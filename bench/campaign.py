@@ -243,7 +243,8 @@ def absorbed_rank(metadata, cell, frame):
 
 
 def capture(directory, cell, frame, metadata):
-    names=[f'x{i}' for i in range(1,17)]
+    k=cell.get('regressors',16)
+    names=[f'x{i}' for i in range(1,k+1)]
     b={r['name']:float(r['value']) for r in csv.DictReader((directory/'coefficients.csv').open())}
     V={(r['row'],r['column']):float(r['value']) for r in csv.DictReader((directory/'covariance.csv').open())}
     if not set(names)<=b.keys(): raise ValueError('omitted/missing finite coefficient')
@@ -253,12 +254,12 @@ def capture(directory, cell, frame, metadata):
     if not np.array_equal(rows.obs_id.to_numpy(),frame.obs_id.to_numpy()):raise ValueError('original row order changed')
     selected=rows.retained.to_numpy()==1
     if not np.isin(rows.retained,[0,1]).all():raise ValueError('invalid sample indicator')
-    if not selected.all():raise ValueError('unexpected sample deletion in positive-outcome balanced inputs')
+    if not selected.all():raise ValueError('unexpected sample deletion in frozen retained inputs')
     required=['finite_slope_rank','slope_omissions','df_a','covariance_policy','N']
     if cell['model']=='ppml':required.append('converged')
     if cell['vce']=='cluster':required.append('N_clust')
     if any(not metadata.get(key) or metadata[key]=='.' for key in required):raise ValueError('missing scientific metadata')
-    if float(metadata['finite_slope_rank'])!=16 or float(metadata['slope_omissions'])!=0:raise ValueError('finite rank/omission mismatch')
+    if float(metadata['finite_slope_rank'])!=k or float(metadata['slope_omissions'])!=0:raise ValueError('finite rank/omission mismatch')
     if cell['model']=='ppml' and float(metadata['converged'])!=1:raise ValueError('missing affirmative PPML convergence')
     if float(metadata['N'])!=selected.sum():raise ValueError('reported sample count mismatch')
     if not np.isfinite(float(metadata['df_a'])):raise ValueError('invalid absorbed DoF evidence')
@@ -274,7 +275,7 @@ def capture(directory, cell, frame, metadata):
     if cell['model']=='ols':
         if not metadata.get('df_r') or metadata['df_r']=='.':raise ValueError('missing residual DoF')
         result['residual_dof']=float(metadata['df_r'])
-        result['correction_dof']=float(metadata['correction_df']) if 'correction_df' in metadata else len(frame)-16-result['absorbed_dof']-(cell['vce']=='cluster')
+        result['correction_dof']=float(metadata['correction_df']) if 'correction_df' in metadata else len(frame)-k-result['absorbed_dof']-(cell['vce']=='cluster')
     if cell['save_fe']:
         fitted=rows.fitted.to_numpy(float)
         if not np.isfinite(fitted[selected]).all():raise ValueError('missing saved prediction')
@@ -298,7 +299,7 @@ def capture(directory, cell, frame, metadata):
             moment=np.bincount(code,weights=residual)
             scale=np.maximum(1,np.bincount(code,weights=np.abs(frame.y)+np.abs(fitted)))
             moments.append(float(np.max(abs(moment)/scale)))
-        X=frame[[f'x{i}' for i in range(1,17)]].to_numpy()
+        X=frame[names].to_numpy()
         moments.append(float(np.max(abs(X.T@residual)/np.maximum(1,abs(X).T@(abs(frame.y)+abs(fitted))))))
         result['maximum_model_score']=max(moments)
         if result['maximum_model_score']>1e-7:raise ValueError('saved predictor fails independent model score')
@@ -325,7 +326,7 @@ def fit(root, cell, arm, repetition, frame, cpus):
     directory.mkdir(parents=True,exist_ok=False)
     settings=dict(source=root/'source',refs=root/'environment/references',r_library=root/'environment/r-library',
         output=directory,dataset=root/'data'/(dataset_key(cell)+'.dta'),warm=root/'data/warm.dta',
-        arm=arm,model=cell['model'],k=16,effects=cell['effects'],threads=cell['threads'],
+        arm=arm,model=cell['model'],k=cell.get('regressors',16),effects=cell['effects'],threads=cell['threads'],
         save_fe=int(cell['save_fe']),vce=cell['vce'],tolerance='',clock_plugin=root/'environment/command-clock.plugin')
     write_configuration(directory,settings)
     if arm.startswith('fixest'):

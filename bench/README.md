@@ -67,6 +67,49 @@ produces the full PDF and CSVs, enforcing complete coverage, scientific eligibil
 fixed-worker exact repeatability and cross-worker agreement. See the
 [comparison guide](../docs/fixest_benchmarks.md) for interpretation.
 
+## Private Veneto panels
+
+`panel_campaign.py` uses the same pinned estimator entrypoints, timers, numerical
+tolerances and Linux placement as the synthetic campaign, with the actual fevc
+retained panels. The long panel is 1996–2001 (5,163,428 observations); it jointly
+fits worker/firm effects, `((age-40)/40)^2`, `((age-40)/40)^3` and year indicators
+with 2001 omitted. The short panel is the pooled 1999/2001 sample (1,319,994
+observations), jointly fitting worker/firm effects and a 2001 indicator. Both
+use unadjusted log daily wages and regular OLS covariance. These are the existing
+fevc samples; this runner does not change their cleaning or connectivity rules.
+
+Preparation takes private retained CSVs containing `year worker firm
+observation_key y` and, for the long panel, `age`. It rejects cardinalities that
+differ from fevc, missing/duplicate person-years, disconnected graphs and singleton
+FE levels. It encodes common Stata inputs, verifies decoded values and hashes,
+and constructs small actual-data explicit-design witnesses:
+
+```sh
+python3 bench/panel_campaign.py prepare PRIVATE_RUN \
+  --long PRIVATE_LONG_RETAINED.csv --short PRIVATE_SHORT_RETAINED.csv
+```
+
+Do not put these inputs or row-level outputs in Git or public storage. Preserve
+owner-only access and obtain approval for any required transfer. Only aggregate
+timing/science summaries belong in committed results.
+
+The fixed schedule has three repetitions at 1/2/4/8/16 cores for fereg and the
+default/strict fixest profiles; reghdfe participates at 1/2/4, within the SCC Stata
+license. This gives 108 planned fit positions. Each panel runs sequentially in
+one independently verified whole-host allocation, using common socket-ordered
+CPU prefixes and NUMA memory binding. A separate four-slot real-data smoke must
+pass before either production task runs. The two panels may use different hosts.
+There are no automatic timing or scientific retries; unavailable comparator
+positions and partial failures remain visible.
+
+Commands include estimation, inference and saving both worker and firm FEs;
+import, disk export and validation are excluded. The runner compares slopes,
+covariance, sample, rank, objective and fitted values, and compares both FE
+channels after observation-weighted centering on the connected graph. Native
+repetitions also require exact raw scientific output and FE channel hashes;
+cross-worker results require scientific agreement. Saved effects and full row
+captures remain private on SCC.
+
 ## Fixed-candidate qualification
 
 [`qualify.py`](qualify.py) implements one bounded regression round for a candidate

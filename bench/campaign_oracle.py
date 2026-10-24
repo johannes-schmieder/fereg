@@ -7,7 +7,7 @@ from campaign import close_values, POLICY
 
 
 def oracle(frame, cell):
-    n=len(frame);k=16
+    n=len(frame);k=cell.get('regressors',16)
     if n>1200:raise ValueError('explicit oracle exceeds its declared bound')
     X=frame[[f'x{i}' for i in range(1,k+1)]].to_numpy()
     F=np.column_stack([pd.get_dummies(frame[f'g{j}'],dtype=float).to_numpy()
