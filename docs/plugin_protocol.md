@@ -192,6 +192,11 @@ solver and by PPML. The public adapter emits it only for the new route;
 existing requests retain their original fields and bytes. The existing OLS
 transport cap admits the new field and hidden Break keys. Solver diagnostic code 8
 identifies CMG-Schur; existing codes and result dimensions are unchanged.
+The same used-solver code 8 identifies actual CMG-preconditioned Schur PCG under
+OLS Auto. Automatic Schur PCG without CMG uses code 4. A certified MAP fallback
+uses code 2 and sets the existing fallback field. This corrects earlier Auto
+reports that labeled every two-FE recurrence as MAP; it does not change the
+2x16 solver matrix, action/result versions or PPML checkpoint-engine codes.
 This additive prototype does not change action or result versions. Older
 plugins reject the unknown solver or field before reading observations.
 CMG-Schur requires exactly two categorical intercept fixed effects; unsupported

@@ -7,8 +7,7 @@ removal, robust and multiway-clustered inference, and saved fixed-effect
 outputs. Estimation runs in one native call and publishes results only after
 the numerical and covariance checks pass.
 
-`fereg` and `feppml` share one maintained native runtime. The former next engine
-is now the only engine; there is no engine selector or fallback. Scientific
+`fereg` and `feppml` share one maintained native runtime. Scientific
 requirements live in [SPEC](docs/SPEC.md), with current validation scope in
 [VALIDATION](docs/VALIDATION.md). The source is licensed under GPL-3.0-only, with third-party terms preserved in
 [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md).
@@ -135,6 +134,14 @@ After estimation, `predict` supports `xb`. If the model was fit with
 exact postestimation contract.
 
 ## Diagnostics and development
+
+Normal OLS output names the fixed-effect solver and final residual-check method.
+After a fit, `e(fereg_solver_used)` and `e(fereg_solver_residual)` contain these
+names; `matrix list e(fereg_solver)` shows iterations, fallback and certificates.
+For two-effect Auto fits, `cg` identifies Schur PCG without multigrid and
+`cmgschur` identifies CMG-preconditioned Schur PCG. Auto builds multigrid only
+when its structural rule admits an upgrade; easy fits may finish without it.
+See [solver options and results](docs/user_guide.md#ols-numerical-and-execution-options).
 
 `fereg, selftest` reports versions, checks ado/plugin compatibility and runs
 bounded installation checks. Use `fereg, selftest verbose` for build, host and

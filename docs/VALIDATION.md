@@ -2,7 +2,9 @@
 
 The many-FE, two-FE structural-gate and ownership/deferred-cell improvements are
 accepted. The runtime at `8de43810` completed source, native and public integration
-checks on 2026-10-24. The cleanup/publication pass preserves that runtime.
+checks on 2026-10-24. The cleanup/publication pass preserves that runtime. The subsequent OLS method-reporting
+correction changes diagnostic labels and fallback flags only; it does not change
+solver selection, iteration budgets, numerical calculations or PPML reporting.
 
 ## Accepted results
 
@@ -89,8 +91,12 @@ prototype worktrees were removed after their unmerged tips were preserved under
 remote `archive/compact-cell-prototype-20261024` and
 `archive/staged-cmg-prototype-20261024` tags. Their branches and the merged
 Auto-routing branch were deleted locally/remotely; 17 merged local branches were
-pruned in total, in addition to the two archived prototypes. Three unrelated
-unmerged local branches remain preserved.
+pruned in total, in addition to the two archived prototypes. Subsequent cleanup
+removed the remaining four fully merged remote branches and three local branches.
+The two unique experimental tips are preserved in remote tags
+`archive/iid-common-floor-20261024` and
+`archive/robust-same-node-timing-20261024`; the rebased backup's changes already
+have equivalent commits in main. Only the main branch and its checkout remain.
 
 Task outputs, expendable Cargo/fuzz caches, mock build files and Python caches
 were removed. `target` retains only the current replay baseline (about 16 MB).

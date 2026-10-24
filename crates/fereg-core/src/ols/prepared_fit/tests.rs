@@ -4875,6 +4875,54 @@ fn low_report_merge_accepts_independent_auto_pilots_in_any_order() {
 }
 
 #[test]
+fn low_report_merge_preserves_cmg_and_map_fallback_across_chunks() {
+    let lsmr = automatic_lsmr_report_for_merge();
+    let mut cg = lsmr.clone();
+    cg.used_solver = FeSolverKind::Cg;
+    cg.requested_preconditioner = None;
+    cg.used_preconditioner = None;
+    let mut cmg = cg.clone();
+    cmg.used_solver = FeSolverKind::CmgSchur;
+    for fallback in [false, true] {
+        let mut map = cg.clone();
+        map.used_solver = FeSolverKind::Map;
+        map.fallback_used = fallback;
+        let reports = [map, cg.clone(), cmg.clone(), lsmr.clone()];
+        for a in 0..4 {
+            for b in 0..4 {
+                for c in 0..4 {
+                    for d in 0..4 {
+                        let order = [a, b, c, d];
+                        if (0..4).any(|i| (i + 1..4).any(|j| order[i] == order[j])) {
+                            continue;
+                        }
+                        let mut merged = reports[a].clone();
+                        for index in [b, c, d] {
+                            merge_solve_report(&mut merged, reports[index].clone()).unwrap();
+                        }
+                        assert_eq!(
+                            merged.used_solver,
+                            if fallback {
+                                FeSolverKind::Map
+                            } else {
+                                FeSolverKind::CmgSchur
+                            }
+                        );
+                        assert_eq!(merged.fallback_used, fallback);
+                        assert_eq!(
+                            merged.requested_preconditioner,
+                            lsmr.requested_preconditioner
+                        );
+                        assert_eq!(merged.used_preconditioner, lsmr.used_preconditioner);
+                        assert_eq!(merged.setup_seconds, 4.0);
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[test]
 fn low_report_merge_preserves_general_map_fallback_in_any_order() {
     let lsmr = automatic_lsmr_report_for_merge();
     let mut fallback = lsmr.clone();

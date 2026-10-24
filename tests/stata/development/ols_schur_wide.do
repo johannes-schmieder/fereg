@@ -37,7 +37,7 @@ foreach effects in one two {
             }
             assert abs(e(rss)-oracle_rss) <= 1e-9*oracle_rss
             if "`effects'" == "two" & `weighted' == 0 {
-                assert e(fereg_solver)[1,2] == 2
+                assert e(fereg_solver)[1,2] == 4
                 assert e(fereg_solver)[1,11] == 0
             }
         }

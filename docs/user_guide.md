@@ -154,7 +154,7 @@ dimension. Cluster interactions use `#`, not `##`.
 
 | Option | Default | Meaning |
 |---|---|---|
-| `solver(auto)` | `auto` | Select topology-qualified CMG before the bounded MAP pilot; otherwise select a certified direct, MAP, CG, or LSMR route. |
+| `solver(auto)` | `auto` | Select a certified projection for the design. Two categorical effects start with Schur PCG and may upgrade to CMG; eligible larger categorical designs use LSMR. |
 | `solver(map|it|squarem|lsmr|cmg)` | — | Request a specific fixed-effect solver. `cmg` is the sparse AKM graph route for categorical intercept effects. In `fereg`, explicit `lsmr` iterates to one hundredth of `tolerance()` (at least 1e-15, never less strictly than `tolerance()`) and certifies at `tolerance()`. |
 | `preconditioner(auto|off|diagonal|schwarz)` | `auto` with `auto`/`lsmr` | Select the LSMR preconditioner. `none` aliases `off`; `additive` aliases `schwarz`. |
 | `threads(#)` | `0` | Request a native thread team. Zero uses the native default. |
@@ -174,6 +174,22 @@ Automatic two-FE OLS checks an initial solution at the requested tolerance
 and spends additional iterations on a tighter correction only if that check
 fails. The correction shares the original iteration budget.
 
+With `solver(auto) preconditioner(auto)`, two categorical-intercept effects
+start with diagonal-preconditioned Schur PCG. If eligible outcome or packed
+regressor/outcome work remains at iteration 16, the qualified structural rule
+can build a CMG preconditioner. The hierarchy is reused across subsequent
+blocks. Small or easy problems can finish without building it. A failed
+optional construction leaves the existing recurrence in place; a numerical
+failure can continue with certified MAP within the original budget.
+
+Eligible designs with three or more categorical-intercept effects use strict
+LSMR with reusable preparation; certified structural shortcuts may finish
+first. One categorical effect uses direct demeaning. Slopes, explicit solver
+and preconditioner requests retain their own supported routes. Ownership and
+repeated-cell optimizations are automatic only for Auto/Auto with a global
+intercept and exactly two categorical-intercept effects. They do not change
+the fitted model or require new options.
+
 Automatic routes can differ at roughly the 1e-5 level in derived statistics
 on weakly connected graphs, despite passing their requested FE-moment certificate.
 
@@ -186,14 +202,10 @@ additional absorbed intercept effects through a dense Schur layer capped at 64
 non-base columns. Zero- and one-effect models retain exact direct projection.
 CMG does not support absorbed slopes. Every result is independently certified;
 the existing CG solver polishes a small remaining projection error or is used
-as a visible fallback if CMG setup or PCG fails. `solver(auto)` selects CMG
-before the MAP pilot only for the frozen favorable topology: two intercept-only
-core effects, no nuisance Schur columns, at least eight observations per
-highest-cardinality level, and at least a 10:1 level-count ratio between the
-core effects. The route is available in `memory(fast)` and `memory(low)`. CMG
-setup is included in memory preflight and timing; setup failure returns visibly
-to the existing auto route, while a solve failure selects certified CG for the
-rest of that fit. The final OLS residual is certified directly and skips graph
+as a visible fallback if CMG setup or PCG fails. Explicit CMG and automatic
+Schur-PCG upgrades are different routes: their result codes are `cmg` and
+`cmgschur`, respectively. Both memory modes include setup in the memory budget
+and elapsed time. The final OLS residual is certified directly and skips graph
 PCG when it is already within-transformed. Low-memory OLS instead reconstructs
 raw residuals and performs the full CMG projection before final certification.
 
@@ -257,16 +269,39 @@ residual and absorbed degrees of freedom, fit statistics, weight metadata,
 cluster counts, singleton counts, and absorbed-effect metadata. The following
 diagnostics are specific to `fereg`:
 
-- `e(fereg_solver)` records the selected route, pilot, iterations, fallback,
-  and convergence certificate;
+- `e(fereg_solver_used)` names the method used for outcome/regressor absorption;
+- `e(fereg_solver_residual)` names the method used for the final residual check;
+- `e(fereg_solver_requested)` retains the user's request, including `auto`;
+- `e(fereg_solver_fallback)` is one if either phase used a certified fallback;
+- `e(fereg_solver)` records both phases, iterations, fallback and certification;
 - `e(fereg_runtime)` records memory-plan, timing, scratch, RSS, and thread
   diagnostics;
 - `e(fereg_certificate)` records independent scientific checks; and
 - `e(fereg_status)`, `e(fereg_dof)`, `e(fereg_fe)`, `e(fereg_cluster)`, and
   related matrices expose the detailed result contract.
 
-Use `ereturn list` and `matrix list e(fereg_solver)` after estimation for the
-complete set.
+The ordinary output prints the two method names. `cg` denotes the guarded
+Schur-PCG recurrence on the automatic two-FE path; `cmgschur` means that path
+actually applied a CMG preconditioner. This does not enable an explicit
+`solver(cg)` request. A MAP fallback is reported as `map` with fallback set.
+
+`e(fereg_solver)` remains a 2-by-16 matrix, with rows `absorption` and
+`residual`. Its first two columns, `requested` and `used`, use these codes:
+1 auto, 2 map, 3 lsmr, 4 cg, 5 it, 6 squarem, 7 cmg, 8 cmgschur.
+Column 3 is iterations and column 11 is fallback. Low-memory absorption
+summarizes all blocks: a fallback takes precedence; otherwise CMG use is
+retained even if an earlier or later block finished without it. A zero-iteration
+`map` row can be an already-orthogonal input check, not an iterative MAP solve.
+The reported method describes the certified result, not every attempted build.
+
+```stata
+display "Absorption: `e(fereg_solver_used)'"
+display "Residual check: `e(fereg_solver_residual)'"
+matrix list e(fereg_solver)
+```
+
+Use `ereturn list` for the complete set. Developer tracing is not needed to
+identify the reported method.
 
 `predict newvar` and `predict newvar, xb` return the finite-regressor linear
 prediction. Models fit with `residuals(saved_residual)` additionally support:

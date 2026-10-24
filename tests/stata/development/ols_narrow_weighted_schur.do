@@ -40,7 +40,7 @@ foreach k in 1 3 6 13 {
         assert abs(e(rss)-oracle_rss)<1e-8*oracle_rss
         assert abs(native_residual-oracle_residual)<1e-7
         assert e(fereg_solver)[1,1]==1
-        assert e(fereg_solver)[1,2]==2
+        assert e(fereg_solver)[1,2]==4
         assert e(fereg_solver)[1,11]==0
         forvalues j=1/`k' {
             assert abs(e(b)[1,`j']-oracle_b[1,`j'])<1e-8

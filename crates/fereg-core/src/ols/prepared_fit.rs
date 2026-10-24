@@ -2407,10 +2407,15 @@ pub(super) fn merge_solve_report(target: &mut SolveReport, source: SolveReport) 
                 report.requested_preconditioner,
                 report.used_preconditioner,
             ) {
-                (FeSolverKind::Map | FeSolverKind::Cg | FeSolverKind::IronsTuck, None, None) => {
-                    true
-                }
-                (FeSolverKind::Lsmr, Some(_), Some(_)) => true,
+                (
+                    FeSolverKind::Map
+                    | FeSolverKind::Cg
+                    | FeSolverKind::CmgSchur
+                    | FeSolverKind::IronsTuck,
+                    None,
+                    None,
+                ) => true,
+                (FeSolverKind::Lsmr | FeSolverKind::CmgSchur, Some(_), Some(_)) => true,
                 (FeSolverKind::Cg | FeSolverKind::Map, Some(_), Some(_)) => report.fallback_used,
                 _ => false,
             }
@@ -2446,11 +2451,13 @@ pub(super) fn merge_solve_report(target: &mut SolveReport, source: SolveReport) 
     }
     if auto_mix {
         // A certified continuation remains authoritative over its LSMR
-        // attempt. Otherwise LSMR metadata takes precedence over direct CG,
-        // coefficient IT and MAP prefixes, without inventing preconditioner data.
+        // attempt. Otherwise retain CMG use across RHS blocks, then LSMR,
+        // direct CG, coefficient IT and MAP prefixes. Preconditioner metadata
+        // still describes only the LSMR blocks that supplied it.
         let priority = |report: &SolveReport| match report.used_solver {
-            FeSolverKind::Map if report.fallback_used => 5,
-            FeSolverKind::Cg if report.fallback_used => 4,
+            FeSolverKind::Map if report.fallback_used => 6,
+            FeSolverKind::Cg if report.fallback_used => 5,
+            FeSolverKind::CmgSchur => 4,
             FeSolverKind::Lsmr => 3,
             FeSolverKind::Cg => 2,
             FeSolverKind::IronsTuck => 1,

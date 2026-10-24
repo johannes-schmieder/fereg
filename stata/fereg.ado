@@ -1,4 +1,4 @@
-*! fereg 0.5.0 beta OLS 25aug2026
+*! fereg 0.5.0 beta OLS 24oct2026
 program define fereg, rclass
     version 18.0
 
@@ -35,5 +35,11 @@ program define fereg, rclass
 
     local display_results = c(noisily)
     _fereg_estimate_public `0'
-    if `display_results' ereturn display
+    if `display_results' {
+        di as txt "Fixed-effect solver: " as result "`e(fereg_solver_used)'" ///
+            as txt "   Residual check: " as result "`e(fereg_solver_residual)'"
+        if e(fereg_solver_fallback) ///
+            di as txt "A certified fallback was used; see e(fereg_solver)."
+        ereturn display
+    }
 end

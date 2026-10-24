@@ -30,6 +30,9 @@ foreach pool in 1 5 10 {
     assert e(fereg_solver)[1,2] == 2
     assert e(fereg_solver)[1,4] == 2
     assert e(fereg_solver)[1,11] == 1
+    assert "`e(fereg_solver_used)'" == "map"
+    assert "`e(fereg_solver_residual)'" == "lsmr"
+    assert e(fereg_solver_fallback) == 1
     assert e(fereg_solver)[1,15] == 0
     assert e(fereg_solver)[2,1] == 1
     * Row 2 is this fixture's final-residual projection.

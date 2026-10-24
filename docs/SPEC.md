@@ -745,7 +745,20 @@ counts, ranks, absorbed metadata, singleton accounting, prediction binding
 and requested output names. Sample/status/count/DoF fields are exact.
 Required OLS families include `fereg_status`, `fereg_dof`, `fereg_fe`,
 `fereg_cluster`, `fereg_subset`, `fereg_solver`, `fereg_certificate` and
-`fereg_runtime`. Required PPML information includes:
+`fereg_runtime`. The OLS solver matrix retains its 2x16 layout and numeric codes.
+Rows `absorption` and `residual` describe outcome/regressor absorption (aggregated
+across Low blocks) and final residual projection. The `used` column reports the
+actual certifying method: automatic two-FE Schur PCG is code 4, and actual CMG
+application on that path is code 8. A MAP continuation is code 2 with fallback
+set; already-certified zero-work inputs retain code 2 with zero iterations.
+Low aggregation preserves CMG use across blocks unless a certified fallback
+takes precedence. Requested solver remains unchanged. The public macros
+`fereg_solver_used` and `fereg_solver_residual` expose the method names;
+`fereg_solver_fallback` is the OR of the two fallback fields. This reporting
+correction changes only method/fallback telemetry, not arithmetic, route
+decisions, iteration budgets, science or the PPML solver contract.
+
+Required PPML information includes:
 
 - N_physical, N_effective, N_candidate, N_full; rank, feppml_model_rank,
   df_m, df_resid, df_structural, df_a, N_hdfe, N_hdfe_extended;

@@ -37,6 +37,15 @@ Keep the installed runtime unchanged while testing private patches. Main must pa
 the default entrypoint with matching installed artifacts before a distribution
 change is committed; source-only success never authorizes publication or promotion.
 
+## Complexity inventory
+
+`tests/reference/complexity.json` records production lines, dispatch/chunk
+candidates and large functions for the maintained runtime. `scripts/check_complexity.py`
+compares the current source with that ratchet. After a scoped change, use
+`--write-inventory target/tmp/<task>/complexity.json` to inspect the measured
+inventory, lower reduced counts and document each necessary increase in the
+ratchet. Do not move code into exclusions or minify it to satisfy the check.
+
 ## Compact candidate qualification
 
 Use `bench/qualify.py plan`, `run` and `report` for a fixed candidate, current

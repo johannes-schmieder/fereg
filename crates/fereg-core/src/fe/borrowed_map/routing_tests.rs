@@ -1712,6 +1712,7 @@ fn routing_and_portfolio_memory_refusal_preserve_the_exact_incumbent() {
             false,
         )
         .unwrap();
+    assert_eq!(reference.report().used_solver, FeSolverKind::Cg);
     for preset in [
         RoutingPreset::new(4, 1).unwrap(),
         RoutingPreset::portfolio_v1(),
@@ -1733,6 +1734,7 @@ fn routing_and_portfolio_memory_refusal_preserve_the_exact_incumbent() {
             .unwrap();
         assert!(owner.auto_route.as_ref().unwrap().setup.attempted);
         assert!(owner.two_fe_pcg.as_ref().unwrap().cmg_schur.is_none());
+        assert_eq!(fit.report().used_solver, FeSolverKind::Cg);
         assert_eq!(fit.residualized(), reference.residualized());
         assert_same_bits(
             fit.residualized().as_slice(),
@@ -1832,6 +1834,7 @@ fn routing_initial_certificate_does_not_spend_or_prepare() {
         .unwrap();
     assert!(fit.report().certified());
     assert_eq!(fit.report().iterations, 0);
+    assert_eq!(fit.report().used_solver, FeSolverKind::Map);
     assert_eq!(fit.residualized(), &witness.residual);
     let route = owner.auto_route.as_ref().unwrap();
     assert!(!route.setup.attempted);
@@ -1883,6 +1886,7 @@ fn routing_low_rhs_chunks_share_preparation_but_final_accuracy_has_a_new_attempt
         )
         .unwrap();
     witness.check(&first, &[0, 1, 2]);
+    assert_eq!(first.report().used_solver, FeSolverKind::CmgSchur);
     let hierarchy = std::ptr::from_ref(
         owner
             .two_fe_pcg
@@ -1906,6 +1910,7 @@ fn routing_low_rhs_chunks_share_preparation_but_final_accuracy_has_a_new_attempt
             )
             .unwrap();
         witness.check(&chunk, positions);
+        assert_eq!(chunk.report().used_solver, FeSolverKind::CmgSchur);
         assert!(owner.auto_route.as_ref().unwrap().setup.attempted);
         assert_eq!(
             std::ptr::from_ref(
@@ -1935,6 +1940,7 @@ fn routing_low_rhs_chunks_share_preparation_but_final_accuracy_has_a_new_attempt
         )
         .unwrap();
     witness.check(&final_fit, &[0]);
+    assert_eq!(final_fit.report().used_solver, FeSolverKind::CmgSchur);
     assert!(!owner.auto_route.as_ref().unwrap().setup.attempted);
     assert_eq!(
         std::ptr::from_ref(

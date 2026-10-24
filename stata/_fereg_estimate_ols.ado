@@ -761,6 +761,20 @@ program define _fereg_estimate_ols, eclass
     ereturn matrix fereg_status = `status_shadow', copy
     ereturn matrix fereg_fit = `fit_shadow', copy
     ereturn matrix fereg_dof = `dof_shadow', copy
+    matrix rownames `solver_shadow' = absorption residual
+    matrix colnames `solver_shadow' = requested used iterations stop ///
+        absolute_infinity relative_infinity relative_two normal_equation ///
+        setup_seconds solve_seconds fallback warnings ///
+        requested_preconditioner used_preconditioner pilot_iterations pilot_contraction
+    local solver_names auto map lsmr cg it squarem cmg cmgschur
+    local absorption_code = `solver_shadow'[1,2]
+    local residual_code = `solver_shadow'[2,2]
+    local absorption_solver : word `absorption_code' of `solver_names'
+    local residual_solver : word `residual_code' of `solver_names'
+    ereturn local fereg_solver_used "`absorption_solver'"
+    ereturn local fereg_solver_residual "`residual_solver'"
+    ereturn scalar fereg_solver_fallback = ///
+        max(`solver_shadow'[1,11], `solver_shadow'[2,11])
     ereturn matrix fereg_solver = `solver_shadow', copy
     ereturn matrix fereg_fe = `fe_shadow', copy
     ereturn matrix fereg_cluster = `cluster_shadow', copy
@@ -955,6 +969,19 @@ program define _fereg_eols_validate, rclass
        !inlist(`runtime'[30,2], 0, 1) {
         di as error "hidden OLS runtime report failed semantic validation"
         exit 3499
+    }
+    forvalues row = 1/2 {
+        if !inrange(`solver'[`row',1], 1, 8) | ///
+           `solver'[`row',1] != int(`solver'[`row',1]) | ///
+           !inrange(`solver'[`row',2], 1, 8) | ///
+           `solver'[`row',2] != int(`solver'[`row',2]) | ///
+           `solver'[`row',3] < 0 | `solver'[`row',3] >= . | ///
+           `solver'[`row',3] != int(`solver'[`row',3]) | ///
+           !inlist(`solver'[`row',4], 1, 2) | ///
+           !inlist(`solver'[`row',11], 0, 1) {
+            di as error "hidden OLS solver report failed semantic validation"
+            exit 3499
+        }
     }
     return scalar coefficients = `coefficients'
 end

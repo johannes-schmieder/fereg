@@ -2036,7 +2036,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         values: DenseMatrix,
         config: MapConfig,
     ) -> Result<CertifiedBorrowedMap> {
-        let result = self.absorb(weights, values.into(), config, false, None);
+        let result = self.absorb(weights, values.into(), config, None, None);
         if !result.as_ref().is_ok_and(|fit| fit.report().certified()) {
             self.reject_ppml_topology();
         }
@@ -2052,7 +2052,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         config: MapConfig,
         final_residual: bool,
     ) -> Result<CertifiedBorrowedMap> {
-        self.absorb(weights, values, config, !final_residual, None)
+        self.absorb(weights, values, config, Some(!final_residual), None)
     }
 
     pub(crate) fn absorb_ols_with_remaining(
@@ -2063,7 +2063,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         final_residual: bool,
         remaining: Option<ObserverRef<'_>>,
     ) -> Result<CertifiedBorrowedMap> {
-        self.absorb(weights, values, config, !final_residual, remaining)
+        self.absorb(weights, values, config, Some(!final_residual), remaining)
     }
 
     fn try_direct_route(
@@ -2174,9 +2174,10 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         weights: BorrowedMapWeights<'_>,
         values: crate::ols::OlsProjectionInput,
         config: MapConfig,
-        refine_ols: bool,
+        ols_refine: Option<bool>,
         mut remaining: Option<ObserverRef<'_>>,
     ) -> Result<CertifiedBorrowedMap> {
+        let refine_ols = ols_refine.unwrap_or(false);
         validate_config(config)?;
         let rhs_count = values.ncols();
         if values.nrows() != self.design.nobs()
@@ -2547,7 +2548,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                 weights,
                 values,
                 config,
-                refine_ols,
+                ols_refine,
                 0,
                 1.0,
                 setup_seconds,
@@ -2709,7 +2710,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         weights: ValidatedWeights<'_>,
         values: DenseMatrix,
         config: MapConfig,
-        refine_ols: bool,
+        ols_refine: Option<bool>,
         completed_pilot_iterations: usize,
         pilot_contraction: f64,
         setup_seconds: f64,
@@ -2722,7 +2723,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             .ok_or_else(|| invalid_data("two-FE categorical MAP PCG workspace is unavailable"))?;
         let explicit_cmg_schur = self.cmg_schur_request.is_some();
         if let Some(route) = self.auto_route.as_mut() {
-            route.begin(config.tolerance, !refine_ols);
+            route.begin(config.tolerance, !ols_refine.unwrap_or(false));
         }
         let result = absorb_two_fe_pcg_reusing(
             &self.design,
@@ -2745,7 +2746,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             if explicit_cmg_schur {
                 SchurWorkLimit::CmgSchur
             } else {
-                SchurWorkLimit::Map { refine: refine_ols }
+                SchurWorkLimit::Map { ols_refine }
             },
             self.retain_coefficients,
             self.auto_route.as_mut(),
@@ -2806,13 +2807,19 @@ fn absorb_two_fe_pcg_reusing(
     let mut operator_seconds = 0.0;
     let mut recurrence_seconds = 0.0;
     let rhs_count = values.ncols();
-    let (iteration_cap, checkpoint_progress, refine) = match work_limit {
-        SchurWorkLimit::Map { refine } => (None, false, refine),
-        SchurWorkLimit::Checkpoint(cap) => (Some(cap), true, false),
-        SchurWorkLimit::CmgSchur => (None, false, false),
+    let (iteration_cap, checkpoint_progress, refine, report_ols_method) = match work_limit {
+        SchurWorkLimit::Map { ols_refine } => (
+            None,
+            false,
+            ols_refine.unwrap_or(false),
+            ols_refine.is_some(),
+        ),
+        SchurWorkLimit::Checkpoint(cap) => (Some(cap), true, false, false),
+        SchurWorkLimit::CmgSchur => (None, false, false, true),
     };
     let explicit_cmg_schur = matches!(work_limit, SchurWorkLimit::CmgSchur);
     let mut cmg_schur = graph.cmg_schur.is_some();
+    let mut cmg_applied = false;
     let mut correction_tolerance = if explicit_cmg_schur {
         Some((config.tolerance * 0.01).max(1e-15).min(config.tolerance))
     } else {
@@ -2974,6 +2981,7 @@ fn absorb_two_fe_pcg_reusing(
                     scale_components.then_some(graph.component_scales.as_slice()),
                     None,
                 )?;
+                cmg_applied = true;
                 if let Some((state, _)) = remaining.as_mut() {
                     state.startup_finished(startup);
                 }
@@ -3232,6 +3240,7 @@ fn absorb_two_fe_pcg_reusing(
                     scale_components.then_some(graph.component_scales.as_slice()),
                     Some(active_rhs_state),
                 )?;
+                cmg_applied = true;
                 crate::kernels::dispatch!(
                     hardware,
                     column_products(
@@ -3533,6 +3542,16 @@ fn absorb_two_fe_pcg_reusing(
                     setup_seconds,
                     solve_started.elapsed().as_secs_f64(),
                 )?;
+                // PPML keeps its checkpoint-engine contract. OLS reports the
+                // actual recurrence, including a CMG inverse reused from an
+                // earlier RHS block. An allocated but unused inverse is not CMG.
+                if report_ols_method {
+                    result.report.used_solver = if cmg_applied {
+                        FeSolverKind::CmgSchur
+                    } else {
+                        FeSolverKind::Cg
+                    };
+                }
                 result.report.pilot_iterations = completed_pilot_iterations;
                 result.report.pilot_contraction = progress_contraction.unwrap_or(pilot_contraction);
                 return Ok(SchurAttempt::Certified(attach_optional_map_coefficients(
@@ -3661,6 +3680,9 @@ fn absorb_two_fe_pcg_reusing(
                 )?;
                 result.report.pilot_iterations = completed_pilot_iterations;
                 result.report.pilot_contraction = progress_contraction.unwrap_or(pilot_contraction);
+                if report_ols_method {
+                    result.report.fallback_used = true;
+                }
                 return Ok(SchurAttempt::Certified(attach_optional_map_coefficients(
                     result,
                     coefficients,
@@ -9100,7 +9122,8 @@ fn checkpoint_schur_copy(
 
 #[derive(Clone, Copy)]
 enum SchurWorkLimit {
-    Map { refine: bool },
+    // None denotes PPML; Some(false) is the OLS final-residual phase.
+    Map { ols_refine: Option<bool> },
     Checkpoint(usize),
     CmgSchur,
 }

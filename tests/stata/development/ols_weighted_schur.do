@@ -99,7 +99,7 @@ foreach t in 1 16 {
     assert e(b)[1,17]==0
     assert e(b)[1,18]==0
     assert e(fereg_status)[18,2]==3
-    assert e(fereg_solver)[1,2]==2
+    assert e(fereg_solver)[1,2]==4
     forvalues j=1/16 {
         assert abs(e(b)[1,`j']-rank_b[1,`j'])<1e-8
         forvalues k=1/16 {

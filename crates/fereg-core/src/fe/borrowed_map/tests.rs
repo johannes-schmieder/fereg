@@ -976,7 +976,7 @@ fn ols_schur_accepts_a_passing_certificate_after_recurrence_budget() {
     assert!(owner.cg_initial_residual_square[0] != 0.0);
     assert!(result.report().certified());
     assert_eq!(result.report().stop_reason, SolveStopReason::Certified);
-    assert_eq!(result.report().used_solver, FeSolverKind::Map);
+    assert_eq!(result.report().used_solver, FeSolverKind::Cg);
     assert!(!result.report().fallback_used);
     assert!(!two_fe_pcg_rhs_ready(
         owner.two_fe_pcg.as_ref().unwrap(),
@@ -5522,8 +5522,8 @@ fn structural_auto_uses_direct_groups_and_one_two_fe_graph() {
         None,
         None,
     )
-    .expect("early MAP");
-    assert_eq!(early.report().used_solver, FeSolverKind::Map);
+    .expect("early Schur CG");
+    assert_eq!(early.report().used_solver, FeSolverKind::Cg);
     assert_eq!(early.report().pilot_iterations, 0);
 
     let worker_codes = [0_u32, 0, 1, 1, 2, 2, 3, 3];
@@ -5557,7 +5557,7 @@ fn structural_auto_uses_direct_groups_and_one_two_fe_graph() {
     )
     .expect("CG auto");
     assert_eq!(cg.report().requested_solver, FeSolverKind::Auto);
-    assert_eq!(cg.report().used_solver, FeSolverKind::Map);
+    assert_eq!(cg.report().used_solver, FeSolverKind::Cg);
     assert_eq!(cg.report().pilot_iterations, 0);
     assert!(cg.report().pilot_contraction.is_finite());
     assert!(cg.report().certified());
@@ -5600,7 +5600,7 @@ fn structural_graph_preserves_slow_chain_and_retained_coefficients() {
     )
     .expect("routed auto");
     assert_eq!(result.report().requested_solver, FeSolverKind::Auto);
-    assert_eq!(result.report().used_solver, FeSolverKind::Map);
+    assert_eq!(result.report().used_solver, FeSolverKind::Cg);
     assert_eq!(result.report().pilot_iterations, 0);
     assert!(result.report().pilot_contraction.is_finite());
     assert!(result.report().certified());
@@ -5620,7 +5620,7 @@ fn structural_graph_preserves_slow_chain_and_retained_coefficients() {
     )
     .expect("direct LSMR auto");
     assert_eq!(direct.report().requested_solver, FeSolverKind::Auto);
-    assert_eq!(direct.report().used_solver, FeSolverKind::Map);
+    assert_eq!(direct.report().used_solver, FeSolverKind::Cg);
     assert_eq!(direct.report().pilot_iterations, 0);
     assert!(direct.report().pilot_contraction.is_finite());
     assert!(direct.report().certified());
@@ -6574,7 +6574,18 @@ fn adaptive_ols_schur_retry_is_bounded_and_preserves_other_callers() {
         assert_eq!(TWO_FE_CORRECTIONS.get(), corrections);
         if let Ok(result) = result {
             assert!(result.report().iterations <= cap);
-            assert!(!result.report().fallback_used);
+            let map_fallback = caller <= 1 && (breakdown || failures > corrections);
+            assert_eq!(result.report().fallback_used, map_fallback);
+            assert_eq!(
+                result.report().used_solver,
+                if caller == 2 || map_fallback {
+                    FeSolverKind::Map
+                } else if caller >= 3 {
+                    FeSolverKind::CmgSchur
+                } else {
+                    FeSolverKind::Cg
+                }
+            );
         } else if caller >= 3 {
             assert_eq!(result.unwrap_err().code, ErrorCode::NonConvergence);
         }

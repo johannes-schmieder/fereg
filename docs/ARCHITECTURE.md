@@ -13,6 +13,14 @@ inference. [SPEC](SPEC.md) defines the scientific contract.
 | `crates/fereg-oracle` | Independent dense scientific oracles; development only |
 | `crates/fereg-testkit` | Native fixtures and independent regression support |
 
+OLS result reporting preserves the two phases and the existing 2x16 solver
+matrix. The shared two-FE recurrence distinguishes OLS from PPML when it emits
+method diagnostics: OLS reports CG or actual CMG-Schur application, and MAP
+continuation sets fallback. PPML retains its checkpoint-engine identities.
+Low-memory aggregation preserves an applied CMG method across blocks unless
+a certified fallback takes precedence. Stata adds readable method macros and
+prints them with the ordinary results; no trace parsing is involved.
+
 ## Preparation and storage
 
 Canonical preparation owns the immutable sample/topology and optional cluster

@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 0.5.0 26aug2026}{...}
+{* *! version 0.5.0 24oct2026}{...}
 {.-}
 help for {cmd:fereg} {right:(Johannes F. Schmieder)}
 {.-}
@@ -183,14 +183,22 @@ residual degrees of freedom.
 {title:Solver, memory, and threads}
 
 {pstd}
-{cmd:solver(auto)} is the default. It uses direct one-pass demeaning for one
-fixed effect. Before the bounded multi-effect pilot, categorical intercept-only
-designs select CMG when they have no nuisance Schur columns, at least eight
-observations per largest-effect level, and at least a 10:1 core level-count
-ratio. Other designs select a certified MAP, CG, or LSMR route after the pilot.
-Auto-selected LSMR may make at most one recorded
-fallback to certified CG. The result matrix records the selected method,
-pilot, iterations, fallback, and final certificate.
+{cmd:solver(auto)} is the default. One categorical effect uses direct
+demeaning. With {cmd:preconditioner(auto)}, two categorical-intercept effects
+start with diagonal-preconditioned Schur PCG. If eligible outcome or packed
+regressor/outcome work remains at iteration 16, a structural rule can build
+a combinatorial multigrid (CMG) preconditioner and reuse it across later blocks.
+Easy problems may finish without multigrid. Optional setup refusal keeps the
+existing recurrence; numerical failure can continue with certified MAP inside
+the original iteration budget.
+
+{pstd}
+Eligible designs with three or more categorical-intercept effects use strict
+LSMR with reusable preparation; certified structural shortcuts may finish
+first. Slopes and explicit solver/preconditioner requests retain their supported
+routes. Ownership and repeated-cell optimizations are automatic for Auto/Auto
+with a global intercept and exactly two categorical-intercept terms; they need
+no additional option and do not change the fitted model.
 
 {pstd}
 Explicit methods are unaccelerated symmetric {cmd:map},
@@ -230,8 +238,9 @@ It is unavailable for PPML, absorbed slopes, or other numbers of fixed effects.
 with {cmd:solver(cmgschur)}.
 The solver matrix uses code 8 for this route. {cmd:e(fereg_cmg_degree)},
 {cmd:e(fereg_cmg_samples)}, and {cmd:e(fereg_cmg_seed)} record the requested
-cutoff, tree count, and seed. This prototype requires a matching development
-plugin; older binaries reject the new request.
+cutoff, tree count, and seed. This experimental explicit option is included in
+the current Mac beta. Its default unsampled graph differs from the automatic
+upgrade, which uses cutoff 5, one sampled tree and seed zero.
 
 {pstd}
 Explicit {cmd:solver(cg)} returns error 198 because its residual certificate
@@ -240,10 +249,10 @@ does not establish projection accuracy. Use {cmd:solver(lsmr)} or
 solve before final certification.
 
 {pstd}
-The automatic CMG route is available in both memory modes, includes hierarchy
-setup in timing and memory preflight, and records requested {cmd:auto} with
-used solver code 7. Unsupported or failed setup returns to the existing auto
-route; a failed CMG solve uses certified CG for the remaining fit work.
+Automatic upgrades are available in both memory modes and include hierarchy
+setup in timing and memory admission. Their used-solver name is {cmd:cmgschur}
+(code 8). The explicit full-graph {cmd:solver(cmg)} route reports {cmd:cmg}
+(code 7). These are distinct methods.
 
 {pstd}
 {cmd:preconditioner()} is valid only with {cmd:solver(auto)} or
@@ -298,6 +307,35 @@ Standard {cmd:test} uses the posted coefficient and covariance matrices.
 rank, residual and absorbed DoF, fit statistics, weight metadata, cluster
 counts, singleton counts, and absorbed-effect metadata. {cmd:ereturn list}
 shows the complete result set.
+
+{pstd}
+Normal output shows the absorption and final residual-check methods.
+{cmd:e(fereg_solver_requested)} preserves the request, including {cmd:auto};
+{cmd:e(fereg_solver_used)} names the method used for outcome/regressor
+absorption, and {cmd:e(fereg_solver_residual)} names the final residual method.
+{cmd:e(fereg_solver_fallback)} equals one if either phase used a certified
+fallback. No developer trace is required.
+
+{pstd}
+For automatic two-effect fits, {cmd:cg} means the guarded Schur-PCG recurrence
+without multigrid and {cmd:cmgschur} means a CMG preconditioner was actually
+applied. An allocated but unused hierarchy is not reported as CMG use.
+Explicit {cmd:solver(cg)} remains unsupported. A MAP continuation reports
+{cmd:map} and sets fallback.
+
+{pstd}
+{cmd:e(fereg_solver)} is a 2-by-16 matrix with rows {cmd:absorption} and
+{cmd:residual}. Columns {cmd:requested} and {cmd:used} use these numeric codes:
+1 auto, 2 map, 3 lsmr, 4 cg, 5 it, 6 squarem, 7 cmg, 8 cmgschur.
+Column 3 is {cmd:iterations}; column 11 is {cmd:fallback}.
+Low-memory absorption combines all blocks: a fallback takes precedence;
+otherwise CMG use remains visible even when another block did not need it.
+A zero-iteration {cmd:map} row may be an already-orthogonal input check.
+The method identifies the certified result, not every attempted construction.
+
+{phang2}{cmd:. display "Absorption: `e(fereg_solver_used)'"}{p_end}
+{phang2}{cmd:. display "Residual check: `e(fereg_solver_residual)'"}{p_end}
+{phang2}{cmd:. matrix list e(fereg_solver)}{p_end}
 
 {pstd}
 Package-specific matrices include {cmd:e(fereg_solver)} for routing and

@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 0.5.0 26aug2026}{...}
+{* *! version 0.5.0 24oct2026}{...}
 {vieweralsosee "fereg" "help fereg"}{...}
 {title:Title}
 
@@ -36,6 +36,18 @@ specified.
 {cmd:test} uses the posted {cmd:e(b)} and {cmd:e(V)}. {cmd:estat summarize}
 summarizes estimation-sample variables through Stata's standard estimator
 summary machinery.
+
+{title:Solver diagnostics}
+
+{pstd}
+{cmd:e(fereg_solver_used)} names the absorption method and
+{cmd:e(fereg_solver_residual)} names the final residual-check method.
+{cmd:e(fereg_solver_fallback)} records whether either phase used a fallback.
+Use {cmd:matrix list e(fereg_solver)} for the two named rows, iteration counts,
+fallback indicators and certificates. On the automatic two-effect path,
+{cmd:cg} is Schur PCG and {cmd:cmgschur} is CMG-preconditioned Schur PCG.
+See {help fereg##stored:Stored results} for the numeric codes and Low-block
+aggregation. These diagnostics do not require saving residuals.
 
 {title:Example}
 
