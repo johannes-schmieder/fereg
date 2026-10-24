@@ -48,5 +48,31 @@ proof. New work does not need to replay those campaigns.
 
 ## Package checks
 
-Current package identity is in [dist](../dist/README.md). The release result is
-recorded here after testing the actual beta.3 package and public installation.
+Beta.3 packages source `e370f3d84f1d` with unchanged accepted native runtime
+(200 modules and 58 artifact inputs equal `8de43810`). The universal plugin was
+built offline from the vendored corresponding-source archive using Rust 1.85.1.
+The dependency audit reports zero advisories. Binary privacy/export/dependency
+audit and actual ABI/load/panic-containment checks passed.
+
+The default `./scripts/run_tests.sh` passed, including installed-package admission,
+316 Python tests, Rust/Clippy, FFI allocation audits, portable and bridge checks,
+and the complexity ratchet. All 353 maintained benchmark tests and 12 focused
+packaging tests passed. The initial cleanup benchmark run exposed two removed
+shared test/document dependencies and an inherited fake resource trace charged
+incorrectly; those tooling fixtures were corrected without native calls or
+relaxing scientific checks.
+
+The staged package passed four licensed Stata 19/MP fixtures on Apple Silicon:
+installation smoke, single-runtime repeatability, two-FE OLS against dummy-variable
+OLS (Auto/LSMR/CMG, Fast/Low), and PPML against full-dummy Poisson with independent
+sandwich covariance. A fresh local `net install` passed the three numerical
+fixtures and selftest; all 31 installed files matched. Actual public OLS
+marker-only Break/rollback passed on this binary at the pre-preparation checkpoint.
+
+The binary SHA-256 is
+`b9c5ff17712e11f897f1536c8c92d92ea84160f3271b34ccad785a37b482f807`;
+the corresponding-source archive SHA-256 is
+`55383fbf48b9496e1845a61688dc87a16bead4d43af025506a42ff9ff40825b8`.
+[Package metadata](../dist/fereg-native.json) records the identity and caveats.
+Public-URL installation is checked after publication, before completing the merge.
+

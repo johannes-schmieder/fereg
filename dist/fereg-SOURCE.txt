@@ -1,8 +1,5 @@
 The corresponding source for this beta, including pinned dependency sources,
 licenses, and build instructions, is available alongside the binary package:
-https://github.com/johannes-schmieder/fereg/releases/download/v0.5.0-beta.2/fereg-0.5.0-source.zip
+https://github.com/johannes-schmieder/fereg/releases/download/v0.5.0-beta.3/fereg-0.5.0-source.zip
 
 For a modified local build, its source is the checkout used to build it.
-
-Checked Mac build instructions (supplement to the frozen archive):
-https://github.com/johannes-schmieder/fereg/releases/download/v0.5.0-beta.2/fereg-0.5.0-build-instructions.md
