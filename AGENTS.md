@@ -141,6 +141,17 @@ be revised using the retained calibration evidence and independent Pro/Fable
 review. Preserve the completed outcome, keep held-out validation separate,
 and retain the scientific, resource, transaction and activation gates above.
 
+On 2026-10-24, Johannes replaced the ownership/cell workstream's extra
+independent reconstruction-verifier gate and 8,526-call Mac schedule with a
+simple acceptance procedure. Accept the completed Linux cohort and its passing
+116-bound report; retain the analysis timeouts as failures without further
+verifier repairs. Run one compact paired Mac check using current workloads and
+a fixed budget, then narrow branch activation, public/hidden equivalence and
+Break/rollback checks. Reuse valid prior science and feature evidence, retain
+one concise results summary, and clean obsolete temporary files. Do not add
+another audit/report chain or repeat timings to obtain a pass. Concrete
+scientific errors, crashes or meaningful slowdowns still require attention.
+
 Runtime changes require `./scripts/run_tests.sh` and mapped scientific/transaction
 checks. Build/package changes require focused tooling and native build/ABI checks.
 Prose-only documentation/instruction changes use link/reference checks and

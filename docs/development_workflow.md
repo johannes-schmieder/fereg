@@ -1016,13 +1016,26 @@ terminal accountings covering all 36 shard results. The 10,440 calls, frozen
 source and artifacts, original science gates and 116 statistical bounds are
 unchanged. Mac execution and public activation remain dependent on qualification.
 
-The separate final verifier reconstructs retained full-column fingerprints,
-checks raw observations and repeats, and independently recomputes all 116
-performance bounds. It uses one maintained independent-oracle check per
-body/worker/arm, then compares additional Linux host banks numerically with
-the actual retained baseline; it does not rerun an oracle for every host bank.
-Neither successful analysis execution nor these prerequisite results establish
-final timing qualification or public-versus-hidden activation equivalence.
+Johannes simplified the acceptance procedure on 2026-10-24. The
+[completed Linux cohort](../bench/results/ownership-qualification-final-linux-20261024.json)
+is accepted: 10,440 calls across twelve distinct general 28-core hosts,
+all twelve allocations successful, and all 116 protected performance bounds
+passed. The extra reconstruction verifier timed out without an assessment;
+it remains failed and is no longer an acceptance requirement. Two earlier
+report timeouts also remain recorded. The successful report used unchanged
+scientific and statistical comparisons and completed in 554 seconds.
+
+Mac now uses one practical check over all 58 settings: the same three artifacts,
+one warmup and two mirrored blocks, 870 calls total, an 1,800-second application
+budget and no retries. Paired median slowdowns beyond max(5%, 1 ms) require
+review; this is not a desktop confidence-bound claim. Existing scientific,
+fixed-worker, cross-worker and observation checks remain. After that check,
+activate only two-FE categorical-intercept OLS with automatic solver and
+preconditioner, then check actual public/hidden equivalence and Break rollback.
+Reuse valid prior feature evidence. No additional reconstruction verifier,
+report chain or Linux timing campaign is required. Obsolete temporary captures,
+source copies and unused repair helpers are removed; current inputs and binaries
+remain until integration is finished.
 
 The final coverage preparation retains the original 42 requests and freezes
 the additional packed-cache boundary triplet at 16 finite regressors and
