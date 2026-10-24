@@ -47,7 +47,9 @@ also resolve.
 [Beta.4](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0-beta.4)
 is published with the matching source archive. A fresh installation from its
 public versioned URL passed selftest and the same four fixtures; all 30
-installed package files matched.
+installed package files matched. A fresh `github install johannes-schmieder/fereg`
+from main also passed selftest and all four fixtures, with all 31 installed files
+matching. Both checks used isolated user ado directories.
 
 ## Limits
 
