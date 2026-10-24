@@ -164,6 +164,19 @@ class WindowsDiagnosticsTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.validate(receipt)
 
+    def test_build_profile_elapsed_budget_is_bounded(self):
+        self.write()
+        receipt = self.receipt()
+        receipt['process']['elapsed_ms'] = 1807000
+        self.validate(receipt)
+        receipt['process']['elapsed_ms'] = 1810001
+        with self.assertRaises(ValueError):
+            self.validate(receipt)
+        receipt['profile'] = 'stata-smoke'
+        receipt['process']['elapsed_ms'] = 1000001
+        with self.assertRaises(ValueError):
+            self.validate(receipt)
+
     def test_timeout_is_distinct_from_failed_project_stage(self):
         self.state.update(status='RUNNING', native_rc=None, stata_rc=None, reason='none')
         self.write()

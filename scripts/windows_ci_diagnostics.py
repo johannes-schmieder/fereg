@@ -195,7 +195,8 @@ def validate_receipt(value, run, revision, source_hash, controller_hash, guard_h
     process = value['process']
     if not isinstance(process, dict) or set(process) != {'outcome', 'elapsed_ms', 'exit_code'} or process['outcome'] not in OUTCOMES:
         raise ValueError('process_schema')
-    if not integer(process['elapsed_ms'], 0, 1000000) or (process['exit_code'] is not None and not integer(process['exit_code'], -2147483648, 2147483647)):
+    elapsed_limit = 1810000 if value['profile'] == 'stata-do' else 1000000
+    if not integer(process['elapsed_ms'], 0, elapsed_limit) or (process['exit_code'] is not None and not integer(process['exit_code'], -2147483648, 2147483647)):
         raise ValueError('process_numbers')
     checks = value['checks']
     required = {'execution_identity', 'source_hash', 'archive_paths', 'source_manifest', 'shutdown_backstop', 'stata', 'project_test'}

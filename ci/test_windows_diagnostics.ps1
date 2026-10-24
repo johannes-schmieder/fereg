@@ -75,6 +75,11 @@ try {
         if ($name -ceq 'Invoke-StataDo') { $invokeText = $definition }
         Invoke-Expression $definition
     }
+    Assert-Test ($invokeText.Contains('[ValidateRange(3000, 1800000)][int]$TimeoutMilliseconds = 900000'))
+    Assert-Test ($invokeText.Contains('$watch.ElapsedMilliseconds -lt $TimeoutMilliseconds'))
+    foreach ($invalidTimeout in @(0, 1800001)) {
+        Assert-Rejected { Invoke-StataDo -TimeoutMilliseconds $invalidTimeout -DoFile 'unused' -WorkingDirectory $root -StatusFile 'unused' -ExpectedMarker 'unused' }
+    }
     $script:FixturePath = Join-Path $root 'fixture.ps1'
     @'
 param([string]$Mode)
@@ -113,12 +118,9 @@ switch ($Mode) {
     foreach ($case in $cases) {
         $script:FixtureMode = $case[0]
         $testStage = 'process_' + $script:FixtureMode
-        if ($script:FixtureMode -ceq 'timeout') {
-            Assert-Test ([regex]::Matches($invokeText, '\b900000\b').Count -eq 1)
-            Invoke-Expression ($invokeText -replace '\b900000\b', '3000')
-        }
+        $timeout = if ($script:FixtureMode -ceq 'timeout') { 3000 } else { 1800000 }
         [IO.File]::WriteAllText((Join-Path $root 'fixture.log'), 'fixture only')
-        $result = Invoke-StataDo -DoFile $script:FixturePath -WorkingDirectory $root -StatusFile (Join-Path $root 'windows-ci.status') -ExpectedMarker 'WINDOWS_CI=PASS'
+        $result = Invoke-StataDo -TimeoutMilliseconds $timeout -DoFile $script:FixturePath -WorkingDirectory $root -StatusFile (Join-Path $root 'windows-ci.status') -ExpectedMarker 'WINDOWS_CI=PASS'
         Assert-Test ($result -eq ($case[1] -ceq 'passed') -and $script:StataProcess.outcome -ceq $case[1])
         Assert-Test (-not (Test-Path (Join-Path $root 'fixture.log')))
         if ($script:FixtureMode -ceq 'timeout') {
