@@ -16,7 +16,11 @@ tar -xf input/source.tar -C source
 cp input/source.json source/.fereg-source.json
 cp -a "$REFERENCE_ROOT/environment/references" environment/
 cp -a "$REFERENCE_ROOT/environment/r-library" environment/
-cp "$REFERENCE_ROOT/environment/environment.json" environment/reference-origin.json
+reference_metadata="$REFERENCE_ROOT/environment/reference-origin.json"
+if [[ ! -f "$reference_metadata" ]]; then
+    reference_metadata="$REFERENCE_ROOT/environment/environment.json"
+fi
+cp "$reference_metadata" environment/reference-origin.json
 module purge
 module load gcc/12.2.0 python3/3.12.4 stata-mp/19 R/4.5.2
 export CC=gcc
