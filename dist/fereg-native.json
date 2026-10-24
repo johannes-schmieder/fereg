@@ -5,18 +5,34 @@
   "runtime_sha256": "5b264edcfcbd7c6be2ecaad5e11f6a9def3e906ae0891bf69212c7b278c23f92",
   "plugins": [
     {
+      "path": "fereg_linux.plugin",
+      "source_sha": "1ac7125bc637e99c4655c065828559dac593ab01",
+      "sha256": "477691209f25364ed64959f15036b41059a81479d12af75b6d24667712f90beb",
+      "bytes": 15779768
+    },
+    {
+      "path": "fereg_windows.plugin",
+      "source_sha": "5b381a2c2a030603215418dd4bcb137e28fdc13e",
+      "sha256": "fd137ad5584a1b0ad54e309af3e10dedae09d7dbee3fd4f5591f592fdb200cd9",
+      "bytes": 10781696
+    },
+    {
       "path": "fereg_macos.plugin",
+      "source_sha": "1ac7125bc637e99c4655c065828559dac593ab01",
       "sha256": "480553bcc294ede70d6318e615af8573659e1919ab3c8a9037366e36e701f031",
       "bytes": 19150656
     }
   ],
   "included_platforms": [
+    "linux",
+    "windows",
     "macos"
   ],
   "support_caveats": [
     "Only platforms named in included_platforms are supplied by this package.",
-    "Licensed installation testing is on Apple Silicon macOS; this does not establish native Intel-host Stata, Linux or Windows distribution qualification.",
-    "Qualified many-FE and two-FE OLS Auto policies are enabled; ownership and deferred cells require Auto/Auto, a global intercept and exactly two categorical-intercept FE terms."
+    "The Linux binary requires glibc 2.28 or newer.",
+    "Native Intel-host Stata testing is outstanding; the macOS plugin contains both processor slices."
   ],
-  "corresponding_source_sha256": "aef44910affa648799c949ec7cb8fba4f7258d3fefc0df5c21d6508b7f62ac02"
+  "corresponding_source_sha256": "0a59581d51dc8c9dfec1073e41a0fdf86f3e8fbd4722eb337b32994258becd50",
+  "corresponding_source_commit": "cf054c6d1e0309b9e6be72f1badfbb1453f2672a"
 }

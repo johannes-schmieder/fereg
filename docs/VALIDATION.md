@@ -68,6 +68,9 @@ Its actual build revision and plugin checksum are recorded in the native
 package metadata and release manifest. Transient objects were deleted, the lock released and the
 Windows machine stopped.
 
+The assembled three-platform main package passed a fresh local Mac installation,
+selftest and four OLS/PPML fixtures; all 35 installed files matched exactly.
+
 ## Limits
 
 - Linux performance evidence applies to Linux. The practical Mac ownership/cell
