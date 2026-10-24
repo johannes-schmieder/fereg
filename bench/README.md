@@ -110,6 +110,14 @@ repetitions also require exact raw scientific output and FE channel hashes;
 cross-worker results require scientific agreement. Saved effects and full row
 captures remain private on SCC.
 
+`panel_collect.py CONTEXT --output NEW_DIRECTORY` collects aggregate results
+after all four scheduler units are terminal: setup, smoke and production tasks
+1–2. It requires successful accounting, application sentinels, verified host
+isolation, the retained-input audit, all 108 fit positions, 20 exact native
+repeat checks and 30 cross-worker comparisons. It writes compact summary and
+observation CSVs plus science JSON; failed or ineligible comparator positions
+remain in the tables. It does not download row captures or saved FE vectors.
+
 ## Fixed-candidate qualification
 
 [`qualify.py`](qualify.py) implements one bounded regression round for a candidate

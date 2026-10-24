@@ -1,0 +1,102 @@
+"""Terminal accounting and coverage guards for aggregate-only collection."""
+import hashlib
+import json
+from pathlib import Path
+import sys
+import tempfile
+import unittest
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from panel_collect import load
+
+
+def fixture(root):
+    def write(name, value):
+        path = root/name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(value) if not isinstance(value, str) else value)
+    context = dict(setup_job=1, smoke_job=2, production_job=3, source='abc',
+                   launcher_sha256={'setup.sh': hashlib.sha256(b'setup').hexdigest(),
+                                    'job.sh': hashlib.sha256(b'job').hexdigest()})
+    write('context.json', context)
+    write('setup.sh', 'setup'); write('job.sh', 'job')
+    write('input/source.json', dict(commit='abc'))
+    jobs = [dict(jobnumber=str(j), taskid=t, failed='0', exit_status='0', slots=str(n), hostname='host'+t)
+            for j, t, n in [(1, 'undefined', 4), (2, 'undefined', 4), (3, '1', 28), (3, '2', 28)]]
+    write('accounting.json', jobs)
+    write('environment/COMPLETE', 'PANEL_SETUP_COMPLETE\n')
+    write('environment/input-audit.json', {p: dict(exact_identifiers=True, adjustment_max_error=0.)
+                                         for p in ['long', 'short']})
+    write('logs/setup.sge', 'PANEL_SETUP_COMPLETE')
+    write('logs/smoke.sge', 'PANEL_JOB_COMPLETE')
+    write('smoke/results.json', dict(complete=True, native_gate_pass=True, records=[{}]*8,
+          science=[dict(kind='dense-oracle', arm='fereg', passed=True)]*2))
+    cells = []
+    for task, panel in enumerate(['long', 'short'], 1):
+        records, science = [], []
+        for t in [1, 2, 4, 8, 16]:
+            cell = dict(id=f'{panel}-{t}', arms=['fereg', 'fixest', 'fixest-strict']+(['reghdfe'] if t <= 4 else []))
+            cells.append(cell)
+            for rep in [1, 2, 3]:
+                for arm in cell['arms']:
+                    records.append(dict(cell=cell['id'], repetition=rep, arm=arm, status='ok',
+                                        metadata=dict(rc='0', complete='1')))
+                science.append(dict(kind='cross-worker', eligible=True))
+                if rep > 1:
+                    science.append(dict(kind='fixed-worker-exact', passed=True))
+        write(f'task-{task}/results.json', dict(complete=True, native_gate_pass=True, job='3', task=str(task),
+                                              records=records, comparisons=[], science=science))
+        write(f'task-{task}/COMPLETE', 'PANEL_TASK_COMPLETE\n')
+        write(f'host-task-{task}/host.json', dict(isolation_ok=True, errors=[],
+              host=dict(job_id='3', task_id=str(task), hostname='host'+str(task))))
+        write(f'logs/production.{task}.sge', f'PANEL_JOB_COMPLETE job=3 task={task}')
+    write('manifest.json', dict(cells=cells, policy=dict(repetitions=3)))
+
+
+class PanelCollectionTests(unittest.TestCase):
+    def test_terminal_complete_aggregate_fixture(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d); fixture(root)
+            result = load(root)
+            self.assertEqual(len(result['records']), 108)
+
+    def test_reject_missing_failed_or_duplicate_accounting(self):
+        for change in ['missing', 'failed', 'duplicate']:
+            with self.subTest(change=change), tempfile.TemporaryDirectory() as d:
+                root = Path(d); fixture(root)
+                path = root/'accounting.json'; jobs = json.loads(path.read_text())
+                if change == 'missing': jobs.pop()
+                if change == 'failed': jobs[-1]['exit_status'] = '1'
+                if change == 'duplicate': jobs.append(jobs[-1])
+                path.write_text(json.dumps(jobs))
+                with self.assertRaisesRegex(ValueError, 'accounting'):
+                    load(root)
+
+    def test_reject_missing_fit_and_native_error(self):
+        for change in ['missing', 'native-error']:
+            with self.subTest(change=change), tempfile.TemporaryDirectory() as d:
+                root = Path(d); fixture(root)
+                path = root/'task-1/results.json'; result = json.loads(path.read_text())
+                if change == 'missing': result['records'].pop()
+                else: result['records'][0]['status'] = 'error'
+                path.write_text(json.dumps(result))
+                with self.assertRaises(ValueError):
+                    load(root)
+
+    def test_reject_host_and_exactness_failure(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d); fixture(root)
+            path = root/'host-task-2/host.json'; host = json.loads(path.read_text())
+            host['isolation_ok'] = False; path.write_text(json.dumps(host))
+            with self.assertRaisesRegex(ValueError, 'whole-host'):
+                load(root)
+            fixture(root)
+            path = root/'task-2/results.json'; result = json.loads(path.read_text())
+            next(s for s in result['science'] if s['kind'] == 'fixed-worker-exact')['passed'] = False
+            path.write_text(json.dumps(result))
+            with self.assertRaisesRegex(ValueError, 'exactness'):
+                load(root)
+
+
+if __name__ == '__main__':
+    unittest.main()
