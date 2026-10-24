@@ -981,9 +981,9 @@ remain unchanged; both the failed proof and the repair are retained.
 
 The [final launch freeze](../bench/results/ownership-qualification-final-launch-20261023.json)
 binds both passed proofs and the exact seven launch/assessment helpers before
-timing. Linux runs first on the twelve declared physical hosts: three shards
+timing. The original Linux launch declared twelve physical hosts: three shards
 per host, 10,440 calls total, 3,600 application seconds per shard and 4,200
-scheduler seconds. The Mac schedule remains fixed at 8,526 calls and 14,400
+scheduler seconds per shard. The Mac schedule remains fixed at 8,526 calls and 14,400
 application seconds. There are no timing retries or replacement samples.
 Each platform must pass all 116 protected bounds before public activation can
 advance. Five launch-boundary tests and six verifier tests passed; actual
@@ -991,6 +991,30 @@ inactive, boundary and repeated-large reference-bank reconstruction checks
 also passed without native execution. The first verifier-test fixture failure
 is retained. Production identity remains equal to `c78f5c9c` across all 200
 runtime modules and 58 artifact inputs.
+
+Johannes's 2026-10-24 allocation amendment removes the historical host list.
+The old twelve arrays were held while all 36 tasks were still queued, then
+cancelled without native execution. The
+[general-node allocation amendment](../bench/results/ownership-qualification-general-allocation-20261024.json)
+uses twelve independent, initially held single-task arrays with general
+`omp 28` requests, which SCC normalizes to `omp28`, and `num_proc=28`.
+Each allocation runs its three original shards serially, with unchanged
+3,600-second application and 3,720-second outer limits per shard; its aggregate
+scheduler limit is 12,600 seconds. The jobs need not start together.
+
+Before timing begins on an allocation, the existing quota, topology and
+all-queue census checks establish a whole physical host. A bounded shared
+lock serializes verified exclusions of already admitted hosts from the
+remaining queued jobs and atomic publication of the actual placement. This
+prevents a completed node from supplying a second independent replica while
+allowing the scheduler to choose any otherwise eligible 28-core node.
+All twelve job identities are bound before release. No placement is recycled,
+and there are no native retries. An allocation-admission failure blocks new
+admissions and new shards; an active shard may finish with its evidence kept.
+The independent verifier checks twelve actual hosts per cell and twelve
+terminal accountings covering all 36 shard results. The 10,440 calls, frozen
+source and artifacts, original science gates and 116 statistical bounds are
+unchanged. Mac execution and public activation remain dependent on qualification.
 
 The separate final verifier reconstructs retained full-column fingerprints,
 checks raw observations and repeats, and independently recomputes all 116
