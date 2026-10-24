@@ -44,6 +44,40 @@ class StataBreakOptionsTests(unittest.TestCase):
                 suffix = f" cmgschur {count}" + (f" {seed}" if seed is not None else "")
                 self.assertEqual(fixture_command(fixture, args), f"do {stata_quote(fixture)}{suffix}")
 
+    def test_public_ols_is_marker_only_and_keeps_public_dispatchers(self):
+        args = self.arguments("--fixture-kind", "ols", "--public-scope")
+        fixture = Path("tests/licensed_stata/estimate_ols_public_break.do")
+        self.assertEqual(fixture_command(fixture, args), f"do {stata_quote(fixture)}")
+        source = Path("stata/_fereg_estimate_ols.ado")
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory) / "adapter.do"
+            self.assertEqual(runner.public_ols_adapter(source, target), runner.sha256_file(source))
+            original = source.read_text().replace(
+                "program define _fereg_estimate_ols, eclass",
+                "program define __fereg_break_transaction, eclass", 1)
+            generated = target.read_text()
+            self.assertTrue(generated.startswith(original))
+            forwarder = generated[len(original):]
+            self.assertIn("breakmarkertoken(`token')", forwarder)
+            self.assertNotIn("inject", forwarder)
+            self.assertNotIn("program define fereg", forwarder)
+            self.assertNotIn("program define _fereg_estimate_public", forwarder)
+            with self.assertRaises(FileExistsError):
+                runner.public_ols_adapter(source, target)
+            bad = Path(directory) / "bad.ado"
+            bad.write_text("program define something_else, eclass\nend\n")
+            with self.assertRaisesRegex(RuntimeError, "anchor changed"):
+                runner.public_ols_adapter(bad, Path(directory) / "bad.do")
+        text = fixture.read_text()
+        self.assertIn("capture noisily fereg y c.x1", text)
+        self.assertIn("solver(auto) preconditioner(auto)", text)
+        self.assertNotIn("inject(", text)
+        self.assertNotIn("clear all", text)
+        for extra in (["--public-scope", "--ols-solver", "cmgschur"],
+                      ["--fixture-kind", "ols-builder", "--public-scope"]):
+            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                self.arguments(*extra)
+
     def test_invalid_sampling_requests_fail_before_stata(self):
         requests = [
             ["--cmg-samples", "0"],

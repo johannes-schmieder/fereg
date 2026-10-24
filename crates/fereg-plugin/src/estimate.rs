@@ -198,6 +198,7 @@ struct EstimateActionSpec {
     routing: Option<RoutingPreset>,
     ownership: fereg_core::ols::PreparedOlsOwnership,
     cells: fereg_core::ols::PreparedOlsCells,
+    public_defaults: bool,
     it_coefficients: bool,
     cmg_schur_degree: usize,
     cmg_schur_samples: u32,
@@ -236,17 +237,20 @@ pub fn estimate_ols(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
     let started = Instant::now();
     let resources_start = instrumentation::begin_observation();
     let local_bundle = read_local_estimate_bundle(args, spi)?.map(|value| [value]);
-    let mut specification = EstimateActionSpec::parse(
-        local_bundle
-            .as_ref()
-            .map_or(args, |values| values.as_slice()),
-    )?;
+    let expanded = local_bundle
+        .as_ref()
+        .map_or(args, |values| values.as_slice());
+    let mut specification = EstimateActionSpec::parse(expanded)?;
     // The expanded local bundle dies here; only the original ABI argv
     // remains live through numerical work and publication.
     specification.transport_parent_bytes = crate::metadata_memory::argument_parent_bytes(args)?;
     drop(local_bundle);
+    let public_defaults = specification.public_defaults;
     let mut action = specification.decode_and_validate(spi)?;
     drop(specification);
+    if public_defaults {
+        activate_public_two_fe(&mut action);
+    }
     let preflight_seconds = started.elapsed().as_secs_f64();
     let mut input_memory = loading_memory(
         &action.request,
@@ -368,6 +372,25 @@ pub fn estimate_ols(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
             phase_seconds,
         }),
     )
+}
+
+/// Public activation changes only invocation wiring, after the model is decoded.
+/// Explicit developer injections bypass this selection at the entry point.
+fn activate_public_two_fe(action: &mut EstimateAction) {
+    if action.fit.absorb.solver == FeSolverKind::Auto
+        && action.fit.absorb.lsmr.preconditioner == LsmrPreconditioner::Auto
+        && action.request.include_intercept
+        && action.request.absorbed_terms.len() == 2
+        && action.request.absorbed_terms.iter().all(|term| {
+            term.intercept && !term.categorical_sources.is_empty() && term.slope_sources.is_empty()
+        })
+    {
+        action.fit.ownership = fereg_core::ols::PreparedOlsOwnership {
+            skip_unused_moments: true,
+            retain_projected_scores: true,
+        };
+        action.fit.cells = fereg_core::ols::PreparedOlsCells::Deferred;
+    }
 }
 
 fn poll_ols_wait(
@@ -975,6 +998,14 @@ impl EstimateActionSpec {
         let output_absorbed = parse_nonnegative_u32(&values, "output_absorbed")?;
         let output_saved_count = parse_usize(&values, "output_saved_count")?;
         let solver = parse_solver(required(&values, "solver")?)?;
+        if values.get("inject").is_some_and(String::is_empty) {
+            // Marker-only public requests have no injection field. Preserve
+            // the historical rejection of an explicitly empty injection.
+            crate::developer_injection::validate_break_marker_token(
+                false,
+                values.get("break_marker_token").map_or("", String::as_str),
+            )?;
+        }
         let injection = crate::developer_injection::parse_ols(
             values.get("inject").map_or("", String::as_str),
             solver,
@@ -1015,6 +1046,7 @@ impl EstimateActionSpec {
             routing: injection.routing,
             ownership: injection.ownership,
             cells: injection.cells,
+            public_defaults: !values.contains_key("inject"),
             it_coefficients: injection.it_coefficients,
             cmg_schur_degree,
             cmg_schur_samples,

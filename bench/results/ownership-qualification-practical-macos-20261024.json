@@ -1,0 +1,834 @@
+{
+  "allowance": "max(5%, 1 ms)",
+  "blocks": 2,
+  "calls": 870,
+  "cells": 58,
+  "checks": "Existing qualifier checked independent science, fixed-worker exact repeats, cross-worker agreement, resource/solver decisions and host observations during execution.",
+  "comparisons": [
+    {
+      "case": "no-fe-t1",
+      "median_excess_s": -0.0009596626160094462,
+      "median_ratio": 1.0902136097898039,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "no-fe-t1",
+      "median_excess_s": -0.0009840667041182626,
+      "median_ratio": 1.0281018936189277,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "no-fe-t4",
+      "median_excess_s": -0.0009878187052852231,
+      "median_ratio": 1.0300109621394677,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "no-fe-t4",
+      "median_excess_s": -0.0010527414953282568,
+      "median_ratio": 0.8926713062219109,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "one-fe-t1",
+      "median_excess_s": -0.0009937088202321234,
+      "median_ratio": 1.0129674678038034,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "one-fe-t1",
+      "median_excess_s": -0.0009809084252578905,
+      "median_ratio": 1.0457756921370434,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "one-fe-t4",
+      "median_excess_s": -0.0010165322436119307,
+      "median_ratio": 0.9647636415508972,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "one-fe-t4",
+      "median_excess_s": -0.0009915984045778742,
+      "median_ratio": 1.0181127850053326,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "slopes-t1",
+      "median_excess_s": -0.0009543820099750697,
+      "median_ratio": 1.055198487311743,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "slopes-t1",
+      "median_excess_s": -0.001276495900793872,
+      "median_ratio": 0.797429653151984,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "slopes-t4",
+      "median_excess_s": -0.000786930220187193,
+      "median_ratio": 1.296504125596487,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "slopes-t4",
+      "median_excess_s": -0.0010231495767710386,
+      "median_ratio": 0.976187203754833,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "low-saved-t1",
+      "median_excess_s": -0.0008560008943552715,
+      "median_ratio": 1.2030440595494325,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "low-saved-t1",
+      "median_excess_s": -0.0009169757567353508,
+      "median_ratio": 1.1061193499339774,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "low-saved-t4",
+      "median_excess_s": -0.000954305729530642,
+      "median_ratio": 1.0486520173977294,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "low-saved-t4",
+      "median_excess_s": -0.0009449794758207754,
+      "median_ratio": 1.0653687743236915,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "dense-t1",
+      "median_excess_s": -0.0019480033710043056,
+      "median_ratio": 1.0000502776081441,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "dense-t1",
+      "median_excess_s": -0.0025738186864335427,
+      "median_ratio": 0.9852249549362617,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "dense-t4",
+      "median_excess_s": -0.001552715204735685,
+      "median_ratio": 0.9833857927133491,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "dense-t4",
+      "median_excess_s": -0.0015131470348482804,
+      "median_ratio": 0.9849913789572586,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "small-retained-t1",
+      "median_excess_s": -0.001375838909021312,
+      "median_ratio": 0.9936753677531072,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "small-retained-t1",
+      "median_excess_s": -0.0013922707289830577,
+      "median_ratio": 0.9930412556298698,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "small-retained-t4",
+      "median_excess_s": -0.0008368336354863479,
+      "median_ratio": 1.0108155784906634,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "small-retained-t4",
+      "median_excess_s": -0.0012596452616241453,
+      "median_ratio": 0.9833246157308088,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "small-third-t1",
+      "median_excess_s": -0.04024864544082399,
+      "median_ratio": 0.8943992566765047,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "small-third-t1",
+      "median_excess_s": -0.011691150774229733,
+      "median_ratio": 0.9995090222221503,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "small-third-t4",
+      "median_excess_s": -0.02913170292296019,
+      "median_ratio": 0.8302995966321154,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "small-third-t4",
+      "median_excess_s": -0.005674054214944039,
+      "median_ratio": 0.9985457848842465,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "four-fe-t1",
+      "median_excess_s": -0.04203249020515154,
+      "median_ratio": 0.8800106858499381,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "four-fe-t1",
+      "median_excess_s": -0.008427097191638012,
+      "median_ratio": 1.0108487321884807,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "four-fe-t4",
+      "median_excess_s": -0.022197579633173488,
+      "median_ratio": 0.8494833460376078,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "four-fe-t4",
+      "median_excess_s": -0.005503414111467353,
+      "median_ratio": 0.9919516867540124,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "eight-fe-t1",
+      "median_excess_s": -0.08343674657962613,
+      "median_ratio": 0.8765570283804222,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "eight-fe-t1",
+      "median_excess_s": -0.02108921798369451,
+      "median_ratio": 0.9999924118181954,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "eight-fe-t4",
+      "median_excess_s": -0.036992557749048825,
+      "median_ratio": 0.861788444960962,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "eight-fe-t4",
+      "median_excess_s": -0.007886698320193687,
+      "median_ratio": 1.0032705412813039,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "weighted-t1",
+      "median_excess_s": -0.0019571894903187234,
+      "median_ratio": 1.0166500253503594,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "weighted-t1",
+      "median_excess_s": -0.0017072379558511763,
+      "median_ratio": 1.0208506450681503,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "weighted-t4",
+      "median_excess_s": -0.0014389593424284472,
+      "median_ratio": 1.013304684296942,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "weighted-t4",
+      "median_excess_s": -0.001708797941037944,
+      "median_ratio": 1.0067301368390924,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "weak-t1",
+      "median_excess_s": -0.050723453889733344,
+      "median_ratio": 0.5307967826393909,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "weak-t1",
+      "median_excess_s": -0.007790062002639684,
+      "median_ratio": 0.9128159801664351,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "weak-t4",
+      "median_excess_s": -0.01011203319556649,
+      "median_ratio": 0.7898338713267952,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "weak-t4",
+      "median_excess_s": -0.00194586774063851,
+      "median_ratio": 0.9874096872124151,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "repeated-cells-t1",
+      "median_excess_s": -0.002311338546475355,
+      "median_ratio": 0.9975618948745405,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "repeated-cells-t1",
+      "median_excess_s": -0.0023100236149569443,
+      "median_ratio": 0.9975902698588914,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "repeated-cells-t4",
+      "median_excess_s": -0.001229374806101164,
+      "median_ratio": 0.9962641749723471,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "repeated-cells-t4",
+      "median_excess_s": -0.0009119618344485866,
+      "median_ratio": 1.0093734642713907,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "wide-rhs-t1",
+      "median_excess_s": -0.009188726531932489,
+      "median_ratio": 0.963280998687343,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "wide-rhs-t1",
+      "median_excess_s": -0.007280072663749902,
+      "median_ratio": 0.9796320160146345,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "wide-rhs-t4",
+      "median_excess_s": -0.004351443871192638,
+      "median_ratio": 0.9730316156789416,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "wide-rhs-t4",
+      "median_excess_s": -0.003852503810266166,
+      "median_ratio": 0.9802536253893259,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "high-degree-mixed-t1",
+      "median_excess_s": -0.011470868712429723,
+      "median_ratio": 0.9991797067578208,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "high-degree-mixed-t1",
+      "median_excess_s": -0.011789028588545426,
+      "median_ratio": 0.9978384300701443,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "high-degree-mixed-t4",
+      "median_excess_s": -0.0074250800010616895,
+      "median_ratio": 0.9877960238474068,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "high-degree-mixed-t4",
+      "median_excess_s": -0.006916289262467823,
+      "median_ratio": 0.9917819501809629,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "high-degree-weak-t1",
+      "median_excess_s": -0.22365352220906998,
+      "median_ratio": 0.6099108194862852,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "high-degree-weak-t1",
+      "median_excess_s": -0.056920135858510815,
+      "median_ratio": 0.8871214875492279,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "high-degree-weak-t4",
+      "median_excess_s": -0.04563700064612104,
+      "median_ratio": 0.8395417168235164,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "high-degree-weak-t4",
+      "median_excess_s": -0.011279588271278736,
+      "median_ratio": 0.988663868271323,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "high-degree-stress-t1",
+      "median_excess_s": -0.0129004594320314,
+      "median_ratio": 0.9885334101331211,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "high-degree-stress-t1",
+      "median_excess_s": -0.011969157212893152,
+      "median_ratio": 0.9927116955894906,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "high-degree-stress-t4",
+      "median_excess_s": -0.006383338586277779,
+      "median_ratio": 0.9930804156128497,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "high-degree-stress-t4",
+      "median_excess_s": -0.006433912676028865,
+      "median_ratio": 0.99264727219687,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "sixteen-fe-t1",
+      "median_excess_s": -0.11840837068665541,
+      "median_ratio": 0.8977753937182865,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "sixteen-fe-t1",
+      "median_excess_s": -0.028852845078173747,
+      "median_ratio": 1.0083556970735033,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "sixteen-fe-t4",
+      "median_excess_s": -0.05986076153023559,
+      "median_ratio": 0.8750164142330106,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "sixteen-fe-t4",
+      "median_excess_s": -0.016886739213390074,
+      "median_ratio": 0.9939265426367581,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "disconnected-t1",
+      "median_excess_s": -0.002051778882139208,
+      "median_ratio": 1.0035346036774553,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "disconnected-t1",
+      "median_excess_s": -0.003201530937727972,
+      "median_ratio": 0.9792933765266407,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "disconnected-t4",
+      "median_excess_s": -0.000962360914995312,
+      "median_ratio": 1.0072395827630822,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "disconnected-t4",
+      "median_excess_s": -0.0015261245778631514,
+      "median_ratio": 0.9840447364449717,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "near-confounded-third-t1",
+      "median_excess_s": -0.010305186649136058,
+      "median_ratio": 0.945546122167175,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "near-confounded-third-t1",
+      "median_excess_s": -0.0027272096957521286,
+      "median_ratio": 1.020184210051275,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "near-confounded-third-t4",
+      "median_excess_s": -0.008162571369183712,
+      "median_ratio": 0.890428580554631,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "near-confounded-third-t4",
+      "median_excess_s": -0.0024414889281729768,
+      "median_ratio": 0.9965711483896333,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "weight-dynamic-t1",
+      "median_excess_s": -0.10111341045840239,
+      "median_ratio": 0.38980583224994736,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "weight-dynamic-t1",
+      "median_excess_s": -0.009098498573438179,
+      "median_ratio": 0.9111581258408098,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "weight-dynamic-t4",
+      "median_excess_s": -0.032246363612626255,
+      "median_ratio": 0.5646246988499064,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "weight-dynamic-t4",
+      "median_excess_s": -0.002647827488928599,
+      "median_ratio": 0.9807805884990403,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "inactive-columns-t1",
+      "median_excess_s": -0.0013298030710618964,
+      "median_ratio": 0.9973060452059068,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "inactive-columns-t1",
+      "median_excess_s": -0.0009161368443105031,
+      "median_ratio": 1.0131347652427238,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "inactive-columns-t4",
+      "median_excess_s": -0.0011265548525894445,
+      "median_ratio": 0.9921721321288522,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "inactive-columns-t4",
+      "median_excess_s": -0.0010709614965396215,
+      "median_ratio": 0.9956103728115603,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "ownership-nonmovers-t1",
+      "median_excess_s": -0.005818851877398839,
+      "median_ratio": 0.6455668178454338,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "ownership-nonmovers-t1",
+      "median_excess_s": -0.0009772397790304057,
+      "median_ratio": 1.0026282994871791,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "ownership-nonmovers-t4",
+      "median_excess_s": -0.0019486529355577796,
+      "median_ratio": 0.8549533014017815,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "ownership-nonmovers-t4",
+      "median_excess_s": -0.001061225582927679,
+      "median_ratio": 0.9892899739757264,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "ownership-hubs-t1",
+      "median_excess_s": -0.000743861805269177,
+      "median_ratio": 1.0130233157645825,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "ownership-hubs-t1",
+      "median_excess_s": -0.0010529349571215207,
+      "median_ratio": 0.9984214536626754,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "ownership-hubs-t4",
+      "median_excess_s": -0.001493400562130865,
+      "median_ratio": 0.9598986792594952,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "ownership-hubs-t4",
+      "median_excess_s": -0.0015124880359267843,
+      "median_ratio": 0.9584172881134617,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "ownership-inactive-zero-t1",
+      "median_excess_s": -0.0010633013540087008,
+      "median_ratio": 0.9879418450526456,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "ownership-inactive-zero-t1",
+      "median_excess_s": -0.001062094024400738,
+      "median_ratio": 0.9883722841229496,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "ownership-inactive-zero-t4",
+      "median_excess_s": -0.0010575228043458599,
+      "median_ratio": 0.9859126450597218,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "ownership-inactive-zero-t4",
+      "median_excess_s": -0.001021047686737215,
+      "median_ratio": 0.9948711963093311,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "ownership-cache-below-t1",
+      "median_excess_s": -0.023128597781008182,
+      "median_ratio": 0.9597764348528661,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "ownership-cache-below-t1",
+      "median_excess_s": -0.017939978520399632,
+      "median_ratio": 0.9786435455607038,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "ownership-cache-below-t4",
+      "median_excess_s": -0.010358766349290342,
+      "median_ratio": 0.9652806819330783,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "ownership-cache-below-t4",
+      "median_excess_s": -0.010097093183599831,
+      "median_ratio": 0.9671662975938273,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "ownership-cache-at-t1",
+      "median_excess_s": -0.01974732931468424,
+      "median_ratio": 0.9719197809257238,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "ownership-cache-at-t1",
+      "median_excess_s": -0.018868188329580635,
+      "median_ratio": 0.975104121206956,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "ownership-cache-at-t4",
+      "median_excess_s": -0.009603933867811023,
+      "median_ratio": 0.9713024729972701,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "ownership-cache-at-t4",
+      "median_excess_s": -0.008341605740498697,
+      "median_ratio": 0.9809673989898027,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "ownership-cache-above-t1",
+      "median_excess_s": -0.010564330131904226,
+      "median_ratio": 1.0046957469638242,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "ownership-cache-above-t1",
+      "median_excess_s": -0.011276427051945887,
+      "median_ratio": 1.0017876114276008,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "ownership-cache-above-t4",
+      "median_excess_s": -0.004257393495058339,
+      "median_ratio": 1.0062761743209447,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "ownership-cache-above-t4",
+      "median_excess_s": -0.005129493803154488,
+      "median_ratio": 0.9976890135525536,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "ownership-repeated-large-t1",
+      "median_excess_s": -0.013196794028304502,
+      "median_ratio": 0.9929518448257668,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "ownership-repeated-large-t1",
+      "median_excess_s": -0.014151748213602981,
+      "median_ratio": 0.9891042389382545,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "ownership-repeated-large-t4",
+      "median_excess_s": -0.00945565741180915,
+      "median_ratio": 0.9672841982638725,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "ownership-repeated-large-t4",
+      "median_excess_s": -0.009739119471782244,
+      "median_ratio": 0.9650060306882924,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "ownership-weak-large-t1",
+      "median_excess_s": -0.170127407521017,
+      "median_ratio": 0.5719452027660723,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "ownership-weak-large-t1",
+      "median_excess_s": -0.030389861777452218,
+      "median_ratio": 0.9135905996041975,
+      "reference": "incumbent",
+      "status": "passed"
+    },
+    {
+      "case": "ownership-weak-large-t4",
+      "median_excess_s": -0.05601157710831525,
+      "median_ratio": 0.6734188959433027,
+      "reference": "original",
+      "status": "passed"
+    },
+    {
+      "case": "ownership-weak-large-t4",
+      "median_excess_s": -0.01252887150300646,
+      "median_ratio": 0.9332653898704145,
+      "reference": "incumbent",
+      "status": "passed"
+    }
+  ],
+  "elapsed_s": 458.2628508750349,
+  "failures": [],
+  "interpretation": "Practical paired median regression check, not a desktop confidence-bound claim.",
+  "prior_attempt": {
+    "calls": 0,
+    "reason": "Sandbox denied process observation; relaunched with required permission.",
+    "status": "failed before native execution"
+  },
+  "protocol": "Johannes approved compact paired Mac check2026-10-24; all58settings,3arms,1warmup,2mirroredblocks,zero retries.",
+  "result_sha256": "b2b1d3f2af1b7eb36258ba38fa0041812a8cd15b2408fd6231faee8f7ab4fc63",
+  "retries": 0,
+  "runner_source": "\"\"\"One user-approved practical Mac check; existing science, no extra verifier.\"\"\"\nimport copy\nimport importlib.util\nimport json\nimport os\nfrom pathlib import Path\nimport statistics\nimport subprocess\nimport sys\nimport time\n\nTASK = Path(__file__).resolve().parent\nSOURCE = TASK/'sources/qualification-eligibility-repair'\nWORK = SOURCE/'target/tmp/ownership-cells'\nPLAN = WORK/'qualification-practical-Darwin.json'\nOUTPUT = WORK/'practical-qualification-Darwin'\n\n\ndef modules():\n    sys.path.insert(0, str(SOURCE/'bench'))\n    import qualify as q\n    original_validate = q.ownership.validate\n    def validate(value):\n        assert value['platform'] == 'Darwin' and value['blocks'] == 2 and value['budget_s'] == 1800\n        prior = copy.deepcopy(value)\n        prior.update(blocks=24, budget_s=14400)\n        original_validate(prior)\n    q.ownership.validate = validate\n    return q\n\n\ndef prepare():\n    q = modules()\n    original = q.read(WORK/'qualification-Darwin.json')\n    plan = copy.deepcopy(original)\n    plan.update(blocks=2, budget_s=1800)\n    plan['mac_cell_policy'] = q.fresh_mac_policy(plan)\n    q.ownership.validate(plan)\n    q.validate_cell_policy(plan)\n    assert plan['mac_cell_policy']['new_call_cap'] == 870\n    assert not PLAN.exists() and not OUTPUT.exists()\n    q.write(PLAN, plan)\n    print('Prepared 58 settings / 870 calls / 1800 seconds / zero retries')\n\n\ndef run():\n    q = modules()\n    plan = q.read(PLAN)\n    result = q.run(PLAN, OUTPUT, 0, 0, False)\n    rows = []\n    complete = result['status'] == 'complete' and not result['failures']\n    if complete:\n        assert len(result['cases']) == 58 and result['native_calls_started'] == 870\n        for cell in result['cases']:\n            for reference in ('original', 'incumbent'):\n                scores = [q.score(block['calls'], reference, 'candidate') for block in cell['blocks']]\n                excess = statistics.median(s['excess_s'] for s in scores)\n                rows.append(dict(case=cell['id'], reference=reference,\n                    median_ratio=statistics.median(s['ratio'] for s in scores),\n                    median_excess_s=excess, status='passed' if excess <= 0 else 'slowdown'))\n    summary = dict(status=('passed' if all(r['status']=='passed' for r in rows) else 'needs_discussion') if complete else 'failed',\n        interpretation='Practical paired median regression check, not a desktop confidence-bound claim.',\n        calls=result.get('native_calls_started',0), cells=len(result['cases']),\n        elapsed_s=result['elapsed_s'], failures=result['failures'], comparisons=rows,\n        retries=0, blocks=2, allowance='max(5%, 1 ms)',\n        result_sha256=q.digest(OUTPUT/'run-0-0/results.json'))\n    q.write(OUTPUT/'summary.json', summary)\n    print(json.dumps(summary, sort_keys=True), flush=True)\n    return 0 if summary['status']=='passed' else 1\n\n\ndef launch():\n    log = TASK/'practical-mac.log'\n    receipt = TASK/'practical-mac-execution.json'\n    assert PLAN.exists() and not OUTPUT.exists() and not log.exists() and not receipt.exists()\n    env = dict(os.environ, PYTHONDONTWRITEBYTECODE='1', OPENBLAS_NUM_THREADS='1', OMP_NUM_THREADS='1',\n        MKL_NUM_THREADS='1', VECLIB_MAXIMUM_THREADS='1', NUMEXPR_NUM_THREADS='1', LC_ALL='C', PYTHONUNBUFFERED='1')\n    env.pop('FEREG_TEST_THREADS',None)\n    start = time.monotonic()\n    with log.open('xb') as stream:\n        process = subprocess.Popen([sys.executable, str(Path(__file__).resolve()), 'run'], cwd=SOURCE,\n            env=env, stdout=stream, stderr=subprocess.STDOUT, start_new_session=True)\n        try:\n            code = process.wait(timeout=1860)\n        except subprocess.TimeoutExpired:\n            import signal\n            os.killpg(process.pid,signal.SIGTERM)\n            try: process.wait(timeout=5)\n            except subprocess.TimeoutExpired:\n                os.killpg(process.pid,signal.SIGKILL);process.wait()\n            code = 124\n    with receipt.open('x') as stream:\n        json.dump(dict(exit_code=code,elapsed_s=time.monotonic()-start,retries=0,calls_cap=870),stream,indent=2)\n    return code\n\n\nif __name__ == '__main__':\n    mode = sys.argv[1]\n    if mode == 'prepare': prepare()\n    elif mode == 'launch': raise SystemExit(launch())\n    elif mode == 'run': raise SystemExit(run())\n    else: raise SystemExit('prepare | launch | run')\n",
+  "status": "passed"
+}

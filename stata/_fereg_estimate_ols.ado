@@ -18,7 +18,7 @@ program define _fereg_estimate_ols, eclass
          CMGSAMples(string) CMGSEed(string) PREConditioner(string) ///
          MEMory(string) POOLSize(integer 10) TOLerance(real 1e-8) ///
          ITERate(integer 16000) THREADS(integer 0) DETERMINISTIC ///
-         INJECT(string) PUBLICWEXP(string)]
+         INJECT(string) BREAKMarkerToken(string) PUBLICWEXP(string)]
 
     local memory_mode = lower(strtrim(`"`memory'"'))
     if `"`memory_mode'"' == "" local memory_mode "fast"
@@ -105,6 +105,10 @@ program define _fereg_estimate_ols, eclass
     }
 
     local inject = lower(strtrim(`"`inject'"'))
+    if `"`breakmarkertoken'"' != "" & `"`inject'"' != "" {
+        di as error "marker-only Break cannot be combined with inject()"
+        exit 198
+    }
     local routing_injection = regexm(`"`inject'"', "^routing_(h(4|8|16|32)_k(0|1|2)|builder_break|prefix_(none|map4|it4)|diagonal|cells|direct)$")
     local it_injection = `"`inject'"' == "it_coefficients"
     local ownership_injection = regexm(`"`inject'"', "^ownership_(moments|scores|both)$")
@@ -580,6 +584,9 @@ program define _fereg_estimate_ols, eclass
     }
     else if `routing_injection' | `it_injection' | `ownership_injection' | `cells_injection' {
         local request_arguments `"`request_arguments'inject=`inject';"'
+    }
+    else if `"`breakmarkertoken'"' != "" {
+        local request_arguments `"`request_arguments'break_marker_token=`breakmarkertoken';"'
     }
     // Frame bounded parser metadata in one vectorized pass. No observations or
     // generated design columns enter Mata; field lengths remain UTF-8 bytes.

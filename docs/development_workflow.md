@@ -1037,6 +1037,17 @@ report chain or Linux timing campaign is required. Obsolete temporary captures,
 source copies and unused repair helpers are removed; current inputs and binaries
 remain until integration is finished.
 
+The [practical Mac check](../bench/results/ownership-qualification-practical-macos-20261024.json)
+passed all 58 settings and 116 paired median comparisons in 458 seconds, with
+870 native calls and no retry. A preceding sandbox launch failed before any
+native call and is retained in the summary. Public activation selects both
+ownership mechanisms and deferred cells only for OLS Auto/Auto with a global
+intercept and exactly two categorical-intercept FE terms. No-intercept, slope,
+other-FE-count and explicit solver/preconditioner requests keep their prior
+selection, as does every explicit developer injection. Marker-only Break uses
+the public selection and tests cancellation before numerical preparation;
+it does not claim interruption inside cell construction.
+
 The final coverage preparation retains the original 42 requests and freezes
 the additional packed-cache boundary triplet at 16 finite regressors and
 262,143 / 262,144 / 262,145 rows. Start with one 4,096-worker, 100-firm,

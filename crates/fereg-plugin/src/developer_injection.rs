@@ -78,7 +78,9 @@ pub(crate) fn parse_ols(stage: &str, solver: FeSolverKind, token: &str) -> Resul
     let unknown = || syntax(format!("unknown hidden OLS injection stage {stage:?}"));
     let (ownership, cells) = ols_mechanisms(stage, solver)?;
     let (routing, break_native) = match stage {
-        "" => (None, false),
+        // A marker alone observes the public request; it must not select an
+        // experimental preset or suppress the public ownership/cell policy.
+        "" => (None, !token.is_empty()),
         "ownership_moments" | "ownership_scores" | "ownership_both" => (None, false),
         "cells_eager"
         | "cells_eager_moments"
@@ -201,7 +203,7 @@ pub(crate) fn parse_ols(stage: &str, solver: FeSolverKind, token: &str) -> Resul
     })
 }
 
-/// `break_marker_token` is required exactly when native Break is injected and
+/// `break_marker_token` is required exactly when a native Break is armed and
 /// must be 32 lowercase hexadecimal characters, so it cannot name a path.
 pub(crate) fn validate_break_marker_token(expects_marker: bool, token: &str) -> Result<()> {
     let has_marker = !token.is_empty();
@@ -424,5 +426,23 @@ mod tests {
                 .routing,
             Some(RoutingPreset::prefix(CategoricalPrefix::Map4))
         );
+    }
+
+    #[test]
+    fn marker_only_ols_does_not_select_an_injection() {
+        let token = "0123456789abcdef0123456789abcdef";
+        let plain = parse_ols("", FeSolverKind::Auto, "").unwrap();
+        let marked = parse_ols("", FeSolverKind::Auto, token).unwrap();
+        assert_eq!(marked.routing, plain.routing);
+        assert_eq!(marked.cells, plain.cells);
+        assert_eq!(marked.ownership, plain.ownership);
+        assert_eq!(marked.it_coefficients, plain.it_coefficients);
+        assert!(plain.native_break_token.is_none());
+        assert_eq!(marked.native_break_token.as_deref(), Some(token));
+        for invalid in ["invalid", "0123456789ABCDEF0123456789ABCDEF", "/tmp/marker"] {
+            assert!(parse_ols("", FeSolverKind::Auto, invalid).is_err());
+        }
+        assert!(parse_ols("ownership_both", FeSolverKind::Auto, token).is_err());
+        assert!(parse_ols("breaknative", FeSolverKind::Auto, "").is_err());
     }
 }

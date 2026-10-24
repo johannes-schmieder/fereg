@@ -12,6 +12,227 @@ use fereg_core::{
 };
 use std::collections::{BTreeMap, BTreeSet};
 
+fn public_two_fixture() -> (Vec<String>, FakeSpi) {
+    let (mut args, mut spi) = saved_output_fixture();
+    let mut request = EstimateActionSpec::parse(&args)
+        .unwrap()
+        .decode_with_memory_limit(&mut spi, || Ok(None))
+        .unwrap()
+        .request;
+    let source = SourceId::new(3).unwrap();
+    request.model.sources.push(SourceEntry {
+        id: source,
+        canonical_name: "h".into(),
+    });
+    request.absorbed_terms[0].saved_name.clear();
+    request.absorbed_terms.push(AbsorbedTerm {
+        id: AbsorbTermId::new(2).unwrap(),
+        intercept: true,
+        categorical_sources: vec![source],
+        slope_sources: Vec::new(),
+        label: "h".into(),
+        saved_name: String::new(),
+    });
+    let wire = ModelWireV2::from_specification(&CompiledModelSpecification {
+        model: request.model,
+        absorbed_terms: request.absorbed_terms,
+    })
+    .unwrap();
+    for (name, rows) in [
+        ("S", wire.sources.rows),
+        ("T", wire.terms.rows),
+        ("C", wire.components.rows),
+        ("A", wire.absorb_terms.rows),
+        ("AC", wire.absorb_components.rows),
+    ] {
+        spi.matrices.insert(name.into(), rows);
+    }
+    spi.matrices
+        .get_mut("B")
+        .unwrap()
+        .push(vec![11.0, 3.0, 3.0]);
+    spi.nvars = 11;
+    spi.matrices
+        .insert("RFE".into(), zero_matrix(2, FE_COLUMNS));
+    for (row, x) in [1.0, 2.0, 1.0, 4.0, 5.0, 2.0].into_iter().enumerate() {
+        spi.data.insert((3, row + 1), (x, false));
+        spi.data
+            .insert((11, row + 1), ((row % 2 + 1) as f64, false));
+    }
+    for (key, value) in [
+        ("source_count", "3".into()),
+        ("source_names", registry(&wire.source_names)),
+        ("absorb_term_count", "2".into()),
+        ("absorb_component_count", "2".into()),
+        ("absorb_labels", registry(&wire.absorb_labels)),
+        ("absorb_saved_names", registry(&wire.absorb_saved_names)),
+        ("binding_count", "5".into()),
+        ("output_saved_count", "2".into()),
+        ("output_saved_channels", registry(&["0".into(), "0".into()])),
+    ] {
+        replace_argument(&mut args, key, format!("{key}={value}"));
+    }
+    (args, spi)
+}
+
+#[test]
+fn public_two_activation_has_exact_scope_and_hidden_configuration() {
+    use fereg_core::ols::{PreparedOlsCells, PreparedOlsOwnership};
+    let hidden =
+        crate::developer_injection::parse_ols("cells_deferred_both", FeSolverKind::Auto, "")
+            .unwrap();
+    for excluded in 0..11 {
+        let (args, mut spi) = public_two_fixture();
+        let mut action = EstimateActionSpec::parse(&args)
+            .unwrap()
+            .decode_with_memory_limit(&mut spi, || Ok(None))
+            .unwrap();
+        match excluded {
+            1 => action.fit.absorb.solver = FeSolverKind::Lsmr,
+            2 => action.fit.absorb.lsmr.preconditioner = LsmrPreconditioner::Off,
+            3 => action.request.include_intercept = false,
+            4 => {
+                action.request.absorbed_terms.pop();
+            }
+            5 => action
+                .request
+                .absorbed_terms
+                .push(action.request.absorbed_terms[0].clone()),
+            6 => action.request.absorbed_terms[0].intercept = false,
+            7 => action.request.absorbed_terms[0]
+                .slope_sources
+                .push(SourceId::new(1).unwrap()),
+            8 => action.request.absorbed_terms.clear(),
+            9 => action.request.absorbed_terms[0].categorical_sources.clear(),
+            10 => action.fit.absorb.solver = FeSolverKind::Cmg,
+            _ => {}
+        }
+        activate_public_two_fe(&mut action);
+        if excluded == 0 {
+            assert_eq!(action.fit.ownership, hidden.ownership);
+            assert_eq!(action.fit.cells, hidden.cells);
+            assert_eq!(action.fit.absorb.routing, hidden.routing);
+        } else {
+            assert_eq!(action.fit.ownership, PreparedOlsOwnership::default());
+            assert_eq!(action.fit.cells, PreparedOlsCells::Off);
+        }
+    }
+}
+
+#[test]
+fn public_two_activation_matches_hidden_science_and_public_repeat() {
+    let bits = |rows: &Vec<Vec<f64>>| {
+        rows.iter()
+            .flatten()
+            .map(|v| v.to_bits())
+            .collect::<Vec<_>>()
+    };
+    for memory in ["fast", "low"] {
+        for workers in [1, 4] {
+            let (mut args, spi) = public_two_fixture();
+            replace_argument(&mut args, "memory", format!("memory={memory}"));
+            replace_argument(&mut args, "threads", format!("threads={workers}"));
+            replace_argument(&mut args, "vce", "vce=robust".into());
+            let mut hidden_args = args.clone();
+            hidden_args.push("inject=cells_deferred_both".into());
+            let mut hidden = spi.clone();
+            estimate_ols(&hidden_args, &mut hidden).unwrap();
+            for _ in 0..2 {
+                let mut public = spi.clone();
+                estimate_ols(&args, &mut public).unwrap();
+                for name in [
+                    "RB", "RV", "RSTATUS", "RMARKB", "RMARKV", "RFIT", "RDOF", "RFE", "RCLUSTER",
+                    "RSUBSET", "RCERT", "RREC",
+                ] {
+                    assert_eq!(
+                        bits(&public.matrices[name]),
+                        bits(&hidden.matrices[name]),
+                        "{name} {memory} W{workers}"
+                    );
+                }
+                for (a, b) in public.matrices["RSOLVER"]
+                    .iter()
+                    .zip(&hidden.matrices["RSOLVER"])
+                {
+                    for column in 0..SOLVER_COLUMNS {
+                        if !matches!(column, 8 | 9) {
+                            assert_eq!(a[column].to_bits(), b[column].to_bits());
+                        }
+                    }
+                }
+                let outputs = |value: &FakeSpi| {
+                    value
+                        .stores
+                        .iter()
+                        .filter_map(|event| match event {
+                            StoreEvent::Numeric(v, r, x) => Some((*v, *r, x.to_bits())),
+                            StoreEvent::Matrix(..) => None,
+                        })
+                        .collect::<Vec<_>>()
+                };
+                assert_eq!(outputs(&public), outputs(&hidden));
+                assert_eq!(public.receipt_complete(), 1.0);
+            }
+        }
+    }
+}
+
+#[test]
+fn public_marker_does_not_accept_an_explicit_empty_injection() {
+    let (mut args, mut spi) = public_two_fixture();
+    args.push("break_marker_token=0123456789abcdef0123456789abcdef".into());
+    let marker = EstimateActionSpec::parse(&args).unwrap();
+    assert!(marker.native_break_token.is_some());
+    assert!(marker.public_defaults);
+    let mut action = marker
+        .decode_with_memory_limit(&mut spi, || Ok(None))
+        .unwrap();
+    activate_public_two_fe(&mut action);
+    assert_eq!(
+        action.fit.cells,
+        fereg_core::ols::PreparedOlsCells::Deferred
+    );
+    args.push("inject=".into());
+    assert!(EstimateActionSpec::parse(&args).is_err());
+}
+
+#[test]
+fn public_two_activation_preserves_explicit_injections_in_local_bundles() {
+    for token in [
+        "ownership_moments",
+        "ownership_scores",
+        "ownership_both",
+        "cells_eager_both",
+        "cells_deferred_both",
+        "routing_prefix_none",
+    ] {
+        let (mut args, mut spi) = public_two_fixture();
+        args.push(format!("inject={token}"));
+        let packed = bundled(&args);
+        let spec = EstimateActionSpec::parse(&packed).unwrap();
+        assert!(!spec.public_defaults, "{token}");
+        let injection =
+            crate::developer_injection::parse_ols(token, FeSolverKind::Auto, "").unwrap();
+        assert_eq!(spec.cells, injection.cells);
+        assert_eq!(spec.ownership, injection.ownership);
+        let payload = packed[0]
+            .strip_prefix("bundle=")
+            .unwrap()
+            .as_bytes()
+            .to_vec();
+        let local_args = [format!("bundle_local={}", payload.len())];
+        spi.local_bundle = Some(payload);
+        let expanded = read_local_estimate_bundle(&local_args, &mut spi)
+            .unwrap()
+            .unwrap();
+        let local = EstimateActionSpec::parse(&[expanded]).unwrap();
+        assert!(!local.public_defaults, "local {token}");
+        assert_eq!(local.cells, injection.cells);
+        assert_eq!(local.ownership, injection.ownership);
+        estimate_ols(&local_args, &mut spi).unwrap();
+    }
+}
+
 #[test]
 fn unused_moments_require_conservative_packed_fast_inference_bound() {
     let columns = 8;
@@ -4497,7 +4718,7 @@ fn invalid_hidden_routing_requests_fail_before_reads_or_publication() {
         vec!["inject=ROUTING_H8_K1"],
         vec!["inject=breaknative"],
         vec!["inject=breaknative", "break_marker_token=invalid"],
-        vec![token],
+        vec!["break_marker_token=invalid"],
     ] {
         requests.push(("auto", fields));
     }

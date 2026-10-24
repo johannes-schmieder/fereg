@@ -130,10 +130,12 @@ def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--cmg-seed", type=lambda value: bounded_integer(value, 2**53 - 1),
                         help="optional CMG-Schur seed; requires positive --cmg-samples")
     parser.add_argument("--public-scope", action="store_true",
-                        help="exercise feppml's outer scope with the private injection adapter")
+                        help="exercise public OLS marker-only Break or feppml's outer injection scope")
     args = parser.parse_args(argv)
-    if args.public_scope and args.fixture_kind != "ppml":
-        parser.error("--public-scope requires --fixture-kind ppml")
+    if args.public_scope and args.fixture_kind not in ("ols", "ppml"):
+        parser.error("--public-scope requires --fixture-kind ols or ppml")
+    if args.public_scope and args.fixture_kind == "ols" and args.ols_solver != "auto":
+        parser.error("public OLS Break requires --ols-solver auto")
     if args.builder_workers is not None and args.fixture_kind != "ols-builder":
         parser.error("--builder-workers requires --fixture-kind ols-builder")
     if args.ols_solver != "auto" and args.fixture_kind != "ols":
@@ -152,16 +154,40 @@ def fixture_command(fixture: Path, args: argparse.Namespace) -> str:
     arguments: list[str] = []
     if args.fixture_kind == "ols-builder":
         arguments.append(str(args.builder_workers or 4))
-    elif args.fixture_kind == "ols":
+    elif args.fixture_kind == "ols" and not args.public_scope:
         arguments.append(args.ols_solver)
         if args.cmg_samples is not None:
             arguments.append(str(args.cmg_samples))
             if args.cmg_seed is not None:
                 arguments.append(str(args.cmg_seed))
-    elif args.public_scope:
+    elif args.public_scope and args.fixture_kind == "ppml":
         arguments.append("public")
     suffix = " " + " ".join(arguments) if arguments else ""
     return f"do {stata_quote(fixture)}{suffix}"
+
+
+def public_ols_adapter(source: Path, target: Path) -> str:
+    """Keep the public dispatchers and real transaction; add only a test token."""
+    text = source.read_text()
+    original = "program define _fereg_estimate_ols, eclass"
+    renamed = "program define __fereg_break_transaction, eclass"
+    if text.count(original) != 1 or renamed in text:
+        raise RuntimeError("public OLS Break transaction anchor changed")
+    with target.open("x") as output:
+        output.write(text.replace(original, renamed, 1))
+        output.write('''
+program define _fereg_estimate_ols, eclass
+    version 18.0
+    local marker_option
+    if "$FEREG_PUBLIC_BREAK_ARMED" == "1" {
+        local token : environment FEREG_BREAK_MARKER_TOKEN
+        assert strlen("`token'") == 32
+        local marker_option "breakmarkertoken(`token')"
+    }
+    __fereg_break_transaction `0' `marker_option'
+end
+''')
+    return sha256_file(source)
 
 
 def builder_trace_events(trace: str) -> list[str]:
@@ -305,6 +331,10 @@ def main() -> None:
 
     root = Path(__file__).resolve().parents[1]
     fixture_name, armed_markers = BREAK_FIXTURES[args.fixture_kind]
+    public_ols = args.public_scope and args.fixture_kind == "ols"
+    if public_ols:
+        fixture_name = "estimate_ols_public_break.do"
+        armed_markers = ("FEREG_NATIVE_BREAK_ARMED",)
     fixture = root / "tests/licensed_stata" / fixture_name
     fixture_sha256 = sha256_file(fixture)
     runner_sha256 = sha256_file(Path(__file__))
@@ -376,10 +406,15 @@ def main() -> None:
                 'plugin call __fereg_break_provenance, selftest "ado=0.5.0" '
                 '"protocol_major=1" "protocol_minor=6" '
                 '"stata=`c(stata_version)\'" "threads=1" "verbose=1"',
-                fixture_command(fixture, args),
-                "",
             ]
         )
+        if public_ols:
+            adapter = run_dir / "public-ols-break-adapter.do"
+            metadata["transaction_ado_sha256"] = public_ols_adapter(
+                root / "stata/_fereg_estimate_ols.ado", adapter)
+            metadata["test_adapter_sha256"] = sha256_file(adapter)
+            commands.append(f"do {stata_quote(adapter)}")
+        commands.extend([fixture_command(fixture, args), ""])
         os.write(master, "\n".join(commands).encode("utf-8"))
         for armed in armed_markers:
             if armed in native_markers:
@@ -407,9 +442,12 @@ def main() -> None:
         if sha256_file(bound_plugin) != args.plugin_sha256:
             raise RuntimeError("candidate plugin bytes changed during the Break fixture")
         if args.public_scope:
-            if "FEPPML_PUBLIC_SCOPE_VERIFIED" not in transcript:
+            sentinel = "FEREG_PUBLIC_SCOPE_VERIFIED" if public_ols else "FEPPML_PUBLIC_SCOPE_VERIFIED"
+            if sentinel not in transcript:
                 raise RuntimeError("public-scope Break fixture did not verify its boundary")
-            print("BOUNDARY: feppml public scope")
+            print("BOUNDARY: " + ("fereg public OLS marker-only scope" if public_ols else "feppml public scope"))
+            if public_ols:
+                print("NATIVE: cancellation at the pre-preparation wait checkpoint; no inject preset")
         if args.fixture_kind == "ols-builder":
             if "FEREG_SOLVER_TRACE_IO_ERROR|" in transcript:
                 raise RuntimeError("solver trace I/O failed during builder Break fixture")
