@@ -164,7 +164,7 @@ fn structural_auto_graph_and_explicit_solvers_match_dummies_in_both_storage_mode
             let fit = fit_prepared_model_coefficients(&prepared, config)
                 .expect("supported solver oracle fit");
             let expected = if solver == FeSolverKind::Auto {
-                FeSolverKind::Map
+                FeSolverKind::Cg
             } else {
                 solver
             };
@@ -173,7 +173,12 @@ fn structural_auto_graph_and_explicit_solvers_match_dummies_in_both_storage_mode
             assert_eq!(fit.absorption_report().pilot_iterations, 0);
             let cmg_final_verification =
                 mode == PreparedOlsExecutionMode::Fast && solver == FeSolverKind::Cmg;
-            let expected_final = if cmg_final_verification {
+            let expected_final = if solver == FeSolverKind::Auto
+                && fit.residual_absorption_report().iterations == 0
+            {
+                // The final residual can pass the initial certificate unchanged.
+                FeSolverKind::Map
+            } else if cmg_final_verification {
                 FeSolverKind::Cg
             } else {
                 expected

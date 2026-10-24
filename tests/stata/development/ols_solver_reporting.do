@@ -2,14 +2,15 @@ version 18
 clear all
 set more off
 
-* Four observations per occupied cell: x and noise each sum to zero,
-* and x is orthogonal to noise. The independent answer is b=.7, u=noise.
+* Four observations per occupied cell: the within-cell part of x and noise
+* sum to zero and are orthogonal. Additive worker/firm terms in x are absorbed.
+* The independent answer is b=.7, u=noise.
 foreach graph in dense ring {
     clear
     if "`graph'" == "dense" {
-        set obs 128
-        generate long worker = floor((_n-1)/16)
-        generate long firm = mod(floor((_n-1)/4),4)
+        set obs 3200
+        generate long worker = floor((_n-1)/32)
+        generate long firm = mod(worker + mod(floor((_n-1)/4),8),10)
         local expected cg
         local code 4
     }
@@ -20,7 +21,7 @@ foreach graph in dense ring {
         local expected cmgschur
         local code 8
     }
-    generate double x = 2*mod(_n-1,2)-1
+    generate double x = 2*mod(_n-1,2)-1 + .3*sin(worker*.173) + .1*cos(firm*.113)
     generate double noise = .01*(2*(mod(_n-1,4)>=2)-1)
     generate double y = .7*x + sin(worker*.137) + cos(firm*.291) + noise
     foreach memory in fast low {

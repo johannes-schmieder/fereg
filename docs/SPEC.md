@@ -19,7 +19,7 @@ Native test names below are relative to `crates/fereg-core` or
 The accepted ownership/cell implementation uses CMG `fd77d98d`. Qualified OLS `solver(auto)` with
 `preconditioner(auto)`, a global intercept and exactly two categorical-intercept
 FE terms selects both ownership mechanisms and deferred cell construction.
-Explicit developer injections retain their historical selection. Core defaults
+Explicit developer injections retain their specified selection. Core defaults
 and requests outside this scope remain unchanged. The
 [acceptance record](../bench/results/ownership-qualification-final-linux-20261024.json)
 and [practical Mac check](../bench/results/ownership-qualification-practical-macos-20261024.json)
@@ -50,8 +50,8 @@ construction, small-direct selection, certification, restart and fallback
 semantics remain fixed. The same original graph produces the same hierarchy
 when both arms construct one. The only permitted cell redesign defers
 construction to successful CMG commitment at the existing restart; it adds no
-restart or speculative setup to short solves. Neither historical work caps nor
-elapsed-time routing are reintroduced. See the [development protocol](development_workflow.md#compact-candidate-qualification).
+restart or speculative setup to short solves. There is no construction-work cap or
+elapsed-time routing. See the [development protocol](development_workflow.md#compact-candidate-qualification).
 
 Both commands accept `depvar [indepvars] [if] [in] [weight], [options]`.
 The dependent variable is plain numeric; the finite list can be empty.
@@ -236,13 +236,13 @@ Zero/one FE, slopes, explicit choices and PPML retain their specified behavior.
 Public activation and performance evidence are complete; see [VALIDATION](VALIDATION.md).
 
 The CMG builder borrows the host team, polls cancellation at fixed logical chunks
-and admits construction against real memory. The former construction-work cap
-and budget-dependent factor screen are retired. Preserve cutoff 5, one sampled
+and admits construction against real memory, without a construction-work cap or
+budget-dependent factor screen. Preserve cutoff 5, one sampled
 tree, seed zero, eligibility, small-direct selection, certification, restart and
 fallback semantics. See the [execution contract](ARCHITECTURE.md#cmg-host-team-and-stage-admission).
 
-Historical developer selectors below are supported comparison contracts, not
-public defaults or authorization to restart their completed campaigns.
+Developer selectors below are supported comparison contracts; public defaults
+are specified above.
 
 Hidden OLS `inject=routing_h{4|8|16|32}_k{0|1|2}` selects a fixed iteration
 checkpoint and high-degree CMG sample count. Eligible two-FE problems start the
@@ -423,9 +423,7 @@ results and solver diagnostics within the existing scientific tolerances;
 model and discrete decisions remain unchanged. It is
 experimental and does not change public Auto or establish performance evidence.
 
-The former concurrent-preparation (overlap) experiment and its injections were
-retired on 2026-10-19 together with the construction-work cap. Break during
-optional construction is exercised on the synchronous builder through the
+Break during optional construction is exercised on the synchronous builder through the
 hidden `routing_builder_break` arm: the h4/k1 two-FE build parks at its first
 cancellation poll after executed construction work, Stata's main thread polls
 Break, and the requested cancellation propagates as an interrupted native

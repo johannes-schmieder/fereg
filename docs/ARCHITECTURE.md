@@ -133,7 +133,7 @@ initial, configured-cadence and fourth-sweep checks remain. Failed attempts
 drop their candidate/norm/coefficient storage before LSMR starts on untouched
 inputs, debiting actual work and preserving memory admission. Explicit solvers,
 weighted requests, PPML and final residual projection retain their routes.
-See the [independent checks and performance limits](https://github.com/johannes-schmieder/fereg/blob/8de43810f4a0cc06d7d87afccf099f5b96943a3b/docs/VALIDATION.md#h2-follow-up-certified-dense-three-fe-gains-2026-10-12).
+See [validation](VALIDATION.md) for the accepted policy and performance limits.
 
 Thread counts are worker budgets. Shared planned lanes retain deterministic
 arithmetic leaves and ordered merges. One-FE, two-FE and general-FE algorithms
@@ -212,8 +212,7 @@ cancellation whenever the count crosses a fixed cadence (65,536 units in both
 fereg's bounded builder and CMG) and before every allocation, carried across
 row, group, pivot and level boundaries. Work between polls is bounded; allocator,
 operating-system and join latency is not. There is no construction-work ledger,
-allowance or charge: Johannes's 2026-10-19 decision removed the optional cap,
-its host-context entry charges and the budget-dependent factor screen. A memory
+allowance, host-context charge or budget-dependent factor screen. A memory
 refusal before installation resumes the incumbent; cancellation and fatal errors
 propagate as an interrupted or failed estimation with atomic rollback.
 
@@ -432,10 +431,8 @@ initialize their required scratch; retries receive fresh complete certificates.
 
 ## Repository boundaries
 
-One plugin per platform serves both public commands. Scientific solver-route
-diagnostics remain.
-There is no legacy binary, selector, fallback, comparator packaging or required
-historical timing campaign. The retained benchmark is descriptive and local.
+One plugin per platform serves both public commands. Solver-route diagnostics
+report the method and certified fallback. The local benchmark is descriptive.
 Tests, pinned independent references and the complexity ratchet remain maintained.
 Builds go under ignored `target/` and task captures under `target/tmp/`, which is
-deleted after use; only one current local plugin is retained in `dist/`. Git history preserves the completed development programs.
+deleted after use; only one current local plugin is retained in `dist/`.

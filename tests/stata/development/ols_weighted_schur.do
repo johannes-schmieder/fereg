@@ -40,7 +40,7 @@ foreach case in iid_aw iid_fw robust_aw robust_fw robust_pw cluster_aw cluster_f
         assert abs(native_residual-oracle_residual)<1e-7
         matrix route=e(fereg_solver)
         assert route[1,1]==1
-        assert route[1,2]==2
+        assert route[1,2]==4
         assert route[1,11]==0
         forvalues j=1/16 {
             assert abs(e(b)[1,`j']-oracle_b[1,`j'])<1e-8

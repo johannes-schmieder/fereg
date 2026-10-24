@@ -45,5 +45,4 @@ signing environments is not claimed.
 
 For a current Git checkout, use the same remap setup but identify the source with
 `git rev-parse --short=12 HEAD` and use the current UTC build date. Delete the
-build work directory when finished. Historical beta.2 instructions remain with
-that immutable release.
+build work directory when finished.

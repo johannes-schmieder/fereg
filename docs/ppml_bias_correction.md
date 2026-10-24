@@ -247,5 +247,4 @@ plugin and its pre-build source manifest. The reconstruction regression retains
 one synthetic duration draw and checks full/A/B exact and randomized outputs
 against explicit-design oracles under four row orders. The Split Branch fixture
 and independent correction witnesses remain under `tests/stata/bias/`.
-Historical simulation and profiling campaign tooling is retired; it remains
-available in Git history. See [validation](VALIDATION.md) for accepted scope.
+See [validation](VALIDATION.md) for accepted scope.

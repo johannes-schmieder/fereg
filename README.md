@@ -171,12 +171,11 @@ Licensed profiles and platform limitations are documented in
 - [`docs/README.md`](docs/README.md) — documentation map.
 - [`AGENTS.md`](AGENTS.md) — concise operating rules for repository work.
 
-Development is consolidated on `main`. Historical receipts are evidence for
-the exact source and artifact they name; they are not general release claims.
+Development is consolidated on `main`.
 
 ## Working paper
 
 The manuscript, publication assets, and frozen paper evidence live in the
 sibling `fereg-paper` repository. Build it there with
 `make paper`; the paper build does not require this implementation checkout.
-Historical programs and receipts remain in Git history; the maintained local benchmark is in [bench](bench/README.md).
+The maintained local benchmark is in [bench](bench/README.md).

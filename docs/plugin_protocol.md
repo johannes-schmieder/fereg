@@ -97,7 +97,7 @@ qualification.
 The separate coefficient-IT injection requires explicit `solver=it` and rejects
 `break_marker_token`. Ordinary explicit IT keeps its incumbent observation-space
 implementation. The compact challenger has not passed promotion qualification;
-its availability failures are retained in [validation](VALIDATION.md).
+it remains a developer-only comparison.
 
 The checkpoint arms apply to eligible categorical two-FE and general categorical
 LSMR routes. Zero/one-FE and slope routes retain their existing behavior; the
@@ -111,8 +111,7 @@ as a continued incumbent or a published result. Accepted results retain the
 original-design certificate, requested tolerance, per-action iteration budget,
 and atomic publication contract. These qualification arms build synchronously
 at a numerical checkpoint. Prefix experiments are independently qualified;
-their tokens cannot be combined into a Cartesian policy search. The former
-overlap arms were retired on 2026-10-19.
+their tokens cannot be combined into a Cartesian policy search.
 
 The builder-Break arm claims a process-wide developer marker for its one
 synchronous build. At the builder's first cancellation poll after executed
@@ -243,8 +242,8 @@ dimensions, nonaliasing destinations, memory/thread controls, and initially
 incomplete receipt before reading observations.
 
 Request wire 1.5 has one closed `solver` field with values `auto`, `map`,
-`lsmr`, and `cmg`. The retired private solver, preconditioner, mode, policy,
-trace, and experiment keys are not compatibility aliases. An older exact
+`lsmr`, and `cmg`. Private solver, preconditioner, mode, policy, trace and
+experiment keys are unsupported. An older exact
 request version is a protocol mismatch; an unknown key on 1.5 is syntax error.
 Recognized solver/topology combinations outside the staged public envelope
 return `r(498)`. A supported route that fails its checked workspace preflight
@@ -364,5 +363,5 @@ actions request the existing optional CMG build; final and unsupported roles
 close economic proposals without a build. The second gate is constant Defer.
 The owner state survives Low chunks and the final accuracy key; correction
 closes economics. Existing direct selection, resource admission, cancellation,
-certification and rollback remain authoritative. This diagnostic selector does
-not activate public Auto or reinterpret the historical remaining-cost controls.
+certification and rollback remain authoritative. Public Auto/Auto uses these
+structural gates by default; this selector remains available for explicit tests.

@@ -14,15 +14,9 @@ clocks. No elapsed-time routing or construction-work cap is introduced.
 Keep cutoff 5, one sampled tree, seed zero, eligibility, small-direct selection,
 certification, restart/fallback and the cumulative iteration budget. Changes in
 solver trajectories must satisfy SPEC's independent scientific witnesses and
-stable discrete decisions. Explicit historical injections retain their contracts.
+stable discrete decisions. Explicit developer injections retain their contracts.
 
 The fixed Mac/Linux qualification passed all 84 protected bounds per platform;
 public/hidden activation passed after the documented transport-accounting
 amendment. Ownership and deferred cell construction subsequently passed their
 separate qualification. See [current validation](VALIDATION.md).
-
-The offline fit searched 1,479 admissible pairs and selected feature 16 by its
-predeclared tie order. Training included three harmful builds and unobserved
-opportunities; it was not a universal optimality proof. The earlier remaining-cost
-formulation selected no upgrades. Both complete research specifications, fitting
-tools and outcomes remain in Git at `8de43810`; they are not current instructions.

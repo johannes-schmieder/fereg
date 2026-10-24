@@ -26,7 +26,6 @@ below its resolution. Dedicated performance decisions require a separately decla
 bounded protocol under `docs/development_workflow.md`.
 
 Generated captures belong under `target/tmp/` and are deleted after inspection.
-Historical campaigns and the legacy comparator are available only in Git history.
 
 ## SCC package comparison
 
@@ -65,8 +64,8 @@ does not qualify a runtime change or establish a universal speed advantage.
 application results and frozen identities. Set `host_observation_required: true`
 in the context for observed runs. `campaign_report.py DIRECTORY --output REPORT`
 produces the full PDF and CSVs, enforcing complete coverage, scientific eligibility,
-fixed-worker exact repeatability and cross-worker agreement. Historical results
-are summarized in [the fixest report](../docs/fixest_benchmarks.md).
+fixed-worker exact repeatability and cross-worker agreement. See the
+[comparison guide](../docs/fixest_benchmarks.md) for interpretation.
 
 ## Fixed-candidate qualification
 
@@ -98,7 +97,7 @@ The configuration is a JSON object with these fields:
 | `threads` | `[1, 4]` for routing coverage. |
 | `blocks` | Fixed even number of mirrored blocks, at most 24. |
 | `shards`, `replicas` | Linux case partitions and repeated allocations; both are 1 on Mac. |
-| `min_distinct_hosts_per_cell` | Optional Linux-only minimum, an integer from 1 through `replicas` (at most 12). The new two-FE policy round sets 12; every cell/reference must have that many accounted physical hosts. |
+| `min_distinct_hosts_per_cell` | Optional Linux-only minimum, an integer from 1 through `replicas` (at most 12). Every cell/reference must have the declared number of accounted physical hosts. |
 | `seed` | Unsigned 64-bit ordering seed. |
 | `timeout_s`, `budget_s` | Fixed per-call and per-job limits, at most 120 and 14,400 seconds. |
 | `coverage` | `routing` requires all 42 cells; `smoke` only checks tooling and cannot qualify a candidate. |
@@ -224,15 +223,13 @@ its tool children, `codex exec`, builds, tests and estimators remain classified.
 New Mac plans use the practical cell policy from their first run. The policy
 flags substantial sampled activity: at least
 one CPU-second in a valid interval no longer than 7.5 seconds, or a known process
-runnable at 20% CPU or more. Lesser activity stays recorded noise, including the
-earlier 70 ms tool-runtime burst. A flag affects only its overlapping cell attempt.
-The older strict plans keep their original policy and failed outcomes.
+runnable at 20% CPU or more. Lesser activity stays recorded noise. A flag affects
+only its overlapping cell attempt.
 Fresh plans permit at most one replacement per affected cell and four replaced
 cells overall, after two clear sampled intervals within 120 seconds. Their call
 cap includes all distinct execution arms, warmups and discarded attempts; the
 whole-run budget remains at most four hours. These plans cannot reset their
-budgets through resume, continuation or recovery entrypoints. Historical recovery
-plans retain their separate prior-evidence bindings and accounting.
+budgets through resume, continuation or recovery entrypoints.
 Unknown desktop activity remains recorded noise. Missing observations,
 artifact drift, native failures and scientific failures retain their failure
 semantics. Python executable-name matching handles macOS's capitalized name,
@@ -256,10 +253,8 @@ to obtain a favorable timing. See [development](../docs/development_workflow.md)
 for stopping rules, scientific requirements and practical Mac measurements.
 
 `native.py`, `time_exact.py`, the replay tools and the campaign runner remain
-maintained diagnostic entrypoints; use their `--help` for bounded runs. Historical
-schema adapters imported by qualification remain for compatibility. Closed policy
-fitting, repair-only diagnostics and one-off source-instrumentation drivers have
-been retired; their code and results remain in Git at `8de43810`.
+maintained diagnostic entrypoints; use their `--help` for bounded runs. Schema
+adapters imported by qualification remain for compatibility.
 
 Current acceptance records are indexed in [VALIDATION](../docs/VALIDATION.md).
 Remove task outputs after recording concise results. Keep numerical references and
