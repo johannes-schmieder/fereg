@@ -8,6 +8,7 @@ if c(os) != "Windows" {
 local root = subinstr(`"`c(pwd)'"', char(92), "/", .)
 capture erase "dist/fereg_windows.plugin.sha256"
 capture erase "target/windows-plugin.verified"
+capture erase "target/windows-installed.verified"
 
 shell powershell.exe -NoLogo -NoProfile -NonInteractive ///
     -ExecutionPolicy Bypass -File "scripts/build_windows.ps1"
@@ -40,12 +41,18 @@ net install fereg, from(`"`root'/target/windows-install"') replace
 findfile fereg.ado
 assert strpos(subinstr(`"`r(fn)'"', char(92), "/", .), "/target/windows-plus/") > 0
 findfile fereg_windows.plugin
-local installed_plugin `"`r(fn)'"'
+local installed_plugin = subinstr(`"`r(fn)'"', char(92), "/", .)
+confirm file "`installed_plugin'"
+* shell forwards its command string: use OS quotes, not Stata compound quotes.
 shell powershell.exe -NoLogo -NoProfile -NonInteractive ///
     -ExecutionPolicy Bypass -File "scripts/verify_windows_plugin.ps1" ///
-    -Plugin `"`installed_plugin'"' -Checksum "dist/fereg_windows.plugin.sha256" ///
-    -Receipt "target/windows-installed.verified"
+    -Plugin "`installed_plugin'" -Checksum "`root'/dist/fereg_windows.plugin.sha256" ///
+    -Receipt "`root'/target/windows-installed.verified"
 confirm file "target/windows-installed.verified"
+file open `verification' using "target/windows-installed.verified", read text
+file read `verification' installed_verified
+file close `verification'
+assert `"`installed_verified'"' == `"`verified'"'
 shell powershell.exe -NoLogo -NoProfile -NonInteractive ///
     -ExecutionPolicy Bypass -File "scripts/windows_ci_report.ps1" -Action start -Stage stata_smoke
 do "tests/stata/installation/windows_ci_smoke.do"
