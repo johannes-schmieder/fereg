@@ -74,5 +74,8 @@ The binary SHA-256 is
 the corresponding-source archive SHA-256 is
 `55383fbf48b9496e1845a61688dc87a16bead4d43af025506a42ff9ff40825b8`.
 [Package metadata](../dist/fereg-native.json) records the identity and caveats.
-Public-URL installation is checked after publication, before completing the merge.
-
+[Beta.3](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0-beta.3)
+is published with 46 assets. A fresh installation from its public versioned URL
+passed selftest and the three independent OLS/PPML fixtures; all 30 installed
+package files matched the published package. GitHub installation from main is
+checked immediately after the fast-forward.
