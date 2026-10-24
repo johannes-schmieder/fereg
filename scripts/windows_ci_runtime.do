@@ -28,13 +28,33 @@ file read `verification' verified
 file close `verification'
 assert regexm(`"`verified'"', "^WINDOWS_PLUGIN_SHA256=[0-9a-f]{64}$")
 
-adopath ++ `"`root'/stata"'
-adopath ++ `"`root'/dist"'
+* Exercise the same net-install boundary as users, before loading the plugin.
+shell python scripts/stage_local_install.py --platform windows --output target/windows-install
+confirm file "target/windows-install/fereg.pkg"
+capture mkdir "target/windows-plus"
+capture mkdir "target/windows-personal"
+sysdir set PLUS `"`root'/target/windows-plus"'
+sysdir set PERSONAL `"`root'/target/windows-personal"'
+global S_ADO "UPDATES;BASE;PLUS;."
+net install fereg, from(`"`root'/target/windows-install"') replace
+findfile fereg.ado
+assert strpos(subinstr(`"`r(fn)'"', char(92), "/", .), "/target/windows-plus/") > 0
+findfile fereg_windows.plugin
+local installed_plugin `"`r(fn)'"'
+shell powershell.exe -NoLogo -NoProfile -NonInteractive ///
+    -ExecutionPolicy Bypass -File "scripts/verify_windows_plugin.ps1" ///
+    -Plugin `"`installed_plugin'"' -Checksum "dist/fereg_windows.plugin.sha256" ///
+    -Receipt "target/windows-installed.verified"
+confirm file "target/windows-installed.verified"
 shell powershell.exe -NoLogo -NoProfile -NonInteractive ///
     -ExecutionPolicy Bypass -File "scripts/windows_ci_report.ps1" -Action start -Stage stata_smoke
 do "tests/stata/installation/windows_ci_smoke.do"
 shell powershell.exe -NoLogo -NoProfile -NonInteractive ///
     -ExecutionPolicy Bypass -File "scripts/windows_ci_report.ps1" -Action start -Stage single_runtime
 do "tests/stata/installation/single_runtime.do"
+do "tests/stata/development/ols_solver_reporting.do"
+do "tests/stata/development/ols_cmg_raw_residual_oracle.do"
+do "tests/stata/development/ols_mixed_solver_reports.do"
+do "tests/stata/parity_ppmlhdfe/feppml_one_fe_dummy_oracle.do"
 shell powershell.exe -NoLogo -NoProfile -NonInteractive ///
     -ExecutionPolicy Bypass -File "scripts/windows_ci_report.ps1" -Action pass
