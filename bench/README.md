@@ -128,6 +128,15 @@ the report and full captures privately on SCC, and commit only the compact
 aggregates. The [October 24 results](../docs/veneto_benchmarks.md) retain all
 reference accuracy failures as descriptive timings without eligible speed ratios.
 
+For accuracy magnitudes from an existing campaign, run
+`panel_accuracy.py PRIVATE_RUN --panel long --output PRIVATE_AGGREGATE.json`
+(and likewise `--panel short`) in a compute-node job. It reads the original
+four-core first repetitions without fitting again or changing any gate. It
+reports coefficient/covariance, RSS, fitted-value and centered worker/firm FE
+differences from fereg, plus independent residual model scores. Only aggregate
+diagnostics and input hashes may leave private storage; full row and FE vectors
+remain on SCC. The native comparison is not a full-panel exact oracle.
+
 ## Fixed-candidate qualification
 
 [`qualify.py`](qualify.py) implements one bounded regression round for a candidate

@@ -131,6 +131,55 @@ Different hosts, sample sizes and controls prevent interpreting the long/short
 timing difference as an isolated panel-length effect. These real-data results
 are distinct from the [synthetic beta.3 campaign](fixest_benchmarks.md).
 
+## Magnitudes of the accuracy differences
+
+A subsequent diagnostic reads the existing **four-core first repetition** of
+each arm on each panel. It does not refit models, replace observations or change
+the campaign gates. The following are differences from fereg's saved outputs,
+after removing the observation-weighted additive normalization from each FE
+channel; they are not errors against a full-panel exact oracle. Worker and firm
+RMSE give each retained level equal weight. All entries are in log daily wage
+units.
+
+| Panel | Comparator | Fitted-value RMSE | Worker FE RMSE | Firm FE RMSE | Maximum FE difference, either channel |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Long | fixest default | 2.59e-7 | 3.92e-6 | 1.11e-6 | 2.36e-4 |
+| Long | fixest strict | 2.62e-10 | 3.63e-9 | 1.45e-9 | 4.03e-7 |
+| Long | reghdfe | 6.78e-6 | 8.60e-5 | 3.27e-5 | 5.06e-3 |
+| Short | fixest default | 1.04e-6 | 2.17e-5 | 4.29e-6 | 6.87e-4 |
+| Short | fixest strict | 3.12e-9 | 6.53e-8 | 1.36e-8 | 2.02e-6 |
+| Short | reghdfe | 5.24e-6 | 1.09e-4 | 2.21e-5 | 3.16e-3 |
+
+Slope and standard-error differences are negligible at this diagnostic point:
+the maximum absolute slope difference across references is `1.05e-9` on the
+long panel and `6.02e-11` on the short panel; maximum relative standard-error
+differences are below `3e-10`. Reported RSS differs by at most `4.80e-12`
+(long) and `1.29e-10` (short), relative to fereg. Reconstructing RSS from
+reghdfe's saved predictor instead gives relative differences of `3.29e-9` on
+both panels. Good slopes or RSS do not ensure equally precise individual FEs.
+
+The normalized model scores explain the default capture failures:
+
+| Panel | fereg | fixest default | fixest strict | reghdfe |
+| --- | ---: | ---: | ---: | ---: |
+| Long | 1.14e-13 | 1.22e-7 | 1.72e-10 | 2.68e-6 |
+| Short | 9.79e-15 | 1.49e-7 | 4.37e-10 | 2.88e-6 |
+
+The frozen score bound is `1e-7`: default fixest exceeds it by only 1.22x/1.49x;
+reghdfe by 26.8x/28.8x. Strict fixest passes the score bound but still differs
+in individual centered FE coordinates. Its long-panel FE tolerance failures
+are sparse (580 of 1,106,419 workers and 15 of 86,647 firms); short-panel failures
+are more widespread (66,056 of 659,997 workers and 5,642 of 42,489 firms), despite
+the small absolute errors. Only 14 short-panel fitted values exceed the frozen
+cross-package tolerance for strict fixest. No gates were relaxed to reflect
+these magnitudes, and this diagnostic does not measure downstream fevc
+variance-component differences.
+
+The [aggregate diagnostic](../bench/results/scc-20261024-veneto-accuracy.json)
+retains RMS, 99th-percentile and maximum differences, affected coordinate counts,
+scores, source/input hashes and accounting. Its maintained
+[reader](../bench/panel_accuracy.py) leaves all row-level values on SCC.
+
 ## Frozen identity and evidence
 
 Campaign `20261024T195706Z-veneto-5c0a9240` uses execution source
@@ -146,6 +195,7 @@ the recorded original KSS graph procedures.
 | [Configuration summary](../bench/results/scc-20261024-veneto-summary.csv) | All 36 arm cells, eligibility, medians/ranges, failed timings, hosts and sampled memory. |
 | [Observations](../bench/results/scc-20261024-veneto-observations.csv) | All 108 planned positions, failures, skips and available command times. |
 | [Scientific comparisons](../bench/results/scc-20261024-veneto-science.json) | All native repeat/core checks and observed cross-package comparison decisions. |
+| [Accuracy magnitudes](../bench/results/scc-20261024-veneto-accuracy.json) | Post-campaign four-core first-repetition diagnostics: fitted values, centered FE channels, slopes, covariance, RSS and independent scores; no refitting. |
 | [Inputs, identity and checks](../bench/results/scc-20261024-veneto-inputs.json) | Input/preparation hashes and sample audits, frozen runtime inventory hash, scheduler records, host replay, native hashes, oracle outcomes and report/evidence hashes. |
 
 Only aggregate evidence is committed. Original administrative records remained
