@@ -354,7 +354,7 @@ class WrapperTests(unittest.TestCase):
             python.chmod(0o755)
             wrapper = Path(scc.__file__).with_name('qualify.sge')
             env = {**os.environ, 'PATH': str(root) + os.pathsep + os.environ['PATH'],
-                   'CAPTURE': str(capture), 'SGE_TASK_ID': '5'}
+                   'CAPTURE': str(capture), 'SGE_TASK_ID': '5', 'BASH_ENV': os.devnull}
             argv = ['bash', '-c', 'module() { :; }; export -f module; exec bash "$@"',
                     'wrapper-test', str(wrapper), str(manifest), str(output)]
             result = subprocess.run(argv, env=env, capture_output=True, text=True)

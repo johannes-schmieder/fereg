@@ -102,9 +102,11 @@ def run_process(command, log, timeout):
                     # The interrupt may have arrived immediately after wait4.
                     process.returncode = -signal.SIGKILL
             finally:
+                # Discard signals pending during cleanup while handlers still
+                # ignore them, before restoring the caller's interrupt policy.
+                signal.pthread_sigmask(signal.SIG_SETMASK, mask)
                 for sig, handler in handlers.items():
                     signal.signal(sig, handler)
-                signal.pthread_sigmask(signal.SIG_SETMASK, mask)
             raise
     wall = time.perf_counter() - start
     if process.returncode:
