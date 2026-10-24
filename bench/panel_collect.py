@@ -6,6 +6,7 @@ import argparse
 import copy
 import hashlib
 import io
+import inspect
 import json
 from pathlib import Path
 import shlex
@@ -17,6 +18,57 @@ from campaign_collect import accounting_records
 
 def remote(command):
     return subprocess.check_output(['ssh', 'scc', command])
+
+
+def audit_host_observations(root):
+    """Replay retained scheduler observations without exporting private captures."""
+    from qualify_scc import validate_census, validate_reservation
+    reports = {}
+    for task in [1, 2]:
+        directory = root/f'host-task-{task}'
+        report = json.loads((directory/'host.json').read_text())
+        raw = (directory/'host-observations.jsonl').read_bytes()
+        events = [json.loads(line) for line in raw.splitlines()]
+        if not report['isolation_ok'] or report['errors'] or any(e['kind'] == 'error' for e in events):
+            raise ValueError('host observation failed')
+        reservations = [e for e in events if e['kind'] == 'reservation']
+        if (len(reservations) != 2 or reservations[0]['monotonic_ns'] > report['started_monotonic_ns']
+                or reservations[-1]['monotonic_ns'] < report['measurement_end_monotonic_ns']):
+            raise ValueError('reservation does not bracket measurement')
+        for event in reservations:
+            validate_reservation(event['raw'], report['host'], 16)
+        samples = {}
+        for kind, gap, duration in [('process', 7.5, 7.5), ('census', 75, 20)]:
+            selected = [e for e in events if e['kind'] == kind]
+            starts = [e['monotonic_ns'] for e in selected]
+            ending = report['measurement_end_monotonic_ns']
+            if (len(selected) != report['samples'][kind]['count'] or not selected
+                    or starts != sorted(set(starts)) or starts[0] > report['started_monotonic_ns']
+                    or starts[-1] < ending):
+                raise ValueError('host sample coverage differs')
+            gaps = [(min(b, ending)-a)/1e9 for a, b in zip(starts, starts[1:])]
+            if any(not 0 <= (e['finished_monotonic_ns']-e['monotonic_ns'])/1e9 <= duration for e in selected):
+                raise ValueError('slow host sample')
+            if any(value > gap for value in gaps):
+                raise ValueError('missing host sample')
+            for event in selected:
+                if kind == 'census':
+                    validate_census(event['raw']['job'], event['raw']['queues'], report['host'])
+                elif event['competing_compute']:
+                    raise ValueError('competing compute observed')
+            samples[kind] = dict(count=len(selected), maximum_gap_seconds=max(gaps, default=0))
+        reports[str(task)] = dict(host=report['host'], reservation_checks=2, samples=samples,
+                                 observations_sha256=hashlib.sha256(raw).hexdigest(), passed=True)
+    return reports
+
+
+def audit_remote_hosts(context):
+    # Inspection of small retained observer metadata only; no fitting or row/FE reads.
+    script = ('import json, hashlib\nfrom pathlib import Path\n'+inspect.getsource(audit_host_observations)
+              +'\nprint(json.dumps(audit_host_observations(Path("."))))\n')
+    command = ('cd '+shlex.quote(context['remote_root'])
+               +' && module load python3/3.12.4 && PYTHONPATH=source/bench python3 -')
+    return json.loads(subprocess.check_output(['ssh', 'scc', command], input=script.encode()))
 
 
 def load(root):
@@ -114,6 +166,7 @@ def collect(context_path, output):
         jobs.extend(accounting_records(raw))
     (output/'accounting.json').write_text(json.dumps(jobs, indent=2)+'\n')
     files = ['manifest.json', 'input/source.json', 'input/prior-panels.json', 'setup.sh', 'job.sh',
+             'preparation/inputs.json', 'preparation/long-sample.json', 'preparation/short-sample.json',
              'environment/runtime.json', 'environment/COMPLETE', 'environment/input-audit.json',
              'environment/reference-origin.json', 'environment/r-package-paths.json',
              'logs/setup.sge', 'logs/smoke.sge', 'logs/harness-tests.log', 'logs/package-check.log',
@@ -131,10 +184,13 @@ def collect(context_path, output):
             destination.parent.mkdir(parents=True, exist_ok=True)
             destination.write_bytes(archive.extractfile(member).read())
     result = load(output)
+    (output/'host-validation.json').write_text(json.dumps(audit_remote_hosts(context), indent=2)+'\n')
     from campaign_report import summarize
     reporting = copy.deepcopy(result)
     reporting['manifest']['policy'].update(result['manifest']['policy']['scientific_tolerances'])
     summary = summarize(reporting)
+    if not summary.loc[summary.arm == 'fereg', 'eligible'].all():
+        raise ValueError('native summary eligibility failed; do not resample')
     summary.to_csv(output/'summary.csv', index=False)
     observations = []
     for record in result['records']:

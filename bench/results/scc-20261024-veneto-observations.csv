@@ -1,0 +1,109 @@
+cell,arm,repetition,status,host,job,task,estimator_tree_rss_bytes,memory_sweeps,error,seconds
+veneto-long-t1,fixest,1,capture-error,scc-ug4,8270918,1,2510958592.0,2389.0,saved predictor fails independent model score,65.238
+veneto-long-t1,fixest-strict,1,ok,scc-ug4,8270918,1,2942443520.0,4286.0,,117.068
+veneto-long-t1,reghdfe,1,capture-error,scc-ug4,8270918,1,2336018432.0,21046.0,saved predictor fails independent model score,      557.01537070200004
+veneto-long-t1,fereg,1,ok,scc-ug4,8270918,1,1804378112.0,629.0,,      16.298021198000001
+veneto-long-t1,fixest-strict,2,ok,scc-ug4,8270918,1,2941640704.0,4464.0,,115.975
+veneto-long-t1,reghdfe,2,skipped-after-failure,,,,,,,
+veneto-long-t1,fereg,2,ok,scc-ug4,8270918,1,1804488704.0,625.0,,      16.262498539999999
+veneto-long-t1,fixest,2,skipped-after-failure,,,,,,,
+veneto-long-t1,reghdfe,3,skipped-after-failure,,,,,,,
+veneto-long-t1,fereg,3,ok,scc-ug4,8270918,1,1804742656.0,626.0,,            16.266076752
+veneto-long-t1,fixest,3,skipped-after-failure,,,,,,,
+veneto-long-t1,fixest-strict,3,ok,scc-ug4,8270918,1,2941726720.0,4421.0,,115.004
+veneto-long-t2,fixest,1,capture-error,scc-ug4,8270918,1,2534191104.0,1489.0,saved predictor fails independent model score,38.728
+veneto-long-t2,fixest-strict,1,ok,scc-ug4,8270918,1,2967076864.0,2587.0,,67.276
+veneto-long-t2,reghdfe,1,capture-error,scc-ug4,8270918,1,2336124928.0,12671.0,saved predictor fails independent model score,      329.87297784500004
+veneto-long-t2,fereg,1,ok,scc-ug4,8270918,1,1898561536.0,506.0,,      13.166035729000001
+veneto-long-t2,fixest-strict,2,ok,scc-ug4,8270918,1,2964873216.0,2592.0,,67.596
+veneto-long-t2,reghdfe,2,skipped-after-failure,,,,,,,
+veneto-long-t2,fereg,2,ok,scc-ug4,8270918,1,1898553344.0,510.0,,            13.218325752
+veneto-long-t2,fixest,2,skipped-after-failure,,,,,,,
+veneto-long-t2,reghdfe,3,skipped-after-failure,,,,,,,
+veneto-long-t2,fereg,3,ok,scc-ug4,8270918,1,1898528768.0,509.0,,      13.220604034000001
+veneto-long-t2,fixest,3,skipped-after-failure,,,,,,,
+veneto-long-t2,fixest-strict,3,ok,scc-ug4,8270918,1,2965356544.0,2578.0,,67.261
+veneto-long-t4,fixest,1,capture-error,scc-ug4,8270918,1,2573455360.0,955.0,saved predictor fails independent model score,24.844
+veneto-long-t4,fixest-strict,1,ok,scc-ug4,8270918,1,3003768832.0,1556.0,,40.425
+veneto-long-t4,reghdfe,1,capture-error,scc-ug4,8270918,1,2336321536.0,9050.0,saved predictor fails independent model score,      235.63751011800002
+veneto-long-t4,fereg,1,ok,scc-ug4,8270918,1,1899814912.0,427.0,,            11.059345447
+veneto-long-t4,fixest-strict,2,ok,scc-ug4,8270918,1,3003674624.0,1551.0,,40.362
+veneto-long-t4,reghdfe,2,skipped-after-failure,,,,,,,
+veneto-long-t4,fereg,2,ok,scc-ug4,8270918,1,1900949504.0,425.0,,      11.048146047000001
+veneto-long-t4,fixest,2,skipped-after-failure,,,,,,,
+veneto-long-t4,reghdfe,3,skipped-after-failure,,,,,,,
+veneto-long-t4,fereg,3,ok,scc-ug4,8270918,1,1904373760.0,426.0,,      11.061563215000001
+veneto-long-t4,fixest,3,skipped-after-failure,,,,,,,
+veneto-long-t4,fixest-strict,3,ok,scc-ug4,8270918,1,3003469824.0,1549.0,,40.305
+veneto-long-t8,fixest,1,capture-error,scc-ug4,8270918,1,2649640960.0,659.0,saved predictor fails independent model score,17.12
+veneto-long-t8,fixest-strict,1,ok,scc-ug4,8270918,1,3080978432.0,1001.0,,25.992
+veneto-long-t8,fereg,1,ok,scc-ug4,8270918,1,1899077632.0,377.0,,      9.7537185640000015
+veneto-long-t8,fixest-strict,2,ok,scc-ug4,8270918,1,3080593408.0,1007.0,,26.193
+veneto-long-t8,fereg,2,ok,scc-ug4,8270918,1,1903734784.0,379.0,,      9.8274008110000004
+veneto-long-t8,fixest,2,skipped-after-failure,,,,,,,
+veneto-long-t8,fereg,3,ok,scc-ug4,8270918,1,1901899776.0,378.0,,      9.8248670990000004
+veneto-long-t8,fixest,3,skipped-after-failure,,,,,,,
+veneto-long-t8,fixest-strict,3,ok,scc-ug4,8270918,1,3080724480.0,1003.0,,26.145
+veneto-long-t16,fixest,1,capture-error,scc-ug4,8270918,1,2649645056.0,645.0,saved predictor fails independent model score,17.396
+veneto-long-t16,fixest-strict,1,ok,scc-ug4,8270918,1,3080802304.0,986.0,,26.403
+veneto-long-t16,fereg,1,ok,scc-ug4,8270918,1,1900277760.0,369.0,,      9.6827251580000002
+veneto-long-t16,fixest-strict,2,ok,scc-ug4,8270918,1,3080794112.0,979.0,,26.246
+veneto-long-t16,fereg,2,ok,scc-ug4,8270918,1,1899159552.0,365.0,,             9.543229019
+veneto-long-t16,fixest,2,skipped-after-failure,,,,,,,
+veneto-long-t16,fereg,3,ok,scc-ug4,8270918,1,1901981696.0,368.0,,      9.6162092389999998
+veneto-long-t16,fixest,3,skipped-after-failure,,,,,,,
+veneto-long-t16,fixest-strict,3,ok,scc-ug4,8270918,1,3080355840.0,984.0,,26.437
+veneto-short-t1,fixest,1,capture-error,scc-ui4,8270918,2,567103488.0,280.0,saved predictor fails independent model score,7.629
+veneto-short-t1,fixest-strict,1,ok,scc-ui4,8270918,2,672620544.0,471.0,,12.839
+veneto-short-t1,reghdfe,1,capture-error,scc-ui4,8270918,2,360263680.0,2344.0,saved predictor fails independent model score,      63.330919653000002
+veneto-short-t1,fereg,1,ok,scc-ui4,8270918,2,380530688.0,127.0,,      3.4431357640000004
+veneto-short-t1,fixest-strict,2,ok,scc-ui4,8270918,2,672776192.0,469.0,,12.749
+veneto-short-t1,reghdfe,2,skipped-after-failure,,,,,,,
+veneto-short-t1,fereg,2,ok,scc-ui4,8270918,2,380579840.0,128.0,,      3.4426763470000004
+veneto-short-t1,fixest,2,skipped-after-failure,,,,,,,
+veneto-short-t1,reghdfe,3,skipped-after-failure,,,,,,,
+veneto-short-t1,fereg,3,ok,scc-ui4,8270918,2,380403712.0,127.0,,      3.4444495620000004
+veneto-short-t1,fixest,3,skipped-after-failure,,,,,,,
+veneto-short-t1,fixest-strict,3,ok,scc-ui4,8270918,2,672395264.0,473.0,,12.767
+veneto-short-t2,fixest,1,capture-error,scc-ui4,8270918,2,588967936.0,206.0,saved predictor fails independent model score,5.632
+veneto-short-t2,fixest-strict,1,ok,scc-ui4,8270918,2,694849536.0,315.0,,8.616
+veneto-short-t2,reghdfe,1,capture-error,scc-ui4,8270918,2,360394752.0,1731.0,saved predictor fails independent model score,      47.433228879000005
+veneto-short-t2,fereg,1,ok,scc-ui4,8270918,2,413859840.0,114.0,,      3.1032285710000003
+veneto-short-t2,fixest-strict,2,ok,scc-ui4,8270918,2,694919168.0,311.0,,8.522
+veneto-short-t2,reghdfe,2,skipped-after-failure,,,,,,,
+veneto-short-t2,fereg,2,ok,scc-ui4,8270918,2,411783168.0,114.0,,      3.0981384470000002
+veneto-short-t2,fixest,2,skipped-after-failure,,,,,,,
+veneto-short-t2,reghdfe,3,skipped-after-failure,,,,,,,
+veneto-short-t2,fereg,3,ok,scc-ui4,8270918,2,411308032.0,114.0,,      3.0951362320000002
+veneto-short-t2,fixest,3,skipped-after-failure,,,,,,,
+veneto-short-t2,fixest-strict,3,ok,scc-ui4,8270918,2,694743040.0,310.0,,8.437
+veneto-short-t4,fixest,1,capture-error,scc-ui4,8270918,2,589332480.0,209.0,saved predictor fails independent model score,5.714
+veneto-short-t4,fixest-strict,1,ok,scc-ui4,8270918,2,694874112.0,319.0,,8.754
+veneto-short-t4,reghdfe,1,capture-error,scc-ui4,8270918,2,362491904.0,1436.0,saved predictor fails independent model score,      38.292105418000006
+veneto-short-t4,fereg,1,ok,scc-ui4,8270918,2,417783808.0,100.0,,      2.6720453060000002
+veneto-short-t4,fixest-strict,2,ok,scc-ui4,8270918,2,694697984.0,316.0,,8.694
+veneto-short-t4,reghdfe,2,skipped-after-failure,,,,,,,
+veneto-short-t4,fereg,2,ok,scc-ui4,8270918,2,413540352.0,99.0,,             2.710680113
+veneto-short-t4,fixest,2,skipped-after-failure,,,,,,,
+veneto-short-t4,reghdfe,3,skipped-after-failure,,,,,,,
+veneto-short-t4,fereg,3,ok,scc-ui4,8270918,2,415059968.0,100.0,,      2.7255979450000001
+veneto-short-t4,fixest,3,skipped-after-failure,,,,,,,
+veneto-short-t4,fixest-strict,3,ok,scc-ui4,8270918,2,694718464.0,317.0,,8.752
+veneto-short-t8,fixest,1,capture-error,scc-ui4,8270918,2,589262848.0,208.0,saved predictor fails independent model score,5.695
+veneto-short-t8,fixest-strict,1,ok,scc-ui4,8270918,2,694697984.0,315.0,,8.671
+veneto-short-t8,fereg,1,ok,scc-ui4,8270918,2,416993280.0,92.0,,      2.4983819720000002
+veneto-short-t8,fixest-strict,2,ok,scc-ui4,8270918,2,694755328.0,314.0,,8.654
+veneto-short-t8,fereg,2,ok,scc-ui4,8270918,2,413085696.0,90.0,,      2.4772449240000003
+veneto-short-t8,fixest,2,skipped-after-failure,,,,,,,
+veneto-short-t8,fereg,3,ok,scc-ui4,8270918,2,413147136.0,91.0,,      2.4928483860000004
+veneto-short-t8,fixest,3,skipped-after-failure,,,,,,,
+veneto-short-t8,fixest-strict,3,ok,scc-ui4,8270918,2,695062528.0,314.0,,8.622
+veneto-short-t16,fixest,1,capture-error,scc-ui4,8270918,2,589373440.0,203.0,saved predictor fails independent model score,5.498
+veneto-short-t16,fixest-strict,1,ok,scc-ui4,8270918,2,695177216.0,318.0,,8.745
+veneto-short-t16,fereg,1,ok,scc-ui4,8270918,2,413945856.0,92.0,,      2.3939569360000004
+veneto-short-t16,fixest-strict,2,ok,scc-ui4,8270918,2,695353344.0,312.0,,8.549
+veneto-short-t16,fereg,2,ok,scc-ui4,8270918,2,410251264.0,91.0,,      2.4515009320000001
+veneto-short-t16,fixest,2,skipped-after-failure,,,,,,,
+veneto-short-t16,fereg,3,ok,scc-ui4,8270918,2,417226752.0,90.0,,      2.4081243970000004
+veneto-short-t16,fixest,3,skipped-after-failure,,,,,,,
+veneto-short-t16,fixest-strict,3,ok,scc-ui4,8270918,2,695058432.0,325.0,,8.418

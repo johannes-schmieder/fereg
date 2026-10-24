@@ -112,11 +112,21 @@ captures remain private on SCC.
 
 `panel_collect.py CONTEXT --output NEW_DIRECTORY` collects aggregate results
 after all four scheduler units are terminal: setup, smoke and production tasks
-1–2. It requires successful accounting, application sentinels, verified host
-isolation, the retained-input audit, all 108 fit positions, 20 exact native
-repeat checks and 30 cross-worker comparisons. It writes compact summary and
+1–2. It requires successful accounting, application sentinels, replayed host
+isolation observations, the retained-input audit, all 108 fit positions, 20 exact native
+repeat checks and 30 consistency comparisons (six at the one-core baseline,
+24 between core counts). It also requires exact repeated reported native RSS.
+It writes compact summary and
 observation CSVs plus science JSON; failed or ineligible comparator positions
 remain in the tables. It does not download row captures or saved FE vectors.
+
+`panel_report.py COLLECTION --output REPORT_DIRECTORY` revalidates native
+eligibility and renders the maintained PDF from aggregate evidence, exporting
+compact CSV/JSON summaries with the `scc-YYYYMMDD-veneto` prefix. Render the PDF
+to images and inspect every page before publication. Retain
+the report and full captures privately on SCC, and commit only the compact
+aggregates. The [October 24 results](../docs/veneto_benchmarks.md) retain all
+reference accuracy failures as descriptive timings without eligible speed ratios.
 
 ## Fixed-candidate qualification
 

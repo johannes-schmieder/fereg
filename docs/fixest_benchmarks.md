@@ -1,5 +1,11 @@
 # Comparing fereg with fixest
 
+The separate [October 24 Veneto AKM comparison](veneto_benchmarks.md) uses the
+real long and short fevc panels, controls and saved worker/firm effects at
+1/2/4/8/16 cores. All 30 native fits pass; reference accuracy failures make all
+cross-package speed ratios ineligible. Native 1-to-16-core scaling is 1.69x
+on the long panel and 1.43x on the short panel.
+
 ## October 24, 2026: beta.3 rerun
 
 Fereg is faster in **29 of 35 scientifically eligible default-fixest

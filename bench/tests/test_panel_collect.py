@@ -5,9 +5,10 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from panel_collect import load
+from panel_collect import audit_host_observations, load
 
 
 def fixture(root):
@@ -54,6 +55,37 @@ def fixture(root):
 
 
 class PanelCollectionTests(unittest.TestCase):
+    def test_host_replay_requires_bracketed_samples_without_interference(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            for task in [1, 2]:
+                directory = root/f'host-task-{task}'
+                directory.mkdir()
+                report = dict(isolation_ok=True, errors=[], host={}, started_monotonic_ns=10**9,
+                              measurement_end_monotonic_ns=5*10**9,
+                              samples={kind: dict(count=2) for kind in ['process', 'census']})
+                (directory/'host.json').write_text(json.dumps(report))
+                events = [dict(kind='reservation', monotonic_ns=t, raw={}) for t in [0, 6*10**9]]
+                events += [dict(kind=kind, monotonic_ns=t, finished_monotonic_ns=t,
+                                raw=dict(job='', queues=''), competing_compute=[])
+                           for kind in ['process', 'census'] for t in [0, 5*10**9]]
+                (directory/'host-observations.jsonl').write_text('\n'.join(map(json.dumps, events)))
+            with patch('qualify_scc.validate_reservation') as reservation, patch('qualify_scc.validate_census') as census:
+                result = audit_host_observations(root)
+                self.assertTrue(all(r['passed'] for r in result.values()))
+                self.assertEqual((reservation.call_count, census.call_count), (4, 4))
+                path = root/'host-task-1/host-observations.jsonl'
+                events = [json.loads(line) for line in path.read_text().splitlines()]
+                events[-1]['kind'] = 'process'
+                path.write_text('\n'.join(map(json.dumps, events)))
+                with self.assertRaisesRegex(ValueError, 'coverage'):
+                    audit_host_observations(root)
+                events[-1]['kind'] = 'census'
+                events[2]['competing_compute'] = ['unexpected process']
+                path.write_text('\n'.join(map(json.dumps, events)))
+                with self.assertRaisesRegex(ValueError, 'competing'):
+                    audit_host_observations(root)
+
     def test_terminal_complete_aggregate_fixture(self):
         with tempfile.TemporaryDirectory() as d:
             root = Path(d); fixture(root)
