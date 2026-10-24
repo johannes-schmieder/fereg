@@ -1,11 +1,12 @@
 # Installation
 
 `fereg` and `feppml` require Stata 18 or newer. The current binary beta supports
-macOS and contains both Apple Silicon and Intel code. Installation and licensed
-estimation checks run on Apple Silicon; native Intel-host qualification is
-still outstanding. Linux and Windows source builds remain available below.
+Linux x86-64, Windows x86-64 and macOS. The macOS plugin contains Apple Silicon
+and Intel code; licensed Mac testing uses Apple Silicon. See
+[validation](VALIDATION.md) for the checks performed on each platform.
+The Linux binary requires glibc 2.28 or newer.
 
-## Install the current macOS package from main
+## Install the current package from main
 
 Start a fresh Stata session and run:
 
@@ -41,7 +42,7 @@ feppml price mpg, absorb(rep78) vce(robust)
 ```
 
 For an offline installation, download `fereg-0.5.0.zip` from the
-[beta release](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0-beta.4),
+[beta release](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0-beta.5),
 extract it, and use the absolute path of the extracted directory containing
 `fereg.pkg`:
 
@@ -75,7 +76,7 @@ Choose the commands for your platform:
 | Platform | Additional build tools | Build and stage |
 | --- | --- | --- |
 | macOS | Xcode Command Line Tools (`xcode-select --install`) | Follow the [Mac source build recipe](macos_source_build.md), then `python3 scripts/stage_local_install.py --platform macos` |
-| Linux x86-64 | GCC or Clang, GNU binutils and development libc headers | `bash scripts/build_linux.sh` then `python3 scripts/stage_local_install.py --platform linux` |
+| Linux x86-64 | GCC or Clang with its undefined-behavior sanitizer runtime, GNU binutils and development libc headers | `bash scripts/build_linux.sh` then `python3 scripts/stage_local_install.py --platform linux` |
 | Windows x86-64 | Visual Studio 2022 Build Tools with Desktop development with C++, Windows SDK, and Python on PATH | In PowerShell: `powershell -File scripts/build_windows.ps1` then `python scripts/stage_local_install.py --platform windows` |
 
 Mac builds require the explicit path-remap setup in that recipe to pass the
@@ -118,7 +119,7 @@ rebuilds them with Stata 18.
 | Symptom | Action |
 | --- | --- |
 | `fereg` is not found | Run `which fereg` and check that installation completed into a directory on `adopath`. |
-| `r(601)`, missing plugin | Install the complete package for your platform. Linux and Windows currently require a local source build. |
+| `r(601)`, missing plugin | Install the complete package, including the native plugin for your platform. |
 | `r(499)`, incompatible files | Exit Stata, install/update the complete package, and restart. Use `which fereg, all` to locate older copies earlier on `adopath`. |
 | macOS refuses to load the plugin | Use the package installed directly by Stata, or the local source build, then run `fereg, selftest verbose` for the loader error. |
 | A build cannot find Python, Cargo or a C compiler | Install the listed build prerequisites and make sure they are on PATH before rerunning from the repository root. |

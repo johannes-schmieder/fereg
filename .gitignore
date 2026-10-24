@@ -5,6 +5,10 @@
 /dist/*.sha256
 !/dist/fereg_macos.plugin
 !/dist/fereg_macos.plugin.sha256
+!/dist/fereg_linux.plugin
+!/dist/fereg_linux.plugin.sha256
+!/dist/fereg_windows.plugin
+!/dist/fereg_windows.plugin.sha256
 /dist/*.dll
 /dist/*.so
 /dist/*.dylib

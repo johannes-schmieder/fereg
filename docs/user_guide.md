@@ -9,9 +9,8 @@ checks the result, and writes the requested outputs.
 Install both commands using the [installation guide](installation.md).
 
 This guide describes the public OLS and PPML commands in the 0.5.0 beta. `feppml` is active through the same guarded Rust-backed transaction and
-shared certified-linear engine as `fereg`. Windows licensed-Stata testing and
-formal cross-platform qualification are deferred; public availability permits
-full user testing but is not a qualified release claim.
+shared certified-linear engine as `fereg`. Binary packages support Linux, Windows
+and macOS; see [validation](VALIDATION.md) for platform-specific test coverage.
 
 ## Syntax
 

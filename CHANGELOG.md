@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.0 beta.5 — 2026-10-24
+
+- Added Linux x86-64 and Windows x86-64 binaries alongside universal macOS.
+- Tested native loading and installed OLS/PPML behavior on each platform.
+- Updated installation instructions and preserved the actual build revision for
+  each binary. Numerical calculations and solver selection are unchanged.
+
 ## 0.5.0 beta.4 — 2026-10-24
 
 - OLS results identify the actual absorption and final residual-check methods.
@@ -13,7 +20,6 @@
 - Numerical calculations, solver selection, iteration budgets and PPML behavior
   are unchanged by this reporting correction.
 
-The package supplies a universal macOS plugin, with licensed installation testing
-on Apple Silicon. Stata 18 or newer is required. Linux and Windows binaries are
-not included. See [installation](docs/installation.md) and
+The package supplies Linux x86-64, Windows x86-64 and universal macOS plugins.
+Stata 18 or newer is required. See [installation](docs/installation.md) and
 [validation](docs/VALIDATION.md) for supported behavior and checks.

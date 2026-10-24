@@ -1,9 +1,10 @@
 # Native distribution
 
 The repository root `fereg.pkg` installs the current Stata files and the
-universal macOS plugin in this directory. Both `github install
+Linux x86-64, Windows x86-64 and universal macOS plugins in this directory.
+Both `github install
 johannes-schmieder/fereg` and `net install` from the raw `main` URL use this
-manifest. Linux and Windows still require source builds.
+manifest; no compiler is needed for installation.
 
 `fereg-native.json` binds the plugin hash to its source commit and a digest of
 runtime production tokens and artifact inputs. `scripts/check_github_install.py`

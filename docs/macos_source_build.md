@@ -1,6 +1,6 @@
 # Building the Mac source archive
 
-The beta.4 source archive includes the exact locked dependencies, their licenses,
+The corresponding-source archive includes the exact locked dependencies, their licenses,
 the local Rayon patch and a relocatable offline Cargo configuration. Its
 `SOURCE_MANIFEST.json` identifies the source commit. The binary package has its
 own manifest: a local rebuild does not inherit the supplied binary's test results.

@@ -15,7 +15,7 @@ MIT/Apache-2.0 Rayon sources. Earlier fereg MIT notices remain in
 Native beta assets must include their checksums and dependency audit, plus a
 matching corresponding-source archive with the exact Cargo.lock dependency
 sources, their licenses, build scripts, and an offline Cargo configuration.
-Only publish the platforms actually included and tested; a macOS beta makes no
-Linux, Windows, native Intel-host or general performance qualification claim.
+Only publish the platforms actually included and tested. Checks on one platform
+do not establish another platform's behavior or general performance.
 GitHub testing remains paused. The packaging and installation procedures are in
 [release process](release_process.md) and [installation](installation.md).

@@ -31,14 +31,13 @@ net install fereg, from("https://raw.githubusercontent.com/johannes-schmieder/fe
 ```
 
 Both routes install `fereg`, `feppml`, help files and the current native plugin
-from `main`. The **macOS beta** requires Stata 18 or newer and includes a
-universal Apple Silicon/Intel plugin; installation is tested on Apple Silicon.
+from `main`. The beta requires Stata 18 or newer and includes native binaries
+for Linux x86-64, Windows x86-64 and macOS (Apple Silicon/Intel universal).
 No Rust, Python or extra Stata packages are needed to use the binary package.
 Exit Stata before updating, then install in a fresh session so the previous
 plugin is unloaded.
 
-Linux and Windows binaries are not included. See the
-[installation guide](docs/installation.md) for source builds, offline
+See the [installation guide](docs/installation.md) for source builds, offline
 installation and troubleshooting. Native build identity, checksums and
 corresponding-source links are retained in [dist](dist/README.md).
 

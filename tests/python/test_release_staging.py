@@ -137,6 +137,32 @@ class ReleaseStagingTests(unittest.TestCase):
             caveats = " ".join(manifest["support_caveats"]).lower()
             self.assertNotRegex(caveats, r"r\(498\)|fail[- ]closed|ols[- ]only")
 
+    def test_reused_native_build_keeps_its_source_identity(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self.make_plugins(root)
+            audit = self.make_audit(root)
+            data = json.loads(audit.read_text())
+            native_sha = "a" * 40
+            output = root / "release.zip"
+            stage_release.create(ROOT, root, audit, output, allow_dirty=True,
+                                 plugin_sources={"fereg_windows.plugin": native_sha})
+            with zipfile.ZipFile(output) as archive:
+                manifest = json.loads(archive.read(
+                    f"{stage_release.PACKAGE_NAME}/RELEASE_MANIFEST.json"))
+            self.assertEqual(manifest["source_sha"], stage_release.source_identity(ROOT)[0])
+            self.assertEqual({p["path"]: p["source_sha"] for p in manifest["plugins"]},
+                             {name: native_sha if name == "fereg_windows.plugin" else manifest["source_sha"]
+                              for name in stage_release.EXPECTED_PLUGINS})
+            with self.assertRaisesRegex(RuntimeError, "full lowercase Git commit SHA"):
+                stage_release.create(ROOT, root, audit, output, allow_dirty=True,
+                                     plugin_sources={"fereg_windows.plugin": "short"})
+            data["cargo_lock_sha256"] = "0" * 64
+            audit.write_text(json.dumps(data))
+            with self.assertRaisesRegex(RuntimeError, "Cargo.lock"):
+                stage_release.create(ROOT, root, audit, output, allow_dirty=True,
+                                     plugin_sources={"fereg_windows.plugin": native_sha})
+
     def test_source_zip_uses_tracked_inventory_without_mutating_source(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

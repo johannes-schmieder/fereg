@@ -838,9 +838,9 @@ platform: {cmd:fereg_macos.plugin}, {cmd:fereg_linux.plugin}, or
 There is one maintained engine and no engine selector.
 
 {pstd}
-Version 0.5.0 remains unreleased development source. Current qualification is
-Mac-only; see {cmd:docs/VALIDATION.md} for scope and limitations. Public native
-distribution remains subject to the separate licensing decision.
+Version 0.5.0 is available as a binary beta for Linux x86-64, Windows x86-64
+and macOS (Apple Silicon/Intel universal). See {cmd:docs/VALIDATION.md} for
+platform-specific test coverage and limitations.
 
 {marker sources}
 {title:Sources and acknowledgements}

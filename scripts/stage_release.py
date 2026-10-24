@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Optional
 
 VERSION = "0.5.0"
-RELEASE_TAG = "v0.5.0-beta.4"
+RELEASE_TAG = "v0.5.0-beta.5"
 PACKAGE_NAME = f"fereg-{VERSION}"
 FIXED_TIME = (2026, 10, 24, 0, 0, 0)
 FIXED_UTC = "2026-10-24T00:00:00Z"
@@ -64,8 +64,7 @@ ROOT_FILES = (
 )
 SUPPORT_CAVEATS = (
     "Only platforms named in included_platforms are supplied by this package.",
-    "Licensed installation testing is on Apple Silicon macOS; this does not "
-    "establish Linux, Windows or native Intel-host Stata qualification.",
+    "Native Intel-host Stata testing is outstanding; the macOS plugin contains both processor slices.",
 )
 
 
@@ -314,6 +313,7 @@ def write_manifest(
     staging: Path, source_sha: str, source_dirty: bool,
     *, review_platforms: Optional[tuple[str, ...]] = None,
     platforms: Optional[tuple[str, ...]] = None,
+    plugin_sources: Optional[dict[str, str]] = None,
 ) -> None:
     plugin_names = selected_plugins(review_platforms if review_platforms is not None else platforms)
     records = file_records(
@@ -340,7 +340,7 @@ def write_manifest(
         "plugins": [
             {
                 "path": plugin,
-                "source_sha": source_sha,
+                "source_sha": (plugin_sources or {}).get(plugin, source_sha),
                 "sha256": expected_digest(staging / f"{plugin}.sha256"),
             }
             for plugin in plugin_names
@@ -362,7 +362,7 @@ def write_manifest(
             support_caveats=[
                 "Review-only package; not a qualified release or publication candidate.",
                 "Only the explicitly included platform binaries are present.",
-                "Licensed Windows and native Intel-host Mac qualification remain deferred.",
+                "No platform qualification follows from review-only staging.",
             ],
         )
     (staging / "RELEASE_MANIFEST.json").write_text(
@@ -416,6 +416,7 @@ def create(
     review_platforms: Optional[tuple[str, ...]] = None,
     platforms: Optional[tuple[str, ...]] = None,
     third_party_licenses: Optional[Path] = None,
+    plugin_sources: Optional[dict[str, str]] = None,
 ) -> None:
     if platforms is not None and review_platforms is not None:
         raise RuntimeError("select release platforms or review platforms, not both")
@@ -425,6 +426,9 @@ def create(
         raise RuntimeError("tracked source is dirty; commit before staging a release")
     plugin_names = selected_plugins(review_platforms if review_platforms is not None else platforms)
     plugins = verify_plugins(plugin_directory, plugin_names)
+    for name, sha in (plugin_sources or {}).items():
+        if name not in plugin_names or len(sha) != 40 or any(c not in "0123456789abcdef" for c in sha):
+            raise RuntimeError("plugin source must name an included plugin and full lowercase Git commit SHA")
     validate_dependency_audit(source, audit_path, source_sha)
     with tempfile.TemporaryDirectory(prefix="fereg-release-") as temporary:
         package_name = PACKAGE_NAME if review_platforms is None else f"{PACKAGE_NAME}-review"
@@ -440,7 +444,7 @@ def create(
         shutil.copy2(audit_path, staging / "DEPENDENCY_AUDIT.json")
         write_sbom(source, staging / "SBOM.spdx.json", source_sha)
         write_manifest(staging, source_sha, source_dirty, review_platforms=review_platforms,
-                       platforms=platforms)
+                       platforms=platforms, plugin_sources=plugin_sources)
         write_zip(staging, output, package_name)
     print(f"created {output}")
     print(f"sha256 {digest(output)}")
@@ -454,12 +458,20 @@ def main() -> None:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--third-party-licenses", type=Path,
                         help="license texts collected from the exact vendored dependencies")
+    parser.add_argument("--plugin-source", action="append", default=[], metavar="PLUGIN=SHA",
+                        help="actual build commit for a reused plugin; repeat per platform")
     selection = parser.add_mutually_exclusive_group()
     selection.add_argument("--platforms", nargs="+", choices=tuple(PLATFORM_PLUGINS),
                            help="include only these explicitly supported beta platforms")
     selection.add_argument("--review-platforms", nargs="+", choices=tuple(PLATFORM_PLUGINS),
                         help="create a visibly review-only subset; never a release package")
     args = parser.parse_args()
+    try:
+        plugin_sources = dict(item.split("=", 1) for item in args.plugin_source)
+    except ValueError:
+        parser.error("--plugin-source requires PLUGIN=SHA")
+    if len(plugin_sources) != len(args.plugin_source):
+        parser.error("duplicate --plugin-source")
     create(
         args.source.resolve(),
         args.plugins.resolve(),
@@ -468,6 +480,7 @@ def main() -> None:
         review_platforms=None if args.review_platforms is None else tuple(args.review_platforms),
         platforms=None if args.platforms is None else tuple(args.platforms),
         third_party_licenses=args.third_party_licenses,
+        plugin_sources=plugin_sources,
     )
 
 

@@ -10,13 +10,15 @@ confirmed the required distribution permissions. See
 The root `fereg.pkg` and `stata.toc` support `github install
 johannes-schmieder/fereg` and direct `net install` from the raw `main` URL.
 The manifest uses the maintained files in `stata/`, plus the qualified native
-plugin, checksum, licenses and source link in `dist/`. The current distribution
-includes only the universal macOS plugin. The larger native file is an explicit
-exception to source-only repository hygiene for this installation route.
+plugins, checksums, licenses and source link in `dist/`. The current distribution
+includes Linux x86-64, Windows x86-64 and universal macOS plugins. Native files
+are an explicit exception to source-only repository hygiene for this installation
+route.
 
 Before pushing a runtime change, rebuild the plugin, run its native and installed
 OLS/PPML checks, and refresh `dist/fereg-native.json`. Its `source_sha` names the
-clean build input; `runtime_sha256` is produced by
+reference build input; each plugin's `source_sha` records its actual build commit.
+`runtime_sha256` is produced by
 `scripts/check_github_install.py`'s `runtime_identity()` function. Preserve the
 plugin SHA-256 and size, source-archive hash and platform caveats. The check runs
 in `scripts/run_tests.sh` and rejects a stale binary, incomplete package, changed
@@ -26,7 +28,7 @@ and test-only commits may retain a binary when the runtime identity matches.
 Publish the exact corresponding-source archive and dependency audit before
 pushing the root package that refers to them. Use a new versioned release for
 each replacement binary; never replace an existing source archive with different
-bytes. Store only the current plugin on `main`. Keep the checksum filename
+bytes. Store only the current plugins on `main`. Keep the checksum filename
 relative and update `dist/fereg-SOURCE.txt` and the root package distribution date.
 Test both the root package locally and the actual `github install` command over
 HTTP in a fresh Stata process with isolated user ado directories. Verify all
@@ -44,11 +46,17 @@ binding and SHA-256 files. Stata otherwise treats those suffixes as ancillary
 files and omits them from `net install`; see the
 [Stata net manual](https://www.stata.com/manuals/rnet.pdf). Installation checks
 must verify their presence and bytes in the isolated PLUS directory too.
+Stata may lowercase ancillary filenames on Linux; match those names without
+case sensitivity while requiring exact contents and a unique installed copy.
 
 `scripts/stage_release.py` stages a deterministic archive with one plugin per
 included platform, production Stata files, checksums, source identity, dependency
 audit (receipt written by `scripts/run_dependency_audit.py`), SBOM and licenses.
-Default production staging requires all three platforms. `--platforms macos`
+Default production staging requires all three platforms. When the runtime is
+unchanged, `--plugin-source PLUGIN=SHA` preserves each actual native build commit;
+the manifest separately records the packaging commit. The dependency audit and
+corresponding-source archive bind the packaging source. Confirm the runtime
+identity before reusing binaries. `--platforms macos`
 creates an explicitly macOS-only beta and filters `fereg.pkg` to that platform.
 The manifest names included and missing platforms. It makes no qualification
 claim for omitted platforms or for an untested processor/host.
