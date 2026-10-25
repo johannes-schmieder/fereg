@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import csv
 import hashlib
 import json
@@ -67,13 +68,24 @@ def coordinates(directory, k):
             np.array([[covariance[a, b] for b in names] for a in names]))
 
 
-def diagnose(root, panel):
+def selected_positions(campaign, cell, arms, repetitions):
+    lookup = {(r['arm'], r['repetition']): r for r in campaign['records'] if r['cell'] == cell}
+    selected = [lookup[(arm, rep)] for arm in arms for rep in range(1, repetitions+1)]
+    native = [r for r in selected if r['arm'] == 'fereg']
+    if (not campaign['complete'] or not campaign['native_gate_pass'] or any(r['status'] != 'ok' for r in native)
+            or any(r['capture'] != native[0]['capture'] or r['metadata']['rss'] != native[0]['metadata']['rss']
+                   for r in native)):
+        raise ValueError('native exact repeat evidence is unavailable')
+    return selected
+
+
+def diagnose(root, panel, threads=4, repetitions=1):
     task = 1 if panel == 'long' else 2
     campaign = json.loads((root/f'task-{task}/results.json').read_text())
-    cell = f'veneto-{panel}-t4'
-    records = {r['arm']: r for r in campaign['records'] if r['cell'] == cell and r['repetition'] == 1}
+    cell = f'veneto-{panel}-t{threads}'
     manifest = json.loads((root/'manifest.json').read_text())
     specification = next(c for c in manifest['cells'] if c['id'] == cell)
+    records = selected_positions(campaign, cell, specification['arms'], repetitions)
     path = root/'data'/f"ols-veneto-{panel}-n{specification['rows']}.dta"
     identity = json.loads(path.with_suffix('.json').read_text())
     if sha256(path) != identity['sha256']:
@@ -85,11 +97,20 @@ def diagnose(root, panel):
     native_beta = native_covariance = native_fitted = native_effects = None
     rows = []
     input_hashes = {str(path.relative_to(root)): identity['sha256']}
-    for arm in ['fereg', 'fixest', 'fixest-strict', 'reghdfe']:
-        record = records[arm]
+    input_hashes[f'task-{task}/results.json'] = sha256(root/f'task-{task}/results.json')
+    for record in records:
+        arm, rep = record['arm'], record['repetition']
+        if record['status'] == 'skipped-after-failure':
+            rows.append(dict(arm=arm, repetition=rep, original_status=record['status']))
+            continue
+        if arm == 'fereg' and rep > 1:
+            repeated = copy.deepcopy(rows[0])
+            repeated.update(repetition=rep, exact_native_capture_reused=True)
+            rows.append(repeated)
+            continue
         if record['process_rc'] != 0 or record['metadata']['rc'].strip() != '0' or record['metadata']['complete'].strip() != '1':
             raise ValueError('diagnostic requires a completed original command')
-        directory = root/f'task-{task}/output'/cell/(arm+'-r1')
+        directory = root/f'task-{task}/output'/cell/(arm+f'-r{rep}')
         path = directory/'rows.csv.gz'
         if not path.exists():
             path = directory/'rows.csv'
@@ -111,22 +132,22 @@ def diagnose(root, panel):
             native_beta, native_covariance, native_fitted, native_effects = beta, covariance, fitted.copy(), effects
             if scores['maximum'] > 1e-7:
                 raise ValueError('native independent model score failed')
-        data = dict(arm=arm, original_status=record['status'], independent_model_scores=scores,
+        data = dict(arm=arm, repetition=rep, original_status=record['status'], independent_model_scores=scores,
                     reported_rss=float(record['metadata']['rss']), reconstructed_rss=rss,
                     coefficient_differences=differences(native_beta, beta, rtol=1e-7, atol=1e-10),
                     covariance_differences=differences(native_covariance, covariance, rtol=1e-6, atol=1e-10),
                     fitted_differences=differences(native_fitted, fitted, rtol=1e-7, atol=1e-9))
         data['maximum_coefficient_difference_in_native_se'] = float(np.max(np.abs(beta-native_beta)/np.sqrt(np.diag(native_covariance))))
         data['maximum_standard_error_relative_difference'] = float(np.max(np.abs(np.sqrt(np.diag(covariance))/np.sqrt(np.diag(native_covariance))-1)))
-        native_rss = float(records['fereg']['metadata']['rss'])
+        native_rss = float(records[0]['metadata']['rss'])
         data['relative_reported_rss_difference'] = (data['reported_rss']-native_rss)/native_rss
         data['relative_reconstructed_rss_difference'] = (rss-native_rss)/native_rss
         data['centered_fe_differences'] = {name: differences(a[0], b[0], rtol=1e-7, atol=1e-9, weights=a[1])
                                           for name, a, b in zip(['worker', 'firm'], native_effects, effects)}
         rows.append(data)
         del values
-    return dict(schema=1, panel=panel, cell=cell, repetition=1, rows=len(frame),
-                comparison='Existing four-core first repetitions; no refitting or gate changes. Differences use fereg as the reference, not a full-panel exact oracle.',
+    return dict(schema=2, panel=panel, cell=cell, threads=threads, repetitions=repetitions, rows=len(frame),
+                comparison='Existing captures only; no refitting or gate changes. Differences use the same-core first native repetition as reference, not a full-panel exact oracle. Later native repetitions reuse its diagnostics only after exact capture/RSS agreement is verified.',
                 definitions=dict(model_score='Maximum absolute residual moment over worker levels, firm levels and controls, divided by max(1, corresponding sum of abs(y)+abs(fitted)).',
                                  centered_fe='Each level effect minus its observation-weighted channel mean; FE error quantiles/RMSE give each level equal weight unless marked observation_weighted.',
                                  output_errors='Absolute errors in log daily wage units, relative to the native saved outputs.'),
@@ -137,8 +158,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('root', type=Path)
     parser.add_argument('--panel', choices=['long', 'short'], required=True)
+    parser.add_argument('--cores', type=int, nargs='+', choices=[1, 2, 4, 8, 16], default=[4])
+    parser.add_argument('--repetitions', type=int, choices=[1, 3], default=1)
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
-    result = diagnose(args.root, args.panel)
+    results = [diagnose(args.root, args.panel, cores, args.repetitions) for cores in args.cores]
+    result = results[0] if len(results) == 1 else dict(schema=2, panel=args.panel, configurations=results)
     args.output.write_text(json.dumps(result, indent=2)+'\n')
     print('PANEL_ACCURACY_COMPLETE '+args.panel)
