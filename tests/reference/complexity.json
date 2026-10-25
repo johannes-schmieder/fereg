@@ -2,28 +2,10 @@
   "definition": "docs/development_workflow.md#complexity-inventory",
   "growth": [
     {
-      "after": 1400,
-      "before": 1398,
-      "metric": "fereg-core/dispatch_candidates",
-      "reason": "Many-FE geometry candidate: recurrence a decade below the request with one seeded LSMR correction after a certificate miss, holding the rejected coefficients only when the memory plan admits them; other presets and discrete decisions unchanged."
-    },
-    {
-      "after": 107982,
-      "before": 107820,
-      "metric": "fereg-core/production_lines",
-      "reason": "Many-FE geometry candidate: recurrence a decade below the request with one seeded LSMR correction after a certificate miss, holding the rejected coefficients only when the memory plan admits them; other presets and discrete decisions unchanged."
-    },
-    {
-      "after": 8666,
-      "before": 8515,
-      "metric": "file/crates/fereg-core/src/fe/borrowed_map.rs",
-      "reason": "Many-FE geometry candidate: recurrence a decade below the request with one seeded LSMR correction after a certificate miss, holding the rejected coefficients only when the memory plan admits them; other presets and discrete decisions unchanged."
-    },
-    {
-      "after": 375,
-      "before": 347,
-      "metric": "function/crates/fereg-core/src/fe/borrowed_map.rs/run_borrowed_lsmr_with_prepared#1",
-      "reason": "Many-FE geometry candidate: recurrence a decade below the request with one seeded LSMR correction after a certificate miss, holding the rejected coefficients only when the memory plan admits them; other presets and discrete decisions unchanged."
+      "after": 15410,
+      "before": 15408,
+      "metric": "fereg-plugin/production_lines",
+      "reason": "Selected hidden many-FE geometry injection keeps public two-FE ownership/deferred-cell activation so selected-hidden/public science is exact; other injections and public behavior unchanged."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -20746,36 +20728,36 @@
         "dispatch_candidates": [
           {
             "condition": "! token . is_empty ( ) && ( token . len ( ) != 32 || ! token . bytes ( ) . all ( | byte | byte . is_ascii_digit ( ) || ( b <char> ..= b <char> ) . contains ( & byte ) ) )",
-            "line": 221
+            "line": 225
           }
         ],
         "functions": {
           "create_native_break_marker#1": {
-            "line": 240,
+            "line": 244,
             "lines": 11
           },
           "internal#1": {
-            "line": 252,
+            "line": 256,
             "lines": 3
           },
           "native_break_marker_path#1": {
-            "line": 234,
+            "line": 238,
             "lines": 3
           },
           "ols_mechanisms#1": {
-            "line": 27,
+            "line": 30,
             "lines": 48
           },
           "parse_ols#1": {
-            "line": 77,
-            "lines": 134
+            "line": 80,
+            "lines": 135
           },
           "validate_break_marker_token#1": {
-            "line": 214,
+            "line": 218,
             "lines": 19
           }
         },
-        "production_lines": 230
+        "production_lines": 232
       },
       "crates/fereg-plugin/src/dispatch.rs": {
         "chunk_candidates": [],
@@ -23644,10 +23626,10 @@
         "dispatch_candidates": 141,
         "files_over_1500": 3,
         "functions_over_150": 12,
-        "production_lines": 15408
+        "production_lines": 15410
       }
     },
     "schema": 1
   },
-  "reason": "Many-FE geometry candidate: recurrence a decade below the request with one seeded LSMR correction after a certificate miss, holding the rejected coefficients only when the memory plan admits them; other presets and discrete decisions unchanged."
+  "reason": "Selected hidden many-FE geometry injection keeps public two-FE ownership/deferred-cell activation so selected-hidden/public science is exact; other injections and public behavior unchanged."
 }
