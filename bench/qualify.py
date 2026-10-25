@@ -733,6 +733,9 @@ def compare_artifacts(manifest, meta, snapshots):
     if diagnostic_mode(manifest):
         return diagnostic_tool(manifest).compare_science(manifest, meta, snapshots)
     candidate = snapshots['candidate']
+    # The executed candidate policy owns its certificate contract.
+    selected = (routing.GEOMETRY_MANY if resource_policy(manifest, 'candidate', meta) == routing.GEOMETRY_MANY
+                else routing.PORTFOLIO_UNSEEDED)
     for role in ('original', 'incumbent', 'hidden'):
         if role not in snapshots:
             continue
@@ -745,7 +748,7 @@ def compare_artifacts(manifest, meta, snapshots):
                     role + ': unaffected science or selected-hidden equivalence changed')
         else:
             science.compatibility(reference[0], candidate[0], reference[1], candidate[1], meta, 'auto',
-                                  selected_policy=routing.policy(routing.PORTFOLIO_UNSEEDED))
+                                  selected_policy=routing.policy(selected))
 
 
 def orders(arms, blocks, seed):

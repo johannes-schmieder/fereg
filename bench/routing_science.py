@@ -91,11 +91,14 @@ def portfolio_scope(reference, raw, meta, arm, selected):
     prepared_fit::merge_solve_report own these tuples. Repeats still compare the
     complete original fingerprint before reaching this cross-artifact check.
     """
-    selected_name = next((name for name in routing.PORTFOLIOS
+    selected_name = next((name for name in (*routing.PORTFOLIOS, routing.GEOMETRY_MANY)
                           if routing.identity(selected) == routing.identity(routing.policy(name))), None)
     if selected_name is None or arm != 'auto':
         raise ValueError('unsupported portfolio comparison policy/request')
-    unseeded = selected_name == routing.PORTFOLIO_UNSEEDED
+    # The geometry policy extends unseeded LSMR with a bounded MAP pilot and
+    # accepts every exit at the requested certificate.
+    geometry = selected_name == routing.GEOMETRY_MANY
+    unseeded = selected_name in (routing.PORTFOLIO_UNSEEDED, routing.GEOMETRY_MANY)
     if unseeded and (not isinstance(meta, dict) or type(meta.get('categorical_intercepts')) is not bool
                      or type(meta.get('absorbed_terms')) is not int or meta['absorbed_terms'] < 0):
         raise ValueError('unseeded portfolio requires inspected fixed-effect metadata')
@@ -130,8 +133,16 @@ def portfolio_scope(reference, raw, meta, arm, selected):
                     or fallback not in {0, 1} or not 0 <= pilot <= min(4, iterations)
                     or iterations > cap):
                 raise ValueError('portfolio Auto route/counter tuple is invalid')
-            if candidate and unseeded and pilot != 0:
+            if candidate and unseeded and not geometry and pilot != 0:
                 raise ValueError('unseeded portfolio cannot contain a MAP pilot')
+            if candidate and geometry and pilot:
+                # three_fe_map::Attempt::record marks uncertified pilot sweeps
+                # as fallback work, so the bit cannot identify a continuation
+                # fallback. A certified pilot returns its MAP report unmarked;
+                # a declined LSMR workspace leaves only the pilot's mark.
+                if fallback != 1 and (used == 3 or requested_pc != 0):
+                    raise ValueError('geometry pilot fallback bit is invalid')
+                fallback = int(used == 2 and requested_pc != 0 or used_pc == 2)
             # A no-LSMR MAP route has no preconditioner. A genuine LSMR
             # continuation keeps its request/resolved metadata, even if MAP
             # ultimately certifies. Low merges max work, OR fallback and sums
@@ -162,9 +173,10 @@ def portfolio_scope(reference, raw, meta, arm, selected):
                 raise ValueError('portfolio Auto preconditioner/fallback/warning tuple is invalid')
             if candidate:
                 target = tolerance if index == 0 else min(tolerance, 1e-14)
-                strict = target if target <= 1e-14 else max(target * 1e-2, 1e-14)
+                strict = target if geometry or target <= 1e-14 else max(target * 1e-2, 1e-14)
                 if row[5] > strict:
-                    raise ValueError('portfolio original-design certificate exceeds private Auto target')
+                    raise ValueError('portfolio original-design certificate exceeds '
+                                     + ('its requested target' if geometry else 'private Auto target'))
     scope = replay_scope(raw, arm, meta)
     # Raw columns 1,10,11,12,13,14 after removal of setup/solve time.
     return scope + [f'/matrices/RSOLVER/bits/{14 * row + column}'

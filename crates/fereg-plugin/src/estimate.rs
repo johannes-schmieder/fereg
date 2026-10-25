@@ -1046,7 +1046,7 @@ impl EstimateActionSpec {
             routing: injection.routing,
             ownership: injection.ownership,
             cells: injection.cells,
-            public_defaults: !values.contains_key("inject"),
+            public_defaults: !values.contains_key("inject") || injection.public_activation,
             it_coefficients: injection.it_coefficients,
             cmg_schur_degree,
             cmg_schur_samples,

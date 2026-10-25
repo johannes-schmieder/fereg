@@ -86,6 +86,24 @@ class PolicyEvidence(unittest.TestCase):
         self.assertEqual(q.resource_policy(self.config, 'candidate', self.meta), routing.GEOMETRY_MANY)
         self.assertIsNone(q.resource_policy(self.config, 'candidate', dict(self.meta, absorbed_terms=2)))
 
+    def test_science_contract_follows_the_executed_candidate_policy(self):
+        meta = {'absorbed_terms': 4, 'categorical_intercepts': True}
+        snapshots = {'candidate': (None, None, {'fingerprint': 'a'}),
+                     'incumbent': (None, None, {'fingerprint': 'b'})}
+        def selected(request, hidden=None):
+            artifacts = {'candidate': {'request': request, 'families': ['many']},
+                         'incumbent': {'request': 'auto', 'families': []}}
+            if hidden:
+                artifacts['hidden'] = {'request': hidden, 'families': ['many']}
+            with patch.object(q.science, 'compatibility') as checked:
+                q.compare_artifacts({'scope': 'many', 'artifacts': artifacts}, meta, snapshots)
+            return checked.call_args.kwargs['selected_policy']
+        geometry = routing.policy(routing.GEOMETRY_MANY)
+        self.assertEqual(selected(routing.GEOMETRY_MANY), geometry)
+        self.assertEqual(selected('auto', routing.GEOMETRY_MANY), geometry)
+        self.assertEqual(selected('incremental-many'), routing.policy(routing.PORTFOLIO_UNSEEDED))
+        self.assertEqual(selected('auto', 'incremental-many'), routing.policy(routing.PORTFOLIO_UNSEEDED))
+
     def test_hidden_outside_scope_needs_no_gate_fields(self):
         self.meta['absorbed_terms'] = 0
         self.presets = {}

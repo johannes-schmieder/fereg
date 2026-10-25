@@ -69,7 +69,7 @@ the routing injections below select experimental algorithms for qualification.
 | `inject=cells_deferred[_moments\|_scores\|_both]` | OLS | Default-off cell experiment constructing only after successful CMG commitment at an existing restart, with joint memory admission; optional ownership controls, unchanged routing policy. Qualification remains pending. |
 | `inject=routing_prefix_{none\|map4\|it4}` | OLS | Replaces the existing categorical shortcut with no prefix, up to four MAP sweeps, or up to four compact IT cycles (eight native sweeps); unfinished prefixes seed original-RHS LSMR |
 | `inject=routing_incremental_many` | OLS (replay wire) | Qualifies strict unseeded LSMR with retained preparation for at least three categorical intercept FEs, using the existing unseeded portfolio |
-| `inject=routing_many_geometry_v1` | OLS (replay wire) | Selects the public many-FE geometry policy for at least three categorical intercept FEs: geometry-qualified MAP pilot, Jacobi LSMR trial with projected escalation to the additive preconditioner, recurrence a decade below the request with one seeded correction on a certificate miss, requested-tolerance certificate |
+| `inject=routing_many_geometry_v1` | OLS (replay wire) | Selects the public many-FE geometry policy for at least three categorical intercept FEs: geometry-qualified MAP pilot, Jacobi LSMR trial with projected escalation to the additive preconditioner, recurrence a decade below the request with one seeded correction on a certificate miss, requested-tolerance certificate. Unlike other injections it keeps public two-FE ownership/deferred-cell activation, so it equals uninjected Auto on every design |
 | `inject=routing_incremental_two` | OLS (replay wire) | Qualifies the existing direct-or-h16/k1 synchronous portfolio for exactly two categorical intercept FEs |
 | `inject=routing_builder_break` + `break_marker_token=<32 lowercase hex>` | OLS | Uses the synchronous h4/k1 builder and waits for Break at its first cancellation poll after executed construction work; any worker count |
 | `inject=ppml_topology` | PPML | Shares admitted categorical checkpoint component indexing after acceptance; weighted numerical data is recomputed in every frame |
@@ -84,7 +84,10 @@ which reach it only through the replay wire (`bench/routing.py`,
 `break_marker_token` except for the builder-Break arm, and are rejected by PPML. Invalid names and explicit
 solver conflicts fail before observation reads or publication. Omitted or empty
 `inject` retains the qualified automatic policy; these arms do not enable a new
-public default or change request/result versions or result dimensions.
+public default or change request/result versions or result dimensions. Explicit
+injections otherwise bypass public two-FE ownership/deferred-cell activation;
+only the selected `routing_many_geometry_v1` arm keeps it, so public activation
+can require exact selected-hidden/public agreement on every design.
 
 The incremental selectors require Auto preconditioning to change computation.
 Outside the selected categorical intercept family, including slopes and explicit
