@@ -4586,6 +4586,7 @@ fn hidden_routing_presets_survive_framed_requests_and_reach_absorb_config() {
             .map(RoutingPreset::prefix),
         )
         .chain([
+            RoutingPreset::geometry_many(),
             RoutingPreset::incremental_many(),
             RoutingPreset::incremental_two(),
         ]);

@@ -228,12 +228,49 @@ unsupported explicit requests must not silently become auto.
 
 ### Qualified Auto routing and developer comparisons
 
-Public OLS Auto/Auto uses strict unseeded LSMR with retained preparation for
-eligible designs with at least three categorical-intercept FEs. Eligible two-FE
-designs use the [qualified structural CMG gates](two_fe_auto_gates.md), with
-ownership and deferred cells in the narrower global-intercept scope above.
-Zero/one FE, slopes, explicit choices and PPML retain their specified behavior.
-Public activation and performance evidence are complete; see [VALIDATION](VALIDATION.md).
+Public OLS Auto/Auto uses the many-FE geometry policy
+(`routing_many_geometry_v1`) for eligible designs with at least three
+categorical-intercept FEs. Eligible two-FE designs use the
+[qualified structural CMG gates](two_fe_auto_gates.md), with ownership and
+deferred cells in the narrower global-intercept scope above. Zero/one FE,
+slopes, explicit choices and PPML retain their specified behavior. Two-FE
+activation and performance evidence are complete; the many-FE geometry policy
+is an unqualified branch candidate, see [VALIDATION](VALIDATION.md).
+
+The many-FE geometry policy keeps retained unseeded LSMR preparation and adds
+three parts. First, with exactly three unit-weight symmetric FEs, every
+projection action without a prepared LSMR solver, including the final-residual
+action, may run the bounded geometry-qualified MAP pilot described in
+[ARCHITECTURE](ARCHITECTURE.md). Second, the retained LSMR solver starts as a
+Jacobi (diagonal) trial. From its third iteration each RHS projects the
+iterations it still needs from the geometric mean of its last two
+normal-equation residual contractions toward the recurrence target. Once the
+projected total exceeds 40 iterations, about the cost of building the additive
+Schwarz preconditioner and running its usual iterations, the trial solver is
+released, the additive configuration that the slot rule selects is built once,
+and each escalated RHS continues from its iterate with its remaining budget.
+Later calls on the binding reuse the solver it holds; reports name the
+preconditioner that finished. Admission charges the additive bound throughout.
+Third, every successful exit (pilot, LSMR or MAP fallback) is accepted only by
+the independent original-design certificate at the requested tolerance, as
+with the pilot and the hidden prefix arms. The LSMR recurrence still targets
+the private hundredth of the request, and native iteration caps, memory
+admission, fallback and cancellation are unchanged.
+
+Declared scope of the geometry policy: eligible public OLS Auto/Auto may change
+coefficients, covariance, fit statistics, residuals, FE coordinates and solver
+iteration signatures and diagnostics within §20 tolerances. Unit-weight
+three-FE Auto with an explicit preconditioner reaches the same pilot and may
+change through its earlier certificate checkpoint. Sample, rank, omission,
+original factor slots/base flags and other discrete decisions remain unchanged.
+Hidden `routing_incremental_many` keeps the previous public policy exactly. The
+parallel copies, RHS transport, pair moments and session starts and the pilot's
+norm handoff are arithmetic-preserving. Independent witnesses cover pilot
+acceptance one sweep early with identical bits, the norm handoff against the
+LSMR kernel and an independent sum, exact split pair moments for every lane
+count, Jacobi completion on mixing panels, escalation near confounding with
+agreement against the strict reference and FE-moment reconstruction, and
+fixed-worker repeatability.
 
 The CMG builder borrows the host team, polls cancellation at fixed logical chunks
 and admits construction against real memory, without a construction-work cap or
@@ -380,7 +417,7 @@ its own cap. The backend's presence does not suppress an explicitly requested
 prefix. An early certificate reports the concrete MAP or IT family. Low reports
 combine those prefixes with actual LSMR metadata when a chunk needs LSMR, while
 preserving any real fallback; an intentional prefix alone is not a fallback.
-Uninjected Auto retains its existing shortcut.
+Uninjected Auto uses the geometry pilot instead.
 
 The separate `routing_portfolio_v1` qualification arm uses one fixed structural
 portfolio. With exactly two categorical FEs it retains the incumbent recurrence

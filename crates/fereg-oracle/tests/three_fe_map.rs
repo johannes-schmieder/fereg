@@ -145,10 +145,16 @@ fn check_oracle(design: &Design, config: PreparedOlsFitConfig) -> CertifiedPrepa
         .unwrap();
     assert!(fit.absorption_report().certified());
     assert!(fit.residual_absorption_report().certified());
-    // The new leading MAP attempt must not select MAP for final residuals.
-    assert_eq!(
-        fit.residual_absorption_report().used_solver,
-        FeSolverKind::Lsmr
+    // Final residuals may also take the bounded pilot; whichever solver
+    // finishes, the independent certificate accepts at the 1e-14 target.
+    let residual = fit.residual_absorption_report();
+    match residual.used_solver {
+        FeSolverKind::Map => assert!(residual.pilot_iterations <= 4, "{residual:?}"),
+        solver => assert_eq!(solver, FeSolverKind::Lsmr),
+    }
+    assert!(
+        residual.certificate.relative_infinity_norm <= 1e-14,
+        "{residual:?}"
     );
     if config.absorb.retain_coefficients && config.execution.mode == PreparedOlsExecutionMode::Fast
     {

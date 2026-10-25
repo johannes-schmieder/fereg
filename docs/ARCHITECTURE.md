@@ -127,13 +127,26 @@ Automatic unit-weight, symmetric three-FE OLS may first attempt at most four
 MAP sweeps when complete, outward-rounded pair-incidence geometry predicts
 convergence at the current recurrence target. Exact integer marginal bounds
 can prove a saturated pair without scanning its contingency cells; otherwise
-moments accumulate once per occupied cell. Geometry chooses only an additional
-certificate checkpoint. The unchanged requested certificate alone accepts;
-initial, configured-cadence and fourth-sweep checks remain. Failed attempts
-drop their candidate/norm/coefficient storage before LSMR starts on untouched
-inputs, debiting actual work and preserving memory admission. Explicit solvers,
-weighted requests, PPML and final residual projection retain their routes.
-See [validation](VALIDATION.md) for the accepted policy and performance limits.
+moments accumulate once per occupied cell, with outer levels split across
+workers into contiguous membership-balanced ranges whose integer partials merge
+in lane order. Geometry chooses only additional certificate checkpoints: the
+predicted sweep and the one before it, because the bound is conservative. The
+unchanged requested certificate alone accepts; initial, configured-cadence and
+fourth-sweep checks remain. A pilot that certifies after sweeping hands the
+finite solve its column norms, computed by the dense LSMR norm kernel. Failed
+attempts drop their candidate/norm/coefficient storage before LSMR starts on
+untouched inputs, debiting actual work and preserving memory admission. The
+pilot is skipped once a binding holds a prepared LSMR solver. Explicit solvers,
+weighted requests and PPML retain their routes. See
+[validation](VALIDATION.md) for the policy status and performance limits.
+
+The public many-FE preset retains a Jacobi LSMR solver first. Each RHS runs
+under an `EscalationPolicy` that projects its remaining iterations from recent
+contraction; escalated sessions finish, the trial solver is released, the
+additive solver is built once and seeded sessions continue each escalated RHS.
+Window sessions start and finish in parallel; results keep RHS order.
+[General routing](../crates/fereg-core/src/fe/borrowed_map/routing_lsmr.rs)
+owns the trial and its escalation.
 
 Thread counts are worker budgets. Shared planned lanes retain deterministic
 arithmetic leaves and ordered merges. One-FE, two-FE and general-FE algorithms

@@ -88,11 +88,14 @@ fn exact_fit(first: &CertifiedPreparedOlsFit, second: &CertifiedPreparedOlsFit) 
     );
 }
 
+/// Strict presets certify many-FE exits at a hundredth of the request; the
+/// public geometry policy (`prefix_limit` of `None`) accepts at the request
+/// and may run its bounded pilot.
 fn check_fit(
     design: &Design,
     oracle: &ExplicitOlsResult,
     fit: &CertifiedPreparedOlsFit,
-    prefix_limit: usize,
+    prefix_limit: Option<usize>,
 ) {
     assert_eq!(fit.finite_rank(), oracle.finite_regressor_rank);
     assert_eq!(fit.kept_generated_columns(), oracle.kept_regressors);
@@ -118,7 +121,7 @@ fn check_fit(
     for report in [fit.absorption_report(), fit.residual_absorption_report()] {
         assert!(report.certified(), "{report:?}");
         assert_eq!(report.requested_solver, FeSolverKind::Auto);
-        let tolerance = if design.effects.len() >= 3 {
+        let tolerance = if design.effects.len() >= 3 && prefix_limit.is_some() {
             1e-14
         } else {
             1e-12
@@ -129,6 +132,10 @@ fn check_fit(
         );
         assert!(report.iterations <= 512);
         if design.effects.len() >= 3 {
+            let Some(prefix_limit) = prefix_limit else {
+                assert!(report.pilot_iterations <= 4);
+                continue;
+            };
             assert!(report.pilot_iterations <= prefix_limit);
             if report.used_solver == FeSolverKind::Lsmr {
                 assert_eq!(report.pilot_iterations, prefix_limit);
@@ -201,6 +208,23 @@ fn check_saved_effects(
     PREDICTION.check_slice(&sum, &target).unwrap();
 }
 
+/// Uninjected public Auto uses the many-FE geometry policy for at least three
+/// categorical Auto-preconditioned effects and an unseeded policy otherwise.
+fn prefix_limit(design: &Design, config: PreparedOlsFitConfig) -> Option<usize> {
+    let routing = config.absorb.routing;
+    let geometry = routing.is_none_or(|p| p == RoutingPreset::geometry_many());
+    if geometry && design.effects.len() >= 3 {
+        None
+    } else if routing.is_none()
+        || matches!(routing, Some(p) if p == RoutingPreset::portfolio_unseeded()
+        || p == RoutingPreset::incremental_many() || p == RoutingPreset::incremental_two())
+    {
+        Some(0)
+    } else {
+        Some(4)
+    }
+}
+
 fn check_case(design: &Design, config: PreparedOlsFitConfig) -> CertifiedPreparedOlsRobust {
     let (problem, rows) = design.oracle_problem(false).unwrap();
     let oracle = fit_explicit_ols(&problem).unwrap();
@@ -231,16 +255,7 @@ fn check_case(design: &Design, config: PreparedOlsFitConfig) -> CertifiedPrepare
         .unwrap()
     };
     let result = run();
-    // Uninjected public Auto uses the unseeded many-FE policy in these
-    // categorical Auto-preconditioned cases.
-    let prefix_limit = if config.absorb.routing.is_none()
-        || matches!(config.absorb.routing, Some(p) if p == RoutingPreset::portfolio_unseeded()
-        || p == RoutingPreset::incremental_many() || p == RoutingPreset::incremental_two())
-    {
-        0
-    } else {
-        4
-    };
+    let prefix_limit = prefix_limit(design, config);
     check_fit(design, &oracle, result.fit(), prefix_limit);
     check_saved_effects(design, &oracle, &prepared, result.fit(), config);
     assert_eq!(result.dof().absorbed_rank, oracle.explicit_dummy_rank);
@@ -423,11 +438,15 @@ fn incremental_families_match_dense_qr_and_existing_portfolio_exactly() {
             assert_eq!(actual.covariance(), expected.covariance());
             assert_eq!(actual.dof(), expected.dof());
             if preset == RoutingPreset::incremental_many() {
+                // Public Auto selects the geometry policy; its hidden token
+                // must agree exactly.
                 options.absorb.routing = None;
                 let public = check_case(&design, options);
-                exact_fit(actual.fit(), public.fit());
-                assert_eq!(actual.covariance(), public.covariance());
-                assert_eq!(actual.dof(), public.dof());
+                options.absorb.routing = Some(RoutingPreset::geometry_many());
+                let hidden = check_case(&design, options);
+                exact_fit(hidden.fit(), public.fit());
+                assert_eq!(hidden.covariance(), public.covariance());
+                assert_eq!(hidden.dof(), public.dof());
             }
             if let Some(previous) = previous {
                 same_discrete_reports(
@@ -451,6 +470,7 @@ fn incremental_families_preserve_ineligible_science_and_memory_exactly() {
     for preset in [
         RoutingPreset::incremental_many(),
         RoutingPreset::incremental_two(),
+        RoutingPreset::geometry_many(),
     ] {
         for (effects, slopes, preconditioner) in [
             (0, false, LsmrPreconditioner::Auto),
@@ -460,10 +480,10 @@ fn incremental_families_preserve_ineligible_science_and_memory_exactly() {
             (3, false, LsmrPreconditioner::Diagonal),
             (3, false, LsmrPreconditioner::Schwarz),
             (
-                if preset == RoutingPreset::incremental_many() {
-                    2
-                } else {
+                if preset == RoutingPreset::incremental_two() {
                     5
+                } else {
+                    2
                 },
                 false,
                 LsmrPreconditioner::Auto,
@@ -483,6 +503,71 @@ fn incremental_families_preserve_ineligible_science_and_memory_exactly() {
                     actual.solver_workspace_peak(),
                     expected.solver_workspace_peak()
                 );
+            }
+        }
+    }
+}
+
+/// Independent dense-QR witness for the public Jacobi trial: a mixing design
+/// finishes on the diagonal solver, while a weakly connected one escalates to
+/// the additive preconditioner. Both stay within the scientific tolerances,
+/// repeat exactly at a fixed worker count and agree with the hidden token.
+#[test]
+fn public_geometry_trial_matches_dense_qr_with_and_without_escalation() {
+    for (graph, finished) in [
+        (Graph::RandomMobility, LsmrPreconditioner::Diagonal),
+        (Graph::AkmWeak, LsmrPreconditioner::Schwarz),
+    ] {
+        let design = generate(
+            72031,
+            &DesignSpec {
+                rows: 3400,
+                levels: vec![200, 60, 12],
+                regressors: 2,
+                graph,
+                ..DesignSpec::default()
+            },
+        )
+        .unwrap();
+        let (problem, _) = design.oracle_problem(false).unwrap();
+        let oracle = fit_explicit_ols(&problem).unwrap();
+        let (request, loaded) = support::inputs(&design, false);
+        let prepared = prepare_model(&request, &[], &loaded, true).unwrap();
+        for workers in [1, 4] {
+            let options = config(PreparedOlsExecutionMode::Fast, workers);
+            let run = |routing| {
+                let mut options = options;
+                options.absorb.routing = routing;
+                fit_prepared_model_robust_with_loaded_moments(
+                    &prepared,
+                    PreparedOlsRobustConfig {
+                        fit: options,
+                        ..PreparedOlsRobustConfig::default()
+                    },
+                    None,
+                )
+                .unwrap()
+            };
+            let public = run(None);
+            check_fit(&design, &oracle, public.fit(), None);
+            let report = public.fit().absorption_report();
+            assert_eq!(
+                report.used_solver,
+                FeSolverKind::Lsmr,
+                "{graph:?} {report:?}"
+            );
+            assert_eq!(
+                report.used_preconditioner,
+                Some(finished),
+                "{graph:?} {report:?}"
+            );
+            assert_eq!(public.dof().absorbed_rank, oracle.explicit_dummy_rank);
+            INFERENCE
+                .check(public.statistics().rss, oracle.weighted_rss)
+                .unwrap();
+            for repeat in [run(None), run(Some(RoutingPreset::geometry_many()))] {
+                exact_fit(repeat.fit(), public.fit());
+                assert_eq!(repeat.covariance(), public.covariance());
             }
         }
     }

@@ -22,6 +22,7 @@ INCREMENTAL = ('incremental-many', 'incremental-two')
 REMAINING = ('two-remaining-v1', 'two-remaining-never',
              'two-remaining-force16', 'two-remaining-force32')
 GATES = 'two-gates-v1'
+GEOMETRY_MANY = 'many-geometry-v1'
 COMPACT_IT = 'it-coefficients'
 
 
@@ -71,6 +72,12 @@ def policy(arm):
                 'decision': 'remaining-cost-v1', 'observation_cadence': 8,
                 'first_decision': 16, 'calibration_control': arm != REMAINING[0],
                 'two_fe': {**base['two_fe'], 'checkpoint': checkpoint}}
+    if arm == GEOMETRY_MANY:
+        return {**policy(PORTFOLIO_UNSEEDED), 'family': 'many', 'injection': 'routing_many_geometry_v1',
+                'certificate': 'requested', 'map_pilot': 'geometry_checkpoint_v1',
+                'preconditioner_trial': {'first': 'diagonal', 'escalation': 'additive',
+                                         'decision': 'projected_iterations_v1',
+                                         'iteration_budget': 40}}
     if arm in INCREMENTAL:
         return {**policy(PORTFOLIO_UNSEEDED), 'family': arm.removeprefix('incremental-'),
                 'injection': 'routing_' + arm.replace('-', '_')}

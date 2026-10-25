@@ -259,7 +259,8 @@ def plan(config_path, output, *, configuration=None):
         require(isinstance(artifact['revision'], str) and artifact['revision'], 'record artifact revision')
         require(isinstance(artifact['build'], str) and artifact['build'], 'record compiler and build settings')
         require(artifact['request'] in ({'auto', *ownership.REQUESTS} if ownership_mode else
-                {'auto', 'preserve', *routing.INCREMENTAL, *routing.REMAINING, routing.GATES}), 'unsupported request')
+                {'auto', 'preserve', *routing.INCREMENTAL, *routing.REMAINING, routing.GATES,
+                 routing.GEOMETRY_MANY}), 'unsupported request')
         require(artifact['request'] not in routing.REMAINING[1:] or
                 value.get('diagnostic') == 'two-fe-remaining-calibration-v1',
                 'forced/never controls belong only to the frozen calibration')
@@ -286,6 +287,8 @@ def plan(config_path, output, *, configuration=None):
             if value['scope'] == 'two':
                 allowed_hidden.add(routing.REMAINING[0])
                 allowed_hidden.add(routing.GATES)
+            if value['scope'] == 'many':
+                allowed_hidden.add(routing.GEOMETRY_MANY)
             require('hidden' in artifacts and artifacts['hidden']['request'] in allowed_hidden,
                     'public activation requires the selected hidden artifact')
     value['harness'] = bind(value['harness'])
@@ -710,6 +713,8 @@ def resource_policy(manifest, role, meta):
     if role == 'candidate' and request == 'auto' and 'hidden' in manifest['artifacts']:
         request = manifest['artifacts']['hidden']['request']
     if family == 'two' and request in (*routing.REMAINING, routing.GATES):
+        return request
+    if family == 'many' and request == routing.GEOMETRY_MANY:
         return request
     return 'incremental-' + family
 

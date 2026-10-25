@@ -128,6 +128,12 @@ pub(crate) fn parse_ols(stage: &str, solver: FeSolverKind, token: &str) -> Resul
             };
             (Some(preset), false)
         }
+        "routing_many_geometry_v1" => {
+            if solver != FeSolverKind::Auto {
+                return Err(syntax("hidden routing injection requires solver(auto)"));
+            }
+            (Some(RoutingPreset::geometry_many()), false)
+        }
         "routing_incremental_many" | "routing_incremental_two" => {
             if solver != FeSolverKind::Auto {
                 return Err(syntax("hidden routing injection requires solver(auto)"));
@@ -320,6 +326,7 @@ mod tests {
     #[test]
     fn incremental_routing_requires_exact_auto_names_without_break_token() {
         for preset in [
+            RoutingPreset::geometry_many(),
             RoutingPreset::incremental_many(),
             RoutingPreset::incremental_two(),
             RoutingPreset::gates_two(),

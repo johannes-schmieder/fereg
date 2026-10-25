@@ -47,7 +47,7 @@ fn select_ols_routing(
     };
     config.routing.filter(eligible).or_else(|| {
         match effects {
-            Some(3..) if defaults[0] => Some(super::RoutingPreset::incremental_many()),
+            Some(3..) if defaults[0] => Some(super::RoutingPreset::geometry_many()),
             Some(2) if defaults[1] => Some(super::RoutingPreset::gates_two()),
             _ => None,
         }
@@ -1526,7 +1526,8 @@ mod routing_selection_tests {
 
     #[test]
     fn effective_identity_retains_qualified_family_and_historical_injections() {
-        let many = RoutingPreset::incremental_many();
+        let many = RoutingPreset::geometry_many();
+        let many_presets = [many, RoutingPreset::incremental_many()];
         let two = RoutingPreset::gates_two();
         let two_presets = [
             two,
@@ -1543,8 +1544,9 @@ mod routing_selection_tests {
                     Some(2) if defaults[1] => Some(two),
                     _ => None,
                 };
-                for requested in [None, Some(many)]
+                for requested in [None]
                     .into_iter()
+                    .chain(many_presets.into_iter().map(Some))
                     .chain(two_presets.into_iter().map(Some))
                 {
                     let mut config = AbsorbConfig {
@@ -1553,7 +1555,8 @@ mod routing_selection_tests {
                     };
                     let selected = match (requested, effects) {
                         (Some(p), Some(n))
-                            if (p == many && n >= 3) || (two_presets.contains(&p) && n == 2) =>
+                            if (many_presets.contains(&p) && n >= 3)
+                                || (two_presets.contains(&p) && n == 2) =>
                         {
                             Some(p)
                         }

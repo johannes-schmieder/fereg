@@ -20,6 +20,58 @@ outside the scope retain their contracts. The Break test interrupts at the
 native pre-preparation checkpoint; it does not establish interruption inside a
 cell constructor. Scientific behavior is specified in [SPEC](SPEC.md).
 
+## Many-FE geometry candidate (unqualified)
+
+Branch `ccr-3970efbe-ecuzgn` changes public OLS Auto/Auto for at least three
+categorical-intercept FEs as specified in [SPEC](SPEC.md#qualified-auto-routing-and-developer-comparisons).
+It is not qualified: no `bench/qualify.py`, SCC or Mac evidence exists, and
+main's installed package is unchanged. The `many-geometry-v1` arm and the
+`routing_many_geometry_v1` token let qualification compare it with the
+protected `incremental-many` policy.
+
+`./scripts/run_tests.sh --source-only` passed (268 Python tests, Rust unit and
+independent numerical integration tests, Clippy, FFI allocation audits,
+portable checks, mock SPI and the complexity ratchet). New witnesses compare the
+public policy with dense explicit-dummy QR on a mixing panel that finishes on
+the Jacobi trial and a weak AKM panel that escalates, with exact fixed-worker
+repeats and exact public/hidden agreement. The plugin replay against main's
+plugin was exact for 72 of 73 cases. In `ols-30`, main rejected a three-FE
+LSMR solve at the private hundredth of the request and fell back to 28 MAP
+sweeps with a warning; the candidate accepts the 13-iteration solve at the
+request. Its 536 numerical leaves stay within the
+[declared scope](../tests/replay/scopes/2026-10-25-many-fe-geometry-linux.json)
+and science passes. The used-solver, fallback and warning fields are the
+intended route change. Four-worker repeats and cross-worker science passed for
+every case.
+
+Local diagnostic timing on a shared cloud VM, four workers, alternating
+candidate/main replays, medians of five runs (ten for the last two rows),
+`NATIVE_SECONDS`. These are descriptive engineering checks, not qualification
+evidence; repeated runs varied by several percent.
+
+| Design | Rows | Candidate/main |
+| --- | ---: | ---: |
+| Three dense FEs, unit weights | 100,000 / 1,000,000 / 4,000,000 | 0.55 / 0.87 / 0.61 |
+| Three dense FEs, analytic weights | 100,000 / 1,000,000 / 4,000,000 | 0.96 / 1.01 / 0.83 |
+| AKM-like three sparse FEs | 1,000,000 | 0.38 |
+| Mixing designs with 3, 4, 8 and 16 FEs | 100,000 | 0.52-0.62 |
+| Near-confounded third FE | 100,000 | 1.02 |
+| Campaign-shaped three sparse FEs | 1,000,000 | 1.04 (1.03-1.10 across runs) |
+
+The last two rows need the additive preconditioner from the start: the trial
+spends about four Jacobi iterations and a diagonal build before escalating.
+Qualification must decide whether that cost stays within max(5%, 1 ms). If it
+does not, the next step is a reviewed `within` change that lets both solvers
+share one locality permutation; the dense gains would not change. Weighted dense
+designs do not reach the unit-weight pilot.
+
+Two parts of the research plan were not adopted. A one-pass shifted projection
+route failed two existing witnesses (CG energy roundoff and tiled-bank
+cross-thread identity), so MAP projections keep the scaled two-pass route; a
+cache-blocked row-streaming kernel remains the next dense-design opportunity.
+LSMR continuation in place of the MAP fallback was not added because acceptance
+at the requested tolerance makes that fallback rare and it remains the safety net.
+
 ## Package checks
 
 The 0.5.0 beta packages include the method-reporting correction and current help

@@ -122,6 +122,17 @@ class RoutingRequests(unittest.TestCase):
         self.assertEqual(routing.policy(routing.PORTFOLIO_V1), old)
         self.assertEqual(routing.policy(routing.PORTFOLIO_UNSEEDED)['two_fe']['trees'], 1)
 
+    def test_geometry_many_policy_extends_the_unseeded_portfolio_identity(self):
+        selected = routing.policy(routing.GEOMETRY_MANY)
+        self.assertEqual(selected['injection'], 'routing_many_geometry_v1')
+        self.assertEqual(selected['family'], 'many')
+        base = routing.policy(routing.PORTFOLIO_UNSEEDED)
+        self.assertEqual((base['certificate'], selected['certificate']), ('private_auto', 'requested'))
+        changed = {'injection', 'certificate'}
+        self.assertEqual({k: v for k, v in selected.items() if k in base and k not in changed},
+                         {k: v for k, v in base.items() if k not in changed})
+        self.assertNotEqual(routing.identity(selected), routing.identity(routing.policy('incremental-many')))
+
     def test_incremental_scope_requires_inspected_categorical_metadata(self):
         for count in [0, 1, 2, 3, 16, True, 3.0, None]:
             for categorical in [False, True, 1]:

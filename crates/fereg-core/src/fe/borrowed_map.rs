@@ -4615,7 +4615,7 @@ pub(crate) fn project_borrowed_intercept_structural<'a>(
     {
         None
     } else {
-        three_fe_geometry.and_then(|g| g.map_checkpoint(weights, map, final_residual))
+        three_fe_geometry.and_then(|g| g.map_checkpoint(weights, map))
     };
     project_general_categorical(
         design,
@@ -4695,7 +4695,14 @@ fn project_general_categorical<'a>(
     let prefix_arm = general_routing
         .as_ref()
         .and_then(|state| state.categorical_prefix());
-    // Prefix completion and correction share this arm's certificate contract.
+    // The public many-FE preset admits the geometry-certified pilot in place
+    // of a prefix and, not being strict, accepts at the requested tolerance.
+    // Prefix completion and correction share the arm's certificate; routes
+    // without a preset keep certifying LSMR at the private recurrence target.
+    let geometry = general_routing
+        .as_ref()
+        .is_some_and(|state| state.geometry_pilot());
+    let experimental_prefix = prefix_arm.is_some() && !geometry;
     let certificate_tolerance = prefix_arm.map_or(lsmr.tolerance, |_| map.tolerance);
     let preconditioner = resolve_borrowed_lsmr_preconditioner(
         design.effects().len(),
@@ -4716,7 +4723,7 @@ fn project_general_categorical<'a>(
         retain,
         general_routing.as_deref(),
     )?;
-    let mut pilot = if prefix_arm.is_some() {
+    let mut pilot = if experimental_prefix {
         std::mem::take(&mut prefix.report)
     } else if let Some(checkpoint) =
         map_first.filter(|_| lsmr.max_iterations > three_fe_map::SWEEPS)
@@ -4729,6 +4736,7 @@ fn project_general_categorical<'a>(
             retain,
             estimate.coefficient_batch_bytes,
             checkpoint,
+            dense_norms,
         )?
     } else {
         three_fe_map::Attempt::default()
@@ -4766,7 +4774,7 @@ fn project_general_categorical<'a>(
         attempted_peak = attempted_peak.max(report.solver_workspace_peak);
         report.requested_solver = FeSolverKind::Auto;
         if report.certified() {
-            record_general_pilot(&pilot, &mut report, prefix_arm.is_some());
+            record_general_pilot(&pilot, &mut report, experimental_prefix);
             let result = if let Some(c) = coefficients {
                 CertifiedBorrowedMap::from_certified_parts_with_coefficients(candidate, report, c)
             } else {
@@ -4799,7 +4807,7 @@ fn project_general_categorical<'a>(
         attempted,
         pilot,
         attempted_peak,
-        prefix_arm.is_some(),
+        experimental_prefix,
     )
 }
 
@@ -5748,10 +5756,11 @@ fn run_borrowed_lsmr_with_prepared<'a>(
     if initial_coefficients.is_some() && prepared.is_none() && general_routing.is_none() {
         prepared = Some(&mut owned_prepared);
     }
+    let mut jacobi_trial = false;
     let (mut solved, preconditioner_fallback) = if let Some(routing) =
         general_routing.as_deref_mut()
     {
-        routing.solve(
+        let solved = routing.solve(
             design,
             weights,
             &rhs_views,
@@ -5761,7 +5770,9 @@ fn run_borrowed_lsmr_with_prepared<'a>(
             lsmr_config.threads.deterministic,
             memory,
             initial_coefficients,
-        )?
+        )?;
+        jacobi_trial = routing.jacobi_trial_active();
+        solved
     } else if let Some(prepared) = prepared.as_deref_mut() {
         prepared.solve(
             design,
@@ -5943,6 +5954,8 @@ fn run_borrowed_lsmr_with_prepared<'a>(
             requested_preconditioner: Some(lsmr_config.preconditioner),
             used_preconditioner: Some(if preconditioner_fallback {
                 LsmrPreconditioner::Off
+            } else if jacobi_trial {
+                LsmrPreconditioner::Diagonal
             } else {
                 resolved_preconditioner
             }),
@@ -8908,7 +8921,7 @@ fn modeled_bytes(peak: SolverWorkspacePeak) -> Result<u128> {
 
 fn fallible_matrix_copy(input: &DenseMatrix, label: &'static str) -> Result<DenseMatrix> {
     let mut output = fallible_matrix_zeros(input.nrows(), input.ncols(), label)?;
-    output.as_mut_slice().copy_from_slice(input.as_slice());
+    crate::parallel::copy_slice(output.as_mut_slice(), input.as_slice());
     Ok(output)
 }
 

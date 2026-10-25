@@ -73,6 +73,19 @@ class PolicyEvidence(unittest.TestCase):
         record = self.completed()
         self.assertTrue(all('gate_events' not in c for cell in record['cases'] for c in cell['warmups']))
 
+    def test_geometry_many_candidate_attests_its_own_preset(self):
+        self.config['scope'] = 'many'
+        self.config['artifacts']['candidate'].update(request=routing.GEOMETRY_MANY, families=['many'])
+        self.meta['absorbed_terms'] = 4
+        self.presets = dict(candidate='routing_many_geometry_v1', incumbent='routing_incremental_many')
+        record = self.completed()
+        self.assertTrue(all('gate_events' not in c for cell in record['cases'] for c in cell['warmups']))
+        self.config['artifacts']['candidate']['request'] = 'auto'
+        self.config['artifacts']['hidden'] = dict(self.config['artifacts']['candidate'],
+                                                  request=routing.GEOMETRY_MANY)
+        self.assertEqual(q.resource_policy(self.config, 'candidate', self.meta), routing.GEOMETRY_MANY)
+        self.assertIsNone(q.resource_policy(self.config, 'candidate', dict(self.meta, absorbed_terms=2)))
+
     def test_hidden_outside_scope_needs_no_gate_fields(self):
         self.meta['absorbed_terms'] = 0
         self.presets = {}

@@ -471,6 +471,112 @@ fn portfolio_unseeded_skips_the_geometry_pilot_and_keeps_preparation_across_rhs_
 }
 
 #[test]
+fn geometry_many_runs_the_certified_pilot_without_preparing_lsmr() {
+    let mut codes = [Vec::new(), Vec::new(), Vec::new()];
+    let mut columns = [Vec::new(), Vec::new()];
+    let mut expected = [Vec::new(), Vec::new()];
+    for first in 0..2 {
+        for second in 0..2 {
+            for third in 0..2 {
+                for sign in [-1., 1.] {
+                    codes[0].push(first);
+                    codes[1].push(second);
+                    codes[2].push(third);
+                    for rhs in 0..2 {
+                        let noise = sign * (rhs + 1) as f64 / 8.;
+                        expected[rhs].push(noise);
+                        columns[rhs].push(
+                            noise + first as f64 + second as f64 / 2. - third as f64 / 4.
+                                + rhs as f64,
+                        );
+                    }
+                }
+            }
+        }
+    }
+    let indices: Vec<_> = codes
+        .iter()
+        .map(|code| LevelIndex::from_codes(code, 2).unwrap())
+        .collect();
+    let sources: Vec<_> = codes
+        .iter()
+        .zip(&indices)
+        .map(|(code, index)| ValidatedBorrowedInterceptSource::new(code, 2, index).unwrap())
+        .collect();
+    let design = BorrowedInterceptFeDesign::new(
+        columns[0].len(),
+        sources.iter().map(|s| s.effect()).collect(),
+    )
+    .unwrap();
+    let mut route = routing_lsmr::GeneralRoutingState::new(RoutingPreset::geometry_many());
+    for rhs in [1, 2] {
+        let original = DenseMatrix::from_columns(&columns[..rhs]).unwrap();
+        let lsmr = LsmrConfig {
+            max_iterations: 8,
+            preconditioner: LsmrPreconditioner::Off,
+            ..LsmrConfig::default()
+        };
+        let estimate = estimate_fe_solver_memory(
+            design.nobs(),
+            rhs,
+            &[2, 2, 2],
+            rayon::current_num_threads(),
+            lsmr.local_size,
+        )
+        .unwrap();
+        let result = project_general_categorical(
+            &design,
+            BorrowedMapWeights::Unit,
+            original,
+            MapConfig {
+                tolerance: 1e-12,
+                max_iterations: 16,
+                ..config()
+            },
+            lsmr,
+            None,
+            true,
+            estimate,
+            false,
+            Some(4),
+            Some(&mut route),
+            false,
+        )
+        .unwrap();
+        // The orthogonal design certifies in the pilot at the requested
+        // tolerance; no LSMR solver is built or retained.
+        assert_eq!(result.report().used_solver, FeSolverKind::Map);
+        assert_eq!(result.report().requested_solver, FeSolverKind::Auto);
+        assert!(result.report().iterations <= 1);
+        assert!(result.report().certified());
+        assert!(result.report().certificate.relative_infinity_norm <= 1e-12);
+        assert!(!route.has_prepared());
+        assert!(!route.has_replacement());
+        for (column, expected) in expected.iter().enumerate().take(rhs) {
+            for (row, &expected) in expected.iter().enumerate() {
+                assert!((result.residualized()[(row, column)] - expected).abs() < 1e-12);
+            }
+        }
+        let coefficients = result.coefficients.as_ref().unwrap();
+        assert_eq!(coefficients.level_counts, [2, 2, 2]);
+        for (column, original) in columns.iter().enumerate().take(rhs) {
+            for (row, &original) in original.iter().enumerate() {
+                let base = column * coefficients.coefficients_per_rhs;
+                let fitted: f64 = codes
+                    .iter()
+                    .enumerate()
+                    .map(|(effect, code)| {
+                        coefficients.values
+                            [base + coefficients.effect_offsets[effect] + code[row] as usize]
+                    })
+                    .sum();
+                assert!((original - result.residualized()[(row, column)] - fitted).abs() < 1e-12);
+            }
+        }
+    }
+}
+
+#[test]
 fn portfolio_direct_numerical_refusal_keeps_incumbent_bits_without_a_cmg_retry() {
     let codes = [
         vec![0, 0, 0, 1, 1, 1, 2, 2, 2],
@@ -1959,3 +2065,241 @@ fn routing_low_rhs_chunks_share_preparation_but_final_accuracy_has_a_new_attempt
 
 #[path = "eager_cell_tests.rs"]
 mod eager_cell_tests;
+
+/// Worker/firm/third-factor panel with a ring that connects every firm. The
+/// confounded panel has low worker mobility and a third factor that nearly
+/// copies `firm % 20`; the mixing panel draws firms and the third factor
+/// independently. Both have 680 total coefficients.
+struct TrialPanel {
+    codes: [Vec<u32>; 3],
+    indices: Vec<LevelIndex>,
+    values: DenseMatrix,
+    levels: [usize; 3],
+}
+
+impl TrialPanel {
+    fn new(confounded: bool) -> Self {
+        Self::with_levels(confounded, [600, 60, 20])
+    }
+
+    fn with_levels(confounded: bool, levels: [usize; 3]) -> Self {
+        let [workers, firms, thirds] = levels.map(|level| level as u64);
+        let mut state = 0x9e37_79b9_7f4a_7c15_u64;
+        let mut next = move || {
+            state = state
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
+            state >> 11
+        };
+        let mut codes = [Vec::new(), Vec::new(), Vec::new()];
+        let mut columns = [Vec::new(), Vec::new()];
+        for worker in 0..workers {
+            let degree = 1 + next() % 3;
+            for period in 0..10_u64 {
+                let firm = if worker < firms {
+                    (worker + period % 2) % firms
+                } else if confounded {
+                    (worker * 7 + (period % degree) * 13 + next() % 2) % firms
+                } else {
+                    // Every observation moves: a well-mixed worker-firm graph.
+                    next() % firms
+                };
+                let third = if confounded {
+                    if next() % 200 == 0 {
+                        next() % thirds
+                    } else {
+                        firm % thirds
+                    }
+                } else {
+                    next() % thirds
+                };
+                codes[0].push(worker as u32);
+                codes[1].push(firm as u32);
+                codes[2].push(third as u32);
+                let noise = (next() % 1024) as f64 / 512.0 - 1.0;
+                columns[0].push(noise + (worker as f64 * 0.071).sin() + (firm as f64 * 0.13).cos());
+                columns[1].push(noise * 0.5 + third as f64 / 20.0);
+            }
+        }
+        let indices = codes
+            .iter()
+            .zip(levels)
+            .map(|(code, levels)| LevelIndex::from_codes(code, levels).unwrap())
+            .collect();
+        Self {
+            codes,
+            indices,
+            values: DenseMatrix::from_columns(&columns).unwrap(),
+            levels,
+        }
+    }
+
+    fn design(&self) -> BorrowedInterceptFeDesign<'_> {
+        let sources: Vec<_> = self
+            .codes
+            .iter()
+            .zip(self.levels)
+            .zip(&self.indices)
+            .map(|((code, levels), index)| {
+                ValidatedBorrowedInterceptSource::new(code, levels, index).unwrap()
+            })
+            .collect();
+        BorrowedInterceptFeDesign::new(
+            self.values.nrows(),
+            sources.iter().map(|source| source.effect()).collect(),
+        )
+        .unwrap()
+    }
+
+    fn project<'a>(
+        &self,
+        route: &mut routing_lsmr::GeneralRoutingState<'a>,
+        design: &BorrowedInterceptFeDesign<'a>,
+        deterministic: bool,
+    ) -> CertifiedBorrowedMap {
+        let lsmr = LsmrConfig {
+            max_iterations: 4_000,
+            threads: crate::ThreadConfig {
+                requested: None,
+                deterministic,
+            },
+            ..LsmrConfig::default()
+        };
+        let estimate = estimate_fe_solver_memory(
+            design.nobs(),
+            2,
+            &self.levels,
+            rayon::current_num_threads(),
+            lsmr.local_size,
+        )
+        .unwrap();
+        project_general_categorical(
+            design,
+            BorrowedMapWeights::Unit,
+            self.values.clone(),
+            MapConfig {
+                tolerance: 1e-8,
+                max_iterations: 8_000,
+                ..config()
+            },
+            lsmr,
+            None,
+            true,
+            estimate,
+            false,
+            None,
+            Some(route),
+            false,
+        )
+        .unwrap()
+    }
+}
+
+#[test]
+fn jacobi_trial_is_reserved_for_designs_resolved_to_the_additive_preconditioner() {
+    // Below the slot rule's threshold Auto already resolves to the diagonal
+    // preconditioner, so the geometry policy builds it once without a trial,
+    // even where a trial would finish without escalating.
+    let panel = TrialPanel::with_levels(false, [100, 20, 8]);
+    let design = panel.design();
+    assert!(design.total_term_slots() < 256);
+    let mut route = routing_lsmr::GeneralRoutingState::new(RoutingPreset::geometry_many());
+    let mut incumbent = routing_lsmr::GeneralRoutingState::new(RoutingPreset::portfolio_unseeded());
+    let actual = panel.project(&mut route, &design, true);
+    let reference = panel.project(&mut incumbent, &design, true);
+    assert!(!route.jacobi_trial_active());
+    for fit in [&actual, &reference] {
+        assert!(fit.report().certified());
+        assert_eq!(fit.report().used_solver, FeSolverKind::Lsmr);
+        assert_eq!(
+            fit.report().used_preconditioner,
+            Some(LsmrPreconditioner::Diagonal)
+        );
+    }
+    assert!(actual.report().iterations <= reference.report().iterations);
+}
+
+#[test]
+fn jacobi_trial_finishes_mixing_designs_and_escalates_near_confounded_ones() {
+    for (confounded, deterministic) in [(false, false), (true, false), (false, true), (true, true)]
+    {
+        let panel = TrialPanel::new(confounded);
+        let design = panel.design();
+        assert!(design.total_term_slots() >= 256);
+        let mut trial = routing_lsmr::GeneralRoutingState::new(RoutingPreset::geometry_many());
+        let mut incumbent =
+            routing_lsmr::GeneralRoutingState::new(RoutingPreset::portfolio_unseeded());
+        let actual = panel.project(&mut trial, &design, deterministic);
+        let reference = panel.project(&mut incumbent, &design, deterministic);
+        for fit in [&actual, &reference] {
+            assert!(fit.report().certified());
+            assert_eq!(fit.report().used_solver, FeSolverKind::Lsmr);
+            assert!(!fit.report().fallback_used);
+        }
+        assert_eq!(
+            reference.report().used_preconditioner,
+            Some(LsmrPreconditioner::Schwarz)
+        );
+        assert_eq!(
+            actual.report().used_preconditioner,
+            Some(if confounded {
+                LsmrPreconditioner::Schwarz
+            } else {
+                LsmrPreconditioner::Diagonal
+            })
+        );
+        assert_eq!(trial.jacobi_trial_active(), !confounded);
+        assert!(actual.report().certificate.relative_infinity_norm <= 1e-8);
+        // Both certified projections agree with each other on every row, and
+        // their FE coefficients reconstruct the original values.
+        for rhs in 0..2 {
+            let scale = (0..design.nobs())
+                .map(|row| panel.values[(row, rhs)].abs())
+                .fold(0.0_f64, f64::max);
+            let coefficients = actual.coefficients.as_ref().unwrap();
+            let base = rhs * coefficients.coefficients_per_rhs;
+            for row in 0..design.nobs() {
+                assert!(
+                    (actual.residualized()[(row, rhs)] - reference.residualized()[(row, rhs)])
+                        .abs()
+                        <= 1e-6 * scale,
+                    "confounded={confounded} rhs={rhs} row={row}"
+                );
+                let fitted: f64 = panel
+                    .codes
+                    .iter()
+                    .enumerate()
+                    .map(|(effect, code)| {
+                        coefficients.values
+                            [base + coefficients.effect_offsets[effect] + code[row] as usize]
+                    })
+                    .sum();
+                assert!(
+                    (panel.values[(row, rhs)] - actual.residualized()[(row, rhs)] - fitted).abs()
+                        <= 1e-10 * scale
+                );
+            }
+        }
+        // A later call on the binding reuses the retained solver: an escalated
+        // binding keeps the additive preconditioner without another trial.
+        let again = panel.project(&mut trial, &design, deterministic);
+        assert!(again.report().certified());
+        assert_eq!(
+            again.report().used_preconditioner,
+            actual.report().used_preconditioner
+        );
+        assert_eq!(trial.jacobi_trial_active(), !confounded);
+        // A fresh binding repeats the same trial decision; reproducible solvers
+        // repeat its bits exactly.
+        let mut fresh = routing_lsmr::GeneralRoutingState::new(RoutingPreset::geometry_many());
+        let repeat = panel.project(&mut fresh, &design, deterministic);
+        assert_eq!(
+            repeat.report().used_preconditioner,
+            actual.report().used_preconditioner
+        );
+        assert_eq!(repeat.report().iterations, actual.report().iterations);
+        if deterministic {
+            assert_eq!(repeat.residualized(), actual.residualized());
+        }
+    }
+}

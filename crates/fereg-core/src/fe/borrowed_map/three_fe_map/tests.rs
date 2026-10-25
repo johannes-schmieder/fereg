@@ -72,7 +72,7 @@ fn passing_requested_certificate_is_accepted_without_a_tighter_gate() {
             tolerance: 0.9,
             ..MapConfig::default()
         };
-        let result = attempt(design, &values, map, None, false, 0, 1).unwrap();
+        let result = attempt(design, &values, map, None, false, 0, 1, false).unwrap();
         assert_eq!(result.iterations, 0);
         let result = result.result.unwrap();
         assert!(result.report.certified());
@@ -104,12 +104,13 @@ fn refused_or_failed_attempt_preserves_original_and_records_work() {
             false,
             0,
             1,
+            false,
         )
         .unwrap();
         assert!(refused.result.is_none());
         assert_eq!(refused.iterations, 0);
         assert_eq!(refused.peak, SolverWorkspacePeak::ZERO);
-        let failed = attempt(design, &values, map, None, false, 0, 1).unwrap();
+        let failed = attempt(design, &values, map, None, false, 0, 1, false).unwrap();
         assert!(failed.result.is_none());
         assert_eq!(failed.iterations, SWEEPS);
         assert_eq!(values, original);
@@ -134,6 +135,7 @@ fn successful_candidate_preserves_coefficients_and_admission() {
             true,
             estimate.coefficient_batch_bytes,
             1,
+            false,
         )
         .unwrap();
         let bytes = trial.peak.bytes().unwrap();
@@ -168,6 +170,7 @@ fn successful_candidate_preserves_coefficients_and_admission() {
             true,
             estimate.coefficient_batch_bytes,
             1,
+            false,
         )
         .unwrap();
         assert_eq!(
@@ -181,13 +184,23 @@ fn successful_candidate_preserves_coefficients_and_admission() {
 fn partial_optional_allocation_refusal_drops_candidate_but_fatal_errors_propagate() {
     fixture(false, |design, values| {
         SETUP_FAILURE.set(Some(ErrorCode::Allocation));
-        let refused = attempt(design, &values, MapConfig::default(), None, false, 0, 1).unwrap();
+        let refused = attempt(
+            design,
+            &values,
+            MapConfig::default(),
+            None,
+            false,
+            0,
+            1,
+            false,
+        )
+        .unwrap();
         assert!(refused.result.is_none());
         assert_eq!(refused.iterations, 0);
         assert!(refused.peak.bytes().unwrap() >= values.as_slice().len() as u64 * 8);
         SETUP_FAILURE.set(Some(ErrorCode::Internal));
         assert!(
-            matches!(attempt(design, &values, MapConfig::default(), None, false, 0, 1),
+            matches!(attempt(design, &values, MapConfig::default(), None, false, 0, 1, false),
             Err(e) if e.code == ErrorCode::Internal)
         );
         let overflow = attempt(
@@ -198,6 +211,7 @@ fn partial_optional_allocation_refusal_drops_candidate_but_fatal_errors_propagat
             true,
             u128::MAX,
             1,
+            false,
         )
         .unwrap();
         assert!(overflow.result.is_none());
@@ -356,7 +370,7 @@ fn geometry_and_pilot_propagate_break() {
             ErrorCode::Interrupted
         );
         assert!(
-            matches!(attempt(design, &values, MapConfig::default(), None, false, 0, 1), Err(e) if e.code == ErrorCode::Interrupted)
+            matches!(attempt(design, &values, MapConfig::default(), None, false, 0, 1, false), Err(e) if e.code == ErrorCode::Interrupted)
         );
         crate::interrupt::reset_cancellation();
         assert!(Geometry::inspect(design, None).unwrap().0.is_some());
@@ -382,6 +396,7 @@ fn missed_prediction_still_accepts_the_fourth_sweep_without_changing_its_result(
             true,
             estimate.coefficient_batch_bytes,
             3,
+            false,
         )
         .unwrap();
         let terminal = attempt(
@@ -392,6 +407,7 @@ fn missed_prediction_still_accepts_the_fourth_sweep_without_changing_its_result(
             true,
             estimate.coefficient_batch_bytes,
             SWEEPS,
+            false,
         )
         .unwrap();
         assert_eq!(earlier.iterations, SWEEPS);
@@ -405,5 +421,86 @@ fn missed_prediction_still_accepts_the_fourth_sweep_without_changing_its_result(
             earlier.coefficients.unwrap().values,
             terminal.coefficients.unwrap().values
         );
+    });
+}
+
+#[test]
+fn early_certificate_accepts_one_sweep_before_the_prediction_with_identical_bits() {
+    fixture(false, |design, values| {
+        let map = MapConfig {
+            tolerance: 1e-12,
+            ..MapConfig::default()
+        };
+        // The fixture certifies after one sweep. A prediction of two sweeps now
+        // also certifies after the first, matching a direct one-sweep request.
+        let direct = attempt(design, &values, map, None, true, 4096, 1, false).unwrap();
+        let early = attempt(design, &values, map, None, true, 4096, 2, false).unwrap();
+        assert_eq!(direct.iterations, 1);
+        assert_eq!(early.iterations, 1);
+        let (direct, early) = (direct.result.unwrap(), early.result.unwrap());
+        assert!(early.report.certified());
+        assert_eq!(direct.residualized(), early.residualized());
+        assert_eq!(
+            direct.coefficients.unwrap().values,
+            early.coefficients.unwrap().values
+        );
+    });
+}
+
+#[test]
+fn dense_norm_handoff_matches_the_lsmr_kernel_and_an_independent_sum() {
+    fixture(false, |design, values| {
+        let map = MapConfig {
+            tolerance: 1e-12,
+            ..MapConfig::default()
+        };
+        let plain = attempt(design, &values, map, None, false, 0, 1, false).unwrap();
+        let handed = attempt(design, &values, map, None, false, 0, 1, true).unwrap();
+        let (plain, handed) = (plain.result.unwrap(), handed.result.unwrap());
+        assert!(plain.residual_norms.is_empty());
+        assert_eq!(plain.residualized(), handed.residualized());
+        let accepted = handed.residualized();
+        let columns = accepted.ncols();
+        let mut expected = vec![0.0; columns];
+        let mut scales = vec![0.0; columns];
+        let mut sums = vec![0.0; columns];
+        let mut dense = vec![0.0; columns];
+        let valid = crate::fe::norms::column_norms_with_dense(
+            accepted,
+            |_| Ok(1.0),
+            &mut expected,
+            &mut scales,
+            &mut sums,
+            &mut dense,
+            "value",
+            "norm",
+        )
+        .unwrap();
+        assert!(valid);
+        assert_eq!(handed.residual_norms, dense);
+        for (column, &norm) in handed.residual_norms.iter().enumerate() {
+            let direct: f64 = (0..accepted.nrows())
+                .map(|row| accepted[(row, column)].powi(2))
+                .sum::<f64>()
+                .sqrt();
+            assert!((norm - direct).abs() <= 1e-14 * direct.max(1.0));
+        }
+        // An initial-certificate exit keeps the caller's own norm kernel.
+        let initial = attempt(
+            design,
+            &values,
+            MapConfig {
+                tolerance: 0.9,
+                ..map
+            },
+            None,
+            false,
+            0,
+            1,
+            true,
+        )
+        .unwrap();
+        assert_eq!(initial.iterations, 0);
+        assert!(initial.result.unwrap().residual_norms.is_empty());
     });
 }
