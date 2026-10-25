@@ -37,12 +37,13 @@ the Jacobi trial and a weak AKM panel that escalates, with exact fixed-worker
 repeats and exact public/hidden agreement. The plugin replay against main's
 plugin was exact for 72 of 73 cases. In `ols-30`, main rejected a three-FE
 LSMR solve at the private hundredth of the request and fell back to 28 MAP
-sweeps with a warning; the candidate accepts the 13-iteration solve at the
-request. Its 536 numerical leaves stay within the
+sweeps with a warning; the candidate accepts a 12-iteration solve at the
+request. Its 502 numerical leaves stay within the
 [declared scope](../tests/replay/scopes/2026-10-25-many-fe-geometry-linux.json)
 and science passes. The used-solver, fallback and warning fields are the
 intended route change. Four-worker repeats and cross-worker science passed for
-every case.
+every case. The suite and replay were rerun after the recurrence margin below
+and after merging main.
 
 Local diagnostic timing on a shared cloud VM, four workers, alternating
 candidate/main replays, medians of five runs (ten for the last two rows),
@@ -58,19 +59,27 @@ evidence; repeated runs varied by several percent.
 | Near-confounded third FE | 100,000 | 1.02 |
 | Campaign-shaped three sparse FEs | 1,000,000 | 1.04 (1.03-1.10 across runs) |
 
+Stopping the recurrence a decade below the request instead of a hundredth cut
+one to three LSMR iterations from every LSMR-routed solve above (for example
+17 to 15 on the AKM-like design and 26 to 23 on the campaign-shaped one). No
+case needed the correction. Against the candidate without this margin, ten
+alternating runs on a slower replacement VM gave 0.95 on both one-million-row
+sparse designs; the 100,000-row ratios (0.97-1.06) were within that host's
+noise.
+
 The last two rows need the additive preconditioner from the start: the trial
 spends about four Jacobi iterations and a diagonal build before escalating.
 Qualification must decide whether that cost stays within max(5%, 1 ms). If it
-does not, the next step is a reviewed `within` change that lets both solvers
-share one locality permutation; the dense gains would not change. Weighted dense
+does not, a reviewed `within` change could let both solvers share one prepared
+design: at one million rows that preparation takes about 36 ms of the 224 ms
+additive build, about half of the measured overhead. The dense gains would not
+change. Weighted dense
 designs do not reach the unit-weight pilot.
 
-Two parts of the research plan were not adopted. A one-pass shifted projection
-route failed two existing witnesses (CG energy roundoff and tiled-bank
-cross-thread identity), so MAP projections keep the scaled two-pass route; a
-cache-blocked row-streaming kernel remains the next dense-design opportunity.
-LSMR continuation in place of the MAP fallback was not added because acceptance
-at the requested tolerance makes that fallback rare and it remains the safety net.
+A one-pass shifted projection route from the research plan failed two existing
+witnesses (CG energy roundoff and tiled-bank cross-thread identity), so MAP
+projections keep the scaled two-pass route; a cache-blocked row-streaming
+kernel remains the next dense-design opportunity.
 
 ## Package checks
 
