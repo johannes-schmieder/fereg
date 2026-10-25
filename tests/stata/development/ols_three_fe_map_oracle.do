@@ -11,7 +11,8 @@ forvalues j=1/3 {
 }
 generate double y = .7*x1-.3*x2+.1*x3+g1/8-g2/10+g3/5+rnormal()
 
-* Explicit diagonal preconditioning retains the geometry-led MAP policy.
+* Explicit diagonal preconditioning retains the geometry-led MAP policy; the
+* geometry pilot also certifies the final-residual projection.
 * Full dummy QR is independent of that FE projection.
 quietly regress y x1-x3 i.g1 i.g2 i.g3, vce(robust)
 matrix oracle_b = e(b)
@@ -29,7 +30,8 @@ foreach mode in fast low {
         assert e(df_r) == oracle_df
         assert e(fereg_solver)[1,2] == 2
         assert e(fereg_solver)[1,11] == 0
-        assert e(fereg_solver)[2,2] == 3
+        assert e(fereg_solver)[2,2] == 2
+        assert e(fereg_solver)[2,11] == 0
         forvalues j=1/3 {
             assert abs(e(b)[1,`j']-oracle_b[1,`j']) < 1e-9
             forvalues k=1/3 {

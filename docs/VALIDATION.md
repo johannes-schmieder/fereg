@@ -24,7 +24,7 @@ cell constructor. Scientific behavior is specified in [SPEC](SPEC.md).
 
 Branch `ccr-3970efbe-ecuzgn` changes public OLS Auto/Auto for at least three
 categorical-intercept FEs as specified in [SPEC](SPEC.md#qualified-auto-routing-and-developer-comparisons).
-It is not qualified: no `bench/qualify.py`, SCC or Mac evidence exists, and
+It is not qualified: no `bench/qualify.py` or SCC evidence exists, and
 main's installed package is unchanged. The `many-geometry-v1` arm and the
 `routing_many_geometry_v1` token let qualification compare it with the
 protected `incremental-many` policy.
@@ -44,6 +44,24 @@ and science passes. The used-solver, fallback and warning fields are the
 intended route change. Four-worker repeats and cross-worker science passed for
 every case. The suite and replay were rerun after the recurrence margin below
 and after merging main.
+
+On Apple Silicon, the source-only suite passed at `7b641ceb` (319 Python tests).
+The candidate's universal Mac plugin passed its binary audit and actual
+ABI/load/panic checks. Its replay against main's Mac plugin was exact for 72 of
+73 cases. `ols-30` takes the same route change as on Linux, with 510 numerical
+leaves inside a separate
+[macOS scope](../tests/replay/scopes/2026-10-25-many-fe-geometry-macos.json),
+because the macOS replay input has its own hash. Science, four-worker repeats
+and cross-worker checks passed for every case. Fourteen focused Stata 19/MP
+fixtures with three or more absorbed effects passed, including dense-dummy,
+reghdfe parity, saved-output, memory-mode and LSMR-reuse checks, and so did
+public OLS Break/rollback. Two development fixtures had asserted main's route
+and were updated without changing any numerical threshold:
+`ols_three_fe_map_oracle.do` now expects the geometry pilot to certify the
+final-residual projection with MAP, and `ols_mixed_solver_reports.do` expects
+the accepted LSMR solve where main fell back to MAP. Main's plugin still passes
+both original fixtures; the candidate agrees with the dense references within
+4e-14 in both.
 
 Local diagnostic timing on a shared cloud VM, four workers, alternating
 candidate/main replays, medians of five runs (ten for the last two rows),
