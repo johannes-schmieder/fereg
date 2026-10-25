@@ -180,6 +180,18 @@ retains RMS, 99th-percentile and maximum differences, affected coordinate counts
 scores, source/input hashes and accounting. Its maintained
 [reader](../bench/panel_accuracy.py) leaves all row-level values on SCC.
 
+The [complete results table](../bench/results/scc-20261024-veneto-all-results.csv)
+extends these measurements to all 36 package/core configurations and all 108
+planned positions. Timings retain their original repetition values, medians,
+ranges, failures and skips. Numerical columns give the worst discrepancy over
+every completed repetition, using the corresponding same-core native reference
+and the same observation-weighted FE centering. All completed reference captures
+are inspected separately. Native repetitions reuse the first native diagnostic
+only after exact original capture and reported-RSS equality has been verified.
+The [full aggregate accuracy evidence](../bench/results/scc-20261024-veneto-all-accuracy.json)
+retains every planned position, including skipped ones; no models were refitted
+and the original eligibility decisions remain unchanged.
+
 ## Frozen identity and evidence
 
 Campaign `20261024T195706Z-veneto-5c0a9240` uses execution source
@@ -196,6 +208,8 @@ the recorded original KSS graph procedures.
 | [Observations](../bench/results/scc-20261024-veneto-observations.csv) | All 108 planned positions, failures, skips and available command times. |
 | [Scientific comparisons](../bench/results/scc-20261024-veneto-science.json) | All native repeat/core checks and observed cross-package comparison decisions. |
 | [Accuracy magnitudes](../bench/results/scc-20261024-veneto-accuracy.json) | Post-campaign four-core first-repetition diagnostics: fitted values, centered FE channels, slopes, covariance, RSS and independent scores; no refitting. |
+| [Complete table with discrepancies](../bench/results/scc-20261024-veneto-all-results.csv) | Every package/core cell, all original repetition times/statuses, and worst numerical discrepancies across completed captures. |
+| [All-core accuracy evidence](../bench/results/scc-20261024-veneto-all-accuracy.json) | Every planned position and every completed reference diagnostic at 1/2/4/8/16 cores, with input/source hashes and scheduler/application checks. |
 | [Inputs, identity and checks](../bench/results/scc-20261024-veneto-inputs.json) | Input/preparation hashes and sample audits, frozen runtime inventory hash, scheduler records, host replay, native hashes, oracle outcomes and report/evidence hashes. |
 
 Only aggregate evidence is committed. Original administrative records remained

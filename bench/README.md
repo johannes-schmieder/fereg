@@ -133,7 +133,11 @@ For accuracy magnitudes from an existing campaign, run
 (and likewise `--panel short`) in a compute-node job. It reads the original
 four-core first repetitions without fitting again or changing any gate. It
 reports coefficient/covariance, RSS, fitted-value and centered worker/firm FE
-differences from fereg, plus independent residual model scores. Only aggregate
+differences from fereg, plus independent residual model scores. To cover the
+full schedule, add `--cores 1 2 4 8 16 --repetitions 3`. Every planned position,
+including skipped positions, stays in the output. Later native repetitions reuse
+the first native diagnostic only after exact capture and reported-RSS agreement
+is verified; each completed reference repetition is inspected separately. Only aggregate
 diagnostics and input hashes may leave private storage; full row and FE vectors
 remain on SCC. The native comparison is not a full-panel exact oracle.
 
