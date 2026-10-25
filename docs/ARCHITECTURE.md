@@ -125,7 +125,7 @@ revision bump.
 
 Automatic unit-weight, symmetric three-FE OLS may first attempt at most four
 MAP sweeps when complete, outward-rounded pair-incidence geometry predicts
-convergence at the current recurrence target. Exact integer marginal bounds
+convergence at a hundredth of the request. Exact integer marginal bounds
 can prove a saturated pair without scanning its contingency cells; otherwise
 moments accumulate once per occupied cell, with outer levels split across
 workers into contiguous membership-balanced ranges whose integer partials merge
@@ -144,7 +144,9 @@ The public many-FE preset retains a Jacobi LSMR solver first. Each RHS runs
 under an `EscalationPolicy` that projects its remaining iterations from recent
 contraction; escalated sessions finish, the trial solver is released, the
 additive solver is built once and seeded sessions continue each escalated RHS.
-Window sessions start and finish in parallel; results keep RHS order.
+Window sessions start and finish in parallel; results keep RHS order. A
+certificate miss on this preset reuses the retained solver for one seeded
+correction before the MAP fallback.
 [General routing](../crates/fereg-core/src/fe/borrowed_map/routing_lsmr.rs)
 owns the trial and its escalation.
 

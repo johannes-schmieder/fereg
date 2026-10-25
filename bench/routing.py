@@ -75,6 +75,8 @@ def policy(arm):
     if arm == GEOMETRY_MANY:
         return {**policy(PORTFOLIO_UNSEEDED), 'family': 'many', 'injection': 'routing_many_geometry_v1',
                 'certificate': 'requested', 'map_pilot': 'geometry_checkpoint_v1',
+                'recurrence': {'margin': 10, 'floor': 1e-14,
+                               'certificate_miss': 'one_seeded_correction_at_hundredth'},
                 'preconditioner_trial': {'first': 'diagonal', 'escalation': 'additive',
                                          'decision': 'projected_iterations_v1',
                                          'iteration_budget': 40}}

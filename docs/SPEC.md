@@ -253,9 +253,19 @@ Later calls on the binding reuse the solver it holds; reports name the
 preconditioner that finished. Admission charges the additive bound throughout.
 Third, every successful exit (pilot, LSMR or MAP fallback) is accepted only by
 the independent original-design certificate at the requested tolerance, as
-with the pilot and the hidden prefix arms. The LSMR recurrence still targets
-the private hundredth of the request, and native iteration caps, memory
-admission, fallback and cancellation are unchanged.
+with the pilot and the hidden prefix arms. The LSMR recurrence stops one
+decimal order below the request, floored at 1e-14 and never looser than the
+request, as two-FE Auto stops at half of it. A certificate miss permits one
+tighter correction at Auto's private hundredth when that target is strictly
+tighter: a categorical seeded LSMR session continues from the rejected
+coefficients with the original response, weights and RHS normalization, and
+only the remaining LSMR budget. The rejected solve keeps its coefficients
+through certification only when the joint memory plan admits them, and the
+correction starts only when its seed and warm-session banks fit; otherwise, or
+after a second miss, the existing original-input MAP fallback runs on the
+shared budget. A corrected exit reports the combined work without a fallback
+warning. Native iteration caps, memory admission and cancellation are
+unchanged.
 
 Declared scope of the geometry policy: eligible public OLS Auto/Auto may change
 coefficients, covariance, fit statistics, residuals, FE coordinates and solver
@@ -266,7 +276,9 @@ original factor slots/base flags and other discrete decisions remain unchanged.
 Hidden `routing_incremental_many` keeps the previous public policy exactly. The
 parallel copies, RHS transport, pair moments and session starts and the pilot's
 norm handoff are arithmetic-preserving. Independent witnesses cover pilot
-acceptance one sweep early with identical bits, the norm handoff against the
+acceptance one sweep early with identical bits, forced certificate misses
+answered by one seeded correction (with and without retained coefficients,
+repeated bit-for-bit) or by the MAP fallback after a second miss, the norm handoff against the
 LSMR kernel and an independent sum, exact split pair moments for every lane
 count, Jacobi completion on mixing panels, escalation near confounding with
 agreement against the strict reference and FE-moment reconstruction, and

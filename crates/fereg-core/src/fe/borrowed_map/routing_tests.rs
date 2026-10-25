@@ -2157,6 +2157,16 @@ impl TrialPanel {
         design: &BorrowedInterceptFeDesign<'a>,
         deterministic: bool,
     ) -> CertifiedBorrowedMap {
+        self.project_with(route, design, deterministic, true)
+    }
+
+    fn project_with<'a>(
+        &self,
+        route: &mut routing_lsmr::GeneralRoutingState<'a>,
+        design: &BorrowedInterceptFeDesign<'a>,
+        deterministic: bool,
+        retain: bool,
+    ) -> CertifiedBorrowedMap {
         let lsmr = LsmrConfig {
             max_iterations: 4_000,
             threads: crate::ThreadConfig {
@@ -2184,7 +2194,7 @@ impl TrialPanel {
             },
             lsmr,
             None,
-            true,
+            retain,
             estimate,
             false,
             None,
@@ -2302,4 +2312,95 @@ fn jacobi_trial_finishes_mixing_designs_and_escalates_near_confounded_ones() {
             assert_eq!(repeat.residualized(), actual.residualized());
         }
     }
+}
+
+#[test]
+fn geometry_certificate_miss_takes_one_seeded_correction_before_map() {
+    let panel = TrialPanel::new(false);
+    let design = panel.design();
+    for retain in [true, false] {
+        let fresh = || routing_lsmr::GeneralRoutingState::new(RoutingPreset::geometry_many());
+        let reference = panel.project_with(&mut fresh(), &design, true, retain);
+        assert!(reference.report().certified());
+        // One forced miss: the correction certifies on LSMR without fallback.
+        GENERAL_LSMR_CERTIFICATE_FAILURES.set(1);
+        GENERAL_LSMR_CORRECTIONS.set(0);
+        let corrected = panel.project_with(&mut fresh(), &design, true, retain);
+        assert_eq!(GENERAL_LSMR_CERTIFICATE_FAILURES.get(), 0);
+        assert_eq!(GENERAL_LSMR_CORRECTIONS.get(), 1);
+        let report = corrected.report();
+        assert!(report.certified(), "{report:?}");
+        assert_eq!(report.used_solver, FeSolverKind::Lsmr);
+        assert!(!report.fallback_used);
+        assert!(report.warnings.is_empty(), "{report:?}");
+        assert!(report.iterations > reference.report().iterations);
+        assert_eq!(corrected.coefficients.is_some(), retain);
+        for rhs in 0..2 {
+            let scale = (0..design.nobs())
+                .map(|row| panel.values[(row, rhs)].abs())
+                .fold(0.0_f64, f64::max);
+            for row in 0..design.nobs() {
+                let gap =
+                    corrected.residualized()[(row, rhs)] - reference.residualized()[(row, rhs)];
+                assert!(
+                    gap.abs() <= 1e-6 * scale,
+                    "retain={retain} rhs={rhs} row={row}"
+                );
+            }
+        }
+        if let Some(coefficients) = corrected.coefficients.as_ref() {
+            // The seeded result already includes the seed: its coefficients
+            // reconstruct the original values.
+            for rhs in 0..2 {
+                let base = rhs * coefficients.coefficients_per_rhs;
+                for row in 0..design.nobs() {
+                    let fitted: f64 = panel
+                        .codes
+                        .iter()
+                        .enumerate()
+                        .map(|(effect, code)| {
+                            coefficients.values
+                                [base + coefficients.effect_offsets[effect] + code[row] as usize]
+                        })
+                        .sum();
+                    let total = corrected.residualized()[(row, rhs)] + fitted;
+                    assert!((panel.values[(row, rhs)] - total).abs() <= 1e-9);
+                }
+            }
+        }
+        // A reproducible repeat of the forced path repeats its bits.
+        GENERAL_LSMR_CERTIFICATE_FAILURES.set(1);
+        let repeat = panel.project_with(&mut fresh(), &design, true, retain);
+        assert_eq!(repeat.residualized(), corrected.residualized());
+        assert_eq!(repeat.report().iterations, report.iterations);
+        // A second miss leaves the original-input MAP fallback.
+        GENERAL_LSMR_CERTIFICATE_FAILURES.set(2);
+        GENERAL_LSMR_CORRECTIONS.set(0);
+        let fallback = panel.project_with(&mut fresh(), &design, true, retain);
+        assert_eq!(GENERAL_LSMR_CORRECTIONS.get(), 1);
+        assert!(fallback.report().certified());
+        assert_eq!(fallback.report().used_solver, FeSolverKind::Map);
+        assert!(fallback.report().fallback_used);
+    }
+    // Presets without the geometry policy keep their direct MAP fallback.
+    GENERAL_LSMR_CERTIFICATE_FAILURES.set(1);
+    GENERAL_LSMR_CORRECTIONS.set(0);
+    let mut incumbent = routing_lsmr::GeneralRoutingState::new(RoutingPreset::portfolio_unseeded());
+    let strict = panel.project(&mut incumbent, &design, true);
+    assert_eq!(GENERAL_LSMR_CORRECTIONS.get(), 0);
+    assert_eq!(strict.report().used_solver, FeSolverKind::Map);
+    assert!(strict.report().fallback_used);
+}
+
+#[test]
+fn geometry_recurrence_stops_a_decade_below_the_request_and_corrects_at_the_hundredth() {
+    use crate::fe::auto::{corrected_lsmr_tolerance, correction_tolerance};
+    assert_eq!(corrected_lsmr_tolerance(1e-8), 1e-9);
+    assert_eq!(correction_tolerance(1e-8, 1e-9), Some(1e-10));
+    // The shared floor leaves no tighter correction at final-residual accuracy.
+    assert_eq!(corrected_lsmr_tolerance(1e-13), 1e-14);
+    assert_eq!(correction_tolerance(1e-13, 1e-14), None);
+    assert_eq!(corrected_lsmr_tolerance(1e-14), 1e-14);
+    assert_eq!(correction_tolerance(1e-14, 1e-14), None);
+    assert_eq!(correction_tolerance(1e-8, 1e-10), None);
 }
