@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.0 beta.7 — 2026-10-26
 
 - PPML Auto with exactly two fixed effects reuses one CMG preconditioner across
   IRLS iterations, in the joint FE solves and in the canonical products of the

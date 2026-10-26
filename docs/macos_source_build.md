@@ -31,7 +31,7 @@ FEREG_RUSTUP_ROOT="${RUSTUP_HOME:-$HOME/.rustup}"
 FEREG_REMAP_SEPARATOR=$'\x1f'
 export CARGO_ENCODED_RUSTFLAGS="--remap-path-prefix=$FEREG_SOURCE_ROOT=/fereg-source${FEREG_REMAP_SEPARATOR}--remap-path-prefix=$CARGO_TARGET_DIR=/fereg-target${FEREG_REMAP_SEPARATOR}--remap-path-prefix=$CARGO_HOME=/cargo${FEREG_REMAP_SEPARATOR}--remap-path-prefix=$FEREG_RUSTUP_ROOT=/rust-toolchain"
 export FEREG_GIT_COMMIT="$(python3 -c 'import json; print(json.load(open("SOURCE_MANIFEST.json"))["source_sha"][:12])')"
-export FEREG_BUILD_DATE=2026-10-25
+export FEREG_BUILD_DATE=2026-10-26
 bash scripts/build_macos.sh
 ```
 
