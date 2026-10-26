@@ -2,16 +2,16 @@
   "definition": "docs/development_workflow.md#complexity-inventory",
   "growth": [
     {
-      "after": 108460,
-      "before": 108448,
+      "after": 108468,
+      "before": 108460,
       "metric": "fereg-core/production_lines",
-      "reason": "Arithmetic-preserving: joint column norms run inside the grouped row-major fill through a shared step of the reusable norm recurrence."
+      "reason": "Arithmetic-preserving: joint column groups follow the team width, keeping a task per worker on wide teams."
     },
     {
-      "after": 1739,
-      "before": 1733,
-      "metric": "file/crates/fereg-core/src/fe/map.rs",
-      "reason": "The reusable norm exposes its row step and finish for the grouped fill."
+      "after": 5716,
+      "before": 5715,
+      "metric": "file/crates/fereg-core/src/ols/linear_session.rs",
+      "reason": "The acceptance scan reads its group width from the shared policy."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -6829,48 +6829,52 @@
         "dispatch_candidates": [
           {
             "condition": "k == 0 || k > self . max_controls || k >= owner . max_rhs || response . len ( ) != n || weights . len ( ) != n || controls . nrows ( ) != n || selected . iter ( ) . any ( | & c | c >= controls . ncols ( ) )",
-            "line": 451
+            "line": 462
           },
           {
             "condition": "k == 0 || k > self . max_controls || response . len ( ) != n || weights . len ( ) != n || controls . ncols ( ) > self . max_controls || controls . nrows ( ) != n || selected . iter ( ) . any ( | & c | c >= controls . ncols ( ) )",
-            "line": 812
+            "line": 824
           }
         ],
         "functions": {
           "beta#1": {
-            "line": 273,
+            "line": 284,
             "lines": 3
           },
           "bytes#1": {
-            "line": 201,
+            "line": 212,
             "lines": 28
           },
           "checkpoint_block#1": {
-            "line": 771,
+            "line": 783,
             "lines": 22
+          },
+          "column_group_width#1": {
+            "line": 85,
+            "lines": 5
           },
           "column_slice#1": {
             "line": 17,
             "lines": 3
           },
           "elements#1": {
-            "line": 253,
+            "line": 264,
             "lines": 19
           },
           "failed#1": {
-            "line": 113,
+            "line": 124,
             "lines": 6
           },
           "finite_product#1": {
-            "line": 126,
+            "line": 137,
             "lines": 24
           },
           "input_norms#1": {
-            "line": 280,
+            "line": 291,
             "lines": 6
           },
           "iterate#1": {
-            "line": 567,
+            "line": 579,
             "lines": 200
           },
           "ncols#1": {
@@ -6878,11 +6882,11 @@
             "lines": 3
           },
           "new#1": {
-            "line": 230,
+            "line": 241,
             "lines": 22
           },
           "normalized_product#1": {
-            "line": 122,
+            "line": 133,
             "lines": 3
           },
           "nrows#1": {
@@ -6890,7 +6894,7 @@
             "lines": 3
           },
           "precondition#1": {
-            "line": 287,
+            "line": 298,
             "lines": 25
           },
           "prefers_column_scans#1": {
@@ -6898,19 +6902,19 @@
             "lines": 3
           },
           "reconstruct#1": {
-            "line": 314,
+            "line": 325,
             "lines": 115
           },
           "reconstruct_direct_columns#1": {
-            "line": 154,
+            "line": 165,
             "lines": 45
           },
           "solve#1": {
-            "line": 433,
-            "lines": 132
+            "line": 444,
+            "lines": 133
           },
           "solve_streamed#1": {
-            "line": 794,
+            "line": 806,
             "lines": 165
           },
           "visit_column#1": {
@@ -6926,7 +6930,7 @@
             "lines": 10
           }
         },
-        "production_lines": 887
+        "production_lines": 894
       },
       "crates/fereg-core/src/fe/topology_adapter.rs": {
         "chunk_candidates": [],
@@ -10128,19 +10132,19 @@
           },
           {
             "condition": "slices [ .. checks . len ( ) ] . iter ( ) . all ( | values | values . len ( ) == weights . len ( ) )",
-            "line": 6617
+            "line": 6618
           },
           {
             "condition": "response . len ( ) != residuals . len ( ) || response . len ( ) != weights . len ( )",
-            "line": 6652
+            "line": 6653
           },
           {
             "condition": "! weight_sum . is_finite ( ) || weight_sum <= 0. || mean . is_some_and ( | value | ! value . is_finite ( ) )",
-            "line": 6681
+            "line": 6682
           },
           {
             "condition": "response . len ( ) != within_residuals . len ( )",
-            "line": 6745
+            "line": 6746
           }
         ],
         "functions": {
@@ -10241,7 +10245,7 @@
             "lines": 13
           },
           "certify_frozen_combined_predictor#1": {
-            "line": 6741,
+            "line": 6742,
             "lines": 19
           },
           "check_frozen_failure_injection#1": {
@@ -10249,11 +10253,11 @@
             "lines": 31
           },
           "check_joint_response#1": {
-            "line": 6646,
+            "line": 6647,
             "lines": 66
           },
           "checked_elements#1": {
-            "line": 6772,
+            "line": 6773,
             "lines": 8
           },
           "classify_frozen_linear_fallback#1": {
@@ -10293,7 +10297,7 @@
             "lines": 25
           },
           "compensated_add#1": {
-            "line": 6809,
+            "line": 6810,
             "lines": 15
           },
           "constant_representation#1": {
@@ -10458,7 +10462,7 @@
           },
           "joint_column_checks#1": {
             "line": 6587,
-            "lines": 58
+            "lines": 59
           },
           "kept_generated_columns#1": {
             "line": 537,
@@ -10633,11 +10637,11 @@
             "lines": 146
           },
           "require_newer#1": {
-            "line": 6761,
+            "line": 6762,
             "lines": 10
           },
           "resize_zeroed#1": {
-            "line": 6781,
+            "line": 6782,
             "lines": 8
           },
           "response#1": {
@@ -10749,11 +10753,11 @@
             "lines": 9
           },
           "stable_norm#1": {
-            "line": 6849,
+            "line": 6850,
             "lines": 12
           },
           "stable_weighted_norm#1": {
-            "line": 6790,
+            "line": 6791,
             "lines": 18
           },
           "stream_frozen_solve#1": {
@@ -10789,7 +10793,7 @@
             "lines": 15
           },
           "update_scaled_square#1": {
-            "line": 6825,
+            "line": 6826,
             "lines": 23
           },
           "validate_one_fe_profile_basis#1": {
@@ -10813,7 +10817,7 @@
             "lines": 22
           },
           "weighted_mean_slice#1": {
-            "line": 6713,
+            "line": 6714,
             "lines": 27
           },
           "weights#1": {
@@ -10841,7 +10845,7 @@
             "lines": 94
           }
         },
-        "production_lines": 5715
+        "production_lines": 5716
       },
       "crates/fereg-core/src/ols/linear_statistics.rs": {
         "chunk_candidates": [],
@@ -23745,7 +23749,7 @@
         "dispatch_candidates": 1404,
         "files_over_1500": 15,
         "functions_over_150": 59,
-        "production_lines": 108460
+        "production_lines": 108468
       },
       "fereg-plugin": {
         "chunk_candidates": 3,
@@ -23757,5 +23761,5 @@
     },
     "schema": 1
   },
-  "reason": "Arithmetic-preserving: joint column norms run inside the grouped row-major fill through a shared step of the reusable norm recurrence."
+  "reason": "Arithmetic-preserving: joint column groups follow the team width, keeping a task per worker on wide teams."
 }

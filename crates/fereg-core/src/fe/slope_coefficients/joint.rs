@@ -79,6 +79,17 @@ pub(crate) trait JointBlockPreconditioner {
     fn apply(&mut self, residual: &[f64], output: &mut [f64]) -> Result<()>;
 }
 
+/// Columns per task for per-column joint work: one scan serves several
+/// columns while the team still has a task per worker. Arithmetic does not
+/// depend on the grouping.
+pub(crate) fn column_group_width(columns: usize) -> usize {
+    columns
+        .div_ceil(rayon::current_num_threads().max(1))
+        .clamp(1, MAX_COLUMN_GROUP)
+}
+
+pub(crate) const MAX_COLUMN_GROUP: usize = 4;
+
 /// The recurrence step at which an absent block preconditioner may be built.
 /// A frame still iterating here is expected to recur in later frames.
 const BLOCK_CHECKPOINT: usize = 64;
@@ -497,13 +508,13 @@ impl JointFiniteWorkspace {
         // Row-major controls are streamed once per group of selected columns,
         // not once per column. Each entry keeps its product and each column
         // its row-order norm recurrence.
-        const GROUP: usize = 4;
         let width = controls.ncols();
-        z.par_chunks_mut(GROUP * n)
-            .zip(selected.par_chunks(GROUP))
-            .zip(self.scales[..k].par_chunks_mut(GROUP))
+        let columns = column_group_width(k);
+        z.par_chunks_mut(columns * n)
+            .zip(selected.par_chunks(columns))
+            .zip(self.scales[..k].par_chunks_mut(columns))
             .for_each(|((block, group), scales)| {
-                let mut norms = [(0.0_f64, 1.0_f64); GROUP];
+                let mut norms = [(0.0_f64, 1.0_f64); MAX_COLUMN_GROUP];
                 for (row, values) in controls.as_slice().chunks_exact(width).enumerate() {
                     for (column, (&source, norm)) in group.iter().zip(&mut norms).enumerate() {
                         let value = values[source] * roots[row];
@@ -530,16 +541,17 @@ impl JointFiniteWorkspace {
                 op.transpose(column, cross, false);
                 Ok(())
             })?;
-        // Pairs of Gram rows share each streamed column tile; every entry
+        // Blocks of Gram rows share each streamed column tile; every entry
         // keeps the pairwise normalized product's bits.
         let hardware = crate::kernels::installed();
+        let block_rows = column_group_width(k);
         self.hessian[..k * k]
-            .par_chunks_mut(2 * k)
+            .par_chunks_mut(block_rows * k)
             .enumerate()
             .for_each(|(block, rows)| {
                 crate::kernels::dispatch!(
                     hardware,
-                    normalized_products(z, n, k, 2 * block, rows.len() / k, rows)
+                    normalized_products(z, n, k, block_rows * block, rows.len() / k, rows)
                 );
             });
         for i in 0..k {

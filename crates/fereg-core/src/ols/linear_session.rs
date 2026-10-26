@@ -6582,8 +6582,8 @@ impl JointColumnCheck {
 }
 
 /// Original-column scores, means and norms after a joint solve, in the
-/// frozen score, RHS and solve banks. Contiguous columns advance four at a
-/// time in one row scan; each column keeps its own row-order sums.
+/// frozen score, RHS and solve banks. Contiguous columns of one task share a
+/// row scan; each column keeps its own row-order sums.
 fn joint_column_checks<C: crate::fe::slope_coefficients::joint::JointFiniteDesign>(
     originals: &C,
     weights: &[f64],
@@ -6591,18 +6591,19 @@ fn joint_column_checks<C: crate::fe::slope_coefficients::joint::JointFiniteDesig
     input_norms: Option<&[f64]>,
     banks: &mut FrozenLinearWorkspace,
 ) -> Result<()> {
-    const GROUP: usize = 4;
+    use crate::fe::slope_coefficients::joint::{column_group_width, MAX_COLUMN_GROUP};
+    let width = column_group_width(banks.scores.len());
     banks
         .scores
-        .par_chunks_mut(GROUP)
-        .zip(banks.rhs.par_chunks_mut(GROUP))
-        .zip(banks.solve.par_chunks_mut(GROUP))
+        .par_chunks_mut(width)
+        .zip(banks.rhs.par_chunks_mut(width))
+        .zip(banks.solve.par_chunks_mut(width))
         .enumerate()
         .try_for_each(|(group, ((scores, means), norms))| -> Result<()> {
-            let first = group * GROUP;
-            let mut checks = [JointColumnCheck::new(); GROUP];
+            let first = group * width;
+            let mut checks = [JointColumnCheck::new(); MAX_COLUMN_GROUP];
             let checks = &mut checks[..scores.len()];
-            let mut slices: [&[f64]; GROUP] = [&[]; GROUP];
+            let mut slices: [&[f64]; MAX_COLUMN_GROUP] = [&[]; MAX_COLUMN_GROUP];
             for (offset, slice) in slices.iter_mut().enumerate().take(checks.len()) {
                 *slice = originals.column_slice(first + offset).unwrap_or_default();
             }
