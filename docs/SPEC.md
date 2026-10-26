@@ -233,9 +233,10 @@ Public OLS Auto/Auto uses the many-FE geometry policy
 categorical-intercept FEs. Eligible two-FE designs use the
 [qualified structural CMG gates](two_fe_auto_gates.md), with ownership and
 deferred cells in the narrower global-intercept scope above. Zero/one FE,
-slopes, explicit choices and PPML retain their specified behavior. Two-FE
-activation and performance evidence are complete; the many-FE geometry policy
-is an unqualified branch candidate, see [VALIDATION](VALIDATION.md).
+slopes, explicit choices and PPML retain their specified behavior. Activation
+and performance evidence for both families are complete; the many-FE policy
+carries one documented near-confounded timing exception, see
+[VALIDATION](VALIDATION.md).
 
 The many-FE geometry policy keeps retained unseeded LSMR preparation and adds
 three parts. First, with exactly three unit-weight symmetric FEs, every

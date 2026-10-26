@@ -62,8 +62,8 @@ Use bounded Astra assistance for difficult problems and independent high-effort
 review for architectural changes; the lead coordinates implementation and tests.
 
 The accepted OLS Auto defaults cover categorical-intercept designs: many-FE
-uses retained preparation and strict unseeded LSMR; two-FE uses the selected
-structural CMG gates. Ownership and deferred cells require exactly two
+uses the geometry policy (bounded MAP pilot, Jacobi-to-additive LSMR, requested
+certificate); two-FE uses the selected structural CMG gates. Ownership and deferred cells require exactly two
 categorical-intercept terms, a global intercept and Auto solver/preconditioner.
 Preserve explicit developer injections and unaffected paths. See SPEC for the
 current behavior and VALIDATION for completed evidence and remaining limitations.

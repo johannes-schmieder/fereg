@@ -1,7 +1,8 @@
 # Validation status
 
 The many-FE, two-FE structural-gate and ownership/deferred-cell improvements are
-accepted. The OLS method-reporting correction changes diagnostic labels and
+accepted, as is the many-FE geometry policy with one documented timing exception.
+The OLS method-reporting correction changes diagnostic labels and
 fallback flags only; solver selection, iteration budgets, numerical calculations
 and PPML reporting are unchanged.
 
@@ -12,6 +13,7 @@ and PPML reporting are unchanged.
 | Many-FE Auto | [Final compact result](../bench/results/incremental-many-20261018-compact.json): Linux qualification and practical Mac recovery passed all 126 protected comparisons per platform; public activation and independent science passed. |
 | Two-FE structural gates | [Linux](../bench/results/two-fe-policy-gates-qualification-linux-20261022.json) and [Mac](../bench/results/two-fe-policy-gates-qualification-mac-20261022.json): all 84 protected bounds per platform passed. [Activation](../bench/results/two-fe-policy-gates-activation-20261023.json): exact public/hidden science, worker, gate, hierarchy and resource checks passed after the documented transport-accounting amendment. |
 | Ownership and deferred cells | [Linux](../bench/results/ownership-qualification-final-linux-20261024.json): 10,440 calls, 58 settings and 12 distinct physical hosts, all 116 protected bounds passed. [Practical Mac check](../bench/results/ownership-qualification-practical-macos-20261024.json): 870 calls and all 116 paired-median comparisons within max(5%, 1 ms). The Mac check is descriptive, not a confidence-bound claim. |
+| Many-FE geometry Auto | [Decision record](../bench/results/many-geometry-20261025.json): Linux qualification passed 80 of 84 protected comparisons and public activation 122 of 126, on 12 distinct physical hosts each. Every miss is the near-confounded third FE, accepted by Johannes as a documented exception; public/hidden agreement was exact. |
 | Public integration | [Final activation](../bench/results/ownership-public-activation-20261024.json): 174 actual hidden/public/public-repeat calls per platform, independent witnesses, fixed-worker exactness, cross-worker science, resource/gate/hierarchy checks, Mac/Linux ABI/load/panic checks and the full source suite passed. Six licensed Mac Stata fixtures and actual public OLS Break/rollback passed. |
 
 Ownership/deferred cells activate only for OLS Auto/Auto with a global intercept
@@ -20,16 +22,56 @@ outside the scope retain their contracts. The Break test interrupts at the
 native pre-preparation checkpoint; it does not establish interruption inside a
 cell constructor. Scientific behavior is specified in [SPEC](SPEC.md).
 
-## Many-FE geometry candidate (unqualified)
+## Many-FE geometry policy
 
-Branch `ccr-3970efbe-ecuzgn` changes public OLS Auto/Auto for at least three
-categorical-intercept FEs as specified in [SPEC](SPEC.md#qualified-auto-routing-and-developer-comparisons).
-It is not qualified: no `bench/qualify.py` or SCC evidence exists, and
-main's installed package is unchanged. The `many-geometry-v1` arm and the
-`routing_many_geometry_v1` token let qualification compare it with the
-protected `incremental-many` policy.
+Public OLS Auto/Auto for at least three categorical-intercept FEs uses the
+geometry policy specified in [SPEC](SPEC.md#qualified-auto-routing-and-developer-comparisons).
+Johannes accepted it on 2026-10-25 with one documented exception, below. The
+`many-geometry-v1` arm and `routing_many_geometry_v1` token select the same
+policy for comparisons; hidden `routing_incremental_many` keeps the previous one.
 
-`./scripts/run_tests.sh --source-only` passed (268 Python tests, Rust unit and
+Linux evidence used the candidate plugin built at `99f0134d` with the release
+toolchain and the beta.5 plugin (`1ac7125b`) as original and incumbent. Each of
+12 replicas ran on its own whole generic 28-core node, all arms in the same
+allocation; accounting recorded `failed=0` and exit 0 for every replica. Ratios
+are candidate/beta.5 median native-call times; bounds are one-sided .025
+bounds on the excess over max(5%, 1 ms) across physical hosts.
+
+| Cell, 1 / 4 workers | Qualification | Public activation |
+| --- | ---: | ---: |
+| Four FEs | 0.68 / 0.64 | 0.68 / 0.64 |
+| Eight FEs | 0.60 / 0.61 | 0.60 / 0.62 |
+| Sixteen FEs | 0.62 / 0.67 | 0.61 / 0.67 |
+| Small third FE | 0.65 / 0.63 | 0.65 / 0.61 |
+| Near-confounded third FE | 1.125 / 1.066 | 1.122 / 1.063 |
+| All other cells | 1.00-1.05 | 0.98-1.02 |
+
+Qualification (5,040 native calls) passed 80 of 84 protected comparisons.
+Public activation (7,560 calls) compared public Auto with the selected hidden
+arm and passed 122 of 126, with exact scientific agreement and solver
+signatures between public and hidden calls, fixed-worker repeatability and
+cross-worker agreement. In both runs the misses were the near-confounded third
+FE against both references: a one-worker regression (excess +16.1 and +15.4 ms,
+lower bounds +10.7 and +11.2 ms) and an inconclusive four-worker result
+(+1.9 and +1.8 ms, bounds spanning zero). This design needs the additive
+preconditioner from the start; the Jacobi trial spends a few iterations before
+escalating and finishes in 19 rather than 17 LSMR iterations. Johannes accepted
+this cell as a documented exception rather than requiring a successor. A
+`within` change sharing one prepared design between the trial and additive
+solvers would remove roughly half of that overhead.
+
+Two harness and wiring amendments, approved by Johannes before measurement,
+made the contracts match the policy: the scientific harness checks the geometry
+arm at its requested certificate and admits its MAP pilot, rather than the
+unseeded portfolio's private hundredth; and hidden `routing_many_geometry_v1`
+keeps public two-FE ownership/deferred-cell activation so public/hidden
+agreement is exact on every design. Operational failures are recorded in the
+decision record: an earlier run blocked on the old certificate contract before
+any timing, one bench unit test lost a timer race and passed on its single
+retry, and two activation replicas failed to open the shared placement lock
+before any native call and were resubmitted.
+
+Before qualification, `./scripts/run_tests.sh --source-only` passed (268 Python tests, Rust unit and
 independent numerical integration tests, Clippy, FFI allocation audits,
 portable checks, mock SPI and the complexity ratchet). New witnesses compare the
 public policy with dense explicit-dummy QR on a mixing panel that finishes on
@@ -85,14 +127,9 @@ alternating runs on a slower replacement VM gave 0.95 on both one-million-row
 sparse designs; the 100,000-row ratios (0.97-1.06) were within that host's
 noise.
 
-The last two rows need the additive preconditioner from the start: the trial
-spends about four Jacobi iterations and a diagonal build before escalating.
-Qualification must decide whether that cost stays within max(5%, 1 ms). If it
-does not, a reviewed `within` change could let both solvers share one prepared
-design: at one million rows that preparation takes about 36 ms of the 224 ms
-additive build, about half of the measured overhead. The dense gains would not
-change. Weighted dense
-designs do not reach the unit-weight pilot.
+The last two rows need the additive preconditioner from the start; the Linux
+near-confounded result above is the corresponding accepted exception. Weighted
+dense designs do not reach the unit-weight pilot.
 
 A one-pass shifted projection route from the research plan failed two existing
 witnesses (CG energy roundoff and tiled-bank cross-thread identity), so MAP
@@ -159,6 +196,9 @@ All 50 GitHub release assets matched their local SHA-256 checksums and sizes.
 
 - Linux performance evidence applies to Linux. The practical Mac ownership/cell
   check reports paired medians, not confidence bounds or a universal speed claim.
+- Many-FE designs that need the additive preconditioner from the start can be
+  slower than beta.5: the near-confounded third FE is about 12% slower at one
+  worker on Linux. This is an accepted exception, not a passed comparison.
 - The Mac plugin contains Apple Silicon and Intel slices. Licensed installation
   testing is on Apple Silicon; native Intel-host Stata testing is outstanding.
 - GitHub Actions remain disabled; checks run locally or on the authorized SCC
