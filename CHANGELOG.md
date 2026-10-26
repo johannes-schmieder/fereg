@@ -2,39 +2,26 @@
 
 ## Unreleased
 
+- PPML Auto with exactly two fixed effects reuses one CMG preconditioner across
+  IRLS iterations, in the joint FE solves and in the canonical products of the
+  first iteration and the strict checkpoint. A solve that is still slow at its
+  checkpoint builds a missing hierarchy or rebuilds one from earlier weights;
+  an estimation builds at most three.
 - PPML publication fits enter the strict checkpoint only once the accepted
-  predictor is predicted to settle within the strict envelope. On weakly
-  connected two-effect designs the deviance and score tests pass while fitted
-  values still move, so the first strict checkpoint used to be rejected and
-  repeated at a 100-times tighter tolerance.
-- Canonical PPML products precondition their reduced Schur solve with the
-  reused CMG hierarchy, refreshed once on current weights, so strict
-  checkpoints of weakly connected designs no longer fall back to the slower
-  categorical solve. Small graph components are solved directly, and dense
-  reduced matrices are no longer assembled for iterative solves.
-- A canonical solve that is still slow after 32 plain steps builds the CMG
-  hierarchy at the first PPML iteration, and a joint frame that reaches its
-  checkpoint with a hierarchy from earlier weights rebuilds it, within at most
-  three builds per estimation.
-- The retained-coefficient refinement after canonical PPML products and the
-  write of dense canonical products run in parallel.
-- PPML joint frames run their fresh original-column and response checks in
-  parallel over fixed row blocks, rebuild residuals from the projected
-  columns and form their Gram and initial scores in one tiled pass, removing
-  several sequential and repeated passes per iteration.
-- PPML Auto with exactly two fixed effects reuses one CMG preconditioner
-  across IRLS iterations on weakly connected designs. An iteration whose FE
-  solve still needs 64 diagonal steps builds it; strict re-solves rebuild it
-  once on current weights. Each estimation builds it at most twice, and every
-  solve still passes its unchanged certificates.
-- On Linux, a two-effect PPML design with 2% worker mobility ran in about
-  0.64-0.70 of beta.6's time at one and four million rows with 4 and 28
-  workers.
+  predictor is predicted to settle within the strict envelope. Weakly connected
+  designs pass their first checkpoint instead of repeating it at a 100-times
+  tighter tolerance.
+- Canonical PPML products solve small graph components directly and no longer
+  assemble dense reduced matrices for iterative solves.
+- PPML iterations with fixed effects make fewer, parallel passes: fresh input
+  checks over fixed row blocks, residuals from projected columns, a one-pass
+  Gram, and parallel refinement, product writes and coupling preparation.
+- On Linux with 4 and 28 workers, two-effect designs with 2% worker mobility
+  ran in 0.32-0.38 of beta.6's time at one and four million rows; AKM and
+  dense two-effect designs ran in 0.73-0.84.
 - Results agree with beta.6 within the documented tolerances; sample, rank,
   omission and separation decisions are unchanged. Iteration counts can
-  differ. Designs whose solves finish quickly, including well-connected and
-  dense two-effect designs, are unchanged bit for bit. Faster PPML Gram
-  products, column scans and norms keep their exact results.
+  differ. OLS is unchanged bit for bit.
 
 ## 0.5.0 beta.6 — 2026-10-25
 

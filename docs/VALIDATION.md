@@ -140,43 +140,58 @@ Complete four-million-row dense three-FE fits took 5% longer at four workers
 and 21% longer at 28, so it was not adopted
 ([record](../bench/results/r4-row-streaming-20261026.json)).
 
-## PPML two-FE CMG reuse
+## PPML two-FE CMG reuse and lean protocol
 
 PPML Auto with exactly two intercept FEs reuses one CMG hierarchy across IRLS
-frames, as specified in [SPEC](SPEC.md#qualified-auto-routing-and-developer-comparisons).
-This branch result awaits Johannes's decision; the
-[record](../bench/results/ppml-two-fe-cmg-20261026.json) retains every timing.
-On one whole node (`scc-wo4`, Xeon E5-2680 v4), campaign-generator PPML inputs
-with 16 regressors ran five alternating rounds per cell against shipped beta.6:
+frames and canonical products, and publication fits enter the strict
+checkpoint once the predictor settles, as specified in
+[SPEC](SPEC.md#qualified-auto-routing-and-developer-comparisons) and §13. This
+branch result awaits Johannes's decision. The
+[lean record](../bench/results/ppml-two-fe-lean-20261026.json) retains every
+timing of the final qualification and the
+[CMG record](../bench/results/ppml-two-fe-cmg-20261026.json) the earlier
+CMG-reuse round.
 
-| Two sparse FEs | Workers | beta.6 s | Candidate s | Paired ratio |
-| --- | ---: | ---: | ---: | ---: |
-| 1,000,000 rows | 4 | 25.61 | 17.76 | 0.704 |
-| 1,000,000 rows | 28 | 19.68 | 12.95 | 0.658 |
-| 4,000,000 rows | 4 | 106.76 | 70.29 | 0.651 |
-| 4,000,000 rows | 28 | 81.85 | 52.21 | 0.639 |
+On one whole node (`scc-wk1`, Xeon E5-2680 v4), campaign-generator PPML inputs
+with 16 regressors ran five rounds per cell with rotated arm order: shipped
+beta.6, the CMG-reuse head `7db43e41` and the lean head `277c5d11`. Times are
+medians; ratios are medians of paired rounds.
 
-These weakly connected inputs install the hierarchy. Coefficients and covariance
-stay within 6e-8 and 6e-11 of the §20 envelopes, discrete fields are exact,
-every arm repeats bit for bit across rounds, and 4- and 28-worker results agree
-within the envelopes. AKM and dense inputs never install a hierarchy and are bit
-for bit identical to beta.6; their paired ratios lie in 0.95-1.06. AKM at four
-workers exceeded the max(5%, 1 ms) bound (1.062 at one million rows, 1.048 at
-four million). A same-node control (`scc-yk4`, six rotated rounds) of shipped
-beta.6, a fresh build of the unchanged parent and the candidate on these exact
-cells found medians within 2% at one million rows, but up to 10% apart at four
-million: AKM 23.9, 22.6 and 22.7 s with a bimodal spread in every build, dense
-20.3, 19.0 and 20.8 s. Shipped beta.6 and the fresh parent build have identical
-runtime source, so differences of this size on unchanged arithmetic are not
-attributable on these nodes. These cells are reported as exceptions, not passes.
+| Design | Rows | Workers | beta.6 s | `7db43e41` s | Lean s | Lean/beta.6 | Lean/`7db43e41` |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Two sparse FEs | 1,000,000 | 4 | 17.75 | 11.05 | 5.82 | 0.324 | 0.528 |
+| Two sparse FEs | 1,000,000 | 28 | 10.86 | 7.56 | 4.13 | 0.380 | 0.543 |
+| Two sparse FEs | 4,000,000 | 4 | 81.30 | 45.28 | 26.37 | 0.327 | 0.582 |
+| Two sparse FEs | 4,000,000 | 28 | 48.36 | 32.92 | 18.04 | 0.374 | 0.549 |
+| AKM | 1,000,000 | 4 | 5.07 | 5.02 | 4.20 | 0.833 | 0.850 |
+| AKM | 1,000,000 | 28 | 3.36 | 3.34 | 2.76 | 0.820 | 0.826 |
+| AKM | 4,000,000 | 4 | 22.94 | 22.65 | 18.66 | 0.811 | 0.828 |
+| AKM | 4,000,000 | 28 | 14.71 | 14.55 | 12.29 | 0.835 | 0.845 |
+| Two dense FEs | 1,000,000 | 4 | 4.70 | 4.54 | 3.88 | 0.825 | 0.852 |
+| Two dense FEs | 1,000,000 | 28 | 3.01 | 2.94 | 2.49 | 0.823 | 0.845 |
+| Two dense FEs | 4,000,000 | 4 | 20.30 | 19.93 | 14.90 | 0.734 | 0.755 |
+| Two dense FEs | 4,000,000 | 28 | 12.42 | 12.17 | 10.15 | 0.819 | 0.831 |
 
-Arithmetic-preserving joint-frame passes (tiled Gram products, grouped fills
-and norms, grouped acceptance scans, groups sized by the team width) keep exact
-outputs; on `scc-yk1` they ran at 0.95-0.99 of the CMG commit with four workers
-and 0.99-1.01 with 28. A fixed four-column grouping was 5-7% slower at 28 workers
-and was replaced. The dense Poisson oracle covers weak chain and AKM graphs that
-build and reuse the hierarchy. Both commits replay the 73-case corpus exactly,
-and the full source-only suite passed.
+Against beta.6, coefficients and covariance stay within 2e-5 and 7e-10 of the
+§20 envelopes (largest on the sparse design, whose published state is one
+Newton step earlier), and sample, status, DoF, drop, separation and FE
+fields are exact in every cell. Every arm repeats bit for bit across rounds;
+4- and 28-worker lean results agree within 1e-8 and 2e-10 of the envelopes
+with exact discrete fields. IRLS iteration counts are unchanged except the
+1M-row sparse design (8 instead of 9). The sparse design defers its strict
+checkpoint once (1M) or twice (4M) and passes the first one. The earlier
+CMG-reuse round had left AKM four-worker cells at 1.048-1.062; all cells are
+now faster than both baselines.
+
+The 73-case replay corpus passes its independent dense science targets in
+every case with no discrete, repeat or thread differences. All OLS cases are
+bit-identical to `7db43e41`; seven PPML cases differ by at most 1.2e-14
+relative in coefficients and covariance. New witnesses cover the settling
+rule, small and shared-CMG implicit components, the implicit assembly choice,
+team-independent joint checks and Gram, refreshes and the three-attempt
+bound. The full source-only suite passed at `277c5d11`. A parallel CMG
+application, a row-tiled certificate Gram and a data-based IRLS start were
+measured and rejected (slower, or no fewer iterations).
 
 ## Package checks
 
