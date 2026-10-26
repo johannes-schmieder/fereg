@@ -2,22 +2,22 @@
   "definition": "docs/development_workflow.md#complexity-inventory",
   "growth": [
     {
-      "after": 109491,
-      "before": 109370,
+      "after": 1415,
+      "before": 1414,
+      "metric": "fereg-core/dispatch_candidates",
+      "reason": "Dense retained refinement chooses fixed parallel row leaves over the sequential row scan."
+    },
+    {
+      "after": 109588,
+      "before": 109491,
       "metric": "fereg-core/production_lines",
-      "reason": "Canonical solves probe a missing PPML CMG hierarchy and build it when slow; joint checkpoints rebuild a stale one; a shared component operator replaces inline closures."
+      "reason": "Retained refinement reduces dense row scores over fixed parallel leaves, and dense canonical products are written in column panels."
     },
     {
-      "after": 1860,
-      "before": 1852,
+      "after": 1891,
+      "before": 1860,
       "metric": "file/crates/fereg-core/src/ols/canonical_products.rs",
-      "reason": "The canonical solve passes the PPML CMG owner and probes before its column solves."
-    },
-    {
-      "after": 1073,
-      "before": 1069,
-      "metric": "function/crates/fereg-core/src/ols/canonical_products.rs/build#1",
-      "reason": "The implicit solve probes the first column before a lazy hierarchy build; component operators come from one helper."
+      "reason": "Dense canonical products are written in row panels, column by column, with direct numeric slices."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -8842,80 +8842,84 @@
             "line": 509
           },
           {
+            "condition": "& self . columns [ j ]",
+            "line": 564
+          },
+          {
             "condition": "storage . nrows ( ) != self . design . nobs ( ) || storage . ncols ( ) != columns",
-            "line": 551
+            "line": 594
           },
           {
             "condition": "columns == 0",
-            "line": 557
+            "line": 600
           },
           {
             "condition": "call . reuse ( ) && call . initialize_ledger ( generated . len ( ) + 1 ) . is_err ( )",
-            "line": 686
+            "line": 720
           },
           {
             "condition": "design . effects ( ) . len ( ) == 3 && design . nobs ( ) == response . len ( )",
-            "line": 764
+            "line": 798
           },
           {
             "condition": "design . effects ( ) . len ( ) != 2 || design . nobs ( ) != response . len ( )",
-            "line": 777
+            "line": 811
           },
           {
             "condition": "build ( prepared , generated , response , weights , divisor , config , design , left , plan , allowance , obsolete_projection , call , cmg , )",
-            "line": 813
+            "line": 847
           },
           {
             "condition": "error . code == ErrorCode :: NonConvergence => Ok ( None ) , Err ( error ) => Err ( error ) , } } # [ allow ( clippy :: too_many_arguments ) ] fn build < 'a , P : PreparedOlsFitView + Sync + ? Sized > ( prepared : & 'a P , generated : & [ usize ] , response : & 'a [ f64 ] , weights : BorrowedMapWeights < '_ > , divisor : f64 , config : MapConfig , design : BorrowedInterceptFeDesign < 'a > , left_effect : usize , plan : Plan , allowance : u128 , obsolete_projection : & mut Vec < f64 > , call : & mut historical_preconditioner :: Call , cmg : Option < & mut ReusableCategoricalMapAbsorber < '_ > > , ) -> Result < Products < 'a , P > >",
-            "line": 829
+            "line": 863
           },
           {
             "condition": "columns . capacity ( ) as u128 * size_of :: < Column < '_ , P > > ( ) as u128 > width as u128 * 32",
-            "line": 868
+            "line": 902
           },
           {
             "condition": "values . len ( ) != n",
-            "line": 884
+            "line": 918
           },
           {
             "condition": "codes . len ( ) != n",
-            "line": 899
+            "line": 933
           },
           {
             "condition": "bytes > allowance . saturating_sub ( obsolete_projection . capacity ( ) as u128 * 8 )",
-            "line": 1069
+            "line": 1103
           },
           {
             "condition": "let BorrowedMapWeights :: Provided ( values ) = weights",
-            "line": 1084
+            "line": 1118
           },
           {
             "condition": "values . len ( ) != n",
-            "line": 1085
-          },
-          {
-            "condition": "weights",
-            "line": 1090
-          },
-          {
-            "condition": "implicit || ! assembly :: try_parallel ( geometry , & mut matrix , & mut totals , & mut touched , workers , & mut budget , ) ?",
             "line": 1119
           },
           {
+            "condition": "weights",
+            "line": 1124
+          },
+          {
+            "condition": "implicit || ! assembly :: try_parallel ( geometry , & mut matrix , & mut totals , & mut touched , workers , & mut budget , ) ?",
+            "line": 1153
+          },
+          {
             "condition": "! factor [ n + free [ h ] ] . is_finite ( )",
-            "line": 1206
+            "line": 1240
           },
           {
             "condition": "& columns [ j ]",
-            "line": 1377
+            "line": 1411
           },
           {
             "condition": "size <= DIRECT_COMPONENT",
-            "line": 1502
+            "line": 1536
           },
           {
             "condition": "let Some ( count ) = shared . solve ( block , & roots , values , & mut scratch [ .. 4 * size ] , component_cap ( config . max_iterations , size ) , config . tolerance * 0.01 , apply , ) ?",
-            "line": 1508
+            "line": 1542
           }
         ],
         "functions": {
@@ -8924,7 +8928,7 @@
             "lines": 6
           },
           "build#1": {
-            "line": 835,
+            "line": 869,
             "lines": 1073
           },
           "charge#1": {
@@ -8952,15 +8956,15 @@
             "lines": 51
           },
           "group_coefficient#1": {
-            "line": 1912,
+            "line": 1946,
             "lines": 26
           },
           "group_effect_mean#1": {
-            "line": 1973,
+            "line": 2007,
             "lines": 13
           },
           "merge#1": {
-            "line": 1987,
+            "line": 2021,
             "lines": 11
           },
           "minimum_storage_bytes#1": {
@@ -8976,7 +8980,7 @@
             "lines": 9
           },
           "nonzero#1": {
-            "line": 617,
+            "line": 651,
             "lines": 7
           },
           "output_tile_rows#1": {
@@ -8988,7 +8992,7 @@
             "lines": 42
           },
           "reduced_matrix_product#1": {
-            "line": 1941,
+            "line": 1975,
             "lines": 24
           },
           "release#1": {
@@ -9016,7 +9020,7 @@
             "lines": 33
           },
           "root#1": {
-            "line": 624,
+            "line": 658,
             "lines": 7
           },
           "set_limit#1": {
@@ -9036,15 +9040,15 @@
             "lines": 9
           },
           "try_build#1": {
-            "line": 633,
+            "line": 667,
             "lines": 25
           },
           "try_build_once#1": {
-            "line": 738,
+            "line": 772,
             "lines": 95
           },
           "try_build_with_preconditioner#1": {
-            "line": 660,
+            "line": 694,
             "lines": 76
           },
           "value#1": {
@@ -9056,11 +9060,15 @@
             "lines": 40
           },
           "write_dense#1": {
-            "line": 549,
-            "lines": 66
+            "line": 592,
+            "lines": 57
+          },
+          "write_dense_panels#1": {
+            "line": 551,
+            "lines": 40
           }
         },
-        "production_lines": 1860
+        "production_lines": 1891
       },
       "crates/fereg-core/src/ols/canonical_products/assembly.rs": {
         "chunk_candidates": [],
@@ -15043,16 +15051,20 @@
             "line": 24,
             "lines": 4
           },
+          "dense_scores#1": {
+            "line": 179,
+            "lines": 53
+          },
           "refine_retained_coefficients#1": {
             "line": 47,
-            "lines": 113
+            "lines": 124
           },
           "refine_workspace#1": {
             "line": 29,
             "lines": 17
           }
         },
-        "production_lines": 150
+        "production_lines": 216
       },
       "crates/fereg-core/src/ols/topology_dof.rs": {
         "chunk_candidates": [],
@@ -23996,10 +24008,10 @@
     "metrics": {
       "fereg-core": {
         "chunk_candidates": 12,
-        "dispatch_candidates": 1414,
+        "dispatch_candidates": 1415,
         "files_over_1500": 15,
         "functions_over_150": 59,
-        "production_lines": 109491
+        "production_lines": 109588
       },
       "fereg-plugin": {
         "chunk_candidates": 3,
@@ -24011,5 +24023,5 @@
     },
     "schema": 1
   },
-  "reason": "Slow canonical and joint checkpoints build or rebuild the PPML CMG hierarchy."
+  "reason": "Retained refinement and dense canonical product writes run in parallel panels."
 }

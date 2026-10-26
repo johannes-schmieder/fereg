@@ -46,7 +46,7 @@ pub(super) fn refine_workspace<Slot>(
 
 pub(super) fn refine_retained_coefficients(
     frame: RefinementFrame<'_>,
-    workspace: RefinementWorkspace<'_>,
+    mut workspace: RefinementWorkspace<'_>,
     tolerance: f64,
 ) -> Result<()> {
     let rank = frame.active_positions.len();
@@ -87,28 +87,39 @@ pub(super) fn refine_retained_coefficients(
     for pass in 0..=3 {
         workspace.scores.fill(0.0);
         workspace.corrections.fill(0.0);
-        for (row, &response) in frame.response.iter().enumerate() {
-            reader.fill_row(row, workspace.row)?;
-            let residual = crate::kernels::dispatch!(
-                hardware,
-                standardized_residual(
-                    response,
-                    workspace.row,
-                    frame.active_positions,
-                    frame.reference_norms,
-                    workspace.coefficients,
-                    None
-                )
-            );
-            let weight = normalized_solver_weight(frame.weights, frame.weight_scale, row)?;
-            for (column, &position) in frame.active_positions.iter().enumerate() {
-                let value =
-                    weight * (workspace.row[position] / frame.reference_norms[position]) * residual;
-                neumaier_add(
-                    value,
-                    &mut workspace.scores[column],
-                    &mut workspace.corrections[column],
+        let dense = match frame.storage {
+            RetainedWithinStorage::Dense(storage) if rank <= LEAF_COLUMNS => {
+                Some(storage.as_slice())
+            }
+            _ => None,
+        };
+        if let Some(values) = dense {
+            dense_scores(&frame, values, &mut workspace)?;
+        } else {
+            for (row, &response) in frame.response.iter().enumerate() {
+                reader.fill_row(row, workspace.row)?;
+                let residual = crate::kernels::dispatch!(
+                    hardware,
+                    standardized_residual(
+                        response,
+                        workspace.row,
+                        frame.active_positions,
+                        frame.reference_norms,
+                        workspace.coefficients,
+                        None
+                    )
                 );
+                let weight = normalized_solver_weight(frame.weights, frame.weight_scale, row)?;
+                for (column, &position) in frame.active_positions.iter().enumerate() {
+                    let value = weight
+                        * (workspace.row[position] / frame.reference_norms[position])
+                        * residual;
+                    neumaier_add(
+                        value,
+                        &mut workspace.scores[column],
+                        &mut workspace.corrections[column],
+                    );
+                }
             }
         }
         for (score, &correction) in workspace
@@ -156,6 +167,67 @@ pub(super) fn refine_retained_coefficients(
         }
     }
     unreachable!("bounded refinement returns at its final pass")
+}
+
+/// Active columns whose dense residual scores reduce over fixed row leaves.
+const LEAF_COLUMNS: usize = 32;
+const LEAF_ROWS: usize = 8192;
+
+/// The scores of a dense retained design as Neumaier sums over fixed row
+/// leaves (`parallel::fixed_tree_reduce`): every leaf keeps row order and the
+/// tree depends only on the row count.
+fn dense_scores(
+    frame: &RefinementFrame<'_>,
+    values: &[f64],
+    workspace: &mut RefinementWorkspace<'_>,
+) -> Result<()> {
+    type Partial = [(f64, f64); LEAF_COLUMNS];
+    let stored = frame.storage.columns();
+    let coefficients = &*workspace.coefficients;
+    let hardware = crate::kernels::installed();
+    let leaf = |rows: std::ops::Range<usize>| -> Result<Partial> {
+        let mut partial = [(0.0, 0.0); LEAF_COLUMNS];
+        for row in rows {
+            let values = &values[row * stored..(row + 1) * stored];
+            let residual = crate::kernels::dispatch!(
+                hardware,
+                standardized_residual(
+                    frame.response[row],
+                    values,
+                    frame.active_positions,
+                    frame.reference_norms,
+                    coefficients,
+                    None
+                )
+            );
+            let weight = normalized_solver_weight(frame.weights, frame.weight_scale, row)?;
+            for ((sum, correction), &position) in partial.iter_mut().zip(frame.active_positions) {
+                let value =
+                    weight * (values[position] / frame.reference_norms[position]) * residual;
+                neumaier_add(value, sum, correction);
+            }
+        }
+        Ok(partial)
+    };
+    let merge = |mut left: Partial, right: Partial| {
+        for ((sum, correction), (other, other_correction)) in left.iter_mut().zip(right) {
+            *correction += other_correction;
+            neumaier_add(other, sum, correction);
+        }
+        left
+    };
+    let partial =
+        crate::parallel::fixed_tree_reduce(frame.response.len(), LEAF_ROWS, &leaf, &merge)?;
+    for ((score, correction), (sum, compensation)) in workspace
+        .scores
+        .iter_mut()
+        .zip(workspace.corrections.iter_mut())
+        .zip(partial)
+    {
+        *score = sum;
+        *correction = compensation;
+    }
+    Ok(())
 }
 
 #[cfg(test)]

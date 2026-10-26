@@ -16,6 +16,8 @@
   hierarchy at the first PPML iteration, and a joint frame that reaches its
   checkpoint with a hierarchy from earlier weights rebuilds it, within at most
   three builds per estimation.
+- The retained-coefficient refinement after canonical PPML products and the
+  write of dense canonical products run in parallel.
 - PPML joint frames run their fresh original-column and response checks in
   parallel over fixed row blocks and rebuild residuals from the projected
   columns, removing several sequential passes per iteration.

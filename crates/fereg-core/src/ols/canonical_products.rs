@@ -546,6 +546,49 @@ impl<P: PreparedOlsFitView + Sync + ?Sized> Products<'_, P> {
         )
     }
 
+    /// Row panels of a dense store, column by column: numeric columns read
+    /// their slices directly; each value keeps `residual`'s arithmetic.
+    fn write_dense_panels(&self, storage: &mut [f64], columns: usize) -> Result<()> {
+        const ROWS: usize = 512;
+        let a = &self.design.effects()[self.left_effect];
+        let b = &self.design.effects()[1 - self.left_effect];
+        let (p, q) = (a.n_levels(), b.n_levels());
+        storage
+            .par_chunks_mut(columns * ROWS)
+            .enumerate()
+            .try_for_each(|(panel, values)| {
+                let first = panel * ROWS;
+                for column in 0..columns {
+                    let j = column + 1;
+                    let rows = values.chunks_mut(columns).enumerate();
+                    match &self.columns[j] {
+                        Column::Numeric(source) if self.three.is_none() => {
+                            let scale = nonzero(self.scales[j]);
+                            let left = &self.left[j * p..(j + 1) * p];
+                            let right = &self.right[j * q..(j + 1) * q];
+                            for (i, values) in rows {
+                                let row = first + i;
+                                let value = (source[row] / scale
+                                    - left[a.codes()[row] as usize]
+                                    - right[b.codes()[row] as usize])
+                                    * scale;
+                                if !value.is_finite() {
+                                    return Err(declined());
+                                }
+                                values[column] = value;
+                            }
+                        }
+                        _ => {
+                            for (i, values) in rows {
+                                values[column] = self.residual(first + i, j)?;
+                            }
+                        }
+                    }
+                }
+                Ok(())
+            })
+    }
+
     pub fn write_dense(&mut self, storage: &mut DenseMatrix) -> Result<()> {
         let columns = self.columns.len() - 1;
         if storage.nrows() != self.design.nobs() || storage.ncols() != columns {
@@ -558,16 +601,7 @@ impl<P: PreparedOlsFitView + Sync + ?Sized> Products<'_, P> {
             return Ok(());
         }
         let Some(tile) = self.tiled.as_mut() else {
-            return storage
-                .as_mut_slice()
-                .par_chunks_mut(columns)
-                .enumerate()
-                .try_for_each(|(row, values)| {
-                    for (column, value) in values.iter_mut().enumerate() {
-                        *value = self.residual(row, column + 1)?;
-                    }
-                    Ok(())
-                });
+            return self.write_dense_panels(storage.as_mut_slice(), columns);
         };
         let a = &self.design.effects()[self.left_effect];
         let b = &self.design.effects()[1 - self.left_effect];
