@@ -2,28 +2,16 @@
   "definition": "docs/development_workflow.md#complexity-inventory",
   "growth": [
     {
-      "after": 1417,
-      "before": 1415,
+      "after": 1418,
+      "before": 1417,
       "metric": "fereg-core/dispatch_candidates",
-      "reason": "Joint frames take the one-pass Gram for banks of at most 23 columns and the pairwise kernel beyond."
+      "reason": "Coupling preparation splits left-level ranges until a range holds few levels."
     },
     {
-      "after": 109732,
-      "before": 109588,
+      "after": 109767,
+      "before": 109732,
       "metric": "fereg-core/production_lines",
-      "reason": "Joint frames keep the projected bank unnormalized, form Gram and initial scores in one tiled pass over fixed leaves, and compute norms from direct squares in parallel."
-    },
-    {
-      "after": 15454,
-      "before": 15432,
-      "metric": "fereg-plugin/production_lines",
-      "reason": "The FMA table instantiates the tiled Gram panel kernel and checks it against the portable body."
-    },
-    {
-      "after": 1773,
-      "before": 1739,
-      "metric": "file/crates/fereg-core/src/fe/map.rs",
-      "reason": "Column norms from direct squares with a scaled rescan, and a parallel fixed-leaf norm."
+      "reason": "Coupling preparation fills disjoint left-level ranges of its CSR bank in parallel, each value in member order."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -6828,45 +6816,49 @@
             "line": 91
           },
           {
+            "condition": "levels . len ( ) <= LEVELS",
+            "line": 143
+          },
+          {
             "condition": "pairs . capacity ( ) > s . pairs",
-            "line": 326
+            "line": 349
           },
           {
             "condition": "effect + 1 < self . effect_groups . len ( )",
-            "line": 650
+            "line": 690
           },
           {
             "condition": "self . representation == Representation :: Schur || width < 2",
-            "line": 748
+            "line": 788
           }
         ],
         "functions": {
           "apply#1": {
-            "line": 603,
+            "line": 643,
             "lines": 32
           },
           "apply_with_helpers#1": {
-            "line": 739,
+            "line": 779,
             "lines": 48
           },
           "bytes#1": {
-            "line": 251,
+            "line": 274,
             "lines": 43
           },
           "compact_base#1": {
-            "line": 636,
+            "line": 676,
             "lines": 48
           },
           "elements#1": {
-            "line": 223,
+            "line": 246,
             "lines": 6
           },
           "elements#2": {
-            "line": 424,
+            "line": 447,
             "lines": 11
           },
           "form_schur#1": {
-            "line": 534,
+            "line": 574,
             "lines": 68
           },
           "new#1": {
@@ -6874,20 +6866,20 @@
             "lines": 76
           },
           "new#2": {
-            "line": 145,
+            "line": 168,
             "lines": 71
           },
           "new#3": {
-            "line": 295,
+            "line": 318,
             "lines": 128
           },
           "numeric_len#1": {
-            "line": 216,
+            "line": 239,
             "lines": 7
           },
           "prepare#1": {
-            "line": 464,
-            "lines": 69
+            "line": 487,
+            "lines": 86
           },
           "product_dot#1": {
             "line": 27,
@@ -6897,12 +6889,16 @@
             "line": 16,
             "lines": 10
           },
+          "split_levels#1": {
+            "line": 133,
+            "lines": 20
+          },
           "subtract_eliminated#1": {
-            "line": 686,
+            "line": 726,
             "lines": 49
           }
         },
-        "production_lines": 711
+        "production_lines": 746
       },
       "crates/fereg-core/src/fe/slope_coefficients/joint.rs": {
         "chunk_candidates": [],
@@ -24058,10 +24054,10 @@
     "metrics": {
       "fereg-core": {
         "chunk_candidates": 12,
-        "dispatch_candidates": 1417,
+        "dispatch_candidates": 1418,
         "files_over_1500": 15,
         "functions_over_150": 59,
-        "production_lines": 109732
+        "production_lines": 109767
       },
       "fereg-plugin": {
         "chunk_candidates": 3,
@@ -24073,5 +24069,5 @@
     },
     "schema": 1
   },
-  "reason": "PPML joint frames form their Gram and initial scores in one tiled pass over an unnormalized bank."
+  "reason": "Joint-frame coupling preparation fills left-level ranges in parallel."
 }
