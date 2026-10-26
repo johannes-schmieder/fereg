@@ -5103,3 +5103,53 @@ fn historical_preconditioner_complete_ppml_known_optimum_hits_and_matches_cold()
         ) < 1e-10
     );
 }
+
+#[test]
+fn strict_entry_waits_for_a_settled_contracting_predictor() {
+    use super::controller::StrictCheckpointControl;
+    let passes = |control: &mut StrictCheckpointControl, movements: &[f64]| {
+        for &movement in movements {
+            control.observe_accepted_iteration(true, movement);
+        }
+    };
+    // Without settling, two passes enter at once.
+    let mut control = StrictCheckpointControl::new(1e-12, false, None);
+    passes(&mut control, &[1e-2]);
+    assert!(!control.may_enter(false, true));
+    passes(&mut control, &[1e-3]);
+    assert!(control.may_enter(false, true));
+    assert!(
+        !control.may_enter(true, true),
+        "a pending audit still defers"
+    );
+    // The weak-graph sequence: a contracting predictor predicted to move by
+    // more than a tenth of the envelope waits one more Newton step.
+    let mut control = StrictCheckpointControl::new(1e-12, false, Some(1e-8));
+    passes(&mut control, &[1.5e-2, 3.6e-4]);
+    assert!(!control.may_enter(false, true));
+    passes(&mut control, &[2e-7]);
+    assert!(control.may_enter(false, true));
+    // A stalled contraction and an exhausted budget enter at once.
+    let mut control = StrictCheckpointControl::new(1e-12, false, Some(1e-8));
+    passes(&mut control, &[1e-3, 6e-4]);
+    assert!(control.may_enter(false, true));
+    let mut control = StrictCheckpointControl::new(1e-12, false, Some(1e-8));
+    passes(&mut control, &[1e-2, 1e-3]);
+    assert!(control.may_enter(false, false));
+    // A failed pass restarts the two-pass requirement.
+    let mut control = StrictCheckpointControl::new(1e-12, false, Some(1e-8));
+    passes(&mut control, &[1e-9, 1e-12]);
+    control.observe_accepted_iteration(false, 1e-13);
+    assert!(!control.may_enter(false, true));
+    // At most eight deferrals per fit.
+    let mut control = StrictCheckpointControl::new(1e-12, false, Some(1e-8));
+    let mut movement = 1.0;
+    passes(&mut control, &[movement]);
+    for _ in 0..8 {
+        movement *= 0.4;
+        passes(&mut control, &[movement]);
+        assert!(!control.may_enter(false, true));
+    }
+    passes(&mut control, &[movement * 0.4]);
+    assert!(control.may_enter(false, true));
+}

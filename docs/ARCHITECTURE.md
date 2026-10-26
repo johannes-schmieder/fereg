@@ -106,11 +106,18 @@ graph holds it with its build generation and at most two construction
 attempts. Joint ordinary frames reach it through the retained-block hook of
 `fe/slope_coefficients/joint.rs`: a diagonal recurrence that reaches step 64
 may build one, and an installed hierarchy `B` applies as `D^1/2 B D^1/2` with
-current level masses `D`. Categorical reprojections use the h16/k1 route; a
-hierarchy from an earlier weight generation is set aside, charged as resident
-to the rebuild, and reinstated unless replaced. Admission reserves only the
-application banks; each construction admits itself against the fit's solver
-budget, and refusal leaves the diagonal recurrence untouched. Joint frames
+current level masses `D`. Canonical products borrow it read-only through
+`PpmlCmgView`: `ols/canonical_products/shared_cmg.rs` preconditions large
+implicit components with one fixed cycle per application on per-worker
+scratch charged to the products' allowance, and a canonical call first
+refreshes a stale hierarchy while an attempt remains. Categorical
+reprojections use the h16/k1 route; a hierarchy from an earlier weight
+generation is set aside, charged as resident to the rebuild, and reinstated
+unless replaced. Admission reserves only the application banks; each
+construction admits itself against the fit's solver budget, and refusal
+leaves the diagonal recurrence untouched. `canonical_products/reduced.rs`
+holds the reduced recurrences, including the dense solve of small implicit
+components. Joint frames
 build weighted columns and their norms, Gram rows (`kernels::normalized_products`,
 which keeps each pair's eight FMA chains) and original-column acceptance scans
 in groups of `ceil(columns / workers)` columns per task, at most four, so one

@@ -883,7 +883,13 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         canonical_final_enabled()
             && matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
             && session.fe_design().effects().len() >= 2,
+        matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
+            .then(|| strict_profile_envelope(config.ppml)),
     );
+    let mut replaced_coefficients = fallible_copy(
+        workspace.coefficients(),
+        "unable to reserve PPML accepted-movement coefficients",
+    )?;
     let mut solver_report = None;
     let retained_limit = MAX_RETAINED_ITERATION_REPORTS
         .min(config.memory.diagnostic_capacity)
@@ -1392,6 +1398,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         );
         let line_search_clock = PpmlPhaseClock::start();
         let previous_objective = objective;
+        replaced_coefficients.copy_from_slice(workspace.coefficients());
         let accepted = {
             let mut poll_line_search = || interrupt(PpmlInterruptPoint::IrlsLineSearchTrial);
             let attempt = if profiled_step.is_some() {
@@ -1523,15 +1530,21 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             }
         }
         let iteration_converged = relative_change <= config.ppml.tolerance && final_score.passed;
+        let slots = direction.active_slots().or_else(|| {
+            profiled_curve
+                .as_ref()
+                .map(ProfiledInterceptCurve::active_slots)
+        });
+        let movement = accepted_movement(&workspace, &replaced_coefficients, slots);
         if crate::diagnostics::solver_trace_enabled() {
             crate::diagnostics::emit_solver_trace(&format!(
-                "FEREG_SOLVER_TRACE|phase=irls_convergence|iteration={iteration}|deviance_change={relative_change:.17e}|score={:.17e}|passed={}|step={:.17e}",
+                "FEREG_SOLVER_TRACE|phase=irls_convergence|iteration={iteration}|deviance_change={relative_change:.17e}|score={:.17e}|passed={}|step={:.17e}|movement={movement:.17e}",
                 final_score.relative_infinity_norm,
                 u8::from(iteration_converged),
                 accepted.step,
             ));
         }
-        strict_control.observe_accepted_iteration(iteration_converged);
+        strict_control.observe_accepted_iteration(iteration_converged, movement);
         if retained_iterations.len() < retained_limit {
             retained_iterations.push(PreparedPpmlIterationReport {
                 iteration,
@@ -1554,7 +1567,10 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             linear_route,
         );
         let audit_defers_strict = allocation_audit.qualification_pending();
-        if strict_control.may_enter(audit_defers_strict) {
+        if strict_control.may_enter(
+            audit_defers_strict,
+            iteration.saturating_add(2) < config.ppml.max_iterations,
+        ) {
             let outcome = controller::StrictCycle {
                 candidate: controller::CandidatePhase {
                     prepared,
@@ -3519,6 +3535,18 @@ fn fresh_warm_linear_equivalent(
         && coefficient_difference <= tolerance)
 }
 
+/// The strict-profile movement of the iteration just accepted: acceptance
+/// swapped the replaced predictor into the trial bank.
+fn accepted_movement(
+    workspace: &PpmlIterationWorkspace,
+    replaced_coefficients: &[f64],
+    slots: Option<&[usize]>,
+) -> f64 {
+    relative_infinity_difference(workspace.eta(), workspace.trial_eta()).max(
+        strict_coefficient_difference(replaced_coefficients, workspace.coefficients(), slots),
+    )
+}
+
 #[allow(clippy::too_many_arguments)]
 fn strict_profile_consistent(
     eta: &[f64],
@@ -3530,10 +3558,6 @@ fn strict_profile_consistent(
     config: PpmlConfig,
     coefficient_slots: Option<&[usize]>,
 ) -> bool {
-    // Publication may be stricter than the attainable inner-solve or machine
-    // floor. In that case fail closed instead of silently weakening the
-    // caller's requested outer/score tolerance.
-    let tolerance = config.tolerance.min(config.score_tolerance).min(1e-8);
     strict_profile_difference(
         eta,
         coefficients,
@@ -3542,7 +3566,14 @@ fn strict_profile_consistent(
         strict_coefficients,
         strict_objective,
         coefficient_slots,
-    ) <= tolerance
+    ) <= strict_profile_envelope(config)
+}
+
+/// Publication may be stricter than the attainable inner-solve or machine
+/// floor. In that case fail closed instead of silently weakening the
+/// caller's requested outer/score tolerance.
+fn strict_profile_envelope(config: PpmlConfig) -> f64 {
+    config.tolerance.min(config.score_tolerance).min(1e-8)
 }
 
 fn strict_profile_difference(

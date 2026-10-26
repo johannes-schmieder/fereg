@@ -930,6 +930,7 @@ mod tests {
                     0,
                     &mut Vec::new(),
                     &mut old,
+                    None,
                 )
                 .unwrap()
                 .unwrap();
@@ -964,6 +965,7 @@ mod tests {
                     0,
                     &mut Vec::new(),
                     &mut probe,
+                    None,
                 )
                 .unwrap()
                 .unwrap();
@@ -982,6 +984,7 @@ mod tests {
                         0,
                         &mut Vec::new(),
                         &mut call,
+                        None,
                     )
                     .unwrap()
                     .unwrap();
@@ -1029,6 +1032,7 @@ mod tests {
                     0,
                     &mut obsolete,
                     &mut call,
+                    None,
                 )
                 .unwrap()
                 .unwrap();
@@ -1074,6 +1078,7 @@ mod tests {
                         0,
                         &mut Vec::new(),
                         &mut call,
+                        None,
                     );
                     match fault {
                         3..=5 => assert_eq!(
@@ -1129,6 +1134,7 @@ mod tests {
                     0,
                     &mut Vec::new(),
                     &mut call,
+                    None,
                 )
                 .unwrap()
                 .unwrap();

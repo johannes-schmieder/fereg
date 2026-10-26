@@ -26,7 +26,7 @@ mod ppml_cmg;
 pub(crate) mod routing_lsmr;
 pub(crate) mod three_fe_map;
 pub(crate) mod three_fe_schur;
-pub(crate) use ppml_cmg::{JointCmgBlock, PpmlCmg};
+pub(crate) use ppml_cmg::{JointCmgBlock, PpmlCmg, PpmlCmgScratch, PpmlCmgView};
 
 pub(crate) const PARALLEL_PROJECTION_MIN_ROWS: usize = 16_384;
 pub(crate) const FUSED_PARALLEL_MAX_RHS: usize = 64;

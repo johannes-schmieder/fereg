@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- PPML publication fits enter the strict checkpoint only once the accepted
+  predictor is predicted to settle within the strict envelope. On weakly
+  connected two-effect designs the deviance and score tests pass while fitted
+  values still move, so the first strict checkpoint used to be rejected and
+  repeated at a 100-times tighter tolerance.
+- Canonical PPML products precondition their reduced Schur solve with the
+  reused CMG hierarchy, refreshed once on current weights, so strict
+  checkpoints of weakly connected designs no longer fall back to the slower
+  categorical solve. Small graph components are solved directly, and dense
+  reduced matrices are no longer assembled for iterative solves.
 - PPML Auto with exactly two fixed effects reuses one CMG preconditioner
   across IRLS iterations on weakly connected designs. An iteration whose FE
   solve still needs 64 diagonal steps builds it; strict re-solves rebuild it

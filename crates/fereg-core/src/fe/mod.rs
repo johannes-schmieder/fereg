@@ -52,8 +52,8 @@ pub(crate) use borrowed_map::{
     absorb_borrowed_intercept_cg, absorb_borrowed_intercept_irons_tuck_certified,
     absorb_borrowed_intercept_lsmr, absorb_borrowed_intercept_map,
     borrowed_cg_recovery_workspace_bytes, project_borrowed_intercept_structural, BorrowedCgOptions,
-    BorrowedLsmrAbsorber, JointCmgBlock, PpmlCmg, ReusableCategoricalMapAbsorber,
-    PARALLEL_DOT_CHUNK_ROWS,
+    BorrowedLsmrAbsorber, JointCmgBlock, PpmlCmg, PpmlCmgScratch, PpmlCmgView,
+    ReusableCategoricalMapAbsorber, PARALLEL_DOT_CHUNK_ROWS,
 };
 pub use borrowed_map::{
     absorb_borrowed_intercept_map_certified, BorrowedMapWeights, CertifiedBorrowedMap,

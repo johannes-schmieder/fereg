@@ -3615,6 +3615,13 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             "attempt|checkpoint={reuse_preconditioner}|enabled={enabled}|weights={}|basis={}|envelope={allowance}",
             self.generations.weights, self.generations.basis
         ));
+        if let Some(categorical) = self
+            .fe_projector
+            .as_mut()
+            .and_then(|session| session.categorical.as_mut())
+        {
+            categorical.refresh_ppml_cmg(self.weights.borrowed())?;
+        }
         let result = super::canonical_products::try_build_with_preconditioner(
             self.prepared,
             &generated,
@@ -3626,6 +3633,11 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             self.canonical_projection_work_hint,
             &mut self.projection_block,
             &mut preconditioner_attempt,
+            self.fe_projector
+                .as_ref()
+                .and_then(|session| session.categorical.as_ref())
+                .and_then(ReusableCategoricalMapAbsorber::ppml_cmg_view)
+                .as_ref(),
         );
         let mut products = match result {
             Ok(Some(products)) => products,
@@ -3646,54 +3658,14 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 return Err(error);
             }
         };
-        if let Some(within) = self.within.as_mut() {
-            within.certificate.passed = false;
-            match &mut within.storage {
-                RetainedWithinStorage::Scratch(storage) => products.write_controls(storage)?,
-                RetainedWithinStorage::Dense(storage) => products.write_dense(storage)?,
-                RetainedWithinStorage::Implicit(_) => unreachable!(),
-            }
-            within
-                .reference_norms
-                .copy_from_slice(&products.scales[1..]);
-            within.reference_means.copy_from_slice(&products.means[1..]);
-            within.within_norms.copy_from_slice(&products.norms[1..]);
-            within.generations = WithinGenerations::from_session(self.generations);
-        } else {
-            let storage = if self.config.execution.mode == PreparedOlsExecutionMode::Fast {
-                let mut dense = DenseMatrix::zeros(self.response.len(), generated.len())?;
-                products.write_dense(&mut dense)?;
-                RetainedWithinStorage::Dense(dense)
-            } else {
-                let mut scratch =
-                    PreparedOlsScratch::create_row_major(self.response.len(), generated.len())?;
-                products.write_controls(&mut scratch)?;
-                RetainedWithinStorage::Scratch(scratch)
-            };
-            self.within = Some(RetainedWithinDesign {
-                storage,
-                stored_generated_columns: generated,
-                active_positions: Vec::new(),
-                reference_norms: fallible_copy(
-                    &products.scales[1..],
-                    "unable to retain canonical product scales",
-                )?,
-                reference_means: fallible_copy(
-                    &products.means[1..],
-                    "unable to retain canonical product means",
-                )?,
-                within_norms: fallible_copy(
-                    &products.norms[1..],
-                    "unable to retain canonical product norms",
-                )?,
-                generations: WithinGenerations::from_session(self.generations),
-                certificate: LinearWithinDesignCertificate {
-                    left_inverse_relative_infinity_norm: f64::INFINITY,
-                    right_inverse_relative_infinity_norm: f64::INFINITY,
-                    passed: false,
-                },
-            });
-        }
+        retain_canonical_products(
+            &mut self.within,
+            self.config.execution.mode == PreparedOlsExecutionMode::Fast,
+            self.response.len(),
+            self.generations,
+            &mut products,
+            generated,
+        )?;
         // The dense residual bank and fused response anchor must describe the
         // same physical frame, including after a strict candidate is rolled
         // back. Otherwise the next ordinary refresh adds an obsolete z delta.
@@ -6858,6 +6830,65 @@ pub(super) fn stable_norm(scale: f64, scaled_square_sum: f64) -> Result<f64> {
     } else {
         Err(invalid_data("weighted-linear norm is not finite"))
     }
+}
+
+/// Store successful canonical products as the retained within design.
+fn retain_canonical_products<P: PreparedOlsFitView + Sync + ?Sized>(
+    within: &mut Option<RetainedWithinDesign>,
+    fast: bool,
+    rows: usize,
+    generations: LinearSessionGenerations,
+    products: &mut super::canonical_products::Products<'_, P>,
+    generated: Vec<usize>,
+) -> Result<()> {
+    if let Some(within) = within.as_mut() {
+        within.certificate.passed = false;
+        match &mut within.storage {
+            RetainedWithinStorage::Scratch(storage) => products.write_controls(storage)?,
+            RetainedWithinStorage::Dense(storage) => products.write_dense(storage)?,
+            RetainedWithinStorage::Implicit(_) => unreachable!(),
+        }
+        within
+            .reference_norms
+            .copy_from_slice(&products.scales[1..]);
+        within.reference_means.copy_from_slice(&products.means[1..]);
+        within.within_norms.copy_from_slice(&products.norms[1..]);
+        within.generations = WithinGenerations::from_session(generations);
+    } else {
+        let storage = if fast {
+            let mut dense = DenseMatrix::zeros(rows, generated.len())?;
+            products.write_dense(&mut dense)?;
+            RetainedWithinStorage::Dense(dense)
+        } else {
+            let mut scratch = PreparedOlsScratch::create_row_major(rows, generated.len())?;
+            products.write_controls(&mut scratch)?;
+            RetainedWithinStorage::Scratch(scratch)
+        };
+        *within = Some(RetainedWithinDesign {
+            storage,
+            stored_generated_columns: generated,
+            active_positions: Vec::new(),
+            reference_norms: fallible_copy(
+                &products.scales[1..],
+                "unable to retain canonical product scales",
+            )?,
+            reference_means: fallible_copy(
+                &products.means[1..],
+                "unable to retain canonical product means",
+            )?,
+            within_norms: fallible_copy(
+                &products.norms[1..],
+                "unable to retain canonical product norms",
+            )?,
+            generations: WithinGenerations::from_session(generations),
+            certificate: LinearWithinDesignCertificate {
+                left_inverse_relative_infinity_norm: f64::INFINITY,
+                right_inverse_relative_infinity_norm: f64::INFINITY,
+                passed: false,
+            },
+        });
+    }
+    Ok(())
 }
 
 #[cfg(test)]

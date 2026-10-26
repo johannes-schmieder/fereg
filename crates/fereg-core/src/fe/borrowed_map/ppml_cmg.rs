@@ -140,6 +140,73 @@ impl ReusableCategoricalMapAbsorber<'_> {
         }
     }
 
+    /// Before a canonical reduced Schur solve: rebuild a hierarchy from an
+    /// earlier weight generation on `weights` while an attempt remains, as a
+    /// categorical projection would. A refusal consumes the attempt and keeps
+    /// the stale hierarchy, which still serves as acceleration.
+    pub(crate) fn refresh_ppml_cmg(&mut self, weights: BorrowedMapWeights<'_>) -> Result<()> {
+        let (Some(state), Some(graph)) = (self.ppml_cmg.as_mut(), self.two_fe_pcg.as_mut()) else {
+            return Ok(());
+        };
+        if state.built == state.frame || state.attempts >= MAX_ATTEMPTS {
+            return Ok(());
+        }
+        let Some(stale) = graph.cmg_schur.take() else {
+            return Ok(());
+        };
+        let resident = stale.retained_bytes()?;
+        state.attempts += 1;
+        let budget = state
+            .budget
+            .map(|budget| -> Result<FeSolverMemoryBudget> {
+                Ok(FeSolverMemoryBudget {
+                    execution_bytes: budget
+                        .execution_bytes
+                        .checked_add(resident)
+                        .ok_or_else(|| allocation("PPML CMG refresh admission overflows"))?,
+                    ..budget
+                })
+            })
+            .transpose()?;
+        let built = CmgSchurPreconditioner::try_build_bounded(
+            &self.design,
+            weights,
+            graph.left_effect,
+            5,
+            crate::fe::cmg_schur::Sampling {
+                samples: 1,
+                seed: 0,
+            },
+            self.max_rhs,
+            budget,
+            false,
+        );
+        let built = match built {
+            Ok(built) => built,
+            Err(error) => {
+                graph.cmg_schur = Some(stale);
+                return Err(error);
+            }
+        };
+        if crate::diagnostics::solver_trace_enabled() {
+            crate::diagnostics::emit_solver_trace(&format!(
+                "FEREG_SOLVER_TRACE|phase=ppml_canonical_cmg|attempt={}|installed={}|refusal={:?}",
+                state.attempts,
+                u8::from(built.preconditioner.is_some()),
+                built.refusal
+            ));
+        }
+        match built.preconditioner {
+            Some(fresh) => {
+                drop(stale);
+                graph.cmg_schur = Some(Box::new(fresh));
+                state.built = state.frame;
+            }
+            None => graph.cmg_schur = Some(stale),
+        }
+        Ok(())
+    }
+
     /// Joint-frame construction on the current frame's weights, when none is
     /// installed and an attempt remains. A refusal consumes the attempt.
     fn install_ppml_cmg(&mut self, weights: &[f64]) -> Result<bool> {
@@ -177,6 +244,52 @@ impl ReusableCategoricalMapAbsorber<'_> {
         state.built = built.preconditioner.as_ref().and(state.frame);
         graph.cmg_schur = built.preconditioner.map(Box::new);
         Ok(graph.cmg_schur.is_some())
+    }
+}
+
+/// Read-only access to the installed hierarchy for the canonical reduced
+/// Schur solve on the same effect. Workers share it, each applying it on its
+/// own [`PpmlCmgScratch`]; like the joint block it is acceleration only.
+pub(crate) struct PpmlCmgView<'a> {
+    preconditioner: &'a CmgSchurPreconditioner,
+    effect: usize,
+}
+
+pub(crate) use crate::fe::cmg_schur::SharedScratch as PpmlCmgScratch;
+
+impl ReusableCategoricalMapAbsorber<'_> {
+    pub(crate) fn ppml_cmg_view(&self) -> Option<PpmlCmgView<'_>> {
+        self.ppml_cmg.as_ref()?;
+        let graph = self.two_fe_pcg.as_ref()?;
+        Some(PpmlCmgView {
+            preconditioner: graph.cmg_schur.as_deref()?,
+            effect: graph.right_effect,
+        })
+    }
+}
+
+impl PpmlCmgView<'_> {
+    /// The effect whose levels the hierarchy's firms are.
+    pub(crate) fn effect(&self) -> usize {
+        self.effect
+    }
+    pub(crate) fn levels(&self) -> usize {
+        self.preconditioner.firm_count()
+    }
+    pub(crate) fn scratch_bytes(&self) -> Result<u128> {
+        self.preconditioner.shared_scratch_bytes()
+    }
+    pub(crate) fn scratch(&self) -> Result<PpmlCmgScratch> {
+        self.preconditioner.shared_scratch()
+    }
+    /// One fixed cycle on a level vector whose component sums are zero.
+    pub(crate) fn apply(
+        &self,
+        input: &[f64],
+        output: &mut [f64],
+        scratch: &mut PpmlCmgScratch,
+    ) -> Result<()> {
+        self.preconditioner.apply_shared(input, output, scratch)
     }
 }
 

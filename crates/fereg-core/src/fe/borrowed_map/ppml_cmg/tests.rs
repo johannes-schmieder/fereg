@@ -298,3 +298,63 @@ fn cancellation_during_joint_construction_propagates() {
     assert_eq!(error.code, ErrorCode::Interrupted);
     assert!(!block.installed());
 }
+
+#[test]
+fn a_canonical_refresh_rebuilds_only_a_stale_hierarchy_within_the_attempts() {
+    let chain = Chain::new(90, 2);
+    let mut absorber = chain.absorber();
+    absorber.enable_ppml_cmg(None, u128::MAX).unwrap();
+    // Nothing installed: a refresh neither builds nor spends an attempt.
+    absorber.begin_ppml_frame(generation(1)).unwrap();
+    absorber
+        .refresh_ppml_cmg(BorrowedMapWeights::Provided(&chain.weights(1)))
+        .unwrap();
+    assert_eq!(state(&absorber).attempts, 0);
+    assert!(absorber.ppml_cmg_view().is_none());
+    let weights = chain.weights(1);
+    let mut block = JointCmgBlock::new(Some(&mut absorber), &weights, Some(1)).unwrap();
+    assert!(block.install().unwrap());
+    assert_eq!(state(&absorber).attempts, 1);
+    // Current hierarchies are kept.
+    absorber
+        .refresh_ppml_cmg(BorrowedMapWeights::Provided(&weights))
+        .unwrap();
+    assert_eq!(state(&absorber).attempts, 1);
+    // A stale one is rebuilt once on current weights.
+    absorber.begin_ppml_frame(generation(2)).unwrap();
+    absorber
+        .refresh_ppml_cmg(BorrowedMapWeights::Provided(&chain.weights(2)))
+        .unwrap();
+    assert_eq!(state(&absorber).attempts, 2);
+    assert_eq!(state(&absorber).built, Some(generation(2)));
+    // Without an attempt the stale hierarchy still serves.
+    absorber.begin_ppml_frame(generation(3)).unwrap();
+    absorber
+        .refresh_ppml_cmg(BorrowedMapWeights::Provided(&chain.weights(3)))
+        .unwrap();
+    assert_eq!(state(&absorber).attempts, 2);
+    assert_eq!(state(&absorber).built, Some(generation(2)));
+    let view = absorber.ppml_cmg_view().unwrap();
+    assert_eq!((view.effect(), view.levels()), (1, 90));
+    // The shared application is the installed cycle on a compatible input.
+    let firms = chain.firm_index.n_levels();
+    let mut input: Vec<f64> = (0..firms).map(|f| (f as f64 * 0.43).sin()).collect();
+    let mean = input.iter().sum::<f64>() / firms as f64;
+    input.iter_mut().for_each(|value| *value -= mean);
+    let (mut shared, mut batched) = (vec![0.0; firms], vec![0.0; firms]);
+    let mut scratch = view.scratch().unwrap();
+    view.apply(&input, &mut shared, &mut scratch).unwrap();
+    absorber
+        .two_fe_pcg
+        .as_mut()
+        .unwrap()
+        .cmg_schur
+        .as_mut()
+        .unwrap()
+        .apply_batch(&input, &mut batched, 1, 1, None, None)
+        .unwrap();
+    let shift = shared[0] - batched[0];
+    for (shared, batched) in shared.iter().zip(&batched) {
+        assert!((shared - shift - batched).abs() <= 1e-12 * (1. + batched.abs()));
+    }
+}

@@ -245,8 +245,13 @@ finite WLS direction by PCG with a diagonal retained-effect block. Without an
 installed hierarchy, a frame whose recurrence reaches step 64 may build one on
 its own weights and restarts from its current iterate. An installed hierarchy
 `B` applies to the retained block of later frames as `D^1/2 B D^1/2`, with the
-current frame's level weight sums `D`. Categorical reprojections, including
-strict checkpoints, use the two-FE Schur recurrence with the h16/k1 build:
+current frame's level weight sums `D`. The canonical products' reduced Schur
+solve applies it to implicit components of at least 64 levels as
+`R G' B G R`, with the Jacobi roots `R` and `G` placing the component's
+grounded anchor; before such a solve, a hierarchy from an earlier weight
+generation is rebuilt once on current weights while an attempt remains.
+Categorical reprojections, used when strict canonical products decline, use
+the two-FE Schur recurrence with the h16/k1 build:
 without a hierarchy one may be built at step 16, and a hierarchy from an
 earlier weight generation is set aside so the reprojection can rebuild it on
 current weights, then reinstated unless replaced. Construction keeps cutoff 5,
@@ -259,11 +264,19 @@ certificate use the current frame; the hierarchy carries no certificate, rank
 or Hessian authority. Explicit solvers, the separation phase, slopes and other
 FE counts retain their behavior.
 
+Canonical products solve implicit components of at most 16 free coordinates
+as dense Cholesky systems of their applied unit columns. Beyond `size`
+recurrence steps, components below 64 free coordinates get `size + 8` more
+and larger ones two. A dense reduced matrix without an affordable
+factorization is not assembled when assembly costs more than 64 applications
+of the implicit incidence operator, which serves instead.
+
 Declared PPML scope: eligible PPML Auto fits may change coefficients,
 covariance, fit statistics, residuals, FE coordinates and solver iteration
-signatures within §20 tolerances. Sample, rank, omission, separation and other
-discrete decisions remain unchanged, and fits that never install a hierarchy
-keep exact scientific results and solver signatures. Witnesses cover the dense
+signatures within §20 tolerances; through the strict entry rule (§13) and the
+canonical-product solves, so may every PPML publication fit and every PPML
+fit with categorical FEs. Sample, rank, omission, separation and other
+discrete decisions remain unchanged. Witnesses cover the dense
 Poisson oracle on weak chain and AKM graphs that exercise reuse, exact
 refusal, the scaled block against the hierarchy, set-aside and attempt rules,
 admission refusal, Break during construction, fixed-worker repeatability and
@@ -933,7 +946,15 @@ recomputed normalized finite and FE scores. A small objective change alone
 is insufficient, particularly near small coefficients.
 
 Apparent convergence triggers fresh strict WLS at
-`min(1e-12,0.1×outer_tolerance)`. If beta, eta, basis/rank or objective moves
+`min(1e-12,0.1×outer_tolerance)`. A publication fit first waits while its
+contracting predictor is predicted to keep moving: with the strict profile
+envelope `min(outer_tolerance, score_tolerance, 1e-8)` and the relative eta and
+coefficient movements `m_k` of the last two accepted iterations, it enters
+once `m_k^2/m_(k-1)` is at most a tenth of the envelope. A contraction ratio
+above one half, fewer than three remaining iterations or eight such
+deferrals enter at once. Weakly identified FE directions can pass the deviance
+and score tests while eta still moves; the wait changes only when the
+unchanged strict check runs. If beta, eta, basis/rank or objective moves
 beyond the registered publication envelope, resume bounded IRLS. Publish
 only after exact accepted-h=qmu Hessian/bread, basis, projection, score,
 objective replay and eta reconstruction checks. Refresh/invalidate all
