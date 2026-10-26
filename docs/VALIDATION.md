@@ -220,7 +220,9 @@ two-FE PPML comparison with explicit dummies passed. After publication, a fresh
 Stata 19/MP `net install` from the
 [beta.7 release](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0-beta.7)
 matched all 34 versioned package files and passed the same checks. All 50
-release assets matched their local SHA-256 checksums.
+release assets matched their local SHA-256 checksums. After the merge,
+`github install johannes-schmieder/fereg` from `main` matched all 35 installed
+files and passed the same checks in a fresh session.
 
 ### Beta.6 many-FE geometry packaging
 
