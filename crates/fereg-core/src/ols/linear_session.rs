@@ -11,7 +11,7 @@ use super::implicit_centered::ImplicitCenteredDesign;
 use crate::data::DenseMatrix;
 use crate::error::{allocation, invalid_argument, invalid_data, ErrorCode, FeregError, Result};
 use crate::fe::{
-    BorrowedMapWeights, CertifiedBorrowedMap, FeDesign, FeSession, FeSolverKind,
+    BorrowedMapWeights, CertifiedBorrowedMap, FeDesign, FeSession, FeSolverKind, JointCmgBlock,
     MapGeometryGeneration, ReusableCategoricalMapAbsorber, ReusableMapAbsorber,
     ReusableMapCapacities, SolveReport,
 };
@@ -2309,6 +2309,19 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         Ok(())
     }
 
+    /// PPML Auto two-FE CMG reuse on the categorical two-FE graph.
+    pub(crate) fn enable_ppml_cmg(&mut self, allowance: u128) -> Result<()> {
+        let budget = self.config.absorb.solver_memory_budget;
+        let Some(FeSession {
+            categorical: Some(absorber),
+            ..
+        }) = self.fe_projector.as_mut()
+        else {
+            return Ok(());
+        };
+        absorber.enable_ppml_cmg(budget, allowance)
+    }
+
     pub(crate) fn enable_checkpoint_lsmr(&mut self, deterministic: bool) {
         if let Some(projector) = self.fe_projector.as_mut() {
             projector.enable_checkpoint_lsmr(deterministic);
@@ -2527,11 +2540,15 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         let Some(FeSession {
             coefficients: true,
             general: Some(projector),
+            categorical,
             ..
         }) = self.fe_projector.as_mut()
         else {
             unreachable!()
         };
+        let retained = projector.joint_retained_intercept_effect();
+        let mut cmg = JointCmgBlock::new(categorical.as_mut(), &self.map_weights, retained);
+        let block = cmg.as_mut().map(JointCmgBlock::as_block);
         let previous_response = &mut self.previous_response;
         let n = self.response.len();
         if previous_response.len() != n || self.frozen_workspace.response.len() != n {
@@ -2557,6 +2574,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 &self.frozen_workspace.response,
                 self.config.absorb.map,
                 self.generations.map_geometry(),
+                block,
             )?,
             RetainedWithinStorage::Scratch(_) | RetainedWithinStorage::Implicit(_) => projector
                 .solve_joint_slopes_streamed(
@@ -2573,6 +2591,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                     &self.frozen_workspace.response,
                     self.config.absorb.map,
                     self.generations.map_geometry(),
+                    block,
                 )?,
         }
         let solving_seconds = started.elapsed().as_secs_f64();

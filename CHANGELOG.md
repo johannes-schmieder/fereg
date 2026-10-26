@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- PPML Auto with exactly two fixed effects reuses one CMG preconditioner
+  across IRLS iterations on weakly connected designs. An iteration whose FE
+  solve still needs 64 diagonal steps builds it; strict re-solves rebuild it
+  once on current weights. Each estimation builds it at most twice, and every
+  solve still passes its unchanged certificates.
+- Results agree with beta.6 within the documented tolerances; sample, rank,
+  omission and separation decisions are unchanged. Iteration counts can
+  differ. Designs whose solves finish quickly, including well-connected and
+  dense two-effect designs, are unchanged bit for bit.
+
 ## 0.5.0 beta.6 — 2026-10-25
 
 - OLS Auto with three or more categorical-intercept effects starts LSMR with a

@@ -95,7 +95,7 @@ fn observation_bank<R: crate::memory::VecReservation>(
     Ok(result)
 }
 
-fn eliminated_effect(design: &FeDesign) -> usize {
+pub(super) fn eliminated_effect(design: &FeDesign) -> usize {
     design
         .effects()
         .iter()

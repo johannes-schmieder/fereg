@@ -513,6 +513,7 @@ impl ReusableMapAbsorber {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn solve_joint_slopes(
         &mut self,
         weights: &[f64],
@@ -521,6 +522,7 @@ impl ReusableMapAbsorber {
         response: &[f64],
         config: MapConfig,
         generation: MapGeometryGeneration,
+        block: Option<&mut dyn super::slope_coefficients::joint::JointBlockPreconditioner>,
     ) -> Result<()> {
         self.solve_joint_slopes_with(
             weights,
@@ -530,12 +532,13 @@ impl ReusableMapAbsorber {
             |joint, owner, design, geometry, reusable| {
                 joint.solve(
                     owner, design, geometry, weights, controls, selected, response, config,
-                    reusable,
+                    reusable, block,
                 )
             },
         )
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn solve_joint_slopes_streamed<
         C: super::slope_coefficients::joint::JointFiniteDesign,
     >(
@@ -546,6 +549,7 @@ impl ReusableMapAbsorber {
         response: &[f64],
         config: MapConfig,
         generation: MapGeometryGeneration,
+        block: Option<&mut dyn super::slope_coefficients::joint::JointBlockPreconditioner>,
     ) -> Result<()> {
         self.solve_joint_slopes_with(
             weights,
@@ -555,7 +559,7 @@ impl ReusableMapAbsorber {
             |joint, owner, design, geometry, reusable| {
                 joint.solve_streamed(
                     owner, design, geometry, weights, controls, selected, response, config,
-                    reusable,
+                    reusable, block,
                 )
             },
         )
@@ -662,6 +666,13 @@ impl ReusableMapAbsorber {
 
     pub(crate) const fn max_rhs(&self) -> usize {
         self.max_rhs
+    }
+
+    /// The joint solve's retained effect for two intercept-only effects.
+    pub(crate) fn joint_retained_intercept_effect(&self) -> Option<usize> {
+        let effects = self.design.effects();
+        (effects.len() == 2 && effects.iter().all(|effect| effect.channels() == 1))
+            .then(|| 1 - super::slope_coefficients::eliminated_effect(&self.design))
     }
 
     pub(crate) const fn design(&self) -> &FeDesign {

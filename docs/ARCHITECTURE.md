@@ -100,6 +100,18 @@ strict tolerances stay unchanged. Optional allocation misses remain cold; fatal
 errors and Break use the existing rollback. Low memory, saved-FE and explicit
 solver requests do not retain this cache.
 
+PPML Auto with exactly two intercept FEs also reuses one CMG Schur hierarchy
+across frames (`fe/borrowed_map/ppml_cmg.rs`). The categorical owner's two-FE
+graph holds it with its build generation and at most two construction
+attempts. Joint ordinary frames reach it through the retained-block hook of
+`fe/slope_coefficients/joint.rs`: a diagonal recurrence that reaches step 64
+may build one, and an installed hierarchy `B` applies as `D^1/2 B D^1/2` with
+current level masses `D`. Categorical reprojections use the h16/k1 route; a
+hierarchy from an earlier weight generation is set aside, charged as resident
+to the rebuild, and reinstated unless replaced. Admission reserves only the
+application banks; each construction admits itself against the fit's solver
+budget, and refusal leaves the diagonal recurrence untouched.
+
 ## Host and execution
 
 `model_metadata.rs` owns shared model decoding and wire construction.

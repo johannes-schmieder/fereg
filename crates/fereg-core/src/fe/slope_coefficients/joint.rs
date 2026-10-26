@@ -68,6 +68,30 @@ impl JointFiniteDesign for DenseMatrix {
     }
 }
 
+/// Optional acceleration of the retained-effect block of the joint recurrence.
+/// It owns no acceptance authority: reconstruction and the independent
+/// certificate still decide every frame.
+pub(crate) trait JointBlockPreconditioner {
+    fn installed(&self) -> bool;
+    /// Try once to install a preconditioner; report whether one is installed.
+    fn install(&mut self) -> Result<bool>;
+    /// `output = B residual` on the retained block, in joint coordinates.
+    fn apply(&mut self, residual: &[f64], output: &mut [f64]) -> Result<()>;
+}
+
+/// The recurrence step at which an absent block preconditioner may be built.
+/// A frame still iterating here is expected to recur in later frames.
+const BLOCK_CHECKPOINT: usize = 64;
+
+crate::fault::fault_plan! {
+    static BLOCK_CHECKPOINT_OVERRIDE: usize = 0;
+}
+
+#[cfg(test)]
+pub(crate) fn set_block_checkpoint_for_test(step: usize) {
+    BLOCK_CHECKPOINT_OVERRIDE.set(step);
+}
+
 pub(crate) struct JointFiniteWorkspace {
     cross: Vec<f64>,
     hessian: Vec<f64>,
@@ -260,8 +284,17 @@ impl JointFiniteWorkspace {
             .map(|_| &self.scales[..self.active])
     }
 
-    fn precondition(&mut self, p: usize, k: usize) {
-        self.preconditioned[..p + k].copy_from_slice(&self.residual[..p + k]);
+    fn precondition<'o>(
+        &mut self,
+        p: usize,
+        k: usize,
+        block: Option<&mut (dyn JointBlockPreconditioner + 'o)>,
+    ) -> Result<()> {
+        match block.filter(|block| block.installed()) {
+            Some(block) => block.apply(&self.residual[..p], &mut self.preconditioned[..p])?,
+            None => self.preconditioned[..p].copy_from_slice(&self.residual[..p]),
+        }
+        self.preconditioned[p..p + k].copy_from_slice(&self.residual[p..p + k]);
         for i in 0..k {
             for j in 0..i {
                 self.preconditioned[p + i] -= self.factor[i * k + j] * self.preconditioned[p + j];
@@ -274,6 +307,7 @@ impl JointFiniteWorkspace {
             }
             self.preconditioned[p + i] /= self.factor[i * k + i];
         }
+        Ok(())
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -407,6 +441,7 @@ impl JointFiniteWorkspace {
         response: &[f64],
         config: MapConfig,
         reusable_geometry: bool,
+        block: Option<&mut dyn JointBlockPreconditioner>,
     ) -> Result<usize> {
         self.report = None;
         self.active = 0;
@@ -504,6 +539,7 @@ impl JointFiniteWorkspace {
             scratch,
             helpers,
             config,
+            block,
         )
     }
 
@@ -521,6 +557,7 @@ impl JointFiniteWorkspace {
         scratch: &mut [f64],
         helpers: &mut [Worker],
         config: MapConfig,
+        mut block: Option<&mut dyn JointBlockPreconditioner>,
     ) -> Result<usize> {
         let hardware = crate::kernels::installed();
         let n = original.len();
@@ -556,7 +593,7 @@ impl JointFiniteWorkspace {
                 self.residual[p + j] = dot(&z[j * n..(j + 1) * n], original);
             }
         }
-        self.precondition(p, k);
+        self.precondition(p, k, block.as_deref_mut())?;
         self.direction[..dimension].copy_from_slice(&self.preconditioned[..dimension]);
         let mut square = dot(
             &self.residual[..dimension],
@@ -593,7 +630,7 @@ impl JointFiniteWorkspace {
                     self.active = k;
                     return Ok(iteration);
                 }
-                self.precondition(p, k);
+                self.precondition(p, k, block.as_deref_mut())?;
                 self.direction[..dimension].copy_from_slice(&self.preconditioned[..dimension]);
                 square = dot(
                     &self.residual[..dimension],
@@ -688,7 +725,7 @@ impl JointFiniteWorkspace {
                     &mut self.residual[..dimension]
                 )
             );
-            self.precondition(p, k);
+            self.precondition(p, k, block.as_deref_mut())?;
             let next = dot(
                 &self.residual[..dimension],
                 &self.preconditioned[..dimension],
@@ -703,8 +740,35 @@ impl JointFiniteWorkspace {
                 )
             );
             square = next;
+            self.checkpoint_block(p, k, iteration + 1, block.as_deref_mut(), &mut square)?;
         }
         Err(failed())
+    }
+
+    /// At the block checkpoint, try once to install an absent block
+    /// preconditioner. Refusal leaves the diagonal recurrence untouched; an
+    /// installed block restarts it from the current iterate.
+    fn checkpoint_block<'o>(
+        &mut self,
+        p: usize,
+        k: usize,
+        step: usize,
+        block: Option<&mut (dyn JointBlockPreconditioner + 'o)>,
+        square: &mut f64,
+    ) -> Result<()> {
+        let checkpoint = match BLOCK_CHECKPOINT_OVERRIDE.get() {
+            0 => BLOCK_CHECKPOINT,
+            step => step,
+        };
+        let Some(block) = block.filter(|block| step == checkpoint && !block.installed()) else {
+            return Ok(());
+        };
+        if block.install()? {
+            self.precondition(p, k, Some(block))?;
+            self.direction[..p + k].copy_from_slice(&self.preconditioned[..p + k]);
+            *square = dot(&self.residual[..p + k], &self.preconditioned[..p + k]);
+        }
+        Ok(())
     }
     #[allow(clippy::too_many_arguments)]
     pub(in crate::fe) fn solve_streamed<C: JointFiniteDesign>(
@@ -718,6 +782,7 @@ impl JointFiniteWorkspace {
         response: &[f64],
         config: MapConfig,
         reusable_geometry: bool,
+        block: Option<&mut dyn JointBlockPreconditioner>,
     ) -> Result<usize> {
         self.report = None;
         self.active = 0;
@@ -868,6 +933,7 @@ impl JointFiniteWorkspace {
             scratch,
             helpers,
             config,
+            block,
         )
     }
 }
