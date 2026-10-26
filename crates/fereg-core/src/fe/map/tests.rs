@@ -106,7 +106,15 @@ fn joint_slope_directions_match_analytic_weighted_oracle_and_revoke_failed_frame
                     weights: frame + 1,
                 };
                 pool.install(|| {
-                    owner.solve_joint_slopes(&weights, &controls, &[2, 0], &y, config, generation)
+                    owner.solve_joint_slopes(
+                        &weights,
+                        &controls,
+                        &[2, 0],
+                        &y,
+                        config,
+                        generation,
+                        None,
+                    )
                 })
                 .unwrap();
                 let out = owner.joint_slopes().unwrap();
@@ -126,6 +134,7 @@ fn joint_slope_directions_match_analytic_weighted_oracle_and_revoke_failed_frame
                         &changed,
                         config,
                         generation,
+                        None,
                     )
                 })
                 .unwrap();
@@ -139,6 +148,7 @@ fn joint_slope_directions_match_analytic_weighted_oracle_and_revoke_failed_frame
                         &zero,
                         config,
                         generation,
+                        None,
                     )
                 })
                 .unwrap();
@@ -168,6 +178,7 @@ fn joint_slope_directions_match_analytic_weighted_oracle_and_revoke_failed_frame
                             &y,
                             short,
                             generation,
+                            None,
                         )
                     })
                     .unwrap_err();
@@ -183,6 +194,7 @@ fn joint_slope_directions_match_analytic_weighted_oracle_and_revoke_failed_frame
                             &y,
                             config,
                             generation,
+                            None,
                         )
                     })
                     .unwrap_err();
@@ -195,13 +207,21 @@ fn joint_slope_directions_match_analytic_weighted_oracle_and_revoke_failed_frame
                     .generation
                     .is_none());
                 pool.install(|| {
-                    owner.solve_joint_slopes(&weights, &controls, &[2, 0], &y, config, generation)
+                    owner.solve_joint_slopes(
+                        &weights,
+                        &controls,
+                        &[2, 0],
+                        &y,
+                        config,
+                        generation,
+                        None,
+                    )
                 })
                 .unwrap();
                 let mut bad = weights.clone();
                 bad[0] = f64::NAN;
                 assert!(owner
-                    .solve_joint_slopes(&bad, &controls, &[2, 0], &y, config, generation)
+                    .solve_joint_slopes(&bad, &controls, &[2, 0], &y, config, generation, None)
                     .is_err());
                 assert!(owner.joint_slopes().unwrap().report.is_none());
                 assert!(owner
@@ -359,6 +379,7 @@ fn check_streamed_joint_slope_directions<const COLUMNS: bool>() {
                         &y,
                         config,
                         generation,
+                        None,
                     )
                 })
                 .unwrap();
@@ -387,6 +408,7 @@ fn check_streamed_joint_slope_directions<const COLUMNS: bool>() {
                         &changed,
                         config,
                         generation,
+                        None,
                     )
                 })
                 .unwrap();
@@ -400,6 +422,7 @@ fn check_streamed_joint_slope_directions<const COLUMNS: bool>() {
                         &zero,
                         config,
                         generation,
+                        None,
                     )
                 })
                 .unwrap();
@@ -429,6 +452,7 @@ fn check_streamed_joint_slope_directions<const COLUMNS: bool>() {
                             &y,
                             short,
                             generation,
+                            None,
                         )
                     })
                     .unwrap_err();
@@ -445,6 +469,7 @@ fn check_streamed_joint_slope_directions<const COLUMNS: bool>() {
                             &y,
                             config,
                             generation,
+                            None,
                         )
                     })
                     .unwrap_err();
@@ -465,13 +490,22 @@ fn check_streamed_joint_slope_directions<const COLUMNS: bool>() {
                         &y,
                         config,
                         generation,
+                        None,
                     )
                 })
                 .unwrap();
                 let mut bad = weights.clone();
                 bad[0] = f64::NAN;
                 assert!(owner
-                    .solve_joint_slopes_streamed(&bad, &streamed, &[2, 0], &y, config, generation)
+                    .solve_joint_slopes_streamed(
+                        &bad,
+                        &streamed,
+                        &[2, 0],
+                        &y,
+                        config,
+                        generation,
+                        None
+                    )
                     .is_err());
                 assert!(owner.joint_slopes().unwrap().report.is_none());
                 assert!(owner.joint_slopes().unwrap().input_norms().is_none());
@@ -2181,4 +2215,163 @@ fn fixed_leaf_norm_loan_preserves_cached_slope_geometry_and_storage() {
             assert_eq!(owner.certificate_columns.as_ptr(), pointer);
         }
     }
+}
+
+/// A diagonal block stand-in with an observable life cycle.
+struct TestBlock {
+    installed: bool,
+    refuse: bool,
+    fail: bool,
+    installs: usize,
+    applies: usize,
+    refreshes: usize,
+}
+
+impl super::super::slope_coefficients::joint::JointBlockPreconditioner for TestBlock {
+    fn installed(&self) -> bool {
+        self.installed
+    }
+    fn install(&mut self) -> Result<bool> {
+        self.installs += 1;
+        self.installed = !self.refuse;
+        Ok(self.installed)
+    }
+    fn refresh(&mut self) -> Result<bool> {
+        self.refreshes += 1;
+        Ok(!self.refuse)
+    }
+    fn apply(&mut self, residual: &[f64], output: &mut [f64]) -> Result<()> {
+        self.applies += 1;
+        if self.fail {
+            return Err(FeregError::new(
+                ErrorCode::Interrupted,
+                "injected block failure",
+            ));
+        }
+        for (level, (value, &input)) in output.iter_mut().zip(residual).enumerate() {
+            *value = input / (1.0 + (level % 3) as f64);
+        }
+        Ok(())
+    }
+}
+
+#[test]
+fn joint_block_refusal_is_exact_and_an_installed_block_reaches_the_same_solution() {
+    // A firm chain makes the diagonal recurrence reach its block checkpoint.
+    let (mut workers, mut firms, mut x, mut z) = (Vec::new(), Vec::new(), Vec::new(), Vec::new());
+    for link in 0..29 {
+        for slot in 0..2 {
+            for (period, firm) in [link, link + 1, link].into_iter().enumerate() {
+                let row = workers.len() as f64;
+                workers.push((link * 2 + slot) as u32);
+                firms.push(firm as u32);
+                x.push((row * 0.37 + period as f64).sin());
+                z.push((row * 0.11).cos());
+            }
+        }
+    }
+    let n = workers.len();
+    let design = FeDesign::new(
+        n,
+        vec![
+            EffectTerm::new(workers.clone(), 58, true, vec![]).unwrap(),
+            EffectTerm::new(firms.clone(), 30, true, vec![]).unwrap(),
+        ],
+    )
+    .unwrap();
+    let controls =
+        DenseMatrix::from_row_major(n, 2, x.iter().zip(&z).flat_map(|(&a, &b)| [a, b]).collect())
+            .unwrap();
+    let weights: Vec<f64> = (0..n).map(|i| 0.5 + (i % 7) as f64 * 0.3).collect();
+    let y: Vec<f64> = (0..n)
+        .map(|i| 0.4 * x[i] - 0.25 * z[i] + (firms[i] as f64 * 0.21).sin() + (i % 5) as f64 * 1e-3)
+        .collect();
+    let config = MapConfig {
+        tolerance: 1e-11,
+        ..MapConfig::default()
+    };
+    let pool = rayon::ThreadPoolBuilder::new()
+        .num_threads(2)
+        .build()
+        .unwrap();
+    let mut owner = ReusableMapAbsorber::new(design, 3).unwrap();
+    owner.enable_certificate_geometry().unwrap();
+    owner.enable_coefficient_solver(2).unwrap();
+    owner.enable_certificate_workspace().unwrap();
+    owner.enable_coefficient_coupling().unwrap();
+    owner.enable_joint_slopes().unwrap();
+    assert_eq!(owner.joint_retained_intercept_effect(), Some(1));
+    let mut frame = 0;
+    let mut solve = |owner: &mut ReusableMapAbsorber, block: Option<&mut TestBlock>| {
+        frame += 1;
+        let generation = MapGeometryGeneration {
+            sample: 1,
+            topology: 1,
+            weights: frame,
+        };
+        pool.install(|| {
+            super::super::slope_coefficients::joint::set_block_checkpoint_for_test(3);
+            let block = block.map(|b| {
+                b as &mut dyn super::super::slope_coefficients::joint::JointBlockPreconditioner
+            });
+            owner.solve_joint_slopes(&weights, &controls, &[0, 1], &y, config, generation, block)
+        })
+        .map(|()| {
+            let joint = owner.joint_slopes().unwrap();
+            (
+                joint.beta().to_vec(),
+                joint.residuals.as_slice().to_vec(),
+                joint.report.as_ref().unwrap().iterations,
+            )
+        })
+    };
+    let bits = |values: &[f64]| values.iter().map(|v| v.to_bits()).collect::<Vec<_>>();
+    let (beta, residuals, iterations) = solve(&mut owner, None).unwrap();
+    assert!(
+        iterations > 3,
+        "the diagonal recurrence passes the checkpoint"
+    );
+    let block = |installed, refuse, fail| TestBlock {
+        installed,
+        refuse,
+        fail,
+        installs: 0,
+        applies: 0,
+        refreshes: 0,
+    };
+    // Refusal at the checkpoint leaves every bit of the diagonal recurrence.
+    let mut refused = block(false, true, false);
+    let refusal = solve(&mut owner, Some(&mut refused)).unwrap();
+    assert_eq!((refused.installs, refused.applies), (1, 0));
+    assert_eq!(
+        (bits(&refusal.0), bits(&refusal.1)),
+        (bits(&beta), bits(&residuals))
+    );
+    assert_eq!(refusal.2, iterations);
+    // Installation, or a rebuild of an installed block, restarts at the
+    // current iterate; acceptance is unchanged.
+    for (installed, installs, refreshes) in [(false, 1, 0), (true, 0, 1)] {
+        let mut accepted = block(installed, false, false);
+        let (b, r, _) = solve(&mut owner, Some(&mut accepted)).unwrap();
+        assert_eq!(
+            (accepted.installs, accepted.refreshes),
+            (installs, refreshes)
+        );
+        assert!(accepted.applies > 0);
+        assert!(owner
+            .joint_slopes()
+            .unwrap()
+            .report
+            .as_ref()
+            .unwrap()
+            .certified());
+        for (actual, expected) in b.iter().zip(&beta).chain(r.iter().zip(&residuals)) {
+            assert!((actual - expected).abs() <= 1e-9, "{actual} != {expected}");
+        }
+    }
+    // A failing application fails the frame without a report.
+    let mut failing = block(true, false, true);
+    let error = solve(&mut owner, Some(&mut failing)).unwrap_err();
+    assert_eq!(error.code, ErrorCode::Interrupted);
+    assert!(owner.joint_slopes().unwrap().report.is_none());
 }

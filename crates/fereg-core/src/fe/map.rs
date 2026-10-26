@@ -513,6 +513,7 @@ impl ReusableMapAbsorber {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn solve_joint_slopes(
         &mut self,
         weights: &[f64],
@@ -521,6 +522,7 @@ impl ReusableMapAbsorber {
         response: &[f64],
         config: MapConfig,
         generation: MapGeometryGeneration,
+        block: Option<&mut dyn super::slope_coefficients::joint::JointBlockPreconditioner>,
     ) -> Result<()> {
         self.solve_joint_slopes_with(
             weights,
@@ -530,12 +532,13 @@ impl ReusableMapAbsorber {
             |joint, owner, design, geometry, reusable| {
                 joint.solve(
                     owner, design, geometry, weights, controls, selected, response, config,
-                    reusable,
+                    reusable, block,
                 )
             },
         )
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn solve_joint_slopes_streamed<
         C: super::slope_coefficients::joint::JointFiniteDesign,
     >(
@@ -546,6 +549,7 @@ impl ReusableMapAbsorber {
         response: &[f64],
         config: MapConfig,
         generation: MapGeometryGeneration,
+        block: Option<&mut dyn super::slope_coefficients::joint::JointBlockPreconditioner>,
     ) -> Result<()> {
         self.solve_joint_slopes_with(
             weights,
@@ -555,7 +559,7 @@ impl ReusableMapAbsorber {
             |joint, owner, design, geometry, reusable| {
                 joint.solve_streamed(
                     owner, design, geometry, weights, controls, selected, response, config,
-                    reusable,
+                    reusable, block,
                 )
             },
         )
@@ -662,6 +666,13 @@ impl ReusableMapAbsorber {
 
     pub(crate) const fn max_rhs(&self) -> usize {
         self.max_rhs
+    }
+
+    /// The joint solve's retained effect for two intercept-only effects.
+    pub(crate) fn joint_retained_intercept_effect(&self) -> Option<usize> {
+        let effects = self.design.effects();
+        (effects.len() == 2 && effects.iter().all(|effect| effect.channels() == 1))
+            .then(|| 1 - super::slope_coefficients::eliminated_effect(&self.design))
     }
 
     pub(crate) const fn design(&self) -> &FeDesign {
@@ -1770,22 +1781,74 @@ fn reusable_compensated_add(value: f64, sum: &mut f64, correction: &mut f64) -> 
 }
 
 pub(super) fn reusable_norm(values: &[f64]) -> f64 {
-    let mut scale = 0.0_f64;
-    let mut sum = 1.0_f64;
+    let mut state = (0.0_f64, 1.0_f64);
     for &value in values {
-        let absolute = value.abs();
-        if absolute == 0.0 {
-            continue;
-        }
-        if scale < absolute {
-            let ratio = scale / absolute;
-            sum = 1.0 + sum * ratio * ratio;
-            scale = absolute;
+        reusable_norm_step(value, &mut state);
+    }
+    reusable_norm_finish(state)
+}
+
+/// A column's Euclidean norm from direct squares, rescanned with the scaled
+/// recurrence when its largest square leaves the range where direct
+/// summation neither overflows nor drops a relevant term.
+#[derive(Clone, Copy, Default)]
+pub(crate) struct SquareSum {
+    maximum: f64,
+    sum: f64,
+}
+
+impl SquareSum {
+    #[inline]
+    pub(crate) fn add(&mut self, value: f64) {
+        let square = value * value;
+        self.maximum = self.maximum.max(square);
+        self.sum += square;
+    }
+
+    pub(crate) fn finish(self, values: &[f64]) -> f64 {
+        if (1e-280..=1e280).contains(&self.maximum) && self.sum.is_finite() {
+            self.sum.sqrt()
         } else {
-            let ratio = absolute / scale;
-            sum += ratio * ratio;
+            reusable_norm(values)
         }
     }
+}
+
+/// The norm of `values` over fixed leaves of direct squares, as
+/// [`SquareSum`]: the leaf tree depends only on the length.
+pub(crate) fn parallel_norm(values: &[f64]) -> f64 {
+    let leaf = |rows: std::ops::Range<usize>| -> Result<SquareSum> {
+        let mut sum = SquareSum::default();
+        values[rows].iter().for_each(|&value| sum.add(value));
+        Ok(sum)
+    };
+    let merge = |left: SquareSum, right: SquareSum| SquareSum {
+        maximum: left.maximum.max(right.maximum),
+        sum: left.sum + right.sum,
+    };
+    crate::parallel::fixed_tree_reduce(values.len(), 8192, &leaf, &merge)
+        .expect("norm leaves are infallible")
+        .finish(values)
+}
+
+/// One row of [`reusable_norm`]'s scaled `(scale, sum)` recurrence.
+#[inline(always)]
+pub(super) fn reusable_norm_step(value: f64, (scale, sum): &mut (f64, f64)) {
+    let absolute = value.abs();
+    if absolute == 0.0 {
+        return;
+    }
+    if *scale < absolute {
+        let ratio = *scale / absolute;
+        *sum = 1.0 + *sum * ratio * ratio;
+        *scale = absolute;
+    } else {
+        let ratio = absolute / *scale;
+        *sum += ratio * ratio;
+    }
+}
+
+pub(super) fn reusable_norm_finish((scale, sum): (f64, f64)) -> f64 {
     if scale == 0.0 {
         0.0
     } else {

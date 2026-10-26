@@ -1,3 +1,4 @@
+use super::reduced::apply_incidence_schur;
 use super::*;
 use crate::metadata::*;
 use crate::ols::{
@@ -1936,5 +1937,199 @@ fn canonical_three_products_preserve_disconnected_and_invalid_frame_fallback() {
         )
         .unwrap()
         .is_none());
+    }
+}
+
+/// A 120-firm worker chain plus small firm components, with weights over
+/// eight orders of magnitude: implicit solves at a strict target.
+fn chain_with_small_components() -> (PreparedOlsData, Vec<f64>, Vec<Vec<f64>>) {
+    let (mut g, mut h, mut w) = (Vec::new(), Vec::new(), Vec::new());
+    let mut worker = 0;
+    let mut link = |firms: &[usize], g: &mut Vec<f64>, h: &mut Vec<f64>| {
+        for &firm in firms {
+            g.push(worker as f64);
+            h.push(firm as f64);
+        }
+        worker += 1;
+    };
+    for firm in 0..119 {
+        for _ in 0..2 {
+            link(&[firm, firm + 1, firm], &mut g, &mut h);
+        }
+    }
+    // Components of one, two, three and four firms beside the chain.
+    let mut next = 120;
+    for size in 1..=4 {
+        for _ in 0..3 {
+            for firm in next..next + size {
+                link(
+                    &[firm, (firm + 1 - next) % size + next, firm],
+                    &mut g,
+                    &mut h,
+                );
+            }
+            next += size;
+        }
+    }
+    for row in 0..g.len() {
+        w.push(0.5 + (row * 7 % 9) as f64);
+    }
+    let x: Vec<Vec<f64>> = (0..3)
+        .map(|j| {
+            (0..g.len())
+                .map(|row| ((row * (j + 2)) as f64 * 0.37).sin() + h[row] * 0.01)
+                .collect()
+        })
+        .collect();
+    let p = prepared(&x[0], &x[1..], &g, &h);
+    (p, w, x)
+}
+
+#[test]
+fn small_implicit_components_meet_a_strict_target_and_a_shared_hierarchy_preconditions() {
+    use crate::fe::slope_coefficients::joint::JointBlockPreconditioner;
+    let (p, w, x) = chain_with_small_components();
+    let n = w.len();
+    let config = MapConfig {
+        tolerance: 1e-12,
+        ..MapConfig::default()
+    };
+    let divisor = w.iter().copied().fold(0_f64, f64::max);
+    // Room for implicit banks and a shared hierarchy's scratch, not for a
+    // dense reduced matrix.
+    let allowance = 16 * n as u128 * 6 * 3;
+    let build = |owner: Option<&mut crate::fe::ReusableCategoricalMapAbsorber<'_>>| {
+        try_build_with_preconditioner(
+            &p,
+            &[0, 1],
+            &x[0],
+            BorrowedMapWeights::Provided(&w),
+            divisor,
+            config,
+            allowance,
+            0,
+            &mut Vec::new(),
+            &mut historical_preconditioner::Call::new(None, 0, 0),
+            owner,
+        )
+        .unwrap()
+        .expect("strict implicit products certify")
+    };
+    let plain = build(None);
+    assert!(plain.implicit && plain.report.certified());
+    let design = || p.fit_borrowed_intercept_map_design().unwrap().unwrap();
+    let generation = crate::fe::MapGeometryGeneration {
+        sample: 1,
+        topology: 1,
+        weights: 1,
+    };
+    let compare = |shared: &Products<'_, PreparedOlsData>| {
+        assert!(shared.implicit && shared.report.certified());
+        assert!(
+            shared.report.iterations < plain.report.iterations,
+            "{} preconditioned and {} plain steps",
+            shared.report.iterations,
+            plain.report.iterations
+        );
+        for (a, b) in shared.response.iter().zip(&plain.response) {
+            assert!((a - b).abs() <= 1e-9 * (1. + b.abs()));
+        }
+        for (a, b) in shared.moments.gram.iter().zip(&plain.moments.gram) {
+            assert!((a - b).abs() <= 1e-9 * (1. + b.abs()));
+        }
+    };
+    // An installed hierarchy preconditions the large component.
+    let mut absorber = crate::fe::ReusableCategoricalMapAbsorber::new(design(), 3, 2).unwrap();
+    absorber.enable_ppml_cmg(None, u128::MAX).unwrap();
+    absorber.begin_ppml_frame(generation).unwrap();
+    assert!(
+        crate::fe::JointCmgBlock::new(Some(&mut absorber), &w, Some(1))
+            .unwrap()
+            .install()
+            .unwrap()
+    );
+    compare(&build(Some(&mut absorber)));
+    assert_eq!(absorber.ppml_cmg_reach(), Some((1, 150, true)));
+    // Without one, a probe beyond 32 plain steps builds it on these weights.
+    let mut absorber = crate::fe::ReusableCategoricalMapAbsorber::new(design(), 3, 2).unwrap();
+    absorber.enable_ppml_cmg(None, u128::MAX).unwrap();
+    absorber.begin_ppml_frame(generation).unwrap();
+    compare(&build(Some(&mut absorber)));
+    assert_eq!(absorber.ppml_cmg_reach(), Some((1, 150, true)));
+}
+
+#[test]
+fn an_unaffordable_dense_factor_uses_the_implicit_operator_without_assembly() {
+    // A complete 300 x 300 bipartite design: assembling the reduced matrix
+    // costs more than 64 implicit applications, and a prior operator
+    // allowance admits the plan but not the cubic factorization.
+    let (mut g, mut h) = (Vec::new(), Vec::new());
+    for a in 0..300 {
+        for b in 0..300 {
+            g.push(a as f64);
+            h.push(b as f64);
+        }
+    }
+    let n = g.len();
+    let w: Vec<f64> = (0..n).map(|i| 0.5 + (i * 13 % 7) as f64).collect();
+    let y: Vec<f64> = (0..n)
+        .map(|i| (i as f64 * 0.11).sin() + g[i] * 0.01)
+        .collect();
+    let x = vec![(0..n)
+        .map(|i| (i as f64 * 0.29).cos() - h[i] * 0.02)
+        .collect::<Vec<_>>()];
+    let p = prepared(&y, &x, &g, &h);
+    let config = MapConfig {
+        tolerance: 1e-12,
+        ..MapConfig::default()
+    };
+    let build = |prior_operator_work| {
+        try_build(
+            &p,
+            &[0],
+            &y,
+            BorrowedMapWeights::Provided(&w),
+            1.,
+            config,
+            u128::MAX >> 8,
+            prior_operator_work,
+            &mut Vec::new(),
+        )
+        .unwrap()
+        .expect("certified products")
+    };
+    let implicit = build(20_000_000);
+    assert!(implicit.implicit && implicit.report.certified());
+    // A well-connected reduced graph finishes its probe: nothing is built and
+    // later canonical solves of the estimation stop probing.
+    let design = p.fit_borrowed_intercept_map_design().unwrap().unwrap();
+    let mut absorber = crate::fe::ReusableCategoricalMapAbsorber::new(design, 2, 2).unwrap();
+    absorber.enable_ppml_cmg(None, u128::MAX).unwrap();
+    assert_eq!(absorber.ppml_cmg_reach(), Some((1, 300, false)));
+    let probed = try_build_with_preconditioner(
+        &p,
+        &[0],
+        &y,
+        BorrowedMapWeights::Provided(&w),
+        1.,
+        config,
+        u128::MAX >> 8,
+        20_000_000,
+        &mut Vec::new(),
+        &mut historical_preconditioner::Call::new(None, 0, 0),
+        Some(&mut absorber),
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(probed.response, implicit.response);
+    assert_eq!(absorber.ppml_cmg_reach(), None);
+    // An allowance that affords the factor keeps the direct solve.
+    let direct = build(1 << 40);
+    assert!(!direct.implicit && direct.report.certified());
+    for (a, b) in implicit.response.iter().zip(&direct.response) {
+        assert!((a - b).abs() <= 1e-9 * (1. + b.abs()));
+    }
+    for (a, b) in implicit.moments.gram.iter().zip(&direct.moments.gram) {
+        assert!((a - b).abs() <= 1e-9 * (1. + b.abs()));
     }
 }

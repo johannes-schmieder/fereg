@@ -140,12 +140,92 @@ Complete four-million-row dense three-FE fits took 5% longer at four workers
 and 21% longer at 28, so it was not adopted
 ([record](../bench/results/r4-row-streaming-20261026.json)).
 
+## PPML two-FE CMG reuse and lean protocol
+
+PPML Auto with exactly two intercept FEs reuses one CMG hierarchy across IRLS
+frames and canonical products, and publication fits enter the strict
+checkpoint once the predictor settles, as specified in
+[SPEC](SPEC.md#qualified-auto-routing-and-developer-comparisons) and §13. This
+branch result awaits Johannes's decision. The
+[lean record](../bench/results/ppml-two-fe-lean-20261026.json) retains every
+timing of the final qualification and the
+[CMG record](../bench/results/ppml-two-fe-cmg-20261026.json) the earlier
+CMG-reuse round.
+
+On one whole node (`scc-wk1`, Xeon E5-2680 v4), campaign-generator PPML inputs
+with 16 regressors ran five rounds per cell with rotated arm order: shipped
+beta.6, the CMG-reuse head `7db43e41` and the lean head `277c5d11`. Times are
+medians; ratios are medians of paired rounds.
+
+| Design | Rows | Workers | beta.6 s | `7db43e41` s | Lean s | Lean/beta.6 | Lean/`7db43e41` |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Two sparse FEs | 1,000,000 | 4 | 17.75 | 11.05 | 5.82 | 0.324 | 0.528 |
+| Two sparse FEs | 1,000,000 | 28 | 10.86 | 7.56 | 4.13 | 0.380 | 0.543 |
+| Two sparse FEs | 4,000,000 | 4 | 81.30 | 45.28 | 26.37 | 0.327 | 0.582 |
+| Two sparse FEs | 4,000,000 | 28 | 48.36 | 32.92 | 18.04 | 0.374 | 0.549 |
+| AKM | 1,000,000 | 4 | 5.07 | 5.02 | 4.20 | 0.833 | 0.850 |
+| AKM | 1,000,000 | 28 | 3.36 | 3.34 | 2.76 | 0.820 | 0.826 |
+| AKM | 4,000,000 | 4 | 22.94 | 22.65 | 18.66 | 0.811 | 0.828 |
+| AKM | 4,000,000 | 28 | 14.71 | 14.55 | 12.29 | 0.835 | 0.845 |
+| Two dense FEs | 1,000,000 | 4 | 4.70 | 4.54 | 3.88 | 0.825 | 0.852 |
+| Two dense FEs | 1,000,000 | 28 | 3.01 | 2.94 | 2.49 | 0.823 | 0.845 |
+| Two dense FEs | 4,000,000 | 4 | 20.30 | 19.93 | 14.90 | 0.734 | 0.755 |
+| Two dense FEs | 4,000,000 | 28 | 12.42 | 12.17 | 10.15 | 0.819 | 0.831 |
+
+Against beta.6, coefficients and covariance stay within 2e-5 and 7e-10 of the
+§20 envelopes (largest on the sparse design, whose published state is one
+Newton step earlier), and sample, status, DoF, drop, separation and FE
+fields are exact in every cell. Every arm repeats bit for bit across rounds;
+4- and 28-worker lean results agree within 1e-8 and 2e-10 of the envelopes
+with exact discrete fields. IRLS iteration counts are unchanged except the
+1M-row sparse design (8 instead of 9). The sparse design defers its strict
+checkpoint once (1M) or twice (4M) and passes the first one. The earlier
+CMG-reuse round had left AKM four-worker cells at 1.048-1.062; all cells are
+now faster than both baselines.
+
+The 73-case replay corpus passes its independent dense science targets in
+every case with no discrete, repeat or thread differences. All OLS cases are
+bit-identical to `7db43e41`; seven PPML cases differ by at most 1.2e-14
+relative in coefficients and covariance. New witnesses cover the settling
+rule, small and shared-CMG implicit components, the implicit assembly choice,
+team-independent joint checks and Gram, refreshes and the three-attempt
+bound. The full source-only suite passed at `277c5d11`. A parallel CMG
+application, a row-tiled certificate Gram and a data-based IRLS start were
+measured and rejected (slower, or no fewer iterations).
+
 ## Package checks
 
-The beta.6 package ships the many-FE geometry policy.
+The beta.7 package ships the lean PPML two-FE protocol and CMG reuse.
 [Package metadata](../dist/fereg-native.json) records each binary's build revision,
-checksum and corresponding-source identity. The Linux and macOS plugins are the
-qualified `99f0134d` builds; Windows was built at `07d4da6d`, and the runtime
+checksum and corresponding-source identity. The Linux plugin is the qualified
+`277c5d11` build measured above. Windows was built at `7a33fc20`, and the
+universal macOS plugin was built offline from the corresponding-source archive
+packaged at `7a33fc20` with a passing dependency audit (no advisories). The
+runtime identity is unchanged between `277c5d11` and `7a33fc20`.
+
+The default `./scripts/run_tests.sh` passed at `8506a65a`: 319 Python tests,
+Rust unit and independent numerical integration tests, Clippy, FFI allocation
+audits, portable checks, mock SPI transactions, the complexity ratchet and the
+root-package identity check.
+
+| Platform | Beta.7 checks |
+| --- | --- |
+| macOS | The offline archive build passed its binary audit and actual ABI/load/panic checks. 40 Stata 19/MP fixtures passed: the 18 beta.6 release fixtures plus 22 PPML route, canonical, joint, separation, inference and parity fixtures. Public PPML and OLS Break/rollback passed, and ten installed-package fixtures passed from the staged archive. |
+| Windows x86-64 | Run `win-20261026T181228Z-1bcb165d` at `7a33fc20`: Rust 1.85.1/MSVC static-CRT build, exact-FMA and hardware-kernel tests, C numeric guards, PE audit and actual ABI/load/panic checks passed. A fresh `net install` verified the installed plugin bytes, then passed the installation smoke, single-runtime and OLS/PPML fixtures in Stata 19/MP. The machine was stopped afterwards. |
+| Linux x86-64 | Qualification job 8287434 built the plugin offline with Rust 1.85.1 and GCC 12.2.0; ELF audit and actual ABI/load/panic checks passed. Job 8289216 repeated the audit (glibc 2.28 maximum) and load checks and passed the same 40 Stata 19/MP fixtures; job 8289358 passed ten installed-package fixtures from the staged archive. |
+
+The root package passed a fresh local Mac `net install`: all 35 installed files
+matched, and selftest, OLS/PPML examples, a three-FE OLS comparison and a
+two-FE PPML comparison with explicit dummies passed. After publication, a fresh
+Stata 19/MP `net install` from the
+[beta.7 release](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0-beta.7)
+matched all 34 versioned package files and passed the same checks. All 50
+release assets matched their local SHA-256 checksums.
+
+### Beta.6 many-FE geometry packaging
+
+The beta.6 package shipped the many-FE geometry policy. The Linux and macOS
+plugins were the qualified `99f0134d` builds; Windows was built at `07d4da6d`, and the runtime
 identity is unchanged between them. The corresponding source was packaged from
 `07d4da6d` with a passing dependency audit (no advisories). An offline Cargo
 build from that archive produced a universal Mac plugin that passed its binary
@@ -233,5 +313,9 @@ All 50 GitHub release assets matched their local SHA-256 checksums and sizes.
   worker on Linux. This is an accepted exception, not a passed comparison.
 - The Mac plugin contains Apple Silicon and Intel slices. Licensed installation
   testing is on Apple Silicon; native Intel-host Stata testing is outstanding.
+- PPML CMG reuse helps weakly connected two-FE designs only. Dense two-FE PPML
+  gains only from the exact passes and still trails fixest at four million rows.
+  On weak graphs the first strict checkpoint is commonly rejected and IRLS
+  resumes for two frames; that protocol cost is unchanged.
 - GitHub Actions remain disabled; checks run locally or on the authorized SCC
   and private Windows hosts.

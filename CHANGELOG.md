@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.5.0 beta.7 — 2026-10-26
+
+- PPML Auto with exactly two fixed effects reuses one CMG preconditioner across
+  IRLS iterations, in the joint FE solves and in the canonical products of the
+  first iteration and the strict checkpoint. A solve that is still slow at its
+  checkpoint builds a missing hierarchy or rebuilds one from earlier weights;
+  an estimation builds at most three.
+- PPML publication fits enter the strict checkpoint only once the accepted
+  predictor is predicted to settle within the strict envelope. Weakly connected
+  designs pass their first checkpoint instead of repeating it at a 100-times
+  tighter tolerance.
+- Canonical PPML products solve small graph components directly and no longer
+  assemble dense reduced matrices for iterative solves.
+- PPML iterations with fixed effects make fewer, parallel passes: fresh input
+  checks over fixed row blocks, residuals from projected columns, a one-pass
+  Gram, and parallel refinement, product writes and coupling preparation.
+- On Linux with 4 and 28 workers, two-effect designs with 2% worker mobility
+  ran in 0.32-0.38 of beta.6's time at one and four million rows; AKM and
+  dense two-effect designs ran in 0.73-0.84.
+- Results agree with beta.6 within the documented tolerances; sample, rank,
+  omission and separation decisions are unchanged. Iteration counts can
+  differ. OLS is unchanged bit for bit.
+
 ## 0.5.0 beta.6 — 2026-10-25
 
 - OLS Auto with three or more categorical-intercept effects starts LSMR with a

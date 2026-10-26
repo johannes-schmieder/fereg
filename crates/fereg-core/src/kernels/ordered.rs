@@ -27,6 +27,112 @@ pub fn normalized_product(left: &[f64], right: &[f64]) -> f64 {
     sums.iter().sum()
 }
 
+/// [`normalized_product`] for the upper-triangle entries `j >= first + a` of
+/// `rows` consecutive Gram rows over `count` columns of length `n` stored
+/// one after another in `columns`; `output` holds those rows of the
+/// row-major `count`-square Gram. Row tiles and eight-column chunks keep
+/// every operand in cache across its pairs, while each pair keeps that
+/// kernel's chains, lane order, tail and final sum bit for bit.
+#[inline(always)]
+pub fn normalized_products(
+    columns: &[f64],
+    n: usize,
+    count: usize,
+    first: usize,
+    rows: usize,
+    output: &mut [f64],
+) {
+    const LANES: usize = 8;
+    const CHUNK: usize = 8;
+    const ROWS: usize = 4;
+    const TILE: usize = 256;
+    debug_assert!(rows <= ROWS && first + rows <= count);
+    debug_assert!(columns.len() >= n * count && output.len() >= rows * count);
+    let full = n / LANES * LANES;
+    for chunk in (first..count).step_by(CHUNK) {
+        let width = CHUNK.min(count - chunk);
+        let mut sums = [[[0.0_f64; LANES]; CHUNK]; ROWS];
+        let pairs = |a: usize| (first + a).max(chunk) - chunk..width;
+        for tile in (0..full).step_by(TILE) {
+            let end = (tile + TILE).min(full);
+            for (a, row_sums) in sums.iter_mut().enumerate().take(rows) {
+                let left = &columns[(first + a) * n..(first + a + 1) * n];
+                for c in pairs(a) {
+                    let right = &columns[(chunk + c) * n..(chunk + c + 1) * n];
+                    let lanes = &mut row_sums[c];
+                    for start in (tile..end).step_by(LANES) {
+                        for lane in 0..LANES {
+                            lanes[lane] =
+                                left[start + lane].mul_add(right[start + lane], lanes[lane]);
+                        }
+                    }
+                }
+            }
+        }
+        for (a, row_sums) in sums.iter_mut().enumerate().take(rows) {
+            let left = &columns[(first + a) * n..(first + a + 1) * n];
+            for c in pairs(a) {
+                let right = &columns[(chunk + c) * n..(chunk + c + 1) * n];
+                let lanes = &mut row_sums[c];
+                for row in full..n {
+                    lanes[0] = left[row].mul_add(right[row], lanes[0]);
+                }
+                output[a * count + chunk + c] = lanes.iter().sum();
+            }
+        }
+    }
+}
+
+/// Eight FMA chains of every upper pair `(i, j >= i)` of `count` column-major
+/// columns (stride `n`) over rows `start..end`, added into `lanes` in
+/// row-major upper pair order, eight lanes per pair. Whole eight-row groups
+/// run in row tiles with all pairs inside each tile; remaining rows add into
+/// lane zero.
+#[inline(always)]
+pub fn gram_panel(
+    columns: &[f64],
+    n: usize,
+    count: usize,
+    start: usize,
+    end: usize,
+    lanes: &mut [f64],
+) {
+    const LANES: usize = 8;
+    const TILE: usize = 128;
+    debug_assert!(start <= end && end <= n && columns.len() >= n * count);
+    debug_assert!(lanes.len() >= count * (count + 1) / 2 * LANES);
+    let full = start + (end - start) / LANES * LANES;
+    for tile in (start..full).step_by(TILE) {
+        let stop = (tile + TILE).min(full);
+        let mut pair = 0;
+        for i in 0..count {
+            let left = &columns[i * n + tile..i * n + stop];
+            for j in i..count {
+                let right = &columns[j * n + tile..j * n + stop];
+                let mut sums = [0.0_f64; LANES];
+                sums.copy_from_slice(&lanes[pair * LANES..(pair + 1) * LANES]);
+                for (left, right) in left.chunks_exact(LANES).zip(right.chunks_exact(LANES)) {
+                    for lane in 0..LANES {
+                        sums[lane] = left[lane].mul_add(right[lane], sums[lane]);
+                    }
+                }
+                lanes[pair * LANES..(pair + 1) * LANES].copy_from_slice(&sums);
+                pair += 1;
+            }
+        }
+    }
+    let mut pair = 0;
+    for i in 0..count {
+        for j in i..count {
+            for row in full..end {
+                lanes[pair * LANES] =
+                    columns[i * n + row].mul_add(columns[j * n + row], lanes[pair * LANES]);
+            }
+            pair += 1;
+        }
+    }
+}
+
 #[inline(always)]
 pub fn scaled_add(source: &[f64], scale: f64, destination: &mut [f64]) {
     for (value, &source) in destination.iter_mut().zip(source) {

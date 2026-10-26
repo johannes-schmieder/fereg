@@ -17,8 +17,8 @@ pub use ordered::{
     weighted_upper_gram,
 };
 pub use ordered::{
-    basis_projection_tile, multiply_add, normalized_product, ordered_dot, selected_residual,
-    subtract_products,
+    basis_projection_tile, gram_panel, multiply_add, normalized_product, normalized_products,
+    ordered_dot, selected_residual, subtract_products,
 };
 pub use ordered::{
     incidence_schur_row, joint_step_energy, normalized_selected_residual,
@@ -68,6 +68,12 @@ pub type OrderedDot = fn(&[f64], &[f64]) -> f64;
 
 /// Runtime entry for [`normalized_product`].
 pub type NormalizedProduct = fn(&[f64], &[f64]) -> f64;
+
+/// Runtime entry for [`normalized_products`].
+pub type NormalizedProducts = fn(&[f64], usize, usize, usize, usize, &mut [f64]);
+
+/// Runtime entry for [`gram_panel`].
+pub type GramPanel = fn(&[f64], usize, usize, usize, usize, &mut [f64]);
 
 /// Runtime entry for [`scaled_add`].
 pub type ScaledAdd = fn(&[f64], f64, &mut [f64]);
@@ -171,6 +177,8 @@ pub struct FusedKernels {
     pub joint_step_energy: JointStepEnergy,
     pub ordered_dot: OrderedDot,
     pub normalized_product: NormalizedProduct,
+    pub normalized_products: NormalizedProducts,
+    pub gram_panel: GramPanel,
     pub scaled_add: ScaledAdd,
     pub coefficient_add: CoefficientAdd,
     pub grouped_cross: GroupedCross,
@@ -489,6 +497,74 @@ pub(crate) use dispatch;
 #[cfg(test)]
 mod tests {
     use std::hint::black_box;
+
+    #[test]
+    fn gram_panels_sum_to_pairwise_products() {
+        for n in [0, 1, 7, 8, 9, 255, 256, 257, 777] {
+            for count in [1, 3, 5] {
+                let columns: Vec<f64> = (0..n * count)
+                    .map(|i| ((i * 37 % 101) as f64 - 50.0) / 7.0)
+                    .collect();
+                let pairs = count * (count + 1) / 2;
+                let mut whole = vec![0.0; pairs * 8];
+                super::gram_panel(&columns, n, count, 0, n, &mut whole);
+                // Split panels over the same rows add up to the same chains.
+                let mut split = vec![0.0; pairs * 8];
+                let middle = n / 16 * 8;
+                super::gram_panel(&columns, n, count, 0, middle, &mut split);
+                super::gram_panel(&columns, n, count, middle, n, &mut split);
+                let mut pair = 0;
+                for i in 0..count {
+                    for j in i..count {
+                        let expected: f64 = (0..n)
+                            .map(|row| columns[i * n + row] * columns[j * n + row])
+                            .sum();
+                        for lanes in [&whole, &split] {
+                            let actual: f64 = lanes[pair * 8..(pair + 1) * 8].iter().sum();
+                            assert!((actual - expected).abs() <= 1e-9 * (1.0 + expected.abs()));
+                        }
+                        pair += 1;
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn normalized_products_match_pairwise_normalized_product_bits() {
+        for n in [0, 1, 7, 8, 9, 255, 256, 257, 777] {
+            for count in [1, 3, 8, 9, 17] {
+                let columns: Vec<f64> = (0..n * count)
+                    .map(|i| ((i * 37 % 101) as f64 - 50.0) / 7.0 * (1.0 + (i % 5) as f64 * 1e-3))
+                    .collect();
+                for first in 0..count {
+                    for rows in 1..=4.min(count - first) {
+                        let mut output = vec![f64::NAN; rows * count];
+                        super::normalized_products(&columns, n, count, first, rows, &mut output);
+                        for a in 0..rows {
+                            let i = first + a;
+                            for j in 0..count {
+                                let actual = output[a * count + j];
+                                if j < i {
+                                    assert!(actual.is_nan(), "lower entry written");
+                                    continue;
+                                }
+                                let expected = super::normalized_product(
+                                    &columns[i * n..(i + 1) * n],
+                                    &columns[j * n..(j + 1) * n],
+                                );
+                                assert_eq!(
+                                    actual.to_bits(),
+                                    expected.to_bits(),
+                                    "{n} {count} {i} {j}"
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     #[test]
     fn upper_rank_one_tiles_match_exact_dyadic_gram_and_partition_bounds() {

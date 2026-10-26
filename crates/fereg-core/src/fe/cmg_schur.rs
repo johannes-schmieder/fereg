@@ -281,6 +281,80 @@ impl CmgSchurPreconditioner {
         crate::interrupt::checkpoint()
     }
 
+    /// Bytes of one [`SharedScratch`] for [`Self::apply_shared`].
+    pub(super) fn shared_scratch_bytes(&self) -> Result<u128> {
+        let cancelled = crate::interrupt::cancellation_requested;
+        let workspace = self
+            .preconditioner
+            .workspace_allocation_bytes_controlled(&cancelled)
+            .map_err(cmg_error)? as u128;
+        let vertices = self.vertex_count() as u128;
+        vertices
+            .checked_mul(2 * std::mem::size_of::<f64>() as u128)
+            .and_then(|bytes| bytes.checked_add(workspace))
+            .ok_or_else(|| allocation("shared CMG scratch dimensions overflow"))
+    }
+
+    pub(super) fn shared_scratch(&self) -> Result<SharedScratch> {
+        let cancelled = crate::interrupt::cancellation_requested;
+        let vertices = self.vertex_count();
+        let message = "unable to reserve shared CMG scratch";
+        let mut rhs = Vec::new();
+        rhs.try_reserve_exact(vertices)
+            .map_err(|_| allocation(message))?;
+        rhs.resize(vertices, 0.0);
+        let mut solution = Vec::new();
+        solution
+            .try_reserve_exact(vertices)
+            .map_err(|_| allocation(message))?;
+        solution.resize(vertices, 0.0);
+        Ok(SharedScratch {
+            rhs,
+            solution,
+            workspace: self
+                .preconditioner
+                .try_workspace_controlled(&cancelled)
+                .map_err(cmg_error)?,
+        })
+    }
+
+    /// `R B_h E` for a firm vector already compatible on its components: the
+    /// one fixed cycle of [`Self::apply_batch`] without its component
+    /// projections, on caller scratch, so workers can share one hierarchy.
+    /// The output's component constants are arbitrary.
+    pub(super) fn apply_shared(
+        &self,
+        input: &[f64],
+        output: &mut [f64],
+        scratch: &mut SharedScratch,
+    ) -> Result<()> {
+        let firms = self.components.labels.len();
+        if input.len() != firms || output.len() != firms || scratch.rhs.len() < firms {
+            return Err(invalid_argument("shared CMG dimensions are inconsistent"));
+        }
+        scratch.rhs[..firms].copy_from_slice(input);
+        scratch.rhs[firms..].fill(0.0);
+        let cancelled = crate::interrupt::cancellation_requested;
+        self.preconditioner
+            .apply_compatible_into_with(
+                &scratch.rhs,
+                &mut scratch.solution,
+                &mut scratch.workspace,
+                cmg::ApplyContext {
+                    plan: None,
+                    team: None,
+                    cancel: Some(&cancelled),
+                },
+            )
+            .map_err(cmg_error)?;
+        output.copy_from_slice(&scratch.solution[..firms]);
+        Ok(())
+    }
+
+    fn vertex_count(&self) -> usize {
+        self.rhs.len() / self.batch_columns
+    }
+
     /// One fixed cycle on the packed lanes. The projection's original width
     /// fixes the arithmetic path: a single-RHS projection uses the scalar
     /// cycle, while a compacted final active lane or one-column tile remainder
@@ -315,6 +389,13 @@ impl CmgSchurPreconditioner {
             }
         }
     }
+}
+
+/// One worker's storage for [`CmgSchurPreconditioner::apply_shared`].
+pub(crate) struct SharedScratch {
+    rhs: Vec<f64>,
+    solution: Vec<f64>,
+    workspace: CmgWorkspace,
 }
 
 struct Admission {

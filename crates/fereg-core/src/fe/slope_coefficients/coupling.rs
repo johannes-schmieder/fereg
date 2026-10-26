@@ -128,6 +128,29 @@ impl Shape {
     }
 }
 
+/// Run `fill` on disjoint ranges of left levels, each with its own edges of
+/// the CSR value bank, splitting halves until a range holds few levels.
+fn split_levels<F>(
+    levels: std::ops::Range<usize>,
+    offsets: &[usize],
+    width: usize,
+    values: &mut [f64],
+    fill: &F,
+) where
+    F: Fn(std::ops::Range<usize>, &mut [f64]) + Sync,
+{
+    const LEVELS: usize = 4096;
+    if levels.len() <= LEVELS {
+        return fill(levels, values);
+    }
+    let middle = levels.start + levels.len() / 2;
+    let (left, right) = values.split_at_mut((offsets[middle] - offsets[levels.start]) * width);
+    rayon::join(
+        || split_levels(levels.start..middle, offsets, width, left, fill),
+        || split_levels(middle..levels.end, offsets, width, right, fill),
+    );
+}
+
 struct PairBlocks {
     left: usize,
     right: usize,
@@ -496,35 +519,52 @@ impl PreparedCoupling {
         let effect_groups = &self.effect_groups;
         let local_rows = &self.local_rows;
         self.pairs.par_iter_mut().for_each(|pair| {
-            pair.values.fill(0.);
-            let left_effect = &design.effects()[pair.left];
-            let right_effect = &design.effects()[pair.right];
-            for level in 0..left_effect.n_levels() {
-                let lg = effect_groups[pair.left] + level;
-                let l = groups[lg];
-                let members = left_effect.level_index().members(level);
-                let ls = members.len();
-                for (local, &row) in members.iter().enumerate() {
-                    let rg = effect_groups[pair.right] + right_effect.codes()[row] as usize;
-                    let r = groups[rg];
-                    let rs = right_effect.level_index().members(r.level).len();
-                    let lb = l.basis_start + local;
-                    let rb = r.basis_start + local_rows[pair.right * n + row];
-                    let target = pair.observation_blocks[row];
-                    for a in 0..geometry.ranks[lg] {
-                        let left = geometry.basis[lb + a * ls];
-                        for b in 0..geometry.ranks[rg] {
-                            let at = target + a * pair.right_channels + b;
-                            pair.values[at] = crate::kernels::fused(
-                                hardware,
-                                left,
-                                geometry.basis[rb + b * rs],
-                                pair.values[at],
-                            );
+            let PairBlocks {
+                left,
+                right,
+                left_channels,
+                right_channels,
+                offsets,
+                observation_blocks,
+                values,
+                ..
+            } = pair;
+            let left_effect = &design.effects()[*left];
+            let right_effect = &design.effects()[*right];
+            let width = *left_channels * *right_channels;
+            // Each left level fills its own edges in member order, so level
+            // ranges run in parallel with every value's sequential arithmetic.
+            let fill = |levels: std::ops::Range<usize>, values: &mut [f64]| {
+                values.fill(0.);
+                let first = offsets[levels.start] * width;
+                for level in levels {
+                    let lg = effect_groups[*left] + level;
+                    let l = groups[lg];
+                    let members = left_effect.level_index().members(level);
+                    let ls = members.len();
+                    for (local, &row) in members.iter().enumerate() {
+                        let rg = effect_groups[*right] + right_effect.codes()[row] as usize;
+                        let r = groups[rg];
+                        let rs = right_effect.level_index().members(r.level).len();
+                        let lb = l.basis_start + local;
+                        let rb = r.basis_start + local_rows[*right * n + row];
+                        let target = observation_blocks[row] - first;
+                        for a in 0..geometry.ranks[lg] {
+                            let left = geometry.basis[lb + a * ls];
+                            for b in 0..geometry.ranks[rg] {
+                                let at = target + a * *right_channels + b;
+                                values[at] = crate::kernels::fused(
+                                    hardware,
+                                    left,
+                                    geometry.basis[rb + b * rs],
+                                    values[at],
+                                );
+                            }
                         }
                     }
                 }
-            }
+            };
+            split_levels(0..left_effect.n_levels(), offsets, width, values, &fill);
         });
         if self.representation == Representation::Schur {
             self.form_schur(design, groups);

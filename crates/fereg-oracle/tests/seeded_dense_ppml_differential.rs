@@ -89,6 +89,39 @@ fn seeded_designs_match_dense_poisson_oracle() {
     }
 }
 
+/// Long chains and weak AKM mobility keep PPML Auto's diagonal joint
+/// recurrence past its block checkpoint, so ordinary frames and the strict
+/// reprojection reuse one CMG hierarchy. The dense oracle stays authoritative.
+#[test]
+fn weak_two_fe_graphs_reusing_cmg_match_dense_poisson_oracle() {
+    for (seed, graph, levels, rows, weights) in [
+        (7, Graph::Chain, vec![300, 150], 1200, WeightKind::Unit),
+        (
+            8,
+            Graph::AkmWeak,
+            vec![200, 60],
+            3400,
+            WeightKind::Probability,
+        ),
+        (9, Graph::Chain, vec![240, 120], 960, WeightKind::Frequency),
+    ] {
+        let spec = DesignSpec {
+            rows,
+            levels,
+            regressors: 2,
+            graph,
+            weights,
+            poisson: true,
+            ..DesignSpec::default()
+        };
+        let design = generate(seed, &spec).expect("design");
+        let context = format!("weak seed {seed}");
+        let fit = fit_design(&design, &context);
+        let (problem, rows) = design.poisson_problem(false).expect("oracle problem");
+        assert_matches_oracle(&fit, &problem, &rows, design.regressors.len(), &context);
+    }
+}
+
 #[test]
 fn fractional_outcomes_match_dense_poisson_oracle() {
     let spec = DesignSpec {

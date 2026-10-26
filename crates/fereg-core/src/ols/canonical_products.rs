@@ -9,7 +9,7 @@ use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::slope_coefficients::joint::normalized_product;
 use crate::fe::{
     BorrowedInterceptFeDesign, BorrowedMapWeights, FeCertificate, FeSolverKind, MapConfig,
-    SolveReport, SolveStopReason,
+    PpmlCmgScratch, PpmlCmgView, ReusableCategoricalMapAbsorber, SolveReport, SolveStopReason,
 };
 use crate::memory::SolverWorkspacePeak;
 use crate::ols::prepared_fit_view::PreparedOlsFitView;
@@ -20,7 +20,14 @@ use std::time::Instant;
 
 mod assembly;
 pub(super) mod historical_preconditioner;
+mod reduced;
+mod shared_cmg;
 mod three;
+use reduced::{
+    component_cap, component_operator, solve_reduced_cg, solve_reduced_cg_with_product,
+    solve_small_component, ASSEMBLY_APPLICATIONS, DIRECT_COMPONENT,
+};
+use shared_cmg::SharedCmg;
 pub(crate) fn canonical_three_workspace_bytes(
     n: usize,
     width: usize,
@@ -81,6 +88,31 @@ impl Budget {
         Ok(())
     }
 
+    // Storage owned outside this budget's vectors is charged before it exists
+    // and credited only after it has been dropped.
+    fn charge(&mut self, bytes: u128) -> Result<()> {
+        self.remaining = self.remaining.checked_sub(bytes).ok_or_else(allocation)?;
+        #[cfg(test)]
+        {
+            self.peak = self.peak.max(self.limit - self.remaining);
+        }
+        Ok(())
+    }
+    // Raise the limit by admitted capacity outside the original plan.
+    fn extend(&mut self, bytes: u128) -> Result<()> {
+        self.limit = self.limit.checked_add(bytes).ok_or_else(allocation)?;
+        self.remaining = self.remaining.checked_add(bytes).ok_or_else(allocation)?;
+        Ok(())
+    }
+    fn credit(&mut self, bytes: u128) -> Result<()> {
+        self.remaining = self
+            .remaining
+            .checked_add(bytes)
+            .filter(|remaining| *remaining <= self.limit)
+            .ok_or_else(allocation)?;
+        Ok(())
+    }
+
     fn reserve_empty<T>(&mut self, n: usize) -> Result<Vec<T>> {
         self.reserve_empty_policy(n, false)
     }
@@ -137,6 +169,8 @@ struct Plan {
     stride: usize,
     bytes: u128,
     factor_work_budget: u128,
+    /// Distinct-pair products of a dense reduced assembly.
+    assembly_work: u128,
 }
 impl Plan {
     fn new(
@@ -194,6 +228,7 @@ impl Plan {
             stride,
             bytes: 0,
             factor_work_budget: work_allowance.saturating_sub(work),
+            assembly_work: work,
         };
         plan.bytes = plan.minimum_storage_bytes(0, 0)?;
         Some(plan)
@@ -511,6 +546,49 @@ impl<P: PreparedOlsFitView + Sync + ?Sized> Products<'_, P> {
         )
     }
 
+    /// Row panels of a dense store, column by column: numeric columns read
+    /// their slices directly; each value keeps `residual`'s arithmetic.
+    fn write_dense_panels(&self, storage: &mut [f64], columns: usize) -> Result<()> {
+        const ROWS: usize = 512;
+        let a = &self.design.effects()[self.left_effect];
+        let b = &self.design.effects()[1 - self.left_effect];
+        let (p, q) = (a.n_levels(), b.n_levels());
+        storage
+            .par_chunks_mut(columns * ROWS)
+            .enumerate()
+            .try_for_each(|(panel, values)| {
+                let first = panel * ROWS;
+                for column in 0..columns {
+                    let j = column + 1;
+                    let rows = values.chunks_mut(columns).enumerate();
+                    match &self.columns[j] {
+                        Column::Numeric(source) if self.three.is_none() => {
+                            let scale = nonzero(self.scales[j]);
+                            let left = &self.left[j * p..(j + 1) * p];
+                            let right = &self.right[j * q..(j + 1) * q];
+                            for (i, values) in rows {
+                                let row = first + i;
+                                let value = (source[row] / scale
+                                    - left[a.codes()[row] as usize]
+                                    - right[b.codes()[row] as usize])
+                                    * scale;
+                                if !value.is_finite() {
+                                    return Err(declined());
+                                }
+                                values[column] = value;
+                            }
+                        }
+                        _ => {
+                            for (i, values) in rows {
+                                values[column] = self.residual(first + i, j)?;
+                            }
+                        }
+                    }
+                }
+                Ok(())
+            })
+    }
+
     pub fn write_dense(&mut self, storage: &mut DenseMatrix) -> Result<()> {
         let columns = self.columns.len() - 1;
         if storage.nrows() != self.design.nobs() || storage.ncols() != columns {
@@ -523,16 +601,7 @@ impl<P: PreparedOlsFitView + Sync + ?Sized> Products<'_, P> {
             return Ok(());
         }
         let Some(tile) = self.tiled.as_mut() else {
-            return storage
-                .as_mut_slice()
-                .par_chunks_mut(columns)
-                .enumerate()
-                .try_for_each(|(row, values)| {
-                    for (column, value) in values.iter_mut().enumerate() {
-                        *value = self.residual(row, column + 1)?;
-                    }
-                    Ok(())
-                });
+            return self.write_dense_panels(storage.as_mut_slice(), columns);
         };
         let a = &self.design.effects()[self.left_effect];
         let b = &self.design.effects()[1 - self.left_effect];
@@ -617,6 +686,7 @@ pub(super) fn try_build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
         prior_operator_work,
         obsolete_projection,
         &mut historical_preconditioner::Call::new(None, 0, 0),
+        None,
     )
 }
 
@@ -632,8 +702,9 @@ pub(super) fn try_build_with_preconditioner<'a, P: PreparedOlsFitView + Sync + ?
     prior_operator_work: u128,
     obsolete_projection: &mut Vec<f64>,
     call: &mut historical_preconditioner::Call,
+    mut cmg: Option<&mut ReusableCategoricalMapAbsorber<'_>>,
 ) -> Result<Option<Products<'a, P>>> {
-    if call.envelope == 0 && !call.reuse() {
+    if call.envelope == 0 && !call.reuse() && cmg.is_none() {
         return try_build(
             prepared,
             generated,
@@ -661,6 +732,7 @@ pub(super) fn try_build_with_preconditioner<'a, P: PreparedOlsFitView + Sync + ?
         prior_operator_work,
         obsolete_projection,
         call,
+        cmg.as_deref_mut(),
     )?;
     if result.is_some() {
         return Ok(result);
@@ -685,6 +757,7 @@ pub(super) fn try_build_with_preconditioner<'a, P: PreparedOlsFitView + Sync + ?
         prior_operator_work,
         obsolete_projection,
         call,
+        cmg,
     )?;
     if result.is_none() {
         call.clear_pending();
@@ -707,6 +780,7 @@ fn try_build_once<'a, P: PreparedOlsFitView + Sync + ?Sized>(
     prior_operator_work: u128,
     obsolete_projection: &mut Vec<f64>,
     call: &mut historical_preconditioner::Call,
+    cmg: Option<&mut ReusableCategoricalMapAbsorber<'_>>,
 ) -> Result<Option<Products<'a, P>>> {
     if config.max_iterations == 0
         || config.check_every == 0
@@ -783,6 +857,7 @@ fn try_build_once<'a, P: PreparedOlsFitView + Sync + ?Sized>(
         allowance,
         obsolete_projection,
         call,
+        cmg,
     ) {
         Ok(result) => Ok(Some(result)),
         Err(error) if error.code == ErrorCode::NonConvergence => Ok(None),
@@ -804,6 +879,7 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
     allowance: u128,
     obsolete_projection: &mut Vec<f64>,
     call: &mut historical_preconditioner::Call,
+    cmg: Option<&mut ReusableCategoricalMapAbsorber<'_>>,
 ) -> Result<Products<'a, P>> {
     let started = Instant::now();
     let Plan {
@@ -814,6 +890,7 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
         workers,
         stride,
         factor_work_budget,
+        assembly_work,
         ..
     } = plan;
     let a = &design.effects()[left_effect];
@@ -935,18 +1012,23 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
     // retains its arithmetic. Implicit geometry admits the full certified
     // product pipeline where dense storage would otherwise force repeated
     // observation-space construction, not merely a different dense matvec.
-    let scratch_vectors = if call.reuse() { 6 } else { 3 };
+    // An iterative solve needs no dense matrix. The implicit incidence
+    // operator applies in at most n + q work, so assembly costing more than
+    // a checkpoint's worth of such applications is not worth building.
     let implicit = call.reuse()
+        || dense_iterative
+            && (n as u128 + q as u128).saturating_mul(ASSEMBLY_APPLICATIONS) < assembly_work
         || plan
             .minimum_storage_bytes(matrix_cells, dense_charge)
             .is_none_or(|bytes| bytes > allowance);
     let iterative = implicit || dense_iterative;
-    let krylov_cells = if iterative {
+    let krylov = |vectors: usize| -> Result<usize> {
+        if !iterative {
+            return Ok(0);
+        }
         d.checked_mul(width)
-            .and_then(|x| x.checked_mul(scratch_vectors))
-            .ok_or_else(declined)?
-    } else {
-        0
+            .and_then(|x| x.checked_mul(vectors))
+            .ok_or_else(declined)
     };
     let matrix_cells = if implicit { q } else { matrix_cells };
     let factor_cells = if implicit {
@@ -964,10 +1046,40 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
         0
     };
     let incidence_words = usize::try_from(incidence_indices).map_err(|_| declined())?;
-    let factor_charge = factor_cells
-        .checked_add(krylov_cells)
-        .and_then(|x| x.checked_add(incidence_words))
-        .ok_or_else(declined)?;
+    let charge = |krylov: usize, words: usize| {
+        factor_cells
+            .checked_add(krylov)
+            .and_then(|x| x.checked_add(incidence_words))
+            .and_then(|x| x.checked_add(words))
+            .ok_or_else(declined)
+    };
+    // A shared hierarchy needs a fourth Krylov vector and per-worker scratch;
+    // without room for them the unpreconditioned solve proceeds.
+    let cmg_plan = match cmg
+        .as_deref()
+        .filter(|_| implicit && !call.reuse() && !call.retry)
+    {
+        Some(owner) => {
+            shared_cmg::Plan::new(Some(owner), 1 - left_effect, q, d, width, &components)?
+        }
+        None => None,
+    };
+    let mut cmg_plan = cmg_plan.filter(|cmg| {
+        charge(d.saturating_mul(width).saturating_mul(4), cmg.words()).is_ok_and(|cells| {
+            plan.minimum_storage_bytes(matrix_cells, cells)
+                .is_some_and(|bytes| bytes <= allowance)
+        })
+    });
+    let scratch_vectors = match (call.reuse(), &cmg_plan) {
+        (true, _) => 6,
+        (false, Some(_)) => 4,
+        (false, None) => 3,
+    };
+    let krylov_cells = krylov(scratch_vectors)?;
+    let factor_charge = charge(
+        krylov_cells,
+        cmg_plan.as_ref().map_or(0, shared_cmg::Plan::words),
+    )?;
     let minimum_bytes = plan
         .minimum_storage_bytes(matrix_cells, factor_charge)
         .ok_or_else(declined)?;
@@ -1217,6 +1329,9 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
         call.retry,
         call.live_bytes()
     ));
+    if let Some(cmg) = cmg_plan.as_mut() {
+        cmg.retain_anchors(&anchors, &components)?;
+    }
     budget.release(matrix)?;
     budget.release(totals)?;
     budget.release(parent)?;
@@ -1335,6 +1450,35 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
         historical_preconditioner::consumer_setup_check()?;
     }
     let mut krylov = budget.reserve_consumer(krylov_cells, 0., call.reuse())?;
+    let mut cmg_view = None;
+    if let (Some(plan), Some(owner)) = (cmg_plan.as_mut(), cmg) {
+        // Probe the first column's largest component with the plain recurrence.
+        let probe = |steps| {
+            let Some(block) = components.iter().max_by_key(|block| block.len) else {
+                return false;
+            };
+            for h in 0..q {
+                if free[h] != usize::MAX {
+                    solved[free[h]] = cross[h] / roots[h];
+                }
+            }
+            solve_reduced_cg_with_product(
+                &mut solved[block.start..block.start + block.len],
+                &mut krylov[..3 * block.len],
+                steps,
+                config.tolerance * 0.01,
+                component_operator(&factor, &incidence_ids, &incidence_rows, n, block),
+            )
+            .is_err()
+        };
+        let headroom = allowance.saturating_sub(bytes);
+        plan.build_after(owner, weights, probe, (q, d, width), headroom, &mut budget)?;
+        cmg_view = owner.ppml_cmg_view();
+    }
+    let shared_cmg = match (cmg_view.as_ref(), cmg_plan) {
+        (Some(view), Some(plan)) => SharedCmg::new(view, plan, &free, d, width, &mut budget)?,
+        _ => None,
+    };
     let numerical_refusal = std::sync::atomic::AtomicBool::new(false);
     let iterations = AtomicUsize::new(1);
     if d > 0 {
@@ -1348,21 +1492,8 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
                 let size = block.len;
                 let values = &mut values[block.start..block.start + size];
                 if implicit {
-                    let root = block.matrix_offset;
-                    let start = incidence_rows.partition_point(|row| row.component < root);
-                    let end = incidence_rows.partition_point(|row| row.component <= root);
-                    let rows = &incidence_rows[start..end];
-                    let diagonal = &factor[n + block.start..n + block.start + size];
-                    let apply = |direction: &[f64], product: &mut [f64]| {
-                        apply_incidence_schur(
-                            &factor[..n],
-                            diagonal,
-                            &incidence_ids,
-                            rows,
-                            direction,
-                            product,
-                        )
-                    };
+                    let apply =
+                        component_operator(&factor, &incidence_ids, &incidence_rows, n, block);
                     if call.reuse() {
                         let Some(count) = historical_preconditioner::finish_numerical(
                             call.solve(
@@ -1402,21 +1533,31 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
                         iterations.fetch_max(count, Ordering::Relaxed);
                         continue;
                     }
+                    if size <= DIRECT_COMPONENT {
+                        iterations
+                            .fetch_max(solve_small_component(values, apply)?, Ordering::Relaxed);
+                        continue;
+                    }
+                    if let Some(shared) = &shared_cmg {
+                        if let Some(count) = shared.solve(
+                            block,
+                            &roots,
+                            values,
+                            &mut scratch[..4 * size],
+                            component_cap(config.max_iterations, size),
+                            config.tolerance * 0.01,
+                            apply,
+                        )? {
+                            iterations.fetch_max(count, Ordering::Relaxed);
+                            continue;
+                        }
+                    }
                     let count = solve_reduced_cg_with_product(
                         values,
                         &mut scratch[..3 * size],
-                        config.max_iterations.min(size),
+                        component_cap(config.max_iterations, size),
                         config.tolerance * 0.01,
-                        |direction, product| {
-                            apply_incidence_schur(
-                                &factor[..n],
-                                diagonal,
-                                &incidence_ids,
-                                rows,
-                                direction,
-                                product,
-                            )
-                        },
+                        apply,
                     )?;
                     iterations.fetch_max(count, Ordering::Relaxed);
                     continue;
@@ -1450,7 +1591,7 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
                         factor,
                         values,
                         &mut scratch[..3 * size],
-                        config.max_iterations.min(size),
+                        component_cap(config.max_iterations, size),
                         config.tolerance * 0.01,
                     )?;
                     iterations.fetch_max(count, Ordering::Relaxed);
@@ -1497,6 +1638,9 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
     }
     if numerical_refusal.load(Ordering::Relaxed) {
         return Err(declined());
+    }
+    if let Some(shared) = shared_cmg {
+        shared.release(&mut budget)?;
     }
     budget.release(krylov)?;
     budget.release(incidence_ids)?;
@@ -1853,122 +1997,11 @@ fn reduced_matrix_product(left: &[f64], right: &[f64]) -> f64 {
     }
 }
 
-fn solve_reduced_cg(
-    matrix: &[f64],
-    values: &mut [f64],
-    scratch: &mut [f64],
-    max_iterations: usize,
-    tolerance: f64,
-) -> Result<usize> {
-    let n = values.len();
-    if matrix.len() != n * n {
-        return Err(declined());
-    }
-    solve_reduced_cg_with_product(
-        values,
-        scratch,
-        max_iterations,
-        tolerance,
-        |direction, product| {
-            for (row, out) in matrix.chunks(n).zip(product.iter_mut()) {
-                *out = reduced_matrix_product(row, direction);
-            }
-        },
-    )
-}
-
 #[derive(Clone, Copy, Default)]
 struct IncidenceRow {
     start: usize,
     end: usize,
     component: usize,
-}
-
-// diag(m_b / root^2) - C'C. Group-pair weights are combined once;
-// grounding and component-local coordinates are resolved before any iteration.
-fn apply_incidence_schur(
-    incidence: &[f64],
-    diagonal: &[f64],
-    ids: &[usize],
-    rows: &[IncidenceRow],
-    direction: &[f64],
-    product: &mut [f64],
-) {
-    for ((out, d), x) in product.iter_mut().zip(diagonal).zip(direction) {
-        *out = d * x;
-    }
-    let hardware = crate::kernels::installed();
-    for row in rows {
-        let coefficients = &incidence[row.start..row.end];
-        let columns = &ids[row.start..row.end];
-        crate::kernels::dispatch!(
-            hardware,
-            incidence_schur_row(coefficients, columns, direction, product)
-        );
-    }
-}
-
-fn solve_reduced_cg_with_product(
-    values: &mut [f64],
-    scratch: &mut [f64],
-    max_iterations: usize,
-    tolerance: f64,
-    apply: impl Fn(&[f64], &mut [f64]),
-) -> Result<usize> {
-    let n = values.len();
-    if scratch.len() < 3 * n {
-        return Err(declined());
-    }
-    let scale = values.iter().map(|x| x.abs()).fold(0_f64, f64::max);
-    if !scale.is_finite() {
-        return Err(declined());
-    }
-    if scale == 0. {
-        return Ok(0);
-    }
-    let (residual, rest) = scratch.split_at_mut(n);
-    let (direction, product) = rest.split_at_mut(n);
-    let product = &mut product[..n];
-    for i in 0..n {
-        residual[i] = values[i] / scale;
-        direction[i] = residual[i];
-    }
-    values.fill(0.);
-    let mut square: f64 = residual.iter().map(|x| x * x).sum();
-    let target = tolerance * square.sqrt();
-    let hardware = crate::kernels::installed();
-    for iteration in 1..=max_iterations {
-        apply(direction, product);
-        let curvature: f64 = direction
-            .iter()
-            .zip(product.iter())
-            .map(|(x, y)| x * y)
-            .sum();
-        if !curvature.is_finite() || curvature <= 0. || !square.is_finite() {
-            return Err(declined());
-        }
-        let alpha = square / curvature;
-        let next = crate::kernels::dispatch!(
-            hardware,
-            joint_step_energy(alpha, direction, product, values, residual)
-        );
-        if !next.is_finite() {
-            return Err(declined());
-        }
-        if next.sqrt() <= target {
-            for value in values {
-                *value *= scale;
-                if !value.is_finite() {
-                    return Err(declined());
-                }
-            }
-            return Ok(iteration);
-        }
-        let beta = next / square;
-        crate::kernels::dispatch!(hardware, affine_direction(beta, residual, direction));
-        square = next;
-    }
-    Err(declined())
 }
 
 fn group_effect_mean(

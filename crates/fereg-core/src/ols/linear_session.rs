@@ -11,7 +11,7 @@ use super::implicit_centered::ImplicitCenteredDesign;
 use crate::data::DenseMatrix;
 use crate::error::{allocation, invalid_argument, invalid_data, ErrorCode, FeregError, Result};
 use crate::fe::{
-    BorrowedMapWeights, CertifiedBorrowedMap, FeDesign, FeSession, FeSolverKind,
+    BorrowedMapWeights, CertifiedBorrowedMap, FeDesign, FeSession, FeSolverKind, JointCmgBlock,
     MapGeometryGeneration, ReusableCategoricalMapAbsorber, ReusableMapAbsorber,
     ReusableMapCapacities, SolveReport,
 };
@@ -63,6 +63,10 @@ use super::{
 
 #[path = "linear_statistics.rs"]
 mod linear_statistics;
+
+#[path = "joint_checks.rs"]
+mod joint_checks;
+use joint_checks::{check_joint_response, joint_column_checks};
 
 /// Monotone identities for every input class that can invalidate a solve.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -2309,6 +2313,19 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         Ok(())
     }
 
+    /// PPML Auto two-FE CMG reuse on the categorical two-FE graph.
+    pub(crate) fn enable_ppml_cmg(&mut self, allowance: u128) -> Result<()> {
+        let budget = self.config.absorb.solver_memory_budget;
+        let Some(FeSession {
+            categorical: Some(absorber),
+            ..
+        }) = self.fe_projector.as_mut()
+        else {
+            return Ok(());
+        };
+        absorber.enable_ppml_cmg(budget, allowance)
+    }
+
     pub(crate) fn enable_checkpoint_lsmr(&mut self, deterministic: bool) {
         if let Some(projector) = self.fe_projector.as_mut() {
             projector.enable_checkpoint_lsmr(deterministic);
@@ -2527,11 +2544,15 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         let Some(FeSession {
             coefficients: true,
             general: Some(projector),
+            categorical,
             ..
         }) = self.fe_projector.as_mut()
         else {
             unreachable!()
         };
+        let retained = projector.joint_retained_intercept_effect();
+        let mut cmg = JointCmgBlock::new(categorical.as_mut(), &self.map_weights, retained);
+        let block = cmg.as_mut().map(JointCmgBlock::as_block);
         let previous_response = &mut self.previous_response;
         let n = self.response.len();
         if previous_response.len() != n || self.frozen_workspace.response.len() != n {
@@ -2557,6 +2578,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 &self.frozen_workspace.response,
                 self.config.absorb.map,
                 self.generations.map_geometry(),
+                block,
             )?,
             RetainedWithinStorage::Scratch(_) | RetainedWithinStorage::Implicit(_) => projector
                 .solve_joint_slopes_streamed(
@@ -2573,6 +2595,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                     &self.frozen_workspace.response,
                     self.config.absorb.map,
                     self.generations.map_geometry(),
+                    block,
                 )?,
         }
         let solving_seconds = started.elapsed().as_secs_f64();
@@ -2616,7 +2639,6 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             generated: basis.kept_generated_columns(),
             numeric: None,
         };
-        use crate::fe::slope_coefficients::joint::JointFiniteDesign;
         let weights = &self.map_weights;
         let response = &self.response;
         let needs_mean = basis
@@ -2626,47 +2648,13 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         let (response_checks, column_checks) = rayon::join(
             || check_joint_response(response, residuals, weights, needs_mean),
             || {
-                self.frozen_workspace
-                    .scores
-                    .par_iter_mut()
-                    .zip(self.frozen_workspace.rhs.par_iter_mut())
-                    .zip(self.frozen_workspace.solve.par_iter_mut())
-                    .enumerate()
-                    .try_for_each(|(column, ((score, mean), norm))| -> Result<()> {
-                        let mut scale = 0.;
-                        let mut square = 1.;
-                        let mut sum = 0.;
-                        let mut correction = 0.;
-                        let mut mean_sum = 0.;
-                        let mut mean_correction = 0.;
-                        originals.visit_column(column, |row, value| {
-                            if input_norms.is_none() {
-                                update_scaled_square(
-                                    weights[row].sqrt() * value,
-                                    &mut scale,
-                                    &mut square,
-                                )?;
-                            }
-                            compensated_add(
-                                weights[row] * value * residuals[row],
-                                &mut sum,
-                                &mut correction,
-                            )?;
-                            compensated_add(
-                                weights[row] * value,
-                                &mut mean_sum,
-                                &mut mean_correction,
-                            )?;
-                            Ok(())
-                        })?;
-                        *norm = match input_norms {
-                            Some(norms) => norms[column],
-                            None => stable_norm(scale, square)?,
-                        };
-                        *score = (sum + correction).abs();
-                        *mean = mean_sum + mean_correction;
-                        Ok(())
-                    })
+                joint_column_checks(
+                    &originals,
+                    weights,
+                    residuals,
+                    input_norms,
+                    &mut self.frozen_workspace,
+                )
             },
         );
         let response_checks = response_checks?;
@@ -3631,6 +3619,13 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             "attempt|checkpoint={reuse_preconditioner}|enabled={enabled}|weights={}|basis={}|envelope={allowance}",
             self.generations.weights, self.generations.basis
         ));
+        if let Some(categorical) = self
+            .fe_projector
+            .as_mut()
+            .and_then(|session| session.categorical.as_mut())
+        {
+            categorical.refresh_ppml_cmg(self.weights.borrowed(), "ppml_canonical_cmg")?;
+        }
         let result = super::canonical_products::try_build_with_preconditioner(
             self.prepared,
             &generated,
@@ -3642,6 +3637,9 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             self.canonical_projection_work_hint,
             &mut self.projection_block,
             &mut preconditioner_attempt,
+            self.fe_projector
+                .as_mut()
+                .and_then(|session| session.categorical.as_mut()),
         );
         let mut products = match result {
             Ok(Some(products)) => products,
@@ -3662,54 +3660,14 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 return Err(error);
             }
         };
-        if let Some(within) = self.within.as_mut() {
-            within.certificate.passed = false;
-            match &mut within.storage {
-                RetainedWithinStorage::Scratch(storage) => products.write_controls(storage)?,
-                RetainedWithinStorage::Dense(storage) => products.write_dense(storage)?,
-                RetainedWithinStorage::Implicit(_) => unreachable!(),
-            }
-            within
-                .reference_norms
-                .copy_from_slice(&products.scales[1..]);
-            within.reference_means.copy_from_slice(&products.means[1..]);
-            within.within_norms.copy_from_slice(&products.norms[1..]);
-            within.generations = WithinGenerations::from_session(self.generations);
-        } else {
-            let storage = if self.config.execution.mode == PreparedOlsExecutionMode::Fast {
-                let mut dense = DenseMatrix::zeros(self.response.len(), generated.len())?;
-                products.write_dense(&mut dense)?;
-                RetainedWithinStorage::Dense(dense)
-            } else {
-                let mut scratch =
-                    PreparedOlsScratch::create_row_major(self.response.len(), generated.len())?;
-                products.write_controls(&mut scratch)?;
-                RetainedWithinStorage::Scratch(scratch)
-            };
-            self.within = Some(RetainedWithinDesign {
-                storage,
-                stored_generated_columns: generated,
-                active_positions: Vec::new(),
-                reference_norms: fallible_copy(
-                    &products.scales[1..],
-                    "unable to retain canonical product scales",
-                )?,
-                reference_means: fallible_copy(
-                    &products.means[1..],
-                    "unable to retain canonical product means",
-                )?,
-                within_norms: fallible_copy(
-                    &products.norms[1..],
-                    "unable to retain canonical product norms",
-                )?,
-                generations: WithinGenerations::from_session(self.generations),
-                certificate: LinearWithinDesignCertificate {
-                    left_inverse_relative_infinity_norm: f64::INFINITY,
-                    right_inverse_relative_infinity_norm: f64::INFINITY,
-                    passed: false,
-                },
-            });
-        }
+        retain_canonical_products(
+            &mut self.within,
+            self.config.execution.mode == PreparedOlsExecutionMode::Fast,
+            self.response.len(),
+            self.generations,
+            &mut products,
+            generated,
+        )?;
         // The dense residual bank and fused response anchor must describe the
         // same physical frame, including after a strict candidate is rolled
         // back. Otherwise the next ordinary refresh adds an obsolete z delta.
@@ -6550,80 +6508,6 @@ fn normalized_solver_weight(
     }
 }
 
-struct JointResponseChecks {
-    reference_norm: f64,
-    weight_sum: f64,
-    response_mean: Option<f64>,
-    reconstruction: LinearReconstructionCertificate,
-}
-
-fn check_joint_response(
-    response: &[f64],
-    residuals: &[f64],
-    weights: &[f64],
-    needs_mean: bool,
-) -> Result<JointResponseChecks> {
-    if response.len() != residuals.len() || response.len() != weights.len() {
-        return Err(invalid_argument("joint response check dimensions differ"));
-    }
-    // Each norm and compensated sum preserves its original row order. Only
-    // independent work overlaps; reconstruction combines maxima and predicates.
-    let (moments, reconstruction) = rayon::join(
-        || -> Result<(f64, f64, Option<f64>)> {
-            let (mut response_scale, mut residual_scale) = (0., 0.);
-            let (mut response_square, mut residual_square) = (1., 1.);
-            let (mut weight_sum, mut weight_correction) = (0., 0.);
-            let (mut response_sum, mut response_correction) = (0., 0.);
-            for ((&value, &residual), &weight) in response.iter().zip(residuals).zip(weights) {
-                let root = weight.sqrt();
-                if !root.is_finite() || root <= 0. {
-                    return Err(invalid_data(
-                        "weighted-linear norm weight is not finite and positive",
-                    ));
-                }
-                update_scaled_square(root * value, &mut response_scale, &mut response_square)?;
-                update_scaled_square(root * residual, &mut residual_scale, &mut residual_square)?;
-                compensated_add(weight, &mut weight_sum, &mut weight_correction)?;
-                if needs_mean {
-                    compensated_add(weight * value, &mut response_sum, &mut response_correction)?;
-                }
-            }
-            let reference = stable_norm(response_scale, response_square)?
-                .max(stable_norm(residual_scale, residual_square)?);
-            let weight_sum = weight_sum + weight_correction;
-            let mean = needs_mean.then(|| (response_sum + response_correction) / weight_sum);
-            if !weight_sum.is_finite()
-                || weight_sum <= 0.
-                || mean.is_some_and(|value| !value.is_finite())
-            {
-                return Err(invalid_data("frozen weighted-linear mean is not finite"));
-            }
-            Ok((reference, weight_sum, mean))
-        },
-        || {
-            response
-                .par_chunks(4096)
-                .zip(residuals.par_chunks(4096))
-                .map(|(response, residuals)| certify_frozen_combined_predictor(response, residuals))
-                .try_reduce(LinearReconstructionCertificate::new, |left, right| {
-                    Ok(LinearReconstructionCertificate {
-                        relative_infinity_norm: left
-                            .relative_infinity_norm
-                            .max(right.relative_infinity_norm),
-                        passed: left.passed && right.passed,
-                    })
-                })
-        },
-    );
-    let (reference_norm, weight_sum, response_mean) = moments?;
-    Ok(JointResponseChecks {
-        reference_norm,
-        weight_sum,
-        response_mean,
-        reconstruction: reconstruction?,
-    })
-}
-
 fn weighted_mean_slice(
     values: &[f64],
     weights: BorrowedMapWeights<'_>,
@@ -6771,6 +6655,65 @@ pub(super) fn stable_norm(scale: f64, scaled_square_sum: f64) -> Result<f64> {
     } else {
         Err(invalid_data("weighted-linear norm is not finite"))
     }
+}
+
+/// Store successful canonical products as the retained within design.
+fn retain_canonical_products<P: PreparedOlsFitView + Sync + ?Sized>(
+    within: &mut Option<RetainedWithinDesign>,
+    fast: bool,
+    rows: usize,
+    generations: LinearSessionGenerations,
+    products: &mut super::canonical_products::Products<'_, P>,
+    generated: Vec<usize>,
+) -> Result<()> {
+    if let Some(within) = within.as_mut() {
+        within.certificate.passed = false;
+        match &mut within.storage {
+            RetainedWithinStorage::Scratch(storage) => products.write_controls(storage)?,
+            RetainedWithinStorage::Dense(storage) => products.write_dense(storage)?,
+            RetainedWithinStorage::Implicit(_) => unreachable!(),
+        }
+        within
+            .reference_norms
+            .copy_from_slice(&products.scales[1..]);
+        within.reference_means.copy_from_slice(&products.means[1..]);
+        within.within_norms.copy_from_slice(&products.norms[1..]);
+        within.generations = WithinGenerations::from_session(generations);
+    } else {
+        let storage = if fast {
+            let mut dense = DenseMatrix::zeros(rows, generated.len())?;
+            products.write_dense(&mut dense)?;
+            RetainedWithinStorage::Dense(dense)
+        } else {
+            let mut scratch = PreparedOlsScratch::create_row_major(rows, generated.len())?;
+            products.write_controls(&mut scratch)?;
+            RetainedWithinStorage::Scratch(scratch)
+        };
+        *within = Some(RetainedWithinDesign {
+            storage,
+            stored_generated_columns: generated,
+            active_positions: Vec::new(),
+            reference_norms: fallible_copy(
+                &products.scales[1..],
+                "unable to retain canonical product scales",
+            )?,
+            reference_means: fallible_copy(
+                &products.means[1..],
+                "unable to retain canonical product means",
+            )?,
+            within_norms: fallible_copy(
+                &products.norms[1..],
+                "unable to retain canonical product norms",
+            )?,
+            generations: WithinGenerations::from_session(generations),
+            certificate: LinearWithinDesignCertificate {
+                left_inverse_relative_infinity_norm: f64::INFINITY,
+                right_inverse_relative_infinity_norm: f64::INFINITY,
+                passed: false,
+            },
+        });
+    }
+    Ok(())
 }
 
 #[cfg(test)]

@@ -233,10 +233,56 @@ Public OLS Auto/Auto uses the many-FE geometry policy
 categorical-intercept FEs. Eligible two-FE designs use the
 [qualified structural CMG gates](two_fe_auto_gates.md), with ownership and
 deferred cells in the narrower global-intercept scope above. Zero/one FE,
-slopes, explicit choices and PPML retain their specified behavior. Activation
-and performance evidence for both families are complete; the many-FE policy
-carries one documented near-confounded timing exception, see
-[VALIDATION](VALIDATION.md).
+slopes and explicit choices retain their specified behavior; PPML Auto adds only
+the two-FE CMG reuse below. Activation and performance evidence for both OLS
+families are complete; the many-FE policy carries one documented
+near-confounded timing exception, see [VALIDATION](VALIDATION.md).
+
+PPML Auto with exactly two categorical intercept FEs, no slopes and a
+publication fit reuses one bounded CMG Schur hierarchy across IRLS frames as
+historical solve acceleration (§13). Ordinary frames solve the joint FE and
+finite WLS direction by PCG with a diagonal retained-effect block. A frame
+whose recurrence reaches step 64 may build a missing hierarchy, or rebuild one
+from an earlier weight generation, on its own weights and restarts from its
+current iterate. An installed hierarchy `B` applies to the retained block of
+later frames as `D^1/2 B D^1/2`, with the current frame's level weight sums
+`D`. The canonical products' reduced Schur solve applies it to implicit
+components of at least 64 levels as `R G' B G R`, with the Jacobi roots `R`
+and `G` placing the component's grounded anchor. Before such a solve, a
+hierarchy from an earlier weight generation is rebuilt on current weights;
+without one, a plain recurrence of the first column on the largest component
+that exceeds 32 steps builds one.
+Categorical reprojections, used when strict canonical products decline, use
+the two-FE Schur recurrence with the h16/k1 build:
+without a hierarchy one may be built at step 16, and a hierarchy from an
+earlier weight generation is set aside so the reprojection can rebuild it on
+current weights, then reinstated unless replaced. Construction keeps cutoff 5,
+one sampled tree and seed zero, polls cancellation and admits itself against
+the fit's solver memory budget with any set-aside hierarchy charged as
+resident; refusal leaves the diagonal recurrence unchanged. An estimation
+makes at most three construction attempts, refusals included, and no
+elapsed-time decision. Operators, stopping targets, reconstruction and every
+certificate use the current frame; the hierarchy carries no certificate, rank
+or Hessian authority. Explicit solvers, the separation phase, slopes and other
+FE counts retain their behavior.
+
+Canonical products solve implicit components of at most 16 free coordinates
+as dense Cholesky systems of their applied unit columns. Beyond `size`
+recurrence steps, components below 64 free coordinates get `size + 8` more
+and larger ones two. A dense reduced matrix without an affordable
+factorization is not assembled when assembly costs more than 64 applications
+of the implicit incidence operator, which serves instead.
+
+Declared PPML scope: eligible PPML Auto fits may change coefficients,
+covariance, fit statistics, residuals, FE coordinates and solver iteration
+signatures within §20 tolerances; through the strict entry rule (§13) and the
+canonical-product solves, so may every PPML publication fit and every PPML
+fit with categorical FEs. Sample, rank, omission, separation and other
+discrete decisions remain unchanged. Witnesses cover the dense
+Poisson oracle on weak chain and AKM graphs that exercise reuse, exact
+refusal, the scaled block against the hierarchy, set-aside and attempt rules,
+admission refusal, Break during construction, fixed-worker repeatability and
+cross-worker agreement.
 
 The many-FE geometry policy keeps retained unseeded LSMR preparation and adds
 three parts. First, with exactly three unit-weight symmetric FEs, every
@@ -902,7 +948,15 @@ recomputed normalized finite and FE scores. A small objective change alone
 is insufficient, particularly near small coefficients.
 
 Apparent convergence triggers fresh strict WLS at
-`min(1e-12,0.1×outer_tolerance)`. If beta, eta, basis/rank or objective moves
+`min(1e-12,0.1×outer_tolerance)`. A publication fit first waits while its
+contracting predictor is predicted to keep moving: with the strict profile
+envelope `min(outer_tolerance, score_tolerance, 1e-8)` and the relative eta and
+coefficient movements `m_k` of the last two accepted iterations, it enters
+once `m_k^2/m_(k-1)` is at most the envelope. A contraction ratio
+above one half, fewer than three remaining iterations or eight such
+deferrals enter at once. Weakly identified FE directions can pass the deviance
+and score tests while eta still moves; the wait changes only when the
+unchanged strict check runs. If beta, eta, basis/rank or objective moves
 beyond the registered publication envelope, resume bounded IRLS. Publish
 only after exact accepted-h=qmu Hessian/bread, basis, projection, score,
 objective replay and eta reconstruction checks. Refresh/invalidate all
@@ -911,8 +965,8 @@ Separately typed historical preconditioner state may survive solely as solve
 acceleration, with its build identity retained and compatibility, memory and
 work limits checked. It carries no current-weight, certificate, canonical-rank
 or Hessian authority; the operator, RHS, stopping target and independent
-certification still use the current problem. Sample mutation invalidates all
-reuse. Warm starts are guesses, never certificates. Final inference and correction
+certification still use the current problem. The two-FE Auto CMG hierarchy
+(§1) is such state. Sample mutation invalidates all reuse. Warm starts are guesses, never certificates. Final inference and correction
 use this same accepted state. Output tolerance (§5) does not remove the
 strict PPML/final-Hessian requirements.
 

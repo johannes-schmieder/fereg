@@ -26,6 +26,10 @@ impl AcceptedCheckpoint {
     }
 }
 
+/// Ordinary iterations a publication fit may add after two passes while its
+/// predicted next movement still exceeds the strict profile envelope.
+const MAX_SETTLING_DEFERRALS: usize = 8;
+
 pub(super) struct StrictCheckpointControl {
     tolerance: f64,
     pending: PendingCheckpointWork,
@@ -34,9 +38,18 @@ pub(super) struct StrictCheckpointControl {
     consecutive_passes: usize,
     rejected_cycles: usize,
     accepted: Option<AcceptedCheckpoint>,
+    /// Strict profile envelope when entry waits for a settled predictor.
+    settling: Option<f64>,
+    /// Profile movements of the two latest accepted iterations, oldest first.
+    movements: [f64; 2],
+    deferrals: usize,
 }
 impl StrictCheckpointControl {
-    pub(super) fn new(tolerance: f64, canonical_products_allowed: bool) -> Self {
+    pub(super) fn new(
+        tolerance: f64,
+        canonical_products_allowed: bool,
+        settling: Option<f64>,
+    ) -> Self {
         Self {
             tolerance,
             pending: PendingCheckpointWork::None,
@@ -45,17 +58,50 @@ impl StrictCheckpointControl {
             consecutive_passes: 0,
             rejected_cycles: 0,
             accepted: None,
+            settling,
+            movements: [f64::INFINITY; 2],
+            deferrals: 0,
         }
     }
-    pub(super) fn observe_accepted_iteration(&mut self, passed: bool) {
+    /// `movement` is the accepted iteration's strict-profile movement: the
+    /// relative predictor and coefficient change the strict check would see.
+    pub(super) fn observe_accepted_iteration(&mut self, passed: bool, movement: f64) {
         self.consecutive_passes = if passed {
             self.consecutive_passes.saturating_add(1)
         } else {
             0
         };
+        self.movements = [self.movements[1], movement];
     }
-    pub(super) fn may_enter(&self, audit_pending: bool) -> bool {
-        self.consecutive_passes >= 2 && !audit_pending
+    /// Two passes admit a strict checkpoint. A publication fit first waits
+    /// while the contracting predictor is predicted to move by more than the
+    /// strict envelope at its next Newton step, extrapolated at its last
+    /// contraction ratio (conservative for quadratic convergence): on weakly
+    /// identified FE directions deviance and scores pass before the
+    /// predictor settles, and such a checkpoint is certain to be rejected.
+    /// A stalled contraction, the iteration budget or the deferral cap
+    /// enters at once; the strict check itself is unchanged.
+    pub(super) fn may_enter(&mut self, audit_pending: bool, headroom: bool) -> bool {
+        if self.consecutive_passes < 2 || audit_pending {
+            return false;
+        }
+        let Some(envelope) = self.settling else {
+            return true;
+        };
+        let [previous, last] = self.movements;
+        let ratio = last / previous;
+        let unsettled = ratio.is_finite() && ratio <= 0.5 && last * ratio > envelope;
+        if unsettled && headroom && self.deferrals < MAX_SETTLING_DEFERRALS {
+            self.deferrals += 1;
+            if crate::diagnostics::solver_trace_enabled() {
+                crate::diagnostics::emit_solver_trace(&format!(
+                    "FEREG_SOLVER_TRACE|phase=strict_settling|movement={last:.17e}|ratio={ratio:.17e}|envelope={envelope:.17e}|deferrals={}",
+                    self.deferrals
+                ));
+            }
+            return false;
+        }
+        true
     }
     pub(super) fn accepted_checkpoint(&self) -> Option<AcceptedCheckpoint> {
         self.accepted

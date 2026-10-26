@@ -22,9 +22,11 @@ use eager_cells::ReuseState;
 mod irons_tuck;
 mod lsmr_norms;
 pub(crate) use irons_tuck::absorb_borrowed_intercept_irons_tuck_certified;
+mod ppml_cmg;
 pub(crate) mod routing_lsmr;
 pub(crate) mod three_fe_map;
 pub(crate) mod three_fe_schur;
+pub(crate) use ppml_cmg::{JointCmgBlock, PpmlCmg, PpmlCmgScratch, PpmlCmgView};
 
 pub(crate) const PARALLEL_PROJECTION_MIN_ROWS: usize = 16_384;
 pub(crate) const FUSED_PARALLEL_MAX_RHS: usize = 64;
@@ -1073,6 +1075,7 @@ pub(crate) struct ReusableCategoricalMapAbsorber<'a> {
     two_fe_pcg: Option<TwoFePcgWorkspace>,
     cmg_schur_request: Option<CmgSchurRequest>,
     auto_route: Option<AutoSchurRoute>,
+    ppml_cmg: Option<Box<PpmlCmg>>,
     reuse: ReuseState<'a>,
     cg_residual_square: Vec<f64>,
     cg_initial_residual_square: Vec<f64>,
@@ -1749,6 +1752,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             two_fe_pcg,
             cmg_schur_request: None,
             auto_route: None,
+            ppml_cmg: None,
             reuse: ReuseState::Off,
             cg_residual_square: reserved_zeros(
                 cg_scalar_rhs,
@@ -1826,6 +1830,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         &mut self,
         generation: super::MapGeometryGeneration,
     ) -> Result<()> {
+        self.observe_ppml_cmg_frame(generation);
         if let Some(topology) = self.reuse.ppml_mut() {
             topology.begin(generation)?;
         }
@@ -2036,7 +2041,9 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         values: DenseMatrix,
         config: MapConfig,
     ) -> Result<CertifiedBorrowedMap> {
+        let withheld = self.begin_ppml_cmg_projection()?;
         let result = self.absorb(weights, values.into(), config, None, None);
+        self.finish_ppml_cmg_projection(withheld);
         if !result.as_ref().is_ok_and(|fit| fit.report().certified()) {
             self.reject_ppml_topology();
         }

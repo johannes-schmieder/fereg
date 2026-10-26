@@ -34,6 +34,7 @@ enum ProjectionInstallation {
         certificate: Option<u128>,
         coupling: Option<u128>,
         joint: Option<u128>,
+        cmg: Option<u128>,
         component_checkpoint: Option<u128>,
     },
 }
@@ -377,6 +378,7 @@ impl LinearAdmission {
         } else {
             None
         };
+        let cmg = self.admit_cmg(inputs, joint.is_some())?;
         let component_checkpoint =
             self.admit_component_checkpoint(inputs, categorical_checkpoints, projection_rhs)?;
         Ok(ProjectionInstallation::Coefficient {
@@ -385,8 +387,36 @@ impl LinearAdmission {
             certificate,
             coupling,
             joint,
+            cmg,
             component_checkpoint,
         })
+    }
+
+    /// Auto two-FE reuse of one CMG hierarchy; its own construction is admitted
+    /// against the final solver budget when it is attempted.
+    fn admit_cmg<P: PreparedOlsFitView + Sync + ?Sized>(
+        &mut self,
+        inputs: &AdmissionInputs<'_, P>,
+        joint: bool,
+    ) -> Result<Option<u128>> {
+        let effects = inputs.fe_design.effects();
+        if !joint
+            || inputs.config.solver_plan.requested != crate::ppml::PpmlSolverFamily::Auto
+            || effects.len() != 2
+            || effects
+                .iter()
+                .any(|e| !e.has_intercept() || !e.slopes().is_empty() || e.channels() != 1)
+        {
+            return Ok(None);
+        }
+        let levels = effects[0].n_levels().min(effects[1].n_levels());
+        match crate::fe::PpmlCmg::bytes(levels) {
+            Ok(bytes) => Ok(self
+                .try_solver_increment(Some(bytes), "PPML CMG application banks overflow")?
+                .then_some(bytes)),
+            Err(error) if error.code == ErrorCode::Allocation => Ok(None),
+            Err(error) => Err(error),
+        }
     }
     fn try_slope_estimate(&mut self, estimate: Result<Option<u128>>) -> Result<Option<u128>> {
         match estimate {
@@ -576,6 +606,7 @@ impl LinearInstallation {
                 certificate,
                 coupling,
                 joint,
+                cmg,
                 component_checkpoint,
             } => {
                 session.enable_ppml_certificate_geometry(geometry)?;
@@ -597,6 +628,9 @@ impl LinearInstallation {
                 installed?;
                 if let Some(allowance) = joint {
                     session.enable_ppml_joint_slopes(allowance)?;
+                }
+                if let Some(allowance) = cmg {
+                    session.enable_ppml_cmg(allowance)?;
                 }
                 component_checkpoint
             }
