@@ -37,10 +37,10 @@ THREADS = [1, 2, 4, 8, 16]
 REPETITIONS = 3
 
 
-def cell_for(panel, frame, threads):
-    return dict(id=f'veneto-{panel}-t{threads}', model='ols', design='veneto-'+panel,
+def cell_for(panel, frame, threads, save_fe=True):
+    return dict(id=f'veneto-{panel}-t{threads}'+('' if save_fe else '-fe0'), model='ols', design='veneto-'+panel,
                 section='veneto', rows=len(frame), regressors=len([c for c in frame if c.startswith('x')]),
-                effects=2, save_fe=True, vce='iid', weights='unit', threads=threads,
+                effects=2, save_fe=save_fe, vce='iid', weights='unit', threads=threads,
                 arms=['fereg', 'fixest', 'fixest-strict', *campaign.PYFIXEST_ARMS]
                 + (['reghdfe'] if threads <= 4 else []))
 
@@ -145,11 +145,12 @@ def prepare(root, long, short):
                timed_fits=sum(len(c['arms']) for c in cells)*REPETITIONS))
 
 
-def reuse(root, previous):
+def reuse(root, previous, save_fe=True):
     """Schedule the current arms on a prior run's audited panel inputs.
 
     The datasets, smoke witnesses, retained-input record and policy are copied
-    byte for byte; only the per-cell arm lists are rebuilt.
+    byte for byte; only the per-cell arm lists and the saved-FE request are
+    rebuilt. Without saved FE, commands time estimation and inference only.
     """
     old = json.loads((previous/'manifest.json').read_text())
     for folder in ['data', 'smoke-data']:
@@ -161,8 +162,10 @@ def reuse(root, previous):
         matches = list((root/folder).glob(f'ols-veneto-{panel}-n*.dta'))
         if len(matches) != 1 or sha256(matches[0]) != identity['sha256']:
             raise ValueError('prior panel input changed')
-    cells = [dict(c, arms=cell_for(c['design'][7:], pd.DataFrame(), c['threads'])['arms']) for c in old['cells']]
+    cells = [dict(c, **{k: v for k, v in cell_for(c['design'][7:], pd.DataFrame(), c['threads'], save_fe).items()
+                        if k in ('id', 'arms', 'save_fe')}) for c in old['cells']]
     write_json(root/'manifest.json', dict(old, cells=cells, reused_inputs=str(previous),
+               policy=dict(old['policy'], save_fe=save_fe),
                timed_fits=sum(len(c['arms']) for c in cells)*REPETITIONS))
 
 
@@ -202,25 +205,27 @@ def audit_inputs(root):
     print('PANEL_INPUT_AUDIT_PASS', flush=True)
 
 
-def effects_capture(record, frame):
+def effects_capture(record, frame, save_fe=True):
     """Retain both FE channels and a comparable, observation-weighted gauge.
 
     Individual levels are identified up to one constant on this connected graph.
     Centering each channel makes both worker and firm effects comparable without
     asserting equality between the estimators' raw normalization conventions.
+    Without saved FE only the scientific output hashes are retained.
     """
     directory = Path(record['directory'])
-    rows = pd.read_csv(directory/'rows.csv', na_values=['.'], float_precision='round_trip')
-    effect_hashes, effects = {}, {}
-    for j in [1, 2]:
-        values = rows[f'saved{j}'].to_numpy(dtype=float)
-        effect_hashes[f'saved{j}'] = hashlib.sha256(values.astype('<f8').tobytes()).hexdigest()
-        codes = frame[f'g{j}'].to_numpy(dtype=int)-1
-        counts = np.bincount(codes)
-        levels = np.bincount(codes, weights=values)/counts
-        effects[f'saved{j}'] = levels - np.average(levels, weights=counts)
-    np.savez_compressed(directory/'effects.npz', **effects)
-    record['capture']['saved_fe_sha256'] = effect_hashes
+    if save_fe:
+        rows = pd.read_csv(directory/'rows.csv', na_values=['.'], float_precision='round_trip')
+        effect_hashes, effects = {}, {}
+        for j in [1, 2]:
+            values = rows[f'saved{j}'].to_numpy(dtype=float)
+            effect_hashes[f'saved{j}'] = hashlib.sha256(values.astype('<f8').tobytes()).hexdigest()
+            codes = frame[f'g{j}'].to_numpy(dtype=int)-1
+            counts = np.bincount(codes)
+            levels = np.bincount(codes, weights=values)/counts
+            effects[f'saved{j}'] = levels - np.average(levels, weights=counts)
+        np.savez_compressed(directory/'effects.npz', **effects)
+        record['capture']['saved_fe_sha256'] = effect_hashes
     record['capture']['scientific_sha256'] = {
         name: sha256(directory/name) for name in ['coefficients.csv', 'covariance.csv', 'rows.csv']}
     # Compress outside the measured command; complete raw output stays on SCC.
@@ -232,7 +237,7 @@ def effects_capture(record, frame):
 
 def compare(a, b, cell):
     result = campaign.compare_records(a, b, cell)
-    if a['status'] == b['status'] == 'ok':
+    if a['status'] == b['status'] == 'ok' and cell['save_fe']:
         x, y = [np.load(Path(r['directory'])/'effects.npz') for r in [a, b]]
         for name in ['saved1', 'saved2']:
             if not close_values(x[name], y[name], campaign.POLICY['fitted_rtol'], campaign.POLICY['fitted_atol']):
@@ -283,7 +288,7 @@ def run(root, task, smoke):
             threads = [4] if smoke else THREADS
             reference = None
             for t in threads:
-                cell = cell_for(panel, frame, t)
+                cell = cell_for(panel, frame, t, manifest['policy'].get('save_fe', True))
                 baseline, failed = {}, set()
                 for rep in range(1, (1 if smoke else REPETITIONS)+1):
                     current = {}
@@ -300,7 +305,7 @@ def run(root, task, smoke):
                         record = campaign.fit(taskroot, cell, arm, rep, frame, cpus)
                         if record['status'] == 'ok':
                             try:
-                                effects_capture(record, frame)
+                                effects_capture(record, frame, cell['save_fe'])
                                 # OLS absorbed rank includes the global intercept.
                                 if record['capture']['absorbed_dof'] != rank:
                                     raise ValueError('independent graph rank differs')
@@ -346,8 +351,9 @@ def run(root, task, smoke):
                                 capture = record['capture']
                                 checks['coefficients'] = close_values(capture['beta'], expected['beta'], 1e-7, 1e-10)
                                 checks['covariance'] = close_values(capture['covariance'], expected['covariance'], 1e-6, 1e-10)
-                                fitted = np.load(Path(record['directory'])/'fitted.npz')['fitted']
-                                checks['fitted'] = close_values(fitted, expected['fitted'], 1e-7, 1e-9)
+                                if cell['save_fe']:
+                                    fitted = np.load(Path(record['directory'])/'fitted.npz')['fitted']
+                                    checks['fitted'] = close_values(fitted, expected['fitted'], 1e-7, 1e-9)
                             science.append(dict(panel=panel, arm=arm, kind='dense-oracle', checks=checks,
                                                 passed=bool(checks) and all(checks.values())))
                             if arm == 'fereg' and not (checks and all(checks.values())):
@@ -374,12 +380,14 @@ if __name__ == '__main__':
     parser.add_argument('--long', type=Path)
     parser.add_argument('--short', type=Path)
     parser.add_argument('--previous', type=Path, help='prior run whose audited inputs are reused')
+    parser.add_argument('--without-saved-fe', action='store_true',
+                        help='reuse: time estimation and inference without saving FE')
     parser.add_argument('--task', type=int, choices=[1, 2], default=1)
     args = parser.parse_args()
     if args.mode == 'prepare':
         prepare(args.root, args.long, args.short)
     elif args.mode == 'reuse':
-        reuse(args.root, args.previous)
+        reuse(args.root, args.previous, not args.without_saved_fe)
     elif args.mode == 'audit':
         audit_inputs(args.root)
     else:

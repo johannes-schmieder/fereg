@@ -68,11 +68,12 @@ def render(campaign, frame, output):
                               'Three-command medians with [min, max]; n=1 is one completed command. '
                               'No fits were retried.')
     pdf = report.CampaignPDF(output/'veneto-akm.pdf', campaign['context']['run_id'])
-    pdf.text('Veneto AKM<br/>Core scaling and saved effects', 'TitleCustom')
+    saved = campaign['manifest']['policy'].get('save_fe', True)
+    pdf.text('Veneto AKM<br/>Core scaling and '+('saved effects' if saved else 'estimation without saved effects'), 'TitleCustom')
     date = datetime.strptime(campaign['context']['run_id'][:8], '%Y%m%d').strftime('%d %B %Y')
     pdf.text(date+'  /  Linux SCC  /  Frozen packaged runtime', 'SmallCustom')
     pdf.text('All 30 fereg fits pass the production gates. '+
-             ('Every comparator configuration is ineligible under the unchanged saved-output checks, '
+             ('Every comparator configuration is ineligible under the unchanged scientific checks, '
               'so its time is descriptive. This campaign does not establish an eligible cross-package speed ranking.'
               if not eligible_references else
               f'{eligible_references} of {len(references)} comparator configurations pass the frozen scientific gates. '
@@ -89,7 +90,10 @@ def render(campaign, frame, output):
                  f'All three-command native ranges and every reference observation follow.')
     pdf.text('Model and command boundary', 'SectionCustom')
     pdf.text('OLS of unadjusted log daily wages on worker and firm intercept effects, with unit '
-             'weights and regular IID covariance. Both FE channels are saved inside command timing. '
+             'weights and regular IID covariance. '+
+             ('Both FE channels are saved inside command timing. ' if saved else
+              'No FE are saved; commands time estimation and inference, and comparisons cover slopes, '
+              'covariance, sample, rank and RSS. ')+
              'Import, export and checks are outside timing. Long: 1996-2001; normalized age squared '
              'and cubed plus 1996-2000 indicators (2001 base). Short: 1999/2001, with a 2001 indicator.')
     planned = sum(len(c['arms']) for c in campaign['manifest']['cells'])*campaign['manifest']['policy']['repetitions']
