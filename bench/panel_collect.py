@@ -101,7 +101,8 @@ def load(root):
     if (root/'environment/COMPLETE').read_text().strip() != 'PANEL_SETUP_COMPLETE':
         raise ValueError('setup incomplete')
     smoke = json.loads((root/'smoke/results.json').read_text())
-    if not smoke.get('complete') or not smoke.get('native_gate_pass') or len(smoke['records']) != 8:
+    if (not smoke.get('complete') or not smoke.get('native_gate_pass')
+            or len(smoke['records']) != smoke.get('expected_fits', 8)):
         raise ValueError('real-data smoke incomplete')
     checks = [s for s in smoke['science'] if s['kind'] == 'dense-oracle' and s['arm'] == 'fereg']
     if len(checks) != 2 or not all(s['passed'] for s in checks):
@@ -165,9 +166,11 @@ def collect(context_path, output):
         (output/(stage+'-accounting.txt')).write_text(raw)
         jobs.extend(accounting_records(raw))
     (output/'accounting.json').write_text(json.dumps(jobs, indent=2)+'\n')
+    preparation = ['preparation/inputs.json', 'preparation/long-sample.json', 'preparation/short-sample.json']
+    # A reused-input run retains its preparation records in the prior run.
+    reused = context.get('previous_root')
     files = ['manifest.json', 'input/source.json', 'input/prior-panels.json', 'setup.sh', 'job.sh',
-             'preparation/inputs.json', 'preparation/long-sample.json', 'preparation/short-sample.json',
-             'environment/runtime.json', 'environment/COMPLETE', 'environment/input-audit.json',
+             *([] if reused else preparation), 'environment/runtime.json', 'environment/COMPLETE', 'environment/input-audit.json',
              'environment/reference-origin.json', 'environment/r-package-paths.json',
              'environment/pyfixest-freeze.txt', 'environment/pyfixest-within-freeze.txt',
              'logs/setup.sge', 'logs/smoke.sge', 'logs/harness-tests.log', 'logs/package-check.log',
@@ -175,15 +178,19 @@ def collect(context_path, output):
     for task in [1, 2]:
         files += [f'task-{task}/results.json', f'task-{task}/COMPLETE',
                   f'host-task-{task}/host.json', f'logs/production.{task}.sge']
-    raw = remote('cd '+shlex.quote(run)+' && tar -cf - '+' '.join(shlex.quote(f) for f in files))
-    with tarfile.open(fileobj=io.BytesIO(raw)) as archive:
-        for member in archive.getmembers():
-            path = Path(member.name)
-            if not member.isfile() or path.is_absolute() or '..' in path.parts:
-                raise ValueError('unsafe aggregate archive entry')
-            destination = output/path
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            destination.write_bytes(archive.extractfile(member).read())
+    if reused:
+        files += ['reuse.sge', 'logs/reuse.sge']
+    archives = [(run, files)]+([(reused, preparation)] if reused else [])
+    for directory, names in archives:
+        raw = remote('cd '+shlex.quote(directory)+' && tar -cf - '+' '.join(shlex.quote(f) for f in names))
+        with tarfile.open(fileobj=io.BytesIO(raw)) as archive:
+            for member in archive.getmembers():
+                path = Path(member.name)
+                if not member.isfile() or path.is_absolute() or '..' in path.parts:
+                    raise ValueError('unsafe aggregate archive entry')
+                destination = output/path
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                destination.write_bytes(archive.extractfile(member).read())
     result = load(output)
     (output/'host-validation.json').write_text(json.dumps(audit_remote_hosts(context), indent=2)+'\n')
     from campaign_report import summarize
