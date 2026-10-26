@@ -163,7 +163,9 @@ matched, and selftest, OLS/PPML examples and a three-FE comparison with
 explicit dummies passed. After publication, a fresh Stata 19/MP `net install`
 from the [beta.6 release](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0-beta.6)
 matched all 34 versioned package files and passed the same checks. All 50
-release assets matched their local SHA-256 checksums.
+release assets matched their local SHA-256 checksums. After the merge,
+`github install johannes-schmieder/fereg` from `main` matched all 35 installed
+files and passed the same checks in a fresh session.
 
 ### Beta.5 platform packaging
 
