@@ -241,15 +241,17 @@ near-confounded timing exception, see [VALIDATION](VALIDATION.md).
 PPML Auto with exactly two categorical intercept FEs, no slopes and a
 publication fit reuses one bounded CMG Schur hierarchy across IRLS frames as
 historical solve acceleration (§13). Ordinary frames solve the joint FE and
-finite WLS direction by PCG with a diagonal retained-effect block. Without an
-installed hierarchy, a frame whose recurrence reaches step 64 may build one on
-its own weights and restarts from its current iterate. An installed hierarchy
-`B` applies to the retained block of later frames as `D^1/2 B D^1/2`, with the
-current frame's level weight sums `D`. The canonical products' reduced Schur
-solve applies it to implicit components of at least 64 levels as
-`R G' B G R`, with the Jacobi roots `R` and `G` placing the component's
-grounded anchor; before such a solve, a hierarchy from an earlier weight
-generation is rebuilt once on current weights while an attempt remains.
+finite WLS direction by PCG with a diagonal retained-effect block. A frame
+whose recurrence reaches step 64 may build a missing hierarchy, or rebuild one
+from an earlier weight generation, on its own weights and restarts from its
+current iterate. An installed hierarchy `B` applies to the retained block of
+later frames as `D^1/2 B D^1/2`, with the current frame's level weight sums
+`D`. The canonical products' reduced Schur solve applies it to implicit
+components of at least 64 levels as `R G' B G R`, with the Jacobi roots `R`
+and `G` placing the component's grounded anchor. Before such a solve, a
+hierarchy from an earlier weight generation is rebuilt on current weights;
+without one, a plain recurrence of the first column on the largest component
+that exceeds 64 steps builds one.
 Categorical reprojections, used when strict canonical products decline, use
 the two-FE Schur recurrence with the h16/k1 build:
 without a hierarchy one may be built at step 16, and a hierarchy from an
@@ -258,7 +260,7 @@ current weights, then reinstated unless replaced. Construction keeps cutoff 5,
 one sampled tree and seed zero, polls cancellation and admits itself against
 the fit's solver memory budget with any set-aside hierarchy charged as
 resident; refusal leaves the diagonal recurrence unchanged. An estimation
-makes at most two construction attempts, refusals included, and no
+makes at most three construction attempts, refusals included, and no
 elapsed-time decision. Operators, stopping targets, reconstruction and every
 certificate use the current frame; the hierarchy carries no certificate, rank
 or Hessian authority. Explicit solvers, the separation phase, slopes and other

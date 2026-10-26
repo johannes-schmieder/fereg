@@ -3624,7 +3624,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             .as_mut()
             .and_then(|session| session.categorical.as_mut())
         {
-            categorical.refresh_ppml_cmg(self.weights.borrowed())?;
+            categorical.refresh_ppml_cmg(self.weights.borrowed(), "ppml_canonical_cmg")?;
         }
         let result = super::canonical_products::try_build_with_preconditioner(
             self.prepared,
@@ -3638,10 +3638,8 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             &mut self.projection_block,
             &mut preconditioner_attempt,
             self.fe_projector
-                .as_ref()
-                .and_then(|session| session.categorical.as_ref())
-                .and_then(ReusableCategoricalMapAbsorber::ppml_cmg_view)
-                .as_ref(),
+                .as_mut()
+                .and_then(|session| session.categorical.as_mut()),
         );
         let mut products = match result {
             Ok(Some(products)) => products,

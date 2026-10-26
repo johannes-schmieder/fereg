@@ -98,6 +98,25 @@ pub(super) fn solve_reduced_cg(
 
 // diag(m_b / root^2) - C'C. Group-pair weights are combined once;
 // grounding and component-local coordinates are resolved before any iteration.
+/// The implicit operator of one component: its sorted incidence rows and
+/// diagonal within the shared banks.
+pub(super) fn component_operator<'f>(
+    factor: &'f [f64],
+    ids: &'f [usize],
+    rows: &'f [IncidenceRow],
+    n: usize,
+    block: &ComponentFactor,
+) -> impl Fn(&[f64], &mut [f64]) + Copy + 'f {
+    let root = block.matrix_offset;
+    let start = rows.partition_point(|row| row.component < root);
+    let end = rows.partition_point(|row| row.component <= root);
+    let rows = &rows[start..end];
+    let diagonal = &factor[n + block.start..n + block.start + block.len];
+    move |direction: &[f64], product: &mut [f64]| {
+        apply_incidence_schur(&factor[..n], diagonal, ids, rows, direction, product)
+    }
+}
+
 pub(super) fn apply_incidence_schur(
     incidence: &[f64],
     diagonal: &[f64],

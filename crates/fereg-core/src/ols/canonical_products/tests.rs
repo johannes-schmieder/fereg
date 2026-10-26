@@ -1,3 +1,4 @@
+use super::reduced::apply_incidence_schur;
 use super::*;
 use crate::metadata::*;
 use crate::ols::{
@@ -1997,7 +1998,7 @@ fn small_implicit_components_meet_a_strict_target_and_a_shared_hierarchy_precond
     // Room for implicit banks and a shared hierarchy's scratch, not for a
     // dense reduced matrix.
     let allowance = 16 * n as u128 * 6 * 3;
-    let build = |view: Option<&PpmlCmgView<'_>>| {
+    let build = |owner: Option<&mut crate::fe::ReusableCategoricalMapAbsorber<'_>>| {
         try_build_with_preconditioner(
             &p,
             &[0, 1],
@@ -2009,44 +2010,52 @@ fn small_implicit_components_meet_a_strict_target_and_a_shared_hierarchy_precond
             0,
             &mut Vec::new(),
             &mut historical_preconditioner::Call::new(None, 0, 0),
-            view,
+            owner,
         )
         .unwrap()
         .expect("strict implicit products certify")
     };
     let plain = build(None);
     assert!(plain.implicit && plain.report.certified());
-    let design = p.fit_borrowed_intercept_map_design().unwrap().unwrap();
-    let mut absorber = crate::fe::ReusableCategoricalMapAbsorber::new(design, 3, 2).unwrap();
+    let design = || p.fit_borrowed_intercept_map_design().unwrap().unwrap();
+    let generation = crate::fe::MapGeometryGeneration {
+        sample: 1,
+        topology: 1,
+        weights: 1,
+    };
+    let compare = |shared: &Products<'_, PreparedOlsData>| {
+        assert!(shared.implicit && shared.report.certified());
+        assert!(
+            shared.report.iterations < plain.report.iterations,
+            "{} preconditioned and {} plain steps",
+            shared.report.iterations,
+            plain.report.iterations
+        );
+        for (a, b) in shared.response.iter().zip(&plain.response) {
+            assert!((a - b).abs() <= 1e-9 * (1. + b.abs()));
+        }
+        for (a, b) in shared.moments.gram.iter().zip(&plain.moments.gram) {
+            assert!((a - b).abs() <= 1e-9 * (1. + b.abs()));
+        }
+    };
+    // An installed hierarchy preconditions the large component.
+    let mut absorber = crate::fe::ReusableCategoricalMapAbsorber::new(design(), 3, 2).unwrap();
     absorber.enable_ppml_cmg(None, u128::MAX).unwrap();
-    absorber
-        .begin_ppml_frame(crate::fe::MapGeometryGeneration {
-            sample: 1,
-            topology: 1,
-            weights: 1,
-        })
-        .unwrap();
+    absorber.begin_ppml_frame(generation).unwrap();
     assert!(
         crate::fe::JointCmgBlock::new(Some(&mut absorber), &w, Some(1))
             .unwrap()
             .install()
             .unwrap()
     );
-    let view = absorber.ppml_cmg_view().unwrap();
-    let shared = build(Some(&view));
-    assert!(shared.implicit && shared.report.certified());
-    assert!(
-        shared.report.iterations < plain.report.iterations,
-        "{} preconditioned and {} plain steps",
-        shared.report.iterations,
-        plain.report.iterations
-    );
-    for (a, b) in shared.response.iter().zip(&plain.response) {
-        assert!((a - b).abs() <= 1e-9 * (1. + b.abs()));
-    }
-    for (a, b) in shared.moments.gram.iter().zip(&plain.moments.gram) {
-        assert!((a - b).abs() <= 1e-9 * (1. + b.abs()));
-    }
+    compare(&build(Some(&mut absorber)));
+    assert_eq!(absorber.ppml_cmg_reach(), Some((1, 150, true)));
+    // Without one, a probe beyond 64 plain steps builds it on these weights.
+    let mut absorber = crate::fe::ReusableCategoricalMapAbsorber::new(design(), 3, 2).unwrap();
+    absorber.enable_ppml_cmg(None, u128::MAX).unwrap();
+    absorber.begin_ppml_frame(generation).unwrap();
+    compare(&build(Some(&mut absorber)));
+    assert_eq!(absorber.ppml_cmg_reach(), Some((1, 150, true)));
 }
 
 #[test]
@@ -2091,6 +2100,29 @@ fn an_unaffordable_dense_factor_uses_the_implicit_operator_without_assembly() {
     };
     let implicit = build(20_000_000);
     assert!(implicit.implicit && implicit.report.certified());
+    // A well-connected reduced graph finishes its probe: nothing is built and
+    // later canonical solves of the estimation stop probing.
+    let design = p.fit_borrowed_intercept_map_design().unwrap().unwrap();
+    let mut absorber = crate::fe::ReusableCategoricalMapAbsorber::new(design, 2, 2).unwrap();
+    absorber.enable_ppml_cmg(None, u128::MAX).unwrap();
+    assert_eq!(absorber.ppml_cmg_reach(), Some((1, 300, false)));
+    let probed = try_build_with_preconditioner(
+        &p,
+        &[0],
+        &y,
+        BorrowedMapWeights::Provided(&w),
+        1.,
+        config,
+        u128::MAX >> 8,
+        20_000_000,
+        &mut Vec::new(),
+        &mut historical_preconditioner::Call::new(None, 0, 0),
+        Some(&mut absorber),
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(probed.response, implicit.response);
+    assert_eq!(absorber.ppml_cmg_reach(), None);
     // An allowance that affords the factor keeps the direct solve.
     let direct = build(1 << 40);
     assert!(!direct.implicit && direct.report.certified());

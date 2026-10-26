@@ -102,15 +102,16 @@ solver requests do not retain this cache.
 
 PPML Auto with exactly two intercept FEs also reuses one CMG Schur hierarchy
 across frames (`fe/borrowed_map/ppml_cmg.rs`). The categorical owner's two-FE
-graph holds it with its build generation and at most two construction
+graph holds it with its build generation and at most three construction
 attempts. Joint ordinary frames reach it through the retained-block hook of
-`fe/slope_coefficients/joint.rs`: a diagonal recurrence that reaches step 64
-may build one, and an installed hierarchy `B` applies as `D^1/2 B D^1/2` with
-current level masses `D`. Canonical products borrow it read-only through
-`PpmlCmgView`: `ols/canonical_products/shared_cmg.rs` preconditions large
-implicit components with one fixed cycle per application on per-worker
-scratch charged to the products' allowance, and a canonical call first
-refreshes a stale hierarchy while an attempt remains. Categorical
+`fe/slope_coefficients/joint.rs`: a recurrence that reaches step 64 may build a
+missing hierarchy or rebuild a stale one, and an installed hierarchy `B`
+applies as `D^1/2 B D^1/2` with current level masses `D`. Canonical products
+take the owner mutably: a call first refreshes a stale hierarchy, and
+`ols/canonical_products/shared_cmg.rs` builds a missing one when a 64-step
+probe of the first column does not finish. It then preconditions large
+implicit components with one fixed cycle per application through
+`PpmlCmgView` on per-worker scratch charged to the products' allowance. Categorical
 reprojections use the h16/k1 route; a hierarchy from an earlier weight
 generation is set aside, charged as resident to the rebuild, and reinstated
 unless replaced. Admission reserves only the application banks; each

@@ -77,6 +77,11 @@ pub(crate) trait JointBlockPreconditioner {
     fn install(&mut self) -> Result<bool>;
     /// `output = B residual` on the retained block, in joint coordinates.
     fn apply(&mut self, residual: &[f64], output: &mut [f64]) -> Result<()>;
+    /// Try once to replace an installed preconditioner built for earlier
+    /// weights; report whether one was rebuilt.
+    fn refresh(&mut self) -> Result<bool> {
+        Ok(false)
+    }
 }
 
 /// Columns per task for per-column joint work: one scan serves several
@@ -837,8 +842,8 @@ impl JointFiniteWorkspace {
     }
 
     /// At the block checkpoint, try once to install an absent block
-    /// preconditioner. Refusal leaves the diagonal recurrence untouched; an
-    /// installed block restarts it from the current iterate.
+    /// preconditioner or to rebuild a stale one. Refusal leaves the
+    /// recurrence untouched; a new block restarts it from the current iterate.
     fn checkpoint_block<'o>(
         &mut self,
         p: usize,
@@ -851,10 +856,15 @@ impl JointFiniteWorkspace {
             0 => BLOCK_CHECKPOINT,
             step => step,
         };
-        let Some(block) = block.filter(|block| step == checkpoint && !block.installed()) else {
+        let Some(block) = block.filter(|_| step == checkpoint) else {
             return Ok(());
         };
-        if block.install()? {
+        let restart = if block.installed() {
+            block.refresh()?
+        } else {
+            block.install()?
+        };
+        if restart {
             self.precondition(p, k, Some(block))?;
             self.direction[..p + k].copy_from_slice(&self.preconditioned[..p + k]);
             *square = dot(&self.residual[..p + k], &self.preconditioned[..p + k]);

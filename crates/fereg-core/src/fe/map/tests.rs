@@ -2224,6 +2224,7 @@ struct TestBlock {
     fail: bool,
     installs: usize,
     applies: usize,
+    refreshes: usize,
 }
 
 impl super::super::slope_coefficients::joint::JointBlockPreconditioner for TestBlock {
@@ -2234,6 +2235,10 @@ impl super::super::slope_coefficients::joint::JointBlockPreconditioner for TestB
         self.installs += 1;
         self.installed = !self.refuse;
         Ok(self.installed)
+    }
+    fn refresh(&mut self) -> Result<bool> {
+        self.refreshes += 1;
+        Ok(!self.refuse)
     }
     fn apply(&mut self, residual: &[f64], output: &mut [f64]) -> Result<()> {
         self.applies += 1;
@@ -2332,6 +2337,7 @@ fn joint_block_refusal_is_exact_and_an_installed_block_reaches_the_same_solution
         fail,
         installs: 0,
         applies: 0,
+        refreshes: 0,
     };
     // Refusal at the checkpoint leaves every bit of the diagonal recurrence.
     let mut refused = block(false, true, false);
@@ -2342,11 +2348,15 @@ fn joint_block_refusal_is_exact_and_an_installed_block_reaches_the_same_solution
         (bits(&beta), bits(&residuals))
     );
     assert_eq!(refusal.2, iterations);
-    // Installation restarts at the current iterate; acceptance is unchanged.
-    for (installed, installs) in [(false, 1), (true, 0)] {
+    // Installation, or a rebuild of an installed block, restarts at the
+    // current iterate; acceptance is unchanged.
+    for (installed, installs, refreshes) in [(false, 1, 0), (true, 0, 1)] {
         let mut accepted = block(installed, false, false);
         let (b, r, _) = solve(&mut owner, Some(&mut accepted)).unwrap();
-        assert_eq!(accepted.installs, installs);
+        assert_eq!(
+            (accepted.installs, accepted.refreshes),
+            (installs, refreshes)
+        );
         assert!(accepted.applies > 0);
         assert!(owner
             .joint_slopes()

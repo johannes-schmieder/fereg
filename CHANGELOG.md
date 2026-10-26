@@ -12,6 +12,10 @@
   checkpoints of weakly connected designs no longer fall back to the slower
   categorical solve. Small graph components are solved directly, and dense
   reduced matrices are no longer assembled for iterative solves.
+- A canonical solve that is still slow after 64 plain steps builds the CMG
+  hierarchy at the first PPML iteration, and a joint frame that reaches its
+  checkpoint with a hierarchy from earlier weights rebuilds it, within at most
+  three builds per estimation.
 - PPML joint frames run their fresh original-column and response checks in
   parallel over fixed row blocks and rebuild residuals from the projected
   columns, removing several sequential passes per iteration.

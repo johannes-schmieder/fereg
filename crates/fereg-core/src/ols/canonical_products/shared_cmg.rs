@@ -9,16 +9,129 @@
 //! only: the exact current operator, recurrence target and the unchanged
 //! original-input certificate decide every solve.
 use super::*;
+use crate::fe::ReusableCategoricalMapAbsorber;
 use std::sync::{Mutex, MutexGuard, TryLockError};
 
 /// Smaller components finish in a few unpreconditioned steps.
 const MIN_COMPONENT: usize = 64;
+/// Steps a plain probe takes before a missing hierarchy is built, as a joint
+/// frame's diagonal recurrence does.
+const CHECKPOINT: usize = 64;
+
+/// A canonical solve's admitted use of the PPML CMG owner.
+pub(super) struct Plan {
+    /// Scratch words admitted with the products' plan; zero until a missing
+    /// hierarchy is built.
+    words: usize,
+    lazy: bool,
+    /// `(block.start, anchor level)` of each preconditioned component.
+    anchors: Vec<(usize, usize)>,
+}
+
+impl Plan {
+    /// For an implicit cold solve of the owner's reduced effect with a large
+    /// component, while a hierarchy is installed or may still be built.
+    pub(super) fn new(
+        owner: Option<&ReusableCategoricalMapAbsorber<'_>>,
+        reduced_effect: usize,
+        q: usize,
+        d: usize,
+        width: usize,
+        components: &[ComponentFactor],
+    ) -> Result<Option<Self>> {
+        let Some((owner, (effect, levels, installed))) =
+            owner.and_then(|owner| Some((owner, owner.ppml_cmg_reach()?)))
+        else {
+            return Ok(None);
+        };
+        if effect != reduced_effect
+            || levels != q
+            || !components.iter().any(|block| block.len >= MIN_COMPONENT)
+        {
+            return Ok(None);
+        }
+        let words = match owner.ppml_cmg_view().filter(|_| installed) {
+            Some(view) => words(view.scratch_bytes()?, q, d, width)?,
+            None => 0,
+        };
+        Ok(Some(Self {
+            words,
+            lazy: !installed,
+            anchors: Vec::new(),
+        }))
+    }
+
+    pub(super) fn words(&self) -> usize {
+        self.words
+    }
+
+    /// Anchors of the preconditioned components, before the geometry banks end.
+    pub(super) fn retain_anchors(
+        &mut self,
+        anchors: &[usize],
+        components: &[ComponentFactor],
+    ) -> Result<()> {
+        for block in components.iter().filter(|block| block.len >= MIN_COMPONENT) {
+            self.anchors.try_reserve(1).map_err(|_| allocation())?;
+            self.anchors
+                .push((block.start, anchors[block.matrix_offset]));
+        }
+        Ok(())
+    }
+
+    /// Without an installed hierarchy, run `probe` (the plain recurrence of
+    /// one column on the largest component, at most [`CHECKPOINT`] steps) and
+    /// build one on `weights` when it does not finish; a finished probe ends
+    /// probing for the estimation. Scratch is then admitted only within
+    /// `headroom` bytes of the products' allowance.
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn build_after(
+        &mut self,
+        owner: &mut ReusableCategoricalMapAbsorber<'_>,
+        weights: BorrowedMapWeights<'_>,
+        probe: impl FnOnce(usize) -> bool,
+        (q, d, width): (usize, usize, usize),
+        headroom: u128,
+        budget: &mut Budget,
+    ) -> Result<()> {
+        if !self.lazy {
+            return Ok(());
+        }
+        if !probe(CHECKPOINT) {
+            owner.note_quick_ppml_probe();
+            return Ok(());
+        }
+        if !owner.build_ppml_cmg(weights, "ppml_canonical_cmg")? {
+            return Ok(());
+        }
+        let Some(view) = owner.ppml_cmg_view() else {
+            return Ok(());
+        };
+        let words = words(view.scratch_bytes()?, q, d, width)?;
+        if words as u128 * 8 <= headroom {
+            budget.extend(words as u128 * 8)?;
+            self.words = words;
+        }
+        Ok(())
+    }
+}
+
+/// Per-worker scratch, the level map and the anchors of one solve.
+fn words(scratch_bytes: u128, q: usize, d: usize, width: usize) -> Result<usize> {
+    let slots = rayon::current_num_threads().clamp(1, width.max(1)) as u128;
+    let words = scratch_bytes
+        .checked_add(2 * q as u128 * 8)
+        .and_then(|bytes| bytes.checked_mul(slots))
+        .and_then(|bytes| bytes.checked_add((d as u128 + 2 * q as u128) * 8))
+        .map(|bytes| bytes.div_ceil(8))
+        .ok_or_else(declined)?;
+    usize::try_from(words).map_err(|_| declined())
+}
 
 pub(super) struct SharedCmg<'v, 'h> {
     view: &'v PpmlCmgView<'h>,
     /// Level of each free reduced coordinate.
     levels: Vec<usize>,
-    /// `(block.start, anchor level)` of each preconditioned component.
     anchors: Vec<(usize, usize)>,
     slots: Vec<Mutex<Slot>>,
     charged: u128,
@@ -31,60 +144,26 @@ struct Slot {
 }
 
 impl<'v, 'h> SharedCmg<'v, 'h> {
-    /// Words of budget a hierarchy on the reduced effect needs for `width`
-    /// columns, or `None` when it does not apply to this geometry.
-    pub(super) fn words(
-        view: Option<&PpmlCmgView<'_>>,
-        reduced_effect: usize,
-        q: usize,
-        d: usize,
-        width: usize,
-        components: &[ComponentFactor],
-    ) -> Result<Option<usize>> {
-        let Some(view) = view else {
-            return Ok(None);
-        };
-        if view.effect() != reduced_effect
-            || view.levels() != q
-            || !components.iter().any(|block| block.len >= MIN_COMPONENT)
-        {
-            return Ok(None);
-        }
-        let slots = rayon::current_num_threads().clamp(1, width.max(1)) as u128;
-        let words = view
-            .scratch_bytes()?
-            .checked_add(2 * q as u128 * 8)
-            .and_then(|bytes| bytes.checked_mul(slots))
-            .and_then(|bytes| bytes.checked_add((d as u128 + 2 * q as u128) * 8))
-            .map(|bytes| bytes.div_ceil(8))
-            .ok_or_else(declined)?;
-        Ok(Some(usize::try_from(words).map_err(|_| declined())?))
-    }
-
-    /// Charge `words` (from [`Self::words`]) and build the per-worker slots.
-    #[allow(clippy::too_many_arguments)]
+    /// Charge the plan's admitted words and build the per-worker slots, or
+    /// `None` when the plan admitted none.
     pub(super) fn new(
         view: &'v PpmlCmgView<'h>,
-        words: usize,
+        plan: Plan,
         free: &[usize],
-        anchors: &[usize],
-        components: &[ComponentFactor],
         d: usize,
         width: usize,
         budget: &mut Budget,
-    ) -> Result<Self> {
-        let charged = words as u128 * 8;
+    ) -> Result<Option<Self>> {
+        if plan.words == 0 {
+            return Ok(None);
+        }
+        let charged = plan.words as u128 * 8;
         budget.charge(charged)?;
         let mut levels = fallible(d, 0_usize)?;
         for (level, &coordinate) in free.iter().enumerate() {
             if coordinate != usize::MAX {
                 levels[coordinate] = level;
             }
-        }
-        let mut retained = Vec::new();
-        for block in components.iter().filter(|block| block.len >= MIN_COMPONENT) {
-            retained.try_reserve(1).map_err(|_| allocation())?;
-            retained.push((block.start, anchors[block.matrix_offset]));
         }
         let count = rayon::current_num_threads().clamp(1, width.max(1));
         let mut slots = Vec::new();
@@ -96,13 +175,13 @@ impl<'v, 'h> SharedCmg<'v, 'h> {
                 output: fallible(free.len(), 0.)?,
             }));
         }
-        Ok(Self {
+        Ok(Some(Self {
             view,
             levels,
-            anchors: retained,
+            anchors: plan.anchors,
             slots,
             charged,
-        })
+        }))
     }
 
     pub(super) fn release(self, budget: &mut Budget) -> Result<()> {

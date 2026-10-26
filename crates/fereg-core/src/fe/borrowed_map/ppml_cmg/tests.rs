@@ -159,7 +159,7 @@ fn joint_block_applies_the_retained_hierarchy_in_joint_coordinates() {
 }
 
 #[test]
-fn estimation_builds_at_most_twice_and_refreshes_only_stale_strict_hierarchies() {
+fn estimation_builds_at_most_three_times_and_refreshes_only_stale_strict_hierarchies() {
     let chain = Chain::new(120, 2);
     let mut absorber = chain.absorber();
     absorber.enable_ppml_cmg(None, u128::MAX).unwrap();
@@ -190,7 +190,7 @@ fn estimation_builds_at_most_twice_and_refreshes_only_stale_strict_hierarchies()
     assert_eq!(state(&absorber).built, Some(generation(1)));
     assert!(installed(&absorber) && state(&absorber).aside.is_none());
     // A strict projection on a later frame rebuilds once on current weights.
-    for (frame, attempts, built) in [(3, 2, 3), (5, 2, 3)] {
+    for (frame, attempts, built) in [(3, 2, 3), (5, 3, 5), (6, 3, 5)] {
         absorber.begin_ppml_frame(generation(frame)).unwrap();
         reference.begin_ppml_frame(generation(frame)).unwrap();
         let weights = chain.weights(frame);
@@ -224,10 +224,10 @@ fn estimation_builds_at_most_twice_and_refreshes_only_stale_strict_hierarchies()
         // A withheld route is restored for later projections.
         assert!(absorber.auto_route.is_some());
     }
-    // With both attempts used, a missing hierarchy is not rebuilt.
+    // With all attempts used, a missing hierarchy is not rebuilt.
     absorber.two_fe_pcg.as_mut().unwrap().cmg_schur = None;
-    let weights = chain.weights(6);
-    absorber.begin_ppml_frame(generation(6)).unwrap();
+    let weights = chain.weights(7);
+    absorber.begin_ppml_frame(generation(7)).unwrap();
     assert!(!JointCmgBlock::new(Some(&mut absorber), &weights, Some(1))
         .unwrap()
         .install()
@@ -240,7 +240,7 @@ fn estimation_builds_at_most_twice_and_refreshes_only_stale_strict_hierarchies()
         )
         .unwrap();
     assert!(!installed(&absorber));
-    assert_eq!(state(&absorber).attempts, 2);
+    assert_eq!(state(&absorber).attempts, 3);
 }
 
 #[test]
@@ -306,36 +306,39 @@ fn a_canonical_refresh_rebuilds_only_a_stale_hierarchy_within_the_attempts() {
     absorber.enable_ppml_cmg(None, u128::MAX).unwrap();
     // Nothing installed: a refresh neither builds nor spends an attempt.
     absorber.begin_ppml_frame(generation(1)).unwrap();
-    absorber
-        .refresh_ppml_cmg(BorrowedMapWeights::Provided(&chain.weights(1)))
-        .unwrap();
+    assert!(!absorber
+        .refresh_ppml_cmg(BorrowedMapWeights::Provided(&chain.weights(1)), "test")
+        .unwrap());
     assert_eq!(state(&absorber).attempts, 0);
     assert!(absorber.ppml_cmg_view().is_none());
+    assert_eq!(absorber.ppml_cmg_reach(), Some((1, 90, false)));
     let weights = chain.weights(1);
     let mut block = JointCmgBlock::new(Some(&mut absorber), &weights, Some(1)).unwrap();
     assert!(block.install().unwrap());
     assert_eq!(state(&absorber).attempts, 1);
     // Current hierarchies are kept.
-    absorber
-        .refresh_ppml_cmg(BorrowedMapWeights::Provided(&weights))
-        .unwrap();
+    assert!(!absorber
+        .refresh_ppml_cmg(BorrowedMapWeights::Provided(&weights), "test")
+        .unwrap());
     assert_eq!(state(&absorber).attempts, 1);
-    // A stale one is rebuilt once on current weights.
-    absorber.begin_ppml_frame(generation(2)).unwrap();
-    absorber
-        .refresh_ppml_cmg(BorrowedMapWeights::Provided(&chain.weights(2)))
-        .unwrap();
-    assert_eq!(state(&absorber).attempts, 2);
-    assert_eq!(state(&absorber).built, Some(generation(2)));
+    // Stale ones are rebuilt on current weights while attempts remain.
+    for frame in [2, 3] {
+        absorber.begin_ppml_frame(generation(frame)).unwrap();
+        assert!(absorber
+            .refresh_ppml_cmg(BorrowedMapWeights::Provided(&chain.weights(frame)), "test")
+            .unwrap());
+        assert_eq!(state(&absorber).attempts, frame as u8);
+        assert_eq!(state(&absorber).built, Some(generation(frame)));
+    }
     // Without an attempt the stale hierarchy still serves.
-    absorber.begin_ppml_frame(generation(3)).unwrap();
-    absorber
-        .refresh_ppml_cmg(BorrowedMapWeights::Provided(&chain.weights(3)))
-        .unwrap();
-    assert_eq!(state(&absorber).attempts, 2);
-    assert_eq!(state(&absorber).built, Some(generation(2)));
+    absorber.begin_ppml_frame(generation(4)).unwrap();
+    assert!(!absorber
+        .refresh_ppml_cmg(BorrowedMapWeights::Provided(&chain.weights(4)), "test")
+        .unwrap());
+    assert_eq!(state(&absorber).attempts, 3);
+    assert_eq!(state(&absorber).built, Some(generation(3)));
+    assert_eq!(absorber.ppml_cmg_reach(), Some((1, 90, true)));
     let view = absorber.ppml_cmg_view().unwrap();
-    assert_eq!((view.effect(), view.levels()), (1, 90));
     // The shared application is the installed cycle on a compatible input.
     let firms = chain.firm_index.n_levels();
     let mut input: Vec<f64> = (0..firms).map(|f| (f as f64 * 0.43).sin()).collect();

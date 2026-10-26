@@ -351,10 +351,6 @@ impl CmgSchurPreconditioner {
         Ok(())
     }
 
-    pub(super) fn firm_count(&self) -> usize {
-        self.components.labels.len()
-    }
-
     fn vertex_count(&self) -> usize {
         self.rhs.len() / self.batch_columns
     }
