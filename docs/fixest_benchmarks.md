@@ -6,6 +6,98 @@ real long and short fevc panels, controls and saved worker/firm effects at
 cross-package speed ratios ineligible. Native 1-to-16-core scaling is 1.69x
 on the long panel and 1.43x on the short panel.
 
+## October 26, 2026: beta.6 rerun
+
+Fereg is faster in **27 of 35 scientifically eligible default-fixest
+comparisons**: **15/18 OLS and 12/17 PPML**, versus 29/35 in the beta.3
+rerun. The other 21 default comparisons remain ineligible or unavailable.
+These counts describe this fixed panel; they are not probabilities of winning
+on an arbitrary model. Two of the four bundles ran on markedly slower nodes
+than beta.3 (below), so count changes do not isolate runtime effects.
+
+Campaign `20261026T012706Z-beta6-fixest-fe67c26c` measured frozen source
+`fe67c26c664cdb6969f28d0fd220395c25293da0`, the v0.5.0-beta.6 runtime with the
+many-FE OLS geometry policy active. Its runtime identity matches the package;
+the SCC-built Linux plugin SHA-256 is
+`acb42877d6b2b7c38fc6642bfaddd2d95979715c95368f61a976a43b3edc49e9`. Datasets,
+the 56 configurations, comparators, repetitions, scientific tolerances,
+per-fit limits, launchers and socket/NUMA placement are unchanged from the
+beta.3 rerun.
+
+Selected results are three-command medians in seconds; the ratio is the
+median **paired fixest/fereg** time within the same node. Rows use four
+workers unless noted.
+
+| Model / design | Rows | Node | fereg s | fixest s | Paired fixest/fereg |
+| --- | ---: | --- | ---: | ---: | ---: |
+| OLS, AKM | 1,000,000 | wo4 | 1.761 | 2.675 | 1.533 |
+| PPML, AKM | 1,000,000 | wd1 | 12.121 | 18.487 | 1.533 |
+| OLS, one FE | 1,000,000 | wo4 | 1.413 | 1.387 | 0.981 |
+| OLS, two dense FEs | 4,000,000 | yk1 | 2.471 | 3.404 | 1.378 |
+| OLS, three dense FEs | 100,000 | wd1 | 0.352 | 0.431 | 1.224 |
+| OLS, three dense FEs | 1,000,000 | wo4 | 2.073 | 2.028 | 0.978 |
+| OLS, three dense FEs | 4,000,000 | wd1 | 9.731 | 9.455 | 0.972 |
+| PPML, two dense FEs | 1,000,000 | yk1 | 4.299 | 4.071 | 0.944 |
+| PPML, two dense FEs, 16 workers | 1,000,000 | yk1 | 3.314 | 3.270 | 0.987 |
+| PPML, two dense FEs | 4,000,000 | wd1 | 47.500 | 36.151 | 0.761 |
+| PPML, three dense FEs | 1,000,000 | yk4 | 5.268 | 5.200 | 0.990 |
+| PPML, three dense FEs | 4,000,000 | yk1 | 20.259 | 18.954 | 0.936 |
+
+The table includes all eight eligible default-fixest losses. Five are within
+3%, which three repetitions do not establish reliably. The clear gaps remain
+dense two-FE PPML (0.761 at four million rows, 0.944 at one million) and dense
+three-FE PPML at four million rows (0.936). Dense three-FE OLS, the geometry
+policy's target, moved from 0.730/0.939/0.559 to 1.224/0.978/0.972 at
+100,000/1,000,000/4,000,000 rows. At four million rows fixest took 2.07 times
+its beta.3 time on the slower node while fereg took 1.19 times. Strict fixest
+comparisons give 21/22 OLS and 4/4 PPML native wins. Eligible reghdfe and
+ppmlhdfe comparisons give 20/20 and 17/17 native wins.
+
+All **168 fereg fits pass**. Captured coefficients, covariance, objectives and
+discrete fields repeat exactly at fixed worker count; cross-worker scientific
+and discrete checks pass. All 168 also pass the sample/discrete, coefficient,
+covariance and objective checks against their beta.3 counterparts. The 147 fits
+outside the seven three-FE OLS configurations are bitwise identical to beta.3.
+All 11 independent native smoke oracles pass; reference smoke counts are
+unchanged (default fixest 2/11, strict fixest 10/11, reghdfe 1/6, ppmlhdfe 1/5).
+
+The 579 planned positions have the same outcome counts as beta.3: 534
+successful captures, eight capture errors, seven command timeouts and 30
+repetitions skipped after a prior failure. All failed observations are
+retained; no timing was retried. Of 193 arm cells, 154 are eligible, 32 have
+descriptive but ineligible timings and seven have no completed timing.
+Four-million-row sparse three-FE PPML completes all three native fits (median
+162.240 seconds); fixest and ppmlhdfe time out.
+
+Setup `8280462`, smoke `8280463` and production `8280464` tasks 1-4 all have
+complete successful scheduler accounting and application sentinels, with no
+failed setup attempt. Bundles used whole 28-core nodes `scc-wo4` and `scc-wd1`
+(Xeon E5-2680 v4, the scheduler's CPU type for all four beta.3 nodes) and
+`scc-yk1` and `scc-yk4` (Xeon Gold 6132). They took 72-210 minutes and 8.11
+node-hours. All five smoke/production host reports pass with no known
+competing compute, and all 377 benchmark-tooling tests pass on SCC.
+
+Absolute times on `scc-wd1` and `scc-wo4` are not comparable with beta.3.
+On `scc-wd1`, configurations with bitwise-unchanged native arithmetic took a
+median 2.3 times their beta.3 time, with every native phase slower, including
+input handling; fixest took 2.2 times. On `scc-wo4` the factors were 1.8 and
+1.4, which lowered fereg's AKM ratios (four-core OLS from 2.10 to 1.53). On the
+Gold 6132 nodes both packages took 0.9-1.0 times their beta.3 times. The
+campaign does not identify why same-model nodes differ. This is descriptive
+Linux evidence from one seed and three repetitions, with no
+confidence-qualified release or universal speed claim.
+
+| Retained evidence | Contents |
+| --- | --- |
+| [Configuration summary](../bench/results/scc-20261026-summary.csv) | All 193 arm cells, medians/ranges, eligibility, paired ratios, hosts and sampled memory. |
+| [Observations](../bench/results/scc-20261026-observations.csv) | All 579 planned positions, failures/skips, process/command times and available native phase clocks. |
+| [Beta.3 comparison](../bench/results/scc-20261026-comparison.csv) | All 56 default-fixest configurations, both campaigns' hosts/times, eligibility and paired ratios. |
+| [Inputs, identity and checks](../bench/results/scc-20261026-inputs.json) | Source/plugin/input identities, accounting, host checks and classes, oracles, repeat/worker checks, 168 historical science checks and artifact hashes. |
+
+Raw captures, compact collection, the checked 21-page PDF and export script
+remain on SCC under
+`/projectnb/welfgr/fereg/runs/20261026T012706Z-beta6-fixest-fe67c26c/`.
+
 ## October 24, 2026: beta.3 rerun
 
 Fereg is faster in **29 of 35 scientifically eligible default-fixest

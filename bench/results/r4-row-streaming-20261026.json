@@ -1,0 +1,304 @@
+{
+  "schema": 1,
+  "date": "2026-10-26",
+  "decision": "not adopted",
+  "candidate": {
+    "branch": "perf/dense-row-streaming",
+    "commit": "010c7b979ceec174f59e9550faebd3451bac5a89",
+    "summary": "Bit-identical cache-blocked row streaming for dense intercept group statistics (rows/levels >= 512, at most 64 columns, scratch in the parallel dot-sum bank) and row-tiled narrow dense certificate norms. Lanes own membership-balanced level ranges and stream 8 MiB row tiles, keeping each level's ascending-membership accumulation order; norms use column lanes over shared 2 MiB row tiles.",
+    "measured_builds": "SCC builds used the pre-refactor development tree of the same kernels; the commit differs only by formatting, helper extraction and moving the projection wiring into the module."
+  },
+  "identity": {
+    "macos_replay": "73/73 retained replay cases identical to the base plugin (replay_plugins.py changed-leaf count 0).",
+    "linux_native": "Output columns identical to the base plugin at 4 and 28 workers.",
+    "micro_benchmark": "Streamed and gathered group statistics bit-identical in every round.",
+    "unit_tests": "Bitwise streamed-versus-gather, first-failing-level error and recorded-projection tests pass on the branch."
+  },
+  "linux": {
+    "host": "scc-wo4 (2 x Xeon E5-2680 v4, Broadwell, 28 cores), whole-node development jobs; not qualification.",
+    "jobs": {
+      "micro_benchmark": "8282094 (micro-benchmarks complete; its later native loop failed on a harness path defect and was rerun)",
+      "native": "8282501",
+      "perf_counters": "8282387",
+      "norms": "8282550"
+    },
+    "group_statistics_micro": {
+      "workload": "Three dense effects, 4,000,000 rows, 99 levels each, 18 columns; seven rounds each, all retained.",
+      "routes": {
+        "OnePass": {
+          "4": {
+            "gather_ms": [
+              812.1,
+              570.4,
+              651.4,
+              540.1,
+              554.7,
+              546.9,
+              546.0
+            ],
+            "stream_ms": [
+              955.2,
+              758.6,
+              802.0,
+              758.9,
+              761.2,
+              749.5,
+              752.9
+            ],
+            "gather_median_ms": 554.7,
+            "stream_median_ms": 758.9
+          },
+          "8": {
+            "gather_ms": [
+              405.9,
+              343.6,
+              320.3,
+              304.0,
+              303.1,
+              293.2,
+              291.9
+            ],
+            "stream_ms": [
+              817.5,
+              599.3,
+              615.5,
+              608.4,
+              612.8,
+              611.4,
+              608.8
+            ],
+            "gather_median_ms": 304.0,
+            "stream_median_ms": 611.4
+          },
+          "28": {
+            "gather_ms": [
+              152.6,
+              113.1,
+              115.6,
+              127.9,
+              114.2,
+              111.6,
+              116.9
+            ],
+            "stream_ms": [
+              769.9,
+              605.8,
+              601.4,
+              599.2,
+              603.2,
+              616.0,
+              597.7
+            ],
+            "gather_median_ms": 115.6,
+            "stream_median_ms": 603.2
+          }
+        },
+        "Scaled": {
+          "4": {
+            "gather_ms": [
+              839.1,
+              840.3,
+              981.2,
+              807.3,
+              805.2,
+              801.5,
+              801.3
+            ],
+            "stream_ms": [
+              1492.4,
+              1448.9,
+              1560.7,
+              1534.8,
+              1467.8,
+              1454.5,
+              1484.2
+            ],
+            "gather_median_ms": 807.3,
+            "stream_median_ms": 1484.2
+          },
+          "8": {
+            "gather_ms": [
+              544.1,
+              612.3,
+              586.3,
+              572.3,
+              556.7,
+              597.3,
+              543.9
+            ],
+            "stream_ms": [
+              939.2,
+              896.3,
+              953.9,
+              922.9,
+              942.6,
+              986.9,
+              908.5
+            ],
+            "gather_median_ms": 572.3,
+            "stream_median_ms": 939.2
+          },
+          "28": {
+            "gather_ms": [
+              254.2,
+              206.2,
+              212.4,
+              223.4,
+              207.5,
+              211.8,
+              211.6
+            ],
+            "stream_ms": [
+              936.4,
+              808.7,
+              808.0,
+              810.9,
+              830.0,
+              800.3,
+              798.5
+            ],
+            "gather_median_ms": 211.8,
+            "stream_median_ms": 808.7
+          }
+        }
+      }
+    },
+    "dense_certificate_norms_micro": {
+      "workload": "Same dense matrix; seven rounds each, all retained.",
+      "workers": {
+        "4": {
+          "previous_blocks_ms": [
+            945.5,
+            739.9,
+            693.5,
+            557.1,
+            597.7,
+            555.0,
+            599.9
+          ],
+          "tiled_ms": [
+            1414.7,
+            1016.3,
+            892.5,
+            850.0,
+            864.4,
+            862.5,
+            839.8
+          ],
+          "previous_blocks_median_ms": 599.9,
+          "tiled_median_ms": 864.4
+        },
+        "28": {
+          "previous_blocks_ms": [
+            149.4,
+            167.7,
+            209.0,
+            188.7,
+            170.2,
+            173.0,
+            168.8
+          ],
+          "tiled_ms": [
+            668.5,
+            538.2,
+            490.8,
+            467.3,
+            475.3,
+            447.0,
+            436.6
+          ],
+          "previous_blocks_median_ms": 170.2,
+          "tiled_median_ms": 475.3
+        }
+      }
+    },
+    "native_plugin": {
+      "workload": "replay_large dense3-4m: 4,000,000 rows, 99/99/99 levels, 16 regressors, unit weights, iid, solver auto; alternating base/candidate, four rounds each, all retained.",
+      "base_plugin_sha256": "62e407cd0960842a44b13dd0b732200ee2f6859ce73f7e42211c7c633fa01c7d",
+      "candidate_plugin_sha256": "836b0e98c1088d352b6a3456545a16468db74e9e91e92c51154606730a62461b",
+      "threads": {
+        "4": {
+          "base_seconds": [
+            11.722448138,
+            12.506143794,
+            12.119338437,
+            12.174078346
+          ],
+          "candidate_seconds": [
+            12.570375407,
+            12.695245898,
+            13.157288525,
+            12.781970578
+          ],
+          "base_median_seconds": 12.146708391499999,
+          "candidate_median_seconds": 12.738608238,
+          "candidate_over_base": 1.0487292381954438,
+          "output_columns_identical": true
+        },
+        "28": {
+          "base_seconds": [
+            6.450626028,
+            6.107179246,
+            6.264994127,
+            6.158502208
+          ],
+          "candidate_seconds": [
+            7.547304369,
+            7.492801359,
+            7.412746508,
+            7.683919221
+          ],
+          "base_median_seconds": 6.2117481675,
+          "candidate_median_seconds": 7.520052864,
+          "candidate_over_base": 1.2106177940929863,
+          "output_columns_identical": true
+        }
+      }
+    },
+    "counters_four_workers": {
+      "note": "perf stat over the whole micro-benchmark process (OnePass and Scaled, seven rounds), user space.",
+      "gather": {
+        "instructions": 99678561215,
+        "cycles": 96739382578,
+        "branch_misses": 4623081,
+        "cache_misses": 1194197272,
+        "llc_load_misses": 293684224
+      },
+      "stream": {
+        "instructions": 139502486728,
+        "cycles": 151198313824,
+        "branch_misses": 252798629,
+        "cache_misses": 2154493227,
+        "llc_load_misses": 235372144
+      }
+    }
+  },
+  "macos": {
+    "host": "M2 Ultra development Mac (16 performance + 8 efficiency cores); noisy, several development builds.",
+    "group_statistics_micro_ranges_ms": {
+      "OnePass": {
+        "gather": [
+          249.4,
+          266.4
+        ],
+        "stream": [
+          74.9,
+          167.9
+        ]
+      },
+      "Scaled": {
+        "gather": [
+          398.5,
+          429.1
+        ],
+        "stream": [
+          142.9,
+          310.5
+        ]
+      }
+    },
+    "dense_fit_note": "A complete dense three-FE fit improved from about 3.95 to 3.65 seconds in development runs."
+  },
+  "diagnosis": "Each streaming lane scans every row of a tile and filters by its level range, so total row reads and branch misses grow with lanes; the 28-worker stream is no faster than 8 workers. The gather is not bandwidth-limited on Broadwell (under 1 GB/s per core at 1.0 IPC), and a level-cursor variant would read each row once with no reuse, so tiling would only reorder accesses. Both micro-benchmark arms use the portable build; the plugin's AVX/FMA gather kernels widen the gap. The tiled norms also lost at 4 and 28 workers.",
+  "retained": "MAP projections, group statistics and dense norms keep the gather and per-block routes."
+}

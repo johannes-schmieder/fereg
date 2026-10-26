@@ -133,8 +133,12 @@ dense designs do not reach the unit-weight pilot.
 
 A one-pass shifted projection route from the research plan failed two existing
 witnesses (CG energy roundoff and tiled-bank cross-thread identity), so MAP
-projections keep the scaled two-pass route; a cache-blocked row-streaming
-kernel remains the next dense-design opportunity.
+projections keep the scaled two-pass route. A bit-identical cache-blocked
+row-streaming kernel for dense group statistics and certificate norms was
+faster on the development Mac but slower on Linux at 4, 8 and 28 workers.
+Complete four-million-row dense three-FE fits took 5% longer at four workers
+and 21% longer at 28, so it was not adopted
+([record](../bench/results/r4-row-streaming-20261026.json)).
 
 ## Package checks
 
