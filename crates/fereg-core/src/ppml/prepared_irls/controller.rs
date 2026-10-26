@@ -74,8 +74,9 @@ impl StrictCheckpointControl {
         self.movements = [self.movements[1], movement];
     }
     /// Two passes admit a strict checkpoint. A publication fit first waits
-    /// while the contracting predictor is predicted to move by more than a
-    /// tenth of the strict envelope at its next Newton step: on weakly
+    /// while the contracting predictor is predicted to move by more than the
+    /// strict envelope at its next Newton step, extrapolated at its last
+    /// contraction ratio (conservative for quadratic convergence): on weakly
     /// identified FE directions deviance and scores pass before the
     /// predictor settles, and such a checkpoint is certain to be rejected.
     /// A stalled contraction, the iteration budget or the deferral cap
@@ -89,7 +90,7 @@ impl StrictCheckpointControl {
         };
         let [previous, last] = self.movements;
         let ratio = last / previous;
-        let unsettled = ratio.is_finite() && ratio <= 0.5 && last * ratio > 0.1 * envelope;
+        let unsettled = ratio.is_finite() && ratio <= 0.5 && last * ratio > envelope;
         if unsettled && headroom && self.deferrals < MAX_SETTLING_DEFERRALS {
             self.deferrals += 1;
             if crate::diagnostics::solver_trace_enabled() {

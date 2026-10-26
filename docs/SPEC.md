@@ -952,7 +952,7 @@ Apparent convergence triggers fresh strict WLS at
 contracting predictor is predicted to keep moving: with the strict profile
 envelope `min(outer_tolerance, score_tolerance, 1e-8)` and the relative eta and
 coefficient movements `m_k` of the last two accepted iterations, it enters
-once `m_k^2/m_(k-1)` is at most a tenth of the envelope. A contraction ratio
+once `m_k^2/m_(k-1)` is at most the envelope. A contraction ratio
 above one half, fewer than three remaining iterations or eight such
 deferrals enter at once. Weakly identified FE directions can pass the deviance
 and score tests while eta still moves; the wait changes only when the

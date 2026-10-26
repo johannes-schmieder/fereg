@@ -18207,44 +18207,44 @@
         "dispatch_candidates": [
           {
             "condition": "facts . active_columns . is_some ( )",
-            "line": 466
+            "line": 467
           },
           {
             "condition": "( self . control . canonical_products_allowed || self . direction . profile ( ) . is_some ( ) || self . curve . is_some ( ) ) && facts . basis_unchanged && reuse_canonical_final_products ( self . session , self . candidate . workspace , self . candidate . prior_weights , self . candidate . offset , self . candidate . config , * self . frame_generation , ) ?",
-            "line": 648
+            "line": 649
           }
         ],
         "functions": {
           "accept#1": {
-            "line": 111,
+            "line": 112,
             "lines": 5
           },
           "accepted_checkpoint#1": {
-            "line": 105,
+            "line": 106,
             "lines": 3
           },
           "apply_commit#1": {
-            "line": 611,
+            "line": 612,
             "lines": 31
           },
           "assess#1": {
-            "line": 287,
+            "line": 288,
             "lines": 71
           },
           "finish_phase#1": {
-            "line": 693,
+            "line": 694,
             "lines": 9
           },
           "finish_rejected_cycle#1": {
-            "line": 118,
+            "line": 119,
             "lines": 75
           },
           "inspect#1": {
-            "line": 238,
+            "line": 239,
             "lines": 47
           },
           "may_enter#1": {
-            "line": 83,
+            "line": 84,
             "lines": 22
           },
           "needs_observation#1": {
@@ -18260,39 +18260,39 @@
             "lines": 8
           },
           "prepare_attempt#1": {
-            "line": 584,
+            "line": 585,
             "lines": 27
           },
           "refresh_score#1": {
-            "line": 483,
+            "line": 484,
             "lines": 17
           },
           "rejected_cycles#1": {
-            "line": 108,
+            "line": 109,
             "lines": 3
           },
           "resolve#1": {
-            "line": 415,
+            "line": 416,
             "lines": 64
           },
           "resume_hessian_candidate#1": {
-            "line": 500,
+            "line": 501,
             "lines": 41
           },
           "run#1": {
-            "line": 703,
+            "line": 704,
             "lines": 68
           },
           "synchronize#1": {
-            "line": 642,
+            "line": 643,
             "lines": 51
           },
           "trace_assessment#1": {
-            "line": 359,
+            "line": 360,
             "lines": 54
           },
           "try_joint#1": {
-            "line": 559,
+            "line": 560,
             "lines": 25
           }
         },
@@ -24056,5 +24056,5 @@
     },
     "schema": 1
   },
-  "reason": "The canonical CMG probe stops at 32 steps."
+  "reason": "The strict settling rule predicts against the full envelope."
 }
