@@ -2,28 +2,16 @@
   "definition": "docs/development_workflow.md#complexity-inventory",
   "growth": [
     {
-      "after": 1404,
-      "before": 1403,
-      "metric": "fereg-core/dispatch_candidates",
-      "reason": "Shape guard of the tiled normalized-products kernel."
-    },
-    {
-      "after": 108448,
-      "before": 108330,
+      "after": 108460,
+      "before": 108448,
       "metric": "fereg-core/production_lines",
-      "reason": "Arithmetic-preserving PPML joint-frame passes: tiled upper Gram products with the pairwise kernel's exact chains, grouped row-major column fills, and grouped original-column acceptance scans; scientific bits unchanged."
+      "reason": "Arithmetic-preserving: joint column norms run inside the grouped row-major fill through a shared step of the reusable norm recurrence."
     },
     {
-      "after": 15432,
-      "before": 15410,
-      "metric": "fereg-plugin/production_lines",
-      "reason": "FMA instantiation of the tiled normalized-products kernel."
-    },
-    {
-      "after": 5715,
-      "before": 5657,
-      "metric": "file/crates/fereg-core/src/ols/linear_session.rs",
-      "reason": "Grouped acceptance scan moved into a helper with its per-column state."
+      "after": 1739,
+      "before": 1733,
+      "metric": "file/crates/fereg-core/src/fe/map.rs",
+      "reason": "The reusable norm exposes its row step and finish for the grouped fill."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -4862,18 +4850,26 @@
           },
           "reusable_norm#1": {
             "line": 1783,
-            "lines": 23
+            "lines": 7
+          },
+          "reusable_norm_finish#1": {
+            "line": 1808,
+            "lines": 7
+          },
+          "reusable_norm_step#1": {
+            "line": 1793,
+            "lines": 14
           },
           "reusable_scaled_moment#1": {
-            "line": 1839,
+            "line": 1848,
             "lines": 16
           },
           "reusable_subtract_cross_projection#1": {
-            "line": 1823,
+            "line": 1832,
             "lines": 15
           },
           "reusable_subtract_projection#1": {
-            "line": 1807,
+            "line": 1816,
             "lines": 15
           },
           "reusable_weighted_norms#1": {
@@ -4893,7 +4889,7 @@
             "lines": 98
           },
           "validate_config#1": {
-            "line": 1856,
+            "line": 1865,
             "lines": 15
           },
           "zero_reusable_certificate#1": {
@@ -4901,7 +4897,7 @@
             "lines": 8
           }
         },
-        "production_lines": 1733
+        "production_lines": 1739
       },
       "crates/fereg-core/src/fe/mod.rs": {
         "chunk_candidates": [],
@@ -6837,7 +6833,7 @@
           },
           {
             "condition": "k == 0 || k > self . max_controls || response . len ( ) != n || weights . len ( ) != n || controls . ncols ( ) > self . max_controls || controls . nrows ( ) != n || selected . iter ( ) . any ( | & c | c >= controls . ncols ( ) )",
-            "line": 805
+            "line": 812
           }
         ],
         "functions": {
@@ -6850,7 +6846,7 @@
             "lines": 28
           },
           "checkpoint_block#1": {
-            "line": 764,
+            "line": 771,
             "lines": 22
           },
           "column_slice#1": {
@@ -6874,7 +6870,7 @@
             "lines": 6
           },
           "iterate#1": {
-            "line": 560,
+            "line": 567,
             "lines": 200
           },
           "ncols#1": {
@@ -6911,10 +6907,10 @@
           },
           "solve#1": {
             "line": 433,
-            "lines": 125
+            "lines": 132
           },
           "solve_streamed#1": {
-            "line": 787,
+            "line": 794,
             "lines": 165
           },
           "visit_column#1": {
@@ -6930,7 +6926,7 @@
             "lines": 10
           }
         },
-        "production_lines": 881
+        "production_lines": 887
       },
       "crates/fereg-core/src/fe/topology_adapter.rs": {
         "chunk_candidates": [],
@@ -23749,7 +23745,7 @@
         "dispatch_candidates": 1404,
         "files_over_1500": 15,
         "functions_over_150": 59,
-        "production_lines": 108448
+        "production_lines": 108460
       },
       "fereg-plugin": {
         "chunk_candidates": 3,
@@ -23761,5 +23757,5 @@
     },
     "schema": 1
   },
-  "reason": "Arithmetic-preserving PPML joint-frame passes: tiled upper Gram products with the pairwise kernel's exact chains, grouped row-major column fills, and grouped original-column acceptance scans; scientific bits unchanged."
+  "reason": "Arithmetic-preserving: joint column norms run inside the grouped row-major fill through a shared step of the reusable norm recurrence."
 }

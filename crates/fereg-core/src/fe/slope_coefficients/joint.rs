@@ -495,16 +495,24 @@ impl JointFiniteWorkspace {
         }
         let roots = roots.as_slice();
         // Row-major controls are streamed once per group of selected columns,
-        // not once per column; each entry keeps its product.
+        // not once per column. Each entry keeps its product and each column
+        // its row-order norm recurrence.
         const GROUP: usize = 4;
         let width = controls.ncols();
         z.par_chunks_mut(GROUP * n)
             .zip(selected.par_chunks(GROUP))
-            .for_each(|(block, group)| {
+            .zip(self.scales[..k].par_chunks_mut(GROUP))
+            .for_each(|((block, group), scales)| {
+                let mut norms = [(0.0_f64, 1.0_f64); GROUP];
                 for (row, values) in controls.as_slice().chunks_exact(width).enumerate() {
-                    for (column, &source) in group.iter().enumerate() {
-                        block[column * n + row] = values[source] * roots[row];
+                    for (column, (&source, norm)) in group.iter().zip(&mut norms).enumerate() {
+                        let value = values[source] * roots[row];
+                        block[column * n + row] = value;
+                        super::super::map::reusable_norm_step(value, norm);
                     }
+                }
+                for (scale, &norm) in scales.iter_mut().zip(&norms) {
+                    *scale = super::super::map::reusable_norm_finish(norm);
                 }
             });
         z.par_chunks_mut(n)
@@ -512,7 +520,6 @@ impl JointFiniteWorkspace {
             .zip(self.column_scratch[..q * k].par_chunks_mut(q))
             .zip(self.cross[..p * k].par_chunks_mut(p))
             .try_for_each(|(((column, scale), work), cross)| -> Result<()> {
-                *scale = super::super::map::reusable_norm(column);
                 if !scale.is_finite() || *scale <= 0. {
                     return Err(failed());
                 }

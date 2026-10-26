@@ -1781,22 +1781,31 @@ fn reusable_compensated_add(value: f64, sum: &mut f64, correction: &mut f64) -> 
 }
 
 pub(super) fn reusable_norm(values: &[f64]) -> f64 {
-    let mut scale = 0.0_f64;
-    let mut sum = 1.0_f64;
+    let mut state = (0.0_f64, 1.0_f64);
     for &value in values {
-        let absolute = value.abs();
-        if absolute == 0.0 {
-            continue;
-        }
-        if scale < absolute {
-            let ratio = scale / absolute;
-            sum = 1.0 + sum * ratio * ratio;
-            scale = absolute;
-        } else {
-            let ratio = absolute / scale;
-            sum += ratio * ratio;
-        }
+        reusable_norm_step(value, &mut state);
     }
+    reusable_norm_finish(state)
+}
+
+/// One row of [`reusable_norm`]'s scaled `(scale, sum)` recurrence.
+#[inline(always)]
+pub(super) fn reusable_norm_step(value: f64, (scale, sum): &mut (f64, f64)) {
+    let absolute = value.abs();
+    if absolute == 0.0 {
+        return;
+    }
+    if *scale < absolute {
+        let ratio = *scale / absolute;
+        *sum = 1.0 + *sum * ratio * ratio;
+        *scale = absolute;
+    } else {
+        let ratio = absolute / *scale;
+        *sum += ratio * ratio;
+    }
+}
+
+pub(super) fn reusable_norm_finish((scale, sum): (f64, f64)) -> f64 {
     if scale == 0.0 {
         0.0
     } else {
