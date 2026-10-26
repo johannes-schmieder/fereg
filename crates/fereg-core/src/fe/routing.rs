@@ -33,6 +33,7 @@ enum PrefixPlan {
     IncrementalTwo,
     RemainingTwo,
     GatesTwo,
+    GeometryMany,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -57,6 +58,7 @@ impl std::fmt::Display for RoutingPreset {
                 PrefixPlan::IncrementalMany => "routing_incremental_many",
                 PrefixPlan::IncrementalTwo => "routing_incremental_two",
                 PrefixPlan::GatesTwo => "routing_two_gates_v1",
+                PrefixPlan::GeometryMany => "routing_many_geometry_v1",
                 PrefixPlan::RemainingTwo => match self.checkpoint {
                     0 => "routing_two_remaining_v1",
                     16 => "routing_two_remaining_force16",
@@ -145,6 +147,18 @@ impl RoutingPreset {
         }
     }
 
+    /// Many-FE policy for three or more categorical intercept effects. A
+    /// geometry-certified bounded MAP pilot runs first when its exact pair
+    /// bound predicts certification within four sweeps; otherwise unseeded
+    /// LSMR with retained preparation runs at the private recurrence target.
+    /// Every automatic exit certifies at the requested tolerance.
+    pub fn geometry_many() -> Self {
+        Self {
+            prefix: Some(PrefixPlan::GeometryMany),
+            ..Self::portfolio_unseeded()
+        }
+    }
+
     /// Isolated qualification of the existing two-FE direct-or-h16/k1 policy.
     pub fn incremental_two() -> Self {
         Self {
@@ -208,7 +222,9 @@ impl RoutingPreset {
         categorical_effects: Option<usize>,
     ) -> Option<Self> {
         let eligible = match self.prefix {
-            Some(PrefixPlan::IncrementalMany) => categorical_effects.is_some_and(|n| n >= 3),
+            Some(PrefixPlan::IncrementalMany | PrefixPlan::GeometryMany) => {
+                categorical_effects.is_some_and(|n| n >= 3)
+            }
             Some(PrefixPlan::IncrementalTwo) => categorical_effects == Some(2),
             Some(PrefixPlan::RemainingTwo | PrefixPlan::GatesTwo) => categorical_effects == Some(2),
             _ => return Some(self),
@@ -217,7 +233,7 @@ impl RoutingPreset {
             && solver == super::FeSolverKind::Auto
             && preconditioner == super::LsmrPreconditioner::Auto)
             .then(|| {
-                if self.requires_economic_grant() {
+                if self.requires_economic_grant() || self.geometry_pilot() {
                     self
                 } else {
                     Self::portfolio_unseeded()
@@ -239,6 +255,12 @@ impl RoutingPreset {
 
     pub(crate) fn strict_categorical_prefix(self) -> bool {
         self.portfolio()
+    }
+
+    /// Whether the many-FE policy admits the geometry-certified MAP pilot and
+    /// certifies its automatic exits at the requested tolerance.
+    pub(crate) fn geometry_pilot(self) -> bool {
+        self.prefix == Some(PrefixPlan::GeometryMany)
     }
 
     /// Developer Break arm for the synchronous bounded CMG builder: the h4/k1
@@ -264,7 +286,8 @@ impl RoutingPreset {
             | PrefixPlan::IncrementalMany
             | PrefixPlan::IncrementalTwo
             | PrefixPlan::RemainingTwo
-            | PrefixPlan::GatesTwo => CategoricalPrefix::None,
+            | PrefixPlan::GatesTwo
+            | PrefixPlan::GeometryMany => CategoricalPrefix::None,
         })
     }
 
@@ -533,6 +556,48 @@ mod tests {
             assert!(!preset.portfolio());
             assert!(!preset.strict_categorical_prefix());
             assert_eq!(preset.categorical_prefix(), Some(isolated));
+        }
+    }
+
+    #[test]
+    fn geometry_many_admits_the_pilot_without_the_strict_portfolio_contract() {
+        let preset = RoutingPreset::geometry_many();
+        assert_eq!(preset.to_string(), "routing_many_geometry_v1");
+        assert!(preset.geometry_pilot());
+        assert!(!preset.portfolio());
+        assert!(!preset.strict_categorical_prefix());
+        assert!(!preset.requires_economic_grant());
+        assert_eq!(preset.categorical_prefix(), Some(CategoricalPrefix::None));
+        assert_eq!(preset.general_pair_checkpoint(), usize::MAX);
+        assert_eq!(preset.kernel(), None);
+        for other in [
+            RoutingPreset::portfolio_unseeded(),
+            RoutingPreset::incremental_many(),
+            RoutingPreset::portfolio_v1(),
+            RoutingPreset::prefix(CategoricalPrefix::None),
+        ] {
+            assert!(!other.geometry_pilot());
+        }
+        use super::super::{FeSolverKind, LsmrPreconditioner};
+        for effects in [Some(3), Some(4), Some(16)] {
+            assert_eq!(
+                preset.resolve_ols(FeSolverKind::Auto, LsmrPreconditioner::Auto, effects),
+                Some(preset)
+            );
+            assert_eq!(
+                preset.resolve_ols(FeSolverKind::Auto, LsmrPreconditioner::Diagonal, effects),
+                None
+            );
+            assert_eq!(
+                preset.resolve_ols(FeSolverKind::Lsmr, LsmrPreconditioner::Auto, effects),
+                None
+            );
+        }
+        for effects in [None, Some(0), Some(1), Some(2)] {
+            assert_eq!(
+                preset.resolve_ols(FeSolverKind::Auto, LsmrPreconditioner::Auto, effects),
+                None
+            );
         }
     }
 

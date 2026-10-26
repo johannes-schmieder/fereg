@@ -181,9 +181,12 @@ blocks. Small or easy problems can finish without building it. A failed
 optional construction leaves the existing recurrence in place; a numerical
 failure can continue with certified MAP within the original budget.
 
-Eligible designs with three or more categorical-intercept effects use strict
-LSMR with reusable preparation; certified structural shortcuts may finish
-first. One categorical effect uses direct demeaning. Slopes, explicit solver
+Eligible designs with three or more categorical-intercept effects use LSMR
+with reusable preparation. It starts with a diagonal preconditioner and builds
+the additive Schwarz preconditioner only when the projected work is large.
+With three unit-weight effects, a short MAP pilot or certified structural
+shortcut may finish first. Every route must pass the requested FE-moment
+certificate. One categorical effect uses direct demeaning. Slopes, explicit solver
 and preconditioner requests retain their own supported routes. Ownership and
 repeated-cell optimizations are automatic only for Auto/Auto with a global
 intercept and exactly two categorical-intercept effects. They do not change

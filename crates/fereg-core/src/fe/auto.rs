@@ -21,6 +21,24 @@ pub(crate) fn direct_lsmr_tolerance(requested_tolerance: f64) -> f64 {
     }
 }
 
+/// The public many-FE geometry policy stops its recurrence one decimal order
+/// below the request, with the same `1e-14` floor: a certificate miss earns one
+/// correction at [`direct_lsmr_tolerance`] before any MAP fallback.
+pub(crate) fn corrected_lsmr_tolerance(requested_tolerance: f64) -> f64 {
+    if requested_tolerance <= 1e-14 {
+        requested_tolerance
+    } else {
+        (requested_tolerance / 10.0).max(1e-14)
+    }
+}
+
+/// The correction target after a certificate miss, when it is strictly tighter
+/// than the recurrence target that missed.
+pub(crate) fn correction_tolerance(requested_tolerance: f64, recurrence: f64) -> Option<f64> {
+    let tighter = direct_lsmr_tolerance(requested_tolerance);
+    (tighter < recurrence).then_some(tighter)
+}
+
 /// Smallest recurrence target explicit LSMR chases below its certificate.
 const EXPLICIT_LSMR_RECURRENCE_FLOOR: f64 = 1e-15;
 

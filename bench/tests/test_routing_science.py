@@ -254,6 +254,77 @@ class UnseededPortfolioScope(unittest.TestCase):
                 routing.PORTFOLIO_UNSEEDED,False,{},expected_preset='routing_portfolio_v1')
 
 
+class GeometryPortfolioScope(unittest.TestCase):
+    META = PortfolioAutoScope.META
+
+    @staticmethod
+    def raw(route='lsmr', *, pilot=0, mode=1, used_pc=None, fallback=None, warnings=None):
+        """A failed pilot marks fallback; continuation routes keep their own tuple."""
+        raw = PortfolioAutoScope.raw(route, pilot=pilot, mode=mode, warnings=warnings)
+        solver = raw['matrices']['RSOLVER']['bits']
+        for row in range(2):
+            if route == 'prefix':
+                solver[16*row+2] = bits(float(pilot))  # The certified pilot is all work.
+            elif pilot:
+                solver[16*row+10] = bits(1.)
+            if fallback is not None:
+                solver[16*row+10] = bits(float(fallback))
+            if used_pc is not None:
+                solver[16*row+13] = bits(float(used_pc))
+        return raw
+
+    def compare(self, raw, **kwargs):
+        return PortfolioAutoScope.compare(self, raw, policy=routing.policy(routing.GEOMETRY_MANY), **kwargs)
+
+    def test_pilot_and_jacobi_routes_certify_at_the_request(self):
+        routes = [('prefix', 0, {}), ('prefix', 2, {}), ('prefix', 4, {}),
+                  ('lsmr', 0, {}), ('lsmr', 0, {'used_pc': 3}), ('lsmr', 3, {'warnings': 0}),
+                  ('lsmr', 4, {'used_pc': 3, 'warnings': 0}), ('map-fallback', 4, {}),
+                  ('pc-fallback', 2, {}), ('map-no-lsmr', 0, {}),
+                  ('map-no-lsmr', 2, {'warnings': 0}), ('map-no-lsmr', 2, {'fallback': 0})]
+        for mode in (1, 2):
+            for route, pilot, fields in routes:
+                raw = self.raw(route, pilot=pilot, mode=mode, **fields)
+                for row, certificate in [(0, 1e-8), (1, 1e-14)]:
+                    raw['matrices']['RSOLVER']['bits'][16*row+5] = bits(certificate)
+                reference = self.raw(mode=mode)
+                with self.subTest(mode=mode, route=route, pilot=pilot, fields=fields):
+                    self.compare(raw, reference=reference)
+                    scope = set(science.portfolio_scope(reference, raw, self.META, 'auto',
+                                routing.policy(routing.GEOMETRY_MANY)))
+                    self.assertEqual(scope - set(science.replay_scope(raw, 'auto', self.META)),
+                        {f'/matrices/RSOLVER/bits/{14*r+c}' for r in range(2) for c in [1,8,9,10,11,12]})
+        # The incumbent contract still requires Auto's private hundredth.
+        raw = self.raw(); raw['matrices']['RSOLVER']['bits'][5] = bits(5e-9)
+        self.compare(raw)
+        with self.assertRaisesRegex(ValueError, 'private Auto target'):
+            UnseededPortfolioScope.compare(self, raw)
+
+    def test_requested_target_and_pilot_tuples_stay_strict(self):
+        for row, value in [(0, 2e-8), (1, 2e-14)]:
+            raw = self.raw(); raw['matrices']['RSOLVER']['bits'][16*row+5] = bits(value)
+            with self.subTest(row=row), self.assertRaisesRegex(ValueError, 'its requested target'):
+                self.compare(raw)
+        for route, pilot, fields in [('lsmr', 2, {'fallback': 0, 'warnings': 0}),
+                                     ('map-fallback', 2, {'fallback': 0}),
+                                     ('lsmr', 2, {'used_pc': 3, 'warnings': 1}),
+                                     ('map-fallback', 2, {'warnings': 0}),
+                                     ('prefix', 2, {'warnings': 1}),
+                                     ('prefix', 5, {})]:
+            with self.subTest(route=route, pilot=pilot, fields=fields), self.assertRaises(ValueError):
+                self.compare(self.raw(route, pilot=pilot, **fields))
+        for column, value in [(10, 2.), (12, 2.), (14, 1.5), (15, .1), (2, 101.)]:
+            raw = self.raw('lsmr', pilot=2, warnings=0)
+            raw['matrices']['RSOLVER']['bits'][column] = bits(value)
+            with self.subTest(column=column), self.assertRaises(ValueError):
+                self.compare(raw)
+        for field, value in [('certificate', 'private_auto'), ('injection', 'routing_portfolio_unseeded')]:
+            selected = routing.policy(routing.GEOMETRY_MANY)
+            selected[field] = value
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                science.portfolio_scope(self.raw(), self.raw(), self.META, 'auto', selected)
+
+
 class RouteHierarchyTrace(unittest.TestCase):
     PREFIX = 'FEREG_SOLVER_TRACE|phase=auto_schur_route|checkpoint=16|samples=1|iterations=16|'
     METADATA = ('terminal=Direct|levels=2|hierarchy_vertices=64;9|hierarchy_nonzeros=448;41|repeats=3;0|'

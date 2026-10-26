@@ -43,6 +43,7 @@ impl Attempt {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn attempt(
     design: &BorrowedInterceptFeDesign<'_>,
     original: &DenseMatrix,
@@ -51,6 +52,7 @@ pub(super) fn attempt(
     retain: bool,
     coefficient_bytes: u128,
     predicted_checkpoint: usize,
+    dense_norms: bool,
 ) -> Result<Attempt> {
     let started = Instant::now();
     let mut trial = Attempt::default();
@@ -120,6 +122,11 @@ pub(super) fn attempt(
     }
     trial.setup_seconds = started.elapsed().as_secs_f64();
     let solve = Instant::now();
+    // The exact-arithmetic bound is conservative, so the certificate one sweep
+    // before its predicted sweep usually already passes. A miss costs one
+    // certificate and continues to the predicted sweep; acceptance is always
+    // the unchanged requested-tolerance certificate.
+    let early_checkpoint = predicted_checkpoint.saturating_sub(1).max(1);
     for iteration in 0..=SWEEPS {
         crate::interrupt::checkpoint()?;
         if iteration > 0 {
@@ -141,6 +148,7 @@ pub(super) fn attempt(
         // Geometry proposes a checkpoint; only the unchanged requested
         // certificate accepts it. A miss still reaches the ordinary checks.
         if iteration == 0
+            || iteration == early_checkpoint
             || iteration == predicted_checkpoint
             || iteration % map.check_every == 0
             || iteration == SWEEPS
@@ -164,6 +172,7 @@ pub(super) fn attempt(
                     solve.elapsed().as_secs_f64(),
                     workspace,
                     coefficients,
+                    dense_norms.then_some(weights),
                 )?);
                 return Ok(trial);
             }
@@ -175,15 +184,24 @@ pub(super) fn attempt(
     Ok(trial)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn finish(
     values: DenseMatrix,
     iteration: usize,
     certificate: FeCertificate,
     trial: &Attempt,
     seconds: f64,
-    workspace: BorrowedMapWorkspace,
+    mut workspace: BorrowedMapWorkspace,
     coefficients: Option<FeCoefficientBatch>,
+    dense_norms: Option<ValidatedWeights<'_>>,
 ) -> Result<CertifiedBorrowedMap> {
+    // Dense OLS hands off the same full-pass norm state as certified LSMR, from
+    // the same kernel on the accepted matrix, so the finite solve need not
+    // recompute it. Low keeps its fixed-leaf norms and receives no handoff.
+    let norms = match dense_norms {
+        Some(weights) if iteration > 0 => handoff_norms(&values, weights, &mut workspace)?,
+        _ => None,
+    };
     let mut result = certified_result(
         values,
         SolveStopReason::Certified,
@@ -193,8 +211,43 @@ fn finish(
         seconds,
     )?;
     result.set_solver_workspace_peak(trial.peak);
-    // Preserve the caller's established norm kernel, particularly Low's fixed
-    // leaves. A norm handoff is a separate H6 change, not part of this pilot.
     drop(workspace);
-    attach_optional_coefficients(result, coefficients)
+    let result = attach_optional_coefficients(result, coefficients)?;
+    match norms {
+        Some(norms) => result.with_residual_norms(norms),
+        None => Ok(result),
+    }
+}
+
+/// Full-pass weighted column norms of the accepted matrix, computed by the
+/// kernel certified LSMR hands off. None when a norm state is not finite.
+fn handoff_norms(
+    values: &DenseMatrix,
+    weights: ValidatedWeights<'_>,
+    workspace: &mut BorrowedMapWorkspace,
+) -> Result<Option<Vec<f64>>> {
+    let columns = values.ncols();
+    if workspace.rhs_scales.len() != columns {
+        return Ok(None);
+    }
+    let valid = crate::fe::norms::column_norms_with_dense(
+        values,
+        |row| {
+            let root = weights.normalized(row).sqrt();
+            if root.is_finite() && root > 0.0 {
+                Ok(root)
+            } else {
+                Err(invalid_data(
+                    "borrowed MAP normalized weight is not finite and positive",
+                ))
+            }
+        },
+        &mut workspace.residual_norms,
+        &mut workspace.value_scales,
+        &mut workspace.group_sums,
+        &mut workspace.rhs_scales,
+        "borrowed MAP weighted value is not finite",
+        "borrowed MAP weighted column norm is not finite",
+    )?;
+    Ok(valid.then(|| std::mem::take(&mut workspace.rhs_scales)))
 }

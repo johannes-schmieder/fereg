@@ -107,6 +107,22 @@ pub(crate) fn initialize_reserved<T: Copy + Send + Sync>(
     }
 }
 
+/// Copy a numeric bank on an installed team. A bitwise copy has no numerical
+/// order; parallel first-touch never initializes a global pool.
+pub(crate) fn copy_slice<T: Copy + Send + Sync>(output: &mut [T], input: &[T]) {
+    assert_eq!(output.len(), input.len(), "parallel copy lengths differ");
+    let plan = reserved_initialization_plan(input.len());
+    if plan.lanes > 1 {
+        let chunk = plan.chunk(input.len());
+        output
+            .par_chunks_mut(chunk)
+            .zip(input.par_chunks(chunk))
+            .for_each(|(output, input)| output.copy_from_slice(input));
+    } else {
+        output.copy_from_slice(input);
+    }
+}
+
 /// Fixed leaves determine numerical order; the partial target bounds their
 /// count but is not hard admission. Existing kernels always allow one partial.
 pub(crate) fn reduction_blocks(
@@ -652,6 +668,37 @@ impl ThreadTeam {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn parallel_copy_is_bitwise_on_and_off_installed_teams() {
+        let input: Vec<f64> = (0..70_001)
+            .map(|i| (i as f64 * 0.37).sin() * 1e300)
+            .collect();
+        let mut serial = vec![0.0; input.len()];
+        super::copy_slice(&mut serial, &input);
+        assert_eq!(
+            serial.iter().map(|v| v.to_bits()).collect::<Vec<_>>(),
+            input.iter().map(|v| v.to_bits()).collect::<Vec<_>>()
+        );
+        for threads in [1, 2, 3, 16] {
+            let team = super::ThreadTeam::new(
+                crate::options::ThreadConfig::from_requested(threads, false).unwrap(),
+            );
+            let copied = team
+                .install(|| {
+                    let mut output = vec![0.0; input.len()];
+                    super::copy_slice(&mut output, &input);
+                    output
+                })
+                .unwrap();
+            assert_eq!(
+                copied.iter().map(|v| v.to_bits()).collect::<Vec<_>>(),
+                serial.iter().map(|v| v.to_bits()).collect::<Vec<_>>()
+            );
+        }
+        let mut empty: [f64; 0] = [];
+        super::copy_slice(&mut empty, &[]);
+    }
+
     #[test]
     fn reserved_initialization_uses_installed_lanes_and_preserves_storage() {
         assert!(rayon::current_thread_index().is_none());

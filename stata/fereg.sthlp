@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 0.5.0 24oct2026}{...}
+{* *! version 0.5.0 25oct2026}{...}
 {.-}
 help for {cmd:fereg} {right:(Johannes F. Schmieder)}
 {.-}
@@ -193,9 +193,12 @@ existing recurrence; numerical failure can continue with certified MAP inside
 the original iteration budget.
 
 {pstd}
-Eligible designs with three or more categorical-intercept effects use strict
-LSMR with reusable preparation; certified structural shortcuts may finish
-first. Slopes and explicit solver/preconditioner requests retain their supported
+Eligible designs with three or more categorical-intercept effects use LSMR
+with reusable preparation. It starts with a diagonal preconditioner and builds
+the additive Schwarz preconditioner only when the projected work is large.
+With three unit-weight effects, a short MAP pilot or certified structural
+shortcut may finish first. Every route must pass the requested certificate.
+Slopes and explicit solver/preconditioner requests retain their supported
 routes. Ownership and repeated-cell optimizations are automatic for Auto/Auto
 with a global intercept and exactly two categorical-intercept terms; they need
 no additional option and do not change the fitted model.

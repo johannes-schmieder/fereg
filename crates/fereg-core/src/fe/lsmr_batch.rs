@@ -92,21 +92,63 @@ fn rhs_columns_mapped(
         column.resize(values.nrows(), 0.0);
         columns.push(column);
     }
-    columns
-        .par_chunks_mut(TRANSPORT_COLUMNS)
+    let rows = values.nrows();
+    let plan = crate::parallel::StagePlan::current(rows as u128 * width as u128, rows);
+    if width.div_ceil(TRANSPORT_COLUMNS) >= plan.lanes || rows == 0 {
+        columns
+            .par_chunks_mut(TRANSPORT_COLUMNS)
+            .enumerate()
+            .for_each(|(tile, columns)| {
+                transport_rows(values, columns, 0, |offset| {
+                    position(tile * TRANSPORT_COLUMNS + offset)
+                });
+            });
+        return Ok(columns);
+    }
+    // Narrow banks cannot fill the team with column tiles. Row blocks own
+    // disjoint destination rows of every column; copies are bitwise.
+    let block = plan.chunk(rows).next_multiple_of(TRANSPORT_ROWS);
+    let mut blocks: Vec<Vec<&mut [f64]>> = Vec::new();
+    reserve(&mut blocks, rows.div_ceil(block)).map_err(|e| e.into_fereg("LSMR RHS transport"))?;
+    for _ in 0..rows.div_ceil(block) {
+        let mut parts = Vec::new();
+        reserve(&mut parts, width).map_err(|e| e.into_fereg("LSMR RHS transport"))?;
+        blocks.push(parts);
+    }
+    for column in &mut columns {
+        for (index, part) in column.chunks_mut(block).enumerate() {
+            blocks[index].push(part);
+        }
+    }
+    blocks
+        .into_par_iter()
         .enumerate()
-        .for_each(|(tile, columns)| {
-            for start in (0..values.nrows()).step_by(TRANSPORT_ROWS) {
-                let end = (start + TRANSPORT_ROWS).min(values.nrows());
-                for (offset, column) in columns.iter_mut().enumerate() {
-                    let c = position(tile * TRANSPORT_COLUMNS + offset);
-                    for (row, destination) in column[start..end].iter_mut().enumerate() {
-                        *destination = values[(start + row, c)];
-                    }
-                }
-            }
+        .for_each(|(index, mut parts)| {
+            transport_rows(values, &mut parts, index * block, &position);
         });
     Ok(columns)
+}
+
+/// Copy rows `first..first + len` of the selected source columns into each
+/// destination, in cache-sized row tiles.
+fn transport_rows<D: AsMut<[f64]>>(
+    values: &DenseMatrix,
+    destinations: &mut [D],
+    first: usize,
+    position: impl Fn(usize) -> usize,
+) {
+    let len = destinations
+        .first_mut()
+        .map_or(0, |destination| destination.as_mut().len());
+    for start in (0..len).step_by(TRANSPORT_ROWS) {
+        let end = (start + TRANSPORT_ROWS).min(len);
+        for (offset, destination) in destinations.iter_mut().enumerate() {
+            let c = position(offset);
+            for (row, value) in destination.as_mut()[start..end].iter_mut().enumerate() {
+                *value = values[(first + start + row, c)];
+            }
+        }
+    }
 }
 
 pub(super) fn copy_demeaned(columns: &[f64], values: &mut DenseMatrix) {
@@ -309,6 +351,50 @@ mod tests {
                         }
                     }
                 });
+        }
+    }
+
+    #[test]
+    fn narrow_transport_uses_row_blocks_with_identical_bits() {
+        for (rows, width) in [(50_003, 1), (50_003, 3), (65_536, 6), (40_001, 9)] {
+            let values = DenseMatrix::from_row_major(
+                rows,
+                width,
+                (0..rows * width)
+                    .map(|i| f64::from_bits((i as u64).wrapping_mul(0x9e3779b97f4a7c15)))
+                    .collect(),
+            )
+            .unwrap();
+            let expected: Vec<Vec<u64>> = (0..width)
+                .map(|c| (0..rows).map(|r| values[(r, c)].to_bits()).collect())
+                .collect();
+            for threads in [1, 3, 4, 16] {
+                let columns = rayon::ThreadPoolBuilder::new()
+                    .num_threads(threads)
+                    .build()
+                    .unwrap()
+                    .install(|| rhs_columns(&values).unwrap());
+                let bits: Vec<Vec<u64>> = columns
+                    .iter()
+                    .map(|c| c.iter().map(|v| v.to_bits()).collect())
+                    .collect();
+                assert_eq!(
+                    bits, expected,
+                    "rows {rows}, width {width}, threads {threads}"
+                );
+                let positions: Vec<_> = (0..width).rev().collect();
+                let selected = rayon::ThreadPoolBuilder::new()
+                    .num_threads(threads)
+                    .build()
+                    .unwrap()
+                    .install(|| selected_rhs_columns(&values, &positions).unwrap());
+                for (j, column) in selected.iter().enumerate() {
+                    assert!(column
+                        .iter()
+                        .map(|v| v.to_bits())
+                        .eq(expected[positions[j]].iter().copied()));
+                }
+            }
         }
     }
 

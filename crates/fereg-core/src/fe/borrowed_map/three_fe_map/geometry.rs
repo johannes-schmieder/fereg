@@ -22,20 +22,37 @@ impl Geometry {
             .map(|(i, j)| effects[i].n_levels().min(effects[j].n_levels()))
             .max()
             .unwrap_or(0);
-        let bytes = size as u128 * 8;
-        if budget.is_some_and(|b| !b.fits(bytes)) {
-            return Ok((None, SolverWorkspacePeak::ZERO));
-        }
+        // Exact integer counts make every lane split produce identical bounds.
+        // Extra lanes are optional; a refused or unaffordable split keeps the
+        // single-lane admission and its refusal semantics.
+        let mut lanes = crate::parallel::StagePlan::current(design.nobs() as u128, design.nobs())
+            .lanes
+            .min(SPLIT_LANE_LIMIT);
         let mut counts = Vec::<u64>::new();
-        if counts.try_reserve_exact(size).is_err() {
-            return Ok((None, SolverWorkspacePeak::ZERO));
+        while lanes > 1 {
+            let affordable = size
+                .checked_mul(lanes)
+                .filter(|&cells| budget.is_none_or(|b| b.fits(cells as u128 * 8)));
+            if affordable.is_some_and(|cells| counts.try_reserve_exact(cells).is_ok()) {
+                break;
+            }
+            lanes = 1;
+        }
+        if lanes == 1 {
+            let bytes = size as u128 * 8;
+            if budget.is_some_and(|b| !b.fits(bytes)) {
+                return Ok((None, SolverWorkspacePeak::ZERO));
+            }
+            if counts.try_reserve_exact(size).is_err() {
+                return Ok((None, SolverWorkspacePeak::ZERO));
+            }
         }
         let bytes = counts.capacity() as u128 * 8;
         let peak = SolverWorkspacePeak::from_bytes(bytes)?;
         if budget.is_some_and(|b| !b.fits(bytes)) {
             return Ok((None, peak));
         }
-        counts.resize(size, 0);
+        counts.resize(size * lanes, 0);
         let mut squares = [0_u128; 3];
         let mut minimum = [u128::MAX; 3];
         let mut maximum = [0_u128; 3];
@@ -66,7 +83,8 @@ impl Geometry {
                 coherence[slot] = 1.0;
                 continue;
             }
-            let Some((count_square, weighted)) = pair_moments(effects[i], effects[j], &mut counts)?
+            let Some((count_square, weighted)) =
+                pair_moments(effects[i], effects[j], &mut counts, lanes)?
             else {
                 return Ok((None, peak));
             };
@@ -93,13 +111,14 @@ impl Geometry {
         ))
     }
 
+    /// The bound depends only on the design, so the same prediction serves the
+    /// main projection and the final residual phase at that phase's target.
     pub(crate) fn map_checkpoint(
         self,
         weights: BorrowedMapWeights<'_>,
         map: MapConfig,
-        final_residual: bool,
     ) -> Option<usize> {
-        if final_residual || !map.symmetric || !matches!(weights, BorrowedMapWeights::Unit) {
+        if !map.symmetric || !matches!(weights, BorrowedMapWeights::Unit) {
             return None;
         }
         self.predicted_sweeps(crate::fe::auto::direct_lsmr_tolerance(map.tolerance))
@@ -131,19 +150,70 @@ fn marginal_saturation(
     Some(denominator > 0 && lower >= denominator)
 }
 
+/// Concurrent pair-moment lanes. Integer sums are exact under any split, so
+/// this caps only scratch, never results.
+const SPLIT_LANE_LIMIT: usize = 64;
+
 fn pair_moments(
     a: BorrowedInterceptEffect<'_>,
     b: BorrowedInterceptEffect<'_>,
     counts: &mut [u64],
+    lanes: usize,
 ) -> Result<Option<(u128, u128)>> {
+    use rayon::prelude::*;
     let (outer, inner) = if a.n_levels() >= b.n_levels() {
         (a, b)
     } else {
         (b, a)
     };
+    if lanes <= 1 {
+        return pair_moment_range(outer, inner, 0..outer.n_levels(), counts);
+    }
+    // Contiguous outer-level ranges with balanced membership.
+    let offsets = outer.level_index().membership_offsets();
+    let total = offsets[outer.n_levels()] - offsets[0];
+    let boundary = |lane: usize| {
+        let target = offsets[0] + total / lanes * lane + (total % lanes) * lane / lanes;
+        offsets[..outer.n_levels()].partition_point(|&offset| offset < target)
+    };
+    let stride = counts.len() / lanes;
+    let partials: Vec<_> = counts
+        .par_chunks_mut(stride)
+        .enumerate()
+        .map(|(lane, counts)| {
+            let end = if lane + 1 == lanes {
+                outer.n_levels()
+            } else {
+                boundary(lane + 1)
+            };
+            pair_moment_range(outer, inner, boundary(lane)..end, counts)
+        })
+        .collect();
     let mut count_square = 0_u128;
     let mut weighted = 0_u128;
-    for level in 0..outer.n_levels() {
+    // The first lane error, in level order, is the serial loop's first error.
+    for partial in partials {
+        let Some((s, w)) = partial? else {
+            return Ok(None);
+        };
+        let (Some(s), Some(w)) = (count_square.checked_add(s), weighted.checked_add(w)) else {
+            return Ok(None);
+        };
+        count_square = s;
+        weighted = w;
+    }
+    Ok(Some((count_square, weighted)))
+}
+
+fn pair_moment_range(
+    outer: BorrowedInterceptEffect<'_>,
+    inner: BorrowedInterceptEffect<'_>,
+    levels: std::ops::Range<usize>,
+    counts: &mut [u64],
+) -> Result<Option<(u128, u128)>> {
+    let mut count_square = 0_u128;
+    let mut weighted = 0_u128;
+    for level in levels {
         if level % 1024 == 0 {
             crate::interrupt::checkpoint()?;
         }
@@ -344,6 +414,66 @@ mod tests {
                     }
                 }
             }
+        }
+    }
+
+    #[test]
+    fn split_pair_moments_and_bounds_are_exact_for_every_lane_count() {
+        use super::*;
+        use crate::fe::{LevelIndex, ValidatedBorrowedInterceptSource};
+        let rows = 120_011;
+        let levels = [37_usize, 211, 1_009];
+        let codes: [Vec<u32>; 3] = std::array::from_fn(|e| {
+            (0..rows)
+                .map(|r| ((r * (2 * e + 3) + r / (e + 5) + (r * r) % 7) % levels[e]) as u32)
+                .collect()
+        });
+        let indexes: Vec<_> = codes
+            .iter()
+            .zip(levels)
+            .map(|(c, n)| LevelIndex::from_codes(c, n).unwrap())
+            .collect();
+        let sources: Vec<_> = codes
+            .iter()
+            .zip(levels)
+            .zip(&indexes)
+            .map(|((c, n), i)| ValidatedBorrowedInterceptSource::new(c, n, i).unwrap())
+            .collect();
+        let design =
+            BorrowedInterceptFeDesign::new(rows, sources.iter().map(|s| s.effect()).collect())
+                .unwrap();
+        let effects = design.effects();
+        for (i, j) in [(0, 1), (0, 2), (1, 2)] {
+            let size = levels[i].min(levels[j]);
+            let mut serial = vec![0_u64; size];
+            let expected = pair_moments(effects[i], effects[j], &mut serial, 1).unwrap();
+            assert!(expected.is_some());
+            for lanes in [2, 3, 7, 64] {
+                let mut counts = vec![0_u64; size * lanes];
+                let actual = rayon::ThreadPoolBuilder::new()
+                    .num_threads(4)
+                    .build()
+                    .unwrap()
+                    .install(|| pair_moments(effects[i], effects[j], &mut counts, lanes))
+                    .unwrap();
+                assert_eq!(actual, expected, "pair {i},{j} lanes {lanes}");
+                assert!(counts.iter().all(|&count| count == 0));
+            }
+        }
+        let serial = Geometry::inspect(&design, None).unwrap().0.unwrap();
+        for threads in [2, 4, 16] {
+            let split = crate::ThreadTeam::new(
+                crate::ThreadConfig::from_requested(threads, false).unwrap(),
+            )
+            .install(|| Geometry::inspect(&design, None))
+            .unwrap()
+            .unwrap()
+            .0
+            .unwrap();
+            assert_eq!(
+                split.bounds.map(f64::to_bits),
+                serial.bounds.map(f64::to_bits)
+            );
         }
     }
 

@@ -28,15 +28,20 @@ pub(super) fn solve_prepared_input(
     for (window_index, columns) in rhs.chunks(window).enumerate() {
         let mut sessions =
             reserved(columns.len()).map_err(|error| (BatchError::Allocation(error), 0))?;
-        for (offset, column) in columns.iter().enumerate() {
-            let seed = initial
-                .rhs(window_index * window + offset)
-                .map_err(|error| (BatchError::Allocation(error), 0))?;
-            sessions.push(
+        let started: Vec<_> = columns
+            .par_iter()
+            .enumerate()
+            .map(|(offset, column)| {
+                let seed = initial
+                    .rhs(window_index * window + offset)
+                    .map_err(|error| (BatchError::Allocation(error), 0))?;
                 solver
                     .start_session_categorical_seeded(column, seed, options)
-                    .map_err(|error| (BatchError::Upstream(error.into()), 0))?,
-            );
+                    .map_err(|error| (BatchError::Upstream(error.into()), 0))
+            })
+            .collect();
+        for session in started {
+            sessions.push(session?);
         }
         let results: Vec<_> = sessions
             .par_iter_mut()
@@ -72,10 +77,14 @@ pub(super) fn solve_prepared_input(
                 spent,
             ));
         }
-        for session in sessions {
+        let finished: Vec<_> = sessions
+            .into_par_iter()
+            .map(within::SolveSession::finish)
+            .collect();
+        for solved in finished {
             append(
                 &mut batch,
-                session.finish(),
+                solved,
                 rhs.len(),
                 solver.n_obs(),
                 solver.n_dofs(),
@@ -99,6 +108,8 @@ pub(crate) struct GeneralRoutingState<'a> {
     replacement_bytes: u128,
     replacement_apply_bytes: u128,
     accuracy: Option<(u64, bool)>,
+    /// Additive configuration a retained Jacobi trial escalates to.
+    trial: Option<PreconditionerConfig>,
 }
 
 impl<'a> GeneralRoutingState<'a> {
@@ -111,6 +122,7 @@ impl<'a> GeneralRoutingState<'a> {
             replacement_bytes: 0,
             replacement_apply_bytes: 0,
             accuracy: None,
+            trial: None,
         }
     }
 
@@ -124,6 +136,16 @@ impl<'a> GeneralRoutingState<'a> {
 
     pub(super) fn strict_categorical_prefix(&self) -> bool {
         self.preset.strict_categorical_prefix()
+    }
+
+    pub(super) fn geometry_pilot(&self) -> bool {
+        self.preset.geometry_pilot()
+    }
+
+    /// Whether the retained solver is still an unescalated Jacobi trial, so the
+    /// last solve finished every RHS with the diagonal preconditioner.
+    pub(super) fn jacobi_trial_active(&self) -> bool {
+        self.trial.is_some()
     }
 
     /// Bind a new accuracy key; it starts a new single optional attempt.
@@ -164,6 +186,7 @@ impl<'a> GeneralRoutingState<'a> {
         self.replacement_bytes = 0;
         self.replacement_apply_bytes = 0;
         self.prepared = BorrowedLsmrPrepared::default();
+        self.trial = None;
     }
 
     pub(super) fn retained_bytes(&self) -> u128 {
@@ -269,13 +292,29 @@ impl<'a> GeneralRoutingState<'a> {
         started: Instant,
         initial_coefficients: Option<&FeCoefficientBatch>,
     ) -> Result<(within::BatchSolveResult, bool)> {
-        let solver = self
-            .prepared
-            .solver
-            .as_ref()
-            .expect("retained routing solver");
+        // Every failed action retries the whole call without a preconditioner.
+        let retry = |state: &mut Self, spent, failure, setup_seconds| {
+            state.retry_off(
+                design,
+                weights,
+                rhs,
+                options,
+                deterministic,
+                spent,
+                failure,
+                setup_seconds,
+                started,
+                initial_coefficients,
+            )
+        };
         let mut batch: Option<within::BatchSolveResult> = None;
         for (window_index, columns) in rhs.chunks(window.max(1)).enumerate() {
+            let solver = self
+                .prepared
+                .solver
+                .as_ref()
+                .expect("retained routing solver");
+            let trial = self.trial.is_some() && self.replacement.is_none();
             let mut sessions = start_routing_sessions(
                 solver,
                 columns,
@@ -291,25 +330,13 @@ impl<'a> GeneralRoutingState<'a> {
             } else {
                 options.maxiter
             };
-            let progress: Vec<_> = sessions
-                .par_iter_mut()
-                .map(|session| advance(session, self.replacement.as_ref(), cap))
-                .collect();
+            let trial_target = trial.then_some(options.tol);
+            let progress =
+                advance_window(&mut sessions, self.replacement.as_ref(), cap, trial_target);
             if let Some(failure) = action_failure(&progress) {
                 let spent = consumed(&sessions, batch.as_ref(), options.maxiter);
                 drop(sessions);
-                return self.retry_off(
-                    design,
-                    weights,
-                    rhs,
-                    options,
-                    deterministic,
-                    spent,
-                    failure,
-                    setup_seconds,
-                    started,
-                    initial_coefficients,
-                );
+                return retry(self, spent, failure, setup_seconds);
             }
             let progress: Vec<_> = progress
                 .into_iter()
@@ -351,26 +378,38 @@ impl<'a> GeneralRoutingState<'a> {
                 if let Some(failure) = action_failure(&continuation) {
                     let spent = consumed(&sessions, batch.as_ref(), options.maxiter);
                     drop(sessions);
-                    return self.retry_off(
-                        design,
-                        weights,
-                        rhs,
-                        options,
-                        deterministic,
-                        spent,
-                        failure,
-                        setup_seconds,
-                        started,
-                        initial_coefficients,
-                    );
+                    return retry(self, spent, failure, setup_seconds);
                 }
             }
             // Finish and release every recurrence before allocating the combined
             // result banks. This preserves the existing bounded-window peak.
-            let finished: Vec<_> = sessions
-                .into_iter()
+            let mut finished: Vec<_> = sessions
+                .into_par_iter()
                 .map(within::SolveSession::finish)
                 .collect();
+            let escalated = escalated(&progress, trial);
+            if escalated.contains(&true) {
+                let (seconds, outcome) = self.escalate(
+                    design,
+                    weights,
+                    columns,
+                    options,
+                    deterministic,
+                    &escalated,
+                    &mut finished,
+                );
+                setup_seconds += seconds;
+                if let Err(failure) = outcome {
+                    let spent = finished
+                        .iter()
+                        .map(|solved| solved.iterations)
+                        .chain(batch.iter().flat_map(|b| b.iterations.iter().copied()))
+                        .max()
+                        .unwrap_or(0);
+                    drop(finished);
+                    return retry(self, spent, failure, setup_seconds);
+                }
+            }
             for solved in finished {
                 append(
                     &mut batch,
@@ -386,6 +425,93 @@ impl<'a> GeneralRoutingState<'a> {
         batch.time_setup += setup_seconds;
         batch.time_total = started.elapsed().as_secs_f64();
         Ok((batch, false))
+    }
+
+    /// Replace a stalled Jacobi trial with the retained additive preconditioner
+    /// and continue each escalated RHS from its iterate with the rest of its
+    /// budget. Later calls on this binding reuse the additive solver.
+    #[allow(clippy::too_many_arguments)]
+    fn escalate(
+        &mut self,
+        design: &BorrowedInterceptFeDesign<'a>,
+        weights: ValidatedWeights<'_>,
+        columns: &[&[f64]],
+        options: &LsmrOptions,
+        deterministic: bool,
+        escalated: &[bool],
+        finished: &mut [within::SolveResult],
+    ) -> (f64, std::result::Result<(), ActionFailure>) {
+        let fatal = |error| ActionFailure {
+            error,
+            preconditioner_breakdown: false,
+        };
+        let started = Instant::now();
+        let config = self.trial.take().expect("escalating Jacobi trial");
+        // Release the trial before construction; the additive bound is admitted.
+        self.prepared.solver = None;
+        let built = build_retained_borrowed_lsmr(design, weights, config, deterministic);
+        let seconds = started.elapsed().as_secs_f64();
+        self.prepared.solver = match built {
+            Ok(solver) => Some(solver),
+            Err(error) => return (seconds, Err(fatal(error))),
+        };
+        self.prepared.builds += 1;
+        let solver = self
+            .prepared
+            .solver
+            .as_ref()
+            .expect("additive routing solver");
+        let mut continued = match reserved(columns.len()) {
+            Ok(values) => values,
+            Err(error) => return (seconds, Err(fatal(error))),
+        };
+        let started: Vec<_> = (0..columns.len())
+            .into_par_iter()
+            .filter_map(|offset| {
+                let remaining = options.maxiter.saturating_sub(finished[offset].iterations);
+                (escalated[offset] && remaining > 0).then(|| {
+                    let options = LsmrOptions {
+                        maxiter: remaining,
+                        ..options.clone()
+                    };
+                    solver
+                        .start_session_categorical_seeded(
+                            columns[offset],
+                            &finished[offset].x,
+                            &options,
+                        )
+                        .map(|session| (offset, session))
+                })
+            })
+            .collect();
+        for session in started {
+            match session {
+                Ok(session) => continued.push(session),
+                Err(error) => return (seconds, Err(action_error(error))),
+            }
+        }
+        let progress: Vec<_> = continued
+            .par_iter_mut()
+            .map(|(_, session)| {
+                let cap = session.remaining_iterations();
+                advance(session, None, cap)
+            })
+            .collect();
+        if let Some(failure) = action_failure(&progress) {
+            return (seconds, Err(failure));
+        }
+        let continued: Vec<_> = continued
+            .into_par_iter()
+            .map(|(offset, session)| (offset, session.finish()))
+            .collect();
+        for (offset, mut solved) in continued {
+            let prior = &finished[offset];
+            let (iterations, time_solve) = (prior.iterations, prior.time_solve);
+            solved.iterations += iterations;
+            solved.time_solve += time_solve;
+            finished[offset] = solved;
+        }
+        (seconds, Ok(()))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -419,10 +545,19 @@ impl<'a> GeneralRoutingState<'a> {
         }
         let setup_started = Instant::now();
         if self.prepared.solver.is_none() {
+            // The public many-FE policy first retains a Jacobi trial and keeps
+            // the additive configuration for a measured escalation. Admission
+            // still charges the additive bound, which covers both solvers.
+            let additive = matches!(preconditioner, PreconditionerConfig::Additive { .. });
+            self.trial = (additive && self.preset.geometry_pilot()).then(|| preconditioner.clone());
             self.prepared.solver = Some(build_retained_borrowed_lsmr(
                 design,
                 weights,
-                preconditioner,
+                if self.trial.is_some() {
+                    PreconditionerConfig::Diagonal
+                } else {
+                    preconditioner
+                },
                 deterministic,
             )?);
             self.prepared.retained_bytes =
@@ -715,13 +850,27 @@ fn start_routing_sessions<'s, 'a>(
     sessions
         .try_reserve_exact(columns.len())
         .map_err(|_| allocation("unable to reserve routing sessions"))?;
-    for (offset, column) in columns.iter().enumerate() {
-        let session = if let Some(seed) = initial {
-            solver.start_session_categorical_seeded(column, seed.rhs(first_rhs + offset)?, options)
-        } else {
-            solver.start_session(column, options)
-        };
-        sessions.push(session.map_err(solve_error)?);
+    // Each start copies and permutes one full response; independent starts run
+    // on the team and the first failure in RHS order is reported.
+    let started: Vec<_> = columns
+        .par_iter()
+        .enumerate()
+        .map(|(offset, column)| {
+            if let Some(seed) = initial {
+                solver
+                    .start_session_categorical_seeded(
+                        column,
+                        seed.rhs(first_rhs + offset)?,
+                        options,
+                    )
+                    .map_err(solve_error)
+            } else {
+                solver.start_session(column, options).map_err(solve_error)
+            }
+        })
+        .collect();
+    for session in started {
+        sessions.push(session?);
     }
     Ok(sessions)
 }
@@ -849,6 +998,109 @@ fn advance(
     Ok(progress)
 }
 
+/// Jacobi trial: from the third iteration on, project the iterations Jacobi
+/// LSMR still needs from its recent contraction, the geometric mean of the last
+/// two steps, toward the recurrence target. Escalate once the projected total
+/// exceeds `TRIAL_ITERATION_BUDGET`, roughly the cost of building the additive
+/// Schwarz preconditioner and running its usual dozen to twenty iterations.
+/// LSMR's normal-equation residual is monotone, so a slow contraction is a
+/// property of the problem. Cancellation still stops the action.
+const TRIAL_ITERATION_BUDGET: f64 = 40.0;
+
+struct JacobiTrial {
+    target: f64,
+}
+
+struct JacobiTrialRun {
+    target: f64,
+    history: [f64; 2],
+}
+
+impl schwarz_precond::EscalationPolicy for JacobiTrial {
+    fn handler(&self) -> Box<dyn schwarz_precond::EscalationHandler> {
+        Box::new(JacobiTrialRun {
+            target: self.target,
+            history: [f64::NAN; 2],
+        })
+    }
+}
+
+impl JacobiTrialRun {
+    /// Whether `current` after `iteration` steps projects beyond the budget.
+    fn projected_beyond_budget(&self, iteration: usize, current: f64) -> bool {
+        let earlier = self.history[0];
+        let observed = earlier.is_finite() && earlier > 0.0 && current > self.target;
+        if iteration < 3 || !observed {
+            return false;
+        }
+        let contraction = (current / earlier).sqrt();
+        if contraction >= 1.0 {
+            return true;
+        }
+        let remaining = (self.target / current).ln() / contraction.ln();
+        iteration as f64 + remaining > TRIAL_ITERATION_BUDGET
+    }
+}
+
+impl schwarz_precond::EscalationHandler for JacobiTrialRun {
+    fn should_escalate(&mut self, progress: schwarz_precond::Progress) -> bool {
+        if crate::interrupt::cancellation_requested() {
+            return true;
+        }
+        let current = progress.normal_eq_residual;
+        let escalate = self.projected_beyond_budget(progress.iteration, current);
+        self.history = [self.history[1], current];
+        escalate
+    }
+}
+
+/// Advance a window's sessions to `cap`, under the Jacobi trial's escalation
+/// policy when it has a recurrence target.
+fn advance_window(
+    sessions: &mut [within::SolveSession<'_, '_>],
+    replacement: Option<&within::PairReplacement>,
+    cap: usize,
+    trial_target: Option<f64>,
+) -> Vec<std::result::Result<within::ActionProgress, ActionFailure>> {
+    sessions
+        .par_iter_mut()
+        .map(|session| match trial_target {
+            Some(target) => advance_with(session, None, cap, &JacobiTrial { target }),
+            None => advance(session, replacement, cap),
+        })
+        .collect()
+}
+
+/// Which RHSs stopped their unfinished Jacobi trial for escalation.
+fn escalated(progress: &[within::ActionProgress], trial: bool) -> Vec<bool> {
+    progress
+        .iter()
+        .map(|progress| {
+            trial
+                && !progress.converged
+                && progress.stop_reason == schwarz_precond::LsmrStopReason::Escalated
+        })
+        .collect()
+}
+
+fn advance_with(
+    session: &mut within::SolveSession<'_, '_>,
+    replacement: Option<&within::PairReplacement>,
+    cap: usize,
+    policy: &dyn schwarz_precond::EscalationPolicy,
+) -> std::result::Result<within::ActionProgress, ActionFailure> {
+    let interrupted = |error| ActionFailure {
+        error,
+        preconditioner_breakdown: false,
+    };
+    crate::interrupt::checkpoint().map_err(interrupted)?;
+    let progress = session
+        .run_action(replacement, cap, Some(policy))
+        .map_err(action_error)?;
+    crate::interrupt::checkpoint().map_err(interrupted)?;
+    Ok(progress)
+}
+
 fn build_error(error: within::BuildError) -> FeregError {
     super::super::lsmr_batch::BatchError::Upstream(error.into())
         .into_fereg("general routing pair construction failed")
@@ -961,6 +1213,31 @@ mod tests {
                 .collect();
             BorrowedInterceptFeDesign::new(self.codes[0].len(), effects).unwrap()
         }
+    }
+
+    #[test]
+    fn jacobi_trial_projects_contraction_against_the_iteration_budget() {
+        let run = |residuals: &[f64]| {
+            let mut handler = JacobiTrialRun {
+                target: 1e-10,
+                history: [f64::NAN; 2],
+            };
+            residuals.iter().enumerate().position(|(index, &current)| {
+                let escalate = handler.projected_beyond_budget(index + 1, current);
+                handler.history = [handler.history[1], current];
+                escalate
+            })
+        };
+        // A steady 0.4 contraction reaches the target near iteration 25.
+        let mixing: Vec<_> = (0..30).map(|k| 0.25 * 0.4_f64.powi(k)).collect();
+        assert_eq!(run(&mixing), None);
+        // A fast first step followed by a plateau escalates once two steps show it.
+        assert_eq!(run(&[0.25, 0.028, 0.026, 0.024, 0.018]), Some(3));
+        // Stagnation and growth escalate; reaching the target never does.
+        assert_eq!(run(&[0.3, 0.3, 0.3]), Some(2));
+        assert_eq!(run(&[0.3, 0.1, 1e-11, 1e-11, 1e-11]), None);
+        // The first two iterations never decide.
+        assert_eq!(run(&[0.9, 0.95]), None);
     }
 
     #[test]

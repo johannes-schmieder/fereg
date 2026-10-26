@@ -2763,6 +2763,11 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
 }
 
 crate::fault::fault_plan! {
+    static GENERAL_LSMR_CERTIFICATE_FAILURES: usize = 0;
+    static GENERAL_LSMR_CORRECTIONS: usize = 0;
+}
+
+crate::fault::fault_plan! {
     static TWO_FE_CERTIFICATE_FAILURES: usize = 0;
     static TWO_FE_CORRECTIONS: usize = 0;
     static TWO_FE_BREAKDOWN: bool = false;
@@ -4615,7 +4620,7 @@ pub(crate) fn project_borrowed_intercept_structural<'a>(
     {
         None
     } else {
-        three_fe_geometry.and_then(|g| g.map_checkpoint(weights, map, final_residual))
+        three_fe_geometry.and_then(|g| g.map_checkpoint(weights, map))
     };
     project_general_categorical(
         design,
@@ -4676,7 +4681,14 @@ fn project_general_categorical<'a>(
     mut general_routing: Option<&mut routing_lsmr::GeneralRoutingState<'a>>,
     final_residual: bool,
 ) -> Result<CertifiedBorrowedMap> {
-    lsmr.tolerance = super::auto::direct_lsmr_tolerance(map.tolerance);
+    let geometry = general_routing
+        .as_ref()
+        .is_some_and(|state| state.geometry_pilot());
+    lsmr.tolerance = if geometry {
+        super::auto::corrected_lsmr_tolerance(map.tolerance)
+    } else {
+        super::auto::direct_lsmr_tolerance(map.tolerance)
+    };
     lsmr.max_iterations = lsmr.max_iterations.min((map.max_iterations / 2).max(1));
     // The portfolio arm keeps the incumbent's strict certificate at every
     // successful exit, including an early prefix or original-input fallback.
@@ -4695,7 +4707,11 @@ fn project_general_categorical<'a>(
     let prefix_arm = general_routing
         .as_ref()
         .and_then(|state| state.categorical_prefix());
-    // Prefix completion and correction share this arm's certificate contract.
+    // The public many-FE preset admits the geometry-certified pilot in place
+    // of a prefix and, not being strict, accepts at the requested tolerance.
+    // Prefix completion and correction share the arm's certificate; routes
+    // without a preset keep certifying LSMR at the private recurrence target.
+    let experimental_prefix = prefix_arm.is_some() && !geometry;
     let certificate_tolerance = prefix_arm.map_or(lsmr.tolerance, |_| map.tolerance);
     let preconditioner = resolve_borrowed_lsmr_preconditioner(
         design.effects().len(),
@@ -4716,7 +4732,7 @@ fn project_general_categorical<'a>(
         retain,
         general_routing.as_deref(),
     )?;
-    let mut pilot = if prefix_arm.is_some() {
+    let mut pilot = if experimental_prefix {
         std::mem::take(&mut prefix.report)
     } else if let Some(checkpoint) =
         map_first.filter(|_| lsmr.max_iterations > three_fe_map::SWEEPS)
@@ -4729,6 +4745,7 @@ fn project_general_categorical<'a>(
             retain,
             estimate.coefficient_batch_bytes,
             checkpoint,
+            dense_norms,
         )?
     } else {
         three_fe_map::Attempt::default()
@@ -4743,44 +4760,35 @@ fn project_general_categorical<'a>(
     let mut attempted_peak = pilot.peak;
     let mut attempted = None;
     if budget.is_none_or(|b| b.fits(bytes)) {
-        let mut memory = BorrowedLsmrCallMemory::new(estimate, preconditioner, budget, 0)?;
-        let mut norms = Vec::new();
+        let memory = BorrowedLsmrCallMemory::new(estimate, preconditioner, budget, 0)?;
         if let Some(state) = general_routing.as_deref_mut() {
             state.begin(map.tolerance, final_residual);
         }
-        let (candidate, mut report, _, coefficients) = run_borrowed_lsmr_with_prepared(
+        match general_lsmr_attempt(
             design,
             validated,
             &values,
-            certificate_tolerance,
-            lsmr.max_iterations,
+            map,
             lsmr,
-            None,
+            certificate_tolerance,
+            preconditioner,
+            memory,
             retain,
-            None,
-            &mut memory,
-            dense_norms.then_some(&mut norms),
+            dense_norms,
+            geometry,
             general_routing.as_deref_mut(),
             prefix.seed.as_ref(),
-        )?;
-        attempted_peak = attempted_peak.max(report.solver_workspace_peak);
-        report.requested_solver = FeSolverKind::Auto;
-        if report.certified() {
-            record_general_pilot(&pilot, &mut report, prefix_arm.is_some());
-            let result = if let Some(c) = coefficients {
-                CertifiedBorrowedMap::from_certified_parts_with_coefficients(candidate, report, c)
-            } else {
-                CertifiedBorrowedMap::from_certified_parts(candidate, report)
-            }?;
-            return if norms.is_empty() {
-                Ok(result)
-            } else {
-                result.with_residual_norms(norms)
-            };
+            &pilot,
+            experimental_prefix,
+        )? {
+            Ok(result) => return Ok(result),
+            // The candidate and coefficient bank are released before continuation.
+            // A report survives the failed certificate; input remains unchanged.
+            Err(report) => {
+                attempted_peak = attempted_peak.max(report.solver_workspace_peak);
+                attempted = Some(report);
+            }
         }
-        // The candidate and coefficient bank are released before continuation.
-        // A report survives the failed certificate; input remains unchanged.
-        attempted = Some(report);
     }
     // The fallback restarts original inputs; release the seed before its admission.
     drop(prefix.seed);
@@ -4799,8 +4807,127 @@ fn project_general_categorical<'a>(
         attempted,
         pilot,
         attempted_peak,
-        prefix_arm.is_some(),
+        experimental_prefix,
     )
+}
+
+/// Auto's general LSMR attempt. On the geometry policy a certificate miss
+/// earns one tighter correction seeded by the rejected coefficients; the seeded
+/// session keeps the original RHS normalization and the remaining budget. A
+/// rejected attempt returns its report after releasing its candidate banks.
+#[allow(clippy::too_many_arguments)]
+fn general_lsmr_attempt<'a>(
+    design: &BorrowedInterceptFeDesign<'a>,
+    validated: ValidatedWeights<'_>,
+    values: &DenseMatrix,
+    map: MapConfig,
+    lsmr: LsmrConfig,
+    certificate_tolerance: f64,
+    preconditioner: LsmrPreconditioner,
+    mut memory: BorrowedLsmrCallMemory,
+    retain: bool,
+    dense_norms: bool,
+    geometry: bool,
+    mut general_routing: Option<&mut routing_lsmr::GeneralRoutingState<'a>>,
+    seed: Option<&FeCoefficientBatch>,
+    pilot: &three_fe_map::Attempt,
+    experimental_prefix: bool,
+) -> Result<std::result::Result<CertifiedBorrowedMap, SolveReport>> {
+    let mut norms = Vec::new();
+    let (mut candidate, mut report, _, mut coefficients) = run_borrowed_lsmr_with_prepared(
+        design,
+        validated,
+        values,
+        certificate_tolerance,
+        lsmr.max_iterations,
+        lsmr,
+        None,
+        retain,
+        None,
+        &mut memory,
+        dense_norms.then_some(&mut norms),
+        general_routing.as_deref_mut(),
+        seed,
+    )?;
+    let remaining = lsmr.max_iterations.saturating_sub(report.iterations);
+    let tighter = super::auto::correction_tolerance(map.tolerance, lsmr.tolerance)
+        .filter(|_| geometry && remaining > 0 && !report.certified());
+    let seed = tighter.and_then(|_| coefficients.take());
+    if let (Some(tighter), Some(seed)) = (tighter, seed) {
+        let extra = seed
+            .retained_bytes()
+            .saturating_add(seeded_lsmr_extra_bytes(
+                values.nrows(),
+                design.total_term_slots(),
+                values.ncols(),
+                lsmr.local_size,
+                preconditioner,
+            )?);
+        if memory.admits(extra) {
+            drop(candidate);
+            if crate::diagnostics::solver_trace_enabled() {
+                crate::diagnostics::emit_solver_trace(&format!(
+                    "FEREG_SOLVER_TRACE|phase=general_lsmr_correction|iterations={}|recurrence_tolerance={tighter:.17e}",
+                    report.iterations
+                ));
+            }
+            GENERAL_LSMR_CORRECTIONS.set(GENERAL_LSMR_CORRECTIONS.get() + 1);
+            let corrected;
+            (candidate, corrected, _, coefficients) = run_borrowed_lsmr_with_prepared(
+                design,
+                validated,
+                values,
+                certificate_tolerance,
+                remaining,
+                LsmrConfig {
+                    tolerance: tighter,
+                    ..lsmr
+                },
+                None,
+                retain,
+                None,
+                &mut memory,
+                dense_norms.then_some(&mut norms),
+                general_routing,
+                Some(&seed),
+            )?;
+            report = merge_lsmr_correction(report, corrected);
+        }
+    }
+    report.requested_solver = FeSolverKind::Auto;
+    if !report.certified() {
+        return Ok(Err(report));
+    }
+    record_general_pilot(pilot, &mut report, experimental_prefix);
+    let result = if let Some(c) = coefficients {
+        CertifiedBorrowedMap::from_certified_parts_with_coefficients(candidate, report, c)
+    } else {
+        CertifiedBorrowedMap::from_certified_parts(candidate, report)
+    }?;
+    Ok(Ok(if norms.is_empty() {
+        result
+    } else {
+        result.with_residual_norms(norms)?
+    }))
+}
+
+/// One report for a rejected first solve and its seeded correction. The seeded
+/// solve's coefficients already include the seed; work and time accumulate.
+fn merge_lsmr_correction(first: SolveReport, mut corrected: SolveReport) -> SolveReport {
+    corrected.iterations += first.iterations;
+    corrected.setup_seconds += first.setup_seconds;
+    corrected.solve_seconds += first.solve_seconds;
+    corrected.certification_seconds += first.certification_seconds;
+    corrected.fallback_used |= first.fallback_used;
+    corrected.solver_workspace_peak = corrected
+        .solver_workspace_peak
+        .max(first.solver_workspace_peak);
+    for warning in first.warnings {
+        if warning != LSMR_RECURRENCE_CLAIM && !corrected.warnings.contains(&warning) {
+            corrected.warnings.push(warning);
+        }
+    }
+    corrected
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -5378,6 +5505,24 @@ impl BorrowedLsmrCallMemory {
                 .ok_or_else(|| allocation("LSMR result overlap overflows"))?,
         )
     }
+
+    /// Whether `include_payload` would admit this payload.
+    fn fits_payload(&self, retained: u128, payload: u128) -> bool {
+        retained
+            .checked_add(payload)
+            .and_then(|bytes| bytes.checked_add(self.metadata_bytes))
+            .and_then(|bytes| bytes.checked_add(self.parent_bytes))
+            .is_some_and(|bytes| self.budget.is_none_or(|budget| budget.fits(bytes)))
+    }
+
+    /// Whether every stage seen so far still fits with `extra` more parent bytes.
+    fn admits(&self, extra: u128) -> bool {
+        self.peak
+            .bytes()
+            .map_or(0, u128::from)
+            .checked_add(extra)
+            .is_some_and(|bytes| self.budget.is_none_or(|budget| budget.fits(bytes)))
+    }
 }
 
 #[derive(Default)]
@@ -5652,6 +5797,9 @@ fn seeded_lsmr_extra_bytes(
         .ok_or_else(|| allocation("categorical LSMR session overlap overflows"))
 }
 
+const LSMR_RECURRENCE_CLAIM: &str =
+    "borrowed LSMR recurrence claimed convergence but the recomputed FE certificate failed";
+
 #[allow(clippy::too_many_arguments)]
 fn run_borrowed_lsmr_with_prepared<'a>(
     design: &BorrowedInterceptFeDesign<'a>,
@@ -5748,10 +5896,11 @@ fn run_borrowed_lsmr_with_prepared<'a>(
     if initial_coefficients.is_some() && prepared.is_none() && general_routing.is_none() {
         prepared = Some(&mut owned_prepared);
     }
+    let mut jacobi_trial = false;
     let (mut solved, preconditioner_fallback) = if let Some(routing) =
         general_routing.as_deref_mut()
     {
-        routing.solve(
+        let solved = routing.solve(
             design,
             weights,
             &rhs_views,
@@ -5761,7 +5910,9 @@ fn run_borrowed_lsmr_with_prepared<'a>(
             lsmr_config.threads.deterministic,
             memory,
             initial_coefficients,
-        )?
+        )?;
+        jacobi_trial = routing.jacobi_trial_active();
+        solved
     } else if let Some(prepared) = prepared.as_deref_mut() {
         prepared.solve(
             design,
@@ -5810,6 +5961,14 @@ fn run_borrowed_lsmr_with_prepared<'a>(
     };
     drop(rhs_views);
     drop(rhs);
+    // A rejected first solve on the geometry policy seeds its correction.
+    let seed_on_miss = !retain_coefficients
+        && initial_coefficients.is_none()
+        && general_routing
+            .as_ref()
+            .is_some_and(|state| state.geometry_pilot())
+        && super::auto::correction_tolerance(certificate_tolerance, lsmr_config.tolerance)
+            .is_some();
     let result = (|| {
         // The candidate is wholly overwritten by the returned residuals. Allocate
         // it after Krylov work, once the RHS transport can be released; preserve
@@ -5833,18 +5992,30 @@ fn run_borrowed_lsmr_with_prepared<'a>(
         )?;
         super::lsmr_batch::copy_demeaned(&solved.demeaned, &mut lsmr_values);
         drop(std::mem::take(&mut solved.demeaned));
-        if !retain_coefficients {
+        let planned = BorrowedMapWorkspace::planned_payload_bytes(
+            design,
+            values.nrows(),
+            values.ncols(),
+            rayon::current_num_threads(),
+        )?;
+        let layout_bytes =
+            (design.effects().len() as u128 * 3 + 1) * std::mem::size_of::<usize>() as u128;
+        let held = |memory: &BorrowedLsmrCallMemory, x: &Vec<f64>, workspace: u128| {
+            memory.fits_payload(
+                retained,
+                (lsmr_values.storage_capacity() as u128 + x.capacity() as u128) * 8
+                    + workspace
+                    + layout_bytes,
+            )
+        };
+        // A correction seed is optional: hold it only where the plan admits it.
+        let mut keep_seed = seed_on_miss && held(memory, &solved.x, planned);
+        if !retain_coefficients && !keep_seed {
             drop(std::mem::take(&mut solved.x));
         }
         memory.include_payload(
             retained,
-            (lsmr_values.storage_capacity() as u128 + solved.x.capacity() as u128) * 8
-                + BorrowedMapWorkspace::planned_payload_bytes(
-                    design,
-                    values.nrows(),
-                    values.ncols(),
-                    rayon::current_num_threads(),
-                )?,
+            (lsmr_values.storage_capacity() as u128 + solved.x.capacity() as u128) * 8 + planned,
         )?;
         let mut reservation = SystemWorkspaceReservation;
         let mut certificate_workspace = BorrowedMapWorkspace::new(
@@ -5854,6 +6025,10 @@ fn run_borrowed_lsmr_with_prepared<'a>(
             &mut reservation,
         )?;
         let certificate_bytes = modeled_bytes(certificate_workspace.payload_peak()?)?;
+        keep_seed = keep_seed && held(memory, &solved.x, certificate_bytes);
+        if !retain_coefficients && !keep_seed {
+            drop(std::mem::take(&mut solved.x));
+        }
         memory.include_payload(
             retained,
             (lsmr_values.storage_capacity() as u128 + solved.x.capacity() as u128) * 8
@@ -5883,11 +6058,15 @@ fn run_borrowed_lsmr_with_prepared<'a>(
             &mut certificate_workspace,
             dense_norms.is_some(),
         );
-        let (certificate, dense_valid) = if let Some(state) = general_routing.as_deref_mut() {
+        let (mut certificate, dense_valid) = if let Some(state) = general_routing.as_deref_mut() {
             state.certificate_boundary(certificate_result)?
         } else {
             certificate_result?
         };
+        if GENERAL_LSMR_CERTIFICATE_FAILURES.get() > 0 {
+            GENERAL_LSMR_CERTIFICATE_FAILURES.set(GENERAL_LSMR_CERTIFICATE_FAILURES.get() - 1);
+            certificate.passed = false;
+        }
         if !certificate.passed {
             if let Some(state) = general_routing.as_deref_mut() {
                 state.close_attempt();
@@ -5925,10 +6104,7 @@ fn run_borrowed_lsmr_with_prepared<'a>(
         );
         }
         if recurrence_converged && !certificate.passed {
-            warnings.push(
-            "borrowed LSMR recurrence claimed convergence but the recomputed FE certificate failed"
-                .to_owned(),
-        );
+            warnings.push(LSMR_RECURRENCE_CLAIM.to_owned());
         }
         let accounted_seconds = owned_setup_seconds + solved.time_total + certification_seconds;
         let postprocess_seconds =
@@ -5943,15 +6119,20 @@ fn run_borrowed_lsmr_with_prepared<'a>(
             requested_preconditioner: Some(lsmr_config.preconditioner),
             used_preconditioner: Some(if preconditioner_fallback {
                 LsmrPreconditioner::Off
+            } else if jacobi_trial {
+                LsmrPreconditioner::Diagonal
             } else {
                 resolved_preconditioner
             }),
             warnings,
             ..SolveReport::single_route(FeSolverKind::Lsmr, stop_reason, certificate)
         };
-        let layout_bytes =
-            (design.effects().len() as u128 * 3 + 1) * std::mem::size_of::<usize>() as u128;
-        if retain_coefficients {
+        // Only a rejected solve hands its coefficients on as a correction seed.
+        let seed = keep_seed && !report.certified();
+        if keep_seed && !seed {
+            drop(std::mem::take(&mut solved.x));
+        }
+        if retain_coefficients || seed {
             memory.include_payload(
                 retained,
                 (lsmr_values.storage_capacity() as u128 + solved.x.capacity() as u128) * 8
@@ -5959,7 +6140,7 @@ fn run_borrowed_lsmr_with_prepared<'a>(
                     + layout_bytes,
             )?;
         }
-        let coefficients = if retain_coefficients {
+        let coefficients = if retain_coefficients || seed {
             Some(FeCoefficientBatch::from_values(
                 vec![1; design.effects().len()],
                 design
@@ -8908,7 +9089,7 @@ fn modeled_bytes(peak: SolverWorkspacePeak) -> Result<u128> {
 
 fn fallible_matrix_copy(input: &DenseMatrix, label: &'static str) -> Result<DenseMatrix> {
     let mut output = fallible_matrix_zeros(input.nrows(), input.ncols(), label)?;
-    output.as_mut_slice().copy_from_slice(input.as_slice());
+    crate::parallel::copy_slice(output.as_mut_slice(), input.as_slice());
     Ok(output)
 }
 

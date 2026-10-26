@@ -234,6 +234,49 @@ fn public_two_activation_preserves_explicit_injections_in_local_bundles() {
 }
 
 #[test]
+fn selected_many_geometry_injection_keeps_public_two_fe_activation() {
+    for (token, public) in [
+        ("routing_many_geometry_v1", true),
+        ("routing_incremental_many", false),
+    ] {
+        let (mut args, mut spi) = public_two_fixture();
+        args.push(format!("inject={token}"));
+        let packed = bundled(&args);
+        let payload = packed[0]
+            .strip_prefix("bundle=")
+            .unwrap()
+            .as_bytes()
+            .to_vec();
+        let local_args = [format!("bundle_local={}", payload.len())];
+        spi.local_bundle = Some(payload);
+        let expanded = read_local_estimate_bundle(&local_args, &mut spi)
+            .unwrap()
+            .unwrap();
+        for spec in [
+            EstimateActionSpec::parse(&args).unwrap(),
+            EstimateActionSpec::parse(&packed).unwrap(),
+            EstimateActionSpec::parse(&[expanded]).unwrap(),
+        ] {
+            assert_eq!(spec.public_defaults, public, "{token}");
+            assert_eq!(spec.cells, fereg_core::ols::PreparedOlsCells::Off);
+            let mut action = spec
+                .decode_with_memory_limit(&mut spi, || Ok(None))
+                .unwrap();
+            if public {
+                activate_public_two_fe(&mut action);
+            }
+            let expected = if public {
+                fereg_core::ols::PreparedOlsCells::Deferred
+            } else {
+                fereg_core::ols::PreparedOlsCells::Off
+            };
+            assert_eq!(action.fit.cells, expected, "{token}");
+        }
+        estimate_ols(&local_args, &mut spi).unwrap();
+    }
+}
+
+#[test]
 fn unused_moments_require_conservative_packed_fast_inference_bound() {
     let columns = 8;
     let boundary = (32 * 1024 * 1024) / (columns * 8);
@@ -4586,6 +4629,7 @@ fn hidden_routing_presets_survive_framed_requests_and_reach_absorb_config() {
             .map(RoutingPreset::prefix),
         )
         .chain([
+            RoutingPreset::geometry_many(),
             RoutingPreset::incremental_many(),
             RoutingPreset::incremental_two(),
         ]);

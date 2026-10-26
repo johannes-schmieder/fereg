@@ -177,8 +177,8 @@ The configuration is a JSON object with these fields:
 | `coverage` | `routing` requires all 42 cells; `smoke` only checks tooling and cannot qualify a candidate. |
 
 Artifact `build` records compiler and build settings in a short string. `request`
-is `auto`, `preserve`, `incremental-many`, `incremental-two`, `two-remaining-v1`
-or `two-gates-v1`. `families` lists
+is `auto`, `preserve`, `incremental-many`, `many-geometry-v1`, `incremental-two`,
+`two-remaining-v1` or `two-gates-v1`. `families` lists
 accepted numerical changes relative to the original (`[]`, `["many"]`, etc.).
 Original and incumbent use their actual uninjected public invocation. A public
 Auto candidate requires the corresponding hidden artifact, with exact agreement

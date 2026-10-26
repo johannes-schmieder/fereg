@@ -21,6 +21,9 @@ pub(crate) struct OlsInjection {
     pub(crate) cells: PreparedOlsCells,
     pub(crate) it_coefficients: bool,
     pub(crate) native_break_token: Option<String>,
+    /// The selected hidden many-FE policy is public Auto's own preset; it keeps
+    /// public two-FE activation so selected-hidden/public science is exact.
+    pub(crate) public_activation: bool,
 }
 
 /// Resolve mechanism ownership independently of routing and marker controls.
@@ -128,6 +131,12 @@ pub(crate) fn parse_ols(stage: &str, solver: FeSolverKind, token: &str) -> Resul
             };
             (Some(preset), false)
         }
+        "routing_many_geometry_v1" => {
+            if solver != FeSolverKind::Auto {
+                return Err(syntax("hidden routing injection requires solver(auto)"));
+            }
+            (Some(RoutingPreset::geometry_many()), false)
+        }
         "routing_incremental_many" | "routing_incremental_two" => {
             if solver != FeSolverKind::Auto {
                 return Err(syntax("hidden routing injection requires solver(auto)"));
@@ -200,6 +209,7 @@ pub(crate) fn parse_ols(stage: &str, solver: FeSolverKind, token: &str) -> Resul
         cells,
         it_coefficients: stage == "it_coefficients",
         native_break_token: break_native.then(|| token.to_owned()),
+        public_activation: stage == "routing_many_geometry_v1",
     })
 }
 
@@ -320,6 +330,7 @@ mod tests {
     #[test]
     fn incremental_routing_requires_exact_auto_names_without_break_token() {
         for preset in [
+            RoutingPreset::geometry_many(),
             RoutingPreset::incremental_many(),
             RoutingPreset::incremental_two(),
             RoutingPreset::gates_two(),
