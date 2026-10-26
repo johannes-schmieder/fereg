@@ -32,6 +32,35 @@ class CampaignTests(unittest.TestCase):
         self.assertEqual({c['threads'] for c in cells},{1,4,8,16})
         self.assertGreater(sum(c['threads']==4 for c in cells),sum(c['threads']!=4 for c in cells))
 
+    def test_pyfixest_and_areg_arms(self):
+        for cell in configurations()+configurations(True):
+            self.assertTrue({'pyfixest','pyfixest-within'}<=set(arms(cell)))
+            one_fe=cell['model']=='ols' and cell['effects']==1 and cell['threads']<=4 and not cell['save_fe']
+            self.assertEqual('areg' in arms(cell),one_fe)
+        self.assertEqual(sum('areg' in arms(c) for c in configurations()),3)
+        metadata=dict(df_a='239',arm='areg')
+        self.assertEqual(absorbed_rank(metadata,dict(model='ols'),None),240.)
+
+    def test_pyfixest_saved_effects_fill_the_omitted_reference(self):
+        import pandas as pd
+        from campaign_pyfixest import saved_effects
+        data=pd.DataFrame(dict(g1=[1.,2.,2.,3.],g2=[10.,20.,10.,20.]))
+        class Release:
+            def fixef(self,atol,btol):
+                return {'C(g1)':{'1':.5,'2':-1.,'3':2.},'C(g2)':{'20':.25}}
+        class Main:
+            def fixef(self,atol,btol):
+                return pd.DataFrame(dict(variable=['g1']*3+['g2']*2,level=['1','2','3','10','20'],
+                                         coefficient=[.5,-1.,2.,0.,.25]))
+        for fit in [Release(),Main()]:
+            first,second=saved_effects(fit,data,2)
+            np.testing.assert_array_equal(first,[.5,-1.,-1.,2.])
+            np.testing.assert_array_equal(second,[0.,.25,0.,.25])
+        class Missing:
+            def fixef(self,atol,btol):
+                return {'C(g1)':{'1':.5,'2':-1.},'C(g2)':{'20':.25}}
+        with self.assertRaises(ValueError):saved_effects(Missing(),data,2)
+
     def test_strict_ols_profiles_are_frozen_separately(self):
         from campaign_report import planned_arms
         for cell in configurations()+configurations(True):

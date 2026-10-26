@@ -59,6 +59,7 @@ import pathlib,sys
 assert 'CAMPAIGN_REFERENCES_COMPLETE rc=0' in pathlib.Path(sys.argv[1]).read_text()
 PY
 cd "$RUN_ROOT/source"
+bash bench/scc/pyfixest_environment.sh "$RUN_ROOT/environment" > "$RUN_ROOT/logs/pyfixest-environment.log" 2>&1
 python3 bench/campaign.py prepare "$RUN_ROOT"
 Rscript -e 'library(fixest);library(foreign);library(jsonlite);library(digest);writeLines(toJSON(as.list(setNames(vapply(loadedNamespaces(),find.package,character(1)),loadedNamespaces())),auto_unbox=TRUE),file.path(Sys.getenv("RUN_ROOT"),"environment/r-package-paths.json"))'
 python3 - "$RUN_ROOT" <<'PY'
@@ -73,6 +74,7 @@ for ref in lock['reference']:
 paths=[r/'source/dist/fereg_linux.plugin',r/'environment/command-clock.plugin',
        *sorted((r/'source/stata').glob('*')),
        *sorted(refs.rglob('*')),*sorted((r/'environment/r-library').rglob('*')),
+       *sorted((r/'environment/pyfixest').rglob('*')),*sorted((r/'environment/pyfixest-within').rglob('*')),
        *sorted((r/'source/bench').rglob('*')),r/'manifest.json',r/'input/frozen-inputs.json']
 for folder in json.loads((r/'environment/r-package-paths.json').read_text()).values():
     paths.extend(sorted(pathlib.Path(folder).rglob('*')))

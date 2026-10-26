@@ -28,7 +28,9 @@ GOLD = '#C88927'
 RED = '#A14543'
 LIGHT = '#EEF3F6'
 ARM_NAMES = {'fereg': 'fereg', 'fixest': 'fixest', 'fixest-strict': 'fixest strict',
-             'reghdfe': 'reghdfe', 'ppmlhdfe': 'ppmlhdfe'}
+             'reghdfe': 'reghdfe', 'ppmlhdfe': 'ppmlhdfe', 'areg': 'areg',
+             'pyfixest': 'pyfixest 0.60', 'pyfixest-within': 'pyfixest within'}
+STATA_ARMS = ['fereg', 'reghdfe', 'ppmlhdfe', 'areg']
 ARM_COLORS = {'fereg': BLUE, 'fixest': GOLD, 'reghdfe': INK, 'ppmlhdfe': INK}
 DESIGNS = {'akm-baseline': 'AKM baseline', 'one-fe': 'One FE',
            'two-dense': 'Two FE / dense', 'two-sparse': 'Two FE / sparse',
@@ -52,6 +54,42 @@ def planned_arms(cell):
             and cell['rows'] == 1000000 and cell['threads'] == 4):
         selected.append('fixest-strict')
     return selected
+
+
+def pyfixest_pages(pdf, frame, manifest):
+    """Every cell with PyFixest arms, plus the one-FE OLS cells with areg."""
+    for model in ['ols', 'ppml']:
+        cells = sorted((c for c in manifest['cells'] if c['model'] == model and 'pyfixest' in planned_arms(c)),
+                       key=lambda c: (list(DESIGNS).index(c['design']), c['rows'], c['threads'], c['vce'], c['save_fe']))
+        midpoint = (len(cells)+1)//2
+        for part, chunk in enumerate([cells[:midpoint], cells[midpoint:]], 1):
+            if not chunk:
+                continue
+            pdf.page(f'{model.upper()}: PyFixest ({part}/2)')
+            pdf.text('PyFixest 0.60.0 uses its default Rust MAP demeaner; the pinned main revision defaults to within LSMR. '
+                     'Both use default estimation tolerances and recover saved FE at 1e-11. Median seconds; * marks result discrepancies. '
+                     'A ratio above 1 means PyFixest took longer than fereg.', 'SmallCustom')
+            rows = [['Design / N', 'Cores / VCE / saved', 'fereg s', '0.60 s', 'within s', '0.60 ×', 'within ×']]
+            for c in chunk:
+                rows.append([DESIGNS[c['design']]+' / '+size_label(c['rows']),
+                             f"{c['threads']} / {c['vce']} / {'yes' if c['save_fe'] else 'no'}",
+                             comparison_cell(frame, c['id'], 'fereg'), comparison_cell(frame, c['id'], 'pyfixest'),
+                             comparison_cell(frame, c['id'], 'pyfixest-within'),
+                             comparison_cell(frame, c['id'], 'pyfixest', 'speedup'),
+                             comparison_cell(frame, c['id'], 'pyfixest-within', 'speedup')])
+            pdf.table(rows, [155, 115, 50, 55, 55, 50, 55])
+    cells = [c for c in manifest['cells'] if 'areg' in planned_arms(c)]
+    if cells:
+        pdf.page('OLS: areg with one absorbed effect')
+        pdf.text('areg absorbs exactly one categorical effect, so it runs only in the four-core one-FE OLS cells. '
+                 'Its absorbed count excludes the intercept and is compared after adding it back.', 'SmallCustom')
+        rows = [['N', 'fereg s', 'areg s', 'reghdfe s', 'areg ×', 'reghdfe ×']]
+        for c in sorted(cells, key=lambda c: c['rows']):
+            rows.append([size_label(c['rows']), comparison_cell(frame, c['id'], 'fereg'),
+                         comparison_cell(frame, c['id'], 'areg'), comparison_cell(frame, c['id'], 'reghdfe'),
+                         comparison_cell(frame, c['id'], 'areg', 'speedup'),
+                         comparison_cell(frame, c['id'], 'reghdfe', 'speedup')])
+        pdf.table(rows, [90, 90, 90, 90, 90, 90])
 
 
 def check_host_observations(root, context, manifest, accounting):
@@ -168,7 +206,7 @@ def completed_seconds(record):
         return None
     try:
         seconds = float(meta['seconds'])
-        if record['arm'] in ['fereg', 'reghdfe', 'ppmlhdfe']:
+        if record['arm'] in STATA_ARMS:
             resolution = float(meta['clock_resolution'])
             if not 0 < resolution <= 5e-7:
                 return None
@@ -473,7 +511,8 @@ def render(campaign, frame, output, saved_retests=None):
     pdf.text('OLS &amp; PPML · AKM baseline · 16 controls', 'SectionCustom')
     pdf.text(f"October 2026 · Frozen source <b>{source}</b> · Boston University SCC")
     pdf.table([['Configurations', 'Planned fits', 'Primary cores', 'Whole-node reservations'],
-               [len(manifest['cells']), len(campaign['records']), '4; selected 1 / 8 / 16', '4 tasks × 28 reserved cores']],
+               [len(manifest['cells']), len(campaign['records']), '4; selected 1 / 8 / 16',
+                f"{manifest['policy']['bundles']} tasks × 28 reserved cores"]],
               [115, 105, 165, 155])
     pdf.text(f"<b>{len(eligible)} of {len(pairs)} primary package comparisons</b> meet the scientific gates in all three paired repetitions. "
              f"{statuses.get('ok', 0)} captures succeeded; {statuses.get('skipped-after-failure', 0)} planned repetitions were skipped after an earlier failure. "
@@ -591,6 +630,8 @@ def render(campaign, frame, output, saved_retests=None):
         pdf.text('Output overhead compares the same package and covariance with and without individual saved FE. '
                  'These ratios describe this host and this data; they are not uncertainty intervals. '
                  'The positive PPML inputs deliberately avoid separation, so this campaign does not measure separation handling.', 'SmallCustom')
+
+    pyfixest_pages(pdf, frame, manifest)
 
     pdf.page('Core scaling within a reserved node')
     pdf.text('The full AKM thread panel for each model remains on the same node. The Stata comparators stop at four processors because of the license. '

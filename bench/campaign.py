@@ -26,6 +26,8 @@ from placement import socket_ordered_cpus, placement_metadata, bound_command
 
 HERE = Path(__file__).resolve().parent
 POLICY = json.loads((HERE/'campaign.json').read_text())
+PYFIXEST_ARMS = list(POLICY['pyfixest'])
+STATA_REFERENCES = ['reghdfe','ppmlhdfe','areg']
 
 
 def write_json(path, value):
@@ -71,8 +73,11 @@ def configurations(smoke=False):
 
 def arms(cell):
     if 'arms' in cell: return list(cell['arms'])
-    result = ['fereg','fixest']
+    result = ['fereg','fixest',*PYFIXEST_ARMS]
     if cell['threads']<=4: result.append('reghdfe' if cell['model']=='ols' else 'ppmlhdfe')
+    # areg absorbs exactly one categorical effect and runs linear models only.
+    if cell['model']=='ols' and cell['effects']==1 and cell['threads']<=4 and not cell['save_fe']:
+        result.append('areg')
     if cell['model']=='ppml' and cell['design'] in ['akm-baseline','two-sparse','three-sparse'] and cell['rows']==1000000 and cell['threads']==4:
         result.append('fixest-strict')
     if cell['model']=='ols' or cell['section']=='smoke': result.append('fixest-strict')
@@ -231,6 +236,9 @@ def absorbed_rank(metadata, cell, frame):
     Raw published counts remain in every observation's metadata and capture.
     """
     rank=float(metadata['df_a'])
+    if metadata.get('arm')=='areg':
+        # areg reports the intercept outside e(df_a); reghdfe counts it there.
+        rank+=1
     if cell['model']!='ppml':return rank
     native=metadata.get('native_arm')=='1'
     stata=native or metadata['covariance_policy'].startswith('stock-ppml-')
@@ -331,6 +339,9 @@ def fit(root, cell, arm, repetition, frame, cpus):
     write_configuration(directory,settings)
     if arm.startswith('fixest'):
         command=['Rscript',str(HERE/'campaign_r.R'),str(directory/'config.tsv')]
+    elif arm in PYFIXEST_ARMS:
+        interpreter=root/'environment'/arm/'bin/python'
+        command=[str(interpreter),'-I','-B',str(HERE/'campaign_pyfixest.py'),str(directory/'config.tsv')]
     else:
         command_file=directory/'command.do'
         command_file.write_text(f'do "{HERE}/campaign_stata.do" "{directory}/config.do"\n')
@@ -338,6 +349,7 @@ def fit(root, cell, arm, repetition, frame, cpus):
     observation=execute(command,directory,cpus[:cell['threads']],POLICY['process_timeout_seconds'])
     meta=read_metadata(directory/'metadata.tsv')
     meta['native_arm']='1' if arm=='fereg' else '0'
+    meta['arm']=arm
     observation.update(cell=cell['id'],arm=arm,repetition=repetition,directory=str(directory),
                        host=socket.gethostname(),job=os.environ.get('JOB_ID'),task=os.environ.get('SGE_TASK_ID'),metadata=meta)
     logs='\n'.join(p.read_text(errors='replace') for p in directory.glob('*.log'))
@@ -348,7 +360,7 @@ def fit(root, cell, arm, repetition, frame, cpus):
             observation['capture']=capture(directory,cell,frame,meta)
             seconds=float(meta['seconds'])
             if not np.isfinite(seconds) or seconds<=0:raise ValueError('invalid timer')
-            if arm=='fereg' or arm in ['reghdfe','ppmlhdfe']:
+            if arm=='fereg' or arm in STATA_REFERENCES:
                 resolution=float(meta['clock_resolution'])
                 if not 0<resolution<=5e-7:raise ValueError('clock resolution is unqualified')
         except (OSError,ValueError,KeyError) as error:

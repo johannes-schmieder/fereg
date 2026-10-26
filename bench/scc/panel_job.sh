@@ -28,7 +28,7 @@ assert (r/'environment/COMPLETE').read_text().strip()=='PANEL_SETUP_COMPLETE'
 if sys.argv[3]=='run':
     assert (r/'smoke/COMPLETE').read_text().strip()=='PANEL_TASK_COMPLETE'
     smoke=json.loads((r/'smoke/results.json').read_text())
-    assert smoke['native_gate_pass'] and smoke['complete'] and len(smoke['records'])==8
+    assert smoke['native_gate_pass'] and smoke['complete'] and len(smoke['records'])==smoke['expected_fits']
     assert all(s['passed'] for s in smoke['science'] if s['kind']=='dense-oracle' and s['arm']=='fereg')
 PY
 task=${SGE_TASK_ID:-1}

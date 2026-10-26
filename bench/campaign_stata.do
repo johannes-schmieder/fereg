@@ -30,9 +30,12 @@ forvalues j=1/`effects' {
 }
 local inference vce(`vce')
 if "`vce'" == "iid" local inference vce(unadjusted)
+if "`vce'" == "iid" & "`arm'" == "areg" local inference vce(ols)
 if "`vce'" == "cluster" local inference vce(cluster cluster)
 local command `arm'
 if "`arm'" == "fereg" & "`model'" == "ppml" local command feppml
+* areg absorbs one categorical effect without saved-effect syntax.
+if "`arm'" == "areg" & ("`model'" != "ols" | `effects' != 1 | `save_fe') exit 198
 local options
 if "`arm'" == "fereg" local options threads(`threads')
 if "`tolerance'" != "" local options `options' tolerance(`tolerance')

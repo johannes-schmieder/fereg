@@ -7,11 +7,11 @@
   "threads": [1, 4, 8, 16],
   "main_threads": 4,
   "repetitions": 3,
-  "bundles": 4,
+  "bundles": 8,
   "command_timeout_seconds": 600,
   "process_timeout_seconds": 900,
-  "job_wall_seconds": 14400,
-  "job_cleanup_seconds": 13800,
+  "job_wall_seconds": 21600,
+  "job_cleanup_seconds": 21000,
   "coefficient_rtol": 1e-7,
   "coefficient_atol": 1e-10,
   "vce_rtol": 1e-6,
@@ -20,5 +20,9 @@
   "fitted_atol": 1e-9,
   "objective_rtol": 1e-8,
   "objective_atol": 1e-10,
+  "pyfixest": {
+    "pyfixest": {"version": "0.60.0"},
+    "pyfixest-within": {"version": "0.60.0", "commit": "263cf2d3c78cbaf4988923c79e0135da130fae1a", "within_py": "0.4.0"}
+  },
   "purpose": "Current-runtime descriptive SCC comparison; AKM baseline, four-core primary panel, one-way worker clustering"
 }

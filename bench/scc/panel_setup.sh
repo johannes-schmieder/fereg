@@ -3,7 +3,7 @@
 #$ -N fereg_veneto_setup
 #$ -pe omp 4
 #$ -l mem_per_core=3G
-#$ -l h_rt=00:30:00
+#$ -l h_rt=01:00:00
 #$ -j y
 set -euo pipefail
 umask 077
@@ -21,11 +21,13 @@ done
 cp "$REFERENCE_ROOT/environment/command-clock.plugin" environment/
 cp "$REFERENCE_ROOT/environment/reference-origin.json" environment/
 module purge
-module load python3/3.12.4 stata-mp/19 R/4.5.2
+module load gcc/12.2.0 python3/3.12.4 stata-mp/19 R/4.5.2
+export CC=gcc
 export OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 OMP_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1
 export PYTHONDONTWRITEBYTECODE=1 MPLCONFIGDIR="$RUN_ROOT/environment/matplotlib"
 export R_LIBS_USER="$RUN_ROOT/environment/r-library"
 cd source
+bash bench/scc/pyfixest_environment.sh "$RUN_ROOT/environment" > "$RUN_ROOT/logs/pyfixest-environment.log" 2>&1
 python3 -m unittest discover -s bench/tests > "$RUN_ROOT/logs/harness-tests.log" 2>&1
 python3 scripts/check_github_install.py > "$RUN_ROOT/logs/package-check.log" 2>&1
 python3 bench/panel_campaign.py audit "$RUN_ROOT" > "$RUN_ROOT/logs/input-audit.log" 2>&1
@@ -40,6 +42,7 @@ for ref in tomllib.loads((r/'source/references.lock.toml').read_text())['referen
 paths=[r/'source/dist/fereg_linux.plugin',r/'environment/command-clock.plugin',r/'manifest.json',
        *sorted((r/'source/stata').glob('*')),*sorted((r/'source/bench').rglob('*')),
        *sorted(refs.rglob('*')),*sorted((r/'environment/r-library').rglob('*')),
+       *sorted((r/'environment/pyfixest').rglob('*')),*sorted((r/'environment/pyfixest-within').rglob('*')),
        *sorted((r/'data').glob('*')),*sorted((r/'smoke-data').glob('*'))]
 for folder in json.loads((r/'environment/r-package-paths.json').read_text()).values():
     paths.extend(sorted(pathlib.Path(folder).rglob('*')))

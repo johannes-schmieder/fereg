@@ -30,21 +30,30 @@ Generated captures belong under `target/tmp/` and are deleted after inspection.
 ## SCC package comparison
 
 `campaign.json` freezes the descriptive OLS/PPML comparison against pinned fixest
-0.14.2, reghdfe and ppmlhdfe: 56 configurations, 36 synthetic datasets, three
-repetitions and 579 planned fits, including separate default and strict fixest
-profiles. Four workers are primary; selected configurations use 1/8/16 workers.
+0.14.2, PyFixest, reghdfe, ppmlhdfe and areg: 56 configurations, 36 synthetic
+datasets, three repetitions and 924 planned fits, including separate default and
+strict fixest profiles. PyFixest runs in every configuration twice: the 0.60.0
+release with its default Rust MAP demeaner, and a pinned main revision whose
+default is the `within` LSMR demeaner. Both keep default estimation tolerances
+and recover saved FE at 1e-11, like the fixest arms. areg absorbs exactly one
+effect, so it runs in the three four-worker one-FE OLS configurations; its
+absorbed count is compared after adding back the intercept it reports
+separately. Four workers are primary; selected configurations use 1/8/16 workers.
 Inputs have 100,000, one million or four million rows and 16 controls, with AKM,
 one-FE and dense/sparse two-/three-FE designs. Covariance and saved-FE variants
 remain part of the baseline panel.
 
 `scc/setup.sh` builds a frozen source archive, checks native ABI/numerics and
 benchmark tooling, and copies the pinned comparator environment from
-`REFERENCE_ROOT`. Supply `RUN_ROOT/input/frozen-inputs.json` with `remote_root`
+`REFERENCE_ROOT`. `scc/pyfixest_environment.sh` installs both PyFixest arms
+from the locked requirements in `pyfixest/` (the main revision builds its Rust
+extension with the pinned toolchain); the runtime inventory hashes both
+environments. Supply `RUN_ROOT/input/frozen-inputs.json` with `remote_root`
 and `datasets` from the retained campaign input record. Production copies those
 datasets, verifies file and decoded column hashes, and preserves their metadata;
 small smoke and warm-up inputs are generated separately.
 
-Submit setup, smoke and the four production bundles with SGE dependencies and
+Submit setup, smoke and the eight production bundles with SGE dependencies and
 `-P welfgr`. `scc/job.sh` takes `RUN_ROOT`, `MODE` (`smoke` or `run`) and
 `UPSTREAM_JOB`, requiring successful upstream accounting and application checks.
 The jobs reserve one complete 28-core node through `mpi_28_tasks_per_node_u`;
@@ -93,9 +102,12 @@ Do not put these inputs or row-level outputs in Git or public storage. Preserve
 owner-only access and obtain approval for any required transfer. Only aggregate
 timing/science summaries belong in committed results.
 
-The fixed schedule has three repetitions at 1/2/4/8/16 cores for fereg and the
-default/strict fixest profiles; reghdfe participates at 1/2/4, within the SCC Stata
-license. This gives 108 planned fit positions. Each panel runs sequentially in
+The fixed schedule has three repetitions at 1/2/4/8/16 cores for fereg, the
+default/strict fixest profiles and both PyFixest arms; reghdfe participates at
+1/2/4, within the SCC Stata license. This gives 168 planned fit positions.
+`panel_campaign.py reuse NEW_RUN --previous PRIOR_RUN` copies a prior run's
+audited panel inputs, smoke witnesses and policy byte for byte and rebuilds only
+the per-cell arm lists. Each panel runs sequentially in
 one independently verified whole-host allocation, using common socket-ordered
 CPU prefixes and NUMA memory binding. A separate four-slot real-data smoke must
 pass before either production task runs. The two panels may use different hosts.

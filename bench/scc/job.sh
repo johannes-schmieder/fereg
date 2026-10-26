@@ -4,7 +4,7 @@
 #$ -pe mpi_28_tasks_per_node_u 28
 #$ -l num_proc=28
 #$ -l mem_per_core=3G
-#$ -l h_rt=04:00:00
+#$ -l h_rt=06:00:00
 #$ -j y
 set -euo pipefail
 umask 077

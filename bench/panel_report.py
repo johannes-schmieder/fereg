@@ -13,6 +13,8 @@ from pathlib import Path
 import campaign_report as report
 from panel_collect import load
 
+REFERENCES = ['fixest', 'fixest-strict', 'pyfixest', 'pyfixest-within', 'reghdfe']
+
 
 def sha256(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -90,9 +92,11 @@ def render(campaign, frame, output):
              'weights and regular IID covariance. Both FE channels are saved inside command timing. '
              'Import, export and checks are outside timing. Long: 1996-2001; normalized age squared '
              'and cubed plus 1996-2000 indicators (2001 base). Short: 1999/2001, with a 2001 indicator.')
-    pdf.text('Three repetitions at 1/2/4/8/16 physical cores for fereg and fixest 0.14.2 '
-             'default/strict; reghdfe 6.14.1 at 1/2/4 because Stata is licensed for four cores. '
-             '108 planned positions. One isolated allocation per panel; different physical hosts.')
+    planned = sum(len(c['arms']) for c in campaign['manifest']['cells'])*campaign['manifest']['policy']['repetitions']
+    pdf.text('Three repetitions at 1/2/4/8/16 physical cores for fereg, fixest 0.14.2 '
+             'default/strict and PyFixest (0.60.0 Rust MAP and the pinned main revision with within LSMR); '
+             'reghdfe 6.14.1 at 1/2/4 because Stata is licensed for four cores. '
+             f'{planned} planned positions. One isolated allocation per panel; different physical hosts.')
     for panel in ['long', 'short']:
         selected = frame[frame.design == 'veneto-'+panel]
         native = selected[selected.arm == 'fereg'].sort_values('threads')
@@ -102,14 +106,14 @@ def render(campaign, frame, output):
         chart = output/(panel+'-native.png')
         native_plot(frame, panel, chart)
         pdf.figure(chart, 2.25)
-        rows = [['Cores', 'fereg seconds', 'fixest default', 'fixest strict', 'reghdfe']]
+        rows = [['Cores', 'fereg', 'fixest default', 'fixest strict', 'pyfixest 0.60', 'pyfixest within', 'reghdfe']]
         for cores in [1, 2, 4, 8, 16]:
             items = selected[selected.threads == cores]
             rows.append([cores]+[timing(next((r for r in items.itertuples() if r.arm == arm), None))
-                                 for arm in ['fereg', 'fixest', 'fixest-strict', 'reghdfe']])
-        pdf.table(rows, [43, 116, 116, 116, 116], padding=7)
+                                 for arm in ['fereg', *REFERENCES]])
+        pdf.table(rows, [37, 78, 78, 78, 78, 80, 78], padding=6)
         details = []
-        for arm in ['fixest', 'fixest-strict', 'reghdfe']:
+        for arm in REFERENCES:
             cells = selected[selected.arm == arm]
             errors = sorted({r['error'] for r in campaign['records']
                              if r['cell'].startswith('veneto-'+panel+'-') and r['arm'] == arm and r.get('error')})
@@ -125,7 +129,7 @@ def render(campaign, frame, output):
                  'These are descriptive medians on one host, not confidence-qualified estimates.')
     pdf.page('Validation, discrepancies and limits')
     counts = Counter(r['status'] for r in campaign['records'])
-    pdf.text(f"All 108 positions are retained: {counts['ok']} successful captures, "
+    pdf.text(f"All {len(campaign['records'])} positions are retained: {counts['ok']} successful captures, "
              f"{counts['capture-error']} capture errors and {counts['skipped-after-failure']} skipped positions. "
              'Every failed observation remains visible. No replacement observations or tolerance changes were used.')
     pdf.table([['Gate', 'Outcome'],

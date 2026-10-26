@@ -41,7 +41,13 @@ def cell_for(panel, frame, threads):
     return dict(id=f'veneto-{panel}-t{threads}', model='ols', design='veneto-'+panel,
                 section='veneto', rows=len(frame), regressors=len([c for c in frame if c.startswith('x')]),
                 effects=2, save_fe=True, vce='iid', weights='unit', threads=threads,
-                arms=['fereg', 'fixest', 'fixest-strict']+(['reghdfe'] if threads <= 4 else []))
+                arms=['fereg', 'fixest', 'fixest-strict', *campaign.PYFIXEST_ARMS]
+                + (['reghdfe'] if threads <= 4 else []))
+
+
+def smoke_fits():
+    """One four-worker fit of every arm on each panel's real-data smoke."""
+    return len(PANELS)*len(cell_for('long', pd.DataFrame(), 4)['arms'])
 
 
 def save_dataset(frame, path):
@@ -136,6 +142,27 @@ def prepare(root, long, short):
                            scientific_tolerances={k: v for k, v in campaign.POLICY.items()
                                                   if k.endswith(('_rtol', '_atol'))},
                            interference='No resampling. Whole-host reservation and passive observation required.'),
+               timed_fits=sum(len(c['arms']) for c in cells)*REPETITIONS))
+
+
+def reuse(root, previous):
+    """Schedule the current arms on a prior run's audited panel inputs.
+
+    The datasets, smoke witnesses, retained-input record and policy are copied
+    byte for byte; only the per-cell arm lists are rebuilt.
+    """
+    old = json.loads((previous/'manifest.json').read_text())
+    for folder in ['data', 'smoke-data']:
+        shutil.copytree(previous/folder, root/folder)
+    (root/'input').mkdir(exist_ok=True)
+    shutil.copy2(previous/'input/prior-panels.json', root/'input/prior-panels.json')
+    for name, identity in old['datasets'].items():
+        folder, panel = ('smoke-data', name[6:]) if name.startswith('smoke-') else ('data', name)
+        matches = list((root/folder).glob(f'ols-veneto-{panel}-n*.dta'))
+        if len(matches) != 1 or sha256(matches[0]) != identity['sha256']:
+            raise ValueError('prior panel input changed')
+    cells = [dict(c, arms=cell_for(c['design'][7:], pd.DataFrame(), c['threads'])['arms']) for c in old['cells']]
+    write_json(root/'manifest.json', dict(old, cells=cells, reused_inputs=str(previous),
                timed_fits=sum(len(c['arms']) for c in cells)*REPETITIONS))
 
 
@@ -329,7 +356,7 @@ def run(root, task, smoke):
             if sha256(path) != identity['sha256']:
                 raise ValueError('panel input changed during timing')
     campaign.verify_runtime(root)
-    expected_count = 8 if smoke else sum(len(c['arms']) for c in manifest['cells'] if c['design'] == 'veneto-'+selected[0])*REPETITIONS
+    expected_count = smoke_fits() if smoke else sum(len(c['arms']) for c in manifest['cells'] if c['design'] == 'veneto-'+selected[0])*REPETITIONS
     result = dict(records=records, comparisons=comparisons, science=science, complete=len(records) == expected_count,
                   expected_fits=expected_count, host=socket.gethostname(), job=os.environ['JOB_ID'],
                   task=os.environ.get('SGE_TASK_ID'), native_gate_pass=True)
@@ -342,14 +369,17 @@ def run(root, task, smoke):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('mode', choices=['prepare', 'audit', 'smoke', 'run'])
+    parser.add_argument('mode', choices=['prepare', 'reuse', 'audit', 'smoke', 'run'])
     parser.add_argument('root', type=Path)
     parser.add_argument('--long', type=Path)
     parser.add_argument('--short', type=Path)
+    parser.add_argument('--previous', type=Path, help='prior run whose audited inputs are reused')
     parser.add_argument('--task', type=int, choices=[1, 2], default=1)
     args = parser.parse_args()
     if args.mode == 'prepare':
         prepare(args.root, args.long, args.short)
+    elif args.mode == 'reuse':
+        reuse(args.root, args.previous)
     elif args.mode == 'audit':
         audit_inputs(args.root)
     else:

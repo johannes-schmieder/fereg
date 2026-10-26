@@ -55,8 +55,10 @@ class PanelTests(unittest.TestCase):
         frame = pd.DataFrame(dict(x1=[1.], y=[2.]))
         cells = [panel.cell_for(p, frame, t) for p in panel.PANELS for t in panel.THREADS]
         self.assertEqual(panel.THREADS, [1, 2, 4, 8, 16])
-        self.assertEqual(sum(len(c['arms']) for c in cells)*panel.REPETITIONS, 108)
+        self.assertEqual(sum(len(c['arms']) for c in cells)*panel.REPETITIONS, 168)
         self.assertTrue(all(('reghdfe' in c['arms']) == (c['threads'] <= 4) for c in cells))
+        self.assertTrue(all({'pyfixest', 'pyfixest-within'} <= set(c['arms']) for c in cells))
+        self.assertEqual(panel.smoke_fits(), 12)
 
     def test_variable_control_count_dense_witness(self):
         cell = dict(model='ols', design='akm-strong', rows=150, regressors=1,

@@ -63,6 +63,7 @@ def collect(context_path, output):
     remote(verify)
     files = ['manifest.json', 'input/source.json', 'setup.sh', 'job.sh', 'environment/runtime.json', 'environment/COMPLETE',
              'environment/reference-origin.json', 'environment/r-package-paths.json',
+             'environment/pyfixest-freeze.txt', 'environment/pyfixest-within-freeze.txt',
              'smoke/results.json', 'smoke/COMPLETE', 'logs/setup.sge', 'logs/smoke.sge',
              'logs/build.log', 'logs/dependency-fetch.log', 'logs/clock-build.log', 'logs/harness-tests.log',
              'logs/reference-prepare.log']

@@ -129,7 +129,7 @@ def load(root):
     expected_positions = {(c['id'], arm, rep) for c in manifest['cells'] for arm in c['arms']
                           for rep in range(1, manifest['policy']['repetitions']+1)}
     positions = [(r['cell'], r['arm'], r['repetition']) for r in records]
-    if len(positions) != len(set(positions)) or set(positions) != expected_positions or len(positions) != 108:
+    if len(positions) != len(set(positions)) or set(positions) != expected_positions:
         raise ValueError('campaign fit coverage differs from the frozen schedule')
     native = [r for r in records if r['arm'] == 'fereg']
     if len(native) != 30 or any(r['status'] != 'ok' or r.get('metadata', {}).get('rc') != '0'
@@ -169,6 +169,7 @@ def collect(context_path, output):
              'preparation/inputs.json', 'preparation/long-sample.json', 'preparation/short-sample.json',
              'environment/runtime.json', 'environment/COMPLETE', 'environment/input-audit.json',
              'environment/reference-origin.json', 'environment/r-package-paths.json',
+             'environment/pyfixest-freeze.txt', 'environment/pyfixest-within-freeze.txt',
              'logs/setup.sge', 'logs/smoke.sge', 'logs/harness-tests.log', 'logs/package-check.log',
              'logs/input-audit.log', 'smoke/results.json', 'smoke/COMPLETE']
     for task in [1, 2]:
