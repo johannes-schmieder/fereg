@@ -2050,7 +2050,7 @@ fn small_implicit_components_meet_a_strict_target_and_a_shared_hierarchy_precond
     );
     compare(&build(Some(&mut absorber)));
     assert_eq!(absorber.ppml_cmg_reach(), Some((1, 150, true)));
-    // Without one, a probe beyond 64 plain steps builds it on these weights.
+    // Without one, a probe beyond 32 plain steps builds it on these weights.
     let mut absorber = crate::fe::ReusableCategoricalMapAbsorber::new(design(), 3, 2).unwrap();
     absorber.enable_ppml_cmg(None, u128::MAX).unwrap();
     absorber.begin_ppml_frame(generation).unwrap();

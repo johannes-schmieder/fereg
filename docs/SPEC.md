@@ -251,7 +251,7 @@ components of at least 64 levels as `R G' B G R`, with the Jacobi roots `R`
 and `G` placing the component's grounded anchor. Before such a solve, a
 hierarchy from an earlier weight generation is rebuilt on current weights;
 without one, a plain recurrence of the first column on the largest component
-that exceeds 64 steps builds one.
+that exceeds 32 steps builds one.
 Categorical reprojections, used when strict canonical products decline, use
 the two-FE Schur recurrence with the h16/k1 build:
 without a hierarchy one may be built at step 16, and a hierarchy from an

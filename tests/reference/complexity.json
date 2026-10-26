@@ -1,19 +1,6 @@
 {
   "definition": "docs/development_workflow.md#complexity-inventory",
-  "growth": [
-    {
-      "after": 1418,
-      "before": 1417,
-      "metric": "fereg-core/dispatch_candidates",
-      "reason": "Coupling preparation splits left-level ranges until a range holds few levels."
-    },
-    {
-      "after": 109767,
-      "before": 109732,
-      "metric": "fereg-core/production_lines",
-      "reason": "Coupling preparation fills disjoint left-level ranges of its CSR bank in parallel, each value in member order."
-    }
-  ],
+  "growth": [],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
   "inventory": {
     "files": {
@@ -9337,64 +9324,64 @@
         "dispatch_candidates": [
           {
             "condition": "effect != reduced_effect || levels != q || ! components . iter ( ) . any ( | block | block . len >= MIN_COMPONENT )",
-            "line": 47
+            "line": 48
           },
           {
             "condition": "! owner . build_ppml_cmg ( weights , <string> ) ?",
-            "line": 104
+            "line": 105
           },
           {
             "condition": "scratch . len ( ) < 4 * n",
-            "line": 287
+            "line": 288
           }
         ],
         "functions": {
           "anchor#1": {
-            "line": 193,
+            "line": 194,
             "lines": 6
           },
           "build_after#1": {
-            "line": 88,
+            "line": 89,
             "lines": 29
           },
           "fallible#1": {
-            "line": 269,
+            "line": 270,
             "lines": 6
           },
           "new#1": {
-            "line": 34,
+            "line": 35,
             "lines": 29
           },
           "new#2": {
-            "line": 149,
+            "line": 150,
             "lines": 37
           },
           "release#1": {
-            "line": 187,
+            "line": 188,
             "lines": 5
           },
           "retain_anchors#1": {
-            "line": 69,
+            "line": 70,
             "lines": 12
           },
           "slot#1": {
-            "line": 201,
+            "line": 202,
             "lines": 12
           },
           "solve#1": {
-            "line": 217,
+            "line": 218,
             "lines": 50
           },
           "solve_reduced_pcg#1": {
-            "line": 278,
+            "line": 279,
             "lines": 80
           },
           "words#1": {
-            "line": 64,
+            "line": 65,
             "lines": 3
           },
           "words#2": {
-            "line": 120,
+            "line": 121,
             "lines": 10
           }
         },
@@ -24069,5 +24056,5 @@
     },
     "schema": 1
   },
-  "reason": "Joint-frame coupling preparation fills left-level ranges in parallel."
+  "reason": "The canonical CMG probe stops at 32 steps."
 }

@@ -14,9 +14,10 @@ use std::sync::{Mutex, MutexGuard, TryLockError};
 
 /// Smaller components finish in a few unpreconditioned steps.
 const MIN_COMPONENT: usize = 64;
-/// Steps a plain probe takes before a missing hierarchy is built, as a joint
-/// frame's diagonal recurrence does.
-const CHECKPOINT: usize = 64;
+/// Steps a plain probe of one column takes before a missing hierarchy is
+/// built. Unlike a joint frame's checkpoint, the probe runs alone, so it stops
+/// at half that frame's 64 steps.
+const CHECKPOINT: usize = 32;
 
 /// A canonical solve's admitted use of the PPML CMG owner.
 pub(super) struct Plan {
