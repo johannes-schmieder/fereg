@@ -56,6 +56,12 @@ def planned_arms(cell):
     return selected
 
 
+def stopping(policy):
+    cleanup = policy['job_cleanup_seconds']
+    return (f"{policy['command_timeout_seconds']} s command; {policy['process_timeout_seconds']} s process; "
+            f"{cleanup//3600} h {cleanup%3600//60} min cleanup threshold; {policy['job_wall_seconds']//3600} h production job")
+
+
 def pyfixest_pages(pdf, frame, manifest):
     """Every cell with PyFixest arms, plus the one-FE OLS cells with areg."""
     for model in ['ols', 'ppml']:
@@ -754,7 +760,7 @@ def render(campaign, frame, output, saved_retests=None):
                ['Covariance tolerance', '1e−10 absolute + 1e−6 relative'],
                ['Prediction tolerance', '1e−9 absolute + 1e−7 relative'],
                ['Objective tolerance', '1e−10 absolute + 1e−8 relative'],
-               ['Bounded stopping', '600 s command; 900 s process; 3 h 50 min cleanup threshold; 4 h production job'],
+               ['Bounded stopping', stopping(manifest['policy'])],
                ['Delivery', 'PDF, configuration-summary.csv, observations.csv, compact frozen run evidence']],
               [150, 390])
     pdf.text('Executable, frontend, transitive benchmark harness and comparator files are hash-frozen and checked before and after each task. '
