@@ -77,7 +77,9 @@ def saved_effects(fit, data, q):
                   for name, group in effects.groupby('variable')}
     saved = []
     for j in range(1, q+1):
-        table = {float(key): value for key, value in tables[f'g{j}'].items()}
+        # A second effect with one level has only the omitted reference.
+        table = {float(key): value for key, value in
+                 (tables.get(f'g{j}', {}) if omitted and j > 1 else tables[f'g{j}']).items()}
         if omitted and j > 1:
             missing = set(np.unique(data[f'g{j}'].to_numpy(dtype=float)))-set(table)
             if len(missing) != 1:

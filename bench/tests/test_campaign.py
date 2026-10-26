@@ -60,6 +60,11 @@ class CampaignTests(unittest.TestCase):
             def fixef(self,atol,btol):
                 return {'C(g1)':{'1':.5,'2':-1.},'C(g2)':{'20':.25}}
         with self.assertRaises(ValueError):saved_effects(Missing(),data,2)
+        class OneLevel:
+            def fixef(self,atol,btol):
+                return {'C(g1)':{'1':.5,'2':-1.,'3':2.}}
+        _,second=saved_effects(OneLevel(),data.assign(g2=10.),2)
+        np.testing.assert_array_equal(second,[0.,0.,0.,0.])
 
     def test_strict_ols_profiles_are_frozen_separately(self):
         from campaign_report import planned_arms
