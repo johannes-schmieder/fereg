@@ -35,6 +35,7 @@ mod x86_64 {
         joint_step_energy,
         ordered_dot,
         normalized_product,
+        normalized_products,
         scaled_add,
         coefficient_add,
         grouped_cross,
@@ -697,6 +698,30 @@ mod x86_64 {
     }
 
     #[target_feature(enable = "fma")]
+    unsafe fn normalized_products_fma(
+        columns: &[f64],
+        n: usize,
+        count: usize,
+        first: usize,
+        rows: usize,
+        output: &mut [f64],
+    ) {
+        fereg_core::kernels::normalized_products(columns, n, count, first, rows, output)
+    }
+
+    fn normalized_products(
+        columns: &[f64],
+        n: usize,
+        count: usize,
+        first: usize,
+        rows: usize,
+        output: &mut [f64],
+    ) {
+        // SAFETY: reachable only through `hardware()`, after FMA/AVX detection.
+        unsafe { normalized_products_fma(columns, n, count, first, rows, output) }
+    }
+
+    #[target_feature(enable = "fma")]
     unsafe fn weighted_product_fma(left: &[f64], roots: &[f64], right: &[f64]) -> f64 {
         fereg_core::kernels::weighted_product(left, roots, right)
     }
@@ -907,6 +932,16 @@ mod x86_64 {
                     (h.normalized_product)(&left, &right).to_bits(),
                     p::normalized_product(&left, &right).to_bits()
                 );
+                let columns: Vec<_> = left.iter().chain(&right).chain(&left).copied().collect();
+                for (first, rows) in [(0, 3), (1, 2)] {
+                    let (mut hardware, mut portable) = (vec![0.0; 9], vec![0.0; 9]);
+                    (h.normalized_products)(&columns, length, 3, first, rows, &mut hardware);
+                    p::normalized_products(&columns, length, 3, first, rows, &mut portable);
+                    assert_eq!(
+                        hardware.iter().map(|v| v.to_bits()).collect::<Vec<_>>(),
+                        portable.iter().map(|v| v.to_bits()).collect::<Vec<_>>()
+                    );
+                }
                 let weights: Vec<_> = right.iter().map(|v| v.abs() + 0.5).collect();
                 assert_eq!(
                     (h.weighted_product)(&left, &weights, &right).to_bits(),

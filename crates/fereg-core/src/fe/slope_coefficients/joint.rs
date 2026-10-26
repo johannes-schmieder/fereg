@@ -494,15 +494,24 @@ impl JointFiniteWorkspace {
             *value /= scale_y;
         }
         let roots = roots.as_slice();
+        // Row-major controls are streamed once per group of selected columns,
+        // not once per column; each entry keeps its product.
+        const GROUP: usize = 4;
+        let width = controls.ncols();
+        z.par_chunks_mut(GROUP * n)
+            .zip(selected.par_chunks(GROUP))
+            .for_each(|(block, group)| {
+                for (row, values) in controls.as_slice().chunks_exact(width).enumerate() {
+                    for (column, &source) in group.iter().enumerate() {
+                        block[column * n + row] = values[source] * roots[row];
+                    }
+                }
+            });
         z.par_chunks_mut(n)
             .zip(self.scales[..k].par_iter_mut())
             .zip(self.column_scratch[..q * k].par_chunks_mut(q))
             .zip(self.cross[..p * k].par_chunks_mut(p))
-            .enumerate()
-            .try_for_each(|(j, (((column, scale), work), cross))| -> Result<()> {
-                for row in 0..n {
-                    column[row] = controls[(row, selected[j])] * roots[row];
-                }
+            .try_for_each(|(((column, scale), work), cross)| -> Result<()> {
                 *scale = super::super::map::reusable_norm(column);
                 if !scale.is_finite() || *scale <= 0. {
                     return Err(failed());
@@ -514,13 +523,17 @@ impl JointFiniteWorkspace {
                 op.transpose(column, cross, false);
                 Ok(())
             })?;
+        // Pairs of Gram rows share each streamed column tile; every entry
+        // keeps the pairwise normalized product's bits.
+        let hardware = crate::kernels::installed();
         self.hessian[..k * k]
-            .par_chunks_mut(k)
+            .par_chunks_mut(2 * k)
             .enumerate()
-            .for_each(|(i, row)| {
-                for j in i..k {
-                    row[j] = normalized_product(&z[i * n..(i + 1) * n], &z[j * n..(j + 1) * n]);
-                }
+            .for_each(|(block, rows)| {
+                crate::kernels::dispatch!(
+                    hardware,
+                    normalized_products(z, n, k, 2 * block, rows.len() / k, rows)
+                );
             });
         for i in 0..k {
             for j in 0..i {

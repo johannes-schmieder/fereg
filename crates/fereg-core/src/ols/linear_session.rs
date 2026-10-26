@@ -2635,7 +2635,6 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             generated: basis.kept_generated_columns(),
             numeric: None,
         };
-        use crate::fe::slope_coefficients::joint::JointFiniteDesign;
         let weights = &self.map_weights;
         let response = &self.response;
         let needs_mean = basis
@@ -2645,47 +2644,13 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         let (response_checks, column_checks) = rayon::join(
             || check_joint_response(response, residuals, weights, needs_mean),
             || {
-                self.frozen_workspace
-                    .scores
-                    .par_iter_mut()
-                    .zip(self.frozen_workspace.rhs.par_iter_mut())
-                    .zip(self.frozen_workspace.solve.par_iter_mut())
-                    .enumerate()
-                    .try_for_each(|(column, ((score, mean), norm))| -> Result<()> {
-                        let mut scale = 0.;
-                        let mut square = 1.;
-                        let mut sum = 0.;
-                        let mut correction = 0.;
-                        let mut mean_sum = 0.;
-                        let mut mean_correction = 0.;
-                        originals.visit_column(column, |row, value| {
-                            if input_norms.is_none() {
-                                update_scaled_square(
-                                    weights[row].sqrt() * value,
-                                    &mut scale,
-                                    &mut square,
-                                )?;
-                            }
-                            compensated_add(
-                                weights[row] * value * residuals[row],
-                                &mut sum,
-                                &mut correction,
-                            )?;
-                            compensated_add(
-                                weights[row] * value,
-                                &mut mean_sum,
-                                &mut mean_correction,
-                            )?;
-                            Ok(())
-                        })?;
-                        *norm = match input_norms {
-                            Some(norms) => norms[column],
-                            None => stable_norm(scale, square)?,
-                        };
-                        *score = (sum + correction).abs();
-                        *mean = mean_sum + mean_correction;
-                        Ok(())
-                    })
+                joint_column_checks(
+                    &originals,
+                    weights,
+                    residuals,
+                    input_norms,
+                    &mut self.frozen_workspace,
+                )
             },
         );
         let response_checks = response_checks?;
@@ -6574,6 +6539,108 @@ struct JointResponseChecks {
     weight_sum: f64,
     response_mean: Option<f64>,
     reconstruction: LinearReconstructionCertificate,
+}
+
+/// One original column's joint score, weighted mean and optional norm.
+#[derive(Clone, Copy)]
+struct JointColumnCheck {
+    scale: f64,
+    square: f64,
+    sum: f64,
+    correction: f64,
+    mean_sum: f64,
+    mean_correction: f64,
+}
+
+impl JointColumnCheck {
+    const fn new() -> Self {
+        Self {
+            scale: 0.,
+            square: 1.,
+            sum: 0.,
+            correction: 0.,
+            mean_sum: 0.,
+            mean_correction: 0.,
+        }
+    }
+
+    fn update(&mut self, value: f64, weight: f64, root: f64, residual: f64) -> Result<()> {
+        if root.is_finite() {
+            update_scaled_square(root * value, &mut self.scale, &mut self.square)?;
+        }
+        compensated_add(
+            weight * value * residual,
+            &mut self.sum,
+            &mut self.correction,
+        )?;
+        compensated_add(
+            weight * value,
+            &mut self.mean_sum,
+            &mut self.mean_correction,
+        )
+    }
+}
+
+/// Original-column scores, means and norms after a joint solve, in the
+/// frozen score, RHS and solve banks. Contiguous columns advance four at a
+/// time in one row scan; each column keeps its own row-order sums.
+fn joint_column_checks<C: crate::fe::slope_coefficients::joint::JointFiniteDesign>(
+    originals: &C,
+    weights: &[f64],
+    residuals: &[f64],
+    input_norms: Option<&[f64]>,
+    banks: &mut FrozenLinearWorkspace,
+) -> Result<()> {
+    const GROUP: usize = 4;
+    banks
+        .scores
+        .par_chunks_mut(GROUP)
+        .zip(banks.rhs.par_chunks_mut(GROUP))
+        .zip(banks.solve.par_chunks_mut(GROUP))
+        .enumerate()
+        .try_for_each(|(group, ((scores, means), norms))| -> Result<()> {
+            let first = group * GROUP;
+            let mut checks = [JointColumnCheck::new(); GROUP];
+            let checks = &mut checks[..scores.len()];
+            let mut slices: [&[f64]; GROUP] = [&[]; GROUP];
+            for (offset, slice) in slices.iter_mut().enumerate().take(checks.len()) {
+                *slice = originals.column_slice(first + offset).unwrap_or_default();
+            }
+            // An infinite root marks norms supplied by the solve's own scan.
+            let root = |weight: f64| {
+                if input_norms.is_none() {
+                    weight.sqrt()
+                } else {
+                    f64::INFINITY
+                }
+            };
+            if slices[..checks.len()]
+                .iter()
+                .all(|values| values.len() == weights.len())
+            {
+                for (row, (&weight, &residual)) in weights.iter().zip(residuals).enumerate() {
+                    let root = root(weight);
+                    for (check, values) in checks.iter_mut().zip(&slices) {
+                        check.update(values[row], weight, root, residual)?;
+                    }
+                }
+            } else {
+                for (offset, check) in checks.iter_mut().enumerate() {
+                    originals.visit_column(first + offset, |row, value| {
+                        check.update(value, weights[row], root(weights[row]), residuals[row])
+                    })?;
+                }
+            }
+            for (offset, check) in checks.iter().enumerate() {
+                norms[offset] = match input_norms {
+                    Some(norms) => norms[first + offset],
+                    None => stable_norm(check.scale, check.square)?,
+                };
+                scores[offset] = (check.sum + check.correction).abs();
+                means[offset] = check.mean_sum + check.mean_correction;
+            }
+            Ok(())
+        })
 }
 
 fn check_joint_response(
