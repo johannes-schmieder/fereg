@@ -138,11 +138,37 @@ kernel remains the next dense-design opportunity.
 
 ## Package checks
 
-The 0.5.0 beta packages include the method-reporting correction and current help
-files. Runtime production code is unchanged by the platform packaging work.
+The beta.6 package ships the many-FE geometry policy.
 [Package metadata](../dist/fereg-native.json) records each binary's build revision,
-checksum and corresponding-source identity.
+checksum and corresponding-source identity. The Linux and macOS plugins are the
+qualified `99f0134d` builds; Windows was built at `07d4da6d`, and the runtime
+identity is unchanged between them. The corresponding source was packaged from
+`07d4da6d` with a passing dependency audit (no advisories). An offline Cargo
+build from that archive produced a universal Mac plugin that passed its binary
+audit and ABI/load/panic checks.
 
+The default `./scripts/run_tests.sh` passed at `78dfeca0`: 319 Python tests,
+Rust unit and independent numerical integration tests, Clippy, FFI allocation
+audits, portable checks, mock SPI transactions, the complexity ratchet and the
+root-package identity check.
+
+| Platform | Beta.6 checks |
+| --- | --- |
+| macOS | Binary audit and actual ABI/load/panic passed. The 14 focused Stata 19/MP fixtures above passed, public OLS Break/rollback passed again at `07d4da6d`, and eight installed-package fixtures passed from the staged archive. |
+| Windows x86-64 | Run `win-20261026T003403Z-d67fa2b4` at `07d4da6d`: Rust 1.85.1/MSVC static-CRT build, exact-FMA and hardware-kernel tests, C numeric guards, PE audit and actual ABI/load/panic checks passed. A fresh `net install` verified the installed plugin bytes, then passed the installation smoke, single-runtime and four OLS/PPML fixtures in Stata 19/MP. The machine was stopped afterwards. |
+| Linux x86-64 | SCC job 8277741 built the plugin offline with Rust 1.85.1 and GCC 12.2.0. ELF audit (glibc 2.28 maximum) and actual ABI/load/panic checks passed. Job 8280233 passed 18 Stata 19/MP fixtures, including the 14 focused many-FE fixtures; job 8280278 passed eight installed-package fixtures from the staged archive. |
+
+The root package passed a fresh local Mac `net install`: all 35 installed files
+matched, and selftest, OLS/PPML examples and a three-FE comparison with
+explicit dummies passed. After publication, a fresh Stata 19/MP `net install`
+from the [beta.6 release](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0-beta.6)
+matched all 34 versioned package files and passed the same checks. All 50
+release assets matched their local SHA-256 checksums.
+
+### Beta.5 platform packaging
+
+The beta.5 packages added Linux and Windows binaries with the method-reporting
+correction; their runtime production code was unchanged by the packaging work.
 The default `./scripts/run_tests.sh` passed for the reporting correction: 316
 Python tests, Rust unit and independent numerical integration tests, Clippy,
 FFI allocation audits, portable checks, mock SPI transactions and the complexity
