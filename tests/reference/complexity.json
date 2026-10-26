@@ -2,22 +2,28 @@
   "definition": "docs/development_workflow.md#complexity-inventory",
   "growth": [
     {
-      "after": 1415,
-      "before": 1414,
+      "after": 1417,
+      "before": 1415,
       "metric": "fereg-core/dispatch_candidates",
-      "reason": "Dense retained refinement chooses fixed parallel row leaves over the sequential row scan."
+      "reason": "Joint frames take the one-pass Gram for banks of at most 23 columns and the pairwise kernel beyond."
     },
     {
-      "after": 109588,
-      "before": 109491,
+      "after": 109732,
+      "before": 109588,
       "metric": "fereg-core/production_lines",
-      "reason": "Retained refinement reduces dense row scores over fixed parallel leaves, and dense canonical products are written in column panels."
+      "reason": "Joint frames keep the projected bank unnormalized, form Gram and initial scores in one tiled pass over fixed leaves, and compute norms from direct squares in parallel."
     },
     {
-      "after": 1891,
-      "before": 1860,
-      "metric": "file/crates/fereg-core/src/ols/canonical_products.rs",
-      "reason": "Dense canonical products are written in row panels, column by column, with direct numeric slices."
+      "after": 15454,
+      "before": 15432,
+      "metric": "fereg-plugin/production_lines",
+      "reason": "The FMA table instantiates the tiled Gram panel kernel and checks it against the portable body."
+    },
+    {
+      "after": 1773,
+      "before": 1739,
+      "metric": "file/crates/fereg-core/src/fe/map.rs",
+      "reason": "Column norms from direct squares with a scaled rescan, and a parallel fixed-leaf norm."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -4762,6 +4768,10 @@
             "line": 833,
             "lines": 31
           },
+          "add#1": {
+            "line": 1802,
+            "lines": 5
+          },
           "base_workspace_bytes#1": {
             "line": 276,
             "lines": 16
@@ -4842,6 +4852,10 @@
             "line": 343,
             "lines": 6
           },
+          "finish#1": {
+            "line": 1808,
+            "lines": 7
+          },
           "has_certificate_geometry#1": {
             "line": 411,
             "lines": 3
@@ -4869,6 +4883,10 @@
           "new#1": {
             "line": 293,
             "lines": 47
+          },
+          "parallel_norm#1": {
+            "line": 1819,
+            "lines": 14
           },
           "prepare_coefficient_geometry#1": {
             "line": 1214,
@@ -4915,23 +4933,23 @@
             "lines": 7
           },
           "reusable_norm_finish#1": {
-            "line": 1808,
+            "line": 1851,
             "lines": 7
           },
           "reusable_norm_step#1": {
-            "line": 1793,
+            "line": 1836,
             "lines": 14
           },
           "reusable_scaled_moment#1": {
-            "line": 1848,
+            "line": 1891,
             "lines": 16
           },
           "reusable_subtract_cross_projection#1": {
-            "line": 1832,
+            "line": 1875,
             "lines": 15
           },
           "reusable_subtract_projection#1": {
-            "line": 1816,
+            "line": 1859,
             "lines": 15
           },
           "reusable_weighted_norms#1": {
@@ -4951,7 +4969,7 @@
             "lines": 98
           },
           "validate_config#1": {
-            "line": 1865,
+            "line": 1908,
             "lines": 15
           },
           "zero_reusable_certificate#1": {
@@ -4959,7 +4977,7 @@
             "lines": 8
           }
         },
-        "production_lines": 1739
+        "production_lines": 1773
       },
       "crates/fereg-core/src/fe/mod.rs": {
         "chunk_candidates": [],
@@ -6891,28 +6909,36 @@
         "dispatch_candidates": [
           {
             "condition": "k == 0 || k > self . max_controls || k >= owner . max_rhs || response . len ( ) != n || weights . len ( ) != n || controls . nrows ( ) != n || selected . iter ( ) . any ( | & c | c >= controls . ncols ( ) )",
-            "line": 524
+            "line": 551
+          },
+          {
+            "condition": "count > GRAM_COLUMNS || self . gram . len ( ) < pairs * GRAM_LEAVES",
+            "line": 659
+          },
+          {
+            "condition": "j > 0 => self . residual [ p + j - 1 ] = sum / self . scales [ j - 1 ] , 0 =>",
+            "line": 683
           },
           {
             "condition": "k == 0 || k > self . max_controls || response . len ( ) != n || weights . len ( ) != n || controls . ncols ( ) > self . max_controls || controls . nrows ( ) != n || selected . iter ( ) . any ( | & c | c >= controls . ncols ( ) )",
-            "line": 893
+            "line": 971
           }
         ],
         "functions": {
           "beta#1": {
-            "line": 289,
+            "line": 313,
             "lines": 3
           },
           "bytes#1": {
-            "line": 217,
-            "lines": 28
+            "line": 237,
+            "lines": 30
           },
           "checkpoint_block#1": {
-            "line": 847,
+            "line": 925,
             "lines": 27
           },
           "column_group_width#1": {
-            "line": 90,
+            "line": 107,
             "lines": 5
           },
           "column_slice#1": {
@@ -6920,43 +6946,51 @@
             "lines": 3
           },
           "elements#1": {
-            "line": 269,
-            "lines": 19
+            "line": 292,
+            "lines": 20
           },
           "failed#1": {
-            "line": 129,
+            "line": 148,
             "lines": 6
           },
           "finite_product#1": {
-            "line": 142,
+            "line": 162,
             "lines": 24
           },
+          "gram_lanes#1": {
+            "line": 79,
+            "lines": 8
+          },
           "input_norms#1": {
-            "line": 296,
+            "line": 320,
             "lines": 6
           },
           "iterate#1": {
-            "line": 641,
-            "lines": 202
+            "line": 724,
+            "lines": 197
           },
           "ncols#1": {
             "line": 44,
             "lines": 3
           },
           "new#1": {
-            "line": 246,
-            "lines": 22
+            "line": 268,
+            "lines": 23
           },
           "normalized_product#1": {
-            "line": 138,
+            "line": 158,
             "lines": 3
+          },
+          "normalized_products#1": {
+            "line": 656,
+            "lines": 39
           },
           "nrows#1": {
             "line": 41,
             "lines": 3
           },
           "precondition#1": {
-            "line": 303,
+            "line": 327,
             "lines": 25
           },
           "prefers_column_scans#1": {
@@ -6964,27 +6998,27 @@
             "lines": 3
           },
           "reconstruct#1": {
-            "line": 330,
+            "line": 354,
             "lines": 119
           },
           "reconstruct_direct_columns#1": {
-            "line": 170,
+            "line": 190,
             "lines": 45
           },
           "reconstruct_projected#1": {
-            "line": 454,
-            "lines": 48
+            "line": 479,
+            "lines": 50
           },
           "refresh#1": {
-            "line": 82,
+            "line": 99,
             "lines": 3
           },
           "solve#1": {
-            "line": 506,
-            "lines": 133
+            "line": 533,
+            "lines": 118
           },
           "solve_streamed#1": {
-            "line": 875,
+            "line": 953,
             "lines": 165
           },
           "visit_column#1": {
@@ -6998,9 +7032,13 @@
           "visit_rows#1": {
             "line": 59,
             "lines": 10
+          },
+          "wide_products#1": {
+            "line": 697,
+            "lines": 25
           }
         },
-        "production_lines": 956
+        "production_lines": 1020
       },
       "crates/fereg-core/src/fe/topology_adapter.rs": {
         "chunk_candidates": [],
@@ -7898,135 +7936,139 @@
         "dispatch_candidates": [
           {
             "condition": "observation >= rows",
-            "line": 375
+            "line": 379
           },
           {
             "condition": "first >= rows",
-            "line": 445
+            "line": 449
           },
           {
             "condition": "observation >= rows",
-            "line": 452
+            "line": 456
           }
         ],
         "functions": {
           "active_name#1": {
-            "line": 235,
+            "line": 239,
             "lines": 3
           },
           "fused#1": {
-            "line": 475,
+            "line": 479,
             "lines": 6
           },
           "group_scales#1": {
-            "line": 363,
+            "line": 367,
             "lines": 27
           },
           "group_sums#1": {
-            "line": 433,
+            "line": 437,
             "lines": 38
           },
           "install#1": {
-            "line": 222,
+            "line": 226,
             "lines": 3
           },
           "installed#1": {
-            "line": 229,
+            "line": 233,
             "lines": 3
           },
           "normalized_weight#1": {
-            "line": 352,
+            "line": 356,
             "lines": 3
           },
           "scaled_group_sums#1": {
-            "line": 395,
+            "line": 399,
             "lines": 25
           },
           "upper_rank_one#1": {
-            "line": 242,
+            "line": 246,
             "lines": 14
           },
           "upper_tile#1": {
-            "line": 336,
+            "line": 340,
             "lines": 14
           },
           "weighted_upper_rank_one#1": {
-            "line": 266,
+            "line": 270,
             "lines": 41
           },
           "weighted_upper_tile#1": {
-            "line": 315,
+            "line": 319,
             "lines": 19
           }
         },
-        "production_lines": 335
+        "production_lines": 337
       },
       "crates/fereg-core/src/kernels/ordered.rs": {
         "chunk_candidates": [],
         "dispatch_candidates": [],
         "functions": {
           "affine_direction#1": {
-            "line": 126,
+            "line": 176,
             "lines": 5
           },
           "basis_forward#1": {
-            "line": 225,
+            "line": 275,
             "lines": 9
           },
           "basis_project#1": {
-            "line": 263,
+            "line": 313,
             "lines": 17
           },
           "basis_projection#1": {
-            "line": 282,
+            "line": 332,
             "lines": 23
           },
           "basis_projection_tile#1": {
-            "line": 466,
+            "line": 516,
             "lines": 34
           },
           "basis_transpose#1": {
-            "line": 237,
+            "line": 287,
             "lines": 24
           },
           "coefficient_add#1": {
-            "line": 95,
+            "line": 145,
             "lines": 11
           },
           "column_products#1": {
-            "line": 318,
+            "line": 368,
             "lines": 8
           },
           "denominator#1": {
-            "line": 328,
+            "line": 378,
             "lines": 3
           },
+          "gram_panel#1": {
+            "line": 92,
+            "lines": 43
+          },
           "grouped_cross#1": {
-            "line": 109,
+            "line": 159,
             "lines": 15
           },
           "incidence_schur_row#1": {
-            "line": 550,
+            "line": 600,
             "lines": 14
           },
           "joint_step#1": {
-            "line": 133,
+            "line": 183,
             "lines": 12
           },
           "joint_step_energy#1": {
-            "line": 567,
+            "line": 617,
             "lines": 15
           },
           "multiply_add#1": {
-            "line": 442,
+            "line": 492,
             "lines": 3
           },
           "normalized_add#1": {
-            "line": 183,
+            "line": 233,
             "lines": 11
           },
           "normalized_dot#1": {
-            "line": 197,
+            "line": 247,
             "lines": 7
           },
           "normalized_product#1": {
@@ -8038,11 +8080,11 @@
             "lines": 48
           },
           "normalized_selected_residual#1": {
-            "line": 519,
+            "line": 569,
             "lines": 13
           },
           "normalized_selected_scores#1": {
-            "line": 535,
+            "line": 585,
             "lines": 12
           },
           "ordered_dot#1": {
@@ -8050,59 +8092,59 @@
             "lines": 5
           },
           "pcg_direction#1": {
-            "line": 415,
+            "line": 465,
             "lines": 23
           },
           "pcg_energy#1": {
-            "line": 371,
+            "line": 421,
             "lines": 16
           },
           "pcg_initialize#1": {
-            "line": 333,
+            "line": 383,
             "lines": 18
           },
           "pcg_step#1": {
-            "line": 353,
+            "line": 403,
             "lines": 16
           },
           "pcg_step_energy#1": {
-            "line": 391,
+            "line": 441,
             "lines": 22
           },
           "scaled_add#1": {
-            "line": 87,
+            "line": 137,
             "lines": 5
           },
           "selected_residual#1": {
-            "line": 503,
+            "line": 553,
             "lines": 12
           },
           "standardized_residual#1": {
-            "line": 208,
+            "line": 258,
             "lines": 15
           },
           "subtract_products#1": {
-            "line": 448,
+            "line": 498,
             "lines": 13
           },
           "subtract_projection#1": {
-            "line": 147,
+            "line": 197,
             "lines": 9
           },
           "weighted_product#1": {
-            "line": 167,
+            "line": 217,
             "lines": 14
           },
           "weighted_square_sum#1": {
-            "line": 158,
+            "line": 208,
             "lines": 6
           },
           "weighted_upper_gram#1": {
-            "line": 307,
+            "line": 357,
             "lines": 9
           }
         },
-        "production_lines": 516
+        "production_lines": 560
       },
       "crates/fereg-core/src/lib.rs": {
         "chunk_candidates": [],
@@ -21926,103 +21968,111 @@
         "dispatch_candidates": [],
         "functions": {
           "affine_direction#1": {
-            "line": 433,
+            "line": 434,
             "lines": 4
           },
           "affine_direction_fma#1": {
-            "line": 429,
+            "line": 430,
             "lines": 3
           },
           "basis_forward#1": {
-            "line": 781,
+            "line": 806,
             "lines": 4
           },
           "basis_forward_fma#1": {
-            "line": 772,
+            "line": 797,
             "lines": 8
           },
           "basis_project#1": {
-            "line": 820,
+            "line": 845,
             "lines": 4
           },
           "basis_project_fma#1": {
-            "line": 811,
+            "line": 836,
             "lines": 8
           },
           "basis_projection#1": {
-            "line": 501,
+            "line": 502,
             "lines": 22
           },
           "basis_projection_fma#1": {
-            "line": 481,
+            "line": 482,
             "lines": 19
           },
           "basis_projection_tile#1": {
-            "line": 230,
+            "line": 231,
             "lines": 18
           },
           "basis_projection_tile_fma#1": {
-            "line": 214,
+            "line": 215,
             "lines": 15
           },
           "basis_transpose#1": {
-            "line": 798,
+            "line": 823,
             "lines": 11
           },
           "basis_transpose_fma#1": {
-            "line": 787,
+            "line": 812,
             "lines": 10
           },
           "coefficient_add#1": {
-            "line": 865,
+            "line": 890,
             "lines": 4
           },
           "coefficient_add_fma#1": {
-            "line": 857,
+            "line": 882,
             "lines": 7
           },
           "column_products#1": {
-            "line": 539,
+            "line": 540,
             "lines": 4
           },
           "column_products_fma#1": {
-            "line": 535,
+            "line": 536,
             "lines": 3
           },
+          "gram_panel#1": {
+            "line": 737,
+            "lines": 11
+          },
+          "gram_panel_fma#1": {
+            "line": 726,
+            "lines": 10
+          },
           "group_scales#1": {
-            "line": 328,
+            "line": 329,
             "lines": 11
           },
           "group_scales_fma#1": {
-            "line": 317,
+            "line": 318,
             "lines": 10
           },
           "group_sums#1": {
-            "line": 393,
+            "line": 394,
             "lines": 24
           },
           "group_sums_fma#1": {
-            "line": 370,
+            "line": 371,
             "lines": 21
           },
           "grouped_cross#1": {
-            "line": 883,
+            "line": 908,
             "lines": 12
           },
           "grouped_cross_fma#1": {
-            "line": 871,
+            "line": 896,
             "lines": 11
           },
           "hardware#1": {
-            "line": 71,
+            "line": 72,
             "lines": 4
           },
           "incidence_schur_row#1": {
-            "line": 85,
+            "line": 86,
             "lines": 9
           },
           "incidence_schur_row_fma#1": {
-            "line": 77,
+            "line": 78,
             "lines": 8
           },
           "install#1": {
@@ -22030,215 +22080,215 @@
             "lines": 6
           },
           "joint_step#1": {
-            "line": 449,
+            "line": 450,
             "lines": 10
           },
           "joint_step_energy#1": {
-            "line": 105,
+            "line": 106,
             "lines": 10
           },
           "joint_step_energy_fma#1": {
-            "line": 96,
+            "line": 97,
             "lines": 9
           },
           "joint_step_fma#1": {
-            "line": 439,
+            "line": 440,
             "lines": 9
           },
           "multiply_add#1": {
-            "line": 184,
+            "line": 185,
             "lines": 4
           },
           "multiply_add_fma#1": {
-            "line": 181,
+            "line": 182,
             "lines": 3
           },
           "normalized_add#1": {
-            "line": 745,
+            "line": 770,
             "lines": 10
           },
           "normalized_add_fma#1": {
-            "line": 735,
+            "line": 760,
             "lines": 9
           },
           "normalized_dot#1": {
-            "line": 766,
+            "line": 791,
             "lines": 4
           },
           "normalized_dot_fma#1": {
-            "line": 757,
+            "line": 782,
             "lines": 8
           },
           "normalized_product#1": {
-            "line": 695,
+            "line": 696,
             "lines": 4
           },
           "normalized_product_fma#1": {
-            "line": 691,
+            "line": 692,
             "lines": 3
           },
           "normalized_products#1": {
-            "line": 712,
+            "line": 713,
             "lines": 11
           },
           "normalized_products_fma#1": {
-            "line": 701,
+            "line": 702,
             "lines": 10
           },
           "normalized_selected_residual#1": {
-            "line": 134,
+            "line": 135,
             "lines": 13
           },
           "normalized_selected_residual_fma#1": {
-            "line": 117,
+            "line": 118,
             "lines": 17
           },
           "normalized_selected_scores#1": {
-            "line": 166,
+            "line": 167,
             "lines": 13
           },
           "normalized_selected_scores_fma#1": {
-            "line": 149,
+            "line": 150,
             "lines": 17
           },
           "ordered_dot#1": {
-            "line": 685,
+            "line": 686,
             "lines": 4
           },
           "ordered_dot_fma#1": {
-            "line": 681,
+            "line": 682,
             "lines": 3
           },
           "pcg_direction#1": {
-            "line": 667,
+            "line": 668,
             "lines": 12
           },
           "pcg_direction_fma#1": {
-            "line": 653,
+            "line": 654,
             "lines": 13
           },
           "pcg_energy#1": {
-            "line": 603,
+            "line": 604,
             "lines": 10
           },
           "pcg_energy_fma#1": {
-            "line": 593,
+            "line": 594,
             "lines": 9
           },
           "pcg_initialize#1": {
-            "line": 556,
+            "line": 557,
             "lines": 11
           },
           "pcg_initialize_fma#1": {
-            "line": 545,
+            "line": 546,
             "lines": 10
           },
           "pcg_step#1": {
-            "line": 580,
+            "line": 581,
             "lines": 11
           },
           "pcg_step_energy#1": {
-            "line": 633,
+            "line": 634,
             "lines": 18
           },
           "pcg_step_energy_fma#1": {
-            "line": 616,
+            "line": 617,
             "lines": 15
           },
           "pcg_step_fma#1": {
-            "line": 569,
+            "line": 570,
             "lines": 10
           },
           "scaled_add#1": {
-            "line": 423,
+            "line": 424,
             "lines": 4
           },
           "scaled_add_fma#1": {
-            "line": 419,
+            "line": 420,
             "lines": 3
           },
           "scaled_group_sums#1": {
-            "line": 353,
+            "line": 354,
             "lines": 14
           },
           "scaled_group_sums_fma#1": {
-            "line": 341,
+            "line": 342,
             "lines": 11
           },
           "selected_residual#1": {
-            "line": 258,
+            "line": 259,
             "lines": 9
           },
           "selected_residual_fma#1": {
-            "line": 250,
+            "line": 251,
             "lines": 8
           },
           "standardized_residual#1": {
-            "line": 844,
+            "line": 869,
             "lines": 11
           },
           "standardized_residual_fma#1": {
-            "line": 826,
+            "line": 851,
             "lines": 17
           },
           "subtract_products#1": {
-            "line": 200,
+            "line": 201,
             "lines": 11
           },
           "subtract_products_fma#1": {
-            "line": 190,
+            "line": 191,
             "lines": 10
           },
           "subtract_projection#1": {
-            "line": 465,
+            "line": 466,
             "lines": 4
           },
           "subtract_projection_fma#1": {
-            "line": 461,
+            "line": 462,
             "lines": 3
           },
           "upper_rank_one#1": {
-            "line": 280,
+            "line": 281,
             "lines": 11
           },
           "upper_rank_one_fma#1": {
-            "line": 269,
+            "line": 270,
             "lines": 10
           },
           "upper_tile#1": {
-            "line": 304,
+            "line": 305,
             "lines": 11
           },
           "upper_tile_fma#1": {
-            "line": 293,
+            "line": 294,
             "lines": 10
           },
           "weighted_product#1": {
-            "line": 729,
+            "line": 754,
             "lines": 4
           },
           "weighted_product_fma#1": {
-            "line": 725,
+            "line": 750,
             "lines": 3
           },
           "weighted_square_sum#1": {
-            "line": 475,
+            "line": 476,
             "lines": 4
           },
           "weighted_square_sum_fma#1": {
-            "line": 471,
+            "line": 472,
             "lines": 3
           },
           "weighted_upper_gram#1": {
-            "line": 529,
+            "line": 530,
             "lines": 4
           },
           "weighted_upper_gram_fma#1": {
-            "line": 525,
+            "line": 526,
             "lines": 3
           }
         },
-        "production_lines": 773
+        "production_lines": 795
       },
       "crates/fereg-plugin/src/input.rs": {
         "chunk_candidates": [],
@@ -24008,20 +24058,20 @@
     "metrics": {
       "fereg-core": {
         "chunk_candidates": 12,
-        "dispatch_candidates": 1415,
+        "dispatch_candidates": 1417,
         "files_over_1500": 15,
         "functions_over_150": 59,
-        "production_lines": 109588
+        "production_lines": 109732
       },
       "fereg-plugin": {
         "chunk_candidates": 3,
         "dispatch_candidates": 141,
         "files_over_1500": 3,
         "functions_over_150": 12,
-        "production_lines": 15432
+        "production_lines": 15454
       }
     },
     "schema": 1
   },
-  "reason": "Retained refinement and dense canonical product writes run in parallel panels."
+  "reason": "PPML joint frames form their Gram and initial scores in one tiled pass over an unnormalized bank."
 }

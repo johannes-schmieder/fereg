@@ -83,6 +83,56 @@ pub fn normalized_products(
     }
 }
 
+/// Eight FMA chains of every upper pair `(i, j >= i)` of `count` column-major
+/// columns (stride `n`) over rows `start..end`, added into `lanes` in
+/// row-major upper pair order, eight lanes per pair. Whole eight-row groups
+/// run in row tiles with all pairs inside each tile; remaining rows add into
+/// lane zero.
+#[inline(always)]
+pub fn gram_panel(
+    columns: &[f64],
+    n: usize,
+    count: usize,
+    start: usize,
+    end: usize,
+    lanes: &mut [f64],
+) {
+    const LANES: usize = 8;
+    const TILE: usize = 128;
+    debug_assert!(start <= end && end <= n && columns.len() >= n * count);
+    debug_assert!(lanes.len() >= count * (count + 1) / 2 * LANES);
+    let full = start + (end - start) / LANES * LANES;
+    for tile in (start..full).step_by(TILE) {
+        let stop = (tile + TILE).min(full);
+        let mut pair = 0;
+        for i in 0..count {
+            let left = &columns[i * n + tile..i * n + stop];
+            for j in i..count {
+                let right = &columns[j * n + tile..j * n + stop];
+                let mut sums = [0.0_f64; LANES];
+                sums.copy_from_slice(&lanes[pair * LANES..(pair + 1) * LANES]);
+                for (left, right) in left.chunks_exact(LANES).zip(right.chunks_exact(LANES)) {
+                    for lane in 0..LANES {
+                        sums[lane] = left[lane].mul_add(right[lane], sums[lane]);
+                    }
+                }
+                lanes[pair * LANES..(pair + 1) * LANES].copy_from_slice(&sums);
+                pair += 1;
+            }
+        }
+    }
+    let mut pair = 0;
+    for i in 0..count {
+        for j in i..count {
+            for row in full..end {
+                lanes[pair * LANES] =
+                    columns[i * n + row].mul_add(columns[j * n + row], lanes[pair * LANES]);
+            }
+            pair += 1;
+        }
+    }
+}
+
 #[inline(always)]
 pub fn scaled_add(source: &[f64], scale: f64, destination: &mut [f64]) {
     for (value, &source) in destination.iter_mut().zip(source) {

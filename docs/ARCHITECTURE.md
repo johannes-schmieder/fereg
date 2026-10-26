@@ -118,15 +118,19 @@ unless replaced. Admission reserves only the application banks; each
 construction admits itself against the fit's solver budget, and refusal
 leaves the diagonal recurrence untouched. `canonical_products/reduced.rs`
 holds the reduced recurrences, including the dense solve of small implicit
-components. Joint frames
-build weighted columns and their norms, Gram rows (`kernels::normalized_products`,
-which keeps each pair's eight FMA chains) and original-column acceptance scans
-in groups of `ceil(columns / workers)` columns per task, at most four, so one
-row scan serves several columns without leaving workers idle. Acceptance scans
+components. Joint frames build weighted columns and their norms and run
+original-column acceptance scans in groups of `ceil(columns / workers)`
+columns per task, at most four, so one row scan serves several columns
+without leaving workers idle. The bank keeps the projected weighted columns
+unnormalized; their norms scale only the small products. One tiled pass
+(`kernels::gram_panel`) over the response and the bank forms the Gram and
+the initial finite scores in 128 fixed row leaves of an admitted partial
+bank, merged in leaf order; wider banks keep the pairwise
+`kernels::normalized_products`. Acceptance scans
 and response checks (`ols/joint_checks.rs`) reduce fixed row leaves over
 `parallel::fixed_tree_reduce`, whose tree depends only on the row count. With
-the projected bank `Z = P X`, reconstruction forms `P(y - D a) - Z b` and the
-finite scores `Z'r` in parallel instead of rescanning row-major
+the projected bank `Z = P X`, reconstruction forms `P(y - D a) - Z (b/s)` and
+the finite scores `Z'r / s` in parallel instead of rescanning row-major
 representatives.
 
 ## Host and execution

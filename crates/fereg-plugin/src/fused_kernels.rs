@@ -36,6 +36,7 @@ mod x86_64 {
         ordered_dot,
         normalized_product,
         normalized_products,
+        gram_panel,
         scaled_add,
         coefficient_add,
         grouped_cross,
@@ -722,6 +723,30 @@ mod x86_64 {
     }
 
     #[target_feature(enable = "fma")]
+    unsafe fn gram_panel_fma(
+        columns: &[f64],
+        n: usize,
+        count: usize,
+        start: usize,
+        end: usize,
+        lanes: &mut [f64],
+    ) {
+        fereg_core::kernels::gram_panel(columns, n, count, start, end, lanes)
+    }
+
+    fn gram_panel(
+        columns: &[f64],
+        n: usize,
+        count: usize,
+        start: usize,
+        end: usize,
+        lanes: &mut [f64],
+    ) {
+        // SAFETY: reachable only through `hardware()`, after FMA/AVX detection.
+        unsafe { gram_panel_fma(columns, n, count, start, end, lanes) }
+    }
+
+    #[target_feature(enable = "fma")]
     unsafe fn weighted_product_fma(left: &[f64], roots: &[f64], right: &[f64]) -> f64 {
         fereg_core::kernels::weighted_product(left, roots, right)
     }
@@ -942,6 +967,13 @@ mod x86_64 {
                         portable.iter().map(|v| v.to_bits()).collect::<Vec<_>>()
                     );
                 }
+                let (mut hardware, mut portable) = (vec![0.0; 48], vec![0.0; 48]);
+                (h.gram_panel)(&columns, length, 3, 0, length, &mut hardware);
+                p::gram_panel(&columns, length, 3, 0, length, &mut portable);
+                assert_eq!(
+                    hardware.iter().map(|v| v.to_bits()).collect::<Vec<_>>(),
+                    portable.iter().map(|v| v.to_bits()).collect::<Vec<_>>()
+                );
                 let weights: Vec<_> = right.iter().map(|v| v.abs() + 0.5).collect();
                 assert_eq!(
                     (h.weighted_product)(&left, &weights, &right).to_bits(),

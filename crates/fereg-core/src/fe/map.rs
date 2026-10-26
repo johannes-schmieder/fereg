@@ -1788,6 +1788,49 @@ pub(super) fn reusable_norm(values: &[f64]) -> f64 {
     reusable_norm_finish(state)
 }
 
+/// A column's Euclidean norm from direct squares, rescanned with the scaled
+/// recurrence when its largest square leaves the range where direct
+/// summation neither overflows nor drops a relevant term.
+#[derive(Clone, Copy, Default)]
+pub(crate) struct SquareSum {
+    maximum: f64,
+    sum: f64,
+}
+
+impl SquareSum {
+    #[inline]
+    pub(crate) fn add(&mut self, value: f64) {
+        let square = value * value;
+        self.maximum = self.maximum.max(square);
+        self.sum += square;
+    }
+
+    pub(crate) fn finish(self, values: &[f64]) -> f64 {
+        if (1e-280..=1e280).contains(&self.maximum) && self.sum.is_finite() {
+            self.sum.sqrt()
+        } else {
+            reusable_norm(values)
+        }
+    }
+}
+
+/// The norm of `values` over fixed leaves of direct squares, as
+/// [`SquareSum`]: the leaf tree depends only on the length.
+pub(crate) fn parallel_norm(values: &[f64]) -> f64 {
+    let leaf = |rows: std::ops::Range<usize>| -> Result<SquareSum> {
+        let mut sum = SquareSum::default();
+        values[rows].iter().for_each(|&value| sum.add(value));
+        Ok(sum)
+    };
+    let merge = |left: SquareSum, right: SquareSum| SquareSum {
+        maximum: left.maximum.max(right.maximum),
+        sum: left.sum + right.sum,
+    };
+    crate::parallel::fixed_tree_reduce(values.len(), 8192, &leaf, &merge)
+        .expect("norm leaves are infallible")
+        .finish(values)
+}
+
 /// One row of [`reusable_norm`]'s scaled `(scale, sum)` recurrence.
 #[inline(always)]
 pub(super) fn reusable_norm_step(value: f64, (scale, sum): &mut (f64, f64)) {

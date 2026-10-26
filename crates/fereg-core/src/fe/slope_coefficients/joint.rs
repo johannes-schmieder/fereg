@@ -68,6 +68,23 @@ impl JointFiniteDesign for DenseMatrix {
     }
 }
 
+/// Row leaves of the tiled Gram: a fixed count, so the bank is admitted once
+/// and the reduction order depends only on the row count.
+const GRAM_LEAVES: usize = 128;
+/// Bank columns (with the response) the tiled Gram covers.
+const GRAM_COLUMNS: usize = 24;
+
+/// Eight-lane upper pair partials of the response and `controls` columns, or
+/// none beyond [`GRAM_COLUMNS`].
+fn gram_lanes(controls: usize) -> usize {
+    let count = controls + 1;
+    if count > GRAM_COLUMNS {
+        0
+    } else {
+        count * (count + 1) / 2 * 8
+    }
+}
+
 /// Optional acceleration of the retained-effect block of the joint recurrence.
 /// It owns no acceptance authority: reconstruction and the independent
 /// certificate still decide every frame.
@@ -120,6 +137,8 @@ pub(crate) struct JointFiniteWorkspace {
     product: Vec<f64>,
     preconditioned: Vec<f64>,
     beta: Vec<f64>,
+    /// Eight-lane upper pair partials of the tiled Gram, one bank per leaf.
+    gram: Vec<f64>,
     pub(crate) residuals: DenseMatrix,
     pub(crate) report: Option<SolveReport>,
     max_controls: usize,
@@ -135,6 +154,7 @@ fn failed() -> FeregError {
 
 // Independent accumulation chains remove the dense Gram's serial dependency.
 // The reduction order is independent of worker scheduling.
+#[cfg(any(target_arch = "aarch64", target_feature = "fma", test))]
 pub(crate) fn normalized_product(left: &[f64], right: &[f64]) -> f64 {
     crate::kernels::dispatch!(crate::kernels::installed(), normalized_product(left, right))
 }
@@ -230,11 +250,13 @@ impl JointFiniteWorkspace {
             .checked_add(k)
             .and_then(|n| n.checked_mul(5))
             .ok_or_else(allocation)?;
+        let gram = (gram_lanes(controls) * GRAM_LEAVES) as u128;
         let values = (p as u128)
             .checked_mul(k)
             .and_then(|n| n.checked_add(square))
             .and_then(|n| n.checked_add(small))
             .and_then(|n| n.checked_add(vectors))
+            .and_then(|n| n.checked_add(gram))
             .and_then(|n| n.checked_add(design.nobs() as u128))
             .ok_or_else(allocation)?;
         values
@@ -259,6 +281,7 @@ impl JointFiniteWorkspace {
             product: filled(size, 0.)?,
             preconditioned: filled(size, 0.)?,
             beta: filled(controls, 0.)?,
+            gram: filled(gram_lanes(controls) * GRAM_LEAVES, 0.)?,
             residuals: DenseMatrix::from_row_major(design.nobs(), 1, filled(design.nobs(), 0.)?)?,
             report: None,
             max_controls: controls,
@@ -279,6 +302,7 @@ impl JointFiniteWorkspace {
             &self.product,
             &self.preconditioned,
             &self.beta,
+            &self.gram,
         ]
         .iter()
         .map(|v| v.capacity())
@@ -447,10 +471,11 @@ impl JointFiniteWorkspace {
         })
     }
 
-    /// With the projected bank `z = P X` of normalized finite columns,
-    /// `P(y - D a - X b) = P(y - D a) - Z b`, and `X'r = Z'r` for such a
-    /// residual: row panels and columns proceed in parallel and the
-    /// row-major originals are not rescanned. `observations` holds `D a`.
+    /// With the projected bank `z = P X` of weighted finite columns and their
+    /// norms `s`, `P(y - D a - X b) = P(y - D a) - Z (b / s)`, and
+    /// `X'r = Z'r` for such a residual: row panels and columns proceed in
+    /// parallel and the row-major originals are not rescanned.
+    /// `observations` holds `D a`.
     fn reconstruct_projected(
         &mut self,
         op: &Operator<'_>,
@@ -469,15 +494,17 @@ impl JointFiniteWorkspace {
             .for_each(|(value, &input)| *value = input - *value);
         op.project_eliminated(observations, scratch);
         let beta = &self.coefficients[p..p + k];
+        let scales = &self.scales[..k];
         observations
             .par_chunks_mut(ROWS)
             .enumerate()
             .for_each(|(panel, target)| {
                 let start = panel * ROWS;
-                for (j, &coefficient) in beta.iter().enumerate() {
+                for (j, (&coefficient, &scale)) in beta.iter().zip(scales).enumerate() {
                     let column = &z[j * n + start..j * n + start + target.len()];
+                    let coefficient = -coefficient / scale;
                     for (value, &x) in target.iter_mut().zip(column) {
-                        *value = (-coefficient).mul_add(x, *value);
+                        *value = coefficient.mul_add(x, *value);
                     }
                 }
             });
@@ -485,8 +512,8 @@ impl JointFiniteWorkspace {
         let observations = &*observations;
         self.residual[p..p + k]
             .par_iter_mut()
-            .zip(z.par_chunks(n))
-            .for_each(|(sum, column)| *sum = dot(column, observations));
+            .zip(z.par_chunks(n).zip(scales.par_iter()))
+            .for_each(|(sum, (column, &scale))| *sum = dot(column, observations) / scale);
         for &sum in &self.residual[p..p + k] {
             if !sum.is_finite() {
                 return f64::INFINITY;
@@ -551,76 +578,61 @@ impl JointFiniteWorkspace {
         let (original, bank) = owner.columns.split_at_mut(n);
         let z = &mut bank[..n * k];
         let roots = &mut owner.roots;
-        let (worker, helpers) = owner.workers.split_first_mut().expect("admitted worker");
-        let observations = &mut worker.observations;
-        let scratch = &mut worker.eliminated_scratch;
-        for row in 0..n {
-            roots[row] = weights[row].sqrt();
-            original[row] = response[row] * roots[row];
-        }
-        let ynorm = super::super::map::reusable_norm(original);
+        roots
+            .par_iter_mut()
+            .zip(original.par_iter_mut())
+            .zip(weights.par_iter().zip(response.par_iter()))
+            .for_each(|((root, value), (&weight, &response))| {
+                *root = weight.sqrt();
+                *value = response * *root;
+            });
+        let ynorm = super::super::map::parallel_norm(original);
         if !ynorm.is_finite() {
             return Err(failed());
         }
         let scale_y = if ynorm == 0. { 1. } else { ynorm };
-        for value in original.iter_mut() {
-            *value /= scale_y;
-        }
-        let roots = roots.as_slice();
+        original.par_iter_mut().for_each(|value| *value /= scale_y);
+        let roots = &*roots;
         // Row-major controls are streamed once per group of selected columns,
-        // not once per column. Each entry keeps its product and each column
-        // its row-order norm recurrence.
+        // not once per column. The bank keeps weighted, unnormalized columns;
+        // their norms scale the small products below instead of the bank.
         let width = controls.ncols();
         let columns = column_group_width(k);
         z.par_chunks_mut(columns * n)
             .zip(selected.par_chunks(columns))
             .zip(self.scales[..k].par_chunks_mut(columns))
             .for_each(|((block, group), scales)| {
-                let mut norms = [(0.0_f64, 1.0_f64); MAX_COLUMN_GROUP];
+                let mut norms = [super::super::map::SquareSum::default(); MAX_COLUMN_GROUP];
                 for (row, values) in controls.as_slice().chunks_exact(width).enumerate() {
                     for (column, (&source, norm)) in group.iter().zip(&mut norms).enumerate() {
                         let value = values[source] * roots[row];
                         block[column * n + row] = value;
-                        super::super::map::reusable_norm_step(value, norm);
+                        norm.add(value);
                     }
                 }
-                for (scale, &norm) in scales.iter_mut().zip(&norms) {
-                    *scale = super::super::map::reusable_norm_finish(norm);
+                for (column, (scale, norm)) in scales.iter_mut().zip(&norms).enumerate() {
+                    *scale = norm.finish(&block[column * n..(column + 1) * n]);
                 }
             });
         z.par_chunks_mut(n)
-            .zip(self.scales[..k].par_iter_mut())
+            .zip(self.scales[..k].par_iter())
             .zip(self.column_scratch[..q * k].par_chunks_mut(q))
             .zip(self.cross[..p * k].par_chunks_mut(p))
-            .try_for_each(|(((column, scale), work), cross)| -> Result<()> {
-                if !scale.is_finite() || *scale <= 0. {
+            .try_for_each(|(((column, &scale), work), cross)| -> Result<()> {
+                if !scale.is_finite() || scale <= 0. {
                     return Err(failed());
-                }
-                for value in column.iter_mut() {
-                    *value /= *scale;
                 }
                 op.project_eliminated(column, work);
                 op.transpose(column, cross, false);
+                cross.iter_mut().for_each(|value| *value /= scale);
                 Ok(())
             })?;
-        // Blocks of Gram rows share each streamed column tile; every entry
-        // keeps the pairwise normalized product's bits.
-        let hardware = crate::kernels::installed();
-        let block_rows = column_group_width(k);
-        self.hessian[..k * k]
-            .par_chunks_mut(block_rows * k)
-            .enumerate()
-            .for_each(|(block, rows)| {
-                crate::kernels::dispatch!(
-                    hardware,
-                    normalized_products(z, n, k, block_rows * block, rows.len() / k, rows)
-                );
-            });
-        for i in 0..k {
-            for j in 0..i {
-                self.hessian[i * k + j] = self.hessian[j * k + i];
-            }
-        }
+        self.normalized_products(n, k, p, &owner.columns[..n * (k + 1)]);
+        let (original, bank) = owner.columns.split_at_mut(n);
+        let z = &bank[..n * k];
+        let (worker, helpers) = owner.workers.split_first_mut().expect("admitted worker");
+        let observations = &mut worker.observations;
+        let scratch = &mut worker.eliminated_scratch;
         self.iterate(
             &op,
             controls,
@@ -635,6 +647,77 @@ impl JointFiniteWorkspace {
             config,
             block,
         )
+    }
+
+    /// The normalized Gram of the projected bank and its initial finite
+    /// scores against the response, from one tiled pass over
+    /// `[original, z_0, ...]`: a fixed number of row leaves keep eight FMA
+    /// chains per pair in the admitted bank and merge in leaf order.
+    fn normalized_products(&mut self, n: usize, k: usize, p: usize, bank: &[f64]) {
+        let count = k + 1;
+        let pairs = count * (count + 1) / 2 * 8;
+        if count > GRAM_COLUMNS || self.gram.len() < pairs * GRAM_LEAVES {
+            return self.wide_products(n, k, p, bank);
+        }
+        let hardware = crate::kernels::installed();
+        let rows = n.div_ceil(GRAM_LEAVES).div_ceil(8) * 8;
+        self.gram[..pairs * GRAM_LEAVES]
+            .par_chunks_mut(pairs)
+            .enumerate()
+            .for_each(|(leaf, lanes)| {
+                lanes.fill(0.0);
+                let (start, end) = ((leaf * rows).min(n), ((leaf + 1) * rows).min(n));
+                crate::kernels::dispatch!(hardware, gram_panel(bank, n, count, start, end, lanes));
+            });
+        let (total, leaves) = self.gram[..pairs * GRAM_LEAVES].split_at_mut(pairs);
+        for leaf in leaves.chunks_exact(pairs) {
+            for (sum, &value) in total.iter_mut().zip(leaf) {
+                *sum += value;
+            }
+        }
+        let mut pair = 0;
+        for i in 0..count {
+            for j in i..count {
+                let sum: f64 = self.gram[pair * 8..(pair + 1) * 8].iter().sum();
+                match i {
+                    0 if j > 0 => self.residual[p + j - 1] = sum / self.scales[j - 1],
+                    0 => {}
+                    _ => {
+                        let value = sum / self.scales[i - 1] / self.scales[j - 1];
+                        self.hessian[(i - 1) * k + j - 1] = value;
+                        self.hessian[(j - 1) * k + i - 1] = value;
+                    }
+                }
+                pair += 1;
+            }
+        }
+    }
+
+    /// Wider banks: Gram row blocks of the pairwise kernel and per-column dots.
+    fn wide_products(&mut self, n: usize, k: usize, p: usize, bank: &[f64]) {
+        let (original, z) = bank.split_at(n);
+        let hardware = crate::kernels::installed();
+        let block_rows = column_group_width(k);
+        self.hessian[..k * k]
+            .par_chunks_mut(block_rows * k)
+            .enumerate()
+            .for_each(|(block, rows)| {
+                crate::kernels::dispatch!(
+                    hardware,
+                    normalized_products(z, n, k, block_rows * block, rows.len() / k, rows)
+                );
+            });
+        for i in 0..k {
+            for j in i..k {
+                let value = self.hessian[i * k + j] / self.scales[i] / self.scales[j];
+                self.hessian[i * k + j] = value;
+                self.hessian[j * k + i] = value;
+            }
+        }
+        self.residual[p..p + k]
+            .par_iter_mut()
+            .zip(z.par_chunks(n).zip(self.scales[..k].par_iter()))
+            .for_each(|(value, (column, &scale))| *value = dot(column, original) / scale);
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -682,12 +765,6 @@ impl JointFiniteWorkspace {
         observations.copy_from_slice(original);
         op.project_eliminated(observations, scratch);
         op.transpose(observations, &mut self.residual[..p], false);
-        if let Some(z) = z {
-            self.residual[p..p + k]
-                .par_iter_mut()
-                .zip(z.par_chunks(n))
-                .for_each(|(value, column)| *value = dot(column, original));
-        }
         self.precondition(p, k, block.as_deref_mut())?;
         self.direction[..dimension].copy_from_slice(&self.preconditioned[..dimension]);
         let mut square = dot(
@@ -776,8 +853,8 @@ impl JointFiniteWorkspace {
                 if let Some(z) = z {
                     for row in 0..n {
                         for j in 0..k {
-                            observations[row] =
-                                z[j * n + row].mul_add(self.direction[p + j], observations[row]);
+                            observations[row] = z[j * n + row]
+                                .mul_add(self.direction[p + j] / self.scales[j], observations[row]);
                         }
                     }
                 } else {
@@ -794,7 +871,8 @@ impl JointFiniteWorkspace {
                 op.transpose(observations, &mut self.product[..p], false);
                 if let Some(z) = z {
                     for j in 0..k {
-                        self.product[p + j] = dot(&z[j * n..(j + 1) * n], observations);
+                        self.product[p + j] =
+                            dot(&z[j * n..(j + 1) * n], observations) / self.scales[j];
                     }
                 } else {
                     self.product[p..dimension].fill(0.);

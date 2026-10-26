@@ -19,8 +19,9 @@
 - The retained-coefficient refinement after canonical PPML products and the
   write of dense canonical products run in parallel.
 - PPML joint frames run their fresh original-column and response checks in
-  parallel over fixed row blocks and rebuild residuals from the projected
-  columns, removing several sequential passes per iteration.
+  parallel over fixed row blocks, rebuild residuals from the projected
+  columns and form their Gram and initial scores in one tiled pass, removing
+  several sequential and repeated passes per iteration.
 - PPML Auto with exactly two fixed effects reuses one CMG preconditioner
   across IRLS iterations on weakly connected designs. An iteration whose FE
   solve still needs 64 diagonal steps builds it; strict re-solves rebuild it
