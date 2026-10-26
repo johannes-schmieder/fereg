@@ -140,6 +140,44 @@ Complete four-million-row dense three-FE fits took 5% longer at four workers
 and 21% longer at 28, so it was not adopted
 ([record](../bench/results/r4-row-streaming-20261026.json)).
 
+## PPML two-FE CMG reuse
+
+PPML Auto with exactly two intercept FEs reuses one CMG hierarchy across IRLS
+frames, as specified in [SPEC](SPEC.md#qualified-auto-routing-and-developer-comparisons).
+This branch result awaits Johannes's decision; the
+[record](../bench/results/ppml-two-fe-cmg-20261026.json) retains every timing.
+On one whole node (`scc-wo4`, Xeon E5-2680 v4), campaign-generator PPML inputs
+with 16 regressors ran five alternating rounds per cell against shipped beta.6:
+
+| Two sparse FEs | Workers | beta.6 s | Candidate s | Paired ratio |
+| --- | ---: | ---: | ---: | ---: |
+| 1,000,000 rows | 4 | 25.61 | 17.76 | 0.704 |
+| 1,000,000 rows | 28 | 19.68 | 12.95 | 0.658 |
+| 4,000,000 rows | 4 | 106.76 | 70.29 | 0.651 |
+| 4,000,000 rows | 28 | 81.85 | 52.21 | 0.639 |
+
+These weakly connected inputs install the hierarchy. Coefficients and covariance
+stay within 6e-8 and 6e-11 of the §20 envelopes, discrete fields are exact,
+every arm repeats bit for bit across rounds, and 4- and 28-worker results agree
+within the envelopes. AKM and dense inputs never install a hierarchy and are bit
+for bit identical to beta.6; their paired ratios lie in 0.95-1.06. AKM at four
+workers exceeded the max(5%, 1 ms) bound (1.062 at one million rows, 1.048 at
+four million). A same-node control (`scc-yk4`, six rotated rounds) of shipped
+beta.6, a fresh build of the unchanged parent and the candidate on these exact
+cells found medians within 2% at one million rows, but up to 10% apart at four
+million: AKM 23.9, 22.6 and 22.7 s with a bimodal spread in every build, dense
+20.3, 19.0 and 20.8 s. Shipped beta.6 and the fresh parent build have identical
+runtime source, so differences of this size on unchanged arithmetic are not
+attributable on these nodes. These cells are reported as exceptions, not passes.
+
+Arithmetic-preserving joint-frame passes (tiled Gram products, grouped fills
+and norms, grouped acceptance scans, groups sized by the team width) keep exact
+outputs; on `scc-yk1` they ran at 0.95-0.99 of the CMG commit with four workers
+and 0.99-1.01 with 28. A fixed four-column grouping was 5-7% slower at 28 workers
+and was replaced. The dense Poisson oracle covers weak chain and AKM graphs that
+build and reuse the hierarchy. Both commits replay the 73-case corpus exactly,
+and the full source-only suite passed.
+
 ## Package checks
 
 The beta.6 package ships the many-FE geometry policy.
@@ -233,5 +271,9 @@ All 50 GitHub release assets matched their local SHA-256 checksums and sizes.
   worker on Linux. This is an accepted exception, not a passed comparison.
 - The Mac plugin contains Apple Silicon and Intel slices. Licensed installation
   testing is on Apple Silicon; native Intel-host Stata testing is outstanding.
+- PPML CMG reuse helps weakly connected two-FE designs only. Dense two-FE PPML
+  gains only from the exact passes and still trails fixest at four million rows.
+  On weak graphs the first strict checkpoint is commonly rejected and IRLS
+  resumes for two frames; that protocol cost is unchanged.
 - GitHub Actions remain disabled; checks run locally or on the authorized SCC
   and private Windows hosts.

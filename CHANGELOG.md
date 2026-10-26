@@ -7,10 +7,14 @@
   solve still needs 64 diagonal steps builds it; strict re-solves rebuild it
   once on current weights. Each estimation builds it at most twice, and every
   solve still passes its unchanged certificates.
+- On Linux, a two-effect PPML design with 2% worker mobility ran in about
+  0.64-0.70 of beta.6's time at one and four million rows with 4 and 28
+  workers.
 - Results agree with beta.6 within the documented tolerances; sample, rank,
   omission and separation decisions are unchanged. Iteration counts can
   differ. Designs whose solves finish quickly, including well-connected and
-  dense two-effect designs, are unchanged bit for bit.
+  dense two-effect designs, are unchanged bit for bit. Faster PPML Gram
+  products, column scans and norms keep their exact results.
 
 ## 0.5.0 beta.6 — 2026-10-25
 

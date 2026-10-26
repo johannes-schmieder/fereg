@@ -110,7 +110,11 @@ current level masses `D`. Categorical reprojections use the h16/k1 route; a
 hierarchy from an earlier weight generation is set aside, charged as resident
 to the rebuild, and reinstated unless replaced. Admission reserves only the
 application banks; each construction admits itself against the fit's solver
-budget, and refusal leaves the diagonal recurrence untouched.
+budget, and refusal leaves the diagonal recurrence untouched. Joint frames
+build weighted columns and their norms, Gram rows (`kernels::normalized_products`,
+which keeps each pair's eight FMA chains) and original-column acceptance scans
+in groups of `ceil(columns / workers)` columns per task, at most four, so one
+row scan serves several columns without leaving workers idle.
 
 ## Host and execution
 
