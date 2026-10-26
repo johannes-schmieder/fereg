@@ -12,6 +12,9 @@
   checkpoints of weakly connected designs no longer fall back to the slower
   categorical solve. Small graph components are solved directly, and dense
   reduced matrices are no longer assembled for iterative solves.
+- PPML joint frames run their fresh original-column and response checks in
+  parallel over fixed row blocks and rebuild residuals from the projected
+  columns, removing several sequential passes per iteration.
 - PPML Auto with exactly two fixed effects reuses one CMG preconditioner
   across IRLS iterations on weakly connected designs. An iteration whose FE
   solve still needs 64 diagonal steps builds it; strict re-solves rebuild it

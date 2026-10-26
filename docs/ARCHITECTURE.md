@@ -121,7 +121,12 @@ components. Joint frames
 build weighted columns and their norms, Gram rows (`kernels::normalized_products`,
 which keeps each pair's eight FMA chains) and original-column acceptance scans
 in groups of `ceil(columns / workers)` columns per task, at most four, so one
-row scan serves several columns without leaving workers idle.
+row scan serves several columns without leaving workers idle. Acceptance scans
+and response checks (`ols/joint_checks.rs`) reduce fixed row leaves over
+`parallel::fixed_tree_reduce`, whose tree depends only on the row count. With
+the projected bank `Z = P X`, reconstruction forms `P(y - D a) - Z b` and the
+finite scores `Z'r` in parallel instead of rescanning row-major
+representatives.
 
 ## Host and execution
 

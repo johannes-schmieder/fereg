@@ -149,6 +149,42 @@ pub(crate) fn reduction_blocks(
         .min((target_bytes / bytes.max(1)).max(1)))
 }
 
+/// Reduce `0..items` over a binary tree of leaves of at most `leaf` items.
+/// The tree depends only on `items` and `leaf`, so every team width and
+/// schedule merges the same partials in the same order. Allocation-free; the
+/// first error in physical order wins.
+pub(crate) fn fixed_tree_reduce<T, L, M>(
+    items: usize,
+    leaf: usize,
+    leaf_fn: &L,
+    merge: &M,
+) -> Result<T>
+where
+    T: Send,
+    L: Fn(std::ops::Range<usize>) -> Result<T> + Sync,
+    M: Fn(T, T) -> T + Sync,
+{
+    fn node<T, L, M>(start: usize, end: usize, leaf: usize, leaf_fn: &L, merge: &M) -> Result<T>
+    where
+        T: Send,
+        L: Fn(std::ops::Range<usize>) -> Result<T> + Sync,
+        M: Fn(T, T) -> T + Sync,
+    {
+        let blocks = (end - start).div_ceil(leaf);
+        if blocks <= 1 {
+            return leaf_fn(start..end);
+        }
+        let middle = start + blocks / 2 * leaf;
+        let (left, right) = rayon::join(
+            || node(start, middle, leaf, leaf_fn, merge),
+            || node(middle, end, leaf, leaf_fn, merge),
+        );
+        let left = left?;
+        Ok(merge(left, right?))
+    }
+    node(0, items, leaf.max(1), leaf_fn, merge)
+}
+
 /// Partition indexed work into the planned lanes. Rayon's minimum-length hint
 /// is not a partition: binary splitting can leave half the planned lanes idle.
 /// Kernels retain their item indices, arithmetic leaves and ordered merges.
@@ -668,6 +704,52 @@ impl ThreadTeam {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn fixed_tree_reduction_is_team_independent_and_reports_the_first_error() {
+        let values: Vec<f64> = (0..100_003)
+            .map(|i| (i as f64 * 0.731).sin() * 10f64.powi(i % 41 - 20))
+            .collect();
+        let leaf = |rows: std::ops::Range<usize>| -> crate::error::Result<f64> {
+            Ok(values[rows].iter().sum())
+        };
+        let merge = |left: f64, right: f64| left + right;
+        let mut bits = Vec::new();
+        for threads in [1, 2, 3, 8] {
+            for leaf_rows in [1, 7, 4096, 200_000] {
+                let pool = rayon::ThreadPoolBuilder::new()
+                    .num_threads(threads)
+                    .build()
+                    .unwrap();
+                let sum = pool
+                    .install(|| super::fixed_tree_reduce(values.len(), leaf_rows, &leaf, &merge))
+                    .unwrap();
+                bits.push((leaf_rows, sum.to_bits()));
+            }
+        }
+        for (leaf_rows, value) in &bits {
+            assert_eq!(
+                bits.iter().find(|(rows, _)| rows == leaf_rows).unwrap().1,
+                *value
+            );
+        }
+        assert_eq!(
+            super::fixed_tree_reduce(0, 8, &|rows| Ok(rows.len()), &|a: usize, b| a + b).unwrap(),
+            0
+        );
+        let failing = |rows: std::ops::Range<usize>| -> crate::error::Result<usize> {
+            if rows.contains(&5) || rows.contains(&90) {
+                Err(super::FeregError::new(
+                    super::ErrorCode::InvalidData,
+                    format!("leaf {}", rows.start),
+                ))
+            } else {
+                Ok(rows.len())
+            }
+        };
+        let error = super::fixed_tree_reduce(100, 4, &failing, &|a, b| a + b).unwrap_err();
+        assert_eq!(error.message, "leaf 4");
+    }
+
     #[test]
     fn parallel_copy_is_bitwise_on_and_off_installed_teams() {
         let input: Vec<f64> = (0..70_001)

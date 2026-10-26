@@ -329,11 +329,15 @@ impl JointFiniteWorkspace {
         selected: &[usize],
         roots: &[f64],
         original: &[f64],
+        z: Option<&[f64]>,
         observations: &mut [f64],
         scratch: &mut [f64],
     ) -> Result<f64> {
         let p = op.coefficients;
         op.forward(&self.coefficients[..p], observations);
+        if let Some(z) = z {
+            return Ok(self.reconstruct_projected(op, z, original, observations, scratch));
+        }
         let direct = reconstruct_direct_columns(
             controls,
             selected,
@@ -436,6 +440,59 @@ impl JointFiniteWorkspace {
         } else {
             maximum
         })
+    }
+
+    /// With the projected bank `z = P X` of normalized finite columns,
+    /// `P(y - D a - X b) = P(y - D a) - Z b`, and `X'r = Z'r` for such a
+    /// residual: row panels and columns proceed in parallel and the
+    /// row-major originals are not rescanned. `observations` holds `D a`.
+    fn reconstruct_projected(
+        &mut self,
+        op: &Operator<'_>,
+        z: &[f64],
+        original: &[f64],
+        observations: &mut [f64],
+        scratch: &mut [f64],
+    ) -> f64 {
+        const ROWS: usize = 1024;
+        let p = op.coefficients;
+        let n = original.len();
+        let k = z.len() / n.max(1);
+        observations
+            .par_iter_mut()
+            .zip(original.par_iter())
+            .for_each(|(value, &input)| *value = input - *value);
+        op.project_eliminated(observations, scratch);
+        let beta = &self.coefficients[p..p + k];
+        observations
+            .par_chunks_mut(ROWS)
+            .enumerate()
+            .for_each(|(panel, target)| {
+                let start = panel * ROWS;
+                for (j, &coefficient) in beta.iter().enumerate() {
+                    let column = &z[j * n + start..j * n + start + target.len()];
+                    for (value, &x) in target.iter_mut().zip(column) {
+                        *value = (-coefficient).mul_add(x, *value);
+                    }
+                }
+            });
+        let mut maximum = op.transpose(observations, &mut self.residual[..p], true);
+        let observations = &*observations;
+        self.residual[p..p + k]
+            .par_iter_mut()
+            .zip(z.par_chunks(n))
+            .for_each(|(sum, column)| *sum = dot(column, observations));
+        for &sum in &self.residual[p..p + k] {
+            if !sum.is_finite() {
+                return f64::INFINITY;
+            }
+            maximum = maximum.max(sum.abs());
+        }
+        if observations.iter().any(|v| !v.is_finite()) {
+            f64::INFINITY
+        } else {
+            maximum
+        }
     }
 
     /// Reuse the existing normalized RHS bank for y and projected finite columns.
@@ -621,9 +678,10 @@ impl JointFiniteWorkspace {
         op.project_eliminated(observations, scratch);
         op.transpose(observations, &mut self.residual[..p], false);
         if let Some(z) = z {
-            for j in 0..k {
-                self.residual[p + j] = dot(&z[j * n..(j + 1) * n], original);
-            }
+            self.residual[p..p + k]
+                .par_iter_mut()
+                .zip(z.par_chunks(n))
+                .for_each(|(value, column)| *value = dot(column, original));
         }
         self.precondition(p, k, block.as_deref_mut())?;
         self.direction[..dimension].copy_from_slice(&self.preconditioned[..dimension]);
@@ -642,6 +700,7 @@ impl JointFiniteWorkspace {
                     selected,
                     roots,
                     original,
+                    z,
                     observations,
                     scratch,
                 )?;

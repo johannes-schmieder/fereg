@@ -4,11 +4,13 @@ use super::{certify_frozen_combined_predictor, LinearReconstructionCertificate};
 fn joint_response_checks_match_separate_fresh_passes_and_reject_invalid_inputs() {
     use super::{check_joint_response, stable_weighted_norm, weighted_mean_slice};
     let n = 12_291;
-    for threads in [1, 4] {
+    let mut reference: Vec<(u64, Option<u64>)> = Vec::new();
+    for threads in [1, 4, 7] {
         let pool = rayon::ThreadPoolBuilder::new()
             .num_threads(threads)
             .build()
             .unwrap();
+        let mut case = 0;
         for response_scale in [0., 1e-150, 1., 1e150] {
             for weight_scale in [1e-150, 1., 1e150] {
                 let response: Vec<_> = (0..n)
@@ -35,20 +37,38 @@ fn joint_response_checks_match_separate_fresh_passes_and_reject_invalid_inputs()
                             check_joint_response(&response, &residuals, &weights, needs_mean)
                         })
                         .unwrap();
-                    assert_eq!(result.reference_norm.to_bits(), expected.to_bits());
+                    // Fixed leaves reorder the sequential passes' rounding only;
+                    // a leaf's direct square sum carries at most its length in
+                    // relative rounding.
+                    assert!((result.reference_norm - expected).abs() <= 1e-12 * expected);
                     assert_eq!(
                         result.reconstruction,
                         certify_frozen_combined_predictor(&response, &residuals).unwrap()
                     );
-                    assert_eq!(
-                        result.response_mean,
-                        needs_mean.then(|| weighted_mean_slice(
+                    let mean = needs_mean.then(|| {
+                        weighted_mean_slice(
                             &response,
                             crate::fe::BorrowedMapWeights::Provided(&weights),
                             scale,
                         )
-                        .unwrap())
+                        .unwrap()
+                    });
+                    assert_eq!(result.response_mean.is_some(), mean.is_some());
+                    if let (Some(actual), Some(mean)) = (result.response_mean, mean) {
+                        let magnitude = 8. * response_scale;
+                        assert!((actual - mean).abs() <= 1e-14 * magnitude.max(mean.abs()));
+                    }
+                    // The leaf tree, not the team, fixes every bit.
+                    let bits = (
+                        result.reference_norm.to_bits(),
+                        result.response_mean.map(f64::to_bits),
                     );
+                    if threads == 1 {
+                        reference.push(bits);
+                    } else {
+                        assert_eq!(reference[case], bits);
+                    }
+                    case += 1;
                 }
             }
         }
