@@ -67,9 +67,11 @@ def collect(context_path, output):
              'smoke/results.json', 'smoke/COMPLETE', 'logs/setup.sge', 'logs/smoke.sge',
              'logs/build.log', 'logs/dependency-fetch.log', 'logs/clock-build.log', 'logs/harness-tests.log',
              'logs/reference-prepare.log']
-    files += [f'task-{i}/{name}' for i in range(1, 5) for name in ['results.json', 'COMPLETE']]
+    bundles = json.loads(remote('cat '+shlex.quote(root+'/manifest.json')))['policy']['bundles']
+    tasks = [f'task-{i}' for i in range(1, bundles+1)]
+    files += [f'{task}/{name}' for task in tasks for name in ['results.json', 'COMPLETE']]
     if context.get('host_observation_required'):
-        files += [f'host-{label}/{name}' for label in ['smoke', 'task-1', 'task-2', 'task-3', 'task-4']
+        files += [f'host-{label}/{name}' for label in ['smoke', *tasks]
                   for name in ['host.json', 'host-observations.jsonl']]
     files += [name for name in context.get('launcher_sha256', {}) if name not in files]
     if context.get('reused_build_job'):
