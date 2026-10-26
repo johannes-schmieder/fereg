@@ -195,10 +195,37 @@ measured and rejected (slower, or no fewer iterations).
 
 ## Package checks
 
-The beta.6 package ships the many-FE geometry policy.
+The beta.7 package ships the lean PPML two-FE protocol and CMG reuse.
 [Package metadata](../dist/fereg-native.json) records each binary's build revision,
-checksum and corresponding-source identity. The Linux and macOS plugins are the
-qualified `99f0134d` builds; Windows was built at `07d4da6d`, and the runtime
+checksum and corresponding-source identity. The Linux plugin is the qualified
+`277c5d11` build measured above. Windows was built at `7a33fc20`, and the
+universal macOS plugin was built offline from the corresponding-source archive
+packaged at `7a33fc20` with a passing dependency audit (no advisories). The
+runtime identity is unchanged between `277c5d11` and `7a33fc20`.
+
+The default `./scripts/run_tests.sh` passed at `8506a65a`: 319 Python tests,
+Rust unit and independent numerical integration tests, Clippy, FFI allocation
+audits, portable checks, mock SPI transactions, the complexity ratchet and the
+root-package identity check.
+
+| Platform | Beta.7 checks |
+| --- | --- |
+| macOS | The offline archive build passed its binary audit and actual ABI/load/panic checks. 40 Stata 19/MP fixtures passed: the 18 beta.6 release fixtures plus 22 PPML route, canonical, joint, separation, inference and parity fixtures. Public PPML and OLS Break/rollback passed, and ten installed-package fixtures passed from the staged archive. |
+| Windows x86-64 | Run `win-20261026T181228Z-1bcb165d` at `7a33fc20`: Rust 1.85.1/MSVC static-CRT build, exact-FMA and hardware-kernel tests, C numeric guards, PE audit and actual ABI/load/panic checks passed. A fresh `net install` verified the installed plugin bytes, then passed the installation smoke, single-runtime and OLS/PPML fixtures in Stata 19/MP. The machine was stopped afterwards. |
+| Linux x86-64 | Qualification job 8287434 built the plugin offline with Rust 1.85.1 and GCC 12.2.0; ELF audit and actual ABI/load/panic checks passed. Job 8289216 repeated the audit (glibc 2.28 maximum) and load checks and passed the same 40 Stata 19/MP fixtures; job 8289358 passed ten installed-package fixtures from the staged archive. |
+
+The root package passed a fresh local Mac `net install`: all 35 installed files
+matched, and selftest, OLS/PPML examples, a three-FE OLS comparison and a
+two-FE PPML comparison with explicit dummies passed. After publication, a fresh
+Stata 19/MP `net install` from the
+[beta.7 release](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0-beta.7)
+matched all 34 versioned package files and passed the same checks. All 50
+release assets matched their local SHA-256 checksums.
+
+### Beta.6 many-FE geometry packaging
+
+The beta.6 package shipped the many-FE geometry policy. The Linux and macOS
+plugins were the qualified `99f0134d` builds; Windows was built at `07d4da6d`, and the runtime
 identity is unchanged between them. The corresponding source was packaged from
 `07d4da6d` with a passing dependency audit (no advisories). An offline Cargo
 build from that archive produced a universal Mac plugin that passed its binary
