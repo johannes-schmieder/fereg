@@ -5,11 +5,11 @@
 # Run the production task of several single-panel Veneto runs back to back on
 # one whole node, so their absolute times share a host. Each run keeps its own
 # preflight, budget, host observation and sentinel in its own logs.
-# Usage: qsub -t 1-1 -v RUN_ROOTS="A B",UPSTREAM_JOBS="ja jb" panel_pair.sh
+# Usage: qsub -t 1-1 -v RUN_ROOTS=A:B,UPSTREAM_JOBS=ja:jb panel_pair.sh
 set -euo pipefail
 : "${RUN_ROOTS:?}" "${UPSTREAM_JOBS:?}"
-read -r -a roots <<< "$RUN_ROOTS"
-read -r -a upstream <<< "$UPSTREAM_JOBS"
+IFS=: read -r -a roots <<< "$RUN_ROOTS"
+IFS=: read -r -a upstream <<< "$UPSTREAM_JOBS"
 test "${#roots[@]}" = "${#upstream[@]}"
 failed=0
 for i in "${!roots[@]}"; do
