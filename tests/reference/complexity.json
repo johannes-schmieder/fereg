@@ -2,34 +2,16 @@
   "definition": "docs/development_workflow.md#complexity-inventory",
   "growth": [
     {
-      "after": 110549,
-      "before": 110310,
+      "after": 1429,
+      "before": 1426,
+      "metric": "fereg-core/dispatch_candidates",
+      "reason": "Work gates of the three exact sections (65,536 element operations; serial below) and the shared-product dispatch now matching the coupling owner."
+    },
+    {
+      "after": 110649,
+      "before": 110549,
       "metric": "fereg-core/production_lines",
-      "reason": "Trace-only phase ledgers (FEREG_PHASE_TIMING) for PPML joint frames, canonical products, shared-CMG column solves, PPML absorptions and CMG build seconds; no arithmetic or decision change."
-    },
-    {
-      "after": 1905,
-      "before": 1891,
-      "metric": "file/crates/fereg-core/src/ols/canonical_products.rs",
-      "reason": "Trace-only laps of the canonical solve phases and the probe interval."
-    },
-    {
-      "after": 208,
-      "before": 197,
-      "metric": "function/crates/fereg-core/src/fe/slope_coefficients/joint.rs/iterate#1",
-      "reason": "Trace-only laps of the joint recurrence phases."
-    },
-    {
-      "after": 169,
-      "before": 165,
-      "metric": "function/crates/fereg-core/src/fe/slope_coefficients/joint.rs/solve_streamed#1",
-      "reason": "Trace-only joint-frame ledger and its setup lap."
-    },
-    {
-      "after": 1086,
-      "before": 1073,
-      "metric": "function/crates/fereg-core/src/ols/canonical_products.rs/build#1",
-      "reason": "Trace-only laps of the canonical solve phases and the probe interval."
+      "reason": "Arithmetic-preserving: fe/exact_sections.rs splits the joint recurrence's helper merge, finite cross block and per-frame level masses into fixed chunks, each element in its serial operation order, with cancellation polls; apply_with_helpers reports cancellation."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -2374,7 +2356,7 @@
           },
           {
             "condition": "residual . len ( ) != state . roots . len ( ) || output . len ( ) != state . roots . len ( )",
-            "line": 463
+            "line": 464
           }
         ],
         "functions": {
@@ -2383,11 +2365,11 @@
             "lines": 8
           },
           "apply#2": {
-            "line": 450,
+            "line": 451,
             "lines": 30
           },
           "as_block#1": {
-            "line": 420,
+            "line": 421,
             "lines": 3
           },
           "begin_ppml_cmg_projection#1": {
@@ -2411,7 +2393,7 @@
             "lines": 24
           },
           "install#1": {
-            "line": 433,
+            "line": 434,
             "lines": 6
           },
           "install_ppml_cmg#1": {
@@ -2419,7 +2401,7 @@
             "lines": 6
           },
           "installed#1": {
-            "line": 426,
+            "line": 427,
             "lines": 6
           },
           "new#1": {
@@ -2443,11 +2425,11 @@
             "lines": 6
           },
           "prepare_masses#1": {
-            "line": 399,
+            "line": 400,
             "lines": 18
           },
           "refresh#1": {
-            "line": 440,
+            "line": 441,
             "lines": 9
           },
           "refresh_ppml_cmg#1": {
@@ -4508,6 +4490,42 @@
         },
         "production_lines": 705
       },
+      "crates/fereg-core/src/fe/exact_sections.rs": {
+        "chunk_candidates": [],
+        "dispatch_candidates": [
+          {
+            "condition": "! parallel ( output . len ( ) . saturating_mul ( partials . len ( ) ) )",
+            "line": 33
+          },
+          {
+            "condition": "! parallel ( p . saturating_mul ( k ) )",
+            "line": 74
+          },
+          {
+            "condition": "! parallel ( weights . len ( ) )",
+            "line": 115
+          }
+        ],
+        "functions": {
+          "add_partials#1": {
+            "line": 28,
+            "lines": 28
+          },
+          "cross_block#1": {
+            "line": 62,
+            "lines": 44
+          },
+          "level_root_masses#1": {
+            "line": 109,
+            "lines": 31
+          },
+          "parallel#1": {
+            "line": 18,
+            "lines": 7
+          }
+        },
+        "production_lines": 110
+      },
       "crates/fereg-core/src/fe/interaction.rs": {
         "chunk_candidates": [],
         "dispatch_candidates": [
@@ -5088,7 +5106,7 @@
         "chunk_candidates": [],
         "dispatch_candidates": [],
         "functions": {},
-        "production_lines": 106
+        "production_lines": 107
       },
       "crates/fereg-core/src/fe/model_recovery.rs": {
         "chunk_candidates": [],
@@ -6983,14 +7001,14 @@
           },
           "solve#2": {
             "line": 594,
-            "lines": 77
+            "lines": 76
           },
           "transpose#1": {
             "line": 515,
             "lines": 37
           }
         },
-        "production_lines": 534
+        "production_lines": 533
       },
       "crates/fereg-core/src/fe/slope_coefficients/coupling.rs": {
         "chunk_candidates": [],
@@ -7017,7 +7035,7 @@
           },
           {
             "condition": "self . representation == Representation :: Schur || width < 2",
-            "line": 789
+            "line": 790
           }
         ],
         "functions": {
@@ -7026,8 +7044,8 @@
             "lines": 32
           },
           "apply_with_helpers#1": {
-            "line": 779,
-            "lines": 53
+            "line": 780,
+            "lines": 49
           },
           "bytes#1": {
             "line": 274,
@@ -7086,7 +7104,7 @@
             "lines": 49
           }
         },
-        "production_lines": 751
+        "production_lines": 747
       },
       "crates/fereg-core/src/fe/slope_coefficients/joint.rs": {
         "chunk_candidates": [],
@@ -7105,7 +7123,7 @@
           },
           {
             "condition": "k == 0 || k > self . max_controls || response . len ( ) != n || weights . len ( ) != n || controls . ncols ( ) > self . max_controls || controls . nrows ( ) != n || selected . iter ( ) . any ( | & c | c >= controls . ncols ( ) )",
-            "line": 994
+            "line": 988
           }
         ],
         "functions": {
@@ -7118,7 +7136,7 @@
             "lines": 30
           },
           "checkpoint_block#1": {
-            "line": 946,
+            "line": 940,
             "lines": 27
           },
           "column_group_width#1": {
@@ -7151,7 +7169,7 @@
           },
           "iterate#1": {
             "line": 734,
-            "lines": 208
+            "lines": 202
           },
           "ncols#1": {
             "line": 46,
@@ -7202,7 +7220,7 @@
             "lines": 126
           },
           "solve_streamed#1": {
-            "line": 974,
+            "line": 968,
             "lines": 169
           },
           "visit_column#1": {
@@ -7222,7 +7240,7 @@
             "lines": 25
           }
         },
-        "production_lines": 1045
+        "production_lines": 1039
       },
       "crates/fereg-core/src/fe/slope_coefficients/joint/trace.rs": {
         "chunk_candidates": [],
@@ -24292,10 +24310,10 @@
     "metrics": {
       "fereg-core": {
         "chunk_candidates": 12,
-        "dispatch_candidates": 1426,
+        "dispatch_candidates": 1429,
         "files_over_1500": 15,
         "functions_over_150": 59,
-        "production_lines": 110549
+        "production_lines": 110649
       },
       "fereg-plugin": {
         "chunk_candidates": 3,
@@ -24307,5 +24325,5 @@
     },
     "schema": 1
   },
-  "reason": "PPML phase instrumentation: trace-only FEREG_PHASE ledgers for joint frames, canonical products, shared-CMG columns and PPML absorptions."
+  "reason": "Exact parallel sections of the PPML joint recurrence: helper merge, finite cross block and level masses."
 }

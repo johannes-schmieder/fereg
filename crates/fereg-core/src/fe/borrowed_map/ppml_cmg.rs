@@ -395,24 +395,25 @@ impl<'s, 'a> JointCmgBlock<'s, 'a> {
             })
     }
 
-    /// Current `sqrt(D_f)` in the retained bank, once per frame.
-    fn prepare_masses(&mut self) {
+    /// Current `sqrt(D_f)` in the retained bank, once per frame: each level's
+    /// weights in row order (an exact parallel section).
+    fn prepare_masses(&mut self) -> Result<()> {
         if self.masses {
-            return;
+            return Ok(());
         }
         let started = self.trace.start();
         let graph = self.absorber.two_fe_pcg.as_ref().expect("oriented graph");
-        let codes = self.absorber.design.effects()[graph.right_effect].codes();
+        let effect = &self.absorber.design.effects()[graph.right_effect];
         let state = self.absorber.ppml_cmg.as_mut().expect("enabled reuse");
-        state.roots.fill(0.0);
-        for (&code, &weight) in codes.iter().zip(self.weights) {
-            state.roots[code as usize] += weight;
-        }
-        for root in &mut state.roots {
-            *root = root.sqrt();
-        }
+        crate::fe::exact_sections::level_root_masses(
+            &mut state.roots,
+            effect.codes(),
+            effect.level_index(),
+            self.weights,
+        )?;
         self.masses = true;
         self.trace.add(0, started);
+        Ok(())
     }
 }
 
@@ -448,7 +449,7 @@ impl JointBlockPreconditioner for JointCmgBlock<'_, '_> {
     }
 
     fn apply(&mut self, residual: &[f64], output: &mut [f64]) -> Result<()> {
-        self.prepare_masses();
+        self.prepare_masses()?;
         let applied = self.trace.start();
         let (Some(state), Some(graph)) = (
             self.absorber.ppml_cmg.as_mut(),

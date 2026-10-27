@@ -826,36 +826,30 @@ impl JointFiniteWorkspace {
             if iteration == config.max_iterations {
                 break;
             }
-            if op
-                .coupling
-                .and_then(|c| {
-                    c.apply_with_helpers(
-                        &self.direction[..p],
-                        &mut self.product[..p],
-                        scratch,
-                        helpers,
-                        Some(trace),
-                    )
-                })
-                .is_none()
-            {
+            let applied = match op.coupling {
+                Some(c) => c.apply_with_helpers(
+                    &self.direction[..p],
+                    &mut self.product[..p],
+                    scratch,
+                    helpers,
+                    Some(trace),
+                )?,
+                None => None,
+            };
+            if applied.is_none() {
                 op.forward(&self.direction[..p], observations);
                 op.project_eliminated(observations, scratch);
                 op.transpose(observations, &mut self.product[..p], false);
             }
             trace.lap(trace::OPERATOR);
-            for j in 0..k {
-                let cross = &self.cross[j * p..(j + 1) * p];
-                self.product[p + j] = dot(cross, &self.direction[..p])
-                    + dot(
-                        &self.hessian[j * k..(j + 1) * k],
-                        &self.direction[p..dimension],
-                    );
-                crate::kernels::dispatch!(
-                    hardware,
-                    scaled_add(cross, self.direction[p + j], &mut self.product[..p])
-                );
-            }
+            crate::fe::exact_sections::cross_block(
+                &self.cross[..p * k],
+                &self.hessian[..k * k],
+                &self.direction[..dimension],
+                &mut self.product[..dimension],
+                p,
+                k,
+            )?;
             trace.lap(trace::CROSS);
             let mut curvature = dot(&self.direction[..dimension], &self.product[..dimension]);
             let magnitude = self.direction[..dimension]

@@ -118,7 +118,12 @@ unless replaced. Admission reserves only the application banks; each
 construction admits itself against the fit's solver budget, and refusal
 leaves the diagonal recurrence untouched. `canonical_products/reduced.rs`
 holds the reduced recurrences, including the dense solve of small implicit
-components. Joint frames build weighted columns and their norms and run
+components. `fe/exact_sections.rs` holds the exact parallel forms of the joint
+recurrence's helper merge and finite cross block and of the per-frame level
+masses: fixed chunks, each element in its serial operation order, so bits do
+not depend on the team. Developer phase records (`FEREG_PHASE_TIMING`) of joint
+frames, canonical products, shared-CMG columns and PPML absorptions come from
+the trace-only ledger in `diagnostics/phase_ledger.rs`. Joint frames build weighted columns and their norms and run
 original-column acceptance scans in groups of `ceil(columns / workers)`
 columns per task, at most four, so one row scan serves several columns
 without leaving workers idle. The bank keeps the projected weighted columns
