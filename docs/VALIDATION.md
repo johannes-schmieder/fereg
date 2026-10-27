@@ -232,9 +232,49 @@ measured and rejected (slower, or no fewer iterations).
 
 ## Package checks
 
-The beta.7 package ships the lean PPML two-FE protocol and CMG reuse.
-[Package metadata](../dist/fereg-native.json) records each binary's build revision,
-checksum and corresponding-source identity. The Linux plugin is the qualified
+### Beta.8 two-FE Auto packaging
+
+Beta.8 ships the two-FE Auto changes described above. The qualified Linux
+binary is the `18b47675` build, Windows was built at `37f1ab89`, and universal
+macOS was built offline from the corresponding-source archive at `6b97e504`.
+Runtime production inputs are unchanged across these revisions. The
+[package metadata](../dist/fereg-native.json) records each actual build commit,
+binary checksum, runtime identity and corresponding-source hash.
+
+The strict default `./scripts/run_tests.sh` passed with the refreshed package:
+319 Python tests, Rust unit and independent numerical integration tests,
+Clippy, FFI allocation audits, portable checks, mock SPI transactions,
+the complexity ratchet and the root-package identity check. An independent
+high-effort source review found no blocking defects in the parallel operators,
+gate v2, derived-residual certification or publication validation; it did not
+replace the executed checks.
+
+| Platform | Beta.8 checks |
+| --- | --- |
+| macOS | Rust 1.85.1 universal build from the vendored source archive, with an empty Cargo home and offline mode; binary privacy/export audit and actual ABI/load/panic checks passed. All 44 mapped Stata 19/MP fixtures, 73 exact replay cases against the qualified Mac candidate, public OLS/PPML Break/rollback, and ten staged-package fixtures passed. |
+| Windows x86-64 | Run `win-20261027T153054Z-e4e3b51f` at `37f1ab89` passed the Rust 1.85.1/MSVC static-CRT build, FMA/hardware tests, C numeric guards, PE audit and actual ABI/load/panic checks. A fresh local `net install` verified plugin bytes and passed installation smoke, single-runtime repeatability and four OLS/PPML fixtures. The controller stopped the machine, deleted transient cloud objects and released its lock. |
+| Linux x86-64 | The qualified binary from build job 8298656 retains its SHA-256. Job 8299903 passed ELF audit (glibc 2.28 maximum), actual ABI/load/panic checks and 42 Stata fixtures. Two development fixtures required the intentionally excluded `_fereg_estimate_ols_test` adapter; after restoring it only in the test workspace, job 8300025 passed both. No runtime or assertion changed. Job 8300111 passed ten staged-package fixtures and a fresh local `net install`, verifying all 34 versioned files and independent OLS/PPML comparisons. |
+
+A fresh local Mac installation of the root package verified all 35 installed
+files, native selftest, exact OLS/PPML repetition and rollback, and independent
+full-dummy OLS and Poisson/covariance comparisons. The dependency audit found
+no advisories. The initial Mac build without the documented path remaps failed
+the personal-path audit; the remapped offline rebuild is the distributed binary.
+An initial local source-test invocation selected Python 3.9 and failed on missing
+Python modules; the required strict suite passed in the corrected environment.
+No performance observations were repeated during release preparation.
+
+The source archive SHA-256 is
+`8e89db60ba8b9111b000c68ea81d71e0bea48b5f6421f421a00e205592546c62`;
+the binary archive SHA-256 is
+`aafc8ce74dbe0df876a07c4375f6e34f0c860fbcd44f76d29bb7ec67a7ebd843`.
+Native Intel-host Stata testing remains outstanding; both macOS slices are supplied.
+
+### Beta.7 PPML packaging
+
+The beta.7 package shipped the lean PPML two-FE protocol and CMG reuse.
+Its [versioned release](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0-beta.7)
+records each binary's build revision, checksum and corresponding-source identity. The Linux plugin is the qualified
 `277c5d11` build measured above. Windows was built at `7a33fc20`, and the
 universal macOS plugin was built offline from the corresponding-source archive
 packaged at `7a33fc20` with a passing dependency audit (no advisories). The
