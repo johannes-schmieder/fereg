@@ -350,7 +350,13 @@ deferred (worker, firm) cells (`fe/routing_kernel.rs`). The kernel keeps a
 firm-major copy of its worker-major cells, built by a stable count so each
 firm's cells stay in increasing worker order. Workers own their left-scratch
 rows and firms their output rows (`routing_kernel/parallel.rs`), so the
-parallel product reproduces the serial bits at every lane count. Low-degree levels
+parallel product reproduces the serial bits at every lane count. When the team
+offers lanes and the optional scratch is admitted, both cell constructors build
+on the team (`routing_kernel/parallel_build.rs`): worker ranges aggregate their
+membership rows in serial order into lane-private spans, and a stable two-level
+(firm range, firm) counting sort builds the firm index, firm totals and Schur
+diagonal in worker-major order, so every bank equals the serial constructor's
+bits; otherwise the serial constructors run. Low-degree levels
 of the larger FE are eliminated into weighted pairs on the smaller FE; higher
 degrees remain auxiliary graph vertices. Degree is counted after repeated
 worker-firm rows are collapsed. A fixed CMG cycle receives component-centered

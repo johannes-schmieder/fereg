@@ -11,6 +11,7 @@ use super::{BorrowedInterceptFeDesign, BorrowedMapWeights};
 
 mod occurrence;
 mod parallel;
+mod parallel_build;
 pub(crate) use occurrence::build_occurrence;
 
 crate::fault::fault_plan! {
@@ -49,7 +50,7 @@ pub(crate) struct OptionalSetup {
     pub refusal: Option<KernelRefusal>,
 }
 
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy, Default, Debug, PartialEq)]
 struct Cell {
     worker: u32,
     firm: u32,
@@ -57,7 +58,7 @@ struct Cell {
 }
 
 /// One cell in the firm-major index, in the cell array's worker order.
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy, Default, Debug, PartialEq)]
 struct FirmCell {
     worker: u32,
     weight: f64,
@@ -315,18 +316,32 @@ pub(crate) fn build(
             refusal: Some(KernelRefusal::MemoryBudget),
         });
     };
-    let fits = limits
-        .retained_live_bytes
-        .checked_add(bytes)
-        .is_some_and(|total| limits.memory.is_none_or(|budget| budget.fits(total)));
-    if !fits {
+    let parallel = parallel_build::plan(design, left_effect, limits);
+    if parallel.is_none() && !fits(limits, bytes) {
         return Ok(OptionalSetup {
             kernel: None,
             peak: SolverWorkspacePeak::ZERO,
             refusal: Some(KernelRefusal::MemoryBudget),
         });
     }
-    let result = build_inner(design, left_effect, weights, weight_scale, &mut work);
+    let (result, bytes) = match parallel {
+        Some((lanes, bytes)) => (
+            parallel_build::construct(
+                design,
+                left_effect,
+                weights,
+                weight_scale,
+                parallel_build::Order::Firm,
+                lanes,
+                &mut work,
+            ),
+            bytes,
+        ),
+        None => (
+            build_inner(design, left_effect, weights, weight_scale, &mut work),
+            bytes,
+        ),
+    };
     let (kernel, refusal) = match result {
         Ok(kernel) => (Some(kernel), None),
         Err(Stop::Refused(reason)) => (None, Some(reason)),
@@ -397,6 +412,13 @@ fn build_inner(
     }
     cells.truncate(write);
     finish(cells, p, q, work)
+}
+
+fn fits(limits: KernelLimits, bytes: u128) -> bool {
+    limits
+        .retained_live_bytes
+        .checked_add(bytes)
+        .is_some_and(|total| limits.memory.is_none_or(|budget| budget.fits(total)))
 }
 
 /// Retained firm index plus its transient cursors, for at most `cells` cells.

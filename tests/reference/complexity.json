@@ -1,6 +1,19 @@
 {
   "definition": "docs/development_workflow.md#complexity-inventory",
-  "growth": [],
+  "growth": [
+    {
+      "after": 1430,
+      "before": 1426,
+      "metric": "fereg-core/dispatch_candidates",
+      "reason": "Parallel-or-serial constructor choice in both constructors, the lane outcome precedence that reproduces each serial failure order, and the occurrence/radix order switch."
+    },
+    {
+      "after": 110870,
+      "before": 110310,
+      "metric": "fereg-core/production_lines",
+      "reason": "Parallel cell construction (routing_kernel/parallel_build.rs): lane-private occurrence aggregation per worker range, compaction, and a stable two-level firm index with the serial reduction orders; both constructors choose it when the team offers lanes and its scratch fits."
+    }
+  ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
   "inventory": {
     "files": {
@@ -5902,108 +5915,112 @@
         "dispatch_candidates": [
           {
             "condition": "rhs_count > stride || input . len ( ) != right_len || output . len ( ) != right_len || left_scratch . len ( ) != left_len",
-            "line": 122
+            "line": 123
           },
           {
             "condition": "result . capacity ( ) > count",
-            "line": 247
+            "line": 248
           },
           {
             "condition": "design . effects ( ) . len ( ) != 2 || left_effect >= 2 || ! weight_scale . is_finite ( ) || weight_scale <= 0.0",
-            "line": 285
+            "line": 286
           },
           {
             "condition": "let BorrowedMapWeights :: Provided ( values ) = weights",
-            "line": 294
-          },
-          {
-            "condition": "values . len ( ) != design . nobs ( )",
             "line": 295
           },
           {
+            "condition": "values . len ( ) != design . nobs ( )",
+            "line": 296
+          },
+          {
             "condition": "weights",
-            "line": 361
+            "line": 376
           },
           {
             "condition": "! weight . is_finite ( ) || weight <= 0.0",
-            "line": 365
+            "line": 380
           },
           {
             "condition": "! cell . weight . is_finite ( )",
-            "line": 392
+            "line": 407
           },
           {
             "condition": "cell . weight >= other",
-            "line": 454
+            "line": 476
           },
           {
             "condition": "! firm_weights [ firm ] . is_finite ( ) || ! diagonal [ firm ] . is_finite ( ) || diagonal [ firm ] < 0.0",
-            "line": 465
+            "line": 487
           }
         ],
         "functions": {
           "apply#1": {
-            "line": 104,
+            "line": 105,
             "lines": 110
           },
           "build#1": {
-            "line": 266,
-            "lines": 75
+            "line": 267,
+            "lines": 89
           },
           "build_inner#1": {
-            "line": 342,
+            "line": 357,
             "lines": 59
           },
           "capacity#1": {
-            "line": 238,
+            "line": 239,
             "lines": 14
           },
           "cell_count#1": {
-            "line": 86,
+            "line": 87,
             "lines": 3
           },
           "charge#1": {
-            "line": 231,
+            "line": 232,
             "lines": 7
           },
           "completed_work#1": {
-            "line": 27,
+            "line": 28,
             "lines": 6
           },
           "diagonal#1": {
-            "line": 82,
+            "line": 83,
             "lines": 3
           },
           "filled#1": {
-            "line": 252,
+            "line": 253,
             "lines": 8
           },
           "finish#1": {
-            "line": 409,
+            "line": 431,
             "lines": 76
           },
           "firm_index#1": {
-            "line": 487,
+            "line": 509,
             "lines": 31
           },
           "firm_index_bytes#1": {
-            "line": 403,
+            "line": 425,
             "lines": 4
           },
+          "fits#1": {
+            "line": 417,
+            "lines": 6
+          },
           "from#1": {
-            "line": 221,
+            "line": 222,
             "lines": 3
           },
           "radix#1": {
-            "line": 519,
+            "line": 541,
             "lines": 30
           },
           "retained_bytes#1": {
-            "line": 90,
+            "line": 91,
             "lines": 10
           }
         },
-        "production_lines": 495
+        "production_lines": 516
       },
       "crates/fereg-core/src/fe/routing_kernel/occurrence.rs": {
         "chunk_candidates": [],
@@ -6021,37 +6038,29 @@
             "line": 18
           },
           {
-            "condition": "! limits . retained_live_bytes . checked_add ( bytes ) . is_some_and ( | total | limits . memory . is_none_or ( | budget | budget . fits ( total ) ) )",
-            "line": 37
-          },
-          {
-            "condition": "construct ( design , left , weights , scale , & mut Work )",
-            "line": 48
-          },
-          {
             "condition": "weights",
-            "line": 84
+            "line": 96
           },
           {
             "condition": "! weight . is_finite ( ) || weight <= 0.0",
-            "line": 88
+            "line": 100
           },
           {
             "condition": "marks [ firm ] != worker",
-            "line": 94
+            "line": 106
           }
         ],
         "functions": {
           "build_occurrence#1": {
             "line": 4,
-            "lines": 60
+            "lines": 72
           },
           "construct#1": {
-            "line": 65,
+            "line": 77,
             "lines": 57
           }
         },
-        "production_lines": 114
+        "production_lines": 126
       },
       "crates/fereg-core/src/fe/routing_kernel/parallel.rs": {
         "chunk_candidates": [],
@@ -6072,6 +6081,90 @@
           }
         },
         "production_lines": 101
+      },
+      "crates/fereg-core/src/fe/routing_kernel/parallel_build.rs": {
+        "chunk_candidates": [],
+        "dispatch_candidates": [
+          {
+            "condition": "context . weights",
+            "line": 121
+          },
+          {
+            "condition": "! weight . is_finite ( ) || weight <= 0.0",
+            "line": 125
+          },
+          {
+            "condition": "lane . marks [ firm ] != worker",
+            "line": 131
+          },
+          {
+            "condition": "worker == design . effects ( ) [ left ] . n_levels ( )",
+            "line": 190
+          },
+          {
+            "condition": "cells . capacity ( ) != total",
+            "line": 318
+          },
+          {
+            "condition": "cell . weight >= other",
+            "line": 401
+          }
+        ],
+        "functions": {
+          "aggregate#1": {
+            "line": 106,
+            "lines": 59
+          },
+          "construct#1": {
+            "line": 219,
+            "lines": 114
+          },
+          "finish#1": {
+            "line": 486,
+            "lines": 113
+          },
+          "firm_range#1": {
+            "line": 365,
+            "lines": 3
+          },
+          "first_worker_at#1": {
+            "line": 167,
+            "lines": 17
+          },
+          "index_range#1": {
+            "line": 433,
+            "lines": 52
+          },
+          "member_start#1": {
+            "line": 185,
+            "lines": 14
+          },
+          "parallel_bytes#1": {
+            "line": 66,
+            "lines": 13
+          },
+          "plan#1": {
+            "line": 43,
+            "lines": 18
+          },
+          "spans#1": {
+            "line": 209,
+            "lines": 9
+          },
+          "stage#1": {
+            "line": 414,
+            "lines": 16
+          },
+          "worker_contributions#1": {
+            "line": 370,
+            "lines": 42
+          },
+          "zeroed#1": {
+            "line": 202,
+            "lines": 5
+          }
+        },
+        "production_lines": 527
       },
       "crates/fereg-core/src/fe/routing_observer.rs": {
         "chunk_candidates": [],
@@ -24196,10 +24289,10 @@
     "metrics": {
       "fereg-core": {
         "chunk_candidates": 12,
-        "dispatch_candidates": 1426,
+        "dispatch_candidates": 1430,
         "files_over_1500": 15,
         "functions_over_150": 59,
-        "production_lines": 110310
+        "production_lines": 110870
       },
       "fereg-plugin": {
         "chunk_candidates": 3,
@@ -24211,5 +24304,5 @@
     },
     "schema": 1
   },
-  "reason": "Gate v2 injection keeps public two-FE activation; documentation of the two-FE Auto changes."
+  "reason": "Parallel construction of the two-FE cell kernel on the installed team."
 }

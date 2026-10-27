@@ -34,18 +34,30 @@ pub(crate) fn build_occurrence(
         + banks
         + super::firm_index_bytes(n, q)
         + 4096;
-    if !limits
-        .retained_live_bytes
-        .checked_add(bytes)
-        .is_some_and(|total| limits.memory.is_none_or(|budget| budget.fits(total)))
-    {
+    let parallel = super::parallel_build::plan(design, left, limits);
+    if parallel.is_none() && !super::fits(limits, bytes) {
         return Ok(OptionalSetup {
             kernel: None,
             peak: SolverWorkspacePeak::ZERO,
             refusal: Some(KernelRefusal::MemoryBudget),
         });
     }
-    let (kernel, refusal) = match construct(design, left, weights, scale, &mut Work) {
+    let (built, bytes) = match parallel {
+        Some((lanes, bytes)) => (
+            super::parallel_build::construct(
+                design,
+                left,
+                weights,
+                scale,
+                super::parallel_build::Order::Occurrence,
+                lanes,
+                &mut Work,
+            ),
+            bytes,
+        ),
+        None => (construct(design, left, weights, scale, &mut Work), bytes),
+    };
+    let (kernel, refusal) = match built {
         Ok(kernel) => (Some(kernel), None),
         Err(Stop::Refused(reason)) => (None, Some(reason)),
         Err(Stop::Fatal(error)) => return Err(error),
