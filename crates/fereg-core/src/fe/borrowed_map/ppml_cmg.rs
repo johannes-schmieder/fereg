@@ -9,9 +9,11 @@
 //! certificate uses the current frame, and an estimation makes at most three
 //! construction attempts, refusals included.
 use super::*;
+use crate::diagnostics::phase_ledger::PhaseLedger;
 use crate::fe::cmg_schur::CmgSchurPreconditioner;
 use crate::fe::slope_coefficients::joint::JointBlockPreconditioner;
 use crate::fe::MapGeometryGeneration;
+use std::time::Instant;
 
 const MAX_ATTEMPTS: u8 = 3;
 
@@ -169,6 +171,7 @@ impl ReusableCategoricalMapAbsorber<'_> {
         };
         let resident = stale.retained_bytes()?;
         state.attempts += 1;
+        let started = Instant::now();
         let budget = state
             .budget
             .map(|budget| -> Result<FeSolverMemoryBudget> {
@@ -203,14 +206,13 @@ impl ReusableCategoricalMapAbsorber<'_> {
                 return Err(error);
             }
         };
-        if crate::diagnostics::solver_trace_enabled() {
-            crate::diagnostics::emit_solver_trace(&format!(
-                "FEREG_SOLVER_TRACE|phase={phase}|attempt={}|installed={}|refusal={:?}",
-                state.attempts,
-                u8::from(built.preconditioner.is_some()),
-                built.refusal
-            ));
-        }
+        trace_ppml_build(
+            phase,
+            state.attempts,
+            built.preconditioner.as_ref(),
+            &built.refusal,
+            started,
+        );
         Ok(match built.preconditioner {
             Some(fresh) => {
                 drop(stale);
@@ -258,6 +260,7 @@ impl ReusableCategoricalMapAbsorber<'_> {
             return Ok(false);
         }
         state.attempts += 1;
+        let started = Instant::now();
         let built = CmgSchurPreconditioner::try_build_bounded(
             &self.design,
             weights,
@@ -273,14 +276,13 @@ impl ReusableCategoricalMapAbsorber<'_> {
             crate::fe::cmg_schur::AutoApplication::Scalar,
             crate::fe::cmg_schur::schur_cmg_options(),
         )?;
-        if crate::diagnostics::solver_trace_enabled() {
-            crate::diagnostics::emit_solver_trace(&format!(
-                "FEREG_SOLVER_TRACE|phase={phase}|attempt={}|installed={}|refusal={:?}",
-                state.attempts,
-                u8::from(built.preconditioner.is_some()),
-                built.refusal
-            ));
-        }
+        trace_ppml_build(
+            phase,
+            state.attempts,
+            built.preconditioner.as_ref(),
+            &built.refusal,
+            started,
+        );
         state.built = built.preconditioner.as_ref().and(state.frame);
         graph.cmg_schur = built.preconditioner.map(Box::new);
         Ok(graph.cmg_schur.is_some())
@@ -296,6 +298,27 @@ impl ReusableCategoricalMapAbsorber<'_> {
             graph.right_weights.len(),
             installed,
         ))
+    }
+}
+
+/// One PPML construction attempt: its outcome, seconds and, when installed,
+/// the stored hierarchy shape.
+fn trace_ppml_build(
+    phase: &str,
+    attempt: u8,
+    installed: Option<&CmgSchurPreconditioner>,
+    refusal: &impl std::fmt::Debug,
+    started: Instant,
+) {
+    if crate::diagnostics::solver_trace_enabled() {
+        let hierarchy = installed.map_or(String::new(), |installed| {
+            format!("|{}", installed.trace_hierarchy())
+        });
+        crate::diagnostics::emit_solver_trace(&format!(
+            "FEREG_SOLVER_TRACE|phase={phase}|attempt={attempt}|installed={}|refusal={refusal:?}|seconds={:.9}{hierarchy}",
+            u8::from(installed.is_some()),
+            started.elapsed().as_secs_f64(),
+        ));
     }
 }
 
@@ -345,6 +368,8 @@ pub(crate) struct JointCmgBlock<'s, 'a> {
     weights: &'s [f64],
     masses: bool,
     attempted: bool,
+    /// Trace-only `FEREG_PHASE|ppml_joint_cmg` slots: masses, application, cycle.
+    trace: PhaseLedger<3>,
 }
 
 impl<'s, 'a> JointCmgBlock<'s, 'a> {
@@ -366,25 +391,29 @@ impl<'s, 'a> JointCmgBlock<'s, 'a> {
                 weights,
                 masses: false,
                 attempted: false,
+                trace: PhaseLedger::new("ppml_joint_cmg", ["masses", "apply", "cycle"]),
             })
     }
 
-    /// Current `sqrt(D_f)` in the retained bank, once per frame.
-    fn prepare_masses(&mut self) {
+    /// Current `sqrt(D_f)` in the retained bank, once per frame: each level's
+    /// weights in row order (an exact parallel section).
+    fn prepare_masses(&mut self) -> Result<()> {
         if self.masses {
-            return;
+            return Ok(());
         }
+        let started = self.trace.start();
         let graph = self.absorber.two_fe_pcg.as_ref().expect("oriented graph");
-        let codes = self.absorber.design.effects()[graph.right_effect].codes();
+        let effect = &self.absorber.design.effects()[graph.right_effect];
         let state = self.absorber.ppml_cmg.as_mut().expect("enabled reuse");
-        state.roots.fill(0.0);
-        for (&code, &weight) in codes.iter().zip(self.weights) {
-            state.roots[code as usize] += weight;
-        }
-        for root in &mut state.roots {
-            *root = root.sqrt();
-        }
+        crate::fe::exact_sections::level_root_masses(
+            &mut state.roots,
+            effect.codes(),
+            effect.level_index(),
+            self.weights,
+        )?;
         self.masses = true;
+        self.trace.add(0, started);
+        Ok(())
     }
 }
 
@@ -420,7 +449,8 @@ impl JointBlockPreconditioner for JointCmgBlock<'_, '_> {
     }
 
     fn apply(&mut self, residual: &[f64], output: &mut [f64]) -> Result<()> {
-        self.prepare_masses();
+        self.prepare_masses()?;
+        let applied = self.trace.start();
         let (Some(state), Some(graph)) = (
             self.absorber.ppml_cmg.as_mut(),
             self.absorber.two_fe_pcg.as_mut(),
@@ -439,10 +469,13 @@ impl JointBlockPreconditioner for JointCmgBlock<'_, '_> {
         for ((raw, &value), &root) in state.raw.iter_mut().zip(residual).zip(&state.roots) {
             *raw = value * root;
         }
+        let cycle = self.trace.start();
         preconditioner.apply_batch(&state.raw, &mut state.solved, 1, 1, None, None)?;
+        self.trace.add(2, cycle);
         for ((value, &solved), &root) in output.iter_mut().zip(&state.solved).zip(&state.roots) {
             *value = solved * root;
         }
+        self.trace.add(1, applied);
         Ok(())
     }
 }

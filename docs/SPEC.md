@@ -14,11 +14,13 @@ Native test names below are relative to `crates/fereg-core` or
 
 ## 1. Public syntax and options
 
-### Ownership and deferred-cell scope
+### Ownership and cell scope
 
-The accepted ownership/cell implementation uses CMG `fd77d98d`. Qualified OLS `solver(auto)` with
+The accepted ownership/cell implementation was qualified with CMG `fd77d98d`; the runtime pins
+CMG `f6a044c9`, whose only change is arithmetic-preserving team dispatch of row-operator
+matvecs (gated on entries times lanes). Qualified OLS `solver(auto)` with
 `preconditioner(auto)`, a global intercept and exactly two categorical-intercept
-FE terms selects both ownership mechanisms and deferred cell construction.
+FE terms selects both ownership mechanisms and eager cell construction.
 Explicit developer injections retain their specified selection. Core defaults
 and requests outside this scope remain unchanged. The
 [acceptance record](../bench/results/ownership-qualification-final-linux-20261024.json)
@@ -48,9 +50,20 @@ toward real memory admission; refusal retains the observation operator.
 CMG commitment by gate v2 (below), cutoff 5, one sampled tree, seed 0, graph
 construction, small-direct selection, certification, restart and fallback
 semantics remain fixed. The same original graph produces the same hierarchy
-when both arms construct one. The only permitted cell redesign defers
-construction to successful CMG commitment at the existing restart; it adds no
-restart or speculative setup to short solves. The deferred cell product runs on
+when both arms construct one. Public two-FE Auto constructs the cells once,
+after the initial certificate and any direct route and before the diagonal
+pilot, so the pilot's Schur products also use the cell operator; the pilot keeps
+its D_f preconditioner, so only the operator's low bits change and the frozen
+gate v2 stall threshold keeps its meaning. Construction runs on the host team
+with the serial constructors' bits when its optional scratch is admitted. The
+former deferred order (construction only after successful CMG commitment at the
+existing restart, adding no setup to short solves) remains the `cells_deferred`
+developer arm. Eager construction was qualified against the deferred public
+order in the [round-two record](../bench/results/two-fe-round-two-20261027.json)
+(Linux 123 of 126 protected comparisons within max(5%, 1 ms) after the
+distinct-host waiver, 3 inconclusive; Mac 115 passed, 11 inconclusive; no
+regression). The serial cell product and construction poll for Break once per
+block of work, not per cell. The cell product runs on
 the host team over a firm-major copy of the cells kept in increasing worker
 order, which reproduces the serial product's bits at every lane count; the copy
 is admitted with the kernel. There is no construction-work cap or
@@ -235,7 +248,7 @@ Public OLS Auto/Auto uses the many-FE geometry policy
 (`routing_many_geometry_v1`) for eligible designs with at least three
 categorical-intercept FEs. Eligible two-FE designs use
 [structural CMG gate v2](two_fe_auto_gates.md) (`routing_two_gates_v2`),
-with ownership and deferred cells in the narrower global-intercept scope above. Zero/one FE,
+with ownership and eager cells in the narrower global-intercept scope above. Zero/one FE,
 slopes and explicit choices retain their specified behavior; PPML Auto adds only
 the two-FE CMG reuse below. Activation and performance evidence for both OLS
 families are complete; the many-FE policy carries one documented
@@ -254,7 +267,16 @@ components of at least 64 levels as `R G' B G R`, with the Jacobi roots `R`
 and `G` placing the component's grounded anchor. Before such a solve, a
 hierarchy from an earlier weight generation is rebuilt on current weights;
 without one, a plain recurrence of the first column on the largest component
-that exceeds 32 steps builds one.
+that exceeds 32 steps builds one. A probe that finishes within 32 steps and
+within that column's iteration cap is the column's solve on that component:
+the column keeps the probe's coordinates and count instead of repeating the
+identical recurrence. Three serial sections of the joint
+recurrence run as exact parallel sections from 65,536 element operations
+(fewer stay on the calling thread): the merge of helper partial products, the finite cross block
+and each frame's level masses `D`. Each splits per-element or per-column work
+into fixed chunks and keeps every element's serial operation order, so results
+are bitwise identical to the serial form at every worker count, and each chunk
+polls cancellation.
 Categorical reprojections, used when strict canonical products decline, use
 the two-FE Schur recurrence with the h16/k1 build:
 without a hierarchy one may be built at step 16, and a hierarchy from an
@@ -1291,7 +1313,7 @@ Exclude timing, build identity and environmental resource observations only.
 A tolerance pass cannot silently waive an unexplained exact-change failure.
 Preserve Stata processor restoration on success, error and Break.
 
-The two-FE OLS Auto team installation and the parallel deferred cell product
+The two-FE OLS Auto team installation, the parallel cell construction and the parallel cell product
 follow this rule: their results do not depend on the worker count, apart from
 CMG's fixed-chunk centering of a single coarse component of at least 131,072
 entries, which uses the same tree whenever a team is installed.

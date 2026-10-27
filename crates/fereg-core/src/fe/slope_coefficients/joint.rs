@@ -3,6 +3,8 @@
 //! never finite products or acceptance across a changing response/weight frame.
 use super::*;
 use crate::fe::SolveReport;
+pub(crate) mod trace;
+use trace::JointLedger;
 
 /// An immutable finite representative. Row and column access let preparation
 /// follow the source layout without materializing another normalized design.
@@ -543,11 +545,17 @@ impl JointFiniteWorkspace {
         reusable_geometry: bool,
         block: Option<&mut dyn JointBlockPreconditioner>,
     ) -> Result<usize> {
+        let mut ledger = trace::ledger();
         self.report = None;
         self.active = 0;
         let n = design.nobs();
         let k = selected.len();
         let p = owner.coefficients;
+        ledger.facts(&[
+            ("p", p as u64),
+            ("k", k as u64),
+            ("workers", owner.workers.len() as u64),
+        ]);
         if k == 0
             || k > self.max_controls
             || k >= owner.max_rhs
@@ -633,6 +641,7 @@ impl JointFiniteWorkspace {
         let (worker, helpers) = owner.workers.split_first_mut().expect("admitted worker");
         let observations = &mut worker.observations;
         let scratch = &mut worker.eliminated_scratch;
+        ledger.lap(trace::SETUP);
         self.iterate(
             &op,
             controls,
@@ -646,6 +655,7 @@ impl JointFiniteWorkspace {
             helpers,
             config,
             block,
+            &ledger,
         )
     }
 
@@ -735,6 +745,7 @@ impl JointFiniteWorkspace {
         helpers: &mut [Worker],
         config: MapConfig,
         mut block: Option<&mut dyn JointBlockPreconditioner>,
+        trace: &JointLedger,
     ) -> Result<usize> {
         let hardware = crate::kernels::installed();
         let n = original.len();
@@ -801,6 +812,7 @@ impl JointFiniteWorkspace {
                         self.residuals[(row, 0)] = value;
                     }
                     self.active = k;
+                    trace.lap(trace::RECONSTRUCT);
                     return Ok(iteration);
                 }
                 self.precondition(p, k, block.as_deref_mut())?;
@@ -810,37 +822,35 @@ impl JointFiniteWorkspace {
                     &self.preconditioned[..dimension],
                 );
             }
+            trace.lap(trace::RECONSTRUCT);
             if iteration == config.max_iterations {
                 break;
             }
-            if op
-                .coupling
-                .and_then(|c| {
-                    c.apply_with_helpers(
-                        &self.direction[..p],
-                        &mut self.product[..p],
-                        scratch,
-                        helpers,
-                    )
-                })
-                .is_none()
-            {
+            let applied = match op.coupling {
+                Some(c) => c.apply_with_helpers(
+                    &self.direction[..p],
+                    &mut self.product[..p],
+                    scratch,
+                    helpers,
+                    Some(trace),
+                )?,
+                None => None,
+            };
+            if applied.is_none() {
                 op.forward(&self.direction[..p], observations);
                 op.project_eliminated(observations, scratch);
                 op.transpose(observations, &mut self.product[..p], false);
             }
-            for j in 0..k {
-                let cross = &self.cross[j * p..(j + 1) * p];
-                self.product[p + j] = dot(cross, &self.direction[..p])
-                    + dot(
-                        &self.hessian[j * k..(j + 1) * k],
-                        &self.direction[p..dimension],
-                    );
-                crate::kernels::dispatch!(
-                    hardware,
-                    scaled_add(cross, self.direction[p + j], &mut self.product[..p])
-                );
-            }
+            trace.lap(trace::OPERATOR);
+            crate::fe::exact_sections::cross_block(
+                &self.cross[..p * k],
+                &self.hessian[..k * k],
+                &self.direction[..dimension],
+                &mut self.product[..dimension],
+                p,
+                k,
+            )?;
+            trace.lap(trace::CROSS);
             let mut curvature = dot(&self.direction[..dimension], &self.product[..dimension]);
             let magnitude = self.direction[..dimension]
                 .iter()
@@ -888,6 +898,7 @@ impl JointFiniteWorkspace {
             if !curvature.is_finite() || curvature <= 0. || !square.is_finite() || square < 0. {
                 return Err(failed());
             }
+            trace.lap(trace::CURVATURE);
             let step = square / curvature;
             crate::kernels::dispatch!(
                 hardware,
@@ -899,7 +910,9 @@ impl JointFiniteWorkspace {
                     &mut self.residual[..dimension]
                 )
             );
+            trace.lap(trace::STEP);
             self.precondition(p, k, block.as_deref_mut())?;
+            trace.lap(trace::PRECONDITION);
             let next = dot(
                 &self.residual[..dimension],
                 &self.preconditioned[..dimension],
@@ -914,7 +927,9 @@ impl JointFiniteWorkspace {
                 )
             );
             square = next;
+            trace.lap(trace::STEP);
             self.checkpoint_block(p, k, iteration + 1, block.as_deref_mut(), &mut square)?;
+            trace.lap(trace::CHECKPOINT);
         }
         Err(failed())
     }
@@ -963,11 +978,13 @@ impl JointFiniteWorkspace {
         reusable_geometry: bool,
         block: Option<&mut dyn JointBlockPreconditioner>,
     ) -> Result<usize> {
+        let mut ledger = trace::ledger();
         self.report = None;
         self.active = 0;
         let n = design.nobs();
         let k = selected.len();
         let p = owner.coefficients;
+        ledger.facts(&[("p", p as u64), ("k", k as u64), ("streamed", 1)]);
         if k == 0
             || k > self.max_controls
             || response.len() != n
@@ -1100,6 +1117,7 @@ impl JointFiniteWorkspace {
                 self.hessian[i * k + j] = self.hessian[j * k + i];
             }
         }
+        ledger.lap(trace::SETUP);
         self.iterate(
             &op,
             controls,
@@ -1113,6 +1131,7 @@ impl JointFiniteWorkspace {
             helpers,
             config,
             block,
+            &ledger,
         )
     }
 }

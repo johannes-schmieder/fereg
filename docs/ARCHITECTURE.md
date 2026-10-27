@@ -66,7 +66,7 @@ immutable projected rows. `ols/prepared_fit/one_shot.rs` owns the Fast/Low fit
 lifecycle. OLS has a temporary finite workspace; PPML lends retained banks.
 OLS does not create a PPML session.
 
-The plugin selects the qualified ownership/deferred-cell policy after decoding
+The plugin selects the ownership/eager-cell policy after decoding
 an ordinary two-FE categorical-intercept OLS Auto/Auto request with a global
 intercept. Both omitted-moment and projected-score ownership controls are set
 there; core defaults stay off. Explicit injection fields bypass this public
@@ -109,7 +109,8 @@ missing hierarchy or rebuild a stale one, and an installed hierarchy `B`
 applies as `D^1/2 B D^1/2` with current level masses `D`. Canonical products
 take the owner mutably: a call first refreshes a stale hierarchy, and
 `ols/canonical_products/shared_cmg.rs` builds a missing one when a 32-step
-probe of the first column does not finish. It then preconditions large
+probe of the first column does not finish; a finished probe is that column's
+solve on its component (`FinishedProbe`). It then preconditions large
 implicit components with one fixed cycle per application through
 `PpmlCmgView` on per-worker scratch charged to the products' allowance. Categorical
 reprojections use the h16/k1 route; a hierarchy from an earlier weight
@@ -118,7 +119,12 @@ unless replaced. Admission reserves only the application banks; each
 construction admits itself against the fit's solver budget, and refusal
 leaves the diagonal recurrence untouched. `canonical_products/reduced.rs`
 holds the reduced recurrences, including the dense solve of small implicit
-components. Joint frames build weighted columns and their norms and run
+components. `fe/exact_sections.rs` holds the exact parallel forms of the joint
+recurrence's helper merge and finite cross block and of the per-frame level
+masses: fixed chunks, each element in its serial operation order, so bits do
+not depend on the team. Developer phase records (`FEREG_PHASE_TIMING`) of joint
+frames, canonical products, shared-CMG columns and PPML absorptions come from
+the trace-only ledger in `diagnostics/phase_ledger.rs`. Joint frames build weighted columns and their norms and run
 original-column acceptance scans in groups of `ceil(columns / workers)`
 columns per task, at most four, so one row scan serves several columns
 without leaving workers idle. The bank keeps the projected weighted columns
@@ -345,12 +351,22 @@ pre-consolidation explicit builder's (a frozen-digest witness covers one and
 four workers); the two-FE Schur routes themselves build with a zero
 low-effective-degree threshold (see SPEC).
 
-After the CMG handoff, OLS Auto applies the Schur operator through the
-deferred (worker, firm) cells (`fe/routing_kernel.rs`). The kernel keeps a
+Public two-FE OLS Auto builds the (worker, firm) cells (`fe/routing_kernel.rs`)
+before the diagonal pilot and applies the Schur operator through them in the
+pilot and after the CMG handoff; the pilot keeps the D_f preconditioner, since
+the operator and preconditioner choices are independent (only the
+`routing_diagonal` ablation preconditions with the cell Schur diagonal). The
+`cells_deferred` developer arm builds them only after the handoff. The kernel keeps a
 firm-major copy of its worker-major cells, built by a stable count so each
 firm's cells stay in increasing worker order. Workers own their left-scratch
 rows and firms their output rows (`routing_kernel/parallel.rs`), so the
-parallel product reproduces the serial bits at every lane count. Low-degree levels
+parallel product reproduces the serial bits at every lane count. When the team
+offers lanes and the optional scratch is admitted, both cell constructors build
+on the team (`routing_kernel/parallel_build.rs`): worker ranges aggregate their
+membership rows in serial order into lane-private spans, and a stable two-level
+(firm range, firm) counting sort builds the firm index, firm totals and Schur
+diagonal in worker-major order, so every bank equals the serial constructor's
+bits; otherwise the serial constructors run. Low-degree levels
 of the larger FE are eliminated into weighted pairs on the smaller FE; higher
 degrees remain auxiliary graph vertices. Degree is counted after repeated
 worker-firm rows are collapsed. A fixed CMG cycle receives component-centered

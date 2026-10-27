@@ -622,25 +622,25 @@ impl Worker {
             if iteration == config.max_iterations {
                 break;
             }
-            let curvature = match op.coupling.and_then(|c| {
+            let applied = match op.coupling {
                 // Specialize at dispatch: routing every column through the
                 // helper-capable product penalizes the ordinary compact kernel
                 // even when no worker is available to share its work.
-                if SHARE_PRODUCT {
-                    c.apply_with_helpers(
-                        &self.direction,
-                        &mut self.product,
-                        &mut self.eliminated_scratch,
-                        helpers,
-                    )
-                } else {
-                    c.apply(
-                        &self.direction,
-                        &mut self.product,
-                        &mut self.eliminated_scratch,
-                    )
-                }
-            }) {
+                Some(c) if SHARE_PRODUCT => c.apply_with_helpers(
+                    &self.direction,
+                    &mut self.product,
+                    &mut self.eliminated_scratch,
+                    helpers,
+                    None,
+                )?,
+                Some(c) => c.apply(
+                    &self.direction,
+                    &mut self.product,
+                    &mut self.eliminated_scratch,
+                ),
+                None => None,
+            };
+            let curvature = match applied {
                 Some(curvature) => curvature,
                 None => {
                     op.forward(&self.direction, &mut self.observations);

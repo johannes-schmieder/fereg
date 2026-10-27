@@ -34,18 +34,30 @@ pub(crate) fn build_occurrence(
         + banks
         + super::firm_index_bytes(n, q)
         + 4096;
-    if !limits
-        .retained_live_bytes
-        .checked_add(bytes)
-        .is_some_and(|total| limits.memory.is_none_or(|budget| budget.fits(total)))
-    {
+    let parallel = super::parallel_build::plan(design, left, limits);
+    if parallel.is_none() && !super::fits(limits, bytes) {
         return Ok(OptionalSetup {
             kernel: None,
             peak: SolverWorkspacePeak::ZERO,
             refusal: Some(KernelRefusal::MemoryBudget),
         });
     }
-    let (kernel, refusal) = match construct(design, left, weights, scale, &mut Work) {
+    let (built, bytes) = match parallel {
+        Some((lanes, bytes)) => (
+            super::parallel_build::construct(
+                design,
+                left,
+                weights,
+                scale,
+                super::parallel_build::Order::Occurrence,
+                lanes,
+                &mut Work,
+            ),
+            bytes,
+        ),
+        None => (construct(design, left, weights, scale, &mut Work), bytes),
+    };
+    let (kernel, refusal) = match built {
         Ok(kernel) => (Some(kernel), None),
         Err(Stop::Refused(reason)) => (None, Some(reason)),
         Err(Stop::Fatal(error)) => return Err(error),
@@ -75,11 +87,12 @@ fn construct(
     let mut cells: Vec<Cell> = work.capacity(design.nobs())?;
     let mut marks = work.filled(q, usize::MAX)?;
     let mut slots = work.filled(q, 0usize)?;
+    // Poll per block of rows (POLL_UNITS), not per row or worker.
+    let mut poll = Poll::default();
     for worker in 0..p {
-        work.charge(16)?;
+        poll.charge(4)?;
         let members = effect.level_index().checked_members(worker)?;
         for &row in members {
-            work.charge(32)?;
             let firm = firms[row] as usize;
             let weight = match weights {
                 BorrowedMapWeights::Unit => 1.0,
@@ -107,6 +120,7 @@ fn construct(
                 }
             }
             completed_work(1, 32);
+            poll.charge(4)?;
         }
     }
     drop(marks);

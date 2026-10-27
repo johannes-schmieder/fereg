@@ -8,6 +8,8 @@ use std::fs::OpenOptions;
 use std::io::Write;
 use std::sync::Mutex;
 
+pub(crate) mod phase_ledger;
+
 thread_local! {
     static SILENCED: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
 }

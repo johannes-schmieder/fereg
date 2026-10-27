@@ -18,7 +18,7 @@ the demeaned observation vectors; recurrence convergence alone is never
 accepted, because `fe/certificate.rs` recomputes `D'Wr` before an estimate
 proceeds. No upstream source is copied or modified.
 
-CMG is GPL-3.0-only, pinned to `f45c3b8b2895a9fdcf32db3b768717230ed594b9` and
+CMG is GPL-3.0-only, pinned to `f6a044c98ba00fddc82bee1800dccdb310b5a240` and
 statically linked for graph-Laplacian/SDDM preconditioning and PCG. Preserve its
 original license and notices. Exact runtime pins also appear in Cargo.lock and
 references.lock.toml.

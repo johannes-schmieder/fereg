@@ -774,19 +774,21 @@ impl PreparedCoupling {
     }
 
     /// A single-RHS solve leaves the other column workers idle.
-    /// Each owns a partial product. Merge in worker order before the unchanged
-    /// curvature guard; only original-row reconstruction can accept a solve.
+    /// Each owns a partial product. Merge in worker order (an exact parallel
+    /// section) before the unchanged curvature guard; only original-row
+    /// reconstruction can accept a solve.
     pub(super) fn apply_with_helpers(
         &self,
         input: &[f64],
         output: &mut [f64],
         scratch: &mut [f64],
         helpers: &mut [Worker],
-    ) -> Option<f64> {
+        trace: Option<&super::joint::trace::JointLedger>,
+    ) -> Result<Option<f64>> {
         let groups = self.pairs[0].offsets.len() - 1;
         let width = (helpers.len() + 1).min(groups);
         if self.representation == Representation::Schur || width < 2 {
-            return self.apply(input, output, scratch);
+            return Ok(self.apply(input, output, scratch));
         }
         let helpers = &mut helpers[..width - 1];
         let chunk = groups / width;
@@ -813,16 +815,16 @@ impl PreparedCoupling {
                     })
             },
         );
-        for worker in helpers {
-            for (value, partial) in output.iter_mut().zip(&worker.product) {
-                *value += partial;
-            }
+        let started = trace.and_then(|trace| trace.start());
+        crate::fe::exact_sections::add_partials(output, helpers, |worker| &worker.product)?;
+        if let Some(trace) = trace {
+            trace.add(super::joint::trace::MERGE, started);
         }
         let curvature = dot(input, output);
         if !curvature.is_finite() || curvature <= self.curvature_error_scale * dot(input, input) {
-            return None;
+            return Ok(None);
         }
-        Some(curvature)
+        Ok(Some(curvature))
     }
 
     #[cfg(test)]

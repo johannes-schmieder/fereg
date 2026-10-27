@@ -65,12 +65,12 @@ the routing injections below select experimental algorithms for qualification.
 | `inject=routing_direct` | OLS | Tests a bounded componentwise direct Schur factorization on eligible two-FE systems |
 | `inject=it_coefficients` | OLS | Tests compact coefficient-space acceleration on eligible categorical systems; requires `solver=it` |
 | `inject=ownership_{moments\|scores\|both}` | OLS | Independently omits provably unused speculative moments and/or retains eligible projected score storage; preserves solver choice and exact science, including explicit solvers |
-| `inject=cells_eager[_moments\|_scores\|_both]` | OLS | Default-off first-occurrence cells for eligible two-FE Auto/Auto, optionally with ownership controls; unchanged CMG policy. |
-| `inject=cells_deferred[_moments\|_scores\|_both]` | OLS | Default-off cell experiment constructing only after successful CMG commitment at an existing restart, with joint memory admission; optional ownership controls, unchanged routing policy. Qualification remains pending. |
+| `inject=cells_eager[_moments\|_scores\|_both]` | OLS | First-occurrence cells constructed before the diagonal pilot for eligible two-FE Auto/Auto, the public cell order; optional ownership controls, unchanged CMG policy. |
+| `inject=cells_deferred[_moments\|_scores\|_both]` | OLS | The former public cell order: construction only after successful CMG commitment at an existing restart, with joint memory admission; optional ownership controls, unchanged routing policy. |
 | `inject=routing_prefix_{none\|map4\|it4}` | OLS | Replaces the existing categorical shortcut with no prefix, up to four MAP sweeps, or up to four compact IT cycles (eight native sweeps); unfinished prefixes seed original-RHS LSMR |
 | `inject=routing_incremental_many` | OLS (replay wire) | Qualifies strict unseeded LSMR with retained preparation for at least three categorical intercept FEs, using the existing unseeded portfolio |
-| `inject=routing_many_geometry_v1` | OLS (replay wire) | Selects the public many-FE geometry policy for at least three categorical intercept FEs: geometry-qualified MAP pilot, Jacobi LSMR trial with projected escalation to the additive preconditioner, recurrence a decade below the request with one seeded correction on a certificate miss, requested-tolerance certificate. Unlike other injections it keeps public two-FE ownership/deferred-cell activation, so it equals uninjected Auto on every design |
-| `inject=routing_two_gates_v2` | OLS (replay wire) | Selects the public two-FE policy, gate v2: the structural gate plus an early CMG build at local step 4, 8 or 12 when the diagonal recurrence has stalled; keeps public two-FE ownership/deferred-cell activation, so it equals uninjected Auto on every design |
+| `inject=routing_many_geometry_v1` | OLS (replay wire) | Selects the public many-FE geometry policy for at least three categorical intercept FEs: geometry-qualified MAP pilot, Jacobi LSMR trial with projected escalation to the additive preconditioner, recurrence a decade below the request with one seeded correction on a certificate miss, requested-tolerance certificate. Unlike other injections it keeps public two-FE ownership/cell activation, so it equals uninjected Auto on every design |
+| `inject=routing_two_gates_v2` | OLS (replay wire) | Selects the public two-FE policy, gate v2: the structural gate plus an early CMG build at local step 4, 8 or 12 when the diagonal recurrence has stalled; keeps public two-FE ownership/cell activation, so it equals uninjected Auto on every design |
 | `inject=routing_incremental_two` | OLS (replay wire) | Qualifies the existing direct-or-h16/k1 synchronous portfolio for exactly two categorical intercept FEs |
 | `inject=routing_builder_break` + `break_marker_token=<32 lowercase hex>` | OLS | Uses the synchronous h4/k1 builder and waits for Break at its first cancellation poll after executed construction work; any worker count |
 | `inject=ppml_topology` | PPML | Shares admitted categorical checkpoint component indexing after acceptance; weighted numerical data is recomputed in every frame |
@@ -87,7 +87,7 @@ which reach it only through the replay wire (`bench/routing.py`,
 solver conflicts fail before observation reads or publication. Omitted or empty
 `inject` retains the qualified automatic policy; these arms do not enable a new
 public default or change request/result versions or result dimensions. Explicit
-injections otherwise bypass public two-FE ownership/deferred-cell activation;
+injections otherwise bypass public two-FE ownership/cell activation;
 only the selected `routing_many_geometry_v1` arm keeps it, so public activation
 can require exact selected-hidden/public agreement on every design.
 
@@ -367,7 +367,7 @@ normalization, RNG and channel contracts are in
 gate v1 plus an early CMG build at local step 4, 8 or 12 when the diagonal
 recurrence has stalled (see [the gate notes](two_fe_auto_gates.md)). Like the
 many-FE geometry selector it keeps the public two-FE ownership and
-deferred-cell activation, so it equals uninjected Auto on every design.
+cell activation, so it equals uninjected Auto on every design.
 
 `inject=routing_two_gates_v1` selects the frozen structural two-gate OLS
 Auto/Auto candidate on exactly two categorical intercept fixed effects. It

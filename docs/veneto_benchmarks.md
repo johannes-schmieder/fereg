@@ -1,5 +1,42 @@
 # Veneto AKM comparisons
 
+## October 27, 2026: round two (team cells, CMG matvec gate) against beta.8
+
+Candidate `d6975ec2` (Linux plugin `8d1608c1...`) against the shipped beta.8
+Linux plugin and PyFixest `within`, one whole node per run (`scc-ui1` without
+saved effects, `scc-uc2` with), three rotated repetitions per cell, every
+fixed-worker repeat exact and every scientific comparison eligible. The
+[round-two record](../bench/results/two-fe-round-two-20261027.json) retains the
+medians and the per-arm science flags.
+
+| Panel, workers | Candidate | beta.8 | PyFixest `within` | vs beta.8 | vs `within` |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| short, 1 | 1.81 | 2.01 | 2.07 | 0.90 | 0.88 |
+| short, 2 | 1.39 | 1.42 | 1.34 | 0.97 | 1.03 |
+| short, 4 | 1.03 | 1.06 | 1.08 | 0.97 | 0.95 |
+| short, 8 | 0.78 | 0.82 | 0.94 | 0.95 | 0.82 |
+| short, 16 | 0.73 | 0.78 | 0.96 | 0.94 | 0.77 |
+| long, 1 | 9.64 | 10.53 | 26.95 | 0.92 | 0.36 |
+| long, 2 | 6.96 | 7.38 | 15.42 | 0.94 | 0.45 |
+| long, 4 | 4.83 | 5.29 | 9.84 | 0.91 | 0.49 |
+| long, 8 | 3.54 | 3.99 | 7.04 | 0.89 | 0.50 |
+| long, 16 | 3.22 | 3.63 | 6.19 | 0.89 | 0.52 |
+
+With saved fixed effects:
+
+| Panel, workers | Candidate | beta.8 | vs beta.8 |
+| --- | ---: | ---: | ---: |
+| short, 1 | 2.83 | 3.27 | 0.86 |
+| short, 2 | 2.11 | 2.14 | 0.98 |
+| short, 4 | 1.49 | 1.51 | 0.99 |
+| short, 8 | 1.11 | 1.15 | 0.97 |
+| short, 16 | 1.03 | 1.13 | 0.91 |
+| long, 1 | 13.19 | 14.61 | 0.90 |
+| long, 2 | 9.68 | 10.25 | 0.94 |
+| long, 4 | 6.61 | 7.15 | 0.93 |
+| long, 8 | 4.78 | 5.35 | 0.89 |
+| long, 16 | 4.31 | 4.97 | 0.87 |
+
 ## October 27, 2026: two-FE Auto speed candidate
 
 A development build of the two-FE Auto speed changes (source `18b47675`,
