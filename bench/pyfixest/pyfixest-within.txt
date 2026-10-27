@@ -97,7 +97,7 @@ pure-eval==0.2.4
     # via stack-data
 pycparser==3.12
     # via cffi
-pyfixest @ git+https://github.com/py-econometrics/pyfixest@263cf2d3c78cbaf4988923c79e0135da130fae1a
+pyfixest @ git+https://github.com/py-econometrics/pyfixest@0f41fffd7276f89cbd87528ef13e8c0261622932
     # via -r ../req-within.in
 pygments==2.21.0
     # via

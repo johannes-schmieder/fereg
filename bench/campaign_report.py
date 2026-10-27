@@ -29,17 +29,24 @@ RED = '#A14543'
 LIGHT = '#EEF3F6'
 ARM_NAMES = {'fereg': 'fereg', 'fixest': 'fixest', 'fixest-strict': 'fixest strict',
              'reghdfe': 'reghdfe', 'ppmlhdfe': 'ppmlhdfe', 'areg': 'areg',
-             'pyfixest': 'pyfixest 0.60', 'pyfixest-within': 'pyfixest within'}
+             'pyfixest': 'pyfixest 0.60', 'pyfixest-within': 'pyfixest within',
+             'julia': 'FixedEffectModels.jl', 'julia-strict': 'FixedEffectModels.jl strict'}
 STATA_ARMS = ['fereg', 'reghdfe', 'ppmlhdfe', 'areg']
-ARM_COLORS = {'fereg': BLUE, 'fixest': GOLD, 'reghdfe': INK, 'ppmlhdfe': INK}
+ARM_COLORS = {'fereg': BLUE, 'fixest': GOLD, 'reghdfe': INK, 'ppmlhdfe': INK,
+              'pyfixest-within': '#5B8C5A', 'julia': '#8E5B9B'}
 DESIGNS = {'akm-baseline': 'AKM baseline', 'one-fe': 'One FE',
            'two-dense': 'Two FE / dense', 'two-sparse': 'Two FE / sparse',
            'three-dense': 'Three FE / dense', 'three-sparse': 'Three FE / sparse'}
 VCE_NAMES = {'iid': 'Regular', 'robust': 'Robust', 'cluster': 'Worker cluster'}
-TIMING_FOOTNOTE = ('* Descriptive timing outside the three-repetition scientific comparison. '
-                   'Discrepancies include precision, FE degrees of freedom and saved-prediction scores; '
-                   'see the discrepancy appendix. n=1 denotes one completed fit. '
-                   'Time ratios require scientific agreement.')
+TIMING_FOOTNOTE = ('* Descriptive timing outside the scientific comparison. '
+                   'Discrepancies include precision and saved-prediction scores; see the discrepancy appendix. '
+                   '† Agreement up to degrees-of-freedom counting conventions. n=k denotes k completed fits. '
+                   'Time ratios require agreement in every paired repetition.')
+
+
+def planned_repetitions(cell, policy):
+    # Earlier manifests share one policy-wide repetition count.
+    return cell.get('repetitions', policy['repetitions'])
 
 
 def planned_arms(cell):
@@ -62,40 +69,48 @@ def stopping(policy):
             f"{cleanup//3600} h {cleanup%3600//60} min cleanup threshold; {policy['job_wall_seconds']//3600} h production job")
 
 
-def pyfixest_pages(pdf, frame, manifest):
-    """Every cell with PyFixest arms, plus the one-FE OLS cells with areg."""
+OTHER_ARMS = {'pyfixest': '0.60', 'pyfixest-within': 'within', 'julia': 'jl', 'julia-strict': 'jl strict'}
+
+
+def package_pages(pdf, frame, manifest):
+    """Every cell with Python or Julia comparators, then every cell with areg."""
+    order = lambda c: (list(DESIGNS).index(c['design']), c['rows'], c['threads'], c['vce'], c['save_fe'],
+                       c.get('regressors', 16))
     for model in ['ols', 'ppml']:
-        cells = sorted((c for c in manifest['cells'] if c['model'] == model and 'pyfixest' in planned_arms(c)),
-                       key=lambda c: (list(DESIGNS).index(c['design']), c['rows'], c['threads'], c['vce'], c['save_fe']))
-        midpoint = (len(cells)+1)//2
-        for part, chunk in enumerate([cells[:midpoint], cells[midpoint:]], 1):
-            if not chunk:
-                continue
-            pdf.page(f'{model.upper()}: PyFixest ({part}/2)')
-            pdf.text('PyFixest 0.60.0 uses its default Rust MAP demeaner; the pinned main revision defaults to within LSMR. '
-                     'Both use default estimation tolerances and recover saved FE at 1e-11. Median seconds; * marks result discrepancies. '
-                     'A ratio above 1 means PyFixest took longer than fereg.', 'SmallCustom')
-            rows = [['Design / N', 'Cores / VCE / saved', 'fereg s', '0.60 s', 'within s', '0.60 ×', 'within ×']]
-            for c in chunk:
-                rows.append([DESIGNS[c['design']]+' / '+size_label(c['rows']),
+        cells = sorted((c for c in manifest['cells'] if c['model'] == model and c['section'] != 'reference'
+                        and set(OTHER_ARMS) & set(planned_arms(c))), key=order)
+        extra = [a for a in OTHER_ARMS if any(a in planned_arms(c) for c in cells)]
+        for part, start in enumerate(range(0, len(cells), 18), 1):
+            pdf.page(f'{model.upper()}: Python and Julia packages ({part}/{(len(cells)+17)//18})')
+            pdf.text('PyFixest within is a pinned main revision whose default is the within LSMR demeaner. '
+                     'FixedEffectModels.jl (jl) uses its default tolerance 1e-6; jl strict uses 1e-10. '
+                     'Median seconds; * marks result discrepancies and † agreement up to degrees-of-freedom conventions. '
+                     'A ratio above 1 means the package took longer than fereg.', 'SmallCustom')
+            rows = [['Design / N / K', 'Cores / VCE / saved', 'fereg s', *[OTHER_ARMS[a]+' s' for a in extra],
+                     *[OTHER_ARMS[a]+' ×' for a in extra]]]
+            for c in cells[start:start+18]:
+                rows.append([f"{DESIGNS[c['design']]} / {size_label(c['rows'])} / {c.get('regressors', 16)}",
                              f"{c['threads']} / {c['vce']} / {'yes' if c['save_fe'] else 'no'}",
-                             comparison_cell(frame, c['id'], 'fereg'), comparison_cell(frame, c['id'], 'pyfixest'),
-                             comparison_cell(frame, c['id'], 'pyfixest-within'),
-                             comparison_cell(frame, c['id'], 'pyfixest', 'speedup'),
-                             comparison_cell(frame, c['id'], 'pyfixest-within', 'speedup')])
-            pdf.table(rows, [155, 115, 50, 55, 55, 50, 55])
-    cells = [c for c in manifest['cells'] if 'areg' in planned_arms(c)]
-    if cells:
-        pdf.page('OLS: areg with one absorbed effect')
-        pdf.text('areg absorbs exactly one categorical effect, so it runs only in the four-core one-FE OLS cells. '
-                 'Its absorbed count excludes the intercept and is compared after adding it back.', 'SmallCustom')
-        rows = [['N', 'fereg s', 'areg s', 'reghdfe s', 'areg ×', 'reghdfe ×']]
-        for c in sorted(cells, key=lambda c: c['rows']):
-            rows.append([size_label(c['rows']), comparison_cell(frame, c['id'], 'fereg'),
+                             comparison_cell(frame, c['id'], 'fereg'),
+                             *[comparison_cell(frame, c['id'], a) for a in extra],
+                             *[comparison_cell(frame, c['id'], a, 'speedup') for a in extra]])
+            width = (540-235)//(1+2*len(extra))
+            pdf.table(rows, [140, 95]+[width]*(1+2*len(extra)), padding=4)
+    cells = sorted((c for c in manifest['cells'] if 'areg' in planned_arms(c)), key=order)
+    for part, start in enumerate(range(0, len(cells), 18), 1):
+        pdf.page(f'OLS: Stata 19 areg ({part}/{(len(cells)+17)//18})')
+        pdf.text('areg runs in every OLS cell with at most four cores and no saved FE. With several effects it uses '
+                 'dfabsorb noabsorbtest tolerance(1e-8) iterate(16000). Its absorbed count excludes the intercept and is '
+                 'compared after adding it back; with clustered covariance it does not discount effects nested in the clusters.',
+                 'SmallCustom')
+        rows = [['Design / N / K', 'Cores / VCE', 'fereg s', 'areg s', 'reghdfe s', 'areg ×', 'reghdfe ×']]
+        for c in cells[start:start+18]:
+            rows.append([f"{DESIGNS[c['design']]} / {size_label(c['rows'])} / {c.get('regressors', 16)}",
+                         f"{c['threads']} / {c['vce']}", comparison_cell(frame, c['id'], 'fereg'),
                          comparison_cell(frame, c['id'], 'areg'), comparison_cell(frame, c['id'], 'reghdfe'),
                          comparison_cell(frame, c['id'], 'areg', 'speedup'),
                          comparison_cell(frame, c['id'], 'reghdfe', 'speedup')])
-        pdf.table(rows, [90, 90, 90, 90, 90, 90])
+        pdf.table(rows, [140, 80, 60, 60, 70, 60, 70], padding=4)
 
 
 def check_host_observations(root, context, manifest, accounting):
@@ -151,7 +166,7 @@ def load_campaign(root):
         records.extend(task['records']); comparisons.extend(task['comparisons'])
         datasets.update(task['datasets']); tasks.append(task)
     expected = {(c['id'], a, r) for c in manifest['cells'] for a in planned_arms(c)
-                for r in range(1, manifest['policy']['repetitions']+1)}
+                for r in range(1, planned_repetitions(c, manifest['policy'])+1)}
     actual = [(r['cell'], r['arm'], r['repetition']) for r in records]
     if len(set(actual)) != len(actual) or set(actual) != expected or len(records) != manifest['timed_fits']:
         raise ValueError('manifest and observation coverage disagree')
@@ -164,42 +179,67 @@ def load_campaign(root):
 def summarize(campaign):
     records = {(r['cell'], r['arm'], r['repetition']): r for r in campaign['records']}
     comparisons = {(r['cell'], r['arm'], r['repetition']): r for r in campaign['comparisons']}
-    count = campaign['manifest']['policy']['repetitions']
+    policy = campaign['manifest']['policy']
     worker_checks = check_workers(campaign)
     repeat_checks = check_native_repetitions(campaign)
     rows = []
     for cell in campaign['manifest']['cells']:
+        count = planned_repetitions(cell, policy)
+        native_reasons = set(worker_checks.get(cell['id'], [])) | set(repeat_checks.get(cell['id'], []))
         for arm in planned_arms(cell):
             runs = [records[(cell['id'], arm, rep)] for rep in range(1, count+1)]
             valid = all(r['status'] == 'ok' for r in runs)
-            reasons = set()
-            paired = []
+            reasons, conventions, paired, scales = set(), set(), [], []
             if arm != 'fereg':
                 for rep, run in enumerate(runs, 1):
                     native = records[(cell['id'], 'fereg', rep)]
                     comparison = comparisons.get((cell['id'], arm, rep), {})
-                    if not comparison.get('eligible') or native['status'] != 'ok' or run['status'] != 'ok':
+                    kind = comparison.get('agreement', 'exact' if comparison.get('eligible') else 'differs')
+                    if not comparison or native['status'] != 'ok' or run['status'] != 'ok':
+                        kind = 'unavailable'
+                    if not comparison.get('eligible') or kind == 'unavailable':
                         reasons.update(comparison.get('reasons', ['application unavailable']))
-                    else:
+                    if kind in ['exact', 'convention']:
                         paired.append(float(run['metadata']['seconds'])/float(native['metadata']['seconds']))
-            if cell['id'] in worker_checks:
-                reasons.update(worker_checks[cell['id']])
-            reasons.update(repeat_checks.get(cell['id'], []))
+                        conventions.update(comparison.get('convention_reasons', []))
+                        if comparison.get('covariance_scale') not in [None, 1.]:
+                            scales.append(comparison['covariance_scale'])
+            reasons.update(native_reasons)
             eligible = valid and not reasons if arm == 'fereg' else valid and not reasons and len(paired) == count
             times = [float(r['metadata']['seconds']) for r in runs if r['status'] == 'ok']
             observed = [value for r in runs if (value := completed_seconds(r)) is not None]
-            resolved_memory = valid and all(r.get('memory_sweeps', 0) >= 10 for r in runs)
-            memory = median(r['estimator_tree_rss_bytes'] for r in runs)/2**30 if resolved_memory else None
+            # Exact: every paired repetition agrees. Convention: agreement up to
+            # absorbed degrees-of-freedom counts and their covariance scalar.
+            if arm == 'fereg':
+                agreement = 'native'
+            elif eligible:
+                agreement = 'exact'
+            elif valid and not native_reasons and len(paired) == count:
+                agreement = 'convention'
+            else:
+                agreement = 'differs' if observed else 'unavailable'
+            if valid and all(r.get('memory_exact') for r in runs):
+                method = 'kernel peak'
+                memory = median(r['peak_rss_bytes'] for r in runs)/2**30
+                increment = median(r['peak_rss_bytes']-r['ready_rss_bytes'] for r in runs)/2**30
+            elif valid and all(r.get('memory_sweeps', 0) >= 10 for r in runs):
+                method, memory, increment = 'sampled', median(r['estimator_tree_rss_bytes'] for r in runs)/2**30, None
+            else:
+                method, memory, increment = '', None, None
             rows.append(dict(cell=cell['id'], model=cell['model'], design=cell['design'], rows=cell['rows'],
                              threads=cell['threads'], vce=cell['vce'], save_fe=cell['save_fe'],
-                             section=cell['section'], arm=arm, successful_repetitions=sum(r['status'] == 'ok' for r in runs),
-                             eligible=eligible, reasons='; '.join(sorted(reasons)),
+                             regressors=cell.get('regressors', 16), section=cell['section'], arm=arm,
+                             repetitions=count, successful_repetitions=sum(r['status'] == 'ok' for r in runs),
+                             eligible=eligible, reasons='; '.join(sorted(reasons)), agreement=agreement,
+                             convention_reasons='; '.join(sorted(conventions)) if agreement == 'convention' else '',
+                             covariance_scale=median(scales) if agreement == 'convention' and scales else None,
                              seconds=median(times) if valid else None,
                              seconds_min=min(times) if valid else None, seconds_max=max(times) if valid else None,
                              timed_repetitions=len(observed), observed_seconds=median(observed) if observed else None,
-                             timing_discrepancy=bool(observed) and not eligible,
-                             speedup=median(paired) if eligible and paired else None,
-                             rss_gib=memory, memory_resolved=resolved_memory,
+                             timing_discrepancy=bool(observed) and not eligible and agreement != 'convention',
+                             speedup=median(paired) if agreement in ['exact', 'convention'] else None,
+                             rss_gib=memory, rss_increment_gib=increment, memory_method=method,
+                             memory_resolved=memory is not None,
                              host=runs[0].get('host'), statuses='; '.join(r['status'] for r in runs)))
     return pd.DataFrame(rows)
 
@@ -227,7 +267,9 @@ def timing_cell(row):
     value = number(row.observed_seconds)
     if row.timing_discrepancy:
         value += '*'
-    if row.timed_repetitions != 3:
+    if getattr(row, 'agreement', '') == 'convention':
+        value += '†'
+    if row.timed_repetitions != getattr(row, 'repetitions', 3):
         value += f'<br/><font size="6">n={row.timed_repetitions}</font>'
     return value
 
@@ -302,12 +344,13 @@ def check_workers(campaign):
             continue
         baseline = [c for c in cells if c['threads'] == 4 and all(c[k] == cell[k] for k in
                     ['model', 'design', 'rows', 'vce', 'save_fe'])
-                    and c.get('regressors', 16) == cell.get('regressors', 16)]
+                    and c.get('regressors', 16) == cell.get('regressors', 16) and c['section'] != 'reference']
         if len(baseline) != 1:
             failures[cell['id']] = ['missing four-core scientific witness']
             continue
         reasons = set()
-        for rep in range(1, policy['repetitions']+1):
+        shared = min(planned_repetitions(cell, policy), planned_repetitions(baseline[0], policy))
+        for rep in range(1, shared+1):
             a, b = records[(cell['id'], rep)], records[(baseline[0]['id'], rep)]
             if a['status'] != 'ok' or b['status'] != 'ok':
                 reasons.add('worker science unavailable'); continue
@@ -345,6 +388,8 @@ def unresolved_detail(campaign, row):
     for run in runs:
         if run['status'] == 'command-timeout':
             details.add('600 s command limit; later repetitions skipped')
+        elif run['status'] == 'skipped-after-timeout':
+            details.add(f"not attempted after the command limit at {run['timed_out_rows']:,} rows")
         elif run['status'] == 'capture-error':
             details.add(run.get('error', 'capture validation failed'))
         elif run['status'] == 'error':
@@ -371,37 +416,47 @@ def configure_plots():
                          'figure.facecolor': 'white', 'savefig.facecolor': 'white'})
 
 
+def series_arms(model):
+    return ['fereg', 'fixest', 'pyfixest-within', *(['julia'] if model == 'ols' else []),
+            'reghdfe' if model == 'ols' else 'ppmlhdfe']
+
+
 def scaling_plot(frame, output):
     fig, axes = plt.subplots(1, 2, figsize=(10, 3.4), constrained_layout=True)
     for ax, model in zip(axes, ['ols', 'ppml']):
-        subset = frame[(frame.model == model) & (frame.design == 'akm-baseline') &
-                       (frame.rows == 1000000) & (~frame.save_fe) &
+        subset = frame[(frame.model == model) & (frame.design == 'akm-baseline') & (frame.section != 'reference') &
+                       (frame.rows == 1000000) & (~frame.save_fe) & (frame.regressors == 16) &
                        (frame.vce == ('iid' if model == 'ols' else 'robust'))]
-        for arm in ['fereg', 'fixest', 'reghdfe' if model == 'ols' else 'ppmlhdfe']:
-            selected = subset[(subset.arm == arm) & (subset.timed_repetitions == 3)].sort_values('threads')
+        for arm in series_arms(model):
+            selected = subset[(subset.arm == arm) & (subset.timed_repetitions == subset.repetitions)].sort_values('threads')
             ax.plot(selected.threads, selected.observed_seconds, marker='o', color=ARM_COLORS[arm], label=ARM_NAMES[arm])
             flagged = selected[selected.timing_discrepancy]
             ax.scatter(flagged.threads, flagged.observed_seconds, marker='*', s=100, color=ARM_COLORS[arm], zorder=4)
         ax.set(title=model.upper(), xlabel='Physical cores', ylabel='Median estimation seconds')
-        ax.set_xticks([1, 4, 8, 16]); ax.set_yscale('log'); ax.grid(axis='y', alpha=.6)
+        ax.set_xscale('log', base=2); ax.set_xticks(sorted(subset.threads.unique()), labels=sorted(subset.threads.unique()))
+        ax.set_yscale('log'); ax.grid(axis='y', alpha=.6)
     axes[1].legend(frameon=False, fontsize=8)
     fig.savefig(output, dpi=180); plt.close(fig)
 
 
-def breadth_plot(frame, model, output):
-    fig, axes = plt.subplots(3, 2, figsize=(10, 7.5), constrained_layout=True)
-    for ax, design in zip(axes.flat, DESIGNS):
+def size_plot(frame, policy, output):
+    series = policy.get('size_series', [])
+    fig, axes = plt.subplots(2, max(1, len(series)), figsize=(10, 6), constrained_layout=True, squeeze=False)
+    for column, (model, design) in enumerate(series):
         subset = frame[(frame.model == model) & (frame.design == design) & (frame.threads == 4) &
-                       (~frame.save_fe) & (frame.vce == ('iid' if model == 'ols' else 'robust'))]
-        for arm in ['fereg', 'fixest', 'reghdfe' if model == 'ols' else 'ppmlhdfe']:
-            selected = subset[(subset.arm == arm) & (subset.timed_repetitions == 3)].sort_values('rows')
-            ax.plot(selected.rows, selected.observed_seconds, marker='o', color=ARM_COLORS[arm], label=ARM_NAMES[arm])
-            flagged = selected[selected.timing_discrepancy]
-            ax.scatter(flagged.rows, flagged.observed_seconds, marker='*', s=100, color=ARM_COLORS[arm], zorder=4)
-        ax.set_title(DESIGNS[design], loc='left', fontsize=10)
-        ax.set_xscale('log'); ax.set_yscale('log')
-        ax.set_xticks([100000, 1000000, 4000000], labels=['100k', '1m', '4m'])
-        ax.grid(axis='y', alpha=.6); ax.set_ylabel('Seconds')
+                       (frame.section != 'reference') & (~frame.save_fe) & (frame.regressors == 16) &
+                       (frame.vce == ('iid' if model == 'ols' else 'robust'))]
+        for arm in series_arms(model):
+            selected = subset[subset.arm == arm].sort_values('rows')
+            timed = selected[selected.timed_repetitions == selected.repetitions]
+            axes[0, column].plot(timed.rows, timed.observed_seconds, marker='o', color=ARM_COLORS[arm], label=ARM_NAMES[arm])
+            measured = selected[selected.memory_resolved]
+            axes[1, column].plot(measured.rows, measured.rss_gib, marker='o', color=ARM_COLORS[arm])
+        axes[0, column].set_title(f'{model.upper()} / {DESIGNS[design]}', loc='left', fontsize=10)
+        axes[0, column].set_ylabel('Seconds'); axes[1, column].set_ylabel('Peak memory, GiB')
+        for ax in axes[:, column]:
+            ax.set_xscale('log'); ax.set_yscale('log'); ax.grid(axis='y', alpha=.6)
+            ax.set_xticks(policy['sizes'], labels=[size_label(n) for n in policy['sizes']])
     axes[0, 0].legend(frameon=False, fontsize=8)
     fig.savefig(output, dpi=180); plt.close(fig)
 
@@ -481,7 +536,9 @@ def comparison_cell(frame, cell, arm, metric='seconds'):
     row = selected.iloc[0]
     if metric == 'seconds':
         return timing_cell(row)
-    if not row.eligible:
+    if metric == 'speedup' and row.agreement not in ['exact', 'convention']:
+        return 'NR'
+    if metric != 'speedup' and not (row.eligible or row.agreement == 'convention'):
         return 'NR'
     return number(row[metric])
 
@@ -504,8 +561,7 @@ def render(campaign, frame, output, saved_retests=None):
     pdfmetrics.registerFontFamily('CampaignSans', normal='CampaignSans', bold='CampaignSans-Bold',
                                 italic='CampaignSans', boldItalic='CampaignSans-Bold')
     scaling_plot(frame, output/'scaling.png')
-    for model in ['ols', 'ppml']:
-        breadth_plot(frame, model, output/f'{model}-breadth.png')
+    size_plot(frame, campaign['manifest']['policy'], output/'sizes.png')
     context, manifest = campaign['context'], campaign['manifest']
     source = context.get('native_source', context['source'])[:12]
     pdf = CampaignPDF(output/'fereg-scc-benchmark.pdf', f"{context['run_id']}  |  source {source}")
@@ -514,15 +570,24 @@ def render(campaign, frame, output, saved_retests=None):
     statuses = Counter(r['status'] for r in campaign['records'])
     jobs = campaign['accounting']['jobs']
     production = [j for j in jobs if str(j['jobnumber']) == str(context['production_job'])]
+    policy = manifest['policy']
+    cores = ' / '.join(map(str, policy['threads']))
+    sizes = ' / '.join(f'{n:,}' for n in policy['sizes'])
+    planned = ('one' if policy['repetitions'] == 1 else f"{policy['repetitions']}")
+    if 'large_repetitions' in policy:
+        planned += f" up to {policy['large_rows']:,} rows and {policy['large_repetitions']} above"
     pdf.text('A focused comparison<br/>of high-dimensional<br/>fixed-effect estimators', 'TitleCustom')
     pdf.text('OLS &amp; PPML · AKM baseline · 16 controls', 'SectionCustom')
     pdf.text(f"October 2026 · Frozen source <b>{source}</b> · Boston University SCC")
     pdf.table([['Configurations', 'Planned fits', 'Primary cores', 'Whole-node reservations'],
-               [len(manifest['cells']), len(campaign['records']), '4; selected 1 / 8 / 16',
+               [len(manifest['cells']), len(campaign['records']), f"{policy['main_threads']}; selected {cores}",
                 f"{manifest['policy']['bundles']} tasks × 28 reserved cores"]],
               [115, 105, 165, 155])
-    pdf.text(f"<b>{len(eligible)} of {len(pairs)} primary package comparisons</b> meet the scientific gates in all three paired repetitions. "
-             f"{statuses.get('ok', 0)} captures succeeded; {statuses.get('skipped-after-failure', 0)} planned repetitions were skipped after an earlier failure. "
+    agreed = pairs[pairs.agreement == 'convention']
+    pdf.text(f"<b>{len(eligible)} of {len(pairs)} primary package comparisons</b> meet the scientific gates in every paired repetition, "
+             f"and {len(agreed)} more agree up to degrees-of-freedom counting conventions. "
+             f"{statuses.get('ok', 0)} captures succeeded; {statuses.get('skipped-after-failure', 0)} planned repetitions were skipped after an earlier failure "
+             f"and {statuses.get('skipped-after-timeout', 0)} after a timeout at a smaller size. "
              "Completed timings with result discrepancies are shown with an asterisk. "
              "Failed or incomplete commands remain NR; only validated comparisons enter time ratios.")
     if not eligible.empty:
@@ -584,31 +649,33 @@ def render(campaign, frame, output, saved_retests=None):
              'The PPML panel crosses robust and clustered covariance with saved FE on/off.')
     pdf.table([['Dimension', 'Selected coverage'],
                ['Model', 'OLS and PPML; PPML uses positive, fractional outcomes'],
-               ['Physical cores', '1 / 4 / 8 / 16 for fereg and fixest; 1 / 4 for Stata comparators'],
-               ['Size', '100,000 / 1,000,000 / 4,000,000 observations'],
+               ['Physical cores', f'{cores} for fereg and the other languages; at most four for Stata comparators'],
+               ['Size', f'{sizes} observations in the size series, each on one node'],
                ['Fixed effects', 'One way; two and three way with dense and sparse designs'],
-               ['Repetition', 'Three fresh processes per package/configuration; rotating package order'],
-               ['Reservation', 'Exactly 28-core nodes, exclusive allocation, sequential fits, four-hour production jobs']],
+               ['Repetition', f'{planned} fresh processes per package/configuration; rotating package order'],
+               ['Reservation', f"Exactly 28-core nodes, exclusive allocation, sequential fits, {policy['job_wall_seconds']//3600}-hour production jobs"]],
               [120, 420])
     pdf.text('<b>What is timed.</b> Estimation, covariance and requested FE recovery. A separate small initialization fit precedes each timed command. '
              'For fixest, lazy FE extraction and observation-level materialization are included. Data generation/import, hash checks and disk export are excluded. '
              'BLAS libraries use one thread; each process is bound to the requested number of physical cores.')
-    pdf.text('<b>Scientific eligibility.</b> All three repetitions must agree on original sample rows, rank/omission/deletion decisions, cluster count and declared DoF/covariance policy. '
+    pdf.text('<b>Scientific eligibility.</b> All repetitions must agree on original sample rows, rank/omission/deletion decisions, cluster count and declared DoF/covariance policy. '
              'All 16 slopes, all 256 slope covariance entries and the objective must agree at SPEC tolerances. Saved-output cells also require prediction agreement and model score checks. '
              'Native coordinates and objectives repeat exactly at fixed worker count; higher-core cells require agreement with their four-core scientific witness. '
              'A bounded independent dummy-design oracle checks the small smoke cases before production.')
     pdf.text('<b>Conventions.</b> PPML fixest disables its K correction and applies N/(N−1) to robust covariance; stock covariance is retained. '
              'PPML absorbed counts are compared as the full FE-span rank, checked by the dummy-design oracle; raw counts are retained. '
              'Its default and stricter convergence profiles are separate. Stock Stata differences remain visible. '
-             'NR means unavailable or unresolved; a displayed ratio requires a successful scientific comparison. '
+             'Absorbed counts follow each package (connected components, levels, or nesting in clusters), which also scales the covariance by one '
+             'small-sample factor; † marks agreement once that scalar is removed. '
+             'NR means unavailable or unresolved; a displayed ratio requires agreement in every paired repetition. '
              'A ratio above 1 means the comparator took longer than fereg.', 'SmallCustom')
     pdf.text('<b>Descriptive timings.</b> A completed command can supply an observed time even when its results fail comparison checks. '
-             'Those values carry *. Three completed commands give a median; n=1 labels a single observation after later repetitions were skipped. '
+             'Those values carry *. Completed commands give a median; n=k labels k completed fits after later repetitions were skipped. '
              'Scientific eligibility and tolerances are unchanged. Failed FE lookup calls and timeouts do not supply completed timings.', 'SmallCustom')
 
     for model in ['ols', 'ppml']:
         pdf.page(f'{model.upper()}: the four-core AKM baseline')
-        pdf.text('1,000,000 observations · worker and firm FE · 16 controls · three planned repetitions; n=1 labels a single completed fit')
+        pdf.text(f'1,000,000 observations · worker and firm FE · 16 controls · {planned} planned repetitions; n=k labels k completed fits')
         cells = [c for c in manifest['cells'] if c['model'] == model and c['section'] == 'baseline']
         comparator = 'reghdfe' if model == 'ols' else 'ppmlhdfe'
         rows = [['Covariance / output', 'fereg<br/>seconds', 'fixest<br/>seconds', f'{comparator}<br/>seconds',
@@ -638,11 +705,10 @@ def render(campaign, frame, output, saved_retests=None):
                  'These ratios describe this host and this data; they are not uncertainty intervals. '
                  'The positive PPML inputs deliberately avoid separation, so this campaign does not measure separation handling.', 'SmallCustom')
 
-    pyfixest_pages(pdf, frame, manifest)
+    package_pages(pdf, frame, manifest)
 
     pdf.page('Core scaling within a reserved node')
-    pdf.text('The full AKM thread panel for each model remains on the same node. The Stata comparators stop at four processors because of the license. '
-             'The higher-core comparisons include only fereg and fixest.')
+    pdf.text('The full AKM thread panel for each model remains on the same node. The Stata comparators stop at four processors because of the license.')
     pdf.figure(output/'scaling.png', 2.4)
     rows = [['Model / cores', 'fereg seconds', 'fixest seconds', 'fixest / fereg']]
     for model in ['ols', 'ppml']:
@@ -652,21 +718,22 @@ def render(campaign, frame, output, saved_retests=None):
             rows.append([f'{model.upper()} / {row.threads}', comparison_cell(frame, row.cell, 'fereg'),
                          comparison_cell(frame, row.cell, 'fixest'), comparison_cell(frame, row.cell, 'fixest', 'speedup')])
     pdf.table(rows, [150, 130, 130, 130])
-    pdf.text('Logarithmic seconds axis. Star markers identify result discrepancies; curves use three completed repetitions. '
+    pdf.text('Logarithmic axes. Star markers identify result discrepancies; curves use every planned repetition. '
              'Selected 16-core clustered/saved and dense/sparse cases appear in the configuration appendix.', 'SmallCustom')
 
-    for model in ['ols', 'ppml']:
-        pdf.page(f'{model.upper()}: size and graph structure')
-        pdf.text('Four-core fits · no saved FE · '+('regular covariance' if model == 'ols' else 'robust covariance')+
-                 ' · logarithmic axes. Points require three completed repetitions; star markers identify result discrepancies.')
-        pdf.figure(output/f'{model}-breadth.png', 5.65)
-        pdf.text('Dense designs repeat Cartesian combinations. Sparse designs use 2% worker mobility; the three-way design adds a 32-level categorical FE. '
-                 'Observation counts change the number of workers and firms as well as data volume. Actual graph counts are recorded below.', 'SmallCustom')
+    pdf.page('Size series within a reserved node')
+    pdf.text('Four-core fits · no saved FE · regular (OLS) or robust (PPML) covariance · logarithmic axes. '
+             'Each series ran on one node in ascending size; a command that reached the time limit was not attempted at larger sizes. '
+             'Time points require every planned repetition; memory is the median kernel peak of the timed command, including the loaded data.')
+    pdf.figure(output/'sizes.png', 4.3)
+    pdf.text('Sparse designs use 2% worker mobility; the three-way design adds a 32-level categorical FE. '
+             'Observation counts change the number of workers and firms as well as data volume. Actual graph counts are recorded at the end.', 'SmallCustom')
 
     pdf.page('Memory and reservation use')
-    pdf.text('Memory is the median observed peak RSS of the estimator process tree during the timed command. '
-             'The Python observer and its input/checking arrays are excluded. Sampling occurs every 20 ms; cells with fewer than ten observations in any repetition are NR. '
-             'RSS includes imported data and runtime state and is not an incremental allocation measure.')
+    pdf.text('Memory is the median peak resident set of the estimator process tree during the timed command. '
+             'Once the input is loaded, the harness resets the kernel high-water mark (clear_refs) and reads VmHWM when the command ends; '
+             'earlier campaigns sampled RSS every 20 ms instead. The Python observer and its input/checking arrays are excluded. '
+             'The peak includes imported data and runtime state; the summary CSV also gives the increase over the loaded state.')
     rows = [['Baseline / output', 'fereg GiB', 'fixest GiB', 'Stata comparator GiB']]
     for c in manifest['cells']:
         if c['section'] == 'baseline':
@@ -816,9 +883,11 @@ def render(campaign, frame, output, saved_retests=None):
              'SmallCustom')
     rows = [['Design / N', 'FE levels', 'Components', 'First-pair links', 'Worker mean degree']]
     seen = set()
-    for key, data in sorted(campaign['datasets'].items()):
-        design = next(c['design'] for c in manifest['cells'] if f"{c['model']}-{c['design']}-n{c['rows']}" == key)
-        n = int(key.rsplit('n', 1)[1])
+    for key, data in sorted(campaign['datasets'].items(), key=lambda kv: kv[1]['rows']):
+        # Control-count variants share their design's graph.
+        cell = next(c for c in manifest['cells']
+                    if f"{c['model']}-{c['design']}-n{c['rows']}"+('' if c.get('regressors', 16) == 16 else f"-k{c['regressors']}") == key)
+        design, n = cell['design'], cell['rows']
         if (design, n) in seen:
             continue
         seen.add((design, n)); graph = data['topology']

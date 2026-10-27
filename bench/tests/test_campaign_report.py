@@ -14,8 +14,9 @@ from campaign_collect import accounting_records
 
 
 def fixture():
-    cells = [dict(id=f'cell-{t}', model='ols', design='akm-baseline', rows=1000000,
-                  threads=t, vce='iid', save_fe=False, section='baseline' if t == 4 else 'scaling')
+    cells = [dict(id=f'cell-{t}', model='ols', design='akm-baseline', rows=1000000, repetitions=3,
+                  threads=t, vce='iid', save_fe=False, section='baseline' if t == 4 else 'scaling',
+                  arms=['fereg', 'fixest', 'julia', *(['reghdfe'] if t <= 4 else [])])
              for t in [4, 16]]
     capture = dict(N=1000000, sample_sha256='identical', finite_slope_rank=16, omitted=[],
                    singleton_deletions=0, separation_deletions=0, absorbed_dof=200000,
@@ -30,7 +31,8 @@ def fixture():
                                                   fereg_threads=cell['threads'],rc='0',complete='1',clock_resolution=1e-9),
                                     process_rc=0,
                                     capture=copy.deepcopy(capture), host='same',
-                                    estimator_tree_rss_bytes=2**30, memory_sweeps=20))
+                                    estimator_tree_rss_bytes=2**30, memory_sweeps=20, memory_exact=True,
+                                    ready_rss_bytes=2**29, peak_rss_bytes=3*2**29))
                 if arm != 'fereg':
                     comparisons.append(dict(cell=cell['id'], arm=arm, repetition=rep,
                                             eligible=True, reasons=[]))
@@ -101,12 +103,36 @@ class CampaignReportTests(unittest.TestCase):
 
     def test_short_rss_observation_is_unresolved(self):
         campaign = fixture()
+        row = summarize(campaign).query("cell == 'cell-4' and arm == 'fereg'").iloc[0]
+        self.assertEqual((row.memory_method, row.rss_gib, row.rss_increment_gib), ('kernel peak', 1.5, 1.0))
+        campaign['records'][0]['memory_exact'] = False
+        row = summarize(campaign).query("cell == 'cell-4' and arm == 'fereg'").iloc[0]
+        self.assertEqual((row.memory_method, row.rss_gib), ('sampled', 1.0))
+        self.assertTrue(np.isnan(row.rss_increment_gib))
         campaign['records'][0]['memory_sweeps'] = 2
         result = summarize(campaign)
         row = result[(result.cell == 'cell-4') & (result.arm == 'fereg')].iloc[0]
         self.assertTrue(row.eligible)
         self.assertFalse(row.memory_resolved)
         self.assertTrue(np.isnan(row.rss_gib))
+
+    def test_convention_agreement_supplies_ratios_with_a_mark(self):
+        campaign = fixture()
+        for comparison in campaign['comparisons']:
+            if comparison['arm'] == 'julia':
+                comparison.update(eligible=False, reasons=['absorbed_dof', 'covariance'], agreement='convention',
+                                  convention_reasons=['absorbed_dof', 'covariance'], covariance_scale=1.001)
+        result = summarize(campaign)
+        row = result[(result.cell == 'cell-4') & (result.arm == 'julia')].iloc[0]
+        self.assertFalse(row.eligible)
+        self.assertEqual((row.agreement, row.speedup, row.covariance_scale), ('convention', 3.0, 1.001))
+        self.assertFalse(row.timing_discrepancy)
+        self.assertEqual(comparison_cell(result, 'cell-4', 'julia'), '6.00†')
+        self.assertEqual(comparison_cell(result, 'cell-4', 'julia', 'speedup'), '3.00')
+        campaign['comparisons'][-1].update(agreement='differs')
+        row = summarize(campaign).query("cell == 'cell-16' and arm == 'julia'").iloc[0]
+        self.assertEqual(row.agreement, 'differs')
+        self.assertTrue(np.isnan(row.speedup))
 
     def test_native_repeatability_is_a_gate(self):
         campaign = fixture()

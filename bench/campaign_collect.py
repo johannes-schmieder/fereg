@@ -61,13 +61,19 @@ def collect(context_path, output):
     verify = ('export PYTHONDONTWRITEBYTECODE=1 OPENBLAS_NUM_THREADS=1; export PYTHONPATH='+
               shlex.quote(root+'/source/bench')+'; '+verify)
     remote(verify)
+    policy = json.loads(remote('cat '+shlex.quote(root+'/manifest.json')))['policy']
     files = ['manifest.json', 'input/source.json', 'setup.sh', 'job.sh', 'environment/runtime.json', 'environment/COMPLETE',
              'environment/reference-origin.json', 'environment/r-package-paths.json',
-             'environment/pyfixest-freeze.txt', 'environment/pyfixest-within-freeze.txt',
+             *[f'environment/{arm}-freeze.txt' for arm in policy['pyfixest']],
              'smoke/results.json', 'smoke/COMPLETE', 'logs/setup.sge', 'logs/smoke.sge',
-             'logs/build.log', 'logs/dependency-fetch.log', 'logs/clock-build.log', 'logs/harness-tests.log',
+             'logs/build.log', 'logs/clock-build.log', 'logs/harness-tests.log',
              'logs/reference-prepare.log']
-    bundles = json.loads(remote('cat '+shlex.quote(root+'/manifest.json')))['policy']['bundles']
+    if 'julia' in policy:
+        files += ['environment/julia-versions.json', 'environment/julia/Project.toml',
+                  'environment/julia/Manifest.toml', 'logs/julia-environment.log']
+    if context.get('plugin', 'build') == 'build':
+        files.append('logs/dependency-fetch.log')
+    bundles = policy['bundles']
     tasks = [f'task-{i}' for i in range(1, bundles+1)]
     files += [f'{task}/{name}' for task in tasks for name in ['results.json', 'COMPLETE']]
     if context.get('host_observation_required'):

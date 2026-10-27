@@ -74,7 +74,7 @@ class PanelTests(unittest.TestCase):
             self.assertEqual(list(manifest['panels']), ['long'])
             self.assertEqual({c['design'] for c in manifest['cells']}, {'veneto-long'})
             self.assertTrue(all(c['id'].endswith('-fe0') and not c['save_fe'] for c in manifest['cells']))
-            self.assertEqual(manifest['timed_fits'], 28*panel.REPETITIONS)
+            self.assertEqual(manifest['timed_fits'], 33*panel.REPETITIONS)
             self.assertFalse(manifest['policy']['save_fe'])
             with self.assertRaises(ValueError):
                 panel.reuse(Path(d)/'other', old, panels=['middle'])
@@ -83,10 +83,11 @@ class PanelTests(unittest.TestCase):
         frame = pd.DataFrame(dict(x1=[1.], y=[2.]))
         cells = [panel.cell_for(p, frame, t) for p in panel.PANELS for t in panel.THREADS]
         self.assertEqual(panel.THREADS, [1, 2, 4, 8, 16])
-        self.assertEqual(sum(len(c['arms']) for c in cells)*panel.REPETITIONS, 168)
+        self.assertEqual(sum(len(c['arms']) for c in cells)*panel.REPETITIONS, 198)
         self.assertTrue(all(('reghdfe' in c['arms']) == (c['threads'] <= 4) for c in cells))
-        self.assertTrue(all({'pyfixest', 'pyfixest-within'} <= set(c['arms']) for c in cells))
-        self.assertEqual(panel.smoke_fits(), 12)
+        self.assertTrue(all({'pyfixest-within', 'julia', 'julia-strict'} <= set(c['arms'])
+                            and 'pyfixest' not in c['arms'] for c in cells))
+        self.assertEqual(panel.smoke_fits(), 14)
         # Real panels keep their own control counts without a synthetic suffix.
         self.assertEqual(panel.dataset_key(dict(cells[0], rows=771)), 'ols-veneto-long-n771')
         unsaved = panel.cell_for('long', frame, 4, save_fe=False)

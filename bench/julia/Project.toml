@@ -1,0 +1,6 @@
+[deps]
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+FixedEffectModels = "9d5cd8c9-2029-5cab-9928-427838db53e3"
+JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
+ReadStatTables = "52522f7a-9570-4e34-8ac6-c005c74d4b84"
+SHA = "ea8e919c-243c-51af-8825-aaa63cd721ce"

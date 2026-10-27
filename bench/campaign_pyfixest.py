@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Pinned PyFixest campaign arm: one warmed, timed fit per process.
 
-Mirrors campaign_r.R: the same inputs, timing window, saved-FE recovery and
-output files. `pyfixest` is the 0.60.0 release with its default Rust MAP
-demeaner; `pyfixest-within` is a pinned main revision whose default is the
-`within` LSMR demeaner. Both keep their default estimation tolerances.
+Mirrors campaign_r.R: the same inputs, memory handshake, timing window,
+saved-FE recovery and output files. `pyfixest-within` is a pinned main
+revision whose default is the `within` LSMR demeaner; `pyfixest`, the 0.60.0
+release with its default Rust MAP demeaner, remains readable for earlier
+campaigns. Both keep their default estimation tolerances.
 """
 from __future__ import annotations
 
@@ -102,6 +103,14 @@ def saved_effects(fit, data, q):
     return saved
 
 
+def wait_for(path, seconds=120):
+    started = time.monotonic()
+    while not path.exists():
+        if time.monotonic()-started > seconds:
+            raise RuntimeError('campaign handshake timed out: '+path.name)
+        time.sleep(.001)
+
+
 def write_metadata(path, meta):
     path.write_text(''.join(f'{key}\t{str(value).replace(chr(9), " ").replace(chr(10), " ")}\n'
                             for key, value in meta.items()))
@@ -136,6 +145,8 @@ def main(configuration):
         if hashlib.sha256(data[name].to_numpy(dtype='<f8').tobytes()).hexdigest() != expected:
             raise RuntimeError('decoded input mismatch: '+name)
     (output/'READY').write_text('ready\n')
+    # The harness resets the kernel memory peak before GO and reads it before ACK.
+    wait_for(output/'GO')
     error, fit, saved = None, None, None
     start = time.perf_counter()
     try:
@@ -148,6 +159,7 @@ def main(configuration):
         error, fit = f'{type(failure).__name__}: {failure}', None
     seconds = time.perf_counter()-start
     (output/'DONE').write_text('done\n')
+    wait_for(output/'ACK')
     meta = dict(rc=1 if fit is None else 0, seconds=repr(seconds), complete=1,
                 pyfixest_version=version, pyfixest_commit=commit or 'release',
                 requested_threads=threads, configured_threads=os.environ['RAYON_NUM_THREADS'],

@@ -13,7 +13,14 @@ from pathlib import Path
 import campaign_report as report
 from panel_collect import load
 
-REFERENCES = ['fixest', 'fixest-strict', 'pyfixest', 'pyfixest-within', 'reghdfe']
+ORDER = ['fixest', 'fixest-strict', 'pyfixest', 'pyfixest-within', 'julia', 'julia-strict', 'reghdfe']
+DESCRIPTIONS = {'fixest': 'fixest 0.14.2 default', 'fixest-strict': 'fixest strict',
+                'pyfixest': 'PyFixest 0.60.0 (Rust MAP)', 'pyfixest-within': 'PyFixest main (within LSMR)',
+                'julia': 'FixedEffectModels.jl (tolerance 1e-6)', 'julia-strict': 'FixedEffectModels.jl (1e-10)'}
+
+
+def references(manifest):
+    return [arm for arm in ORDER if any(arm in c['arms'] for c in manifest['cells'])]
 
 
 def sha256(path):
@@ -49,8 +56,8 @@ def timing(row):
         return '-'
     if not row.timed_repetitions:
         return 'Unavailable'
-    value = f'{row.observed_seconds:.3f}' + ('' if row.eligible else '*')
-    if row.timed_repetitions == 3:
+    value = f'{row.observed_seconds:.3f}' + ('' if row.eligible else '†' if row.agreement == 'convention' else '*')
+    if row.timed_repetitions == row.repetitions:
         return value+f'<br/><font size="6">[{row.seconds_min:.3f}, {row.seconds_max:.3f}]</font>'
     return value+'<br/><font size="6">n=1; later positions skipped</font>'
 
@@ -65,8 +72,9 @@ def render(campaign, frame, output):
     references = frame[frame.arm != 'fereg']
     eligible_references = int(references.eligible.sum())
     report.TIMING_FOOTNOTE = ('* Comparator timing failed the frozen scientific/output gate. '
-                              'Three-command medians with [min, max]; n=1 is one completed command. '
-                              'No fits were retried.')
+                              '† Agreement up to degrees-of-freedom counting conventions. '
+                              'Medians with [min, max]; n=1 is one completed command. No fits were retried.')
+    arms = references(campaign['manifest'])
     pdf = report.CampaignPDF(output/'veneto-akm.pdf', campaign['context']['run_id'])
     saved = campaign['manifest']['policy'].get('save_fe', True)
     pdf.text('Veneto AKM<br/>Core scaling and '+('saved effects' if saved else 'estimation without saved effects'), 'TitleCustom')
@@ -99,10 +107,10 @@ def render(campaign, frame, output):
              ' '.join({'long': 'Long: 1996-2001; normalized age squared and cubed plus 1996-2000 indicators (2001 base).',
                        'short': 'Short: 1999/2001, with a 2001 indicator.'}[p] for p in panels))
     planned = sum(len(c['arms']) for c in campaign['manifest']['cells'])*campaign['manifest']['policy']['repetitions']
-    pdf.text('Three repetitions at 1/2/4/8/16 physical cores for fereg, fixest 0.14.2 '
-             'default/strict and PyFixest (0.60.0 Rust MAP and the pinned main revision with within LSMR); '
-             'reghdfe 6.14.1 at 1/2/4 because Stata is licensed for four cores. '
-             f'{planned} planned positions. One isolated allocation per panel; different physical hosts.')
+    pdf.text(f'{repetitions} repetitions at 1/2/4/8/16 physical cores for fereg, '+
+             ', '.join(DESCRIPTIONS[a] for a in arms if a != 'reghdfe')+
+             '; reghdfe 6.14.1 at 1/2/4 because Stata is licensed for four cores. '
+             f'{planned} planned positions. One isolated allocation per panel.')
     for panel in panels:
         selected = frame[frame.design == 'veneto-'+panel]
         native = selected[selected.arm == 'fereg'].sort_values('threads')
@@ -112,14 +120,14 @@ def render(campaign, frame, output):
         chart = output/(panel+'-native.png')
         native_plot(frame, panel, chart)
         pdf.figure(chart, 2.25)
-        rows = [['Cores', 'fereg', 'fixest default', 'fixest strict', 'pyfixest 0.60', 'pyfixest within', 'reghdfe']]
+        rows = [['Cores', 'fereg', *[report.ARM_NAMES[a] for a in arms]]]
         for cores in [1, 2, 4, 8, 16]:
             items = selected[selected.threads == cores]
             rows.append([cores]+[timing(next((r for r in items.itertuples() if r.arm == arm), None))
-                                 for arm in ['fereg', *REFERENCES]])
-        pdf.table(rows, [37, 78, 78, 78, 78, 80, 78], padding=6)
+                                 for arm in ['fereg', *arms]])
+        pdf.table(rows, [37]+[(540-37)//(1+len(arms))]*(1+len(arms)), padding=6)
         details = []
-        for arm in REFERENCES:
+        for arm in arms:
             arm_cells = selected[selected.arm == arm]
             errors = sorted({r['error'] for r in campaign['records']
                              if r['cell'].startswith('veneto-'+panel+'-') and r['arm'] == arm and r.get('error')})
@@ -128,7 +136,9 @@ def render(campaign, frame, output):
             if any(r['status'] == 'command-timeout' for r in campaign['records']
                    if r['cell'].startswith('veneto-'+panel+'-') and r['arm'] == arm):
                 reasons.append('600-second command limit')
-            details.append(f'{report.ARM_NAMES[arm]}: {int(arm_cells.eligible.sum())}/{len(arm_cells)} eligible cells. '+
+            convention = int((arm_cells.agreement == 'convention').sum())
+            details.append(f'{report.ARM_NAMES[arm]}: {int(arm_cells.eligible.sum())}/{len(arm_cells)} eligible cells'+
+                           (f', {convention} more up to degrees-of-freedom conventions. ' if convention else '. ')+
                            ('; '.join(errors+reasons)+'.' if errors or reasons else 'All checks pass.'))
         pdf.text(' '.join(details), 'SmallCustom')
         base, last = native.iloc[0], native.iloc[-1]
@@ -205,8 +215,10 @@ def export(root, output):
     runtime = json.loads((root/'environment/runtime.json').read_text())
     critical = {'source/dist/fereg_linux.plugin', 'environment/command-clock.plugin', 'manifest.json'}
     critical.update('source/bench/'+name for name in ['panel_campaign.py', 'campaign.py', 'campaign_stata.do',
-                                                    'campaign_r.R', 'campaign_fixest.R', 'campaign_oracle.py',
+                                                    'campaign_r.R', 'campaign_fixest.R', 'campaign_pyfixest.py',
+                                                    'campaign_julia.jl', 'campaign_oracle.py',
                                                     'qualify_scc.py', 'block_host.py'])
+    critical &= set(runtime)
     preparation = {}
     for name in ['inputs.json', 'long-sample.json', 'short-sample.json']:
         path = root/'preparation'/name

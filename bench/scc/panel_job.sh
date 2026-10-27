@@ -6,8 +6,10 @@ set -euo pipefail
 umask 077
 : "${RUN_ROOT:?}" "${MODE:?}" "${UPSTREAM_JOB:?}"
 module purge
-module load python3/3.12.4 stata-mp/19 R/4.5.2
+module load python3/3.12.4 stata-mp/19 R/4.5.2 julia/1.11.7
 export OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 OMP_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1
+export JULIA_DEPOT_PATH="$RUN_ROOT/environment/julia-depot" JULIA_PKG_OFFLINE=true
+export JULIA_CPU_TARGET='generic;sandybridge,-xsaveopt,clone_all;haswell,-rdrnd,base(1)'
 export PYTHONDONTWRITEBYTECODE=1 MPLCONFIGDIR="$RUN_ROOT/environment/matplotlib"
 export R_LIBS_USER="$RUN_ROOT/environment/r-library"
 cd "$RUN_ROOT/source"

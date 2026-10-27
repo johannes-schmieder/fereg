@@ -77,6 +77,11 @@ def validate_smoke(result):
             checks['fitted']=close_values(p,e['fitted'],POLICY['fitted_rtol'],POLICY['fitted_atol'])
             checks['sample']=a['retained_all'] and a['N']==cell['rows']
             if cell['model']=='ppml':checks['absorbed_rank']=a['absorbed_dof']==e['rank']
-        rows.append(dict(cell=cell['id'],arm=record['arm'],checks=checks,
+        # Informational: a covariance that matches up to one degrees-of-freedom scalar.
+        scale=None
+        if checks.get('covariance') is False:
+            from campaign import agreement
+            scale=agreement(dict(covariance=e['covariance']),a,['covariance'])['covariance_scale']
+        rows.append(dict(cell=cell['id'],arm=record['arm'],checks=checks,covariance_scale=scale,
                          **{'pass':bool(checks) and all(checks.values())}))
     return rows

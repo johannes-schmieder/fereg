@@ -175,13 +175,17 @@ def collect(context_path, output):
     preparation = ['preparation/inputs.json', 'preparation/long-sample.json', 'preparation/short-sample.json']
     # A reused-input run retains its preparation records in the prior run.
     reused = context.get('previous_root')
+    manifest = json.loads(remote('cat '+shlex.quote(run+'/manifest.json')))
+    arms = {arm for cell in manifest['cells'] for arm in cell['arms']}
     files = ['manifest.json', 'input/source.json', 'input/prior-panels.json', 'setup.sh', 'job.sh',
              *([] if reused else preparation), 'environment/runtime.json', 'environment/COMPLETE', 'environment/input-audit.json',
              'environment/reference-origin.json', 'environment/r-package-paths.json',
-             'environment/pyfixest-freeze.txt', 'environment/pyfixest-within-freeze.txt',
+             *[f'environment/{arm}-freeze.txt' for arm in ['pyfixest', 'pyfixest-within'] if arm in arms],
+             *(['environment/julia-versions.json', 'environment/julia/Manifest.toml', 'logs/julia-environment.log']
+               if arms & {'julia', 'julia-strict'} else []),
              'logs/setup.sge', 'logs/smoke.sge', 'logs/harness-tests.log', 'logs/package-check.log',
              'logs/input-audit.log', 'smoke/results.json', 'smoke/COMPLETE']
-    panels = json.loads(remote('cat '+shlex.quote(run+'/manifest.json'))).get('panels', 'ls')
+    panels = manifest.get('panels', 'ls')
     for task in range(1, len(panels)+1):
         files += [f'task-{task}/results.json', f'task-{task}/COMPLETE',
                   f'host-task-{task}/host.json', f'logs/production.{task}.sge']

@@ -1,19 +1,22 @@
 {
-  "schema": 1,
+  "schema": 2,
   "seed": 739391,
   "controls": 16,
+  "control_variants": [4, 64],
   "baseline_rows": 1000000,
-  "sizes": [100000, 1000000, 4000000],
-  "threads": [1, 4, 8, 16],
+  "sizes": [100000, 300000, 1000000, 3000000, 10000000],
+  "size_series": [["ols", "akm-baseline"], ["ppml", "akm-baseline"], ["ols", "three-sparse"]],
+  "threads": [1, 2, 4, 8, 16],
   "main_threads": 4,
-  "repetitions": 3,
-  "bundles": 8,
-  "supplement_bundles": 3,
-  "supplement_controls": [4, 64],
+  "repetitions": 5,
+  "large_rows": 1000000,
+  "large_repetitions": 3,
+  "reference_repetitions": 3,
+  "bundles": 6,
   "command_timeout_seconds": 600,
-  "process_timeout_seconds": 900,
-  "job_wall_seconds": 21600,
-  "job_cleanup_seconds": 21000,
+  "process_timeout_seconds": 1500,
+  "job_wall_seconds": 43200,
+  "job_cleanup_seconds": 41400,
   "coefficient_rtol": 1e-7,
   "coefficient_atol": 1e-10,
   "vce_rtol": 1e-6,
@@ -22,9 +25,10 @@
   "fitted_atol": 1e-9,
   "objective_rtol": 1e-8,
   "objective_atol": 1e-10,
+  "covariance_scale_bound": 0.01,
   "pyfixest": {
-    "pyfixest": {"version": "0.60.0"},
-    "pyfixest-within": {"version": "0.60.0", "commit": "263cf2d3c78cbaf4988923c79e0135da130fae1a", "within_py": "0.4.0"}
+    "pyfixest-within": {"version": "0.60.0", "commit": "0f41fffd7276f89cbd87528ef13e8c0261622932", "within_py": "0.4.0"}
   },
-  "purpose": "Current-runtime descriptive SCC comparison; AKM baseline, four-core primary panel, one-way worker clustering"
+  "julia": {"julia": "1.11.7", "FixedEffectModels": "2.1.0"},
+  "purpose": "Descriptive SCC comparison of one frozen runtime: options, designs and controls at one million rows and four cores; core scaling; size series on one node each; FixedEffectModels.jl for linear models"
 }
