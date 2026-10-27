@@ -17,8 +17,10 @@ Native test names below are relative to `crates/fereg-core` or
 ### Ownership and cell scope
 
 The accepted ownership/cell implementation was qualified with CMG `fd77d98d`; the runtime pins
-CMG `f6a044c9`, whose only change is arithmetic-preserving team dispatch of row-operator
-matvecs (gated on entries times lanes). Qualified OLS `solver(auto)` with
+CMG `5c5b5b2b`, which adds arithmetic-preserving team dispatch of row-operator
+matvecs (gated on entries times lanes, `f6a044c9`) and the 32-level hierarchy cap
+(§19). The cap keeps every hierarchy of at most 32 levels bit-identical and lowers
+the CMG bytes this scope admits and charges as retained. Qualified OLS `solver(auto)` with
 `preconditioner(auto)`, a global intercept and exactly two categorical-intercept
 FE terms selects both ownership mechanisms and eager cell construction.
 Explicit developer injections retain their specified selection. Core defaults
@@ -363,7 +365,8 @@ Every two-FE Schur hierarchy (OLS Auto, explicit `cmgschur` and PPML reuse) is
 built with CMG's options except a zero low-effective-degree threshold: on
 expander-like firm Schur graphs CMG's correction detaches most firms into
 singleton aggregates, so coarsening stagnated. The options change only the
-preconditioner. OLS Auto installs its hierarchy on the host team: CMG's
+preconditioner. CMG's default depth limit of 32 levels is the hard stop of each
+such hierarchy and the level count of every CMG bound fereg admits (§19). OLS Auto installs its hierarchy on the host team: CMG's
 row-operator plan and up to four interleaved lanes, each only when its bound
 is admitted after the one-lane apply storage, otherwise the scalar
 application of the same hierarchy, so the team installation never refuses a
@@ -1327,6 +1330,16 @@ transaction atomicity. Reuse existing allocation/failure tests; no new exhaustiv
 memory-audit framework is required. Estimates remain estimates, not process RSS
 or strict OS bounds. No new route-specific admission fences may be added to
 hide a performance regression. Future removal of a mode needs mapped coverage.
+
+CMG admission assumes CMG's default hierarchy cap of 32 levels (CMG `5c5b5b2b`;
+previously 128). Every CMG construction, workspace and plan bound fereg admits,
+including the serial construction bound that two-FE OLS Auto keeps charged as
+retained CMG storage, provisions at most 31 coarse graph copies instead of 127.
+A hierarchy that would need more levels stops at the cap with CMG's iterative
+`MaximumLevels` terminal inside the admitted bytes; its first 31 levels are
+unchanged. Hierarchies of at most 32 levels are bit-identical. The lower bounds
+can admit a CMG build, cell kernel, cell cache or interleaved application that a
+tight memory limit refused before; an admitted route keeps its certificates.
 
 ## 20. Accuracy tolerances and independent evidence
 

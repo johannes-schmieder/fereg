@@ -331,7 +331,9 @@ allocation plus the larger of native execution and subsequent posting growth,
 with the preexisting native owner added once. The additional reserve excludes
 resident baselines. Solver admission and safety headroom remain separate.
 The estimate's calibrated scope and extrapolation limits are described in
-[the memory model](ARCHITECTURE.md#preparation-and-storage).
+[the memory model](ARCHITECTURE.md#preparation-and-storage). The native forecast
+includes admitted solver workspace peaks, whose CMG parts assume CMG's 32-level
+hierarchy cap (SPEC §19).
 
 The low 16 gap bits retain strict proof limitations even at practical status 2.
 Bits 17/18 mark unknown expected use/Stata growth, bit 16 an unavailable

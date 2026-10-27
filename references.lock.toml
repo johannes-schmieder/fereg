@@ -29,7 +29,7 @@ use = "Runtime LSMR runtime and oracle dependency: current-parent port, fixed ar
 [[reference]]
 name = "cmg"
 repository = "https://github.com/johannes-schmieder/CMG"
-commit = "f6a044c98ba00fddc82bee1800dccdb310b5a240"
+commit = "5c5b5b2b138226ea928514fa9db27439ba1cffdb"
 version = "0.1.0"
 license = "GPL-3.0-only"
 relevant_source_paths = ["src/", "Cargo.toml"]
