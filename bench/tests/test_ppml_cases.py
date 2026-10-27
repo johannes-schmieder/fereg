@@ -29,7 +29,7 @@ class PpmlCases(unittest.TestCase):
     def test_write_rejects_non_ppml_template_and_bad_columns(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            template_bytes = (b'FEREG_REPLAY_V1\n2 1 1 1 0\n' + b'12\nestimate-ols\n' + b'9\nthreads=1\n'
+            template_bytes = (b'FEREG_REPLAY_V1\n2 1 2 1 0\n' + b'12\nestimate-ols\n' + b'9\nthreads=1\n'
                               + b'0\n' + b'0000000000000000\n' * 2)
             def fake_run(command, **kwargs):
                 Path(command[3]).write_bytes(template_bytes)
