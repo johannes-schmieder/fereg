@@ -20,6 +20,10 @@
   first column's solve instead of being repeated; results are unchanged.
 - Developer phase timing (`FEREG_PHASE_TIMING`) reports PPML joint frames,
   canonical products, shared-CMG column solves and PPML absorptions.
+- Developer phase timing reports the PPML separation rectifier (phase,
+  iteration and projection laps). A hidden `inject=ppml_separation_auto`
+  qualification arm solves two-intercept separation-detector projections with
+  the two-FE Auto route; the public detector is unchanged.
 
 ## 0.5.0 beta.8 — 2026-10-27
 

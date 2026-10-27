@@ -1,0 +1,254 @@
+{
+ "schema": 1,
+ "date": "2026-10-27",
+ "change": {
+  "branch": "codex/ppml-separation-routing",
+  "base": "9b13e47b (codex/two-fe-round-two)",
+  "summary": "Hidden inject=ppml_separation_auto: admitted separation-detector projections with exactly two categorical intercepts use the OLS two-FE Auto route (gate v2) instead of retained-product CG. Detector weights, tolerances, iteration limit and decision rules unchanged. Public default unchanged.",
+  "verdict": "Not proposed for activation: decision identity holds on the Veneto panels, campaign separation designs and replay corpus, but not on 22 of 54 cells of the seeded census (iteration counts, failure modes)."
+ },
+ "protocol": {
+  "host": "M2 Ultra Mac, Stata 19/MP, arm64 profiling plugins (base 9b13e47b; candidate = branch head build)",
+  "panels": "Veneto-shaped Poisson panels (short 1,386,980 rows, control y2001; long 5,626,943 rows, 10 controls), feppml ycount <controls>, absorb(worker firm) vce(robust) through the hidden adapter with the public options (tolerance 1e-8, septolerance 1e-8, sepiterate 10000).",
+  "schedule": "Session A 17:20-17:42: 1/2/4/8 workers, arms public and auto interleaved per cell with rotating first arm, three repetitions per Stata process, medians of repetitions 2-3; FEREG_PHASE_TIMING=1 FEREG_SOLVER_TRACE=1 in every arm.",
+  "frozen_rule": "Quiet gate (no other Stata, cargo, rustc or Python process) before the session, 10-s competitor monitor; discard and repeat once on a competitor. Waited 0 s; no competitor appeared; nothing discarded."
+ },
+ "veneto_cells": [
+  {
+   "design": "veneto_long",
+   "workers": 1,
+   "arm": "public",
+   "native_s": 112.08,
+   "ir_s": 74.086,
+   "projections_per_fit": 1,
+   "projection_fit_s": 72.121,
+   "rhs_fe_iterations_residual_iterations": "12/61/0",
+   "ir_iterations": 1
+  },
+  {
+   "design": "veneto_long",
+   "workers": 1,
+   "arm": "auto",
+   "native_s": 46.167,
+   "ir_s": 8.698,
+   "projections_per_fit": 1,
+   "projection_fit_s": 6.741,
+   "rhs_fe_iterations_residual_iterations": "12/57/0",
+   "ir_iterations": 1
+  },
+  {
+   "design": "veneto_long",
+   "workers": 2,
+   "arm": "public",
+   "native_s": 69.314,
+   "ir_s": 45.017,
+   "projections_per_fit": 1,
+   "projection_fit_s": 43.12,
+   "rhs_fe_iterations_residual_iterations": "12/61/0",
+   "ir_iterations": 1
+  },
+  {
+   "design": "veneto_long",
+   "workers": 2,
+   "arm": "auto",
+   "native_s": 35.354,
+   "ir_s": 11.18,
+   "projections_per_fit": 1,
+   "projection_fit_s": 9.288,
+   "rhs_fe_iterations_residual_iterations": "12/57/0",
+   "ir_iterations": 1
+  },
+  {
+   "design": "veneto_long",
+   "workers": 4,
+   "arm": "public",
+   "native_s": 43.481,
+   "ir_s": 26.502,
+   "projections_per_fit": 1,
+   "projection_fit_s": 24.665,
+   "rhs_fe_iterations_residual_iterations": "12/61/0",
+   "ir_iterations": 1
+  },
+  {
+   "design": "veneto_long",
+   "workers": 4,
+   "arm": "auto",
+   "native_s": 23.905,
+   "ir_s": 7.098,
+   "projections_per_fit": 1,
+   "projection_fit_s": 5.245,
+   "rhs_fe_iterations_residual_iterations": "12/57/0",
+   "ir_iterations": 1
+  },
+  {
+   "design": "veneto_long",
+   "workers": 8,
+   "arm": "public",
+   "native_s": 29.636,
+   "ir_s": 15.596,
+   "projections_per_fit": 1,
+   "projection_fit_s": 13.766,
+   "rhs_fe_iterations_residual_iterations": "12/61/0",
+   "ir_iterations": 1
+  },
+  {
+   "design": "veneto_long",
+   "workers": 8,
+   "arm": "auto",
+   "native_s": 18.922,
+   "ir_s": 4.998,
+   "projections_per_fit": 1,
+   "projection_fit_s": 3.176,
+   "rhs_fe_iterations_residual_iterations": "12/57/0",
+   "ir_iterations": 1
+  },
+  {
+   "design": "veneto_short",
+   "workers": 1,
+   "arm": "public",
+   "native_s": 14.029,
+   "ir_s": 9.018,
+   "projections_per_fit": 1,
+   "projection_fit_s": 8.673,
+   "rhs_fe_iterations_residual_iterations": "3/60/0",
+   "ir_iterations": 1
+  },
+  {
+   "design": "veneto_short",
+   "workers": 1,
+   "arm": "auto",
+   "native_s": 6.254,
+   "ir_s": 1.237,
+   "projections_per_fit": 1,
+   "projection_fit_s": 0.898,
+   "rhs_fe_iterations_residual_iterations": "3/58/0",
+   "ir_iterations": 1
+  },
+  {
+   "design": "veneto_short",
+   "workers": 2,
+   "arm": "public",
+   "native_s": 9.567,
+   "ir_s": 5.479,
+   "projections_per_fit": 1,
+   "projection_fit_s": 5.15,
+   "rhs_fe_iterations_residual_iterations": "3/60/0",
+   "ir_iterations": 1
+  },
+  {
+   "design": "veneto_short",
+   "workers": 2,
+   "arm": "auto",
+   "native_s": 5.603,
+   "ir_s": 1.483,
+   "projections_per_fit": 1,
+   "projection_fit_s": 1.161,
+   "rhs_fe_iterations_residual_iterations": "3/58/0",
+   "ir_iterations": 1
+  },
+  {
+   "design": "veneto_short",
+   "workers": 4,
+   "arm": "public",
+   "native_s": 6.434,
+   "ir_s": 3.232,
+   "projections_per_fit": 1,
+   "projection_fit_s": 2.916,
+   "rhs_fe_iterations_residual_iterations": "3/60/0",
+   "ir_iterations": 1
+  },
+  {
+   "design": "veneto_short",
+   "workers": 4,
+   "arm": "auto",
+   "native_s": 4.285,
+   "ir_s": 1.038,
+   "projections_per_fit": 1,
+   "projection_fit_s": 0.716,
+   "rhs_fe_iterations_residual_iterations": "3/58/0",
+   "ir_iterations": 1
+  },
+  {
+   "design": "veneto_short",
+   "workers": 8,
+   "arm": "public",
+   "native_s": 5.007,
+   "ir_s": 2.109,
+   "projections_per_fit": 1,
+   "projection_fit_s": 1.796,
+   "rhs_fe_iterations_residual_iterations": "3/60/0",
+   "ir_iterations": 1
+  },
+  {
+   "design": "veneto_short",
+   "workers": 8,
+   "arm": "auto",
+   "native_s": 3.679,
+   "ir_s": 0.788,
+   "projections_per_fit": 1,
+   "projection_fit_s": 0.476,
+   "rhs_fe_iterations_residual_iterations": "3/58/0",
+   "ir_iterations": 1
+  }
+ ],
+ "veneto_witnesses": "Both panels, 1/2/4/8 workers: e(b), e(V), e(feppml_separation_sequence), e(feppml_drop_counts) and the dropped-row list identical between arms at every worker count; e(feppml_separation) differs only in the IR row's maximum interior certificate magnitude (column 8, ~1e-13); every arm repeats bit for bit across repetitions; separated sets, RSEQ and discrete RSEP columns identical across worker counts (short 7,498 dropped rows, long 1,643).",
+ "campaign_cells": {
+  "note": "bench/generate.py with separation=True (seed 739391, 16 regressors, two FEs), 4 workers, one run per arm; witness runs, timings indicative only.",
+  "cells": [
+   {
+    "design": "dense 200k",
+    "dropped": 1794,
+    "public_native_s": 0.448,
+    "auto_native_s": 0.39,
+    "public_ir_s": 0.149,
+    "auto_ir_s": 0.083,
+    "fe_iterations": "3 -> 2"
+   },
+   {
+    "design": "akm-strong 500k",
+    "dropped": 430,
+    "public_native_s": 2.725,
+    "auto_native_s": 1.606,
+    "public_ir_s": 1.442,
+    "auto_ir_s": 0.338,
+    "fe_iterations": "24 -> 21"
+   },
+   {
+    "design": "akm-weak 500k",
+    "dropped": 1078,
+    "public_native_s": 34.219,
+    "auto_native_s": 9.056,
+    "public_ir_s": 28.187,
+    "auto_ir_s": 3.013,
+    "fe_iterations": "565 -> 620"
+   },
+   {
+    "design": "akm-strong 500k pweight",
+    "dropped": 430,
+    "public_native_s": 2.856,
+    "auto_native_s": 1.74,
+    "public_ir_s": 1.454,
+    "auto_ir_s": 0.332,
+    "fe_iterations": "24 -> 21"
+   }
+  ],
+  "witness": "Identical e(b), e(V), RSEQ, drop counts and dropped rows; RSEP differs only in the IR interior certificate magnitude."
+ },
+ "replay": {
+  "public": "scripts/run_plugin_replay.sh candidate vs 9b13e47b: 73/73 cases, 0 exact, 0 discrete, 0 science differences.",
+  "hidden": "All 38 PPML cases rerun with inject=ppml_separation_auto appended: identical exact view in 37; ppml-separation-ir differs in RSEP[IR,8] (2.69e-20 -> 2.39e-20) and RREC[28..29] (separation trace digest, which hashes certificate bits and is a protected discrete field of the replay view)."
+ },
+ "seeded_census": {
+  "test": "crates/fereg-oracle/tests/ppml_separation_routing.rs",
+  "corpus": "18 seeded fereg_oracle designs (DensePanel 240 rows 12x10, AkmCampaign 1000 rows 200x40, Chain 300 rows 30x20; unit/frequency/probability weights; zero fractions 0.2/0.45/0.7; odd seeds add a finite regressor positive only on every fifth zero row) x 3 configurations (fe simplex ir; fe ir; ir) at the public septolerance(1e-8), one worker.",
+  "same": 32,
+  "ir_iterations": 9,
+  "public_fails": 9,
+  "hidden_fails": 2,
+  "both_fail_differently": 2,
+  "other": 0,
+  "public_chain_cells": "fe simplex ir: 5 ir-iterations (seeds 2, 5, 8, 11, 17), 3 public-fails (10, 14, 16), 0 hidden-fails",
+  "hidden_cross_worker": "Where the hidden arm succeeds at one worker it repeats bit for bit at 2/4/8 workers and its decisions and sample agree across 1/2/4/8 workers."
+ },
+ "activation_needed": "Johannes's decision to accept the census divergences (or a narrower scope); then set PreparedPpmlSeparationExecution.auto_projection to true for every PPML fit in prepared_estimator.rs, remove the injection, document in SPEC \u00a714 that admitted two-intercept detector projections use the OLS two-FE Auto route, and declare a replay scope for RSEP IR certificate columns 8-11 and RREC 28-29 on ppml-separation-ir."
+}
