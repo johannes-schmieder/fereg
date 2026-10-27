@@ -16,6 +16,7 @@ and PPML reporting are unchanged.
 | Ownership and deferred cells | [Linux](../bench/results/ownership-qualification-final-linux-20261024.json): 10,440 calls, 58 settings and 12 distinct physical hosts, all 116 protected bounds passed. [Practical Mac check](../bench/results/ownership-qualification-practical-macos-20261024.json): 870 calls and all 116 paired-median comparisons within max(5%, 1 ms). The Mac check is descriptive, not a confidence-bound claim. |
 | Many-FE geometry Auto | [Decision record](../bench/results/many-geometry-20261025.json): Linux qualification passed 80 of 84 protected comparisons and public activation 122 of 126, on 12 distinct physical hosts each. Every miss is the near-confounded third FE, accepted by Johannes as a documented exception; public/hidden agreement was exact. |
 | PPML two-FE CMG reuse and lean protocol | [Lean record](../bench/results/ppml-two-fe-lean-20261026.json): every two-FE cell faster than beta.6 at 4 and 28 workers on Linux (0.32-0.84), science within the §20 envelopes, 73/73 replay cases. Merged and released as v0.5.0-beta.7; the [beta.7 SCC comparison](fixest_benchmarks.md#october-26-2026-beta7-rerun-with-pyfixest-and-areg) found all 168 native fits passing and every OLS fit bit-identical to beta.6. |
+| Two-FE Auto speed | [Qualification record](../bench/results/two-fe-auto-qualification-20261027.json): Linux 7,560 calls on 31 physical hosts, all 126 protected comparisons within max(5%, 1 ms) after Johannes waived the 12-distinct-host rule (84 cells had 11); practical Mac check 119 of 126 passed, the other 7 inconclusive with paired medians within the bound. [Veneto comparison](../bench/results/two-fe-auto-veneto-20261027.json): 1.24-2.08 times faster than beta.7 without saved FE and 1.06-2.18 with saved FE; faster than PyFixest's `within` in 9 of 10 cells. |
 | Public integration | [Final activation](../bench/results/ownership-public-activation-20261024.json): 174 actual hidden/public/public-repeat calls per platform, independent witnesses, fixed-worker exactness, cross-worker science, resource/gate/hierarchy checks, Mac/Linux ABI/load/panic checks and the full source suite passed. Six licensed Mac Stata fixtures and actual public OLS Break/rollback passed. |
 
 Ownership/deferred cells activate only for OLS Auto/Auto with a global intercept
@@ -23,6 +24,40 @@ and exactly two categorical-intercept FE terms. Explicit injections and paths
 outside the scope retain their contracts. The Break test interrupts at the
 native pre-preparation checkpoint; it does not establish interruption inside a
 cell constructor. Scientific behavior is specified in [SPEC](SPEC.md).
+
+## Two-FE Auto speed
+
+Public OLS Auto/Auto with exactly two categorical-intercept FEs applies its CMG
+hierarchy on the worker team, runs the deferred cell operator in parallel,
+builds the hierarchy without CMG's low-effective-degree correction and hands
+off early under gate v2; Fast fits without saved outputs certify their within
+residual by its derived bound. Specified in [SPEC](SPEC.md) and
+[the gate notes](two_fe_auto_gates.md); the investigation behind it is in
+[the PyFixest comparison](pyfixest_twoway_investigation.md).
+
+The fixed-candidate qualification used beta.7 public Auto as original and
+incumbent and the hidden `two-gates-v2` arm, with the 42 routing cells. Linux
+passed every protected comparison; the weak and high-degree-weak cells ran
+4-11% faster and the others within noise. Science, gate decisions, resources
+and cross-worker agreement passed. The routing cases all request saved outputs,
+so they do not exercise the derived residual; its witnesses are the dense
+explicit-OLS oracle, the 68 licensed Mac Stata fixtures and the Veneto runs.
+
+On one whole SCC node with the audited Veneto panels (seconds, medians of three):
+
+| Panel, workers | Candidate | beta.7 | PyFixest `within` |
+| --- | ---: | ---: | ---: |
+| short, 1 | 2.01 | 2.49 | 2.08 |
+| short, 4 | 1.03 | 1.85 | 1.08 |
+| short, 16 | 0.78 | 1.61 | 0.96 |
+| long, 1 | 10.53 | 13.32 | 26.94 |
+| long, 4 | 5.28 | 8.54 | 9.84 |
+| long, 16 | 3.62 | 7.08 | 6.23 |
+
+Every fixed-worker repeat was exact and every cross-worker, beta.7 and
+PyFixest comparison passed the campaign tolerances. The 73-case replay corpus is
+exact against beta.7's runtime, and PPML's campaign two-sparse design ran 2%
+faster from the hierarchy options with the other PPML designs unchanged.
 
 ## Many-FE geometry policy
 
@@ -322,9 +357,12 @@ All 50 GitHub release assets matched their local SHA-256 checksums and sizes.
   the beta.7 SCC comparison fereg was faster than default fixest in every
   eligible PPML configuration, but PyFixest's `within` and MAP demeaners were
   faster on dense two- and three-FE PPML.
-- PyFixest's `within` default was also faster than fereg on dense three-FE OLS
-  and on the short Veneto panel without saved FE. On that panel, two-FE OLS Auto
-  took about 30% longer than explicit `solver(cmgschur)`.
+- PyFixest's `within` default was also faster than fereg on dense three-FE OLS.
+  After the two-FE Auto speed changes it remains 3% faster on the short Veneto
+  panel at two workers; fereg is faster in the other nine Veneto cells measured.
+- The two-FE Auto speed qualification accepted 11 instead of 12 distinct
+  physical hosts per Linux cell (waived by Johannes); its Mac check is
+  descriptive.
 - Explicit `solver(cmg)` was about 50 times slower than `solver(cmgschur)` on the
   real Veneto panels, and explicit `solver(lsmr)` returned `r(909)` on the long
   panel in a 64 GB allocation where Auto completed. Auto does not use either

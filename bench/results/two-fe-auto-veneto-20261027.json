@@ -1,0 +1,554 @@
+{
+  "schema": 1,
+  "date": "2026-10-27",
+  "purpose": "Development comparison of the two-FE Auto speed candidate on the audited Veneto panels, without and with saved FE; not a qualification.",
+  "candidate": {
+    "source": "18b47675802e896b0de92d77e220872edbf3ae12",
+    "linux_plugin_sha256": "3f888ffe29ea3f4eba567c5d47ffc382d0508c8137103981b3e8ff1767a2d84c",
+    "build": "SCC job 8298656, scripts/build_linux.sh, Rust 1.85.1, gcc 12.2.0"
+  },
+  "incumbent": {
+    "source": "277c5d11e9d1d4d6f4b17a747c21dbf9f52257f6",
+    "linux_plugin_sha256": "79d81fb145109c112c9075f77e1a2799bf09ddfab45cc4f563366138ee811171",
+    "role": "v0.5.0-beta.7 shipped plugin"
+  },
+  "comparator": "PyFixest main 263cf2d3 with within-py 0.4.0 (pyfixest-within campaign arm, default within LSMR)",
+  "protocol": {
+    "host": "scc-ud2",
+    "job": "8298657",
+    "allocation": "one whole 28-core node (mpi_28_tasks_per_node_u 28), host activity observed",
+    "inputs": "audited Veneto long (5,163,428 rows) and short (1,319,994 rows) panels of run 20261027T021257Z-beta7-veneto-long-nofe-9bbd2649, reused byte for byte",
+    "schedule": "threads 1/2/4/8/16, three repetitions, arm order rotated per repetition, iid VCE, no saved FE, campaign command clock",
+    "arms": [
+      "candidate fereg",
+      "beta.7 fereg",
+      "pyfixest-within"
+    ]
+  },
+  "cells": [
+    {
+      "panel": "short",
+      "threads": 1,
+      "seconds": {
+        "incumbent": [
+          2.488967,
+          2.489243,
+          2.4911
+        ],
+        "pyfixest-within": [
+          2.161229,
+          2.06418,
+          2.084236
+        ],
+        "candidate": [
+          2.014568,
+          2.007155,
+          2.006239
+        ]
+      },
+      "medians": {
+        "incumbent": 2.4892,
+        "pyfixest-within": 2.0842,
+        "candidate": 2.0072
+      },
+      "beta7_over_candidate": 1.24,
+      "pyfixest_within_over_candidate": 1.038
+    },
+    {
+      "panel": "short",
+      "threads": 2,
+      "seconds": {
+        "incumbent": [
+          2.214877,
+          2.206041,
+          2.20858
+        ],
+        "pyfixest-within": [
+          1.351347,
+          1.348449,
+          1.353412
+        ],
+        "candidate": [
+          1.38753,
+          1.375857,
+          1.3931
+        ]
+      },
+      "medians": {
+        "incumbent": 2.2086,
+        "pyfixest-within": 1.3513,
+        "candidate": 1.3875
+      },
+      "beta7_over_candidate": 1.592,
+      "pyfixest_within_over_candidate": 0.974
+    },
+    {
+      "panel": "short",
+      "threads": 4,
+      "seconds": {
+        "incumbent": [
+          1.866808,
+          1.850769,
+          1.848516
+        ],
+        "pyfixest-within": [
+          1.068489,
+          1.11886,
+          1.079513
+        ],
+        "candidate": [
+          1.034173,
+          1.066491,
+          1.030568
+        ]
+      },
+      "medians": {
+        "incumbent": 1.8508,
+        "pyfixest-within": 1.0795,
+        "candidate": 1.0342
+      },
+      "beta7_over_candidate": 1.79,
+      "pyfixest_within_over_candidate": 1.044
+    },
+    {
+      "panel": "short",
+      "threads": 8,
+      "seconds": {
+        "incumbent": [
+          1.667213,
+          1.63931,
+          1.656029
+        ],
+        "pyfixest-within": [
+          0.938848,
+          0.943218,
+          0.934663
+        ],
+        "candidate": [
+          0.824031,
+          0.822006,
+          0.823782
+        ]
+      },
+      "medians": {
+        "incumbent": 1.656,
+        "pyfixest-within": 0.9388,
+        "candidate": 0.8238
+      },
+      "beta7_over_candidate": 2.01,
+      "pyfixest_within_over_candidate": 1.14
+    },
+    {
+      "panel": "short",
+      "threads": 16,
+      "seconds": {
+        "incumbent": [
+          1.610198,
+          1.588435,
+          1.614158
+        ],
+        "pyfixest-within": [
+          0.954808,
+          1.00155,
+          0.956763
+        ],
+        "candidate": [
+          0.785262,
+          0.769741,
+          0.774754
+        ]
+      },
+      "medians": {
+        "incumbent": 1.6102,
+        "pyfixest-within": 0.9568,
+        "candidate": 0.7748
+      },
+      "beta7_over_candidate": 2.078,
+      "pyfixest_within_over_candidate": 1.235
+    },
+    {
+      "panel": "long",
+      "threads": 1,
+      "seconds": {
+        "incumbent": [
+          13.315233,
+          13.320565,
+          13.311922
+        ],
+        "pyfixest-within": [
+          26.937285,
+          27.308837,
+          26.820069
+        ],
+        "candidate": [
+          10.523673,
+          10.547979,
+          10.527528
+        ]
+      },
+      "medians": {
+        "incumbent": 13.3152,
+        "pyfixest-within": 26.9373,
+        "candidate": 10.5275
+      },
+      "beta7_over_candidate": 1.265,
+      "pyfixest_within_over_candidate": 2.559
+    },
+    {
+      "panel": "long",
+      "threads": 2,
+      "seconds": {
+        "incumbent": [
+          10.5923,
+          10.607137,
+          10.537436
+        ],
+        "pyfixest-within": [
+          15.33067,
+          15.397953,
+          15.448258
+        ],
+        "candidate": [
+          7.464063,
+          7.394258,
+          7.446319
+        ]
+      },
+      "medians": {
+        "incumbent": 10.5923,
+        "pyfixest-within": 15.398,
+        "candidate": 7.4463
+      },
+      "beta7_over_candidate": 1.422,
+      "pyfixest_within_over_candidate": 2.068
+    },
+    {
+      "panel": "long",
+      "threads": 4,
+      "seconds": {
+        "incumbent": [
+          8.545323,
+          8.534269,
+          8.536617
+        ],
+        "pyfixest-within": [
+          9.843575,
+          9.783252,
+          9.880372
+        ],
+        "candidate": [
+          5.276421,
+          5.278294,
+          5.275688
+        ]
+      },
+      "medians": {
+        "incumbent": 8.5366,
+        "pyfixest-within": 9.8436,
+        "candidate": 5.2764
+      },
+      "beta7_over_candidate": 1.618,
+      "pyfixest_within_over_candidate": 1.866
+    },
+    {
+      "panel": "long",
+      "threads": 8,
+      "seconds": {
+        "incumbent": [
+          7.276887,
+          7.372945,
+          7.381023
+        ],
+        "pyfixest-within": [
+          6.996698,
+          7.017612,
+          7.034159
+        ],
+        "candidate": [
+          3.996704,
+          3.994809,
+          3.983286
+        ]
+      },
+      "medians": {
+        "incumbent": 7.3729,
+        "pyfixest-within": 7.0176,
+        "candidate": 3.9948
+      },
+      "beta7_over_candidate": 1.846,
+      "pyfixest_within_over_candidate": 1.757
+    },
+    {
+      "panel": "long",
+      "threads": 16,
+      "seconds": {
+        "incumbent": [
+          6.975749,
+          7.075821,
+          7.076088
+        ],
+        "pyfixest-within": [
+          6.166852,
+          6.22799,
+          6.317425
+        ],
+        "candidate": [
+          3.62372,
+          3.636681,
+          3.617865
+        ]
+      },
+      "medians": {
+        "incumbent": 7.0758,
+        "pyfixest-within": 6.228,
+        "candidate": 3.6237
+      },
+      "beta7_over_candidate": 1.953,
+      "pyfixest_within_over_candidate": 1.719
+    }
+  ],
+  "science": {
+    "checks": {
+      "cross-worker": 30,
+      "versus incumbent:fereg": 30,
+      "versus candidate:pyfixest-within": 30,
+      "fixed-worker-exact": 20
+    },
+    "all_passed": true,
+    "tolerances": "campaign policy: coefficients 1e-7/1e-10, covariance 1e-6/1e-10, objective 1e-8/1e-10; fixed-worker captures exact"
+  },
+  "limitations": [
+    "One node and three repetitions per cell: descriptive, not a confidence bound.",
+    "The routing qualification and the Mac practical check are recorded separately."
+  ],
+  "saved_fe": {
+    "host": "scc-ug1",
+    "job": "8298658",
+    "arms": [
+      "candidate fereg",
+      "beta.7 fereg"
+    ],
+    "note": "PyFixest's saved effects exceed the campaign command limit on these panels (October 26 record), so it is omitted.",
+    "cells": [
+      {
+        "panel": "short",
+        "threads": 1,
+        "seconds": {
+          "incumbent": [
+            3.529952,
+            3.427131,
+            3.413781
+          ],
+          "candidate": [
+            3.252815,
+            3.244228,
+            3.244337
+          ]
+        },
+        "medians": {
+          "incumbent": 3.4271,
+          "candidate": 3.2443
+        },
+        "beta7_over_candidate": 1.056
+      },
+      {
+        "panel": "short",
+        "threads": 2,
+        "seconds": {
+          "incumbent": [
+            3.131485,
+            3.104758,
+            3.078981
+          ],
+          "candidate": [
+            2.165393,
+            2.12556,
+            2.143303
+          ]
+        },
+        "medians": {
+          "incumbent": 3.1048,
+          "candidate": 2.1433
+        },
+        "beta7_over_candidate": 1.449
+      },
+      {
+        "panel": "short",
+        "threads": 4,
+        "seconds": {
+          "incumbent": [
+            2.737188,
+            2.717939,
+            2.721239
+          ],
+          "candidate": [
+            1.516229,
+            1.511613,
+            1.503766
+          ]
+        },
+        "medians": {
+          "incumbent": 2.7212,
+          "candidate": 1.5116
+        },
+        "beta7_over_candidate": 1.8
+      },
+      {
+        "panel": "short",
+        "threads": 8,
+        "seconds": {
+          "incumbent": [
+            2.482157,
+            2.502037,
+            2.514757
+          ],
+          "candidate": [
+            1.160858,
+            1.152831,
+            1.15532
+          ]
+        },
+        "medians": {
+          "incumbent": 2.502,
+          "candidate": 1.1553
+        },
+        "beta7_over_candidate": 2.166
+      },
+      {
+        "panel": "short",
+        "threads": 16,
+        "seconds": {
+          "incumbent": [
+            2.394237,
+            2.391289,
+            2.411084
+          ],
+          "candidate": [
+            1.151072,
+            1.096168,
+            1.078645
+          ]
+        },
+        "medians": {
+          "incumbent": 2.3942,
+          "candidate": 1.0962
+        },
+        "beta7_over_candidate": 2.184
+      },
+      {
+        "panel": "long",
+        "threads": 1,
+        "seconds": {
+          "incumbent": [
+            16.343496,
+            16.336364,
+            16.35836
+          ],
+          "candidate": [
+            14.607113,
+            14.603146,
+            14.608414
+          ]
+        },
+        "medians": {
+          "incumbent": 16.3435,
+          "candidate": 14.6071
+        },
+        "beta7_over_candidate": 1.119
+      },
+      {
+        "panel": "long",
+        "threads": 2,
+        "seconds": {
+          "incumbent": [
+            13.616806,
+            13.641629,
+            13.613598
+          ],
+          "candidate": [
+            10.277897,
+            10.262018,
+            10.219326
+          ]
+        },
+        "medians": {
+          "incumbent": 13.6168,
+          "candidate": 10.262
+        },
+        "beta7_over_candidate": 1.327
+      },
+      {
+        "panel": "long",
+        "threads": 4,
+        "seconds": {
+          "incumbent": [
+            11.476019,
+            11.151355,
+            11.418734
+          ],
+          "candidate": [
+            7.125054,
+            7.154996,
+            7.146067
+          ]
+        },
+        "medians": {
+          "incumbent": 11.4187,
+          "candidate": 7.1461
+        },
+        "beta7_over_candidate": 1.598
+      },
+      {
+        "panel": "long",
+        "threads": 8,
+        "seconds": {
+          "incumbent": [
+            10.114574,
+            10.097184,
+            10.075962
+          ],
+          "candidate": [
+            5.381213,
+            5.388577,
+            5.294036
+          ]
+        },
+        "medians": {
+          "incumbent": 10.0972,
+          "candidate": 5.3812
+        },
+        "beta7_over_candidate": 1.876
+      },
+      {
+        "panel": "long",
+        "threads": 16,
+        "seconds": {
+          "incumbent": [
+            9.642032,
+            9.516391,
+            9.972615
+          ],
+          "candidate": [
+            5.004259,
+            4.812377,
+            4.981823
+          ]
+        },
+        "medians": {
+          "incumbent": 9.642,
+          "candidate": 4.9818
+        },
+        "beta7_over_candidate": 1.935
+      }
+    ],
+    "science": {
+      "checks": {
+        "cross-worker": 30,
+        "versus incumbent:fereg": 30,
+        "fixed-worker-exact": 20
+      },
+      "all_passed": true,
+      "saved_effects": "centered worker and firm effects compared at the fitted tolerances"
+    }
+  }
+}

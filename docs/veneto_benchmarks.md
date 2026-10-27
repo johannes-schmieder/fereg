@@ -1,5 +1,38 @@
 # Veneto AKM comparisons
 
+## October 27, 2026: two-FE Auto speed candidate
+
+A development build of the two-FE Auto speed changes (source `18b47675`,
+Linux plugin `3f888ffe...`) ran against the beta.7 plugin (`79d81fb1...`) and
+PyFixest main `263cf2d3` with within-py 0.4.0 on the audited long and short
+panels, reused byte for byte. Each cell had three repetitions with the arm
+order rotated, iid VCE and the campaign command clock, on one whole 28-core
+node per run (`scc-ud2` without saved FE, `scc-ug1` with saved FE). This is a
+descriptive comparison, not a qualification; see the
+[record](../bench/results/two-fe-auto-veneto-20261027.json).
+
+Without saved FE (seconds, medians; PyFixest/fereg above 1 means fereg was faster):
+
+| Panel, workers | fereg candidate | beta.7 | PyFixest `within` | PyFixest/fereg |
+| --- | ---: | ---: | ---: | ---: |
+| short, 1 | 2.01 | 2.49 | 2.08 | 1.04 |
+| short, 2 | 1.39 | 2.21 | 1.35 | 0.97 |
+| short, 4 | 1.03 | 1.85 | 1.08 | 1.04 |
+| short, 8 | 0.82 | 1.66 | 0.94 | 1.14 |
+| short, 16 | 0.78 | 1.61 | 0.96 | 1.23 |
+| long, 1 | 10.53 | 13.32 | 26.94 | 2.56 |
+| long, 2 | 7.45 | 10.59 | 15.40 | 2.07 |
+| long, 4 | 5.28 | 8.54 | 9.84 | 1.87 |
+| long, 8 | 4.00 | 7.37 | 7.02 | 1.76 |
+| long, 16 | 3.62 | 7.08 | 6.23 | 1.72 |
+
+With both FE channels saved the candidate took 3.24-1.10 seconds on the short
+panel and 14.61-4.98 on the long one from one to 16 workers, 1.06-2.18 times
+faster than beta.7; PyFixest's saved effects exceed the command limit and were
+omitted. All fixed-worker repeats were exact, and every cross-worker, beta.7 and
+PyFixest comparison (coefficients, covariance, objective and centered saved
+effects) passed the campaign tolerances.
+
 ## October 27, 2026: long panel rerun on one node
 
 The October 26 long-panel runs landed on different nodes, one of them

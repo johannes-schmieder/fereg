@@ -7,6 +7,19 @@ the SCC campaign records. Linux remains the performance host; the Mac numbers
 reproduce the SCC ratios closely (see the consistency check at the end) and are
 used to explain them, not to replace them.
 
+## Outcome (2026-10-27)
+
+The fixes below were implemented on `codex/two-fe-auto-speed`: the CMG cycle
+runs on the worker team, the deferred cell operator is parallel, the Schur
+hierarchy drops CMG's low-effective-degree correction, gate v2 builds the
+hierarchy at step 4 when the diagonal recurrence stalls, and Fast fits without
+saved outputs certify their within residual by its derived bound. On the real
+Veneto panels fereg Auto is now faster than PyFixest's `within` in 9 of 10
+cells (all but the short panel at two workers) and 1.2-2.1 times faster than
+beta.7; see [Veneto comparisons](veneto_benchmarks.md) and
+[validation](VALIDATION.md#two-fe-auto-speed). The CMG crate itself needed no
+change: its existing threshold option removed the stagnation.
+
 ## Short answers
 
 1. **fereg's two-FE solver core is not slower than `within`.** Explicit
