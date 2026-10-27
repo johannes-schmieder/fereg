@@ -113,11 +113,21 @@ def package_pages(pdf, frame, manifest):
         pdf.table(rows, [140, 80, 60, 60, 70, 60, 70], padding=4)
 
 
+def production_job(context, task):
+    """A task resubmitted after a documented stop runs under its own job."""
+    return str(context.get('task_jobs', {}).get(str(task), context['production_job']))
+
+
+def stopped_tasks(context):
+    """Stopped attempts stay retained but are not part of the measurement."""
+    return {(str(s['job']), str(s['task'])) for s in context.get('stopped_tasks', [])}
+
+
 def check_host_observations(root, context, manifest, accounting):
     if not context.get('host_observation_required'):
         return
     for label,job,task in [('smoke',str(context['smoke_job']),'0')]+[
-            (f'task-{i}',str(context['production_job']),str(i))
+            (f'task-{i}',production_job(context,i),str(i))
             for i in range(1,manifest['policy']['bundles']+1)]:
         observed=json.loads((root/f'host-{label}/host.json').read_text())
         host=observed['host']
@@ -142,11 +152,13 @@ def load_campaign(root):
     if not smoke.get('native_gate_pass') or not (root/'smoke/COMPLETE').is_file():
         raise ValueError('independent native smoke is not accepted')
     expected_jobs = {(str(context['setup_job']), None), (str(context['smoke_job']), None)}
-    expected_jobs.update((str(context['production_job']), str(i))
+    expected_jobs.update((production_job(context, i), str(i))
                          for i in range(1, manifest['policy']['bundles']+1))
     actual_jobs = set()
     for job in accounting['jobs']:
         key = str(job['jobnumber']), None if job.get('taskid') in [None, 'undefined', '0'] else str(job['taskid'])
+        if key in stopped_tasks(context):
+            continue
         if key in actual_jobs:
             raise ValueError('duplicate job accounting')
         actual_jobs.add(key)
@@ -170,7 +182,7 @@ def load_campaign(root):
     actual = [(r['cell'], r['arm'], r['repetition']) for r in records]
     if len(set(actual)) != len(actual) or set(actual) != expected or len(records) != manifest['timed_fits']:
         raise ValueError('manifest and observation coverage disagree')
-    if any(str(r.get('job')) != str(context['production_job']) for r in records if 'directory' in r):
+    if any(str(r.get('job')) != production_job(context, r.get('task')) for r in records if 'directory' in r):
         raise ValueError('application observation job identity mismatch')
     return dict(manifest=manifest, context=context, smoke=smoke, accounting=accounting,
                 records=records, comparisons=comparisons, datasets=datasets, tasks=tasks)
@@ -569,7 +581,9 @@ def render(campaign, frame, output, saved_retests=None):
     eligible = pairs[pairs.eligible]
     statuses = Counter(r['status'] for r in campaign['records'])
     jobs = campaign['accounting']['jobs']
-    production = [j for j in jobs if str(j['jobnumber']) == str(context['production_job'])]
+    tasks = range(1, manifest['policy']['bundles']+1)
+    production = [j for j in jobs if (str(j['jobnumber']), str(j['taskid'])) in
+                  {(production_job(context, i), str(i)) for i in tasks}]
     policy = manifest['policy']
     cores = ' / '.join(map(str, policy['threads']))
     sizes = ' / '.join(f'{n:,}' for n in policy['sizes'])

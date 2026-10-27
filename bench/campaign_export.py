@@ -107,6 +107,7 @@ def export(root, report, output, prefix):
         datasets=campaign['datasets'],
         accounting=[{k: r[k] for k in accounting_keys if k in r} for r in campaign['accounting']['jobs']],
         launchers=context.get('launcher_sha256', {}),
+        stopped_tasks=context.get('stopped_tasks', []), task_jobs=context.get('task_jobs', {}),
         scc_benchmark_tests=dict(count=int(re.findall(r'^Ran (\d+) tests', harness, re.M)[-1]),
                                  passed=harness.rstrip().endswith('OK')),
         host_isolation=hosts,

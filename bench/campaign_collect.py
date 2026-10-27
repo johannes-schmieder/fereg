@@ -43,8 +43,12 @@ def collect(context_path, output):
     output.mkdir(parents=True, exist_ok=False)
     (output/'context.json').write_text(json.dumps(context, indent=2)+'\n')
     jobs = []
-    for kind in ['setup', 'smoke', 'production']:
-        job = str(context[kind+'_job'])
+    # A task resubmitted after a documented stop has its own job (task_jobs).
+    resubmitted = sorted(set(map(str, context.get('task_jobs', {}).values())))
+    for kind, job in [('setup', context['setup_job']), ('smoke', context['smoke_job']),
+                      ('production', context['production_job']),
+                      *[(f'resubmitted-{job}', job) for job in resubmitted]]:
+        job = str(job)
         if not job.isdigit():
             raise ValueError('invalid submitted job identity')
         raw = remote('qacct -j '+job).decode()
@@ -80,6 +84,7 @@ def collect(context_path, output):
         files += [f'host-{label}/{name}' for label in ['smoke', *tasks]
                   for name in ['host.json', 'host-observations.jsonl']]
     files += [name for name in context.get('launcher_sha256', {}) if name not in files]
+    files += [name for name in context.get('retained_files', []) if name not in files]
     if context.get('reused_build_job'):
         files.append('logs/abi-retest.log')
     listing = remote('find '+shlex.quote(root+'/logs')+" -maxdepth 1 -type f -name 'production.*.sge'").decode().splitlines()
@@ -101,9 +106,10 @@ def collect(context_path, output):
             raise ValueError('scheduler launcher identity changed: '+name)
     sentinels = (output/'environment/COMPLETE').read_text().strip() == 'CAMPAIGN_SETUP_COMPLETE'
     sentinels &= 'CAMPAIGN_JOB_COMPLETE' in (output/'logs/smoke.sge').read_text()
+    from campaign_report import production_job
     for task in range(1, manifest['policy']['bundles']+1):
         matches = [p for p in (output/'logs').glob('production.*.sge')
-                   if f"CAMPAIGN_JOB_COMPLETE job={context['production_job']} task={task}" in p.read_text()]
+                   if f"CAMPAIGN_JOB_COMPLETE job={production_job(context, task)} task={task}" in p.read_text()]
         sentinels &= len(matches) == 1
     (output/'accounting.json').write_text(json.dumps(dict(jobs=jobs, sentinels_pass=bool(sentinels)), indent=2)+'\n')
     inventory = {str(p.relative_to(output)): hashlib.sha256(p.read_bytes()).hexdigest()

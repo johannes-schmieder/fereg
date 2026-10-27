@@ -9,7 +9,8 @@ import tempfile
 import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from campaign import POLICY
-from campaign_report import summarize, planned_arms, comparison_cell, completed_seconds, check_host_observations
+from campaign_report import (summarize, planned_arms, comparison_cell, completed_seconds, check_host_observations,
+                             production_job, stopped_tasks)
 from campaign_collect import accounting_records
 
 
@@ -167,6 +168,28 @@ class CampaignReportTests(unittest.TestCase):
                 path.write_text(json.dumps(dict(original,**update)))
                 with self.assertRaises(ValueError):
                     check_host_observations(root,context,manifest,accounting)
+
+
+    def test_a_resubmitted_task_keeps_its_own_job(self):
+        context = dict(production_job='11', task_jobs={'1': '12'},
+                       stopped_tasks=[dict(job='11', task='1', reason='wrong processor type')])
+        self.assertEqual([production_job(context, t) for t in [1, 2]], ['12', '11'])
+        self.assertEqual(stopped_tasks(context), {('11', '1')})
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            context.update(host_observation_required=True, smoke_job='10')
+            accounting = dict(jobs=[dict(jobnumber='10', taskid='undefined', hostname='scc-a'),
+                                    dict(jobnumber='12', taskid='1', hostname='scc-c'),
+                                    dict(jobnumber='11', taskid='2', hostname='scc-b')])
+            for label, job, task, host in [('smoke', '10', '0', 'scc-a'), ('task-1', '12', '1', 'scc-c'),
+                                           ('task-2', '11', '2', 'scc-b')]:
+                (root/f'host-{label}').mkdir()
+                (root/f'host-{label}/host.json').write_text(json.dumps(dict(
+                    isolation_ok=True, errors=[], host=dict(job_id=job, task_id=task, hostname=host))))
+            check_host_observations(root, context, dict(policy=dict(bundles=2)), accounting)
+            del context['task_jobs']
+            with self.assertRaises(ValueError):
+                check_host_observations(root, context, dict(policy=dict(bundles=2)), accounting)
 
 
 if __name__ == '__main__':
