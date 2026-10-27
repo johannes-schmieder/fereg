@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- CMG `5c5b5b2b`: the multigrid hierarchy stops at 32 levels instead of 128,
+  and every CMG memory admission assumes at most 32 levels. Pre-build CMG
+  admission and the retained charge of two-FE OLS Auto shrink by about 474 MB
+  and 1.3 GB on 1.4M- and 5.6M-row AKM panels, so a tight memory limit that
+  refused the CMG preconditioner can now admit it. Hierarchies of at most 32
+  levels (the recorded AKM hierarchies have 3) are bit-identical; a deeper
+  one would stop at the cap with an iterative terminal inside the admitted
+  memory.
 - OLS Auto with two categorical-intercept effects builds its aggregated
   (worker, firm) cells on the worker team, bit for bit as the serial build,
   and constructs them before the diagonal pilot so the pilot's Schur products

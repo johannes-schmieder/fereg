@@ -1340,6 +1340,7 @@ A hierarchy that would need more levels stops at the cap with CMG's iterative
 unchanged. Hierarchies of at most 32 levels are bit-identical. The lower bounds
 can admit a CMG build, cell kernel, cell cache or interleaved application that a
 tight memory limit refused before; an admitted route keeps its certificates.
+See the [memory record](../bench/results/cmg-admission-level-cap-2026-10-27.json).
 
 ## 20. Accuracy tolerances and independent evidence
 
