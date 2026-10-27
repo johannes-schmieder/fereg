@@ -1,0 +1,1305 @@
+{
+  "source": "5c1957cc47aaadafe78c2574d2274f1fa4d7b76f",
+  "science": [
+    {
+      "panel": "long",
+      "threads": 1,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "long",
+      "threads": 1,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 1,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "long",
+      "threads": 1,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 1,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "long",
+      "threads": 2,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "long",
+      "threads": 2,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 2,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "long",
+      "threads": 2,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 2,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "long",
+      "threads": 4,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "long",
+      "threads": 4,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 4,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "long",
+      "threads": 4,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 4,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "long",
+      "threads": 8,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "long",
+      "threads": 8,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 8,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "long",
+      "threads": 8,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 8,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "long",
+      "threads": 16,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "long",
+      "threads": 16,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 16,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "long",
+      "threads": 16,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 16,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "short",
+      "threads": 1,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "short",
+      "threads": 1,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "short",
+      "threads": 1,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "short",
+      "threads": 1,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "short",
+      "threads": 1,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "short",
+      "threads": 2,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "short",
+      "threads": 2,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "short",
+      "threads": 2,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "short",
+      "threads": 2,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "short",
+      "threads": 2,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "short",
+      "threads": 4,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "short",
+      "threads": 4,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "short",
+      "threads": 4,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "short",
+      "threads": 4,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "short",
+      "threads": 4,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "short",
+      "threads": 8,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "short",
+      "threads": 8,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "short",
+      "threads": 8,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "short",
+      "threads": 8,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "short",
+      "threads": 8,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "short",
+      "threads": 16,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "short",
+      "threads": 16,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "short",
+      "threads": 16,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "short",
+      "threads": 16,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "short",
+      "threads": 16,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    }
+  ],
+  "comparisons": [
+    {
+      "cell": "veneto-long-t1-fe0",
+      "arm": "fixest",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t1-fe0",
+      "arm": "fixest-strict",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t1-fe0",
+      "arm": "pyfixest",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "application unavailable"
+      ]
+    },
+    {
+      "cell": "veneto-long-t1-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t1-fe0",
+      "arm": "reghdfe",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "application unavailable"
+      ]
+    },
+    {
+      "cell": "veneto-long-t1-fe0",
+      "arm": "fixest-strict",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t1-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t1-fe0",
+      "arm": "fixest",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t1-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t1-fe0",
+      "arm": "fixest",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t1-fe0",
+      "arm": "fixest-strict",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t2-fe0",
+      "arm": "fixest",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t2-fe0",
+      "arm": "fixest-strict",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t2-fe0",
+      "arm": "pyfixest",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "application unavailable"
+      ]
+    },
+    {
+      "cell": "veneto-long-t2-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t2-fe0",
+      "arm": "reghdfe",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "application unavailable"
+      ]
+    },
+    {
+      "cell": "veneto-long-t2-fe0",
+      "arm": "fixest-strict",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t2-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t2-fe0",
+      "arm": "fixest",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t2-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t2-fe0",
+      "arm": "fixest",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t2-fe0",
+      "arm": "fixest-strict",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t4-fe0",
+      "arm": "fixest",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t4-fe0",
+      "arm": "fixest-strict",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t4-fe0",
+      "arm": "pyfixest",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t4-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t4-fe0",
+      "arm": "reghdfe",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t4-fe0",
+      "arm": "fixest-strict",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t4-fe0",
+      "arm": "pyfixest",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t4-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t4-fe0",
+      "arm": "reghdfe",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t4-fe0",
+      "arm": "fixest",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t4-fe0",
+      "arm": "pyfixest",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t4-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t4-fe0",
+      "arm": "reghdfe",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t4-fe0",
+      "arm": "fixest",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t4-fe0",
+      "arm": "fixest-strict",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t8-fe0",
+      "arm": "fixest",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t8-fe0",
+      "arm": "fixest-strict",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t8-fe0",
+      "arm": "pyfixest",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t8-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t8-fe0",
+      "arm": "fixest-strict",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t8-fe0",
+      "arm": "pyfixest",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t8-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t8-fe0",
+      "arm": "fixest",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t8-fe0",
+      "arm": "pyfixest",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t8-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t8-fe0",
+      "arm": "fixest",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t8-fe0",
+      "arm": "fixest-strict",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t16-fe0",
+      "arm": "fixest",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t16-fe0",
+      "arm": "fixest-strict",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t16-fe0",
+      "arm": "pyfixest",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t16-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t16-fe0",
+      "arm": "fixest-strict",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t16-fe0",
+      "arm": "pyfixest",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t16-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t16-fe0",
+      "arm": "fixest",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t16-fe0",
+      "arm": "pyfixest",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t16-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t16-fe0",
+      "arm": "fixest",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-long-t16-fe0",
+      "arm": "fixest-strict",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t1-fe0",
+      "arm": "fixest",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t1-fe0",
+      "arm": "fixest-strict",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t1-fe0",
+      "arm": "pyfixest",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t1-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t1-fe0",
+      "arm": "reghdfe",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t1-fe0",
+      "arm": "fixest-strict",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t1-fe0",
+      "arm": "pyfixest",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t1-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t1-fe0",
+      "arm": "reghdfe",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t1-fe0",
+      "arm": "fixest",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t1-fe0",
+      "arm": "pyfixest",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t1-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t1-fe0",
+      "arm": "reghdfe",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t1-fe0",
+      "arm": "fixest",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t1-fe0",
+      "arm": "fixest-strict",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t2-fe0",
+      "arm": "fixest",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t2-fe0",
+      "arm": "fixest-strict",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t2-fe0",
+      "arm": "pyfixest",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t2-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t2-fe0",
+      "arm": "reghdfe",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t2-fe0",
+      "arm": "fixest-strict",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t2-fe0",
+      "arm": "pyfixest",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t2-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t2-fe0",
+      "arm": "reghdfe",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t2-fe0",
+      "arm": "fixest",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t2-fe0",
+      "arm": "pyfixest",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t2-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t2-fe0",
+      "arm": "reghdfe",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t2-fe0",
+      "arm": "fixest",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t2-fe0",
+      "arm": "fixest-strict",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t4-fe0",
+      "arm": "fixest",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t4-fe0",
+      "arm": "fixest-strict",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t4-fe0",
+      "arm": "pyfixest",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t4-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t4-fe0",
+      "arm": "reghdfe",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t4-fe0",
+      "arm": "fixest-strict",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t4-fe0",
+      "arm": "pyfixest",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t4-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t4-fe0",
+      "arm": "reghdfe",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t4-fe0",
+      "arm": "fixest",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t4-fe0",
+      "arm": "pyfixest",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t4-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t4-fe0",
+      "arm": "reghdfe",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t4-fe0",
+      "arm": "fixest",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t4-fe0",
+      "arm": "fixest-strict",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t8-fe0",
+      "arm": "fixest",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t8-fe0",
+      "arm": "fixest-strict",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t8-fe0",
+      "arm": "pyfixest",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t8-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t8-fe0",
+      "arm": "fixest-strict",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t8-fe0",
+      "arm": "pyfixest",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t8-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t8-fe0",
+      "arm": "fixest",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t8-fe0",
+      "arm": "pyfixest",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t8-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t8-fe0",
+      "arm": "fixest",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t8-fe0",
+      "arm": "fixest-strict",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t16-fe0",
+      "arm": "fixest",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t16-fe0",
+      "arm": "fixest-strict",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t16-fe0",
+      "arm": "pyfixest",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t16-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t16-fe0",
+      "arm": "fixest-strict",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t16-fe0",
+      "arm": "pyfixest",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t16-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t16-fe0",
+      "arm": "fixest",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t16-fe0",
+      "arm": "pyfixest",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t16-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t16-fe0",
+      "arm": "fixest",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "cell": "veneto-short-t16-fe0",
+      "arm": "fixest-strict",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": []
+    }
+  ]
+}

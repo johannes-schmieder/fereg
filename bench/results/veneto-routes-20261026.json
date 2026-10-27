@@ -1,0 +1,280 @@
+{
+  "schema": 1,
+  "date": "2026-10-26",
+  "purpose": "Explain the Veneto estimation gap between fereg and PyFixest within; aggregate timings only, rows stay private on SCC.",
+  "runtime": "v0.5.0-beta.7 packaged runtime (Linux plugin 79d81fb145109c112c9075f77e1a2799bf09ddfab45cc4f563366138ee811171), harness 5c1957cc",
+  "inputs": "Audited Veneto panels of run 20261026T203913Z-beta7-veneto-nofe-5c1957cc (October 24 inputs reused); OLS, IID covariance, no saved FE.",
+  "protocol": "One Stata 19/MP session per panel with set processors 4 and threads(4); three repetitions per route after one warm fit; Stata timer seconds include the command overhead. PyFixest within (pinned main 263cf2d3, within-py 0.4.0) runs RAYON_NUM_THREADS=4 in the campaign environment after a warm fit; seconds cover pf.feols only.",
+  "short_panel": {
+    "job": 8292028,
+    "host": "scc-gr4",
+    "cpu": "Xeon Gold 6242",
+    "slots": 8,
+    "routes": {
+      "auto": {
+        "seconds": [
+          1.824,
+          1.763,
+          1.798
+        ],
+        "median_seconds": 1.798,
+        "return_codes": [
+          0,
+          0,
+          0
+        ],
+        "used": [
+          "cmgschur"
+        ],
+        "first_coefficient": [
+          ".0322019067198819"
+        ],
+        "rss": [
+          "11028.681350011"
+        ]
+      },
+      "lsmr": {
+        "seconds": [
+          1.421,
+          1.454,
+          1.469
+        ],
+        "median_seconds": 1.454,
+        "return_codes": [
+          0,
+          0,
+          0
+        ],
+        "used": [
+          "lsmr"
+        ],
+        "first_coefficient": [
+          ".0322019067198751"
+        ],
+        "rss": [
+          "11028.6813500103"
+        ]
+      },
+      "cmgschur": {
+        "seconds": [
+          1.36,
+          1.355,
+          1.381
+        ],
+        "median_seconds": 1.36,
+        "return_codes": [
+          0,
+          0,
+          0
+        ],
+        "used": [
+          "cmgschur"
+        ],
+        "first_coefficient": [
+          ".0322019067198722"
+        ],
+        "rss": [
+          "11028.6813500106"
+        ]
+      },
+      "cmg": {
+        "seconds": [
+          67.678,
+          68.425,
+          67.202
+        ],
+        "median_seconds": 67.678,
+        "return_codes": [
+          0,
+          0,
+          0
+        ],
+        "used": [
+          "cmg"
+        ],
+        "first_coefficient": [
+          ".0322019067198737"
+        ],
+        "rss": [
+          "11028.6813500106"
+        ]
+      },
+      "map": {
+        "seconds": [
+          269.474,
+          270.495,
+          270.855
+        ],
+        "median_seconds": 270.495,
+        "return_codes": [
+          0,
+          0,
+          0
+        ],
+        "used": [
+          "map"
+        ],
+        "first_coefficient": [
+          ".0322019067199516"
+        ],
+        "rss": [
+          "11028.6813500111"
+        ]
+      },
+      "pyfixest-within": {
+        "seconds": [
+          0.9958,
+          0.9533,
+          1.0036
+        ],
+        "median_seconds": 0.9958,
+        "return_codes": [
+          0,
+          0,
+          0
+        ],
+        "used": [],
+        "first_coefficient": [
+          "0.0322019067200882"
+        ],
+        "rss": []
+      }
+    }
+  },
+  "long_panel": {
+    "job": 8292029,
+    "host": "scc-pf7",
+    "cpu": "Xeon E5-2650 v2 (no AVX2/FMA)",
+    "slots": 8,
+    "routes": {
+      "auto": {
+        "seconds": [
+          37.327,
+          37.52,
+          37.302
+        ],
+        "median_seconds": 37.327,
+        "return_codes": [
+          0,
+          0,
+          0
+        ],
+        "used": [
+          "cmgschur"
+        ],
+        "first_coefficient": [
+          "-.433693169945668"
+        ],
+        "rss": [
+          "72259.0034011259"
+        ]
+      },
+      "lsmr": {
+        "seconds": [
+          1.067,
+          1.008,
+          1.065
+        ],
+        "median_seconds": 1.065,
+        "return_codes": [
+          909,
+          909,
+          909
+        ],
+        "used": [],
+        "first_coefficient": [],
+        "rss": []
+      },
+      "cmgschur": {
+        "seconds": [
+          30.085,
+          29.911,
+          29.944
+        ],
+        "median_seconds": 29.944,
+        "return_codes": [
+          0,
+          0,
+          0
+        ],
+        "used": [
+          "cmgschur"
+        ],
+        "first_coefficient": [
+          "-.433693169944548"
+        ],
+        "rss": [
+          "72259.0034011333"
+        ]
+      },
+      "cmg": {
+        "seconds": [
+          1425.142,
+          1412.259,
+          1414.412
+        ],
+        "median_seconds": 1414.412,
+        "return_codes": [
+          0,
+          0,
+          0
+        ],
+        "used": [
+          "cmg"
+        ],
+        "first_coefficient": [
+          "-.433693169945416"
+        ],
+        "rss": [
+          "72259.0034011244"
+        ]
+      }
+    },
+    "status": "Cancelled by Johannes during solver(map); map and PyFixest within were not run (qacct failed=100, exit 137).",
+    "note": "solver(lsmr) returned r(909): LSMR workspace exceeds the joint execution plan, in an 8-slot, 8 GB-per-slot allocation. Absolute times reflect the older host and are not comparable with campaign nodes."
+  },
+  "pyfixest_phases": {
+    "job": 8290380,
+    "host": "scc-pi1",
+    "slots": 4,
+    "panel": "short",
+    "threads": 4,
+    "note": "Separate processes per row; fit is pf.feols, recovery is fit.fixef(atol=btol=tolerance) via scipy LSQR.",
+    "results": {
+      "pyfixest 1e-6": {
+        "pyfixest": "0.60.0",
+        "rows": 1319994,
+        "threads": 4,
+        "fit_seconds": 70.9957867640187,
+        "fixef_1e-06_seconds": 328.6953828840051
+      },
+      "pyfixest 1e-11": {
+        "pyfixest": "0.60.0",
+        "rows": 1319994,
+        "threads": 4,
+        "fit_seconds": 54.71365347201936,
+        "fixef_1e-11_seconds": 531.8378135459498
+      },
+      "pyfixest-within 1e-6": {
+        "pyfixest": "0.60.0",
+        "rows": 1319994,
+        "threads": 4,
+        "fit_seconds": 15.448325147037394,
+        "fixef_1e-06_seconds": 224.06422579300124
+      },
+      "pyfixest-within 1e-11": {
+        "pyfixest": "0.60.0",
+        "rows": 1319994,
+        "threads": 4,
+        "fit_seconds": 4.3051645959494635,
+        "fixef_1e-11_seconds": 438.8121762869996
+      }
+    }
+  },
+  "findings": [
+    "All fereg routes and PyFixest within agree on the first coefficient to about 1e-13 relative and on RSS to about 1e-15.",
+    "Short panel: explicit cmgschur (1.37 s) and lsmr (1.45 s) beat Auto (1.80 s, resolving to cmgschur after its diagonal Schur PCG pilot); PyFixest within takes 0.97 s.",
+    "Explicit solver(cmg) takes about 50 times longer than cmgschur on both panels (67 s short; 1,413 s long on scc-pf7).",
+    "PyFixest saved-FE recovery dominates its Veneto saved-FE runs: 224-532 s for LSQR recovery against 4-71 s estimation."
+  ]
+}

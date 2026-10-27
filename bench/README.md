@@ -107,7 +107,10 @@ default/strict fixest profiles and both PyFixest arms; reghdfe participates at
 1/2/4, within the SCC Stata license. This gives 168 planned fit positions.
 `panel_campaign.py reuse NEW_RUN --previous PRIOR_RUN` copies a prior run's
 audited panel inputs, smoke witnesses and policy byte for byte and rebuilds only
-the per-cell arm lists. Each panel runs sequentially in
+the per-cell arm lists; `--without-saved-fe` schedules the same cells without
+saved FE, so commands time estimation and inference and comparisons cover
+slopes, covariance, sample, rank and RSS. The collector retains the reuse job
+and the prior run's preparation records. Each panel runs sequentially in
 one independently verified whole-host allocation, using common socket-ordered
 CPU prefixes and NUMA memory binding. A separate four-slot real-data smoke must
 pass before either production task runs. The two panels may use different hosts.
@@ -134,7 +137,8 @@ remain in the tables. It does not download row captures or saved FE vectors.
 
 `panel_report.py COLLECTION --output REPORT_DIRECTORY` revalidates native
 eligibility and renders the maintained PDF from aggregate evidence, exporting
-compact CSV/JSON summaries with the `scc-YYYYMMDD-veneto` prefix. Render the PDF
+compact CSV/JSON summaries with the `scc-YYYYMMDD-veneto` prefix, or the
+context's `export_prefix` when one date has several runs. Render the PDF
 to images and inspect every page before publication. Retain
 the report and full captures privately on SCC, and commit only the compact
 aggregates. The [October 24 results](../docs/veneto_benchmarks.md) retain all

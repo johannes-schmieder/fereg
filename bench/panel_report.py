@@ -138,17 +138,23 @@ def render(campaign, frame, output):
              'Every failed observation remains visible. No replacement observations or tolerance changes were used.')
     pdf.table([['Gate', 'Outcome'],
                ['Scheduler and application', 'Setup, smoke and both production tasks: failed=0, exit=0; all sentinels present.'],
-               ['Native repeated science', '20 exact repeat checks; scientific CSV and raw FE hashes, reported RSS and discrete decisions stable.'],
+               ['Native repeated science', '20 exact repeat checks; scientific CSV'+(' and raw FE' if saved else '')+' hashes, reported RSS and discrete decisions stable.'],
                ['Native core consistency', '30 checks against one-core reference, including 6 one-core checks and 24 between core counts; four-core witnesses also pass.'],
-               ['Independent witnesses', 'Both native dense-design real-data smokes pass coefficients, covariance and fitted values. Full-panel graph rank, model scores and objective replay pass.'],
+               ['Independent witnesses', 'Both native dense-design real-data smokes pass coefficients'+(', covariance and fitted values' if saved else ' and covariance')+
+                '. Full-panel graph rank'+(', model scores and objective replay pass.' if saved else ' passes.')],
                ['Host evidence', 'Both complete reservations and all-queue censuses replay successfully; continuous samples report no known competing compute.'],
                ['Retained input audit', 'Exact fevc identifiers. Control-adjustment max errors: 1.54e-13 long, 1.01e-13 short (gate 1e-12).']],
               [132, 375], padding=5)
     pdf.text('Reference accuracy and interpretation', 'SectionCustom')
-    pdf.text('The per-panel tables identify every reference discrepancy. The independent saved-predictor '
-             'model-score bound is 1e-7. FE comparisons use observation-weighted centering to remove '
-             'the arbitrary connected-graph additive normalization. A remaining centered-channel '
-             'discrepancy exceeds the frozen tolerance; its underlying numerical cause is not diagnosed here.', 'SmallCustom')
+    if saved:
+        pdf.text('The per-panel tables identify every reference discrepancy. The independent saved-predictor '
+                 'model-score bound is 1e-7. FE comparisons use observation-weighted centering to remove '
+                 'the arbitrary connected-graph additive normalization. A remaining centered-channel '
+                 'discrepancy exceeds the frozen tolerance; its underlying numerical cause is not diagnosed here.', 'SmallCustom')
+    else:
+        pdf.text('The per-panel tables identify every reference discrepancy. Without saved FE, comparisons '
+                 'cover slopes, covariance, sample, rank, degrees of freedom and RSS; saved-predictor and '
+                 'centered-FE checks do not apply.', 'SmallCustom')
     smoke = [(s['panel'], s['arm'], s['passed']) for s in campaign['smoke']['science'] if s['kind'] == 'dense-oracle']
     failed_smokes = ', '.join(panel+' '+arm for panel, arm, passed in smoke if not passed) or 'none'
     pdf.text('Dense real-data smoke failures: '+failed_smokes+'. Production failures remain visible '
@@ -164,7 +170,7 @@ def render(campaign, frame, output):
     pdf.text('Identity and retention', 'SectionCustom')
     pdf.text('Harness source '+context['source'][:12]+'; packaged native source '+context['runtime_source'][:12]+
              '. Plugin SHA-256 '+context['linux_plugin_sha256']+'. Compact CSV/JSON evidence and '
-             'the maintained renderer are committed in bench/. Full captures, saved effects, host '
+             'the maintained renderer are committed in bench/. Full captures, '+('saved effects, ' if saved else '')+'host '
              'observations and this report remain private under the recorded SCC campaign root.', 'SmallCustom')
     pdf.build()
 
@@ -176,7 +182,7 @@ def export(root, output):
         raise ValueError('retained host replay is missing')
     frame = validated_summary(campaign)
     output.mkdir(parents=True, exist_ok=True)
-    prefix = 'scc-'+campaign['context']['run_id'][:8]+'-veneto'
+    prefix = campaign['context'].get('export_prefix', 'scc-'+campaign['context']['run_id'][:8]+'-veneto')
     frame.to_csv(output/(prefix+'-summary.csv'), index=False)
     # Keep every planned position, including failures and skipped repetitions.
     (output/(prefix+'-observations.csv')).write_bytes((root/'observations.csv').read_bytes())
@@ -209,11 +215,13 @@ def export(root, output):
     for cell in campaign['manifest']['cells']:
         runs = [r for r in campaign['records'] if r['cell'] == cell['id'] and r['arm'] == 'fereg']
         c = runs[0]['capture']
-        evidence['native_cells'].append(dict(cell=cell['id'], **{k: c[k] for k in
+        # Runs without saved FE have no saved channels or saved-predictor score.
+        evidence['native_cells'].append(dict(cell=cell['id'], **{k: c.get(k) for k in
             ['N', 'sample_sha256', 'finite_slope_rank', 'absorbed_dof', 'omitted', 'publication_omitted',
              'singleton_deletions', 'separation_deletions', 'saved_fe_sha256', 'scientific_sha256']},
             exact_reported_rss=[r['metadata']['rss'].strip() for r in runs],
-            maximum_model_score=max(r['capture']['maximum_model_score'] for r in runs),
+            maximum_model_score=max((r['capture'].get('maximum_model_score') for r in runs
+                                     if 'maximum_model_score' in r['capture']), default=None),
             placement={k: runs[0]['placement'][k] for k in ['cpus', 'sockets', 'memory_nodes']},
             cpu_model=next(line.split(':', 1)[1].strip() for line in runs[0]['placement']['lscpu'].splitlines()
                            if line.startswith('Model name:'))))

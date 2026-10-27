@@ -1,4 +1,127 @@
-# Veneto AKM comparison, October 24, 2026
+# Veneto AKM comparisons
+
+## October 26, 2026: beta.7 with PyFixest, with and without saved FE
+
+The same audited long and short fevc panels ran on the v0.5.0-beta.7 packaged
+Linux runtime (plugin `79d81fb1...`, built at `277c5d11`), first with both FE
+channels saved inside command timing, as on October 24, and then without saved
+FE. Arms are fereg, fixest 0.14.2 default and strict, PyFixest 0.60.0 (default
+Rust MAP), PyFixest main `263cf2d3` with within-py 0.4.0 (default `within`
+LSMR), and reghdfe at 1/2/4 cores. Each run has 168 planned positions: three
+repetitions at 1/2/4/8/16 cores per panel. Both runs reuse the October 24 run's
+audited inputs, smoke witnesses and policy byte for byte
+(`panel_campaign.py reuse`); only the arm lists and the saved-FE request
+differ. All 60 native fits pass the production gates, with exact fixed-worker
+repeats and cross-core agreement.
+
+**Without saved FE**, the comparison isolates estimation and inference. 42 of
+46 comparator cells are eligible; the other four are reghdfe and PyFixest
+0.60.0 hitting the 600-second command limit at one and two cores on the long
+panel. Entries are three-command medians in seconds, with the paired
+comparator/fereg ratio in parentheses (above 1 means fereg was faster).
+
+| Long, 5,163,428 rows (`scc-uf4`) | fereg s | PyFixest within | fixest default | fixest strict | reghdfe | PyFixest 0.60 |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 30.99 | 58.43 (1.88) | 137.06 (4.42) | 256.61 (8.28) | timeout | timeout |
+| 2 | 23.45 | 33.02 (1.41) | 75.86 (3.23) | 139.84 (5.97) | timeout | timeout |
+| 4 | 18.88 | 20.52 (1.09) | 42.95 (2.28) | 76.75 (4.07) | 450.54 (23.89) | 364.71 (19.36) |
+| 8 | 16.32 | 14.01 (0.86) | 25.50 (1.56) | 44.72 (2.74) | — | 221.01 (13.47) |
+| 16 | 15.63 | 11.74 (0.76) | 25.93 (1.66) | 47.08 (3.04) | — | 227.42 (14.51) |
+
+| Short, 1,319,994 rows (`scc-ui4`) | fereg s | PyFixest within | fixest default | fixest strict | reghdfe | PyFixest 0.60 |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 2.48 | 2.05 (0.83) | 5.48 (2.21) | 11.00 (4.44) | 42.97 (17.30) | 70.95 (28.56) |
+| 2 | 2.18 | 1.34 (0.62) | 3.46 (1.59) | 6.70 (3.07) | 31.41 (14.39) | 49.02 (22.30) |
+| 4 | 1.86 | 1.08 (0.58) | 3.59 (1.92) | 6.91 (3.70) | 26.12 (14.06) | 50.28 (26.98) |
+| 8 | 1.65 | 0.94 (0.57) | 3.55 (2.16) | 6.83 (4.15) | — | 49.91 (30.32) |
+| 16 | 1.61 | 0.94 (0.59) | 3.75 (2.33) | 7.02 (4.37) | — | 47.64 (29.65) |
+
+Fereg is faster than both fixest profiles, reghdfe and PyFixest 0.60.0 in
+every eligible cell. PyFixest's `within` default is faster than fereg on the
+short panel at every core count (0.57-0.83) and on the long panel at 8 and 16
+cores (0.86, 0.76); fereg is faster on the long panel at one to four cores
+(1.09-1.88).
+
+**With saved FE**, as on October 24, no comparator cell is eligible, so
+comparator times are descriptive (`*`; n=1 is a single completed command
+before later repetitions were skipped):
+
+| Long (`scc-ue1`) | fereg s | fixest default | fixest strict | reghdfe | Both PyFixest arms |
+| ---: | ---: | ---: | ---: | ---: | --- |
+| 1 | 16.31 | 64.47* n=1 | 115.89* | 571.43* n=1 | timeout |
+| 2 | 13.20 | 39.09* n=1 | 67.19* | 327.15* n=1 | timeout |
+| 4 | 11.09 | 24.91* n=1 | 40.50* | 236.66* n=1 | timeout |
+| 8 | 9.93 | 17.17* n=1 | 26.09* | — | timeout |
+| 16 | 10.40 | 17.50* n=1 | 27.02* | — | timeout |
+
+| Short (`scc-uf3`) | fereg s | fixest default | fixest strict | reghdfe | Both PyFixest arms |
+| ---: | ---: | ---: | ---: | ---: | --- |
+| 1 | 8.19 | 18.10* n=1 | 30.66* | 159.58* n=1 | timeout |
+| 2 | 6.99 | 12.89* n=1 | 19.49* | 112.23* n=1 | timeout |
+| 4 | 5.99 | 12.88* n=1 | 19.51* | 85.60* n=1 | timeout |
+| 8 | 5.49 | 12.91* n=1 | 19.25* | — | timeout |
+| 16 | 5.33 | 13.36* n=1 | 20.12* | — | timeout |
+
+Default fixest and reghdfe fail the independent saved-predictor score check;
+strict fixest completes but its centered worker and firm effects differ from
+fereg's beyond the frozen tolerance on both panels (and its short-panel saved
+prediction too). Both PyFixest arms hit the 600-second command limit at every
+core count. A separate diagnostic on the short panel at four threads (below)
+shows why: PyFixest recovers saved effects with scipy's single-threaded LSQR,
+which took 224-329 seconds at PyFixest's default 1e-6 tolerance and 439-532
+seconds at the campaign's 1e-11, against 4-71 seconds for estimation.
+
+**Hosts.** All four production tasks used whole 28-core E5-2680 v4 nodes, yet
+`scc-uf3` and `scc-uf4` ran every package about 2.1-2.4 times slower than
+`scc-ui4`/`scc-ue1` and the October 24 nodes: on `scc-uf3` the short saved-FE
+fereg command took 8.19 seconds at one core against 3.44 on October 24, and
+reghdfe, default and strict fixest slowed by the same factor, as did fereg's
+non-numerical input copy. Paired ratios within a node remain comparable; absolute
+times across the saved and unsaved runs, or across dates, are not.
+
+**Route diagnostic.** On the short panel without saved FE, one Xeon Gold 6242
+node ran each fereg solver route and PyFixest `within` three times at four
+threads in one session; all routes agree on the first coefficient to about
+1e-13 relative and on RSS to about 1e-15.
+
+| Route | Median seconds |
+| --- | ---: |
+| PyFixest `within` (main) | 1.00 |
+| fereg `solver(cmgschur)` | 1.36 |
+| fereg `solver(lsmr)` | 1.45 |
+| fereg `solver(auto)`, resolving to `cmgschur` | 1.80 |
+| fereg `solver(cmg)` | 67.7 |
+| fereg `solver(map)` | 270.5 |
+
+With its diagonal Schur-PCG pilot before the CMG upgrade, Auto took about 30%
+longer than building CMG at once (`cmgschur`). Explicit `solver(cmg)` (fused-FWL CMG) was about
+50 times slower than `cmgschur` here and on the long panel. A long-panel run on
+an older E5-2650 v2 node with an 8-slot, 64 GB allocation was cancelled before
+`map` and PyFixest; there, explicit `solver(lsmr)` returned `r(909)` (LSMR
+workspace exceeds the joint execution plan) while Auto completed. These are
+single-session descriptive timings.
+
+**Smokes and identity.** The unsaved run's real-data smoke passed for all 12
+fits against the dense oracle. In the saved run's smoke, default fixest failed
+the long-panel score check, as on October 24, and PyFixest 0.60.0 failed in the
+harness's FE mapping on the short smoke panel, which has a single firm; the fix
+(`f2b8865f`) followed, and the production panels with 42,489 and 86,647 firms
+were unaffected. Saved run `20261026T184833Z-beta7-veneto-a4bd2cce`: setup
+`8289450`, smoke `8289451`, production `8289452`. Unsaved run
+`20261026T203913Z-beta7-veneto-nofe-5c1957cc`: setup `8290777`, smoke
+`8290778`, production `8290779`. All scheduler accounting, sentinels, host
+reservations and censuses pass.
+
+| Retained aggregate evidence | Contents |
+| --- | --- |
+| Saved FE: [summary](../bench/results/scc-20261026-beta7-veneto-summary.csv), [observations](../bench/results/scc-20261026-beta7-veneto-observations.csv), [science](../bench/results/scc-20261026-beta7-veneto-science.json), [inputs](../bench/results/scc-20261026-beta7-veneto-inputs.json) | All 56 arm cells and 168 positions, native repeat/core checks, identities, accounting and host replay. |
+| Without saved FE: [summary](../bench/results/scc-20261026-beta7-veneto-nofe-summary.csv), [observations](../bench/results/scc-20261026-beta7-veneto-nofe-observations.csv), [science](../bench/results/scc-20261026-beta7-veneto-nofe-science.json), [inputs](../bench/results/scc-20261026-beta7-veneto-nofe-inputs.json) | The same for the unsaved run. |
+| [Route and PyFixest phase diagnostics](../bench/results/veneto-routes-20261026.json) | Aggregate route timings, return codes, hosts and PyFixest fit/recovery phases. |
+
+Full captures and the checked four-page reports remain private under the two
+run roots in `/projectnb/welfgr/fereg/runs/`.
+
+## October 24, 2026: first comparison
 
 All **30 fereg fits pass** the frozen scientific and saved-output gates on the
 long and short Veneto panels used by fevc. Median command time falls from
@@ -15,7 +138,7 @@ times remain visible below. These observations identify failed checks, without
 diagnosing the underlying numerical cause or proving which full-panel FE
 solution is correct by an independent dense oracle.
 
-## Models and retained samples
+### Models and retained samples
 
 The response is unadjusted log daily wages. Each model includes worker and firm
 intercept effects, unit weights and regular IID OLS covariance. Both FE channels
@@ -43,7 +166,7 @@ adjusted wages lie in the declared control span, with maximum errors
 long sample is 18 rows below the historical published count; it matches the
 retained fevc input exactly. No sample change was made to close that difference.
 
-## Core scaling and observed reference times
+### Core scaling and observed reference times
 
 All times are seconds. Fereg and strict fixest entries are three-command
 medians. Every asterisk denotes a scientifically ineligible comparator. Default
@@ -81,7 +204,7 @@ at 1/2/4. Fereg's native worker budget is explicitly verified at 1/2/4/8/16;
 fixest uses the same requested physical-core prefixes. Reference sources and
 all used runtime files are frozen and checked before and after execution.
 
-## Validation and limits
+### Validation and limits
 
 All **108 planned positions** from ten configurations are accounted for: 60
 successful captures (30 native and 30 strict fixest), 16 capture errors (ten
@@ -131,7 +254,7 @@ Different hosts, sample sizes and controls prevent interpreting the long/short
 timing difference as an isolated panel-length effect. These real-data results
 are distinct from the [synthetic beta.3 campaign](fixest_benchmarks.md).
 
-## Magnitudes of the accuracy differences
+### Magnitudes of the accuracy differences
 
 A subsequent diagnostic reads the existing **four-core first repetition** of
 each arm on each panel. It does not refit models, replace observations or change
@@ -192,7 +315,7 @@ The [full aggregate accuracy evidence](../bench/results/scc-20261024-veneto-all-
 retains every planned position, including skipped ones; no models were refitted
 and the original eligibility decisions remain unchanged.
 
-## Frozen identity and evidence
+### Frozen identity and evidence
 
 Campaign `20261024T195706Z-veneto-5c0a9240` uses execution source
 `5c0a92404f3b5da8b76cde27a857b2e29a29d6da` and the already qualified packaged

@@ -10,4 +10,6 @@
 - [Weight semantics](weight_semantics.md): weight normalization and inference.
 - [Release process](release_process.md) and [licensing](licensing.md): packaging and distribution limits.
 - [Local benchmark](../bench/README.md): small, maintained development measurements.
-- [Comparisons with fixest](fixest_benchmarks.md): benchmark scope and interpretation.
+- [Comparisons with fixest](fixest_benchmarks.md): synthetic SCC comparisons with fixest, PyFixest, reghdfe, ppmlhdfe and areg.
+- [Veneto comparisons](veneto_benchmarks.md): real AKM panels with and without saved effects.
+- [Changelog](../CHANGELOG.md): changes by release.

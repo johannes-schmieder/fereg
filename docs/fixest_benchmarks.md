@@ -1,10 +1,126 @@
 # Comparing fereg with fixest
 
-The separate [October 24 Veneto AKM comparison](veneto_benchmarks.md) uses the
-real long and short fevc panels, controls and saved worker/firm effects at
-1/2/4/8/16 cores. All 30 native fits pass; reference accuracy failures make all
-cross-package speed ratios ineligible. Native 1-to-16-core scaling is 1.69x
-on the long panel and 1.43x on the short panel.
+The separate [Veneto AKM comparisons](veneto_benchmarks.md) use the real long
+and short fevc panels at 1/2/4/8/16 cores. On October 26 they ran on the beta.7
+runtime with PyFixest, both with and without saved worker/firm effects.
+Without saved effects every comparator except two timed-out cells passes the
+scientific gates; with saved effects all comparator timings stay descriptive.
+
+## October 26, 2026: beta.7 rerun with PyFixest and areg
+
+Fereg is faster in **all 35 scientifically eligible default-fixest
+comparisons**: **18/18 OLS and 17/17 PPML**, versus 27/35 in the beta.6 rerun.
+The strongest comparator is now PyFixest. Against its pinned main revision,
+which defaults to the `within` LSMR demeaner, fereg is faster in **21 of 35**
+eligible comparisons (13/18 OLS, 8/17 PPML); against the PyFixest 0.60.0
+release, in 22 of 35 (15/18, 7/17). Fereg is faster than `areg` in all three
+one-FE OLS configurations (1.12-2.06), and in every eligible strict-fixest
+(22/22 OLS, 4/4 PPML), reghdfe (20/20) and ppmlhdfe (17/17) comparison. These
+counts describe this fixed panel;
+they are not probabilities of winning on an arbitrary model.
+
+Campaign `20261026T184833Z-beta7-fixest-a4bd2cce` measured frozen source
+`a4bd2ccea1d09fdd44349fd591598cd3b5a9fc6a`. Its runtime identity is the
+v0.5.0-beta.7 package's (`9713d640...`); the SCC-built Linux plugin SHA-256 is
+`cc1920c2b4bd258a706bebd1d44f309e703eb0ea75258920ce935dcf30b0e92a`. Datasets,
+the 56 configurations, fixest/reghdfe/ppmlhdfe profiles, repetitions,
+scientific tolerances, per-fit limits and socket/NUMA placement are unchanged.
+New arms:
+
+- **PyFixest 0.60.0**, the current PyPI release, with its default Rust MAP
+  demeaner, in every configuration.
+- **PyFixest main** at `263cf2d3` with within-py 0.4.0, whose default is the
+  `within` LSMR demeaner with adaptive preconditioning. This default is merged
+  but not yet in a PyFixest release. It also runs in every configuration.
+- **areg** in the three four-worker one-FE OLS configurations, the only ones it
+  can fit. Its absorbed count is compared after adding back the intercept it
+  reports separately.
+
+Both PyFixest arms keep default estimation tolerances, recover saved FE at
+1e-11 like the fixest arms, and use locked Linux environments built in the
+setup job and hashed into the runtime inventory. The schedule grew from 579 to
+924 planned fits in eight bundles with a six-hour walltime.
+
+Selected results are three-command medians in seconds; ratios are the median
+**paired comparator/fereg** time within the same node, so values above 1 mean
+fereg was faster. Rows use four workers. `*` marks a completed but
+scientifically ineligible time; NR means no completed time.
+
+| Model / design | Rows | fereg s | fixest s | fixest / fereg | within s | within / fereg | PyFixest 0.60 s | 0.60 / fereg |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| OLS, AKM | 1,000,000 | 1.73 | 2.67 | 1.54 | 2.81 | 1.62 | 5.81 | 3.31 |
+| OLS, AKM | 4,000,000 | 4.03 | 9.16 | 2.28 | 10.79 | 2.70 | 27.52 | 6.89 |
+| OLS, one FE | 1,000,000 | 0.74 | 1.01 | 1.36 | 0.76 | 1.01 | 1.06 | 1.42 |
+| OLS, two dense FEs | 4,000,000 | 2.67 | 3.71 | 1.39 | 3.37 | 1.27 | 4.79 | 1.80 |
+| OLS, three dense FEs | 4,000,000 | 4.48 | 4.55 | 1.02 | 3.98 | 0.89 | 5.34 | 1.19 |
+| OLS, three sparse FEs | 4,000,000 | 21.27 | 122.51* | – | 15.58* | – | NR | – |
+| PPML, AKM | 1,000,000 | 4.24 | 7.95 | 1.89 | 9.96 | 2.31 | 27.00 | 6.29 |
+| PPML, AKM | 4,000,000 | 19.05 | 43.53 | 2.28 | 49.21 | 2.59 | 134.56 | 7.11 |
+| PPML, two dense FEs | 4,000,000 | 15.23 | 15.82 | 1.04 | 14.44 | 0.95 | 12.50 | 0.82 |
+| PPML, two sparse FEs | 4,000,000 | 27.40 | 195.29* | – | 51.87* | – | NR | – |
+| PPML, three dense FEs | 4,000,000 | 17.27 | 21.07 | 1.22 | 15.91 | 0.92 | 13.70 | 0.80 |
+| PPML, three sparse FEs | 1,000,000 | 31.46 | 149.42* | – | 18.99* | – | NR | – |
+
+**Against fixest.** All eight beta.6 default-fixest losses are now wins. The
+five PPML flips reflect beta.7's PPML two-FE protocol; dense two-FE PPML at four
+million rows moved from 0.761 to 1.039. The three OLS flips (one FE at one
+million rows and three dense FEs at one and four million) are not runtime
+effects: every OLS fit is bit-identical to beta.6, and those cells were within
+3% of parity. Default fixest still loses most where graphs are sparse, but
+those comparisons stay ineligible because default fixest does not count
+disconnected components exactly.
+
+**Against PyFixest.** The `within` default is faster than fereg on dense
+three-FE designs (0.64-0.89 OLS, 0.80-0.92 PPML), dense two-FE PPML
+(0.90-0.98), one-FE PPML up to one million rows (0.76-0.98) and the
+100,000-row one-FE and dense two-FE OLS cells. On sparse three-FE designs its
+medians are 0.44-0.87 of fereg's (descriptive). Fereg is faster on AKM designs
+(1.28-2.70 OLS, 1.93-2.73 PPML) and large dense two-FE OLS (1.15-1.29); on
+sparse two-FE designs the descriptive median ratios are 0.99-2.15. PyFixest
+0.60's MAP demeaner is the fastest package on dense two- and three-FE PPML
+(0.68-0.88) and one-FE PPML (0.71-0.93), but it failed to converge after
+10,000 iterations in four sparse cells and hit the command limit in six more.
+With saved FE, PyFixest recovers effects with scipy's LSQR: the within arm took
+10.2-10.5 seconds in the four-worker saved-FE AKM OLS cells against fereg's
+2.2-2.4, and those cells fail the saved-prediction gate. PyFixest's sparse
+cells are ineligible for the same reason as default fixest's: it counts
+absorbed degrees of freedom by levels, not exact components, so DoF and the
+covariance scale differ.
+
+**Science and coverage.** All 168 native fits pass, repeat exactly at fixed
+worker count and agree across workers. Against beta.6, all 168 pass the
+sample/discrete, coefficient, covariance and objective checks; all 87 OLS and 9
+one-FE PPML fits are bitwise identical, and the 72 multi-FE PPML fits stay
+within 1.9e-5 (coefficients) and 2.4e-9 (covariance) of the gate envelopes.
+Independent smoke oracles pass for fereg 11/11, strict fixest 10/11, PyFixest
+within 8/11, PyFixest 0.60 3/11, default fixest 2/11, reghdfe 1/6 and
+ppmlhdfe 1/5. The 924 planned positions have 831 successful captures, 14
+capture errors, 13 command timeouts (six PyFixest 0.60), four PyFixest 0.60
+demeaning failures and 62
+repetitions skipped after a prior failure. Of 308 arm cells, 227 are eligible.
+All failed observations are retained; no timing was retried.
+
+Setup `8289446`, smoke `8289447` and production `8289448` tasks 1-8 all have
+successful scheduler accounting and application sentinels. Bundles used whole
+28-core E5-2680 v4 nodes (`scc-wo4`, `scc-wm1`, `scc-wn2`, `scc-wg3`, `scc-va1`,
+`scc-wh4`, `scc-wh1`, `scc-wm2`), took 0.82-2.32 hours and 10.28 node-hours in
+total; all nine host reports pass. Same-model nodes still differ by up to about
+2.4x (see the [Veneto runs](veneto_benchmarks.md)), so only paired ratios within
+a node are compared. This is descriptive Linux evidence from one seed and three
+repetitions, with no confidence-qualified or universal speed claim.
+
+| Retained evidence | Contents |
+| --- | --- |
+| [Configuration summary](../bench/results/scc-20261026-beta7-summary.csv) | All 308 arm cells, medians/ranges, eligibility, paired ratios, hosts and sampled memory. |
+| [Observations](../bench/results/scc-20261026-beta7-observations.csv) | All 924 planned positions, failures/skips, process/command times, PyFixest identities and native phase clocks. |
+| [Beta.6 comparison](../bench/results/scc-20261026-beta7-comparison.csv) | All 56 default-fixest configurations with both campaigns' hosts, times and ratios, plus the PyFixest and areg cells. |
+| [Inputs, identity and checks](../bench/results/scc-20261026-beta7-inputs.json) | Source/plugin/input identities, PyFixest pins and freezes, accounting, host checks, oracles, repeat/worker checks, 168 historical science checks and artifact hashes. |
+
+Raw captures, the compact collection and the checked 29-page PDF remain on SCC
+under `/projectnb/welfgr/fereg/runs/20261026T184833Z-beta7-fixest-a4bd2cce/`.
+The PDF's provenance table lists the old 3 h 50 min / 4 h stopping limits; the
+campaign used 5 h 50 min and 6 h, as `campaign.json` records, and the renderer
+now prints the policy's values.
 
 ## October 26, 2026: beta.6 rerun
 

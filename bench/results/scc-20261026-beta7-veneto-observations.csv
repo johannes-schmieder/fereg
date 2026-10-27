@@ -1,0 +1,169 @@
+cell,arm,repetition,status,host,job,task,estimator_tree_rss_bytes,memory_sweeps,error,seconds
+veneto-long-t1,fixest,1,capture-error,scc-ue1,8289452,1,2511097856.0,2443.0,saved predictor fails independent model score,64.474
+veneto-long-t1,fixest-strict,1,ok,scc-ue1,8289452,1,2942210048.0,4367.0,,115.059
+veneto-long-t1,pyfixest,1,command-timeout,scc-ue1,8289452,1,2323566592.0,22734.0,,
+veneto-long-t1,pyfixest-within,1,command-timeout,scc-ue1,8289452,1,3155636224.0,22740.0,,
+veneto-long-t1,reghdfe,1,capture-error,scc-ue1,8289452,1,2333663232.0,21654.0,saved predictor fails independent model score,           571.432566286
+veneto-long-t1,fereg,1,ok,scc-ue1,8289452,1,1806753792.0,619.0,,      16.312153219000002
+veneto-long-t1,fixest-strict,2,ok,scc-ue1,8289452,1,2941788160.0,4403.0,,116.246
+veneto-long-t1,pyfixest,2,skipped-after-failure,,,,,,,
+veneto-long-t1,pyfixest-within,2,skipped-after-failure,,,,,,,
+veneto-long-t1,reghdfe,2,skipped-after-failure,,,,,,,
+veneto-long-t1,fereg,2,ok,scc-ue1,8289452,1,1806704640.0,618.0,,      16.305440693000001
+veneto-long-t1,fixest,2,skipped-after-failure,,,,,,,
+veneto-long-t1,pyfixest,3,skipped-after-failure,,,,,,,
+veneto-long-t1,pyfixest-within,3,skipped-after-failure,,,,,,,
+veneto-long-t1,reghdfe,3,skipped-after-failure,,,,,,,
+veneto-long-t1,fereg,3,ok,scc-ue1,8289452,1,1804750848.0,613.0,,      16.277959937000002
+veneto-long-t1,fixest,3,skipped-after-failure,,,,,,,
+veneto-long-t1,fixest-strict,3,ok,scc-ue1,8289452,1,2941865984.0,4373.0,,115.886
+veneto-long-t2,fixest,1,capture-error,scc-ue1,8289452,1,2533937152.0,1472.0,saved predictor fails independent model score,39.088
+veneto-long-t2,fixest-strict,1,ok,scc-ue1,8289452,1,2965065728.0,2539.0,,67.175
+veneto-long-t2,pyfixest,1,command-timeout,scc-ue1,8289452,1,5123883008.0,22760.0,,
+veneto-long-t2,pyfixest-within,1,command-timeout,scc-ue1,8289452,1,3220955136.0,22836.0,,
+veneto-long-t2,reghdfe,1,capture-error,scc-ue1,8289452,1,2335801344.0,12429.0,saved predictor fails independent model score,           327.145116309
+veneto-long-t2,fereg,1,ok,scc-ue1,8289452,1,1898745856.0,500.0,,      13.196635003000001
+veneto-long-t2,fixest-strict,2,ok,scc-ue1,8289452,1,2965266432.0,2534.0,,67.194
+veneto-long-t2,pyfixest,2,skipped-after-failure,,,,,,,
+veneto-long-t2,pyfixest-within,2,skipped-after-failure,,,,,,,
+veneto-long-t2,reghdfe,2,skipped-after-failure,,,,,,,
+veneto-long-t2,fereg,2,ok,scc-ue1,8289452,1,1898590208.0,498.0,,      13.141438430000001
+veneto-long-t2,fixest,2,skipped-after-failure,,,,,,,
+veneto-long-t2,pyfixest,3,skipped-after-failure,,,,,,,
+veneto-long-t2,pyfixest-within,3,skipped-after-failure,,,,,,,
+veneto-long-t2,reghdfe,3,skipped-after-failure,,,,,,,
+veneto-long-t2,fereg,3,ok,scc-ue1,8289452,1,1898467328.0,499.0,,            13.203665489
+veneto-long-t2,fixest,3,skipped-after-failure,,,,,,,
+veneto-long-t2,fixest-strict,3,ok,scc-ue1,8289452,1,2965127168.0,2550.0,,67.448
+veneto-long-t4,fixest,1,capture-error,scc-ue1,8289452,1,2572922880.0,944.0,saved predictor fails independent model score,24.907
+veneto-long-t4,fixest-strict,1,ok,scc-ue1,8289452,1,3003428864.0,1535.0,,40.496
+veneto-long-t4,pyfixest,1,command-timeout,scc-ue1,8289452,1,5157859328.0,22719.0,,
+veneto-long-t4,pyfixest-within,1,command-timeout,scc-ue1,8289452,1,3352285184.0,22836.0,,
+veneto-long-t4,reghdfe,1,capture-error,scc-ue1,8289452,1,2332512256.0,8956.0,saved predictor fails independent model score,      236.66136927000002
+veneto-long-t4,fereg,1,ok,scc-ue1,8289452,1,1898549248.0,420.0,,      11.088987981000001
+veneto-long-t4,fixest-strict,2,ok,scc-ue1,8289452,1,3003437056.0,1524.0,,40.383
+veneto-long-t4,pyfixest,2,skipped-after-failure,,,,,,,
+veneto-long-t4,pyfixest-within,2,skipped-after-failure,,,,,,,
+veneto-long-t4,reghdfe,2,skipped-after-failure,,,,,,,
+veneto-long-t4,fereg,2,ok,scc-ue1,8289452,1,1898729472.0,418.0,,      11.034172676000001
+veneto-long-t4,fixest,2,skipped-after-failure,,,,,,,
+veneto-long-t4,pyfixest,3,skipped-after-failure,,,,,,,
+veneto-long-t4,pyfixest-within,3,skipped-after-failure,,,,,,,
+veneto-long-t4,reghdfe,3,skipped-after-failure,,,,,,,
+veneto-long-t4,fereg,3,ok,scc-ue1,8289452,1,1899053056.0,420.0,,            11.108838427
+veneto-long-t4,fixest,3,skipped-after-failure,,,,,,,
+veneto-long-t4,fixest-strict,3,ok,scc-ue1,8289452,1,3003727872.0,1533.0,,40.6
+veneto-long-t8,fixest,1,capture-error,scc-ue1,8289452,1,2649518080.0,649.0,saved predictor fails independent model score,17.173
+veneto-long-t8,fixest-strict,1,ok,scc-ue1,8289452,1,3080425472.0,985.0,,26.079
+veneto-long-t8,pyfixest,1,command-timeout,scc-ue1,8289452,1,5229686784.0,22785.0,,
+veneto-long-t8,pyfixest-within,1,command-timeout,scc-ue1,8289452,1,3772100608.0,22839.0,,
+veneto-long-t8,fereg,1,ok,scc-ue1,8289452,1,1898459136.0,373.0,,      9.8148764820000007
+veneto-long-t8,fixest-strict,2,ok,scc-ue1,8289452,1,3080736768.0,987.0,,26.089
+veneto-long-t8,pyfixest,2,skipped-after-failure,,,,,,,
+veneto-long-t8,pyfixest-within,2,skipped-after-failure,,,,,,,
+veneto-long-t8,fereg,2,ok,scc-ue1,8289452,1,1898594304.0,378.0,,      9.9781507630000004
+veneto-long-t8,fixest,2,skipped-after-failure,,,,,,,
+veneto-long-t8,pyfixest,3,skipped-after-failure,,,,,,,
+veneto-long-t8,pyfixest-within,3,skipped-after-failure,,,,,,,
+veneto-long-t8,fereg,3,ok,scc-ue1,8289452,1,1899970560.0,377.0,,      9.9312246870000003
+veneto-long-t8,fixest,3,skipped-after-failure,,,,,,,
+veneto-long-t8,fixest-strict,3,ok,scc-ue1,8289452,1,3080613888.0,988.0,,26.091
+veneto-long-t16,fixest,1,capture-error,scc-ue1,8289452,1,2650173440.0,635.0,saved predictor fails independent model score,17.503
+veneto-long-t16,fixest-strict,1,ok,scc-ue1,8289452,1,3080613888.0,976.0,,26.608
+veneto-long-t16,pyfixest,1,command-timeout,scc-ue1,8289452,1,5233995776.0,22423.0,,
+veneto-long-t16,pyfixest-within,1,command-timeout,scc-ue1,8289452,1,3871162368.0,21601.0,,
+veneto-long-t16,fereg,1,ok,scc-ue1,8289452,1,1902374912.0,389.0,,      10.472573159000001
+veneto-long-t16,fixest-strict,2,ok,scc-ue1,8289452,1,3080421376.0,1001.0,,27.714
+veneto-long-t16,pyfixest,2,skipped-after-failure,,,,,,,
+veneto-long-t16,pyfixest-within,2,skipped-after-failure,,,,,,,
+veneto-long-t16,fereg,2,ok,scc-ue1,8289452,1,1896853504.0,360.0,,             9.593728316
+veneto-long-t16,fixest,2,skipped-after-failure,,,,,,,
+veneto-long-t16,pyfixest,3,skipped-after-failure,,,,,,,
+veneto-long-t16,pyfixest-within,3,skipped-after-failure,,,,,,,
+veneto-long-t16,fereg,3,ok,scc-ue1,8289452,1,1901428736.0,376.0,,      10.397722999000001
+veneto-long-t16,fixest,3,skipped-after-failure,,,,,,,
+veneto-long-t16,fixest-strict,3,ok,scc-ue1,8289452,1,3083014144.0,983.0,,27.016
+veneto-short-t1,fixest,1,capture-error,scc-uf3,8289452,2,566923264.0,508.0,saved predictor fails independent model score,18.097
+veneto-short-t1,fixest-strict,1,ok,scc-uf3,8289452,2,673185792.0,880.0,,30.59
+veneto-short-t1,pyfixest,1,command-timeout,scc-uf3,8289452,2,2019868672.0,17134.0,,
+veneto-short-t1,pyfixest-within,1,command-timeout,scc-uf3,8289452,2,718798848.0,17225.0,,
+veneto-short-t1,reghdfe,1,capture-error,scc-uf3,8289452,2,364830720.0,4588.0,saved predictor fails independent model score,           159.581030884
+veneto-short-t1,fereg,1,ok,scc-uf3,8289452,2,380731392.0,235.0,,      8.1952528890000007
+veneto-short-t1,fixest-strict,2,ok,scc-uf3,8289452,2,672784384.0,872.0,,30.662
+veneto-short-t1,pyfixest,2,skipped-after-failure,,,,,,,
+veneto-short-t1,pyfixest-within,2,skipped-after-failure,,,,,,,
+veneto-short-t1,reghdfe,2,skipped-after-failure,,,,,,,
+veneto-short-t1,fereg,2,ok,scc-uf3,8289452,2,385323008.0,235.0,,      8.1912908210000008
+veneto-short-t1,fixest,2,skipped-after-failure,,,,,,,
+veneto-short-t1,pyfixest,3,skipped-after-failure,,,,,,,
+veneto-short-t1,pyfixest-within,3,skipped-after-failure,,,,,,,
+veneto-short-t1,reghdfe,3,skipped-after-failure,,,,,,,
+veneto-short-t1,fereg,3,ok,scc-uf3,8289452,2,382873600.0,234.0,,      8.1722350850000005
+veneto-short-t1,fixest,3,skipped-after-failure,,,,,,,
+veneto-short-t1,fixest-strict,3,ok,scc-uf3,8289452,2,672579584.0,876.0,,30.684
+veneto-short-t2,fixest,1,capture-error,scc-uf3,8289452,2,589328384.0,368.0,saved predictor fails independent model score,12.887
+veneto-short-t2,fixest-strict,1,ok,scc-uf3,8289452,2,694730752.0,559.0,,19.534
+veneto-short-t2,pyfixest,1,command-timeout,scc-uf3,8289452,2,2051252224.0,17130.0,,
+veneto-short-t2,pyfixest-within,1,command-timeout,scc-uf3,8289452,2,814231552.0,17280.0,,
+veneto-short-t2,reghdfe,1,capture-error,scc-uf3,8289452,2,364838912.0,3233.0,saved predictor fails independent model score,      112.22642552600001
+veneto-short-t2,fereg,1,ok,scc-uf3,8289452,2,419786752.0,199.0,,             6.987507688
+veneto-short-t2,fixest-strict,2,ok,scc-uf3,8289452,2,694710272.0,554.0,,19.447
+veneto-short-t2,pyfixest,2,skipped-after-failure,,,,,,,
+veneto-short-t2,pyfixest-within,2,skipped-after-failure,,,,,,,
+veneto-short-t2,reghdfe,2,skipped-after-failure,,,,,,,
+veneto-short-t2,fereg,2,ok,scc-uf3,8289452,2,414691328.0,200.0,,             6.994277061
+veneto-short-t2,fixest,2,skipped-after-failure,,,,,,,
+veneto-short-t2,pyfixest,3,skipped-after-failure,,,,,,,
+veneto-short-t2,pyfixest-within,3,skipped-after-failure,,,,,,,
+veneto-short-t2,reghdfe,3,skipped-after-failure,,,,,,,
+veneto-short-t2,fereg,3,ok,scc-uf3,8289452,2,411566080.0,199.0,,      7.0138501790000003
+veneto-short-t2,fixest,3,skipped-after-failure,,,,,,,
+veneto-short-t2,fixest-strict,3,ok,scc-uf3,8289452,2,695259136.0,555.0,,19.488
+veneto-short-t4,fixest,1,capture-error,scc-uf3,8289452,2,589733888.0,367.0,saved predictor fails independent model score,12.879
+veneto-short-t4,fixest-strict,1,ok,scc-uf3,8289452,2,694771712.0,558.0,,19.538
+veneto-short-t4,pyfixest,1,command-timeout,scc-uf3,8289452,2,2051178496.0,17147.0,,
+veneto-short-t4,pyfixest-within,1,command-timeout,scc-uf3,8289452,2,807583744.0,17294.0,,
+veneto-short-t4,reghdfe,1,capture-error,scc-uf3,8289452,2,360325120.0,2463.0,saved predictor fails independent model score,      85.595210266999999
+veneto-short-t4,fereg,1,ok,scc-uf3,8289452,2,418013184.0,172.0,,      5.9926119550000001
+veneto-short-t4,fixest-strict,2,ok,scc-uf3,8289452,2,694972416.0,555.0,,19.441
+veneto-short-t4,pyfixest,2,skipped-after-failure,,,,,,,
+veneto-short-t4,pyfixest-within,2,skipped-after-failure,,,,,,,
+veneto-short-t4,reghdfe,2,skipped-after-failure,,,,,,,
+veneto-short-t4,fereg,2,ok,scc-uf3,8289452,2,415150080.0,171.0,,      5.9947353780000006
+veneto-short-t4,fixest,2,skipped-after-failure,,,,,,,
+veneto-short-t4,pyfixest,3,skipped-after-failure,,,,,,,
+veneto-short-t4,pyfixest-within,3,skipped-after-failure,,,,,,,
+veneto-short-t4,reghdfe,3,skipped-after-failure,,,,,,,
+veneto-short-t4,fereg,3,ok,scc-uf3,8289452,2,411578368.0,171.0,,      6.0146031330000005
+veneto-short-t4,fixest,3,skipped-after-failure,,,,,,,
+veneto-short-t4,fixest-strict,3,ok,scc-uf3,8289452,2,694718464.0,556.0,,19.509
+veneto-short-t8,fixest,1,capture-error,scc-uf3,8289452,2,589828096.0,369.0,saved predictor fails independent model score,12.909
+veneto-short-t8,fixest-strict,1,ok,scc-uf3,8289452,2,694726656.0,550.0,,19.308
+veneto-short-t8,pyfixest,1,command-timeout,scc-uf3,8289452,2,2053308416.0,17177.0,,
+veneto-short-t8,pyfixest-within,1,command-timeout,scc-uf3,8289452,2,813985792.0,17308.0,,
+veneto-short-t8,fereg,1,ok,scc-uf3,8289452,2,409640960.0,159.0,,      5.5016260400000006
+veneto-short-t8,fixest-strict,2,ok,scc-uf3,8289452,2,694644736.0,554.0,,19.251
+veneto-short-t8,pyfixest,2,skipped-after-failure,,,,,,,
+veneto-short-t8,pyfixest-within,2,skipped-after-failure,,,,,,,
+veneto-short-t8,fereg,2,ok,scc-uf3,8289452,2,415592448.0,158.0,,      5.4939965200000005
+veneto-short-t8,fixest,2,skipped-after-failure,,,,,,,
+veneto-short-t8,pyfixest,3,skipped-after-failure,,,,,,,
+veneto-short-t8,pyfixest-within,3,skipped-after-failure,,,,,,,
+veneto-short-t8,fereg,3,ok,scc-uf3,8289452,2,416739328.0,156.0,,      5.4521105410000006
+veneto-short-t8,fixest,3,skipped-after-failure,,,,,,,
+veneto-short-t8,fixest-strict,3,ok,scc-uf3,8289452,2,694874112.0,551.0,,19.237
+veneto-short-t16,fixest,1,capture-error,scc-uf3,8289452,2,589398016.0,383.0,saved predictor fails independent model score,13.362
+veneto-short-t16,fixest-strict,1,ok,scc-uf3,8289452,2,695025664.0,560.0,,20.104
+veneto-short-t16,pyfixest,1,command-timeout,scc-uf3,8289452,2,2051395584.0,17047.0,,
+veneto-short-t16,pyfixest-within,1,command-timeout,scc-uf3,8289452,2,824999936.0,17201.0,,
+veneto-short-t16,fereg,1,ok,scc-uf3,8289452,2,415088640.0,154.0,,      5.2913737210000003
+veneto-short-t16,fixest-strict,2,ok,scc-uf3,8289452,2,694861824.0,560.0,,20.117
+veneto-short-t16,pyfixest,2,skipped-after-failure,,,,,,,
+veneto-short-t16,pyfixest-within,2,skipped-after-failure,,,,,,,
+veneto-short-t16,fereg,2,ok,scc-uf3,8289452,2,412975104.0,153.0,,      5.3617920830000001
+veneto-short-t16,fixest,2,skipped-after-failure,,,,,,,
+veneto-short-t16,pyfixest,3,skipped-after-failure,,,,,,,
+veneto-short-t16,pyfixest-within,3,skipped-after-failure,,,,,,,
+veneto-short-t16,fereg,3,ok,scc-uf3,8289452,2,405053440.0,153.0,,             5.328411096
+veneto-short-t16,fixest,3,skipped-after-failure,,,,,,,
+veneto-short-t16,fixest-strict,3,ok,scc-uf3,8289452,2,694951936.0,576.0,,20.134

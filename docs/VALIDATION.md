@@ -1,7 +1,8 @@
 # Validation status
 
 The many-FE, two-FE structural-gate and ownership/deferred-cell improvements are
-accepted, as is the many-FE geometry policy with one documented timing exception.
+accepted, as are the many-FE geometry policy with one documented timing exception
+and the PPML two-FE CMG reuse and lean protocol released in v0.5.0-beta.7.
 The OLS method-reporting correction changes diagnostic labels and
 fallback flags only; solver selection, iteration budgets, numerical calculations
 and PPML reporting are unchanged.
@@ -14,6 +15,7 @@ and PPML reporting are unchanged.
 | Two-FE structural gates | [Linux](../bench/results/two-fe-policy-gates-qualification-linux-20261022.json) and [Mac](../bench/results/two-fe-policy-gates-qualification-mac-20261022.json): all 84 protected bounds per platform passed. [Activation](../bench/results/two-fe-policy-gates-activation-20261023.json): exact public/hidden science, worker, gate, hierarchy and resource checks passed after the documented transport-accounting amendment. |
 | Ownership and deferred cells | [Linux](../bench/results/ownership-qualification-final-linux-20261024.json): 10,440 calls, 58 settings and 12 distinct physical hosts, all 116 protected bounds passed. [Practical Mac check](../bench/results/ownership-qualification-practical-macos-20261024.json): 870 calls and all 116 paired-median comparisons within max(5%, 1 ms). The Mac check is descriptive, not a confidence-bound claim. |
 | Many-FE geometry Auto | [Decision record](../bench/results/many-geometry-20261025.json): Linux qualification passed 80 of 84 protected comparisons and public activation 122 of 126, on 12 distinct physical hosts each. Every miss is the near-confounded third FE, accepted by Johannes as a documented exception; public/hidden agreement was exact. |
+| PPML two-FE CMG reuse and lean protocol | [Lean record](../bench/results/ppml-two-fe-lean-20261026.json): every two-FE cell faster than beta.6 at 4 and 28 workers on Linux (0.32-0.84), science within the §20 envelopes, 73/73 replay cases. Merged and released as v0.5.0-beta.7; the [beta.7 SCC comparison](fixest_benchmarks.md#october-26-2026-beta7-rerun-with-pyfixest-and-areg) found all 168 native fits passing and every OLS fit bit-identical to beta.6. |
 | Public integration | [Final activation](../bench/results/ownership-public-activation-20261024.json): 174 actual hidden/public/public-repeat calls per platform, independent witnesses, fixed-worker exactness, cross-worker science, resource/gate/hierarchy checks, Mac/Linux ABI/load/panic checks and the full source suite passed. Six licensed Mac Stata fixtures and actual public OLS Break/rollback passed. |
 
 Ownership/deferred cells activate only for OLS Auto/Auto with a global intercept
@@ -145,8 +147,8 @@ and 21% longer at 28, so it was not adopted
 PPML Auto with exactly two intercept FEs reuses one CMG hierarchy across IRLS
 frames and canonical products, and publication fits enter the strict
 checkpoint once the predictor settles, as specified in
-[SPEC](SPEC.md#qualified-auto-routing-and-developer-comparisons) and §13. This
-branch result awaits Johannes's decision. The
+[SPEC](SPEC.md#qualified-auto-routing-and-developer-comparisons) and §13.
+Johannes accepted the result; it ships in v0.5.0-beta.7. The
 [lean record](../bench/results/ppml-two-fe-lean-20261026.json) retains every
 timing of the final qualification and the
 [CMG record](../bench/results/ppml-two-fe-cmg-20261026.json) the earlier
@@ -315,9 +317,19 @@ All 50 GitHub release assets matched their local SHA-256 checksums and sizes.
   worker on Linux. This is an accepted exception, not a passed comparison.
 - The Mac plugin contains Apple Silicon and Intel slices. Licensed installation
   testing is on Apple Silicon; native Intel-host Stata testing is outstanding.
-- PPML CMG reuse helps weakly connected two-FE designs only. Dense two-FE PPML
-  gains only from the exact passes and still trails fixest at four million rows.
-  On weak graphs the first strict checkpoint is commonly rejected and IRLS
-  resumes for two frames; that protocol cost is unchanged.
+- PPML CMG reuse mainly helps weakly connected two-FE designs; AKM and dense
+  two-FE PPML gain 16-27% from the leaner passes and settled strict entry. In
+  the beta.7 SCC comparison fereg was faster than default fixest in every
+  eligible PPML configuration, but PyFixest's `within` and MAP demeaners were
+  faster on dense two- and three-FE PPML.
+- PyFixest's `within` default was also faster than fereg on dense three-FE OLS
+  and on the short Veneto panel without saved FE. On that panel, two-FE OLS Auto
+  took about 30% longer than explicit `solver(cmgschur)`.
+- Explicit `solver(cmg)` was about 50 times slower than `solver(cmgschur)` on the
+  real Veneto panels, and explicit `solver(lsmr)` returned `r(909)` on the long
+  panel in a 64 GB allocation where Auto completed. Auto does not use either
+  route there.
+- Package comparisons are descriptive: one seed, three repetitions, and
+  same-model SCC nodes that differed by up to 2.4 times in absolute speed.
 - GitHub Actions remain disabled; checks run locally or on the authorized SCC
   and private Windows hosts.

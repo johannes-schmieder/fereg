@@ -1,0 +1,1850 @@
+{
+  "run_id": "20261026T184833Z-beta7-veneto-a4bd2cce",
+  "remote_root": "/projectnb/welfgr/fereg/runs/20261026T184833Z-beta7-veneto-a4bd2cce",
+  "source": "a4bd2ccea1d09fdd44349fd591598cd3b5a9fc6a",
+  "runtime_source": "277c5d11e9d1d4d6f4b17a747c21dbf9f52257f6",
+  "linux_plugin_sha256": "79d81fb145109c112c9075f77e1a2799bf09ddfab45cc4f563366138ee811171",
+  "fevc_source": "1e5acf429a40a825d2ddf499d468bb2ba161fbb9",
+  "resources": {
+    "reuse": {
+      "slots": 4,
+      "mem_per_core": "3G",
+      "h_rt": "00:30:00"
+    },
+    "setup": {
+      "slots": 4,
+      "mem_per_core": "3G",
+      "h_rt": "01:00:00"
+    },
+    "smoke": {
+      "slots": 4,
+      "mem_per_core": "3G",
+      "h_rt": "00:30:00"
+    },
+    "production": {
+      "slots": 28,
+      "pe": "mpi_28_tasks_per_node_u",
+      "num_proc": 28,
+      "mem_per_core": "3G",
+      "h_rt": "04:00:00"
+    }
+  },
+  "preparation_sha256": {
+    "prepare_stage2.m": "ed9b343e5b5115b97a73a86155217db672cab568b46c28ff9a311d30cbb64a0a",
+    "long-sample.json": "cd2b8b62c57f74be2d7ab38d57d692358bd7e90eba3ca42f73317ddfbcad8d6e",
+    "connected_set.m": "e757863b6ce8cc4b78f9170f07e00517e36be39c6ba62a1870c98fb2c7457bfa",
+    "build.do": "efccfdfa83a8c0507875cf11f1af8bb0a09f3b7abb004cf4e3468ffac618499f",
+    "build_adj.m": "53cac245a3802c6f42dc896859fa55e812f9b2880cf8cb848b319ed50e6532d9",
+    "short-graph.py": "d35c60c69a8c1a0ec9114d093d865aab48886ede7d17a1bfcd84b0bc712989c9",
+    "short-sample.json": "80c90bd5083ada7b1b8c724ea05e65ee97cc1e45a9f296e9dd949207e628283f",
+    "prepare_short.py": "6da047f72f6201c62d32dee614d3646e628d733890938c5fb77228a13d77ed39",
+    "inputs.json": "3212a53a58aa91ad960a7f939beb57284aaf4986293c55a54b420d0ff7b8b069",
+    "prepare_stage1.do": "c59212f5b1482d0769fe9dbdb6c2f3e5014811a68f0e7de7f49188dc0e7f83f5",
+    "short-builder.do": "e7f5c23d4853c5e633d6351c2ca0f13e5f067519c7f26127b84b3e32949dd1c8",
+    "pruning_unbal_v3.m": "d7590cc2b8499e43c9b503143762f9c21054ac8ace1e1e1a9b11698f092ce760",
+    "prepare_short.shared-cleaning.py": "18a994f96c366349abc6e41ea2908dc17d03494ce8394825bccb01068e530b2b"
+  },
+  "preparation_notes": [
+    "Full cleaning and graph preparation use the recorded fevc code.",
+    "The two-year input uses its own original source-order tie handling; the shared six-year cleaning was rejected before timing.",
+    "A first preparation launch preceded archive extraction and failed for missing input; no estimation occurred.",
+    "Inputs, smoke witnesses and policy reused byte for byte from 20261024T195706Z-veneto-5c0a9240; only arm lists and the saved-FE request changed."
+  ],
+  "schema": 1,
+  "manifest": {
+    "schema": 1,
+    "panels": {
+      "long": {
+        "years": [
+          1996,
+          1997,
+          1998,
+          1999,
+          2000,
+          2001
+        ],
+        "rows": 5163428,
+        "workers": 1106419,
+        "firms": 86647,
+        "regressors": 7
+      },
+      "short": {
+        "years": [
+          1999,
+          2001
+        ],
+        "rows": 1319994,
+        "workers": 659997,
+        "firms": 42489,
+        "regressors": 1
+      }
+    },
+    "cells": [
+      {
+        "id": "veneto-long-t1",
+        "model": "ols",
+        "design": "veneto-long",
+        "section": "veneto",
+        "rows": 5163428,
+        "regressors": 7,
+        "effects": 2,
+        "save_fe": true,
+        "vce": "iid",
+        "weights": "unit",
+        "threads": 1,
+        "arms": [
+          "fereg",
+          "fixest",
+          "fixest-strict",
+          "pyfixest",
+          "pyfixest-within",
+          "reghdfe"
+        ]
+      },
+      {
+        "id": "veneto-long-t2",
+        "model": "ols",
+        "design": "veneto-long",
+        "section": "veneto",
+        "rows": 5163428,
+        "regressors": 7,
+        "effects": 2,
+        "save_fe": true,
+        "vce": "iid",
+        "weights": "unit",
+        "threads": 2,
+        "arms": [
+          "fereg",
+          "fixest",
+          "fixest-strict",
+          "pyfixest",
+          "pyfixest-within",
+          "reghdfe"
+        ]
+      },
+      {
+        "id": "veneto-long-t4",
+        "model": "ols",
+        "design": "veneto-long",
+        "section": "veneto",
+        "rows": 5163428,
+        "regressors": 7,
+        "effects": 2,
+        "save_fe": true,
+        "vce": "iid",
+        "weights": "unit",
+        "threads": 4,
+        "arms": [
+          "fereg",
+          "fixest",
+          "fixest-strict",
+          "pyfixest",
+          "pyfixest-within",
+          "reghdfe"
+        ]
+      },
+      {
+        "id": "veneto-long-t8",
+        "model": "ols",
+        "design": "veneto-long",
+        "section": "veneto",
+        "rows": 5163428,
+        "regressors": 7,
+        "effects": 2,
+        "save_fe": true,
+        "vce": "iid",
+        "weights": "unit",
+        "threads": 8,
+        "arms": [
+          "fereg",
+          "fixest",
+          "fixest-strict",
+          "pyfixest",
+          "pyfixest-within"
+        ]
+      },
+      {
+        "id": "veneto-long-t16",
+        "model": "ols",
+        "design": "veneto-long",
+        "section": "veneto",
+        "rows": 5163428,
+        "regressors": 7,
+        "effects": 2,
+        "save_fe": true,
+        "vce": "iid",
+        "weights": "unit",
+        "threads": 16,
+        "arms": [
+          "fereg",
+          "fixest",
+          "fixest-strict",
+          "pyfixest",
+          "pyfixest-within"
+        ]
+      },
+      {
+        "id": "veneto-short-t1",
+        "model": "ols",
+        "design": "veneto-short",
+        "section": "veneto",
+        "rows": 1319994,
+        "regressors": 1,
+        "effects": 2,
+        "save_fe": true,
+        "vce": "iid",
+        "weights": "unit",
+        "threads": 1,
+        "arms": [
+          "fereg",
+          "fixest",
+          "fixest-strict",
+          "pyfixest",
+          "pyfixest-within",
+          "reghdfe"
+        ]
+      },
+      {
+        "id": "veneto-short-t2",
+        "model": "ols",
+        "design": "veneto-short",
+        "section": "veneto",
+        "rows": 1319994,
+        "regressors": 1,
+        "effects": 2,
+        "save_fe": true,
+        "vce": "iid",
+        "weights": "unit",
+        "threads": 2,
+        "arms": [
+          "fereg",
+          "fixest",
+          "fixest-strict",
+          "pyfixest",
+          "pyfixest-within",
+          "reghdfe"
+        ]
+      },
+      {
+        "id": "veneto-short-t4",
+        "model": "ols",
+        "design": "veneto-short",
+        "section": "veneto",
+        "rows": 1319994,
+        "regressors": 1,
+        "effects": 2,
+        "save_fe": true,
+        "vce": "iid",
+        "weights": "unit",
+        "threads": 4,
+        "arms": [
+          "fereg",
+          "fixest",
+          "fixest-strict",
+          "pyfixest",
+          "pyfixest-within",
+          "reghdfe"
+        ]
+      },
+      {
+        "id": "veneto-short-t8",
+        "model": "ols",
+        "design": "veneto-short",
+        "section": "veneto",
+        "rows": 1319994,
+        "regressors": 1,
+        "effects": 2,
+        "save_fe": true,
+        "vce": "iid",
+        "weights": "unit",
+        "threads": 8,
+        "arms": [
+          "fereg",
+          "fixest",
+          "fixest-strict",
+          "pyfixest",
+          "pyfixest-within"
+        ]
+      },
+      {
+        "id": "veneto-short-t16",
+        "model": "ols",
+        "design": "veneto-short",
+        "section": "veneto",
+        "rows": 1319994,
+        "regressors": 1,
+        "effects": 2,
+        "save_fe": true,
+        "vce": "iid",
+        "weights": "unit",
+        "threads": 16,
+        "arms": [
+          "fereg",
+          "fixest",
+          "fixest-strict",
+          "pyfixest",
+          "pyfixest-within"
+        ]
+      }
+    ],
+    "datasets": {
+      "long": {
+        "rows": 5163428,
+        "sha256": "fc56787dcc8f108d4005546390dd6633ace745b5fe18dfe613eb2e907eb233e5",
+        "column_sha256": {
+          "obs_id": "f6518d498851c1709d95ab7e2144a81abe9d973206e777a53eedc0e4b7e84542",
+          "g1": "04280279f655edb34e196d842c32e6cb426533b6840f32839c6f341ee1943787",
+          "g2": "1e720654571f75a0f0d3813e5094b7f785819622346634735dfd00f876a2fafa",
+          "y": "12c9180f13fb8b71914b3a1a49c12293ebc6d41c70a5210b73ed06926fbfd706",
+          "x1": "75ac8fcd43a4173b08c2f47bb4dfcde359d1a294a1f674b4fdd7e862eb2739cb",
+          "x2": "7d73fe0df5625eeaf410b9353af27de8098af2937efcb76c5085909c21008fdb",
+          "x3": "6cd63abe13d7c156caf125ae3f44bc4a700848af8cbda3a287138eec1c4c88ce",
+          "x4": "62bf17937a0ed1b0c95693577a95e39d947fd6debce79923bfc3cfb909a9c95a",
+          "x5": "1ac03968f038901adcdf954dc99b51fdf1ce814779443377e1ba6e13fb8e181a",
+          "x6": "d8aad3659e26ccb1b174a9459fd07f6fe283ee2888975518fbe71053e8d66478",
+          "x7": "40faf805bad10134c82734a0a1c87a06dcdcbe82959952659f758761cf5abad3"
+        },
+        "topology": {
+          "levels": [
+            1106419,
+            86647
+          ],
+          "components": 1,
+          "first_pair_rank": 1193065,
+          "distinct_first_pair_links": 1700466
+        }
+      },
+      "smoke-long": {
+        "rows": 771,
+        "sha256": "bcc6b77d41c039935097108502e6d385a8dfd8d9c702dad6e65c3561709cb578",
+        "column_sha256": {
+          "obs_id": "1e0e730350f41a92b0a75acd44618dfba0c0549e669df000406bcf9ca911e9eb",
+          "g1": "0cbedc6617e29e0b0c098341986e2d01a2ba821644513fed97c19788ec027791",
+          "g2": "e1918f464d298c6c381d8035885ba26ae411bf7248ce24b0c9bd8607366dedc6",
+          "y": "672f3e4133e085e71d6ba1e82e3fbdccf872959888e13da85b929a3e944f256f",
+          "x1": "93f11c8b29143357c28f121c515509013d9e78df5ce41a419850b3ebe633104b",
+          "x2": "d8e45588891f1d24cceb9013bdc458c49dfd5020efd28e0c2cad93e29faa987b",
+          "x3": "1a4d161174326e01dbffeb4567a40073056b923bb3563c49dc555881438331fb",
+          "x4": "bb89522557177b637dbd78371b6f95ca5bb1da3fd1f57ec197897620261a1aed",
+          "x5": "37c460338eb0d903f8efc243a21429dbef495ebe6dbe39b097463efbc4efe502",
+          "x6": "8fe456e999703b1664adb619ce494e47d81087e403aa1ccc08928c869aa42591",
+          "x7": "ab4c47e3c2b6c62b4f9543109406424efc1919047335d7fa6875ce33f1963c37"
+        },
+        "topology": {
+          "levels": [
+            199,
+            8
+          ],
+          "components": 1,
+          "first_pair_rank": 206,
+          "distinct_first_pair_links": 292
+        }
+      },
+      "short": {
+        "rows": 1319994,
+        "sha256": "090f50096d4a0074f72905998bc91f4e56d0a54e18761f1a48252bf2caf50242",
+        "column_sha256": {
+          "obs_id": "978f86b26f0b412c4543b3da48f0f0379e8abfc8e5457e6d9ed7ab5d9d62b6a4",
+          "g1": "e3f128f0af6b7c7e512d8fa3e56eb2c02e9cc29a4fc6340afe4db4f53db81b62",
+          "g2": "30cd483556dcadf1b74ec76cc5563b711d3c077afb3e01aae36dc17289713025",
+          "y": "7a1424b9628a2199268696baf61dd0490b1a2385e62a57e1aa8906de2f7abab2",
+          "x1": "f4bc234750c800d9ac51296d54f77737e4c1c31c27213d726f326edda8b74b4a"
+        },
+        "topology": {
+          "levels": [
+            659997,
+            42489
+          ],
+          "components": 1,
+          "first_pair_rank": 702485,
+          "distinct_first_pair_links": 824215
+        }
+      },
+      "smoke-short": {
+        "rows": 390,
+        "sha256": "2e3c3fbfa606fcbfefa64e8d35df9fc5860bb1ed1b995b0b251ab34ec7f3fc5a",
+        "column_sha256": {
+          "obs_id": "b823d0c049822a46269a70cf7bf0fee000c18dbad32bb7107e4490474d98360a",
+          "g1": "3bf1aee7f9efeaf73262037b02a2b17333384abf983d39e96f71a63ce7f02efb",
+          "g2": "a7a76b9abd6a75a1ee0ca3a3f7e4691c71ebd388df8b165b79257b1acbd85f4a",
+          "y": "314323f825f06c226b52bffc617cca26e4d0fc6bea403f849e196f94aaa2de4b",
+          "x1": "4ae1ccf5b432f36363589749a650dd3d86ec00762d243f6e5f3ef2c859f63f67"
+        },
+        "topology": {
+          "levels": [
+            195,
+            1
+          ],
+          "components": 1,
+          "first_pair_rank": 195,
+          "distinct_first_pair_links": 195
+        }
+      }
+    },
+    "policy": {
+      "threads": [
+        1,
+        2,
+        4,
+        8,
+        16
+      ],
+      "repetitions": 3,
+      "command_timeout_seconds": 600,
+      "process_timeout_seconds": 900,
+      "bundles": 2,
+      "job_cleanup_seconds": 13800,
+      "scientific_tolerances": {
+        "coefficient_rtol": 1e-07,
+        "coefficient_atol": 1e-10,
+        "vce_rtol": 1e-06,
+        "vce_atol": 1e-10,
+        "fitted_rtol": 1e-07,
+        "fitted_atol": 1e-09,
+        "objective_rtol": 1e-08,
+        "objective_atol": 1e-10
+      },
+      "interference": "No resampling. Whole-host reservation and passive observation required."
+    },
+    "timed_fits": 168,
+    "reused_inputs": "/projectnb/welfgr/fereg/runs/20261024T195706Z-veneto-5c0a9240"
+  },
+  "accounting": [
+    {
+      "qname": "econ",
+      "hostname": "scc-ei3.scc.bu.edu",
+      "group": "welfgr",
+      "owner": "johannes",
+      "project": "welfgr",
+      "department": "defaultdepartment",
+      "jobname": "fereg_veneto_setup",
+      "jobnumber": "8289450",
+      "taskid": "undefined",
+      "account": "sge",
+      "priority": "0",
+      "qsub_time": "Mon Oct 26 14:49:27 2026",
+      "start_time": "Mon Oct 26 14:56:41 2026",
+      "end_time": "Mon Oct 26 15:01:28 2026",
+      "granted_pe": "omp",
+      "slots": "4",
+      "failed": "0",
+      "exit_status": "0",
+      "ru_wallclock": "287",
+      "ru_utime": "189.116",
+      "ru_stime": "22.138",
+      "ru_maxrss": "1212872",
+      "ru_ixrss": "0",
+      "ru_ismrss": "0",
+      "ru_idrss": "0",
+      "ru_isrss": "0",
+      "ru_minflt": "2463183",
+      "ru_majflt": "3496",
+      "ru_nswap": "0",
+      "ru_inblock": "1842200",
+      "ru_oublock": "5730024",
+      "ru_msgsnd": "0",
+      "ru_msgrcv": "0",
+      "ru_nsignals": "0",
+      "ru_nvcsw": "583749",
+      "ru_nivcsw": "7547",
+      "cpu": "211.254",
+      "mem": "98.055",
+      "io": "20.052",
+      "iow": "0.000",
+      "maxvmem": "2.837G",
+      "arid": "undefined"
+    },
+    {
+      "qname": "econ",
+      "hostname": "scc-gr4.scc.bu.edu",
+      "group": "welfgr",
+      "owner": "johannes",
+      "project": "welfgr",
+      "department": "defaultdepartment",
+      "jobname": "fereg_veneto",
+      "jobnumber": "8289451",
+      "taskid": "undefined",
+      "account": "sge",
+      "priority": "0",
+      "qsub_time": "Mon Oct 26 14:49:27 2026",
+      "start_time": "Mon Oct 26 15:03:35 2026",
+      "end_time": "Mon Oct 26 15:09:02 2026",
+      "granted_pe": "omp",
+      "slots": "4",
+      "failed": "0",
+      "exit_status": "0",
+      "ru_wallclock": "327",
+      "ru_utime": "40.644",
+      "ru_stime": "11.498",
+      "ru_maxrss": "252012",
+      "ru_ixrss": "0",
+      "ru_ismrss": "0",
+      "ru_idrss": "0",
+      "ru_isrss": "0",
+      "ru_minflt": "578474",
+      "ru_majflt": "27",
+      "ru_nswap": "0",
+      "ru_inblock": "17482536",
+      "ru_oublock": "5320",
+      "ru_msgsnd": "0",
+      "ru_msgrcv": "0",
+      "ru_nsignals": "0",
+      "ru_nvcsw": "279032",
+      "ru_nivcsw": "5545",
+      "cpu": "52.142",
+      "mem": "23.271",
+      "io": "18.344",
+      "iow": "0.000",
+      "maxvmem": "1.711G",
+      "arid": "undefined"
+    },
+    {
+      "qname": "u",
+      "hostname": "scc-uf3.scc.bu.edu",
+      "group": "welfgr",
+      "owner": "johannes",
+      "project": "welfgr",
+      "department": "defaultdepartment",
+      "jobname": "fereg_veneto",
+      "jobnumber": "8289452",
+      "taskid": "2",
+      "account": "sge",
+      "priority": "0",
+      "qsub_time": "Mon Oct 26 14:49:27 2026",
+      "start_time": "Mon Oct 26 15:10:56 2026",
+      "end_time": "Mon Oct 26 17:33:31 2026",
+      "granted_pe": "mpi_28_tasks_per_node_u",
+      "slots": "28",
+      "failed": "0",
+      "exit_status": "0",
+      "ru_wallclock": "8555",
+      "ru_utime": "10862.873",
+      "ru_stime": "1469.741",
+      "ru_maxrss": "2005184",
+      "ru_ixrss": "0",
+      "ru_ismrss": "0",
+      "ru_idrss": "0",
+      "ru_isrss": "0",
+      "ru_minflt": "10732513",
+      "ru_majflt": "946",
+      "ru_nswap": "0",
+      "ru_inblock": "23990944",
+      "ru_oublock": "9000240",
+      "ru_msgsnd": "0",
+      "ru_msgrcv": "0",
+      "ru_nsignals": "0",
+      "ru_nvcsw": "918035",
+      "ru_nivcsw": "168488",
+      "cpu": "12332.614",
+      "mem": "17153.836",
+      "io": "62.684",
+      "iow": "0.000",
+      "maxvmem": "5.714G",
+      "arid": "undefined"
+    },
+    {
+      "qname": "u",
+      "hostname": "scc-ue1.scc.bu.edu",
+      "group": "welfgr",
+      "owner": "johannes",
+      "project": "welfgr",
+      "department": "defaultdepartment",
+      "jobname": "fereg_veneto",
+      "jobnumber": "8289452",
+      "taskid": "1",
+      "account": "sge",
+      "priority": "0",
+      "qsub_time": "Mon Oct 26 14:49:27 2026",
+      "start_time": "Mon Oct 26 15:10:56 2026",
+      "end_time": "Mon Oct 26 18:06:41 2026",
+      "granted_pe": "mpi_28_tasks_per_node_u",
+      "slots": "28",
+      "failed": "0",
+      "exit_status": "0",
+      "ru_wallclock": "10545",
+      "ru_utime": "15002.012",
+      "ru_stime": "2082.242",
+      "ru_maxrss": "5111324",
+      "ru_ixrss": "0",
+      "ru_ismrss": "0",
+      "ru_idrss": "0",
+      "ru_isrss": "0",
+      "ru_minflt": "244169292",
+      "ru_majflt": "1342",
+      "ru_nswap": "0",
+      "ru_inblock": "42069520",
+      "ru_oublock": "34023848",
+      "ru_msgsnd": "0",
+      "ru_msgrcv": "0",
+      "ru_nsignals": "0",
+      "ru_nvcsw": "1400153",
+      "ru_nivcsw": "54475",
+      "cpu": "17084.254",
+      "mem": "47606.897",
+      "io": "139.458",
+      "iow": "0.000",
+      "maxvmem": "7.480G",
+      "arid": "undefined"
+    }
+  ],
+  "input_audit": {
+    "long": {
+      "rows": 5163428,
+      "exact_identifiers": true,
+      "control_rank": 7,
+      "adjustment_max_error": 2.608191440600649e-13,
+      "adjustment_coefficients": [
+        -0.4336931699419312,
+        1.1272069895750425,
+        -0.07632167751282531,
+        -0.04685892536979737,
+        -0.03051424524276535,
+        -0.01373491940891408,
+        -0.008589723503714966
+      ]
+    },
+    "short": {
+      "rows": 1319994,
+      "exact_identifiers": true,
+      "control_rank": 1,
+      "adjustment_max_error": 3.126665593100597e-14,
+      "adjustment_coefficients": [
+        0.032201906720727355
+      ]
+    }
+  },
+  "prior_panels": {
+    "long": {
+      "path": "/projectnb/welfgr/vckss/private-veneto/20260917-panel-1996-2001/inputs/pooled_adjusted_1996_2001.csv",
+      "sha256": "e4a1928d98c1dbe7185634e14470b9361b58f8d5b33cceacc8d168ccdad4634e"
+    },
+    "short": {
+      "path": "/projectnb/welfgr/vckss/private-veneto/20260914-paper/inputs/pooled_adjusted.csv",
+      "sha256": "23093f69ea594ae1ebae348c70008934c5c6431221e2c3a8f0f44a7b1a7b7e2f"
+    }
+  },
+  "references": {
+    "references": "/projectnb/welfgr/fereg/runs/20260929-rebuild-m16-cdfa8f85/environment/references",
+    "r_library": "/projectnb/welfgr/fereg/runs/20260929-rebuild-m16-cdfa8f85/environment/r-library",
+    "source_hashes": {
+      "reghdfe": "b8c2c5dcfa23fe59ff1ca72d2f7fedf507763757ea2ad52fe301a5fe686a01bd",
+      "ftools": "d112fc4b662945c1f76c8462a0d6c904ddc336813f24fb8c83c3aad3a0f49680",
+      "require": "d190c105f703b12d696b9aa426cd70c6c05dbd7102e62a1fcf59f0ae30616cf1",
+      "ppmlhdfe": "366ddb71ebbe53bb4d7e0d4066e0a419ec6f0b689d0004be2da23e0c295d953e",
+      "fixest": "17372a789aaf9a3b04e8e0324feaf0f3c3c16f517baeb75e46289340332f0ee9"
+    }
+  },
+  "host_validation": {
+    "1": {
+      "host": {
+        "affinity": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27
+        ],
+        "hostname": "scc-ue1",
+        "job_id": "8289452",
+        "pe": "mpi_28_tasks_per_node_u",
+        "queue": "u@scc-ue1.scc.bu.edu",
+        "slots": 28,
+        "task_id": "1"
+      },
+      "reservation_checks": 2,
+      "samples": {
+        "process": {
+          "count": 2041,
+          "maximum_gap_seconds": 6.026999804
+        },
+        "census": {
+          "count": 171,
+          "maximum_gap_seconds": 60.98985269
+        }
+      },
+      "observations_sha256": "fd1d7a61753bb52e3583dabdef730ea887a77320a78484ef8d1cab1e5872010b",
+      "passed": true
+    },
+    "2": {
+      "host": {
+        "affinity": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27
+        ],
+        "hostname": "scc-uf3",
+        "job_id": "8289452",
+        "pe": "mpi_28_tasks_per_node_u",
+        "queue": "u@scc-uf3.scc.bu.edu",
+        "slots": 28,
+        "task_id": "2"
+      },
+      "reservation_checks": 2,
+      "samples": {
+        "process": {
+          "count": 1640,
+          "maximum_gap_seconds": 6.877429943
+        },
+        "census": {
+          "count": 138,
+          "maximum_gap_seconds": 61.79176799
+        }
+      },
+      "observations_sha256": "af1690e191c732a13da2a36477b8c8a816c372c36ea824ac72132e64bd1e2060",
+      "passed": true
+    }
+  },
+  "native_cells": [
+    {
+      "cell": "veneto-long-t1",
+      "N": 5163428,
+      "sample_sha256": "9fad03afde4d578070471004f6c4e63b4bc43962f08132c67afbe1dcf13a77b0",
+      "finite_slope_rank": 7,
+      "absorbed_dof": 1193065.0,
+      "omitted": [],
+      "publication_omitted": [],
+      "singleton_deletions": 0,
+      "separation_deletions": 0,
+      "saved_fe_sha256": {
+        "saved1": "a1c83d8d795165b43f1b229b0355f385a2c40aaea77f7bd9d6d7fd8be989f5ee",
+        "saved2": "7ac72d1dd5939df09cea37b34b250b660f79ea52ebfede75443d0cfa09397984"
+      },
+      "scientific_sha256": {
+        "coefficients.csv": "dfd25361f856ea5526d09b7dde6340158dcdb368df7511d0eb5aea2c396dc6a9",
+        "covariance.csv": "9d386fc14d12e0794c9a1ae6e6b1acacbdcb0c994ff2dbc58c55b892fb7c4709",
+        "rows.csv": "093becf37425b9cd59fa0f4c4d064bc8159fe91aa92db9b7ca885f57ba1f2413"
+      },
+      "exact_reported_rss": [
+        "72259.003401124442",
+        "72259.003401124442",
+        "72259.003401124442"
+      ],
+      "maximum_model_score": 1.1443913426583023e-13,
+      "placement": {
+        "cpus": [
+          0
+        ],
+        "sockets": [
+          0
+        ],
+        "memory_nodes": [
+          0
+        ]
+      },
+      "cpu_model": "Intel(R) Xeon(R) CPU E5-2680 v4 @ 2.40GHz"
+    },
+    {
+      "cell": "veneto-long-t2",
+      "N": 5163428,
+      "sample_sha256": "9fad03afde4d578070471004f6c4e63b4bc43962f08132c67afbe1dcf13a77b0",
+      "finite_slope_rank": 7,
+      "absorbed_dof": 1193065.0,
+      "omitted": [],
+      "publication_omitted": [],
+      "singleton_deletions": 0,
+      "separation_deletions": 0,
+      "saved_fe_sha256": {
+        "saved1": "a1c83d8d795165b43f1b229b0355f385a2c40aaea77f7bd9d6d7fd8be989f5ee",
+        "saved2": "7ac72d1dd5939df09cea37b34b250b660f79ea52ebfede75443d0cfa09397984"
+      },
+      "scientific_sha256": {
+        "coefficients.csv": "dfd25361f856ea5526d09b7dde6340158dcdb368df7511d0eb5aea2c396dc6a9",
+        "covariance.csv": "9d386fc14d12e0794c9a1ae6e6b1acacbdcb0c994ff2dbc58c55b892fb7c4709",
+        "rows.csv": "093becf37425b9cd59fa0f4c4d064bc8159fe91aa92db9b7ca885f57ba1f2413"
+      },
+      "exact_reported_rss": [
+        "72259.003401124442",
+        "72259.003401124442",
+        "72259.003401124442"
+      ],
+      "maximum_model_score": 1.1443913426583023e-13,
+      "placement": {
+        "cpus": [
+          0,
+          2
+        ],
+        "sockets": [
+          0
+        ],
+        "memory_nodes": [
+          0
+        ]
+      },
+      "cpu_model": "Intel(R) Xeon(R) CPU E5-2680 v4 @ 2.40GHz"
+    },
+    {
+      "cell": "veneto-long-t4",
+      "N": 5163428,
+      "sample_sha256": "9fad03afde4d578070471004f6c4e63b4bc43962f08132c67afbe1dcf13a77b0",
+      "finite_slope_rank": 7,
+      "absorbed_dof": 1193065.0,
+      "omitted": [],
+      "publication_omitted": [],
+      "singleton_deletions": 0,
+      "separation_deletions": 0,
+      "saved_fe_sha256": {
+        "saved1": "a1c83d8d795165b43f1b229b0355f385a2c40aaea77f7bd9d6d7fd8be989f5ee",
+        "saved2": "7ac72d1dd5939df09cea37b34b250b660f79ea52ebfede75443d0cfa09397984"
+      },
+      "scientific_sha256": {
+        "coefficients.csv": "dfd25361f856ea5526d09b7dde6340158dcdb368df7511d0eb5aea2c396dc6a9",
+        "covariance.csv": "9d386fc14d12e0794c9a1ae6e6b1acacbdcb0c994ff2dbc58c55b892fb7c4709",
+        "rows.csv": "093becf37425b9cd59fa0f4c4d064bc8159fe91aa92db9b7ca885f57ba1f2413"
+      },
+      "exact_reported_rss": [
+        "72259.003401124442",
+        "72259.003401124442",
+        "72259.003401124442"
+      ],
+      "maximum_model_score": 1.1443913426583023e-13,
+      "placement": {
+        "cpus": [
+          0,
+          2,
+          4,
+          6
+        ],
+        "sockets": [
+          0
+        ],
+        "memory_nodes": [
+          0
+        ]
+      },
+      "cpu_model": "Intel(R) Xeon(R) CPU E5-2680 v4 @ 2.40GHz"
+    },
+    {
+      "cell": "veneto-long-t8",
+      "N": 5163428,
+      "sample_sha256": "9fad03afde4d578070471004f6c4e63b4bc43962f08132c67afbe1dcf13a77b0",
+      "finite_slope_rank": 7,
+      "absorbed_dof": 1193065.0,
+      "omitted": [],
+      "publication_omitted": [],
+      "singleton_deletions": 0,
+      "separation_deletions": 0,
+      "saved_fe_sha256": {
+        "saved1": "a1c83d8d795165b43f1b229b0355f385a2c40aaea77f7bd9d6d7fd8be989f5ee",
+        "saved2": "7ac72d1dd5939df09cea37b34b250b660f79ea52ebfede75443d0cfa09397984"
+      },
+      "scientific_sha256": {
+        "coefficients.csv": "dfd25361f856ea5526d09b7dde6340158dcdb368df7511d0eb5aea2c396dc6a9",
+        "covariance.csv": "9d386fc14d12e0794c9a1ae6e6b1acacbdcb0c994ff2dbc58c55b892fb7c4709",
+        "rows.csv": "093becf37425b9cd59fa0f4c4d064bc8159fe91aa92db9b7ca885f57ba1f2413"
+      },
+      "exact_reported_rss": [
+        "72259.003401124442",
+        "72259.003401124442",
+        "72259.003401124442"
+      ],
+      "maximum_model_score": 1.1443913426583023e-13,
+      "placement": {
+        "cpus": [
+          0,
+          2,
+          4,
+          6,
+          8,
+          10,
+          12,
+          14
+        ],
+        "sockets": [
+          0
+        ],
+        "memory_nodes": [
+          0
+        ]
+      },
+      "cpu_model": "Intel(R) Xeon(R) CPU E5-2680 v4 @ 2.40GHz"
+    },
+    {
+      "cell": "veneto-long-t16",
+      "N": 5163428,
+      "sample_sha256": "9fad03afde4d578070471004f6c4e63b4bc43962f08132c67afbe1dcf13a77b0",
+      "finite_slope_rank": 7,
+      "absorbed_dof": 1193065.0,
+      "omitted": [],
+      "publication_omitted": [],
+      "singleton_deletions": 0,
+      "separation_deletions": 0,
+      "saved_fe_sha256": {
+        "saved1": "a1c83d8d795165b43f1b229b0355f385a2c40aaea77f7bd9d6d7fd8be989f5ee",
+        "saved2": "7ac72d1dd5939df09cea37b34b250b660f79ea52ebfede75443d0cfa09397984"
+      },
+      "scientific_sha256": {
+        "coefficients.csv": "dfd25361f856ea5526d09b7dde6340158dcdb368df7511d0eb5aea2c396dc6a9",
+        "covariance.csv": "9d386fc14d12e0794c9a1ae6e6b1acacbdcb0c994ff2dbc58c55b892fb7c4709",
+        "rows.csv": "093becf37425b9cd59fa0f4c4d064bc8159fe91aa92db9b7ca885f57ba1f2413"
+      },
+      "exact_reported_rss": [
+        "72259.003401124442",
+        "72259.003401124442",
+        "72259.003401124442"
+      ],
+      "maximum_model_score": 1.1443913426583023e-13,
+      "placement": {
+        "cpus": [
+          0,
+          2,
+          4,
+          6,
+          8,
+          10,
+          12,
+          14,
+          16,
+          18,
+          20,
+          22,
+          24,
+          26,
+          1,
+          3
+        ],
+        "sockets": [
+          0,
+          1
+        ],
+        "memory_nodes": [
+          0,
+          1
+        ]
+      },
+      "cpu_model": "Intel(R) Xeon(R) CPU E5-2680 v4 @ 2.40GHz"
+    },
+    {
+      "cell": "veneto-short-t1",
+      "N": 1319994,
+      "sample_sha256": "e5027cdf0c8b501354383d0aaacb4de9b246784b94d4c95679b919825670a27c",
+      "finite_slope_rank": 1,
+      "absorbed_dof": 702485.0,
+      "omitted": [],
+      "publication_omitted": [],
+      "singleton_deletions": 0,
+      "separation_deletions": 0,
+      "saved_fe_sha256": {
+        "saved1": "3c72e92570cfb738edf9667f9286d502edd4eef1b15bb0be93f2f4f3742d83d6",
+        "saved2": "19de3d2d824c9d4527f5ffa05e8f534ef897d19406ed049174b3f3acc492727b"
+      },
+      "scientific_sha256": {
+        "coefficients.csv": "2a10d09d970b8cb84601bac67f78c5cd82ee53c2aa671a6a0dadc5c2f479d64f",
+        "covariance.csv": "36b46a6e51b35936177d10be0dbcb9fe3fdd869296582b0568e7ca1d464b2ca6",
+        "rows.csv": "dce856cf27420186f4fcf21e052fb9fdc8e93dd00a0193bca084142b089c4af0"
+      },
+      "exact_reported_rss": [
+        "11028.681350010531",
+        "11028.681350010531",
+        "11028.681350010531"
+      ],
+      "maximum_model_score": 9.794861657955775e-15,
+      "placement": {
+        "cpus": [
+          0
+        ],
+        "sockets": [
+          0
+        ],
+        "memory_nodes": [
+          0
+        ]
+      },
+      "cpu_model": "Intel(R) Xeon(R) CPU E5-2680 v4 @ 2.40GHz"
+    },
+    {
+      "cell": "veneto-short-t2",
+      "N": 1319994,
+      "sample_sha256": "e5027cdf0c8b501354383d0aaacb4de9b246784b94d4c95679b919825670a27c",
+      "finite_slope_rank": 1,
+      "absorbed_dof": 702485.0,
+      "omitted": [],
+      "publication_omitted": [],
+      "singleton_deletions": 0,
+      "separation_deletions": 0,
+      "saved_fe_sha256": {
+        "saved1": "3c72e92570cfb738edf9667f9286d502edd4eef1b15bb0be93f2f4f3742d83d6",
+        "saved2": "19de3d2d824c9d4527f5ffa05e8f534ef897d19406ed049174b3f3acc492727b"
+      },
+      "scientific_sha256": {
+        "coefficients.csv": "2a10d09d970b8cb84601bac67f78c5cd82ee53c2aa671a6a0dadc5c2f479d64f",
+        "covariance.csv": "36b46a6e51b35936177d10be0dbcb9fe3fdd869296582b0568e7ca1d464b2ca6",
+        "rows.csv": "dce856cf27420186f4fcf21e052fb9fdc8e93dd00a0193bca084142b089c4af0"
+      },
+      "exact_reported_rss": [
+        "11028.681350010531",
+        "11028.681350010531",
+        "11028.681350010531"
+      ],
+      "maximum_model_score": 9.794861657955775e-15,
+      "placement": {
+        "cpus": [
+          0,
+          2
+        ],
+        "sockets": [
+          0
+        ],
+        "memory_nodes": [
+          0
+        ]
+      },
+      "cpu_model": "Intel(R) Xeon(R) CPU E5-2680 v4 @ 2.40GHz"
+    },
+    {
+      "cell": "veneto-short-t4",
+      "N": 1319994,
+      "sample_sha256": "e5027cdf0c8b501354383d0aaacb4de9b246784b94d4c95679b919825670a27c",
+      "finite_slope_rank": 1,
+      "absorbed_dof": 702485.0,
+      "omitted": [],
+      "publication_omitted": [],
+      "singleton_deletions": 0,
+      "separation_deletions": 0,
+      "saved_fe_sha256": {
+        "saved1": "3c72e92570cfb738edf9667f9286d502edd4eef1b15bb0be93f2f4f3742d83d6",
+        "saved2": "19de3d2d824c9d4527f5ffa05e8f534ef897d19406ed049174b3f3acc492727b"
+      },
+      "scientific_sha256": {
+        "coefficients.csv": "2a10d09d970b8cb84601bac67f78c5cd82ee53c2aa671a6a0dadc5c2f479d64f",
+        "covariance.csv": "36b46a6e51b35936177d10be0dbcb9fe3fdd869296582b0568e7ca1d464b2ca6",
+        "rows.csv": "dce856cf27420186f4fcf21e052fb9fdc8e93dd00a0193bca084142b089c4af0"
+      },
+      "exact_reported_rss": [
+        "11028.681350010531",
+        "11028.681350010531",
+        "11028.681350010531"
+      ],
+      "maximum_model_score": 9.794861657955775e-15,
+      "placement": {
+        "cpus": [
+          0,
+          2,
+          4,
+          6
+        ],
+        "sockets": [
+          0
+        ],
+        "memory_nodes": [
+          0
+        ]
+      },
+      "cpu_model": "Intel(R) Xeon(R) CPU E5-2680 v4 @ 2.40GHz"
+    },
+    {
+      "cell": "veneto-short-t8",
+      "N": 1319994,
+      "sample_sha256": "e5027cdf0c8b501354383d0aaacb4de9b246784b94d4c95679b919825670a27c",
+      "finite_slope_rank": 1,
+      "absorbed_dof": 702485.0,
+      "omitted": [],
+      "publication_omitted": [],
+      "singleton_deletions": 0,
+      "separation_deletions": 0,
+      "saved_fe_sha256": {
+        "saved1": "3c72e92570cfb738edf9667f9286d502edd4eef1b15bb0be93f2f4f3742d83d6",
+        "saved2": "19de3d2d824c9d4527f5ffa05e8f534ef897d19406ed049174b3f3acc492727b"
+      },
+      "scientific_sha256": {
+        "coefficients.csv": "2a10d09d970b8cb84601bac67f78c5cd82ee53c2aa671a6a0dadc5c2f479d64f",
+        "covariance.csv": "36b46a6e51b35936177d10be0dbcb9fe3fdd869296582b0568e7ca1d464b2ca6",
+        "rows.csv": "dce856cf27420186f4fcf21e052fb9fdc8e93dd00a0193bca084142b089c4af0"
+      },
+      "exact_reported_rss": [
+        "11028.681350010531",
+        "11028.681350010531",
+        "11028.681350010531"
+      ],
+      "maximum_model_score": 9.794861657955775e-15,
+      "placement": {
+        "cpus": [
+          0,
+          2,
+          4,
+          6,
+          8,
+          10,
+          12,
+          14
+        ],
+        "sockets": [
+          0
+        ],
+        "memory_nodes": [
+          0
+        ]
+      },
+      "cpu_model": "Intel(R) Xeon(R) CPU E5-2680 v4 @ 2.40GHz"
+    },
+    {
+      "cell": "veneto-short-t16",
+      "N": 1319994,
+      "sample_sha256": "e5027cdf0c8b501354383d0aaacb4de9b246784b94d4c95679b919825670a27c",
+      "finite_slope_rank": 1,
+      "absorbed_dof": 702485.0,
+      "omitted": [],
+      "publication_omitted": [],
+      "singleton_deletions": 0,
+      "separation_deletions": 0,
+      "saved_fe_sha256": {
+        "saved1": "3c72e92570cfb738edf9667f9286d502edd4eef1b15bb0be93f2f4f3742d83d6",
+        "saved2": "19de3d2d824c9d4527f5ffa05e8f534ef897d19406ed049174b3f3acc492727b"
+      },
+      "scientific_sha256": {
+        "coefficients.csv": "2a10d09d970b8cb84601bac67f78c5cd82ee53c2aa671a6a0dadc5c2f479d64f",
+        "covariance.csv": "36b46a6e51b35936177d10be0dbcb9fe3fdd869296582b0568e7ca1d464b2ca6",
+        "rows.csv": "dce856cf27420186f4fcf21e052fb9fdc8e93dd00a0193bca084142b089c4af0"
+      },
+      "exact_reported_rss": [
+        "11028.681350010531",
+        "11028.681350010531",
+        "11028.681350010531"
+      ],
+      "maximum_model_score": 9.794861657955775e-15,
+      "placement": {
+        "cpus": [
+          0,
+          2,
+          4,
+          6,
+          8,
+          10,
+          12,
+          14,
+          16,
+          18,
+          20,
+          22,
+          24,
+          26,
+          1,
+          3
+        ],
+        "sockets": [
+          0,
+          1
+        ],
+        "memory_nodes": [
+          0,
+          1
+        ]
+      },
+      "cpu_model": "Intel(R) Xeon(R) CPU E5-2680 v4 @ 2.40GHz"
+    }
+  ],
+  "smoke_science": [
+    {
+      "panel": "long",
+      "threads": 4,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "long",
+      "arm": "fixest",
+      "kind": "dense-oracle",
+      "checks": {},
+      "passed": false
+    },
+    {
+      "panel": "long",
+      "arm": "fixest-strict",
+      "kind": "dense-oracle",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true
+      },
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "arm": "pyfixest",
+      "kind": "dense-oracle",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true
+      },
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "arm": "pyfixest-within",
+      "kind": "dense-oracle",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true
+      },
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "arm": "reghdfe",
+      "kind": "dense-oracle",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true
+      },
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "arm": "fereg",
+      "kind": "dense-oracle",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true
+      },
+      "passed": true
+    },
+    {
+      "panel": "short",
+      "threads": 4,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "short",
+      "arm": "fixest",
+      "kind": "dense-oracle",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true
+      },
+      "passed": true
+    },
+    {
+      "panel": "short",
+      "arm": "fixest-strict",
+      "kind": "dense-oracle",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true
+      },
+      "passed": true
+    },
+    {
+      "panel": "short",
+      "arm": "pyfixest",
+      "kind": "dense-oracle",
+      "checks": {},
+      "passed": false
+    },
+    {
+      "panel": "short",
+      "arm": "pyfixest-within",
+      "kind": "dense-oracle",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true
+      },
+      "passed": true
+    },
+    {
+      "panel": "short",
+      "arm": "reghdfe",
+      "kind": "dense-oracle",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true
+      },
+      "passed": true
+    },
+    {
+      "panel": "short",
+      "arm": "fereg",
+      "kind": "dense-oracle",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true
+      },
+      "passed": true
+    }
+  ],
+  "science": [
+    {
+      "panel": "long",
+      "threads": 1,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "long",
+      "threads": 1,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 1,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "long",
+      "threads": 1,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 1,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "long",
+      "threads": 2,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "long",
+      "threads": 2,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 2,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "long",
+      "threads": 2,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 2,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "long",
+      "threads": 4,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "long",
+      "threads": 4,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 4,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "long",
+      "threads": 4,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 4,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "long",
+      "threads": 8,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "long",
+      "threads": 8,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 8,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "long",
+      "threads": 8,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 8,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "long",
+      "threads": 16,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "long",
+      "threads": 16,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 16,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "long",
+      "threads": 16,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 16,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "short",
+      "threads": 1,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "short",
+      "threads": 1,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "short",
+      "threads": 1,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "short",
+      "threads": 1,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "short",
+      "threads": 1,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "short",
+      "threads": 2,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "short",
+      "threads": 2,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "short",
+      "threads": 2,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "short",
+      "threads": 2,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "short",
+      "threads": 2,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "short",
+      "threads": 4,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "short",
+      "threads": 4,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "short",
+      "threads": 4,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "short",
+      "threads": 4,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "short",
+      "threads": 4,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "short",
+      "threads": 8,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "short",
+      "threads": 8,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "short",
+      "threads": 8,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "short",
+      "threads": 8,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "short",
+      "threads": 8,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "short",
+      "threads": 16,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "short",
+      "threads": 16,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "short",
+      "threads": 16,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "short",
+      "threads": 16,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "short",
+      "threads": 16,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    }
+  ],
+  "status_counts": {
+    "capture-error": 16,
+    "ok": 60,
+    "command-timeout": 20,
+    "skipped-after-failure": 72
+  },
+  "eligible_arm_cells": 10,
+  "preparation": {
+    "inputs.json": {
+      "archive_sha256": "17737a31881f9f57c15a22f1c3a4a401e41b7fb9ffb992d417bf61a8ae7947f4",
+      "members": {
+        "anagr.dta": "8a142efee0823fbab4d783139fcc95337d7b4168f0d3267e03e1d70b2ae7dfd3",
+        "azien.dta": "e071f5636c0cf6e1b31ee6fcc5f2828f9bbeb8254c2075dca6f32efb05386845",
+        "contr.dta": "50fea6507c6678895b5b4e7f3486f61981d7bf01ac7cd3eff098da20438df934"
+      }
+    },
+    "long-sample.json": {
+      "status": "PASS",
+      "years": [
+        1996,
+        1997,
+        1998,
+        1999,
+        2000,
+        2001
+      ],
+      "original_rows": 6044422.0,
+      "largest_connected_rows": 5811476.0,
+      "leave_worker_out_rows": 5435407.0,
+      "rows": 5163428.0,
+      "workers": 1106419.0,
+      "firms": 86647,
+      "matches": 1700466.0,
+      "stayer_workers": 666090,
+      "stayer_rows": 3029356.0,
+      "worker_degree_histogram": [
+        666090,
+        318508,
+        94888,
+        22437,
+        4028,
+        468
+      ],
+      "year_counts": [
+        784819,
+        844852,
+        864922,
+        885408,
+        917646,
+        865781
+      ],
+      "published_pooled_rows": 5163446.0,
+      "published_count_difference": -18,
+      "all_workers_removable_without_disconnect": true,
+      "singleton_workers": 0,
+      "matlab_version": "24.2.0.2863752 (R2024b) Update 5",
+      "graph_source": "maintained KSS 8b957ffe"
+    },
+    "short-sample.json": {
+      "rows": 1319994,
+      "workers": 659997,
+      "firms": 42489,
+      "matches": 824215,
+      "years": [
+        1999,
+        2001
+      ],
+      "code_sha256": "d35c60c69a8c1a0ec9114d093d865aab48886ede7d17a1bfcd84b0bc712989c9",
+      "input_sha256": "44a72c092af4b78aa2eea03b750f3c894ea64ea4c735e238db106e730b5bc7d9",
+      "retained_sha256": "88794aafb7f057e9beade9f3a34baad0de8b52fc1fbbf9c8e5202b67cdab0a21",
+      "largest_connected_rows": 1859445
+    }
+  },
+  "retained_runtime_inventory": {
+    "sha256": "d63a599a5d62194d3af6bb21248812031f95fffb0397827dc2e51baca3de3c9c",
+    "files": 45348,
+    "critical_files": {
+      "environment/command-clock.plugin": "9e99876289df144aa2f465410b442fe28e4c8adc2ad3ee17cb03ea4a61a88684",
+      "manifest.json": "40251069c0db3b9c6d923711c7ef36286be87da77666f425e7b47839c7e35c6c",
+      "source/bench/block_host.py": "fccf59236f74f077e890685acd2abc996a1c7be8ecabecde095da6932974944d",
+      "source/bench/campaign.py": "2d909a110c76e657252e9af9397e1033a84702e2b868314ac516d024532aac04",
+      "source/bench/campaign_fixest.R": "495906c50f684cddb883707214b606bf8c217edcec302de91bed0569a348f99c",
+      "source/bench/campaign_oracle.py": "7e8c63c29fda6df832d6a6005ebc0581a0cd73303b2e939170edaef0e622ee22",
+      "source/bench/campaign_r.R": "8e7867fbc1b468f15ea1e3ec8048c6e2cf04ebe7875cf2c46202af897f6a7cd7",
+      "source/bench/campaign_stata.do": "50133df8c5d8561227dc321c25d2c4ba78c2c18a3901c43b8f60114bee7a711a",
+      "source/bench/panel_campaign.py": "a6f8b7f493220842504410c9b8f9ed7bffe36ca773ab5338eaa2562cef9ebe78",
+      "source/bench/qualify_scc.py": "68704aff448e8485a775a81bfe54ec14eea0203d9d8567d0dde8ec6bc650fbeb",
+      "source/dist/fereg_linux.plugin": "79d81fb145109c112c9075f77e1a2799bf09ddfab45cc4f563366138ee811171"
+    }
+  },
+  "artifacts_sha256": {
+    "scc-20261026-beta7-veneto-observations.csv": "0174316f8d87a8a9a7d473fb3df03093d72165514122c787a3ea374e364549c9",
+    "scc-20261026-beta7-veneto-science.json": "8dc017954ddd8c77d68e69a94aa04ac60eae08807ff0768341cb25b10e44f137",
+    "scc-20261026-beta7-veneto-summary.csv": "b1742f4507ed2012f72dd61d02c65328cd122cb59cb4b47283c108d054e2fc1f",
+    "veneto-akm.pdf": "2c71f87d91e3020970bff0081728e572ab59f1ef0d55df88d8c9f23944301813"
+  },
+  "collected_aggregate_sha256": {
+    "accounting.json": "021f17794ae1e5ec91ebc9ab5814f3cd9838fbad81ae91fa91e956dbde9e6e47",
+    "context.json": "edfe492b3e8c45ede7049ab269c6715e87c4de9acae36a4fd5837ec041124c0e",
+    "environment/COMPLETE": "756e62f28ae30b22558028188bea81ff23f4a5f23cbff615b154f32975164dde",
+    "environment/input-audit.json": "18d885bac8ed9e33b4beaafb27923bac31cb186aeb6e7cc7a838ee7c7b88c05a",
+    "environment/pyfixest-freeze.txt": "51a5d4d83f9d61afd18b1ec28278487bc752bc05dbb851b0086b48c4c61e2e76",
+    "environment/pyfixest-within-freeze.txt": "88766c00a0e4a3756bed9f837ece2a32452a704398d1a0daa625c1f18a077cde",
+    "environment/r-package-paths.json": "1777df07ffbcb11812e09e276ed3f20d84d7787f2cabdf05c956ed4be741443a",
+    "environment/reference-origin.json": "ded108478b24b62e4323bbc1667845f781808423ae4341680f8dbf390e42af26",
+    "environment/runtime.json": "d63a599a5d62194d3af6bb21248812031f95fffb0397827dc2e51baca3de3c9c",
+    "host-task-1/host.json": "4ed2dbd2bee1cf5b8c8320cce4839f21522798df138831f7aa5632e76817604a",
+    "host-task-2/host.json": "01be7672e4161d774c1f89c559ea1287ae4630182e40dbf35e6915212c38bbb7",
+    "host-validation.json": "f7aed2db3d35af85f31603553d8c75e4162815ab11b05a86ec0698e530dec735",
+    "input/prior-panels.json": "a2861dc9e5e64bcecbb89274b91e3bc4d54c9a2d139d06819731534330a397f3",
+    "input/source.json": "2e4ec9f0f1a2f2502acb211a1ac75a35523ea1d68a710ab37bed1837b788837a",
+    "job.sh": "b4c4464feb93ccfe3cb1c547950bc209dc5b04ed0ebadb851dd874ab52a6a4e3",
+    "logs/harness-tests.log": "2c819ea590da0d88c7b15548208ead0c3a05be517b8c42dc0e14d160e106982c",
+    "logs/input-audit.log": "ea061d0ced19bb552159b5dd06281c5ceb45a846417b140ff3a3ca4b60c4702b",
+    "logs/package-check.log": "45b29f93e2a188e796e0b7e6d5e5ec73e584f940cdbb6e40eafc872abf7bddb5",
+    "logs/production.1.sge": "f12f0ad82141cb202e5825ba8818f221650b435e8716fe7943c6c9e66ff89f8b",
+    "logs/production.2.sge": "0cad2a0a037227ed8364b66753abc909cc3053e46c7e5aaffa66df230f708d04",
+    "logs/reuse.sge": "58ad2e718fd4e9a21fb4617b45fca3c565316a25ce609b83077fad5f269c93df",
+    "logs/setup.sge": "c64bf5f2acc9fd155501f87b2eabec7eaf9eee14b0e1db3a80746210554f9bd4",
+    "logs/smoke.sge": "03ad009f05439cfbe32e4516f49e2c22a96eb0b6dde64efdf0c3013e9a292052",
+    "manifest.json": "40251069c0db3b9c6d923711c7ef36286be87da77666f425e7b47839c7e35c6c",
+    "observations.csv": "0174316f8d87a8a9a7d473fb3df03093d72165514122c787a3ea374e364549c9",
+    "preparation/inputs.json": "3212a53a58aa91ad960a7f939beb57284aaf4986293c55a54b420d0ff7b8b069",
+    "preparation/long-sample.json": "cd2b8b62c57f74be2d7ab38d57d692358bd7e90eba3ca42f73317ddfbcad8d6e",
+    "preparation/short-sample.json": "80c90bd5083ada7b1b8c724ea05e65ee97cc1e45a9f296e9dd949207e628283f",
+    "production-accounting.txt": "3cf1eab4a42fc1aa545a951d83208065f6aca4459469e3043308d1f5fe9e0ffd",
+    "reuse.sge": "c950c4b51d35da80dee9b12730b8c295333199f1e86e2b8fcb4c53f8859e039d",
+    "science.json": "8dc017954ddd8c77d68e69a94aa04ac60eae08807ff0768341cb25b10e44f137",
+    "setup-accounting.txt": "d0a1645073d40c41eb7d59815046d4f7bcc98ab65f04e2587aee85e0aaa20bc4",
+    "setup.sh": "f7ee575a186e0e7bb054cefc46b94ff8df439be0bd8387cebbbafe8424c8579b",
+    "smoke/COMPLETE": "48a5f888b37146f7e455fcb963de4aa3b78e7043f830f1c054d0d27e63ec9e06",
+    "smoke/results.json": "7561e3d0cfcf6a7c5416ce90f7e19e5384b026dc474b14b4a4a202f5eb64ca85",
+    "smoke-accounting.txt": "4998d277a245e2195fb86952a84c82736a7c9443460b744467f81461e2b79238",
+    "summary.csv": "b1742f4507ed2012f72dd61d02c65328cd122cb59cb4b47283c108d054e2fc1f",
+    "task-1/COMPLETE": "48a5f888b37146f7e455fcb963de4aa3b78e7043f830f1c054d0d27e63ec9e06",
+    "task-1/results.json": "4cbefea797aa4842a080cf0271fecbf7027c06b5eb88cc157746c12c7aedea3a",
+    "task-2/COMPLETE": "48a5f888b37146f7e455fcb963de4aa3b78e7043f830f1c054d0d27e63ec9e06",
+    "task-2/results.json": "c892f0fcabc2c021c3c5b4841e7437e41f7f98afeb5e0bf3a56ca7c0ef208dc0"
+  },
+  "analysis_tools_sha256": {
+    "panel_collect.py": "61024b4c9b3100da9cfe13c4206906bd566ffbdae891fce5160254a293c1d895",
+    "panel_report.py": "63bb15a4b26ca36da8e39060a52176961efc8f574face3b3b9617539f4a463b3"
+  }
+}
