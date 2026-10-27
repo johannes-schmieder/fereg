@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 0.5.0 26sep2026}{...}
+{* *! version 0.5.0 26oct2026}{...}
 {.-}
 help for {cmd:feppml} {right:(Johannes F. Schmieder)}
 {.-}
@@ -454,7 +454,13 @@ restored on success, error, and Break.
 partitions and merge order for the same platform, route, and thread count.
 {cmd:solver(auto)} is the default. It selects the MAP-owned projection family.
 Its numerical engine and workspace depend on the fixed-effect design and
-admitted storage. LSMR and CMG remain explicit solver requests.
+admitted storage. LSMR and CMG remain explicit solver requests. With exactly
+two categorical intercept effects and no slopes, automatic publication fits
+reuse one CMG preconditioner across IRLS iterations to accelerate their joint
+fixed-effect solves and canonical products; this is not {cmd:solver(cmg)}, and
+every result is still certified. Every publication fit enters the strict
+convergence checkpoint only once the accepted predictor is predicted to settle
+within the strict envelope, so iteration counts can differ from earlier betas.
 {cmd:solver(map)} requests the canonical MAP-owned projection family explicitly.
 For multiple effects with absorbed slopes, this family uses a current-weight
 coefficient-space Schur/CG kernel when its workspace fits. It prepares weighted
@@ -969,6 +975,8 @@ contract, and the fitted-mean prediction on the final sample.
 package plugin on the ado-path: {cmd:fereg_windows.plugin},
 {cmd:fereg_linux.plugin}, or the universal {cmd:fereg_macos.plugin}. Users do
 not need Rust, Python, Julia, a compiler, BLAS, or a separate native runtime.
+Descriptive comparisons with fixest, PyFixest and ppmlhdfe are in
+{cmd:docs/fixest_benchmarks.md} of the source repository.
 
 {marker sources}
 {title:Sources and acknowledgements}

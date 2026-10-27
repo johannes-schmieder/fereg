@@ -31,14 +31,17 @@ net install fereg, from("https://raw.githubusercontent.com/johannes-schmieder/fe
 ```
 
 Both routes install `fereg`, `feppml`, help files and the current native plugin
-from `main`. The beta requires Stata 18 or newer and includes native binaries
+from `main`, which carries the
+[v0.5.0-beta.7](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0-beta.7)
+runtime. The beta requires Stata 18 or newer and includes native binaries
 for Linux x86-64, Windows x86-64 and macOS (Apple Silicon/Intel universal).
 No Rust, Python or extra Stata packages are needed to use the binary package.
 Exit Stata before updating, then install in a fresh session so the previous
 plugin is unloaded.
 
-See the [installation guide](docs/installation.md) for source builds, offline
-installation and troubleshooting. Native build identity, checksums and
+See the [installation guide](docs/installation.md) for versioned and offline
+installation, source builds and troubleshooting. Changes by release are in the
+[changelog](CHANGELOG.md). Native build identity, checksums and
 corresponding-source links are retained in [dist](dist/README.md).
 
 ## Quick start
@@ -84,9 +87,25 @@ feppml trade agreement log_distance, absorb(exporter_year importer_year) ///
 ```
 
 Type `help feppml` for the complete implemented PPML syntax, saved-output and
-prediction contracts, separation methods, failure classes, and six
+prediction contracts, separation methods, failure classes, and seven
 self-contained examples. A simulated bilateral-trade comparison against
 `ppmlhdfe` is in `tests/manual/simple_PPML.do`.
+
+## Performance
+
+Descriptive Linux comparisons on whole 28-core SCC nodes are in
+[Comparing fereg with fixest](docs/fixest_benchmarks.md) (56 synthetic OLS and
+PPML configurations) and [Veneto AKM comparisons](docs/veneto_benchmarks.md)
+(real long and short worker-firm panels, with and without saved effects).
+Speed ratios count only when results pass the same scientific checks. In the
+beta.7 campaign, `fereg` was faster than default `fixest` in all 35 eligible
+configurations and faster than strict `fixest`, `reghdfe`, `ppmlhdfe` and
+`areg` in every eligible comparison. PyFixest's `within` demeaner was faster
+on dense three-FE designs, dense two-FE PPML and the short Veneto panel without
+saved effects, while `fereg` was faster on synthetic AKM designs. When saving
+worker and firm effects on the real panels, every comparator either timed out
+or failed a scientific check. These are fixed-panel descriptive results, not
+universal rankings.
 
 ## Command syntax
 
@@ -104,7 +123,8 @@ Common options are:
 - `residuals(newvar)` and names inside `absorb()`, such as
   `absorb(fe_worker=worker fe_firm=firm)`, for saved outputs;
 - `solver(auto|map|it|squarem|lsmr|cmg)` and
-  `preconditioner(auto|off|diagonal|schwarz)` for the fixed-effect solver; and
+  `preconditioner(auto|off|diagonal|schwarz)` for the fixed-effect solver, plus
+  the experimental two-FE `solver(cmgschur)`; and
 - `memory(auto|fast|low)`, `poolsize(#)`, `threads(#)`, `deterministic`, and
   `timeit` for execution control and diagnostics.
 
@@ -165,6 +185,11 @@ Licensed profiles and platform limitations are documented in
 - [`docs/installation.md`](docs/installation.md) — installation and source builds.
 - [`docs/user_guide.md`](docs/user_guide.md) — user-facing syntax, semantics,
   output, and benchmark guidance.
+- [`docs/VALIDATION.md`](docs/VALIDATION.md) — accepted evidence, package
+  checks and limits.
+- [`docs/fixest_benchmarks.md`](docs/fixest_benchmarks.md) and
+  [`docs/veneto_benchmarks.md`](docs/veneto_benchmarks.md) — package
+  comparisons.
 - [`stata/fereg.sthlp`](stata/fereg.sthlp) — installed Stata help and
   self-contained examples.
 - [`docs/README.md`](docs/README.md) — documentation map.
@@ -177,4 +202,5 @@ Development is consolidated on `main`.
 The manuscript, publication assets, and frozen paper evidence live in the
 sibling `fereg-paper` repository. Build it there with
 `make paper`; the paper build does not require this implementation checkout.
-The maintained local benchmark is in [bench](bench/README.md).
+The maintained benchmark tooling, qualification harness and SCC comparison
+campaigns are in [bench](bench/README.md).

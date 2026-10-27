@@ -45,8 +45,15 @@ drop codes, stored results, failure atomicity, and runnable examples.
 `solver(auto)` selects LSMR for exactly two or three categorical intercept
 effects when fast-memory execution and the complete specialized workspace fit
 the native memory plan. Otherwise it selects MAP, including low-memory and
-absorbed-slope designs. It does not select CMG. This is the development-admitted
-policy, not a formal qualification claim.
+absorbed-slope designs. It does not select the explicit CMG solver. With
+exactly two categorical intercept effects and no slopes, Auto publication fits
+also reuse one CMG preconditioner across IRLS iterations to accelerate their
+joint FE solves and canonical products. This is solve acceleration inside Auto,
+not `solver(cmg)`, and every result is still certified. Every PPML publication
+fit enters the strict convergence checkpoint only once the accepted predictor
+is predicted to settle within the strict envelope, so iteration counts can
+differ from earlier betas. This is the development-admitted policy, not a
+formal qualification claim.
 Explicit `solver(lsmr)` selects one native fused or joint LSMR implementation
 for the fit, and `solver(cmg)` means the prepared fused-FWL CMG implementation.
 Concrete LSMR preconditioner and reuse choices remain internal and are not
@@ -338,8 +345,12 @@ session and checks coefficients and RSS before printing times. It is a
 reproducible local comparison, not release qualification.
 
 Use the [maintained local benchmark](../bench/README.md) for descriptive development
-measurements. [Validation](VALIDATION.md) records scientific evidence and timing
-limits. Both public commands use the same sole native runtime.
+measurements. Descriptive Linux comparisons with fixest, PyFixest, reghdfe,
+ppmlhdfe and `areg` are in [Comparing fereg with fixest](fixest_benchmarks.md)
+and, on real AKM panels with and without saved effects, in
+[Veneto AKM comparisons](veneto_benchmarks.md). [Validation](VALIDATION.md)
+records scientific evidence and timing limits. Both public commands use the
+same sole native runtime.
 
 ## Examples and limitations
 

@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 0.5.0 25oct2026}{...}
+{* *! version 0.5.0 26oct2026}{...}
 {.-}
 help for {cmd:fereg} {right:(Johannes F. Schmieder)}
 {.-}
@@ -242,8 +242,8 @@ with {cmd:solver(cmgschur)}.
 The solver matrix uses code 8 for this route. {cmd:e(fereg_cmg_degree)},
 {cmd:e(fereg_cmg_samples)}, and {cmd:e(fereg_cmg_seed)} record the requested
 cutoff, tree count, and seed. This experimental explicit option is included in
-the current Mac beta. Its default unsampled graph differs from the automatic
-upgrade, which uses cutoff 5, one sampled tree and seed zero.
+the current beta on all three platforms. Its default unsampled graph differs
+from the automatic upgrade, which uses cutoff 5, one sampled tree and seed zero.
 
 {pstd}
 Explicit {cmd:solver(cg)} returns error 198 because its residual certificate
@@ -843,7 +843,9 @@ There is one maintained engine and no engine selector.
 {pstd}
 Version 0.5.0 is available as a binary beta for Linux x86-64, Windows x86-64
 and macOS (Apple Silicon/Intel universal). See {cmd:docs/VALIDATION.md} for
-platform-specific test coverage and limitations.
+platform-specific test coverage and limitations, and
+{cmd:docs/fixest_benchmarks.md} and {cmd:docs/veneto_benchmarks.md} for
+descriptive comparisons with fixest, PyFixest, reghdfe and {cmd:areg}.
 
 {marker sources}
 {title:Sources and acknowledgements}
