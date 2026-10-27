@@ -182,9 +182,9 @@ fails. The correction shares the original iteration budget.
 
 With `solver(auto) preconditioner(auto)`, two categorical-intercept effects
 start with diagonal-preconditioned Schur PCG. If eligible outcome or packed
-regressor/outcome work remains at iteration 16, the qualified structural rule
-can build a CMG preconditioner. The hierarchy is reused across subsequent
-blocks. Small or easy problems can finish without building it. A failed
+regressor/outcome work has stalled at iteration 4, 8 or 12, or remains at
+iteration 16, the structural rule builds a CMG preconditioner and applies it
+on the worker team. The hierarchy is reused across subsequent blocks. Small or easy problems can finish without building it. A failed
 optional construction leaves the existing recurrence in place; a numerical
 failure can continue with certified MAP within the original budget.
 
@@ -297,7 +297,11 @@ actually applied a CMG preconditioner. This does not enable an explicit
 `e(fereg_solver)` remains a 2-by-16 matrix, with rows `absorption` and
 `residual`. Its first two columns, `requested` and `used`, use these codes:
 1 auto, 2 map, 3 lsmr, 4 cg, 5 it, 6 squarem, 7 cmg, 8 cmgschur.
-Column 3 is iterations and column 11 is fallback. Low-memory absorption
+Column 3 is iterations, column 4 the stop code (1 no fixed effects,
+2 certified, 5 derived certificate) and column 11 is fallback. Without
+`residuals()`, `xbd()`, `d()` or saved fixed effects, the default memory mode
+certifies the within residual of the absorbed outcome and regressors directly
+(stop code 5, zero iterations) instead of absorbing it again. Low-memory absorption
 summarizes all blocks: a fallback takes precedence; otherwise CMG use is
 retained even if an earlier or later block finished without it. A zero-iteration
 `map` row can be an already-orthogonal input check, not an iterative MAP solve.

@@ -215,8 +215,10 @@ fereg arithmetic can supply different buffers, as the explicit CMGSchur and
 PPML replays demonstrate. Scientific agreement and stable discrete decisions
 remain required. Which hierarchy levels carry row
 operators still follows the worker count; that is a memory and speed choice,
-since row operators reproduce the edge-list products bit for bit. The
-automatic route's team-free scalar cycle keeps its serial arithmetic.
+since row operators reproduce the edge-list products bit for bit. The OLS
+automatic route borrows whichever host team is installed for its cycle
+(`with_cmg_execution`), because its plan records no team width; PPML reuse
+and reduced pairs keep a team-free scalar cycle with serial arithmetic.
 
 CMG construction, application and PCG receive one context each
 (`BuildContext`, `ApplyContext`, `SolveContext`): the borrowed team, the
@@ -333,10 +335,22 @@ emission, initial graph and hierarchy pipeline, all polling cancellation);
 the two differ only in installation. The explicit request contracts large
 levels and builds row operators for the eligible levels of its host team, and
 keeps up to four interleaved lanes; the automatic upgrade builds on the team
-when the parallel bound is admitted (serially otherwise, with identical bits)
-and applies one team-free scalar cycle per lane. Graphs, hierarchies and cycle bits
-equal the pre-consolidation explicit builder's (a frozen-digest witness covers
-one and four workers). Low-degree levels
+when the parallel bound is admitted (serially otherwise, with identical bits).
+For OLS it also installs the row-operator plan and up to four interleaved
+lanes, each only when its bound is admitted after the one-lane apply storage
+(`fe/cmg_schur/bounded/install.rs`), and otherwise applies the same hierarchy
+as one team-free scalar cycle per lane, as PPML reuse always does. With
+default hierarchy options, graphs, hierarchies and cycle bits equal the
+pre-consolidation explicit builder's (a frozen-digest witness covers one and
+four workers); the two-FE Schur routes themselves build with a zero
+low-effective-degree threshold (see SPEC).
+
+After the CMG handoff, OLS Auto applies the Schur operator through the
+deferred (worker, firm) cells (`fe/routing_kernel.rs`). The kernel keeps a
+firm-major copy of its worker-major cells, built by a stable count so each
+firm's cells stay in increasing worker order. Workers own their left-scratch
+rows and firms their output rows (`routing_kernel/parallel.rs`), so the
+parallel product reproduces the serial bits at every lane count. Low-degree levels
 of the larger FE are eliminated into weighted pairs on the smaller FE; higher
 degrees remain auxiliary graph vertices. Degree is counted after repeated
 worker-firm rows are collapsed. A fixed CMG cycle receives component-centered

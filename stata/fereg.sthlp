@@ -186,9 +186,10 @@ residual degrees of freedom.
 {cmd:solver(auto)} is the default. One categorical effect uses direct
 demeaning. With {cmd:preconditioner(auto)}, two categorical-intercept effects
 start with diagonal-preconditioned Schur PCG. If eligible outcome or packed
-regressor/outcome work remains at iteration 16, a structural rule can build
-a combinatorial multigrid (CMG) preconditioner and reuse it across later blocks.
-Easy problems may finish without multigrid. Optional setup refusal keeps the
+regressor/outcome work has stalled at iteration 4, 8 or 12, or remains at
+iteration 16, a structural rule builds a combinatorial multigrid (CMG)
+preconditioner, applies it on the worker team and reuses it across later
+blocks. Easy problems may finish without multigrid. Optional setup refusal keeps the
 existing recurrence; numerical failure can continue with certified MAP inside
 the original iteration budget.
 
@@ -330,7 +331,11 @@ Explicit {cmd:solver(cg)} remains unsupported. A MAP continuation reports
 {cmd:e(fereg_solver)} is a 2-by-16 matrix with rows {cmd:absorption} and
 {cmd:residual}. Columns {cmd:requested} and {cmd:used} use these numeric codes:
 1 auto, 2 map, 3 lsmr, 4 cg, 5 it, 6 squarem, 7 cmg, 8 cmgschur.
-Column 3 is {cmd:iterations}; column 11 is {cmd:fallback}.
+Column 3 is {cmd:iterations}; column 4 is the stop code: 1 no fixed effects,
+2 certified, 5 derived certificate; column 11 is {cmd:fallback}.
+Without {cmd:residuals()}, {cmd:xbd()}, {cmd:d()} or saved fixed effects, the
+default memory mode certifies the within residual of the absorbed outcome and
+regressors directly (stop code 5, zero iterations) instead of absorbing it again.
 Low-memory absorption combines all blocks: a fallback takes precedence;
 otherwise CMG use remains visible even when another block did not need it.
 A zero-iteration {cmd:map} row may be an already-orthogonal input check.

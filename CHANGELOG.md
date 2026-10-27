@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased
+
+- OLS Auto with two categorical-intercept effects applies its CMG
+  preconditioner on the worker team (row operators and interleaved columns
+  when memory admits them) and runs the aggregated cell operator in parallel,
+  with results independent of the worker count.
+- The multigrid hierarchy for two-effect designs no longer detaches weakly
+  connected firms into singleton groups, so it coarsens in a few levels on
+  worker-firm panels (OLS Auto, `solver(cmgschur)` and PPML reuse).
+- A two-effect Auto fit whose diagonal recurrence has stalled builds the
+  multigrid preconditioner at iteration 4, 8 or 12 instead of 16.
+- Without `residuals()`, `xbd()`, `d()` or saved fixed effects, OLS in the
+  default memory mode certifies its within residual directly instead of
+  absorbing it a second time; `e(fereg_solver)` reports stop code 5.
+- On synthetic Veneto-shaped AKM panels on an M2 Ultra, two-effect OLS Auto
+  took 0.43-0.55 of its previous native time at 4 and 8 workers. Results
+  agree within the documented tolerances; sample, rank and omission decisions
+  are unchanged.
+
 ## 0.5.0 beta.7 — 2026-10-26
 
 - PPML Auto with exactly two fixed effects reuses one CMG preconditioner across

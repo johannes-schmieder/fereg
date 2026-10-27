@@ -45,12 +45,15 @@ combined with this operator. Reuse is confined to an unchanged design, sample
 and normalized-weight owner. Construction, temporary and retained storage count
 toward real memory admission; refusal retains the observation operator.
 
-CMG commitment at iteration 16, cutoff 5, one sampled tree, seed 0, graph
+CMG commitment by gate v2 (below), cutoff 5, one sampled tree, seed 0, graph
 construction, small-direct selection, certification, restart and fallback
 semantics remain fixed. The same original graph produces the same hierarchy
 when both arms construct one. The only permitted cell redesign defers
 construction to successful CMG commitment at the existing restart; it adds no
-restart or speculative setup to short solves. There is no construction-work cap or
+restart or speculative setup to short solves. The deferred cell product runs on
+the host team over a firm-major copy of the cells kept in increasing worker
+order, which reproduces the serial product's bits at every lane count; the copy
+is admitted with the kernel. There is no construction-work cap or
 elapsed-time routing. See the [development protocol](development_workflow.md#compact-candidate-qualification).
 
 Both commands accept `depvar [indepvars] [if] [in] [weight], [options]`.
@@ -230,9 +233,9 @@ unsupported explicit requests must not silently become auto.
 
 Public OLS Auto/Auto uses the many-FE geometry policy
 (`routing_many_geometry_v1`) for eligible designs with at least three
-categorical-intercept FEs. Eligible two-FE designs use the
-[qualified structural CMG gates](two_fe_auto_gates.md), with ownership and
-deferred cells in the narrower global-intercept scope above. Zero/one FE,
+categorical-intercept FEs. Eligible two-FE designs use
+[structural CMG gate v2](two_fe_auto_gates.md) (`routing_two_gates_v2`),
+with ownership and deferred cells in the narrower global-intercept scope above. Zero/one FE,
 slopes and explicit choices retain their specified behavior; PPML Auto adds only
 the two-FE CMG reuse below. Activation and performance evidence for both OLS
 families are complete; the many-FE policy carries one documented
@@ -257,7 +260,8 @@ the two-FE Schur recurrence with the h16/k1 build:
 without a hierarchy one may be built at step 16, and a hierarchy from an
 earlier weight generation is set aside so the reprojection can rebuild it on
 current weights, then reinstated unless replaced. Construction keeps cutoff 5,
-one sampled tree and seed zero, polls cancellation and admits itself against
+one sampled tree, seed zero and the two-FE Schur hierarchy options, polls
+cancellation and admits itself against
 the fit's solver memory budget with any set-aside hierarchy charged as
 resident; refusal leaves the diagonal recurrence unchanged. An estimation
 makes at most three construction attempts, refusals included, and no
@@ -336,6 +340,18 @@ and admits construction against real memory, without a construction-work cap or
 budget-dependent factor screen. Preserve cutoff 5, one sampled
 tree, seed zero, eligibility, small-direct selection, certification, restart and
 fallback semantics. See the [execution contract](ARCHITECTURE.md#cmg-host-team-and-stage-admission).
+
+Every two-FE Schur hierarchy (OLS Auto, explicit `cmgschur` and PPML reuse) is
+built with CMG's options except a zero low-effective-degree threshold: on
+expander-like firm Schur graphs CMG's correction detaches most firms into
+singleton aggregates, so coarsening stagnated. The options change only the
+preconditioner. OLS Auto installs its hierarchy on the host team: CMG's
+row-operator plan and up to four interleaved lanes, each only when its bound
+is admitted after the one-lane apply storage, otherwise the scalar
+application of the same hierarchy, so the team installation never refuses a
+build the scalar one admits. Its arithmetic is the scalar cycle's except
+CMG's fixed-chunk centering of one coarse component of at least 131,072
+entries. PPML reuse and reduced pairs keep the team-free scalar cycle.
 
 Developer selectors below are supported comparison contracts; public defaults
 are specified above.
@@ -491,7 +507,8 @@ geometry or certificate refusal cannot enable CMG afterward. A declined
 preflight retains the one CMG opportunity across Low chunks. Previously
 retained CMG inverses remain reusable.
 
-The incumbent-CMG choice considers one synchronous build at iteration 16, using cutoff 5, one
+The incumbent-CMG choice considers one synchronous build at iteration 16 (or at
+gate v2's earlier stall decision), using cutoff 5, one
 sampled tree per high-degree worker and seed zero. Sampling changes only the
 preconditioner; the original Schur operator and certificate remain authoritative.
 The canonical cache uses the complete admission envelope above. These are
@@ -701,6 +718,13 @@ and X using the same FE span/weights, solve finite WLS on the identified
 coordinates, and reconstruct residuals from original sources. Independently
 certify FE orthogonality, finite score, bread/inverse, covariance and fit.
 No iterative recurrence status alone permits publication.
+
+A Fast fit that requests no residual, xbd, d or saved-FE output may keep its
+within residual `r = y~ - X~b` instead of projecting it again, when the derived
+certificate of §16 passes; its residual solver row reports zero iterations and
+stop code 5. Requested outputs, Low memory, explicit CMG or LSMR sessions and a
+failing derived certificate keep the certified final projection (decided by
+Johannes, 2026-10-27).
 
 Where an absorbed intercept exists, the reported constant is
 `mean_w(y) - mean_w(X)'b`. It is a normalization coordinate, not an extra
@@ -1159,6 +1183,13 @@ Local rank-aware bases prevent slope scaling/rotation from changing the span
 test. Residual reconstruction and small D'Wr are necessary, not a universal
 forward-accuracy bound; §20 independently tests weak graphs.
 
+A derived certificate applies to a residual formed as a linear combination of
+certified projections, `r = y~ - X~b`. The moments are recomputed from the
+declared design and weights as above, with `s = s_y + sum |b_j| s_j`, each term
+the scale at which its column was certified (the larger of its raw and within
+weighted norms). By linearity a certified projection cannot exceed this bound,
+so the check verifies the combination without a second solve.
+
 OLS additionally certifies finite scores, bread/inverse, fit and covariance.
 PPML additionally certifies model-space feasibility, scores, accepted objective,
 final Hessian/rank, output reconstruction and any bias calculation. Finite but
@@ -1259,6 +1290,11 @@ Numerical fixes declare affected cases/fields; unaffected science remains exact.
 Exclude timing, build identity and environmental resource observations only.
 A tolerance pass cannot silently waive an unexplained exact-change failure.
 Preserve Stata processor restoration on success, error and Break.
+
+The two-FE OLS Auto team installation and the parallel deferred cell product
+follow this rule: their results do not depend on the worker count, apart from
+CMG's fixed-chunk centering of a single coarse component of at least 131,072
+entries, which uses the same tree whenever a team is installed.
 
 Scoped changes may deliberately change algorithms, arithmetic order and storage. Declare affected outputs, routes and
 errors before implementation; require independent scientific acceptance and

@@ -70,6 +70,7 @@ the routing injections below select experimental algorithms for qualification.
 | `inject=routing_prefix_{none\|map4\|it4}` | OLS | Replaces the existing categorical shortcut with no prefix, up to four MAP sweeps, or up to four compact IT cycles (eight native sweeps); unfinished prefixes seed original-RHS LSMR |
 | `inject=routing_incremental_many` | OLS (replay wire) | Qualifies strict unseeded LSMR with retained preparation for at least three categorical intercept FEs, using the existing unseeded portfolio |
 | `inject=routing_many_geometry_v1` | OLS (replay wire) | Selects the public many-FE geometry policy for at least three categorical intercept FEs: geometry-qualified MAP pilot, Jacobi LSMR trial with projected escalation to the additive preconditioner, recurrence a decade below the request with one seeded correction on a certificate miss, requested-tolerance certificate. Unlike other injections it keeps public two-FE ownership/deferred-cell activation, so it equals uninjected Auto on every design |
+| `inject=routing_two_gates_v2` | OLS (replay wire) | Selects the public two-FE policy, gate v2: the structural gate plus an early CMG build at local step 4, 8 or 12 when the diagonal recurrence has stalled; keeps public two-FE ownership/deferred-cell activation, so it equals uninjected Auto on every design |
 | `inject=routing_incremental_two` | OLS (replay wire) | Qualifies the existing direct-or-h16/k1 synchronous portfolio for exactly two categorical intercept FEs |
 | `inject=routing_builder_break` + `break_marker_token=<32 lowercase hex>` | OLS | Uses the synchronous h4/k1 builder and waits for Break at its first cancellation poll after executed construction work; any worker count |
 | `inject=ppml_topology` | PPML | Shares admitted categorical checkpoint component indexing after acceptance; weighted numerical data is recomputed in every frame |
@@ -77,7 +78,8 @@ the routing injections below select experimental algorithms for qualification.
 Each routing name is a complete literal token, for example
 `routing_h8_k1`. The hidden Stata adapter accepts the `routing_h*_k*`,
 `routing_builder_break`, prefix and kernel tokens; the plugin additionally
-accepts `routing_incremental_{many,two}`, `routing_many_geometry_v1` and
+accepts `routing_incremental_{many,two}`, `routing_many_geometry_v1`,
+`routing_two_gates_{v1,v2}`, `routing_two_remaining_*` and
 `routing_portfolio_{v1,unseeded}`,
 which reach it only through the replay wire (`bench/routing.py`,
 `bench/qualify.py`) and Rust tests. OLS routing injections require `solver=auto`, reject
@@ -361,6 +363,12 @@ normalization, RNG and channel contracts are in
 
 ### Hidden two-FE gate qualification selector
 
+`inject=routing_two_gates_v2` selects gate v2, the public two-FE Auto policy:
+gate v1 plus an early CMG build at local step 4, 8 or 12 when the diagonal
+recurrence has stalled (see [the gate notes](two_fe_auto_gates.md)). Like the
+many-FE geometry selector it keeps the public two-FE ownership and
+deferred-cell activation, so it equals uninjected Auto on every design.
+
 `inject=routing_two_gates_v1` selects the frozen structural two-gate OLS
 Auto/Auto candidate on exactly two categorical intercept fixed effects. It
 uses the first eligible initial-recurrence local16 boundary: packed/outcome
@@ -368,5 +376,6 @@ actions request the existing optional CMG build; final and unsupported roles
 close economic proposals without a build. The second gate is constant Defer.
 The owner state survives Low chunks and the final accuracy key; correction
 closes economics. Existing direct selection, resource admission, cancellation,
-certification and rollback remain authoritative. Public Auto/Auto uses these
-structural gates by default; this selector remains available for explicit tests.
+certification and rollback remain authoritative. Public Auto/Auto used these
+structural gates by default before gate v2; this selector remains available for
+explicit tests.
