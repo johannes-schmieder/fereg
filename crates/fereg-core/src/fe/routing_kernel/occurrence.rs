@@ -30,7 +30,10 @@ pub(crate) fn build_occurrence(
     let cells = n * std::mem::size_of::<Cell>() as u128;
     let markers = 2 * q * std::mem::size_of::<usize>() as u128;
     let banks = (p + 1) * std::mem::size_of::<usize>() as u128 + (p + 2 * q) * 8;
-    let bytes = (cells + markers).max(2 * cells).max(cells + (n + 1) * 8) + banks + 4096;
+    let bytes = (cells + markers).max(2 * cells).max(cells + (n + 1) * 8)
+        + banks
+        + super::firm_index_bytes(n, q)
+        + 4096;
     if !limits
         .retained_live_bytes
         .checked_add(bytes)

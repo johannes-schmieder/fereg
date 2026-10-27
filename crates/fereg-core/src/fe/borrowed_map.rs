@@ -3826,7 +3826,14 @@ impl TwoFePcgWorkspace {
     ) -> Result<()> {
         if self.use_cell_operator {
             if let Some(kernel) = &self.kernel {
-                return kernel.apply(
+                // Both products have identical bits at every lane count.
+                let apply = if kernel.parallel_lanes(rhs_count) {
+                    super::routing_kernel::CellSchur::apply_parallel
+                } else {
+                    super::routing_kernel::CellSchur::apply
+                };
+                return apply(
+                    kernel,
                     &self.direction,
                     &mut self.operator,
                     &mut self.left_work,

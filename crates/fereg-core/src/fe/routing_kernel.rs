@@ -10,6 +10,7 @@ use crate::memory::{FeSolverMemoryBudget, SolverWorkspacePeak};
 use super::{BorrowedInterceptFeDesign, BorrowedMapWeights};
 
 mod occurrence;
+mod parallel;
 pub(crate) use occurrence::build_occurrence;
 
 crate::fault::fault_plan! {
@@ -55,9 +56,21 @@ struct Cell {
     weight: f64,
 }
 
+/// One cell in the firm-major index, in the cell array's worker order.
+#[derive(Clone, Copy, Default)]
+struct FirmCell {
+    worker: u32,
+    weight: f64,
+}
+
 pub(crate) struct CellSchur {
     cells: Vec<Cell>,
     offsets: Vec<usize>,
+    /// Firm-major copy of `cells` for the parallel operator. A stable count
+    /// keeps each firm's cells in increasing worker order, the order in which
+    /// the serial operator updates that firm.
+    firm_offsets: Vec<usize>,
+    firm_cells: Vec<FirmCell>,
     worker_weights: Vec<f64>,
     firm_weights: Vec<f64>,
     diagonal: Vec<f64>,
@@ -77,6 +90,8 @@ impl CellSchur {
     pub fn retained_bytes(&self) -> u128 {
         self.cells.capacity() as u128 * std::mem::size_of::<Cell>() as u128
             + self.offsets.capacity() as u128 * std::mem::size_of::<usize>() as u128
+            + self.firm_cells.capacity() as u128 * std::mem::size_of::<FirmCell>() as u128
+            + self.firm_offsets.capacity() as u128 * std::mem::size_of::<usize>() as u128
             + (self.worker_weights.capacity() as u128
                 + self.firm_weights.capacity() as u128
                 + self.diagonal.capacity() as u128)
@@ -291,6 +306,7 @@ pub(crate) fn build(
         .checked_mul(2 * std::mem::size_of::<Cell>() as u128)
         .and_then(|b| b.checked_add((p as u128 + 1) * std::mem::size_of::<usize>() as u128))
         .and_then(|b| b.checked_add((p as u128 + 2 * q as u128) * 8))
+        .and_then(|b| b.checked_add(firm_index_bytes(n as u128, q as u128)))
         .and_then(|b| b.checked_add(4096));
     let Some(bytes) = bytes else {
         return Ok(OptionalSetup {
@@ -383,6 +399,12 @@ fn build_inner(
     finish(cells, p, q, work)
 }
 
+/// Retained firm index plus its transient cursors, for at most `cells` cells.
+fn firm_index_bytes(cells: u128, q: u128) -> u128 {
+    cells * std::mem::size_of::<FirmCell>() as u128
+        + (2 * q + 1) * std::mem::size_of::<usize>() as u128
+}
+
 // The caller's cell order is numerical authority; do not sort here.
 fn finish(cells: Vec<Cell>, p: usize, q: usize, work: &mut Work) -> Attempt<CellSchur> {
     let mut offsets = work.filled(
@@ -447,14 +469,51 @@ fn finish(cells: Vec<Cell>, p: usize, q: usize, work: &mut Work) -> Attempt<Cell
             diagonal[firm] = firm_weights[firm];
         }
     }
+    drop(suffix);
+    let (firm_offsets, firm_cells) = firm_index(&cells, q, work)?;
     work.charge(32)?;
     Ok(CellSchur {
         cells,
         offsets,
+        firm_offsets,
+        firm_cells,
         worker_weights,
         firm_weights,
         diagonal,
     })
+}
+
+/// Stable counting sort of the worker-major cells by firm.
+fn firm_index(cells: &[Cell], q: usize, work: &mut Work) -> Attempt<(Vec<usize>, Vec<FirmCell>)> {
+    let mut offsets = work.filled(
+        q.checked_add(1)
+            .ok_or_else(|| allocation("cell firm offsets overflow"))?,
+        0usize,
+    )?;
+    for cell in cells {
+        work.charge(8)?;
+        offsets[cell.firm as usize + 1] += 1;
+    }
+    for firm in 0..q {
+        work.charge(4)?;
+        offsets[firm + 1] += offsets[firm];
+    }
+    let mut cursor = work.capacity(q)?;
+    for &start in &offsets[..q] {
+        work.charge(4)?;
+        cursor.push(start);
+    }
+    let mut firm_cells = work.filled(cells.len(), FirmCell::default())?;
+    for cell in cells {
+        work.charge(16)?;
+        let slot = &mut cursor[cell.firm as usize];
+        firm_cells[*slot] = FirmCell {
+            worker: cell.worker,
+            weight: cell.weight,
+        };
+        *slot += 1;
+    }
+    Ok((offsets, firm_cells))
 }
 
 fn radix(cells: &mut Vec<Cell>, work: &mut Work) -> Attempt<()> {
