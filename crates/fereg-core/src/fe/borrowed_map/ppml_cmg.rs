@@ -71,6 +71,9 @@ impl ReusableCategoricalMapAbsorber<'_> {
             solved: reserved_zeros(levels, &mut reservation, message)?,
         }));
         self.request_auto_routing(crate::fe::RoutingPreset::new(16, 1)?, budget, 0);
+        if let Some(route) = self.auto_route.as_mut() {
+            route.options = crate::fe::cmg_schur::schur_cmg_options();
+        }
         Ok(())
     }
 
@@ -178,7 +181,7 @@ impl ReusableCategoricalMapAbsorber<'_> {
                 })
             })
             .transpose()?;
-        let built = CmgSchurPreconditioner::try_build_bounded(
+        let built = CmgSchurPreconditioner::try_build_bounded_with(
             &self.design,
             weights,
             graph.left_effect,
@@ -190,6 +193,8 @@ impl ReusableCategoricalMapAbsorber<'_> {
             self.max_rhs,
             budget,
             false,
+            crate::fe::cmg_schur::AutoApplication::Scalar,
+            crate::fe::cmg_schur::schur_cmg_options(),
         );
         let built = match built {
             Ok(built) => built,
@@ -253,7 +258,7 @@ impl ReusableCategoricalMapAbsorber<'_> {
             return Ok(false);
         }
         state.attempts += 1;
-        let built = CmgSchurPreconditioner::try_build_bounded(
+        let built = CmgSchurPreconditioner::try_build_bounded_with(
             &self.design,
             weights,
             graph.left_effect,
@@ -265,6 +270,8 @@ impl ReusableCategoricalMapAbsorber<'_> {
             self.max_rhs,
             state.budget,
             false,
+            crate::fe::cmg_schur::AutoApplication::Scalar,
+            crate::fe::cmg_schur::schur_cmg_options(),
         )?;
         if crate::diagnostics::solver_trace_enabled() {
             crate::diagnostics::emit_solver_trace(&format!(

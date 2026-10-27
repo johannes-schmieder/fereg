@@ -28,7 +28,8 @@ pub(super) use sampling::Sampling;
 
 const MAX_BATCH_COLUMNS: usize = 4;
 
-/// Hierarchy options of the OLS Schur routes. Firm Schur graphs of worker-firm
+/// Hierarchy options of the two-FE Schur routes (OLS Auto, explicit cmgschur
+/// and PPML reuse). Firm Schur graphs of worker-firm
 /// panels are expander-like: almost every firm's heaviest edge carries a small
 /// share of its weighted degree, so CMG's low-effective-degree correction
 /// detaches most firms into singleton aggregates and coarsening stagnates.
