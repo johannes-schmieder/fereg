@@ -1,25 +1,6 @@
 {
   "definition": "docs/development_workflow.md#complexity-inventory",
-  "growth": [
-    {
-      "after": 110873,
-      "before": 110870,
-      "metric": "fereg-core/production_lines",
-      "reason": "Separate kernel-diagonal preconditioner flag on the two-FE PCG workspace and its ablation setter."
-    },
-    {
-      "after": 8697,
-      "before": 8694,
-      "metric": "file/crates/fereg-core/src/fe/borrowed_map.rs",
-      "reason": "The two-FE PCG workspace separates its preconditioner choice (kernel_diagonal, set only by the routing_diagonal ablation) from its operator choice (use_cell_operator), so eager cells keep the pilot D_f preconditioner."
-    },
-    {
-      "after": 426,
-      "before": 424,
-      "metric": "function/crates/fereg-core/src/fe/borrowed_map.rs/absorb#1",
-      "reason": "The routing ablation sets the separate kernel-diagonal preconditioner flag."
-    }
-  ],
+  "growth": [],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
   "inventory": {
     "files": {
@@ -5925,56 +5906,56 @@
           },
           {
             "condition": "result . capacity ( ) > count",
-            "line": 248
+            "line": 223
           },
           {
             "condition": "design . effects ( ) . len ( ) != 2 || left_effect >= 2 || ! weight_scale . is_finite ( ) || weight_scale <= 0.0",
-            "line": 286
+            "line": 281
           },
           {
             "condition": "let BorrowedMapWeights :: Provided ( values ) = weights",
-            "line": 295
+            "line": 290
           },
           {
             "condition": "values . len ( ) != design . nobs ( )",
-            "line": 296
+            "line": 291
           },
           {
             "condition": "weights",
-            "line": 376
+            "line": 371
           },
           {
             "condition": "! weight . is_finite ( ) || weight <= 0.0",
-            "line": 380
+            "line": 375
           },
           {
             "condition": "! cell . weight . is_finite ( )",
-            "line": 407
+            "line": 402
           },
           {
             "condition": "cell . weight >= other",
-            "line": 476
+            "line": 472
           },
           {
             "condition": "! firm_weights [ firm ] . is_finite ( ) || ! diagonal [ firm ] . is_finite ( ) || diagonal [ firm ] < 0.0",
-            "line": 487
+            "line": 483
           }
         ],
         "functions": {
           "apply#1": {
             "line": 105,
-            "lines": 110
+            "lines": 85
           },
           "build#1": {
-            "line": 267,
+            "line": 262,
             "lines": 89
           },
           "build_inner#1": {
-            "line": 357,
+            "line": 352,
             "lines": 59
           },
           "capacity#1": {
-            "line": 239,
+            "line": 214,
             "lines": 14
           },
           "cell_count#1": {
@@ -5982,8 +5963,12 @@
             "lines": 3
           },
           "charge#1": {
-            "line": 232,
+            "line": 207,
             "lines": 7
+          },
+          "charge#2": {
+            "line": 248,
+            "lines": 8
           },
           "completed_work#1": {
             "line": 28,
@@ -5994,31 +5979,31 @@
             "lines": 3
           },
           "filled#1": {
-            "line": 253,
-            "lines": 8
+            "line": 228,
+            "lines": 9
           },
           "finish#1": {
-            "line": 431,
-            "lines": 76
+            "line": 426,
+            "lines": 77
           },
           "firm_index#1": {
-            "line": 509,
-            "lines": 31
+            "line": 505,
+            "lines": 32
           },
           "firm_index_bytes#1": {
-            "line": 425,
+            "line": 420,
             "lines": 4
           },
           "fits#1": {
-            "line": 417,
+            "line": 412,
             "lines": 6
           },
           "from#1": {
-            "line": 222,
+            "line": 197,
             "lines": 3
           },
           "radix#1": {
-            "line": 541,
+            "line": 538,
             "lines": 30
           },
           "retained_bytes#1": {
@@ -6026,7 +6011,7 @@
             "lines": 10
           }
         },
-        "production_lines": 516
+        "production_lines": 506
       },
       "crates/fereg-core/src/fe/routing_kernel/occurrence.rs": {
         "chunk_candidates": [],
@@ -6045,15 +6030,15 @@
           },
           {
             "condition": "weights",
-            "line": 96
+            "line": 97
           },
           {
             "condition": "! weight . is_finite ( ) || weight <= 0.0",
-            "line": 100
+            "line": 101
           },
           {
             "condition": "marks [ firm ] != worker",
-            "line": 106
+            "line": 107
           }
         ],
         "functions": {
@@ -6063,10 +6048,10 @@
           },
           "construct#1": {
             "line": 77,
-            "lines": 57
+            "lines": 59
           }
         },
-        "production_lines": 126
+        "production_lines": 127
       },
       "crates/fereg-core/src/fe/routing_kernel/parallel.rs": {
         "chunk_candidates": [],
@@ -24298,7 +24283,7 @@
         "dispatch_candidates": 1430,
         "files_over_1500": 15,
         "functions_over_150": 59,
-        "production_lines": 110873
+        "production_lines": 110864
       },
       "fereg-plugin": {
         "chunk_candidates": 3,
@@ -24310,5 +24295,5 @@
     },
     "schema": 1
   },
-  "reason": "Eager cells for public two-FE Auto with an explicit preconditioner flag."
+  "reason": "Block polls in the serial cell product and occurrence construction."
 }

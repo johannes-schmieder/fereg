@@ -87,11 +87,12 @@ fn construct(
     let mut cells: Vec<Cell> = work.capacity(design.nobs())?;
     let mut marks = work.filled(q, usize::MAX)?;
     let mut slots = work.filled(q, 0usize)?;
+    // Poll per block of rows (POLL_UNITS), not per row or worker.
+    let mut poll = Poll::default();
     for worker in 0..p {
-        work.charge(16)?;
+        poll.charge(4)?;
         let members = effect.level_index().checked_members(worker)?;
         for &row in members {
-            work.charge(32)?;
             let firm = firms[row] as usize;
             let weight = match weights {
                 BorrowedMapWeights::Unit => 1.0,
@@ -119,6 +120,7 @@ fn construct(
                 }
             }
             completed_work(1, 32);
+            poll.charge(4)?;
         }
     }
     drop(marks);

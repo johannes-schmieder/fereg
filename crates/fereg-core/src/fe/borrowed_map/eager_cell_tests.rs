@@ -509,7 +509,14 @@ fn deferred_cells_cancel_or_fail_after_install_without_publishing_kernel_and_reb
                 ErrorCode::Allocation
             }
         );
-        assert_eq!(work, if cancel { 32 } else { 0 });
+        // Construction polls once per block of rows: the request made after
+        // the first row is observed at the first block poll, inside the rows.
+        if cancel {
+            assert!(work > 32 && work % 32 == 0 && work <= 32 * 1024, "{work}");
+            assert!(work < 32 * witness.weights.len(), "{work}");
+        } else {
+            assert_eq!(work, 0);
+        }
         assert_eq!(TWO_FE_ROUTING_BUILD_AT.get(), 16);
         let graph = owner.two_fe_pcg.as_ref().unwrap();
         assert!(

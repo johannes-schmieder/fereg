@@ -196,7 +196,9 @@ fn occurrence_and_wide_apply_break_after_real_inner_work() {
         .err()
         .unwrap();
         assert_eq!(error.code, crate::error::ErrorCode::Interrupted);
-        assert_eq!(CELL_COMPLETED_WORK.get(), 32);
+        // Rows poll once per POLL_UNITS block: all eight rows finish before
+        // the next poll (compaction) observes the request.
+        assert_eq!(CELL_COMPLETED_WORK.get(), 8 * 32);
         assert!(crate::interrupt::cancellation_requested());
         CELL_CANCEL_PHASE.set(0);
         crate::interrupt::reset_cancellation();
@@ -222,7 +224,8 @@ fn occurrence_and_wide_apply_break_after_real_inner_work() {
             )
             .unwrap_err();
         assert_eq!(error.code, crate::error::ErrorCode::Interrupted);
-        assert_eq!(CELL_COMPLETED_WORK.get(), 512);
+        // Worker 0's first two wide cells (2 x 2200 units) cross one poll block.
+        assert_eq!(CELL_COMPLETED_WORK.get(), 4400);
         assert!(crate::interrupt::cancellation_requested());
         CELL_CANCEL_PHASE.set(0);
         crate::interrupt::reset_cancellation();
@@ -266,4 +269,76 @@ fn occurrence_allocation_failure_propagates_through_real_ols_owner() {
         assert_eq!(error.code, crate::error::ErrorCode::Allocation);
         assert!(!CELL_ALLOCATION_FAILURE.get());
     });
+}
+
+// Narrow products poll once per block of cells, not per cell: a request made
+// after the first gather (phase 3) or scatter (phase 4) cell is observed at
+// the next block poll, inside that pass.
+#[test]
+fn narrow_apply_breaks_inside_gather_and_scatter_blocks() {
+    const MARKER: &str = "FEREG_NARROW_APPLY_CANCEL_CHILD";
+    if std::env::var_os(MARKER).is_none() {
+        let status = std::process::Command::new(std::env::current_exe().unwrap())
+            .env(MARKER, "1")
+            .args([
+                "fe::routing_kernel::occurrence_tests::narrow_apply_breaks_inside_gather_and_scatter_blocks",
+                "--exact",
+                "--test-threads=1",
+            ])
+            .status()
+            .unwrap();
+        assert!(status.success());
+        return;
+    }
+    let (workers, firms) = (3000, 500);
+    let left: Vec<u32> = (0..2 * workers).map(|row| (row / 2) as u32).collect();
+    let right: Vec<u32> = (0..2 * workers)
+        .map(|row| ((row / 2 + 7 * (row % 2)) % firms) as u32)
+        .collect();
+    let a = LevelIndex::from_codes(&left, workers).unwrap();
+    let b = LevelIndex::from_codes(&right, firms).unwrap();
+    let design = BorrowedInterceptFeDesign::new(
+        left.len(),
+        vec![
+            BorrowedInterceptEffect::new(&left, workers, &a).unwrap(),
+            BorrowedInterceptEffect::new(&right, firms, &b).unwrap(),
+        ],
+    )
+    .unwrap();
+    let kernel = build_occurrence(&design, 0, BorrowedMapWeights::Unit, 1., limits())
+        .unwrap()
+        .kernel
+        .unwrap();
+    let cells = kernel.cell_count();
+    assert_eq!(cells, 2 * workers);
+    let input: Vec<f64> = (0..firms).map(|firm| firm as f64 / 7.).collect();
+    let mut expected = vec![0.; firms];
+    kernel
+        .apply(&input, &mut expected, &mut vec![0.; workers], 1, 1)
+        .unwrap();
+    for phase in [3, 4] {
+        CELL_COMPLETED_WORK.set(0);
+        CELL_CANCEL_PHASE.set(phase);
+        let error = kernel
+            .apply(&input, &mut vec![0.; firms], &mut vec![0.; workers], 1, 1)
+            .unwrap_err();
+        CELL_CANCEL_PHASE.set(0);
+        assert_eq!(error.code, crate::error::ErrorCode::Interrupted);
+        assert!(crate::interrupt::cancellation_requested());
+        crate::interrupt::reset_cancellation();
+        let completed = CELL_COMPLETED_WORK.get();
+        assert!(
+            completed > 2 && completed < 2 * cells,
+            "phase {phase}: {completed}"
+        );
+        assert!(completed <= POLL_UNITS, "phase {phase}: {completed}");
+    }
+    let mut again = vec![0.; firms];
+    kernel
+        .apply(&input, &mut again, &mut vec![0.; workers], 1, 1)
+        .unwrap();
+    assert_eq!(
+        again.iter().map(|v| v.to_bits()).collect::<Vec<_>>(),
+        expected.iter().map(|v| v.to_bits()).collect::<Vec<_>>()
+    );
 }
