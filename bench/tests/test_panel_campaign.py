@@ -1,6 +1,7 @@
 """Checks for real-panel preparation, FE comparison and scientific rejection."""
 from pathlib import Path
 import sys
+import json
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -50,6 +51,33 @@ class PanelTests(unittest.TestCase):
             self.assertTrue((root/'manifest.json').exists())
             self.assertTrue((root/'data/warm.dta').exists())
             self.assertTrue((root/'smoke-data/warm.dta').exists())
+
+    def test_reuse_keeps_inputs_and_schedules_a_panel_subset(self):
+        with tempfile.TemporaryDirectory() as d:
+            old, new = Path(d)/'old', Path(d)/'new'
+            for folder in ['data', 'smoke-data', 'input']:
+                (old/folder).mkdir(parents=True)
+            datasets = {}
+            for name in panel.PANELS:
+                for folder, key in [('data', name), ('smoke-data', 'smoke-'+name)]:
+                    path = old/folder/f'ols-veneto-{name}-n10.dta'
+                    path.write_bytes((name+folder).encode())
+                    datasets[key] = dict(sha256=panel.sha256(path))
+            (old/'input/prior-panels.json').write_text('{}')
+            frame = pd.DataFrame(dict(x1=[1.]))
+            cells = [panel.cell_for(p, frame, t) for p in panel.PANELS for t in panel.THREADS]
+            (old/'manifest.json').write_text(json.dumps(dict(cells=cells, datasets=datasets, panels=panel.PANELS,
+                                                             policy=dict(repetitions=3), timed_fits=0)))
+            new.mkdir()
+            panel.reuse(new, old, save_fe=False, panels=['long'])
+            manifest = json.loads((new/'manifest.json').read_text())
+            self.assertEqual(list(manifest['panels']), ['long'])
+            self.assertEqual({c['design'] for c in manifest['cells']}, {'veneto-long'})
+            self.assertTrue(all(c['id'].endswith('-fe0') and not c['save_fe'] for c in manifest['cells']))
+            self.assertEqual(manifest['timed_fits'], 28*panel.REPETITIONS)
+            self.assertFalse(manifest['policy']['save_fe'])
+            with self.assertRaises(ValueError):
+                panel.reuse(Path(d)/'other', old, panels=['middle'])
 
     def test_manifest_ladder_and_license(self):
         frame = pd.DataFrame(dict(x1=[1.], y=[2.]))

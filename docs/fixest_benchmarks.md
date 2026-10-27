@@ -32,9 +32,10 @@ New arms:
 - **PyFixest main** at `263cf2d3` with within-py 0.4.0, whose default is the
   `within` LSMR demeaner with adaptive preconditioning. This default is merged
   but not yet in a PyFixest release. It also runs in every configuration.
-- **areg** in the three four-worker one-FE OLS configurations, the only ones it
-  can fit. Its absorbed count is compared after adding back the intercept it
-  reports separately.
+- **areg** in the three four-worker one-FE OLS configurations. Its absorbed
+  count is compared after adding back the intercept it reports separately.
+  Stata 19's `areg` also absorbs several effects; restricting it to one-FE cells
+  was a harness error, and a supplement adds it to the multi-FE OLS cells.
 
 Both PyFixest arms keep default estimation tolerances, recover saved FE at
 1e-11 like the fixest arms, and use locked Linux environments built in the

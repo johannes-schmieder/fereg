@@ -72,7 +72,8 @@ def render(campaign, frame, output):
     pdf.text('Veneto AKM<br/>Core scaling and '+('saved effects' if saved else 'estimation without saved effects'), 'TitleCustom')
     date = datetime.strptime(campaign['context']['run_id'][:8], '%Y%m%d').strftime('%d %B %Y')
     pdf.text(date+'  /  Linux SCC  /  Frozen packaged runtime', 'SmallCustom')
-    pdf.text('All 30 fereg fits pass the production gates. '+
+    cells, repetitions = campaign['manifest']['cells'], campaign['manifest']['policy']['repetitions']
+    pdf.text(f'All {len(cells)*repetitions} fereg fits pass the production gates. '+
              ('Every comparator configuration is ineligible under the unchanged scientific checks, '
               'so its time is descriptive. This campaign does not establish an eligible cross-package speed ranking.'
               if not eligible_references else
@@ -82,7 +83,7 @@ def render(campaign, frame, output):
     pdf.table([['Retained fevc panel', 'Rows', 'Workers', 'Firms', 'Controls']]+[
         [p.capitalize(), f"{s['rows']:,}", f"{s['workers']:,}", f"{s['firms']:,}", s['regressors']]
         for p, s in panels.items()], [125, 110, 110, 105, 57])
-    for panel in ['long', 'short']:
+    for panel in panels:
         native = frame[(frame.design == 'veneto-'+panel) & (frame.arm == 'fereg')].sort_values('threads')
         first, last = native.iloc[0], native.iloc[-1]
         pdf.text(f'<b>{panel.capitalize()} panel:</b> {first.seconds:.3f} seconds at one core to '
@@ -101,7 +102,7 @@ def render(campaign, frame, output):
              'default/strict and PyFixest (0.60.0 Rust MAP and the pinned main revision with within LSMR); '
              'reghdfe 6.14.1 at 1/2/4 because Stata is licensed for four cores. '
              f'{planned} planned positions. One isolated allocation per panel; different physical hosts.')
-    for panel in ['long', 'short']:
+    for panel in panels:
         selected = frame[frame.design == 'veneto-'+panel]
         native = selected[selected.arm == 'fereg'].sort_values('threads')
         pdf.page(panel.capitalize()+' panel: native core scaling')
@@ -138,11 +139,13 @@ def render(campaign, frame, output):
              'Every failed observation remains visible. No replacement observations or tolerance changes were used.')
     pdf.table([['Gate', 'Outcome'],
                ['Scheduler and application', 'Setup, smoke and both production tasks: failed=0, exit=0; all sentinels present.'],
-               ['Native repeated science', '20 exact repeat checks; scientific CSV'+(' and raw FE' if saved else '')+' hashes, reported RSS and discrete decisions stable.'],
-               ['Native core consistency', '30 checks against one-core reference, including 6 one-core checks and 24 between core counts; four-core witnesses also pass.'],
-               ['Independent witnesses', 'Both native dense-design real-data smokes pass coefficients'+(', covariance and fitted values' if saved else ' and covariance')+
+               ['Native repeated science', f'{len(cells)*(repetitions-1)} exact repeat checks; scientific CSV'+(' and raw FE' if saved else '')+' hashes, reported RSS and discrete decisions stable.'],
+               ['Native core consistency', f'{len(cells)*repetitions} checks against the one-core reference, including '
+                f'{sum(c["threads"] == 1 for c in cells)*repetitions} one-core checks and '
+                f'{sum(c["threads"] != 1 for c in cells)*repetitions} between core counts; four-core witnesses also pass.'],
+               ['Independent witnesses', 'Every native dense-design real-data smoke passes coefficients'+(', covariance and fitted values' if saved else ' and covariance')+
                 '. Full-panel graph rank'+(', model scores and objective replay pass.' if saved else ' passes.')],
-               ['Host evidence', 'Both complete reservations and all-queue censuses replay successfully; continuous samples report no known competing compute.'],
+               ['Host evidence', 'Every complete reservation and all-queue census replays successfully; continuous samples report no known competing compute.'],
                ['Retained input audit', 'Exact fevc identifiers. Control-adjustment max errors: 1.54e-13 long, 1.01e-13 short (gate 1e-12).']],
               [132, 375], padding=5)
     pdf.text('Reference accuracy and interpretation', 'SectionCustom')
@@ -178,7 +181,8 @@ def render(campaign, frame, output):
 def export(root, output):
     campaign = load(root)
     hosts = json.loads((root/'host-validation.json').read_text())
-    if set(hosts) != {'1', '2'} or not all(v['passed'] for v in hosts.values()):
+    tasks = {str(task) for task in range(1, len(campaign['manifest'].get('panels', 'ls'))+1)}
+    if set(hosts) != tasks or not all(v['passed'] for v in hosts.values()):
         raise ValueError('retained host replay is missing')
     frame = validated_summary(campaign)
     output.mkdir(parents=True, exist_ok=True)

@@ -24,7 +24,10 @@ def audit_host_observations(root):
     """Replay retained scheduler observations without exporting private captures."""
     from qualify_scc import validate_census, validate_reservation
     reports = {}
-    for task in [1, 2]:
+    # One production task per scheduled panel; older collections scheduled both.
+    manifest = root/'manifest.json'
+    panels = json.loads(manifest.read_text()).get('panels', 'ls') if manifest.exists() else 'ls'
+    for task in range(1, len(panels)+1):
         directory = root/f'host-task-{task}'
         report = json.loads((directory/'host.json').read_text())
         raw = (directory/'host-observations.jsonl').read_bytes()
@@ -75,8 +78,10 @@ def load(root):
     context = json.loads((root/'context.json').read_text())
     manifest = json.loads((root/'manifest.json').read_text())
     jobs = json.loads((root/'accounting.json').read_text())
+    panels = manifest.get('panels', {'long': None, 'short': None})
+    tasks = range(1, len(panels)+1)
     expected = {(str(context['setup_job']), 'undefined'), (str(context['smoke_job']), 'undefined'),
-                (str(context['production_job']), '1'), (str(context['production_job']), '2')}
+                *((str(context['production_job']), str(task)) for task in tasks)}
     seen = set()
     for job in jobs:
         task = job['taskid'] if job['taskid'] not in ['0', 'NONE'] else 'undefined'
@@ -105,10 +110,10 @@ def load(root):
             or len(smoke['records']) != smoke.get('expected_fits', 8)):
         raise ValueError('real-data smoke incomplete')
     checks = [s for s in smoke['science'] if s['kind'] == 'dense-oracle' and s['arm'] == 'fereg']
-    if len(checks) != 2 or not all(s['passed'] for s in checks):
+    if len(checks) != len(panels) or not all(s['passed'] for s in checks):
         raise ValueError('native independent smoke failed')
     records, comparisons, science = [], [], []
-    for task in [1, 2]:
+    for task in tasks:
         label = f'task-{task}'
         result = json.loads((root/label/'results.json').read_text())
         host = json.loads((root/('host-'+label)/'host.json').read_text())
@@ -132,17 +137,18 @@ def load(root):
     positions = [(r['cell'], r['arm'], r['repetition']) for r in records]
     if len(positions) != len(set(positions)) or set(positions) != expected_positions:
         raise ValueError('campaign fit coverage differs from the frozen schedule')
+    repetitions = manifest['policy']['repetitions']
     native = [r for r in records if r['arm'] == 'fereg']
-    if len(native) != 30 or any(r['status'] != 'ok' or r.get('metadata', {}).get('rc') != '0'
+    if len(native) != len(manifest['cells'])*repetitions or any(r['status'] != 'ok' or r.get('metadata', {}).get('rc') != '0'
                                or r['metadata'].get('complete') != '1' for r in native):
         raise ValueError('native application evidence failed')
     fixed = [s for s in science if s['kind'] == 'fixed-worker-exact']
     cross = [s for s in science if s['kind'] == 'cross-worker']
-    if len(fixed) != 20 or not all(s['passed'] for s in fixed):
+    if len(fixed) != len(manifest['cells'])*(repetitions-1) or not all(s['passed'] for s in fixed):
         raise ValueError('native fixed-worker exactness failed')
-    if len(cross) != 30 or not all(s['eligible'] for s in cross):
+    if len(cross) != len(manifest['cells'])*repetitions or not all(s['eligible'] for s in cross):
         raise ValueError('native cross-worker scientific agreement failed')
-    for panel in ['long', 'short']:
+    for panel in panels:
         audit = json.loads((root/'environment/input-audit.json').read_text())[panel]
         if not audit['exact_identifiers'] or audit['adjustment_max_error'] > 1e-12:
             raise ValueError('retained fevc input audit failed')
@@ -175,7 +181,8 @@ def collect(context_path, output):
              'environment/pyfixest-freeze.txt', 'environment/pyfixest-within-freeze.txt',
              'logs/setup.sge', 'logs/smoke.sge', 'logs/harness-tests.log', 'logs/package-check.log',
              'logs/input-audit.log', 'smoke/results.json', 'smoke/COMPLETE']
-    for task in [1, 2]:
+    panels = json.loads(remote('cat '+shlex.quote(run+'/manifest.json'))).get('panels', 'ls')
+    for task in range(1, len(panels)+1):
         files += [f'task-{task}/results.json', f'task-{task}/COMPLETE',
                   f'host-task-{task}/host.json', f'logs/production.{task}.sge']
     if reused:

@@ -30,18 +30,28 @@ Generated captures belong under `target/tmp/` and are deleted after inspection.
 ## SCC package comparison
 
 `campaign.json` freezes the descriptive OLS/PPML comparison against pinned fixest
-0.14.2, PyFixest, reghdfe, ppmlhdfe and areg: 56 configurations, 36 synthetic
-datasets, three repetitions and 924 planned fits, including separate default and
-strict fixest profiles. PyFixest runs in every configuration twice: the 0.60.0
+0.14.2, PyFixest, reghdfe, ppmlhdfe and Stata 19 areg: 56 configurations, 36
+synthetic datasets, three repetitions and 978 planned fits, including separate
+default and strict fixest profiles. PyFixest runs in every configuration twice: the 0.60.0
 release with its default Rust MAP demeaner, and a pinned main revision whose
 default is the `within` LSMR demeaner. Both keep default estimation tolerances
-and recover saved FE at 1e-11, like the fixest arms. areg absorbs exactly one
-effect, so it runs in the three four-worker one-FE OLS configurations; its
-absorbed count is compared after adding back the intercept it reports
-separately. Four workers are primary; selected configurations use 1/8/16 workers.
+and recover saved FE at 1e-11, like the fixest arms. areg runs in every OLS
+configuration with at most four workers and no saved FE (it cannot save
+individual effects). With several effects it uses `dfabsorb noabsorbtest
+tolerance(1e-8) iterate(16000)`, the options of the August 2026 comparison.
+Its absorbed count is compared after adding back the intercept it reports
+separately; with clustered covariance it does not discount effects nested in
+the clusters, so those cells stay descriptive. Four workers are primary; selected configurations use 1/8/16 workers.
 Inputs have 100,000, one million or four million rows and 16 controls, with AKM,
 one-FE and dense/sparse two-/three-FE designs. Covariance and saved-FE variants
 remain part of the baseline panel.
+
+`campaign.py prepare RUN_ROOT --supplement` (or `CAMPAIGN_SUPPLEMENT=1` for
+`scc/setup.sh`) schedules a supplement instead: areg paired with fereg in the 18
+multi-FE OLS cells where the beta.7 rerun lacked it, and AKM fits at one million
+rows and four workers with `supplement_controls` (4 and 64) instead of 16
+controls, for every arm. Its three bundles reuse the frozen datasets where they
+exist and generate the new control counts with the same generator and seed.
 
 `scc/setup.sh` builds a frozen source archive, checks native ABI/numerics and
 benchmark tooling, and copies the pinned comparator environment from
@@ -110,7 +120,10 @@ audited panel inputs, smoke witnesses and policy byte for byte and rebuilds only
 the per-cell arm lists; `--without-saved-fe` schedules the same cells without
 saved FE, so commands time estimation and inference and comparisons cover
 slopes, covariance, sample, rank and RSS. The collector retains the reuse job
-and the prior run's preparation records. Each panel runs sequentially in
+and the prior run's preparation records. `--panels long` schedules one panel;
+`scc/panel_pair.sh` then runs the production task of several such runs back to
+back in one whole-node job (for example the long panel with and without saved
+FE), so their absolute times share a host. Each panel runs sequentially in
 one independently verified whole-host allocation, using common socket-ordered
 CPU prefixes and NUMA memory binding. A separate four-slot real-data smoke must
 pass before either production task runs. The two panels may use different hosts.

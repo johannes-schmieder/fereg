@@ -44,12 +44,13 @@ def verify_runtime(root):
 
 def configurations(smoke=False):
     result = []
-    def add(model, design='akm-baseline', rows=1000000, threads=4, vce=None, save_fe=False, section='baseline'):
+    def add(model, design='akm-baseline', rows=1000000, threads=4, vce=None, save_fe=False, section='baseline',
+            regressors=POLICY['controls']):
         vce = vce or ('iid' if model=='ols' else 'robust')
         cell = dict(model=model,design=design,rows=rows,threads=threads,vce=vce,
-                    save_fe=save_fe,section=section,regressors=16,weights='unit')
+                    save_fe=save_fe,section=section,regressors=regressors,weights='unit')
         cell['effects'] = 1 if design=='one-fe' else 3 if design.startswith('three-') else 2
-        cell['id'] = f'{model}-{design}-n{rows}-t{threads}-{vce}-fe{int(save_fe)}'
+        cell['id'] = f'{model}-{design}-n{rows}-t{threads}-{vce}-fe{int(save_fe)}'+controls_suffix(cell)
         cell['arms'] = arms(cell)
         if not any(c['id']==cell['id'] for c in result): result.append(cell)
     if smoke:
@@ -71,12 +72,41 @@ def configurations(smoke=False):
     return result
 
 
+def controls_suffix(cell):
+    """Cells keep their historical identities at the standard control count."""
+    k = cell.get('regressors', POLICY['controls'])
+    return '' if k == POLICY['controls'] else f'-k{k}'
+
+
+def supplement_configurations():
+    """Stata 19 areg wherever the main panel lacks it, and other control counts.
+
+    Every cell pairs its comparators with fereg on the same node. The main
+    panel's frozen datasets serve the areg cells; other control counts use
+    newly generated inputs from the same generator and seed.
+    """
+    result = []
+    for cell in configurations():
+        if 'areg' in cell['arms'] and cell['effects'] > 1:
+            result.append(dict(cell, arms=['fereg', 'areg'], section='supplement-areg'))
+    for k in POLICY['supplement_controls']:
+        for model in ['ols', 'ppml']:
+            cell = dict(model=model, design='akm-baseline', rows=POLICY['baseline_rows'], threads=POLICY['main_threads'],
+                        vce='iid' if model == 'ols' else 'robust', save_fe=False, section='supplement-controls',
+                        regressors=k, weights='unit', effects=2)
+            cell['id'] = f"{model}-akm-baseline-n{cell['rows']}-t{cell['threads']}-{cell['vce']}-fe0"+controls_suffix(cell)
+            cell['arms'] = arms(cell)
+            result.append(cell)
+    return result
+
+
 def arms(cell):
     if 'arms' in cell: return list(cell['arms'])
     result = ['fereg','fixest',*PYFIXEST_ARMS]
     if cell['threads']<=4: result.append('reghdfe' if cell['model']=='ols' else 'ppmlhdfe')
-    # areg absorbs exactly one categorical effect and runs linear models only.
-    if cell['model']=='ols' and cell['effects']==1 and cell['threads']<=4 and not cell['save_fe']:
+    # Stata 19 areg absorbs several categorical effects for linear models; it
+    # cannot save individual effects, and Stata is licensed for four cores.
+    if cell['model']=='ols' and cell['threads']<=4 and not cell['save_fe']:
         result.append('areg')
     if cell['model']=='ppml' and cell['design'] in ['akm-baseline','two-sparse','three-sparse'] and cell['rows']==1000000 and cell['threads']==4:
         result.append('fixest-strict')
@@ -85,21 +115,23 @@ def arms(cell):
 
 
 def dataset_key(cell):
-    return f"{cell['model']}-{cell['design']}-n{cell['rows']}"
+    return f"{cell['model']}-{cell['design']}-n{cell['rows']}"+controls_suffix(cell)
 
 
-def prepare(root):
-    cells = configurations()
+def prepare(root, supplement=False):
+    cells = supplement_configurations() if supplement else configurations()
+    bundles = POLICY['supplement_bundles'] if supplement else POLICY['bundles']
     # Dataset units keep the complete baseline thread/VCE/output panel together.
     units = {}
     for cell in cells: units.setdefault(dataset_key(cell),[]).append(cell)
-    bundles = [[] for _ in range(POLICY['bundles'])]
+    bundles = [[] for _ in range(bundles)]
     costs = [0.0]*len(bundles)
     for key, group in sorted(units.items(),key=lambda kv:sum(c['rows']*len(arms(c)) for c in kv[1]),reverse=True):
         slot = min(range(len(bundles)),key=costs.__getitem__)
         bundles[slot].extend(group)
         costs[slot] += sum(c['rows']*len(arms(c)) for c in group)
-    write_json(root/'manifest.json',dict(schema=1,policy=POLICY,cells=cells,bundles=bundles,
+    policy = dict(POLICY, bundles=len(bundles))
+    write_json(root/'manifest.json',dict(schema=1,policy=policy,cells=cells,bundles=bundles,supplement=supplement,
                timed_fits=sum(len(arms(c)) for c in cells)*POLICY['repetitions']))
 
 
@@ -413,7 +445,9 @@ def run_bundle(root, task, smoke=False, frozen_inputs=None, monitor=None):
     taskroot.mkdir(exist_ok=False)
     for name in ['source','environment']:(taskroot/name).symlink_to(root/name,target_is_directory=True)
     (taskroot/'data').mkdir();(taskroot/'output').mkdir()
-    warmcell=dict(cells[0],model='ppml',design='one-fe',effects=1,rows=512)
+    # The warm input must carry every control a cell in this bundle uses.
+    warmcell=dict(cells[0],model='ppml',design='one-fe',effects=1,rows=512,
+                  regressors=max(c.get('regressors',POLICY['controls']) for c in cells))
     make_dataset(warmcell,taskroot/'data/warm.dta')
     for cell in cells:
         if monitor:monitor.check()
@@ -421,8 +455,8 @@ def run_bundle(root, task, smoke=False, frozen_inputs=None, monitor=None):
         key=dataset_key(cell)
         path=taskroot/'data'/(key+'.dta')
         if not path.exists():
-            frame,metadata=(frozen_dataset(cell,path,frozen_inputs) if frozen_inputs and not smoke
-                            else make_dataset(cell,path))
+            frozen=frozen_inputs and not smoke and key in frozen_inputs['datasets']
+            frame,metadata=frozen_dataset(cell,path,frozen_inputs) if frozen else make_dataset(cell,path)
             datasets[key]=metadata
         else:frame=pd.read_stata(path,convert_categoricals=False)
         selected=arms(cell);failed=set()
@@ -477,8 +511,9 @@ if __name__=='__main__':
     parser.add_argument('--task',type=int,default=1)
     parser.add_argument('--frozen-inputs',type=Path)
     parser.add_argument('--observe-host',action='store_true')
+    parser.add_argument('--supplement',action='store_true',help='prepare: schedule the supplement cells')
     args=parser.parse_args()
-    if args.mode=='prepare':prepare(args.root)
+    if args.mode=='prepare':prepare(args.root,args.supplement)
     else:
         frozen=json.loads(args.frozen_inputs.read_text()) if args.frozen_inputs else None
         if args.observe_host:

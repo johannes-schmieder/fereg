@@ -45,9 +45,9 @@ def cell_for(panel, frame, threads, save_fe=True):
                 + (['reghdfe'] if threads <= 4 else []))
 
 
-def smoke_fits():
-    """One four-worker fit of every arm on each panel's real-data smoke."""
-    return len(PANELS)*len(cell_for('long', pd.DataFrame(), 4)['arms'])
+def smoke_fits(panels=PANELS):
+    """One four-worker fit of every arm on each scheduled panel's real-data smoke."""
+    return len(panels)*len(cell_for('long', pd.DataFrame(), 4)['arms'])
 
 
 def save_dataset(frame, path):
@@ -145,12 +145,13 @@ def prepare(root, long, short):
                timed_fits=sum(len(c['arms']) for c in cells)*REPETITIONS))
 
 
-def reuse(root, previous, save_fe=True):
+def reuse(root, previous, save_fe=True, panels=None):
     """Schedule the current arms on a prior run's audited panel inputs.
 
     The datasets, smoke witnesses, retained-input record and policy are copied
-    byte for byte; only the per-cell arm lists and the saved-FE request are
-    rebuilt. Without saved FE, commands time estimation and inference only.
+    byte for byte; only the per-cell arm lists, the saved-FE request and the
+    optional panel subset are rebuilt. Without saved FE, commands time
+    estimation and inference only.
     """
     old = json.loads((previous/'manifest.json').read_text())
     for folder in ['data', 'smoke-data']:
@@ -162,9 +163,13 @@ def reuse(root, previous, save_fe=True):
         matches = list((root/folder).glob(f'ols-veneto-{panel}-n*.dta'))
         if len(matches) != 1 or sha256(matches[0]) != identity['sha256']:
             raise ValueError('prior panel input changed')
+    selected = [panel for panel in old['panels'] if panel in (panels or old['panels'])]
+    if not selected or set(panels or []) - set(selected):
+        raise ValueError('unknown panel subset')
     cells = [dict(c, **{k: v for k, v in cell_for(c['design'][7:], pd.DataFrame(), c['threads'], save_fe).items()
-                        if k in ('id', 'arms', 'save_fe')}) for c in old['cells']]
+                        if k in ('id', 'arms', 'save_fe')}) for c in old['cells'] if c['design'][7:] in selected]
     write_json(root/'manifest.json', dict(old, cells=cells, reused_inputs=str(previous),
+               panels={panel: old['panels'][panel] for panel in selected},
                policy=dict(old['policy'], save_fe=save_fe),
                timed_fits=sum(len(c['arms']) for c in cells)*REPETITIONS))
 
@@ -249,7 +254,8 @@ def compare(a, b, cell):
 def run(root, task, smoke):
     campaign.verify_runtime(root)
     manifest = json.loads((root/'manifest.json').read_text())
-    selected = ['long', 'short'] if smoke else [['long', 'short'][task-1]]
+    scheduled = list(manifest['panels'])
+    selected = scheduled if smoke else [scheduled[task-1]]
     label = 'smoke' if smoke else f'task-{task}'
     taskroot = root/label
     taskroot.mkdir(exist_ok=False)
@@ -362,7 +368,7 @@ def run(root, task, smoke):
             if sha256(path) != identity['sha256']:
                 raise ValueError('panel input changed during timing')
     campaign.verify_runtime(root)
-    expected_count = smoke_fits() if smoke else sum(len(c['arms']) for c in manifest['cells'] if c['design'] == 'veneto-'+selected[0])*REPETITIONS
+    expected_count = smoke_fits(scheduled) if smoke else sum(len(c['arms']) for c in manifest['cells'] if c['design'] == 'veneto-'+selected[0])*REPETITIONS
     result = dict(records=records, comparisons=comparisons, science=science, complete=len(records) == expected_count,
                   expected_fits=expected_count, host=socket.gethostname(), job=os.environ['JOB_ID'],
                   task=os.environ.get('SGE_TASK_ID'), native_gate_pass=True)
@@ -382,12 +388,14 @@ if __name__ == '__main__':
     parser.add_argument('--previous', type=Path, help='prior run whose audited inputs are reused')
     parser.add_argument('--without-saved-fe', action='store_true',
                         help='reuse: time estimation and inference without saving FE')
+    parser.add_argument('--panels', nargs='+', choices=list(PANELS),
+                        help='reuse: schedule only these panels, one production task each')
     parser.add_argument('--task', type=int, choices=[1, 2], default=1)
     args = parser.parse_args()
     if args.mode == 'prepare':
         prepare(args.root, args.long, args.short)
     elif args.mode == 'reuse':
-        reuse(args.root, args.previous, not args.without_saved_fe)
+        reuse(args.root, args.previous, not args.without_saved_fe, args.panels)
     elif args.mode == 'audit':
         audit_inputs(args.root)
     else:

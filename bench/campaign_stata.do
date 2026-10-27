@@ -34,11 +34,15 @@ if "`vce'" == "iid" & "`arm'" == "areg" local inference vce(ols)
 if "`vce'" == "cluster" local inference vce(cluster cluster)
 local command `arm'
 if "`arm'" == "fereg" & "`model'" == "ppml" local command feppml
-* areg absorbs one categorical effect without saved-effect syntax.
-if "`arm'" == "areg" & ("`model'" != "ols" | `effects' != 1 | `save_fe') exit 198
+* Stata 19 areg absorbs several categorical effects but cannot save them.
+if "`arm'" == "areg" & ("`model'" != "ols" | `save_fe') exit 198
 local options
 if "`arm'" == "fereg" local options threads(`threads')
 if "`tolerance'" != "" local options `options' tolerance(`tolerance')
+* Multi-effect areg uses the exact-collinearity DoF adjustment and the
+* tolerance of the August 2026 comparison, without the absorbed-effects F test.
+local timed_options `options'
+if "`arm'" == "areg" & `effects' > 1 local timed_options `options' dfabsorb noabsorbtest tolerance(1e-8) iterate(16000)
 * Initialization uses a separate small input and is excluded from timing.
 quietly use `"`warm'"', clear
 capture noisily quietly `command' y `xvars', absorb(g1) `inference' `options'
@@ -54,7 +58,7 @@ file open ready using `"`output'/READY"', write text replace
 file write ready "ready" _n
 file close ready
 plugin call _campaign_clock, start
-capture noisily quietly `command' y `xvars', absorb(`absorb') `inference' `options'
+capture noisily quietly `command' y `xvars', absorb(`absorb') `inference' `timed_options'
 local rc = _rc
 plugin call _campaign_clock, stop `command_seconds' `resolution'
 file open done using `"`output'/DONE"', write text replace

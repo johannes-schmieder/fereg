@@ -8,6 +8,8 @@
   "main_threads": 4,
   "repetitions": 3,
   "bundles": 8,
+  "supplement_bundles": 3,
+  "supplement_controls": [4, 64],
   "command_timeout_seconds": 600,
   "process_timeout_seconds": 900,
   "job_wall_seconds": 21600,

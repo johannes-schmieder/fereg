@@ -60,7 +60,7 @@ assert 'CAMPAIGN_REFERENCES_COMPLETE rc=0' in pathlib.Path(sys.argv[1]).read_tex
 PY
 cd "$RUN_ROOT/source"
 bash bench/scc/pyfixest_environment.sh "$RUN_ROOT/environment" > "$RUN_ROOT/logs/pyfixest-environment.log" 2>&1
-python3 bench/campaign.py prepare "$RUN_ROOT"
+python3 bench/campaign.py prepare "$RUN_ROOT" ${CAMPAIGN_SUPPLEMENT:+--supplement}
 Rscript -e 'library(fixest);library(foreign);library(jsonlite);library(digest);writeLines(toJSON(as.list(setNames(vapply(loadedNamespaces(),find.package,character(1)),loadedNamespaces())),auto_unbox=TRUE),file.path(Sys.getenv("RUN_ROOT"),"environment/r-package-paths.json"))'
 python3 - "$RUN_ROOT" <<'PY'
 import hashlib,json,pathlib,sys,tomllib,shutil

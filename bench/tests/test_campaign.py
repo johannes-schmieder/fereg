@@ -7,7 +7,7 @@ import shutil
 import subprocess
 import numpy as np
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
-from campaign import configurations, arms, make_dataset, compare_records, prepare, absorbed_rank, frozen_dataset
+from campaign import configurations, arms, make_dataset, compare_records, prepare, absorbed_rank, frozen_dataset, supplement_configurations, dataset_key
 from campaign_oracle import oracle
 
 
@@ -35,11 +35,26 @@ class CampaignTests(unittest.TestCase):
     def test_pyfixest_and_areg_arms(self):
         for cell in configurations()+configurations(True):
             self.assertTrue({'pyfixest','pyfixest-within'}<=set(arms(cell)))
-            one_fe=cell['model']=='ols' and cell['effects']==1 and cell['threads']<=4 and not cell['save_fe']
-            self.assertEqual('areg' in arms(cell),one_fe)
-        self.assertEqual(sum('areg' in arms(c) for c in configurations()),3)
+            eligible=cell['model']=='ols' and cell['threads']<=4 and not cell['save_fe']
+            self.assertEqual('areg' in arms(cell),eligible)
+        self.assertEqual(sum('areg' in arms(c) for c in configurations()),21)
         metadata=dict(df_a='239',arm='areg')
         self.assertEqual(absorbed_rank(metadata,dict(model='ols'),None),240.)
+
+    def test_supplement_pairs_areg_and_control_counts_with_fereg(self):
+        cells=supplement_configurations()
+        self.assertEqual(len(cells),len({c['id'] for c in cells}))
+        areg=[c for c in cells if c['section']=='supplement-areg']
+        self.assertEqual(len(areg),18)
+        self.assertTrue(all(c['arms']==['fereg','areg'] and c['effects']>1 for c in areg))
+        main={dataset_key(c) for c in configurations()}
+        self.assertTrue(all(dataset_key(c) in main for c in areg))
+        controls=[c for c in cells if c['section']=='supplement-controls']
+        self.assertEqual(sorted((c['model'],c['regressors']) for c in controls),
+                         [('ols',4),('ols',64),('ppml',4),('ppml',64)])
+        self.assertTrue(all(c['id'].endswith(f"-k{c['regressors']}") and dataset_key(c).endswith(f"-k{c['regressors']}")
+                            and c['arms'][0]=='fereg' for c in controls))
+        self.assertIn('areg',[c for c in controls if c['model']=='ols'][0]['arms'])
 
     def test_pyfixest_saved_effects_fill_the_omitted_reference(self):
         import pandas as pd
