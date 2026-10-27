@@ -482,6 +482,7 @@ fn admit_detector_projection(
 
 #[path = "prepared_separation_graph.rs"]
 mod graph;
+mod trace;
 
 /// A separate scope makes success and failed initial construction observable;
 /// later rebuilds remain nested in the requesting separation phase.
@@ -901,6 +902,7 @@ where
                     return Ok((false, false));
                 }
                 let started = Instant::now();
+                let mut lap = trace::IrPhase::new(coordinator.view().generation);
                 let proposal = {
                     let view = coordinator.view();
                     prepared_bound_iterated_rectifier(
@@ -912,12 +914,14 @@ where
                         interrupt,
                     )?
                 };
+                lap.detected(&proposal);
                 fail_closed_comprehensive(&proposal)?;
                 if !proposal.dropped_original_rows.is_empty() {
                     let certified = {
                         let view = coordinator.view();
                         validate_numerical_proposal(view.prepared, proposal, ppml, config, linear)?
                     };
+                    lap.validated();
                     commit_numerical(
                         &mut coordinator,
                         &mut reports,
@@ -929,6 +933,7 @@ where
                         started,
                         config,
                     )?;
+                    lap.committed();
                     return Ok((false, true));
                 }
                 let replayed_certificate = replay_numerical_no_drop(
@@ -941,6 +946,7 @@ where
                     interrupt,
                     None,
                 )?;
+                lap.replayed();
                 let comprehensive_certified = proposal.status == MethodStatus::NoSeparation
                     && replayed_certificate
                         .as_ref()
@@ -2040,28 +2046,17 @@ fn prepared_iterated_rectifier(
             None,
         ));
     }
-    let boundary_weight = ir_boundary_weight(config, boundary.len());
-    let weights = fallible_collect(
-        outcome
-            .iter()
-            .map(|value| if *value > 0.0 { 1.0 } else { boundary_weight }),
-        outcome.len(),
-        "unable to reserve prepared IR weights",
-    )?;
-    let mut u = fallible_collect(
-        outcome
-            .iter()
-            .map(|value| if *value == 0.0 { 1.0 } else { 0.0 }),
-        outcome.len(),
-        "unable to reserve prepared IR recurrence",
-    )?;
+    let (weights, mut u) = ir_weights_and_recurrence(outcome, config, boundary.len())?;
 
     for iteration in 1..=config.max_ir_iterations {
         interrupt(PpmlInterruptPoint::SeparationIrIteration)?;
+        let mut lap = trace::IrIteration::new(generation.generation(), iteration, boundary.len());
         let projection = prepared_project(generation, &u, &weights, ppml, config, linear)?;
+        lap.projected();
         let fitted = &projection.fitted;
         let assessment = assess_ir_projection(outcome, |row| fitted[row], config);
         if let Some(certificate) = assessment.certificate {
+            lap.decided(trace::IrStep::Certified);
             let note = if assessment.scale <= f64::MIN_POSITIVE {
                 "prepared iterated rectifier converged to zero"
             } else {
@@ -2113,6 +2108,7 @@ fn prepared_iterated_rectifier(
                 "unable to reserve prepared IR proposal rows",
             )?;
             if !dropped.is_empty() {
+                lap.decided(trace::IrStep::Proposed(dropped.len()));
                 let certificate = detector_direction_certificate(
                     outcome,
                     &direction,
@@ -2146,6 +2142,7 @@ fn prepared_iterated_rectifier(
         if maximum > 0.0 {
             u.iter_mut().for_each(|value| *value /= maximum);
         }
+        lap.decided(trace::IrStep::Continued(trace::support(&u)));
     }
     Ok((
         DetectionProposal {
@@ -2163,6 +2160,31 @@ fn prepared_iterated_rectifier(
         },
         None,
     ))
+}
+
+/// Projection weights and initial recurrence of the rectifier: unit weight
+/// and zero on positive rows, the boundary weight and one on zero rows.
+fn ir_weights_and_recurrence(
+    outcome: &[f64],
+    config: SeparationConfig,
+    boundary_rows: usize,
+) -> Result<(Vec<f64>, Vec<f64>)> {
+    let boundary_weight = ir_boundary_weight(config, boundary_rows);
+    let weights = fallible_collect(
+        outcome
+            .iter()
+            .map(|value| if *value > 0.0 { 1.0 } else { boundary_weight }),
+        outcome.len(),
+        "unable to reserve prepared IR weights",
+    )?;
+    let u = fallible_collect(
+        outcome
+            .iter()
+            .map(|value| if *value == 0.0 { 1.0 } else { 0.0 }),
+        outcome.len(),
+        "unable to reserve prepared IR recurrence",
+    )?;
+    Ok((weights, u))
 }
 
 fn nonnegative_ir_boundary_violation(minimum_boundary: f64) -> f64 {
@@ -2399,8 +2421,14 @@ fn prepared_project(
         ));
     }
     fit_config.score_tolerance = config.projection_tolerance;
+    let mut lap = trace::Projection::new(
+        generation.generation(),
+        response.len(),
+        generation.model().columns.len() + 1,
+    );
     let fit =
         fit_prepared_weighted_linear_projection_once(generation.fit_view(), frame, fit_config)?;
+    lap.fitted(&fit);
     if !fit.certified() {
         return Err(FeregError::new(
             ErrorCode::NonConvergence,

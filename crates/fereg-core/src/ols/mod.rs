@@ -90,7 +90,10 @@ pub use prepared_fit::{
     PreparedOlsFitStatus, PreparedOlsFittedCoefficient, PreparedOlsOwnership,
     PreparedOlsRankCertificate, PreparedOlsScoreCertificate,
 };
-pub(crate) use prepared_fit::{fit_prepared_weighted_linear_projection_once, LinearSolveFrame};
+pub(crate) use prepared_fit::{
+    fit_prepared_weighted_linear_projection_once, CertifiedPreparedLinearProjection,
+    LinearSolveFrame,
+};
 pub use prepared_rhs::{
     absorb_prepared_ols_rhs_map, add_numeric_ols_predictor, build_prepared_ols_rhs, PreparedOlsRhs,
 };
