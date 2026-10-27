@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.0 beta.9 — 2026-10-28
 
 - OLS Auto with two categorical-intercept effects builds its aggregated
   (worker, firm) cells on the worker team, bit for bit as the serial build,

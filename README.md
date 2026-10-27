@@ -32,7 +32,7 @@ net install fereg, from("https://raw.githubusercontent.com/johannes-schmieder/fe
 
 Both routes install `fereg`, `feppml`, help files and the current native plugin
 from `main`, which carries the
-[v0.5.0-beta.8](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0-beta.8)
+[v0.5.0-beta.9](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0-beta.9)
 runtime. The beta requires Stata 18 or newer and includes native binaries
 for Linux x86-64, Windows x86-64 and macOS (Apple Silicon/Intel universal).
 No Rust, Python or extra Stata packages are needed to use the binary package.
