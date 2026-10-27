@@ -355,6 +355,15 @@ Use one report and retain a concise result. Do not re-run an unchanged candidate
 to obtain a favorable timing. See [development](../docs/development_workflow.md)
 for stopping rules, scientific requirements and practical Mac measurements.
 
+[`ppml_cases.py`](ppml_cases.py) writes campaign-DGP PPML replay cases for
+`time_exact.py` (arithmetic-preserving PPML candidates only):
+
+```
+python3 bench/ppml_cases.py --output target/tmp/TASK/ppml --threads 4 28
+python3 bench/time_exact.py --plugin base=... --plugin candidate=... \
+    --cases target/tmp/TASK/ppml/cases/*-t4.case --output target/tmp/TASK/t4 --repetitions 5
+```
+
 `native.py`, `time_exact.py`, the replay tools and the campaign runner remain
 maintained diagnostic entrypoints; use their `--help` for bounded runs. Schema
 adapters imported by qualification remain for compatibility.

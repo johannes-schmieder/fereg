@@ -232,6 +232,15 @@ measured and rejected (slower, or no fewer iterations).
 
 ### PPML two-FE parity work (development, Mac)
 
+PPML exact-timing protocol: campaign-DGP PPML cases are written by
+[`bench/ppml_cases.py`](../bench/ppml_cases.py) (maintained generator, policy
+seed, 16 regressors, robust VCE, `separation(fe simplex ir)`, tolerance 1e-8,
+iterate 10000) and timed with [`bench/time_exact.py`](../bench/time_exact.py),
+which guards exact science between the plugins it compares. The beta.7 lean
+record's case generator was never committed; this tool reproduces its protocol
+for arithmetic-preserving PPML candidates. Result-changing PPML candidates
+still need an extension of `bench/qualify.py`, which refuses PPML today.
+
 On an M2 Ultra Mac (development measurement, three repetitions per cell,
 medians of repetitions 2-3, arms interleaved, no competing build/test/Stata
 process observed), the exact parallel joint sections and the reuse of a
