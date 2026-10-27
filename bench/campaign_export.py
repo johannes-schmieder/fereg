@@ -68,7 +68,13 @@ def export(root, report, output, prefix):
     context, manifest = campaign['context'], campaign['manifest']
     repeats, workers = check_native_repetitions(campaign), check_workers(campaign)
     native = [r for r in campaign['records'] if r['arm'] == 'fereg']
-    if any(repeats.values()) or any(workers.values()) or any(r['status'] != 'ok' for r in native):
+    # A native command limit stays visible as a result; every other native failure stops the export.
+    limited = {r['cell'] for r in native if r['status'] in ['command-timeout', 'timeout']}
+    unexplained = [r for r in native if r['status'] != 'ok' and r['cell'] not in limited]
+    if (unexplained or any(v for k, v in repeats.items() if k not in limited)
+            or any(v for k, v in workers.items() if k not in limited)
+            or any(r['status'] not in ['command-timeout', 'timeout', 'skipped-after-failure']
+                   for r in native if r['cell'] in limited)):
         raise ValueError('native evidence failed; do not export or resample')
     hosts = host_replay(root, manifest)
     output.mkdir(parents=True, exist_ok=True)
@@ -118,7 +124,8 @@ def export(root, report, output, prefix):
                         eligible_arm_cells=int(summary.eligible.sum()),
                         convention_arm_cells=int((summary.agreement == 'convention').sum()),
                         statuses=dict(Counter(r['status'] for r in campaign['records'])),
-                        native_fits=len(native), native_all_pass=True,
+                        native_fits=len(native), native_all_pass=not limited,
+                        native_command_limits=sorted(limited),
                         exact_memory_positions=sum(bool(r.get('memory_exact')) for r in campaign['records']),
                         smoke_oracle_counts={a: dict(passed=sum(x['pass'] for x in smoke if x['arm'] == a),
                                                      total=sum(x['arm'] == a for x in smoke))

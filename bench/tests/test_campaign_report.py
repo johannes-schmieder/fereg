@@ -106,6 +106,10 @@ class CampaignReportTests(unittest.TestCase):
         campaign = fixture()
         row = summarize(campaign).query("cell == 'cell-4' and arm == 'fereg'").iloc[0]
         self.assertEqual((row.memory_method, row.rss_gib, row.rss_increment_gib), ('kernel peak', 1.5, 1.0))
+        failed = next(r for r in campaign['records'] if r['cell'] == 'cell-4' and r['arm'] == 'fixest')
+        failed.update(status='capture-error')
+        row = summarize(campaign).query("cell == 'cell-4' and arm == 'fixest'").iloc[0]
+        self.assertEqual((row.memory_method, row.rss_gib), ('kernel peak', 1.5))
         campaign['records'][0]['memory_exact'] = False
         row = summarize(campaign).query("cell == 'cell-4' and arm == 'fereg'").iloc[0]
         self.assertEqual((row.memory_method, row.rss_gib), ('sampled', 1.0))

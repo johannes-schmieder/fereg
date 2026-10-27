@@ -222,18 +222,24 @@ def summarize(campaign):
             observed = [value for r in runs if (value := completed_seconds(r)) is not None]
             # Exact: every paired repetition agrees. Convention: agreement up to
             # absorbed degrees-of-freedom counts and their covariance scalar.
+            native_ok = all(records[(cell['id'], 'fereg', rep)]['status'] == 'ok' for rep in range(1, count+1))
             if arm == 'fereg':
                 agreement = 'native'
             elif eligible:
                 agreement = 'exact'
             elif valid and not native_reasons and len(paired) == count:
                 agreement = 'convention'
+            elif observed and not native_ok:
+                # fereg did not finish, so these completed results were not compared.
+                agreement = 'unverified'
             else:
                 agreement = 'differs' if observed else 'unavailable'
-            if valid and all(r.get('memory_exact') for r in runs):
+            # Memory covers the same completed commands as the descriptive time.
+            completed = [r for r in runs if completed_seconds(r) is not None]
+            if completed and all(r.get('memory_exact') for r in completed):
                 method = 'kernel peak'
-                memory = median(r['peak_rss_bytes'] for r in runs)/2**30
-                increment = median(r['peak_rss_bytes']-r['ready_rss_bytes'] for r in runs)/2**30
+                memory = median(r['peak_rss_bytes'] for r in completed)/2**30
+                increment = median(r['peak_rss_bytes']-r['ready_rss_bytes'] for r in completed)/2**30
             elif valid and all(r.get('memory_sweeps', 0) >= 10 for r in runs):
                 method, memory, increment = 'sampled', median(r['estimator_tree_rss_bytes'] for r in runs)/2**30, None
             else:
