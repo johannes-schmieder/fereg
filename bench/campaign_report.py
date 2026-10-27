@@ -301,7 +301,8 @@ def check_workers(campaign):
         if cell['threads'] == 4:
             continue
         baseline = [c for c in cells if c['threads'] == 4 and all(c[k] == cell[k] for k in
-                    ['model', 'design', 'rows', 'vce', 'save_fe'])]
+                    ['model', 'design', 'rows', 'vce', 'save_fe'])
+                    and c.get('regressors', 16) == cell.get('regressors', 16)]
         if len(baseline) != 1:
             failures[cell['id']] = ['missing four-core scientific witness']
             continue

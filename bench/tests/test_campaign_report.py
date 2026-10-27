@@ -89,6 +89,16 @@ class CampaignReportTests(unittest.TestCase):
         self.assertTrue(result[result.cell == 'cell-4'].eligible.all())
         self.assertTrue(all('worker beta' in x for x in result[result.cell == 'cell-16'].reasons))
 
+    def test_worker_witness_matches_the_control_count(self):
+        campaign = fixture()
+        other = dict(campaign['manifest']['cells'][0], id='cell-4-k4', regressors=4)
+        campaign['manifest']['cells'].append(other)
+        for record in [r for r in campaign['records'] if r['cell'] == 'cell-4']:
+            campaign['records'].append(dict(copy.deepcopy(record), cell='cell-4-k4'))
+        campaign['comparisons'] += [dict(c, cell='cell-4-k4') for c in campaign['comparisons'] if c['cell'] == 'cell-4']
+        result = summarize(campaign)
+        self.assertTrue(result[result.cell == 'cell-16'].eligible.all())
+
     def test_short_rss_observation_is_unresolved(self):
         campaign = fixture()
         campaign['records'][0]['memory_sweeps'] = 2
