@@ -721,13 +721,13 @@ fn gates_real_callers_routes_refusal_direct_and_cancel() {
         crate::ols::PreparedOlsCells::Off,
         crate::ols::PreparedOlsCells::Deferred,
     ] {
-        // The public default is gate v1; v2 adds the early stall grant.
+        // The public default is gate v2; v1 remains a developer arm.
         for preset in [
             None,
             Some(RoutingPreset::gates_two()),
             Some(RoutingPreset::gates_two_v2()),
         ] {
-            let stall = preset == Some(RoutingPreset::gates_two_v2());
+            let stall = preset != Some(RoutingPreset::gates_two());
             for workers in [1, 4] {
                 for mode in [
                     PreparedOlsExecutionMode::Fast,

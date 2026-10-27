@@ -48,7 +48,7 @@ fn select_ols_routing(
     config.routing.filter(eligible).or_else(|| {
         match effects {
             Some(3..) if defaults[0] => Some(super::RoutingPreset::geometry_many()),
-            Some(2) if defaults[1] => Some(super::RoutingPreset::gates_two()),
+            Some(2) if defaults[1] => Some(super::RoutingPreset::gates_two_v2()),
             _ => None,
         }
         .filter(eligible)
@@ -1545,9 +1545,10 @@ mod routing_selection_tests {
     fn effective_identity_retains_qualified_family_and_historical_injections() {
         let many = RoutingPreset::geometry_many();
         let many_presets = [many, RoutingPreset::incremental_many()];
-        let two = RoutingPreset::gates_two();
+        let two = RoutingPreset::gates_two_v2();
         let two_presets = [
             two,
+            RoutingPreset::gates_two(),
             RoutingPreset::incremental_two(),
             RoutingPreset::remaining_two(),
             RoutingPreset::remaining_two_control(None).unwrap(),
