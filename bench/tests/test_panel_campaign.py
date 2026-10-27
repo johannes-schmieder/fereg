@@ -87,6 +87,8 @@ class PanelTests(unittest.TestCase):
         self.assertTrue(all(('reghdfe' in c['arms']) == (c['threads'] <= 4) for c in cells))
         self.assertTrue(all({'pyfixest', 'pyfixest-within'} <= set(c['arms']) for c in cells))
         self.assertEqual(panel.smoke_fits(), 12)
+        # Real panels keep their own control counts without a synthetic suffix.
+        self.assertEqual(panel.dataset_key(dict(cells[0], rows=771)), 'ols-veneto-long-n771')
         unsaved = panel.cell_for('long', frame, 4, save_fe=False)
         self.assertEqual((unsaved['id'], unsaved['save_fe']), ('veneto-long-t4-fe0', False))
         self.assertEqual(unsaved['arms'], panel.cell_for('long', frame, 4)['arms'])

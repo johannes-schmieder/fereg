@@ -73,9 +73,10 @@ def configurations(smoke=False):
 
 
 def controls_suffix(cell):
-    """Cells keep their historical identities at the standard control count."""
+    """Synthetic cells keep their historical identities at the standard control
+    count; real panels carry their own fixed controls and inputs."""
     k = cell.get('regressors', POLICY['controls'])
-    return '' if k == POLICY['controls'] else f'-k{k}'
+    return '' if k == POLICY['controls'] or cell.get('section') == 'veneto' else f'-k{k}'
 
 
 def supplement_configurations():
