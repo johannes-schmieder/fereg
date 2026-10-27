@@ -270,6 +270,14 @@ the binary archive SHA-256 is
 `aafc8ce74dbe0df876a07c4375f6e34f0c860fbcd44f76d29bb7ec67a7ebd843`.
 Native Intel-host Stata testing remains outstanding; both macOS slices are supplied.
 
+After publication, fresh Stata sessions installed from the public
+[beta.8 URL](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0-beta.8)
+and through `github install johannes-schmieder/fereg` from updated `main`.
+All 34 versioned files and all 35 main-package files matched their expected
+bytes; native selftest, repeatability/rollback and the independent full-dummy
+OLS and Poisson/covariance checks passed on both routes. GitHub's recorded
+SHA-256 and size matched every one of the 50 published assets.
+
 ### Beta.7 PPML packaging
 
 The beta.7 package shipped the lean PPML two-FE protocol and CMG reuse.
