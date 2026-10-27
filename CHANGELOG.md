@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- OLS Auto with two categorical-intercept effects builds its aggregated
+  (worker, firm) cells on the worker team, bit for bit as the serial build,
+  and constructs them before the diagonal pilot so the pilot's Schur products
+  use the cell operator; the serial cell product and construction poll for
+  Break once per block instead of once per cell. Pilot low bits change within
+  the certified tolerances; sample, rank, omissions and every discrete decision
+  are unchanged, and results stay independent of the worker count.
+- CMG `f6a044c9`: a multigrid level's row-operator matvec runs on the worker
+  team when its entries times lanes reach the parallel threshold, not only when
+  its row count does, so dense coarse levels with few rows no longer run
+  serially. Arithmetic-preserving; the stale `f45c3b8b` notices are corrected.
 - PPML Auto with two fixed effects merges helper products, applies the finite
   cross block and forms per-frame level masses of its joint FE solves in
   parallel; results are bit-identical to the serial passes.
