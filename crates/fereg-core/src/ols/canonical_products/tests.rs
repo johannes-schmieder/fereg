@@ -2121,7 +2121,16 @@ fn an_unaffordable_dense_factor_uses_the_implicit_operator_without_assembly() {
     )
     .unwrap()
     .unwrap();
-    assert_eq!(probed.response, implicit.response);
+    // The finished probe's coordinates are column 0's result: every output
+    // bit, the certificate and the reported iterations match the plain solve.
+    let bits = |values: &[f64]| values.iter().map(|v| v.to_bits()).collect::<Vec<_>>();
+    assert_eq!(bits(&probed.response), bits(&implicit.response));
+    assert_eq!(bits(&probed.moments.gram), bits(&implicit.moments.gram));
+    assert_eq!(probed.report.iterations, implicit.report.iterations);
+    assert_eq!(
+        probed.report.certificate.relative_infinity_norm.to_bits(),
+        implicit.report.certificate.relative_infinity_norm.to_bits()
+    );
     assert_eq!(absorber.ppml_cmg_reach(), None);
     // An allowance that affords the factor keeps the direct solve.
     let direct = build(1 << 40);
@@ -2132,4 +2141,27 @@ fn an_unaffordable_dense_factor_uses_the_implicit_operator_without_assembly() {
     for (a, b) in implicit.moments.gram.iter().zip(&direct.moments.gram) {
         assert!((a - b).abs() <= 1e-9 * (1. + b.abs()));
     }
+}
+
+#[test]
+fn only_a_probe_within_the_column_cap_is_reused_and_only_for_column_zero() {
+    use shared_cmg::FinishedProbe;
+    let block = ComponentFactor {
+        start: 3,
+        len: 70,
+        offset: 0,
+        matrix_offset: 0,
+        level_start: 0,
+    };
+    let other = ComponentFactor { start: 73, ..block };
+    assert!(FinishedProbe::new(&block, &Err(declined()), 100).is_none());
+    // A column cap below the probe's count would refuse the column's solve.
+    assert!(FinishedProbe::new(&block, &Ok(30), 29).is_none());
+    let probe = FinishedProbe::new(&block, &Ok(29), 29);
+    assert_eq!(FinishedProbe::reuse(probe, 0, &block), Some(29));
+    assert_eq!(FinishedProbe::reuse(probe, 1, &block), None);
+    assert_eq!(FinishedProbe::reuse(probe, 0, &other), None);
+    assert!(FinishedProbe::holds(probe, 0, 3) && FinishedProbe::holds(probe, 0, 72));
+    assert!(!FinishedProbe::holds(probe, 0, 73) && !FinishedProbe::holds(probe, 0, 2));
+    assert!(!FinishedProbe::holds(probe, 1, 3) && !FinishedProbe::holds(None, 0, 3));
 }

@@ -28,7 +28,7 @@ use reduced::{
     component_cap, component_operator, solve_reduced_cg, solve_reduced_cg_with_product,
     solve_small_component, ASSEMBLY_APPLICATIONS, DIRECT_COMPONENT,
 };
-use shared_cmg::SharedCmg;
+use shared_cmg::{FinishedProbe, SharedCmg};
 pub(crate) fn canonical_three_workspace_bytes(
     n: usize,
     width: usize,
@@ -1454,6 +1454,7 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
     }
     let mut krylov = budget.reserve_consumer(krylov_cells, 0., call.reuse())?;
     let mut cmg_view = None;
+    let mut finished = None;
     ledger.lap(trace::RHS);
     if let (Some(plan), Some(owner)) = (cmg_plan.as_mut(), cmg) {
         // Probe the first column's largest component with the plain recurrence.
@@ -1475,6 +1476,8 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
                 component_operator(&factor, &incidence_ids, &incidence_rows, n, block),
             );
             ledger.add(trace::PROBE, probe_started);
+            let cap = component_cap(config.max_iterations, block.len);
+            finished = FinishedProbe::new(block, &probed, cap);
             probed.is_err()
         };
         let headroom = allowance.saturating_sub(bytes);
@@ -1486,16 +1489,22 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
         (Some(view), Some(plan)) => SharedCmg::new(view, plan, &free, d, width, &mut budget)?,
         _ => None,
     };
+    // A finished probe left no hierarchy; its column keeps the plain result.
+    let finished = finished.filter(|_| shared_cmg.is_none());
     let numerical_refusal = std::sync::atomic::AtomicBool::new(false);
     let iterations = AtomicUsize::new(1);
     if d > 0 {
         let solve_column = |j: usize, values: &mut [f64], scratch: &mut [f64]| -> Result<()> {
             for h in 0..q {
-                if free[h] != usize::MAX {
+                if free[h] != usize::MAX && !FinishedProbe::holds(finished, j, free[h]) {
                     values[free[h]] = cross[j * q + h] / roots[h];
                 }
             }
             for block in &components {
+                if let Some(count) = FinishedProbe::reuse(finished, j, block) {
+                    iterations.fetch_max(count, Ordering::Relaxed);
+                    continue;
+                }
                 let size = block.len;
                 let values = &mut values[block.start..block.start + size];
                 if implicit {

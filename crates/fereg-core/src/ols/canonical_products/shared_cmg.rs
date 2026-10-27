@@ -117,6 +117,47 @@ impl Plan {
     }
 }
 
+/// A probe of column 0 that finished on its component. Column 0's solve
+/// would repeat that recurrence (same operator, starting values, target and
+/// steps), so it keeps the probe's coordinates and count instead.
+#[derive(Clone, Copy)]
+pub(super) struct FinishedProbe {
+    start: usize,
+    len: usize,
+    count: usize,
+}
+
+impl FinishedProbe {
+    /// The probe's result when the column solve would reach the same step:
+    /// a finished count within the column's iteration cap `cap`.
+    pub(super) fn new(block: &ComponentFactor, probed: &Result<usize>, cap: usize) -> Option<Self> {
+        let count = *probed.as_ref().ok()?;
+        (count <= cap).then_some(Self {
+            start: block.start,
+            len: block.len,
+            count,
+        })
+    }
+
+    /// Whether column `column`'s free coordinate already holds the probe's solution.
+    pub(super) fn holds(probe: Option<Self>, column: usize, coordinate: usize) -> bool {
+        probe.is_some_and(|probe| {
+            column == 0 && (probe.start..probe.start + probe.len).contains(&coordinate)
+        })
+    }
+
+    /// The probe's count for column `column`'s solve of `block`, if reused.
+    pub(super) fn reuse(
+        probe: Option<Self>,
+        column: usize,
+        block: &ComponentFactor,
+    ) -> Option<usize> {
+        probe
+            .filter(|probe| column == 0 && probe.start == block.start && probe.len == block.len)
+            .map(|probe| probe.count)
+    }
+}
+
 /// Per-worker scratch, the level map and the anchors of one solve.
 fn words(scratch_bytes: u128, q: usize, d: usize, width: usize) -> Result<usize> {
     let slots = rayon::current_num_threads().clamp(1, width.max(1)) as u128;

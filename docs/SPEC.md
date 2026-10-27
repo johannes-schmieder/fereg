@@ -254,7 +254,10 @@ components of at least 64 levels as `R G' B G R`, with the Jacobi roots `R`
 and `G` placing the component's grounded anchor. Before such a solve, a
 hierarchy from an earlier weight generation is rebuilt on current weights;
 without one, a plain recurrence of the first column on the largest component
-that exceeds 32 steps builds one. Three serial sections of the joint
+that exceeds 32 steps builds one. A probe that finishes within 32 steps and
+within that column's iteration cap is the column's solve on that component:
+the column keeps the probe's coordinates and count instead of repeating the
+identical recurrence. Three serial sections of the joint
 recurrence run as exact parallel sections from 65,536 element operations
 (fewer stay on the calling thread): the merge of helper partial products, the finite cross block
 and each frame's level masses `D`. Each splits per-element or per-column work

@@ -2,16 +2,22 @@
   "definition": "docs/development_workflow.md#complexity-inventory",
   "growth": [
     {
-      "after": 1429,
-      "before": 1426,
-      "metric": "fereg-core/dispatch_candidates",
-      "reason": "Work gates of the three exact sections (65,536 element operations; serial below) and the shared-product dispatch now matching the coupling owner."
+      "after": 110687,
+      "before": 110649,
+      "metric": "fereg-core/production_lines",
+      "reason": "Arithmetic-preserving: FinishedProbe keeps a finished canonical probe's coordinates and count as column 0's plain solve of that component instead of repeating the identical recurrence."
     },
     {
-      "after": 110649,
-      "before": 110549,
-      "metric": "fereg-core/production_lines",
-      "reason": "Arithmetic-preserving: fe/exact_sections.rs splits the joint recurrence's helper merge, finite cross block and per-frame level masses into fixed chunks, each element in its serial operation order, with cancellation polls; apply_with_helpers reports cancellation."
+      "after": 1913,
+      "before": 1905,
+      "metric": "file/crates/fereg-core/src/ols/canonical_products.rs",
+      "reason": "The probe records a finished result; column 0 skips initializing and re-solving that component."
+    },
+    {
+      "after": 1095,
+      "before": 1086,
+      "metric": "function/crates/fereg-core/src/ols/canonical_products.rs/build#1",
+      "reason": "The probe records a finished result; column 0 skips initializing and re-solving that component."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -9170,11 +9176,11 @@
           },
           {
             "condition": "size <= DIRECT_COMPONENT",
-            "line": 1543
+            "line": 1552
           },
           {
             "condition": "let Some ( count ) = shared . solve ( j , block , & roots , values , & mut scratch [ .. 4 * size ] , component_cap ( config . max_iterations , size ) , config . tolerance * 0.01 , apply , ) ?",
-            "line": 1549
+            "line": 1558
           }
         ],
         "functions": {
@@ -9184,7 +9190,7 @@
           },
           "build#1": {
             "line": 870,
-            "lines": 1086
+            "lines": 1095
           },
           "charge#1": {
             "line": 94,
@@ -9211,15 +9217,15 @@
             "lines": 51
           },
           "group_coefficient#1": {
-            "line": 1960,
+            "line": 1969,
             "lines": 26
           },
           "group_effect_mean#1": {
-            "line": 2021,
+            "line": 2030,
             "lines": 13
           },
           "merge#1": {
-            "line": 2035,
+            "line": 2044,
             "lines": 11
           },
           "minimum_storage_bytes#1": {
@@ -9247,7 +9253,7 @@
             "lines": 42
           },
           "reduced_matrix_product#1": {
-            "line": 1989,
+            "line": 1998,
             "lines": 24
           },
           "release#1": {
@@ -9323,7 +9329,7 @@
             "lines": 40
           }
         },
-        "production_lines": 1905
+        "production_lines": 1913
       },
       "crates/fereg-core/src/ols/canonical_products/assembly.rs": {
         "chunk_candidates": [],
@@ -9562,12 +9568,12 @@
           },
           {
             "condition": "scratch . len ( ) < 4 * n",
-            "line": 297
+            "line": 338
           }
         ],
         "functions": {
           "anchor#1": {
-            "line": 194,
+            "line": 235,
             "lines": 6
           },
           "build_after#1": {
@@ -9575,35 +9581,47 @@
             "lines": 29
           },
           "fallible#1": {
-            "line": 279,
+            "line": 320,
             "lines": 6
+          },
+          "holds#1": {
+            "line": 143,
+            "lines": 5
           },
           "new#1": {
             "line": 35,
             "lines": 29
           },
           "new#2": {
-            "line": 150,
+            "line": 133,
+            "lines": 8
+          },
+          "new#3": {
+            "line": 191,
             "lines": 37
           },
           "release#1": {
-            "line": 188,
+            "line": 229,
             "lines": 5
           },
           "retain_anchors#1": {
             "line": 70,
             "lines": 12
           },
+          "reuse#1": {
+            "line": 150,
+            "lines": 9
+          },
           "slot#1": {
-            "line": 202,
+            "line": 243,
             "lines": 12
           },
           "solve#1": {
-            "line": 218,
+            "line": 259,
             "lines": 59
           },
           "solve_reduced_pcg#1": {
-            "line": 288,
+            "line": 329,
             "lines": 80
           },
           "words#1": {
@@ -9611,11 +9629,11 @@
             "lines": 3
           },
           "words#2": {
-            "line": 121,
+            "line": 162,
             "lines": 10
           }
         },
-        "production_lines": 316
+        "production_lines": 346
       },
       "crates/fereg-core/src/ols/canonical_products/three.rs": {
         "chunk_candidates": [],
@@ -24313,7 +24331,7 @@
         "dispatch_candidates": 1429,
         "files_over_1500": 15,
         "functions_over_150": 59,
-        "production_lines": 110649
+        "production_lines": 110687
       },
       "fereg-plugin": {
         "chunk_candidates": 3,
@@ -24325,5 +24343,5 @@
     },
     "schema": 1
   },
-  "reason": "Exact parallel sections of the PPML joint recurrence: helper merge, finite cross block and level masses."
+  "reason": "A finished canonical PPML probe is column 0's solve on its component."
 }

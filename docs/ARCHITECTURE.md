@@ -109,7 +109,8 @@ missing hierarchy or rebuild a stale one, and an installed hierarchy `B`
 applies as `D^1/2 B D^1/2` with current level masses `D`. Canonical products
 take the owner mutably: a call first refreshes a stale hierarchy, and
 `ols/canonical_products/shared_cmg.rs` builds a missing one when a 32-step
-probe of the first column does not finish. It then preconditions large
+probe of the first column does not finish; a finished probe is that column's
+solve on its component (`FinishedProbe`). It then preconditions large
 implicit components with one fixed cycle per application through
 `PpmlCmgView` on per-worker scratch charged to the products' allowance. Categorical
 reprojections use the h16/k1 route; a hierarchy from an earlier weight
