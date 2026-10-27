@@ -16,7 +16,9 @@ Native test names below are relative to `crates/fereg-core` or
 
 ### Ownership and deferred-cell scope
 
-The accepted ownership/cell implementation uses CMG `fd77d98d`. Qualified OLS `solver(auto)` with
+The accepted ownership/cell implementation was qualified with CMG `fd77d98d`; the runtime pins
+CMG `f6a044c9`, whose only change is arithmetic-preserving team dispatch of row-operator
+matvecs (gated on entries times lanes). Qualified OLS `solver(auto)` with
 `preconditioner(auto)`, a global intercept and exactly two categorical-intercept
 FE terms selects both ownership mechanisms and deferred cell construction.
 Explicit developer injections retain their specified selection. Core defaults
