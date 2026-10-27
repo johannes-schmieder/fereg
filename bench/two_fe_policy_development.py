@@ -210,8 +210,13 @@ def gate_events(log, rule='v1'):
 
 
 def semantic_signature(detail):
-    """Warmup-only discrete policy evidence, excluding worker representation."""
-    return routing.identity({'events': detail['gate_events'],
+    """Warmup-only discrete policy evidence, excluding worker representation.
+
+    Gate v2's traced contraction is retained diagnostic evidence, not a
+    discrete decision; its local age, role and grant are compared.
+    """
+    events = [{k: v for k, v in event.items() if k != 'contraction'} for event in detail['gate_events']]
+    return routing.identity({'events': events,
         'routes': [{k: route[k] for k in ('iterations', 'installed', 'refusal')}
                    for route in detail['route_trace']],
         'hierarchies': [None if h is None else {k: v for k, v in h.items()
