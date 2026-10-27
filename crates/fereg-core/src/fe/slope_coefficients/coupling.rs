@@ -782,6 +782,7 @@ impl PreparedCoupling {
         output: &mut [f64],
         scratch: &mut [f64],
         helpers: &mut [Worker],
+        trace: Option<&super::joint::trace::JointLedger>,
     ) -> Option<f64> {
         let groups = self.pairs[0].offsets.len() - 1;
         let width = (helpers.len() + 1).min(groups);
@@ -813,10 +814,14 @@ impl PreparedCoupling {
                     })
             },
         );
+        let started = trace.and_then(|trace| trace.start());
         for worker in helpers {
             for (value, partial) in output.iter_mut().zip(&worker.product) {
                 *value += partial;
             }
+        }
+        if let Some(trace) = trace {
+            trace.add(super::joint::trace::MERGE, started);
         }
         let curvature = dot(input, output);
         if !curvature.is_finite() || curvature <= self.curvature_error_scale * dot(input, input) {

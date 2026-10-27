@@ -632,6 +632,7 @@ impl Worker {
                         &mut self.product,
                         &mut self.eliminated_scratch,
                         helpers,
+                        None,
                     )
                 } else {
                     c.apply(

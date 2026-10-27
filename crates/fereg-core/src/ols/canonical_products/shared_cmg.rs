@@ -217,6 +217,7 @@ impl<'v, 'h> SharedCmg<'v, 'h> {
     #[allow(clippy::too_many_arguments)]
     pub(super) fn solve(
         &self,
+        column: usize,
         block: &ComponentFactor,
         roots: &[f64],
         values: &mut [f64],
@@ -229,6 +230,7 @@ impl<'v, 'h> SharedCmg<'v, 'h> {
             return Ok(None);
         };
         let levels = &self.levels[block.start..block.start + block.len];
+        let mut ledger = super::trace::column_ledger();
         let mut slot = self.slot();
         let Slot {
             scratch: cmg,
@@ -243,7 +245,9 @@ impl<'v, 'h> SharedCmg<'v, 'h> {
                 sum += scaled;
             }
             input[anchor] = -sum;
+            let cycle = ledger.start();
             let applied = self.view.apply(input, output, cmg);
+            ledger.add(0, cycle);
             for &level in levels {
                 input[level] = 0.;
             }
@@ -255,15 +259,20 @@ impl<'v, 'h> SharedCmg<'v, 'h> {
             }
             Ok(())
         };
-        solve_reduced_pcg(
+        let solved = solve_reduced_pcg(
             values,
             scratch,
             max_iterations,
             tolerance,
             apply,
             precondition,
-        )
-        .map(Some)
+        );
+        ledger.facts(&[
+            ("column", column as u64),
+            ("size", block.len as u64),
+            ("iterations", *solved.as_ref().unwrap_or(&0) as u64),
+        ]);
+        solved.map(Some)
     }
 }
 
