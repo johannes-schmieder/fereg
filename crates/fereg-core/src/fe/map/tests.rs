@@ -2375,3 +2375,88 @@ fn joint_block_refusal_is_exact_and_an_installed_block_reaches_the_same_solution
     assert_eq!(error.code, ErrorCode::Interrupted);
     assert!(owner.joint_slopes().unwrap().report.is_none());
 }
+
+#[test]
+fn exact_joint_sections_keep_every_bit_at_one_to_eight_workers() {
+    // Workers bridge a firm chain; helpers merge partial products and every
+    // frame applies the finite cross block.
+    let (mut workers, mut firms, mut x, mut z) = (Vec::new(), Vec::new(), Vec::new(), Vec::new());
+    for link in 0..40 {
+        for slot in 0..3 {
+            for (period, firm) in [link, link + 1, link].into_iter().enumerate() {
+                let row = workers.len() as f64;
+                workers.push((link * 3 + slot) as u32);
+                firms.push(firm as u32);
+                x.push((row * 0.37 + period as f64).sin());
+                z.push((row * 0.11).cos());
+            }
+        }
+    }
+    let n = workers.len();
+    let design = FeDesign::new(
+        n,
+        vec![
+            EffectTerm::new(workers, 120, true, vec![]).unwrap(),
+            EffectTerm::new(firms.clone(), 41, true, vec![]).unwrap(),
+        ],
+    )
+    .unwrap();
+    let controls =
+        DenseMatrix::from_row_major(n, 2, x.iter().zip(&z).flat_map(|(&a, &b)| [a, b]).collect())
+            .unwrap();
+    let weights: Vec<f64> = (0..n).map(|i| 0.5 + (i % 7) as f64 * 0.3).collect();
+    let y: Vec<f64> = (0..n)
+        .map(|i| 0.4 * x[i] - 0.25 * z[i] + (firms[i] as f64 * 0.21).sin() + (i % 5) as f64 * 1e-3)
+        .collect();
+    let config = MapConfig {
+        tolerance: 1e-11,
+        ..MapConfig::default()
+    };
+    for threads in [1, 2, 4, 8] {
+        let pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(threads)
+            .build()
+            .unwrap();
+        let mut outputs = Vec::new();
+        for parallel in [false, true] {
+            let mut owner = ReusableMapAbsorber::new(design.clone(), 3).unwrap();
+            owner.enable_certificate_geometry().unwrap();
+            owner.enable_coefficient_solver(threads).unwrap();
+            owner.enable_certificate_workspace().unwrap();
+            owner.enable_coefficient_coupling().unwrap();
+            owner
+                .coefficient_solver
+                .as_mut()
+                .unwrap()
+                .force_compact_coupling_for_test();
+            owner.enable_joint_slopes().unwrap();
+            let generation = MapGeometryGeneration {
+                sample: 1,
+                topology: 1,
+                weights: 1,
+            };
+            crate::fe::exact_sections::tests::with_form(parallel, || {
+                pool.install(|| {
+                    owner.solve_joint_slopes(
+                        &weights,
+                        &controls,
+                        &[0, 1],
+                        &y,
+                        config,
+                        generation,
+                        None,
+                    )
+                })
+            })
+            .unwrap();
+            let joint = owner.joint_slopes().unwrap();
+            let bits = |values: &[f64]| values.iter().map(|v| v.to_bits()).collect::<Vec<_>>();
+            outputs.push((
+                bits(joint.beta()),
+                bits(joint.residuals.as_slice()),
+                joint.report.as_ref().unwrap().iterations,
+            ));
+        }
+        assert_eq!(outputs[0], outputs[1], "{threads} workers");
+    }
+}

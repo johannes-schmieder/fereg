@@ -174,7 +174,14 @@ impl<'a> FeSession<'a> {
     ) -> Result<CertifiedBorrowedMap> {
         if let Some(p) = self.categorical.as_mut() {
             p.begin_ppml_frame(generation)?;
-            return p.absorb_ppml(raw_weights, values, config);
+            let mut ledger = crate::diagnostics::phase_ledger::PhaseLedger::new("ppml_absorb", []);
+            ledger.fact("rhs", values.ncols() as u64);
+            let result = p.absorb_ppml(raw_weights, values, config);
+            if let Ok(fit) = &result {
+                ledger.fact("iterations", fit.report().iterations as u64);
+                ledger.fact("certified", u64::from(fit.report().certified()));
+            }
+            return result;
         }
         let p = self.general.as_mut().ok_or_else(|| {
             FeregError::new(

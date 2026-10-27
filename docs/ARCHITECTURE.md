@@ -109,7 +109,8 @@ missing hierarchy or rebuild a stale one, and an installed hierarchy `B`
 applies as `D^1/2 B D^1/2` with current level masses `D`. Canonical products
 take the owner mutably: a call first refreshes a stale hierarchy, and
 `ols/canonical_products/shared_cmg.rs` builds a missing one when a 32-step
-probe of the first column does not finish. It then preconditions large
+probe of the first column does not finish; a finished probe is that column's
+solve on its component (`FinishedProbe`). It then preconditions large
 implicit components with one fixed cycle per application through
 `PpmlCmgView` on per-worker scratch charged to the products' allowance. Categorical
 reprojections use the h16/k1 route; a hierarchy from an earlier weight
@@ -118,7 +119,12 @@ unless replaced. Admission reserves only the application banks; each
 construction admits itself against the fit's solver budget, and refusal
 leaves the diagonal recurrence untouched. `canonical_products/reduced.rs`
 holds the reduced recurrences, including the dense solve of small implicit
-components. Joint frames build weighted columns and their norms and run
+components. `fe/exact_sections.rs` holds the exact parallel forms of the joint
+recurrence's helper merge and finite cross block and of the per-frame level
+masses: fixed chunks, each element in its serial operation order, so bits do
+not depend on the team. Developer phase records (`FEREG_PHASE_TIMING`) of joint
+frames, canonical products, shared-CMG columns and PPML absorptions come from
+the trace-only ledger in `diagnostics/phase_ledger.rs`. Joint frames build weighted columns and their norms and run
 original-column acceptance scans in groups of `ceil(columns / workers)`
 columns per task, at most four, so one row scan serves several columns
 without leaving workers idle. The bank keeps the projected weighted columns

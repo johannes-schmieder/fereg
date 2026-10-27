@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- PPML Auto with two fixed effects merges helper products, applies the finite
+  cross block and forms per-frame level masses of its joint FE solves in
+  parallel; results are bit-identical to the serial passes.
+- A canonical PPML probe that finishes within its 32 steps is reused as the
+  first column's solve instead of being repeated; results are unchanged.
+- Developer phase timing (`FEREG_PHASE_TIMING`) reports PPML joint frames,
+  canonical products, shared-CMG column solves and PPML absorptions.
+
 ## 0.5.0 beta.8 — 2026-10-27
 
 - OLS Auto with two categorical-intercept effects applies its CMG

@@ -23,11 +23,12 @@ pub(super) mod historical_preconditioner;
 mod reduced;
 mod shared_cmg;
 mod three;
+mod trace;
 use reduced::{
     component_cap, component_operator, solve_reduced_cg, solve_reduced_cg_with_product,
     solve_small_component, ASSEMBLY_APPLICATIONS, DIRECT_COMPONENT,
 };
-use shared_cmg::SharedCmg;
+use shared_cmg::{FinishedProbe, SharedCmg};
 pub(crate) fn canonical_three_workspace_bytes(
     n: usize,
     width: usize,
@@ -882,6 +883,7 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
     cmg: Option<&mut ReusableCategoricalMapAbsorber<'_>>,
 ) -> Result<Products<'a, P>> {
     let started = Instant::now();
+    let mut ledger = trace::ledger();
     let Plan {
         n,
         p,
@@ -1339,6 +1341,7 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
     budget.release(touched)?;
     budget.release(anchors)?;
     let setup_seconds = started.elapsed().as_secs_f64();
+    ledger.lap(trace::SETUP);
     let started = Instant::now();
     let mut scales = budget.reserve(width, 0.)?;
     let mut means = budget.reserve(width, 0.)?;
@@ -1451,9 +1454,12 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
     }
     let mut krylov = budget.reserve_consumer(krylov_cells, 0., call.reuse())?;
     let mut cmg_view = None;
+    let mut finished = None;
+    ledger.lap(trace::RHS);
     if let (Some(plan), Some(owner)) = (cmg_plan.as_mut(), cmg) {
         // Probe the first column's largest component with the plain recurrence.
         let probe = |steps| {
+            let probe_started = ledger.start();
             let Some(block) = components.iter().max_by_key(|block| block.len) else {
                 return false;
             };
@@ -1462,33 +1468,43 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
                     solved[free[h]] = cross[h] / roots[h];
                 }
             }
-            solve_reduced_cg_with_product(
+            let probed = solve_reduced_cg_with_product(
                 &mut solved[block.start..block.start + block.len],
                 &mut krylov[..3 * block.len],
                 steps,
                 config.tolerance * 0.01,
                 component_operator(&factor, &incidence_ids, &incidence_rows, n, block),
-            )
-            .is_err()
+            );
+            ledger.add(trace::PROBE, probe_started);
+            let cap = component_cap(config.max_iterations, block.len);
+            finished = FinishedProbe::new(block, &probed, cap);
+            probed.is_err()
         };
         let headroom = allowance.saturating_sub(bytes);
         plan.build_after(owner, weights, probe, (q, d, width), headroom, &mut budget)?;
         cmg_view = owner.ppml_cmg_view();
+        ledger.lap(trace::CMG_PLAN);
     }
     let shared_cmg = match (cmg_view.as_ref(), cmg_plan) {
         (Some(view), Some(plan)) => SharedCmg::new(view, plan, &free, d, width, &mut budget)?,
         _ => None,
     };
+    // A finished probe left no hierarchy; its column keeps the plain result.
+    let finished = finished.filter(|_| shared_cmg.is_none());
     let numerical_refusal = std::sync::atomic::AtomicBool::new(false);
     let iterations = AtomicUsize::new(1);
     if d > 0 {
         let solve_column = |j: usize, values: &mut [f64], scratch: &mut [f64]| -> Result<()> {
             for h in 0..q {
-                if free[h] != usize::MAX {
+                if free[h] != usize::MAX && !FinishedProbe::holds(finished, j, free[h]) {
                     values[free[h]] = cross[j * q + h] / roots[h];
                 }
             }
             for block in &components {
+                if let Some(count) = FinishedProbe::reuse(finished, j, block) {
+                    iterations.fetch_max(count, Ordering::Relaxed);
+                    continue;
+                }
                 let size = block.len;
                 let values = &mut values[block.start..block.start + size];
                 if implicit {
@@ -1540,6 +1556,7 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
                     }
                     if let Some(shared) = &shared_cmg {
                         if let Some(count) = shared.solve(
+                            j,
                             block,
                             &roots,
                             values,
@@ -1683,6 +1700,7 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
             u8::from(iterative), u8::from(implicit), iterations.load(Ordering::Relaxed));
     }
     let solve_seconds = started.elapsed().as_secs_f64();
+    ledger.lap(trace::SOLVE);
     let started = Instant::now();
     // RHS reductions are already released. Certificate reductions also need
     // a Gram and independent left-score diagnostics, only in this later phase.
@@ -1886,6 +1904,11 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
             })?;
         (left, None, within_response)
     };
+    trace::finish(
+        &mut ledger,
+        [n, width, q, d, usize::from(implicit)],
+        &iterations,
+    );
     let report = SolveReport {
         requested_solver: FeSolverKind::Map,
         used_solver: FeSolverKind::Map,

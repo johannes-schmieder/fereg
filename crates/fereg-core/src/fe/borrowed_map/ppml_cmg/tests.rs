@@ -361,3 +361,38 @@ fn a_canonical_refresh_rebuilds_only_a_stale_hierarchy_within_the_attempts() {
         assert!((shared - shift - batched).abs() <= 1e-12 * (1. + batched.abs()));
     }
 }
+
+#[test]
+fn joint_block_masses_are_bitwise_the_serial_scatter_at_every_width() {
+    let chain = Chain::new(90, 2);
+    let weights = chain.weights(1);
+    let firms = chain.firm_index.n_levels();
+    let residual: Vec<f64> = (0..firms).map(|f| (f as f64 * 0.61).cos()).collect();
+    let mut results = Vec::new();
+    for threads in [1, 2, 4, 8] {
+        let pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(threads)
+            .build()
+            .unwrap();
+        for parallel in [false, true] {
+            let mut absorber = chain.absorber();
+            absorber.enable_ppml_cmg(None, u128::MAX).unwrap();
+            absorber.begin_ppml_frame(generation(1)).unwrap();
+            let mut output = vec![0.0; firms];
+            crate::fe::exact_sections::tests::with_form(parallel, || {
+                pool.install(|| {
+                    let mut block =
+                        JointCmgBlock::new(Some(&mut absorber), &weights, Some(1)).unwrap();
+                    assert!(block.install().unwrap());
+                    block.apply(&residual, &mut output).unwrap();
+                })
+            });
+            let roots = state(&absorber).roots.clone();
+            results.push((
+                roots.iter().map(|v| v.to_bits()).collect::<Vec<_>>(),
+                output.iter().map(|v| v.to_bits()).collect::<Vec<_>>(),
+            ));
+        }
+    }
+    assert!(results.windows(2).all(|pair| pair[0] == pair[1]));
+}

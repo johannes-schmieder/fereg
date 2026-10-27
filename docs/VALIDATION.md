@@ -230,6 +230,24 @@ bound. The full source-only suite passed at `277c5d11`. A parallel CMG
 application, a row-tiled certificate Gram and a data-based IRLS start were
 measured and rejected (slower, or no fewer iterations).
 
+### PPML two-FE parity work (development, Mac)
+
+On an M2 Ultra Mac (development measurement, three repetitions per cell,
+medians of repetitions 2-3, arms interleaved, no competing build/test/Stata
+process observed), the exact parallel joint sections and the reuse of a
+finished canonical probe changed no bit of `e(b)` or `e(V)` in any of 17
+cells (campaign-generator AKM, sparse and dense designs at 1M rows with 16
+regressors at 1, 4 and 8 workers; synthetic Veneto-shaped Poisson panels of
+1.39M and 5.63M rows at 1, 2, 4 and 8 workers), and the 73-case replay was
+exact against beta.8. Native time was 0.975-0.986 of beta.8 on the campaign
+designs at 4 and 8 workers and 0.994-1.009 on the Veneto panels. Separation
+IR is 42-61% of PPML native time on the Veneto panels at 4 and 8 workers;
+the joint frames' scalar CMG cycle is 5-8% on the long panel. A team
+application of the PPML hierarchy above CMG's 350,000-edge single-RHS
+minimum (row-operator plan only) left results bit-identical but changed the
+long panel's native time by 0.980-1.013 (1-8 workers) against the same build
+without it, short of the 5% acceptance margin; it was not retained.
+
 ## Package checks
 
 ### Beta.8 two-FE Auto packaging
@@ -401,7 +419,10 @@ All 50 GitHub release assets matched their local SHA-256 checksums and sizes.
 - The Mac plugin contains Apple Silicon and Intel slices. Licensed installation
   testing is on Apple Silicon; native Intel-host Stata testing is outstanding.
 - PPML CMG reuse mainly helps weakly connected two-FE designs; AKM and dense
-  two-FE PPML gain 16-27% from the leaner passes and settled strict entry. In
+  two-FE PPML gain 16-27% from the leaner passes and settled strict entry.
+  The PPML joint frames still apply their CMG hierarchy with one scalar
+  cycle per step, and separation IR dominates PPML time on Veneto-shaped
+  panels; the October 27 parity work measured these on the Mac only. In
   the beta.7 SCC comparison fereg was faster than default fixest in every
   eligible PPML configuration, but PyFixest's `within` and MAP demeaners were
   faster on dense two- and three-FE PPML.

@@ -17,6 +17,7 @@ mod cmg;
 mod cmg_schur;
 mod components;
 mod design;
+pub(crate) mod exact_sections;
 mod interaction;
 mod lsmr;
 mod lsmr_batch;
