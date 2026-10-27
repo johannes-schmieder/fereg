@@ -6,6 +6,49 @@ runtime with PyFixest, both with and without saved worker/firm effects.
 Without saved effects every comparator except two timed-out cells passes the
 scientific gates; with saved effects all comparator timings stay descriptive.
 
+## October 27, 2026: beta.7 supplement with multi-FE areg and control counts
+
+Stata 19's `areg` absorbs several effects; the beta.7 rerun below had restricted
+it to one-FE cells. Supplement `20261027T013651Z-beta7-supplement-ee60ff55`
+(source `ee60ff55`, the same v0.5.0-beta.7 runtime identity `9713d640...`,
+SCC-built plugin `74812e13...`) pairs areg with fereg in all 18 multi-FE OLS
+configurations with at most four workers and no saved FE, using `dfabsorb
+noabsorbtest tolerance(1e-8) iterate(16000)` as in the August comparison. It
+also fits the AKM design at one million rows and four workers with 4 and 64
+controls instead of 16, for every arm. Each comparator is paired with fereg on
+the same node; the three bundles ran on whole 28-core E5-2680 v4 nodes
+(`scc-wk4`, `scc-tr4`, `scc-tj4`). The 54 fereg captures that repeat main-run
+cells are bitwise identical to the main run's.
+
+**areg.** Where its results agree with fereg's, areg took 2.69-12.89 times as
+long as fereg (median 7.09; 15 configurations, including the one-core AKM
+cell at 7.17). It took 9.19 times as long in the one-million-row AKM design,
+12.89 at four million rows and 4.72-5.36 in dense three-FE designs. In the
+sparse two- and three-FE designs at one and four million rows it did not finish
+within the 600-second limit. With worker-clustered covariance it does not
+discount the worker effects nested in the clusters, so that cell (8.73 times)
+is descriptive. Its peak memory was 1.07 GiB at one million rows and 4.33 GiB at
+four million, against fereg's 0.61 and 2.29 GiB in the main run.
+
+**Controls.** Ratios of median times to fereg's within each cell:
+
+| Model | Controls | fixest | PyFixest within | PyFixest 0.60 | reghdfe / ppmlhdfe | areg |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| OLS | 4 | 1.73 | 1.52 | 4.13 | 12.66 | 12.00 |
+| OLS | 16 (main run) | 1.54 | 1.62 | 3.35 | 9.19 | 9.19 |
+| OLS | 64 | 1.15 | 1.46 | 3.35 | 10.75 | 4.86 |
+| PPML | 4 | 1.28 | 1.58 | 3.98 | 9.63 | — |
+| PPML | 16 (main run) | 1.87 | 2.35 | 6.36 | 20.13 | — |
+| PPML | 64 | 2.42 | 2.21 | 6.19 | 30.40 | — |
+
+All 66 native fits pass with exact repeats and cross-worker agreement; 57 of 62
+arm cells are eligible (the exceptions are areg's clustered cell and four
+timeouts). The 16-control row comes from the main run on other nodes, and the
+control-count cells ran on different nodes, so compare ratios rather than
+absolute times. Compact evidence: [summary](../bench/results/scc-20261027-beta7-supplement-summary.csv),
+[observations](../bench/results/scc-20261027-beta7-supplement-observations.csv) and
+[inputs and checks](../bench/results/scc-20261027-beta7-supplement-inputs.json).
+
 ## October 26, 2026: beta.7 rerun with PyFixest and areg
 
 Fereg is faster in **all 35 scientifically eligible default-fixest
