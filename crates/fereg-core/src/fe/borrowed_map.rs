@@ -1110,6 +1110,10 @@ struct CmgSchurRequest {
 struct AutoSchurRoute {
     preset: super::RoutingPreset,
     request: CmgSchurRequest,
+    /// OLS routes apply an installed hierarchy on the host team; PPML reuse
+    /// shares its hierarchy across workers and keeps the scalar cycle.
+    application: super::cmg_schur::AutoApplication,
+    options: ::cmg::CmgOptions,
     setup: super::routing::SetupLedger,
     peak: SolverWorkspacePeak,
 }
@@ -1214,7 +1218,7 @@ impl AutoSchurRoute {
             .breaks_builder()
             .then(super::routing_break::DeveloperBreak::claim)
             .transpose()?;
-        let built = super::cmg_schur::CmgSchurPreconditioner::try_build_bounded(
+        let built = super::cmg_schur::CmgSchurPreconditioner::try_build_bounded_with(
             design,
             weights
                 .values
@@ -1225,6 +1229,8 @@ impl AutoSchurRoute {
             stride,
             eager_cells::with_retained(self.request.budget, cell_retained)?,
             self.preset.breaks_builder(),
+            self.application,
+            self.options,
         )?;
         self.peak = self.peak.max(built.peak.with_retained(cell_retained)?);
         let elapsed = started.elapsed();
@@ -1547,9 +1553,21 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                 budget,
                 parents,
             },
+            application: super::cmg_schur::AutoApplication::Scalar,
+            options: ::cmg::CmgOptions::default(),
             setup: super::routing::SetupLedger::new(),
             peak: SolverWorkspacePeak::ZERO,
         });
+    }
+
+    /// The OLS installation of the automatic route: the Schur hierarchy
+    /// options, applied on the host team with row operators and interleaved
+    /// lanes whenever admitted.
+    pub(super) fn apply_auto_routing_on_team(&mut self) {
+        if let Some(route) = self.auto_route.as_mut() {
+            route.application = super::cmg_schur::AutoApplication::Team;
+            route.options = super::cmg_schur::schur_cmg_options();
+        }
     }
 
     /// Validate and retain the request; an already certified RHS needs no hierarchy.

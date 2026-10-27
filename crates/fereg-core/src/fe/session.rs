@@ -459,6 +459,7 @@ impl<'a> FeSession<'a> {
                 .transpose()?;
             if let Some(preset) = config.absorb.routing {
                 p.request_auto_routing(preset, budget, parents);
+                p.apply_auto_routing_on_team();
             }
             if ols_cells {
                 match config.cells {

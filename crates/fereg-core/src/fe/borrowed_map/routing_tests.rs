@@ -2404,3 +2404,56 @@ fn geometry_recurrence_stops_a_decade_below_the_request_and_corrects_at_the_hund
     assert_eq!(correction_tolerance(1e-14, 1e-14), None);
     assert_eq!(correction_tolerance(1e-8, 1e-10), None);
 }
+
+// The OLS session applies an installed hierarchy on the host team: row
+// operators and interleaved lanes, with the scalar route's fits bit for bit
+// (no coarse component reaches CMG's 131,072-entry team centering here).
+#[test]
+fn team_application_reproduces_scalar_route_fits_at_every_worker_count() {
+    let witness = PairedGraph::new();
+    let positions = [0, 1, 2];
+    let run = |workers: usize, team: bool| {
+        crate::ThreadTeam::new(crate::ThreadConfig::from_requested(workers, true).unwrap())
+            .install(|| {
+                let mut owner =
+                    ReusableCategoricalMapAbsorber::new(witness.design(), 3, workers).unwrap();
+                owner.retain_coefficients = true;
+                owner.request_auto_routing(RoutingPreset::portfolio_unseeded(), None, 0);
+                if team {
+                    owner.apply_auto_routing_on_team();
+                }
+                let mut result = owner
+                    .absorb_ols(
+                        BorrowedMapWeights::Provided(&witness.weights),
+                        witness.columns(&positions).into(),
+                        config(),
+                        false,
+                    )
+                    .unwrap();
+                witness.check(&result, &positions);
+                let trace = owner
+                    .two_fe_pcg
+                    .as_ref()
+                    .unwrap()
+                    .cmg_schur
+                    .as_ref()
+                    .unwrap()
+                    .trace_hierarchy();
+                result.report.setup_seconds = 0.;
+                result.report.solve_seconds = 0.;
+                result.report.certification_seconds = 0.;
+                (result, trace)
+            })
+            .unwrap()
+    };
+    let (reference, scalar_trace) = run(1, false);
+    assert!(scalar_trace.ends_with("|application=scalar|parallel_operators=0|batch_columns=1"));
+    for workers in [1, 4] {
+        let (scalar, _) = run(workers, false);
+        let (team, trace) = run(workers, true);
+        assert!(trace.contains("|application=parallel|"), "{trace}");
+        assert!(trace.ends_with("|batch_columns=3"), "{trace}");
+        assert_eq!(scalar, reference);
+        assert_eq!(team, reference);
+    }
+}

@@ -21,19 +21,34 @@ use super::{BorrowedInterceptFeDesign, BorrowedMapWeights, LevelIndex};
 
 mod bounded;
 mod sampling;
+pub(super) use bounded::AutoApplication;
 use bounded::Install;
 use sampling::SampledTrees;
 pub(super) use sampling::Sampling;
 
 const MAX_BATCH_COLUMNS: usize = 4;
 
+/// Hierarchy options of the OLS Schur routes. Firm Schur graphs of worker-firm
+/// panels are expander-like: almost every firm's heaviest edge carries a small
+/// share of its weighted degree, so CMG's low-effective-degree correction
+/// detaches most firms into singleton aggregates and coarsening stagnates.
+/// Without the correction the heavy-edge forest aggregates them. The options
+/// change only the preconditioner; operators and certificates are unchanged.
+pub(super) fn schur_cmg_options() -> CmgOptions {
+    CmgOptions {
+        low_effective_degree_threshold: 0.0,
+        ..CmgOptions::default()
+    }
+}
+
 pub(super) struct CmgSchurPreconditioner {
     preconditioner: CmgPreconditioner,
     install: Install,
-    /// Row operators for the host team's eligible levels (explicit only).
+    /// Row operators for the host team's eligible levels (explicit and
+    /// admitted automatic team installations).
     plan: Option<ParallelCmgPlan>,
     scalar_workspace: CmgWorkspace,
-    /// Interleaved lanes of a wider explicit installation.
+    /// Interleaved lanes of a wider explicit or automatic team installation.
     batch_workspace: Option<CmgBatchWorkspace>,
     rhs: Vec<f64>,
     solution: Vec<f64>,
@@ -64,7 +79,7 @@ impl CmgSchurPreconditioner {
             rhs_capacity,
             threads,
             budget,
-            CmgOptions::default(),
+            schur_cmg_options(),
         )
     }
 
@@ -159,8 +174,9 @@ impl CmgSchurPreconditioner {
             factor.map_or(0, cmg::GroundedLdl::active_dimension),
             factor.map_or(0, cmg::GroundedLdl::factor_nonzeros),
             match self.install {
-                Install::Auto => "scalar",
                 Install::Explicit { .. } => "parallel",
+                Install::Auto { .. } if self.plan.is_some() => "parallel",
+                Install::Auto { .. } => "scalar",
             },
             self.plan.as_ref().map_or(0, ParallelCmgPlan::operator_count),
             self.batch_columns,
@@ -382,8 +398,13 @@ impl CmgSchurPreconditioner {
             .map_err(cmg_error)
         };
         match self.install {
-            // The automatic route keeps its team-free scalar application.
-            Install::Auto => run(None),
+            // PPML reuse and reduced pairs keep the team-free scalar cycle.
+            Install::Auto { team_lanes: None } => run(None),
+            // An automatic team installation borrows whichever host team is
+            // installed (none outside an action): its plan records no width.
+            Install::Auto {
+                team_lanes: Some(_),
+            } => crate::parallel::with_cmg_execution(run)?,
             Install::Explicit { threads, .. } => {
                 crate::parallel::with_cmg_team(threads, |team| run(Some(team)))
             }
@@ -734,7 +755,7 @@ mod tests {
             .unwrap();
             assert_eq!(built.refusal, None);
             let mut candidate = built.preconditioner.unwrap();
-            assert_eq!(candidate.install, Install::Auto);
+            assert_eq!(candidate.install, Install::AUTO);
             assert!(candidate.plan.is_none() && candidate.batch_workspace.is_none());
             assert_eq!(edges(&candidate), edges(&explicit));
             assert_eq!(candidate.components.labels, explicit.components.labels);
@@ -2071,5 +2092,221 @@ mod tests {
             assert_eq!(explicit, frozen_explicit, "explicit {key}");
             assert_eq!(automatic, frozen_automatic, "automatic {key}");
         }
+    }
+
+    /// Every packed application of the frozen witness's inputs, as bits.
+    fn application_bits(
+        solver: &mut CmgSchurPreconditioner,
+        firms: usize,
+        stride: usize,
+    ) -> Vec<u64> {
+        let residual: Vec<f64> = (0..firms * stride)
+            .map(|index| ((index * 37 % 257) as f64 - 128.0) / 64.0 + (index % 3) as f64 * 0.25)
+            .collect();
+        let scales: Vec<f64> = (0..firms).map(|firm| 1.0 + (firm % 4) as f64).collect();
+        let mut mask = vec![1.0; stride];
+        mask[0] = 0.0;
+        if stride > 2 {
+            mask[2] = -1.0;
+        }
+        let mut bits = Vec::new();
+        let mut output = vec![0.0; residual.len()];
+        for rhs_count in [1, stride] {
+            for (scaled, masked) in [(false, false), (true, false), (false, true)] {
+                if masked && rhs_count == 1 {
+                    continue;
+                }
+                output.fill(0.5);
+                solver
+                    .apply_batch(
+                        &residual,
+                        &mut output,
+                        stride,
+                        rhs_count,
+                        scaled.then_some(&scales[..]),
+                        masked.then_some(&mask[..rhs_count]),
+                    )
+                    .unwrap();
+                bits.extend(output.iter().map(|value| value.to_bits()));
+            }
+        }
+        bits
+    }
+
+    // The automatic team installation (row operators and interleaved lanes
+    // on the host team) reproduces the team-free scalar cycle bit for bit on
+    // every frozen fixture, worker count and capacity; only CMG's fixed-chunk
+    // centering of one coarse component of 131,072 or more entries differs.
+    #[test]
+    fn automatic_team_installation_reproduces_scalar_cycle_bits() {
+        let cases: Vec<(&str, Fixture, bool, usize, u32)> = vec![
+            ("sampled0", Fixture::sampled_degrees(true, 1.0), true, 5, 0),
+            ("sampled1", Fixture::sampled_degrees(true, 1.0), true, 5, 1),
+            ("stars4", Fixture::weighted_stars(), true, 4, 0),
+            ("stars6", Fixture::weighted_stars(), true, 6, 0),
+            ("torus65", Fixture::torus(65), false, 4, 0),
+        ];
+        for (name, fixture, provided, degree, samples) in &cases {
+            let design = fixture.design();
+            let weights = if *provided {
+                BorrowedMapWeights::Provided(&fixture.weights)
+            } else {
+                BorrowedMapWeights::Unit
+            };
+            let sampling = Sampling {
+                samples: *samples,
+                seed: 0,
+            };
+            let firms = fixture.firm_index.n_levels();
+            for threads in [1, 4] {
+                for capacity in [1, 2, 5] {
+                    crate::ThreadTeam::new(
+                        crate::ThreadConfig::from_requested(threads, true).unwrap(),
+                    )
+                    .install(|| {
+                        let build = |application| {
+                            let built = CmgSchurPreconditioner::try_build_bounded_with(
+                                &design,
+                                weights,
+                                0,
+                                *degree,
+                                sampling,
+                                capacity,
+                                None,
+                                false,
+                                application,
+                                CmgOptions::default(),
+                            )
+                            .unwrap();
+                            let peak = built.peak.bytes().unwrap() as u128;
+                            (built.preconditioner.unwrap(), peak)
+                        };
+                        let (mut scalar, _) = build(AutoApplication::Scalar);
+                        let (mut team, peak) = build(AutoApplication::Team);
+                        let lanes = capacity.min(MAX_BATCH_COLUMNS);
+                        assert_eq!(
+                            team.install,
+                            Install::Auto {
+                                team_lanes: Some(lanes)
+                            }
+                        );
+                        assert!(team.plan.is_some(), "{name}");
+                        assert_eq!(team.batch_columns, lanes);
+                        assert!(team.trace_hierarchy().contains("|application=parallel|"));
+                        assert!(scalar.trace_hierarchy().contains("|application=scalar|"));
+                        if *name == "torus65" && threads > 1 {
+                            assert!(team.plan.as_ref().unwrap().operator_count() > 0);
+                        }
+                        assert_eq!(edges(&team), edges(&scalar));
+                        assert_eq!(team.components.labels, scalar.components.labels);
+                        assert_eq!(
+                            application_bits(&mut team, firms, capacity),
+                            application_bits(&mut scalar, firms, capacity),
+                            "{name}/t{threads}/c{capacity}"
+                        );
+                        assert!(team.retained_bytes().unwrap() <= peak);
+                    })
+                    .unwrap();
+                }
+            }
+        }
+    }
+
+    // Optional row operators and interleaved lanes never refuse a build the
+    // scalar installation admits: the same budget installs the same hierarchy
+    // with the scalar application and identical bits.
+    #[test]
+    fn automatic_team_installation_never_refuses_what_scalar_admits() {
+        let fixture = Fixture::torus(65);
+        let design = fixture.design();
+        let firms = fixture.firm_index.n_levels();
+        crate::ThreadTeam::new(crate::ThreadConfig::from_requested(4, true).unwrap())
+            .install(|| {
+                let build = |application, usable_bytes: Option<u128>| {
+                    CmgSchurPreconditioner::try_build_bounded_with(
+                        &design,
+                        BorrowedMapWeights::Unit,
+                        0,
+                        4,
+                        Sampling::default(),
+                        5,
+                        usable_bytes.map(|usable_bytes| FeSolverMemoryBudget {
+                            execution_bytes: 0,
+                            usable_bytes,
+                        }),
+                        false,
+                        application,
+                        CmgOptions::default(),
+                    )
+                    .unwrap()
+                };
+                let scalar_peak =
+                    build(AutoApplication::Scalar, None).peak.bytes().unwrap() as u128;
+                let team_peak = build(AutoApplication::Team, None).peak.bytes().unwrap() as u128;
+                assert!(team_peak > scalar_peak);
+                // The smallest budget that installs the scalar application (a
+                // tight budget also selects the serial hierarchy bound).
+                let (mut refused, mut minimum) = (0, scalar_peak);
+                while refused + 1 < minimum {
+                    let middle = refused + (minimum - refused) / 2;
+                    if build(AutoApplication::Scalar, Some(middle))
+                        .preconditioner
+                        .is_some()
+                    {
+                        minimum = middle;
+                    } else {
+                        refused = middle;
+                    }
+                }
+                let mut scalar = build(AutoApplication::Scalar, Some(minimum))
+                    .preconditioner
+                    .unwrap();
+                assert!(build(AutoApplication::Scalar, Some(minimum - 1))
+                    .preconditioner
+                    .is_none());
+                let reference = application_bits(&mut scalar, firms, 5);
+                let complete = |team: &CmgSchurPreconditioner| {
+                    team.plan
+                        .as_ref()
+                        .is_some_and(|plan| plan.operator_count() > 0)
+                        && team.batch_columns == MAX_BATCH_COLUMNS
+                };
+                // The smallest budget that installs every optional part.
+                let (mut partial, mut full) = (minimum, team_peak);
+                while partial + 1 < full {
+                    let middle = partial + (full - partial) / 2;
+                    if build(AutoApplication::Team, Some(middle))
+                        .preconditioner
+                        .as_ref()
+                        .is_some_and(complete)
+                    {
+                        full = middle;
+                    } else {
+                        partial = middle;
+                    }
+                }
+                assert!(full > minimum);
+                let mut degraded = 0;
+                let span = full - minimum;
+                for usable in (0..=8).map(|step| minimum + span * step / 8) {
+                    let built = build(AutoApplication::Team, Some(usable));
+                    let mut team = built.preconditioner.expect("team installs never refuse");
+                    degraded += usize::from(!complete(&team));
+                    assert_eq!(complete(&team), usable >= full);
+                    assert!(built.peak.bytes().unwrap() as u128 <= usable);
+                    assert!(team.retained_bytes().unwrap() <= usable);
+                    assert_eq!(application_bits(&mut team, firms, 5), reference);
+                }
+                assert!(degraded > 0);
+                assert!(build(AutoApplication::Team, Some(minimum - 1))
+                    .preconditioner
+                    .is_none());
+                let mut full = build(AutoApplication::Team, Some(team_peak))
+                    .preconditioner
+                    .unwrap();
+                assert!(full.plan.is_some() && full.batch_columns == MAX_BATCH_COLUMNS);
+                assert_eq!(application_bits(&mut full, firms, 5), reference);
+            })
+            .unwrap();
     }
 }
