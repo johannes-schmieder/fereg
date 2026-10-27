@@ -359,9 +359,11 @@ for stopping rules, scientific requirements and practical Mac measurements.
 `time_exact.py` (arithmetic-preserving PPML candidates only):
 
 ```
+REPLAY_MAX_CELLS=120000000U bash bench/build_timing_harness.sh target/tmp/TASK/harness
 python3 bench/ppml_cases.py --output target/tmp/TASK/ppml --threads 4 28
 python3 bench/time_exact.py --plugin base=... --plugin candidate=... \
-    --cases target/tmp/TASK/ppml/cases/*-t4.case --output target/tmp/TASK/t4 --repetitions 5
+    --cases target/tmp/TASK/ppml/cases/*-t4.case --output target/tmp/TASK/t4 --repetitions 5 \
+    --harness target/tmp/TASK/harness
 ```
 
 `native.py`, `time_exact.py`, the replay tools and the campaign runner remain
