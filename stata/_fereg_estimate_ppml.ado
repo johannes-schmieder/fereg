@@ -212,7 +212,7 @@ program define _fereg_estimate_ppml, eclass
     local inject_known = `inject_known' | inlist(`"`inject'"', ///
         "breakpostplugin", "breakpostpublic", "mutatewire", ///
         "mutatesemantic", "mutatesolver", "mutateoutput", "panic", "breaknative", ///
-        "allocation")
+        "allocation") | `"`inject'"' == "ppml_separation_auto"
     if !`inject_known' {
         di as error "unknown developer PPML transaction injection stage: `inject'"
         exit 198
@@ -742,6 +742,7 @@ program define _fereg_estimate_ppml, eclass
     if `"`inject'"' == "panic" local plugin_inject "panic"
     if `"`inject'"' == "breaknative" local plugin_inject "breaknative"
     if `"`inject'"' == "allocation" local plugin_inject "allocation"
+    if `"`inject'"' == "ppml_separation_auto" local plugin_inject "ppml_separation_auto"
     quietly _fereg_memory_baseline
     local stata_used_before = strtrim(string(r(used), "%21.0f"))
     local stata_alloc_before = strtrim(string(r(allocated), "%21.0f"))

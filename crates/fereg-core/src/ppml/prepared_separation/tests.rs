@@ -2190,6 +2190,289 @@ fn admitted_projection_still_detects_finite_separation_outside_graph_submodel() 
     }
 }
 
+/// Two-intercept detector fixture whose zeros only a finite regressor can
+/// separate (`separable`), so the graph has no direction and the rectifier
+/// projects; `separable == false` opposes the regressor and certifies none.
+fn finite_separation_owner(separable: bool) -> PreparedPpmlModelOwner {
+    let (mut request, clusters, mut loaded, mut uses) = fixture();
+    let mut second = request.absorbed_terms[0].clone();
+    second.id = AbsorbTermId::new(2).unwrap();
+    second.categorical_sources = vec![SourceId::new(3).unwrap()];
+    second.label = "h".into();
+    request.absorbed_terms.push(second);
+    request.keep_singletons = true;
+    loaded.outcome = column(&[1., 1., 1., 1., 0., 0.]);
+    loaded.numeric_sources[0].1 = column(&[0., 0., 0., 0., 1., if separable { 1. } else { -1. }]);
+    loaded.numeric_sources[1].1 = column(&[1., 1., 2., 2., 1., 2.]);
+    loaded.numeric_sources[2].1 = column(&[1., 2., 1., 2., 1., 2.]);
+    uses[2].fixed_effect = true;
+    PreparedPpmlModelOwner::new(
+        request,
+        clusters,
+        loaded.clone(),
+        prepare_numeric(&loaded, &uses),
+    )
+    .unwrap()
+}
+
+/// Admitted detector policy with the public (CG) or hidden (Auto) solver.
+fn detector_ppml(solver: FeSolverKind) -> PpmlConfig {
+    let mut ppml = PpmlConfig::default();
+    ppml.absorb.solver = solver;
+    ppml.absorb.retain_coefficients = true;
+    ppml.absorb.lsmr.threads = crate::ThreadConfig::from_requested(1, true).unwrap();
+    ppml.absorb.solver_memory_budget = Some(crate::memory::FeSolverMemoryBudget {
+        execution_bytes: 0,
+        usable_bytes: 1 << 30,
+    });
+    ppml
+}
+
+fn rectifier_only() -> SeparationConfig {
+    SeparationConfig {
+        methods: SeparationMethods {
+            fixed_effects: false,
+            simplex: false,
+            iterated_rectifier: true,
+            mu: false,
+        },
+        drop_singletons: false,
+        ..SeparationConfig::default()
+    }
+}
+
+/// Every discrete field of a separation report: rows, reasons, generations,
+/// method order, status, iterations, drops and certificate verdicts.
+fn report_decisions(report: &SeparationReport) -> impl PartialEq + std::fmt::Debug {
+    (
+        report.retained_observations.clone(),
+        report.dropped_observations.clone(),
+        report.drop_reasons.clone(),
+        (report.singleton_count, report.separated_count),
+        (report.generations, report.generation_hashes.clone()),
+        report
+            .methods
+            .iter()
+            .map(|entry| {
+                (
+                    entry.generation,
+                    entry.method,
+                    entry.status,
+                    entry.iterations,
+                    entry.dropped_observations.clone(),
+                    entry.singleton_drops.clone(),
+                    entry.certificate.as_ref().map(|c| (c.proof, c.passed)),
+                    entry.exact_fe_certificate.clone(),
+                )
+            })
+            .collect::<Vec<_>>(),
+    )
+}
+
+#[test]
+fn auto_projection_routes_exactly_two_categorical_intercepts() {
+    let two = PreparedSeparationCoordinator::new(finite_separation_owner(true)).unwrap();
+    let design = two
+        .view()
+        .prepared
+        .fit_view()
+        .fit_borrowed_intercept_map_design()
+        .unwrap()
+        .unwrap();
+    assert_eq!(design.effects().len(), 2);
+    assert_eq!(
+        routing::projection_solver(true, &design),
+        FeSolverKind::Auto
+    );
+    assert_eq!(routing::projection_solver(false, &design), FeSolverKind::Cg);
+    let (request, clusters, loaded, uses) = fixture();
+    let owner = PreparedPpmlModelOwner::new(
+        request,
+        clusters,
+        loaded.clone(),
+        prepare_numeric(&loaded, &uses),
+    )
+    .unwrap();
+    let one = PreparedSeparationCoordinator::new(owner).unwrap();
+    let design = one
+        .view()
+        .prepared
+        .fit_view()
+        .fit_borrowed_intercept_map_design()
+        .unwrap()
+        .unwrap();
+    assert_eq!(design.effects().len(), 1);
+    for injected in [false, true] {
+        assert_eq!(
+            routing::projection_solver(injected, &design),
+            FeSolverKind::Cg
+        );
+    }
+}
+
+#[test]
+fn auto_projection_keeps_every_rectifier_decision() {
+    // The Auto route builds OLS cells on the shared process worker team; an
+    // isolated child keeps them out of other tests' thread-local cell counts.
+    const CHILD: &str = "FEREG_SEPARATION_AUTO_DECISION_CHILD";
+    if std::env::var_os(CHILD).is_none() {
+        let status = std::process::Command::new(std::env::current_exe().unwrap())
+            .env(CHILD, "1")
+            .args([
+                "ppml::prepared_separation::tests::auto_projection_keeps_every_rectifier_decision",
+                "--exact",
+                "--test-threads=1",
+            ])
+            .status()
+            .unwrap();
+        assert!(status.success());
+        return;
+    }
+    for separable in [true, false] {
+        let config = rectifier_only();
+        let run = |solver| {
+            let ppml = detector_ppml(solver);
+            let coordinator =
+                PreparedSeparationCoordinator::new(finite_separation_owner(separable)).unwrap();
+            let linear = PreparedOlsFitConfig {
+                absorb: ppml.absorb,
+                fixed_effect_collinearity_tolerance: ppml.fixed_effect_collinearity_tolerance,
+                ..PreparedOlsFitConfig::default()
+            };
+            let (proposal, evidence) = prepared_iterated_rectifier(
+                coordinator.view().prepared,
+                ppml,
+                config,
+                linear,
+                &mut |_| Ok(()),
+            )
+            .unwrap();
+            let outcome = detect_prepared_ppml_separation(
+                finite_separation_owner(separable),
+                ppml,
+                config,
+                None,
+                None,
+            )
+            .unwrap();
+            (proposal, evidence.is_some(), outcome)
+        };
+        let (cg, cg_evidence, cg_outcome) = run(FeSolverKind::Cg);
+        let (auto, auto_evidence, auto_outcome) = run(FeSolverKind::Auto);
+        // The detector's own decision: rows, status, iteration, method and
+        // certificate verdict; the direction differs at most in low bits.
+        assert_eq!(auto.dropped, cg.dropped, "separable={separable}");
+        assert_eq!(auto.status, cg.status);
+        assert_eq!(auto.iterations, cg.iterations);
+        assert_eq!(auto_evidence, cg_evidence);
+        assert_eq!(
+            auto.certificate.as_ref().map(|c| (c.proof, c.passed)),
+            cg.certificate.as_ref().map(|c| (c.proof, c.passed))
+        );
+        if let (Some(a), Some(c)) = (&auto.direction, &cg.direction) {
+            let scale = infinity_norm(c);
+            for (a, c) in a.iter().zip(c) {
+                assert!((a - c).abs() <= 1e-8 * scale, "{a} vs {c}");
+            }
+        }
+        assert_eq!(
+            report_decisions(&auto_outcome.separation),
+            report_decisions(&cg_outcome.separation)
+        );
+        assert_eq!(
+            auto_outcome.prepared.original_rows(),
+            cg_outcome.prepared.original_rows()
+        );
+        assert_eq!(
+            cg_outcome.separation.separated_count,
+            if separable { 2 } else { 0 }
+        );
+    }
+}
+
+#[test]
+fn break_inside_an_auto_rectifier_projection_is_interrupted() {
+    const CHILD: &str = "FEREG_SEPARATION_AUTO_BREAK_CHILD";
+    if std::env::var_os(CHILD).is_none() {
+        let status = std::process::Command::new(std::env::current_exe().unwrap())
+            .env(CHILD, "1")
+            .args([
+                "ppml::prepared_separation::tests::break_inside_an_auto_rectifier_projection_is_interrupted",
+                "--exact",
+                "--test-threads=1",
+            ])
+            .status()
+            .unwrap();
+        assert!(status.success());
+        return;
+    }
+    use crate::interrupt::test_polls;
+    for solver in [FeSolverKind::Auto, FeSolverKind::Cg] {
+        let ppml = detector_ppml(solver);
+        let config = rectifier_only();
+        let linear = PreparedOlsFitConfig {
+            absorb: ppml.absorb,
+            fixed_effect_collinearity_tolerance: ppml.fixed_effect_collinearity_tolerance,
+            ..PreparedOlsFitConfig::default()
+        };
+        // Host polls observed at each rectifier Break point, then the result.
+        let run = || {
+            let coordinator =
+                PreparedSeparationCoordinator::new(finite_separation_owner(false)).unwrap();
+            let mut marks = Vec::new();
+            let mut interrupt = |point| {
+                if point == PpmlInterruptPoint::SeparationIrIteration {
+                    marks.push(test_polls::polls());
+                }
+                Ok(())
+            };
+            let result = coordinate_prepared_ppml_separation(
+                coordinator,
+                ppml,
+                config,
+                None,
+                linear,
+                // Without the graph shortcut every rectifier mark is an
+                // iteration start or the fixed-point check.
+                false,
+                &mut interrupt,
+                |_, _| unreachable!("Mu is disabled"),
+                |_, _| Ok(()),
+            )
+            .map(|(outcome, ())| report_decisions_debug(&outcome.separation));
+            (marks, result)
+        };
+        test_polls::cancel_at(None);
+        let (marks, reference) = run();
+        let reference = reference.unwrap();
+        // The rectifier's first iteration polls before its projection; the
+        // fixed-point check polls after it. Every host query between them
+        // belongs to the projection.
+        assert!(marks.len() >= 2, "{solver:?}: {marks:?}");
+        let (start, end) = (marks[0], marks[1]);
+        assert!(
+            end > start,
+            "{solver:?}: no host query inside the projection"
+        );
+        for stop in start..end {
+            test_polls::cancel_at(Some(stop));
+            let (_, result) = run();
+            let error = result.expect_err("Break inside the projection must fail the fit");
+            assert_eq!(
+                error.code,
+                ErrorCode::Interrupted,
+                "{solver:?} stop {stop}: {error}"
+            );
+        }
+        test_polls::cancel_at(None);
+        assert_eq!(run().1.unwrap(), reference, "{solver:?}");
+    }
+}
+
+fn report_decisions_debug(report: &SeparationReport) -> String {
+    format!("{:?}", report_decisions(report))
+}
+
 fn fixture() -> (
     OlsRequestV1,
     Vec<OlsClusterTermV1>,

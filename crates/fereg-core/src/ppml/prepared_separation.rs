@@ -280,6 +280,8 @@ impl FinalGenerationReplayToken {
 pub(crate) struct PreparedPpmlSeparationExecution {
     pub(crate) preliminary_plan: PpmlMemoryPlan,
     pub(crate) linear: PreparedOlsFitConfig,
+    /// Hidden `inject=ppml_separation_auto` arm; see [`routing`].
+    pub(crate) auto_projection: bool,
 }
 
 fn parallel_digest_team(rows: usize) -> bool {
@@ -468,7 +470,7 @@ fn admit_detector_projection(
     {
         return Ok((ppml, linear));
     }
-    linear.absorb.solver = FeSolverKind::Cg;
+    linear.absorb.solver = routing::projection_solver(execution.auto_projection, &design);
     linear.absorb.retain_coefficients = true;
     linear.absorb.solver_memory_budget = Some(crate::memory::FeSolverMemoryBudget {
         execution_bytes: base,
@@ -482,6 +484,7 @@ fn admit_detector_projection(
 
 #[path = "prepared_separation_graph.rs"]
 mod graph;
+mod routing;
 mod trace;
 
 /// A separate scope makes success and failed initial construction observable;
