@@ -2929,7 +2929,7 @@ fn validate_shadow_diagnostics(
             || !matches!(row[0], 1.0 | 2.0 | 3.0 | 4.0 | 5.0 | 6.0 | 7.0 | 8.0)
             || !matches!(row[1], 1.0 | 2.0 | 3.0 | 4.0 | 5.0 | 6.0 | 7.0 | 8.0)
             || exact_usize(row[2], "OLS solver iteration count").is_err()
-            || !matches!(row[3], 1.0 | 2.0 | 3.0 | 4.0)
+            || !matches!(row[3], 1.0 | 2.0 | 3.0 | 4.0 | 5.0)
             || !matches!(row[10], 0.0 | 1.0)
             || exact_usize(row[11], "OLS solver warning count").is_err()
             || !matches!(row[12], 0.0 | 1.0 | 2.0 | 3.0 | 4.0)

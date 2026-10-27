@@ -45,6 +45,10 @@ pub enum SolveStopReason {
     MaximumIterations,
     /// The numerical recurrence stopped but the recomputed certificate failed.
     Uncertified,
+    /// No solve ran: the values are a linear combination of certified
+    /// projections and their recomputed certificate passed at the scale of
+    /// the combined terms (fast OLS final residuals without saved outputs).
+    DerivedCertificate,
 }
 
 /// Diagnostics from one fixed-effect absorption run.
@@ -123,7 +127,9 @@ impl SolveReport {
         self.certificate.passed
             && matches!(
                 self.stop_reason,
-                SolveStopReason::Certified | SolveStopReason::NoFixedEffects
+                SolveStopReason::Certified
+                    | SolveStopReason::NoFixedEffects
+                    | SolveStopReason::DerivedCertificate
             )
     }
 }

@@ -1132,6 +1132,7 @@ fn stop_code(value: SolveStopReason) -> f64 {
         SolveStopReason::Certified => 2.0,
         SolveStopReason::MaximumIterations => 3.0,
         SolveStopReason::Uncertified => 4.0,
+        SolveStopReason::DerivedCertificate => 5.0,
     }
 }
 

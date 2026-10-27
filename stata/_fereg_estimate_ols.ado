@@ -977,7 +977,7 @@ program define _fereg_eols_validate, rclass
            `solver'[`row',2] != int(`solver'[`row',2]) | ///
            `solver'[`row',3] < 0 | `solver'[`row',3] >= . | ///
            `solver'[`row',3] != int(`solver'[`row',3]) | ///
-           !inlist(`solver'[`row',4], 1, 2) | ///
+           !inlist(`solver'[`row',4], 1, 2, 5) | ///
            !inlist(`solver'[`row',11], 0, 1) {
             di as error "hidden OLS solver report failed semantic validation"
             exit 3499

@@ -881,6 +881,19 @@ pub(super) fn fit<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         LinearSessionAllocationPhase::Projection,
     );
     crate::interrupt::checkpoint()?;
+    // Fast OLS without residual, xbd, d or saved-FE outputs keeps its within
+    // residual when its derived certificate passes (SPEC §7, §16).
+    let derived_scale =
+        (dense && !config.absorb.retain_coefficients && config.final_residual_tolerance.is_none())
+            .then(|| {
+                derived_residual_scale(
+                    weighted_response_norm(frame.response(), weights)?,
+                    &inputs.reference_norms,
+                    &inputs.norms,
+                    &qr.generated_coefficients,
+                )
+            })
+            .transpose()?;
     let (residuals, residual_absorption_report, residual_fe_coefficients) = project_residual(
         &mut cmg,
         prepared.fit_sample().n_active(),
@@ -890,6 +903,7 @@ pub(super) fn fit<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         retained_fe_parent,
         perturbations.final_residual_constant,
         remaining.as_mut().map(ObserverRef::reborrow),
+        derived_scale.map(|scale| (scale, &inputs.absorption_report)),
     )?;
     if !dense {
         drop(cmg);
@@ -930,6 +944,90 @@ fn scaled_initial_sum_of_squares(value: f64, multiplier: f64, dense: bool) -> Re
     Ok(scaled)
 }
 
+fn weighted_response_norm(response: &[f64], weights: NormalizedWeights<'_>) -> Result<f64> {
+    let mut scale = 0.0_f64;
+    let mut scaled_square_sum = 1.0_f64;
+    for (row, &value) in response.iter().enumerate() {
+        update_scaled_sum_of_squares(
+            weights.root(row)? * value,
+            &mut scale,
+            &mut scaled_square_sum,
+        )?;
+    }
+    checked_norm(scale, scaled_square_sum)
+}
+
+/// `s_y + Σ|b_j| s_j` over kept columns, each `s` the §16 scale at which the
+/// projection certified that column (the larger of its raw and within weighted
+/// norms): by linearity the moments of `ỹ - X̃b` are at most tolerance times it.
+fn derived_residual_scale(
+    raw_outcome_norm: f64,
+    raw_norms: &[f64],
+    within_norms: &[f64],
+    coefficients: &[Option<f64>],
+) -> Result<f64> {
+    if within_norms.len() != coefficients.len() + 1 || raw_norms.len() != coefficients.len() {
+        return Err(invalid_argument(
+            "derived residual scale needs one raw and within norm per column",
+        ));
+    }
+    let mut scale = raw_outcome_norm.max(within_norms[0]);
+    for ((raw, within), coefficient) in raw_norms.iter().zip(&within_norms[1..]).zip(coefficients) {
+        if let Some(value) = coefficient {
+            scale += value.abs() * raw.max(*within);
+        }
+    }
+    if scale.is_finite() && scale >= 0.0 {
+        Ok(scale)
+    } else {
+        Err(invalid_data("derived residual scale is invalid"))
+    }
+}
+
+/// The derived certificate of a fast within residual, or `None` when this
+/// session cannot recompute it or it does not pass.
+fn derived_residual(
+    cmg: &mut crate::fe::FeSession<'_>,
+    matrix: &DenseMatrix,
+    weights: NormalizedWeights<'_>,
+    config: PreparedOlsFitConfig,
+    scale: f64,
+    absorption: &SolveReport,
+) -> Result<Option<SolveReport>> {
+    let started = std::time::Instant::now();
+    let norm = weighted_matrix_column_norm(matrix, 0, weights)?;
+    // r is at most its terms' sum; rounding can only make the ratio smaller.
+    let amplification = if norm > 0.0 {
+        (scale / norm).max(1.0)
+    } else {
+        1.0
+    };
+    let tolerance = config.final_absorb_config().map.tolerance;
+    let Some(certificate) =
+        cmg.certify_derived_residual(weights.borrowed(), matrix, tolerance, amplification)?
+    else {
+        return Ok(None);
+    };
+    if !certificate.passed {
+        return Ok(None);
+    }
+    Ok(Some(SolveReport {
+        iterations: 0,
+        checkpoint_retries: 0,
+        stop_reason: SolveStopReason::DerivedCertificate,
+        certificate,
+        normal_equation_residual: 0.0,
+        setup_seconds: 0.0,
+        solve_seconds: 0.0,
+        certification_seconds: started.elapsed().as_secs_f64(),
+        fallback_used: false,
+        pilot_iterations: 0,
+        pilot_contraction: 0.0,
+        warnings: Vec::new(),
+        ..absorption.clone()
+    }))
+}
+
 #[allow(clippy::too_many_arguments)]
 fn project_residual(
     cmg: &mut crate::fe::FeSession<'_>,
@@ -940,9 +1038,21 @@ fn project_residual(
     retained_fe_parent: u128,
     perturb_constant: bool,
     remaining: Option<ObserverRef<'_>>,
+    derived: Option<(f64, &SolveReport)>,
 ) -> Result<(DenseMatrix, SolveReport, Option<FeCoefficientBatch>)> {
     let dense = config.execution.mode == PreparedOlsExecutionMode::Fast;
     let matrix = DenseMatrix::from_row_major(rows, 1, seed)?;
+    if let Some((scale, absorption)) = derived {
+        if let Some(report) = derived_residual(cmg, &matrix, weights, config, scale, absorption)? {
+            let mut residuals = matrix;
+            if perturb_constant {
+                for row in 0..residuals.nrows() {
+                    residuals[(row, 0)] += 0.25;
+                }
+            }
+            return Ok((residuals, report, None));
+        }
+    }
     // Original-source seeds contain the full FE contribution. They require the
     // full projector; only dense within seeds may use terminal residual polish.
     let residual_absorbed = cmg.project_ols_with_remaining(

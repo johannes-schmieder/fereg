@@ -820,6 +820,25 @@ impl<'a> FeSession<'a> {
         self.categorical.as_ref()?.gate_rule().map(GateState::new)
     }
 
+    /// Recompute the certificate of a residual formed from certified
+    /// projections at its derived scale, `amplification` times its own norm,
+    /// where the categorical owner serves this session; `None` keeps the
+    /// caller's projection path.
+    pub(crate) fn certify_derived_residual(
+        &mut self,
+        weights: BorrowedMapWeights<'_>,
+        values: &DenseMatrix,
+        tolerance: f64,
+        amplification: f64,
+    ) -> Result<Option<super::FeCertificate>> {
+        match self.categorical.as_mut() {
+            Some(owner) if self.cmg.is_none() && self.lsmr.is_none() => owner
+                .certify_derived(weights, values, tolerance, amplification)
+                .map(Some),
+            _ => Ok(None),
+        }
+    }
+
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn project_ols_with_remaining(
         &mut self,

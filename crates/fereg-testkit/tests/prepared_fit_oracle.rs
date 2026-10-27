@@ -5,7 +5,7 @@ use fereg_core::{
     MetadataFlag, OlsInputBinding, OlsInputRole, OlsRequestV1, PreparedOlsAbsorbedDofPolicy,
     PreparedOlsBreadCoordinateKind, PreparedOlsData, PreparedOlsExecutionMode,
     PreparedOlsFitConfig, PreparedOlsFitStatus, PreparedOlsUnadjustedConfig, RawTermKind,
-    SourceEntry, SourceId, TermComponent, TermId, TermOrder, TimeSeriesState,
+    SolveStopReason, SourceEntry, SourceId, TermComponent, TermId, TermOrder, TimeSeriesState,
 };
 use fereg_testkit::explicit_ols::{
     fit_explicit_ols, DummyEffect, ExplicitOlsProblem, OracleWeights,
@@ -173,7 +173,17 @@ fn structural_auto_graph_and_explicit_solvers_match_dummies_in_both_storage_mode
             assert_eq!(fit.absorption_report().pilot_iterations, 0);
             let cmg_final_verification =
                 mode == PreparedOlsExecutionMode::Fast && solver == FeSolverKind::Cmg;
-            let expected_final = if solver == FeSolverKind::Auto
+            let derived =
+                fit.residual_absorption_report().stop_reason == SolveStopReason::DerivedCertificate;
+            // Fast fits without saved outputs certify ỹ - X̃b by its derived
+            // certificate; low-memory raw residuals are always projected.
+            assert_eq!(
+                derived,
+                mode == PreparedOlsExecutionMode::Fast && solver == FeSolverKind::Auto
+            );
+            let expected_final = if derived {
+                expected
+            } else if solver == FeSolverKind::Auto
                 && fit.residual_absorption_report().iterations == 0
             {
                 // The final residual can pass the initial certificate unchanged.

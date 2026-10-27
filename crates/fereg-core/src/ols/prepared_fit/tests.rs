@@ -9761,3 +9761,80 @@ fn incremental_family_fits_match_portfolio_or_incumbent_with_analytic_witnesses(
 
 #[path = "ownership_tests.rs"]
 mod ownership_tests;
+
+// Fast fits without residual, xbd, d or saved-FE outputs accept ỹ - X̃b by its
+// derived certificate (no second solve); requested outputs, low memory and a
+// failing derived check keep the certified final projection, with the same
+// coefficients and residuals within the certified accuracy.
+#[test]
+fn derived_final_residual_replaces_the_polish_only_without_outputs() {
+    let n = 4_000;
+    let workers = (0..n).map(|row| (row / 4) as f64).collect::<Vec<_>>();
+    let firms = (0..n)
+        .map(|row| ((row * 7 + row / 4 * 13) % 97) as f64)
+        .collect::<Vec<_>>();
+    let x = (0..n)
+        .map(|row| (row as f64 * 0.37).sin() + 0.01 * workers[row])
+        .collect::<Vec<_>>();
+    let y = (0..n)
+        .map(|row| {
+            1.5 * x[row]
+                + 0.3 * workers[row].sin()
+                + 0.2 * firms[row].cos()
+                + 0.05 * (row as f64 * 1.7).cos()
+        })
+        .collect::<Vec<_>>();
+    let prepared = prepared_multiway_categorical(&y, std::slice::from_ref(&x), &[workers, firms]);
+    let fit = |mode, outputs: Option<f64>| {
+        let mut config = PreparedOlsFitConfig::default();
+        config.execution.mode = mode;
+        config.final_residual_tolerance = outputs;
+        fit_prepared_model_coefficients(&prepared, config).unwrap()
+    };
+    let derived = fit(PreparedOlsExecutionMode::Fast, None);
+    let report = derived.residual_absorption_report();
+    assert_eq!(report.stop_reason, SolveStopReason::DerivedCertificate);
+    assert_eq!(report.iterations, 0);
+    assert!(report.certified() && report.certificate.passed);
+    assert_eq!(report.used_solver, derived.absorption_report().used_solver);
+    for (mode, outputs) in [
+        (PreparedOlsExecutionMode::Fast, Some(1e-14)),
+        (PreparedOlsExecutionMode::Low, None),
+    ] {
+        let polished = fit(mode, outputs);
+        let report = polished.residual_absorption_report();
+        assert_eq!(report.stop_reason, SolveStopReason::Certified);
+        assert!(report.certified());
+        for (left, right) in derived.coefficients().iter().zip(polished.coefficients()) {
+            assert_eq!(left.status, right.status);
+            match (left.value, right.value) {
+                (Some(a), Some(b)) => assert_close(a, b, 1e-9),
+                (None, None) => {}
+                _ => panic!("coefficient availability differs"),
+            }
+        }
+        for (a, b) in derived.residuals().iter().zip(polished.residuals()) {
+            assert_close(*a, *b, 1e-8);
+        }
+    }
+    // A corrupted within residual fails its derived certificate and is
+    // projected as before.
+    let mut reservation = InjectedReservation::default();
+    let corrected = fit_with_controls_internal(
+        &prepared,
+        PreparedOlsFitConfig::default(),
+        &mut reservation,
+        FitPerturbations {
+            reconstructed_within_residual_constant: true,
+            ..FitPerturbations::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(
+        corrected.residual_absorption_report().stop_reason,
+        SolveStopReason::Certified
+    );
+    for (a, b) in derived.residuals().iter().zip(corrected.residuals()) {
+        assert_close(*a, *b, 1e-8);
+    }
+}

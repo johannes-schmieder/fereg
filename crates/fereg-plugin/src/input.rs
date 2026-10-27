@@ -344,6 +344,7 @@ const fn stop_reason_label(reason: SolveStopReason) -> &'static str {
         SolveStopReason::Certified => "certified",
         SolveStopReason::MaximumIterations => "maximum_iterations",
         SolveStopReason::Uncertified => "uncertified",
+        SolveStopReason::DerivedCertificate => "derived_certificate",
     }
 }
 
