@@ -95,8 +95,9 @@ def render(campaign, frame, output):
              ('Both FE channels are saved inside command timing. ' if saved else
               'No FE are saved; commands time estimation and inference, and comparisons cover slopes, '
               'covariance, sample, rank and RSS. ')+
-             'Import, export and checks are outside timing. Long: 1996-2001; normalized age squared '
-             'and cubed plus 1996-2000 indicators (2001 base). Short: 1999/2001, with a 2001 indicator.')
+             'Import, export and checks are outside timing. '+
+             ' '.join({'long': 'Long: 1996-2001; normalized age squared and cubed plus 1996-2000 indicators (2001 base).',
+                       'short': 'Short: 1999/2001, with a 2001 indicator.'}[p] for p in panels))
     planned = sum(len(c['arms']) for c in campaign['manifest']['cells'])*campaign['manifest']['policy']['repetitions']
     pdf.text('Three repetitions at 1/2/4/8/16 physical cores for fereg, fixest 0.14.2 '
              'default/strict and PyFixest (0.60.0 Rust MAP and the pinned main revision with within LSMR); '
@@ -119,12 +120,15 @@ def render(campaign, frame, output):
         pdf.table(rows, [37, 78, 78, 78, 78, 80, 78], padding=6)
         details = []
         for arm in REFERENCES:
-            cells = selected[selected.arm == arm]
+            arm_cells = selected[selected.arm == arm]
             errors = sorted({r['error'] for r in campaign['records']
                              if r['cell'].startswith('veneto-'+panel+'-') and r['arm'] == arm and r.get('error')})
-            reasons = sorted({reason for value in cells.reasons for reason in value.split('; ') if reason
+            reasons = sorted({reason for value in arm_cells.reasons for reason in value.split('; ') if reason
                               and reason != 'application unavailable'})
-            details.append(f'{report.ARM_NAMES[arm]}: {int(cells.eligible.sum())}/{len(cells)} eligible cells. '+
+            if any(r['status'] == 'command-timeout' for r in campaign['records']
+                   if r['cell'].startswith('veneto-'+panel+'-') and r['arm'] == arm):
+                reasons.append('600-second command limit')
+            details.append(f'{report.ARM_NAMES[arm]}: {int(arm_cells.eligible.sum())}/{len(arm_cells)} eligible cells. '+
                            ('; '.join(errors+reasons)+'.' if errors or reasons else 'All checks pass.'))
         pdf.text(' '.join(details), 'SmallCustom')
         base, last = native.iloc[0], native.iloc[-1]
@@ -138,7 +142,8 @@ def render(campaign, frame, output):
              f"{counts['capture-error']} capture errors and {counts['skipped-after-failure']} skipped positions. "
              'Every failed observation remains visible. No replacement observations or tolerance changes were used.')
     pdf.table([['Gate', 'Outcome'],
-               ['Scheduler and application', 'Setup, smoke and both production tasks: failed=0, exit=0; all sentinels present.'],
+               ['Scheduler and application', 'Setup, smoke and '+('both production tasks' if len(panels) == 2 else 'the production task')+
+                ': failed=0, exit=0; all sentinels present.'],
                ['Native repeated science', f'{len(cells)*(repetitions-1)} exact repeat checks; scientific CSV'+(' and raw FE' if saved else '')+' hashes, reported RSS and discrete decisions stable.'],
                ['Native core consistency', f'{len(cells)*repetitions} checks against the one-core reference, including '
                 f'{sum(c["threads"] == 1 for c in cells)*repetitions} one-core checks and '
@@ -146,7 +151,8 @@ def render(campaign, frame, output):
                ['Independent witnesses', 'Every native dense-design real-data smoke passes coefficients'+(', covariance and fitted values' if saved else ' and covariance')+
                 '. Full-panel graph rank'+(', model scores and objective replay pass.' if saved else ' passes.')],
                ['Host evidence', 'Every complete reservation and all-queue census replays successfully; continuous samples report no known competing compute.'],
-               ['Retained input audit', 'Exact fevc identifiers. Control-adjustment max errors: 1.54e-13 long, 1.01e-13 short (gate 1e-12).']],
+               ['Retained input audit', 'Exact fevc identifiers. Control-adjustment max errors: '+
+                ', '.join(f"{campaign['input_audit'][p]['adjustment_max_error']:.3g} {p}" for p in panels)+' (gate 1e-12).']],
               [132, 375], padding=5)
     pdf.text('Reference accuracy and interpretation', 'SectionCustom')
     if saved:
@@ -191,6 +197,7 @@ def export(root, output):
     # Keep every planned position, including failures and skipped repetitions.
     (output/(prefix+'-observations.csv')).write_bytes((root/'observations.csv').read_bytes())
     (output/(prefix+'-science.json')).write_bytes((root/'science.json').read_bytes())
+    campaign['input_audit'] = json.loads((root/'environment/input-audit.json').read_text())
     render(campaign, frame, output)
     context = campaign['context']
     evidence = {k: context[k] for k in ['run_id', 'remote_root', 'source', 'runtime_source',

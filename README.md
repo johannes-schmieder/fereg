@@ -101,8 +101,9 @@ Speed ratios count only when results pass the same scientific checks. In the
 beta.7 campaign, `fereg` was faster than default `fixest` in all 35 eligible
 configurations and faster than strict `fixest`, `reghdfe`, `ppmlhdfe` and
 `areg` in every eligible comparison. PyFixest's `within` demeaner was faster
-on dense three-FE designs, dense two-FE PPML and the short Veneto panel without
-saved effects, while `fereg` was faster on synthetic AKM designs. When saving
+on dense three-FE designs, dense two-FE PPML and, without saved effects, the
+short Veneto panel and the long panel at 8 and 16 cores, while `fereg` was
+faster on synthetic AKM designs and on the long panel at one to four cores. When saving
 worker and firm effects on the real panels, every comparator either timed out
 or failed a scientific check. These are fixed-panel descriptive results, not
 universal rankings.

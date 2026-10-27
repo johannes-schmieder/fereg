@@ -1,5 +1,80 @@
 # Veneto AKM comparisons
 
+## October 27, 2026: long panel rerun on one node
+
+The October 26 long-panel runs landed on different nodes, one of them
+(`scc-uf4`) about twice as slow as the others, so the saved and unsaved long
+results were not comparable with each other. Both long-panel variants were
+therefore rerun back to back in one whole-node job on `scc-uc2` (28-core E5-2680
+v4), using the same beta.7 runtime (plugin `79d81fb1...`, built at `277c5d11`),
+the same arms, and the October 24 run's audited inputs, smoke witnesses and
+policy reused byte for byte. Only the long panel was scheduled: 5,163,428 rows,
+1,106,419 workers, 86,647 firms and seven controls. Each variant has 84 planned
+positions. All 30 native fits pass the production gates, with exact
+fixed-worker repeats and cross-core agreement.
+
+**Without saved FE**, 22 of 23 comparator cells are eligible; the other is
+PyFixest 0.60.0 at one core, which hit the 600-second command limit. Entries
+are three-command medians in seconds, with the comparator/fereg ratio in
+parentheses.
+
+| Cores | fereg s | PyFixest within | fixest default | fixest strict | reghdfe | PyFixest 0.60 |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 13.32 | 26.89 (2.02) | 59.89 (4.49) | 111.49 (8.37) | 503.16 (37.76) | timeout |
+| 2 | 10.54 | 15.30 (1.45) | 34.71 (3.29) | 63.99 (6.07) | 288.72 (27.41) | 345.22 (32.77) |
+| 4 | 8.56 | 9.82 (1.15) | 20.82 (2.43) | 36.98 (4.32) | 203.77 (23.80) | 188.52 (22.02) |
+| 8 | 7.41 | 7.03 (0.95) | 13.03 (1.76) | 22.68 (3.06) | — | 124.21 (16.76) |
+| 16 | 7.03 | 6.30 (0.90) | 13.42 (1.91) | 22.73 (3.23) | — | 128.59 (18.30) |
+
+Fereg is faster than both fixest profiles, reghdfe and PyFixest 0.60.0 in
+every eligible cell. PyFixest's `within` default is faster at 8 and 16 cores
+(0.95, 0.90), fereg at one to four cores (1.15-2.02), the same crossover as
+on October 26's `scc-uf4` run. Fereg's absolute times are 2.2 to 2.3 times
+shorter on `scc-uc2`. Peak estimator memory was 1.38-1.47 GiB for
+fereg, 2.0-2.4 GiB for fixest default, 2.3-2.5 GiB strict, 2.1 GiB reghdfe,
+2.2-2.8 GiB PyFixest 0.60.0 and 2.6-3.6 GiB PyFixest `within`.
+
+**With saved FE**, fereg took 16.27 seconds at one core and 9.64 at sixteen,
+22-37% longer than without saved FE on the same node, with peak memory of
+1.68-1.77 GiB. No comparator cell is eligible, so comparator times are
+descriptive (`*`; n=1 is a single completed command before later repetitions
+were skipped):
+
+| Cores | fereg s | fixest default | fixest strict | reghdfe | Both PyFixest arms |
+| ---: | ---: | ---: | ---: | ---: | --- |
+| 1 | 16.27 | 63.68* n=1 (3.91) | 115.00* (7.07) | 559.05* n=1 (34.35) | timeout |
+| 2 | 13.14 | 38.99* n=1 (2.97) | 67.58* (5.14) | 326.78* n=1 (24.87) | timeout |
+| 4 | 11.10 | 24.91* n=1 (2.24) | 40.42* (3.64) | 239.39* n=1 (21.58) | timeout |
+| 8 | 9.79 | 17.20* n=1 (1.76) | 26.06* (2.66) | — | timeout |
+| 16 | 9.64 | 17.45* n=1 (1.81) | 26.56* (2.76) | — | timeout |
+
+As on October 24 and 26, default fixest and reghdfe fail the independent
+saved-predictor score check; strict fixest completes, but its centered worker
+and firm effects differ from fereg's beyond the frozen tolerance; and both
+PyFixest arms reach the 600-second command limit at every core count, because
+they recover saved effects with single-threaded LSQR (see the route
+diagnostic below). Fereg's saved-FE times on `scc-uc2` match October 26's
+`scc-ue1` run within 0.8 seconds.
+
+**Identity.** Unsaved run `20261027T021257Z-beta7-veneto-long-nofe-9bbd2649`:
+reuse `8294346`, setup `8294347`, smoke `8294348`. Saved run
+`20261027T021257Z-beta7-veneto-long-saved-9bbd2649`: reuse `8294349`, setup
+`8294350`, smoke `8294351`. Both production runs share pair job `8294352`
+(`bench/scc/panel_pair.sh`), which ran the unsaved variant first. The
+unsaved run's smoke passed for all six fits; in the saved run's smoke, default
+fixest again failed the long-panel score check. All scheduler accounting,
+sentinels, host reservations and censuses pass. A first submission from
+`ee60ff55` failed its smokes before any timing because the new controls suffix
+changed the panel dataset key; `9bbd2649` fixed that.
+
+| Retained aggregate evidence | Contents |
+| --- | --- |
+| Without saved FE: [summary](../bench/results/scc-20261027-beta7-veneto-long-nofe-summary.csv), [observations](../bench/results/scc-20261027-beta7-veneto-long-nofe-observations.csv), [science](../bench/results/scc-20261027-beta7-veneto-long-nofe-science.json), [inputs](../bench/results/scc-20261027-beta7-veneto-long-nofe-inputs.json) | All 28 arm cells and 84 positions, native repeat/core checks, identities, accounting and host replay. |
+| Saved FE: [summary](../bench/results/scc-20261027-beta7-veneto-long-saved-summary.csv), [observations](../bench/results/scc-20261027-beta7-veneto-long-saved-observations.csv), [science](../bench/results/scc-20261027-beta7-veneto-long-saved-science.json), [inputs](../bench/results/scc-20261027-beta7-veneto-long-saved-inputs.json) | The same for the saved run. |
+
+Full captures and the checked three-page reports remain private under the two
+run roots in `/projectnb/welfgr/fereg/runs/`.
+
 ## October 26, 2026: beta.7 with PyFixest, with and without saved FE
 
 The same audited long and short fevc panels ran on the v0.5.0-beta.7 packaged

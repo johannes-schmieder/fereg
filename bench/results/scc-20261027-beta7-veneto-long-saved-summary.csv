@@ -1,0 +1,29 @@
+cell,model,design,rows,threads,vce,save_fe,section,arm,successful_repetitions,eligible,reasons,seconds,seconds_min,seconds_max,timed_repetitions,observed_seconds,timing_discrepancy,speedup,rss_gib,memory_resolved,host,statuses
+veneto-long-t1,ols,veneto-long,5163428,1,iid,True,veneto,fereg,3,True,,16.273316378,16.241313447,16.276596253,3,16.273316378,False,,1.6808853149414062,True,scc-uc2,ok; ok; ok
+veneto-long-t1,ols,veneto-long,5163428,1,iid,True,veneto,fixest,0,False,application unavailable,,,,1,63.68,True,,,False,scc-uc2,capture-error; skipped-after-failure; skipped-after-failure
+veneto-long-t1,ols,veneto-long,5163428,1,iid,True,veneto,fixest-strict,3,False,centered saved1; centered saved2,115.002,114.633,115.877,3,115.002,True,,2.739715576171875,True,scc-uc2,ok; ok; ok
+veneto-long-t1,ols,veneto-long,5163428,1,iid,True,veneto,pyfixest,0,False,application unavailable,,,,0,,False,,,False,scc-uc2,command-timeout; skipped-after-failure; skipped-after-failure
+veneto-long-t1,ols,veneto-long,5163428,1,iid,True,veneto,pyfixest-within,0,False,application unavailable,,,,0,,False,,,False,scc-uc2,command-timeout; skipped-after-failure; skipped-after-failure
+veneto-long-t1,ols,veneto-long,5163428,1,iid,True,veneto,reghdfe,0,False,application unavailable,,,,1,559.050798598,True,,,False,scc-uc2,capture-error; skipped-after-failure; skipped-after-failure
+veneto-long-t2,ols,veneto-long,5163428,2,iid,True,veneto,fereg,3,True,,13.137072525,13.123653228,13.186525549,3,13.137072525,False,,1.7699661254882812,True,scc-uc2,ok; ok; ok
+veneto-long-t2,ols,veneto-long,5163428,2,iid,True,veneto,fixest,0,False,application unavailable,,,,1,38.989,True,,,False,scc-uc2,capture-error; skipped-after-failure; skipped-after-failure
+veneto-long-t2,ols,veneto-long,5163428,2,iid,True,veneto,fixest-strict,3,False,centered saved1; centered saved2,67.579,67.027,67.765,3,67.579,True,,2.7614593505859375,True,scc-uc2,ok; ok; ok
+veneto-long-t2,ols,veneto-long,5163428,2,iid,True,veneto,pyfixest,0,False,application unavailable,,,,0,,False,,,False,scc-uc2,command-timeout; skipped-after-failure; skipped-after-failure
+veneto-long-t2,ols,veneto-long,5163428,2,iid,True,veneto,pyfixest-within,0,False,application unavailable,,,,0,,False,,,False,scc-uc2,command-timeout; skipped-after-failure; skipped-after-failure
+veneto-long-t2,ols,veneto-long,5163428,2,iid,True,veneto,reghdfe,0,False,application unavailable,,,,1,326.776063012,True,,,False,scc-uc2,capture-error; skipped-after-failure; skipped-after-failure
+veneto-long-t4,ols,veneto-long,5163428,4,iid,True,veneto,fereg,3,True,,11.095722122000002,11.029120192,11.163632738,3,11.095722122000002,False,,1.7684669494628906,True,scc-uc2,ok; ok; ok
+veneto-long-t4,ols,veneto-long,5163428,4,iid,True,veneto,fixest,0,False,application unavailable,,,,1,24.907,True,,,False,scc-uc2,capture-error; skipped-after-failure; skipped-after-failure
+veneto-long-t4,ols,veneto-long,5163428,4,iid,True,veneto,fixest-strict,3,False,centered saved1; centered saved2,40.424,40.359,40.462,3,40.424,True,,2.7972488403320312,True,scc-uc2,ok; ok; ok
+veneto-long-t4,ols,veneto-long,5163428,4,iid,True,veneto,pyfixest,0,False,application unavailable,,,,0,,False,,,False,scc-uc2,command-timeout; skipped-after-failure; skipped-after-failure
+veneto-long-t4,ols,veneto-long,5163428,4,iid,True,veneto,pyfixest-within,0,False,application unavailable,,,,0,,False,,,False,scc-uc2,command-timeout; skipped-after-failure; skipped-after-failure
+veneto-long-t4,ols,veneto-long,5163428,4,iid,True,veneto,reghdfe,0,False,application unavailable,,,,1,239.39375106800003,True,,,False,scc-uc2,capture-error; skipped-after-failure; skipped-after-failure
+veneto-long-t8,ols,veneto-long,5163428,8,iid,True,veneto,fereg,3,True,,9.78671332,9.747194411,9.92735929,3,9.78671332,False,,1.7702064514160156,True,scc-uc2,ok; ok; ok
+veneto-long-t8,ols,veneto-long,5163428,8,iid,True,veneto,fixest,0,False,application unavailable,,,,1,17.203,True,,,False,scc-uc2,capture-error; skipped-after-failure; skipped-after-failure
+veneto-long-t8,ols,veneto-long,5163428,8,iid,True,veneto,fixest-strict,3,False,centered saved1; centered saved2,26.057,26.051,26.082,3,26.057,True,,2.868946075439453,True,scc-uc2,ok; ok; ok
+veneto-long-t8,ols,veneto-long,5163428,8,iid,True,veneto,pyfixest,0,False,application unavailable,,,,0,,False,,,False,scc-uc2,command-timeout; skipped-after-failure; skipped-after-failure
+veneto-long-t8,ols,veneto-long,5163428,8,iid,True,veneto,pyfixest-within,0,False,application unavailable,,,,0,,False,,,False,scc-uc2,command-timeout; skipped-after-failure; skipped-after-failure
+veneto-long-t16,ols,veneto-long,5163428,16,iid,True,veneto,fereg,3,True,,9.637372859000001,9.593674639000001,9.667058631,3,9.637372859000001,False,,1.7716026306152344,True,scc-uc2,ok; ok; ok
+veneto-long-t16,ols,veneto-long,5163428,16,iid,True,veneto,fixest,0,False,application unavailable,,,,1,17.451,True,,,False,scc-uc2,capture-error; skipped-after-failure; skipped-after-failure
+veneto-long-t16,ols,veneto-long,5163428,16,iid,True,veneto,fixest-strict,3,False,centered saved1; centered saved2,26.564,26.147,26.921,3,26.564,True,,2.8689804077148438,True,scc-uc2,ok; ok; ok
+veneto-long-t16,ols,veneto-long,5163428,16,iid,True,veneto,pyfixest,0,False,application unavailable,,,,0,,False,,,False,scc-uc2,command-timeout; skipped-after-failure; skipped-after-failure
+veneto-long-t16,ols,veneto-long,5163428,16,iid,True,veneto,pyfixest-within,0,False,application unavailable,,,,0,,False,,,False,scc-uc2,command-timeout; skipped-after-failure; skipped-after-failure

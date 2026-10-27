@@ -1,0 +1,509 @@
+{
+  "source": "9bbd2649c64b4889e437493d71a1ab31188066c7",
+  "science": [
+    {
+      "panel": "long",
+      "threads": 1,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "long",
+      "threads": 1,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 1,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "long",
+      "threads": 1,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 1,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "long",
+      "threads": 2,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "long",
+      "threads": 2,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 2,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "long",
+      "threads": 2,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 2,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "long",
+      "threads": 4,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "long",
+      "threads": 4,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 4,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "long",
+      "threads": 4,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 4,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "long",
+      "threads": 8,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "long",
+      "threads": 8,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 8,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "long",
+      "threads": 8,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 8,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "long",
+      "threads": 16,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "long",
+      "threads": 16,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 16,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    },
+    {
+      "panel": "long",
+      "threads": 16,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 16,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": []
+    }
+  ],
+  "comparisons": [
+    {
+      "cell": "veneto-long-t1",
+      "arm": "fixest",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "application unavailable"
+      ]
+    },
+    {
+      "cell": "veneto-long-t1",
+      "arm": "fixest-strict",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "centered saved1",
+        "centered saved2"
+      ]
+    },
+    {
+      "cell": "veneto-long-t1",
+      "arm": "pyfixest",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "application unavailable"
+      ]
+    },
+    {
+      "cell": "veneto-long-t1",
+      "arm": "pyfixest-within",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "application unavailable"
+      ]
+    },
+    {
+      "cell": "veneto-long-t1",
+      "arm": "reghdfe",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "application unavailable"
+      ]
+    },
+    {
+      "cell": "veneto-long-t1",
+      "arm": "fixest-strict",
+      "repetition": 2,
+      "eligible": false,
+      "reasons": [
+        "centered saved1",
+        "centered saved2"
+      ]
+    },
+    {
+      "cell": "veneto-long-t1",
+      "arm": "fixest-strict",
+      "repetition": 3,
+      "eligible": false,
+      "reasons": [
+        "centered saved1",
+        "centered saved2"
+      ]
+    },
+    {
+      "cell": "veneto-long-t2",
+      "arm": "fixest",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "application unavailable"
+      ]
+    },
+    {
+      "cell": "veneto-long-t2",
+      "arm": "fixest-strict",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "centered saved1",
+        "centered saved2"
+      ]
+    },
+    {
+      "cell": "veneto-long-t2",
+      "arm": "pyfixest",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "application unavailable"
+      ]
+    },
+    {
+      "cell": "veneto-long-t2",
+      "arm": "pyfixest-within",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "application unavailable"
+      ]
+    },
+    {
+      "cell": "veneto-long-t2",
+      "arm": "reghdfe",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "application unavailable"
+      ]
+    },
+    {
+      "cell": "veneto-long-t2",
+      "arm": "fixest-strict",
+      "repetition": 2,
+      "eligible": false,
+      "reasons": [
+        "centered saved1",
+        "centered saved2"
+      ]
+    },
+    {
+      "cell": "veneto-long-t2",
+      "arm": "fixest-strict",
+      "repetition": 3,
+      "eligible": false,
+      "reasons": [
+        "centered saved1",
+        "centered saved2"
+      ]
+    },
+    {
+      "cell": "veneto-long-t4",
+      "arm": "fixest",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "application unavailable"
+      ]
+    },
+    {
+      "cell": "veneto-long-t4",
+      "arm": "fixest-strict",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "centered saved1",
+        "centered saved2"
+      ]
+    },
+    {
+      "cell": "veneto-long-t4",
+      "arm": "pyfixest",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "application unavailable"
+      ]
+    },
+    {
+      "cell": "veneto-long-t4",
+      "arm": "pyfixest-within",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "application unavailable"
+      ]
+    },
+    {
+      "cell": "veneto-long-t4",
+      "arm": "reghdfe",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "application unavailable"
+      ]
+    },
+    {
+      "cell": "veneto-long-t4",
+      "arm": "fixest-strict",
+      "repetition": 2,
+      "eligible": false,
+      "reasons": [
+        "centered saved1",
+        "centered saved2"
+      ]
+    },
+    {
+      "cell": "veneto-long-t4",
+      "arm": "fixest-strict",
+      "repetition": 3,
+      "eligible": false,
+      "reasons": [
+        "centered saved1",
+        "centered saved2"
+      ]
+    },
+    {
+      "cell": "veneto-long-t8",
+      "arm": "fixest",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "application unavailable"
+      ]
+    },
+    {
+      "cell": "veneto-long-t8",
+      "arm": "fixest-strict",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "centered saved1",
+        "centered saved2"
+      ]
+    },
+    {
+      "cell": "veneto-long-t8",
+      "arm": "pyfixest",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "application unavailable"
+      ]
+    },
+    {
+      "cell": "veneto-long-t8",
+      "arm": "pyfixest-within",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "application unavailable"
+      ]
+    },
+    {
+      "cell": "veneto-long-t8",
+      "arm": "fixest-strict",
+      "repetition": 2,
+      "eligible": false,
+      "reasons": [
+        "centered saved1",
+        "centered saved2"
+      ]
+    },
+    {
+      "cell": "veneto-long-t8",
+      "arm": "fixest-strict",
+      "repetition": 3,
+      "eligible": false,
+      "reasons": [
+        "centered saved1",
+        "centered saved2"
+      ]
+    },
+    {
+      "cell": "veneto-long-t16",
+      "arm": "fixest",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "application unavailable"
+      ]
+    },
+    {
+      "cell": "veneto-long-t16",
+      "arm": "fixest-strict",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "centered saved1",
+        "centered saved2"
+      ]
+    },
+    {
+      "cell": "veneto-long-t16",
+      "arm": "pyfixest",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "application unavailable"
+      ]
+    },
+    {
+      "cell": "veneto-long-t16",
+      "arm": "pyfixest-within",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "application unavailable"
+      ]
+    },
+    {
+      "cell": "veneto-long-t16",
+      "arm": "fixest-strict",
+      "repetition": 2,
+      "eligible": false,
+      "reasons": [
+        "centered saved1",
+        "centered saved2"
+      ]
+    },
+    {
+      "cell": "veneto-long-t16",
+      "arm": "fixest-strict",
+      "repetition": 3,
+      "eligible": false,
+      "reasons": [
+        "centered saved1",
+        "centered saved2"
+      ]
+    }
+  ]
+}
