@@ -17,6 +17,7 @@ and PPML reporting are unchanged.
 | Many-FE geometry Auto | [Decision record](../bench/results/many-geometry-20261025.json): Linux qualification passed 80 of 84 protected comparisons and public activation 122 of 126, on 12 distinct physical hosts each. Every miss is the near-confounded third FE, accepted by Johannes as a documented exception; public/hidden agreement was exact. |
 | PPML two-FE CMG reuse and lean protocol | [Lean record](../bench/results/ppml-two-fe-lean-20261026.json): every two-FE cell faster than beta.6 at 4 and 28 workers on Linux (0.32-0.84), science within the §20 envelopes, 73/73 replay cases. Merged and released as v0.5.0-beta.7; the [beta.7 SCC comparison](fixest_benchmarks.md#october-26-2026-beta7-rerun-with-pyfixest-and-areg) found all 168 native fits passing and every OLS fit bit-identical to beta.6. |
 | Two-FE Auto speed | [Qualification record](../bench/results/two-fe-auto-qualification-20261027.json): Linux 7,560 calls on 31 physical hosts, all 126 protected comparisons within max(5%, 1 ms) after Johannes waived the 12-distinct-host rule (84 cells had 11); practical Mac check 119 of 126 passed, the other 7 inconclusive with paired medians within the bound. [Veneto comparison](../bench/results/two-fe-auto-veneto-20261027.json): 1.24-2.08 times faster than beta.7 without saved FE and 1.06-2.18 with saved FE; faster than PyFixest's `within` in 9 of 10 cells. |
+| Two-FE Auto round two | [Round-two record](../bench/results/two-fe-round-two-20261027.json): Linux 10,080 calls on 28 physical hosts, 123 of 126 protected comparisons within max(5%, 1 ms) after the 12-distinct-host waiver (every cell had 11) and 3 inconclusive under 1 ms; Mac check 115 of 126 passed, 11 inconclusive; Veneto candidate faster than beta.8 in all 20 cells and than PyFixest `within` in 9 of 10; PPML exact timing 12 of 12 within bound with identical science. |
 | Public integration | [Final activation](../bench/results/ownership-public-activation-20261024.json): 174 actual hidden/public/public-repeat calls per platform, independent witnesses, fixed-worker exactness, cross-worker science, resource/gate/hierarchy checks, Mac/Linux ABI/load/panic checks and the full source suite passed. Six licensed Mac Stata fixtures and actual public OLS Break/rollback passed. |
 
 Ownership/deferred cells activate only for OLS Auto/Auto with a global intercept
@@ -58,6 +59,105 @@ Every fixed-worker repeat was exact and every cross-worker, beta.7 and
 PyFixest comparison passed the campaign tolerances. The 73-case replay corpus is
 exact against beta.7's runtime, and PPML's campaign two-sparse design ran 2%
 faster from the hierarchy options with the other PPML designs unchanged.
+
+## Two-FE Auto round two
+
+Round two keeps beta.8's policy and changes three mechanisms, specified in
+[SPEC](SPEC.md) and [the gate notes](two_fe_auto_gates.md): the (worker, firm)
+cells are built on the worker team, bit for bit as the serial build, and before
+the diagonal pilot, so the pilot's Schur products use the cell operator, with
+block cancellation polls in the serial kernel; the pinned CMG (`f6a044c9`)
+dispatches a level's row-operator matvec to the team when its entries times
+lanes reach the parallel threshold, so dense coarse levels with few rows no
+longer run serially; and PPML's joint recurrence merges helper products, forms
+the finite cross block and the level masses in exact parallel form and reuses a
+finished canonical probe. The CMG and PPML changes are arithmetic-preserving;
+the cells change moves low bits of the pilot within the certified tolerances
+and is bound by the replay scope
+[`2026-10-27-two-fe-eager-cells-macos.json`](../tests/replay/scopes/2026-10-27-two-fe-eager-cells-macos.json)
+(three two-FE cases; solver codes, iterations, stop reasons and every discrete
+decision unchanged). The [round-two record](../bench/results/two-fe-round-two-20261027.json)
+holds every number below.
+
+The fixed-candidate Linux qualification (beta.7 public Auto as original, beta.8 as
+incumbent, the hidden `two-gates-v2` arm, 42 routing cells, 3 shards by 12
+replicas, 10,080 native calls on 28 physical hosts) reported `needs_discussion`
+because every cell reached 11 of the required 12 distinct physical hosts;
+Johannes waived that rule for this round as for the previous one. Under the
+waiver 123 of 126 comparisons satisfy max(5%, 1 ms) and three are inconclusive
+by under a millisecond (sixteen-fe-t4 and small-retained-t4 against the
+incumbent, small-retained-t4 against the original, medians below zero). No
+scientific, gate, resource or cross-worker check failed and no native call was
+repeated. Against beta.8 the repeated-cells, disconnected and wide-rhs cells
+ran 19-21% faster at one worker and the high-degree and weak cells 10-15%;
+weighted-t1 ran 4% faster, so the eager build's cost on that no-aggregation
+design needs no exception on Linux.
+
+The practical Mac check (42 cells, blocks of 6, 1,638 native calls, beta.8 as
+original and incumbent) passed 115 of 126 comparisons with 11 inconclusive and
+no regression or scientific error; weighted-t1, which the first eager-cells
+candidate had regressed by 9% because the serial kernel polled once per cell,
+closed to a paired ratio of 1.021 after the block-poll change. The licensed
+Mac Stata development profile passed its 68 fixtures on a fresh build. On the
+synthetic Veneto-shaped AKM panels (profiling builds, no competing process),
+native time relative to beta.8 at 1/2/4/8 workers was 0.944/0.931/0.937/0.886 on the short panel
+and 0.949/0.887/0.884/0.914 on the long panel. Attribution on the same
+panels: eager cells cut the pilot's operator phase (long panel at two workers
+0.72 s to 0.41 s) and the entries-gated matvec cut the short panel's recurrence
+by 14/32/40% at 2/4/8 workers (its 3,043-row level is newly parallel; the long
+panel's planned levels all exceed 4,096 rows and its dispatch is unchanged).
+
+On one whole SCC node with the audited Veneto panels, three rotated
+repetitions, every fixed-worker repeat exact and every cross-worker, beta.8 and
+PyFixest comparison eligible (seconds, medians):
+
+| Panel, workers | Candidate | beta.8 | PyFixest `within` | vs beta.8 | vs `within` |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| short, 1 | 1.81 | 2.01 | 2.07 | 0.90 | 0.88 |
+| short, 2 | 1.39 | 1.42 | 1.34 | 0.97 | 1.03 |
+| short, 4 | 1.03 | 1.06 | 1.08 | 0.97 | 0.95 |
+| short, 8 | 0.78 | 0.82 | 0.94 | 0.95 | 0.82 |
+| short, 16 | 0.73 | 0.78 | 0.96 | 0.94 | 0.77 |
+| long, 1 | 9.64 | 10.53 | 26.95 | 0.92 | 0.36 |
+| long, 2 | 6.96 | 7.38 | 15.42 | 0.94 | 0.45 |
+| long, 4 | 4.83 | 5.29 | 9.84 | 0.91 | 0.49 |
+| long, 8 | 3.54 | 3.99 | 7.04 | 0.89 | 0.50 |
+| long, 16 | 3.22 | 3.63 | 6.19 | 0.89 | 0.52 |
+
+With saved fixed effects (PyFixest's saved effects exceed the command limit):
+
+| Panel, workers | Candidate | beta.8 | vs beta.8 |
+| --- | ---: | ---: | ---: |
+| short, 1 | 2.83 | 3.27 | 0.86 |
+| short, 2 | 2.11 | 2.14 | 0.98 |
+| short, 4 | 1.49 | 1.51 | 0.99 |
+| short, 8 | 1.11 | 1.15 | 0.97 |
+| short, 16 | 1.03 | 1.13 | 0.91 |
+| long, 1 | 13.19 | 14.61 | 0.90 |
+| long, 2 | 9.68 | 10.25 | 0.94 |
+| long, 4 | 6.61 | 7.15 | 0.93 |
+| long, 8 | 4.78 | 5.35 | 0.89 |
+| long, 16 | 4.31 | 4.97 | 0.87 |
+
+PPML exact timing (campaign-DGP cases through `bench/ppml_cases.py` and
+`bench/time_exact.py`, one whole node, five alternating repetitions, science
+identical between beta.8 and the candidate in every run; candidate over
+beta.8 native-time ratio, candidate median in parentheses):
+
+| Design, rows | 4 workers | 28 workers |
+| --- | ---: | ---: |
+| two-sparse, 1,000,000 | 0.991 (5.66 s) | 0.984 (4.01 s) |
+| two-sparse, 4,000,000 | 0.990 (25.42 s) | 0.967 (17.23 s) |
+| akm-baseline, 1,000,000 | 0.983 (4.08 s) | 0.990 (2.74 s) |
+| akm-baseline, 4,000,000 | 0.985 (18.32 s) | 0.995 (12.15 s) |
+| two-dense, 1,000,000 | 0.996 (3.83 s) | 1.005 (2.48 s) |
+| two-dense, 4,000,000 | 0.996 (14.76 s) | 0.999 (10.07 s) |
+
+All twelve PPML cells pass the nonregression bound. The team application of
+CMG to PPML's joint frames above 350,000 finest edges was built, measured at
+0.98 on the long Poisson panel at 8 workers and removed; separation detection
+is 42-61% of PPML native time on Veneto-scale Poisson panels and is the
+subject of a separate workstream.
 
 ## Many-FE geometry policy
 
