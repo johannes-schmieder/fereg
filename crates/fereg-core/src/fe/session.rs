@@ -817,10 +817,7 @@ impl<'a> FeSession<'a> {
     }
 
     pub(crate) fn gates_state(&self) -> Option<GateState> {
-        self.categorical
-            .as_ref()?
-            .gates_enabled()
-            .then(GateState::new)
+        self.categorical.as_ref()?.gate_rule().map(GateState::new)
     }
 
     #[allow(clippy::too_many_arguments)]

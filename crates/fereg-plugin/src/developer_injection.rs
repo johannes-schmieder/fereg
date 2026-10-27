@@ -115,6 +115,7 @@ pub(crate) fn parse_ols(stage: &str, solver: FeSolverKind, token: &str) -> Resul
             (Some(RoutingPreset::portfolio_v1()), false)
         }
         "routing_two_gates_v1"
+        | "routing_two_gates_v2"
         | "routing_two_remaining_v1"
         | "routing_two_remaining_never"
         | "routing_two_remaining_force16"
@@ -124,6 +125,7 @@ pub(crate) fn parse_ols(stage: &str, solver: FeSolverKind, token: &str) -> Resul
             }
             let preset = match stage {
                 "routing_two_gates_v1" => RoutingPreset::gates_two(),
+                "routing_two_gates_v2" => RoutingPreset::gates_two_v2(),
                 "routing_two_remaining_v1" => RoutingPreset::remaining_two(),
                 "routing_two_remaining_force16" => RoutingPreset::remaining_two_control(Some(16))?,
                 "routing_two_remaining_force32" => RoutingPreset::remaining_two_control(Some(32))?,

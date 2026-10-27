@@ -227,7 +227,9 @@ fn eager_cells_gates_h16_installs_the_original_graph_hierarchy() {
                 .request_deferred_cells(BorrowedMapWeights::Provided(&witness.weights))
                 .unwrap(),
         }
-        let mut state = crate::fe::routing_gates::GateState::new();
+        let mut state = crate::fe::routing_gates::GateState::new(
+            crate::fe::routing_gates::GateRule::Structural16,
+        );
         state.begin(
             crate::fe::routing_remaining::Demand::Packed { regressors: 2 },
             3,
@@ -337,7 +339,8 @@ fn deferred_solve(
     owner: &mut ReusableCategoricalMapAbsorber<'_>,
     witness: &PairedGraph,
 ) -> Result<CertifiedBorrowedMap> {
-    let mut state = crate::fe::routing_gates::GateState::new();
+    let mut state =
+        crate::fe::routing_gates::GateState::new(crate::fe::routing_gates::GateRule::Structural16);
     state.begin(
         crate::fe::routing_remaining::Demand::Packed { regressors: 2 },
         3,

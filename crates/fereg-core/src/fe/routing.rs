@@ -33,6 +33,7 @@ enum PrefixPlan {
     IncrementalTwo,
     RemainingTwo,
     GatesTwo,
+    GatesTwoV2,
     GeometryMany,
 }
 
@@ -58,6 +59,7 @@ impl std::fmt::Display for RoutingPreset {
                 PrefixPlan::IncrementalMany => "routing_incremental_many",
                 PrefixPlan::IncrementalTwo => "routing_incremental_two",
                 PrefixPlan::GatesTwo => "routing_two_gates_v1",
+                PrefixPlan::GatesTwoV2 => "routing_two_gates_v2",
                 PrefixPlan::GeometryMany => "routing_many_geometry_v1",
                 PrefixPlan::RemainingTwo => match self.checkpoint {
                     0 => "routing_two_remaining_v1",
@@ -197,8 +199,26 @@ impl RoutingPreset {
         }
     }
 
+    /// Gate v1 plus the early stall grant of gate v2 (see `routing_gates`).
+    pub fn gates_two_v2() -> Self {
+        Self {
+            prefix: Some(PrefixPlan::GatesTwoV2),
+            ..Self::gates_two()
+        }
+    }
+
     pub(crate) fn gates(self) -> bool {
-        self.prefix == Some(PrefixPlan::GatesTwo)
+        self.gate_rule().is_some()
+    }
+
+    pub(crate) fn gate_rule(self) -> Option<super::routing_gates::GateRule> {
+        match self.prefix {
+            Some(PrefixPlan::GatesTwo) => Some(super::routing_gates::GateRule::Structural16),
+            Some(PrefixPlan::GatesTwoV2) => Some(super::routing_gates::GateRule::Stall {
+                threshold: super::routing_gates::STALL_THRESHOLD,
+            }),
+            _ => None,
+        }
     }
 
     pub(crate) fn requires_economic_grant(self) -> bool {
@@ -226,7 +246,9 @@ impl RoutingPreset {
                 categorical_effects.is_some_and(|n| n >= 3)
             }
             Some(PrefixPlan::IncrementalTwo) => categorical_effects == Some(2),
-            Some(PrefixPlan::RemainingTwo | PrefixPlan::GatesTwo) => categorical_effects == Some(2),
+            Some(PrefixPlan::RemainingTwo | PrefixPlan::GatesTwo | PrefixPlan::GatesTwoV2) => {
+                categorical_effects == Some(2)
+            }
             _ => return Some(self),
         };
         (eligible
@@ -249,6 +271,7 @@ impl RoutingPreset {
                     | PrefixPlan::PortfolioUnseeded
                     | PrefixPlan::RemainingTwo
                     | PrefixPlan::GatesTwo
+                    | PrefixPlan::GatesTwoV2
             )
         )
     }
@@ -287,6 +310,7 @@ impl RoutingPreset {
             | PrefixPlan::IncrementalTwo
             | PrefixPlan::RemainingTwo
             | PrefixPlan::GatesTwo
+            | PrefixPlan::GatesTwoV2
             | PrefixPlan::GeometryMany => CategoricalPrefix::None,
         })
     }
@@ -443,6 +467,7 @@ mod tests {
                 false,
             ),
             (RoutingPreset::gates_two(), "routing_two_gates_v1", false),
+            (RoutingPreset::gates_two_v2(), "routing_two_gates_v2", false),
         ] {
             assert_eq!(preset.to_string(), name);
             for effects in [None, Some(0), Some(1), Some(2), Some(3), Some(7)] {

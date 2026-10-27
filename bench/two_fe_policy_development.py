@@ -133,8 +133,10 @@ def compare_science(value, meta, snapshots):
                               selected_policy=routing.policy(routing.PORTFOLIO_UNSEEDED))
 
 
-def gate_events(log):
-    events, closed, pending_build = [], False, False
+def gate_events(log, rule='v1'):
+    """Validate gate decisions; `rule='stall-v2'` also admits early stall ages."""
+    require(rule in ('v1', 'stall-v2'), 'unknown gate rule')
+    events, closed, pending_build, granted_age = [], False, False, None
     action_events, action_ordinal = [], 0
     for line in log.splitlines():
         require(not line.startswith('FEREG_POLICY_LABEL|'), 'selected structural gate used historical observer labels')
@@ -146,7 +148,8 @@ def gate_events(log):
             require(not pending_build, 'gate grant crosses an action boundary')
             for event in action_events:
                 if event['event'] == 'decision':
-                    require(int(action['iterations']) >= 16, 'gate decision exceeds completed action age')
+                    require(int(action['iterations']) >= int(event['local']),
+                            'gate decision exceeds completed action age')
                     role = event['role']
                     require(role == 'Unknown' or action.get('final') == str(int(role == 'Final')),
                             'gate role disagrees with completed action')
@@ -159,7 +162,7 @@ def gate_events(log):
             require(all(len(p) == 2 for p in pairs) and len({p[0] for p in pairs}) == len(pairs),
                     'malformed gate build trace')
             route = dict(pairs)
-            require(pending_build and route.get('iterations') == '16'
+            require(pending_build and route.get('iterations') == granted_age
                     and route.get('installed') in ('0', '1')
                     and route.get('refusal') == ('None' if route['installed'] == '1' else 'Some(MemoryBudget)'),
                     'gate build has no grant, wrong age or invalid refusal')
@@ -173,19 +176,32 @@ def gate_events(log):
         event = dict(pairs)
         common = {'phase', 'event', 'grant', 'terminal', 'proxy_entries', 'bank_bytes'}
         require(common <= set(event) and not pending_build, 'incomplete gate event or missing build outcome')
-        require(event['terminal'] == '1' and event['proxy_entries'] == event['bank_bytes'] == '0',
-                'selected structural gate changed its terminal/dependency contract')
-        if event['event'] == 'decision':
-            require(not closed and set(event) == common | {'local', 'role'} and event['local'] == '16',
+        require(event['proxy_entries'] == event['bank_bytes'] == '0',
+                'selected structural gate changed its dependency contract')
+        early = rule == 'stall-v2' and event['event'] == 'decision' and event.get('local') in ('4', '8', '12')
+        require(event['terminal'] == ('1' if not early else event['grant']),
+                'selected structural gate changed its terminal contract')
+        if early:
+            require(not closed and set(event) == common | {'local', 'role', 'rule', 'contraction'}
+                    and event['rule'] == 'stall_v2' and event['role'] in ('Packed', 'Outcome')
+                    and event['grant'] in ('0', '1') and 0 <= float(event['contraction']),
+                    'stall gate decision schema changed')
+            closed = event['grant'] == '1'
+        elif event['event'] == 'decision':
+            extra = {'rule'} if rule == 'stall-v2' else set()
+            require(not closed and set(event) == common | {'local', 'role'} | extra and event['local'] == '16'
+                    and (rule == 'v1' or event['rule'] == 'stall_v2'),
                     'gate episode reopened or decision schema/age changed')
             require(event['role'] in ('Packed', 'Outcome', 'Final', 'Unknown')
                     and event['grant'] == str(int(event['role'] in ('Packed', 'Outcome'))),
                     'selected gate action/decision mismatch')
-            pending_build = event['grant'] == '1'
+            closed = True
         else:
             require(event['event'] == 'correction' and set(event) == common and event['grant'] == '0',
                     'invalid correction closure')
-        closed = True
+            closed = True
+        if event['event'] == 'decision' and event['grant'] == '1':
+            pending_build, granted_age = True, event['local']
         events.append(event)
         action_events.append(event)
     require(not pending_build, 'gate grant lacks a completed build/refusal outcome')

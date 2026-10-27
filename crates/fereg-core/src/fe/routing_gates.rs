@@ -2,8 +2,23 @@
 //!
 //! The immutable offline fit selects feature16 (final role) <=0 at local16,
 //! followed by constant Defer. Owner economics is separate from SetupLedger.
+//! The stall rule (gate v2) may grant the same build earlier, at local ages
+//! 4, 8 or 12, when the diagonal recurrence has visibly stalled; local16 and
+//! everything after it are unchanged.
 use super::routing_remaining::Demand;
 use crate::error::Result;
+
+mod stall;
+pub(crate) use stall::STALL_THRESHOLD;
+
+/// Which structural gate a two-FE Auto policy uses.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum GateRule {
+    /// Gate v1: the selected local16 boundary only.
+    Structural16,
+    /// Gate v2: v1 plus an early stall grant at local 4, 8 or 12.
+    Stall { threshold: f64 },
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Role {
@@ -16,14 +31,66 @@ enum Role {
 pub(crate) struct GateState {
     terminal: bool,
     role: Role,
+    rule: GateRule,
 }
 
 impl GateState {
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new(rule: GateRule) -> Self {
         Self {
             terminal: false,
             role: Role::Unknown,
+            rule,
         }
+    }
+
+    /// One observation of the recurrence after its `age`-th local step.
+    /// `initial` is each lane's activity state (its initial energy, zero once
+    /// complete, negative after an underflowed start) and `current` its
+    /// present energy, both serial canonical reductions, so the decision is
+    /// identical at every worker count.
+    pub(crate) fn observe(
+        &mut self,
+        age: usize,
+        remaining: usize,
+        initial: &[f64],
+        current: &[f64],
+    ) -> Result<bool> {
+        if age == 16 {
+            return self.checkpoint(16, remaining, true);
+        }
+        match self.rule {
+            GateRule::Stall { threshold } if stall::AGES.contains(&age) => {
+                self.stall(age, remaining, threshold, initial, current)
+            }
+            _ => Ok(false),
+        }
+    }
+
+    fn stall(
+        &mut self,
+        age: usize,
+        remaining: usize,
+        threshold: f64,
+        initial: &[f64],
+        current: &[f64],
+    ) -> Result<bool> {
+        if self.terminal || remaining == 0 || !matches!(self.role, Role::Packed | Role::Outcome) {
+            return Ok(false);
+        }
+        crate::interrupt::checkpoint()?;
+        // A lane without valid history leaves this age undecided.
+        let Some(ratio) = stall::energy_ratio(initial, current) else {
+            return Ok(false);
+        };
+        let grant = ratio >= stall::energy_bound(threshold, age);
+        self.terminal = grant;
+        if crate::diagnostics::solver_trace_enabled() {
+            crate::diagnostics::emit_solver_trace(&format!(
+                "FEREG_SOLVER_TRACE|phase=two_fe_gates|event=decision|local={age}|role={:?}|grant={}|terminal={}|proxy_entries=0|bank_bytes=0|rule=stall_v2|contraction={:.17e}",
+                self.role, u8::from(grant), u8::from(grant), stall::contraction(ratio, age)));
+        }
+        crate::interrupt::checkpoint()?;
+        Ok(grant)
     }
 
     pub(crate) fn shell_bytes() -> u128 {
@@ -66,8 +133,12 @@ impl GateState {
         self.terminal = true;
         let grant = matches!(self.role, Role::Packed | Role::Outcome);
         if crate::diagnostics::solver_trace_enabled() {
+            let rule = match self.rule {
+                GateRule::Structural16 => "",
+                GateRule::Stall { .. } => "|rule=stall_v2",
+            };
             crate::diagnostics::emit_solver_trace(&format!(
-                "FEREG_SOLVER_TRACE|phase=two_fe_gates|event=decision|local=16|role={:?}|grant={}|terminal=1|proxy_entries=0|bank_bytes=0",
+                "FEREG_SOLVER_TRACE|phase=two_fe_gates|event=decision|local=16|role={:?}|grant={}|terminal=1|proxy_entries=0|bank_bytes=0{rule}",
                 self.role, u8::from(grant)));
         }
         crate::interrupt::checkpoint()?;

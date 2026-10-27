@@ -288,7 +288,8 @@ fn gates_correction_closes_before_first_checkpoint_without_observation_scan() {
     let mut owner = ReusableCategoricalMapAbsorber::new(witness.design(), 3, 1).unwrap();
     owner.retain_coefficients = true;
     owner.request_auto_routing(RoutingPreset::gates_two(), None, 0);
-    let mut state = crate::fe::routing_gates::GateState::new();
+    let mut state =
+        crate::fe::routing_gates::GateState::new(crate::fe::routing_gates::GateRule::Structural16);
     state.begin(Demand::Packed { regressors: 2 }, 3, 3, false);
     TWO_FE_CERTIFICATE_AT.set(8);
     TWO_FE_CERTIFICATE_REJECTED_AT.set(0);
@@ -332,7 +333,8 @@ fn gates_consumed_key_does_not_select_and_fresh_key_can_build() {
     let route = owner.auto_route.as_mut().unwrap();
     route.begin(config().tolerance, false);
     route.setup.attempted = true;
-    let mut state = crate::fe::routing_gates::GateState::new();
+    let mut state =
+        crate::fe::routing_gates::GateState::new(crate::fe::routing_gates::GateRule::Structural16);
     state.begin(Demand::Packed { regressors: 2 }, 3, 3, false);
     let scan = ScanGuard::new(1);
     TWO_FE_ROUTING_BUILD_AT.set(0);

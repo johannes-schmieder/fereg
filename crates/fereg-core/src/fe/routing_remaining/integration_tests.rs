@@ -721,7 +721,13 @@ fn gates_real_callers_routes_refusal_direct_and_cancel() {
         crate::ols::PreparedOlsCells::Off,
         crate::ols::PreparedOlsCells::Deferred,
     ] {
-        for preset in [None, Some(RoutingPreset::gates_two())] {
+        // The public default is gate v1; v2 adds the early stall grant.
+        for preset in [
+            None,
+            Some(RoutingPreset::gates_two()),
+            Some(RoutingPreset::gates_two_v2()),
+        ] {
+            let stall = preset == Some(RoutingPreset::gates_two_v2());
             for workers in [1, 4] {
                 for mode in [
                     PreparedOlsExecutionMode::Fast,
@@ -746,7 +752,6 @@ fn gates_real_callers_routes_refusal_direct_and_cancel() {
                             .filter(|s| s.contains("|phase=auto_schur_route|"))
                             .collect();
                         assert_eq!(routes.len(), 1, "{new}");
-                        assert_eq!(field(routes[0], "iterations"), "16");
                         assert_eq!(field(routes[0], "installed"), "1");
                         let attempts: Vec<_> = new
                             .lines()
@@ -766,10 +771,21 @@ fn gates_real_callers_routes_refusal_direct_and_cancel() {
                             .lines()
                             .filter(|s| s.contains("|phase=two_fe_gates|event=decision|"))
                             .collect();
-                        assert_eq!(gates.len(), 1, "{new}");
-                        assert_eq!(field(gates[0], "grant"), "1");
+                        // One grant ends the episode; earlier stall checks declined.
+                        let granted = gates.last().unwrap();
+                        assert_eq!(field(granted, "grant"), "1");
+                        assert!(gates[..gates.len() - 1]
+                            .iter()
+                            .all(|line| field(line, "grant") == "0"));
+                        assert_eq!(field(routes[0], "iterations"), field(granted, "local"));
+                        if stall {
+                            assert!(gates.iter().all(|line| line.contains("|rule=stall_v2")));
+                        } else {
+                            assert_eq!(gates.len(), 1, "{new}");
+                            assert_eq!(field(granted, "local"), "16");
+                        }
                         assert_eq!(
-                            field(gates[0], "role"),
+                            field(granted, "role"),
                             if mode == PreparedOlsExecutionMode::Fast {
                                 "Packed"
                             } else {
@@ -859,7 +875,7 @@ fn gates_real_callers_routes_refusal_direct_and_cancel() {
     let rectangle = PairedCells::new(true);
     let direct_data = rectangle.prepared(2);
     let mut direct = FeSession::for_ols(&direct_data, BorrowedMapWeights::Unit, options).unwrap();
-    let mut terminal = GateState::new();
+    let mut terminal = GateState::new(crate::fe::routing_gates::GateRule::Structural16);
     terminal.correction().unwrap();
     let before = trace().len();
     let fit = direct

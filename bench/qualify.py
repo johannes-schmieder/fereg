@@ -259,7 +259,7 @@ def plan(config_path, output, *, configuration=None):
         require(isinstance(artifact['revision'], str) and artifact['revision'], 'record artifact revision')
         require(isinstance(artifact['build'], str) and artifact['build'], 'record compiler and build settings')
         require(artifact['request'] in ({'auto', *ownership.REQUESTS} if ownership_mode else
-                {'auto', 'preserve', *routing.INCREMENTAL, *routing.REMAINING, routing.GATES,
+                {'auto', 'preserve', *routing.INCREMENTAL, *routing.REMAINING, *routing.GATE_RULES,
                  routing.GEOMETRY_MANY}), 'unsupported request')
         require(artifact['request'] not in routing.REMAINING[1:] or
                 value.get('diagnostic') == 'two-fe-remaining-calibration-v1',
@@ -286,7 +286,7 @@ def plan(config_path, output, *, configuration=None):
             allowed_hidden = {'incremental-' + value['scope']}
             if value['scope'] == 'two':
                 allowed_hidden.add(routing.REMAINING[0])
-                allowed_hidden.add(routing.GATES)
+                allowed_hidden.update(routing.GATE_RULES)
             if value['scope'] == 'many':
                 allowed_hidden.add(routing.GEOMETRY_MANY)
             require('hidden' in artifacts and artifacts['hidden']['request'] in allowed_hidden,
@@ -712,7 +712,7 @@ def resource_policy(manifest, role, meta):
     request = artifact['request']
     if role == 'candidate' and request == 'auto' and 'hidden' in manifest['artifacts']:
         request = manifest['artifacts']['hidden']['request']
-    if family == 'two' and request in (*routing.REMAINING, routing.GATES):
+    if family == 'two' and request in (*routing.REMAINING, *routing.GATE_RULES):
         return request
     if family == 'many' and request == routing.GEOMETRY_MANY:
         return request
@@ -1012,9 +1012,10 @@ def _run(manifest_path, output, manifest, deadline, shard, replica, resume, exec
                                     selected = resource_policy(manifest, role, meta)
                                     resources_detail = science.resource_diagnostics(log.read_text(), selected,
                                         False, {}, expected_preset=routing.policy(selected)['injection'])
-                                    if selected == routing.GATES:
+                                    if selected in routing.GATE_RULES:
                                         import two_fe_policy_development as development
-                                        resources_detail['gate_events'] = development.gate_events(log.read_text())
+                                        resources_detail['gate_events'] = development.gate_events(
+                                            log.read_text(), routing.GATE_RULES[selected])
                                 detail.update(resources_detail)
                         if ownership.enabled(manifest):
                             detail.update(raw_result=raw, result_sha256=digest(target), log_sha256=digest(log),
@@ -1046,7 +1047,7 @@ def _run(manifest_path, output, manifest, deadline, shard, replica, resume, exec
                         for role, current in conceptual.items():
                             prior = first_worker[role]
                             cmgschur.scientific_comparison(prior[0], current[0], prior[1], current[1], meta)
-                            if resource_policy(manifest, role, meta) == routing.GATES:
+                            if resource_policy(manifest, role, meta) in routing.GATE_RULES:
                                 import two_fe_policy_development as development
                                 require(development.semantic_signature(current[2]) == development.semantic_signature(prior[2]),
                                         'cross-worker gate decisions changed')
@@ -1443,7 +1444,7 @@ def report(manifest_path, output, accounting_dir=None, *, allocation_amendment=N
                     if ownership.enabled(manifest):
                         ownership.verify_report_cell(manifest, item, manifest_path, reference_root, cell, verify_file)
                     for call in cell['warmups']:
-                        if resource_policy(manifest, call['execution'], policy_meta) == routing.GATES:
+                        if resource_policy(manifest, call['execution'], policy_meta) in routing.GATE_RULES:
                             import two_fe_policy_development as development
                             signature = development.semantic_signature(call)
                             policy_key = (key, call['execution'])

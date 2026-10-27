@@ -22,6 +22,8 @@ INCREMENTAL = ('incremental-many', 'incremental-two')
 REMAINING = ('two-remaining-v1', 'two-remaining-never',
              'two-remaining-force16', 'two-remaining-force32')
 GATES = 'two-gates-v1'
+GATES_V2 = 'two-gates-v2'
+GATE_RULES = {GATES: 'v1', GATES_V2: 'stall-v2'}
 GEOMETRY_MANY = 'many-geometry-v1'
 COMPACT_IT = 'it-coefficients'
 
@@ -64,6 +66,11 @@ def policy(arm):
                 'decision': 'direct-loss-gates-v1', 'first_decision': 16,
                 'selected_features': ['final'], 'progress_samples': 0,
                 'two_fe': {**base['two_fe'], 'checkpoint': 0}}
+    if arm == GATES_V2:
+        return {**policy(GATES), 'injection': 'routing_two_gates_v2',
+                'decision': 'stall-gates-v2', 'first_decision': 4,
+                'stall': {'ages': [4, 8, 12], 'terminal': 16, 'statistic': 'energy_since_pilot_start',
+                          'threshold': 0.5}}
     if arm in REMAINING:
         base = policy(PORTFOLIO_UNSEEDED)
         checkpoint = {'two-remaining-v1': 0, 'two-remaining-never': 2**64 - 1,

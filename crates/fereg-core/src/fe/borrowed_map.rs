@@ -1526,9 +1526,11 @@ impl Drop for PcgPilotGroupScratch<'_> {
 
 impl<'a> ReusableCategoricalMapAbsorber<'a> {
     pub(crate) fn gates_enabled(&self) -> bool {
-        self.auto_route
-            .as_ref()
-            .is_some_and(|route| route.preset.gates())
+        self.gate_rule().is_some()
+    }
+
+    pub(crate) fn gate_rule(&self) -> Option<super::routing_gates::GateRule> {
+        self.auto_route.as_ref()?.preset.gate_rule()
     }
 
     pub(crate) fn remaining_mode(&self) -> Option<super::routing_remaining::Mode> {
@@ -3398,13 +3400,15 @@ fn absorb_two_fe_pcg_reusing(
                 // certificate before reaching the grant decision.
                 let granted = if !route.setup.attempted {
                     if let Some(state) = gates.as_deref_mut() {
-                        // Only the selected structural boundary is observed. No
-                        // progress scans, history counters or diagnostic clocks.
-                        if iterations - epoch_start == 16 {
-                            state.checkpoint(16, pcg_iteration_limit - iterations, true)?
-                        } else {
-                            false
-                        }
+                        // Only the selected structural boundaries are observed:
+                        // no progress scans, history counters or diagnostic
+                        // clocks, only the energies the recurrence holds.
+                        state.observe(
+                            iterations - epoch_start,
+                            pcg_iteration_limit - iterations,
+                            &active_rhs_state[..rhs_count],
+                            &residual_square[..rhs_count],
+                        )?
                     } else {
                         observe_remaining(
                             remaining.as_mut(),
