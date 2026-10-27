@@ -717,8 +717,11 @@ fn gates_real_callers_routes_refusal_direct_and_cancel() {
     }
     let fixture = PairedCells::new(false);
     let data = fixture.prepared(2);
+    // Public two-FE Auto constructs cells eagerly; deferred remains a
+    // developer arm.
     for cell_mode in [
         crate::ols::PreparedOlsCells::Off,
+        crate::ols::PreparedOlsCells::Eager,
         crate::ols::PreparedOlsCells::Deferred,
     ] {
         // The public default is gate v2; v1 remains a developer arm.
@@ -757,15 +760,29 @@ fn gates_real_callers_routes_refusal_direct_and_cancel() {
                             .lines()
                             .filter(|line| line.starts_with("FEREG_CELLS|event=attempt|"))
                             .collect();
-                        if cell_mode == crate::ols::PreparedOlsCells::Deferred {
-                            assert_eq!(attempts.len(), 1, "{new}");
-                            assert_eq!(field(attempts[0], "admitted"), "1");
-                            assert!(
-                                new.find(routes[0]).unwrap() < new.find(attempts[0]).unwrap(),
-                                "construct only after installed CMG: {new}"
-                            );
-                        } else {
-                            assert!(attempts.is_empty(), "{new}");
+                        match cell_mode {
+                            crate::ols::PreparedOlsCells::Deferred => {
+                                assert_eq!(attempts.len(), 1, "{new}");
+                                assert_eq!(field(attempts[0], "admitted"), "1");
+                                assert!(
+                                    new.find(routes[0]).unwrap() < new.find(attempts[0]).unwrap(),
+                                    "construct only after installed CMG: {new}"
+                                );
+                            }
+                            crate::ols::PreparedOlsCells::Eager => {
+                                // Built before the pilot: before every gate
+                                // decision and the CMG route.
+                                assert_eq!(attempts.len(), 1, "{new}");
+                                assert_eq!(field(attempts[0], "admitted"), "1");
+                                let first_gate = new.find("|phase=two_fe_gates|").unwrap();
+                                assert!(
+                                    new.find(attempts[0]).unwrap() < first_gate,
+                                    "construct before the pilot: {new}"
+                                );
+                            }
+                            crate::ols::PreparedOlsCells::Off => {
+                                assert!(attempts.is_empty(), "{new}");
+                            }
                         }
                         let gates: Vec<_> = new
                             .lines()

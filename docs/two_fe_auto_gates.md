@@ -19,7 +19,7 @@ The threshold was frozen from one development measurement on 2026-10-27: no
 routing family that finishes without a hierarchy exceeded 0.33 at any age, the
 two synthetic Veneto-shaped AKM panels measured 0.57 and 0.59 at age 4, and the
 weak routing families crossed at age 8 or 12. The hidden v2 injection keeps the
-public two-FE ownership and deferred-cell activation, so it equals uninjected
+public two-FE ownership and cell activation, so it equals uninjected
 Auto on every design.
 
 ## Gate v1

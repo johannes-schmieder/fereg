@@ -11,6 +11,7 @@ use super::{BorrowedInterceptFeDesign, BorrowedMapWeights};
 
 mod occurrence;
 mod parallel;
+mod parallel_build;
 pub(crate) use occurrence::build_occurrence;
 
 crate::fault::fault_plan! {
@@ -49,7 +50,7 @@ pub(crate) struct OptionalSetup {
     pub refusal: Option<KernelRefusal>,
 }
 
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy, Default, Debug, PartialEq)]
 struct Cell {
     worker: u32,
     firm: u32,
@@ -57,7 +58,7 @@ struct Cell {
 }
 
 /// One cell in the firm-major index, in the cell array's worker order.
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy, Default, Debug, PartialEq)]
 struct FirmCell {
     worker: u32,
     weight: f64,
@@ -128,86 +129,61 @@ impl CellSchur {
                 "cell Schur input/workspace dimensions differ",
             ));
         }
+        // One poll per POLL_UNITS scalar operations, like long serial row
+        // passes; every element keeps its serial operation and order.
+        let mut poll = Poll::default();
         for (worker, &total) in self.worker_weights.iter().enumerate() {
-            crate::interrupt::checkpoint()?;
             let work = &mut left_scratch[worker * stride..worker * stride + rhs_count];
-            for (tile, chunk) in work.chunks_mut(256).enumerate() {
-                if tile != 0 {
-                    crate::interrupt::checkpoint()?;
-                }
-                chunk.fill(0.0);
-                completed_work(2, chunk.len());
-            }
+            work.fill(0.0);
+            completed_work(2, rhs_count);
+            poll.charge(rhs_count)?;
             for cell in &self.cells[self.offsets[worker]..self.offsets[worker + 1]] {
-                crate::interrupt::checkpoint()?;
-                let source =
-                    &input[cell.firm as usize * stride..cell.firm as usize * stride + rhs_count];
-                for (tile, (target, source)) in
-                    work.chunks_mut(256).zip(source.chunks(256)).enumerate()
-                {
-                    if tile != 0 {
-                        crate::interrupt::checkpoint()?;
-                    }
-                    for (sum, &value) in target.iter_mut().zip(source) {
-                        *sum += cell.weight * value;
-                    }
-                    completed_work(3, 2 * source.len());
-                    if CELL_RECORD_ACTIVITY.get() {
-                        CELL_APPLY_COUNT.set(CELL_APPLY_COUNT.get() + 1);
-                    }
+                let firm = cell.firm as usize * stride;
+                for (sum, &value) in work.iter_mut().zip(&input[firm..firm + rhs_count]) {
+                    *sum += cell.weight * value;
                 }
+                completed_work(3, 2 * rhs_count);
+                if CELL_RECORD_ACTIVITY.get() {
+                    CELL_APPLY_COUNT.set(CELL_APPLY_COUNT.get() + 1);
+                }
+                poll.charge(2 * rhs_count)?;
             }
             if total > 0.0 {
-                for chunk in work.chunks_mut(256) {
-                    crate::interrupt::checkpoint()?;
-                    for value in chunk.iter_mut() {
-                        *value /= total;
-                    }
-                    completed_work(2, chunk.len());
+                for value in work.iter_mut() {
+                    *value /= total;
                 }
+                completed_work(2, rhs_count);
+                poll.charge(rhs_count)?;
             }
         }
         for (firm, &total) in self.firm_weights.iter().enumerate() {
-            crate::interrupt::checkpoint()?;
-            for start in (0..rhs_count).step_by(256) {
-                if start != 0 {
-                    crate::interrupt::checkpoint()?;
-                }
-                let end = (start + 256).min(rhs_count);
-                for rhs in start..end {
-                    output[firm * stride + rhs] = total * input[firm * stride + rhs];
-                }
-                completed_work(2, 2 * (end - start));
+            let range = firm * stride..firm * stride + rhs_count;
+            for (value, &term) in output[range.clone()].iter_mut().zip(&input[range]) {
+                *value = total * term;
             }
+            completed_work(2, 2 * rhs_count);
+            poll.charge(2 * rhs_count)?;
         }
         for cell in &self.cells {
-            crate::interrupt::checkpoint()?;
-            for start in (0..rhs_count).step_by(256) {
-                if start != 0 {
-                    crate::interrupt::checkpoint()?;
-                }
-                let end = (start + 256).min(rhs_count);
-                for rhs in start..end {
-                    output[cell.firm as usize * stride + rhs] -=
-                        cell.weight * left_scratch[cell.worker as usize * stride + rhs];
-                }
-                completed_work(2, 2 * (end - start));
+            let (firm, worker) = (cell.firm as usize * stride, cell.worker as usize * stride);
+            for (value, &term) in output[firm..firm + rhs_count]
+                .iter_mut()
+                .zip(&left_scratch[worker..worker + rhs_count])
+            {
+                *value -= cell.weight * term;
             }
+            completed_work(4, 2 * rhs_count);
+            poll.charge(2 * rhs_count)?;
         }
         for firm in 0..self.firm_weights.len() {
-            crate::interrupt::checkpoint()?;
-            for start in (0..rhs_count).step_by(256) {
-                if start != 0 {
-                    crate::interrupt::checkpoint()?;
-                }
-                let end = (start + 256).min(rhs_count);
-                for rhs in start..end {
-                    if !output[firm * stride + rhs].is_finite() {
-                        return Err(invalid_data("cell Schur product is nonfinite"));
-                    }
-                }
-                completed_work(2, end - start);
+            if output[firm * stride..firm * stride + rhs_count]
+                .iter()
+                .any(|value| !value.is_finite())
+            {
+                return Err(invalid_data("cell Schur product is nonfinite"));
             }
+            completed_work(2, rhs_count);
+            poll.charge(rhs_count)?;
         }
         crate::interrupt::checkpoint()
     }
@@ -251,11 +227,31 @@ impl Work {
     }
     fn filled<T: Copy>(&mut self, count: usize, value: T) -> Attempt<Vec<T>> {
         let mut result = self.capacity(count)?;
-        for _ in 0..count {
-            self.charge(4)?;
-            result.push(value);
+        while result.len() < count {
+            self.charge(16)?;
+            let block = (count - result.len()).min(1024);
+            result.resize(result.len() + block, value);
         }
         Ok(result)
+    }
+}
+
+/// Scalar operations between cancellation polls in serial cell passes.
+const POLL_UNITS: usize = 4096;
+
+/// One host-flag poll per [`POLL_UNITS`] scalar operations of a serial pass,
+/// so inner loops carry no per-element poll.
+#[derive(Default)]
+struct Poll(usize);
+impl Poll {
+    #[inline]
+    fn charge(&mut self, units: usize) -> Result<()> {
+        self.0 += units;
+        if self.0 < POLL_UNITS {
+            return Ok(());
+        }
+        self.0 = 0;
+        crate::interrupt::checkpoint()
     }
 }
 
@@ -315,18 +311,32 @@ pub(crate) fn build(
             refusal: Some(KernelRefusal::MemoryBudget),
         });
     };
-    let fits = limits
-        .retained_live_bytes
-        .checked_add(bytes)
-        .is_some_and(|total| limits.memory.is_none_or(|budget| budget.fits(total)));
-    if !fits {
+    let parallel = parallel_build::plan(design, left_effect, limits);
+    if parallel.is_none() && !fits(limits, bytes) {
         return Ok(OptionalSetup {
             kernel: None,
             peak: SolverWorkspacePeak::ZERO,
             refusal: Some(KernelRefusal::MemoryBudget),
         });
     }
-    let result = build_inner(design, left_effect, weights, weight_scale, &mut work);
+    let (result, bytes) = match parallel {
+        Some((lanes, bytes)) => (
+            parallel_build::construct(
+                design,
+                left_effect,
+                weights,
+                weight_scale,
+                parallel_build::Order::Firm,
+                lanes,
+                &mut work,
+            ),
+            bytes,
+        ),
+        None => (
+            build_inner(design, left_effect, weights, weight_scale, &mut work),
+            bytes,
+        ),
+    };
     let (kernel, refusal) = match result {
         Ok(kernel) => (Some(kernel), None),
         Err(Stop::Refused(reason)) => (None, Some(reason)),
@@ -399,6 +409,13 @@ fn build_inner(
     finish(cells, p, q, work)
 }
 
+fn fits(limits: KernelLimits, bytes: u128) -> bool {
+    limits
+        .retained_live_bytes
+        .checked_add(bytes)
+        .is_some_and(|total| limits.memory.is_none_or(|budget| budget.fits(total)))
+}
+
 /// Retained firm index plus its transient cursors, for at most `cells` cells.
 fn firm_index_bytes(cells: u128, q: u128) -> u128 {
     cells * std::mem::size_of::<FirmCell>() as u128
@@ -407,6 +424,7 @@ fn firm_index_bytes(cells: u128, q: u128) -> u128 {
 
 // The caller's cell order is numerical authority; do not sort here.
 fn finish(cells: Vec<Cell>, p: usize, q: usize, work: &mut Work) -> Attempt<CellSchur> {
+    let mut poll = Poll::default();
     let mut offsets = work.filled(
         p.checked_add(1)
             .ok_or_else(|| allocation("cell offsets overflow"))?,
@@ -416,13 +434,13 @@ fn finish(cells: Vec<Cell>, p: usize, q: usize, work: &mut Work) -> Attempt<Cell
     let mut firm_weights = work.filled(q, 0.0)?;
     let mut diagonal = work.filled(q, 0.0)?;
     for cell in &cells {
-        work.charge(16)?;
+        poll.charge(16)?;
         offsets[cell.worker as usize + 1] += 1;
         worker_weights[cell.worker as usize] += cell.weight;
         firm_weights[cell.firm as usize] += cell.weight;
     }
     for i in 0..p {
-        work.charge(4)?;
+        poll.charge(4)?;
         offsets[i + 1] += offsets[i];
     }
     let mut suffix = work.filled(
@@ -433,7 +451,7 @@ fn finish(cells: Vec<Cell>, p: usize, q: usize, work: &mut Work) -> Attempt<Cell
         0.0,
     )?;
     for worker in 0..p {
-        work.charge(16)?;
+        poll.charge(16)?;
         let (start, end) = (offsets[worker], offsets[worker + 1]);
         let total = worker_weights[worker];
         if !total.is_finite() {
@@ -441,12 +459,12 @@ fn finish(cells: Vec<Cell>, p: usize, q: usize, work: &mut Work) -> Attempt<Cell
         }
         suffix[end] = 0.0;
         for i in (start..end).rev() {
-            work.charge(8)?;
+            poll.charge(8)?;
             suffix[i] = suffix[i + 1] + cells[i].weight;
         }
         let mut prefix = 0.0;
         for i in start..end {
-            work.charge(32)?;
+            poll.charge(32)?;
             let cell = cells[i];
             let other = prefix + suffix[i + 1];
             // Since c + other = total mathematically, dividing the larger
@@ -461,7 +479,7 @@ fn finish(cells: Vec<Cell>, p: usize, q: usize, work: &mut Work) -> Attempt<Cell
         }
     }
     for firm in 0..q {
-        work.charge(16)?;
+        poll.charge(16)?;
         if !firm_weights[firm].is_finite() || !diagonal[firm].is_finite() || diagonal[firm] < 0.0 {
             return Err(Stop::Refused(KernelRefusal::Numerical));
         }
@@ -485,27 +503,28 @@ fn finish(cells: Vec<Cell>, p: usize, q: usize, work: &mut Work) -> Attempt<Cell
 
 /// Stable counting sort of the worker-major cells by firm.
 fn firm_index(cells: &[Cell], q: usize, work: &mut Work) -> Attempt<(Vec<usize>, Vec<FirmCell>)> {
+    let mut poll = Poll::default();
     let mut offsets = work.filled(
         q.checked_add(1)
             .ok_or_else(|| allocation("cell firm offsets overflow"))?,
         0usize,
     )?;
     for cell in cells {
-        work.charge(8)?;
+        poll.charge(8)?;
         offsets[cell.firm as usize + 1] += 1;
     }
     for firm in 0..q {
-        work.charge(4)?;
+        poll.charge(4)?;
         offsets[firm + 1] += offsets[firm];
     }
     let mut cursor = work.capacity(q)?;
-    for &start in &offsets[..q] {
-        work.charge(4)?;
-        cursor.push(start);
+    for block in offsets[..q].chunks(1024) {
+        poll.charge(4 * block.len())?;
+        cursor.extend_from_slice(block);
     }
     let mut firm_cells = work.filled(cells.len(), FirmCell::default())?;
     for cell in cells {
-        work.charge(16)?;
+        poll.charge(16)?;
         let slot = &mut cursor[cell.firm as usize];
         firm_cells[*slot] = FirmCell {
             worker: cell.worker,

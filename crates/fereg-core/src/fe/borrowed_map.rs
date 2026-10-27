@@ -1324,7 +1324,11 @@ fn component_scaled_checkpoint_weights(
 struct TwoFePcgWorkspace {
     cmg_schur: Option<Box<super::cmg_schur::CmgSchurPreconditioner>>,
     kernel: Option<super::routing_kernel::CellSchur>,
+    /// Operator choice: the cell product instead of the membership product.
     use_cell_operator: bool,
+    /// Preconditioner choice, independent of the operator: the kernel's Schur
+    /// diagonal (the `routing_diagonal` ablation) instead of D_f.
+    kernel_diagonal: bool,
     left_effect: usize,
     right_effect: usize,
     component_roots: Vec<usize>,
@@ -1364,6 +1368,7 @@ impl TwoFePcgWorkspace {
             cmg_schur: None,
             kernel: None,
             use_cell_operator: false,
+            kernel_diagonal: false,
             left_effect,
             right_effect,
             component_roots: Vec::new(),
@@ -2362,6 +2367,8 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                 graph.kernel = built.kernel;
                 graph.use_cell_operator =
                     route.preset.kernel() == Some(super::routing::RoutingAblation::Cells);
+                graph.kernel_diagonal =
+                    route.preset.kernel() == Some(super::routing::RoutingAblation::Diagonal);
                 let elapsed = started.elapsed();
                 setup_seconds += elapsed.as_secs_f64();
                 solve_started += elapsed;
@@ -3029,7 +3036,7 @@ fn absorb_two_fe_pcg_reusing(
                         schur_diagonal(
                             &graph.right_weights,
                             graph.kernel.as_ref(),
-                            graph.use_cell_operator
+                            graph.kernel_diagonal
                         ),
                         scale_components.then_some(graph.component_scales.as_slice()),
                         stride,
@@ -3208,7 +3215,7 @@ fn absorb_two_fe_pcg_reusing(
                             schur_diagonal(
                                 &graph.right_weights,
                                 graph.kernel.as_ref(),
-                                graph.use_cell_operator
+                                graph.kernel_diagonal
                             ),
                             scale_components.then_some(graph.component_scales.as_slice()),
                             stride,
@@ -3236,7 +3243,7 @@ fn absorb_two_fe_pcg_reusing(
                         schur_diagonal(
                             &graph.right_weights,
                             graph.kernel.as_ref(),
-                            graph.use_cell_operator
+                            graph.kernel_diagonal
                         ),
                         scale_components.then_some(graph.component_scales.as_slice()),
                         stride,
@@ -3350,7 +3357,7 @@ fn absorb_two_fe_pcg_reusing(
                 let right_weights = schur_diagonal(
                     &graph.right_weights,
                     graph.kernel.as_ref(),
-                    graph.use_cell_operator,
+                    graph.kernel_diagonal,
                 );
                 let component_scales = &graph.component_scales;
                 let residual = &graph.residual;
@@ -3383,7 +3390,7 @@ fn absorb_two_fe_pcg_reusing(
                         schur_diagonal(
                             &graph.right_weights,
                             graph.kernel.as_ref(),
-                            graph.use_cell_operator
+                            graph.kernel_diagonal
                         ),
                         scale_components.then_some(graph.component_scales.as_slice()),
                         stride,
@@ -4006,15 +4013,16 @@ impl TwoFePcgWorkspace {
     }
 }
 
+/// D_f unless the diagonal ablation selected the kernel's Schur diagonal.
+/// The operator (cells or membership) never changes the preconditioner.
 fn schur_diagonal<'a>(
     weights: &'a [f64],
     kernel: Option<&'a super::routing_kernel::CellSchur>,
-    cells: bool,
+    kernel_diagonal: bool,
 ) -> &'a [f64] {
-    if cells {
-        weights
-    } else {
-        kernel.map_or(weights, |k| k.diagonal())
+    match kernel.filter(|_| kernel_diagonal) {
+        Some(kernel) => kernel.diagonal(),
+        None => weights,
     }
 }
 

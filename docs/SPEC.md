@@ -14,11 +14,11 @@ Native test names below are relative to `crates/fereg-core` or
 
 ## 1. Public syntax and options
 
-### Ownership and deferred-cell scope
+### Ownership and cell scope
 
 The accepted ownership/cell implementation uses CMG `fd77d98d`. Qualified OLS `solver(auto)` with
 `preconditioner(auto)`, a global intercept and exactly two categorical-intercept
-FE terms selects both ownership mechanisms and deferred cell construction.
+FE terms selects both ownership mechanisms and eager cell construction.
 Explicit developer injections retain their specified selection. Core defaults
 and requests outside this scope remain unchanged. The
 [acceptance record](../bench/results/ownership-qualification-final-linux-20261024.json)
@@ -48,9 +48,16 @@ toward real memory admission; refusal retains the observation operator.
 CMG commitment by gate v2 (below), cutoff 5, one sampled tree, seed 0, graph
 construction, small-direct selection, certification, restart and fallback
 semantics remain fixed. The same original graph produces the same hierarchy
-when both arms construct one. The only permitted cell redesign defers
-construction to successful CMG commitment at the existing restart; it adds no
-restart or speculative setup to short solves. The deferred cell product runs on
+when both arms construct one. Public two-FE Auto constructs the cells once,
+after the initial certificate and any direct route and before the diagonal
+pilot, so the pilot's Schur products also use the cell operator; the pilot keeps
+its D_f preconditioner, so only the operator's low bits change and the frozen
+gate v2 stall threshold keeps its meaning. Construction runs on the host team
+with the serial constructors' bits when its optional scratch is admitted. The
+former deferred order (construction only after successful CMG commitment at the
+existing restart, adding no setup to short solves) remains the `cells_deferred`
+developer arm. Eager construction is a candidate whose qualification against
+the deferred public order is recorded separately. The cell product runs on
 the host team over a firm-major copy of the cells kept in increasing worker
 order, which reproduces the serial product's bits at every lane count; the copy
 is admitted with the kernel. There is no construction-work cap or
@@ -235,7 +242,7 @@ Public OLS Auto/Auto uses the many-FE geometry policy
 (`routing_many_geometry_v1`) for eligible designs with at least three
 categorical-intercept FEs. Eligible two-FE designs use
 [structural CMG gate v2](two_fe_auto_gates.md) (`routing_two_gates_v2`),
-with ownership and deferred cells in the narrower global-intercept scope above. Zero/one FE,
+with ownership and eager cells in the narrower global-intercept scope above. Zero/one FE,
 slopes and explicit choices retain their specified behavior; PPML Auto adds only
 the two-FE CMG reuse below. Activation and performance evidence for both OLS
 families are complete; the many-FE policy carries one documented
@@ -1291,7 +1298,7 @@ Exclude timing, build identity and environmental resource observations only.
 A tolerance pass cannot silently waive an unexplained exact-change failure.
 Preserve Stata processor restoration on success, error and Break.
 
-The two-FE OLS Auto team installation and the parallel deferred cell product
+The two-FE OLS Auto team installation, the parallel cell construction and the parallel cell product
 follow this rule: their results do not depend on the worker count, apart from
 CMG's fixed-chunk centering of a single coarse component of at least 131,072
 entries, which uses the same tree whenever a team is installed.
