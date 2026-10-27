@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.0 beta.8 — 2026-10-27
 
 - OLS Auto with two categorical-intercept effects applies its CMG
   preconditioner on the worker team (row operators and interleaved columns
