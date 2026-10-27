@@ -881,19 +881,7 @@ pub(super) fn fit<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         LinearSessionAllocationPhase::Projection,
     );
     crate::interrupt::checkpoint()?;
-    // Fast OLS without residual, xbd, d or saved-FE outputs keeps its within
-    // residual when its derived certificate passes (SPEC §7, §16).
-    let derived_scale =
-        (dense && !config.absorb.retain_coefficients && config.final_residual_tolerance.is_none())
-            .then(|| {
-                derived_residual_scale(
-                    weighted_response_norm(frame.response(), weights)?,
-                    &inputs.reference_norms,
-                    &inputs.norms,
-                    &qr.generated_coefficients,
-                )
-            })
-            .transpose()?;
+    let derived_scale = derived_scale(dense, config, frame.response(), weights, &inputs, &qr)?;
     let (residuals, residual_absorption_report, residual_fe_coefficients) = project_residual(
         &mut cmg,
         prepared.fit_sample().n_active(),
@@ -942,6 +930,29 @@ fn scaled_initial_sum_of_squares(value: f64, multiplier: f64, dense: bool) -> Re
         }));
     }
     Ok(scaled)
+}
+
+/// Fast OLS without residual, xbd, d or saved-FE outputs keeps its within
+/// residual when its derived certificate passes (SPEC §7, §16); this is the
+/// scale at which it is checked, or `None` when the final projection runs.
+fn derived_scale(
+    dense: bool,
+    config: PreparedOlsFitConfig,
+    response: &[f64],
+    weights: NormalizedWeights<'_>,
+    inputs: &OneShotInputs,
+    qr: &FiniteFit,
+) -> Result<Option<f64>> {
+    if !dense || config.absorb.retain_coefficients || config.final_residual_tolerance.is_some() {
+        return Ok(None);
+    }
+    derived_residual_scale(
+        weighted_response_norm(response, weights)?,
+        &inputs.reference_norms,
+        &inputs.norms,
+        &qr.generated_coefficients,
+    )
+    .map(Some)
 }
 
 fn weighted_response_norm(response: &[f64], weights: NormalizedWeights<'_>) -> Result<f64> {

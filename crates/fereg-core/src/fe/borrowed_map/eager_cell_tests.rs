@@ -168,6 +168,8 @@ fn eager_retained_cells_are_admitted_and_reported_through_cmg_checkpoint() {
         2,
         None,
         false,
+        crate::fe::cmg_schur::AutoApplication::Scalar,
+        ::cmg::CmgOptions::default(),
     )
     .unwrap();
     assert!(reference.preconditioner.is_some());

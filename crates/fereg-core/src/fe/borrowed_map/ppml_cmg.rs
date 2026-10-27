@@ -181,7 +181,7 @@ impl ReusableCategoricalMapAbsorber<'_> {
                 })
             })
             .transpose()?;
-        let built = CmgSchurPreconditioner::try_build_bounded_with(
+        let built = CmgSchurPreconditioner::try_build_bounded(
             &self.design,
             weights,
             graph.left_effect,
@@ -258,7 +258,7 @@ impl ReusableCategoricalMapAbsorber<'_> {
             return Ok(false);
         }
         state.attempts += 1;
-        let built = CmgSchurPreconditioner::try_build_bounded_with(
+        let built = CmgSchurPreconditioner::try_build_bounded(
             &self.design,
             weights,
             graph.left_effect,

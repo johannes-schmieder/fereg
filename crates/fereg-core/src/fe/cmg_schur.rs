@@ -752,6 +752,8 @@ mod tests {
                 2,
                 None,
                 false,
+                AutoApplication::Scalar,
+                CmgOptions::default(),
             )
             .unwrap();
             assert_eq!(built.refusal, None);
@@ -880,6 +882,8 @@ mod tests {
                 execution_bytes: 0,
             }),
             false,
+            AutoApplication::Scalar,
+            CmgOptions::default(),
         )
         .unwrap();
         assert!(memory.preconditioner.is_none());
@@ -895,6 +899,8 @@ mod tests {
             1,
             None,
             false,
+            AutoApplication::Scalar,
+            CmgOptions::default(),
         )
         .err()
         .unwrap();
@@ -2019,7 +2025,16 @@ mod tests {
                         let explicit = digest(&mut explicit, firms, capacity);
                         let automatic = if *options == CmgOptions::default() {
                             let mut automatic = CmgSchurPreconditioner::try_build_bounded(
-                                &design, weights, 0, *degree, sampling, capacity, None, false,
+                                &design,
+                                weights,
+                                0,
+                                *degree,
+                                sampling,
+                                capacity,
+                                None,
+                                false,
+                                AutoApplication::Scalar,
+                                CmgOptions::default(),
                             )
                             .unwrap()
                             .preconditioner
@@ -2166,7 +2181,7 @@ mod tests {
                     )
                     .install(|| {
                         let build = |application| {
-                            let built = CmgSchurPreconditioner::try_build_bounded_with(
+                            let built = CmgSchurPreconditioner::try_build_bounded(
                                 &design,
                                 weights,
                                 0,
@@ -2224,7 +2239,7 @@ mod tests {
         crate::ThreadTeam::new(crate::ThreadConfig::from_requested(4, true).unwrap())
             .install(|| {
                 let build = |application, usable_bytes: Option<u128>| {
-                    CmgSchurPreconditioner::try_build_bounded_with(
+                    CmgSchurPreconditioner::try_build_bounded(
                         &design,
                         BorrowedMapWeights::Unit,
                         0,

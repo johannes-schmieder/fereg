@@ -813,6 +813,8 @@ fn finite_and_portfolio_checkpoints_install_the_same_bounded_hierarchy() {
             2,
             None,
             false,
+            crate::fe::cmg_schur::AutoApplication::Scalar,
+            ::cmg::CmgOptions::default(),
         )
         .unwrap();
         assert_eq!(reference.refusal, None);

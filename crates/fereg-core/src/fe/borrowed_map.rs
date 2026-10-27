@@ -1219,7 +1219,7 @@ impl AutoSchurRoute {
             .breaks_builder()
             .then(super::routing_break::DeveloperBreak::claim)
             .transpose()?;
-        let built = super::cmg_schur::CmgSchurPreconditioner::try_build_bounded_with(
+        let built = super::cmg_schur::CmgSchurPreconditioner::try_build_bounded(
             design,
             weights
                 .values

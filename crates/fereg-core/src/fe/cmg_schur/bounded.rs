@@ -11,7 +11,9 @@ use crate::error::FeregError;
 
 use super::*;
 
+mod install;
 mod team;
+use install::{install_plan, ApplyShape};
 use team::{PrepareTask, CENSUS_TASK_CELLS};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -449,38 +451,12 @@ impl CmgSchurPreconditioner {
     /// or numerical failures remain fatal. The canonical census cache is used
     /// whenever its complete peak envelope is admitted. `break_builder` arms
     /// the developer builder-Break point (see `routing_break`).
-    #[allow(clippy::too_many_arguments)]
-    pub(in crate::fe) fn try_build_bounded(
-        design: &BorrowedInterceptFeDesign<'_>,
-        weights: BorrowedMapWeights<'_>,
-        left_effect: usize,
-        degree: usize,
-        sampling: Sampling,
-        rhs_capacity: usize,
-        budget: Option<FeSolverMemoryBudget>,
-        break_builder: bool,
-    ) -> Result<BoundedCmgBuild> {
-        Self::try_build_bounded_with(
-            design,
-            weights,
-            left_effect,
-            degree,
-            sampling,
-            rhs_capacity,
-            budget,
-            break_builder,
-            AutoApplication::Scalar,
-            CmgOptions::default(),
-        )
-    }
-
-    /// [`Self::try_build_bounded`] with an explicit application and hierarchy
-    /// options. A team application installs its row-operator plan and up to
+    /// A team application installs its row-operator plan and up to
     /// [`MAX_BATCH_COLUMNS`] interleaved lanes of `rhs_capacity` only when
     /// their bounds are admitted; otherwise it keeps the scalar application of
     /// the same hierarchy. Neither choice can refuse the build.
     #[allow(clippy::too_many_arguments)]
-    pub(in crate::fe) fn try_build_bounded_with(
+    pub(in crate::fe) fn try_build_bounded(
         design: &BorrowedInterceptFeDesign<'_>,
         weights: BorrowedMapWeights<'_>,
         left_effect: usize,
@@ -672,91 +648,25 @@ fn finish(
     // admitted peak keeps the parallel one. Explicit builds keep their bound.
     parents += if explicit { bound } else { serial } as u128;
     let component_count = components.sizes.len();
-    // Apply storage for `columns` lanes after the scalar workspace bytes.
-    let apply_bound = |work: &mut Work,
-                       scalar_bytes: usize,
-                       columns: usize|
-     -> Attempt<(usize, usize, usize)> {
-        // Explicit centering scratch already holds every lane.
-        let lane_bytes = if !explicit && columns > 1 {
-            super::bytes::<[f64; 2]>(
-                component_count
-                    .checked_mul(columns)
-                    .ok_or_else(|| allocation("CMG Schur component batch dimensions overflow"))?,
-            )?
-        } else {
-            0
-        };
-        let batch_bytes = if columns > 1 {
-            work.cmg(|_, cancelled| {
-                CmgBatchWorkspace::allocation_bytes_controlled(&preconditioner, columns, cancelled)
-            })?
-        } else {
-            0
-        };
-        let elements = graph
-            .vertex_count()
-            .checked_mul(columns)
-            .ok_or_else(|| allocation("CMG Schur batch dimensions overflow"))?;
-        let bound = scalar_bytes
-            .checked_add(batch_bytes)
-            .and_then(|bytes| bytes.checked_add(super::bytes::<[f64; 2]>(elements).ok()?))
-            .and_then(|bytes| bytes.checked_add(std::mem::size_of::<CmgSchurPreconditioner>()))
-            .and_then(|bytes| bytes.checked_add(lane_bytes))
-            .ok_or_else(|| allocation("bounded CMG apply storage overflows"))?;
-        Ok((batch_bytes, elements, bound))
+    let shape = ApplyShape {
+        vertices: graph.vertex_count(),
+        components: component_count,
+        explicit,
     };
-    let plan = if install.planned() {
-        work.step(128)?;
-        let bound = work.cmg(|team, _| {
-            team.map_or(Ok(0), |team| {
-                cmg::ParallelCmgPlan::construction_allocation_bound(&preconditioner, team)
-            })
-        })?;
-        // An automatic team installation keeps the scalar application when
-        // the optional row operators would leave no room for its one-lane
-        // apply storage; explicit requests refuse instead.
-        let room = explicit || {
-            let scalar_bytes = work.cmg(|_, cancelled| {
-                preconditioner.workspace_allocation_bytes_controlled(cancelled)
-            })?;
-            let scalar_apply = apply_bound(work, scalar_bytes, 1)?.2;
-            fits(memory, parents + bound as u128, scalar_apply)
-        };
-        if room {
-            let admitted = admit(memory, work, parents, bound)?;
-            let plan = work.cmg(|team, cancelled| {
-                team.map(|team| {
-                    cmg::ParallelCmgPlan::build_with(
-                        &preconditioner,
-                        cmg::BuildContext {
-                            team: Some(team),
-                            cancel: Some(cancelled),
-                            budget_bytes: Some(admitted),
-                        },
-                    )
-                })
-                .transpose()
-            })?;
-            parents += bound as u128;
-            plan
-        } else {
-            None
-        }
-    } else {
-        None
-    };
+    let plan = install_plan(&preconditioner, install, shape, &mut parents, work, memory)?;
     // Layout scans are O(levels) and the zeroed workspaces O(n * columns);
     // all poll cancellation inside CMG.
     work.step(128)?;
     let scalar_bytes =
         work.cmg(|_, cancelled| preconditioner.workspace_allocation_bytes_controlled(cancelled))?;
     let mut columns = install.columns();
-    let (mut batch_bytes, mut elements, mut bound) = apply_bound(work, scalar_bytes, columns)?;
+    let (mut batch_bytes, mut elements, mut bound) =
+        shape.bound(&preconditioner, work, scalar_bytes, columns)?;
     if !explicit && columns > 1 && !fits(memory, parents, bound) {
         // Optional interleaved lanes of an automatic installation.
         columns = 1;
-        (batch_bytes, elements, bound) = apply_bound(work, scalar_bytes, columns)?;
+        (batch_bytes, elements, bound) =
+            shape.bound(&preconditioner, work, scalar_bytes, columns)?;
     }
     admit(memory, work, parents, bound)?;
     if !explicit && columns > 1 {
@@ -2429,6 +2339,8 @@ mod cache_tests {
                     1,
                     budget,
                     false,
+                    AutoApplication::Scalar,
+                    CmgOptions::default(),
                 )
             } else {
                 CmgSchurPreconditioner::build_observations_bounded(
