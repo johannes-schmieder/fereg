@@ -66,7 +66,7 @@ immutable projected rows. `ols/prepared_fit/one_shot.rs` owns the Fast/Low fit
 lifecycle. OLS has a temporary finite workspace; PPML lends retained banks.
 OLS does not create a PPML session.
 
-The plugin selects the qualified ownership/deferred-cell policy after decoding
+The plugin selects the ownership/eager-cell policy after decoding
 an ordinary two-FE categorical-intercept OLS Auto/Auto request with a global
 intercept. Both omitted-moment and projected-score ownership controls are set
 there; core defaults stay off. Explicit injection fields bypass this public
@@ -345,8 +345,12 @@ pre-consolidation explicit builder's (a frozen-digest witness covers one and
 four workers); the two-FE Schur routes themselves build with a zero
 low-effective-degree threshold (see SPEC).
 
-After the CMG handoff, OLS Auto applies the Schur operator through the
-deferred (worker, firm) cells (`fe/routing_kernel.rs`). The kernel keeps a
+Public two-FE OLS Auto builds the (worker, firm) cells (`fe/routing_kernel.rs`)
+before the diagonal pilot and applies the Schur operator through them in the
+pilot and after the CMG handoff; the pilot keeps the D_f preconditioner, since
+the operator and preconditioner choices are independent (only the
+`routing_diagonal` ablation preconditions with the cell Schur diagonal). The
+`cells_deferred` developer arm builds them only after the handoff. The kernel keeps a
 firm-major copy of its worker-major cells, built by a stable count so each
 firm's cells stay in increasing worker order. Workers own their left-scratch
 rows and firms their output rows (`routing_kernel/parallel.rs`), so the

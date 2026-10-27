@@ -79,8 +79,7 @@ fn public_two_fixture() -> (Vec<String>, FakeSpi) {
 fn public_two_activation_has_exact_scope_and_hidden_configuration() {
     use fereg_core::ols::{PreparedOlsCells, PreparedOlsOwnership};
     let hidden =
-        crate::developer_injection::parse_ols("cells_deferred_both", FeSolverKind::Auto, "")
-            .unwrap();
+        crate::developer_injection::parse_ols("cells_eager_both", FeSolverKind::Auto, "").unwrap();
     for excluded in 0..11 {
         let (args, mut spi) = public_two_fixture();
         let mut action = EstimateActionSpec::parse(&args)
@@ -134,7 +133,7 @@ fn public_two_activation_matches_hidden_science_and_public_repeat() {
             replace_argument(&mut args, "threads", format!("threads={workers}"));
             replace_argument(&mut args, "vce", "vce=robust".into());
             let mut hidden_args = args.clone();
-            hidden_args.push("inject=cells_deferred_both".into());
+            hidden_args.push("inject=cells_eager_both".into());
             let mut hidden = spi.clone();
             estimate_ols(&hidden_args, &mut hidden).unwrap();
             for _ in 0..2 {
@@ -188,10 +187,7 @@ fn public_marker_does_not_accept_an_explicit_empty_injection() {
         .decode_with_memory_limit(&mut spi, || Ok(None))
         .unwrap();
     activate_public_two_fe(&mut action);
-    assert_eq!(
-        action.fit.cells,
-        fereg_core::ols::PreparedOlsCells::Deferred
-    );
+    assert_eq!(action.fit.cells, fereg_core::ols::PreparedOlsCells::Eager);
     args.push("inject=".into());
     assert!(EstimateActionSpec::parse(&args).is_err());
 }
@@ -268,7 +264,7 @@ fn selected_public_policy_injections_keep_public_two_fe_activation() {
                 activate_public_two_fe(&mut action);
             }
             let expected = if public {
-                fereg_core::ols::PreparedOlsCells::Deferred
+                fereg_core::ols::PreparedOlsCells::Eager
             } else {
                 fereg_core::ols::PreparedOlsCells::Off
             };

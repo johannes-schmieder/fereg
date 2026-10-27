@@ -389,7 +389,7 @@ fn activate_public_two_fe(action: &mut EstimateAction) {
             skip_unused_moments: true,
             retain_projected_scores: true,
         };
-        action.fit.cells = fereg_core::ols::PreparedOlsCells::Deferred;
+        action.fit.cells = fereg_core::ols::PreparedOlsCells::Eager;
     }
 }
 
