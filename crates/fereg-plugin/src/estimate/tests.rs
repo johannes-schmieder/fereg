@@ -234,9 +234,11 @@ fn public_two_activation_preserves_explicit_injections_in_local_bundles() {
 }
 
 #[test]
-fn selected_many_geometry_injection_keeps_public_two_fe_activation() {
+fn selected_public_policy_injections_keep_public_two_fe_activation() {
     for (token, public) in [
         ("routing_many_geometry_v1", true),
+        ("routing_two_gates_v2", true),
+        ("routing_two_gates_v1", false),
         ("routing_incremental_many", false),
     ] {
         let (mut args, mut spi) = public_two_fixture();

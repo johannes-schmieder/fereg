@@ -1369,6 +1369,7 @@ fn ppml_topology_injection_is_explicit_and_does_not_accept_routing_presets() {
         "routing_incremental_many",
         "routing_incremental_two",
         "routing_many_geometry_v1",
+        "routing_two_gates_v2",
     ] {
         let mut rejected = args.clone();
         rejected.push(format!("inject={unsupported}"));

@@ -211,7 +211,9 @@ pub(crate) fn parse_ols(stage: &str, solver: FeSolverKind, token: &str) -> Resul
         cells,
         it_coefficients: stage == "it_coefficients",
         native_break_token: break_native.then(|| token.to_owned()),
-        public_activation: stage == "routing_many_geometry_v1",
+        // Selected public policies keep public two-FE activation, so the
+        // hidden invocation equals uninjected Auto on every design.
+        public_activation: matches!(stage, "routing_many_geometry_v1" | "routing_two_gates_v2"),
     })
 }
 

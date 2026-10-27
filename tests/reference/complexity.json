@@ -1,37 +1,6 @@
 {
   "definition": "docs/development_workflow.md#complexity-inventory",
-  "growth": [
-    {
-      "after": 1426,
-      "before": 1418,
-      "metric": "fereg-core/dispatch_candidates",
-      "reason": "Two-FE Auto speed workstream: admission fallbacks of the optional plan and lanes, parallel-cell dispatch, gate v2 ages and derived-certificate eligibility."
-    },
-    {
-      "after": 110310,
-      "before": 109767,
-      "metric": "fereg-core/production_lines",
-      "reason": "Two-FE Auto speed workstream: host-team CMG application with scalar fallback, parallel deferred-cell operator with its firm index, gate v2 stall rule, Schur hierarchy options and the derived final-residual certificate."
-    },
-    {
-      "after": 15458,
-      "before": 15454,
-      "metric": "fereg-plugin/production_lines",
-      "reason": "Derived-certificate stop code in solver reports and the gate v2 developer injection."
-    },
-    {
-      "after": 8694,
-      "before": 8673,
-      "metric": "file/crates/fereg-core/src/fe/borrowed_map.rs",
-      "reason": "Auto route application/options fields and setter, gate rule accessor, gate observation call and parallel-cell dispatch; new logic lives in routing_gates/stall.rs, routing_kernel/parallel.rs, cmg_schur/bounded/install.rs and borrowed_map/derived_residual.rs."
-    },
-    {
-      "after": 925,
-      "before": 923,
-      "metric": "function/crates/fereg-core/src/fe/borrowed_map.rs/absorb_two_fe_pcg_reusing#1",
-      "reason": "The gate call passes the recurrence energies to the gate v2 observation."
-    }
-  ],
+  "growth": [],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
   "inventory": {
     "files": {
@@ -21323,20 +21292,20 @@
         "dispatch_candidates": [
           {
             "condition": "! token . is_empty ( ) && ( token . len ( ) != 32 || ! token . bytes ( ) . all ( | byte | byte . is_ascii_digit ( ) || ( b <char> ..= b <char> ) . contains ( & byte ) ) )",
-            "line": 227
+            "line": 229
           }
         ],
         "functions": {
           "create_native_break_marker#1": {
-            "line": 246,
+            "line": 248,
             "lines": 11
           },
           "internal#1": {
-            "line": 258,
+            "line": 260,
             "lines": 3
           },
           "native_break_marker_path#1": {
-            "line": 240,
+            "line": 242,
             "lines": 3
           },
           "ols_mechanisms#1": {
@@ -21345,10 +21314,10 @@
           },
           "parse_ols#1": {
             "line": 80,
-            "lines": 137
+            "lines": 139
           },
           "validate_break_marker_token#1": {
-            "line": 220,
+            "line": 222,
             "lines": 19
           }
         },
@@ -24242,5 +24211,5 @@
     },
     "schema": 1
   },
-  "reason": "Two-FE Auto applies CMG on the host team, runs cells in parallel, hands off early by gate v2 and certifies fast final residuals by their derived bound."
+  "reason": "Gate v2 injection keeps public two-FE activation; documentation of the two-FE Auto changes."
 }
