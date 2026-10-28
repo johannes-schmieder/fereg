@@ -22,7 +22,9 @@ from qualify_scc import validate_reservation, validate_census
 FIELDS = ['cell', 'arm', 'repetition', 'status', 'host', 'job', 'task', 'process_rc', 'wall_seconds', 'seconds',
           'error', 'estimator_tree_rss_bytes', 'memory_sweeps', 'memory_exact', 'ready_rss_bytes', 'peak_rss_bytes',
           'done_rss_bytes', 'timed_out_rows']
-METADATA = ['warm_seconds', 'iterations', 'tolerance', 'fereg_threads', 'feppml_threads', 'fixest_version',
+# fereg's own phase clocks (OLS) and total; they may nest and must not be summed.
+METADATA = ['preflight_seconds', 'input_seconds', 'native_seconds', 'total_seconds',
+            'warm_seconds', 'iterations', 'tolerance', 'fereg_threads', 'feppml_threads', 'fixest_version',
             'pyfixest_version', 'pyfixest_commit', 'julia_version', 'fixedeffectmodels_version']
 
 

@@ -21285,12 +21285,12 @@
     "environment/julia/Project.toml": "ff14e5108e9e76c3799dcc1285cfcab8adaeb4f4f87bd900045ff6e665a7fbc2"
   },
   "runtime_inventory_sha256": "a31b26de83c8b4385a52e536bd6427478d05dd4414f5661c647067cb287698df",
-  "exporter_sha256": "01ab9274041638ba1d7d1d0dd3c669c5772bf36900b871290b7c07a977b1264d",
+  "exporter_sha256": "a030f1027005870e079d94627fef18c5179862d47f142d5b91a7f70a993aa2ad",
   "report_pdf_sha256": "e4dff45d5e8fb940dadbe40ca53fe2d93fb57f6d81870a9f4d7b4334be1a20eb",
   "report_pdf_pages": 33,
   "retained_csv_sha256": {
     "scc-20261027-beta8-summary.csv": "73d338494581340ac9e7ac15dae0873edc68b018b11a14b152d189be61dd346a",
-    "scc-20261027-beta8-observations.csv": "3c308208d28c636cc940277d5030a84f6a6517641290bc78ee9364622ad4efcc"
+    "scc-20261027-beta8-observations.csv": "a689e58ffb30fd569d292188186667b086c927139f3d95f673ba426086c908fe"
   },
   "limitations": [
     "Descriptive Linux comparison on one fixed seed; three to five repetitions per configuration.",
