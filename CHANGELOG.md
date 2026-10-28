@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- OLS Auto with three or more categorical-intercept effects no longer falls
+  back to slow alternating projections on large sparse panels because of an
+  overstated memory estimate: when the additive-Schwarz bound refuses LSMR,
+  fereg counts the factor-pair components that need nested scratch exactly and
+  admits against that bound. The ten-million-row sparse three-FE benchmark
+  design now finishes in about 65 seconds (four workers) instead of not at
+  all. Fits the old bound admitted are unchanged bit for bit; sample, rank and
+  omission decisions are unchanged.
+
 ## 0.5.0 beta.9 — 2026-10-28
 
 - OLS Auto with two categorical-intercept effects builds its aggregated

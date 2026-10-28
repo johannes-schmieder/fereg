@@ -277,6 +277,47 @@ Complete four-million-row dense three-FE fits took 5% longer at four workers
 and 21% longer at 28, so it was not adopted
 ([record](../bench/results/r4-row-streaming-20261026.json)).
 
+## Many-FE Schwarz admission at scale
+
+The beta.8 campaign's sparse three-FE OLS fit did not finish at ten million
+rows. Traced SCC reruns of main (`a023073e`) showed why: at 1M and 3M the
+geometry policy's Jacobi trial certified in 23 LSMR iterations, but at 10M the
+general categorical route refused the additive LSMR attempt and ran the
+original-input MAP fallback (a perf attach saw only borrowed-MAP kernels, 5.0
+GiB RSS at about 3.6 cores). The refusal came from the additive-Schwarz memory
+bound, which charged `T + R` level-sized banks per concurrent RHS with
+`R = levels * (effects - 1) / 10,002`, quadratic in the levels: 11.9 GB at 1M,
+95 GB at 3M and about 1 TB at 10M for 17 RHS and four workers, against measured
+peaks of 1.96 and 5.91 GiB. Exactly three pair components of this design have a
+block of at least 10,000 levels at every size. The repair counts them when the
+level bound refuses ([SPEC](SPEC.md#qualified-auto-routing-and-developer-comparisons));
+the 10M solver estimate becomes 32.4 GB and the fit takes
+the unchanged geometry route (24 iterations, no escalation).
+
+On one whole E5-2680 v4 node (three repetitions, baseline and candidate
+alternating up to 3M), median native seconds were 0.38, 1.33, 4.51, 14.47,
+25.9, 36.8 and 65.0 at 100k, 300k, 1M, 3M, 5M, 7M and 10M rows, with peak
+process RSS 0.23 to 17.0 GiB. Baseline and candidate were bitwise identical
+through 3M, as was the candidate with the campaign's beta.8 3M capture. At 10M
+the coefficients agree with FixedEffectModels.jl at 1e-10 tolerance and with
+PyFixest to 2e-13 relative, and the covariance to 1.5e-13 of the
+standard-error scale after the absorbed-DoF convention. The campaign's 10M
+references were 55 s (PyFixest), 105 s (FixedEffectModels.jl) and 338 s
+(fixest); their peak memory, 4.4 to 12.6 GiB, stays below fereg's. Deterministic
+mode repeated bit for bit at 10M; default mode differed in the last bits there
+because within's non-reproducible adjoint uses an atomic scatter for terms of at
+least 100,000 levels (the 100,000-level firm effect), which no earlier size
+of this design reached.
+
+Local checks: `./scripts/run_tests.sh --source-only` passed on the M2 Ultra; the
+candidate arm64 plugin's replay against the published beta.9 macOS plugin was
+exact for 73 of 73 cases; the many-FE corpus cells' level bounds are at most
+1.9 GB, so none reaches the refinement. A one-million-row campaign-topology
+test admits the additive route under a budget one byte below the level bound
+with the unbudgeted fit's bits; with the refinement disabled it stayed in the
+MAP fallback past 600 seconds. Record:
+[three-fe-scale-2026-10-28](../bench/results/three-fe-scale-2026-10-28.json).
+
 ## PPML two-FE CMG reuse and lean protocol
 
 PPML Auto with exactly two intercept FEs reuses one CMG hierarchy across IRLS
