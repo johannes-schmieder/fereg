@@ -433,15 +433,19 @@ def scoped_decision_paths(prefixes: list[str]) -> set[str]:
     return paths
 
 
-def load_scopes(paths: list[Path]) -> dict:
-    """Union of affected-scope files; a case may be declared by only one."""
-    cases = {}
-    for path in paths:
-        for name, entry in json.loads(path.read_text()).get('cases', {}).items():
-            if name in cases:
-                raise RuntimeError(f'replay case {name} is declared by more than one affected scope')
-            cases[name] = entry
-    return {'cases': cases} if paths else {}
+def scoped_prefixes(scopes: list[dict], case: Path, expected: dict) -> list[str]:
+    """Union of the leaves several affected-scope files declare for one case.
+
+    Each file's entry is validated on its own (input identity, reason, leaf
+    classes, the separation-trace rule), so independent declared changes
+    compose without one entry lending its declarations to another.
+    """
+    prefixes = []
+    for scope in scopes:
+        for path in affected_prefixes(scope, case, expected):
+            if path not in prefixes:
+                prefixes.append(path)
+    return prefixes
 
 
 def validate_scope_targets(prefixes: list[str], result: dict, poisson: bool) -> None:
@@ -469,17 +473,21 @@ def main() -> int:
     parser.add_argument('--baseline-fixes', default=None, help='comma-separated accepted fixes in an older parent; defaults to current fixes')
     parser.add_argument('--policy', type=Path, default=ROOT / 'tests/replay/intentional_changes.json')
     parser.add_argument('--affected-scope', type=Path, nargs='+', action='extend', default=[],
-                        help='predeclared input-bound numerical scope files (their union; a case may appear in one); '
-                             'science/discrete/repeats remain mandatory')
+                        help='predeclared input-bound numerical scope files (the union of their separately '
+                             'validated entries); science/discrete/repeats remain mandatory')
     parser.add_argument('--scope-bindings', type=Path, help='required source/artifact/reference bindings for a typed diagnostic transition')
     parser.add_argument('--thread-counts', type=int, nargs='*', default=[],
                         help='additional native thread counts: dense science, discrete stability and fixed-thread repeats')
     args = parser.parse_args()
     if len(set(args.thread_counts)) != len(args.thread_counts) or any(t < 2 or t > 1024 for t in args.thread_counts):
         parser.error('thread counts must be unique integers from 2 through 1024')
-    scope = load_scopes(args.affected_scope)
+    scopes = [json.loads(path.read_text()) for path in args.affected_scope]
     # A typed diagnostic scope is bound to its single scope file.
-    scope_path = args.affected_scope[0] if len(args.affected_scope) == 1 else None
+    if len(scopes) > 1 and any('diagnostic_contract' in entry for one in scopes
+                               for entry in one.get('cases', {}).values()):
+        parser.error('a typed diagnostic scope must be the only affected scope')
+    scope = scopes[0] if len(scopes) == 1 else {}
+    scope_path = args.affected_scope[0] if len(scopes) == 1 else None
     bindings = json.loads(args.scope_bindings.read_text()) if args.scope_bindings else None
     binding_identity = digest(args.scope_bindings) if args.scope_bindings else None
     if args.affected_scope and not args.baseline:
@@ -502,14 +510,14 @@ def main() -> int:
     inventory = json.loads((ROOT / 'tests/replay/matrix.json').read_text())
     if [case.stem for case in cases] != inventory['cases']:
         raise RuntimeError('replay corpus differs from the declared bounded matrix')
-    if set(scope.get('cases', {})) - {case.stem for case in cases}:
+    if {name for one in scopes for name in one.get('cases', {})} - {case.stem for case in cases}:
         raise RuntimeError('affected scope contains an unknown replay input')
     artifacts = [args.plugin] + ([args.baseline] if args.baseline else [])
     identities = {str(p): digest(p) for p in artifacts}
     records = []
     for case in cases:
         expected = enrich_ols_expected(case, enrich_expected(case, json.loads(case.with_suffix('.json').read_text())))
-        scoped = affected_prefixes(scope, case, expected)
+        scoped = scoped_prefixes(scopes, case, expected)
         typed = scope.get('cases', {}).get(case.stem, {}).get('diagnostic_contract')
         contract = replay_cmg_polish.case_contract(case) if typed else None
         verify_scope_bindings()

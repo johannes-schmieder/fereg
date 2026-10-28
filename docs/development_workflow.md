@@ -44,8 +44,9 @@ matrix (`tests/replay/matrix.json`) and compares the actual binary exactly with 
 baseline plugin and scientifically with independent dense targets. A declared
 numerical change is replayed with affected-scope files in `tests/replay/scopes/`:
 pass several through `FEREG_REPLAY_AFFECTED_SCOPES` (space-separated) or
-`replay_plugins.py --affected-scope A B`; their union applies and a case may be
-declared by only one file. Each entry binds a case's frozen input SHA-256, a
+`replay_plugins.py --affected-scope A B`. Each file's entry is validated on its
+own and the union of the declared leaves applies, so independent changes to one
+case compose; a typed diagnostic scope must be passed alone. Each entry binds a case's frozen input SHA-256, a
 reason and `allowed_paths` leaves of the exact view. Accepted leaves are the
 numerical envelope of `numerical_scope_indices` (including PPML `RSEP`
 certificate magnitudes, zero-based columns 8-11 of every method row), the inner

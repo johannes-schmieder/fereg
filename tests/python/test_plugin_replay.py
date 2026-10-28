@@ -9,7 +9,7 @@ import unittest
 from unittest.mock import patch
 import tempfile
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'scripts'))
-from replay_plugins import scientific_errors, affected_prefixes, digest, allowed_difference, differences, discrete_view, exact_view, expected_for_fixes, numerical_scope_indices, work_scope_indices, validate_scope_targets, RowColumns, load_scopes, scoped_decision_paths
+from replay_plugins import scientific_errors, affected_prefixes, digest, allowed_difference, differences, discrete_view, exact_view, expected_for_fixes, numerical_scope_indices, work_scope_indices, validate_scope_targets, RowColumns, scoped_prefixes, scoped_decision_paths
 from replay_psd import eigensystem
 from replay_bias_reference import enrich_expected, REFERENCE, NAMES
 from replay_ols_reference import dense_targets, derive_ols, enrich_expected as enrich_ols_expected
@@ -201,17 +201,29 @@ class AffectedScopeChecks(unittest.TestCase):
             self.assertTrue([p for p in differences(discrete_view(result, expected),
                                                     discrete_view(bad, expected)) if p not in exempt], (name, index))
 
-    def test_several_scope_files_form_a_disjoint_union(self):
+    def test_several_scope_files_validate_each_entry_and_unite_leaves(self):
         with tempfile.TemporaryDirectory() as root:
-            first, second = Path(root) / 'first.json', Path(root) / 'second.json'
-            first.write_text(json.dumps({'cases': {'a': {'reason': 'x'}}}))
-            second.write_text(json.dumps({'schema': 1, 'cases': {'b': {'reason': 'y'}}}))
-            self.assertEqual(load_scopes([first, second]),
-                             {'cases': {'a': {'reason': 'x'}, 'b': {'reason': 'y'}}})
-            self.assertEqual(load_scopes([]), {})
-            second.write_text(json.dumps({'cases': {'a': {'reason': 'y'}}}))
-            with self.assertRaisesRegex(RuntimeError, 'more than one affected scope'):
-                load_scopes([first, second])
+            case = Path(root) / 'shared.case'
+            case.write_text('bound shared input')
+            ppml = {'poisson': True, 'outputs': {'sample': 0, 'drop_reason': 1}}
+            def scope(reason, paths):
+                return {'cases': {'shared': {'input_sha256': digest(case), 'reason': reason,
+                                             'allowed_paths': paths}}}
+            first = scope('declared solver change', ['/matrices/RB/bits/0', '/matrices/RFIT/bits/5'])
+            second = scope('declared separation route', ['/matrices/RFIT/bits/5', '/matrices/RSEP/bits/22',
+                                                         '/matrices/RREC/bits/28'])
+            self.assertEqual(scoped_prefixes([first, second, {'cases': {}}], case, ppml),
+                             ['/matrices/RB/bits/0', '/matrices/RFIT/bits/5',
+                              '/matrices/RSEP/bits/22', '/matrices/RREC/bits/28'])
+            self.assertEqual(scoped_prefixes([], case, ppml), [])
+            # One file's RSEP leaf and reason never admit another's trace digest.
+            lent = scope('declared solver change', ['/matrices/RB/bits/0', '/matrices/RREC/bits/28'])
+            with self.assertRaises(RuntimeError):
+                scoped_prefixes([lent, second], case, ppml)
+            stale = scope('declared solver change', ['/matrices/RB/bits/0'])
+            stale['cases']['shared']['input_sha256'] = '0' * 64
+            with self.assertRaises(RuntimeError):
+                scoped_prefixes([first, stale], case, ppml)
 
     def test_scope_targets_must_exist_and_be_present_numbers(self):
         result = ReplayChecks().fixture()
