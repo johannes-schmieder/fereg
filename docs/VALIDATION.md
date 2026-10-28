@@ -159,6 +159,53 @@ CMG to PPML's joint frames above 350,000 finest edges was built, measured at
 is 42-61% of PPML native time on Veneto-scale Poisson panels and is the
 subject of a separate workstream.
 
+## Derived residual on the one-FE and many-FE routes
+
+Fast OLS Auto without residual, xbd, d or saved-FE outputs now certifies its
+within residual by the derived bound (SPEC §7, §16) on the direct one-FE route
+and the many-FE geometry policy as well as the two-FE owner; see the
+[compact record](../bench/results/derived-residual-routes-2026-10-28.json).
+It is not yet qualified with `bench/qualify.py`; that is the integration round's
+task.
+
+- **Independent witnesses.** Dense explicit-dummy OLS (one FE; three FE through
+  the balanced MAP pilot and dense/sparse LSMR; unit and analytic weights)
+  matches the derived residual at the prediction tolerance, and explicit level
+  moments meet 1e-10 at the derived scale. On 60,000-row designs fixed-worker
+  repeats are bit-identical and 1/2/4/8 workers agree with each other and
+  with the polished projection. Unit tests cover the forced certificate failure
+  (bit-identical coefficients), saved FE, requested outputs, low memory and
+  explicit solvers.
+- **Replay.** Against the published beta.9 plugin, 73/73 cases pass with zero
+  exact differences. Every OLS replay case requests residual, xbd and absorbed
+  outputs, so the corpus does not exercise the derived path on any route; the
+  [scope](../tests/replay/scopes/2026-10-28-derived-residual-routes-macos.json)
+  therefore lists no cases.
+- **Mac Stata end-to-end.** Coefficients are bit-identical to beta.9 in every
+  cell below. One FE and dense three FE are bit-identical apart from the
+  residual solver row, because beta.9 already accepted their residual at the
+  initial certificate. Sparse three FE changes r2, rmse, rss, F and the iid
+  covariance in the last bits through the residual sum of squares; this
+  corrects the earlier claim that iid covariance is unaffected. Used solver,
+  preconditioners, fallback and pilot fields of the residual row are unchanged.
+
+Arm64 profiling builds, Stata 19 MP, 1,000,000 rows and 16 controls, medians of
+three interleaved runs under the frozen quiet-host rule (three contaminated
+beta.9 runs were discarded and repeated once):
+
+| Design, workers | beta.9 native s | Candidate native s | Residual phase ms, beta.9 -> candidate |
+| --- | ---: | ---: | ---: |
+| one-fe, 1 | 0.422 | 0.414 | 19.4 -> 19.8 |
+| one-fe, 4 | 0.182 | 0.185 | 13.6 -> 13.2 |
+| three-dense, 1 | 1.161 | 1.149 | 23.1 -> 22.3 |
+| three-dense, 4 | 0.437 | 0.441 | 12.3 -> 12.3 |
+| three-sparse, 1 | 6.526 | 6.418 | 88.2 -> 26.6 |
+| three-sparse, 4 | 1.928 | 1.945 | 44.7 -> 15.9 |
+
+Only the sparse LSMR route saves its second solve, about 1-1.5% of native time
+and within the run-to-run spread of the totals; on one FE and the MAP pilot the
+derived certificate costs the same as the certificate it replaces.
+
 ## Many-FE geometry policy
 
 Public OLS Auto/Auto for at least three categorical-intercept FEs uses the
