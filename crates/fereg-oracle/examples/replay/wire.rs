@@ -14,6 +14,8 @@ pub struct Request {
     matrices: Vec<(String, usize, usize, Vec<f64>)>,
     pub outputs: Vec<(String, usize)>,
     pub saved: Vec<usize>,
+    /// No residual, xb, xbd or absorbed output: the derived-residual path.
+    pub derived_residual: bool,
 }
 impl Request {
     pub(super) fn replace(&mut self, key: &str, value: &str) {
@@ -53,6 +55,43 @@ impl Request {
     fn result(&mut self, key: &str, name: &str, rows: usize, cols: usize) {
         self.arg(&format!("output_{key}_matrix"), name);
         self.matrix(name, rows, cols, vec![0.; rows * cols]);
+    }
+    /// Keep only the sample and drop-reason outputs, as the public call
+    /// without prediction options requests; Fast OLS may then derive its
+    /// within residual. The other output variables leave the varlist.
+    pub fn without_observation_outputs(&mut self) {
+        assert!(
+            self.saved.is_empty(),
+            "saved FE outputs keep the projection"
+        );
+        let kept = |name: &str| matches!(name, "sample" | "drop_reason");
+        let mut dropped = self
+            .outputs
+            .iter()
+            .filter(|(name, _)| !kept(name))
+            .map(|&(_, index)| index)
+            .collect::<Vec<_>>();
+        dropped.sort_unstable();
+        for &index in dropped.iter().rev() {
+            self.data.remove(index);
+            let name = self
+                .outputs
+                .iter()
+                .find(|o| o.1 == index)
+                .unwrap()
+                .0
+                .clone();
+            self.replace(&format!("output_{name}"), "0");
+        }
+        self.outputs.retain(|(name, _)| kept(name));
+        for (name, index) in &mut self.outputs {
+            *index -= dropped.iter().filter(|&&d| d < *index).count();
+            let position = *index + 1;
+            self.args
+                .retain(|arg| !arg.starts_with(&format!("output_{name}=")));
+            self.args.push(format!("output_{name}={position}"));
+        }
+        self.derived_residual = true;
     }
     pub fn save_effects(&mut self, design: &Design) {
         let mut positions = Vec::new();
@@ -186,6 +225,7 @@ pub(super) fn model_input(
         matrices: vec![],
         outputs: vec![],
         saved: vec![],
+        derived_residual: false,
     };
     let mut binding = Vec::new();
     for b in &model.bindings {

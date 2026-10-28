@@ -6642,6 +6642,7 @@ fn declined_map_continuation_reports_pcg_misses_and_keeps_certified_results() {
                     map,
                     final_residual,
                     None,
+                    None,
                 )
             } else {
                 owner.absorb_ols_with_remaining(
@@ -6682,6 +6683,113 @@ fn declined_map_continuation_reports_pcg_misses_and_keeps_certified_results() {
                 assert_eq!(error.code, ErrorCode::NonConvergence, "{context}");
                 assert!(error.message.contains("declined the MAP continuation"));
             }
+        }
+    }
+}
+
+std::thread_local! {
+    static DECLINED_RECHECKS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+/// A test re-check: the shared certificate of the candidate itself (the
+/// injected failures only reject the PCG loop's own certificate).
+fn shared_recheck(
+    design: &BorrowedInterceptFeDesign<'_>,
+    weights: Option<&[f64]>,
+    _raw_scale: f64,
+    values: &DenseMatrix,
+    _scales: &[f64],
+    tolerance: f64,
+) -> Result<FeCertificate> {
+    assert!(weights.is_none());
+    DECLINED_RECHECKS.with(|calls| calls.set(calls.get() + 1));
+    super::certify_borrowed_intercept_candidate(
+        design,
+        BorrowedMapWeights::Unit,
+        values,
+        MapConfig {
+            tolerance,
+            ..config()
+        },
+    )
+}
+
+/// A declining caller's re-check is consulted only at a two-FE PCG miss: a
+/// result that certifies never reaches it and is unchanged bit for bit, and
+/// a forced certificate miss whose candidate passes the re-check publishes
+/// that candidate instead of `NonConvergence`.
+#[test]
+fn declined_recheck_runs_only_after_a_pcg_certificate_miss() {
+    let first = [0, 0, 0, 0, 1, 1, 1, 1, 2, 2];
+    let second = [0, 0, 1, 1, 1, 1, 2, 2, 2, 2];
+    let indices = [
+        LevelIndex::from_codes(&first, 3).unwrap(),
+        LevelIndex::from_codes(&second, 3).unwrap(),
+    ];
+    let sources = [
+        ValidatedBorrowedInterceptSource::new(&first, 3, &indices[0]).unwrap(),
+        ValidatedBorrowedInterceptSource::new(&second, 3, &indices[1]).unwrap(),
+    ];
+    let input =
+        DenseMatrix::from_columns(&[vec![11., -9., 10., -10., 10., -10., 10., -10., 10., -10.]])
+            .unwrap();
+    // (final residual, injected certificate failures, re-check expected).
+    for (final_residual, failures, rechecked) in [
+        (false, 0, false),
+        (true, 0, false),
+        (false, 1, false),
+        (true, 1, true),
+        (false, 2, true),
+    ] {
+        let run = |recheck: Option<super::super::CertificateRecheck>| {
+            let design =
+                BorrowedInterceptFeDesign::new(10, sources.iter().map(|s| s.effect()).collect())
+                    .unwrap();
+            let mut owner = ReusableCategoricalMapAbsorber::new(design, 1, 1).unwrap();
+            TWO_FE_CERTIFICATE_FAILURES.set(failures);
+            DECLINED_RECHECKS.with(|calls| calls.set(0));
+            let map = MapConfig {
+                tolerance: 1e-2,
+                max_iterations: 40,
+                ..config()
+            };
+            let result = owner.absorb_ols_declining_map_continuation(
+                BorrowedMapWeights::Unit,
+                input.clone().into(),
+                map,
+                final_residual,
+                None,
+                recheck,
+            );
+            TWO_FE_CERTIFICATE_FAILURES.set(0);
+            (result, DECLINED_RECHECKS.with(std::cell::Cell::get))
+        };
+        let context = format!("final={final_residual} failures={failures}");
+        let (declined, _) = run(None);
+        let (result, calls) = run(Some(shared_recheck));
+        assert_eq!(calls, usize::from(rechecked), "{context}");
+        let result = result.expect("the re-check accepts a candidate that certifies");
+        assert!(result.report().certified(), "{context}");
+        assert_eq!(
+            result.report().stop_reason,
+            SolveStopReason::Certified,
+            "{context}"
+        );
+        if rechecked {
+            assert_eq!(
+                declined.unwrap_err().code,
+                ErrorCode::NonConvergence,
+                "{context}"
+            );
+        } else {
+            let bits = |r: &CertifiedBorrowedMap| {
+                r.residualized()
+                    .as_slice()
+                    .iter()
+                    .map(|v| v.to_bits())
+                    .collect::<Vec<_>>()
+            };
+            assert_eq!(bits(&declined.unwrap()), bits(&result), "{context}");
         }
     }
 }

@@ -29,7 +29,9 @@
 //! 1.06e-8; MAP corrections are below one ulp and leave every bit unchanged
 //! for 16,000 sweeps). An Auto step that misses a certificate therefore takes
 //! no MAP continuation and is re-executed as retained CG (`retry.rs`), the
-//! public detector solver, whose own iterates certified that residual.
+//! public detector solver, whose own iterates certified that residual. Only
+//! when that chain fails too does a last Auto attempt re-certify the PCG miss
+//! about each level's largest-weight member (`recertify.rs`, seed 3).
 
 use crate::fe::{BorrowedInterceptFeDesign, FeSolverKind};
 

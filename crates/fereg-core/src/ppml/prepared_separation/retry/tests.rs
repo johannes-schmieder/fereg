@@ -442,3 +442,108 @@ fn auto_step_stops_on_break_memory_or_internal_errors() {
         assert_eq!(cell.get(), plan(None));
     }
 }
+
+/// The solver and whether the largest-weight re-check is armed.
+fn attempt(linear: &PreparedOlsFitConfig) -> (FeSolverKind, bool) {
+    (
+        linear.absorb.solver,
+        linear.absorb.declined_recheck.is_some(),
+    )
+}
+
+#[test]
+fn recertified_auto_attempt_follows_only_a_complete_numerical_failure() {
+    use FeSolverKind::{Auto, Cg, Lsmr};
+    // An earlier success never arms the re-check.
+    for success in [Auto, Cg, Lsmr] {
+        let cell = Cell::new(plan(None));
+        let (policy, _) = auto_routed(&cell);
+        let mut calls = Vec::new();
+        let (_, ppml, linear) = policy
+            .run(0, |ppml, linear| {
+                assert_eq!(ppml.absorb, linear.absorb);
+                calls.push(attempt(&linear));
+                if linear.absorb.solver == success {
+                    Ok(())
+                } else {
+                    Err(failure(ErrorCode::NonConvergence, "uncertified"))
+                }
+            })
+            .unwrap();
+        assert!(calls.iter().all(|(_, armed)| !armed), "{calls:?}");
+        assert_eq!(calls.last(), Some(&(success, false)));
+        assert!(ppml.absorb.declined_recheck.is_none() && linear.absorb.declined_recheck.is_none());
+    }
+    // Every attempt failed: the Auto step once more, re-check armed, under
+    // the admitted Auto policy; its result and policy are returned.
+    let cell = Cell::new(plan(None));
+    let (policy, _) = auto_routed(&cell);
+    let mut calls = Vec::new();
+    let (value, ppml, linear) = policy
+        .run(4, |ppml, linear| {
+            assert_eq!(ppml.absorb, linear.absorb);
+            calls.push(attempt(&linear));
+            if linear.absorb.declined_recheck.is_some() {
+                Ok(19)
+            } else {
+                Err(failure(ErrorCode::InvalidData, "uncertified"))
+            }
+        })
+        .unwrap();
+    assert_eq!(value, 19);
+    assert_eq!(
+        calls,
+        [(Auto, false), (Cg, false), (Lsmr, false), (Auto, true)]
+    );
+    let mut expected = policy.admitted().1;
+    expected.absorb.declined_recheck = linear.absorb.declined_recheck;
+    assert_eq!((linear, ppml.absorb), (expected, expected.absorb));
+    // A failed re-check reports the retained-CG step's error; Break and
+    // allocation failures of the re-check attempt propagate.
+    let cg = "retained CG direction failed certification";
+    for (code, reported) in [
+        (ErrorCode::NonConvergence, ErrorCode::NonConvergence),
+        (ErrorCode::Interrupted, ErrorCode::Interrupted),
+        (ErrorCode::Allocation, ErrorCode::Allocation),
+    ] {
+        let cell = Cell::new(plan(None));
+        let (policy, _) = auto_routed(&cell);
+        let error = policy
+            .run(0, |_, linear| {
+                Err::<(), _>(match attempt(&linear) {
+                    (Cg, _) => failure(ErrorCode::NonConvergence, cg),
+                    (Auto, true) => failure(code, "re-check attempt"),
+                    _ => failure(ErrorCode::InvalidData, "uncertified"),
+                })
+            })
+            .unwrap_err();
+        assert_eq!(error.code, reported);
+        if code == ErrorCode::NonConvergence {
+            assert_eq!(error.message, cg);
+        }
+    }
+    // Without an admitted LSMR re-execution the re-check follows retained CG.
+    let cell = Cell::new(plan(None));
+    let (policy, _) = auto_routed(&cell);
+    let unadmitted = DetectorPolicy::new(policy.ppml, policy.linear, policy.retained_cg, None);
+    let mut calls = Vec::new();
+    unadmitted
+        .run(0, |_, linear| {
+            calls.push(attempt(&linear));
+            Err::<(), _>(failure(ErrorCode::NonConvergence, "uncertified"))
+        })
+        .unwrap_err();
+    assert_eq!(calls, [(Auto, false), (Cg, false), (Auto, true)]);
+    // An admitted retained-CG detector (the developer comparison arm) never
+    // re-checks.
+    let cell = Cell::new(plan(None));
+    let (policy, _) = retained_cg(&cell);
+    let mut calls = Vec::new();
+    policy
+        .run(0, |_, linear| {
+            calls.push(attempt(&linear));
+            Err::<(), _>(failure(ErrorCode::NonConvergence, "uncertified"))
+        })
+        .unwrap_err();
+    assert_eq!(calls, [(Cg, false), (Lsmr, false)]);
+}

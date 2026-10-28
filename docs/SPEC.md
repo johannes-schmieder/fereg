@@ -1172,9 +1172,20 @@ certificates, the memory budget and every detector weight, recurrence,
 iteration limit, sign and threshold rule are the same on both routes. An
 Auto-routed step that fails a numerical certificate takes no two-FE PCG MAP
 continuation and runs once more with retained CG under the same admitted
-budget; from there it is exactly a retained-CG step (below), and when that
-fails as well the retained-CG step's error is reported. Numerical scope of the
-activation: the flagged separated set, the final sample, coefficients and VCE
+budget; from there it is exactly a retained-CG step (below). When that fails
+as well (its LSMR re-execution included), the Auto step runs once more, and
+this time a two-FE PCG certificate miss re-certifies its rejected candidate
+with each FE level's mean formed about the level's largest-weight member
+instead of its first member, at the same scales and tolerance, publishing the
+candidate if that passes (Johannes, 2026-10-28; seeded census seed 3, where a
+zero-outcome first member of weight 1e-18 and residual of order one floors the
+shared certificate near the tolerance while the exact moments are 1e-18 or
+below). Otherwise the retained-CG step's error is reported. Numerical scope of
+the re-check: only Auto detector steps whose every attempt failed a numerical
+certificate can change, from that error to a certified result; every fit that
+completed or failed differently before is bit-identical, and the shared FE
+certificate, the retained-CG arm and every other solver are unchanged.
+Numerical scope of the activation: the flagged separated set, the final sample, coefficients and VCE
 are unchanged on every witness; the rectifier may certify its terminal
 fixed point at an earlier iteration, so `RSEP` iteration counts (column 5)
 and certificate magnitudes (columns 9-12, zero-based 8-11) and `RSEQ` total
@@ -1226,7 +1237,8 @@ trace digest independently of timing. Bound public diagnostic tables; no
 observation-sized trace crosses the result wire. Separation proves a sample
 decision, not estimator convergence.
 
-Tests: `src/ppml/prepared_separation.rs` (re-execution: `prepared_separation/retry`),
+Tests: `src/ppml/prepared_separation.rs` (re-execution: `prepared_separation/retry`,
+re-certification: `prepared_separation/recertify`),
 `fereg-oracle/tests/ppml_separation_primers.rs`, `fereg-oracle/tests/ppml_separation_routing.rs`,
 `tests/python/test_ppml_recession_cone_primers.py`,
 `tests/python/ppml_recession_cone_oracle.py`,

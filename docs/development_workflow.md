@@ -37,6 +37,28 @@ Keep the installed runtime unchanged while testing private patches. Main must pa
 the default entrypoint with matching installed artifacts before a distribution
 change is committed; source-only success never authorizes publication or promotion.
 
+## Plugin replay and affected scopes
+
+`scripts/run_plugin_replay.sh PLUGIN [BASELINE]` regenerates the bounded case
+matrix (`tests/replay/matrix.json`) and compares the actual binary exactly with a
+baseline plugin and scientifically with independent dense targets. A declared
+numerical change is replayed with affected-scope files in `tests/replay/scopes/`:
+pass several through `FEREG_REPLAY_AFFECTED_SCOPES` (space-separated) or
+`replay_plugins.py --affected-scope A B`. Each file's entry is validated on its
+own and the union of the declared leaves applies, so independent changes to one
+case compose; a typed diagnostic scope must be passed alone. Each entry binds a case's frozen input SHA-256, a
+reason and `allowed_paths` leaves of the exact view. Accepted leaves are the
+numerical envelope of `numerical_scope_indices` (including PPML `RSEP`
+certificate magnitudes, zero-based columns 8-11 of every method row), the inner
+work counters of `work_scope_indices` (including the `RSEP` iteration count,
+column 5), `RB`/`RV` coordinates, bias leaves and retained output columns. The
+one typed transaction leaf is the PPML receipt's separation trace digest
+(`RREC` 28-29), accepted only beside a declared `RSEP` leaf and a reason that
+names separation; every other receipt position, route, status and discrete
+field is rejected. Declared `RSEP` iteration and trace-digest leaves are exempt
+only in the parent's discrete comparison; fixed-thread repeats and cross-worker
+checks keep them exact.
+
 ## Complexity inventory
 
 `tests/reference/complexity.json` records production lines, dispatch/chunk

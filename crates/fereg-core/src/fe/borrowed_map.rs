@@ -2070,7 +2070,14 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         config: MapConfig,
     ) -> Result<CertifiedBorrowedMap> {
         let withheld = self.begin_ppml_cmg_projection()?;
-        let result = self.absorb(weights, values.into(), config, None, None, true);
+        let result = self.absorb(
+            weights,
+            values.into(),
+            config,
+            None,
+            None,
+            SchurMiss::MapContinuation,
+        );
         self.finish_ppml_cmg_projection(withheld);
         if !result.as_ref().is_ok_and(|fit| fit.report().certified()) {
             self.reject_ppml_topology();
@@ -2087,7 +2094,14 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         config: MapConfig,
         final_residual: bool,
     ) -> Result<CertifiedBorrowedMap> {
-        self.absorb(weights, values, config, Some(!final_residual), None, true)
+        self.absorb(
+            weights,
+            values,
+            config,
+            Some(!final_residual),
+            None,
+            SchurMiss::MapContinuation,
+        )
     }
 
     pub(crate) fn absorb_ols_with_remaining(
@@ -2104,14 +2118,15 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             config,
             Some(!final_residual),
             remaining,
-            true,
+            SchurMiss::MapContinuation,
         )
     }
 
     /// [`Self::absorb_ols_with_remaining`] for a caller with its own certified
     /// fallback (`AbsorbConfig::certified_fallback` false; the separation
     /// detector re-executes with retained CG): a two-FE PCG certificate miss
-    /// or breakdown returns `NonConvergence` instead of continuing with MAP.
+    /// or breakdown returns `NonConvergence` instead of continuing with MAP,
+    /// unless the caller's `recheck` of the rejected candidate passes.
     /// A result that certifies without MAP is unchanged bit for bit.
     pub(crate) fn absorb_ols_declining_map_continuation(
         &mut self,
@@ -2120,6 +2135,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         config: MapConfig,
         final_residual: bool,
         remaining: Option<ObserverRef<'_>>,
+        recheck: Option<super::CertificateRecheck>,
     ) -> Result<CertifiedBorrowedMap> {
         self.absorb(
             weights,
@@ -2127,7 +2143,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             config,
             Some(!final_residual),
             remaining,
-            false,
+            SchurMiss::Decline(recheck),
         )
     }
 
@@ -2241,7 +2257,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         config: MapConfig,
         ols_refine: Option<bool>,
         mut remaining: Option<ObserverRef<'_>>,
-        map_continuation: bool,
+        miss: SchurMiss,
     ) -> Result<CertifiedBorrowedMap> {
         let refine_ols = ols_refine.unwrap_or(false);
         validate_config(config)?;
@@ -2617,7 +2633,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                 values,
                 config,
                 ols_refine,
-                map_continuation,
+                miss,
                 0,
                 1.0,
                 setup_seconds,
@@ -2780,7 +2796,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         values: DenseMatrix,
         config: MapConfig,
         ols_refine: Option<bool>,
-        map_continuation: bool,
+        miss: SchurMiss,
         completed_pilot_iterations: usize,
         pilot_contraction: f64,
         setup_seconds: f64,
@@ -2816,10 +2832,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             if explicit_cmg_schur {
                 SchurWorkLimit::CmgSchur
             } else {
-                SchurWorkLimit::Map {
-                    ols_refine,
-                    map_continuation,
-                }
+                SchurWorkLimit::Map { ols_refine, miss }
             },
             self.retain_coefficients,
             self.auto_route.as_mut(),
@@ -3614,30 +3627,18 @@ fn absorb_two_fe_pcg_reusing(
                 );
             }
             if certificate.passed {
-                let mut result = certified_result(
+                return publish_two_fe_pcg(
                     values,
-                    SolveStopReason::Certified,
                     iterations,
                     certificate,
-                    setup_seconds,
-                    solve_started.elapsed().as_secs_f64(),
-                )?;
-                // PPML keeps its checkpoint-engine contract. OLS reports the
-                // actual recurrence, including a CMG inverse reused from an
-                // earlier RHS block. An allocated but unused inverse is not CMG.
-                if report_ols_method {
-                    result.report.used_solver = if cmg_applied {
-                        FeSolverKind::CmgSchur
-                    } else {
-                        FeSolverKind::Cg
-                    };
-                }
-                result.report.pilot_iterations = completed_pilot_iterations;
-                result.report.pilot_contraction = progress_contraction.unwrap_or(pilot_contraction);
-                return Ok(SchurAttempt::Certified(attach_optional_map_coefficients(
-                    result,
+                    (setup_seconds, solve_started),
+                    report_ols_method.then_some(cmg_applied),
+                    (
+                        completed_pilot_iterations,
+                        progress_contraction.unwrap_or(pilot_contraction),
+                    ),
                     coefficients,
-                )?));
+                );
             }
             TWO_FE_CERTIFICATE_REJECTED_AT.set(iterations);
         }
@@ -3723,13 +3724,41 @@ fn absorb_two_fe_pcg_reusing(
             "cmgschur did not certify within its iteration budget",
         ));
     }
-    if matches!(
-        work_limit,
-        SchurWorkLimit::Map {
-            map_continuation: false,
-            ..
+    if let SchurWorkLimit::Map {
+        miss: SchurMiss::Decline(recheck),
+        ..
+    } = work_limit
+    {
+        // The declining caller may re-certify the rejected candidate at the
+        // same scales and tolerance; a pass publishes it like a certified
+        // iterate. Without a re-check, or when it fails, nothing changes.
+        if let Some(certificate) = recheck
+            .map(|recheck| {
+                recheck_declined(
+                    recheck,
+                    design,
+                    weights,
+                    &values,
+                    config,
+                    certificate_workspace,
+                )
+            })
+            .transpose()?
+            .filter(|certificate| certificate.passed)
+        {
+            return publish_two_fe_pcg(
+                values,
+                iterations,
+                certificate,
+                (setup_seconds, solve_started),
+                report_ols_method.then_some(cmg_applied),
+                (
+                    completed_pilot_iterations,
+                    progress_contraction.unwrap_or(pilot_contraction),
+                ),
+                coefficients,
+            );
         }
-    ) {
         return Err(FeregError::new(
             ErrorCode::NonConvergence,
             "two-FE categorical PCG did not certify; its caller declined the MAP continuation",
@@ -8375,15 +8404,21 @@ fn certify_with_current_norms(
     workspace: &mut BorrowedMapWorkspace,
 ) -> Result<FeCertificate> {
     workspace.rhs_relative_infinity_norms.fill(0.0);
-    for rhs in 0..residuals.ncols() {
+    set_certificate_scales(residuals.ncols(), workspace)?;
+    certify_with_current_scales(design, weights, residuals, tolerance, workspace)
+}
+
+/// Each RHS's certificate scale: the larger of its reference and current
+/// residual norms.
+fn set_certificate_scales(columns: usize, workspace: &mut BorrowedMapWorkspace) -> Result<()> {
+    for rhs in 0..columns {
         let scale = workspace.reference_norms[rhs].max(workspace.residual_norms[rhs]);
         if !scale.is_finite() || scale < 0.0 {
             return Err(invalid_data("borrowed MAP RHS scale is invalid"));
         }
         workspace.rhs_scales[rhs] = scale;
     }
-
-    certify_with_current_scales(design, weights, residuals, tolerance, workspace)
+    Ok(())
 }
 
 fn certify_with_current_scales(
@@ -9515,13 +9550,80 @@ fn checkpoint_schur_copy(
 #[derive(Clone, Copy)]
 enum SchurWorkLimit {
     // None denotes PPML; Some(false) is the OLS final-residual phase.
-    // `map_continuation` is false only for a caller that declined it.
     Map {
         ols_refine: Option<bool>,
-        map_continuation: bool,
+        miss: SchurMiss,
     },
     Checkpoint(usize),
     CmgSchur,
+}
+
+/// Publish a certified two-FE PCG iterate. PPML keeps its checkpoint-engine
+/// contract (`ols_cmg` None). OLS reports the actual recurrence, including a
+/// CMG inverse reused from an earlier RHS block; an allocated but unused
+/// inverse is not CMG.
+fn publish_two_fe_pcg(
+    values: DenseMatrix,
+    iterations: usize,
+    certificate: FeCertificate,
+    (setup_seconds, solve_started): (f64, Instant),
+    ols_cmg: Option<bool>,
+    (pilot_iterations, pilot_contraction): (usize, f64),
+    coefficients: Option<MapCoefficientAccumulator>,
+) -> Result<SchurAttempt> {
+    let mut result = certified_result(
+        values,
+        SolveStopReason::Certified,
+        iterations,
+        certificate,
+        setup_seconds,
+        solve_started.elapsed().as_secs_f64(),
+    )?;
+    if let Some(cmg_applied) = ols_cmg {
+        result.report.used_solver = if cmg_applied {
+            FeSolverKind::CmgSchur
+        } else {
+            FeSolverKind::Cg
+        };
+    }
+    result.report.pilot_iterations = pilot_iterations;
+    result.report.pilot_contraction = pilot_contraction;
+    Ok(SchurAttempt::Certified(attach_optional_map_coefficients(
+        result,
+        coefficients,
+    )?))
+}
+
+/// A declining caller's re-check of a rejected two-FE PCG candidate, at the
+/// scales the shared certificate uses for it and the same tolerance.
+fn recheck_declined(
+    recheck: super::CertificateRecheck,
+    design: &BorrowedInterceptFeDesign<'_>,
+    weights: ValidatedWeights<'_>,
+    values: &DenseMatrix,
+    config: MapConfig,
+    workspace: &mut BorrowedMapWorkspace,
+) -> Result<FeCertificate> {
+    update_workspace_norms(values, weights, workspace, false)?;
+    set_certificate_scales(values.ncols(), workspace)?;
+    recheck(
+        design,
+        weights.values,
+        weights.raw_scale,
+        values,
+        &workspace.rhs_scales[..values.ncols()],
+        config.tolerance,
+    )
+}
+
+/// What a two-FE PCG certificate miss does once its corrections are spent.
+#[derive(Clone, Copy)]
+enum SchurMiss {
+    /// Continue with symmetric MAP (every caller but the separation detector).
+    MapContinuation,
+    /// Return `NonConvergence` (the caller re-executes); with a re-check, a
+    /// rejected candidate that passes it is published instead.
+    Decline(Option<super::CertificateRecheck>),
 }
 
 // Values remain authoritative input until reconstruction. A failed final

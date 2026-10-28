@@ -225,7 +225,20 @@ task.
   exact differences. Every OLS replay case requests residual, xbd and absorbed
   outputs, so the corpus does not exercise the derived path on any route; the
   [scope](../tests/replay/scopes/2026-10-28-derived-residual-routes-macos.json)
-  therefore lists no cases.
+  therefore lists no cases. Three replay cases now request only the sample
+  and drop reasons in Fast memory (`ols-derived-fe1`, `-fe2`, `-fe3`: one FE
+  iid, two FE analytic-weight robust, three FE robust); their science check
+  requires the residual row's stop code 5 with the absorption's solver, zero
+  iterations and zero pilot work, beside the dense explicit-dummy
+  coefficients and covariance. On the integration head all three take the
+  derived path and pass with 4- and 8-worker repeats and cross-worker
+  agreement (replay against the same build, 77/77). Against beta.9,
+  `ols-derived-fe2` is exact (beta.9 already derived the two-FE owner's
+  residual), while beta.9 projects the one- and three-FE residuals (stop
+  code 2), so those two cases differ in the residual row's stop code and
+  certificate norms (and, for three FE, the within fused LSMR leaves). A
+  stop-code change is a route signature that no affected scope may declare,
+  so these cases take the current build as their parent from beta.10 on.
 - **Mac Stata end-to-end.** Coefficients are bit-identical to beta.9 in every
   cell below. One FE and dense three FE are bit-identical apart from the
   residual solver row, because beta.9 already accepted their residual at the
@@ -790,13 +803,15 @@ published beta.9 plugin with the same ado (the [record](../bench/results/ppml-se
 - Replay (`scripts/run_plugin_replay.sh`, 73 cases): 72 exact; only
   `ppml-separation-ir` differs, in `RSEP` zero-based 22 (the rectifier row's
   interior certificate, 2.69e-20 to 2.39e-20) and `RREC` 28-29. The replay
-  harness cannot declare that change: an affected scope accepts only
-  numerical envelope leaves (RFIT, RCERT, RINF, RSOLVER) and rejects `RSEP`
-  and `RREC` leaves as nonnumerical transaction fields, while its discrete
-  view protects the whole `RREC` table. The harness was not changed; the
-  scope file `tests/replay/scopes/2026-10-28-ppml-separation-activation-macos.json`
-  is not written. Declaring this class needs Johannes's decision on a typed
-  separation-trace scope in `scripts/replay_plugins.py`.
+  harness now declares this class (development workflow, plugin replay):
+  `RSEP` certificate magnitudes and iteration counts are scope leaves by row
+  stride, and the separation trace digest is accepted only beside a declared
+  `RSEP` leaf with a separation reason. With the
+  [declared scope](../tests/replay/scopes/2026-10-28-ppml-separation-activation-macos.json)
+  and the [within fused LSMR scope](../tests/replay/scopes/2026-10-28-within-fused-lsmr-macos.json),
+  replay of the integration head (`d64fdc0d`, arm64) against the published
+  beta.9 plugin passes 74/74 (15 scoped cases, no science, exact or discrete
+  failures outside the declared leaves).
 - Break: an isolated unit test cancels at every host poll inside a rectifier
   projection of the activated policy (Auto, no MAP continuation, retained-CG
   re-execution) and of retained CG; every stop returns `Interrupted` and is
@@ -820,7 +835,7 @@ of repetitions 2-3, arms alternating first per cell, `FEREG_PHASE_TIMING=1`:
 
 The rectifier's share of native time falls from 42-65% to 19-30%.
 
-Seed 3 (cells (3,1) and (3,2)) remains a documented limitation. With a
+Seed 3 (cells (3,1) and (3,2)) was a documented limitation. With a
 60-digit reference projection the rectifier's exact direction flags the 20
 LP-witness rows and passes every deletion certificate (span 6e-19). Retained
 CG's fitted values are wrong by up to 2.3e-10 on zero-outcome rows only
@@ -829,13 +844,39 @@ FE certificate cannot see at weight 1e-18 but the unit-weight span check
 (1e-10) rejects (1.82e-10). LSMR's and Auto's directions are accurate (span
 3.3e-17 and 1.7e-12, same 20 rows) but their residuals fail the FE
 certificate's first-member-shift floor (computed 1.149e-8 and 4.25e-8, exact
-6.3e-23 and 1.2e-18; independent of summation order). Options for Johannes,
-none implemented because each changes a certificate or tolerance: shift each
-certificate level by its largest-weight member (reproduces the exact moments
-in emulation; shared with OLS, so it needs its own scope) or re-certify that
-way only after a first-member failure; certify the span check's projection of
-the direction when only the span check fails; a detector-scaled FE
-tolerance; or keep the limitation.
+6.3e-23 and 1.2e-18; independent of summation order).
+
+Johannes chose the narrow re-certification (2026-10-28, SPEC §14): when an
+Auto detector step's retained-CG and LSMR re-executions also fail, the Auto
+step runs once more and its two-FE PCG certificate miss re-certifies the
+rejected candidate with each level's mean formed about its largest-weight
+member, at the same scales and tolerance
+(`prepared_separation/recertify.rs`); the shared FE certificate is unchanged.
+Witnesses at the integration head plus this change, against the integration
+head (`d64fdc0d`):
+
+- Census (`ppml_separation_routing.rs`): full fingerprints of all 108
+  arm-cells (separation report with certificate magnitudes, drop reasons,
+  `e(b)` and `e(V)` bits, errors; elapsed seconds excluded) at 1 and 4
+  workers are identical except the Auto arm of (3,1) and (3,2), which now
+  completes with the LP-witness sample (220 rows) after the last attempt
+  instead of the retained-CG error. The retained-CG arm keeps that error, so
+  the census is 37 same, 15 ir-iterations and 2 cg-fails; fixed-worker
+  repeats and cross-worker decisions hold at 1, 2, 4 and 8 workers.
+  Seed 9, whose Auto miss retained CG certifies, is unchanged.
+- Unit tests: the re-check removes a constructed first-member floor that the
+  shared certificate rejects and matches compensated level sums about zero,
+  while a genuine 1e-6 moment fails both; an injected two-FE PCG miss reaches
+  the re-check only on a miss, a certified PCG result never consults it and is
+  bit-identical; the detector policy arms it only after the Auto, retained-CG
+  and LSMR attempts all fail numerically, reports the retained-CG error when
+  it fails, propagates Break and allocation failures and never arms it for a
+  retained-CG detector.
+- Replay: all 77 cases are bit-identical in the exact view between arm64
+  builds of the integration head and of this change; against the published
+  beta.9 plugin with the two beta.10 scopes, 75 pass and the one- and
+  three-FE derived-residual cases differ as described in the derived-residual
+  section.
 
 ## Package checks
 

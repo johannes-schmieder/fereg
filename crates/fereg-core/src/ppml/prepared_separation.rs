@@ -511,6 +511,7 @@ fn admit_detector_projection(
 
 #[path = "prepared_separation_graph.rs"]
 mod graph;
+mod recertify;
 mod retry;
 mod routing;
 mod trace;

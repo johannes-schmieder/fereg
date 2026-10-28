@@ -10,9 +10,10 @@
 //! certificate verdicts and published fit bits; certificate magnitudes are
 //! solver diagnostics. On this small seeded corpus (weakly connected chains,
 //! sparse AKM graphs and induced finite-regressor separation at the public
-//! `septolerance(1e-8)`) the arms agree in sample, drops and fit everywhere;
-//! the census below pins the cells whose terminal rectifier certifies at a
-//! different iteration so any change to either arm is seen (VALIDATION, PPML
+//! `septolerance(1e-8)`) the arms agree in sample, drops and fit wherever
+//! both complete; the census below pins the cells whose terminal rectifier
+//! certifies at a different iteration, and the two seed-3 cells only the Auto
+//! arm completes, so any change to either arm is seen (VALIDATION, PPML
 //! separation routing).
 //!
 //! Every arm that completes also agrees with an independent witness: the
@@ -217,13 +218,19 @@ fn classify(
 /// (16, 0) now "same". Before a failed Auto step re-executed as retained CG
 /// (2026-10-28), (9, 1) and (9, 2) were "auto-fails" (a two-FE PCG final
 /// residual at the categorical certificate's rounding floor; MAP could not
-/// move it) and (3, 1) and (3, 2) "both-fail"; all four are now "same", the
+/// move it) and (3, 1) and (3, 2) "both-fail"; all four became "same", the
 /// seed-3 cells with the retained-CG error in both arms. Since the Auto route
 /// became the default (beta.10) the first arm is `inject=ppml_separation_cg`.
+/// Since an Auto detector whose every attempt fails re-checks its two-FE PCG
+/// miss about each level's largest-weight member (2026-10-28), (3, 1) and
+/// (3, 2) complete in the Auto arm with the LP-witness sample, while the
+/// retained-CG arm keeps its error: "cg-fails".
 const DIVERGENCES: &[(usize, usize, &str)] = &[
     (2, 0, "ir-iterations"),
     (2, 1, "ir-iterations"),
     (2, 2, "ir-iterations"),
+    (3, 1, "cg-fails"),
+    (3, 2, "cg-fails"),
     (5, 0, "ir-iterations"),
     (5, 1, "ir-iterations"),
     (5, 2, "ir-iterations"),
@@ -300,7 +307,8 @@ fn auto_projection_divergence_census_is_pinned() {
 }
 
 /// Both arms, including fits that re-execute a failed Auto step as retained
-/// CG or a failed retained-CG step with LSMR, repeat bit for bit at a fixed worker count and keep their
+/// CG, a failed retained-CG step with LSMR, or a failed Auto chain with the
+/// largest-weight re-check, repeat bit for bit at a fixed worker count and keep their
 /// decisions and sample across 1, 2, 4 and 8 workers.
 #[test]
 fn both_arms_repeat_and_agree_across_workers() {

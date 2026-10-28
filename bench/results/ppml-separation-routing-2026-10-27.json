@@ -341,7 +341,7 @@
   "replay": {
    "run": "scripts/run_plugin_replay.sh activated candidate vs published beta.9 (73 cases).",
    "result": "72 exact; ppml-separation-ir differs only in RSEP zero-based 22 (rectifier interior certificate 2.6908e-20 -> 2.3899e-20) and RREC 28-29 (separation trace digest). No science errors.",
-   "scope_file": "Not written. scripts/replay_plugins.py affected scopes accept only numerical envelope leaves (RFIT, RCERT, RINF, RSOLVER) and reject RSEP and RREC leaves as nonnumerical transaction fields, and its discrete view protects all of RREC; declaring the change would need a harness extension (Johannes's decision). The harness was not edited."
+   "scope_file": "tests/replay/scopes/2026-10-28-ppml-separation-activation-macos.json (RSEP 22, RREC 28-29), declarable since scripts/replay_plugins.py classifies RSEP certificate magnitudes (columns 8-11) and iteration counts (column 5) by row stride and accepts the separation trace digest (RREC 28-29) only beside a declared RSEP leaf with a separation reason. Replay of the integration head d64fdc0d (arm64) against beta.9 with this scope and 2026-10-28-within-fused-lsmr-macos.json: 74/74 pass, 15 scoped cases."
   },
   "break": "Isolated unit test: Break at every host poll inside a rectifier projection of the admitted default policy (Auto without MAP continuation, retained-CG re-execution) and of retained CG returns Interrupted and is not re-executed.",
   "timing": {
@@ -579,14 +579,20 @@
    ]
   },
   "seed_3": {
-   "status": "Documented limitation; nothing implemented (each option changes a certificate or tolerance).",
+   "status": "Resolved 2026-10-28 with option 1's narrow variant (Johannes): an Auto detector step whose retained-CG and LSMR re-executions also fail runs once more, and its two-FE PCG certificate miss re-certifies the rejected candidate with each level's mean about its largest-weight member at the same scales and tolerance (prepared_separation/recertify.rs). The shared FE certificate, the retained-CG arm and every other solver are unchanged.",
    "evidence": "60-digit mpmath reference projection of the first rectifier recurrence: exact direction flags the 20 LP-witness rows, span 6.2e-19. Retained CG: fitted errors up to 2.34e-10 on zero rows only (4.9e-17 on positive rows; u - r formation exact), invisible to the weighted FE certificate at weight 1e-18 but rejected by the unit-weight span check (1.8249e-10 > 1e-10). LSMR and Auto: directions accurate (span 3.3e-17 and 1.7e-12, same 20 rows) but their residuals fail the FE certificate's first-member-shift floor (computed 1.149e-8 and 4.25e-8 vs exact 6.3e-23 and 1.2e-18; unchanged under 20 random summation orders).",
    "options": [
     "Certificate arithmetic: shift each level by its largest-weight member (emulation gives the exact moments: 6.3e-23, 1.2e-18, seed 9 2.7e-10); shared with OLS, needs its own scope; narrow variant re-certifies that way only after a first-member failure (bit-identical whenever the current certificate passes).",
     "Certify the span check's unit-weight projection of the direction when only the span check fails (seed 3: same 20 rows, span 2.4e-16, boundary 1.1e-10, interior 9.2e-11); a certificate-procedure change.",
     "Detector-scaled FE tolerance for rectifier projections; a tolerance change.",
     "Keep the limitation (current)."
-   ]
+   ],
+   "recertification": {
+    "branch": "codex/replay-scope-separation",
+    "scope": "Only Auto detector steps whose every attempt failed a numerical certificate can change, from that error to a certified result; every other fit is bit-identical.",
+    "census": "Full fingerprints of all 108 arm-cells (separation report with certificate magnitudes, drop reasons, e(b)/e(V) bits, errors; elapsed seconds excluded) at 1 and 4 workers identical to d64fdc0d except the Auto arm of (3,1) and (3,2): now complete with the LP-witness sample (220 rows) via the last attempt. The retained-CG arm keeps its error: 37 same, 15 ir-iterations, 2 cg-fails. Fixed-worker repeats and cross-worker decisions hold at 1/2/4/8 workers. Seed 9 unchanged (retained CG certifies its Auto miss).",
+    "unit_tests": "recertify::tests (constructed first-member floor: shared certificate fails, re-check passes and matches compensated sums about zero; a 1e-6 moment fails), borrowed_map::tests::declined_recheck_runs_only_after_a_pcg_certificate_miss (injected PCG miss), retry::tests::recertified_auto_attempt_follows_only_a_complete_numerical_failure (policy order, reported error, Break/allocation, retained-CG detector)."
+   }
   }
  }
 }
