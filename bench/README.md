@@ -429,7 +429,21 @@ qsub -t "1-$TASKS" bench/qualify.sge target/tmp/TASK/plan.json target/tmp/TASK/r
 The wrapper reserves a whole 28-core node with `omp28` and `num_proc=28`.
 [`qualify_scc.py`](qualify_scc.py) verifies scheduler reservation, process activity
 and CPU affinity throughout collection. A slot request alone cannot prove
-isolation. Each task compares all arms on its own node; tasks never split a
+isolation. Use the same `omp28` request for every whole-node companion job
+(Veneto comparison, PPML timing, size series): `mpi_28_tasks_per_node_u` is bound
+to the `u` queue and waited hours on 2026-10-28 while `omp28` started 33 array
+tasks at once; arms are compared within one node, so the node class does not
+matter, and the record names the host. Submit a round as one dependent chain
+(`qsub -hold_jid`), check that each `qsub` printed a job id, and verify the
+checksum manifest from the run root (`sha256sum -c`, two-space format, paths
+relative to the run root) before any dependent job. Before the first timing of a
+round: regenerate the frozen configuration against the final candidate (scope,
+`families`, `public_policy`, hidden request; see the declaration rules above),
+run one science-only harness call per eligible family with the actual plugins
+and compare `exact_view` fingerprints, build the ci-profile `replay_large`
+generator (`cargo build -p fereg-oracle --example replay_large --profile ci`)
+before `routing_cases.py`, and check `campaign.json` pins against the reused
+environment root (the PyFixest commit of the Veneto environment). Each task compares all arms on its own node; tasks never split a
 candidate/reference pair across hosts. The plan limits external numerical
 libraries to one thread and sets native worker counts explicitly.
 
