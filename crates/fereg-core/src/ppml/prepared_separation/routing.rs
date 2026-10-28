@@ -14,6 +14,21 @@
 //! the rectifier's weights, recurrence, iteration limit and every sign and
 //! threshold rule are the caller's, unchanged. Projected values may differ
 //! from CG's in their low bits within those certificates.
+//!
+//! The categorical FE certificate (shared by this route, retained CG and
+//! MAP) forms each level mean as the first member's value plus a compensated
+//! sum of weighted differences from it. When that member is a zero-outcome
+//! row with a residual of order one, the positive rows' residuals (about
+//! 1e-18) vanish in their differences and the mean carries a rounding error
+//! of order one ulp of that residual. Against the rectifier's weighted
+//! residual norm (about 1e-8) this is of the order of the 1e-8 certificate
+//! tolerance, so whether an accurate residual passes depends on its last bits
+//! (seeded census seed 9: exact relative moments below 2.8e-10, computed
+//! 1.06e-8; MAP corrections are below one ulp and leave every bit unchanged
+//! for 16,000 sweeps). An Auto step that misses a certificate therefore takes
+//! no MAP continuation and is re-executed as retained CG (`retry.rs`), the
+//! public detector solver, whose own iterates certified that residual.
+
 use crate::fe::{BorrowedInterceptFeDesign, FeSolverKind};
 
 /// The FE solver of an admitted detector projection.

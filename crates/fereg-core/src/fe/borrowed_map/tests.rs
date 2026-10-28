@@ -6592,6 +6592,100 @@ fn adaptive_ols_schur_retry_is_bounded_and_preserves_other_callers() {
     }
 }
 
+/// A caller that declines the MAP continuation (the separation detector)
+/// receives every two-FE PCG certificate miss or breakdown as NonConvergence;
+/// a PCG result that certifies is unchanged bit for bit.
+#[test]
+fn declined_map_continuation_reports_pcg_misses_and_keeps_certified_results() {
+    let first = [0, 0, 0, 0, 1, 1, 1, 1, 2, 2];
+    let second = [0, 0, 1, 1, 1, 1, 2, 2, 2, 2];
+    let indices = [
+        LevelIndex::from_codes(&first, 3).unwrap(),
+        LevelIndex::from_codes(&second, 3).unwrap(),
+    ];
+    let sources = [
+        ValidatedBorrowedInterceptSource::new(&first, 3, &indices[0]).unwrap(),
+        ValidatedBorrowedInterceptSource::new(&second, 3, &indices[1]).unwrap(),
+    ];
+    let input =
+        DenseMatrix::from_columns(&[vec![11., -9., 10., -10., 10., -10., 10., -10., 10., -10.]])
+            .unwrap();
+    // (final residual, injected certificate failures, breakdown, certifies
+    // without MAP). An ordinary solve's single miss is absorbed by its PCG
+    // correction; a final residual has no correction.
+    for (final_residual, failures, breakdown, certifies) in [
+        (false, 0, false, true),
+        (true, 0, false, true),
+        (false, 1, false, true),
+        (false, 2, false, false),
+        (true, 1, false, false),
+        (false, 0, true, false),
+        (true, 0, true, false),
+    ] {
+        let run = |declined: bool| {
+            let design =
+                BorrowedInterceptFeDesign::new(10, sources.iter().map(|s| s.effect()).collect())
+                    .unwrap();
+            let mut owner = ReusableCategoricalMapAbsorber::new(design, 1, 1).unwrap();
+            TWO_FE_CERTIFICATE_FAILURES.set(failures);
+            TWO_FE_BREAKDOWN.set(breakdown);
+            let map = MapConfig {
+                tolerance: 1e-2,
+                max_iterations: 40,
+                ..config()
+            };
+            let input = input.clone().into();
+            let result = if declined {
+                owner.absorb_ols_declining_map_continuation(
+                    BorrowedMapWeights::Unit,
+                    input,
+                    map,
+                    final_residual,
+                    None,
+                )
+            } else {
+                owner.absorb_ols_with_remaining(
+                    BorrowedMapWeights::Unit,
+                    input,
+                    map,
+                    final_residual,
+                    None,
+                )
+            };
+            TWO_FE_CERTIFICATE_FAILURES.set(0);
+            TWO_FE_BREAKDOWN.set(false);
+            result
+        };
+        let context = format!("final={final_residual} failures={failures} breakdown={breakdown}");
+        let continued = run(false).expect("the MAP continuation certifies");
+        match run(true) {
+            Ok(declined) => {
+                assert!(certifies, "{context}");
+                assert!(!continued.report().fallback_used, "{context}");
+                let bits = |r: &CertifiedBorrowedMap| {
+                    r.residualized()
+                        .as_slice()
+                        .iter()
+                        .map(|v| v.to_bits())
+                        .collect::<Vec<_>>()
+                };
+                assert_eq!(bits(&declined), bits(&continued), "{context}");
+                assert_eq!(
+                    declined.report().iterations,
+                    continued.report().iterations,
+                    "{context}"
+                );
+            }
+            Err(error) => {
+                assert!(!certifies, "{context}");
+                assert!(continued.report().fallback_used, "{context}");
+                assert_eq!(error.code, ErrorCode::NonConvergence, "{context}");
+                assert!(error.message.contains("declined the MAP continuation"));
+            }
+        }
+    }
+}
+
 #[test]
 fn cmg_schur_direction_parallel_update_matches_separate_scalar_operations() {
     for workers in [1, 4] {

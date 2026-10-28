@@ -76,7 +76,7 @@ fn retained_cg(plan: &Cell<PpmlMemoryPlan>) -> (DetectorPolicy<'_>, LsmrAdmissio
     .unwrap()
     .expect("retained CG resolves an LSMR re-execution");
     (
-        DetectorPolicy::new(ppml, linear, Some((admission, plan))),
+        DetectorPolicy::new(ppml, linear, None, Some((admission, plan))),
         admission,
     )
 }
@@ -196,15 +196,38 @@ fn only_numerical_failures_of_admitted_retained_cg_are_reexecuted() {
             .unwrap_err();
         assert_eq!((calls, error.code), (1, code));
     }
-    // Other admitted detector solvers (the hidden Auto arm) resolve none.
+    // Other admitted detector solvers resolve none; Auto re-executes as
+    // retained CG and so resolves the same charge.
     let estimate = estimate_fe_solver_memory(100, 2, &[10, 10], 1, Some(4)).unwrap();
-    for solver in [FeSolverKind::Auto, FeSolverKind::Map, FeSolverKind::Lsmr] {
+    assert_eq!(
+        lsmr_admission(
+            FeSolverKind::Auto,
+            &estimate,
+            LsmrPreconditioner::Auto,
+            100,
+            0,
+            0
+        ),
+        lsmr_admission(
+            FeSolverKind::Cg,
+            &estimate,
+            LsmrPreconditioner::Auto,
+            100,
+            0,
+            0
+        ),
+    );
+    for solver in [FeSolverKind::Map, FeSolverKind::Lsmr] {
         let admission =
             lsmr_admission(solver, &estimate, LsmrPreconditioner::Auto, 100, 0, 0).unwrap();
         assert_eq!(admission, None);
     }
-    let unadmitted =
-        DetectorPolicy::new(PpmlConfig::default(), PreparedOlsFitConfig::default(), None);
+    let unadmitted = DetectorPolicy::new(
+        PpmlConfig::default(),
+        PreparedOlsFitConfig::default(),
+        None,
+        None,
+    );
     let mut calls = 0;
     let error = unadmitted
         .run(0, |_, _| {
@@ -238,7 +261,12 @@ fn reexecution_that_does_not_fit_the_plan_reports_the_first_error() {
     let cell = Cell::new(tight);
     let mut linear = PreparedOlsFitConfig::default();
     linear.absorb.solver = FeSolverKind::Cg;
-    let policy = DetectorPolicy::new(PpmlConfig::default(), linear, Some((admission, &cell)));
+    let policy = DetectorPolicy::new(
+        PpmlConfig::default(),
+        linear,
+        None,
+        Some((admission, &cell)),
+    );
     let mut calls = 0;
     let error = policy
         .run(0, |_, _| {
@@ -248,4 +276,169 @@ fn reexecution_that_does_not_fit_the_plan_reports_the_first_error() {
         .unwrap_err();
     assert_eq!((calls, error.code), (1, ErrorCode::NonConvergence));
     assert_eq!(cell.get(), tight);
+}
+
+/// An admitted Auto detector policy on `plan`: its retained-CG re-execution
+/// under the same budget and the retained-CG LSMR charge.
+fn auto_routed(plan: &Cell<PpmlMemoryPlan>) -> (DetectorPolicy<'_>, LsmrAdmission) {
+    let (cg, admission) = retained_cg(plan);
+    let (cg_ppml, cg_linear) = cg.admitted();
+    let mut linear = cg_linear;
+    linear.absorb.solver = FeSolverKind::Auto;
+    linear.absorb.solver_memory_budget = Some(FeSolverMemoryBudget {
+        execution_bytes: 5,
+        usable_bytes: 50,
+    });
+    let mut cg_linear = cg_linear;
+    cg_linear.absorb.solver_memory_budget = linear.absorb.solver_memory_budget;
+    let cg_ppml = PpmlConfig {
+        absorb: cg_linear.absorb,
+        ..cg_ppml
+    };
+    let ppml = PpmlConfig {
+        absorb: linear.absorb,
+        ..cg_ppml
+    };
+    (
+        DetectorPolicy::new(
+            ppml,
+            linear,
+            Some((cg_ppml, cg_linear)),
+            Some((admission, plan)),
+        ),
+        admission,
+    )
+}
+
+#[test]
+fn certified_auto_attempt_is_never_reexecuted_or_charged() {
+    let cell = Cell::new(plan(None));
+    let before = cell.get();
+    let (policy, _) = auto_routed(&cell);
+    let mut solvers = Vec::new();
+    let (value, ppml, linear) = policy
+        .run(0, |ppml, linear| {
+            assert_eq!(ppml.absorb, linear.absorb);
+            solvers.push(linear.absorb.solver);
+            Ok(5)
+        })
+        .unwrap();
+    assert_eq!((value, solvers), (5, vec![FeSolverKind::Auto]));
+    assert_eq!((ppml, linear), policy.admitted());
+    assert_eq!(cell.get(), before);
+}
+
+#[test]
+fn failed_auto_step_reexecutes_as_retained_cg_under_the_same_budget() {
+    for code in [ErrorCode::NonConvergence, ErrorCode::InvalidData] {
+        let cell = Cell::new(plan(None));
+        let before = cell.get();
+        let (policy, _) = auto_routed(&cell);
+        let admitted = policy.admitted().1;
+        let mut calls = Vec::new();
+        let (value, ppml, linear) = policy
+            .run(2, |ppml, linear| {
+                assert_eq!(ppml.absorb, linear.absorb);
+                calls.push(linear.absorb.solver);
+                if linear.absorb.solver == FeSolverKind::Auto {
+                    Err(failure(code, "Auto projection failed its certificate"))
+                } else {
+                    Ok(13)
+                }
+            })
+            .unwrap();
+        assert_eq!(value, 13);
+        assert_eq!(calls, [FeSolverKind::Auto, FeSolverKind::Cg]);
+        // Only the solver differs; a terminal replay re-executes this policy.
+        let mut expected = admitted;
+        expected.absorb.solver = FeSolverKind::Cg;
+        assert_eq!(linear, expected);
+        assert_eq!(ppml.absorb, expected.absorb);
+        // Retained CG runs within the admitted budget: nothing is charged.
+        assert_eq!(cell.get(), before);
+    }
+}
+
+#[test]
+fn failed_auto_and_cg_steps_continue_with_lsmr_and_report_the_cg_error() {
+    let cell = Cell::new(plan(None));
+    let (policy, admission) = auto_routed(&cell);
+    let mut calls = Vec::new();
+    let (value, ppml, linear) = policy
+        .run(1, |_, linear| {
+            calls.push(linear.absorb.solver);
+            match linear.absorb.solver {
+                FeSolverKind::Lsmr => Ok(17),
+                _ => Err(failure(ErrorCode::NonConvergence, "uncertified")),
+            }
+        })
+        .unwrap();
+    assert_eq!(value, 17);
+    assert_eq!(
+        calls,
+        [FeSolverKind::Auto, FeSolverKind::Cg, FeSolverKind::Lsmr]
+    );
+    // The LSMR policy is the retained-CG step's re-execution.
+    assert_eq!(
+        linear.absorb.solver_memory_budget,
+        Some(FeSolverMemoryBudget {
+            execution_bytes: admission.base,
+            usable_bytes: admission.base + admission.bytes,
+        })
+    );
+    assert_eq!(ppml.absorb, linear.absorb);
+    assert_eq!(cell.get().separation_projection_bytes, admission.bytes);
+
+    let cell = Cell::new(plan(None));
+    let (policy, _) = auto_routed(&cell);
+    let cg = "retained CG direction failed certification";
+    let error = policy
+        .run(0, |_, linear| {
+            Err::<(), _>(match linear.absorb.solver {
+                FeSolverKind::Auto => failure(ErrorCode::InvalidData, "Auto did not certify"),
+                FeSolverKind::Cg => failure(ErrorCode::NonConvergence, cg),
+                _ => failure(ErrorCode::InvalidData, "LSMR did not certify"),
+            })
+        })
+        .unwrap_err();
+    assert_eq!(
+        (error.code, error.message.as_str()),
+        (ErrorCode::NonConvergence, cg)
+    );
+}
+
+#[test]
+fn auto_step_stops_on_break_memory_or_internal_errors() {
+    for code in [
+        ErrorCode::Interrupted,
+        ErrorCode::Allocation,
+        ErrorCode::Internal,
+    ] {
+        // Of the Auto attempt itself.
+        let cell = Cell::new(plan(None));
+        let (policy, _) = auto_routed(&cell);
+        let mut calls = 0;
+        let error = policy
+            .run(0, |_, _| {
+                calls += 1;
+                Err::<(), _>(failure(code, "not a certificate failure"))
+            })
+            .unwrap_err();
+        assert_eq!((calls, error.code), (1, code));
+        // Of its retained-CG re-execution.
+        let mut solvers = Vec::new();
+        let error = policy
+            .run(0, |_, linear| {
+                solvers.push(linear.absorb.solver);
+                Err::<(), _>(if linear.absorb.solver == FeSolverKind::Auto {
+                    failure(ErrorCode::NonConvergence, "uncertified")
+                } else {
+                    failure(code, "re-execution stopped")
+                })
+            })
+            .unwrap_err();
+        assert_eq!(error.code, code);
+        assert_eq!(solvers, [FeSolverKind::Auto, FeSolverKind::Cg]);
+        assert_eq!(cell.get(), plan(None));
+    }
 }

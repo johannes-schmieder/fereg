@@ -205,28 +205,27 @@ fn classify(
 /// Every (seed, configuration) pair whose class is not "same" at one worker.
 /// Configuration 0 is the public `fe simplex ir` chain. "ir-iterations":
 /// equal sample, drops and fit bits; only a terminal no-separation rectifier
-/// execution's iteration count and certificate differ. "hidden-fails": the
-/// Auto route exhausts its iteration budget. "both-fail": both arms error,
-/// differently. Where both arms succeed the separated set never differs.
+/// execution's iteration count and certificate differ. Where both arms
+/// succeed the separated set never differs.
 ///
 /// Before the public detector re-executed failed retained-CG steps with LSMR
 /// (2026-10-27), nine more cells were "public-fails": (5, 1), (5, 2), (11, 1),
 /// (11, 2), (17, 1) and (17, 2) now "ir-iterations", and (10, 0), (14, 0) and
-/// (16, 0) now "same".
+/// (16, 0) now "same". Before a failed Auto step re-executed as retained CG
+/// (2026-10-28), (9, 1) and (9, 2) were "hidden-fails" (a two-FE PCG final
+/// residual below the categorical certificate's rounding floor; MAP could not
+/// move it) and (3, 1) and (3, 2) "both-fail"; all four are now "same", the
+/// seed-3 cells with the retained-CG error in both arms.
 const DIVERGENCES: &[(usize, usize, &str)] = &[
     (2, 0, "ir-iterations"),
     (2, 1, "ir-iterations"),
     (2, 2, "ir-iterations"),
-    (3, 1, "both-fail"),
-    (3, 2, "both-fail"),
     (5, 0, "ir-iterations"),
     (5, 1, "ir-iterations"),
     (5, 2, "ir-iterations"),
     (8, 0, "ir-iterations"),
     (8, 1, "ir-iterations"),
     (8, 2, "ir-iterations"),
-    (9, 1, "hidden-fails"),
-    (9, 2, "hidden-fails"),
     (11, 0, "ir-iterations"),
     (11, 1, "ir-iterations"),
     (11, 2, "ir-iterations"),
