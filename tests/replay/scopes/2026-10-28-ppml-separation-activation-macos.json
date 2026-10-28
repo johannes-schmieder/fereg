@@ -1,0 +1,13 @@
+{
+ "cases": {
+  "ppml-separation-ir": {
+   "input_sha256": "f9e7efb7fb3024de86cfb881ab956ff7e9c019ad2cb0d00e727f27a5069948a3",
+   "reason": "Activated beta.10 Auto separation detector route (SPEC 14): admitted rectifier projections on exactly two categorical intercept effects use the OLS two-FE Auto route instead of retained-product CG. The rectifier row's interior certificate magnitude (RSEP zero-based 22, column 8 of the second method row) changes within the detector's certificate tolerance, and with it the receipt's separation trace digest (RREC 28-29). The separated set, drop reasons, sample, coefficients, covariance, iteration counts, statuses and every other discrete decision are unchanged. This scope binds the macOS replay input.",
+   "allowed_paths": [
+    "/matrices/RREC/bits/28",
+    "/matrices/RREC/bits/29",
+    "/matrices/RSEP/bits/22"
+   ]
+  }
+ }
+}

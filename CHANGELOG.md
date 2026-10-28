@@ -27,6 +27,11 @@
   hidden Stata adapter) qualifies bounded many-FE LSMR session windows, at
   most one live session per worker with the Jacobi escalation barrier at each
   window's end. Public Auto is unchanged.
+- Developer: plugin replay accepts several affected-scope files (their
+  disjoint union) and can declare PPML separation changes: `RSEP` certificate
+  magnitudes and iteration counts by row stride, and the receipt's separation
+  trace digest only beside a declared `RSEP` leaf with a separation reason.
+  The activated separation route's replay change is now a declared scope.
  (beta.10 development)
 
 - OLS with one fixed effect and the bounded three-FE MAP pilot skip the

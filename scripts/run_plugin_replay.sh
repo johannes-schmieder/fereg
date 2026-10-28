@@ -13,6 +13,11 @@ cargo run -p fereg-oracle --example replay --profile ci -- "$REPLAY_ROOT/cases"
 ./tests/mock_spi/run_actual_unix_plugin_test.sh "$1"
 arguments=(--plugin "$1" --cases "$REPLAY_ROOT/cases" --output "$REPLAY_ROOT/results")
 if [[ $# == 2 ]]; then arguments+=(--baseline "$2"); fi
+# Space-separated affected-scope files (their disjoint union); requires a baseline.
+if [[ -n "${FEREG_REPLAY_AFFECTED_SCOPES:-}" ]]; then
+  read -r -a scopes <<< "$FEREG_REPLAY_AFFECTED_SCOPES"
+  arguments+=(--affected-scope "${scopes[@]}")
+fi
 if [[ -n "${FEREG_REPLAY_BASELINE_FIXES+x}" ]]; then
   arguments+=(--baseline-fixes "$FEREG_REPLAY_BASELINE_FIXES")
 fi

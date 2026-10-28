@@ -341,7 +341,7 @@
   "replay": {
    "run": "scripts/run_plugin_replay.sh activated candidate vs published beta.9 (73 cases).",
    "result": "72 exact; ppml-separation-ir differs only in RSEP zero-based 22 (rectifier interior certificate 2.6908e-20 -> 2.3899e-20) and RREC 28-29 (separation trace digest). No science errors.",
-   "scope_file": "Not written. scripts/replay_plugins.py affected scopes accept only numerical envelope leaves (RFIT, RCERT, RINF, RSOLVER) and reject RSEP and RREC leaves as nonnumerical transaction fields, and its discrete view protects all of RREC; declaring the change would need a harness extension (Johannes's decision). The harness was not edited."
+   "scope_file": "tests/replay/scopes/2026-10-28-ppml-separation-activation-macos.json (RSEP 22, RREC 28-29), declarable since scripts/replay_plugins.py classifies RSEP certificate magnitudes (columns 8-11) and iteration counts (column 5) by row stride and accepts the separation trace digest (RREC 28-29) only beside a declared RSEP leaf with a separation reason. Replay of the integration head d64fdc0d (arm64) against beta.9 with this scope and 2026-10-28-within-fused-lsmr-macos.json: 74/74 pass, 15 scoped cases."
   },
   "break": "Isolated unit test: Break at every host poll inside a rectifier projection of the admitted default policy (Auto without MAP continuation, retained-CG re-execution) and of retained CG returns Interrupted and is not re-executed.",
   "timing": {

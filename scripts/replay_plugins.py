@@ -300,26 +300,60 @@ def check_threads(args, case: Path, expected: dict, one_thread: dict, contract=N
     return records
 
 
-def numerical_scope_indices(poisson: bool) -> dict[str, set[int]]:
+# PPML separation wire layout (crates/fereg-plugin/src/ppml_result.rs): one
+# RSEP row per separation method, and the receipt's separation trace digest.
+SEPARATION_COLUMNS = 14
+SEPARATION_TRACE_DIGEST = (28, 29)
+
+
+class RowColumns:
+    """Fixed columns of every row of a row-major table of a given stride.
+
+    Membership depends only on the stride, so a table that gains rows (another
+    separation method) keeps its column classification without new indices.
+    """
+
+    def __init__(self, stride: int, columns: set[int]):
+        if stride <= 0 or not columns or any(c < 0 or c >= stride for c in columns):
+            raise ValueError('row columns must lie inside a positive stride')
+        self.stride, self.columns = stride, frozenset(columns)
+
+    def __contains__(self, index) -> bool:
+        return type(index) is int and index >= 0 and index % self.stride in self.columns
+
+    def leaves(self, rows: int) -> list[int]:
+        return [self.stride * row + column for row in range(rows) for column in sorted(self.columns)]
+
+
+def numerical_scope_indices(poisson: bool) -> dict[str, set[int] | RowColumns]:
     """Numerical fixed-table leaves; RSOLVER indices are AFTER exact_view.
 
     RB/RV coordinates and observation columns are dimension-dependent and are
     validated separately. Tolerances, presence/acceptance flags and PSD states
     are deliberately absent. This is a schema envelope, not a scope manifest.
+    RSEP certificate magnitudes (zero-based columns 8-11 of every method row)
+    are classified by the row stride.
     """
     if poisson:
         return {'RFIT': {5, 6, 7, 8, 9, 10, 12, 17, 18, 19, 24, 25},
                 'RCERT': set(range(15)), 'RINF': {8, 9, 11, 12, 13},
-                'RSOLVER': {19 * row + col for row in range(4) for col in range(13, 19)}}
+                'RSOLVER': {19 * row + col for row in range(4) for col in range(13, 19)},
+                'RSEP': RowColumns(SEPARATION_COLUMNS, {8, 9, 10, 11})}
     return {'RFIT': set(range(1, 24, 2)),
             'RCERT': {2 * row + 1 for row in list(range(4, 23)) + [27, 30]},
             'RSOLVER': {14 * row + col for row in range(2) for col in [4, 5, 6, 7, 13]}}
 
 
-def work_scope_indices(poisson: bool) -> dict[str, set[int]]:
-    """Only named inner-work counters; never routes, retries or outer steps."""
+def work_scope_indices(poisson: bool) -> dict[str, set[int] | RowColumns]:
+    """Only named inner-work counters; never routes, retries or outer steps.
+
+    The RSEP iteration count (column 5 of every method row) is declarable for
+    a scoped parent comparison only; it stays a protected cross-worker
+    decision in `discrete_view`, like the census's decision identity.
+    """
     if poisson:
         return {'RFIT': {14}, 'RSOLVER': {19 * row + 12 for row in range(4)},
+                'RSEP': RowColumns(SEPARATION_COLUMNS, {5}),
                 'runtime_signature': {1}}  # RRUNTIME[2]: total inner iterations.
     return {'RSOLVER': {2, 16}}
 
@@ -329,6 +363,10 @@ def affected_prefixes(scope: dict, case: Path, expected: dict) -> list[str]:
 
     Repeatability and stable model decisions never use this field allowance.
     Accept leaves of numerical result tables/columns, not whole transactions.
+    The one typed transaction leaf is the PPML receipt's separation trace
+    digest (RREC 28-29), which hashes the RSEP iteration counts and
+    certificate magnitudes: it is accepted only beside at least one declared
+    RSEP leaf and a reason that names separation.
     """
     entry = scope.get('cases', {}).get(case.stem)
     if entry is None:
@@ -336,8 +374,10 @@ def affected_prefixes(scope: dict, case: Path, expected: dict) -> list[str]:
     if entry['input_sha256'] != digest(case) or not entry.get('reason'):
         raise RuntimeError('affected replay scope does not identify the frozen input')
     prefixes = entry['allowed_paths']
-    numerical = numerical_scope_indices(expected.get('poisson', False))
-    work = work_scope_indices(expected.get('poisson', False))
+    poisson = expected.get('poisson', False)
+    numerical = numerical_scope_indices(poisson)
+    work = work_scope_indices(poisson)
+    separation_leaf, trace_digest = False, False
     valid_columns = {expected['outputs'][name] for name in expected['outputs']
                      if name not in {'sample', 'drop_reason'}} | set(expected.get('saved', []))
     for path in prefixes:
@@ -345,7 +385,11 @@ def affected_prefixes(scope: dict, case: Path, expected: dict) -> list[str]:
         table = False
         if len(parts) == 5 and parts[1] == 'matrices' and parts[3] == 'bits' and parts[4].isdigit():
             name, index = parts[2], int(parts[4])
-            table = name in {'RB', 'RV'} or index in numerical.get(name, set()) | work.get(name, set())
+            table = name in {'RB', 'RV'} or index in numerical.get(name, ()) or index in work.get(name, ())
+            separation_leaf = separation_leaf or (table and name == 'RSEP')
+            if poisson and name == 'RREC' and index in SEPARATION_TRACE_DIGEST:
+                trace_digest = True
+                continue
         bias_leaf = len(parts) == 5 and parts[1] == 'matrices' and parts[3] == 'bits' and parts[4].isdigit()
         if bias_leaf:
             index = int(parts[4])
@@ -366,7 +410,38 @@ def affected_prefixes(scope: dict, case: Path, expected: dict) -> list[str]:
                    and parts[2].isdigit() and int(parts[2]) in work.get('runtime_signature', set()))
         if not (table or column or bias_leaf or runtime):
             raise RuntimeError('affected scope includes a nonnumerical transaction field')
+    if trace_digest and not (separation_leaf and 'separation' in entry['reason'].lower()):
+        raise RuntimeError('a separation trace digest change needs a declared RSEP leaf and a separation reason')
     return prefixes
+
+
+def scoped_decision_paths(prefixes: list[str]) -> set[str]:
+    """`discrete_view` leaves a validated scope declares for the parent comparison.
+
+    Only the RSEP iteration count and the separation trace digest are both
+    protected decisions and declarable leaves. Cross-worker checks and
+    fixed-thread repeats never use this exemption.
+    """
+    paths = set()
+    for path in prefixes:
+        parts = path.split('/')
+        if len(parts) == 5 and parts[1] == 'matrices' and parts[3] == 'bits':
+            if parts[2] == 'RREC':
+                paths.add(f'/protected/RREC/bits/{parts[4]}')
+            elif parts[2] == 'RSEP':
+                paths.add(f'/protected/RSEP/{parts[4]}')
+    return paths
+
+
+def load_scopes(paths: list[Path]) -> dict:
+    """Union of affected-scope files; a case may be declared by only one."""
+    cases = {}
+    for path in paths:
+        for name, entry in json.loads(path.read_text()).get('cases', {}).items():
+            if name in cases:
+                raise RuntimeError(f'replay case {name} is declared by more than one affected scope')
+            cases[name] = entry
+    return {'cases': cases} if paths else {}
 
 
 def validate_scope_targets(prefixes: list[str], result: dict, poisson: bool) -> None:
@@ -393,14 +468,18 @@ def main() -> int:
     parser.add_argument('--harness', type=Path, default=ROOT / 'target/actual-plugin-harness/actual_plugin_loader_test')
     parser.add_argument('--baseline-fixes', default=None, help='comma-separated accepted fixes in an older parent; defaults to current fixes')
     parser.add_argument('--policy', type=Path, default=ROOT / 'tests/replay/intentional_changes.json')
-    parser.add_argument('--affected-scope', type=Path, help='predeclared input-bound numerical scope; science/discrete/repeats remain mandatory')
+    parser.add_argument('--affected-scope', type=Path, nargs='+', action='extend', default=[],
+                        help='predeclared input-bound numerical scope files (their union; a case may appear in one); '
+                             'science/discrete/repeats remain mandatory')
     parser.add_argument('--scope-bindings', type=Path, help='required source/artifact/reference bindings for a typed diagnostic transition')
     parser.add_argument('--thread-counts', type=int, nargs='*', default=[],
                         help='additional native thread counts: dense science, discrete stability and fixed-thread repeats')
     args = parser.parse_args()
     if len(set(args.thread_counts)) != len(args.thread_counts) or any(t < 2 or t > 1024 for t in args.thread_counts):
         parser.error('thread counts must be unique integers from 2 through 1024')
-    scope = json.loads(args.affected_scope.read_text()) if args.affected_scope else {}
+    scope = load_scopes(args.affected_scope)
+    # A typed diagnostic scope is bound to its single scope file.
+    scope_path = args.affected_scope[0] if len(args.affected_scope) == 1 else None
     bindings = json.loads(args.scope_bindings.read_text()) if args.scope_bindings else None
     binding_identity = digest(args.scope_bindings) if args.scope_bindings else None
     if args.affected_scope and not args.baseline:
@@ -408,7 +487,7 @@ def main() -> int:
     def verify_scope_bindings():
         if args.scope_bindings and digest(args.scope_bindings) != binding_identity:
             raise RuntimeError('typed diagnostic binding file changed during replay')
-        replay_cmg_polish.validate_bindings(scope, bindings, args.affected_scope,
+        replay_cmg_polish.validate_bindings(scope, bindings, scope_path,
                                           args.plugin, args.baseline, args.harness,
                                           args.cases, ROOT)
     verify_scope_bindings()
@@ -467,7 +546,8 @@ def main() -> int:
             if contract is not None:
                 current_view = replay_cmg_polish.parent_discrete_view(current_view, contract[0])
                 parent_view = replay_cmg_polish.parent_discrete_view(parent_view, contract[0])
-            discrete = differences(current_view, parent_view)
+            exempt = scoped_decision_paths(scoped)
+            discrete = [path for path in differences(current_view, parent_view) if path not in exempt]
         record = {'case': case.stem, 'input_sha256': digest(case), 'exact_differences': changed,
                   'science_errors': science, 'known_defect': candidate_expected.get('known_defect'), 'repaired_defect': candidate_expected.get('repaired_defect'), 'intentional_differences': intentional, 'baseline_science_errors': baseline_science, 'discrete_differences': discrete, 'affected_scope': bool(scoped), 'diagnostic_contract': typed, 'return_code': candidate['return_code']}
         record['thread_checks'] = check_threads(args, case, candidate_expected, candidate, contract, verify_scope_bindings) if args.thread_counts else []
@@ -479,7 +559,7 @@ def main() -> int:
     summary = {'schema': 1, 'plugin_sha256': digest(args.plugin), 'baseline_sha256': digest(args.baseline) if args.baseline else None,
                'known_defect_cases': sum(bool(r['known_defect']) for r in records),
                'scientific_pass_cases': sum(not r['known_defect'] and not r['science_errors'] for r in records),
-               'candidate_fixes': sorted(candidate_fixes), 'baseline_fixes': sorted(baseline_fixes), 'policy_sha256': digest(args.policy), 'affected_scope_sha256': digest(args.affected_scope) if args.affected_scope else None, 'scope_bindings_sha256': digest(args.scope_bindings) if args.scope_bindings else None, 'cases': records, 'passed': all(not r['exact_differences'] and not r['science_errors'] and not r['baseline_science_errors'] and not r['discrete_differences'] and all(not t['science_errors'] and not t['repeat_differences'] and not t['discrete_differences'] for t in r['thread_checks']) for r in records)}
+               'candidate_fixes': sorted(candidate_fixes), 'baseline_fixes': sorted(baseline_fixes), 'policy_sha256': digest(args.policy), 'affected_scope_sha256': [digest(path) for path in args.affected_scope] or None, 'scope_bindings_sha256': digest(args.scope_bindings) if args.scope_bindings else None, 'cases': records, 'passed': all(not r['exact_differences'] and not r['science_errors'] and not r['baseline_science_errors'] and not r['discrete_differences'] and all(not t['science_errors'] and not t['repeat_differences'] and not t['discrete_differences'] for t in r['thread_checks']) for r in records)}
     if {str(p): digest(p) for p in artifacts} != identities:
         raise RuntimeError('replay native artifact changed during execution')
     (args.output / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n')

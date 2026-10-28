@@ -790,13 +790,15 @@ published beta.9 plugin with the same ado (the [record](../bench/results/ppml-se
 - Replay (`scripts/run_plugin_replay.sh`, 73 cases): 72 exact; only
   `ppml-separation-ir` differs, in `RSEP` zero-based 22 (the rectifier row's
   interior certificate, 2.69e-20 to 2.39e-20) and `RREC` 28-29. The replay
-  harness cannot declare that change: an affected scope accepts only
-  numerical envelope leaves (RFIT, RCERT, RINF, RSOLVER) and rejects `RSEP`
-  and `RREC` leaves as nonnumerical transaction fields, while its discrete
-  view protects the whole `RREC` table. The harness was not changed; the
-  scope file `tests/replay/scopes/2026-10-28-ppml-separation-activation-macos.json`
-  is not written. Declaring this class needs Johannes's decision on a typed
-  separation-trace scope in `scripts/replay_plugins.py`.
+  harness now declares this class (development workflow, plugin replay):
+  `RSEP` certificate magnitudes and iteration counts are scope leaves by row
+  stride, and the separation trace digest is accepted only beside a declared
+  `RSEP` leaf with a separation reason. With the
+  [declared scope](../tests/replay/scopes/2026-10-28-ppml-separation-activation-macos.json)
+  and the [within fused LSMR scope](../tests/replay/scopes/2026-10-28-within-fused-lsmr-macos.json),
+  replay of the integration head (`d64fdc0d`, arm64) against the published
+  beta.9 plugin passes 74/74 (15 scoped cases, no science, exact or discrete
+  failures outside the declared leaves).
 - Break: an isolated unit test cancels at every host poll inside a rectifier
   projection of the activated policy (Auto, no MAP continuation, retained-CG
   re-execution) and of retained CG; every stop returns `Interrupted` and is

@@ -9,7 +9,7 @@ import unittest
 from unittest.mock import patch
 import tempfile
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'scripts'))
-from replay_plugins import scientific_errors, affected_prefixes, digest, allowed_difference, differences, discrete_view, exact_view, expected_for_fixes, numerical_scope_indices, work_scope_indices, validate_scope_targets
+from replay_plugins import scientific_errors, affected_prefixes, digest, allowed_difference, differences, discrete_view, exact_view, expected_for_fixes, numerical_scope_indices, work_scope_indices, validate_scope_targets, RowColumns, load_scopes, scoped_decision_paths
 from replay_psd import eigensystem
 from replay_bias_reference import enrich_expected, REFERENCE, NAMES
 from replay_ols_reference import dense_targets, derive_ols, enrich_expected as enrich_ols_expected
@@ -116,13 +116,19 @@ class AffectedScopeChecks(unittest.TestCase):
                 expected = {'poisson': poisson, 'outputs': {'sample': 0, 'drop_reason': 1}}
                 for schema in [numeric, work]:
                     for table, indices in schema.items():
+                        if isinstance(indices, RowColumns):
+                            indices = indices.leaves(3)
                         for index in indices:
                             path = (f'/runtime_signature/{index}' if table == 'runtime_signature'
                                     else f'/matrices/{table}/bits/{index}')
                             entry['allowed_paths'] = [path]
                             self.assertEqual(affected_prefixes({'cases': {'schema': entry}}, case, expected), [path])
                 for table in numeric.keys() & work.keys():
-                    self.assertTrue(numeric[table].isdisjoint(work[table]))
+                    left, right = numeric[table], work[table]
+                    if isinstance(left, RowColumns):
+                        self.assertEqual(left.stride, right.stride)
+                        left, right = left.columns, right.columns
+                    self.assertTrue(left.isdisjoint(right))
                 for path in (['/matrices/RCERT/bits/7', '/matrices/RCERT/bits/47',
                               '/matrices/RCERT/bits/49', '/matrices/RCERT/bits/51',
                               '/matrices/RCERT/bits/53', '/matrices/RCERT/bits/57',
@@ -133,6 +139,79 @@ class AffectedScopeChecks(unittest.TestCase):
                     entry['allowed_paths'] = [path]
                     with self.assertRaises(RuntimeError):
                         affected_prefixes({'cases': {'schema': entry}}, case, expected)
+
+    def test_separation_trace_digest_needs_a_declared_rsep_leaf_and_reason(self):
+        with tempfile.TemporaryDirectory() as root:
+            case = Path(root) / 'separation.case'
+            case.write_text('bound separation input')
+            ppml = {'poisson': True, 'outputs': {'sample': 0, 'drop_reason': 1}}
+            entry = {'input_sha256': digest(case), 'reason': 'activated separation detector route',
+                     'allowed_paths': []}
+            scope = {'cases': {'separation': entry}}
+            # Certificate magnitudes and iteration counts of every method row,
+            # classified by the 14-column stride rather than fixed indices.
+            for path in ['/matrices/RSEP/bits/8', '/matrices/RSEP/bits/22', '/matrices/RSEP/bits/39',
+                         '/matrices/RSEP/bits/5', '/matrices/RSEP/bits/19', '/matrices/RSEP/bits/61']:
+                entry['allowed_paths'] = [path]
+                self.assertEqual(affected_prefixes(scope, case, ppml), [path])
+            for path in ['/matrices/RSEP/bits/0', '/matrices/RSEP/bits/7', '/matrices/RSEP/bits/12',
+                         '/matrices/RSEP/bits/21', '/matrices/RSEP/bits/27', '/matrices/RSEP/bits']:
+                entry['allowed_paths'] = [path]
+                with self.assertRaises(RuntimeError): affected_prefixes(scope, case, ppml)
+            digest_paths = ['/matrices/RREC/bits/28', '/matrices/RREC/bits/29']
+            entry['allowed_paths'] = ['/matrices/RSEP/bits/22'] + digest_paths
+            self.assertEqual(affected_prefixes(scope, case, ppml), entry['allowed_paths'])
+            for paths, reason in [(digest_paths, entry['reason']),
+                                  (['/matrices/RFIT/bits/5'] + digest_paths, entry['reason']),
+                                  (['/matrices/RSEP/bits/22'] + digest_paths, 'declared algorithm change'),
+                                  (['/matrices/RSEP/bits/22', '/matrices/RREC/bits/27'], entry['reason']),
+                                  (['/matrices/RSEP/bits/22', '/matrices/RREC/bits/30'], entry['reason']),
+                                  (['/matrices/RSEP/bits/22', '/matrices/RREC/bits/0'], entry['reason']),
+                                  (['/matrices/RSEP/bits/22', '/matrices/RREC/bits'], entry['reason']),
+                                  (['/matrices/RSEP/bits/22', '/matrices/RSEQ/bits/6'], entry['reason'])]:
+                bad = dict(entry, allowed_paths=paths, reason=reason)
+                with self.assertRaises(RuntimeError):
+                    affected_prefixes({'cases': {'separation': bad}}, case, ppml)
+            ols = {'poisson': False, 'outputs': {'sample': 0, 'drop_reason': 1}}
+            for path in ['/matrices/RSEP/bits/8'] + digest_paths:
+                bad = dict(entry, allowed_paths=['/matrices/RB/bits/0', path])
+                with self.assertRaises(RuntimeError):
+                    affected_prefixes({'cases': {'separation': bad}}, case, ols)
+
+    def test_scoped_decision_exemption_names_only_declared_protected_leaves(self):
+        def table(length, columns=1):
+            return {'rows': length // columns, 'columns': columns, 'bits': ['0000000000000000'] * length}
+        result = {'matrices': {'RDOF': table(12), 'RSTATUS': table(4), 'RREC': table(33, 33),
+                               'RSEP': table(28, 14), 'RSEQ': table(65, 13)},
+                  'columns': [['3ff0000000000000'], ['0000000000000000']]}
+        expected = {'poisson': True, 'outputs': {'sample': 0, 'drop_reason': 1}}
+        exempt = scoped_decision_paths(['/matrices/RSEP/bits/19', '/matrices/RSEP/bits/22',
+                                        '/matrices/RREC/bits/28', '/matrices/RREC/bits/29',
+                                        '/matrices/RB/bits/0'])
+        changed = copy.deepcopy(result)
+        for name, index in [('RSEP', 19), ('RSEP', 22), ('RREC', 28), ('RREC', 29)]:
+            changed['matrices'][name]['bits'][index] = '3ff0000000000000'
+        self.assertEqual([p for p in differences(discrete_view(result, expected),
+                                                 discrete_view(changed, expected)) if p not in exempt], [])
+        # Without the declaration, or for any other decision, the views differ.
+        self.assertTrue(differences(discrete_view(result, expected), discrete_view(changed, expected)))
+        for name, index in [('RSEP', 5), ('RSEP', 15), ('RREC', 27), ('RREC', 30), ('RSEQ', 6)]:
+            bad = copy.deepcopy(changed)
+            bad['matrices'][name]['bits'][index] = '3ff0000000000000'
+            self.assertTrue([p for p in differences(discrete_view(result, expected),
+                                                    discrete_view(bad, expected)) if p not in exempt], (name, index))
+
+    def test_several_scope_files_form_a_disjoint_union(self):
+        with tempfile.TemporaryDirectory() as root:
+            first, second = Path(root) / 'first.json', Path(root) / 'second.json'
+            first.write_text(json.dumps({'cases': {'a': {'reason': 'x'}}}))
+            second.write_text(json.dumps({'schema': 1, 'cases': {'b': {'reason': 'y'}}}))
+            self.assertEqual(load_scopes([first, second]),
+                             {'cases': {'a': {'reason': 'x'}, 'b': {'reason': 'y'}}})
+            self.assertEqual(load_scopes([]), {})
+            second.write_text(json.dumps({'cases': {'a': {'reason': 'y'}}}))
+            with self.assertRaisesRegex(RuntimeError, 'more than one affected scope'):
+                load_scopes([first, second])
 
     def test_scope_targets_must_exist_and_be_present_numbers(self):
         result = ReplayChecks().fixture()
