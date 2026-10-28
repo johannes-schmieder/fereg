@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+No changes yet.
+
+## 0.5.0 beta.10 — 2026-10-28
+
 - OLS Auto with three or more categorical-intercept effects no longer falls
   back to slow alternating projections on large sparse panels because of an
   overstated memory estimate: when the additive-Schwarz bound refuses LSMR,
@@ -123,7 +127,6 @@
   Results change in the last bits within the
   certified tolerances; routes, iterations and discrete decisions are
   unchanged. LSMR sessions keep fewer response copies.
-  iteration and projection laps).
 
 ## 0.5.0 beta.9 — 2026-10-28
 
