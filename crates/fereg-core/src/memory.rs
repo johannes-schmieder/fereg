@@ -13,7 +13,7 @@ mod slope_recovery;
 mod workspace_peak;
 pub(crate) use categorical_schwarz::{
     categorical_dense_cross_tab_bytes, estimate_categorical_schwarz_memory,
-    CategoricalSchwarzMemoryEstimate,
+    CategoricalSchwarzMemoryEstimate, SCHWARZ_YIELDING_BLOCK_LEVELS,
 };
 pub(crate) use owned_fe::{
     generic_fe_solver_bytes, owned_fe_matrix_bytes, OwnedFeDesignMemoryEstimate,
@@ -265,6 +265,29 @@ pub fn estimate_fe_solver_memory(
     )
 }
 
+/// As [`estimate_fe_solver_memory`] for categorical intercepts whose exact
+/// number of yielding factor-pair components is known (see
+/// `BorrowedInterceptFeDesign::yielding_pair_components`). `None` keeps the
+/// level-count bound and therefore the same estimate.
+pub(crate) fn estimate_fe_solver_memory_with_yielding(
+    observations: usize,
+    rhs_columns: usize,
+    effect_level_counts: &[usize],
+    threads: usize,
+    local_reorthogonalization_size: Option<usize>,
+    yielding_components: Option<usize>,
+) -> Result<FeSolverMemoryEstimate> {
+    estimate_fe_solver_memory_inner(
+        observations,
+        rhs_columns,
+        effect_level_counts,
+        threads,
+        local_reorthogonalization_size,
+        false,
+        yielding_components.map(|count| count as u128),
+    )
+}
+
 fn estimate_fe_solver_memory_for_channels(
     observations: usize,
     rhs_columns: usize,
@@ -272,6 +295,26 @@ fn estimate_fe_solver_memory_for_channels(
     threads: usize,
     local_reorthogonalization_size: Option<usize>,
     signed_cover: bool,
+) -> Result<FeSolverMemoryEstimate> {
+    estimate_fe_solver_memory_inner(
+        observations,
+        rhs_columns,
+        effect_level_counts,
+        threads,
+        local_reorthogonalization_size,
+        signed_cover,
+        None,
+    )
+}
+
+fn estimate_fe_solver_memory_inner(
+    observations: usize,
+    rhs_columns: usize,
+    effect_level_counts: &[usize],
+    threads: usize,
+    local_reorthogonalization_size: Option<usize>,
+    signed_cover: bool,
+    yielding_components: Option<u128>,
 ) -> Result<FeSolverMemoryEstimate> {
     if observations == 0 || rhs_columns == 0 {
         return Err(FeregError::new(
@@ -317,6 +360,7 @@ fn estimate_fe_solver_memory_for_channels(
             signed_cover,
             group_workspace_bytes,
             scalar_rhs_bytes,
+            yielding_components,
         },
         &mut estimate,
     )?;
@@ -475,6 +519,7 @@ struct FeSolverDimensions<'a> {
     signed_cover: bool,
     group_workspace_bytes: u128,
     scalar_rhs_bytes: u128,
+    yielding_components: Option<u128>,
 }
 
 struct LsmrRecurrenceMemory {
@@ -593,6 +638,7 @@ fn populate_lsmr_memory(
         signed_cover,
         group_workspace_bytes,
         scalar_rhs_bytes,
+        yielding_components,
         ..
     } = dimensions;
     let n = observations as u128;
@@ -647,6 +693,7 @@ fn populate_lsmr_memory(
             schwarz_weighted_correction_bytes(n, effect_level_counts)?,
         ])?,
         signed_cover,
+        yielding_components,
     )?;
     let diagonal_bytes = checked_mul(levels, 16, "LSMR diagonal build and retained inverse")?;
     let lsmr_off_retained_bytes = checked_sum(&[

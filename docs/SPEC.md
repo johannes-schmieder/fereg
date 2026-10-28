@@ -357,6 +357,40 @@ count, Jacobi completion on mixing panels, escalation near confounding with
 agreement against the strict reference and FE-moment reconstruction, and
 fixed-worker repeatability.
 
+Additive-Schwarz admission charges `T + R` level-sized worker banks per
+concurrent RHS apply, where `R` bounds the factor-pair components whose local
+solve may yield into nested work (a block of more than 10,000 levels). The
+level-count bound `R = levels * (effects - 1) / 10,002` grows with the levels,
+so the charge is quadratic in them. When it refuses the additive LSMR attempt
+of the general categorical OLS Auto route (many-FE designs, and two-FE designs
+whose graph and compact routes were refused), fereg counts the structural pair
+components with a block of at least 10,000 levels exactly from the codes,
+once per design, after admitting that count's O(levels) scratch, and admits
+the attempt against the same bound with the smaller `R`. Within's subdomains
+are the bipartite components of each pair's cross-tab, and with the route's
+strictly positive weights those are the structural pair components. An estimate that fits, an unbudgeted call,
+an explicit non-additive preconditioner or an unadmitted count scratch keeps
+the level-count estimate and computes nothing new.
+
+Declared scope of the exact count: only fits whose additive attempt the
+level-count bound refused change, from the original-input MAP fallback to the
+unchanged LSMR attempt of their route (for many-FE Auto the geometry policy:
+Jacobi trial, additive escalation, requested certificate, correction and MAP
+fallback). They may change coefficients, covariance, fit statistics, residuals,
+FE coordinates, solver iteration signatures, reported solver, workspace peak
+and fallback diagnostics within §20 tolerances. Sample, rank, omission,
+original factor slots/base flags and other discrete decisions remain
+unchanged. Every fit the level-count bound admits keeps its bits, route and
+memory accounting. PPML categorical LSMR, explicit `solver(lsmr)` and owned
+designs keep the level-count bound. Witnesses: the count against an
+independent breadth-first search; the beta.8 campaign's sparse three-FE
+parameters (level bound about 1 TB at ten million rows, exact count 3, linear
+growth); and a one-million-row campaign topology under a budget one byte
+below the level bound, which admits the additive route with the unbudgeted
+fit's bits at one and four workers, repeated, agreeing across workers and
+reconstructing the input from its FE coefficients, where the level bound ran
+the MAP fallback.
+
 The CMG builder borrows the host team, polls cancellation at fixed logical chunks
 and admits construction against real memory, without a construction-work cap or
 budget-dependent factor screen. Preserve cutoff 5, one sampled

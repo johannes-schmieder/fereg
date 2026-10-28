@@ -526,11 +526,9 @@ impl<'a> GeneralRoutingState<'a> {
         memory: &BorrowedLsmrCallMemory,
         seeded: bool,
     ) -> Result<SessionAdmission> {
-        let levels: Vec<_> = design.effects().iter().map(|e| e.n_levels()).collect();
-        let estimate = estimate_fe_solver_memory(
-            design.nobs(),
+        let estimate = super::borrowed_solver_memory_estimate(
+            design,
             rhs_count,
-            &levels,
             rayon::current_num_threads(),
             options.local_size,
         )?;

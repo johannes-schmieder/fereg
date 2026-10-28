@@ -525,12 +525,25 @@ impl<'a> BorrowedInterceptEffect<'a> {
 ///
 /// The effect table is small, wire ordered, and owned by the view. Codes and
 /// compressed membership remain owned by the prepared-data object.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug)]
 pub struct BorrowedInterceptFeDesign<'a> {
     nobs: usize,
     effects: Vec<BorrowedInterceptEffect<'a>>,
     total_term_slots: usize,
+    /// Structural count of yielding factor-pair components, computed only
+    /// when an admission needs it. A cache, not part of the design identity.
+    yielding_pair_components: std::sync::OnceLock<usize>,
 }
+
+impl PartialEq for BorrowedInterceptFeDesign<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        self.nobs == other.nobs
+            && self.effects == other.effects
+            && self.total_term_slots == other.total_term_slots
+    }
+}
+
+impl Eq for BorrowedInterceptFeDesign<'_> {}
 
 impl<'a> BorrowedInterceptFeDesign<'a> {
     pub(crate) fn new(nobs: usize, effects: Vec<BorrowedInterceptEffect<'a>>) -> Result<Self> {
@@ -546,7 +559,54 @@ impl<'a> BorrowedInterceptFeDesign<'a> {
             nobs,
             effects,
             total_term_slots,
+            yielding_pair_components: std::sync::OnceLock::new(),
         })
+    }
+
+    /// The exact yielding factor-pair component count, if already computed.
+    pub(crate) fn known_yielding_pair_components(&self) -> Option<usize> {
+        self.yielding_pair_components.get().copied()
+    }
+
+    /// Largest transient scratch of [`Self::yielding_pair_components`].
+    pub(crate) fn yielding_pair_component_scratch_bytes(&self) -> u128 {
+        let mut largest = 0;
+        for (index, left) in self.effects.iter().enumerate() {
+            for right in &self.effects[index + 1..] {
+                largest = largest.max(super::components::large_pair_component_scratch_bytes(
+                    left.n_levels(),
+                    right.n_levels(),
+                ));
+            }
+        }
+        largest
+    }
+
+    /// Factor-pair components, over every pair of effects, with at least
+    /// `SCHWARZ_YIELDING_BLOCK_LEVELS` levels in one block: the components
+    /// whose additive-Schwarz local solves may yield into nested work.
+    /// Computed once from the codes and cached.
+    pub(crate) fn yielding_pair_components(&self) -> Result<usize> {
+        if let Some(count) = self.known_yielding_pair_components() {
+            return Ok(count);
+        }
+        let mut total = 0_usize;
+        for (index, left) in self.effects.iter().enumerate() {
+            for right in &self.effects[index + 1..] {
+                crate::interrupt::checkpoint()?;
+                let count = super::components::count_large_pair_components(
+                    left.codes(),
+                    left.n_levels(),
+                    right.codes(),
+                    right.n_levels(),
+                    crate::memory::SCHWARZ_YIELDING_BLOCK_LEVELS,
+                )?;
+                total = total
+                    .checked_add(count)
+                    .ok_or_else(|| allocation("yielding pair component count overflows"))?;
+            }
+        }
+        Ok(*self.yielding_pair_components.get_or_init(|| total))
     }
 
     #[must_use]

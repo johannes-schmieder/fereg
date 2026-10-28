@@ -224,6 +224,60 @@ fn connected_components_inner(
     })
 }
 
+/// Transient bytes of [`count_large_pair_components`] for one factor pair:
+/// union-find parents and ranks plus two per-root block counters.
+pub(crate) fn large_pair_component_scratch_bytes(left_levels: usize, right_levels: usize) -> u128 {
+    let nodes = left_levels as u128 + right_levels as u128;
+    nodes * (2 * std::mem::size_of::<usize>() as u128 + 1 + std::mem::size_of::<usize>() as u128)
+}
+
+/// Number of connected components of one factor pair's bipartite incidence
+/// graph, over every observation, with at least `threshold` levels in one of
+/// their two FE blocks. Levels without observations are isolated singletons.
+pub(crate) fn count_large_pair_components(
+    left_codes: &[u32],
+    left_levels: usize,
+    right_codes: &[u32],
+    right_levels: usize,
+    threshold: usize,
+) -> Result<usize> {
+    if left_codes.len() != right_codes.len() {
+        return Err(FeregError::new(
+            ErrorCode::InvalidArgument,
+            "pair component code columns have inconsistent lengths",
+        ));
+    }
+    let nodes = left_levels
+        .checked_add(right_levels)
+        .ok_or_else(|| FeregError::new(ErrorCode::Allocation, "pair level count overflow"))?;
+    let mut union_find = UnionFind::try_new(nodes)?;
+    for (&left, &right) in left_codes.iter().zip(right_codes) {
+        let (left, right) = (left as usize, right as usize);
+        if left >= left_levels || right >= right_levels {
+            return Err(FeregError::new(
+                ErrorCode::InvalidData,
+                "component code exceeds declared level count",
+            ));
+        }
+        union_find.union(left, left_levels + right);
+    }
+    let mut left_count = fallible_filled(nodes, 0_usize, "unable to reserve pair block counts")?;
+    let mut right_count = fallible_filled(nodes, 0_usize, "unable to reserve pair block counts")?;
+    for node in 0..nodes {
+        let root = union_find.find(node);
+        if node < left_levels {
+            left_count[root] += 1;
+        } else {
+            right_count[root] += 1;
+        }
+    }
+    Ok((0..nodes)
+        .filter(|&root| {
+            union_find.parent[root] == root && left_count[root].max(right_count[root]) >= threshold
+        })
+        .count())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -317,6 +371,94 @@ mod tests {
         assert_eq!(next_label, 3);
         assert_eq!(union_find.parent.as_ptr(), parent_pointer);
         assert_eq!(union_find.parent.capacity(), parent_capacity);
+    }
+
+    /// Independent breadth-first reference: components of the bipartite
+    /// pair graph and their block level counts.
+    fn reference_large_pair_components(
+        left: &[u32],
+        left_levels: usize,
+        right: &[u32],
+        right_levels: usize,
+        threshold: usize,
+    ) -> usize {
+        let nodes = left_levels + right_levels;
+        let mut adjacency = vec![Vec::new(); nodes];
+        for (&a, &b) in left.iter().zip(right) {
+            adjacency[a as usize].push(left_levels + b as usize);
+            adjacency[left_levels + b as usize].push(a as usize);
+        }
+        let mut seen = vec![false; nodes];
+        let mut large = 0;
+        for start in 0..nodes {
+            if seen[start] {
+                continue;
+            }
+            seen[start] = true;
+            let (mut queue, mut blocks) = (vec![start], [0_usize; 2]);
+            while let Some(node) = queue.pop() {
+                blocks[usize::from(node >= left_levels)] += 1;
+                for &next in &adjacency[node] {
+                    if !seen[next] {
+                        seen[next] = true;
+                        queue.push(next);
+                    }
+                }
+            }
+            large += usize::from(blocks[0].max(blocks[1]) >= threshold);
+        }
+        large
+    }
+
+    #[test]
+    fn large_pair_components_match_an_independent_search() {
+        let mut state = 0x9e37_79b9_7f4a_7c15_u64;
+        let mut next = move |bound: u64| {
+            state = state
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
+            ((state >> 33) % bound) as u32
+        };
+        for (rows, left_levels, right_levels) in [(40, 30, 6), (200, 90, 40), (500, 60, 300)] {
+            let left: Vec<u32> = (0..rows).map(|_| next(left_levels as u64)).collect();
+            let right: Vec<u32> = (0..rows).map(|_| next(right_levels as u64)).collect();
+            for threshold in [1, 2, 3, 5, 8, 20, 61] {
+                assert_eq!(
+                    count_large_pair_components(
+                        &left,
+                        left_levels,
+                        &right,
+                        right_levels,
+                        threshold
+                    )
+                    .unwrap(),
+                    reference_large_pair_components(
+                        &left,
+                        left_levels,
+                        &right,
+                        right_levels,
+                        threshold
+                    ),
+                    "rows={rows} threshold={threshold}"
+                );
+            }
+        }
+        // Two components with blocks {3, 1} and {1, 2}; the threshold is inclusive.
+        let (left, right) = ([0, 1, 2, 3], [0, 0, 0, 1]);
+        assert_eq!(
+            count_large_pair_components(&left, 4, &right, 2, 3).unwrap(),
+            1
+        );
+        assert_eq!(
+            count_large_pair_components(&left, 4, &right, 2, 1).unwrap(),
+            2
+        );
+        assert_eq!(
+            count_large_pair_components(&left, 4, &right, 2, 4).unwrap(),
+            0
+        );
+        let error = count_large_pair_components(&left, 4, &[0, 0, 0, 2], 2, 1).unwrap_err();
+        assert_eq!(error.code, ErrorCode::InvalidData);
     }
 
     #[test]

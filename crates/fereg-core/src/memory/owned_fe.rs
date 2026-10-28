@@ -372,8 +372,8 @@ mod tests {
             estimate_categorical_schwarz_memory, estimate_schwarz_memory,
         };
         let plain = estimate_categorical_schwarz_memory(48, 3, 15, 6, 4, 100).unwrap();
-        let unsigned = estimate_schwarz_memory(48, 3, 15, 6, 4, 100, false).unwrap();
-        let signed = estimate_schwarz_memory(48, 3, 15, 6, 4, 100, true).unwrap();
+        let unsigned = estimate_schwarz_memory(48, 3, 15, 6, 4, 100, false, None).unwrap();
+        let signed = estimate_schwarz_memory(48, 3, 15, 6, 4, 100, true, None).unwrap();
         assert_eq!(plain, unsigned);
         assert_eq!(signed.solver_frame_bytes, plain.solver_frame_bytes);
         assert!(signed.build_peak_bytes > plain.build_peak_bytes);

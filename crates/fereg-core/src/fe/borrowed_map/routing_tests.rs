@@ -2459,3 +2459,223 @@ fn team_application_reproduces_scalar_route_fits_at_every_worker_count() {
         assert_eq!(team, reference);
     }
 }
+
+/// The campaign's sparse three-FE topology at a reduced size: workers with
+/// five rows each, firms with 2% mobility per period and a 32-level third
+/// effect `(firm + 17 worker + period) % 32`, all zero-based.
+struct SparseThreePanel {
+    codes: [Vec<u32>; 3],
+    indices: Vec<LevelIndex>,
+    values: DenseMatrix,
+    levels: [usize; 3],
+}
+
+impl SparseThreePanel {
+    fn new(rows: usize) -> Self {
+        let periods = 5;
+        let workers = rows.div_ceil(periods);
+        let firms = (workers / 20).max(8);
+        let mut state = 0x2545_f491_4f6c_dd1d_u64;
+        let mut next = move || {
+            state = state
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
+            state >> 11
+        };
+        let mut codes = [Vec::new(), Vec::new(), Vec::new()];
+        let mut columns = [Vec::new(), Vec::new()];
+        for worker in 0..workers {
+            let mut firm = worker % firms;
+            for period in 0..periods {
+                if codes[0].len() == rows {
+                    break;
+                }
+                if period > 0 && next() % 50 == 0 {
+                    firm = next() as usize % firms;
+                }
+                codes[0].push(worker as u32);
+                codes[1].push(firm as u32);
+                codes[2].push(((firm + 17 * worker + period) % 32) as u32);
+                let noise = (next() % 1024) as f64 / 512.0 - 1.0;
+                columns[0].push(noise + (worker as f64 * 0.071).sin() + (firm as f64 * 0.13).cos());
+                columns[1].push(noise * 0.5 + ((firm + period) % 32) as f64 / 20.0);
+            }
+        }
+        let levels = [workers, firms, 32];
+        let indices = codes
+            .iter()
+            .zip(levels)
+            .map(|(code, levels)| LevelIndex::from_codes(code, levels).unwrap())
+            .collect();
+        Self {
+            codes,
+            indices,
+            values: DenseMatrix::from_columns(&columns).unwrap(),
+            levels,
+        }
+    }
+
+    fn design(&self) -> BorrowedInterceptFeDesign<'_> {
+        let sources: Vec<_> = self
+            .codes
+            .iter()
+            .zip(self.levels)
+            .zip(&self.indices)
+            .map(|((code, levels), index)| {
+                ValidatedBorrowedInterceptSource::new(code, levels, index).unwrap()
+            })
+            .collect();
+        BorrowedInterceptFeDesign::new(
+            self.values.nrows(),
+            sources.iter().map(|source| source.effect()).collect(),
+        )
+        .unwrap()
+    }
+
+    fn lsmr() -> LsmrConfig {
+        LsmrConfig {
+            max_iterations: 4_000,
+            threads: crate::ThreadConfig {
+                requested: None,
+                deterministic: true,
+            },
+            ..LsmrConfig::default()
+        }
+    }
+
+    fn project<'a>(
+        &self,
+        design: &BorrowedInterceptFeDesign<'a>,
+        route: &mut routing_lsmr::GeneralRoutingState<'a>,
+        budget: Option<FeSolverMemoryBudget>,
+    ) -> CertifiedBorrowedMap {
+        let lsmr = Self::lsmr();
+        let estimate = estimate_fe_solver_memory(
+            design.nobs(),
+            2,
+            &self.levels,
+            rayon::current_num_threads(),
+            lsmr.local_size,
+        )
+        .unwrap();
+        project_general_categorical(
+            design,
+            BorrowedMapWeights::Unit,
+            self.values.clone(),
+            MapConfig {
+                tolerance: 1e-8,
+                max_iterations: 8_000,
+                ..config()
+            },
+            lsmr,
+            budget,
+            true,
+            estimate,
+            false,
+            None,
+            Some(route),
+            false,
+        )
+        .unwrap()
+    }
+}
+
+#[test]
+fn refused_level_bound_admits_additive_lsmr_by_exact_yielding_count() {
+    // At campaign scale the level-count Schwarz bound grows quadratically in
+    // the levels and refused LSMR, sending the fit to the MAP fallback. Here a
+    // budget one byte below that bound must admit the same additive LSMR solve
+    // through the exact yielding pair-component count, with the unbudgeted
+    // solve's bits, at every worker count.
+    let panel = SparseThreePanel::new(1_000_000);
+    let lsmr = SparseThreePanel::lsmr();
+    let mut fits = Vec::new();
+    for workers in [1, 4] {
+        let fit =
+            crate::ThreadTeam::new(crate::ThreadConfig::from_requested(workers, true).unwrap())
+                .install(|| {
+                    let coarse = estimate_fe_solver_memory(
+                        panel.values.nrows(),
+                        2,
+                        &panel.levels,
+                        workers,
+                        lsmr.local_size,
+                    )
+                    .unwrap();
+                    let budget = FeSolverMemoryBudget {
+                        execution_bytes: 0,
+                        usable_bytes: coarse.lsmr_schwarz_bytes - 1,
+                    };
+                    let design = panel.design();
+                    let mut route =
+                        routing_lsmr::GeneralRoutingState::new(RoutingPreset::geometry_many());
+                    let reference = panel.project(&design, &mut route, None);
+                    // An unbudgeted or admitted call never counts components.
+                    assert_eq!(design.known_yielding_pair_components(), None);
+                    let mut fits = Vec::new();
+                    for _ in 0..2 {
+                        let design = panel.design();
+                        let mut route =
+                            routing_lsmr::GeneralRoutingState::new(RoutingPreset::geometry_many());
+                        let fit = panel.project(&design, &mut route, Some(budget));
+                        assert_eq!(design.known_yielding_pair_components(), Some(3));
+                        let refined = crate::memory::estimate_fe_solver_memory_with_yielding(
+                            panel.values.nrows(),
+                            2,
+                            &panel.levels,
+                            workers,
+                            lsmr.local_size,
+                            Some(3),
+                        )
+                        .unwrap();
+                        assert!(budget.fits(refined.lsmr_schwarz_bytes));
+                        fits.push(fit);
+                    }
+                    for fit in fits.iter().chain([&reference]) {
+                        assert!(fit.report().certified());
+                        assert_eq!(fit.report().used_solver, FeSolverKind::Lsmr);
+                        assert!(!fit.report().fallback_used);
+                        assert!(fit.report().certificate.relative_infinity_norm <= 1e-8);
+                    }
+                    for fit in &fits {
+                        assert_eq!(fit.report().iterations, reference.report().iterations);
+                        assert_eq!(fit.residualized(), reference.residualized());
+                    }
+                    fits.swap_remove(0)
+                })
+                .unwrap();
+        fits.push(fit);
+    }
+    // Scientific agreement across worker counts, and the retained FE
+    // coefficients reconstruct the original values on every row.
+    for rhs in 0..2 {
+        let scale = (0..panel.values.nrows())
+            .map(|row| panel.values[(row, rhs)].abs())
+            .fold(0.0_f64, f64::max);
+        for row in 0..panel.values.nrows() {
+            assert!(
+                (fits[0].residualized()[(row, rhs)] - fits[1].residualized()[(row, rhs)]).abs()
+                    <= 1e-6 * scale
+            );
+        }
+        for fit in &fits {
+            let coefficients = fit.coefficients.as_ref().unwrap();
+            let base = rhs * coefficients.coefficients_per_rhs;
+            for row in 0..panel.values.nrows() {
+                let fitted: f64 = panel
+                    .codes
+                    .iter()
+                    .enumerate()
+                    .map(|(effect, code)| {
+                        coefficients.values
+                            [base + coefficients.effect_offsets[effect] + code[row] as usize]
+                    })
+                    .sum();
+                assert!(
+                    (panel.values[(row, rhs)] - fit.residualized()[(row, rhs)] - fitted).abs()
+                        <= 1e-10 * scale
+                );
+            }
+        }
+    }
+}
