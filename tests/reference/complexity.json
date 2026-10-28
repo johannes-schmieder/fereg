@@ -2,46 +2,10 @@
   "definition": "docs/development_workflow.md#complexity-inventory",
   "growth": [
     {
-      "after": 112114,
-      "before": 111789,
+      "after": 112201,
+      "before": 112114,
       "metric": "fereg-core/production_lines",
-      "reason": "beta.10 integration of origin/codex/beta10-exact: Beta.10 step-0 measurement: trace-only phase laps (FEREG_PHASE_TIMING) for the borrowed MAP wrapper (map_wrapper_trace.rs: scan, norms, initial certificate, sweep, certify), the OLS finalize score certificate, the PPML one-FE profile/direction/line-search trial and the numeric input pipeline producer/consumer (numeric_pipeline/trace.rs). Disabled, no clock is read; no arithmetic or decision change. Beta.10 step-0 measurement: trace-only phase laps (FEREG_PHASE_TIMING) splitting the dense OLS projection into RHS construction, raw moments and norms (dense_raw) and the initial absorption (project_dense). Disabled, no clock is read; no arithmetic or decision change. E4 (arithmetic-preserving): the borrowed MAP wrapper and the bounded three-FE MAP pilot apply the reusable owner's exact one-group initial rejection screen (new fe/borrowed_map/initial_screen.rs with entry/pilot certificate helpers and a fault_plan! comparison arm) before the complete initial certificate; entry finite scans use the parallel pure predicate DenseMatrix::all_finite. Published bits and decisions are unchanged. E2 (arithmetic-preserving): wide raw-moment caches choose the widest of 64/32/16/8/1-column bands that still gives every worker a task (ols/prepared_fit/raw_moment_bands.rs); every band keeps each column's serial row-order arithmetic. A design wider than the 64-column stack binding fills its [response, X] batch through a heap descriptor (ols/prepared_rhs/wide_rhs.rs) sharing the exact bound-tile copy, charged by the fast memory estimate. Published bits and decisions are unchanged. E2 follow-up (arithmetic-preserving): Gram dimensions wider than the 64-column stack block accumulate dense moments in a heap private bank (ols/finite_wls_kernel/wide_private.rs) with the layout's partition of Gram rows and the stack path's shared rank-1 pass (accumulate_standardized_rows), so every entry keeps the in-place wide kernels' bits; the fast memory estimate charges (2k^2+k)*8 bytes; a failed reservation keeps the in-place kernels."
-    },
-    {
-      "after": 1450,
-      "before": 1445,
-      "metric": "fereg-core/dispatch_candidates",
-      "reason": "beta.10 integration of origin/codex/beta10-exact: E4 (arithmetic-preserving): the borrowed MAP wrapper and the bounded three-FE MAP pilot apply the reusable owner's exact one-group initial rejection screen (new fe/borrowed_map/initial_screen.rs with entry/pilot certificate helpers and a fault_plan! comparison arm) before the complete initial certificate; entry finite scans use the parallel pure predicate DenseMatrix::all_finite. Published bits and decisions are unchanged. E2 (arithmetic-preserving): wide raw-moment caches choose the widest of 64/32/16/8/1-column bands that still gives every worker a task (ols/prepared_fit/raw_moment_bands.rs); every band keeps each column's serial row-order arithmetic. A design wider than the 64-column stack binding fills its [response, X] batch through a heap descriptor (ols/prepared_rhs/wide_rhs.rs) sharing the exact bound-tile copy, charged by the fast memory estimate. Published bits and decisions are unchanged."
-    },
-    {
-      "after": 13,
-      "before": 12,
-      "metric": "fereg-core/chunk_candidates",
-      "reason": "beta.10 integration of origin/codex/beta10-exact: E2 follow-up (arithmetic-preserving): Gram dimensions wider than the 64-column stack block accumulate dense moments in a heap private bank (ols/finite_wls_kernel/wide_private.rs) with the layout's partition of Gram rows and the stack path's shared rank-1 pass (accumulate_standardized_rows), so every entry keeps the in-place wide kernels' bits; the fast memory estimate charges (2k^2+k)*8 bytes; a failed reservation keeps the in-place kernels."
-    },
-    {
-      "after": 15524,
-      "before": 15468,
-      "metric": "fereg-plugin/production_lines",
-      "reason": "beta.10 integration of origin/codex/beta10-exact: Beta.10 step-0 measurement: trace-only phase laps (FEREG_PHASE_TIMING) for the borrowed MAP wrapper (map_wrapper_trace.rs: scan, norms, initial certificate, sweep, certify), the OLS finalize score certificate, the PPML one-FE profile/direction/line-search trial and the numeric input pipeline producer/consumer (numeric_pipeline/trace.rs). Disabled, no clock is read; no arithmetic or decision change."
-    },
-    {
-      "after": 8790,
-      "before": 8781,
-      "metric": "file/crates/fereg-core/src/fe/borrowed_map.rs",
-      "reason": "beta.10 integration of origin/codex/beta10-exact: Beta.10 step-0 measurement: trace-only phase laps (FEREG_PHASE_TIMING) for the borrowed MAP wrapper (map_wrapper_trace.rs: scan, norms, initial certificate, sweep, certify), the OLS finalize score certificate, the PPML one-FE profile/direction/line-search trial and the numeric input pipeline producer/consumer (numeric_pipeline/trace.rs). Disabled, no clock is read; no arithmetic or decision change. E4 (arithmetic-preserving): the borrowed MAP wrapper and the bounded three-FE MAP pilot apply the reusable owner's exact one-group initial rejection screen (new fe/borrowed_map/initial_screen.rs with entry/pilot certificate helpers and a fault_plan! comparison arm) before the complete initial certificate; entry finite scans use the parallel pure predicate DenseMatrix::all_finite. Published bits and decisions are unchanged."
-    },
-    {
-      "after": 2076,
-      "before": 2025,
-      "metric": "file/crates/fereg-core/src/ols/finite_wls_kernel.rs",
-      "reason": "beta.10 integration of origin/codex/beta10-exact: E2 follow-up (arithmetic-preserving): Gram dimensions wider than the 64-column stack block accumulate dense moments in a heap private bank (ols/finite_wls_kernel/wide_private.rs) with the layout's partition of Gram rows and the stack path's shared rank-1 pass (accumulate_standardized_rows), so every entry keeps the in-place wide kernels' bits; the fast memory estimate charges (2k^2+k)*8 bytes; a failed reservation keeps the in-place kernels."
-    },
-    {
-      "after": 3348,
-      "before": 3342,
-      "metric": "file/crates/fereg-core/src/ppml/memory.rs",
-      "reason": "beta.10 integration of origin/codex/beta10-exact: Beta.10 step-0 measurement: trace-only phase laps (FEREG_PHASE_TIMING) for the borrowed MAP wrapper (map_wrapper_trace.rs: scan, norms, initial certificate, sweep, certify), the OLS finalize score certificate, the PPML one-FE profile/direction/line-search trial and the numeric input pipeline producer/consumer (numeric_pipeline/trace.rs). Disabled, no clock is read; no arithmetic or decision change."
+      "reason": "beta.10 integration of origin/codex/derived-residual-routes: Derived final residual on the one-FE and many-FE Auto binding routes (SPEC 7, 16): fe/borrowed_map/derived_residual.rs shares the derived-scale and certificate steps between the two-FE owner and a new one-RHS binding certificate admitted against the solver budget, with a fault_plan! one-shot failure for tests; fe/session.rs selects the binding certificate for Auto one-FE designs and the many-FE geometry policy; one_shot.rs gates on the saved-FE request before the one-FE route clears its unused coefficient product. No projection loop changes."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -2282,17 +2246,37 @@
         "chunk_candidates": [],
         "dispatch_candidates": [
           {
-            "condition": "values . nrows ( ) != self . design . nobs ( ) || values . ncols ( ) != 1 || ! amplification . is_finite ( ) || amplification < 1.0 || ! ( tolerance . is_finite ( ) && tolerance > 0.0 )",
-            "line": 22
+            "condition": "values . nrows ( ) != nobs || values . ncols ( ) != 1 || ! amplification . is_finite ( ) || amplification < 1.0 || ! ( tolerance . is_finite ( ) && tolerance > 0.0 )",
+            "line": 30
+          },
+          {
+            "condition": "budget . is_some_and ( | b | ! b . fits ( bytes ) )",
+            "line": 121
           }
         ],
         "functions": {
+          "certify_at_derived_scale#1": {
+            "line": 64,
+            "lines": 14
+          },
+          "certify_binding_derived#1": {
+            "line": 100,
+            "lines": 29
+          },
           "certify_derived#1": {
-            "line": 15,
-            "lines": 32
+            "line": 80,
+            "lines": 15
+          },
+          "set_derived_scale#1": {
+            "line": 48,
+            "lines": 14
+          },
+          "validate#1": {
+            "line": 29,
+            "lines": 16
           }
         },
-        "production_lines": 35
+        "production_lines": 94
       },
       "crates/fereg-core/src/fe/borrowed_map/eager_cells.rs": {
         "chunk_candidates": [],
@@ -6891,64 +6875,60 @@
             "line": 780
           },
           {
-            "condition": "self . cmg . is_none ( ) && self . lsmr . is_none ( ) => owner . certify_derived ( weights , values , tolerance , amplification ) . map ( Some ) , _ => Ok ( None ) , } } # [ allow ( clippy :: too_many_arguments ) ] pub ( crate ) fn project_ols_with_remaining ( & mut self , weights : BorrowedMapWeights < '_ > , values : DenseMatrix , config : super :: AbsorbConfig , final_residual : bool , raw_final : bool , remaining : Option < ( ObserverRef < '_ > , Demand ) > , ) -> Result < CertifiedBorrowedMap >",
-            "line": 842
-          },
-          {
             "condition": "let Some ( p ) = self . cmg . as_mut ( )",
-            "line": 908
+            "line": 940
           },
           {
             "condition": "let Some ( p ) = self . lsmr . as_mut ( )",
-            "line": 920
+            "line": 952
           },
           {
             "condition": "let Some ( p ) = self . categorical . as_mut ( )",
-            "line": 932
+            "line": 964
           },
           {
             "condition": "let Some ( p ) = self . general . as_mut ( )",
-            "line": 934
+            "line": 966
           },
           {
             "condition": "let Some ( peak ) = self . categorical . as_ref ( ) . map ( | p | p . cmg_schur_peak ( ) ) . transpose ( ) ? . flatten ( )",
-            "line": 1036
+            "line": 1068
           },
           {
             "condition": "! design . effects ( ) . is_empty ( ) => super :: absorb_borrowed_intercept_lsmr ( design , weights , values . into_values ( ) , config . lsmr , config . retain_coefficients , ) , S :: Cg =>",
-            "line": 1146
+            "line": 1178
           },
           {
             "condition": "let Some ( c ) = r . retained . filter ( | _ | memory . is_none_or ( | m | fits ( m . retained_peak_bytes ) ) )",
-            "line": 1275
+            "line": 1307
           },
           {
             "condition": "recover :: recover_finalized_categorical_effects_from_coefficients_selected_certified ( r . topology , r . effects , r . weights , r . target , r . requested_channels , c , r . map . tolerance , r . known_connected , r . materialize_absorbed_sum )",
-            "line": 1280
+            "line": 1312
           },
           {
             "condition": "r . effects . len ( ) == 1 && ! r . effects [ 0 ] . slopes ( ) . is_empty ( ) && r . effects [ 0 ] . channels ( ) <= 4",
-            "line": 1288
+            "line": 1320
           },
           {
             "condition": "recover :: recover_finalized_single_slope_direct_certified ( r . topology , r . effects , r . weights , r . target , r . requested_channels , r . map . tolerance , r . materialize_absorbed_sum , false , )",
-            "line": 1301
+            "line": 1333
           },
           {
             "condition": "intercepts && r . effects . len ( ) == 2 && memory . is_some_and ( | m | fits ( m . retained_peak_bytes ) )",
-            "line": 1319
+            "line": 1351
           },
           {
             "condition": "recover :: recover_finalized_two_effects_graph_certified ( r . topology , r . effects , r . weights , r . target , r . requested_channels , r . map . tolerance , r . known_connected , r . materialize_absorbed_sum , )",
-            "line": 1322
+            "line": 1354
           },
           {
             "condition": "memory . is_some_and ( | m | ! fits ( m . map_peak_bytes ) )",
-            "line": 1340
+            "line": 1372
           },
           {
             "condition": "n",
-            "line": 1377
+            "line": 1409
           }
         ],
         "functions": {
@@ -6986,15 +6966,19 @@
           },
           "certify_derived_residual#1": {
             "line": 834,
-            "lines": 14
+            "lines": 29
           },
           "close_routing_attempt#1": {
-            "line": 872,
+            "line": 904,
             "lines": 5
           },
           "default#1": {
             "line": 212,
             "lines": 21
+          },
+          "derived_binding#1": {
+            "line": 868,
+            "lines": 12
           },
           "design#1": {
             "line": 80,
@@ -7021,7 +7005,7 @@
             "lines": 6
           },
           "include_recovery_peak#1": {
-            "line": 1373,
+            "line": 1405,
             "lines": 10
           },
           "max_rhs#1": {
@@ -7029,7 +7013,7 @@
             "lines": 6
           },
           "numerical_recovery_miss#1": {
-            "line": 1365,
+            "line": 1397,
             "lines": 8
           },
           "optional#1": {
@@ -7061,11 +7045,11 @@
             "lines": 85
           },
           "project_initial_ols#1": {
-            "line": 878,
+            "line": 910,
             "lines": 18
           },
           "project_intercepts#1": {
-            "line": 1119,
+            "line": 1151,
             "lines": 88
           },
           "project_ols#1": {
@@ -7073,19 +7057,19 @@
             "lines": 24
           },
           "project_ols_binding#1": {
-            "line": 898,
+            "line": 930,
             "lines": 81
           },
           "project_ols_input#1": {
-            "line": 981,
+            "line": 1013,
             "lines": 135
           },
           "project_ols_with_remaining#1": {
-            "line": 850,
+            "line": 882,
             "lines": 19
           },
           "recover#1": {
-            "line": 1224,
+            "line": 1256,
             "lines": 140
           },
           "reject_ppml_topology#1": {
@@ -7101,7 +7085,7 @@
             "lines": 3
           }
         },
-        "production_lines": 1293
+        "production_lines": 1320
       },
       "crates/fereg-core/src/fe/singleton.rs": {
         "chunk_candidates": [],
@@ -14022,15 +14006,15 @@
           },
           {
             "condition": "within_norms . len ( ) != coefficients . len ( ) + 1 || raw_norms . len ( ) != coefficients . len ( )",
-            "line": 1003
+            "line": 1006
           },
           {
             "condition": "let Some ( report ) = derived_residual ( cmg , & matrix , weights , config , scale , absorption ) ?",
-            "line": 1080
+            "line": 1083
           },
           {
             "condition": "let ( ProjectedStorage :: Scratch ( low ) , Some ( destination ) ) = ( inputs . storage , retained_scratch )",
-            "line": 1181
+            "line": 1184
           }
         ],
         "functions": {
@@ -14043,24 +14027,24 @@
             "lines": 126
           },
           "derived_residual#1": {
-            "line": 1023,
+            "line": 1026,
             "lines": 41
           },
           "derived_residual_scale#1": {
-            "line": 997,
+            "line": 1000,
             "lines": 23
           },
           "derived_scale#1": {
-            "line": 961,
+            "line": 964,
             "lines": 19
           },
           "finish_one_shot#1": {
-            "line": 1127,
+            "line": 1130,
             "lines": 74
           },
           "fit#1": {
             "line": 796,
-            "lines": 149
+            "lines": 150
           },
           "original_residuals#1": {
             "line": 645,
@@ -14071,7 +14055,7 @@
             "lines": 84
           },
           "project_residual#1": {
-            "line": 1066,
+            "line": 1069,
             "lines": 59
           },
           "project_scratch#1": {
@@ -14091,7 +14075,7 @@
             "lines": 41
           },
           "scaled_initial_sum_of_squares#1": {
-            "line": 946,
+            "line": 947,
             "lines": 11
           },
           "score_norms#1": {
@@ -14107,11 +14091,11 @@
             "lines": 39
           },
           "weighted_response_norm#1": {
-            "line": 981,
+            "line": 984,
             "lines": 12
           }
         },
-        "production_lines": 1130
+        "production_lines": 1131
       },
       "crates/fereg-core/src/ols/prepared_fit/raw_moment_bands.rs": {
         "chunk_candidates": [],
@@ -24749,7 +24733,7 @@
         "dispatch_candidates": 1450,
         "files_over_1500": 15,
         "functions_over_150": 59,
-        "production_lines": 112114
+        "production_lines": 112201
       },
       "fereg-plugin": {
         "chunk_candidates": 3,
@@ -24761,5 +24745,5 @@
     },
     "schema": 1
   },
-  "reason": "beta.10 integration merge of origin/codex/beta10-exact; growth measured against the integration branch before the merge."
+  "reason": "beta.10 integration merge of origin/codex/derived-residual-routes; growth measured against the integration branch before the merge."
 }

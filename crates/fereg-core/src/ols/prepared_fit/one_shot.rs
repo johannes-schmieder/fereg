@@ -812,6 +812,7 @@ pub(super) fn fit<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     let weights = frame.weights();
     let reuse_absorption_norms = weights.matches_fe_norm_scale();
     let dense = config.execution.mode == PreparedOlsExecutionMode::Fast;
+    let requested = config;
     let retained_fe_parent = retained_fe_budget(prepared, &mut config, perturbations)?;
     let mut cmg = crate::fe::FeSession::for_ols(prepared, weights.borrowed(), config)?;
     let mut legacy = cmg.remaining_state();
@@ -904,7 +905,7 @@ pub(super) fn fit<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         LinearSessionAllocationPhase::Projection,
     );
     crate::interrupt::checkpoint()?;
-    let derived_scale = derived_scale(dense, config, frame.response(), weights, &inputs, &qr)?;
+    let derived_scale = derived_scale(dense, requested, frame.response(), weights, &inputs, &qr)?;
     let (residuals, residual_absorption_report, residual_fe_coefficients) = project_residual(
         &mut cmg,
         prepared.fit_sample().n_active(),
@@ -958,6 +959,8 @@ fn scaled_initial_sum_of_squares(value: f64, multiplier: f64, dense: bool) -> Re
 /// Fast OLS without residual, xbd, d or saved-FE outputs keeps its within
 /// residual when its derived certificate passes (SPEC §7, §16); this is the
 /// scale at which it is checked, or `None` when the final projection runs.
+/// `config` is the request before the one-FE route clears its unused
+/// coefficient product, so a saved-FE request always keeps the projection.
 fn derived_scale(
     dense: bool,
     config: PreparedOlsFitConfig,

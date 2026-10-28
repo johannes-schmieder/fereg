@@ -17,7 +17,7 @@ use super::routing_observer::ObserverRef;
 use super::routing_remaining::State as RemainingState;
 
 mod categorical_prefix;
-mod derived_residual;
+pub(crate) mod derived_residual;
 mod eager_cells;
 use eager_cells::ReuseState;
 mod initial_screen;

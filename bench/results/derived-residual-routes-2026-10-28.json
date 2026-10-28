@@ -1,0 +1,183 @@
+{
+ "schema": 1,
+ "date": "2026-10-28",
+ "scope": "Fast OLS Auto without residual, xbd, d or saved-FE outputs: the derived final-residual certificate (SPEC 7, 16) extended from the two-FE categorical owner to the direct one-FE route and the many-FE geometry policy (MAP pilot, LSMR session, MAP fallback). Branch codex/derived-residual-routes, implementation commit 06222830.",
+ "decision": "Approved by Johannes for beta.10 as a declared-scope change (2026-10-28).",
+ "numerical_scope": "On these routes and settings only: residuals, fitted values, residual-based fit statistics and the covariance (iid through its residual sum of squares, robust/cluster through the scores) may change low bits within the certified tolerance where the second absorption would have moved the residual; the residual solver row reports zero iterations, zero pilot work and stop code 5. Coefficients, bread, sample, rank, omissions and every discrete decision are unchanged.",
+ "artifacts": {
+  "baseline": "published beta.9 macOS plugin a7b25176 (source a023073e)",
+  "candidate_release_arm64": "9dfc068c2d72b0516bbd9f0b7180986e3943525e2205af7a63eb5311e8dcd1aa",
+  "timing_beta9_profiling_arm64": "d15d595e6ffe2ccb2bc7b3dffc21353ca738b811fb45e7e978148da2c33c1c7d (source a023073e)",
+  "timing_candidate_profiling_arm64": "dee087a97b76b19550acf9123b320e24dd7e42720980e3b9e36be63335e7edaa (source 06222830)"
+ },
+ "replay": {
+  "baseline": "beta.9 macOS plugin a7b25176",
+  "candidate": "9dfc068c",
+  "unscoped": "73/73 scientific pass, zero exact differences: every OLS replay case requests residual, xbd and absorbed outputs, so none takes the derived path",
+  "scope": "tests/replay/scopes/2026-10-28-derived-residual-routes-macos.json (no cases)",
+  "scoped": "passed"
+ },
+ "witnesses": [
+  "crates/fereg-oracle/tests/derived_residual.rs: dense explicit-dummy OLS for one FE (unit, analytic) and three FE (balanced MAP pilot, dense and sparse LSMR; unit, analytic): residual equals y - Xb - D d_hat at the PREDICTION tolerance, explicit level moments at the derived scale <= 1e-10; 60,000-row one-FE and sparse three-FE designs: bit-identical repeats at 1/2/4/8 workers, cross-worker agreement and agreement with the polished projection",
+  "crates/fereg-core/src/ols/prepared_fit/tests.rs: stop code 5, zero iterations and pilot work, used solver equals the absorption's; forced fault_plan! failure falls back with bit-identical coefficients; saved FE, requested outputs, low memory and explicit map/lsmr keep the projection",
+  "Mac Stata end-to-end on the timing datasets: coefficients bit-identical to beta.9 in all six cells; one-FE and three-dense residuals, fit statistics and covariance bit-identical (beta.9 accepted the residual at its initial certificate); three-sparse r2, rmse, rss, F and all 289 iid covariance entries differ in the last few bits; residual-row used solver, preconditioners, fallback and pilot fields unchanged, iterations 2 -> 0 and stop 2 -> 5 on three-sparse, 0 -> 0 and 2 -> 5 elsewhere; fixed-worker repeats exact"
+ ],
+ "timing": {
+  "host": "Mac (Apple silicon), Stata 19 MP, arm64 profiling builds of both arms",
+  "rule": "frozen before timing: wait until no other stata, cargo, rustc or python process exists; sample during each run; a contaminated run is discarded and repeated once",
+  "datasets": {
+   "one-fe": "8c40b3fd",
+   "three-dense": "b1fa7ffd",
+   "three-sparse": "3277c882"
+  },
+  "design": "bench/campaign.make_dataset, 1,000,000 rows, 16 controls, vce iid, no outputs; 3 interleaved repetitions per arm, medians of 3; FEREG_PHASE_TIMING residual_absorb phase",
+  "cells": [
+   {
+    "design": "one-fe",
+    "rows": 1000000,
+    "controls": 16,
+    "workers": 1,
+    "beta9": {
+     "command_s": 0.548,
+     "native_s": 0.422,
+     "residual_phase_ms": 19.4,
+     "runs": 3
+    },
+    "candidate": {
+     "command_s": 0.541,
+     "native_s": 0.414,
+     "residual_phase_ms": 19.8,
+     "runs": 3
+    },
+    "native_ratio": 0.981
+   },
+   {
+    "design": "one-fe",
+    "rows": 1000000,
+    "controls": 16,
+    "workers": 4,
+    "beta9": {
+     "command_s": 0.292,
+     "native_s": 0.182,
+     "residual_phase_ms": 13.6,
+     "runs": 3
+    },
+    "candidate": {
+     "command_s": 0.296,
+     "native_s": 0.185,
+     "residual_phase_ms": 13.2,
+     "runs": 3
+    },
+    "native_ratio": 1.016
+   },
+   {
+    "design": "three-dense",
+    "rows": 1000000,
+    "controls": 16,
+    "workers": 1,
+    "beta9": {
+     "command_s": 1.297,
+     "native_s": 1.161,
+     "residual_phase_ms": 23.1,
+     "runs": 3
+    },
+    "candidate": {
+     "command_s": 1.289,
+     "native_s": 1.149,
+     "residual_phase_ms": 22.3,
+     "runs": 3
+    },
+    "native_ratio": 0.99
+   },
+   {
+    "design": "three-dense",
+    "rows": 1000000,
+    "controls": 16,
+    "workers": 4,
+    "beta9": {
+     "command_s": 0.543,
+     "native_s": 0.437,
+     "residual_phase_ms": 12.3,
+     "runs": 3
+    },
+    "candidate": {
+     "command_s": 0.55,
+     "native_s": 0.441,
+     "residual_phase_ms": 12.3,
+     "runs": 3
+    },
+    "native_ratio": 1.009
+   },
+   {
+    "design": "three-sparse",
+    "rows": 1000000,
+    "controls": 16,
+    "workers": 1,
+    "beta9": {
+     "command_s": 6.666,
+     "native_s": 6.526,
+     "residual_phase_ms": 88.2,
+     "runs": 3
+    },
+    "candidate": {
+     "command_s": 6.557,
+     "native_s": 6.418,
+     "residual_phase_ms": 26.6,
+     "runs": 3
+    },
+    "native_ratio": 0.983
+   },
+   {
+    "design": "three-sparse",
+    "rows": 1000000,
+    "controls": 16,
+    "workers": 4,
+    "beta9": {
+     "command_s": 2.042,
+     "native_s": 1.928,
+     "residual_phase_ms": 44.7,
+     "runs": 3
+    },
+    "candidate": {
+     "command_s": 2.055,
+     "native_s": 1.945,
+     "residual_phase_ms": 15.9,
+     "runs": 3
+    },
+    "native_ratio": 1.009
+   }
+  ],
+  "discarded_attempts": [
+   {
+    "arm": "beta9",
+    "design": "three-dense",
+    "workers": 4,
+    "repetition": "r1b",
+    "competitor": [
+     "cargo"
+    ]
+   },
+   {
+    "arm": "beta9",
+    "design": "three-sparse",
+    "workers": 1,
+    "repetition": "r1b",
+    "competitor": [
+     "cargo",
+     "rustc"
+    ]
+   },
+   {
+    "arm": "beta9",
+    "design": "three-sparse",
+    "workers": 1,
+    "repetition": "r2b",
+    "competitor": [
+     "cargo",
+     "rustc"
+    ]
+   }
+  ]
+ },
+ "findings": "The derived certificate removes the second LSMR session on the sparse three-FE route (residual phase 88 -> 27 ms at 1 worker, 45 -> 16 ms at 4), about 1-1.5% of native time, within run-to-run noise of the totals. On one FE and the dense three-FE MAP pilot beta.9 already accepted the within residual at its initial certificate with zero sweeps, so the derived certificate replaces one certificate pass with an equal one and the residual phase is unchanged (13-23 ms); the earlier estimate of tens of milliseconds saved on one-FE fits does not hold."
+}

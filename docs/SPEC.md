@@ -841,10 +841,20 @@ No iterative recurrence status alone permits publication.
 
 A Fast fit that requests no residual, xbd, d or saved-FE output may keep its
 within residual `r = y~ - X~b` instead of projecting it again, when the derived
-certificate of §16 passes; its residual solver row reports zero iterations and
-stop code 5. Requested outputs, Low memory, explicit CMG or LSMR sessions and a
-failing derived certificate keep the certified final projection (decided by
-Johannes, 2026-10-27).
+certificate of §16 passes; its residual solver row reports the absorption's
+method, zero iterations, zero pilot work and stop code 5. The derived residual
+serves the two-FE categorical owner (decided by Johannes, 2026-10-27) and, for
+beta.10, the direct one-FE Auto route and the many-FE Auto geometry policy,
+whose MAP pilot, LSMR session and MAP fallback all certify at the requested
+tolerance (decided by Johannes, 2026-10-28). Requested outputs, Low memory,
+explicit CMG, LSMR, MAP, CG, IT or SQUAREM sessions, many-FE developer routing
+arms outside the geometry policy, designs without an absorbed effect and a
+failing derived certificate keep the certified final projection. Residuals,
+fitted values, residual-based fit statistics and every covariance (iid through
+its residual sum of squares, robust/cluster through the scores) may differ from
+the projected residual in low bits within the certified tolerance, wherever the
+projection would have changed the within residual; coefficients, the bread,
+sample, rank, omissions and discrete decisions do not.
 
 Where an absorbed intercept exists, the reported constant is
 `mean_w(y) - mean_w(X)'b`. It is a normalization coordinate, not an extra
@@ -1308,7 +1318,11 @@ certified projections, `r = y~ - X~b`. The moments are recomputed from the
 declared design and weights as above, with `s = s_y + sum |b_j| s_j`, each term
 the scale at which its column was certified (the larger of its raw and within
 weighted norms). By linearity a certified projection cannot exceed this bound,
-so the check verifies the combination without a second solve.
+so the check verifies the combination without a second solve. The two-FE owner
+recomputes the moments on its retained workspace; the one-FE and many-FE
+binding routes, which retain no owner, recompute them for every absorbed effect
+on a one-RHS workspace over the same borrowed design, admitted against the
+solver memory budget. Neither reads a solver's own residual norms.
 
 OLS additionally certifies finite scores, bread/inverse, fit and covariance.
 PPML additionally certifies model-space feasibility, scores, accepted objective,

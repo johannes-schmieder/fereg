@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## Unreleased
+
 - OLS Auto with three or more categorical-intercept effects no longer falls
   back to slow alternating projections on large sparse panels because of an
   overstated memory estimate: when the additive-Schwarz bound refuses LSMR,
@@ -40,6 +42,21 @@
   bit-identical, and the fast memory estimate counts the new buffers.
 - Developer phase timing (`FEREG_PHASE_TIMING`) splits the MAP wrapper, dense
   projection setup, score certificate, PPML one-FE profile and loader pipeline.
+- Fast OLS Auto with one fixed effect, and with three or more under the
+  many-FE geometry policy (MAP pilot, LSMR session or MAP fallback), now keeps
+  its within residual `y~ - X~b` when no residual, xbd, d or saved-FE output is
+  requested and the derived certificate passes, instead of absorbing the
+  residual a second time; the two-FE route has done so since beta.8. The
+  certificate recomputes every absorbed effect's level moments from the
+  declared design and weights on a one-RHS workspace. The residual solver row
+  reports the absorption's method, zero iterations and stop code 5. Where the
+  second absorption would have moved the residual (the LSMR route), residuals,
+  fitted values, residual-based fit statistics and the covariance (iid through
+  its residual sum of squares) change in low bits within the certified
+  tolerance; coefficients, sample, rank, omissions and every discrete decision
+  are unchanged. Where it accepted the residual unchanged (one FE and the MAP
+  pilot) only the residual solver row changes. Explicit solvers, low memory,
+  requested outputs and a failed check keep the certified final projection.
 
 ## 0.5.0 beta.9 — 2026-10-28
 
