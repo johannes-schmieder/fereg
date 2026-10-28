@@ -1,0 +1,76 @@
+{
+  "schema": 1,
+  "date": "2026-10-28",
+  "scope": "Beta.10 round 2 on codex/beta10-round2 (from codex/beta10-integration 96ab756a, later merged with d64fdc0d: within pin 3b5b9b9a and PPML separation activation): P5a exact pass fusion of the three-FE MAP pilot sweep (kept); P5b dense many-FE route choice (measured, refuted, not implemented); P6 fast-mode residency (measured, design only); E6c implicit LevelIndex (skipped); Ordered additive-Schwarz reduction in every mode (kept, coordinator request). Descriptive Mac evidence, not qualification.",
+  "commits": {
+    "p5a": "449f8b76",
+    "merge_integration": "6d39c8db",
+    "ordered_reduction": "9a080118"
+  },
+  "artifacts": {
+    "build": "cargo build --profile profiling -p fereg-plugin --target aarch64-apple-darwin; clang -c stplugin.c/stata_bridge.c; clang -bundle with plugin/exports_macos.txt; ad-hoc codesign",
+    "base_96ab756a_sha256": "b4cf1bde28dec133714e4145f4d1cd5ad36e588b17c94645e3ac1b5af3186a2f",
+    "p5a_449f8b76_sha256": "5b15e90a5c0e0e77d0d24e743b8ee7618ef5994d8a4547c45afd777a4d4bb600",
+    "ordered_candidate_sha256": "231f03e336560cf9daf78678b3bb265f628f71099fb37ce589a0a3db09ca30e8",
+    "auto_reduction_control_sha256": "996823b45f46fd54c4a0bcd2357f04ce35c1772ac20a3092f32563af30297012",
+    "inputs": {
+      "generator": "bench/campaign.py make_dataset, seed 739391, OLS cells of configurations(), 1M rows, 16 controls, vce(unadjusted)",
+      "three_dense_sha256": "b1fa7ffdd9ce2e3d370540c49a3a784daa10218c3395af3d72333d7a677aaf44",
+      "three_sparse_sha256": "3277c8827a32871aff05c951631a5363df03c49df43867176fc13027e42c2250",
+      "akm_baseline_sha256": "1bf562c8ec05cd26d101afb9d9cbc8538a1eeb5b41611bb2fac9c39a0d8da453"
+    }
+  },
+  "protocol": "Mac M2 Ultra (shared with other agents), Stata MP 19 batch, 3 fits per session, medians of fits 2-3 of native seconds (e(fereg_runtime) row 20), FEREG_PHASE_TIMING=1 FEREG_SOLVER_TRACE=1; frozen rule: 30 s without any other stata/cargo/rustc/python process before each session, 2 s sampling during it, discard and repeat once on a competitor. One early fused session (t4) was contaminated twice and is excluded; every session below was clean. Peak memory is /usr/bin/time -l maximum resident set of the Stata process; load-only processes: 208.7 MB (akm), 210.5 MB (three-sparse).",
+  "p5a_fused_pilot_sweep": {
+    "mechanism": "next effect's column scales raised in the row-streaming subtract pass (per-lane maximum tables merged by maximum); member-order weight and scaled sums unchanged; tables optional admitted scratch (<= 64 columns, <= 256 KiB per lane table)",
+    "baseline_phase_split_three_dense": {
+      "t1": {"native": 1.02, "pilot_total": 0.72, "pilot_sweeps_2": 0.57, "certificate": 0.09, "finish_norm_handoff": 0.036, "setup": 0.025},
+      "t4": {"native": 0.39, "pilot_total": 0.25, "pilot_sweeps_2": 0.17, "group_statistics_share_of_sweeps": "0.11-0.16 s", "subtract_share_of_sweeps": "0.05-0.06 s"}
+    },
+    "native_seconds_base_vs_p5a": {
+      "three_dense_t1": [1.0355, 0.9736],
+      "three_dense_t4": [0.4035, 0.3757],
+      "three_sparse_t1": [6.2848, 6.3048],
+      "three_sparse_t4": [1.8754, 1.8702]
+    },
+    "same_binary_ab_unfused_vs_fused": {
+      "three_dense_t1": {"unfused": [1.0213, 1.0514], "fused": [0.9739, 0.9685], "pilot_sweep_seconds": "0.566-0.602 -> 0.513-0.527"},
+      "three_dense_t4": {"unfused": [0.4091, 0.3976], "fused": [0.3703, 0.3902]}
+    },
+    "notes": "Three-sparse predicts no pilot (geometry None) and is unaffected. Stata e(b), e(V) hashes, rss and r2 identical in every session.",
+    "exactness": "unit tests: fused vs unfused sweeps bit for bit (values and coefficient batches, unit/provided weights, 1/5/18/64 columns, crossed/random/sorted designs, forward/symmetric) at 1/2/4/8 workers with cross-worker agreement; whole pilot attempts (1/18/65 columns, three checkpoints, retained coefficients) identical to the unfused arm; refused tables keep the unfused pilot. Plugin replay 74/74 exact against beta.9 (before the integration merge)."
+  },
+  "p5b_dense_route": {
+    "candidate": "start the Jacobi LSMR trial instead of the geometry-qualified MAP pilot (measurement stub behind a hidden arm, removed)",
+    "three_dense_native_public_pilot_vs_trial_first": {
+      "t1": [0.9593, 1.325],
+      "t4": [0.377, 0.5077],
+      "t8": [0.260, 0.3252]
+    },
+    "trial_iterations": "4 per RHS (Jacobi, no escalation), certified",
+    "peak_rss_mb": {"pilot": "693-713", "trial_first": "1132-1196"},
+    "three_sparse": "geometry predicts no pilot; any pilot-versus-trial rule leaves it on the trial",
+    "decision": "not implemented: the pilot is 25-38% faster and about 450 MB lighter where the geometry admits it, and the bounded pilot cannot certify where the geometry predicts no sweep count; no general rule improves on the qualified geometry policy on the campaign cells"
+  },
+  "p6_fast_residency": {
+    "increment_over_load_only_mb_at_1m": {
+      "akm_k16": {"t1": 425, "t4": 459},
+      "three_dense_k16": {"t1": 529, "t4": 538},
+      "three_sparse_k16": {"t1": "1754-2256", "t4": "1811-2119"}
+    },
+    "post_projection_readers_of_prepared_sources": "the independent raw residual y - Xb (prepared_fit::build_independent_raw_residuals through NumericOlsColumns::subtract_fitted), used for the reported intercept mean (RawResiduals::MeanOnly), and requested xb/residual outputs; the row-major [y, X] copy is projected in place and holds no raw X afterwards",
+    "decision": "not implemented: every option either changes the independent raw residual's arithmetic or witness role (intercept from cached raw moments), or changes the public memory/transaction design (re-reading X through SPI after the solve, about 0.06-0.09 s per 1M x 17 values); keeping a raw row-major copy instead of the column-major sources saves nothing. An exact option outside P6: the three-FE pilot holds the original row-major matrix beside its candidate copy (144 B/row) only for the LSMR fallback; rebuilding the original from the column-major sources on a pilot miss would lower dense three-FE peaks by about 144 B/row without changing estimates or memory(auto)."
+  },
+  "e6c_level_index": {
+    "decision": "skipped",
+    "survey": "149 production members()/checked_members() call sites, 13 membership_offsets() sites, 28 &[usize] member parameters in kernels.rs/ordered.rs including the installed hardware function-pointer types; a u32 or implicit-identity index cannot return &[usize] without storage and needs those signatures changed together"
+  },
+  "ordered_reduction": {
+    "change": "fe::lsmr::additive_schwarz: Ordered reduction for every additive-Schwarz build (OLS borrowed/owned LSMR, Jacobi-trial escalation, explicit preconditioner(schwarz), PPML joint Schwarz); previously only deterministic/PPML-deterministic",
+    "three_sparse_public_auto_native_auto_vs_ordered": {"t1": [4.9826, 4.9363], "t4": [1.5411, 1.5771], "t8": [1.1454, 1.0318], "note": "Jacobi trial finishes in 22-23 iterations per RHS; no escalation, additive solver not built; identical bits"},
+    "three_sparse_explicit_lsmr_schwarz_native_auto_vs_ordered": {"t1": [4.858, 4.7443], "t4": [1.5241, 1.5349], "t8": [1.0193, 1.016], "note": "identical bits under both reductions and across 1/4/8 workers on this design"},
+    "cost": "within noise (-2.3% to +2.3%); far below 5% of native time",
+    "witnesses": "an escalating default-mode many-FE fit (shuffled near-confounded 60,000-row panel) repeats bit for bit at 1/2/4/8 workers and its retained solver reports the Ordered reduction; replay of the candidate against the Auto-reduction build of the same tree is 74/74 exact with 2/4/8-thread science and repeats",
+    "replay_vs_beta9": "59/74 exact; the 14 within-fused cases pass under tests/replay/scopes/2026-10-28-within-fused-lsmr-macos.json; ppml-separation-ir differs in RSEP[22] and RREC[28..29], the declared change of the integrated PPML separation activation; no science or discrete differences"
+  }
+}
