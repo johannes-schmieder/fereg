@@ -2070,7 +2070,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         config: MapConfig,
     ) -> Result<CertifiedBorrowedMap> {
         let withheld = self.begin_ppml_cmg_projection()?;
-        let result = self.absorb(weights, values.into(), config, None, None);
+        let result = self.absorb(weights, values.into(), config, None, None, true);
         self.finish_ppml_cmg_projection(withheld);
         if !result.as_ref().is_ok_and(|fit| fit.report().certified()) {
             self.reject_ppml_topology();
@@ -2087,7 +2087,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         config: MapConfig,
         final_residual: bool,
     ) -> Result<CertifiedBorrowedMap> {
-        self.absorb(weights, values, config, Some(!final_residual), None)
+        self.absorb(weights, values, config, Some(!final_residual), None, true)
     }
 
     pub(crate) fn absorb_ols_with_remaining(
@@ -2098,7 +2098,37 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         final_residual: bool,
         remaining: Option<ObserverRef<'_>>,
     ) -> Result<CertifiedBorrowedMap> {
-        self.absorb(weights, values, config, Some(!final_residual), remaining)
+        self.absorb(
+            weights,
+            values,
+            config,
+            Some(!final_residual),
+            remaining,
+            true,
+        )
+    }
+
+    /// [`Self::absorb_ols_with_remaining`] for a caller with its own certified
+    /// fallback (`AbsorbConfig::certified_fallback` false; the separation
+    /// detector re-executes with retained CG): a two-FE PCG certificate miss
+    /// or breakdown returns `NonConvergence` instead of continuing with MAP.
+    /// A result that certifies without MAP is unchanged bit for bit.
+    pub(crate) fn absorb_ols_declining_map_continuation(
+        &mut self,
+        weights: BorrowedMapWeights<'_>,
+        values: crate::ols::OlsProjectionInput,
+        config: MapConfig,
+        final_residual: bool,
+        remaining: Option<ObserverRef<'_>>,
+    ) -> Result<CertifiedBorrowedMap> {
+        self.absorb(
+            weights,
+            values,
+            config,
+            Some(!final_residual),
+            remaining,
+            false,
+        )
     }
 
     fn try_direct_route(
@@ -2211,6 +2241,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         config: MapConfig,
         ols_refine: Option<bool>,
         mut remaining: Option<ObserverRef<'_>>,
+        map_continuation: bool,
     ) -> Result<CertifiedBorrowedMap> {
         let refine_ols = ols_refine.unwrap_or(false);
         validate_config(config)?;
@@ -2586,6 +2617,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                 values,
                 config,
                 ols_refine,
+                map_continuation,
                 0,
                 1.0,
                 setup_seconds,
@@ -2748,6 +2780,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         values: DenseMatrix,
         config: MapConfig,
         ols_refine: Option<bool>,
+        map_continuation: bool,
         completed_pilot_iterations: usize,
         pilot_contraction: f64,
         setup_seconds: f64,
@@ -2783,7 +2816,10 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             if explicit_cmg_schur {
                 SchurWorkLimit::CmgSchur
             } else {
-                SchurWorkLimit::Map { ols_refine }
+                SchurWorkLimit::Map {
+                    ols_refine,
+                    map_continuation,
+                }
             },
             self.retain_coefficients,
             self.auto_route.as_mut(),
@@ -2850,7 +2886,7 @@ fn absorb_two_fe_pcg_reusing(
     let mut recurrence_seconds = 0.0;
     let rhs_count = values.ncols();
     let (iteration_cap, checkpoint_progress, refine, report_ols_method) = match work_limit {
-        SchurWorkLimit::Map { ols_refine } => (
+        SchurWorkLimit::Map { ols_refine, .. } => (
             None,
             false,
             ols_refine.unwrap_or(false),
@@ -3685,6 +3721,18 @@ fn absorb_two_fe_pcg_reusing(
         return Err(FeregError::new(
             ErrorCode::NonConvergence,
             "cmgschur did not certify within its iteration budget",
+        ));
+    }
+    if matches!(
+        work_limit,
+        SchurWorkLimit::Map {
+            map_continuation: false,
+            ..
+        }
+    ) {
+        return Err(FeregError::new(
+            ErrorCode::NonConvergence,
+            "two-FE categorical PCG did not certify; its caller declined the MAP continuation",
         ));
     }
 
@@ -9467,7 +9515,11 @@ fn checkpoint_schur_copy(
 #[derive(Clone, Copy)]
 enum SchurWorkLimit {
     // None denotes PPML; Some(false) is the OLS final-residual phase.
-    Map { ols_refine: Option<bool> },
+    // `map_continuation` is false only for a caller that declined it.
+    Map {
+        ols_refine: Option<bool>,
+        map_continuation: bool,
+    },
     Checkpoint(usize),
     CmgSchur,
 }

@@ -1,16 +1,19 @@
 #![deny(clippy::too_many_lines)]
-//! Hidden `inject=ppml_separation_auto` against the public detector solver.
+//! The default two-FE Auto detector route against the retained-CG arm.
 //!
-//! The hidden arm solves admitted two-intercept detector projections with the
-//! OLS two-FE Auto route instead of retained-product CG; every detector rule
-//! is unchanged. Decision identity requires equal separated sets, drop
-//! reasons, generation hashes, method order, statuses, iterations, certificate
-//! verdicts and published fit bits; certificate magnitudes are solver
-//! diagnostics. On this small seeded corpus (weakly connected chains, sparse
-//! AKM graphs and induced finite-regressor separation at the public
-//! `septolerance(1e-8)`) identity does NOT hold on every case: the census
-//! below pins each divergence class so the evidence is reproducible and any
-//! change to either arm is seen (VALIDATION, PPML separation routing).
+//! Since beta.10 admitted two-intercept detector projections use the OLS
+//! two-FE Auto route by default (a failed Auto step re-executes as retained
+//! CG); `inject=ppml_separation_cg` keeps retained-product CG, the earlier
+//! public path, as a developer comparison arm. Every detector rule is the
+//! same in both. Decision identity requires equal separated sets, drop
+//! reasons, generation hashes, method order, statuses, iterations,
+//! certificate verdicts and published fit bits; certificate magnitudes are
+//! solver diagnostics. On this small seeded corpus (weakly connected chains,
+//! sparse AKM graphs and induced finite-regressor separation at the public
+//! `septolerance(1e-8)`) the arms agree in sample, drops and fit everywhere;
+//! the census below pins the cells whose terminal rectifier certifies at a
+//! different iteration so any change to either arm is seen (VALIDATION, PPML
+//! separation routing).
 //!
 //! Every arm that completes also agrees with an independent witness: the
 //! retained sample of a HiGHS linear program (maximal recession-cone
@@ -29,13 +32,13 @@ use fereg_oracle::designs::{generate, Design, DesignSpec, Graph, WeightKind};
 fn fit(
     design: &Design,
     config: SeparationConfig,
-    injected: bool,
+    auto_route: bool,
     threads: usize,
 ) -> Result<CertifiedPpmlResult, FeregError> {
     let (mut request, loaded) = support::ppml::request(design, None, false, config);
     let team = ThreadConfig::from_requested(threads, false).expect("threads");
     request.linear.execution.threads = team;
-    request.inject_separation_auto = injected;
+    request.inject_separation_cg = !auto_route;
     ThreadTeam::new(team)
         .install(|| fit_prepared_ppml(request, loaded))
         .expect("team")
@@ -163,12 +166,12 @@ fn designs() -> Vec<(String, Design)> {
     designs
 }
 
-/// Outcome class of one public/hidden pair.
+/// Outcome class of one retained-CG/Auto pair.
 fn classify(
-    public: &Result<CertifiedPpmlResult, FeregError>,
-    hidden: &Result<CertifiedPpmlResult, FeregError>,
+    cg: &Result<CertifiedPpmlResult, FeregError>,
+    auto: &Result<CertifiedPpmlResult, FeregError>,
 ) -> &'static str {
-    match (public, hidden) {
+    match (cg, auto) {
         (Ok(p), Ok(h)) if published(p) == published(h) => "same",
         (Ok(p), Ok(h)) => {
             // Equal sample and fit; only a terminal no-separation rectifier
@@ -197,36 +200,36 @@ fn classify(
         }
         (Err(p), Err(h)) if p.code == h.code && p.message == h.message => "same",
         (Err(_), Err(_)) => "both-fail",
-        (Err(_), Ok(_)) => "public-fails",
-        (Ok(_), Err(_)) => "hidden-fails",
+        (Err(_), Ok(_)) => "cg-fails",
+        (Ok(_), Err(_)) => "auto-fails",
     }
 }
 
 /// Every (seed, configuration) pair whose class is not "same" at one worker.
 /// Configuration 0 is the public `fe simplex ir` chain. "ir-iterations":
 /// equal sample, drops and fit bits; only a terminal no-separation rectifier
-/// execution's iteration count and certificate differ. "hidden-fails": the
-/// Auto route exhausts its iteration budget. "both-fail": both arms error,
-/// differently. Where both arms succeed the separated set never differs.
+/// execution's iteration count and certificate differ. Where both arms
+/// succeed the separated set never differs.
 ///
-/// Before the public detector re-executed failed retained-CG steps with LSMR
-/// (2026-10-27), nine more cells were "public-fails": (5, 1), (5, 2), (11, 1),
+/// Before the retained-CG detector re-executed failed steps with LSMR
+/// (2026-10-27), nine more cells were "cg-fails": (5, 1), (5, 2), (11, 1),
 /// (11, 2), (17, 1) and (17, 2) now "ir-iterations", and (10, 0), (14, 0) and
-/// (16, 0) now "same".
+/// (16, 0) now "same". Before a failed Auto step re-executed as retained CG
+/// (2026-10-28), (9, 1) and (9, 2) were "auto-fails" (a two-FE PCG final
+/// residual at the categorical certificate's rounding floor; MAP could not
+/// move it) and (3, 1) and (3, 2) "both-fail"; all four are now "same", the
+/// seed-3 cells with the retained-CG error in both arms. Since the Auto route
+/// became the default (beta.10) the first arm is `inject=ppml_separation_cg`.
 const DIVERGENCES: &[(usize, usize, &str)] = &[
     (2, 0, "ir-iterations"),
     (2, 1, "ir-iterations"),
     (2, 2, "ir-iterations"),
-    (3, 1, "both-fail"),
-    (3, 2, "both-fail"),
     (5, 0, "ir-iterations"),
     (5, 1, "ir-iterations"),
     (5, 2, "ir-iterations"),
     (8, 0, "ir-iterations"),
     (8, 1, "ir-iterations"),
     (8, 2, "ir-iterations"),
-    (9, 1, "hidden-fails"),
-    (9, 2, "hidden-fails"),
     (11, 0, "ir-iterations"),
     (11, 1, "ir-iterations"),
     (11, 2, "ir-iterations"),
@@ -275,19 +278,19 @@ fn retained_witness(fit: &CertifiedPpmlResult) -> (usize, u64) {
 }
 
 #[test]
-fn hidden_auto_projection_divergence_census_is_pinned() {
+fn auto_projection_divergence_census_is_pinned() {
     let mut observed = Vec::new();
     for (seed, (name, design)) in designs().into_iter().enumerate() {
         for (index, config) in configurations().into_iter().enumerate() {
-            let (public, hidden) = (
+            let (cg, auto) = (
                 fit(&design, config, false, 1),
                 fit(&design, config, true, 1),
             );
-            for arm in [&public, &hidden].into_iter().flatten() {
+            for arm in [&cg, &auto].into_iter().flatten() {
                 let context = format!("{name} config {index}");
                 assert_eq!(retained_witness(arm), LP_WITNESS[seed], "{context}");
             }
-            let class = classify(&public, &hidden);
+            let class = classify(&cg, &auto);
             if class != "same" {
                 observed.push((seed, index, class));
             }
@@ -296,8 +299,8 @@ fn hidden_auto_projection_divergence_census_is_pinned() {
     assert_eq!(observed, DIVERGENCES);
 }
 
-/// Both arms, including public fits that re-execute a failed retained-CG step
-/// with LSMR, repeat bit for bit at a fixed worker count and keep their
+/// Both arms, including fits that re-execute a failed Auto step as retained
+/// CG or a failed retained-CG step with LSMR, repeat bit for bit at a fixed worker count and keep their
 /// decisions and sample across 1, 2, 4 and 8 workers.
 #[test]
 fn both_arms_repeat_and_agree_across_workers() {
@@ -324,7 +327,7 @@ fn both_arms_repeat_and_agree_across_workers() {
                             .collect::<Vec<_>>()
                     )
                 };
-                let context = format!("{name} config {index} hidden {injected} threads {threads}");
+                let context = format!("{name} config {index} auto {injected} threads {threads}");
                 // Fixed workers: every bit, certificate magnitudes included.
                 assert_eq!(certificates(&first), certificates(&second), "{context}");
                 assert_eq!(published(&first), published(&second), "{context}");
@@ -353,13 +356,13 @@ fn census_cell() {
     for injected in [false, true] {
         match fit(&design, configurations()[index], injected, 1) {
             Ok(fit) => eprintln!(
-                "{name} config {index} hidden {injected}: retained {:?}, witness {:?}, {}",
+                "{name} config {index} auto {injected}: retained {:?}, witness {:?}, {}",
                 retained_witness(&fit),
                 LP_WITNESS[seed],
                 published(&fit).0
             ),
             Err(error) => eprintln!(
-                "{name} config {index} hidden {injected}: {:?} {}",
+                "{name} config {index} auto {injected}: {:?} {}",
                 error.code, error.message
             ),
         }

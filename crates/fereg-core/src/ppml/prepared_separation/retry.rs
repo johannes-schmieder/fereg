@@ -1,4 +1,14 @@
-//! LSMR re-execution of a detector step whose retained-CG projection failed.
+//! Re-execution of a detector step whose admitted projection failed.
+//!
+//! A step admitted on the two-FE Auto route ([`super::routing`]) that fails a
+//! numerical certificate first runs again with retained-product CG, the
+//! detector's established solver, under the same weights, tolerances,
+//! iteration limit, rules and certificates; from there it continues exactly
+//! as a retained-CG step (below). The Auto attempt takes no MAP continuation
+//! (its `AbsorbConfig::certified_fallback` is off), so a two-FE PCG
+//! certificate miss reaches retained CG at once. The
+//! re-executed step reproduces the retained-CG step bit for bit, and when it
+//! fails too, its error (not the Auto attempt's) is reported.
 //!
 //! The public detector solves its weighted finite-plus-FE projections with
 //! retained-product CG on the normal equations. The rectifier weights zero
@@ -52,9 +62,10 @@ pub(super) struct LsmrAdmission {
     bytes: u128,
 }
 
-/// The re-execution charge for an admitted retained-CG detector: the CG
-/// charge with its CG workspace replaced by LSMR's, and at least the graph
-/// proposal workspace the CG budget admitted.
+/// The re-execution charge for an admitted retained-CG detector (or an Auto
+/// detector, whose re-execution is retained CG): the CG charge with its CG
+/// workspace replaced by LSMR's, and at least the graph proposal workspace
+/// the CG budget admitted.
 pub(super) fn lsmr_admission(
     solver: FeSolverKind,
     estimate: &FeSolverMemoryEstimate,
@@ -63,7 +74,7 @@ pub(super) fn lsmr_admission(
     graph_bytes: u128,
     base: u128,
 ) -> Result<Option<LsmrAdmission>> {
-    if solver != FeSolverKind::Cg {
+    if !matches!(solver, FeSolverKind::Cg | FeSolverKind::Auto) {
         return Ok(None);
     }
     let bytes = estimate
@@ -86,10 +97,13 @@ pub(super) fn lsmr_admission(
     Ok(Some(LsmrAdmission { base, bytes }))
 }
 
-/// The admitted detector projection policy and its optional re-execution.
+/// The admitted detector projection policy and its optional re-executions.
 pub(super) struct DetectorPolicy<'a> {
     ppml: PpmlConfig,
     linear: PreparedOlsFitConfig,
+    /// The retained-CG policy of an admitted Auto detector, under the same
+    /// admitted budget; `None` when the admitted policy is retained CG.
+    retained_cg: Option<(PpmlConfig, PreparedOlsFitConfig)>,
     /// The LSMR charge and the fit's live plan it is admitted into.
     lsmr: Option<(LsmrAdmission, &'a Cell<PpmlMemoryPlan>)>,
 }
@@ -98,13 +112,20 @@ impl<'a> DetectorPolicy<'a> {
     pub(super) const fn new(
         ppml: PpmlConfig,
         linear: PreparedOlsFitConfig,
+        retained_cg: Option<(PpmlConfig, PreparedOlsFitConfig)>,
         lsmr: Option<(LsmrAdmission, &'a Cell<PpmlMemoryPlan>)>,
     ) -> Self {
-        Self { ppml, linear, lsmr }
+        Self {
+            ppml,
+            linear,
+            retained_cg,
+            lsmr,
+        }
     }
 
     /// Run one detector step with the admitted policy and, after a numerical
-    /// certificate failure, once more with LSMR. Returns the step's result and
+    /// certificate failure, once more with retained CG when the admitted
+    /// policy is Auto, then once more with LSMR. Returns the step's result and
     /// the policy that produced it (a terminal result's replay must re-execute
     /// with that same policy).
     pub(super) fn run<T>(
@@ -112,12 +133,28 @@ impl<'a> DetectorPolicy<'a> {
         generation: usize,
         mut step: impl FnMut(PpmlConfig, PreparedOlsFitConfig) -> Result<T>,
     ) -> Result<(T, PpmlConfig, PreparedOlsFitConfig)> {
-        let first = match step(self.ppml, self.linear) {
+        let mut first = match step(self.ppml, self.linear) {
             Ok(value) => return Ok((value, self.ppml, self.linear)),
             Err(error) => error,
         };
         if !numerical(&first) {
             return Err(first);
+        }
+        if let Some((ppml, linear)) = self.retained_cg {
+            let retried = step(ppml, linear);
+            if crate::diagnostics::phase_timing_enabled() {
+                eprintln!(
+                    "FEREG_PHASE|separation_projection_retry|generation={generation}|solver=cg|first={:?}|succeeded={}",
+                    first.code,
+                    u8::from(retried.is_ok()),
+                );
+            }
+            // From here the step is exactly a retained-CG step.
+            first = match retried {
+                Ok(value) => return Ok((value, ppml, linear)),
+                Err(error) if numerical(&error) => error,
+                Err(error) => return Err(error),
+            };
         }
         let Some((ppml, linear)) = self.admit_lsmr()? else {
             return Err(first);
@@ -149,7 +186,7 @@ impl<'a> DetectorPolicy<'a> {
             return Ok(None);
         }
         live.set(plan);
-        let mut linear = self.linear;
+        let mut linear = self.retained_cg.map_or(self.linear, |(_, linear)| linear);
         linear.absorb.solver = FeSolverKind::Lsmr;
         linear.absorb.solver_memory_budget = Some(FeSolverMemoryBudget {
             execution_bytes: admission.base,
@@ -158,7 +195,7 @@ impl<'a> DetectorPolicy<'a> {
                 .checked_add(admission.bytes)
                 .ok_or_else(|| allocation("separation LSMR projection budget overflows"))?,
         });
-        let mut ppml = self.ppml;
+        let mut ppml = self.retained_cg.map_or(self.ppml, |(ppml, _)| ppml);
         ppml.absorb = linear.absorb;
         Ok(Some((ppml, linear)))
     }

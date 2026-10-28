@@ -1163,8 +1163,26 @@ Requested/default IR nonconvergence or uncertified output is fatal. Mu needs
 a fitted start and the same independent cone certificate; accepted Mu drops
 discard that entire fitted session.
 
-An admitted detector projection is solved with retained-product CG on the
-weighted normal equations. When a detector step that used it fails a
+An admitted detector projection on exactly two categorical intercept effects
+is solved with the OLS two-FE Auto route (Johannes, 2026-10-28, beta.10);
+other admitted projections, and the developer comparison arm
+`inject=ppml_separation_cg`, use retained-product CG. The FE tolerance, the
+finite score tolerance, the rank, FE-moment, score and reconstruction
+certificates, the memory budget and every detector weight, recurrence,
+iteration limit, sign and threshold rule are the same on both routes. An
+Auto-routed step that fails a numerical certificate takes no two-FE PCG MAP
+continuation and runs once more with retained CG under the same admitted
+budget; from there it is exactly a retained-CG step (below), and when that
+fails as well the retained-CG step's error is reported. Numerical scope of the
+activation: the flagged separated set, the final sample, coefficients and VCE
+are unchanged on every witness; the rectifier may certify its terminal
+fixed point at an earlier iteration, so `RSEP` iteration counts (column 5)
+and certificate magnitudes (columns 9-12, zero-based 8-11) and `RSEQ` total
+iterations may change, and with them the separation trace digest (`RREC`
+zero-based positions 28-29).
+
+A retained-CG projection solves the weighted normal equations. When a
+detector step that used it fails a
 numerical certificate (NonConvergence or InvalidData: a simplex deletion's
 certification, the rectifier's detection and deletion certification, or the
 Mu candidate and its certification), the step runs once more with LSMR, the

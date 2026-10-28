@@ -75,7 +75,7 @@ the routing injections below select experimental algorithms for qualification.
 | `inject=routing_incremental_two` | OLS (replay wire) | Qualifies the existing direct-or-h16/k1 synchronous portfolio for exactly two categorical intercept FEs |
 | `inject=routing_builder_break` + `break_marker_token=<32 lowercase hex>` | OLS | Uses the synchronous h4/k1 builder and waits for Break at its first cancellation poll after executed construction work; any worker count |
 | `inject=ppml_topology` | PPML | Shares admitted categorical checkpoint component indexing after acceptance; weighted numerical data is recomputed in every frame |
-| `inject=ppml_separation_auto` | PPML | Solves admitted separation-detector projections (rectifier, Mu, numerical direction span checks) with exactly two categorical intercepts through the OLS two-FE Auto route instead of retained-product CG; detector tolerances, weights, iteration limit and decision rules are unchanged. Qualification arm only: its witnesses did not hold on every case (see VALIDATION, PPML separation routing) |
+| `inject=ppml_separation_cg` | PPML | Comparison arm for the beta.10 default: solves admitted separation-detector projections (rectifier, Mu, numerical direction span checks) with exactly two categorical intercepts with retained-product CG, the earlier public path, instead of the OLS two-FE Auto route; detector tolerances, weights, iteration limit and decision rules are the same. Replaces `inject=ppml_separation_auto` (see VALIDATION, PPML separation routing) |
 
 Each routing name is a complete literal token, for example
 `routing_h8_k1`. The hidden Stata adapter accepts the `routing_h*_k*`,

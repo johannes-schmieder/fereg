@@ -64,7 +64,20 @@
   failed with r(430) or r(459) at the default `septolerance(1e-8)` now
   complete with certified separation (9 of 11 failing cells of the seeded
   census); fits that completed before are bit-identical.
+- PPML separation detector projections with exactly two categorical
+  intercepts (the iterated rectifier, Mu and numerical span checks) use the
+  OLS two-FE Auto route instead of retained-product CG, which cut PPML native
+  time on two Veneto-shaped Poisson panels to 0.43-0.73 of beta.9 (1-8
+  workers). Detector tolerances, weights, iteration limits and rules are
+  unchanged; an Auto step that fails a certificate runs again as retained CG.
+  The separated rows, sample, coefficients and covariance are unchanged on
+  every witness; the rectifier can certify at an earlier iteration, so
+  `e(feppml_separation)` iteration counts and certificate magnitudes and the
+  receipt's separation trace digest can differ. `inject=ppml_separation_cg`
+  keeps the retained-CG path for comparison.
 - Developer phase timing reports the PPML separation rectifier (phase,
+## Unreleased
+
   iteration and projection laps). A hidden `inject=ppml_separation_auto`
   qualification arm solves two-intercept separation-detector projections with
   the two-FE Auto route; the public detector is unchanged.
@@ -76,6 +89,7 @@
   Results change in the last bits within the
   certified tolerances; routes, iterations and discrete decisions are
   unchanged. LSMR sessions keep fewer response copies.
+  iteration and projection laps).
 
 ## 0.5.0 beta.9 — 2026-10-28
 

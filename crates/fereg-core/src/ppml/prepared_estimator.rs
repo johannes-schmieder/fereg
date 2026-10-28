@@ -142,12 +142,13 @@ pub struct PreparedPpmlRequestV1 {
     /// Hidden structural-sharing qualification arm; ordinary PPML leaves it off.
     #[doc(hidden)]
     pub inject_topology_sharing: bool,
-    /// Hidden qualification arm: weighted separation-detector projections on
-    /// exactly two categorical intercepts use the OLS two-FE Auto route
-    /// instead of retained-product CG. Every detector decision rule, tolerance
-    /// and iteration limit is unchanged; ordinary PPML leaves it off.
+    /// Developer comparison arm: weighted separation-detector projections on
+    /// exactly two categorical intercepts keep retained-product CG instead of
+    /// the default OLS two-FE Auto route (the pre-beta.10 public path). Every
+    /// detector decision rule, tolerance and iteration limit is the same;
+    /// ordinary PPML leaves it off.
     #[doc(hidden)]
-    pub inject_separation_auto: bool,
+    pub inject_separation_cg: bool,
 }
 
 /// Owned raw inputs for PPML preparation.
@@ -359,7 +360,7 @@ pub fn fit_prepared_ppml_interruptible(
     let separation_execution = PreparedPpmlSeparationExecution {
         preliminary_plan,
         linear: resolved_linear,
-        auto_projection: request.inject_separation_auto,
+        auto_projection: !request.inject_separation_cg,
     };
     let requested_saved_channels = requested_saved_channels(&request.ols)?;
     if requested_saved_channels
