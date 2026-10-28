@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## Unreleased
+
 - OLS Auto with three or more categorical-intercept effects no longer falls
   back to slow alternating projections on large sparse panels because of an
   overstated memory estimate: when the additive-Schwarz bound refuses LSMR,
@@ -66,6 +68,14 @@
   iteration and projection laps). A hidden `inject=ppml_separation_auto`
   qualification arm solves two-intercept separation-detector projections with
   the two-FE Auto route; the public detector is unchanged.
+- The pinned `within` (`3b5b9b9a`) runs each modified-LSMR step as one pass
+  over observations and sums its design adjoints in a fixed order without
+  atomics, so three-FE LSMR solves with the Jacobi or no preconditioner repeat
+  exactly and agree across worker counts without `deterministic` (additive
+  Schwarz keeps `within`'s Auto reduction unless `deterministic` is set).
+  Results change in the last bits within the
+  certified tolerances; routes, iterations and discrete decisions are
+  unchanged. LSMR sessions keep fewer response copies.
 
 ## 0.5.0 beta.9 — 2026-10-28
 
