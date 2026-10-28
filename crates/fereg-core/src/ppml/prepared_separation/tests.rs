@@ -2405,14 +2405,25 @@ fn break_inside_an_auto_rectifier_projection_is_interrupted() {
         return;
     }
     use crate::interrupt::test_polls;
-    for solver in [FeSolverKind::Auto, FeSolverKind::Cg] {
+    let admitted = |solver| {
         let ppml = detector_ppml(solver);
-        let config = rectifier_only();
         let linear = PreparedOlsFitConfig {
             absorb: ppml.absorb,
             fixed_effect_collinearity_tolerance: ppml.fixed_effect_collinearity_tolerance,
             ..PreparedOlsFitConfig::default()
         };
+        (ppml, linear)
+    };
+    for solver in [FeSolverKind::Auto, FeSolverKind::Cg] {
+        let config = rectifier_only();
+        let (mut ppml, mut linear) = admitted(solver);
+        // The default (Auto) detector as admitted: no MAP continuation and a
+        // retained-CG re-execution, which a Break never reaches.
+        let retained_cg = (solver == FeSolverKind::Auto).then(|| admitted(FeSolverKind::Cg));
+        if retained_cg.is_some() {
+            linear.absorb.certified_fallback = false;
+            ppml.absorb = linear.absorb;
+        }
         // Host polls observed at each rectifier Break point, then the result.
         let run = || {
             let coordinator =
@@ -2426,7 +2437,7 @@ fn break_inside_an_auto_rectifier_projection_is_interrupted() {
             };
             let result = coordinate_prepared_ppml_separation(
                 coordinator,
-                &retry::DetectorPolicy::new(ppml, linear, None, None),
+                &retry::DetectorPolicy::new(ppml, linear, retained_cg, None),
                 config,
                 None,
                 // Without the graph shortcut every rectifier mark is an

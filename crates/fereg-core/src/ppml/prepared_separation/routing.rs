@@ -2,11 +2,13 @@
 //!
 //! An admitted detector projection (rectifier recurrence, Mu candidate or a
 //! numerical direction's span check) is one certified weighted
-//! finite-plus-FE least-squares projection. The public route solves its FE
-//! systems with retained-product CG. The hidden `inject=ppml_separation_auto`
-//! arm solves them with the OLS two-FE Auto route (diagonal pilot, stall
-//! gate, CMG Schur preconditioner on the worker team, aggregated cells) on
-//! the detector's own weights, for exactly two categorical intercept effects.
+//! finite-plus-FE least-squares projection. For exactly two categorical
+//! intercept effects the default route (beta.10) solves its FE systems with
+//! the OLS two-FE Auto route (diagonal pilot, stall gate, CMG Schur
+//! preconditioner on the worker team, aggregated cells) on the detector's own
+//! weights; other designs, and the developer comparison arm
+//! `inject=ppml_separation_cg` (the earlier public path), use retained-product
+//! CG.
 //!
 //! Only the solver that reaches the projection's certificates changes: the
 //! FE tolerance, the finite score tolerance (`projection_tolerance`), the

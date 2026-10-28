@@ -280,7 +280,8 @@ impl FinalGenerationReplayToken {
 pub(crate) struct PreparedPpmlSeparationExecution {
     pub(crate) preliminary_plan: PpmlMemoryPlan,
     pub(crate) linear: PreparedOlsFitConfig,
-    /// Hidden `inject=ppml_separation_auto` arm; see [`routing`].
+    /// Default two-FE Auto detector route; `inject=ppml_separation_cg` turns
+    /// it off. See [`routing`].
     pub(crate) auto_projection: bool,
 }
 
