@@ -8,8 +8,9 @@
   bit-identical.
 - OLS designs with more than 63 controls compute raw column moments in wide
   column bands and build their `[y, X]` matrix in row tiles instead of cell by
-  cell, removing the jump in run time at 64 controls; results are
-  bit-identical, and the fast memory estimate counts the wide binding.
+  cell, and accumulate their cross-products in a private buffer beyond 64
+  columns, removing the jumps in run time at 63 to 65 controls; results are
+  bit-identical, and the fast memory estimate counts the new buffers.
 - Developer phase timing (`FEREG_PHASE_TIMING`) splits the MAP wrapper, dense
   projection setup, score certificate, PPML one-FE profile and loader pipeline.
 
