@@ -6023,7 +6023,13 @@ fn run_borrowed_lsmr_with_prepared<'a>(
         memory.include(admitted)?;
     }
     let lsmr_setup_started = Instant::now();
-    let rhs = super::lsmr_batch::rhs_columns(values)?;
+    // The general routing windows transport their own columns from `values`
+    // and release them once their sessions own copies.
+    let rhs = if general_routing.is_some() {
+        Vec::new()
+    } else {
+        super::lsmr_batch::rhs_columns(values)?
+    };
     let rhs_views = rhs.iter().map(Vec::as_slice).collect::<Vec<_>>();
     let options = LsmrOptions {
         tol: lsmr_config.tolerance,
@@ -6050,7 +6056,7 @@ fn run_borrowed_lsmr_with_prepared<'a>(
         let solved = routing.solve(
             design,
             weights,
-            &rhs_views,
+            values,
             &options,
             lsmr_config.preconditioner,
             preconditioner,

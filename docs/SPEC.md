@@ -1394,7 +1394,14 @@ refactors retain exact route/bit checks. No post-hoc parity exception is implied
 Preserve supported memory modes, admission policy and public controls.
 Preserve checked sizing, fallible allocation, r(909), ownership cleanup and
 transaction atomicity. Reuse existing allocation/failure tests; no new exhaustive
-memory-audit framework is required. Estimates remain estimates, not process RSS
+memory-audit framework is required. The many-FE LSMR route transports each RHS window
+from the row-major projection input only while its sessions start, releases
+the column-major copy once each session owns its response, and transports the
+columns again, bitwise, for an escalation or a preconditioner retry; OLS Fast
+releases its projected matrix after the finite solve, which no later stage
+reads. Both are arithmetic-preserving storage-lifetime changes. Admission
+totals are unchanged (they still charge the released storage), so
+`memory(auto)` chooses Fast or Low exactly as before. Estimates remain estimates, not process RSS
 or strict OS bounds. No new route-specific admission fences may be added to
 hide a performance regression. Future removal of a mode needs mapped coverage.
 

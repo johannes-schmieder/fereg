@@ -3027,3 +3027,61 @@ fn escalation_reuses_the_trial_design_with_the_rebuilt_solvers_bits() {
         }
     }
 }
+
+fn route_trial_panel<R: super::super::lsmr_batch::RhsSource + ?Sized>(
+    panel: &TrialPanel,
+    rhs: &R,
+) -> (within::BatchSolveResult, bool) {
+    let design = panel.design();
+    let weights = validate_weights(BorrowedMapWeights::Unit, design.nobs()).unwrap();
+    let options = LsmrOptions {
+        tol: 1e-9,
+        maxiter: 1_000,
+        local_size: None,
+    };
+    let estimate = estimate_fe_solver_memory(design.nobs(), 2, &panel.levels, 1, None).unwrap();
+    let mut memory =
+        BorrowedLsmrCallMemory::new(estimate, LsmrPreconditioner::Schwarz, None, 0).unwrap();
+    let mut route = routing_lsmr::GeneralRoutingState::new(RoutingPreset::geometry_many());
+    route.begin(1e-8, false);
+    let (solved, _) = route
+        .solve(
+            &design,
+            weights,
+            rhs,
+            &options,
+            LsmrPreconditioner::Auto,
+            borrowed_within_preconditioner(LsmrPreconditioner::Schwarz),
+            true,
+            &mut memory,
+            None,
+        )
+        .unwrap();
+    (solved, route.jacobi_trial_active())
+}
+
+#[test]
+fn routing_windows_transport_their_own_columns_bit_for_bit() {
+    // The many-FE windows transport each window from the row-major matrix and
+    // release it once the sessions own their responses; an escalation
+    // transports its columns again. Both match borrowed column-major input.
+    use super::super::lsmr_batch::RhsSource;
+    for (panel, escalates) in [
+        (TrialPanel::new(false), false),
+        (TrialPanel::new(true), true),
+    ] {
+        let columns = super::super::lsmr_batch::rhs_columns(&panel.values).unwrap();
+        let borrowed: Vec<_> = columns.iter().map(Vec::as_slice).collect();
+        assert_eq!(
+            panel.values.columns(&[1]).unwrap().views(),
+            vec![borrowed[1]]
+        );
+        let (matrix, matrix_trial) = route_trial_panel(&panel, &panel.values);
+        let (slices, slices_trial) = route_trial_panel(&panel, &borrowed[..]);
+        assert_eq!(matrix_trial, !escalates);
+        assert_eq!(slices_trial, !escalates);
+        assert_eq!(matrix.iterations, slices.iterations);
+        assert_eq!(matrix.x, slices.x);
+        assert_eq!(matrix.demeaned, slices.demeaned);
+    }
+}

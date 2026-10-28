@@ -7,6 +7,7 @@
 use std::cell::RefCell;
 use std::sync::{Arc, Mutex};
 
+use super::super::lsmr_batch::RhsSource;
 use super::*;
 use crate::fe::cmg_schur::{CmgSchurPreconditioner, Sampling};
 use crate::fe::routing::{RoutingPreset, SetupLedger};
@@ -203,11 +204,11 @@ impl<'a> GeneralRoutingState<'a> {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub(super) fn solve(
+    pub(super) fn solve<R: RhsSource + ?Sized>(
         &mut self,
         design: &BorrowedInterceptFeDesign<'a>,
         weights: ValidatedWeights<'_>,
-        rhs: &[&[f64]],
+        rhs: &R,
         options: &LsmrOptions,
         requested: LsmrPreconditioner,
         preconditioner: PreconditionerConfig,
@@ -221,10 +222,11 @@ impl<'a> GeneralRoutingState<'a> {
             || self.prepared.preconditioner_fallback
         {
             self.close_attempt();
+            let columns = rhs.all_columns()?;
             return self.prepared.solve(
                 design,
                 weights,
-                rhs,
+                &columns.views(),
                 options,
                 requested,
                 preconditioner,
@@ -241,7 +243,7 @@ impl<'a> GeneralRoutingState<'a> {
         } = self.prepare_call(
             design,
             weights,
-            rhs.len(),
+            rhs.count(),
             options,
             preconditioner,
             deterministic,
@@ -253,10 +255,11 @@ impl<'a> GeneralRoutingState<'a> {
             self.replacement_bytes = 0;
             self.replacement_apply_bytes = 0;
             self.setup.attempted = true;
+            let columns = rhs.all_columns()?;
             let (mut solved, fallback) = self.prepared.solve(
                 design,
                 weights,
-                rhs,
+                &columns.views(),
                 options,
                 requested,
                 PreconditionerConfig::default(),
@@ -285,11 +288,11 @@ impl<'a> GeneralRoutingState<'a> {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn solve_serial_windows(
+    fn solve_serial_windows<R: RhsSource + ?Sized>(
         &mut self,
         design: &BorrowedInterceptFeDesign<'a>,
         weights: ValidatedWeights<'_>,
-        rhs: &[&[f64]],
+        rhs: &R,
         options: &LsmrOptions,
         deterministic: bool,
         memory: &mut BorrowedLsmrCallMemory,
@@ -315,20 +318,17 @@ impl<'a> GeneralRoutingState<'a> {
             )
         };
         let mut batch: Option<within::BatchSolveResult> = None;
-        for (window_index, columns) in rhs.chunks(window.max(1)).enumerate() {
+        let window = window.max(1);
+        for first in (0..rhs.count()).step_by(window) {
+            let positions: Vec<_> = (first..(first + window).min(rhs.count())).collect();
             let solver = self
                 .prepared
                 .solver
                 .as_ref()
                 .expect("retained routing solver");
             let trial = self.trial.is_some() && self.replacement.is_none();
-            let mut sessions = start_routing_sessions(
-                solver,
-                columns,
-                options,
-                initial_coefficients,
-                window_index * window,
-            )?;
+            let mut sessions =
+                start_routing_sessions(solver, rhs, &positions, options, initial_coefficients)?;
             let pilot = self.replacement.is_none()
                 && !self.setup.attempted
                 && options.maxiter > self.preset.general_pair_checkpoint();
@@ -399,7 +399,8 @@ impl<'a> GeneralRoutingState<'a> {
                 let (seconds, outcome) = self.escalate(
                     design,
                     weights,
-                    columns,
+                    rhs,
+                    &positions,
                     options,
                     deterministic,
                     &escalated,
@@ -421,7 +422,7 @@ impl<'a> GeneralRoutingState<'a> {
                 append(
                     &mut batch,
                     solved,
-                    rhs.len(),
+                    rhs.count(),
                     design.nobs(),
                     design.total_term_slots(),
                 )?;
@@ -438,11 +439,12 @@ impl<'a> GeneralRoutingState<'a> {
     /// and continue each escalated RHS from its iterate with the rest of its
     /// budget. Later calls on this binding reuse the additive solver.
     #[allow(clippy::too_many_arguments)]
-    fn escalate(
+    fn escalate<R: RhsSource + ?Sized>(
         &mut self,
         design: &BorrowedInterceptFeDesign<'a>,
         weights: ValidatedWeights<'_>,
-        columns: &[&[f64]],
+        rhs: &R,
+        positions: &[usize],
         options: &LsmrOptions,
         deterministic: bool,
         escalated: &[bool],
@@ -472,29 +474,34 @@ impl<'a> GeneralRoutingState<'a> {
             .solver
             .as_ref()
             .expect("additive routing solver");
-        let mut continued = match reserved(columns.len()) {
+        let restarted: Vec<_> = (0..positions.len())
+            .filter(|&offset| escalated[offset] && options.maxiter > finished[offset].iterations)
+            .collect();
+        let selected: Vec<_> = restarted.iter().map(|&offset| positions[offset]).collect();
+        let transported = match rhs.columns(&selected) {
+            Ok(columns) => columns,
+            Err(error) => return (seconds, Err(fatal(error))),
+        };
+        let columns = transported.views();
+        let mut continued = match reserved(restarted.len()) {
             Ok(values) => values,
             Err(error) => return (seconds, Err(fatal(error))),
         };
-        let started: Vec<_> = (0..columns.len())
-            .into_par_iter()
-            .filter_map(|offset| {
-                let remaining = options.maxiter.saturating_sub(finished[offset].iterations);
-                (escalated[offset] && remaining > 0).then(|| {
-                    let options = LsmrOptions {
-                        maxiter: remaining,
-                        ..options.clone()
-                    };
-                    solver
-                        .start_session_categorical_seeded(
-                            columns[offset],
-                            &finished[offset].x,
-                            &options,
-                        )
-                        .map(|session| (offset, session))
-                })
+        let started: Vec<_> = restarted
+            .par_iter()
+            .zip(&columns)
+            .map(|(&offset, column)| {
+                let options = LsmrOptions {
+                    maxiter: options.maxiter - finished[offset].iterations,
+                    ..options.clone()
+                };
+                solver
+                    .start_session_categorical_seeded(column, &finished[offset].x, &options)
+                    .map(|session| (offset, session))
             })
             .collect();
+        drop(columns);
+        drop(transported);
         for session in started {
             match session {
                 Ok(session) => continued.push(session),
@@ -625,11 +632,11 @@ impl<'a> GeneralRoutingState<'a> {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn retry_off(
+    fn retry_off<R: RhsSource + ?Sized>(
         &mut self,
         design: &BorrowedInterceptFeDesign<'a>,
         weights: ValidatedWeights<'_>,
-        rhs: &[&[f64]],
+        rhs: &R,
         options: &LsmrOptions,
         deterministic: bool,
         spent: usize,
@@ -651,10 +658,11 @@ impl<'a> GeneralRoutingState<'a> {
             maxiter: remaining,
             ..options.clone()
         };
+        let columns = rhs.all_columns()?;
         let (mut solved, _) = self.prepared.solve(
             design,
             weights,
-            rhs,
+            &columns.views(),
             &options,
             LsmrPreconditioner::Auto,
             PreconditionerConfig::Off,
@@ -851,13 +859,19 @@ impl within::FixedReducedInverseFactory for PairFactory<'_> {
     }
 }
 
-fn start_routing_sessions<'s, 'a>(
+/// Start one window's sessions. Each session copies its response, so the
+/// window's transport is released before any Krylov work; an escalation or
+/// retry transports its columns again, bitwise.
+fn start_routing_sessions<'s, 'a, R: RhsSource + ?Sized>(
     solver: &'s within::Solver<'a>,
-    columns: &[&[f64]],
+    rhs: &R,
+    positions: &[usize],
     options: &LsmrOptions,
     initial: Option<&FeCoefficientBatch>,
-    first_rhs: usize,
 ) -> Result<Vec<within::SolveSession<'s, 'a>>> {
+    let transported = rhs.columns(positions)?;
+    let columns = transported.views();
+    let first_rhs = positions.first().copied().unwrap_or(0);
     let mut sessions = Vec::new();
     sessions
         .try_reserve_exact(columns.len())
@@ -1298,7 +1312,7 @@ mod tests {
             .solve(
                 &design,
                 weights,
-                &rhs,
+                &rhs[..],
                 &options,
                 LsmrPreconditioner::Auto,
                 PreconditionerConfig::default(),
@@ -1387,7 +1401,7 @@ mod tests {
             .solve(
                 &design,
                 weights,
-                &rhs,
+                &rhs[..],
                 &options,
                 LsmrPreconditioner::Auto,
                 PreconditionerConfig::default(),
@@ -1507,7 +1521,7 @@ mod tests {
             .solve(
                 &design,
                 weights,
-                &rhs,
+                &rhs[..],
                 &options,
                 LsmrPreconditioner::Auto,
                 PreconditionerConfig::default(),
@@ -1561,7 +1575,7 @@ mod tests {
             .solve(
                 &design,
                 weights,
-                &rhs,
+                &rhs[..],
                 &options,
                 LsmrPreconditioner::Auto,
                 PreconditionerConfig::default(),
@@ -1588,7 +1602,7 @@ mod tests {
             .solve(
                 &design,
                 weights,
-                &[&next],
+                &[next.as_slice()][..],
                 &options,
                 LsmrPreconditioner::Auto,
                 PreconditionerConfig::default(),

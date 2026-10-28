@@ -18,6 +18,11 @@
 - Many-FE OLS Auto builds the pinned solver's design (including its locality
   sort) once for the Jacobi trial and reuses it when the trial escalates to
   additive Schwarz. Results are bit-identical.
+- Many-FE OLS Auto releases its column-major RHS transport once its LSMR
+  sessions hold their own copies, and OLS Fast releases the projected matrix
+  after the finite solve. The campaign sparse three-FE design
+  (1M rows, 16 controls, four workers) peaks about 100 MB lower on the Mac;
+  results, routes and memory admission are unchanged.
 
 ## 0.5.0 beta.9 — 2026-10-28
 
