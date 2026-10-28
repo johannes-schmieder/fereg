@@ -1029,6 +1029,37 @@ head (`d64fdc0d`):
 
 ## Package checks
 
+### Beta.10 integration packaging
+
+Beta.10 ships the integration round described in
+[Beta.10 integration qualification](#beta10-integration-qualification). The
+qualified Linux binary is the `3348fe45` SCC build (job 8313475), Windows was
+built at `7674cf06` (run `win-20261028T183336Z-bc5a4e6b`), and universal macOS was built offline from
+the corresponding-source archive at `7674cf06`. Runtime production inputs are
+unchanged across these revisions (`scripts/check_complexity.py
+--compare-production 3348fe45`: 225 runtime modules, 58 artifact inputs). The
+[package metadata](../dist/fereg-native.json) records each actual build
+commit, binary checksum, runtime identity and corresponding-source hash.
+
+| Platform | Beta.10 checks |
+| --- | --- |
+| macOS | Rust 1.85.1 universal build from the vendored source archive with an empty Cargo home and offline mode; binary privacy/export audit and actual ABI/load/panic checks passed. Replay of the archive-built plugin (`aa453ba7...`) against the qualified Mac plugin (`3e8f88de...`) is exact on all 77 cases. All 67 fixtures of the full Stata 19/MP profile passed (69 of 69 profile steps) on a fresh universal build at `7674cf06` with the path-remap environment. All 11 staged-package fixtures passed from the exact binary archive (`1a4de469...`) in a fresh Stata 19/MP session. |
+| Windows x86-64 | Run `win-20261028T183336Z-bc5a4e6b` at `7674cf06` passed the Rust 1.85.1/MSVC build, the project tests, the PE archive-path and source-manifest checks, the native loader and licensed Stata `stata-do` smoke with its authoritative status file, and the execution-identity, source-hash and shutdown-backstop controller checks (receipt `039f3245...`, source archive `f709dca1...`). |
+| Linux x86-64 | The qualified binary from build job 8313475 retains its SHA-256 (`a7964116...`). Job 8318613 passed the ELF audit, actual ABI/load/panic checks and all 67 fixtures of the full Stata 19/MP profile (0 failed); job 8318967 passed all 11 staged-package fixtures from the exact binary archive (`1a4de469...`) in Stata 19/MP. |
+
+The dependency audit found no advisories. The strict default
+`./scripts/run_tests.sh` passed with the refreshed package. The source archive
+SHA-256 is `2ca4fa49566c462bb24d045ea4b878bba5ab80952c3c410eb7924ae2990e365b`;
+the binary archive SHA-256 is `1a4de46983daaea92643dd0adba682007fd2dce6b8410219079e9e1ba94dc9cf`. Native Intel-host Stata testing remains
+outstanding; both macOS slices are supplied. One tooling mistake preceded the
+accepted runs and changed no artifact: the first archive-build attempt looked
+for the source ZIP in a directory while `package_release.py` writes the ZIP at
+the given output path.
+
+After publication, fresh Stata 19/MP sessions installed beta.10 from the public
+[beta.10 URL](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0-beta.10)
+and from updated `main` into isolated PLUS directories. INSTALLCHECK
+
 ### Beta.9 two-FE Auto round-two packaging
 
 Beta.9 ships the round-two changes described above. The qualified Linux binary
