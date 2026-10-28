@@ -22,6 +22,7 @@ mod eager_cells;
 use eager_cells::ReuseState;
 mod irons_tuck;
 mod lsmr_norms;
+mod map_wrapper_trace;
 pub(crate) use irons_tuck::absorb_borrowed_intercept_irons_tuck_certified;
 mod ppml_cmg;
 pub(crate) mod routing_lsmr;
@@ -6860,17 +6861,21 @@ fn absorb_with_reservation_mode<R: WorkspaceReservation>(
             "borrowed MAP requires nonempty observation and RHS axes",
         ));
     }
+    // Trace-only laps (FEREG_PHASE_TIMING): no arithmetic or decision effect.
+    let trace = map_wrapper_trace::ledger(values.nrows(), values.ncols());
     let invalid_values = values.as_slice().iter().any(|value| !value.is_finite());
     if invalid_values {
         return Err(invalid_data("borrowed MAP values must be finite"));
     }
     let weights = validate_weights(weights, values.nrows())?;
+    trace.lap(map_wrapper_trace::SCAN);
 
     let setup_started = Instant::now();
     let mut workspace =
         BorrowedMapWorkspace::new(design, values.nrows(), values.ncols(), reservation)?;
     update_workspace_norms(&values, weights, &mut workspace, true)?;
     let setup_seconds = setup_started.elapsed().as_secs_f64();
+    trace.lap(map_wrapper_trace::NORMS);
     let solve_started = Instant::now();
     let workspace_peak = workspace.payload_peak()?;
     let mut coefficients = retain_coefficients
@@ -6896,6 +6901,7 @@ fn absorb_with_reservation_mode<R: WorkspaceReservation>(
         } else {
             certify_initial(design, weights, &values, config.tolerance, &mut workspace)?
         };
+        trace.lap(map_wrapper_trace::INITIAL);
         if initial_certificate.passed {
             let mut result = certified_result(
                 values,
@@ -6947,6 +6953,7 @@ fn absorb_with_reservation_mode<R: WorkspaceReservation>(
             coefficients.as_mut(),
             config.symmetric,
         )?;
+        trace.lap(map_wrapper_trace::SWEEP);
         // One intercept effect is removed exactly by its first projection, so
         // certify immediately instead of waiting for the periodic multiway
         // cadence. Multiway designs retain periodic plus final certification.
@@ -6955,6 +6962,7 @@ fn absorb_with_reservation_mode<R: WorkspaceReservation>(
             || iteration == config.max_iterations
         {
             let certificate = certify(design, weights, &values, config.tolerance, &mut workspace)?;
+            trace.lap(map_wrapper_trace::CERTIFY);
             if certificate.passed {
                 let mut result = certified_result(
                     values,

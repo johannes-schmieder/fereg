@@ -3381,6 +3381,11 @@ impl PpmlIterationWorkspace {
             ));
         }
         self.trial_mean_bounds = None;
+        // Trace-only laps (FEREG_PHASE_TIMING): no arithmetic or decision effect.
+        let trace = crate::diagnostics::phase_ledger::PhaseLedger::new(
+            "ppml_line_search_trial",
+            ["interpolate", "means"],
+        );
         for row in 0..self.eta.len() {
             let value = self.eta[row] + step * (self.candidate_eta[row] - self.eta[row]);
             if !value.is_finite() {
@@ -3403,11 +3408,13 @@ impl PpmlIterationWorkspace {
             self.trial_coefficients[column] = value;
         }
         transform(&mut self.trial_eta)?;
+        trace.lap(0);
         if let Some(inputs) = inputs {
             inputs.fill_means(&self.trial_eta, bounds, &mut self.trial_mean)?;
         } else {
             means_from_eta(&self.trial_eta, bounds, &mut self.trial_mean)?;
         }
+        trace.lap(1);
         self.trial_mean_bounds = Some(bounds);
         self.certify_steady_state_capacity()
     }

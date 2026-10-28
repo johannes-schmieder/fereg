@@ -1116,6 +1116,11 @@ fn finish_one_shot<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     reservation: &mut R,
     retained_scratch: Option<&mut Option<PreparedOlsScratch>>,
 ) -> Result<CertifiedPreparedOlsFit> {
+    // Trace-only lap (FEREG_PHASE_TIMING): no arithmetic or decision effect.
+    let trace = crate::diagnostics::phase_ledger::PhaseLedger::new(
+        "fit_finalize",
+        ["certify_scores", "publication"],
+    );
     let score_certificate = certify_scores(
         prepared,
         residuals.as_slice(),
@@ -1127,6 +1132,7 @@ fn finish_one_shot<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         inputs.within_outcome_norm,
         config.score_tolerance,
     )?;
+    trace.lap(0);
     if !score_certificate.passed {
         return Err(invalid_data(
             if config.execution.mode == PreparedOlsExecutionMode::Fast {
@@ -1153,6 +1159,7 @@ fn finish_one_shot<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     {
         *destination = Some(low.scratch);
     }
+    trace.lap(1);
     Ok(qr.publish(
         coefficients,
         FitPublication {
