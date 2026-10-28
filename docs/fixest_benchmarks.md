@@ -87,8 +87,10 @@ input with `threads(4)` and `memory(fast)` on two other nodes (a whole E5-2680 v
 node and 16 slots of another node); neither fit finished within 70 minutes. The
 processes stayed compute-bound at about 3.5 cores and 5.8 GB of virtual memory,
 so neither the low-memory plan nor the node explains the limit; at three
-million rows the same design took 15.5 seconds. The cause in the three-FE
-solver path is not yet diagnosed, and the campaign timing stays as recorded.
+million rows the same design took 15.5 seconds. The campaign timing stays as
+recorded. The cause, diagnosed afterwards, was an overstated additive-Schwarz
+memory bound that sent the fit to the MAP fallback; see
+[VALIDATION](VALIDATION.md#many-fe-schwarz-admission-at-scale).
 
 **Controls.** fereg's OLS time rose from 0.54 seconds with 4 controls to 5.44
 with 64, more steeply than the comparators': at 64 controls reghdfe took 11.2,

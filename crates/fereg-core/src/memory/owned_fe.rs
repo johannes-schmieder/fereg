@@ -103,12 +103,16 @@ pub(crate) fn owned_fe_matrix_bytes(rows: usize, rhs: usize) -> Result<u128> {
 
 /// The input matrix and caller-owned FeDesign are charged by the caller.
 /// Generic certificate QR moves each level column into its basis without
-/// copying the numeric bank; both descriptor banks can coexist.
+/// copying the numeric bank; both descriptor banks can coexist. `yielding` is
+/// an optional exact count of yielding factor-pair components for an
+/// intercept-only design (see `FeDesign::yielding_pair_components`); `None`
+/// keeps the level-count bound.
 pub(crate) fn generic_fe_solver_bytes(
     design: &FeDesign,
     rhs: usize,
     solver: FeSolverKind,
     config: LsmrConfig,
+    yielding: Option<usize>,
 ) -> Result<u128> {
     let r = rhs as u128;
     let c = design.max_channels() as u128;
@@ -138,7 +142,9 @@ pub(crate) fn generic_fe_solver_bytes(
         FeSolverKind::Map | FeSolverKind::Auto => 0,
         FeSolverKind::Cg => 3,
         FeSolverKind::IronsTuck | FeSolverKind::Squarem => 4,
-        FeSolverKind::Lsmr => return generic_lsmr_bytes(design, rhs, config, certificate),
+        FeSolverKind::Lsmr => {
+            return generic_lsmr_bytes(design, rhs, config, certificate, yielding)
+        }
         FeSolverKind::Cmg | FeSolverKind::CmgSchur => {
             return Err(FeregError::new(
                 ErrorCode::Unsupported,
@@ -159,6 +165,7 @@ fn generic_lsmr_bytes(
     rhs: usize,
     config: LsmrConfig,
     certificate: u128,
+    yielding: Option<usize>,
 ) -> Result<u128> {
     if design.effects().is_empty() || rhs == 0 {
         return Ok(certificate);
@@ -196,14 +203,26 @@ fn generic_lsmr_bytes(
     // Repeated term levels conservatively charge sorted codes once per channel.
     // The shared recurrence/window/scatter model and categorical routes remain
     // unchanged; signed channels additionally admit the doubled Schur cover.
-    let estimate = estimate_fe_solver_memory_for_channels(
-        design.nobs(),
-        rhs,
-        &counts,
-        rayon::current_num_threads(),
-        config.local_size,
-        has_slopes,
-    )?;
+    // An intercept-only design whose level-count bound was refused may pass
+    // its exact yielding pair-component count (see `admit_generic_solver`).
+    let estimate = match yielding {
+        Some(yielding) if !has_slopes => super::estimate_fe_solver_memory_with_yielding(
+            design.nobs(),
+            rhs,
+            &counts,
+            rayon::current_num_threads(),
+            config.local_size,
+            Some(yielding),
+        )?,
+        _ => estimate_fe_solver_memory_for_channels(
+            design.nobs(),
+            rhs,
+            &counts,
+            rayon::current_num_threads(),
+            config.local_size,
+            has_slopes,
+        )?,
+    };
     let preconditioner = crate::fe::resolve_preconditioner_kind(design, config.preconditioner);
     let solver_bytes = estimate
         .lsmr_bytes(preconditioner)
@@ -371,9 +390,9 @@ mod tests {
         use crate::memory::categorical_schwarz::{
             estimate_categorical_schwarz_memory, estimate_schwarz_memory,
         };
-        let plain = estimate_categorical_schwarz_memory(48, 3, 15, 6, 4, 100).unwrap();
-        let unsigned = estimate_schwarz_memory(48, 3, 15, 6, 4, 100, false).unwrap();
-        let signed = estimate_schwarz_memory(48, 3, 15, 6, 4, 100, true).unwrap();
+        let plain = estimate_categorical_schwarz_memory(48, 3, 15, 6, 4, 100, None).unwrap();
+        let unsigned = estimate_schwarz_memory(48, 3, 15, 6, 4, 100, false, None).unwrap();
+        let signed = estimate_schwarz_memory(48, 3, 15, 6, 4, 100, true, None).unwrap();
         assert_eq!(plain, unsigned);
         assert_eq!(signed.solver_frame_bytes, plain.solver_frame_bytes);
         assert!(signed.build_peak_bytes > plain.build_peak_bytes);

@@ -70,6 +70,7 @@ the routing injections below select experimental algorithms for qualification.
 | `inject=routing_prefix_{none\|map4\|it4}` | OLS | Replaces the existing categorical shortcut with no prefix, up to four MAP sweeps, or up to four compact IT cycles (eight native sweeps); unfinished prefixes seed original-RHS LSMR |
 | `inject=routing_incremental_many` | OLS (replay wire) | Qualifies strict unseeded LSMR with retained preparation for at least three categorical intercept FEs, using the existing unseeded portfolio |
 | `inject=routing_many_geometry_v1` | OLS (replay wire) | Selects the public many-FE geometry policy for at least three categorical intercept FEs: geometry-qualified MAP pilot, Jacobi LSMR trial with projected escalation to the additive preconditioner, recurrence a decade below the request with one seeded correction on a certificate miss, requested-tolerance certificate. Unlike other injections it keeps public two-FE ownership/cell activation, so it equals uninjected Auto on every design |
+| `inject=routing_many_windows_v1` | OLS (replay wire, hidden Stata adapter) | Candidate many-FE policy: `routing_many_geometry_v1` with at most one live LSMR session per worker; the Jacobi trial escalates at the end of each window and later windows start on the additive solver. Keeps public two-FE ownership/cell activation, so two-FE and ineligible designs equal uninjected Auto; not a public default |
 | `inject=routing_two_gates_v2` | OLS (replay wire) | Selects the public two-FE policy, gate v2: the structural gate plus an early CMG build at local step 4, 8 or 12 when the diagonal recurrence has stalled; keeps public two-FE ownership/cell activation, so it equals uninjected Auto on every design |
 | `inject=routing_incremental_two` | OLS (replay wire) | Qualifies the existing direct-or-h16/k1 synchronous portfolio for exactly two categorical intercept FEs |
 | `inject=routing_builder_break` + `break_marker_token=<32 lowercase hex>` | OLS | Uses the synchronous h4/k1 builder and waits for Break at its first cancellation poll after executed construction work; any worker count |
@@ -77,7 +78,8 @@ the routing injections below select experimental algorithms for qualification.
 
 Each routing name is a complete literal token, for example
 `routing_h8_k1`. The hidden Stata adapter accepts the `routing_h*_k*`,
-`routing_builder_break`, prefix and kernel tokens; the plugin additionally
+`routing_builder_break`, prefix and kernel tokens and the candidate
+`routing_many_windows_v1`; the plugin additionally
 accepts `routing_incremental_{many,two}`, `routing_many_geometry_v1`,
 `routing_two_gates_{v1,v2}`, `routing_two_remaining_*` and
 `routing_portfolio_{v1,unseeded}`,
@@ -88,8 +90,9 @@ solver conflicts fail before observation reads or publication. Omitted or empty
 `inject` retains the qualified automatic policy; these arms do not enable a new
 public default or change request/result versions or result dimensions. Explicit
 injections otherwise bypass public two-FE ownership/cell activation;
-only the selected `routing_many_geometry_v1` arm keeps it, so public activation
-can require exact selected-hidden/public agreement on every design.
+only the selected `routing_many_geometry_v1` arm and the candidate
+`routing_many_windows_v1` keep it, so public activation can require exact
+selected-hidden/public agreement on every design.
 
 The incremental selectors require Auto preconditioning to change computation.
 Outside the selected categorical intercept family, including slopes and explicit

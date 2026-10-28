@@ -324,6 +324,10 @@ projected total exceeds 40 iterations, about the cost of building the additive
 Schwarz preconditioner and running its usual iterations, the trial solver is
 released, the additive configuration that the slot rule selects is built once,
 and each escalated RHS continues from its iterate with its remaining budget.
+The trial solver and its escalation share one prepared pinned-solver design
+(observation frame, locality sort and layout), so escalation builds only the
+additive solver state; this is arithmetic-preserving, and the kept design stays
+within the additive solver frame that admission charges.
 Later calls on the binding reuse the solver it holds; reports name the
 preconditioner that finished. Admission charges the additive bound throughout.
 Third, every successful exit (pilot, LSMR or MAP fallback) is accepted only by
@@ -358,6 +362,97 @@ LSMR kernel and an independent sum, exact split pair moments for every lane
 count, Jacobi completion on mixing panels, escalation near confounding with
 agreement against the strict reference and FE-moment reconstruction, and
 fixed-worker repeatability.
+
+Additive-Schwarz admission charges `T + R` level-sized worker banks per
+concurrent RHS apply, where `R` bounds the factor-pair components whose local
+solve may yield into nested work (a block of more than 10,000 levels). The
+level-count bound `R = levels * (effects - 1) / 10,002` grows with the levels,
+so the charge is quadratic in them. When it refuses the additive LSMR attempt
+of the general categorical OLS Auto route (many-FE designs, and two-FE designs
+whose graph and compact routes were refused), fereg counts the structural pair
+components with a block of at least 10,000 levels exactly from the codes,
+once per design, after admitting that count's O(levels) scratch, and admits
+the attempt against the same bound with the smaller `R`. Within's subdomains
+are the bipartite components of each pair's cross-tab, and with the route's
+strictly positive weights those are the structural pair components. An estimate that fits, an unbudgeted call,
+an explicit non-additive preconditioner or an unadmitted count scratch keeps
+the level-count estimate and computes nothing new.
+
+Declared scope of the exact count: only fits whose additive attempt the
+level-count bound refused change, from the original-input MAP fallback to the
+unchanged LSMR attempt of their route (for many-FE Auto the geometry policy:
+Jacobi trial, additive escalation, requested certificate, correction and MAP
+fallback). They may change coefficients, covariance, fit statistics, residuals,
+FE coordinates, solver iteration signatures, reported solver, workspace peak
+and fallback diagnostics within §20 tolerances. Sample, rank, omission,
+original factor slots/base flags and other discrete decisions remain
+unchanged. Every fit the level-count bound admits keeps its bits, route and
+memory accounting. Witnesses: the count against an
+independent breadth-first search; the beta.8 campaign's sparse three-FE
+parameters (level bound about 1 TB at ten million rows, exact count 3, linear
+growth); and a one-million-row campaign topology under a budget one byte
+below the level bound, which admits the additive route with the unbudgeted
+fit's bits at one and four workers, repeated, agreeing across workers and
+reconstructing the input from its FE coefficients, where the level bound ran
+the MAP fallback.
+
+The same refinement, under the same rule (only after the level-count bound
+refused; the exact `R` is never larger), covers the other additive-Schwarz
+LSMR admissions. Explicit OLS `solver(lsmr)` on a borrowed categorical design
+refines its call admission. Owned designs refine the generic LSMR admission of
+explicit `solver(lsmr)` and of the automatic owned route when every term is one
+intercept channel and every weight is strictly positive; designs with slopes
+keep the level-count bound, because their subdomains are not the code
+components. The PPML preflight (explicit LSMR's joint Schwarz factor over the
+core pair or both effects, and the checkpoint accelerator over every pair)
+recounts once when its plan refused, with the strictly positive PPML working
+weights; a plan that still does not fit reports the original refusal. Each
+count is taken once per design, after its O(levels) scratch is admitted, and a
+count whose scratch or allocation is refused keeps the refusal. Declared scope:
+only fits the level-count bound refused change. Explicit LSMR fits move from
+an `r(909)` allocation refusal to their unchanged LSMR solve; the automatic
+owned route moves from its MAP fallback to its unchanged LSMR attempt; refused
+PPML plans move from the preflight refusal to their unchanged fit. They may
+change coefficients, covariance, fit statistics, residuals, FE coordinates,
+iteration signatures, reported solver, workspace peaks and fallback
+diagnostics within §20 tolerances; discrete decisions are unchanged.
+Witnesses: the per-pair cache against the independent search on every pair
+subset; explicit borrowed LSMR, explicit and automatic owned LSMR under a
+budget one byte below the level bound with the unbudgeted solve's bits,
+repeated at one and four workers and agreeing across them, with a budget below
+the exact bound still refused and a sloped design still refused; and PPML
+explicit LSMR on the sparse three-FE topology, whose refused plan is admitted,
+repeats bit for bit, agrees with the unbudgeted fit and refuses below the exact
+bound with the original message.
+
+Candidate bounded LSMR session windows (hidden `routing_many_windows_v1`, not
+public): the many-FE geometry policy unchanged except that its unseeded and
+seeded LSMR solves keep at most one live session per worker instead of every
+RHS of a call (at most 64, or four per worker). RHSs run in fixed windows of
+consecutive columns; each window starts its sessions, runs them to completion,
+finishes and releases them before the next window starts. The Jacobi trial's
+escalation barrier falls at the end of each window: if a window's trial
+projects beyond its budget, that window's escalated RHSs continue from their
+iterates on the additive solver built once from the shared design, and every
+later window of the call, and later calls on the binding, start on the
+additive solver without a trial. A window whose RHSs all finish on the trial
+leaves the trial retained for the next window. Without any escalation every
+RHS runs the same independent recurrence as in one window, so results are
+bit-identical to the public policy; with an escalation, RHSs after the
+escalating window may finish in fewer iterations with different low bits.
+Admission still charges the established window bound, so the arm admits at
+least what the public policy admits; only the reported workspace peak's
+warm-session term follows the smaller window. Two-FE and ineligible designs
+fall back to exactly the public policy, including ownership/cell activation.
+Declared scope of the arm: injected many-FE OLS Auto fits with an escalating
+Jacobi trial may change coefficients, covariance, fit statistics, residuals,
+FE coordinates and solver iteration signatures within §20 tolerances;
+discrete decisions are unchanged. Public activation is a separate decision
+after qualification. Witnesses: dense explicit-dummy QR at one, two, four and
+eight workers on a finishing and an escalating panel, fixed-worker repeats,
+exact public agreement where one window holds every RHS or no RHS escalates,
+and the four-, eight-, sixteen-FE, small-third and near-confounded routing
+families against the public arm.
 
 The CMG builder borrows the host team, polls cancellation at fixed logical chunks
 and admits construction against real memory, without a construction-work cap or
@@ -1331,7 +1426,14 @@ refactors retain exact route/bit checks. No post-hoc parity exception is implied
 Preserve supported memory modes, admission policy and public controls.
 Preserve checked sizing, fallible allocation, r(909), ownership cleanup and
 transaction atomicity. Reuse existing allocation/failure tests; no new exhaustive
-memory-audit framework is required. Estimates remain estimates, not process RSS
+memory-audit framework is required. The many-FE LSMR route transports each RHS window
+from the row-major projection input only while its sessions start, releases
+the column-major copy once each session owns its response, and transports the
+columns again, bitwise, for an escalation or a preconditioner retry; OLS Fast
+releases its projected matrix after the finite solve, which no later stage
+reads. Both are arithmetic-preserving storage-lifetime changes. Admission
+totals are unchanged (they still charge the released storage), so
+`memory(auto)` chooses Fast or Low exactly as before. Estimates remain estimates, not process RSS
 or strict OS bounds. No new route-specific admission fences may be added to
 hide a performance regression. Future removal of a mode needs mapped coverage.
 

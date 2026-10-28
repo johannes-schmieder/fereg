@@ -277,6 +277,134 @@ Complete four-million-row dense three-FE fits took 5% longer at four workers
 and 21% longer at 28, so it was not adopted
 ([record](../bench/results/r4-row-streaming-20261026.json)).
 
+## Many-FE Schwarz admission at scale
+
+The beta.8 campaign's sparse three-FE OLS fit did not finish at ten million
+rows. Traced SCC reruns of main (`a023073e`) showed why: at 1M and 3M the
+geometry policy's Jacobi trial certified in 23 LSMR iterations, but at 10M the
+general categorical route refused the additive LSMR attempt and ran the
+original-input MAP fallback (a perf attach saw only borrowed-MAP kernels, 5.0
+GiB RSS at about 3.6 cores). The refusal came from the additive-Schwarz memory
+bound, which charged `T + R` level-sized banks per concurrent RHS with
+`R = levels * (effects - 1) / 10,002`, quadratic in the levels: 11.9 GB at 1M,
+95 GB at 3M and about 1 TB at 10M for 17 RHS and four workers, against measured
+peaks of 1.96 and 5.91 GiB. Exactly three pair components of this design have a
+block of at least 10,000 levels at every size. The repair counts them when the
+level bound refuses ([SPEC](SPEC.md#qualified-auto-routing-and-developer-comparisons));
+the 10M solver estimate becomes 32.4 GB and the fit takes
+the unchanged geometry route (24 iterations, no escalation).
+
+On one whole E5-2680 v4 node (three repetitions, baseline and candidate
+alternating up to 3M), median native seconds were 0.38, 1.33, 4.51, 14.47,
+25.9, 36.8 and 65.0 at 100k, 300k, 1M, 3M, 5M, 7M and 10M rows, with peak
+process RSS 0.23 to 17.0 GiB. Baseline and candidate were bitwise identical
+through 3M, as was the candidate with the campaign's beta.8 3M capture. At 10M
+the coefficients agree with FixedEffectModels.jl at 1e-10 tolerance and with
+PyFixest to 2e-13 relative, and the covariance to 1.5e-13 of the
+standard-error scale after the absorbed-DoF convention. The campaign's 10M
+references were 55 s (PyFixest), 105 s (FixedEffectModels.jl) and 338 s
+(fixest); their peak memory, 4.4 to 12.6 GiB, stays below fereg's. Deterministic
+mode repeated bit for bit at 10M; default mode differed in the last bits there
+because within's non-reproducible adjoint uses an atomic scatter for terms of at
+least 100,000 levels (the 100,000-level firm effect), which no earlier size
+of this design reached.
+
+Local checks: `./scripts/run_tests.sh --source-only` passed on the M2 Ultra; the
+candidate arm64 plugin's replay against the published beta.9 macOS plugin was
+exact for 73 of 73 cases; the many-FE corpus cells' level bounds are at most
+1.9 GB, so none reaches the refinement. A one-million-row campaign-topology
+test admits the additive route under a budget one byte below the level bound
+with the unbudgeted fit's bits; with the refinement disabled it stayed in the
+MAP fallback past 600 seconds. Record:
+[three-fe-scale-2026-10-28](../bench/results/three-fe-scale-2026-10-28.json).
+
+## Many-FE memory, shared trial design and candidate session windows
+
+Branch `codex/many-fe-windows` (from the sparse three-FE scale fix) adds four
+changes for beta.10; the record is
+[many-fe-windows-2026-10-28](../bench/results/many-fe-windows-2026-10-28.json).
+
+1. The exact yielding-component admission now also covers explicit
+   `solver(lsmr)` (borrowed and owned designs), the automatic owned-design
+   LSMR attempt and the explicit PPML LSMR preflight, only after the
+   level-count bound refused ([SPEC](SPEC.md#qualified-auto-routing-and-developer-comparisons)).
+   Witnesses run each route on the sparse three-FE topology under a budget one
+   byte below the level bound: the fits are admitted with the unbudgeted
+   fit's bits (PPML: agreement within 2e-9 and exact repeats), at one and four
+   workers, while a budget below the exact bound and a sloped design are still
+   refused.
+2. The Jacobi trial and its additive escalation share one prepared pinned
+   design (bit-identical; a digest of escalating fits matches the parent
+   revision). With the pinned `within` only the design is shareable: it costs
+   0.1-0.3 ms on sorted designs and 5-7 ms at one million locality-sorted
+   rows, against 45-56 ms for the additive build; the larger saving this
+   section's predecessor anticipated needs a `within` change (shared square
+   root weights, stable adjoint and solver frame).
+3. The many-FE windows transport and release their own RHS columns, and OLS
+   Fast releases its projected matrix after the finite solve. Admission
+   totals are unchanged, so `memory(auto)` chooses as before. Campaign data,
+   one million rows, 16 controls, four workers, Mac process peak (including
+   Stata and 0.21 GB of data): three-sparse 1.876 to 1.778 GB, three-dense
+   0.726 to 0.724 GB; bits unchanged. The implicit identity `LevelIndex` and
+   u32 observation indexes were not made: `members()` returns `&[usize]` to
+   about 200 call sites across MAP, OLS, PPML and slope code.
+4. Hidden `routing_many_windows_v1` is a candidate policy, not a public
+   default: at most one live LSMR session per worker, with the Jacobi
+   escalation barrier at each window's end. Without an escalation it is
+   bit-identical to public Auto; after one, later windows start on the
+   additive solver. Dense explicit-dummy QR witnesses pass at 1, 2, 4 and 8
+   workers with exact fixed-worker repeats. Of the routing families,
+   small-third, four-, eight- and sixteen-FE are bit-identical to public at
+   one and four workers; near-confounded-third is identical at four and at
+   one worker takes 18 instead of 19 projection iterations (coefficients
+   within 2.7e-14, covariance within 2.2e-11).
+
+Mac timing (M2 Ultra, arm64 profiling build of `acdfb097`, Stata 19 MP batch,
+fresh process per fit, three alternating repetitions, native seconds median,
+peak RSS GB). Rule frozen before collection: wait until no other Stata,
+cargo, rustc or Python process runs; a fit during which one appears is
+discarded and repeated once (one public fit was repeated).
+
+| Design | Workers | Public s | Hidden s | Public GB | Hidden GB |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| three-sparse | 1 | 6.64 | 5.81 | 1.77 | 1.05 |
+| three-sparse | 4 | 1.94 | 1.79 | 1.79 | 1.37 |
+| three-sparse | 8 | 1.36 | 1.17 | 2.00 | 1.79 |
+| three-dense | 1 | 1.17 | 1.21 | 0.72 | 0.72 |
+| three-dense | 4 | 0.45 | 0.45 | 0.73 | 0.73 |
+| three-dense | 8 | 0.30 | 0.30 | 0.73 | 0.73 |
+
+The sparse design's outcome RHS escalates; with windows the later RHSs start
+on the additive solver (19 instead of 22 iterations), and results agree with
+public within 2.3e-14 of the coefficient scale. The dense design certifies in
+the MAP pilot, so both arms run identical code and results; its differences
+are noise.
+
+SCC confirmation at ten million rows (campaign three-sparse input, threads(4),
+one whole E5-2680 v4 node, two repetitions per arm in a fixed alternating
+order, every fit reported): base is the branch parent `cf5ddfc0`, candidate
+`acdfb097` uninjected, hidden `acdfb097` with the windows token.
+
+| Arm | Native s (rep 1, 2) | Peak RSS GiB (rep 1, 2) |
+| --- | --- | --- |
+| Base public | 73.6, 72.4 | 16.89, 17.03 |
+| Candidate public | 75.0, 74.3 | 15.63, 15.48 |
+| Candidate hidden | 68.8, 69.1 | 9.65, 9.64 |
+
+Public coefficients agree with the base to 1e-17 of their scale (default mode
+repeats differ in the last bits, as in the scale record); the hidden arm
+agrees with public within 1.1e-14 (coefficients) and 1.1e-13 (variance, RSS).
+Its later windows finish in 19-20 instead of 22-23 iterations. The public
+candidate's 2% longer native time over two repetitions is not resolved by
+this confirmation; its peak is 1.3 GiB lower.
+
+Local checks: `./scripts/run_tests.sh --source-only` passed (319 Python
+tests, 1500 core library tests, plugin and oracle tests, Clippy, allocator
+audits, portable checks, complexity ratchet). The candidate arm64 plugin's
+replay against the published beta.9 macOS plugin was exact for 73 of 73 cases.
+Public activation of the windows policy needs the bounded qualification and
+Johannes's decision.
+
 ## PPML two-FE CMG reuse and lean protocol
 
 PPML Auto with exactly two intercept FEs reuses one CMG hierarchy across IRLS

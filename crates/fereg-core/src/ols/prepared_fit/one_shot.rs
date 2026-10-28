@@ -576,6 +576,12 @@ fn solve_one_shot<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     if crate::diagnostics::phase_timing_enabled() {
         trace_score_ownership(prepared, inputs, &qr);
     }
+    // Nothing reads the projected matrix after the finite solve: its within
+    // residual is in `qr` and an owned score cache has taken the matrix.
+    // Release it before the residual projection; admission still charges it.
+    if let ProjectedStorage::Dense(dense) = &mut inputs.storage {
+        dense.within = None;
+    }
     Ok(qr)
 }
 

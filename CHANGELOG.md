@@ -1,5 +1,33 @@
 # Changelog
 
+## Unreleased
+
+- OLS Auto with three or more categorical-intercept effects no longer falls
+  back to slow alternating projections on large sparse panels because of an
+  overstated memory estimate: when the additive-Schwarz bound refuses LSMR,
+  fereg counts the factor-pair components that need nested scratch exactly and
+  admits against that bound. The ten-million-row sparse three-FE benchmark
+  design now finishes in about 65 seconds (four workers) instead of not at
+  all. Fits the old bound admitted are unchanged bit for bit; sample, rank and
+  omission decisions are unchanged.
+- The same exact count now also admits explicit `solver(lsmr)` (OLS, borrowed
+  and owned designs), the automatic owned-design LSMR attempt and the explicit
+  PPML LSMR preflight when the level-count bound refused them, instead of an
+  `r(909)` refusal or the MAP fallback. Owned designs with slopes keep the
+  level-count bound. Fits the old bound admitted are unchanged bit for bit.
+- Many-FE OLS Auto builds the pinned solver's design (including its locality
+  sort) once for the Jacobi trial and reuses it when the trial escalates to
+  additive Schwarz. Results are bit-identical.
+- Many-FE OLS Auto releases its column-major RHS transport once its LSMR
+  sessions hold their own copies, and OLS Fast releases the projected matrix
+  after the finite solve. The campaign sparse three-FE design peaks about
+  100 MB lower at one million rows on the Mac and 1.3 GiB lower at ten million
+  on Linux; results, routes and memory admission are unchanged.
+- Developer: hidden `inject=routing_many_windows_v1` (replay wire and the
+  hidden Stata adapter) qualifies bounded many-FE LSMR session windows, at
+  most one live session per worker with the Jacobi escalation barrier at each
+  window's end. Public Auto is unchanged.
+
 ## 0.5.0 beta.9 — 2026-10-28
 
 - CMG `5c5b5b2b`: the multigrid hierarchy stops at 32 levels instead of 128,

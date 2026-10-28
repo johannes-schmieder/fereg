@@ -4758,11 +4758,14 @@ fn project_general_categorical<'a>(
     // without a preset keep certifying LSMR at the private recurrence target.
     let experimental_prefix = prefix_arm.is_some() && !geometry;
     let certificate_tolerance = prefix_arm.map_or(lsmr.tolerance, |_| map.tolerance);
-    let preconditioner = resolve_borrowed_lsmr_preconditioner(
-        design.effects().len(),
-        design.total_term_slots(),
-        lsmr.preconditioner,
-    );
+    let (preconditioner, estimate) = general_lsmr_admission(
+        design,
+        values.ncols(),
+        rayon::current_num_threads(),
+        lsmr,
+        budget,
+        estimate,
+    )?;
     let bytes = estimate.lsmr_bytes(preconditioner);
     let mut prefix = categorical_prefix_attempt(
         design,
@@ -4854,6 +4857,81 @@ fn project_general_categorical<'a>(
         attempted_peak,
         experimental_prefix,
     )
+}
+
+/// The solver memory estimate of a borrowed categorical design, using its
+/// exact yielding pair-component count once one has been computed.
+pub(super) fn borrowed_solver_memory_estimate(
+    design: &BorrowedInterceptFeDesign<'_>,
+    rhs: usize,
+    threads: usize,
+    local_size: Option<usize>,
+) -> Result<crate::memory::FeSolverMemoryEstimate> {
+    let levels: Vec<_> = design.effects().iter().map(|e| e.n_levels()).collect();
+    crate::memory::estimate_fe_solver_memory_with_yielding(
+        design.nobs(),
+        rhs,
+        &levels,
+        threads,
+        local_size,
+        design.known_yielding_pair_components(),
+    )
+}
+
+/// The level-count additive-Schwarz bound charges `T + R` level-sized apply
+/// banks per concurrent RHS, with `R = pair_level_incidence / 10_002`
+/// yielding components: quadratic in the levels. When that bound refuses the
+/// additive LSMR solve, count the yielding pair components exactly from the
+/// codes (once per design) and admit against the resulting bound, which the
+/// same `T + R` argument proves. An estimate that already fits, a design
+/// without the additive preconditioner, an unbudgeted call or a count whose
+/// scratch is not admitted keep the level-count estimate unchanged.
+/// Returns the resolved preconditioner with the estimate to admit it against.
+/// `threads` is the worker count the caller's level-count estimate charged.
+fn general_lsmr_admission(
+    design: &BorrowedInterceptFeDesign<'_>,
+    rhs: usize,
+    threads: usize,
+    lsmr: LsmrConfig,
+    budget: Option<FeSolverMemoryBudget>,
+    estimate: crate::memory::FeSolverMemoryEstimate,
+) -> Result<(LsmrPreconditioner, crate::memory::FeSolverMemoryEstimate)> {
+    let preconditioner = resolve_borrowed_lsmr_preconditioner(
+        design.effects().len(),
+        design.total_term_slots(),
+        lsmr.preconditioner,
+    );
+    let Some(limit) = budget else {
+        return Ok((preconditioner, estimate));
+    };
+    if preconditioner != LsmrPreconditioner::Schwarz
+        || limit.fits(estimate.lsmr_bytes(preconditioner))
+    {
+        return Ok((preconditioner, estimate));
+    }
+    if design.known_yielding_pair_components().is_none() {
+        if !limit.fits(design.yielding_pair_component_scratch_bytes()) {
+            return Ok((preconditioner, estimate));
+        }
+        match design.yielding_pair_components() {
+            Ok(_) => {}
+            Err(error) if error.code == ErrorCode::Allocation => {
+                return Ok((preconditioner, estimate))
+            }
+            Err(error) => return Err(error),
+        }
+    }
+    let refined = borrowed_solver_memory_estimate(design, rhs, threads, lsmr.local_size)?;
+    if crate::diagnostics::solver_trace_enabled() {
+        crate::diagnostics::emit_solver_trace(&format!(
+            "FEREG_SOLVER_TRACE|phase=schwarz_admission_refined|yielding_components={}|level_bound_bytes={}|refined_bytes={}|admitted={}",
+            design.known_yielding_pair_components().unwrap_or(0),
+            estimate.lsmr_bytes(preconditioner),
+            refined.lsmr_bytes(preconditioner),
+            u8::from(limit.fits(refined.lsmr_bytes(preconditioner))),
+        ));
+    }
+    Ok((preconditioner, refined))
 }
 
 /// Auto's general LSMR attempt. On the geometry policy a certificate miss
@@ -5452,22 +5530,28 @@ impl<'a> BorrowedLsmrAbsorber<'a> {
             .iter()
             .map(|effect| effect.n_levels())
             .collect::<Vec<_>>();
+        let threads = config
+            .lsmr
+            .threads
+            .resolved()
+            .max(rayon::current_num_threads());
         let estimate = estimate_fe_solver_memory(
             values.nrows(),
             values.ncols(),
             &levels,
-            config
-                .lsmr
-                .threads
-                .resolved()
-                .max(rayon::current_num_threads()),
+            threads,
             config.lsmr.local_size,
         )?;
-        let preconditioner = resolve_borrowed_lsmr_preconditioner(
-            levels.len(),
-            self.design.total_term_slots(),
-            config.lsmr.preconditioner,
-        );
+        // Explicit LSMR has no fallback: a refused level-count bound earns the
+        // same exact yielding-component refinement as the Auto route.
+        let (preconditioner, estimate) = general_lsmr_admission(
+            &self.design,
+            values.ncols(),
+            threads,
+            config.lsmr,
+            config.solver_memory_budget,
+            estimate,
+        )?;
         let mut memory =
             BorrowedLsmrCallMemory::new(estimate, preconditioner, config.solver_memory_budget, 0)?;
         let mut norms = Vec::new();
@@ -5593,20 +5677,14 @@ impl<'a> BorrowedLsmrPrepared<'a> {
         deterministic: bool,
         initial_coefficients: Option<&FeCoefficientBatch>,
     ) -> Result<(within::BatchSolveResult, bool)> {
-        let levels = design
-            .effects()
-            .iter()
-            .map(|effect| effect.n_levels())
-            .collect::<Vec<_>>();
-        let memory = estimate_fe_solver_memory(
-            design.nobs(),
+        let memory = borrowed_solver_memory_estimate(
+            design,
             rhs.len(),
-            &levels,
             rayon::current_num_threads(),
             options.local_size,
         )?;
         let resolved = resolve_borrowed_lsmr_preconditioner(
-            levels.len(),
+            design.effects().len(),
             design.total_term_slots(),
             requested,
         );
@@ -5733,7 +5811,40 @@ fn build_retained_borrowed_lsmr<'a>(
     preconditioner: PreconditionerConfig,
     deterministic: bool,
 ) -> Result<within::Solver<'a>> {
-    let effects = borrowed_lsmr_effects(design)?;
+    build_retained_lsmr_from(
+        borrowed_lsmr_effects(design)?,
+        weights,
+        preconditioner,
+        deterministic,
+    )
+}
+
+/// The pinned solver's observation-ordered design (locality sort included).
+/// `within::Solver::new` performs exactly this construction from the effects,
+/// so a solver built from it, or from a clone of it, is the same solver.
+fn prepared_within_design<'a>(
+    design: &BorrowedInterceptFeDesign<'a>,
+) -> Result<within::Design<'a>> {
+    within::Design::new(borrowed_lsmr_effects(design)?).map_err(retained_lsmr_build_error)
+}
+
+fn retained_lsmr_build_error(error: within::BuildError) -> FeregError {
+    FeregError::new(
+        if matches!(error, within::BuildError::Allocation { .. }) {
+            ErrorCode::Allocation
+        } else {
+            ErrorCode::Internal
+        },
+        format!("borrowed modified LSMR failed: {error}"),
+    )
+}
+
+fn build_retained_lsmr_from<'a>(
+    effects: impl within::IntoDesign<'a>,
+    weights: ValidatedWeights<'_>,
+    preconditioner: PreconditionerConfig,
+    deterministic: bool,
+) -> Result<within::Solver<'a>> {
     let weights = weights
         .values
         .map(|values| {
@@ -5757,16 +5868,7 @@ fn build_retained_borrowed_lsmr<'a>(
             Ok(solver)
         }
     });
-    solver.map_err(|error| {
-        FeregError::new(
-            if matches!(error, within::BuildError::Allocation { .. }) {
-                ErrorCode::Allocation
-            } else {
-                ErrorCode::Internal
-            },
-            format!("borrowed modified LSMR failed: {error}"),
-        )
-    })
+    solver.map_err(retained_lsmr_build_error)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -5921,7 +6023,13 @@ fn run_borrowed_lsmr_with_prepared<'a>(
         memory.include(admitted)?;
     }
     let lsmr_setup_started = Instant::now();
-    let rhs = super::lsmr_batch::rhs_columns(values)?;
+    // The general routing windows transport their own columns from `values`
+    // and release them once their sessions own copies.
+    let rhs = if general_routing.is_some() {
+        Vec::new()
+    } else {
+        super::lsmr_batch::rhs_columns(values)?
+    };
     let rhs_views = rhs.iter().map(Vec::as_slice).collect::<Vec<_>>();
     let options = LsmrOptions {
         tol: lsmr_config.tolerance,
@@ -5948,7 +6056,7 @@ fn run_borrowed_lsmr_with_prepared<'a>(
         let solved = routing.solve(
             design,
             weights,
-            &rhs_views,
+            values,
             &options,
             lsmr_config.preconditioner,
             preconditioner,

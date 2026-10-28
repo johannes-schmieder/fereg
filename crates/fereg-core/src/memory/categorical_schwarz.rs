@@ -41,6 +41,8 @@ pub(crate) fn categorical_dense_cross_tab_bytes(
 /// both categorical LSMR routes. Every factor-pair can contain N distinct edges; the
 /// accounting charges both CSR orientations, construction copies, per-level
 /// maps/factors, locality-sort copies, and concurrent Schwarz apply buffers.
+/// `yielding` is an optional exact count of yielding factor-pair components
+/// (see [`estimate_schwarz_memory`]); `None` keeps the level-count bound.
 pub(crate) fn estimate_categorical_schwarz_memory(
     rows: u128,
     effects: u128,
@@ -48,6 +50,7 @@ pub(crate) fn estimate_categorical_schwarz_memory(
     maximum_levels: u128,
     threads: u128,
     dense_cross_tab_bytes: u128,
+    yielding: Option<u128>,
 ) -> Result<CategoricalSchwarzMemoryEstimate> {
     estimate_schwarz_memory(
         rows,
@@ -57,9 +60,25 @@ pub(crate) fn estimate_categorical_schwarz_memory(
         threads,
         dense_cross_tab_bytes,
         false,
+        yielding,
     )
 }
 
+/// Levels in one FE block of a factor-pair component at which its local solve
+/// may yield into nested Rayon work. The pinned within `block_elim/solver.rs`
+/// and `csr_block.rs` parallel paths require more than 10,000 rows in a block;
+/// counting blocks of at least 10,000 levels keeps one level of margin.
+pub(crate) const SCHWARZ_YIELDING_BLOCK_LEVELS: usize = 10_000;
+
+/// `yielding` is an optional exact count of factor-pair components with a
+/// block of at least [`SCHWARZ_YIELDING_BLOCK_LEVELS`] levels. Without it,
+/// `pair_level_incidence / 10_002` bounds them from level counts alone; that
+/// bound grows with the levels and every charged bank is level-sized, so the
+/// charge is quadratic in the levels. Within's subdomains are the bipartite
+/// components of each pair's positive-weight cross-tab, the structural pair
+/// components, so the exact count bounds the same yielding subdomains. The
+/// smaller of both is used.
+#[allow(clippy::too_many_arguments)]
 pub(super) fn estimate_schwarz_memory(
     rows: u128,
     effects: u128,
@@ -68,6 +87,7 @@ pub(super) fn estimate_schwarz_memory(
     threads: u128,
     dense_cross_tab_bytes: u128,
     signed_cover: bool,
+    yielding: Option<u128>,
 ) -> Result<CategoricalSchwarzMemoryEstimate> {
     let pairs = checked_mul(
         effects,
@@ -123,7 +143,7 @@ pub(super) fn estimate_schwarz_memory(
     // Each concurrent outer RHS owns a separate apply and is charged by its
     // caller. The lifetime argument and pinned source paths are recorded in
     // the decision record kept in Git history (ADR 0228).
-    let reentrant_components = pair_level_incidence / 10_002;
+    let reentrant_components = (pair_level_incidence / 10_002).min(yielding.unwrap_or(u128::MAX));
     let worker_buffers = checked_sum(&[threads, reentrant_components])?;
     let apply_peak_bytes = checked_sum(&[
         bytes_for_memory::<f64>(
@@ -265,6 +285,7 @@ mod tests {
                 196_608,
                 threads as u128,
                 0,
+                None,
             )
             .unwrap();
             let active_worker_payload = threads as u128 * (206_931 + 6 * 196_608 + 4) * 8;
@@ -274,12 +295,54 @@ mod tests {
     }
 
     #[test]
+    fn exact_yielding_count_removes_the_quadratic_campaign_bound() {
+        // The beta.8 campaign's sparse three-FE OLS cells: 17 RHS, four
+        // workers, 2 million workers, 100,000 firms and a 32-level effect at
+        // ten million rows. The level-count bound R = 419 charged about a
+        // terabyte, which refused LSMR; exactly three pair components there
+        // have a block of at least 10,000 levels.
+        let estimate = |rows, levels: [usize; 3], yielding| {
+            crate::memory::estimate_fe_solver_memory_with_yielding(
+                rows, 17, &levels, 4, None, yielding,
+            )
+            .unwrap()
+            .lsmr_schwarz_bytes
+        };
+        let gib = 1024_u128.pow(3);
+        let small = [600_000, 30_000, 32];
+        let large = [2_000_000, 100_000, 32];
+        assert!(estimate(10_000_000, large, None) > 900 * gib);
+        assert!(estimate(10_000_000, large, Some(3)) < 32 * gib);
+        // With an exact count the bound grows linearly between 3M and 10M rows.
+        let ratio = estimate(10_000_000, large, Some(3)) as f64
+            / estimate(3_000_000, small, Some(3)) as f64;
+        assert!(ratio < 10.0 / 3.0 * 1.05, "{ratio}");
+        // No count is the unchanged estimate; a count is never above the bound.
+        let unchanged =
+            crate::memory::estimate_fe_solver_memory(3_000_000, 17, &small, 4, None).unwrap();
+        assert_eq!(
+            crate::memory::estimate_fe_solver_memory_with_yielding(
+                3_000_000, 17, &small, 4, None, None
+            )
+            .unwrap(),
+            unchanged
+        );
+        assert_eq!(
+            estimate(3_000_000, small, Some(usize::MAX)),
+            unchanged.lsmr_schwarz_bytes
+        );
+        assert!(estimate(3_000_000, small, Some(0)) < estimate(3_000_000, small, Some(3)));
+    }
+
+    #[test]
     fn schwarz_stack_bound_keeps_nonreentrant_and_overflow_boundaries() {
         // Below the first yielding component the ordinary T-worker allowance
         // is unchanged. Crossing the threshold must add scratch even at T=1.
-        let below = estimate_categorical_schwarz_memory(20_000, 2, 10_001, 6_000, 1, 0).unwrap();
-        let above = estimate_categorical_schwarz_memory(20_000, 2, 10_002, 6_000, 1, 0).unwrap();
+        let below =
+            estimate_categorical_schwarz_memory(20_000, 2, 10_001, 6_000, 1, 0, None).unwrap();
+        let above =
+            estimate_categorical_schwarz_memory(20_000, 2, 10_002, 6_000, 1, 0, None).unwrap();
         assert!(above.apply_peak_bytes > 2 * below.apply_peak_bytes - 256);
-        assert!(estimate_categorical_schwarz_memory(1, 2, 10_002, 1, u128::MAX, 0).is_err());
+        assert!(estimate_categorical_schwarz_memory(1, 2, 10_002, 1, u128::MAX, 0, None).is_err());
     }
 }

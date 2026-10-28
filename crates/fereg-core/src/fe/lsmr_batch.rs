@@ -62,6 +62,68 @@ fn cells(rows: usize, columns: usize) -> Result<usize, BatchError> {
 const TRANSPORT_ROWS: usize = 32;
 const TRANSPORT_COLUMNS: usize = 8;
 
+/// Column-major RHS for the many-FE routing windows. A row-major source is
+/// transported on demand, bitwise, so a window's copies can be released once
+/// its sessions own their responses and transported again for an escalation
+/// or retry; borrowed columns are returned as they are.
+pub(super) trait RhsSource: Sync {
+    fn count(&self) -> usize;
+    fn columns(&self, positions: &[usize]) -> crate::error::Result<RhsColumns<'_>>;
+    fn all_columns(&self) -> crate::error::Result<RhsColumns<'_>> {
+        let positions: Vec<_> = (0..self.count()).collect();
+        self.columns(&positions)
+    }
+}
+
+pub(super) enum RhsColumns<'a> {
+    Borrowed(Vec<&'a [f64]>),
+    Owned(Vec<Vec<f64>>),
+}
+
+impl RhsColumns<'_> {
+    pub(super) fn views(&self) -> Vec<&[f64]> {
+        match self {
+            Self::Borrowed(columns) => columns.clone(),
+            Self::Owned(columns) => columns.iter().map(Vec::as_slice).collect(),
+        }
+    }
+}
+
+impl RhsSource for DenseMatrix {
+    fn count(&self) -> usize {
+        self.ncols()
+    }
+
+    fn columns(&self, positions: &[usize]) -> crate::error::Result<RhsColumns<'_>> {
+        if positions.len() == self.ncols() && positions.iter().enumerate().all(|(i, &p)| i == p) {
+            rhs_columns(self).map(RhsColumns::Owned)
+        } else {
+            selected_rhs_columns(self, positions).map(RhsColumns::Owned)
+        }
+    }
+}
+
+impl RhsSource for [&[f64]] {
+    fn count(&self) -> usize {
+        self.len()
+    }
+
+    fn columns(&self, positions: &[usize]) -> crate::error::Result<RhsColumns<'_>> {
+        positions
+            .iter()
+            .map(|&column| {
+                self.get(column).copied().ok_or_else(|| {
+                    FeregError::new(
+                        ErrorCode::InvalidArgument,
+                        "LSMR selected RHS is out of bounds",
+                    )
+                })
+            })
+            .collect::<crate::error::Result<_>>()
+            .map(RhsColumns::Borrowed)
+    }
+}
+
 pub(super) fn rhs_columns(values: &DenseMatrix) -> crate::error::Result<Vec<Vec<f64>>> {
     rhs_columns_mapped(values, values.ncols(), |column| column)
 }

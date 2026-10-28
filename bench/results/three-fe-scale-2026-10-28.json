@@ -1,0 +1,466 @@
+{
+ "schema": 1,
+ "purpose": "Diagnosis and repair of the beta.8 campaign's ten-million-row sparse three-FE OLS limit (design three-sparse, 16 controls, IID VCE, threads(4), Auto/Auto, default tolerance 1e-8).",
+ "source": {
+  "baseline": "a023073e (v0.5.0-beta.9 main)",
+  "candidate": "ef511947 (codex/three-fe-scale)"
+ },
+ "plugins": {
+  "linux_baseline_release_sha256": "a2919f1cfe4be3aba0a3eddc25f49b444a78d88aee4717783d2521cad6134ca8",
+  "linux_candidate_release_sha256": "bb27c7c39c0fa8ee87dbb47e381cbc70245e9e231bdecadb1f869350be3e00b0",
+  "macos_beta9_published_sha256": "a7b251761aecbc6f4509a24ba1d190c64452fe4012eab2bfde6f9dfc5cec690b",
+  "macos_candidate_arm64_release_sha256": "68c2a58a1c6fca60d6b795c2cbd0182ffa2844bcc446d902d87abe5fbbe6394a",
+  "linux_build": "SCC jobs 8308899 (baseline) and 8310163 (candidate); Rust 1.85.1, gcc 12.2.0, scripts/build_linux.sh on git archive"
+ },
+ "inputs": {
+  "campaign_inputs": "bench/results/scc-20261027-beta8-inputs.json (100k, 300k, 1M, 3M and 10M reused read-only)",
+  "generated": {
+   "5000000": "a511d72a627b2ff421e6dc3d75c41bf35d5ab87caee33be7801b4185e6846956",
+   "7000000": "a12a741973a92147a71f76ac16db009139329b2191d0053c1027d7ee78de0409"
+  },
+  "generator": "bench/campaign.py make_dataset, seed 739391, python3/3.12.4 on SCC (numpy 1.26.4, pandas 2.2.2)"
+ },
+ "diagnosis": {
+  "route": "project_general_categorical refused additive LSMR (level-count Schwarz bound exceeded the solver budget) and ran the original-input MAP fallback",
+  "baseline_reproduction": [
+   {
+    "rows": 1000000,
+    "host": "scc-ei3",
+    "wall_seconds": 5.68,
+    "max_rss_gib": 1.96,
+    "route": "LSMR Jacobi trial, 23 iterations, certified",
+    "traced_memory_bytes": 16149267643,
+    "memory_limit": 315551619482
+   },
+   {
+    "rows": 3000000,
+    "host": "scc-gd4",
+    "wall_seconds": 16.4,
+    "max_rss_gib": 5.91,
+    "route": "LSMR Jacobi trial, 23 iterations, certified",
+    "traced_memory_bytes": 122353903627,
+    "memory_limit": 297464263476
+   },
+   {
+    "rows": 10000000,
+    "host": "scc-wm2",
+    "status": "killed at 1200 s",
+    "route": "MAP fallback"
+   }
+  ],
+  "perf_10m_baseline": {
+   "host": "scc-wm1",
+   "window": "60 s from 150 s",
+   "rss_gib": 5.02,
+   "cpu_percent": 366,
+   "self_percent": {
+    "scaled_group_sums_fma": 32.1,
+    "parallel::stage_producer": 26.4,
+    "group_scales_fma": 21.1,
+    "group_sums_fma": 8.2,
+    "scaled_kernel_group_means": 4.2,
+    "norms::leaf": 2.2,
+    "CertificateFold::level": 1.1
+   }
+  },
+  "level_bound_estimate_17rhs_t4_bytes": {
+   "1000000": 11880000000.0,
+   "3000000": 95330000000.0,
+   "5000000": 258380000000.0,
+   "10000000": 1014080000000.0
+  },
+  "diagonal_estimate_17rhs_t4_bytes": {
+   "1000000": 950000000.0,
+   "3000000": 2840000000.0,
+   "5000000": 4740000000.0,
+   "10000000": 9350000000.0
+  },
+  "yielding_components": {
+   "level_bound": {
+    "1000000": 41,
+    "3000000": 125,
+    "5000000": 209,
+    "7000000": 293,
+    "10000000": 419
+   },
+   "exact": {
+    "1000000": 3,
+    "3000000": 3,
+    "5000000": 3,
+    "7000000": 3,
+    "10000000": 3
+   }
+  },
+  "refined_estimate_17rhs_t4_bytes": {
+   "3000000": 8630000000.0,
+   "10000000": 28650000000.0
+  },
+  "mac_note": "On the M2 Ultra (usable limit 90.7 GB) the baseline already refused at 3M and sat in the MAP fallback for more than ten minutes before it was stopped."
+ },
+ "fix": "Refusal-only exact count of factor-pair components with a block of at least 10,000 levels (cached per design) replaces the level-count R in the T + R Schwarz bound; admitted fits compute nothing new.",
+ "candidate_traces": {
+  "10000000": {
+   "schwarz_admission_refined": {
+    "yielding_components": 3,
+    "level_bound_bytes": 1064729228752,
+    "refined_bytes": 32376307152,
+    "admitted": 1
+   },
+   "projection_iterations": 24,
+   "final_residual_iterations": 2,
+   "certificate_relative_infinity_max": 2.61e-10,
+   "max_rss_gib": 17.0
+  },
+  "7000000": {
+   "schwarz_admission_refined": {
+    "level_bound_bytes": 526524076432,
+    "refined_bytes": 22754172432
+   },
+   "projection_iterations": 23
+  },
+  "5000000": {
+   "note": "admitted by the level bound on this node (limit 428 GB); unchanged route"
+  },
+  "jacobi_trial": "never escalated at any size; the additive preconditioner was never built"
+ },
+ "timing_series": {
+  "host": "scc-xf1 (whole 28-core E5-2680 v4 node, job 8310207)",
+  "protocol": "one job, sizes ascending, three repetitions per arm; baseline and candidate alternate at sizes up to 3M; fresh Stata process per fit; no exclusion or retry rule, every repetition reported",
+  "seconds": "native = e(fereg_runtime) native seconds; stata_timer = Stata timer around the fereg command; rss = /usr/bin/time maximum resident set of the Stata process including the loaded data",
+  "cells": [
+   {
+    "arm": "base",
+    "rows": 100000,
+    "reps": 3,
+    "native_median": 0.3895,
+    "native_min": 0.3794,
+    "native_max": 0.391,
+    "timer_median": 0.623,
+    "rss_max_gib": 0.2333,
+    "iterations": [
+     22
+    ],
+    "fallback": [
+     0
+    ],
+    "solver": [
+     "lsmr"
+    ]
+   },
+   {
+    "arm": "fix",
+    "rows": 100000,
+    "reps": 3,
+    "native_median": 0.384,
+    "native_min": 0.3816,
+    "native_max": 0.4032,
+    "timer_median": 0.612,
+    "rss_max_gib": 0.2339,
+    "iterations": [
+     22
+    ],
+    "fallback": [
+     0
+    ],
+    "solver": [
+     "lsmr"
+    ]
+   },
+   {
+    "arm": "base",
+    "rows": 300000,
+    "reps": 3,
+    "native_median": 1.3341,
+    "native_min": 1.3249,
+    "native_max": 1.3724,
+    "timer_median": 1.63,
+    "rss_max_gib": 0.5895,
+    "iterations": [
+     22
+    ],
+    "fallback": [
+     0
+    ],
+    "solver": [
+     "lsmr"
+    ]
+   },
+   {
+    "arm": "fix",
+    "rows": 300000,
+    "reps": 3,
+    "native_median": 1.3336,
+    "native_min": 1.308,
+    "native_max": 1.3367,
+    "timer_median": 1.625,
+    "rss_max_gib": 0.5952,
+    "iterations": [
+     22
+    ],
+    "fallback": [
+     0
+    ],
+    "solver": [
+     "lsmr"
+    ]
+   },
+   {
+    "arm": "base",
+    "rows": 1000000,
+    "reps": 3,
+    "native_median": 4.5676,
+    "native_min": 4.4606,
+    "native_max": 4.6908,
+    "timer_median": 5.056,
+    "rss_max_gib": 2.0138,
+    "iterations": [
+     23
+    ],
+    "fallback": [
+     0
+    ],
+    "solver": [
+     "lsmr"
+    ]
+   },
+   {
+    "arm": "fix",
+    "rows": 1000000,
+    "reps": 3,
+    "native_median": 4.5119,
+    "native_min": 4.5077,
+    "native_max": 4.5144,
+    "timer_median": 5.015,
+    "rss_max_gib": 1.9475,
+    "iterations": [
+     23
+    ],
+    "fallback": [
+     0
+    ],
+    "solver": [
+     "lsmr"
+    ]
+   },
+   {
+    "arm": "base",
+    "rows": 3000000,
+    "reps": 3,
+    "native_median": 14.4691,
+    "native_min": 14.3567,
+    "native_max": 14.6239,
+    "timer_median": 15.49,
+    "rss_max_gib": 6.1401,
+    "iterations": [
+     23
+    ],
+    "fallback": [
+     0
+    ],
+    "solver": [
+     "lsmr"
+    ]
+   },
+   {
+    "arm": "fix",
+    "rows": 3000000,
+    "reps": 3,
+    "native_median": 14.4659,
+    "native_min": 14.372,
+    "native_max": 14.5656,
+    "timer_median": 15.506,
+    "rss_max_gib": 6.317,
+    "iterations": [
+     23
+    ],
+    "fallback": [
+     0
+    ],
+    "solver": [
+     "lsmr"
+    ]
+   },
+   {
+    "arm": "fix",
+    "rows": 5000000,
+    "reps": 3,
+    "native_median": 25.8698,
+    "native_min": 25.2206,
+    "native_max": 25.9586,
+    "timer_median": 27.45,
+    "rss_max_gib": 8.5377,
+    "iterations": [
+     23
+    ],
+    "fallback": [
+     0
+    ],
+    "solver": [
+     "lsmr"
+    ]
+   },
+   {
+    "arm": "fix",
+    "rows": 7000000,
+    "reps": 3,
+    "native_median": 36.8135,
+    "native_min": 36.5053,
+    "native_max": 37.1052,
+    "timer_median": 38.915,
+    "rss_max_gib": 11.9982,
+    "iterations": [
+     23
+    ],
+    "fallback": [
+     0
+    ],
+    "solver": [
+     "lsmr"
+    ]
+   },
+   {
+    "arm": "fix",
+    "rows": 10000000,
+    "reps": 3,
+    "native_median": 65.0246,
+    "native_min": 64.8675,
+    "native_max": 65.0761,
+    "timer_median": 67.958,
+    "rss_max_gib": 16.9848,
+    "iterations": [
+     24
+    ],
+    "fallback": [
+     0
+    ],
+    "solver": [
+     "lsmr"
+    ]
+   }
+  ]
+ },
+ "repeatability": {
+  "default_mode_10m": "three repetitions differ in the last bits (101-106 of 289 covariance entries, max relative 2.3e-13; coefficient x8 in the 17th digit): within's non-reproducible adjoint uses an atomic scatter for the 100,000-level firm term; at 7M (70,000 firms) the fold scatter repeated exactly",
+  "deterministic_mode_10m": {
+   "host": "scc-xe4",
+   "job": 8310269,
+   "repetitions": 3,
+   "bitwise_identical": true,
+   "stata_timer_seconds": [
+    74.25,
+    73.846,
+    74.161
+   ],
+   "native_seconds_r1": 70.925
+  },
+  "baseline_vs_candidate": "bitwise identical coefficients and covariance at 100k, 300k, 1M and 3M (all repetitions); candidate 3M also bitwise identical to the beta.8 campaign fereg capture"
+ },
+ "science": {
+  "tolerances": "coefficients rtol 1e-7 atol 1e-10; covariance after a common DoF-convention scale, rtol 1e-6",
+  "comparisons": {
+   "n3000000/fereg-r1": {
+    "coef_max_rel": 0.0,
+    "coef_pass": true,
+    "vce_scale": 1.0,
+    "vce_scale_minus_1": 0.0,
+    "vce_max_rel_to_sd": 0.0,
+    "vce_pass": true
+   },
+   "n3000000/fixest-r1": {
+    "coef_max_rel": 1.0495534717595773e-08,
+    "coef_pass": true,
+    "vce_scale": 0.9994580896216866,
+    "vce_scale_minus_1": -0.0005419103783134149,
+    "vce_max_rel_to_sd": 6.1484863320978025e-09,
+    "vce_pass": true
+   },
+   "n3000000/fixest-strict-r1": {
+    "coef_max_rel": 1.762214932482913e-13,
+    "coef_pass": true,
+    "vce_scale": 1.0000012651614087,
+    "vce_scale_minus_1": 1.2651614087477725e-06,
+    "vce_max_rel_to_sd": 1.3751258618023595e-13,
+    "vce_pass": true
+   },
+   "n3000000/julia-r1": {
+    "coef_max_rel": 3.1002552739788877e-06,
+    "coef_pass": false,
+    "vce_scale": 0.9994572205755591,
+    "vce_scale_minus_1": -0.0005427794244409201,
+    "vce_max_rel_to_sd": 1.2747324943359574e-07,
+    "vce_pass": true
+   },
+   "n3000000/julia-strict-r1": {
+    "coef_max_rel": 1.3782168135547201e-13,
+    "coef_pass": true,
+    "vce_scale": 0.9994572457690282,
+    "vce_scale_minus_1": -0.0005427542309718314,
+    "vce_max_rel_to_sd": 8.946370956836576e-14,
+    "vce_pass": true
+   },
+   "n3000000/pyfixest-within-r1": {
+    "coef_max_rel": 1.2332024181890961e-13,
+    "coef_pass": true,
+    "vce_scale": 0.9994580892099472,
+    "vce_scale_minus_1": -0.0005419107900528353,
+    "vce_max_rel_to_sd": 8.607112507630694e-14,
+    "vce_pass": true
+   },
+   "n3000000/reghdfe-r1": {
+    "coef_max_rel": 1.421340919643184e-11,
+    "coef_pass": true,
+    "vce_scale": 1.0000000000001543,
+    "vce_scale_minus_1": 1.5432100042289676e-13,
+    "vce_max_rel_to_sd": 1.7520805737075875e-12,
+    "vce_pass": true
+   },
+   "n10000000/fixest-r1": {
+    "coef_max_rel": 3.873474109701281e-09,
+    "coef_pass": true,
+    "vce_scale": 0.9994591518367639,
+    "vce_scale_minus_1": -0.000540848163236074,
+    "vce_max_rel_to_sd": 9.543050983385647e-09,
+    "vce_pass": true
+   },
+   "n10000000/julia-r1": {
+    "coef_max_rel": 1.62713449793764e-06,
+    "coef_pass": false,
+    "vce_scale": 0.9994589361582171,
+    "vce_scale_minus_1": -0.0005410638417828739,
+    "vce_max_rel_to_sd": 2.2456765799696374e-07,
+    "vce_pass": true
+   },
+   "n10000000/julia-strict-r1": {
+    "coef_max_rel": 2.0026693794337266e-13,
+    "coef_pass": true,
+    "vce_scale": 0.9994588972561599,
+    "vce_scale_minus_1": -0.0005411027438401161,
+    "vce_max_rel_to_sd": 1.4802869188225324e-13,
+    "vce_pass": true
+   },
+   "n10000000/pyfixest-within-r1": {
+    "coef_max_rel": 2.0200385848060953e-13,
+    "coef_pass": true,
+    "vce_scale": 0.999459150285265,
+    "vce_scale_minus_1": -0.0005408497147350033,
+    "vce_max_rel_to_sd": 1.5221620791852633e-13,
+    "vce_pass": true
+   }
+  },
+  "note": "julia (FixedEffectModels.jl default tolerance) differs by 1.6e-6 to 3.1e-6 relative; julia-strict, pyfixest-within and fixest-strict agree to 2e-13. RSS at 10M 1975933.3812976473 versus pyfixest 1975933.3812976433."
+ },
+ "campaign_reference_10m_seconds": {
+  "pyfixest-within": 55.05,
+  "julia": 105.43,
+  "fixest": 338.1,
+  "julia-strict": 336.95,
+  "host": "scc-wk3"
+ },
+ "validation": {
+  "source_only_suite": "./scripts/run_tests.sh --source-only PASS on the M2 Ultra (2,109 Rust tests, Python suite, clippy, FFI audits, portable checks; installed-package checks not performed)",
+  "replay": "scripts/run_plugin_replay.sh candidate arm64 plugin against the published beta.9 macOS plugin: 73 of 73 cases exact",
+  "complexity": "ratchet PASS with scoped growth (production lines 111241 -> 111430, dispatch 1433 -> 1434, borrowed_map.rs 8697 -> 8749)",
+  "qualification_corpus": "level-bound estimates of the many-FE corpus cells are at most 1.9 GB (sixteen-fe, 28 workers), far inside the qualification nodes' budgets, so no corpus cell reaches the refinement"
+ },
+ "retention": "SCC run directory /projectnb/welfgr/fereg/runs/three-fe-scale-20261028 and local task outputs are deleted after commit; this record keeps the compact results."
+}

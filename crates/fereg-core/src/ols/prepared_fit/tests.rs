@@ -1520,7 +1520,8 @@ fn generic_prepared_slope_admits_owned_design_unit_weights_and_solver_together()
                 ..AbsorbConfig::default()
             };
             let solver_bytes =
-                crate::memory::generic_fe_solver_bytes(&design, 1, solver, config.lsmr).unwrap()
+                crate::memory::generic_fe_solver_bytes(&design, 1, solver, config.lsmr, None)
+                    .unwrap()
                     + if solver == FeSolverKind::Lsmr {
                         (8 * n) as u128
                     } else {

@@ -35,6 +35,7 @@ enum PrefixPlan {
     GatesTwo,
     GatesTwoV2,
     GeometryMany,
+    GeometryManyWindows,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -61,6 +62,7 @@ impl std::fmt::Display for RoutingPreset {
                 PrefixPlan::GatesTwo => "routing_two_gates_v1",
                 PrefixPlan::GatesTwoV2 => "routing_two_gates_v2",
                 PrefixPlan::GeometryMany => "routing_many_geometry_v1",
+                PrefixPlan::GeometryManyWindows => "routing_many_windows_v1",
                 PrefixPlan::RemainingTwo => match self.checkpoint {
                     0 => "routing_two_remaining_v1",
                     16 => "routing_two_remaining_force16",
@@ -161,6 +163,17 @@ impl RoutingPreset {
         }
     }
 
+    /// Candidate many-FE policy: the geometry policy with bounded LSMR
+    /// session windows of at most one session per worker instead of every
+    /// RHS at once. The Jacobi trial's escalation barrier falls at the end of
+    /// each window; windows after an escalation start on the additive solver.
+    pub fn geometry_many_windows() -> Self {
+        Self {
+            prefix: Some(PrefixPlan::GeometryManyWindows),
+            ..Self::portfolio_unseeded()
+        }
+    }
+
     /// Isolated qualification of the existing two-FE direct-or-h16/k1 policy.
     pub fn incremental_two() -> Self {
         Self {
@@ -242,9 +255,11 @@ impl RoutingPreset {
         categorical_effects: Option<usize>,
     ) -> Option<Self> {
         let eligible = match self.prefix {
-            Some(PrefixPlan::IncrementalMany | PrefixPlan::GeometryMany) => {
-                categorical_effects.is_some_and(|n| n >= 3)
-            }
+            Some(
+                PrefixPlan::IncrementalMany
+                | PrefixPlan::GeometryMany
+                | PrefixPlan::GeometryManyWindows,
+            ) => categorical_effects.is_some_and(|n| n >= 3),
             Some(PrefixPlan::IncrementalTwo) => categorical_effects == Some(2),
             Some(PrefixPlan::RemainingTwo | PrefixPlan::GatesTwo | PrefixPlan::GatesTwoV2) => {
                 categorical_effects == Some(2)
@@ -283,7 +298,15 @@ impl RoutingPreset {
     /// Whether the many-FE policy admits the geometry-certified MAP pilot and
     /// certifies its automatic exits at the requested tolerance.
     pub(crate) fn geometry_pilot(self) -> bool {
-        self.prefix == Some(PrefixPlan::GeometryMany)
+        matches!(
+            self.prefix,
+            Some(PrefixPlan::GeometryMany | PrefixPlan::GeometryManyWindows)
+        )
+    }
+
+    /// Whether the many-FE LSMR windows hold at most one session per worker.
+    pub(crate) fn bounded_session_windows(self) -> bool {
+        self.prefix == Some(PrefixPlan::GeometryManyWindows)
     }
 
     /// Developer Break arm for the synchronous bounded CMG builder: the h4/k1
@@ -311,7 +334,8 @@ impl RoutingPreset {
             | PrefixPlan::RemainingTwo
             | PrefixPlan::GatesTwo
             | PrefixPlan::GatesTwoV2
-            | PrefixPlan::GeometryMany => CategoricalPrefix::None,
+            | PrefixPlan::GeometryMany
+            | PrefixPlan::GeometryManyWindows => CategoricalPrefix::None,
         })
     }
 
@@ -586,8 +610,20 @@ mod tests {
 
     #[test]
     fn geometry_many_admits_the_pilot_without_the_strict_portfolio_contract() {
-        let preset = RoutingPreset::geometry_many();
-        assert_eq!(preset.to_string(), "routing_many_geometry_v1");
+        let windows = RoutingPreset::geometry_many_windows();
+        assert_eq!(windows.to_string(), "routing_many_windows_v1");
+        assert!(windows.bounded_session_windows());
+        assert!(!RoutingPreset::geometry_many().bounded_session_windows());
+        for (preset, name) in [
+            (RoutingPreset::geometry_many(), "routing_many_geometry_v1"),
+            (windows, "routing_many_windows_v1"),
+        ] {
+            geometry_contract(preset, name);
+        }
+    }
+
+    fn geometry_contract(preset: RoutingPreset, name: &str) {
+        assert_eq!(preset.to_string(), name);
         assert!(preset.geometry_pilot());
         assert!(!preset.portfolio());
         assert!(!preset.strict_categorical_prefix());

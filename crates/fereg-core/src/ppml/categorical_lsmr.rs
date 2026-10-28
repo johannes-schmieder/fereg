@@ -57,10 +57,32 @@ pub(crate) const fn joint_lsmr_policy(effect_count: usize) -> CategoricalLsmrPol
     }
 }
 
+/// The effects whose factor pairs the policy's Schwarz factor covers, in the
+/// order of `effect_level_counts`: the core pair, every effect, or none.
+pub(crate) fn schwarz_effects(
+    effect_level_counts: &[usize],
+    policy: CategoricalLsmrPolicy,
+) -> Result<Vec<usize>> {
+    match policy {
+        CategoricalLsmrPolicy::Diagonal => Ok(Vec::new()),
+        CategoricalLsmrPolicy::Reuse => Ok((0..effect_level_counts.len()).collect()),
+        CategoricalLsmrPolicy::CorePair => {
+            Ok(core_pair_by_levels(effect_level_counts.len(), |effect| {
+                effect_level_counts[effect]
+            })?
+            .to_vec())
+        }
+    }
+}
+
 fn largest_retained_core_pair(design: &FeDesign) -> Result<[usize; 2]> {
-    let order = retained_effect_order_by_levels(design.effects().len(), |effect| {
+    core_pair_by_levels(design.effects().len(), |effect| {
         design.effects()[effect].n_levels()
-    })?;
+    })
+}
+
+fn core_pair_by_levels(effects: usize, levels: impl Fn(usize) -> usize) -> Result<[usize; 2]> {
+    let order = retained_effect_order_by_levels(effects, levels)?;
     if order.len() < 2 {
         return Err(invalid_argument(
             "joint PPML core-pair policy requires at least two effects",
@@ -1980,13 +2002,17 @@ impl ScaledSquareSum {
 /// assumes borrowed topology and a shared recurrence, while this engine
 /// retains an active finite design and PPML frame buffers and can overlap an
 /// earlier solution with a certified continuation. Schwarz state is charged
-/// only for a policy that can build or reuse it.
+/// only for a policy that can build or reuse it. `yielding` is an optional
+/// exact count of the yielding pair components among the effects the policy's
+/// Schwarz factor covers ([`schwarz_effects`]); `None` keeps the level-count
+/// bound.
 pub(crate) fn estimate_joint_lsmr_workspace_bytes(
     rows: usize,
     active_columns: usize,
     effect_level_counts: &[usize],
     threads: usize,
     policy: CategoricalLsmrPolicy,
+    yielding: Option<usize>,
 ) -> Result<u128> {
     let shape = CategoricalLsmrMemoryShape::new(
         rows,
@@ -1994,6 +2020,7 @@ pub(crate) fn estimate_joint_lsmr_workspace_bytes(
         effect_level_counts,
         threads,
         policy,
+        yielding,
     )?;
     let n = shape.rows;
     let k = shape.active_columns;
@@ -2108,6 +2135,24 @@ pub(crate) fn estimate_checkpoint_lsmr_workspace_bytes(
     effect_level_counts: &[usize],
     threads: usize,
 ) -> Result<u128> {
+    estimate_checkpoint_lsmr_workspace_bytes_with_yielding(
+        rows,
+        rhs,
+        effect_level_counts,
+        threads,
+        None,
+    )
+}
+
+/// As [`estimate_checkpoint_lsmr_workspace_bytes`], with an optional exact
+/// yielding pair-component count over every effect pair.
+pub(crate) fn estimate_checkpoint_lsmr_workspace_bytes_with_yielding(
+    rows: usize,
+    rhs: usize,
+    effect_level_counts: &[usize],
+    threads: usize,
+    yielding: Option<usize>,
+) -> Result<u128> {
     if rhs == 0 {
         return Err(invalid_argument(
             "PPML checkpoint LSMR memory estimate requires a positive RHS width",
@@ -2116,8 +2161,14 @@ pub(crate) fn estimate_checkpoint_lsmr_workspace_bytes(
     // This is the same borrowed categorical batch adapter used by OLS. Share
     // its guarded recurrence windows, scatter, output overlap and Schwarz
     // estimates; nested Rayon alone does not bound live frames by workers.
-    let solver =
-        crate::memory::estimate_fe_solver_memory(rows, rhs, effect_level_counts, threads, Some(4))?;
+    let solver = crate::memory::estimate_fe_solver_memory_with_yielding(
+        rows,
+        rhs,
+        effect_level_counts,
+        threads,
+        Some(4),
+        yielding,
+    )?;
     checked_sum_memory(&[
         solver.lsmr_schwarz_bytes,
         // OLS charges its caller-owned input in the execution model. A PPML
@@ -2148,7 +2199,9 @@ impl CategoricalLsmrMemoryShape {
         effect_level_counts: &[usize],
         threads: usize,
         policy: CategoricalLsmrPolicy,
+        yielding: Option<usize>,
     ) -> Result<Self> {
+        let yielding = yielding.map(|count| count as u128);
         if rows == 0 || threads == 0 {
             return Err(invalid_argument(
                 "PPML categorical LSMR memory estimate requires positive rows and threads",
@@ -2181,6 +2234,7 @@ impl CategoricalLsmrMemoryShape {
                     crate::memory::schwarz_weighted_correction_bytes(rows, effect_level_counts)?,
                     "PPML LSMR cross-tab and compensation scratch",
                 )?,
+                yielding,
             )?,
             CategoricalLsmrPolicy::CorePair => {
                 if effect_level_counts.len() < 2 {
@@ -2216,6 +2270,7 @@ impl CategoricalLsmrMemoryShape {
                             "PPML LSMR core cross-tab and compensation scratch",
                         )?
                     },
+                    yielding,
                 )?
             }
         };

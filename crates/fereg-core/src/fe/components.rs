@@ -224,6 +224,150 @@ fn connected_components_inner(
     })
 }
 
+/// Transient bytes of [`count_large_pair_components`] for one factor pair:
+/// union-find parents and ranks plus two per-root block counters.
+pub(crate) fn large_pair_component_scratch_bytes(left_levels: usize, right_levels: usize) -> u128 {
+    let nodes = left_levels as u128 + right_levels as u128;
+    nodes * (2 * std::mem::size_of::<usize>() as u128 + 1 + std::mem::size_of::<usize>() as u128)
+}
+
+/// Number of connected components of one factor pair's bipartite incidence
+/// graph, over every observation, with at least `threshold` levels in one of
+/// their two FE blocks. Levels without observations are isolated singletons.
+pub(crate) fn count_large_pair_components(
+    left_codes: &[u32],
+    left_levels: usize,
+    right_codes: &[u32],
+    right_levels: usize,
+    threshold: usize,
+) -> Result<usize> {
+    if left_codes.len() != right_codes.len() {
+        return Err(FeregError::new(
+            ErrorCode::InvalidArgument,
+            "pair component code columns have inconsistent lengths",
+        ));
+    }
+    let nodes = left_levels
+        .checked_add(right_levels)
+        .ok_or_else(|| FeregError::new(ErrorCode::Allocation, "pair level count overflow"))?;
+    let mut union_find = UnionFind::try_new(nodes)?;
+    for (&left, &right) in left_codes.iter().zip(right_codes) {
+        let (left, right) = (left as usize, right as usize);
+        if left >= left_levels || right >= right_levels {
+            return Err(FeregError::new(
+                ErrorCode::InvalidData,
+                "component code exceeds declared level count",
+            ));
+        }
+        union_find.union(left, left_levels + right);
+    }
+    let mut left_count = fallible_filled(nodes, 0_usize, "unable to reserve pair block counts")?;
+    let mut right_count = fallible_filled(nodes, 0_usize, "unable to reserve pair block counts")?;
+    for node in 0..nodes {
+        let root = union_find.find(node);
+        if node < left_levels {
+            left_count[root] += 1;
+        } else {
+            right_count[root] += 1;
+        }
+    }
+    Ok((0..nodes)
+        .filter(|&root| {
+            union_find.parent[root] == root && left_count[root].max(right_count[root]) >= threshold
+        })
+        .count())
+}
+
+/// Exact per-factor-pair counts of the components with at least
+/// `SCHWARZ_YIELDING_BLOCK_LEVELS` levels in one FE block, computed once from
+/// a design's codes when a memory admission needs them. Pairs are stored in
+/// `(i, j)`, `i < j` order. A cache, not part of any design identity; one
+/// thin pointer wide, so designs keep their layout until a count exists.
+#[derive(Debug, Default, Clone)]
+pub(crate) struct YieldingPairCache(std::sync::OnceLock<Box<PairCounts>>);
+
+#[derive(Debug, Clone)]
+struct PairCounts(Vec<usize>);
+
+impl PartialEq for YieldingPairCache {
+    fn eq(&self, _: &Self) -> bool {
+        true
+    }
+}
+
+impl Eq for YieldingPairCache {}
+
+impl YieldingPairCache {
+    /// The cached count over the pairs of `among` (every pair with `None`).
+    pub(crate) fn known(&self, effects: usize, among: Option<&[usize]>) -> Option<usize> {
+        let counts = self.0.get()?;
+        let mut pair = 0;
+        let mut total = 0_usize;
+        for left in 0..effects {
+            for right in left + 1..effects {
+                let selected = among.is_none_or(|set| set.contains(&left) && set.contains(&right));
+                if selected {
+                    total = total.saturating_add(*counts.0.get(pair)?);
+                }
+                pair += 1;
+            }
+        }
+        Some(total)
+    }
+
+    /// Largest transient scratch of [`Self::count`]: one pair's union-find
+    /// and block counters, plus the retained per-pair table.
+    pub(crate) fn scratch_bytes(levels: &[usize]) -> u128 {
+        let mut largest = 0;
+        for (index, &left) in levels.iter().enumerate() {
+            for &right in &levels[index + 1..] {
+                largest = largest.max(large_pair_component_scratch_bytes(left, right));
+            }
+        }
+        let pairs = levels.len() as u128 * (levels.len() as u128).saturating_sub(1) / 2;
+        largest + pairs * std::mem::size_of::<usize>() as u128
+    }
+
+    /// Count every pair once from the codes; later calls reuse the table.
+    pub(crate) fn count(&self, codes: &[&[u32]], levels: &[usize]) -> Result<usize> {
+        if self.0.get().is_none() {
+            if codes.len() != levels.len() {
+                return Err(FeregError::new(
+                    ErrorCode::InvalidArgument,
+                    "yielding pair code and level tables have different lengths",
+                ));
+            }
+            let pairs = levels.len() * levels.len().saturating_sub(1) / 2;
+            let mut counts = Vec::new();
+            counts.try_reserve_exact(pairs).map_err(|_| {
+                FeregError::new(
+                    ErrorCode::Allocation,
+                    "unable to reserve yielding pair component counts",
+                )
+            })?;
+            for (index, (left, &left_levels)) in codes.iter().zip(levels).enumerate() {
+                for (right, &right_levels) in codes[index + 1..].iter().zip(&levels[index + 1..]) {
+                    crate::interrupt::checkpoint()?;
+                    counts.push(count_large_pair_components(
+                        left,
+                        left_levels,
+                        right,
+                        right_levels,
+                        crate::memory::SCHWARZ_YIELDING_BLOCK_LEVELS,
+                    )?);
+                }
+            }
+            let _ = self.0.set(Box::new(PairCounts(counts)));
+        }
+        self.known(levels.len(), None).ok_or_else(|| {
+            FeregError::new(
+                ErrorCode::Internal,
+                "yielding pair component table is inconsistent",
+            )
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -317,6 +461,136 @@ mod tests {
         assert_eq!(next_label, 3);
         assert_eq!(union_find.parent.as_ptr(), parent_pointer);
         assert_eq!(union_find.parent.capacity(), parent_capacity);
+    }
+
+    /// Independent breadth-first reference: components of the bipartite
+    /// pair graph and their block level counts.
+    fn reference_large_pair_components(
+        left: &[u32],
+        left_levels: usize,
+        right: &[u32],
+        right_levels: usize,
+        threshold: usize,
+    ) -> usize {
+        let nodes = left_levels + right_levels;
+        let mut adjacency = vec![Vec::new(); nodes];
+        for (&a, &b) in left.iter().zip(right) {
+            adjacency[a as usize].push(left_levels + b as usize);
+            adjacency[left_levels + b as usize].push(a as usize);
+        }
+        let mut seen = vec![false; nodes];
+        let mut large = 0;
+        for start in 0..nodes {
+            if seen[start] {
+                continue;
+            }
+            seen[start] = true;
+            let (mut queue, mut blocks) = (vec![start], [0_usize; 2]);
+            while let Some(node) = queue.pop() {
+                blocks[usize::from(node >= left_levels)] += 1;
+                for &next in &adjacency[node] {
+                    if !seen[next] {
+                        seen[next] = true;
+                        queue.push(next);
+                    }
+                }
+            }
+            large += usize::from(blocks[0].max(blocks[1]) >= threshold);
+        }
+        large
+    }
+
+    #[test]
+    fn large_pair_components_match_an_independent_search() {
+        let mut state = 0x9e37_79b9_7f4a_7c15_u64;
+        let mut next = move |bound: u64| {
+            state = state
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
+            ((state >> 33) % bound) as u32
+        };
+        for (rows, left_levels, right_levels) in [(40, 30, 6), (200, 90, 40), (500, 60, 300)] {
+            let left: Vec<u32> = (0..rows).map(|_| next(left_levels as u64)).collect();
+            let right: Vec<u32> = (0..rows).map(|_| next(right_levels as u64)).collect();
+            for threshold in [1, 2, 3, 5, 8, 20, 61] {
+                assert_eq!(
+                    count_large_pair_components(
+                        &left,
+                        left_levels,
+                        &right,
+                        right_levels,
+                        threshold
+                    )
+                    .unwrap(),
+                    reference_large_pair_components(
+                        &left,
+                        left_levels,
+                        &right,
+                        right_levels,
+                        threshold
+                    ),
+                    "rows={rows} threshold={threshold}"
+                );
+            }
+        }
+        // Two components with blocks {3, 1} and {1, 2}; the threshold is inclusive.
+        let (left, right) = ([0, 1, 2, 3], [0, 0, 0, 1]);
+        assert_eq!(
+            count_large_pair_components(&left, 4, &right, 2, 3).unwrap(),
+            1
+        );
+        assert_eq!(
+            count_large_pair_components(&left, 4, &right, 2, 1).unwrap(),
+            2
+        );
+        assert_eq!(
+            count_large_pair_components(&left, 4, &right, 2, 4).unwrap(),
+            0
+        );
+        let error = count_large_pair_components(&left, 4, &[0, 0, 0, 2], 2, 1).unwrap_err();
+        assert_eq!(error.code, ErrorCode::InvalidData);
+    }
+
+    #[test]
+    fn yielding_pair_cache_counts_each_pair_once_and_sums_selected_pairs() {
+        // Two blocks of 10,000 levels joined through a two-level effect: the
+        // (0, 1) and (1, 2) pairs each have one yielding component, while the
+        // one-to-one (0, 2) pair has 10,000 two-level components.
+        let rows = 20_000_u32;
+        let first: Vec<u32> = (0..rows).map(|row| row % 10_000).collect();
+        let second: Vec<u32> = (0..rows).map(|row| row / 10_000).collect();
+        let third = first.clone();
+        let codes = [first.as_slice(), &second, &third];
+        let levels = [10_000, 2, 10_000];
+        let cache = YieldingPairCache::default();
+        assert_eq!(cache.known(3, None), None);
+        assert!(YieldingPairCache::scratch_bytes(&levels) > 0);
+        assert_eq!(cache.count(&codes, &levels).unwrap(), 2);
+        for (pair, expected) in [([0, 1], 1), ([1, 2], 1), ([0, 2], 0)] {
+            assert_eq!(cache.known(3, Some(&pair)), Some(expected));
+            let threshold = crate::memory::SCHWARZ_YIELDING_BLOCK_LEVELS;
+            assert_eq!(
+                reference_large_pair_components(
+                    codes[pair[0]],
+                    levels[pair[0]],
+                    codes[pair[1]],
+                    levels[pair[1]],
+                    threshold
+                ),
+                expected
+            );
+        }
+        assert_eq!(cache.known(3, Some(&[0, 1, 2])), Some(2));
+        assert_eq!(cache.known(3, None), Some(2));
+        // The cache is not part of a design's identity.
+        assert_eq!(cache, YieldingPairCache::default());
+        assert_eq!(
+            YieldingPairCache::default()
+                .count(&codes[..2], &levels)
+                .unwrap_err()
+                .code,
+            ErrorCode::InvalidArgument
+        );
     }
 
     #[test]

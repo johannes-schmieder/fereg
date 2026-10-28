@@ -212,7 +212,9 @@ fn check_saved_effects(
 /// categorical Auto-preconditioned effects and an unseeded policy otherwise.
 fn prefix_limit(design: &Design, config: PreparedOlsFitConfig) -> Option<usize> {
     let routing = config.absorb.routing;
-    let geometry = routing.is_none_or(|p| p == RoutingPreset::geometry_many());
+    let geometry = routing.is_none_or(|p| {
+        p == RoutingPreset::geometry_many() || p == RoutingPreset::geometry_many_windows()
+    });
     if geometry && design.effects.len() >= 3 {
         None
     } else if routing.is_none()
@@ -568,6 +570,98 @@ fn public_geometry_trial_matches_dense_qr_with_and_without_escalation() {
             for repeat in [run(None), run(Some(RoutingPreset::geometry_many()))] {
                 exact_fit(repeat.fit(), public.fit());
                 assert_eq!(repeat.covariance(), public.covariance());
+            }
+        }
+    }
+}
+
+/// Independent dense-QR witness for the candidate bounded LSMR session
+/// windows (hidden `routing_many_windows_v1`): at most one session per worker,
+/// with the Jacobi trial's escalation barrier at the end of each window. On a
+/// mixing design that finishes on the diagonal solver and a weak AKM design
+/// that escalates, every worker count stays within the scientific tolerances
+/// of the explicit-dummy QR, repeats exactly at a fixed worker count, keeps
+/// the public fit's discrete decisions and equals it exactly where one window
+/// holds every RHS or no RHS escalates.
+#[test]
+fn bounded_session_windows_match_dense_qr_and_public_discrete_decisions() {
+    for graph in [Graph::RandomMobility, Graph::AkmWeak] {
+        let design = generate(
+            72031,
+            &DesignSpec {
+                rows: 3400,
+                levels: vec![200, 60, 12],
+                regressors: 6,
+                graph,
+                ..DesignSpec::default()
+            },
+        )
+        .unwrap();
+        let (problem, _) = design.oracle_problem(false).unwrap();
+        let oracle = fit_explicit_ols(&problem).unwrap();
+        let (request, loaded) = support::inputs(&design, false);
+        let prepared = prepare_model(&request, &[], &loaded, true).unwrap();
+        let rhs = build_prepared_ols_rhs(&prepared).unwrap().values().ncols();
+        assert_eq!(rhs, 8);
+        for workers in [1, 2, 4, 8] {
+            let options = config(PreparedOlsExecutionMode::Fast, workers);
+            let run = |routing| {
+                let mut options = options;
+                options.absorb.routing = routing;
+                fit_prepared_model_robust_with_loaded_moments(
+                    &prepared,
+                    PreparedOlsRobustConfig {
+                        fit: options,
+                        ..PreparedOlsRobustConfig::default()
+                    },
+                    None,
+                )
+                .unwrap()
+            };
+            let public = run(None);
+            let windows = run(Some(RoutingPreset::geometry_many_windows()));
+            check_fit(&design, &oracle, windows.fit(), None);
+            assert_eq!(windows.dof(), public.dof());
+            assert_eq!(windows.dof().absorbed_rank, oracle.explicit_dummy_rank);
+            INFERENCE
+                .check(windows.statistics().rss, oracle.weighted_rss)
+                .unwrap();
+            let report = windows.fit().absorption_report();
+            assert_eq!(report.used_solver, FeSolverKind::Lsmr, "{graph:?}");
+            assert!(!report.fallback_used);
+            assert_eq!(
+                report.used_preconditioner,
+                public.fit().absorption_report().used_preconditioner
+            );
+            let repeat = run(Some(RoutingPreset::geometry_many_windows()));
+            exact_fit(repeat.fit(), windows.fit());
+            assert_eq!(repeat.covariance(), windows.covariance());
+            // Without escalation every RHS runs the same independent Jacobi
+            // recurrence in any window; only a window barrier can change bits.
+            // The window's smaller warm-session charge lowers only the
+            // reported workspace peak.
+            if workers >= rhs || matches!(graph, Graph::RandomMobility) {
+                assert_eq!(windows.fit().coefficients(), public.fit().coefficients());
+                assert_eq!(windows.fit().residuals(), public.fit().residuals());
+                assert_eq!(
+                    windows.fit().recovered_fe_coefficients(),
+                    public.fit().recovered_fe_coefficients()
+                );
+                assert_eq!(windows.covariance(), public.covariance());
+                for (left, right) in [
+                    (
+                        windows.fit().absorption_report(),
+                        public.fit().absorption_report(),
+                    ),
+                    (
+                        windows.fit().residual_absorption_report(),
+                        public.fit().residual_absorption_report(),
+                    ),
+                ] {
+                    same_discrete_reports(left, right);
+                    assert_eq!(left.iterations, right.iterations);
+                    assert_eq!(left.certificate, right.certificate);
+                }
             }
         }
     }
