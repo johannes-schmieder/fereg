@@ -110,6 +110,11 @@ pub(crate) struct GeneralRoutingState<'a> {
     accuracy: Option<(u64, bool)>,
     /// Additive configuration a retained Jacobi trial escalates to.
     trial: Option<PreconditionerConfig>,
+    /// The trial solver's prepared design, kept so escalation builds the
+    /// additive solver without repeating the locality sort. A clone of
+    /// borrowed columns is shallow; a sorted copy stays within the additive
+    /// solver frame that admission charges while the trial is retained.
+    trial_design: Option<within::Design<'a>>,
 }
 
 impl<'a> GeneralRoutingState<'a> {
@@ -123,6 +128,7 @@ impl<'a> GeneralRoutingState<'a> {
             replacement_apply_bytes: 0,
             accuracy: None,
             trial: None,
+            trial_design: None,
         }
     }
 
@@ -187,6 +193,7 @@ impl<'a> GeneralRoutingState<'a> {
         self.replacement_apply_bytes = 0;
         self.prepared = BorrowedLsmrPrepared::default();
         self.trial = None;
+        self.trial_design = None;
     }
 
     pub(super) fn retained_bytes(&self) -> u128 {
@@ -448,8 +455,12 @@ impl<'a> GeneralRoutingState<'a> {
         let started = Instant::now();
         let config = self.trial.take().expect("escalating Jacobi trial");
         // Release the trial before construction; the additive bound is admitted.
+        // The shared design is the one the trial solver was built from.
         self.prepared.solver = None;
-        let built = build_retained_borrowed_lsmr(design, weights, config, deterministic);
+        let built = match self.trial_design.take() {
+            Some(shared) => build_retained_lsmr_from(shared, weights, config, deterministic),
+            None => build_retained_borrowed_lsmr(design, weights, config, deterministic),
+        };
         let seconds = started.elapsed().as_secs_f64();
         self.prepared.solver = match built {
             Ok(solver) => Some(solver),
@@ -548,16 +559,19 @@ impl<'a> GeneralRoutingState<'a> {
             // still charges the additive bound, which covers both solvers.
             let additive = matches!(preconditioner, PreconditionerConfig::Additive { .. });
             self.trial = (additive && self.preset.geometry_pilot()).then(|| preconditioner.clone());
-            self.prepared.solver = Some(build_retained_borrowed_lsmr(
-                design,
-                weights,
-                if self.trial.is_some() {
-                    PreconditionerConfig::Diagonal
-                } else {
-                    preconditioner
-                },
-                deterministic,
-            )?);
+            self.prepared.solver = Some(if self.trial.is_some() {
+                // Prepare the design once for the trial and its escalation.
+                let shared = prepared_within_design(design)?;
+                self.trial_design = Some(shared.clone());
+                build_retained_lsmr_from(
+                    shared,
+                    weights,
+                    PreconditionerConfig::Diagonal,
+                    deterministic,
+                )?
+            } else {
+                build_retained_borrowed_lsmr(design, weights, preconditioner, deterministic)?
+            });
             self.prepared.retained_bytes =
                 estimate.lsmr_retained_bytes(LsmrPreconditioner::Schwarz);
             self.prepared.builds += 1;

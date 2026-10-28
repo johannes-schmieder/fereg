@@ -2136,6 +2136,38 @@ impl TrialPanel {
         }
     }
 
+    /// The same panel with its rows in a fixed pseudo-random order, so the
+    /// pinned solver locality-sorts its dominant factor.
+    fn shuffled(&self) -> Self {
+        let rows = self.values.nrows();
+        let mut order: Vec<usize> = (0..rows).collect();
+        let mut state = 0x2545_f491_4f6c_dd1d_u64;
+        for index in (1..rows).rev() {
+            state = state
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
+            order.swap(index, (state >> 33) as usize % (index + 1));
+        }
+        let codes = self
+            .codes
+            .clone()
+            .map(|code| order.iter().map(|&row| code[row]).collect::<Vec<_>>());
+        let columns: Vec<Vec<f64>> = (0..self.values.ncols())
+            .map(|rhs| order.iter().map(|&row| self.values[(row, rhs)]).collect())
+            .collect();
+        let indices = codes
+            .iter()
+            .zip(self.levels)
+            .map(|(code, levels)| LevelIndex::from_codes(code, levels).unwrap())
+            .collect();
+        Self {
+            codes,
+            indices,
+            values: DenseMatrix::from_columns(&columns).unwrap(),
+            levels: self.levels,
+        }
+    }
+
     fn design(&self) -> BorrowedInterceptFeDesign<'_> {
         let sources: Vec<_> = self
             .codes
@@ -2918,4 +2950,80 @@ fn refused_level_bound_admits_owned_lsmr_by_exact_yielding_count() {
         crate::fe::absorb_fixed_effects(&sloped, &weights, &mut values, config).unwrap_err();
     assert_eq!(error.code, ErrorCode::Allocation);
     assert_eq!(sloped.yielding_pair_component_scratch_bytes(), None);
+}
+
+#[test]
+fn escalation_reuses_the_trial_design_with_the_rebuilt_solvers_bits() {
+    // The geometry trial prepares the pinned solver's design once and builds
+    // its additive escalation from that design. A solver built from the
+    // shared design is the solver built from the effects: identical solves,
+    // with and without the locality sort and in both adjoint modes.
+    for panel in [TrialPanel::new(true), TrialPanel::new(true).shuffled()] {
+        let design = panel.design();
+        let weights = validate_weights(BorrowedMapWeights::Unit, design.nobs()).unwrap();
+        let columns: Vec<Vec<f64>> = (0..2)
+            .map(|rhs| {
+                (0..design.nobs())
+                    .map(|row| panel.values[(row, rhs)])
+                    .collect()
+            })
+            .collect();
+        let rhs: Vec<_> = columns.iter().map(Vec::as_slice).collect();
+        let options = LsmrOptions {
+            tol: 1e-10,
+            maxiter: 1_000,
+            local_size: None,
+        };
+        for (workers, deterministic) in [(1, false), (4, true)] {
+            crate::ThreadTeam::new(crate::ThreadConfig::from_requested(workers, true).unwrap())
+                .install(|| {
+                    let shared = prepared_within_design(&design).unwrap();
+                    for config in [
+                        PreconditionerConfig::Diagonal,
+                        borrowed_within_preconditioner(LsmrPreconditioner::Schwarz),
+                    ] {
+                        let from_shared = build_retained_lsmr_from(
+                            shared.clone(),
+                            weights,
+                            config.clone(),
+                            deterministic,
+                        )
+                        .unwrap();
+                        let rebuilt =
+                            build_retained_borrowed_lsmr(&design, weights, config, deterministic)
+                                .unwrap();
+                        let left =
+                            routing_lsmr::solve_prepared_input(&from_shared, &rhs, &options, None)
+                                .unwrap();
+                        let right =
+                            routing_lsmr::solve_prepared_input(&rebuilt, &rhs, &options, None)
+                                .unwrap();
+                        assert_eq!(left.iterations, right.iterations);
+                        assert_eq!(left.x, right.x);
+                        assert_eq!(left.demeaned, right.demeaned);
+                    }
+                    // The routed fit escalates and repeats bit for bit.
+                    let fits: Vec<_> = (0..2)
+                        .map(|_| {
+                            let mut route = routing_lsmr::GeneralRoutingState::new(
+                                RoutingPreset::geometry_many(),
+                            );
+                            let fit = panel.project(&mut route, &design, deterministic);
+                            assert!(!route.jacobi_trial_active());
+                            fit
+                        })
+                        .collect();
+                    for fit in &fits {
+                        assert!(fit.report().certified());
+                        assert_eq!(
+                            fit.report().used_preconditioner,
+                            Some(LsmrPreconditioner::Schwarz)
+                        );
+                    }
+                    assert_eq!(fits[0].report().iterations, fits[1].report().iterations);
+                    assert_eq!(fits[0].residualized(), fits[1].residualized());
+                })
+                .unwrap();
+        }
+    }
 }

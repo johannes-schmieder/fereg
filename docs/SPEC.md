@@ -322,6 +322,10 @@ projected total exceeds 40 iterations, about the cost of building the additive
 Schwarz preconditioner and running its usual iterations, the trial solver is
 released, the additive configuration that the slot rule selects is built once,
 and each escalated RHS continues from its iterate with its remaining budget.
+The trial solver and its escalation share one prepared pinned-solver design
+(observation frame, locality sort and layout), so escalation builds only the
+additive solver state; this is arithmetic-preserving, and the kept design stays
+within the additive solver frame that admission charges.
 Later calls on the binding reuse the solver it holds; reports name the
 preconditioner that finished. Admission charges the additive bound throughout.
 Third, every successful exit (pilot, LSMR or MAP fallback) is accepted only by

@@ -5811,7 +5811,40 @@ fn build_retained_borrowed_lsmr<'a>(
     preconditioner: PreconditionerConfig,
     deterministic: bool,
 ) -> Result<within::Solver<'a>> {
-    let effects = borrowed_lsmr_effects(design)?;
+    build_retained_lsmr_from(
+        borrowed_lsmr_effects(design)?,
+        weights,
+        preconditioner,
+        deterministic,
+    )
+}
+
+/// The pinned solver's observation-ordered design (locality sort included).
+/// `within::Solver::new` performs exactly this construction from the effects,
+/// so a solver built from it, or from a clone of it, is the same solver.
+fn prepared_within_design<'a>(
+    design: &BorrowedInterceptFeDesign<'a>,
+) -> Result<within::Design<'a>> {
+    within::Design::new(borrowed_lsmr_effects(design)?).map_err(retained_lsmr_build_error)
+}
+
+fn retained_lsmr_build_error(error: within::BuildError) -> FeregError {
+    FeregError::new(
+        if matches!(error, within::BuildError::Allocation { .. }) {
+            ErrorCode::Allocation
+        } else {
+            ErrorCode::Internal
+        },
+        format!("borrowed modified LSMR failed: {error}"),
+    )
+}
+
+fn build_retained_lsmr_from<'a>(
+    effects: impl within::IntoDesign<'a>,
+    weights: ValidatedWeights<'_>,
+    preconditioner: PreconditionerConfig,
+    deterministic: bool,
+) -> Result<within::Solver<'a>> {
     let weights = weights
         .values
         .map(|values| {
@@ -5835,16 +5868,7 @@ fn build_retained_borrowed_lsmr<'a>(
             Ok(solver)
         }
     });
-    solver.map_err(|error| {
-        FeregError::new(
-            if matches!(error, within::BuildError::Allocation { .. }) {
-                ErrorCode::Allocation
-            } else {
-                ErrorCode::Internal
-            },
-            format!("borrowed modified LSMR failed: {error}"),
-        )
-    })
+    solver.map_err(retained_lsmr_build_error)
 }
 
 #[allow(clippy::too_many_arguments)]

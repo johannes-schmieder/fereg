@@ -15,6 +15,9 @@
   PPML LSMR preflight when the level-count bound refused them, instead of an
   `r(909)` refusal or the MAP fallback. Owned designs with slopes keep the
   level-count bound. Fits the old bound admitted are unchanged bit for bit.
+- Many-FE OLS Auto builds the pinned solver's design (including its locality
+  sort) once for the Jacobi trial and reuses it when the trial escalates to
+  additive Schwarz. Results are bit-identical.
 
 ## 0.5.0 beta.9 — 2026-10-28
 
