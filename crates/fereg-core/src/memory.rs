@@ -175,6 +175,17 @@ pub fn estimate_phase2_memory(
             )
         }
     };
+    // A fast design wider than the stack binding borrows its sources through
+    // one heap descriptor per generated column while building the RHS batch.
+    let wide_rhs_binding = if finite_columns > crate::ols::MAX_BOUND_NUMERIC_COLUMNS {
+        checked_mul(
+            k,
+            std::mem::size_of::<Option<&[f64]>>() as u128,
+            "wide RHS binding bytes",
+        )?
+    } else {
+        0
+    };
     let fast_parallel_projection = projection_bytes(k)?;
     let low_parallel_projection = projection_bytes(pool)?;
 
@@ -206,6 +217,7 @@ pub fn estimate_phase2_memory(
         )?,
         fast_parallel_projection,
         wide_finite_solve,
+        wide_rhs_binding,
     ])?;
     let low = checked_sum(&[
         base,
@@ -1015,7 +1027,7 @@ mod tests {
         for k in [65_usize, 128, 1024] {
             let estimate = estimate_phase2_memory(100, 0, k, 0, 0, 8).expect("wide estimate");
             let legacy_fast = 100 * 40 + 16 * 100 * k as u128 + 8 * (k * k) as u128;
-            let incremental = 32 * (k * k) as u128 + 128 * k as u128;
+            let incremental = 32 * (k * k) as u128 + 128 * k as u128 + 16 * k as u128;
             assert_eq!(estimate.fast_bytes, legacy_fast + incremental);
             assert_eq!(
                 estimate.low_bytes,

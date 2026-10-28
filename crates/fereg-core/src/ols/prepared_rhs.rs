@@ -187,6 +187,8 @@ fn build_prepared_ols_rhs_with_reservation<R: RhsReservation>(
     }
     if let Some(columns) = NumericOlsColumns::bind(&prepared.model, &prepared.sample)? {
         columns.fill_reserved_rhs(response, &mut data)?;
+    } else if let Some(columns) = WideRhsColumns::bind(&prepared.model, &prepared.sample) {
+        columns.fill_reserved_rhs(response, &mut data)?;
     } else {
         data.resize(elements, 0.0);
         if rayon::current_num_threads() == 1 {
@@ -296,8 +298,66 @@ pub(crate) fn numeric_sources_are_finite(
     )
 }
 
+/// Fill a reserved `[response, X]` batch from borrowed column bindings (None
+/// is an explicit intercept) in bounded row tiles: an exact copy of every value.
+fn fill_bound_rhs(
+    columns: &[Option<&[f64]>],
+    rows: usize,
+    response: &[f64],
+    data: &mut Vec<f64>,
+) -> Result<()> {
+    let width = columns.len() + 1;
+    if response.len() != rows {
+        return Err(invalid_argument("numeric OLS RHS response is not aligned"));
+    }
+    let elements = rows
+        .checked_mul(width)
+        .ok_or_else(|| allocation("numeric OLS RHS dimensions overflow"))?;
+    if data.capacity() < elements {
+        return Err(allocation("numeric OLS RHS reservation is insufficient"));
+    }
+    // The caller already reserved the complete matrix fallibly. Indexed
+    // collection reuses that capacity and initializes disjoint slices in
+    // parallel, without uninitialized memory in the safe core or a second
+    // observation-scale allocation.
+    (0..elements)
+        .into_par_iter()
+        .map(|_| 0.0)
+        .collect_into_vec(data);
+    data.par_chunks_mut(NUMERIC_TILE_ROWS * width)
+        .enumerate()
+        .for_each(|(tile, output)| {
+            let start = tile * NUMERIC_TILE_ROWS;
+            let rows = output.len() / width;
+            for (destination, &value) in output
+                .chunks_exact_mut(width)
+                .zip(&response[start..start + rows])
+            {
+                destination[0] = value;
+            }
+            for (column, source) in columns.iter().enumerate() {
+                if let Some(source) = source {
+                    for (destination, &value) in output
+                        .chunks_exact_mut(width)
+                        .zip(&source[start..start + rows])
+                    {
+                        destination[column + 1] = value;
+                    }
+                } else {
+                    for destination in output.chunks_exact_mut(width) {
+                        destination[column + 1] = 1.0;
+                    }
+                }
+            }
+        });
+    Ok(())
+}
+
 const NUMERIC_TILE_ROWS: usize = 128;
 pub(crate) const MAX_BOUND_NUMERIC_COLUMNS: usize = 64;
+
+mod wide_rhs;
+pub(crate) use wide_rhs::WideRhsColumns;
 
 /// Add a numeric prepared predictor in coefficient-slot order using bounded
 /// row tiles. Unsupported designs return false without changing the output.
@@ -434,52 +494,7 @@ impl<'a> NumericOlsColumns<'a> {
     }
 
     pub(crate) fn fill_reserved_rhs(&self, response: &[f64], data: &mut Vec<f64>) -> Result<()> {
-        let width = self.width + 1;
-        if response.len() != self.rows {
-            return Err(invalid_argument("numeric OLS RHS response is not aligned"));
-        }
-        let elements = self
-            .rows
-            .checked_mul(width)
-            .ok_or_else(|| allocation("numeric OLS RHS dimensions overflow"))?;
-        if data.capacity() < elements {
-            return Err(allocation("numeric OLS RHS reservation is insufficient"));
-        }
-        // The caller already reserved the complete matrix fallibly. Indexed
-        // collection reuses that capacity and initializes disjoint slices in
-        // parallel, without uninitialized memory in the safe core or a second
-        // observation-scale allocation.
-        (0..elements)
-            .into_par_iter()
-            .map(|_| 0.0)
-            .collect_into_vec(data);
-        data.par_chunks_mut(NUMERIC_TILE_ROWS * width)
-            .enumerate()
-            .for_each(|(tile, output)| {
-                let start = tile * NUMERIC_TILE_ROWS;
-                let rows = output.len() / width;
-                for (destination, &value) in output
-                    .chunks_exact_mut(width)
-                    .zip(&response[start..start + rows])
-                {
-                    destination[0] = value;
-                }
-                for (column, source) in self.columns[..self.width].iter().enumerate() {
-                    if let Some(source) = source {
-                        for (destination, &value) in output
-                            .chunks_exact_mut(width)
-                            .zip(&source[start..start + rows])
-                        {
-                            destination[column + 1] = value;
-                        }
-                    } else {
-                        for destination in output.chunks_exact_mut(width) {
-                            destination[column + 1] = 1.0;
-                        }
-                    }
-                }
-            });
-        Ok(())
+        fill_bound_rhs(self.raw_columns(), self.rows, response, data)
     }
 
     /// Add selected raw columns in the caller's coefficient order. Keeping
@@ -1263,6 +1278,74 @@ mod tests {
                 )
                 .unwrap_err()
             );
+        }
+    }
+
+    #[test]
+    fn wide_rhs_binding_matches_generic_cells_across_workers() {
+        use crate::{ThreadConfig, ThreadTeam};
+        for (width, n) in [(66_usize, 4099), (67, 16384), (98, 4099)] {
+            let mut request = request(false, true);
+            request.model.sources.clear();
+            request.model.terms.clear();
+            request.bindings.truncate(2);
+            let mut input = LoadedOlsInput {
+                candidate: vec![true; n].into(),
+                outcome: loaded((0..n).map(|r| (r as f64).cos()).collect()),
+                numeric_sources: Vec::new(),
+                analytic_weight: None,
+                frequency_weight: None,
+                probability_weight: None,
+            };
+            for j in 0..width - 2 {
+                let source = source(j as u32 + 1, &format!("x{j}"));
+                request
+                    .model
+                    .terms
+                    .push(continuous_term(j as u32 + 1, source.id));
+                request.bindings.push(OlsInputBinding {
+                    stata_var_position: j as u32 + 3,
+                    role: OlsInputRole::NumericSource(source.id),
+                });
+                input.numeric_sources.push((
+                    source.id,
+                    loaded(
+                        (0..n)
+                            .map(|r| match r {
+                                0 => -0.0,
+                                _ => {
+                                    ((r * 17 + j) as f64).sin()
+                                        * if j % 2 == 0 { 1e90 } else { 1e-90 }
+                                }
+                            })
+                            .collect(),
+                    ),
+                ));
+                request.model.sources.push(source);
+            }
+            let prepared = prepare_model(&request, &[], &input, false).unwrap();
+            let generated = prepared.model.columns.len();
+            assert!(generated > MAX_BOUND_NUMERIC_COLUMNS);
+            assert!(NumericOlsColumns::bind(&prepared.model, &prepared.sample)
+                .unwrap()
+                .is_none());
+            assert!(WideRhsColumns::bind(&prepared.model, &prepared.sample).is_some());
+            let mut expected = Vec::with_capacity(n * (generated + 1));
+            for row in 0..n {
+                expected.push(prepared.sample.outcome[row].to_bits());
+                for column in 0..generated {
+                    expected.push(prepared.column_value(column, row).unwrap().to_bits());
+                }
+            }
+            for threads in [1, 2, 4, 8] {
+                ThreadTeam::new(ThreadConfig::from_requested(threads, false).unwrap())
+                    .install(|| {
+                        let rhs = build_prepared_ols_rhs(&prepared).unwrap().into_values();
+                        let actual: Vec<_> = rhs.as_slice().iter().map(|x| x.to_bits()).collect();
+                        assert_eq!(actual, expected);
+                    })
+                    .unwrap();
+            }
         }
     }
 
