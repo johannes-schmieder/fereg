@@ -1058,7 +1058,16 @@ the given output path.
 
 After publication, fresh Stata 19/MP sessions installed beta.10 from the public
 [beta.10 URL](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0-beta.10)
-and from updated `main` into isolated PLUS directories. INSTALLCHECK
+and from updated `main` into isolated PLUS directories. All 34 package files
+installed from the release matched the staged package bytes, and the 35 files
+installed from `main` matched them too apart from `dist/fereg-native.json`, the
+root package's own manifest, which bound the runtime to `7674cf06`. Native
+selftest passed on both routes, and `fereg`/`feppml` on the `auto` data agreed
+with Stata's `regress` and `poisson` dummy regressions to rounding (coefficient
+relative differences 2e-16 and 6e-14). GitHub's recorded SHA-256 and size
+matched every one of the 50 published assets. A first `main` installation
+before the notices refresh (`d894f630`) differed only in
+`fereg-THIRD-PARTY-NOTICES.txt`, which main's copy had not carried forward.
 
 ### Beta.9 two-FE Auto round-two packaging
 
