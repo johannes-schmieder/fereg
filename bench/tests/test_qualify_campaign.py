@@ -320,6 +320,24 @@ class Coverage(unittest.TestCase):
         self.assertEqual(len(q.read(self.manifest)['cases']) * 2, 58)
 
 
+class FrozenConfigurations(unittest.TestCase):
+    def test_beta10_configurations_cover_all_58_cells_with_declared_policies(self):
+        directory = Path(q.__file__).resolve().parent / 'qualify_configs'
+        for name, platform in (('beta10-linux.json', 'Linux'), ('beta10-darwin.json', 'Darwin')):
+            with self.subTest(config=name):
+                value = q.read(directory / name)
+                self.assertEqual((value['platform'], value['coverage'], value['threads']),
+                                 (platform, 'routing-campaign', [1, 4]))
+                self.assertEqual({c['family'] for c in value['cases']}, q.COVERAGES['routing-campaign'])
+                self.assertTrue(all(c['oracle']['kind'] == 'routing' for c in value['cases']
+                                    if c['family'] in q.CAMPAIGN_FAMILIES))
+                artifacts = value['artifacts']
+                self.assertEqual(artifacts['incumbent']['public_policy'], routing.GATES_V2)
+                self.assertEqual(artifacts['hidden']['request'], routing.GATES_V2)
+                self.assertTrue(value['timeout_s'] <= 120 and value['budget_s'] <= 14400)
+        self.assertEqual(q.read(directory / 'beta10-linux.json')['min_distinct_hosts_per_cell'], 12)
+
+
 class PublicPolicy(unittest.TestCase):
     evidence = test_qualify_policy.PolicyEvidence
     setUp, plan, execute = evidence.setUp, evidence.plan, evidence.execute

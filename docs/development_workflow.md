@@ -55,6 +55,13 @@ input and reference identities once per job, with lightweight drift checks.
 Do not add recursive history checks or prerequisite receipt chains.
 
 Keep 42-cell routing coverage and add cases only for the affected mechanism.
+The routing cells stop at 100,000 rows and 5 regressors; when a candidate targets
+million-row, one-FE, dense three-FE or many-control designs, add the 16-cell
+`campaign` coverage (`routing-campaign` runs all 58 cells). Its million-row SCC
+comparison designs carry independent blocked oracle references, and two of its
+cells request no observation outputs, the only routing-runner cells that reach
+the derived within residual. Declare each public original/incumbent's two-FE
+policy with `public_policy` so its gate evidence is checked.
 Protect original and last accepted public Auto with max(5%, 1 ms). Require
 independent numerical witnesses, exact/scoped science, resource gates, fixed-worker
 repeatability and cross-worker agreement. Activation must match the selected
