@@ -27,6 +27,13 @@
   hidden Stata adapter) qualifies bounded many-FE LSMR session windows, at
   most one live session per worker with the Jacobi escalation barrier at each
   window's end. Public Auto is unchanged.
+- `feppml` separation on two categorical fixed effects: when every detector
+  attempt (Auto, retained CG, LSMR) fails a numerical certificate, the Auto
+  step runs once more and re-checks a rejected two-FE projection with each
+  level's mean formed about its largest-weight observation instead of its
+  first. Heavily zero designs whose accurate projection was rejected by
+  rounding in that mean (an `r(430)` error) now complete; every fit that
+  completed before is bit-identical.
 - Developer: plugin replay accepts several affected-scope files (each entry
   validated on its own, their leaves united) and can declare PPML separation
   changes: `RSEP` certificate

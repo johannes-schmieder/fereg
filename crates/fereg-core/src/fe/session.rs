@@ -971,6 +971,7 @@ impl<'a> FeSession<'a> {
                     config.map,
                     final_residual,
                     remaining,
+                    config.declined_recheck,
                 )
             }
         } else if let Some(p) = self.general.as_mut() {

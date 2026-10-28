@@ -66,7 +66,7 @@ pub use borrowed_map::{
 pub(crate) use borrowed_map::{FUSED_PARALLEL_MAX_RHS, PARALLEL_PROJECTION_MIN_ROWS};
 pub(crate) use categorical_request::bind_categorical_effect_recipes;
 pub use categorical_request::{plan_categorical_absorbed_request, CategoricalAbsorbRequestPlan};
-pub use certificate::{certify_residuals, FeCertificate};
+pub use certificate::{certify_residuals, CertificateRecheck, FeCertificate};
 pub(crate) use certificate::{certify_residuals_with_reference_norms, weighted_column_norms};
 pub(crate) use cmg::{
     explicit_cmg_components, CmgAbsorber, CmgConfig, CmgControlSeed, CmgTopologyProfile,

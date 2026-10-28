@@ -81,6 +81,11 @@ pub struct AbsorbConfig {
     /// Retain coefficient-space solver products for zero-extra-solve saved-FE
     /// recovery. Callers enable this only when saved channels are requested.
     pub retain_coefficients: bool,
+    /// With `certified_fallback` off, a two-FE PCG certificate miss accepts
+    /// its rejected candidate when this re-check passes at the same tolerance
+    /// instead of returning `NonConvergence`. Only the separation detector's
+    /// last-resort attempt sets it (SPEC §14); `None` everywhere else.
+    pub declined_recheck: Option<super::CertificateRecheck>,
 }
 
 impl Default for AbsorbConfig {
@@ -97,6 +102,7 @@ impl Default for AbsorbConfig {
             certified_fallback: true,
             solver_memory_budget: None,
             retain_coefficients: false,
+            declined_recheck: None,
         }
     }
 }

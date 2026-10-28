@@ -7,8 +7,11 @@
 //! as a retained-CG step (below). The Auto attempt takes no MAP continuation
 //! (its `AbsorbConfig::certified_fallback` is off), so a two-FE PCG
 //! certificate miss reaches retained CG at once. The
-//! re-executed step reproduces the retained-CG step bit for bit, and when it
-//! fails too, its error (not the Auto attempt's) is reported.
+//! re-executed step reproduces the retained-CG step bit for bit. When it fails
+//! too (its LSMR re-execution included), the Auto step runs a last time with
+//! the largest-weight re-certification of a two-FE PCG miss
+//! ([`super::recertify`]); if that fails as well, the retained-CG step's
+//! error (not the Auto attempt's) is reported.
 //!
 //! The public detector solves its weighted finite-plus-FE projections with
 //! retained-product CG on the normal equations. The rectifier weights zero
@@ -125,7 +128,8 @@ impl<'a> DetectorPolicy<'a> {
 
     /// Run one detector step with the admitted policy and, after a numerical
     /// certificate failure, once more with retained CG when the admitted
-    /// policy is Auto, then once more with LSMR. Returns the step's result and
+    /// policy is Auto, then once more with LSMR, and last (Auto only) with the
+    /// largest-weight re-check of a two-FE PCG miss. Returns the step's result and
     /// the policy that produced it (a terminal result's replay must re-execute
     /// with that same policy).
     pub(super) fn run<T>(
@@ -157,12 +161,48 @@ impl<'a> DetectorPolicy<'a> {
             };
         }
         let Some((ppml, linear)) = self.admit_lsmr()? else {
-            return Err(first);
+            return self.recertified(generation, step, first);
         };
         let retried = step(ppml, linear);
         if crate::diagnostics::phase_timing_enabled() {
             eprintln!(
                 "FEREG_PHASE|separation_projection_retry|generation={generation}|solver=lsmr|first={:?}|succeeded={}",
+                first.code,
+                u8::from(retried.is_ok()),
+            );
+        }
+        match retried {
+            Ok(value) => Ok((value, ppml, linear)),
+            Err(error) if numerical(&error) => self.recertified(generation, step, first),
+            Err(error) => Err(error),
+        }
+    }
+
+    /// The last resort of an admitted Auto detector whose every attempt failed
+    /// a numerical certificate: the Auto step once more, where a two-FE PCG
+    /// certificate miss re-certifies its rejected candidate about each level's
+    /// largest-weight member ([`super::recertify`]) at the same tolerance and
+    /// publishes it if that passes. Otherwise `first` (the retained-CG step's
+    /// error) is reported, as without this attempt.
+    fn recertified<T>(
+        &self,
+        generation: usize,
+        mut step: impl FnMut(PpmlConfig, PreparedOlsFitConfig) -> Result<T>,
+        first: FeregError,
+    ) -> Result<(T, PpmlConfig, PreparedOlsFitConfig)> {
+        if self.retained_cg.is_none() {
+            return Err(first);
+        }
+        let mut linear = self.linear;
+        linear.absorb.declined_recheck = Some(super::recertify::largest_weight_certificate);
+        let ppml = PpmlConfig {
+            absorb: linear.absorb,
+            ..self.ppml
+        };
+        let retried = step(ppml, linear);
+        if crate::diagnostics::phase_timing_enabled() {
+            eprintln!(
+                "FEREG_PHASE|separation_projection_retry|generation={generation}|solver=auto_recertified|first={:?}|succeeded={}",
                 first.code,
                 u8::from(retried.is_ok()),
             );
