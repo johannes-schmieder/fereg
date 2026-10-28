@@ -2,52 +2,10 @@
   "definition": "docs/development_workflow.md#complexity-inventory",
   "growth": [
     {
-      "after": 111241,
-      "before": 110310,
+      "after": 111328,
+      "before": 111241,
       "metric": "fereg-core/production_lines",
-      "reason": "Round-two merge into main: Parallel cell construction (routing_kernel/parallel_build.rs): lane-private occurrence aggregation per worker range, compaction, and a stable two-level firm index with the serial reduction orders; both constructors choose it when the team offers lanes and its scratch fits. Separate kernel-diagonal preconditioner flag on the two-FE PCG workspace and its ablation setter. Trace-only phase ledgers (FEREG_PHASE_TIMING) for PPML joint frames, canonical products, shared-CMG column solves, PPML absorptions and CMG build seconds; no arithmetic or decision change. Arithmetic-preserving: fe/exact_sections.rs splits the joint recurrence's helper merge, finite cross block and per-frame level masses into fixed chunks, each element in its serial operation order, with cancellation polls; apply_with_helpers reports cancellation. Arithmetic-preserving: FinishedProbe keeps a finished canonical probe's coordinates and count as column 0's plain solve of that component instead of repeating the identical recurrence. PPML parity merge: Trace-only phase ledgers (FEREG_PHASE_TIMING) for PPML joint frames, canonical products, shared-CMG column solves, PPML absorptions and CMG build seconds; no arithmetic or decision change. Arithmetic-preserving: fe/exact_sections.rs splits the joint recurrence's helper merge, finite cross block and per-frame level masses into fixed chunks, each element in its serial operation order, with cancellation polls; apply_with_helpers reports cancellation. Arithmetic-preserving: FinishedProbe keeps a finished canonical probe's coordinates and count as column 0's plain solve of that component instead of repeating the identical recurrence."
-    },
-    {
-      "after": 1433,
-      "before": 1426,
-      "metric": "fereg-core/dispatch_candidates",
-      "reason": "Round-two merge into main: Parallel-or-serial constructor choice in both constructors, the lane outcome precedence that reproduces each serial failure order, and the occurrence/radix order switch. Work gates of the three exact sections (65,536 element operations; serial below) and the shared-product dispatch now matching the coupling owner. PPML parity merge: Work gates of the three exact sections (65,536 element operations; serial below) and the shared-product dispatch now matching the coupling owner."
-    },
-    {
-      "after": 8697,
-      "before": 8694,
-      "metric": "file/crates/fereg-core/src/fe/borrowed_map.rs",
-      "reason": "Round-two merge into main: The two-FE PCG workspace separates its preconditioner choice (kernel_diagonal, set only by the routing_diagonal ablation) from its operator choice (use_cell_operator), so eager cells keep the pilot D_f preconditioner."
-    },
-    {
-      "after": 426,
-      "before": 424,
-      "metric": "function/crates/fereg-core/src/fe/borrowed_map.rs/absorb#1",
-      "reason": "Round-two merge into main: The routing ablation sets the separate kernel-diagonal preconditioner flag."
-    },
-    {
-      "after": 202,
-      "before": 197,
-      "metric": "function/crates/fereg-core/src/fe/slope_coefficients/joint.rs/iterate#1",
-      "reason": "Round-two merge into main: Trace-only laps of the joint recurrence phases. PPML parity merge: Trace-only laps of the joint recurrence phases."
-    },
-    {
-      "after": 169,
-      "before": 165,
-      "metric": "function/crates/fereg-core/src/fe/slope_coefficients/joint.rs/solve_streamed#1",
-      "reason": "Round-two merge into main: Trace-only joint-frame ledger and its setup lap. PPML parity merge: Trace-only joint-frame ledger and its setup lap."
-    },
-    {
-      "after": 1913,
-      "before": 1891,
-      "metric": "file/crates/fereg-core/src/ols/canonical_products.rs",
-      "reason": "Round-two merge into main: Trace-only laps of the canonical solve phases and the probe interval. The probe records a finished result; column 0 skips initializing and re-solving that component. PPML parity merge: Trace-only laps of the canonical solve phases and the probe interval. The probe records a finished result; column 0 skips initializing and re-solving that component."
-    },
-    {
-      "after": 1095,
-      "before": 1073,
-      "metric": "function/crates/fereg-core/src/ols/canonical_products.rs/build#1",
-      "reason": "Round-two merge into main: Trace-only laps of the canonical solve phases and the probe interval. The probe records a finished result; column 0 skips initializing and re-solving that component. PPML parity merge: Trace-only laps of the canonical solve phases and the probe interval. The probe records a finished result; column 0 skips initializing and re-solving that component."
+      "reason": "Derived final residual on the one-FE and many-FE Auto binding routes (SPEC 7, 16): fe/borrowed_map/derived_residual.rs shares the derived-scale and certificate steps between the two-FE owner and a new one-RHS binding certificate admitted against the solver budget, with a fault_plan! one-shot failure for tests; fe/session.rs selects the binding certificate for Auto one-FE designs and the many-FE geometry policy; one_shot.rs gates on the saved-FE request before the one-FE route clears its unused coefficient product. No projection loop changes."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -2244,17 +2202,37 @@
         "chunk_candidates": [],
         "dispatch_candidates": [
           {
-            "condition": "values . nrows ( ) != self . design . nobs ( ) || values . ncols ( ) != 1 || ! amplification . is_finite ( ) || amplification < 1.0 || ! ( tolerance . is_finite ( ) && tolerance > 0.0 )",
-            "line": 22
+            "condition": "values . nrows ( ) != nobs || values . ncols ( ) != 1 || ! amplification . is_finite ( ) || amplification < 1.0 || ! ( tolerance . is_finite ( ) && tolerance > 0.0 )",
+            "line": 30
+          },
+          {
+            "condition": "budget . is_some_and ( | b | ! b . fits ( bytes ) )",
+            "line": 121
           }
         ],
         "functions": {
+          "certify_at_derived_scale#1": {
+            "line": 64,
+            "lines": 14
+          },
+          "certify_binding_derived#1": {
+            "line": 100,
+            "lines": 29
+          },
           "certify_derived#1": {
-            "line": 15,
-            "lines": 32
+            "line": 80,
+            "lines": 15
+          },
+          "set_derived_scale#1": {
+            "line": 48,
+            "lines": 14
+          },
+          "validate#1": {
+            "line": 29,
+            "lines": 16
           }
         },
-        "production_lines": 35
+        "production_lines": 94
       },
       "crates/fereg-core/src/fe/borrowed_map/eager_cells.rs": {
         "chunk_candidates": [],
@@ -6710,64 +6688,60 @@
             "line": 780
           },
           {
-            "condition": "self . cmg . is_none ( ) && self . lsmr . is_none ( ) => owner . certify_derived ( weights , values , tolerance , amplification ) . map ( Some ) , _ => Ok ( None ) , } } # [ allow ( clippy :: too_many_arguments ) ] pub ( crate ) fn project_ols_with_remaining ( & mut self , weights : BorrowedMapWeights < '_ > , values : DenseMatrix , config : super :: AbsorbConfig , final_residual : bool , raw_final : bool , remaining : Option < ( ObserverRef < '_ > , Demand ) > , ) -> Result < CertifiedBorrowedMap >",
-            "line": 842
-          },
-          {
             "condition": "let Some ( p ) = self . cmg . as_mut ( )",
-            "line": 908
+            "line": 940
           },
           {
             "condition": "let Some ( p ) = self . lsmr . as_mut ( )",
-            "line": 920
+            "line": 952
           },
           {
             "condition": "let Some ( p ) = self . categorical . as_mut ( )",
-            "line": 932
+            "line": 964
           },
           {
             "condition": "let Some ( p ) = self . general . as_mut ( )",
-            "line": 934
+            "line": 966
           },
           {
             "condition": "let Some ( peak ) = self . categorical . as_ref ( ) . map ( | p | p . cmg_schur_peak ( ) ) . transpose ( ) ? . flatten ( )",
-            "line": 1036
+            "line": 1068
           },
           {
             "condition": "! design . effects ( ) . is_empty ( ) => super :: absorb_borrowed_intercept_lsmr ( design , weights , values . into_values ( ) , config . lsmr , config . retain_coefficients , ) , S :: Cg =>",
-            "line": 1146
+            "line": 1178
           },
           {
             "condition": "let Some ( c ) = r . retained . filter ( | _ | memory . is_none_or ( | m | fits ( m . retained_peak_bytes ) ) )",
-            "line": 1275
+            "line": 1307
           },
           {
             "condition": "recover :: recover_finalized_categorical_effects_from_coefficients_selected_certified ( r . topology , r . effects , r . weights , r . target , r . requested_channels , c , r . map . tolerance , r . known_connected , r . materialize_absorbed_sum )",
-            "line": 1280
+            "line": 1312
           },
           {
             "condition": "r . effects . len ( ) == 1 && ! r . effects [ 0 ] . slopes ( ) . is_empty ( ) && r . effects [ 0 ] . channels ( ) <= 4",
-            "line": 1288
+            "line": 1320
           },
           {
             "condition": "recover :: recover_finalized_single_slope_direct_certified ( r . topology , r . effects , r . weights , r . target , r . requested_channels , r . map . tolerance , r . materialize_absorbed_sum , false , )",
-            "line": 1301
+            "line": 1333
           },
           {
             "condition": "intercepts && r . effects . len ( ) == 2 && memory . is_some_and ( | m | fits ( m . retained_peak_bytes ) )",
-            "line": 1319
+            "line": 1351
           },
           {
             "condition": "recover :: recover_finalized_two_effects_graph_certified ( r . topology , r . effects , r . weights , r . target , r . requested_channels , r . map . tolerance , r . known_connected , r . materialize_absorbed_sum , )",
-            "line": 1322
+            "line": 1354
           },
           {
             "condition": "memory . is_some_and ( | m | ! fits ( m . map_peak_bytes ) )",
-            "line": 1340
+            "line": 1372
           },
           {
             "condition": "n",
-            "line": 1377
+            "line": 1409
           }
         ],
         "functions": {
@@ -6805,15 +6779,19 @@
           },
           "certify_derived_residual#1": {
             "line": 834,
-            "lines": 14
+            "lines": 29
           },
           "close_routing_attempt#1": {
-            "line": 872,
+            "line": 904,
             "lines": 5
           },
           "default#1": {
             "line": 212,
             "lines": 21
+          },
+          "derived_binding#1": {
+            "line": 868,
+            "lines": 12
           },
           "design#1": {
             "line": 80,
@@ -6840,7 +6818,7 @@
             "lines": 6
           },
           "include_recovery_peak#1": {
-            "line": 1373,
+            "line": 1405,
             "lines": 10
           },
           "max_rhs#1": {
@@ -6848,7 +6826,7 @@
             "lines": 6
           },
           "numerical_recovery_miss#1": {
-            "line": 1365,
+            "line": 1397,
             "lines": 8
           },
           "optional#1": {
@@ -6880,11 +6858,11 @@
             "lines": 85
           },
           "project_initial_ols#1": {
-            "line": 878,
+            "line": 910,
             "lines": 18
           },
           "project_intercepts#1": {
-            "line": 1119,
+            "line": 1151,
             "lines": 88
           },
           "project_ols#1": {
@@ -6892,19 +6870,19 @@
             "lines": 24
           },
           "project_ols_binding#1": {
-            "line": 898,
+            "line": 930,
             "lines": 81
           },
           "project_ols_input#1": {
-            "line": 981,
+            "line": 1013,
             "lines": 135
           },
           "project_ols_with_remaining#1": {
-            "line": 850,
+            "line": 882,
             "lines": 19
           },
           "recover#1": {
-            "line": 1224,
+            "line": 1256,
             "lines": 140
           },
           "reject_ppml_topology#1": {
@@ -6920,7 +6898,7 @@
             "lines": 3
           }
         },
-        "production_lines": 1293
+        "production_lines": 1320
       },
       "crates/fereg-core/src/fe/singleton.rs": {
         "chunk_candidates": [],
@@ -13796,15 +13774,15 @@
           },
           {
             "condition": "within_norms . len ( ) != coefficients . len ( ) + 1 || raw_norms . len ( ) != coefficients . len ( )",
-            "line": 980
+            "line": 983
           },
           {
             "condition": "let Some ( report ) = derived_residual ( cmg , & matrix , weights , config , scale , absorption ) ?",
-            "line": 1057
+            "line": 1060
           },
           {
             "condition": "let ( ProjectedStorage :: Scratch ( low ) , Some ( destination ) ) = ( inputs . storage , retained_scratch )",
-            "line": 1152
+            "line": 1155
           }
         ],
         "functions": {
@@ -13817,24 +13795,24 @@
             "lines": 116
           },
           "derived_residual#1": {
-            "line": 1000,
+            "line": 1003,
             "lines": 41
           },
           "derived_residual_scale#1": {
-            "line": 974,
+            "line": 977,
             "lines": 23
           },
           "derived_scale#1": {
-            "line": 938,
+            "line": 941,
             "lines": 19
           },
           "finish_one_shot#1": {
-            "line": 1104,
+            "line": 1107,
             "lines": 67
           },
           "fit#1": {
             "line": 773,
-            "lines": 149
+            "lines": 150
           },
           "original_residuals#1": {
             "line": 622,
@@ -13845,7 +13823,7 @@
             "lines": 77
           },
           "project_residual#1": {
-            "line": 1043,
+            "line": 1046,
             "lines": 59
           },
           "project_scratch#1": {
@@ -13865,7 +13843,7 @@
             "lines": 41
           },
           "scaled_initial_sum_of_squares#1": {
-            "line": 923,
+            "line": 924,
             "lines": 11
           },
           "score_norms#1": {
@@ -13881,11 +13859,11 @@
             "lines": 39
           },
           "weighted_response_norm#1": {
-            "line": 958,
+            "line": 961,
             "lines": 12
           }
         },
-        "production_lines": 1106
+        "production_lines": 1107
       },
       "crates/fereg-core/src/ols/prepared_fit_view.rs": {
         "chunk_candidates": [],
@@ -24445,7 +24423,7 @@
         "dispatch_candidates": 1433,
         "files_over_1500": 15,
         "functions_over_150": 59,
-        "production_lines": 111241
+        "production_lines": 111328
       },
       "fereg-plugin": {
         "chunk_candidates": 3,

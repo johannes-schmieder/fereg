@@ -49,6 +49,8 @@ mod topology_source;
 
 pub use accelerated_map::absorb_accelerated_map;
 pub use auto::{absorb_fixed_effects, AbsorbConfig};
+#[cfg(test)]
+pub(crate) use borrowed_map::derived_residual::inject_derived_certificate_failure_once;
 pub(crate) use borrowed_map::{
     absorb_borrowed_intercept_cg, absorb_borrowed_intercept_irons_tuck_certified,
     absorb_borrowed_intercept_lsmr, absorb_borrowed_intercept_map,

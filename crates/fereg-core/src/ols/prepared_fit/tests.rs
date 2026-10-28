@@ -2536,6 +2536,8 @@ fn without_solve_timings(mut fit: CertifiedPreparedOlsFit) -> CertifiedPreparedO
     fit.absorption_report.solve_seconds = 0.0;
     fit.residual_absorption_report.setup_seconds = 0.0;
     fit.residual_absorption_report.solve_seconds = 0.0;
+    // A derived final residual times only its certificate.
+    fit.residual_absorption_report.certification_seconds = 0.0;
 
     fit
 }
@@ -9836,5 +9838,164 @@ fn derived_final_residual_replaces_the_polish_only_without_outputs() {
     );
     for (a, b) in derived.residuals().iter().zip(corrected.residuals()) {
         assert_close(*a, *b, 1e-8);
+    }
+}
+
+/// One sorted FE, a sparse three-FE graph, or (`product`) three FEs whose
+/// balanced cells make every pair independent, so MAP converges at once.
+fn derived_route_fixture(
+    effects: usize,
+    product: bool,
+    weights: Option<&[f64]>,
+) -> crate::PreparedOlsData {
+    let n = 3_000;
+    let codes = if product {
+        [
+            (0..n).map(|row| (row % 4) as f64).collect::<Vec<_>>(),
+            (0..n).map(|row| (row / 4 % 5) as f64).collect(),
+            (0..n).map(|row| (row / 20 % 3) as f64).collect(),
+        ]
+    } else {
+        [
+            (0..n).map(|row| (row / 5) as f64).collect::<Vec<_>>(),
+            (0..n)
+                .map(|row| ((row * 7 + row / 5 * 13) % 53) as f64)
+                .collect(),
+            (0..n)
+                .map(|row| ((row * 13 + row / 11) % 17) as f64)
+                .collect(),
+        ]
+    };
+    let x = [
+        (0..n)
+            .map(|row| (row as f64 * 0.37).sin() + 0.01 * codes[0][row])
+            .collect::<Vec<_>>(),
+        (0..n)
+            .map(|row| (row as f64 * 0.11).cos() + 0.02 * codes[1][row])
+            .collect(),
+    ];
+    let y = (0..n)
+        .map(|row| {
+            1.5 * x[0][row] - 0.7 * x[1][row]
+                + 0.3 * codes[0][row].sin()
+                + 0.2 * codes[1][row].cos()
+                - 0.1 * codes[2][row]
+                + 0.05 * (row as f64 * 1.7).cos()
+        })
+        .collect::<Vec<_>>();
+    let weights = weights.map_or(TestWeights::Unit, TestWeights::Analytic);
+    prepared_multiway_categorical_weights(&y, &x, &codes[..effects], weights)
+}
+
+// The direct one-FE route and the many-FE geometry policy (MAP pilot and
+// LSMR session) accept ỹ - X̃b by the same derived certificate as the two-FE
+// owner. A forced derived-certificate failure, saved FE products, requested
+// residual outputs and low memory keep the certified final projection, with
+// identical coefficients and residuals within the certified accuracy.
+#[test]
+fn derived_final_residual_covers_the_one_fe_and_many_fe_auto_routes() {
+    let analytic = (0..3_000)
+        .map(|row| 0.5 + f64::from(row % 7) / 3.0)
+        .collect::<Vec<_>>();
+    let mut routes = Vec::new();
+    for (effects, product, weights) in [
+        (1, false, None),
+        (1, false, Some(analytic.as_slice())),
+        (3, true, None),
+        (3, false, None),
+        (3, false, Some(analytic.as_slice())),
+    ] {
+        let prepared = derived_route_fixture(effects, product, weights);
+        let config = |mode, outputs: Option<f64>, retain: bool| {
+            let mut config = PreparedOlsFitConfig::default();
+            config.execution.mode = mode;
+            config.final_residual_tolerance = outputs;
+            config.absorb.retain_coefficients = retain;
+            config.allow_final_fe_recovery = true;
+            config
+        };
+        let fast = config(PreparedOlsExecutionMode::Fast, None, false);
+        let derived = fit_prepared_model_coefficients(&prepared, fast).unwrap();
+        let report = derived.residual_absorption_report();
+        let absorption = derived.absorption_report();
+        assert_eq!(report.stop_reason, SolveStopReason::DerivedCertificate);
+        assert_eq!((report.iterations, report.pilot_iterations), (0, 0));
+        assert!(report.certified() && report.certificate.passed);
+        assert_eq!(report.used_solver, absorption.used_solver);
+        assert_eq!(report.requested_solver, FeSolverKind::Auto);
+        assert!(!report.fallback_used);
+        routes.push((effects, absorption.used_solver));
+
+        crate::fe::inject_derived_certificate_failure_once();
+        let forced = fit_with_controls_internal(
+            &prepared,
+            fast,
+            &mut InjectedReservation::default(),
+            FitPerturbations::default(),
+        )
+        .unwrap();
+        let polished = [
+            forced,
+            fit_prepared_model_coefficients(
+                &prepared,
+                config(PreparedOlsExecutionMode::Fast, None, true),
+            )
+            .unwrap(),
+            fit_prepared_model_coefficients(
+                &prepared,
+                config(PreparedOlsExecutionMode::Fast, Some(1e-14), false),
+            )
+            .unwrap(),
+            fit_prepared_model_coefficients(
+                &prepared,
+                config(PreparedOlsExecutionMode::Low, None, false),
+            )
+            .unwrap(),
+        ];
+        for (index, polished) in polished.iter().enumerate() {
+            let report = polished.residual_absorption_report();
+            assert_eq!(report.stop_reason, SolveStopReason::Certified, "{index}");
+            assert!(report.certified());
+            for (left, right) in derived.coefficients().iter().zip(polished.coefficients()) {
+                assert_eq!(left.status, right.status);
+                match (left.value, right.value) {
+                    // The forced fallback shares every pre-residual step.
+                    (Some(a), Some(b)) if index == 0 => assert_eq!(a.to_bits(), b.to_bits()),
+                    (Some(a), Some(b)) => assert_close(a, b, 1e-9),
+                    (None, None) => {}
+                    _ => panic!("coefficient availability differs"),
+                }
+            }
+            for (a, b) in derived.residuals().iter().zip(polished.residuals()) {
+                assert_close(*a, *b, 1e-8);
+            }
+        }
+    }
+    // Both many-FE exits are covered: the balanced unit-weight design passes
+    // the bounded MAP pilot; the sparse designs run the LSMR session.
+    assert_eq!(
+        routes,
+        [
+            (1, FeSolverKind::Map),
+            (1, FeSolverKind::Map),
+            (3, FeSolverKind::Map),
+            (3, FeSolverKind::Lsmr),
+            (3, FeSolverKind::Lsmr),
+        ]
+    );
+}
+
+// Explicit solvers on the binding route keep the certified final projection.
+#[test]
+fn derived_final_residual_leaves_explicit_binding_solvers_projected() {
+    let prepared = derived_route_fixture(1, false, None);
+    for solver in [FeSolverKind::Map, FeSolverKind::Lsmr] {
+        let mut config = PreparedOlsFitConfig::default();
+        config.absorb.solver = solver;
+        let fit = fit_prepared_model_coefficients(&prepared, config).unwrap();
+        assert_eq!(
+            fit.residual_absorption_report().stop_reason,
+            SolveStopReason::Certified
+        );
     }
 }
