@@ -153,13 +153,16 @@ pub(super) fn attempt(
             || iteration % map.check_every == 0
             || iteration == SWEEPS
         {
-            let certificate = if iteration == 0 {
-                certify_initial(design, weights, &values, map.tolerance, &mut workspace)
-            } else {
-                certify(design, weights, &values, map.tolerance, &mut workspace)
-            };
-            let certificate = match certificate {
-                Ok(certificate) => certificate,
+            let certificate = match initial_screen::pilot_certificate(
+                iteration == 0,
+                design,
+                weights,
+                &values,
+                map.tolerance,
+                &mut workspace,
+            ) {
+                Ok(Some(certificate)) => certificate,
+                Ok(None) => continue,
                 Err(e) if e.code == ErrorCode::InvalidData => break,
                 Err(e) => return Err(e),
             };

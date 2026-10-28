@@ -75,6 +75,14 @@ impl DenseMatrix {
         &mut self.data
     }
 
+    /// Whether every value is finite. A pure predicate: the installed team
+    /// may scan disjoint chunks in any order without changing the answer.
+    pub(crate) fn all_finite(&self) -> bool {
+        crate::parallel::all_row_chunks(self.data.len(), self.data.len() as u128, |range| {
+            self.data[range].iter().all(|value| value.is_finite())
+        })
+    }
+
     pub(crate) fn storage_capacity(&self) -> usize {
         self.data.capacity()
     }

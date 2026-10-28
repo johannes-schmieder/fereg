@@ -20,6 +20,7 @@ mod categorical_prefix;
 mod derived_residual;
 mod eager_cells;
 use eager_cells::ReuseState;
+mod initial_screen;
 mod irons_tuck;
 mod lsmr_norms;
 mod map_wrapper_trace;
@@ -4526,7 +4527,7 @@ pub(crate) fn certify_borrowed_intercept_candidate_with_workspace(
             "borrowed certificate design and matrix dimensions are inconsistent",
         ));
     }
-    if values.as_slice().iter().any(|value| !value.is_finite()) {
+    if !values.all_finite() {
         return Err(invalid_data(
             "borrowed certificate candidate contains a nonfinite value",
         ));
@@ -6863,8 +6864,7 @@ fn absorb_with_reservation_mode<R: WorkspaceReservation>(
     }
     // Trace-only laps (FEREG_PHASE_TIMING): no arithmetic or decision effect.
     let trace = map_wrapper_trace::ledger(values.nrows(), values.ncols());
-    let invalid_values = values.as_slice().iter().any(|value| !value.is_finite());
-    if invalid_values {
+    if !values.all_finite() {
         return Err(invalid_data("borrowed MAP values must be finite"));
     }
     let weights = validate_weights(weights, values.nrows())?;
@@ -6896,13 +6896,15 @@ fn absorb_with_reservation_mode<R: WorkspaceReservation>(
     }
 
     {
-        let initial_certificate = if design.effects().is_empty() {
-            certify_initial_structural_constant(weights, &values, config.tolerance, &mut workspace)?
-        } else {
-            certify_initial(design, weights, &values, config.tolerance, &mut workspace)?
-        };
+        let initial_certificate = initial_screen::entry_certificate(
+            design,
+            weights,
+            &values,
+            config.tolerance,
+            &mut workspace,
+        )?;
         trace.lap(map_wrapper_trace::INITIAL);
-        if initial_certificate.passed {
+        if let Some(initial_certificate) = initial_certificate.filter(|c| c.passed) {
             let mut result = certified_result(
                 values,
                 SolveStopReason::Certified,
@@ -9405,6 +9407,8 @@ fn update_workspace_norms(
     )
 }
 
+#[cfg(test)]
+mod initial_screen_tests;
 #[cfg(test)]
 mod ppml_topology_tests;
 #[cfg(test)]

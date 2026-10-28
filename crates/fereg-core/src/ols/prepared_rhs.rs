@@ -72,7 +72,7 @@ impl OlsProjectionInput {
 
     pub(crate) fn validate_finite(&self, message: &'static str) -> Result<()> {
         if let Self::Raw(values) = self {
-            if values.as_slice().iter().any(|v| !v.is_finite()) {
+            if !values.all_finite() {
                 return Err(invalid_data(message));
             }
         }
