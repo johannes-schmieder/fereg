@@ -5,6 +5,8 @@ mod bias;
 #[allow(dead_code)]
 #[path = "../tests/support/ols_complete_oracle.rs"]
 mod dense;
+#[path = "replay/derived.rs"]
+mod derived;
 #[path = "replay/expected.rs"]
 mod expected;
 #[allow(dead_code)]
@@ -130,4 +132,5 @@ fn main() {
     }
     known::generate(&directory);
     wide::generate_case(&directory);
+    derived::generate_cases(&directory);
 }

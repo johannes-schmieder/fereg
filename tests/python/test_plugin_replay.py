@@ -73,6 +73,23 @@ class ReplayChecks(unittest.TestCase):
         changed['columns'][1][0] = '3ff0000000000000'
         self.assertNotEqual(discrete_view(base, expected), discrete_view(changed, expected))
 
+    def test_derived_residual_cases_must_take_the_derived_certificate_path(self):
+        from replay_plugins import derived_residual_errors
+        def solver(residual_stop=5., iterations=0., used=4., pilot=0.):
+            row = [1., 4., 7., 2.] + [0.] * 12
+            residual = [1., used, iterations, residual_stop] + [0.] * 10 + [pilot, 0.]
+            return {'columns': 16, 'bits': [struct.pack('>d', v).hex() for v in row + residual]}
+        expected = {'poisson': False, 'derived_residual': True, 'saved': [],
+                    'outputs': {'sample': 0, 'drop_reason': 1}}
+        result = {'matrices': {'RSOLVER': solver()}}
+        self.assertEqual(derived_residual_errors(result, expected), [])
+        for bad in [solver(residual_stop=2.), solver(iterations=3.), solver(used=2.), solver(pilot=1.)]:
+            self.assertTrue(derived_residual_errors({'matrices': {'RSOLVER': bad}}, expected))
+        for outputs in [{'sample': 0, 'drop_reason': 1, 'residual': 2},
+                        {'sample': 0, 'drop_reason': 1, 'xbd': 2}]:
+            self.assertTrue(derived_residual_errors(result, dict(expected, outputs=outputs)))
+        self.assertTrue(derived_residual_errors(result, dict(expected, saved=[3])))
+
     def test_independent_psd_target_has_analytic_spectrum(self):
         values, fixed = eigensystem([[1., 2., 0.], [2., 1., 0.], [0., 0., 4.]])
         for a,b in zip(sorted(values), [-1., 3., 4.]): self.assertAlmostEqual(a,b,places=13)

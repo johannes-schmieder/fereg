@@ -33,6 +33,9 @@
   magnitudes and iteration counts by row stride, and the receipt's separation
   trace digest only beside a declared `RSEP` leaf with a separation reason.
   The activated separation route's replay change is now a declared scope.
+- Developer: three Fast OLS replay cases without observation outputs (one,
+  two and three FE) exercise the derived within residual and require its
+  certificate path (stop code 5) beside the dense targets.
  (beta.10 development)
 
 - OLS with one fixed effect and the bounded three-FE MAP pilot skip the

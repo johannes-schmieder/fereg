@@ -36,6 +36,9 @@
     "ols-29",
     "ols-30",
     "ols-31",
+    "ols-derived-fe1",
+    "ols-derived-fe2",
+    "ols-derived-fe3",
     "ols-wide-k67",
     "ppml-00",
     "ppml-01",
@@ -76,6 +79,11 @@
     "ppml-separation-mu",
     "ppml-separation-simplex"
   ],
+  "case_notes": {
+    "ols-derived-fe1": "Fast OLS without residual, xb, xbd, d or saved-FE outputs (one FE, iid): the only OLS cases that reach the derived within residual (SPEC 7, stop code 5); every other OLS case requests observation outputs.",
+    "ols-derived-fe2": "As ols-derived-fe1 on the two-FE categorical owner (analytic weights, robust).",
+    "ols-derived-fe3": "As ols-derived-fe1 on the many-FE geometry policy (three FE, robust)."
+  },
   "known_defects": {
     "known-12": "full-matrix-covariance",
     "known-66": "frequency-singleton",

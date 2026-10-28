@@ -161,9 +161,12 @@ def scientific_errors(result: dict, expected: dict) -> list[str]:
     sample = [number(x) for x in result['columns'][outputs['sample']]]
     if sample != expected['sample']:
         errors.append('sample mismatch')
-    for name, target_name in [('residual', 'residual'), ('mean' if expected['poisson'] else 'xbd', 'fitted')]:
-        values = result['columns'][outputs[name]]
-        close([number(values[i]) for i in expected['rows']], expected[target_name], name, 1e-7, 1e-9)
+    if expected.get('derived_residual'):
+        errors.extend(derived_residual_errors(result, expected))
+    else:
+        for name, target_name in [('residual', 'residual'), ('mean' if expected['poisson'] else 'xbd', 'fitted')]:
+            values = result['columns'][outputs[name]]
+            close([number(values[i]) for i in expected['rows']], expected[target_name], name, 1e-7, 1e-9)
     if expected.get('saved'):
         total = [sum(number(result['columns'][channel][i])
                      for channel in expected['saved']) for i in expected['rows']]
@@ -179,6 +182,25 @@ def scientific_errors(result: dict, expected: dict) -> list[str]:
         close([number(result['columns'][int(channel)][i]) for i in expected['rows']],
               target, 'independent saved FE gauge/' + str(channel), 1e-7, 1e-9)
     return errors
+
+
+def derived_residual_errors(result: dict, expected: dict) -> list[str]:
+    """A Fast OLS case without observation outputs must take the derived path.
+
+    SPEC §7: its residual solver row reports the absorption's solver, zero
+    iterations, zero pilot work and stop code 5 (derived certificate). The
+    dense targets then check coefficients and the residual-based covariance.
+    """
+    if (expected['poisson'] or set(expected['outputs']) != {'sample', 'drop_reason'}
+            or expected.get('saved')):
+        return ['derived-residual case requests an observation output']
+    solver = matrix(result, 'RSOLVER')
+    width = result['matrices']['RSOLVER']['columns']
+    absorption, residual = solver[:width], solver[width:2 * width]
+    if (residual[3] != 5 or residual[1] != absorption[1] or residual[2] != 0
+            or residual[14] != 0 or residual[15] != 0):
+        return ['derived residual certificate path was not taken']
+    return []
 
 
 def digest(path: Path) -> str:

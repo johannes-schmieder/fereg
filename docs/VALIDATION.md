@@ -225,7 +225,20 @@ task.
   exact differences. Every OLS replay case requests residual, xbd and absorbed
   outputs, so the corpus does not exercise the derived path on any route; the
   [scope](../tests/replay/scopes/2026-10-28-derived-residual-routes-macos.json)
-  therefore lists no cases.
+  therefore lists no cases. Three replay cases now request only the sample
+  and drop reasons in Fast memory (`ols-derived-fe1`, `-fe2`, `-fe3`: one FE
+  iid, two FE analytic-weight robust, three FE robust); their science check
+  requires the residual row's stop code 5 with the absorption's solver, zero
+  iterations and zero pilot work, beside the dense explicit-dummy
+  coefficients and covariance. On the integration head all three take the
+  derived path and pass with 4- and 8-worker repeats and cross-worker
+  agreement (replay against the same build, 77/77). Against beta.9,
+  `ols-derived-fe2` is exact (beta.9 already derived the two-FE owner's
+  residual), while beta.9 projects the one- and three-FE residuals (stop
+  code 2), so those two cases differ in the residual row's stop code and
+  certificate norms (and, for three FE, the within fused LSMR leaves). A
+  stop-code change is a route signature that no affected scope may declare,
+  so these cases take the current build as their parent from beta.10 on.
 - **Mac Stata end-to-end.** Coefficients are bit-identical to beta.9 in every
   cell below. One FE and dense three FE are bit-identical apart from the
   residual solver row, because beta.9 already accepted their residual at the
