@@ -2,8 +2,6 @@
 
 ## Unreleased
 
-## Unreleased
-
 - OLS Auto with three or more categorical-intercept effects no longer falls
   back to slow alternating projections on large sparse panels because of an
   overstated memory estimate: when the additive-Schwarz bound refuses LSMR,
@@ -76,7 +74,6 @@
   receipt's separation trace digest can differ. `inject=ppml_separation_cg`
   keeps the retained-CG path for comparison.
 - Developer phase timing reports the PPML separation rectifier (phase,
-## Unreleased
 
   iteration and projection laps). A hidden `inject=ppml_separation_auto`
   qualification arm solves two-intercept separation-detector projections with
