@@ -19,6 +19,7 @@ use super::routing_remaining::State as RemainingState;
 mod categorical_prefix;
 pub(crate) mod derived_residual;
 mod eager_cells;
+mod fused_sweep;
 use eager_cells::ReuseState;
 mod initial_screen;
 mod irons_tuck;

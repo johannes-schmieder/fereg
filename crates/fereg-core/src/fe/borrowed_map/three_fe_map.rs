@@ -2,6 +2,7 @@
 use super::*;
 
 mod geometry;
+mod pilot_trace;
 #[cfg(test)]
 mod tests;
 pub(crate) use geometry::Geometry;
@@ -56,6 +57,7 @@ pub(super) fn attempt(
 ) -> Result<Attempt> {
     let started = Instant::now();
     let mut trial = Attempt::default();
+    let mut trace = pilot_trace::ledger(original.nrows(), original.ncols(), predicted_checkpoint);
     let workspace_bytes = BorrowedMapWorkspace::planned_payload_bytes(
         design,
         original.nrows(),
@@ -68,6 +70,8 @@ pub(super) fn attempt(
     let Some(bytes) = bytes.filter(|&b| budget.is_none_or(|limit| limit.fits(b))) else {
         return Ok(trial);
     };
+    let fused_bytes = super::fused_sweep::admit(design, original, bytes, budget);
+    let bytes = fused_bytes.unwrap_or(bytes);
     // Record the admitted construction overlap even if a later optional
     // reservation fails after an earlier bank was allocated.
     trial.peak = SolverWorkspacePeak::from_bytes(bytes)?;
@@ -88,9 +92,10 @@ pub(super) fn attempt(
         let coefficients = retain
             .then(|| FeCoefficientBatch::intercept_zeros(design, original.ncols()))
             .transpose()?;
-        Ok((candidate, workspace, coefficients))
+        let fused = super::fused_sweep::reserve(design, original, fused_bytes.is_some())?;
+        Ok((candidate, workspace, coefficients, fused))
     })();
-    let (mut values, mut workspace, mut coefficients) = match setup {
+    let (mut values, mut workspace, mut coefficients, mut fused) = match setup {
         Ok(state) => state,
         Err(e) if e.code == ErrorCode::Allocation => {
             trial.setup_seconds = started.elapsed().as_secs_f64();
@@ -98,15 +103,7 @@ pub(super) fn attempt(
         }
         Err(e) => return Err(e),
     };
-    // The original remains live in its execution admission. The new candidate,
-    // workspace and coefficient batch are charged separately. Record directly
-    // in the final RHS-major batch: no conversion allocation follows a pass.
-    let retained_coefficients = coefficients
-        .as_ref()
-        .map_or(0, FeCoefficientBatch::retained_bytes);
-    let actual = modeled_bytes(workspace.payload_peak()?)?
-        + values.storage_capacity() as u128 * 8
-        + retained_coefficients;
+    let actual = reserved_bytes(&workspace, &values, coefficients.as_ref(), fused.as_ref())?;
     if actual > bytes {
         trial.peak = SolverWorkspacePeak::from_bytes(actual)?;
         trial.setup_seconds = started.elapsed().as_secs_f64();
@@ -121,6 +118,8 @@ pub(super) fn attempt(
         return Ok(trial);
     }
     trial.setup_seconds = started.elapsed().as_secs_f64();
+    trace.fact("fused", u64::from(fused.is_some()));
+    trace.lap(pilot_trace::SETUP);
     let solve = Instant::now();
     // The exact-arithmetic bound is conservative, so the certificate one sweep
     // before its predicted sweep usually already passes. A miss costs one
@@ -131,19 +130,20 @@ pub(super) fn attempt(
         crate::interrupt::checkpoint()?;
         if iteration > 0 {
             trial.iterations = iteration;
-            if let Err(e) = borrowed_residual_sweep_recording(
+            if let Err(e) = super::fused_sweep::symmetric_sweep(
                 design,
                 weights,
                 &mut values,
                 &mut workspace,
+                fused.as_mut(),
                 coefficients.as_mut(),
-                true,
             ) {
                 if e.code != ErrorCode::InvalidData {
                     return Err(e);
                 }
                 break;
             }
+            trace.lap(pilot_trace::SWEEP);
         }
         // Geometry proposes a checkpoint; only the unchanged requested
         // certificate accepts it. A miss still reaches the ordinary checks.
@@ -153,20 +153,23 @@ pub(super) fn attempt(
             || iteration % map.check_every == 0
             || iteration == SWEEPS
         {
-            let certificate = match initial_screen::pilot_certificate(
+            let certificate = initial_screen::pilot_certificate(
                 iteration == 0,
                 design,
                 weights,
                 &values,
                 map.tolerance,
                 &mut workspace,
-            ) {
+            );
+            trace.lap(pilot_trace::certificate_slot(iteration));
+            let certificate = match certificate {
                 Ok(Some(certificate)) => certificate,
                 Ok(None) => continue,
                 Err(e) if e.code == ErrorCode::InvalidData => break,
                 Err(e) => return Err(e),
             };
             if certificate.passed {
+                trace.fact("accepted_sweeps", iteration as u64);
                 trial.result = Some(finish(
                     values,
                     iteration,
@@ -177,6 +180,7 @@ pub(super) fn attempt(
                     coefficients,
                     dense_norms.then_some(weights),
                 )?);
+                trace.lap(pilot_trace::FINISH);
                 return Ok(trial);
             }
         }
@@ -185,6 +189,22 @@ pub(super) fn attempt(
     // Failed candidate, coefficient and norm storage are dropped here, before
     // the caller constructs LSMR on the unchanged original matrix.
     Ok(trial)
+}
+
+/// The original remains live in its execution admission. The new candidate,
+/// workspace, coefficient batch and fused tables are charged separately.
+/// Record directly in the final RHS-major batch: no conversion allocation
+/// follows a pass.
+fn reserved_bytes(
+    workspace: &BorrowedMapWorkspace,
+    values: &DenseMatrix,
+    coefficients: Option<&FeCoefficientBatch>,
+    fused: Option<&super::fused_sweep::FusedSweepScratch>,
+) -> Result<u128> {
+    Ok(modeled_bytes(workspace.payload_peak()?)?
+        + values.storage_capacity() as u128 * 8
+        + coefficients.map_or(0, FeCoefficientBatch::retained_bytes)
+        + fused.map_or(0, super::fused_sweep::FusedSweepScratch::capacity_bytes))
 }
 
 #[allow(clippy::too_many_arguments)]

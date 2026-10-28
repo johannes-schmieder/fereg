@@ -353,8 +353,9 @@ three-FE Auto with an explicit preconditioner reaches the same pilot and may
 change through its earlier certificate checkpoint. Sample, rank, omission,
 original factor slots/base flags and other discrete decisions remain unchanged.
 Hidden `routing_incremental_many` keeps the previous public policy exactly. The
-parallel copies, RHS transport, pair moments and session starts and the pilot's
-norm handoff are arithmetic-preserving. Independent witnesses cover pilot
+parallel copies, RHS transport, pair moments and session starts, the pilot's
+norm handoff and its fused sweep passes (beta.10; optional admitted scale
+tables, see [ARCHITECTURE](ARCHITECTURE.md)) are arithmetic-preserving. Independent witnesses cover pilot
 acceptance one sweep early with identical bits, forced certificate misses
 answered by one seeded correction (with and without retained coefficients,
 repeated bit-for-bit) or by the MAP fallback after a second miss, the norm handoff against the
