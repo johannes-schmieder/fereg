@@ -56,6 +56,15 @@
 - Developer: three Fast OLS replay cases without observation outputs (one,
   two and three FE) exercise the derived within residual and require its
   certificate path (stop code 5) beside the dense targets.
+- Developer: `bench/qualify.py` validates a residual solver row that changes
+  from a certified projection to the derived certificate (no residual, xbd,
+  absorbed or saved output requested; the absorption's method, zero iterations
+  and pilot work, certificate within the requested tolerance) and admits only
+  that row's route leaf, requiring every published value to stay bit-identical
+  in otherwise exact comparisons. A public candidate may declare both the
+  two-FE and many-FE families: the hidden arm binds the family it activates and
+  the other family keeps the declared `public_policy`. The beta.10 configurations
+  declare scope `many` with the `many-geometry-v1` hidden arm.
 
 - OLS with one fixed effect and the bounded three-FE MAP pilot skip the
   complete initial FE certificate when one exact group proves it fails, and

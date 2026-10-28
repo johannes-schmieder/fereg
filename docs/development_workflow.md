@@ -82,8 +82,12 @@ million-row, one-FE, dense three-FE or many-control designs, add the 16-cell
 `campaign` coverage (`routing-campaign` runs all 58 cells). Its million-row SCC
 comparison designs carry independent blocked oracle references, and two of its
 cells request no observation outputs, the only routing-runner cells that reach
-the derived within residual. Declare each public original/incumbent's two-FE
-policy with `public_policy` so its gate evidence is checked.
+the derived within residual; against a reference that still projects that
+residual, `bench/routing_science.py` validates the derived row's tuple and admits
+its stop code as the one route leaf (README, "Qualification"). Declare each
+public original/incumbent's two-FE policy with `public_policy` so its gate
+evidence is checked; a candidate declaring both families keeps its own
+`public_policy` for two-FE cells beside a many-FE hidden arm.
 Protect original and last accepted public Auto with max(5%, 1 ms). Require
 independent numerical witnesses, exact/scoped science, resource gates, fixed-worker
 repeatability and cross-worker agreement. Activation must match the selected

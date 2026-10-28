@@ -247,7 +247,18 @@ declares the `two` family, its traced warmups must attest that preset and its
 gate events. Omitted, it is `two-gates-v1`, beta.7's public policy; beta.8 and
 beta.9 run `two-gates-v2`. A public
 Auto candidate requires the corresponding hidden artifact, with exact agreement
-of scientific output and numerical solver signatures. Unchanged explicit OLS
+of scientific output and numerical solver signatures. The hidden arm binds the
+family its request activates (`two-*` requests the two-FE cells, `many-*` and
+`many-geometry-v1` the many-FE cells); a candidate declaring both families keeps
+its `public_policy` for the two-FE cells beside a many-FE hidden arm, and the
+plugin runs the public route wherever an injected preset is not eligible.
+A residual solver row that changes from a certified projection (stop code 2) to
+the derived certificate (stop code 5, SPEC §7/§16) on a cell that requests no
+residual, xbd, absorbed or saved output is validated as a tuple (the absorption's
+method, zero iterations, zero pilot work, no fallback, certificate within the
+requested tolerance) and then admitted as the row's only route leaf; in an
+otherwise exact comparison every published value and observation column must
+still be bit-identical. Any other stop-code change remains undeclarable. Unchanged explicit OLS
 requests use `scope: "exact"` and `request: "preserve"`. This routing runner is
 OLS-only; PPML remains covered by the mapped feature/replay suite.
 Resource and gate evidence follows the eligible family: two-FE hidden policies
@@ -378,7 +389,7 @@ paths are relative to that directory and point into one task directory,
 
 - `artifacts/beta.7`, `beta.8`, `beta.9`: the published plugins, for example
   `git show v0.5.0-beta.9:dist/fereg_linux.plugin`; `artifacts/candidate`: the
-  candidate, which also serves the hidden `two-gates-v2` arm;
+  candidate, which also serves the hidden `many-geometry-v1` arm;
 - `harness/timing-harness` from `build_timing_harness.sh`;
 - `inputs/routing`: `routing_cases.py` output with its 16 `routing_oracle.py`
   references and 4 replay references (`X.reference.json` beside `X.case`);
@@ -386,9 +397,16 @@ paths are relative to that directory and point into one task directory,
 
 `beta10-linux.json` covers `routing-campaign` (58 cells) with beta.7 as original,
 beta.9 as incumbent (`families: ["two"]`, `public_policy: "two-gates-v2"`), scope
-`two`, a public candidate and hidden `two-gates-v2`, 3 shards x 12 replicas, 2
+`many`, a public candidate declaring `["two", "many"]` with
+`public_policy: "two-gates-v2"` and the hidden `many-geometry-v1` arm
+(`families: ["many"]`), 3 shards x 12 replicas, 2
 blocks, 12 distinct hosts per cell, a 120-second call timeout and a 10,800-second
-budget. The campaign families are ordered so each shard gets 2 or 3 of them
+budget. The configurations were frozen with scope `two` and a `two-gates-v2`
+hidden arm before the within fused-LSMR pin and the derived one-FE residual
+joined the candidate; the first Mac attempt and the first Linux array stopped
+at their first three-FE cell with the exactness rule, and the declaration was
+amended before any timing was read (both attempts are recorded as discarded in
+the beta.10 round record). The campaign families are ordered so each shard gets 2 or 3 of them
 (akm-k64 with one-fe-nosave). At four distinct arms that is 13,920 calls; from
 the Mac sizing a shard needs about half an hour. `beta10-darwin.json` is the
 practical Mac check with beta.8 as original, 6 blocks and the 14,400-second

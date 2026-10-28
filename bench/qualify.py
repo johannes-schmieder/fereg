@@ -725,8 +725,12 @@ def resource_policy(manifest, role, meta):
         return None
     request = artifact['request']
     if role == 'candidate' and request == 'auto' and 'hidden' in manifest['artifacts']:
-        request = manifest['artifacts']['hidden']['request']
-    elif family == 'two' and request == 'auto':
+        hidden = manifest['artifacts']['hidden']['request']
+        # The hidden arm binds the family it activates; a public candidate's
+        # other eligible families keep their declared public policies.
+        if routing.policy(hidden).get('family', family) == family:
+            request = hidden
+    if request == 'auto' and family == 'two':
         # An uninjected public invocation attests the public two-FE policy it
         # declares; configurations without the field keep gates v1.
         request = artifact.get('public_policy', routing.GATES)
@@ -759,8 +763,13 @@ def compare_artifacts(manifest, meta, snapshots):
                  or role == 'incumbent' and not affected(meta, [manifest['scope']])
                  or not affected(meta, manifest['artifacts']['candidate']['families']))
         if exact:
-            require(candidate[2]['fingerprint'] == reference[2]['fingerprint'],
-                    role + ': unaffected science or selected-hidden equivalence changed')
+            same = candidate[2]['fingerprint'] == reference[2]['fingerprint']
+            if (not same and role != 'hidden' and manifest['scope'] != 'exact'
+                    and science.derived_residual_only(reference[0], candidate[0], meta)):
+                # SPEC §7: a derived residual row replaces a certified projection
+                # without changing any published value.
+                same = digest(candidate[1]) == digest(reference[1])
+            require(same, role + ': unaffected science or selected-hidden equivalence changed')
         else:
             # The executed candidate policy owns its certificate contract.
             selected = (routing.GEOMETRY_MANY if resource_policy(manifest, 'candidate', meta) == routing.GEOMETRY_MANY

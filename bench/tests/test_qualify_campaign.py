@@ -332,8 +332,14 @@ class FrozenConfigurations(unittest.TestCase):
                 self.assertTrue(all(c['oracle']['kind'] == 'routing' for c in value['cases']
                                     if c['family'] in q.CAMPAIGN_FAMILIES))
                 artifacts = value['artifacts']
-                self.assertEqual(artifacts['incumbent']['public_policy'], routing.GATES_V2)
-                self.assertEqual(artifacts['hidden']['request'], routing.GATES_V2)
+                self.assertEqual(value['scope'], 'many')
+                self.assertEqual((artifacts['incumbent']['families'], artifacts['incumbent']['public_policy']),
+                                 (['two'], routing.GATES_V2))
+                self.assertEqual((artifacts['candidate']['request'], artifacts['candidate']['families'],
+                                  artifacts['candidate']['public_policy']), ('auto', ['two', 'many'], routing.GATES_V2))
+                self.assertEqual((artifacts['hidden']['request'], artifacts['hidden']['families']),
+                                 (routing.GEOMETRY_MANY, ['many']))
+                self.assertEqual(artifacts['hidden']['path'], artifacts['candidate']['path'])
                 self.assertTrue(value['timeout_s'] <= 120 and value['budget_s'] <= 14400)
         self.assertEqual(q.read(directory / 'beta10-linux.json')['min_distinct_hosts_per_cell'], 12)
 
