@@ -9,19 +9,32 @@ They are not relicensed by fereg.
 
 ## Pinned numerical dependencies
 
-The MIT-licensed `within` and `schwarz-precond` runtime dependencies are pinned to
-`297f32d9c4f83cc7d814ea778cd28c1f976e68d0`. The native LSMR adapters map fereg FE
-views to upstream operations; fereg independently recomputes the final weighted
-FE certificate. Preserve the upstream MIT notices with source distributions.
-`fe/lsmr.rs` maps each native FE term to a `within` effect and copies back only
-the demeaned observation vectors; recurrence convergence alone is never
-accepted, because `fe/certificate.rs` recomputes `D'Wr` before an estimate
-proceeds. No upstream source is copied or modified.
+The MIT-licensed `within` and `schwarz-precond` runtime dependencies come from
+[within](https://github.com/py-econometrics/within), developed by Alexander
+Fischer, Kristof Schröder, and contributors at the appliedAI Institute for
+Europe and in the PyFixest community. fereg uses version 0.4.0 from its
+[adapted fork at `efe35ee`](https://github.com/johannes-schmieder/within/tree/efe35ee386ad989b043a5076d01d879ca410ff19).
+The upstream library supplies LSMR, pairwise Schwarz preconditioning, local
+approximate factorizations, and an adaptive preconditioner strategy. The fork
+adapts borrowed data access, resumable iterations, bounded allocation,
+reproducible reductions, and cancellation. fereg's adapters supply the model
+data and independently check the returned weighted fixed-effect residuals
+before accepting an estimate. The numerical methods and their sources are
+acknowledged in the [README](README.md#selected-references).
 
-CMG is GPL-3.0-only, pinned to `f6a044c98ba00fddc82bee1800dccdb310b5a240` and
-statically linked for graph-Laplacian/SDDM preconditioning and PCG. Preserve its
-original license and notices. Exact runtime pins also appear in Cargo.lock and
-references.lock.toml.
+The upstream [MIT license](https://github.com/johannes-schmieder/within/blob/efe35ee386ad989b043a5076d01d879ca410ff19/LICENSE)
+retains copyright notices for within contributors and the appliedAI Institute
+for Europe gGmbH. Preserve those notices with source distributions.
+
+The GPL-3.0-only [CMG Rust port](https://github.com/johannes-schmieder/CMG) is
+pinned to `f6a044c98ba00fddc82bee1800dccdb310b5a240` and statically linked for
+graph-Laplacian/SDDM preconditioning and PCG. It derives from Koutis and Miller's
+[original MATLAB/C implementation](https://github.com/ikoutis/cmg-solver/tree/19752fc102f8cae8e34f66457bfaccb1aaa60375)
+of the method by
+[Koutis, Miller, and Tolliver (2011)](https://doi.org/10.1016/j.cviu.2011.05.013).
+Preserve its original license and notices. Exact current runtime pins are
+recorded in [Cargo.lock](Cargo.lock) and
+[the core crate manifest](crates/fereg-core/Cargo.toml).
 
 fereg is distributed under GPL-3.0-only. On 2026-10-13 Johannes confirmed
 that the required native-distribution permissions had been obtained; see the
@@ -83,8 +96,8 @@ or preinstalled ado package does not establish identity. Independent Poisson
 and recession-cone calculations supplement reference parity, since comparator
 agreement alone is not scientific authority. Somaini and Wolak (2016), "An
 Algorithm to Estimate the Two-Way Fixed Effects Model", *Journal of Econometric
-Methods*, doi:10.1515/jem-2014-0008, is literature background only; no code is
-adapted.
+Methods*, doi:10.1515/jem-2014-0008, is cited for the two-way block-elimination
+method; no source code is adapted from that paper.
 
 The `fe/borrowed_map.rs` path is native fereg code, not adapted within,
 PyFixest or reghdfe source. Later source adaptation must identify the exact

@@ -12,6 +12,34 @@ requirements live in [SPEC](docs/SPEC.md), with current validation scope in
 [VALIDATION](docs/VALIDATION.md). The source is licensed under GPL-3.0-only, with third-party terms preserved in
 [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md).
 
+## Upstream software and acknowledgments
+
+fereg builds on established open-source numerical software. Its LSMR solver
+and pairwise Schwarz preconditioner use a pinned, adapted
+[fork](https://github.com/johannes-schmieder/within) of
+[within](https://github.com/py-econometrics/within), developed by Alexander
+Fischer, Kristof Schröder, and contributors at the appliedAI Institute for
+Europe and in the PyFixest community. Their
+[graph-preconditioning paper](https://github.com/py-econometrics/within-paper)
+describes the approach. The fork adapts data access, resumable iterations,
+allocation, reproducible reductions, and cancellation for fereg; the upstream
+LSMR and preconditioning algorithms are shared numerical building blocks.
+
+The CMG backend uses a [Rust port](https://github.com/johannes-schmieder/CMG)
+of Koutis and Miller's
+[original MATLAB/C implementation](https://github.com/ikoutis/cmg-solver),
+based on the combinatorial multigrid method of
+[Koutis, Miller, and Tolliver (2011)](https://doi.org/10.1016/j.cviu.2011.05.013).
+fereg integrates these components with Stata estimation, automatic solver
+selection, and independent convergence checks.
+
+We also acknowledge [reghdfe](https://github.com/sergiocorreia/reghdfe),
+[ppmlhdfe](https://github.com/sergiocorreia/ppmlhdfe), and
+[PyFixest](https://github.com/py-econometrics/pyfixest) as development and
+compatibility references. See [Selected references](#selected-references)
+for the methodological sources and
+[Third-party notices](THIRD_PARTY_NOTICES.md) for licenses and code provenance.
+
 ## Install in Stata
 
 Install the current package from `main`, using the same community-contributed
@@ -207,3 +235,53 @@ sibling `fereg-paper` repository. Build it there with
 `make paper`; the paper build does not require this implementation checkout.
 The maintained benchmark tooling, qualification harness and SCC comparison
 campaigns are in [bench](bench/README.md).
+
+## Selected references
+
+These sources describe the numerical and econometric methods used by fereg
+and its dependencies.
+
+- **Fischer, Alexander, and Kristof Schröder (2026).**
+  [*Graph Preconditioning for High-Dimensional Fixed Effects Regression*](https://github.com/py-econometrics/within-paper).
+  Working paper. The pairwise graph preconditioner implemented in `within`.
+- **Koutis, Ioannis, Gary L. Miller, and David Tolliver (2011).**
+  [*Combinatorial Preconditioners and Multilevel Solvers for Problems in Computer Vision and Image Processing*](https://doi.org/10.1016/j.cviu.2011.05.013).
+  *Computer Vision and Image Understanding* 115(12): 1638–1646.
+  The combinatorial multigrid method underlying the CMG backend.
+- **Fong, David Chin-Lung, and Michael A. Saunders (2011).**
+  [*LSMR: An Iterative Algorithm for Sparse Least-Squares Problems*](https://doi.org/10.1137/10079687X).
+  *SIAM Journal on Scientific Computing* 33(5): 2950–2971.
+  The LSMR iteration used for fixed-effect absorption through `within`.
+- **Gao, Yuan, Rasmus Kyng, and Daniel A. Spielman (2026).**
+  [*AC(k): Robust Solution of Laplacian Equations by Randomized Approximate Cholesky Factorization*](https://doi.org/10.1137/24M1673577).
+  *SIAM Journal on Scientific Computing* 48(3): A1643–A1684.
+  Approximate Cholesky factorization and randomized elimination methods used
+  in graph preconditioning.
+- **Somaini, Paulo, and Frank A. Wolak (2016).**
+  [*An Algorithm to Estimate the Two-Way Fixed Effects Model*](https://doi.org/10.1515/jem-2014-0008).
+  *Journal of Econometric Methods* 5(1): 143–152.
+  The block-elimination reduction for two-way fixed effects.
+- **Guimarães, Paulo, and Pedro Portugal (2010).**
+  [*A Simple Feasible Procedure to Fit Models with High-Dimensional Fixed Effects*](https://doi.org/10.1177/1536867X1101000406).
+  *Stata Journal* 10(4): 628–649.
+  Iterative absorption of high-dimensional fixed effects.
+- **Gaure, Simen (2013).**
+  [*OLS with Multiple High Dimensional Category Variables*](https://doi.org/10.1016/j.csda.2013.03.024).
+  *Computational Statistics & Data Analysis* 66: 8–18.
+  Alternating-projection methods for multiple fixed effects.
+- **Correia, Sergio (2016).**
+  [*A Feasible Estimator for Linear Models with Multi-Way Fixed Effects*](https://www.scorreia.com/research/hdfe.pdf).
+  Working paper. Graph formulations and computational methods for multi-way
+  fixed-effect estimation.
+- **Correia, Sergio, Paulo Guimarães, and Thomas Zylkin (2020).**
+  [*Fast Poisson Estimation with High-Dimensional Fixed Effects*](https://doi.org/10.1177/1536867X20909691).
+  *Stata Journal* 20(1): 95–115.
+  PPML with high-dimensional fixed effects and the `ppmlhdfe` reference implementation.
+- **Irons, Bruce M., and Robert C. Tuck (1969).**
+  [*A Version of the Aitken Accelerator for Computer Iteration*](https://doi.org/10.1002/nme.1620010306).
+  *International Journal for Numerical Methods in Engineering* 1(3): 275–277.
+  The Irons–Tuck acceleration available through `solver(it)`.
+- **Varadhan, Ravi, and Christophe Roland (2008).**
+  [*Simple and Globally Convergent Methods for Accelerating the Convergence of Any EM Algorithm*](https://doi.org/10.1111/j.1467-9469.2007.00585.x).
+  *Scandinavian Journal of Statistics* 35(2): 335–353.
+  The SQUAREM acceleration available through `solver(squarem)`.
