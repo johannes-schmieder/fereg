@@ -4758,8 +4758,14 @@ fn project_general_categorical<'a>(
     // without a preset keep certifying LSMR at the private recurrence target.
     let experimental_prefix = prefix_arm.is_some() && !geometry;
     let certificate_tolerance = prefix_arm.map_or(lsmr.tolerance, |_| map.tolerance);
-    let (preconditioner, estimate) =
-        general_lsmr_admission(design, values.ncols(), lsmr, budget, estimate)?;
+    let (preconditioner, estimate) = general_lsmr_admission(
+        design,
+        values.ncols(),
+        rayon::current_num_threads(),
+        lsmr,
+        budget,
+        estimate,
+    )?;
     let bytes = estimate.lsmr_bytes(preconditioner);
     let mut prefix = categorical_prefix_attempt(
         design,
@@ -4881,9 +4887,11 @@ pub(super) fn borrowed_solver_memory_estimate(
 /// without the additive preconditioner, an unbudgeted call or a count whose
 /// scratch is not admitted keep the level-count estimate unchanged.
 /// Returns the resolved preconditioner with the estimate to admit it against.
+/// `threads` is the worker count the caller's level-count estimate charged.
 fn general_lsmr_admission(
     design: &BorrowedInterceptFeDesign<'_>,
     rhs: usize,
+    threads: usize,
     lsmr: LsmrConfig,
     budget: Option<FeSolverMemoryBudget>,
     estimate: crate::memory::FeSolverMemoryEstimate,
@@ -4913,7 +4921,6 @@ fn general_lsmr_admission(
             Err(error) => return Err(error),
         }
     }
-    let threads = rayon::current_num_threads();
     let refined = borrowed_solver_memory_estimate(design, rhs, threads, lsmr.local_size)?;
     if crate::diagnostics::solver_trace_enabled() {
         crate::diagnostics::emit_solver_trace(&format!(
@@ -5523,22 +5530,28 @@ impl<'a> BorrowedLsmrAbsorber<'a> {
             .iter()
             .map(|effect| effect.n_levels())
             .collect::<Vec<_>>();
+        let threads = config
+            .lsmr
+            .threads
+            .resolved()
+            .max(rayon::current_num_threads());
         let estimate = estimate_fe_solver_memory(
             values.nrows(),
             values.ncols(),
             &levels,
-            config
-                .lsmr
-                .threads
-                .resolved()
-                .max(rayon::current_num_threads()),
+            threads,
             config.lsmr.local_size,
         )?;
-        let preconditioner = resolve_borrowed_lsmr_preconditioner(
-            levels.len(),
-            self.design.total_term_slots(),
-            config.lsmr.preconditioner,
-        );
+        // Explicit LSMR has no fallback: a refused level-count bound earns the
+        // same exact yielding-component refinement as the Auto route.
+        let (preconditioner, estimate) = general_lsmr_admission(
+            &self.design,
+            values.ncols(),
+            threads,
+            config.lsmr,
+            config.solver_memory_budget,
+            estimate,
+        )?;
         let mut memory =
             BorrowedLsmrCallMemory::new(estimate, preconditioner, config.solver_memory_budget, 0)?;
         let mut norms = Vec::new();

@@ -381,8 +381,7 @@ FE coordinates, solver iteration signatures, reported solver, workspace peak
 and fallback diagnostics within §20 tolerances. Sample, rank, omission,
 original factor slots/base flags and other discrete decisions remain
 unchanged. Every fit the level-count bound admits keeps its bits, route and
-memory accounting. PPML categorical LSMR, explicit `solver(lsmr)` and owned
-designs keep the level-count bound. Witnesses: the count against an
+memory accounting. Witnesses: the count against an
 independent breadth-first search; the beta.8 campaign's sparse three-FE
 parameters (level bound about 1 TB at ten million rows, exact count 3, linear
 growth); and a one-million-row campaign topology under a budget one byte
@@ -390,6 +389,35 @@ below the level bound, which admits the additive route with the unbudgeted
 fit's bits at one and four workers, repeated, agreeing across workers and
 reconstructing the input from its FE coefficients, where the level bound ran
 the MAP fallback.
+
+The same refinement, under the same rule (only after the level-count bound
+refused; the exact `R` is never larger), covers the other additive-Schwarz
+LSMR admissions. Explicit OLS `solver(lsmr)` on a borrowed categorical design
+refines its call admission. Owned designs refine the generic LSMR admission of
+explicit `solver(lsmr)` and of the automatic owned route when every term is one
+intercept channel and every weight is strictly positive; designs with slopes
+keep the level-count bound, because their subdomains are not the code
+components. The PPML preflight (explicit LSMR's joint Schwarz factor over the
+core pair or both effects, and the checkpoint accelerator over every pair)
+recounts once when its plan refused, with the strictly positive PPML working
+weights; a plan that still does not fit reports the original refusal. Each
+count is taken once per design, after its O(levels) scratch is admitted, and a
+count whose scratch or allocation is refused keeps the refusal. Declared scope:
+only fits the level-count bound refused change. Explicit LSMR fits move from
+an `r(909)` allocation refusal to their unchanged LSMR solve; the automatic
+owned route moves from its MAP fallback to its unchanged LSMR attempt; refused
+PPML plans move from the preflight refusal to their unchanged fit. They may
+change coefficients, covariance, fit statistics, residuals, FE coordinates,
+iteration signatures, reported solver, workspace peaks and fallback
+diagnostics within §20 tolerances; discrete decisions are unchanged.
+Witnesses: the per-pair cache against the independent search on every pair
+subset; explicit borrowed LSMR, explicit and automatic owned LSMR under a
+budget one byte below the level bound with the unbudgeted solve's bits,
+repeated at one and four workers and agreeing across them, with a budget below
+the exact bound still refused and a sloped design still refused; and PPML
+explicit LSMR on the sparse three-FE topology, whose refused plan is admitted,
+repeats bit for bit, agrees with the unbudgeted fit and refuses below the exact
+bound with the original message.
 
 The CMG builder borrows the host team, polls cancellation at fixed logical chunks
 and admits construction against real memory, without a construction-work cap or

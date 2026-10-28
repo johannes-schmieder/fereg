@@ -33,8 +33,9 @@ use super::categorical_fwl_cmg::{
     ReusableCategoricalFwlCmg,
 };
 use super::categorical_lsmr::{
-    estimate_checkpoint_lsmr_workspace_bytes, estimate_joint_lsmr_workspace_bytes,
-    joint_lsmr_policy, JointLsmrFrameDiagnostic, JointLsmrReport, ReusableCategoricalJointLsmr,
+    estimate_checkpoint_lsmr_workspace_bytes_with_yielding, estimate_joint_lsmr_workspace_bytes,
+    joint_lsmr_policy, schwarz_effects, JointLsmrFrameDiagnostic, JointLsmrReport,
+    ReusableCategoricalJointLsmr,
 };
 #[cfg(test)]
 use super::family::poisson_objective_from_eta;
@@ -1805,12 +1806,45 @@ fn record_cmg_heap_forecast(
     Ok(())
 }
 
+/// Exact yielding pair-component counts for a plan whose level-count Schwarz
+/// bound refused the fit: `[joint, checkpoint]`, over the joint policy's
+/// Schwarz effects and over every effect pair. The count's scratch is first
+/// admitted in that plan; `None` when the scratch or count is not admitted.
+/// PPML working weights are strictly positive, so within's subdomains are the
+/// structural factor-pair components counted here.
+fn refused_yielding_counts<P: PreparedOlsFitView + ?Sized>(
+    prepared: &P,
+    memory_plan: PpmlMemoryPlan,
+) -> Result<Option<[Option<usize>; 2]>> {
+    let design = prepared.fit_borrowed_cmg_design()?;
+    if memory_plan
+        .with_solver_workspace(design.yielding_pair_component_scratch_bytes())
+        .is_err()
+    {
+        return Ok(None);
+    }
+    match design.yielding_pair_components() {
+        Ok(_) => {}
+        Err(error) if error.code == ErrorCode::Allocation => return Ok(None),
+        Err(error) => return Err(error),
+    }
+    let levels: Vec<_> = design.effects().iter().map(|e| e.n_levels()).collect();
+    let joint = schwarz_effects(&levels, joint_lsmr_policy(levels.len()))?;
+    Ok(Some([
+        design.known_yielding_components_among(&joint),
+        design.known_yielding_pair_components(),
+    ]))
+}
+
+/// `yielding` holds exact `[joint, checkpoint]` counts only after the
+/// level-count admission was refused (see [`refused_yielding_counts`]).
 fn public_solver_memory_admission<P: PreparedOlsFitView + ?Sized>(
     prepared: &P,
     memory_plan: PpmlMemoryPlan,
     config: &PreparedPpmlIrlsConfig,
     rhs: usize,
     purpose: PreparedPpmlIrlsPurpose,
+    yielding: [Option<usize>; 2],
 ) -> Result<PublicSolverMemoryAdmission> {
     let solver = config.solver_plan.selected;
     if matches!(
@@ -1868,6 +1902,7 @@ fn public_solver_memory_admission<P: PreparedOlsFitView + ?Sized>(
                 &levels,
                 config.linear.execution.threads.resolved(),
                 joint_lsmr_policy(levels.len()),
+                yielding[0],
             )?
         }
         super::PpmlSolverFamily::Cmg => {
@@ -1932,11 +1967,12 @@ fn public_solver_memory_admission<P: PreparedOlsFitView + ?Sized>(
     // would overstate the fit-lifetime peak.
     let checkpoint_workspace =
         if use_checkpoint_lsmr_accelerator(dimensions.observations, levels.len()) {
-            estimate_checkpoint_lsmr_workspace_bytes(
+            estimate_checkpoint_lsmr_workspace_bytes_with_yielding(
                 dimensions.observations,
                 rhs,
                 &levels,
                 config.linear.execution.threads.resolved(),
+                yielding[1],
             )?
         } else {
             0

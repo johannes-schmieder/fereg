@@ -41,6 +41,8 @@ pub(crate) fn categorical_dense_cross_tab_bytes(
 /// both categorical LSMR routes. Every factor-pair can contain N distinct edges; the
 /// accounting charges both CSR orientations, construction copies, per-level
 /// maps/factors, locality-sort copies, and concurrent Schwarz apply buffers.
+/// `yielding` is an optional exact count of yielding factor-pair components
+/// (see [`estimate_schwarz_memory`]); `None` keeps the level-count bound.
 pub(crate) fn estimate_categorical_schwarz_memory(
     rows: u128,
     effects: u128,
@@ -48,6 +50,7 @@ pub(crate) fn estimate_categorical_schwarz_memory(
     maximum_levels: u128,
     threads: u128,
     dense_cross_tab_bytes: u128,
+    yielding: Option<u128>,
 ) -> Result<CategoricalSchwarzMemoryEstimate> {
     estimate_schwarz_memory(
         rows,
@@ -57,7 +60,7 @@ pub(crate) fn estimate_categorical_schwarz_memory(
         threads,
         dense_cross_tab_bytes,
         false,
-        None,
+        yielding,
     )
 }
 
@@ -282,6 +285,7 @@ mod tests {
                 196_608,
                 threads as u128,
                 0,
+                None,
             )
             .unwrap();
             let active_worker_payload = threads as u128 * (206_931 + 6 * 196_608 + 4) * 8;
@@ -334,9 +338,11 @@ mod tests {
     fn schwarz_stack_bound_keeps_nonreentrant_and_overflow_boundaries() {
         // Below the first yielding component the ordinary T-worker allowance
         // is unchanged. Crossing the threshold must add scratch even at T=1.
-        let below = estimate_categorical_schwarz_memory(20_000, 2, 10_001, 6_000, 1, 0).unwrap();
-        let above = estimate_categorical_schwarz_memory(20_000, 2, 10_002, 6_000, 1, 0).unwrap();
+        let below =
+            estimate_categorical_schwarz_memory(20_000, 2, 10_001, 6_000, 1, 0, None).unwrap();
+        let above =
+            estimate_categorical_schwarz_memory(20_000, 2, 10_002, 6_000, 1, 0, None).unwrap();
         assert!(above.apply_peak_bytes > 2 * below.apply_peak_bytes - 256);
-        assert!(estimate_categorical_schwarz_memory(1, 2, 10_002, 1, u128::MAX, 0).is_err());
+        assert!(estimate_categorical_schwarz_memory(1, 2, 10_002, 1, u128::MAX, 0, None).is_err());
     }
 }

@@ -64,9 +64,45 @@ impl LinearAdmission {
             .finite_columns
             .checked_add(1)
             .ok_or_else(|| allocation("PPML FE solver RHS width overflows"))?;
-        let solver_admission =
-            public_solver_memory_admission(prepared, memory_plan, config, solver_rhs, purpose)?;
-        memory_plan = memory_plan.with_solver_workspace(solver_admission.incremental_bytes)?;
+        let mut solver_admission = public_solver_memory_admission(
+            prepared,
+            memory_plan,
+            config,
+            solver_rhs,
+            purpose,
+            [None; 2],
+        )?;
+        memory_plan = match memory_plan.with_solver_workspace(solver_admission.incremental_bytes) {
+            Ok(plan) => plan,
+            // A refused level-count Schwarz bound earns one admission against
+            // exact yielding pair-component counts; a fit that still does not
+            // fit reports the original refusal.
+            Err(error) if error.code == ErrorCode::Allocation => {
+                let Some(yielding) = refused_yielding_counts(prepared, memory_plan)? else {
+                    return Err(error);
+                };
+                let refined = public_solver_memory_admission(
+                    prepared,
+                    memory_plan,
+                    config,
+                    solver_rhs,
+                    purpose,
+                    yielding,
+                )?;
+                let plan = memory_plan
+                    .with_solver_workspace(refined.incremental_bytes)
+                    .map_err(|_| error)?;
+                if crate::diagnostics::solver_trace_enabled() {
+                    crate::diagnostics::emit_solver_trace(&format!(
+                        "FEREG_SOLVER_TRACE|phase=schwarz_admission_refined|route=ppml|level_bound_bytes={}|refined_bytes={}|admitted=1",
+                        solver_admission.incremental_bytes, refined.incremental_bytes,
+                    ));
+                }
+                solver_admission = refined;
+                plan
+            }
+            Err(error) => return Err(error),
+        };
         let solver_execution_bytes = memory_plan
             .selected_inventory()
             .peak_bytes

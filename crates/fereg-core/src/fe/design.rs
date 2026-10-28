@@ -525,25 +525,15 @@ impl<'a> BorrowedInterceptEffect<'a> {
 ///
 /// The effect table is small, wire ordered, and owned by the view. Codes and
 /// compressed membership remain owned by the prepared-data object.
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct BorrowedInterceptFeDesign<'a> {
     nobs: usize,
     effects: Vec<BorrowedInterceptEffect<'a>>,
     total_term_slots: usize,
-    /// Structural count of yielding factor-pair components, computed only
-    /// when an admission needs it. A cache, not part of the design identity.
-    yielding_pair_components: std::sync::OnceLock<usize>,
+    /// Structural counts of yielding factor-pair components, computed only
+    /// when an admission needs them. A cache, not part of the design identity.
+    yielding_pairs: super::components::YieldingPairCache,
 }
-
-impl PartialEq for BorrowedInterceptFeDesign<'_> {
-    fn eq(&self, other: &Self) -> bool {
-        self.nobs == other.nobs
-            && self.effects == other.effects
-            && self.total_term_slots == other.total_term_slots
-    }
-}
-
-impl Eq for BorrowedInterceptFeDesign<'_> {}
 
 impl<'a> BorrowedInterceptFeDesign<'a> {
     pub(crate) fn new(nobs: usize, effects: Vec<BorrowedInterceptEffect<'a>>) -> Result<Self> {
@@ -559,54 +549,37 @@ impl<'a> BorrowedInterceptFeDesign<'a> {
             nobs,
             effects,
             total_term_slots,
-            yielding_pair_components: std::sync::OnceLock::new(),
+            yielding_pairs: super::components::YieldingPairCache::default(),
         })
     }
 
     /// The exact yielding factor-pair component count, if already computed.
     pub(crate) fn known_yielding_pair_components(&self) -> Option<usize> {
-        self.yielding_pair_components.get().copied()
+        self.yielding_pairs.known(self.effects.len(), None)
+    }
+
+    /// The exact count over the pairs of the selected effects, if computed.
+    pub(crate) fn known_yielding_components_among(&self, effects: &[usize]) -> Option<usize> {
+        self.yielding_pairs.known(self.effects.len(), Some(effects))
     }
 
     /// Largest transient scratch of [`Self::yielding_pair_components`].
     pub(crate) fn yielding_pair_component_scratch_bytes(&self) -> u128 {
-        let mut largest = 0;
-        for (index, left) in self.effects.iter().enumerate() {
-            for right in &self.effects[index + 1..] {
-                largest = largest.max(super::components::large_pair_component_scratch_bytes(
-                    left.n_levels(),
-                    right.n_levels(),
-                ));
-            }
-        }
-        largest
+        let levels: Vec<_> = self.effects.iter().map(|e| e.n_levels()).collect();
+        super::components::YieldingPairCache::scratch_bytes(&levels)
     }
 
     /// Factor-pair components, over every pair of effects, with at least
     /// `SCHWARZ_YIELDING_BLOCK_LEVELS` levels in one block: the components
     /// whose additive-Schwarz local solves may yield into nested work.
-    /// Computed once from the codes and cached.
+    /// Computed once from the codes and cached per pair.
     pub(crate) fn yielding_pair_components(&self) -> Result<usize> {
         if let Some(count) = self.known_yielding_pair_components() {
             return Ok(count);
         }
-        let mut total = 0_usize;
-        for (index, left) in self.effects.iter().enumerate() {
-            for right in &self.effects[index + 1..] {
-                crate::interrupt::checkpoint()?;
-                let count = super::components::count_large_pair_components(
-                    left.codes(),
-                    left.n_levels(),
-                    right.codes(),
-                    right.n_levels(),
-                    crate::memory::SCHWARZ_YIELDING_BLOCK_LEVELS,
-                )?;
-                total = total
-                    .checked_add(count)
-                    .ok_or_else(|| allocation("yielding pair component count overflows"))?;
-            }
-        }
-        Ok(*self.yielding_pair_components.get_or_init(|| total))
+        let codes: Vec<_> = self.effects.iter().map(|e| e.codes()).collect();
+        let levels: Vec<_> = self.effects.iter().map(|e| e.n_levels()).collect();
+        self.yielding_pairs.count(&codes, &levels)
     }
 
     #[must_use]
@@ -776,6 +749,9 @@ impl EffectTerm {
 pub struct FeDesign {
     nobs: usize,
     effects: Vec<EffectTerm>,
+    /// Structural yielding pair-component counts of an intercept-only design,
+    /// computed only when an admission needs them. Not part of its identity.
+    yielding_pairs: super::components::YieldingPairCache,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -797,7 +773,38 @@ impl FeDesign {
                 "fixed-effect terms do not share the declared observation count",
             ));
         }
-        Ok(Self { nobs, effects })
+        Ok(Self {
+            nobs,
+            effects,
+            yielding_pairs: super::components::YieldingPairCache::default(),
+        })
+    }
+
+    /// Whether every term is one categorical intercept channel, so within's
+    /// additive subdomains are the factor-pair components of its codes.
+    fn intercept_only(&self) -> bool {
+        self.effects
+            .iter()
+            .all(|effect| effect.intercept && effect.slopes.is_empty())
+    }
+
+    /// Transient scratch of [`Self::yielding_pair_components`], or `None`
+    /// for a design with slopes, whose subdomains are not the code components.
+    pub(crate) fn yielding_pair_component_scratch_bytes(&self) -> Option<u128> {
+        let levels: Vec<_> = self.effects.iter().map(EffectTerm::n_levels).collect();
+        self.intercept_only()
+            .then(|| super::components::YieldingPairCache::scratch_bytes(&levels))
+    }
+
+    /// As `BorrowedInterceptFeDesign::yielding_pair_components`, for an
+    /// intercept-only owned design; `None` for a design with slopes.
+    pub(crate) fn yielding_pair_components(&self) -> Result<Option<usize>> {
+        if !self.intercept_only() {
+            return Ok(None);
+        }
+        let codes: Vec<_> = self.effects.iter().map(EffectTerm::codes).collect();
+        let levels: Vec<_> = self.effects.iter().map(EffectTerm::n_levels).collect();
+        self.yielding_pairs.count(&codes, &levels).map(Some)
     }
 
     #[must_use]

@@ -10,6 +10,11 @@
   design now finishes in about 65 seconds (four workers) instead of not at
   all. Fits the old bound admitted are unchanged bit for bit; sample, rank and
   omission decisions are unchanged.
+- The same exact count now also admits explicit `solver(lsmr)` (OLS, borrowed
+  and owned designs), the automatic owned-design LSMR attempt and the explicit
+  PPML LSMR preflight when the level-count bound refused them, instead of an
+  `r(909)` refusal or the MAP fallback. Owned designs with slopes keep the
+  level-count bound. Fits the old bound admitted are unchanged bit for bit.
 
 ## 0.5.0 beta.9 — 2026-10-28
 

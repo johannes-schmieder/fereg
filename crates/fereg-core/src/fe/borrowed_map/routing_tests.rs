@@ -2679,3 +2679,243 @@ fn refused_level_bound_admits_additive_lsmr_by_exact_yielding_count() {
         }
     }
 }
+
+/// Agreement of two residual banks within a relative bound of the input scale.
+fn assert_banks_agree(left: &DenseMatrix, right: &DenseMatrix, input: &DenseMatrix, bound: f64) {
+    for rhs in 0..input.ncols() {
+        let scale = (0..input.nrows())
+            .map(|row| input[(row, rhs)].abs())
+            .fold(0.0_f64, f64::max);
+        for row in 0..input.nrows() {
+            assert!((left[(row, rhs)] - right[(row, rhs)]).abs() <= bound * scale);
+        }
+    }
+}
+
+#[test]
+fn refused_level_bound_admits_explicit_lsmr_by_exact_yielding_count() {
+    // Explicit solver(lsmr) has no fallback: a refused level-count bound was an
+    // allocation error. The exact count admits the unchanged explicit solve.
+    let panel = SparseThreePanel::new(200_000);
+    let mut fits = Vec::new();
+    for workers in [1, 4] {
+        let fit =
+            crate::ThreadTeam::new(crate::ThreadConfig::from_requested(workers, true).unwrap())
+                .install(|| {
+                    let mut config = crate::fe::AbsorbConfig {
+                        solver: FeSolverKind::Lsmr,
+                        lsmr: SparseThreePanel::lsmr(),
+                        ..crate::fe::AbsorbConfig::default()
+                    };
+                    let threads = config
+                        .lsmr
+                        .threads
+                        .resolved()
+                        .max(rayon::current_num_threads());
+                    let coarse = estimate_fe_solver_memory(
+                        panel.values.nrows(),
+                        2,
+                        &panel.levels,
+                        threads,
+                        config.lsmr.local_size,
+                    )
+                    .unwrap();
+                    let refined = crate::memory::estimate_fe_solver_memory_with_yielding(
+                        panel.values.nrows(),
+                        2,
+                        &panel.levels,
+                        threads,
+                        config.lsmr.local_size,
+                        Some(2),
+                    )
+                    .unwrap();
+                    assert!(refined.lsmr_schwarz_bytes < coarse.lsmr_schwarz_bytes);
+                    let absorb = |config: crate::fe::AbsorbConfig| {
+                        let mut session = BorrowedLsmrAbsorber::new(
+                            panel.design(),
+                            BorrowedMapWeights::Unit,
+                            config,
+                        )
+                        .unwrap();
+                        let fit = session.absorb(
+                            BorrowedMapWeights::Unit,
+                            panel.values.clone(),
+                            super::super::MapGeometryGeneration {
+                                sample: 0,
+                                topology: 0,
+                                weights: 0,
+                            },
+                            config,
+                            false,
+                        );
+                        (fit, session.into_design().known_yielding_pair_components())
+                    };
+                    let (reference, counted) = absorb(config);
+                    let reference = reference.unwrap();
+                    assert_eq!(counted, None);
+                    // Below the exact bound the refusal stays an allocation error.
+                    config.solver_memory_budget = Some(FeSolverMemoryBudget {
+                        execution_bytes: 0,
+                        usable_bytes: refined.lsmr_schwarz_bytes - 1,
+                    });
+                    let (refused, counted) = absorb(config);
+                    assert_eq!(refused.unwrap_err().code, ErrorCode::Allocation);
+                    assert_eq!(counted, Some(2));
+                    config.solver_memory_budget = Some(FeSolverMemoryBudget {
+                        execution_bytes: 0,
+                        usable_bytes: coarse.lsmr_schwarz_bytes - 1,
+                    });
+                    for _ in 0..2 {
+                        let (fit, counted) = absorb(config);
+                        let fit = fit.unwrap();
+                        assert_eq!(counted, Some(2));
+                        assert!(fit.report().certified());
+                        assert_eq!(fit.report().used_solver, FeSolverKind::Lsmr);
+                        assert_eq!(fit.report().iterations, reference.report().iterations);
+                        assert_eq!(fit.residualized(), reference.residualized());
+                    }
+                    reference
+                })
+                .unwrap();
+        fits.push(fit);
+    }
+    assert_banks_agree(
+        fits[0].residualized(),
+        fits[1].residualized(),
+        &panel.values,
+        1e-6,
+    );
+}
+
+#[test]
+fn refused_level_bound_admits_owned_lsmr_by_exact_yielding_count() {
+    // Owned intercept-only designs: explicit LSMR errors and Auto falls back to
+    // MAP when the level-count bound refuses. With the exact count both run
+    // the unchanged LSMR solve with the unbudgeted solve's bits. A design with
+    // slopes keeps the level-count bound.
+    let panel = SparseThreePanel::new(200_000);
+    let design = crate::fe::FeDesign::new(
+        panel.values.nrows(),
+        panel
+            .codes
+            .iter()
+            .zip(panel.levels)
+            .map(|(codes, levels)| {
+                crate::fe::EffectTerm::new(codes.clone(), levels, true, Vec::new()).unwrap()
+            })
+            .collect(),
+    )
+    .unwrap();
+    let weights = vec![1.0; panel.values.nrows()];
+    let mut fits = Vec::new();
+    for workers in [1, 4] {
+        let fit =
+            crate::ThreadTeam::new(crate::ThreadConfig::from_requested(workers, true).unwrap())
+                .install(|| {
+                    let mut explicit = Vec::new();
+                    for solver in [FeSolverKind::Lsmr, FeSolverKind::Auto] {
+                        let mut config = crate::fe::AbsorbConfig {
+                            solver,
+                            lsmr: SparseThreePanel::lsmr(),
+                            map: MapConfig {
+                                tolerance: 1e-8,
+                                max_iterations: 8_000,
+                                ..config()
+                            },
+                            ..crate::fe::AbsorbConfig::default()
+                        };
+                        let preserved = if solver == FeSolverKind::Lsmr
+                            && !config.certified_fallback
+                        {
+                            0
+                        } else {
+                            crate::memory::owned_fe_matrix_bytes(panel.values.nrows(), 2).unwrap()
+                        };
+                        let coarse = crate::memory::generic_fe_solver_bytes(
+                            &design,
+                            2,
+                            FeSolverKind::Lsmr,
+                            config.lsmr,
+                            None,
+                        )
+                        .unwrap()
+                            + preserved;
+                        let mut reference = panel.values.clone();
+                        let reference_report = crate::fe::absorb_fixed_effects(
+                            &design,
+                            &weights,
+                            &mut reference,
+                            config,
+                        )
+                        .unwrap();
+                        assert_eq!(reference_report.used_solver, FeSolverKind::Lsmr);
+                        config.solver_memory_budget = Some(FeSolverMemoryBudget {
+                            execution_bytes: 0,
+                            usable_bytes: coarse - 1,
+                        });
+                        for _ in 0..2 {
+                            let mut values = panel.values.clone();
+                            let report = crate::fe::absorb_fixed_effects(
+                                &design,
+                                &weights,
+                                &mut values,
+                                config,
+                            )
+                            .unwrap();
+                            assert_eq!(report.used_solver, FeSolverKind::Lsmr);
+                            assert!(!report.fallback_used);
+                            assert!(report.certified());
+                            assert_eq!(report.iterations, reference_report.iterations);
+                            assert_eq!(values, reference);
+                        }
+                        if solver == FeSolverKind::Lsmr {
+                            explicit.push(reference);
+                        }
+                    }
+                    explicit.swap_remove(0)
+                })
+                .unwrap();
+        fits.push(fit);
+    }
+    assert_banks_agree(&fits[0], &fits[1], &panel.values, 1e-6);
+    // A slope channel keeps the level-count bound: still refused.
+    let slope: Vec<f64> = (0..panel.values.nrows())
+        .map(|row| 1.0 + (row % 7) as f64)
+        .collect();
+    let sloped = crate::fe::FeDesign::new(
+        panel.values.nrows(),
+        panel
+            .codes
+            .iter()
+            .zip(panel.levels)
+            .enumerate()
+            .map(|(effect, (codes, levels))| {
+                let slopes = if effect == 2 {
+                    vec![slope.clone()]
+                } else {
+                    Vec::new()
+                };
+                crate::fe::EffectTerm::new(codes.clone(), levels, true, slopes).unwrap()
+            })
+            .collect(),
+    )
+    .unwrap();
+    let mut config = crate::fe::AbsorbConfig {
+        solver: FeSolverKind::Lsmr,
+        lsmr: SparseThreePanel::lsmr(),
+        ..crate::fe::AbsorbConfig::default()
+    };
+    let coarse =
+        crate::memory::generic_fe_solver_bytes(&sloped, 2, FeSolverKind::Lsmr, config.lsmr, None)
+            .unwrap()
+            + crate::memory::owned_fe_matrix_bytes(panel.values.nrows(), 2).unwrap();
+    config.solver_memory_budget = Some(FeSolverMemoryBudget {
+        execution_bytes: 0,
+        usable_bytes: coarse - 1,
+    });
+    let mut values = panel.values.clone();
+    let error =
+        crate::fe::absorb_fixed_effects(&sloped, &weights, &mut values, config).unwrap_err();
+    assert_eq!(error.code, ErrorCode::Allocation);
+    assert_eq!(sloped.yielding_pair_component_scratch_bytes(), None);
+}
