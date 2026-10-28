@@ -10,7 +10,7 @@ They are not relicensed by fereg.
 ## Pinned numerical dependencies
 
 The MIT-licensed `within` and `schwarz-precond` runtime dependencies are pinned to
-`297f32d9c4f83cc7d814ea778cd28c1f976e68d0`. The native LSMR adapters map fereg FE
+`17fcf288d7f968b28315cba301f52b8f61227419`. The native LSMR adapters map fereg FE
 views to upstream operations; fereg independently recomputes the final weighted
 FE certificate. Preserve the upstream MIT notices with source distributions.
 `fe/lsmr.rs` maps each native FE term to a `within` effect and copies back only

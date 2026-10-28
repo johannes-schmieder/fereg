@@ -369,7 +369,7 @@ dependencies = [
 [[package]]
 name = "schwarz-precond"
 version = "0.4.0"
-source = "git+https://github.com/johannes-schmieder/within?rev=efe35ee386ad989b043a5076d01d879ca410ff19#efe35ee386ad989b043a5076d01d879ca410ff19"
+source = "git+https://github.com/johannes-schmieder/within?rev=17fcf288d7f968b28315cba301f52b8f61227419#17fcf288d7f968b28315cba301f52b8f61227419"
 dependencies = [
  "rayon",
  "serde",
@@ -498,7 +498,7 @@ dependencies = [
 [[package]]
 name = "within"
 version = "0.4.0"
-source = "git+https://github.com/johannes-schmieder/within?rev=efe35ee386ad989b043a5076d01d879ca410ff19#efe35ee386ad989b043a5076d01d879ca410ff19"
+source = "git+https://github.com/johannes-schmieder/within?rev=17fcf288d7f968b28315cba301f52b8f61227419#17fcf288d7f968b28315cba301f52b8f61227419"
 dependencies = [
  "approx-chol",
  "ndarray",
