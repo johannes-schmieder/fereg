@@ -335,7 +335,7 @@ fn core_pair_bridge_matches_its_dense_symmetric_block_factor() {
     let solver = Solver::new(
         effects,
         Some(weights.clone()),
-        PreconditionerConfig::default(),
+        within::PreconditionerConfig::default(),
     )
     .expect("core solver");
     let core = solver
@@ -742,7 +742,6 @@ fn topology_identity_rejects_an_equal_shaped_replacement() {
     assert!(!identity.matches(&replacement));
 
     let mut solver = ReusableCategoricalJointLsmr {
-        deterministic: false,
         team: test_team(1),
         active_design: DenseMatrix::from_row_major(4, 0, Vec::new()).expect("active"),
         active_slots: Vec::new(),
@@ -836,7 +835,6 @@ fn joint_solver_reuses_a_certified_incremental_state_across_weight_frames() {
             .collect::<Vec<_>>();
         let outcome = target.iter().map(|value| 1.0 + value).collect::<Vec<_>>();
         let mut solver = ReusableCategoricalJointLsmr {
-            deterministic: false,
             team: test_team(2),
             active_design,
             active_slots: vec![0],
@@ -991,7 +989,6 @@ fn joint_solver_tracks_retained_team_across_one_four_one() {
 
     for requested in [1, 4, 1] {
         let mut solver = ReusableCategoricalJointLsmr {
-            deterministic: false,
             team: test_team(requested),
             active_design: DenseMatrix::from_row_major(12, 1, active_values.clone())
                 .expect("active design"),
@@ -1057,7 +1054,6 @@ fn joint_solver_supports_zero_finite_columns_with_three_effects() {
         .collect::<Vec<_>>();
     let outcome = target.iter().map(|value| 1.0 + value).collect::<Vec<_>>();
     let mut solver = ReusableCategoricalJointLsmr {
-        deterministic: false,
         team: test_team(4),
         active_design: DenseMatrix::from_row_major(rows, 0, Vec::new())
             .expect("empty active design"),

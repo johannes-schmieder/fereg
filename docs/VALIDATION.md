@@ -204,6 +204,52 @@ bit-identical to beta.9 on all eight 1M-row designs at 1 and 4 workers. The
 resource error; 102 of 126 comparisons passed and 24 were inconclusive with
 negative median excess and upper bounds of at most 1.9 ms, so the status is
 `needs_discussion`, as in round two.
+## Beta.10 round two: dense many-FE route, residency and repeatability
+
+Descriptive Mac evidence on the 1M-row campaign designs; every number is in
+the [record](../bench/results/beta10-round2-2026-10-28.json).
+
+- **Fused pilot sweep (kept, exact).** On dense three-FE the bounded MAP pilot
+  was 70% of native time at one worker (two symmetric sweeps 0.57 s of
+  1.02 s), and group statistics outweighed the subtraction pass about 2.5 to 1
+  at four workers. The pilot now raises the next effect's column scales while
+  it subtracts the current effect's means. Native time fell from 1.036 to
+  0.974 s at one worker and 0.404 to 0.376 s at four, with identical
+  `e(b)`/`e(V)`; sparse three-FE (no pilot) is unchanged. Unit tests compare
+  fused and unfused sweeps and whole pilot attempts bit for bit at 1/2/4/8
+  workers, and replay was 74/74 exact against beta.9.
+- **Jacobi trial instead of the pilot (refuted).** Without the pilot, dense
+  three-FE certifies after four Jacobi LSMR iterations per RHS but takes
+  1.325/0.508/0.325 s against 0.959/0.377/0.260 s at 1/4/8 workers and peaks
+  about 450 MB higher. Sparse three-FE has no predicted sweep count, so it
+  already starts the trial. No pass-cost rule improves on the geometry policy
+  on these cells; none was added.
+- **Fast residency (design only).** The Fast increment over the loaded Stata
+  process is about 425-459 B/row on AKM with 16 controls, 529-538 on dense
+  three-FE and 1,750-2,250 on sparse three-FE. After projection the
+  column-major prepared sources are read by the independent raw residual
+  `y - Xb`, which gives the reported intercept, and by requested `xb`/residual
+  outputs. Removing them needs a different intercept arithmetic (losing the
+  witness) or a second SPI read after the solve (a memory and transaction
+  design change), so nothing changed. An exact option remains for dense
+  three-FE: the pilot keeps the untouched row-major original beside its
+  candidate only for the LSMR fallback and could rebuild it from the sources
+  instead (about 144 B/row).
+- **Implicit level index (skipped).** 149 member-slice call sites and 28
+  kernel parameters, including installed function-pointer types, take
+  `&[usize]`; a u32 or implicit identity index cannot be introduced
+  bit-identically in one bounded pass.
+- **Ordered additive reduction (kept, declared scope in SPEC §18).** Every
+  additive-Schwarz build now uses the Ordered reduction in default mode too.
+  An escalating default-mode fit repeats bit for bit at 1/2/4/8 workers. On
+  sparse three-FE the public trial does not escalate at 1M rows, and
+  explicit `solver(lsmr) preconditioner(schwarz)` gave identical bits under
+  both reductions with native times within -2.3% to +0.7% at 1/4/8 workers.
+  Replay against the Auto-reduction build of the same tree is 74/74 exact;
+  against beta.9 the only differences are the within fused-LSMR scope (14
+  cases, passing under its scope file) and the separation activation's
+  `ppml-separation-ir` certificate digest.
+
 ## Derived residual on the one-FE and many-FE routes
 
 Fast OLS Auto without residual, xbd, d or saved-FE outputs now certifies its

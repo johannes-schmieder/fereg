@@ -23,6 +23,19 @@
   after the finite solve. The campaign sparse three-FE design peaks about
   100 MB lower at one million rows on the Mac and 1.3 GiB lower at ten million
   on Linux; results, routes and memory admission are unchanged.
+- The additive-Schwarz preconditioner of LSMR (many-FE OLS Auto after its
+  Jacobi trial escalates, explicit `preconditioner(schwarz)`, PPML LSMR) now
+  always combines subdomain contributions in a fixed order, as it already did
+  under `deterministic`, so repeated fits at the same worker count give
+  identical results. Affected default-mode fits may change in low bits within
+  the certified tolerance; sample, rank, omissions and every discrete decision
+  are unchanged.
+- The bounded three-FE MAP pilot of many-FE OLS Auto takes the next
+  effect's column scales in the same pass that subtracts the current effect's
+  level means, saving one of the three matrix walks of each effect projection
+  (about 6-7% of native time at one and four workers on the one-million-row dense
+  three-FE design). Results are bit-identical; the pilot's reported workspace
+  peak includes the small scale tables.
 - Developer: hidden `inject=routing_many_windows_v1` (replay wire and the
   hidden Stata adapter) qualifies bounded many-FE LSMR session windows, at
   most one live session per worker with the Jacobi escalation barrier at each

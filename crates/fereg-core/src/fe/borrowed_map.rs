@@ -19,6 +19,7 @@ use super::routing_remaining::State as RemainingState;
 mod categorical_prefix;
 pub(crate) mod derived_residual;
 mod eager_cells;
+mod fused_sweep;
 use eager_cells::ReuseState;
 mod initial_screen;
 mod irons_tuck;
@@ -6428,7 +6429,7 @@ fn borrowed_within_preconditioner(preconditioner: LsmrPreconditioner) -> Precond
         LsmrPreconditioner::Auto => unreachable!("borrowed automatic preconditioner is resolved"),
         LsmrPreconditioner::Off => PreconditionerConfig::Off,
         LsmrPreconditioner::Diagonal => PreconditionerConfig::Diagonal,
-        LsmrPreconditioner::Schwarz => PreconditionerConfig::default(),
+        LsmrPreconditioner::Schwarz => crate::fe::additive_schwarz(),
     }
 }
 

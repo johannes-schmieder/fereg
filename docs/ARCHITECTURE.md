@@ -176,7 +176,20 @@ finite solve its column norms, computed by the dense LSMR norm kernel. Failed
 attempts drop their candidate/norm/coefficient storage before LSMR starts on
 untouched inputs, debiting actual work and preserving memory admission. The
 pilot is skipped once a binding holds a prepared LSMR solver. Explicit solvers,
-weighted requests and PPML retain their routes. See
+weighted requests and PPML retain their routes.
+
+Each pilot sweep fuses consecutive effect projections exactly. A scaled
+projection needs each level's column scales (largest member magnitude), its
+member-order compensated scaled sums, and the subtraction of each row's level
+mean. Maxima are exact in any order, so the next effect's scales are raised in
+the row-streaming pass that subtracts the current effect's means, into one
+table per lane merged by maximum; weight sums and scaled sums keep their
+member order and kernels, and every element is subtracted once with the same
+operands, so the sweep is bitwise the unfused one at every worker count. The
+tables (lanes plus one level-by-column tables of the largest effect) are
+optional admitted pilot scratch, used only for at most 64 columns and at most
+256 KiB per lane table, so they stay cache resident; otherwise, or when the
+budget does not fit them, the unfused sweep runs. See
 [validation](VALIDATION.md) for the policy status and performance limits.
 
 The public many-FE preset retains a Jacobi LSMR solver first. Each RHS runs

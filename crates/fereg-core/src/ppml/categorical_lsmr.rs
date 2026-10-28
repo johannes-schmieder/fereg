@@ -10,7 +10,7 @@ use std::time::Instant;
 
 use rayon::prelude::*;
 use schwarz_precond::{mlsmr, LsmrStopReason, MlsmrOptions, Operator, SolveError, Staleness};
-use within::{Effect, Preconditioner, PreconditionerConfig, Solver};
+use within::{Effect, Preconditioner, Solver};
 
 use crate::data::DenseMatrix;
 use crate::error::{allocation, invalid_argument, ErrorCode, FeregError, Result};
@@ -268,7 +268,6 @@ impl JointLsmrFirstPassPredictor {
 /// convergence, but canonical projection still owns final rank and inference.
 pub(crate) struct ReusableCategoricalJointLsmr {
     team: InstalledThreadTeam,
-    deterministic: bool,
     active_design: DenseMatrix,
     active_slots: Vec<usize>,
     topology: FeTopologyIdentity,
@@ -404,7 +403,6 @@ impl ReusableCategoricalJointLsmr {
             .ok_or_else(|| allocation("joint PPML augmented width overflows"))?;
         Ok(Self {
             team,
-            deterministic: threads.deterministic,
             active_design,
             active_slots,
             topology,
@@ -901,12 +899,8 @@ impl ReusableCategoricalJointLsmr {
         } else {
             within_effects(fe_design)?
         };
-        let mut config = PreconditionerConfig::default();
-        if self.deterministic {
-            if let PreconditionerConfig::Additive { reduction, .. } = &mut config {
-                *reduction = within::ReductionStrategy::Ordered;
-            }
-        }
+        // Ordered in every mode: repeatable at a fixed worker count.
+        let config = crate::fe::additive_schwarz();
         let solver = Solver::new(
             effects,
             Some(fallible_copy(weights, "joint PPML Schwarz weights")?),

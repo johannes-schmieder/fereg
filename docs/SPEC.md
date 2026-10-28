@@ -353,8 +353,9 @@ three-FE Auto with an explicit preconditioner reaches the same pilot and may
 change through its earlier certificate checkpoint. Sample, rank, omission,
 original factor slots/base flags and other discrete decisions remain unchanged.
 Hidden `routing_incremental_many` keeps the previous public policy exactly. The
-parallel copies, RHS transport, pair moments and session starts and the pilot's
-norm handoff are arithmetic-preserving. Independent witnesses cover pilot
+parallel copies, RHS transport, pair moments and session starts, the pilot's
+norm handoff and its fused sweep passes (beta.10; optional admitted scale
+tables, see [ARCHITECTURE](ARCHITECTURE.md)) are arithmetic-preserving. Independent witnesses cover pilot
 acceptance one sweep early with identical bits, forced certificate misses
 answered by one seeded correction (with and without retained coefficients,
 repeated bit-for-bit) or by the MAP fallback after a second miss, the norm handoff against the
@@ -1476,6 +1477,20 @@ Numerical fixes declare affected cases/fields; unaffected science remains exact.
 Exclude timing, build identity and environmental resource observations only.
 A tolerance pass cannot silently waive an unexplained exact-change failure.
 Preserve Stata processor restoration on success, error and Break.
+
+Every additive-Schwarz preconditioner fereg builds in the pinned solver (OLS
+borrowed and owned LSMR, the many-FE Jacobi trial's escalation, explicit
+`preconditioner(schwarz)` and the PPML joint Schwarz factor) uses the Ordered
+reduction, which commits subdomain contributions in subdomain order, in every
+mode; the pinned Auto reduction may resolve to an atomic scatter whose
+summation order follows thread timing. Before beta.10 only `deterministic`
+selected it. Declared scope: default-mode fits whose LSMR runs on the additive
+preconditioner (many-FE OLS Auto fits whose Jacobi trial escalates, explicit
+Schwarz LSMR and PPML LSMR) may change coefficients, covariance, fit
+statistics, residuals, FE coordinates and iteration signatures in low bits
+within §20; `deterministic` fits and discrete decisions are unchanged.
+Witness: an escalating default-mode many-FE fit repeats bit for bit at one,
+two, four and eight workers.
 
 The two-FE OLS Auto team installation, the parallel cell construction and the parallel cell product
 follow this rule: their results do not depend on the worker count, apart from

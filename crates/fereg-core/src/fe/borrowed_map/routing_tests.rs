@@ -3085,3 +3085,70 @@ fn routing_windows_transport_their_own_columns_bit_for_bit() {
         assert_eq!(matrix.demeaned, slices.demeaned);
     }
 }
+
+#[test]
+fn default_mode_additive_escalation_repeats_bits_at_each_worker_count() {
+    // Every fereg additive-Schwarz build uses the Ordered reduction, so a
+    // default-mode (not `deterministic`) fit that escalates from the Jacobi
+    // trial repeats bit for bit at a fixed worker count.
+    assert!(matches!(
+        crate::fe::additive_schwarz(),
+        within::PreconditionerConfig::Additive {
+            reduction: within::ReductionStrategy::Ordered,
+            ..
+        }
+    ));
+    let panel = TrialPanel::with_levels(true, [6_000, 600, 60]).shuffled();
+    // The retained solver the route builds carries the Ordered reduction.
+    {
+        let design = panel.design();
+        let weights = validate_weights(BorrowedMapWeights::Unit, design.nobs()).unwrap();
+        let solver = build_retained_borrowed_lsmr(
+            &design,
+            weights,
+            borrowed_within_preconditioner(LsmrPreconditioner::Schwarz),
+            false,
+        )
+        .unwrap();
+        assert!(matches!(
+            solver.preconditioner().map(|p| p.config()),
+            Some(within::PreconditionerConfig::Additive {
+                reduction: within::ReductionStrategy::Ordered,
+                ..
+            })
+        ));
+    }
+    for workers in [1, 2, 4, 8] {
+        crate::ThreadTeam::new(crate::ThreadConfig::from_requested(workers, false).unwrap())
+            .install(|| {
+                let design = panel.design();
+                let run = || {
+                    let mut route =
+                        routing_lsmr::GeneralRoutingState::new(RoutingPreset::geometry_many());
+                    let fit = panel.project(&mut route, &design, false);
+                    assert!(!route.jacobi_trial_active());
+                    fit
+                };
+                let first = run();
+                assert!(first.report().certified());
+                assert_eq!(
+                    first.report().used_preconditioner,
+                    Some(LsmrPreconditioner::Schwarz)
+                );
+                for _ in 0..3 {
+                    let again = run();
+                    assert_eq!(again.report().iterations, first.report().iterations);
+                    let bits = |fit: &CertifiedBorrowedMap| {
+                        fit.residualized()
+                            .as_slice()
+                            .iter()
+                            .chain(&fit.coefficients.as_ref().unwrap().values)
+                            .map(|value| value.to_bits())
+                            .collect::<Vec<_>>()
+                    };
+                    assert_eq!(bits(&again), bits(&first), "workers={workers}");
+                }
+            })
+            .unwrap();
+    }
+}
