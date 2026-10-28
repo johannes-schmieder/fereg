@@ -72,7 +72,7 @@ mod wire {
 use fereg_oracle::designs::{generate, DesignSpec, Graph, WeightKind};
 use std::{collections::BTreeMap, path::PathBuf};
 
-const HELP: &str = "replay_large --output target/tmp/TASK/NAME.case --rows N --levels L1,L2[,L3] \
+const HELP: &str = "replay_large --output target/tmp/TASK/NAME.case --rows N --levels L1[,L2,...] \
 --regressors K --weights unit|aw|fw|pw --vce iid|robust|cluster \
 --graph akm-strong|akm-weak|chain|barbell|random-mobility|akm-campaign --solver auto|map|lsmr|cmg \
 --seed N [--ppml] [--threads N] [--tolerance T] [--iterations N] [--max-cells N] [--max-edges N] \
@@ -85,7 +85,8 @@ the existing oracle topology (AkmStrong is adjacent-firm mobility, not random).\
 akm-campaign requires two effects and ceil(rows/5) workers: five consecutive\n\
 periods, persistence 0.8 and random destination firms. Oracle RNG draws do not\n\
 reproduce frozen NumPy campaign inputs. --no-observation-outputs keeps the\n\
-mandatory sample output; candidate and deterministic defaults are unchanged.";
+mandatory sample output; candidate and deterministic defaults are unchanged.\n\
+One effect requires random-mobility; 1..16 effects are accepted.";
 
 fn main() {
     if let Err(error) = run() {
@@ -175,14 +176,14 @@ fn run() -> Result<(), String> {
     if rows == 0
         || rows > i32::MAX as usize
         || regressors > 1000
-        || levels.len() < 2
+        || levels.is_empty()
         || levels.len() > 16
         || levels
             .iter()
             .any(|&n| n < 2 || n > rows || n >= u32::MAX as usize)
     {
         return Err(
-            "require 0<rows<=i32::MAX, K<=1000 and 2..16 effects with 2<=levels<=rows".into(),
+            "require 0<rows<=i32::MAX, K<=1000 and 1..16 effects with 2<=levels<=rows".into(),
         );
     }
     let graph = match get("--graph")? {
@@ -194,6 +195,10 @@ fn run() -> Result<(), String> {
         "akm-campaign" => Graph::AkmCampaign,
         _ => return Err("unsupported --graph".into()),
     };
+    // A single effect has no mobility graph; only independent draws apply.
+    if levels.len() == 1 && graph != Graph::RandomMobility {
+        return Err("one effect requires --graph random-mobility".into());
+    }
     // The oracle enumerates barbell halves densely. Refuse accidental huge
     // allocations and prefixes that omit the bridge instead of relabelling them.
     let edges = match graph {

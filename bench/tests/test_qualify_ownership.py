@@ -106,8 +106,12 @@ class Contracts(unittest.TestCase):
             self.assertEqual(q.resource_policy(value,role,meta),routing.GATES)
             self.assertEqual(q.resource_policy(value,role,{**meta,'absorbed_terms':3}),'incremental-many')
             self.assertIsNone(q.resource_policy(value,role,{**meta,'absorbed_terms':1}))
+        # Outside ownership mode a public incumbent attests its declared public
+        # two-FE policy; without the field it is gates v1.
         historical=copy.deepcopy(value);historical.pop('qualification')
-        self.assertEqual(q.resource_policy(historical,'incumbent',meta),'incremental-two')
+        self.assertEqual(q.resource_policy(historical,'incumbent',meta),routing.GATES)
+        historical['artifacts']['incumbent']['public_policy']=routing.GATES_V2
+        self.assertEqual(q.resource_policy(historical,'incumbent',meta),routing.GATES_V2)
 
     def test_changed_cells_scope_keeps_routes_and_other_discrete_fields_exact(self):
         for request in o.CELL_REQUESTS:

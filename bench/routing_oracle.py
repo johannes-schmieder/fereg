@@ -14,6 +14,13 @@ categorical intercept FEs, HC1 or unit-weight IID/one-way CR1, pairwise DoF,
 optional first-FE cluster nesting for two FEs, and no saved effects. Original
 rows are preserved, including independently requested singleton pruning. The
 CLI writes separate input-bound JSON/NPZ references.
+
+Designs beyond the dense path's bounds (one FE, more rows, regressors or
+retained levels; the campaign-shaped cells) use the blocked path: the largest
+FE is eliminated exactly, the grounded Schur system of the others is factored
+once with a shifted Cholesky certificate of its rank, and columns are
+projected in small blocks so the declared memory model holds. One FE needs
+only exact group means. The blocked path supports unit-weight IID and HC1.
 """
 from __future__ import annotations
 
@@ -24,13 +31,19 @@ import os
 from pathlib import Path
 import re
 import signal
+import sys
 import zipfile
 
 import numpy as np
 from native_io import bounded_line, case_header, digest, numbers
 
 KIND = 'routing_categorical_oracle'
+BLOCKED_KIND = 'routing_blocked_categorical_oracle'
 MAX_ROWS, MAX_RETAINED, MAX_X, MAX_FE = 600_000, 2048, 32, 16
+# Blocked path: rows, regressors, grounded Schur dimension, total FE levels.
+MAX_BLOCKED_ROWS, MAX_BLOCKED_X, MAX_BLOCKED_RETAINED, MAX_BLOCKED_LEVELS = 2_000_000, 64, 12_000, 600_000
+BLOCK_COLUMNS, ROW_BLOCK = 4, 1 << 16
+MAX_REFINEMENT = 80
 MAX_BYTES, MAX_SCHUR_WORK = 1 << 30, 2_000_000_000
 EXPANDED_MEMORY_BYTES = 2 << 30
 MAX_WEIGHT_RATIO = 1e12
@@ -58,17 +71,24 @@ def _matrix(stream, count):
     return np.frombuffer(bytes.fromhex(text.decode('ascii')), dtype='>f8').astype(float)
 
 
-def read_case(path):
-    """Validate the actual frozen canonical bindings, not a generator filename."""
+def read_case(path, *, blocked=False):
+    """Validate the actual frozen canonical bindings, not a generator filename.
+
+    The outcome and regressors are decoded straight into one Fortran-ordered
+    `z = [y, X]`; blocked=True returns it as is, so large designs hold a single
+    copy. Otherwise `y` and the C-ordered `x` are returned as always.
+    """
     with Path(path).open('rb') as stream:
         shape, arguments = case_header(stream)
         pairs = [arg.decode().split('=', 1) for arg in arguments[1:]]
         fields = dict(pairs)
         n, width, _, matrix_count, macros = shape
         k, q = int(fields['term_count']), int(fields['absorb_term_count'])
+        # The dense and blocked solvers each enforce their own tighter bounds.
         _require(arguments[0] == b'estimate-ols' and len(fields) == len(pairs)
-                 and 1 <= n <= MAX_ROWS and 1 <= k <= MAX_X and 2 <= q <= MAX_FE
-                 and width <= 64 and macros == 0, 'unsupported oracle input dimensions/model')
+                 and 1 <= n <= MAX_BLOCKED_ROWS and 1 <= k <= MAX_BLOCKED_X and 1 <= q <= MAX_FE
+                 and width <= 3 + MAX_BLOCKED_X + MAX_FE + len(OUTPUTS) and macros == 0,
+                 'unsupported oracle input dimensions/model')
         vce = fields.get('vce')
         cluster_count = '1' if vce == 'cluster' else '0'
         _require(vce in {'robust', 'iid', 'cluster'} and all(fields.get(key) == value for key, value in {
@@ -85,12 +105,17 @@ def read_case(path):
                  'saved-effect fixtures require their separate independent witness')
         start = stream.tell()
         inputs = int(fields['output_sample']) - 1
-        _require(inputs in {2 + k + q, 3 + k + q} and width == inputs + 6,
+        # Either all six observation outputs or only the mandatory sample.
+        _require(inputs in {2 + k + q, 3 + k + q} and width in {inputs + len(OUTPUTS), inputs + 1},
                  'noncanonical input/output columns')
         data = []
+        z = np.empty((n, k+1), order='F')
         for j in range(width):
             _require(bounded_line(stream) == b'0\n', 'oracle requires numeric replay columns')
-            if j < inputs:
+            if 1 <= j <= k + 1:
+                z[:, j-1] = _matrix(stream, n)
+                data.append(None)
+            elif j < inputs:
                 data.append(_matrix(stream, n))
             else:
                 stream.seek(n * 17, 1)
@@ -121,19 +146,37 @@ def read_case(path):
         expected.update(cluster_term_matrix=[[1, 1]], cluster_component_matrix=[[1, 1, k+1]])
     _require(all(np.array_equal(tables.get(fields.get(name)), value) for name, value in expected.items()),
              'canonical model/source binding differs from oracle contract')
-    _require(all(np.all(np.isfinite(v) & (np.abs(v) < 8e307)) for v in data)
+    _require(all(np.all(np.isfinite(v) & (np.abs(v) < 8e307)) for v in [*data, *z.T] if v is not None)
              and np.all(data[0] == 1), 'oracle does not infer missing-data or candidate selection')
-    outputs = {name: int(fields['output_' + name]) - 1 for name in OUTPUTS}
-    _require(list(outputs.values()) == list(range(inputs, width)), 'unexpected output registry')
+    outputs = {name: int(fields['output_' + name]) - 1 for name in OUTPUTS if fields['output_' + name] != '0'}
+    _require(list(outputs) in (list(OUTPUTS), ['sample']) and list(outputs.values()) == list(range(inputs, width)),
+             'unexpected output registry')
     w = data[-1] if inputs == 3 + k + q else np.ones(n)
     _require(np.all(w > 0), 'oracle requires positive weights')
     _require(vce == 'robust' or inputs == 2+k+q, 'IID/cluster oracle requires unit weights')
-    return dict(y=data[1], x=np.column_stack(data[2:2+k]), factors=data[2+k:2+k+q], weights=w,
+    columns = dict(z=z) if blocked else dict(y=np.array(z[:, 0]), x=np.ascontiguousarray(z[:, 1:]))
+    del z
+    return dict(**columns, factors=data[2+k:2+k+q], weights=w,
                 vce=vce, clusters=data[2+k] if vce == 'cluster' else None,
                 account_cluster_nesting=nesting == '1',
                 include_intercept=fields['include_intercept'] == '1',
                 keep_singletons=fields['keep_singletons'] == '1', rows=n, columns=width,
-                outputs=outputs, case_sha256=digest(path), body_sha256=body.hexdigest())
+                outputs=outputs, case_sha256=digest(path), body_sha256=body.hexdigest(),
+                column_offset=start)
+
+
+def column_reader(path, n, offset, expected_sha256):
+    """Re-read original regressor columns from the bound case, never from a copy."""
+    def read(first, last):
+        with Path(path).open('rb') as stream:
+            columns = []
+            for j in range(first, last):
+                stream.seek(offset + (2 + j) * (2 + 17 * n))
+                _require(stream.read(2) == b'0\n', 'oracle requires numeric replay columns')
+                columns.append(_matrix(stream, n))
+        return np.column_stack(columns)
+    read.verify = lambda: _require(digest(path) == expected_sha256, 'oracle input changed while solving')
+    return read
 
 
 def _sample(factors, keep_singletons):
@@ -438,24 +481,443 @@ def solve(y, x, factors, weights=None, *, keep_singletons=False, include_interce
     return reference, arrays
 
 
-def write_reference(case, output, *, memory_budget_bytes=MAX_BYTES):
+def _cholesky_certificate(sparse_scaled, dense, label, floor=0.):
+    """Rank admission by one shifted dense Cholesky of the equilibrated system.
+
+    A successful factor gives L L' = A - tau I + dA with |dA| <= gamma_{n+1}|L||L'|
+    (Higham, Thm 10.3), so lambda_min(A) >= tau - gamma_{n+1}||L||_F^2. The shift
+    is 1/128 of an inverse-iteration estimate from an unshifted factor, raised to
+    8 times the declared formation `floor` when that is larger; it must stay at
+    most a quarter of the estimate, so the refinement contraction
+    tau/(lambda_min - tau) is at most 1/3. `dense` is the equilibrated matrix;
+    it is overwritten by the shifted factor.
+    """
+    from scipy.linalg import cho_factor, cho_solve, LinAlgError
+    nk = dense.shape[0]
+    try:
+        factor = cho_factor(dense, lower=True, overwrite_a=True, check_finite=False)
+    except LinAlgError as error:
+        raise ValueError(label + ': grounded system is not positive definite') from error
+    rng = np.random.default_rng(20261028)
+    vector = rng.standard_normal(nk)
+    vector /= np.linalg.norm(vector)
+    estimate, iterations = np.inf, 0
+    for iterations in range(1, 201):
+        vector = cho_solve(factor, vector, check_finite=False)
+        vector /= np.linalg.norm(vector)
+        quotient = float(vector @ (sparse_scaled @ vector))
+        converged = abs(quotient - estimate) <= 1e-6 * quotient
+        estimate = quotient
+        if converged and iterations >= 8:
+            break
+    _require(np.isfinite(estimate) and estimate > 0, label + ': invalid minimum-eigenvalue estimate')
+    del factor
+    shift = max(estimate / 128, 8 * floor)
+    _require(shift <= estimate / 4, label + ': ambiguous rank or conditioning (formation bound near the spectrum)')
+    dense[:] = 0
+    coo = sparse_scaled.tocoo()
+    dense[coo.row, coo.col] = coo.data
+    dense[np.diag_indices(nk)] -= shift
+    try:
+        factor = cho_factor(dense, lower=True, overwrite_a=True, check_finite=False)
+    except LinAlgError as error:
+        raise ValueError(label + ': ambiguous rank or conditioning (shifted factor failed)') from error
+    lower = np.tril(factor[0]) if nk <= 2048 else None
+    frobenius = float(np.sum(lower**2)) if lower is not None else _lower_frobenius_squared(factor[0])
+    return factor, {'minimum_eigenvalue_estimate': estimate, 'inverse_iterations': iterations,
+                    'shift': shift, 'factor_frobenius_squared': frobenius,
+                    'cholesky_error_bound': _gamma(nk + 1) * frobenius}
+
+
+def _lower_frobenius_squared(matrix):
+    total = 0.
+    for first in range(0, matrix.shape[1], 512):
+        block = matrix[:, first:first+512]
+        total += float(np.sum(np.tril(block, -first)**2))
+    return total
+
+
+def _blocked_projection_errors(e, r, keep, cross_keep, degree, scale, schur_lower, original, projected,
+                               fe_left, fe_right, w, q_minus_one):
+    """Per-column bounds on ||P - P*||_W for one column block of the blocked path.
+
+    P - P* = F_a d lies in the anchored FE span, and g = F_a'W P = H_a d, so
+    ||F_a d||_W^2 = g' H_a^-1 g = g_e' D^-1 g_e + u' S^-1 u with
+    u = g_r - C' D^-1 g_e (block LDL of the anchored FE Gram). With the
+    equilibration S = Ds^-1 A Ds^-1, u' S^-1 u <= ||Ds u||^2 / lambda_min(A),
+    and lambda_min(A) has the certified shifted-Cholesky lower bound. Moment
+    rounding enters as componentwise magnitude bounds; reconstruction rounding is
+    bounded as on the dense path.
+    """
+    m = len(w)
+    rounding = _gamma(8*m+32)
+    weighted = w[:, None] * projected
+    magnitude = w[:, None] * np.abs(projected)
+    left = np.abs(e.T @ weighted) + rounding * (e.T @ magnitude)
+    d_lower = degree / (1+rounding)
+    squared = np.sum(left**2 / d_lower[:, None], axis=0)
+    if r is not None:
+        right = np.abs((r.T @ weighted)[keep]) + rounding * (r.T @ magnitude)[keep]
+        coupled = (right + cross_keep.T @ (left / d_lower[:, None])) * (1 + _gamma(q_minus_one + 8))
+        squared += np.sum((scale[:, None] * coupled)**2, axis=0) / schur_lower
+    span_error = 2*np.sqrt(squared)
+    reconstruction = np.abs(original) + np.abs(e @ fe_left)
+    if r is not None:
+        reconstruction += r @ np.abs(fe_right)
+    reconstruction_error = 2*np.sqrt(np.sum(w[:, None]*(_gamma(q_minus_one+5)*reconstruction)**2, axis=0))
+    errors = span_error + reconstruction_error
+    _require(np.all(np.isfinite(errors)), 'nonfinite original-design projection error bound')
+    return errors
+
+
+def blocked_memory_model(n, m, k, q, ne, nr, grounded):
+    """Declared upper model of live blocked-path arrays, in bytes."""
+    columns = BLOCK_COLUMNS
+    # One decoded [y, X], the candidate/FE/weight columns, one column's text
+    # and hex buffers, and a retained-row copy when singletons are pruned.
+    reading = 8*n*(k + q + 4) + 34*n + (8*m*(k+1) if m < n else 0)
+    solving = (8*m*(k+1)                           # projected [y, X], overwritten in place
+               + 8*grounded*grounded               # one dense equilibrated/factored system
+               + 8*m*(columns*8 + 12)              # column-block temporaries and row vectors
+               + 24*n*q + 40*m*q                   # codes, singleton masks, sparse incidence
+               + 8*(ne + nr)*columns*8             # FE right-hand sides and solutions
+               + 8*ROW_BLOCK*(3*k + 4) + 64*nr*q)  # row-block influence, sparse Schur terms
+    return max(reading, solving)
+
+
+def solve_blocked(z, factors, weights=None, *, keep_singletons=False, include_intercept=True,
+                  vce='iid', memory_budget_bytes=MAX_BYTES, original=None):
+    """Blocked FWL projection with unit IID or HC1 evidence for large categorical designs.
+
+    z = [y, X] (rows by 1+k, Fortran order) is projected in place. `original(first,
+    last)` returns the original regressor columns first..last-1 for the finite
+    moments and xb; by default a copy is kept, which the memory model excludes.
+    """
+    from scipy import sparse
+    from scipy.linalg import cho_solve
+    from scipy.sparse.csgraph import connected_components
+    memory_budget(memory_budget_bytes)
+    _require(isinstance(z, np.ndarray) and z.dtype == np.float64 and z.ndim == 2 and z.flags.f_contiguous,
+             'blocked oracle requires a Fortran-ordered float64 [y, X]')
+    (n, width), q = z.shape, len(factors)
+    k = width - 1
+    _require(1 <= q <= MAX_FE and 0 < n <= MAX_BLOCKED_ROWS and 0 < k <= MAX_BLOCKED_X
+             and all(np.asarray(c).shape == (n,) for c in factors), 'blocked oracle dimension limit')
+    w = np.ones(n) if weights is None else np.asarray(weights, dtype=float)
+    _require(w.shape == (n,) and np.all(np.isfinite(w)) and np.all(w > 0)
+             and all(np.all(np.isfinite(c)) for c in [*z.T, *factors]), 'oracle requires finite positive WLS data')
+    _require(vce in {'robust', 'iid'} and (vce == 'robust' or np.all(w == 1)),
+             'blocked oracle supports HC1 or unit-weight IID')
+    if original is None:
+        kept = np.array(z[:, 1:])
+        original = lambda first, last: kept[:, first:last]
+    active, codes = _sample(factors, keep_singletons)
+    levels = [int(c.max()) + 1 for c in codes]
+    eliminated = int(np.argmax(levels))
+    ne, nr = levels[eliminated], sum(levels) - levels[eliminated]
+    m = int(active.sum())
+    _require(sum(levels) <= MAX_BLOCKED_LEVELS, 'blocked oracle FE level bound exceeded')
+    full = bool(active.all())
+    if not full:
+        z = np.asfortranarray(z[active])
+    y = z[:, 0].copy()
+    w = w if full else w[active]
+    _require(w.max() / w.min() <= MAX_WEIGHT_RATIO, 'oracle weight ratio bound exceeded')
+    w = w / w.max()
+    w *= m / w.sum()
+    _require(np.all(w > 0) and np.all(np.isfinite(w)), 'weight normalization underflow/overflow')
+    ce = codes[eliminated]
+    e = sparse.csr_matrix((np.ones(m), ce, np.arange(m+1)), shape=(m, ne))
+    degree = np.bincount(ce, weights=w, minlength=ne)
+    others = [j for j in range(q) if j != eliminated]
+    offsets = np.cumsum([0] + [levels[j] for j in others])
+    r = cross = None
+    grounds, components, work, keep, pair_components = [], ne, 0, np.zeros(0, dtype=np.int64), []
+    schur_certificate, factor = None, None
+    rounding = _gamma(8*m+32)
+    cross_keep, scale, schur_lower = None, None, None
+    if q == 1:
+        modeled = blocked_memory_model(n, m, k, q, ne, nr, 0)
+        _require(modeled <= memory_budget_bytes, 'blocked oracle modeled memory bound exceeded')
+    else:
+        columns = np.column_stack([codes[j] + offsets[i] for i, j in enumerate(others)]).ravel()
+        r = sparse.csr_matrix((np.ones(len(columns)), columns, np.arange(m+1)*(q-1)), shape=(m, nr))
+        del columns
+        wr = r.multiply(w[:, None]).tocsr()
+        cross = (e.T @ wr).tocsr()
+        work = int(np.sum(np.diff(cross.indptr).astype(np.int64)**2))
+        _require(work <= MAX_SCHUR_WORK, 'oracle sparse Schur-product work bound exceeded')
+        adjacency = sparse.bmat([[None, cross], [cross.T, None]], format='csr')
+        components = int(connected_components(adjacency, directed=False, return_labels=False))
+        del adjacency
+        # Every component of the bipartite graph between the eliminated FE and
+        # one retained FE carries a known null direction (+1 on its retained
+        # levels, -1 on its eliminated levels). Their retained supports are
+        # disjoint, so grounding one retained level per pair component removes
+        # an independent set. For two FEs this is the joint component rule;
+        # any further alias still fails the shifted-Cholesky certificate.
+        for i in range(q-1):
+            block = cross[:, offsets[i]:offsets[i+1]]
+            pair = sparse.bmat([[None, block], [block.T, None]], format='csr')
+            count, labels = connected_components(pair, directed=False)
+            unique, first = np.unique(labels[ne:], return_index=True)
+            _require(len(unique) == count, 'component lacks a declared FE partition')
+            pair_components.append(int(count))
+            grounds.extend((first + offsets[i]).tolist())
+            del pair, labels
+        keep = np.setdiff1d(np.arange(nr), grounds)
+        nk = len(keep)
+        _require(0 < nk <= MAX_BLOCKED_RETAINED, 'blocked oracle grounded Schur dimension bound exceeded')
+        modeled = blocked_memory_model(n, m, k, q, ne, nr, nk)
+        _require(modeled <= memory_budget_bytes, 'blocked oracle modeled memory bound exceeded')
+        positive = (r.T @ wr).tocsr()
+        del wr
+        negative = (cross.T @ cross.multiply((1/degree)[:, None])).tocsr()
+        reduced = (positive - negative).tocsr()[keep][:, keep].tocsr()
+        reduced = ((reduced + reduced.T) * .5).tocsr()
+        bound = ((positive + negative).tocsr()[keep][:, keep]).tocsr()
+        del positive, negative
+        diagonal = reduced.diagonal()
+        reduced_norm = float(abs(reduced).sum(axis=1).max())
+        _require(np.all(diagonal > 0), 'grounded FE Schur: nonpositive diagonal / additional alias')
+        scale = 1 / np.sqrt(diagonal)
+        scaled = (sparse.diags(scale) @ reduced @ sparse.diags(scale)).tocsr()
+        # Formation (sums, division, products, subtraction), symmetrization and
+        # the two equilibration products, as absolute bounds on the scaled matrix.
+        formation = float(abs(sparse.diags(scale) @ bound @ sparse.diags(scale)).sum(axis=1).max()) * (rounding + _gamma(2))
+        scaling = _gamma(3) * float(abs(scaled).sum(axis=1).max())
+        del bound
+        dense = np.zeros((nk, nk), order='F')
+        coo = scaled.tocoo()
+        dense[coo.row, coo.col] = coo.data
+        del coo
+        factor, schur_certificate = _cholesky_certificate(scaled, dense, 'grounded FE Schur', formation + scaling)
+        lower = schur_certificate['shift'] - schur_certificate['cholesky_error_bound'] - formation - scaling
+        schur_certificate.update(formation_error_bound=formation, scaling_error_bound=scaling,
+                                 minimum_eigenvalue_lower_bound=lower, dimension=nk)
+        _require(np.isfinite(lower) and lower > 0, 'grounded FE Schur: ambiguous rank or conditioning')
+        schur_lower = lower
+        cross_keep = cross[:, keep].tocsr()
+    errors = np.zeros(k+1)
+    means = np.zeros(k+1)
+    squares = np.zeros(k+1)
+    projection_moment = backward = 0.
+    steps = 0
+    for first in range(0, k+1, BLOCK_COLUMNS):
+        last = min(first + BLOCK_COLUMNS, k+1)
+        block = np.array(z[:, first:last])
+        weighted = w[:, None] * block
+        means[first:last] = np.average(block, axis=0, weights=w)
+        squares[first:last] = np.sum(weighted * block, axis=0)
+        left = e.T @ weighted
+        fe_right = None
+        if q == 1:
+            fe_left = left / degree[:, None]
+            projected = block - fe_left[ce]
+        else:
+            right = (r.T @ weighted - cross.T @ (left / degree[:, None]))[keep]
+            target = scale[:, None] * right
+            # Shifted-factor refinement contracts by shift/(lambda_min-shift),
+            # about 1/127; stop at 4 eps or when corrections stagnate at the
+            # rounding floor. The backward error below decides admission.
+            solution = cho_solve(factor, target, check_finite=False)
+            previous = np.inf
+            for steps_used in range(1, MAX_REFINEMENT + 1):
+                delta = cho_solve(factor, target - scaled @ solution, check_finite=False)
+                size = float(np.max(np.abs(delta)))
+                if size > previous / 2:
+                    break
+                solution += delta
+                previous = size
+                if size <= 4 * np.finfo(float).eps * np.max(np.abs(solution)):
+                    break
+            steps = max(steps, steps_used)
+            solution *= scale[:, None]
+            residual_rhs = right - reduced @ solution
+            backward_scale = max(np.max(np.abs(right)) + reduced_norm*np.max(np.abs(solution)),
+                                 np.finfo(float).tiny)
+            backward = max(backward, float(np.max(np.abs(residual_rhs)) / backward_scale))
+            fe_right = np.zeros((nr, last-first))
+            fe_right[keep] = solution
+            fe_left = (left - cross @ fe_right) / degree[:, None]
+            projected = block - fe_left[ce] - r @ fe_right
+        del weighted, left
+        projection_moment = max(projection_moment, _moments(codes, projected, w, block))
+        errors[first:last] = _blocked_projection_errors(e, r, keep, cross_keep, degree, scale, schur_lower,
+                                                        block, projected, fe_left, fe_right, w, q-1)
+        z[:, first:last] = projected
+        del block, projected, fe_left, fe_right
+    _require(projection_moment <= MOMENT_LIMIT, 'original-design FE projection moments failed')
+    _require(np.isfinite(backward) and backward <= MOMENT_LIMIT, 'direct grounded solve backward error failed')
+    del factor
+    if q > 1:
+        del dense, scaled
+    ry, rx = z[:, 0], z[:, 1:]
+    gram, magnitude = np.zeros((k, k)), np.zeros((k, k))
+    for start in range(0, m, ROW_BLOCK):
+        rows = rx[start:start+ROW_BLOCK]
+        weights_block = w[start:start+ROW_BLOCK, None]
+        gram += rows.T @ (weights_block * rows)
+        magnitude += np.abs(rows).T @ (weights_block * np.abs(rows))
+    x_errors = errors[1:]
+    x_norms = np.sqrt(np.diag(gram) / (1-rounding))
+    gram_error = (np.outer(x_norms, x_errors) + np.outer(x_errors, x_norms)
+                  + np.outer(x_errors, x_errors) + rounding*magnitude)
+    xs, xf, xspectrum = _spectrum(gram, 'within finite design', gram_error)
+    bread = xs[:, None] * cho_solve(xf, np.diag(xs), check_finite=False)
+    inverse_error = float(np.max(np.abs(gram @ bread - np.eye(k))))
+    _require(inverse_error <= MOMENT_LIMIT, 'independent within bread inverse failed')
+    beta = bread @ (rx.T @ (w * ry))
+    residual = ry - rx @ beta
+    fitted = y - residual
+    meanx, meany = means[1:], means[0]
+    reported = np.r_[beta, meany - meanx @ beta] if include_intercept else beta
+    width = k + int(include_intercept)
+    sandwich = np.zeros((width, width))
+    for start in range(0, m, ROW_BLOCK):
+        influence = rx[start:start+ROW_BLOCK] @ bread
+        if include_intercept:
+            influence = np.column_stack([influence, 1/m - influence @ meanx])
+        if vce == 'robust':
+            influence *= (w[start:start+ROW_BLOCK] * residual[start:start+ROW_BLOCK])[:, None]
+        sandwich += influence.T @ influence
+    del z, ry, rx
+    redundant = _pair_redundancies(codes, levels)
+    actual_rank = sum(levels) - len(grounds)
+    policy_rank = sum(levels) - sum(redundant)
+    df = m - k - policy_rank
+    _require(df > 0, 'nonpositive independently derived policy residual degrees of freedom')
+    covariance = sandwich * (m / df) if vce == 'robust' else sandwich * (residual @ residual / df)
+    _require(np.all(np.isfinite(reported)) and np.all(np.isfinite(covariance)),
+             'nonfinite independent coefficients or covariance')
+    full_moment = _moments(codes, residual[:, None], w, y[:, None])
+    xb = np.full(m, reported[-1] if include_intercept else 0.)
+    finite_moment = 0.
+    response = np.sum(w*y*y)
+    for first in range(0, k, BLOCK_COLUMNS):
+        last = min(first + BLOCK_COLUMNS, k)
+        block = original(first, last)
+        block = block if full else block[active]
+        _require(block.shape == (m, last-first), 'original regressor block shape mismatch')
+        xb += block @ beta[first:last]
+        numerator = np.abs(block.T @ (w*residual))
+        denominator = np.maximum(np.sqrt(squares[first+1:last+1] * response), np.finfo(float).tiny)
+        _require(np.all(np.isfinite(numerator)) and np.all(np.isfinite(denominator)),
+                 'nonfinite or nonpositive finite-design moment normalization')
+        finite_moment = max(finite_moment, float(np.max(numerator / denominator)))
+        del block
+    if hasattr(original, 'verify'):
+        original.verify()
+    _require(np.isfinite(finite_moment), 'nonfinite finite-design moment ratio')
+    _require(max(full_moment, finite_moment) <= MOMENT_LIMIT, 'original full-design residual moments failed')
+    arrays = dict(sample=active, drop_reason=np.where(active, 0, 8).astype(np.uint8))
+    for name, values in [('residual', residual), ('fitted', fitted), ('xb', xb), ('absorbed', fitted-xb)]:
+        arrays[name] = np.full(n, np.nan)
+        arrays[name][active] = values
+    dof = {0:m, 1:m, 2:n, 3:m, 5:k, 6:k, 7:policy_rank, 8:k+policy_rank,
+           9:df, 10:df, 11:df, 12:0, 13:sum(levels), 14:sum(redundant),
+           15:n-m, 16:n-m, 18:int(include_intercept), 19:int(q>2)}
+    fe_rows = [[1, j+1, k+j+1, levels[j], redundant[j], levels[j]-redundant[j], int(j<2), 0] for j in range(q)]
+    reference = dict(schema=1, kind=BLOCKED_KIND, status='passed', rows=n, retained_rows=m, regressors=k,
+        beta=reported.tolist(), covariance=covariance.tolist(), include_intercept=include_intercept,
+        keep_singletons=keep_singletons, true_fe_rank=actual_rank, pairwise_fe_rank=policy_rank,
+        fe_rows=fe_rows, dof_rows={str(key): value for key, value in dof.items()},
+        certificate=dict(method='group-means' if q == 1 else 'eliminated-schur-shifted-cholesky',
+            eliminated_factor=eliminated, levels=levels, retained_dimension=nr,
+            grounded_dimension=len(keep), components=int(components), pair_components=pair_components,
+            known_nullity=len(grounds), schur_certificate=schur_certificate, finite_spectrum=xspectrum,
+            fe_span_bound='anchored block LDL with certified Schur lower bound',
+            projection_error_bounds=errors.tolist(),
+            projection_moment=projection_moment, full_fe_moment=full_moment,
+            finite_moment=finite_moment, backward_error=backward, refinement_steps=steps,
+            bread_inverse_error=inverse_error, modeled_peak_bytes=modeled, schur_product_work=work,
+            block_columns=BLOCK_COLUMNS, weight_ratio=float(w.max()/w.min()), normalized_weight_sum=float(w.sum())))
+    if memory_budget_bytes != MAX_BYTES:
+        reference['certificate']['memory_budget_bytes'] = memory_budget_bytes
+    if vce != 'robust':
+        eigenvalues = np.linalg.eigvalsh((covariance + covariance.T)/2)
+        margin = 256*np.finfo(float).eps*len(eigenvalues)*max(float(np.max(np.abs(eigenvalues))), np.finfo(float).tiny)
+        _require(np.isfinite(margin) and eigenvalues[0] >= -margin, 'independent covariance is not PSD')
+        reference.update(vce=vce, covariance_psd=dict(minimum_eigenvalue=float(eigenvalues[0]), tolerance=margin))
+    return reference, arrays
+
+
+def blocked_required(n, k, factors, memory_budget_bytes=MAX_BYTES):
+    """Whether the dense path's input-level bounds exclude this design.
+
+    The dense path keeps its own refusals after singleton pruning; a design it
+    admits here is never sent to the blocked path.
+    """
+    levels = [len(np.unique(f)) for f in factors]
+    retained = sum(levels) - max(levels)
+    return (len(factors) == 1 or n > MAX_ROWS or k > MAX_X or retained > MAX_RETAINED
+            or sum(levels) > 50_000 or n * (128 + 256*k + 96*len(factors)) > memory_budget_bytes)
+
+
+def write_reference(case, output, *, memory_budget_bytes=MAX_BYTES, blocked=False):
     import scipy
-    data = read_case(case)
-    reference, arrays = solve(data['y'], data['x'], data['factors'], data['weights'],
-                             include_intercept=data['include_intercept'], keep_singletons=data['keep_singletons'],
-                             vce=data['vce'], clusters=data['clusters'],
-                             account_cluster_nesting=data['account_cluster_nesting'],
-                             memory_budget_bytes=memory_budget_bytes)
+    data = read_case(case, blocked=True)
+    k = data['z'].shape[1] - 1
+    if blocked or blocked_required(data['rows'], k, data['factors'], memory_budget_bytes):
+        _require(data['vce'] in {'iid', 'robust'} and not data['account_cluster_nesting'],
+                 'blocked oracle supports HC1 or unit-weight IID')
+        reader = column_reader(case, data['rows'], data['column_offset'], data['case_sha256'])
+        reference, arrays = solve_blocked(data.pop('z'), data['factors'], data['weights'],
+                                          include_intercept=data['include_intercept'],
+                                          keep_singletons=data['keep_singletons'], vce=data['vce'],
+                                          memory_budget_bytes=memory_budget_bytes, original=reader)
+    else:
+        # The dense path keeps its C-ordered inputs, exactly as before.
+        z = data.pop('z')
+        y, x = np.array(z[:, 0]), np.ascontiguousarray(z[:, 1:])
+        del z
+        reference, arrays = solve(y, x, data['factors'], data['weights'],
+                                 include_intercept=data['include_intercept'], keep_singletons=data['keep_singletons'],
+                                 vce=data['vce'], clusters=data['clusters'],
+                                 account_cluster_nesting=data['account_cluster_nesting'],
+                                 memory_budget_bytes=memory_budget_bytes)
     output = Path(output)
     npz = output.with_suffix('.npz')
     _require(not output.exists() and not npz.exists(), 'reference output already exists')
     np.savez_compressed(npz, **arrays)
     reference.update({key: data[key] for key in ['case_sha256','body_sha256','columns','outputs']})
+    if reference['kind'] == BLOCKED_KIND:
+        import resource
+        peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        reference['certificate']['observed_peak_rss_bytes'] = int(peak if sys.platform == 'darwin' else peak * 1024)
     reference.update(arrays={'file': npz.name, 'sha256': digest(npz)},
                      producer_sha256=digest(Path(__file__)), parser_sha256=digest(PARSER_SOURCE),
                      numpy=np.__version__, scipy=scipy.__version__)
     output.write_text(json.dumps(reference, sort_keys=True, indent=2, allow_nan=False) + '\n')
     return reference
+
+
+def _blocked_certificate(cert, q, regressors):
+    """Recheck the blocked path's rank arithmetic; the factor itself is not stored."""
+    _require(cert.get('block_columns') == BLOCK_COLUMNS and cert.get('method') ==
+             ('group-means' if q == 1 else 'eliminated-schur-shifted-cholesky')
+             and 0 <= cert['eliminated_factor'] < q and cert['levels'][cert['eliminated_factor']] == max(cert['levels'])
+             and sum(cert['levels']) <= MAX_BLOCKED_LEVELS and type(cert['refinement_steps']) is int
+             and 0 <= cert['refinement_steps'] <= MAX_REFINEMENT
+             and len(cert['pair_components']) == q-1
+             and all(type(c) is int and cert['components'] <= c for c in cert['pair_components']),
+             'invalid blocked oracle certificate')
+    schur = cert['schur_certificate']
+    if q == 1:
+        _require(schur is None, 'one-FE group means need no Schur certificate')
+        return
+    nk = cert['grounded_dimension']
+    values = [schur[key] for key in ('minimum_eigenvalue_estimate', 'shift', 'factor_frobenius_squared',
+                                     'cholesky_error_bound', 'formation_error_bound', 'scaling_error_bound',
+                                     'minimum_eigenvalue_lower_bound')]
+    lower = schur['shift'] - schur['cholesky_error_bound'] - schur['formation_error_bound'] - schur['scaling_error_bound']
+    floor = schur['formation_error_bound'] + schur['scaling_error_bound']
+    _require(schur['dimension'] == nk <= MAX_BLOCKED_RETAINED and all(np.isfinite(v) and v >= 0 for v in values)
+             and schur['shift'] == max(schur['minimum_eigenvalue_estimate'] / 128, 8 * floor)
+             and schur['shift'] <= schur['minimum_eigenvalue_estimate'] / 4
+             and schur['cholesky_error_bound'] == _gamma(nk + 1) * schur['factor_frobenius_squared']
+             and schur['minimum_eigenvalue_lower_bound'] == lower and lower > 0,
+             'blocked Schur rank certificate failed')
 
 
 def load_reference(path: Path, case_sha256: str, body_sha256: str):
@@ -464,27 +926,34 @@ def load_reference(path: Path, case_sha256: str, body_sha256: str):
     reference = json.loads(path.read_text())
     _require(all(isinstance(value, str) and re.fullmatch(r'[a-f0-9]{64}', value)
                  for value in (case_sha256, body_sha256)), 'oracle reference identity requires input and body digests')
-    _require(reference.get('schema') == 1 and reference.get('kind') == KIND
+    blocked = reference.get('kind') == BLOCKED_KIND
+    _require(reference.get('schema') == 1 and reference.get('kind') in (KIND, BLOCKED_KIND)
              and reference.get('status') == 'passed' and reference.get('case_sha256') == case_sha256
              and reference.get('body_sha256') == body_sha256, 'oracle reference identity mismatch')
     # Source digests record which implementation produced the witness. Editing
     # tooling prose or framing does not invalidate its mathematical result.
     # The qualification manifest binds this descriptor, its arrays and input.
-    _require(type(reference.get('rows')) is int and 0 < reference['rows'] <= MAX_ROWS, 'invalid oracle row bound')
+    _require(type(reference.get('rows')) is int
+             and 0 < reference['rows'] <= (MAX_BLOCKED_ROWS if blocked else MAX_ROWS), 'invalid oracle row bound')
     cert = reference['certificate']
     allowed_bytes = memory_budget(cert.get('memory_budget_bytes', MAX_BYTES))
     levels, q = cert['levels'], len(cert['levels'])
-    _require(2 <= q <= MAX_FE and all(type(v) is int and v > 0 for v in levels)
-             and cert['known_nullity'] == (q-1)*cert['components']
+    _require((1 if blocked else 2) <= q <= MAX_FE and all(type(v) is int and v > 0 for v in levels)
+             and cert['known_nullity'] == (sum(cert['pair_components']) if blocked else (q-1)*cert['components'])
              and reference['true_fe_rank'] == sum(levels)-cert['known_nullity']
-             and 0 < cert['grounded_dimension'] <= cert['retained_dimension'] <= MAX_RETAINED
+             and (q == 1 and cert['grounded_dimension'] == cert['retained_dimension'] == 0
+                  or 0 < cert['grounded_dimension'] <= cert['retained_dimension']
+                  <= (MAX_BLOCKED_LEVELS if blocked else MAX_RETAINED))
              and cert['grounded_dimension'] == cert['retained_dimension']-cert['known_nullity']
              and cert['modeled_peak_bytes'] <= allowed_bytes and cert['schur_product_work'] <= MAX_SCHUR_WORK
              and 1 <= cert['weight_ratio'] <= MAX_WEIGHT_RATIO,
              'invalid independent rank/resource certificate')
     for key in ['projection_moment','full_fe_moment','finite_moment','backward_error','bread_inverse_error']:
         _require(0 <= cert[key] <= MOMENT_LIMIT, 'independent numerical certificate failed: '+key)
-    for key,dimension in [('schur_spectrum',cert['grounded_dimension']),('finite_spectrum',reference['regressors'])]:
+    if blocked:
+        _blocked_certificate(cert, q, reference['regressors'])
+    for key,dimension in ([('finite_spectrum',reference['regressors'])] if blocked else
+                          [('schur_spectrum',cert['grounded_dimension']),('finite_spectrum',reference['regressors'])]):
         spectrum = cert[key]
         minimum, maximum = spectrum['minimum_eigenvalue'], spectrum['maximum_eigenvalue']
         eigen_margin = 256*np.finfo(float).eps*dimension*maximum
@@ -494,8 +963,9 @@ def load_reference(path: Path, case_sha256: str, body_sha256: str):
                  and minimum > margin > 0 and spectrum['eigensolver_margin'] == eigen_margin
                  and spectrum['required_margin'] == margin,
                  'independent spectrum certificate failed')
-    _require(np.isfinite(cert['anchored_fe_eigenvalue_lower_bound'])
-             and cert['anchored_fe_eigenvalue_lower_bound'] > 0
+    _require((cert.get('fe_span_bound') == 'anchored block LDL with certified Schur lower bound' if blocked else
+              np.isfinite(cert['anchored_fe_eigenvalue_lower_bound'])
+              and cert['anchored_fe_eigenvalue_lower_bound'] > 0)
              and len(cert['projection_error_bounds']) == reference['regressors']+1
              and all(np.isfinite(v) and v >= 0 for v in cert['projection_error_bounds']),
              'invalid original-design projection error certificate')
@@ -575,9 +1045,16 @@ def check_reference(reference, raw: dict, columns: Path, meta: dict):
         _require(active.shape == (meta['rows'],) and active.dtype == bool, 'invalid independent sample')
         data = np.memmap(columns, dtype=np.float64, mode='r', shape=(meta['columns'],meta['rows']))
         try:
+            # Sample-only requests publish no other observation output; their
+            # residual enters through the checked RSS-based covariance.
+            _require(set(meta['outputs']) in (set(OUTPUTS), {'sample'}), 'unexpected oracle output layout')
             for key in ['sample','drop_reason']:
+                if key not in meta['outputs']:
+                    continue
                 close(data[meta['outputs'][key]], oracle[key], key, 0, 0)
             for key,target in [('residual','residual'),('xbd','fitted'),('xb','xb'),('absorbed','absorbed')]:
+                if key not in meta['outputs']:
+                    continue
                 observed = data[meta['outputs'][key]]
                 close(observed[active], oracle[target][active], key, 1e-7, 1e-9)
                 close(observed[active], oracle[target][active], 'absolute '+key, 0, 2e-8)
@@ -593,6 +1070,8 @@ def main():
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--memory-budget-gib', type=int, choices=(1, 2), default=1,
                         help='prospectively declared reference workspace allowance; default remains 1 GiB')
+    parser.add_argument('--blocked', action='store_true',
+                        help='declare the blocked elimination path (automatic beyond the dense bounds)')
     args = parser.parse_args()
     from routing_cases import scratch
     _require(os.environ.get('OPENBLAS_NUM_THREADS') == '1' and os.environ.get('VECLIB_MAXIMUM_THREADS') == '1',
@@ -603,7 +1082,8 @@ def main():
         raise TimeoutError('independent oracle exceeded its 120-second execution bound')
     signal.signal(signal.SIGALRM, expired)
     signal.alarm(120)
-    reference = write_reference(args.case, output, memory_budget_bytes=args.memory_budget_gib << 30)
+    reference = write_reference(args.case, output, memory_budget_bytes=args.memory_budget_gib << 30,
+                                blocked=args.blocked)
     signal.alarm(0)
     print(json.dumps({key:reference[key] for key in ['kind','case_sha256','rows','retained_rows','true_fe_rank','pairwise_fe_rank','certificate']}))
 

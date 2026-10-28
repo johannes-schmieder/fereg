@@ -41,6 +41,13 @@ from replay_plugins import exact_view
 FAMILIES = {'no-fe', 'one-fe', 'slopes', 'low-saved', *routing_cases.NATIVE_CASES,
             *routing_cases.SYNTHETIC_CASES, *routing_cases.EXTENDED_CASES,
             *routing_cases.SAMPLED_CASES}
+CAMPAIGN_FAMILIES = set(routing_cases.CAMPAIGN_CASES)
+# Qualification coverages and their complete family sets, at workers [1, 4].
+COVERAGES = {'routing': FAMILIES, 'campaign': CAMPAIGN_FAMILIES,
+             'routing-campaign': FAMILIES | CAMPAIGN_FAMILIES}
+# Public two-FE Auto policies an original/incumbent artifact may declare it runs;
+# omission keeps the meaning of configurations written before beta.8.
+PUBLIC_POLICIES = (routing.GATES, routing.GATES_V2)
 ENVIRONMENT = ('FEREG_SOLVER_TRACE', 'FEREG_SOLVER_TRACE_FILE', 'FEREG_PHASE_TIMING',
                'FEREG_CMG_ORDINARY', 'FEREG_ACTION_MEMORY_AUDIT', 'FEREG_PPML_MEMORY_TRACE',
                'FEREG_MEMORY_LIMIT_BYTES', 'LLVM_PROFILE_FILE')
@@ -232,7 +239,7 @@ def plan(config_path, output, *, configuration=None):
     require(set(value) == required, 'configuration needs exactly: ' + ', '.join(sorted(required)))
     require(value['scope'] in {'exact', 'many', 'two'}, 'unsupported numerical scope')
     require(value['platform'] in {'Darwin', 'Linux'}, 'platform must be Darwin or Linux')
-    require(value['coverage'] in ({'ownership'} if ownership_mode else {'routing', 'smoke'}), 'unsupported coverage')
+    require(value['coverage'] in ({'ownership'} if ownership_mode else {*COVERAGES, 'smoke'}), 'unsupported coverage')
     for field, low, high in [('blocks', 1, 24), ('shards', 1, 42), ('replicas', 1, 12),
                              ('seed', 0, 2**64 - 1), ('timeout_s', 1, 120), ('budget_s', 1, 14400)]:
         require(type(value[field]) is int and low <= value[field] <= high, 'invalid ' + field)
@@ -255,7 +262,10 @@ def plan(config_path, output, *, configuration=None):
         return key
 
     for role, artifact in artifacts.items():
-        require(set(artifact) == {'path', 'revision', 'build', 'request', 'families'}, 'invalid artifact ' + role)
+        require(set(artifact) - {'public_policy'} == {'path', 'revision', 'build', 'request', 'families'},
+                'invalid artifact ' + role)
+        require('public_policy' not in artifact or artifact['public_policy'] in PUBLIC_POLICIES
+                and artifact['request'] == 'auto' and not ownership_mode, 'invalid public two-FE policy for ' + role)
         require(isinstance(artifact['revision'], str) and artifact['revision'], 'record artifact revision')
         require(isinstance(artifact['build'], str) and artifact['build'], 'record compiler and build settings')
         require(artifact['request'] in ({'auto', *ownership.REQUESTS} if ownership_mode else
@@ -334,9 +344,11 @@ def plan(config_path, output, *, configuration=None):
             require(options.get('solver') == options.get('preconditioner') == 'auto',
                     'routing qualification requires source Auto/Auto')
     require(value['cases'] and value['shards'] <= len(value['cases']), 'empty case shard')
-    if value['coverage'] == 'routing':
-        require(len(value['cases']) == len(FAMILIES) and {c['family'] for c in value['cases']} == FAMILIES
-                and sorted(workers) == [1, 4], 'routing qualification requires all 42 workload cells')
+    if value['coverage'] in COVERAGES:
+        expected = COVERAGES[value['coverage']]
+        require(len(value['cases']) == len(expected) and {c['family'] for c in value['cases']} == expected
+                and sorted(workers) == [1, 4],
+                f"{value['coverage']} qualification requires all {2 * len(expected)} workload cells")
         require(value['blocks'] % 2 == 0 and value['blocks'] >= (6 if value['platform'] == 'Darwin' else 2),
                 'qualification requires balanced blocks and enough independent measurements')
     if value.get('diagnostic') in ('two-fe-remaining-calibration-v1', 'two-fe-gates-development-v1'):
@@ -398,9 +410,10 @@ def continuation_accounting(old, previous):
     arms = list(dict.fromkeys(aliases.values()))
     cells = [(f"{item['id']}-t{t}", i, item['family']) for i, item in enumerate(old['cases']) for t in old['threads']]
     require(len({c[0] for c in cells}) == len(cells), 'duplicate planned cells')
-    if old['coverage'] == 'routing':
-        require(len(cells) == 42 and {c['family'] for c in old['cases']} == FAMILIES
-                and sorted(old['threads']) == [1, 4], 'continuation requires all 42 cells')
+    if old['coverage'] in COVERAGES:
+        expected = COVERAGES[old['coverage']]
+        require(len(cells) == 2 * len(expected) and {c['family'] for c in old['cases']} == expected
+                and sorted(old['threads']) == [1, 4], f'continuation requires all {2 * len(expected)} cells')
     prior = previous['cases']
     require([c['id'] for c in prior] == [c[0] for c in cells[:len(prior)]]
             and len(prior) <= len(cells), 'missing, duplicate or reordered prior cells')
@@ -606,9 +619,10 @@ def recovery_definition(old, previous, events, paths, output):
             indices[cid] = list(range(old['blocks']))
     fresh = [cid for cid, _ in expected if cid not in reused]
     require(fresh and len(expected) == len(set(cid for cid, _ in expected)), 'no fresh cells or duplicate cells')
-    if old['coverage'] == 'routing':
-        require(len(expected) == 42 and {c['family'] for c in old['cases']} == FAMILIES
-                and sorted(old['threads']) == [1, 4], 'recovery requires all 42 cells')
+    if old['coverage'] in COVERAGES:
+        families = COVERAGES[old['coverage']]
+        require(len(expected) == 2 * len(families) and {c['family'] for c in old['cases']} == families
+                and sorted(old['threads']) == [1, 4], f'recovery requires all {2 * len(families)} cells')
     per_cell = len(set(artifact_aliases(old).values()))*(1+2*old['blocks'])
     spent = old.get('continuation', {}).get('prior_calls', 0)+sum(len(cell_calls(c)) for c in previous['cases'])
     elapsed = old.get('continuation', {}).get('prior_elapsed_s', 0)+previous['elapsed_s']
@@ -712,6 +726,10 @@ def resource_policy(manifest, role, meta):
     request = artifact['request']
     if role == 'candidate' and request == 'auto' and 'hidden' in manifest['artifacts']:
         request = manifest['artifacts']['hidden']['request']
+    elif family == 'two' and request == 'auto':
+        # An uninjected public invocation attests the public two-FE policy it
+        # declares; configurations without the field keep gates v1.
+        request = artifact.get('public_policy', routing.GATES)
     if family == 'two' and request in (*routing.REMAINING, *routing.GATE_RULES):
         return request
     if family == 'many' and request == routing.GEOMETRY_MANY:
@@ -804,7 +822,8 @@ def compare_saved(left, right, meta):
     a, b = read(left.with_suffix('.json')), read(right.with_suffix('.json'))
     for matrix, rtol, atol in [('RB', 1e-7, 1e-10), ('RV', 1e-6, 1e-10), ('RFIT', 1e-7, 1e-9)]:
         cmgschur.close(numbers(a['matrices'][matrix]), numbers(b['matrices'][matrix]), matrix, rtol, atol)
-    numeric = {meta['outputs'][name] for name in ('residual', 'xb', 'xbd', 'absorbed')} | set(meta.get('saved', []))
+    numeric = ({meta['outputs'][name] for name in ('residual', 'xb', 'xbd', 'absorbed') if name in meta['outputs']}
+               | set(meta.get('saved', [])))
     with np.load(left.with_suffix('.npz')) as x, np.load(right.with_suffix('.npz')) as y:
         require(set(x.files) == set(y.files), 'cross-host output channels changed')
         sample = x[str(meta['outputs']['sample'])].view(np.float64) == 1

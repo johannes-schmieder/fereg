@@ -215,7 +215,9 @@ near-confounded third FE, dynamic weights, inactive columns and three high-degre
 families. This is a sparse 42-cell coverage set, not a Cartesian product. Explicit
 solver and PPML feature checks remain in `scripts/run_tests.sh` and
 `scripts/replay_solver_routing.py`; a full optional-solver timing frontier is no
-longer mandatory for each candidate.
+longer mandatory for each candidate. The routing cells are at most 100,000 rows
+and 5 regressors, so a [campaign coverage](#campaign-coverage) adds the
+million-row designs of the SCC package comparison.
 
 The configuration is a JSON object with these fields:
 
@@ -223,22 +225,27 @@ The configuration is a JSON object with these fields:
 | --- | --- |
 | `scope` | `exact`, `many` or `two`; declares which eligible Auto family may change numerically. |
 | `platform` | `Darwin` or `Linux`; build and measure native artifacts for that host. |
-| `artifacts` | `original`, `incumbent`, `candidate`, plus `hidden` for public activation. Each has `path`, `revision`, `build`, `request` and `families`. |
+| `artifacts` | `original`, `incumbent`, `candidate`, plus `hidden` for public activation. Each has `path`, `revision`, `build`, `request` and `families`, and optionally `public_policy`. |
 | `harness` | Built complete-native-call timing harness. |
 | `cases` | One row per fixture: `id`, `family`, `input`, `oracle`, `memory_limit_bytes` (positive bytes or `null`). |
-| `threads` | `[1, 4]` for routing coverage. |
+| `threads` | `[1, 4]` for routing and campaign coverage. |
 | `blocks` | Fixed even number of mirrored blocks, at most 24. |
 | `shards`, `replicas` | Linux case partitions and repeated allocations; both are 1 on Mac. |
 | `min_distinct_hosts_per_cell` | Optional Linux-only minimum, an integer from 1 through `replicas` (at most 12). Every cell/reference must have the declared number of accounted physical hosts. |
 | `seed` | Unsigned 64-bit ordering seed. |
 | `timeout_s`, `budget_s` | Fixed per-call and per-job limits, at most 120 and 14,400 seconds. |
-| `coverage` | `routing` requires all 42 cells; `smoke` only checks tooling and cannot qualify a candidate. |
+| `coverage` | `routing` requires all 42 cells, `campaign` the 16 campaign cells and `routing-campaign` all 58; `smoke` only checks tooling and cannot qualify a candidate. |
 
 Artifact `build` records compiler and build settings in a short string. `request`
 is `auto`, `preserve`, `incremental-many`, `many-geometry-v1`, `incremental-two`,
-`two-remaining-v1` or `two-gates-v1`. `families` lists
+`two-remaining-v1`, `two-gates-v1` or `two-gates-v2`. `families` lists
 accepted numerical changes relative to the original (`[]`, `["many"]`, etc.).
-Original and incumbent use their actual uninjected public invocation. A public
+Original and incumbent use their actual uninjected public invocation. An
+artifact with request `auto` may declare `public_policy` (`two-gates-v1` or
+`two-gates-v2`), the two-FE policy its public Auto runs: when the artifact
+declares the `two` family, its traced warmups must attest that preset and its
+gate events. Omitted, it is `two-gates-v1`, beta.7's public policy; beta.8 and
+beta.9 run `two-gates-v2`. A public
 Auto candidate requires the corresponding hidden artifact, with exact agreement
 of scientific output and numerical solver signatures. Unchanged explicit OLS
 requests use `scope: "exact"` and `request: "preserve"`. This routing runner is
@@ -298,6 +305,98 @@ is the built `fereg-oracle` `replay_large` example by default; `--generator` sel
 another built copy. `--small` produces tooling-smoke fixtures only.
 [`routing_oracle.py`](routing_oracle.py) retains the independent categorical
 mathematics. Generated inputs alone establish no scientific or timing result.
+
+### Campaign coverage
+
+`routing_cases.py --coverage campaign --output target/tmp/TASK/inputs/campaign`
+writes eight one-million-row OLS families with the campaign generator
+(`campaign.make_dataset`, seed 739391 from `campaign.json`), IID covariance, unit
+weights and no saved effects, as replay cases through the canonical serializer:
+
+| Family | Design | Controls | FE levels | Outputs |
+| --- | --- | ---: | --- | --- |
+| `campaign-one-fe` | one-fe | 16 | 200,000 | residual, xb, xbd, absorbed |
+| `campaign-one-fe-nosave` | one-fe | 16 | 200,000 | sample only |
+| `campaign-akm-k16` | akm-baseline | 16 | 200,000 x 10,000 | residual, xb, xbd, absorbed |
+| `campaign-akm-k16-nosave` | akm-baseline | 16 | 200,000 x 10,000 | sample only |
+| `campaign-akm-k64` | akm-baseline | 64 | 200,000 x 10,000 | residual, xb, xbd, absorbed |
+| `campaign-three-dense` | three-dense | 16 | 62 x 62 x 62 | residual, xb, xbd, absorbed |
+| `campaign-three-sparse` | three-sparse | 16 | 200,000 x 10,000 x 32 | residual, xb, xbd, absorbed |
+| `campaign-two-dense` | two-dense | 16 | 500 x 500 | residual, xb, xbd, absorbed |
+
+The routing cells request residual, xb, xbd and absorbed outputs, so a Fast fit
+there always projects its final residual. The `-nosave` cells request only the
+mandatory sample output, the one layout in which a Fast fit may keep its derived
+within residual (SPEC 7); their residual enters the science through RSS-based
+IID covariance. The generator takes no seed or imports. Identifiers, topology and
+seed must equal the committed [beta.8 campaign inputs](results/scc-20261027-beta8-inputs.json);
+NumPy's normal draws differ bitwise across platforms, so the sidecar lists the
+float columns that differ from the Linux campaign data (15 of 17 at 16 controls
+and 46 of 65 at 64 controls on the Mac) instead of requiring them.
+
+Every campaign cell has an independent `routing` oracle from the blocked path of
+`routing_oracle.py`, which applies beyond the dense path's 600,000 rows, 32
+regressors and 2,048 retained levels, or when declared with `--blocked`. One FE
+uses exact group means; otherwise the largest FE is eliminated, one retained
+level per component of each eliminated/retained pair graph is grounded, and the
+equilibrated grounded Schur system (9,999 firm levels for akm, 9,586 firm and
+third levels for three-sparse, 122 for three-dense, 499 for two-dense) is admitted by a
+shifted dense Cholesky certificate before blocked projection. It checks
+coefficients, covariance, FE/DoF rows and coefficient status at the routing
+tolerances and every published observation output; discrete fields are exact.
+No campaign cell relies on a replay reference or the plugin's own result.
+
+```sh
+OPENBLAS_NUM_THREADS=1 VECLIB_MAXIMUM_THREADS=1 python3 bench/routing_oracle.py \
+  --blocked --case X.case --output X.reference.json --memory-budget-gib 2
+```
+
+The akm and three-sparse references need the declared 2 GiB budget, the others
+1 GiB. On an Apple M-series Mac each finishes within 37 seconds (limit 120); the
+k64 reference peaks at 2.08 GB resident, inside 2 GiB. Inputs total 4.2 GB: the
+k64 case is 1.26 GB and 74 million cells (the timing harness admits 100 million
+by default), and each native call writes 8 bytes per cell of binary output.
+Generate inputs once per platform and keep them out of Git.
+
+One traced beta.9 call per cell on this Mac (2026-10-28, other agents building,
+so indicative only) gave native seconds at one/four workers: one-fe 0.60/0.41,
+one-fe-nosave 0.56/0.32, akm-k16 0.90/0.50, akm-k16-nosave 0.73/0.42, akm-k64
+3.82/2.49, three-dense 1.54/1.41, three-sparse 6.28/3.24, two-dense 0.63/0.37.
+Loading the case dominates each call: 3.6-5.8 seconds of wall time per call,
+14.7-16.3 for akm-k64 and 7.3-10.3 for three-sparse. Every cell passed its
+independent oracle, cross-worker agreement and, for the two-FE cells, the gate
+v2 preset and gate-event checks. `qualify.py run` on a Darwin smoke plan of the
+16 cells blocked twice in its first cell: the practical Mac policy flagged other
+agents' rustc builds and they did not clear within the 120-second quiet wait.
+A Mac campaign round therefore needs the measured host free of builds.
+
+### Configurations
+
+[`qualify_configs/`](qualify_configs/) holds frozen round configurations. Their
+paths are relative to that directory and point into one task directory,
+`target/tmp/beta10-qualify/`:
+
+- `artifacts/beta.7`, `beta.8`, `beta.9`: the published plugins, for example
+  `git show v0.5.0-beta.9:dist/fereg_linux.plugin`; `artifacts/candidate`: the
+  candidate, which also serves the hidden `two-gates-v2` arm;
+- `harness/timing-harness` from `build_timing_harness.sh`;
+- `inputs/routing`: `routing_cases.py` output with its 16 `routing_oracle.py`
+  references and 4 replay references (`X.reference.json` beside `X.case`);
+- `inputs/campaign`: the campaign coverage with its 8 blocked references.
+
+`beta10-linux.json` covers `routing-campaign` (58 cells) with beta.7 as original,
+beta.9 as incumbent (`families: ["two"]`, `public_policy: "two-gates-v2"`), scope
+`two`, a public candidate and hidden `two-gates-v2`, 3 shards x 12 replicas, 2
+blocks, 12 distinct hosts per cell, a 120-second call timeout and a 10,800-second
+budget. The campaign families are ordered so each shard gets 2 or 3 of them
+(akm-k64 with one-fe-nosave). At four distinct arms that is 13,920 calls; from
+the Mac sizing a shard needs about half an hour. `beta10-darwin.json` is the
+practical Mac check with beta.8 as original, 6 blocks and the 14,400-second
+budget, about 3,000 calls and roughly 2.7 hours without retries. beta.8 and
+beta.9 are bit-identical on the one-FE and three-FE campaign cells, and beta.7
+and beta.9 on one-fe-nosave and three-dense. If the candidate's scope or hidden
+request differs, edit `scope`, `families` and `hidden.request`; record the
+candidate's source commit and SHA-256 in the round record.
 
 ### SCC execution and timing
 
