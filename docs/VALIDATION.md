@@ -277,6 +277,63 @@ Complete four-million-row dense three-FE fits took 5% longer at four workers
 and 21% longer at 28, so it was not adopted
 ([record](../bench/results/r4-row-streaming-20261026.json)).
 
+## Pinned within fused LSMR step
+
+Branch `codex/within-fused-lsmr` pins `within` `3b5b9b9a` of
+`codex/fused-lsmr-pass` in three reviewed steps
+([record](../bench/results/within-fused-lsmr-2026-10-28.json)).
+
+- `17fcf288` shares a session's response with its unit-weight RHS and an
+  unseeded recurrence's RHS. A unit-weight seeded session holds one fewer
+  observation-length vector and an unseeded one two fewer. Storage only: the
+  macOS replay against the published beta.9 plugin was exact for 73 of 73 cases.
+- `2ba7239d` runs each modified-LSMR step as one pass over observations and
+  sums every design adjoint in fixed row lanes, with no atomics. `A v`, the `u`
+  update and its norm are bitwise unchanged; the declared scope is the adjoint's
+  low bits. Default-mode `within` adjoints are now repeatable and identical
+  across worker counts; before, the atomic scatter for terms with at least
+  100,000 levels made repeated ten-million-row fits differ in their last bits.
+  Whole solves are repeatable and worker-count independent with Off, Diagonal
+  and ordered additive preconditioners. Without `deterministic`, fereg's
+  additive Schwarz still uses `within`'s Auto reduction, which may select an
+  atomic scatter; on the campaign sparse design below, fused fits nevertheless
+  matched bitwise at 1, 4 and 8 workers while beta.9's did not. Fourteen three-FE
+  replay inputs change within the
+  [declared scope](../tests/replay/scopes/2026-10-28-within-fused-lsmr-macos.json)
+  (467 leaves); solver codes, used solvers, fallbacks, stop reasons, iteration
+  counters and discrete decisions are unchanged, and no one- or two-FE case
+  changes. Scoped replay passed all 73 cases with four- and eight-worker
+  repeats and cross-worker science.
+- `3b5b9b9a` adds `Solver::with_preconditioner`, which swaps a solver's
+  preconditioner on its prepared frame and is bitwise a fresh construction.
+  fereg does not use it yet; replay against the `2ba7239d` plugin was exact.
+
+`./scripts/run_tests.sh --source-only` passed at both runtime pins, including
+the many-FE witnesses: public geometry trial against dense QR with and without
+escalation, the portfolio against strict QR with discrete decisions across
+workers, near-confounded escalation, and explicit three-FE LSMR against
+explicit dummies. The complexity ratchet is unchanged. Inside `within`, the
+separate kernel matches 24 session digests recorded at the previous pin, and
+the fused kernel repeats at 1, 2, 4 and 8 workers.
+
+Descriptive Mac timing (Apple M2 Ultra, shared with other agents; frozen
+competitor rule, medians of six clean fits): native seconds for 1M rows and 16
+controls, fused pin against beta.9.
+
+| Design | 1 worker | 4 workers | 8 workers |
+| --- | ---: | ---: | ---: |
+| Campaign three sparse FEs | 0.79 | 0.84 | 0.90 |
+| Campaign three dense FEs (MAP, no LSMR) | 1.00 | 0.99 | 0.98 |
+
+The `within` step kernel alone, on the same sparse topology with 16
+right-hand sides and 23 steps, ran at 0.65-0.79 of the separate kernel with
+the diagonal preconditioner and 0.78-0.93 with additive Schwarz. On that
+design the lane merge costs 1.93 MB of buffers per live session and about 11%
+of a single-RHS step at eight workers (merge plus zeroing). Peak RSS for the
+sparse fit at eight workers fell from 2.12 to 2.00 GB. fereg's LSMR admission
+is unchanged and remains an upper bound. These timings are not qualification
+evidence; `bench/qualify.py` has not been run.
+
 ## PPML two-FE CMG reuse and lean protocol
 
 PPML Auto with exactly two intercept FEs reuses one CMG hierarchy across IRLS
