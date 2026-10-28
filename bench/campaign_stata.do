@@ -5,6 +5,20 @@ set varabbrev off
 set linesize 255
 args configuration
 include `"`configuration'"'
+program _campaign_wait
+    args path
+    local waited = 0
+    capture confirm file `"`path'"'
+    while _rc {
+        sleep 1
+        local ++waited
+        if `waited' > 120000 {
+            display as error "campaign handshake timed out: `path'"
+            exit 9
+        }
+        capture confirm file `"`path'"'
+    }
+end
 local processors = min(`threads', 4, c(processors_lic), c(processors_mach))
 set processors `processors'
 sysdir set PLUS `"`refs'"'
@@ -57,6 +71,8 @@ display "CAMPAIGN_READY"
 file open ready using `"`output'/READY"', write text replace
 file write ready "ready" _n
 file close ready
+* The harness resets the kernel memory peak before GO and reads it before ACK.
+_campaign_wait `"`output'/GO"'
 plugin call _campaign_clock, start
 capture noisily quietly `command' y `xvars', absorb(`absorb') `inference' `timed_options'
 local rc = _rc
@@ -64,6 +80,7 @@ plugin call _campaign_clock, stop `command_seconds' `resolution'
 file open done using `"`output'/DONE"', write text replace
 file write done "done" _n
 file close done
+_campaign_wait `"`output'/ACK"'
 tempname meta
 file open `meta' using `"`output'/metadata.tsv"', write text replace
 file write `meta' "rc" _tab "`rc'" _n

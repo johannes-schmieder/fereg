@@ -43,8 +43,12 @@ def collect(context_path, output):
     output.mkdir(parents=True, exist_ok=False)
     (output/'context.json').write_text(json.dumps(context, indent=2)+'\n')
     jobs = []
-    for kind in ['setup', 'smoke', 'production']:
-        job = str(context[kind+'_job'])
+    # A task resubmitted after a documented stop has its own job (task_jobs).
+    resubmitted = sorted(set(map(str, context.get('task_jobs', {}).values())))
+    for kind, job in [('setup', context['setup_job']), ('smoke', context['smoke_job']),
+                      ('production', context['production_job']),
+                      *[(f'resubmitted-{job}', job) for job in resubmitted]]:
+        job = str(job)
         if not job.isdigit():
             raise ValueError('invalid submitted job identity')
         raw = remote('qacct -j '+job).decode()
@@ -61,19 +65,26 @@ def collect(context_path, output):
     verify = ('export PYTHONDONTWRITEBYTECODE=1 OPENBLAS_NUM_THREADS=1; export PYTHONPATH='+
               shlex.quote(root+'/source/bench')+'; '+verify)
     remote(verify)
+    policy = json.loads(remote('cat '+shlex.quote(root+'/manifest.json')))['policy']
     files = ['manifest.json', 'input/source.json', 'setup.sh', 'job.sh', 'environment/runtime.json', 'environment/COMPLETE',
              'environment/reference-origin.json', 'environment/r-package-paths.json',
-             'environment/pyfixest-freeze.txt', 'environment/pyfixest-within-freeze.txt',
+             *[f'environment/{arm}-freeze.txt' for arm in policy['pyfixest']],
              'smoke/results.json', 'smoke/COMPLETE', 'logs/setup.sge', 'logs/smoke.sge',
-             'logs/build.log', 'logs/dependency-fetch.log', 'logs/clock-build.log', 'logs/harness-tests.log',
+             'logs/build.log', 'logs/clock-build.log', 'logs/harness-tests.log',
              'logs/reference-prepare.log']
-    bundles = json.loads(remote('cat '+shlex.quote(root+'/manifest.json')))['policy']['bundles']
+    if 'julia' in policy:
+        files += ['environment/julia-versions.json', 'environment/julia/Project.toml',
+                  'environment/julia/Manifest.toml', 'logs/julia-environment.log']
+    if context.get('plugin', 'build') == 'build':
+        files.append('logs/dependency-fetch.log')
+    bundles = policy['bundles']
     tasks = [f'task-{i}' for i in range(1, bundles+1)]
     files += [f'{task}/{name}' for task in tasks for name in ['results.json', 'COMPLETE']]
     if context.get('host_observation_required'):
         files += [f'host-{label}/{name}' for label in ['smoke', *tasks]
                   for name in ['host.json', 'host-observations.jsonl']]
     files += [name for name in context.get('launcher_sha256', {}) if name not in files]
+    files += [name for name in context.get('retained_files', []) if name not in files]
     if context.get('reused_build_job'):
         files.append('logs/abi-retest.log')
     listing = remote('find '+shlex.quote(root+'/logs')+" -maxdepth 1 -type f -name 'production.*.sge'").decode().splitlines()
@@ -95,9 +106,10 @@ def collect(context_path, output):
             raise ValueError('scheduler launcher identity changed: '+name)
     sentinels = (output/'environment/COMPLETE').read_text().strip() == 'CAMPAIGN_SETUP_COMPLETE'
     sentinels &= 'CAMPAIGN_JOB_COMPLETE' in (output/'logs/smoke.sge').read_text()
+    from campaign_report import production_job
     for task in range(1, manifest['policy']['bundles']+1):
         matches = [p for p in (output/'logs').glob('production.*.sge')
-                   if f"CAMPAIGN_JOB_COMPLETE job={context['production_job']} task={task}" in p.read_text()]
+                   if f"CAMPAIGN_JOB_COMPLETE job={production_job(context, task)} task={task}" in p.read_text()]
         sentinels &= len(matches) == 1
     (output/'accounting.json').write_text(json.dumps(dict(jobs=jobs, sentinels_pass=bool(sentinels)), indent=2)+'\n')
     inventory = {str(p.relative_to(output)): hashlib.sha256(p.read_bytes()).hexdigest()

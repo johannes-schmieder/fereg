@@ -30,48 +30,71 @@ Generated captures belong under `target/tmp/` and are deleted after inspection.
 ## SCC package comparison
 
 `campaign.json` freezes the descriptive OLS/PPML comparison against pinned fixest
-0.14.2, PyFixest, reghdfe, ppmlhdfe and Stata 19 areg: 56 configurations, 36
-synthetic datasets, three repetitions and 978 planned fits, including separate
-default and strict fixest profiles. PyFixest runs in every configuration twice: the 0.60.0
-release with its default Rust MAP demeaner, and a pinned main revision whose
-default is the `within` LSMR demeaner. Both keep default estimation tolerances
-and recover saved FE at 1e-11, like the fixest arms. areg runs in every OLS
-configuration with at most four workers and no saved FE (it cannot save
-individual effects). With several effects it uses `dfabsorb noabsorbtest
-tolerance(1e-8) iterate(16000)`, the options of the August 2026 comparison.
-Its absorbed count is compared after adding back the intercept it reports
-separately; with clustered covariance it does not discount effects nested in
-the clusters, so those cells stay descriptive. Four workers are primary; selected configurations use 1/8/16 workers.
-Inputs have 100,000, one million or four million rows and 16 controls, with AKM,
-one-FE and dense/sparse two-/three-FE designs. Covariance and saved-FE variants
-remain part of the baseline panel.
+0.14.2 (default and strict profiles), PyFixest, FixedEffectModels.jl, reghdfe,
+ppmlhdfe and Stata 19 areg. At one million rows and four cores it covers the
+AKM baseline with every covariance type with and without saved FE, 4 and 64
+controls instead of 16, and one-FE and dense/sparse two-/three-FE designs. Core
+series at 1/2/4/8/16 workers use the AKM baseline, and size series from
+100,000 to ten million rows cover AKM OLS, AKM PPML and sparse three-FE OLS.
+Cells up to one million rows have five repetitions and larger cells three.
 
-`campaign.py prepare RUN_ROOT --supplement` (or `CAMPAIGN_SUPPLEMENT=1` for
-`scc/setup.sh`) schedules a supplement instead: areg paired with fereg in the 18
-multi-FE OLS cells where the beta.7 rerun lacked it, and AKM fits at one million
-rows and four workers with `supplement_controls` (4 and 64) instead of 16
-controls, for every arm. Its three bundles reuse the frozen datasets where they
-exist and generate the new control counts with the same generator and seed.
+PyFixest runs a pinned main revision whose default is the `within` LSMR
+demeaner, with default estimation tolerances and saved FE recovered at 1e-11
+like the fixest arms. FixedEffectModels.jl runs in linear cells only, at its
+default tolerance (1e-6) and at 1e-10 (`julia-strict`); `julia --threads` sets
+its workers and a warm-up fit of the same specification keeps compilation out
+of timing. areg runs in every OLS configuration with at most four workers and
+no saved FE (it cannot save individual effects). With several effects it uses
+`dfabsorb noabsorbtest tolerance(1e-8) iterate(16000)`, the options of the
+August 2026 comparison. Its absorbed count is compared after adding back the
+intercept it reports separately; with clustered covariance it does not discount
+effects nested in the clusters, so those cells stay descriptive.
 
-`scc/setup.sh` builds a frozen source archive, checks native ABI/numerics and
-benchmark tooling, and copies the pinned comparator environment from
-`REFERENCE_ROOT`. `scc/pyfixest_environment.sh` installs both PyFixest arms
-from the locked requirements in `pyfixest/` (the main revision builds its Rust
-extension with the pinned toolchain); the runtime inventory hashes both
-environments. Supply `RUN_ROOT/input/frozen-inputs.json` with `remote_root`
-and `datasets` from the retained campaign input record. Production copies those
-datasets, verifies file and decoded column hashes, and preserves their metadata;
-small smoke and warm-up inputs are generated separately.
+`campaign.py prepare RUN_ROOT` packs one model and design per node, so each
+size, core and option series compares absolute times on one host, and orders
+sizes ascending: a command that reaches the time limit is not attempted at
+larger sizes of its series (`skipped-after-timeout`). Every node first times
+the same native reference cell, recording its speed.
 
-Submit setup, smoke and the eight production bundles with SGE dependencies and
+Comparisons separate counting conventions from numerical differences. Packages
+count absorbed degrees of freedom differently (connected components, levels, or
+nesting in clusters); this changes reported counts and scales the covariance by
+one small-sample factor. A comparison agrees by convention when all other
+checks pass and the covariance matches after one scalar within
+`covariance_scale_bound` of one; such pairs supply time ratios and are marked
+in reports. Strict eligibility is unchanged.
+
+Memory is exact: after an arm loads its input it writes READY and waits; the
+harness resets the kernel's peak resident set of the process tree
+(`/proc/PID/clear_refs`), writes GO, and after DONE reads VmHWM before writing
+ACK. The peak therefore covers the timed command with the loaded data, and the
+summary also gives the increase over the loaded state. The 20 ms RSS samples
+remain a cross-check, and the smoke gate requires exact peaks.
+
+`scc/setup.sh` builds a frozen source archive and copies the pinned comparator
+environment from `REFERENCE_ROOT`; `CAMPAIGN_PLUGIN=dist` measures the published
+package binary after checking its checksum instead of rebuilding it.
+`scc/pyfixest_environment.sh` installs the PyFixest arms named in
+`campaign.json` from the locked requirements in `pyfixest/` (the main revision
+builds its Rust extension with the pinned toolchain), and
+`scc/julia_environment.sh` instantiates and precompiles `julia/Manifest.toml`
+in its own depot. The runtime inventory hashes every environment, including the
+Julia project, package sources and artifacts. Supply
+`RUN_ROOT/input/frozen-inputs.json` with `remote_root` and `datasets` from the
+retained campaign input record. Production copies those datasets, verifies file
+and decoded column hashes, and preserves their metadata; other sizes and
+control counts, small smoke inputs and warm-up inputs are generated with the
+same generator and seed.
+
+Submit setup, smoke and the production bundles with SGE dependencies and
 `-P welfgr`. `scc/job.sh` takes `RUN_ROOT`, `MODE` (`smoke` or `run`) and
 `UPSTREAM_JOB`, requiring successful upstream accounting and application checks.
-The jobs reserve one complete 28-core node through `mpi_28_tasks_per_node_u`;
-no MPI ranks are launched. The existing qualification host observer verifies
-the scheduler reservation, all-queue census, affinity and absence of known
-competing compute throughout smoke and production. Both packages receive the
-same socket-ordered CPU prefix and NUMA memory binding. There are no automatic
-timing retries or interference exclusions.
+The jobs reserve one complete 28-core node; no MPI ranks are launched. The
+existing qualification host observer verifies the scheduler reservation,
+all-queue census, affinity and absence of known competing compute throughout
+smoke and production. Every package receives the same socket-ordered CPU
+prefix and NUMA memory binding. There are no automatic timing retries or
+interference exclusions.
 
 Timing includes estimation, inference and requested FE recovery, including
 fixest's lazy extraction and row materialization. Import, generation and disk
@@ -83,8 +106,10 @@ does not qualify a runtime change or establish a universal speed advantage.
 application results and frozen identities. Set `host_observation_required: true`
 in the context for observed runs. `campaign_report.py DIRECTORY --output REPORT`
 produces the full PDF and CSVs, enforcing complete coverage, scientific eligibility,
-fixed-worker exact repeatability and cross-worker agreement. See the
-[comparison guide](../docs/fixest_benchmarks.md) for interpretation.
+fixed-worker exact repeatability and cross-worker agreement, and
+`campaign_export.py DIRECTORY --report REPORT --output RESULTS --prefix PREFIX`
+writes the compact summary, observation and input records kept in `results/`.
+See the [comparison guide](../docs/fixest_benchmarks.md) for interpretation.
 
 ## Private Veneto panels
 
@@ -113,14 +138,18 @@ owner-only access and obtain approval for any required transfer. Only aggregate
 timing/science summaries belong in committed results.
 
 The fixed schedule has three repetitions at 1/2/4/8/16 cores for fereg, the
-default/strict fixest profiles and both PyFixest arms; reghdfe participates at
-1/2/4, within the SCC Stata license. This gives 168 planned fit positions.
+default/strict fixest profiles, the PyFixest arms pinned in `campaign.json` and
+both FixedEffectModels.jl profiles; reghdfe participates at 1/2/4, within the
+SCC Stata license. This gives 198 planned fit positions for both panels.
+FixedEffectModels.jl counts every FE level, so its absorbed count is checked
+against the sum of levels rather than the graph rank.
 `panel_campaign.py reuse NEW_RUN --previous PRIOR_RUN` copies a prior run's
 audited panel inputs, smoke witnesses and policy byte for byte and rebuilds only
 the per-cell arm lists; `--without-saved-fe` schedules the same cells without
 saved FE, so commands time estimation and inference and comparisons cover
-slopes, covariance, sample, rank and RSS. The collector retains the reuse job
-and the prior run's preparation records. `--panels long` schedules one panel;
+slopes, covariance, sample, rank and RSS. A reused run has a 20,000-second fit
+budget. The collector retains the reuse job and the prior run's preparation
+records. `--panels long` schedules one panel;
 `scc/panel_pair.sh` then runs the production task of several such runs back to
 back in one whole-node job (for example the long panel with and without saved
 FE), so their absolute times share a host. Each panel runs sequentially in
@@ -141,9 +170,9 @@ captures remain private on SCC.
 `panel_collect.py CONTEXT --output NEW_DIRECTORY` collects aggregate results
 after all four scheduler units are terminal: setup, smoke and production tasks
 1–2. It requires successful accounting, application sentinels, replayed host
-isolation observations, the retained-input audit, all 108 fit positions, 20 exact native
-repeat checks and 30 consistency comparisons (six at the one-core baseline,
-24 between core counts). It also requires exact repeated reported native RSS.
+isolation observations, the retained-input audit, every planned fit position,
+exact native repeat checks and consistency comparisons with the one-core
+baseline. It also requires exact repeated reported native RSS.
 It writes compact summary and
 observation CSVs plus science JSON; failed or ineligible comparator positions
 remain in the tables. It does not download row captures or saved FE vectors.
@@ -359,9 +388,11 @@ for stopping rules, scientific requirements and practical Mac measurements.
 `time_exact.py` (arithmetic-preserving PPML candidates only):
 
 ```
+REPLAY_MAX_CELLS=120000000U bash bench/build_timing_harness.sh target/tmp/TASK/harness
 python3 bench/ppml_cases.py --output target/tmp/TASK/ppml --threads 4 28
 python3 bench/time_exact.py --plugin base=... --plugin candidate=... \
-    --cases target/tmp/TASK/ppml/cases/*-t4.case --output target/tmp/TASK/t4 --repetitions 5
+    --cases target/tmp/TASK/ppml/cases/*-t4.case --output target/tmp/TASK/t4 --repetitions 5 \
+    --harness target/tmp/TASK/harness
 ```
 
 `native.py`, `time_exact.py`, the replay tools and the campaign runner remain

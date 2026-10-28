@@ -4,7 +4,7 @@
 #$ -pe mpi_28_tasks_per_node_u 28
 #$ -l num_proc=28
 #$ -l mem_per_core=3G
-#$ -l h_rt=06:00:00
+#$ -l h_rt=12:00:00
 #$ -j y
 set -euo pipefail
 umask 077
@@ -12,8 +12,10 @@ umask 077
 test "$NSLOTS" = 28
 test -f "$RUN_ROOT/environment/COMPLETE"
 module purge
-module load python3/3.12.4 stata-mp/19 R/4.5.2
+module load python3/3.12.4 stata-mp/19 R/4.5.2 julia/1.11.7
 export R_LIBS_USER="$RUN_ROOT/environment/r-library"
+export JULIA_DEPOT_PATH="$RUN_ROOT/environment/julia-depot" JULIA_PKG_OFFLINE=true
+export JULIA_CPU_TARGET='generic;sandybridge,-xsaveopt,clone_all;haswell,-rdrnd,base(1)'
 export OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 OMP_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1
 export PYTHONDONTWRITEBYTECODE=1
 cd "$RUN_ROOT/source"

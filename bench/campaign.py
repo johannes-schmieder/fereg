@@ -27,7 +27,11 @@ from placement import socket_ordered_cpus, placement_metadata, bound_command
 HERE = Path(__file__).resolve().parent
 POLICY = json.loads((HERE/'campaign.json').read_text())
 PYFIXEST_ARMS = list(POLICY['pyfixest'])
+# FixedEffectModels.jl at its default tolerance and at 1e-10 (linear models only).
+JULIA_ARMS = ['julia','julia-strict'] if 'julia' in POLICY else []
 STATA_REFERENCES = ['reghdfe','ppmlhdfe','areg']
+# Reported absorbed/residual counts follow each package's convention; see agreement().
+COUNT_CONVENTIONS = {'absorbed_dof','residual_dof','correction_dof'}
 
 
 def write_json(path, value):
@@ -42,16 +46,21 @@ def verify_runtime(root):
         if sha256(root/name)!=expected:raise RuntimeError('frozen runtime changed: '+name)
 
 
+def repetitions(cell):
+    return POLICY['large_repetitions'] if cell['rows']>POLICY['large_rows'] else POLICY['repetitions']
+
+
 def configurations(smoke=False):
     result = []
-    def add(model, design='akm-baseline', rows=1000000, threads=4, vce=None, save_fe=False, section='baseline',
-            regressors=POLICY['controls']):
+    def add(model, design='akm-baseline', rows=POLICY['baseline_rows'], threads=POLICY['main_threads'], vce=None,
+            save_fe=False, section='baseline', regressors=POLICY['controls']):
         vce = vce or ('iid' if model=='ols' else 'robust')
         cell = dict(model=model,design=design,rows=rows,threads=threads,vce=vce,
                     save_fe=save_fe,section=section,regressors=regressors,weights='unit')
         cell['effects'] = 1 if design=='one-fe' else 3 if design.startswith('three-') else 2
         cell['id'] = f'{model}-{design}-n{rows}-t{threads}-{vce}-fe{int(save_fe)}'+controls_suffix(cell)
         cell['arms'] = arms(cell)
+        cell['repetitions'] = 1 if smoke else repetitions(cell)
         if not any(c['id']==cell['id'] for c in result): result.append(cell)
     if smoke:
         for model in ['ols','ppml']:
@@ -63,13 +72,23 @@ def configurations(smoke=False):
     for model in ['ols','ppml']:
         for vce in (['iid','robust','cluster'] if model=='ols' else ['robust','cluster']):
             for saved in [False,True]: add(model,vce=vce,save_fe=saved)
-        for threads in [1,8,16]: add(model,threads=threads,section='scaling')
+        for threads in POLICY['threads']:
+            if threads!=POLICY['main_threads']: add(model,threads=threads,section='scaling')
         add(model,threads=16,vce='cluster',save_fe=True,section='scaling')
-        for rows in [100000,4000000]: add(model,rows=rows,section='size')
-        for design in ['one-fe','two-dense','two-sparse','three-dense','three-sparse']:
-            for rows in POLICY['sizes']: add(model,design,rows=rows,section='breadth')
+        for k in POLICY['control_variants']: add(model,regressors=k,section='controls')
+        for design in ['one-fe','two-dense','two-sparse','three-dense','three-sparse']: add(model,design,section='design')
         for design in ['two-dense','three-sparse']: add(model,design,threads=16,section='scaling')
+    # Size series repeat the four-core default specification; their
+    # one-million-row cells are the option and design cells above.
+    for model,design in POLICY['size_series']:
+        for rows in POLICY['sizes']: add(model,design,rows=rows,section='size')
     return result
+
+
+def series_key(cell):
+    """Cells that differ only in their number of rows form one size series."""
+    return (cell['model'],cell['design'],cell['threads'],cell['vce'],cell['save_fe'],
+            cell.get('regressors',POLICY['controls']))
 
 
 def controls_suffix(cell):
@@ -79,31 +98,10 @@ def controls_suffix(cell):
     return '' if k == POLICY['controls'] or cell.get('section') == 'veneto' else f'-k{k}'
 
 
-def supplement_configurations():
-    """Stata 19 areg wherever the main panel lacks it, and other control counts.
-
-    Every cell pairs its comparators with fereg on the same node. The main
-    panel's frozen datasets serve the areg cells; other control counts use
-    newly generated inputs from the same generator and seed.
-    """
-    result = []
-    for cell in configurations():
-        if 'areg' in cell['arms'] and cell['effects'] > 1:
-            result.append(dict(cell, arms=['fereg', 'areg'], section='supplement-areg'))
-    for k in POLICY['supplement_controls']:
-        for model in ['ols', 'ppml']:
-            cell = dict(model=model, design='akm-baseline', rows=POLICY['baseline_rows'], threads=POLICY['main_threads'],
-                        vce='iid' if model == 'ols' else 'robust', save_fe=False, section='supplement-controls',
-                        regressors=k, weights='unit', effects=2)
-            cell['id'] = f"{model}-akm-baseline-n{cell['rows']}-t{cell['threads']}-{cell['vce']}-fe0"+controls_suffix(cell)
-            cell['arms'] = arms(cell)
-            result.append(cell)
-    return result
-
-
 def arms(cell):
     if 'arms' in cell: return list(cell['arms'])
     result = ['fereg','fixest',*PYFIXEST_ARMS]
+    if cell['model']=='ols': result.extend(JULIA_ARMS)
     if cell['threads']<=4: result.append('reghdfe' if cell['model']=='ols' else 'ppmlhdfe')
     # Stata 19 areg absorbs several categorical effects for linear models; it
     # cannot save individual effects, and Stata is licensed for four cores.
@@ -119,21 +117,48 @@ def dataset_key(cell):
     return f"{cell['model']}-{cell['design']}-n{cell['rows']}"+controls_suffix(cell)
 
 
-def prepare(root, supplement=False):
-    cells = supplement_configurations() if supplement else configurations()
-    bundles = POLICY['supplement_bundles'] if supplement else POLICY['bundles']
-    # Dataset units keep the complete baseline thread/VCE/output panel together.
+# Approximate seconds per fit at one million rows and four cores, used only to
+# balance bundles (beta.7 SCC medians, rounded). Each fresh process also loads
+# its input, and a timeout stops a command's later repetitions and sizes.
+PACKING_SECONDS = {'fereg':2,'fixest':3,'fixest-strict':4,'pyfixest-within':3,'julia':3,'julia-strict':4,
+                   'reghdfe':25,'areg':25,'ppmlhdfe':90}
+
+
+def estimated_seconds(cell):
+    scale = cell['rows']/1e6*(4 if cell['model']=='ppml' else 1)*(4 if 'sparse' in cell['design'] else 1)
+    total = 0.
+    for arm in arms(cell):
+        command = PACKING_SECONDS[arm]*scale*(cell.get('regressors',16)/16)**.5
+        if command>=POLICY['command_timeout_seconds']: total += POLICY['command_timeout_seconds']
+        else: total += cell['repetitions']*(command+10+5*cell['rows']/1e6)
+    return total
+
+
+def prepare(root):
+    cells = configurations()
+    # One design and model per node: its size, core, option and control series
+    # then compare absolute times on one host.
     units = {}
-    for cell in cells: units.setdefault(dataset_key(cell),[]).append(cell)
-    bundles = [[] for _ in range(bundles)]
+    for cell in cells: units.setdefault(f"{cell['model']}-{cell['design']}",[]).append(cell)
+    bundles = [[] for _ in range(POLICY['bundles'])]
     costs = [0.0]*len(bundles)
-    for key, group in sorted(units.items(),key=lambda kv:sum(c['rows']*len(arms(c)) for c in kv[1]),reverse=True):
+    for key, group in sorted(units.items(),key=lambda kv:(-sum(map(estimated_seconds,kv[1])),kv[0])):
         slot = min(range(len(bundles)),key=costs.__getitem__)
-        bundles[slot].extend(group)
-        costs[slot] += sum(c['rows']*len(arms(c)) for c in group)
-    policy = dict(POLICY, bundles=len(bundles))
-    write_json(root/'manifest.json',dict(schema=1,policy=policy,cells=cells,bundles=bundles,supplement=supplement,
-               timed_fits=sum(len(arms(c)) for c in cells)*POLICY['repetitions']))
+        # Ascending sizes let a timeout stop the remainder of its series.
+        bundles[slot].extend(sorted(group,key=lambda c:c['rows']))
+        costs[slot] += sum(map(estimated_seconds,group))
+    # Every node first times the same native reference cell, recording its speed.
+    reference = next(c for c in cells if c['section']=='baseline' and c['model']=='ols'
+                     and c['vce']=='iid' and not c['save_fe'])
+    references = []
+    for task, bundle in enumerate(bundles, 1):
+        cell = dict(reference,id=f"{reference['id']}-ref{task}",section='reference',arms=['fereg'],
+                    repetitions=POLICY['reference_repetitions'])
+        bundle.insert(0,cell); references.append(cell)
+    cells = references+cells
+    write_json(root/'manifest.json',dict(schema=2,policy=POLICY,cells=cells,bundles=bundles,
+               estimated_bundle_hours=[round(sum(map(estimated_seconds,b))/3600,2) for b in bundles],
+               timed_fits=sum(len(c['arms'])*c['repetitions'] for c in cells)))
 
 
 def make_dataset(cell, path):
@@ -226,11 +251,34 @@ def frozen_dataset(cell, destination, inventory):
     return frame, metadata
 
 
+def reset_peak(pid):
+    # Linux 4.0+: writing 5 resets the process's peak resident set to its current size.
+    Path(f'/proc/{pid}/clear_refs').write_text('5')
+
+
+def process_memory(pid, field):
+    for line in Path(f'/proc/{pid}/status').read_text().splitlines():
+        if line.startswith(field+':'):
+            return int(line.split()[1])*1024
+    raise ValueError('missing '+field)
+
+
 def execute(command, directory, cpus, timeout):
+    """Run one arm; the timed window lies between its READY and DONE files.
+
+    After READY the arm waits for GO while the kernel's peak resident set
+    (VmHWM) of its process tree is reset, so the peak read at DONE covers the
+    timed command exactly, with the loaded data. The arm then waits for ACK,
+    keeping output writing out of that peak. The 20 ms RSS samples remain a
+    cross-check.
+    """
     placement=placement_metadata(cpus)
     env=dict(os.environ,OPENBLAS_NUM_THREADS='1',MKL_NUM_THREADS='1',NUMEXPR_NUM_THREADS='1',
              OMP_NUM_THREADS=str(len(cpus)))
     start=time.monotonic();peak=0;sweeps=0;monitor_started=None
+    memory=dict(memory_exact=False)
+    def tree(pid):
+        parent=psutil.Process(pid);return [parent,*parent.children(recursive=True)]
     with (directory/'process.log').open('w') as log:
         process=subprocess.Popen(bound_command(command,placement),cwd=directory,
                                  stdout=log,stderr=subprocess.STDOUT,env=env,start_new_session=True)
@@ -242,6 +290,26 @@ def execute(command, directory, cpus, timeout):
                 except subprocess.TimeoutExpired:os.killpg(process.pid,signal.SIGKILL);process.wait()
                 break
             ready=(directory/'READY').exists();done=(directory/'DONE').exists()
+            if ready and not (directory/'GO').exists():
+                try:
+                    processes=tree(process.pid)
+                    for p in processes:reset_peak(p.pid)
+                    memory.update(ready_rss_bytes=sum(process_memory(p.pid,'VmRSS') for p in processes),
+                                  reset_pids=sorted(p.pid for p in processes),reset=True)
+                except (OSError,ValueError,psutil.Error) as error:
+                    memory.update(reset=False,memory_error=str(error))
+                (directory/'GO').write_text('go\n')
+            if done and not (directory/'ACK').exists():
+                try:
+                    processes=tree(process.pid)
+                    memory.update(peak_rss_bytes=sum(process_memory(p.pid,'VmHWM') for p in processes),
+                                  done_rss_bytes=sum(process_memory(p.pid,'VmRSS') for p in processes),
+                                  peak_pids=sorted(p.pid for p in processes))
+                    # A process that exited during the command would take its peak with it.
+                    memory['memory_exact']=bool(memory.get('reset')) and set(memory['reset_pids'])<=set(memory['peak_pids'])
+                except (OSError,ValueError,psutil.Error) as error:
+                    memory.update(memory_exact=False,memory_error=str(error))
+                (directory/'ACK').write_text('ack\n')
             if ready and not done:
                 if monitor_started is None: monitor_started=time.monotonic()
                 if time.monotonic()-monitor_started>POLICY['command_timeout_seconds']:
@@ -250,14 +318,14 @@ def execute(command, directory, cpus, timeout):
                     except subprocess.TimeoutExpired:os.killpg(process.pid,signal.SIGKILL);process.wait()
                     break
                 try:
-                    parent=psutil.Process(process.pid);tree=[parent,*parent.children(recursive=True)]
-                    peak=max(peak,sum(p.memory_info().rss for p in tree));sweeps+=1
+                    processes=tree(process.pid)
+                    peak=max(peak,sum(p.memory_info().rss for p in processes));sweeps+=1
                 except (psutil.NoSuchProcess,psutil.AccessDenied):pass
             time.sleep(.02)
         rc=process.wait()
     if status=='ok' and rc!=0:status='error'
     return dict(status=status,process_rc=rc,wall_seconds=time.monotonic()-start,
-                estimator_tree_rss_bytes=peak,memory_sweeps=sweeps,placement=placement)
+                estimator_tree_rss_bytes=peak,memory_sweeps=sweeps,placement=placement,**memory)
 
 
 def absorbed_rank(metadata, cell, frame):
@@ -369,9 +437,15 @@ def fit(root, cell, arm, repetition, frame, cpus):
         output=directory,dataset=root/'data'/(dataset_key(cell)+'.dta'),warm=root/'data/warm.dta',
         arm=arm,model=cell['model'],k=cell.get('regressors',16),effects=cell['effects'],threads=cell['threads'],
         save_fe=int(cell['save_fe']),vce=cell['vce'],tolerance='',clock_plugin=root/'environment/command-clock.plugin')
+    if arm in JULIA_ARMS:
+        settings.update(julia_version=POLICY['julia']['julia'],fixedeffectmodels=POLICY['julia']['FixedEffectModels'])
     write_configuration(directory,settings)
     if arm.startswith('fixest'):
         command=['Rscript',str(HERE/'campaign_r.R'),str(directory/'config.tsv')]
+    elif arm in JULIA_ARMS:
+        # JULIA_DEPOT_PATH (set by the job) holds the instantiated, precompiled pins.
+        command=[os.environ.get('JULIA_BIN','julia'),'--startup-file=no',f"--threads={cell['threads']}",
+                 f"--project={root/'environment/julia'}",str(HERE/'campaign_julia.jl'),str(directory/'config.tsv')]
     elif arm in PYFIXEST_ARMS:
         interpreter=root/'environment'/arm/'bin/python'
         command=[str(interpreter),'-I','-B',str(HERE/'campaign_pyfixest.py'),str(directory/'config.tsv')]
@@ -410,7 +484,8 @@ def close_values(a,b,rtol,atol):
 
 
 def compare_records(a,b,cell):
-    if a['status']!='ok' or b['status']!='ok':return dict(eligible=False,reasons=['application unavailable'])
+    if a['status']!='ok' or b['status']!='ok':
+        return dict(eligible=False,reasons=['application unavailable'],agreement='unavailable')
     x,y=a['capture'],b['capture'];reasons=[]
     for key in ['N','sample_sha256','omitted','finite_slope_rank','singleton_deletions','separation_deletions','clusters','absorbed_dof']:
         if key not in x or key not in y:reasons.append('missing '+key);continue
@@ -432,7 +507,31 @@ def compare_records(a,b,cell):
         p=np.load(Path(a['directory'])/'fitted.npz')['fitted'];q=np.load(Path(b['directory'])/'fitted.npz')['fitted']
         if not close_values(p,q,POLICY['fitted_rtol'],POLICY['fitted_atol']):reasons.append('saved prediction')
         if max(x['maximum_model_score'],y['maximum_model_score'])>1e-7:reasons.append('model score')
-    return dict(eligible=not reasons,reasons=reasons)
+    return dict(eligible=not reasons,reasons=reasons,**agreement(x,y,reasons))
+
+
+def agreement(x, y, reasons):
+    """Separate counting conventions from numerical differences.
+
+    Packages count absorbed degrees of freedom differently (connected
+    components, levels, or nesting in clusters), which changes reported counts
+    and multiplies the covariance by one small-sample scalar. A comparison
+    agrees by convention when every other check passes and the covariance
+    matches after one scalar within covariance_scale_bound of one.
+    """
+    if not reasons:
+        return dict(agreement='exact',covariance_scale=1.)
+    scale=None
+    if 'covariance' in reasons:
+        a,b=np.asarray(x['covariance'],dtype=float),np.asarray(y['covariance'],dtype=float)
+        if a.shape==b.shape and np.isfinite(a).all() and np.isfinite(b).all() and (np.diag(a)>0).all():
+            candidate=float(np.median(np.diag(b)/np.diag(a)))
+            if (abs(candidate-1)<=POLICY['covariance_scale_bound']
+                    and close_values(a,b/candidate,POLICY['vce_rtol'],POLICY['vce_atol'])):
+                scale=candidate
+    numerical=set(reasons)-COUNT_CONVENTIONS-({'covariance'} if scale is not None else set())
+    return dict(agreement='differs' if numerical else 'convention',covariance_scale=scale,
+                convention_reasons=sorted(set(reasons)-numerical))
 
 
 def run_bundle(root, task, smoke=False, frozen_inputs=None, monitor=None):
@@ -450,6 +549,7 @@ def run_bundle(root, task, smoke=False, frozen_inputs=None, monitor=None):
     warmcell=dict(cells[0],model='ppml',design='one-fe',effects=1,rows=512,
                   regressors=max(c.get('regressors',POLICY['controls']) for c in cells))
     make_dataset(warmcell,taskroot/'data/warm.dta')
+    exhausted={}
     for cell in cells:
         if monitor:monitor.check()
         if time.monotonic()-started>POLICY['job_cleanup_seconds']:break
@@ -461,10 +561,16 @@ def run_bundle(root, task, smoke=False, frozen_inputs=None, monitor=None):
             datasets[key]=metadata
         else:frame=pd.read_stata(path,convert_categoricals=False)
         selected=arms(cell);failed=set()
-        for repetition in range(1,(1 if smoke else POLICY['repetitions'])+1):
+        # A command that timed out at a smaller size is not attempted again in its series.
+        limits=exhausted.get(series_key(cell),{})
+        for repetition in range(1,cell['repetitions']+1):
             current={}
             order=selected[repetition%len(selected):]+selected[:repetition%len(selected)]
             for arm in order:
+                if arm in limits and cell['rows']>limits[arm]:
+                    records.append(dict(cell=cell['id'],arm=arm,repetition=repetition,status='skipped-after-timeout',
+                                        timed_out_rows=limits[arm],metadata={}))
+                    continue
                 if arm in failed:
                     records.append(dict(cell=cell['id'],arm=arm,repetition=repetition,status='skipped-after-failure',metadata={}))
                     continue
@@ -473,32 +579,39 @@ def run_bundle(root, task, smoke=False, frozen_inputs=None, monitor=None):
                 if monitor:monitor.check()
                 records.append(record);current[arm]=record
                 if record['status']!='ok':failed.add(arm)
+                if record['status'] in ['timeout','command-timeout']:
+                    exhausted.setdefault(series_key(cell),{}).setdefault(arm,cell['rows'])
                 write_json(taskroot/'results.json',dict(cells=cells,records=records,datasets=datasets,comparisons=comparisons,complete=False))
             if 'fereg' in current:
                 for arm in selected:
                     if arm=='fereg' or arm not in current:continue
                     result=compare_records(current['fereg'],current[arm],cell)
                     result.update(cell=cell['id'],arm=arm,repetition=repetition)
-                    if result['eligible']:result['ratio']=float(current['fereg']['metadata']['seconds'])/float(current[arm]['metadata']['seconds'])
+                    if result['agreement'] in ['exact','convention']:
+                        result['ratio']=float(current['fereg']['metadata']['seconds'])/float(current[arm]['metadata']['seconds'])
                     comparisons.append(result)
         del frame
         if sha256(path)!=datasets[key]['sha256']:raise RuntimeError('input dataset changed')
-    expected=sum(len(arms(c)) for c in cells)*(1 if smoke else POLICY['repetitions'])
+    expected=sum(len(arms(c))*c['repetitions'] for c in cells)
     seen={(r['cell'],r['arm'],r['repetition']) for r in records}
     for cell in cells:
         for arm in arms(cell):
-            for repetition in range(1,(1 if smoke else POLICY['repetitions'])+1):
+            for repetition in range(1,cell['repetitions']+1):
                 if (cell['id'],arm,repetition) not in seen:
                     records.append(dict(cell=cell['id'],arm=arm,repetition=repetition,status='unattempted-budget',metadata={}))
+    skipped=['unattempted-budget','skipped-after-failure','skipped-after-timeout']
     result=dict(cells=cells,records=records,datasets=datasets,comparisons=comparisons,
-                complete=len(records)==expected and all(r['status'] not in ['unattempted-budget','skipped-after-failure'] for r in records),
+                complete=len(records)==expected and all(r['status'] not in skipped for r in records),
                 coverage_complete=len(records)==expected,expected_fits=expected,host=socket.gethostname(),physical_cpus=cpus,
                 wall_seconds=time.monotonic()-started)
     if smoke:
         from campaign_oracle import validate_smoke
         result['independent_science']=validate_smoke(result)
         accepted=all(x['pass'] for x in result['independent_science'] if x['arm']=='fereg')
-        result['native_gate_pass']=accepted and sum(r['arm']=='fereg' for r in records)==len(cells)
+        # Production relies on exact kernel peaks; every completed smoke fit must provide one.
+        result['memory_exact']=all(r.get('memory_exact') for r in records if r['status']=='ok')
+        result['native_gate_pass']=(accepted and result['memory_exact']
+                                    and sum(r['arm']=='fereg' for r in records)==len(cells))
     write_json(taskroot/'results.json',result)
     verify_runtime(root)
     if smoke and not result['native_gate_pass']:raise RuntimeError('independent native smoke failed')
@@ -512,9 +625,8 @@ if __name__=='__main__':
     parser.add_argument('--task',type=int,default=1)
     parser.add_argument('--frozen-inputs',type=Path)
     parser.add_argument('--observe-host',action='store_true')
-    parser.add_argument('--supplement',action='store_true',help='prepare: schedule the supplement cells')
     args=parser.parse_args()
-    if args.mode=='prepare':prepare(args.root,args.supplement)
+    if args.mode=='prepare':prepare(args.root)
     else:
         frozen=json.loads(args.frozen_inputs.read_text()) if args.frozen_inputs else None
         if args.observe_host:

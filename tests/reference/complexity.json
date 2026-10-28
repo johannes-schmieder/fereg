@@ -9,9 +9,9 @@
     },
     {
       "after": 111395,
-      "before": 111379,
+      "before": 111241,
       "metric": "fereg-core/production_lines",
-      "reason": "PPML separation routing (hidden): the inject=ppml_separation_auto request flag, its separation-execution field and the new prepared_separation/routing.rs that selects the OLS two-FE Auto route for admitted two-intercept detector projections; the public detector keeps retained-product CG."
+      "reason": "PPML separation step 1: trace-only rectifier laps under FEREG_PHASE_TIMING (separation_ir_phase: detect/validate/commit/replay; separation_ir_iteration: projection and decision seconds, outcome and flagged count; separation_projection: fit seconds, RHS, solver iterations and used solver) in the new prepared_separation/trace.rs; the rectifier weight and initial recurrence construction moved unchanged into ir_weights_and_recurrence so prepared_iterated_rectifier stays under the function bound. No arithmetic or decision change. PPML separation routing (hidden): the inject=ppml_separation_auto request flag, its separation-execution field and the new prepared_separation/routing.rs that selects the OLS two-FE Auto route for admitted two-intercept detector projections; the public detector keeps retained-product CG."
     },
     {
       "after": 15461,
@@ -27,9 +27,9 @@
     },
     {
       "after": 3490,
-      "before": 3488,
+      "before": 3463,
       "metric": "file/crates/fereg-core/src/ppml/prepared_separation.rs",
-      "reason": "PPML separation routing (hidden): the separation execution's auto_projection field and the routing submodule declaration."
+      "reason": "PPML separation step 1: trace-only rectifier laps at the IR phase, iteration and projection sites, and ir_weights_and_recurrence (moved unchanged from prepared_iterated_rectifier). PPML separation routing (hidden): the separation execution's auto_projection field and the routing submodule declaration."
     },
     {
       "after": 2652,
@@ -42,6 +42,12 @@
       "before": 479,
       "metric": "function/crates/fereg-core/src/ppml/prepared_estimator.rs/fit_prepared_ppml_interruptible#1",
       "reason": "PPML separation routing (hidden): pass the injection flag into the separation execution."
+    },
+    {
+      "after": 644,
+      "before": 639,
+      "metric": "function/crates/fereg-core/src/ppml/prepared_separation.rs/coordinate_prepared_ppml_separation#1",
+      "reason": "PPML separation step 1: trace-only IR phase laps (detect, validate, commit, replay) in the coordinator's IR closure."
     },
     {
       "after": 166,
@@ -24532,5 +24538,5 @@
     },
     "schema": 1
   },
-  "reason": "Merge of codex/two-fe-cells, codex/cmg-terminal and codex/ppml-parity; growth is the PPML parity branch measured against the cells/CMG merge."
+  "reason": "Merge of main (v0.5.0-beta.9, a023073e) into the PPML separation branch; growth is the separation trace and hidden-routing branch measured against main."
 }

@@ -2,7 +2,9 @@
 # Build the replay harness with a monotonic clock around the single native call.
 # The ordinary replay/loader build is unchanged; REPLAY_TIMING only adds the
 # clock and streams numeric output columns as raw binary beside the JSON. The
-# frozen workloads need larger input bounds than the 73-case replay corpus.
+# frozen workloads need larger input bounds than the 73-case replay corpus;
+# REPLAY_MAX_ROWS and REPLAY_MAX_CELLS override the defaults (campaign PPML
+# cases with 16 regressors at 4,000,000 rows have 108,000,000 cells).
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUTPUT="${1:-$ROOT/target/timing-harness/timing-harness}"
@@ -15,7 +17,7 @@ esac
 "${CC:-cc}" -std=c11 -O2 -Wall -Wextra -Wpedantic -Wconversion -Wshadow \
   -Wstrict-prototypes -Wmissing-prototypes -Werror \
   -D_POSIX_C_SOURCE=200809L -DREPLAY_TIMING -DSYSTEM="$SYSTEM_DEFINE" \
-  -DREPLAY_MAX_ROWS=4000000 -DREPLAY_MAX_CELLS=100000000U \
+  -DREPLAY_MAX_ROWS="${REPLAY_MAX_ROWS:-4000000}" -DREPLAY_MAX_CELLS="${REPLAY_MAX_CELLS:-100000000U}" \
   -I"$ROOT/plugin" "$ROOT/tests/mock_spi/actual_plugin_loader_test.c" \
   "${EXTRA_LIBS[@]}" -o "$OUTPUT"
 printf '%s\n' "$OUTPUT"

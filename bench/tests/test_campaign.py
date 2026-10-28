@@ -7,7 +7,8 @@ import shutil
 import subprocess
 import numpy as np
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
-from campaign import configurations, arms, make_dataset, compare_records, prepare, absorbed_rank, frozen_dataset, supplement_configurations, dataset_key
+import campaign
+from campaign import configurations, arms, make_dataset, compare_records, prepare, absorbed_rank, frozen_dataset, dataset_key, POLICY
 from campaign_oracle import oracle
 
 
@@ -26,30 +27,32 @@ class CampaignTests(unittest.TestCase):
     def test_license_and_matrix(self):
         cells=configurations()
         self.assertEqual(len(cells),len({c['id'] for c in cells}))
-        self.assertTrue(all(c['regressors']==16 for c in cells))
+        self.assertEqual({c['regressors'] for c in cells},{4,16,64})
+        self.assertTrue(all(c['regressors']==16 or c['section']=='controls' for c in cells))
         for c in cells:
-            if c['threads']>4:self.assertFalse({'reghdfe','ppmlhdfe'} & set(arms(c)))
-        self.assertEqual({c['threads'] for c in cells},{1,4,8,16})
+            if c['threads']>4:self.assertFalse({'reghdfe','ppmlhdfe','areg'} & set(arms(c)))
+            self.assertEqual(c['repetitions'],3 if c['rows']>1000000 else 5)
+        self.assertEqual({c['threads'] for c in cells},{1,2,4,8,16})
         self.assertGreater(sum(c['threads']==4 for c in cells),sum(c['threads']!=4 for c in cells))
+        for model,design in POLICY['size_series']:
+            series={c['rows'] for c in cells if c['model']==model and c['design']==design and c['threads']==4
+                    and not c['save_fe'] and c['regressors']==16 and c['vce']==('iid' if model=='ols' else 'robust')}
+            self.assertEqual(series,set(POLICY['sizes']))
 
-    def test_pyfixest_and_areg_arms(self):
+    def test_package_and_areg_arms(self):
         for cell in configurations()+configurations(True):
-            self.assertTrue({'pyfixest','pyfixest-within'}<=set(arms(cell)))
+            self.assertIn('pyfixest-within',arms(cell))
+            self.assertNotIn('pyfixest',arms(cell))
+            self.assertEqual({'julia','julia-strict'}<=set(arms(cell)),cell['model']=='ols')
+            self.assertFalse({'julia','julia-strict'} & set(arms(cell)) and cell['model']=='ppml')
             eligible=cell['model']=='ols' and cell['threads']<=4 and not cell['save_fe']
             self.assertEqual('areg' in arms(cell),eligible)
-        self.assertEqual(sum('areg' in arms(c) for c in configurations()),21)
+        self.assertEqual(sum('areg' in arms(c) for c in configurations()),20)
         metadata=dict(df_a='239',arm='areg')
         self.assertEqual(absorbed_rank(metadata,dict(model='ols'),None),240.)
 
-    def test_supplement_pairs_areg_and_control_counts_with_fereg(self):
-        cells=supplement_configurations()
-        self.assertEqual(len(cells),len({c['id'] for c in cells}))
-        areg=[c for c in cells if c['section']=='supplement-areg']
-        self.assertEqual(len(areg),18)
-        self.assertTrue(all(c['arms']==['fereg','areg'] and c['effects']>1 for c in areg))
-        main={dataset_key(c) for c in configurations()}
-        self.assertTrue(all(dataset_key(c) in main for c in areg))
-        controls=[c for c in cells if c['section']=='supplement-controls']
+    def test_control_counts_join_the_main_grid(self):
+        controls=[c for c in configurations() if c['section']=='controls']
         self.assertEqual(sorted((c['model'],c['regressors']) for c in controls),
                          [('ols',4),('ols',64),('ppml',4),('ppml',64)])
         self.assertTrue(all(c['id'].endswith(f"-k{c['regressors']}") and dataset_key(c).endswith(f"-k{c['regressors']}")
@@ -93,15 +96,78 @@ class CampaignTests(unittest.TestCase):
         del historical['arms']
         self.assertNotIn('fixest-strict',planned_arms(historical))
 
-    def test_full_baseline_stays_in_one_bundle(self):
+    def test_each_design_shares_one_node_and_each_node_starts_with_the_reference(self):
         import json
         with tempfile.TemporaryDirectory() as d:
             root=Path(d);prepare(root)
             plan=json.loads((root/'manifest.json').read_text())
-            for model in ['ols','ppml']:
-                owners={i for i,b in enumerate(plan['bundles']) for c in b
-                        if c['model']==model and c['design']=='akm-baseline' and c['rows']==1000000}
-                self.assertEqual(len(owners),1)
+            self.assertEqual(len(plan['bundles']),POLICY['bundles'])
+            for task,bundle in enumerate(plan['bundles'],1):
+                self.assertEqual(bundle[0]['section'],'reference')
+                self.assertEqual(bundle[0]['id'],f'ols-akm-baseline-n1000000-t4-iid-fe0-ref{task}')
+                self.assertEqual((bundle[0]['arms'],bundle[0]['repetitions']),(['fereg'],3))
+                self.assertEqual(sum(c['section']=='reference' for c in bundle),1)
+                for key in {campaign.series_key(c) for c in bundle[1:]}:
+                    sizes=[c['rows'] for c in bundle[1:] if campaign.series_key(c)==key]
+                    self.assertEqual(sizes,sorted(sizes))
+            for cell in configurations():
+                owners={i for i,b in enumerate(plan['bundles']) for c in b if c['section']!='reference'
+                        and c['model']==cell['model'] and c['design']==cell['design']}
+                self.assertEqual(len(owners),1,cell['id'])
+            self.assertEqual(plan['timed_fits'],sum(len(c['arms'])*c['repetitions'] for c in plan['cells']))
+            self.assertEqual(len(plan['cells']),len(configurations())+POLICY['bundles'])
+
+    def test_a_timeout_ends_its_size_series_on_the_node(self):
+        import json
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d)
+            cells=[dict(c,rows=rows,id=c['id'].replace('n1200',f'n{rows}'),repetitions=2,
+                        arms=['fereg','fixest','reghdfe'])
+                   for c in configurations(True)[:1] for rows in [1200,2400]]
+            (root/'manifest.json').write_text(json.dumps(dict(bundles=[cells])))
+            def fake_fit(taskroot,cell,arm,repetition,frame,cpus):
+                status='command-timeout' if arm=='reghdfe' else 'ok'
+                return dict(cell=cell['id'],arm=arm,repetition=repetition,status=status,metadata=dict(seconds='1'))
+            with mock.patch.object(campaign,'verify_runtime'),mock.patch.object(campaign,'physical_cpus',return_value=list(range(28))),\
+                 mock.patch.object(campaign,'fit',side_effect=fake_fit),\
+                 mock.patch.object(campaign,'compare_records',return_value=dict(eligible=True,reasons=[],agreement='exact')):
+                campaign.run_bundle(root,1)
+            records=json.loads((root/'task-1/results.json').read_text())['records']
+            status={(r['cell'],r['arm'],r['repetition']):r['status'] for r in records}
+            small,large=cells[0]['id'],cells[1]['id']
+            self.assertEqual([status[(small,'reghdfe',r)] for r in [1,2]],['command-timeout','skipped-after-failure'])
+            self.assertEqual([status[(large,'reghdfe',r)] for r in [1,2]],['skipped-after-timeout']*2)
+            self.assertEqual([status[(large,'fixest',r)] for r in [1,2]],['ok','ok'])
+            self.assertTrue(all(r['timed_out_rows']==1200 for r in records if r['status']=='skipped-after-timeout'))
+
+    def test_kernel_peak_brackets_the_timed_command(self):
+        from unittest import mock
+        script=('import pathlib,time,sys\n'
+                'd=pathlib.Path(sys.argv[1])\n'
+                '(d/"READY").write_text("r")\n'
+                'while not (d/"GO").exists():time.sleep(.001)\n'
+                '(d/"DONE").write_text("d")\n'
+                'while not (d/"ACK").exists():time.sleep(.001)\n')
+        with tempfile.TemporaryDirectory() as d:
+            directory=Path(d)
+            memory={'VmRSS':100,'VmHWM':300}
+            with mock.patch.object(campaign,'placement_metadata',return_value=dict(mask='0',memory_nodes=[0])),\
+                 mock.patch.object(campaign,'bound_command',side_effect=lambda command,placement:command),\
+                 mock.patch.object(campaign,'reset_peak'),\
+                 mock.patch.object(campaign,'process_memory',side_effect=lambda pid,field:memory[field]):
+                result=campaign.execute([sys.executable,'-c',script,str(directory)],directory,[0],60)
+            self.assertEqual(result['status'],'ok')
+            self.assertTrue(result['memory_exact'])
+            self.assertEqual((result['ready_rss_bytes'],result['peak_rss_bytes']),(100,300))
+            directory=Path(d)/'failed';directory.mkdir()
+            with mock.patch.object(campaign,'placement_metadata',return_value=dict(mask='0',memory_nodes=[0])),\
+                 mock.patch.object(campaign,'bound_command',side_effect=lambda command,placement:command),\
+                 mock.patch.object(campaign,'reset_peak',side_effect=PermissionError('denied')),\
+                 mock.patch.object(campaign,'process_memory',side_effect=lambda pid,field:memory[field]):
+                result=campaign.execute([sys.executable,'-c',script,str(directory)],directory,[0],60)
+            self.assertEqual(result['status'],'ok')
+            self.assertFalse(result['memory_exact'])
 
     def test_scientific_failures_are_unranked(self):
         cell=configurations()[0]
@@ -120,6 +186,27 @@ class CampaignTests(unittest.TestCase):
             self.assertFalse(compare_records(a,b,cell)['eligible'])
         self.assertFalse(compare_records(a,dict(a,status='timeout'),cell)['eligible'])
         self.assertFalse(compare_records(a,dict(a,capture={k:v for k,v in capture.items() if k!='finite_slope_rank'}),cell)['eligible'])
+
+    def test_counting_conventions_are_separated_from_numerical_differences(self):
+        cell=configurations()[0]
+        capture=dict(beta=[1.]*16,covariance=(np.eye(16)+.1).tolist(),N=1000,sample_sha256='a',omitted=[],
+                     finite_slope_rank=16,singleton_deletions=0,separation_deletions=0,clusters=None,
+                     covariance_policy='stock-ols-iid',absorbed_dof=200,residual_dof=784,correction_dof=784)
+        a=dict(status='ok',capture=capture,metadata={'rss':'1'})
+        self.assertEqual(compare_records(a,a,cell)['agreement'],'exact')
+        # One more absorbed level scales the covariance by 784/783.
+        levels=dict(capture,absorbed_dof=201,residual_dof=783,correction_dof=783,
+                    covariance=((np.eye(16)+.1)*784/783).tolist())
+        result=compare_records(a,dict(a,capture=levels),cell)
+        self.assertFalse(result['eligible'])
+        self.assertEqual(result['agreement'],'convention')
+        self.assertAlmostEqual(result['covariance_scale'],784/783)
+        self.assertEqual(result['convention_reasons'],['absorbed_dof','correction_dof','covariance','residual_dof'])
+        for changed in [dict(beta=[1.+1e-5]*16),dict(covariance=((np.eye(16)+.1)*1.02).tolist()),
+                        dict(covariance=(np.eye(16)+.1+np.diag([1e-4]*16)).tolist())]:
+            result=compare_records(a,dict(a,capture=dict(levels,**changed)),cell)
+            self.assertEqual(result['agreement'],'differs',changed)
+        self.assertEqual(compare_records(a,dict(a,status='timeout'),cell)['agreement'],'unavailable')
 
     def test_independent_oracle_and_lossless_inputs(self):
         with tempfile.TemporaryDirectory() as d:

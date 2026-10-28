@@ -58,8 +58,12 @@ gate v2 stall threshold keeps its meaning. Construction runs on the host team
 with the serial constructors' bits when its optional scratch is admitted. The
 former deferred order (construction only after successful CMG commitment at the
 existing restart, adding no setup to short solves) remains the `cells_deferred`
-developer arm. Eager construction is a candidate whose qualification against
-the deferred public order is recorded separately. The cell product runs on
+developer arm. Eager construction was qualified against the deferred public
+order in the [round-two record](../bench/results/two-fe-round-two-20261027.json)
+(Linux 123 of 126 protected comparisons within max(5%, 1 ms) after the
+distinct-host waiver, 3 inconclusive; Mac 115 passed, 11 inconclusive; no
+regression). The serial cell product and construction poll for Break once per
+block of work, not per cell. The cell product runs on
 the host team over a firm-major copy of the cells kept in increasing worker
 order, which reproduces the serial product's bits at every lane count; the copy
 is admitted with the kernel. There is no construction-work cap or

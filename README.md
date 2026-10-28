@@ -32,7 +32,7 @@ net install fereg, from("https://raw.githubusercontent.com/johannes-schmieder/fe
 
 Both routes install `fereg`, `feppml`, help files and the current native plugin
 from `main`, which carries the
-[v0.5.0-beta.8](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0-beta.8)
+[v0.5.0-beta.9](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0-beta.9)
 runtime. The beta requires Stata 18 or newer and includes native binaries
 for Linux x86-64, Windows x86-64 and macOS (Apple Silicon/Intel universal).
 No Rust, Python or extra Stata packages are needed to use the binary package.
@@ -94,19 +94,21 @@ self-contained examples. A simulated bilateral-trade comparison against
 ## Performance
 
 Descriptive Linux comparisons on whole 28-core SCC nodes are in
-[Comparing fereg with fixest](docs/fixest_benchmarks.md) (56 synthetic OLS and
-PPML configurations) and [Veneto AKM comparisons](docs/veneto_benchmarks.md)
-(real long and short worker-firm panels, with and without saved effects).
-Speed ratios count only when results pass the same scientific checks. In the
-beta.7 campaign, `fereg` was faster than default `fixest` in all 35 eligible
-configurations and faster than strict `fixest`, `reghdfe`, `ppmlhdfe` and
-`areg` in every eligible comparison. PyFixest's `within` demeaner was faster
-on dense three-FE designs, dense two-FE PPML and, without saved effects, the
-short Veneto panel and the long panel at 8 and 16 cores, while `fereg` was
-faster on synthetic AKM designs and on the long panel at one to four cores. When saving
-worker and firm effects on the real panels, every comparator either timed out
-or failed a scientific check. These are fixed-panel descriptive results, not
-universal rankings.
+[Comparing fereg with fixest](docs/fixest_benchmarks.md) (50 synthetic OLS and
+PPML configurations up to ten million rows) and
+[Veneto AKM comparisons](docs/veneto_benchmarks.md) (real worker-firm panels,
+with and without saved effects). Speed ratios count only when results agree,
+exactly or up to how absorbed degrees of freedom are counted. In the beta.8
+campaign `fereg` was faster than `reghdfe`, `ppmlhdfe`, `areg` and default and
+strict `fixest` in every agreeing configuration, and faster than
+FixedEffectModels.jl in the AKM designs with 4 or 16 controls. PyFixest's `within` demeaner was faster
+on sparse and dense three-FE designs, dense two-FE PPML and one-FE designs;
+FixedEffectModels.jl was faster with one FE, dense three-FE designs and 64
+controls. On the real long Veneto panel `fereg` was faster than every comparator
+at one to sixteen cores, and when saving worker and firm effects every comparator
+timed out or failed a scientific check. In sparse three-FE OLS at ten million
+rows `fereg` did not finish within the 600-second limit. These are fixed-panel
+descriptive results, not universal rankings.
 
 ## Command syntax
 

@@ -27,7 +27,16 @@ for(name in names(identity$column_sha256)) {
 }
 rm(bytes)
 invisible(gc())
+campaign_wait <- function(name) {
+    started <- proc.time()[["elapsed"]]
+    while (!file.exists(file.path(c$output,name))) {
+        if (proc.time()[["elapsed"]]-started > 120) stop("campaign handshake timed out: ",name)
+        Sys.sleep(0.001)
+    }
+}
 writeLines("ready",file.path(c$output,"READY"))
+# The harness resets the kernel memory peak before GO and reads it before ACK.
+campaign_wait("GO")
 error <- NULL; saved <- NULL
 start <- proc.time()[["elapsed"]]
 fit <- tryCatch({
@@ -46,6 +55,7 @@ fit <- tryCatch({
 },error=function(e){error <<- conditionMessage(e);NULL})
 seconds <- proc.time()[["elapsed"]]-start
 writeLines("done",file.path(c$output,"DONE"))
+campaign_wait("ACK")
 meta <- c(rc=if(is.null(fit)) 1 else 0,seconds=seconds,complete=1,
           fixest_version=as.character(packageVersion("fixest")),requested_threads=threads,
           configured_threads=threads,reference_profile=c$arm,

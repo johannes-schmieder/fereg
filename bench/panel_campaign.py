@@ -35,13 +35,15 @@ PANELS = {
 }
 THREADS = [1, 2, 4, 8, 16]
 REPETITIONS = 3
+# Fit budget of one reused panel run; two runs share a twelve-hour pair job.
+REUSE_CLEANUP_SECONDS = 20000
 
 
 def cell_for(panel, frame, threads, save_fe=True):
     return dict(id=f'veneto-{panel}-t{threads}'+('' if save_fe else '-fe0'), model='ols', design='veneto-'+panel,
                 section='veneto', rows=len(frame), regressors=len([c for c in frame if c.startswith('x')]),
                 effects=2, save_fe=save_fe, vce='iid', weights='unit', threads=threads,
-                arms=['fereg', 'fixest', 'fixest-strict', *campaign.PYFIXEST_ARMS]
+                arms=['fereg', 'fixest', 'fixest-strict', *campaign.PYFIXEST_ARMS, *campaign.JULIA_ARMS]
                 + (['reghdfe'] if threads <= 4 else []))
 
 
@@ -170,7 +172,7 @@ def reuse(root, previous, save_fe=True, panels=None):
                         if k in ('id', 'arms', 'save_fe')}) for c in old['cells'] if c['design'][7:] in selected]
     write_json(root/'manifest.json', dict(old, cells=cells, reused_inputs=str(previous),
                panels={panel: old['panels'][panel] for panel in selected},
-               policy=dict(old['policy'], save_fe=save_fe),
+               policy=dict(old['policy'], save_fe=save_fe, job_cleanup_seconds=REUSE_CLEANUP_SECONDS),
                timed_fits=sum(len(c['arms']) for c in cells)*REPETITIONS))
 
 
@@ -248,6 +250,7 @@ def compare(a, b, cell):
             if not close_values(x[name], y[name], campaign.POLICY['fitted_rtol'], campaign.POLICY['fitted_atol']):
                 result['reasons'].append('centered '+name)
         result['eligible'] = not result['reasons']
+        result.update(campaign.agreement(a['capture'], b['capture'], result['reasons']))
     return result
 
 
@@ -312,8 +315,10 @@ def run(root, task, smoke):
                         if record['status'] == 'ok':
                             try:
                                 effects_capture(record, frame, cell['save_fe'])
-                                # OLS absorbed rank includes the global intercept.
-                                if record['capture']['absorbed_dof'] != rank:
+                                # OLS absorbed rank includes the global intercept;
+                                # FixedEffectModels.jl counts every level instead.
+                                expected = sum(identity['topology']['levels']) if arm in campaign.JULIA_ARMS else rank
+                                if record['capture']['absorbed_dof'] != expected:
                                     raise ValueError('independent graph rank differs')
                                 if arm == 'fereg' and float(record['metadata'].get('fereg_threads', 'nan')) != t:
                                     raise ValueError('native worker budget is unverified')

@@ -4,7 +4,7 @@
 #$ -pe mpi_28_tasks_per_node_u 28
 #$ -l num_proc=28
 #$ -l mem_per_core=3G
-#$ -l h_rt=01:00:00
+#$ -l h_rt=02:00:00
 #$ -j y
 set -euo pipefail
 umask 077
@@ -22,7 +22,7 @@ if [[ ! -f "$reference_metadata" ]]; then
 fi
 cp "$reference_metadata" environment/reference-origin.json
 module purge
-module load gcc/12.2.0 python3/3.12.4 stata-mp/19 R/4.5.2
+module load gcc/12.2.0 python3/3.12.4 stata-mp/19 R/4.5.2 julia/1.11.7
 export CC=gcc
 python3 - "$RUN_ROOT" "$REFERENCE_ROOT" <<'PY'
 import hashlib,pathlib,shutil,sys,tomllib
@@ -46,9 +46,15 @@ export R_LIBS_USER="$RUN_ROOT/environment/r-library"
 export FEREG_GIT_COMMIT
 FEREG_GIT_COMMIT=$(python3 -c 'import json;print(json.load(open("input/source.json"))["commit"])')
 cd source
-cargo fetch --locked --target x86_64-unknown-linux-gnu > "$RUN_ROOT/logs/dependency-fetch.log" 2>&1
-export CARGO_NET_OFFLINE=true
-bash scripts/build_linux.sh > "$RUN_ROOT/logs/build.log" 2>&1
+if [[ "${CAMPAIGN_PLUGIN:-build}" == dist ]]; then
+    # Measure the published package binary exactly as installed from GitHub.
+    (cd dist && sha256sum -c fereg_linux.plugin.sha256) > "$RUN_ROOT/logs/build.log" 2>&1
+    printf 'CAMPAIGN_PLUGIN=dist\n' >> "$RUN_ROOT/logs/build.log"
+else
+    cargo fetch --locked --target x86_64-unknown-linux-gnu > "$RUN_ROOT/logs/dependency-fetch.log" 2>&1
+    export CARGO_NET_OFFLINE=true
+    bash scripts/build_linux.sh > "$RUN_ROOT/logs/build.log" 2>&1
+fi
 python3 bench/build_clock.py --output "$RUN_ROOT/environment/command-clock.plugin" > "$RUN_ROOT/logs/clock-build.log" 2>&1
 python3 -m unittest discover -s bench/tests > "$RUN_ROOT/logs/harness-tests.log" 2>&1
 cd "$RUN_ROOT/environment/references"
@@ -60,7 +66,8 @@ assert 'CAMPAIGN_REFERENCES_COMPLETE rc=0' in pathlib.Path(sys.argv[1]).read_tex
 PY
 cd "$RUN_ROOT/source"
 bash bench/scc/pyfixest_environment.sh "$RUN_ROOT/environment" > "$RUN_ROOT/logs/pyfixest-environment.log" 2>&1
-python3 bench/campaign.py prepare "$RUN_ROOT" ${CAMPAIGN_SUPPLEMENT:+--supplement}
+bash bench/scc/julia_environment.sh "$RUN_ROOT/environment" > "$RUN_ROOT/logs/julia-environment.log" 2>&1
+python3 bench/campaign.py prepare "$RUN_ROOT"
 Rscript -e 'library(fixest);library(foreign);library(jsonlite);library(digest);writeLines(toJSON(as.list(setNames(vapply(loadedNamespaces(),find.package,character(1)),loadedNamespaces())),auto_unbox=TRUE),file.path(Sys.getenv("RUN_ROOT"),"environment/r-package-paths.json"))'
 python3 - "$RUN_ROOT" <<'PY'
 import hashlib,json,pathlib,sys,tomllib,shutil
@@ -71,14 +78,19 @@ for ref in lock['reference']:
     for name,expected in ref.get('required_capture_sha256',{}).items():
         path=refs/pathlib.Path(name).name
         assert hashlib.sha256(path.read_bytes()).hexdigest()==expected,name
+policy=json.loads((r/'source/bench/campaign.json').read_text())
+# Julia writes compiled caches and logs in its depot; its sources and artifacts are frozen.
+depot=r/'environment/julia-depot'
 paths=[r/'source/dist/fereg_linux.plugin',r/'environment/command-clock.plugin',
        *sorted((r/'source/stata').glob('*')),
        *sorted(refs.rglob('*')),*sorted((r/'environment/r-library').rglob('*')),
-       *sorted((r/'environment/pyfixest').rglob('*')),*sorted((r/'environment/pyfixest-within').rglob('*')),
+       *[p for arm in policy['pyfixest'] for p in sorted((r/'environment'/arm).rglob('*'))],
+       *sorted((r/'environment/julia').rglob('*')),*sorted((depot/'packages').rglob('*')),
+       *sorted((depot/'artifacts').rglob('*')),
        *sorted((r/'source/bench').rglob('*')),r/'manifest.json',r/'input/frozen-inputs.json']
 for folder in json.loads((r/'environment/r-package-paths.json').read_text()).values():
     paths.extend(sorted(pathlib.Path(folder).rglob('*')))
-paths.extend(pathlib.Path(shutil.which(name)).resolve() for name in ['stata-mp','Rscript'])
+paths.extend(pathlib.Path(shutil.which(name)).resolve() for name in ['stata-mp','Rscript','julia'])
 def key(p):
     try:return str(p.relative_to(r))
     except ValueError:return str(p)

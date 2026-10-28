@@ -1,0 +1,100 @@
+cell,arm,repetition,status,host,job,task,estimator_tree_rss_bytes,memory_sweeps,error,seconds
+veneto-long-t1,fixest,1,capture-error,scc-uc4,8302359,1,2512814080.0,2319.0,saved predictor fails independent model score,64.399
+veneto-long-t1,fixest-strict,1,ok,scc-uc4,8302359,1,2944512000.0,4198.0,,116.091
+veneto-long-t1,pyfixest-within,1,command-timeout,scc-uc4,8302359,1,3155189760.0,21545.0,,
+veneto-long-t1,julia,1,capture-error,scc-uc4,8302359,1,2282864640.0,2030.0,saved predictor fails independent model score,56.219395204
+veneto-long-t1,julia-strict,1,ok,scc-uc4,8302359,1,2276659200.0,4708.0,,130.174959448
+veneto-long-t1,reghdfe,1,capture-error,scc-uc4,8302359,1,2333925376.0,20699.0,saved predictor fails independent model score,      563.82495241399999
+veneto-long-t1,fereg,1,ok,scc-uc4,8302359,1,1831997440.0,531.0,,      14.619037931000001
+veneto-long-t1,fixest-strict,2,ok,scc-uc4,8302359,1,2941575168.0,4176.0,,115.715
+veneto-long-t1,pyfixest-within,2,skipped-after-failure,,,,,,,
+veneto-long-t1,julia,2,skipped-after-failure,,,,,,,
+veneto-long-t1,julia-strict,2,ok,scc-uc4,8302359,1,2270248960.0,4692.0,,130.040615326
+veneto-long-t1,reghdfe,2,skipped-after-failure,,,,,,,
+veneto-long-t1,fereg,2,ok,scc-uc4,8302359,1,1831669760.0,535.0,,            14.773523745
+veneto-long-t1,fixest,2,skipped-after-failure,,,,,,,
+veneto-long-t1,pyfixest-within,3,skipped-after-failure,,,,,,,
+veneto-long-t1,julia,3,skipped-after-failure,,,,,,,
+veneto-long-t1,julia-strict,3,ok,scc-uc4,8302359,1,2267774976.0,4690.0,,130.478246643
+veneto-long-t1,reghdfe,3,skipped-after-failure,,,,,,,
+veneto-long-t1,fereg,3,ok,scc-uc4,8302359,1,1829904384.0,529.0,,      14.603214468000001
+veneto-long-t1,fixest,3,skipped-after-failure,,,,,,,
+veneto-long-t1,fixest-strict,3,ok,scc-uc4,8302359,1,2941657088.0,4219.0,,117.035
+veneto-long-t2,fixest,1,capture-error,scc-uc4,8302359,1,2533896192.0,1420.0,saved predictor fails independent model score,39.949
+veneto-long-t2,fixest-strict,1,ok,scc-uc4,8302359,1,2965266432.0,2456.0,,69.211
+veneto-long-t2,pyfixest-within,1,command-timeout,scc-uc4,8302359,1,3217170432.0,21735.0,,
+veneto-long-t2,julia,1,capture-error,scc-uc4,8302359,1,2275516416.0,1388.0,saved predictor fails independent model score,36.741057596
+veneto-long-t2,julia-strict,1,ok,scc-uc4,8302359,1,2271973376.0,3052.0,,81.206808876
+veneto-long-t2,reghdfe,1,capture-error,scc-uc4,8302359,1,2333896704.0,12389.0,saved predictor fails independent model score,      328.69641558400002
+veneto-long-t2,fereg,1,ok,scc-uc4,8302359,1,1936797696.0,378.0,,             9.994665264
+veneto-long-t2,fixest-strict,2,ok,scc-uc4,8302359,1,2965385216.0,2544.0,,67.658
+veneto-long-t2,pyfixest-within,2,skipped-after-failure,,,,,,,
+veneto-long-t2,julia,2,skipped-after-failure,,,,,,,
+veneto-long-t2,julia-strict,2,ok,scc-uc4,8302359,1,2273013760.0,3068.0,,81.642719802
+veneto-long-t2,reghdfe,2,skipped-after-failure,,,,,,,
+veneto-long-t2,fereg,2,ok,scc-uc4,8302359,1,1936965632.0,378.0,,            10.041418536
+veneto-long-t2,fixest,2,skipped-after-failure,,,,,,,
+veneto-long-t2,pyfixest-within,3,skipped-after-failure,,,,,,,
+veneto-long-t2,julia,3,skipped-after-failure,,,,,,,
+veneto-long-t2,julia-strict,3,ok,scc-uc4,8302359,1,2279157760.0,3118.0,,82.573618612
+veneto-long-t2,reghdfe,3,skipped-after-failure,,,,,,,
+veneto-long-t2,fereg,3,ok,scc-uc4,8302359,1,1936875520.0,376.0,,      9.9741977290000001
+veneto-long-t2,fixest,3,skipped-after-failure,,,,,,,
+veneto-long-t2,fixest-strict,3,ok,scc-uc4,8302359,1,2965028864.0,2545.0,,67.445
+veneto-long-t4,fixest,1,capture-error,scc-uc4,8302359,1,2572738560.0,937.0,saved predictor fails independent model score,24.932
+veneto-long-t4,fixest-strict,1,ok,scc-uc4,8302359,1,3005493248.0,1522.0,,40.425
+veneto-long-t4,pyfixest-within,1,command-timeout,scc-uc4,8302359,1,3355504640.0,22660.0,,
+veneto-long-t4,julia,1,capture-error,scc-uc4,8302359,1,2277326848.0,1098.0,saved predictor fails independent model score,29.092294507
+veneto-long-t4,julia-strict,1,ok,scc-uc4,8302359,1,2280632320.0,2162.0,,57.478912469
+veneto-long-t4,reghdfe,1,capture-error,scc-uc4,8302359,1,2336583680.0,9079.0,saved predictor fails independent model score,      242.06515150300001
+veneto-long-t4,fereg,1,ok,scc-uc4,8302359,1,1937387520.0,264.0,,      7.0091429820000002
+veneto-long-t4,fixest-strict,2,ok,scc-uc4,8302359,1,3003432960.0,1520.0,,40.457
+veneto-long-t4,pyfixest-within,2,skipped-after-failure,,,,,,,
+veneto-long-t4,julia,2,skipped-after-failure,,,,,,,
+veneto-long-t4,julia-strict,2,ok,scc-uc4,8302359,1,2299834368.0,2208.0,,58.933905983
+veneto-long-t4,reghdfe,2,skipped-after-failure,,,,,,,
+veneto-long-t4,fereg,2,ok,scc-uc4,8302359,1,1939390464.0,263.0,,      7.0062054110000007
+veneto-long-t4,fixest,2,skipped-after-failure,,,,,,,
+veneto-long-t4,pyfixest-within,3,skipped-after-failure,,,,,,,
+veneto-long-t4,julia,3,skipped-after-failure,,,,,,,
+veneto-long-t4,julia-strict,3,ok,scc-uc4,8302359,1,2278531072.0,2156.0,,57.551046846
+veneto-long-t4,reghdfe,3,skipped-after-failure,,,,,,,
+veneto-long-t4,fereg,3,ok,scc-uc4,8302359,1,1937055744.0,265.0,,      7.0382034190000002
+veneto-long-t4,fixest,3,skipped-after-failure,,,,,,,
+veneto-long-t4,fixest-strict,3,ok,scc-uc4,8302359,1,3003502592.0,1517.0,,40.508
+veneto-long-t8,fixest,1,capture-error,scc-uc4,8302359,1,2649686016.0,648.0,saved predictor fails independent model score,17.2
+veneto-long-t8,fixest-strict,1,ok,scc-uc4,8302359,1,3082727424.0,986.0,,26.127
+veneto-long-t8,pyfixest-within,1,command-timeout,scc-uc4,8302359,1,3716157440.0,22591.0,,
+veneto-long-t8,julia,1,capture-error,scc-uc4,8302359,1,2289029120.0,852.0,saved predictor fails independent model score,22.656484014
+veneto-long-t8,julia-strict,1,ok,scc-uc4,8302359,1,2294722560.0,1670.0,,44.428042482
+veneto-long-t8,fereg,1,ok,scc-uc4,8302359,1,1944780800.0,200.0,,      5.2908995560000003
+veneto-long-t8,fixest-strict,2,ok,scc-uc4,8302359,1,3080527872.0,988.0,,26.191
+veneto-long-t8,pyfixest-within,2,skipped-after-failure,,,,,,,
+veneto-long-t8,julia,2,skipped-after-failure,,,,,,,
+veneto-long-t8,julia-strict,2,ok,scc-uc4,8302359,1,2286219264.0,1684.0,,44.714469144
+veneto-long-t8,fereg,2,ok,scc-uc4,8302359,1,1939423232.0,199.0,,             5.278470649
+veneto-long-t8,fixest,2,skipped-after-failure,,,,,,,
+veneto-long-t8,pyfixest-within,3,skipped-after-failure,,,,,,,
+veneto-long-t8,julia,3,skipped-after-failure,,,,,,,
+veneto-long-t8,julia-strict,3,ok,scc-uc4,8302359,1,2289258496.0,1670.0,,44.483941948
+veneto-long-t8,fereg,3,ok,scc-uc4,8302359,1,1937887232.0,199.0,,      5.2828092190000007
+veneto-long-t8,fixest,3,skipped-after-failure,,,,,,,
+veneto-long-t8,fixest-strict,3,ok,scc-uc4,8302359,1,3080380416.0,979.0,,26.024
+veneto-long-t16,fixest,1,capture-error,scc-uc4,8302359,1,2651713536.0,632.0,saved predictor fails independent model score,17.415
+veneto-long-t16,fixest-strict,1,ok,scc-uc4,8302359,1,3081179136.0,1021.0,,28.446
+veneto-long-t16,pyfixest-within,1,command-timeout,scc-uc4,8302359,1,3894878208.0,22691.0,,
+veneto-long-t16,julia,1,capture-error,scc-uc4,8302359,1,2461364224.0,1590.0,saved predictor fails independent model score,42.497098151
+veneto-long-t16,julia-strict,1,ok,scc-uc4,8302359,1,2395336704.0,3516.0,,94.128451872
+veneto-long-t16,fereg,1,ok,scc-uc4,8302359,1,1936412672.0,178.0,,      4.8189188620000003
+veneto-long-t16,fixest-strict,2,ok,scc-uc4,8302359,1,3081011200.0,944.0,,26.249
+veneto-long-t16,pyfixest-within,2,skipped-after-failure,,,,,,,
+veneto-long-t16,julia,2,skipped-after-failure,,,,,,,
+veneto-long-t16,julia-strict,2,ok,scc-uc4,8302359,1,2394443776.0,2896.0,,76.966063901
+veneto-long-t16,fereg,2,ok,scc-uc4,8302359,1,1939206144.0,179.0,,      4.8281881380000007
+veneto-long-t16,fixest,2,skipped-after-failure,,,,,,,
+veneto-long-t16,pyfixest-within,3,skipped-after-failure,,,,,,,
+veneto-long-t16,julia,3,skipped-after-failure,,,,,,,
+veneto-long-t16,julia-strict,3,ok,scc-uc4,8302359,1,2402840576.0,2831.0,,75.910241422
+veneto-long-t16,fereg,3,ok,scc-uc4,8302359,1,1937670144.0,177.0,,      4.8320522630000005
+veneto-long-t16,fixest,3,skipped-after-failure,,,,,,,
+veneto-long-t16,fixest-strict,3,ok,scc-uc4,8302359,1,3082690560.0,952.0,,26.296
