@@ -357,6 +357,27 @@ minimum (row-operator plan only) left results bit-identical but changed the
 long panel's native time by 0.980-1.013 (1-8 workers) against the same build
 without it, short of the 5% acceptance margin; it was not retained.
 
+## CMG admission level cap (development, Mac)
+
+CMG `5c5b5b2b` caps its default hierarchy depth, and with it every pre-build
+admission bound, at 32 levels instead of 128 (Johannes's decision; not part of
+the beta.9 qualification). On the synthetic AKM panels of 1.39M and 5.63M rows
+(`fereg y <controls>, absorb(worker firm)`, 1 and 4 workers) the
+[memory record](../bench/results/cmg-admission-level-cap-2026-10-27.json)
+shows the admitted serial CMG construction bound falling from 640 MB to
+166 MB and from 1,759 MB to 446 MB; the parallel bound and the retained charge
+of two-FE OLS Auto fall by the same 474 MB and 1,313 MB. Both hierarchies have
+3 levels, and `e(b)`, solver rows, hierarchy traces and every reported peak
+(`e(fereg_memory)`, the routing and cell traces) are identical before and after.
+Those reported peaks do not include the CMG admission stage: they are the same
+when CMG is refused. Under `FEREG_MEMORY_LIMIT_BYTES` the short panel's CMG
+install threshold fell by 473-475 MB (predicted 474 MB); at a 1.25 GB limit the
+parent refused CMG (Schur PCG, 52 iterations) and the head installed it (17
+iterations, the unconstrained result). Replay is exact against the parent's
+plugin for all 73 cases without a scope; against beta.8 only the existing
+eager-cells scope applies. CMG's full suite and `./scripts/run_tests.sh
+--source-only` passed; no installed package was built or checked.
+
 ## Package checks
 
 ### Beta.9 two-FE Auto round-two packaging

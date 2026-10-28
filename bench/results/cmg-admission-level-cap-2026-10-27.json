@@ -1,0 +1,67 @@
+{
+  "record": "cmg-admission-level-cap",
+  "date": "2026-10-27",
+  "decision": "Johannes: cap CMG's admission level assumption at 32 levels with a hard stop at the cap, a refusal test and a memory record; a public memory-control change outside the beta.9 qualification, landed as its own pin bump.",
+  "change": {
+    "cmg_base": "f6a044c98ba00fddc82bee1800dccdb310b5a240",
+    "cmg_head": "5c5b5b2b138226ea928514fa9db27439ba1cffdb",
+    "cmg_branch": "codex/admission-level-cap",
+    "fereg_base": "9b13e47b (codex/two-fe-round-two; runtime identical to df3ea035)",
+    "fereg_pin_commit": "957816fe",
+    "what": "CmgOptions::default().max_levels 128 -> 32: hard construction stop (existing iterative MaximumLevels terminal, no new terminal reason) and level count of every pre-build CMG admission bound. fereg takes all CMG options from the default and has no level arithmetic of its own.",
+    "numerical_scope": "none for hierarchies of at most 32 levels (bit-identical); admission and termination change at the cap"
+  },
+  "host": {"machine": "Apple M2 Ultra, 24 cores, 192 GiB", "stata": "Stata/MP 19.0 batch", "plugins": "universal release builds with path remaps, arm64 slice used; base and head from the same recipe"},
+  "admitted_cmg_bytes": {
+    "method": "CmgPreconditioner::construction_allocation_bound and scalar_workspace_allocation_bound with fereg's Schur options (low-effective-degree threshold 0, pruned/preserved/factored components) on the exact graph (vertices and edges from the explicit cmgschur trace with cmgsamples(1) cmgseed(0), whose hierarchy matches the Auto trace); before = 128 levels, after = 32",
+    "akm_short": {
+      "rows": 1386980, "workers": 693490, "firms": 39700, "controls": "y2001",
+      "graph": {"vertices": 39700, "edges": 208997, "levels": 3, "terminal": "Direct", "hierarchy_vertices": [39700, 3043, 20]},
+      "serial_construction": {"before": 639894084, "after": 166389060, "delta": -473505024},
+      "parallel_construction": {"before": 644910012, "after": 171404988, "delta": -473505024},
+      "scalar_workspace": {"before": 245530328, "after": 62573528, "delta": -182956800},
+      "retained_charge_note": "two-FE OLS Auto keeps the serial construction bound charged as retained CMG storage, so its retained charge falls by the serial delta"
+    },
+    "akm_long": {
+      "rows": 5626943, "workers": 1143748, "firms": 83113, "controls": "age2 age3 y1996 y1997 y1998 y1999 y2000",
+      "graph": {"vertices": 83113, "edges": 647137, "levels": 3, "terminal": "FullContraction", "hierarchy_vertices": [83113, 13001, 1063]},
+      "serial_construction": {"before": 1759132060, "after": 445938076, "delta": -1313193984},
+      "parallel_construction": {"before": 1774663348, "after": 461469364, "delta": -1313193984},
+      "scalar_workspace": {"before": 513996320, "after": 130992416, "delta": -383003904}
+    }
+  },
+  "unconstrained_fits": {
+    "command": "fereg y <controls>, absorb(worker firm) threads(T); FEREG_SOLVER_TRACE=1 FEREG_PHASE_TIMING=1",
+    "fields": "native_peak_est = e(fereg_memory) row 6; memory_bytes = routing_action trace; cells_peak = FEREG_CELLS attempt peak_bytes; solver = e(fereg_solver)[1, requested used iterations]",
+    "cases": [
+      {"panel": "akm_short", "threads": 1, "native_peak_est": 346766835, "memory_bytes": 222579933, "cells_peak": 78945392, "solver": [1, 8, 17], "application": "parallel, 0 operators, 3 columns"},
+      {"panel": "akm_short", "threads": 4, "native_peak_est": 391154875, "memory_bytes": 222579933, "cells_peak": 90043440, "solver": [1, 8, 17], "application": "parallel, 2 operators, 3 columns"},
+      {"panel": "akm_long", "threads": 1, "native_peak_est": 1958214259, "memory_bytes": 1865273185, "cells_peak": 291056960, "solver": [1, 8, 16], "application": "parallel, 0 operators, 4 columns"},
+      {"panel": "akm_long", "threads": 4, "native_peak_est": 2408383739, "memory_bytes": 1865273185, "cells_peak": 336074712, "solver": [1, 8, 16], "application": "parallel, 2 operators, 4 columns"}
+    ],
+    "base_vs_head": "every listed field, the hierarchy trace, e(b)[1,1] (all digits) and every e(fereg_memory) row except safety_headroom are identical between base and head in all four cases; only host-dependent available-memory, RSS and timing rows differ",
+    "observation": "the reported peaks are identical whether CMG is installed or refused (see memory_limit_case), so they do not contain the CMG admission stage; the cap changes admission, not these reported envelopes. Not investigated further here."
+  },
+  "memory_limit_case": {
+    "control": "FEREG_MEMORY_LIMIT_BYTES (developer instrumentation; the public memory() option takes auto|fast|low and has no byte limit); usable = L - max(512 MiB, L/5)",
+    "panel": "akm_short", "threads": 4,
+    "install_threshold_L": {
+      "base": {"refused_at": 1511718750, "installed_at": 1512695312},
+      "head": {"refused_at": 1037597656, "installed_at": 1038330078},
+      "threshold_shift_bracket": [473388672, 475097656],
+      "predicted_shift": 473505024
+    },
+    "at_L_1250000000": {
+      "base": {"cmg": "refused (MemoryBudget)", "solver": [1, 4, 52], "b1": ".050555602362006062"},
+      "head": {"cmg": "installed, parallel, 2 operators, 3 columns", "solver": [1, 8, 17], "b1": ".050555602362004501", "matches_unconstrained": true}
+    },
+    "note": "head refuses below its own threshold (L 1037000000: solver [1, 4, 52]); at L 875000000 head fails with r(909) before any CMG attempt"
+  },
+  "validation": {
+    "cmg": "fmt, clippy, doc, all tests debug/release with and without all features (812 passed), release build; frozen_bits unchanged; hierarchy_admission bounds are derived, no re-derived expectations needed; new tests: 2 x 264-clique graph stops at 32 levels (34 unrestricted) inside its bound, first 31 levels identical, one byte short refuses without allocating; an explicit 128-level request is refused before allocating under the budget the default admits. The benchmarks manifest fails on its pre-existing workspace declaration.",
+    "fereg_source_only": "./scripts/run_tests.sh --source-only passed (2106 Rust tests, 319 + 7 Python tests); installed-package checks not performed",
+    "cargo_fetch_locked": "root and fuzz workspaces pass",
+    "replay_vs_round_two_parent": "73/73 exact, no scope",
+    "replay_vs_beta8": "70 exact; ols-09, ols-24, ols-27 differ only in the existing 2026-10-27 eager-cells scope paths (432, 2, 461 fields) and pass with it, as for the round-two parent"
+  }
+}
