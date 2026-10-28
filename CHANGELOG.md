@@ -43,7 +43,6 @@
 - Developer: three Fast OLS replay cases without observation outputs (one,
   two and three FE) exercise the derived within residual and require its
   certificate path (stop code 5) beside the dense targets.
- (beta.10 development)
 
 - OLS with one fixed effect and the bounded three-FE MAP pilot skip the
   complete initial FE certificate when one exact group proves it fails, and
