@@ -159,6 +159,52 @@ CMG to PPML's joint frames above 350,000 finest edges was built, measured at
 is 42-61% of PPML native time on Veneto-scale Poisson panels and is the
 subject of a separate workstream.
 
+## Beta.10 exact engineering
+
+Two arithmetic-preserving changes from the beta.8 campaign analysis were
+measured first and kept; the [record](../bench/results/beta10-exact-2026-10-28.json)
+holds every number below. Trace-only `FEREG_PHASE_TIMING` laps split the MAP
+wrapper, the finalize score certificate, the dense projection's RHS/moment
+construction, the PPML one-FE profile and the loader pipeline. Each item was
+kept only if its phase reached 5% of native time on a 1M-row campaign design
+at 1 or 4 workers, or (for the 64-column cluster) if the control series jumped.
+
+- The borrowed MAP wrapper and the bounded three-FE MAP pilot apply the exact
+  one-group initial rejection screen before the complete initial certificate,
+  and entry finite scans run as a parallel predicate (MAP wrapper overhead was
+  16-18% of one-FE native time).
+- Wide raw-moment caches use the widest 64/32/16/8/1-column band that keeps
+  every worker busy, each column in its serial row order, and designs wider
+  than the 64-column stack binding fill the `[y, X]` batch through a heap
+  descriptor charged by the fast memory estimate. At 63 to 64 controls the
+  native time had jumped by 0.36 s (one worker) for one control; the jump is gone.
+
+Native seconds on an M-series Mac (medians, step 0 against final): one FE
+0.417/0.178 to 0.382/0.161 at 1/4 workers, dense three-FE 1.132/0.417 to
+1.047/0.410, AKM with 64 controls 2.633/1.072 to 1.947/0.977, with 96 controls
+5.390/1.925 to 3.477/1.561; PPML one FE unchanged within noise. The score
+certificate (at most 2.6%), converged two-FE lanes (under 0.4%), CMG
+application (at most 2.1%), PPML one-FE serial passes (at most 3.7%) and
+loader packing (fully overlapped with the SPI read) fell below the rule and
+were not changed. A follow-up removed the last cliff: Gram dimensions wider
+than the 64-column stack block accumulate in a private heap bank with the same
+partition of Gram rows and the same per-row rank-1 pass, charged by the fast
+memory estimate. In paired sessions against the previous head, the finite
+solve at 65 controls fell from 0.780 to 0.519 s (one worker) and 0.327 to
+0.247 s (four), at 96 controls from 1.300 to 0.988 s and 0.543 to 0.459 s;
+native time at 65 controls fell from 2.234 to 1.975 s and 1.108 to 1.011 s,
+with identical coefficients and residual sums.
+
+Plugin replay is 74/74 exact against beta.9 after each change, including the new compact
+`ols-wide-k67` case (67 regressors), and the universal release build is exact
+at 2/4/8 replay threads; Stata `e(b)`, `e(V)` and posted scalars are
+bit-identical to beta.9 on all eight 1M-row designs at 1 and 4 workers. The
+42-cell Mac protocol (beta.9 as original and incumbent, the hidden
+`two-gates-v2` arm, 1,638 native calls) found no scientific, agreement or
+resource error; 102 of 126 comparisons passed and 24 were inconclusive with
+negative median excess and upper bounds of at most 1.9 ms, so the status is
+`needs_discussion`, as in round two.
+
 ## Many-FE geometry policy
 
 Public OLS Auto/Auto for at least three categorical-intercept FEs uses the

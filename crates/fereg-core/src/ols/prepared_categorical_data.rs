@@ -361,6 +361,8 @@ impl PreparedOlsData {
         }
         if let Some(columns) = crate::ols::NumericOlsColumns::bind(&self.model, &self.sample)? {
             columns.fill_reserved_rhs(response, &mut values)?;
+        } else if let Some(columns) = crate::ols::WideRhsColumns::bind(&self.model, &self.sample) {
+            columns.fill_reserved_rhs(response, &mut values)?;
         } else {
             values.resize(elements, 0.0);
             for (row, destination) in values.chunks_exact_mut(ncols).enumerate() {

@@ -20,8 +20,10 @@ mod categorical_prefix;
 mod derived_residual;
 mod eager_cells;
 use eager_cells::ReuseState;
+mod initial_screen;
 mod irons_tuck;
 mod lsmr_norms;
+mod map_wrapper_trace;
 pub(crate) use irons_tuck::absorb_borrowed_intercept_irons_tuck_certified;
 mod ppml_cmg;
 pub(crate) mod routing_lsmr;
@@ -4525,7 +4527,7 @@ pub(crate) fn certify_borrowed_intercept_candidate_with_workspace(
             "borrowed certificate design and matrix dimensions are inconsistent",
         ));
     }
-    if values.as_slice().iter().any(|value| !value.is_finite()) {
+    if !values.all_finite() {
         return Err(invalid_data(
             "borrowed certificate candidate contains a nonfinite value",
         ));
@@ -6968,17 +6970,20 @@ fn absorb_with_reservation_mode<R: WorkspaceReservation>(
             "borrowed MAP requires nonempty observation and RHS axes",
         ));
     }
-    let invalid_values = values.as_slice().iter().any(|value| !value.is_finite());
-    if invalid_values {
+    // Trace-only laps (FEREG_PHASE_TIMING): no arithmetic or decision effect.
+    let trace = map_wrapper_trace::ledger(values.nrows(), values.ncols());
+    if !values.all_finite() {
         return Err(invalid_data("borrowed MAP values must be finite"));
     }
     let weights = validate_weights(weights, values.nrows())?;
+    trace.lap(map_wrapper_trace::SCAN);
 
     let setup_started = Instant::now();
     let mut workspace =
         BorrowedMapWorkspace::new(design, values.nrows(), values.ncols(), reservation)?;
     update_workspace_norms(&values, weights, &mut workspace, true)?;
     let setup_seconds = setup_started.elapsed().as_secs_f64();
+    trace.lap(map_wrapper_trace::NORMS);
     let solve_started = Instant::now();
     let workspace_peak = workspace.payload_peak()?;
     let mut coefficients = retain_coefficients
@@ -6999,12 +7004,15 @@ fn absorb_with_reservation_mode<R: WorkspaceReservation>(
     }
 
     {
-        let initial_certificate = if design.effects().is_empty() {
-            certify_initial_structural_constant(weights, &values, config.tolerance, &mut workspace)?
-        } else {
-            certify_initial(design, weights, &values, config.tolerance, &mut workspace)?
-        };
-        if initial_certificate.passed {
+        let initial_certificate = initial_screen::entry_certificate(
+            design,
+            weights,
+            &values,
+            config.tolerance,
+            &mut workspace,
+        )?;
+        trace.lap(map_wrapper_trace::INITIAL);
+        if let Some(initial_certificate) = initial_certificate.filter(|c| c.passed) {
             let mut result = certified_result(
                 values,
                 SolveStopReason::Certified,
@@ -7055,6 +7063,7 @@ fn absorb_with_reservation_mode<R: WorkspaceReservation>(
             coefficients.as_mut(),
             config.symmetric,
         )?;
+        trace.lap(map_wrapper_trace::SWEEP);
         // One intercept effect is removed exactly by its first projection, so
         // certify immediately instead of waiting for the periodic multiway
         // cadence. Multiway designs retain periodic plus final certification.
@@ -7063,6 +7072,7 @@ fn absorb_with_reservation_mode<R: WorkspaceReservation>(
             || iteration == config.max_iterations
         {
             let certificate = certify(design, weights, &values, config.tolerance, &mut workspace)?;
+            trace.lap(map_wrapper_trace::CERTIFY);
             if certificate.passed {
                 let mut result = certified_result(
                     values,
@@ -9505,6 +9515,8 @@ fn update_workspace_norms(
     )
 }
 
+#[cfg(test)]
+mod initial_screen_tests;
 #[cfg(test)]
 mod ppml_topology_tests;
 #[cfg(test)]

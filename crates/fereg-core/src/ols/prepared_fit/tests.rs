@@ -4224,7 +4224,7 @@ fn residual_bound_requires_weighted_underflow_fallback() {
 
 #[test]
 fn blocked_raw_moments_preserve_columnwise_bits_and_dispatch() {
-    for threads in [1, 7, 16] {
+    for threads in [1, 2, 4, 7, 8, 16] {
         let team = ThreadTeam::new(ThreadConfig::from_requested(threads, true).unwrap());
         team.install(|| {
             for columns in [1, 7, 8, 9, 63, 64, 65, 66, 129] {
@@ -4273,6 +4273,9 @@ fn blocked_raw_moments_preserve_columnwise_bits_and_dispatch() {
                     )
                     .unwrap();
                     for fill in [
+                        fill_raw_moment_cache_blocked::<64>,
+                        fill_raw_moment_cache_blocked::<32>,
+                        fill_raw_moment_cache_blocked::<16>,
                         fill_raw_moment_cache_blocked::<8>,
                         fill_raw_moment_cache_blocked::<1>,
                     ] {

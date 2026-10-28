@@ -432,8 +432,9 @@ remain separate and fresh.
 
 ### Initial FE rejection screen
 
-The reusable categorical MAP owner may reject its zero-iteration shortcut from
-one exact group, but that rejection grants no certificate. Every successful
+The reusable categorical MAP owner, the borrowed MAP wrapper on the binding
+route and the bounded three-FE MAP pilot may reject their zero-iteration
+shortcut from one exact group, but that rejection grants no certificate. Every successful
 shortcut still runs the complete independent certificate, as does every final
 solver acceptance. A partial `FeCertificate` is never published.
 

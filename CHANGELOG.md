@@ -27,6 +27,19 @@
   hidden Stata adapter) qualifies bounded many-FE LSMR session windows, at
   most one live session per worker with the Jacobi escalation barrier at each
   window's end. Public Auto is unchanged.
+ (beta.10 development)
+
+- OLS with one fixed effect and the bounded three-FE MAP pilot skip the
+  complete initial FE certificate when one exact group proves it fails, and
+  scan their inputs for nonfinite values in parallel; results are
+  bit-identical.
+- OLS designs with more than 63 controls compute raw column moments in wide
+  column bands and build their `[y, X]` matrix in row tiles instead of cell by
+  cell, and accumulate their cross-products in a private buffer beyond 64
+  columns, removing the jumps in run time at 63 to 65 controls; results are
+  bit-identical, and the fast memory estimate counts the new buffers.
+- Developer phase timing (`FEREG_PHASE_TIMING`) splits the MAP wrapper, dense
+  projection setup, score certificate, PPML one-FE profile and loader pipeline.
 
 ## 0.5.0 beta.9 — 2026-10-28
 

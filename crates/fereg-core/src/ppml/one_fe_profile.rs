@@ -470,6 +470,11 @@ impl ProfiledOneFe {
         step: f64,
         config: PpmlConfig,
     ) -> Result<()> {
+        // Trace-only laps (FEREG_PHASE_TIMING): no arithmetic or decision effect.
+        let trace = crate::diagnostics::phase_ledger::PhaseLedger::new(
+            "ppml_one_fe_profile",
+            ["eta", "shifts", "apply", "means"],
+        );
         let k = self.columns;
         let base = &self.base;
         let direction = &self.direction;
@@ -487,6 +492,7 @@ impl ProfiledOneFe {
                     Ok(())
                 })
         })?;
+        trace.lap(0);
         let eta = &self.eta;
         let log_q = &self.log_weights;
         let log_y = &self.log_outcomes;
@@ -511,6 +517,7 @@ impl ProfiledOneFe {
                     Ok(())
                 })
         })?;
+        trace.lap(1);
         let shifts = &self.shifts;
         let codes = design.effects()[0].codes();
         self.team.install(|| {
@@ -519,7 +526,10 @@ impl ProfiledOneFe {
                 .enumerate()
                 .for_each(|(row, eta)| *eta += shifts[codes[row] as usize])
         });
-        means_from_eta(&self.eta, config.bounds, &mut self.mean)
+        trace.lap(2);
+        let result = means_from_eta(&self.eta, config.bounds, &mut self.mean);
+        trace.lap(3);
+        result
     }
 
     /// A centered Hessian is assembled directly, avoiding subtraction of two
@@ -573,11 +583,16 @@ impl ProfiledOneFe {
         }
         self.direction.fill(0.);
         self.profile(data, design, offset, 0., config)?;
+        // Trace-only lap (FEREG_PHASE_TIMING): no arithmetic or decision effect.
+        let trace =
+            crate::diagnostics::phase_ledger::PhaseLedger::new("ppml_one_fe_direction", ["max"]);
         let maximum = q
             .iter()
             .zip(&self.mean)
             .map(|(&q, &mu)| q * mu)
             .fold(0.0_f64, f64::max);
+        trace.lap(0);
+        drop(trace);
         if !maximum.is_finite() || maximum <= 0. {
             return Err(numerical());
         }

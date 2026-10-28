@@ -15,6 +15,8 @@ mod known;
 #[allow(dead_code)]
 #[path = "../tests/support/mod.rs"]
 mod support;
+#[path = "replay/wide.rs"]
+mod wide;
 #[path = "replay/wire.rs"]
 mod wire;
 use fereg_oracle::designs::{generate, DesignSpec, Graph, WeightKind};
@@ -127,4 +129,5 @@ fn main() {
         );
     }
     known::generate(&directory);
+    wide::generate_case(&directory);
 }
