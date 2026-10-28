@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased (beta.10 development)
+
+- OLS with one fixed effect and the bounded three-FE MAP pilot skip the
+  complete initial FE certificate when one exact group proves it fails, and
+  scan their inputs for nonfinite values in parallel; results are
+  bit-identical.
+- OLS designs with more than 63 controls compute raw column moments in wide
+  column bands and build their `[y, X]` matrix in row tiles instead of cell by
+  cell, removing the jump in run time at 64 controls; results are
+  bit-identical, and the fast memory estimate counts the wide binding.
+- Developer phase timing (`FEREG_PHASE_TIMING`) splits the MAP wrapper, dense
+  projection setup, score certificate, PPML one-FE profile and loader pipeline.
+
 ## 0.5.0 beta.9 — 2026-10-28
 
 - OLS Auto with two categorical-intercept effects builds its aggregated

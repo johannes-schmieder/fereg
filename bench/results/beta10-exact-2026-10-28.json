@@ -1,0 +1,1342 @@
+{
+ "schema": 1,
+ "date": "2026-10-28",
+ "scope": "Exact engineering for beta.10 on branch codex/beta10-exact (base a023073e, v0.5.0-beta.9). Arithmetic-preserving: published bits, solver signatures and discrete decisions unchanged.",
+ "commits": {
+  "trace_laps": [
+   "ccc8f6f9",
+   "c925566d"
+  ],
+  "E4_initial_screen_and_parallel_scan": "1a005ac3",
+  "E2_wide_moments_and_rhs": "e8230ca5"
+ },
+ "artifacts": {
+  "beta9_dist_sha256": "a7b251761aecbc6f4509a24ba1d190c64452fe4012eab2bfde6f9dfc5cec690b",
+  "step0_profiling_arm64_sha256_prefix": "28f229428fb5f80a",
+  "final_profiling_arm64_sha256_prefix": "2cda4678feceeea6",
+  "candidate_universal_release_sha256": "f2098ccc2874445da4026b05b0005c5b768d63b86d3c4622366f2ae56fd9dad0",
+  "candidate_source": "e8230ca57133ee20a6cac5532dbd868c2bd9381d"
+ },
+ "protocol": "Mac arm64, Stata MP 19 batch, campaign generator (bench/campaign.make_dataset, seed 739391), 1M rows; threads(1) and threads(4); 3 fits per session, medians of fits 2-3; FEREG_PHASE_TIMING=1 FEREG_SOLVER_TRACE=1; frozen rule: 30 s without Stata/cargo/rustc/Python before a session, 2 s sampling, discard and repeat once. Step 0: k64 first attempt contaminated and repeated clean; k65 both attempts contaminated (kept, flagged). Final: all sessions clean.",
+ "step0_phases": {
+  "ols-akm-baseline-k16|t1": {
+   "native_s": 0.5981,
+   "res.input": 0.0954,
+   "ols_prepare_moments.seconds": 0.0369,
+   "fit.projection": 0.3926,
+   "map_wrapper.scan": 0.0,
+   "map_wrapper.norms": 0.0,
+   "map_wrapper.initial_certificate": 0.0,
+   "map_wrapper.sweep": 0.0,
+   "map_wrapper.certify": 0.0,
+   "schur.operator": 0.0862,
+   "schur.recurrence": 0.0091,
+   "fit.finite_solve": 0.0927,
+   "fit.bread_raw_residual": 0.0171,
+   "fit.residual_absorb": 0.0255,
+   "fit_finalize.certify_scores": 0.0075,
+   "iid.total": 0.0119,
+   "numeric_pipeline.consume": 0.0234,
+   "numeric_pipeline.wait": 0.0
+  },
+  "ols-akm-baseline-k16|t4": {
+   "native_s": 0.2522,
+   "res.input": 0.0769,
+   "ols_prepare_moments.seconds": 0.0318,
+   "fit.projection": 0.126,
+   "map_wrapper.scan": 0.0,
+   "map_wrapper.norms": 0.0,
+   "map_wrapper.initial_certificate": 0.0,
+   "map_wrapper.sweep": 0.0,
+   "map_wrapper.certify": 0.0,
+   "schur.operator": 0.04,
+   "schur.recurrence": 0.0052,
+   "fit.finite_solve": 0.0478,
+   "fit.bread_raw_residual": 0.007,
+   "fit.residual_absorb": 0.015,
+   "fit_finalize.certify_scores": 0.0047,
+   "iid.total": 0.0078,
+   "numeric_pipeline.consume": 0.025,
+   "numeric_pipeline.wait": 0.0001
+  },
+  "ols-akm-baseline-k64|t1": {
+   "native_s": 2.6332,
+   "res.input": 0.3381,
+   "ols_prepare_moments.seconds": 0.0904,
+   "fit.projection": 1.9024,
+   "map_wrapper.scan": 0.0,
+   "map_wrapper.norms": 0.0,
+   "map_wrapper.initial_certificate": 0.0,
+   "map_wrapper.sweep": 0.0,
+   "map_wrapper.certify": 0.0,
+   "schur.operator": 0.2105,
+   "schur.recurrence": 0.023,
+   "fit.finite_solve": 0.5332,
+   "fit.bread_raw_residual": 0.0523,
+   "fit.residual_absorb": 0.0232,
+   "fit_finalize.certify_scores": 0.0072,
+   "iid.total": 0.0114,
+   "numeric_pipeline.consume": 0.0,
+   "numeric_pipeline.wait": 0.0
+  },
+  "ols-akm-baseline-k64|t4": {
+   "native_s": 1.0724,
+   "res.input": 0.3253,
+   "ols_prepare_moments.seconds": 0.0294,
+   "fit.projection": 0.691,
+   "map_wrapper.scan": 0.0,
+   "map_wrapper.norms": 0.0,
+   "map_wrapper.initial_certificate": 0.0,
+   "map_wrapper.sweep": 0.0,
+   "map_wrapper.certify": 0.0,
+   "schur.operator": 0.124,
+   "schur.recurrence": 0.0185,
+   "fit.finite_solve": 0.261,
+   "fit.bread_raw_residual": 0.0515,
+   "fit.residual_absorb": 0.0141,
+   "fit_finalize.certify_scores": 0.0046,
+   "iid.total": 0.0079,
+   "numeric_pipeline.consume": 0.0,
+   "numeric_pipeline.wait": 0.0
+  },
+  "ols-one-fe-k16|t1": {
+   "native_s": 0.4168,
+   "res.input": 0.0918,
+   "ols_prepare_moments.seconds": 0.038,
+   "fit.projection": 0.2345,
+   "map_wrapper.scan": 0.008,
+   "map_wrapper.norms": 0.0255,
+   "map_wrapper.initial_certificate": 0.0328,
+   "map_wrapper.sweep": 0.0459,
+   "map_wrapper.certify": 0.0457,
+   "schur.operator": 0.0,
+   "schur.recurrence": 0.0,
+   "fit.finite_solve": 0.0888,
+   "fit.bread_raw_residual": 0.0102,
+   "fit.residual_absorb": 0.0205,
+   "fit_finalize.certify_scores": 0.0074,
+   "iid.total": 0.0115,
+   "numeric_pipeline.consume": 0.0246,
+   "numeric_pipeline.wait": 0.0
+  },
+  "ols-one-fe-k16|t4": {
+   "native_s": 0.178,
+   "res.input": 0.0851,
+   "ols_prepare_moments.seconds": 0.0267,
+   "fit.projection": 0.0674,
+   "map_wrapper.scan": 0.0082,
+   "map_wrapper.norms": 0.0076,
+   "map_wrapper.initial_certificate": 0.0162,
+   "map_wrapper.sweep": 0.0146,
+   "map_wrapper.certify": 0.018,
+   "schur.operator": 0.0,
+   "schur.recurrence": 0.0,
+   "fit.finite_solve": 0.0466,
+   "fit.bread_raw_residual": 0.0065,
+   "fit.residual_absorb": 0.014,
+   "fit_finalize.certify_scores": 0.0046,
+   "iid.total": 0.0078,
+   "numeric_pipeline.consume": 0.0225,
+   "numeric_pipeline.wait": 0.0
+  },
+  "ols-three-dense-k16|t1": {
+   "native_s": 1.1318,
+   "res.input": 0.1015,
+   "ols_prepare_moments.seconds": 0.0514,
+   "fit.projection": 0.9164,
+   "map_wrapper.scan": 0.0,
+   "map_wrapper.norms": 0.0,
+   "map_wrapper.initial_certificate": 0.0,
+   "map_wrapper.sweep": 0.0,
+   "map_wrapper.certify": 0.0,
+   "schur.operator": 0.0,
+   "schur.recurrence": 0.0,
+   "fit.finite_solve": 0.0884,
+   "fit.bread_raw_residual": 0.01,
+   "fit.residual_absorb": 0.0228,
+   "fit_finalize.certify_scores": 0.0072,
+   "iid.total": 0.0115,
+   "numeric_pipeline.consume": 0.0247,
+   "numeric_pipeline.wait": 0.0
+  },
+  "ols-three-dense-k16|t4": {
+   "native_s": 0.4168,
+   "res.input": 0.0836,
+   "ols_prepare_moments.seconds": 0.0318,
+   "fit.projection": 0.2857,
+   "map_wrapper.scan": 0.0,
+   "map_wrapper.norms": 0.0,
+   "map_wrapper.initial_certificate": 0.0,
+   "map_wrapper.sweep": 0.0,
+   "map_wrapper.certify": 0.0,
+   "schur.operator": 0.0,
+   "schur.recurrence": 0.0,
+   "fit.finite_solve": 0.0458,
+   "fit.bread_raw_residual": 0.0065,
+   "fit.residual_absorb": 0.0128,
+   "fit_finalize.certify_scores": 0.0046,
+   "iid.total": 0.0078,
+   "numeric_pipeline.consume": 0.0246,
+   "numeric_pipeline.wait": 0.0
+  },
+  "ppml-one-fe-k16|t1": {
+   "native_s": 2.7471,
+   "res.time_fe_projection": 0.3778,
+   "res.time_finite_solve": 0.5533,
+   "res.time_objective_line_search": 0.4614,
+   "res.time_strict_final_solve": 0.6311,
+   "ppml_one_fe_profile.means": 0.0364,
+   "ppml_one_fe_direction.max": 0.0018,
+   "ppml_line_search_trial.interpolate": 0.0055
+  },
+  "ppml-one-fe-k16|t4": {
+   "native_s": 1.163,
+   "res.time_fe_projection": 0.1143,
+   "res.time_finite_solve": 0.2068,
+   "res.time_objective_line_search": 0.1467,
+   "res.time_strict_final_solve": 0.2435,
+   "ppml_one_fe_profile.means": 0.0363,
+   "ppml_one_fe_direction.max": 0.0018,
+   "ppml_line_search_trial.interpolate": 0.0045
+  }
+ },
+ "native_seconds": {
+  "ols-akm-baseline-k16|t1": {
+   "step0": 0.5981,
+   "final": 0.5609,
+   "ratio": 0.938
+  },
+  "ols-akm-baseline-k16|t4": {
+   "step0": 0.2522,
+   "final": 0.2458,
+   "ratio": 0.975
+  },
+  "ols-akm-baseline-k32|t1": {
+   "step0": 0.9884,
+   "final": 0.9666,
+   "ratio": 0.978
+  },
+  "ols-akm-baseline-k32|t4": {
+   "step0": 0.4088,
+   "final": 0.4156,
+   "ratio": 1.017
+  },
+  "ols-akm-baseline-k48|t1": {
+   "step0": 1.3908,
+   "final": 1.3675,
+   "ratio": 0.983
+  },
+  "ols-akm-baseline-k48|t4": {
+   "step0": 0.5922,
+   "final": 0.5648,
+   "ratio": 0.954
+  },
+  "ols-akm-baseline-k63|t1": {
+   "step0": 2.2695,
+   "final": 1.9471,
+   "ratio": 0.858
+  },
+  "ols-akm-baseline-k63|t4": {
+   "step0": 0.9113,
+   "final": 0.9146,
+   "ratio": 1.004
+  },
+  "ols-akm-baseline-k64|t1": {
+   "step0": 2.6332,
+   "final": 1.9472,
+   "ratio": 0.739
+  },
+  "ols-akm-baseline-k64|t4": {
+   "step0": 1.0724,
+   "final": 0.9772,
+   "ratio": 0.911
+  },
+  "ols-akm-baseline-k65|t1": {
+   "step0": 3.1198,
+   "final": 2.2511,
+   "ratio": 0.722
+  },
+  "ols-akm-baseline-k65|t4": {
+   "step0": 1.2515,
+   "final": 1.0444,
+   "ratio": 0.835
+  },
+  "ols-akm-baseline-k96|t1": {
+   "step0": 5.3896,
+   "final": 3.477,
+   "ratio": 0.645
+  },
+  "ols-akm-baseline-k96|t4": {
+   "step0": 1.9254,
+   "final": 1.5608,
+   "ratio": 0.811
+  },
+  "ols-one-fe-k16|t1": {
+   "step0": 0.4168,
+   "final": 0.3815,
+   "ratio": 0.915
+  },
+  "ols-one-fe-k16|t4": {
+   "step0": 0.178,
+   "final": 0.1612,
+   "ratio": 0.906
+  },
+  "ols-three-dense-k16|t1": {
+   "step0": 1.1318,
+   "final": 1.0473,
+   "ratio": 0.925
+  },
+  "ols-three-dense-k16|t4": {
+   "step0": 0.4168,
+   "final": 0.4101,
+   "ratio": 0.984
+  },
+  "ppml-one-fe-k16|t1": {
+   "step0": 2.7471,
+   "final": 2.7449,
+   "ratio": 0.999
+  },
+  "ppml-one-fe-k16|t4": {
+   "step0": 1.163,
+   "final": 1.1342,
+   "ratio": 0.975
+  }
+ },
+ "decisions": {
+  "E1": "skipped: certify_scores 0.3-2.6% of native (kept columns skipped; residual norm and absorbed intercept only)",
+  "E2": "implemented: k-series jump 63->64 controls +0.364 s (t1) and +0.161 s (t4) against 0.025/0.011 s per control; wide raw-moment bands and wide RHS binding. Remaining: 64->65 controls (65 kept columns, FIXED_BLOCK_MOMENT_MAX_COLUMNS Gram kernel) finite solve 0.533->0.771 s (t1), 0.256->0.320 s (t4); not implemented",
+  "E3a": "skipped: akm k64 per-RHS iterations 61x14, 4x13, 1x0; converged-lane work about 2% of the operator phase (<0.4% of native)",
+  "E3b": "skipped: recurrence including CMG application 0.9-2.1% of native",
+  "E4": "implemented: MAP wrapper scan+norms+initial certificate 16% (t1) and 18% (t4) of one-FE native; screen and parallel scan, norm reuse not adopted",
+  "E5": "skipped: serial exp, max and trial interpolation 1.6% (t1) and 3.7% (t4) of PPML one-FE native",
+  "E8": "skipped: loader consumer fully overlapped (producer wait <=0.0001 s); SPI read bounds input"
+ },
+ "exactness": {
+  "replay": "73/73 exact vs beta.9 after E4; 74/74 exact after E2 including new ols-wide-k67 (67 regressors, 857 KB) with dense-science pass; universal release 74/74 exact with thread counts 2/4/8",
+  "stata_bits": "e(b), e(V) and 14 e() scalars identical to beta.9 (%21x) at threads 1 and 4 on one-fe, three-dense, PPML one-fe and akm k16/63/64/65/96 (1M rows)",
+  "unit": "new and old paths compared bit for bit at 1/2/4/8 workers; scripts/run_tests.sh --source-only passed (installed-package binding not refreshed: no publication)"
+ },
+ "qualification": {
+  "config": "scope two, Darwin, blocks 6, shards 1, replicas 1, threads [1,4], seed 2026102811; inputs routing_cases --seed 2026102801 with imports no-fe=ols-00, one-fe=ols-05, slopes=ols-21, low-saved=ols-24; 16 routing_oracle references",
+  "original": "beta.9 dist",
+  "incumbent": "beta.9 dist",
+  "candidate": "f2098ccc auto",
+  "hidden": "f2098ccc two-gates-v2",
+  "native_calls": 1638,
+  "errors": [],
+  "status": "needs_discussion",
+  "passed": 102,
+  "inconclusive": 24,
+  "failed": 0,
+  "comparisons": [
+   {
+    "case": "dense-t1",
+    "reference": "hidden",
+    "status": "inconclusive",
+    "median_ratio": 1.0121,
+    "excess_upper_ms": 0.271,
+    "excess_median_ms": -1.533
+   },
+   {
+    "case": "dense-t1",
+    "reference": "incumbent",
+    "status": "inconclusive",
+    "median_ratio": 0.9935,
+    "excess_upper_ms": 0.594,
+    "excess_median_ms": -2.316
+   },
+   {
+    "case": "dense-t1",
+    "reference": "original",
+    "status": "inconclusive",
+    "median_ratio": 0.9935,
+    "excess_upper_ms": 0.594,
+    "excess_median_ms": -2.316
+   },
+   {
+    "case": "dense-t4",
+    "reference": "hidden",
+    "status": "inconclusive",
+    "median_ratio": 1.0079,
+    "excess_upper_ms": 0.396,
+    "excess_median_ms": -0.981
+   },
+   {
+    "case": "dense-t4",
+    "reference": "incumbent",
+    "status": "passed",
+    "median_ratio": 1.0092,
+    "excess_upper_ms": -0.177,
+    "excess_median_ms": -0.951
+   },
+   {
+    "case": "dense-t4",
+    "reference": "original",
+    "status": "passed",
+    "median_ratio": 1.0092,
+    "excess_upper_ms": -0.177,
+    "excess_median_ms": -0.951
+   },
+   {
+    "case": "disconnected-t1",
+    "reference": "hidden",
+    "status": "passed",
+    "median_ratio": 0.9925,
+    "excess_upper_ms": -0.543,
+    "excess_median_ms": -1.827
+   },
+   {
+    "case": "disconnected-t1",
+    "reference": "incumbent",
+    "status": "passed",
+    "median_ratio": 1.0159,
+    "excess_upper_ms": -0.741,
+    "excess_median_ms": -1.057
+   },
+   {
+    "case": "disconnected-t1",
+    "reference": "original",
+    "status": "passed",
+    "median_ratio": 1.0159,
+    "excess_upper_ms": -0.741,
+    "excess_median_ms": -1.057
+   },
+   {
+    "case": "disconnected-t4",
+    "reference": "hidden",
+    "status": "inconclusive",
+    "median_ratio": 0.9963,
+    "excess_upper_ms": 0.614,
+    "excess_median_ms": -1.073
+   },
+   {
+    "case": "disconnected-t4",
+    "reference": "incumbent",
+    "status": "inconclusive",
+    "median_ratio": 1.006,
+    "excess_upper_ms": 0.705,
+    "excess_median_ms": -0.881
+   },
+   {
+    "case": "disconnected-t4",
+    "reference": "original",
+    "status": "inconclusive",
+    "median_ratio": 1.006,
+    "excess_upper_ms": 0.705,
+    "excess_median_ms": -0.881
+   },
+   {
+    "case": "eight-fe-t1",
+    "reference": "hidden",
+    "status": "passed",
+    "median_ratio": 1.0046,
+    "excess_upper_ms": -4.932,
+    "excess_median_ms": -9.751
+   },
+   {
+    "case": "eight-fe-t1",
+    "reference": "incumbent",
+    "status": "passed",
+    "median_ratio": 0.9964,
+    "excess_upper_ms": -8.13,
+    "excess_median_ms": -11.583
+   },
+   {
+    "case": "eight-fe-t1",
+    "reference": "original",
+    "status": "passed",
+    "median_ratio": 0.9964,
+    "excess_upper_ms": -8.13,
+    "excess_median_ms": -11.583
+   },
+   {
+    "case": "eight-fe-t4",
+    "reference": "hidden",
+    "status": "passed",
+    "median_ratio": 1.002,
+    "excess_upper_ms": -4.037,
+    "excess_median_ms": -4.511
+   },
+   {
+    "case": "eight-fe-t4",
+    "reference": "incumbent",
+    "status": "passed",
+    "median_ratio": 0.9955,
+    "excess_upper_ms": -4.21,
+    "excess_median_ms": -5.146
+   },
+   {
+    "case": "eight-fe-t4",
+    "reference": "original",
+    "status": "passed",
+    "median_ratio": 0.9955,
+    "excess_upper_ms": -4.21,
+    "excess_median_ms": -5.146
+   },
+   {
+    "case": "four-fe-t1",
+    "reference": "hidden",
+    "status": "passed",
+    "median_ratio": 0.9864,
+    "excess_upper_ms": -2.952,
+    "excess_median_ms": -7.993
+   },
+   {
+    "case": "four-fe-t1",
+    "reference": "incumbent",
+    "status": "passed",
+    "median_ratio": 0.9999,
+    "excess_upper_ms": -1.402,
+    "excess_median_ms": -6.244
+   },
+   {
+    "case": "four-fe-t1",
+    "reference": "original",
+    "status": "passed",
+    "median_ratio": 0.9999,
+    "excess_upper_ms": -1.402,
+    "excess_median_ms": -6.244
+   },
+   {
+    "case": "four-fe-t4",
+    "reference": "hidden",
+    "status": "passed",
+    "median_ratio": 0.9919,
+    "excess_upper_ms": -1.612,
+    "excess_median_ms": -3.243
+   },
+   {
+    "case": "four-fe-t4",
+    "reference": "incumbent",
+    "status": "passed",
+    "median_ratio": 0.9867,
+    "excess_upper_ms": -1.801,
+    "excess_median_ms": -3.553
+   },
+   {
+    "case": "four-fe-t4",
+    "reference": "original",
+    "status": "passed",
+    "median_ratio": 0.9867,
+    "excess_upper_ms": -1.801,
+    "excess_median_ms": -3.553
+   },
+   {
+    "case": "high-degree-mixed-t1",
+    "reference": "hidden",
+    "status": "passed",
+    "median_ratio": 0.9997,
+    "excess_upper_ms": -6.306,
+    "excess_median_ms": -9.243
+   },
+   {
+    "case": "high-degree-mixed-t1",
+    "reference": "incumbent",
+    "status": "passed",
+    "median_ratio": 1.001,
+    "excess_upper_ms": -8.251,
+    "excess_median_ms": -9.091
+   },
+   {
+    "case": "high-degree-mixed-t1",
+    "reference": "original",
+    "status": "passed",
+    "median_ratio": 1.001,
+    "excess_upper_ms": -8.251,
+    "excess_median_ms": -9.091
+   },
+   {
+    "case": "high-degree-mixed-t4",
+    "reference": "hidden",
+    "status": "passed",
+    "median_ratio": 0.9936,
+    "excess_upper_ms": -2.378,
+    "excess_median_ms": -5.919
+   },
+   {
+    "case": "high-degree-mixed-t4",
+    "reference": "incumbent",
+    "status": "passed",
+    "median_ratio": 1.0006,
+    "excess_upper_ms": -3.32,
+    "excess_median_ms": -5.152
+   },
+   {
+    "case": "high-degree-mixed-t4",
+    "reference": "original",
+    "status": "passed",
+    "median_ratio": 1.0006,
+    "excess_upper_ms": -3.32,
+    "excess_median_ms": -5.152
+   },
+   {
+    "case": "high-degree-stress-t1",
+    "reference": "hidden",
+    "status": "passed",
+    "median_ratio": 1.0073,
+    "excess_upper_ms": -4.861,
+    "excess_median_ms": -8.062
+   },
+   {
+    "case": "high-degree-stress-t1",
+    "reference": "incumbent",
+    "status": "passed",
+    "median_ratio": 1.0039,
+    "excess_upper_ms": -4.351,
+    "excess_median_ms": -8.711
+   },
+   {
+    "case": "high-degree-stress-t1",
+    "reference": "original",
+    "status": "passed",
+    "median_ratio": 1.0039,
+    "excess_upper_ms": -4.351,
+    "excess_median_ms": -8.711
+   },
+   {
+    "case": "high-degree-stress-t4",
+    "reference": "hidden",
+    "status": "passed",
+    "median_ratio": 0.9937,
+    "excess_upper_ms": -3.001,
+    "excess_median_ms": -6.086
+   },
+   {
+    "case": "high-degree-stress-t4",
+    "reference": "incumbent",
+    "status": "passed",
+    "median_ratio": 1.0126,
+    "excess_upper_ms": -2.842,
+    "excess_median_ms": -3.952
+   },
+   {
+    "case": "high-degree-stress-t4",
+    "reference": "original",
+    "status": "passed",
+    "median_ratio": 1.0126,
+    "excess_upper_ms": -2.842,
+    "excess_median_ms": -3.952
+   },
+   {
+    "case": "high-degree-weak-t1",
+    "reference": "hidden",
+    "status": "passed",
+    "median_ratio": 1.0037,
+    "excess_upper_ms": -5.884,
+    "excess_median_ms": -11.307
+   },
+   {
+    "case": "high-degree-weak-t1",
+    "reference": "incumbent",
+    "status": "passed",
+    "median_ratio": 1.0056,
+    "excess_upper_ms": -6.466,
+    "excess_median_ms": -10.786
+   },
+   {
+    "case": "high-degree-weak-t1",
+    "reference": "original",
+    "status": "passed",
+    "median_ratio": 1.0056,
+    "excess_upper_ms": -6.466,
+    "excess_median_ms": -10.786
+   },
+   {
+    "case": "high-degree-weak-t4",
+    "reference": "hidden",
+    "status": "passed",
+    "median_ratio": 0.9998,
+    "excess_upper_ms": -3.803,
+    "excess_median_ms": -6.653
+   },
+   {
+    "case": "high-degree-weak-t4",
+    "reference": "incumbent",
+    "status": "passed",
+    "median_ratio": 0.9929,
+    "excess_upper_ms": -3.114,
+    "excess_median_ms": -7.623
+   },
+   {
+    "case": "high-degree-weak-t4",
+    "reference": "original",
+    "status": "passed",
+    "median_ratio": 0.9929,
+    "excess_upper_ms": -3.114,
+    "excess_median_ms": -7.623
+   },
+   {
+    "case": "inactive-columns-t1",
+    "reference": "hidden",
+    "status": "passed",
+    "median_ratio": 1.0222,
+    "excess_upper_ms": -0.317,
+    "excess_median_ms": -0.713
+   },
+   {
+    "case": "inactive-columns-t1",
+    "reference": "incumbent",
+    "status": "passed",
+    "median_ratio": 0.9892,
+    "excess_upper_ms": -1.069,
+    "excess_median_ms": -1.606
+   },
+   {
+    "case": "inactive-columns-t1",
+    "reference": "original",
+    "status": "passed",
+    "median_ratio": 0.9892,
+    "excess_upper_ms": -1.069,
+    "excess_median_ms": -1.606
+   },
+   {
+    "case": "inactive-columns-t4",
+    "reference": "hidden",
+    "status": "passed",
+    "median_ratio": 1.0018,
+    "excess_upper_ms": -0.236,
+    "excess_median_ms": -0.971
+   },
+   {
+    "case": "inactive-columns-t4",
+    "reference": "incumbent",
+    "status": "passed",
+    "median_ratio": 0.9959,
+    "excess_upper_ms": -0.415,
+    "excess_median_ms": -1.066
+   },
+   {
+    "case": "inactive-columns-t4",
+    "reference": "original",
+    "status": "passed",
+    "median_ratio": 0.9959,
+    "excess_upper_ms": -0.415,
+    "excess_median_ms": -1.066
+   },
+   {
+    "case": "low-saved-t1",
+    "reference": "hidden",
+    "status": "passed",
+    "median_ratio": 0.9313,
+    "excess_upper_ms": -1.003,
+    "excess_median_ms": -1.045
+   },
+   {
+    "case": "low-saved-t1",
+    "reference": "incumbent",
+    "status": "passed",
+    "median_ratio": 0.9351,
+    "excess_upper_ms": -1.019,
+    "excess_median_ms": -1.042
+   },
+   {
+    "case": "low-saved-t1",
+    "reference": "original",
+    "status": "passed",
+    "median_ratio": 0.9351,
+    "excess_upper_ms": -1.019,
+    "excess_median_ms": -1.042
+   },
+   {
+    "case": "low-saved-t4",
+    "reference": "hidden",
+    "status": "passed",
+    "median_ratio": 1.0073,
+    "excess_upper_ms": -0.422,
+    "excess_median_ms": -0.995
+   },
+   {
+    "case": "low-saved-t4",
+    "reference": "incumbent",
+    "status": "passed",
+    "median_ratio": 0.9306,
+    "excess_upper_ms": -0.795,
+    "excess_median_ms": -1.055
+   },
+   {
+    "case": "low-saved-t4",
+    "reference": "original",
+    "status": "passed",
+    "median_ratio": 0.9306,
+    "excess_upper_ms": -0.795,
+    "excess_median_ms": -1.055
+   },
+   {
+    "case": "near-confounded-third-t1",
+    "reference": "hidden",
+    "status": "passed",
+    "median_ratio": 0.9982,
+    "excess_upper_ms": -1.733,
+    "excess_median_ms": -5.465
+   },
+   {
+    "case": "near-confounded-third-t1",
+    "reference": "incumbent",
+    "status": "passed",
+    "median_ratio": 1.0025,
+    "excess_upper_ms": -2.821,
+    "excess_median_ms": -4.931
+   },
+   {
+    "case": "near-confounded-third-t1",
+    "reference": "original",
+    "status": "passed",
+    "median_ratio": 1.0025,
+    "excess_upper_ms": -2.821,
+    "excess_median_ms": -4.931
+   },
+   {
+    "case": "near-confounded-third-t4",
+    "reference": "hidden",
+    "status": "passed",
+    "median_ratio": 1.0064,
+    "excess_upper_ms": -1.041,
+    "excess_median_ms": -2.173
+   },
+   {
+    "case": "near-confounded-third-t4",
+    "reference": "incumbent",
+    "status": "passed",
+    "median_ratio": 0.9892,
+    "excess_upper_ms": -1.588,
+    "excess_median_ms": -3.047
+   },
+   {
+    "case": "near-confounded-third-t4",
+    "reference": "original",
+    "status": "passed",
+    "median_ratio": 0.9892,
+    "excess_upper_ms": -1.588,
+    "excess_median_ms": -3.047
+   },
+   {
+    "case": "no-fe-t1",
+    "reference": "hidden",
+    "status": "passed",
+    "median_ratio": 1.0099,
+    "excess_upper_ms": -0.986,
+    "excess_median_ms": -0.997
+   },
+   {
+    "case": "no-fe-t1",
+    "reference": "incumbent",
+    "status": "passed",
+    "median_ratio": 0.9437,
+    "excess_upper_ms": -1.013,
+    "excess_median_ms": -1.02
+   },
+   {
+    "case": "no-fe-t1",
+    "reference": "original",
+    "status": "passed",
+    "median_ratio": 0.9437,
+    "excess_upper_ms": -1.013,
+    "excess_median_ms": -1.02
+   },
+   {
+    "case": "no-fe-t4",
+    "reference": "hidden",
+    "status": "passed",
+    "median_ratio": 0.9777,
+    "excess_upper_ms": -0.954,
+    "excess_median_ms": -1.01
+   },
+   {
+    "case": "no-fe-t4",
+    "reference": "incumbent",
+    "status": "passed",
+    "median_ratio": 0.9656,
+    "excess_upper_ms": -1.001,
+    "excess_median_ms": -1.016
+   },
+   {
+    "case": "no-fe-t4",
+    "reference": "original",
+    "status": "passed",
+    "median_ratio": 0.9656,
+    "excess_upper_ms": -1.001,
+    "excess_median_ms": -1.016
+   },
+   {
+    "case": "one-fe-t1",
+    "reference": "hidden",
+    "status": "passed",
+    "median_ratio": 1.0106,
+    "excess_upper_ms": -0.97,
+    "excess_median_ms": -0.995
+   },
+   {
+    "case": "one-fe-t1",
+    "reference": "incumbent",
+    "status": "passed",
+    "median_ratio": 0.9504,
+    "excess_upper_ms": -0.994,
+    "excess_median_ms": -1.021
+   },
+   {
+    "case": "one-fe-t1",
+    "reference": "original",
+    "status": "passed",
+    "median_ratio": 0.9504,
+    "excess_upper_ms": -0.994,
+    "excess_median_ms": -1.021
+   },
+   {
+    "case": "one-fe-t4",
+    "reference": "hidden",
+    "status": "passed",
+    "median_ratio": 0.9897,
+    "excess_upper_ms": -0.95,
+    "excess_median_ms": -1.005
+   },
+   {
+    "case": "one-fe-t4",
+    "reference": "incumbent",
+    "status": "passed",
+    "median_ratio": 0.9354,
+    "excess_upper_ms": -0.989,
+    "excess_median_ms": -1.032
+   },
+   {
+    "case": "one-fe-t4",
+    "reference": "original",
+    "status": "passed",
+    "median_ratio": 0.9354,
+    "excess_upper_ms": -0.989,
+    "excess_median_ms": -1.032
+   },
+   {
+    "case": "repeated-cells-t1",
+    "reference": "hidden",
+    "status": "passed",
+    "median_ratio": 1.0184,
+    "excess_upper_ms": -0.553,
+    "excess_median_ms": -0.997
+   },
+   {
+    "case": "repeated-cells-t1",
+    "reference": "incumbent",
+    "status": "passed",
+    "median_ratio": 1.0153,
+    "excess_upper_ms": -0.222,
+    "excess_median_ms": -1.088
+   },
+   {
+    "case": "repeated-cells-t1",
+    "reference": "original",
+    "status": "passed",
+    "median_ratio": 1.0153,
+    "excess_upper_ms": -0.222,
+    "excess_median_ms": -1.088
+   },
+   {
+    "case": "repeated-cells-t4",
+    "reference": "hidden",
+    "status": "passed",
+    "median_ratio": 0.9894,
+    "excess_upper_ms": -0.919,
+    "excess_median_ms": -1.239
+   },
+   {
+    "case": "repeated-cells-t4",
+    "reference": "incumbent",
+    "status": "passed",
+    "median_ratio": 0.9833,
+    "excess_upper_ms": -0.941,
+    "excess_median_ms": -1.337
+   },
+   {
+    "case": "repeated-cells-t4",
+    "reference": "original",
+    "status": "passed",
+    "median_ratio": 0.9833,
+    "excess_upper_ms": -0.941,
+    "excess_median_ms": -1.337
+   },
+   {
+    "case": "sixteen-fe-t1",
+    "reference": "hidden",
+    "status": "passed",
+    "median_ratio": 1.0037,
+    "excess_upper_ms": -12.404,
+    "excess_median_ms": -18.596
+   },
+   {
+    "case": "sixteen-fe-t1",
+    "reference": "incumbent",
+    "status": "passed",
+    "median_ratio": 1.0026,
+    "excess_upper_ms": -15.93,
+    "excess_median_ms": -19.104
+   },
+   {
+    "case": "sixteen-fe-t1",
+    "reference": "original",
+    "status": "passed",
+    "median_ratio": 1.0026,
+    "excess_upper_ms": -15.93,
+    "excess_median_ms": -19.104
+   },
+   {
+    "case": "sixteen-fe-t4",
+    "reference": "hidden",
+    "status": "passed",
+    "median_ratio": 1.0094,
+    "excess_upper_ms": -4.247,
+    "excess_median_ms": -7.686
+   },
+   {
+    "case": "sixteen-fe-t4",
+    "reference": "incumbent",
+    "status": "passed",
+    "median_ratio": 1.0078,
+    "excess_upper_ms": -6.776,
+    "excess_median_ms": -8.025
+   },
+   {
+    "case": "sixteen-fe-t4",
+    "reference": "original",
+    "status": "passed",
+    "median_ratio": 1.0078,
+    "excess_upper_ms": -6.776,
+    "excess_median_ms": -8.025
+   },
+   {
+    "case": "slopes-t1",
+    "reference": "hidden",
+    "status": "inconclusive",
+    "median_ratio": 1.0377,
+    "excess_upper_ms": 0.174,
+    "excess_median_ms": -0.973
+   },
+   {
+    "case": "slopes-t1",
+    "reference": "incumbent",
+    "status": "inconclusive",
+    "median_ratio": 0.9832,
+    "excess_upper_ms": 0.089,
+    "excess_median_ms": -1.013
+   },
+   {
+    "case": "slopes-t1",
+    "reference": "original",
+    "status": "inconclusive",
+    "median_ratio": 0.9832,
+    "excess_upper_ms": 0.089,
+    "excess_median_ms": -1.013
+   },
+   {
+    "case": "slopes-t4",
+    "reference": "hidden",
+    "status": "inconclusive",
+    "median_ratio": 1.0366,
+    "excess_upper_ms": 0.236,
+    "excess_median_ms": -0.972
+   },
+   {
+    "case": "slopes-t4",
+    "reference": "incumbent",
+    "status": "inconclusive",
+    "median_ratio": 0.8838,
+    "excess_upper_ms": 0.344,
+    "excess_median_ms": -1.116
+   },
+   {
+    "case": "slopes-t4",
+    "reference": "original",
+    "status": "inconclusive",
+    "median_ratio": 0.8838,
+    "excess_upper_ms": 0.344,
+    "excess_median_ms": -1.116
+   },
+   {
+    "case": "small-retained-t1",
+    "reference": "hidden",
+    "status": "inconclusive",
+    "median_ratio": 0.9972,
+    "excess_upper_ms": 0.725,
+    "excess_median_ms": -1.339
+   },
+   {
+    "case": "small-retained-t1",
+    "reference": "incumbent",
+    "status": "passed",
+    "median_ratio": 1.0083,
+    "excess_upper_ms": -0.41,
+    "excess_median_ms": -1.044
+   },
+   {
+    "case": "small-retained-t1",
+    "reference": "original",
+    "status": "passed",
+    "median_ratio": 1.0083,
+    "excess_upper_ms": -0.41,
+    "excess_median_ms": -1.044
+   },
+   {
+    "case": "small-retained-t4",
+    "reference": "hidden",
+    "status": "passed",
+    "median_ratio": 0.9928,
+    "excess_upper_ms": -0.253,
+    "excess_median_ms": -1.111
+   },
+   {
+    "case": "small-retained-t4",
+    "reference": "incumbent",
+    "status": "passed",
+    "median_ratio": 0.9964,
+    "excess_upper_ms": -0.437,
+    "excess_median_ms": -1.055
+   },
+   {
+    "case": "small-retained-t4",
+    "reference": "original",
+    "status": "passed",
+    "median_ratio": 0.9964,
+    "excess_upper_ms": -0.437,
+    "excess_median_ms": -1.055
+   },
+   {
+    "case": "small-third-t1",
+    "reference": "hidden",
+    "status": "passed",
+    "median_ratio": 0.9938,
+    "excess_upper_ms": -3.122,
+    "excess_median_ms": -7.029
+   },
+   {
+    "case": "small-third-t1",
+    "reference": "incumbent",
+    "status": "passed",
+    "median_ratio": 0.9873,
+    "excess_upper_ms": -3.841,
+    "excess_median_ms": -7.934
+   },
+   {
+    "case": "small-third-t1",
+    "reference": "original",
+    "status": "passed",
+    "median_ratio": 0.9873,
+    "excess_upper_ms": -3.841,
+    "excess_median_ms": -7.934
+   },
+   {
+    "case": "small-third-t4",
+    "reference": "hidden",
+    "status": "passed",
+    "median_ratio": 1.0079,
+    "excess_upper_ms": -1.989,
+    "excess_median_ms": -2.431
+   },
+   {
+    "case": "small-third-t4",
+    "reference": "incumbent",
+    "status": "passed",
+    "median_ratio": 0.985,
+    "excess_upper_ms": -1.146,
+    "excess_median_ms": -3.781
+   },
+   {
+    "case": "small-third-t4",
+    "reference": "original",
+    "status": "passed",
+    "median_ratio": 0.985,
+    "excess_upper_ms": -1.146,
+    "excess_median_ms": -3.781
+   },
+   {
+    "case": "weak-t1",
+    "reference": "hidden",
+    "status": "passed",
+    "median_ratio": 0.9944,
+    "excess_upper_ms": -1.271,
+    "excess_median_ms": -2.112
+   },
+   {
+    "case": "weak-t1",
+    "reference": "incumbent",
+    "status": "passed",
+    "median_ratio": 0.9852,
+    "excess_upper_ms": -1.121,
+    "excess_median_ms": -2.501
+   },
+   {
+    "case": "weak-t1",
+    "reference": "original",
+    "status": "passed",
+    "median_ratio": 0.9852,
+    "excess_upper_ms": -1.121,
+    "excess_median_ms": -2.501
+   },
+   {
+    "case": "weak-t4",
+    "reference": "hidden",
+    "status": "inconclusive",
+    "median_ratio": 0.9955,
+    "excess_upper_ms": 0.011,
+    "excess_median_ms": -1.328
+   },
+   {
+    "case": "weak-t4",
+    "reference": "incumbent",
+    "status": "passed",
+    "median_ratio": 1.0241,
+    "excess_upper_ms": -0.069,
+    "excess_median_ms": -0.619
+   },
+   {
+    "case": "weak-t4",
+    "reference": "original",
+    "status": "passed",
+    "median_ratio": 1.0241,
+    "excess_upper_ms": -0.069,
+    "excess_median_ms": -0.619
+   },
+   {
+    "case": "weight-dynamic-t1",
+    "reference": "hidden",
+    "status": "passed",
+    "median_ratio": 1.0076,
+    "excess_upper_ms": -1.37,
+    "excess_median_ms": -2.014
+   },
+   {
+    "case": "weight-dynamic-t1",
+    "reference": "incumbent",
+    "status": "passed",
+    "median_ratio": 0.9994,
+    "excess_upper_ms": -1.347,
+    "excess_median_ms": -2.442
+   },
+   {
+    "case": "weight-dynamic-t1",
+    "reference": "original",
+    "status": "passed",
+    "median_ratio": 0.9994,
+    "excess_upper_ms": -1.347,
+    "excess_median_ms": -2.442
+   },
+   {
+    "case": "weight-dynamic-t4",
+    "reference": "hidden",
+    "status": "passed",
+    "median_ratio": 1.0271,
+    "excess_upper_ms": -0.398,
+    "excess_median_ms": -0.728
+   },
+   {
+    "case": "weight-dynamic-t4",
+    "reference": "incumbent",
+    "status": "passed",
+    "median_ratio": 1.0073,
+    "excess_upper_ms": -0.15,
+    "excess_median_ms": -1.38
+   },
+   {
+    "case": "weight-dynamic-t4",
+    "reference": "original",
+    "status": "passed",
+    "median_ratio": 1.0073,
+    "excess_upper_ms": -0.15,
+    "excess_median_ms": -1.38
+   },
+   {
+    "case": "weighted-t1",
+    "reference": "hidden",
+    "status": "inconclusive",
+    "median_ratio": 1.0073,
+    "excess_upper_ms": 1.53,
+    "excess_median_ms": -2.64
+   },
+   {
+    "case": "weighted-t1",
+    "reference": "incumbent",
+    "status": "inconclusive",
+    "median_ratio": 1.0037,
+    "excess_upper_ms": 0.464,
+    "excess_median_ms": -2.856
+   },
+   {
+    "case": "weighted-t1",
+    "reference": "original",
+    "status": "inconclusive",
+    "median_ratio": 1.0037,
+    "excess_upper_ms": 0.464,
+    "excess_median_ms": -2.856
+   },
+   {
+    "case": "weighted-t4",
+    "reference": "hidden",
+    "status": "inconclusive",
+    "median_ratio": 0.9931,
+    "excess_upper_ms": 1.846,
+    "excess_median_ms": -2.263
+   },
+   {
+    "case": "weighted-t4",
+    "reference": "incumbent",
+    "status": "inconclusive",
+    "median_ratio": 1.0062,
+    "excess_upper_ms": 1.277,
+    "excess_median_ms": -1.714
+   },
+   {
+    "case": "weighted-t4",
+    "reference": "original",
+    "status": "inconclusive",
+    "median_ratio": 1.0062,
+    "excess_upper_ms": 1.277,
+    "excess_median_ms": -1.714
+   },
+   {
+    "case": "wide-rhs-t1",
+    "reference": "hidden",
+    "status": "passed",
+    "median_ratio": 0.9928,
+    "excess_upper_ms": -0.886,
+    "excess_median_ms": -4.836
+   },
+   {
+    "case": "wide-rhs-t1",
+    "reference": "incumbent",
+    "status": "passed",
+    "median_ratio": 0.9788,
+    "excess_upper_ms": -2.927,
+    "excess_median_ms": -6.048
+   },
+   {
+    "case": "wide-rhs-t1",
+    "reference": "original",
+    "status": "passed",
+    "median_ratio": 0.9788,
+    "excess_upper_ms": -2.927,
+    "excess_median_ms": -6.048
+   },
+   {
+    "case": "wide-rhs-t4",
+    "reference": "hidden",
+    "status": "inconclusive",
+    "median_ratio": 0.9942,
+    "excess_upper_ms": 0.745,
+    "excess_median_ms": -2.815
+   },
+   {
+    "case": "wide-rhs-t4",
+    "reference": "incumbent",
+    "status": "inconclusive",
+    "median_ratio": 1.008,
+    "excess_upper_ms": 0.581,
+    "excess_median_ms": -2.059
+   },
+   {
+    "case": "wide-rhs-t4",
+    "reference": "original",
+    "status": "inconclusive",
+    "median_ratio": 1.008,
+    "excess_upper_ms": 0.581,
+    "excess_median_ms": -2.059
+   }
+  ]
+ }
+}
