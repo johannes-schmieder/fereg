@@ -29,10 +29,9 @@ fn detect_prepared_ppml_separation(
     let mut interrupt = |_| Ok(());
     let (outcome, ()) = coordinate_prepared_ppml_separation(
         coordinator,
-        ppml,
+        &retry::DetectorPolicy::new(ppml, linear, None),
         config,
         phase_allocation_probe,
-        linear,
         ppml.absorb.solver_memory_budget.is_some(),
         &mut interrupt,
         |generation, _| {
@@ -367,7 +366,7 @@ fn mu_phase_and_report_charge_the_fitted_start_solve() {
     let mut interrupt = |_| Ok(());
     let (result, artifact) = coordinate_prepared_ppml_separation(
         coordinator,
-        ppml,
+        &retry::DetectorPolicy::new(ppml, linear, None),
         SeparationConfig {
             methods: SeparationMethods {
                 fixed_effects: false,
@@ -379,7 +378,6 @@ fn mu_phase_and_report_charge_the_fitted_start_solve() {
             ..SeparationConfig::default()
         },
         Some(mu_scope_probe),
-        linear,
         false,
         &mut interrupt,
         |generation, _| {
@@ -2428,10 +2426,9 @@ fn break_inside_an_auto_rectifier_projection_is_interrupted() {
             };
             let result = coordinate_prepared_ppml_separation(
                 coordinator,
-                ppml,
+                &retry::DetectorPolicy::new(ppml, linear, None),
                 config,
                 None,
-                linear,
                 // Without the graph shortcut every rectifier mark is an
                 // iteration start or the fixed-point check.
                 false,

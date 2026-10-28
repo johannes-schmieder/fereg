@@ -1055,6 +1055,27 @@ Requested/default IR nonconvergence or uncertified output is fatal. Mu needs
 a fitted start and the same independent cone certificate; accepted Mu drops
 discard that entire fitted session.
 
+An admitted detector projection is solved with retained-product CG on the
+weighted normal equations. When a detector step that used it fails a
+numerical certificate (NonConvergence or InvalidData: a simplex deletion's
+certification, the rectifier's detection and deletion certification, or the
+Mu candidate and its certification), the step runs once more with LSMR, the
+public `lsmr` solver family and preconditioner policy, under the same
+weights, tolerances, iteration limit, decision rules and certificates
+(Johannes, 2026-10-27: fix the public detector failures). CG squares the
+rectifier's zero-row weight ratio (`tolerance^2 / zeros`), so on weakly
+connected or heavily zero designs its zero-row fitted values can leave the
+model span; LSMR works on the weighted operator itself. Its workspace is
+bounded on generation zero and charged to the memory plan only when the step
+is re-executed; a step that certifies on its first attempt is never
+re-executed. If the LSMR workspace does not fit the plan or the re-execution
+also fails a numerical certificate, the first error is reported; Break,
+allocation and internal errors of the re-execution propagate. A terminal
+no-drop result is replayed with the solver that produced it. Numerical scope:
+only fits that previously failed with r(430) or r(459) in such a step can
+change, from failure to a certified result; every fit that completed before
+is bit-identical.
+
 A terminal no-drop result is checked before it is reported. For an IR
 fixed point (Johannes, 2026-10-09) the check uses the stored recurrence and
 projection residual: both are finite; the recurrence is nonnegative, zero
@@ -1079,7 +1100,8 @@ trace digest independently of timing. Bound public diagnostic tables; no
 observation-sized trace crosses the result wire. Separation proves a sample
 decision, not estimator convergence.
 
-Tests: `src/ppml/prepared_separation.rs`, `fereg-oracle/tests/ppml_separation_primers.rs`,
+Tests: `src/ppml/prepared_separation.rs` (re-execution: `prepared_separation/retry`),
+`fereg-oracle/tests/ppml_separation_primers.rs`, `fereg-oracle/tests/ppml_separation_routing.rs`,
 `tests/python/test_ppml_recession_cone_primers.py`,
 `tests/python/ppml_recession_cone_oracle.py`,
 `parity_ppmlhdfe/feppml_separation_methods.do`,

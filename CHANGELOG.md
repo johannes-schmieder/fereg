@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- PPML separation: a detector step whose retained-CG projection fails a
+  numerical certificate (simplex deletion certification, the iterated
+  rectifier, or Mu) is executed once more with LSMR under the same weights,
+  tolerances and rules. Small weakly connected or zero-heavy designs that
+  failed with r(430) or r(459) at the default `septolerance(1e-8)` now
+  complete with certified separation (9 of 11 failing cells of the seeded
+  census); fits that completed before are bit-identical.
 - Developer phase timing reports the PPML separation rectifier (phase,
   iteration and projection laps). A hidden `inject=ppml_separation_auto`
   qualification arm solves two-intercept separation-detector projections with

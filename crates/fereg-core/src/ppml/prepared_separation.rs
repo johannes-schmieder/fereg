@@ -372,31 +372,28 @@ where
     validate_config(config)?;
     let (coordinator, initial_preparation_elapsed, initial_preparation_peak) =
         prepare_initial_generation(owner, phase_allocation_probe)?;
-    let (projection_ppml, projection_linear) =
+    let (projection_ppml, projection_linear, lsmr) =
         admit_detector_projection(coordinator.view().prepared, ppml, config, &mut execution)?;
+    // A detector re-execution may charge its LSMR workspace mid-chain; the
+    // later exploration and publication fits read the charged plan.
+    let plan = std::cell::Cell::new(execution.preliminary_plan);
+    let policy = retry::DetectorPolicy::new(
+        projection_ppml,
+        projection_linear,
+        lsmr.map(|admission| (admission, &plan)),
+    );
     let (mut outcome, fit) = coordinate_prepared_ppml_separation(
         coordinator,
-        projection_ppml,
+        &policy,
         config,
         phase_allocation_probe,
-        projection_linear,
         execution.preliminary_plan.separation_projection_bytes > 0,
         interrupt,
         |generation, interrupt| {
-            explore_generation(
-                generation,
-                &execution.preliminary_plan,
-                execution.linear,
-                interrupt,
-            )
+            explore_generation(generation, &plan.get(), execution.linear, interrupt)
         },
         |generation, interrupt| {
-            fit_generation(
-                generation,
-                &execution.preliminary_plan,
-                execution.linear,
-                interrupt,
-            )
+            fit_generation(generation, &plan.get(), execution.linear, interrupt)
         },
     )?;
     outcome.initial_preparation_elapsed = initial_preparation_elapsed;
@@ -411,19 +408,23 @@ fn admit_detector_projection(
     mut ppml: PpmlConfig,
     config: SeparationConfig,
     execution: &mut PreparedPpmlSeparationExecution,
-) -> Result<(PpmlConfig, PreparedOlsFitConfig)> {
+) -> Result<(
+    PpmlConfig,
+    PreparedOlsFitConfig,
+    Option<retry::LsmrAdmission>,
+)> {
     let mut linear = execution.linear;
     if ppml.absorb.solver != FeSolverKind::Map
         || !config.methods.iterated_rectifier
         || !generation.outcome().contains(&0.0)
     {
-        return Ok((ppml, linear));
+        return Ok((ppml, linear, None));
     }
     let Some(design) = generation.fit_view().fit_borrowed_intercept_map_design()? else {
-        return Ok((ppml, linear));
+        return Ok((ppml, linear, None));
     };
     let Some(graph_bytes) = graph::workspace_bytes(&design)? else {
-        return Ok((ppml, linear));
+        return Ok((ppml, linear, None));
     };
     let levels = fallible_collect(
         design.effects().iter().map(|e| e.n_levels()),
@@ -468,9 +469,17 @@ fn admit_detector_projection(
         .preliminary_plan
         .admit_separation_projection(bytes)
     {
-        return Ok((ppml, linear));
+        return Ok((ppml, linear, None));
     }
     linear.absorb.solver = routing::projection_solver(execution.auto_projection, &design);
+    let lsmr = retry::lsmr_admission(
+        linear.absorb.solver,
+        &estimate,
+        linear.absorb.lsmr.preconditioner,
+        generation.original_rows().len(),
+        graph_bytes,
+        base,
+    )?;
     linear.absorb.retain_coefficients = true;
     linear.absorb.solver_memory_budget = Some(crate::memory::FeSolverMemoryBudget {
         execution_bytes: base,
@@ -479,11 +488,12 @@ fn admit_detector_projection(
             .ok_or_else(|| allocation("separation projection budget overflows"))?,
     });
     ppml.absorb = linear.absorb;
-    Ok((ppml, linear))
+    Ok((ppml, linear, lsmr))
 }
 
 #[path = "prepared_separation_graph.rs"]
 mod graph;
+mod retry;
 mod routing;
 mod trace;
 
@@ -527,10 +537,9 @@ fn prepare_initial_generation(
 #[allow(clippy::too_many_arguments)]
 fn coordinate_prepared_ppml_separation<T, E, F>(
     mut coordinator: PreparedSeparationCoordinator<PreparedPpmlModelOwner>,
-    ppml: PpmlConfig,
+    policy: &retry::DetectorPolicy<'_>,
     config: SeparationConfig,
     phase_allocation_probe: Option<PpmlPhaseAllocatorProbe>,
-    linear: PreparedOlsFitConfig,
     graph_admitted: bool,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
     mut explore_generation: E,
@@ -546,6 +555,7 @@ where
         &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
     ) -> Result<T>,
 {
+    let (ppml, linear) = policy.admitted();
     let candidate_original_rows = coordinator.candidate_original_rows();
     let candidate_observations = candidate_original_rows.len();
     let generation_capacity = separation_generation_capacity(
@@ -854,10 +864,8 @@ where
                 )
                 .then_some(proposal.status);
                 if !proposal.dropped_original_rows.is_empty() {
-                    let certified = {
-                        let view = coordinator.view();
-                        validate_numerical_proposal(view.prepared, proposal, ppml, config, linear)?
-                    };
+                    let certified =
+                        policy.validate(coordinator.view().prepared, proposal, config)?;
                     commit_numerical(
                         &mut coordinator,
                         &mut reports,
@@ -906,39 +914,38 @@ where
                 }
                 let started = Instant::now();
                 let mut lap = trace::IrPhase::new(coordinator.view().generation);
-                let proposal = {
+                let (detected, ppml, linear) = {
                     let view = coordinator.view();
-                    prepared_bound_iterated_rectifier(
-                        view.prepared,
-                        ppml,
-                        config,
-                        linear,
-                        graph_admitted,
-                        interrupt,
-                    )?
+                    policy.run(view.generation, |ppml, linear| {
+                        retry::ir_step(
+                            view.prepared,
+                            ppml,
+                            config,
+                            linear,
+                            graph_admitted,
+                            interrupt,
+                            &mut lap,
+                        )
+                    })?
                 };
-                lap.detected(&proposal);
-                fail_closed_comprehensive(&proposal)?;
-                if !proposal.dropped_original_rows.is_empty() {
-                    let certified = {
-                        let view = coordinator.view();
-                        validate_numerical_proposal(view.prepared, proposal, ppml, config, linear)?
-                    };
-                    lap.validated();
-                    commit_numerical(
-                        &mut coordinator,
-                        &mut reports,
-                        &mut generation_hashes,
-                        method_report_capacity,
-                        generation_capacity,
-                        &candidate_original_rows,
-                        certified,
-                        started,
-                        config,
-                    )?;
-                    lap.committed();
-                    return Ok((false, true));
-                }
+                let proposal = match detected {
+                    retry::Detected::Deletion(certified) => {
+                        commit_numerical(
+                            &mut coordinator,
+                            &mut reports,
+                            &mut generation_hashes,
+                            method_report_capacity,
+                            generation_capacity,
+                            &candidate_original_rows,
+                            certified,
+                            started,
+                            config,
+                        )?;
+                        lap.committed();
+                        return Ok((false, true));
+                    }
+                    retry::Detected::Terminal(proposal) => proposal,
+                };
                 let replayed_certificate = replay_numerical_no_drop(
                     coordinator.view().prepared,
                     &proposal,
@@ -1001,47 +1008,29 @@ where
                         "prepared Mu exploratory trajectory did not certify",
                     ));
                 }
-                let proposal = {
+                let (detected, ppml, linear) = {
                     let view = coordinator.view();
-                    bind_numerical_proposal(
-                        view.prepared,
-                        prepared_mu_from_mean(
-                            view.prepared,
-                            ppml,
-                            config,
-                            linear,
-                            exploration.mean(),
-                            exploration.certificate().accepted_iterations,
-                        )?,
-                    )?
+                    policy.run(view.generation, |ppml, linear| {
+                        retry::mu_step(view.prepared, ppml, config, linear, &exploration)
+                    })?
                 };
-                if matches!(
-                    proposal.status,
-                    MethodStatus::MaximumIterations | MethodStatus::Uncertified
-                ) {
-                    return Err(FeregError::new(
-                        ErrorCode::NonConvergence,
-                        "prepared mu separation did not produce a certified result",
-                    ));
-                }
-                if !proposal.dropped_original_rows.is_empty() {
-                    let certified = {
-                        let view = coordinator.view();
-                        validate_numerical_proposal(view.prepared, proposal, ppml, config, linear)?
-                    };
-                    commit_numerical(
-                        &mut coordinator,
-                        &mut reports,
-                        &mut generation_hashes,
-                        method_report_capacity,
-                        generation_capacity,
-                        &candidate_original_rows,
-                        certified,
-                        started,
-                        config,
-                    )?;
-                    return Ok(true);
-                }
+                let proposal = match detected {
+                    retry::Detected::Deletion(certified) => {
+                        commit_numerical(
+                            &mut coordinator,
+                            &mut reports,
+                            &mut generation_hashes,
+                            method_report_capacity,
+                            generation_capacity,
+                            &candidate_original_rows,
+                            certified,
+                            started,
+                            config,
+                        )?;
+                        return Ok(true);
+                    }
+                    retry::Detected::Terminal(proposal) => proposal,
+                };
                 let replayed_certificate = replay_numerical_no_drop(
                     coordinator.view().prepared,
                     &proposal,
@@ -3032,7 +3021,24 @@ fn validate_numerical_proposal(
     config: SeparationConfig,
     linear: PreparedOlsFitConfig,
 ) -> Result<ValidatedNumericalProposal> {
-    validate_prepared_numerical_metadata(generation, &proposal, config)?;
+    let certificate = certify_numerical_proposal(generation, &proposal, ppml, config, linear)?;
+    Ok(ValidatedNumericalProposal {
+        reason: numerical_drop_reason(proposal.method)?,
+        proposal,
+        certificate,
+    })
+}
+
+/// Deletion certificate of a numerical proposal; the proposal is borrowed so
+/// a failed certification can be re-run without copying its direction.
+fn certify_numerical_proposal(
+    generation: &PreparedPpmlModelGeneration,
+    proposal: &PreparedNumericalProposal,
+    ppml: PpmlConfig,
+    config: SeparationConfig,
+    linear: PreparedOlsFitConfig,
+) -> Result<SeparationCertificate> {
+    validate_prepared_numerical_metadata(generation, proposal, config)?;
     if proposal.dropped_original_rows.is_empty() {
         return Err(FeregError::new(
             ErrorCode::Internal,
@@ -3167,11 +3173,7 @@ fn validate_numerical_proposal(
             ),
         ));
     }
-    Ok(ValidatedNumericalProposal {
-        reason: numerical_drop_reason(proposal.method)?,
-        proposal,
-        certificate,
-    })
+    Ok(certificate)
 }
 
 fn proposal_report(
