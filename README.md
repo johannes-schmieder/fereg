@@ -1,4 +1,4 @@
-# fereg
+# fereg: Fast High Dimensional Fixed Effects Regressions in Stata
 
 `fereg` is a Rust-backed Stata estimator for linear models with many fixed
 effects. It supports OLS and weighted least squares, multiple absorbed effects,
