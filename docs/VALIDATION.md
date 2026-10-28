@@ -318,6 +318,93 @@ with the unbudgeted fit's bits; with the refinement disabled it stayed in the
 MAP fallback past 600 seconds. Record:
 [three-fe-scale-2026-10-28](../bench/results/three-fe-scale-2026-10-28.json).
 
+## Many-FE memory, shared trial design and candidate session windows
+
+Branch `codex/many-fe-windows` (from the sparse three-FE scale fix) adds four
+changes for beta.10; the record is
+[many-fe-windows-2026-10-28](../bench/results/many-fe-windows-2026-10-28.json).
+
+1. The exact yielding-component admission now also covers explicit
+   `solver(lsmr)` (borrowed and owned designs), the automatic owned-design
+   LSMR attempt and the explicit PPML LSMR preflight, only after the
+   level-count bound refused ([SPEC](SPEC.md#qualified-auto-routing-and-developer-comparisons)).
+   Witnesses run each route on the sparse three-FE topology under a budget one
+   byte below the level bound: the fits are admitted with the unbudgeted
+   fit's bits (PPML: agreement within 2e-9 and exact repeats), at one and four
+   workers, while a budget below the exact bound and a sloped design are still
+   refused.
+2. The Jacobi trial and its additive escalation share one prepared pinned
+   design (bit-identical; a digest of escalating fits matches the parent
+   revision). With the pinned `within` only the design is shareable: it costs
+   0.1-0.3 ms on sorted designs and 5-7 ms at one million locality-sorted
+   rows, against 45-56 ms for the additive build; the larger saving this
+   section's predecessor anticipated needs a `within` change (shared square
+   root weights, stable adjoint and solver frame).
+3. The many-FE windows transport and release their own RHS columns, and OLS
+   Fast releases its projected matrix after the finite solve. Admission
+   totals are unchanged, so `memory(auto)` chooses as before. Campaign data,
+   one million rows, 16 controls, four workers, Mac process peak (including
+   Stata and 0.21 GB of data): three-sparse 1.876 to 1.778 GB, three-dense
+   0.726 to 0.724 GB; bits unchanged. The implicit identity `LevelIndex` and
+   u32 observation indexes were not made: `members()` returns `&[usize]` to
+   about 200 call sites across MAP, OLS, PPML and slope code.
+4. Hidden `routing_many_windows_v1` is a candidate policy, not a public
+   default: at most one live LSMR session per worker, with the Jacobi
+   escalation barrier at each window's end. Without an escalation it is
+   bit-identical to public Auto; after one, later windows start on the
+   additive solver. Dense explicit-dummy QR witnesses pass at 1, 2, 4 and 8
+   workers with exact fixed-worker repeats. Of the routing families,
+   small-third, four-, eight- and sixteen-FE are bit-identical to public at
+   one and four workers; near-confounded-third is identical at four and at
+   one worker takes 18 instead of 19 projection iterations (coefficients
+   within 2.7e-14, covariance within 2.2e-11).
+
+Mac timing (M2 Ultra, arm64 profiling build of `acdfb097`, Stata 19 MP batch,
+fresh process per fit, three alternating repetitions, native seconds median,
+peak RSS GB). Rule frozen before collection: wait until no other Stata,
+cargo, rustc or Python process runs; a fit during which one appears is
+discarded and repeated once (one public fit was repeated).
+
+| Design | Workers | Public s | Hidden s | Public GB | Hidden GB |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| three-sparse | 1 | 6.64 | 5.81 | 1.77 | 1.05 |
+| three-sparse | 4 | 1.94 | 1.79 | 1.79 | 1.37 |
+| three-sparse | 8 | 1.36 | 1.17 | 2.00 | 1.79 |
+| three-dense | 1 | 1.17 | 1.21 | 0.72 | 0.72 |
+| three-dense | 4 | 0.45 | 0.45 | 0.73 | 0.73 |
+| three-dense | 8 | 0.30 | 0.30 | 0.73 | 0.73 |
+
+The sparse design's outcome RHS escalates; with windows the later RHSs start
+on the additive solver (19 instead of 22 iterations), and results agree with
+public within 2.3e-14 of the coefficient scale. The dense design certifies in
+the MAP pilot, so both arms run identical code and results; its differences
+are noise.
+
+SCC confirmation at ten million rows (campaign three-sparse input, threads(4),
+one whole E5-2680 v4 node, two repetitions per arm in a fixed alternating
+order, every fit reported): base is the branch parent `cf5ddfc0`, candidate
+`acdfb097` uninjected, hidden `acdfb097` with the windows token.
+
+| Arm | Native s (rep 1, 2) | Peak RSS GiB (rep 1, 2) |
+| --- | --- | --- |
+| Base public | 73.6, 72.4 | 16.89, 17.03 |
+| Candidate public | 75.0, 74.3 | 15.63, 15.48 |
+| Candidate hidden | 68.8, 69.1 | 9.65, 9.64 |
+
+Public coefficients agree with the base to 1e-17 of their scale (default mode
+repeats differ in the last bits, as in the scale record); the hidden arm
+agrees with public within 1.1e-14 (coefficients) and 1.1e-13 (variance, RSS).
+Its later windows finish in 19-20 instead of 22-23 iterations. The public
+candidate's 2% longer native time over two repetitions is not resolved by
+this confirmation; its peak is 1.3 GiB lower.
+
+Local checks: `./scripts/run_tests.sh --source-only` passed (319 Python
+tests, 1500 core library tests, plugin and oracle tests, Clippy, allocator
+audits, portable checks, complexity ratchet). The candidate arm64 plugin's
+replay against the published beta.9 macOS plugin was exact for 73 of 73 cases.
+Public activation of the windows policy needs the bounded qualification and
+Johannes's decision.
+
 ## PPML two-FE CMG reuse and lean protocol
 
 PPML Auto with exactly two intercept FEs reuses one CMG hierarchy across IRLS

@@ -20,9 +20,9 @@
   additive Schwarz. Results are bit-identical.
 - Many-FE OLS Auto releases its column-major RHS transport once its LSMR
   sessions hold their own copies, and OLS Fast releases the projected matrix
-  after the finite solve. The campaign sparse three-FE design
-  (1M rows, 16 controls, four workers) peaks about 100 MB lower on the Mac;
-  results, routes and memory admission are unchanged.
+  after the finite solve. The campaign sparse three-FE design peaks about
+  100 MB lower at one million rows on the Mac and 1.3 GiB lower at ten million
+  on Linux; results, routes and memory admission are unchanged.
 - Developer: hidden `inject=routing_many_windows_v1` (replay wire and the
   hidden Stata adapter) qualifies bounded many-FE LSMR session windows, at
   most one live session per worker with the Jacobi escalation barrier at each
