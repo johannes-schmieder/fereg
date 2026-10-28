@@ -359,6 +359,32 @@ without it, short of the 5% acceptance margin; it was not retained.
 
 ## Package checks
 
+### Beta.9 two-FE Auto round-two packaging
+
+Beta.9 ships the round-two changes described above. The qualified Linux binary
+is the `d6975ec2` SCC build (job 8305425), Windows was built at `8b2f38a4`
+(run `win-20261027T235540Z-45d74d45`), and universal macOS was built offline
+from the corresponding-source archive at `8b2f38a4`. Runtime production inputs
+are unchanged across these revisions (`scripts/check_complexity.py
+--compare-production`). The [package metadata](../dist/fereg-native.json)
+records each actual build commit, binary checksum, runtime identity and
+corresponding-source hash.
+
+| Platform | Beta.9 checks |
+| --- | --- |
+| macOS | Rust 1.85.1 universal build from the vendored source archive with an empty Cargo home and offline mode; binary privacy/export audit and actual ABI/load/panic checks passed. All 67 fixtures of the full Stata 19/MP profile, the 73-case replay against the beta.8 plugin under the eager-cells scope, public OLS/PPML Break/rollback and eleven staged-package fixtures passed (the five remaining installation fixtures need the intentionally excluded development adapters or a Windows host). |
+| Windows x86-64 | Run `win-20261027T235540Z-45d74d45` at `8b2f38a4` passed the Rust 1.85.1/MSVC static-CRT build, exact-FMA and fused-kernel tests, C numeric guards, PE audit, native loader checks, checksum, Stata smoke and single-runtime stages; the controller stopped the machine, deleted transient objects and released its lock. The collected plugin's SHA-256 matches the receipt. |
+| Linux x86-64 | The qualified binary from build job 8305425 retains its SHA-256. Job 8308581 passed the ELF audit (glibc 2.28 maximum), actual ABI/load/panic checks and all 67 fixtures of the full Stata 19/MP profile; job 8308667 passed the same eleven staged-package fixtures from the exact binary archive. |
+
+The dependency audit found no advisories. The strict default
+`./scripts/run_tests.sh` passed with the refreshed package. The source archive
+SHA-256 is `7f1ab939328f94c338ceb126cb404185439f0b1bbe0857a508963c9e7547decd`;
+the binary archive SHA-256 is `ae409717f30440191e1ce633695d14079714f8e74f02e6d834f2dc2de5ae7fac`. Native Intel-host Stata testing
+remains outstanding; both macOS slices are supplied. Two tooling mistakes
+preceded the accepted runs and changed no artifact: the first source-archive
+attempt used an exported snapshot without Git metadata and the first staging
+attempt lacked the plugin checksum files.
+
 ### Beta.8 two-FE Auto packaging
 
 Beta.8 ships the two-FE Auto changes described above. The qualified Linux

@@ -41,11 +41,11 @@ fereg price mpg, absorb(rep78) vce(robust)
 feppml price mpg, absorb(rep78) vce(robust)
 ```
 
-To install beta.8 independently of later changes to `main`, use a fresh Stata
+To install beta.9 independently of later changes to `main`, use a fresh Stata
 session:
 
 ```stata
-net install fereg, from("https://github.com/johannes-schmieder/fereg/releases/download/v0.5.0-beta.8/") replace
+net install fereg, from("https://github.com/johannes-schmieder/fereg/releases/download/v0.5.0-beta.9/") replace
 fereg, selftest
 ```
 

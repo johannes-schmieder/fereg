@@ -1,26 +1,26 @@
 {
   "schema": 1,
   "version": "0.5.0",
-  "source_sha": "6b97e504106564e9874642a1a603c38f038d61ee",
-  "runtime_sha256": "1513ab39126cd65cdc2dacc5683d72dd55ef2a198533ea7ac729f6dc7752ad6d",
+  "source_sha": "8b2f38a478976ea7bc33d261a38981bccdf40553",
+  "runtime_sha256": "2edac11218fece3f8d5069cc585f1c62b23491b2298336b7833e3c1ea7187fae",
   "plugins": [
     {
       "path": "fereg_linux.plugin",
-      "source_sha": "18b47675802e896b0de92d77e220872edbf3ae12",
-      "sha256": "3f888ffe29ea3f4eba567c5d47ffc382d0508c8137103981b3e8ff1767a2d84c",
-      "bytes": 16213000
+      "source_sha": "d6975ec2c3a17c70608ff96d3b0f7a159421034f",
+      "sha256": "8d1608c174166de13e9604378825bad0bf28dc21ad72d188851f85fdb718c331",
+      "bytes": 16383200
     },
     {
       "path": "fereg_windows.plugin",
-      "source_sha": "37f1ab8937ac190df669eaa7161619014906eb11",
-      "sha256": "fb4d6a1d5b6f9f79b935e7a09e0ade5529f38649e31784665537dc7497131b79",
-      "bytes": 11213312
+      "source_sha": "8b2f38a478976ea7bc33d261a38981bccdf40553",
+      "sha256": "aee7c85bda35bdcda0d7eabcb56f342ad8960e2eb854c5050931c50031c4fa26",
+      "bytes": 11414016
     },
     {
       "path": "fereg_macos.plugin",
-      "source_sha": "6b97e504106564e9874642a1a603c38f038d61ee",
-      "sha256": "08ac71ff09920ecdd8157e892719dd15b0fdb28a009fb9d052bff1a66e8a5404",
-      "bytes": 19915184
+      "source_sha": "8b2f38a478976ea7bc33d261a38981bccdf40553",
+      "sha256": "a7b251761aecbc6f4509a24ba1d190c64452fe4012eab2bfde6f9dfc5cec690b",
+      "bytes": 20199200
     }
   ],
   "included_platforms": [
@@ -33,6 +33,6 @@
     "The Linux binary requires glibc 2.28 or newer.",
     "Native Intel-host Stata testing is outstanding; the macOS plugin contains both processor slices."
   ],
-  "corresponding_source_sha256": "8e89db60ba8b9111b000c68ea81d71e0bea48b5f6421f421a00e205592546c62",
-  "corresponding_source_commit": "6b97e504106564e9874642a1a603c38f038d61ee"
+  "corresponding_source_sha256": "7f1ab939328f94c338ceb126cb404185439f0b1bbe0857a508963c9e7547decd",
+  "corresponding_source_commit": "8b2f38a478976ea7bc33d261a38981bccdf40553"
 }
