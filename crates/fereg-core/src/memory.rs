@@ -160,6 +160,20 @@ pub fn estimate_phase2_memory(
                 "wide finite solve bytes",
             )?,
             checked_mul(k, 128, "wide finite solve metadata bytes")?,
+            // Private Gram moments: one Gram, one RHS and at most one row per
+            // partition, with at most one partition per Gram row.
+            checked_mul(
+                checked_sum(&[
+                    checked_mul(
+                        checked_mul(k, k, "wide private Gram")?,
+                        2,
+                        "wide private Gram rows",
+                    )?,
+                    k,
+                ])?,
+                8,
+                "wide private Gram bytes",
+            )?,
         ])?
     } else {
         0
@@ -1027,7 +1041,10 @@ mod tests {
         for k in [65_usize, 128, 1024] {
             let estimate = estimate_phase2_memory(100, 0, k, 0, 0, 8).expect("wide estimate");
             let legacy_fast = 100 * 40 + 16 * 100 * k as u128 + 8 * (k * k) as u128;
-            let incremental = 32 * (k * k) as u128 + 128 * k as u128 + 16 * k as u128;
+            let incremental = 32 * (k * k) as u128
+                + 128 * k as u128
+                + 16 * k as u128
+                + 8 * (2 * k * k + k) as u128;
             assert_eq!(estimate.fast_bytes, legacy_fast + incremental);
             assert_eq!(
                 estimate.low_bytes,
