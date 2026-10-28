@@ -55,9 +55,17 @@ fn dense_raw<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
 ) -> Result<DenseRaw> {
     let weights = frame.weights();
     let generated_columns = prepared.fit_model().columns.len();
+    // Trace-only laps (FEREG_PHASE_TIMING): no arithmetic or decision effect.
+    let mut trace = crate::diagnostics::phase_ledger::PhaseLedger::new(
+        "dense_raw",
+        ["rhs", "moments", "norms"],
+    );
     let (rows, pending_moments) =
         loaded_rows.map_or((None, None), |loaded| (Some(loaded.rows), loaded.moments));
+    trace.fact("loaded_rows", u64::from(rows.is_some()));
     let (raw, reused_rows) = prepared.fit_build_rhs_with_loaded_rows(frame.response(), rows)?;
+    trace.fact("reused_rows", u64::from(reused_rows));
+    trace.lap(0);
     let pending_moments = if reused_rows && weights.values.is_none() {
         pending_moments
     } else {
@@ -104,6 +112,7 @@ fn dense_raw<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     } else {
         None
     };
+    trace.lap(1);
     let threads = rayon::current_num_threads();
     let blocked_raw = threads == 1 || generated_columns.div_ceil(8) >= threads;
     if raw_moments.is_none() && blocked_raw {
@@ -138,6 +147,7 @@ fn dense_raw<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
             },
         )?;
     }
+    trace.lap(2);
     let strided_score_means = if use_strided_fast_score_cache {
         let cache = raw_moments
             .as_ref()
@@ -177,6 +187,11 @@ fn project_dense<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     remaining: Option<ObserverRef<'_>>,
 ) -> Result<OneShotInputs> {
     let weights = frame.weights();
+    // Trace-only laps (FEREG_PHASE_TIMING): no arithmetic or decision effect.
+    let trace = crate::diagnostics::phase_ledger::PhaseLedger::new(
+        "project_dense",
+        ["dense_raw", "absorb"],
+    );
     let mut raw = dense_raw(
         prepared,
         frame,
@@ -185,6 +200,7 @@ fn project_dense<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         max_fast_score_cache_bytes,
         loaded_rows,
     )?;
+    trace.lap(0);
     let mut absorbed = cmg.project_initial_ols(
         weights.borrowed(),
         std::mem::replace(
@@ -202,6 +218,7 @@ fn project_dense<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
             )
         }),
     )?;
+    trace.lap(1);
     if !absorbed.report().certified() {
         return Err(invalid_data(
             "prepared OLS initial absorption returned an uncertified result",

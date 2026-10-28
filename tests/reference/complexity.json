@@ -2,28 +2,10 @@
   "definition": "docs/development_workflow.md#complexity-inventory",
   "growth": [
     {
-      "after": 111287,
-      "before": 111241,
+      "after": 111302,
+      "before": 111287,
       "metric": "fereg-core/production_lines",
-      "reason": "Beta.10 step-0 measurement: trace-only phase laps (FEREG_PHASE_TIMING) for the borrowed MAP wrapper (map_wrapper_trace.rs: scan, norms, initial certificate, sweep, certify), the OLS finalize score certificate, the PPML one-FE profile/direction/line-search trial and the numeric input pipeline producer/consumer (numeric_pipeline/trace.rs). Disabled, no clock is read; no arithmetic or decision change."
-    },
-    {
-      "after": 15514,
-      "before": 15458,
-      "metric": "fereg-plugin/production_lines",
-      "reason": "Beta.10 step-0 measurement: trace-only phase laps (FEREG_PHASE_TIMING) for the borrowed MAP wrapper (map_wrapper_trace.rs: scan, norms, initial certificate, sweep, certify), the OLS finalize score certificate, the PPML one-FE profile/direction/line-search trial and the numeric input pipeline producer/consumer (numeric_pipeline/trace.rs). Disabled, no clock is read; no arithmetic or decision change."
-    },
-    {
-      "after": 8704,
-      "before": 8697,
-      "metric": "file/crates/fereg-core/src/fe/borrowed_map.rs",
-      "reason": "Beta.10 step-0 measurement: trace-only phase laps (FEREG_PHASE_TIMING) for the borrowed MAP wrapper (map_wrapper_trace.rs: scan, norms, initial certificate, sweep, certify), the OLS finalize score certificate, the PPML one-FE profile/direction/line-search trial and the numeric input pipeline producer/consumer (numeric_pipeline/trace.rs). Disabled, no clock is read; no arithmetic or decision change."
-    },
-    {
-      "after": 3348,
-      "before": 3342,
-      "metric": "file/crates/fereg-core/src/ppml/memory.rs",
-      "reason": "Beta.10 step-0 measurement: trace-only phase laps (FEREG_PHASE_TIMING) for the borrowed MAP wrapper (map_wrapper_trace.rs: scan, norms, initial certificate, sweep, certify), the OLS finalize score certificate, the PPML one-FE profile/direction/line-search trial and the numeric input pipeline producer/consumer (numeric_pipeline/trace.rs). Disabled, no clock is read; no arithmetic or decision change."
+      "reason": "Beta.10 step-0 measurement: trace-only phase laps (FEREG_PHASE_TIMING) splitting the dense OLS projection into RHS construction, raw moments and norms (dense_raw) and the initial absorption (project_dense). Disabled, no clock is read; no arithmetic or decision change."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -13723,136 +13705,136 @@
         "dispatch_candidates": [
           {
             "condition": "reused_rows && weights . values . is_none ( )",
-            "line": 61
+            "line": 69
           },
           {
             "condition": "retain_fast_score_cache",
-            "line": 74
+            "line": 82
           },
           {
             "condition": "( prepared . fit_has_absorbed_intercept ( ) && ! retain_fast_score_cache ) || use_strided_fast_score_cache",
-            "line": 90
+            "line": 98
           },
           {
             "condition": "retain_fast_score_cache",
-            "line": 113
+            "line": 122
           },
           {
             "condition": "retain_fast_score_cache && raw_moments . is_none ( )",
-            "line": 116
+            "line": 125
           },
           {
             "condition": "use_strided_fast_score_cache",
-            "line": 141
+            "line": 151
           },
           {
             "condition": "retain_fast_score_cache && ! owned_scores",
-            "line": 278
+            "line": 295
           },
           {
             "condition": "rayon :: current_num_threads ( ) == 1",
-            "line": 305
+            "line": 322
           },
           {
             "condition": "within . ncols ( ) . div_ceil ( 8 ) >= rayon :: current_num_threads ( )",
-            "line": 307
+            "line": 324
           },
           {
             "condition": "prepared . fit_report_intercept ( ) && ! prepared . fit_has_absorbed_intercept ( ) && matches ! ( prepared . fit_model ( ) . columns [ generated ] . kind , PreparedOlsColumnKind :: Intercept )",
-            "line": 505
+            "line": 522
           },
           {
             "condition": "retain_fast_score_cache && inputs . fast_score_cache . is_none ( )",
-            "line": 559
+            "line": 576
           },
           {
             "condition": "dense . raw . strided_score_means . is_none ( ) ) && matches ! ( inputs . fast_score_cache , Some ( PreparedOlsFastScoreCache :: Selected",
-            "line": 588
+            "line": 605
           },
           {
             "condition": "& inputs . fast_score_cache",
-            "line": 607
+            "line": 624
           },
           {
             "condition": "let Some ( budget ) = config . absorb . solver_memory_budget . as_mut ( )",
-            "line": 759
+            "line": 776
           },
           {
             "condition": "! budget . fits ( 0 )",
-            "line": 764
+            "line": 781
           },
           {
             "condition": "within_norms . len ( ) != coefficients . len ( ) + 1 || raw_norms . len ( ) != coefficients . len ( )",
-            "line": 980
+            "line": 997
           },
           {
             "condition": "let Some ( report ) = derived_residual ( cmg , & matrix , weights , config , scale , absorption ) ?",
-            "line": 1057
+            "line": 1074
           },
           {
             "condition": "let ( ProjectedStorage :: Scratch ( low ) , Some ( destination ) ) = ( inputs . storage , retained_scratch )",
-            "line": 1158
+            "line": 1175
           }
         ],
         "functions": {
           "dense_finite_inputs#1": {
-            "line": 244,
+            "line": 261,
             "lines": 87
           },
           "dense_raw#1": {
             "line": 48,
-            "lines": 116
+            "lines": 126
           },
           "derived_residual#1": {
-            "line": 1000,
+            "line": 1017,
             "lines": 41
           },
           "derived_residual_scale#1": {
-            "line": 974,
+            "line": 991,
             "lines": 23
           },
           "derived_scale#1": {
-            "line": 938,
+            "line": 955,
             "lines": 19
           },
           "finish_one_shot#1": {
-            "line": 1104,
+            "line": 1121,
             "lines": 74
           },
           "fit#1": {
-            "line": 773,
+            "line": 790,
             "lines": 149
           },
           "original_residuals#1": {
-            "line": 622,
+            "line": 639,
             "lines": 35
           },
           "project_dense#1": {
-            "line": 166,
-            "lines": 77
+            "line": 176,
+            "lines": 84
           },
           "project_residual#1": {
-            "line": 1043,
+            "line": 1060,
             "lines": 59
           },
           "project_scratch#1": {
-            "line": 332,
+            "line": 349,
             "lines": 92
           },
           "project_scratch_columns#1": {
-            "line": 426,
+            "line": 443,
             "lines": 96
           },
           "reported_bread#1": {
-            "line": 659,
+            "line": 676,
             "lines": 70
           },
           "retained_fe_budget#1": {
-            "line": 730,
+            "line": 747,
             "lines": 41
           },
           "scaled_initial_sum_of_squares#1": {
-            "line": 923,
+            "line": 940,
             "lines": 11
           },
           "score_norms#1": {
@@ -13860,19 +13842,19 @@
             "lines": 6
           },
           "solve_one_shot#1": {
-            "line": 523,
+            "line": 540,
             "lines": 58
           },
           "trace_score_ownership#1": {
-            "line": 582,
+            "line": 599,
             "lines": 39
           },
           "weighted_response_norm#1": {
-            "line": 958,
+            "line": 975,
             "lines": 12
           }
         },
-        "production_lines": 1112
+        "production_lines": 1127
       },
       "crates/fereg-core/src/ols/prepared_fit_view.rs": {
         "chunk_candidates": [],
@@ -24455,7 +24437,7 @@
         "dispatch_candidates": 1433,
         "files_over_1500": 15,
         "functions_over_150": 59,
-        "production_lines": 111287
+        "production_lines": 111302
       },
       "fereg-plugin": {
         "chunk_candidates": 3,
