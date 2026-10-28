@@ -385,6 +385,15 @@ preceded the accepted runs and changed no artifact: the first source-archive
 attempt used an exported snapshot without Git metadata and the first staging
 attempt lacked the plugin checksum files.
 
+After publication, fresh Stata 19/MP sessions installed beta.9 from the public
+[beta.9 URL](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0-beta.9)
+and from updated `main` into isolated PLUS directories. All 35 installed files
+matched the staged package bytes on both routes, the manifest bound the runtime
+to `8b2f38a4`, native selftest passed, and `fereg`/`feppml` on the `auto` data
+agreed with Stata's `regress` and `poisson` dummy regressions to rounding
+(coefficient relative differences below 1e-13). GitHub's recorded SHA-256 and
+size matched every one of the 50 published assets.
+
 ### Beta.8 two-FE Auto packaging
 
 Beta.8 ships the two-FE Auto changes described above. The qualified Linux
