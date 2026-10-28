@@ -2,28 +2,16 @@
   "definition": "docs/development_workflow.md#complexity-inventory",
   "growth": [
     {
-      "after": 1445,
-      "before": 1443,
-      "metric": "fereg-core/dispatch_candidates",
-      "reason": "Exact storage-lifetime changes for many-FE memory: the RhsSource transport chooses the full or selected bitwise copy (lsmr_batch.rs), and run_borrowed_lsmr_with_prepared skips its upfront column-major transport on the general routing route, whose windows transport their own columns and release them once the sessions own copies."
-    },
-    {
-      "after": 111768,
-      "before": 111699,
+      "after": 111789,
+      "before": 111768,
       "metric": "fereg-core/production_lines",
-      "reason": "Exact storage-lifetime changes for many-FE memory: RhsSource/RhsColumns let the routing windows transport their columns from the row-major input on demand and release them after session start, with bitwise re-transport of escalated columns and of retries (lsmr_batch.rs, routing_lsmr.rs, borrowed_map.rs); OLS Fast releases its projected matrix after the finite solve (one_shot.rs)."
+      "reason": "Candidate hidden many-FE policy routing_many_windows_v1 (P3): the GeometryManyWindows preset with its token, eligibility and geometry-pilot membership and the bounded_session_windows predicate (routing.rs), and the window rule of at most one live LSMR session per worker in the general routing admission (routing_lsmr.rs). The public default is unchanged."
     },
     {
-      "after": 8781,
-      "before": 8777,
-      "metric": "file/crates/fereg-core/src/fe/borrowed_map.rs",
-      "reason": "run_borrowed_lsmr_with_prepared no longer transports every RHS upfront on the general routing route; the routing windows transport and release their own columns."
-    },
-    {
-      "after": 381,
-      "before": 375,
-      "metric": "function/crates/fereg-core/src/fe/borrowed_map.rs/run_borrowed_lsmr_with_prepared#1",
-      "reason": "The general routing route passes the row-major input to its windows instead of an upfront column-major transport, which stays only for the explicit and prepared routes (six lines)."
+      "after": 15468,
+      "before": 15458,
+      "metric": "fereg-plugin/production_lines",
+      "reason": "The developer injection parser accepts the candidate routing_many_windows_v1 token beside routing_many_geometry_v1, and the public-activation token list moves to a named constant that includes it, so two-FE designs keep exactly the public policy under the candidate."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -2516,44 +2504,44 @@
           },
           {
             "condition": "memory_admitted",
-            "line": 721
+            "line": 727
           },
           {
             "condition": "let Some ( budget ) = state . memory . budget",
-            "line": 811
+            "line": 817
           }
         ],
         "functions": {
           "action_error#1": {
-            "line": 918,
+            "line": 924,
             "lines": 9
           },
           "action_failure#1": {
-            "line": 930,
+            "line": 936,
             "lines": 21
           },
           "advance#1": {
-            "line": 1010,
+            "line": 1016,
             "lines": 16
           },
           "advance_window#1": {
-            "line": 1085,
+            "line": 1091,
             "lines": 14
           },
           "advance_with#1": {
-            "line": 1112,
+            "line": 1118,
             "lines": 17
           },
           "append#1": {
-            "line": 1135,
+            "line": 1141,
             "lines": 45
           },
           "apply_in_place#1": {
-            "line": 755,
+            "line": 761,
             "lines": 15
           },
           "arbitrate#1": {
-            "line": 954,
+            "line": 960,
             "lines": 12
           },
           "begin#1": {
@@ -2561,11 +2549,11 @@
             "lines": 8
           },
           "build#1": {
-            "line": 802,
+            "line": 808,
             "lines": 58
           },
           "build_error#1": {
-            "line": 1130,
+            "line": 1136,
             "lines": 4
           },
           "categorical_prefix#1": {
@@ -2577,7 +2565,7 @@
             "lines": 10
           },
           "checkpoint#1": {
-            "line": 793,
+            "line": 799,
             "lines": 8
           },
           "close_attempt#1": {
@@ -2585,11 +2573,11 @@
             "lines": 3
           },
           "consumed#1": {
-            "line": 979,
+            "line": 985,
             "lines": 16
           },
           "dimension#1": {
-            "line": 749,
+            "line": 755,
             "lines": 3
           },
           "escalate#1": {
@@ -2597,11 +2585,11 @@
             "lines": 92
           },
           "escalated#1": {
-            "line": 1101,
+            "line": 1107,
             "lines": 10
           },
           "fatal_rank#1": {
-            "line": 967,
+            "line": 973,
             "lines": 11
           },
           "geometry_pilot#1": {
@@ -2609,11 +2597,11 @@
             "lines": 3
           },
           "handler#1": {
-            "line": 999,
+            "line": 1005,
             "lines": 3
           },
           "handler#2": {
-            "line": 1046,
+            "line": 1052,
             "lines": 6
           },
           "has_prepared#1": {
@@ -2630,14 +2618,14 @@
           },
           "prepare_call#1": {
             "line": 536,
-            "lines": 97
+            "lines": 103
           },
           "projected_beyond_budget#1": {
-            "line": 1056,
+            "line": 1062,
             "lines": 13
           },
           "rejected#1": {
-            "line": 785,
+            "line": 791,
             "lines": 3
           },
           "release_backend#1": {
@@ -2645,7 +2633,7 @@
             "lines": 8
           },
           "reserved#1": {
-            "line": 1181,
+            "line": 1187,
             "lines": 7
           },
           "retained_bytes#1": {
@@ -2653,19 +2641,19 @@
             "lines": 5
           },
           "retry_off#1": {
-            "line": 635,
+            "line": 641,
             "lines": 44
           },
           "scratch_len#1": {
-            "line": 752,
+            "line": 758,
             "lines": 3
           },
           "should_escalate#1": {
-            "line": 1005,
+            "line": 1011,
             "lines": 3
           },
           "should_escalate#2": {
-            "line": 1072,
+            "line": 1078,
             "lines": 9
           },
           "solve#1": {
@@ -2673,7 +2661,7 @@
             "lines": 82
           },
           "solve_error#1": {
-            "line": 904,
+            "line": 910,
             "lines": 7
           },
           "solve_prepared_input#1": {
@@ -2685,7 +2673,7 @@
             "lines": 146
           },
           "start_routing_sessions#1": {
-            "line": 865,
+            "line": 871,
             "lines": 38
           },
           "strict_categorical_prefix#1": {
@@ -2693,11 +2681,11 @@
             "lines": 3
           },
           "try_pair_replacement#1": {
-            "line": 694,
+            "line": 700,
             "lines": 47
           }
         },
-        "production_lines": 1069
+        "production_lines": 1073
       },
       "crates/fereg-core/src/fe/borrowed_map/three_fe_map.rs": {
         "chunk_candidates": [],
@@ -5745,143 +5733,151 @@
         "dispatch_candidates": [],
         "functions": {
           "ablation#1": {
-            "line": 98,
+            "line": 100,
             "lines": 15
           },
           "begin#1": {
-            "line": 418,
+            "line": 442,
             "lines": 11
           },
+          "bounded_session_windows#1": {
+            "line": 308,
+            "lines": 3
+          },
           "breaks_builder#1": {
-            "line": 300,
+            "line": 323,
             "lines": 3
           },
           "builder_break#1": {
-            "line": 293,
+            "line": 316,
             "lines": 5
           },
           "categorical_prefix#1": {
-            "line": 304,
-            "lines": 13
+            "line": 327,
+            "lines": 14
           },
           "checkpoint#1": {
-            "line": 322,
+            "line": 346,
             "lines": 3
           },
           "fmt#1": {
-            "line": 48,
-            "lines": 31
+            "line": 49,
+            "lines": 32
           },
           "gate_rule#1": {
-            "line": 214,
+            "line": 227,
             "lines": 9
           },
           "gates#1": {
-            "line": 210,
+            "line": 223,
             "lines": 3
           },
           "gates_two#1": {
-            "line": 194,
+            "line": 207,
             "lines": 7
           },
           "gates_two_v2#1": {
-            "line": 203,
+            "line": 216,
             "lines": 6
           },
           "general_pair_checkpoint#1": {
-            "line": 328,
+            "line": 352,
             "lines": 7
           },
           "geometry_many#1": {
-            "line": 157,
+            "line": 159,
+            "lines": 6
+          },
+          "geometry_many_windows#1": {
+            "line": 170,
             "lines": 6
           },
           "geometry_pilot#1": {
-            "line": 285,
-            "lines": 3
+            "line": 300,
+            "lines": 6
           },
           "incremental_many#1": {
-            "line": 145,
+            "line": 147,
             "lines": 6
           },
           "incremental_two#1": {
-            "line": 165,
+            "line": 178,
             "lines": 6
           },
           "kernel#1": {
-            "line": 318,
+            "line": 342,
             "lines": 3
           },
           "matches_accuracy#1": {
-            "line": 396,
+            "line": 420,
             "lines": 5
           },
           "new#1": {
-            "line": 82,
+            "line": 84,
             "lines": 14
           },
           "new#2": {
-            "line": 411,
+            "line": 435,
             "lines": 6
           },
           "portfolio#1": {
-            "line": 266,
+            "line": 281,
             "lines": 12
           },
           "portfolio_choice#1": {
-            "line": 402,
+            "line": 426,
             "lines": 4
           },
           "portfolio_unseeded#1": {
-            "line": 137,
+            "line": 139,
             "lines": 6
           },
           "portfolio_v1#1": {
-            "line": 126,
+            "line": 128,
             "lines": 8
           },
           "prefix#1": {
-            "line": 114,
+            "line": 116,
             "lines": 9
           },
           "remaining_mode#1": {
-            "line": 228,
+            "line": 241,
             "lines": 7
           },
           "remaining_two#1": {
-            "line": 173,
+            "line": 186,
             "lines": 7
           },
           "remaining_two_control#1": {
-            "line": 182,
+            "line": 195,
             "lines": 11
           },
           "requires_economic_grant#1": {
-            "line": 224,
+            "line": 237,
             "lines": 3
           },
           "resolve_ols#1": {
-            "line": 238,
-            "lines": 27
+            "line": 251,
+            "lines": 29
           },
           "samples#1": {
-            "line": 335,
+            "line": 359,
             "lines": 3
           },
           "schur_iteration_work#1": {
-            "line": 343,
+            "line": 367,
             "lines": 34
           },
           "select_portfolio#1": {
-            "line": 407,
+            "line": 431,
             "lines": 3
           },
           "strict_categorical_prefix#1": {
-            "line": 279,
+            "line": 294,
             "lines": 3
           }
         },
-        "production_lines": 345
+        "production_lines": 362
       },
       "crates/fereg-core/src/fe/routing_break.rs": {
         "chunk_candidates": [],
@@ -21675,20 +21671,20 @@
         "dispatch_candidates": [
           {
             "condition": "! token . is_empty ( ) && ( token . len ( ) != 32 || ! token . bytes ( ) . all ( | byte | byte . is_ascii_digit ( ) || ( b <char> ..= b <char> ) . contains ( & byte ) ) )",
-            "line": 229
+            "line": 243
           }
         ],
         "functions": {
           "create_native_break_marker#1": {
-            "line": 248,
+            "line": 262,
             "lines": 11
           },
           "internal#1": {
-            "line": 260,
+            "line": 274,
             "lines": 3
           },
           "native_break_marker_path#1": {
-            "line": 242,
+            "line": 256,
             "lines": 3
           },
           "ols_mechanisms#1": {
@@ -21697,14 +21693,14 @@
           },
           "parse_ols#1": {
             "line": 80,
-            "lines": 139
+            "lines": 144
           },
           "validate_break_marker_token#1": {
-            "line": 222,
+            "line": 236,
             "lines": 19
           }
         },
-        "production_lines": 234
+        "production_lines": 244
       },
       "crates/fereg-plugin/src/dispatch.rs": {
         "chunk_candidates": [],
@@ -24582,14 +24578,14 @@
         "dispatch_candidates": 1445,
         "files_over_1500": 15,
         "functions_over_150": 59,
-        "production_lines": 111768
+        "production_lines": 111789
       },
       "fereg-plugin": {
         "chunk_candidates": 3,
         "dispatch_candidates": 141,
         "files_over_1500": 3,
         "functions_over_150": 12,
-        "production_lines": 15458
+        "production_lines": 15468
       }
     },
     "schema": 1

@@ -423,6 +423,35 @@ explicit LSMR on the sparse three-FE topology, whose refused plan is admitted,
 repeats bit for bit, agrees with the unbudgeted fit and refuses below the exact
 bound with the original message.
 
+Candidate bounded LSMR session windows (hidden `routing_many_windows_v1`, not
+public): the many-FE geometry policy unchanged except that its unseeded and
+seeded LSMR solves keep at most one live session per worker instead of every
+RHS of a call (at most 64, or four per worker). RHSs run in fixed windows of
+consecutive columns; each window starts its sessions, runs them to completion,
+finishes and releases them before the next window starts. The Jacobi trial's
+escalation barrier falls at the end of each window: if a window's trial
+projects beyond its budget, that window's escalated RHSs continue from their
+iterates on the additive solver built once from the shared design, and every
+later window of the call, and later calls on the binding, start on the
+additive solver without a trial. A window whose RHSs all finish on the trial
+leaves the trial retained for the next window. Without any escalation every
+RHS runs the same independent recurrence as in one window, so results are
+bit-identical to the public policy; with an escalation, RHSs after the
+escalating window may finish in fewer iterations with different low bits.
+Admission still charges the established window bound, so the arm admits at
+least what the public policy admits; only the reported workspace peak's
+warm-session term follows the smaller window. Two-FE and ineligible designs
+fall back to exactly the public policy, including ownership/cell activation.
+Declared scope of the arm: injected many-FE OLS Auto fits with an escalating
+Jacobi trial may change coefficients, covariance, fit statistics, residuals,
+FE coordinates and solver iteration signatures within §20 tolerances;
+discrete decisions are unchanged. Public activation is a separate decision
+after qualification. Witnesses: dense explicit-dummy QR at one, two, four and
+eight workers on a finishing and an escalating panel, fixed-worker repeats,
+exact public agreement where one window holds every RHS or no RHS escalates,
+and the four-, eight-, sixteen-FE, small-third and near-confounded routing
+families against the public arm.
+
 The CMG builder borrows the host team, polls cancellation at fixed logical chunks
 and admits construction against real memory, without a construction-work cap or
 budget-dependent factor screen. Preserve cutoff 5, one sampled

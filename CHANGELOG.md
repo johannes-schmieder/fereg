@@ -23,6 +23,10 @@
   after the finite solve. The campaign sparse three-FE design
   (1M rows, 16 controls, four workers) peaks about 100 MB lower on the Mac;
   results, routes and memory admission are unchanged.
+- Developer: hidden `inject=routing_many_windows_v1` (replay wire and the
+  hidden Stata adapter) qualifies bounded many-FE LSMR session windows, at
+  most one live session per worker with the Jacobi escalation barrier at each
+  window's end. Public Auto is unchanged.
 
 ## 0.5.0 beta.9 — 2026-10-28
 

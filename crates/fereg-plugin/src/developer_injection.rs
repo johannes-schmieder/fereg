@@ -133,11 +133,16 @@ pub(crate) fn parse_ols(stage: &str, solver: FeSolverKind, token: &str) -> Resul
             };
             (Some(preset), false)
         }
-        "routing_many_geometry_v1" => {
+        "routing_many_geometry_v1" | "routing_many_windows_v1" => {
             if solver != FeSolverKind::Auto {
                 return Err(syntax("hidden routing injection requires solver(auto)"));
             }
-            (Some(RoutingPreset::geometry_many()), false)
+            let preset = if stage == "routing_many_windows_v1" {
+                RoutingPreset::geometry_many_windows()
+            } else {
+                RoutingPreset::geometry_many()
+            };
+            (Some(preset), false)
         }
         "routing_incremental_many" | "routing_incremental_two" => {
             if solver != FeSolverKind::Auto {
@@ -213,9 +218,18 @@ pub(crate) fn parse_ols(stage: &str, solver: FeSolverKind, token: &str) -> Resul
         native_break_token: break_native.then(|| token.to_owned()),
         // Selected public policies keep public two-FE activation, so the
         // hidden invocation equals uninjected Auto on every design.
-        public_activation: matches!(stage, "routing_many_geometry_v1" | "routing_two_gates_v2"),
+        public_activation: PUBLIC_ACTIVATION.contains(&stage),
     })
 }
+
+/// Selected public policies keep public two-FE activation, so the hidden
+/// invocation equals uninjected Auto on every design. The candidate many-FE
+/// windows keep it too, so only many-FE windows differ from public Auto.
+const PUBLIC_ACTIVATION: [&str; 3] = [
+    "routing_many_geometry_v1",
+    "routing_many_windows_v1",
+    "routing_two_gates_v2",
+];
 
 /// `break_marker_token` is required exactly when a native Break is armed and
 /// must be 32 lowercase hexadecimal characters, so it cannot name a path.
@@ -335,6 +349,7 @@ mod tests {
     fn incremental_routing_requires_exact_auto_names_without_break_token() {
         for preset in [
             RoutingPreset::geometry_many(),
+            RoutingPreset::geometry_many_windows(),
             RoutingPreset::incremental_many(),
             RoutingPreset::incremental_two(),
             RoutingPreset::gates_two(),

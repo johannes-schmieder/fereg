@@ -584,7 +584,13 @@ impl<'a> GeneralRoutingState<'a> {
             self.prepared.builds += 1;
         }
         let setup_seconds = setup_started.elapsed().as_secs_f64();
-        let window = crate::memory::lsmr_rhs_window(rhs_count, rayon::current_num_threads());
+        // The candidate bounded-window policy keeps at most one live session
+        // per worker; admission still charges the established window bound.
+        let window = if self.preset.bounded_session_windows() {
+            rayon::current_num_threads().clamp(1, rhs_count.max(1))
+        } else {
+            crate::memory::lsmr_rhs_window(rhs_count, rayon::current_num_threads())
+        };
         // The existing estimate covers 4m+6n numeric lanes per active RHS;
         // sessions admit 6m+12n for warm state, terminal copies and recovery.
         // Reserve a second full retained bound for replacement metadata and
