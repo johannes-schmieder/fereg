@@ -1755,7 +1755,7 @@ fn accepted_mu_drop_then_publication_fit_failure_returns_no_composite() {
     let execution = PreparedPpmlSeparationExecution {
         preliminary_plan: plan,
         linear: resolved_linear,
-        auto_projection: false,
+        auto_projection: true,
     };
     let owner = PreparedPpmlModelOwner::new(request.ols, request.clusters, loaded.ols, numeric)
         .expect("prepared PPML owner");
@@ -2479,7 +2479,7 @@ fn fixture(
         solver: PpmlSolverFamily::Map,
         inject_fe_recovery_allocation_failure: false,
         inject_topology_sharing: false,
-        inject_separation_auto: false,
+        inject_separation_cg: false,
     };
     let outcome = if separated {
         column(&[0.0, 0.0, 2.0, 4.0, 3.0, 5.0, 4.0, 7.0, 5.0, 8.0, 6.0, 9.0])
@@ -2984,7 +2984,7 @@ fn factor_rebase_fixture() -> (PreparedPpmlRequestV1, LoadedPpmlInput) {
             solver: PpmlSolverFamily::Auto,
             inject_fe_recovery_allocation_failure: false,
             inject_topology_sharing: false,
-            inject_separation_auto: false,
+            inject_separation_cg: false,
         },
         loaded,
     )

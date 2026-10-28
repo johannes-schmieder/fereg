@@ -280,7 +280,8 @@ impl FinalGenerationReplayToken {
 pub(crate) struct PreparedPpmlSeparationExecution {
     pub(crate) preliminary_plan: PpmlMemoryPlan,
     pub(crate) linear: PreparedOlsFitConfig,
-    /// Hidden `inject=ppml_separation_auto` arm; see [`routing`].
+    /// Default two-FE Auto detector route; `inject=ppml_separation_cg` turns
+    /// it off. See [`routing`].
     pub(crate) auto_projection: bool,
 }
 
@@ -372,7 +373,7 @@ where
     validate_config(config)?;
     let (coordinator, initial_preparation_elapsed, initial_preparation_peak) =
         prepare_initial_generation(owner, phase_allocation_probe)?;
-    let (projection_ppml, projection_linear, lsmr) =
+    let (projection_ppml, projection_linear, retained_cg, lsmr) =
         admit_detector_projection(coordinator.view().prepared, ppml, config, &mut execution)?;
     // A detector re-execution may charge its LSMR workspace mid-chain; the
     // later exploration and publication fits read the charged plan.
@@ -380,6 +381,7 @@ where
     let policy = retry::DetectorPolicy::new(
         projection_ppml,
         projection_linear,
+        retained_cg,
         lsmr.map(|admission| (admission, &plan)),
     );
     let (mut outcome, fit) = coordinate_prepared_ppml_separation(
@@ -401,30 +403,36 @@ where
     Ok((outcome, fit))
 }
 
+/// The admitted detector policy, the retained-CG re-execution policy of an
+/// Auto-routed detector, and the LSMR re-execution charge.
+type AdmittedDetector = (
+    PpmlConfig,
+    PreparedOlsFitConfig,
+    Option<(PpmlConfig, PreparedOlsFitConfig)>,
+    Option<retry::LsmrAdmission>,
+);
+
 /// Graph proposals and retained CG need extra detector workspace, not an IRLS cache. Resolve
-/// its complete bound on generation zero; later generations only shrink.
+/// its complete bound on generation zero; later generations only shrink. The Auto route
+/// ([`routing`]) runs under the same budget.
 fn admit_detector_projection(
     generation: &PreparedPpmlModelGeneration,
     mut ppml: PpmlConfig,
     config: SeparationConfig,
     execution: &mut PreparedPpmlSeparationExecution,
-) -> Result<(
-    PpmlConfig,
-    PreparedOlsFitConfig,
-    Option<retry::LsmrAdmission>,
-)> {
+) -> Result<AdmittedDetector> {
     let mut linear = execution.linear;
     if ppml.absorb.solver != FeSolverKind::Map
         || !config.methods.iterated_rectifier
         || !generation.outcome().contains(&0.0)
     {
-        return Ok((ppml, linear, None));
+        return Ok((ppml, linear, None, None));
     }
     let Some(design) = generation.fit_view().fit_borrowed_intercept_map_design()? else {
-        return Ok((ppml, linear, None));
+        return Ok((ppml, linear, None, None));
     };
     let Some(graph_bytes) = graph::workspace_bytes(&design)? else {
-        return Ok((ppml, linear, None));
+        return Ok((ppml, linear, None, None));
     };
     let levels = fallible_collect(
         design.effects().iter().map(|e| e.n_levels()),
@@ -469,7 +477,7 @@ fn admit_detector_projection(
         .preliminary_plan
         .admit_separation_projection(bytes)
     {
-        return Ok((ppml, linear, None));
+        return Ok((ppml, linear, None, None));
     }
     linear.absorb.solver = routing::projection_solver(execution.auto_projection, &design);
     let lsmr = retry::lsmr_admission(
@@ -488,7 +496,17 @@ fn admit_detector_projection(
             .ok_or_else(|| allocation("separation projection budget overflows"))?,
     });
     ppml.absorb = linear.absorb;
-    Ok((ppml, linear, lsmr))
+    // An Auto detector that misses a certificate re-executes its step with
+    // retained CG (retry.rs), so its own two-FE PCG takes no MAP continuation.
+    let retained_cg = (linear.absorb.solver == FeSolverKind::Auto).then(|| {
+        let mut cg = (ppml, linear);
+        cg.1.absorb.solver = FeSolverKind::Cg;
+        cg.0.absorb = cg.1.absorb;
+        linear.absorb.certified_fallback = false;
+        ppml.absorb = linear.absorb;
+        cg
+    });
+    Ok((ppml, linear, retained_cg, lsmr))
 }
 
 #[path = "prepared_separation_graph.rs"]

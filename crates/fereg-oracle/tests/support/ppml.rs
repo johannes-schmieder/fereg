@@ -74,7 +74,7 @@ pub fn request(
         solver: PpmlSolverFamily::Auto,
         inject_fe_recovery_allocation_failure: false,
         inject_topology_sharing: false,
-        inject_separation_auto: false,
+        inject_separation_cg: false,
     };
     let loaded = LoadedPpmlInput {
         bias_units: None,

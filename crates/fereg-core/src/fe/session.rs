@@ -962,7 +962,17 @@ impl<'a> FeSession<'a> {
                 dense_norms,
             )
         } else if let Some(p) = self.categorical.as_mut() {
-            p.absorb_ols_with_remaining(weights, values, config.map, final_residual, remaining)
+            if config.certified_fallback {
+                p.absorb_ols_with_remaining(weights, values, config.map, final_residual, remaining)
+            } else {
+                p.absorb_ols_declining_map_continuation(
+                    weights,
+                    values,
+                    config.map,
+                    final_residual,
+                    remaining,
+                )
+            }
         } else if let Some(p) = self.general.as_mut() {
             let values = values.into_values();
             let generation = MapGeometryGeneration {

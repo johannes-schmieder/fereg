@@ -1,0 +1,160 @@
+{
+ "schema": 1,
+ "date": "2026-10-28",
+ "decision": "pinned on codex/within-fused-lsmr; fused step is within's default kernel",
+ "within": {
+  "branch": "codex/fused-lsmr-pass",
+  "base": "efe35ee386ad989b043a5076d01d879ca410ff19",
+  "commits": {
+   "e6a_storage": "17fcf288d7f968b28315cba301f52b8f61227419",
+   "fused_step": "080d65e",
+   "review_fixes": "2ba7239ddb10012891c18c050e546e0c75894fd1",
+   "preconditioner_swap": "3b5b9b9ab9b79e4a8cac2841f7c1d41bb2276104"
+  },
+  "scope": "A v, the u update and ||u|| bitwise unchanged; A'u summed in fixed design-only row lanes (sorted runs in row order, lane buffers merged in lane order, ownership index for separate terms); no adjoint atomics. StepKernel::Separate keeps efe35ee bits (24 pinned session digests).",
+  "determinism": "fused results repeat exactly and are identical across worker counts in default and reproducible mode for Off, Diagonal and Ordered-additive preconditioners; 600,000-row test with 200,000 sorted and 120,000 unsorted levels at 1/2/4/8 workers."
+ },
+ "replay_macos": {
+  "baseline_sha256": "a7b251761aecbc6f4509a24ba1d190c64452fe4012eab2bfde6f9dfc5cec690b",
+  "e6a": {
+   "plugin_sha256": "3d96d18a14ab14a4b0f2039abc0982f5dedae8fc6758c5aa752043f70a95236f",
+   "result": "73/73 exact"
+  },
+  "fused": {
+   "plugin_sha256": "d99f29b74bd0bfdf1664c7fc8f191b362145ee0dd143e9ec33cc22d10099be86",
+   "changed_cases": [
+    "ols-12",
+    "ols-13",
+    "ols-15",
+    "ols-28",
+    "ols-30",
+    "ols-31",
+    "ppml-12",
+    "ppml-13",
+    "ppml-14",
+    "ppml-15",
+    "ppml-28",
+    "ppml-29",
+    "ppml-30",
+    "ppml-31"
+   ],
+   "scope": "tests/replay/scopes/2026-10-28-within-fused-lsmr-macos.json",
+   "scoped_leaves": 467,
+   "result": "73/73 pass with 4- and 8-worker repeats and cross-worker science; no solver-code, iteration, stop-reason or discrete change"
+  },
+  "final": {
+   "plugin_sha256": "bc0ada9e92aa3778961d2d87d62d54904defdcea1f475c48bef02dde24e48cca",
+   "result": "exact vs fused plugin; scoped replay vs beta.9 73/73 pass"
+  }
+ },
+ "timing_rule": "Mac Studio (Apple M2 Ultra, 16 performance + 8 efficiency cores) shared with other agents; before each process wait for 30 s without any other stata-mp, cargo, rustc or python process, watch during the run, discard a contaminated run and repeat it once; cells still contaminated got one follow-up schedule declared before the first schedule finished. Medians of all clean samples; descriptive, not qualification.",
+ "within_kernel_seconds": {
+  "workload": "examples/fused_step: 1,000,000 rows, 200,000 sorted workers, 10,000 firms (2% mobility), 32-level third effect, 16 RHS solve_batch, 23 steps",
+  "diagonal": {
+   "1": {
+    "fused": 1.943,
+    "separate": 2.986,
+    "n": [
+     3,
+     9
+    ]
+   },
+   "4": {
+    "fused": 0.574,
+    "separate": 0.759,
+    "n": [
+     6,
+     6
+    ]
+   },
+   "8": {
+    "fused": 0.323,
+    "separate": 0.409,
+    "n": [
+     6,
+     6
+    ]
+   }
+  },
+  "additive": {
+   "1": {
+    "fused": 3.644,
+    "separate": 4.694,
+    "n": [
+     6,
+     6
+    ]
+   },
+   "4": {
+    "fused": 0.995,
+    "separate": 1.211,
+    "n": [
+     3,
+     6
+    ]
+   },
+   "8": {
+    "fused": 0.688,
+    "separate": 0.742,
+    "n": [
+     6,
+     6
+    ]
+   }
+  },
+  "discarded_runs": 23
+ },
+ "deterministic_merge": {
+  "design": "1M three-sparse, one RHS step, 8 workers",
+  "lanes": 25,
+  "lane_rows": 40960,
+  "lane_buffer_bytes_per_operator": 1926144,
+  "merge_us": 45,
+  "zeroing_us": 65,
+  "step_us": 1010
+ },
+ "fereg_native_seconds": {
+  "inputs": "bench.campaign.make_dataset ols three-sparse and three-dense, 1,000,000 rows, 16 controls, vce(unadjusted)",
+  "n_per_cell": 6,
+  "three-sparse": {
+   "1": [
+    6.385,
+    5.023
+   ],
+   "4": [
+    1.916,
+    1.612
+   ],
+   "8": [
+    1.267,
+    1.14
+   ]
+  },
+  "three-dense": {
+   "1": [
+    1.113,
+    1.119
+   ],
+   "4": [
+    0.416,
+    0.412
+   ],
+   "8": [
+    0.294,
+    0.286
+   ]
+  },
+  "columns": [
+   "beta9",
+   "fused"
+  ],
+  "notes": "Same routes and LSMR iterations; three-dense uses the MAP pilot and no LSMR. Fused e(rss) identical at 1/4/8 workers; beta.9 default mode differed in the last bits across worker counts."
+ },
+ "peak_rss_bytes": {
+  "design": "three-sparse 1M, 8 workers, one batch each",
+  "beta9": 2123022336,
+  "e6a": 1996701696,
+  "fused": 2002010112
+ },
+ "memory_accounting": "Per live session at n rows (unit weights): pinned 5 observation vectors (y, b, rhs, u, av); E6a 4 seeded / 3 unseeded; fused 3 seeded / 2 unseeded plus lane buffers <= n/4 values, without the per-operator atomic scatter scratch. fereg's admission (4n per active RHS plus scatter) is unchanged and remains an upper bound."
+}
