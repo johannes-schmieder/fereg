@@ -6400,7 +6400,7 @@ fn borrowed_within_preconditioner(preconditioner: LsmrPreconditioner) -> Precond
         LsmrPreconditioner::Auto => unreachable!("borrowed automatic preconditioner is resolved"),
         LsmrPreconditioner::Off => PreconditionerConfig::Off,
         LsmrPreconditioner::Diagonal => PreconditionerConfig::Diagonal,
-        LsmrPreconditioner::Schwarz => PreconditionerConfig::default(),
+        LsmrPreconditioner::Schwarz => crate::fe::additive_schwarz(),
     }
 }
 

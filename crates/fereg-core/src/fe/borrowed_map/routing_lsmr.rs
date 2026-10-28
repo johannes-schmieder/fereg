@@ -262,7 +262,7 @@ impl<'a> GeneralRoutingState<'a> {
                 &columns.views(),
                 options,
                 requested,
-                PreconditionerConfig::default(),
+                crate::fe::additive_schwarz(),
                 deterministic,
                 initial_coefficients,
             )?;
