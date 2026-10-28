@@ -597,6 +597,94 @@ iterations, the unconstrained result). Replay is exact against the parent's
 plugin for all 73 cases without a scope; against beta.8 only the existing
 eager-cells scope applies. CMG's full suite and `./scripts/run_tests.sh
 --source-only` passed; no installed package was built or checked.
+### PPML separation routing (development, Mac; not activated)
+
+The iterated rectifier was 42-66% of PPML native time on the Veneto-shaped
+Poisson panels. On both panels the separation chain's IR phase is one graph
+proposal followed by a single rectifier projection that certifies no further
+separation at iteration 1: a weighted finite-plus-FE projection of 3 (short) or
+12 (long) columns with zero-outcome weights near 1e-21, solved by
+retained-product CG (60-61 iterations, no preconditioner hierarchy). The
+hidden `inject=ppml_separation_auto` arm solves admitted two-intercept detector
+projections with the OLS two-FE Auto route instead; the detector's weights,
+tolerances, iteration limit and decision rules are unchanged and the public
+default is not changed. Measured on an M2 Ultra (three repetitions per cell,
+medians of repetitions 2-3, arms interleaved, no competing process; the
+[record](../bench/results/ppml-separation-routing-2026-10-27.json) keeps every
+cell):
+
+| Panel | Workers | Public native s | Hidden native s | Ratio | Public IR s | Hidden IR s | Ratio |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Short (1.39M) | 1 | 14.03 | 6.25 | 0.446 | 9.02 | 1.24 | 0.137 |
+| Short (1.39M) | 4 | 6.43 | 4.29 | 0.666 | 3.23 | 1.04 | 0.321 |
+| Short (1.39M) | 8 | 5.01 | 3.68 | 0.735 | 2.11 | 0.79 | 0.374 |
+| Long (5.63M) | 1 | 112.08 | 46.17 | 0.412 | 74.09 | 8.70 | 0.117 |
+| Long (5.63M) | 4 | 43.48 | 23.91 | 0.550 | 26.50 | 7.10 | 0.268 |
+| Long (5.63M) | 8 | 29.64 | 18.92 | 0.638 | 15.60 | 5.00 | 0.320 |
+
+On both panels at 1, 2, 4 and 8 workers, on four campaign-generator
+separation designs (dense, AKM strong and weak mobility, probability weights)
+and on the replay corpus, `e(b)`, `e(V)`, the separated rows, drop counts and
+`e(feppml_separation_sequence)` are identical between the arms, and
+`e(feppml_separation)` differs only in the rectifier's interior certificate
+magnitude; the separation trace digest in the receipt hashes that magnitude
+and therefore also differs on `ppml-separation-ir`. Each arm repeats bit for
+bit. The public replay is exact (73 of 73 cases) with the arm compiled in.
+
+The witnesses do not hold on every case. A seeded census
+(`crates/fereg-oracle/tests/ppml_separation_routing.rs`: 18 small chain,
+sparse-AKM and dense designs, some with induced finite-regressor separation,
+three separation configurations, public tolerances) is identical in 32 of 54
+cells. Where both arms succeed the separated set never differs, but in 9 cells
+the hidden arm certifies the terminal rectifier at iteration 1 where CG needs
+2, which changes RSEP and RSEQ iteration counts. In 9 cells retained CG fails
+a projection certificate and the public fit errors while the hidden arm
+completes; in 2 cells the Auto route exhausts its iteration budget where the
+public fit succeeds; 2 cells fail in both arms with different errors. Under
+`fe simplex ir` the divergences are 5 iteration-count cells and 3 public
+failures. The hidden arm is deterministic at fixed workers and its decisions
+agree across 1, 2, 4 and 8 workers wherever it succeeds. In an isolated unit
+test, a Break at every host poll inside a rectifier projection returns
+`Interrupted` on both arms.
+
+The public failures were a detector defect, now fixed (SPEC §14, the
+[record](../bench/results/ppml-separation-routing-2026-10-27.json)'s
+`post_fix_census`). Retained CG solves the rectifier projection on the
+weighted normal equations, which square the zero-row weight
+`tolerance^2 / zeros` (about 1e-18): on six cells the proposed direction left
+the model span (independent least-squares span distance 0.14-0.19 on seeds 11
+and 17, 2e-8 on seed 5) and failed the deletion certificate, r(430). On three
+`fe simplex ir` cells the span check of an exact simplex direction lying in
+the FE span failed its finite score certificate, normalized by FE-solver
+noise, r(459). A detector step that fails such a certificate now runs once
+more with LSMR under the same rules and certificates. All 9 cells complete
+and retain exactly the sample of an independent HiGHS linear program
+(maximal recession-cone separation alternated with singleton pruning), which
+every completing arm of all 54 cells also matches. Every other cell, in both
+arms, is unchanged bit for bit (full separation report, `e(b)`, `e(V)` and
+error messages). Seed 3 (2 cells) still fails in both arms: its CG direction
+has the right rows but span distance 1.8e-10 over the 1e-10 tolerance, and
+LSMR ends 15% over its FE certificate. The replay corpus is exact against the
+published beta.9 plugin (73 cases). Through Stata, the four campaign
+separation designs (4 and 8 workers) and both Veneto-shaped Poisson panels
+(1, 2, 4 and 8 workers) give identical `e(b)`, `e(V)`, separation matrices,
+drop counts and dropped rows with no re-execution; run through Stata, the
+seven fixed census cells that return r(430) or r(459) under beta.9 complete
+with the LP sample (seed 3 stays r(430)). Both arms repeat
+bit for bit at fixed workers and agree across 1, 2, 4 and 8 workers.
+
+After the fix the census is identical in 35 of 54 cells and differs in 15
+iteration-count cells (equal sample and fit), 2 hidden-route failures and the
+2 seed-3 cells; under `fe simplex ir` only 5 iteration-count cells differ.
+The two hidden failures (seed 9 without simplex) occur in the first rectifier
+projection, not through the rectifier's iteration limit: the Auto route's
+two-FE PCG accepts the final residual absorption at iteration 0 on its
+recurrence proxy, the FE certificate (the same as CG's) rejects it, final
+residual absorptions have no PCG correction, and the MAP fail-safe exhausts
+its 16,000 iterations; retained CG certifies the same residual in 8
+iterations. A fix would need a proxy stop scaled like the certificate or a
+certified non-MAP fallback for detector projections. Activation would need
+Johannes's decision on these classes.
 
 ## Package checks
 

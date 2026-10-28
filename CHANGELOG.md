@@ -2,8 +2,6 @@
 
 ## Unreleased
 
-## Unreleased
-
 - OLS Auto with three or more categorical-intercept effects no longer falls
   back to slow alternating projections on large sparse panels because of an
   overstated memory estimate: when the additive-Schwarz bound refuses LSMR,
@@ -57,6 +55,17 @@
   are unchanged. Where it accepted the residual unchanged (one FE and the MAP
   pilot) only the residual solver row changes. Explicit solvers, low memory,
   requested outputs and a failed check keep the certified final projection.
+- PPML separation: a detector step whose retained-CG projection fails a
+  numerical certificate (simplex deletion certification, the iterated
+  rectifier, or Mu) is executed once more with LSMR under the same weights,
+  tolerances and rules. Small weakly connected or zero-heavy designs that
+  failed with r(430) or r(459) at the default `septolerance(1e-8)` now
+  complete with certified separation (9 of 11 failing cells of the seeded
+  census); fits that completed before are bit-identical.
+- Developer phase timing reports the PPML separation rectifier (phase,
+  iteration and projection laps). A hidden `inject=ppml_separation_auto`
+  qualification arm solves two-intercept separation-detector projections with
+  the two-FE Auto route; the public detector is unchanged.
 
 ## 0.5.0 beta.9 — 2026-10-28
 

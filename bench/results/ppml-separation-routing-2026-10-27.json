@@ -1,0 +1,323 @@
+{
+ "schema": 1,
+ "date": "2026-10-27",
+ "change": {
+  "branch": "codex/ppml-separation-routing",
+  "base": "9b13e47b (codex/two-fe-round-two)",
+  "summary": "Hidden inject=ppml_separation_auto: admitted separation-detector projections with exactly two categorical intercepts use the OLS two-FE Auto route (gate v2) instead of retained-product CG. Detector weights, tolerances, iteration limit and decision rules unchanged. Public default unchanged.",
+  "verdict": "Not proposed for activation: decision identity holds on the Veneto panels, campaign separation designs and replay corpus, but not on 22 of 54 cells of the seeded census (iteration counts, failure modes)."
+ },
+ "protocol": {
+  "host": "M2 Ultra Mac, Stata 19/MP, arm64 profiling plugins (base 9b13e47b; candidate = branch head build)",
+  "panels": "Veneto-shaped Poisson panels (short 1,386,980 rows, control y2001; long 5,626,943 rows, 10 controls), feppml ycount <controls>, absorb(worker firm) vce(robust) through the hidden adapter with the public options (tolerance 1e-8, septolerance 1e-8, sepiterate 10000).",
+  "schedule": "Session A 17:20-17:42: 1/2/4/8 workers, arms public and auto interleaved per cell with rotating first arm, three repetitions per Stata process, medians of repetitions 2-3; FEREG_PHASE_TIMING=1 FEREG_SOLVER_TRACE=1 in every arm.",
+  "frozen_rule": "Quiet gate (no other Stata, cargo, rustc or Python process) before the session, 10-s competitor monitor; discard and repeat once on a competitor. Waited 0 s; no competitor appeared; nothing discarded."
+ },
+ "veneto_cells": [
+  {
+   "design": "veneto_long",
+   "workers": 1,
+   "arm": "public",
+   "native_s": 112.08,
+   "ir_s": 74.086,
+   "projections_per_fit": 1,
+   "projection_fit_s": 72.121,
+   "rhs_fe_iterations_residual_iterations": "12/61/0",
+   "ir_iterations": 1
+  },
+  {
+   "design": "veneto_long",
+   "workers": 1,
+   "arm": "auto",
+   "native_s": 46.167,
+   "ir_s": 8.698,
+   "projections_per_fit": 1,
+   "projection_fit_s": 6.741,
+   "rhs_fe_iterations_residual_iterations": "12/57/0",
+   "ir_iterations": 1
+  },
+  {
+   "design": "veneto_long",
+   "workers": 2,
+   "arm": "public",
+   "native_s": 69.314,
+   "ir_s": 45.017,
+   "projections_per_fit": 1,
+   "projection_fit_s": 43.12,
+   "rhs_fe_iterations_residual_iterations": "12/61/0",
+   "ir_iterations": 1
+  },
+  {
+   "design": "veneto_long",
+   "workers": 2,
+   "arm": "auto",
+   "native_s": 35.354,
+   "ir_s": 11.18,
+   "projections_per_fit": 1,
+   "projection_fit_s": 9.288,
+   "rhs_fe_iterations_residual_iterations": "12/57/0",
+   "ir_iterations": 1
+  },
+  {
+   "design": "veneto_long",
+   "workers": 4,
+   "arm": "public",
+   "native_s": 43.481,
+   "ir_s": 26.502,
+   "projections_per_fit": 1,
+   "projection_fit_s": 24.665,
+   "rhs_fe_iterations_residual_iterations": "12/61/0",
+   "ir_iterations": 1
+  },
+  {
+   "design": "veneto_long",
+   "workers": 4,
+   "arm": "auto",
+   "native_s": 23.905,
+   "ir_s": 7.098,
+   "projections_per_fit": 1,
+   "projection_fit_s": 5.245,
+   "rhs_fe_iterations_residual_iterations": "12/57/0",
+   "ir_iterations": 1
+  },
+  {
+   "design": "veneto_long",
+   "workers": 8,
+   "arm": "public",
+   "native_s": 29.636,
+   "ir_s": 15.596,
+   "projections_per_fit": 1,
+   "projection_fit_s": 13.766,
+   "rhs_fe_iterations_residual_iterations": "12/61/0",
+   "ir_iterations": 1
+  },
+  {
+   "design": "veneto_long",
+   "workers": 8,
+   "arm": "auto",
+   "native_s": 18.922,
+   "ir_s": 4.998,
+   "projections_per_fit": 1,
+   "projection_fit_s": 3.176,
+   "rhs_fe_iterations_residual_iterations": "12/57/0",
+   "ir_iterations": 1
+  },
+  {
+   "design": "veneto_short",
+   "workers": 1,
+   "arm": "public",
+   "native_s": 14.029,
+   "ir_s": 9.018,
+   "projections_per_fit": 1,
+   "projection_fit_s": 8.673,
+   "rhs_fe_iterations_residual_iterations": "3/60/0",
+   "ir_iterations": 1
+  },
+  {
+   "design": "veneto_short",
+   "workers": 1,
+   "arm": "auto",
+   "native_s": 6.254,
+   "ir_s": 1.237,
+   "projections_per_fit": 1,
+   "projection_fit_s": 0.898,
+   "rhs_fe_iterations_residual_iterations": "3/58/0",
+   "ir_iterations": 1
+  },
+  {
+   "design": "veneto_short",
+   "workers": 2,
+   "arm": "public",
+   "native_s": 9.567,
+   "ir_s": 5.479,
+   "projections_per_fit": 1,
+   "projection_fit_s": 5.15,
+   "rhs_fe_iterations_residual_iterations": "3/60/0",
+   "ir_iterations": 1
+  },
+  {
+   "design": "veneto_short",
+   "workers": 2,
+   "arm": "auto",
+   "native_s": 5.603,
+   "ir_s": 1.483,
+   "projections_per_fit": 1,
+   "projection_fit_s": 1.161,
+   "rhs_fe_iterations_residual_iterations": "3/58/0",
+   "ir_iterations": 1
+  },
+  {
+   "design": "veneto_short",
+   "workers": 4,
+   "arm": "public",
+   "native_s": 6.434,
+   "ir_s": 3.232,
+   "projections_per_fit": 1,
+   "projection_fit_s": 2.916,
+   "rhs_fe_iterations_residual_iterations": "3/60/0",
+   "ir_iterations": 1
+  },
+  {
+   "design": "veneto_short",
+   "workers": 4,
+   "arm": "auto",
+   "native_s": 4.285,
+   "ir_s": 1.038,
+   "projections_per_fit": 1,
+   "projection_fit_s": 0.716,
+   "rhs_fe_iterations_residual_iterations": "3/58/0",
+   "ir_iterations": 1
+  },
+  {
+   "design": "veneto_short",
+   "workers": 8,
+   "arm": "public",
+   "native_s": 5.007,
+   "ir_s": 2.109,
+   "projections_per_fit": 1,
+   "projection_fit_s": 1.796,
+   "rhs_fe_iterations_residual_iterations": "3/60/0",
+   "ir_iterations": 1
+  },
+  {
+   "design": "veneto_short",
+   "workers": 8,
+   "arm": "auto",
+   "native_s": 3.679,
+   "ir_s": 0.788,
+   "projections_per_fit": 1,
+   "projection_fit_s": 0.476,
+   "rhs_fe_iterations_residual_iterations": "3/58/0",
+   "ir_iterations": 1
+  }
+ ],
+ "veneto_witnesses": "Both panels, 1/2/4/8 workers: e(b), e(V), e(feppml_separation_sequence), e(feppml_drop_counts) and the dropped-row list identical between arms at every worker count; e(feppml_separation) differs only in the IR row's maximum interior certificate magnitude (column 8, ~1e-13); every arm repeats bit for bit across repetitions; separated sets, RSEQ and discrete RSEP columns identical across worker counts (short 7,498 dropped rows, long 1,643).",
+ "campaign_cells": {
+  "note": "bench/generate.py with separation=True (seed 739391, 16 regressors, two FEs), 4 workers, one run per arm; witness runs, timings indicative only.",
+  "cells": [
+   {
+    "design": "dense 200k",
+    "dropped": 1794,
+    "public_native_s": 0.448,
+    "auto_native_s": 0.39,
+    "public_ir_s": 0.149,
+    "auto_ir_s": 0.083,
+    "fe_iterations": "3 -> 2"
+   },
+   {
+    "design": "akm-strong 500k",
+    "dropped": 430,
+    "public_native_s": 2.725,
+    "auto_native_s": 1.606,
+    "public_ir_s": 1.442,
+    "auto_ir_s": 0.338,
+    "fe_iterations": "24 -> 21"
+   },
+   {
+    "design": "akm-weak 500k",
+    "dropped": 1078,
+    "public_native_s": 34.219,
+    "auto_native_s": 9.056,
+    "public_ir_s": 28.187,
+    "auto_ir_s": 3.013,
+    "fe_iterations": "565 -> 620"
+   },
+   {
+    "design": "akm-strong 500k pweight",
+    "dropped": 430,
+    "public_native_s": 2.856,
+    "auto_native_s": 1.74,
+    "public_ir_s": 1.454,
+    "auto_ir_s": 0.332,
+    "fe_iterations": "24 -> 21"
+   }
+  ],
+  "witness": "Identical e(b), e(V), RSEQ, drop counts and dropped rows; RSEP differs only in the IR interior certificate magnitude."
+ },
+ "replay": {
+  "public": "scripts/run_plugin_replay.sh candidate vs 9b13e47b: 73/73 cases, 0 exact, 0 discrete, 0 science differences.",
+  "hidden": "All 38 PPML cases rerun with inject=ppml_separation_auto appended: identical exact view in 37; ppml-separation-ir differs in RSEP[IR,8] (2.69e-20 -> 2.39e-20) and RREC[28..29] (separation trace digest, which hashes certificate bits and is a protected discrete field of the replay view)."
+ },
+ "seeded_census": {
+  "test": "crates/fereg-oracle/tests/ppml_separation_routing.rs",
+  "corpus": "18 seeded fereg_oracle designs (DensePanel 240 rows 12x10, AkmCampaign 1000 rows 200x40, Chain 300 rows 30x20; unit/frequency/probability weights; zero fractions 0.2/0.45/0.7; odd seeds add a finite regressor positive only on every fifth zero row) x 3 configurations (fe simplex ir; fe ir; ir) at the public septolerance(1e-8), one worker.",
+  "same": 32,
+  "ir_iterations": 9,
+  "public_fails": 9,
+  "hidden_fails": 2,
+  "both_fail_differently": 2,
+  "other": 0,
+  "public_chain_cells": "fe simplex ir: 5 ir-iterations (seeds 2, 5, 8, 11, 17), 3 public-fails (10, 14, 16), 0 hidden-fails",
+  "hidden_cross_worker": "Where the hidden arm succeeds at one worker it repeats bit for bit at 2/4/8 workers and its decisions and sample agree across 1/2/4/8 workers."
+ },
+ "activation_needed": "Johannes's decision to accept the census divergences (or a narrower scope); then set PreparedPpmlSeparationExecution.auto_projection to true for every PPML fit in prepared_estimator.rs, remove the injection, document in SPEC \u00a714 that admitted two-intercept detector projections use the OLS two-FE Auto route, and declare a replay scope for RSEP IR certificate columns 8-11 and RREC 28-29 on ppml-separation-ir.",
+ "post_fix_census": {
+  "change": {
+   "branch": "codex/ppml-separation-fix (separation branch + main v0.5.0-beta.9, merge 60e4d7de)",
+   "commit": "9fff5bf3",
+   "summary": "A detector step (simplex deletion certification, rectifier detection and certification, Mu candidate and certification) whose admitted retained-CG projection fails with NonConvergence or InvalidData is executed once more with the public LSMR solver family under the same weights, tolerances, iteration limit, decision rules and certificates; the LSMR workspace is bounded on generation zero and charged to the live memory plan only when used. If it does not fit or also fails numerically, the first error is reported. Public default otherwise unchanged; hidden Auto arm resolves no re-execution."
+  },
+  "diagnosis": {
+   "ir_span_class": "Cells (5,1) (5,2) (11,1) (11,2) (17,1) (17,2), r(430) 'direction failed certification'. Retained CG solves the rectifier projection on the weighted normal equations; the zero-row weight tolerance^2/zeros (6e-19 at 150-170 zeros) is squared, so zero-row components are lost to rounding (seed 11 iteration-1 projection scale 1.58e4 for a recurrence in [0,1]; scales then wander over ten iterations). The proposed direction (-fitted, fitted = response - residual) leaves the model span: independent numpy lstsq span distance 0.144 (seed 11), 0.193 (17), 2.0e-8 (5) against projection_tolerance 1e-10, equal to fereg's own span certificate. Tightening the FE tolerance to 1e-12 does not help (CG breaks down). The decision rule is not at fault: with an accurate projection the same rule proposes the LP-witness set.",
+   "simplex_score_class": "Cells (10,0) (14,0) (16,0), r(459) 'finite score certificate did not pass'. The unit-weight span check of an exact simplex direction lying in the FE span: the within response is FE-solver noise (8.8e-16, 8.6e-9, 2.3e-8 against |z| ~ 1), and the deferred absorbed intercept's raw moment is normalized by max(within response, residual) norm, giving 1.33e-10, 1.11e-10, 1.47e-10 against score tolerance 1e-10 while the residual (span distance) is <= 2e-14. The FE certificate of the residual absorption is scaled by the raw RHS and never asks for that orthogonality.",
+   "seed_3": "Cells (3,1) (3,2) still fail in both arms. The CG direction is the LP-witness set (20 rows) but its span distance is 1.825e-10 (lstsq 1.8249e-10) over projection_tolerance 1e-10; LSMR's residual absorption ends at FE relative moment 1.149e-8 over 1e-8; CMG and Auto exhaust their budgets. Not changed.",
+   "rejected_candidates": "Shared score-certificate normalization (also gates PPML IRLS; not narrow); larger CG budget or tighter FE tolerance (CG breakdown); explicit CMG for detector projections (fixes the IR class only, two/three intercept FEs only)."
+  },
+  "cells_changed": [
+   {
+    "cells": "(5,1) (5,2)",
+    "before": "r(430) span=2.008e-8",
+    "after": "LSMR re-execution of the rectifier step on generation 2 (fe ir) / 1 (ir); 209 of 300 rows retained = LP witness; class vs hidden: ir-iterations"
+   },
+   {
+    "cells": "(11,1) (11,2)",
+    "before": "r(430) span=1.441e-1",
+    "after": "re-execution on generation 2 / 1; 194 of 300 retained = LP witness; ir-iterations"
+   },
+   {
+    "cells": "(17,1) (17,2)",
+    "before": "r(430) span=1.930e-1",
+    "after": "re-execution on generation 2 / 1; 228 of 300 retained = LP witness; ir-iterations"
+   },
+   {
+    "cells": "(10,0)",
+    "before": "r(459) finite score certificate",
+    "after": "simplex certification re-executed on generations 2 and 3; 805 of 1000 retained = LP witness; same as hidden"
+   },
+   {
+    "cells": "(14,0)",
+    "before": "r(459)",
+    "after": "simplex certification re-executed on generation 0; 295 of 300 retained = LP witness; same as hidden"
+   },
+   {
+    "cells": "(16,0)",
+    "before": "r(459)",
+    "after": "simplex certification re-executed on generations 1 and 2; 806 of 1000 retained = LP witness; same as hidden"
+   }
+  ],
+  "classes": {
+   "same": 35,
+   "ir_iterations": 15,
+   "public_fails": 0,
+   "hidden_fails": 2,
+   "both_fail_differently": 2,
+   "other": 0,
+   "detail": "ir-iterations: the original 9 plus (5,1) (5,2) (11,1) (11,2) (17,1) (17,2); (10,0) (14,0) (16,0) moved from public-fails to same; hidden-fails (9,1) (9,2) and both-fail (3,1) (3,2) unchanged. Under fe simplex ir: 5 ir-iterations cells, no failures."
+  },
+  "witnesses": {
+   "census_identity": "All 54 cells, both arms, before and after the fix (full separation report with certificate magnitudes and elapsed time zeroed, e(b) and e(V) bits, error messages): only the 9 public cells above changed, each from error to success.",
+   "lp_witness": "HiGHS LP (scipy 1.13.1, independent of fereg): maximal recession-cone separation alternated with singleton pruning to a fixed point. Every completed arm of all 54 cells, before and after the fix, retains exactly the LP sample; pinned per design in the census test (count and FNV-1a fold).",
+   "workers": "Both arms, every completing cell: bit-identical repeat at 2, 4 and 8 workers (certificate magnitudes included) and identical decisions and sample across 1, 2, 4 and 8 workers (census test both_arms_repeat_and_agree_across_workers).",
+   "replay": "scripts/run_plugin_replay.sh arm64 candidate (fix tree) vs published beta.9 dist/fereg_macos.plugin (a7b25176): 73 cases, rc 0, 0 exact differences, 0 science differences; 70 without repair and the 3 standing known-repair cases (known-12, known-66, known-294). ppml-separation-fe/ir/mu/simplex exact.",
+   "stata_campaign_and_panels": "Stata 19/MP batch, candidate vs beta.9 plugin, same ado: bench/generate.py separation=True seed 739391 (dense 200k: 1,794 dropped; akm-strong 500k: 430; akm-weak 500k: 1,078; akm-strong 500k pweight: 430) at 4 and 8 workers, and the synthetic Veneto-shaped Poisson panels (ycount = rpoisson(exp(ln 4 + y - mean(y))), seed 739391; short 1,386,980 rows with y2001: 7,498 dropped; long 5,626,943 rows with age2 age3 y1996-y2000: 1,536 dropped) at 1, 2, 4 and 8 workers: e(b), e(V), e(feppml_separation), e(feppml_separation_sequence), e(feppml_drop_counts), e(feppml_fit) and the dropped-row checksum identical in all 16 runs; no re-execution occurred (FEREG_PHASE_TIMING).",
+   "stata_census_cells": "The census designs through the Stata plugin path (candidate vs beta.9): (5,1) (5,2) (11,1) (11,2) (17,1) (17,2) r(430) and (14,0) r(459) under beta.9 now complete with the LP-witness sample; (10,0), (16,0), (9,1) and (0,0) complete identically in both (the Stata request certifies (10,0) and (16,0) without re-execution); (3,1) is r(430) in both."
+  },
+  "hidden_budget_exhaustions": {
+   "cells": "(9,1) (9,2): DensePanel 240 rows 12x10, unit weights, zero fraction 0.45, induced regressor separation; configurations fe ir and ir.",
+   "where": "Generation 0, rectifier iteration 1 of 10,000: the first detector projection. The rectifier's iteration limit is not consumed and no pilot or handoff is involved: the initial absorption (4 RHS) certifies after 5 two-FE PCG iterations; the final residual absorption's PCG stops at iteration 0 on its recurrence proxy (target 5e-9 relative to the original RHS reference norms) while the independent FE certificate fails.",
+   "why": "Final residual absorptions run with ols_refine = Some(false) (borrowed_map.rs absorb_ols_with_remaining), so no tighter PCG correction is attempted, and the fail-safe symmetric MAP continuation runs the remaining 16,000-iteration budget on the 9e-19-weighted system without certifying (0.13 s). The FE certificate and tolerance are the same as retained CG's; CG certifies the same residual after 8 iterations. Forcing the correction (recurrence 1e-10) still stops at iteration 0, so the proxy and the certificate measure different scales on this residual. An LSMR re-execution of the hidden step also fails.",
+   "fix_would_need": "A two-FE PCG stop for detector residual absorptions normalized like the FE certificate (current residual rather than original RHS reference norms), or a certified non-MAP fallback (retained CG certifies these cells) when the proxy stop misses the certificate. Either changes the hidden route; not implemented."
+  },
+  "activation_needed": "Unchanged: Johannes's decision on the hidden route given the post-fix classes (15 ir-iterations cells with identical sample and fit, 2 hidden-fails, 2 both-fail)."
+ }
+}
