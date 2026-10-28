@@ -19,6 +19,7 @@ and PPML reporting are unchanged.
 | Two-FE Auto speed | [Qualification record](../bench/results/two-fe-auto-qualification-20261027.json): Linux 7,560 calls on 31 physical hosts, all 126 protected comparisons within max(5%, 1 ms) after Johannes waived the 12-distinct-host rule (84 cells had 11); practical Mac check 119 of 126 passed, the other 7 inconclusive with paired medians within the bound. [Veneto comparison](../bench/results/two-fe-auto-veneto-20261027.json): 1.24-2.08 times faster than beta.7 without saved FE and 1.06-2.18 with saved FE; faster than PyFixest's `within` in 9 of 10 cells. |
 | Two-FE Auto round two | [Round-two record](../bench/results/two-fe-round-two-20261027.json): Linux 10,080 calls on 28 physical hosts, 123 of 126 protected comparisons within max(5%, 1 ms) after the 12-distinct-host waiver (every cell had 11) and 3 inconclusive under 1 ms; Mac check 115 of 126 passed, 11 inconclusive; Veneto candidate faster than beta.8 in all 20 cells and than PyFixest `within` in 9 of 10; PPML exact timing 12 of 12 within bound with identical science. |
 | Public integration | [Final activation](../bench/results/ownership-public-activation-20261024.json): 174 actual hidden/public/public-repeat calls per platform, independent witnesses, fixed-worker exactness, cross-worker science, resource/gate/hierarchy checks, Mac/Linux ABI/load/panic checks and the full source suite passed. Six licensed Mac Stata fixtures and actual public OLS Break/rollback passed. |
+| Beta.10 integration | [Round record](../bench/results/beta10-2026-10-28.json): Linux 13,920 calls on 35 physical hosts, 173 of 174 protected comparisons within max(5%, 1 ms) (one inconclusive by 0.02 ms; 20 cells one host short of twelve under Johannes's renewed waiver); Mac 162 passed, 11 inconclusive and the accepted sixteen-FE one-worker exception of the within fused LSMR step; Veneto candidate within 4% of beta.9 and faster than PyFixest `within` in 9 of 10 cells; PPML 12 of 12 within bound and bit-identical; sparse three-FE series finishes at ten million rows where beta.9 does not. Publication is a separate authorization. |
 
 Ownership/deferred cells activate only for OLS Auto/Auto with a global intercept
 and exactly two categorical-intercept FE terms. Explicit injections and paths
@@ -158,6 +159,108 @@ CMG to PPML's joint frames above 350,000 finest edges was built, measured at
 0.98 on the long Poisson panel at 8 workers and removed; separation detection
 is 42-61% of PPML native time on Veneto-scale Poisson panels and is the
 subject of a separate workstream.
+
+## Beta.10 integration qualification
+
+The integration candidate `codex/beta10-integration` (runtime commit
+3348fe45, qualification tooling 77a45d18) joins the beta.10 workstreams below
+on the beta.9 baseline: exact many-FE Schwarz admission (the ten-million-row
+sparse three-FE fix), the shared Jacobi-trial design, RHS-transport and
+projected-matrix release, the fused three-FE MAP pilot sweep, the ordered
+additive-Schwarz reduction in every mode, the within fused LSMR pin, the
+derived residual on the one-FE and many-FE routes, the CMG admission level
+cap, the PPML separation re-execution, re-certification and Auto-route
+activation, and the wide private Gram bank. The
+[round record](../bench/results/beta10-2026-10-28.json) keeps the
+identities, declarations, comparisons and failure history.
+
+- **Replay.** 77 of 77 cases pass against the published beta.9 macOS plugin
+  with the within fused-LSMR, derived-residual and PPML separation scopes;
+  only `ols-derived-fe1` and `ols-derived-fe3` differ outside a scope, in
+  their residual row's stop code (2 to 5) and certificate norms, and the
+  integration head is their exact replay parent from beta.10 on.
+- **Declaration.** The frozen configurations declared scope `two` with a
+  `two-gates-v2` hidden arm. The first Mac attempt and the first Linux array
+  stopped at their first three-FE cell with the exactness rule, because the
+  within fused LSMR pin changes many-FE science in the last bits and the
+  derived one-FE residual changes the residual row's stop code on the
+  no-output one-FE campaign cell. Both configurations were amended before any
+  timing was read (scope `many`; candidate families `two` and `many` with
+  `public_policy: two-gates-v2`; hidden `many-geometry-v1`), the tool learned
+  to bind a hidden arm only to the family it activates and to validate a
+  projection-to-derived residual row ([README](../bench/README.md)), and the
+  discarded attempts are listed in the record. With the actual plugins, the
+  candidate's published values and observation columns on the no-output
+  one-FE cell are bit-identical to beta.8 and beta.9.
+- **Linux qualification** ([configuration](../bench/qualify_configs/beta10-linux.json),
+  array 8313820, report 8313821): 58 cells, beta.7 original, beta.9 incumbent,
+  candidate and hidden arms, 13,920 native calls on 35 distinct physical
+  hosts. 173 of 174 protected comparisons are within max(5%, 1 ms); the one
+  inconclusive comparison is `small-retained-t4` against beta.7, whose upper
+  bound exceeds the allowance by 0.02 ms (median 0.26 ms faster). Twenty
+  cells reached 11 of the required 12 distinct hosts (60 comparisons, all
+  within the bound), the same one-host shortfall Johannes waived for round
+  two; the tool therefore reports `needs_discussion`, and Johannes applied the
+  waiver again on 2026-10-28, so the Linux result stands as passed with one
+  inconclusive comparison. Against beta.9 the
+  median cell ratio is 0.992 and no cell is slower than 1.017; the many-FE
+  cells improve most: eight FE 0.77 and 0.84, four FE 0.80 and 0.87, small
+  third 0.81 and 0.88, campaign three-sparse 0.82 and 0.84,
+  campaign AKM k64 0.86 and 0.88 at one and four workers.
+- **Mac practical check** ([configuration](../bench/qualify_configs/beta10-darwin.json),
+  beta.8 original, 3,016 calls): 162 of 174 comparisons pass, 11 are
+  inconclusive on small or noisy cells (`slopes-t4`, `campaign-two-dense-t4`,
+  `disconnected-t4`, `weak-t1/t4`, `sixteen-fe-t1` against beta.9, where the
+  medians are within noise or negative) and one is a regression:
+  `sixteen-fe-t1` is 6% slower than beta.8 (0.413 s against 0.389 s in every
+  block; 0.390 s for beta.9). The same cell is 6% faster than beta.9 on Linux.
+  A development attribution with arm64 release builds of the integration
+  head selecting within's `StepKernel::Separate` instead of the default fused
+  step reproduces beta.9's time (0.389 s) and output bits on that cell, while
+  the fused kernel is also the source of the one-worker gains on three, four
+  and eight effects (small third 0.110 against 0.120 s, four FE 0.110 against
+  0.121 s, eight FE 0.181 against 0.211 s). The fused step therefore costs
+  about 6% at sixteen effects and one worker on the M2 Ultra and nothing at
+  four workers; no platform-specific kernel fence was added. Johannes
+  accepted this one-cell Mac exception on 2026-10-28; a within follow-up for
+  many small unsorted intercept terms on arm64 remains open.
+- **Veneto panels** (candidate against the beta.9 plugin on one whole 28-core
+  node, three rotated repetitions): with saved effects the candidate is within
+  2% of beta.9 at every core count (short 0.98-1.00, long 0.99-1.00) with
+  exact fixed-worker repeats and cross-worker agreement. Without saved
+  effects the first job's fereg arms agree within 1% while its PyFixest arm
+  failed the pinned-source check (main now pins the beta.8 campaign's
+  PyFixest commit, the reused beta.7 environment carried the older one); the
+  rerun against the beta.8 Veneto environment (job 8315525, scc-xf4) has the
+  candidate within 4% of beta.9 everywhere (short 0.96-1.01, long 0.98-1.00)
+  and faster than PyFixest `within` in 9 of 10 cells (short 0.77-0.92 at 1, 4,
+  8 and 16 cores, 1.00 at 2 cores; long 0.36-0.51), with exact fixed-worker
+  repeats and cross-worker agreement. Both first jobs ran on scc-uf3, where
+  every phase of every arm was about 2.5 times slower than on the other
+  E5-2680 v4 nodes with no competing process observed; their within-job
+  ratios stand, their absolute levels do not compare with round two.
+- **PPML timing** (campaign-DGP PPML cases from `bench/ppml_cases.py`: two-sparse,
+  AKM baseline and two-dense at 1M and 4M rows, 16 regressors, robust VCE;
+  beta.9 against the candidate, five rotated repetitions, one whole node, job
+  8313485 on scc-uf3): all 12 cells pass the max(5%, 1 ms) bound with paired
+  median ratios 0.985-1.005 at 4 and 28 workers, and every published result
+  is bit-identical to beta.9 (the beta.10 PPML changes act only on separation
+  detection, which these designs do not reach). The node ran about 2.4 times
+  slower than the round-two node for both arms, so only the ratios compare.
+- **Sparse three-FE size series** (the campaign design: 16 controls, iid VCE,
+  `threads(4)`, Auto/Auto; one whole 28-core node, scc-wo4, jobs 8316297 and
+  8318321; three repetitions per cell in a fresh Stata process, each fit
+  bounded at 30 minutes; 100k-7M rows regenerated with the campaign generator
+  and the campaign's ten-million-row input reused read-only). The candidate
+  takes 0.73, 1.87, 5.02 and 15.7 s at 100k, 300k, 1M and 3M rows against
+  beta.9's 0.84, 1.98, 5.49 and 16.9 s (7-13% faster, 10-20% less resident
+  memory, same LSMR route and iteration counts, coefficients equal to twelve
+  digits with last-bit differences under the within fused-LSMR scope), and
+  28.0, 39.4 and 58.9 s with 6.8, 9.2 and 12.6 GiB at 5M, 7M and 10M rows
+  (23-24 LSMR iterations). beta.9 exhausted the 30-minute bound at 5M and 7M
+  rows on this node, and Johannes skipped its ten-million-row attempt, which
+  the beta.8 campaign had already shown not to finish. The campaign's recorded
+  timings stand; this series is the candidate's.
 
 ## Beta.10 exact engineering
 

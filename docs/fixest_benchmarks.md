@@ -90,7 +90,13 @@ so neither the low-memory plan nor the node explains the limit; at three
 million rows the same design took 15.5 seconds. The campaign timing stays as
 recorded. The cause, diagnosed afterwards, was an overstated additive-Schwarz
 memory bound that sent the fit to the MAP fallback; see
-[VALIDATION](VALIDATION.md#many-fe-schwarz-admission-at-scale).
+[VALIDATION](VALIDATION.md#many-fe-schwarz-admission-at-scale). The beta.10
+candidate reran only this size series under a bounded protocol (one whole
+28-core node, three repetitions, 30 minutes per fit): it finishes ten million
+rows in 59 seconds with 12.6 GiB, 7M in 39 and 5M in 28, where beta.9 exhausts
+the bound at 5M and 7M, and it is 7-13% faster than beta.9 from 100,000 to
+three million rows ([round record](../bench/results/beta10-2026-10-28.json)).
+Those numbers come from a different node and are not campaign timings.
 
 **Controls.** fereg's OLS time rose from 0.54 seconds with 4 controls to 5.44
 with 64, more steeply than the comparators': at 64 controls reghdfe took 11.2,
