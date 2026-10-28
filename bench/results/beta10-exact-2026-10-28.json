@@ -8,7 +8,8 @@
    "c925566d"
   ],
   "E4_initial_screen_and_parallel_scan": "1a005ac3",
-  "E2_wide_moments_and_rhs": "e8230ca5"
+  "E2_wide_moments_and_rhs": "e8230ca5",
+  "E2_wide_private_gram": "5cc84ee1"
  },
  "artifacts": {
   "beta9_dist_sha256": "a7b251761aecbc6f4509a24ba1d190c64452fe4012eab2bfde6f9dfc5cec690b",
@@ -304,7 +305,7 @@
  },
  "decisions": {
   "E1": "skipped: certify_scores 0.3-2.6% of native (kept columns skipped; residual norm and absorbed intercept only)",
-  "E2": "implemented: k-series jump 63->64 controls +0.364 s (t1) and +0.161 s (t4) against 0.025/0.011 s per control; wide raw-moment bands and wide RHS binding. Remaining: 64->65 controls (65 kept columns, FIXED_BLOCK_MOMENT_MAX_COLUMNS Gram kernel) finite solve 0.533->0.771 s (t1), 0.256->0.320 s (t4); not implemented",
+  "E2": "implemented: k-series jump 63->64 controls +0.364 s (t1) and +0.161 s (t4) against 0.025/0.011 s per control; wide raw-moment bands and wide RHS binding (e8230ca5), then a heap private Gram bank for more than 64 kept columns (5cc84ee1), which removed the remaining 64->65 control cliff in the finite solve",
   "E3a": "skipped: akm k64 per-RHS iterations 61x14, 4x13, 1x0; converged-lane work about 2% of the operator phase (<0.4% of native)",
   "E3b": "skipped: recurrence including CMG application 0.9-2.1% of native",
   "E4": "implemented: MAP wrapper scan+norms+initial certificate 16% (t1) and 18% (t4) of one-FE native; screen and parallel scan, norm reuse not adopted",
@@ -1338,5 +1339,83 @@
     "excess_median_ms": -2.059
    }
   ]
+ },
+ "wide_gram_followup": {
+  "protocol": "paired sessions on the same day: before = e8230ca5 profiling arm64 rebuild, after = 5cc84ee1 profiling arm64; arm order alternated by design; threads(1) and threads(4); 3 fits, medians of fits 2-3; frozen rule as above; all 20 sessions clean",
+  "e_b1_and_rss_bits": "identical between arms in every cell",
+  "replay": "74/74 exact vs beta.9 including ols-wide-k67, also with thread counts 2/4/8",
+  "admission": "fast estimate adds (2k^2 + k) * 8 bytes when k > 64",
+  "cells": {
+   "k48|t1": {
+    "before_native_s": 1.3729,
+    "after_native_s": 1.3664,
+    "ratio": 0.995,
+    "before_finite_solve_s": 0.3523,
+    "after_finite_solve_s": 0.3467
+   },
+   "k48|t4": {
+    "before_native_s": 0.5829,
+    "after_native_s": 0.5578,
+    "ratio": 0.957,
+    "before_finite_solve_s": 0.1717,
+    "after_finite_solve_s": 0.158
+   },
+   "k63|t1": {
+    "before_native_s": 1.8903,
+    "after_native_s": 1.8696,
+    "ratio": 0.989,
+    "before_finite_solve_s": 0.5186,
+    "after_finite_solve_s": 0.4961
+   },
+   "k63|t4": {
+    "before_native_s": 0.8854,
+    "after_native_s": 0.8811,
+    "ratio": 0.995,
+    "before_finite_solve_s": 0.2526,
+    "after_finite_solve_s": 0.2381
+   },
+   "k64|t1": {
+    "before_native_s": 1.9453,
+    "after_native_s": 1.9204,
+    "ratio": 0.987,
+    "before_finite_solve_s": 0.5359,
+    "after_finite_solve_s": 0.516
+   },
+   "k64|t4": {
+    "before_native_s": 0.993,
+    "after_native_s": 0.9216,
+    "ratio": 0.928,
+    "before_finite_solve_s": 0.2578,
+    "after_finite_solve_s": 0.2395
+   },
+   "k65|t1": {
+    "before_native_s": 2.2344,
+    "after_native_s": 1.9755,
+    "ratio": 0.884,
+    "before_finite_solve_s": 0.7799,
+    "after_finite_solve_s": 0.5193
+   },
+   "k65|t4": {
+    "before_native_s": 1.1082,
+    "after_native_s": 1.011,
+    "ratio": 0.912,
+    "before_finite_solve_s": 0.3272,
+    "after_finite_solve_s": 0.2467
+   },
+   "k96|t1": {
+    "before_native_s": 3.4829,
+    "after_native_s": 3.1309,
+    "ratio": 0.899,
+    "before_finite_solve_s": 1.3,
+    "after_finite_solve_s": 0.9881
+   },
+   "k96|t4": {
+    "before_native_s": 1.5521,
+    "after_native_s": 1.4648,
+    "ratio": 0.944,
+    "before_finite_solve_s": 0.5433,
+    "after_finite_solve_s": 0.4589
+   }
+  }
  }
 }

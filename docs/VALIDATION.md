@@ -186,10 +186,16 @@ Native seconds on an M-series Mac (medians, step 0 against final): one FE
 certificate (at most 2.6%), converged two-FE lanes (under 0.4%), CMG
 application (at most 2.1%), PPML one-FE serial passes (at most 3.7%) and
 loader packing (fully overlapped with the SPI read) fell below the rule and
-were not changed. One cliff remains: the finite Gram kernel's 64-column
-private-moment limit adds 0.24 s (one worker) at 65 kept columns.
+were not changed. A follow-up removed the last cliff: Gram dimensions wider
+than the 64-column stack block accumulate in a private heap bank with the same
+partition of Gram rows and the same per-row rank-1 pass, charged by the fast
+memory estimate. In paired sessions against the previous head, the finite
+solve at 65 controls fell from 0.780 to 0.519 s (one worker) and 0.327 to
+0.247 s (four), at 96 controls from 1.300 to 0.988 s and 0.543 to 0.459 s;
+native time at 65 controls fell from 2.234 to 1.975 s and 1.108 to 1.011 s,
+with identical coefficients and residual sums.
 
-Plugin replay is 74/74 exact against beta.9, including the new compact
+Plugin replay is 74/74 exact against beta.9 after each change, including the new compact
 `ols-wide-k67` case (67 regressors), and the universal release build is exact
 at 2/4/8 replay threads; Stata `e(b)`, `e(V)` and posted scalars are
 bit-identical to beta.9 on all eight 1M-row designs at 1 and 4 workers. The
