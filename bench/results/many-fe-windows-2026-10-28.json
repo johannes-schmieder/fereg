@@ -1,0 +1,690 @@
+{
+ "schema": 1,
+ "purpose": "Beta.10 many-FE OLS route: exact Schwarz admission for every LSMR route (item 1), shared Jacobi-trial design (E7), RHS-transport and projected-matrix release (E6b/E6d), and the hidden bounded-session-window candidate routing_many_windows_v1 (P3). Descriptive engineering evidence, not qualification.",
+ "source": {
+  "parent": "cf5ddfc0 (codex/three-fe-scale)",
+  "commits": {
+   "item1": "344e8236",
+   "e7": "321ba327",
+   "e6": "535afb1d",
+   "p3": "acdfb097"
+  },
+  "within_pin": "efe35ee"
+ },
+ "plugins": {
+  "mac_candidate_arm64_profiling_acdfb097_sha256": "029810cb8645fcbde52cc93e3d5595c9c77e99d774e06b4193c5b936d23b0359",
+  "mac_e7_arm64_profiling_321ba327_sha256": "830f8aa3e88a4f0f2a3842280fc8a026de6952845ea67e1b9c6aecc4ef1eadef",
+  "mac_e6_arm64_profiling_sha256": "b2d9932c9f695f597d732e8bab554e1db811be03289c0b98914ccc1d3100e305",
+  "linux_base_cf5ddfc0_sha256": "03ee573521905cbe46cd8a542d75dbbc26252aa49e4d5a788eb38281723b2b69",
+  "linux_candidate_acdfb097_sha256": "93b3363a58c7d402fc75c76a82fe7a9fdc503fe624f22986e179481e255750fd",
+  "linux_build": "SCC job 8311738: Rust 1.85.1, gcc 12.2.0, scripts/build_linux.sh on git archives of cf5ddfc0 and acdfb097",
+  "mac_build": "cargo build --profile profiling -p fereg-plugin --target aarch64-apple-darwin, clang bundle with plugin/exports_macos.txt, ad-hoc codesign"
+ },
+ "inputs": {
+  "mac": {
+   "generator": "bench/campaign.py make_dataset, seed 739391, ols, 16 controls, 1M rows (Mac python)",
+   "three_sparse_sha256": "3277c8827a32871aff05c951631a5363df03c49df43867176fc13027e42c2250",
+   "three_dense_sha256": "b1fa7ffdd9ce2e3d370540c49a3a784daa10218c3395af3d72333d7a677aaf44",
+   "levels": {
+    "three-sparse": [
+     200000,
+     10000,
+     32
+    ],
+    "three-dense": [
+     62,
+     62,
+     62
+    ]
+   }
+  },
+  "scc_10m": "beta.8 campaign input ols-three-sparse-n10000000.dta (task-3, read-only)",
+  "routing_families": "bench/routing_cases.py generators, seed 20261028: small-third, four-fe, eight-fe, sixteen-fe (replay_large random-mobility), near-confounded-third (extended_columns)"
+ },
+ "e7_design_build_seconds_mac_ci": {
+  "note": "within::Design::new vs full solver builds; only the design is shareable with the pinned API",
+  "100k_sorted": {
+   "design": 0.0001,
+   "diagonal_solver": 0.0008,
+   "additive_solver": 0.0102
+  },
+  "1M_sorted": {
+   "design": 0.0003,
+   "diagonal_solver": 0.0077,
+   "additive_solver": 0.0449
+  },
+  "1M_shuffled": {
+   "design": 0.0073,
+   "clone": 0.0013,
+   "diagonal_solver": 0.0123,
+   "additive_solver": 0.0501
+  },
+  "1M_shuffled_deterministic": {
+   "design": 0.0053,
+   "clone": 0.0004,
+   "diagonal_solver": 0.02,
+   "additive_solver": 0.0561
+  }
+ },
+ "e6_memory_mac": {
+  "protocol": "Stata 19 MP batch, threads(4), memory(auto), /usr/bin/time -l maximum resident set of the Stata process; load-only process 0.209 GB",
+  "three-sparse": {
+   "before_321ba327_gb": 1.876,
+   "after_e6_gb": 1.778,
+   "admitted_solver_bytes": 16149267643,
+   "science": "identical"
+  },
+  "three-dense": {
+   "before_321ba327_gb": 0.726,
+   "after_e6_gb": 0.724,
+   "science": "identical"
+  },
+  "admission_totals": "unchanged; memory(auto) Fast/Low choice unchanged",
+  "not_done": "E6c implicit identity LevelIndex / u32 observation indexes: LevelIndex::members returns &[usize] to about 200 call sites across MAP, OLS, PPML and slope code"
+ },
+ "mac_timing": {
+  "host": "M2 Ultra, macOS, Stata 19 MP batch, fresh process per fit, _fereg_estimate_ols with memory(auto), public = uninjected, hidden = inject(routing_many_windows_v1)",
+  "frozen_rule": "before each fit wait until no other stata-mp, cargo, rustc or python process runs; a fit during which one appeared is discarded and repeated once; three repetitions per arm, order alternating per repetition",
+  "discarded": 1,
+  "cells": [
+   {
+    "design": "three-sparse",
+    "threads": 1,
+    "arm": "public",
+    "reps": 3,
+    "native_seconds": [
+     6.6028,
+     6.6364,
+     6.6817
+    ],
+    "native_median": 6.6364,
+    "peak_rss_gb_max": 1.766,
+    "peak_rss_gb_median": 1.74
+   },
+   {
+    "design": "three-sparse",
+    "threads": 1,
+    "arm": "hidden",
+    "reps": 3,
+    "native_seconds": [
+     5.7591,
+     5.8063,
+     5.9267
+    ],
+    "native_median": 5.8063,
+    "peak_rss_gb_max": 1.051,
+    "peak_rss_gb_median": 1.043
+   },
+   {
+    "design": "three-sparse",
+    "threads": 4,
+    "arm": "public",
+    "reps": 3,
+    "native_seconds": [
+     1.9417,
+     1.9429,
+     1.9934
+    ],
+    "native_median": 1.9429,
+    "peak_rss_gb_max": 1.793,
+    "peak_rss_gb_median": 1.769
+   },
+   {
+    "design": "three-sparse",
+    "threads": 4,
+    "arm": "hidden",
+    "reps": 3,
+    "native_seconds": [
+     1.7746,
+     1.7909,
+     1.7992
+    ],
+    "native_median": 1.7909,
+    "peak_rss_gb_max": 1.37,
+    "peak_rss_gb_median": 1.363
+   },
+   {
+    "design": "three-sparse",
+    "threads": 8,
+    "arm": "public",
+    "reps": 3,
+    "native_seconds": [
+     1.2084,
+     1.3581,
+     1.5057
+    ],
+    "native_median": 1.3581,
+    "peak_rss_gb_max": 2.003,
+    "peak_rss_gb_median": 1.997
+   },
+   {
+    "design": "three-sparse",
+    "threads": 8,
+    "arm": "hidden",
+    "reps": 3,
+    "native_seconds": [
+     1.1536,
+     1.1657,
+     1.1856
+    ],
+    "native_median": 1.1657,
+    "peak_rss_gb_max": 1.788,
+    "peak_rss_gb_median": 1.752
+   },
+   {
+    "design": "three-dense",
+    "threads": 1,
+    "arm": "public",
+    "reps": 3,
+    "native_seconds": [
+     1.1502,
+     1.1686,
+     1.2045
+    ],
+    "native_median": 1.1686,
+    "peak_rss_gb_max": 0.724,
+    "peak_rss_gb_median": 0.723
+   },
+   {
+    "design": "three-dense",
+    "threads": 1,
+    "arm": "hidden",
+    "reps": 3,
+    "native_seconds": [
+     1.1738,
+     1.2057,
+     1.2537
+    ],
+    "native_median": 1.2057,
+    "peak_rss_gb_max": 0.724,
+    "peak_rss_gb_median": 0.723
+   },
+   {
+    "design": "three-dense",
+    "threads": 4,
+    "arm": "public",
+    "reps": 3,
+    "native_seconds": [
+     0.4371,
+     0.4477,
+     0.4555
+    ],
+    "native_median": 0.4477,
+    "peak_rss_gb_max": 0.726,
+    "peak_rss_gb_median": 0.725
+   },
+   {
+    "design": "three-dense",
+    "threads": 4,
+    "arm": "hidden",
+    "reps": 3,
+    "native_seconds": [
+     0.4453,
+     0.4478,
+     0.4503
+    ],
+    "native_median": 0.4478,
+    "peak_rss_gb_max": 0.726,
+    "peak_rss_gb_median": 0.725
+   },
+   {
+    "design": "three-dense",
+    "threads": 8,
+    "arm": "public",
+    "reps": 3,
+    "native_seconds": [
+     0.2999,
+     0.3036,
+     0.3171
+    ],
+    "native_median": 0.3036,
+    "peak_rss_gb_max": 0.726,
+    "peak_rss_gb_median": 0.726
+   },
+   {
+    "design": "three-dense",
+    "threads": 8,
+    "arm": "hidden",
+    "reps": 3,
+    "native_seconds": [
+     0.2973,
+     0.3023,
+     0.3058
+    ],
+    "native_median": 0.3023,
+    "peak_rss_gb_max": 0.726,
+    "peak_rss_gb_median": 0.726
+   }
+  ]
+ },
+ "scc_10m_confirmation": {
+  "host": "scc-wo4 (whole 28-core E5-2680 v4 node, job 8311739)",
+  "protocol": "three-sparse 10M, 16 controls, threads(4), memory(auto); base = cf5ddfc0 public, candidate = acdfb097 public, hidden = acdfb097 routing_many_windows_v1; two repetitions, fixed alternating order; native = e(fereg_runtime) native seconds; rss = /usr/bin/time -v maximum resident set (KiB) of the Stata process including the 1.68 GB input; no exclusion or retry rule",
+  "fits": [
+   {
+    "rep": 1,
+    "arm": "base",
+    "native_seconds": 73.604,
+    "timer_seconds": 77.972,
+    "max_rss_gib": 16.891
+   },
+   {
+    "rep": 1,
+    "arm": "candidate",
+    "native_seconds": 74.958,
+    "timer_seconds": 78.935,
+    "max_rss_gib": 15.631
+   },
+   {
+    "rep": 1,
+    "arm": "hidden",
+    "native_seconds": 68.755,
+    "timer_seconds": 73.943,
+    "max_rss_gib": 9.648
+   },
+   {
+    "rep": 2,
+    "arm": "hidden",
+    "native_seconds": 69.096,
+    "timer_seconds": 73.049,
+    "max_rss_gib": 9.639
+   },
+   {
+    "rep": 2,
+    "arm": "candidate",
+    "native_seconds": 74.33,
+    "timer_seconds": 78.665,
+    "max_rss_gib": 15.48
+   },
+   {
+    "rep": 2,
+    "arm": "base",
+    "native_seconds": 72.379,
+    "timer_seconds": 76.516,
+    "max_rss_gib": 17.031
+   }
+  ],
+  "iterations": {
+   "public": "projection 24 (per RHS 24,23,23,23,22,23,23,22,23,23,22,23,23,23,23,22,22,1), final residual 2",
+   "hidden": "projection 24 (per RHS 24,23,23,23,19,19,20,19,19,19,19,19,19,19,19,19,19,1), final residual 2"
+  },
+  "science": {
+   "candidate_vs_base_max_coef_rel": 1e-17,
+   "hidden_vs_candidate_max_coef_rel": 1.1e-14,
+   "hidden_vs_candidate_V11_rel": 1.1e-13,
+   "hidden_vs_candidate_rss_rel": 1.1e-13,
+   "note": "default (non-reproducible) mode; repeats differ in the last bits as in the scale record because within's adjoint uses an atomic scatter for the 2,000,000-level worker term"
+  }
+ },
+ "routing_families_public_vs_hidden": [
+  {
+   "family": "small-third",
+   "threads": 1,
+   "public_repeat_exact": true,
+   "public_actions": [
+    14,
+    9
+   ],
+   "public_rhs_iterations": [
+    14,
+    12,
+    12,
+    12,
+    12,
+    12,
+    1,
+    9
+   ],
+   "windows_repeat_exact": true,
+   "windows_actions": [
+    14,
+    9
+   ],
+   "windows_rhs_iterations": [
+    14,
+    12,
+    12,
+    12,
+    12,
+    12,
+    1,
+    9
+   ],
+   "public_windows_exact": true,
+   "RB_rel_diff": 0.0,
+   "RV_rel_diff": 0.0
+  },
+  {
+   "family": "small-third",
+   "threads": 4,
+   "public_repeat_exact": true,
+   "public_actions": [
+    14,
+    9
+   ],
+   "public_rhs_iterations": [
+    14,
+    12,
+    12,
+    12,
+    12,
+    12,
+    1,
+    9
+   ],
+   "windows_repeat_exact": true,
+   "windows_actions": [
+    14,
+    9
+   ],
+   "windows_rhs_iterations": [
+    14,
+    12,
+    12,
+    12,
+    12,
+    12,
+    1,
+    9
+   ],
+   "public_windows_exact": true,
+   "RB_rel_diff": 0.0,
+   "RV_rel_diff": 0.0
+  },
+  {
+   "family": "four-fe",
+   "threads": 1,
+   "public_repeat_exact": true,
+   "public_actions": [
+    12,
+    8
+   ],
+   "public_rhs_iterations": [
+    12,
+    11,
+    11,
+    11,
+    11,
+    11,
+    1,
+    8
+   ],
+   "windows_repeat_exact": true,
+   "windows_actions": [
+    12,
+    8
+   ],
+   "windows_rhs_iterations": [
+    12,
+    11,
+    11,
+    11,
+    11,
+    11,
+    1,
+    8
+   ],
+   "public_windows_exact": true,
+   "RB_rel_diff": 0.0,
+   "RV_rel_diff": 0.0
+  },
+  {
+   "family": "four-fe",
+   "threads": 4,
+   "public_repeat_exact": true,
+   "public_actions": [
+    12,
+    8
+   ],
+   "public_rhs_iterations": [
+    12,
+    11,
+    11,
+    11,
+    11,
+    11,
+    1,
+    8
+   ],
+   "windows_repeat_exact": true,
+   "windows_actions": [
+    12,
+    8
+   ],
+   "windows_rhs_iterations": [
+    12,
+    11,
+    11,
+    11,
+    11,
+    11,
+    1,
+    8
+   ],
+   "public_windows_exact": true,
+   "RB_rel_diff": 0.0,
+   "RV_rel_diff": 0.0
+  },
+  {
+   "family": "eight-fe",
+   "threads": 1,
+   "public_repeat_exact": true,
+   "public_actions": [
+    13,
+    8
+   ],
+   "public_rhs_iterations": [
+    13,
+    11,
+    11,
+    11,
+    11,
+    11,
+    1,
+    8
+   ],
+   "windows_repeat_exact": true,
+   "windows_actions": [
+    13,
+    8
+   ],
+   "windows_rhs_iterations": [
+    13,
+    11,
+    11,
+    11,
+    11,
+    11,
+    1,
+    8
+   ],
+   "public_windows_exact": true,
+   "RB_rel_diff": 0.0,
+   "RV_rel_diff": 0.0
+  },
+  {
+   "family": "eight-fe",
+   "threads": 4,
+   "public_repeat_exact": true,
+   "public_actions": [
+    13,
+    8
+   ],
+   "public_rhs_iterations": [
+    13,
+    11,
+    11,
+    11,
+    11,
+    11,
+    1,
+    8
+   ],
+   "windows_repeat_exact": true,
+   "windows_actions": [
+    13,
+    8
+   ],
+   "windows_rhs_iterations": [
+    13,
+    11,
+    11,
+    11,
+    11,
+    11,
+    1,
+    8
+   ],
+   "public_windows_exact": true,
+   "RB_rel_diff": 0.0,
+   "RV_rel_diff": 0.0
+  },
+  {
+   "family": "sixteen-fe",
+   "threads": 1,
+   "public_repeat_exact": true,
+   "public_actions": [
+    14,
+    9
+   ],
+   "public_rhs_iterations": [
+    14,
+    11,
+    11,
+    11,
+    11,
+    11,
+    1,
+    9
+   ],
+   "windows_repeat_exact": true,
+   "windows_actions": [
+    14,
+    9
+   ],
+   "windows_rhs_iterations": [
+    14,
+    11,
+    11,
+    11,
+    11,
+    11,
+    1,
+    9
+   ],
+   "public_windows_exact": true,
+   "RB_rel_diff": 0.0,
+   "RV_rel_diff": 0.0
+  },
+  {
+   "family": "sixteen-fe",
+   "threads": 4,
+   "public_repeat_exact": true,
+   "public_actions": [
+    14,
+    9
+   ],
+   "public_rhs_iterations": [
+    14,
+    11,
+    11,
+    11,
+    11,
+    11,
+    1,
+    9
+   ],
+   "windows_repeat_exact": true,
+   "windows_actions": [
+    14,
+    9
+   ],
+   "windows_rhs_iterations": [
+    14,
+    11,
+    11,
+    11,
+    11,
+    11,
+    1,
+    9
+   ],
+   "public_windows_exact": true,
+   "RB_rel_diff": 0.0,
+   "RV_rel_diff": 0.0
+  },
+  {
+   "family": "near-confounded-third",
+   "threads": 1,
+   "public_repeat_exact": true,
+   "public_actions": [
+    19,
+    11
+   ],
+   "public_rhs_iterations": [
+    18,
+    19,
+    19,
+    1,
+    11
+   ],
+   "windows_repeat_exact": true,
+   "windows_actions": [
+    18,
+    11
+   ],
+   "windows_rhs_iterations": [
+    18,
+    14,
+    14,
+    1,
+    11
+   ],
+   "public_windows_exact": false,
+   "RB_rel_diff": 2.672e-14,
+   "RV_rel_diff": 2.232e-11
+  },
+  {
+   "family": "near-confounded-third",
+   "threads": 4,
+   "public_repeat_exact": true,
+   "public_actions": [
+    19,
+    11
+   ],
+   "public_rhs_iterations": [
+    18,
+    19,
+    19,
+    1,
+    11
+   ],
+   "windows_repeat_exact": true,
+   "windows_actions": [
+    19,
+    11
+   ],
+   "windows_rhs_iterations": [
+    18,
+    19,
+    19,
+    1,
+    11
+   ],
+   "public_windows_exact": true,
+   "RB_rel_diff": 0.0,
+   "RV_rel_diff": 0.0
+  }
+ ],
+ "witnesses": {
+  "replay": "candidate arm64 plugin vs published beta.9 macOS plugin: 73 of 73 cases exact",
+  "source_only": "./scripts/run_tests.sh --source-only passed (319 Python, 1500 core library, plugin and oracle tests, Clippy, allocator audits, portable checks, complexity ratchet)",
+  "oracle": "fereg-oracle routing_portfolio bounded_session_windows_match_dense_qr_and_public_discrete_decisions at 1/2/4/8 workers"
+ },
+ "finding": "The campaign sparse three-FE public fit escalates: its outcome RHS leaves the Jacobi trial and finishes on additive Schwarz (e(fereg_solver) reports used preconditioner 4 at 1M on the Mac), while the other RHSs finish on the trial. At 10M the hidden arm's later windows start on the additive solver (19-20 iterations), so the first window, whose RHSs match the public counts, escalated there too. The scale record's statement that the additive preconditioner was never built is therefore inaccurate for the outcome column.",
+ "decisions_open": [
+  "P3 public activation (needs bounded qualification and Johannes's decision)",
+  "E6c LevelIndex storage change across shared call sites",
+  "a within change to share the solver frame (square-root weights, stable adjoint) between trial and escalation"
+ ]
+}

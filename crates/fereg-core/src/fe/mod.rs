@@ -49,6 +49,8 @@ mod topology_source;
 
 pub use accelerated_map::absorb_accelerated_map;
 pub use auto::{absorb_fixed_effects, AbsorbConfig};
+#[cfg(test)]
+pub(crate) use borrowed_map::derived_residual::inject_derived_certificate_failure_once;
 pub(crate) use borrowed_map::{
     absorb_borrowed_intercept_cg, absorb_borrowed_intercept_irons_tuck_certified,
     absorb_borrowed_intercept_lsmr, absorb_borrowed_intercept_map,
@@ -64,7 +66,7 @@ pub use borrowed_map::{
 pub(crate) use borrowed_map::{FUSED_PARALLEL_MAX_RHS, PARALLEL_PROJECTION_MIN_ROWS};
 pub(crate) use categorical_request::bind_categorical_effect_recipes;
 pub use categorical_request::{plan_categorical_absorbed_request, CategoricalAbsorbRequestPlan};
-pub use certificate::{certify_residuals, FeCertificate};
+pub use certificate::{certify_residuals, CertificateRecheck, FeCertificate};
 pub(crate) use certificate::{certify_residuals_with_reference_norms, weighted_column_norms};
 pub(crate) use cmg::{
     explicit_cmg_components, CmgAbsorber, CmgConfig, CmgControlSeed, CmgTopologyProfile,
@@ -79,8 +81,8 @@ pub use design::{
 };
 pub use interaction::{factorize_code_interaction, CategoricalCodeView, EncodedInteraction};
 pub(crate) use interaction::{try_factorize_dense_code_interaction, InteractionReservation};
-pub(crate) use lsmr::resolve_preconditioner_kind;
 pub use lsmr::{absorb_lsmr, LsmrConfig};
+pub(crate) use lsmr::{additive_schwarz, resolve_preconditioner_kind};
 pub use map::{absorb_map, MapConfig};
 pub(crate) use map::{MapGeometryGeneration, ReusableMapAbsorber, ReusableMapCapacities};
 pub use partition::CategoricalPartition;

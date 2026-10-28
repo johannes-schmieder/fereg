@@ -101,6 +101,7 @@ enum PpmlDeveloperInjection {
     BreakNative,
     Allocation,
     Topology,
+    SeparationCg,
 }
 
 #[cfg(test)]
@@ -566,6 +567,7 @@ fn prepared_ppml_request(
         inject_fe_recovery_allocation_failure: action.injection
             == PpmlDeveloperInjection::Allocation,
         inject_topology_sharing: action.injection == PpmlDeveloperInjection::Topology,
+        inject_separation_cg: action.injection == PpmlDeveloperInjection::SeparationCg,
     })
 }
 
@@ -891,6 +893,7 @@ impl EstimatePpmlSpec {
                 "breaknative" => PpmlDeveloperInjection::BreakNative,
                 "allocation" => PpmlDeveloperInjection::Allocation,
                 "ppml_topology" => PpmlDeveloperInjection::Topology,
+                "ppml_separation_cg" => PpmlDeveloperInjection::SeparationCg,
                 other => {
                     return Err(syntax(format!(
                         "unknown hidden PPML injection stage {other:?}",

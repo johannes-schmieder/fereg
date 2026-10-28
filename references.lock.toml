@@ -19,17 +19,17 @@ use = "Development reference for model-matrix, OLS, PPML, and tests; not a runti
 [[reference]]
 name = "within"
 repository = "https://github.com/johannes-schmieder/within"
-commit = "803a4feacef526f55e1520f22be4409779b7d8ff"
+commit = "3b5b9b9ab9b79e4a8cac2841f7c1d41bb2276104"
 version = "commit-pinned development tree"
 license = "MIT"
 relevant_source_paths = ["crates/within/src/", "crates/schwarz-precond/src/"]
 relevant_test_paths = ["crates/within/tests/", "crates/schwarz-precond/src/lsmr/tests/", "bench/history/"]
-use = "Runtime LSMR runtime and oracle dependency: current-parent port, fixed arithmetic for explicit ParallelReduction, compensated weighted Gram assembly, raw-coordinate construction that leaves rank authority with fereg, and optional cooperative iteration polls. Deterministic execution is propagated to numerical consumers."
+use = "Runtime LSMR and oracle dependency (both within and schwarz-precond): fixed pair inverses, resumable sessions with shared response storage, fused modified-LSMR steps with fixed-order adjoints, in-place preconditioner replacement, owned pair-build gates, raw-coordinate construction that leaves rank authority with fereg, and optional cooperative iteration polls. Deterministic execution is propagated to numerical consumers."
 
 [[reference]]
 name = "cmg"
 repository = "https://github.com/johannes-schmieder/CMG"
-commit = "f6a044c98ba00fddc82bee1800dccdb310b5a240"
+commit = "5c5b5b2b138226ea928514fa9db27439ba1cffdb"
 version = "0.1.0"
 license = "GPL-3.0-only"
 relevant_source_paths = ["src/", "Cargo.toml"]

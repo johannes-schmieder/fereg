@@ -19,6 +19,7 @@ and PPML reporting are unchanged.
 | Two-FE Auto speed | [Qualification record](../bench/results/two-fe-auto-qualification-20261027.json): Linux 7,560 calls on 31 physical hosts, all 126 protected comparisons within max(5%, 1 ms) after Johannes waived the 12-distinct-host rule (84 cells had 11); practical Mac check 119 of 126 passed, the other 7 inconclusive with paired medians within the bound. [Veneto comparison](../bench/results/two-fe-auto-veneto-20261027.json): 1.24-2.08 times faster than beta.7 without saved FE and 1.06-2.18 with saved FE; faster than PyFixest's `within` in 9 of 10 cells. |
 | Two-FE Auto round two | [Round-two record](../bench/results/two-fe-round-two-20261027.json): Linux 10,080 calls on 28 physical hosts, 123 of 126 protected comparisons within max(5%, 1 ms) after the 12-distinct-host waiver (every cell had 11) and 3 inconclusive under 1 ms; Mac check 115 of 126 passed, 11 inconclusive; Veneto candidate faster than beta.8 in all 20 cells and than PyFixest `within` in 9 of 10; PPML exact timing 12 of 12 within bound with identical science. |
 | Public integration | [Final activation](../bench/results/ownership-public-activation-20261024.json): 174 actual hidden/public/public-repeat calls per platform, independent witnesses, fixed-worker exactness, cross-worker science, resource/gate/hierarchy checks, Mac/Linux ABI/load/panic checks and the full source suite passed. Six licensed Mac Stata fixtures and actual public OLS Break/rollback passed. |
+| Beta.10 integration | [Round record](../bench/results/beta10-2026-10-28.json): Linux 13,920 calls on 35 physical hosts, 173 of 174 protected comparisons within max(5%, 1 ms) (one inconclusive by 0.02 ms; 20 cells one host short of twelve under Johannes's renewed waiver); Mac 162 passed, 11 inconclusive and the accepted sixteen-FE one-worker exception of the within fused LSMR step; Veneto candidate within 4% of beta.9 and faster than PyFixest `within` in 9 of 10 cells; PPML 12 of 12 within bound and bit-identical; sparse three-FE series finishes at ten million rows where beta.9 does not. Publication is a separate authorization. |
 
 Ownership/deferred cells activate only for OLS Auto/Auto with a global intercept
 and exactly two categorical-intercept FE terms. Explicit injections and paths
@@ -159,6 +160,259 @@ CMG to PPML's joint frames above 350,000 finest edges was built, measured at
 is 42-61% of PPML native time on Veneto-scale Poisson panels and is the
 subject of a separate workstream.
 
+## Beta.10 integration qualification
+
+The integration candidate `codex/beta10-integration` (runtime commit
+3348fe45, qualification tooling 77a45d18) joins the beta.10 workstreams below
+on the beta.9 baseline: exact many-FE Schwarz admission (the ten-million-row
+sparse three-FE fix), the shared Jacobi-trial design, RHS-transport and
+projected-matrix release, the fused three-FE MAP pilot sweep, the ordered
+additive-Schwarz reduction in every mode, the within fused LSMR pin, the
+derived residual on the one-FE and many-FE routes, the CMG admission level
+cap, the PPML separation re-execution, re-certification and Auto-route
+activation, and the wide private Gram bank. The
+[round record](../bench/results/beta10-2026-10-28.json) keeps the
+identities, declarations, comparisons and failure history.
+
+- **Replay.** 77 of 77 cases pass against the published beta.9 macOS plugin
+  with the within fused-LSMR, derived-residual and PPML separation scopes;
+  only `ols-derived-fe1` and `ols-derived-fe3` differ outside a scope, in
+  their residual row's stop code (2 to 5) and certificate norms, and the
+  integration head is their exact replay parent from beta.10 on.
+- **Declaration.** The frozen configurations declared scope `two` with a
+  `two-gates-v2` hidden arm. The first Mac attempt and the first Linux array
+  stopped at their first three-FE cell with the exactness rule, because the
+  within fused LSMR pin changes many-FE science in the last bits and the
+  derived one-FE residual changes the residual row's stop code on the
+  no-output one-FE campaign cell. Both configurations were amended before any
+  timing was read (scope `many`; candidate families `two` and `many` with
+  `public_policy: two-gates-v2`; hidden `many-geometry-v1`), the tool learned
+  to bind a hidden arm only to the family it activates and to validate a
+  projection-to-derived residual row ([README](../bench/README.md)), and the
+  discarded attempts are listed in the record. With the actual plugins, the
+  candidate's published values and observation columns on the no-output
+  one-FE cell are bit-identical to beta.8 and beta.9.
+- **Linux qualification** ([configuration](../bench/qualify_configs/beta10-linux.json),
+  array 8313820, report 8313821): 58 cells, beta.7 original, beta.9 incumbent,
+  candidate and hidden arms, 13,920 native calls on 35 distinct physical
+  hosts. 173 of 174 protected comparisons are within max(5%, 1 ms); the one
+  inconclusive comparison is `small-retained-t4` against beta.7, whose upper
+  bound exceeds the allowance by 0.02 ms (median 0.26 ms faster). Twenty
+  cells reached 11 of the required 12 distinct hosts (60 comparisons, all
+  within the bound), the same one-host shortfall Johannes waived for round
+  two; the tool therefore reports `needs_discussion`, and Johannes applied the
+  waiver again on 2026-10-28, so the Linux result stands as passed with one
+  inconclusive comparison. Against beta.9 the
+  median cell ratio is 0.992 and no cell is slower than 1.017; the many-FE
+  cells improve most: eight FE 0.77 and 0.84, four FE 0.80 and 0.87, small
+  third 0.81 and 0.88, campaign three-sparse 0.82 and 0.84,
+  campaign AKM k64 0.86 and 0.88 at one and four workers.
+- **Mac practical check** ([configuration](../bench/qualify_configs/beta10-darwin.json),
+  beta.8 original, 3,016 calls): 162 of 174 comparisons pass, 11 are
+  inconclusive on small or noisy cells (`slopes-t4`, `campaign-two-dense-t4`,
+  `disconnected-t4`, `weak-t1/t4`, `sixteen-fe-t1` against beta.9, where the
+  medians are within noise or negative) and one is a regression:
+  `sixteen-fe-t1` is 6% slower than beta.8 (0.413 s against 0.389 s in every
+  block; 0.390 s for beta.9). The same cell is 6% faster than beta.9 on Linux.
+  A development attribution with arm64 release builds of the integration
+  head selecting within's `StepKernel::Separate` instead of the default fused
+  step reproduces beta.9's time (0.389 s) and output bits on that cell, while
+  the fused kernel is also the source of the one-worker gains on three, four
+  and eight effects (small third 0.110 against 0.120 s, four FE 0.110 against
+  0.121 s, eight FE 0.181 against 0.211 s). The fused step therefore costs
+  about 6% at sixteen effects and one worker on the M2 Ultra and nothing at
+  four workers; no platform-specific kernel fence was added. Johannes
+  accepted this one-cell Mac exception on 2026-10-28; a within follow-up for
+  many small unsorted intercept terms on arm64 remains open.
+- **Veneto panels** (candidate against the beta.9 plugin on one whole 28-core
+  node, three rotated repetitions): with saved effects the candidate is within
+  2% of beta.9 at every core count (short 0.98-1.00, long 0.99-1.00) with
+  exact fixed-worker repeats and cross-worker agreement. Without saved
+  effects the first job's fereg arms agree within 1% while its PyFixest arm
+  failed the pinned-source check (main now pins the beta.8 campaign's
+  PyFixest commit, the reused beta.7 environment carried the older one); the
+  rerun against the beta.8 Veneto environment (job 8315525, scc-xf4) has the
+  candidate within 4% of beta.9 everywhere (short 0.96-1.01, long 0.98-1.00)
+  and faster than PyFixest `within` in 9 of 10 cells (short 0.77-0.92 at 1, 4,
+  8 and 16 cores, 1.00 at 2 cores; long 0.36-0.51), with exact fixed-worker
+  repeats and cross-worker agreement. Both first jobs ran on scc-uf3, where
+  every phase of every arm was about 2.5 times slower than on the other
+  E5-2680 v4 nodes with no competing process observed; their within-job
+  ratios stand, their absolute levels do not compare with round two.
+- **PPML timing** (campaign-DGP PPML cases from `bench/ppml_cases.py`: two-sparse,
+  AKM baseline and two-dense at 1M and 4M rows, 16 regressors, robust VCE;
+  beta.9 against the candidate, five rotated repetitions, one whole node, job
+  8313485 on scc-uf3): all 12 cells pass the max(5%, 1 ms) bound with paired
+  median ratios 0.985-1.005 at 4 and 28 workers, and every published result
+  is bit-identical to beta.9 (the beta.10 PPML changes act only on separation
+  detection, which these designs do not reach). The node ran about 2.4 times
+  slower than the round-two node for both arms, so only the ratios compare.
+- **Sparse three-FE size series** (the campaign design: 16 controls, iid VCE,
+  `threads(4)`, Auto/Auto; one whole 28-core node, scc-wo4, jobs 8316297 and
+  8318321; three repetitions per cell in a fresh Stata process, each fit
+  bounded at 30 minutes; 100k-7M rows regenerated with the campaign generator
+  and the campaign's ten-million-row input reused read-only). The candidate
+  takes 0.73, 1.87, 5.02 and 15.7 s at 100k, 300k, 1M and 3M rows against
+  beta.9's 0.84, 1.98, 5.49 and 16.9 s (7-13% faster, 10-20% less resident
+  memory, same LSMR route and iteration counts, coefficients equal to twelve
+  digits with last-bit differences under the within fused-LSMR scope), and
+  28.0, 39.4 and 58.9 s with 6.8, 9.2 and 12.6 GiB at 5M, 7M and 10M rows
+  (23-24 LSMR iterations). beta.9 exhausted the 30-minute bound at 5M and 7M
+  rows on this node, and Johannes skipped its ten-million-row attempt, which
+  the beta.8 campaign had already shown not to finish. The campaign's recorded
+  timings stand; this series is the candidate's.
+
+## Beta.10 exact engineering
+
+Two arithmetic-preserving changes from the beta.8 campaign analysis were
+measured first and kept; the [record](../bench/results/beta10-exact-2026-10-28.json)
+holds every number below. Trace-only `FEREG_PHASE_TIMING` laps split the MAP
+wrapper, the finalize score certificate, the dense projection's RHS/moment
+construction, the PPML one-FE profile and the loader pipeline. Each item was
+kept only if its phase reached 5% of native time on a 1M-row campaign design
+at 1 or 4 workers, or (for the 64-column cluster) if the control series jumped.
+
+- The borrowed MAP wrapper and the bounded three-FE MAP pilot apply the exact
+  one-group initial rejection screen before the complete initial certificate,
+  and entry finite scans run as a parallel predicate (MAP wrapper overhead was
+  16-18% of one-FE native time).
+- Wide raw-moment caches use the widest 64/32/16/8/1-column band that keeps
+  every worker busy, each column in its serial row order, and designs wider
+  than the 64-column stack binding fill the `[y, X]` batch through a heap
+  descriptor charged by the fast memory estimate. At 63 to 64 controls the
+  native time had jumped by 0.36 s (one worker) for one control; the jump is gone.
+
+Native seconds on an M-series Mac (medians, step 0 against final): one FE
+0.417/0.178 to 0.382/0.161 at 1/4 workers, dense three-FE 1.132/0.417 to
+1.047/0.410, AKM with 64 controls 2.633/1.072 to 1.947/0.977, with 96 controls
+5.390/1.925 to 3.477/1.561; PPML one FE unchanged within noise. The score
+certificate (at most 2.6%), converged two-FE lanes (under 0.4%), CMG
+application (at most 2.1%), PPML one-FE serial passes (at most 3.7%) and
+loader packing (fully overlapped with the SPI read) fell below the rule and
+were not changed. A follow-up removed the last cliff: Gram dimensions wider
+than the 64-column stack block accumulate in a private heap bank with the same
+partition of Gram rows and the same per-row rank-1 pass, charged by the fast
+memory estimate. In paired sessions against the previous head, the finite
+solve at 65 controls fell from 0.780 to 0.519 s (one worker) and 0.327 to
+0.247 s (four), at 96 controls from 1.300 to 0.988 s and 0.543 to 0.459 s;
+native time at 65 controls fell from 2.234 to 1.975 s and 1.108 to 1.011 s,
+with identical coefficients and residual sums.
+
+Plugin replay is 74/74 exact against beta.9 after each change, including the new compact
+`ols-wide-k67` case (67 regressors), and the universal release build is exact
+at 2/4/8 replay threads; Stata `e(b)`, `e(V)` and posted scalars are
+bit-identical to beta.9 on all eight 1M-row designs at 1 and 4 workers. The
+42-cell Mac protocol (beta.9 as original and incumbent, the hidden
+`two-gates-v2` arm, 1,638 native calls) found no scientific, agreement or
+resource error; 102 of 126 comparisons passed and 24 were inconclusive with
+negative median excess and upper bounds of at most 1.9 ms, so the status is
+`needs_discussion`, as in round two.
+## Beta.10 round two: dense many-FE route, residency and repeatability
+
+Descriptive Mac evidence on the 1M-row campaign designs; every number is in
+the [record](../bench/results/beta10-round2-2026-10-28.json).
+
+- **Fused pilot sweep (kept, exact).** On dense three-FE the bounded MAP pilot
+  was 70% of native time at one worker (two symmetric sweeps 0.57 s of
+  1.02 s), and group statistics outweighed the subtraction pass about 2.5 to 1
+  at four workers. The pilot now raises the next effect's column scales while
+  it subtracts the current effect's means. Native time fell from 1.036 to
+  0.974 s at one worker and 0.404 to 0.376 s at four, with identical
+  `e(b)`/`e(V)`; sparse three-FE (no pilot) is unchanged. Unit tests compare
+  fused and unfused sweeps and whole pilot attempts bit for bit at 1/2/4/8
+  workers, and replay was 74/74 exact against beta.9.
+- **Jacobi trial instead of the pilot (refuted).** Without the pilot, dense
+  three-FE certifies after four Jacobi LSMR iterations per RHS but takes
+  1.325/0.508/0.325 s against 0.959/0.377/0.260 s at 1/4/8 workers and peaks
+  about 450 MB higher. Sparse three-FE has no predicted sweep count, so it
+  already starts the trial. No pass-cost rule improves on the geometry policy
+  on these cells; none was added.
+- **Fast residency (design only).** The Fast increment over the loaded Stata
+  process is about 425-459 B/row on AKM with 16 controls, 529-538 on dense
+  three-FE and 1,750-2,250 on sparse three-FE. After projection the
+  column-major prepared sources are read by the independent raw residual
+  `y - Xb`, which gives the reported intercept, and by requested `xb`/residual
+  outputs. Removing them needs a different intercept arithmetic (losing the
+  witness) or a second SPI read after the solve (a memory and transaction
+  design change), so nothing changed. An exact option remains for dense
+  three-FE: the pilot keeps the untouched row-major original beside its
+  candidate only for the LSMR fallback and could rebuild it from the sources
+  instead (about 144 B/row).
+- **Implicit level index (skipped).** 149 member-slice call sites and 28
+  kernel parameters, including installed function-pointer types, take
+  `&[usize]`; a u32 or implicit identity index cannot be introduced
+  bit-identically in one bounded pass.
+- **Ordered additive reduction (kept, declared scope in SPEC §18).** Every
+  additive-Schwarz build now uses the Ordered reduction in default mode too.
+  An escalating default-mode fit repeats bit for bit at 1/2/4/8 workers. On
+  sparse three-FE the public trial does not escalate at 1M rows, and
+  explicit `solver(lsmr) preconditioner(schwarz)` gave identical bits under
+  both reductions with native times within -2.3% to +0.7% at 1/4/8 workers.
+  Replay against the Auto-reduction build of the same tree is 74/74 exact;
+  against beta.9 the only differences are the within fused-LSMR scope (14
+  cases, passing under its scope file) and the separation activation's
+  `ppml-separation-ir` certificate digest.
+
+## Derived residual on the one-FE and many-FE routes
+
+Fast OLS Auto without residual, xbd, d or saved-FE outputs now certifies its
+within residual by the derived bound (SPEC §7, §16) on the direct one-FE route
+and the many-FE geometry policy as well as the two-FE owner; see the
+[compact record](../bench/results/derived-residual-routes-2026-10-28.json).
+It is not yet qualified with `bench/qualify.py`; that is the integration round's
+task.
+
+- **Independent witnesses.** Dense explicit-dummy OLS (one FE; three FE through
+  the balanced MAP pilot and dense/sparse LSMR; unit and analytic weights)
+  matches the derived residual at the prediction tolerance, and explicit level
+  moments meet 1e-10 at the derived scale. On 60,000-row designs fixed-worker
+  repeats are bit-identical and 1/2/4/8 workers agree with each other and
+  with the polished projection. Unit tests cover the forced certificate failure
+  (bit-identical coefficients), saved FE, requested outputs, low memory and
+  explicit solvers.
+- **Replay.** Against the published beta.9 plugin, 73/73 cases pass with zero
+  exact differences. Every OLS replay case requests residual, xbd and absorbed
+  outputs, so the corpus does not exercise the derived path on any route; the
+  [scope](../tests/replay/scopes/2026-10-28-derived-residual-routes-macos.json)
+  therefore lists no cases. Three replay cases now request only the sample
+  and drop reasons in Fast memory (`ols-derived-fe1`, `-fe2`, `-fe3`: one FE
+  iid, two FE analytic-weight robust, three FE robust); their science check
+  requires the residual row's stop code 5 with the absorption's solver, zero
+  iterations and zero pilot work, beside the dense explicit-dummy
+  coefficients and covariance. On the integration head all three take the
+  derived path and pass with 4- and 8-worker repeats and cross-worker
+  agreement (replay against the same build, 77/77). Against beta.9,
+  `ols-derived-fe2` is exact (beta.9 already derived the two-FE owner's
+  residual), while beta.9 projects the one- and three-FE residuals (stop
+  code 2), so those two cases differ in the residual row's stop code and
+  certificate norms (and, for three FE, the within fused LSMR leaves). A
+  stop-code change is a route signature that no affected scope may declare,
+  so these cases take the current build as their parent from beta.10 on.
+- **Mac Stata end-to-end.** Coefficients are bit-identical to beta.9 in every
+  cell below. One FE and dense three FE are bit-identical apart from the
+  residual solver row, because beta.9 already accepted their residual at the
+  initial certificate. Sparse three FE changes r2, rmse, rss, F and the iid
+  covariance in the last bits through the residual sum of squares; this
+  corrects the earlier claim that iid covariance is unaffected. Used solver,
+  preconditioners, fallback and pilot fields of the residual row are unchanged.
+
+Arm64 profiling builds, Stata 19 MP, 1,000,000 rows and 16 controls, medians of
+three interleaved runs under the frozen quiet-host rule (three contaminated
+beta.9 runs were discarded and repeated once):
+
+| Design, workers | beta.9 native s | Candidate native s | Residual phase ms, beta.9 -> candidate |
+| --- | ---: | ---: | ---: |
+| one-fe, 1 | 0.422 | 0.414 | 19.4 -> 19.8 |
+| one-fe, 4 | 0.182 | 0.185 | 13.6 -> 13.2 |
+| three-dense, 1 | 1.161 | 1.149 | 23.1 -> 22.3 |
+| three-dense, 4 | 0.437 | 0.441 | 12.3 -> 12.3 |
+| three-sparse, 1 | 6.526 | 6.418 | 88.2 -> 26.6 |
+| three-sparse, 4 | 1.928 | 1.945 | 44.7 -> 15.9 |
+
+Only the sparse LSMR route saves its second solve, about 1-1.5% of native time
+and within the run-to-run spread of the totals; on one FE and the MAP pilot the
+derived certificate costs the same as the certificate it replaces.
+
 ## Many-FE geometry policy
 
 Public OLS Auto/Auto for at least three categorical-intercept FEs uses the
@@ -277,6 +531,190 @@ Complete four-million-row dense three-FE fits took 5% longer at four workers
 and 21% longer at 28, so it was not adopted
 ([record](../bench/results/r4-row-streaming-20261026.json)).
 
+## Many-FE Schwarz admission at scale
+
+The beta.8 campaign's sparse three-FE OLS fit did not finish at ten million
+rows. Traced SCC reruns of main (`a023073e`) showed why: at 1M and 3M the
+geometry policy's Jacobi trial certified in 23 LSMR iterations, but at 10M the
+general categorical route refused the additive LSMR attempt and ran the
+original-input MAP fallback (a perf attach saw only borrowed-MAP kernels, 5.0
+GiB RSS at about 3.6 cores). The refusal came from the additive-Schwarz memory
+bound, which charged `T + R` level-sized banks per concurrent RHS with
+`R = levels * (effects - 1) / 10,002`, quadratic in the levels: 11.9 GB at 1M,
+95 GB at 3M and about 1 TB at 10M for 17 RHS and four workers, against measured
+peaks of 1.96 and 5.91 GiB. Exactly three pair components of this design have a
+block of at least 10,000 levels at every size. The repair counts them when the
+level bound refuses ([SPEC](SPEC.md#qualified-auto-routing-and-developer-comparisons));
+the 10M solver estimate becomes 32.4 GB and the fit takes
+the unchanged geometry route (24 iterations, no escalation).
+
+On one whole E5-2680 v4 node (three repetitions, baseline and candidate
+alternating up to 3M), median native seconds were 0.38, 1.33, 4.51, 14.47,
+25.9, 36.8 and 65.0 at 100k, 300k, 1M, 3M, 5M, 7M and 10M rows, with peak
+process RSS 0.23 to 17.0 GiB. Baseline and candidate were bitwise identical
+through 3M, as was the candidate with the campaign's beta.8 3M capture. At 10M
+the coefficients agree with FixedEffectModels.jl at 1e-10 tolerance and with
+PyFixest to 2e-13 relative, and the covariance to 1.5e-13 of the
+standard-error scale after the absorbed-DoF convention. The campaign's 10M
+references were 55 s (PyFixest), 105 s (FixedEffectModels.jl) and 338 s
+(fixest); their peak memory, 4.4 to 12.6 GiB, stays below fereg's. Deterministic
+mode repeated bit for bit at 10M; default mode differed in the last bits there
+because within's non-reproducible adjoint uses an atomic scatter for terms of at
+least 100,000 levels (the 100,000-level firm effect), which no earlier size
+of this design reached.
+
+Local checks: `./scripts/run_tests.sh --source-only` passed on the M2 Ultra; the
+candidate arm64 plugin's replay against the published beta.9 macOS plugin was
+exact for 73 of 73 cases; the many-FE corpus cells' level bounds are at most
+1.9 GB, so none reaches the refinement. A one-million-row campaign-topology
+test admits the additive route under a budget one byte below the level bound
+with the unbudgeted fit's bits; with the refinement disabled it stayed in the
+MAP fallback past 600 seconds. Record:
+[three-fe-scale-2026-10-28](../bench/results/three-fe-scale-2026-10-28.json).
+
+## Many-FE memory, shared trial design and candidate session windows
+
+Branch `codex/many-fe-windows` (from the sparse three-FE scale fix) adds four
+changes for beta.10; the record is
+[many-fe-windows-2026-10-28](../bench/results/many-fe-windows-2026-10-28.json).
+
+1. The exact yielding-component admission now also covers explicit
+   `solver(lsmr)` (borrowed and owned designs), the automatic owned-design
+   LSMR attempt and the explicit PPML LSMR preflight, only after the
+   level-count bound refused ([SPEC](SPEC.md#qualified-auto-routing-and-developer-comparisons)).
+   Witnesses run each route on the sparse three-FE topology under a budget one
+   byte below the level bound: the fits are admitted with the unbudgeted
+   fit's bits (PPML: agreement within 2e-9 and exact repeats), at one and four
+   workers, while a budget below the exact bound and a sloped design are still
+   refused.
+2. The Jacobi trial and its additive escalation share one prepared pinned
+   design (bit-identical; a digest of escalating fits matches the parent
+   revision). With the pinned `within` only the design is shareable: it costs
+   0.1-0.3 ms on sorted designs and 5-7 ms at one million locality-sorted
+   rows, against 45-56 ms for the additive build; the larger saving this
+   section's predecessor anticipated needs a `within` change (shared square
+   root weights, stable adjoint and solver frame).
+3. The many-FE windows transport and release their own RHS columns, and OLS
+   Fast releases its projected matrix after the finite solve. Admission
+   totals are unchanged, so `memory(auto)` chooses as before. Campaign data,
+   one million rows, 16 controls, four workers, Mac process peak (including
+   Stata and 0.21 GB of data): three-sparse 1.876 to 1.778 GB, three-dense
+   0.726 to 0.724 GB; bits unchanged. The implicit identity `LevelIndex` and
+   u32 observation indexes were not made: `members()` returns `&[usize]` to
+   about 200 call sites across MAP, OLS, PPML and slope code.
+4. Hidden `routing_many_windows_v1` is a candidate policy, not a public
+   default: at most one live LSMR session per worker, with the Jacobi
+   escalation barrier at each window's end. Without an escalation it is
+   bit-identical to public Auto; after one, later windows start on the
+   additive solver. Dense explicit-dummy QR witnesses pass at 1, 2, 4 and 8
+   workers with exact fixed-worker repeats. Of the routing families,
+   small-third, four-, eight- and sixteen-FE are bit-identical to public at
+   one and four workers; near-confounded-third is identical at four and at
+   one worker takes 18 instead of 19 projection iterations (coefficients
+   within 2.7e-14, covariance within 2.2e-11).
+
+Mac timing (M2 Ultra, arm64 profiling build of `acdfb097`, Stata 19 MP batch,
+fresh process per fit, three alternating repetitions, native seconds median,
+peak RSS GB). Rule frozen before collection: wait until no other Stata,
+cargo, rustc or Python process runs; a fit during which one appears is
+discarded and repeated once (one public fit was repeated).
+
+| Design | Workers | Public s | Hidden s | Public GB | Hidden GB |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| three-sparse | 1 | 6.64 | 5.81 | 1.77 | 1.05 |
+| three-sparse | 4 | 1.94 | 1.79 | 1.79 | 1.37 |
+| three-sparse | 8 | 1.36 | 1.17 | 2.00 | 1.79 |
+| three-dense | 1 | 1.17 | 1.21 | 0.72 | 0.72 |
+| three-dense | 4 | 0.45 | 0.45 | 0.73 | 0.73 |
+| three-dense | 8 | 0.30 | 0.30 | 0.73 | 0.73 |
+
+The sparse design's outcome RHS escalates; with windows the later RHSs start
+on the additive solver (19 instead of 22 iterations), and results agree with
+public within 2.3e-14 of the coefficient scale. The dense design certifies in
+the MAP pilot, so both arms run identical code and results; its differences
+are noise.
+
+SCC confirmation at ten million rows (campaign three-sparse input, threads(4),
+one whole E5-2680 v4 node, two repetitions per arm in a fixed alternating
+order, every fit reported): base is the branch parent `cf5ddfc0`, candidate
+`acdfb097` uninjected, hidden `acdfb097` with the windows token.
+
+| Arm | Native s (rep 1, 2) | Peak RSS GiB (rep 1, 2) |
+| --- | --- | --- |
+| Base public | 73.6, 72.4 | 16.89, 17.03 |
+| Candidate public | 75.0, 74.3 | 15.63, 15.48 |
+| Candidate hidden | 68.8, 69.1 | 9.65, 9.64 |
+
+Public coefficients agree with the base to 1e-17 of their scale (default mode
+repeats differ in the last bits, as in the scale record); the hidden arm
+agrees with public within 1.1e-14 (coefficients) and 1.1e-13 (variance, RSS).
+Its later windows finish in 19-20 instead of 22-23 iterations. The public
+candidate's 2% longer native time over two repetitions is not resolved by
+this confirmation; its peak is 1.3 GiB lower.
+
+Local checks: `./scripts/run_tests.sh --source-only` passed (319 Python
+tests, 1500 core library tests, plugin and oracle tests, Clippy, allocator
+audits, portable checks, complexity ratchet). The candidate arm64 plugin's
+replay against the published beta.9 macOS plugin was exact for 73 of 73 cases.
+Public activation of the windows policy needs the bounded qualification and
+Johannes's decision.
+## Pinned within fused LSMR step
+
+Branch `codex/within-fused-lsmr` pins `within` `3b5b9b9a` of
+`codex/fused-lsmr-pass` in three reviewed steps
+([record](../bench/results/within-fused-lsmr-2026-10-28.json)).
+
+- `17fcf288` shares a session's response with its unit-weight RHS and an
+  unseeded recurrence's RHS. A unit-weight seeded session holds one fewer
+  observation-length vector and an unseeded one two fewer. Storage only: the
+  macOS replay against the published beta.9 plugin was exact for 73 of 73 cases.
+- `2ba7239d` runs each modified-LSMR step as one pass over observations and
+  sums every design adjoint in fixed row lanes, with no atomics. `A v`, the `u`
+  update and its norm are bitwise unchanged; the declared scope is the adjoint's
+  low bits. Default-mode `within` adjoints are now repeatable and identical
+  across worker counts; before, the atomic scatter for terms with at least
+  100,000 levels made repeated ten-million-row fits differ in their last bits.
+  Whole solves are repeatable and worker-count independent with Off, Diagonal
+  and ordered additive preconditioners. Without `deterministic`, fereg's
+  additive Schwarz still uses `within`'s Auto reduction, which may select an
+  atomic scatter; on the campaign sparse design below, fused fits nevertheless
+  matched bitwise at 1, 4 and 8 workers while beta.9's did not. Fourteen three-FE
+  replay inputs change within the
+  [declared scope](../tests/replay/scopes/2026-10-28-within-fused-lsmr-macos.json)
+  (467 leaves); solver codes, used solvers, fallbacks, stop reasons, iteration
+  counters and discrete decisions are unchanged, and no one- or two-FE case
+  changes. Scoped replay passed all 73 cases with four- and eight-worker
+  repeats and cross-worker science.
+- `3b5b9b9a` adds `Solver::with_preconditioner`, which swaps a solver's
+  preconditioner on its prepared frame and is bitwise a fresh construction.
+  fereg does not use it yet; replay against the `2ba7239d` plugin was exact.
+
+`./scripts/run_tests.sh --source-only` passed at both runtime pins, including
+the many-FE witnesses: public geometry trial against dense QR with and without
+escalation, the portfolio against strict QR with discrete decisions across
+workers, near-confounded escalation, and explicit three-FE LSMR against
+explicit dummies. The complexity ratchet is unchanged. Inside `within`, the
+separate kernel matches 24 session digests recorded at the previous pin, and
+the fused kernel repeats at 1, 2, 4 and 8 workers.
+
+Descriptive Mac timing (Apple M2 Ultra, shared with other agents; frozen
+competitor rule, medians of six clean fits): native seconds for 1M rows and 16
+controls, fused pin against beta.9.
+
+| Design | 1 worker | 4 workers | 8 workers |
+| --- | ---: | ---: | ---: |
+| Campaign three sparse FEs | 0.79 | 0.84 | 0.90 |
+| Campaign three dense FEs (MAP, no LSMR) | 1.00 | 0.99 | 0.98 |
+
+The `within` step kernel alone, on the same sparse topology with 16
+right-hand sides and 23 steps, ran at 0.65-0.79 of the separate kernel with
+the diagonal preconditioner and 0.78-0.93 with additive Schwarz. On that
+design the lane merge costs 1.93 MB of buffers per live session and about 11%
+of a single-RHS step at eight workers (merge plus zeroing). Peak RSS for the
+sparse fit at eight workers fell from 2.12 to 2.00 GB. fereg's LSMR admission
+is unchanged and remains an upper bound. These timings are not qualification
+evidence; `bench/qualify.py` has not been run.
+
 ## PPML two-FE CMG reuse and lean protocol
 
 PPML Auto with exactly two intercept FEs reuses one CMG hierarchy across IRLS
@@ -356,6 +794,238 @@ application of the PPML hierarchy above CMG's 350,000-edge single-RHS
 minimum (row-operator plan only) left results bit-identical but changed the
 long panel's native time by 0.980-1.013 (1-8 workers) against the same build
 without it, short of the 5% acceptance margin; it was not retained.
+
+## CMG admission level cap (development, Mac)
+
+CMG `5c5b5b2b` caps its default hierarchy depth, and with it every pre-build
+admission bound, at 32 levels instead of 128 (Johannes's decision; not part of
+the beta.9 qualification). On the synthetic AKM panels of 1.39M and 5.63M rows
+(`fereg y <controls>, absorb(worker firm)`, 1 and 4 workers) the
+[memory record](../bench/results/cmg-admission-level-cap-2026-10-27.json)
+shows the admitted serial CMG construction bound falling from 640 MB to
+166 MB and from 1,759 MB to 446 MB; the parallel bound and the retained charge
+of two-FE OLS Auto fall by the same 474 MB and 1,313 MB. Both hierarchies have
+3 levels, and `e(b)`, solver rows, hierarchy traces and every reported peak
+(`e(fereg_memory)`, the routing and cell traces) are identical before and after.
+Those reported peaks do not include the CMG admission stage: they are the same
+when CMG is refused. Under `FEREG_MEMORY_LIMIT_BYTES` the short panel's CMG
+install threshold fell by 473-475 MB (predicted 474 MB); at a 1.25 GB limit the
+parent refused CMG (Schur PCG, 52 iterations) and the head installed it (17
+iterations, the unconstrained result). Replay is exact against the parent's
+plugin for all 73 cases without a scope; against beta.8 only the existing
+eager-cells scope applies. CMG's full suite and `./scripts/run_tests.sh
+--source-only` passed; no installed package was built or checked.
+### PPML separation routing (development, Mac; not activated)
+### PPML separation routing (development, Mac; activated for beta.10)
+
+The iterated rectifier was 42-66% of PPML native time on the Veneto-shaped
+Poisson panels. On both panels the separation chain's IR phase is one graph
+proposal followed by a single rectifier projection that certifies no further
+separation at iteration 1: a weighted finite-plus-FE projection of 3 (short) or
+12 (long) columns with zero-outcome weights near 1e-21, solved by
+retained-product CG (60-61 iterations, no preconditioner hierarchy). The
+hidden `inject=ppml_separation_auto` arm solves admitted two-intercept detector
+projections with the OLS two-FE Auto route instead; the detector's weights,
+tolerances, iteration limit and decision rules are unchanged and the public
+default is not changed. Measured on an M2 Ultra (three repetitions per cell,
+medians of repetitions 2-3, arms interleaved, no competing process; the
+[record](../bench/results/ppml-separation-routing-2026-10-27.json) keeps every
+cell):
+
+| Panel | Workers | Public native s | Hidden native s | Ratio | Public IR s | Hidden IR s | Ratio |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Short (1.39M) | 1 | 14.03 | 6.25 | 0.446 | 9.02 | 1.24 | 0.137 |
+| Short (1.39M) | 4 | 6.43 | 4.29 | 0.666 | 3.23 | 1.04 | 0.321 |
+| Short (1.39M) | 8 | 5.01 | 3.68 | 0.735 | 2.11 | 0.79 | 0.374 |
+| Long (5.63M) | 1 | 112.08 | 46.17 | 0.412 | 74.09 | 8.70 | 0.117 |
+| Long (5.63M) | 4 | 43.48 | 23.91 | 0.550 | 26.50 | 7.10 | 0.268 |
+| Long (5.63M) | 8 | 29.64 | 18.92 | 0.638 | 15.60 | 5.00 | 0.320 |
+
+On both panels at 1, 2, 4 and 8 workers, on four campaign-generator
+separation designs (dense, AKM strong and weak mobility, probability weights)
+and on the replay corpus, `e(b)`, `e(V)`, the separated rows, drop counts and
+`e(feppml_separation_sequence)` are identical between the arms, and
+`e(feppml_separation)` differs only in the rectifier's interior certificate
+magnitude; the separation trace digest in the receipt hashes that magnitude
+and therefore also differs on `ppml-separation-ir`. Each arm repeats bit for
+bit. The public replay is exact (73 of 73 cases) with the arm compiled in.
+
+The witnesses do not hold on every case. A seeded census
+(`crates/fereg-oracle/tests/ppml_separation_routing.rs`: 18 small chain,
+sparse-AKM and dense designs, some with induced finite-regressor separation,
+three separation configurations, public tolerances) is identical in 32 of 54
+cells. Where both arms succeed the separated set never differs, but in 9 cells
+the hidden arm certifies the terminal rectifier at iteration 1 where CG needs
+2, which changes RSEP and RSEQ iteration counts. In 9 cells retained CG fails
+a projection certificate and the public fit errors while the hidden arm
+completes; in 2 cells the Auto route exhausts its iteration budget where the
+public fit succeeds; 2 cells fail in both arms with different errors. Under
+`fe simplex ir` the divergences are 5 iteration-count cells and 3 public
+failures. The hidden arm is deterministic at fixed workers and its decisions
+agree across 1, 2, 4 and 8 workers wherever it succeeds. In an isolated unit
+test, a Break at every host poll inside a rectifier projection returns
+`Interrupted` on both arms.
+
+The public failures were a detector defect, now fixed (SPEC §14, the
+[record](../bench/results/ppml-separation-routing-2026-10-27.json)'s
+`post_fix_census`). Retained CG solves the rectifier projection on the
+weighted normal equations, which square the zero-row weight
+`tolerance^2 / zeros` (about 1e-18): on six cells the proposed direction left
+the model span (independent least-squares span distance 0.14-0.19 on seeds 11
+and 17, 2e-8 on seed 5) and failed the deletion certificate, r(430). On three
+`fe simplex ir` cells the span check of an exact simplex direction lying in
+the FE span failed its finite score certificate, normalized by FE-solver
+noise, r(459). A detector step that fails such a certificate now runs once
+more with LSMR under the same rules and certificates. All 9 cells complete
+and retain exactly the sample of an independent HiGHS linear program
+(maximal recession-cone separation alternated with singleton pruning), which
+every completing arm of all 54 cells also matches. Every other cell, in both
+arms, is unchanged bit for bit (full separation report, `e(b)`, `e(V)` and
+error messages). Seed 3 (2 cells) still fails in both arms: its CG direction
+has the right rows but span distance 1.8e-10 over the 1e-10 tolerance, and
+LSMR ends 15% over its FE certificate. The replay corpus is exact against the
+published beta.9 plugin (73 cases). Through Stata, the four campaign
+separation designs (4 and 8 workers) and both Veneto-shaped Poisson panels
+(1, 2, 4 and 8 workers) give identical `e(b)`, `e(V)`, separation matrices,
+drop counts and dropped rows with no re-execution; run through Stata, the
+seven fixed census cells that return r(430) or r(459) under beta.9 complete
+with the LP sample (seed 3 stays r(430)). Both arms repeat
+bit for bit at fixed workers and agree across 1, 2, 4 and 8 workers.
+
+After the fix the census is identical in 35 of 54 cells and differs in 15
+iteration-count cells (equal sample and fit), 2 hidden-route failures and the
+2 seed-3 cells; under `fe simplex ir` only 5 iteration-count cells differ.
+The two hidden failures (seed 9 without simplex) occur in the first rectifier
+projection, not through the rectifier's iteration limit: the Auto route's
+two-FE PCG accepts the final residual absorption at iteration 0 on its
+recurrence proxy, the FE certificate (the same as CG's) rejects it, final
+residual absorptions have no PCG correction, and the MAP fail-safe exhausts
+its 16,000 iterations; retained CG certifies the same residual in 8
+iterations.
+
+The residual was accurate; the certificate's arithmetic was not. The
+categorical FE certificate (shared by two-FE PCG, retained CG and MAP) forms
+each level mean as the first member's value plus a compensated sum of
+weighted differences. When that member is a zero-outcome row with a residual
+of order one, the positive rows' residuals (about 1e-18) vanish in their
+differences and the mean carries one ulp of the shift, which against the
+rectifier's weighted residual norm (9.1e-9) is of the order of the 1e-8
+tolerance: exact relative moments at most 2.7e-10, computed 1.06e-8, and MAP
+corrections below one ulp leave every bit unchanged for 16,000 sweeps; retained
+CG's later iterates certified (8.5e-21). A stop scaled like the certificate
+would not remove that floor. Since 2026-10-28 an Auto-routed detector step
+that fails a numerical certificate takes no MAP continuation and runs once
+more as retained CG under the same budget and rules, then continues exactly
+as a retained-CG step. Both seed-9 cells complete with the LP-witness sample
+and the seed-3 cells report the retained-CG error in both arms; every other
+census arm-cell is bit-identical at 1 and 4 workers (full report with
+certificate magnitudes, `e(b)`, `e(V)`, errors). The census is then 39 same
+and 15 iteration-count cells.
+
+#### Activation (beta.10 candidate, 2026-10-28)
+
+Johannes authorized activating the Auto route for beta.10 with a declared
+scope for the iteration-count class (SPEC §14): the separated set, sample,
+`e(b)` and `e(V)` are unchanged on every witness; `RSEP` iteration counts and
+certificate magnitudes, `RSEQ` iterations and the receipt's separation trace
+digest may change. `inject=ppml_separation_cg` keeps the retained-CG path.
+Witnesses, all on the activated arm64 profiling candidate against the
+published beta.9 plugin with the same ado (the [record](../bench/results/ppml-separation-routing-2026-10-27.json)'s
+`activation`):
+
+- Census (`ppml_separation_routing.rs`, CG arm vs default): all 54 cells
+  agree in sample and fit (39 identical, 15 iteration-count cells, no
+  failure class); every completing arm retains the LP-witness sample;
+  fixed-worker repeats and cross-worker decisions hold at 1, 2, 4 and 8
+  workers.
+- Stata: the four campaign separation designs (4 and 8 workers) and both
+  Poisson panels (1, 2, 4 and 8 workers) give `e(b)`, `e(V)`,
+  `e(feppml_separation_sequence)`, drop counts, `e(feppml_fit)` and the
+  dropped rows identical to beta.9 at every worker count (1,794, 430, 1,078,
+  430, 7,498 and 1,536 dropped rows); `e(feppml_separation)` differs only in
+  the rectifier row's interior certificate magnitude and the receipt only in
+  the separation trace digest. Each worker count repeats bit for bit; dropped
+  rows, drop counts, the separation sequence and the discrete separation
+  columns agree across worker counts (coefficients within 2.1e-12 relative).
+  No detector re-execution occurred. The CG arm reproduces beta.9 exactly,
+  separation matrices and receipt included, on all six designs.
+- Replay (`scripts/run_plugin_replay.sh`, 73 cases): 72 exact; only
+  `ppml-separation-ir` differs, in `RSEP` zero-based 22 (the rectifier row's
+  interior certificate, 2.69e-20 to 2.39e-20) and `RREC` 28-29. The replay
+  harness now declares this class (development workflow, plugin replay):
+  `RSEP` certificate magnitudes and iteration counts are scope leaves by row
+  stride, and the separation trace digest is accepted only beside a declared
+  `RSEP` leaf with a separation reason. With the
+  [declared scope](../tests/replay/scopes/2026-10-28-ppml-separation-activation-macos.json)
+  and the [within fused LSMR scope](../tests/replay/scopes/2026-10-28-within-fused-lsmr-macos.json),
+  replay of the integration head (`d64fdc0d`, arm64) against the published
+  beta.9 plugin passes 74/74 (15 scoped cases, no science, exact or discrete
+  failures outside the declared leaves).
+- Break: an isolated unit test cancels at every host poll inside a rectifier
+  projection of the activated policy (Auto, no MAP continuation, retained-CG
+  re-execution) and of retained CG; every stop returns `Interrupted` and is
+  not re-executed.
+
+Timing (frozen rule: before each cell, no other Stata, cargo, rustc or Python process
+and no other agent's timing driver for 60 s, a 10-s monitor during the cell, discard and
+repeat once on a competitor; one cell, short at 1 worker on the candidate, was discarded
+for a rustc process and repeated cleanly). arm64 profiling builds of the activated tree and
+of v0.5.0-beta.9, Stata 19/MP on the M2 Ultra, three repetitions per Stata process, medians
+of repetitions 2-3, arms alternating first per cell, `FEREG_PHASE_TIMING=1`:
+
+| Panel | Workers | beta.9 native s | Activated native s | Ratio | beta.9 IR s | Activated IR s | Ratio |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Short (1.39M) | 1 | 14.72 | 6.93 | 0.471 | 9.32 | 1.38 | 0.148 |
+| Short (1.39M) | 4 | 6.50 | 4.38 | 0.674 | 3.27 | 1.05 | 0.322 |
+| Short (1.39M) | 8 | 5.03 | 3.67 | 0.729 | 2.13 | 0.77 | 0.363 |
+| Long (5.63M) | 1 | 87.88 | 38.11 | 0.434 | 57.01 | 7.29 | 0.128 |
+| Long (5.63M) | 4 | 34.19 | 20.55 | 0.601 | 19.81 | 6.23 | 0.314 |
+| Long (5.63M) | 8 | 23.81 | 16.23 | 0.682 | 12.03 | 4.35 | 0.361 |
+
+The rectifier's share of native time falls from 42-65% to 19-30%.
+
+Seed 3 (cells (3,1) and (3,2)) was a documented limitation. With a
+60-digit reference projection the rectifier's exact direction flags the 20
+LP-witness rows and passes every deletion certificate (span 6e-19). Retained
+CG's fitted values are wrong by up to 2.3e-10 on zero-outcome rows only
+(4.9e-17 on positive rows; `u - r` formation is exact), which the weighted
+FE certificate cannot see at weight 1e-18 but the unit-weight span check
+(1e-10) rejects (1.82e-10). LSMR's and Auto's directions are accurate (span
+3.3e-17 and 1.7e-12, same 20 rows) but their residuals fail the FE
+certificate's first-member-shift floor (computed 1.149e-8 and 4.25e-8, exact
+6.3e-23 and 1.2e-18; independent of summation order).
+
+Johannes chose the narrow re-certification (2026-10-28, SPEC §14): when an
+Auto detector step's retained-CG and LSMR re-executions also fail, the Auto
+step runs once more and its two-FE PCG certificate miss re-certifies the
+rejected candidate with each level's mean formed about its largest-weight
+member, at the same scales and tolerance
+(`prepared_separation/recertify.rs`); the shared FE certificate is unchanged.
+Witnesses at the integration head plus this change, against the integration
+head (`d64fdc0d`):
+
+- Census (`ppml_separation_routing.rs`): full fingerprints of all 108
+  arm-cells (separation report with certificate magnitudes, drop reasons,
+  `e(b)` and `e(V)` bits, errors; elapsed seconds excluded) at 1 and 4
+  workers are identical except the Auto arm of (3,1) and (3,2), which now
+  completes with the LP-witness sample (220 rows) after the last attempt
+  instead of the retained-CG error. The retained-CG arm keeps that error, so
+  the census is 37 same, 15 ir-iterations and 2 cg-fails; fixed-worker
+  repeats and cross-worker decisions hold at 1, 2, 4 and 8 workers.
+  Seed 9, whose Auto miss retained CG certifies, is unchanged.
+- Unit tests: the re-check removes a constructed first-member floor that the
+  shared certificate rejects and matches compensated level sums about zero,
+  while a genuine 1e-6 moment fails both; an injected two-FE PCG miss reaches
+  the re-check only on a miss, a certified PCG result never consults it and is
+  bit-identical; the detector policy arms it only after the Auto, retained-CG
+  and LSMR attempts all fail numerically, reports the retained-CG error when
+  it fails, propagates Break and allocation failures and never arms it for a
+  retained-CG detector.
+- Replay: all 77 cases are bit-identical in the exact view between arm64
+  builds of the integration head and of this change; against the published
+  beta.9 plugin with the two beta.10 scopes, 75 pass and the one- and
+  three-FE derived-residual cases differ as described in the derived-residual
+  section.
 
 ## Package checks
 

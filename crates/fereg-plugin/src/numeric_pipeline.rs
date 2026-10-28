@@ -33,6 +33,9 @@ struct Slots {
     closed: bool,
 }
 
+mod trace;
+use trace::PipelineTrace;
+
 struct Handoff {
     slots: Mutex<Slots>,
     changed: Condvar,
@@ -505,6 +508,8 @@ fn read_tiles(
         buffer.resize(elements, 0.0);
     }
     let [first, second] = buffers;
+    // Trace-only intervals (FEREG_PHASE_TIMING): no effect on values or order.
+    let trace = PipelineTrace::new(rows, width);
     let handoff = Handoff {
         slots: Mutex::new(Slots {
             free: [Some(first), Some(second)],
@@ -530,12 +535,14 @@ fn read_tiles(
                         slots = handoff.wait(slots);
                     }
                 };
+                let consumed = trace.start();
                 consume(
                     tile.start,
                     tile.rows,
                     &mut tile.values,
                     tile.missing_boundary,
                 );
+                trace.add(PipelineTrace::CONSUME, consumed);
                 handoff.lock().free[index] = Some(tile.values);
                 handoff.changed.notify_all();
                 index ^= 1;
@@ -544,6 +551,7 @@ fn read_tiles(
         let _close = CloseOnDrop(&handoff);
         for (sequence, start) in (0..rows).step_by(TILE_ROWS).enumerate() {
             let index = sequence % 2;
+            let waited = trace.start();
             let mut buffer = {
                 let mut slots = handoff.lock();
                 loop {
@@ -559,10 +567,13 @@ fn read_tiles(
                     slots = handoff.wait(slots);
                 }
             };
+            trace.add(PipelineTrace::WAIT, waited);
             spi.check_interrupted()?;
             let count = (rows - start).min(TILE_ROWS);
+            let read = trace.start();
             let boundary =
                 spi.read_numeric_rows(positions, start + 1, &mut buffer[..count * width])?;
+            trace.add(PipelineTrace::READ, read);
             if !boundary.is_finite() || boundary <= 0.0 {
                 return Err(FeregError::new(
                     ErrorCode::Internal,

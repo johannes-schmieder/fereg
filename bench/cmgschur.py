@@ -172,7 +172,8 @@ def scientific_comparison(reference, candidate, reference_columns, columns, meta
     close(numbers(right['RV']), numbers(left['RV']), 'covariance', 1e-6, 1e-10)
     close(numbers(right['RFIT']), numbers(left['RFIT']), 'fit', 1e-7, 1e-9)
     output = meta['outputs']
-    numeric = {output[name] for name in ['residual', 'xb', 'xbd', 'absorbed']}
+    # Sample-only requests publish no other observation output.
+    numeric = {output[name] for name in ['residual', 'xb', 'xbd', 'absorbed'] if name in output}
     numeric.update(meta.get('saved', []))
     a = np.memmap(reference_columns, dtype=np.float64, mode='r', shape=(meta['columns'], meta['rows']))
     b = np.memmap(columns, dtype=np.float64, mode='r', shape=a.shape)

@@ -65,5 +65,12 @@ pub fn write(
     for (i, index) in request.saved.iter().enumerate() {
         writeln!(file, "{}{index}", if i == 0 { "" } else { "," }).unwrap();
     }
-    writeln!(file, "]}}").unwrap();
+    // Only derived-residual cases carry the flag, so every other reference
+    // file keeps its bytes.
+    let derived = if request.derived_residual {
+        ",\"derived_residual\":true"
+    } else {
+        ""
+    };
+    writeln!(file, "]{derived}}}").unwrap();
 }

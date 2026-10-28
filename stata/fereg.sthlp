@@ -336,6 +336,9 @@ Column 3 is {cmd:iterations}; column 4 is the stop code: 1 no fixed effects,
 Without {cmd:residuals()}, {cmd:xbd()}, {cmd:d()} or saved fixed effects, the
 default memory mode certifies the within residual of the absorbed outcome and
 regressors directly (stop code 5, zero iterations) instead of absorbing it again.
+This applies to automatic absorption of one, two or more categorical effects;
+the residual row then repeats the absorption method. Explicit solvers, low
+memory and a failed check absorb the residual again.
 Low-memory absorption combines all blocks: a fallback takes precedence;
 otherwise CMG use remains visible even when another block did not need it.
 A zero-iteration {cmd:map} row may be an already-orthogonal input check.

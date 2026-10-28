@@ -55,9 +55,17 @@ fn dense_raw<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
 ) -> Result<DenseRaw> {
     let weights = frame.weights();
     let generated_columns = prepared.fit_model().columns.len();
+    // Trace-only laps (FEREG_PHASE_TIMING): no arithmetic or decision effect.
+    let mut trace = crate::diagnostics::phase_ledger::PhaseLedger::new(
+        "dense_raw",
+        ["rhs", "moments", "norms"],
+    );
     let (rows, pending_moments) =
         loaded_rows.map_or((None, None), |loaded| (Some(loaded.rows), loaded.moments));
+    trace.fact("loaded_rows", u64::from(rows.is_some()));
     let (raw, reused_rows) = prepared.fit_build_rhs_with_loaded_rows(frame.response(), rows)?;
+    trace.fact("reused_rows", u64::from(reused_rows));
+    trace.lap(0);
     let pending_moments = if reused_rows && weights.values.is_none() {
         pending_moments
     } else {
@@ -104,6 +112,7 @@ fn dense_raw<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     } else {
         None
     };
+    trace.lap(1);
     let threads = rayon::current_num_threads();
     let blocked_raw = threads == 1 || generated_columns.div_ceil(8) >= threads;
     if raw_moments.is_none() && blocked_raw {
@@ -138,6 +147,7 @@ fn dense_raw<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
             },
         )?;
     }
+    trace.lap(2);
     let strided_score_means = if use_strided_fast_score_cache {
         let cache = raw_moments
             .as_ref()
@@ -177,6 +187,11 @@ fn project_dense<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     remaining: Option<ObserverRef<'_>>,
 ) -> Result<OneShotInputs> {
     let weights = frame.weights();
+    // Trace-only laps (FEREG_PHASE_TIMING): no arithmetic or decision effect.
+    let trace = crate::diagnostics::phase_ledger::PhaseLedger::new(
+        "project_dense",
+        ["dense_raw", "absorb"],
+    );
     let mut raw = dense_raw(
         prepared,
         frame,
@@ -185,6 +200,7 @@ fn project_dense<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         max_fast_score_cache_bytes,
         loaded_rows,
     )?;
+    trace.lap(0);
     let mut absorbed = cmg.project_initial_ols(
         weights.borrowed(),
         std::mem::replace(
@@ -202,6 +218,7 @@ fn project_dense<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
             )
         }),
     )?;
+    trace.lap(1);
     if !absorbed.report().certified() {
         return Err(invalid_data(
             "prepared OLS initial absorption returned an uncertified result",
@@ -576,6 +593,12 @@ fn solve_one_shot<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     if crate::diagnostics::phase_timing_enabled() {
         trace_score_ownership(prepared, inputs, &qr);
     }
+    // Nothing reads the projected matrix after the finite solve: its within
+    // residual is in `qr` and an owned score cache has taken the matrix.
+    // Release it before the residual projection; admission still charges it.
+    if let ProjectedStorage::Dense(dense) = &mut inputs.storage {
+        dense.within = None;
+    }
     Ok(qr)
 }
 
@@ -789,6 +812,7 @@ pub(super) fn fit<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     let weights = frame.weights();
     let reuse_absorption_norms = weights.matches_fe_norm_scale();
     let dense = config.execution.mode == PreparedOlsExecutionMode::Fast;
+    let requested = config;
     let retained_fe_parent = retained_fe_budget(prepared, &mut config, perturbations)?;
     let mut cmg = crate::fe::FeSession::for_ols(prepared, weights.borrowed(), config)?;
     let mut legacy = cmg.remaining_state();
@@ -881,7 +905,7 @@ pub(super) fn fit<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         LinearSessionAllocationPhase::Projection,
     );
     crate::interrupt::checkpoint()?;
-    let derived_scale = derived_scale(dense, config, frame.response(), weights, &inputs, &qr)?;
+    let derived_scale = derived_scale(dense, requested, frame.response(), weights, &inputs, &qr)?;
     let (residuals, residual_absorption_report, residual_fe_coefficients) = project_residual(
         &mut cmg,
         prepared.fit_sample().n_active(),
@@ -935,6 +959,8 @@ fn scaled_initial_sum_of_squares(value: f64, multiplier: f64, dense: bool) -> Re
 /// Fast OLS without residual, xbd, d or saved-FE outputs keeps its within
 /// residual when its derived certificate passes (SPEC §7, §16); this is the
 /// scale at which it is checked, or `None` when the final projection runs.
+/// `config` is the request before the one-FE route clears its unused
+/// coefficient product, so a saved-FE request always keeps the projection.
 fn derived_scale(
     dense: bool,
     config: PreparedOlsFitConfig,
@@ -1116,6 +1142,11 @@ fn finish_one_shot<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     reservation: &mut R,
     retained_scratch: Option<&mut Option<PreparedOlsScratch>>,
 ) -> Result<CertifiedPreparedOlsFit> {
+    // Trace-only lap (FEREG_PHASE_TIMING): no arithmetic or decision effect.
+    let trace = crate::diagnostics::phase_ledger::PhaseLedger::new(
+        "fit_finalize",
+        ["certify_scores", "publication"],
+    );
     let score_certificate = certify_scores(
         prepared,
         residuals.as_slice(),
@@ -1127,6 +1158,7 @@ fn finish_one_shot<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         inputs.within_outcome_norm,
         config.score_tolerance,
     )?;
+    trace.lap(0);
     if !score_certificate.passed {
         return Err(invalid_data(
             if config.execution.mode == PreparedOlsExecutionMode::Fast {
@@ -1153,6 +1185,7 @@ fn finish_one_shot<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     {
         *destination = Some(low.scratch);
     }
+    trace.lap(1);
     Ok(qr.publish(
         coefficients,
         FitPublication {

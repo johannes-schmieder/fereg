@@ -335,7 +335,7 @@ fn core_pair_bridge_matches_its_dense_symmetric_block_factor() {
     let solver = Solver::new(
         effects,
         Some(weights.clone()),
-        PreconditionerConfig::default(),
+        within::PreconditionerConfig::default(),
     )
     .expect("core solver");
     let core = solver
@@ -742,7 +742,6 @@ fn topology_identity_rejects_an_equal_shaped_replacement() {
     assert!(!identity.matches(&replacement));
 
     let mut solver = ReusableCategoricalJointLsmr {
-        deterministic: false,
         team: test_team(1),
         active_design: DenseMatrix::from_row_major(4, 0, Vec::new()).expect("active"),
         active_slots: Vec::new(),
@@ -836,7 +835,6 @@ fn joint_solver_reuses_a_certified_incremental_state_across_weight_frames() {
             .collect::<Vec<_>>();
         let outcome = target.iter().map(|value| 1.0 + value).collect::<Vec<_>>();
         let mut solver = ReusableCategoricalJointLsmr {
-            deterministic: false,
             team: test_team(2),
             active_design,
             active_slots: vec![0],
@@ -991,7 +989,6 @@ fn joint_solver_tracks_retained_team_across_one_four_one() {
 
     for requested in [1, 4, 1] {
         let mut solver = ReusableCategoricalJointLsmr {
-            deterministic: false,
             team: test_team(requested),
             active_design: DenseMatrix::from_row_major(12, 1, active_values.clone())
                 .expect("active design"),
@@ -1057,7 +1054,6 @@ fn joint_solver_supports_zero_finite_columns_with_three_effects() {
         .collect::<Vec<_>>();
     let outcome = target.iter().map(|value| 1.0 + value).collect::<Vec<_>>();
     let mut solver = ReusableCategoricalJointLsmr {
-        deterministic: false,
         team: test_team(4),
         active_design: DenseMatrix::from_row_major(rows, 0, Vec::new())
             .expect("empty active design"),
@@ -1108,6 +1104,7 @@ fn joint_memory_estimate_scales_with_retained_design_and_thread_team() {
         &[2_000, 1_000],
         1,
         CategoricalLsmrPolicy::Reuse,
+        None,
     )
     .expect("base estimate");
     let wider = estimate_joint_lsmr_workspace_bytes(
@@ -1116,6 +1113,7 @@ fn joint_memory_estimate_scales_with_retained_design_and_thread_team() {
         &[2_000, 1_000],
         1,
         CategoricalLsmrPolicy::Reuse,
+        None,
     )
     .expect("wide estimate");
     let parallel = estimate_joint_lsmr_workspace_bytes(
@@ -1124,6 +1122,7 @@ fn joint_memory_estimate_scales_with_retained_design_and_thread_team() {
         &[2_000, 1_000],
         8,
         CategoricalLsmrPolicy::Reuse,
+        None,
     )
     .expect("parallel estimate");
     let more_levels = estimate_joint_lsmr_workspace_bytes(
@@ -1132,6 +1131,7 @@ fn joint_memory_estimate_scales_with_retained_design_and_thread_team() {
         &[2_001, 1_001],
         8,
         CategoricalLsmrPolicy::Reuse,
+        None,
     )
     .expect("larger topology estimate");
     assert!(wider > base);
@@ -1186,11 +1186,17 @@ fn sparse_checkpoint_memory_includes_concurrent_dense_nuisance_pairs() {
         dense
     );
     let checkpoint =
-        CategoricalLsmrMemoryShape::new(8_000, 0, &levels, 7, CategoricalLsmrPolicy::Reuse)
+        CategoricalLsmrMemoryShape::new(8_000, 0, &levels, 7, CategoricalLsmrPolicy::Reuse, None)
             .unwrap();
-    let ordinary =
-        CategoricalLsmrMemoryShape::new(8_000, 10, &levels, 7, CategoricalLsmrPolicy::CorePair)
-            .unwrap();
+    let ordinary = CategoricalLsmrMemoryShape::new(
+        8_000,
+        10,
+        &levels,
+        7,
+        CategoricalLsmrPolicy::CorePair,
+        None,
+    )
+    .unwrap();
     assert!(checkpoint.schwarz.build_peak_bytes > dense);
     assert!(ordinary.schwarz.build_peak_bytes < dense);
     assert!(estimate_checkpoint_lsmr_workspace_bytes(8_000, 11, &levels, 7).unwrap() > dense);
@@ -1200,6 +1206,7 @@ fn sparse_checkpoint_memory_includes_concurrent_dense_nuisance_pairs() {
         &[1_600, 2_666, 2_000],
         7,
         CategoricalLsmrPolicy::Reuse,
+        None,
     )
     .unwrap();
     assert_eq!(checkpoint.schwarz, permuted.schwarz);
@@ -1253,18 +1260,42 @@ fn joint_core_pair_uses_the_same_two_largest_effects_under_every_permutation() {
 #[test]
 fn joint_memory_charges_only_the_selected_schwarz_topology() {
     let levels = [500, 2_000, 1_000];
-    let diagonal_one =
-        estimate_joint_lsmr_workspace_bytes(10_000, 8, &levels, 1, CategoricalLsmrPolicy::Diagonal)
-            .expect("serial diagonal estimate");
-    let diagonal_eight =
-        estimate_joint_lsmr_workspace_bytes(10_000, 8, &levels, 8, CategoricalLsmrPolicy::Diagonal)
-            .expect("parallel diagonal estimate");
-    let schwarz =
-        estimate_joint_lsmr_workspace_bytes(10_000, 8, &levels, 8, CategoricalLsmrPolicy::Reuse)
-            .expect("Schwarz estimate");
-    let core_pair =
-        estimate_joint_lsmr_workspace_bytes(10_000, 8, &levels, 8, CategoricalLsmrPolicy::CorePair)
-            .expect("core-pair estimate");
+    let diagonal_one = estimate_joint_lsmr_workspace_bytes(
+        10_000,
+        8,
+        &levels,
+        1,
+        CategoricalLsmrPolicy::Diagonal,
+        None,
+    )
+    .expect("serial diagonal estimate");
+    let diagonal_eight = estimate_joint_lsmr_workspace_bytes(
+        10_000,
+        8,
+        &levels,
+        8,
+        CategoricalLsmrPolicy::Diagonal,
+        None,
+    )
+    .expect("parallel diagonal estimate");
+    let schwarz = estimate_joint_lsmr_workspace_bytes(
+        10_000,
+        8,
+        &levels,
+        8,
+        CategoricalLsmrPolicy::Reuse,
+        None,
+    )
+    .expect("Schwarz estimate");
+    let core_pair = estimate_joint_lsmr_workspace_bytes(
+        10_000,
+        8,
+        &levels,
+        8,
+        CategoricalLsmrPolicy::CorePair,
+        None,
+    )
+    .expect("core-pair estimate");
     assert_eq!(diagonal_one, diagonal_eight);
     assert!(diagonal_eight < core_pair);
     assert!(core_pair < schwarz);
@@ -1274,6 +1305,7 @@ fn joint_memory_charges_only_the_selected_schwarz_topology() {
         &[1_000, 500, 2_000],
         8,
         CategoricalLsmrPolicy::CorePair,
+        None,
     )
     .expect("permuted core-pair estimate");
     assert_eq!(core_pair, permuted);
@@ -1307,9 +1339,15 @@ fn core_pair_memory_charges_exactly_two_core_width_bridge_buffers() {
 
 #[test]
 fn joint_memory_estimate_rejects_invalid_and_overflowing_shapes() {
-    let invalid =
-        estimate_joint_lsmr_workspace_bytes(100, 2, &[20, 0], 4, CategoricalLsmrPolicy::Diagonal)
-            .expect_err("zero levels must fail");
+    let invalid = estimate_joint_lsmr_workspace_bytes(
+        100,
+        2,
+        &[20, 0],
+        4,
+        CategoricalLsmrPolicy::Diagonal,
+        None,
+    )
+    .expect_err("zero levels must fail");
     assert_eq!(invalid.code, ErrorCode::InvalidArgument);
 
     let overflow = estimate_joint_lsmr_workspace_bytes(
@@ -1318,6 +1356,7 @@ fn joint_memory_estimate_rejects_invalid_and_overflowing_shapes() {
         &[usize::MAX, usize::MAX],
         usize::MAX,
         CategoricalLsmrPolicy::Reuse,
+        None,
     )
     .expect_err("adversarial dimensions must fail closed");
     assert_eq!(overflow.code, ErrorCode::Allocation);

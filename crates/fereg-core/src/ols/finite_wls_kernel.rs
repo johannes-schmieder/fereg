@@ -8,6 +8,7 @@
 
 mod axis;
 mod direction;
+mod wide_private;
 mod workspace;
 pub(super) use axis::{FiniteDenseRows, FiniteResponse};
 pub(crate) use direction::{solve_finite_direction, FiniteDirectionWorkspace};
@@ -1669,6 +1670,20 @@ fn fill_retained_dense_partitioned(
             gram,
         );
     }
+    if let Some(mut bank) = wide_private::reserve(dimension, layout) {
+        let hardware = crate::kernels::installed().map(|kernels| kernels.upper_rank_one);
+        let pass = DenseRowsPass {
+            values,
+            selected_columns,
+            response,
+            weights,
+            divisor,
+            scales,
+            hardware,
+            dimension,
+        };
+        return wide_private::fill_dense_rows(pass, layout, &mut bank, rhs, gram);
+    }
     if layout.columns_per_partition > 1 {
         return fill_retained_dense_standardized_tiles(
             values,
@@ -1758,29 +1773,69 @@ fn fill_retained_dense_standardized_rows(
             record_retained_moment_worker();
             let left_start = partition * layout.columns_per_partition;
             with_private_retained_moments(rhs_rows, gram_rows, |rhs, gram, standardized| {
-                for (row, &response_value) in response.iter().enumerate() {
-                    let source = values.row(row);
-                    let weight = normalized_weight(weights, divisor, row)?;
-                    for column in left_start..dimension {
-                        let source_column =
-                            selected_columns.map_or(column, |selected| selected[column]);
-                        standardized[column] =
-                            scaled_column(source[source_column], scales, column)?;
-                    }
-                    crate::kernels::upper_rank_one(
+                accumulate_standardized_rows(
+                    DenseRowsPass {
+                        values,
+                        selected_columns,
+                        response,
+                        weights,
+                        divisor,
+                        scales,
                         hardware,
-                        weight,
-                        &standardized[..dimension],
-                        response_value,
-                        left_start,
-                        rhs,
-                        gram,
-                    );
-                }
-                Ok(())
+                        dimension,
+                    },
+                    left_start,
+                    rhs,
+                    gram,
+                    standardized,
+                )
             })
         },
     )
+}
+
+/// One partition's dense rank-1 pass: rows in order, each standardized once
+/// from its first partition column, then one weighted `mul_add` per entry.
+#[derive(Clone, Copy)]
+struct DenseRowsPass<'a> {
+    values: FiniteDenseRows<'a>,
+    selected_columns: Option<&'a [usize]>,
+    response: FiniteResponse<'a>,
+    weights: BorrowedMapWeights<'a>,
+    divisor: f64,
+    scales: Option<&'a [f64]>,
+    hardware: Option<crate::kernels::UpperRankOne>,
+    dimension: usize,
+}
+
+fn accumulate_standardized_rows(
+    pass: DenseRowsPass<'_>,
+    left_start: usize,
+    rhs: &mut [f64],
+    gram: &mut [f64],
+    standardized: &mut [f64],
+) -> Result<()> {
+    let dimension = pass.dimension;
+    for (row, &response_value) in pass.response.iter().enumerate() {
+        let source = pass.values.row(row);
+        let weight = normalized_weight(pass.weights, pass.divisor, row)?;
+        for column in left_start..dimension {
+            let source_column = pass
+                .selected_columns
+                .map_or(column, |selected| selected[column]);
+            standardized[column] = scaled_column(source[source_column], pass.scales, column)?;
+        }
+        crate::kernels::upper_rank_one(
+            pass.hardware,
+            weight,
+            &standardized[..dimension],
+            response_value,
+            left_start,
+            rhs,
+            gram,
+        );
+    }
+    Ok(())
 }
 
 // Two fixed column tiles bound local storage at every width. Each Gram entry

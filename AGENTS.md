@@ -77,6 +77,14 @@ exact. Public activation requires exact selected-hidden/public agreement.
 Never sample until a pass, discard unfavorable timings, or silently replace an
 inconclusive candidate. Diagnose harness failures with bounded repairs; discuss
 scientific failures or inconclusive decisions with Johannes.
+Before any timing, the qualification declaration must name every eligible family
+whose science differs from the incumbent and every declared route change (the
+derived residual row); re-check a frozen configuration against the final
+candidate, run one science-only call per eligible family with the actual plugins,
+and verify every environment pin (`bench/campaign.json` against the reused
+environment root) so that no array is blocked after it starts. Evidence for a
+changed path must come from cells whose traces show that path executed; a
+measurement on cells that never reach it proves nothing about its cost.
 
 Linux is the primary performance host. Compare arms within the same verified
 isolated allocation on general eligible SCC nodes; slot counts alone do not prove
@@ -95,7 +103,14 @@ SCC authentication: after a batch authentication failure, run plain `ssh scc` in
 an interactive PTY, complete prompts and phone 2FA, keep it open and verify
 `ssh -o BatchMode=yes scc hostname` before retrying. A sandbox socket denial is
 not an authentication failure. Never run workloads on login nodes or agent tools
-on measured nodes. The pinned `within`/`schwarz-precond` dependencies follow the
+on measured nodes. Whole-node SCC jobs request `-pe omp28 28 -l num_proc=28`,
+which any whole 28-core node satisfies; a queue-bound environment such as
+`mpi_28_tasks_per_node_u` waits for one node class and is used only when that
+class is itself the requirement, with the reason recorded. Submit a chain in one
+step with `-hold_jid`, confirm that every `qsub` returned a job id, and verify
+checksum manifests (`sha256sum`-format, paths relative to the run root) from the
+run root before anything depends on them; record each job's host in the result.
+The pinned `within`/`schwarz-precond` dependencies follow the
 same scientific rules; integrate dependency changes through reviewed pins.
 
 Native publication permissions are resolved in `docs/licensing.md`. Main is a

@@ -1,7 +1,140 @@
 # Changelog
 
+## Unreleased
+
+- OLS Auto with three or more categorical-intercept effects no longer falls
+  back to slow alternating projections on large sparse panels because of an
+  overstated memory estimate: when the additive-Schwarz bound refuses LSMR,
+  fereg counts the factor-pair components that need nested scratch exactly and
+  admits against that bound. The ten-million-row sparse three-FE benchmark
+  design now finishes in about 65 seconds (four workers) instead of not at
+  all. Fits the old bound admitted are unchanged bit for bit; sample, rank and
+  omission decisions are unchanged.
+- The same exact count now also admits explicit `solver(lsmr)` (OLS, borrowed
+  and owned designs), the automatic owned-design LSMR attempt and the explicit
+  PPML LSMR preflight when the level-count bound refused them, instead of an
+  `r(909)` refusal or the MAP fallback. Owned designs with slopes keep the
+  level-count bound. Fits the old bound admitted are unchanged bit for bit.
+- Many-FE OLS Auto builds the pinned solver's design (including its locality
+  sort) once for the Jacobi trial and reuses it when the trial escalates to
+  additive Schwarz. Results are bit-identical.
+- Many-FE OLS Auto releases its column-major RHS transport once its LSMR
+  sessions hold their own copies, and OLS Fast releases the projected matrix
+  after the finite solve. The campaign sparse three-FE design peaks about
+  100 MB lower at one million rows on the Mac and 1.3 GiB lower at ten million
+  on Linux; results, routes and memory admission are unchanged.
+- The additive-Schwarz preconditioner of LSMR (many-FE OLS Auto after its
+  Jacobi trial escalates, explicit `preconditioner(schwarz)`, PPML LSMR) now
+  always combines subdomain contributions in a fixed order, as it already did
+  under `deterministic`, so repeated fits at the same worker count give
+  identical results. Affected default-mode fits may change in low bits within
+  the certified tolerance; sample, rank, omissions and every discrete decision
+  are unchanged.
+- The bounded three-FE MAP pilot of many-FE OLS Auto takes the next
+  effect's column scales in the same pass that subtracts the current effect's
+  level means, saving one of the three matrix walks of each effect projection
+  (about 6-7% of native time at one and four workers on the one-million-row dense
+  three-FE design). Results are bit-identical; the pilot's reported workspace
+  peak includes the small scale tables.
+- Developer: hidden `inject=routing_many_windows_v1` (replay wire and the
+  hidden Stata adapter) qualifies bounded many-FE LSMR session windows, at
+  most one live session per worker with the Jacobi escalation barrier at each
+  window's end. Public Auto is unchanged.
+- `feppml` separation on two categorical fixed effects: when every detector
+  attempt (Auto, retained CG, LSMR) fails a numerical certificate, the Auto
+  step runs once more and re-checks a rejected two-FE projection with each
+  level's mean formed about its largest-weight observation instead of its
+  first. Heavily zero designs whose accurate projection was rejected by
+  rounding in that mean (an `r(430)` error) now complete; every fit that
+  completed before is bit-identical.
+- Developer: plugin replay accepts several affected-scope files (each entry
+  validated on its own, their leaves united) and can declare PPML separation
+  changes: `RSEP` certificate
+  magnitudes and iteration counts by row stride, and the receipt's separation
+  trace digest only beside a declared `RSEP` leaf with a separation reason.
+  The activated separation route's replay change is now a declared scope.
+- Developer: three Fast OLS replay cases without observation outputs (one,
+  two and three FE) exercise the derived within residual and require its
+  certificate path (stop code 5) beside the dense targets.
+- Developer: `bench/qualify.py` validates a residual solver row that changes
+  from a certified projection to the derived certificate (no residual, xbd,
+  absorbed or saved output requested; the absorption's method, zero iterations
+  and pilot work, certificate within the requested tolerance) and admits only
+  that row's route leaf, requiring every published value to stay bit-identical
+  in otherwise exact comparisons. A public candidate may declare both the
+  two-FE and many-FE families: the hidden arm binds the family it activates and
+  the other family keeps the declared `public_policy`. The beta.10 configurations
+  declare scope `many` with the `many-geometry-v1` hidden arm.
+
+- OLS with one fixed effect and the bounded three-FE MAP pilot skip the
+  complete initial FE certificate when one exact group proves it fails, and
+  scan their inputs for nonfinite values in parallel; results are
+  bit-identical.
+- OLS designs with more than 63 controls compute raw column moments in wide
+  column bands and build their `[y, X]` matrix in row tiles instead of cell by
+  cell, and accumulate their cross-products in a private buffer beyond 64
+  columns, removing the jumps in run time at 63 to 65 controls; results are
+  bit-identical, and the fast memory estimate counts the new buffers.
+- Developer phase timing (`FEREG_PHASE_TIMING`) splits the MAP wrapper, dense
+  projection setup, score certificate, PPML one-FE profile and loader pipeline.
+- Fast OLS Auto with one fixed effect, and with three or more under the
+  many-FE geometry policy (MAP pilot, LSMR session or MAP fallback), now keeps
+  its within residual `y~ - X~b` when no residual, xbd, d or saved-FE output is
+  requested and the derived certificate passes, instead of absorbing the
+  residual a second time; the two-FE route has done so since beta.8. The
+  certificate recomputes every absorbed effect's level moments from the
+  declared design and weights on a one-RHS workspace. The residual solver row
+  reports the absorption's method, zero iterations and stop code 5. Where the
+  second absorption would have moved the residual (the LSMR route), residuals,
+  fitted values, residual-based fit statistics and the covariance (iid through
+  its residual sum of squares) change in low bits within the certified
+  tolerance; coefficients, sample, rank, omissions and every discrete decision
+  are unchanged. Where it accepted the residual unchanged (one FE and the MAP
+  pilot) only the residual solver row changes. Explicit solvers, low memory,
+  requested outputs and a failed check keep the certified final projection.
+- PPML separation: a detector step whose retained-CG projection fails a
+  numerical certificate (simplex deletion certification, the iterated
+  rectifier, or Mu) is executed once more with LSMR under the same weights,
+  tolerances and rules. Small weakly connected or zero-heavy designs that
+  failed with r(430) or r(459) at the default `septolerance(1e-8)` now
+  complete with certified separation (9 of 11 failing cells of the seeded
+  census); fits that completed before are bit-identical.
+- PPML separation detector projections with exactly two categorical
+  intercepts (the iterated rectifier, Mu and numerical span checks) use the
+  OLS two-FE Auto route instead of retained-product CG, which cut PPML native
+  time on two Veneto-shaped Poisson panels to 0.43-0.73 of beta.9 (1-8
+  workers). Detector tolerances, weights, iteration limits and rules are
+  unchanged; an Auto step that fails a certificate runs again as retained CG.
+  The separated rows, sample, coefficients and covariance are unchanged on
+  every witness; the rectifier can certify at an earlier iteration, so
+  `e(feppml_separation)` iteration counts and certificate magnitudes and the
+  receipt's separation trace digest can differ. `inject=ppml_separation_cg`
+  keeps the retained-CG path for comparison.
+- Developer phase timing reports the PPML separation rectifier (phase,
+
+  iteration and projection laps). A hidden `inject=ppml_separation_auto`
+  qualification arm solves two-intercept separation-detector projections with
+  the two-FE Auto route; the public detector is unchanged.
+- The pinned `within` (`3b5b9b9a`) runs each modified-LSMR step as one pass
+  over observations and sums its design adjoints in a fixed order without
+  atomics, so three-FE LSMR solves with the Jacobi or no preconditioner repeat
+  exactly and agree across worker counts without `deterministic` (additive
+  Schwarz keeps `within`'s Auto reduction unless `deterministic` is set).
+  Results change in the last bits within the
+  certified tolerances; routes, iterations and discrete decisions are
+  unchanged. LSMR sessions keep fewer response copies.
+  iteration and projection laps).
+
 ## 0.5.0 beta.9 — 2026-10-28
 
+- CMG `5c5b5b2b`: the multigrid hierarchy stops at 32 levels instead of 128,
+  and every CMG memory admission assumes at most 32 levels. Pre-build CMG
+  admission and the retained charge of two-FE OLS Auto shrink by about 474 MB
+  and 1.3 GB on 1.4M- and 5.6M-row AKM panels, so a tight memory limit that
+  refused the CMG preconditioner can now admit it. Hierarchies of at most 32
+  levels (the recorded AKM hierarchies have 3) are bit-identical; a deeper
+  one would stop at the cap with an iterative terminal inside the admitted
+  memory.
 - OLS Auto with two categorical-intercept effects builds its aggregated
   (worker, firm) cells on the worker team, bit for bit as the serial build,
   and constructs them before the diagonal pilot so the pilot's Schur products

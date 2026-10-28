@@ -829,8 +829,8 @@ impl<'a> FeSession<'a> {
 
     /// Recompute the certificate of a residual formed from certified
     /// projections at its derived scale, `amplification` times its own norm,
-    /// where the categorical owner serves this session; `None` keeps the
-    /// caller's projection path.
+    /// where the two-FE categorical owner or an Auto binding route serves this
+    /// session; `None` keeps the caller's projection path.
     pub(crate) fn certify_derived_residual(
         &mut self,
         weights: BorrowedMapWeights<'_>,
@@ -838,12 +838,44 @@ impl<'a> FeSession<'a> {
         tolerance: f64,
         amplification: f64,
     ) -> Result<Option<super::FeCertificate>> {
-        match self.categorical.as_mut() {
-            Some(owner) if self.cmg.is_none() && self.lsmr.is_none() => owner
+        if self.cmg.is_some() || self.lsmr.is_some() {
+            return Ok(None);
+        }
+        if let Some(owner) = self.categorical.as_mut() {
+            return owner
                 .certify_derived(weights, values, tolerance, amplification)
-                .map(Some),
+                .map(Some);
+        }
+        match (self.derived_binding(), self.absorb_config) {
+            (Some(design), Some(config)) => {
+                super::borrowed_map::derived_residual::certify_binding_derived(
+                    design,
+                    weights,
+                    values,
+                    tolerance,
+                    amplification,
+                    config.solver_memory_budget,
+                )
+            }
             _ => Ok(None),
         }
+    }
+
+    /// The Auto binding whose projections certify at the requested tolerance:
+    /// the direct one-FE route and the many-FE geometry policy (its LSMR
+    /// session, MAP pilot and MAP fallback). Explicit solvers, developer
+    /// routing arms and empty designs keep the final projection.
+    fn derived_binding(&self) -> Option<&super::BorrowedInterceptFeDesign<'a>> {
+        let design = self.binding.as_ref()?;
+        let config = self.absorb_config?;
+        let geometry = config
+            .routing
+            .is_some_and(super::RoutingPreset::geometry_pilot);
+        (self.general.is_none()
+            && self.owned.is_none()
+            && config.solver == super::FeSolverKind::Auto
+            && (design.effects().len() == 1 || design.effects().len() >= 3 && geometry))
+            .then_some(design)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -930,7 +962,18 @@ impl<'a> FeSession<'a> {
                 dense_norms,
             )
         } else if let Some(p) = self.categorical.as_mut() {
-            p.absorb_ols_with_remaining(weights, values, config.map, final_residual, remaining)
+            if config.certified_fallback {
+                p.absorb_ols_with_remaining(weights, values, config.map, final_residual, remaining)
+            } else {
+                p.absorb_ols_declining_map_continuation(
+                    weights,
+                    values,
+                    config.map,
+                    final_residual,
+                    remaining,
+                    config.declined_recheck,
+                )
+            }
         } else if let Some(p) = self.general.as_mut() {
             let values = values.into_values();
             let generation = MapGeometryGeneration {

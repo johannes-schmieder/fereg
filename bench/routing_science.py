@@ -50,6 +50,62 @@ def cmg_polish_limits(raw, label='CMG'):
     return mode, (primary, 0 if mode == 1 else 1)
 
 
+DERIVED_RESIDUAL_LEAVES = tuple(f'/matrices/RSOLVER/bits/{14 + column}' for column in (1, 2, 3, 4, 5, 6, 7))
+
+
+def derived_residual_leaves(reference, raw, meta):
+    """Leaves a derived residual row may change against a certified projection.
+
+    SPEC §7/§16: a Fast fit that requests no residual, xbd, absorbed or saved-FE
+    output may keep `r = y~ - X~b` when the derived certificate passes; its
+    residual row then repeats the absorption's method with zero iterations, zero
+    pilot work and stop code 5. The published results stay within the certified
+    tolerance and the independent scientific comparison witnesses them. Only a
+    reference row that is a certified projection (stop code 2) may change into a
+    derived row; every other stop-code change stays an undeclarable route change.
+    Returns the route leaves (after exact_view) of that change, or [] when both
+    rows share a stop code.
+    """
+    if not all(isinstance(value, dict) and 'RSOLVER' in value.get('matrices', {}) for value in (reference, raw)):
+        return []
+    tables = [value['matrices']['RSOLVER'] for value in (reference, raw)]
+    if any((table['rows'], table['columns'], len(table['bits'])) != (2, 16, 32) for table in tables):
+        raise ValueError('derived residual solver shape changed')
+    before, after = [cmgschur.numbers(table) for table in tables]
+    projected, derived = before[16:32], after[16:32]
+    if projected[3] == derived[3]:
+        return []
+    if not isinstance(meta, dict) or not isinstance(meta.get('outputs'), dict):
+        raise ValueError('derived residual comparison requires inspected output metadata')
+    if any(name in meta['outputs'] for name in ('residual', 'xbd', 'absorbed')) or meta.get('saved'):
+        raise ValueError('derived residual row requires a request without residual, xbd, absorbed or saved outputs')
+    for value, row, candidate in [(reference, projected, False), (raw, derived, True)]:
+        runtime = cmgschur.numbers(value['matrices']['RRUNTIME'])
+        tolerance = runtime[45]
+        if (type(value.get('return_code')) is not int or value['return_code'] != 0
+                or not all(math.isfinite(v) and v >= 0 for v in row)
+                or runtime[44] != 1 or not math.isfinite(tolerance) or tolerance <= 0):
+            raise ValueError('derived residual result/runtime tuple is invalid')
+        if candidate:
+            absorption = after[:16]
+            if (row[0] != 1 or row[1] != absorption[1] or row[2] != 0 or row[3] != 5
+                    or any(row[column] != 0 for column in range(10, 16)) or row[5] > tolerance):
+                raise ValueError('derived residual row tuple is invalid')
+        elif row[3] != 2:
+            raise ValueError('reference residual row is not a certified projection')
+    # Raw columns 1 and 3 after removal of setup/solve time; the certificate
+    # magnitudes (4-7) and the iteration count (2) are already in the envelope.
+    return [f'/matrices/RSOLVER/bits/{14 + column}' for column in ([1] if projected[1] != derived[1] else []) + [3]]
+
+
+def derived_residual_only(reference, raw, meta):
+    """True when exact views differ only inside a validated derived residual row."""
+    if not derived_residual_leaves(reference, raw, meta):
+        return False
+    changed = differences(exact_view(reference, False), exact_view(raw, False))
+    return bool(changed) and all(path in DERIVED_RESIDUAL_LEAVES for path in changed)
+
+
 def portfolio_direct_scope(reference, raw, meta):
     """The certified zero-iteration MAP return owns only its changed family ID."""
     scope = replay_scope(raw, 'auto', meta)
@@ -58,9 +114,10 @@ def portfolio_direct_scope(reference, raw, meta):
            for table in tables):
         raise ValueError('portfolio direct solver shape changed')
     decoded = [cmgschur.numbers(table) for table in tables]
+    derived = derived_residual_leaves(reference, raw, meta)
     for index in range(2):
         before, after = [values[16 * index:16 * (index + 1)] for values in decoded]
-        if before[1] == after[1]:
+        if before[1] == after[1] or (index == 1 and derived):
             continue
         for value, row, candidate in [(reference, before, False), (raw, after, True)]:
             cmg_polish_limits(value, label='portfolio direct Auto')
@@ -81,7 +138,7 @@ def portfolio_direct_scope(reference, raw, meta):
             if candidate and row[5] > (tolerance if index == 0 else min(tolerance, 1e-14)):
                 raise ValueError('portfolio direct certificate exceeds its requested target')
         scope.append(f'/matrices/RSOLVER/bits/{14 * index + 1}')
-    return scope
+    return scope + derived
 
 
 def portfolio_scope(reference, raw, meta, arm, selected):
@@ -110,6 +167,7 @@ def portfolio_scope(reference, raw, meta, arm, selected):
     terms, rows = meta['absorbed_terms'], meta.get('rows')
     if type(rows) is not int or rows < 1:
         raise ValueError('portfolio comparison requires inspected row count')
+    derived = derived_residual_leaves(reference, raw, meta)
     for value, candidate in [(reference, False), (raw, True)]:
         table = value['matrices']['RSOLVER']
         if (type(value.get('return_code')) is not int or value['return_code'] != 0
@@ -124,6 +182,8 @@ def portfolio_scope(reference, raw, meta, arm, selected):
             raise ValueError('portfolio runtime tolerance/iteration policy is invalid')
         decoded = cmgschur.numbers(table)
         for index in range(2):
+            if candidate and index == 1 and derived:
+                continue  # validated by derived_residual_leaves
             row = decoded[index * 16:(index + 1) * 16]
             requested, used, iterations, stop = row[:4]
             fallback, warnings, requested_pc, used_pc, pilot, contraction = row[10:]
@@ -180,7 +240,7 @@ def portfolio_scope(reference, raw, meta, arm, selected):
     scope = replay_scope(raw, arm, meta)
     # Raw columns 1,10,11,12,13,14 after removal of setup/solve time.
     return scope + [f'/matrices/RSOLVER/bits/{14 * row + column}'
-                    for row in range(2) for column in [1, 8, 9, 10, 11, 12]]
+                    for row in range(2) for column in [1, 8, 9, 10, 11, 12]] + derived
 
 
 def compatibility(reference, raw, reference_columns, columns, meta, arm, *, selected_policy=None):

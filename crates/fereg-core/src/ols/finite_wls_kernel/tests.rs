@@ -1051,3 +1051,95 @@ fn retained_qr_direct_span_fails_closed_in_the_threshold_guard() {
         assert!(!certificate.passed);
     }
 }
+
+#[test]
+fn wide_private_moments_match_in_place_tiles_bit_for_bit() {
+    for (columns, spaced, provided, scaled) in [
+        (65_usize, false, false, false),
+        (66, true, true, true),
+        (97, false, true, true),
+        (130, true, false, true),
+    ] {
+        let rows = 211;
+        let selected = (0..columns)
+            .map(|column| if spaced { 2 * column + 1 } else { column })
+            .collect::<Vec<_>>();
+        let stored = selected[columns - 1] + 1;
+        let scales = (0..columns)
+            .map(|column| 2.0_f64.powi((column % 5) as i32 * 7 - 14) * 1.3)
+            .collect::<Vec<_>>();
+        let weights = (0..rows)
+            .map(|row| 0.25 + (row % 7) as f64 * 0.375)
+            .collect::<Vec<_>>();
+        let response = (0..rows)
+            .map(|row| {
+                if row == 3 {
+                    -0.0
+                } else {
+                    (row as f64 * 0.37).cos()
+                }
+            })
+            .collect::<Vec<_>>();
+        let mut values = vec![f64::NAN; rows * stored];
+        for row in 0..rows {
+            for column in 0..columns {
+                values[row * stored + selected[column]] = if (row + column) % 23 == 0 {
+                    -0.0
+                } else {
+                    ((row * 17 + column * 13) as f64 * 0.731).sin() * 1e3
+                };
+            }
+        }
+        let weights_arg = if provided {
+            BorrowedMapWeights::Provided(&weights)
+        } else {
+            BorrowedMapWeights::Unit
+        };
+        let divisor = if provided { 1.75 } else { 1.0 };
+        let source = FixedBlockMomentSource::Dense {
+            values: FiniteDenseRows::packed(&values, stored),
+            rows,
+            stored_columns: stored,
+            selected_columns: if spaced { Some(&selected) } else { None },
+            response: (&response).into(),
+            weights: weights_arg,
+            solver_weight_divisor: divisor,
+            column_scales: if scaled { Some(&scales) } else { None },
+        };
+        let bits = |values: &[f64]| values.iter().map(|x| x.to_bits()).collect::<Vec<_>>();
+        for threads in [1, 2, 4, 8] {
+            crate::ThreadTeam::new(crate::ThreadConfig::from_requested(threads, true).unwrap())
+                .install(|| {
+                    let layout_source = validate_moment_source(source).unwrap();
+                    let layout = layout_source.layout();
+                    assert!(layout.columns_per_partition > 1);
+                    assert!(wide_private::reserve(columns, layout).is_some());
+                    let mut rhs = vec![0.0; columns];
+                    let mut gram = vec![0.0; columns * columns];
+                    fill_finite_wls_moments(layout_source, &mut [], &mut rhs, &mut gram).unwrap();
+                    let mut old_rhs = vec![0.0; columns];
+                    let mut old_gram = vec![0.0; columns * columns];
+                    fill_retained_dense_standardized_tiles(
+                        FiniteDenseRows::packed(&values, stored),
+                        if spaced { Some(&selected) } else { None },
+                        (&response).into(),
+                        weights_arg,
+                        divisor,
+                        if scaled { Some(&scales) } else { None },
+                        layout,
+                        &mut old_rhs,
+                        &mut old_gram,
+                    )
+                    .unwrap();
+                    for left in 0..columns {
+                        for right in (left + 1)..columns {
+                            old_gram[right * columns + left] = old_gram[left * columns + right];
+                        }
+                    }
+                    assert_eq!(bits(&rhs), bits(&old_rhs));
+                    assert_eq!(bits(&gram), bits(&old_gram));
+                })
+                .unwrap();
+        }
+    }
+}

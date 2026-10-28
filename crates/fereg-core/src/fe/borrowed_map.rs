@@ -17,11 +17,14 @@ use super::routing_observer::ObserverRef;
 use super::routing_remaining::State as RemainingState;
 
 mod categorical_prefix;
-mod derived_residual;
+pub(crate) mod derived_residual;
 mod eager_cells;
+mod fused_sweep;
 use eager_cells::ReuseState;
+mod initial_screen;
 mod irons_tuck;
 mod lsmr_norms;
+mod map_wrapper_trace;
 pub(crate) use irons_tuck::absorb_borrowed_intercept_irons_tuck_certified;
 mod ppml_cmg;
 pub(crate) mod routing_lsmr;
@@ -2068,7 +2071,14 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         config: MapConfig,
     ) -> Result<CertifiedBorrowedMap> {
         let withheld = self.begin_ppml_cmg_projection()?;
-        let result = self.absorb(weights, values.into(), config, None, None);
+        let result = self.absorb(
+            weights,
+            values.into(),
+            config,
+            None,
+            None,
+            SchurMiss::MapContinuation,
+        );
         self.finish_ppml_cmg_projection(withheld);
         if !result.as_ref().is_ok_and(|fit| fit.report().certified()) {
             self.reject_ppml_topology();
@@ -2085,7 +2095,14 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         config: MapConfig,
         final_residual: bool,
     ) -> Result<CertifiedBorrowedMap> {
-        self.absorb(weights, values, config, Some(!final_residual), None)
+        self.absorb(
+            weights,
+            values,
+            config,
+            Some(!final_residual),
+            None,
+            SchurMiss::MapContinuation,
+        )
     }
 
     pub(crate) fn absorb_ols_with_remaining(
@@ -2096,7 +2113,39 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         final_residual: bool,
         remaining: Option<ObserverRef<'_>>,
     ) -> Result<CertifiedBorrowedMap> {
-        self.absorb(weights, values, config, Some(!final_residual), remaining)
+        self.absorb(
+            weights,
+            values,
+            config,
+            Some(!final_residual),
+            remaining,
+            SchurMiss::MapContinuation,
+        )
+    }
+
+    /// [`Self::absorb_ols_with_remaining`] for a caller with its own certified
+    /// fallback (`AbsorbConfig::certified_fallback` false; the separation
+    /// detector re-executes with retained CG): a two-FE PCG certificate miss
+    /// or breakdown returns `NonConvergence` instead of continuing with MAP,
+    /// unless the caller's `recheck` of the rejected candidate passes.
+    /// A result that certifies without MAP is unchanged bit for bit.
+    pub(crate) fn absorb_ols_declining_map_continuation(
+        &mut self,
+        weights: BorrowedMapWeights<'_>,
+        values: crate::ols::OlsProjectionInput,
+        config: MapConfig,
+        final_residual: bool,
+        remaining: Option<ObserverRef<'_>>,
+        recheck: Option<super::CertificateRecheck>,
+    ) -> Result<CertifiedBorrowedMap> {
+        self.absorb(
+            weights,
+            values,
+            config,
+            Some(!final_residual),
+            remaining,
+            SchurMiss::Decline(recheck),
+        )
     }
 
     fn try_direct_route(
@@ -2209,6 +2258,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         config: MapConfig,
         ols_refine: Option<bool>,
         mut remaining: Option<ObserverRef<'_>>,
+        miss: SchurMiss,
     ) -> Result<CertifiedBorrowedMap> {
         let refine_ols = ols_refine.unwrap_or(false);
         validate_config(config)?;
@@ -2584,6 +2634,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                 values,
                 config,
                 ols_refine,
+                miss,
                 0,
                 1.0,
                 setup_seconds,
@@ -2746,6 +2797,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         values: DenseMatrix,
         config: MapConfig,
         ols_refine: Option<bool>,
+        miss: SchurMiss,
         completed_pilot_iterations: usize,
         pilot_contraction: f64,
         setup_seconds: f64,
@@ -2781,7 +2833,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             if explicit_cmg_schur {
                 SchurWorkLimit::CmgSchur
             } else {
-                SchurWorkLimit::Map { ols_refine }
+                SchurWorkLimit::Map { ols_refine, miss }
             },
             self.retain_coefficients,
             self.auto_route.as_mut(),
@@ -2848,7 +2900,7 @@ fn absorb_two_fe_pcg_reusing(
     let mut recurrence_seconds = 0.0;
     let rhs_count = values.ncols();
     let (iteration_cap, checkpoint_progress, refine, report_ols_method) = match work_limit {
-        SchurWorkLimit::Map { ols_refine } => (
+        SchurWorkLimit::Map { ols_refine, .. } => (
             None,
             false,
             ols_refine.unwrap_or(false),
@@ -3576,30 +3628,18 @@ fn absorb_two_fe_pcg_reusing(
                 );
             }
             if certificate.passed {
-                let mut result = certified_result(
+                return publish_two_fe_pcg(
                     values,
-                    SolveStopReason::Certified,
                     iterations,
                     certificate,
-                    setup_seconds,
-                    solve_started.elapsed().as_secs_f64(),
-                )?;
-                // PPML keeps its checkpoint-engine contract. OLS reports the
-                // actual recurrence, including a CMG inverse reused from an
-                // earlier RHS block. An allocated but unused inverse is not CMG.
-                if report_ols_method {
-                    result.report.used_solver = if cmg_applied {
-                        FeSolverKind::CmgSchur
-                    } else {
-                        FeSolverKind::Cg
-                    };
-                }
-                result.report.pilot_iterations = completed_pilot_iterations;
-                result.report.pilot_contraction = progress_contraction.unwrap_or(pilot_contraction);
-                return Ok(SchurAttempt::Certified(attach_optional_map_coefficients(
-                    result,
+                    (setup_seconds, solve_started),
+                    report_ols_method.then_some(cmg_applied),
+                    (
+                        completed_pilot_iterations,
+                        progress_contraction.unwrap_or(pilot_contraction),
+                    ),
                     coefficients,
-                )?));
+                );
             }
             TWO_FE_CERTIFICATE_REJECTED_AT.set(iterations);
         }
@@ -3683,6 +3723,46 @@ fn absorb_two_fe_pcg_reusing(
         return Err(FeregError::new(
             ErrorCode::NonConvergence,
             "cmgschur did not certify within its iteration budget",
+        ));
+    }
+    if let SchurWorkLimit::Map {
+        miss: SchurMiss::Decline(recheck),
+        ..
+    } = work_limit
+    {
+        // The declining caller may re-certify the rejected candidate at the
+        // same scales and tolerance; a pass publishes it like a certified
+        // iterate. Without a re-check, or when it fails, nothing changes.
+        if let Some(certificate) = recheck
+            .map(|recheck| {
+                recheck_declined(
+                    recheck,
+                    design,
+                    weights,
+                    &values,
+                    config,
+                    certificate_workspace,
+                )
+            })
+            .transpose()?
+            .filter(|certificate| certificate.passed)
+        {
+            return publish_two_fe_pcg(
+                values,
+                iterations,
+                certificate,
+                (setup_seconds, solve_started),
+                report_ols_method.then_some(cmg_applied),
+                (
+                    completed_pilot_iterations,
+                    progress_contraction.unwrap_or(pilot_contraction),
+                ),
+                coefficients,
+            );
+        }
+        return Err(FeregError::new(
+            ErrorCode::NonConvergence,
+            "two-FE categorical PCG did not certify; its caller declined the MAP continuation",
         ));
     }
 
@@ -4525,7 +4605,7 @@ pub(crate) fn certify_borrowed_intercept_candidate_with_workspace(
             "borrowed certificate design and matrix dimensions are inconsistent",
         ));
     }
-    if values.as_slice().iter().any(|value| !value.is_finite()) {
+    if !values.all_finite() {
         return Err(invalid_data(
             "borrowed certificate candidate contains a nonfinite value",
         ));
@@ -4758,11 +4838,14 @@ fn project_general_categorical<'a>(
     // without a preset keep certifying LSMR at the private recurrence target.
     let experimental_prefix = prefix_arm.is_some() && !geometry;
     let certificate_tolerance = prefix_arm.map_or(lsmr.tolerance, |_| map.tolerance);
-    let preconditioner = resolve_borrowed_lsmr_preconditioner(
-        design.effects().len(),
-        design.total_term_slots(),
-        lsmr.preconditioner,
-    );
+    let (preconditioner, estimate) = general_lsmr_admission(
+        design,
+        values.ncols(),
+        rayon::current_num_threads(),
+        lsmr,
+        budget,
+        estimate,
+    )?;
     let bytes = estimate.lsmr_bytes(preconditioner);
     let mut prefix = categorical_prefix_attempt(
         design,
@@ -4854,6 +4937,81 @@ fn project_general_categorical<'a>(
         attempted_peak,
         experimental_prefix,
     )
+}
+
+/// The solver memory estimate of a borrowed categorical design, using its
+/// exact yielding pair-component count once one has been computed.
+pub(super) fn borrowed_solver_memory_estimate(
+    design: &BorrowedInterceptFeDesign<'_>,
+    rhs: usize,
+    threads: usize,
+    local_size: Option<usize>,
+) -> Result<crate::memory::FeSolverMemoryEstimate> {
+    let levels: Vec<_> = design.effects().iter().map(|e| e.n_levels()).collect();
+    crate::memory::estimate_fe_solver_memory_with_yielding(
+        design.nobs(),
+        rhs,
+        &levels,
+        threads,
+        local_size,
+        design.known_yielding_pair_components(),
+    )
+}
+
+/// The level-count additive-Schwarz bound charges `T + R` level-sized apply
+/// banks per concurrent RHS, with `R = pair_level_incidence / 10_002`
+/// yielding components: quadratic in the levels. When that bound refuses the
+/// additive LSMR solve, count the yielding pair components exactly from the
+/// codes (once per design) and admit against the resulting bound, which the
+/// same `T + R` argument proves. An estimate that already fits, a design
+/// without the additive preconditioner, an unbudgeted call or a count whose
+/// scratch is not admitted keep the level-count estimate unchanged.
+/// Returns the resolved preconditioner with the estimate to admit it against.
+/// `threads` is the worker count the caller's level-count estimate charged.
+fn general_lsmr_admission(
+    design: &BorrowedInterceptFeDesign<'_>,
+    rhs: usize,
+    threads: usize,
+    lsmr: LsmrConfig,
+    budget: Option<FeSolverMemoryBudget>,
+    estimate: crate::memory::FeSolverMemoryEstimate,
+) -> Result<(LsmrPreconditioner, crate::memory::FeSolverMemoryEstimate)> {
+    let preconditioner = resolve_borrowed_lsmr_preconditioner(
+        design.effects().len(),
+        design.total_term_slots(),
+        lsmr.preconditioner,
+    );
+    let Some(limit) = budget else {
+        return Ok((preconditioner, estimate));
+    };
+    if preconditioner != LsmrPreconditioner::Schwarz
+        || limit.fits(estimate.lsmr_bytes(preconditioner))
+    {
+        return Ok((preconditioner, estimate));
+    }
+    if design.known_yielding_pair_components().is_none() {
+        if !limit.fits(design.yielding_pair_component_scratch_bytes()) {
+            return Ok((preconditioner, estimate));
+        }
+        match design.yielding_pair_components() {
+            Ok(_) => {}
+            Err(error) if error.code == ErrorCode::Allocation => {
+                return Ok((preconditioner, estimate))
+            }
+            Err(error) => return Err(error),
+        }
+    }
+    let refined = borrowed_solver_memory_estimate(design, rhs, threads, lsmr.local_size)?;
+    if crate::diagnostics::solver_trace_enabled() {
+        crate::diagnostics::emit_solver_trace(&format!(
+            "FEREG_SOLVER_TRACE|phase=schwarz_admission_refined|yielding_components={}|level_bound_bytes={}|refined_bytes={}|admitted={}",
+            design.known_yielding_pair_components().unwrap_or(0),
+            estimate.lsmr_bytes(preconditioner),
+            refined.lsmr_bytes(preconditioner),
+            u8::from(limit.fits(refined.lsmr_bytes(preconditioner))),
+        ));
+    }
+    Ok((preconditioner, refined))
 }
 
 /// Auto's general LSMR attempt. On the geometry policy a certificate miss
@@ -5452,22 +5610,28 @@ impl<'a> BorrowedLsmrAbsorber<'a> {
             .iter()
             .map(|effect| effect.n_levels())
             .collect::<Vec<_>>();
+        let threads = config
+            .lsmr
+            .threads
+            .resolved()
+            .max(rayon::current_num_threads());
         let estimate = estimate_fe_solver_memory(
             values.nrows(),
             values.ncols(),
             &levels,
-            config
-                .lsmr
-                .threads
-                .resolved()
-                .max(rayon::current_num_threads()),
+            threads,
             config.lsmr.local_size,
         )?;
-        let preconditioner = resolve_borrowed_lsmr_preconditioner(
-            levels.len(),
-            self.design.total_term_slots(),
-            config.lsmr.preconditioner,
-        );
+        // Explicit LSMR has no fallback: a refused level-count bound earns the
+        // same exact yielding-component refinement as the Auto route.
+        let (preconditioner, estimate) = general_lsmr_admission(
+            &self.design,
+            values.ncols(),
+            threads,
+            config.lsmr,
+            config.solver_memory_budget,
+            estimate,
+        )?;
         let mut memory =
             BorrowedLsmrCallMemory::new(estimate, preconditioner, config.solver_memory_budget, 0)?;
         let mut norms = Vec::new();
@@ -5593,20 +5757,14 @@ impl<'a> BorrowedLsmrPrepared<'a> {
         deterministic: bool,
         initial_coefficients: Option<&FeCoefficientBatch>,
     ) -> Result<(within::BatchSolveResult, bool)> {
-        let levels = design
-            .effects()
-            .iter()
-            .map(|effect| effect.n_levels())
-            .collect::<Vec<_>>();
-        let memory = estimate_fe_solver_memory(
-            design.nobs(),
+        let memory = borrowed_solver_memory_estimate(
+            design,
             rhs.len(),
-            &levels,
             rayon::current_num_threads(),
             options.local_size,
         )?;
         let resolved = resolve_borrowed_lsmr_preconditioner(
-            levels.len(),
+            design.effects().len(),
             design.total_term_slots(),
             requested,
         );
@@ -5733,7 +5891,40 @@ fn build_retained_borrowed_lsmr<'a>(
     preconditioner: PreconditionerConfig,
     deterministic: bool,
 ) -> Result<within::Solver<'a>> {
-    let effects = borrowed_lsmr_effects(design)?;
+    build_retained_lsmr_from(
+        borrowed_lsmr_effects(design)?,
+        weights,
+        preconditioner,
+        deterministic,
+    )
+}
+
+/// The pinned solver's observation-ordered design (locality sort included).
+/// `within::Solver::new` performs exactly this construction from the effects,
+/// so a solver built from it, or from a clone of it, is the same solver.
+fn prepared_within_design<'a>(
+    design: &BorrowedInterceptFeDesign<'a>,
+) -> Result<within::Design<'a>> {
+    within::Design::new(borrowed_lsmr_effects(design)?).map_err(retained_lsmr_build_error)
+}
+
+fn retained_lsmr_build_error(error: within::BuildError) -> FeregError {
+    FeregError::new(
+        if matches!(error, within::BuildError::Allocation { .. }) {
+            ErrorCode::Allocation
+        } else {
+            ErrorCode::Internal
+        },
+        format!("borrowed modified LSMR failed: {error}"),
+    )
+}
+
+fn build_retained_lsmr_from<'a>(
+    effects: impl within::IntoDesign<'a>,
+    weights: ValidatedWeights<'_>,
+    preconditioner: PreconditionerConfig,
+    deterministic: bool,
+) -> Result<within::Solver<'a>> {
     let weights = weights
         .values
         .map(|values| {
@@ -5757,16 +5948,7 @@ fn build_retained_borrowed_lsmr<'a>(
             Ok(solver)
         }
     });
-    solver.map_err(|error| {
-        FeregError::new(
-            if matches!(error, within::BuildError::Allocation { .. }) {
-                ErrorCode::Allocation
-            } else {
-                ErrorCode::Internal
-            },
-            format!("borrowed modified LSMR failed: {error}"),
-        )
-    })
+    solver.map_err(retained_lsmr_build_error)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -5921,7 +6103,13 @@ fn run_borrowed_lsmr_with_prepared<'a>(
         memory.include(admitted)?;
     }
     let lsmr_setup_started = Instant::now();
-    let rhs = super::lsmr_batch::rhs_columns(values)?;
+    // The general routing windows transport their own columns from `values`
+    // and release them once their sessions own copies.
+    let rhs = if general_routing.is_some() {
+        Vec::new()
+    } else {
+        super::lsmr_batch::rhs_columns(values)?
+    };
     let rhs_views = rhs.iter().map(Vec::as_slice).collect::<Vec<_>>();
     let options = LsmrOptions {
         tol: lsmr_config.tolerance,
@@ -5948,7 +6136,7 @@ fn run_borrowed_lsmr_with_prepared<'a>(
         let solved = routing.solve(
             design,
             weights,
-            &rhs_views,
+            values,
             &options,
             lsmr_config.preconditioner,
             preconditioner,
@@ -6241,7 +6429,7 @@ fn borrowed_within_preconditioner(preconditioner: LsmrPreconditioner) -> Precond
         LsmrPreconditioner::Auto => unreachable!("borrowed automatic preconditioner is resolved"),
         LsmrPreconditioner::Off => PreconditionerConfig::Off,
         LsmrPreconditioner::Diagonal => PreconditionerConfig::Diagonal,
-        LsmrPreconditioner::Schwarz => PreconditionerConfig::default(),
+        LsmrPreconditioner::Schwarz => crate::fe::additive_schwarz(),
     }
 }
 
@@ -6860,17 +7048,20 @@ fn absorb_with_reservation_mode<R: WorkspaceReservation>(
             "borrowed MAP requires nonempty observation and RHS axes",
         ));
     }
-    let invalid_values = values.as_slice().iter().any(|value| !value.is_finite());
-    if invalid_values {
+    // Trace-only laps (FEREG_PHASE_TIMING): no arithmetic or decision effect.
+    let trace = map_wrapper_trace::ledger(values.nrows(), values.ncols());
+    if !values.all_finite() {
         return Err(invalid_data("borrowed MAP values must be finite"));
     }
     let weights = validate_weights(weights, values.nrows())?;
+    trace.lap(map_wrapper_trace::SCAN);
 
     let setup_started = Instant::now();
     let mut workspace =
         BorrowedMapWorkspace::new(design, values.nrows(), values.ncols(), reservation)?;
     update_workspace_norms(&values, weights, &mut workspace, true)?;
     let setup_seconds = setup_started.elapsed().as_secs_f64();
+    trace.lap(map_wrapper_trace::NORMS);
     let solve_started = Instant::now();
     let workspace_peak = workspace.payload_peak()?;
     let mut coefficients = retain_coefficients
@@ -6891,12 +7082,15 @@ fn absorb_with_reservation_mode<R: WorkspaceReservation>(
     }
 
     {
-        let initial_certificate = if design.effects().is_empty() {
-            certify_initial_structural_constant(weights, &values, config.tolerance, &mut workspace)?
-        } else {
-            certify_initial(design, weights, &values, config.tolerance, &mut workspace)?
-        };
-        if initial_certificate.passed {
+        let initial_certificate = initial_screen::entry_certificate(
+            design,
+            weights,
+            &values,
+            config.tolerance,
+            &mut workspace,
+        )?;
+        trace.lap(map_wrapper_trace::INITIAL);
+        if let Some(initial_certificate) = initial_certificate.filter(|c| c.passed) {
             let mut result = certified_result(
                 values,
                 SolveStopReason::Certified,
@@ -6947,6 +7141,7 @@ fn absorb_with_reservation_mode<R: WorkspaceReservation>(
             coefficients.as_mut(),
             config.symmetric,
         )?;
+        trace.lap(map_wrapper_trace::SWEEP);
         // One intercept effect is removed exactly by its first projection, so
         // certify immediately instead of waiting for the periodic multiway
         // cadence. Multiway designs retain periodic plus final certification.
@@ -6955,6 +7150,7 @@ fn absorb_with_reservation_mode<R: WorkspaceReservation>(
             || iteration == config.max_iterations
         {
             let certificate = certify(design, weights, &values, config.tolerance, &mut workspace)?;
+            trace.lap(map_wrapper_trace::CERTIFY);
             if certificate.passed {
                 let mut result = certified_result(
                     values,
@@ -8209,15 +8405,21 @@ fn certify_with_current_norms(
     workspace: &mut BorrowedMapWorkspace,
 ) -> Result<FeCertificate> {
     workspace.rhs_relative_infinity_norms.fill(0.0);
-    for rhs in 0..residuals.ncols() {
+    set_certificate_scales(residuals.ncols(), workspace)?;
+    certify_with_current_scales(design, weights, residuals, tolerance, workspace)
+}
+
+/// Each RHS's certificate scale: the larger of its reference and current
+/// residual norms.
+fn set_certificate_scales(columns: usize, workspace: &mut BorrowedMapWorkspace) -> Result<()> {
+    for rhs in 0..columns {
         let scale = workspace.reference_norms[rhs].max(workspace.residual_norms[rhs]);
         if !scale.is_finite() || scale < 0.0 {
             return Err(invalid_data("borrowed MAP RHS scale is invalid"));
         }
         workspace.rhs_scales[rhs] = scale;
     }
-
-    certify_with_current_scales(design, weights, residuals, tolerance, workspace)
+    Ok(())
 }
 
 fn certify_with_current_scales(
@@ -9349,9 +9551,80 @@ fn checkpoint_schur_copy(
 #[derive(Clone, Copy)]
 enum SchurWorkLimit {
     // None denotes PPML; Some(false) is the OLS final-residual phase.
-    Map { ols_refine: Option<bool> },
+    Map {
+        ols_refine: Option<bool>,
+        miss: SchurMiss,
+    },
     Checkpoint(usize),
     CmgSchur,
+}
+
+/// Publish a certified two-FE PCG iterate. PPML keeps its checkpoint-engine
+/// contract (`ols_cmg` None). OLS reports the actual recurrence, including a
+/// CMG inverse reused from an earlier RHS block; an allocated but unused
+/// inverse is not CMG.
+fn publish_two_fe_pcg(
+    values: DenseMatrix,
+    iterations: usize,
+    certificate: FeCertificate,
+    (setup_seconds, solve_started): (f64, Instant),
+    ols_cmg: Option<bool>,
+    (pilot_iterations, pilot_contraction): (usize, f64),
+    coefficients: Option<MapCoefficientAccumulator>,
+) -> Result<SchurAttempt> {
+    let mut result = certified_result(
+        values,
+        SolveStopReason::Certified,
+        iterations,
+        certificate,
+        setup_seconds,
+        solve_started.elapsed().as_secs_f64(),
+    )?;
+    if let Some(cmg_applied) = ols_cmg {
+        result.report.used_solver = if cmg_applied {
+            FeSolverKind::CmgSchur
+        } else {
+            FeSolverKind::Cg
+        };
+    }
+    result.report.pilot_iterations = pilot_iterations;
+    result.report.pilot_contraction = pilot_contraction;
+    Ok(SchurAttempt::Certified(attach_optional_map_coefficients(
+        result,
+        coefficients,
+    )?))
+}
+
+/// A declining caller's re-check of a rejected two-FE PCG candidate, at the
+/// scales the shared certificate uses for it and the same tolerance.
+fn recheck_declined(
+    recheck: super::CertificateRecheck,
+    design: &BorrowedInterceptFeDesign<'_>,
+    weights: ValidatedWeights<'_>,
+    values: &DenseMatrix,
+    config: MapConfig,
+    workspace: &mut BorrowedMapWorkspace,
+) -> Result<FeCertificate> {
+    update_workspace_norms(values, weights, workspace, false)?;
+    set_certificate_scales(values.ncols(), workspace)?;
+    recheck(
+        design,
+        weights.values,
+        weights.raw_scale,
+        values,
+        &workspace.rhs_scales[..values.ncols()],
+        config.tolerance,
+    )
+}
+
+/// What a two-FE PCG certificate miss does once its corrections are spent.
+#[derive(Clone, Copy)]
+enum SchurMiss {
+    /// Continue with symmetric MAP (every caller but the separation detector).
+    MapContinuation,
+    /// Return `NonConvergence` (the caller re-executes); with a re-check, a
+    /// rejected candidate that passes it is published instead.
+    Decline(Option<super::CertificateRecheck>),
 }
 
 // Values remain authoritative input until reconstruction. A failed final
@@ -9397,6 +9670,8 @@ fn update_workspace_norms(
     )
 }
 
+#[cfg(test)]
+mod initial_screen_tests;
 #[cfg(test)]
 mod ppml_topology_tests;
 #[cfg(test)]

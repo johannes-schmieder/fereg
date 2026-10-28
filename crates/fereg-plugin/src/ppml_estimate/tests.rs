@@ -1378,6 +1378,37 @@ fn ppml_topology_injection_is_explicit_and_does_not_accept_routing_presets() {
 }
 
 #[test]
+fn ppml_separation_cg_injection_is_explicit_and_exclusive() {
+    let (args, mut spi) = fixture();
+    let action = EstimatePpmlSpec::parse(&args)
+        .unwrap()
+        .decode_and_validate(&mut spi)
+        .unwrap();
+    let request = prepared_ppml_request(&action, None).unwrap();
+    assert!(!request.inject_separation_cg);
+    let mut experiment = args.clone();
+    experiment.push("inject=ppml_separation_cg".to_owned());
+    let action = EstimatePpmlSpec::parse(&experiment)
+        .unwrap()
+        .decode_and_validate(&mut spi)
+        .unwrap();
+    let request = prepared_ppml_request(&action, None).unwrap();
+    assert!(request.inject_separation_cg);
+    assert!(!request.inject_topology_sharing);
+    assert!(!request.inject_fe_recovery_allocation_failure);
+    for unsupported in [
+        "ppml_separation_cg_v1",
+        "ppml_separation",
+        "PPML_SEPARATION_CG",
+        "ppml_separation_auto",
+    ] {
+        let mut rejected = args.clone();
+        rejected.push(format!("inject={unsupported}"));
+        assert!(EstimatePpmlSpec::parse(&rejected).is_err());
+    }
+}
+
+#[test]
 fn public_solver_names_decode_to_typed_families() {
     for (name, expected) in [
         ("auto", PpmlSolverFamily::Auto),
@@ -1491,6 +1522,7 @@ fn with_certified_fixture_probe(
             solver: action.solver,
             inject_fe_recovery_allocation_failure: false,
             inject_topology_sharing: false,
+            inject_separation_cg: false,
         },
         LoadedPpmlInput {
             bias_units: None,
@@ -1888,6 +1920,7 @@ fn no_route_rejects_before_canonical_numeric_allocation_and_stores_nothing() {
             solver: action.solver,
             inject_fe_recovery_allocation_failure: false,
             inject_topology_sharing: false,
+            inject_separation_cg: false,
         };
         let prepared_input = LoadedPpmlInput {
             bias_units: None,

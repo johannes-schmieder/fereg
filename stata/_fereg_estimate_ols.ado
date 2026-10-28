@@ -109,7 +109,7 @@ program define _fereg_estimate_ols, eclass
         di as error "marker-only Break cannot be combined with inject()"
         exit 198
     }
-    local routing_injection = regexm(`"`inject'"', "^routing_(h(4|8|16|32)_k(0|1|2)|builder_break|prefix_(none|map4|it4)|diagonal|cells|direct)$")
+    local routing_injection = regexm(`"`inject'"', "^routing_(h(4|8|16|32)_k(0|1|2)|builder_break|prefix_(none|map4|it4)|diagonal|cells|direct|many_windows_v1)$")
     local it_injection = `"`inject'"' == "it_coefficients"
     local ownership_injection = regexm(`"`inject'"', "^ownership_(moments|scores|both)$")
     local cells_injection = regexm(`"`inject'"', "^cells_(eager|deferred)(_(moments|scores|both))?$")

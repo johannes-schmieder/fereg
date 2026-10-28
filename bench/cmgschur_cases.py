@@ -235,17 +235,22 @@ def noconstant_template(arguments, metadata, regressors, matrix_count):
     return arguments, output.getvalue()
 
 
-def write_case(generator, path, columns, tolerance=1e-8, include_intercept=True, *, effect_count=2, weights=None):
-    """Use the canonical Rust serializer for metadata, replace only numeric data."""
+def write_case(generator, path, columns, tolerance=1e-8, include_intercept=True, *, effect_count=2, weights=None,
+               vce='robust', observation_outputs=True):
+    """Use the canonical Rust serializer for metadata, replace only numeric data.
+
+    Without observation outputs only the mandatory sample destination remains,
+    so no residual, xb, xbd or absorbed output is requested."""
     template = path.with_suffix('.template.case')
-    if not 2 <= effect_count <= 16:
-        raise ValueError('native template requires 2..16 categorical effects')
+    if not 1 <= effect_count <= 16 or vce not in {'robust', 'iid'}:
+        raise ValueError('native template requires 1..16 categorical effects and robust or IID VCE')
     regressors = len(columns) - effect_count - 1
-    template_levels = ','.join(map(str, [20, 10] + [5] * (effect_count - 2)))
+    template_levels = ','.join(map(str, ([20, 10] + [5] * (effect_count - 2))[:effect_count]))
     subprocess.run([str(generator), '--output', str(template), '--rows', '80',
                     '--levels', template_levels, '--regressors', str(regressors),
-                    '--weights', 'unit' if weights is None else 'pw', '--vce', 'robust', '--graph', 'random-mobility',
-                    '--solver', 'auto', '--seed', '20261013', '--tolerance', str(tolerance)],
+                    '--weights', 'unit' if weights is None else 'pw', '--vce', vce, '--graph', 'random-mobility',
+                    '--solver', 'auto', '--seed', '20261013', '--tolerance', str(tolerance),
+                    *([] if observation_outputs else ['--no-observation-outputs'])],
                    check=True, stdout=subprocess.DEVNULL, timeout=60)
     try:
         with template.open('rb') as stream:
@@ -266,7 +271,12 @@ def write_case(generator, path, columns, tolerance=1e-8, include_intercept=True,
         data = [np.ones(n), *columns, *([] if weights is None else [weights])]
         if len(data) != int(fields['output_sample']) - 1:
             raise ValueError('canonical template input layout changed')
-        for name in ['sample', 'residual', 'drop_reason', 'xb', 'xbd', 'absorbed']:
+        outputs = ['sample', 'residual', 'drop_reason', 'xb', 'xbd', 'absorbed']
+        if not observation_outputs:
+            if any(fields['output_' + name] != '0' for name in outputs[1:]):
+                raise ValueError('sample-only template requests an observation output')
+            outputs = outputs[:1]
+        for name in outputs:
             initial = 1.0 if name == 'sample' else 0.0 if name == 'drop_reason' else float.fromhex('0x1p+1023')
             if int(fields['output_' + name]) != len(data) + 1:
                 raise ValueError('canonical template output layout changed')
@@ -283,8 +293,7 @@ def write_case(generator, path, columns, tolerance=1e-8, include_intercept=True,
                     bits = np.asarray(column[first:first+32768], dtype=np.float64).view(np.uint64)
                     stream.write(''.join(f'{int(value):016x}\n' for value in bits).encode())
             stream.write(metadata)
-        return {name: int(fields['output_' + name]) - 1
-                for name in ['sample', 'residual', 'drop_reason', 'xb', 'xbd', 'absorbed']}
+        return {name: int(fields['output_' + name]) - 1 for name in outputs}
     finally:
         template.unlink(missing_ok=True)
 

@@ -37,6 +37,28 @@ Keep the installed runtime unchanged while testing private patches. Main must pa
 the default entrypoint with matching installed artifacts before a distribution
 change is committed; source-only success never authorizes publication or promotion.
 
+## Plugin replay and affected scopes
+
+`scripts/run_plugin_replay.sh PLUGIN [BASELINE]` regenerates the bounded case
+matrix (`tests/replay/matrix.json`) and compares the actual binary exactly with a
+baseline plugin and scientifically with independent dense targets. A declared
+numerical change is replayed with affected-scope files in `tests/replay/scopes/`:
+pass several through `FEREG_REPLAY_AFFECTED_SCOPES` (space-separated) or
+`replay_plugins.py --affected-scope A B`. Each file's entry is validated on its
+own and the union of the declared leaves applies, so independent changes to one
+case compose; a typed diagnostic scope must be passed alone. Each entry binds a case's frozen input SHA-256, a
+reason and `allowed_paths` leaves of the exact view. Accepted leaves are the
+numerical envelope of `numerical_scope_indices` (including PPML `RSEP`
+certificate magnitudes, zero-based columns 8-11 of every method row), the inner
+work counters of `work_scope_indices` (including the `RSEP` iteration count,
+column 5), `RB`/`RV` coordinates, bias leaves and retained output columns. The
+one typed transaction leaf is the PPML receipt's separation trace digest
+(`RREC` 28-29), accepted only beside a declared `RSEP` leaf and a reason that
+names separation; every other receipt position, route, status and discrete
+field is rejected. Declared `RSEP` iteration and trace-digest leaves are exempt
+only in the parent's discrete comparison; fixed-thread repeats and cross-worker
+checks keep them exact.
+
 ## Complexity inventory
 
 `tests/reference/complexity.json` records production lines, dispatch/chunk
@@ -55,6 +77,17 @@ input and reference identities once per job, with lightweight drift checks.
 Do not add recursive history checks or prerequisite receipt chains.
 
 Keep 42-cell routing coverage and add cases only for the affected mechanism.
+The routing cells stop at 100,000 rows and 5 regressors; when a candidate targets
+million-row, one-FE, dense three-FE or many-control designs, add the 16-cell
+`campaign` coverage (`routing-campaign` runs all 58 cells). Its million-row SCC
+comparison designs carry independent blocked oracle references, and two of its
+cells request no observation outputs, the only routing-runner cells that reach
+the derived within residual; against a reference that still projects that
+residual, `bench/routing_science.py` validates the derived row's tuple and admits
+its stop code as the one route leaf (README, "Qualification"). Declare each
+public original/incumbent's two-FE policy with `public_policy` so its gate
+evidence is checked; a candidate declaring both families keeps its own
+`public_policy` for two-FE cells beside a many-FE hidden arm.
 Protect original and last accepted public Auto with max(5%, 1 ms). Require
 independent numerical witnesses, exact/scoped science, resource gates, fixed-worker
 repeatability and cross-worker agreement. Activation must match the selected

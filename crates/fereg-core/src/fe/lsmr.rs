@@ -309,8 +309,21 @@ fn within_preconditioner(preconditioner: LsmrPreconditioner) -> PreconditionerCo
         LsmrPreconditioner::Auto => unreachable!("automatic preconditioner is resolved first"),
         LsmrPreconditioner::Off => PreconditionerConfig::Off,
         LsmrPreconditioner::Diagonal => PreconditionerConfig::Diagonal,
-        LsmrPreconditioner::Schwarz => PreconditionerConfig::default(),
+        LsmrPreconditioner::Schwarz => additive_schwarz(),
     }
+}
+
+/// The additive-Schwarz configuration of every fereg LSMR build: the pinned
+/// default local solvers with the Ordered reduction, which commits subdomain
+/// contributions in subdomain order. The pinned Auto reduction may resolve to
+/// an atomic scatter whose summation order follows thread timing; fereg
+/// requires repeatable results at a fixed worker count in every mode.
+pub(crate) fn additive_schwarz() -> PreconditionerConfig {
+    let mut config = PreconditionerConfig::default();
+    if let PreconditionerConfig::Additive { reduction, .. } = &mut config {
+        *reduction = within::ReductionStrategy::Ordered;
+    }
+    config
 }
 
 fn validate_config(config: LsmrConfig) -> Result<()> {

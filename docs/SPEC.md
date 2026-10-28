@@ -17,8 +17,10 @@ Native test names below are relative to `crates/fereg-core` or
 ### Ownership and cell scope
 
 The accepted ownership/cell implementation was qualified with CMG `fd77d98d`; the runtime pins
-CMG `f6a044c9`, whose only change is arithmetic-preserving team dispatch of row-operator
-matvecs (gated on entries times lanes). Qualified OLS `solver(auto)` with
+CMG `5c5b5b2b`, which adds arithmetic-preserving team dispatch of row-operator
+matvecs (gated on entries times lanes, `f6a044c9`) and the 32-level hierarchy cap
+(§19). The cap keeps every hierarchy of at most 32 levels bit-identical and lowers
+the CMG bytes this scope admits and charges as retained. Qualified OLS `solver(auto)` with
 `preconditioner(auto)`, a global intercept and exactly two categorical-intercept
 FE terms selects both ownership mechanisms and eager cell construction.
 Explicit developer injections retain their specified selection. Core defaults
@@ -322,6 +324,10 @@ projected total exceeds 40 iterations, about the cost of building the additive
 Schwarz preconditioner and running its usual iterations, the trial solver is
 released, the additive configuration that the slot rule selects is built once,
 and each escalated RHS continues from its iterate with its remaining budget.
+The trial solver and its escalation share one prepared pinned-solver design
+(observation frame, locality sort and layout), so escalation builds only the
+additive solver state; this is arithmetic-preserving, and the kept design stays
+within the additive solver frame that admission charges.
 Later calls on the binding reuse the solver it holds; reports name the
 preconditioner that finished. Admission charges the additive bound throughout.
 Third, every successful exit (pilot, LSMR or MAP fallback) is accepted only by
@@ -347,8 +353,9 @@ three-FE Auto with an explicit preconditioner reaches the same pilot and may
 change through its earlier certificate checkpoint. Sample, rank, omission,
 original factor slots/base flags and other discrete decisions remain unchanged.
 Hidden `routing_incremental_many` keeps the previous public policy exactly. The
-parallel copies, RHS transport, pair moments and session starts and the pilot's
-norm handoff are arithmetic-preserving. Independent witnesses cover pilot
+parallel copies, RHS transport, pair moments and session starts, the pilot's
+norm handoff and its fused sweep passes (beta.10; optional admitted scale
+tables, see [ARCHITECTURE](ARCHITECTURE.md)) are arithmetic-preserving. Independent witnesses cover pilot
 acceptance one sweep early with identical bits, forced certificate misses
 answered by one seeded correction (with and without retained coefficients,
 repeated bit-for-bit) or by the MAP fallback after a second miss, the norm handoff against the
@@ -356,6 +363,97 @@ LSMR kernel and an independent sum, exact split pair moments for every lane
 count, Jacobi completion on mixing panels, escalation near confounding with
 agreement against the strict reference and FE-moment reconstruction, and
 fixed-worker repeatability.
+
+Additive-Schwarz admission charges `T + R` level-sized worker banks per
+concurrent RHS apply, where `R` bounds the factor-pair components whose local
+solve may yield into nested work (a block of more than 10,000 levels). The
+level-count bound `R = levels * (effects - 1) / 10,002` grows with the levels,
+so the charge is quadratic in them. When it refuses the additive LSMR attempt
+of the general categorical OLS Auto route (many-FE designs, and two-FE designs
+whose graph and compact routes were refused), fereg counts the structural pair
+components with a block of at least 10,000 levels exactly from the codes,
+once per design, after admitting that count's O(levels) scratch, and admits
+the attempt against the same bound with the smaller `R`. Within's subdomains
+are the bipartite components of each pair's cross-tab, and with the route's
+strictly positive weights those are the structural pair components. An estimate that fits, an unbudgeted call,
+an explicit non-additive preconditioner or an unadmitted count scratch keeps
+the level-count estimate and computes nothing new.
+
+Declared scope of the exact count: only fits whose additive attempt the
+level-count bound refused change, from the original-input MAP fallback to the
+unchanged LSMR attempt of their route (for many-FE Auto the geometry policy:
+Jacobi trial, additive escalation, requested certificate, correction and MAP
+fallback). They may change coefficients, covariance, fit statistics, residuals,
+FE coordinates, solver iteration signatures, reported solver, workspace peak
+and fallback diagnostics within §20 tolerances. Sample, rank, omission,
+original factor slots/base flags and other discrete decisions remain
+unchanged. Every fit the level-count bound admits keeps its bits, route and
+memory accounting. Witnesses: the count against an
+independent breadth-first search; the beta.8 campaign's sparse three-FE
+parameters (level bound about 1 TB at ten million rows, exact count 3, linear
+growth); and a one-million-row campaign topology under a budget one byte
+below the level bound, which admits the additive route with the unbudgeted
+fit's bits at one and four workers, repeated, agreeing across workers and
+reconstructing the input from its FE coefficients, where the level bound ran
+the MAP fallback.
+
+The same refinement, under the same rule (only after the level-count bound
+refused; the exact `R` is never larger), covers the other additive-Schwarz
+LSMR admissions. Explicit OLS `solver(lsmr)` on a borrowed categorical design
+refines its call admission. Owned designs refine the generic LSMR admission of
+explicit `solver(lsmr)` and of the automatic owned route when every term is one
+intercept channel and every weight is strictly positive; designs with slopes
+keep the level-count bound, because their subdomains are not the code
+components. The PPML preflight (explicit LSMR's joint Schwarz factor over the
+core pair or both effects, and the checkpoint accelerator over every pair)
+recounts once when its plan refused, with the strictly positive PPML working
+weights; a plan that still does not fit reports the original refusal. Each
+count is taken once per design, after its O(levels) scratch is admitted, and a
+count whose scratch or allocation is refused keeps the refusal. Declared scope:
+only fits the level-count bound refused change. Explicit LSMR fits move from
+an `r(909)` allocation refusal to their unchanged LSMR solve; the automatic
+owned route moves from its MAP fallback to its unchanged LSMR attempt; refused
+PPML plans move from the preflight refusal to their unchanged fit. They may
+change coefficients, covariance, fit statistics, residuals, FE coordinates,
+iteration signatures, reported solver, workspace peaks and fallback
+diagnostics within §20 tolerances; discrete decisions are unchanged.
+Witnesses: the per-pair cache against the independent search on every pair
+subset; explicit borrowed LSMR, explicit and automatic owned LSMR under a
+budget one byte below the level bound with the unbudgeted solve's bits,
+repeated at one and four workers and agreeing across them, with a budget below
+the exact bound still refused and a sloped design still refused; and PPML
+explicit LSMR on the sparse three-FE topology, whose refused plan is admitted,
+repeats bit for bit, agrees with the unbudgeted fit and refuses below the exact
+bound with the original message.
+
+Candidate bounded LSMR session windows (hidden `routing_many_windows_v1`, not
+public): the many-FE geometry policy unchanged except that its unseeded and
+seeded LSMR solves keep at most one live session per worker instead of every
+RHS of a call (at most 64, or four per worker). RHSs run in fixed windows of
+consecutive columns; each window starts its sessions, runs them to completion,
+finishes and releases them before the next window starts. The Jacobi trial's
+escalation barrier falls at the end of each window: if a window's trial
+projects beyond its budget, that window's escalated RHSs continue from their
+iterates on the additive solver built once from the shared design, and every
+later window of the call, and later calls on the binding, start on the
+additive solver without a trial. A window whose RHSs all finish on the trial
+leaves the trial retained for the next window. Without any escalation every
+RHS runs the same independent recurrence as in one window, so results are
+bit-identical to the public policy; with an escalation, RHSs after the
+escalating window may finish in fewer iterations with different low bits.
+Admission still charges the established window bound, so the arm admits at
+least what the public policy admits; only the reported workspace peak's
+warm-session term follows the smaller window. Two-FE and ineligible designs
+fall back to exactly the public policy, including ownership/cell activation.
+Declared scope of the arm: injected many-FE OLS Auto fits with an escalating
+Jacobi trial may change coefficients, covariance, fit statistics, residuals,
+FE coordinates and solver iteration signatures within §20 tolerances;
+discrete decisions are unchanged. Public activation is a separate decision
+after qualification. Witnesses: dense explicit-dummy QR at one, two, four and
+eight workers on a finishing and an escalating panel, fixed-worker repeats,
+exact public agreement where one window holds every RHS or no RHS escalates,
+and the four-, eight-, sixteen-FE, small-third and near-confounded routing
+families against the public arm.
 
 The CMG builder borrows the host team, polls cancellation at fixed logical chunks
 and admits construction against real memory, without a construction-work cap or
@@ -367,7 +465,8 @@ Every two-FE Schur hierarchy (OLS Auto, explicit `cmgschur` and PPML reuse) is
 built with CMG's options except a zero low-effective-degree threshold: on
 expander-like firm Schur graphs CMG's correction detaches most firms into
 singleton aggregates, so coarsening stagnated. The options change only the
-preconditioner. OLS Auto installs its hierarchy on the host team: CMG's
+preconditioner. CMG's default depth limit of 32 levels is the hard stop of each
+such hierarchy and the level count of every CMG bound fereg admits (§19). OLS Auto installs its hierarchy on the host team: CMG's
 row-operator plan and up to four interleaved lanes, each only when its bound
 is admitted after the one-lane apply storage, otherwise the scalar
 application of the same hierarchy, so the team installation never refuses a
@@ -743,10 +842,20 @@ No iterative recurrence status alone permits publication.
 
 A Fast fit that requests no residual, xbd, d or saved-FE output may keep its
 within residual `r = y~ - X~b` instead of projecting it again, when the derived
-certificate of §16 passes; its residual solver row reports zero iterations and
-stop code 5. Requested outputs, Low memory, explicit CMG or LSMR sessions and a
-failing derived certificate keep the certified final projection (decided by
-Johannes, 2026-10-27).
+certificate of §16 passes; its residual solver row reports the absorption's
+method, zero iterations, zero pilot work and stop code 5. The derived residual
+serves the two-FE categorical owner (decided by Johannes, 2026-10-27) and, for
+beta.10, the direct one-FE Auto route and the many-FE Auto geometry policy,
+whose MAP pilot, LSMR session and MAP fallback all certify at the requested
+tolerance (decided by Johannes, 2026-10-28). Requested outputs, Low memory,
+explicit CMG, LSMR, MAP, CG, IT or SQUAREM sessions, many-FE developer routing
+arms outside the geometry policy, designs without an absorbed effect and a
+failing derived certificate keep the certified final projection. Residuals,
+fitted values, residual-based fit statistics and every covariance (iid through
+its residual sum of squares, robust/cluster through the scores) may differ from
+the projected residual in low bits within the certified tolerance, wherever the
+projection would have changed the within residual; coefficients, the bread,
+sample, rank, omissions and discrete decisions do not.
 
 Where an absorbed intercept exists, the reported constant is
 `mean_w(y) - mean_w(X)'b`. It is a normalization coordinate, not an extra
@@ -1055,6 +1164,56 @@ Requested/default IR nonconvergence or uncertified output is fatal. Mu needs
 a fitted start and the same independent cone certificate; accepted Mu drops
 discard that entire fitted session.
 
+An admitted detector projection on exactly two categorical intercept effects
+is solved with the OLS two-FE Auto route (Johannes, 2026-10-28, beta.10);
+other admitted projections, and the developer comparison arm
+`inject=ppml_separation_cg`, use retained-product CG. The FE tolerance, the
+finite score tolerance, the rank, FE-moment, score and reconstruction
+certificates, the memory budget and every detector weight, recurrence,
+iteration limit, sign and threshold rule are the same on both routes. An
+Auto-routed step that fails a numerical certificate takes no two-FE PCG MAP
+continuation and runs once more with retained CG under the same admitted
+budget; from there it is exactly a retained-CG step (below). When that fails
+as well (its LSMR re-execution included), the Auto step runs once more, and
+this time a two-FE PCG certificate miss re-certifies its rejected candidate
+with each FE level's mean formed about the level's largest-weight member
+instead of its first member, at the same scales and tolerance, publishing the
+candidate if that passes (Johannes, 2026-10-28; seeded census seed 3, where a
+zero-outcome first member of weight 1e-18 and residual of order one floors the
+shared certificate near the tolerance while the exact moments are 1e-18 or
+below). Otherwise the retained-CG step's error is reported. Numerical scope of
+the re-check: only Auto detector steps whose every attempt failed a numerical
+certificate can change, from that error to a certified result; every fit that
+completed or failed differently before is bit-identical, and the shared FE
+certificate, the retained-CG arm and every other solver are unchanged.
+Numerical scope of the activation: the flagged separated set, the final sample, coefficients and VCE
+are unchanged on every witness; the rectifier may certify its terminal
+fixed point at an earlier iteration, so `RSEP` iteration counts (column 5)
+and certificate magnitudes (columns 9-12, zero-based 8-11) and `RSEQ` total
+iterations may change, and with them the separation trace digest (`RREC`
+zero-based positions 28-29).
+
+A retained-CG projection solves the weighted normal equations. When a
+detector step that used it fails a
+numerical certificate (NonConvergence or InvalidData: a simplex deletion's
+certification, the rectifier's detection and deletion certification, or the
+Mu candidate and its certification), the step runs once more with LSMR, the
+public `lsmr` solver family and preconditioner policy, under the same
+weights, tolerances, iteration limit, decision rules and certificates
+(Johannes, 2026-10-27: fix the public detector failures). CG squares the
+rectifier's zero-row weight ratio (`tolerance^2 / zeros`), so on weakly
+connected or heavily zero designs its zero-row fitted values can leave the
+model span; LSMR works on the weighted operator itself. Its workspace is
+bounded on generation zero and charged to the memory plan only when the step
+is re-executed; a step that certifies on its first attempt is never
+re-executed. If the LSMR workspace does not fit the plan or the re-execution
+also fails a numerical certificate, the first error is reported; Break,
+allocation and internal errors of the re-execution propagate. A terminal
+no-drop result is replayed with the solver that produced it. Numerical scope:
+only fits that previously failed with r(430) or r(459) in such a step can
+change, from failure to a certified result; every fit that completed before
+is bit-identical.
+
 A terminal no-drop result is checked before it is reported. For an IR
 fixed point (Johannes, 2026-10-09) the check uses the stored recurrence and
 projection residual: both are finite; the recurrence is nonnegative, zero
@@ -1079,7 +1238,9 @@ trace digest independently of timing. Bound public diagnostic tables; no
 observation-sized trace crosses the result wire. Separation proves a sample
 decision, not estimator convergence.
 
-Tests: `src/ppml/prepared_separation.rs`, `fereg-oracle/tests/ppml_separation_primers.rs`,
+Tests: `src/ppml/prepared_separation.rs` (re-execution: `prepared_separation/retry`,
+re-certification: `prepared_separation/recertify`),
+`fereg-oracle/tests/ppml_separation_primers.rs`, `fereg-oracle/tests/ppml_separation_routing.rs`,
 `tests/python/test_ppml_recession_cone_primers.py`,
 `tests/python/ppml_recession_cone_oracle.py`,
 `parity_ppmlhdfe/feppml_separation_methods.do`,
@@ -1210,7 +1371,11 @@ certified projections, `r = y~ - X~b`. The moments are recomputed from the
 declared design and weights as above, with `s = s_y + sum |b_j| s_j`, each term
 the scale at which its column was certified (the larger of its raw and within
 weighted norms). By linearity a certified projection cannot exceed this bound,
-so the check verifies the combination without a second solve.
+so the check verifies the combination without a second solve. The two-FE owner
+recomputes the moments on its retained workspace; the one-FE and many-FE
+binding routes, which retain no owner, recompute them for every absorbed effect
+on a one-RHS workspace over the same borrowed design, admitted against the
+solver memory budget. Neither reads a solver's own residual norms.
 
 OLS additionally certifies finite scores, bread/inverse, fit and covariance.
 PPML additionally certifies model-space feasibility, scores, accepted objective,
@@ -1313,6 +1478,20 @@ Exclude timing, build identity and environmental resource observations only.
 A tolerance pass cannot silently waive an unexplained exact-change failure.
 Preserve Stata processor restoration on success, error and Break.
 
+Every additive-Schwarz preconditioner fereg builds in the pinned solver (OLS
+borrowed and owned LSMR, the many-FE Jacobi trial's escalation, explicit
+`preconditioner(schwarz)` and the PPML joint Schwarz factor) uses the Ordered
+reduction, which commits subdomain contributions in subdomain order, in every
+mode; the pinned Auto reduction may resolve to an atomic scatter whose
+summation order follows thread timing. Before beta.10 only `deterministic`
+selected it. Declared scope: default-mode fits whose LSMR runs on the additive
+preconditioner (many-FE OLS Auto fits whose Jacobi trial escalates, explicit
+Schwarz LSMR and PPML LSMR) may change coefficients, covariance, fit
+statistics, residuals, FE coordinates and iteration signatures in low bits
+within §20; `deterministic` fits and discrete decisions are unchanged.
+Witness: an escalating default-mode many-FE fit repeats bit for bit at one,
+two, four and eight workers.
+
 The two-FE OLS Auto team installation, the parallel cell construction and the parallel cell product
 follow this rule: their results do not depend on the worker count, apart from
 CMG's fixed-chunk centering of a single coarse component of at least 131,072
@@ -1328,9 +1507,27 @@ refactors retain exact route/bit checks. No post-hoc parity exception is implied
 Preserve supported memory modes, admission policy and public controls.
 Preserve checked sizing, fallible allocation, r(909), ownership cleanup and
 transaction atomicity. Reuse existing allocation/failure tests; no new exhaustive
-memory-audit framework is required. Estimates remain estimates, not process RSS
+memory-audit framework is required. The many-FE LSMR route transports each RHS window
+from the row-major projection input only while its sessions start, releases
+the column-major copy once each session owns its response, and transports the
+columns again, bitwise, for an escalation or a preconditioner retry; OLS Fast
+releases its projected matrix after the finite solve, which no later stage
+reads. Both are arithmetic-preserving storage-lifetime changes. Admission
+totals are unchanged (they still charge the released storage), so
+`memory(auto)` chooses Fast or Low exactly as before. Estimates remain estimates, not process RSS
 or strict OS bounds. No new route-specific admission fences may be added to
 hide a performance regression. Future removal of a mode needs mapped coverage.
+
+CMG admission assumes CMG's default hierarchy cap of 32 levels (CMG `5c5b5b2b`;
+previously 128). Every CMG construction, workspace and plan bound fereg admits,
+including the serial construction bound that two-FE OLS Auto keeps charged as
+retained CMG storage, provisions at most 31 coarse graph copies instead of 127.
+A hierarchy that would need more levels stops at the cap with CMG's iterative
+`MaximumLevels` terminal inside the admitted bytes; its first 31 levels are
+unchanged. Hierarchies of at most 32 levels are bit-identical. The lower bounds
+can admit a CMG build, cell kernel, cell cache or interleaved application that a
+tight memory limit refused before; an admitted route keeps its certificates.
+See the [memory record](../bench/results/cmg-admission-level-cap-2026-10-27.json).
 
 ## 20. Accuracy tolerances and independent evidence
 

@@ -1,0 +1,347 @@
+{
+  "scope": "many",
+  "platform": "Darwin",
+  "artifacts": {
+    "original": {
+      "path": "../../target/tmp/beta10-qualify/artifacts/beta.8/fereg_macos.plugin",
+      "revision": "v0.5.0-beta.8 published package (tag 177205cb, source 6b97e504, SHA-256 08ac71ff...)",
+      "build": "published macOS arm64 package, release profile",
+      "request": "auto",
+      "families": [],
+      "public_policy": "two-gates-v2"
+    },
+    "incumbent": {
+      "path": "../../target/tmp/beta10-qualify/artifacts/beta.9/fereg_macos.plugin",
+      "revision": "v0.5.0-beta.9 published package (tag 658f0405, source d6975ec2, SHA-256 a7b25176...)",
+      "build": "published macOS arm64 package, release profile",
+      "request": "auto",
+      "families": [
+        "two"
+      ],
+      "public_policy": "two-gates-v2"
+    },
+    "candidate": {
+      "path": "../../target/tmp/beta10-qualify/artifacts/candidate/fereg_macos.plugin",
+      "revision": "v0.5.0-beta.10 candidate (source commit and SHA-256 recorded in the round record)",
+      "build": "release-profile macOS arm64 candidate package",
+      "request": "auto",
+      "families": [
+        "two",
+        "many"
+      ],
+      "public_policy": "two-gates-v2"
+    },
+    "hidden": {
+      "path": "../../target/tmp/beta10-qualify/artifacts/candidate/fereg_macos.plugin",
+      "revision": "v0.5.0-beta.10 candidate (source commit and SHA-256 recorded in the round record)",
+      "build": "release-profile macOS arm64 candidate package",
+      "request": "many-geometry-v1",
+      "families": [
+        "many"
+      ]
+    }
+  },
+  "harness": "../../target/tmp/beta10-qualify/harness/timing-harness",
+  "cases": [
+    {
+      "id": "no-fe",
+      "family": "no-fe",
+      "input": "../../target/tmp/beta10-qualify/inputs/routing/no-fe.case",
+      "oracle": {
+        "kind": "replay",
+        "path": "../../target/tmp/beta10-qualify/inputs/routing/no-fe.reference.json"
+      },
+      "memory_limit_bytes": null
+    },
+    {
+      "id": "one-fe",
+      "family": "one-fe",
+      "input": "../../target/tmp/beta10-qualify/inputs/routing/one-fe.case",
+      "oracle": {
+        "kind": "replay",
+        "path": "../../target/tmp/beta10-qualify/inputs/routing/one-fe.reference.json"
+      },
+      "memory_limit_bytes": null
+    },
+    {
+      "id": "slopes",
+      "family": "slopes",
+      "input": "../../target/tmp/beta10-qualify/inputs/routing/slopes.case",
+      "oracle": {
+        "kind": "replay",
+        "path": "../../target/tmp/beta10-qualify/inputs/routing/slopes.reference.json"
+      },
+      "memory_limit_bytes": null
+    },
+    {
+      "id": "low-saved",
+      "family": "low-saved",
+      "input": "../../target/tmp/beta10-qualify/inputs/routing/low-saved.case",
+      "oracle": {
+        "kind": "replay",
+        "path": "../../target/tmp/beta10-qualify/inputs/routing/low-saved.reference.json"
+      },
+      "memory_limit_bytes": null
+    },
+    {
+      "id": "dense",
+      "family": "dense",
+      "input": "../../target/tmp/beta10-qualify/inputs/routing/dense.case",
+      "oracle": {
+        "kind": "routing",
+        "path": "../../target/tmp/beta10-qualify/inputs/routing/dense.reference.json"
+      },
+      "memory_limit_bytes": null
+    },
+    {
+      "id": "small-retained",
+      "family": "small-retained",
+      "input": "../../target/tmp/beta10-qualify/inputs/routing/small-retained.case",
+      "oracle": {
+        "kind": "routing",
+        "path": "../../target/tmp/beta10-qualify/inputs/routing/small-retained.reference.json"
+      },
+      "memory_limit_bytes": null
+    },
+    {
+      "id": "small-third",
+      "family": "small-third",
+      "input": "../../target/tmp/beta10-qualify/inputs/routing/small-third.case",
+      "oracle": {
+        "kind": "routing",
+        "path": "../../target/tmp/beta10-qualify/inputs/routing/small-third.reference.json"
+      },
+      "memory_limit_bytes": null
+    },
+    {
+      "id": "four-fe",
+      "family": "four-fe",
+      "input": "../../target/tmp/beta10-qualify/inputs/routing/four-fe.case",
+      "oracle": {
+        "kind": "routing",
+        "path": "../../target/tmp/beta10-qualify/inputs/routing/four-fe.reference.json"
+      },
+      "memory_limit_bytes": null
+    },
+    {
+      "id": "eight-fe",
+      "family": "eight-fe",
+      "input": "../../target/tmp/beta10-qualify/inputs/routing/eight-fe.case",
+      "oracle": {
+        "kind": "routing",
+        "path": "../../target/tmp/beta10-qualify/inputs/routing/eight-fe.reference.json"
+      },
+      "memory_limit_bytes": null
+    },
+    {
+      "id": "weighted",
+      "family": "weighted",
+      "input": "../../target/tmp/beta10-qualify/inputs/routing/weighted.case",
+      "oracle": {
+        "kind": "routing",
+        "path": "../../target/tmp/beta10-qualify/inputs/routing/weighted.reference.json"
+      },
+      "memory_limit_bytes": null
+    },
+    {
+      "id": "weak",
+      "family": "weak",
+      "input": "../../target/tmp/beta10-qualify/inputs/routing/weak.case",
+      "oracle": {
+        "kind": "routing",
+        "path": "../../target/tmp/beta10-qualify/inputs/routing/weak.reference.json"
+      },
+      "memory_limit_bytes": null
+    },
+    {
+      "id": "repeated-cells",
+      "family": "repeated-cells",
+      "input": "../../target/tmp/beta10-qualify/inputs/routing/repeated-cells.case",
+      "oracle": {
+        "kind": "routing",
+        "path": "../../target/tmp/beta10-qualify/inputs/routing/repeated-cells.reference.json"
+      },
+      "memory_limit_bytes": null
+    },
+    {
+      "id": "wide-rhs",
+      "family": "wide-rhs",
+      "input": "../../target/tmp/beta10-qualify/inputs/routing/wide-rhs.case",
+      "oracle": {
+        "kind": "routing",
+        "path": "../../target/tmp/beta10-qualify/inputs/routing/wide-rhs.reference.json"
+      },
+      "memory_limit_bytes": null
+    },
+    {
+      "id": "high-degree-mixed",
+      "family": "high-degree-mixed",
+      "input": "../../target/tmp/beta10-qualify/inputs/routing/high-degree-mixed.case",
+      "oracle": {
+        "kind": "routing",
+        "path": "../../target/tmp/beta10-qualify/inputs/routing/high-degree-mixed.reference.json"
+      },
+      "memory_limit_bytes": null
+    },
+    {
+      "id": "high-degree-weak",
+      "family": "high-degree-weak",
+      "input": "../../target/tmp/beta10-qualify/inputs/routing/high-degree-weak.case",
+      "oracle": {
+        "kind": "routing",
+        "path": "../../target/tmp/beta10-qualify/inputs/routing/high-degree-weak.reference.json"
+      },
+      "memory_limit_bytes": null
+    },
+    {
+      "id": "high-degree-stress",
+      "family": "high-degree-stress",
+      "input": "../../target/tmp/beta10-qualify/inputs/routing/high-degree-stress.case",
+      "oracle": {
+        "kind": "routing",
+        "path": "../../target/tmp/beta10-qualify/inputs/routing/high-degree-stress.reference.json"
+      },
+      "memory_limit_bytes": null
+    },
+    {
+      "id": "sixteen-fe",
+      "family": "sixteen-fe",
+      "input": "../../target/tmp/beta10-qualify/inputs/routing/sixteen-fe.case",
+      "oracle": {
+        "kind": "routing",
+        "path": "../../target/tmp/beta10-qualify/inputs/routing/sixteen-fe.reference.json"
+      },
+      "memory_limit_bytes": null
+    },
+    {
+      "id": "disconnected",
+      "family": "disconnected",
+      "input": "../../target/tmp/beta10-qualify/inputs/routing/disconnected.case",
+      "oracle": {
+        "kind": "routing",
+        "path": "../../target/tmp/beta10-qualify/inputs/routing/disconnected.reference.json"
+      },
+      "memory_limit_bytes": null
+    },
+    {
+      "id": "near-confounded-third",
+      "family": "near-confounded-third",
+      "input": "../../target/tmp/beta10-qualify/inputs/routing/near-confounded-third.case",
+      "oracle": {
+        "kind": "routing",
+        "path": "../../target/tmp/beta10-qualify/inputs/routing/near-confounded-third.reference.json"
+      },
+      "memory_limit_bytes": null
+    },
+    {
+      "id": "weight-dynamic",
+      "family": "weight-dynamic",
+      "input": "../../target/tmp/beta10-qualify/inputs/routing/weight-dynamic.case",
+      "oracle": {
+        "kind": "routing",
+        "path": "../../target/tmp/beta10-qualify/inputs/routing/weight-dynamic.reference.json"
+      },
+      "memory_limit_bytes": null
+    },
+    {
+      "id": "inactive-columns",
+      "family": "inactive-columns",
+      "input": "../../target/tmp/beta10-qualify/inputs/routing/inactive-columns.case",
+      "oracle": {
+        "kind": "inactive"
+      },
+      "memory_limit_bytes": null
+    },
+    {
+      "id": "campaign-three-sparse",
+      "family": "campaign-three-sparse",
+      "input": "../../target/tmp/beta10-qualify/inputs/campaign/campaign-three-sparse.case",
+      "oracle": {
+        "kind": "routing",
+        "path": "../../target/tmp/beta10-qualify/inputs/campaign/campaign-three-sparse.reference.json"
+      },
+      "memory_limit_bytes": null
+    },
+    {
+      "id": "campaign-akm-k16",
+      "family": "campaign-akm-k16",
+      "input": "../../target/tmp/beta10-qualify/inputs/campaign/campaign-akm-k16.case",
+      "oracle": {
+        "kind": "routing",
+        "path": "../../target/tmp/beta10-qualify/inputs/campaign/campaign-akm-k16.reference.json"
+      },
+      "memory_limit_bytes": null
+    },
+    {
+      "id": "campaign-akm-k64",
+      "family": "campaign-akm-k64",
+      "input": "../../target/tmp/beta10-qualify/inputs/campaign/campaign-akm-k64.case",
+      "oracle": {
+        "kind": "routing",
+        "path": "../../target/tmp/beta10-qualify/inputs/campaign/campaign-akm-k64.reference.json"
+      },
+      "memory_limit_bytes": null
+    },
+    {
+      "id": "campaign-one-fe",
+      "family": "campaign-one-fe",
+      "input": "../../target/tmp/beta10-qualify/inputs/campaign/campaign-one-fe.case",
+      "oracle": {
+        "kind": "routing",
+        "path": "../../target/tmp/beta10-qualify/inputs/campaign/campaign-one-fe.reference.json"
+      },
+      "memory_limit_bytes": null
+    },
+    {
+      "id": "campaign-akm-k16-nosave",
+      "family": "campaign-akm-k16-nosave",
+      "input": "../../target/tmp/beta10-qualify/inputs/campaign/campaign-akm-k16-nosave.case",
+      "oracle": {
+        "kind": "routing",
+        "path": "../../target/tmp/beta10-qualify/inputs/campaign/campaign-akm-k16-nosave.reference.json"
+      },
+      "memory_limit_bytes": null
+    },
+    {
+      "id": "campaign-one-fe-nosave",
+      "family": "campaign-one-fe-nosave",
+      "input": "../../target/tmp/beta10-qualify/inputs/campaign/campaign-one-fe-nosave.case",
+      "oracle": {
+        "kind": "routing",
+        "path": "../../target/tmp/beta10-qualify/inputs/campaign/campaign-one-fe-nosave.reference.json"
+      },
+      "memory_limit_bytes": null
+    },
+    {
+      "id": "campaign-two-dense",
+      "family": "campaign-two-dense",
+      "input": "../../target/tmp/beta10-qualify/inputs/campaign/campaign-two-dense.case",
+      "oracle": {
+        "kind": "routing",
+        "path": "../../target/tmp/beta10-qualify/inputs/campaign/campaign-two-dense.reference.json"
+      },
+      "memory_limit_bytes": null
+    },
+    {
+      "id": "campaign-three-dense",
+      "family": "campaign-three-dense",
+      "input": "../../target/tmp/beta10-qualify/inputs/campaign/campaign-three-dense.case",
+      "oracle": {
+        "kind": "routing",
+        "path": "../../target/tmp/beta10-qualify/inputs/campaign/campaign-three-dense.reference.json"
+      },
+      "memory_limit_bytes": null
+    }
+  ],
+  "threads": [
+    1,
+    4
+  ],
+  "blocks": 6,
+  "shards": 1,
+  "replicas": 1,
+  "seed": 2026102912,
+  "timeout_s": 120,
+  "budget_s": 14400,
+  "coverage": "routing-campaign"
+}

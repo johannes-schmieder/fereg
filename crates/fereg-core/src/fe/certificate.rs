@@ -17,6 +17,19 @@ pub struct FeCertificate {
     pub passed: bool,
 }
 
+/// An independent re-certification of a rejected FE candidate: the design,
+/// raw weights (`None` is unit), their normalization scale, the candidate,
+/// one certificate scale per column and the tolerance. Only the separation
+/// detector supplies one (`AbsorbConfig::declined_recheck`).
+pub type CertificateRecheck = fn(
+    &crate::fe::BorrowedInterceptFeDesign<'_>,
+    Option<&[f64]>,
+    f64,
+    &DenseMatrix,
+    &[f64],
+    f64,
+) -> Result<FeCertificate>;
+
 /// Weighted Euclidean norm of each matrix column.
 pub(crate) fn weighted_column_norms(values: &DenseMatrix, weights: &[f64]) -> Result<Vec<f64>> {
     validate_common(values, weights)?;

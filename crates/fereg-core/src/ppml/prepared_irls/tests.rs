@@ -1188,6 +1188,20 @@ fn prepared_three_fe(
                 % 11) as f64
         })
         .collect::<Vec<_>>();
+    let prepared = prepared_three_fe_columns(order, &x_values, &categorical, &outcome);
+    (prepared, outcome)
+}
+
+/// A prepared three-FE Poisson fixture from one control, three one-based
+/// categorical columns (large, medium, small) and an outcome, with the
+/// absorbed terms in `order`.
+fn prepared_three_fe_columns(
+    order: [usize; 3],
+    x_values: &[f64],
+    categorical: &[Vec<f64>; 3],
+    outcome: &[f64],
+) -> PreparedOlsData {
+    let rows = outcome.len();
     let x = source(1, "x");
     let effects = [source(2, "large"), source(3, "medium"), source(4, "small")];
     let labels = ["large", "medium", "small"];
@@ -1204,7 +1218,7 @@ fn prepared_three_fe(
             saved_name: format!("__fe_{}", labels[effect]),
         })
         .collect();
-    let prepared = prepare_model(
+    prepare_model(
         &OlsRequestV1 {
             model: CompiledTermGraph {
                 sources: vec![
@@ -1248,9 +1262,9 @@ fn prepared_three_fe(
         &[],
         &LoadedOlsInput {
             candidate: vec![true; rows].into(),
-            outcome: loaded(&outcome),
+            outcome: loaded(outcome),
             numeric_sources: vec![
-                (x.id, loaded(&x_values)),
+                (x.id, loaded(x_values)),
                 (effects[0].id, loaded(&categorical[0])),
                 (effects[1].id, loaded(&categorical[1])),
                 (effects[2].id, loaded(&categorical[2])),
@@ -1261,8 +1275,7 @@ fn prepared_three_fe(
         },
         false,
     )
-    .expect("prepared three-FE fixture");
-    (prepared, outcome)
+    .expect("prepared three-FE fixture")
 }
 
 #[test]
@@ -1590,6 +1603,7 @@ fn cmg_nuisance_batch_memory_is_admitted_before_any_canonical_work() {
         &config,
         rhs,
         PreparedPpmlIrlsPurpose::Publication,
+        [None; 2],
     )
     .unwrap();
     config.memory.poolsize = 7;
@@ -1600,6 +1614,7 @@ fn cmg_nuisance_batch_memory_is_admitted_before_any_canonical_work() {
         &config,
         rhs,
         PreparedPpmlIrlsPurpose::Publication,
+        [None; 2],
     )
     .unwrap();
     assert!(wide.incremental_bytes > small.incremental_bytes);
@@ -5152,4 +5167,122 @@ fn strict_entry_waits_for_a_settled_contracting_predictor() {
     }
     passes(&mut control, &[movement * 0.4]);
     assert!(control.may_enter(false, true));
+}
+
+/// The campaign's sparse three-FE topology (workers with five rows, firms
+/// with 2% mobility per period, a 32-level third effect) as a Poisson fixture.
+fn prepared_sparse_three_fe(rows: usize) -> (PreparedOlsData, Vec<f64>) {
+    let periods = 5;
+    let workers = rows.div_ceil(periods);
+    let firms = (workers / 20).max(8);
+    let mut state = 0x2545_f491_4f6c_dd1d_u64;
+    let mut next = move || {
+        state = state
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1_442_695_040_888_963_407);
+        state >> 11
+    };
+    let mut categorical = [Vec::new(), Vec::new(), Vec::new()];
+    let (mut x, mut outcome) = (Vec::new(), Vec::new());
+    for worker in 0..workers {
+        let mut firm = worker % firms;
+        for period in 0..periods {
+            if outcome.len() == rows {
+                break;
+            }
+            if period > 0 && next() % 50 == 0 {
+                firm = next() as usize % firms;
+            }
+            let third = (firm + 17 * worker + period) % 32;
+            categorical[0].push((worker + 1) as f64);
+            categorical[1].push((firm + 1) as f64);
+            categorical[2].push((third + 1) as f64);
+            x.push((outcome.len() as f64 * 0.173).sin());
+            outcome.push((1 + (worker * 7 + firm * 3 + third + period) % 5) as f64);
+        }
+    }
+    let prepared = prepared_three_fe_columns([0, 1, 2], &x, &categorical, &outcome);
+    (prepared, outcome)
+}
+
+#[test]
+fn refused_level_bound_admits_ppml_lsmr_by_exact_yielding_count() {
+    // The joint PPML LSMR and checkpoint Schwarz estimates charge the
+    // level-count yielding bound. A plan one byte below it refused the fit
+    // before any work; the exact count admits it with the same science.
+    let (prepared, outcome) = prepared_sparse_three_fe(150_000);
+    let weights = vec![1.0; outcome.len()];
+    let offset = vec![0.0; outcome.len()];
+    let mut references = Vec::new();
+    for workers in [1, 4] {
+        let mut config = PreparedPpmlIrlsConfig {
+            solver_plan: PpmlSolverPlan::new(super::super::PpmlSolverFamily::Lsmr),
+            ..PreparedPpmlIrlsConfig::default()
+        };
+        config.linear.execution.threads =
+            crate::options::ThreadConfig::from_requested(workers, true).unwrap();
+        config.ppml.absorb.lsmr.threads = config.linear.execution.threads;
+        config.linear.absorb.lsmr.threads = config.linear.execution.threads;
+        let dimensions = memory_dimensions(&prepared, config);
+        let rhs = dimensions.finite_columns + 1;
+        let plan = plan_ppml_memory(dimensions, config.memory).unwrap();
+        let admission = |yielding| {
+            public_solver_memory_admission(
+                &prepared,
+                plan,
+                &config,
+                rhs,
+                PreparedPpmlIrlsPurpose::Publication,
+                yielding,
+            )
+            .unwrap()
+        };
+        let level = admission([None; 2]);
+        let counts = refused_yielding_counts(&prepared, plan).unwrap().unwrap();
+        // The core worker-firm pair and every pair of this topology.
+        assert_eq!(counts, [Some(1), Some(2)]);
+        let refined = admission(counts);
+        assert!(refined.incremental_bytes < level.incremental_bytes);
+        let fit = |plan| {
+            fit_prepared_ppml_irls(&prepared, &outcome, &weights, &offset, config, plan, None)
+        };
+        let reference = fit(plan).expect("unbudgeted PPML LSMR fit");
+        let mut budget = plan;
+        budget.usable_bytes =
+            Some(plan.selected_inventory().peak_bytes + level.incremental_bytes - 1);
+        assert!(budget
+            .with_solver_workspace(level.incremental_bytes)
+            .is_err());
+        let mut repeated: Option<Vec<f64>> = None;
+        for _ in 0..2 {
+            let fitted = fit(budget).expect("refined PPML LSMR admission");
+            assert!(fitted.diagnostics().converged);
+            assert!(fitted.diagnostics().final_score.passed);
+            assert_eq!(fitted.diagnostics().solver.fallback_count, 0);
+            assert!(relative_infinity_difference(fitted.eta(), reference.eta()) <= 2e-9);
+            assert!(relative_infinity_difference(fitted.mean(), reference.mean()) <= 2e-9);
+            assert!(
+                (fitted.objective().deviance - reference.objective().deviance).abs()
+                    <= 1e-8 * reference.objective().deviance.abs().max(1.0)
+            );
+            if let Some(eta) = &repeated {
+                assert_eq!(eta.as_slice(), fitted.eta());
+            } else {
+                repeated = Some(fitted.eta().to_vec());
+            }
+        }
+        // Below the exact bound the original refusal is reported.
+        budget.usable_bytes =
+            Some(plan.selected_inventory().peak_bytes + refined.incremental_bytes - 1);
+        let error = match fit(budget) {
+            Ok(_) => panic!("plan below the exact bound was admitted"),
+            Err(error) => error,
+        };
+        assert_eq!(error.code, ErrorCode::Allocation);
+        assert!(error
+            .message
+            .contains(&format!("solver_workspace={}", level.incremental_bytes)));
+        references.push(reference.eta().to_vec());
+    }
+    assert!(relative_infinity_difference(&references[0], &references[1]) <= 2e-9);
 }

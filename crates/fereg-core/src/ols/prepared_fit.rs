@@ -1,5 +1,6 @@
 mod finite;
 mod one_shot;
+mod raw_moment_bands;
 
 use crate::data::{DenseMatrix, PreparedWeights, WeightKind};
 use crate::error::{allocation, invalid_argument, invalid_data, ErrorCode, FeregError, Result};
@@ -3821,18 +3822,8 @@ fn build_raw_moment_cache<R: FitReservation>(
             &mut norms,
             reservation,
         )?;
-    } else if raw.ncols().div_ceil(8) >= rayon::current_num_threads() {
-        fill_raw_moment_cache_blocked::<8>(
-            raw,
-            weights,
-            weight_sum,
-            &mut scales,
-            &mut means,
-            &mut norms,
-        )?;
     } else {
-        // One column per task when eight-column blocks would idle threads.
-        fill_raw_moment_cache_blocked::<1>(
+        raw_moment_bands::fill_wide(
             raw,
             weights,
             weight_sum,

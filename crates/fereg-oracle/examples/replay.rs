@@ -5,6 +5,8 @@ mod bias;
 #[allow(dead_code)]
 #[path = "../tests/support/ols_complete_oracle.rs"]
 mod dense;
+#[path = "replay/derived.rs"]
+mod derived;
 #[path = "replay/expected.rs"]
 mod expected;
 #[allow(dead_code)]
@@ -15,6 +17,8 @@ mod known;
 #[allow(dead_code)]
 #[path = "../tests/support/mod.rs"]
 mod support;
+#[path = "replay/wide.rs"]
+mod wide;
 #[path = "replay/wire.rs"]
 mod wire;
 use fereg_oracle::designs::{generate, DesignSpec, Graph, WeightKind};
@@ -127,4 +131,6 @@ fn main() {
         );
     }
     known::generate(&directory);
+    wide::generate_case(&directory);
+    derived::generate_cases(&directory);
 }

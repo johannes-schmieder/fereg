@@ -4,6 +4,12 @@
 No-FE, one-FE and slope cases must be supplied explicitly: replay_large cannot
 create those shapes. Missing witnesses stop preparation; they are never silently
 removed from coverage. Generated cases are inputs, not scientific evidence.
+
+`--coverage campaign` instead writes the million-row OLS designs of the SCC
+package comparison (bench/campaign.json): the same campaign generator and seed,
+checked against the committed beta.8 campaign column hashes, serialized as IID
+replay cases. Two variants request no observation outputs, so the derived
+within-residual path is exercised.
 """
 from __future__ import annotations
 
@@ -11,6 +17,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+import re
 import shutil
 import struct
 
@@ -37,6 +44,24 @@ EXTENDED_CASES = ('sixteen-fe', 'disconnected', 'near-confounded-third', 'weight
 SAMPLED_CASES = {'high-degree-mixed': 'd30-mixed', 'high-degree-weak': 'd30-weak',
                  'high-degree-stress': 'd60-stress'}
 SMALL_HIGH_DEGREE = {'d30-mixed': (42, 40, 31), 'd30-weak': (320, 300, 31), 'd60-stress': (82, 80, 61)}
+# Campaign-shaped OLS designs at the SCC comparison's one-million-row size, with
+# IID covariance, unit weights and no saved effects. Cases with observation
+# outputs request residual/xb/xbd/absorbed like the generated routing families;
+# `-nosave` cases request only the mandatory sample output, the one layout in
+# which a Fast fit may keep its certified derived within residual (SPEC 7).
+CAMPAIGN_CASES = {
+    'campaign-one-fe': ('one-fe', 16, True),
+    'campaign-one-fe-nosave': ('one-fe', 16, False),
+    'campaign-akm-k16': ('akm-baseline', 16, True),
+    'campaign-akm-k16-nosave': ('akm-baseline', 16, False),
+    'campaign-akm-k64': ('akm-baseline', 64, True),
+    'campaign-three-dense': ('three-dense', 16, True),
+    'campaign-three-sparse': ('three-sparse', 16, True),
+    'campaign-two-dense': ('two-dense', 16, True),
+}
+CAMPAIGN_ROWS, CAMPAIGN_SMALL_ROWS = 1_000_000, 2000
+CAMPAIGN_EFFECTS = {'one-fe': 1, 'akm-baseline': 2, 'two-dense': 2, 'three-dense': 3, 'three-sparse': 3}
+CAMPAIGN_RECORD = Path(__file__).resolve().parent / 'results/scc-20261027-beta8-inputs.json'
 
 
 def scratch(path):
@@ -115,6 +140,8 @@ def inspect_case(path, family=None):
     count = int(fields['absorb_term_count'])
     if family in {'no-fe', 'one-fe'} and count != int(family == 'one-fe'):
         raise ValueError(f'{family}: imported absorbed-term count does not match family')
+    if family in CAMPAIGN_CASES and count != CAMPAIGN_EFFECTS[CAMPAIGN_CASES[family][0]]:
+        raise ValueError(f'{family}: absorbed-term count does not match the campaign design')
     if family == 'slopes' and count == 0:
         raise ValueError('imported slope fixture has no slope terms')
     categorical = count == 0
@@ -146,13 +173,20 @@ def inspect_case(path, family=None):
             if terms is None or (family == 'slopes' and not any(t[3] > 0 for t in terms)):
                 raise ValueError('imported slope fixture has no slope terms')
             categorical = all(term[2] == 1 and term[3] == 0 for term in terms)
-            if family == 'one-fe' and not categorical:
-                raise ValueError('one-fe fixture must have one categorical intercept and no slopes')
+            if family in {'one-fe', *CAMPAIGN_CASES} and not categorical:
+                raise ValueError(f'{family} fixture must have categorical intercepts and no slopes')
+    # A zero position is an output the request does not publish; only the
+    # sample destination is mandatory. Routing inputs request all six.
+    positions = {name: int(fields['output_' + name]) for name in
+                 ['sample', 'residual', 'drop_reason', 'xb', 'xbd', 'absorbed']}
+    if positions['sample'] < 1 or any(not 0 <= value <= shape[1] for value in positions.values()):
+        raise ValueError('invalid observation-output registry')
+    if family in CAMPAIGN_CASES and any(bool(v) != CAMPAIGN_CASES[family][2] for k, v in positions.items() if k != 'sample'):
+        raise ValueError(f'{family}: observation outputs do not match the declared variant')
     return {'rows': shape[0], 'columns': shape[1], 'absorbed_terms': count,
             'categorical_intercepts': categorical,
             'body_sha256': body_hash.hexdigest(), 'saved': saved,
-            'outputs': {name: int(fields['output_' + name]) - 1 for name in
-                        ['sample', 'residual', 'drop_reason', 'xb', 'xbd', 'absorbed']}}
+            'outputs': {name: value - 1 for name, value in positions.items() if value}}
 
 
 def paired_orthogonal_oracle(columns):
@@ -233,16 +267,117 @@ def inactive_case_oracle(path):
     return paired_orthogonal_oracle(data[1:])
 
 
+def campaign_columns(design, regressors, rows, directory):
+    """Campaign generator columns [y, x1..xk, g1..gq] and their DTA metadata.
+
+    The campaign writes a Stata DTA; it is decoded, verified and then deleted.
+    """
+    import campaign
+    q = CAMPAIGN_EFFECTS[design]
+    cell = dict(model='ols', design=design, rows=rows, threads=campaign.POLICY['main_threads'], vce='iid',
+                save_fe=False, section='design', regressors=regressors, weights='unit', effects=q)
+    cell['id'] = (f"ols-{design}-n{rows}-t{cell['threads']}-iid-fe0" + campaign.controls_suffix(cell))
+    directory.mkdir(exist_ok=False)
+    path = directory / (campaign.dataset_key(cell) + '.dta')
+    try:
+        frame, metadata = campaign.make_dataset(cell, path)
+        names = ['y', *[f'x{j}' for j in range(1, regressors + 1)], *[f'g{j}' for j in range(1, q + 1)]]
+        columns = [frame[name].to_numpy(dtype=np.float64) for name in names]
+    finally:
+        for item in directory.iterdir():
+            item.unlink()
+        directory.rmdir()
+    for values in columns[-q:]:
+        if not np.all(values == np.floor(values)) or values.min() < 1:
+            raise ValueError('campaign identifiers must be positive integers')
+    return columns, campaign.dataset_key(cell), metadata, campaign.POLICY
+
+
+def campaign_witness(key, metadata, small):
+    """Compare full-size data with the committed beta.8 campaign column hashes.
+
+    Identifiers, topology and seed must be equal. Normal draws may differ bitwise
+    across platforms (NumPy's ziggurat rejection path uses the platform libm), so
+    float columns are reported, not required: the SCC inputs were drawn on Linux.
+    """
+    if small:
+        return {'status': 'not applicable: small tooling fixture'}
+    record = json.loads(CAMPAIGN_RECORD.read_text())
+    expected = record['datasets'][key]
+    hashes, reference = metadata['column_sha256'], expected['column_sha256']
+    floating = {'y', *(name for name in reference if re.fullmatch(r'x[0-9]+', name))}
+    structural = sorted(set(reference) - floating)
+    if (set(hashes) != set(reference) or any(hashes[name] != reference[name] for name in structural)
+            or metadata['rows'] != expected['rows'] or metadata['seed'] != expected['seed']
+            or metadata['topology'] != expected['topology']):
+        raise ValueError(f'{key}: campaign identifiers or topology differ from the committed beta.8 campaign inputs')
+    differing = sorted((name for name in floating if hashes[name] != reference[name]),
+                       key=lambda name: (name != 'y', int(name[1:]) if name != 'y' else 0))
+    return {'status': ('all decoded column hashes equal the beta.8 SCC campaign dataset' if not differing else
+                       'identifiers and topology equal the beta.8 SCC campaign dataset; '
+                       'platform-dependent normal draws differ in the listed float columns'),
+            'dataset': key, 'differing_float_columns': differing, 'structural_columns': structural,
+            'record': CAMPAIGN_RECORD.relative_to(ROOT).as_posix(), 'record_sha256': digest(CAMPAIGN_RECORD),
+            'campaign_run': record['run_id'], 'numpy': np.__version__}
+
+
+def campaign_main(args, parser):
+    """Write the campaign coverage; it has no imports and its own frozen seed."""
+    if args.seed is not None or args.source or args.low_saved is not None:
+        parser.error('campaign coverage uses the bench/campaign.json seed and takes no imports')
+    if not args.threads or len(set(args.threads)) != len(args.threads) or any(not 1 <= t <= 1024 for t in args.threads):
+        parser.error('require distinct workers in 1..1024')
+    generator = args.generator.resolve(strict=True)
+    generator_hash = digest(generator)
+    output = scratch(args.output)
+    output.mkdir(parents=True, exist_ok=False)
+    rows = CAMPAIGN_SMALL_ROWS if args.small else CAMPAIGN_ROWS
+    generated, cells = {}, []
+    for family, (design, regressors, observed) in CAMPAIGN_CASES.items():
+        path = output / f'{family}.case'
+        if (design, regressors) not in generated:
+            generated[design, regressors] = campaign_columns(design, regressors, rows, output / f'.{family}-dta')
+        columns, key, data, policy = generated[design, regressors]
+        q = CAMPAIGN_EFFECTS[design]
+        write_case(generator, path, columns, effect_count=q, vce='iid', observation_outputs=observed)
+        metadata = {'schema': 1, 'family': family, 'coverage': [family], 'small': args.small,
+                    'evidence': 'unqualified input; separate scientific witnesses required',
+                    'campaign_design': design, 'regressors': regressors, 'vce': 'iid', 'weight_kind': 'unit',
+                    'observation_outputs': observed, 'campaign_seed': policy['seed'],
+                    'campaign_policy_sha256': digest(Path(__file__).resolve().parent / 'campaign.json'),
+                    'campaign_topology': data['topology'], 'campaign_witness': campaign_witness(key, data, args.small),
+                    'generator_sha256': generator_hash}
+        metadata.update(inspect_case(path, family))
+        metadata['case_sha256'] = digest(path)
+        path.with_suffix('.json').write_text(json.dumps(metadata, indent=2) + '\n')
+        for threads in args.threads:
+            cells.append({'id': f'{family}-t{threads}', 'case_sha256': metadata['case_sha256'],
+                          'body_sha256': metadata['body_sha256'],
+                          'family': family, 'coverage': [family], 'threads': threads,
+                          'absorbed_terms': metadata['absorbed_terms'],
+                          'categorical_intercepts': metadata['categorical_intercepts'], 'case_file': path.name})
+    if digest(generator) != generator_hash:
+        raise ValueError('generator changed while preparing panel')
+    (output / 'panel.json').write_text(json.dumps({'schema': 1, 'coverage': 'campaign', 'seed': policy['seed'],
+        'small': args.small, 'cells': cells}, indent=2) + '\n')
+    print(f'{len(cells)} declared campaign cells prepared; no scientific qualification or timings performed')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--seed', type=int, required=True, help='unsigned 64-bit generation seed')
+    parser.add_argument('--coverage', choices=['routing', 'campaign'], default='routing')
+    parser.add_argument('--seed', type=int, help='unsigned 64-bit generation seed (routing coverage)')
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--generator', type=Path, default=ROOT / 'target/ci/examples/replay_large')
     parser.add_argument('--source', action='append', default=[], help='family=path for each required import')
     parser.add_argument('--threads', nargs='+', type=int, default=[1, 4])
-    parser.add_argument('--low-saved', type=Path, required=True, help='independent native replay input with saved effects')
+    parser.add_argument('--low-saved', type=Path, help='independent native replay input with saved effects (routing coverage)')
     parser.add_argument('--small', action='store_true', help='small generated fixtures for tooling smoke checks, not performance qualification')
     args = parser.parse_args()
+    if args.coverage == 'campaign':
+        return campaign_main(args, parser)
+    if args.seed is None or args.low_saved is None:
+        parser.error('routing coverage requires --seed and --low-saved')
     if not 0 <= args.seed <= (1 << 64) - 1:
         parser.error('--seed must be an unsigned 64-bit integer')
     try:
