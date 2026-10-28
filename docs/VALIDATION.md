@@ -406,7 +406,45 @@ failures. The hidden arm is deterministic at fixed workers and its decisions
 agree across 1, 2, 4 and 8 workers wherever it succeeds. In an isolated unit
 test, a Break at every host poll inside a rectifier projection returns
 `Interrupted` on both arms.
-Activation would need Johannes's decision on these classes.
+
+The public failures were a detector defect, now fixed (SPEC §14, the
+[record](../bench/results/ppml-separation-routing-2026-10-27.json)'s
+`post_fix_census`). Retained CG solves the rectifier projection on the
+weighted normal equations, which square the zero-row weight
+`tolerance^2 / zeros` (about 1e-18): on six cells the proposed direction left
+the model span (independent least-squares span distance 0.14-0.19 on seeds 11
+and 17, 2e-8 on seed 5) and failed the deletion certificate, r(430). On three
+`fe simplex ir` cells the span check of an exact simplex direction lying in
+the FE span failed its finite score certificate, normalized by FE-solver
+noise, r(459). A detector step that fails such a certificate now runs once
+more with LSMR under the same rules and certificates. All 9 cells complete
+and retain exactly the sample of an independent HiGHS linear program
+(maximal recession-cone separation alternated with singleton pruning), which
+every completing arm of all 54 cells also matches. Every other cell, in both
+arms, is unchanged bit for bit (full separation report, `e(b)`, `e(V)` and
+error messages). Seed 3 (2 cells) still fails in both arms: its CG direction
+has the right rows but span distance 1.8e-10 over the 1e-10 tolerance, and
+LSMR ends 15% over its FE certificate. The replay corpus is exact against the
+published beta.9 plugin (73 cases). Through Stata, the four campaign
+separation designs (4 and 8 workers) and both Veneto-shaped Poisson panels
+(1, 2, 4 and 8 workers) give identical `e(b)`, `e(V)`, separation matrices,
+drop counts and dropped rows with no re-execution; run through Stata, the
+seven fixed census cells that return r(430) or r(459) under beta.9 complete
+with the LP sample (seed 3 stays r(430)). Both arms repeat
+bit for bit at fixed workers and agree across 1, 2, 4 and 8 workers.
+
+After the fix the census is identical in 35 of 54 cells and differs in 15
+iteration-count cells (equal sample and fit), 2 hidden-route failures and the
+2 seed-3 cells; under `fe simplex ir` only 5 iteration-count cells differ.
+The two hidden failures (seed 9 without simplex) occur in the first rectifier
+projection, not through the rectifier's iteration limit: the Auto route's
+two-FE PCG accepts the final residual absorption at iteration 0 on its
+recurrence proxy, the FE certificate (the same as CG's) rejects it, final
+residual absorptions have no PCG correction, and the MAP fail-safe exhausts
+its 16,000 iterations; retained CG certifies the same residual in 8
+iterations. A fix would need a proxy stop scaled like the certificate or a
+certified non-MAP fallback for detector projections. Activation would need
+Johannes's decision on these classes.
 
 ## Package checks
 
