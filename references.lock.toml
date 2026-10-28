@@ -19,7 +19,7 @@ use = "Development reference for model-matrix, OLS, PPML, and tests; not a runti
 [[reference]]
 name = "within"
 repository = "https://github.com/johannes-schmieder/within"
-commit = "17fcf288d7f968b28315cba301f52b8f61227419"
+commit = "2ba7239ddb10012891c18c050e546e0c75894fd1"
 version = "commit-pinned development tree"
 license = "MIT"
 relevant_source_paths = ["crates/within/src/", "crates/schwarz-precond/src/"]
