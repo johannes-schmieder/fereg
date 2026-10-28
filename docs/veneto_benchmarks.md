@@ -36,6 +36,44 @@ With saved fixed effects:
 | long, 4 | 6.61 | 7.15 | 0.93 |
 | long, 8 | 4.78 | 5.35 | 0.89 |
 | long, 16 | 4.31 | 4.97 | 0.87 |
+## October 27, 2026: beta.8 long panel with FixedEffectModels.jl
+
+Runs `20261027T165902Z-beta8-veneto-long-{nofe,saved}-670632aa` (harness
+`670632aa`) timed the published beta.8 plugin (`3f888ffe...`, build `18b47675`)
+on the audited long panel, reused byte for byte, against fixest 0.14.2 (default
+and strict), PyFixest main `0f41fffd` (within LSMR), FixedEffectModels.jl 2.1.0
+at its default tolerance and at 1e-10, and reghdfe at one to four cores. Both
+variants ran back to back in one whole-node pair job pinned to E5-2680 v4
+(`scc-uc4`), without saved effects first, with three repetitions per cell and
+exact kernel memory peaks. All 30 fereg fits passed the production gates.
+
+Without saved FE (seconds; comparator median over fereg's in parentheses; c:
+agrees up to degrees-of-freedom counting; *: results differ):
+
+| Cores | fereg | PyFixest within | FixedEffectModels.jl | FEM.jl 1e-10 | fixest | fixest strict | reghdfe |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 10.5 | 26.8 (2.55) | 44.3 (4.21)* | 109 (10.35)c | 59.8 (5.68) | 112 (10.60) | 502 (47.68) |
+| 2 | 7.40 | 15.3 (2.07) | 28.0 (3.79)* | 67.7 (9.14)c | 34.7 (4.68) | 63.9 (8.63) | 289 (39.06) |
+| 4 | 5.25 | 9.96 (1.90) | 19.3 (3.67)* | 46.2 (8.80)c | 20.8 (3.96) | 37.0 (7.04) | 202 (38.51) |
+| 8 | 4.00 | 7.02 (1.76) | 14.9 (3.72)* | 34.8 (8.70)c | 13.1 (3.27) | 22.7 (5.69) | — |
+| 16 | 3.64 | 6.22 (1.71) | 26.0 (7.16)* | 62.6 (17.20)c | 13.3 (3.66) | 22.8 (6.26) | — |
+
+fereg was faster than every comparator at every core count; beta.7 had taken
+13.32 to 7.03 seconds on a node of the same type. FixedEffectModels.jl at its
+default tolerance stops early enough that its coefficients and objective miss
+the frozen tolerances; with 1e-10 it agrees up to its level count and becomes
+slower with sixteen cores than with eight. fereg's peak memory was 1.41-1.53 GiB
+against 2.61-3.62 (PyFixest within), 1.49-1.78 (FixedEffectModels.jl),
+1.99-2.39 (fixest) and 2.10 (reghdfe).
+
+With both FE channels saved fereg took 14.62 seconds with one core and 4.83
+with sixteen (1.32-1.39 times its unsaved time) and used at most 1.81 GiB.
+No comparator matched its saved effects: default fixest and default
+FixedEffectModels.jl failed the saved-prediction model-score check, reghdfe,
+strict fixest and FixedEffectModels.jl at 1e-10 completed but their centered
+worker and firm effects differ beyond the frozen tolerance (FixedEffectModels.jl
+also misses the prediction check), and PyFixest within did not finish within
+600 seconds. Their completed times were 3.3-38.6 times fereg's.
 
 ## October 27, 2026: two-FE Auto speed candidate
 

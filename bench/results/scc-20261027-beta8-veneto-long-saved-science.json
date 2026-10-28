@@ -1,0 +1,917 @@
+{
+  "source": "670632aac4599d992758544392d287acdda812e4",
+  "science": [
+    {
+      "panel": "long",
+      "threads": 1,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long",
+      "threads": 1,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 1,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long",
+      "threads": 1,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 1,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long",
+      "threads": 2,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long",
+      "threads": 2,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 2,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long",
+      "threads": 2,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 2,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long",
+      "threads": 4,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long",
+      "threads": 4,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 4,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long",
+      "threads": 4,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 4,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long",
+      "threads": 8,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long",
+      "threads": 8,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 8,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long",
+      "threads": 8,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 8,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long",
+      "threads": 16,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long",
+      "threads": 16,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 16,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long",
+      "threads": 16,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 16,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    }
+  ],
+  "comparisons": [
+    {
+      "cell": "veneto-long-t1",
+      "arm": "fixest",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "application unavailable"
+      ],
+      "agreement": "unavailable"
+    },
+    {
+      "cell": "veneto-long-t1",
+      "arm": "fixest-strict",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "centered saved1",
+        "centered saved2"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": []
+    },
+    {
+      "cell": "veneto-long-t1",
+      "arm": "pyfixest-within",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "application unavailable"
+      ],
+      "agreement": "unavailable"
+    },
+    {
+      "cell": "veneto-long-t1",
+      "arm": "julia",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "application unavailable"
+      ],
+      "agreement": "unavailable"
+    },
+    {
+      "cell": "veneto-long-t1",
+      "arm": "julia-strict",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof",
+        "saved prediction",
+        "centered saved1",
+        "centered saved2"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ]
+    },
+    {
+      "cell": "veneto-long-t1",
+      "arm": "reghdfe",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "application unavailable"
+      ],
+      "agreement": "unavailable"
+    },
+    {
+      "cell": "veneto-long-t1",
+      "arm": "fixest-strict",
+      "repetition": 2,
+      "eligible": false,
+      "reasons": [
+        "centered saved1",
+        "centered saved2"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": []
+    },
+    {
+      "cell": "veneto-long-t1",
+      "arm": "julia-strict",
+      "repetition": 2,
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof",
+        "saved prediction",
+        "centered saved1",
+        "centered saved2"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ]
+    },
+    {
+      "cell": "veneto-long-t1",
+      "arm": "julia-strict",
+      "repetition": 3,
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof",
+        "saved prediction",
+        "centered saved1",
+        "centered saved2"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ]
+    },
+    {
+      "cell": "veneto-long-t1",
+      "arm": "fixest-strict",
+      "repetition": 3,
+      "eligible": false,
+      "reasons": [
+        "centered saved1",
+        "centered saved2"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": []
+    },
+    {
+      "cell": "veneto-long-t2",
+      "arm": "fixest",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "application unavailable"
+      ],
+      "agreement": "unavailable"
+    },
+    {
+      "cell": "veneto-long-t2",
+      "arm": "fixest-strict",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "centered saved1",
+        "centered saved2"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": []
+    },
+    {
+      "cell": "veneto-long-t2",
+      "arm": "pyfixest-within",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "application unavailable"
+      ],
+      "agreement": "unavailable"
+    },
+    {
+      "cell": "veneto-long-t2",
+      "arm": "julia",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "application unavailable"
+      ],
+      "agreement": "unavailable"
+    },
+    {
+      "cell": "veneto-long-t2",
+      "arm": "julia-strict",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof",
+        "saved prediction",
+        "centered saved1",
+        "centered saved2"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ]
+    },
+    {
+      "cell": "veneto-long-t2",
+      "arm": "reghdfe",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "application unavailable"
+      ],
+      "agreement": "unavailable"
+    },
+    {
+      "cell": "veneto-long-t2",
+      "arm": "fixest-strict",
+      "repetition": 2,
+      "eligible": false,
+      "reasons": [
+        "centered saved1",
+        "centered saved2"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": []
+    },
+    {
+      "cell": "veneto-long-t2",
+      "arm": "julia-strict",
+      "repetition": 2,
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof",
+        "saved prediction",
+        "centered saved1",
+        "centered saved2"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ]
+    },
+    {
+      "cell": "veneto-long-t2",
+      "arm": "julia-strict",
+      "repetition": 3,
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof",
+        "saved prediction",
+        "centered saved1",
+        "centered saved2"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ]
+    },
+    {
+      "cell": "veneto-long-t2",
+      "arm": "fixest-strict",
+      "repetition": 3,
+      "eligible": false,
+      "reasons": [
+        "centered saved1",
+        "centered saved2"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": []
+    },
+    {
+      "cell": "veneto-long-t4",
+      "arm": "fixest",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "application unavailable"
+      ],
+      "agreement": "unavailable"
+    },
+    {
+      "cell": "veneto-long-t4",
+      "arm": "fixest-strict",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "centered saved1",
+        "centered saved2"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": []
+    },
+    {
+      "cell": "veneto-long-t4",
+      "arm": "pyfixest-within",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "application unavailable"
+      ],
+      "agreement": "unavailable"
+    },
+    {
+      "cell": "veneto-long-t4",
+      "arm": "julia",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "application unavailable"
+      ],
+      "agreement": "unavailable"
+    },
+    {
+      "cell": "veneto-long-t4",
+      "arm": "julia-strict",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof",
+        "saved prediction",
+        "centered saved1",
+        "centered saved2"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ]
+    },
+    {
+      "cell": "veneto-long-t4",
+      "arm": "reghdfe",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "application unavailable"
+      ],
+      "agreement": "unavailable"
+    },
+    {
+      "cell": "veneto-long-t4",
+      "arm": "fixest-strict",
+      "repetition": 2,
+      "eligible": false,
+      "reasons": [
+        "centered saved1",
+        "centered saved2"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": []
+    },
+    {
+      "cell": "veneto-long-t4",
+      "arm": "julia-strict",
+      "repetition": 2,
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof",
+        "saved prediction",
+        "centered saved1",
+        "centered saved2"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ]
+    },
+    {
+      "cell": "veneto-long-t4",
+      "arm": "julia-strict",
+      "repetition": 3,
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof",
+        "saved prediction",
+        "centered saved1",
+        "centered saved2"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ]
+    },
+    {
+      "cell": "veneto-long-t4",
+      "arm": "fixest-strict",
+      "repetition": 3,
+      "eligible": false,
+      "reasons": [
+        "centered saved1",
+        "centered saved2"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": []
+    },
+    {
+      "cell": "veneto-long-t8",
+      "arm": "fixest",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "application unavailable"
+      ],
+      "agreement": "unavailable"
+    },
+    {
+      "cell": "veneto-long-t8",
+      "arm": "fixest-strict",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "centered saved1",
+        "centered saved2"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": []
+    },
+    {
+      "cell": "veneto-long-t8",
+      "arm": "pyfixest-within",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "application unavailable"
+      ],
+      "agreement": "unavailable"
+    },
+    {
+      "cell": "veneto-long-t8",
+      "arm": "julia",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "application unavailable"
+      ],
+      "agreement": "unavailable"
+    },
+    {
+      "cell": "veneto-long-t8",
+      "arm": "julia-strict",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof",
+        "saved prediction",
+        "centered saved1",
+        "centered saved2"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ]
+    },
+    {
+      "cell": "veneto-long-t8",
+      "arm": "fixest-strict",
+      "repetition": 2,
+      "eligible": false,
+      "reasons": [
+        "centered saved1",
+        "centered saved2"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": []
+    },
+    {
+      "cell": "veneto-long-t8",
+      "arm": "julia-strict",
+      "repetition": 2,
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof",
+        "saved prediction",
+        "centered saved1",
+        "centered saved2"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ]
+    },
+    {
+      "cell": "veneto-long-t8",
+      "arm": "julia-strict",
+      "repetition": 3,
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof",
+        "saved prediction",
+        "centered saved1",
+        "centered saved2"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ]
+    },
+    {
+      "cell": "veneto-long-t8",
+      "arm": "fixest-strict",
+      "repetition": 3,
+      "eligible": false,
+      "reasons": [
+        "centered saved1",
+        "centered saved2"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": []
+    },
+    {
+      "cell": "veneto-long-t16",
+      "arm": "fixest",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "application unavailable"
+      ],
+      "agreement": "unavailable"
+    },
+    {
+      "cell": "veneto-long-t16",
+      "arm": "fixest-strict",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "centered saved1",
+        "centered saved2"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": []
+    },
+    {
+      "cell": "veneto-long-t16",
+      "arm": "pyfixest-within",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "application unavailable"
+      ],
+      "agreement": "unavailable"
+    },
+    {
+      "cell": "veneto-long-t16",
+      "arm": "julia",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "application unavailable"
+      ],
+      "agreement": "unavailable"
+    },
+    {
+      "cell": "veneto-long-t16",
+      "arm": "julia-strict",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof",
+        "saved prediction",
+        "centered saved1",
+        "centered saved2"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ]
+    },
+    {
+      "cell": "veneto-long-t16",
+      "arm": "fixest-strict",
+      "repetition": 2,
+      "eligible": false,
+      "reasons": [
+        "centered saved1",
+        "centered saved2"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": []
+    },
+    {
+      "cell": "veneto-long-t16",
+      "arm": "julia-strict",
+      "repetition": 2,
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof",
+        "saved prediction",
+        "centered saved1",
+        "centered saved2"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ]
+    },
+    {
+      "cell": "veneto-long-t16",
+      "arm": "julia-strict",
+      "repetition": 3,
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof",
+        "saved prediction",
+        "centered saved1",
+        "centered saved2"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ]
+    },
+    {
+      "cell": "veneto-long-t16",
+      "arm": "fixest-strict",
+      "repetition": 3,
+      "eligible": false,
+      "reasons": [
+        "centered saved1",
+        "centered saved2"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": []
+    }
+  ]
+}

@@ -19,7 +19,7 @@ DESCRIPTIONS = {'fixest': 'fixest 0.14.2 default', 'fixest-strict': 'fixest stri
                 'julia': 'FixedEffectModels.jl (tolerance 1e-6)', 'julia-strict': 'FixedEffectModels.jl (1e-10)'}
 
 
-def references(manifest):
+def reference_arms(manifest):
     return [arm for arm in ORDER if any(arm in c['arms'] for c in manifest['cells'])]
 
 
@@ -74,7 +74,7 @@ def render(campaign, frame, output):
     report.TIMING_FOOTNOTE = ('* Comparator timing failed the frozen scientific/output gate. '
                               '† Agreement up to degrees-of-freedom counting conventions. '
                               'Medians with [min, max]; n=1 is one completed command. No fits were retried.')
-    arms = references(campaign['manifest'])
+    arms = reference_arms(campaign["manifest"])
     pdf = report.CampaignPDF(output/'veneto-akm.pdf', campaign['context']['run_id'])
     saved = campaign['manifest']['policy'].get('save_fe', True)
     pdf.text('Veneto AKM<br/>Core scaling and '+('saved effects' if saved else 'estimation without saved effects'), 'TitleCustom')

@@ -1,10 +1,99 @@
 # Comparing fereg with fixest
 
 The separate [Veneto AKM comparisons](veneto_benchmarks.md) use the real long
-and short fevc panels at 1/2/4/8/16 cores. On October 26 they ran on the beta.7
-runtime with PyFixest, both with and without saved worker/firm effects.
-Without saved effects every comparator except two timed-out cells passes the
-scientific gates; with saved effects all comparator timings stay descriptive.
+and short fevc panels at 1/2/4/8/16 cores. On October 27 the long panel ran on
+the beta.8 package with PyFixest and FixedEffectModels.jl, with and without
+saved worker/firm effects.
+
+## October 27, 2026: beta.8 campaign with FixedEffectModels.jl and size series
+
+Run `20261027T165902Z-beta8-campaign-670632aa` (harness `670632aa`) measured
+the published v0.5.0-beta.8 package, Linux plugin `3f888ffe...` (build
+`18b47675`), against fixest 0.14.2 (default and strict), PyFixest main
+`0f41fffd` with within-py 0.4.0, FixedEffectModels.jl 2.1.0 on Julia 1.11.7 at
+its default tolerance (1e-6) and at 1e-10, reghdfe, ppmlhdfe and Stata 19
+areg. At one million rows and four cores it covers the AKM design with every
+covariance type and saved FE, 4 and 64 controls, and one-FE and dense/sparse
+two-/three-FE designs; AKM core series run at 1/2/4/8/16 cores, and size series
+from 100,000 to ten million rows cover AKM OLS, AKM PPML and sparse three-FE
+OLS. Each model and design ran on one whole 28-core E5-2680 v4 node (`scc-xe4`,
+`scc-wk4`, `scc-wk3`, `scc-xe1`, `scc-xa2`, `scc-xf3`), with five repetitions up
+to one million rows and three above. The same native reference cell took
+1.015-1.047 seconds on every node. Memory is the kernel peak resident set of
+the timed command, including the loaded data.
+
+Production task 1 first started on a Xeon Gold 6132 node. It was stopped after
+25 positions, before its timings were inspected, and resubmitted as job
+8302543 pinned to E5-2680 v4; the stopped attempt is retained on SCC. Of the
+1,448 planned positions, 1,330 succeeded, 15 completed with a capture error
+(saved predictions that fail the model-score check), 9 reached the 600-second
+limit, 88 later repetitions were skipped after a failure and 6 larger sizes
+after a timeout. Results that differ only in counting absorbed degrees of
+freedom agree "by convention": their covariance matches after one scalar
+within 1% of one.
+
+**Speed against fereg** (comparator median over fereg median in configurations
+whose results agree, exactly or by convention):
+
+| Comparator | Model | Agreeing | fereg faster | Ratio range | Median |
+| --- | --- | ---: | ---: | ---: | ---: |
+| reghdfe | OLS | 19 | 19 | 4.13-48.1 | 13.6 |
+| ppmlhdfe | PPML | 13 | 13 | 7.47-77.7 | 19.0 |
+| areg | OLS | 15 | 15 | 1.68-102 | 7.78 |
+| fixest | OLS | 22 | 22 | 1.19-5.68 | 2.05 |
+| fixest | PPML | 19 | 19 | 1.12-8.65 | 1.87 |
+| PyFixest within | OLS | 23 | 16 | 0.61-3.75 | 1.51 |
+| PyFixest within | PPML | 19 | 13 | 0.46-2.72 | 2.09 |
+| FixedEffectModels.jl | OLS | 17 | 13 | 0.52-2.20 | 1.52 |
+| FixedEffectModels.jl strict | OLS | 23 | 20 | 0.52-11.5 | 2.67 |
+
+In the one-million-row AKM design fereg took 1.01 seconds (OLS) and 4.24
+(PPML). reghdfe took 14.6 times as long, areg 8.9, fixest 2.0, PyFixest within
+2.2 and FixedEffectModels.jl 1.6 (2.5 strict); ppmlhdfe took 19.7 times as long,
+fixest 1.9 and PyFixest within 2.3. PyFixest within was faster in the sparse
+three-FE OLS and PPML designs (0.46-0.74), the dense three-FE designs (0.87-0.89),
+dense two-FE PPML (0.90-0.97) and with one FE (0.96-0.99); FixedEffectModels.jl was faster with one FE (0.52), in
+the dense three-FE design (0.74), with 64 controls (0.89) and about equal in
+the dense two-FE design (0.98). At its default tolerance FixedEffectModels.jl
+differs numerically in the sparse designs; with 1e-10 it agrees and took
+6.0-11.5 times as long. With saved FE, every comparator's saved predictions
+miss the 1e-7 accuracy check except strict fixest.
+
+**Cores.** From one to sixteen cores fereg's AKM time fell from 2.09 to 0.72
+seconds (OLS) and from 8.99 to 3.11 (PPML). FixedEffectModels.jl gains less
+from cores: 1.13 times fereg's time with one core and 1.95 with sixteen. On one
+core reghdfe took 13.6 and ppmlhdfe 22.7 times as long as fereg.
+
+**Size.** In AKM OLS fereg took 0.17 seconds at 100,000 rows and 10.6 at ten
+million; reghdfe's ratio rose from 7.6 to 22.0, areg's from 4.3 to 11.0 and
+PyFixest within's from 1.2 to 3.8, while fixest (1.6-2.3) and
+FixedEffectModels.jl (1.6-2.2) stayed about constant. At ten million rows the
+peak memory was 5.64 GiB for fereg, 7.18 reghdfe, 10.32 areg, 6.68 fixest,
+11.35 PyFixest within and 4.18 FixedEffectModels.jl. In AKM PPML fereg took
+60.8 seconds at ten million rows, where ppmlhdfe did not finish within the
+limit; fixest took 2.0 and PyFixest within 2.7 times as long, with peaks of
+12.41 GiB (fereg), 12.62 and 16.32. In sparse three-FE OLS fereg took 0.53 to
+15.5 seconds from 100,000 to three million rows, PyFixest within 0.61-0.74
+times as long, and fereg needed more memory than every comparator that finished:
+5.77 GiB at three million rows against 4.37 (PyFixest within), 2.61 (reghdfe),
+2.31 (fixest) and 1.83 (FixedEffectModels.jl).
+
+**Ten-million-row sparse three-FE limit.** At ten million rows fereg itself
+reached the 600-second limit in sparse three-FE OLS, while PyFixest within
+(55 seconds), FixedEffectModels.jl (105 seconds at its default tolerance) and
+fixest (338 seconds) finished; those comparator results could not be checked
+against fereg. A separate diagnostic outside the campaign refitted the same
+input with `threads(4)` and `memory(fast)` on two other nodes (a whole E5-2680 v4
+node and 16 slots of another node); neither fit finished within 70 minutes. The
+processes stayed compute-bound at about 3.5 cores and 5.8 GB of virtual memory,
+so neither the low-memory plan nor the node explains the limit; at three
+million rows the same design took 15.5 seconds. The cause in the three-FE
+solver path is not yet diagnosed, and the campaign timing stays as recorded.
+
+**Controls.** fereg's OLS time rose from 0.54 seconds with 4 controls to 5.44
+with 64, more steeply than the comparators': at 64 controls reghdfe took 11.2,
+areg 5.0, fixest 1.19, PyFixest within 1.51 and FixedEffectModels.jl 0.89 times
+as long. In PPML the gap to ppmlhdfe widened from 9.6 (4 controls) to 30.4 (64).
 
 ## October 27, 2026: beta.7 supplement with multi-FE areg and control counts
 

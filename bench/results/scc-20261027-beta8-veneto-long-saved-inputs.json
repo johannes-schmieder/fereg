@@ -1,0 +1,1209 @@
+{
+  "run_id": "20261027T165902Z-beta8-veneto-long-saved-670632aa",
+  "remote_root": "/projectnb/welfgr/fereg/runs/20261027T165902Z-beta8-veneto-long-saved-670632aa",
+  "source": "670632aac4599d992758544392d287acdda812e4",
+  "runtime_source": "18b47675802e896b0de92d77e220872edbf3ae12",
+  "linux_plugin_sha256": "3f888ffe29ea3f4eba567c5d47ffc382d0508c8137103981b3e8ff1767a2d84c",
+  "fevc_source": "1e5acf429a40a825d2ddf499d468bb2ba161fbb9",
+  "resources": {
+    "reuse": {
+      "slots": 4,
+      "mem_per_core": "3G",
+      "h_rt": "00:30:00"
+    },
+    "setup": {
+      "slots": 4,
+      "mem_per_core": "3G",
+      "h_rt": "02:00:00"
+    },
+    "smoke": {
+      "slots": 4,
+      "mem_per_core": "3G",
+      "h_rt": "00:30:00"
+    },
+    "production": {
+      "slots": 28,
+      "pe": "mpi_28_tasks_per_node_u",
+      "num_proc": 28,
+      "mem_per_core": "3G",
+      "h_rt": "12:00:00",
+      "cpu_type": "E5-2680v4"
+    }
+  },
+  "preparation_sha256": {
+    "prepare_stage2.m": "ed9b343e5b5115b97a73a86155217db672cab568b46c28ff9a311d30cbb64a0a",
+    "long-sample.json": "cd2b8b62c57f74be2d7ab38d57d692358bd7e90eba3ca42f73317ddfbcad8d6e",
+    "connected_set.m": "e757863b6ce8cc4b78f9170f07e00517e36be39c6ba62a1870c98fb2c7457bfa",
+    "build.do": "efccfdfa83a8c0507875cf11f1af8bb0a09f3b7abb004cf4e3468ffac618499f",
+    "build_adj.m": "53cac245a3802c6f42dc896859fa55e812f9b2880cf8cb848b319ed50e6532d9",
+    "short-graph.py": "d35c60c69a8c1a0ec9114d093d865aab48886ede7d17a1bfcd84b0bc712989c9",
+    "short-sample.json": "80c90bd5083ada7b1b8c724ea05e65ee97cc1e45a9f296e9dd949207e628283f",
+    "prepare_short.py": "6da047f72f6201c62d32dee614d3646e628d733890938c5fb77228a13d77ed39",
+    "inputs.json": "3212a53a58aa91ad960a7f939beb57284aaf4986293c55a54b420d0ff7b8b069",
+    "prepare_stage1.do": "c59212f5b1482d0769fe9dbdb6c2f3e5014811a68f0e7de7f49188dc0e7f83f5",
+    "short-builder.do": "e7f5c23d4853c5e633d6351c2ca0f13e5f067519c7f26127b84b3e32949dd1c8",
+    "pruning_unbal_v3.m": "d7590cc2b8499e43c9b503143762f9c21054ac8ace1e1e1a9b11698f092ce760",
+    "prepare_short.shared-cleaning.py": "18a994f96c366349abc6e41ea2908dc17d03494ce8394825bccb01068e530b2b"
+  },
+  "preparation_notes": [
+    "Full cleaning and graph preparation use the recorded fevc code.",
+    "The two-year input uses its own original source-order tie handling; the shared six-year cleaning was rejected before timing.",
+    "A first preparation launch preceded archive extraction and failed for missing input; no estimation occurred.",
+    "Inputs, smoke witnesses and policy reused byte for byte from 20261024T195706Z-veneto-5c0a9240; only the long panel was scheduled, and only arm lists, the saved-FE request and the 20,000-second fit budget changed.",
+    "Both long-panel variants ran back to back in one whole-node pair job (panel_pair.sh) pinned to cpu_type=E5-2680v4, without saved effects first."
+  ],
+  "schema": 1,
+  "manifest": {
+    "schema": 1,
+    "panels": {
+      "long": {
+        "years": [
+          1996,
+          1997,
+          1998,
+          1999,
+          2000,
+          2001
+        ],
+        "rows": 5163428,
+        "workers": 1106419,
+        "firms": 86647,
+        "regressors": 7
+      }
+    },
+    "cells": [
+      {
+        "id": "veneto-long-t1",
+        "model": "ols",
+        "design": "veneto-long",
+        "section": "veneto",
+        "rows": 5163428,
+        "regressors": 7,
+        "effects": 2,
+        "save_fe": true,
+        "vce": "iid",
+        "weights": "unit",
+        "threads": 1,
+        "arms": [
+          "fereg",
+          "fixest",
+          "fixest-strict",
+          "pyfixest-within",
+          "julia",
+          "julia-strict",
+          "reghdfe"
+        ]
+      },
+      {
+        "id": "veneto-long-t2",
+        "model": "ols",
+        "design": "veneto-long",
+        "section": "veneto",
+        "rows": 5163428,
+        "regressors": 7,
+        "effects": 2,
+        "save_fe": true,
+        "vce": "iid",
+        "weights": "unit",
+        "threads": 2,
+        "arms": [
+          "fereg",
+          "fixest",
+          "fixest-strict",
+          "pyfixest-within",
+          "julia",
+          "julia-strict",
+          "reghdfe"
+        ]
+      },
+      {
+        "id": "veneto-long-t4",
+        "model": "ols",
+        "design": "veneto-long",
+        "section": "veneto",
+        "rows": 5163428,
+        "regressors": 7,
+        "effects": 2,
+        "save_fe": true,
+        "vce": "iid",
+        "weights": "unit",
+        "threads": 4,
+        "arms": [
+          "fereg",
+          "fixest",
+          "fixest-strict",
+          "pyfixest-within",
+          "julia",
+          "julia-strict",
+          "reghdfe"
+        ]
+      },
+      {
+        "id": "veneto-long-t8",
+        "model": "ols",
+        "design": "veneto-long",
+        "section": "veneto",
+        "rows": 5163428,
+        "regressors": 7,
+        "effects": 2,
+        "save_fe": true,
+        "vce": "iid",
+        "weights": "unit",
+        "threads": 8,
+        "arms": [
+          "fereg",
+          "fixest",
+          "fixest-strict",
+          "pyfixest-within",
+          "julia",
+          "julia-strict"
+        ]
+      },
+      {
+        "id": "veneto-long-t16",
+        "model": "ols",
+        "design": "veneto-long",
+        "section": "veneto",
+        "rows": 5163428,
+        "regressors": 7,
+        "effects": 2,
+        "save_fe": true,
+        "vce": "iid",
+        "weights": "unit",
+        "threads": 16,
+        "arms": [
+          "fereg",
+          "fixest",
+          "fixest-strict",
+          "pyfixest-within",
+          "julia",
+          "julia-strict"
+        ]
+      }
+    ],
+    "datasets": {
+      "long": {
+        "rows": 5163428,
+        "sha256": "fc56787dcc8f108d4005546390dd6633ace745b5fe18dfe613eb2e907eb233e5",
+        "column_sha256": {
+          "obs_id": "f6518d498851c1709d95ab7e2144a81abe9d973206e777a53eedc0e4b7e84542",
+          "g1": "04280279f655edb34e196d842c32e6cb426533b6840f32839c6f341ee1943787",
+          "g2": "1e720654571f75a0f0d3813e5094b7f785819622346634735dfd00f876a2fafa",
+          "y": "12c9180f13fb8b71914b3a1a49c12293ebc6d41c70a5210b73ed06926fbfd706",
+          "x1": "75ac8fcd43a4173b08c2f47bb4dfcde359d1a294a1f674b4fdd7e862eb2739cb",
+          "x2": "7d73fe0df5625eeaf410b9353af27de8098af2937efcb76c5085909c21008fdb",
+          "x3": "6cd63abe13d7c156caf125ae3f44bc4a700848af8cbda3a287138eec1c4c88ce",
+          "x4": "62bf17937a0ed1b0c95693577a95e39d947fd6debce79923bfc3cfb909a9c95a",
+          "x5": "1ac03968f038901adcdf954dc99b51fdf1ce814779443377e1ba6e13fb8e181a",
+          "x6": "d8aad3659e26ccb1b174a9459fd07f6fe283ee2888975518fbe71053e8d66478",
+          "x7": "40faf805bad10134c82734a0a1c87a06dcdcbe82959952659f758761cf5abad3"
+        },
+        "topology": {
+          "levels": [
+            1106419,
+            86647
+          ],
+          "components": 1,
+          "first_pair_rank": 1193065,
+          "distinct_first_pair_links": 1700466
+        }
+      },
+      "smoke-long": {
+        "rows": 771,
+        "sha256": "bcc6b77d41c039935097108502e6d385a8dfd8d9c702dad6e65c3561709cb578",
+        "column_sha256": {
+          "obs_id": "1e0e730350f41a92b0a75acd44618dfba0c0549e669df000406bcf9ca911e9eb",
+          "g1": "0cbedc6617e29e0b0c098341986e2d01a2ba821644513fed97c19788ec027791",
+          "g2": "e1918f464d298c6c381d8035885ba26ae411bf7248ce24b0c9bd8607366dedc6",
+          "y": "672f3e4133e085e71d6ba1e82e3fbdccf872959888e13da85b929a3e944f256f",
+          "x1": "93f11c8b29143357c28f121c515509013d9e78df5ce41a419850b3ebe633104b",
+          "x2": "d8e45588891f1d24cceb9013bdc458c49dfd5020efd28e0c2cad93e29faa987b",
+          "x3": "1a4d161174326e01dbffeb4567a40073056b923bb3563c49dc555881438331fb",
+          "x4": "bb89522557177b637dbd78371b6f95ca5bb1da3fd1f57ec197897620261a1aed",
+          "x5": "37c460338eb0d903f8efc243a21429dbef495ebe6dbe39b097463efbc4efe502",
+          "x6": "8fe456e999703b1664adb619ce494e47d81087e403aa1ccc08928c869aa42591",
+          "x7": "ab4c47e3c2b6c62b4f9543109406424efc1919047335d7fa6875ce33f1963c37"
+        },
+        "topology": {
+          "levels": [
+            199,
+            8
+          ],
+          "components": 1,
+          "first_pair_rank": 206,
+          "distinct_first_pair_links": 292
+        }
+      },
+      "short": {
+        "rows": 1319994,
+        "sha256": "090f50096d4a0074f72905998bc91f4e56d0a54e18761f1a48252bf2caf50242",
+        "column_sha256": {
+          "obs_id": "978f86b26f0b412c4543b3da48f0f0379e8abfc8e5457e6d9ed7ab5d9d62b6a4",
+          "g1": "e3f128f0af6b7c7e512d8fa3e56eb2c02e9cc29a4fc6340afe4db4f53db81b62",
+          "g2": "30cd483556dcadf1b74ec76cc5563b711d3c077afb3e01aae36dc17289713025",
+          "y": "7a1424b9628a2199268696baf61dd0490b1a2385e62a57e1aa8906de2f7abab2",
+          "x1": "f4bc234750c800d9ac51296d54f77737e4c1c31c27213d726f326edda8b74b4a"
+        },
+        "topology": {
+          "levels": [
+            659997,
+            42489
+          ],
+          "components": 1,
+          "first_pair_rank": 702485,
+          "distinct_first_pair_links": 824215
+        }
+      },
+      "smoke-short": {
+        "rows": 390,
+        "sha256": "2e3c3fbfa606fcbfefa64e8d35df9fc5860bb1ed1b995b0b251ab34ec7f3fc5a",
+        "column_sha256": {
+          "obs_id": "b823d0c049822a46269a70cf7bf0fee000c18dbad32bb7107e4490474d98360a",
+          "g1": "3bf1aee7f9efeaf73262037b02a2b17333384abf983d39e96f71a63ce7f02efb",
+          "g2": "a7a76b9abd6a75a1ee0ca3a3f7e4691c71ebd388df8b165b79257b1acbd85f4a",
+          "y": "314323f825f06c226b52bffc617cca26e4d0fc6bea403f849e196f94aaa2de4b",
+          "x1": "4ae1ccf5b432f36363589749a650dd3d86ec00762d243f6e5f3ef2c859f63f67"
+        },
+        "topology": {
+          "levels": [
+            195,
+            1
+          ],
+          "components": 1,
+          "first_pair_rank": 195,
+          "distinct_first_pair_links": 195
+        }
+      }
+    },
+    "policy": {
+      "threads": [
+        1,
+        2,
+        4,
+        8,
+        16
+      ],
+      "repetitions": 3,
+      "command_timeout_seconds": 600,
+      "process_timeout_seconds": 900,
+      "bundles": 2,
+      "job_cleanup_seconds": 20000,
+      "scientific_tolerances": {
+        "coefficient_rtol": 1e-07,
+        "coefficient_atol": 1e-10,
+        "vce_rtol": 1e-06,
+        "vce_atol": 1e-10,
+        "fitted_rtol": 1e-07,
+        "fitted_atol": 1e-09,
+        "objective_rtol": 1e-08,
+        "objective_atol": 1e-10
+      },
+      "interference": "No resampling. Whole-host reservation and passive observation required.",
+      "save_fe": true
+    },
+    "timed_fits": 99,
+    "reused_inputs": "/projectnb/welfgr/fereg/runs/20261024T195706Z-veneto-5c0a9240"
+  },
+  "accounting": [
+    {
+      "qname": "econ",
+      "hostname": "scc-ei3.scc.bu.edu",
+      "group": "welfgr",
+      "owner": "johannes",
+      "project": "welfgr",
+      "department": "defaultdepartment",
+      "jobname": "fereg_veneto_setup",
+      "jobnumber": "8302357",
+      "taskid": "undefined",
+      "account": "sge",
+      "priority": "0",
+      "qsub_time": "Tue Oct 27 13:01:42 2026",
+      "start_time": "Tue Oct 27 13:50:04 2026",
+      "end_time": "Tue Oct 27 13:57:18 2026",
+      "granted_pe": "omp",
+      "slots": "4",
+      "failed": "0",
+      "exit_status": "0",
+      "ru_wallclock": "434",
+      "ru_utime": "1095.955",
+      "ru_stime": "53.012",
+      "ru_maxrss": "2925604",
+      "ru_ixrss": "0",
+      "ru_ismrss": "0",
+      "ru_idrss": "0",
+      "ru_isrss": "0",
+      "ru_minflt": "12074907",
+      "ru_majflt": "7847",
+      "ru_nswap": "0",
+      "ru_inblock": "2210352",
+      "ru_oublock": "6583896",
+      "ru_msgsnd": "0",
+      "ru_msgrcv": "0",
+      "ru_nsignals": "0",
+      "ru_nvcsw": "935754",
+      "ru_nivcsw": "19930",
+      "cpu": "1148.967",
+      "mem": "1734.519",
+      "io": "29.236",
+      "iow": "0.000",
+      "maxvmem": "6.805G",
+      "arid": "undefined"
+    },
+    {
+      "qname": "econ",
+      "hostname": "scc-tb4.scc.bu.edu",
+      "group": "welfgr",
+      "owner": "johannes",
+      "project": "welfgr",
+      "department": "defaultdepartment",
+      "jobname": "fereg_veneto",
+      "jobnumber": "8302358",
+      "taskid": "undefined",
+      "account": "sge",
+      "priority": "0",
+      "qsub_time": "Tue Oct 27 13:01:42 2026",
+      "start_time": "Tue Oct 27 14:04:27 2026",
+      "end_time": "Tue Oct 27 14:08:47 2026",
+      "granted_pe": "omp",
+      "slots": "4",
+      "failed": "0",
+      "exit_status": "0",
+      "ru_wallclock": "260",
+      "ru_utime": "77.573",
+      "ru_stime": "15.785",
+      "ru_maxrss": "732244",
+      "ru_ixrss": "0",
+      "ru_ismrss": "0",
+      "ru_idrss": "0",
+      "ru_isrss": "0",
+      "ru_minflt": "427507",
+      "ru_majflt": "2374",
+      "ru_nswap": "0",
+      "ru_inblock": "18093776",
+      "ru_oublock": "2864",
+      "ru_msgsnd": "0",
+      "ru_msgrcv": "0",
+      "ru_nsignals": "0",
+      "ru_nvcsw": "180203",
+      "ru_nivcsw": "2560",
+      "cpu": "93.358",
+      "mem": "67.516",
+      "io": "18.348",
+      "iow": "0.000",
+      "maxvmem": "2.081G",
+      "arid": "undefined"
+    },
+    {
+      "qname": "u",
+      "hostname": "scc-uc4.scc.bu.edu",
+      "group": "welfgr",
+      "owner": "johannes",
+      "project": "welfgr",
+      "department": "defaultdepartment",
+      "jobname": "fereg_veneto_pair",
+      "jobnumber": "8302359",
+      "taskid": "1",
+      "account": "sge",
+      "priority": "0",
+      "qsub_time": "Tue Oct 27 13:01:42 2026",
+      "start_time": "Tue Oct 27 14:20:03 2026",
+      "end_time": "Tue Oct 27 19:14:52 2026",
+      "granted_pe": "mpi_28_tasks_per_node_u",
+      "slots": "28",
+      "failed": "0",
+      "exit_status": "0",
+      "ru_wallclock": "17689",
+      "ru_utime": "27949.628",
+      "ru_stime": "3785.363",
+      "ru_maxrss": "3815272",
+      "ru_ixrss": "0",
+      "ru_ismrss": "0",
+      "ru_idrss": "0",
+      "ru_isrss": "0",
+      "ru_minflt": "303499929",
+      "ru_majflt": "3674",
+      "ru_nswap": "0",
+      "ru_inblock": "73146592",
+      "ru_oublock": "64410808",
+      "ru_msgsnd": "0",
+      "ru_msgrcv": "0",
+      "ru_nsignals": "0",
+      "ru_nvcsw": "3630342",
+      "ru_nivcsw": "123218",
+      "cpu": "31734.991",
+      "mem": "75685.463",
+      "io": "408.680",
+      "iow": "0.000",
+      "maxvmem": "7.529G",
+      "arid": "undefined"
+    }
+  ],
+  "input_audit": {
+    "long": {
+      "rows": 5163428,
+      "exact_identifiers": true,
+      "control_rank": 7,
+      "adjustment_max_error": 2.608191440600649e-13,
+      "adjustment_coefficients": [
+        -0.4336931699419312,
+        1.1272069895750425,
+        -0.07632167751282531,
+        -0.04685892536979737,
+        -0.03051424524276535,
+        -0.01373491940891408,
+        -0.008589723503714966
+      ]
+    },
+    "short": {
+      "rows": 1319994,
+      "exact_identifiers": true,
+      "control_rank": 1,
+      "adjustment_max_error": 3.126665593100597e-14,
+      "adjustment_coefficients": [
+        0.032201906720727355
+      ]
+    }
+  },
+  "prior_panels": {
+    "long": {
+      "path": "/projectnb/welfgr/vckss/private-veneto/20260917-panel-1996-2001/inputs/pooled_adjusted_1996_2001.csv",
+      "sha256": "e4a1928d98c1dbe7185634e14470b9361b58f8d5b33cceacc8d168ccdad4634e"
+    },
+    "short": {
+      "path": "/projectnb/welfgr/vckss/private-veneto/20260914-paper/inputs/pooled_adjusted.csv",
+      "sha256": "23093f69ea594ae1ebae348c70008934c5c6431221e2c3a8f0f44a7b1a7b7e2f"
+    }
+  },
+  "references": {
+    "references": "/projectnb/welfgr/fereg/runs/20260929-rebuild-m16-cdfa8f85/environment/references",
+    "r_library": "/projectnb/welfgr/fereg/runs/20260929-rebuild-m16-cdfa8f85/environment/r-library",
+    "source_hashes": {
+      "reghdfe": "b8c2c5dcfa23fe59ff1ca72d2f7fedf507763757ea2ad52fe301a5fe686a01bd",
+      "ftools": "d112fc4b662945c1f76c8462a0d6c904ddc336813f24fb8c83c3aad3a0f49680",
+      "require": "d190c105f703b12d696b9aa426cd70c6c05dbd7102e62a1fcf59f0ae30616cf1",
+      "ppmlhdfe": "366ddb71ebbe53bb4d7e0d4066e0a419ec6f0b689d0004be2da23e0c295d953e",
+      "fixest": "17372a789aaf9a3b04e8e0324feaf0f3c3c16f517baeb75e46289340332f0ee9"
+    }
+  },
+  "host_validation": {
+    "1": {
+      "host": {
+        "affinity": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27
+        ],
+        "hostname": "scc-uc4",
+        "job_id": "8302359",
+        "pe": "mpi_28_tasks_per_node_u",
+        "queue": "u@scc-uc4.scc.bu.edu",
+        "slots": 28,
+        "task_id": "1"
+      },
+      "reservation_checks": 2,
+      "samples": {
+        "process": {
+          "count": 1931,
+          "maximum_gap_seconds": 6.0637687
+        },
+        "census": {
+          "count": 162,
+          "maximum_gap_seconds": 61.026714121
+        }
+      },
+      "observations_sha256": "b3c1dc3ac62af068006ce76b8a1ecaa5eb371faf33343080ed3ccc8fe772a13b",
+      "passed": true
+    }
+  },
+  "native_cells": [
+    {
+      "cell": "veneto-long-t1",
+      "N": 5163428,
+      "sample_sha256": "9fad03afde4d578070471004f6c4e63b4bc43962f08132c67afbe1dcf13a77b0",
+      "finite_slope_rank": 7,
+      "absorbed_dof": 1193065.0,
+      "omitted": [],
+      "publication_omitted": [],
+      "singleton_deletions": 0,
+      "separation_deletions": 0,
+      "saved_fe_sha256": {
+        "saved1": "3e4d5c126522b810dd2a4b24ad51d6e4e189cc28d35b29893d48fd219294a308",
+        "saved2": "efc4d4b95c8e64c97fc51e3dc83fe9d86f3b88ff473a99a512c0bd708e4f157c"
+      },
+      "scientific_sha256": {
+        "coefficients.csv": "9734111fae5cc049231623fcf004448c7e389f3afc6e25805c1b9d6852f23696",
+        "covariance.csv": "69b0e92bbdf66f8cdea4429a3235316ccc2687bec5065d91240b1c708587582f",
+        "rows.csv": "8d76226c94aa8c5bd86b772bba903c28d20a61ad6e9a92dde4c48f3602d0ba4a"
+      },
+      "exact_reported_rss": [
+        "72259.003401124719",
+        "72259.003401124719",
+        "72259.003401124719"
+      ],
+      "maximum_model_score": 1.1304997083970348e-13,
+      "placement": {
+        "cpus": [
+          0
+        ],
+        "sockets": [
+          0
+        ],
+        "memory_nodes": [
+          0
+        ]
+      },
+      "cpu_model": "Intel(R) Xeon(R) CPU E5-2680 v4 @ 2.40GHz"
+    },
+    {
+      "cell": "veneto-long-t2",
+      "N": 5163428,
+      "sample_sha256": "9fad03afde4d578070471004f6c4e63b4bc43962f08132c67afbe1dcf13a77b0",
+      "finite_slope_rank": 7,
+      "absorbed_dof": 1193065.0,
+      "omitted": [],
+      "publication_omitted": [],
+      "singleton_deletions": 0,
+      "separation_deletions": 0,
+      "saved_fe_sha256": {
+        "saved1": "3e4d5c126522b810dd2a4b24ad51d6e4e189cc28d35b29893d48fd219294a308",
+        "saved2": "efc4d4b95c8e64c97fc51e3dc83fe9d86f3b88ff473a99a512c0bd708e4f157c"
+      },
+      "scientific_sha256": {
+        "coefficients.csv": "9734111fae5cc049231623fcf004448c7e389f3afc6e25805c1b9d6852f23696",
+        "covariance.csv": "69b0e92bbdf66f8cdea4429a3235316ccc2687bec5065d91240b1c708587582f",
+        "rows.csv": "8d76226c94aa8c5bd86b772bba903c28d20a61ad6e9a92dde4c48f3602d0ba4a"
+      },
+      "exact_reported_rss": [
+        "72259.003401124719",
+        "72259.003401124719",
+        "72259.003401124719"
+      ],
+      "maximum_model_score": 1.1304997083970348e-13,
+      "placement": {
+        "cpus": [
+          0,
+          2
+        ],
+        "sockets": [
+          0
+        ],
+        "memory_nodes": [
+          0
+        ]
+      },
+      "cpu_model": "Intel(R) Xeon(R) CPU E5-2680 v4 @ 2.40GHz"
+    },
+    {
+      "cell": "veneto-long-t4",
+      "N": 5163428,
+      "sample_sha256": "9fad03afde4d578070471004f6c4e63b4bc43962f08132c67afbe1dcf13a77b0",
+      "finite_slope_rank": 7,
+      "absorbed_dof": 1193065.0,
+      "omitted": [],
+      "publication_omitted": [],
+      "singleton_deletions": 0,
+      "separation_deletions": 0,
+      "saved_fe_sha256": {
+        "saved1": "3e4d5c126522b810dd2a4b24ad51d6e4e189cc28d35b29893d48fd219294a308",
+        "saved2": "efc4d4b95c8e64c97fc51e3dc83fe9d86f3b88ff473a99a512c0bd708e4f157c"
+      },
+      "scientific_sha256": {
+        "coefficients.csv": "9734111fae5cc049231623fcf004448c7e389f3afc6e25805c1b9d6852f23696",
+        "covariance.csv": "69b0e92bbdf66f8cdea4429a3235316ccc2687bec5065d91240b1c708587582f",
+        "rows.csv": "8d76226c94aa8c5bd86b772bba903c28d20a61ad6e9a92dde4c48f3602d0ba4a"
+      },
+      "exact_reported_rss": [
+        "72259.003401124719",
+        "72259.003401124719",
+        "72259.003401124719"
+      ],
+      "maximum_model_score": 1.1304997083970348e-13,
+      "placement": {
+        "cpus": [
+          0,
+          2,
+          4,
+          6
+        ],
+        "sockets": [
+          0
+        ],
+        "memory_nodes": [
+          0
+        ]
+      },
+      "cpu_model": "Intel(R) Xeon(R) CPU E5-2680 v4 @ 2.40GHz"
+    },
+    {
+      "cell": "veneto-long-t8",
+      "N": 5163428,
+      "sample_sha256": "9fad03afde4d578070471004f6c4e63b4bc43962f08132c67afbe1dcf13a77b0",
+      "finite_slope_rank": 7,
+      "absorbed_dof": 1193065.0,
+      "omitted": [],
+      "publication_omitted": [],
+      "singleton_deletions": 0,
+      "separation_deletions": 0,
+      "saved_fe_sha256": {
+        "saved1": "3e4d5c126522b810dd2a4b24ad51d6e4e189cc28d35b29893d48fd219294a308",
+        "saved2": "efc4d4b95c8e64c97fc51e3dc83fe9d86f3b88ff473a99a512c0bd708e4f157c"
+      },
+      "scientific_sha256": {
+        "coefficients.csv": "9734111fae5cc049231623fcf004448c7e389f3afc6e25805c1b9d6852f23696",
+        "covariance.csv": "69b0e92bbdf66f8cdea4429a3235316ccc2687bec5065d91240b1c708587582f",
+        "rows.csv": "8d76226c94aa8c5bd86b772bba903c28d20a61ad6e9a92dde4c48f3602d0ba4a"
+      },
+      "exact_reported_rss": [
+        "72259.003401124719",
+        "72259.003401124719",
+        "72259.003401124719"
+      ],
+      "maximum_model_score": 1.1304997083970348e-13,
+      "placement": {
+        "cpus": [
+          0,
+          2,
+          4,
+          6,
+          8,
+          10,
+          12,
+          14
+        ],
+        "sockets": [
+          0
+        ],
+        "memory_nodes": [
+          0
+        ]
+      },
+      "cpu_model": "Intel(R) Xeon(R) CPU E5-2680 v4 @ 2.40GHz"
+    },
+    {
+      "cell": "veneto-long-t16",
+      "N": 5163428,
+      "sample_sha256": "9fad03afde4d578070471004f6c4e63b4bc43962f08132c67afbe1dcf13a77b0",
+      "finite_slope_rank": 7,
+      "absorbed_dof": 1193065.0,
+      "omitted": [],
+      "publication_omitted": [],
+      "singleton_deletions": 0,
+      "separation_deletions": 0,
+      "saved_fe_sha256": {
+        "saved1": "3e4d5c126522b810dd2a4b24ad51d6e4e189cc28d35b29893d48fd219294a308",
+        "saved2": "efc4d4b95c8e64c97fc51e3dc83fe9d86f3b88ff473a99a512c0bd708e4f157c"
+      },
+      "scientific_sha256": {
+        "coefficients.csv": "9734111fae5cc049231623fcf004448c7e389f3afc6e25805c1b9d6852f23696",
+        "covariance.csv": "69b0e92bbdf66f8cdea4429a3235316ccc2687bec5065d91240b1c708587582f",
+        "rows.csv": "8d76226c94aa8c5bd86b772bba903c28d20a61ad6e9a92dde4c48f3602d0ba4a"
+      },
+      "exact_reported_rss": [
+        "72259.003401124719",
+        "72259.003401124719",
+        "72259.003401124719"
+      ],
+      "maximum_model_score": 1.1304997083970348e-13,
+      "placement": {
+        "cpus": [
+          0,
+          2,
+          4,
+          6,
+          8,
+          10,
+          12,
+          14,
+          16,
+          18,
+          20,
+          22,
+          24,
+          26,
+          1,
+          3
+        ],
+        "sockets": [
+          0,
+          1
+        ],
+        "memory_nodes": [
+          0,
+          1
+        ]
+      },
+      "cpu_model": "Intel(R) Xeon(R) CPU E5-2680 v4 @ 2.40GHz"
+    }
+  ],
+  "smoke_science": [
+    {
+      "panel": "long",
+      "threads": 4,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long",
+      "arm": "fixest",
+      "kind": "dense-oracle",
+      "checks": {},
+      "passed": false
+    },
+    {
+      "panel": "long",
+      "arm": "fixest-strict",
+      "kind": "dense-oracle",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true
+      },
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "arm": "pyfixest-within",
+      "kind": "dense-oracle",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true
+      },
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "arm": "julia",
+      "kind": "dense-oracle",
+      "checks": {},
+      "passed": false
+    },
+    {
+      "panel": "long",
+      "arm": "julia-strict",
+      "kind": "dense-oracle",
+      "checks": {
+        "coefficients": true,
+        "covariance": false,
+        "fitted": true
+      },
+      "passed": false
+    },
+    {
+      "panel": "long",
+      "arm": "reghdfe",
+      "kind": "dense-oracle",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true
+      },
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "arm": "fereg",
+      "kind": "dense-oracle",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true
+      },
+      "passed": true
+    }
+  ],
+  "science": [
+    {
+      "panel": "long",
+      "threads": 1,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long",
+      "threads": 1,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 1,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long",
+      "threads": 1,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 1,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long",
+      "threads": 2,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long",
+      "threads": 2,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 2,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long",
+      "threads": 2,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 2,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long",
+      "threads": 4,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long",
+      "threads": 4,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 4,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long",
+      "threads": 4,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 4,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long",
+      "threads": 8,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long",
+      "threads": 8,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 8,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long",
+      "threads": 8,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 8,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long",
+      "threads": 16,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long",
+      "threads": 16,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 16,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long",
+      "threads": 16,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 16,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    }
+  ],
+  "status_counts": {
+    "capture-error": 13,
+    "ok": 45,
+    "command-timeout": 5,
+    "skipped-after-failure": 36
+  },
+  "eligible_arm_cells": 5,
+  "preparation": {
+    "inputs.json": {
+      "archive_sha256": "17737a31881f9f57c15a22f1c3a4a401e41b7fb9ffb992d417bf61a8ae7947f4",
+      "members": {
+        "anagr.dta": "8a142efee0823fbab4d783139fcc95337d7b4168f0d3267e03e1d70b2ae7dfd3",
+        "azien.dta": "e071f5636c0cf6e1b31ee6fcc5f2828f9bbeb8254c2075dca6f32efb05386845",
+        "contr.dta": "50fea6507c6678895b5b4e7f3486f61981d7bf01ac7cd3eff098da20438df934"
+      }
+    },
+    "long-sample.json": {
+      "status": "PASS",
+      "years": [
+        1996,
+        1997,
+        1998,
+        1999,
+        2000,
+        2001
+      ],
+      "original_rows": 6044422.0,
+      "largest_connected_rows": 5811476.0,
+      "leave_worker_out_rows": 5435407.0,
+      "rows": 5163428.0,
+      "workers": 1106419.0,
+      "firms": 86647,
+      "matches": 1700466.0,
+      "stayer_workers": 666090,
+      "stayer_rows": 3029356.0,
+      "worker_degree_histogram": [
+        666090,
+        318508,
+        94888,
+        22437,
+        4028,
+        468
+      ],
+      "year_counts": [
+        784819,
+        844852,
+        864922,
+        885408,
+        917646,
+        865781
+      ],
+      "published_pooled_rows": 5163446.0,
+      "published_count_difference": -18,
+      "all_workers_removable_without_disconnect": true,
+      "singleton_workers": 0,
+      "matlab_version": "24.2.0.2863752 (R2024b) Update 5",
+      "graph_source": "maintained KSS 8b957ffe"
+    },
+    "short-sample.json": {
+      "rows": 1319994,
+      "workers": 659997,
+      "firms": 42489,
+      "matches": 824215,
+      "years": [
+        1999,
+        2001
+      ],
+      "code_sha256": "d35c60c69a8c1a0ec9114d093d865aab48886ede7d17a1bfcd84b0bc712989c9",
+      "input_sha256": "44a72c092af4b78aa2eea03b750f3c894ea64ea4c735e238db106e730b5bc7d9",
+      "retained_sha256": "88794aafb7f057e9beade9f3a34baad0de8b52fc1fbbf9c8e5202b67cdab0a21",
+      "largest_connected_rows": 1859445
+    }
+  },
+  "retained_runtime_inventory": {
+    "sha256": "4f7371f2fec10b4068f84f8882167039ed54510f05d94bca6b30d86d6c0b5782",
+    "files": 26006,
+    "critical_files": {
+      "environment/command-clock.plugin": "9e99876289df144aa2f465410b442fe28e4c8adc2ad3ee17cb03ea4a61a88684",
+      "manifest.json": "48a2c8a16c998622f1c36e7db6bcc146bfaf6a7fc5999b3e343416fddc56ad91",
+      "source/bench/block_host.py": "fccf59236f74f077e890685acd2abc996a1c7be8ecabecde095da6932974944d",
+      "source/bench/campaign.py": "dcd231d84b44684f534f2ebd21b6fcb3301df5264edd89fe5c409de4cc6f6c19",
+      "source/bench/campaign_fixest.R": "495906c50f684cddb883707214b606bf8c217edcec302de91bed0569a348f99c",
+      "source/bench/campaign_julia.jl": "54287b75855d002890205d0e13b32efde72f8ce44930129a94aef43241caef8d",
+      "source/bench/campaign_oracle.py": "8cfa0ad99f528013ec1d7d73c655b7ae9197b5f1794621573e368b23633934c6",
+      "source/bench/campaign_pyfixest.py": "8f5900860506599af0532063340d9461d4267215f2d994cdf0eedaa0403907a7",
+      "source/bench/campaign_r.R": "642fd5883298490a04287814ab7871ca9169235a959667a4466a0fc3f2089356",
+      "source/bench/campaign_stata.do": "46dceef7917b175dbbe3b58f31e6c88fe1a1018067eca8fb4d97c11dbf7f5ba2",
+      "source/bench/panel_campaign.py": "b61ad5553a77ede8b284a4662c255da43c346af82fda0fd9df9d2b2faec2923f",
+      "source/bench/qualify_scc.py": "68704aff448e8485a775a81bfe54ec14eea0203d9d8567d0dde8ec6bc650fbeb",
+      "source/dist/fereg_linux.plugin": "3f888ffe29ea3f4eba567c5d47ffc382d0508c8137103981b3e8ff1767a2d84c"
+    }
+  },
+  "artifacts_sha256": {
+    "scc-20261027-beta8-veneto-long-saved-observations.csv": "1707ecc213f2834e7c8f7e50854e9d9017c2f8a266e22930972cb405ca4a9316",
+    "scc-20261027-beta8-veneto-long-saved-science.json": "63c89f1814e80e9daa0fc74a6d22a638cc32151f9b53a4e9946ffef82cea86c4",
+    "scc-20261027-beta8-veneto-long-saved-summary.csv": "d169980d474cbae853c0440abb4e42f1d8e2b8a8904e506994473e98cbb750b7",
+    "veneto-akm.pdf": "0760543221eb614390ccd64ce4c98a9bc1e92dbbc59624bca1ee0675e88ba84c"
+  },
+  "collected_aggregate_sha256": {
+    "accounting.json": "8cf1cbd1a279bc295011654bf0888513c03cdd59d3a130570209a728c238713d",
+    "context.json": "9de082c5825c3087d4626a779509993ee28c2ca28d5583996b6d82ebf4f51161",
+    "environment/COMPLETE": "756e62f28ae30b22558028188bea81ff23f4a5f23cbff615b154f32975164dde",
+    "environment/input-audit.json": "18d885bac8ed9e33b4beaafb27923bac31cb186aeb6e7cc7a838ee7c7b88c05a",
+    "environment/julia/Manifest.toml": "455f675f13599c229874ade21a7b2c043f75168d6e8630ceada7214e80a45fcf",
+    "environment/julia-versions.json": "c3d2c691970550a10240a53c366005d0a7f6b2abb5f8a0ed9d95de27f92d8370",
+    "environment/pyfixest-within-freeze.txt": "eaab6085281e5695bd39efbc02eb211f6b3e278a127c2d55b8444bdaf6dafac2",
+    "environment/r-package-paths.json": "1777df07ffbcb11812e09e276ed3f20d84d7787f2cabdf05c956ed4be741443a",
+    "environment/reference-origin.json": "ded108478b24b62e4323bbc1667845f781808423ae4341680f8dbf390e42af26",
+    "environment/runtime.json": "4f7371f2fec10b4068f84f8882167039ed54510f05d94bca6b30d86d6c0b5782",
+    "host-task-1/host.json": "f5149265029983d84664e37042e337e85f21983fd70e78440f93651a004651f1",
+    "host-validation.json": "2cdf0705d0ccd917e1c354ee114adc21cd6e10fe5774fd181def92d15da3cc8a",
+    "input/prior-panels.json": "a2861dc9e5e64bcecbb89274b91e3bc4d54c9a2d139d06819731534330a397f3",
+    "input/source.json": "8a8e5ebed380117728e9040c3f34e465100961c58a03acd56330eb097c6cf8da",
+    "job.sh": "521895a31b764fc8f6fa9f0514b20291d81a25c9fc50d2cd6fa483d6ae71e3f6",
+    "logs/harness-tests.log": "9caa4df00c61dc2673782049e62ecbc1eb34f59e8d1184025aaef6da24c36b4f",
+    "logs/input-audit.log": "ea061d0ced19bb552159b5dd06281c5ceb45a846417b140ff3a3ca4b60c4702b",
+    "logs/julia-environment.log": "0bcbef825a1246b493ee12c1a6355e6166e0f845077a221c7a734be959f3151d",
+    "logs/package-check.log": "0b41fcaa5ae6d3751681a63d1b6dab7ab9e789a3f600544a0e495d850be9cf40",
+    "logs/production.1.sge": "7ad45a393ffa6f093ce4081bac437cc73d67b54d57a1e2027877d8b2430442bf",
+    "logs/reuse.sge": "a997d528aeaa3b12f0af3d65f8d8f3d3add2393e2f2751988cdf65e456044aff",
+    "logs/setup.sge": "c325bfcb1ea63a858824758dc95bd677b1c1ea24ad36851aaf4abbfe4f91e9b7",
+    "logs/smoke.sge": "b27bae8bf0a319eb2364bb4a116557ed0a3113a899c4a9576bb79c044db0ad57",
+    "manifest.json": "48a2c8a16c998622f1c36e7db6bcc146bfaf6a7fc5999b3e343416fddc56ad91",
+    "observations.csv": "1707ecc213f2834e7c8f7e50854e9d9017c2f8a266e22930972cb405ca4a9316",
+    "preparation/inputs.json": "3212a53a58aa91ad960a7f939beb57284aaf4986293c55a54b420d0ff7b8b069",
+    "preparation/long-sample.json": "cd2b8b62c57f74be2d7ab38d57d692358bd7e90eba3ca42f73317ddfbcad8d6e",
+    "preparation/short-sample.json": "80c90bd5083ada7b1b8c724ea05e65ee97cc1e45a9f296e9dd949207e628283f",
+    "production-accounting.txt": "313852104b55b23b881852baa43156b787326066bc879da26e5f7f1ab074d28a",
+    "reuse.sge": "cc01934ccc90c7d4ea7964086a09f79ca662baaa1e340e353c5816357d4c033b",
+    "science.json": "63c89f1814e80e9daa0fc74a6d22a638cc32151f9b53a4e9946ffef82cea86c4",
+    "setup-accounting.txt": "9129077e04b0d962f1127dc27f72843c2f5598c7d70a89b55d9a4abd0b52e913",
+    "setup.sh": "ba76e35995b930ef3c637578a24bf944b30607d1a38997c8348bb0b579cd75f8",
+    "smoke/COMPLETE": "48a5f888b37146f7e455fcb963de4aa3b78e7043f830f1c054d0d27e63ec9e06",
+    "smoke/results.json": "556d3da41cefc3abbbfa63b4129937581fcede941a7fc54449c1d4dd53269c39",
+    "smoke-accounting.txt": "80a581a707025738a94964ff82dab74bbec987513ff4a21cb919519c044eb6fb",
+    "summary.csv": "d169980d474cbae853c0440abb4e42f1d8e2b8a8904e506994473e98cbb750b7",
+    "task-1/COMPLETE": "48a5f888b37146f7e455fcb963de4aa3b78e7043f830f1c054d0d27e63ec9e06",
+    "task-1/results.json": "6530cacf9f65f9b2c70d46e544c028184817a18de10a531f11b9da5e20181215"
+  },
+  "analysis_tools_sha256": {
+    "panel_collect.py": "c50db0dc800733b929ab18da5b40f8b8affa0de3f59e695c4d0d7efda616e0be",
+    "panel_report.py": "bd49f8af7b09900129d9d93e3688c1ee8814cd9217a063737061e7b3228702a7"
+  }
+}
