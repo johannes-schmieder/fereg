@@ -86,6 +86,75 @@
       "candidate-next-full.log": "c88ef840e312a13d3ee372e7d5eed4fb471b0932d9d0fc1c28518d8fc6993193"
     }
   },
+  "mac_coherent_api_science": {
+    "artifacts": {
+      "base": {
+        "binary_sha256": "aacf954088362660ac8b4c6e3819503732d104a49b61925a0f065cc11e0461c3",
+        "source_revision": "32dde1bdd604f33012e592270781129e09e82a92"
+      },
+      "api": {
+        "binary_sha256": "e08d54c9e2364dfa98298a224d09027da6a16c9de3460d04c2b5b8219f67406e",
+        "source_revision": "773372c56b69584f0bb42d930bf8866d8a65050d"
+      },
+      "cancel": {
+        "binary_sha256": "9237ff5c2d80e235d5015449423a15b3ba49f91cbfcb62d4184458d9814a8663",
+        "source_revision": "b596c9854ea078dc40e903300d66a54d6062fcf0"
+      }
+    },
+    "configuration": {
+      "build_jobs": 4,
+      "library_threads": 1,
+      "local_reorthogonalization_size": 8,
+      "maxiter": 1000,
+      "native_workers": 1,
+      "preconditioner_seed": 7,
+      "profile": "release, opt-level 3, fat LTO, one codegen unit, debug 0, incremental off",
+      "rhs_order_per_group": [0, 1, 0, 1],
+      "rust": "1.85.1",
+      "tolerance": 1e-12
+    },
+    "coverage": {
+      "cells": 6,
+      "families": [
+        "unweighted categorical, Off",
+        "positive dyadic weights, categorical, Diagonal",
+        "positive dyadic weights, three slope columns, Additive with ParallelReduction"
+      ],
+      "rows_per_family": [8192, 8388608],
+      "execution_arms": ["base", "api-default", "api-prepared", "cancel"],
+      "fresh_processes_per_arm_cell": 2,
+      "groups_per_process": "one warmup and one retained four-RHS group",
+      "same_api_binary_for_both_output_modes": true
+    },
+    "checks": [
+      "All common named scientific fields match exactly across base, API default and inactive cancellation.",
+      "Across API output modes, coefficients, dimensions, layout, unidentified directions, warnings, convergence, iterations, recurrence-residual bits and explicit stop reasons remain exact.",
+      "PreparedModel differences are confined to demeaned values, planted-residual errors and their full-output digest; all field names and dimensions remain exact.",
+      "Every arm repeats exactly across warmup/retained groups and two fresh processes; all API stops are NormalEquationTolerance.",
+      "Every output passes the independent dyadic planted-projection witness at the unchanged absolute bound of 1e-8.",
+      "All six unique cells, 48 successful process keys and 24 arm/cell references are present; source, checkout and binary identities remain unchanged."
+    ],
+    "maximum_planted_residual_error": 4.001599052116944e-11,
+    "native_processes": 48,
+    "platform": "aarch64-apple-darwin",
+    "rhs_solves_including_warmups": 384,
+    "sha256": {
+      "build_metadata": "9510c03a63c9b3202988d2ac682d5ed015b5b902e55110fc1f0772765e20e4b7",
+      "harness_source": "2abba3e2e30802d77d5973951179190e8cde2b950228028324d003be980a8e05",
+      "preflight": "80644567fcd76ea80bf3204d6254a32462a2691ae8d1b8f4ce94d201de8bd897",
+      "proposal": "020a2a81b31ace8e11daf76748b38eaf04f707ce4091da21703bfce5d5878675",
+      "science_driver": "df3f19df3c3ef4987f1b55e9f9189a684866f13cea6f8cdbaefb05a575d57866",
+      "science_summary": "c2e42bf3a96a06328aa9d096fc04074e964e56d8e318e6ebb91305f60f398119"
+    },
+    "source_only_harness_tests_passed": 14,
+    "status": "passed",
+    "timing": false,
+    "limitations": [
+      "One worker and six representative cells; not a complete weight/preconditioner interaction study.",
+      "Fresh science evidence for coherent API 773372c; historical cf228c performance evidence remains separate.",
+      "No performance qualification, actual fereg plugin evidence or adoption decision."
+    ]
+  },
   "scc": {
     "blas_threads": 1,
     "cargo_build_jobs": 4,

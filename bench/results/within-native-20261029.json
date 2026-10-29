@@ -2158,6 +2158,709 @@
         "limitation": "Compilation does not establish runtime, scientific or performance acceptance of the timing harness.",
         "flag_path_normalization": "Only the verified checkout path in -I is represented relative to source; all other compiler flags are literal."
       }
+    },
+    "qualification_science_preflight": {
+      "budget_s": 7200,
+      "calls": [
+        {
+          "columns_sha256": "83dcf2c3ca74ca2293515f720ca793c5eeb47e8174a2ae485dc0fdec266c84e7",
+          "family": "small-third",
+          "fingerprint": "cd2dc3caacd05c0e6dcea623b4ef1cc5aa3cfa0594631810cc5f99b682c1d312",
+          "log_sha256": "10f62c9a04422728e588ae87b048c0641c27904ba452a172d5d2714fbb9f56a3",
+          "prepared_sha256": "f65c373d39c14c89dc0290f6b36b33eafd17799aea0cb9f3f92ac67eb4512e54",
+          "result_sha256": "fcb3fa7fc964463ca0fb8d618887a2959903effd0ad9d490e6be2c9077840385",
+          "role": "incumbent",
+          "status": "oracle-passed",
+          "within_migration": {
+            "eligible": true,
+            "executed": true,
+            "iterations": 84,
+            "rhs_solves": 8
+          },
+          "worker_signature": "cf004d85f93dc1e0187b86820961b6bc5c32c94c97c760a372fc6cbca03dd599",
+          "workers": 1
+        },
+        {
+          "columns_sha256": "476d5ff0ff117bc585ad180506abff48b96d9ef0a8fab8e84a3331c96b49284f",
+          "family": "small-third",
+          "fingerprint": "68253d929e03d0ecbcc0f872d698ac868cbedd92382154f5b893dc399ab6acb9",
+          "log_sha256": "e3cc4fb14cc4bd0ee08b570abf88abf76c2f0ced9f76bb38817d4bbdc9ce8459",
+          "prepared_sha256": "f65c373d39c14c89dc0290f6b36b33eafd17799aea0cb9f3f92ac67eb4512e54",
+          "result_sha256": "ed6f320d70d34c56ebc4cf3b8f8a37a7a3f2dcc7393eb42dc8c75e18ab520f18",
+          "role": "candidate",
+          "status": "oracle-passed",
+          "within_migration": {
+            "eligible": true,
+            "executed": true,
+            "iterations": 84,
+            "rhs_solves": 8
+          },
+          "worker_signature": "cf004d85f93dc1e0187b86820961b6bc5c32c94c97c760a372fc6cbca03dd599",
+          "workers": 1
+        },
+        {
+          "columns_sha256": "83dcf2c3ca74ca2293515f720ca793c5eeb47e8174a2ae485dc0fdec266c84e7",
+          "family": "small-third",
+          "fingerprint": "4c056c7d06f86f357b1c44cb887c78f59bb016796f394e32fe0c37fbfb736125",
+          "log_sha256": "39df31889ae4704529c4c3afa496835eee21e8b9809a008acaed641844c5650d",
+          "prepared_sha256": "5d8466be5ac565b314e25afa56fc801a63fa1d16fcfd2066b057019165f248aa",
+          "result_sha256": "952f085542b2663e856ca740c2a71743a6e5ff14368578f9f840e97bb4b53089",
+          "role": "incumbent",
+          "status": "oracle-passed",
+          "within_migration": {
+            "eligible": true,
+            "executed": true,
+            "iterations": 84,
+            "rhs_solves": 8
+          },
+          "worker_signature": "cf004d85f93dc1e0187b86820961b6bc5c32c94c97c760a372fc6cbca03dd599",
+          "workers": 4
+        },
+        {
+          "columns_sha256": "476d5ff0ff117bc585ad180506abff48b96d9ef0a8fab8e84a3331c96b49284f",
+          "family": "small-third",
+          "fingerprint": "8fb307d6ea1ca6039924a3959c05a9c986b7def2a4fc70746e14ee833d5fad7f",
+          "log_sha256": "b0fae262dab805b9aa9d389cf397855b425d6885ed061071febec224fbf16373",
+          "prepared_sha256": "5d8466be5ac565b314e25afa56fc801a63fa1d16fcfd2066b057019165f248aa",
+          "result_sha256": "eb1e79c03c4015acd9b83372a3df1d607fcf32db68104d5bd8fbd0b1f80d741c",
+          "role": "candidate",
+          "status": "oracle-passed",
+          "within_migration": {
+            "eligible": true,
+            "executed": true,
+            "iterations": 84,
+            "rhs_solves": 8
+          },
+          "worker_signature": "cf004d85f93dc1e0187b86820961b6bc5c32c94c97c760a372fc6cbca03dd599",
+          "workers": 4
+        },
+        {
+          "columns_sha256": "05fa870b7b48c2e19ea5c1f7812c5d13839370653a228118c34b92c209f3598d",
+          "family": "four-fe",
+          "fingerprint": "f0da097d1b7f0311732fe98d58c25b945a96ef5cd5dc19a44f36d27c13fca18d",
+          "log_sha256": "0d31950a30132fd7412becaa7bf98e9a7771c2cdd2f95ae11cf40cc5dc7cea35",
+          "prepared_sha256": "06f34b974a1d96ce56124ec2d7b24d83aac79ee3f295d39781a54cfb3b351f3c",
+          "result_sha256": "904a5e5f5aafd36d56a7b8f70f6728da5d88d081bd08406eb21d4c3a12304cea",
+          "role": "incumbent",
+          "status": "oracle-passed",
+          "within_migration": {
+            "eligible": true,
+            "executed": true,
+            "iterations": 76,
+            "rhs_solves": 8
+          },
+          "worker_signature": "081e7b6c4c0d9fc5c9158a142dd0c3628799fa084e96ab3f4b055196323c7e02",
+          "workers": 1
+        },
+        {
+          "columns_sha256": "fa546da31a94471f1e7c44c9830867bb5ca9c5591924627f369fefc601b30553",
+          "family": "four-fe",
+          "fingerprint": "e668a41783c9fbf96c94d9591d1bfa5e952e022858f938c93c9d41a6eee8d7a2",
+          "log_sha256": "210e28f3ef7a214413ef5540818f5ab0cbaeab8fe83a4f4c169e4aa0e0c9911f",
+          "prepared_sha256": "06f34b974a1d96ce56124ec2d7b24d83aac79ee3f295d39781a54cfb3b351f3c",
+          "result_sha256": "db7ca16ac17e39142cab8416358e125d1aa98ed0510b8640b42cf0f7d5e171f6",
+          "role": "candidate",
+          "status": "oracle-passed",
+          "within_migration": {
+            "eligible": true,
+            "executed": true,
+            "iterations": 76,
+            "rhs_solves": 8
+          },
+          "worker_signature": "081e7b6c4c0d9fc5c9158a142dd0c3628799fa084e96ab3f4b055196323c7e02",
+          "workers": 1
+        },
+        {
+          "columns_sha256": "05fa870b7b48c2e19ea5c1f7812c5d13839370653a228118c34b92c209f3598d",
+          "family": "four-fe",
+          "fingerprint": "a5527f6344382f9d4468804876ae9da2edd4e4565492d049520ac12b3b6628d8",
+          "log_sha256": "e58e3d017aa4799aa8afaeb5d1e35e0a28ceda1efaf983491bc358df127c6023",
+          "prepared_sha256": "bb3b71d8592a809d2bb14f550c012feec6e6c1badd152121cb4d534d1ce7aa0e",
+          "result_sha256": "f99b78f1b6a0f390529ef9bb7a20d0b3743a7ccd746452b45dc3ef2f08c33768",
+          "role": "incumbent",
+          "status": "oracle-passed",
+          "within_migration": {
+            "eligible": true,
+            "executed": true,
+            "iterations": 76,
+            "rhs_solves": 8
+          },
+          "worker_signature": "081e7b6c4c0d9fc5c9158a142dd0c3628799fa084e96ab3f4b055196323c7e02",
+          "workers": 4
+        },
+        {
+          "columns_sha256": "fa546da31a94471f1e7c44c9830867bb5ca9c5591924627f369fefc601b30553",
+          "family": "four-fe",
+          "fingerprint": "301f2f3e6979392db73d2d3fcdff4977edb48fa47d1942e2eccc50935a941328",
+          "log_sha256": "fe6162e0f56e82792741c77c7cd74150add6f8563a83641e46d421e099821eb5",
+          "prepared_sha256": "bb3b71d8592a809d2bb14f550c012feec6e6c1badd152121cb4d534d1ce7aa0e",
+          "result_sha256": "b9e78db40c204ae7e53c494c519414656631b7845d29fb889c66fa30e86e048e",
+          "role": "candidate",
+          "status": "oracle-passed",
+          "within_migration": {
+            "eligible": true,
+            "executed": true,
+            "iterations": 76,
+            "rhs_solves": 8
+          },
+          "worker_signature": "081e7b6c4c0d9fc5c9158a142dd0c3628799fa084e96ab3f4b055196323c7e02",
+          "workers": 4
+        },
+        {
+          "columns_sha256": "172993aa60163d3e96af7701e76e4bd29b57be070f42eafe798f9682e8729c76",
+          "family": "eight-fe",
+          "fingerprint": "3fbc828266a739eddbc5f9750e27659eceee9c9b94e07ff89da733dc33458f50",
+          "log_sha256": "3737894e1966c21614eedff220b52ad7733bc2f1670a1278eacbc8b8283d4e83",
+          "prepared_sha256": "a22816612878c43e43b4d4182d0fdefaa2a6e32d552507400b05c3c543f1105f",
+          "result_sha256": "e8df91914f00b0c7333813ade66b483f87c864bb983912699175585902d460fa",
+          "role": "incumbent",
+          "status": "oracle-passed",
+          "within_migration": {
+            "eligible": true,
+            "executed": true,
+            "iterations": 77,
+            "rhs_solves": 8
+          },
+          "worker_signature": "ca11d747bea53656d7a0462d87a064ba781d614bbfb744e74b50ad8099559a1c",
+          "workers": 1
+        },
+        {
+          "columns_sha256": "0952515967ed6c95dd830ef8fd4b3d08f4a42199a23c478adbb53a6bf085e3b0",
+          "family": "eight-fe",
+          "fingerprint": "30157e6b50971d2cf6b97c4f7b72bd8f9217ee07b201d3a2fbe7389b5cc015b6",
+          "log_sha256": "1752046c3cb9e0e6b5a6be6f032009e0b47940e6cf563fe13fa73562357c8a83",
+          "prepared_sha256": "a22816612878c43e43b4d4182d0fdefaa2a6e32d552507400b05c3c543f1105f",
+          "result_sha256": "4f287e5d4a6e73cb769be3bea8ca6f2f107cae12e9a031aec41db5c4a5d4fd4b",
+          "role": "candidate",
+          "status": "oracle-passed",
+          "within_migration": {
+            "eligible": true,
+            "executed": true,
+            "iterations": 77,
+            "rhs_solves": 8
+          },
+          "worker_signature": "ca11d747bea53656d7a0462d87a064ba781d614bbfb744e74b50ad8099559a1c",
+          "workers": 1
+        },
+        {
+          "columns_sha256": "172993aa60163d3e96af7701e76e4bd29b57be070f42eafe798f9682e8729c76",
+          "family": "eight-fe",
+          "fingerprint": "2432eb78772bee1490f8334681053ed018fa749b1fac6cab40406bc2bf385250",
+          "log_sha256": "4051a3aeb21d4c44cd6bc410299638a710c469b9d30310365e50a955b97fb038",
+          "prepared_sha256": "c62ee89ffcfb8b3d83c64fad2bb7d2538e658568bc1f3084d55c1151d35a38cd",
+          "result_sha256": "14cee7476264069f60a59c14535a748ac6930d230a7f8ccc557ef45b7f8b0099",
+          "role": "incumbent",
+          "status": "oracle-passed",
+          "within_migration": {
+            "eligible": true,
+            "executed": true,
+            "iterations": 77,
+            "rhs_solves": 8
+          },
+          "worker_signature": "ca11d747bea53656d7a0462d87a064ba781d614bbfb744e74b50ad8099559a1c",
+          "workers": 4
+        },
+        {
+          "columns_sha256": "0952515967ed6c95dd830ef8fd4b3d08f4a42199a23c478adbb53a6bf085e3b0",
+          "family": "eight-fe",
+          "fingerprint": "8342153b9fdb640100a6072903e30706902e1bc8ad9c2e076fbffcaea88061a7",
+          "log_sha256": "daae2643a8263f8f5cc31cc446dbb3b34b36320e38fbf406d3f2b6050224c36d",
+          "prepared_sha256": "c62ee89ffcfb8b3d83c64fad2bb7d2538e658568bc1f3084d55c1151d35a38cd",
+          "result_sha256": "bc1d69e470cb197672ad334c3681755035388ee1a32e0b7a10b0b2e015a54e8d",
+          "role": "candidate",
+          "status": "oracle-passed",
+          "within_migration": {
+            "eligible": true,
+            "executed": true,
+            "iterations": 77,
+            "rhs_solves": 8
+          },
+          "worker_signature": "ca11d747bea53656d7a0462d87a064ba781d614bbfb744e74b50ad8099559a1c",
+          "workers": 4
+        },
+        {
+          "columns_sha256": "a57340b3df985378d80e7975e64e377d726ef6ddc3bd532540c4abe6e37fdab5",
+          "family": "sixteen-fe",
+          "fingerprint": "faec697668a6f5225ef801ddfc2b0cc7c72256a93ddf2c100a5884cb0a0b9907",
+          "log_sha256": "a68b31d38d8e4808664a0b3a64c2e10e6490a8374f1a5ab28beaf2f2a265b6ab",
+          "prepared_sha256": "68a08c3addfa8a009725e0af62b099e4e8e191b4138a200b5fe1d67e8320353c",
+          "result_sha256": "7eba08dd2c8a0e4e016355e124b845fd36fa81f9cc32955891d86903583812e9",
+          "role": "incumbent",
+          "status": "oracle-passed",
+          "within_migration": {
+            "eligible": true,
+            "executed": true,
+            "iterations": 79,
+            "rhs_solves": 8
+          },
+          "worker_signature": "9d686bfdd787f7ee810de90907164199174c0503ed074916670bc50e74fdbe21",
+          "workers": 1
+        },
+        {
+          "columns_sha256": "a5ee3f5d777b2c47a9057c8bea8009fdb3defcbed6e1d205640daba4c6933576",
+          "family": "sixteen-fe",
+          "fingerprint": "d2791a806881aa59b33f3f1dcad9a050a23e36b83f535c0984c132688114517c",
+          "log_sha256": "531a11ca171ac9e5e836533cb2fb0fb4f65c0ca5121364fdc977e2402b6b7b0d",
+          "prepared_sha256": "68a08c3addfa8a009725e0af62b099e4e8e191b4138a200b5fe1d67e8320353c",
+          "result_sha256": "be8c816b380f1c4324eda14855b1d291edaf87792f3b04bb039e18fac3c4b765",
+          "role": "candidate",
+          "status": "oracle-passed",
+          "within_migration": {
+            "eligible": true,
+            "executed": true,
+            "iterations": 79,
+            "rhs_solves": 8
+          },
+          "worker_signature": "9d686bfdd787f7ee810de90907164199174c0503ed074916670bc50e74fdbe21",
+          "workers": 1
+        },
+        {
+          "columns_sha256": "a57340b3df985378d80e7975e64e377d726ef6ddc3bd532540c4abe6e37fdab5",
+          "family": "sixteen-fe",
+          "fingerprint": "031a0ab48876cb02ba18844af94751429b7ce65daa13b479e1a7745a0cd2f14a",
+          "log_sha256": "288b0eeabc0b3d226d8b96ebeb78a1c48333fa3adea78cfd982e531a90f46b5a",
+          "prepared_sha256": "97d7a5125ed99a5044628aced5caaec8e7e36c35c7e1fcc37bd0e3084fb6f6d7",
+          "result_sha256": "64f149cb9a67cab4836b9bfaec128d205138becd621fc630779b924260d2229f",
+          "role": "incumbent",
+          "status": "oracle-passed",
+          "within_migration": {
+            "eligible": true,
+            "executed": true,
+            "iterations": 79,
+            "rhs_solves": 8
+          },
+          "worker_signature": "9d686bfdd787f7ee810de90907164199174c0503ed074916670bc50e74fdbe21",
+          "workers": 4
+        },
+        {
+          "columns_sha256": "a5ee3f5d777b2c47a9057c8bea8009fdb3defcbed6e1d205640daba4c6933576",
+          "family": "sixteen-fe",
+          "fingerprint": "26adb3d9ff7d4aff310c440f1240fe3f5da217a680d7bcce663199e5edf926f5",
+          "log_sha256": "a4d0fa22808ac4dd9ec7869bfac1b2be8e23c51e79f6b6f9b59e806300a425f0",
+          "prepared_sha256": "97d7a5125ed99a5044628aced5caaec8e7e36c35c7e1fcc37bd0e3084fb6f6d7",
+          "result_sha256": "7137cd840ca57938254d9fdac87705a363c22b57f2f5f36f65937b245251992a",
+          "role": "candidate",
+          "status": "oracle-passed",
+          "within_migration": {
+            "eligible": true,
+            "executed": true,
+            "iterations": 79,
+            "rhs_solves": 8
+          },
+          "worker_signature": "9d686bfdd787f7ee810de90907164199174c0503ed074916670bc50e74fdbe21",
+          "workers": 4
+        },
+        {
+          "columns_sha256": "6966a89b771f7b134b7f27309fd14219f1b26d4566c6f46c259166dfad0b5c2c",
+          "family": "near-confounded-third",
+          "fingerprint": "0c4a91c05a78119e619d09b61e13191e5d71c3d41222428e4acf22e84227f0cc",
+          "log_sha256": "590aa1f0eae59db7db7ca0ce72f14fc62270af1215162a0d82fe6652f180bac6",
+          "prepared_sha256": "5e42ad5d8999d308ba718d208765f444cd399c42135101849632a3f9e26c338e",
+          "result_sha256": "574c698f2b25a20624a50186c6431542a03e8e387a2d3761d9772619a4b9099a",
+          "role": "incumbent",
+          "status": "oracle-passed",
+          "within_migration": {
+            "eligible": true,
+            "executed": true,
+            "iterations": 71,
+            "rhs_solves": 5
+          },
+          "worker_signature": "34db99df90bac5e17400e446250660534b056e9d353f74e60b4e29022d6430d4",
+          "workers": 1
+        },
+        {
+          "columns_sha256": "66f862194a01769eee869536d32f67ed8f0223c43b756bd2341b8cca2679580b",
+          "family": "near-confounded-third",
+          "fingerprint": "280d42ed0bcc07364156676da51c3c47e77e4b4fb8472993cec7b2bb24f636ac",
+          "log_sha256": "1b1dcb195ff114ad93bc609cc1b667003a5e4ffd3145283b71797079e732b234",
+          "prepared_sha256": "5e42ad5d8999d308ba718d208765f444cd399c42135101849632a3f9e26c338e",
+          "result_sha256": "f7d718f04c59e3de5a0df8c0cef2425ec3c378470431c644f9de5abb4be30f94",
+          "role": "candidate",
+          "status": "oracle-passed",
+          "within_migration": {
+            "eligible": true,
+            "executed": true,
+            "iterations": 71,
+            "rhs_solves": 5
+          },
+          "worker_signature": "34db99df90bac5e17400e446250660534b056e9d353f74e60b4e29022d6430d4",
+          "workers": 1
+        },
+        {
+          "columns_sha256": "6966a89b771f7b134b7f27309fd14219f1b26d4566c6f46c259166dfad0b5c2c",
+          "family": "near-confounded-third",
+          "fingerprint": "87032c0eebf8e203f3609fb8d95af1c56d07df4e1aaa4e76c0eda2e4fb6ed4cb",
+          "log_sha256": "c0947320e3d639d33aefa21d61a4cd361fb3158fe0b72ad34d0558a71d5b01de",
+          "prepared_sha256": "9dc3f3f9e6300b521e80bbd22c7bba4d7c4663971b666afd2f546bb74c142491",
+          "result_sha256": "64f76b3dbb715ab79472e100aa0b658dff12fc565117c4fc1f46cb439413d49c",
+          "role": "incumbent",
+          "status": "oracle-passed",
+          "within_migration": {
+            "eligible": true,
+            "executed": true,
+            "iterations": 71,
+            "rhs_solves": 5
+          },
+          "worker_signature": "34db99df90bac5e17400e446250660534b056e9d353f74e60b4e29022d6430d4",
+          "workers": 4
+        },
+        {
+          "columns_sha256": "66f862194a01769eee869536d32f67ed8f0223c43b756bd2341b8cca2679580b",
+          "family": "near-confounded-third",
+          "fingerprint": "ea42267ec5fdcedfc9773e5b692736602c9c0a81ad7f1d967752bf8e7ddc7dd1",
+          "log_sha256": "12332ca3d989f8eabf9916be483870c2886bf17e6591209c4cef4ab45d07e564",
+          "prepared_sha256": "9dc3f3f9e6300b521e80bbd22c7bba4d7c4663971b666afd2f546bb74c142491",
+          "result_sha256": "381f3232a645d04917a6d671fce8cdf5101a2460231c7dabc63af1f6037344c7",
+          "role": "candidate",
+          "status": "oracle-passed",
+          "within_migration": {
+            "eligible": true,
+            "executed": true,
+            "iterations": 71,
+            "rhs_solves": 5
+          },
+          "worker_signature": "34db99df90bac5e17400e446250660534b056e9d353f74e60b4e29022d6430d4",
+          "workers": 4
+        },
+        {
+          "columns_sha256": "69c6d1ddf9a30f833228d5e1808f6c9bab1bd368604a0ee9b6cf822253246bca",
+          "family": "campaign-three-sparse",
+          "fingerprint": "545939828afdaee882d50b625bde5e7b5ecca6eb27c00d1c3da46b25bd811433",
+          "log_sha256": "4dd41266999b39f80675aab75c46216156ba3429938972f31ebbd93c5d7451c8",
+          "prepared_sha256": "e856815653ba02dbb81a0bc1ba401bd13ebcdc5414c49783cf15c3fdadea1c84",
+          "result_sha256": "58192bf008f9f46ece73a1322437f4d55bbebea72874a9daf0ad0b37b83058b6",
+          "role": "incumbent",
+          "status": "oracle-passed",
+          "within_migration": {
+            "eligible": true,
+            "executed": true,
+            "iterations": 390,
+            "rhs_solves": 19
+          },
+          "worker_signature": "62192355c6d593b2cdd7ebe8db1b60da7a0cc1979f8271164795060c9f928e7f",
+          "workers": 1
+        },
+        {
+          "columns_sha256": "f04cbf5145fcce0dcff46e672fe14a7210ac8613c8e2f7d89eda8a0c26d5e0ff",
+          "family": "campaign-three-sparse",
+          "fingerprint": "2776d3570d029af3ceebf27cd6b7f9141cac9b73924db957f79e5726b4712d7c",
+          "log_sha256": "1c613b88373b3137835cac6798eb7f93515f2e0e6332d6fd82e9515d16e7a596",
+          "prepared_sha256": "e856815653ba02dbb81a0bc1ba401bd13ebcdc5414c49783cf15c3fdadea1c84",
+          "result_sha256": "c0baab3c8354c5c58950f1fbc24b7949e3fe4087d1396e7c0c9a446752b561fb",
+          "role": "candidate",
+          "status": "oracle-passed",
+          "within_migration": {
+            "eligible": true,
+            "executed": true,
+            "iterations": 390,
+            "rhs_solves": 19
+          },
+          "worker_signature": "62192355c6d593b2cdd7ebe8db1b60da7a0cc1979f8271164795060c9f928e7f",
+          "workers": 1
+        },
+        {
+          "columns_sha256": "69c6d1ddf9a30f833228d5e1808f6c9bab1bd368604a0ee9b6cf822253246bca",
+          "family": "campaign-three-sparse",
+          "fingerprint": "6788402f70359e811c5074afff5a0200f68d763e404306991c80c0f9817cd049",
+          "log_sha256": "43fcbd5f78c2e406dbc39434a0724380c3c44a2596dd0eb2eb429dec28c76a9e",
+          "prepared_sha256": "8f265abdb40a25579e6e7d60c5e3d9a9a48bab7c02db347ecbaeb570444ff47d",
+          "result_sha256": "c73862503bfa6008750707c0dda3a340717a817a9d5e77c3a357fd392224f6a9",
+          "role": "incumbent",
+          "status": "oracle-passed",
+          "within_migration": {
+            "eligible": true,
+            "executed": true,
+            "iterations": 390,
+            "rhs_solves": 19
+          },
+          "worker_signature": "62192355c6d593b2cdd7ebe8db1b60da7a0cc1979f8271164795060c9f928e7f",
+          "workers": 4
+        },
+        {
+          "columns_sha256": "f04cbf5145fcce0dcff46e672fe14a7210ac8613c8e2f7d89eda8a0c26d5e0ff",
+          "family": "campaign-three-sparse",
+          "fingerprint": "087b72e2a12291b331d6b5ad59f80a6840864e7a8e169ef93a7426ff79a3ecdb",
+          "log_sha256": "ac41e2aa8eed6b4de43e630931502b99a3227f71715a795378105f788603670f",
+          "prepared_sha256": "8f265abdb40a25579e6e7d60c5e3d9a9a48bab7c02db347ecbaeb570444ff47d",
+          "result_sha256": "ee79b29b92c6a21e444712d5a0349150270ac32df63ac96870b0061f0d30318e",
+          "role": "candidate",
+          "status": "oracle-passed",
+          "within_migration": {
+            "eligible": true,
+            "executed": true,
+            "iterations": 390,
+            "rhs_solves": 19
+          },
+          "worker_signature": "62192355c6d593b2cdd7ebe8db1b60da7a0cc1979f8271164795060c9f928e7f",
+          "workers": 4
+        },
+        {
+          "columns_sha256": "08c56052c382ba6204267b99d24c83b476d47f03d8e149666b2a07cefa66886b",
+          "family": "campaign-three-dense",
+          "fingerprint": "956d5c7f17ffc3832acb0583597a15efbe6e0fb08cf8cdb27cfadbd44671b297",
+          "log_sha256": "265da5f38083611e655ab25948535f17ae32ec560a400087217ab7540dda91f7",
+          "prepared_sha256": "fa9e7e62105662a949af1e6639fa1a0b21bdf17816548c2ca2d23b5980d4f4db",
+          "result_sha256": "be02018b26683f02ecbda1733c68a6c2fb2fa8ce129a987fe9aa3c1df0b97267",
+          "role": "incumbent",
+          "status": "oracle-passed",
+          "within_migration": {
+            "eligible": true,
+            "executed": false,
+            "iterations": 0,
+            "rhs_solves": 0
+          },
+          "worker_signature": "756bdcacf60826a269e7d3e47e4882d1b8852be0c82637d4f64a652faf713f2d",
+          "workers": 1
+        },
+        {
+          "columns_sha256": "08c56052c382ba6204267b99d24c83b476d47f03d8e149666b2a07cefa66886b",
+          "family": "campaign-three-dense",
+          "fingerprint": "956d5c7f17ffc3832acb0583597a15efbe6e0fb08cf8cdb27cfadbd44671b297",
+          "log_sha256": "c5763f3022dd7008070bfa88f15c04b3124a2c089d78712ffef377a1ff341598",
+          "prepared_sha256": "fa9e7e62105662a949af1e6639fa1a0b21bdf17816548c2ca2d23b5980d4f4db",
+          "result_sha256": "b68c1ef4fa6c78340816673a68216864cebdfb77626d2089a5b1e937a9bf84ed",
+          "role": "candidate",
+          "status": "oracle-passed",
+          "within_migration": {
+            "eligible": true,
+            "executed": false,
+            "iterations": 0,
+            "rhs_solves": 0
+          },
+          "worker_signature": "756bdcacf60826a269e7d3e47e4882d1b8852be0c82637d4f64a652faf713f2d",
+          "workers": 1
+        },
+        {
+          "columns_sha256": "08c56052c382ba6204267b99d24c83b476d47f03d8e149666b2a07cefa66886b",
+          "family": "campaign-three-dense",
+          "fingerprint": "329e7173e9153ad2d2a1196c984eee699698b4642664562d53aca34829494eb4",
+          "log_sha256": "231e456ad7436c0893d731fcee5faab272c926fe9cb83684eb32ef991eb02a70",
+          "prepared_sha256": "11ac4c0f4b75adf51f5dd37ad2fbe80bb7981fe84b655eec168832d41a718589",
+          "result_sha256": "7b880c471f69772be94c7cae0ef544d98e3f62467f7c35a7635fbed5950b085a",
+          "role": "incumbent",
+          "status": "oracle-passed",
+          "within_migration": {
+            "eligible": true,
+            "executed": false,
+            "iterations": 0,
+            "rhs_solves": 0
+          },
+          "worker_signature": "756bdcacf60826a269e7d3e47e4882d1b8852be0c82637d4f64a652faf713f2d",
+          "workers": 4
+        },
+        {
+          "columns_sha256": "08c56052c382ba6204267b99d24c83b476d47f03d8e149666b2a07cefa66886b",
+          "family": "campaign-three-dense",
+          "fingerprint": "329e7173e9153ad2d2a1196c984eee699698b4642664562d53aca34829494eb4",
+          "log_sha256": "930c944219eb2937d1f5fe4d7728b1689aeffcd29d78b4f67d23f6265df3319f",
+          "prepared_sha256": "11ac4c0f4b75adf51f5dd37ad2fbe80bb7981fe84b655eec168832d41a718589",
+          "result_sha256": "d582c584d8638be80ef16710cf015817aa2109f2faaead612d1e2fc6f8625afd",
+          "role": "candidate",
+          "status": "oracle-passed",
+          "within_migration": {
+            "eligible": true,
+            "executed": false,
+            "iterations": 0,
+            "rhs_solves": 0
+          },
+          "worker_signature": "756bdcacf60826a269e7d3e47e4882d1b8852be0c82637d4f64a652faf713f2d",
+          "workers": 4
+        }
+      ],
+      "cleared_native_environment_keys": [
+        "DYLD_INSERT_LIBRARIES",
+        "FEREG_ACTION_MEMORY_AUDIT",
+        "FEREG_CMG_ORDINARY",
+        "FEREG_MEMORY_LIMIT_BYTES",
+        "FEREG_PHASE_TIMING",
+        "FEREG_PPML_MEMORY_TRACE",
+        "FEREG_SOLVER_TRACE",
+        "FEREG_SOLVER_TRACE_FILE",
+        "LD_AUDIT",
+        "LD_PRELOAD",
+        "LLVM_PROFILE_FILE",
+        "RAYON_NUM_THREADS",
+        "RUST_TEST_THREADS"
+      ],
+      "comparisons": [
+        {
+          "arms_passed": true,
+          "both_executed_within": true,
+          "cross_worker_passed": false,
+          "family": "small-third",
+          "workers": 1
+        },
+        {
+          "arms_passed": true,
+          "both_executed_within": true,
+          "cross_worker_passed": true,
+          "family": "small-third",
+          "workers": 4
+        },
+        {
+          "arms_passed": true,
+          "both_executed_within": true,
+          "cross_worker_passed": false,
+          "family": "four-fe",
+          "workers": 1
+        },
+        {
+          "arms_passed": true,
+          "both_executed_within": true,
+          "cross_worker_passed": true,
+          "family": "four-fe",
+          "workers": 4
+        },
+        {
+          "arms_passed": true,
+          "both_executed_within": true,
+          "cross_worker_passed": false,
+          "family": "eight-fe",
+          "workers": 1
+        },
+        {
+          "arms_passed": true,
+          "both_executed_within": true,
+          "cross_worker_passed": true,
+          "family": "eight-fe",
+          "workers": 4
+        },
+        {
+          "arms_passed": true,
+          "both_executed_within": true,
+          "cross_worker_passed": false,
+          "family": "sixteen-fe",
+          "workers": 1
+        },
+        {
+          "arms_passed": true,
+          "both_executed_within": true,
+          "cross_worker_passed": true,
+          "family": "sixteen-fe",
+          "workers": 4
+        },
+        {
+          "arms_passed": true,
+          "both_executed_within": true,
+          "cross_worker_passed": false,
+          "family": "near-confounded-third",
+          "workers": 1
+        },
+        {
+          "arms_passed": true,
+          "both_executed_within": true,
+          "cross_worker_passed": true,
+          "family": "near-confounded-third",
+          "workers": 4
+        },
+        {
+          "arms_passed": true,
+          "both_executed_within": true,
+          "cross_worker_passed": false,
+          "family": "campaign-three-sparse",
+          "workers": 1
+        },
+        {
+          "arms_passed": true,
+          "both_executed_within": true,
+          "cross_worker_passed": true,
+          "family": "campaign-three-sparse",
+          "workers": 4
+        },
+        {
+          "arms_passed": true,
+          "both_executed_within": false,
+          "cross_worker_passed": false,
+          "family": "campaign-three-dense",
+          "workers": 1
+        },
+        {
+          "arms_passed": true,
+          "both_executed_within": false,
+          "cross_worker_passed": true,
+          "family": "campaign-three-dense",
+          "workers": 4
+        }
+      ],
+      "config_sha256": "d3d6657cc29f9b6bcabeec6ae98a55bf25d957f917c6a0f9fd42b6924e1e0070",
+      "elapsed_s": 395.1407436419977,
+      "helper_sha256": "6fb3b84905d617bef44d1b9134c6dee17e0e3181fd0e106456ea69e1b98a66e9",
+      "input_plan_sha256": "a0824aa4e40553196c97fb23f570c34658d7ccfecca7af04157a026abdf0eafc",
+      "mode": "science-only",
+      "native_call_cap": 28,
+      "native_calls_started": 28,
+      "note": "Incidental harness timers remain in raw logs; no timing comparison, extra repeat or observer policy is used.",
+      "pins": {
+        "candidate": "a01a1fc905e95db1621e288b21f45e47bd628c789cb0931240241dbc4f0b8cfc",
+        "harness": "63dda1c1dd6436305aae2fdb3ffb410f3af9d3d5220cc0be3c0599ed7d19ba67",
+        "incumbent": "a79641166c17e5c193dc5f86a7fd487265d6978076e60ab7ca72f32f240f9f08"
+      },
+      "repeatability_claim": false,
+      "status": "passed",
+      "timeout_s": 120,
+      "timing_verdict": null,
+      "summary_sha256": "6d2503943682b693bb16bbb5070f276f280c50c86b9aa7db7e46eda4f1b06485",
+      "runtime_source_revision": "d96eccfc269b8b5045038ee0dcee5fc2c788a86d",
+      "scope": "Seven prospective many-FE families; one call per actual published beta.10/candidate and worker count 1/4. No native repeat or timing comparison.",
+      "execution_sources_match_macos": true,
+      "inputs_match_macos": true,
+      "path_evidence": "All six non-dense families reached within in both binaries at both worker counts. campaign-three-dense completed in the MAP pilot at both worker counts and required exact scientific equality; it supplies no within cost evidence.",
+      "accounting": {
+        "job": 8327872,
+        "host": "scc-pg7",
+        "failed": 0,
+        "exit_status": 0,
+        "slots": 16,
+        "wall_seconds": 443,
+        "cpu_seconds": 509.668,
+        "maxvmem": "1.921G"
+      },
+      "environment": {
+        "python": "3.12.4 (main, Jul  1 2024, 10:14:11) [GCC 12.2.0]",
+        "packages": {
+          "numpy": "1.26.4",
+          "scipy": "1.14.0"
+        },
+        "affinity": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ]
+      },
+      "evidence_sha256": {
+        "accounting.txt": "9b73805dc447716c4b52917e1afdd98675f8c845c57a0c6d74f5a4b11a5b8beb",
+        "environment.json": "366fcbf473c9c78b4de84791d1b3bdc228e383272cdd0cd998e223e6bbdf9ffa",
+        "PASS": "2173566b867a35ea2dc7a80aa093ed28aa4924c18dec4c8a14ea2caa67852f51",
+        "exit-status.txt": "c5248ed3e305aceb5f2aff61fc17c105f4e1157d4f947b87728a5b2be18cc102",
+        "job.log": "9e674ded044e79b466c2501c0c600f3b871e61b5694993f49534bba27fbad431",
+        "logs/preflight.log": "d79847831fc5055f3e35cd78941cfdb6f036cada88d0745dbd9ebd81be297dd2",
+        "logs/input-verification.log": "6ee39c39a7760cf184bdc558724bf14a9cf7e9706005d93ae94ad521045040b8"
+      },
+      "independent_review": {
+        "local_result_hashes_verified": 28,
+        "local_log_hashes_verified": 28,
+        "local_trace_counts_verified": 28,
+        "checks": "Scheduler status, terminal markers, source/input-plan bindings, same maintained sources and same input/oracle hashes as the Mac preflight verified. No native rerun.",
+        "column_storage": "Column sidecars and prepared requests remain SCC-only; their recorded hashes were not independently rehashed locally."
+      },
+      "limitations": [
+        "No fixed-worker repeatability claim from a single call per cell; separate replay and timed repetition gates remain required.",
+        "No performance acceptance, package admission, publication or adoption claim.",
+        "Within iterations are trace observations, not proof of every API feature or fallback branch."
+      ]
     }
   },
   "limitations": [
@@ -2179,7 +2882,8 @@
       "Linux 693-transaction replay checks and final scheduler accounting",
       "Linux four-case public boundary checks and final scheduler accounting",
       "Additional Mac mapped OLS reuse and augmented PPML oracle fixtures",
-      "Additional Linux mapped OLS reuse and augmented PPML oracle fixtures, source-bound timing-harness compilation and scheduler accounting"
+      "Additional Linux mapped OLS reuse and augmented PPML oracle fixtures, source-bound timing-harness compilation and scheduler accounting",
+      "Linux primary science preflight: 28 stored result/log hashes and actual path traces, 14 accepted comparisons, scheduler accounting and terminal markers; columns remain SCC-only"
     ],
     "pending": []
   }

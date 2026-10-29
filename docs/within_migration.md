@@ -536,6 +536,25 @@ allocation, with no isolation or performance claim. The
 [compact record](../bench/results/within-output-option-20261029.json) preserves
 source, script, manifest and result identities, including earlier diagnostics.
 
+A fresh Mac science panel for coherent API `773372c` passed all 48 declared
+processes and 384 RHS solves, including warmups, against frozen upstream
+`32dde1b` and inactive cancellation `b596c`. Proposal SHA-256
+`020a2a81b31ace8e11daf76748b38eaf04f707ce4091da21703bfce5d5878675`
+binds six cells at one worker: 8,192 and 8,388,608 rows for unweighted
+categorical Off, weighted categorical Diagonal and weighted three-slope
+Additive designs. The same API binary supplies default and PreparedModel
+output modes. All common named fields match exactly across base, default API
+and cancellation. Between API output modes, coefficients, dimensions, layout,
+unidentified directions, warnings, convergence, iterations, recurrence-residual
+bits and explicit stop reasons remain exact; only demeaned values, their
+planted-residual errors and the full-output digest differ. Each arm repeats
+exactly across warmup/retained groups and two fresh processes. The independent
+dyadic projection witness passes the unchanged `1e-8` absolute bound, with
+maximum error `4.001599052116944e-11`. The same compact record preserves the
+three actual binary hashes and source, proposal and preflight identities.
+This panel contains no timed invocations and makes no fereg adoption claim;
+historical `cf228c` performance evidence remains separate.
+
 Fereg explicitly selects this output mode in both ordinary batch and controlled
 routing helpers. Its numerical scope includes their weighted/sloped OLS and
 PPML checkpoint, separation and fallback consumers. The returned residual may

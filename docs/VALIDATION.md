@@ -92,12 +92,16 @@ ordinary Within OLS and augmented joint-PPML execution; the Linux timing
 harness was compiled but made no performance calls. Package admission,
 beta.10 performance and production acceptance remain outstanding.
 
-The Mac qualification science preflight passes all 28 calls across seven
-prospective many-FE families, both actual binaries and one/four workers.
-Independent oracles and cross-worker scientific/discrete checks pass. Six
-families reach Within in both binaries; the dense three-FE family completes
-in the unchanged MAP pilot and remains exact. This is no timing or additional
-fixed-worker repeatability claim; Linux preflight and performance remain pending.
+The qualification science preflight passes all 28 calls and 14 comparisons
+on each platform across seven prospective many-FE families, both actual binaries
+and one/four workers. Independent oracles and cross-worker scientific/discrete
+checks pass. Six families reach Within in both binaries; the dense three-FE
+family completes in the unchanged MAP pilot and remains exact. Linux job
+8327872 on `scc-pg7` completed with scheduler failure/exit status 0/0 and all
+terminal markers. Its 28 collected result/log pairs and path traces were
+independently verified; column files remain on SCC. The native record retains
+the exact identities and accounting. This is no timing or additional
+fixed-worker repeatability claim; performance qualification remains pending.
 
 The separate sparse back-substitution optimization completed its practical Mac
 comparison: 312 calls, 72 paired blocks and all 12 descriptive intervals passed
