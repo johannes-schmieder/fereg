@@ -30,7 +30,8 @@ forvalues case = 1/3 {
             quietly fereg y q v i.g [aw=w], absorb(g##c.(z1 z2)) ///
                 solver(lsmr) preconditioner(off) memory(fast) ///
                 tolerance(1e-10) iterate(100) threads(`workers') deterministic ///
-                residuals(actual_r) xbd(actual_f)
+                residuals(actual_r)
+            quietly predict double actual_f, xbd
             assert e(N) == 128 & e(N_full) == 128 & e(num_singletons) == 0
             assert e(sample) == 1 & e(rank) == ref_rank & e(converged) == 1
             assert "`e(fereg_solver_used)'" == "lsmr"

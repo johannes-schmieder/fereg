@@ -151,7 +151,7 @@
     5,
     7
   ],
-  "command": "fereg y q v i.g [aw=w], absorb(g##c.(z1 z2)) solver(lsmr) preconditioner(off) memory(fast) tolerance(1e-10) iterate(100) threads(WORKERS) deterministic residuals(actual_r) xbd(actual_f)",
+  "command": "fereg y q v i.g [aw=w], absorb(g##c.(z1 z2)) solver(lsmr) preconditioner(off) memory(fast) tolerance(1e-10) iterate(100) threads(WORKERS) deterministic residuals(actual_r); predict double actual_f, xbd",
   "oracle": "Reuse the maintained 60-fixture exact-rational centered-Gram rank decisions on actual binary64 slopes. Independently orthogonalize retained raw columns in weighted observation space, residualize rounded y+.7*(u*v), q=u*v and v, and solve their exact rational finite normal equations. Existing FE-collinearity rule is residual energy/raw energy <= exact binary64 1e-9. All retained FE and finite score moments are exactly zero. Nonzero omitted-v energy is reported explicitly.",
   "sample": "All 128 original rows, no singleton removals; rank 2/2/1 for cases1/2/3.",
   "original_axis": "q v 3b.g 11o.g 29o.g 97o.g _cons; replace v by o.v only in case3. Slots1..7 unchanged, statuses1,(1/1/3),2,3,3,3,5. Omitted coefficient and covariance rows/columns are exactly zero. Explicit ib3.g with sloped absorption remains unsupported rc498 and must preserve the accepted estimates and absent requested output.",
@@ -170,8 +170,8 @@
   "transport": "CSV binary64 round-trip decimal values imported with asdouble. Before estimation, Stata %21x values for z1/z2/y must match independently generated canonical hex strings; w/q/v and labels are exact small integers. The licensed runner records actual plugin and source identities; CSV and fixture hashes below freeze prospective inputs.",
   "sha256": {
     "tests/fixtures/ols/within_plugin_slope_boundary.csv": "891404052b5904e36a86b6901993dc270a996a684dfcd95fc1fe252a38e92147",
-    "tests/stata/development/within_plugin_slope_boundary.do": "0e5c29aa5c5b8b0b14c7d285922c18324a7da24b399c77d940e9ea6c25a94f36",
-    "bench/prepare_within_plugin_boundary.py": "de5f9f2e036175f080e227077c55bdbe2dff66e1864445ea9c41382e34880099",
+    "tests/stata/development/within_plugin_slope_boundary.do": "0cae53ed7de8e13377391b757230fe301433ca3f328b19714fb0d020d8766587",
+    "bench/prepare_within_plugin_boundary.py": "3eb88a5019bb6fc94f08f19e88c97e377f236c81386ea7a1a2ae04613f091f9f",
     "bench/compare_within_slope_boundary.py": "307dd2283eae442ffa9fbd39153b87c7f307348aff617fe27b25b3e6bf44064e"
   }
 }

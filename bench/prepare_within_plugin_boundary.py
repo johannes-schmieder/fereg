@@ -130,7 +130,7 @@ def contents():
         "cases": expected, "workers": [1, 4], "repeats_per_worker": 2,
         "native_estimation_calls": 12, "additional_frontend_only_rejections": 3,
         "rows_per_case": 128, "levels": [3, 11, 29, 97], "weights": [2, 3, 5, 7],
-        "command": "fereg y q v i.g [aw=w], absorb(g##c.(z1 z2)) solver(lsmr) preconditioner(off) memory(fast) tolerance(1e-10) iterate(100) threads(WORKERS) deterministic residuals(actual_r) xbd(actual_f)",
+        "command": "fereg y q v i.g [aw=w], absorb(g##c.(z1 z2)) solver(lsmr) preconditioner(off) memory(fast) tolerance(1e-10) iterate(100) threads(WORKERS) deterministic residuals(actual_r); predict double actual_f, xbd",
         "oracle": "Reuse the maintained 60-fixture exact-rational centered-Gram rank decisions on actual binary64 slopes. Independently orthogonalize retained raw columns in weighted observation space, residualize rounded y+.7*(u*v), q=u*v and v, and solve their exact rational finite normal equations. Existing FE-collinearity rule is residual energy/raw energy <= exact binary64 1e-9. All retained FE and finite score moments are exactly zero. Nonzero omitted-v energy is reported explicitly.",
         "sample": "All 128 original rows, no singleton removals; rank 2/2/1 for cases1/2/3.",
         "original_axis": "q v 3b.g 11o.g 29o.g 97o.g _cons; replace v by o.v only in case3. Slots1..7 unchanged, statuses1,(1/1/3),2,3,3,3,5. Omitted coefficient and covariance rows/columns are exactly zero. Explicit ib3.g with sloped absorption remains unsupported rc498 and must preserve the accepted estimates and absent requested output.",
