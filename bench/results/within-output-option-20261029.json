@@ -155,6 +155,98 @@
       "No performance qualification, actual fereg plugin evidence or adoption decision."
     ]
   },
+  "scc_coherent_api_science": {
+    "artifacts": {
+      "base": {
+        "binary_sha256": "6e92de24c2cf48205cedca0f4280790e74e7fd92dc0056ad562102270e63401b",
+        "source_revision": "32dde1bdd604f33012e592270781129e09e82a92"
+      },
+      "api": {
+        "binary_sha256": "513a9f34193155a0142050d70060251b5bd11ae865cb0a012de5d182a347ce85",
+        "source_revision": "773372c56b69584f0bb42d930bf8866d8a65050d"
+      },
+      "cancel": {
+        "binary_sha256": "6923a12b74e20364b4a62cc9ad8ebd420581114bb9cdf24811256a030af671dc",
+        "source_revision": "b596c9854ea078dc40e903300d66a54d6062fcf0"
+      }
+    },
+    "configuration": {
+      "build_jobs": 4,
+      "gcc": "12.2.0",
+      "incremental": false,
+      "library_threads": 1,
+      "local_reorthogonalization_size": 8,
+      "maxiter": 1000,
+      "native_workers": 1,
+      "preconditioner_seed": 7,
+      "profile": "release, opt-level 3, fat LTO, one codegen unit, debug 0",
+      "python": "3.12.4",
+      "rhs_order_per_group": [0, 1, 0, 1],
+      "rust": "1.85.1",
+      "tolerance": 1e-12
+    },
+    "coverage": {
+      "cells": 6,
+      "families": [
+        "unweighted categorical, Off",
+        "positive dyadic weights, categorical, Diagonal",
+        "positive dyadic weights, three slope columns, Additive with ParallelReduction"
+      ],
+      "rows_per_family": [8192, 8388608],
+      "execution_arms": ["base", "api-default", "api-prepared", "cancel"],
+      "fresh_processes_per_arm_cell": 2,
+      "groups_per_process": "one warmup and one retained four-RHS group",
+      "same_api_binary_for_both_output_modes": true
+    },
+    "checks": [
+      "All common named scientific fields match exactly across base, API default and inactive cancellation.",
+      "Across API output modes, coefficients, dimensions, layout, unidentified directions, warnings, convergence, iterations, recurrence-residual bits and explicit stop reasons remain exact.",
+      "PreparedModel differences are confined to demeaned values, planted-residual errors and their full-output digest; all field names and dimensions remain exact.",
+      "Every arm repeats exactly across warmup/retained groups and two fresh processes; all API stops are NormalEquationTolerance.",
+      "Every output passes the independent dyadic planted-projection witness at the unchanged absolute bound of 1e-8.",
+      "All six unique cells, 48 successful process keys and 24 arm/cell references are present; source, clean checkout and binary identities are verified, and existing helper sources are unchanged."
+    ],
+    "accounting": {
+      "qname": "qphys-pub",
+      "hostname": "scc-eg1.scc.bu.edu",
+      "granted_pe": "omp16",
+      "slots": "16",
+      "failed": "0",
+      "exit_status": "0",
+      "ru_wallclock": "684",
+      "cpu": "733.921",
+      "ru_maxrss": "1432040",
+      "maxvmem": "2.455G"
+    },
+    "job": 8328473,
+    "host": "scc-eg1",
+    "maximum_planted_residual_error": 4.001599052116944e-11,
+    "native_processes": 48,
+    "arm_cell_references": 24,
+    "platform": "Linux",
+    "rhs_solves_including_warmups": 384,
+    "sha256": {
+      "build_metadata": "5a1bec2330763fe2b0b606ce02ac8fd5ae9c56969d7f55404976c45929193262",
+      "harness_source": "2abba3e2e30802d77d5973951179190e8cde2b950228028324d003be980a8e05",
+      "preflight": "09ee757abdf5f9314fd4ccad1712e1093957b6738279445981ff13f52d6e3b1b",
+      "proposal": "020a2a81b31ace8e11daf76748b38eaf04f707ce4091da21703bfce5d5878675",
+      "science_driver": "df3f19df3c3ef4987f1b55e9f9189a684866f13cea6f8cdbaefb05a575d57866",
+      "science_summary": "b9c76d6d0f451307544e299b231fcd808115d245f478dc8cbfdb636efaf950bc",
+      "source_binding": "b2d892acc4201fcd508b13c7192a39ddd97ba1e7fc939069c4ed34efaea5ca1f",
+      "accounting": "94766c0bdead392b26e81ef6d6d70896066710a2f15a6e0d54ed5a3a7f65400e",
+      "attempt": "c3e4c83c8be4997190f5d04ce0bb8a312bdca44408c68a11d99aa170d669d41d",
+      "log": "223eedb959ecf44575279063dc83e1b874a9c7842712b83cf8f84888b6b5461b"
+    },
+    "status": "passed",
+    "timing": false,
+    "isolation_claim": false,
+    "retries": 0,
+    "limitations": [
+      "Correctness-only shared allocation; no isolation or performance claim.",
+      "One worker and six representative cells; not a complete interaction study, actual fereg plugin qualification or adoption decision.",
+      "Fresh science evidence for coherent API 773372c; historical cf228c performance evidence remains separate."
+    ]
+  },
   "scc": {
     "blas_threads": 1,
     "cargo_build_jobs": 4,

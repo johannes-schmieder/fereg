@@ -555,6 +555,26 @@ three actual binary hashes and source, proposal and preflight identities.
 This panel contains no timed invocations and makes no fereg adoption claim;
 historical `cf228c` performance evidence remains separate.
 
+A matching SCC science panel for coherent API `773372c`, upstream `32dde1b`
+and inactive cancellation `b596c` passed all 48 processes, 384 RHS solves
+including warmups and 24 arm/cell references under the same proposal, using
+Rust 1.85.1 and GCC 12.2.0. The
+same six cells, one-worker configuration, exact scientific comparison scope
+and fixed-worker repeatability checks passed. All controlled stops were
+`NormalEquationTolerance`; the independent projection witness again had
+maximum error `4.001599052116944e-11` against the unchanged `1e-8` bound.
+Source/artifact binding, clean checkouts and unchanged helper sources were
+verified. Job `8328473` ran once on `scc-eg1` in `qphys-pub`, with actual
+granted PE `omp16` and 16 slots. Terminal accounting reports failed/exit
+status 0, 684 seconds wall time and 2.455G maximum virtual memory. The
+[compact record](../bench/results/within-output-option-20261029.json) retains
+all three Linux binary pins and the collected source, preflight, accounting
+and result hashes; the summary SHA-256 is
+`b9c76d6d0f451307544e299b231fcd808115d245f478dc8cbfdb636efaf950bc`.
+This was a shared correctness allocation with no retries, timing, isolation
+or fereg qualification/adoption claim; historical `cf228c` performance remains
+separate.
+
 Fereg explicitly selects this output mode in both ordinary batch and controlled
 routing helpers. Its numerical scope includes their weighted/sloped OLS and
 PPML checkpoint, separation and fallback consumers. The returned residual may
