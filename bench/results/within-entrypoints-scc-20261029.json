@@ -1,0 +1,655 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-29",
+  "kind": "native-entrypoint-science-only",
+  "status": "passed",
+  "platform": "Linux",
+  "timing": false,
+  "execution": "Original frozen science runner executed 72 calls on one shared SCC correctness allocation. The maintained prepare/build/run commands have not been executed; four pure parser/validation unit tests passed.",
+  "maintained_sources": {
+    "native": {
+      "path": "bench/within_entrypoints.rs",
+      "sha256": "94f212f00806a2f01d117429edd305b1e56cfd7cdc91a698eee11ed69959d612",
+      "relation_to_executed_source": "byte-identical"
+    },
+    "runner": {
+      "path": "bench/check_within_entrypoints.py",
+      "sha256": "0e4f8aafed4f30c234bd0edea02b1617d784cb57c2a0f01c743a75f0aededff7",
+      "execution_status": "not_executed",
+      "changes": [
+        "Explicit prepare/build/run and work directory; explicit exact clean Git checkout paths.",
+        "Maintained lock template; declaration binds source, runner, manifests and locks.",
+        "Existing field parser extracted without changing framing; explicit schema version gate.",
+        "Science-only mode requires exact SHA fields and null clocks.",
+        "API stop-reason arrays must repeat exactly; independently true in original recorded run."
+      ]
+    },
+    "lock_template": {
+      "path": "bench/within_entrypoints.lock",
+      "sha256": "97deb12a5b28c53d355d4413c0b5250fd637fd1d80c269013de4c3506295403b",
+      "relation_to_executed_lock": "byte-identical base lock; only root package name is rewritten per generated arm"
+    },
+    "pure_test_source": {
+      "path": "bench/tests/test_within_entrypoints.py",
+      "sha256": "795602fbc069cb2e37aa2370a459b9f14b3f2f208387708de8a409396da8f071",
+      "execution_status": "passed: four pure failure-gate tests; no native processes or builds"
+    }
+  },
+  "original_execution_identities": {
+    "native_source_sha256": "94f212f00806a2f01d117429edd305b1e56cfd7cdc91a698eee11ed69959d612",
+    "executed_runner_sha256": "8213b29466f05a139e005d81869b864d52af576167515b4bb17a53c5b815512d",
+    "declaration_sha256": "8105d2a3f8a3bf354a3c218770b26f7e371628d844dae520685ac9eb183e4661",
+    "build_metadata_sha256": "219d5c03dd4bf47e56463fb5bd846eea632e68c6d6834f369790b5a45e891658",
+    "preflight_sha256": "dac18ff53b72f1b6137bdc1049fc3d01d92adea586c6f95449939da082e764b0",
+    "summary_sha256": "06e89c0dcae3dfdb9a45942ae9a6db5fb75e5409db797cf784d89476f4e6c5ed",
+    "stage_manifest_sha256": "4ed4e44d9f6788b2a672cd9790afbb2305a2621e2ff2f0948e41b0a5872280ef",
+    "stage_script_sha256": "1b03d78384bfba542249b37fffcc66652dc038f0cb5b9153368d83a98ceaa02c",
+    "accounting_sha256": "4ac6bfc3bf99245d56a046fe361b5b7e4ba2bef5feec9384a0411f863916b11c"
+  },
+  "configuration": {
+    "cells": [
+      {
+        "id": "small-weighted-slopes0-off-w1",
+        "rows": 8192,
+        "slopes": 0,
+        "preconditioner": "off",
+        "workers": 1,
+        "weighted": true
+      },
+      {
+        "id": "small-weighted-slopes0-diagonal-w1",
+        "rows": 8192,
+        "slopes": 0,
+        "preconditioner": "diagonal",
+        "workers": 1,
+        "weighted": true
+      },
+      {
+        "id": "small-weighted-slopes0-additive-w1",
+        "rows": 8192,
+        "slopes": 0,
+        "preconditioner": "additive",
+        "workers": 1,
+        "weighted": true
+      },
+      {
+        "id": "small-weighted-slopes3-off-w1",
+        "rows": 8192,
+        "slopes": 3,
+        "preconditioner": "off",
+        "workers": 1,
+        "weighted": true
+      },
+      {
+        "id": "small-weighted-slopes3-diagonal-w1",
+        "rows": 8192,
+        "slopes": 3,
+        "preconditioner": "diagonal",
+        "workers": 1,
+        "weighted": true
+      },
+      {
+        "id": "small-weighted-slopes3-additive-w1",
+        "rows": 8192,
+        "slopes": 3,
+        "preconditioner": "additive",
+        "workers": 1,
+        "weighted": true
+      },
+      {
+        "id": "memory-weighted-slopes0-off-w1",
+        "rows": 4194304,
+        "slopes": 0,
+        "preconditioner": "off",
+        "workers": 1,
+        "weighted": true
+      },
+      {
+        "id": "memory-weighted-slopes0-diagonal-w1",
+        "rows": 4194304,
+        "slopes": 0,
+        "preconditioner": "diagonal",
+        "workers": 1,
+        "weighted": true
+      },
+      {
+        "id": "memory-weighted-slopes0-additive-w1",
+        "rows": 4194304,
+        "slopes": 0,
+        "preconditioner": "additive",
+        "workers": 1,
+        "weighted": true
+      },
+      {
+        "id": "memory-weighted-slopes3-off-w1",
+        "rows": 4194304,
+        "slopes": 3,
+        "preconditioner": "off",
+        "workers": 1,
+        "weighted": true
+      },
+      {
+        "id": "memory-weighted-slopes3-diagonal-w1",
+        "rows": 4194304,
+        "slopes": 3,
+        "preconditioner": "diagonal",
+        "workers": 1,
+        "weighted": true
+      },
+      {
+        "id": "memory-weighted-slopes3-additive-w1",
+        "rows": 4194304,
+        "slopes": 3,
+        "preconditioner": "additive",
+        "workers": 1,
+        "weighted": true
+      }
+    ],
+    "workers": 1,
+    "weighted": true,
+    "tolerance": 1e-12,
+    "witness_max_abs": 1e-08,
+    "maxiter": 1000,
+    "local_size": 8,
+    "additive_seed": 7,
+    "additive_reduction": "ParallelReduction",
+    "rhs_sequence": [
+      0,
+      1,
+      0,
+      1
+    ],
+    "warmup_groups": 1,
+    "retained_groups": 1,
+    "repetitions": 2,
+    "native_processes": 72,
+    "solves_including_warmups": 576,
+    "per_call_timeout_seconds": 120,
+    "science_budget_seconds": 2700,
+    "retries": 0,
+    "timing": false
+  },
+  "configuration_sha256": "c0cf8d2663f61ad9cc6bf069a0424476e836367dff774269b2bf7f49a7355fe5",
+  "canonical_hash_encoding": "UTF-8 JSON with sorted keys, separators comma/colon, no whitespace and allow_nan=false",
+  "compiler": "rustc 1.85.1 (4eb161250 2025-03-15)\nbinary: rustc\ncommit-hash: 4eb161250e340c8f48f66e2b929ef4a5bed7c181\ncommit-date: 2025-03-15\nhost: x86_64-unknown-linux-gnu\nrelease: 1.85.1\nLLVM version: 19.1.7\n",
+  "cargo_version": "cargo 1.85.1 (d73d2caf9 2024-12-31)",
+  "profile": {
+    "name": "release",
+    "opt_level": 3,
+    "debug": 0,
+    "codegen_units": 1,
+    "lto": "fat"
+  },
+  "environment": {
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_BUILD_JOBS": "4",
+    "RUSTFLAGS": "",
+    "CARGO_ENCODED_RUSTFLAGS": "",
+    "CARGO_PROFILE_RELEASE_OPT_LEVEL": "3",
+    "CARGO_PROFILE_RELEASE_LTO": "fat",
+    "CARGO_PROFILE_RELEASE_CODEGEN_UNITS": "1",
+    "CARGO_PROFILE_RELEASE_DEBUG": "0",
+    "OMP_NUM_THREADS": "1",
+    "OPENBLAS_NUM_THREADS": "1",
+    "MKL_NUM_THREADS": "1",
+    "NUMEXPR_NUM_THREADS": "1",
+    "RAYON_NUM_THREADS": "1",
+    "LC_ALL": "C"
+  },
+  "build_command_template": [
+    "cargo",
+    "build",
+    "--release",
+    "--locked",
+    "--offline",
+    "--manifest-path",
+    "<arm>/Cargo.toml"
+  ],
+  "artifacts": {
+    "base": {
+      "source_revision": "32dde1bdd604f33012e592270781129e09e82a92",
+      "source_archive_sha256": "39e8b2ba094b8a908972848be17d40bfe205763a839cc3703e18915000931cc7",
+      "source_manifest_sha256": "dca508002ef93dd37792dedb0f92e622eb9c43c94cc16fe86552d12de95b2a51",
+      "cargo_toml_sha256": "2bf190e313b8a025bf02858344d8724d0b23b7d13cfe1e6d91ce5af25058b9ae",
+      "cargo_lock_sha256": "97deb12a5b28c53d355d4413c0b5250fd637fd1d80c269013de4c3506295403b",
+      "binary_sha256": "c1c0a600a38b59c7113545d3e80ea903d4c398b349cd051cf409834d611fc1e3",
+      "features": [
+        "base"
+      ]
+    },
+    "api": {
+      "source_revision": "cf228c412fdadac89a3ff28b12f53b7e1580f3de",
+      "source_archive_sha256": "792d55603ac4d5d6cdeeabdeadf185122b26f0f90bbf9fbbd2a5fab6e9e7502d",
+      "source_manifest_sha256": "d8cc7b119d9d3985e406c4b1a91a46b946b8b3a969670dc4010e5ddd51672e9f",
+      "cargo_toml_sha256": "2d186a7fc18d1c763919940d0fe74c203cc7445989f4ec2742109ce00f106725",
+      "cargo_lock_sha256": "381039d6208ea93da77a68e5116bc62e717a25a8d298fb46f50c52432e144bbe",
+      "binary_sha256": "8d1d3af2ddc22917306d61369b47e298ff3380bae8caa437bb99bb45be24794d",
+      "features": [
+        "api"
+      ]
+    },
+    "cancel": {
+      "source_revision": "b596c9854ea078dc40e903300d66a54d6062fcf0",
+      "source_archive_sha256": "1c91c1212236ebadf019b9a7329089b5d95bd0a43e013b4a3b2d8eae2824f155",
+      "source_manifest_sha256": "2bf770a2bd63a27857266199d270f4cfb3f200c7baecb013db7796dc809496b8",
+      "cargo_toml_sha256": "3a05a3891de000541ebdd4030aeb87062c3b4e9ba4ff793715d52aad314153de",
+      "cargo_lock_sha256": "bc3b04253788874f92171ee8a05b1f6898d59e88211eea24257805a7e4504c6b",
+      "binary_sha256": "10d8b12ca5fc858ad10cae35b9f4f0e0513ab20329a0e0db147d3db2731c15c5",
+      "features": [
+        "cancel"
+      ]
+    }
+  },
+  "native_processes": 72,
+  "solves_including_warmups": 576,
+  "completed_processes": 72,
+  "failures": [],
+  "common_sha_fields_exact_across_all_arms_and_repetitions": true,
+  "api_stop_reasons_repeat_exact": true,
+  "max_small_error": 1.7963408538435033e-13,
+  "max_large_error": 1.2308840613428629e-09,
+  "cells": [
+    {
+      "id": "small-weighted-slopes0-off-w1",
+      "rows": 8192,
+      "slopes": 0,
+      "preconditioner": "off",
+      "maximum_error": 1.0880185641326534e-14,
+      "iterations": [
+        11,
+        11,
+        11,
+        11
+      ],
+      "recurrence_residuals": [
+        2.436344375823042e-16,
+        1.21367909124643e-16,
+        2.436344375823042e-16,
+        1.21367909124643e-16
+      ],
+      "input_fnv64": "13dc31eae27c49bf",
+      "science_fnv64": "c54ba353fe272e09",
+      "api_stop_reasons": [
+        "NormalEquationTolerance",
+        "NormalEquationTolerance",
+        "NormalEquationTolerance",
+        "NormalEquationTolerance"
+      ],
+      "exact_across_arms_and_repetitions": true,
+      "processes": 6,
+      "common_fields_sha256": "5e97e60ae4b2bc00dc4eeee670efc17c3fe0e34a9c08fdabb3045f236295af35",
+      "common_field_count": 59
+    },
+    {
+      "id": "small-weighted-slopes0-diagonal-w1",
+      "rows": 8192,
+      "slopes": 0,
+      "preconditioner": "diagonal",
+      "maximum_error": 9.325873406851315e-15,
+      "iterations": [
+        6,
+        6,
+        6,
+        6
+      ],
+      "recurrence_residuals": [
+        7.381939475493381e-17,
+        1.647204671531646e-16,
+        7.381939475493381e-17,
+        1.647204671531646e-16
+      ],
+      "input_fnv64": "13dc31eae27c49bf",
+      "science_fnv64": "5cb3585f0ba8d83d",
+      "api_stop_reasons": [
+        "NormalEquationTolerance",
+        "NormalEquationTolerance",
+        "NormalEquationTolerance",
+        "NormalEquationTolerance"
+      ],
+      "exact_across_arms_and_repetitions": true,
+      "processes": 6,
+      "common_fields_sha256": "58aa49a1374c504842770c274e083384a745ed8ac6846e79fc148cd2ef7a5c82",
+      "common_field_count": 59
+    },
+    {
+      "id": "small-weighted-slopes0-additive-w1",
+      "rows": 8192,
+      "slopes": 0,
+      "preconditioner": "additive",
+      "maximum_error": 5.551115123125783e-15,
+      "iterations": [
+        6,
+        6,
+        6,
+        6
+      ],
+      "recurrence_residuals": [
+        3.2478799163154923e-17,
+        3.0493201621225844e-17,
+        3.2478799163154923e-17,
+        3.0493201621225844e-17
+      ],
+      "input_fnv64": "13dc31eae27c49bf",
+      "science_fnv64": "81147eeeb739125d",
+      "api_stop_reasons": [
+        "NormalEquationTolerance",
+        "NormalEquationTolerance",
+        "NormalEquationTolerance",
+        "NormalEquationTolerance"
+      ],
+      "exact_across_arms_and_repetitions": true,
+      "processes": 6,
+      "common_fields_sha256": "2a27bba802a952ed301d96eed99eecddeb098e3d64f44d96446377fc133476ae",
+      "common_field_count": 59
+    },
+    {
+      "id": "small-weighted-slopes3-off-w1",
+      "rows": 8192,
+      "slopes": 3,
+      "preconditioner": "off",
+      "maximum_error": 1.7963408538435033e-13,
+      "iterations": [
+        15,
+        15,
+        15,
+        15
+      ],
+      "recurrence_residuals": [
+        3.514142711482585e-13,
+        1.8964325508263045e-13,
+        3.514142711482585e-13,
+        1.8964325508263045e-13
+      ],
+      "input_fnv64": "20f00bfabcf7354d",
+      "science_fnv64": "0d9dda637c0d0da9",
+      "api_stop_reasons": [
+        "NormalEquationTolerance",
+        "NormalEquationTolerance",
+        "NormalEquationTolerance",
+        "NormalEquationTolerance"
+      ],
+      "exact_across_arms_and_repetitions": true,
+      "processes": 6,
+      "common_fields_sha256": "46596871824a0a03dee8412277a86e7ad914335350df67fcca0d6ceeffb14466",
+      "common_field_count": 62
+    },
+    {
+      "id": "small-weighted-slopes3-diagonal-w1",
+      "rows": 8192,
+      "slopes": 3,
+      "preconditioner": "diagonal",
+      "maximum_error": 6.994405055138486e-15,
+      "iterations": [
+        8,
+        8,
+        8,
+        8
+      ],
+      "recurrence_residuals": [
+        1.2954187564128553e-16,
+        1.8085608290304292e-16,
+        1.2954187564128553e-16,
+        1.8085608290304292e-16
+      ],
+      "input_fnv64": "20f00bfabcf7354d",
+      "science_fnv64": "fadaad3fa5d19fb9",
+      "api_stop_reasons": [
+        "NormalEquationTolerance",
+        "NormalEquationTolerance",
+        "NormalEquationTolerance",
+        "NormalEquationTolerance"
+      ],
+      "exact_across_arms_and_repetitions": true,
+      "processes": 6,
+      "common_fields_sha256": "ba8c08a05067aa712067895f46d9951707fb6436dd8ffd41adbfc9d26cf31727",
+      "common_field_count": 62
+    },
+    {
+      "id": "small-weighted-slopes3-additive-w1",
+      "rows": 8192,
+      "slopes": 3,
+      "preconditioner": "additive",
+      "maximum_error": 4.707345624410664e-14,
+      "iterations": [
+        11,
+        10,
+        11,
+        10
+      ],
+      "recurrence_residuals": [
+        1.9306935344638292e-14,
+        3.520175053742722e-16,
+        1.9306935344638292e-14,
+        3.520175053742722e-16
+      ],
+      "input_fnv64": "20f00bfabcf7354d",
+      "science_fnv64": "c2b1306da0862a69",
+      "api_stop_reasons": [
+        "NormalEquationTolerance",
+        "NormalEquationTolerance",
+        "NormalEquationTolerance",
+        "NormalEquationTolerance"
+      ],
+      "exact_across_arms_and_repetitions": true,
+      "processes": 6,
+      "common_fields_sha256": "fe8a267809b7ab85d65ad9611393bdfee7ff8ee4817409bd79414529336dcb0a",
+      "common_field_count": 62
+    },
+    {
+      "id": "memory-weighted-slopes0-off-w1",
+      "rows": 4194304,
+      "slopes": 0,
+      "preconditioner": "off",
+      "maximum_error": 1.0442757769624222e-12,
+      "iterations": [
+        11,
+        11,
+        11,
+        11
+      ],
+      "recurrence_residuals": [
+        5.251217895724512e-13,
+        1.9575739405397444e-13,
+        5.251217895724512e-13,
+        1.9575739405397444e-13
+      ],
+      "input_fnv64": "a6303645286f9991",
+      "science_fnv64": "f013ab5b3024314d",
+      "api_stop_reasons": [
+        "NormalEquationTolerance",
+        "NormalEquationTolerance",
+        "NormalEquationTolerance",
+        "NormalEquationTolerance"
+      ],
+      "exact_across_arms_and_repetitions": true,
+      "processes": 6,
+      "common_fields_sha256": "2a05e2fece640629a2cf11cb55ada5c88d6ab42827c8f699331c3e05982c99ac",
+      "common_field_count": 59
+    },
+    {
+      "id": "memory-weighted-slopes0-diagonal-w1",
+      "rows": 4194304,
+      "slopes": 0,
+      "preconditioner": "diagonal",
+      "maximum_error": 1.6342482922482304e-13,
+      "iterations": [
+        6,
+        6,
+        6,
+        6
+      ],
+      "recurrence_residuals": [
+        1.8407819525504305e-16,
+        1.1341799335388677e-14,
+        1.8407819525504305e-16,
+        1.1341799335388677e-14
+      ],
+      "input_fnv64": "a6303645286f9991",
+      "science_fnv64": "474f97fc08c0d04d",
+      "api_stop_reasons": [
+        "NormalEquationTolerance",
+        "NormalEquationTolerance",
+        "NormalEquationTolerance",
+        "NormalEquationTolerance"
+      ],
+      "exact_across_arms_and_repetitions": true,
+      "processes": 6,
+      "common_fields_sha256": "0fb4d72b7acfb18dadd24127008dedb60c8f341ac03c2d6e02160f5b4d8320a5",
+      "common_field_count": 59
+    },
+    {
+      "id": "memory-weighted-slopes0-additive-w1",
+      "rows": 4194304,
+      "slopes": 0,
+      "preconditioner": "additive",
+      "maximum_error": 5.226707955330312e-12,
+      "iterations": [
+        12,
+        12,
+        12,
+        12
+      ],
+      "recurrence_residuals": [
+        2.1573599406838456e-12,
+        1.3058336867841875e-12,
+        2.1573599406838456e-12,
+        1.3058336867841875e-12
+      ],
+      "input_fnv64": "a6303645286f9991",
+      "science_fnv64": "c1db84c516884421",
+      "api_stop_reasons": [
+        "NormalEquationTolerance",
+        "NormalEquationTolerance",
+        "NormalEquationTolerance",
+        "NormalEquationTolerance"
+      ],
+      "exact_across_arms_and_repetitions": true,
+      "processes": 6,
+      "common_fields_sha256": "cbd93856b293e388b91dfe6d0b57646b6707e791c62db3d8e70bcc772b4d06e8",
+      "common_field_count": 59
+    },
+    {
+      "id": "memory-weighted-slopes3-off-w1",
+      "rows": 4194304,
+      "slopes": 3,
+      "preconditioner": "off",
+      "maximum_error": 1.2308840613428629e-09,
+      "iterations": [
+        13,
+        13,
+        13,
+        13
+      ],
+      "recurrence_residuals": [
+        5.0406045636075116e-12,
+        5.032762382066264e-12,
+        5.0406045636075116e-12,
+        5.032762382066264e-12
+      ],
+      "input_fnv64": "f4a61c4e74624c64",
+      "science_fnv64": "5a7ec5b00e8fec89",
+      "api_stop_reasons": [
+        "NormalEquationTolerance",
+        "NormalEquationTolerance",
+        "NormalEquationTolerance",
+        "NormalEquationTolerance"
+      ],
+      "exact_across_arms_and_repetitions": true,
+      "processes": 6,
+      "common_fields_sha256": "344ced5b60986bb794af87c0c0b25241e59ce61192c66658591b292b66f937fa",
+      "common_field_count": 62
+    },
+    {
+      "id": "memory-weighted-slopes3-diagonal-w1",
+      "rows": 4194304,
+      "slopes": 3,
+      "preconditioner": "diagonal",
+      "maximum_error": 1.9761969838327786e-13,
+      "iterations": [
+        8,
+        8,
+        8,
+        8
+      ],
+      "recurrence_residuals": [
+        6.521507695554879e-17,
+        1.3023155769470626e-15,
+        6.521507695554879e-17,
+        1.3023155769470626e-15
+      ],
+      "input_fnv64": "f4a61c4e74624c64",
+      "science_fnv64": "fb711e6b99838a2d",
+      "api_stop_reasons": [
+        "NormalEquationTolerance",
+        "NormalEquationTolerance",
+        "NormalEquationTolerance",
+        "NormalEquationTolerance"
+      ],
+      "exact_across_arms_and_repetitions": true,
+      "processes": 6,
+      "common_fields_sha256": "426a420cdb9945bfb8f78625c7a3ca45efda4b91369fa892edd7ad989b1eaee7",
+      "common_field_count": 62
+    },
+    {
+      "id": "memory-weighted-slopes3-additive-w1",
+      "rows": 4194304,
+      "slopes": 3,
+      "preconditioner": "additive",
+      "maximum_error": 2.2306601010768645e-11,
+      "iterations": [
+        30,
+        30,
+        30,
+        30
+      ],
+      "recurrence_residuals": [
+        6.064985263792419e-12,
+        6.333814246700516e-12,
+        6.064985263792419e-12,
+        6.333814246700516e-12
+      ],
+      "input_fnv64": "f4a61c4e74624c64",
+      "science_fnv64": "0e87355fece153f5",
+      "api_stop_reasons": [
+        "NormalEquationTolerance",
+        "NormalEquationTolerance",
+        "NormalEquationTolerance",
+        "NormalEquationTolerance"
+      ],
+      "exact_across_arms_and_repetitions": true,
+      "processes": 6,
+      "common_fields_sha256": "5c1998db7957daa6eb99365b2d3cb46fc3f4d640db69b69b83d577549a7f6e52",
+      "common_field_count": 62
+    }
+  ],
+  "limits": [
+    "One Linux host, one worker per native process, weighted cold explicit Off/Diagonal/Additive only. No isolation or performance evidence.",
+    "No active cancellation latency, general signed/centered slopes, multiworker overhead, baseline repeatability fix, combined beta.11 or adoption claim.",
+    "The original tol=1e-10 forward-witness failure and four-worker baseline repeatability defect remain unwaived.",
+    "No beta.10 comparison follows from this record. Cross-platform scientific bit identity is not claimed.",
+    "The 120-second call limit and 2700-second science budget are historical fixed limits, not a claim of feasibility on other hosts."
+  ],
+  "allocation": {
+    "job_id": 8326797,
+    "host": "scc-wg4",
+    "slots": 12,
+    "parallel_environment": "omp12",
+    "kind": "shared correctness allocation",
+    "isolation_claim": false,
+    "native_workers": 1
+  },
+  "accounting": {
+    "exit_status": 0,
+    "failed": 0,
+    "wallclock_seconds": 708,
+    "cpu_seconds": 769.793,
+    "max_virtual_memory": "2.510G",
+    "scope": "Scheduler accounting for the entire shared build/science job; not arm timings or performance evidence."
+  },
+  "python_version": "3.12.4 (main, Jul  1 2024, 10:14:11) [GCC 12.2.0]",
+  "independent_review": {
+    "status": "passed",
+    "scope": "Read-only verification of full72-call grid, configurations, entrypoints, common scientific SHA fields, repeated API stop reasons, source/manifests/locks, empty stderr, null native timers and terminal accounting. No rerun or timing.",
+    "reviewer": "cancellation patch agent"
+  }
+}

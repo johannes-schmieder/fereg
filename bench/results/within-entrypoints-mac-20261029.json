@@ -1,0 +1,614 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-29",
+  "kind": "native-entrypoint-science-only",
+  "status": "passed",
+  "platform": "Darwin",
+  "timing": false,
+  "execution": "Original frozen science runner executed the 72 calls. The maintained prepare/build/run commands have not been executed; four pure parser/validation unit tests passed.",
+  "maintained_sources": {
+    "native": {
+      "path": "bench/within_entrypoints.rs",
+      "sha256": "94f212f00806a2f01d117429edd305b1e56cfd7cdc91a698eee11ed69959d612",
+      "relation_to_executed_source": "byte-identical"
+    },
+    "runner": {
+      "path": "bench/check_within_entrypoints.py",
+      "sha256": "0e4f8aafed4f30c234bd0edea02b1617d784cb57c2a0f01c743a75f0aededff7",
+      "execution_status": "not_executed",
+      "changes": [
+        "Explicit prepare/build/run and work directory; explicit exact clean Git checkout paths.",
+        "Maintained lock template; declaration binds source, runner, manifests and locks.",
+        "Existing field parser extracted without changing framing; explicit schema version gate.",
+        "Science-only mode requires exact SHA fields and null clocks.",
+        "API stop-reason arrays must repeat exactly; independently true in original recorded run."
+      ]
+    },
+    "lock_template": {
+      "path": "bench/within_entrypoints.lock",
+      "sha256": "97deb12a5b28c53d355d4413c0b5250fd637fd1d80c269013de4c3506295403b",
+      "relation_to_executed_lock": "byte-identical base lock; only root package name is rewritten per generated arm"
+    },
+    "pure_test_source": {
+      "path": "bench/tests/test_within_entrypoints.py",
+      "sha256": "795602fbc069cb2e37aa2370a459b9f14b3f2f208387708de8a409396da8f071",
+      "execution_status": "passed: four pure failure-gate tests; no native processes or builds"
+    }
+  },
+  "original_execution_identities": {
+    "native_source_sha256": "94f212f00806a2f01d117429edd305b1e56cfd7cdc91a698eee11ed69959d612",
+    "executed_runner_sha256": "8213b29466f05a139e005d81869b864d52af576167515b4bb17a53c5b815512d",
+    "declaration_sha256": "8105d2a3f8a3bf354a3c218770b26f7e371628d844dae520685ac9eb183e4661",
+    "build_metadata_sha256": "cba32e593a13321111b2689f46658c69917bb264b5db46ce22d0c883e62f650f",
+    "preflight_sha256": "0a0963525cc7a384a368c8228a91b18812e340a3ca9eee85c3c1b08bf2c68f72",
+    "summary_sha256": "91abb9e9e4a6e0e2ed6dab9ed5a723dcd16907ea28d332e68aec4c19de355536"
+  },
+  "configuration": {
+    "cells": [
+      {
+        "id": "small-weighted-slopes0-off-w1",
+        "rows": 8192,
+        "slopes": 0,
+        "preconditioner": "off",
+        "workers": 1,
+        "weighted": true
+      },
+      {
+        "id": "small-weighted-slopes0-diagonal-w1",
+        "rows": 8192,
+        "slopes": 0,
+        "preconditioner": "diagonal",
+        "workers": 1,
+        "weighted": true
+      },
+      {
+        "id": "small-weighted-slopes0-additive-w1",
+        "rows": 8192,
+        "slopes": 0,
+        "preconditioner": "additive",
+        "workers": 1,
+        "weighted": true
+      },
+      {
+        "id": "small-weighted-slopes3-off-w1",
+        "rows": 8192,
+        "slopes": 3,
+        "preconditioner": "off",
+        "workers": 1,
+        "weighted": true
+      },
+      {
+        "id": "small-weighted-slopes3-diagonal-w1",
+        "rows": 8192,
+        "slopes": 3,
+        "preconditioner": "diagonal",
+        "workers": 1,
+        "weighted": true
+      },
+      {
+        "id": "small-weighted-slopes3-additive-w1",
+        "rows": 8192,
+        "slopes": 3,
+        "preconditioner": "additive",
+        "workers": 1,
+        "weighted": true
+      },
+      {
+        "id": "memory-weighted-slopes0-off-w1",
+        "rows": 4194304,
+        "slopes": 0,
+        "preconditioner": "off",
+        "workers": 1,
+        "weighted": true
+      },
+      {
+        "id": "memory-weighted-slopes0-diagonal-w1",
+        "rows": 4194304,
+        "slopes": 0,
+        "preconditioner": "diagonal",
+        "workers": 1,
+        "weighted": true
+      },
+      {
+        "id": "memory-weighted-slopes0-additive-w1",
+        "rows": 4194304,
+        "slopes": 0,
+        "preconditioner": "additive",
+        "workers": 1,
+        "weighted": true
+      },
+      {
+        "id": "memory-weighted-slopes3-off-w1",
+        "rows": 4194304,
+        "slopes": 3,
+        "preconditioner": "off",
+        "workers": 1,
+        "weighted": true
+      },
+      {
+        "id": "memory-weighted-slopes3-diagonal-w1",
+        "rows": 4194304,
+        "slopes": 3,
+        "preconditioner": "diagonal",
+        "workers": 1,
+        "weighted": true
+      },
+      {
+        "id": "memory-weighted-slopes3-additive-w1",
+        "rows": 4194304,
+        "slopes": 3,
+        "preconditioner": "additive",
+        "workers": 1,
+        "weighted": true
+      }
+    ],
+    "workers": 1,
+    "weighted": true,
+    "tolerance": 1e-12,
+    "witness_max_abs": 1e-08,
+    "maxiter": 1000,
+    "local_size": 8,
+    "additive_seed": 7,
+    "additive_reduction": "ParallelReduction",
+    "rhs_sequence": [
+      0,
+      1,
+      0,
+      1
+    ],
+    "warmup_groups": 1,
+    "retained_groups": 1,
+    "repetitions": 2,
+    "native_processes": 72,
+    "solves_including_warmups": 576,
+    "per_call_timeout_seconds": 120,
+    "science_budget_seconds": 2700,
+    "retries": 0,
+    "timing": false
+  },
+  "configuration_sha256": "c0cf8d2663f61ad9cc6bf069a0424476e836367dff774269b2bf7f49a7355fe5",
+  "canonical_hash_encoding": "UTF-8 JSON with sorted keys, separators comma/colon, no whitespace and allow_nan=false",
+  "compiler": "rustc 1.85.1 (4eb161250 2025-03-15)\nbinary: rustc\ncommit-hash: 4eb161250e340c8f48f66e2b929ef4a5bed7c181\ncommit-date: 2025-03-15\nhost: aarch64-apple-darwin\nrelease: 1.85.1\nLLVM version: 19.1.7\n",
+  "cargo_version": "cargo 1.85.1 (d73d2caf9 2024-12-31)",
+  "profile": {
+    "name": "release",
+    "opt_level": 3,
+    "debug": 0,
+    "codegen_units": 1,
+    "lto": "fat"
+  },
+  "environment": {
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_BUILD_JOBS": "4",
+    "CARGO_PROFILE_RELEASE_DEBUG": "0",
+    "RUSTFLAGS": "",
+    "CARGO_ENCODED_RUSTFLAGS": ""
+  },
+  "build_command_template": [
+    "cargo",
+    "build",
+    "--release",
+    "--locked",
+    "--offline",
+    "--manifest-path",
+    "<arm>/Cargo.toml"
+  ],
+  "artifacts": {
+    "base": {
+      "source_revision": "32dde1bdd604f33012e592270781129e09e82a92",
+      "binary_sha256": "7ac6cd3a5256185c14bc8c4e6e9cc2291c03e4172e740cd45f0d046135ca63ec",
+      "cargo_toml_sha256": "2bf190e313b8a025bf02858344d8724d0b23b7d13cfe1e6d91ce5af25058b9ae",
+      "cargo_lock_sha256": "97deb12a5b28c53d355d4413c0b5250fd637fd1d80c269013de4c3506295403b",
+      "features": [
+        "base"
+      ]
+    },
+    "api": {
+      "source_revision": "cf228c412fdadac89a3ff28b12f53b7e1580f3de",
+      "binary_sha256": "705525a07f3666d4b4279bce6bc21ce5628d3e43cf037672342a230f8a67546d",
+      "cargo_toml_sha256": "2d186a7fc18d1c763919940d0fe74c203cc7445989f4ec2742109ce00f106725",
+      "cargo_lock_sha256": "381039d6208ea93da77a68e5116bc62e717a25a8d298fb46f50c52432e144bbe",
+      "features": [
+        "api"
+      ]
+    },
+    "cancel": {
+      "source_revision": "b596c9854ea078dc40e903300d66a54d6062fcf0",
+      "binary_sha256": "38f6530b2df5af9b5c3e630f9acb86af0070d4d24ba24c22f9e59bfc0b928a2f",
+      "cargo_toml_sha256": "3a05a3891de000541ebdd4030aeb87062c3b4e9ba4ff793715d52aad314153de",
+      "cargo_lock_sha256": "bc3b04253788874f92171ee8a05b1f6898d59e88211eea24257805a7e4504c6b",
+      "features": [
+        "cancel"
+      ]
+    }
+  },
+  "native_processes": 72,
+  "solves_including_warmups": 576,
+  "completed_processes": 72,
+  "failures": [],
+  "common_sha_fields_exact_across_all_arms_and_repetitions": true,
+  "api_stop_reasons_repeat_exact": true,
+  "max_small_error": 1.7963408538435033e-13,
+  "max_large_error": 1.2308842833874678e-09,
+  "cells": [
+    {
+      "id": "small-weighted-slopes0-off-w1",
+      "rows": 8192,
+      "slopes": 0,
+      "preconditioner": "off",
+      "maximum_error": 1.0436096431476471e-14,
+      "iterations": [
+        11,
+        11,
+        11,
+        11
+      ],
+      "recurrence_residuals": [
+        2.4363443758230404e-16,
+        1.2136790912464303e-16,
+        2.4363443758230404e-16,
+        1.2136790912464303e-16
+      ],
+      "api_stop_reasons": [
+        "NormalEquationTolerance",
+        "NormalEquationTolerance",
+        "NormalEquationTolerance",
+        "NormalEquationTolerance"
+      ],
+      "exact_across_arms_and_repetitions": true,
+      "processes": 6,
+      "input_fnv64": "13dc31eae27c49bf",
+      "science_fnv64": "6dfe93c4e3a77781",
+      "common_fields_sha256": "64acf1aa120e97b95c0b43a9441cce459c5efde6960227cc6a2280fa17289d51",
+      "common_field_count": 59
+    },
+    {
+      "id": "small-weighted-slopes0-diagonal-w1",
+      "rows": 8192,
+      "slopes": 0,
+      "preconditioner": "diagonal",
+      "maximum_error": 9.769962616701378e-15,
+      "iterations": [
+        6,
+        6,
+        6,
+        6
+      ],
+      "recurrence_residuals": [
+        7.381939475493382e-17,
+        1.647204671531646e-16,
+        7.381939475493382e-17,
+        1.647204671531646e-16
+      ],
+      "api_stop_reasons": [
+        "NormalEquationTolerance",
+        "NormalEquationTolerance",
+        "NormalEquationTolerance",
+        "NormalEquationTolerance"
+      ],
+      "exact_across_arms_and_repetitions": true,
+      "processes": 6,
+      "input_fnv64": "13dc31eae27c49bf",
+      "science_fnv64": "29a165706c21bc95",
+      "common_fields_sha256": "fe9221d1357fb02962cab77432eee58b9fcbc346f6089b7a69317b8458aa1dc4",
+      "common_field_count": 59
+    },
+    {
+      "id": "small-weighted-slopes0-additive-w1",
+      "rows": 8192,
+      "slopes": 0,
+      "preconditioner": "additive",
+      "maximum_error": 5.551115123125783e-15,
+      "iterations": [
+        6,
+        6,
+        6,
+        6
+      ],
+      "recurrence_residuals": [
+        3.247879916315493e-17,
+        3.0493201621225844e-17,
+        3.247879916315493e-17,
+        3.0493201621225844e-17
+      ],
+      "api_stop_reasons": [
+        "NormalEquationTolerance",
+        "NormalEquationTolerance",
+        "NormalEquationTolerance",
+        "NormalEquationTolerance"
+      ],
+      "exact_across_arms_and_repetitions": true,
+      "processes": 6,
+      "input_fnv64": "13dc31eae27c49bf",
+      "science_fnv64": "61919fd0e4be7d71",
+      "common_fields_sha256": "ec4cf21e906a7d24a246985676ff9e9fbfd06faa42c6aa94e0995e6e1ee999ff",
+      "common_field_count": 59
+    },
+    {
+      "id": "small-weighted-slopes3-off-w1",
+      "rows": 8192,
+      "slopes": 3,
+      "preconditioner": "off",
+      "maximum_error": 1.7963408538435033e-13,
+      "iterations": [
+        15,
+        15,
+        15,
+        15
+      ],
+      "recurrence_residuals": [
+        3.514142711482585e-13,
+        1.8964325508263053e-13,
+        3.514142711482585e-13,
+        1.8964325508263053e-13
+      ],
+      "api_stop_reasons": [
+        "NormalEquationTolerance",
+        "NormalEquationTolerance",
+        "NormalEquationTolerance",
+        "NormalEquationTolerance"
+      ],
+      "exact_across_arms_and_repetitions": true,
+      "processes": 6,
+      "input_fnv64": "20f00bfabcf7354d",
+      "science_fnv64": "db394729f8830a15",
+      "common_fields_sha256": "1fe8aee11d098b009244b7e115dcbd49b6d55a5d845d860daae85a7a8f411755",
+      "common_field_count": 62
+    },
+    {
+      "id": "small-weighted-slopes3-diagonal-w1",
+      "rows": 8192,
+      "slopes": 3,
+      "preconditioner": "diagonal",
+      "maximum_error": 8.104628079763643e-15,
+      "iterations": [
+        8,
+        8,
+        8,
+        8
+      ],
+      "recurrence_residuals": [
+        1.2954187564128555e-16,
+        1.8085608290304297e-16,
+        1.2954187564128555e-16,
+        1.8085608290304297e-16
+      ],
+      "api_stop_reasons": [
+        "NormalEquationTolerance",
+        "NormalEquationTolerance",
+        "NormalEquationTolerance",
+        "NormalEquationTolerance"
+      ],
+      "exact_across_arms_and_repetitions": true,
+      "processes": 6,
+      "input_fnv64": "20f00bfabcf7354d",
+      "science_fnv64": "5d79ba30c02bf345",
+      "common_fields_sha256": "cf9170244f409661c2c4142367bb0aba8c7eb1f400cd92ed88d59852f7f478cd",
+      "common_field_count": 62
+    },
+    {
+      "id": "small-weighted-slopes3-additive-w1",
+      "rows": 8192,
+      "slopes": 3,
+      "preconditioner": "additive",
+      "maximum_error": 4.707345624410664e-14,
+      "iterations": [
+        11,
+        10,
+        11,
+        10
+      ],
+      "recurrence_residuals": [
+        1.930693534463829e-14,
+        3.5201750537427225e-16,
+        1.930693534463829e-14,
+        3.5201750537427225e-16
+      ],
+      "api_stop_reasons": [
+        "NormalEquationTolerance",
+        "NormalEquationTolerance",
+        "NormalEquationTolerance",
+        "NormalEquationTolerance"
+      ],
+      "exact_across_arms_and_repetitions": true,
+      "processes": 6,
+      "input_fnv64": "20f00bfabcf7354d",
+      "science_fnv64": "8f49776ad581e1a1",
+      "common_fields_sha256": "745c4a051718aeeb905b8262f1282fdd401032a4a2dccc49ec02ca2db66df214",
+      "common_field_count": 62
+    },
+    {
+      "id": "memory-weighted-slopes0-off-w1",
+      "rows": 4194304,
+      "slopes": 0,
+      "preconditioner": "off",
+      "maximum_error": 1.0444978215673473e-12,
+      "iterations": [
+        11,
+        11,
+        11,
+        11
+      ],
+      "recurrence_residuals": [
+        5.25121789572451e-13,
+        1.9575739405397461e-13,
+        5.25121789572451e-13,
+        1.9575739405397461e-13
+      ],
+      "api_stop_reasons": [
+        "NormalEquationTolerance",
+        "NormalEquationTolerance",
+        "NormalEquationTolerance",
+        "NormalEquationTolerance"
+      ],
+      "exact_across_arms_and_repetitions": true,
+      "processes": 6,
+      "input_fnv64": "a6303645286f9991",
+      "science_fnv64": "c972c205d48ed8ad",
+      "common_fields_sha256": "5100445949b1c9f0099062b3112ffa714963a63968d0d4095dc8c88acfe41812",
+      "common_field_count": 59
+    },
+    {
+      "id": "memory-weighted-slopes0-diagonal-w1",
+      "rows": 4194304,
+      "slopes": 0,
+      "preconditioner": "diagonal",
+      "maximum_error": 1.6342482922482304e-13,
+      "iterations": [
+        6,
+        6,
+        6,
+        6
+      ],
+      "recurrence_residuals": [
+        1.8407819525504305e-16,
+        1.1341799335388677e-14,
+        1.8407819525504305e-16,
+        1.1341799335388677e-14
+      ],
+      "api_stop_reasons": [
+        "NormalEquationTolerance",
+        "NormalEquationTolerance",
+        "NormalEquationTolerance",
+        "NormalEquationTolerance"
+      ],
+      "exact_across_arms_and_repetitions": true,
+      "processes": 6,
+      "input_fnv64": "a6303645286f9991",
+      "science_fnv64": "474f97fc08c0d04d",
+      "common_fields_sha256": "0fb4d72b7acfb18dadd24127008dedb60c8f341ac03c2d6e02160f5b4d8320a5",
+      "common_field_count": 59
+    },
+    {
+      "id": "memory-weighted-slopes0-additive-w1",
+      "rows": 4194304,
+      "slopes": 0,
+      "preconditioner": "additive",
+      "maximum_error": 5.226485910725387e-12,
+      "iterations": [
+        12,
+        12,
+        12,
+        12
+      ],
+      "recurrence_residuals": [
+        2.1573599406838456e-12,
+        1.3058336867841873e-12,
+        2.1573599406838456e-12,
+        1.3058336867841873e-12
+      ],
+      "api_stop_reasons": [
+        "NormalEquationTolerance",
+        "NormalEquationTolerance",
+        "NormalEquationTolerance",
+        "NormalEquationTolerance"
+      ],
+      "exact_across_arms_and_repetitions": true,
+      "processes": 6,
+      "input_fnv64": "a6303645286f9991",
+      "science_fnv64": "bdda3cf6342a0ae9",
+      "common_fields_sha256": "956e12a4a3fd44bd0dbc5e52ba463a36938ae2ee8108f1a77a40861ae64dc6b2",
+      "common_field_count": 59
+    },
+    {
+      "id": "memory-weighted-slopes3-off-w1",
+      "rows": 4194304,
+      "slopes": 3,
+      "preconditioner": "off",
+      "maximum_error": 1.2308842833874678e-09,
+      "iterations": [
+        13,
+        13,
+        13,
+        13
+      ],
+      "recurrence_residuals": [
+        5.040604563607516e-12,
+        5.0327623820662625e-12,
+        5.040604563607516e-12,
+        5.0327623820662625e-12
+      ],
+      "api_stop_reasons": [
+        "NormalEquationTolerance",
+        "NormalEquationTolerance",
+        "NormalEquationTolerance",
+        "NormalEquationTolerance"
+      ],
+      "exact_across_arms_and_repetitions": true,
+      "processes": 6,
+      "input_fnv64": "f4a61c4e74624c64",
+      "science_fnv64": "0cb5cc5a525a1491",
+      "common_fields_sha256": "583860e647da2a9edea3b7c27f3853b0c45caa6abb33efa9019b7b630888c4ff",
+      "common_field_count": 62
+    },
+    {
+      "id": "memory-weighted-slopes3-diagonal-w1",
+      "rows": 4194304,
+      "slopes": 3,
+      "preconditioner": "diagonal",
+      "maximum_error": 1.9761969838327786e-13,
+      "iterations": [
+        8,
+        8,
+        8,
+        8
+      ],
+      "recurrence_residuals": [
+        6.521507695554879e-17,
+        1.3023155769470612e-15,
+        6.521507695554879e-17,
+        1.3023155769470612e-15
+      ],
+      "api_stop_reasons": [
+        "NormalEquationTolerance",
+        "NormalEquationTolerance",
+        "NormalEquationTolerance",
+        "NormalEquationTolerance"
+      ],
+      "exact_across_arms_and_repetitions": true,
+      "processes": 6,
+      "input_fnv64": "f4a61c4e74624c64",
+      "science_fnv64": "0843ce13bdb95be5",
+      "common_fields_sha256": "2ed4350c1d97c3492966bd00e68c3aa27a3e8d3a16cdd50493f40471ba290d33",
+      "common_field_count": 62
+    },
+    {
+      "id": "memory-weighted-slopes3-additive-w1",
+      "rows": 4194304,
+      "slopes": 3,
+      "preconditioner": "additive",
+      "maximum_error": 2.2306601010768645e-11,
+      "iterations": [
+        30,
+        30,
+        30,
+        30
+      ],
+      "recurrence_residuals": [
+        6.064985263792424e-12,
+        6.333814246700512e-12,
+        6.064985263792424e-12,
+        6.333814246700512e-12
+      ],
+      "api_stop_reasons": [
+        "NormalEquationTolerance",
+        "NormalEquationTolerance",
+        "NormalEquationTolerance",
+        "NormalEquationTolerance"
+      ],
+      "exact_across_arms_and_repetitions": true,
+      "processes": 6,
+      "input_fnv64": "f4a61c4e74624c64",
+      "science_fnv64": "83e8f8b5d9c5a031",
+      "common_fields_sha256": "b8d8cb021f3ee7692a5ec7398431dda9f43332738857690c5da2ce632b814f22",
+      "common_field_count": 62
+    }
+  ],
+  "limits": [
+    "Mac one-worker cold explicit Off/Diagonal/Additive only. No performance evidence, active cancellation latency, general signed/centered slopes, multiworker overhead, baseline repeatability fix, combined beta.11 or adoption claim.",
+    "The original tol=1e-10 forward-witness failure and four-worker baseline repeatability defect remain unwaived.",
+    "Positive disjoint slope-only channels do not cover general signed or centered slope designs.",
+    "No performance, SCC, beta.10 comparison or beta.11 adoption inference follows from this record.",
+    "The 120-second call limit and 2700-second science budget are historical fixed limits, not a claim of feasibility on other hosts."
+  ]
+}
