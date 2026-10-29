@@ -718,8 +718,8 @@ cross-tab accumulation stack count rises from 29 to 60, out of 1,722 and 1,745
 total samples. Source inspection gives a correction-array allocation total of
 20.88 MB for this unweighted categorical fixture; a dense-only exact-integer
 path can omit them while preserving the existing dense/sparse choice. Weighted and sloped sums
-still require compensation. These are separate proposed optimizations, with
-independent integer/group-sum witnesses and exact-output comparisons required.
+still require compensation. The two fork patches and their completed Mac and
+Linux public science checks are described below.
 
 Single instrumented calls identify investigation targets, not causal effects
 or performance acceptance. Mac samples include harness work and retain desktop
@@ -727,6 +727,62 @@ activity; Linux's user-space event excludes kernel and page-fault costs. The
 held back-substitution patch remains excluded. A revised candidate requires a
 separately declared comparison before acceptance; both completed reports remain
 `needs_discussion`.
+
+### Independent fork optimization checks
+
+The [patch evidence](../bench/results/within-optimizations-20261029.json)
+retains each frozen base, patch commit, compiler/artifact/driver hashes, full
+scientific summaries and streamed field hashes. Both patches preserve arithmetic
+and were tested independently; neither is in the `d3407a16` beta.11 plugin.
+They are published on Johannes's fork as `codex/categorical-unit-counts` and
+`codex/categorical-scatter-slices`, respectively. No upstream push or pull request
+has been made; performance and integration remain pending.
+Source review finds both deltas apply separately and together to `d3407a16`;
+the existing fereg memory bounds remain conservative. This is not an integrated
+artifact check or evidence that either patch recovers the recorded regression.
+
+| Patch | Exact base / fork patch | Production scope |
+| --- | --- | --- |
+| Dense categorical counts | `32dde1bd` / [`ba409ada`](https://github.com/johannes-schmieder/within/commit/ba409ada2ffb27e90d19b22532c4d830a161f964) | Omit the correction vector only for dense structural Unit × Unit pairs without weights and with at most `2^53` observations. Every partial count is an exactly representable integer, so the existing compensation is zero. The dense/sparse dispatch rule and weighted, sloped and sparse arithmetic stay unchanged. |
+| Categorical scatter slices | `6f2ead13` / [`1f16b437`](https://github.com/johannes-schmieder/within/commit/1f16b4376d08ebd1b99f5120b868db7262af6b84) | Check row-slice bounds once per leaf for unweighted categorical Fold terms. Preserve leaf sizes, the fixed reduction tree, addition order and allocation sizes; weighted terms, slopes and Owner terms use the existing path. |
+
+Both Mac public panels used Rust 1.85.1 with `target-cpu=generic`, fixed inputs,
+four RHSs per group and one internal repeated group, without timers or retries.
+The count panel passed 24 processes: 12 exact base/patch comparisons and eight
+exact one/four-worker apply comparisons. It covers cache, large dense, sparse
+memory and weighted-cache designs; the largest dense table has 2,499,995 cells
+and omits 19,999,960 correction bytes without changing dispatch. Full solves use
+one worker because frozen base `32dde1bd` already has a recorded four-worker
+LSMR repeatability failure. This limitation does not relax the combined
+candidate's repeatability requirements. Per four-RHS group, both arms use
+4/4/8/4 iterations for those designs; maximum independent error is `7.20e-14`.
+
+The scatter panel passed 40 processes, 20 exact paired comparisons and eight
+exact one/four-worker full-solve comparisons. Cache and 4,194,304-row cases
+include weighted controls; separate weighted entrypoint cases cover zero/three
+slopes and Off/Diagonal/Additive preconditioners. Maximum independent error is
+`2.995e-12` in the two-FE harness and `1.231e-9` in the weighted/sloped harness,
+against an unchanged `1e-8` witness bound. Their solver tolerances are `1e-11`
+and the previously approved `1e-12`, respectively. The entrypoint records retain
+SHA-256s for coefficients, residuals, layout, convergence and work; the two-FE
+harness uses FNV64 vector signatures plus independent witnesses. Read-only
+review reconstructed every comparison without native reruns.
+
+The same public schedules passed on Linux: jobs `8339222` and `8339223` completed
+24 and 40 calls, respectively, with all paired and worker comparisons exact.
+Maximum independent errors match the Mac bounds reported above. Both used Rust
+1.85.1, generic CPU builds and GCC 12.2.0 on `scc-tb4`, with four slots and 3 GB
+per slot in shared correctness allocations. Scheduler failure/exit status was
+0/0 for both; these allocations establish no timing or isolation claim.
+
+Private tests retain independent integer/dyadic witnesses, compensation checks,
+leaf-boundary cases and mixed weighted/sloped solves. The evidence distinguishes
+the Mac full suites, final test-only edits and Clippy's existing lint exception.
+Linux successor `8339224` passed all eight cross-tab and three scatter witnesses
+on the same host, with scheduler failure/exit 0/0; it ran focused filters, not
+the full suite. Bounded performance comparisons remain pending. These standalone
+results neither establish recovered performance nor replace combined OLS/PPML,
+fallback, memory, cancellation and beta.10 qualification checks.
 
 Independent tests to preserve include the dense QR and weighted/disconnected
 families in [routing_portfolio](../crates/fereg-oracle/tests/routing_portfolio.rs),

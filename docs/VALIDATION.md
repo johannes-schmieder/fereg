@@ -159,6 +159,37 @@ CPU event excludes kernel allocation costs. Linux job `8338538` completed on
 separately declared comparison before acceptance; the completed main-panel
 verdicts and all adverse observations remain unchanged.
 
+The two independent fork optimizations now have Mac and Linux public science evidence
+in the [patch record](../bench/results/within-optimizations-20261029.json).
+Dense categorical counts compare `32dde1bd` with `ba409ada`; categorical Fold
+slices compare `6f2ead13` with `1f16b437`. Both use Rust 1.85.1 with generic CPU
+release builds, preserve arithmetic and leave the frozen beta.11 plugin
+unchanged. The [migration account](within_migration.md#independent-fork-optimization-checks)
+links the frozen commits on Johannes's fork and defines their narrow production
+scopes and retained independent tests. Neither has been pushed upstream or
+submitted as an upstream pull request.
+
+| Patch panel, per platform | Native processes | Exact base/patch comparisons | Exact one/four-worker comparisons | Maximum independent error |
+| --- | ---: | ---: | ---: | ---: |
+| Dense counts, Mac and Linux | 24 each | 12 each | 8 preconditioner apply each | `7.20e-14` |
+| Scatter slices, Mac and Linux | 40 each | 20 each | 8 full solves each | `1.231e-9` |
+
+Every process includes a repeated four-RHS group, with no timers or retries.
+Both panels retain the `1e-8` independent witness bound. The two-FE harness uses
+solver tolerance `1e-11`; the weighted/sloped entrypoint harness uses the already
+approved `1e-12`. Counts' full solves are restricted to one worker because its
+frozen upstream base has a known four-worker LSMR repeatability failure; the
+combined candidate's fixed-worker requirement remains unchanged. Read-only
+reviews checked both completed panels, their exact artifact/source bindings
+and every declared comparison. Linux public jobs `8339222`/`8339223` completed
+on `scc-tb4` with scheduler failure/exit 0/0, using four-slot shared correctness
+allocations, generic CPU builds and GCC 12.2.0. They establish no performance or
+isolation claim. Successor `8339224` passed the eight count and three scatter
+private witnesses on that host with scheduler failure/exit 0/0; this is a
+focused-filter result, not a Linux full-suite claim. Performance comparisons
+remain pending. These checks do not establish beta.11 performance acceptance;
+the original regressions and inconclusive results remain in force.
+
 The Linux separation-fallback companion passes its 16 declared actual-plugin
 calls on `scc-pi2` (job 8328529, scheduler failure/exit 0/0). The seed-17 weighted
 PPML design retains the independent LP's 228 original rows and passes the
