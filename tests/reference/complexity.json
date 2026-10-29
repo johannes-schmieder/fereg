@@ -1,67 +1,6 @@
 {
   "definition": "docs/development_workflow.md#complexity-inventory",
-  "growth": [
-    {
-      "after": 143,
-      "before": 141,
-      "metric": "fereg-plugin/dispatch_candidates",
-      "reason": "The sanctioned LSMR iteration Break selector validates explicit LSMR and categorical designs for OLS and PPML. These branches are developer injection validation, not scientific solver routing."
-    },
-    {
-      "after": 15675,
-      "before": 15527,
-      "metric": "fereg-plugin/production_lines",
-      "reason": "beta.11 essential cancellation: main-thread PPML polling and joined worker cancellation, OLS panic cancellation guard, and the sanctioned actual-LSMR Break witness shared by OLS/PPML. Meaningful helpers keep all formerly small functions below 150 lines; ordinary solver and publication policies are unchanged."
-    },
-    {
-      "after": 8937,
-      "before": 8923,
-      "metric": "file/crates/fereg-core/src/fe/borrowed_map.rs",
-      "reason": "beta.11 upstream adapter: charge retained Schwarz workspace across narrower RHS reuse before transport, debit failed controlled attempts before the existing Off retry, and release the discarded solver before fallback construction. Public solver policy and independent certificates are unchanged."
-    },
-    {
-      "after": 2090,
-      "before": 2065,
-      "metric": "file/crates/fereg-core/src/ppml/categorical_lsmr.rs",
-      "reason": "beta.11 upstream adapter: cancellable construction and iterations, distinct Interrupted mapping, audited upstream memory arguments, and the sanctioned actual-iteration Break witness. The existing joint PPML solver and per-attempt budgets are preserved."
-    },
-    {
-      "after": 3427,
-      "before": 3377,
-      "metric": "file/crates/fereg-plugin/src/estimate.rs",
-      "reason": "The sanctioned actual-LSMR Break witness validates request shape and owns its marker/guard through joined numerical work. A private OlsNativeBreak helper preserves existing preparation and builder Break boundaries; ordinary estimates do not allocate a witness."
-    },
-    {
-      "after": 2709,
-      "before": 2652,
-      "metric": "file/crates/fereg-plugin/src/ppml_estimate.rs",
-      "reason": "Essential PPML idle polling during joined numerical work plus the sanctioned actual-joint-LSMR Break witness. Scoped claim/completion helpers preserve existing outer-IRLS markers and reject a missed injected iteration before publication."
-    },
-    {
-      "after": 409,
-      "before": 381,
-      "metric": "function/crates/fereg-core/src/fe/borrowed_map.rs/run_borrowed_lsmr_with_prepared#1",
-      "reason": "beta.11 upstream adapter: checked historical workspace admission, attempted-iteration debit, and release of retained state before the existing unpreconditioned fallback. This extends the existing function without adding a route."
-    },
-    {
-      "after": 274,
-      "before": 261,
-      "metric": "function/crates/fereg-plugin/src/estimate.rs/decode_with_memory_limit#1",
-      "reason": "Validate that the explicit developer LSMR Break request has at least two categorical-intercept effects before numerical work. This prevents unrelated paths from claiming the new in-loop cancellation witness."
-    },
-    {
-      "after": 221,
-      "before": 205,
-      "metric": "function/crates/fereg-plugin/src/ppml_estimate.rs/decode_and_validate#1",
-      "reason": "Validate the sanctioned joint-LSMR Break selector, supported categorical effect shape and token before starting work; preserve existing public feature checks."
-    },
-    {
-      "after": 167,
-      "before": 166,
-      "metric": "function/crates/fereg-plugin/src/ppml_estimate.rs/parse#1",
-      "reason": "Retain the parsed sanctioned LSMR iteration Break flag in the action request beside the existing native Break token."
-    }
-  ],
+  "growth": [],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
   "inventory": {
     "files": {
@@ -9058,31 +8997,31 @@
         "dispatch_candidates": [],
         "functions": {
           "bytes_for_memory#1": {
-            "line": 326,
+            "line": 329,
             "lines": 3
           },
           "categorical_dense_cross_tab_bytes#1": {
             "line": 13,
-            "lines": 26
+            "lines": 29
           },
           "checked_add_memory#1": {
-            "line": 321,
+            "line": 324,
             "lines": 4
           },
           "estimate_categorical_schwarz_memory#1": {
-            "line": 46,
+            "line": 49,
             "lines": 21
           },
           "estimate_schwarz_memory#1": {
-            "line": 83,
+            "line": 86,
             "lines": 128
           },
           "schwarz_pool_memory#1": {
-            "line": 213,
+            "line": 216,
             "lines": 87
           },
           "stable_adjoint_index_bytes#1": {
-            "line": 302,
+            "line": 305,
             "lines": 18
           }
         },
@@ -25060,5 +24999,5 @@
     },
     "schema": 1
   },
-  "reason": "beta.11 candidate upstream integration: retire the approved general-FE pair/session experiment; preserve supported solver policies with controlled coefficient starts, cancellation and revised memory admission. Lower all reduced counts and explain only scoped adapter growth."
+  "reason": "beta.11 candidate dependency pin refresh and comment-only function-location update; all measured runtime limits and totals remain unchanged. Historical migration growth approvals remain in prior commits."
 }

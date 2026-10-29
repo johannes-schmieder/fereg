@@ -14,8 +14,11 @@ pub(crate) fn categorical_dense_cross_tab_bytes(
     rows: u128,
     level_counts: &[usize],
 ) -> Result<u128> {
-    // The pinned within cross_tab/accumulate.rs chooses dense whenever
-    // L_i * L_j <= 5,000,000 OR its 8-byte table costs no more than 12N.
+    // Charge a value table under the conservative envelope of 5,000,000
+    // cells or an 8-byte table costing no more than 12N. Pinned within uses
+    // 16 bytes/cell for its 40 MB dispatch threshold, so every actual dense
+    // case is included. schwarz_weighted_correction_bytes separately charges
+    // compensation, including structural-unit pairs that now omit that buffer.
     // Pair construction is parallel; charge all simultaneously live tables.
     // The existing edge bound separately covers CSR output and sparse scratch.
     let sparse_bytes = checked_mul(rows, 12, "categorical LSMR sparse cross-tab scratch")?;

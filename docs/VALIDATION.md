@@ -12,6 +12,9 @@ and PPML reporting are unchanged.
 The unpublished beta.11 candidate is separate from the accepted beta.10 release.
 The [compatibility report](within_migration.md) records the frozen dependency
 bases, patch evidence and outstanding integration and performance requirements.
+The completed native and main performance evidence below binds within
+`d3407a16`; the latest `4beaa8af` source candidate has separate checks described
+below and no new actual plugin.
 Johannes approved retiring the general more-than-two-FE pair-upgrade experiment;
 its explicit h/k and builder-Break requests must fail clearly. Two-FE h/k and
 builder-Break behavior, public Auto escalation, supported OLS/PPML paths and
@@ -186,9 +189,45 @@ on `scc-tb4` with scheduler failure/exit 0/0, using four-slot shared correctness
 allocations, generic CPU builds and GCC 12.2.0. They establish no performance or
 isolation claim. Successor `8339224` passed the eight count and three scatter
 private witnesses on that host with scheduler failure/exit 0/0; this is a
-focused-filter result, not a Linux full-suite claim. Performance comparisons
-remain pending. These checks do not establish beta.11 performance acceptance;
+focused-filter result, not a Linux full-suite claim. These checks do not
+establish beta.11 performance acceptance;
 the original regressions and inconclusive results remain in force.
+
+The [independent performance record](../bench/results/within-optimization-performance-20261029.json)
+now retains all 840 calls on six whole-node Linux hosts: 168 untimed preflights
+and 672 timed calls, with exact order, scientific fields, block/host aggregates
+and all source/artifact/configuration/accounting identities. Array `8340554`
+completed with scheduler failure/exit 0/0 on all six tasks; science and isolation
+checks pass, with no native errors, retries or discarded timings. Read-only
+reconstruction confirms 23 passed and five inconclusive endpoint comparisons,
+with no positive lower-bound regression. Both patches remain `review_required`:
+counts has an inconclusive sparse construction control; scatter has three
+inconclusive cache construction controls and a weighted memory four-worker
+solve. The two endpoints are protected separately; six-host median bounds at
+one-sided alpha `.025` have no simultaneous-coverage guarantee. Neither patch
+is performance-accepted. The [migration account](within_migration.md#independent-performance-and-combined-source-candidate)
+reports the improvements and unfavorable bounds without claiming beta.11 recovery.
+
+Mac's two operational launches retain 56 untimed science calls and zero native
+performance timings. A denied hardware query stopped the first; competing
+unrelated Stata Monte Carlo work stopped the second at admission. No process
+was stopped and no adverse measurement was excluded. Mac timing remains blocked.
+
+Combined within source [`4beaa8af`](https://github.com/johannes-schmieder/within/commit/4beaa8afcdc56ddee6f29b3cbd5bf151f0f2d5c5)
+is published on Johannes's fork only. Its [source record](../bench/results/within-optimized-integration-20261029.json)
+retains 588 passing top-level tests, two passing isolated subprocess tests and
+one ignored fixture-regeneration test on Mac Rust 1.85.1. A missing cancellation
+argument first caused test compilation to fail; the repair changes only the
+private witness. fereg's updated pin passed 324 Python tests, 1,537 core tests,
+189 non-FFI and 219 FFI plugin tests, scientific integration/oracles, strict
+Clippy and portable checks. The original script exited 1 at stale complexity
+locations; the first follow-up exited 1 for unused historical growth entries.
+After approved metadata-only repairs, size/ratchet, mock-SPI and numeric guards
+passed. All measured totals and limits are unchanged, both failures remain
+recorded, and no broad rerun occurred. No new actual plugin has been built:
+the earlier native evidence and performance verdicts still apply to `d3407a16`.
+The held back-substitution patch, upstream submission and production adoption
+remain outside this result.
 
 The Linux separation-fallback companion passes its 16 declared actual-plugin
 calls on `scc-pi2` (job 8328529, scheduler failure/exit 0/0). The seed-17 weighted

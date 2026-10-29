@@ -4,17 +4,19 @@ The baseline audit compares fereg `7f56d06ee4c004741f32d4692bc0e40b898a51d7`
 with upstream `py-econometrics/within` main frozen at
 `32dde1bdd604f33012e592270781129e09e82a92`. That fereg baseline used
 [historical fork revision `3b5b9b9`](https://github.com/johannes-schmieder/within/commit/3b5b9b9ab9b79e4a8cac2841f7c1d41bb2276104)
-for both `within` and `schwarz-precond`. The unpublished beta.11 candidate's
+for both `within` and `schwarz-precond`. The latest source for the unpublished
+beta.11 candidate pins both dependencies through its
 [dependency declarations](../crates/fereg-core/Cargo.toml) and
-[lockfile](../Cargo.lock) now pin both to
-`d3407a16dec3715f6e9eee13fb9b6646d5b28035`, available in the fork on
-`codex/fereg-beta11-candidate-next`. This is the combined upstream-based candidate,
-not an upstream release. The patch evidence below is current through October 29, 2026;
-source integration and the declared Mac/Linux native checks have passed. The
+[lockfile](../Cargo.lock) to
+`4beaa8afcdc56ddee6f29b3cbd5bf151f0f2d5c5`, available in the fork on
+`codex/beta11-candidate-optimized`. Its combined dependency suite passed, and
+fereg source checks completed after the scoped metadata repairs below. No new
+plugin has been built. The existing actual plugins and declared Mac/Linux native
+checks use `d3407a16dec3715f6e9eee13fb9b6646d5b28035`. The
 completed main performance panels each contain a regression and inconclusive
 comparisons, so beta.11 is not performance-qualified; installed-package admission
 also remains outstanding. This report establishes neither acceptance nor
-readiness for adoption or publication.
+readiness for adoption or a production release.
 
 Johannes's current instruction is to develop and push these patches only in
 `johannes-schmieder/within`. Any upstream push or pull request requires prior
@@ -736,7 +738,7 @@ scientific summaries and streamed field hashes. Both patches preserve arithmetic
 and were tested independently; neither is in the `d3407a16` beta.11 plugin.
 They are published on Johannes's fork as `codex/categorical-unit-counts` and
 `codex/categorical-scatter-slices`, respectively. No upstream push or pull request
-has been made; performance and integration remain pending.
+has been made; performance acceptance and actual-plugin integration remain pending.
 Source review finds both deltas apply separately and together to `d3407a16`;
 the existing fereg memory bounds remain conservative. This is not an integrated
 artifact check or evidence that either patch recovers the recorded regression.
@@ -780,9 +782,69 @@ leaf-boundary cases and mixed weighted/sloped solves. The evidence distinguishes
 the Mac full suites, final test-only edits and Clippy's existing lint exception.
 Linux successor `8339224` passed all eight cross-tab and three scatter witnesses
 on the same host, with scheduler failure/exit 0/0; it ran focused filters, not
-the full suite. Bounded performance comparisons remain pending. These standalone
+the full suite. The independent performance results and combined source checks
+below extend this evidence. These standalone
 results neither establish recovered performance nor replace combined OLS/PPML,
 fallback, memory, cancellation and beta.10 qualification checks.
+
+### Independent performance and combined source candidate
+
+The [independent performance record](../bench/results/within-optimization-performance-20261029.json)
+retains all 840 Linux calls: 168 untimed host preflights and 672 timed calls,
+their exact order, scientific fields, every block and host aggregate, and
+source/binary/configuration/environment/accounting hashes. Array `8340554` used
+six distinct whole-node hosts, `omp28` with 28 slots and `num_proc=28`; every
+task ended with scheduler failure/exit 0/0. Both patch reports verified science
+and isolation without native errors, retries or discarded timings. Each cell
+has two mirrored blocks per host. Build and solve/apply time are protected
+separately by max(5%, 1 ms); six host medians produce exact min/max bounds for
+the median at one-sided alpha `.025`, without simultaneous coverage.
+
+| Independent patch | Passed endpoints | Inconclusive endpoints | Positive lower-bound regressions | Decision |
+| --- | ---: | ---: | ---: | --- |
+| Dense counts | 11 | 1 | 0 | `review_required` |
+| Scatter slices | 12 | 4 | 0 | `review_required` |
+
+Dense construction's median host ratios are `0.554–0.568` in the three large
+dense cells. Its sparse construction control remains inconclusive, with an
+upper bound of 10.47 ms beyond the max(5%, 1 ms) allowance. Scatter's unweighted
+memory solve ratios are
+`0.98976` at one worker and `0.99665` at four; these do not establish recovery
+of the earlier Mac regression. Three cache construction controls and the
+weighted memory four-worker solve remain inconclusive; the latter's host-median
+ratios range from `0.97744` to `1.11216`, with an upper bound 238.56 ms beyond
+the allowance. All adverse blocks remain in the record, including
+those in passed host-level intervals. Read-only reconstruction reproduced all
+28 decisions from the retained timings. Neither patch is performance-accepted.
+
+Mac completed 28 untimed science calls before each of two operational launch
+failures, for 56 retained calls and zero native performance timings. The first
+stopped at a denied hardware query; the second stopped at host admission after
+observing three competing Stata processes. The unrelated Monte Carlo work has
+not been stopped. Bound Claude activity remains part of the declared policy;
+it is not an exclusion for adverse observations. Mac timing remains blocked,
+and neither attempt is a performance result.
+
+The [combined source record](../bench/results/within-optimized-integration-20261029.json)
+binds fork commit [`4beaa8af`](https://github.com/johannes-schmieder/within/commit/4beaa8afcdc56ddee6f29b3cbd5bf151f0f2d5c5)
+on `codex/beta11-candidate-optimized`. Both dependency crates passed 588
+top-level tests and two isolated subprocess tests with all features on Mac
+Rust 1.85.1; one fixture-regeneration test remains ignored. The first attempt
+failed before tests because the new private scatter witness lacked the
+existing `Cancellation` argument. A test-only default argument fixed that
+integration; both production patches still match their independent versions.
+The failed compile and an earlier formatter PATH repair remain recorded.
+fereg's source run passed 324 Python tests, 1,537 core tests, 189 non-FFI and
+219 FFI plugin tests, scientific integration and independent oracles, strict
+Clippy and portable checks. The original script exited 1 at stale complexity
+locations after a comment-only change; its first follow-up then rejected ten
+unused historical growth entries. The approved metadata repair refreshed seven
+position/comment-length values and retired those entries without changing any
+measured total or limit. The final size/ratchet, mock-SPI and numeric-guard checks
+passed. Both failed invocations remain recorded; no broad rerun was needed.
+The actual plugins still use `d3407a16`; there is no new qualified beta.11
+plugin. The held back-substitution patch remains excluded. There has been no
+upstream push or PR, and these source checks do not authorize production adoption.
 
 Independent tests to preserve include the dense QR and weighted/disconnected
 families in [routing_portfolio](../crates/fereg-oracle/tests/routing_portfolio.rs),

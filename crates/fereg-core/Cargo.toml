@@ -13,8 +13,8 @@ path = "src/lib.rs"
 [dependencies]
 cmg = { git = "https://github.com/johannes-schmieder/CMG", rev = "5c5b5b2b138226ea928514fa9db27439ba1cffdb", features = ["parallel", "experimental-components"] }
 rayon = { version = "=1.12.0" }
-schwarz-precond = { git = "https://github.com/johannes-schmieder/within", rev = "d3407a16dec3715f6e9eee13fb9b6646d5b28035", package = "schwarz-precond" }
-within = { git = "https://github.com/johannes-schmieder/within", rev = "d3407a16dec3715f6e9eee13fb9b6646d5b28035", package = "within" }
+schwarz-precond = { git = "https://github.com/johannes-schmieder/within", rev = "4beaa8afcdc56ddee6f29b3cbd5bf151f0f2d5c5", package = "schwarz-precond" }
+within = { git = "https://github.com/johannes-schmieder/within", rev = "4beaa8afcdc56ddee6f29b3cbd5bf151f0f2d5c5", package = "within" }
 
 [lints]
 workspace = true

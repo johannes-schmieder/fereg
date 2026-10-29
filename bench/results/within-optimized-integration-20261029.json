@@ -1,0 +1,1265 @@
+{
+  "date": "2026-10-29",
+  "fereg_integration": {
+    "existing_actual_plugins_within_pin": "d3407a16dec3715f6e9eee13fb9b6646d5b28035",
+    "new_actual_plugin_built": false,
+    "performance_accepted": false,
+    "production_adopted": false,
+    "source_pin": "4beaa8afcdc56ddee6f29b3cbd5bf151f0f2d5c5",
+    "source_suite": {
+      "final_scoped_source_diff_sha256": "580330910e9d4263941011c3c3e817f15f777b0697ad01815184f7a6fab84f0c",
+      "final_source_file_sha256": {
+        "Cargo.lock": "72c1101afb8b7f6d41f135e2185c2fd4fb857deecfb664f6f19703795622086a",
+        "crates/fereg-core/Cargo.toml": "3061f3f08eea47eca8835d99b4aad61ae965d833418f2c9b459dd88e425cc861",
+        "crates/fereg-core/src/memory/categorical_schwarz.rs": "be706769dce3697b85efe38fa52e622c3ed2c258d230b4951b55713d0afe9e19",
+        "fuzz/Cargo.lock": "2484aa83d01909e824d2339dda9f66dd23429b178f586a93a9de382582e8e9b3",
+        "tests/reference/complexity.json": "1db230ef946732b5fd62b7c643ed4786b94e894817f193725820ef3db3ed55d8"
+      },
+      "identity_at_original_launch": {
+        "build_cache": "Candidate worktree Cargo cache; personal path omitted.",
+        "cargo": "cargo 1.85.1 (d73d2caf9 2024-12-31)",
+        "command": [
+          "./scripts/run_tests.sh",
+          "--source-only"
+        ],
+        "environment": {
+          "CARGO_BUILD_JOBS": "4",
+          "CARGO_INCREMENTAL": "0",
+          "CARGO_PROFILE_DEV_DEBUG": "0",
+          "FEREG_TEST_PROFILE": "ci",
+          "FEREG_TEST_THREADS": "8",
+          "MKL_NUM_THREADS": "1",
+          "NUMEXPR_NUM_THREADS": "1",
+          "OMP_NUM_THREADS": "1",
+          "OPENBLAS_NUM_THREADS": "1",
+          "RAYON_NUM_THREADS": "8",
+          "RUSTUP_TOOLCHAIN": "1.85.1",
+          "RUST_TEST_THREADS": "1",
+          "VECLIB_MAXIMUM_THREADS": "1"
+        },
+        "file_sha256": {
+          "Cargo.lock": "72c1101afb8b7f6d41f135e2185c2fd4fb857deecfb664f6f19703795622086a",
+          "crates/fereg-core/Cargo.toml": "3061f3f08eea47eca8835d99b4aad61ae965d833418f2c9b459dd88e425cc861",
+          "crates/fereg-core/src/memory/categorical_schwarz.rs": "be706769dce3697b85efe38fa52e622c3ed2c258d230b4951b55713d0afe9e19",
+          "dist/fereg_macos.plugin": "22570a0ab4e01c215ad2ebfc049c74cb317bb342c57a59f6d4bb1ba77b745f48",
+          "dist/fereg_macos.plugin.sha256": "ba6b4407862c70f06eb79a6afb7e8949b1ad9564df7f012d07750c6e4d024316",
+          "fuzz/Cargo.lock": "2484aa83d01909e824d2339dda9f66dd23429b178f586a93a9de382582e8e9b3"
+        },
+        "python": "3.12.2 | packaged by conda-forge | (main, Feb 16 2024, 20:54:21) [Clang 16.0.6 ]",
+        "rustc": "rustc 1.85.1 (4eb161250 2025-03-15)",
+        "rustflags": "",
+        "source_diff_sha256": "876808d98094c8f8c0d80f9170f249a0f3b803c1ec99aa5ff5a45a7c7988d62c",
+        "source_head": "0d8de4afe3f8e3b60f5f05904786714259ae12b7",
+        "within_revision": "4beaa8afcdc56ddee6f29b3cbd5bf151f0f2d5c5"
+      },
+      "metadata_repair": {
+        "broad_suite_rerun": false,
+        "final_followup": {
+          "checks": [
+            {
+              "command": [
+                "bash",
+                "scripts/check_sizes.sh"
+              ],
+              "coverage": "Seven Python inventory tests, complexity ratchet and oracle size checks",
+              "exit_code": 0
+            },
+            {
+              "command": [
+                "tests/mock_spi/run_mock_bridge_test.sh"
+              ],
+              "exit_code": 0
+            },
+            {
+              "command": [
+                "bash",
+                "tests/mock_spi/run_numeric_batch_guard_test.sh"
+              ],
+              "coverage": "Input and output guards with both compiled variants",
+              "exit_code": 0
+            }
+          ],
+          "exit_code": 0,
+          "log_sha256": "fcabd726a3a2bce5cf8520e92a4e557bd4780dcf8ef42cd0a8fe64a940a50657"
+        },
+        "first_followup": {
+          "diagnostic": "check_sizes rejected ten historical growth exceptions that were unused for this metadata-only transition; later commands did not run.",
+          "exit_code": 1,
+          "log_sha256": "68c913f11b6277acd2b512af38ee8968745743afe69aae1bfd8fb83f89e0e8dc"
+        },
+        "scope": "Seven function-position/comment-length inventory values refreshed; ten historical growth entries retired and explanatory reason updated. Every measured runtime total and limit is unchanged. No runtime edit was made for either repair."
+      },
+      "native_plugin_unchanged": true,
+      "original": {
+        "command": [
+          "./scripts/run_tests.sh",
+          "--source-only"
+        ],
+        "diagnostic": "The script stopped at stale complexity function positions and comment length after the source science, Clippy and portable checks passed.",
+        "exit_code": 1,
+        "log_sha256": "df2482739f19e2b7d56fb896b993d13163c956a1e5a6eba567b29b82d98181c1"
+      },
+      "passed_before_metadata_repair": {
+        "core_ignored": 3,
+        "core_tests": 1537,
+        "coverage": [
+          "Workspace scientific and integration tests",
+          "PPML separation census and repeatability",
+          "Fuzz checks",
+          "Both strict Clippy configurations",
+          "Independent Python scientific oracles",
+          "Portable shell syntax, Python compilation, TOML parsing and strict C checks"
+        ],
+        "ignored_audit_drivers_subsequently_run_individually": true,
+        "plugin_with_ffi_normal_pass_ignored_audit_drivers": 10,
+        "plugin_with_ffi_tests": 219,
+        "plugin_without_ffi_tests": 189,
+        "python_tests": 324,
+        "rust_result_groups_in_log_order": [
+          {
+            "failed": 0,
+            "filtered_out": 1539,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 1539,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 1539,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 1539,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 1539,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 1539,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 1539,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 1539,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 1539,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 1539,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 1539,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 1539,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 1539,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 1539,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 1539,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 1539,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 1539,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 1539,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 1539,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 1539,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 1539,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 1539,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 1539,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 1539,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 1539,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 1539,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 1539,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 1539,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 1539,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 1539,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 1539,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 1539,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 3,
+            "measured": 0,
+            "passed": 1537,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 2,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 8,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 2,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 14,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 0,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 5,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 3,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 5,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 2,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 11,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 6,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 3,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 1,
+            "measured": 0,
+            "passed": 2,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 8,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 3,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 1,
+            "measured": 0,
+            "passed": 6,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 5,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 6,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 3,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 0,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 0,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 0,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 0,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 0,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 0,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 0,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 0,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 0,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 188,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 188,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 188,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 188,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 188,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 188,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 188,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 188,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 188,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 188,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 188,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 189,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 3,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 5,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 9,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 4,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 5,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 3,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 2,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 2,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 8,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 8,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 13,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 12,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 8,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 2,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 228,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 228,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 228,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 228,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 228,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 228,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 228,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 228,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 228,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 228,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 228,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 228,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 228,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 228,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 228,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 228,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 228,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 228,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 0,
+            "ignored": 10,
+            "measured": 0,
+            "passed": 219,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 228,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 228,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 228,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 228,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 228,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 228,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 228,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 228,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 228,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          },
+          {
+            "failed": 0,
+            "filtered_out": 228,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 1,
+            "status": "ok"
+          }
+        ],
+        "rust_result_groups_including_nested_subprocesses": 120
+      },
+      "validation_boundary": "Source-only checks. Installed-package admission, native plugin builds, native estimations, performance and reference execution were not performed. Earlier actual-plugin results remain bound to d3407a16."
+    },
+    "status": "Source-suite components passed after a scoped complexity metadata repair and successful remaining checks. The original script exit 1 and first follow-up exit 1 are retained; no broad rerun was performed."
+  },
+  "limitations": [
+    "The two independent Linux patch reports remain review_required because of five inconclusive endpoint comparisons. No positive lower-bound regression was reported, but non-regression was not established for every control.",
+    "The independent Mac performance launch remains blocked by unrelated active Stata Monte Carlo work; both failed launches retain 56 untimed science calls and zero native performance timings.",
+    "The held sparse back-substitution patch remains excluded. Combined actual-plugin scientific, cancellation, memory and beta.10 performance qualification still require separate evidence."
+  ],
+  "publication": {
+    "branch": "codex/beta11-candidate-optimized",
+    "branch_url": "https://github.com/johannes-schmieder/within/tree/codex/beta11-candidate-optimized",
+    "commit_url": "https://github.com/johannes-schmieder/within/commit/4beaa8afcdc56ddee6f29b3cbd5bf151f0f2d5c5",
+    "repository": "https://github.com/johannes-schmieder/within",
+    "status": "Published on Johannes\u2019s fork only. No upstream push or pull request."
+  },
+  "schema": 1,
+  "scope": "Combined within source correctness after adding the two separately tested optimization patches to d3407a16. This is not a new fereg plugin or beta.11 performance qualification.",
+  "source_record_sha256": "b397e884f6fee19fc94d991d7df6b6d246cdee1e8d36e321f62987c95ec0c503",
+  "within_suite": {
+    "attempts": [
+      {
+        "attempts": [],
+        "base": "d3407a16dec3715f6e9eee13fb9b6646d5b28035",
+        "branch": "codex/beta11-candidate-optimized",
+        "candidate": "a17e978f68e87664abdf452588e36a029ec6b166",
+        "cargo": "cargo 1.85.1 (d73d2caf9 2024-12-31)",
+        "cargo_lock_sha256": "525b3330ed4dc739d0103f8431e1a4daadb3498ab06d63995293113bbaece68f",
+        "changed_files": [
+          "crates/within/src/domain/cross_tab/accumulate.rs",
+          "crates/within/src/domain/cross_tab/tests.rs",
+          "crates/within/src/operator/design.rs",
+          "crates/within/src/operator/design/scatter.rs",
+          "crates/within/src/operator/design/scatter/tests.rs"
+        ],
+        "cherry_picked_sources": [
+          "ba409ada2ffb27e90d19b22532c4d830a161f964",
+          "1f16b4376d08ebd1b99f5120b868db7262af6b84"
+        ],
+        "cleared_environment_names": [],
+        "command": [
+          "cargo",
+          "test",
+          "--locked",
+          "--offline",
+          "-p",
+          "within",
+          "-p",
+          "schwarz-precond",
+          "--all-features"
+        ],
+        "diagnostic": "E0061: scatter witness build_schwarz call lacks default Cancellation argument; failed during lib-test compilation, before any tests ran.",
+        "diffstat": "5 files changed, 378 insertions(+), 3 deletions(-)",
+        "elapsed_seconds": 36.277067667000004,
+        "environment": {
+          "CARGO_BUILD_JOBS": "4",
+          "CARGO_INCREMENTAL": "0",
+          "CARGO_PROFILE_DEV_DEBUG": "0",
+          "CARGO_PROFILE_TEST_DEBUG": "0",
+          "MKL_NUM_THREADS": "4",
+          "NUMEXPR_NUM_THREADS": "4",
+          "OMP_NUM_THREADS": "4",
+          "OPENBLAS_NUM_THREADS": "4",
+          "VECLIB_MAXIMUM_THREADS": "4"
+        },
+        "environment_paths": "RUSTC/RUSTDOC use the identified Rust 1.85.1 toolchain; Cargo uses a separate task build cache. Personal filesystem paths are omitted.",
+        "exit_code": 101,
+        "fereg_pin_changed_during_this_within_suite": false,
+        "format_check": {
+          "command": "cargo fmt --all -- --check (Rust 1.85.1 toolchain on PATH)",
+          "exit_code": 0,
+          "launch_repair": "The first absolute Cargo invocation returned 101 because cargo-fmt was not on PATH. Setting the toolchain PATH fixed only the invocation; source was unchanged."
+        },
+        "integration_commits": [
+          "534ea64f7b0e26b772f93ca087f43837c1e187e4",
+          "a17e978f68e87664abdf452588e36a029ec6b166"
+        ],
+        "log_sha256": "d212c5f79e6c73dcdc3613056ba4c58e82bf8caafd076ce8d790326da1d33cb6",
+        "performance_calls": 0,
+        "platform": "macOS-26.6.2-arm64-arm-64bit",
+        "portable_cpu": "Default target CPU; RUSTFLAGS and encoded flags cleared",
+        "record": "Combined within counts/scatter integration",
+        "rustc": "rustc 1.85.1 (4eb161250 2025-03-15)\nbinary: rustc\ncommit-hash: 4eb161250e340c8f48f66e2b929ef4a5bed7c181\ncommit-date: 2025-03-15\nhost: aarch64-apple-darwin\nrelease: 1.85.1\nLLVM version: 19.1.7\n",
+        "source_clean_after": true,
+        "source_clean_before": true,
+        "status": "failed",
+        "timeout_seconds": 1800,
+        "tree": "20a5bdf718cb37b2c2801e695316db6324163caa"
+      }
+    ],
+    "base": "d3407a16dec3715f6e9eee13fb9b6646d5b28035",
+    "branch": "codex/beta11-candidate-optimized",
+    "candidate": "4beaa8afcdc56ddee6f29b3cbd5bf151f0f2d5c5",
+    "cargo": "cargo 1.85.1 (d73d2caf9 2024-12-31)",
+    "cargo_lock_sha256": "525b3330ed4dc739d0103f8431e1a4daadb3498ab06d63995293113bbaece68f",
+    "changed_files": [
+      "crates/within/src/domain/cross_tab/accumulate.rs",
+      "crates/within/src/domain/cross_tab/tests.rs",
+      "crates/within/src/operator/design.rs",
+      "crates/within/src/operator/design/scatter.rs",
+      "crates/within/src/operator/design/scatter/tests.rs"
+    ],
+    "cherry_picked_sources": [
+      "ba409ada2ffb27e90d19b22532c4d830a161f964",
+      "1f16b4376d08ebd1b99f5120b868db7262af6b84"
+    ],
+    "cleared_environment_names": [],
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "--offline",
+      "-p",
+      "within",
+      "-p",
+      "schwarz-precond",
+      "--all-features"
+    ],
+    "diffstat": "5 files changed, 382 insertions(+), 3 deletions(-)",
+    "elapsed_seconds": 204.925839083,
+    "environment": {
+      "CARGO_BUILD_JOBS": "4",
+      "CARGO_INCREMENTAL": "0",
+      "CARGO_PROFILE_DEV_DEBUG": "0",
+      "CARGO_PROFILE_TEST_DEBUG": "0",
+      "MKL_NUM_THREADS": "4",
+      "NUMEXPR_NUM_THREADS": "4",
+      "OMP_NUM_THREADS": "4",
+      "OPENBLAS_NUM_THREADS": "4",
+      "VECLIB_MAXIMUM_THREADS": "4"
+    },
+    "environment_paths": "RUSTC/RUSTDOC use the identified Rust 1.85.1 toolchain; Cargo uses a separate task build cache. Personal filesystem paths are omitted.",
+    "exit_code": 0,
+    "fereg_pin_changed_during_this_within_suite": false,
+    "final_diffstat": "5 files changed, 382 insertions(+), 3 deletions(-)",
+    "final_tree": "2cf522f5586872c02c04e20a99d98ba33d370762",
+    "format_check": {
+      "command": "cargo fmt --all -- --check (Rust 1.85.1 toolchain on PATH)",
+      "exit_code": 0,
+      "launch_repair": "The first absolute Cargo invocation returned 101 because cargo-fmt was not on PATH. Setting the toolchain PATH fixed only the invocation; source was unchanged."
+    },
+    "integration_commits": [
+      "534ea64f7b0e26b772f93ca087f43837c1e187e4",
+      "a17e978f68e87664abdf452588e36a029ec6b166",
+      "4beaa8afcdc56ddee6f29b3cbd5bf151f0f2d5c5"
+    ],
+    "log_sha256": "8a2a5de0a80fc24195454317089356f5ff121dc42416d0a3586504b2fdf5bdd9",
+    "performance_calls": 0,
+    "platform": "macOS-26.6.2-arm64-arm-64bit",
+    "portable_cpu": "Default target CPU; RUSTFLAGS and encoded flags cleared",
+    "record": "Combined within counts/scatter integration",
+    "rustc": "rustc 1.85.1 (4eb161250 2025-03-15)\nbinary: rustc\ncommit-hash: 4eb161250e340c8f48f66e2b929ef4a5bed7c181\ncommit-date: 2025-03-15\nhost: aarch64-apple-darwin\nrelease: 1.85.1\nLLVM version: 19.1.7\n",
+    "source_clean_after": true,
+    "source_clean_before": true,
+    "status": "passed",
+    "test_integration_adaptation": "Pass crate::Cancellation::default() to private build_schwarz in the new scatter witness. Production changes still equal the two original patches.",
+    "timeout_seconds": 1800,
+    "tree": "2cf522f5586872c02c04e20a99d98ba33d370762",
+    "validation": {
+      "coverage": [
+        "Both full crate suites, all features, all integration targets and doctests",
+        "Counts exact integer, weighted and signed controls",
+        "Scatter dyadic grouped-sum oracle, leaf/tail exact bits, mixed Owner/Fold weighted/sloped solver results at one and four workers",
+        "Controlled coefficients and original references, stop reasons, counted failure budgets, correction solves, residual output",
+        "Cancellation and retryable construction, fallible Schwarz scratch",
+        "Fixed-worker repeats, cross-worker decisions, reused batches and independent weighted-slope projection"
+      ],
+      "diff_check_passed": true,
+      "format_check_passed": true,
+      "ignored_test": "regenerate_wire_format_fixture",
+      "nested_subprocess_groups": 2,
+      "nested_subprocess_passed": 2,
+      "performance_claim": "None. Correctness suite only; actual fereg combined candidate qualification remains pending.",
+      "production_patches_match_originals": true,
+      "source_clean": true,
+      "successful_attempt_compiler_warnings": [],
+      "top_level_failed": 0,
+      "top_level_ignored": 1,
+      "top_level_passed": 588,
+      "top_level_test_groups": 27,
+      "validation_boundary": "No fereg dependency pin, runtime test script, native plugin build, publication or upstream action in this task."
+    }
+  }
+}
