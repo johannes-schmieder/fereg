@@ -1,0 +1,580 @@
+{
+  "schema": 1,
+  "purpose": "Descriptive rerun of the published beta.10 package; no new runtime qualification.",
+  "source_commit": "7c5d9f39888ab0d7f04946cce0d2e6e94e329313",
+  "runtime_source": "3348fe4597a872c5981d646b49346ff62688c737",
+  "plugin_sha256": "a79641166c17e5c193dc5f86a7fd487265d6978076e60ab7ca72f32f240f9f08",
+  "planned_positions": 1646,
+  "production_native_fits": 286,
+  "all_native_pass": true,
+  "synthetic_checks": {
+    "fixed_worker_cells": 56,
+    "cross_worker_cells": 14,
+    "passed": true
+  },
+  "accounting": [
+    {
+      "jobnumber": "8320660",
+      "taskid": "undefined",
+      "hostname": "scc-xf1.scc.bu.edu",
+      "qname": "onrcc-m512-pub",
+      "slots": "28",
+      "failed": "0",
+      "exit_status": "0",
+      "start_time": "Wed Oct 28 16:12:09 2026",
+      "end_time": "Wed Oct 28 16:16:24 2026",
+      "ru_wallclock": "255",
+      "cpu": "100.317",
+      "maxvmem": "1.301G"
+    },
+    {
+      "jobnumber": "8320661",
+      "taskid": "undefined",
+      "hostname": "scc-xe4.scc.bu.edu",
+      "qname": "onrcc-m512-pub",
+      "slots": "28",
+      "failed": "0",
+      "exit_status": "0",
+      "start_time": "Wed Oct 28 16:17:23 2026",
+      "end_time": "Wed Oct 28 16:25:40 2026",
+      "ru_wallclock": "497",
+      "cpu": "322.792",
+      "maxvmem": "2.246G"
+    },
+    {
+      "jobnumber": "8320662",
+      "taskid": "4",
+      "hostname": "scc-xf3.scc.bu.edu",
+      "qname": "onrcc-m512-pub",
+      "slots": "28",
+      "failed": "0",
+      "exit_status": "1",
+      "start_time": "Wed Oct 28 16:26:49 2026",
+      "end_time": "Wed Oct 28 16:27:44 2026",
+      "ru_wallclock": "55",
+      "cpu": "22.266",
+      "maxvmem": "876.820M"
+    },
+    {
+      "jobnumber": "8320662",
+      "taskid": "6",
+      "hostname": "scc-xa3.scc.bu.edu",
+      "qname": "onrcc-m512-pub",
+      "slots": "28",
+      "failed": "0",
+      "exit_status": "1",
+      "start_time": "Wed Oct 28 16:26:49 2026",
+      "end_time": "Wed Oct 28 16:30:48 2026",
+      "ru_wallclock": "239",
+      "cpu": "22.629",
+      "maxvmem": "900.789M"
+    },
+    {
+      "jobnumber": "8320662",
+      "taskid": "1",
+      "hostname": "scc-xe2.scc.bu.edu",
+      "qname": "onrcc-m512-pub",
+      "slots": "28",
+      "failed": "0",
+      "exit_status": "1",
+      "start_time": "Wed Oct 28 16:26:49 2026",
+      "end_time": "Wed Oct 28 16:30:49 2026",
+      "ru_wallclock": "240",
+      "cpu": "40.795",
+      "maxvmem": "951.785M"
+    },
+    {
+      "jobnumber": "8320662",
+      "taskid": "3",
+      "hostname": "scc-xb3.scc.bu.edu",
+      "qname": "onrcc-m512-pub",
+      "slots": "28",
+      "failed": "0",
+      "exit_status": "1",
+      "start_time": "Wed Oct 28 16:26:49 2026",
+      "end_time": "Wed Oct 28 16:31:24 2026",
+      "ru_wallclock": "275",
+      "cpu": "24.666",
+      "maxvmem": "952.844M"
+    },
+    {
+      "jobnumber": "8320662",
+      "taskid": "5",
+      "hostname": "scc-xe3.scc.bu.edu",
+      "qname": "onrcc-m512-pub",
+      "slots": "28",
+      "failed": "0",
+      "exit_status": "1",
+      "start_time": "Wed Oct 28 16:26:49 2026",
+      "end_time": "Wed Oct 28 16:31:32 2026",
+      "ru_wallclock": "283",
+      "cpu": "24.707",
+      "maxvmem": "953.785M"
+    },
+    {
+      "jobnumber": "8320662",
+      "taskid": "2",
+      "hostname": "scc-xa4.scc.bu.edu",
+      "qname": "onrcc-m512-pub",
+      "slots": "28",
+      "failed": "0",
+      "exit_status": "1",
+      "start_time": "Wed Oct 28 16:26:49 2026",
+      "end_time": "Wed Oct 28 16:31:32 2026",
+      "ru_wallclock": "283",
+      "cpu": "25.486",
+      "maxvmem": "880.816M"
+    },
+    {
+      "jobnumber": "8320663",
+      "taskid": "undefined",
+      "hostname": "scc-gd4.scc.bu.edu",
+      "qname": "econ",
+      "slots": "4",
+      "failed": "0",
+      "exit_status": "0",
+      "start_time": "Wed Oct 28 16:12:09 2026",
+      "end_time": "Wed Oct 28 16:12:14 2026",
+      "ru_wallclock": "5",
+      "cpu": "2.548",
+      "maxvmem": "701.301M"
+    },
+    {
+      "jobnumber": "8320664",
+      "taskid": "undefined",
+      "hostname": "scc-gr4.scc.bu.edu",
+      "qname": "econ",
+      "slots": "4",
+      "failed": "0",
+      "exit_status": "0",
+      "start_time": "Wed Oct 28 16:16:24 2026",
+      "end_time": "Wed Oct 28 16:21:33 2026",
+      "ru_wallclock": "309",
+      "cpu": "111.820",
+      "maxvmem": "1.367G"
+    },
+    {
+      "jobnumber": "8320665",
+      "taskid": "undefined",
+      "hostname": "scc-gd4.scc.bu.edu",
+      "qname": "econ",
+      "slots": "4",
+      "failed": "0",
+      "exit_status": "0",
+      "start_time": "Wed Oct 28 16:24:00 2026",
+      "end_time": "Wed Oct 28 16:26:15 2026",
+      "ru_wallclock": "135",
+      "cpu": "59.197",
+      "maxvmem": "2.112G"
+    },
+    {
+      "jobnumber": "8320666",
+      "taskid": "undefined",
+      "hostname": "scc-gr4.scc.bu.edu",
+      "qname": "econ",
+      "slots": "4",
+      "failed": "0",
+      "exit_status": "0",
+      "start_time": "Wed Oct 28 16:12:09 2026",
+      "end_time": "Wed Oct 28 16:12:15 2026",
+      "ru_wallclock": "6",
+      "cpu": "2.642",
+      "maxvmem": "700.301M"
+    },
+    {
+      "jobnumber": "8320667",
+      "taskid": "undefined",
+      "hostname": "scc-gd4.scc.bu.edu",
+      "qname": "econ",
+      "slots": "4",
+      "failed": "0",
+      "exit_status": "0",
+      "start_time": "Wed Oct 28 16:16:23 2026",
+      "end_time": "Wed Oct 28 16:21:17 2026",
+      "ru_wallclock": "294",
+      "cpu": "110.506",
+      "maxvmem": "1.435G"
+    },
+    {
+      "jobnumber": "8320668",
+      "taskid": "undefined",
+      "hostname": "scc-gr4.scc.bu.edu",
+      "qname": "econ",
+      "slots": "4",
+      "failed": "0",
+      "exit_status": "0",
+      "start_time": "Wed Oct 28 16:24:00 2026",
+      "end_time": "Wed Oct 28 16:26:15 2026",
+      "ru_wallclock": "135",
+      "cpu": "61.423",
+      "maxvmem": "2.116G"
+    },
+    {
+      "jobnumber": "8320669",
+      "taskid": "1",
+      "hostname": "scc-wc3.scc.bu.edu",
+      "qname": "w28",
+      "slots": "28",
+      "failed": "0",
+      "exit_status": "0",
+      "start_time": "Wed Oct 28 16:28:37 2026",
+      "end_time": "Wed Oct 28 21:21:57 2026",
+      "ru_wallclock": "17600",
+      "cpu": "31297.477",
+      "maxvmem": "7.528G"
+    },
+    {
+      "jobnumber": "8320984",
+      "taskid": "undefined",
+      "hostname": "scc-gd4.scc.bu.edu",
+      "qname": "econ",
+      "slots": "4",
+      "failed": "0",
+      "exit_status": "0",
+      "start_time": "Wed Oct 28 16:37:55 2026",
+      "end_time": "Wed Oct 28 16:41:43 2026",
+      "ru_wallclock": "228",
+      "cpu": "170.782",
+      "maxvmem": "3.858G"
+    },
+    {
+      "jobnumber": "8320989",
+      "taskid": "6",
+      "hostname": "scc-xc4.scc.bu.edu",
+      "qname": "onrcc-m512-pub",
+      "slots": "28",
+      "failed": "0",
+      "exit_status": "0",
+      "start_time": "Wed Oct 28 16:42:57 2026",
+      "end_time": "Wed Oct 28 17:10:36 2026",
+      "ru_wallclock": "1659",
+      "cpu": "2593.358",
+      "maxvmem": "4.507G"
+    },
+    {
+      "jobnumber": "8320989",
+      "taskid": "5",
+      "hostname": "scc-xc1.scc.bu.edu",
+      "qname": "onrcc-m512-pub",
+      "slots": "28",
+      "failed": "0",
+      "exit_status": "0",
+      "start_time": "Wed Oct 28 16:42:57 2026",
+      "end_time": "Wed Oct 28 17:36:20 2026",
+      "ru_wallclock": "3203",
+      "cpu": "6480.689",
+      "maxvmem": "19.580G"
+    },
+    {
+      "jobnumber": "8320989",
+      "taskid": "4",
+      "hostname": "scc-xa2.scc.bu.edu",
+      "qname": "onrcc-m512-pub",
+      "slots": "28",
+      "failed": "0",
+      "exit_status": "0",
+      "start_time": "Wed Oct 28 16:42:57 2026",
+      "end_time": "Wed Oct 28 18:35:00 2026",
+      "ru_wallclock": "6723",
+      "cpu": "28921.879",
+      "maxvmem": "6.695G"
+    },
+    {
+      "jobnumber": "8320989",
+      "taskid": "2",
+      "hostname": "scc-xa1.scc.bu.edu",
+      "qname": "onrcc-m512-pub",
+      "slots": "28",
+      "failed": "0",
+      "exit_status": "0",
+      "start_time": "Wed Oct 28 16:42:57 2026",
+      "end_time": "Wed Oct 28 19:41:16 2026",
+      "ru_wallclock": "10699",
+      "cpu": "20159.198",
+      "maxvmem": "15.865G"
+    },
+    {
+      "jobnumber": "8320989",
+      "taskid": "1",
+      "hostname": "scc-ul2.scc.bu.edu",
+      "qname": "spl-pub",
+      "slots": "28",
+      "failed": "0",
+      "exit_status": "0",
+      "start_time": "Wed Oct 28 16:42:57 2026",
+      "end_time": "Wed Oct 28 19:59:18 2026",
+      "ru_wallclock": "11781",
+      "cpu": "31667.484",
+      "maxvmem": "20.604G"
+    },
+    {
+      "jobnumber": "8320989",
+      "taskid": "3",
+      "hostname": "scc-xc3.scc.bu.edu",
+      "qname": "onrcc-m512-pub",
+      "slots": "28",
+      "failed": "0",
+      "exit_status": "0",
+      "start_time": "Wed Oct 28 16:42:57 2026",
+      "end_time": "Wed Oct 28 20:15:56 2026",
+      "ru_wallclock": "12779",
+      "cpu": "41723.492",
+      "maxvmem": "18.754G"
+    }
+  ],
+  "accounting_sha256": "d6d649c5e3733ce5d2c2502770363335d42641f0b9abfae5338ade5aa158fbe9",
+  "operational_input_repair": {
+    "reason": "Multiple byte-identical retained reference inputs rejected by unique-path loader.",
+    "original_production_job": "8320662",
+    "zero_timed_fits": true,
+    "datasets": {
+      "ols-akm-baseline-n1000000": {
+        "copies": 6,
+        "source": "/projectnb/welfgr/fereg/runs/20261027T165902Z-beta8-campaign-670632aa/task-1/data/ols-akm-baseline-n1000000.dta",
+        "sha256": "5fd1a5cf2039c4cc5c0399326c238502fbd16fc10811799c2bde7047d1931425"
+      },
+      "ppml-akm-baseline-n100000": {
+        "copies": 1,
+        "source": "/projectnb/welfgr/fereg/runs/20261027T165902Z-beta8-campaign-670632aa/task-1/data/ppml-akm-baseline-n100000.dta",
+        "sha256": "bf51d2f86b92cd682ed79e74e0339eff3cd029d738278a8c09e3a7f54c3f8def"
+      },
+      "ppml-akm-baseline-n300000": {
+        "copies": 1,
+        "source": "/projectnb/welfgr/fereg/runs/20261027T165902Z-beta8-campaign-670632aa/task-1/data/ppml-akm-baseline-n300000.dta",
+        "sha256": "e5b7acb3d6b0c631bef859ffa328d58bbdf71f4bc664c6b9a6f822b9846956a9"
+      },
+      "ppml-akm-baseline-n1000000": {
+        "copies": 1,
+        "source": "/projectnb/welfgr/fereg/runs/20261027T165902Z-beta8-campaign-670632aa/task-1/data/ppml-akm-baseline-n1000000.dta",
+        "sha256": "0c873dcd5e8f2468115a44712d20b21492ca88210d1a97194ab244441dfcdfd8"
+      },
+      "ppml-akm-baseline-n1000000-k4": {
+        "copies": 1,
+        "source": "/projectnb/welfgr/fereg/runs/20261027T165902Z-beta8-campaign-670632aa/task-1/data/ppml-akm-baseline-n1000000-k4.dta",
+        "sha256": "5f08835bf45b69d0be6668c6d7b0a3514d64d194dee785f574f73092be5a43d4"
+      },
+      "ppml-akm-baseline-n1000000-k64": {
+        "copies": 1,
+        "source": "/projectnb/welfgr/fereg/runs/20261027T165902Z-beta8-campaign-670632aa/task-1/data/ppml-akm-baseline-n1000000-k64.dta",
+        "sha256": "90d5e75cf0847610c6d3baa807a0e7ddce464fd7e952d5d1da64611d4e40f759"
+      },
+      "ppml-akm-baseline-n3000000": {
+        "copies": 1,
+        "source": "/projectnb/welfgr/fereg/runs/20261027T165902Z-beta8-campaign-670632aa/task-1/data/ppml-akm-baseline-n3000000.dta",
+        "sha256": "24213ac0fca678c76716602410d06d4dd1a991db24c45e43f38963733a400f99"
+      },
+      "ppml-akm-baseline-n10000000": {
+        "copies": 1,
+        "source": "/projectnb/welfgr/fereg/runs/20261027T165902Z-beta8-campaign-670632aa/task-1/data/ppml-akm-baseline-n10000000.dta",
+        "sha256": "b8651957dfac3c678e45b874bf9bfa98929b69c138a01f8ceb4050bc88157547"
+      },
+      "ols-akm-baseline-n100000": {
+        "copies": 1,
+        "source": "/projectnb/welfgr/fereg/runs/20261027T165902Z-beta8-campaign-670632aa/task-2/data/ols-akm-baseline-n100000.dta",
+        "sha256": "a9372d0e680fa5b176878fa6cdac24739878b954132973db47b1bbf60c9a97e0"
+      },
+      "ols-akm-baseline-n300000": {
+        "copies": 1,
+        "source": "/projectnb/welfgr/fereg/runs/20261027T165902Z-beta8-campaign-670632aa/task-2/data/ols-akm-baseline-n300000.dta",
+        "sha256": "6bcedd8977762c36666169190ebb5c677bf57c91018e4f3c8e58e5f773196086"
+      },
+      "ols-akm-baseline-n1000000-k4": {
+        "copies": 1,
+        "source": "/projectnb/welfgr/fereg/runs/20261027T165902Z-beta8-campaign-670632aa/task-2/data/ols-akm-baseline-n1000000-k4.dta",
+        "sha256": "c0731e05302bb864ffac07fa4b6f0ba2f4a4ff8eb590cf28ff72a1c478a8fc6c"
+      },
+      "ols-akm-baseline-n1000000-k64": {
+        "copies": 1,
+        "source": "/projectnb/welfgr/fereg/runs/20261027T165902Z-beta8-campaign-670632aa/task-2/data/ols-akm-baseline-n1000000-k64.dta",
+        "sha256": "81b9861fe5b88ee2f2fca581185b8c502d89c71c8c87cac612a5d07430939506"
+      },
+      "ols-akm-baseline-n3000000": {
+        "copies": 1,
+        "source": "/projectnb/welfgr/fereg/runs/20261027T165902Z-beta8-campaign-670632aa/task-2/data/ols-akm-baseline-n3000000.dta",
+        "sha256": "d2b4f7e19ca7c4b7f8becac5fb87c371af6e0fa8d79b95760f8bbc5989c92286"
+      },
+      "ols-akm-baseline-n10000000": {
+        "copies": 1,
+        "source": "/projectnb/welfgr/fereg/runs/20261027T165902Z-beta8-campaign-670632aa/task-2/data/ols-akm-baseline-n10000000.dta",
+        "sha256": "0e99172919df7577837c9ac47094cfd33ccd0bde11d18cdbd0da3b8b8540e11c"
+      },
+      "ols-three-sparse-n100000": {
+        "copies": 1,
+        "source": "/projectnb/welfgr/fereg/runs/20261027T165902Z-beta8-campaign-670632aa/task-3/data/ols-three-sparse-n100000.dta",
+        "sha256": "f4c266c096723055355e7a92cf7ada04185c0acbde699094d92cd17ac896ec5f"
+      },
+      "ols-three-sparse-n300000": {
+        "copies": 1,
+        "source": "/projectnb/welfgr/fereg/runs/20261027T165902Z-beta8-campaign-670632aa/task-3/data/ols-three-sparse-n300000.dta",
+        "sha256": "90f800e01b53dde185318a56b9f4e8867bfe069fc8411ffe41e29fe84a21b646"
+      },
+      "ols-three-sparse-n1000000": {
+        "copies": 1,
+        "source": "/projectnb/welfgr/fereg/runs/20261027T165902Z-beta8-campaign-670632aa/task-3/data/ols-three-sparse-n1000000.dta",
+        "sha256": "d6c423c35cb9da500b22ffe437b157ba2210c658f7ac7de8d730fba5cab01c05"
+      },
+      "ols-three-sparse-n3000000": {
+        "copies": 1,
+        "source": "/projectnb/welfgr/fereg/runs/20261027T165902Z-beta8-campaign-670632aa/task-3/data/ols-three-sparse-n3000000.dta",
+        "sha256": "120ca722dc3a673627c8539b8787ae4d3280d1e4f27551fa45f6f9f98d21924e"
+      },
+      "ols-three-sparse-n10000000": {
+        "copies": 1,
+        "source": "/projectnb/welfgr/fereg/runs/20261027T165902Z-beta8-campaign-670632aa/task-3/data/ols-three-sparse-n10000000.dta",
+        "sha256": "2c2bd92570fc993b2b431258ad0ac2aaabc9a17cfbc37f4b9eeadca1c3ba8c7d"
+      },
+      "ppml-three-sparse-n1000000": {
+        "copies": 1,
+        "source": "/projectnb/welfgr/fereg/runs/20261027T165902Z-beta8-campaign-670632aa/task-4/data/ppml-three-sparse-n1000000.dta",
+        "sha256": "a307604c6befb9445804b32b9c481e765746342606f5b0dc9c56c9198274ec59"
+      },
+      "ppml-two-sparse-n1000000": {
+        "copies": 1,
+        "source": "/projectnb/welfgr/fereg/runs/20261027T165902Z-beta8-campaign-670632aa/task-4/data/ppml-two-sparse-n1000000.dta",
+        "sha256": "8cb82127870859b2562f4677c773321387bd8e70f4aaac19624b516ea1eb7303"
+      },
+      "ols-one-fe-n1000000": {
+        "copies": 1,
+        "source": "/projectnb/welfgr/fereg/runs/20261027T165902Z-beta8-campaign-670632aa/task-4/data/ols-one-fe-n1000000.dta",
+        "sha256": "1def072fe207536772cfc53670698c8c9c06bfc80802880edabf8aade3552f84"
+      },
+      "ppml-two-dense-n1000000": {
+        "copies": 1,
+        "source": "/projectnb/welfgr/fereg/runs/20261027T165902Z-beta8-campaign-670632aa/task-5/data/ppml-two-dense-n1000000.dta",
+        "sha256": "1b88b707541f271490125709a902e0f85889dd17ed96982a8a276dabec06b88c"
+      },
+      "ols-two-sparse-n1000000": {
+        "copies": 1,
+        "source": "/projectnb/welfgr/fereg/runs/20261027T165902Z-beta8-campaign-670632aa/task-5/data/ols-two-sparse-n1000000.dta",
+        "sha256": "9997535f2b59835f121ca762473ea4cc93a76478ccfee7c2bf1f6e429ee0191c"
+      },
+      "ols-three-dense-n1000000": {
+        "copies": 1,
+        "source": "/projectnb/welfgr/fereg/runs/20261027T165902Z-beta8-campaign-670632aa/task-5/data/ols-three-dense-n1000000.dta",
+        "sha256": "80e65408931d01527dd0d1a7af5db7398b6e4ef53519db81aa72270236ef5a39"
+      },
+      "ppml-one-fe-n1000000": {
+        "copies": 1,
+        "source": "/projectnb/welfgr/fereg/runs/20261027T165902Z-beta8-campaign-670632aa/task-6/data/ppml-one-fe-n1000000.dta",
+        "sha256": "4134b49b85fe14ef3ef16c97626594a0e045923bd1a8c648da3f6e1e9b338eb2"
+      },
+      "ppml-three-dense-n1000000": {
+        "copies": 1,
+        "source": "/projectnb/welfgr/fereg/runs/20261027T165902Z-beta8-campaign-670632aa/task-6/data/ppml-three-dense-n1000000.dta",
+        "sha256": "50f9641bb1b61b292ebb9b3145d96a9c62aad91ad960383a5bd7406c7169267b"
+      },
+      "ols-two-dense-n1000000": {
+        "copies": 1,
+        "source": "/projectnb/welfgr/fereg/runs/20261027T165902Z-beta8-campaign-670632aa/task-6/data/ols-two-dense-n1000000.dta",
+        "sha256": "dc1290bdcbe71b530f47bb02ffb86f9dc9174c3c7b7926462cc484624c8a6640"
+      }
+    },
+    "old_inventory_sha256": "601c2016421462ed2347efae4c992d182b806cafbcc4d7f713db627f2c23950b",
+    "new_inventory_sha256": "defb6e7e371cc1ade1c8020267269c3b6b160324bc6dc91b0d24e4caf4622701",
+    "changed_runtime_inventory_fields": [
+      "input/frozen-inputs.json"
+    ],
+    "job": "8320984",
+    "host": "scc-gd4",
+    "passed": true
+  },
+  "operational_repair_sha256": {
+    "input_repair.py": "4caa758b3cd66b112a6dd5276d0f0fefb10183cb489a4ee0d5056b5c01ffd1b0",
+    "input_repair.sge": "6315a52c45c4bacc7a22bbcb9a2e8585a1b8264145d4b9cf5ec01ba6818a6c34",
+    "input-repair.json": "c8268e834852402652ecda31d41c584612f656da24126f388f4b0795f53bc7fb",
+    "logs/input-repair.sge": "9bec23e56299aa97bdef46998a6a6e174f0440e18499fa16c23ab9f1c235eee3"
+  },
+  "frozen_inventory_checks": {
+    "synthetic": true,
+    "veneto_nofe": true,
+    "veneto_saved": true,
+    "panel_check_sha256": "a4c54c9baf6b0d65daa0b07d8a0025550215f24e5c29fbc12163e9877896561b"
+  },
+  "synthetic_hosts": [
+    {
+      "task": "task-1",
+      "host": "scc-ul2",
+      "cpu_model": "Intel(R) Xeon(R) CPU E5-2680 v4 @ 2.40GHz",
+      "placement_sha256": "f17516ec62ab2ecbab39acb6f990fc29aeec7c65a209bd1a81d6241f9e3a49fe"
+    },
+    {
+      "task": "task-2",
+      "host": "scc-xa1",
+      "cpu_model": "Intel(R) Xeon(R) CPU E5-2680 v4 @ 2.40GHz",
+      "placement_sha256": "0b41945f0879d5780663722df97f23a92177f7e44ef07319b33fc45134543d62"
+    },
+    {
+      "task": "task-3",
+      "host": "scc-xc3",
+      "cpu_model": "Intel(R) Xeon(R) CPU E5-2680 v4 @ 2.40GHz",
+      "placement_sha256": "2ab64096941750404d5ea234fe6bf72ed662aec3ddd7e9e641fa4b0fd6e0928a"
+    },
+    {
+      "task": "task-4",
+      "host": "scc-xa2",
+      "cpu_model": "Intel(R) Xeon(R) CPU E5-2680 v4 @ 2.40GHz",
+      "placement_sha256": "bfb0b5b636e75619256df45db06da53ca7db2b83aa5d12b36a33bb1f1aa090b9"
+    },
+    {
+      "task": "task-5",
+      "host": "scc-xc1",
+      "cpu_model": "Intel(R) Xeon(R) CPU E5-2680 v4 @ 2.40GHz",
+      "placement_sha256": "30144c87dc5a06b2ef80c4b0bc1fde479f2ba121819838a74396561ffdcc60d3"
+    },
+    {
+      "task": "task-6",
+      "host": "scc-xc4",
+      "cpu_model": "Intel(R) Xeon(R) CPU E5-2680 v4 @ 2.40GHz",
+      "placement_sha256": "8c5d4fe84f307608130e9f228cd6fec27a87cf7f0e2c5a989fa439a88f6eb115"
+    }
+  ],
+  "veneto_host": {
+    "host": "scc-wc3",
+    "cpu_model": "Intel(R) Xeon(R) CPU E5-2680 v4 @ 2.40GHz"
+  },
+  "policy": {
+    "retries_of_timed_fits": 0,
+    "exclusions": 0,
+    "tolerance_changes": 0,
+    "cpu_model_restriction": false,
+    "production_slots": 28,
+    "mem_per_core": "3G",
+    "production_walltime": "12h"
+  },
+  "scc_harness_suites": [
+    {
+      "run": "campaign",
+      "tests": 421,
+      "passed": true
+    },
+    {
+      "run": "veneto-long-nofe",
+      "tests": 421,
+      "passed": true
+    },
+    {
+      "run": "veneto-long-saved",
+      "tests": 421,
+      "passed": true
+    }
+  ],
+  "limitations": [
+    "All performance ratios compare packages within a cell and host. No absolute beta.8/beta.10 speedup claim.",
+    "The dense three-FE host scc-xc1 had a slower native reference median (1.668 s versus 0.924-0.943 s on the other five). No timing was excluded or repeated.",
+    "Comparator errors, time limits, scientific discrepancies and prescribed skipped positions remain retained.",
+    "Private Veneto rows and saved fixed effects remain on SCC."
+  ],
+  "retained_evidence_sha256": {
+    "scc-20261028-beta10-veneto-long-saved-observations.csv": "054f282c21c3bf2de20af2c82f94544df0606321576540476b0f7b5c6c8c2817",
+    "scc-20261028-beta10-veneto-long-saved-summary.csv": "4ad0afbebd0d474e5f3a7eb7dd6b1776e7bd8e960710f8cb760cf7e0e55f406c",
+    "scc-20261028-beta10-observations.csv": "7ac17dff9aa13ae294a5704e528760e0ddd6baa3ad881caec7d09919b3abd4ff",
+    "scc-20261028-beta10-veneto-long-nofe-science.json": "7fa83bd99174274a2ca4bcddc478c072a0136fbc66732fb80d4e0e308b06d578",
+    "scc-20261028-beta10-veneto-long-nofe-inputs.json": "ed743fb14198b2ec6dcbbb60e810560feaab5157f4e242ecad3a599bb8ff1d31",
+    "scc-20261028-beta10-veneto-long-nofe-observations.csv": "c998c77b0d7a5e64341911c482c6e9645cd9d7e25bd81230145dbfc40a7234a1",
+    "scc-20261028-beta10-inputs.json": "fcde84e0808c79d9fc0e2a7e8be77aa8050e06603bfc6dc9c429c4882dd8272d",
+    "scc-20261028-beta10-veneto-long-saved-science.json": "7a4435cb24171160c250485d3d54ce6c566ef51d4c00a6e05ad8f139d0cb8c4e",
+    "scc-20261028-beta10-veneto-long-saved-inputs.json": "ab383080974a1ee0e87fce4de1576829154f9d7a84059f8248aa5852960b9cd0",
+    "scc-20261028-beta10-veneto-long-nofe-summary.csv": "475ac92fd21c128105536b475e42ae7e62bc2339688056bca947171d9ab9fe83",
+    "scc-20261028-beta10-summary.csv": "397a351f8fcbf41989c87ddcc1d647439a80b04c962142c8727e87add088ec5a"
+  }
+}

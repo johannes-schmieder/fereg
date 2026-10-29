@@ -1,5 +1,74 @@
 # Veneto AKM comparisons
 
+## October 28, 2026: published beta.10 long-panel campaign
+
+Runs `20261028T200905Z-beta10-veneto-long-{nofe,saved}-7c5d9f39` measured the
+published beta.10 Linux plugin `a7964116...` (runtime source `3348fe45`,
+harness `7c5d9f39`) on the same audited inputs and pinned comparators as the
+beta.8 campaign below. Both variants ran consecutively on the same whole
+28-core E5-2680 v4 node, `scc-wc3`, with three repetitions at each of
+1/2/4/8/16 workers. No CPU-model restriction, timing retries or exclusions
+were imposed. These are within-host package comparisons, not estimates of
+absolute speedups over beta.8 on another host.
+
+All 30 fereg fits passed, with 20 exact fixed-worker repeat checks and 30
+cross-worker science checks (including the one-worker references). Setup,
+reuse, smoke and paired production accounting passed, as did the input audits,
+application sentinels and whole-host observation replay. Each setup ran all
+421 benchmark harness tests successfully. Private rows and saved effects remain
+on SCC; only aggregate evidence is retained here.
+
+Median command seconds without saved effects (`c`: agreement up to absorbed
+degrees-of-freedom counting; `*`: results differ beyond the frozen tolerances):
+
+| Workers | fereg | PyFixest within | FEM.jl | FEM.jl strict | fixest | fixest strict | reghdfe |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 9.73 | 27.05 | 44.94* | 110.82c | 60.86 | 112.71 | 507.23 |
+| 2 | 6.94 | 15.44 | 28.13* | 68.22c | 34.83 | 64.17 | 290.92 |
+| 4 | 4.79 | 9.83 | 19.48* | 46.54c | 20.76 | 37.03 | 202.90 |
+| 8 | 3.53 | 7.01 | 14.94* | 34.94c | 13.06 | 22.69 | — |
+| 16 | 3.20 | 6.19 | 25.89* | 62.51c | 13.25 | 23.00 | — |
+
+fereg scales from 9.73 to 3.20 seconds (3.04 times), and is faster than every
+agreeing comparator at each worker count. At four workers fixest takes 4.33
+times as long, PyFixest 2.05 and reghdfe 42.33. Default FixedEffectModels.jl
+misses the coefficient/objective checks; its strict variant agrees up to the
+small-sample covariance convention. All 99 unsaved positions completed.
+fereg's kernel peak memory is 1.44–1.54 GiB, against 2.61–3.65 for PyFixest,
+1.49–1.78 for default FEM.jl, 1.99–2.39 for fixest and about 2.10 for reghdfe.
+
+With both worker and firm effects saved:
+
+| Workers | fereg seconds | Kernel peak GiB |
+| ---: | ---: | ---: |
+| 1 | 13.10 | 1.73 |
+| 2 | 9.42 | 1.82 |
+| 4 | 6.40 | 1.82 |
+| 8 | 4.68 | 1.82 |
+| 16 | 4.20 | 1.83 |
+
+Saving effects adds about 31–36% to fereg's command time. No comparator passes
+the saved-effects comparison: default fixest, default FEM.jl and reghdfe fail
+the saved-prediction model-score check; strict fixest and strict FEM.jl have
+centered effects outside tolerance, and strict FEM.jl also misses the saved
+prediction check. PyFixest reaches the 600-second limit at every worker count.
+The saved variant retains all 99 positions: 45 successful captures, 13 capture
+errors, 5 timeouts and 36 later positions skipped under the frozen rules.
+Completed comparator times are descriptive and do not establish a speed ranking
+for equivalent saved outputs.
+
+Retained evidence: [unsaved summary](../bench/results/scc-20261028-beta10-veneto-long-nofe-summary.csv),
+[observations](../bench/results/scc-20261028-beta10-veneto-long-nofe-observations.csv),
+[science](../bench/results/scc-20261028-beta10-veneto-long-nofe-science.json),
+[inputs](../bench/results/scc-20261028-beta10-veneto-long-nofe-inputs.json);
+[saved summary](../bench/results/scc-20261028-beta10-veneto-long-saved-summary.csv),
+[observations](../bench/results/scc-20261028-beta10-veneto-long-saved-observations.csv),
+[science](../bench/results/scc-20261028-beta10-veneto-long-saved-science.json),
+[inputs](../bench/results/scc-20261028-beta10-veneto-long-saved-inputs.json).
+The [campaign completion record](../bench/results/scc-20261028-beta10-completion.json)
+includes both reuse jobs and the operational input repair. Historical rounds
+below retain their original evidence and interpretation.
+
 ## October 27, 2026: round two (team cells, CMG matvec gate) against beta.8
 
 Candidate `d6975ec2` (Linux plugin `8d1608c1...`) against the shipped beta.8

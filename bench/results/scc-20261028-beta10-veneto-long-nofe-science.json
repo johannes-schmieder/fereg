@@ -1,0 +1,1283 @@
+{
+  "source": "7c5d9f39888ab0d7f04946cce0d2e6e94e329313",
+  "science": [
+    {
+      "panel": "long",
+      "threads": 1,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long",
+      "threads": 1,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 1,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long",
+      "threads": 1,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 1,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long",
+      "threads": 2,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long",
+      "threads": 2,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 2,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long",
+      "threads": 2,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 2,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long",
+      "threads": 4,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long",
+      "threads": 4,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 4,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long",
+      "threads": 4,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 4,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long",
+      "threads": 8,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long",
+      "threads": 8,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 8,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long",
+      "threads": 8,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 8,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long",
+      "threads": 16,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long",
+      "threads": 16,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 16,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long",
+      "threads": 16,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long",
+      "threads": 16,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    }
+  ],
+  "comparisons": [
+    {
+      "cell": "veneto-long-t1-fe0",
+      "arm": "fixest",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t1-fe0",
+      "arm": "fixest-strict",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t1-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t1-fe0",
+      "arm": "julia",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof",
+        "coefficients",
+        "objective"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ]
+    },
+    {
+      "cell": "veneto-long-t1-fe0",
+      "arm": "julia-strict",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ]
+    },
+    {
+      "cell": "veneto-long-t1-fe0",
+      "arm": "reghdfe",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t1-fe0",
+      "arm": "fixest-strict",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t1-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t1-fe0",
+      "arm": "julia",
+      "repetition": 2,
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof",
+        "coefficients",
+        "objective"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ]
+    },
+    {
+      "cell": "veneto-long-t1-fe0",
+      "arm": "julia-strict",
+      "repetition": 2,
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ]
+    },
+    {
+      "cell": "veneto-long-t1-fe0",
+      "arm": "reghdfe",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t1-fe0",
+      "arm": "fixest",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t1-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t1-fe0",
+      "arm": "julia",
+      "repetition": 3,
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof",
+        "coefficients",
+        "objective"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ]
+    },
+    {
+      "cell": "veneto-long-t1-fe0",
+      "arm": "julia-strict",
+      "repetition": 3,
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ]
+    },
+    {
+      "cell": "veneto-long-t1-fe0",
+      "arm": "reghdfe",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t1-fe0",
+      "arm": "fixest",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t1-fe0",
+      "arm": "fixest-strict",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t2-fe0",
+      "arm": "fixest",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t2-fe0",
+      "arm": "fixest-strict",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t2-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t2-fe0",
+      "arm": "julia",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof",
+        "coefficients",
+        "objective"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ]
+    },
+    {
+      "cell": "veneto-long-t2-fe0",
+      "arm": "julia-strict",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ]
+    },
+    {
+      "cell": "veneto-long-t2-fe0",
+      "arm": "reghdfe",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t2-fe0",
+      "arm": "fixest-strict",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t2-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t2-fe0",
+      "arm": "julia",
+      "repetition": 2,
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof",
+        "coefficients",
+        "objective"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ]
+    },
+    {
+      "cell": "veneto-long-t2-fe0",
+      "arm": "julia-strict",
+      "repetition": 2,
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ]
+    },
+    {
+      "cell": "veneto-long-t2-fe0",
+      "arm": "reghdfe",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t2-fe0",
+      "arm": "fixest",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t2-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t2-fe0",
+      "arm": "julia",
+      "repetition": 3,
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof",
+        "coefficients",
+        "objective"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ]
+    },
+    {
+      "cell": "veneto-long-t2-fe0",
+      "arm": "julia-strict",
+      "repetition": 3,
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ]
+    },
+    {
+      "cell": "veneto-long-t2-fe0",
+      "arm": "reghdfe",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t2-fe0",
+      "arm": "fixest",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t2-fe0",
+      "arm": "fixest-strict",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t4-fe0",
+      "arm": "fixest",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t4-fe0",
+      "arm": "fixest-strict",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t4-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t4-fe0",
+      "arm": "julia",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof",
+        "coefficients",
+        "objective"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ]
+    },
+    {
+      "cell": "veneto-long-t4-fe0",
+      "arm": "julia-strict",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ]
+    },
+    {
+      "cell": "veneto-long-t4-fe0",
+      "arm": "reghdfe",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t4-fe0",
+      "arm": "fixest-strict",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t4-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t4-fe0",
+      "arm": "julia",
+      "repetition": 2,
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof",
+        "coefficients",
+        "objective"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ]
+    },
+    {
+      "cell": "veneto-long-t4-fe0",
+      "arm": "julia-strict",
+      "repetition": 2,
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ]
+    },
+    {
+      "cell": "veneto-long-t4-fe0",
+      "arm": "reghdfe",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t4-fe0",
+      "arm": "fixest",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t4-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t4-fe0",
+      "arm": "julia",
+      "repetition": 3,
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof",
+        "coefficients",
+        "objective"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ]
+    },
+    {
+      "cell": "veneto-long-t4-fe0",
+      "arm": "julia-strict",
+      "repetition": 3,
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ]
+    },
+    {
+      "cell": "veneto-long-t4-fe0",
+      "arm": "reghdfe",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t4-fe0",
+      "arm": "fixest",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t4-fe0",
+      "arm": "fixest-strict",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t8-fe0",
+      "arm": "fixest",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t8-fe0",
+      "arm": "fixest-strict",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t8-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t8-fe0",
+      "arm": "julia",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof",
+        "coefficients",
+        "objective"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ]
+    },
+    {
+      "cell": "veneto-long-t8-fe0",
+      "arm": "julia-strict",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ]
+    },
+    {
+      "cell": "veneto-long-t8-fe0",
+      "arm": "fixest-strict",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t8-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t8-fe0",
+      "arm": "julia",
+      "repetition": 2,
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof",
+        "coefficients",
+        "objective"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ]
+    },
+    {
+      "cell": "veneto-long-t8-fe0",
+      "arm": "julia-strict",
+      "repetition": 2,
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ]
+    },
+    {
+      "cell": "veneto-long-t8-fe0",
+      "arm": "fixest",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t8-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t8-fe0",
+      "arm": "julia",
+      "repetition": 3,
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof",
+        "coefficients",
+        "objective"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ]
+    },
+    {
+      "cell": "veneto-long-t8-fe0",
+      "arm": "julia-strict",
+      "repetition": 3,
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ]
+    },
+    {
+      "cell": "veneto-long-t8-fe0",
+      "arm": "fixest",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t8-fe0",
+      "arm": "fixest-strict",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t16-fe0",
+      "arm": "fixest",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t16-fe0",
+      "arm": "fixest-strict",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t16-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t16-fe0",
+      "arm": "julia",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof",
+        "coefficients",
+        "objective"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ]
+    },
+    {
+      "cell": "veneto-long-t16-fe0",
+      "arm": "julia-strict",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ]
+    },
+    {
+      "cell": "veneto-long-t16-fe0",
+      "arm": "fixest-strict",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t16-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t16-fe0",
+      "arm": "julia",
+      "repetition": 2,
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof",
+        "coefficients",
+        "objective"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ]
+    },
+    {
+      "cell": "veneto-long-t16-fe0",
+      "arm": "julia-strict",
+      "repetition": 2,
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ]
+    },
+    {
+      "cell": "veneto-long-t16-fe0",
+      "arm": "fixest",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t16-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t16-fe0",
+      "arm": "julia",
+      "repetition": 3,
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof",
+        "coefficients",
+        "objective"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ]
+    },
+    {
+      "cell": "veneto-long-t16-fe0",
+      "arm": "julia-strict",
+      "repetition": 3,
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ]
+    },
+    {
+      "cell": "veneto-long-t16-fe0",
+      "arm": "fixest",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-t16-fe0",
+      "arm": "fixest-strict",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    }
+  ]
+}

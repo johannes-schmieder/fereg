@@ -7,6 +7,29 @@ The OLS method-reporting correction changes diagnostic labels and
 fallback flags only; solver selection, iteration budgets, numerical calculations
 and PPML reporting are unchanged.
 
+## Published beta.10 descriptive campaign
+
+The October 28 SCC rerun of the published Linux plugin `a7964116...` (runtime
+source `3348fe45`, harness `7c5d9f39`) retains the beta.8 inputs, pins, tolerances
+and all 1,646 positions: 1,448 synthetic and 99 per Veneto variant. All 286
+native fits passed. Synthetic fixed-worker repeatability passed in 56 cells
+and cross-worker science in 14 groups; the panels passed 20 exact repeats and
+30 worker-reference comparisons. All setup suites passed 421 tests, every
+accepted scheduler record and application sentinel passed, and the retained
+host observations and frozen inventories verified. Original pre-fit input
+discovery failures and the bounded canonical-path repair are recorded separately;
+no timed fit was retried or excluded.
+
+Sparse three-FE OLS at ten million rows completed in 53.18 seconds (three
+repetitions, 52.94–54.82 seconds), using 12.50 GiB. Comparator failures and
+memory tradeoffs remain explicit in the [synthetic report](fixest_benchmarks.md)
+and [Veneto report](veneto_benchmarks.md). The slower reference observation on
+`scc-xc1` is retained. This campaign describes an already-qualified release;
+it is not new runtime qualification and makes no absolute cross-host
+beta.8/beta.10 speedup claim. See the
+[completion and repair record](../bench/results/scc-20261028-beta10-completion.json)
+and its linked evidence hashes.
+
 ## Accepted results
 
 | Change | Evidence and scope |

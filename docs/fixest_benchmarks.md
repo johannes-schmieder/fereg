@@ -1,9 +1,103 @@
 # Comparing fereg with fixest
 
-The separate [Veneto AKM comparisons](veneto_benchmarks.md) use the real long
-and short fevc panels at 1/2/4/8/16 cores. On October 27 the long panel ran on
-the beta.8 package with PyFixest and FixedEffectModels.jl, with and without
-saved worker/firm effects.
+The current published beta.10 synthetic and [Veneto AKM comparisons](veneto_benchmarks.md)
+use the fixed beta.8 schedule and references. Earlier campaigns are retained below.
+
+## October 28, 2026: published beta.10 campaign
+
+Run `20261028T200905Z-beta10-campaign-7c5d9f39` measured the published
+v0.5.0-beta.10 Linux plugin `a7964116...` (runtime source `3348fe45`, harness
+`7c5d9f39`) with the same inputs, comparator pins, tolerances and repetition
+schedule as beta.8 below. It covers 50 substantive configurations plus six
+per-host reference cells: 1,448 positions, with five repetitions through one
+million rows and three above. The comparators are fixest 0.14.2, PyFixest main
+`0f41fffd` with within-py 0.4.0, FixedEffectModels.jl 2.1.0 / Julia 1.11.7,
+reghdfe, ppmlhdfe and Stata 19 areg; strict variants retain their frozen
+settings.
+
+All **256 fereg fits passed**, including all 56 fixed-worker cell checks and
+14 cross-worker groups. The 11 native independent smoke witnesses passed.
+All production accounting, application sentinels, frozen runtime inventories,
+fit coverage and host-observation replay passed. Each of the three SCC setup
+runs passed 421 harness tests. The campaign retains 1,333 successful captures,
+15 capture errors, 8 command timeouts, 86 positions skipped after failure and
+6 larger-size positions skipped after timeout. Comparator smoke discrepancies
+are recorded in the inputs evidence; a smoke pass does not replace per-fit
+scientific checks.
+
+Six whole 28-core allocations ran on `scc-ul2`, `scc-xa1`, `scc-xc3`, `scc-xa2`,
+`scc-xc1` and `scc-xc4`. Every observed CPU was an Intel Xeon E5-2680 v4,
+but no CPU-model restriction was requested. The native reference median was
+0.924–0.943 seconds on five hosts and 1.668 seconds on `scc-xc1` (the dense
+three-FE bundle). That slower observation is retained. Compare packages within
+the same configuration and host; absolute times across bundles, or against
+beta.8 on different hosts, do not identify a software speedup.
+
+**Agreeing package comparisons.** Ratios below divide each comparator's
+median command time by fereg's median on the same host. Agreement includes
+results differing only by the absorbed-degrees-of-freedom covariance scalar;
+all other discrepancies remain descriptive.
+
+| Comparator | Model | Agreeing cells | fereg faster | Ratio range | Median ratio |
+| --- | --- | ---: | ---: | ---: | ---: |
+| reghdfe | OLS | 19 | 19 | 4.54–30.84 | 15.53 |
+| ppmlhdfe | PPML | 13 | 13 | 7.53–78.17 | 19.12 |
+| areg | OLS | 15 | 15 | 1.83–96.39 | 8.85 |
+| fixest | OLS | 23 | 22 | 0.97–6.44 | 2.23 |
+| fixest | PPML | 19 | 19 | 1.01–8.69 | 1.88 |
+| fixest strict | OLS | 24 | 24 | 1.19–23.81 | 3.14 |
+| fixest strict | PPML | 6 | 6 | 2.04–3.66 | 2.92 |
+| PyFixest within | OLS | 24 | 18 | 0.64–4.29 | 1.58 |
+| PyFixest within | PPML | 19 | 13 | 0.25–2.74 | 2.12 |
+| FEM.jl | OLS | 17 | 14 | 0.55–2.30 | 1.61 |
+| FEM.jl strict | OLS | 24 | 21 | 0.57–12.81 | 2.79 |
+
+At one million rows and four workers, AKM OLS takes 0.933 seconds in fereg,
+2.028 in fixest, 2.229 in PyFixest, 1.633 in FEM.jl (agreement by convention),
+14.711 in reghdfe and 8.965 in areg. AKM PPML takes 4.228 seconds in fereg,
+7.930 in fixest, 9.741 in PyFixest and 83.701 in ppmlhdfe.
+The Stata comparators are slower in every agreeing cell. Default fixest is
+slightly faster in dense three-FE OLS (1.955 versus 2.017 seconds); PyFixest
+and FEM.jl win several designs. FEM.jl is faster in one-FE and dense two-/three-FE
+OLS, but its default tolerance misses the sparse-design accuracy checks.
+Saved-output discrepancies and covariance conventions are marked per cell in
+the retained summary.
+
+**Ten million rows.** AKM OLS takes 9.25 seconds in fereg, and AKM PPML 59.74
+seconds; the latter reaches the 600-second limit in ppmlhdfe. Sparse three-FE
+OLS now completes all three native repetitions, at 52.94–54.82 seconds
+(median **53.18**), with exact repeats and scientific agreement across workers.
+PyFixest takes 55.01 seconds, fixest 336.70 and strict FEM.jl 341.77, all agreeing
+up to degrees-of-freedom conventions. Default FEM.jl takes 103.27 seconds but
+misses the science checks; reghdfe and strict fixest time out, and areg is
+skipped after its smaller-size timeout. No failed timing was retried. The old
+beta.8 timeout remains historical evidence below; this campaign establishes
+completion for beta.10, not an absolute speedup across hosts.
+
+**Memory limits and tradeoffs.** Ten-million-row kernel peaks, including loaded
+data, are 5.71 GiB for native AKM OLS and 12.40 GiB for native AKM PPML. Sparse
+three-FE OLS uses 12.50 GiB, against 12.71 for PyFixest, 7.19 for fixest and 4.37
+for strict FEM.jl. At three million rows fereg still uses more memory than
+those completing comparators (4.54 GiB versus 4.27 for PyFixest). PyFixest is
+faster through three million rows; at ten million fereg's median is 3.3% lower.
+The 28-slot requests reserve 3 GiB per core; these results do not establish
+behavior under a smaller memory budget. See the companion
+[Veneto beta.10 results](veneto_benchmarks.md#october-28-2026-published-beta10-long-panel-campaign)
+for the real-data comparison.
+
+**Operational repair.** Original array 8320662 failed before any timed fit
+because the retained beta.8 bundles contained several identical copies of the
+reference input. Repair 8320984 verified all 28 frozen inputs, every duplicate
+hash/metadata record and every decoded column, then supplied unique canonical
+paths. Replacement array 8320989 ran once. Only the frozen-input path inventory
+entry changed; original failed accounting, old inventories and the repair hashes
+remain in the [completion record](../bench/results/scc-20261028-beta10-completion.json).
+
+Retained evidence: [summary](../bench/results/scc-20261028-beta10-summary.csv),
+[all positions](../bench/results/scc-20261028-beta10-observations.csv), and
+[inputs, science, hosts and hashes](../bench/results/scc-20261028-beta10-inputs.json).
+This is descriptive measurement of an already-qualified release, with no
+scientific tolerance changes, timing exclusions or resampling.
 
 ## October 27, 2026: beta.8 campaign with FixedEffectModels.jl and size series
 
