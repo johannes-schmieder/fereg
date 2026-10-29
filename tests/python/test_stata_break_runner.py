@@ -137,6 +137,36 @@ class StataBreakOptionsTests(unittest.TestCase):
             with self.subTest(extra=extra), self.assertRaises(RuntimeError):
                 builder_trace_events(ready + "\n" + ready + "\n" + extra)
 
+    def test_lsmr_fixture_requires_completed_work_and_actual_upstream_cancellation(self):
+        fixture = Path("tests/licensed_stata/estimate_lsmr_iteration_break.do")
+        for estimator, backend in (("ols", "within"), ("ppml", "ppml_joint")):
+            for workers in (1, 4):
+                args = self.arguments("--fixture-kind", estimator + "-lsmr", "--lsmr-workers", str(workers))
+                self.assertEqual(fixture_command(fixture, args), f"do {stata_quote(fixture)} {estimator} {workers}")
+            ready = ("FEREG_SOLVER_TRACE|phase=lsmr_break|event=iteration_break_ready|"
+                     f"backend={backend}|iteration=1")
+            cancelled = ("FEREG_SOLVER_TRACE|phase=lsmr_break|event=iteration_break_cancelled|"
+                         f"backend={backend}")
+            events = [ready, cancelled] * 2
+            trace = "\n".join(events)
+            self.assertEqual(runner.lsmr_trace_events(trace, backend), events)
+            for bad in ("", ready, trace.replace("iteration=1", "iteration=0"),
+                        trace.replace("iteration=1", "iteration=-1"),
+                        trace.replace("iteration=1", "iteration=oops"),
+                        trace.replace("backend=" + backend, "backend=other"),
+                        "\n".join([cancelled, ready] * 2), trace + "\n" + ready,
+                        trace.replace("iteration=1", "iteration=1|iteration=1"),
+                        trace.replace("iteration=1", "iteration=1|extra=1"),
+                        "prefix" + trace, trace.replace("phase=lsmr_break", "phase=other")):
+                with self.subTest(backend=backend, bad=bad), self.assertRaises(RuntimeError):
+                    runner.lsmr_trace_events(bad, backend)
+        for extra in (["--lsmr-workers", "1"],
+                      ["--fixture-kind", "ppml-lsmr", "--lsmr-workers", "2"],
+                      ["--fixture-kind", "ols-lsmr", "--builder-workers", "4"],
+                      ["--fixture-kind", "ols-lsmr", "--public-scope"]):
+            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                self.arguments(*extra)
+
     def test_failure_capture_distinguishes_raw_empty_missing_and_unreadable(self):
         for state in ("present", "empty", "missing", "unreadable"):
             with self.subTest(state=state), tempfile.TemporaryDirectory() as directory:

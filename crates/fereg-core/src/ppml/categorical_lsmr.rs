@@ -4,12 +4,14 @@
 //! LSMR diagnostics alone never authorize an IRLS step.
 
 use crate::linalg::neumaier_add;
-use crate::memory::{fallible_copy, fallible_filled};
+use crate::memory::fallible_filled;
 use std::sync::Mutex;
 use std::time::Instant;
 
 use rayon::prelude::*;
-use schwarz_precond::{mlsmr, LsmrStopReason, MlsmrOptions, Operator, SolveError, Staleness};
+use schwarz_precond::{
+    mlsmr_cancellable, LsmrStopReason, MlsmrOptions, Operator, SolveError, Staleness,
+};
 use within::{Effect, Preconditioner, Solver};
 
 use crate::data::DenseMatrix;
@@ -795,7 +797,7 @@ impl ReusableCategoricalJointLsmr {
             &self.effect_offsets,
             &self.sqrt_weights,
         )?;
-        mlsmr(
+        mlsmr_cancellable(
             &operator,
             &self.rhs,
             preconditioner,
@@ -803,11 +805,20 @@ impl ReusableCategoricalJointLsmr {
             max_iterations,
             MlsmrOptions {
                 warm_start,
-                escalation,
+                escalation: crate::fe::lsmr_break::policy(
+                    crate::fe::DeveloperLsmrBackend::PpmlJoint,
+                )
+                .or(escalation),
                 local_size,
             },
+            schwarz_precond::Cancellation::new(&crate::interrupt::cancellation_requested),
         )
-        .map_err(lsmr_error)
+        .map_err(|error| {
+            if matches!(error, SolveError::Cancelled) {
+                crate::fe::lsmr_break::record_cancelled(crate::fe::DeveloperLsmrBackend::PpmlJoint);
+            }
+            lsmr_error(error)
+        })
     }
 
     fn validate_frame(
@@ -899,16 +910,24 @@ impl ReusableCategoricalJointLsmr {
         } else {
             within_effects(fe_design)?
         };
-        // Ordered in every mode: repeatable at a fixed worker count.
+        // Explicit additive policy and repeatable owner reduction in every mode.
         let config = crate::fe::additive_schwarz();
-        let solver = Solver::new(
+        let solver = Solver::new_cancellable(
             effects,
-            Some(fallible_copy(weights, "joint PPML Schwarz weights")?),
+            Some(weights),
             config,
+            within::Cancellation::new(&crate::interrupt::cancellation_requested),
         )
         .map_err(|error| {
+            if let Err(error) = crate::interrupt::checkpoint() {
+                return error;
+            }
             FeregError::new(
-                ErrorCode::InvalidData,
+                if matches!(error, within::BuildError::Cancelled) {
+                    ErrorCode::Interrupted
+                } else {
+                    ErrorCode::InvalidData
+                },
                 format!("unable to build joint PPML Schwarz preconditioner: {error}"),
             )
         })?;
@@ -1486,8 +1505,9 @@ fn apply_core_pair_bridge(
     }
 
     let effects = design.effects();
-    let mut bridge = scratch.lock().map_err(|_| SolveError::Synchronization {
+    let mut bridge = scratch.lock().map_err(|_| SolveError::InvalidInput {
         context: "joint PPML core-pair bridge scratch",
+        message: "synchronization failure: scratch mutex is poisoned".to_owned(),
     })?;
     if bridge.core_rhs.len() != core_width || bridge.core_correction.len() != core_width {
         return Err(solve_shape_error("core-pair bridge scratch"));
@@ -2046,10 +2066,10 @@ pub(crate) fn estimate_joint_lsmr_workspace_bytes(
     ])?;
 
     // The continuation path uses a four-vector local reorthogonalization
-    // window. Besides Modified Golub-Kahan's 2N + (3 + 2w)P vectors, the
-    // LSMR solution recurrence owns another 3P vectors and a warm start owns
-    // an N-vector residual. Keep one prior P-vector result live because both
-    // recurrence escalation and exact-certificate continuation do so.
+    // window. Modified Golub-Kahan and the solution recurrence own
+    // 2N + (6 + 2w)P values; warm residuals reuse the observation workspace.
+    // Keep the caller's prior P-vector and a second P-vector for an upstream
+    // false-convergence restart while the corrected recurrence runs.
     const CONTINUATION_LOCAL_SIZE: u128 = 4;
     let recurrence_vectors = checked_add_memory(
         6,
@@ -2057,13 +2077,13 @@ pub(crate) fn estimate_joint_lsmr_workspace_bytes(
         "joint PPML recurrence vector count",
     )?;
     let recurrence_values = checked_sum_memory(&[
-        checked_mul_memory(n, 3, "joint PPML recurrence observation vectors")?,
+        checked_mul_memory(n, 2, "joint PPML recurrence observation vectors")?,
         checked_mul_memory(
             p,
             recurrence_vectors,
             "joint PPML recurrence coefficient vectors",
         )?,
-        p,
+        checked_mul_memory(p, 2, "joint PPML retained continuation results")?,
     ])?;
     let recurrence_peak = checked_sum_memory(&[
         bytes_for_memory::<f64>(recurrence_values, "joint PPML recurrence values")?,
@@ -2071,8 +2091,8 @@ pub(crate) fn estimate_joint_lsmr_workspace_bytes(
     ])?;
 
     // A stale/certificate-triggered rebuild retains the previous solution
-    // while `within::Solver::new` owns copied weights and may locality-sort all
-    // categorical columns.
+    // while `within::Solver::new` constructs square-root weights and may
+    // locality-sort all categorical columns.
     let solve_peak = if policy == CategoricalLsmrPolicy::Diagonal {
         recurrence_peak
     } else {
@@ -2299,8 +2319,13 @@ pub(super) fn bytes_for_memory<T>(elements: u128, context: &'static str) -> Resu
 }
 
 fn lsmr_error(error: SolveError) -> FeregError {
+    if let Err(error) = crate::interrupt::checkpoint() {
+        return error;
+    }
     FeregError::new(
-        if matches!(error, SolveError::Allocation { .. }) {
+        if matches!(error, SolveError::Cancelled) {
+            ErrorCode::Interrupted
+        } else if matches!(error, SolveError::Allocation { .. }) {
             ErrorCode::Allocation
         } else {
             ErrorCode::NonConvergence

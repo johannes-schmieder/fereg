@@ -159,17 +159,14 @@ pub(crate) fn absorb_lsmr_certified_at(
             if config.preconditioner == LsmrPreconditioner::Auto
                 && error.preconditioner_breakdown() =>
         {
-            let solved = super::lsmr_batch::solve_batch(
-                build_effects(design)?,
+            let solved = retry_owned_unpreconditioned(
+                design,
+                weights,
                 &rhs_views,
-                Some(weights),
                 &options,
-                PreconditionerConfig::Off,
                 config.threads.deterministic,
-            )
-            .map_err(|fallback_error| {
-                fallback_error.into_fereg("modified LSMR failed after unpreconditioned fallback")
-            })?;
+                error,
+            )?;
             (solved, true)
         }
         Err(error) => {
@@ -224,6 +221,41 @@ pub(crate) fn absorb_lsmr_certified_at(
         warnings,
         ..SolveReport::single_route(FeSolverKind::Lsmr, stop_reason, certificate)
     })
+}
+
+// A numerical refusal consumes its attempted native work before the only
+// permitted Auto retry. Explicit preconditioners never enter this helper.
+fn retry_owned_unpreconditioned(
+    design: &FeDesign,
+    weights: &[f64],
+    rhs: &[&[f64]],
+    options: &LsmrOptions,
+    deterministic: bool,
+    error: super::lsmr_batch::BatchError,
+) -> Result<within::BatchSolveResult> {
+    let spent = error.attempted_iterations();
+    let Some(remaining) = options.maxiter.checked_sub(spent).filter(|n| *n > 0) else {
+        return Err(error.into_fereg("modified LSMR failed"));
+    };
+    let fallback_options = LsmrOptions {
+        maxiter: remaining,
+        ..options.clone()
+    };
+    let mut solved = super::lsmr_batch::solve_batch(
+        build_effects(design)?,
+        rhs,
+        Some(weights),
+        &fallback_options,
+        PreconditionerConfig::Off,
+        deterministic,
+    )
+    .map_err(|fallback_error| {
+        fallback_error.into_fereg("modified LSMR failed after unpreconditioned fallback")
+    })?;
+    for iterations in &mut solved.iterations {
+        *iterations += spent;
+    }
+    Ok(solved)
 }
 
 fn trace_lsmr_columns(
@@ -313,17 +345,13 @@ fn within_preconditioner(preconditioner: LsmrPreconditioner) -> PreconditionerCo
     }
 }
 
-/// The additive-Schwarz configuration of every fereg LSMR build: the pinned
-/// default local solvers with the Ordered reduction, which commits subdomain
-/// contributions in subdomain order. The pinned Auto reduction may resolve to
-/// an atomic scatter whose summation order follows thread timing; fereg
-/// requires repeatable results at a fixed worker count in every mode.
+/// Explicit additive Schwarz for fereg's own routing policy. Upstream's default
+/// is adaptive; inheriting it would add a second, independent escalation policy.
+/// The upstream owner reduction is repeatable at a fixed worker count.
 pub(crate) fn additive_schwarz() -> PreconditionerConfig {
-    let mut config = PreconditionerConfig::default();
-    if let PreconditionerConfig::Additive { reduction, .. } = &mut config {
-        *reduction = within::ReductionStrategy::Ordered;
+    PreconditionerConfig::Additive {
+        local_solver: within::LocalSolverConfig::default(),
     }
-    config
 }
 
 fn validate_config(config: LsmrConfig) -> Result<()> {
@@ -352,6 +380,14 @@ fn validate_config(config: LsmrConfig) -> Result<()> {
 mod tests {
     use super::*;
     use crate::fe::EffectTerm;
+
+    #[test]
+    fn schwarz_configuration_never_inherits_upstream_adaptive_policy() {
+        assert!(matches!(
+            additive_schwarz(),
+            PreconditionerConfig::Additive { .. }
+        ));
+    }
 
     #[test]
     fn lsmr_setup_capacity_overflow_is_an_allocation_error() {
@@ -402,30 +438,111 @@ mod tests {
         assert!(values.as_slice().iter().all(|value| value.abs() < 1e-7));
     }
 
-    #[test]
-    fn automatic_preconditioner_falls_back_for_roundoff_indefiniteness() {
+    fn extreme_weight_tree_fixture() -> (FeDesign, Vec<f64>, DenseMatrix) {
         let first = EffectTerm::new(vec![0, 0, 1, 1, 1], 2, true, vec![]).expect("first");
         let second = EffectTerm::new(vec![0, 0, 0, 1, 1], 2, true, vec![]).expect("second");
         let design = FeDesign::new(5, vec![first, second]).expect("design");
         let tiny = 1e-5_f64 * 1e-5_f64 / 3.0;
         let weights = vec![tiny, 1.0, tiny, tiny, 1.0];
-        let mut values =
-            DenseMatrix::from_columns(&[vec![1.0, 0.0, 1.0, 1.0, 0.0]]).expect("values");
-        let report = absorb_lsmr(
+        let values = DenseMatrix::from_columns(&[vec![1.0, 0.0, 1.0, 1.0, 0.0]]).expect("values");
+        (design, weights, values)
+    }
+
+    #[test]
+    fn extreme_weight_tree_matches_analytic_projection_with_auto_and_off() {
+        // Preserve the historical roundoff fixture as a scientific witness.
+        // The three observed cells form an acyclic bipartite design, so their
+        // weighted means give its exact independent FE projection. Whether a
+        // particular arithmetic implementation needs a positivity retry is
+        // incidental; both returned projections must satisfy this certificate.
+        let (design, weights, original) = extreme_weight_tree_fixture();
+        let mean = weights[0] / (weights[0] + weights[1]);
+        let analytic = [1.0 - mean, -mean, 0.0, 1.0 - mean, -mean];
+        for preconditioner in [LsmrPreconditioner::Auto, LsmrPreconditioner::Off] {
+            let mut values = original.clone();
+            let report = absorb_lsmr(
+                &design,
+                &weights,
+                &mut values,
+                LsmrConfig {
+                    tolerance: 1e-10,
+                    preconditioner,
+                    ..LsmrConfig::default()
+                },
+            )
+            .expect("certified weighted projection");
+            assert!(report.certified());
+            assert!(values
+                .as_slice()
+                .iter()
+                .zip(analytic)
+                .all(|(actual, expected)| (actual - expected).abs() < 1e-14));
+        }
+    }
+
+    #[test]
+    fn positivity_retry_cannot_refund_the_failed_attempts_iterations() {
+        let (design, _, values) = extreme_weight_tree_fixture();
+        let weights = [1.0; 5];
+        let rhs = super::super::lsmr_batch::rhs_columns(&values).unwrap();
+        let rhs_views: Vec<_> = rhs.iter().map(Vec::as_slice).collect();
+        let options = LsmrOptions {
+            tol: 1e-10,
+            maxiter: 500,
+            local_size: Some(4),
+        };
+        // The upstream iteration_budget tests use genuinely failing operators
+        // to establish this counted-error contract. At the adapter boundary,
+        // choose the count explicitly instead of relying on accidental roundoff.
+        let spent = 3;
+        let failure = || super::super::lsmr_batch::BatchError::Attempt {
+            source: within::SolveError::InvalidInput {
+                context: "mlsmr",
+                message: "preconditioner not positive definite".to_owned(),
+            },
+            iterations: spent,
+        };
+        let off = super::super::lsmr_batch::solve_batch(
+            build_effects(&design).unwrap(),
+            &rhs_views,
+            Some(&weights),
+            &options,
+            PreconditionerConfig::Off,
+            false,
+        )
+        .unwrap();
+        assert!(off.converged.iter().all(|&value| value));
+        let total = spent + off.iterations.iter().copied().max().unwrap();
+        let successful = retry_owned_unpreconditioned(
             &design,
             &weights,
-            &mut values,
-            LsmrConfig {
-                tolerance: 1e-10,
-                ..LsmrConfig::default()
+            &rhs_views,
+            &LsmrOptions {
+                maxiter: total,
+                ..options.clone()
             },
+            false,
+            failure(),
         )
-        .expect("certified fallback");
-        assert!(report.fallback_used);
-        assert!(report.certified());
-        assert!(report
-            .warnings
-            .iter()
-            .any(|warning| warning.contains("positive-definiteness guard")));
+        .unwrap();
+        assert_eq!(successful.iterations.iter().copied().max(), Some(total));
+        assert_eq!(successful.demeaned, off.demeaned);
+        assert_eq!(successful.x, off.x);
+        let error = retry_owned_unpreconditioned(
+            &design,
+            &weights,
+            &rhs_views,
+            &LsmrOptions {
+                maxiter: spent,
+                ..options
+            },
+            false,
+            failure(),
+        )
+        .unwrap_err();
+        assert_eq!(error.code, ErrorCode::Internal);
+        assert!(error
+            .message
+            .contains("preconditioner not positive definite"));
     }
 }

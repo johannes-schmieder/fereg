@@ -2638,6 +2638,95 @@ fn idle_host_polls_do_not_arm_native_break_or_consume_phase_ordinals() {
     assert_eq!(spi.store_calls, 0);
 }
 
+fn lsmr_iteration_break_fixture(threads: usize) -> (Vec<String>, FakeSpi) {
+    let (mut args, mut spi) = bias_fixture(false);
+    // Reuse the categorical two-FE design, without requesting bias correction.
+    args.retain(|arg| !arg.starts_with("bias_") && !arg.starts_with("output_bias_"));
+    spi.nvars = 15;
+    spi.numeric.retain(|(variable, _), _| *variable <= 15);
+    replace_argument(&mut args, "solver", "solver=lsmr".to_owned());
+    replace_argument(&mut args, "threads", format!("threads={threads}"));
+    (args, spi)
+}
+
+#[test]
+fn lsmr_iteration_break_is_polled_after_solver_work_and_leaves_no_publication() {
+    if isolated_host_cancellation_test("ppml_estimate::tests::lsmr_iteration_break_is_polled_after_solver_work_and_leaves_no_publication") {
+        return;
+    }
+    for threads in [1, 4] {
+        for _ in 0..2 {
+            let (mut args, mut spi) = lsmr_iteration_break_fixture(threads);
+            let token = format!(
+                "{:032x}",
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_nanos()
+            );
+            let marker = crate::developer_injection::native_break_marker_path("feppml", &token);
+            args.push("inject=lsmr_iteration_break".to_owned());
+            args.push(format!("break_marker_token={token}"));
+            spi.interrupt_when_marker_exists = Some(marker.clone());
+            let error = estimate_ppml(&args, &mut spi).unwrap_err();
+            assert_eq!(error.code, ErrorCode::Interrupted, "{error}");
+            assert_eq!(
+                spi.displays,
+                [crate::developer_injection::PPML_NATIVE_BREAK_MARKER]
+            );
+            assert_eq!(
+                std::fs::read_to_string(&marker).unwrap(),
+                crate::developer_injection::PPML_NATIVE_BREAK_MARKER
+            );
+            std::fs::remove_file(marker).unwrap();
+            assert!(
+                !fereg_core::fe::lsmr_break_ready(),
+                "action guard must reset"
+            );
+            assert!(!fereg_core::interrupt::cancellation_requested());
+            assert_eq!(spi.store_calls, 0);
+            assert!(spi.stores.is_empty());
+            assert_eq!(spi.receipt_complete(), 0.0);
+        }
+        let (args, mut spi) = lsmr_iteration_break_fixture(threads);
+        estimate_ppml(&args, &mut spi).expect("ordinary LSMR succeeds after repeated Break");
+        assert_eq!(spi.receipt_complete(), 1.0);
+    }
+}
+
+#[test]
+fn lsmr_iteration_break_requires_supported_shape_and_safe_marker() {
+    for token in [None, Some("/tmp/arbitrary.marker")] {
+        let (mut args, mut spi) = lsmr_iteration_break_fixture(1);
+        args.push("inject=lsmr_iteration_break".to_owned());
+        if let Some(token) = token {
+            args.push(format!("break_marker_token={token}"));
+        }
+        assert_eq!(
+            estimate_ppml(&args, &mut spi).unwrap_err().code,
+            ErrorCode::Syntax
+        );
+        assert_eq!(spi.reads, 0);
+    }
+    for wrong_solver in [false, true] {
+        let (mut args, mut spi) = if wrong_solver {
+            let (mut args, spi) = lsmr_iteration_break_fixture(1);
+            replace_argument(&mut args, "solver", "solver=auto".to_owned());
+            (args, spi)
+        } else {
+            let (mut args, spi) = fixture();
+            replace_argument(&mut args, "solver", "solver=lsmr".to_owned());
+            (args, spi)
+        };
+        args.push("inject=lsmr_iteration_break".to_owned());
+        args.push("break_marker_token=00000000000000000000000000000000".to_owned());
+        let error = estimate_ppml(&args, &mut spi).unwrap_err();
+        assert_eq!(error.code, ErrorCode::Unsupported, "{error}");
+        assert_eq!(spi.reads, 0);
+        assert_eq!(spi.store_calls, 0);
+    }
+}
+
 #[test]
 fn native_break_rejects_missing_or_path_like_marker_tokens_before_reads() {
     let (mut missing_args, mut missing_spi) = fixture();

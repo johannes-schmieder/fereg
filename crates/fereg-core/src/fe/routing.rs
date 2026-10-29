@@ -278,6 +278,14 @@ impl RoutingPreset {
             })
     }
 
+    /// The old h/k pair replacement and its builder-Break selector are retired
+    /// for general categorical designs. Two-effect experiments still use them.
+    pub(crate) fn retired_general_pair_request(self, categorical_effects: Option<usize>) -> bool {
+        categorical_effects.is_some_and(|effects| effects > 2)
+            && self.prefix.is_none()
+            && self.ablation.is_none()
+    }
+
     pub(crate) fn portfolio(self) -> bool {
         matches!(
             self.prefix,
@@ -347,15 +355,6 @@ impl RoutingPreset {
         self.checkpoint
     }
 
-    /// Prefix arms cannot nominate or build a general within pair replacement.
-    /// Their two-FE policy may independently have a finite checkpoint.
-    pub(crate) fn general_pair_checkpoint(self) -> usize {
-        if self.prefix.is_some() {
-            usize::MAX
-        } else {
-            self.checkpoint
-        }
-    }
     pub(crate) fn samples(self) -> u32 {
         self.samples
     }
@@ -567,17 +566,16 @@ mod tests {
         assert_eq!(preset.categorical_prefix(), Some(CategoricalPrefix::Map4));
         assert_eq!(preset.checkpoint(), 16);
         assert_eq!(preset.samples(), 1);
-        assert_eq!(preset.general_pair_checkpoint(), usize::MAX);
         assert_eq!(preset.kernel(), None);
         let legacy = RoutingPreset::prefix(CategoricalPrefix::Map4);
         assert!(!legacy.strict_categorical_prefix());
         assert_ne!(preset, legacy);
         assert_eq!(legacy.to_string(), "routing_prefix_map4");
         assert_eq!(legacy.checkpoint(), usize::MAX);
-        assert_eq!(legacy.general_pair_checkpoint(), usize::MAX);
         let old_pair = RoutingPreset::new(16, 1).unwrap();
         assert!(!old_pair.strict_categorical_prefix());
-        assert_eq!(old_pair.general_pair_checkpoint(), 16);
+        assert!(old_pair.retired_general_pair_request(Some(3)));
+        assert!(!old_pair.retired_general_pair_request(Some(2)));
     }
 
     #[test]
@@ -591,7 +589,6 @@ mod tests {
         assert!(control.strict_categorical_prefix());
         assert_eq!(control.categorical_prefix(), Some(CategoricalPrefix::None));
         assert_eq!(v1.categorical_prefix(), Some(CategoricalPrefix::Map4));
-        assert_eq!(control.general_pair_checkpoint(), usize::MAX);
         assert_eq!(control.checkpoint(), v1.checkpoint());
         assert_eq!(control.samples(), v1.samples());
         assert_eq!(control.kernel(), v1.kernel());
@@ -629,7 +626,6 @@ mod tests {
         assert!(!preset.strict_categorical_prefix());
         assert!(!preset.requires_economic_grant());
         assert_eq!(preset.categorical_prefix(), Some(CategoricalPrefix::None));
-        assert_eq!(preset.general_pair_checkpoint(), usize::MAX);
         assert_eq!(preset.kernel(), None);
         for other in [
             RoutingPreset::portfolio_unseeded(),

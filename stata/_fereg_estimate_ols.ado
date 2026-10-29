@@ -116,7 +116,7 @@ program define _fereg_estimate_ols, eclass
     if `"`inject'"' != "" & !`routing_injection' & !`it_injection' & !`ownership_injection' & !`cells_injection' & !inlist(`"`inject'"', ///
         "posthold", "postplugin", "poststripe", "postereturn", ///
         "postscalars", "postdiagnostics", "precommit", ///
-        "breakpostplugin", "breaknative") {
+        "breakpostplugin", "breaknative") & `"`inject'"' != "lsmr_iteration_break" {
         di as error "unknown developer transaction injection stage: `inject'"
         exit 198
     }
@@ -573,7 +573,7 @@ program define _fereg_estimate_ols, eclass
         if `cmgseed_explicit' local request_arguments ///
             `"`request_arguments'cmgseed=`cmgseed';"'
     }
-    if inlist(`"`inject'"', "breaknative", "routing_builder_break") {
+    if inlist(`"`inject'"', "breaknative", "routing_builder_break", "lsmr_iteration_break") {
         local break_marker_token : environment FEREG_BREAK_MARKER_TOKEN
         if strtrim(`"`break_marker_token'"') == "" {
             di as error "hidden OLS breaknative requires FEREG_BREAK_MARKER_TOKEN"

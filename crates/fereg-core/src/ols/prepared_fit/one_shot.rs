@@ -851,7 +851,6 @@ pub(super) fn fit<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
             remaining.as_mut().map(ObserverRef::reborrow),
         )
     };
-    cmg.close_routing_attempt();
     // Cancellation requested during the projection takes precedence.
     crate::interrupt::checkpoint()?;
     let mut inputs = projection?;

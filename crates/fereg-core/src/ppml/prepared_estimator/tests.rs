@@ -780,12 +780,13 @@ fn automatic_structural_map_uses_admitted_shared_operations() {
     assert_eq!(automatic.solver().requested, PpmlSolverFamily::Auto);
     assert_eq!(automatic.solver().selected, PpmlSolverFamily::Map);
     assert_eq!(automatic.solver().fallback_count, 0);
-    assert!(automatic.memory().plan.solver_workspace_bytes > 0);
-    assert!(
-        automatic.memory().plan.selected_inventory().peak_bytes
-            + automatic.memory().plan.solver_workspace_bytes
-            <= usable
-    );
+    let automatic_plan = automatic.memory().plan;
+    // MAP's base workspace is already in the execution inventory. Shared
+    // coefficient/certificate banks use the reusable charges; an optional
+    // three-FE LSMR checkpoint may be refused independently of those banks.
+    assert!(automatic_plan.reusable_certificate_bytes > 0);
+    assert!(automatic_plan.reusable_slope_bytes > 0);
+    assert!(automatic_plan.selected_bytes() <= usable);
     // Shared numerical directions/checkpoints report their actual work.
     // Only the unselected explicit CMG implementation must remain unused.
     let report = automatic.solver();

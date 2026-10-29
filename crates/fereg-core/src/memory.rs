@@ -594,42 +594,37 @@ fn lsmr_recurrence_memory(dimensions: &FeSolverDimensions<'_>) -> Result<LsmrRec
         )
     };
     let krylov_bytes = recurrence(checked_sum(&[
-        6,
+        // A failed original-residual audit may retain the preceding solution
+        // while the replacement recurrence starts.
+        7,
         checked_mul(history, 2, "modified LSMR history lanes")?,
     ])?)?;
-    let off_krylov_bytes = recurrence(checked_sum(&[5, history])?)?;
+    let off_krylov_bytes = recurrence(checked_sum(&[6, history])?)?;
 
-    // Each RHS operator owns its largest scatter block. Small blocks also
-    // allocate fold/reduce accumulators; with_min_len bounds the number of
-    // leaves independently of the nested task schedule. Charge both fold and
-    // reduction identities for every leaf, plus the final result.
-    let fold_levels = if observations > 10_000 {
-        effect_level_counts
-            .iter()
-            .copied()
-            .filter(|&count| count < 100_000)
-            .max()
-            .unwrap_or(0) as u128
-    } else {
+    // Upstream fixes the row-reduction tree independently of the team size.
+    // A fused term has C <= 4 channels (wider terms run channels sequentially),
+    // L levels, and q = ceil(N / max(4CL, 65536)) leaves. At most q*CL values
+    // coexist: merging reuses one child. q*CL <= ceil(N/4) + CL.
+    let fused_slots = checked_mul(maximum_levels, 4, "LSMR fused scatter slots")?.min(levels);
+    let fold_bytes = if fused_slots == 0 {
         0
-    };
-    let min_rows = (observations / threads).max(1024);
-    let fold_leaves = observations.div_ceil(min_rows) as u128;
-    let scatter_bytes = checked_mul(
+    } else {
         checked_mul(
-            checked_sum(&[
-                maximum_levels,
-                checked_mul(
-                    fold_levels,
-                    checked_sum(&[checked_mul(fold_leaves, 2, "LSMR scatter leaves")?, 1])?,
-                    "LSMR scatter fold and reduction storage",
-                )?,
-            ])?,
-            active_rhs,
-            "LSMR per-RHS scatter storage",
-        )?,
-        8,
-        "LSMR scatter bytes",
+            checked_sum(&[n.div_ceil(4), fused_slots])?,
+            8,
+            "LSMR fixed-tree scatter bytes",
+        )?
+    };
+    // Owner sums write directly into the coefficient block. Their only heap
+    // scratch is one slice descriptor per channel and group of 1024 levels.
+    let owner_groups = effect_level_counts.iter().try_fold(0_u128, |sum, count| {
+        checked_sum(&[sum, (*count as u128).div_ceil(1024)])
+    })?;
+    let owner_bytes = checked_mul(owner_groups, 16, "LSMR owner group descriptors")?;
+    let scatter_bytes = checked_mul(
+        fold_bytes.max(owner_bytes),
+        active_rhs,
+        "LSMR concurrent adjoint scratch",
     )?;
     Ok(LsmrRecurrenceMemory {
         active_rhs,
@@ -638,6 +633,47 @@ fn lsmr_recurrence_memory(dimensions: &FeSolverDimensions<'_>) -> Result<LsmrRec
         off_krylov_bytes,
         scatter_bytes,
     })
+}
+
+/// Individual controlled results coexist with the adapter's shared batch metadata.
+fn lsmr_result_metadata_bytes(
+    rhs: u128,
+    active_rhs: u128,
+    effects: u128,
+    levels: u128,
+    signed_cover: bool,
+) -> Result<u128> {
+    // Controlled per-RHS calls return layout, unidentified directions and
+    // warnings individually before the adapter assembles one shared result.
+    // Unidentified Vec collection may have capacity below twice its P entries;
+    // layout labels are shared Arcs. Only signed channel pairs emit warnings.
+    let result_metadata = checked_sum(&[
+        checked_mul(
+            levels,
+            2 * std::mem::size_of::<within::CoefficientAddress>() as u128,
+            "LSMR unidentified result capacity",
+        )?,
+        checked_mul(effects, 64, "LSMR result term layouts")?,
+        if signed_cover {
+            checked_mul(
+                checked_mul(levels, effects.saturating_sub(1), "LSMR warning components")?,
+                std::mem::size_of::<within::BuildWarning>() as u128,
+                "LSMR result warnings",
+            )?
+        } else {
+            0
+        },
+        256,
+    ])?;
+    checked_sum(&[
+        checked_mul(rhs, 256, "LSMR RHS descriptors and result metadata")?,
+        checked_mul(effects, 128, "LSMR effect and layout metadata")?,
+        checked_mul(
+            checked_sum(&[active_rhs, 1])?,
+            result_metadata,
+            "LSMR individual and combined result metadata",
+        )?,
+    ])
 }
 
 /// Retained preconditioner, output transport and certification are sequential
@@ -694,10 +730,8 @@ fn populate_lsmr_memory(
         2,
         "LSMR window individual and combined output banks",
     )?;
-    let metadata_bytes = checked_sum(&[
-        checked_mul(rhs, 256, "LSMR RHS descriptors and result metadata")?,
-        checked_mul(effects, 128, "LSMR effect and layout metadata")?,
-    ])?;
+    let metadata_bytes =
+        lsmr_result_metadata_bytes(rhs, active_rhs, effects, levels, signed_cover)?;
     let common = |recurrence_bytes| -> Result<u128> {
         checked_sum(&[
             rhs_copy_bytes,
@@ -714,6 +748,7 @@ fn populate_lsmr_memory(
         levels,
         maximum_levels,
         threads as u128,
+        active_rhs,
         checked_sum(&[
             categorical_dense_cross_tab_bytes(n, effect_level_counts)?,
             schwarz_weighted_correction_bytes(n, effect_level_counts)?,
@@ -757,13 +792,9 @@ fn populate_lsmr_memory(
     .max(postprocess(lsmr_diagonal_retained_bytes)?);
     let topology_bytes = schwarz.build_peak_bytes;
     let schwarz_setup_peak = checked_sum(&[rhs_copy_bytes, topology_bytes, metadata_bytes])?;
-    // The shared retained estimate charges up to four complete pooled objects.
-    // Each live RHS can additionally own one complete apply stack.
-    let schwarz_batch_apply_bytes = checked_mul(
-        schwarz.apply_peak_bytes,
-        active_rhs,
-        "LSMR concurrent Schwarz applies",
-    )?;
+    // This shared pool estimate already includes all active RHS, including
+    // suspended nested tasks; do not multiply it by the RHS count again.
+    let schwarz_batch_apply_bytes = schwarz.apply_peak_bytes;
     let schwarz_solve_peak = checked_sum(&[
         common(krylov_bytes)?,
         schwarz.solver_frame_bytes,
@@ -1155,20 +1186,25 @@ mod tests {
 
     #[test]
     fn lsmr_recurrence_model_matches_independent_allocator_payloads() {
-        // Pinned modified-LSMR payloads independently captured by the rectangular
-        // operator/barrier probe in lsmr-transport-local-2026-09-12. They exclude
-        // transport, scatter, preconditioners and result-container bookkeeping.
-        for (rows, levels, rhs, history, payload) in [
-            (8192, 4096, 1, None, 327_680),
-            (8192, 4096, 1, Some(4), 589_824),
-            (8192, 4096, 4, Some(4), 2_359_296),
-            (16384, 4096, 4, Some(4), 2_883_584),
-            (8192, 6144, 4, Some(4), 3_276_800),
-            (32, 8, 4, Some(100), 7_680),
+        // Ordinary modified-LSMR heap payloads measured by the independent
+        // rectangular-system witness in bench/within_allocation.rs on upstream
+        // 32dde1bd and reproducibility 6f2ead13 (Rust 1.85.1). The estimate also
+        // reserves one prior coefficient bank for an internal residual-audit
+        // restart; none of these well-conditioned witnesses needs that restart.
+        for (rows, levels, history, payload) in [
+            (64, 32, None, 2_560),
+            (64, 32, Some(4), 4_608),
+            (64, 32, Some(100), 18_944),
+            (8192, 4096, None, 327_680),
+            (8192, 4096, Some(4), 589_824),
+            (8192, 4096, Some(8), 851_968),
         ] {
-            let estimate = estimate_fe_solver_memory(rows, rhs, &[levels], 4, history).unwrap();
-            assert_eq!(estimate.krylov_bytes, payload);
-            assert!(estimate.lsmr_diagonal_bytes > payload);
+            for rhs in [1, 4] {
+                let estimate = estimate_fe_solver_memory(rows, rhs, &[levels], 4, history).unwrap();
+                let audited_peak = (payload + levels as u128 * 8) * rhs as u128;
+                assert_eq!(estimate.krylov_bytes, audited_peak);
+                assert!(estimate.lsmr_diagonal_bytes > audited_peak);
+            }
         }
     }
 

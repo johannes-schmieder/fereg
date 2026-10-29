@@ -350,9 +350,7 @@ impl BoundedCells<'_> {
         let Some(cache) = self.cache.as_mut() else {
             return Ok(None);
         };
-        let CellSource::Observations { membership, .. } = source else {
-            return Ok(None);
-        };
+        let membership = source.membership;
         let cells_total = membership.nobs();
         if cells_total < TEAM_STAGE_ITEMS || !work.cmg(|team, _| Ok(team.is_some()))? {
             return Ok(None);

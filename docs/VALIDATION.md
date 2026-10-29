@@ -7,6 +7,82 @@ The OLS method-reporting correction changes diagnostic labels and
 fallback flags only; solver selection, iteration budgets, numerical calculations
 and PPML reporting are unchanged.
 
+## Upstream migration candidate
+
+The unpublished beta.11 candidate is separate from the accepted beta.10 release.
+The [compatibility report](within_migration.md) records the frozen dependency
+bases, patch evidence and outstanding integration and performance requirements.
+Johannes approved retiring the general more-than-two-FE pair-upgrade experiment;
+its explicit h/k and builder-Break requests must fail clearly. Two-FE h/k and
+builder-Break behavior, public Auto escalation, supported OLS/PPML paths and
+independent scientific witnesses remain required. Approval of that retirement
+does not accept beta.11 or waive the recorded residual-witness failure.
+
+Johannes accepted upstream's whitening correction, supported by the independent
+weighted slope-boundary oracle, for continued qualification. The original
+fork/candidate rank-parity failure remains recorded. Actual published fereg
+results, original factor slots/base flags, PPML, replay and beta.10 performance
+must still pass; this decision does not authorize production adoption.
+
+Focused Rust 1.85.1 adapter checks passed 79 main tests and four subprocess
+witnesses, including explicit LSMR, controlled routing, selector retirement,
+two-FE CMG and PPML. The separate memory/admission set passed 97 distinct tests;
+85 memory and four retained-storage tests passed again after the helper
+refactor. The core complexity ratchet decreases from 113,243 to 113,029
+production lines and from 1,458 to 1,451 dispatch candidates. Essential host
+cancellation and the sanctioned iteration-Break witness increase plugin lines
+from 15,527 to 15,675 and dispatch candidates from 141 to 143. The combined
+runtime is 66 production lines smaller, with all large-size counts unchanged.
+
+The historical extreme-weight fixture initially failed an expected fallback
+flag, while Auto and Off both passed the original `1e-10` certificate and
+matched its independent analytic projection within `2.23e-16`. The approved
+test update preserves the fixture and now requires analytic error below
+`1e-14`; counted-failure boundaries and upstream failing-operator witnesses
+test fallback budgets independently of roundoff. The original expectation and
+diagnostic values remain in the compatibility report. The full source suite
+failed at `automatic_structural_map_uses_admitted_shared_operations`, which
+expected positive reported solver workspace, after 1,535 core passes and three
+ignored tests. Diagnosis showed Auto correctly admitted shared certificate and
+coefficient banks while refusing an optional LSMR checkpoint; its separate
+solver-workspace charge was legitimately zero. A test-only correction now
+checks the actual reusable charges and total selected bytes against the cap,
+preserving policy and numerical comparisons. Both this test and the explicit
+LSMR checkpoint-admission test passed focused reruns. The original full-suite
+failure remains recorded. The rerun passed all 1,536 core tests (three ignored),
+then stopped at the PPML separation routing census: retained-CG developer
+configurations 1/2 for seed 17 now fail their LSMR retry. Public Auto retains
+exactly the incumbent sample and separation decisions in all three diagnosed
+configurations and matches the independent 228-row LP witness. Causal isolation
+found identical coefficients and one solver iteration, but different residual
+reconstruction: upstream's weighted-residual unscaling gives an FE certificate
+of `1.0478754743e-8`, just above this call's `1e-8` tolerance; direct unweighted
+model subtraction gives `3.6898581565e-11`, matching the incumbent. No census
+expectation or scientific tolerance has been changed. The opt-in prepared-model
+output option passed its isolated and combined dependency checks; beta.11 now
+pins `d3407a16` and selects it explicitly. Both PPML separation routing tests
+now pass, including fixed-worker repeatability and cross-worker agreement;
+the independent diagnostic remains ignored. The final Mac source-only suite
+completed with exit status 0: 273 Python tests (12 skipped), 1,537 core unit tests (three
+ignored), workspace scientific/integration and plugin/FFI tests, isolated
+allocation audits, strict Clippy, fuzz compilation, portable/C guards and the
+complexity ratchet passed. The compatibility report records its exact log
+identity and environment. Installed-package admission was explicitly omitted.
+Actual plugin, rank-boundary and beta.10 performance qualification remain
+separate requirements; source integration is not production acceptance.
+
+The separate sparse back-substitution optimization completed its practical Mac
+comparison: 312 calls, 72 paired blocks and all 12 descriptive intervals passed
+max(5%, 1 ms), with exact scientific signatures. All interrupted attempts and
+unfavorable timings remain in the
+[compact evidence](../bench/results/within-backsub-20261029.json), including
+the explicitly retained Claude background activity. Linux passed all 12
+host-median intervals across six isolated physical hosts, but one of 432
+blocks exceeded the allowance by 2.528 ms. Johannes reviewed the retained
+observation and instructed us to hold the optional upstream PR. This patch is
+absent from the combined candidate and does not establish beta.11 performance
+acceptance.
+
 ## Published beta.10 descriptive campaign
 
 The October 28 SCC rerun of the published Linux plugin `a7964116...` (runtime

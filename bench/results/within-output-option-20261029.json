@@ -1,0 +1,136 @@
+{
+  "contract": {
+    "default_output": "unchanged weighted audit",
+    "opt_in": "original response minus prepared model before coefficient back-transform and caller-order restoration",
+    "raw_slope_evaluation_bit_identity_promised": false,
+    "returned_residual_storage": "reuses existing measured buffer",
+    "scientific_tolerances": "unchanged",
+    "solver_coefficients_audit_stop_work": "unchanged for a given solve input"
+  },
+  "date": "2026-10-29",
+  "fereg_source_integration": {
+    "checks": [
+      "workspace scientific and integration tests",
+      "plugin and FFI tests",
+      "isolated allocation audits",
+      "format",
+      "fuzz compilation",
+      "strict Clippy",
+      "portable and C numeric guards",
+      "complexity ratchet"
+    ],
+    "command": "./scripts/run_tests.sh --source-only",
+    "core_unit_ignored": 3,
+    "core_unit_passed": 1537,
+    "environment": {
+      "blas_workers": 1,
+      "build_jobs": 4,
+      "platform": "macOS arm64",
+      "python": "3.12.14",
+      "rayon_workers": 8,
+      "rust": "1.85.1"
+    },
+    "exit_status": 0,
+    "log_sha256": "9f24d2a9cf823362a5cc79e11cd1e8eb396e8338ba59160dc17406a67c6776dd",
+    "prior_failures": [
+      {
+        "diagnosis": "test-only workspace charge assertion after optional checkpoint refusal",
+        "log_sha256": "5e1cd99dc388c21b19317b77f163a5c1a5a520dfbf43dd4b1253b0e99fad014f"
+      },
+      {
+        "diagnosis": "PPML separation retry residual reconstruction; corrected through explicit PreparedModel API",
+        "log_sha256": "dadc1beb36f3e4407977028d5116300d87c12636da61546bd3da318705742307"
+      },
+      {
+        "diagnosis": "two adapter tests compared explicitly selected prepared output to default upstream output; kept exact coefficients, diagnostics, work and independent residual arithmetic",
+        "log_sha256": "9e2bb532b5b25e43f06b1fa6891fc2875b50ddc735e94335ee2fb424f69a3fef"
+      }
+    ],
+    "python_skipped": 12,
+    "python_tests": 273,
+    "status": "source-only pass; installed package, native plugin and performance not qualified",
+    "within_revision": "d3407a16dec3715f6e9eee13fb9b6646d5b28035"
+  },
+  "limitations": [
+    "Dependency suites are not actual fereg plugin or installation evidence.",
+    "The new gather has no timing qualification yet; historical cf228c entrypoint results are not transferred.",
+    "Fereg opts in for ordinary batch and controlled routes, so downstream certification and later estimation may change even though within solve coefficients are unchanged.",
+    "Initial new early-stop fixture converged before the callback; its original failed log is retained by hash and the final three-FE fixture demonstrably reaches the intended callback.",
+    "Earlier combined compile/merge repair diagnostics are retained by hash; final immutable revision alone is claimed tested.",
+    "Upstream pushes and PRs require prior discussion with Johannes; development remains on the fork."
+  ],
+  "mac": {
+    "all_target_clippy": "isolated API reports two unchanged useless_vec warnings in tests/domain.rs; not claimed passing",
+    "combined": {
+      "additional_subprocess_executions": 2,
+      "doctests": 4,
+      "existing_ignored": 1,
+      "unit_integration_tests": 579
+    },
+    "focused_strict_clippy": "passed library and controlled/residual_output targets",
+    "isolated_api": {
+      "additional_subprocess_executions": 2,
+      "doctests": 3,
+      "existing_ignored": 1,
+      "unit_integration_tests": 549
+    },
+    "platform": "aarch64-apple-darwin",
+    "rust": "1.85.1",
+    "sha256": {
+      "api-output-clippy-focused.log": "91acbea7cf4ba1aae52147f560a9585498c5f4df0702986de01284c05fcec30c",
+      "api-output-clippy.log": "b72cc664c861e709810ac58cb3f5bd79412ed4b5c7c663046f8a63563ad250f0",
+      "api-output-full-final.log": "323fb9eccb27723af68235298cc740e57d832a75bb35ce703c9adff0c36334c5",
+      "api-output-full.log": "9e812caff459b4fc29bcb9651ad1aeacde03b938b0a997b0d44449532a98b58a",
+      "candidate-next-clippy.log": "e40252576ee438458341d476fad39b98da494436bb91585100ac064a56134f9b",
+      "candidate-next-full-final.log": "d1d1cbbe4c1bdc10974c87abcba0a2483b84d7f32446ca88e9531190fbff96be",
+      "candidate-next-full.log": "c88ef840e312a13d3ee372e7d5eed4fb471b0932d9d0fc1c28518d8fc6993193"
+    }
+  },
+  "scc": {
+    "blas_threads": 1,
+    "cargo_build_jobs": 4,
+    "combined_passes_including_docs_and_subprocesses": 585,
+    "cpu_seconds": 1428.26,
+    "exit_status": 0,
+    "failed": 0,
+    "gcc": "12.2.0",
+    "host": "scc-wm3",
+    "isolated_api_passes_including_docs_and_subprocesses": 554,
+    "isolation_claim": false,
+    "job": "8326940",
+    "maxvmem": "3.876G",
+    "project": "welfgr",
+    "rayon_threads": 8,
+    "rust": "1.85.1",
+    "sha256": {
+      "accounting": "f70ab0814dc568e203c9faf92e96d522003057f6bf9908929b366ab56477d01f",
+      "log": "e00096f5787ed73375637b6a43c905c0e575f2549fb8dd8051c52e94bb915514",
+      "manifest": "02a530952f79fcf2e0b85ce6827233c66b39fc0b0f708e300dbeafb05180c915",
+      "script": "e6fb381be64a98095df2632faaa4bd5028079bac1803579bc37fef6ade2da57c"
+    },
+    "slots": 12,
+    "test_threads": 1,
+    "wall_limit_seconds": 3600,
+    "wall_seconds": 626
+  },
+  "schema": 1,
+  "scope": "Controlled prepared-model output option: isolated API and combined dependency correctness; no timing or fereg adoption claim.",
+  "sources": {
+    "combined": "d3407a16dec3715f6e9eee13fb9b6646d5b28035",
+    "combined_parent": "41c53760e233ed6b0766af74f55951a4a0d51067",
+    "isolated_api": "773372c56b69584f0bb42d930bf8866d8a65050d",
+    "isolated_api_parent": "cf228c412fdadac89a3ff28b12f53b7e1580f3de",
+    "reproducibility_base": "6f2ead13bc494f7b6507b40a894c6f277aa21679",
+    "upstream_base": "32dde1bdd604f33012e592270781129e09e82a92"
+  },
+  "status": "passed_dependency_correctness",
+  "witnesses": [
+    "Captured synthetic PPML rectifier with tiny positive weights and fixed coefficients",
+    "Independent weighted group means, including zero weights",
+    "Sloped rank loss, warm correction and locality permutations",
+    "Exact early-stop/coefficient/work equality across Off, Diagonal and Additive",
+    "Prepared output fixed-worker repeats and caller row order",
+    "Measured buffer pointer reuse",
+    "Combined final cancellation discards reconstructed output and preserves consumed iterations"
+  ]
+}

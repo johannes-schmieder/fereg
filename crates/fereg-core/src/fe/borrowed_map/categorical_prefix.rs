@@ -323,7 +323,6 @@ mod tests {
             false,
             Some(4),
             Some(route),
-            false,
         )
         .unwrap()
     }
@@ -394,10 +393,6 @@ mod tests {
                     strict
                 )
                 .passed
-            );
-            assert!(
-                !portfolio.has_replacement(),
-                "portfolio general stage never builds a pair replacement"
             );
         });
     }
@@ -486,7 +481,6 @@ mod tests {
                     <= budget.usable_bytes
             );
             assert!(result.report().certified());
-            assert!(!constrained.has_replacement());
         });
     }
 

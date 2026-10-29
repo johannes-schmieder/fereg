@@ -11,21 +11,68 @@ use within::{BatchSolveResult, Effect, LsmrOptions, PreconditionerConfig, Solver
 #[derive(Debug)]
 pub(super) enum BatchError {
     Upstream(WithinError),
+    /// Maximum attempted work across this joined batch, including failed steps
+    /// and RHSs completed in earlier windows.
+    Attempt {
+        source: within::SolveError,
+        iterations: usize,
+    },
     Allocation(FeregError),
 }
 
 impl BatchError {
+    pub(super) fn attempted_iterations(&self) -> usize {
+        match self {
+            Self::Attempt { iterations, .. } => *iterations,
+            _ => 0,
+        }
+    }
+
+    fn positivity_failure(&self) -> bool {
+        matches!(self,
+            Self::Upstream(WithinError::Solve(within::SolveError::InvalidInput { context, message }))
+            | Self::Attempt { source: within::SolveError::InvalidInput { context, message }, .. }
+            if *context == "mlsmr" && message.contains("preconditioner not positive definite"))
+    }
+
     pub(super) fn preconditioner_breakdown(&self) -> bool {
-        matches!(self, Self::Upstream(WithinError::Solve(within::SolveError::InvalidInput {
-            context, message
-        })) if *context == "mlsmr" && message.contains("preconditioner not positive definite"))
+        !crate::interrupt::cancellation_requested() && self.positivity_failure()
+    }
+
+    // Pure priority after joining all RHSs. A positivity refusal must not hide
+    // cancellation, a fatal error, or an allocation failure in another RHS.
+    fn failure_rank(&self) -> u8 {
+        match self {
+            Self::Upstream(WithinError::Build(within::BuildError::Cancelled))
+            | Self::Upstream(WithinError::Solve(within::SolveError::Cancelled))
+            | Self::Attempt {
+                source: within::SolveError::Cancelled,
+                ..
+            } => 0,
+            Self::Allocation(error) if error.code == ErrorCode::Interrupted => 0,
+            Self::Upstream(WithinError::Solve(within::SolveError::Allocation { .. }))
+            | Self::Attempt {
+                source: within::SolveError::Allocation { .. },
+                ..
+            } => 2,
+            Self::Allocation(error) if error.code == ErrorCode::Allocation => 2,
+            _ if self.positivity_failure() => 3,
+            _ => 1,
+        }
     }
 
     pub(super) fn into_fereg(self, context: &str) -> FeregError {
+        if let Err(error) = crate::interrupt::checkpoint() {
+            return error;
+        }
         match self {
             Self::Allocation(error) => error,
-            Self::Upstream(WithinError::Build(within::BuildError::Allocation { .. }))
-            | Self::Upstream(WithinError::Solve(within::SolveError::Allocation { .. })) => {
+            Self::Attempt { source, .. } => Self::Upstream(source.into()).into_fereg(context),
+            Self::Upstream(WithinError::Build(within::BuildError::Cancelled))
+            | Self::Upstream(WithinError::Solve(within::SolveError::Cancelled)) => {
+                FeregError::new(ErrorCode::Interrupted, format!("{context}: cancelled"))
+            }
+            Self::Upstream(WithinError::Solve(within::SolveError::Allocation { .. })) => {
                 FeregError::new(
                     ErrorCode::Allocation,
                     format!("{context}: allocation failed"),
@@ -64,7 +111,7 @@ const TRANSPORT_COLUMNS: usize = 8;
 
 /// Column-major RHS for the many-FE routing windows. A row-major source is
 /// transported on demand, bitwise, so a window's copies can be released once
-/// its sessions own their responses and transported again for an escalation
+/// all independent attempts have joined and transported again for an escalation
 /// or retry; borrowed columns are returned as they are.
 pub(super) trait RhsSource: Sync {
     fn count(&self) -> usize;
@@ -272,44 +319,19 @@ pub(super) fn solve_batch(
     weights: Option<&[f64]>,
     options: &LsmrOptions,
     preconditioner: PreconditionerConfig,
-    deterministic: bool,
+    _deterministic: bool,
 ) -> Result<BatchSolveResult, BatchError> {
-    // Keep the upstream construction/transport lifetime for narrow batches.
-    // Only a windowed batch needs to retain its solver across several calls.
-    if !deterministic && rhs.len() <= lsmr_rhs_window(rhs.len(), rayon::current_num_threads()) {
-        return within::solve_batch_with_screening(
-            effects,
-            rhs,
-            weights,
-            options,
-            preconditioner,
-            within::SlopeScreening::Disabled,
-        )
-        .map_err(BatchError::Upstream);
-    }
     let started = Instant::now();
-    let weights = weights
-        .map(|weights| {
-            let mut copy = Vec::new();
-            reserve(&mut copy, weights.len())?;
-            copy.extend_from_slice(weights);
-            Ok(copy)
-        })
-        .transpose()?;
-    let solver = Solver::new_with_screening(
+    // Upstream keeps construction weights borrowed and uses its reproducible
+    // owner reduction in every mode. The solver still lives only for this
+    // batch; explicit windows below bound the simultaneous RHS recurrences.
+    let solver = Solver::new_cancellable(
         effects,
         weights,
         preconditioner,
-        within::SlopeScreening::Disabled,
+        within::Cancellation::new(&crate::interrupt::cancellation_requested),
     )
     .map_err(|error| BatchError::Upstream(error.into()))?;
-    let solver = if deterministic {
-        solver
-            .with_reproducible()
-            .map_err(|error| BatchError::Upstream(error.into()))?
-    } else {
-        solver
-    };
     let setup = started.elapsed().as_secs_f64();
     let mut result = solve_prepared_batch(&solver, rhs, options)?;
     result.time_setup += setup;
@@ -322,44 +344,182 @@ pub(super) fn solve_prepared_batch(
     rhs: &[&[f64]],
     options: &LsmrOptions,
 ) -> Result<BatchSolveResult, BatchError> {
-    // An explicit outer window bounds live recurrences even when nested Rayon
-    // suspends one RHS and starts another. Use the installed team, including
-    // checkpoints whose LsmrConfig retains the machine-default thread setting.
-    let window = lsmr_rhs_window(rhs.len(), rayon::current_num_threads());
-    if rhs.len() <= window {
+    solve_prepared_batch_seeded(solver, rhs, options, None)
+}
+
+/// Controlled batch with optional total coefficient seeds in RHS-major order,
+/// using the original response and one fixed preconditioner for each attempt.
+pub(super) fn solve_prepared_batch_seeded(
+    solver: &Solver<'_>,
+    rhs: &[&[f64]],
+    options: &LsmrOptions,
+    initial: Option<&[f64]>,
+) -> Result<BatchSolveResult, BatchError> {
+    if let Some(initial) = initial {
+        if initial.len() != cells(solver.n_dofs(), rhs.len())? {
+            return Err(BatchError::Allocation(FeregError::new(
+                ErrorCode::InvalidArgument,
+                "LSMR initial coefficient bank has inconsistent dimensions",
+            )));
+        }
+    }
+    if rhs.is_empty() {
         return solver
-            .solve_batch(rhs, options)
-            .map_err(|error| BatchError::Upstream(error.into()));
+            .solve_batch_cancellable(
+                rhs,
+                options,
+                within::Cancellation::new(&crate::interrupt::cancellation_requested),
+            )
+            .map_err(BatchError::Upstream);
     }
     let started = Instant::now();
-    let mut windows = rhs.chunks(window);
-    let mut result = solver
-        .solve_batch(windows.next().unwrap_or(&[]), options)
-        .map_err(|error| BatchError::Upstream(error.into()))?;
-    let remaining = rhs.len() - result.iterations.len();
-    reserve(&mut result.x, cells(result.n_dofs, remaining)?)?;
-    reserve(&mut result.demeaned, cells(result.n_obs, remaining)?)?;
-    reserve(&mut result.converged, remaining)?;
-    reserve(&mut result.iterations, remaining)?;
-    reserve(&mut result.residual, remaining)?;
-    reserve(&mut result.time_solve, remaining)?;
-    for rhs in windows {
-        let mut next = solver
-            .solve_batch(rhs, options)
-            .map_err(|error| BatchError::Upstream(error.into()))?;
-        // Every window uses the same solver: layout, unidentified columns and
-        // build warnings are invariant. Append in original RHS order. On any
-        // error, drop all earlier windows before the caller retries the batch.
-        result.x.append(&mut next.x);
-        result.demeaned.append(&mut next.demeaned);
-        result.converged.append(&mut next.converged);
-        result.iterations.append(&mut next.iterations);
-        result.residual.append(&mut next.residual);
-        result.time_solve.append(&mut next.time_solve);
-        result.time_setup += next.time_setup;
+    // Bound live recurrences even when nested Rayon suspends one RHS and starts
+    // another. Cold controlled calls preserve the upstream cold arithmetic and
+    // also report a failed iteration, which a later retry must not refund.
+    let window = lsmr_rhs_window(rhs.len(), rayon::current_num_threads());
+    let mut batch = None;
+    let mut spent = 0;
+    for (window_index, columns) in rhs.chunks(window).enumerate() {
+        let mut results = Vec::new();
+        reserve(&mut results, columns.len())?;
+        columns
+            .par_iter()
+            .enumerate()
+            .map(|(offset, column)| {
+                let seed = initial.map(|initial| {
+                    let first = (window_index * window + offset) * solver.n_dofs();
+                    &initial[first..first + solver.n_dofs()]
+                });
+                solver
+                    .solve_controlled(
+                        column,
+                        options,
+                        within::SolveControl {
+                            initial_coefficients: seed,
+                            escalation: super::lsmr_break::policy(
+                                super::DeveloperLsmrBackend::Within,
+                            ),
+                            cancellation: within::Cancellation::new(
+                                &crate::interrupt::cancellation_requested,
+                            ),
+                            residual_output: within::ResidualOutput::PreparedModel,
+                        },
+                    )
+                    .map(|result| result.solution)
+                    .map_err(|failure| {
+                        if matches!(failure.source, within::SolveError::Cancelled) {
+                            super::lsmr_break::record_cancelled(
+                                super::DeveloperLsmrBackend::Within,
+                            );
+                        }
+                        BatchError::Attempt {
+                            source: failure.source,
+                            iterations: failure.iterations,
+                        }
+                    })
+            })
+            .collect_into_vec(&mut results);
+        for solved in joined_solutions(results, &mut spent)? {
+            append_solved(
+                &mut batch,
+                solved,
+                rhs.len(),
+                solver.n_obs(),
+                solver.n_dofs(),
+            )?;
+        }
     }
-    result.time_total = started.elapsed().as_secs_f64();
-    Ok(result)
+    let mut batch = batch.expect("nonempty RHS batch");
+    batch.time_total = started.elapsed().as_secs_f64();
+    Ok(batch)
+}
+
+/// Admit a fully joined window only after accounting for all attempted work
+/// and selecting the highest-priority failure, with RHS order breaking ties.
+fn joined_solutions(
+    results: Vec<Result<within::SolveResult, BatchError>>,
+    spent: &mut usize,
+) -> Result<impl Iterator<Item = within::SolveResult>, BatchError> {
+    *spent = results.iter().fold(*spent, |spent, result| {
+        spent.max(match result {
+            Ok(solved) => solved.iterations,
+            Err(error) => error.attempted_iterations(),
+        })
+    });
+    if crate::interrupt::cancellation_requested() {
+        return Err(BatchError::Attempt {
+            source: within::SolveError::Cancelled,
+            iterations: *spent,
+        });
+    }
+    let failure_index = results
+        .iter()
+        .enumerate()
+        .filter_map(|(index, result)| result.as_ref().err().map(|e| (e.failure_rank(), index)))
+        .min()
+        .map(|(_, index)| index);
+    if let Some(index) = failure_index {
+        let error = results.into_iter().nth(index).unwrap().unwrap_err();
+        return Err(match error {
+            BatchError::Attempt { source, .. } => BatchError::Attempt {
+                source,
+                iterations: *spent,
+            },
+            error => error,
+        });
+    }
+    Ok(results
+        .into_iter()
+        .map(|solved| solved.expect("joined batch errors checked")))
+}
+
+/// Append an independently solved RHS in caller order. Only the first RHS
+/// contributes shared layout, warnings and unidentified-coordinate metadata.
+pub(super) fn append_solved(
+    batch: &mut Option<BatchSolveResult>,
+    mut solved: within::SolveResult,
+    rhs: usize,
+    rows: usize,
+    dofs: usize,
+) -> Result<(), BatchError> {
+    if batch.is_none() {
+        let mut x = Vec::new();
+        let mut demeaned = Vec::new();
+        reserve(&mut x, cells(dofs, rhs)?)?;
+        reserve(&mut demeaned, cells(rows, rhs)?)?;
+        let mut converged = Vec::new();
+        let mut iterations = Vec::new();
+        let mut residual = Vec::new();
+        let mut time_solve = Vec::new();
+        reserve(&mut converged, rhs)?;
+        reserve(&mut iterations, rhs)?;
+        reserve(&mut residual, rhs)?;
+        reserve(&mut time_solve, rhs)?;
+        *batch = Some(BatchSolveResult {
+            x,
+            demeaned,
+            unidentified: std::mem::take(&mut solved.unidentified),
+            warnings: std::mem::take(&mut solved.warnings),
+            layout: solved.layout,
+            converged,
+            iterations,
+            residual,
+            time_solve,
+            time_setup: 0.0,
+            time_total: 0.0,
+            n_dofs: dofs,
+            n_obs: rows,
+        });
+    }
+    let batch = batch.as_mut().expect("batch initialized");
+    batch.x.append(&mut solved.x);
+    batch.demeaned.append(&mut solved.demeaned);
+    batch.converged.push(solved.converged);
+    batch.iterations.push(solved.iterations);
+    batch.residual.push(solved.residual);
+    batch.time_solve.push(solved.time_solve);
+    batch.time_setup += solved.time_setup;
+    Ok(())
 }
 
 #[cfg(test)]
@@ -515,8 +675,36 @@ mod tests {
         }
     }
 
+    fn assert_categorical_model_output(
+        result: &BatchSolveResult,
+        rhs: &[&[f64]],
+        left: &[u32],
+        right: &[u32],
+        left_levels: usize,
+    ) {
+        // The default upstream batch exposes weighted-audit output. Fereg
+        // explicitly reconstructs the unweighted model instead. With these
+        // two categorical terms, public coefficients give an independent
+        // exact output witness while full-batch solve metadata stays exact.
+        assert_eq!(result.n_obs, left.len());
+        assert_eq!(result.converged.len(), rhs.len());
+        assert_eq!(result.demeaned.len(), rhs.len() * result.n_obs);
+        for (column, original) in rhs.iter().enumerate() {
+            let coefficients = result.x(column);
+            for (row, &y) in original.iter().enumerate() {
+                let fitted = coefficients[left[row] as usize]
+                    + coefficients[left_levels + right[row] as usize];
+                assert_eq!(
+                    result.demeaned(column)[row].to_bits(),
+                    (y - fitted).to_bits(),
+                    "column {column}, row {row}"
+                );
+            }
+        }
+    }
+
     #[test]
-    fn windows_preserve_all_outputs_against_the_upstream_full_batch() {
+    fn windows_preserve_upstream_solves_and_prepared_outputs() {
         let rows = 1024;
         let left: Vec<u32> = (0..rows).map(|row| (row % 32) as u32).collect();
         let right: Vec<u32> = (0..rows).map(|row| ((row / 7) % 27) as u32).collect();
@@ -545,14 +733,14 @@ mod tests {
                     for preconditioner in [
                         PreconditionerConfig::Off,
                         PreconditionerConfig::Diagonal,
-                        PreconditionerConfig::default(),
+                        crate::fe::additive_schwarz(),
                     ] {
                         let solver = Solver::new(
                             vec![
                                 Effect::new(&left, true, []).unwrap(),
                                 Effect::new(&right, true, []).unwrap(),
                             ],
-                            Some(weights.clone()),
+                            Some(weights.as_slice()),
                             preconditioner,
                         )
                         .unwrap();
@@ -560,7 +748,7 @@ mod tests {
                         assert!(oracle.converged.iter().all(|&converged| converged));
                         let result = solve_prepared_batch(&solver, &rhs, &options).unwrap();
                         assert_eq!(result.x, oracle.x);
-                        assert_eq!(result.demeaned, oracle.demeaned);
+                        assert_categorical_model_output(&result, &rhs, &left, &right, 32);
                         assert_eq!(result.unidentified, oracle.unidentified);
                         assert_eq!(result.converged, oracle.converged);
                         assert_eq!(result.iterations, oracle.iterations);
@@ -572,7 +760,7 @@ mod tests {
     }
 
     #[test]
-    fn narrow_batch_adapters_match_upstream_and_fail_atomically() {
+    fn narrow_batch_adapters_keep_prepared_outputs_and_fail_atomically() {
         let rows = 512;
         let left: Vec<u32> = (0..rows).map(|r| (r % 32) as u32).collect();
         let right: Vec<u32> = (0..rows).map(|r| ((r / 7) % 19) as u32).collect();
@@ -600,7 +788,7 @@ mod tests {
                         for preconditioner in [
                             PreconditionerConfig::Off,
                             PreconditionerConfig::Diagonal,
-                            PreconditionerConfig::default(),
+                            crate::fe::additive_schwarz(),
                         ] {
                             let effects = || {
                                 vec![
@@ -609,12 +797,7 @@ mod tests {
                                 ]
                             };
                             let w = weighted.then_some(weights.as_slice());
-                            let solver = Solver::new(
-                                effects(),
-                                w.map(<[f64]>::to_vec),
-                                preconditioner.clone(),
-                            )
-                            .unwrap();
+                            let solver = Solver::new(effects(), w, preconditioner.clone()).unwrap();
                             for width in [16, 52, 64] {
                                 let rhs = &views[..width];
                                 let expected = solver.solve_batch(rhs, &options).unwrap();
@@ -632,7 +815,9 @@ mod tests {
                                     .unwrap(),
                                 ] {
                                     assert_eq!(actual.x, expected.x);
-                                    assert_eq!(actual.demeaned, expected.demeaned);
+                                    assert_categorical_model_output(
+                                        &actual, rhs, &left, &right, 32,
+                                    );
                                     assert_eq!(actual.unidentified, expected.unidentified);
                                     assert_eq!(actual.converged, expected.converged);
                                     assert_eq!(actual.iterations, expected.iterations);
@@ -657,7 +842,7 @@ mod tests {
                                         false,
                                     ),
                                 ] {
-                                    assert!(matches!(attempt, Err(BatchError::Upstream(_))));
+                                    assert!(matches!(attempt, Err(BatchError::Attempt { .. })));
                                 }
                             }
                         }
@@ -676,6 +861,11 @@ mod tests {
         )
         .unwrap();
         let rhs = [1.0, 2.0, 3.0, 4.0];
+        let completed_iterations = solver
+            .solve(&rhs, &LsmrOptions::default())
+            .unwrap()
+            .iterations;
+        assert!(completed_iterations > 0);
         let mut batch: Vec<&[f64]> = vec![&rhs; 65];
         batch[64] = &rhs[..3];
         let error = rayon::ThreadPoolBuilder::new()
@@ -684,12 +874,176 @@ mod tests {
             .unwrap()
             .install(|| solve_prepared_batch(&solver, &batch, &LsmrOptions::default()))
             .unwrap_err();
-        assert!(matches!(
-            &error,
-            BatchError::Upstream(WithinError::Solve(_))
-        ));
+        assert!(matches!(&error, BatchError::Attempt { .. }));
         assert!(!error.preconditioner_breakdown());
+        assert_eq!(error.attempted_iterations(), completed_iterations);
         assert_eq!(error.into_fereg("test failure").code, ErrorCode::Internal);
+    }
+
+    #[test]
+    fn cancellation_keeps_interrupted_classification_and_cannot_fallback() {
+        for error in [
+            BatchError::Upstream(WithinError::Build(within::BuildError::Cancelled)),
+            BatchError::Upstream(WithinError::Solve(within::SolveError::Cancelled)),
+            BatchError::Attempt {
+                source: within::SolveError::Cancelled,
+                iterations: 3,
+            },
+        ] {
+            assert!(!error.preconditioner_breakdown());
+            assert_eq!(
+                error.into_fereg("test cancellation").code,
+                ErrorCode::Interrupted
+            );
+        }
+    }
+
+    #[test]
+    fn late_cancellation_prevents_a_numerical_fallback() {
+        const CHILD_ENV: &str = "FEREG_LSMR_BATCH_LATE_CANCELLATION_CHILD";
+        if std::env::var_os(CHILD_ENV).is_none() {
+            let status = std::process::Command::new(std::env::current_exe().unwrap())
+                .env(CHILD_ENV, "1")
+                .args([
+                    "fe::lsmr_batch::tests::late_cancellation_prevents_a_numerical_fallback",
+                    "--exact",
+                    "--test-threads=1",
+                ])
+                .status()
+                .unwrap();
+            assert!(status.success());
+            return;
+        }
+        let failure = BatchError::Attempt {
+            source: within::SolveError::InvalidInput {
+                context: "mlsmr",
+                message: "preconditioner not positive definite".to_owned(),
+            },
+            iterations: 7,
+        };
+        assert!(failure.preconditioner_breakdown());
+        crate::interrupt::request_cancellation();
+        assert!(!failure.preconditioner_breakdown());
+        assert_eq!(failure.attempted_iterations(), 7);
+        assert_eq!(
+            failure.into_fereg("late cancellation").code,
+            ErrorCode::Interrupted
+        );
+        crate::interrupt::reset_cancellation();
+    }
+
+    #[test]
+    fn joined_fatal_rhs_cannot_be_hidden_by_a_positivity_refusal() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+
+        #[derive(Clone, Copy)]
+        enum Outcome {
+            Positivity,
+            Malformed,
+            Allocation,
+            Cancelled,
+            Success,
+        }
+        use Outcome::*;
+
+        let levels = [0, 0, 1, 1];
+        let rhs = [1.0, 2.0, 3.0, 4.0];
+        let solver = Solver::new(
+            vec![Effect::new(&levels, true, []).unwrap()],
+            None,
+            PreconditionerConfig::Off,
+        )
+        .unwrap();
+        let options = LsmrOptions::default();
+        let attempt = |outcome| match outcome {
+            // Arbitration must not depend on a numerical fixture triggering a
+            // roundoff-sensitive positivity refusal in this upstream revision.
+            Positivity => Err(BatchError::Attempt {
+                source: within::SolveError::InvalidInput {
+                    context: "mlsmr",
+                    message: "preconditioner not positive definite".to_owned(),
+                },
+                iterations: 7,
+            }),
+            Allocation => Err(BatchError::Attempt {
+                source: within::SolveError::Allocation {
+                    context: "joined test",
+                },
+                iterations: 3,
+            }),
+            Cancelled => Err(BatchError::Attempt {
+                source: within::SolveError::Cancelled,
+                iterations: 4,
+            }),
+            Malformed | Success => solver
+                .solve_controlled(
+                    if matches!(outcome, Malformed) {
+                        &rhs[..3]
+                    } else {
+                        &rhs
+                    },
+                    &options,
+                    within::SolveControl::default(),
+                )
+                .map(|result| result.solution)
+                .map_err(|failure| BatchError::Attempt {
+                    source: failure.source,
+                    iterations: failure.iterations,
+                }),
+        };
+        let source = |error: &BatchError| match error {
+            BatchError::Attempt { source, .. } => source.to_string(),
+            _ => panic!("expected counted solve error"),
+        };
+        for threads in [1, 4] {
+            rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .build()
+                .unwrap()
+                .install(|| {
+                    for (outcomes, expected) in [
+                        (vec![Positivity, Success], Positivity),
+                        (vec![Positivity, Allocation, Success], Allocation),
+                        (vec![Positivity, Malformed, Allocation, Success], Malformed),
+                        (
+                            vec![Positivity, Malformed, Allocation, Cancelled, Success],
+                            Cancelled,
+                        ),
+                    ] {
+                        let expected_source = source(&attempt(expected).unwrap_err());
+                        for reverse in [false, true] {
+                            let mut outcomes = outcomes.clone();
+                            if reverse {
+                                outcomes.reverse();
+                            }
+                            for previous_spent in [0, 11] {
+                                let completed = AtomicUsize::new(0);
+                                let mut results = Vec::new();
+                                outcomes
+                                    .par_iter()
+                                    .map(|&outcome| {
+                                        let result = attempt(outcome);
+                                        completed.fetch_add(1, Ordering::Relaxed);
+                                        result
+                                    })
+                                    .collect_into_vec(&mut results);
+                                assert_eq!(completed.load(Ordering::Relaxed), outcomes.len());
+                                let mut spent = previous_spent;
+                                let failure = joined_solutions(results, &mut spent)
+                                    .err()
+                                    .expect("joined window must fail atomically");
+                                assert_eq!(source(&failure), expected_source);
+                                assert_eq!(spent, previous_spent.max(7));
+                                assert_eq!(failure.attempted_iterations(), spent);
+                                assert_eq!(
+                                    failure.preconditioner_breakdown(),
+                                    matches!(expected, Positivity)
+                                );
+                            }
+                        }
+                    }
+                });
+        }
     }
 
     #[test]

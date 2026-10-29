@@ -2,13 +2,21 @@
 
 The baseline audit compares fereg `7f56d06ee4c004741f32d4692bc0e40b898a51d7`
 with upstream `py-econometrics/within` main frozen at
-`32dde1bdd604f33012e592270781129e09e82a92`. The fereg
-[dependency declarations](../crates/fereg-core/Cargo.toml) and lockfile pin both
-`within` and `schwarz-precond` to fork revision
-`3b5b9b9ab9b79e4a8cac2841f7c1d41bb2276104`. The unpublished migration candidate
-is beta.11. The patch evidence below is current through October 29, 2026;
-the combined fereg candidate does not yet compile. This report establishes
+`32dde1bdd604f33012e592270781129e09e82a92`. That fereg baseline used
+[historical fork revision `3b5b9b9`](https://github.com/johannes-schmieder/within/commit/3b5b9b9ab9b79e4a8cac2841f7c1d41bb2276104)
+for both `within` and `schwarz-precond`. The unpublished beta.11 candidate's
+[dependency declarations](../crates/fereg-core/Cargo.toml) and
+[lockfile](../Cargo.lock) now pin both to
+`d3407a16dec3715f6e9eee13fb9b6646d5b28035`, available in the fork on
+`codex/fereg-beta11-candidate-next`. This is the combined upstream-based candidate,
+not an upstream release. The patch evidence below is current through October 29, 2026;
+combined fereg integration validation remains incomplete. This report establishes
 neither performance acceptance nor readiness for adoption or publication.
+
+Johannes's current instruction is to develop and push these patches only in
+`johannes-schmieder/within`. Any upstream push or pull request requires prior
+discussion with him. No migration patch has been submitted upstream. This
+supersedes the initial authorization to submit qualified contributions.
 
 The authority remains [SPEC](SPEC.md), [architecture](ARCHITECTURE.md) and
 [development requirements](development_workflow.md). Supported models,
@@ -58,27 +66,33 @@ fereg acceptance separately compares the actual beta.11 plugin with beta.10.
 | Shared prepared design | Existing upstream API and useful optimization. Upstream accepts a shared `Design`; do not require a new generic workspace ownership API. |
 | Fork `Solver::with_preconditioner` | Optional unused optimization. No current fereg caller uses it. |
 | `SlopeScreening::Disabled` | Replaceable through upstream's ordinary per-term preparation. The fork option disables cross-term diagnostics, not whitening or rank decisions. Check peak storage and slope arithmetic. |
-| Generic `PairReplacement` and reduced-inverse factory | Experimental general-FE developer routing only. Not required by public Auto, PPML, explicit LSMR or correction solves. Retirement requires approval; see below. |
+| Generic `PairReplacement` and reduced-inverse factory | Experimental general-FE developer routing only. Not required by public Auto, PPML, explicit LSMR or correction solves. Johannes approved retirement of this branch; the two-FE selectors remain. |
 | Sparse back substitution and other kernel changes | Independent performance candidates. Keep worthwhile changes in separate patches; optional speedups do not become API prerequisites. |
 | Typed allocation failures | Preserve the public failure contract and admission. Frozen upstream lacks fork allocation variants; removing match arms is not evidence that the contract survives. This does not require porting every historical allocation hook. |
 
 ### Controlled starts suffice
 
 In [general routing](../crates/fereg-core/src/fe/borrowed_map/routing_lsmr.rs),
-`solve_serial_windows` finishes Jacobi sessions before `escalate` releases the
-trial solver, constructs additive Schwarz and starts from each returned `x`
-with its remaining allowance. No Krylov recurrence crosses that replacement.
-The public `geometry_many` preset cannot build a generic pair replacement:
-[`general_pair_checkpoint`](../crates/fereg-core/src/fe/routing.rs) returns
-`usize::MAX` for every prefix policy.
+the baseline finished Jacobi sessions before releasing the trial solver,
+constructing additive Schwarz and starting from each returned `x` with its
+remaining allowance. No Krylov recurrence crossed that replacement. The
+candidate's `solve_controlled_windows` and `escalate` express this behavior
+directly through coefficient results and the controlled API. The public
+`geometry_many` preset retains its existing policy and never needed the retired
+generic pair factory.
 
 [`general_lsmr_attempt`](../crates/fereg-core/src/fe/borrowed_map.rs) also uses
 only returned coefficients for its one tighter correction after independent
 certificate rejection. `FeCoefficientBatch` documents the original term/channel/
 level layout. Each correction keeps the original RHS and subtracts prior work.
-The adapter must preserve iteration consumption on failed attempts as well:
-the current escalation error return precedes merging continued-session counts,
-so this boundary deserves an explicit failure-accounting witness.
+The adapter must preserve iteration consumption on failed attempts as well.
+The candidate debits successful and failed additive continuations before
+propagating an escalation failure. The focused
+`failed_escalation_keeps_prior_work_in_the_off_retry_budget` witness covers a
+counted failure at the adapter boundary, an actual Off retry with the remaining
+allowance and budget exhaustion. Upstream failing-operator witnesses separately
+establish the returned iteration count; the adapter test does not depend on
+accidental roundoff to enter fallback.
 
 PPML's joint solver already calls low-level `mlsmr` with `MlsmrOptions`
 containing `warm_start`, `escalation` and `local_size`. It retains accepted
@@ -99,37 +113,81 @@ fereg's own augmented operator; an adaptive getter can return the diagonal
 ladder before Schwarz exists.
 
 There is no `Solver::new_raw` call in current fereg and no such constructor in
-the pinned fork. The fork's `new_with_screening(..., Disabled)` still performs
+the historical fork baseline. Its `new_with_screening(..., Disabled)` performs
 per-term slope whitening with the `1e-10` relative Gram rank rule. A new raw
 constructor is therefore not an established migration requirement. Upstream
 uses compensated two-pass level moments instead of the fork's Welford moments,
 and reconstructs weights from retained square roots. Weighted/sloped low bits
 can change; boundary witnesses must check that the model span and discrete rank
-decisions survive. Any changed rank requires Johannes's decision.
+decisions survive. The [weighted slope-boundary witness](../bench/results/within-slope-boundary-20261029.json)
+finds a concrete dependency rank difference. Johannes accepted upstream's
+whitening correction for continued migration qualification; the original
+fork/candidate parity failure remains recorded.
+Its [independent rational oracle](../bench/compare_within_slope_boundary.py) compares
+the actual IEEE inputs with the [public API results](../bench/within_slope_boundary.rs),
+including original coefficient coordinates. The fixed Mac matrix contains 60
+fixtures: five perturbations around the `1e-10` Gram rule, four shifts/scales,
+three row orders, unequal nonsquare weights, one/four workers and two repeats
+per pin, for 480 records. Neither fixtures nor tolerances changed after freezing.
 
-### Experimental branch requiring approval
+The candidate passes every exact-rank, projection and retained-span certificate
+check; maximum projection error is `6.16e-12` and normalized certificate is
+`3.39e-12`, against unchanged bounds `1e-8` and `1e-9`. The fork differs in
+observed kept/drop identities on 23 fixtures: 13 change retained counts and
+the exact retained span; three change counts on exactly aliased slopes without
+changing the exact span; three keep the same count but select a different
+near-aliased slope, changing the exact span; four only rename the dropped
+exactly redundant slope. These are 49 per-level identity differences across
+240 levels, including 25 retained-count and 28 exact-span differences.
+All differences occur with shifted/scaled loadings; zero-offset fixtures and
+all `delta=2e-5` fixtures agree. The largest fork projection error is `0.200018`.
 
-The narrow retirement proposal is the general categorical, more-than-two-FE
+For example, with shift `2^24` and `delta=1.01e-5`, the exact residual-variance
+fractions are `1.01995e-10` to `1.02014e-10`, above the threshold. The candidate
+keeps both slopes at all four levels. The fork drops the first slope at two
+levels and fails both the projection and independent certificate. Below the
+threshold at `delta=0.99e-5`, the reverse-row fixture instead finds the fork
+retaining both slopes at three levels where the exact rule retains only the
+second slope. Baseline parity therefore cannot be substituted for the oracle.
+
+Input bit digests, original layouts, all empty fork slots, fixed-worker repeats
+and cross-worker agreement pass. Returned original-coordinate coefficients also
+pass the predeclared conditioning-aware reconstruction bound; their absolute
+reconstruction error can reach `1.22e-4` under large offsets, separately from
+the strict returned-projection checks. This isolates dependency whitening;
+it does not yet establish a change in fereg's published rank, omission or
+estimates. Johannes's approval permits continued qualification with upstream's
+whitening correction. Actual fereg native-plugin checks must still validate
+published results, original factor slots/base flags, PPML and replay behavior,
+and the candidate must pass beta.10 performance qualification. Scientific
+tolerances remain unchanged; this is not production-adoption approval.
+
+### Approved retirement of the general-FE experiment
+
+Johannes approved retirement of the general categorical, more-than-two-FE
 pair-upgrade branch selected by the twelve `routing_h{4,8,16,32}_k{0,1,2}`
-developer arms. Their two-FE CMG implementations and selectors remain useful
-and would stay. The general-FE interpretation of `routing_builder_break`
-(h4/k1) also needs an explicit disposition; its documented two-FE Break witness
-stays. Prefix, portfolio, geometry and bounded-window selectors do not require
-generic pair factories and need no retirement for this reason. No removal is
-authorized by this report.
+developer arms and by `routing_builder_break` (h4/k1). The candidate must reject
+these explicit requests with InvalidArgument on more-than-two-FE categorical
+designs. Their two-FE CMG implementations, selectors and documented Break witness
+remain supported. Prefix, portfolio, geometry and bounded-window selectors do
+not require generic pair factories and remain supported. This approval does
+not change public Auto, explicit LSMR or PPML policy.
 
-The pair factory, component CSR view and replacement owner occur only in
+In the audited baseline, the pair factory, component CSR view and replacement owner occur only in
 [general routing](../crates/fereg-core/src/fe/borrowed_map/routing_lsmr.rs).
-There is no public PPML `PairReplacement` consumer. Exact continuation of a live
-recurrence after optional setup is refused is tested by
-`refused_pair_build_resumes_exact_incumbent_recurrence`; accepted replacement
-and reuse have their own test. That historical requirement is what needs full
+There is no public PPML `PairReplacement` consumer. The historical
+`refused_pair_build_resumes_exact_incumbent_recurrence` test required exact
+continuation of a live recurrence after optional setup was refused; accepted
+replacement and reuse had their own test. That historical requirement needed full
 recurrence retention. Upstream's prepared operator and pair builders are
 private, so reconstructing an equivalent factory locally would introduce a
 new preconditioner implementation and still would not preserve exact
 refusal/resume behavior without recurrence access. It is not a small adapter.
 Useful independent projection, coefficient reconstruction, memory and dense-QR
-witnesses remain even if this experiment is retired.
+witnesses remain requirements after retirement. Implementation-specific tests
+of the retired factory and recurrence machinery do not establish public-policy
+correctness; retained controlled-start and independent witnesses must cover the
+supported routes.
 
 ## Cancellation, failure and memory
 
@@ -169,8 +227,14 @@ draft #478. Numerical summaries and iteration counts matched the unpatched
 stack exactly; six four-worker heap peaks differed with bookkeeping/pool
 scheduling, which is not a scientific-bit target. Independent source review
 found no underbound or checked-overflow mismatch in the candidate formulas.
-This source/allocation evidence is distinct from behavioral tests of fereg's
-revised formulas, which remain blocked by the incomplete integration build.
+The mapped fereg memory/admission checks passed 97 distinct tests, including
+retained LSMR storage, exact versus coarse admission, constrained PPML memory,
+coefficient/certificate handoff and an analytic weighted CMG cycle. After the
+helper refactor, all 85 memory tests and four retained-storage tests passed
+again. The retained yielding-component witness exercises a nonzero yielding
+count and RHS width 64 to 1: the exact bound admits the solve, while one byte
+less is rejected before the native batch. These are mapped source tests;
+complete plugin admission validation remains necessary.
 Preserve admission and allocation-error behavior without importing unrelated
 allocation interfaces.
 
@@ -192,6 +256,66 @@ guarantees bitwise repeatability only for one thread and lacks the fork's
 Ordered reduction. fereg requires repeatability at every fixed worker count
 and seed, scientific agreement across counts and stable discrete decisions.
 
+### Performance inventory
+
+This source-only followup compares fork `3b5b9b9ab9b79e4a8cac2841f7c1d41bb2276104`,
+frozen main `32dde1bdd604f33012e592270781129e09e82a92`, the reproducibility stack
+`6f2ead13bc494f7b6507b40a894c6f277aa21679` and combined candidate
+`41c53760e233ed6b0766af74f55951a4a0d51067`. The candidate retains the draft's
+design adjoints and bidiagonalization kernels. These findings identify optional
+work for review; they establish no timing benefit or regression.
+
+| Fork improvement | Upstream equivalent or remaining gap |
+|---|---|
+| Fused observation pass | The fork's [optional operator hook](https://github.com/johannes-schmieder/within/blob/3b5b9b9ab9b79e4a8cac2841f7c1d41bb2276104/crates/schwarz-precond/src/lib.rs#L58-L75) combines `u = Av + c*u`, its squared norm and selected adjoint terms. [Modified LSMR](https://github.com/johannes-schmieder/within/blob/3b5b9b9ab9b79e4a8cac2841f7c1d41bb2276104/crates/schwarz-precond/src/lsmr/bidiag.rs#L341-L379) reuses that adjoint. The hook is absent from frozen main and both later stacks; [candidate steps](https://github.com/johannes-schmieder/within/blob/41c53760e233ed6b0766af74f55951a4a0d51067/crates/schwarz-precond/src/lsmr/bidiag.rs#L478-L498) still execute separate forward and update passes. This remains an optional performance candidate. |
+| Fixed-lane adjoints | The fork's [lane plan](https://github.com/johannes-schmieder/within/blob/3b5b9b9ab9b79e4a8cac2841f7c1d41bb2276104/crates/within/src/operator/design/fused.rs#L1-L107) combines sorted runs and buffered categorical terms, then handles slopes and large unsorted terms through coefficient ownership. Draft #478 supplies the reproducibility purpose through [data-selected Owner/Fold plans](https://github.com/py-econometrics/within/blob/6f2ead13bc494f7b6507b40a894c6f277aa21679/crates/within/src/domain/adjoint_sum.rs#L1-L29) and [fixed adjoint trees](https://github.com/py-econometrics/within/blob/6f2ead13bc494f7b6507b40a894c6f277aa21679/crates/within/src/operator/design/scatter.rs#L75-L179). Those sums have different arithmetic order from the fork. Porting the old lanes is not required merely to obtain repeatability. |
+| Per-step norm and normalization work | Upstream already fuses the affine vector update with its norm. The [current implementation](https://github.com/py-econometrics/within/blob/6f2ead13bc494f7b6507b40a894c6f277aa21679/crates/schwarz-precond/src/lsmr/bidiag.rs#L25-L59) uses eight accumulators per 4,096-row leaf, a fixed reduction tree and range-safe norm fallback. The fork's scalar norm helpers are superseded. Upstream also retains the optimization of leaving `u` unnormalized, now bounded to beta in `[1e-64, 1e64]` to protect extreme-scale solves. |
+
+The old fusion was active on supported paths. The fork constructed
+[`StepKernel::Fused` by default](https://github.com/johannes-schmieder/within/blob/3b5b9b9ab9b79e4a8cac2841f7c1d41bb2276104/crates/within/src/solver.rs#L479)
+and fereg did not override it. Within-based many-FE Auto Jacobi/Schwarz attempts,
+explicit weighted or sloped OLS LSMR, owned Auto LSMR attempts and PPML canonical
+checkpoint or separation LSMR projections therefore used it when executing
+modified LSMR. Cold Off solves use ordinary Golub-Kahan and bypass the fused
+forward step, but their design adjoints still followed the fork's lane order.
+PPML's [augmented joint solver](../crates/fereg-core/src/ppml/categorical_lsmr.rs),
+`ReusableCategoricalJointLsmr::run_once`, instead supplies its own
+`AugmentedCategoricalOperator` with only forward and adjoint actions. It never
+used this within-specific fusion; common low-level norm changes do affect it.
+Evidence must distinguish these paths from MAP/CMG work that never executes the
+kernel under review.
+
+The smallest proposed optional boundary is to fuse the forward gather and
+affine observation update while preserving the candidate's current adjoint
+kernel, norm arithmetic, solver policy and public controls. It must retain the
+per-row `xi + scale * yi` expression, current eight-lane leaves and reduction
+tree, finite checks and scaled-norm fallback. Full forward/adjoint fusion is a
+separate arithmetic and storage change: old lane boundaries and run grouping do
+not reproduce the current per-level and per-term trees. The current design also
+uses `u32` ownership rows and shares row work across slope columns, whereas the
+fork's ownership fallback used `usize` rows and separate coefficient passes.
+The old algorithm is not necessarily faster on these designs.
+
+If raw-adjoint fusion is explored later, beta outside `[1e-64, 1e64]` must still
+trigger normalization and recomputation of the adjoint; scaling an already
+rounded adjoint is not equivalent. Speculative raw-adjoint overflow must not
+block that fallback. Restoring fusion also does not automatically eliminate an
+observation vector: [current gradient audits](https://github.com/johannes-schmieder/within/blob/41c53760e233ed6b0766af74f55951a4a0d51067/crates/schwarz-precond/src/lsmr/bidiag.rs#L512-L525)
+use the forward scratch buffer. A different buffer lifetime needs its own
+allocation and admission check.
+
+Before timing, any such patch needs exact candidate-versus-patch updated vectors,
+norms, solver fields and stop decisions, together with independent weighted and
+sloped projection certificates. Cover sorted Owner, sparse indexed Owner and
+dense Fold designs; zero weights; lane/leaf boundaries; extreme magnitudes;
+warm starts, correction audits, cancellation and counted failures. Retain the
+existing range, determinism and independent projection witnesses. A bounded
+Mac/SCC comparison must include both cache-resident and beyond-cache working
+sets with traces establishing execution of the changed path. No new fusion is
+implemented in beta.11, and it is not a prerequisite for migration. The separate
+sparse back-substitution patch remains subject to its own evidence and review;
+combined beta.11 qualification against beta.10 remains a separate gate.
+
 ### Patch evidence and unresolved results
 
 The separate API patch is `cf228c412fdadac89a3ff28b12f53b7e1580f3de` and the
@@ -202,8 +326,16 @@ one existing ignored test. The latter
 adds nine cancellation tests covering joined work and distinct cancellation,
 without changing existing `MlsmrOptions` struct literals. The combined upstream
 stack `41c53760` on draft #478 passed 574 Mac tests with one ignored test and
-independent high-effort review. These are upstream patch checks, not a working
-or accepted beta.11 plugin.
+independent high-effort review. Final API review found no remaining blocker.
+These are upstream patch checks; they do not establish beta.11 plugin readiness.
+The downstream source review against fereg `0bcd10fb` and dependency `41c53760`
+also found no remaining source blocker after the wrapper and cancellation fixes;
+its final nine-file diff digest was
+`17244ad11ab07a6659c8a51bbeddf80f1081ad0023919e79011075890bd03e47`.
+That review identified the rank-boundary witness above as a qualification
+requirement. Its subsequent parity failure is retained; Johannes accepted the
+independently supported upstream whitening correction for continued qualification.
+The source review does not replace runtime or timing evidence.
 
 The independent reproducibility witness at
 `43348fd7329fc1093ec3aa6442696ce1950485e9` on draft #478 passed with Rust 1.85.1
@@ -216,6 +348,19 @@ at eight workers: 10,386 coefficient entries and 55,568 demeaned entries
 changed in low bits, with maximum differences `9.71e-16` and `4.44e-16`;
 iteration count and discrete decisions stayed fixed. This establishes a real
 baseline defect, not failure of the stated scientific tolerance.
+
+An October 29 source review also inspected the three newer draft #478 commits
+through `4516668612dbdb8bf3019eda6703fd573bcbe0f9` against frozen `6f2ead1`.
+They change the unsorted slope scatter threshold, increase by-level reduction
+leaves from 4,096 to 16,384 rows, and move scatter indices into each prepared
+design. These changes can alter arithmetic and construction/overlap storage;
+the previous evidence cannot qualify them. In particular, locality sorting
+adds an `8L` transient cursor and per-term index construction is concurrent.
+The fallible Schwarz scratch patch is source-disjoint, but does not cover
+these within allocations. No required correctness fix was identified in this
+delta. The candidate retains `6f2ead1`; newer upstream performance claims are
+motivation for later evaluation, not transferred evidence. Fixed-worker
+repeatability remains a production prerequisite.
 
 SCC correctness jobs completed with success sentinels, terminal exit 0 and no
 test failures. Each suite had one existing ignored test; these commands omitted
@@ -233,28 +378,62 @@ doctests.
 
 These used 12-slot correctness allocations, not verified performance isolation.
 Combined-stack job `8325803` also has a verified success sentinel and terminal
-exit 0. No performance timing has been collected.
+exit 0. These correctness checks do not establish combined beta.11 performance acceptance.
 
 The separate back-substitution patch is `3303a6e`; its common benchmark harness
-is frozen at base `846d84d` and patch `5f31a1a`. On Mac, all six large-case
+is frozen at base `846d84d` and patch `5f31a1a`. The
+[compact evidence record](../bench/results/within-backsub-20261029.json) retains
+source, binary, harness and plan hashes, every paired ratio, per-host statistics
+and the exact Linux report hash. On Mac, all six large-case science-only
 base/patch comparisons agreed exactly for unit/weighted direct application at
 one/four workers and complete solves at one worker. The design has 8,388,608
 rows and a 360,718,788-byte factor/RHS lower bound; maximum independent fitted
-error was `9.094502928519432e-12`. Four-worker complete solves are excluded
-prospectively from timing because the frozen base failed repeatability there;
-that failure is retained. The fixed microbenchmark schedule has six mirrored
-blocks per cell, six distinct SCC physical hosts, no retries and no exclusions.
-It reuses the maintained qualification statistics and host observation tools;
-it does not replace beta.11 qualification against beta.10. Mac host preflight
-failed with zero benchmark calls because the sandbox denied process observation.
-Permission for a preflight retry is pending; there are no Mac timing results.
+error was `9.094502928519432e-12`. Four-worker complete solves were excluded
+before timing because the frozen base failed repeatability there; that negative
+result remains relevant to adoption.
+
 The Linux release build completed in job `8325815` on `scc-eb1`, with source,
-compiler and binary identities checked. Its science-only preflight passed in
-job `8325890` on `scc-222`: 24 calls across all 12 cells, exact base/patch
-agreement, and maximum independent error `9.094502928519432e-12`. The reused
-Python environment's PyFixest/within-py versions and PyFixest commit, plus the
-recorded Julia pins, matched the current campaign declaration. No Linux timing
-array has been submitted.
+compiler and binary identities checked. Science-only preflight `8325890` on
+`scc-222` passed all 24 calls across 12 cells. The reused Python and Julia pins
+matched the campaign declaration. Timing array `8326747` then completed 1,872
+calls on six distinct, verified whole-node allocations, with no exclusions or
+retries. Accounting, scientific signatures, iteration counts, independent
+witnesses and replayed isolation checks passed. Six mirrored blocks per cell
+and host gave 432 paired comparisons. All 12 host-median nonregression intervals
+passed the declared max(5%, 1 ms) allowance; pooled descriptive median ratios
+were 0.932–0.979 in cache and 0.959–0.987 outside cache. With only six independent
+hosts, the exact median bounds are the minimum and maximum host scores; these
+are not simultaneous bounds across cells or proof of a speed improvement.
+
+One observation still triggers the frozen review rule: weighted memory direct
+application at four workers, `scc-yk3`, zero-based block 4, took 0.328317 seconds
+for the patch versus 0.310275 for the base, a 5.815% increase and 2.528 ms beyond
+the allowance. It remains in the report. Johannes reviewed this result and
+instructed us to hold the optional upstream PR. The patch remains outside the
+combined candidate and does not replace beta.11 qualification against beta.10.
+
+The completed practical Mac comparison contains 24 science preflights and 288
+timed calls, giving 72 mirrored paired blocks across the same 12 cells. Exact
+science, schedule, binary and observer checks passed. All 12 descriptive
+intervals and all 72 individual blocks stay within max(5%, 1 ms). Eleven cell
+medians improve by 0.28–5.92%; the cache/unit complete-solve median is 0.45%
+slower. All 15 unfavorable point comparisons remain recorded; the largest
+relative increase, 7.84%, is 0.119 ms and below the absolute allowance.
+
+Four earlier Mac observer attempts remain separate, including 32 completed
+timings and eight paired blocks. The first failed before execution because
+process observation was sandboxed; the second stopped after four science
+calls when Claude used CPU. Two later attempts exposed overly narrow Claude
+identity rules; their gated children were stopped before native execution.
+Johannes authorized operational retries and retaining Claude as ordinary
+desktop noise. The final prospective declaration binds five verified Claude
+executable identities, including two search helpers. Across 391 samples they
+used 5.87 sampled CPU-seconds, with peak simultaneous sampled CPU of 11.8%
+and summed RSS of 2,475,936 KiB. These counters do not prove idleness or explain
+any individual timing. Other competing compute remained screened. No timing
+was excluded or pooled across attempts, and unfavorable native results do
+not authorize resampling. Mac evidence is descriptive; Johannes's hold on
+submitting this optional optimization remains in effect.
 
 The common cold-solve fingerprint driver (SHA-256
 `f546648c5d7982cfb0299d723663c33f1e0a27ca7293f0e42dd13282071fad42`) found
@@ -268,15 +447,125 @@ Read-only diagnosis found no contradiction with the native backward-error
 stopping rule: it differs from the driver's maximum-row forward-error witness.
 The internal operator-norm estimate and stop reason were not exposed, so the
 exact stopping branch cannot be reconstructed. The forward witness remains a
-failure; equality to the baseline is not a scientific pass. A single diagnostic
-at tolerance `1e-12` has been proposed to Johannes but has not been approved or
-run. The `1e-8` witness and original failed observations remain unchanged.
+failure; equality to the baseline is not a scientific pass. Johannes authorized
+one stricter diagnostic at tolerance `1e-12` on the same failed cell, all three
+arms and two repeats. Exactly six fresh-process calls passed the unchanged
+`1e-8` witness without retries: every call used 16 iterations, with maximum
+planted error `8.477663016037695e-13` and normal-equation ratio
+`2.6044044562489446e-16`. Common scientific bits and iterations matched across
+arms and repeats; inputs and all ten original source/configuration/result hashes
+were unchanged. This diagnostic changes no public default and does not erase
+the original tolerance-`1e-10` failure or establish beta.11 acceptance.
 
-The fereg integration check still reports 21 compile errors for preserved
-optional pair/session APIs. The experimental-retirement question remains
-pending; no paths or selectors have been removed. Actual beta.11 plugin tests,
-full memory-admission checks, combined fereg scientific results, Mac/SCC performance against
-beta.10 and adoption review therefore remain outstanding. No upstream PR
+Focused fereg adapter checks on Rust 1.85.1 passed 79 main tests and four
+subprocess witnesses: LSMR/batch 16, controlled routing 5, retired selectors 1,
+bounded CMG 24, analytic Schur 1 and PPML categorical LSMR 32. The approved
+retirement removes the obsolete pair/session consumers. The
+[complexity ratchet](../tests/reference/complexity.json) reduces fereg-core
+production lines from 113,243 to 113,029 and dispatch candidates from 1,458 to
+1,451. Essential host cancellation and the sanctioned actual-iteration Break
+witness add 148 plugin production lines and two injection dispatch candidates.
+The combined runtime decreases by 66 lines; large-file/function and chunk
+counts do not increase. The new selector's parser and host entrypoints remain
+below 150 production lines through meaningful request/guard helpers.
+
+One original test failed its expected fallback-route assertion, not its
+scientific certificate. Read-only diagnosis of the unchanged extreme-weight
+fixture found Auto/Diagonal converged in four iterations with certificate
+`5.2752027773493125e-12` and analytic residual error
+`2.220446049250313e-16`; Off gave certificate `5.275202776979238e-12` and error
+`1.1102230246251565e-16`. With Johannes's approval,
+[`extreme_weight_tree_matches_analytic_projection_with_auto_and_off`](../crates/fereg-core/src/fe/lsmr.rs)
+preserves the historical rows and weights, requires the original `1e-10`
+certificate and checks the independent analytic projection within `1e-14`.
+Failure-accounting tests use explicit counted errors at adapter boundaries,
+actual retry solves and independent upstream failure witnesses. This changes no
+Auto policy and retains the original failed expectation as evidence.
+
+The full source suite stopped at a core-test failure after 1,535 passes and
+three ignored tests:
+[`automatic_structural_map_uses_admitted_shared_operations`](../crates/fereg-core/src/ppml/prepared_estimator/tests.rs)
+expected `solver_workspace_bytes > 0`. Diagnosis found a test assertion on the
+wrong charge field, not a missing allocation: with 12 rows, FE levels 6/2/3,
+three RHSs and 24 workers, explicit LSMR needs 57,465 base bytes plus 80,524
+solver bytes, while the test supplies 137,988 usable bytes, one byte less.
+Auto legitimately admits 408 certificate bytes and 55,416 reusable
+coefficient/joint bytes for a 113,289-byte total. Its optional component
+checkpoint would add 57,864 bytes and exceed the cap at 171,153, so that
+checkpoint is refused and the separate solver-workspace charge is zero.
+The test-only correction requires both actual reusable charges to be positive
+and total selected bytes to fit the cap; policy and numerical comparisons stay
+unchanged. This test and `public_lsmr_checkpoint_workspace_is_required_before_canonical_work`
+passed focused reruns. The original full-suite failure is retained. The rerun
+passed all 1,536 core tests (three ignored), then failed the pinned PPML
+separation routing census at seed 17, configurations 1/2: the retained-CG
+developer arm's LSMR retry fails its residual certificate. Public Auto's
+sample and separation decisions remain exact against the incumbent in all
+three diagnosed configurations, including the independent 228-row LP witness.
+
+Causal isolation captured the final 260-row, two-FE residual solve with 49
+coefficients and minimum weight `5.74712643678161e-19`. With identical
+coefficients and one solver iteration, weighted-residual unscaling gives
+fereg's FE certificate `1.0478754742976134e-8`, exceeding this call's actual
+`1e-8` tolerance. Direct unweighted model subtraction gives
+`3.689858156465186e-11`, matching the incumbent; the vectors differ by at most
+`5.551115123125783e-17`. An independent 80-digit evaluation of the same
+floating-point coefficients gives maximum reconstruction errors of
+`5.57e-17` and `3.52e-19`, respectively. Independent stable mathematical
+moments pass both outputs; this identifies a caller-unit reconstruction
+compatibility issue, not a coefficient error. Isolated API revision `773372c`
+adds an opt-in `ResidualOutput::PreparedModel` to the new controlled interface,
+reusing upstream's existing gather and measured residual buffer before
+coefficient back-transformation and row restoration. The default output and
+weighted convergence audit remain unchanged. The combined revision `d3407a16`
+passed 579 unit/integration tests and four doctests, plus focused strict Clippy;
+the isolated API passed 549 tests and three doctests. Independent source review
+found no blocker. Tests cover the captured input, weighted group means,
+sloped rank loss, zero weights, original row order, warm handoff, storage reuse
+and cancellation after reconstruction with exact consumed work.
+
+SCC follow-up job `8326940` on `scc-wm3` passed both updated suites with the
+same counts, plus two isolated subprocess executions per suite. It used Rust
+1.85.1, GCC 12.2.0, 12 reserved slots, four build jobs and eight Rayon workers;
+tests ran serially. Terminal accounting reports failed/exit status 0, 626
+seconds wall time and 3.876G maximum virtual memory. This was a correctness
+allocation, with no isolation or performance claim. The
+[compact record](../bench/results/within-output-option-20261029.json) preserves
+source, script, manifest and result identities, including earlier diagnostics.
+
+Fereg explicitly selects this output mode in both ordinary batch and controlled
+routing helpers. Its numerical scope includes their weighted/sloped OLS and
+PPML checkpoint, separation and fallback consumers. The returned residual may
+affect later independent certification or estimation steps; final estimation
+bits are not presumed unchanged. The within solve's coefficients, convergence
+audit, stop reason and work stay unchanged for a given input. No new retained
+observation buffer is allocated, but the extra gather needs fresh performance
+qualification. No census expectation or scientific tolerance has changed.
+The previously failing PPML separation census and the fixed/cross-worker
+agreement test now pass with their original expectations and tolerances.
+The next full run passed 1,535 core tests and found two adapter witnesses still
+comparing the explicitly selected output against upstream's default weighted
+output. Their test-only correction preserves exact full-batch coefficients,
+convergence, work, diagnostics and failure checks, and independently verifies
+every returned residual bit as the original response minus its two categorical
+coefficients. Output-bank shape checks remain explicit. Both focused witnesses
+passed; no scientific tolerance changed. The original failure is retained.
+The final Mac `./scripts/run_tests.sh --source-only` completed with exit status
+0 against this exact pin: 273 Python tests (12 skipped), 1,537 core unit tests (three
+ignored), workspace scientific/integration tests, plugin/FFI tests, isolated
+allocation audits, formatting, fuzz compilation, strict Clippy, portable/C
+guards and the complexity ratchet passed. The source-run log SHA-256 is
+`9f24d2a9cf823362a5cc79e11cd1e8eb396e8338ba59160dc17406a67c6776dd`.
+This run used Rust 1.85.1, Python 3.12.14, four build jobs, eight Rayon workers
+and one BLAS worker on the development Mac. It explicitly did not perform
+installed-package admission. Historical `cf228c` entrypoint evidence does not
+qualify the new API revision.
+Actual beta.11 plugin tests, full plugin memory
+admission and combined scientific validation remain outstanding. The new
+controlled-solve, cancellation and
+fallible-allocation entry points also need patch-specific performance evidence.
+Mac/SCC beta.11 performance against beta.10 and adoption review remain separate
+requirements. No upstream PR
 submission or production acceptance is claimed by these checks.
 
 Independent tests to preserve include the dense QR and weighted/disconnected

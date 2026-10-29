@@ -25,6 +25,8 @@ except ImportError:
 BREAK_FIXTURES = {
     "ols": ("estimate_ols_eclass_break.do", ("FEREG_NATIVE_BREAK_ARMED", "FEREG_BREAK_ARMED")),
     "ols-builder": ("estimate_ols_builder_break.do", ("FEREG_NATIVE_BREAK_ARMED", "FEREG_NATIVE_BREAK_ARMED")),
+    "ols-lsmr": ("estimate_lsmr_iteration_break.do", ("FEREG_NATIVE_BREAK_ARMED", "FEREG_NATIVE_BREAK_ARMED")),
+    "ppml-lsmr": ("estimate_lsmr_iteration_break.do", ("FEPPML_NATIVE_BREAK_ARMED", "FEPPML_NATIVE_BREAK_ARMED")),
     "ppml": (
         "estimate_ppml_eclass_break.do",
         (
@@ -125,6 +127,8 @@ def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
                         help="OLS route exercised by both native and publication Break checks")
     parser.add_argument("--builder-workers", type=int, choices=(2, 4),
                         help="worker count for the actual optional-builder Break fixture (default 4)")
+    parser.add_argument("--lsmr-workers", type=int, choices=(1, 4),
+                        help="worker count for completed-iteration LSMR Break fixtures (default 4)")
     parser.add_argument("--cmg-samples", type=lambda value: bounded_integer(value, 2**32 - 1),
                         help="optional CMG-Schur tree count; positive counts use a degree-30 fixture")
     parser.add_argument("--cmg-seed", type=lambda value: bounded_integer(value, 2**53 - 1),
@@ -138,6 +142,8 @@ def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
         parser.error("public OLS Break requires --ols-solver auto")
     if args.builder_workers is not None and args.fixture_kind != "ols-builder":
         parser.error("--builder-workers requires --fixture-kind ols-builder")
+    if args.lsmr_workers is not None and args.fixture_kind not in ("ols-lsmr", "ppml-lsmr"):
+        parser.error("--lsmr-workers requires --fixture-kind ols-lsmr or ppml-lsmr")
     if args.ols_solver != "auto" and args.fixture_kind != "ols":
         parser.error("--ols-solver requires --fixture-kind ols")
     if args.cmg_samples is not None or args.cmg_seed is not None:
@@ -154,6 +160,8 @@ def fixture_command(fixture: Path, args: argparse.Namespace) -> str:
     arguments: list[str] = []
     if args.fixture_kind == "ols-builder":
         arguments.append(str(args.builder_workers or 4))
+    elif args.fixture_kind in ("ols-lsmr", "ppml-lsmr"):
+        arguments.extend([args.fixture_kind.split("-", 1)[0], str(args.lsmr_workers or 4)])
     elif args.fixture_kind == "ols" and not args.public_scope:
         arguments.append(args.ols_solver)
         if args.cmg_samples is not None:
@@ -214,6 +222,36 @@ def builder_trace_events(trace: str) -> list[str]:
         events.append(line)
     if len(events) != 2:
         raise RuntimeError("expected two synchronous builder Break readiness records")
+    return events
+
+
+def lsmr_trace_events(trace: str, backend: str) -> list[str]:
+    """Require two completed-iteration/actual-upstream-cancellation pairs."""
+    events = []
+    expected = ["iteration_break_ready", "iteration_break_cancelled"] * 2
+    for line in trace.splitlines():
+        if "event=iteration_break_" not in line:
+            continue
+        try:
+            if not line.startswith("FEREG_SOLVER_TRACE|phase=lsmr_break|event="):
+                raise ValueError("fragmented LSMR record")
+            pairs = [part.split("=", 1) for part in line.split("|")[1:]]
+            fields = dict(pairs)
+            if len(events) >= len(expected) or fields.get("event") != expected[len(events)]:
+                raise ValueError("unexpected LSMR event order")
+            names = {"phase", "event", "backend"}
+            if fields["event"] == "iteration_break_ready":
+                names.add("iteration")
+                iteration = fields.get("iteration", "")
+                if not iteration.isascii() or not iteration.isdecimal() or int(iteration) < 1:
+                    raise ValueError("no completed LSMR iteration")
+            if len(pairs) != len(fields) or set(fields) != names or fields["backend"] != backend:
+                raise ValueError("invalid LSMR fields or backend")
+        except (ValueError, KeyError) as error:
+            raise RuntimeError("invalid LSMR iteration Break trace") from error
+        events.append(line)
+    if len(events) != len(expected):
+        raise RuntimeError("expected two completed-iteration/upstream-cancellation pairs")
     return events
 
 
@@ -366,7 +404,7 @@ def main() -> None:
     process_environment["FEREG_PPML_BREAK_MARKER_TOKEN"] = native_marker_token
     process_environment["FEREG_BREAK_MARKER_TOKEN"] = native_marker_token
     trace_path = run_dir / "builder.trace"
-    if args.fixture_kind == "ols-builder":
+    if args.fixture_kind in ("ols-builder", "ols-lsmr", "ppml-lsmr"):
         process_environment["FEREG_SOLVER_TRACE"] = "1"
         process_environment["FEREG_SOLVER_TRACE_FILE"] = str(trace_path)
     process = None
@@ -457,6 +495,18 @@ def main() -> None:
                 print("BUILDER: " + event)
             print("TRACE_SHA256: " + sha256_file(trace_path))
             print(f"BOUNDARY: actual optional builder, workers={args.builder_workers or 4}, two cancellations and follow-up fits")
+        if args.fixture_kind in ("ols-lsmr", "ppml-lsmr"):
+            if "FEREG_SOLVER_TRACE_IO_ERROR|" in transcript:
+                raise RuntimeError("solver trace I/O failed during LSMR Break fixture")
+            if "FEREG_LSMR_BREAK_RESET_VERIFIED" not in transcript:
+                raise RuntimeError("LSMR Break fixture did not verify rollback/reset")
+            backend = "within" if args.fixture_kind == "ols-lsmr" else "ppml_joint"
+            events = lsmr_trace_events(trace_path.read_text() if trace_path.exists() else "", backend)
+            metadata["lsmr_events"] = events
+            for event in events:
+                print("LSMR: " + event)
+            print("TRACE_SHA256: " + sha256_file(trace_path))
+            print(f"BOUNDARY: completed {backend} iteration and upstream Cancelled, workers={args.lsmr_workers or 4}, populated/null estimates and exact follow-up fits")
         if args.fixture_kind == "ols":
             print(f"BOUNDARY: OLS solver({args.ols_solver})")
             if args.cmg_samples:

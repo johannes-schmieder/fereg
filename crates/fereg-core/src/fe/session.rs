@@ -35,24 +35,36 @@ pub(crate) struct FeSession<'a> {
 
 /// Select invocation identity before canonical portfolio construction. Refused
 /// hidden families fall back to the accepted default, including the other family.
+/// Retired general-pair selectors fail before any substitution can occur.
 fn select_ols_routing(
     config: super::AbsorbConfig,
     effects: Option<usize>,
     defaults: [bool; 2],
-) -> Option<super::RoutingPreset> {
+) -> Result<Option<super::RoutingPreset>> {
+    if let Some(preset) = config
+        .routing
+        .filter(|preset| preset.retired_general_pair_request(effects))
+    {
+        return Err(FeregError::new(
+            ErrorCode::InvalidArgument,
+            format!(
+                "developer routing selector {preset} is unsupported with more than two categorical fixed effects; general pair upgrades were retired"
+            ),
+        ));
+    }
     let eligible = |preset: &super::RoutingPreset| {
         preset
             .resolve_ols(config.solver, config.lsmr.preconditioner, effects)
             .is_some()
     };
-    config.routing.filter(eligible).or_else(|| {
+    Ok(config.routing.filter(eligible).or_else(|| {
         match effects {
             Some(3..) if defaults[0] => Some(super::RoutingPreset::geometry_many()),
             Some(2) if defaults[1] => Some(super::RoutingPreset::gates_two_v2()),
             _ => None,
         }
         .filter(eligible)
-    })
+    }))
 }
 
 impl<'a> FeSession<'a> {
@@ -285,7 +297,7 @@ impl<'a> FeSession<'a> {
         const DEFAULT_MANY: bool = true;
         const DEFAULT_TWO: bool = true;
         let effects = borrowed.as_ref().map(|design| design.effects().len());
-        let routing = select_ols_routing(config.absorb, effects, [DEFAULT_MANY, DEFAULT_TWO]);
+        let routing = select_ols_routing(config.absorb, effects, [DEFAULT_MANY, DEFAULT_TWO])?;
         owner.absorb_config = Some(super::AbsorbConfig {
             routing,
             ..config.absorb
@@ -899,14 +911,6 @@ impl<'a> FeSession<'a> {
         )
     }
 
-    /// Close the general routing's optional attempt for the current accuracy
-    /// key once the complete committed RHS set or a failed action ends.
-    pub(crate) fn close_routing_attempt(&mut self) {
-        if let Some(general) = self.general_routing.as_mut() {
-            general.close_attempt();
-        }
-    }
-
     pub(crate) fn project_initial_ols(
         &mut self,
         weights: BorrowedMapWeights<'_>,
@@ -1058,9 +1062,6 @@ impl<'a> FeSession<'a> {
             .as_ref()
             .and_then(ObserverRef::remaining)
             .map(|state| state.measurement_scope());
-        if final_residual {
-            self.close_routing_attempt();
-        }
         let result = self.project_ols_binding(
             weights,
             values,
@@ -1070,9 +1071,6 @@ impl<'a> FeSession<'a> {
             dense_norms,
             remaining.as_mut().map(ObserverRef::reborrow),
         );
-        if result.is_err() || final_residual || !self.ols_chunked_norms {
-            self.close_routing_attempt();
-        }
         // Cancellation requested during the projection takes precedence.
         crate::interrupt::checkpoint()?;
         let mut result = result?;
@@ -1630,18 +1628,21 @@ mod routing_selection_tests {
                         }
                         _ => incumbent,
                     };
-                    assert_eq!(select_ols_routing(config, effects, defaults), selected);
+                    assert_eq!(
+                        select_ols_routing(config, effects, defaults).unwrap(),
+                        selected
+                    );
                     for preconditioner in [
                         LsmrPreconditioner::Off,
                         LsmrPreconditioner::Diagonal,
                         LsmrPreconditioner::Schwarz,
                     ] {
                         config.lsmr.preconditioner = preconditioner;
-                        assert_eq!(select_ols_routing(config, effects, defaults), None);
+                        assert_eq!(select_ols_routing(config, effects, defaults).unwrap(), None);
                     }
                     config.lsmr.preconditioner = LsmrPreconditioner::Auto;
                     config.solver = FeSolverKind::Lsmr;
-                    assert_eq!(select_ols_routing(config, effects, defaults), None);
+                    assert_eq!(select_ols_routing(config, effects, defaults).unwrap(), None);
                 }
                 let historical = RoutingPreset::portfolio_v1();
                 let config = AbsorbConfig {
@@ -1649,8 +1650,67 @@ mod routing_selection_tests {
                     ..AbsorbConfig::default()
                 };
                 assert_eq!(
-                    select_ols_routing(config, effects, defaults),
+                    select_ols_routing(config, effects, defaults).unwrap(),
                     Some(historical)
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn retired_general_pair_selectors_fail_before_default_substitution() {
+        let mut retired = vec![RoutingPreset::builder_break()];
+        for checkpoint in [4, 8, 16, 32] {
+            for samples in [0, 1, 2] {
+                retired.push(RoutingPreset::new(checkpoint, samples).unwrap());
+            }
+        }
+        for defaults in [[false, false], [true, false], [false, true], [true, true]] {
+            for &preset in &retired {
+                let config = AbsorbConfig {
+                    routing: Some(preset),
+                    ..AbsorbConfig::default()
+                };
+                for effects in [Some(3), Some(4), Some(16)] {
+                    let error = select_ols_routing(config, effects, defaults).unwrap_err();
+                    assert_eq!(error.code, ErrorCode::InvalidArgument);
+                    assert!(error.message.contains(&preset.to_string()));
+                    assert!(error.message.contains("general pair upgrades were retired"));
+                }
+                // The same parsed selectors still identify the two-FE path.
+                assert_eq!(
+                    select_ols_routing(config, Some(2), defaults).unwrap(),
+                    Some(preset)
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn retiring_general_pairs_preserves_other_general_experiments() {
+        use crate::fe::CategoricalPrefix;
+        let retained = [
+            RoutingPreset::ablation("diagonal").unwrap(),
+            RoutingPreset::ablation("cells").unwrap(),
+            RoutingPreset::ablation("direct").unwrap(),
+            RoutingPreset::prefix(CategoricalPrefix::None),
+            RoutingPreset::prefix(CategoricalPrefix::Map4),
+            RoutingPreset::prefix(CategoricalPrefix::CompactIt4),
+            RoutingPreset::portfolio_v1(),
+            RoutingPreset::portfolio_unseeded(),
+            RoutingPreset::incremental_many(),
+            RoutingPreset::geometry_many(),
+            RoutingPreset::geometry_many_windows(),
+        ];
+        for preset in retained {
+            for effects in [Some(3), Some(4), Some(16)] {
+                let config = AbsorbConfig {
+                    routing: Some(preset),
+                    ..AbsorbConfig::default()
+                };
+                assert_eq!(
+                    select_ols_routing(config, effects, [true, true]).unwrap(),
+                    Some(preset)
                 );
             }
         }

@@ -472,7 +472,7 @@ is admitted after the one-lane apply storage, otherwise the scalar
 application of the same hierarchy, so the team installation never refuses a
 build the scalar one admits. Its arithmetic is the scalar cycle's except
 CMG's fixed-chunk centering of one coarse component of at least 131,072
-entries. PPML reuse and reduced pairs keep the team-free scalar cycle.
+entries. PPML reuse keeps the team-free scalar cycle.
 
 Developer selectors below are supported comparison contracts; public defaults
 are specified above.
@@ -480,18 +480,14 @@ are specified above.
 Hidden OLS `inject=routing_h{4|8|16|32}_k{0|1|2}` selects a fixed iteration
 checkpoint and high-degree CMG sample count. Eligible two-FE problems start the
 existing diagonal-preconditioned Schur recurrence and consider one optional
-CMG build if work remains at the checkpoint. General categorical problems retain
-the existing three-FE geometry shortcut, then start incumbent LSMR in its bounded
-RHS windows. If any active RHS still needs iterations at the checkpoint, the
-additive preconditioner may replace one eligible categorical pair's large
-component solvers with fixed reduced CMG inverses. Pair nomination maximizes
-the largest component's smaller FE dimension, then the sum of component retained
-widths, both descending, with ascending original factor indices breaking ties.
-Components within the existing dense
-threshold and all other local solvers remain unchanged; replacement of the
-eligible components commits together or not at all. Explicit
-`preconditioner(off|diagonal|schwarz)` remains authoritative; general pair
-replacement requires `preconditioner(auto)`.
+CMG build if work remains at the checkpoint. The general categorical
+more-than-two-FE pair-upgrade interpretation of these selectors and
+`routing_builder_break` is retired with Johannes's approval. Those explicit
+requests return InvalidArgument on more-than-two-FE categorical designs; the
+two-FE selectors and their builder-Break witness remain supported. Zero/one-FE
+and slope routes retain their existing behavior. This retirement does not change
+public many-FE Auto's Jacobi-to-additive escalation or its supported prefix,
+portfolio, geometry and bounded-window comparison policies.
 
 Construction runs serially at the numerical checkpoint, without elapsed-time or
 background-completion decisions. Refusal leaves the live recurrence unchanged;
@@ -521,8 +517,7 @@ the cache, a checked conservative envelope admits the cache together with cell
 scratch, sampling, graph construction, components, hierarchy, scalar workspace
 and final application banks, net of live parent/execution storage. Overflow or
 insufficient memory chooses the original two-pass path before allocation, with
-no second attempt. Cache bytes remain reserved through finish. The reduced
-general-pair builder retains the uncached path. Cached and uncached builds
+no second attempt. Cache bytes remain reserved through finish. Cached and uncached builds
 require identical graph, hierarchy and application results. This optimization
 does not activate public routing or establish a speed claim.
 
@@ -549,7 +544,7 @@ Zero/one-FE and slope routes retain their existing behavior. Separate prefix
 and PPML topology experiments are described below. Exact hidden tokens
 and validation are specified in [the plugin protocol](plugin_protocol.md#developer-injections-hidden-adapters-only);
 implementation boundaries are [routing presets and the attempt record](../crates/fereg-core/src/fe/routing.rs),
-[general pair replacement](../crates/fereg-core/src/fe/borrowed_map/routing_lsmr.rs),
+[many-FE controlled LSMR](../crates/fereg-core/src/fe/borrowed_map/routing_lsmr.rs),
 [two-FE kernels](../crates/fereg-core/src/fe/routing_kernel.rs) and
 [direct proposals](../crates/fereg-core/src/fe/routing_direct.rs).
 
@@ -559,8 +554,8 @@ iteration signatures within §20 tolerances. Sample, rank, omission, original
 factor slots/base flags and other discrete model decisions remain unchanged;
 uninjected routes retain exact scientific results and solver signatures.
 Independent witnesses cover weighted rectangle and dense observation-elimination
-identities, disconnected direct solves, exact recurrence continuation after
-refusal, accepted pair replacement/reuse, and original FE-moment and coefficient
+identities, disconnected direct solves, exact two-FE recurrence continuation after
+refusal, and original FE-moment and coefficient
 reconstruction checks. No performance or default-promotion claim follows from
 these contracts.
 

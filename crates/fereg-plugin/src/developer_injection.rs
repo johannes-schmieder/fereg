@@ -21,6 +21,7 @@ pub(crate) struct OlsInjection {
     pub(crate) cells: PreparedOlsCells,
     pub(crate) it_coefficients: bool,
     pub(crate) native_break_token: Option<String>,
+    pub(crate) lsmr_iteration_break: bool,
     /// The selected hidden many-FE policy is public Auto's own preset; it keeps
     /// public two-FE activation so selected-hidden/public science is exact.
     pub(crate) public_activation: bool,
@@ -76,9 +77,34 @@ fn ols_mechanisms(
     Ok((ownership, cells))
 }
 
+/// Decode the bounded `routing_h*_k*` checkpoint/sample presets.
+fn parse_checkpoint_preset(stage: &str, solver: FeSolverKind) -> Result<RoutingPreset> {
+    let unknown = || syntax(format!("unknown hidden OLS injection stage {stage:?}"));
+    let (checkpoint, samples) = stage
+        .strip_prefix("routing_h")
+        .and_then(|preset| preset.split_once("_k"))
+        .ok_or_else(unknown)?;
+    let checkpoint = match checkpoint {
+        "4" => 4,
+        "8" => 8,
+        "16" => 16,
+        "32" => 32,
+        _ => return Err(unknown()),
+    };
+    let samples = match samples {
+        "0" => 0,
+        "1" => 1,
+        "2" => 2,
+        _ => return Err(unknown()),
+    };
+    if solver != FeSolverKind::Auto {
+        return Err(syntax("hidden routing injection requires solver(auto)"));
+    }
+    RoutingPreset::new(checkpoint, samples)
+}
+
 /// Decode the bounded OLS experiment presets without adding public syntax.
 pub(crate) fn parse_ols(stage: &str, solver: FeSolverKind, token: &str) -> Result<OlsInjection> {
-    let unknown = || syntax(format!("unknown hidden OLS injection stage {stage:?}"));
     let (ownership, cells) = ols_mechanisms(stage, solver)?;
     let (routing, break_native) = match stage {
         // A marker alone observes the public request; it must not select an
@@ -94,6 +120,12 @@ pub(crate) fn parse_ols(stage: &str, solver: FeSolverKind, token: &str) -> Resul
         | "cells_deferred_scores"
         | "cells_deferred_both" => (None, false),
         "breaknative" => (None, true),
+        "lsmr_iteration_break" => {
+            if solver != FeSolverKind::Lsmr {
+                return Err(syntax("hidden LSMR iteration Break requires solver(lsmr)"));
+            }
+            (None, true)
+        }
         "routing_builder_break" => {
             if solver != FeSolverKind::Auto {
                 return Err(syntax("hidden routing injection requires solver(auto)"));
@@ -185,29 +217,7 @@ pub(crate) fn parse_ols(stage: &str, solver: FeSolverKind, token: &str) -> Resul
                 false,
             )
         }
-        _ => {
-            let (checkpoint, samples) = stage
-                .strip_prefix("routing_h")
-                .and_then(|preset| preset.split_once("_k"))
-                .ok_or_else(unknown)?;
-            let checkpoint = match checkpoint {
-                "4" => 4,
-                "8" => 8,
-                "16" => 16,
-                "32" => 32,
-                _ => return Err(unknown()),
-            };
-            let samples = match samples {
-                "0" => 0,
-                "1" => 1,
-                "2" => 2,
-                _ => return Err(unknown()),
-            };
-            if solver != FeSolverKind::Auto {
-                return Err(syntax("hidden routing injection requires solver(auto)"));
-            }
-            (Some(RoutingPreset::new(checkpoint, samples)?), false)
-        }
+        _ => (Some(parse_checkpoint_preset(stage, solver)?), false),
     };
     validate_break_marker_token(break_native, token)?;
     Ok(OlsInjection {
@@ -216,6 +226,7 @@ pub(crate) fn parse_ols(stage: &str, solver: FeSolverKind, token: &str) -> Resul
         cells,
         it_coefficients: stage == "it_coefficients",
         native_break_token: break_native.then(|| token.to_owned()),
+        lsmr_iteration_break: stage == "lsmr_iteration_break",
         // Selected public policies keep public two-FE activation, so the
         // hidden invocation equals uninjected Auto on every design.
         public_activation: PUBLIC_ACTIVATION.contains(&stage),
@@ -474,5 +485,35 @@ mod tests {
         }
         assert!(parse_ols("ownership_both", FeSolverKind::Auto, token).is_err());
         assert!(parse_ols("breaknative", FeSolverKind::Auto, "").is_err());
+    }
+
+    #[test]
+    fn lsmr_iteration_break_requires_explicit_solver_and_valid_marker() {
+        let token = "0123456789abcdef0123456789abcdef";
+        let parsed = parse_ols("lsmr_iteration_break", FeSolverKind::Lsmr, token).unwrap();
+        assert!(parsed.lsmr_iteration_break);
+        assert_eq!(parsed.native_break_token.as_deref(), Some(token));
+        assert!(parsed.routing.is_none());
+        for solver in [
+            FeSolverKind::Auto,
+            FeSolverKind::Map,
+            FeSolverKind::Cg,
+            FeSolverKind::Cmg,
+        ] {
+            assert!(parse_ols("lsmr_iteration_break", solver, token).is_err());
+        }
+        for marker in ["", "invalid", "0123456789ABCDEF0123456789ABCDEF"] {
+            assert!(parse_ols("lsmr_iteration_break", FeSolverKind::Lsmr, marker).is_err());
+        }
+        assert!(
+            !parse_ols("breaknative", FeSolverKind::Lsmr, token)
+                .unwrap()
+                .lsmr_iteration_break
+        );
+        assert!(
+            !parse_ols("", FeSolverKind::Lsmr, "")
+                .unwrap()
+                .lsmr_iteration_break
+        );
     }
 }

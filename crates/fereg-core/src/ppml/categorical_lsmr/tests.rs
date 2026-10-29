@@ -11,6 +11,14 @@ fn ordered_scratch_allocation_keeps_the_allocation_failure_contract() {
         ErrorCode::NonConvergence
     );
 }
+#[test]
+fn cancellation_is_never_classified_as_ppml_numerical_nonconvergence() {
+    assert_eq!(
+        lsmr_error(SolveError::Cancelled).code,
+        ErrorCode::Interrupted
+    );
+}
+
 use crate::fe::EffectTerm;
 
 fn predictor_frame(
@@ -334,8 +342,8 @@ fn core_pair_bridge_matches_its_dense_symmetric_block_factor() {
     let effects = within_effects_selected(&design, &core_effects).expect("within effects");
     let solver = Solver::new(
         effects,
-        Some(weights.clone()),
-        within::PreconditionerConfig::default(),
+        Some(weights.as_slice()),
+        crate::fe::additive_schwarz(),
     )
     .expect("core solver");
     let core = solver

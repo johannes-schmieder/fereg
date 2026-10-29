@@ -57,9 +57,10 @@ the routing injections below select experimental algorithms for qualification.
 | Key | Estimator | Effect |
 |---|---|---|
 | `inject=breaknative` + `break_marker_token=<32 lowercase hex>` | OLS, PPML | Arms native Break: displays `FEREG_NATIVE_BREAK_ARMED` (OLS) or `FEPPML_NATIVE_BREAK_ARMED` (PPML), creates `<tmp>/<fereg\|feppml>-native-break-<token>.marker`, and waits for Stata Break inside the native call |
+| `inject=lsmr_iteration_break` + `break_marker_token=<32 lowercase hex>` | OLS, PPML | Requires explicit `solver=lsmr` and at least two categorical intercept FEs. Parks after a completed, continuing upstream iteration; the main-thread poller emits the native marker, real Break sets the cancellation signal, and all work joins before rollback |
 | `inject=panic` | PPML | Panics after validation to prove ABI panic containment (OLS uses the `panic-test` action) |
 | `inject=allocation` | PPML | Fails the FE-recovery reservation to prove atomic allocation failure |
-| `inject=routing_h{4\|8\|16\|32}_k{0\|1\|2}` | OLS | Selects one of 12 automatic-routing arms: the incumbent reaches iteration `h` before a bounded optional CMG build; `k` is the high-degree worker tree sample count (zero retains the hybrid graph) |
+| `inject=routing_h{4\|8\|16\|32}_k{0\|1\|2}` | OLS | Selects one of 12 eligible two-FE routing arms: the incumbent reaches iteration `h` before a bounded optional CMG build; `k` is the high-degree worker tree sample count (zero retains the hybrid graph). More-than-two-FE categorical requests fail clearly |
 | `inject=routing_diagonal` | OLS | Tests the current-weight Schur diagonal on eligible two-FE systems, retaining the observation operator |
 | `inject=routing_cells` | OLS | Tests an operator over aggregated worker/firm cells, retaining the incumbent diagonal preconditioner |
 | `inject=routing_direct` | OLS | Tests a bounded componentwise direct Schur factorization on eligible two-FE systems |
@@ -73,9 +74,19 @@ the routing injections below select experimental algorithms for qualification.
 | `inject=routing_many_windows_v1` | OLS (replay wire, hidden Stata adapter) | Candidate many-FE policy: `routing_many_geometry_v1` with at most one live LSMR session per worker; the Jacobi trial escalates at the end of each window and later windows start on the additive solver. Keeps public two-FE ownership/cell activation, so two-FE and ineligible designs equal uninjected Auto; not a public default |
 | `inject=routing_two_gates_v2` | OLS (replay wire) | Selects the public two-FE policy, gate v2: the structural gate plus an early CMG build at local step 4, 8 or 12 when the diagonal recurrence has stalled; keeps public two-FE ownership/cell activation, so it equals uninjected Auto on every design |
 | `inject=routing_incremental_two` | OLS (replay wire) | Qualifies the existing direct-or-h16/k1 synchronous portfolio for exactly two categorical intercept FEs |
-| `inject=routing_builder_break` + `break_marker_token=<32 lowercase hex>` | OLS | Uses the synchronous h4/k1 builder and waits for Break at its first cancellation poll after executed construction work; any worker count |
+| `inject=routing_builder_break` + `break_marker_token=<32 lowercase hex>` | OLS | Uses the synchronous two-FE h4/k1 builder and waits for Break at its first cancellation poll after executed construction work; any worker count. More-than-two-FE categorical requests fail clearly |
 | `inject=ppml_topology` | PPML | Shares admitted categorical checkpoint component indexing after acceptance; weighted numerical data is recomputed in every frame |
 | `inject=ppml_separation_cg` | PPML | Comparison arm for the beta.10 default: solves admitted separation-detector projections (rectifier, Mu, numerical direction span checks) with exactly two categorical intercepts with retained-product CG, the earlier public path, instead of the OLS two-FE Auto route; detector tolerances, weights, iteration limit and decision rules are the same. Replaces `inject=ppml_separation_auto` (see VALIDATION, PPML separation routing) |
+
+The LSMR iteration witness leaves ordinary solver policies unchanged. Its
+`lsmr_break` trace must contain `iteration_break_ready` with a positive completed
+iteration and `iteration_break_cancelled` from the actual upstream cancellation
+error. OLS observes `within::Solver::solve_controlled`; PPML observes its joint
+`mlsmr_cancellable` solve. A fit that finishes without reaching this checkpoint
+fails before publication. `scripts/run_stata_break_test.py` selects these real
+PTY fixtures with `--fixture-kind ols-lsmr` or `ppml-lsmr` and
+`--lsmr-workers 1` or `4`; each verifies populated/null estimates, output rollback
+and exact successful fits after interruption.
 
 Each routing name is a complete literal token, for example
 `routing_h8_k1`. The hidden Stata adapter accepts the `routing_h*_k*`,
@@ -110,11 +121,12 @@ The separate coefficient-IT injection requires explicit `solver=it` and rejects
 implementation. The compact challenger has not passed promotion qualification;
 it remains a developer-only comparison.
 
-The checkpoint arms apply to eligible categorical two-FE and general categorical
-LSMR routes. Zero/one-FE and slope routes retain their existing behavior; the
-three kernel experiments affect only eligible two-FE systems. Explicit
-`preconditioner()` choices remain authoritative: general LSMR pair replacement
-is considered only with `preconditioner=auto`. Optional construction is admitted
+The checkpoint arms apply to eligible categorical two-FE systems. The general
+more-than-two-FE pair-upgrade experiment is retired: explicit h/k or
+`routing_builder_break` requests on those categorical designs return
+InvalidArgument. Zero/one-FE and slope routes retain their existing behavior;
+the three kernel experiments affect only eligible two-FE systems. Explicit
+`preconditioner()` choices remain authoritative. Optional construction is admitted
 against the joint memory budget; a memory refusal continues the incumbent.
 Construction is cancellable at bounded chunks; a Break propagates as an
 interrupted native estimation with atomic rollback after all tasks join, never

@@ -212,7 +212,7 @@ program define _fereg_estimate_ppml, eclass
     local inject_known = `inject_known' | inlist(`"`inject'"', ///
         "breakpostplugin", "breakpostpublic", "mutatewire", ///
         "mutatesemantic", "mutatesolver", "mutateoutput", "panic", "breaknative", ///
-        "allocation") | `"`inject'"' == "ppml_separation_cg"
+        "allocation") | inlist(`"`inject'"', "ppml_separation_cg", "lsmr_iteration_break")
     if !`inject_known' {
         di as error "unknown developer PPML transaction injection stage: `inject'"
         exit 198
@@ -741,6 +741,7 @@ program define _fereg_estimate_ppml, eclass
     local plugin_inject
     if `"`inject'"' == "panic" local plugin_inject "panic"
     if `"`inject'"' == "breaknative" local plugin_inject "breaknative"
+    if `"`inject'"' == "lsmr_iteration_break" local plugin_inject "lsmr_iteration_break"
     if `"`inject'"' == "allocation" local plugin_inject "allocation"
     if `"`inject'"' == "ppml_separation_cg" local plugin_inject "ppml_separation_cg"
     quietly _fereg_memory_baseline
@@ -753,7 +754,7 @@ program define _fereg_estimate_ppml, eclass
     if `"`plugin_inject'"' != "" {
         local request_arguments `"`request_arguments'inject=`plugin_inject';"'
     }
-    if `"`plugin_inject'"' == "breaknative" {
+    if inlist(`"`plugin_inject'"', "breaknative", "lsmr_iteration_break") {
         local break_marker_token : environment FEREG_PPML_BREAK_MARKER_TOKEN
         if strtrim(`"`break_marker_token'"') == "" {
             di as error "hidden PPML breaknative requires FEREG_PPML_BREAK_MARKER_TOKEN"

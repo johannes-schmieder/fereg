@@ -399,7 +399,7 @@ impl CmgSchurPreconditioner {
             .map_err(cmg_error)
         };
         match self.install {
-            // PPML reuse and reduced pairs keep the team-free scalar cycle.
+            // PPML reuse keeps the team-free scalar cycle.
             Install::Auto { team_lanes: None } => run(None),
             // An automatic team installation borrows whichever host team is
             // installed (none outside an action): its plan records no width.
@@ -787,83 +787,67 @@ mod tests {
     }
 
     #[test]
-    fn bounded_csr_inverse_matches_analytic_schur_across_weight_scales() {
+    fn bounded_observation_cycle_matches_analytic_schur_across_weight_scales() {
         for exponent in [-500, 0, 500] {
             let scale = 2.0_f64.powi(exponent);
-            let weights = [2.0 * scale, 3.0 * scale, 2.0 * scale, 3.0 * scale];
-            let (built, normalization) = CmgSchurPreconditioner::try_build_reduced_bounded(
-                2,
-                2,
-                &[0, 2, 4],
-                &[0, 1, 0, 1],
-                &weights,
+            let fixture = Fixture::new(
+                vec![0, 0, 1, 1],
+                vec![0, 1, 0, 1],
+                vec![2.0 * scale, 3.0 * scale, 2.0 * scale, 3.0 * scale],
+            );
+            let built = CmgSchurPreconditioner::try_build_bounded(
+                &fixture.design(),
+                BorrowedMapWeights::Provided(&fixture.weights),
+                0,
                 5,
                 Sampling::default(),
+                1,
                 None,
+                false,
+                AutoApplication::Scalar,
+                CmgOptions::default(),
             )
             .unwrap();
             let mut candidate = built.preconditioner.unwrap();
-            assert_eq!(normalization, 3.0 * scale);
-            let mut rhs = [1.0, -1.0];
+            let mut image = [0.0; 2];
             candidate
-                .apply_reduced_in_place(&mut rhs, &mut [0.0; 2], normalization)
+                .apply_batch(&[1.0, -1.0], &mut image, 1, 1, None, None)
                 .unwrap();
             // Two [2,3] rows give S=2.4*[1,-1;-1,1]*scale.
-            let expected = 5.0 / 24.0 / scale;
-            assert!((rhs[0] / expected - 1.0).abs() < 2e-14);
-            assert!((rhs[1] / expected + 1.0).abs() < 2e-14);
-            let mut constant = [1.0, 1.0];
+            // The hierarchy divides weights by 3*scale, so its normalized
+            // quotient inverse maps [1,-1] to [5/8,-5/8] at every scale.
+            let expected = 5.0 / 8.0;
+            assert!((image[0] / expected - 1.0).abs() < 2e-14);
+            assert!((image[1] / expected + 1.0).abs() < 2e-14);
             candidate
-                .apply_reduced_in_place(&mut constant, &mut [0.0; 2], normalization)
+                .apply_batch(&[1.0, 1.0], &mut image, 1, 1, None, None)
                 .unwrap();
-            assert_eq!(constant, [0.0; 2]);
+            assert_eq!(image, [0.0; 2]);
         }
-        // Relative weight range matters separately from a harmless global
-        // scale. Pre-dividing this residual by max(weight) would erase it.
-        let (built, normalization) = CmgSchurPreconditioner::try_build_reduced_bounded(
-            1,
-            2,
-            &[0, 2],
-            &[0, 1],
-            &[1.0, 1e300],
+        // A large relative weight range is distinct from global scaling. The
+        // normalized Schur edge is 1e-300, so the finite quotient response to
+        // [1e-100,-1e-100] is [5e199,-5e199].
+        let fixture = Fixture::new(vec![0, 0], vec![0, 1], vec![1.0, 1e300]);
+        let built = CmgSchurPreconditioner::try_build_bounded(
+            &fixture.design(),
+            BorrowedMapWeights::Provided(&fixture.weights),
+            0,
             5,
             Sampling::default(),
+            1,
             None,
+            false,
+            AutoApplication::Scalar,
+            CmgOptions::default(),
         )
         .unwrap();
         let mut candidate = built.preconditioner.unwrap();
-        let mut rhs = [1e-100, -1e-100];
+        let mut image = [0.0; 2];
         candidate
-            .apply_reduced_in_place(&mut rhs, &mut [0.0; 2], normalization)
+            .apply_batch(&[1e-100, -1e-100], &mut image, 1, 1, None, None)
             .unwrap();
-        assert!((rhs[0] / 5e-101 - 1.0).abs() < 2e-14);
-        assert!((rhs[1] / 5e-101 + 1.0).abs() < 2e-14);
-        let malformed = CmgSchurPreconditioner::try_build_reduced_bounded(
-            2,
-            2,
-            &[0, 3, 2],
-            &[0, 1],
-            &[1.0, 1.0],
-            5,
-            Sampling::default(),
-            None,
-        )
-        .err()
-        .unwrap();
-        assert_eq!(malformed.code, ErrorCode::InvalidData);
-        let disconnected = CmgSchurPreconditioner::try_build_reduced_bounded(
-            2,
-            2,
-            &[0, 1, 2],
-            &[0, 1],
-            &[1.0, 1.0],
-            5,
-            Sampling::default(),
-            None,
-        )
-        .err()
-        .unwrap();
-        assert_eq!(disconnected.code, ErrorCode::InvalidData);
+        assert!((image[0] / 5e199 - 1.0).abs() < 2e-14);
+        assert!((image[1] / 5e199 + 1.0).abs() < 2e-14);
     }
 
     #[test]

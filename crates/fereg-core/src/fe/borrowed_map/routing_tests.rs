@@ -436,7 +436,6 @@ fn portfolio_unseeded_skips_the_geometry_pilot_and_keeps_preparation_across_rhs_
             false,
             Some(4),
             Some(&mut route),
-            false,
         )
         .unwrap();
         assert_eq!(result.report().used_solver, FeSolverKind::Lsmr);
@@ -445,7 +444,6 @@ fn portfolio_unseeded_skips_the_geometry_pilot_and_keeps_preparation_across_rhs_
         assert!(result.report().iterations <= 8);
         assert!(result.report().certificate.relative_infinity_norm <= 1e-14);
         assert!(route.has_prepared());
-        assert!(!route.has_replacement());
         for (column, expected) in expected.iter().enumerate().take(rhs) {
             for (row, &expected) in expected.iter().enumerate() {
                 assert!((result.residualized()[(row, column)] - expected).abs() < 1e-12);
@@ -540,7 +538,6 @@ fn geometry_many_runs_the_certified_pilot_without_preparing_lsmr() {
             false,
             Some(4),
             Some(&mut route),
-            false,
         )
         .unwrap();
         // The orthogonal design certifies in the pilot at the requested
@@ -551,7 +548,6 @@ fn geometry_many_runs_the_certified_pilot_without_preparing_lsmr() {
         assert!(result.report().certified());
         assert!(result.report().certificate.relative_infinity_norm <= 1e-12);
         assert!(!route.has_prepared());
-        assert!(!route.has_replacement());
         for (column, expected) in expected.iter().enumerate().take(rhs) {
             for (row, &expected) in expected.iter().enumerate() {
                 assert!((result.residualized()[(row, column)] - expected).abs() < 1e-12);
@@ -2233,7 +2229,6 @@ impl TrialPanel {
             false,
             None,
             Some(route),
-            false,
         )
         .unwrap()
     }
@@ -2606,7 +2601,6 @@ impl SparseThreePanel {
             false,
             None,
             Some(route),
-            false,
         )
         .unwrap()
     }
@@ -3043,7 +3037,6 @@ fn route_trial_panel<R: super::super::lsmr_batch::RhsSource + ?Sized>(
     let mut memory =
         BorrowedLsmrCallMemory::new(estimate, LsmrPreconditioner::Schwarz, None, 0).unwrap();
     let mut route = routing_lsmr::GeneralRoutingState::new(RoutingPreset::geometry_many());
-    route.begin(1e-8, false);
     let (solved, _) = route
         .solve(
             &design,
@@ -3088,18 +3081,15 @@ fn routing_windows_transport_their_own_columns_bit_for_bit() {
 
 #[test]
 fn default_mode_additive_escalation_repeats_bits_at_each_worker_count() {
-    // Every fereg additive-Schwarz build uses the Ordered reduction, so a
+    // Upstream additive-Schwarz uses fixed reduction ownership, so a
     // default-mode (not `deterministic`) fit that escalates from the Jacobi
     // trial repeats bit for bit at a fixed worker count.
     assert!(matches!(
         crate::fe::additive_schwarz(),
-        within::PreconditionerConfig::Additive {
-            reduction: within::ReductionStrategy::Ordered,
-            ..
-        }
+        within::PreconditionerConfig::Additive { .. }
     ));
     let panel = TrialPanel::with_levels(true, [6_000, 600, 60]).shuffled();
-    // The retained solver the route builds carries the Ordered reduction.
+    // The retained route explicitly builds the fixed additive configuration.
     {
         let design = panel.design();
         let weights = validate_weights(BorrowedMapWeights::Unit, design.nobs()).unwrap();
@@ -3112,10 +3102,7 @@ fn default_mode_additive_escalation_repeats_bits_at_each_worker_count() {
         .unwrap();
         assert!(matches!(
             solver.preconditioner().map(|p| p.config()),
-            Some(within::PreconditionerConfig::Additive {
-                reduction: within::ReductionStrategy::Ordered,
-                ..
-            })
+            Some(within::PreconditionerConfig::Additive { .. })
         ));
     }
     for workers in [1, 2, 4, 8] {
@@ -3151,4 +3138,105 @@ fn default_mode_additive_escalation_repeats_bits_at_each_worker_count() {
             })
             .unwrap();
     }
+}
+
+#[test]
+fn retained_lsmr_yielding_cache_survives_narrow_admission_boundary() {
+    // The small reuse fixture has no yielding local component. This topology
+    // has a worker block above 10,000 levels, so the shared workspace pool's
+    // admitted high-water bound grows with the number of unfinished RHS.
+    let panel = SparseThreePanel::new(60_000);
+    assert!(panel.design().yielding_pair_components().unwrap() > 0);
+    let workers = 4;
+    crate::ThreadTeam::new(crate::ThreadConfig::from_requested(workers, true).unwrap())
+        .install(|| {
+            let config = crate::fe::AbsorbConfig {
+                solver: FeSolverKind::Lsmr,
+                lsmr: LsmrConfig {
+                    preconditioner: LsmrPreconditioner::Schwarz,
+                    threads: crate::ThreadConfig::from_requested(workers, true).unwrap(),
+                    ..SparseThreePanel::lsmr()
+                },
+                retain_coefficients: true,
+                ..crate::fe::AbsorbConfig::default()
+            };
+            let generation = super::super::MapGeometryGeneration {
+                sample: 0,
+                topology: 0,
+                weights: 0,
+            };
+            let column: Vec<_> = (0..panel.values.nrows())
+                .map(|row| panel.values[(row, 0)])
+                .collect();
+            let narrow = || DenseMatrix::from_columns(&[column.clone()]).unwrap();
+            let mut reference =
+                BorrowedLsmrAbsorber::new(panel.design(), BorrowedMapWeights::Unit, config)
+                    .unwrap();
+            let reference = reference
+                .absorb(
+                    BorrowedMapWeights::Unit,
+                    narrow(),
+                    generation,
+                    config,
+                    false,
+                )
+                .unwrap();
+            let mut session =
+                BorrowedLsmrAbsorber::new(panel.design(), BorrowedMapWeights::Unit, config)
+                    .unwrap();
+            let wide = DenseMatrix::from_columns(&vec![column.clone(); 64]).unwrap();
+            let wide = session
+                .absorb(BorrowedMapWeights::Unit, wide, generation, config, false)
+                .unwrap();
+            assert!(wide.report().certified());
+            drop(wide);
+            let historical = session.prepared.retained_bytes;
+            let estimate = estimate_fe_solver_memory(
+                panel.values.nrows(),
+                1,
+                &panel.levels,
+                workers,
+                config.lsmr.local_size,
+            )
+            .unwrap();
+            let current_retained = estimate.lsmr_retained_bytes(LsmrPreconditioner::Schwarz);
+            assert!(historical > current_retained);
+            let required =
+                estimate.lsmr_bytes(LsmrPreconditioner::Schwarz) + historical - current_retained;
+            let mut bounded = config;
+            bounded.solver_memory_budget = Some(FeSolverMemoryBudget {
+                execution_bytes: 0,
+                usable_bytes: required,
+            });
+            let actual = session
+                .absorb(
+                    BorrowedMapWeights::Unit,
+                    narrow(),
+                    generation,
+                    bounded,
+                    false,
+                )
+                .unwrap();
+            assert_eq!(actual.residualized(), reference.residualized());
+            assert_eq!(actual.report().certificate, reference.report().certificate);
+            assert_eq!(actual.report().iterations, reference.report().iterations);
+            assert_eq!(session.prepared.retained_bytes, historical);
+            assert_eq!(session.prepared.builds, 1);
+            let completed = session.prepared.batches;
+            bounded.solver_memory_budget.as_mut().unwrap().usable_bytes -= 1;
+            let error = session
+                .absorb(
+                    BorrowedMapWeights::Unit,
+                    narrow(),
+                    generation,
+                    bounded,
+                    false,
+                )
+                .unwrap_err();
+            assert_eq!(error.code, ErrorCode::Allocation);
+            // Refusal happens before transport/native work and publishes no fit.
+            assert_eq!(session.prepared.batches, completed);
+            assert_eq!(session.prepared.builds, 1);
+        })
+        .unwrap();
 }

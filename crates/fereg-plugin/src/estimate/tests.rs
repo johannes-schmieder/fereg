@@ -4715,6 +4715,49 @@ fn hidden_builder_break_requires_a_marker_at_every_worker_count() {
 }
 
 #[test]
+fn hidden_lsmr_iteration_break_requires_categorical_effects_before_observation_reads() {
+    for (mut args, mut spi, supported) in [
+        {
+            let (args, spi) = public_two_fixture();
+            (args, spi, true)
+        },
+        {
+            let (args, spi) = saved_output_fixture();
+            (args, spi, false)
+        },
+        {
+            let (args, spi) = fixture(OlsVceKind::Iid);
+            (args, spi, false)
+        },
+    ] {
+        replace_argument(&mut args, "solver", "solver=lsmr".into());
+        args.extend([
+            "inject=lsmr_iteration_break".into(),
+            "break_marker_token=0123456789abcdef0123456789abcdef".into(),
+        ]);
+        for request in [&args, &bundled(&args)] {
+            let specification = EstimateActionSpec::parse(request).unwrap();
+            assert!(specification.lsmr_iteration_break);
+            match specification.decode_with_memory_limit(&mut spi, || Ok(None)) {
+                Ok(action) => {
+                    assert!(supported);
+                    assert!(action.lsmr_iteration_break);
+                    assert_eq!(action.fit.absorb.solver, FeSolverKind::Lsmr);
+                }
+                Err(error) => {
+                    assert!(!supported, "{error}");
+                    assert!(error
+                        .to_string()
+                        .contains("at least two categorical intercept"));
+                }
+            }
+            assert_eq!(spi.numeric_reads, 0);
+            assert_eq!(spi.store_calls, 0);
+        }
+    }
+}
+
+#[test]
 fn invalid_hidden_routing_requests_fail_before_reads_or_publication() {
     let token = "break_marker_token=0123456789abcdef0123456789abcdef";
     let mut requests = Vec::new();

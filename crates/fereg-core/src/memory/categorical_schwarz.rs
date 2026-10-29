@@ -58,6 +58,7 @@ pub(crate) fn estimate_categorical_schwarz_memory(
         levels,
         maximum_levels,
         threads,
+        1,
         dense_cross_tab_bytes,
         false,
         yielding,
@@ -85,6 +86,7 @@ pub(super) fn estimate_schwarz_memory(
     levels: u128,
     maximum_levels: u128,
     threads: u128,
+    concurrent_rhs: u128,
     dense_cross_tab_bytes: u128,
     signed_cover: bool,
     yielding: Option<u128>,
@@ -118,58 +120,30 @@ pub(super) fn estimate_schwarz_memory(
     )?;
     let diagonal_bytes = bytes_for_memory::<f64>(levels, "categorical LSMR retained diagonal")?;
 
-    // A categorical component owns both FE blocks and the reduced factor's
-    // augmented dimension in each of its two local scratch vectors. A signed
-    // cover additionally needs up to 2*maximum_levels entries in each vector.
-    let local_scratch_values = checked_sum(&[
-        checked_mul(
-            maximum_levels,
-            if signed_cover { 10 } else { 6 },
-            "categorical Schwarz local scratch",
+    // The reproducible Schwarz implementation stores every local output once,
+    // indexed by a shared deterministic prolongation. A pair contains each
+    // participating coefficient once, so S <= pair_level_incidence and K <= S.
+    let prolongation_bytes = checked_sum(&[
+        bytes_for_memory::<usize>(
+            checked_sum(&[levels, pair_level_incidence, 2])?,
+            "Schwarz prolongation and subdomain offsets",
         )?,
-        4,
+        bytes_for_memory::<u32>(pair_level_incidence, "Schwarz prolongation slots")?,
+        256,
     ])?;
-    let global_apply_values = checked_sum(&[levels, local_scratch_values])?;
-
-    // WorkerBufferStack retains each worker's maximum re-entry depth. Only
-    // components with an FE block above 10,000 levels can yield inside the
-    // pinned local solver; each consumes at least 10,002 pair-level incidences.
-    // Each component executes once per apply on one worker. Across all workers,
-    // every stack entry beyond the first therefore consumes a distinct yielding
-    // component. Summed worker high-water depths are bounded by T + R, not
-    // T * (1 + R), even when their maxima occur at different times. At the end
-    // of each apply all stacks return to one shared pool; prior idle buffers are
-    // consumed before allocating, so repeated applies cannot grow this bound.
-    // Each concurrent outer RHS owns a separate apply and is charged by its
-    // caller. The lifetime argument and pinned source paths are recorded in
-    // the decision record kept in Git history (ADR 0228).
-    let reentrant_components = (pair_level_incidence / 10_002).min(yielding.unwrap_or(u128::MAX));
-    let worker_buffers = checked_sum(&[threads, reentrant_components])?;
-    let apply_peak_bytes = checked_sum(&[
-        bytes_for_memory::<f64>(
-            checked_mul(
-                global_apply_values,
-                worker_buffers,
-                "categorical Schwarz apply values",
-            )?,
-            "categorical Schwarz apply bytes",
-        )?,
-        // Vec capacity growth, thread-local stacks and descriptors carry no
-        // additional numeric payload, but remain live until the round ends.
-        checked_mul(
-            worker_buffers,
-            512,
-            "categorical Schwarz buffer descriptors",
-        )?,
-        checked_mul(threads, 256, "categorical Schwarz worker descriptors")?,
-    ])?;
-    // MAX_POOL_SIZE bounds top-level objects; each can retain its entire stack.
-    let retained_pool_bytes =
-        checked_mul(apply_peak_bytes, 4, "categorical Schwarz retained pools")?;
+    let (retained_pool_bytes, apply_peak_bytes) = schwarz_pool_memory(
+        maximum_levels,
+        pair_level_incidence,
+        threads,
+        concurrent_rhs,
+        signed_cover,
+        yielding,
+    )?;
     let retained_bytes = checked_sum(&[
         retained_edge_bytes,
         retained_level_bytes,
         diagonal_bytes,
+        prolongation_bytes,
         retained_pool_bytes,
     ])?;
 
@@ -219,6 +193,12 @@ pub(super) fn estimate_schwarz_memory(
         build_edge_bytes,
         build_level_bytes,
         dense_cross_tab_bytes,
+        // Prolongation construction also owns a cursor per global coefficient
+        // and may copy the subdomain offsets into their final Arc allocation.
+        bytes_for_memory::<usize>(
+            checked_sum(&[levels, pair_level_incidence, 1])?,
+            "Schwarz prolongation construction cursors",
+        )?,
         retained_bytes,
     ])?;
     Ok(CategoricalSchwarzMemoryEstimate {
@@ -229,6 +209,95 @@ pub(super) fn estimate_schwarz_memory(
     })
 }
 
+/// Shared numeric scratch and cache bounds over one admitted RHS envelope.
+fn schwarz_pool_memory(
+    maximum_levels: u128,
+    pair_level_incidence: u128,
+    threads: u128,
+    concurrent_rhs: u128,
+    signed_cover: bool,
+    yielding: Option<u128>,
+) -> Result<(u128, u128)> {
+    // A pooled workspace holds the two original blocks plus the augmented
+    // reduced factor (doubled for a signed cover). A permuted approximate-
+    // Cholesky readout can additionally allocate one reduced factor vector.
+    let workspace_values = checked_sum(&[
+        checked_mul(
+            maximum_levels,
+            if signed_cover { 5 } else { 3 },
+            "Schwarz local workspace",
+        )?,
+        2,
+    ])?;
+    let permutation_values = checked_sum(&[
+        checked_mul(
+            maximum_levels,
+            if signed_cover { 2 } else { 1 },
+            "Schwarz local permutation",
+        )?,
+        2,
+    ])?;
+    // At most T local spans run, and every suspended borrower belongs to a
+    // distinct yielding component of one unfinished RHS. The pool is shared
+    // across RHS and clones, rather than owning one worker stack per RHS.
+    // Callers retaining a solver across widths preserve the historical maximum
+    // of this retained estimate; a narrower subsequent call cannot release it.
+    let yielding_components = (pair_level_incidence / 10_002).min(yielding.unwrap_or(u128::MAX));
+    let workspace_count = checked_sum(&[
+        threads,
+        checked_mul(
+            concurrent_rhs,
+            yielding_components,
+            "Schwarz suspended local workspaces",
+        )?,
+    ])?
+    .min(checked_mul(
+        concurrent_rhs,
+        pair_level_incidence,
+        "Schwarz local workspace tasks",
+    )?);
+    let retained_pool_bytes = checked_sum(&[
+        bytes_for_memory::<f64>(
+            checked_mul(
+                workspace_values,
+                workspace_count,
+                "Schwarz retained local workspaces",
+            )?,
+            "Schwarz retained workspace bytes",
+        )?,
+        bytes_for_memory::<f64>(
+            checked_mul(pair_level_incidence, 4, "Schwarz cached local outputs")?,
+            "Schwarz cached local-output bytes",
+        )?,
+        checked_mul(workspace_count, 512, "Schwarz workspace cache descriptors")?,
+    ])?;
+    let apply_peak_bytes = checked_sum(&[
+        bytes_for_memory::<f64>(
+            checked_mul(
+                pair_level_incidence,
+                concurrent_rhs,
+                "Schwarz active local outputs",
+            )?,
+            "Schwarz active local-output bytes",
+        )?,
+        bytes_for_memory::<f64>(
+            checked_mul(
+                permutation_values,
+                workspace_count,
+                "Schwarz active local permutations",
+            )?,
+            "Schwarz local permutation bytes",
+        )?,
+        checked_mul(
+            checked_sum(&[concurrent_rhs, workspace_count])?,
+            512,
+            "Schwarz apply descriptors",
+        )?,
+        checked_mul(threads, 256, "Schwarz worker descriptors")?,
+    ])?;
+    Ok((retained_pool_bytes, apply_peak_bytes))
+}
+
 /// Reproducible indices are shared across RHS; sorted terms need less storage.
 fn stable_adjoint_index_bytes(rows: u128, effects: u128, levels: u128) -> Result<u128> {
     // Reproducible adjoints share one stable level index across every live RHS.
@@ -237,7 +306,7 @@ fn stable_adjoint_index_bytes(rows: u128, effects: u128, levels: u128) -> Result
     checked_sum(&[
         checked_mul(
             checked_mul(rows, effects, "LSMR stable row indices")?,
-            8,
+            4,
             "LSMR stable index bytes",
         )?,
         checked_mul(
@@ -265,8 +334,8 @@ mod tests {
     #[test]
     fn sparse_schwarz_memory_does_not_multiply_yielding_components_by_workers() {
         // Three independent sparse partitions, with many levels in the first.
-        // Every apply still charges all possible yielding frames, all worker
-        // accumulators and four retained pooled applies. A 32 GiB solver budget
+        // The shared pool charges all possible yielding frames and worker
+        // workspaces, without multiplying workers by yielding frames. A 32 GiB solver budget
         // must not reject the same complete checkpoint at a larger team size.
         for threads in [1, 4, 8, 16, 28] {
             let model = crate::memory::estimate_fe_solver_memory(
@@ -288,9 +357,9 @@ mod tests {
                 None,
             )
             .unwrap();
-            let active_worker_payload = threads as u128 * (206_931 + 6 * 196_608 + 4) * 8;
-            assert!(frame.apply_peak_bytes > active_worker_payload);
-            assert!(frame.retained_bytes > 4 * frame.apply_peak_bytes);
+            let worker_workspace_payload = threads as u128 * (3 * 196_608 + 2) * 8;
+            assert!(frame.retained_bytes > worker_workspace_payload);
+            assert!(frame.apply_peak_bytes > 206_931 * 2 * 8);
         }
     }
 
@@ -311,7 +380,7 @@ mod tests {
         let gib = 1024_u128.pow(3);
         let small = [600_000, 30_000, 32];
         let large = [2_000_000, 100_000, 32];
-        assert!(estimate(10_000_000, large, None) > 900 * gib);
+        assert!(estimate(10_000_000, large, None) > estimate(10_000_000, large, Some(3)));
         assert!(estimate(10_000_000, large, Some(3)) < 32 * gib);
         // With an exact count the bound grows linearly between 3M and 10M rows.
         let ratio = estimate(10_000_000, large, Some(3)) as f64
@@ -335,6 +404,20 @@ mod tests {
     }
 
     #[test]
+    fn shared_workspace_retention_accounts_for_the_rhs_envelope() {
+        let estimate = |rhs| {
+            estimate_schwarz_memory(100_000, 3, 30_000, 20_000, 4, rhs, 0, false, Some(3)).unwrap()
+        };
+        let narrow = estimate(1);
+        let wide = estimate(64);
+        // More concurrent RHS can suspend more local spans. Unlike the capped
+        // output pool, these workspaces remain resident after every apply joins.
+        assert!(wide.retained_bytes > narrow.retained_bytes + 63 * 3 * (3 * 20_000 + 2) * 8);
+        assert!(wide.apply_peak_bytes > narrow.apply_peak_bytes);
+        assert!(estimate_schwarz_memory(1, 3, u128::MAX, 1, 1, 64, 0, false, None).is_err());
+    }
+
+    #[test]
     fn schwarz_stack_bound_keeps_nonreentrant_and_overflow_boundaries() {
         // Below the first yielding component the ordinary T-worker allowance
         // is unchanged. Crossing the threshold must add scratch even at T=1.
@@ -342,7 +425,8 @@ mod tests {
             estimate_categorical_schwarz_memory(20_000, 2, 10_001, 6_000, 1, 0, None).unwrap();
         let above =
             estimate_categorical_schwarz_memory(20_000, 2, 10_002, 6_000, 1, 0, None).unwrap();
-        assert!(above.apply_peak_bytes > 2 * below.apply_peak_bytes - 256);
+        assert!(above.retained_bytes > below.retained_bytes + (3 * 6_000 + 2) * 8);
+        assert!(above.apply_peak_bytes > below.apply_peak_bytes + (6_000 + 2) * 8);
         assert!(estimate_categorical_schwarz_memory(1, 2, 10_002, 1, u128::MAX, 0, None).is_err());
     }
 }

@@ -21,6 +21,7 @@ pub(crate) mod exact_sections;
 mod interaction;
 mod lsmr;
 mod lsmr_batch;
+pub(crate) mod lsmr_break;
 mod map;
 mod norms;
 mod partition;
@@ -83,6 +84,8 @@ pub use interaction::{factorize_code_interaction, CategoricalCodeView, EncodedIn
 pub(crate) use interaction::{try_factorize_dense_code_interaction, InteractionReservation};
 pub use lsmr::{absorb_lsmr, LsmrConfig};
 pub(crate) use lsmr::{additive_schwarz, resolve_preconditioner_kind};
+#[doc(hidden)]
+pub use lsmr_break::{lsmr_break_ready, DeveloperLsmrBackend, DeveloperLsmrBreak};
 pub use map::{absorb_map, MapConfig};
 pub(crate) use map::{MapGeometryGeneration, ReusableMapAbsorber, ReusableMapCapacities};
 pub use partition::CategoricalPartition;

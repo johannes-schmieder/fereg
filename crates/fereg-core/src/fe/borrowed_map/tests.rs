@@ -1589,7 +1589,11 @@ fn retained_lsmr_reuses_preparation_and_preserves_each_batch() {
                     };
                     let mut session =
                         BorrowedLsmrAbsorber::new(make_design(), weights, config).unwrap();
-                    for (batch, columns) in [1, 3, 2].into_iter().enumerate() {
+                    let mut retained_high_water = 0;
+                    // Crossing 64/65 changes the active RHS window: cached
+                    // scratch from the wider call must survive admission of
+                    // a later narrower call without changing its science.
+                    for (batch, columns) in [1, 3, 2, 64, 65, 1].into_iter().enumerate() {
                         let rhs = DenseMatrix::from_columns(
                             &(0..columns)
                                 .map(|j| {
@@ -1647,6 +1651,8 @@ fn retained_lsmr_reuses_preparation_and_preserves_each_batch() {
                         assert_eq!(actual.into_full_parts().2, expected.into_full_parts().2);
                         assert_eq!(session.prepared.builds, 1);
                         assert_eq!(session.prepared.batches, batch + 1);
+                        assert!(session.prepared.retained_bytes >= retained_high_water);
+                        retained_high_water = session.prepared.retained_bytes;
                     }
                     let mut constrained = config;
                     constrained.solver_memory_budget = Some(FeSolverMemoryBudget {

@@ -237,7 +237,7 @@ operators still follows the worker count; that is a memory and speed choice,
 since row operators reproduce the edge-list products bit for bit. The OLS
 automatic route borrows whichever host team is installed for its cycle
 (`with_cmg_execution`), because its plan records no team width; PPML reuse
-and reduced pairs keep a team-free scalar cycle with serial arithmetic.
+keeps a team-free scalar cycle with serial arithmetic.
 
 CMG construction, application and PCG receive one context each
 (`BuildContext`, `ApplyContext`, `SolveContext`): the borrowed team, the

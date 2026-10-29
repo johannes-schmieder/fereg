@@ -127,10 +127,15 @@ behind test configuration. Keep independent reference implementations and their
 consumers in fereg-oracle or fereg-testkit; preserve unique scientific witnesses
 when removing an obsolete production pipeline.
 
-The three-FE LSMR hot path is in the pinned `within`/`schwarz-precond` dependency
-from `johannes-schmieder/within`. Its changes follow the same scientific and
+The many-FE LSMR hot path is in the pinned `within`/`schwarz-precond` dependency.
+Its changes follow the same scientific and
 evidence requirements and enter this repository through a reviewed pinned
-revision bump.
+revision bump. The [upstream migration candidate](within_migration.md) preserves
+fereg's public solver policy. Johannes approved retiring only the general
+more-than-two-FE pair-upgrade experiment; keep the two-FE h/k and builder-Break
+selectors, other supported comparison policies and independent scientific
+witnesses. Retirement is not a waiver of integration, cancellation, memory or
+beta.10 performance qualification.
 
 After editing `_fereg_ppml_result_mata.ado`, rebuild its three `.mo` files and
 receipt using the actual Stata 18 compiler with `scripts/build_ppml_mata.py`.

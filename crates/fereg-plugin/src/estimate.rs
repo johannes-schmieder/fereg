@@ -171,6 +171,7 @@ struct EstimateAction {
     matrices: PreparedResultMatrices,
     /// Hidden-adapter Break injection token; `None` for every ordinary action.
     native_break_token: Option<String>,
+    lsmr_iteration_break: bool,
 }
 
 #[derive(Debug)]
@@ -212,6 +213,7 @@ struct EstimateActionSpec {
     outputs: ObservationOutputs,
     matrices: ResultMatrices,
     native_break_token: Option<String>,
+    lsmr_iteration_break: bool,
 }
 
 #[derive(Debug)]
@@ -303,13 +305,8 @@ pub fn estimate_ols(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
     // saved-FE recovery) run on the action team while Stata's thread polls
     // Break; an interruption stops core loops at their next checkpoint.
     let team = ThreadTeam::new(action.fit.execution.threads);
-    let mut native_break_token = action.native_break_token.take();
-    let builder_break = action
-        .fit
-        .absorb
-        .routing
-        .is_some_and(RoutingPreset::breaks_builder);
-    let hold_for_break = native_break_token.is_some() && !builder_break;
+    let mut native_break = OlsNativeBreak::new(&mut action)?;
+    let hold_for_break = native_break.hold_before_preparation();
     let numerical_action = &mut action;
     let (prepared, inference, derived, phase_seconds) = crate::cancellable::run(
         team,
@@ -351,8 +348,14 @@ pub fn estimate_ols(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                 [prepare_seconds, inference_seconds, outputs_seconds],
             ))
         },
-        &mut || poll_ols_wait(spi, &mut native_break_token, builder_break),
+        &mut || native_break.poll(spi),
     )?;
+    if native_break.lsmr_iteration {
+        return Err(FeregError::new(
+            ErrorCode::Internal,
+            "developer LSMR Break did not reach a continuing upstream iteration",
+        ));
+    }
     let view = inference.view();
     complete_ols(
         &action,
@@ -393,22 +396,59 @@ fn activate_public_two_fe(action: &mut EstimateAction) {
     }
 }
 
-fn poll_ols_wait(
-    spi: &mut dyn SpiApi,
-    native_break_token: &mut Option<String>,
-    builder_break: bool,
-) -> Result<()> {
-    let ready = !builder_break || fereg_core::fe::routing_builder_break_ready();
-    if let Some(token) = ready.then(|| native_break_token.take()).flatten() {
-        // Arm the interactive controller only after display returns.
-        spi.display(crate::developer_injection::OLS_NATIVE_BREAK_MARKER)?;
-        crate::developer_injection::create_native_break_marker(
-            "fereg",
-            crate::developer_injection::OLS_NATIVE_BREAK_MARKER,
-            &token,
-        )?;
+/// Keep the selected Break boundary and its core guard alive through joined work.
+struct OlsNativeBreak {
+    token: Option<String>,
+    builder: bool,
+    lsmr_iteration: bool,
+    _lsmr_guard: Option<fereg_core::fe::DeveloperLsmrBreak>,
+}
+
+impl OlsNativeBreak {
+    fn new(action: &mut EstimateAction) -> Result<Self> {
+        let token = action.native_break_token.take();
+        let builder = action
+            .fit
+            .absorb
+            .routing
+            .is_some_and(RoutingPreset::breaks_builder);
+        let lsmr_iteration = action.lsmr_iteration_break;
+        let guard = lsmr_iteration
+            .then(|| {
+                fereg_core::fe::DeveloperLsmrBreak::claim(
+                    fereg_core::fe::DeveloperLsmrBackend::Within,
+                )
+            })
+            .transpose()?;
+        Ok(Self {
+            token,
+            builder,
+            lsmr_iteration,
+            _lsmr_guard: guard,
+        })
     }
-    spi.check_interrupted_while_waiting()
+
+    fn hold_before_preparation(&self) -> bool {
+        self.token.is_some() && !self.builder && !self.lsmr_iteration
+    }
+
+    fn poll(&mut self, spi: &mut dyn SpiApi) -> Result<()> {
+        let ready = if self.lsmr_iteration {
+            fereg_core::fe::lsmr_break_ready()
+        } else {
+            !self.builder || fereg_core::fe::routing_builder_break_ready()
+        };
+        if let Some(token) = ready.then(|| self.token.take()).flatten() {
+            // Arm the interactive controller only after display returns.
+            spi.display(crate::developer_injection::OLS_NATIVE_BREAK_MARKER)?;
+            crate::developer_injection::create_native_break_marker(
+                "fereg",
+                crate::developer_injection::OLS_NATIVE_BREAK_MARKER,
+                &token,
+            )?;
+        }
+        spi.check_interrupted_while_waiting()
+    }
 }
 
 mod ols_pipeline;
@@ -1087,6 +1127,7 @@ impl EstimateActionSpec {
                 receipt: required(&values, "output_receipt_matrix")?.to_owned(),
             },
             native_break_token: injection.native_break_token,
+            lsmr_iteration_break: injection.lsmr_iteration_break,
         };
         reject_unknown_fields(ACTION_ESTIMATE_OLS, &values, OLS_FIELDS)?;
         if specification.cells != fereg_core::ols::PreparedOlsCells::Off
@@ -1143,6 +1184,18 @@ impl EstimateActionSpec {
             include_intercept: self.include_intercept,
             keep_singletons: self.keep_singletons,
         };
+        if self.lsmr_iteration_break
+            && (request.absorbed_terms.len() < 2
+                || request.absorbed_terms.iter().any(|term| {
+                    !term.intercept
+                        || term.categorical_sources.is_empty()
+                        || !term.slope_sources.is_empty()
+                }))
+        {
+            return Err(syntax(
+                "hidden LSMR iteration Break requires at least two categorical intercept fixed effects",
+            ));
+        }
         if self.solver == FeSolverKind::CmgSchur
             && (request.absorbed_terms.len() != 2
                 || request.absorbed_terms.iter().any(|term| {
@@ -1352,6 +1405,7 @@ impl EstimateActionSpec {
             outputs: self.outputs.clone(),
             matrices,
             native_break_token: self.native_break_token.clone(),
+            lsmr_iteration_break: self.lsmr_iteration_break,
         };
         action.metadata_owner_bytes = action
             .metadata_capacity_bytes()

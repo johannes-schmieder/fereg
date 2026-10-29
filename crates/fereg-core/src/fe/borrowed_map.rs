@@ -4759,7 +4759,6 @@ pub(crate) fn project_borrowed_intercept_structural<'a>(
         dense_norms,
         map_first,
         general_routing,
-        final_residual,
     )
 }
 
@@ -4804,7 +4803,6 @@ fn project_general_categorical<'a>(
     dense_norms: bool,
     map_first: Option<usize>,
     mut general_routing: Option<&mut routing_lsmr::GeneralRoutingState<'a>>,
-    final_residual: bool,
 ) -> Result<CertifiedBorrowedMap> {
     let geometry = general_routing
         .as_ref()
@@ -4889,9 +4887,6 @@ fn project_general_categorical<'a>(
     let mut attempted = None;
     if budget.is_none_or(|b| b.fits(bytes)) {
         let memory = BorrowedLsmrCallMemory::new(estimate, preconditioner, budget, 0)?;
-        if let Some(state) = general_routing.as_deref_mut() {
-            state.begin(map.tolerance, final_residual);
-        }
         match general_lsmr_attempt(
             design,
             validated,
@@ -4921,7 +4916,6 @@ fn project_general_categorical<'a>(
     // The fallback restarts original inputs; release the seed before its admission.
     drop(prefix.seed);
     if let Some(state) = general_routing {
-        state.close_attempt();
         state.release_backend();
     }
     finish_general_map(
@@ -5377,6 +5371,13 @@ impl<'s, 'a> CheckpointLsmrBatch<'s, 'a> {
         let without_positions = estimate
             .lsmr_bytes(preconditioner)
             .checked_add(retained)
+            .and_then(|bytes| {
+                bytes.checked_add(
+                    self.prepared
+                        .retained_bytes
+                        .saturating_sub(estimate.lsmr_retained_bytes(preconditioner)),
+                )
+            })
             .and_then(|v| {
                 v.checked_add(
                     self.memory
@@ -5770,14 +5771,6 @@ impl<'a> BorrowedLsmrPrepared<'a> {
         );
         let started = Instant::now();
         let mut setup_seconds = 0.0;
-        if self
-            .solver
-            .as_ref()
-            .is_some_and(|solver| solver.reproducible() != deterministic)
-        {
-            self.solver = None;
-            self.retained_bytes = 0;
-        }
         if self.solver.is_none() {
             let setup = Instant::now();
             let preconditioner = if self.preconditioner_fallback {
@@ -5799,6 +5792,15 @@ impl<'a> BorrowedLsmrPrepared<'a> {
             self.builds += 1;
             setup_seconds += setup.elapsed().as_secs_f64();
         }
+        // Shared upstream scratch pools retain the largest previous call's
+        // capacities even when this call has fewer right-hand sides.
+        self.retained_bytes =
+            self.retained_bytes
+                .max(memory.lsmr_retained_bytes(if self.preconditioner_fallback {
+                    LsmrPreconditioner::Off
+                } else {
+                    resolved
+                }));
         let initial = routing_lsmr::solve_prepared_input(
             self.solver.as_ref().expect("LSMR preparation exists"),
             rhs,
@@ -5909,9 +5911,12 @@ fn prepared_within_design<'a>(
 }
 
 fn retained_lsmr_build_error(error: within::BuildError) -> FeregError {
+    if let Err(interrupted) = crate::interrupt::checkpoint() {
+        return interrupted;
+    }
     FeregError::new(
-        if matches!(error, within::BuildError::Allocation { .. }) {
-            ErrorCode::Allocation
+        if matches!(error, within::BuildError::Cancelled) {
+            ErrorCode::Interrupted
         } else {
             ErrorCode::Internal
         },
@@ -5923,32 +5928,18 @@ fn build_retained_lsmr_from<'a>(
     effects: impl within::IntoDesign<'a>,
     weights: ValidatedWeights<'_>,
     preconditioner: PreconditionerConfig,
-    deterministic: bool,
+    _deterministic: bool,
 ) -> Result<within::Solver<'a>> {
-    let weights = weights
-        .values
-        .map(|values| {
-            let mut copy = Vec::new();
-            copy.try_reserve_exact(values.len())
-                .map_err(|_| allocation("unable to reserve retained LSMR weights"))?;
-            copy.extend_from_slice(values);
-            Ok(copy)
-        })
-        .transpose()?;
-    let solver = within::Solver::new_with_screening(
+    // The upstream reproducibility implementation uses the same fixed-owner
+    // assembly in every mode. Its constructor retains only square-root weights,
+    // so no caller-owned weight copy is needed here.
+    within::Solver::new_cancellable(
         effects,
-        weights,
-        preconditioner,
-        within::SlopeScreening::Disabled,
+        weights.values,
+        &preconditioner,
+        within::Cancellation::new(&crate::interrupt::cancellation_requested),
     )
-    .and_then(|solver| {
-        if deterministic {
-            solver.with_reproducible()
-        } else {
-            Ok(solver)
-        }
-    });
-    solver.map_err(retained_lsmr_build_error)
+    .map_err(retained_lsmr_build_error)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -6077,6 +6068,28 @@ fn run_borrowed_lsmr_with_prepared<'a>(
             "categorical LSMR seed has an incompatible factor layout",
         ));
     }
+    let retained = general_routing.as_ref().map_or_else(
+        || prepared.as_ref().map_or(0, |state| state.retained_bytes),
+        |state| state.retained_bytes(),
+    );
+    if retained > 0 {
+        let estimate = borrowed_solver_memory_estimate(
+            design,
+            values.ncols(),
+            rayon::current_num_threads(),
+            lsmr_config.local_size,
+        )?;
+        let resolved = resolve_borrowed_lsmr_preconditioner(
+            design.effects().len(),
+            design.total_term_slots(),
+            lsmr_config.preconditioner,
+        );
+        let bytes = estimate
+            .lsmr_bytes(resolved)
+            .checked_add(retained.saturating_sub(estimate.lsmr_retained_bytes(resolved)))
+            .ok_or_else(|| allocation("retained LSMR workspace overlap overflows"))?;
+        memory.include(bytes)?;
+    }
     if let Some(seed) = initial_coefficients {
         let admitted = memory
             .peak
@@ -6103,8 +6116,8 @@ fn run_borrowed_lsmr_with_prepared<'a>(
         memory.include(admitted)?;
     }
     let lsmr_setup_started = Instant::now();
-    // The general routing windows transport their own columns from `values`
-    // and release them once their sessions own copies.
+    // General routing transports each bounded window from `values`; the
+    // transport stays alive until that window's controlled attempts finish.
     let rhs = if general_routing.is_some() {
         Vec::new()
     } else {
@@ -6173,11 +6186,21 @@ fn run_borrowed_lsmr_with_prepared<'a>(
                 if lsmr_config.preconditioner == LsmrPreconditioner::Auto
                     && error.preconditioner_breakdown() =>
             {
-                let solved = super::lsmr_batch::solve_batch(
+                let spent = error.attempted_iterations();
+                let Some(remaining) = options.maxiter.checked_sub(spent).filter(|n| *n > 0) else {
+                    return Err(
+                        error.into_fereg("borrowed modified LSMR exhausted its native allowance")
+                    );
+                };
+                let fallback_options = LsmrOptions {
+                    maxiter: remaining,
+                    ..options.clone()
+                };
+                let mut solved = super::lsmr_batch::solve_batch(
                     effects,
                     &rhs_views,
                     weights.values,
-                    &options,
+                    &fallback_options,
                     PreconditionerConfig::Off,
                     lsmr_config.threads.deterministic,
                 )
@@ -6185,6 +6208,9 @@ fn run_borrowed_lsmr_with_prepared<'a>(
                     fallback_error
                         .into_fereg("borrowed modified LSMR failed after unpreconditioned fallback")
                 })?;
+                for iterations in &mut solved.iterations {
+                    *iterations += spent;
+                }
                 (solved, true)
             }
             Err(error) => {
@@ -6291,19 +6317,13 @@ fn run_borrowed_lsmr_with_prepared<'a>(
             &mut certificate_workspace,
             dense_norms.is_some(),
         );
-        let (mut certificate, dense_valid) = if let Some(state) = general_routing.as_deref_mut() {
-            state.certificate_boundary(certificate_result)?
-        } else {
-            certificate_result?
-        };
+        if certificate_result.is_err() {
+            crate::interrupt::checkpoint()?;
+        }
+        let (mut certificate, dense_valid) = certificate_result?;
         if GENERAL_LSMR_CERTIFICATE_FAILURES.get() > 0 {
             GENERAL_LSMR_CERTIFICATE_FAILURES.set(GENERAL_LSMR_CERTIFICATE_FAILURES.get() - 1);
             certificate.passed = false;
-        }
-        if !certificate.passed {
-            if let Some(state) = general_routing.as_deref_mut() {
-                state.close_attempt();
-            }
         }
         let certification_seconds = certification_started.elapsed().as_secs_f64();
         if crate::diagnostics::solver_trace_enabled() {
@@ -6403,11 +6423,10 @@ fn run_borrowed_lsmr_with_prepared<'a>(
         report.solver_workspace_peak = memory.peak;
         Ok((lsmr_values, report, owned_setup_seconds, coefficients))
     })();
-    if let Some(state) = general_routing {
-        state.certificate_boundary(result)
-    } else {
-        result
+    if result.is_err() {
+        crate::interrupt::checkpoint()?;
     }
+    result
 }
 
 fn resolve_borrowed_lsmr_preconditioner(

@@ -24,7 +24,7 @@ pub(in crate::fe) enum BuildRefusal {
 /// How an automatic build applies its hierarchy.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(in crate::fe) enum AutoApplication {
-    /// One team-free scalar cycle per lane (PPML reuse and reduced pairs).
+    /// One team-free scalar cycle per lane (PPML reuse).
     Scalar,
     /// The row-operator plan and interleaved lanes on the host team, each
     /// installed when admitted, with the scalar application otherwise.
@@ -46,7 +46,7 @@ pub(in crate::fe) enum Install {
     /// Automatic upgrade: the hierarchy builds on the host team when its
     /// parallel bound is admitted (serially otherwise, with the same result).
     /// Without `team_lanes` each lane runs one scalar team-free cycle with no
-    /// row operators (PPML reuse and reduced pairs share such a hierarchy).
+    /// row operators (PPML reuse shares such a hierarchy).
     /// With `team_lanes`, the row-operator plan and up to that many
     /// interleaved lanes are installed when their bounds are admitted and the
     /// cycle borrows whichever host team is installed; a plan or batch
@@ -304,147 +304,6 @@ fn admit(
 }
 
 impl CmgSchurPreconditioner {
-    /// Build one connected, aggregated bipartite CSR component for within's
-    /// reduced-inverse adapter. The returned scale is the graph's global weight
-    /// normalization: applying the inverse of the original Schur requires
-    /// restoring the inverse scale around the fixed cycle.
-    #[allow(clippy::too_many_arguments)]
-    pub(in crate::fe) fn try_build_reduced_bounded(
-        n_eliminated: usize,
-        n_retained: usize,
-        row_ptr: &[u32],
-        columns: &[u32],
-        weights: &[f64],
-        degree: usize,
-        sampling: Sampling,
-        budget: Option<FeSolverMemoryBudget>,
-    ) -> Result<(BoundedCmgBuild, f64)> {
-        sampling.validate()?;
-        if n_retained == 0
-            || n_eliminated == 0
-            || !(4..=6).contains(&degree)
-            || n_eliminated.checked_add(1) != Some(row_ptr.len())
-            || row_ptr.first() != Some(&0)
-            || row_ptr.last().copied().map(|n| n as usize) != Some(columns.len())
-            || columns.len() != weights.len()
-        {
-            return Err(invalid_argument(
-                "CMG reduced component CSR dimensions are inconsistent",
-            ));
-        }
-        crate::interrupt::checkpoint()?;
-        let mut work = Work::new(false);
-        let mut memory = Admission {
-            budget,
-            peak: SolverWorkspacePeak::ZERO,
-        };
-        let mut weight_scale = 1.0;
-        let attempt = (|| {
-            for pair in row_ptr.windows(2) {
-                work.step(16)?;
-                if pair[0] >= pair[1] || pair[1] as usize > columns.len() {
-                    return Err(AttemptError::Fatal(invalid_data(
-                        "CMG reduced component CSR has an empty or invalid row",
-                    )));
-                }
-            }
-            let source = CellSource::Csr {
-                retained: n_retained,
-                row_ptr,
-                columns,
-                weights,
-            };
-            let (graph, components, scale, cache_bytes, _) = graph(
-                source,
-                degree,
-                sampling,
-                false,
-                Install::AUTO,
-                &mut work,
-                &mut memory,
-            )?;
-            weight_scale = scale;
-            if components.sizes.len() != 1 {
-                return Err(AttemptError::Fatal(invalid_data(
-                    "CMG reduced component is disconnected",
-                )));
-            }
-            finish(
-                graph,
-                components,
-                cache_bytes,
-                Install::AUTO,
-                CmgOptions::default(),
-                &mut work,
-                &mut memory,
-            )
-            .map(|(preconditioner, _)| preconditioner)
-        })();
-        let (preconditioner, refusal) = match attempt {
-            Ok(candidate) => (Some(candidate), None),
-            Err(AttemptError::Refused(reason)) => (None, Some(reason)),
-            Err(AttemptError::Fatal(error)) => return Err(error),
-        };
-        Ok((
-            BoundedCmgBuild {
-                preconditioner,
-                refusal,
-                peak: memory.peak,
-            },
-            weight_scale,
-        ))
-    }
-
-    /// Workspace-backed fixed reduced action. A factory may synchronize this
-    /// owner to implement an immutable shared inverse without apply allocations.
-    pub(in crate::fe) fn apply_reduced_in_place(
-        &mut self,
-        rhs: &mut [f64],
-        scratch: &mut [f64],
-        weight_scale: f64,
-    ) -> Result<()> {
-        if self.install != Install::AUTO
-            || rhs.len() != self.components.labels.len()
-            || scratch.len() < rhs.len()
-            || !weight_scale.is_finite()
-            || weight_scale <= 0.0
-        {
-            return Err(invalid_argument(
-                "CMG reduced application dimensions or scale are inconsistent",
-            ));
-        }
-        // Normalize homogeneously before the fixed linear action, then restore
-        // the full scale only at the end. Dividing rhs by the graph scale first
-        // can destroy a tiny residual even when the final image is representable.
-        let mut rhs_scale = 0.0_f64;
-        for (row, &value) in rhs.iter().enumerate() {
-            crate::interrupt::row_checkpoint(row)?;
-            if !value.is_finite() {
-                return Err(invalid_data("CMG reduced residual is nonfinite"));
-            }
-            rhs_scale = rhs_scale.max(value.abs());
-        }
-        if rhs_scale == 0.0 {
-            return Ok(());
-        }
-        for (row, value) in rhs.iter_mut().enumerate() {
-            crate::interrupt::row_checkpoint(row)?;
-            let scaled = *value / rhs_scale;
-            if *value != 0.0 && scaled == 0.0 {
-                return Err(invalid_data(
-                    "CMG reduced residual normalization underflows",
-                ));
-            }
-            *value = scaled;
-        }
-        self.apply_batch(rhs, &mut scratch[..rhs.len()], 1, 1, None, None)?;
-        for (row, (value, &image)) in rhs.iter_mut().zip(scratch.iter()).enumerate() {
-            crate::interrupt::row_checkpoint(row)?;
-            *value = restore_scale(image, rhs_scale, weight_scale)?;
-        }
-        crate::interrupt::checkpoint()
-    }
-
     /// Candidate-only builder with admitted initial-graph stages. `budget`
     /// includes the caller's live incumbent owners in execution_bytes. No solver
     /// state is changed by a memory refusal. Cancellation and actual allocation
@@ -529,7 +388,7 @@ impl CmgSchurPreconditioner {
             budget,
             peak: SolverWorkspacePeak::ZERO,
         };
-        let source = CellSource::Observations {
+        let source = CellSource {
             membership,
             firms,
             retained,
@@ -706,50 +565,6 @@ fn finish(
     ))
 }
 
-// Evaluate value*numerator/denominator without overflowing or underflowing
-// either intermediate ratio. Mantissas remain in [1/2,4); exact powers of two
-// carry the exponent. A lost nonzero image is an error, never a zero inverse.
-fn restore_scale(value: f64, numerator: f64, denominator: f64) -> Result<f64> {
-    fn parts(mut value: f64) -> (f64, i32) {
-        let mut correction = 0;
-        if value < f64::MIN_POSITIVE {
-            value *= 4_503_599_627_370_496.0;
-            correction = -52;
-        }
-        let bits = value.to_bits();
-        let exponent = ((bits >> 52) & 0x7ff) as i32 - 1023 + correction;
-        (
-            f64::from_bits((bits & ((1_u64 << 52) - 1)) | (1023_u64 << 52)),
-            exponent,
-        )
-    }
-    if value == 0.0 {
-        return Ok(value);
-    }
-    if !value.is_finite() {
-        return Err(invalid_data("CMG reduced image is nonfinite"));
-    }
-    let (v, ve) = parts(value.abs());
-    let (n, ne) = parts(numerator);
-    let (d, de) = parts(denominator);
-    let mut result = v * n / d;
-    let mut exponent = ve + ne - de;
-    while exponent > 1023 {
-        result *= f64::from_bits(2046_u64 << 52);
-        exponent -= 1023;
-    }
-    while exponent < -1022 {
-        result *= f64::MIN_POSITIVE;
-        exponent += 1022;
-    }
-    result *= f64::from_bits(((exponent + 1023) as u64) << 52);
-    result = result.copysign(value);
-    if !result.is_finite() || result == 0.0 {
-        return Err(invalid_data("CMG reduced image scaling is unrepresentable"));
-    }
-    Ok(result)
-}
-
 // Retained graph payload plus the pinned three Arc layouts. This is constant
 // work and intentionally includes a few spare metadata bytes.
 fn graph_storage_bound(graph: &Laplacian) -> Result<u128> {
@@ -772,72 +587,35 @@ fn find_root(labels: &mut [usize], mut vertex: usize, work: &mut Work) -> Attemp
 }
 
 #[derive(Clone, Copy)]
-enum CellSource<'a> {
-    Observations {
-        membership: &'a LevelIndex,
-        firms: &'a [u32],
-        retained: usize,
-        weights: BorrowedMapWeights<'a>,
-    },
-    Csr {
-        retained: usize,
-        row_ptr: &'a [u32],
-        columns: &'a [u32],
-        weights: &'a [f64],
-    },
+struct CellSource<'a> {
+    membership: &'a LevelIndex,
+    firms: &'a [u32],
+    retained: usize,
+    weights: BorrowedMapWeights<'a>,
 }
 
 impl<'a> CellSource<'a> {
     fn worker_count(self) -> usize {
-        match self {
-            Self::Observations { membership, .. } => membership.n_levels(),
-            Self::Csr { row_ptr, .. } => row_ptr.len() - 1,
-        }
+        self.membership.n_levels()
     }
     fn firm_count(self) -> usize {
-        match self {
-            Self::Observations { retained, .. } | Self::Csr { retained, .. } => retained,
-        }
+        self.retained
     }
     fn row_count(self, worker: usize) -> usize {
-        match self {
-            Self::Observations { membership, .. } => membership.members(worker).len(),
-            Self::Csr { row_ptr, .. } => (row_ptr[worker + 1] - row_ptr[worker]) as usize,
-        }
+        self.membership.members(worker).len()
     }
     fn entry(self, worker: usize, position: usize) -> (u32, f64) {
-        match self {
-            Self::Observations {
-                membership,
-                firms,
-                weights,
-                ..
-            } => {
-                let row = membership.members(worker)[position];
-                (
-                    firms[row],
-                    match weights {
-                        BorrowedMapWeights::Unit => 1.0,
-                        BorrowedMapWeights::Provided(values) => values[row],
-                    },
-                )
-            }
-            Self::Csr {
-                row_ptr,
-                columns,
-                weights,
-                ..
-            } => {
-                let row = row_ptr[worker] as usize + position;
-                (columns[row], weights[row])
-            }
-        }
+        let row = self.membership.members(worker)[position];
+        (
+            self.firms[row],
+            match self.weights {
+                BorrowedMapWeights::Unit => 1.0,
+                BorrowedMapWeights::Provided(values) => values[row],
+            },
+        )
     }
     fn weights(self) -> BorrowedMapWeights<'a> {
-        match self {
-            Self::Observations { weights, .. } => weights,
-            Self::Csr { weights, .. } => BorrowedMapWeights::Provided(weights),
-        }
+        self.weights
     }
 }
 
@@ -1136,9 +914,7 @@ fn admitted_cache_bytes(
     sampling: Sampling,
     budget: Option<FeSolverMemoryBudget>,
 ) -> Option<usize> {
-    let CellSource::Observations { membership, .. } = source else {
-        return None;
-    };
+    let membership = source.membership;
     let envelope = cache_envelope(
         membership.nobs(),
         source.worker_count(),
@@ -1507,9 +1283,7 @@ fn graph(
         weight_scale,
         cells: work.capacity(max_rows)?,
         cache: if cache_bytes > 0 {
-            let CellSource::Observations { membership, .. } = source else {
-                return Err(invalid_data("CMG canonical cache requires observations").into());
-            };
+            let membership = source.membership;
             Some(CanonicalCells::new(
                 membership.nobs(),
                 source.worker_count(),
@@ -1626,8 +1400,8 @@ fn automatic_hierarchy(
 mod control_tests {
     use super::*;
 
-    fn emission_fixture(rows: usize) -> (Vec<u32>, Vec<u32>, Vec<f64>) {
-        let mut pointers = vec![0];
+    fn emission_fixture(rows: usize) -> (LevelIndex, Vec<u32>, Vec<f64>) {
+        let mut workers = Vec::new();
         let mut columns = Vec::new();
         let mut weights = Vec::new();
         for worker in 0..rows {
@@ -1635,13 +1409,17 @@ mod control_tests {
             for firm in (0..count).rev() {
                 // Ties, duplicate cells, wide weights, and two components.
                 for weight in [1.0, [1.0, 1.0e-8, 1.0e8][firm % 3]] {
+                    workers.push(worker as u32);
                     columns.push((firm + 19 * (worker % 2)) as u32);
                     weights.push(weight);
                 }
             }
-            pointers.push(columns.len() as u32);
         }
-        (pointers, columns, weights)
+        (
+            LevelIndex::from_codes(&workers, rows).unwrap(),
+            columns,
+            weights,
+        )
     }
 
     fn bits(values: &[f64]) -> Vec<u64> {
@@ -1651,7 +1429,7 @@ mod control_tests {
     #[test]
     fn hosted_emission_matches_serial_raw_graph_hierarchy_and_cycle_bits() {
         use crate::{options::ThreadConfig, parallel::ThreadTeam};
-        let (pointers, columns, weights) = emission_fixture(8192);
+        let (membership, columns, weights) = emission_fixture(8192);
         for samples in [0, 1, 3] {
             let sampling = Sampling { samples, seed: 0 };
             let run = |lanes: Option<usize>| {
@@ -1661,11 +1439,11 @@ mod control_tests {
                         budget: None,
                         peak: SolverWorkspacePeak::ZERO,
                     };
-                    let source = CellSource::Csr {
+                    let source = CellSource {
+                        membership: &membership,
+                        firms: &columns,
                         retained: 38,
-                        row_ptr: &pointers,
-                        columns: &columns,
-                        weights: &weights,
+                        weights: BorrowedMapWeights::Provided(&weights),
                     };
                     let mut cells = BoundedCells {
                         source,
@@ -1776,7 +1554,7 @@ mod control_tests {
     #[test]
     fn hosted_emission_scratch_fallback_precedes_kernel_work() {
         use crate::{options::ThreadConfig, parallel::ThreadTeam};
-        let (pointers, columns, weights) = emission_fixture(8192);
+        let (membership, columns, weights) = emission_fixture(8192);
         let sampling = Sampling {
             samples: 1,
             seed: 0,
@@ -1790,11 +1568,11 @@ mod control_tests {
                         peak: SolverWorkspacePeak::ZERO,
                     };
                     let mut cells = BoundedCells {
-                        source: CellSource::Csr {
+                        source: CellSource {
+                            membership: &membership,
+                            firms: &columns,
                             retained: 38,
-                            row_ptr: &pointers,
-                            columns: &columns,
-                            weights: &weights,
+                            weights: BorrowedMapWeights::Provided(&weights),
                         },
                         weight_scale: 1.0,
                         cells: Vec::with_capacity(34),
@@ -1853,15 +1631,7 @@ mod control_tests {
     fn observation_graph_uses_hosted_stages_at_every_worker_count() {
         use crate::{options::ThreadConfig, parallel::ThreadTeam};
         for rows in [8, 8192] {
-            let (pointers, columns, weights) = emission_fixture(rows);
-            let codes: Vec<_> = pointers
-                .windows(2)
-                .enumerate()
-                .flat_map(|(worker, pair)| {
-                    std::iter::repeat(worker as u32).take((pair[1] - pair[0]) as usize)
-                })
-                .collect();
-            let membership = LevelIndex::from_codes(&codes, rows).unwrap();
+            let (membership, columns, weights) = emission_fixture(rows);
             let run = |lanes: Option<usize>| {
                 let operation = || {
                     crate::parallel::with_cmg_execution(|team| {
@@ -1874,7 +1644,7 @@ mod control_tests {
                         peak: SolverWorkspacePeak::ZERO,
                     };
                     let (graph, components, scale, cache, _) = graph(
-                        CellSource::Observations {
+                        CellSource {
                             membership: &membership,
                             firms: &columns,
                             retained: 38,
@@ -1954,16 +1724,20 @@ mod control_tests {
         }
     }
 
-    fn candidate() -> Result<(BoundedCmgBuild, f64)> {
-        CmgSchurPreconditioner::try_build_reduced_bounded(
-            2,
-            2,
-            &[0, 2, 4],
+    fn candidate() -> Result<BoundedCmgBuild> {
+        let membership = LevelIndex::from_codes(&[0, 0, 1, 1], 2)?;
+        CmgSchurPreconditioner::build_observations_bounded(
+            &membership,
             &[0, 1, 0, 1],
-            &[2.0, 3.0, 2.0, 3.0],
+            2,
+            BorrowedMapWeights::Provided(&[2.0, 3.0, 2.0, 3.0]),
             5,
             Sampling::default(),
             None,
+            false,
+            Install::AUTO,
+            CmgOptions::default(),
+            false,
         )
     }
 
@@ -1972,29 +1746,25 @@ mod control_tests {
         use crate::{options::ThreadConfig, parallel::ThreadTeam};
         let make = |workers| {
             ThreadTeam::new(ThreadConfig::from_requested(workers, true).unwrap())
-                .install(|| {
-                    let (result, scale) = candidate().unwrap();
-                    (result.preconditioner.unwrap(), scale)
-                })
+                .install(|| candidate().unwrap().preconditioner.unwrap())
                 .unwrap()
         };
-        let (mut one, scale) = make(1);
-        let (four, other_scale) = make(4);
-        assert_eq!(scale, other_scale);
+        let mut one = make(1);
+        let four = make(4);
         assert_eq!(
             one.preconditioner.hierarchy(),
             four.preconditioner.hierarchy()
         );
         let mut expected = None;
         for workers in [4, 1, 4] {
-            let mut rhs = [1.0, -1.0];
+            let mut image = [0.0; 2];
             ThreadTeam::new(ThreadConfig::from_requested(workers, true).unwrap())
                 .install(|| {
-                    one.apply_reduced_in_place(&mut rhs, &mut [0.0; 2], scale)
+                    one.apply_batch(&[1.0, -1.0], &mut image, 1, 1, None, None)
                         .unwrap();
                 })
                 .unwrap();
-            let bits = rhs.map(f64::to_bits);
+            let bits = image.map(f64::to_bits);
             assert_eq!(bits, *expected.get_or_insert(bits));
         }
     }
@@ -2034,7 +1804,7 @@ mod control_tests {
 
     #[test]
     fn trace_hierarchy_reports_stored_metadata_of_the_installed_build() {
-        let (built, _) = candidate().unwrap();
+        let built = candidate().unwrap();
         let installed = built.preconditioner.unwrap();
         let cmg = &installed.preconditioner;
         let report = cmg.hierarchy().report();
@@ -2080,7 +1850,7 @@ mod control_tests {
         let bank: Vec<u8> = work.capacity(3).unwrap();
         assert_eq!((bank.capacity(), work.polls), (3, 2));
         // An identical candidate repeats its complete poll schedule.
-        let (first, _) = candidate().unwrap();
+        let first = candidate().unwrap();
         assert!(first.preconditioner.is_some() && first.refusal.is_none());
     }
 
@@ -2130,13 +1900,12 @@ mod control_tests {
         // its banks. Request host cancellation from inside that preparation,
         // at polls between its allocations, and map it exactly like a build.
         let reference = {
-            let (built, scale) = candidate().unwrap();
-            let mut built = built.preconditioner.unwrap();
-            let mut rhs = [1.0, -1.0];
+            let mut built = candidate().unwrap().preconditioner.unwrap();
+            let mut image = [0.0; 2];
             built
-                .apply_reduced_in_place(&mut rhs, &mut [0.0; 2], scale)
+                .apply_batch(&[1.0, -1.0], &mut image, 1, 1, None, None)
                 .unwrap();
-            rhs.map(f64::to_bits)
+            image.map(f64::to_bits)
         };
         // 200,000 isolates: one level whose nine banks initialize 1.8 million
         // values at CMG's fixed counted cadence.
@@ -2175,13 +1944,12 @@ mod control_tests {
         let again = prepare(None).unwrap_or_else(|_| panic!("rebuilt workspace"));
         assert_eq!(again.byte_len(), complete.byte_len());
         assert_eq!(again.dimensions(), complete.dimensions());
-        let (built, scale) = candidate().unwrap();
-        let mut built = built.preconditioner.unwrap();
-        let mut rhs = [1.0, -1.0];
+        let mut built = candidate().unwrap().preconditioner.unwrap();
+        let mut image = [0.0; 2];
         built
-            .apply_reduced_in_place(&mut rhs, &mut [0.0; 2], scale)
+            .apply_batch(&[1.0, -1.0], &mut image, 1, 1, None, None)
             .unwrap();
-        assert_eq!(rhs.map(f64::to_bits), reference);
+        assert_eq!(image.map(f64::to_bits), reference);
 
         // Developer builder Break: park after executed work, then interrupt.
         let guard = crate::fe::routing_break::DeveloperBreak::claim().unwrap();
@@ -2315,7 +2083,7 @@ mod cache_tests {
         }
 
         fn source(&self) -> CellSource<'_> {
-            CellSource::Observations {
+            CellSource {
                 membership: &self.membership,
                 firms: &self.firms,
                 retained: self.firm_index.n_levels(),
@@ -2561,7 +2329,7 @@ mod cache_tests {
     #[test]
     fn empty_observations_and_isolated_firms_keep_identical_graphs() {
         let membership = LevelIndex::from_codes(&[], 0).unwrap();
-        let source = CellSource::Observations {
+        let source = CellSource {
             membership: &membership,
             firms: &[],
             retained: 3,
@@ -2672,7 +2440,7 @@ mod team_stage_tests {
         }
 
         fn source(&self) -> CellSource<'_> {
-            CellSource::Observations {
+            CellSource {
                 membership: &self.membership,
                 firms: &self.firms,
                 retained: 500,

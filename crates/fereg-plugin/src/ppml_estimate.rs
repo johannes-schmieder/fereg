@@ -99,6 +99,7 @@ enum PpmlDeveloperInjection {
     None,
     Panic,
     BreakNative,
+    BreakLsmrIteration,
     Allocation,
     Topology,
     SeparationCg,
@@ -401,6 +402,7 @@ pub fn estimate_ppml(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         drop(rayon::broadcast(|_| ()));
     })?;
     let transport_parent_bytes = action.transport_parent_bytes;
+    let lsmr_break = claim_ppml_lsmr_break(action.injection)?;
     let result = crate::ppml_execution::run(
         fereg_core::ThreadTeam::new(action.linear.execution.threads),
         move |poll| {
@@ -433,7 +435,8 @@ pub fn estimate_ppml(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
             fit_prepared_ppml_interruptible(prepared_request, (prepared_input, load_hint), poll)
         },
         &mut relay_ppml_interrupts(spi, action.injection, &action.break_marker_token),
-    )?;
+    );
+    let result = finish_ppml_lsmr_break(lsmr_break, result)?;
     let publication_extension_started = Instant::now();
     let mut publication_phase = PublicationPhaseScope::begin(phase_probe);
     let publication_memory = action.publication_memory(&result)?;
@@ -476,6 +479,33 @@ pub fn estimate_ppml(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
     store_runtime_and_complete(&action, &shadow, &memory_report, spi)
 }
 
+fn claim_ppml_lsmr_break(
+    injection: PpmlDeveloperInjection,
+) -> Result<Option<fereg_core::fe::DeveloperLsmrBreak>> {
+    (injection == PpmlDeveloperInjection::BreakLsmrIteration)
+        .then(|| {
+            fereg_core::fe::DeveloperLsmrBreak::claim(
+                fereg_core::fe::DeveloperLsmrBackend::PpmlJoint,
+            )
+        })
+        .transpose()
+}
+
+/// Release the witness only after the executor has joined and reject an unarmed success.
+fn finish_ppml_lsmr_break<T>(
+    guard: Option<fereg_core::fe::DeveloperLsmrBreak>,
+    result: Result<T>,
+) -> Result<T> {
+    let injected = guard.is_some();
+    drop(guard);
+    if injected && result.is_ok() {
+        return Err(internal(
+            "developer LSMR Break injection completed without a continuing solver iteration",
+        ));
+    }
+    result
+}
+
 fn embedding_without_load_hint(
     probe: fereg_core::ppml::PpmlAllocatorSnapshotProbe,
     start_bytes: u64,
@@ -507,6 +537,13 @@ fn relay_ppml_interrupts<'a>(
         // The scoped executor relays safe-point requests here. This closure
         // keeps the non-Send/non-Sync SPI session on Stata's calling thread.
         let Some(point) = point else {
+            if injection == PpmlDeveloperInjection::BreakLsmrIteration
+                && !native_break_armed
+                && fereg_core::fe::lsmr_break_ready()
+            {
+                native_break_armed = true;
+                emit_ppml_break_marker(spi, break_marker_token)?;
+            }
             return spi.check_interrupted_while_waiting();
         };
         spi.check_interrupted()?;
@@ -515,14 +552,7 @@ fn relay_ppml_interrupts<'a>(
             && point == PpmlInterruptPoint::IrlsIteration
         {
             native_break_armed = true;
-            spi.display(crate::developer_injection::PPML_NATIVE_BREAK_MARKER)?;
-            // Arm the PTY controller only after display returns: Linux Stata
-            // can classify a Ctrl-C inside SF_display as an SPI display error.
-            crate::developer_injection::create_native_break_marker(
-                "feppml",
-                crate::developer_injection::PPML_NATIVE_BREAK_MARKER,
-                break_marker_token,
-            )?;
+            emit_ppml_break_marker(spi, break_marker_token)?;
             // Synchronize the interactive fixture after actual core entry.
             // The controller sends Ctrl-C only after observing the marker;
             // remain on Stata's caller thread until its poll reports Break.
@@ -533,6 +563,17 @@ fn relay_ppml_interrupts<'a>(
         }
         Ok(())
     }
+}
+
+fn emit_ppml_break_marker(spi: &mut dyn SpiApi, token: &str) -> Result<()> {
+    spi.display(crate::developer_injection::PPML_NATIVE_BREAK_MARKER)?;
+    // Arm only after display returns: Linux can classify Ctrl-C inside
+    // SF_display as an SPI display error instead of a Break.
+    crate::developer_injection::create_native_break_marker(
+        "feppml",
+        crate::developer_injection::PPML_NATIVE_BREAK_MARKER,
+        token,
+    )
 }
 
 fn prepared_ppml_request(
@@ -894,6 +935,7 @@ impl EstimatePpmlSpec {
                 "" => PpmlDeveloperInjection::None,
                 "panic" => PpmlDeveloperInjection::Panic,
                 "breaknative" => PpmlDeveloperInjection::BreakNative,
+                "lsmr_iteration_break" => PpmlDeveloperInjection::BreakLsmrIteration,
                 "allocation" => PpmlDeveloperInjection::Allocation,
                 "ppml_topology" => PpmlDeveloperInjection::Topology,
                 "ppml_separation_cg" => PpmlDeveloperInjection::SeparationCg,
@@ -924,7 +966,10 @@ impl EstimatePpmlSpec {
             ));
         }
         crate::developer_injection::validate_break_marker_token(
-            self.injection == PpmlDeveloperInjection::BreakNative,
+            matches!(
+                self.injection,
+                PpmlDeveloperInjection::BreakNative | PpmlDeveloperInjection::BreakLsmrIteration
+            ),
             &self.break_marker_token,
         )?;
 
@@ -1044,6 +1089,19 @@ impl EstimatePpmlSpec {
         };
         let config = PpmlConfig::with_outer_controls(self.tolerance, self.iterate)?;
         let solver = self.decode_solver()?;
+        if self.injection == PpmlDeveloperInjection::BreakLsmrIteration
+            && (solver != PpmlSolverFamily::Lsmr
+                || request.absorbed_terms.len() < 2
+                || request.absorbed_terms.iter().any(|term| {
+                    !term.intercept
+                        || term.categorical_sources.is_empty()
+                        || !term.slope_sources.is_empty()
+                }))
+        {
+            return Err(unsupported(
+                "lsmr_iteration_break requires explicit LSMR with at least two categorical-intercept fixed effects",
+            ));
+        }
         let threads = ThreadConfig::from_requested(self.threads, self.deterministic)?;
         let execution_mode = match self.memory {
             MemoryMode::Low => PreparedOlsExecutionMode::Low,
