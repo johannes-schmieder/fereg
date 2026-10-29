@@ -4,19 +4,19 @@ The baseline audit compares fereg `7f56d06ee4c004741f32d4692bc0e40b898a51d7`
 with upstream `py-econometrics/within` main frozen at
 `32dde1bdd604f33012e592270781129e09e82a92`. That fereg baseline used
 [historical fork revision `3b5b9b9`](https://github.com/johannes-schmieder/within/commit/3b5b9b9ab9b79e4a8cac2841f7c1d41bb2276104)
-for both `within` and `schwarz-precond`. The latest source for the unpublished
-beta.11 candidate pins both dependencies through its
+for both `within` and `schwarz-precond`. The active source for the unpublished
+beta.11 candidate again pins both dependencies through its
 [dependency declarations](../crates/fereg-core/Cargo.toml) and
 [lockfile](../Cargo.lock) to
-`4beaa8afcdc56ddee6f29b3cbd5bf151f0f2d5c5`, available in the fork on
-`codex/beta11-candidate-optimized`. Its combined dependency suite passed, and
-fereg source checks completed after the scoped metadata repairs below. No new
-plugin has been built. The existing actual plugins and declared Mac/Linux native
-checks use `d3407a16dec3715f6e9eee13fb9b6646d5b28035`. The
-completed main performance panels each contain a regression and inconclusive
-comparisons, so beta.11 is not performance-qualified; installed-package admission
-also remains outstanding. This report establishes neither acceptance nor
-readiness for adoption or a production release.
+`d3407a16dec3715f6e9eee13fb9b6646d5b28035`, matching the existing actual plugins
+and declared Mac/Linux native checks. Johannes directed bounded slowdown
+diagnosis before further qualification; the scatter optimization is held.
+The combined `4beaa8af` source and its checks remain historical, unaccepted
+evidence below. No new plugin has been built. The completed main performance
+panels each contain a regression and inconclusive comparisons, so beta.11 is
+not performance-qualified; installed-package admission also remains outstanding.
+Restoring the pin establishes neither recovered performance nor acceptance,
+adoption or readiness for a production release.
 
 Johannes's current instruction is to develop and push these patches only in
 `johannes-schmieder/within`. Any upstream push or pull request requires prior
@@ -825,8 +825,8 @@ not been stopped. Bound Claude activity remains part of the declared policy;
 it is not an exclusion for adverse observations. Mac timing remains blocked,
 and neither attempt is a performance result.
 
-The [combined source record](../bench/results/within-optimized-integration-20261029.json)
-binds fork commit [`4beaa8af`](https://github.com/johannes-schmieder/within/commit/4beaa8afcdc56ddee6f29b3cbd5bf151f0f2d5c5)
+The historical [combined source record](../bench/results/within-optimized-integration-20261029.json)
+binds fereg `379bf7c8` to fork commit [`4beaa8af`](https://github.com/johannes-schmieder/within/commit/4beaa8afcdc56ddee6f29b3cbd5bf151f0f2d5c5)
 on `codex/beta11-candidate-optimized`. Both dependency crates passed 588
 top-level tests and two isolated subprocess tests with all features on Mac
 Rust 1.85.1; one fixture-regeneration test remains ignored. The first attempt
@@ -842,9 +842,44 @@ unused historical growth entries. The approved metadata repair refreshed seven
 position/comment-length values and retired those entries without changing any
 measured total or limit. The final size/ratchet, mock-SPI and numeric-guard checks
 passed. Both failed invocations remain recorded; no broad rerun was needed.
-The actual plugins still use `d3407a16`; there is no new qualified beta.11
-plugin. The held back-substitution patch remains excluded. There has been no
-upstream push or PR, and these source checks do not authorize production adoption.
+That combined candidate remains unaccepted. The active fereg pin has been
+restored to `d3407a16`; no optimized plugin was built. The manifest and both
+lockfiles are byte-identical to tested fereg `d96eccfc`. Shipping Rust, frontend,
+bridge and scripts differ only in an explanatory memory comment, so the earlier
+source/native correctness evidence is reused. Locked offline metadata checks
+passed for the workspace (59 packages) and fuzz workspace (64 packages) with
+Rust 1.85.1; no plugin rebuild or new fereg native test was performed. The counts-only combined
+commit `534ea64f` and standalone counts patch `ba409ada` remain separate,
+unaccepted candidates. The bounded diagnosis is complete; scatter remains held
+with the cause unresolved. The standalone scatter weighted-control concern and the original `d3407a16` versus
+beta.10 regressions are distinct comparisons; restoring the pin resolves neither.
+The additional strict-reference-fit budget remains unapproved, and qualification
+has not resumed. The held back-substitution patch remains excluded. There has
+been no upstream push or PR, and these source checks do not authorize adoption.
+
+The [bounded diagnosis](../bench/results/within-scatter-diagnosis-20261029.json)
+retains the restoration checks, existing control observations, generated-code
+audit and exactly two profiled calls. All 60 original weighted-control calls
+have identical science and work; no known competing compute was found. The
+adverse hosts show temporal variation, which does not identify a cause or justify
+excluding observations. Static inspection finds unchanged weighted right-Fold
+instructions but real caller stack, register and layout changes; it does not
+establish full compiled equivalence. This weighted categorical path supports
+weighted OLS and some PPML projections, but the standalone benchmark does not
+measure all weighted fereg fits or the PPML joint solver.
+
+SCC `8341332` stopped before native work on a software-counter label mismatch.
+A parser-only repair retained that failure; `8341371` then completed one call
+per frozen binary on `scc-zj4`, with scheduler failure/exit 0/0 and exact science.
+The base/patch totals of 15,541/15,389 userspace samples include setup, warmup
+and eight RHS solves per process. Weighted Owner samples were 691/658 and Fold samples 723/657;
+some parallel-helper work remains unresolved. There were no lost samples.
+Instrumented final-group times were 3.15062/3.11007 seconds, so this pair on a
+previously stable host did not reproduce the slowdown. It neither explains nor
+clears the adverse hosts. User-filtered context-switch/migration zeros are not
+proof of no scheduling activity; native resource reports show nonzero switches.
+Scatter remains held, the counts control remains inconclusive, and the original
+beta.11 regressions remain unresolved. No qualification or acceptance follows.
 
 Independent tests to preserve include the dense QR and weighted/disconnected
 families in [routing_portfolio](../crates/fereg-oracle/tests/routing_portfolio.rs),

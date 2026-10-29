@@ -1,0 +1,2381 @@
+{
+  "date": "2026-10-29",
+  "decision": {
+    "additional_reference_fit_budget_approved": false,
+    "beta11": "not qualified; original d340 versus beta.10 regressions unresolved",
+    "cause": "unresolved",
+    "counts": "independent and unaccepted; sparse construction control remains inconclusive",
+    "new_plugin_built": false,
+    "qualification_resumed": false,
+    "scatter": "held",
+    "upstream_submission": false
+  },
+  "existing_observation_audit": {
+    "finding": "The adverse scatter wj4 result concentrates in its first mirrored block. xe2 varies substantially in both arms and is also the sole adverse host for the counts sparse construction control. Counts apply passes.",
+    "isolation": "Six distinct whole-node hosts passed the frozen isolation checks; no known competing compute was found. Every host had two NUMA nodes and all 28 physical CPUs allowed. No host or timing is excluded.",
+    "limits": "Original accounting is whole-task only. Actual thread placement and per-call RSS, faults, context switches, frequency and hardware counters are absent. Temporal effects, NUMA placement, frequency and code generation remain hypotheses; these observations neither identify a cause nor exonerate either patch.",
+    "selected_controls": {
+      "counts": {
+        "calls": 60,
+        "cell": "sparse-memory-apply-t1",
+        "comparisons": [
+          {
+            "any_adverse_block": true,
+            "cell": "sparse-memory-apply-t1",
+            "excess_bounds": {
+              "alpha": 0.025,
+              "lower": -0.07661773053211275,
+              "median": -0.07032357310710252,
+              "n": 6,
+              "upper": 0.010467419642177248
+            },
+            "field": "build_ns",
+            "host_scores": [
+              {
+                "excess_seconds": -0.06706935824701735,
+                "host": "scc-wj4",
+                "ratio": 1.0016663723448402
+              },
+              {
+                "excess_seconds": -0.07502379963878086,
+                "host": "scc-wk4",
+                "ratio": 0.9955961502341604
+              },
+              {
+                "excess_seconds": 0.010467419642177248,
+                "host": "scc-xe2",
+                "ratio": 1.0602371165155329
+              },
+              {
+                "excess_seconds": -0.07046412325186992,
+                "host": "scc-xe3",
+                "ratio": 0.9988757541630887
+              },
+              {
+                "excess_seconds": -0.07661773053211275,
+                "host": "scc-xf2",
+                "ratio": 0.9952262570314627
+              },
+              {
+                "excess_seconds": -0.07018302296233514,
+                "host": "scc-zj4",
+                "ratio": 0.9955728797289349
+              }
+            ],
+            "paired_blocks": [
+              {
+                "base_seconds": 1.2783598303412405,
+                "block": 0,
+                "excess_seconds": -0.05514836313450468,
+                "host": "scc-zj4",
+                "patch_seconds": 1.2871294587237978,
+                "ratio": 1.0068600625382733,
+                "replica": 0
+              },
+              {
+                "base_seconds": 1.2967904823687921,
+                "block": 1,
+                "excess_seconds": -0.0852176827901656,
+                "host": "scc-zj4",
+                "patch_seconds": 1.2764123236970661,
+                "ratio": 0.9842856969195964,
+                "replica": 0
+              },
+              {
+                "base_seconds": 1.3874802872820757,
+                "block": 0,
+                "excess_seconds": -0.05757344842444817,
+                "host": "scc-wj4",
+                "patch_seconds": 1.3992808532217313,
+                "ratio": 1.008505033223046,
+                "replica": 1
+              },
+              {
+                "base_seconds": 1.3877486344124268,
+                "block": 1,
+                "excess_seconds": -0.07656526806958652,
+                "host": "scc-wj4",
+                "patch_seconds": 1.3805707980634616,
+                "ratio": 0.9948277114666344,
+                "replica": 1
+              },
+              {
+                "base_seconds": 1.3642398443495198,
+                "block": 0,
+                "excess_seconds": -0.06487332590259821,
+                "host": "scc-wk4",
+                "patch_seconds": 1.3675785106643978,
+                "ratio": 1.002447272251068,
+                "replica": 2
+              },
+              {
+                "base_seconds": 1.3904875130307934,
+                "block": 1,
+                "excess_seconds": -0.08517427337496351,
+                "host": "scc-wk4",
+                "patch_seconds": 1.3748376153073696,
+                "ratio": 0.9887450282172529,
+                "replica": 2
+              },
+              {
+                "base_seconds": 1.3760771455456144,
+                "block": 0,
+                "excess_seconds": -0.0682203525749781,
+                "host": "scc-xe3",
+                "patch_seconds": 1.376660650247917,
+                "ratio": 1.0004240348763813,
+                "replica": 3
+              },
+              {
+                "base_seconds": 1.380376045934714,
+                "block": 1,
+                "excess_seconds": -0.07270789392876173,
+                "host": "scc-xe3",
+                "patch_seconds": 1.376686954302688,
+                "ratio": 0.9973274734497961,
+                "replica": 3
+              },
+              {
+                "base_seconds": 1.8043052498209773,
+                "block": 0,
+                "excess_seconds": -0.07219925929591291,
+                "host": "scc-xe2",
+                "patch_seconds": 1.822321253016113,
+                "ratio": 1.0099850084662356,
+                "replica": 4
+              },
+              {
+                "base_seconds": 1.5396808150590486,
+                "block": 1,
+                "excess_seconds": 0.0931340985802674,
+                "host": "scc-xe2",
+                "patch_seconds": 1.7097989543922685,
+                "ratio": 1.1104892245648301,
+                "replica": 4
+              },
+              {
+                "base_seconds": 1.4002563325934667,
+                "block": 0,
+                "excess_seconds": -0.07688021923546577,
+                "host": "scc-xf2",
+                "patch_seconds": 1.3933889299876743,
+                "ratio": 0.995095610392225,
+                "replica": 5
+              },
+              {
+                "base_seconds": 1.3973447143004964,
+                "block": 1,
+                "excess_seconds": -0.07635524182875973,
+                "host": "scc-xf2",
+                "patch_seconds": 1.3908567081867615,
+                "ratio": 0.9953569036707004,
+                "replica": 5
+              }
+            ],
+            "primary": true,
+            "status": "inconclusive"
+          },
+          {
+            "any_adverse_block": false,
+            "cell": "sparse-memory-apply-t1",
+            "excess_bounds": {
+              "alpha": 0.025,
+              "lower": -0.019564930314447605,
+              "median": -0.013444709227801731,
+              "n": 6,
+              "upper": -0.01312042998913503
+            },
+            "field": "elapsed_ns",
+            "host_scores": [
+              {
+                "excess_seconds": -0.013205760606561446,
+                "host": "scc-wj4",
+                "ratio": 1.0044024218090368
+              },
+              {
+                "excess_seconds": -0.014598201668307515,
+                "host": "scc-wk4",
+                "ratio": 0.9996564812886688
+              },
+              {
+                "excess_seconds": -0.013683657849042019,
+                "host": "scc-xe2",
+                "ratio": 1.006886860785081
+              },
+              {
+                "excess_seconds": -0.013177573210105088,
+                "host": "scc-xe3",
+                "ratio": 1.0045514790384218
+              },
+              {
+                "excess_seconds": -0.01312042998913503,
+                "host": "scc-xf2",
+                "ratio": 1.0047520555910094
+              },
+              {
+                "excess_seconds": -0.019564930314447605,
+                "host": "scc-zj4",
+                "ratio": 0.9914572789267372
+              }
+            ],
+            "paired_blocks": [
+              {
+                "base_seconds": 0.3322200527418907,
+                "block": 0,
+                "excess_seconds": -0.016872435725804442,
+                "host": "scc-zj4",
+                "patch_seconds": 0.3319586196531808,
+                "ratio": 0.9992130725206012,
+                "replica": 0
+              },
+              {
+                "base_seconds": 0.335715287361133,
+                "block": 1,
+                "excess_seconds": -0.022257424903090767,
+                "host": "scc-zj4",
+                "patch_seconds": 0.33024362682609887,
+                "ratio": 0.9837014853328732,
+                "replica": 0
+              },
+              {
+                "base_seconds": 0.28967023873140957,
+                "block": 0,
+                "excess_seconds": -0.012477555574807772,
+                "host": "scc-wj4",
+                "patch_seconds": 0.2916761950931723,
+                "ratio": 1.0069249653348844,
+                "replica": 1
+              },
+              {
+                "base_seconds": 0.28956630077365825,
+                "block": 1,
+                "excess_seconds": -0.013933965638315119,
+                "host": "scc-wj4",
+                "patch_seconds": 0.29011065017402604,
+                "ratio": 1.001879878283189,
+                "replica": 1
+              },
+              {
+                "base_seconds": 0.2894104615868797,
+                "block": 0,
+                "excess_seconds": -0.013234138068800026,
+                "host": "scc-wk4",
+                "patch_seconds": 0.2906468465974237,
+                "ratio": 1.004272081263976,
+                "replica": 2
+              },
+              {
+                "base_seconds": 0.290438887108569,
+                "block": 1,
+                "excess_seconds": -0.015962265267815003,
+                "host": "scc-wk4",
+                "patch_seconds": 0.28899856619618247,
+                "ratio": 0.9950408813133617,
+                "replica": 2
+              },
+              {
+                "base_seconds": 0.2897323995086778,
+                "block": 0,
+                "excess_seconds": -0.013921597741816517,
+                "host": "scc-xe3",
+                "patch_seconds": 0.29029742174229517,
+                "ratio": 1.0019501520526373,
+                "replica": 3
+              },
+              {
+                "base_seconds": 0.29018349919058645,
+                "block": 1,
+                "excess_seconds": -0.012433548678393656,
+                "host": "scc-xe3",
+                "patch_seconds": 0.2922591254717221,
+                "ratio": 1.0071528060242063,
+                "replica": 3
+              },
+              {
+                "base_seconds": 0.3224397875354411,
+                "block": 0,
+                "excess_seconds": -0.01834416708245917,
+                "host": "scc-xe2",
+                "patch_seconds": 0.320217609829754,
+                "ratio": 0.9931082397657179,
+                "replica": 4
+              },
+              {
+                "base_seconds": 0.30759491447832193,
+                "block": 1,
+                "excess_seconds": -0.009023148615624869,
+                "host": "scc-xe2",
+                "patch_seconds": 0.31395151158661316,
+                "ratio": 1.0206654818044438,
+                "replica": 4
+              },
+              {
+                "base_seconds": 0.2898046474190956,
+                "block": 0,
+                "excess_seconds": -0.014124575115011884,
+                "host": "scc-xf2",
+                "patch_seconds": 0.2901703046750385,
+                "ratio": 1.0012617370328576,
+                "replica": 5
+              },
+              {
+                "base_seconds": 0.2901574171515011,
+                "block": 1,
+                "excess_seconds": -0.012116284863258176,
+                "host": "scc-xf2",
+                "patch_seconds": 0.292549003145818,
+                "ratio": 1.008242374149161,
+                "replica": 5
+              }
+            ],
+            "primary": false,
+            "status": "passed_interval"
+          }
+        ],
+        "host_science_and_work_exact": true,
+        "plan_sha256": "03b884ecdcf68b8a322753128aeb2fb51395e151574de49bef22044adef8cb4c",
+        "report_sha256": "d6aeb22ade2b23db70798bf3e33f6480c01ea0a78576c22375eb3dd1d8f64124",
+        "science_and_work": {
+          "backsub_nnz_per_apply": 8388608,
+          "backsub_rows_per_apply": 2097152,
+          "explicit_apply_calls": 4,
+          "factor_rhs_lower_bound": 360718788,
+          "input_fnv64": "27945609be56a280",
+          "iterations": 0,
+          "left": 2097152,
+          "maximum_error": 2.220446049250313e-15,
+          "mode": "apply",
+          "nobs": 8388608,
+          "recurrence_residual": 0.0,
+          "rhs": 4,
+          "right": 127,
+          "science_fnv64": "deed981919f36edf",
+          "size": "custom",
+          "threads": 1,
+          "warmups": 1,
+          "weighted": false
+        }
+      },
+      "scatter": {
+        "calls": 60,
+        "cell": "memory-weighted-solve-t4",
+        "comparisons": [
+          {
+            "any_adverse_block": true,
+            "cell": "memory-weighted-solve-t4",
+            "excess_bounds": {
+              "alpha": 0.025,
+              "lower": -0.14246427863534777,
+              "median": -0.10076066971176409,
+              "n": 6,
+              "upper": -0.0205160258146408
+            },
+            "field": "build_ns",
+            "host_scores": [
+              {
+                "excess_seconds": -0.0205160258146408,
+                "host": "scc-wj4",
+                "ratio": 1.0395513022644738
+              },
+              {
+                "excess_seconds": -0.0877489012391095,
+                "host": "scc-wk4",
+                "ratio": 1.0033846993557507
+              },
+              {
+                "excess_seconds": -0.14246427863534777,
+                "host": "scc-xe2",
+                "ratio": 0.9932692809893355
+              },
+              {
+                "excess_seconds": -0.1040372863520696,
+                "host": "scc-xe3",
+                "ratio": 0.9991306701926976
+              },
+              {
+                "excess_seconds": -0.1036000999129324,
+                "host": "scc-xf2",
+                "ratio": 0.9993005527657883
+              },
+              {
+                "excess_seconds": -0.0979212395105958,
+                "host": "scc-zj4",
+                "ratio": 0.9952535872046028
+              }
+            ],
+            "paired_blocks": [
+              {
+                "base_seconds": 1.7885196672279469,
+                "block": 0,
+                "excess_seconds": -0.09328078143661683,
+                "host": "scc-zj4",
+                "patch_seconds": 1.7846648691527274,
+                "ratio": 0.9978446990850293,
+                "replica": 0
+              },
+              {
+                "base_seconds": 1.7887360531247303,
+                "block": 1,
+                "excess_seconds": -0.10256169758457476,
+                "host": "scc-zj4",
+                "patch_seconds": 1.775611158196392,
+                "ratio": 0.9926624753241763,
+                "replica": 0
+              },
+              {
+                "base_seconds": 2.047013344181919,
+                "block": 0,
+                "excess_seconds": 0.0688846764054118,
+                "host": "scc-wj4",
+                "patch_seconds": 2.218248687796427,
+                "ratio": 1.0836513079414933,
+                "replica": 1
+              },
+              {
+                "base_seconds": 2.015019994213342,
+                "block": 1,
+                "excess_seconds": -0.10991672803469339,
+                "host": "scc-wj4",
+                "patch_seconds": 2.0058542658893157,
+                "ratio": 0.9954512965874541,
+                "replica": 1
+              },
+              {
+                "base_seconds": 1.884741673526649,
+                "block": 0,
+                "excess_seconds": -0.09997835221396213,
+                "host": "scc-wk4",
+                "patch_seconds": 1.8790004049890192,
+                "ratio": 0.9969538167387753,
+                "replica": 2
+              },
+              {
+                "base_seconds": 1.8793217364253139,
+                "block": 1,
+                "excess_seconds": -0.07551945026425685,
+                "host": "scc-wk4",
+                "patch_seconds": 1.8977683729823225,
+                "ratio": 1.0098155819727261,
+                "replica": 2
+              },
+              {
+                "base_seconds": 2.0361148208010533,
+                "block": 0,
+                "excess_seconds": -0.09696476012815812,
+                "host": "scc-xe3",
+                "patch_seconds": 2.040955801712948,
+                "ratio": 1.002377557916891,
+                "replica": 3
+              },
+              {
+                "base_seconds": 2.0531703368092025,
+                "block": 1,
+                "excess_seconds": -0.11110981257598107,
+                "host": "scc-xe3",
+                "patch_seconds": 2.0447190410736815,
+                "ratio": 0.9958837824685043,
+                "replica": 3
+              },
+              {
+                "base_seconds": 2.5120486605464585,
+                "block": 0,
+                "excess_seconds": -0.215629568015338,
+                "host": "scc-xe2",
+                "patch_seconds": 2.4220215255584434,
+                "ratio": 0.9641618666063455,
+                "replica": 4
+              },
+              {
+                "base_seconds": 2.508714659213151,
+                "block": 1,
+                "excess_seconds": -0.06929898925535757,
+                "host": "scc-xe2",
+                "patch_seconds": 2.564851402918451,
+                "ratio": 1.0223766953723255,
+                "replica": 4
+              },
+              {
+                "base_seconds": 2.049998925468843,
+                "block": 0,
+                "excess_seconds": -0.12446836270196114,
+                "host": "scc-xf2",
+                "patch_seconds": 2.028030509040324,
+                "ratio": 0.9892836936860858,
+                "replica": 5
+              },
+              {
+                "base_seconds": 2.0335932613159935,
+                "block": 1,
+                "excess_seconds": -0.08273183712390364,
+                "host": "scc-xf2",
+                "patch_seconds": 2.0525410872578895,
+                "ratio": 1.0093174118454908,
+                "replica": 5
+              }
+            ],
+            "primary": false,
+            "status": "passed_interval"
+          },
+          {
+            "any_adverse_block": true,
+            "cell": "memory-weighted-solve-t4",
+            "excess_bounds": {
+              "alpha": 0.025,
+              "lower": -0.24147078675239497,
+              "median": -0.12229356171456192,
+              "n": 6,
+              "upper": 0.23856455523603948
+            },
+            "field": "elapsed_ns",
+            "host_scores": [
+              {
+                "excess_seconds": 0.13638970846422893,
+                "host": "scc-wj4",
+                "ratio": 1.096525014148154
+              },
+              {
+                "excess_seconds": -0.1428110459941171,
+                "host": "scc-wk4",
+                "ratio": 0.996556838707257
+              },
+              {
+                "excess_seconds": 0.23856455523603948,
+                "host": "scc-xe2",
+                "ratio": 1.1121648095926613
+              },
+              {
+                "excess_seconds": -0.1181803039103739,
+                "host": "scc-xe3",
+                "ratio": 1.0076715996814194
+              },
+              {
+                "excess_seconds": -0.12640681951874994,
+                "host": "scc-xf2",
+                "ratio": 1.0047089561979543
+              },
+              {
+                "excess_seconds": -0.24147078675239497,
+                "host": "scc-zj4",
+                "ratio": 0.9774440294452549
+              }
+            ],
+            "paired_blocks": [
+              {
+                "base_seconds": 3.2006296551916527,
+                "block": 0,
+                "excess_seconds": -0.08987776287288005,
+                "host": "scc-zj4",
+                "patch_seconds": 3.2707833750783557,
+                "ratio": 1.0219187245774932,
+                "replica": 0
+              },
+              {
+                "base_seconds": 3.3586394499645005,
+                "block": 1,
+                "excess_seconds": -0.39306381063190987,
+                "host": "scc-zj4",
+                "patch_seconds": 3.1335076118308156,
+                "ratio": 0.9329693343130164,
+                "replica": 0
+              },
+              {
+                "base_seconds": 2.8943104050562134,
+                "block": 0,
+                "excess_seconds": 0.37956518393389527,
+                "host": "scc-wj4",
+                "patch_seconds": 3.4185911092429198,
+                "ratio": 1.1811418371957667,
+                "replica": 1
+              },
+              {
+                "base_seconds": 2.803378733923927,
+                "block": 1,
+                "excess_seconds": -0.1067857670054374,
+                "host": "scc-wj4",
+                "patch_seconds": 2.836761903614686,
+                "ratio": 1.011908191100541,
+                "replica": 1
+              },
+              {
+                "base_seconds": 2.682321002928298,
+                "block": 0,
+                "excess_seconds": -0.15003766765896362,
+                "host": "scc-wk4",
+                "patch_seconds": 2.6663993854157493,
+                "ratio": 0.9940642385847305,
+                "replica": 2
+              },
+              {
+                "base_seconds": 2.661097762521356,
+                "block": 1,
+                "excess_seconds": -0.13558442432927054,
+                "host": "scc-wk4",
+                "patch_seconds": 2.6585682263181534,
+                "ratio": 0.9990494388297835,
+                "replica": 2
+              },
+              {
+                "base_seconds": 2.802266804163861,
+                "block": 0,
+                "excess_seconds": -0.1165669689187063,
+                "host": "scc-xe3",
+                "patch_seconds": 2.8258131754533475,
+                "ratio": 1.0084026157875114,
+                "replica": 3
+              },
+              {
+                "base_seconds": 2.782054399450748,
+                "block": 1,
+                "excess_seconds": -0.1197936389020415,
+                "host": "scc-xe3",
+                "patch_seconds": 2.8013634805212435,
+                "ratio": 1.0069405835753276,
+                "replica": 3
+              },
+              {
+                "base_seconds": 3.8409171299140983,
+                "block": 0,
+                "excess_seconds": 0.44370418309484794,
+                "host": "scc-xe2",
+                "patch_seconds": 4.476667169504651,
+                "ratio": 1.1655203739333921,
+                "replica": 4
+              },
+              {
+                "base_seconds": 3.794300921512718,
+                "block": 1,
+                "excess_seconds": 0.033424927377231045,
+                "host": "scc-xe2",
+                "patch_seconds": 4.017440894965585,
+                "ratio": 1.0588092452519304,
+                "replica": 4
+              },
+              {
+                "base_seconds": 2.78871697814747,
+                "block": 0,
+                "excess_seconds": -0.13322543469917972,
+                "host": "scc-xf2",
+                "patch_seconds": 2.794927392355664,
+                "ratio": 1.0022269790218437,
+                "replica": 5
+              },
+              {
+                "base_seconds": 2.7935251516525708,
+                "block": 1,
+                "excess_seconds": -0.11958820433832015,
+                "host": "scc-xf2",
+                "patch_seconds": 2.813613204896879,
+                "ratio": 1.007190933374065,
+                "replica": 5
+              }
+            ],
+            "primary": true,
+            "status": "inconclusive"
+          }
+        ],
+        "host_science_and_work_exact": true,
+        "plan_sha256": "e707c1b0f63f6e64415184e3e12e4c0ac91790db989c3ef4e58f60e95680bab9",
+        "report_sha256": "0a08049d2227497e0f792d60e91c12a4b9f592bd6e2e470e25163d945e21e52f",
+        "science_and_work": {
+          "backsub_nnz_per_apply": 16777216,
+          "backsub_rows_per_apply": 4194304,
+          "explicit_apply_calls": 0,
+          "factor_rhs_lower_bound": 721428932,
+          "input_fnv64": "061c62b47c130e4d",
+          "iterations": 4,
+          "left": 4194304,
+          "maximum_error": 3.6770586575585185e-12,
+          "mode": "solve",
+          "nobs": 16777216,
+          "recurrence_residual": 1.6998152642738361e-12,
+          "rhs": 4,
+          "right": 127,
+          "science_fnv64": "d163263bc9157460",
+          "size": "custom",
+          "threads": 4,
+          "warmups": 1,
+          "weighted": true
+        }
+      }
+    },
+    "source_record": "within-optimization-performance-20261029.json",
+    "source_record_sha256": "56afe05e8a463b5f9131ea1e54f08135cbf537212b0bab9c6456bbbb803f93f6"
+  },
+  "kind": "Bounded diagnosis of the held scatter optimization and existing control observations",
+  "profile": {
+    "actual_native_calls": 2,
+    "arguments": [
+      "--artifact",
+      "{arm}",
+      "--size",
+      "memory",
+      "--left",
+      "4194304",
+      "--threads",
+      "4",
+      "--mode",
+      "solve",
+      "--rhs",
+      "4",
+      "--warmups",
+      "1",
+      "--weighted",
+      "--measure"
+    ],
+    "completed_attempt": {
+      "calls": [
+        {
+          "argv": [
+            "backsub_compare",
+            "--artifact",
+            "base",
+            "--size",
+            "memory",
+            "--left",
+            "4194304",
+            "--threads",
+            "4",
+            "--mode",
+            "solve",
+            "--rhs",
+            "4",
+            "--warmups",
+            "1",
+            "--weighted",
+            "--measure"
+          ],
+          "arm": "base",
+          "artifact_sha256": "2b9eb08780c4a954a2158040f47ca3ed69cfaf598bcabca2447fb44cdff3abd3",
+          "finished_monotonic_ns": 557091438076908,
+          "lost_samples": 0,
+          "native_resources": {
+            "Average resident set size (kbytes)": 0,
+            "Average shared text size (kbytes)": 0,
+            "Average stack size (kbytes)": 0,
+            "Average total size (kbytes)": 0,
+            "Average unshared data size (kbytes)": 0,
+            "Elapsed wall seconds": 11.48,
+            "Exit status": 0,
+            "File system inputs": 0,
+            "File system outputs": 8,
+            "Involuntary context switches": 46,
+            "Major (requiring I/O) page faults": 0,
+            "Maximum resident set size (kbytes)": 2435348,
+            "Minor (reclaiming a frame) page faults": 255226,
+            "Page size (bytes)": 4096,
+            "Percent of CPU this job got": 153.0,
+            "Signals delivered": 0,
+            "Socket messages received": 0,
+            "Socket messages sent": 0,
+            "Swaps": 0,
+            "System time (seconds)": 2.22,
+            "User time (seconds)": 15.4,
+            "Voluntary context switches": 579
+          },
+          "outer_perf_counters": {
+            "context-switches": {
+              "actual_label": "context-switches:u",
+              "event_running_percent": 100.0,
+              "event_runtime_ns": 18393993307,
+              "modifier": "u",
+              "unit": "",
+              "value": 0.0
+            },
+            "cpu-migrations": {
+              "actual_label": "cpu-migrations:u",
+              "event_running_percent": 100.0,
+              "event_runtime_ns": 18393993307,
+              "modifier": "u",
+              "unit": "",
+              "value": 0.0
+            },
+            "cycles:u": {
+              "actual_label": "cycles:u",
+              "event_running_percent": 100.0,
+              "event_runtime_ns": 18398229175,
+              "modifier": "u",
+              "unit": "",
+              "value": 50831072639.0
+            },
+            "instructions:u": {
+              "actual_label": "instructions:u",
+              "event_running_percent": 100.0,
+              "event_runtime_ns": 18398229175,
+              "modifier": "u",
+              "unit": "",
+              "value": 73008850975.0
+            },
+            "page-faults": {
+              "actual_label": "page-faults:u",
+              "event_running_percent": 100.0,
+              "event_runtime_ns": 18393993307,
+              "modifier": "u",
+              "unit": "",
+              "value": 259586.0
+            },
+            "task-clock": {
+              "actual_label": "task-clock:u",
+              "event_running_percent": 100.0,
+              "event_runtime_ns": 18393993307,
+              "modifier": "u",
+              "unit": "msec",
+              "value": 18393.99
+            }
+          },
+          "output_hashes": {
+            ".functions.txt": "1431251059b182590f69d0cb09070a07eb40c40efdea13ef85bc1d3fa9436158",
+            ".header.txt": "38ab634166489f2d0e9cfdd45bfd14f804358440a4f7b4d17cdcbf03644a085b",
+            ".log": "e2778b606de9dc98202d843eafd9056b74724bcc2bf7a5f1cc036528d8cbacbe",
+            ".perf.data": "c46bba7ff33cd40050308b4f0820bc2d0c778078b9eb7ea1464a22576bebb69d",
+            ".stacks.txt": "464e3e36c20449333ae0e69c801b621fd9a3d26cfd8ac9006fb5bad99eff0e01",
+            ".stat.csv": "0214f7d7ba0a5c58877a4a09c21e61693b02de14a086f16b25bcca51ceb4efad",
+            ".time.txt": "822e1ce48853daaa76db03c72a8caf632a7d676db3d9adebd3907066ed81b71e"
+          },
+          "payload": {
+            "artifact": "base",
+            "backsub_nnz_per_apply": 16777216,
+            "backsub_rows_per_apply": 4194304,
+            "build_ns": 1842344245,
+            "elapsed_ns": 3150619680,
+            "explicit_apply_calls": 0,
+            "factor_rhs_lower_bound": 721428932,
+            "input_fnv64": "061c62b47c130e4d",
+            "iterations": 4,
+            "left": 4194304,
+            "maximum_error": 3.6770586575585185e-12,
+            "mode": "solve",
+            "nobs": 16777216,
+            "recurrence_residual": 1.6998152642738361e-12,
+            "rhs": 4,
+            "right": 127,
+            "science_fnv64": "d163263bc9157460",
+            "size": "custom",
+            "threads": 4,
+            "warmups": 1,
+            "weighted": true
+          },
+          "started_monotonic_ns": 557079609877057,
+          "status": "science-and-profile-collected",
+          "tail_observed_monotonic_ns": 557091438089639,
+          "throttling_warning_recorded": false,
+          "wrapper_resources": {
+            "maxrss_bytes": 2493796352,
+            "system_s": 2.580083,
+            "user_s": 15.532191,
+            "wall_s": 11.82812618499156
+          }
+        },
+        {
+          "argv": [
+            "backsub_compare",
+            "--artifact",
+            "patch",
+            "--size",
+            "memory",
+            "--left",
+            "4194304",
+            "--threads",
+            "4",
+            "--mode",
+            "solve",
+            "--rhs",
+            "4",
+            "--warmups",
+            "1",
+            "--weighted",
+            "--measure"
+          ],
+          "arm": "patch",
+          "artifact_sha256": "05b1a826e2ffd2765fc4863b456d24d48ad1def3e2d421431cdc35d29fe8ce56",
+          "finished_monotonic_ns": 557113398861068,
+          "lost_samples": 0,
+          "native_resources": {
+            "Average resident set size (kbytes)": 0,
+            "Average shared text size (kbytes)": 0,
+            "Average stack size (kbytes)": 0,
+            "Average total size (kbytes)": 0,
+            "Average unshared data size (kbytes)": 0,
+            "Elapsed wall seconds": 11.38,
+            "Exit status": 0,
+            "File system inputs": 0,
+            "File system outputs": 8,
+            "Involuntary context switches": 44,
+            "Major (requiring I/O) page faults": 0,
+            "Maximum resident set size (kbytes)": 2437508,
+            "Minor (reclaiming a frame) page faults": 252234,
+            "Page size (bytes)": 4096,
+            "Percent of CPU this job got": 153.0,
+            "Signals delivered": 0,
+            "Socket messages received": 0,
+            "Socket messages sent": 0,
+            "Swaps": 0,
+            "System time (seconds)": 2.24,
+            "User time (seconds)": 15.28,
+            "Voluntary context switches": 551
+          },
+          "outer_perf_counters": {
+            "context-switches": {
+              "actual_label": "context-switches:u",
+              "event_running_percent": 100.0,
+              "event_runtime_ns": 18324234661,
+              "modifier": "u",
+              "unit": "",
+              "value": 0.0
+            },
+            "cpu-migrations": {
+              "actual_label": "cpu-migrations:u",
+              "event_running_percent": 100.0,
+              "event_runtime_ns": 18324234661,
+              "modifier": "u",
+              "unit": "",
+              "value": 0.0
+            },
+            "cycles:u": {
+              "actual_label": "cycles:u",
+              "event_running_percent": 100.0,
+              "event_runtime_ns": 18330789144,
+              "modifier": "u",
+              "unit": "",
+              "value": 50147483590.0
+            },
+            "instructions:u": {
+              "actual_label": "instructions:u",
+              "event_running_percent": 100.0,
+              "event_runtime_ns": 18330789144,
+              "modifier": "u",
+              "unit": "",
+              "value": 73008078806.0
+            },
+            "page-faults": {
+              "actual_label": "page-faults:u",
+              "event_running_percent": 100.0,
+              "event_runtime_ns": 18324234661,
+              "modifier": "u",
+              "unit": "",
+              "value": 256573.0
+            },
+            "task-clock": {
+              "actual_label": "task-clock:u",
+              "event_running_percent": 100.0,
+              "event_runtime_ns": 18324234661,
+              "modifier": "u",
+              "unit": "msec",
+              "value": 18324.23
+            }
+          },
+          "output_hashes": {
+            ".functions.txt": "992d0b3fbeef3259fab0c573aa0361a39b1719f1d0355aa0ad058926973d5f8a",
+            ".header.txt": "da5133f41903c97ce4b58d3f75479009481f1095610ecf4829d21eed442da0e2",
+            ".log": "b8e16e3144504cb6df33a50bf4f7e50d633fe0ec8b97281f31c930804f55a06c",
+            ".perf.data": "d15bba0fe57f38323f1759cba929f3baf26c8488e45b45262878cb707773fe0f",
+            ".stacks.txt": "96b788b5e3c505bf03aeecc63d3804e4d19e3c83f42128858b2eee34f5755579",
+            ".stat.csv": "b8f6d705f781f5bb0582d211bf5d464f1dfea6655e6c8d87d158d431d570af75",
+            ".time.txt": "84db365ebfe9dbe6e41bb8db723ce294487d7c4410afcf1918c7d5ea9eb6f28b"
+          },
+          "payload": {
+            "artifact": "patch",
+            "backsub_nnz_per_apply": 16777216,
+            "backsub_rows_per_apply": 4194304,
+            "build_ns": 1810834201,
+            "elapsed_ns": 3110073273,
+            "explicit_apply_calls": 0,
+            "factor_rhs_lower_bound": 721428932,
+            "input_fnv64": "061c62b47c130e4d",
+            "iterations": 4,
+            "left": 4194304,
+            "maximum_error": 3.6770586575585185e-12,
+            "mode": "solve",
+            "nobs": 16777216,
+            "recurrence_residual": 1.6998152642738361e-12,
+            "rhs": 4,
+            "right": 127,
+            "science_fnv64": "d163263bc9157460",
+            "size": "custom",
+            "threads": 4,
+            "warmups": 1,
+            "weighted": true
+          },
+          "started_monotonic_ns": 557101558212670,
+          "status": "science-and-profile-collected",
+          "tail_observed_monotonic_ns": 557113398876548,
+          "throttling_warning_recorded": false,
+          "wrapper_resources": {
+            "maxrss_bytes": 2496008192,
+            "system_s": 2.6305959999999997,
+            "user_s": 15.422661,
+            "wall_s": 11.84053688799031
+          }
+        }
+      ],
+      "environment": {
+        "affinity": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27
+        ],
+        "cleared_names": [],
+        "python": "3.12.4 (main, Jul  1 2024, 10:14:11) [GCC 12.2.0]"
+      },
+      "host_observation": {
+        "accounting_required": true,
+        "errors": [],
+        "finished_monotonic_ns": 557124027356730,
+        "host": {
+          "affinity": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25,
+            26,
+            27
+          ],
+          "hostname": "scc-zj4",
+          "job_id": "8341371",
+          "pe": "omp28",
+          "queue": "econ@scc-zj4.scc.bu.edu",
+          "slots": 28,
+          "task_id": "0"
+        },
+        "isolation_ok": true,
+        "measurement_end_monotonic_ns": 557122293375306,
+        "observations": "host-observations.jsonl",
+        "process_policy": {
+          "active_cpu_seconds": 0.05,
+          "executable_identity": "macOS ucomm or Linux comm; args joined by PID and lstart",
+          "executables": [
+            "cargo",
+            "rustc",
+            "rustdoc",
+            "clang",
+            "clang++",
+            "gcc",
+            "g++",
+            "cc1",
+            "cc1plus",
+            "ld",
+            "ld.lld",
+            "make",
+            "gmake",
+            "ninja",
+            "cmake",
+            "pytest",
+            "py.test",
+            "R",
+            "Rscript",
+            "stata",
+            "stata-mp",
+            "stata-se",
+            "StataMP",
+            "StataSE",
+            "julia",
+            "codex",
+            "claude",
+            "node_repl",
+            "uvx",
+            "actual_plugin_loader_test",
+            "actual_plugin_l"
+          ],
+          "maximum_gap_seconds": 7.5,
+          "name": "known-compute-blocks-v1",
+          "python_modules": [
+            "pytest",
+            "unittest",
+            "compileall"
+          ],
+          "runnable_cpu_percent": 1.0,
+          "rust_test_path": "target/(debug|release|ci)/deps/[^/ ]+-[0-9a-f]{8,}$",
+          "schema": 1,
+          "script_directories": [
+            "bench",
+            "scripts",
+            "tests"
+          ],
+          "unknown_activity": "retain"
+        },
+        "samples": {
+          "census": {
+            "count": 2,
+            "finish": 557123583491177,
+            "start": 557122356473296
+          },
+          "process": {
+            "count": 14,
+            "finish": 557122355890694,
+            "start": 557122293429668
+          }
+        },
+        "schema": 1,
+        "scope": "Sampled known competing compute; ordinary OS activity retained. SCC also requires a whole-node reservation.",
+        "started_monotonic_ns": 557079494636397
+      },
+      "host_observations_sha256": "08da98c322ccd43bbf7d17fccf543dd1942d032d1d1147650f4c9eff3d9e541d",
+      "host_record_sha256": "34eddf14ff7dca0666a5eb353ba555e6ba9fbe899ed146385623a554f61d628d",
+      "hostname": "scc-zj4",
+      "job_id": 8341371,
+      "kernel": {
+        "perf_event_paranoid": "2",
+        "sample_rate_cap": 39000,
+        "uname": [
+          "Linux",
+          "scc-zj4",
+          "4.18.0-553.177.1.el8_10.x86_64",
+          "#1 SMP Wed Oct 21 17:33:50 EDT 2026",
+          "x86_64"
+        ]
+      },
+      "prerequisite_attempts": [
+        {
+          "counters": {
+            "context-switches": {
+              "actual_label": "context-switches:u",
+              "event_running_percent": 100.0,
+              "event_runtime_ns": 520442317,
+              "modifier": "u",
+              "unit": "",
+              "value": 0.0
+            },
+            "cpu-migrations": {
+              "actual_label": "cpu-migrations:u",
+              "event_running_percent": 100.0,
+              "event_runtime_ns": 520442317,
+              "modifier": "u",
+              "unit": "",
+              "value": 0.0
+            },
+            "cycles:u": {
+              "actual_label": "cycles:u",
+              "event_running_percent": 100.0,
+              "event_runtime_ns": 520979703,
+              "modifier": "u",
+              "unit": "",
+              "value": 512839347.0
+            },
+            "instructions:u": {
+              "actual_label": "instructions:u",
+              "event_running_percent": 100.0,
+              "event_runtime_ns": 520979703,
+              "modifier": "u",
+              "unit": "",
+              "value": 1150052098.0
+            },
+            "page-faults": {
+              "actual_label": "page-faults:u",
+              "event_running_percent": 100.0,
+              "event_runtime_ns": 520442317,
+              "modifier": "u",
+              "unit": "",
+              "value": 3452.0
+            },
+            "task-clock": {
+              "actual_label": "task-clock:u",
+              "event_running_percent": 100.0,
+              "event_runtime_ns": 520442317,
+              "modifier": "u",
+              "unit": "msec",
+              "value": 520.44
+            }
+          },
+          "events": [
+            "task-clock",
+            "page-faults",
+            "context-switches",
+            "cpu-migrations",
+            "cycles:u",
+            "instructions:u"
+          ],
+          "native_binary": false,
+          "status": "passed"
+        }
+      ],
+      "selected_stat_events": [
+        "task-clock",
+        "page-faults",
+        "context-switches",
+        "cpu-migrations",
+        "cycles:u",
+        "instructions:u"
+      ],
+      "status": "diagnostic-complete",
+      "summary_sha256": "aab7c582c87449c1071be254391c4d4c80325eb82ad42f77e1c36bd8503031d3",
+      "tools": {
+        "perf": {
+          "sha256": "3786e70e808ce0dbac394474ee782007921b4605ad7f3591bd68827499fcd177"
+        },
+        "python": {
+          "sha256": "f62d663ae97a6edcd3070f1437627f3cb34829a87826abd6969d1f795d44f0c4"
+        },
+        "readelf": {
+          "sha256": "8305184289baf6f163940cb2cfe0718942fd905ccbd274a1e52d37492e8b71b2"
+        },
+        "time": {
+          "sha256": "56a583436993ccc4fa7dcbc00e9761106d06acc55734f16ded1c4d38ca3eaafb"
+        }
+      }
+    },
+    "config_sha256": "bb12703e9c4741d89b42893655d1df64b1dd6fb4585e600eb3c5189df121f5e2",
+    "failed_attempt": {
+      "actual_native_calls": 0,
+      "cause": "perf reported software event labels with :u; the initial parser accepted only unmodified names.",
+      "config_sha256": "f047b47400e7a0d1197a956f739a464a197e7c6605f04bada38cdde581747040",
+      "counter_csv_sha256": "9c6ede97cdc3f8133d9b23d81ae2d2a56f91d0a69a71ffac13cf6e6d39b71bf2",
+      "diagnostic": "missing required perf counters",
+      "hostname": "scc-zj4",
+      "input_archive_sha256": "5c7bce163bde45c300c5167bc3d5055de4f93f29d199b1d68a7509854a3c576a",
+      "job_id": 8341332,
+      "launcher_sha256": "7170ed6c03d4ac711b30ba95497c334a47a2166ae398858ea42e8425034e3dac",
+      "retained_input_sha256": {
+        "README.md": "33b27df8e0907d7d0f9fe2552488272df36bbc06d5217b6a63ac136979db0305",
+        "SHA256SUMS": "a144f2edbb7738248cdefbbe031bae5a66722c3d468b9235013a1ce5e47ff81b",
+        "config.json": "f047b47400e7a0d1197a956f739a464a197e7c6605f04bada38cdde581747040",
+        "job.sh": "f2e0a72a1799823825602d638de92161cd8203bb421cfbcfceb299612cecdd7f",
+        "profile.py": "7170ed6c03d4ac711b30ba95497c334a47a2166ae398858ea42e8425034e3dac"
+      },
+      "summary_sha256": "485b76c668fdd283544eb998c5afbf887ab0423d50121a4469e6485b1cf5dadb"
+    },
+    "input_identity_labels": "Paths in input_sha256 are semantic source labels with the original suffixes preserved; their hashes bind the frozen inputs. They are not links to ignored task directories.",
+    "input_sha256": {
+      "fereg/bench/block_host.py": "fccf59236f74f077e890685acd2abc996a1c7be8ecabecde095da6932974944d",
+      "fereg/bench/cmg_setup.py": "b7477ec64d6c926bd67b503f7a3cfc11f3ffa71055adaf89b9ae954be3f4547c",
+      "fereg/bench/cmgschur.py": "797ab16b37bba88049cd98026ace7b5147d188049e64d39a1f823b69df0ca415",
+      "fereg/bench/cmgschur_cases.py": "192dd59269ab26abf100065a33cff771ba5999445f61cd6ab7c908c3dcdca0c5",
+      "fereg/bench/native.py": "9114748c964f4afe8691d4cfb1aa4779e298caf1d3241711eb1ff15cc1d96c14",
+      "fereg/bench/native_io.py": "5a3ac828c7f0c7c3cd5af963e7192f5b598c2ca817767a1ef1b49d05196f3a03",
+      "fereg/bench/ownership_panel3.py": "f3c37bb5783c18a1031219fe59fb6e4ec5eeee161666a5163544390eb5f009cc",
+      "fereg/bench/ownership_qualification_cases.py": "4b9e0df18533789de7de37efc6457ebda4b968bb516608d76aa86f545c1ea304",
+      "fereg/bench/qualify.py": "ed57b205aef0076079e195bc5ccc8d4fc2f2c6429409165247966ff691c5d361",
+      "fereg/bench/qualify_ownership.py": "e47ee96011af09c6dabf08e1670d2e30e7553633f291f4c478132de53b198ce7",
+      "fereg/bench/qualify_scc.py": "68704aff448e8485a775a81bfe54ec14eea0203d9d8567d0dde8ec6bc650fbeb",
+      "fereg/bench/routing.py": "bdcc0a99a842fc680e44e13661ec636209abba438e201d6cfdf676d05b3f1148",
+      "fereg/bench/routing_cases.py": "e060940f2f6f149520c33e4c0f8428fb028b3df0dee0ba7ba48102c0b489b99b",
+      "fereg/bench/routing_oracle.py": "52202977a396e610489211ebc40acbda8c0300332345a6edd0c9ec44490176a8",
+      "fereg/bench/routing_science.py": "62084b661bdb9351e503821778c6dbbda74ab7355456fbeaaa0e83f2df284f03",
+      "fereg/bench/time_exact.py": "f686e037d3a65c2d9ba6cb79e9cb3ad07316768bc9d5b44d928d98c6dbf6caba",
+      "fereg/bench/two_fe_policy.py": "0c6a925e1ddb99b82e8b460a2d9bb2a67911b31ba16f9808469d44c9a1fb71d8",
+      "fereg/bench/two_fe_policy_development.py": "486f7bae48c41d64fca5bdf1ae4d0018c5142fbd6e646258d29c2841476a6697",
+      "fereg/crates/fereg-oracle/python/replay_ols_reference.py": "9f543e9558e3f2198b7f2995eb93b5b4fcebb3d24f08bd1f61c3eb6f80927fd0",
+      "fereg/scripts/replay_bias_reference.py": "32f31f26512c350980bc6c76dbf4ea2a56818b03fa0af39d9b5165d9e50d57ff",
+      "fereg/scripts/replay_cmg_polish.py": "fea5b0bc6a32199dad2baecd5d9f262410400b6c01e0c4fa0e5923fdcb2bc501",
+      "fereg/scripts/replay_plugins.py": "c9c45e18e2ea879a91b71beecf5abae33c769579d326e5468a45f3068034f8b2",
+      "fereg/scripts/replay_psd.py": "6eec58705ef0ffa50d177b7ae51f126e5954827a39f67b4578d018119339bef8",
+      "performance-source/backsub_performance.py": "4bb34f8c96aada6ad7cedb89c1467150a530e1ecaef30619e5847a44ad153917",
+      "performance-source/independent-performance-prep/memory-bound.json": "9636c20c910b4a931d256642da853341b95bddcfc8a2e1a8d767a006d729c1b8",
+      "performance-source/independent-performance-prep/performance.py": "6f49b10f5f63d4d8d6c8569a0cad43be0245d4d54e6b05614d06fd51f7d9ff40",
+      "performance-source/independent-performance-proposed.json": "fedcac043fd0b320b0ba6f15538a7a2d75b9be990fa63a122a9c78fccfc2f781",
+      "performance/scatter-plan.json": "e707c1b0f63f6e64415184e3e12e4c0ac91790db989c3ef4e58f60e95680bab9",
+      "performance/science/summary.json": "a1b0a9e908e8a55df7aae87de4ac5af7435cff62b8752eb2dacf2f97683259cd",
+      "profile/failed-prerequisite-inputs.json": "5c7bce163bde45c300c5167bc3d5055de4f93f29d199b1d68a7509854a3c576a",
+      "profile/output/prerequisite-0.stat.csv": "9c6ede97cdc3f8133d9b23d81ae2d2a56f91d0a69a71ffac13cf6e6d39b71bf2",
+      "profile/output/summary.json": "485b76c668fdd283544eb998c5afbf887ab0423d50121a4469e6485b1cf5dadb",
+      "standalone-scatter/cargo-scatter-science-base/release/backsub_compare": "2b9eb08780c4a954a2158040f47ca3ed69cfaf598bcabca2447fb44cdff3abd3",
+      "standalone-scatter/cargo-scatter-slices/release/backsub_compare": "05b1a826e2ffd2765fc4863b456d24d48ad1def3e2d421431cdc35d29fe8ce56",
+      "standalone-scatter/scatter-slices-science/base/Cargo.lock": "683eb7f7e1ef9ae491dbead88b708819270434cd5536d7b891515596c262c478",
+      "standalone-scatter/scatter-slices-science/base/Cargo.toml": "61d3683591646eafa6429071644c615438e5b18af50043799f0b6883d1d7d98c",
+      "standalone-scatter/scatter-slices-science/build.json": "04192e9195365044deb75ae0a5aeb3d5b5bb5d63a937d037af0cbfe8b51d1187",
+      "standalone-scatter/scatter-slices-science/patch/Cargo.lock": "683eb7f7e1ef9ae491dbead88b708819270434cd5536d7b891515596c262c478",
+      "standalone-scatter/scatter-slices-science/patch/Cargo.toml": "154d6a250b4da6577baa48093ec798ca5534131882ad3aac82d0799f65b1ec92",
+      "standalone-scatter/scatter-slices-science/plan.json": "6052c3ae2688a75eb5c29e662b25922f26103d85b21c8f724b36d480647eefc3",
+      "standalone-scatter/scatter-slices-science/source/backsub_compare.rs": "c1f98275245f720b44c89a95b9afcca1a314dabe3e1f712e86bf01325187357c",
+      "standalone-scatter/within-scatter-base/Cargo.lock": "525b3330ed4dc739d0103f8431e1a4daadb3498ab06d63995293113bbaece68f",
+      "standalone-scatter/within-scatter-base/Cargo.toml": "b14f61df4b0932d9667f6f6beb8e5a021bc11b4b3cf799264b4ab28da723298d",
+      "standalone-scatter/within-scatter-slices/Cargo.lock": "525b3330ed4dc739d0103f8431e1a4daadb3498ab06d63995293113bbaece68f",
+      "standalone-scatter/within-scatter-slices/Cargo.toml": "b14f61df4b0932d9667f6f6beb8e5a021bc11b4b3cf799264b4ab28da723298d"
+    },
+    "interpretation": "The pair ran on a host that was stable in the original panel. Native solve time was 3.150619680 versus 3.110073273 seconds under profiling; this does not reproduce the slowdown or clear the earlier adverse results. User-mode context-switch and migration zeros do not show that no switches or migrations occurred; native time -v separately reports real process resources.",
+    "job_script_sha256": "4aaf3b3b4e9eb2ba60c623d87831c621b8fb1d3c395fd35d23632bc495115849",
+    "kind": "One sequential diagnostic pair; no performance qualification or causal identification from timing",
+    "launcher_sha256": "d0989156d4c11709e8fabfe2c585e896211e12c6e3ed1c2c4d72de5e4027617d",
+    "manifest_sha256": "c20b4acd6caecd6004c23e4101249277af83580063037dbbdcc91a9f1f6e979a",
+    "order": [
+      "base",
+      "patch"
+    ],
+    "profiler": {
+      "buffer_pages": 256,
+      "callgraph": "dwarf,8192",
+      "event": "task-clock:u",
+      "fallback": "Try software+hardware counters once on a tiny CPU-only Python probe. Only an identified hardware permission/unavailable-counter failure permits one software-only probe. Required software-counter, sampling or DWARF failures abort immediately before actual calls. Freeze the successful selection for both calls; no profiler changes or retries after an actual call starts.",
+      "frequency_hz": 1000,
+      "optional_hardware_events": [
+        "cycles:u",
+        "instructions:u"
+      ],
+      "prerequisite_calls_maximum": 2,
+      "prerequisite_cpu_seconds": 0.3,
+      "software_events": [
+        "task-clock",
+        "page-faults",
+        "context-switches",
+        "cpu-migrations"
+      ]
+    },
+    "raw_profile_retention": "The two large perf data files remain on SCC, bound by the per-call SHA256 values. Decoded outputs were collected and their hashes verified.",
+    "readme_sha256": "a729587415b59b3f36ebad5b6b8789edacedfbc767f8bda8a005d35ca9ce3889",
+    "repair": "Only the counter parser changed: accept a requested software event or that exact event plus :u, retain the actual label/modifier, and preserve duplicate, missing, finite and nonnegative checks. Hardware events remain exact and positive. A separate output retained the zero-call failure; arguments, artifacts and the total two-call budget did not change.",
+    "resources": {
+      "library_threads": 1,
+      "mem_per_core": "3G",
+      "num_proc": 28,
+      "pe": "omp28",
+      "slots": 28,
+      "walltime": "00:30:00",
+      "workers": 4
+    },
+    "sample_analysis": {
+      "analysis_source_sha256": {
+        "analyze.py": "c0f8cb07962072d1f5e90a8653f0addfe5ff5dbccd4f46d005307c8761df1b1e",
+        "map_samples.py": "ab22819175d7bea1f74f8ac586e57b5c65d0087630422c138a01da985fbf0ed9",
+        "summarize.py": "dabadce45c35b85ea7b74e9060b4ea9ba651707fdd425ff20b6567f32229a47d"
+      },
+      "arms": {
+        "base": {
+          "exclusive_categories": {
+            "LSMR_named_functions": {
+              "percent": 3.899362975355511,
+              "samples": 606
+            },
+            "allocation_or_vector_construction": {
+              "percent": 0.32172961842867254,
+              "samples": 50
+            },
+            "construction_named_functions": {
+              "percent": 18.023293224374235,
+              "samples": 2801
+            },
+            "design_apply_gather": {
+              "percent": 7.2453510070137055,
+              "samples": 1126
+            },
+            "fixture_generation_checks_and_driver_glue": {
+              "percent": 19.27803873624606,
+              "samples": 2996
+            },
+            "generic_parallel_helpers_not_fully_attributed": {
+              "percent": 10.700727108937649,
+              "samples": 1663
+            },
+            "memory_copy_or_zero": {
+              "percent": 3.880059198249791,
+              "samples": 603
+            },
+            "preconditioner_apply_named_functions": {
+              "percent": 21.68457628209253,
+              "samples": 3370
+            },
+            "runtime_and_other": {
+              "percent": 0.9008429316002832,
+              "samples": 140
+            },
+            "shared_vector_reduction": {
+              "percent": 4.2275271861527575,
+              "samples": 657
+            },
+            "solver_input_output_named_functions": {
+              "percent": 0.7013705681745062,
+              "samples": 109
+            },
+            "unresolved_or_missing_top_frame": {
+              "percent": 0.03860755421144071,
+              "samples": 6
+            },
+            "weighted_left_Owner_fixed_tree": {
+              "percent": 4.446303326684254,
+              "samples": 691
+            },
+            "weighted_right_Fold_fixed_tree": {
+              "percent": 4.652210282478605,
+              "samples": 723
+            }
+          },
+          "inclusive_distinct_sample_presence_not_additive": {
+            "LSMR": 4777,
+            "gather": 1126,
+            "left_Owner_fixed_tree_or_mapped_helper": 805,
+            "preconditioner": 3567,
+            "right_Fold": 725
+          },
+          "load_bias": "0x5645e160e000",
+          "lost_samples": 0,
+          "missing_top_frames": 6,
+          "owner_helper_exclusive_samples_already_in_generic_bucket": 113,
+          "perf_report_samples": 15541,
+          "period_ns_counts": {
+            "1000000": 15541
+          },
+          "raw_samples": 15541,
+          "scatter_top_offsets": {
+            "fold": [
+              {
+                "offset": "0x15b",
+                "samples": 222
+              },
+              {
+                "offset": "0x155",
+                "samples": 109
+              },
+              {
+                "offset": "0x11c",
+                "samples": 76
+              },
+              {
+                "offset": "0x14f",
+                "samples": 72
+              },
+              {
+                "offset": "0x165",
+                "samples": 71
+              },
+              {
+                "offset": "0x136",
+                "samples": 66
+              },
+              {
+                "offset": "0x14a",
+                "samples": 60
+              },
+              {
+                "offset": "0x15f",
+                "samples": 8
+              },
+              {
+                "offset": "0x13a",
+                "samples": 8
+              },
+              {
+                "offset": "0x119",
+                "samples": 7
+              }
+            ],
+            "owner": [
+              {
+                "offset": "0x231",
+                "samples": 109
+              },
+              {
+                "offset": "0x229",
+                "samples": 89
+              },
+              {
+                "offset": "0x223",
+                "samples": 74
+              },
+              {
+                "offset": "0x20d",
+                "samples": 43
+              },
+              {
+                "offset": "0x1d3",
+                "samples": 39
+              },
+              {
+                "offset": "0x0",
+                "samples": 33
+              },
+              {
+                "offset": "0x200",
+                "samples": 27
+              },
+              {
+                "offset": "0x1e0",
+                "samples": 27
+              },
+              {
+                "offset": "0x5",
+                "samples": 26
+              },
+              {
+                "offset": "0x59",
+                "samples": 25
+              }
+            ]
+          },
+          "top_functions": [
+            {
+              "percent": 12.798404221092595,
+              "samples": 1989,
+              "symbol": "within::block_elim::schur::exact::_$u7b$$u7b$closure$u7d$$u7d$::h2e1e81d89a1c6288"
+            },
+            {
+              "percent": 11.846084550543724,
+              "samples": 1841,
+              "symbol": "within::csr_block::CsrBlock::spmv_assign_add::hf10ea36d7c023363"
+            },
+            {
+              "percent": 9.523196705488708,
+              "samples": 1480,
+              "symbol": "rayon_core::thread_pool::ThreadPool::install::_$u7b$$u7b$closure$u7d$$u7d$::hb5ab46ce3c6c9308"
+            },
+            {
+              "percent": 7.554211440705231,
+              "samples": 1174,
+              "symbol": "backsub_compare::signature::h28983c1e2fd2b43e"
+            },
+            {
+              "percent": 7.2453510070137055,
+              "samples": 1126,
+              "symbol": "within::operator::design::gather::gather_apply::_$u7b$$u7b$closure$u7d$$u7d$::h15155d2e973e6950"
+            },
+            {
+              "percent": 6.389550221993437,
+              "samples": 993,
+              "symbol": "within::block_elim::solver::backsub_block_from_scaled_rhs::_$u7b$$u7b$closure$u7d$$u7d$::h6b00f8b594ac7078"
+            },
+            {
+              "percent": 4.652210282478605,
+              "samples": 723,
+              "symbol": "within::operator::design::scatter::fixed_tree::h758ccd230ae27aba"
+            },
+            {
+              "percent": 4.446303326684254,
+              "samples": 691,
+              "symbol": "within::operator::design::scatter::fixed_tree::hc1a6105c0f18c69b"
+            },
+            {
+              "percent": 3.4489415095553695,
+              "samples": 536,
+              "symbol": "_$LT$rayon..iter..splitter..SplitProducer$LT$D$C$S$GT$$u20$as$u20$rayon..iter..plumbing..UnindexedProducer$GT$::fold_with::he462b8fad4d9535d"
+            },
+            {
+              "percent": 3.2880767003410334,
+              "samples": 511,
+              "symbol": "schwarz_precond::fold::fold::h5b111b553bf2120d"
+            },
+            {
+              "percent": 2.9599124895437874,
+              "samples": 460,
+              "symbol": "schwarz_precond::lsmr::mlsmr::h294b64afb776e302"
+            },
+            {
+              "percent": 2.644617463483688,
+              "samples": 411,
+              "symbol": "__memmove_evex_unaligned_erms"
+            },
+            {
+              "percent": 2.284280290843575,
+              "samples": 355,
+              "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper::hdf0b5e7d1750a7da"
+            },
+            {
+              "percent": 2.2521073290007076,
+              "samples": 350,
+              "symbol": "within::domain::factor_pairs::split_into_subdomains::h234db466cb3f5525"
+            },
+            {
+              "percent": 2.2006305900521204,
+              "samples": 342,
+              "symbol": "backsub_compare::check_solution::hfbe0ec7b49033afc"
+            },
+            {
+              "percent": 2.084807927417798,
+              "samples": 324,
+              "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper::hd980b517f6a1976e"
+            },
+            {
+              "percent": 1.5764751303004954,
+              "samples": 245,
+              "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper::h2e27b53ee162960f"
+            },
+            {
+              "percent": 1.512129206614761,
+              "samples": 235,
+              "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper::h029696ea9f1a3cab"
+            },
+            {
+              "percent": 1.383437359243292,
+              "samples": 215,
+              "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper::h03d11429a20bc5ce"
+            },
+            {
+              "percent": 1.2804838813461168,
+              "samples": 199,
+              "symbol": "within::domain::cross_tab::accumulate::accumulate_cross_block::h4f88a8e748d98485"
+            }
+          ]
+        },
+        "patch": {
+          "exclusive_categories": {
+            "LSMR_named_functions": {
+              "percent": 3.892390668659432,
+              "samples": 599
+            },
+            "allocation_or_vector_construction": {
+              "percent": 0.3444018454740399,
+              "samples": 53
+            },
+            "construction_named_functions": {
+              "percent": 18.02586262915069,
+              "samples": 2774
+            },
+            "design_apply_gather": {
+              "percent": 7.570342452401066,
+              "samples": 1165
+            },
+            "fixture_generation_checks_and_driver_glue": {
+              "percent": 19.409968159074662,
+              "samples": 2987
+            },
+            "generic_parallel_helpers_not_fully_attributed": {
+              "percent": 10.786925726168041,
+              "samples": 1660
+            },
+            "memory_copy_or_zero": {
+              "percent": 3.8469036324647474,
+              "samples": 592
+            },
+            "preconditioner_apply_named_functions": {
+              "percent": 21.710312560920137,
+              "samples": 3341
+            },
+            "runtime_and_other": {
+              "percent": 0.8707518357268178,
+              "samples": 134
+            },
+            "shared_vector_reduction": {
+              "percent": 4.236792514133472,
+              "samples": 652
+            },
+            "solver_input_output_named_functions": {
+              "percent": 0.7017999870037039,
+              "samples": 108
+            },
+            "unresolved_or_missing_top_frame": {
+              "percent": 0.05848333225030866,
+              "samples": 9
+            },
+            "weighted_left_Owner_fixed_tree": {
+              "percent": 4.275781402300344,
+              "samples": 658
+            },
+            "weighted_right_Fold_fixed_tree": {
+              "percent": 4.2692832542725325,
+              "samples": 657
+            }
+          },
+          "inclusive_distinct_sample_presence_not_additive": {
+            "LSMR": 4716,
+            "gather": 1165,
+            "left_Owner_fixed_tree_or_mapped_helper": 785,
+            "preconditioner": 3525,
+            "right_Fold": 663
+          },
+          "load_bias": "0x55bbbd9df000",
+          "lost_samples": 0,
+          "missing_top_frames": 9,
+          "owner_helper_exclusive_samples_already_in_generic_bucket": 126,
+          "perf_report_samples": 15389,
+          "period_ns_counts": {
+            "1000000": 15389
+          },
+          "raw_samples": 15389,
+          "scatter_top_offsets": {
+            "fold": [
+              {
+                "offset": "0x155",
+                "samples": 131
+              },
+              {
+                "offset": "0x14f",
+                "samples": 122
+              },
+              {
+                "offset": "0x15b",
+                "samples": 99
+              },
+              {
+                "offset": "0x13a",
+                "samples": 55
+              },
+              {
+                "offset": "0x146",
+                "samples": 47
+              },
+              {
+                "offset": "0x11c",
+                "samples": 47
+              },
+              {
+                "offset": "0x165",
+                "samples": 46
+              },
+              {
+                "offset": "0x130",
+                "samples": 45
+              },
+              {
+                "offset": "0x110",
+                "samples": 38
+              },
+              {
+                "offset": "0x129",
+                "samples": 24
+              }
+            ],
+            "owner": [
+              {
+                "offset": "0x229",
+                "samples": 130
+              },
+              {
+                "offset": "0x216",
+                "samples": 100
+              },
+              {
+                "offset": "0x200",
+                "samples": 96
+              },
+              {
+                "offset": "0x223",
+                "samples": 40
+              },
+              {
+                "offset": "0x231",
+                "samples": 33
+              },
+              {
+                "offset": "0x0",
+                "samples": 30
+              },
+              {
+                "offset": "0x59",
+                "samples": 27
+              },
+              {
+                "offset": "0x22",
+                "samples": 26
+              },
+              {
+                "offset": "0x1ed",
+                "samples": 25
+              },
+              {
+                "offset": "0x1db",
+                "samples": 23
+              }
+            ]
+          },
+          "top_functions": [
+            {
+              "percent": 12.690883098316979,
+              "samples": 1953,
+              "symbol": "within::block_elim::schur::exact::_$u7b$$u7b$closure$u7d$$u7d$::h67fbb7d63fa0f84b"
+            },
+            {
+              "percent": 11.768146078367666,
+              "samples": 1811,
+              "symbol": "within::csr_block::CsrBlock::spmv_assign_add::hc4137a9ab2d5063c"
+            },
+            {
+              "percent": 9.695236857495614,
+              "samples": 1492,
+              "symbol": "rayon_core::thread_pool::ThreadPool::install::_$u7b$$u7b$closure$u7d$$u7d$::h72f1ca2cb5179b7f"
+            },
+            {
+              "percent": 7.570342452401066,
+              "samples": 1165,
+              "symbol": "within::operator::design::gather::gather_apply::_$u7b$$u7b$closure$u7d$$u7d$::h85ec15e2b89fa0ea"
+            },
+            {
+              "percent": 7.5508480083176295,
+              "samples": 1162,
+              "symbol": "backsub_compare::signature::hf3f4507465b0a353"
+            },
+            {
+              "percent": 6.511144323867698,
+              "samples": 1002,
+              "symbol": "within::block_elim::solver::backsub_block_from_scaled_rhs::_$u7b$$u7b$closure$u7d$$u7d$::h4be3eafb640e860f"
+            },
+            {
+              "percent": 4.275781402300344,
+              "samples": 658,
+              "symbol": "within::operator::design::scatter::fixed_tree::hed0dd96a07167b70"
+            },
+            {
+              "percent": 4.2692832542725325,
+              "samples": 657,
+              "symbol": "within::operator::design::scatter::fixed_tree::hfca7a04c77d16485"
+            },
+            {
+              "percent": 3.4310221586847747,
+              "samples": 528,
+              "symbol": "_$LT$rayon..iter..splitter..SplitProducer$LT$D$C$S$GT$$u20$as$u20$rayon..iter..plumbing..UnindexedProducer$GT$::fold_with::h9ffe35fd4ff7402c"
+            },
+            {
+              "percent": 3.3010591981285335,
+              "samples": 508,
+              "symbol": "schwarz_precond::fold::fold::h664d373b929e35fd"
+            },
+            {
+              "percent": 2.989148092793554,
+              "samples": 460,
+              "symbol": "schwarz_precond::lsmr::mlsmr::h18d86941fe872ba8"
+            },
+            {
+              "percent": 2.5927610630970173,
+              "samples": 399,
+              "symbol": "__memmove_evex_unaligned_erms"
+            },
+            {
+              "percent": 2.228864773539541,
+              "samples": 343,
+              "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper::hbc5f5fbf241ac6f2"
+            },
+            {
+              "percent": 2.1638832932614207,
+              "samples": 333,
+              "symbol": "backsub_compare::check_solution::h368a1fcd4d925665"
+            },
+            {
+              "percent": 2.144388849177984,
+              "samples": 330,
+              "symbol": "within::domain::factor_pairs::split_into_subdomains::hea7d7c17b1dd8012"
+            },
+            {
+              "percent": 2.144388849177984,
+              "samples": 330,
+              "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper::hfee7c573f541fe1a"
+            },
+            {
+              "percent": 1.5465592306192735,
+              "samples": 238,
+              "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper::hee8789c33b127ef3"
+            },
+            {
+              "percent": 1.4815777503411527,
+              "samples": 228,
+              "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper::hd0958350896eb9d6"
+            },
+            {
+              "percent": 1.4555851582299044,
+              "samples": 224,
+              "symbol": "within::domain::cross_tab::accumulate::accumulate_cross_block::hae59d9f8f760003b"
+            },
+            {
+              "percent": 1.3971018259795958,
+              "samples": 215,
+              "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper::hbc2e046ff9b1ff4a"
+            }
+          ]
+        }
+      },
+      "findings": [
+        "This pair did not reproduce the earlier weighted slowdown. The profiled patch had fewer total userspace samples and lower instrumented final-group time, but one sequential pair provides no acceptance or variance evidence.",
+        "The two weighted fixed_tree specializations are identifiable and neither has more exclusive samples in this pair; counts include their control work, not just arithmetic leaf instructions. This does not explain earlier host-specific unfavorable timing.",
+        "Gather has more exclusive samples in the patch; preconditioner sparse multiply/back-substitution and setup Schur construction dominate larger absolute portions. These descriptive counts cannot attribute causality.",
+        "The codegen audit established real weighted caller changes and shifted leaf placement despite identical inspected Fold instructions. This profile neither proves nor rules out code-layout, cache, allocation or host interactions behind prior regressions."
+      ],
+      "independent_reviews": {
+        "attribution": {
+          "checked": "Weighted C1 dispatch, 1,024-level grouping, 10,000-row parallel threshold, 4,096-row leaf and shared serial/parallel closure bind the selected specialization to Owner.",
+          "limit": "The attribution reviewer did not independently recount the large stacks. Counts include prologue/control work; caller-PC adjustment remains explicit.",
+          "result": "pass_with_limits"
+        },
+        "metadata": {
+          "checked": "Two actual calls, exact declared science, retained ELF identities, all 12 local per-arm output hashes, zero lost samples, no profiler warnings, whole 28-CPU reservation, sole-job censuses and no known competing compute.",
+          "result": "pass_with_limits"
+        }
+      },
+      "limitations": [
+        "One host, scc-zj4, which was previously stable; one fixed-order profiled call per arm. No repeatability estimate, confidence interval, causal isolation, or replacement of original qualification evidence; prior wj4/xe2 observations remain unresolved and retained.",
+        "Userspace task-clock samples exclude kernel execution and off-CPU waits. Sampling and DWARF unwinding perturb the workload.",
+        "Whole-process sample counts and outer hardware instruction/cycle counts include setup, checks and wrappers; they are not solver-only counts and cannot be equated to final four-solve elapsed_ns or summed CPU/wall intervals.",
+        "Generic parallel helper symbols contain inlined numerical work and are not all mapped; absence of an apply_adjoint top-frame sample is not absence of adjoint work.",
+        "Counters with :u include user filtering. Zero user-filtered context-switch/migration counters do not imply zero process scheduling; inner time-v reports nonzero switches.",
+        "Raw perf data remain on SCC and are bound by SHA256. The analysis uses collected decoded stacks and reports whose hashes were verified."
+      ],
+      "method": {
+        "Fold_attribution": "The right unsorted 127-level term takes the separately verified weighted Fold specializations.",
+        "Owner_attribution": "Independent source and dispatch review ties the left sorted term to the scalar-result fixed_tree specializations. The weighted C1 branch groups 1,024 levels, uses the 10,000-row parallel threshold and shares the 4,096-row leaf closure between serial and parallel Owner branches. Counts include prologue and control work.",
+        "caller_pc_limit": "The observed base PC 0xe3c28 is an unwinder-adjusted caller PC; the literal return address is 0xe3c29.",
+        "exclusive": "Exactly one category per sample, determined by the first frame. Categories sum to the full decoded sample count; missing frames and generic helpers are retained.",
+        "inclusive": "A named region is counted at most once in each stack. Regions can overlap and must not be summed. Rayon worker-root truncation makes ancestor coverage incomplete.",
+        "independent_recount": "Both full decoded sample-header totals and the sum of every exclusive category were checked independently. No new native calls were made.",
+        "resolution": "A consistent load bias from captured MLSMR PCs and retained ELF symbols maps each PC to a function interval, separating the two fixed_tree specializations that perf prints with the same demangled name."
+      },
+      "source_record_sha256": "9de6d4adaba5fdd09e5adc24bda8d3102e59c421c19fc5bee35b48631e48bd2a"
+    },
+    "scheduler": {
+      "attempts": [
+        {
+          "actual_binary_calls": 0,
+          "cpu_seconds": 1.463,
+          "end_time": "2026-10-29 14:39:02",
+          "exit_status": 1,
+          "failed": 0,
+          "granted_pe": "omp28",
+          "hostname": "scc-zj4.scc.bu.edu",
+          "job_id": 8341332,
+          "maxvmem": "91.977M",
+          "queue": "econ",
+          "ru_wallclock": 2,
+          "slots": 28,
+          "start_time": "2026-10-29 14:39:00"
+        },
+        {
+          "actual_binary_calls": 2,
+          "cpu_seconds": 56.945,
+          "end_time": "2026-10-29 14:45:54",
+          "exit_status": 0,
+          "failed": 0,
+          "granted_pe": "omp28",
+          "hostname": "scc-zj4.scc.bu.edu",
+          "job_id": 8341371,
+          "maxvmem": "2.971G",
+          "queue": "econ",
+          "ru_majflt": 2129,
+          "ru_maxrss_kib": 2437508,
+          "ru_minflt": 1362309,
+          "ru_nivcsw": 1710,
+          "ru_nvcsw": 79604,
+          "ru_wallclock": 50,
+          "slots": 28,
+          "start_time": "2026-10-29 14:45:04"
+        }
+      ],
+      "scope": "Whole job including probes, perf recording and decoding, hashing and host observation; not per-call native resources. Times are SCC local scheduler times.",
+      "source": "Completed qacct -j output read over ssh scc; compact transcription, not a raw accounting file"
+    },
+    "scheduler_transcription_sha256": "af7355c985d0805e4a772de2b88e284c8267df348b5f73129be38019e43f6ea8",
+    "science_exact": true,
+    "science_exclusions": [
+      "artifact",
+      "build_ns",
+      "elapsed_ns"
+    ],
+    "scope": {
+      "limits": "One sequential call per arm on one host; no performance verdict, variance estimate or causal attribution from timing. Userspace CPU samples omit off-CPU waits and kernel work. Software counters and resource fields help interpret but do not remove sampler overhead.",
+      "native_timers": "build_ns and final four-solve elapsed_ns are instrumentation-affected diagnostics only.",
+      "perf_record": "Entire executable lifetime: fixture generation, construction, warmup, eight RHS solves, output checks and teardown. Sampling overhead retained.",
+      "perf_stat": "Outer perf-stat process subtree, including perf-record and time wrappers; not pure solver cost. Retain actual event labels/modifiers; software :u context-switch/migration zeros do not establish no kernel scheduling activity. Use native time -v independently.",
+      "run_process": "Outer wrapper-tree wall/user/system/maxrss, as returned by existing native.run_process.",
+      "time_verbose": "Inner /usr/bin/time -v observes the native executable and its threads over its whole lifetime, including setup and warmup."
+    },
+    "timeout_seconds_per_call": 120,
+    "total_native_call_budget": 2
+  },
+  "schema": 1,
+  "scope": "The weighted categorical path supports weighted OLS and some PPML projections. This standalone benchmark does not measure all weighted fereg fits or the PPML joint solver; its host-specific observations must not be extrapolated to those complete estimators.",
+  "source_restoration": {
+    "active_within_revision": "d3407a16dec3715f6e9eee13fb9b6646d5b28035",
+    "comment_file_sha256": "c8f0005e2b937627489e158a901a9e8f41c0aed884171f02688b77b62a2ef873",
+    "evidence_reuse": "Earlier d340 full source and native correctness evidence applies to the equivalent shipping runtime. Performance verdicts are unchanged.",
+    "file_sha256": {
+      "Cargo.lock": "ae8016d756b08dbfc28b8db86803e434e9fd4fcec0a8580e0c17da62779e248c",
+      "crates/fereg-core/Cargo.toml": "8f294e01da50b8b6d78871407e1721189bf02fd29077aa2cd84f46b39dfcfc8e",
+      "fuzz/Cargo.lock": "4d38a2058481507da24634c28c509fbae78f52a416d62fab96019ffa3961db4e"
+    },
+    "focused_size_checks": {
+      "broad_source_or_native_rerun": false,
+      "execution_evidence": "Parent tool transcript; no additional log artifact was created.",
+      "initial_attempt": {
+        "cause": "The default shell selected Xcode Python 3.9, which lacks tomllib.",
+        "status": "failed before checks"
+      },
+      "repaired_attempt": {
+        "complexity_ratchet": "passed",
+        "oracle_size_checks": "passed",
+        "parser_tests": 7,
+        "repair": "Select the existing Homebrew Python interpreter; no source edit.",
+        "status": "passed"
+      },
+      "runtime_metric_totals_changed": false
+    },
+    "historical_unaccepted_fereg_revision": "379bf7c81a0cb9e74bb06c26012117d8d2eb126e",
+    "historical_unaccepted_within_revision": "4beaa8afcdc56ddee6f29b3cbd5bf151f0f2d5c5",
+    "manifest_and_locks_byte_identical": true,
+    "metadata_checks": {
+      "command": [
+        "cargo",
+        "metadata",
+        "--locked",
+        "--offline",
+        "--format-version",
+        "1",
+        "--manifest-path",
+        "MANIFEST"
+      ],
+      "execution_evidence": "Recorded in the restoration tool transcript; no plugin rebuild or new fereg native test.",
+      "fuzz": {
+        "exit_code": 0,
+        "manifest": "fuzz/Cargo.toml",
+        "packages": 64
+      },
+      "toolchain": "Rust/Cargo 1.85.1",
+      "workspace": {
+        "exit_code": 0,
+        "manifest": "Cargo.toml",
+        "packages": 59
+      }
+    },
+    "separate_unaccepted_counts_revisions": [
+      "534ea64f7b0e26b772f93ca087f43837c1e187e4",
+      "ba409ada2ffb27e90d19b22532c4d830a161f964"
+    ],
+    "shipping_comparison_paths": [
+      "crates/fereg-core/src",
+      "crates/fereg-plugin/src",
+      "plugin",
+      "stata",
+      "scripts"
+    ],
+    "shipping_diff_sha256": "1202f35043e682db6aba65c1a3de6a9e3a3ff4521dfe2e4086d45ce838473468",
+    "shipping_difference": "Only explanatory comments in crates/fereg-core/src/memory/categorical_schwarz.rs; no runtime tokens changed.",
+    "tested_fereg_revision": "d96eccfc269b8b5045038ee0dcee5fc2c788a86d"
+  },
+  "static_code_audit": {
+    "artifacts": {
+      "base": {
+        "elf_build_id": "a66e316dfec141cb704705509a8932ca7cc1b8bf",
+        "elf_sha256": "2b9eb08780c4a954a2158040f47ca3ed69cfaf598bcabca2447fb44cdff3abd3",
+        "source_revision": "6f2ead13bc494f7b6507b40a894c6f277aa21679"
+      },
+      "build_record_sha256": "04192e9195365044deb75ae0a5aeb3d5b5bb5d63a937d037af0cbfe8b51d1187",
+      "common_adapted_harness_sha256": "c1f98275245f720b44c89a95b9afcca1a314dabe3e1f712e86bf01325187357c",
+      "compiler": "rustc 1.85.1 / LLVM 19.1.7, x86_64-unknown-linux-gnu; retained binaries, no rebuild",
+      "disassembler": {
+        "sha256": "792a7ab8593499fabb6316aa915de8833d61949d6329f89a0d6416f8ed99f4c8",
+        "version": "Apple LLVM21.0.0 llvm-objdump"
+      },
+      "patch": {
+        "elf_build_id": "0550aff7ed3532fc9b6d2c9af957e831340814eb",
+        "elf_sha256": "05b1a826e2ffd2765fc4863b456d24d48ad1def3e2d421431cdc35d29fe8ce56",
+        "source_revision": "1f16b4376d08ebd1b99f5120b868db7262af6b84"
+      },
+      "performance_plan_sha256": "e707c1b0f63f6e64415184e3e12e4c0ac91790db989c3ef4e58f60e95680bab9"
+    },
+    "benchmark_routes": {
+      "calls": "The harness makes four serial RHS calls per group, with the selected Rayon pool internally. One warmup group means eight solves per process.",
+      "left_term": "Four contiguous rows per left level; sorted q labels select Owner. Its observation loop is distinct from the Fold leaf inspected below.",
+      "right_term": "Unsorted cycling right labels have 127 levels; 16,384 or 16,777,216 rows exceed 12 times 127, selecting Fold at both declared sizes.",
+      "scope_limit": "The detailed identical leaf claim applies to the right Fold term only. The whole apply_adjoint body was compared, but the left Owner loop and all Rayon specializations were not exhaustively matched.",
+      "source_mapping": "domain.rs:636-666 and domain/adjoint_sum.rs:18-25"
+    },
+    "conclusion": "The weighted right Fold leaf retains its instructions, but the surrounding apply_adjoint function has real stack, register and layout changes. The left Owner loop and all Rayon clones were not exhaustively matched. Static inspection cannot attribute the slowdown.",
+    "functions": [
+      {
+        "base_address": "0x243c0",
+        "base_bytes": 6416,
+        "base_instructions": 1263,
+        "base_mod64": 0,
+        "floating_rip_references_exact": true,
+        "floating_rip_references_verified": 3,
+        "id": 0,
+        "instruction_operands_exact_after_address_normalization": true,
+        "patch_address": "0x24450",
+        "patch_bytes": 6416,
+        "patch_instructions": 1263,
+        "patch_mod64": 16,
+        "symbol": "within::solver::Solver::solve"
+      },
+      {
+        "base_address": "0x4c0e0",
+        "base_bytes": 562,
+        "base_instructions": 127,
+        "base_mod64": 32,
+        "floating_rip_references_exact": true,
+        "floating_rip_references_verified": 5,
+        "id": 1,
+        "instruction_operands_exact_after_address_normalization": true,
+        "patch_address": "0x4c420",
+        "patch_bytes": 562,
+        "patch_instructions": 127,
+        "patch_mod64": 32,
+        "symbol": "schwarz_precond::lsmr::recurrence::LsmrRecurrenceState::step"
+      },
+      {
+        "base_address": "0xdd4c0",
+        "base_bytes": 338,
+        "base_instructions": 86,
+        "base_mod64": 0,
+        "floating_rip_references_exact": true,
+        "floating_rip_references_verified": 0,
+        "id": 2,
+        "instruction_operands_exact_after_address_normalization": true,
+        "patch_address": "0xdd860",
+        "patch_bytes": 338,
+        "patch_instructions": 86,
+        "patch_mod64": 32,
+        "symbol": "_$LT$within..operator..design..DesignOperator$u20$as$u20$schwarz_precond..Operator$GT$::apply"
+      },
+      {
+        "base_address": "0xdd620",
+        "base_bytes": 4395,
+        "base_instructions": 945,
+        "base_mod64": 32,
+        "floating_rip_references_exact": true,
+        "floating_rip_references_verified": 0,
+        "id": 3,
+        "instruction_operands_exact_after_address_normalization": true,
+        "patch_address": "0xdd9c0",
+        "patch_bytes": 4395,
+        "patch_instructions": 945,
+        "patch_mod64": 0,
+        "symbol": "within::operator::design::gather::gather_apply::_$u7b$$u7b$closure$u7d$$u7d$"
+      },
+      {
+        "base_address": "0xdf430",
+        "base_bytes": 20672,
+        "base_instructions": 4094,
+        "base_mod64": 48,
+        "floating_rip_references_exact": true,
+        "floating_rip_references_verified": 0,
+        "id": 4,
+        "instruction_operands_exact_after_address_normalization": false,
+        "patch_address": "0xdf7d0",
+        "patch_bytes": 20873,
+        "patch_instructions": 4143,
+        "patch_mod64": 16,
+        "symbol": "_$LT$within..operator..design..DesignOperator$u20$as$u20$schwarz_precond..Operator$GT$::apply_adjoint",
+        "weighted_start": {
+          "base": "0xe1909",
+          "base_mod64": 9,
+          "patch": "0xe1cdc",
+          "patch_mod64": 28
+        }
+      },
+      {
+        "base_address": "0x119ad0",
+        "base_bytes": 3727,
+        "base_instructions": 666,
+        "base_mod64": 16,
+        "floating_rip_references_exact": true,
+        "floating_rip_references_verified": 6,
+        "id": 5,
+        "instruction_operands_exact_after_address_normalization": true,
+        "patch_address": "0x119f50",
+        "patch_bytes": 3727,
+        "patch_instructions": 666,
+        "patch_mod64": 16,
+        "symbol": "schwarz_precond::lsmr::mlsmr"
+      },
+      {
+        "base_address": "0x11e130",
+        "base_bytes": 15650,
+        "base_instructions": 3080,
+        "base_mod64": 48,
+        "floating_rip_references_exact": true,
+        "floating_rip_references_verified": 72,
+        "id": 6,
+        "instruction_operands_exact_after_address_normalization": true,
+        "patch_address": "0x11e5b0",
+        "patch_bytes": 15650,
+        "patch_instructions": 3080,
+        "patch_mod64": 48,
+        "symbol": "schwarz_precond::lsmr::lsmr_from_bidiag"
+      }
+    ],
+    "independent_review": {
+      "checked": "Raw stack growth from 424 to 440 bytes and register-store examples; 301 normalized weighted fixed_tree instructions including the leaf; 86 byte-equal constants; 10 raw/source hash bindings.",
+      "limits": "Canonical callee/RIP removal is not complete target equivalence; unresolved Rayon clone and metadata remain. No causal performance conclusion.",
+      "result": "pass_with_limits",
+      "reviewer": "fingerprint_review"
+    },
+    "native_or_build_calls": 0,
+    "normalization": {
+      "data_verification": "All 86 RIP-relative floating constant references in the six selected structurally identical functions were byte-equal at their mapped ELF addresses. Gather jump-table targets match function-relative destinations. GOT dynamic relocations identify unchanged memcpy, memset and hypot.",
+      "limitations": "Address-taking LEAs include cold panic metadata/string/vtable references and were not exhaustively recursively resolved. Matching canonical names is not proof that every callee specialization is identical. The loose @LOCAL weighted.diff is diagnostic only, not a control-flow equivalence proof.",
+      "preserved": "Mnemonic, register operands, non-address immediates and local function-relative branch destinations; direct-call names stripped only of Rust hash suffix.",
+      "removed": "RIP displacements and disassembler comments/addresses; Rust hash suffixes."
+    },
+    "raw_evidence_sha256": {
+      "00.base.s": "87a984ac0b7d78563edfddabb9d5d3649e23d3b898a1faccd8f9003a14420d69",
+      "00.diff": "9e9bc08df88a0a70ef239ce3adfb1507dd024850ad77899b79251aac431525b6",
+      "00.patch.s": "1628615d5815e6d817957a0ca0f9f62d8705da95a1441305563d5886291aebe4",
+      "01.base.s": "f31119aed8a1f609b5b542cab4fba1ae107fe51408c49f65be61556fa00fad07",
+      "01.diff": "50528529409b985dce9ed7e4c7cb800d49c771ebe02e21fd7a4933a117c50335",
+      "01.patch.s": "7cf4fc0100930c056cf79446e7869fab2876e8cd3ca1d79f9eb5827b80469828",
+      "02.base.s": "aa01d16cce91c75e37b8f658495756dff085ea4952478db41a1c8af78f6befa1",
+      "02.diff": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "02.patch.s": "1ef8a3c11460586952dec5cb0e081815811970f52f185b03a7ce6e906e6a7a85",
+      "03.base.s": "abcec8169fde6993e96444dbea7bc27d88784dcbcb4429d9b2a4e7ad10e17dc7",
+      "03.diff": "63e2cec42a5652e95614ce6fc0d3c26db6e555ac6692109af553910490ec63e9",
+      "03.patch.s": "d4cc3859553a3eb8abe44808903f3ab59728da65bcbbabec5914883008f45c11",
+      "04.base.s": "13fda8d5463e9c991c72db23a0acc8dfa588d442ed76f29d5c2d5c3674683fba",
+      "04.diff": "73cecd709c2d189aeaefb0c35bc85d21fedd4762696dd944871af6aeb2ab7e5f",
+      "04.patch.s": "18cc44c0edbe0e441ebbc24d4d7cd5ff9b068585b3a070f0f2af1da202924621",
+      "05.base.s": "7ae5df20f978b7a7d415f7e7ffa1613f051158da613b23115e4b159bed9f2ad9",
+      "05.diff": "fef02497754d3513faac0707c429c5f340912fc579c43ab65d0906cc5ba86949",
+      "05.patch.s": "f9e9f57beb4c937630baef5aa03ac92e3930e383deeb7b3a6ca7d23b1f4d81eb",
+      "06.base.s": "268fb2519735c7409e1e6f53581ac3f13554a69eeb36b174bf24200a3959656c",
+      "06.diff": "b71e064f7a3ddd0009df7c1a964595159f2a1b55ab13db7e492eb32d9e343ef5",
+      "06.patch.s": "ca2633148305d987302d858a0d014bfbb1e03b4de80521a64ed4e659e4854344",
+      "base.apply_adjoint.s": "9e19aa16b9ffa499cdf24bdef9fb3896d0aad39ec4fa83ab0da18d11cc37ae6d",
+      "base.relocations": "f36fbe750484c199ac01267696f0643828c7264d5eb5f07b992d8f794408465e",
+      "base.symbols": "9b03f16a89a2b395631bec1b6b33bb4321bee6155f2fba49d82415597c295159",
+      "callee-summary.json": "20ae35b4018880ed098cfe5023d59103dfbffb9bdf3d84107c55776e400f8bf0",
+      "functions.json": "49db8a0cf8197e008e6ce194c62b5595eeba8efa70ec3efaf34aac5228da1bb5",
+      "inspect.py": "b4f1a6d6ff41d180c906b8615dacbef85800bc2c5bdc1199ce21d0d8292cd310",
+      "patch.apply_adjoint.s": "a3bc4c51e61d3f5a606acd53ded5283ad7d9b265a917ce0f845d644bfd6b96b7",
+      "patch.relocations": "006da0c5aba2748c81684bea9f637a4bd1110db669f03adc15620d512b211a6e",
+      "patch.symbols": "9cae08a6075db429d2a477b1b32922021d569a7829c0c9954599234e82754866",
+      "resolve.py": "fd0a85ff45443a5cfbcd89688be82aac083c456959ad900ba6d22adffecfb003",
+      "resolved.json": "dc0181f9deccc7365cf5aa8a0b31b4a4b554dff2f1593fcb67273875a16fbb28",
+      "weighted-cold.base.s": "7cb00fc2fcf8ba16961f00b60e893733339aad04d4e3f893991065ccb6da9043",
+      "weighted-cold.diff": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "weighted-cold.patch.s": "3ac05e3ea5ee73ccc294cf57011a3d861c458c628f824c25bbf8ba00eeb04fdc",
+      "weighted-cross.base.s": "3823055284eecfbe82137a60ee1438964ff4eba6f9a338f6d7a8d456861de9d9",
+      "weighted-cross.diff": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "weighted-cross.patch.s": "ac77bedcdef5cec66305dd086736c7c31f7500399ba39780554557bb2f970dd9",
+      "weighted-join.base.s": "4e7680ed86bbeca1dce246fe67bfa37547c0a6ad31f4b5029464db37fb558be5",
+      "weighted-join.diff": "f7fc7597bf2228d227a6423ddcaef7fb324a277a23bb6299d4cd6ad277b21e5c",
+      "weighted-join.patch.s": "c41e66835fb9a303addbe5974d79dc8c351f5f54fd828873dad72d16b99ae7f2",
+      "weighted-tree.base.s": "c6e1cbb98e0520df772049dea65b4b1a33059d66acf55ec0d8e753c2d6c0d3ee",
+      "weighted-tree.diff": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "weighted-tree.patch.s": "d882c5d8e5e30da7458157bbb1e55db51edcac470bddd8d0e0aa9e0dfd857efb",
+      "weighted.diff": "64e69b3a7655b690ee14741472ac83c213b23622a38147296f7dd9c4d8ed265b"
+    },
+    "source_findings": [
+      {
+        "finding": "Some(sqrt_weights) passes |i|sw[i]*x[i] and None to scatter_apply; only unweighted passes Some(x).",
+        "lines": "73-79",
+        "path": "crates/within/src/operator/design.rs"
+      },
+      {
+        "finding": "Weighted categorical term falls back to unchanged scatter_term<1>; categorical_fold specialization is used only for unweighted Fold. The source change does not prove generated-code equality.",
+        "lines": "29-35,109-136",
+        "path": "crates/within/src/operator/design/scatter.rs"
+      },
+      {
+        "finding": "ModifiedGolubKahan::step calls ordinary operator.apply then axpy_with_norm; frozen DesignOperator has no specialized fused-operator override. Fused vector update/norm code is included in the monomorphized lsmr_from_bidiag inspection.",
+        "lines": "478-500",
+        "path": "crates/schwarz-precond/src/lsmr/bidiag.rs"
+      },
+      {
+        "finding": "Static additive solve supplies no escalation callback and defaults to no warm start. This frozen MlsmrOptions has only warm_start, escalation and local_size; no progress or cancellation callback exists in this independent scatter comparison.",
+        "lines": "429-435",
+        "path": "crates/within/src/solver.rs"
+      }
+    ],
+    "source_record_sha256": "21c82cd84698ec83e761da2ddf1f4bf1c234f1527f582461ce5674922b863770",
+    "text_size": {
+      "base_bytes": 1177491,
+      "delta_bytes": 272,
+      "patch_bytes": 1177763
+    },
+    "weighted_categorical_fold": {
+      "caller": {
+        "actual_change": "Weighted caller moves closure input registers and stack locations, changes register allocation and local block placement. These differences survive removal of relocation addresses.",
+        "example": "base stores %rdx at0xe8(%rsp),%rcx at0xf0; patch stores %r9 at0xd8,%r8 at0xe0. Weighted closure begins at0xd8 vs0xc8(%rsp).",
+        "stack_subtraction_bytes": {
+          "base": 424,
+          "patch": 440
+        }
+      },
+      "dispatch": {
+        "categorical_zero_slope_jump_target": {
+          "base": "0xe1a90",
+          "patch": "0xe1e58"
+        },
+        "table_mapping_verified": true,
+        "weighted_continuation": {
+          "base": "0xe1909",
+          "patch": "0xe1cdc"
+        }
+      },
+      "fixed_tree": {
+        "base_address": "0xecdb0",
+        "base_symbol": "within::operator::design::scatter::fixed_tree::h758ccd230ae27aba",
+        "bytes_each": 1310,
+        "inlining": "Weighted per-row closure is inlined into this fixed_tree specialization in both artifacts; no new leaf call.",
+        "instruction_operands_exact_after_address_normalization": true,
+        "instructions_each": 301,
+        "patch_address": "0xed250",
+        "patch_symbol": "within::operator::design::scatter::fixed_tree::hfca7a04c77d16485"
+      },
+      "leaf_loop": {
+        "base_last_instruction": "0xecf1b",
+        "base_mod64": 0,
+        "base_start": "0xecec0",
+        "finding": "Same row bounds comparisons, level load, movsd weight, mulsd input, addsd accumulator, store and increment/backedge. Alignment changes are observed; their performance effect is unmeasured.",
+        "patch_last_instruction": "0xed3bb",
+        "patch_mod64": 32,
+        "patch_start": "0xed360"
+      },
+      "parallel_wrapper_limit": "Join closure differs only in WorkerThread::take_local_job clone annotation(.699 vs.703); both bodies1196bytes/266instructions. Registry cold/cross wrappers have matching normalized instruction operands. The clone implementation and complete Rayon runtime callgraph were not recursively audited.",
+      "parallel_wrappers": [
+        {
+          "base_address": "0xfa300",
+          "bytes_each": 1196,
+          "diff_lines": 11,
+          "instructions": [
+            266,
+            266
+          ],
+          "name": "weighted-join",
+          "normalized_operand_exact": false,
+          "patch_address": "0xfa910"
+        },
+        {
+          "base_address": "0x173a0",
+          "bytes_each": 347,
+          "diff_lines": 0,
+          "instructions": [
+            75,
+            75
+          ],
+          "name": "weighted-cold",
+          "normalized_operand_exact": true,
+          "patch_address": "0x17420"
+        },
+        {
+          "base_address": "0x17500",
+          "bytes_each": 325,
+          "diff_lines": 0,
+          "instructions": [
+            73,
+            73
+          ],
+          "name": "weighted-cross",
+          "normalized_operand_exact": true,
+          "patch_address": "0x17580"
+        }
+      ]
+    }
+  },
+  "status": "Bounded diagnosis complete; cause unresolved and scatter held"
+}

@@ -12,9 +12,12 @@ and PPML reporting are unchanged.
 The unpublished beta.11 candidate is separate from the accepted beta.10 release.
 The [compatibility report](within_migration.md) records the frozen dependency
 bases, patch evidence and outstanding integration and performance requirements.
-The completed native and main performance evidence below binds within
-`d3407a16`; the latest `4beaa8af` source candidate has separate checks described
-below and no new actual plugin.
+The active source pin is restored to `d3407a16`, which also binds the completed
+native and main performance evidence below. Johannes directed bounded slowdown
+diagnosis before further qualification, and scatter is held. The `4beaa8af`
+combined source and its checks remain historical, unaccepted evidence; no new
+actual plugin was built. The pin restoration does not establish performance
+recovery or beta.11 acceptance.
 Johannes approved retiring the general more-than-two-FE pair-upgrade experiment;
 its explicit h/k and builder-Break requests must fail clearly. Two-FE h/k and
 builder-Break behavior, public Auto escalation, supported OLS/PPML paths and
@@ -213,8 +216,9 @@ performance timings. A denied hardware query stopped the first; competing
 unrelated Stata Monte Carlo work stopped the second at admission. No process
 was stopped and no adverse measurement was excluded. Mac timing remains blocked.
 
-Combined within source [`4beaa8af`](https://github.com/johannes-schmieder/within/commit/4beaa8afcdc56ddee6f29b3cbd5bf151f0f2d5c5)
-is published on Johannes's fork only. Its [source record](../bench/results/within-optimized-integration-20261029.json)
+Historical combined within source [`4beaa8af`](https://github.com/johannes-schmieder/within/commit/4beaa8afcdc56ddee6f29b3cbd5bf151f0f2d5c5)
+was integrated at fereg `379bf7c8` and published on Johannes's fork only.
+Its [source record](../bench/results/within-optimized-integration-20261029.json)
 retains 588 passing top-level tests, two passing isolated subprocess tests and
 one ignored fixture-regeneration test on Mac Rust 1.85.1. A missing cancellation
 argument first caused test compilation to fail; the repair changes only the
@@ -226,8 +230,31 @@ After approved metadata-only repairs, size/ratchet, mock-SPI and numeric guards
 passed. All measured totals and limits are unchanged, both failures remain
 recorded, and no broad rerun occurred. No new actual plugin has been built:
 the earlier native evidence and performance verdicts still apply to `d3407a16`.
-The held back-substitution patch, upstream submission and production adoption
-remain outside this result.
+The active pin has been restored to `d3407a16`. Its manifest and both lockfiles
+match tested fereg `d96eccfc` exactly; the only shipping-source difference is an
+explanatory memory comment. The earlier source/native correctness evidence is
+reused, with successful locked offline metadata checks for the 59-package
+workspace and 64-package fuzz workspace. No plugin rebuild or new fereg native
+test was run.
+Combined counts-only `534ea64f` and standalone counts `ba409ada` remain separate,
+unaccepted candidates. The
+original beta.11-versus-beta.10 regressions remain distinct from the standalone
+scatter weighted-control concern. No recovery or acceptance follows from the
+restoration. Additional strict-reference fits remain unapproved and qualification
+has not resumed. The held back-substitution patch, upstream submission and
+production adoption remain outside this result.
+
+The [bounded diagnosis](../bench/results/within-scatter-diagnosis-20261029.json)
+finds real weighted caller code changes but no cause for the adverse controls.
+Job `8341332` failed a counter-label prerequisite before native work; a narrow
+parser repair preserved that failure. Job `8341371` completed exactly two
+profiled calls with exact science, zero lost samples and scheduler failure/exit
+0/0. This single pair on previously stable `scc-zj4` did not reproduce the
+slowdown. Samples cover the whole process, include unresolved parallel-helper
+work, and cannot clear the earlier adverse hosts. Scatter remains held; counts
+and the original beta.11 regressions retain their prior decisions. The record
+also preserves the restored-pin size check's Python-selection failure and
+successful interpreter-only repair. No new qualification or acceptance is claimed.
 
 The Linux separation-fallback companion passes its 16 declared actual-plugin
 calls on `scc-pi2` (job 8328529, scheduler failure/exit 0/0). The seed-17 weighted
