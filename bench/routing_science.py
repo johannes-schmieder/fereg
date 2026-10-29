@@ -14,6 +14,61 @@ import routing_oracle
 from replay_plugins import (allowed_difference, differences, exact_view,
                             numerical_scope_indices, scientific_errors, work_scope_indices)
 
+WITHIN_MIGRATION = 'within-migration-v1'
+
+
+def within_migration_eligible(meta):
+    """The existing panel's categorical many-FE dependency consumers only."""
+    return routing.incremental_eligible(meta, 'many')
+
+
+def within_migration_trace(log, meta):
+    """A configured family is not proof that the MAP pilot reached within."""
+    eligible = within_migration_eligible(meta)
+    iterations = []
+    for line in log.splitlines():
+        if not line.startswith('FEREG_SOLVER_TRACE|'):
+            continue
+        fields = dict(part.split('=', 1) for part in line.split('|')[1:] if '=' in part)
+        if fields.get('phase') != 'lsmr_rhs':
+            continue
+        try:
+            rhs, count = int(fields['rhs']), int(fields['iterations'])
+            norms = [float(fields[key]) for key in ('within_normal', 'fereg_relinf')]
+        except (KeyError, ValueError) as error:
+            raise ValueError('incomplete within migration path trace') from error
+        if (not eligible or rhs < 0 or count < 0 or fields.get('converged') not in {'true', 'false'}
+                or any(not math.isfinite(v) or v < 0 for v in norms)):
+            raise ValueError('invalid or ineligible within migration path trace')
+        iterations.append(count)
+    detail = {'within_migration': {'eligible': eligible, 'executed': bool(iterations),
+                                  'rhs_solves': len(iterations), 'iterations': sum(iterations)}}
+    if eligible:
+        detail.update(resource_diagnostics(log, routing.GEOMETRY_MANY, False, {}))
+    return detail
+
+
+def within_migration_comparison(reference, candidate, meta):
+    """Permit numerical/inner-work changes only when both actual calls used within.
+
+    Ordinary sample/rank/omission and solver-route fields are never scoped.
+    There is deliberately no automatic derived-residual route exception.
+    """
+    eligible = within_migration_eligible(meta)
+    if eligible:
+        for raw, _, _ in (reference, candidate):
+            # Reuse the accepted policy's cap/certificate checks, but never
+            # its broader route-difference allowance.
+            portfolio_scope(raw, raw, meta, 'auto', routing.policy(routing.GEOMETRY_MANY))
+    executed = eligible and all(
+        snapshot[2].get('within_migration', {}).get('executed') is True
+        for snapshot in (reference, candidate))
+    if not executed:
+        if reference[2]['fingerprint'] != candidate[2]['fingerprint']:
+            raise ValueError('within migration without eligible path traces requires exact science')
+        return
+    compatibility(reference[0], candidate[0], reference[1], candidate[1], meta, 'auto')
+
 
 def replay_scope(raw, arm='auto', meta=None):
     if arm != 'auto':

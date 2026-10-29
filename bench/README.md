@@ -223,7 +223,7 @@ The configuration is a JSON object with these fields:
 
 | Field | Meaning |
 | --- | --- |
-| `scope` | `exact`, `many` or `two`; declares which eligible Auto family may change numerically. |
+| `scope` | `exact`, `many`, `two` or `within-migration-v1`; declares which eligible Auto family may change numerically. |
 | `platform` | `Darwin` or `Linux`; build and measure native artifacts for that host. |
 | `artifacts` | `original`, `incumbent`, `candidate`, plus `hidden` for public activation. Each has `path`, `revision`, `build`, `request` and `families`, and optionally `public_policy`. |
 | `harness` | Built complete-native-call timing harness. |
@@ -292,6 +292,18 @@ numerical truth, typed scope certificates and setup/iteration/memory contracts.
 Every timed call must reproduce that artifact/cell's exact complete output
 fingerprint. Cross-worker comparisons require scientific agreement and stable
 discrete decisions. All checks run outside the complete native-call timer.
+
+The `within-migration-v1` scope compares unchanged public Auto requests against
+the protected references. All three roles declare the same public two-FE
+policy; only the candidate declares `families: ["within-migration-v1"]`.
+Numerical and inner-work differences are eligible only for categorical designs
+with at least three FE terms, and only when both actual traced calls reach
+`phase=lsmr_rhs`. A MAP-only pilot result remains exact. Sample, rank, omission,
+receipt and solver/preconditioner/fallback decisions stay exact, with no implicit
+derived-residual route exception. The report rereads retained traces and checks
+the original geometry policy's iteration, memory and certificate limits.
+Explicit/sloped and PPML integration still require their separately mapped
+scientific and performance checks; this scope does not broaden their support.
 
 The fixed run budget includes input verification, oracle and cross-worker checks,
 output writes and observer shutdown. A main-thread deadline interrupts overdue

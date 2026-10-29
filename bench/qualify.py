@@ -224,6 +224,7 @@ def plan(config_path, output, *, configuration=None):
     value = read(config_path) if configuration is None else copy.deepcopy(configuration)
     diagnostic = diagnostic_mode(value)
     ownership_mode = ownership.enabled(value)
+    within_migration = value.get('scope') == science.WITHIN_MIGRATION
     if ownership_mode:
         ownership.validate(value)
     required = {'scope', 'platform', 'artifacts', 'harness', 'cases', 'threads',
@@ -237,7 +238,9 @@ def plan(config_path, output, *, configuration=None):
     if 'min_distinct_hosts_per_cell' in value:
         required.add('min_distinct_hosts_per_cell')
     require(set(value) == required, 'configuration needs exactly: ' + ', '.join(sorted(required)))
-    require(value['scope'] in {'exact', 'many', 'two'}, 'unsupported numerical scope')
+    require(value['scope'] in {'exact', 'many', 'two', science.WITHIN_MIGRATION}, 'unsupported numerical scope')
+    require(not within_migration or not diagnostic and not ownership_mode,
+            'within migration cannot change routing or ownership policies')
     require(value['platform'] in {'Darwin', 'Linux'}, 'platform must be Darwin or Linux')
     require(value['coverage'] in ({'ownership'} if ownership_mode else {*COVERAGES, 'smoke'}), 'unsupported coverage')
     for field, low, high in [('blocks', 1, 24), ('shards', 1, 42), ('replicas', 1, 12),
@@ -274,7 +277,8 @@ def plan(config_path, output, *, configuration=None):
         require(artifact['request'] not in routing.REMAINING[1:] or
                 value.get('diagnostic') == 'two-fe-remaining-calibration-v1',
                 'forced/never controls belong only to the frozen calibration')
-        require(isinstance(artifact['families'], list) and set(artifact['families']) <= {'many', 'two'},
+        families = {science.WITHIN_MIGRATION} if within_migration else {'many', 'two'}
+        require(isinstance(artifact['families'], list) and set(artifact['families']) <= families,
                 'invalid artifact numerical families')
         artifact['path'] = bind(artifact['path'])
     if value.get('diagnostic') == 'two-fe-gates-development-v1':
@@ -282,7 +286,15 @@ def plan(config_path, output, *, configuration=None):
             value['policy_binding'][name] = bind(value['policy_binding'][name])
     if ownership_mode:
         value['ownership_binding'] = {k: bind(v) for k, v in value['ownership_binding'].items()}
-    if not diagnostic and not ownership_mode:
+    if within_migration:
+        require(set(artifacts) == {'original', 'incumbent', 'candidate'}
+                and all(a['request'] == 'auto' for a in artifacts.values())
+                and len({a.get('public_policy', routing.GATES) for a in artifacts.values()}) == 1,
+                'within migration compares unchanged public Auto requests')
+        require(artifacts['original']['families'] == artifacts['incumbent']['families'] == []
+                and artifacts['candidate']['families'] == [science.WITHIN_MIGRATION],
+                'within migration must declare only its dependency family')
+    elif not diagnostic and not ownership_mode:
         require(artifacts['original']['families'] == [], 'original baseline must remain original')
         require(all(artifacts[r]['request'] in {'auto', 'preserve'} for r in ('original', 'incumbent')),
                 'protected references must use their public requests')
@@ -712,11 +724,14 @@ def worker_signature(raw):
 
 
 def affected(meta, families):
-    return any(routing.incremental_eligible(meta, family) for family in families)
+    return any(science.within_migration_eligible(meta) if family == science.WITHIN_MIGRATION
+               else routing.incremental_eligible(meta, family) for family in families)
 
 
 def resource_policy(manifest, role, meta):
     """Resolve the executed family, including a public candidate's hidden binding."""
+    if manifest.get('scope') == science.WITHIN_MIGRATION:
+        return routing.GEOMETRY_MANY if science.within_migration_eligible(meta) else None
     if ownership.enabled(manifest):
         return ownership.resource_policy(manifest, role, meta)
     artifact = manifest['artifacts'][role]
@@ -759,6 +774,9 @@ def compare_artifacts(manifest, meta, snapshots):
         if role not in snapshots:
             continue
         reference = snapshots[role]
+        if manifest['scope'] == science.WITHIN_MIGRATION:
+            science.within_migration_comparison(reference, candidate, meta)
+            continue
         exact = (role == 'hidden' or manifest['scope'] == 'exact'
                  or role == 'incumbent' and not affected(meta, [manifest['scope']])
                  or not affected(meta, manifest['artifacts']['candidate']['families']))
@@ -1024,7 +1042,10 @@ def _run(manifest_path, output, manifest, deadline, shard, replica, resume, exec
                         require(detail['solver_rows'][0][0] == expected, 'requested solver identity mismatch')
                         if role in snapshots:
                             require(detail['fingerprint'] == snapshots[role][2]['fingerprint'], 'fixed-worker repeat changed')
-                        if traced and ownership.enabled(manifest):
+                        if traced and manifest['scope'] == science.WITHIN_MIGRATION:
+                            detail.update(science.within_migration_trace(log.read_text(), meta),
+                                          trace_log=str(log.relative_to(directory)))
+                        elif traced and ownership.enabled(manifest):
                             with source.open('rb') as stream:
                                 _, source_args = case_header(stream)
                             detail.update(ownership.resource_detail(manifest, role, meta, log.read_text(),
@@ -1472,6 +1493,12 @@ def report(manifest_path, output, accounting_dir=None, *, allocation_amendment=N
                     if ownership.enabled(manifest):
                         ownership.verify_report_cell(manifest, item, manifest_path, reference_root, cell, verify_file)
                     for call in cell['warmups']:
+                        if manifest['scope'] == science.WITHIN_MIGRATION:
+                            trace = (reference_root / call['trace_log']).resolve(strict=True)
+                            require(trace.is_relative_to(reference_root.resolve()), 'migration trace outside job')
+                            expected_trace = science.within_migration_trace(trace.read_text(), policy_meta)
+                            require(all(call.get(k) == v for k, v in expected_trace.items()),
+                                    'retained within migration path evidence changed')
                         if resource_policy(manifest, call['execution'], policy_meta) in routing.GATE_RULES:
                             import two_fe_policy_development as development
                             signature = development.semantic_signature(call)
