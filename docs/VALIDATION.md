@@ -12,12 +12,14 @@ and PPML reporting are unchanged.
 The unpublished beta.11 candidate is separate from the accepted beta.10 release.
 The [compatibility report](within_migration.md) records the frozen dependency
 bases, patch evidence and outstanding integration and performance requirements.
-The active source pin is restored to `d3407a16`, which also binds the completed
-native and main performance evidence below. Johannes directed bounded slowdown
-diagnosis before further qualification, and scatter is held. The `4beaa8af`
-combined source and its checks remain historical, unaccepted evidence; no new
-actual plugin was built. The pin restoration does not establish performance
-recovery or beta.11 acceptance.
+The active source pin is the counts-only stack `534ea64f`, whose parent is
+`d3407a16`. Johannes approved advancing it to testing after the bounded diagnosis;
+scatter and back-substitution remain held. The completed native and main
+performance evidence below still binds `d3407a16`. The `4beaa8af` combined source
+and its checks remain historical, unaccepted evidence. The counts-only source
+suite passed; new actual-plugin checks and a separately declared beta.10
+comparison are pending. This does not establish performance recovery or beta.11
+acceptance.
 Johannes approved retiring the general more-than-two-FE pair-upgrade experiment;
 its explicit h/k and builder-Break requests must fail clearly. Two-FE h/k and
 builder-Break behavior, public Auto escalation, supported OLS/PPML paths and
@@ -230,19 +232,29 @@ After approved metadata-only repairs, size/ratchet, mock-SPI and numeric guards
 passed. All measured totals and limits are unchanged, both failures remain
 recorded, and no broad rerun occurred. No new actual plugin has been built:
 the earlier native evidence and performance verdicts still apply to `d3407a16`.
-The active pin has been restored to `d3407a16`. Its manifest and both lockfiles
+Fereg `65449fd6` restored the pin to `d3407a16`. Its manifest and both lockfiles
 match tested fereg `d96eccfc` exactly; the only shipping-source difference is an
 explanatory memory comment. The earlier source/native correctness evidence is
 reused, with successful locked offline metadata checks for the 59-package
 workspace and 64-package fuzz workspace. No plugin rebuild or new fereg native
 test was run.
-Combined counts-only `534ea64f` and standalone counts `ba409ada` remain separate,
-unaccepted candidates. The
-original beta.11-versus-beta.10 regressions remain distinct from the standalone
+The original beta.11-versus-beta.10 regressions remain distinct from the standalone
 scatter weighted-control concern. No recovery or acceptance follows from the
-restoration. Additional strict-reference fits remain unapproved and qualification
-has not resumed. The held back-substitution patch, upstream submission and
+restoration. Additional strict-reference fits remain unapproved. The held
+back-substitution patch, upstream submission and
 production adoption remain outside this result.
+
+Johannes subsequently approved testing counts-only `534ea64f`; it is now the
+active source pin, with no scatter or back-substitution change. Its single Mac
+source-only suite passed 324 Python tests, 1,537 core tests (three ignored),
+189 non-FFI and 219 FFI plugin tests, independent scientific oracles, allocation
+audits, strict Clippy, fuzz, portable/C guards and complexity checks. The
+[migration account](within_migration.md#independent-performance-and-combined-source-candidate)
+binds the exact pin diff, environment and log hash. New native and performance
+checks remain pending. Standalone counts' inconclusive sparse control and every
+prior beta.11 performance failure remain retained; this is authorization to test,
+not acceptance. The main 58-cell comparison is independent of the unfinished
+large-companion references. The gather-zeroing investigation is separate.
 
 The [bounded diagnosis](../bench/results/within-scatter-diagnosis-20261029.json)
 finds real weighted caller code changes but no cause for the adverse controls.

@@ -5,18 +5,21 @@ with upstream `py-econometrics/within` main frozen at
 `32dde1bdd604f33012e592270781129e09e82a92`. That fereg baseline used
 [historical fork revision `3b5b9b9`](https://github.com/johannes-schmieder/within/commit/3b5b9b9ab9b79e4a8cac2841f7c1d41bb2276104)
 for both `within` and `schwarz-precond`. The active source for the unpublished
-beta.11 candidate again pins both dependencies through its
+beta.11 counts-only test candidate pins both dependencies through its
 [dependency declarations](../crates/fereg-core/Cargo.toml) and
 [lockfile](../Cargo.lock) to
-`d3407a16dec3715f6e9eee13fb9b6646d5b28035`, matching the existing actual plugins
-and declared Mac/Linux native checks. Johannes directed bounded slowdown
-diagnosis before further qualification; the scatter optimization is held.
+`534ea64f7b0e26b772f93ca087f43837c1e187e4`: the tested migration stack
+`d3407a16` plus the dense categorical-count optimization. Johannes approved
+advancing this counts-only candidate to testing after the bounded diagnosis;
+scatter and back-substitution remain held. The existing actual plugins and
+completed Mac/Linux native checks still bind `d3407a16`; the new candidate's
+native checks and separately declared comparison against beta.10 are pending.
 The combined `4beaa8af` source and its checks remain historical, unaccepted
-evidence below. No new plugin has been built. The completed main performance
+evidence below. The completed main performance
 panels each contain a regression and inconclusive comparisons, so beta.11 is
 not performance-qualified; installed-package admission also remains outstanding.
-Restoring the pin establishes neither recovered performance nor acceptance,
-adoption or readiness for a production release.
+The counts-only source checks establish neither recovered performance nor
+acceptance, adoption or readiness for a production release.
 
 Johannes's current instruction is to develop and push these patches only in
 `johannes-schmieder/within`. Any upstream push or pull request requires prior
@@ -842,20 +845,51 @@ unused historical growth entries. The approved metadata repair refreshed seven
 position/comment-length values and retired those entries without changing any
 measured total or limit. The final size/ratchet, mock-SPI and numeric-guard checks
 passed. Both failed invocations remain recorded; no broad rerun was needed.
-That combined candidate remains unaccepted. The active fereg pin has been
-restored to `d3407a16`; no optimized plugin was built. The manifest and both
+That combined candidate remains unaccepted. Fereg `65449fd6` restored the pin
+to `d3407a16`; no optimized plugin was built at that stage. The manifest and both
 lockfiles are byte-identical to tested fereg `d96eccfc`. Shipping Rust, frontend,
 bridge and scripts differ only in an explanatory memory comment, so the earlier
 source/native correctness evidence is reused. Locked offline metadata checks
 passed for the workspace (59 packages) and fuzz workspace (64 packages) with
-Rust 1.85.1; no plugin rebuild or new fereg native test was performed. The counts-only combined
-commit `534ea64f` and standalone counts patch `ba409ada` remain separate,
-unaccepted candidates. The bounded diagnosis is complete; scatter remains held
+Rust 1.85.1; no plugin rebuild or new fereg native test was performed for the
+restoration. The bounded diagnosis is complete; scatter remains held
 with the cause unresolved. The standalone scatter weighted-control concern and the original `d3407a16` versus
 beta.10 regressions are distinct comparisons; restoring the pin resolves neither.
-The additional strict-reference-fit budget remains unapproved, and qualification
-has not resumed. The held back-substitution patch remains excluded. There has
+The additional strict-reference-fit budget remains unapproved. The held
+back-substitution patch remains excluded. There has
 been no upstream push or PR, and these source checks do not authorize adoption.
+
+Johannes subsequently approved testing the counts-only stack `534ea64f`.
+Its parent is exactly `d3407a16`, and its two-file diff adds 18 production lines
+and 124 independent test lines. The unweighted Unit-by-Unit dense path omits
+compensation only when every integer count is exactly representable; weighted,
+sloped and sparse accumulation and the conservative memory-admission estimate
+are unchanged. Scatter is absent. Standalone patch `ba409ada` remains the
+separate upstream-base comparison; its inconclusive sparse construction control
+is retained and is not waived as a performance pass.
+
+The fereg pin update changes only the manifest and two lockfiles relative to
+`65449fd6` (patch SHA-256
+`f97a5b31f52710cd88ac677433fbfd04fa227035c15a872a9cdbbc35454e4972`).
+One `./scripts/run_tests.sh --source-only` invocation passed on Mac Rust 1.85.1:
+324 Python tests, 1,537 core tests (three ignored), 189 non-FFI and 219 FFI plugin
+tests, isolated allocation audits, scientific integration/oracles, strict Clippy,
+fuzz compilation, portable/C checks and the complexity ratchet. The source log
+SHA-256 is `23944c13168735406fbf560d9b456303fdfd5a1b598301573bbeee0dda762f38`.
+The run used Python 3.12.2, four Cargo jobs, serial Rust test threads, eight
+Rayon/fereg workers and single-threaded BLAS. Native refresh and the fixed
+58-cell comparison remain prerequisites. Those cells retain all seven previously
+nonpassing cells; the missing large companion references block their own panel,
+not independent preparation of this main comparison. A separate gather-zeroing
+investigation is excluded from this fixed counts candidate.
+
+The exact dependency stack also passed focused Mac Rust 1.85.1 checks:
+325 top-level tests and one isolated subprocess, with no failures or ignored
+tests. These cover cross-tab witnesses, controlled solves, cancellation, slopes,
+residual output, repeatability, Schwarz and iteration budgets. Both changed
+files match standalone `ba409ada` byte for byte; formatting and clean-tree
+checks passed. The dependency test log SHA-256 is
+`bcda6d90ef8dbf1013b9a1b39dd71f7aa4ee31644278f00ac28b7315faab0e60`.
 
 The [bounded diagnosis](../bench/results/within-scatter-diagnosis-20261029.json)
 retains the restoration checks, existing control observations, generated-code
