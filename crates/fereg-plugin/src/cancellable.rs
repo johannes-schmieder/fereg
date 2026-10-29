@@ -145,6 +145,8 @@ pub(crate) fn run<T: Send>(
     };
     let mut interruption = None;
     let output = team.in_place_scope(|scope| {
+        // Release checkpoint-only work before Rayon joins after a caller panic.
+        let _cancel = CancelOnUnwind;
         let worker_shared = &shared;
         scope.spawn(move |_| {
             let _finished = Finished(worker_shared);
@@ -298,5 +300,84 @@ mod tests {
         }));
         assert!(result.is_err());
         assert!(!interrupt::cancellation_requested());
+    }
+
+    /// A caller panic changes the process-wide signal, so isolate this witness.
+    #[test]
+    fn caller_panic_cancels_and_joins_work_then_resets_for_retry() {
+        const CHILD_ENV: &str = "FEREG_CANCELLABLE_CALLER_PANIC_TEST_CHILD";
+        if std::env::var_os(CHILD_ENV).is_none() {
+            let status = std::process::Command::new(std::env::current_exe().expect("test binary"))
+                .env(CHILD_ENV, "1")
+                .args([
+                    "cancellable::tests::caller_panic_cancels_and_joins_work_then_resets_for_retry",
+                    "--exact",
+                    "--test-threads=1",
+                ])
+                .status()
+                .expect("launch isolated caller-panic test");
+            assert!(status.success(), "isolated caller-panic test failed");
+            return;
+        }
+        use std::sync::atomic::{AtomicBool, Ordering};
+        for threads in [1, 4] {
+            let started = AtomicBool::new(false);
+            let joined = AtomicBool::new(false);
+            let cancelled = AtomicBool::new(false);
+            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                run(
+                    team(threads),
+                    || -> Result<()> {
+                        started.store(true, Ordering::Release);
+                        let deadline = std::time::Instant::now() + Duration::from_secs(5);
+                        while std::time::Instant::now() < deadline {
+                            if let Err(error) = interrupt::checkpoint() {
+                                cancelled
+                                    .store(error.code == ErrorCode::Interrupted, Ordering::Release);
+                                joined.store(true, Ordering::Release);
+                                return Err(error);
+                            }
+                            std::thread::sleep(Duration::from_micros(200));
+                        }
+                        joined.store(true, Ordering::Release);
+                        Err(FeregError::new(
+                            ErrorCode::Internal,
+                            "cancellation did not reach worker",
+                        ))
+                    },
+                    &mut || {
+                        if started.load(Ordering::Acquire) {
+                            panic!("injected caller poll panic");
+                        }
+                        Ok(())
+                    },
+                )
+            }));
+            assert!(result.is_err(), "the caller panic must propagate");
+            assert!(
+                joined.load(Ordering::Acquire),
+                "work must finish before unwinding returns"
+            );
+            assert!(
+                cancelled.load(Ordering::Acquire),
+                "the worker must observe cancellation"
+            );
+            assert!(
+                !interrupt::cancellation_requested(),
+                "reset must follow the join"
+            );
+            assert_eq!(
+                run(
+                    team(threads),
+                    || {
+                        interrupt::checkpoint()?;
+                        Ok(42)
+                    },
+                    &mut || Ok(())
+                )
+                .expect("same-process retry"),
+                42
+            );
+        }
     }
 }
