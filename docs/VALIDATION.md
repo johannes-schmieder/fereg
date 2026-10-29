@@ -103,6 +103,24 @@ independently verified; column files remain on SCC. The native record retains
 the exact identities and accounting. This is no timing or additional
 fixed-worker repeatability claim; performance qualification remains pending.
 
+The Linux separation-fallback companion passes its 16 declared actual-plugin
+calls on `scc-pi2` (job 8328529, scheduler failure/exit 0/0). The seed-17 weighted
+PPML design retains the independent LP's 228 original rows and passes the
+dense Poisson oracle in both binaries. All eight injected calls actually take
+the successful generation-2 CG-to-LSMR retry, with 147 iterations over ten
+RHS solves; public Auto is a control and uses no Within work here. Eight
+fixed-worker repeats are exact, and four cross-worker comparisons pass science
+and preserve decisions. At each worker count, public Auto and injected CG have
+identical estimates and observation outputs. Across binaries, only the declared
+IR interior/span certificate magnitudes and their trace digest differ; all
+other scientific fields stay exact. The digest remains exact within a binary
+across workers and repeats. Because it also aggregates unpublished discrete
+internals, the cross-plugin exception does not prove full internal execution
+identity. All 16 result/log/column captures and the scheduler record were
+independently rechecked without new native calls. The native record retains
+their identities. Matching Mac inputs/configuration are prepared but unrun;
+these Linux checks make no performance or adoption claim.
+
 The separate sparse back-substitution optimization completed its practical Mac
 comparison: 312 calls, 72 paired blocks and all 12 descriptive intervals passed
 max(5%, 1 ms), with exact scientific signatures. All interrupted attempts and

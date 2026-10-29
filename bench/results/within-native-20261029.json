@@ -2861,6 +2861,560 @@
         "No performance acceptance, package admission, publication or adoption claim.",
         "Within iterations are trace observations, not proof of every API feature or fallback branch."
       ]
+    },
+    "separation_fallback_companion": {
+      "budget_s": 2400,
+      "calls": [
+        {
+          "columns_sha256": "fdeafe0e456a6de03010a3926d467beab46ead0b77ea206f3d1eb9a3fdf2d54f",
+          "log": "public-auto-t1-incumbent-r0.log",
+          "log_sha256": "9c848440a2603b8c1897a4223666179168c72c8772b8d4782043540ed220835e",
+          "path_evidence": {
+            "lsmr_iterations": 0,
+            "lsmr_rhs": 0,
+            "retries": []
+          },
+          "prepared_sha256": "d275254c070d5f206a94645b0137d53a5324217b4674c91ddbcddc14f1012714",
+          "repeat": 0,
+          "request": "public-auto",
+          "result_sha256": "84ee01aeefacf805d979982f70009f2bf4cac2b7faa2f5c1155ab1623d68dae3",
+          "role": "incumbent",
+          "status": "passed",
+          "target": "public-auto-t1-incumbent-r0.json",
+          "workers": 1
+        },
+        {
+          "columns_sha256": "fdeafe0e456a6de03010a3926d467beab46ead0b77ea206f3d1eb9a3fdf2d54f",
+          "cross_plugin_changed_paths": [],
+          "log": "public-auto-t1-candidate-r0.log",
+          "log_sha256": "cbaebc6dabd4e15eded867f7a82601d39b4d39f94bcb911bdb06ea38ab26988b",
+          "path_evidence": {
+            "lsmr_iterations": 0,
+            "lsmr_rhs": 0,
+            "retries": []
+          },
+          "prepared_sha256": "d275254c070d5f206a94645b0137d53a5324217b4674c91ddbcddc14f1012714",
+          "repeat": 0,
+          "request": "public-auto",
+          "result_sha256": "0cabf095ed68f68965900f52042e42e40780c98879213523f524c0cab2b162ef",
+          "role": "candidate",
+          "status": "passed",
+          "target": "public-auto-t1-candidate-r0.json",
+          "workers": 1
+        },
+        {
+          "columns_sha256": "fdeafe0e456a6de03010a3926d467beab46ead0b77ea206f3d1eb9a3fdf2d54f",
+          "log": "public-auto-t1-incumbent-r1.log",
+          "log_sha256": "cbc3861c9fb1b3c54851d2d81521c808f35e439f276b6dff18b0977db6efa2ee",
+          "path_evidence": {
+            "lsmr_iterations": 0,
+            "lsmr_rhs": 0,
+            "retries": []
+          },
+          "prepared_sha256": "d275254c070d5f206a94645b0137d53a5324217b4674c91ddbcddc14f1012714",
+          "repeat": 1,
+          "request": "public-auto",
+          "result_sha256": "b77b97aee269028613825befc60e25357c13a92117129631ffb5ba1f6eb9ccab",
+          "role": "incumbent",
+          "status": "passed",
+          "target": "public-auto-t1-incumbent-r1.json",
+          "workers": 1
+        },
+        {
+          "columns_sha256": "fdeafe0e456a6de03010a3926d467beab46ead0b77ea206f3d1eb9a3fdf2d54f",
+          "log": "public-auto-t1-candidate-r1.log",
+          "log_sha256": "66217787a062be876017eab66018c6a0556f0386df0ee73da0e44f8ba1554940",
+          "path_evidence": {
+            "lsmr_iterations": 0,
+            "lsmr_rhs": 0,
+            "retries": []
+          },
+          "prepared_sha256": "d275254c070d5f206a94645b0137d53a5324217b4674c91ddbcddc14f1012714",
+          "repeat": 1,
+          "request": "public-auto",
+          "result_sha256": "d17609f1d204fe63805d32f40aed0d9c184a63e59b9c346f7eb53b40d59d993c",
+          "role": "candidate",
+          "status": "passed",
+          "target": "public-auto-t1-candidate-r1.json",
+          "workers": 1
+        },
+        {
+          "columns_sha256": "01da7b2afa836cf7007cd265ee57b95cb43aedafd5288751a0222c05261b16ee",
+          "log": "public-auto-t4-incumbent-r0.log",
+          "log_sha256": "c75c0cf7080318f47a30ce4a1a38469ae92eedeb2b04da15a178b084dc3c7669",
+          "path_evidence": {
+            "lsmr_iterations": 0,
+            "lsmr_rhs": 0,
+            "retries": []
+          },
+          "prepared_sha256": "78240e78b601aed22e05ec5da9604ebb25f993fbbf712df739a86756e5c0d877",
+          "repeat": 0,
+          "request": "public-auto",
+          "result_sha256": "477da002193786f3c3f073b2b56cbeab53ae0b4329ade51272a7f114bfa88d4c",
+          "role": "incumbent",
+          "status": "passed",
+          "target": "public-auto-t4-incumbent-r0.json",
+          "workers": 4
+        },
+        {
+          "columns_sha256": "01da7b2afa836cf7007cd265ee57b95cb43aedafd5288751a0222c05261b16ee",
+          "cross_plugin_changed_paths": [],
+          "log": "public-auto-t4-candidate-r0.log",
+          "log_sha256": "d65967c1bbdcf9de4006f98b3446482b7cb8390f1fb12b28ba6c86ade88f2efd",
+          "path_evidence": {
+            "lsmr_iterations": 0,
+            "lsmr_rhs": 0,
+            "retries": []
+          },
+          "prepared_sha256": "78240e78b601aed22e05ec5da9604ebb25f993fbbf712df739a86756e5c0d877",
+          "repeat": 0,
+          "request": "public-auto",
+          "result_sha256": "46ec10161d440175185d9b7d240bd76e5737a87d469fd5357e52a95cf35e03b5",
+          "role": "candidate",
+          "status": "passed",
+          "target": "public-auto-t4-candidate-r0.json",
+          "workers": 4
+        },
+        {
+          "columns_sha256": "01da7b2afa836cf7007cd265ee57b95cb43aedafd5288751a0222c05261b16ee",
+          "log": "public-auto-t4-incumbent-r1.log",
+          "log_sha256": "93cd4c22bb3e04be14a64c08eb55c600aa439648b20bcc0cdbe1b584f879c4b5",
+          "path_evidence": {
+            "lsmr_iterations": 0,
+            "lsmr_rhs": 0,
+            "retries": []
+          },
+          "prepared_sha256": "78240e78b601aed22e05ec5da9604ebb25f993fbbf712df739a86756e5c0d877",
+          "repeat": 1,
+          "request": "public-auto",
+          "result_sha256": "cb5e067b5f34a77eccb169b1f157a4c7adcee8db7794b4a6db95c3817d2b03e7",
+          "role": "incumbent",
+          "status": "passed",
+          "target": "public-auto-t4-incumbent-r1.json",
+          "workers": 4
+        },
+        {
+          "columns_sha256": "01da7b2afa836cf7007cd265ee57b95cb43aedafd5288751a0222c05261b16ee",
+          "log": "public-auto-t4-candidate-r1.log",
+          "log_sha256": "be5b82dc240d3c2bdbb892dfc0fc883bca5741e75ea282465c1e6ca3397b30e4",
+          "path_evidence": {
+            "lsmr_iterations": 0,
+            "lsmr_rhs": 0,
+            "retries": []
+          },
+          "prepared_sha256": "78240e78b601aed22e05ec5da9604ebb25f993fbbf712df739a86756e5c0d877",
+          "repeat": 1,
+          "request": "public-auto",
+          "result_sha256": "49ec642230ea974848de59c603d2e8bb52a0f2ec259377818309b25430d15fca",
+          "role": "candidate",
+          "status": "passed",
+          "target": "public-auto-t4-candidate-r1.json",
+          "workers": 4
+        },
+        {
+          "columns_sha256": "fdeafe0e456a6de03010a3926d467beab46ead0b77ea206f3d1eb9a3fdf2d54f",
+          "log": "retained-cg-t1-incumbent-r0.log",
+          "log_sha256": "f3cde5b1034ef3d38bdad44b963b152272c5942e370f135a5ed3ab6c9e7c5464",
+          "path_evidence": {
+            "lsmr_iterations": 147,
+            "lsmr_rhs": 10,
+            "retries": [
+              {
+                "first": "NonConvergence",
+                "generation": "2",
+                "solver": "lsmr",
+                "succeeded": "1"
+              }
+            ]
+          },
+          "prepared_sha256": "43938f1b49adcee35c88d41bd9bc428feb7c0774b0522b35d3412b17401dcbc4",
+          "repeat": 0,
+          "request": "retained-cg",
+          "result_sha256": "fe32e67a92872d08ba5f35cd15f9c0f9ff3a9c58892b80517f9d6b77f09c0027",
+          "role": "incumbent",
+          "status": "passed",
+          "target": "retained-cg-t1-incumbent-r0.json",
+          "workers": 1
+        },
+        {
+          "columns_sha256": "fdeafe0e456a6de03010a3926d467beab46ead0b77ea206f3d1eb9a3fdf2d54f",
+          "cross_plugin_changed_paths": [
+            "/matrices/RREC/bits/28",
+            "/matrices/RREC/bits/29",
+            "/matrices/RSEP/bits/36",
+            "/matrices/RSEP/bits/38"
+          ],
+          "log": "retained-cg-t1-candidate-r0.log",
+          "log_sha256": "3c918b8aa787d4d0da9bb1666a886982bc6d03d0fc1fb40064f9613d262fa545",
+          "path_evidence": {
+            "lsmr_iterations": 147,
+            "lsmr_rhs": 10,
+            "retries": [
+              {
+                "first": "NonConvergence",
+                "generation": "2",
+                "solver": "lsmr",
+                "succeeded": "1"
+              }
+            ]
+          },
+          "prepared_sha256": "43938f1b49adcee35c88d41bd9bc428feb7c0774b0522b35d3412b17401dcbc4",
+          "repeat": 0,
+          "request": "retained-cg",
+          "result_sha256": "709d43c2fae16d1bae895aad9d69ef0dcb2cb7252c93b15aeeaf216fc4e2c2ac",
+          "role": "candidate",
+          "status": "passed",
+          "target": "retained-cg-t1-candidate-r0.json",
+          "workers": 1
+        },
+        {
+          "columns_sha256": "fdeafe0e456a6de03010a3926d467beab46ead0b77ea206f3d1eb9a3fdf2d54f",
+          "log": "retained-cg-t1-incumbent-r1.log",
+          "log_sha256": "1f156cb88593e037ccb80e11e987bf886fb37ccb08a2cbd34173475c953ba66e",
+          "path_evidence": {
+            "lsmr_iterations": 147,
+            "lsmr_rhs": 10,
+            "retries": [
+              {
+                "first": "NonConvergence",
+                "generation": "2",
+                "solver": "lsmr",
+                "succeeded": "1"
+              }
+            ]
+          },
+          "prepared_sha256": "43938f1b49adcee35c88d41bd9bc428feb7c0774b0522b35d3412b17401dcbc4",
+          "repeat": 1,
+          "request": "retained-cg",
+          "result_sha256": "2d213792af934ca121ee5b7d8154b09136aeaaea129187e80e5dcb2473d69386",
+          "role": "incumbent",
+          "status": "passed",
+          "target": "retained-cg-t1-incumbent-r1.json",
+          "workers": 1
+        },
+        {
+          "columns_sha256": "fdeafe0e456a6de03010a3926d467beab46ead0b77ea206f3d1eb9a3fdf2d54f",
+          "log": "retained-cg-t1-candidate-r1.log",
+          "log_sha256": "a27f9f27af3277fcf3e78c93f0d57d53466c597c123ed3c60e1e31414f19dbfc",
+          "path_evidence": {
+            "lsmr_iterations": 147,
+            "lsmr_rhs": 10,
+            "retries": [
+              {
+                "first": "NonConvergence",
+                "generation": "2",
+                "solver": "lsmr",
+                "succeeded": "1"
+              }
+            ]
+          },
+          "prepared_sha256": "43938f1b49adcee35c88d41bd9bc428feb7c0774b0522b35d3412b17401dcbc4",
+          "repeat": 1,
+          "request": "retained-cg",
+          "result_sha256": "7ef3cd233aae720ab13d644924ffa4319cdc7f71b57169796503b887ae2ead86",
+          "role": "candidate",
+          "status": "passed",
+          "target": "retained-cg-t1-candidate-r1.json",
+          "workers": 1
+        },
+        {
+          "columns_sha256": "01da7b2afa836cf7007cd265ee57b95cb43aedafd5288751a0222c05261b16ee",
+          "log": "retained-cg-t4-incumbent-r0.log",
+          "log_sha256": "50eca0690757a3672921f4c6480ecea6121a317516ec871ec1a1a9848ca3acb3",
+          "path_evidence": {
+            "lsmr_iterations": 147,
+            "lsmr_rhs": 10,
+            "retries": [
+              {
+                "first": "NonConvergence",
+                "generation": "2",
+                "solver": "lsmr",
+                "succeeded": "1"
+              }
+            ]
+          },
+          "prepared_sha256": "09341064d2318904dcf47a433e8f3b478a7b83f570a7df0d51ff12b3858cbba9",
+          "repeat": 0,
+          "request": "retained-cg",
+          "result_sha256": "976408451ef563a13950334e1da6363dced668c7e38a2d5b66b4783208c9e47d",
+          "role": "incumbent",
+          "status": "passed",
+          "target": "retained-cg-t4-incumbent-r0.json",
+          "workers": 4
+        },
+        {
+          "columns_sha256": "01da7b2afa836cf7007cd265ee57b95cb43aedafd5288751a0222c05261b16ee",
+          "cross_plugin_changed_paths": [
+            "/matrices/RREC/bits/28",
+            "/matrices/RREC/bits/29",
+            "/matrices/RSEP/bits/36",
+            "/matrices/RSEP/bits/38"
+          ],
+          "log": "retained-cg-t4-candidate-r0.log",
+          "log_sha256": "e42bbb9cd18705db07987955f05beb770b518de43d4edcff64c2b748c857ad44",
+          "path_evidence": {
+            "lsmr_iterations": 147,
+            "lsmr_rhs": 10,
+            "retries": [
+              {
+                "first": "NonConvergence",
+                "generation": "2",
+                "solver": "lsmr",
+                "succeeded": "1"
+              }
+            ]
+          },
+          "prepared_sha256": "09341064d2318904dcf47a433e8f3b478a7b83f570a7df0d51ff12b3858cbba9",
+          "repeat": 0,
+          "request": "retained-cg",
+          "result_sha256": "8b2d14fb532f67b055d4d334d885ed55ef56971fa33cfdd9c16bb1ee7af9c07f",
+          "role": "candidate",
+          "status": "passed",
+          "target": "retained-cg-t4-candidate-r0.json",
+          "workers": 4
+        },
+        {
+          "columns_sha256": "01da7b2afa836cf7007cd265ee57b95cb43aedafd5288751a0222c05261b16ee",
+          "log": "retained-cg-t4-incumbent-r1.log",
+          "log_sha256": "24bcb28d9a57eb93c56c1da8f66571450576da83d3e3c27df8af3ceb4cd61e0d",
+          "path_evidence": {
+            "lsmr_iterations": 147,
+            "lsmr_rhs": 10,
+            "retries": [
+              {
+                "first": "NonConvergence",
+                "generation": "2",
+                "solver": "lsmr",
+                "succeeded": "1"
+              }
+            ]
+          },
+          "prepared_sha256": "09341064d2318904dcf47a433e8f3b478a7b83f570a7df0d51ff12b3858cbba9",
+          "repeat": 1,
+          "request": "retained-cg",
+          "result_sha256": "bc39974c44b303f805271191b2830942dca1554ea919116a37323d1ccddab41a",
+          "role": "incumbent",
+          "status": "passed",
+          "target": "retained-cg-t4-incumbent-r1.json",
+          "workers": 4
+        },
+        {
+          "columns_sha256": "01da7b2afa836cf7007cd265ee57b95cb43aedafd5288751a0222c05261b16ee",
+          "log": "retained-cg-t4-candidate-r1.log",
+          "log_sha256": "4ec59e577c58e98685d845fbfdd4d26f77f4ad669dd491e00755c63f65494d29",
+          "path_evidence": {
+            "lsmr_iterations": 147,
+            "lsmr_rhs": 10,
+            "retries": [
+              {
+                "first": "NonConvergence",
+                "generation": "2",
+                "solver": "lsmr",
+                "succeeded": "1"
+              }
+            ]
+          },
+          "prepared_sha256": "09341064d2318904dcf47a433e8f3b478a7b83f570a7df0d51ff12b3858cbba9",
+          "repeat": 1,
+          "request": "retained-cg",
+          "result_sha256": "1beb9f52f3b665652d7ec9b526d3b402e64f1cf51601c0360e6cd4a7ba9ac46d",
+          "role": "candidate",
+          "status": "passed",
+          "target": "retained-cg-t4-candidate-r1.json",
+          "workers": 4
+        }
+      ],
+      "cleared_native_environment_keys": [
+        "DYLD_INSERT_LIBRARIES",
+        "FEREG_ACTION_MEMORY_AUDIT",
+        "FEREG_CMG_ORDINARY",
+        "FEREG_MEMORY_LIMIT_BYTES",
+        "FEREG_PHASE_TIMING",
+        "FEREG_PPML_MEMORY_TRACE",
+        "FEREG_SOLVER_TRACE",
+        "FEREG_SOLVER_TRACE_FILE",
+        "LD_AUDIT",
+        "LD_PRELOAD",
+        "LLVM_PROFILE_FILE",
+        "RAYON_NUM_THREADS",
+        "RUST_TEST_THREADS"
+      ],
+      "config_sha256": "ed5e435b444d6378397e867f24cd6f6bc2e806871e19926ea98a6c7b33889254",
+      "helper_sha256": "3770044629c425654de4b00480c705afb7e8e93eaa63bfcd0bed13f305926b98",
+      "lp_witness": {
+        "fnv1a_rows": "af3596f7b4156b10",
+        "retained": 228
+      },
+      "mode": "science-only",
+      "native_call_cap": 16,
+      "status": "passed",
+      "timeout_s": 120,
+      "timing_verdict": null,
+      "source_revision": "d96eccfc269b8b5045038ee0dcee5fc2c788a86d",
+      "within_revision": "d3407a16dec3715f6e9eee13fb9b6646d5b28035",
+      "retries": 0,
+      "scope": "Science-only actual-plugin seed-17 retained-CG to LSMR separation fallback plus public Auto control; no performance or adoption claim.",
+      "artifacts": {
+        "candidate": "a01a1fc905e95db1621e288b21f45e47bd628c789cb0931240241dbc4f0b8cfc",
+        "harness": "63dda1c1dd6436305aae2fdb3ffb410f3af9d3d5220cc0be3c0599ed7d19ba67",
+        "incumbent": "a79641166c17e5c193dc5f86a7fd487265d6978076e60ab7ca72f32f240f9f08"
+      },
+      "inputs": {
+        "public-auto": "d275254c070d5f206a94645b0137d53a5324217b4674c91ddbcddc14f1012714",
+        "retained-cg": "43938f1b49adcee35c88d41bd9bc428feb7c0774b0522b35d3412b17401dcbc4"
+      },
+      "independent_dense_oracle_sha256": "44e3e59c06e03af5f0a0655cb91b7837a5748142d5b4407e459efaf8c338f63d",
+      "generator_sources": {
+        "crates/fereg-oracle/examples/replay/expected.rs": "3e781d3829a7425568a65ea77eac58e97e8cc3c6f94939ab50e9016e87ed7c2b",
+        "crates/fereg-oracle/examples/replay/wire.rs": "e5aa1624b0dfc01a17bf25679ee242d285ac618adbd0d0e5d565b6337668e602",
+        "crates/fereg-oracle/examples/separation_fallback.rs": "bf3fc7bf8f02b5e1880f3bb4288a13ac00d2c402c23384d89c52eaf7376f335e",
+        "crates/fereg-oracle/src/designs.rs": "721b355070482a47bd188e2c92a45133c7965dbf620e107a719b1763e4903b39",
+        "crates/fereg-oracle/src/designs/topology.rs": "bc870432f4b8c60ee71fe4801d65851daae93d658dcc926c3db2a84e5882be6b",
+        "crates/fereg-oracle/tests/ppml_separation_routing.rs": "7e814aa197a52789121b01b486dcddb09a16f03a415f57b6d85e51064a23650a"
+      },
+      "execution_sources": {
+        "block_host": "fccf59236f74f077e890685acd2abc996a1c7be8ecabecde095da6932974944d",
+        "cmg_setup": "b7477ec64d6c926bd67b503f7a3cfc11f3ffa71055adaf89b9ae954be3f4547c",
+        "cmgschur": "797ab16b37bba88049cd98026ace7b5147d188049e64d39a1f823b69df0ca415",
+        "cmgschur_cases": "192dd59269ab26abf100065a33cff771ba5999445f61cd6ab7c908c3dcdca0c5",
+        "native": "9114748c964f4afe8691d4cfb1aa4779e298caf1d3241711eb1ff15cc1d96c14",
+        "native_io": "5a3ac828c7f0c7c3cd5af963e7192f5b598c2ca817767a1ef1b49d05196f3a03",
+        "ownership_panel3": "f3c37bb5783c18a1031219fe59fb6e4ec5eeee161666a5163544390eb5f009cc",
+        "ownership_qualification_cases": "4b9e0df18533789de7de37efc6457ebda4b968bb516608d76aa86f545c1ea304",
+        "qualify": "ed57b205aef0076079e195bc5ccc8d4fc2f2c6429409165247966ff691c5d361",
+        "qualify_ownership": "e47ee96011af09c6dabf08e1670d2e30e7553633f291f4c478132de53b198ce7",
+        "qualify_scc": "68704aff448e8485a775a81bfe54ec14eea0203d9d8567d0dde8ec6bc650fbeb",
+        "replay_bias_reference": "32f31f26512c350980bc6c76dbf4ea2a56818b03fa0af39d9b5165d9e50d57ff",
+        "replay_cmg_polish": "fea5b0bc6a32199dad2baecd5d9f262410400b6c01e0c4fa0e5923fdcb2bc501",
+        "replay_ols_reference": "9f543e9558e3f2198b7f2995eb93b5b4fcebb3d24f08bd1f61c3eb6f80927fd0",
+        "replay_plugins": "c9c45e18e2ea879a91b71beecf5abae33c769579d326e5468a45f3068034f8b2",
+        "replay_psd": "6eec58705ef0ffa50d177b7ae51f126e5954827a39f67b4578d018119339bef8",
+        "routing": "bdcc0a99a842fc680e44e13661ec636209abba438e201d6cfdf676d05b3f1148",
+        "routing_cases": "e060940f2f6f149520c33e4c0f8428fb028b3df0dee0ba7ba48102c0b489b99b",
+        "routing_oracle": "52202977a396e610489211ebc40acbda8c0300332345a6edd0c9ec44490176a8",
+        "routing_science": "62084b661bdb9351e503821778c6dbbda74ab7355456fbeaaa0e83f2df284f03",
+        "time_exact": "f686e037d3a65c2d9ba6cb79e9cb3ad07316768bc9d5b44d928d98c6dbf6caba",
+        "two_fe_policy": "0c6a925e1ddb99b82e8b460a2d9bb2a67911b31ba16f9808469d44c9a1fb71d8",
+        "two_fe_policy_development": "486f7bae48c41d64fca5bdf1ae4d0018c5142fbd6e646258d29c2841476a6697"
+      },
+      "accounting": {
+        "job": 8328529,
+        "host": "scc-pi2",
+        "failed": 0,
+        "exit_status": 0,
+        "slots": 4,
+        "wall_seconds": 95,
+        "cpu_seconds": 239.406,
+        "maxvmem": "2.308G",
+        "purpose": "Shared correctness allocation; wall and memory accounting are not performance measurements."
+      },
+      "environment": {
+        "host": "scc-pi2",
+        "job": "8328529",
+        "slots": 4,
+        "affinity": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "python": "3.12.4 (main, Jul  1 2024, 10:14:11) [GCC 12.2.0]",
+        "packages": {
+          "numpy": "2.5.4",
+          "pandas": "3.1.0",
+          "scipy": "1.18.1"
+        },
+        "rustc": "rustc 1.85.1 (4eb161250 2025-03-15)\nbinary: rustc\ncommit-hash: 4eb161250e340c8f48f66e2b929ef4a5bed7c181\ncommit-date: 2025-03-15\nhost: x86_64-unknown-linux-gnu\nrelease: 1.85.1\nLLVM version: 19.1.7",
+        "cargo": "cargo 1.85.1 (d73d2caf9 2024-12-31)",
+        "gcc": "gcc (GCC) 12.2.0\nCopyright (C) 2022 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
+        "candidate_revision": "d96eccfc269b8b5045038ee0dcee5fc2c788a86d",
+        "mode": "science-only",
+        "native_calls": 16,
+        "retries": 0,
+        "performance_claim": false
+      },
+      "comparison_scope": {
+        "cross_plugin_only_allowed_paths": [
+          "/matrices/RSEP/bits/36",
+          "/matrices/RSEP/bits/37",
+          "/matrices/RSEP/bits/38",
+          "/matrices/RSEP/bits/39",
+          "/matrices/RREC/bits/28",
+          "/matrices/RREC/bits/29"
+        ],
+        "actual_changed_paths": [
+          "/matrices/RREC/bits/28",
+          "/matrices/RREC/bits/29",
+          "/matrices/RSEP/bits/36",
+          "/matrices/RSEP/bits/38"
+        ],
+        "condition": "Both actual retained-CG arms must first prove generation-2 successful LSMR retry and positive inner iteration work.",
+        "fixed_and_cross_worker_digest": "Exact; no scope exemption.",
+        "other_scientific_fields": "Exact across plugins, including iterations, counts, status, sequence, sample, rank, omission, DoF, coefficients, covariance and observation outputs.",
+        "limitation": "The digest also aggregates unpublished discrete internals and two additional certificate magnitudes; RSEP/RSEQ do not separately expose every proof payload. The allowed cross-plugin digest change is not an independent proof of identical full internal execution."
+      },
+      "independent_review": {
+        "changed_magnitudes": [
+          {
+            "RSEP36_interior_zero_relative": {
+              "candidate": 3.2036828130617327e-18,
+              "incumbent": 3.2036828130617315e-18
+            },
+            "RSEP38_span_residual_relative": {
+              "candidate": 5.907794734014179e-16,
+              "incumbent": 5.785870426737622e-16
+            },
+            "workers": 1
+          },
+          {
+            "RSEP36_interior_zero_relative": {
+              "candidate": 3.2036828130617327e-18,
+              "incumbent": 3.2036828130617315e-18
+            },
+            "RSEP38_span_residual_relative": {
+              "candidate": 5.907794734014179e-16,
+              "incumbent": 5.785870426737622e-16
+            },
+            "workers": 4
+          }
+        ],
+        "cross_plugin_scoped_comparisons": 4,
+        "cross_worker_discrete_and_science_comparisons": 4,
+        "fixed_worker_comparisons": 8,
+        "independent_dense_checks": 16,
+        "linux_summary_sha256": "944d112b8259306c47fa415709967f86bdf1635b47508d0f42d11e2b24625b6b",
+        "native_executions": 0,
+        "prepared_requests_verified": 4,
+        "public_auto_retained_cg_exact_fit_and_output_comparisons": 4,
+        "result_log_columns_hashes_verified": 16,
+        "status": "passed_stored_capture_review"
+      },
+      "evidence_sha256": {
+        "SHA256SUMS": "ab2e923b4173f2b71c91d6abb8b2a71cecf43ce0ed4200824bbdc7cd7dddaf11",
+        "OUTPUTS.SHA256SUMS": "4f1ba54324ff16a7301f66db82a792e902be99cb8321840ee622d6b6d2937a03",
+        "config-linux.json": "ed5e435b444d6378397e867f24cd6f6bc2e806871e19926ea98a6c7b33889254",
+        "environment.json": "935e665af987eb58212965eeac6ec8004c54d93235463bc22530566621def86d",
+        "accounting.txt": "f2d7b55e59db3f907dbc05d224468a882d555482a02e67607c01ff59153802ef",
+        "exit-status.txt": "7bb5060f35318f74dc45c087f915d3108f86f5c1b32eae3d91e73ebcf0791d44",
+        "STARTED": "ebf6197b1f32e6688438479c2581ac00feed35ace700a477f5c1fec6584a84b0",
+        "declaration.txt": "590cce36b1f77abce6195c7b04acbbc176f701623b762fd28736faee74df2c85",
+        "scc-fallback.sh": "1ae464e00f667f4d9a3fac78e7a223f863a21453dff38d6451b58cbed10307a2",
+        "source/fallback.py": "3770044629c425654de4b00480c705afb7e8e93eaa63bfcd0bed13f305926b98",
+        "source/separation_fallback.rs": "bf3fc7bf8f02b5e1880f3bb4288a13ac00d2c402c23384d89c52eaf7376f335e",
+        "logs/build.log": "875bb4df304e7d655650b61e9449087d6146457e8da9f5f8cff173b1b77febea",
+        "logs/generation.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "logs/native-science.log": "2025884a9742d34df03b99d834e426d4a8754cce3300a35c4476944a4e45a108",
+        "logs/staged-source-verification.log": "221c2a4b9ba8b8c0633bc750f0b52ca6d5c42d6a365899c06d428d856e74fe34",
+        "logs/staged-source-after.log": "221c2a4b9ba8b8c0633bc750f0b52ca6d5c42d6a365899c06d428d856e74fe34",
+        "linux-results/summary.json": "944d112b8259306c47fa415709967f86bdf1635b47508d0f42d11e2b24625b6b",
+        "stored-review.json": "c2aaa1c3a361f4c9f0d5bebfff2046910a6b747ef88cc1b327de403eab602d47"
+      },
+      "limitations": [
+        "Two requests on one synthetic separation design; no claim about all PPML fallback geometries.",
+        "The public Auto control does not execute within here; only the injected retained-CG route provides actual retry-path evidence.",
+        "No Mac call has been made for this companion; a matching configuration is prepared but held for review.",
+        "No timing comparison, production adoption or upstream publication acceptance."
+      ]
     }
   },
   "limitations": [
@@ -2883,7 +3437,8 @@
       "Linux four-case public boundary checks and final scheduler accounting",
       "Additional Mac mapped OLS reuse and augmented PPML oracle fixtures",
       "Additional Linux mapped OLS reuse and augmented PPML oracle fixtures, source-bound timing-harness compilation and scheduler accounting",
-      "Linux primary science preflight: 28 stored result/log hashes and actual path traces, 14 accepted comparisons, scheduler accounting and terminal markers; columns remain SCC-only"
+      "Linux primary science preflight: 28 stored result/log hashes and actual path traces, 14 accepted comparisons, scheduler accounting and terminal markers; columns remain SCC-only",
+      "Linux retained-CG fallback companion: all16 stored result/log/column hashes, independent dense oracle and original-row LP witness, exact fixed-worker repeats, cross-worker decisions/science, actual generation-2 LSMR retry, scoped cross-plugin differences and scheduler accounting; no native rerun."
     ],
     "pending": []
   }
