@@ -349,6 +349,22 @@ impl SpiApi for FakeSpi {
             Ok(())
         }
     }
+
+    fn check_interrupted_while_waiting(&mut self) -> Result<()> {
+        // Timed polls must not consume deterministic phase-boundary ordinals.
+        if self
+            .interrupt_when_marker_exists
+            .as_ref()
+            .is_some_and(|path| path.exists())
+        {
+            Err(FeregError::new(
+                ErrorCode::Interrupted,
+                "injected hidden PPML interruption",
+            ))
+        } else {
+            Ok(())
+        }
+    }
 }
 
 #[test]
@@ -2519,6 +2535,11 @@ fn finite_valid_unrepresentable_result_fails_r430_atomically() {
 
 #[test]
 fn stale_receipt_interrupt_and_panic_leave_complete_zero() {
+    if isolated_host_cancellation_test(
+        "ppml_estimate::tests::stale_receipt_interrupt_and_panic_leave_complete_zero",
+    ) {
+        return;
+    }
     let (args, mut stale) = fixture();
     stale.matrices.get_mut("RREC").expect("receipt")[0][0] = 1.0;
     assert!(estimate_ppml(&args, &mut stale).is_err());
@@ -2546,6 +2567,9 @@ fn stale_receipt_interrupt_and_panic_leave_complete_zero() {
 
 #[test]
 fn native_break_marker_is_emitted_after_core_entry_and_interrupts_before_stores() {
+    if isolated_host_cancellation_test("ppml_estimate::tests::native_break_marker_is_emitted_after_core_entry_and_interrupts_before_stores") {
+        return;
+    }
     let (mut args, mut spi) = fixture();
     args.push("inject=breaknative".to_owned());
     let marker_token = format!(
@@ -2578,6 +2602,40 @@ fn native_break_marker_is_emitted_after_core_entry_and_interrupts_before_stores(
     assert_eq!(spi.store_calls, 0);
     assert!(spi.stores.is_empty());
     assert_eq!(spi.receipt_complete(), 0.0);
+}
+
+fn isolated_host_cancellation_test(name: &str) -> bool {
+    const CHILD: &str = "FEREG_PPML_HOST_CANCELLATION_TEST_CHILD";
+    if std::env::var_os(CHILD).is_some() {
+        return false;
+    }
+    let status = std::process::Command::new(std::env::current_exe().unwrap())
+        .env(CHILD, "1")
+        .args([name, "--exact", "--test-threads=1"])
+        .status()
+        .expect("launch isolated PPML host cancellation witness");
+    assert!(status.success());
+    true
+}
+
+#[test]
+fn idle_host_polls_do_not_arm_native_break_or_consume_phase_ordinals() {
+    let (_, mut spi) = fixture();
+    spi.interrupt_at = Some(1);
+    {
+        let mut poll = relay_ppml_interrupts(
+            &mut spi,
+            PpmlDeveloperInjection::BreakNative,
+            "00000000000000000000000000000000",
+        );
+        poll(None).unwrap();
+        poll(None).unwrap();
+        let error = poll(Some(PpmlInterruptPoint::Preparation)).unwrap_err();
+        assert_eq!(error.code, ErrorCode::Interrupted);
+    }
+    assert_eq!(spi.interrupt_checks, 1);
+    assert!(spi.displays.is_empty());
+    assert_eq!(spi.store_calls, 0);
 }
 
 #[test]

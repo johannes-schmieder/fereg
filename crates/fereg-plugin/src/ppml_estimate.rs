@@ -501,11 +501,14 @@ fn relay_ppml_interrupts<'a>(
     spi: &'a mut dyn SpiApi,
     injection: PpmlDeveloperInjection,
     break_marker_token: &'a str,
-) -> impl FnMut(PpmlInterruptPoint) -> Result<()> + 'a {
+) -> impl FnMut(Option<PpmlInterruptPoint>) -> Result<()> + 'a {
     let mut native_break_armed = false;
-    move |point: PpmlInterruptPoint| {
+    move |point: Option<PpmlInterruptPoint>| {
         // The scoped executor relays safe-point requests here. This closure
         // keeps the non-Send/non-Sync SPI session on Stata's calling thread.
+        let Some(point) = point else {
+            return spi.check_interrupted_while_waiting();
+        };
         spi.check_interrupted()?;
         if injection == PpmlDeveloperInjection::BreakNative
             && !native_break_armed

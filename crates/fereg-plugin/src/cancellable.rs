@@ -50,7 +50,7 @@ impl<T> Drop for Finished<'_, T> {
 }
 
 /// Clears any cancellation request when the action leaves the runner.
-struct ResetCancellation;
+pub(crate) struct ResetCancellation;
 
 impl Drop for ResetCancellation {
     fn drop(&mut self) {
