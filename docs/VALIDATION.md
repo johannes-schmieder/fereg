@@ -23,7 +23,9 @@ weighted slope-boundary oracle, for continued qualification. The original
 fork/candidate rank-parity failure remains recorded. The native checks below
 cover declared published results, factor slots/base flags, PPML and replay;
 beta.10 performance must still pass. This decision does not authorize production
-adoption or acceptance of the documented rejected near-boundary fits.
+adoption or acceptance of the documented rejected near-boundary fits. The completed
+main performance panels below do not qualify beta.11: both contain a regression
+and inconclusive comparisons.
 
 Focused Rust 1.85.1 adapter checks passed 79 main tests and four subprocess
 witnesses, including explicit LSMR, controlled routing, selector retirement,
@@ -101,7 +103,51 @@ family completes in the unchanged MAP pilot and remains exact. Linux job
 terminal markers. Its 28 collected result/log pairs and path traces were
 independently verified; column files remain on SCC. The native record retains
 the exact identities and accounting. This is no timing or additional
-fixed-worker repeatability claim; performance qualification remains pending.
+fixed-worker repeatability claim; the completed main timing panels follow.
+
+The [main qualification record](../bench/results/within-qualification-20261029.json)
+retains every call, order, warmup, timing, solver row and scientific fingerprint
+in lossless compact payloads, with artifact/input/source hashes and decoding
+instructions. Both panels use the unchanged actual beta.10 and beta.11 plugins,
+29 families at one/four workers, and the frozen max(5%, 1 ms) allowance.
+
+| Panel | Native calls | Independent units per cell | Passed / inconclusive / regression |
+| --- | ---: | --- | --- |
+| Mac | 1,508 | Six mirrored blocks on one desktop | 51 / 6 / 1 |
+| Linux | 3,480 | Six physical hosts, two blocks each | 55 / 2 / 1 |
+
+Linux array `8328471` used six distinct whole-node allocations; all six jobs
+and report job `8338074` ended with scheduler failure/exit 0/0. There were no
+native errors, retries or discarded timings on either platform. The maintained
+reports passed scientific, fixed-worker and cross-worker checks; six families
+actually execute Within, while the dense three-FE MAP control remains exact.
+Independent read-only review reproduced all block orders, report classifications
+and bounds. These are one-sided `.025` bounds under the declared unit assumptions,
+with no simultaneous-coverage claim. The two reference labels alias the same
+beta.10 artifact and are counted once in the table.
+
+Mac `campaign-three-sparse-t1` regresses: median paired ratio `1.12666`, with
+raw timed medians 5.59002 versus 6.30906 seconds. Both arms record 19 RHS solves,
+390 iterations and outer counts 23+14. Linux `near-confounded-third-t4` regresses:
+ratio `1.11520`, with excess above the allowance bounded at 1.58–8.60 ms.
+Both arms retain five RHS solves, 71 iterations and outer counts 22+10.
+Recorded Linux setup medians increase 14.90–16.70 ms across hosts while solve
+medians decrease 1.62–4.41 ms. These phase observations do not identify a cause.
+All these calls retain LSMR with additive Schwarz and zero fallback.
+
+Linux's other inconclusive cells are `campaign-akm-k16-t4` and
+`campaign-three-sparse-t1`. The record lists all six Mac inconclusive cells.
+Mac retains the explicitly permitted Claude background activity: 47.95 sampled
+CPU seconds across five bound processes; this is neither an isolation claim nor
+a reason to discard adverse measurements. Both complete panels remain
+`needs_discussion`; no repeat sampling, production adoption or performance
+acceptance follows from them.
+
+Johannes subsequently authorized exactly one function-level profile per frozen
+plugin for each platform's regressing cell, followed by a justified fix in the
+fork only. No profile results are included here. Any revised candidate requires
+a separately declared comparison before acceptance; the completed main-panel
+verdicts and all adverse observations remain unchanged.
 
 The Linux separation-fallback companion passes its 16 declared actual-plugin
 calls on `scc-pi2` (job 8328529, scheduler failure/exit 0/0). The seed-17 weighted

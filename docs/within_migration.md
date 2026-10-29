@@ -10,9 +10,11 @@ for both `within` and `schwarz-precond`. The unpublished beta.11 candidate's
 `d3407a16dec3715f6e9eee13fb9b6646d5b28035`, available in the fork on
 `codex/fereg-beta11-candidate-next`. This is the combined upstream-based candidate,
 not an upstream release. The patch evidence below is current through October 29, 2026;
-source integration and the declared Mac/Linux native checks have passed, while
-performance qualification and installed-package admission remain outstanding. This report establishes
-neither performance acceptance nor readiness for adoption or publication.
+source integration and the declared Mac/Linux native checks have passed. The
+completed main performance panels each contain a regression and inconclusive
+comparisons, so beta.11 is not performance-qualified; installed-package admission
+also remains outstanding. This report establishes neither acceptance nor
+readiness for adoption or publication.
 
 Johannes's current instruction is to develop and push these patches only in
 `johannes-schmieder/within`. Any upstream push or pull request requires prior
@@ -670,8 +672,44 @@ compiled the source-bound C timing harness with GCC 12.2.0 and made zero native
 performance calls. The record preserves exact hashes, configurations, bounds
 and limitations. All successful SCC jobs have verified zero scheduler and
 application exit statuses and a 16-CPU affinity cap; they make no performance
-isolation claim. Independent Intel Mac runtime, Windows, package admission and
-beta.10 performance qualification remain outstanding.
+isolation claim. Independent Intel Mac runtime, Windows and package admission
+remain outstanding; the completed main beta.10 comparison is described below.
+
+### Combined candidate performance
+
+The [compact qualification record](../bench/results/within-qualification-20261029.json)
+retains all 4,988 main-panel calls, including every warmup and adverse timing,
+with exact identities, order, solver rows, scientific fingerprints and decoding
+instructions. Mac's 1,508 calls produce 51 passing, six inconclusive and one
+regressing cell. Linux's 3,480 calls on six distinct whole-node SCC hosts produce
+55 passing, two inconclusive and one regressing cell. Both panels cover the same
+58 cells and use the declared max(5%, 1 ms) rule. There are no native errors,
+retries or discarded timings; the scientific and discrete gates pass for the
+declared scope. Six many-FE families actually execute Within; the dense three-FE
+control remains on exact MAP and supplies no Within cost evidence.
+
+Mac's sparse three-FE one-worker cell has paired median ratio `1.12666`
+(raw medians 5.59002 versus 6.30906 seconds). Linux's near-confounded third-FE
+four-worker cell has ratio `1.11520` and positive excess above the allowance
+of 1.58–8.60 ms. Their unchanged recorded work is respectively 19 RHS/390
+iterations and five RHS/71 iterations, both using additive Schwarz without
+fallback. The Mac difference lies in recorded solve duration; the Linux
+difference lies in setup duration. The retained traces contain no per-RHS timing,
+and these observations do not attribute either regression to a specific kernel.
+
+The Mac observer retains 47.95 sampled Claude CPU seconds as authorized desktop
+noise; no measurement is excluded on that basis. Linux uses physical hosts as
+independent units; Mac uses six mirrored blocks on one desktop. The one-sided
+`.025` intervals are conditional on the declared unit assumptions and have no
+simultaneous-coverage guarantee. Both reports remain `needs_discussion`.
+[Validation](VALIDATION.md#upstream-migration-candidate) records the limitations;
+neither these main panels nor independent patch improvements authorize adoption.
+
+Johannes authorized exactly one function-level profile per frozen plugin for
+each platform's regressing cell and a justified fix in the fork only. Profile
+results are not yet included here. A revised candidate requires a separately
+declared comparison before acceptance; both completed reports remain
+`needs_discussion`.
 
 Independent tests to preserve include the dense QR and weighted/disconnected
 families in [routing_portfolio](../crates/fereg-oracle/tests/routing_portfolio.rs),
