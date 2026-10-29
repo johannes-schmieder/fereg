@@ -145,8 +145,18 @@ acceptance follows from them.
 
 Johannes subsequently authorized exactly one function-level profile per frozen
 plugin for each platform's regressing cell, followed by a justified fix in the
-fork only. No profile results are included here. Any revised candidate requires
-a separately declared comparison before acceptance; the completed main-panel
+fork only. All four calls completed and passed their independent oracle, exact
+per-artifact scientific fingerprint and recorded solver-work checks. The
+[qualification record](../bench/results/within-qualification-20261029.json)
+retains their diagnostic summaries and source/profile identities. Mac sampling
+and disassembly point to categorical accumulation's per-row bounds checks;
+Linux sampling and allocation inspection point to unnecessary compensation
+arrays for exact unweighted categorical counts. These motivate separate patches
+that preserve arithmetic. They do not establish causal effects or recovered
+performance: each profile contains one instrumented call, and Linux's user-space
+CPU event excludes kernel allocation costs. Linux job `8338538` completed on
+`scc-we4` with scheduler failure/exit 0/0. Any revised candidate requires a
+separately declared comparison before acceptance; the completed main-panel
 verdicts and all adverse observations remain unchanged.
 
 The Linux separation-fallback companion passes its 16 declared actual-plugin
@@ -162,10 +172,15 @@ IR interior/span certificate magnitudes and their trace digest differ; all
 other scientific fields stay exact. The digest remains exact within a binary
 across workers and repeats. Because it also aggregates unpublished discrete
 internals, the cross-plugin exception does not prove full internal execution
-identity. All 16 result/log/column captures and the scheduler record were
+identity. All 16 Linux result/log/column captures and the scheduler record were
 independently rechecked without new native calls. The native record retains
-their identities. Matching Mac inputs/configuration are prepared but unrun;
-these Linux checks make no performance or adoption claim.
+their identities. The same declared Mac companion now passes all 16 calls,
+including eight actual generation-2 retries, eight fixed-worker comparisons and
+four cross-worker comparisons. Independent review confirms the same sample,
+oracle and comparison scope. Its first launch stopped at output-directory
+validation before native execution; correcting only that path required no
+repeated native calls. Neither platform's checks make a performance or adoption
+claim.
 
 The separate sparse back-substitution optimization completed its practical Mac
 comparison: 312 calls, 72 paired blocks and all 12 descriptive intervals passed

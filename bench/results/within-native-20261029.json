@@ -1404,6 +1404,503 @@
         "No performance acceptance, package admission, publication or adoption claim.",
         "Within iterations are trace observations, not proof of every API feature or fallback branch."
       ]
+    },
+    "separation_fallback_companion": {
+      "budget_s": 2400,
+      "calls": [
+        {
+          "columns_sha256": "a0f5c0abed5052f457b0f2d7520390086f993a2c357f9e49f34f75dd59c2c9d8",
+          "log": "public-auto-t1-incumbent-r0.log",
+          "log_sha256": "cad326eb8d127ead1683a4f56f1096d4c069c7bc922dc7e0f50ae151c320e6f2",
+          "path_evidence": {
+            "lsmr_iterations": 0,
+            "lsmr_rhs": 0,
+            "retries": []
+          },
+          "prepared_sha256": "d275254c070d5f206a94645b0137d53a5324217b4674c91ddbcddc14f1012714",
+          "repeat": 0,
+          "request": "public-auto",
+          "result_sha256": "6f35974c4ba158d79657ec69b5960af2e11a6051c74a8f054794b36dc7179508",
+          "role": "incumbent",
+          "status": "passed",
+          "target": "public-auto-t1-incumbent-r0.json",
+          "workers": 1
+        },
+        {
+          "columns_sha256": "a0f5c0abed5052f457b0f2d7520390086f993a2c357f9e49f34f75dd59c2c9d8",
+          "cross_plugin_changed_paths": [],
+          "log": "public-auto-t1-candidate-r0.log",
+          "log_sha256": "f15b13781a7ca1cf00ae404cd409f292600595d8ddb2e72f1ddcd8146c7bcdfb",
+          "path_evidence": {
+            "lsmr_iterations": 0,
+            "lsmr_rhs": 0,
+            "retries": []
+          },
+          "prepared_sha256": "d275254c070d5f206a94645b0137d53a5324217b4674c91ddbcddc14f1012714",
+          "repeat": 0,
+          "request": "public-auto",
+          "result_sha256": "d230e20fb3752b98995fc3f39e8d4a75be86d46f1c52936f5da13d63c0250e03",
+          "role": "candidate",
+          "status": "passed",
+          "target": "public-auto-t1-candidate-r0.json",
+          "workers": 1
+        },
+        {
+          "columns_sha256": "a0f5c0abed5052f457b0f2d7520390086f993a2c357f9e49f34f75dd59c2c9d8",
+          "log": "public-auto-t1-incumbent-r1.log",
+          "log_sha256": "7ee1bbf5d7567095dbd0f9385ad0fea0288cce8035ec045b2d8504f24a4e736c",
+          "path_evidence": {
+            "lsmr_iterations": 0,
+            "lsmr_rhs": 0,
+            "retries": []
+          },
+          "prepared_sha256": "d275254c070d5f206a94645b0137d53a5324217b4674c91ddbcddc14f1012714",
+          "repeat": 1,
+          "request": "public-auto",
+          "result_sha256": "5d21e2ba15dd05d13d24d6f8523696a28c3fd217a0d23d3934b7f91243a3032a",
+          "role": "incumbent",
+          "status": "passed",
+          "target": "public-auto-t1-incumbent-r1.json",
+          "workers": 1
+        },
+        {
+          "columns_sha256": "a0f5c0abed5052f457b0f2d7520390086f993a2c357f9e49f34f75dd59c2c9d8",
+          "log": "public-auto-t1-candidate-r1.log",
+          "log_sha256": "7e37ef4da665d84bc50a88475fc348e7b9aa227070c2f80d2dba768151b9f90f",
+          "path_evidence": {
+            "lsmr_iterations": 0,
+            "lsmr_rhs": 0,
+            "retries": []
+          },
+          "prepared_sha256": "d275254c070d5f206a94645b0137d53a5324217b4674c91ddbcddc14f1012714",
+          "repeat": 1,
+          "request": "public-auto",
+          "result_sha256": "6cfb6031d49bbc4419c5c0065c3ebd9170286ec5d1683cb4b69f3b9b950c8ae6",
+          "role": "candidate",
+          "status": "passed",
+          "target": "public-auto-t1-candidate-r1.json",
+          "workers": 1
+        },
+        {
+          "columns_sha256": "b0cd3013b1fcadb103fab63a45b8c5f60eff66977352ef55179f66a7a93f8f77",
+          "log": "public-auto-t4-incumbent-r0.log",
+          "log_sha256": "2b45382c6c19bcbbf23e57c41dd7d80189264da85c51587897e685cd1865c7f5",
+          "path_evidence": {
+            "lsmr_iterations": 0,
+            "lsmr_rhs": 0,
+            "retries": []
+          },
+          "prepared_sha256": "78240e78b601aed22e05ec5da9604ebb25f993fbbf712df739a86756e5c0d877",
+          "repeat": 0,
+          "request": "public-auto",
+          "result_sha256": "715e58524d2623ea2484d3c2799b4c3efaded57cfe46fad7866b1b0680e4f5fb",
+          "role": "incumbent",
+          "status": "passed",
+          "target": "public-auto-t4-incumbent-r0.json",
+          "workers": 4
+        },
+        {
+          "columns_sha256": "b0cd3013b1fcadb103fab63a45b8c5f60eff66977352ef55179f66a7a93f8f77",
+          "cross_plugin_changed_paths": [],
+          "log": "public-auto-t4-candidate-r0.log",
+          "log_sha256": "0ffbc7f14c5a7e431a986f0b1ad439da993ab2f288e04167f45ce4af7305d92b",
+          "path_evidence": {
+            "lsmr_iterations": 0,
+            "lsmr_rhs": 0,
+            "retries": []
+          },
+          "prepared_sha256": "78240e78b601aed22e05ec5da9604ebb25f993fbbf712df739a86756e5c0d877",
+          "repeat": 0,
+          "request": "public-auto",
+          "result_sha256": "e692ae27b630f33f5478221afadfd13e5a04a65dc12fa153fce2d5618f5c8327",
+          "role": "candidate",
+          "status": "passed",
+          "target": "public-auto-t4-candidate-r0.json",
+          "workers": 4
+        },
+        {
+          "columns_sha256": "b0cd3013b1fcadb103fab63a45b8c5f60eff66977352ef55179f66a7a93f8f77",
+          "log": "public-auto-t4-incumbent-r1.log",
+          "log_sha256": "fc496615f41be9f197224817d1c9e30d3760efa1bb0e317bd18827c78b3e4018",
+          "path_evidence": {
+            "lsmr_iterations": 0,
+            "lsmr_rhs": 0,
+            "retries": []
+          },
+          "prepared_sha256": "78240e78b601aed22e05ec5da9604ebb25f993fbbf712df739a86756e5c0d877",
+          "repeat": 1,
+          "request": "public-auto",
+          "result_sha256": "f264545d6616305f5f036abe9deec4909c4e47913be3bcb072ee16c85ba8c797",
+          "role": "incumbent",
+          "status": "passed",
+          "target": "public-auto-t4-incumbent-r1.json",
+          "workers": 4
+        },
+        {
+          "columns_sha256": "b0cd3013b1fcadb103fab63a45b8c5f60eff66977352ef55179f66a7a93f8f77",
+          "log": "public-auto-t4-candidate-r1.log",
+          "log_sha256": "513bda95e8e1ae0d5e1089eae956d28424d2216240a9b76399a08fbb04a7be67",
+          "path_evidence": {
+            "lsmr_iterations": 0,
+            "lsmr_rhs": 0,
+            "retries": []
+          },
+          "prepared_sha256": "78240e78b601aed22e05ec5da9604ebb25f993fbbf712df739a86756e5c0d877",
+          "repeat": 1,
+          "request": "public-auto",
+          "result_sha256": "c040b48c58be727c7fe4d7ce78837495350985f489c075df9dd57de714373d02",
+          "role": "candidate",
+          "status": "passed",
+          "target": "public-auto-t4-candidate-r1.json",
+          "workers": 4
+        },
+        {
+          "columns_sha256": "a0f5c0abed5052f457b0f2d7520390086f993a2c357f9e49f34f75dd59c2c9d8",
+          "log": "retained-cg-t1-incumbent-r0.log",
+          "log_sha256": "98c8c8cd00668420aa59fac7393851943225e5ad025666523103eaace20bd2d8",
+          "path_evidence": {
+            "lsmr_iterations": 147,
+            "lsmr_rhs": 10,
+            "retries": [
+              {
+                "first": "NonConvergence",
+                "generation": "2",
+                "solver": "lsmr",
+                "succeeded": "1"
+              }
+            ]
+          },
+          "prepared_sha256": "43938f1b49adcee35c88d41bd9bc428feb7c0774b0522b35d3412b17401dcbc4",
+          "repeat": 0,
+          "request": "retained-cg",
+          "result_sha256": "859ab81a817c789e05cea0ede6625195ffc31b5b69b5e0b2927a96a6b59bfd21",
+          "role": "incumbent",
+          "status": "passed",
+          "target": "retained-cg-t1-incumbent-r0.json",
+          "workers": 1
+        },
+        {
+          "columns_sha256": "a0f5c0abed5052f457b0f2d7520390086f993a2c357f9e49f34f75dd59c2c9d8",
+          "cross_plugin_changed_paths": [
+            "/matrices/RREC/bits/28",
+            "/matrices/RREC/bits/29",
+            "/matrices/RSEP/bits/36",
+            "/matrices/RSEP/bits/38"
+          ],
+          "log": "retained-cg-t1-candidate-r0.log",
+          "log_sha256": "49af32157368664294ec9dd7b6054409395b964f90013cc0c8b97bd75209c64d",
+          "path_evidence": {
+            "lsmr_iterations": 147,
+            "lsmr_rhs": 10,
+            "retries": [
+              {
+                "first": "NonConvergence",
+                "generation": "2",
+                "solver": "lsmr",
+                "succeeded": "1"
+              }
+            ]
+          },
+          "prepared_sha256": "43938f1b49adcee35c88d41bd9bc428feb7c0774b0522b35d3412b17401dcbc4",
+          "repeat": 0,
+          "request": "retained-cg",
+          "result_sha256": "e00b65f183164cf4d691dc7dc2ac9a553bde2b9bd8579e6e3a4251896cf7cbe3",
+          "role": "candidate",
+          "status": "passed",
+          "target": "retained-cg-t1-candidate-r0.json",
+          "workers": 1
+        },
+        {
+          "columns_sha256": "a0f5c0abed5052f457b0f2d7520390086f993a2c357f9e49f34f75dd59c2c9d8",
+          "log": "retained-cg-t1-incumbent-r1.log",
+          "log_sha256": "42cdf1a02b3438b0ca7c674ef267c9af776f6e290bb949d49dbcdf6a6075383a",
+          "path_evidence": {
+            "lsmr_iterations": 147,
+            "lsmr_rhs": 10,
+            "retries": [
+              {
+                "first": "NonConvergence",
+                "generation": "2",
+                "solver": "lsmr",
+                "succeeded": "1"
+              }
+            ]
+          },
+          "prepared_sha256": "43938f1b49adcee35c88d41bd9bc428feb7c0774b0522b35d3412b17401dcbc4",
+          "repeat": 1,
+          "request": "retained-cg",
+          "result_sha256": "08be9a0b32b6841400b1b0a216aaeb9d619b960f46a83e41e67bc921ef54e476",
+          "role": "incumbent",
+          "status": "passed",
+          "target": "retained-cg-t1-incumbent-r1.json",
+          "workers": 1
+        },
+        {
+          "columns_sha256": "a0f5c0abed5052f457b0f2d7520390086f993a2c357f9e49f34f75dd59c2c9d8",
+          "log": "retained-cg-t1-candidate-r1.log",
+          "log_sha256": "0050439d1f3775a78580141d8f567b2bee6b4e53d5c55d8ec17cc12138b4b664",
+          "path_evidence": {
+            "lsmr_iterations": 147,
+            "lsmr_rhs": 10,
+            "retries": [
+              {
+                "first": "NonConvergence",
+                "generation": "2",
+                "solver": "lsmr",
+                "succeeded": "1"
+              }
+            ]
+          },
+          "prepared_sha256": "43938f1b49adcee35c88d41bd9bc428feb7c0774b0522b35d3412b17401dcbc4",
+          "repeat": 1,
+          "request": "retained-cg",
+          "result_sha256": "c71e38bb52e1ddcfac3220851279581f7b51213aae868666a6a80c48df328960",
+          "role": "candidate",
+          "status": "passed",
+          "target": "retained-cg-t1-candidate-r1.json",
+          "workers": 1
+        },
+        {
+          "columns_sha256": "b0cd3013b1fcadb103fab63a45b8c5f60eff66977352ef55179f66a7a93f8f77",
+          "log": "retained-cg-t4-incumbent-r0.log",
+          "log_sha256": "051dbfb2be1e65f826a7c4b332f270c12afe6e9a94d4a22161a46235b47acb44",
+          "path_evidence": {
+            "lsmr_iterations": 147,
+            "lsmr_rhs": 10,
+            "retries": [
+              {
+                "first": "NonConvergence",
+                "generation": "2",
+                "solver": "lsmr",
+                "succeeded": "1"
+              }
+            ]
+          },
+          "prepared_sha256": "09341064d2318904dcf47a433e8f3b478a7b83f570a7df0d51ff12b3858cbba9",
+          "repeat": 0,
+          "request": "retained-cg",
+          "result_sha256": "24d8aa0c76f64eacb023544887baecff776d576a23a325cd9d9f09d8450aad48",
+          "role": "incumbent",
+          "status": "passed",
+          "target": "retained-cg-t4-incumbent-r0.json",
+          "workers": 4
+        },
+        {
+          "columns_sha256": "b0cd3013b1fcadb103fab63a45b8c5f60eff66977352ef55179f66a7a93f8f77",
+          "cross_plugin_changed_paths": [
+            "/matrices/RREC/bits/28",
+            "/matrices/RREC/bits/29",
+            "/matrices/RSEP/bits/36",
+            "/matrices/RSEP/bits/38"
+          ],
+          "log": "retained-cg-t4-candidate-r0.log",
+          "log_sha256": "7ceaffb074700b7b58419a3cc21648fe5c674e17e723a82d660de345a4cea730",
+          "path_evidence": {
+            "lsmr_iterations": 147,
+            "lsmr_rhs": 10,
+            "retries": [
+              {
+                "first": "NonConvergence",
+                "generation": "2",
+                "solver": "lsmr",
+                "succeeded": "1"
+              }
+            ]
+          },
+          "prepared_sha256": "09341064d2318904dcf47a433e8f3b478a7b83f570a7df0d51ff12b3858cbba9",
+          "repeat": 0,
+          "request": "retained-cg",
+          "result_sha256": "894dd95bb8ef4a1b6ad6aa1d7189a7d65b51d9512a2cf752d2c155ee03f25a8d",
+          "role": "candidate",
+          "status": "passed",
+          "target": "retained-cg-t4-candidate-r0.json",
+          "workers": 4
+        },
+        {
+          "columns_sha256": "b0cd3013b1fcadb103fab63a45b8c5f60eff66977352ef55179f66a7a93f8f77",
+          "log": "retained-cg-t4-incumbent-r1.log",
+          "log_sha256": "9d3df6e8c0d8b05a610d63c973fe953c9c1eb4e606f91c8c869481a3e49f1706",
+          "path_evidence": {
+            "lsmr_iterations": 147,
+            "lsmr_rhs": 10,
+            "retries": [
+              {
+                "first": "NonConvergence",
+                "generation": "2",
+                "solver": "lsmr",
+                "succeeded": "1"
+              }
+            ]
+          },
+          "prepared_sha256": "09341064d2318904dcf47a433e8f3b478a7b83f570a7df0d51ff12b3858cbba9",
+          "repeat": 1,
+          "request": "retained-cg",
+          "result_sha256": "2c55132ab67d2fd9375e67d388e3f7c3d07602f307395edd7728816a6f2c6dfb",
+          "role": "incumbent",
+          "status": "passed",
+          "target": "retained-cg-t4-incumbent-r1.json",
+          "workers": 4
+        },
+        {
+          "columns_sha256": "b0cd3013b1fcadb103fab63a45b8c5f60eff66977352ef55179f66a7a93f8f77",
+          "log": "retained-cg-t4-candidate-r1.log",
+          "log_sha256": "5fc5662d5c0243c364f8b35571abf1f8a9e1c2eb9a0c61b08b930bef19881c5f",
+          "path_evidence": {
+            "lsmr_iterations": 147,
+            "lsmr_rhs": 10,
+            "retries": [
+              {
+                "first": "NonConvergence",
+                "generation": "2",
+                "solver": "lsmr",
+                "succeeded": "1"
+              }
+            ]
+          },
+          "prepared_sha256": "09341064d2318904dcf47a433e8f3b478a7b83f570a7df0d51ff12b3858cbba9",
+          "repeat": 1,
+          "request": "retained-cg",
+          "result_sha256": "d5bc33c2e57cf73c8cf385addcb9afa63b312b89e9dee8d0790e34d0d3400d17",
+          "role": "candidate",
+          "status": "passed",
+          "target": "retained-cg-t4-candidate-r1.json",
+          "workers": 4
+        }
+      ],
+      "cleared_native_environment_keys": [
+        "DYLD_INSERT_LIBRARIES",
+        "FEREG_ACTION_MEMORY_AUDIT",
+        "FEREG_CMG_ORDINARY",
+        "FEREG_MEMORY_LIMIT_BYTES",
+        "FEREG_PHASE_TIMING",
+        "FEREG_PPML_MEMORY_TRACE",
+        "FEREG_SOLVER_TRACE",
+        "FEREG_SOLVER_TRACE_FILE",
+        "LD_AUDIT",
+        "LD_PRELOAD",
+        "LLVM_PROFILE_FILE",
+        "RAYON_NUM_THREADS",
+        "RUST_TEST_THREADS"
+      ],
+      "config_sha256": "2265b2fa8b59218c90ece3f9f7ee2261c2e85ed1a0ad78df18fab0db330b31ab",
+      "helper_sha256": "3770044629c425654de4b00480c705afb7e8e93eaa63bfcd0bed13f305926b98",
+      "lp_witness": {
+        "fnv1a_rows": "af3596f7b4156b10",
+        "retained": 228
+      },
+      "mode": "science-only",
+      "native_call_cap": 16,
+      "status": "passed",
+      "timeout_s": 120,
+      "timing_verdict": null,
+      "source_revision": "d96eccfc269b8b5045038ee0dcee5fc2c788a86d",
+      "within_revision": "d3407a16dec3715f6e9eee13fb9b6646d5b28035",
+      "scope": "Science-only actual-plugin seed-17 retained-CG to LSMR separation fallback plus public Auto control; no performance or adoption claim.",
+      "comparison_scope": {
+        "cross_plugin_only_allowed_paths": [
+          "/matrices/RSEP/bits/36",
+          "/matrices/RSEP/bits/37",
+          "/matrices/RSEP/bits/38",
+          "/matrices/RSEP/bits/39",
+          "/matrices/RREC/bits/28",
+          "/matrices/RREC/bits/29"
+        ],
+        "actual_changed_paths": [
+          "/matrices/RREC/bits/28",
+          "/matrices/RREC/bits/29",
+          "/matrices/RSEP/bits/36",
+          "/matrices/RSEP/bits/38"
+        ],
+        "condition": "Both actual retained-CG arms must first prove generation-2 successful LSMR retry and positive inner iteration work.",
+        "fixed_and_cross_worker_digest": "Exact; no scope exemption.",
+        "other_scientific_fields": "Exact across plugins, including iterations, counts, status, sequence, sample, rank, omission, DoF, coefficients, covariance and observation outputs.",
+        "limitation": "The digest also aggregates unpublished discrete internals and two additional certificate magnitudes; RSEP/RSEQ do not separately expose every proof payload. The allowed cross-plugin digest change is not an independent proof of identical full internal execution."
+      },
+      "retries": 0,
+      "artifacts": {
+        "candidate": "22570a0ab4e01c215ad2ebfc049c74cb317bb342c57a59f6d4bb1ba77b745f48",
+        "harness": "5410c275bfd61db2bef4b6ed0ba50741797847454159f790a668f5c0243e94b1",
+        "incumbent": "aa453ba70c90a605877c1c85383f574ea6cbd5e4ba3a2875b61b451e9d7ceae0"
+      },
+      "inputs": {
+        "public-auto": "d275254c070d5f206a94645b0137d53a5324217b4674c91ddbcddc14f1012714",
+        "retained-cg": "43938f1b49adcee35c88d41bd9bc428feb7c0774b0522b35d3412b17401dcbc4"
+      },
+      "independent_dense_oracle_sha256": "44e3e59c06e03af5f0a0655cb91b7837a5748142d5b4407e459efaf8c338f63d",
+      "generator_sources": {
+        "crates/fereg-oracle/examples/replay/expected.rs": "3e781d3829a7425568a65ea77eac58e97e8cc3c6f94939ab50e9016e87ed7c2b",
+        "crates/fereg-oracle/examples/replay/wire.rs": "e5aa1624b0dfc01a17bf25679ee242d285ac618adbd0d0e5d565b6337668e602",
+        "crates/fereg-oracle/examples/separation_fallback.rs": "bf3fc7bf8f02b5e1880f3bb4288a13ac00d2c402c23384d89c52eaf7376f335e",
+        "crates/fereg-oracle/src/designs.rs": "721b355070482a47bd188e2c92a45133c7965dbf620e107a719b1763e4903b39",
+        "crates/fereg-oracle/src/designs/topology.rs": "bc870432f4b8c60ee71fe4801d65851daae93d658dcc926c3db2a84e5882be6b",
+        "crates/fereg-oracle/tests/ppml_separation_routing.rs": "7e814aa197a52789121b01b486dcddb09a16f03a415f57b6d85e51064a23650a"
+      },
+      "execution_sources": {
+        "block_host": "fccf59236f74f077e890685acd2abc996a1c7be8ecabecde095da6932974944d",
+        "cmg_setup": "b7477ec64d6c926bd67b503f7a3cfc11f3ffa71055adaf89b9ae954be3f4547c",
+        "cmgschur": "797ab16b37bba88049cd98026ace7b5147d188049e64d39a1f823b69df0ca415",
+        "cmgschur_cases": "192dd59269ab26abf100065a33cff771ba5999445f61cd6ab7c908c3dcdca0c5",
+        "native": "9114748c964f4afe8691d4cfb1aa4779e298caf1d3241711eb1ff15cc1d96c14",
+        "native_io": "5a3ac828c7f0c7c3cd5af963e7192f5b598c2ca817767a1ef1b49d05196f3a03",
+        "ownership_panel3": "f3c37bb5783c18a1031219fe59fb6e4ec5eeee161666a5163544390eb5f009cc",
+        "ownership_qualification_cases": "4b9e0df18533789de7de37efc6457ebda4b968bb516608d76aa86f545c1ea304",
+        "qualify": "ed57b205aef0076079e195bc5ccc8d4fc2f2c6429409165247966ff691c5d361",
+        "qualify_ownership": "e47ee96011af09c6dabf08e1670d2e30e7553633f291f4c478132de53b198ce7",
+        "qualify_scc": "68704aff448e8485a775a81bfe54ec14eea0203d9d8567d0dde8ec6bc650fbeb",
+        "replay_bias_reference": "32f31f26512c350980bc6c76dbf4ea2a56818b03fa0af39d9b5165d9e50d57ff",
+        "replay_cmg_polish": "fea5b0bc6a32199dad2baecd5d9f262410400b6c01e0c4fa0e5923fdcb2bc501",
+        "replay_ols_reference": "9f543e9558e3f2198b7f2995eb93b5b4fcebb3d24f08bd1f61c3eb6f80927fd0",
+        "replay_plugins": "c9c45e18e2ea879a91b71beecf5abae33c769579d326e5468a45f3068034f8b2",
+        "replay_psd": "6eec58705ef0ffa50d177b7ae51f126e5954827a39f67b4578d018119339bef8",
+        "routing": "bdcc0a99a842fc680e44e13661ec636209abba438e201d6cfdf676d05b3f1148",
+        "routing_cases": "e060940f2f6f149520c33e4c0f8428fb028b3df0dee0ba7ba48102c0b489b99b",
+        "routing_oracle": "52202977a396e610489211ebc40acbda8c0300332345a6edd0c9ec44490176a8",
+        "routing_science": "62084b661bdb9351e503821778c6dbbda74ab7355456fbeaaa0e83f2df284f03",
+        "time_exact": "f686e037d3a65c2d9ba6cb79e9cb3ad07316768bc9d5b44d928d98c6dbf6caba",
+        "two_fe_policy": "0c6a925e1ddb99b82e8b460a2d9bb2a67911b31ba16f9808469d44c9a1fb71d8",
+        "two_fe_policy_development": "486f7bae48c41d64fca5bdf1ae4d0018c5142fbd6e646258d29c2841476a6697"
+      },
+      "environment": {
+        "platform": "macOS-26.6.2-arm64-arm-64bit",
+        "machine": "arm64",
+        "python": "3.12.14 (main, Aug 25 2026, 13:50:33) [Clang 22.1.3 ]",
+        "packages": {
+          "numpy": "2.3.5"
+        },
+        "mode": "science-only",
+        "native_calls": 16,
+        "performance_claim": false
+      },
+      "evidence_sha256": {
+        "summary.json": "44ad1408fac52a745e9b7ecc41437f08b230e13eb61631223352ab34d5327d2a",
+        "config-darwin.json": "2265b2fa8b59218c90ece3f9f7ee2261c2e85ed1a0ad78df18fab0db330b31ab",
+        "source/fallback.py": "3770044629c425654de4b00480c705afb7e8e93eaa63bfcd0bed13f305926b98",
+        "declaration.txt": "590cce36b1f77abce6195c7b04acbbc176f701623b762fd28736faee74df2c85",
+        "macos-launch-error.json": "f0fe580458c8e13b95a06c967746de60b45d14cecd09849c5c6cefbbed442aa9"
+      },
+      "operational_repair": {
+        "failure_stage": "Output-root validation, before native calls",
+        "native_calls_in_failed_launch": 0,
+        "change": "Correct output path only; identical helper, config, plugins and inputs.",
+        "repeated_native_calls": 0
+      },
+      "limitations": [
+        "Two requests on one synthetic separation design; no claim about all PPML fallback geometries.",
+        "The public Auto control does not execute within here; only the injected retained-CG route provides actual retry-path evidence.",
+        "No timing comparison, production adoption or upstream publication acceptance."
+      ],
+      "independent_review": {
+        "status": "passed_stored_capture_review",
+        "native_executions": 0,
+        "result_log_columns_hashes_verified": 16,
+        "prepared_requests_verified": 4,
+        "independent_dense_checks": 16,
+        "fixed_worker_comparisons": 8,
+        "cross_worker_discrete_and_science_comparisons": 4,
+        "public_auto_retained_cg_exact_fit_and_output_comparisons": 4,
+        "cross_plugin_scoped_comparisons": 4,
+        "macos_summary_sha256": "44ad1408fac52a745e9b7ecc41437f08b230e13eb61631223352ab34d5327d2a"
+      }
     }
   },
   "linux": {
@@ -3412,7 +3909,6 @@
       "limitations": [
         "Two requests on one synthetic separation design; no claim about all PPML fallback geometries.",
         "The public Auto control does not execute within here; only the injected retained-CG route provides actual retry-path evidence.",
-        "No Mac call has been made for this companion; a matching configuration is prepared but held for review.",
         "No timing comparison, production adoption or upstream publication acceptance."
       ]
     }

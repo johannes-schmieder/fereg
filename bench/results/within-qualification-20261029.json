@@ -1,6 +1,1837 @@
 {
   "date": "2026-10-29",
   "decision": "Both completed main panels contain regressions and inconclusive cells. No acceptance, resampling, successor candidate or causal attribution follows from these measurements.",
+  "diagnostics_after_review": {
+    "independent_review": "Read-only review verified all original qualification fields unchanged, four exact profile calls and scientific fingerprints, accounting/hashes, source-derived allocations, actual-binary bounds checks and the stated sample predicates. No additional native calls.",
+    "limitations": [
+      "Single instrumented calls are diagnostic evidence, not timing comparisons or causal effect estimates.",
+      "CPU samples include harness parsing and serialization; waiting frames and recursive inclusions must not be counted repeatedly.",
+      "The Linux task-clock:u event excludes kernel time, including some allocation/page-fault cost.",
+      "Mac desktop and exact-bound Claude activity remain retained; the sampled observer does not prove quietness.",
+      "The separately held back-substitution patch remains outside the candidate."
+    ],
+    "linux": {
+      "accounting": {
+        "cpu": "9.914",
+        "exit_status": "0",
+        "failed": "0",
+        "granted_pe": "omp28",
+        "hostname": "scc-we4.scc.bu.edu",
+        "jobnumber": "8338538",
+        "maxvmem": "720.551M",
+        "qname": "w28",
+        "ru_wallclock": "13",
+        "slots": "28"
+      },
+      "accounting_sha256": "06061b60e23f11e3a87d3d67951eaa0ecc61d9267235b2f955c72d0c992608a6",
+      "accumulation_samples": {
+        "CSR_conversion_descendants": [
+          16,
+          21
+        ],
+        "columns": [
+          "incumbent",
+          "candidate"
+        ],
+        "cross_tab_nonrecursive_stack_union": [
+          29,
+          60
+        ],
+        "exclusive_accumulate_cross_block": [
+          12,
+          39
+        ],
+        "total_samples": [
+          1722,
+          1745
+        ]
+      },
+      "calls": [
+        {
+          "diagnostic_native_seconds": 0.122800928,
+          "fingerprint": "87032c0eebf8e203f3609fb8d95af1c56d07df4e1aaa4e76c0eda2e4fb6ed4cb",
+          "flat_exclusive_samples": [
+            {
+              "dso": "libc-2.28.so",
+              "samples": 402,
+              "symbol": "_IO_vfscanf"
+            },
+            {
+              "dso": "libc-2.28.so",
+              "samples": 244,
+              "symbol": "__GI_____strtoull_l_internal"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 204,
+              "symbol": "within::operator::design::fused::run_lanes::_$u7b$$u7b$closure$u7d$$u7d$::hc3ddcf127f699639"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 143,
+              "symbol": "within::operator::design::gather::gather_rows"
+            },
+            {
+              "dso": "libc-2.28.so",
+              "samples": 30,
+              "symbol": "__isoc99_fscanf"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 28,
+              "symbol": "within::block_elim::solver::backsub_block_from_scaled_rhs::_$u7b$$u7b$closure$u7d$$u7d$::hfbdbafe16d111340"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 26,
+              "symbol": "within::solver::session::SolveSession::run_action"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 25,
+              "symbol": "fereg_plugin::fused_kernels::x86_64::group_sums_fma"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 24,
+              "symbol": "core::ops::function::FnMut::call_mut"
+            },
+            {
+              "dso": "libc-2.28.so",
+              "samples": 22,
+              "symbol": "__memset_avx2_unaligned_erms_rtm"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 20,
+              "symbol": "core::ops::function::impls::<impl core::ops::function::FnOnce<A> for &mut F>::call_once"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 19,
+              "symbol": "schwarz_precond::lsmr::bidiag::ModifiedGolubKahan<A,M>::init"
+            },
+            {
+              "dso": "libc-2.28.so",
+              "samples": 18,
+              "symbol": "_IO_sputbackc"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 16,
+              "symbol": "within::csr_block::CsrBlock::from_dense_table"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 15,
+              "symbol": "<within::block_elim::solver::BlockElimSolver as schwarz_precond::local_solve::LocalSolver>::solve_local"
+            },
+            {
+              "dso": "libc-2.28.so",
+              "samples": 15,
+              "symbol": "read_int"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 14,
+              "symbol": "fereg_plugin::fused_kernels::x86_64::upper_rank_one_fma"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 13,
+              "symbol": "fereg_core::ols::prepared_unadjusted::ReferenceWeightView::value"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 13,
+              "symbol": "fereg_core::parallel::stage_producer"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 13,
+              "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper"
+            },
+            {
+              "dso": "libpthread-2.28.so",
+              "samples": 13,
+              "symbol": "_pthread_cleanup_push_defer"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 12,
+              "symbol": "fereg_core::ols::prepared_categorical_data::PreparedOlsData::column_value"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 12,
+              "symbol": "schwarz_precond::lsmr::bidiag::WindowRing<2_usize>::reorthogonalize"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 12,
+              "symbol": "within::domain::cross_tab::accumulate::accumulate_cross_block"
+            },
+            {
+              "dso": "timing-harness",
+              "samples": 12,
+              "symbol": "replay_vdata"
+            },
+            {
+              "dso": "libc-2.28.so",
+              "samples": 11,
+              "symbol": "__memmove_avx_unaligned_erms_rtm"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 10,
+              "symbol": "schwarz_precond::lsmr::bidiag::true_residual"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 9,
+              "symbol": "within::csr_block::CsrBlock::spmv_assign_add"
+            },
+            {
+              "dso": "timing-harness",
+              "samples": 9,
+              "symbol": "main"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 8,
+              "symbol": "approx_chol::approx_chol::builder::BlockFactorizer<T,C>::factor"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 8,
+              "symbol": "fereg_core::fe::norms::leaf"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 8,
+              "symbol": "fereg_core::ols::prepared_fit::update_scaled_sum_of_squares"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 8,
+              "symbol": "fereg_core::ols::prepared_rhs::validate_prepared_model_metadata"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 8,
+              "symbol": "fereg_core::ols::topology_dof::union"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 8,
+              "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper"
+            },
+            {
+              "dso": "timing-harness",
+              "samples": 8,
+              "symbol": "replay_vstore"
+            },
+            {
+              "dso": "libc-2.28.so",
+              "samples": 7,
+              "symbol": "__sched_yield"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 6,
+              "symbol": "approx_chol::approx_chol::factorization::approximate::clique_tree::sample_column"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 6,
+              "symbol": "fereg_core::ols::prepared_categorical_data::PreparedCategoricalModelSource::n_levels"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 6,
+              "symbol": "fereg_core::ols::prepared_fit::compensated_add"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 6,
+              "symbol": "fereg_core::parallel::stage_producer"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 6,
+              "symbol": "fereg_core::parallel::stage_producer"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 6,
+              "symbol": "fereg_core::sandwich::update_fixed_dense_triangle"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 6,
+              "symbol": "schwarz_precond::schwarz::preconditioner::SchwarzPreconditioner<S>::apply"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 5,
+              "symbol": "fereg_core::ols::finite_wls_kernel::accumulate_standardized_rows"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 5,
+              "symbol": "fereg_plugin::model_metadata::reserved_filled"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 5,
+              "symbol": "fereg_spi_vdata_columns"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 5,
+              "symbol": "fereg_spi_vstore"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 5,
+              "symbol": "schwarz_precond::lsmr::bidiag::WindowRing<2_usize>::push"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 5,
+              "symbol": "schwarz_precond::lsmr::vec_norm"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 4,
+              "symbol": "fereg_core::fe::borrowed_map::three_fe_map::geometry::pair_moment_range"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 4,
+              "symbol": "fereg_plugin::estimate::store_shadow"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 4,
+              "symbol": "fereg_plugin::fused_kernels::x86_64::selected_residual_fma"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 4,
+              "symbol": "within::solver::session::<impl within::solver::Solver>::start_session"
+            },
+            {
+              "dso": "libc-2.28.so",
+              "samples": 4,
+              "symbol": "__strtoull_internal"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 3,
+              "symbol": "<fereg_plugin::ffi::SpiSession as fereg_plugin::input::SpiApi>::read_numeric"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 3,
+              "symbol": "approx_chol::graph::adjacency::AdjListGraph<C,T>::eliminate_vertex"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 3,
+              "symbol": "core::slice::sort::shared::smallsort::small_sort_general"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 3,
+              "symbol": "crossbeam_deque::deque::Injector<T>::steal"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 3,
+              "symbol": "crossbeam_epoch::default::with_handle"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 3,
+              "symbol": "fereg_core::factorize::factorize_f64"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 3,
+              "symbol": "fereg_core::ols::prepared_fit::NormalizedWeights::root"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 3,
+              "symbol": "fereg_core::ols::prepared_fit::finalize_reported_bread_and_intercept::_$u7b$$u7b$closure$u7d$$u7d$::h0cec052184a132aa"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 3,
+              "symbol": "fereg_core::ols::prepared_fit::weighted_matrix_column_norm"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 3,
+              "symbol": "fereg_core::ols::prepared_scores::PreparedOlsDenseScoreView::fill_reported_row"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 3,
+              "symbol": "fereg_core::ols::topology_dof::pair_components_for_effects"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 3,
+              "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 3,
+              "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 3,
+              "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 3,
+              "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 3,
+              "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 3,
+              "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 3,
+              "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 3,
+              "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 3,
+              "symbol": "rayon_core::registry::WorkerThread::find_work"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 3,
+              "symbol": "within::operator::schwarz::build_preconditioner"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 3,
+              "symbol": "within::solver::session::SolveSession::result"
+            },
+            {
+              "dso": "libm-2.28.so",
+              "samples": 3,
+              "symbol": "0x0000000000039429"
+            },
+            {
+              "dso": "libpthread-2.28.so",
+              "samples": 3,
+              "symbol": "_pthread_cleanup_pop_restore"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 2,
+              "symbol": "__rust_dealloc"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 2,
+              "symbol": "fereg_core::fe::borrowed_map::CertificateFold::level"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 2,
+              "symbol": "fereg_core::fe::borrowed_map::kernel_group_means"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 2,
+              "symbol": "fereg_core::fe::design::LevelIndex::checked_member_range"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 2,
+              "symbol": "fereg_core::fe::design::ValidatedBorrowedInterceptSource::new::_$u7b$$u7b$closure$u7d$$u7d$::h18f534567a7b3bb6"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 2,
+              "symbol": "fereg_core::ols::prepared::is_full_retained_unweighted_sample::_$u7b$$u7b$closure$u7d$$u7d$::h500d23d34a20f82b"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 2,
+              "symbol": "fereg_core::ols::prepared_fit::finite::dense_within_residuals::_$u7b$$u7b$closure$u7d$$u7d$::hd53421b369c99bca"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 2,
+              "symbol": "fereg_core::ols::prepared_unadjusted::compensated_add"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 2,
+              "symbol": "fereg_core::ols::prepared_unadjusted::update_scaled_sum_of_squares"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 2,
+              "symbol": "fereg_core::ols::prepared_unadjusted::weighted_sum_of_squares"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 2,
+              "symbol": "fereg_core::parallel::stage_producer"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 2,
+              "symbol": "fereg_plugin::estimate::validate_derived_against_outputs"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 2,
+              "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 2,
+              "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 2,
+              "symbol": "within::block_elim::schur::exact::_$u7b$$u7b$closure$u7d$$u7d$::h83a57f8a7b5b9742"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 2,
+              "symbol": "within::operator::design::fused::finish"
+            },
+            {
+              "dso": "ld-2.28.so",
+              "samples": 2,
+              "symbol": "__tls_get_addr"
+            },
+            {
+              "dso": "libc-2.28.so",
+              "samples": 2,
+              "symbol": "_int_free"
+            },
+            {
+              "dso": "libc-2.28.so",
+              "samples": 2,
+              "symbol": "malloc"
+            },
+            {
+              "dso": "timing-harness",
+              "samples": 2,
+              "symbol": "__isoc99_fscanf@plt"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 1,
+              "symbol": "<core::iter::adapters::map::Map<I,F> as core::iter::traits::iterator::Iterator>::next"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 1,
+              "symbol": "<fereg_core::ols::prepared_robust::OlsRobustScoreMultiplier as fereg_core::sandwich::SandwichScoreMultiplier>::score_pair"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 1,
+              "symbol": "<fereg_plugin::ffi::SpiSession as fereg_plugin::input::SpiApi>::read_numeric_columns"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 1,
+              "symbol": "<fereg_plugin::ffi::SpiSession as fereg_plugin::input::SpiApi>::store_numeric"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 1,
+              "symbol": "<fereg_plugin::ffi::TrackingAllocator as core::alloc::global::GlobalAlloc>::alloc_zeroed"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 1,
+              "symbol": "<fereg_plugin::ffi::TrackingAllocator as core::alloc::global::GlobalAlloc>::realloc"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 1,
+              "symbol": "approx_chol::approx_chol::factorization::approximate::ordering::DegreeDeltas::flush"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 1,
+              "symbol": "approx_chol::graph::adjacency::add_edge_pair"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 1,
+              "symbol": "approx_chol::graph::ingest::validate::Mirrors<T>::claim"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 1,
+              "symbol": "core::ops::try_trait::NeverShortCircuit$LT$T$GT$::wrap_mut_2::_$u7b$$u7b$closure$u7d$$u7d$::hfa83d6c5adc0f27b"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 1,
+              "symbol": "core::slice::sort::shared::smallsort::insertion_sort_shift_left"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 1,
+              "symbol": "core::slice::sort::unstable::quicksort::quicksort"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 1,
+              "symbol": "core::slice::sort::unstable::quicksort::quicksort"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 1,
+              "symbol": "core::slice::sort::unstable::quicksort::quicksort"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 1,
+              "symbol": "fereg_core::fe::borrowed_map::update_workspace_norms"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 1,
+              "symbol": "fereg_core::fe::design::LevelIndex::try_from_ordered_codes"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 1,
+              "symbol": "fereg_core::ols::finite_wls_kernel::validate_retained_source"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 1,
+              "symbol": "fereg_core::ols::prepared_fit::LinearSolveFrame::from_prepared_ols"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 1,
+              "symbol": "fereg_core::ols::prepared_fit::certify_scores"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 1,
+              "symbol": "fereg_core::ols::prepared_fit::weighted_mean_slice"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 1,
+              "symbol": "fereg_core::ols::prepared_fit::weighted_mean_with_bound"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 1,
+              "symbol": "fereg_core::ols::prepared_unadjusted::independent_outcome_sum"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 1,
+              "symbol": "fereg_core::parallel::stage_producer"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 1,
+              "symbol": "fereg_plugin::estimate::read_numeric_columns_in_chunks"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 1,
+              "symbol": "fereg_plugin::fused_kernels::x86_64::group_sums"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 1,
+              "symbol": "fereg_spi_vdata_with_missing"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 1,
+              "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 1,
+              "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 1,
+              "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 1,
+              "symbol": "rayon_core::join::join_context::_$u7b$$u7b$closure$u7d$$u7d$::h804ea0db24b4fe93"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 1,
+              "symbol": "rayon_core::registry::WorkerThread::take_local_job"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 1,
+              "symbol": "rayon_core::registry::WorkerThread::take_local_job"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 1,
+              "symbol": "rayon_core::sleep::Sleep::wake_specific_thread"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 1,
+              "symbol": "schwarz_precond::lsmr::bidiag::alpha_from_vp"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 1,
+              "symbol": "schwarz_precond::lsmr::recurrence::SolutionState::update"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 1,
+              "symbol": "within::block_elim::solver::Eliminated::factor_reduced"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 1,
+              "symbol": "within::csr_block::CsrBlock::transpose"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 1,
+              "symbol": "within::domain::Design::build"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 1,
+              "symbol": "within::domain::factor_pairs::split_into_subdomains"
+            },
+            {
+              "dso": "beta10-linux.plugin",
+              "samples": 1,
+              "symbol": "within::operator::design::fused::carve"
+            },
+            {
+              "dso": "ld-2.28.so",
+              "samples": 1,
+              "symbol": "_dl_relocate_object"
+            },
+            {
+              "dso": "libc-2.28.so",
+              "samples": 1,
+              "symbol": "__uflow"
+            },
+            {
+              "dso": "libc-2.28.so",
+              "samples": 1,
+              "symbol": "_int_malloc"
+            },
+            {
+              "dso": "libc-2.28.so",
+              "samples": 1,
+              "symbol": "_int_realloc"
+            },
+            {
+              "dso": "libc-2.28.so",
+              "samples": 1,
+              "symbol": "cfree@GLIBC_2.2.5"
+            },
+            {
+              "dso": "libc-2.28.so",
+              "samples": 1,
+              "symbol": "pthread_self"
+            },
+            {
+              "dso": "libc-2.28.so",
+              "samples": 1,
+              "symbol": "read"
+            },
+            {
+              "dso": "libc-2.28.so",
+              "samples": 1,
+              "symbol": "realloc"
+            },
+            {
+              "dso": "libc-2.28.so",
+              "samples": 1,
+              "symbol": "syscall"
+            },
+            {
+              "dso": "libc-2.28.so",
+              "samples": 1,
+              "symbol": "sysmalloc"
+            },
+            {
+              "dso": "timing-harness",
+              "samples": 1,
+              "symbol": "replay_matstore"
+            }
+          ],
+          "lost_samples": 0,
+          "role": "incumbent",
+          "sample_rate_cap_after": 25000,
+          "sha256": {
+            "functions.txt": "90f3b3547512719d899fd5a9b735e2a659587c83b8fb754a94d0a0cbe44c951b",
+            "header.txt": "965a5567f79a9c7123302424bf7a52f983d936680b3762149e672e0e655f7e51",
+            "json": "52c0af859c037c4b584f1a0b98808e92633b07764cc1bd5f3f5b331d7cdef73a",
+            "log": "3d170a25e9461afa8d2bef531630e4ace08912c774b4b9b88124c25103557dbb",
+            "stacks.txt": "ebc6d1303584ef1c5a24804153223595efbd98359989752c0ddd64d44523248c"
+          },
+          "solver_rows": [
+            [
+              1.0,
+              3.0,
+              22.0,
+              2.0,
+              1.8983179572718e-06,
+              1.192570520805217e-10,
+              7.0199331740195565e-12,
+              4.212103641241289e-09,
+              0.027777505999999997,
+              0.035318511000000004,
+              0.0,
+              0.0,
+              1.0,
+              4.0,
+              0.0,
+              0.0
+            ],
+            [
+              1.0,
+              3.0,
+              10.0,
+              2.0,
+              1.8007262347907727e-11,
+              2.7959639297198237e-15,
+              1.823531820927815e-16,
+              5.078921723736702e-06,
+              0.0004562719999999993,
+              0.010148085000000001,
+              0.0,
+              0.0,
+              1.0,
+              4.0,
+              0.0,
+              0.0
+            ]
+          ],
+          "status": "science-and-profile-passed",
+          "within_migration": {
+            "eligible": true,
+            "executed": true,
+            "iterations": 71,
+            "rhs_solves": 5
+          }
+        },
+        {
+          "diagnostic_native_seconds": 0.142221345,
+          "fingerprint": "ea42267ec5fdcedfc9773e5b692736602c9c0a81ad7f1d967752bf8e7ddc7dd1",
+          "flat_exclusive_samples": [
+            {
+              "dso": "libc-2.28.so",
+              "samples": 428,
+              "symbol": "_IO_vfscanf"
+            },
+            {
+              "dso": "libc-2.28.so",
+              "samples": 223,
+              "symbol": "__GI_____strtoull_l_internal"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 171,
+              "symbol": "within::operator::design::gather::gather_apply::_$u7b$$u7b$closure$u7d$$u7d$::hed222a35a281c093"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 127,
+              "symbol": "within::operator::design::scatter::fixed_tree"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 40,
+              "symbol": "schwarz_precond::fold::fold"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 39,
+              "symbol": "within::domain::cross_tab::accumulate::accumulate_cross_block"
+            },
+            {
+              "dso": "libc-2.28.so",
+              "samples": 38,
+              "symbol": "__isoc99_fscanf"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 32,
+              "symbol": "within::block_elim::solver::backsub_block_from_scaled_rhs::_$u7b$$u7b$closure$u7d$$u7d$::h5befdf075e30f171"
+            },
+            {
+              "dso": "libc-2.28.so",
+              "samples": 32,
+              "symbol": "__memset_avx2_unaligned_erms_rtm"
+            },
+            {
+              "dso": "libc-2.28.so",
+              "samples": 30,
+              "symbol": "_IO_sputbackc"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 27,
+              "symbol": "within::operator::design::scatter::fixed_tree"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 26,
+              "symbol": "fereg_plugin::fused_kernels::x86_64::group_sums_fma"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 22,
+              "symbol": "core::ops::function::impls::<impl core::ops::function::FnOnce<A> for &mut F>::call_once"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 21,
+              "symbol": "<within::block_elim::solver::BlockElimSolver as schwarz_precond::local_solve::LocalSolver>::solve_local"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 21,
+              "symbol": "within::csr_block::CsrBlock::from_dense_table"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 16,
+              "symbol": "core::ops::function::FnMut::call_mut"
+            },
+            {
+              "dso": "timing-harness",
+              "samples": 15,
+              "symbol": "replay_vdata"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 14,
+              "symbol": "fereg_core::parallel::stage_producer"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 14,
+              "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 13,
+              "symbol": "schwarz_precond::lsmr::mlsmr_counted_cancellable"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 12,
+              "symbol": "fereg_core::ols::prepared_categorical_data::PreparedOlsData::column_value"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 12,
+              "symbol": "fereg_core::parallel::stage_producer"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 11,
+              "symbol": "fereg_plugin::fused_kernels::x86_64::upper_rank_one_fma"
+            },
+            {
+              "dso": "timing-harness",
+              "samples": 11,
+              "symbol": "main"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 10,
+              "symbol": "fereg_core::fe::norms::leaf"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 9,
+              "symbol": "approx_chol::approx_chol::builder::BlockFactorizer<T,C>::factor"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 9,
+              "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 9,
+              "symbol": "within::csr_block::CsrBlock::spmv_assign_add"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 8,
+              "symbol": "fereg_core::ols::finite_wls_kernel::accumulate_standardized_rows"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 8,
+              "symbol": "fereg_core::ols::topology_dof::union"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 7,
+              "symbol": "crossbeam_deque::deque::Stealer<T>::steal"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 7,
+              "symbol": "fereg_core::parallel::stage_producer"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 6,
+              "symbol": "<rayon::iter::splitter::SplitProducer<D,S> as rayon::iter::plumbing::UnindexedProducer>::fold_with"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 6,
+              "symbol": "approx_chol::approx_chol::factorization::approximate::clique_tree::sample_column"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 6,
+              "symbol": "fereg_core::ols::prepared_categorical_data::PreparedCategoricalModelSource::n_levels"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 6,
+              "symbol": "fereg_core::ols::prepared_fit::NormalizedWeights::root"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 6,
+              "symbol": "fereg_core::ols::prepared_rhs::validate_prepared_model_metadata"
+            },
+            {
+              "dso": "libc-2.28.so",
+              "samples": 6,
+              "symbol": "__sched_yield"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 5,
+              "symbol": "<fereg_plugin::ffi::SpiSession as fereg_plugin::input::SpiApi>::store_numeric"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 5,
+              "symbol": "fereg_core::ols::prepared_fit::compensated_add"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 5,
+              "symbol": "fereg_core::ols::prepared_fit::update_scaled_sum_of_squares"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 5,
+              "symbol": "fereg_core::ols::prepared_unadjusted::ReferenceWeightView::value"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 5,
+              "symbol": "fereg_core::sandwich::update_fixed_dense_triangle"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 5,
+              "symbol": "fereg_spi_vstore"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 5,
+              "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 5,
+              "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 5,
+              "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 5,
+              "symbol": "schwarz_precond::lsmr::bidiag::WindowRing<2_usize>::reorthogonalize"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 5,
+              "symbol": "std::sync::poison::once::Once::call_once_force::_$u7b$$u7b$closure$u7d$$u7d$::h2a63385992b20c50"
+            },
+            {
+              "dso": "ld-2.28.so",
+              "samples": 5,
+              "symbol": "__tls_get_addr"
+            },
+            {
+              "dso": "libc-2.28.so",
+              "samples": 5,
+              "symbol": "__memmove_avx_unaligned_erms_rtm"
+            },
+            {
+              "dso": "libpthread-2.28.so",
+              "samples": 5,
+              "symbol": "_pthread_cleanup_push_defer"
+            },
+            {
+              "dso": "timing-harness",
+              "samples": 5,
+              "symbol": "replay_vstore"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 4,
+              "symbol": "core::slice::sort::shared::smallsort::small_sort_general"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 4,
+              "symbol": "crossbeam_epoch::default::with_handle"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 4,
+              "symbol": "fereg_core::factorize::factorize_f64"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 4,
+              "symbol": "fereg_core::ols::prepared::is_full_retained_unweighted_sample::_$u7b$$u7b$closure$u7d$$u7d$::h4769ca61f1d89a58"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 4,
+              "symbol": "fereg_core::ols::prepared_scores::PreparedOlsDenseScoreView::fill_reported_row"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 4,
+              "symbol": "fereg_core::ols::prepared_unadjusted::update_scaled_sum_of_squares"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 4,
+              "symbol": "fereg_plugin::estimate::store_shadow"
+            },
+            {
+              "dso": "libc-2.28.so",
+              "samples": 4,
+              "symbol": "read_int"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 3,
+              "symbol": "approx_chol::approx_chol::factorization::approximate::ordering::DynamicOrdering::apply_delta"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 3,
+              "symbol": "fereg_core::fe::borrowed_map::three_fe_map::geometry::pair_moment_range"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 3,
+              "symbol": "fereg_core::ols::prepared_fit::finite::dense_within_residuals::_$u7b$$u7b$closure$u7d$$u7d$::hc38d76817e40688b"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 3,
+              "symbol": "fereg_core::ols::prepared_fit::weighted_mean_with_bound"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 3,
+              "symbol": "fereg_core::ols::topology_dof::pair_components_for_effects"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 3,
+              "symbol": "fereg_core::parallel::stage_producer"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 3,
+              "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 3,
+              "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 3,
+              "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 3,
+              "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 3,
+              "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 3,
+              "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 3,
+              "symbol": "schwarz_precond::fold::fold"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 3,
+              "symbol": "within::domain::factor_pairs::split_into_subdomains"
+            },
+            {
+              "dso": "libpthread-2.28.so",
+              "samples": 3,
+              "symbol": "_pthread_cleanup_pop_restore"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 2,
+              "symbol": "<fereg_plugin::ffi::SpiSession as fereg_plugin::input::SpiApi>::read_numeric_columns"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 2,
+              "symbol": "<fereg_plugin::ffi::TrackingAllocator as core::alloc::global::GlobalAlloc>::realloc"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 2,
+              "symbol": "<within::operator::schwarz::DiagonalPreconditioner as schwarz_precond::Operator>::apply"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 2,
+              "symbol": "approx_chol::approx_chol::factorization::approximate::clique_tree::sample_column"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 2,
+              "symbol": "approx_chol::graph::adjacency::AdjListGraph<C,T>::eliminate_vertex"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 2,
+              "symbol": "approx_chol::graph::adjacency::add_edge_pair"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 2,
+              "symbol": "fereg_core::ols::prepared_fit::finalize_reported_bread_and_intercept::_$u7b$$u7b$closure$u7d$$u7d$::h3a0a225118c7520a"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 2,
+              "symbol": "fereg_core::ols::prepared_unadjusted::compensated_add"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 2,
+              "symbol": "fereg_plugin::estimate::estimate_ols::_$u7b$$u7b$closure$u7d$$u7d$::h5aec69d4238a1fcb"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 2,
+              "symbol": "fereg_plugin::estimate::validate_derived_against_outputs"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 2,
+              "symbol": "fereg_plugin::fused_kernels::x86_64::selected_residual_fma"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 2,
+              "symbol": "fereg_plugin::model_metadata::reserved_filled"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 2,
+              "symbol": "fereg_spi_vdata_columns"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 2,
+              "symbol": "fereg_spi_vdata_with_missing"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 2,
+              "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 2,
+              "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 2,
+              "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 2,
+              "symbol": "rayon_core::registry::WorkerThread::find_work"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 2,
+              "symbol": "schwarz_precond::lsmr::validate_lsmr_inputs"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 2,
+              "symbol": "within::solver::Solver::prepare"
+            },
+            {
+              "dso": "libc-2.28.so",
+              "samples": 2,
+              "symbol": "_int_free"
+            },
+            {
+              "dso": "libc-2.28.so",
+              "samples": 2,
+              "symbol": "pthread_self"
+            },
+            {
+              "dso": "libm-2.28.so",
+              "samples": 2,
+              "symbol": "0x0000000000039420"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 1,
+              "symbol": "<fereg_core::ols::prepared_robust::OlsRobustScoreMultiplier as fereg_core::sandwich::SandwichScoreMultiplier>::score_pair"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 1,
+              "symbol": "<fereg_plugin::ffi::SpiSession as fereg_plugin::input::SpiApi>::read_numeric"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 1,
+              "symbol": "<fereg_plugin::ffi::TrackingAllocator as core::alloc::global::GlobalAlloc>::alloc"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 1,
+              "symbol": "<fereg_plugin::ffi::TrackingAllocator as core::alloc::global::GlobalAlloc>::alloc_zeroed"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 1,
+              "symbol": "<rayon_core::job::StackJob<L,F,R> as rayon_core::job::Job>::execute"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 1,
+              "symbol": "__rust_dealloc"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 1,
+              "symbol": "approx_chol::graph::ingest::validate::Mirrors<T>::claim"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 1,
+              "symbol": "core::ops::try_trait::NeverShortCircuit$LT$T$GT$::wrap_mut_2::_$u7b$$u7b$closure$u7d$$u7d$::h80275b70e00e4321"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 1,
+              "symbol": "core::ptr::drop_in_place<within::operator::schwarz::Preconditioner>"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 1,
+              "symbol": "core::slice::sort::shared::smallsort::insertion_sort_shift_left"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 1,
+              "symbol": "fereg_core::fe::borrowed_map::CertificateFold::level"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 1,
+              "symbol": "fereg_core::fe::design::LevelIndex::try_from_ordered_codes"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 1,
+              "symbol": "fereg_core::fe::design::ValidatedBorrowedInterceptSource::new::_$u7b$$u7b$closure$u7d$$u7d$::h8813a6dc5604eaa1"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 1,
+              "symbol": "fereg_core::ols::finite_wls_kernel::validate_retained_source"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 1,
+              "symbol": "fereg_core::ols::prepared_categorical_data::valid_complete_sample::_$u7b$$u7b$closure$u7d$$u7d$::haccbb3484fdb185b"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 1,
+              "symbol": "fereg_core::ols::prepared_fit::LinearSolveFrame::from_prepared_ols"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 1,
+              "symbol": "fereg_core::ols::prepared_fit::finalize_reported_bread_and_intercept::_$u7b$$u7b$closure$u7d$$u7d$::h102d1637f7fb85ee"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 1,
+              "symbol": "fereg_core::ols::prepared_fit::reserved_filled"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 1,
+              "symbol": "fereg_core::ols::prepared_fit::weighted_matrix_column_norm"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 1,
+              "symbol": "fereg_core::ols::prepared_fit::weighted_mean_slice"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 1,
+              "symbol": "fereg_core::ols::prepared_unadjusted::independent_outcome_sum"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 1,
+              "symbol": "fereg_plugin::estimate::load_ols_input_with_team"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 1,
+              "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 1,
+              "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 1,
+              "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 1,
+              "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 1,
+              "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 1,
+              "symbol": "rayon_core::join::join_context::_$u7b$$u7b$closure$u7d$$u7d$::h3fc6bb75bbc90bf3"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 1,
+              "symbol": "rayon_core::join::join_context::_$u7b$$u7b$closure$u7d$$u7d$::h707c6b4c47dadb24"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 1,
+              "symbol": "rayon_core::join::join_context::_$u7b$$u7b$closure$u7d$$u7d$::h79f90daa60df5632"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 1,
+              "symbol": "rayon_core::registry::WorkerThread::take_local_job"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 1,
+              "symbol": "rayon_core::registry::WorkerThread::wait_until_cold"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 1,
+              "symbol": "rayon_core::sleep::Sleep::sleep"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 1,
+              "symbol": "schwarz_precond::lsmr::lsmr_from_bidiag"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 1,
+              "symbol": "schwarz_precond::lsmr::recurrence::SolutionState::update"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 1,
+              "symbol": "std::thread::yield_now"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 1,
+              "symbol": "within::block_elim::schur::exact::_$u7b$$u7b$closure$u7d$$u7d$::h20ea7714b44d752e"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 1,
+              "symbol": "within::block_elim::solver::Eliminated::new"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 1,
+              "symbol": "within::csr_block::CsrBlock::transpose"
+            },
+            {
+              "dso": "fereg_linux.plugin",
+              "samples": 1,
+              "symbol": "within::domain::Design::build"
+            },
+            {
+              "dso": "ld-2.28.so",
+              "samples": 1,
+              "symbol": "strcmp"
+            },
+            {
+              "dso": "libc-2.28.so",
+              "samples": 1,
+              "symbol": "__strchrnul_avx2_rtm"
+            },
+            {
+              "dso": "libc-2.28.so",
+              "samples": 1,
+              "symbol": "__strtoull_internal"
+            },
+            {
+              "dso": "libc-2.28.so",
+              "samples": 1,
+              "symbol": "read"
+            },
+            {
+              "dso": "libc-2.28.so",
+              "samples": 1,
+              "symbol": "realloc"
+            },
+            {
+              "dso": "libc-2.28.so",
+              "samples": 1,
+              "symbol": "syscall"
+            },
+            {
+              "dso": "libm-2.28.so",
+              "samples": 1,
+              "symbol": "0x0000000000039429"
+            },
+            {
+              "dso": "libm-2.28.so",
+              "samples": 1,
+              "symbol": "0x00000000000771c0"
+            },
+            {
+              "dso": "timing-harness",
+              "samples": 1,
+              "symbol": "__isoc99_fscanf@plt"
+            }
+          ],
+          "lost_samples": 0,
+          "role": "candidate",
+          "sample_rate_cap_after": 25000,
+          "sha256": {
+            "functions.txt": "e6a14069052471a102f7c1676e49d9e6f3101cdd9a697cbca6cc4068434435e0",
+            "header.txt": "37f5f0d4b7d729feff3456b6aa560670498dcc66348c10e29f3a01e015bd6569",
+            "json": "52ff93e831834b0d017fbd39cc9fed512cffb7cfd0e443364d30230c01954ffb",
+            "log": "3f12da78226eca98ddf4f7554f397ad4e0ce817fa002e0c31f88dad2c52b066c",
+            "stacks.txt": "ba8a5e42c2d7e37f32b085058a64ba07e53ac9a5fd9599f946966fef5701d0d6"
+          },
+          "solver_rows": [
+            [
+              1.0,
+              3.0,
+              22.0,
+              2.0,
+              1.8983179572718e-06,
+              1.1925705715410438e-10,
+              7.019933219102793e-12,
+              4.212103600263539e-09,
+              0.04565457599999999,
+              0.035121214000000005,
+              0.0,
+              0.0,
+              1.0,
+              4.0,
+              0.0,
+              0.0
+            ],
+            [
+              1.0,
+              3.0,
+              10.0,
+              2.0,
+              1.828009965620936e-11,
+              2.838327019564063e-15,
+              1.8246233821246738e-16,
+              5.0806551902230845e-06,
+              0.0003306199999999988,
+              0.010996452,
+              0.0,
+              0.0,
+              1.0,
+              4.0,
+              0.0,
+              0.0
+            ]
+          ],
+          "status": "science-and-profile-passed",
+          "within_migration": {
+            "eligible": true,
+            "executed": true,
+            "iterations": 71,
+            "rhs_solves": 5
+          }
+        }
+      ],
+      "case": "near-confounded-third-t4",
+      "config_sha256": "86f716be9f341408ada376df501a6d3701aa8da47a7c8012027846bd2b38c445",
+      "driver_sha256": "be573362486a757a0beda019dc677f6cfe88731dd596ca6576d15a1282c183db",
+      "host_observations_sha256": "b7337b3da044b56b9cafa403b77a55c9e979697591156670c1fee777813abd79",
+      "interpretation": "Dense cross-tab accumulation is the leading setup target. For these unweighted categorical pairs, source inspection gives a correction-vector allocation total of 20.88 MB plus finishing sweeps; this is not a measured peak-memory delta. Exact integer counts through 2^53 do not require those corrections; a guarded dense-only bypass can preserve arithmetic and the original dense/sparse choice.",
+      "manifest_sha256": "8d3f9e6d79060213f4219bdf1d60e3036e4ef2e54021d759dbb6820fd89ca971",
+      "method": "perf 4.18 task-clock:u at 4000 Hz, 16 KiB DWARF stacks, strict frequency; permission/unwind probe before plugins. Whole-node omp28/num_proc28 reservation, four estimator workers.",
+      "native_calls": 2,
+      "summary_sha256": "27d9a2f273023788fedbc18a96a3843aa9a072124ec4c19230d9e45108cd442a"
+    },
+    "mac": {
+      "calls": [
+        {
+          "columns_sha256": "cd24693d71e434d20186b665bd1767996de72ab62f7d95000b166552118766cb",
+          "diagnostic_native_seconds": 6.096276,
+          "fingerprint": "02f24e0c12bffa1cd94d108c533363b2705deef43e65a8f751fe00ac16dcc565",
+          "head_sha256": "6fb0a0eee57826164d82c96079d1dcb61bf62f2f359683b1e8921a48f282262d",
+          "interference": [],
+          "log_sha256": "c04d6640731f5296faa516244ac4286d83dcd3c6b0c036d55385e956b20986a9",
+          "native_exit": 0,
+          "plugin_sha256": "aa453ba70c90a605877c1c85383f574ea6cbd5e4ba3a2875b61b451e9d7ceae0",
+          "profile_sha256": "d9027ed7ab8449f7aeb5433a3325fc98f1e2beb942b04be73a0c14dd4cbaec07",
+          "role": "incumbent",
+          "sampler_exit": 0,
+          "solver_rows": [
+            [
+              1.0,
+              3.0,
+              23.0,
+              2.0,
+              8.965941082572648e-05,
+              4.6474169058978047e-10,
+              2.8937273705435383e-12,
+              7.601991105166226e-09,
+              0.1751251230000008,
+              5.012005751,
+              0.0,
+              0.0,
+              1.0,
+              4.0,
+              0.0,
+              0.0
+            ],
+            [
+              1.0,
+              3.0,
+              14.0,
+              2.0,
+              2.563853573889219e-10,
+              2.9919683629649577e-15,
+              3.518920019504845e-17,
+              7.511842056431135e-06,
+              0.005170460000000004,
+              0.198579874,
+              0.0,
+              0.0,
+              1.0,
+              4.0,
+              0.0,
+              0.0
+            ]
+          ],
+          "status": "profiled-science-passed",
+          "within_migration": {
+            "eligible": true,
+            "executed": true,
+            "iterations": 390,
+            "rhs_solves": 19
+          }
+        },
+        {
+          "columns_sha256": "fa2a9d08d027de1dd55dd65168e444e1c40d8241d1c009e0cd99bb23d475390c",
+          "diagnostic_native_seconds": 6.950172,
+          "fingerprint": "9099b8c4263a57ef82c90b50a25bc2321d5eb533127fe9838b9cb123d86e3b7e",
+          "head_sha256": "dfe32c1902f1f69fe04184d3a43cc4b72a5f3c01ae8a46387909cd5e3bd98372",
+          "interference": [],
+          "log_sha256": "806f9b2f65d3eafea90350dc7cfe535d2576f077cced4000775f1a8181f8f099",
+          "native_exit": 0,
+          "plugin_sha256": "22570a0ab4e01c215ad2ebfc049c74cb317bb342c57a59f6d4bb1ba77b745f48",
+          "profile_sha256": "77ef152552a4ae9aa44da6ad497caf66c422750f2f63b425adb159f68c413dd4",
+          "role": "candidate",
+          "sampler_exit": 0,
+          "solver_rows": [
+            [
+              1.0,
+              3.0,
+              23.0,
+              2.0,
+              8.965941082572648e-05,
+              4.6474169058978047e-10,
+              2.8937273656608636e-12,
+              7.60199110574877e-09,
+              0.17132754100000097,
+              5.854635708999999,
+              0.0,
+              0.0,
+              1.0,
+              4.0,
+              0.0,
+              0.0
+            ],
+            [
+              1.0,
+              3.0,
+              14.0,
+              2.0,
+              2.605206050887432e-10,
+              3.040225917206329e-15,
+              3.521860567221233e-17,
+              7.5118175661716015e-06,
+              0.004793459000000014,
+              0.222428333,
+              0.0,
+              0.0,
+              1.0,
+              4.0,
+              0.0,
+              0.0
+            ]
+          ],
+          "status": "profiled-science-passed",
+          "within_migration": {
+            "eligible": true,
+            "executed": true,
+            "iterations": 390,
+            "rhs_solves": 19
+          }
+        }
+      ],
+      "case": "campaign-three-sparse-t1",
+      "config_sha256": "fa9f401587c835e9d93c3ea0596d0eedc7478a427b8fdecf00921f955eb8ed05",
+      "driver_sha256": "95fc318e9763c17d3920fd6e701cd4ccaa7facd42cd1df54315e0e7434c3c181",
+      "host_observations_sha256": "5393d9a20e2cb40caa60968d51e348e3d680c32c9dfe712781ba7095a77ed09c",
+      "interpretation": "Observation accumulation is the leading target. Candidate fixed_tree has 1779 nonrecursive-inclusive/1763 exclusive samples, including inlined leaf work; this does not identify recursion or Rayon as the cause. Static disassembly shows two row bounds checks per hot-loop iteration, motivating a slice specialization preserving every sum and tree.",
+      "method": "sample at nominal 1 ms, -mayDie, maximum 120 s; permission probe on sleep before either plugin; one fixed-order invocation per arm.",
+      "native_calls": 2,
+      "nonoverlapping_stack_sample_buckets": {
+        "backsub_subset": [
+          469,
+          515
+        ],
+        "columns": [
+          "incumbent",
+          "candidate"
+        ],
+        "harness_input_parsing": [
+          1903,
+          1958
+        ],
+        "preconditioner_including_backsub": [
+          1416,
+          1472
+        ],
+        "selected_adjoint_fused_gather_scatter_union": [
+          1661,
+          2414
+        ],
+        "worker_thread": [
+          4448,
+          5031
+        ]
+      },
+      "selected_operator_bucket_definition": "Worker-thread stack union containing ::gather::, ::scatter::, ::fused::, ::apply_adjoint:: or ::apply_fused_update::, counted once per sample. Excludes generic DesignOperator::apply self/other descendants; including those adds 41 candidate samples.",
+      "summary_sha256": "b536521fddac3bf828c6bc07367fb5f1dbe74617c442441506060fef98c0bd8b"
+    },
+    "new_candidate_qualified": false,
+    "permission": "Johannes approved one function profile per frozen plugin on each affected platform, followed by justified fork-only fixes.",
+    "qualification_verdict_unchanged": true,
+    "science": "Each invocation matches its own frozen exact scientific fingerprint, independent oracle, route and iteration work.",
+    "scope": "Only the two already-regressing cells; one incumbent and one candidate invocation per platform. No warmups, estimator retries, timing acceptance or replacement of prior observations.",
+    "status": "completed-four-profile-calls"
+  },
   "followup_authorization": {
     "authorized_by": "Johannes",
     "date": "2026-10-29",

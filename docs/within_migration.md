@@ -706,9 +706,26 @@ simultaneous-coverage guarantee. Both reports remain `needs_discussion`.
 neither these main panels nor independent patch improvements authorize adoption.
 
 Johannes authorized exactly one function-level profile per frozen plugin for
-each platform's regressing cell and a justified fix in the fork only. Profile
-results are not yet included here. A revised candidate requires a separately
-declared comparison before acceptance; both completed reports remain
+each platform's regressing cell and a justified fix in the fork only. The four
+completed calls pass the independent oracle, their own frozen scientific
+fingerprint and recorded solver-work checks. Their summaries and profile/source
+identities are in the same compact qualification record. Mac's selected
+adjoint/fused/gather/scatter stack union rises from 1,661 to 2,414 samples;
+the hot categorical accumulation loop retains two avoidable row bounds checks.
+A private slice specialization
+can preserve its reduction tree, arithmetic order and allocation sizes. Linux's
+cross-tab accumulation stack count rises from 29 to 60, out of 1,722 and 1,745
+total samples. Source inspection gives a correction-array allocation total of
+20.88 MB for this unweighted categorical fixture; a dense-only exact-integer
+path can omit them while preserving the existing dense/sparse choice. Weighted and sloped sums
+still require compensation. These are separate proposed optimizations, with
+independent integer/group-sum witnesses and exact-output comparisons required.
+
+Single instrumented calls identify investigation targets, not causal effects
+or performance acceptance. Mac samples include harness work and retain desktop
+activity; Linux's user-space event excludes kernel and page-fault costs. The
+held back-substitution patch remains excluded. A revised candidate requires a
+separately declared comparison before acceptance; both completed reports remain
 `needs_discussion`.
 
 Independent tests to preserve include the dense QR and weighted/disconnected
