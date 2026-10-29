@@ -19,15 +19,15 @@ assert inlist(q,-1,1) & inlist(v,-1,1)
 tempfile source
 save `source'
 
-forvalues case = 1/3 {
+forvalues case = 1/4 {
     use `source', clear
     keep if case == `case'
     assert _N == 128 & row == _n
-    if `case' == 2 {
-        * Johannes approved preserving this existing rejection after both
-        * beta.10 and the candidate failed the unchanged independent FE check.
+    if inlist(`case',2,3) {
+        * Preserve the approved existing rejection: both beta.10 and the
+        * candidate failed their unchanged independent FE check in these cases.
         * The exact retained-span oracle remains in the CSV; it is not a
-        * published estimate when fereg's fuller raw-span certificate rejects.
+        * published estimate when fereg's independent certificate rejects.
         quietly regress y q v i.g [aw=w]
         generate byte prior_sample = e(sample)
         local prior_scalars : e(scalars)
@@ -89,12 +89,12 @@ forvalues case = 1/3 {
                 assert `"`after_cols'"' == `"`prior_cols_`item''"'
             }
             assert e(sample) == prior_sample
-            display "BOUNDARY_REJECTION|case=2|attempt=`attempt'|workers=`workers'|rc=`observed_rc'|rollback=1"
+            display "BOUNDARY_REJECTION|case=`case'|attempt=`attempt'|workers=`workers'|rc=`observed_rc'|rollback=1"
         }
         continue
     }
     local expected_names "q v 3b.g 11o.g 29o.g 97o.g _cons"
-    if `case' == 3 local expected_names "q o.v 3b.g 11o.g 29o.g 97o.g _cons"
+    if `case' == 4 local expected_names "q o.v 3b.g 11o.g 29o.g 97o.g _cons"
     foreach workers in 1 4 {
         forvalues repeat = 1/2 {
             quietly fereg y q v i.g [aw=w], absorb(g##c.(z1 z2)) ///
@@ -129,7 +129,7 @@ forvalues case = 1/3 {
             assert abs(e(rss)-ref_rss) <= 1e-8*ref_rss
             assert abs(actual_r-ref_resid) <= 1e-8
             assert abs(actual_f-ref_fitted) <= 1e-8
-            assert (ref_v_energy <= 1e-9) == (`case' == 3)
+            assert (ref_v_energy <= 1e-9) == (`case' == 4)
 
             * Independent input-space moments use exact-oracle basis columns,
             * not the plugin's reported certificate or returned FE coefficients.
