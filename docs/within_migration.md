@@ -10,7 +10,8 @@ for both `within` and `schwarz-precond`. The unpublished beta.11 candidate's
 `d3407a16dec3715f6e9eee13fb9b6646d5b28035`, available in the fork on
 `codex/fereg-beta11-candidate-next`. This is the combined upstream-based candidate,
 not an upstream release. The patch evidence below is current through October 29, 2026;
-combined fereg integration validation remains incomplete. This report establishes
+source integration and the declared Mac/Linux native checks have passed, while
+performance qualification and installed-package admission remain outstanding. This report establishes
 neither performance acceptance nor readiness for adoption or publication.
 
 Johannes's current instruction is to develop and push these patches only in
@@ -157,9 +158,10 @@ reconstruction error can reach `1.22e-4` under large offsets, separately from
 the strict returned-projection checks. This isolates dependency whitening;
 it does not yet establish a change in fereg's published rank, omission or
 estimates. Johannes's approval permits continued qualification with upstream's
-whitening correction. Actual fereg native-plugin checks must still validate
-published results, original factor slots/base flags, PPML and replay behavior,
-and the candidate must pass beta.10 performance qualification. Scientific
+whitening correction. The native checks below validate selected published
+results, original factor slots/base flags, PPML and replay behavior, while
+preserving the documented near-boundary rejections. The candidate must still
+pass beta.10 performance qualification. Scientific
 tolerances remain unchanged; this is not production-adoption approval.
 
 ### Approved retirement of the general-FE experiment
@@ -199,7 +201,8 @@ The baseline [`categorical_lsmr`](../crates/fereg-core/src/ppml/categorical_lsmr
 error mapper converted non-allocation errors to NonConvergence, which strict-final
 IRLS may catch for a canonical retry. The candidate now calls the cancellable
 constructor and low-level solve and maps Cancelled to Interrupted before that
-catch. Complete fereg Break/rollback validation is still outstanding.
+catch. The actual-iteration Mac/Linux Break witnesses below verify propagation,
+joined work, rollback and successful reuse for both OLS and PPML.
 
 PPML's joint policy has a separate existing work convention: initial,
 staleness and certificate continuations each receive the configured per-run
@@ -560,13 +563,72 @@ This run used Rust 1.85.1, Python 3.12.14, four build jobs, eight Rayon workers
 and one BLAS worker on the development Mac. It explicitly did not perform
 installed-package admission. Historical `cf228c` entrypoint evidence does not
 qualify the new API revision.
-Actual beta.11 plugin tests, full plugin memory
-admission and combined scientific validation remain outstanding. The new
-controlled-solve, cancellation and
-fallible-allocation entry points also need patch-specific performance evidence.
+The native checks below cover existing memory fixtures, transactions and the
+declared scientific replay scope. The new controlled-solve, cancellation and
+fallible-allocation entry points still need patch-specific performance evidence.
 Mac/SCC beta.11 performance against beta.10 and adoption review remain separate
 requirements. No upstream PR
 submission or production acceptance is claimed by these checks.
+
+### Native candidate checks
+
+The [native evidence record](../bench/results/within-native-20261029.json)
+binds fereg `d96eccfc`, within `d3407a16`, both actual plugin hashes and all
+declared inputs. The universal Mac build passed binary audits and actual
+ABI/load/selftest and panic checks; runtime tests used Apple Silicon. SCC job
+`8327053` on `scc-gd4` passed the source-only suite and Linux build, ELF audit
+and actual ABI checks with Rust 1.85.1 and GCC 12.2.0. Both platforms passed
+all 67 licensed Stata 19/MP fixtures, including the existing memory controls.
+
+The Mac replay made 693 native calls across 77 inputs at one/two/four/eight
+workers. Science, 308 fixed-worker repeats and 231 cross-worker checks passed.
+The [original declaration](../tests/replay/scopes/2026-10-29-within-migration-macos-original.json)
+failed exact comparison on PPML `RCERT[10]` in three inputs. This retained-bread
+asymmetry magnitude can be nonzero because ordered rescaling rounds its two
+divisions differently. The source-reviewed
+[correction](../tests/replay/scopes/2026-10-29-within-migration-macos.json)
+classifies that numerical field for all ten eligible PPML inputs and removes
+five OLS `RCERT[39]` structural-zero allowances. All 77 comparisons pass a
+read-only reassessment of the same transactions; the original failure remains
+recorded. No scientific tolerance, model, route or protected discrete criterion
+changed. Johannes authorized diagnosed harness repairs and continued
+qualification; agents and the lead reviewed this declaration correction.
+
+SCC job `8327417` passed the independent fixture and Break stages but failed
+before its first replay native call: `--replay` rejects the inherited ABI-only
+`FEREG_TEST_THREADS` setting. Replay-only repair `8327539` on `scc-b24` removed
+that setting and passed all 693 calls under the frozen
+[Linux declaration](../tests/replay/scopes/2026-10-29-within-migration-linux.json).
+All 77 scientific/exact-field comparisons, repeats and cross-worker checks
+passed; 58 cases remain wholly exact and 19 differ only in declared leaves.
+The original failed job is retained; passed fixture/Break stages were not rerun.
+
+Each platform passed four explicit-LSMR Break runs: OLS/PPML at one/four
+workers, with two interruptions per run after a completed continuing iteration.
+Actual upstream `Cancelled` traces, populated/null estimate rollback, absent
+outputs, processor restoration and exact same-process follow-up fits passed.
+These are small weighted categorical witnesses, with no construction-latency
+or performance bound.
+
+The separately frozen public slope fixture `3d61d4e0` passed on both unchanged
+plugins; Linux job `8327553` ran on `scc-b23`. Cases 1/4 produce eight oracle
+fits per platform at one/four workers with two repeats. Cases 2/3 retain eight
+atomic `r(459)` rejections; four explicit-base requests retain `r(498)` refusal.
+The original syntax failure and failed case-2/3 success expectations remain
+recorded, including bounded diagnostics showing beta.10 also rejects both.
+Johannes instructed us to preserve those rejections. The original three-case
+inputs, oracles and tolerances are unchanged; the appended orthogonal fourth
+case is a positive control, not an accepted estimate for either rejected case.
+
+Two additional Mac fixtures pass outside the full profile: four weighted OLS
+fits exercise low-memory pool limits 1/5/10 and fast mode; eight offset PPML
+fits agree with Poisson references at one/four workers. Traces establish
+ordinary Within OLS and augmented joint-PPML solves, not wide-RHS Within PPML
+batching, continuation or predictor coverage. The record preserves their bounds
+and limitations. All successful SCC jobs have verified zero scheduler and
+application exit statuses and a 16-CPU affinity cap; they make no performance
+isolation claim. Independent Intel Mac runtime, Windows, package admission and
+beta.10 performance qualification remain outstanding.
 
 Independent tests to preserve include the dense QR and weighted/disconnected
 families in [routing_portfolio](../crates/fereg-oracle/tests/routing_portfolio.rs),
@@ -580,8 +642,8 @@ fixed-worker repeats. [PPML joint tests](../crates/fereg-core/src/ppml/categoric
 cover independent augmented products, dense core-pair inverses, changed weights,
 warm starts and numerical extremes; [IRLS tests](../crates/fereg-core/src/ppml/prepared_irls/tests.rs)
 cover strict final truth and actual memory refusal. Main-thread callback tests
-alone do not establish interruption inside LSMR. Actual plugin replay and
-licensed Stata Break/rollback, slope and explicit-solver checks remain necessary.
+alone do not establish interruption inside LSMR; the actual plugin witnesses
+above supply the completed-iteration and rollback evidence for their stated scope.
 
 Patch-specific science and bounded performance comparisons must precede a
 combined beta.11 qualification. Include large sparse and dense weighted/sloped

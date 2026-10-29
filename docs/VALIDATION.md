@@ -20,9 +20,10 @@ does not accept beta.11 or waive the recorded residual-witness failure.
 
 Johannes accepted upstream's whitening correction, supported by the independent
 weighted slope-boundary oracle, for continued qualification. The original
-fork/candidate rank-parity failure remains recorded. Actual published fereg
-results, original factor slots/base flags, PPML, replay and beta.10 performance
-must still pass; this decision does not authorize production adoption.
+fork/candidate rank-parity failure remains recorded. The native checks below
+cover declared published results, factor slots/base flags, PPML and replay;
+beta.10 performance must still pass. This decision does not authorize production
+adoption or acceptance of the documented rejected near-boundary fits.
 
 Focused Rust 1.85.1 adapter checks passed 79 main tests and four subprocess
 witnesses, including explicit LSMR, controlled routing, selector retirement,
@@ -68,8 +69,24 @@ ignored), workspace scientific/integration and plugin/FFI tests, isolated
 allocation audits, strict Clippy, fuzz compilation, portable/C guards and the
 complexity ratchet passed. The compatibility report records its exact log
 identity and environment. Installed-package admission was explicitly omitted.
-Actual plugin, rank-boundary and beta.10 performance qualification remain
-separate requirements; source integration is not production acceptance.
+Native correctness checks are recorded separately below; source integration
+is not production acceptance.
+
+The [native record](../bench/results/within-native-20261029.json) binds fereg
+`d96eccfc`, within `d3407a16` and both actual plugins. Mac and SCC builds,
+all 67 licensed fixtures per platform, and four OLS/PPML LSMR Break runs per
+platform passed. Break traces prove completed solver work, distinct cancellation,
+rollback and successful reuse. The 77-case/693-call replay passes science,
+fixed-worker repeats and cross-worker checks on both platforms. The original
+Mac declaration failed three PPML diagnostic magnitudes; a source-reviewed
+declaration correction passes reassessment without native reruns, preserving
+that failure. Linux's first replay launch failed on an ABI-only environment
+setting; a separate replay-only repair passed without repeating the independent
+fixture/Break stages. Both platforms also pass the four-case public slope
+contract: eight oracle fits, eight expected atomic rank-boundary rejections and
+four frontend refusals each. Earlier failed expectations remain recorded under
+Johannes's instruction to preserve existing rejections. Package admission,
+beta.10 performance and production acceptance remain outstanding.
 
 The separate sparse back-substitution optimization completed its practical Mac
 comparison: 312 calls, 72 paired blocks and all 12 descriptive intervals passed

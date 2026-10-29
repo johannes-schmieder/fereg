@@ -1,0 +1,1225 @@
+{
+  "schema": 1,
+  "status": "native_correctness_checks_passed_with_original_failures_preserved",
+  "date": "2026-10-29",
+  "source_revision": "d96eccfc269b8b5045038ee0dcee5fc2c788a86d",
+  "source_tree": "63381bb986718532ce313540347f484b1a91f7b3",
+  "within_revision": "d3407a16dec3715f6e9eee13fb9b6646d5b28035",
+  "scope": "Native development candidate evidence only; no performance, installed-package admission, adoption or publication acceptance.",
+  "artifacts": {
+    "macos": {
+      "sha256": "22570a0ab4e01c215ad2ebfc049c74cb317bb342c57a59f6d4bb1ba77b745f48",
+      "platform": "macOS universal; runtime tests arm64",
+      "slices": [
+        {
+          "architecture": "x86_64",
+          "bytes": 11234736,
+          "embedded_date": "2026-10-29",
+          "embedded_full_source_commit": "d96eccfc269b8b5045038ee0dcee5fc2c788a86d",
+          "sha256": "2a329f22e920203afbc88e0a344c2cd8d5313face882c5f5a25674627364fe58"
+        },
+        {
+          "architecture": "arm64",
+          "bytes": 9654064,
+          "embedded_date": "2026-10-29",
+          "embedded_full_source_commit": "d96eccfc269b8b5045038ee0dcee5fc2c788a86d",
+          "sha256": "2404fbc37ef783b2b8d0cb6debb82525b761faff7214ccf0878f175ac3dbc863"
+        }
+      ]
+    },
+    "linux": {
+      "sha256": "a01a1fc905e95db1621e288b21f45e47bd628c789cb0931240241dbc4f0b8cfc",
+      "platform": "Linux x86_64"
+    },
+    "beta10_macos": {
+      "sha256": "aa453ba70c90a605877c1c85383f574ea6cbd5e4ba3a2875b61b451e9d7ceae0",
+      "source_revision": "7674cf06a6786aed08d282bc27b6ae1e71ed26fb"
+    },
+    "beta10_linux": {
+      "sha256": "a79641166c17e5c193dc5f86a7fd487265d6978076e60ab7ca72f32f240f9f08",
+      "source_revision": "3348fe4597a872c5981d646b49346ff62688c737"
+    }
+  },
+  "replay_scope_files": {
+    "macos-original": {
+      "path": "tests/replay/scopes/2026-10-29-within-migration-macos-original.json",
+      "sha256": "ccbf05a0aa083b96e32e720706176daa58158f2f76ef27a9411d8c4daded88f0"
+    },
+    "macos": {
+      "path": "tests/replay/scopes/2026-10-29-within-migration-macos.json",
+      "sha256": "25efc501c50244897a7b479d39f5a67ecb11a5d632ae45b84a32a2a7e9b61a66"
+    },
+    "linux": {
+      "path": "tests/replay/scopes/2026-10-29-within-migration-linux.json",
+      "sha256": "c059ef88c98aa427201320922f5f851d0a2532a8dd5b159f1f513d0aac91e0d6",
+      "role": "Exact platform-bound copy of the Mac-reviewed numerical declaration, frozen before any successful Linux replay. Its inherited proposal/read-only header is preserved verbatim; the Linux run is a prospective execution under these frozen bytes."
+    }
+  },
+  "macos": {
+    "binary_checks": {
+      "status": "passed",
+      "checks": [
+        "Mach-O architecture, export, dependency and personal-path audit",
+        "actual ABI/load/self-test",
+        "FFI panic containment"
+      ],
+      "build_log_sha256": "60182dc7f8239f11738913f4a2f6585050923daf43b5816d7d5b3bba004f127a"
+    },
+    "stata_fixtures": {
+      "status": "passed",
+      "passed": 67,
+      "failed": 0,
+      "fixture_profile": "ci/stata_profiles.json",
+      "profile_sha256": "e8603c64c90b50a88a860890461cfd505cc35ed8c3c792e77e34743ddda00b13",
+      "ordered_fixture_list_sha256": "e7260d178b5f6e8d045db1acd1c29768155224a07282a6f512e55ccf2aed8c7e",
+      "stata": {
+        "stata_version": "19",
+        "stata_edition": "MP",
+        "stata_machine_type": "Mac (Apple Silicon)"
+      },
+      "supervisor": {
+        "process_rc": 0,
+        "timed_out": false,
+        "launch_error": null
+      },
+      "summary_sha256": "9397e27d95a4515abac5be37f451eaeb22436fe690b213a016707403e1becbf3"
+    },
+    "replay": {
+      "cases": 77,
+      "native_calls": 693,
+      "worker_counts": [
+        1,
+        2,
+        4,
+        8
+      ],
+      "scientific_pass_cases": 77,
+      "baseline_scientific_pass_cases": 77,
+      "fixed_worker_repeats": 308,
+      "cross_worker_comparisons": 231,
+      "original_frozen_result": {
+        "passed": false,
+        "summary_sha256": "597aba94de2b9623400044302e9d820164e36e6b8c284c181da1805a5ef11144",
+        "scope": "macos-original",
+        "failures": [
+          {
+            "case": "ppml-12",
+            "field": "/matrices/RCERT/bits/10",
+            "baseline_bits": "3c662a5460968980",
+            "baseline_value": 9.612688247555637e-18,
+            "candidate_bits": "0000000000000000",
+            "candidate_value": 0.0,
+            "unchanged_acceptance_tolerance": 1e-10
+          },
+          {
+            "case": "ppml-13",
+            "field": "/matrices/RCERT/bits/10",
+            "baseline_bits": "3c7ef6ef5963af7d",
+            "baseline_value": 2.6857500319736225e-17,
+            "candidate_bits": "0000000000000000",
+            "candidate_value": 0.0,
+            "unchanged_acceptance_tolerance": 1e-10
+          },
+          {
+            "case": "ppml-25",
+            "field": "/matrices/RCERT/bits/10",
+            "baseline_bits": "3c374f06087a394f",
+            "baseline_value": 1.263566389542354e-18,
+            "candidate_bits": "0000000000000000",
+            "candidate_value": 0.0,
+            "unchanged_acceptance_tolerance": 1e-10
+          }
+        ]
+      },
+      "reviewed_declaration_correction": {
+        "status": "reviewed_by_agents_and_lead_for_continued_qualification",
+        "scope": "macos",
+        "method": "Read-only reassessment of all 693 existing native transactions; no native rerun, resampling, tolerance, model or route change.",
+        "original_assessment_status": "proposed_not_adopted",
+        "original_assessment_sha256": "61cd032bb03bbd3a7e24b6e8f3a89f327b63d1e3bc36b3295c46edc0adf8ec14",
+        "comparison_passed": true,
+        "comparison_pass_cases": 77,
+        "changed_fields": {
+          "add_numeric_retained_bread_symmetry_cases": [
+            "ppml-10",
+            "ppml-12",
+            "ppml-13",
+            "ppml-14",
+            "ppml-15",
+            "ppml-25",
+            "ppml-28",
+            "ppml-29",
+            "ppml-30",
+            "ppml-31"
+          ],
+          "remove_structural_zero_standard_error_cases": [
+            "ols-13",
+            "ols-15",
+            "ols-25",
+            "ols-31",
+            "ols-derived-fe3"
+          ],
+          "unchanged": "all scientific tolerances, model/sample/rank/omission/DoF and routes, outer work, acceptance flags, transactions, fixed-worker exactness and cross-worker criteria"
+        },
+        "structural_zero_checks": [
+          {
+            "case": "ols-13",
+            "field": "/matrices/RCERT/bits/39",
+            "both_arms_bits": "0000000000000000"
+          },
+          {
+            "case": "ols-15",
+            "field": "/matrices/RCERT/bits/39",
+            "both_arms_bits": "0000000000000000"
+          },
+          {
+            "case": "ols-25",
+            "field": "/matrices/RCERT/bits/39",
+            "both_arms_bits": "0000000000000000"
+          },
+          {
+            "case": "ols-31",
+            "field": "/matrices/RCERT/bits/39",
+            "both_arms_bits": "0000000000000000"
+          },
+          {
+            "case": "ols-derived-fe3",
+            "field": "/matrices/RCERT/bits/39",
+            "both_arms_bits": "0000000000000000"
+          }
+        ],
+        "transaction_inventory_sha256": "5f0c4fbe9d96c66d4354b06d426e3174c5a6da2c8f94c769e99c3bf569b9b9b1",
+        "remaining_comparison_failures": [],
+        "acceptance_limit": "Original frozen comparison remains failed. This is a reviewed declaration correction for continued qualification, not beta.11 adoption.",
+        "authority": "Johannes authorized diagnosed harness repairs and continued qualification while preserving rank rejections; agents and lead reviewed this source-backed declaration correction. There was no separate explicit user approval of the RCERT field correction."
+      },
+      "evidence_sha256": {
+        "replay_log": "8a1a512fff64ec746855818bdbcdef11539d18bda9349cd17fc46774adafa611",
+        "correction_source_rationale": "e0cb75cc087dc767fef954dc07795af0f6ff59138f380d8f3a52817299b850e7"
+      }
+    },
+    "lsmr_break": {
+      "status": "passed",
+      "scope": {
+        "attempts_per_case": 2,
+        "effects": "three categorical intercept fixed effects",
+        "followup_successes": 8,
+        "outer_tolerance": "1e-10",
+        "platform": "macOS",
+        "prior_estimates": [
+          "populated",
+          "null"
+        ],
+        "rows": 720,
+        "solver": "explicit LSMR",
+        "stata": "19.0 MP, fixture version18.0",
+        "total_breaks": 8,
+        "weights": {
+          "ols": "aweight",
+          "ppml": "fweight"
+        },
+        "worker_counts": [
+          1,
+          4
+        ]
+      },
+      "verified_contract": [
+        "Break returns Stata rc1 only after a completed continuing upstream iteration.",
+        "Both interruptions have a distinct actual upstream Cancelled trace, in readiness/cancel order.",
+        "Data signature, prior e() scalars/macros/matrices/functions and populated e(sample) are restored.",
+        "All requested saved-FE and observation outputs and new estimation receipts remain absent.",
+        "Requested processors remain set through rollback; original processors restore before the terminal sentinel.",
+        "Both same-process follow-up fits exactly match initial coefficients, covariance, residuals and sample.",
+        "Frozen source and plugin hashes match all records; loaded selftest reports the full candidate source commit."
+      ],
+      "runs": [
+        {
+          "backend": "within",
+          "case": "ols-lsmr-t1",
+          "completed_iterations_before_break": [
+            1,
+            1
+          ],
+          "estimator": "ols",
+          "files": {
+            ".json": {
+              "bytes": 2023,
+              "sha256": "9c8528084188b0fd1d302500cb7460f9764b3d334c002a06adefb1966d16af4c"
+            },
+            ".process.json": {
+              "bytes": 1790,
+              "sha256": "b3ff488fd455f7168ff23e95e5ab6a6dbfa93cdc6957b6d9e101960f38600eb2"
+            },
+            ".pty": {
+              "bytes": 13837,
+              "sha256": "b46f3ef07a9c3b1dc9c0c7057b3c10a7ae151bbf889fc8f8a57e8bf2afca69a3"
+            },
+            ".stderr": {
+              "bytes": 89,
+              "sha256": "abdf5ad4a7b4b66813cc9ff026d5f000f744ea1a8bf828de3419c60dc0ba858a"
+            },
+            ".stdout": {
+              "bytes": 626,
+              "sha256": "7ebe6c43820eff8fa40a7d082f3c4284f607f802ab042e158bf962ea96275e21"
+            },
+            ".trace": {
+              "bytes": 2553,
+              "sha256": "301da6b272aa05aa2453b1e4c3e581299b5957508db30e072b2b69e749292027"
+            }
+          },
+          "fixture_pass": true,
+          "processor_transition": [
+            [
+              8,
+              1
+            ],
+            [
+              1,
+              8
+            ]
+          ],
+          "requested_workers": 1,
+          "runner_rc": 0,
+          "stata_cleanup_rc": -15,
+          "timed_out": false,
+          "upstream_cancelled_trace_events": 2
+        },
+        {
+          "backend": "within",
+          "case": "ols-lsmr-t4",
+          "completed_iterations_before_break": [
+            1,
+            1
+          ],
+          "estimator": "ols",
+          "files": {
+            ".json": {
+              "bytes": 2021,
+              "sha256": "36fb4b86ae27639717accd9538616b4d087c2f19c3d81f86efa20bb49fb0dfad"
+            },
+            ".process.json": {
+              "bytes": 1790,
+              "sha256": "d298bfa8db26be7229ef43183c5296f8361f7fbb83d6d4c61b0267e295848b8a"
+            },
+            ".pty": {
+              "bytes": 13837,
+              "sha256": "1cdf2cc56e25990d6839e57f784876823a9f20c25c54fb9ec95f3cab156c21a3"
+            },
+            ".stderr": {
+              "bytes": 89,
+              "sha256": "1af856cfe7b3c4a76d55017c5ca5a45abfefec82740b3e23eb363af2fd5b4690"
+            },
+            ".stdout": {
+              "bytes": 626,
+              "sha256": "7754f6dd2bf768a8ff0748d51682b6cd55b1f0e9f66d15722b74550d1b7b6e10"
+            },
+            ".trace": {
+              "bytes": 2553,
+              "sha256": "387c1c8e1a4a1a433d1d7a433a7fd39c2170d556c8ce4905c1e04419b1735922"
+            }
+          },
+          "fixture_pass": true,
+          "processor_transition": [
+            [
+              8,
+              4
+            ],
+            [
+              4,
+              8
+            ]
+          ],
+          "requested_workers": 4,
+          "runner_rc": 0,
+          "stata_cleanup_rc": -15,
+          "timed_out": false,
+          "upstream_cancelled_trace_events": 2
+        },
+        {
+          "backend": "ppml_joint",
+          "case": "ppml-lsmr-t1",
+          "completed_iterations_before_break": [
+            1,
+            1
+          ],
+          "estimator": "ppml",
+          "files": {
+            ".json": {
+              "bytes": 2042,
+              "sha256": "3e0f4b20931de993e88b945eb447c620f890b49cb901e302116d928a335418da"
+            },
+            ".process.json": {
+              "bytes": 1791,
+              "sha256": "0f8d5875a0dd5bd0c508aa084c8ed452bf4e684ca3f8564bdeefe1bcd5a20ae5"
+            },
+            ".pty": {
+              "bytes": 34548,
+              "sha256": "806416800462ec52d95d969962e352a37d1a34bcd82dd9ef578776da000c4f42"
+            },
+            ".stderr": {
+              "bytes": 90,
+              "sha256": "ec5cd7b06a307ae09cc3a7f6e8edb765f03d8f4d934ea391ecad6c0afac4136a"
+            },
+            ".stdout": {
+              "bytes": 646,
+              "sha256": "b9f2e9ebaf59052b4dd17484936ace91a04286047223f05fcfa5ee707b80c199"
+            },
+            ".trace": {
+              "bytes": 21619,
+              "sha256": "4e0cb8613928fcaf85718aca14c632410a7206fb76abade1e25882e4c47e1bb8"
+            }
+          },
+          "fixture_pass": true,
+          "processor_transition": [
+            [
+              8,
+              1
+            ],
+            [
+              1,
+              8
+            ]
+          ],
+          "requested_workers": 1,
+          "runner_rc": 0,
+          "stata_cleanup_rc": -15,
+          "timed_out": false,
+          "upstream_cancelled_trace_events": 2
+        },
+        {
+          "backend": "ppml_joint",
+          "case": "ppml-lsmr-t4",
+          "completed_iterations_before_break": [
+            1,
+            1
+          ],
+          "estimator": "ppml",
+          "files": {
+            ".json": {
+              "bytes": 2040,
+              "sha256": "44d16c67f3ea83a7d09dabc8137b7d7a36f957d9a102dcba33c4f11bc2de53e1"
+            },
+            ".process.json": {
+              "bytes": 1792,
+              "sha256": "c18c0dacb401f03740df7a27b4526ef5c8cf21d5bf211c509c2db94373a3be0e"
+            },
+            ".pty": {
+              "bytes": 34548,
+              "sha256": "48f6ea1d5b373dc435de490fe6a8e644acdb50c7ea73ca381fd6fdb8fee3daf5"
+            },
+            ".stderr": {
+              "bytes": 90,
+              "sha256": "075c0f93483b15aad1a86f638953c42c1fd42ddd5fd6e80214e48091a8f775aa"
+            },
+            ".stdout": {
+              "bytes": 646,
+              "sha256": "43d5ac9be022bcc6b97fadcccbc95c3c817dd09c78d1820a7953c379ab76a703"
+            },
+            ".trace": {
+              "bytes": 21619,
+              "sha256": "59e6833e0b8e7eda3a0e3a975afe324ca9e069da754056269f48c92484684faa"
+            }
+          },
+          "fixture_pass": true,
+          "processor_transition": [
+            [
+              8,
+              4
+            ],
+            [
+              4,
+              8
+            ]
+          ],
+          "requested_workers": 4,
+          "runner_rc": 0,
+          "stata_cleanup_rc": -15,
+          "timed_out": false,
+          "upstream_cancelled_trace_events": 2
+        }
+      ],
+      "summary_sha256": "7c9eeccd47922ca7484f88db226fc64483afbb56b41f69bf23d6bd045b102305",
+      "source_sha256": {
+        "ci/supervise_stata.py": "6099917349f1f1f9f7aa57cce1c01ed8c4d460966ba48a23bdac021549510c5f",
+        "crates/fereg-core/build.rs": "09a6d7cfabbf02db308e9527d77a0ff2414f6f8351160d428ae7ef24dd733091",
+        "crates/fereg-core/src/fe/lsmr_batch.rs": "ca4c5fe84936168b98837e4ab5474d82394c1a190f1fd74c5a583573fe972c23",
+        "crates/fereg-core/src/fe/lsmr_break.rs": "de7b60ed3face8c19b72fce2224ba45d7e5f9ec0d6c7d2303fd0eeab3b3819b4",
+        "crates/fereg-core/src/ppml/categorical_lsmr.rs": "97a7f99beecc5ed7508f94a6db1e11ad25346850930fb9401972e94286b7d7fd",
+        "crates/fereg-plugin/src/cancellable.rs": "9c88b4d62e035c4f490346ee5782d17aa33857cb495575f88f40e9c1358b945c",
+        "crates/fereg-plugin/src/estimate.rs": "5a0d618b8eee04d3dd77c4675867e779f67961849088de747eed5a7ade39521f",
+        "crates/fereg-plugin/src/ppml_estimate.rs": "72b0983176ecd4738b86de7c6112ecfe40f07d4aa743634fd090e4f366cdc0ee",
+        "crates/fereg-plugin/src/ppml_execution.rs": "8f3bc2ccfa2d24ff362b9aad983d9ef5ca5adac1e77faf73de0fe1a3d2dd660f",
+        "scripts/build_macos.sh": "7485175fb81126dc641e8cb78216d32f12144b70d03e1a4e8ba444771150ded0",
+        "scripts/run_stata_break_test.py": "b93ca43dc9add418dcceb0d71b56fbaf764e04a2f54c1eff6cf2631c33221421",
+        "scripts/run_stata_tests.py": "4a6aadb6cbc6aca378c67d64a2b2f2c6fe088aaa2227697a3a99009305f468a3",
+        "stata/_fereg_estimate_ols.ado": "68f18381859a00ee1af66a5f807f60f51cc7eccbe13bb4791ea8cf0d9a64c2e4",
+        "stata/_fereg_estimate_ppml.ado": "076865a862912d820cf615a2a5feffd315a34429aed2b60a283c909da1e6e8bd",
+        "tests/licensed_stata/estimate_lsmr_iteration_break.do": "e740256b33613e55c7f2d36abafdcaddc380156c880bfeb68a37a88c4bac297c"
+      },
+      "cleanup_interpretation": "Each supervisor returned0. After the success sentinel and validation, finish_attempt terminates/reaps interactive Stata; the recorded-15 is expected SIGTERM cleanup, not a test timeout or scientific failure."
+    },
+    "public_slope_boundary": {
+      "status": "passed_four_case_declared_contract",
+      "witness_revision": "3d61d4e05cf093a920bb91ca71ca7bec542a95ae",
+      "runtime_revision": "d96eccfc269b8b5045038ee0dcee5fc2c788a86d",
+      "plugin_sha256": "22570a0ab4e01c215ad2ebfc049c74cb317bb342c57a59f6d4bb1ba77b745f48",
+      "declaration": {
+        "path": "bench/results/within-plugin-slope-boundary-declaration.json",
+        "sha256": "d4e87adec59172f5a804a4cf8a4295ad08f041e7d8026e83c8fb889d45d502fa",
+        "retained_original_status": "prospective four-case amendment preserving approved existing rejections; appended orthogonal positive control not yet executed"
+      },
+      "source_and_input_sha256": {
+        "tests/fixtures/ols/within_plugin_slope_boundary.csv": "8c982c7b4baa995fec0ca6219c9444a73f2a81c39597acf41b8997936c00b40f",
+        "tests/stata/development/within_plugin_slope_boundary.do": "7e9099b975112da823818fd1dccfd51800c5069ca0a2d13e2dbb478af3eb7194",
+        "bench/prepare_within_plugin_boundary.py": "202626a287b2bc2e356448616bac40bf5478a76e8ccad151b73857eb339ddb37",
+        "bench/compare_within_slope_boundary.py": "307dd2283eae442ffa9fbd39153b87c7f307348aff617fe27b25b3e6bf44064e"
+      },
+      "original_three_case_csv_prefix": {
+        "bytes": 128156,
+        "sha256": "891404052b5904e36a86b6901993dc270a996a684dfcd95fc1fe252a38e92147",
+        "preservation": "The current CSV starts with exactly these bytes, including its unchanged header. Only case4 rows are appended."
+      },
+      "native_estimation_calls": 16,
+      "workers": [
+        1,
+        4
+      ],
+      "repeats_per_worker": 2,
+      "successful_oracle_fits": 8,
+      "successful_cases": [
+        1,
+        4
+      ],
+      "expected_atomic_rc459_calls": 8,
+      "rejected_cases": [
+        2,
+        3
+      ],
+      "frontend_only_rc498_rejections": 4,
+      "scientific_checks": [
+        "binary64 transport verified before fitting",
+        "independent weighted rational retained-span and finite oracle on successful cases",
+        "original factor slots, base flags, omitted coefficient/covariance rows and columns",
+        "sample, rank and covariance",
+        "coefficients, fitted values and residuals with unchanged 1e-8 bounds",
+        "independent normalized moments 1e-9",
+        "exact fixed-worker b/V/status/sample/residual/fitted/solver repetitions excluding timing",
+        "cross-worker science and exact discrete decisions",
+        "populated e() and data/output rollback for expected rejections"
+      ],
+      "limitations": [
+        "Cases2/3 remain rejected fits; their exact oracles are retained, not published as estimates.",
+        "The appended orthogonal case4 is a well-conditioned positive control, not a replacement for rejected near-boundary cases.",
+        "No runtime, grammar, original three-case input, oracle or tolerance change.",
+        "This fixture establishes neither beta.10 performance nor acceptance of rejected near-boundary estimates."
+      ],
+      "user_decision": "Johannes: Preserve rejection and continue migration (recommended). Keep existing rank-span mismatch rejection; no runtime/model, oracle, input or tolerance change.",
+      "prior_failures": [
+        {
+          "attempt": "original",
+          "status": "failed_retained",
+          "stata_rc": 198,
+          "explanation": "Original fixture used unsupported xbd() estimation option; rc198 before native estimation.",
+          "summary_sha256": "eb2d7a7e52fb965f757aaf6264106731e53a43acd5c2d197c5147ca14e3383ab",
+          "process_sha256": "88bb8da4f2fc2859d7820b6767b6ed397ae276a21c03c3530f73f8c9897722c4"
+        },
+        {
+          "attempt": "repair-syntax",
+          "status": "failed_retained",
+          "stata_rc": 459,
+          "explanation": "Syntax repair used postestimation predict; case1 passed, first case2 fit failed rc459.",
+          "summary_sha256": "4d48963e94447c61a0cacf6a3910c5a163af65bc39f3246ac5218e0231eda5c4",
+          "process_sha256": "65de2e9a01bef1cc2711c68eb38e4c4a6f5e5f8175016dfbe74857923e96e41c"
+        },
+        {
+          "attempt": "approved-rejection",
+          "status": "failed_retained",
+          "stata_rc": 459,
+          "explanation": "Case1 success and approved case2 rejections passed; first case3 success expectation failed rc459.",
+          "summary_sha256": "4d48963e94447c61a0cacf6a3910c5a163af65bc39f3246ac5218e0231eda5c4",
+          "process_sha256": "45712422e452159b71f347719d56f624aacc051fa128d950836547d4ce2130e0"
+        }
+      ],
+      "bounded_diagnostics": [
+        {
+          "case": 2,
+          "arm": "candidate",
+          "calls": 1,
+          "workers": 1,
+          "stata_rc": 459,
+          "summary_sha256": "92ed566035b17ba6051e9b773274ac7010c9a9610d5b7635d7605f5d541d68c5",
+          "process_sha256": "a695ee10715488e3da185d4a0a14aedfcf65e4d107bac70c6f0a21819f81e412"
+        },
+        {
+          "case": 2,
+          "arm": "beta10",
+          "calls": 1,
+          "workers": 1,
+          "stata_rc": 459,
+          "summary_sha256": "92ed566035b17ba6051e9b773274ac7010c9a9610d5b7635d7605f5d541d68c5",
+          "process_sha256": "5651563f812813630f9ca425d56d55f871b93f0f7873ae8198dd40992b027a59"
+        },
+        {
+          "case": 3,
+          "arm": "candidate",
+          "calls": 1,
+          "workers": 1,
+          "stata_rc": 459,
+          "summary_sha256": "292de925ad59a8cb3f0dd6adc647785665ea3104625cfafaace2b77b3b6edd6a",
+          "process_sha256": "5bf267c56ff59fa9c05cdd428d7660dfcd4f0dbf4684d75f53f6ed574d9b8ab6"
+        },
+        {
+          "case": 3,
+          "arm": "beta10",
+          "calls": 1,
+          "workers": 1,
+          "stata_rc": 459,
+          "summary_sha256": "292de925ad59a8cb3f0dd6adc647785665ea3104625cfafaace2b77b3b6edd6a",
+          "process_sha256": "969df4827fce93b01c610fcfd47b7049b7f8c6fbe8f47a76c3d5c40f02e47d83"
+        }
+      ],
+      "supervisor": {
+        "process_rc": 0,
+        "timed_out": false,
+        "launch_error": null
+      },
+      "evidence_sha256": {
+        "summary.json": "1157cbb40456d74605f4554fbc3c198d158f19e68bd00c543c66a6c9c11ea367",
+        "process.json": "2cc111e7a47abe10b5086e6af1a3120c94049652c8b24c0595abd2f0d6872ff3",
+        "stdout.log": "8530bd89a10a915e0b0fd9ba94a8dfce1f542f3e3398d645f994108a71ba38b9",
+        "stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "fixture-logs/tests__stata__development__within_plugin_slope_boundary.do.log": "8b16ce9777e1b4913c0efcd68a6dfb351588bc559314331f236bd38d17ac39f0",
+        "fixture-logs/tests__stata__development__within_plugin_slope_boundary.do.status": "dba81c16b263327e69dc2e125a5c6e68192f60d0de75f5b59a45af70e52d79f6"
+      },
+      "independent_read_only_review": "passed; raw sentinels/metadata/hashes and unchanged runtime source verified; no native rerun"
+    },
+    "additional_mapped_fixtures": {
+      "status": "passed",
+      "source_revision": "d96eccfc269b8b5045038ee0dcee5fc2c788a86d",
+      "plugin_sha256": "22570a0ab4e01c215ad2ebfc049c74cb317bb342c57a59f6d4bb1ba77b745f48",
+      "fixtures": [
+        "tests/stata/development/ols_lsmr_reuse.do",
+        "tests/stata/development/lsmr_batch_oracle.do"
+      ],
+      "fixture_sha256": {
+        "tests/stata/development/ols_lsmr_reuse.do": "14faa3425c7c81ef402c0b2e405cd4727bd9af525301e19b49450057cfe3b058",
+        "tests/stata/development/lsmr_batch_oracle.do": "6c84caa179bb36b7dbcda3b0b5cf5147037a7a0dd0173f7494565af15444379c"
+      },
+      "fixture_passed": 2,
+      "fixture_failed": 0,
+      "outside_full_profile": true,
+      "supervisor": {
+        "process_rc": 0,
+        "timed_out": false,
+        "launch_error": null
+      },
+      "trace_events": {
+        "total": 221,
+        "solver_events": 80,
+        "lsmr_rhs": 52,
+        "joint_lsmr_frame": 28,
+        "lsmr_session": 21,
+        "strict_result_converged": 8,
+        "retained_ols_sessions": 4
+      },
+      "evidence_sha256": {
+        "summary.json": "4aa499d2744919e8e57c09043224e32d41e93a1b53466364c066b731a8593f67",
+        "process.json": "af364b3aeb08a28240caf45bb210eb1694856c05dae113d46277c470e311b352",
+        "stdout.log": "abc2461531c1bbc5a204c81015ffd4d5dfee465da3e52bd13bdc402a7c771ad4",
+        "stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "solver.trace": "57251cac03054d952bb9d73a7f28dbd65cff3a4c75d33c5f64826f20eec9a789",
+        "fixture-logs/tests__stata__development__ols_lsmr_reuse.do.log": "447528d88b09c1eba4e7a0c1f2148c37c4003d25f17a3ac8368ecbad27a0ffad",
+        "fixture-logs/tests__stata__development__lsmr_batch_oracle.do.log": "7f372f7a900dc6e8452d6657ac74f1dcc03b772d0fccb7c69d9a119300a5e0ec"
+      },
+      "limitations": [
+        "No fixed-worker bitwise repeatability, absorbed-slope, active cancellation, separation or performance claim from these two fixtures.",
+        "PPML continuation and predictor flags remain zero.",
+        "Trace observations establish declared path execution, not broader-route coverage."
+      ],
+      "fit_counts": {
+        "fereg_ols": 4,
+        "feppml": 8,
+        "dummy_ols_reference": 1,
+        "poisson_reference": 8
+      },
+      "ols": {
+        "rows": 1400,
+        "regressors": 10,
+        "categorical_fixed_effects": 3,
+        "weights": "analytic",
+        "low_memory_pool_limits": [
+          1,
+          5,
+          10
+        ],
+        "low_memory_requested_workers": 7,
+        "fast_memory_workers": 1,
+        "coefficient_covariance_bound": 1e-10,
+        "fitted_residual_bound": 1e-09,
+        "other_checks": [
+          "rank",
+          "degrees of freedom",
+          "saved-FE reconstruction",
+          "centering"
+        ]
+      },
+      "ppml": {
+        "rows": 4096,
+        "regressors": 65,
+        "categorical_fixed_effects": 2,
+        "offset": true,
+        "workers": [
+          1,
+          4
+        ],
+        "designs": [
+          "unit robust covariance",
+          "unit clustered covariance",
+          "frequency-weight clustered covariance",
+          "probability-weight clustered covariance"
+        ],
+        "coefficient_covariance_bound": 1e-07,
+        "mean_bound": "1e-7*(1+abs(reference))",
+        "reference": "Poisson coefficients and Mata Hessian/meat; Mata reuses the package small-sample multiplier."
+      },
+      "path_evidence": "Within OLS RHS solves and augmented joint-PPML mlsmr_cancellable executed. The PPML test is not evidence of wide-RHS Within batching.",
+      "independent_read_only_review": "passed; source, loaded full runtime identity, raw sentinels, return codes, trace counts and contract checked"
+    }
+  },
+  "linux": {
+    "source_and_native_build": {
+      "job": "8327053",
+      "host": "scc-gd4",
+      "status": "passed_prerequisites_verified",
+      "slots": 16,
+      "affinity": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "toolchain": {
+        "python": "3.12.4 (main, Jul  1 2024, 10:14:11) [GCC 12.2.0]",
+        "rustc": "rustc 1.85.1 (4eb161250 2025-03-15)",
+        "cargo": "cargo 1.85.1 (d73d2caf9 2024-12-31)",
+        "gcc": "gcc (GCC) 12.2.0"
+      },
+      "environment": {
+        "CARGO_BUILD_JOBS": "4",
+        "RUST_TEST_THREADS": "1",
+        "RAYON_NUM_THREADS": "8",
+        "FEREG_TEST_THREADS": "8",
+        "OMP_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "MKL_NUM_THREADS": "1",
+        "NUMEXPR_NUM_THREADS": "1"
+      },
+      "evidence_sha256": {
+        "environment": "204025e59aae8dd0b80aeb9ed7e53a8ad31e0b74c3d8770f28ff0d23906c583a",
+        "accounting": "016371ec096c39a26564b8441c1de8f9f0af0310d778ec408406513bdb19a96f",
+        "outputs_manifest": "b8b90e1e6a38f2c9785cab2ed503a748c421520871dc9b43d40f07bad2dda2eb",
+        "source_suite_log": "46de4b2fcadb851710938420ba4732717416e048f4881f1eaec10ca38e057ee5",
+        "native_build_log": "4a972581375693168b6e6abc976b2d7696ea08a646ca74a90ed01048861e7e74"
+      },
+      "accounting": {
+        "jobnumber": "8327053",
+        "hostname": "scc-gd4.scc.bu.edu",
+        "qname": "econ",
+        "slots": "16",
+        "failed": "0",
+        "exit_status": "0",
+        "ru_wallclock": "822",
+        "cpu": "1895.851",
+        "maxvmem": "5.962G",
+        "start_time": "Thu Oct 29 08:08:16 2026",
+        "end_time": "Thu Oct 29 08:21:58 2026"
+      },
+      "source_suite": {
+        "python_tests": 324,
+        "static_tool_tests": 7,
+        "workspace_passed": 1916,
+        "workspace_intentionally_ignored": 5,
+        "ffi_passed": 225,
+        "allocator_audits_passed_in_fresh_processes": 10,
+        "counts_exclude_nested_subprocess_summary_double_counting": true,
+        "other_checks": [
+          "formatting",
+          "fuzz compilation",
+          "both Clippy modes",
+          "complexity ratchet",
+          "portable/static C guards and GCC analyzer",
+          "mock SPI and input/output guards"
+        ]
+      },
+      "native_checks": {
+        "bytes": 16737480,
+        "format": "ELF64 x86_64",
+        "exports": [
+          "pginit",
+          "stata_call"
+        ],
+        "unresolved_symbols": [],
+        "maximum_glibc_version": "2.28",
+        "passed": [
+          "actual ABI/load/selftests",
+          "protocol rejection",
+          "intentional panic containment",
+          "OLS preparation/input",
+          "atomic store and numeric guards"
+        ]
+      },
+      "source_archive_sha256": "cb0c8d5bf20ee62e780a3d583608428c5a2e1a861267ddde77d0122c1e770be1"
+    },
+    "native_job": {
+      "job": "8327417",
+      "host": "scc-gd4",
+      "status": "failed_replay_launcher_before_first_native_call",
+      "accounting": {
+        "jobnumber": "8327417",
+        "hostname": "scc-gd4.scc.bu.edu",
+        "qname": "econ",
+        "slots": "16",
+        "failed": "0",
+        "exit_status": "1",
+        "ru_wallclock": "75",
+        "cpu": "124.447",
+        "maxvmem": "8.890G",
+        "start_time": "Thu Oct 29 08:39:05 2026",
+        "end_time": "Thu Oct 29 08:40:20 2026"
+      },
+      "slots": 16,
+      "affinity": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "stage_verdicts": [
+        {
+          "stage": "replay",
+          "passed": false
+        },
+        {
+          "stage": "fixtures",
+          "passed": true
+        },
+        {
+          "stage": "ols-lsmr-t1",
+          "passed": true
+        },
+        {
+          "stage": "ols-lsmr-t4",
+          "passed": true
+        },
+        {
+          "stage": "ppml-lsmr-t1",
+          "passed": true
+        },
+        {
+          "stage": "ppml-lsmr-t4",
+          "passed": true
+        }
+      ],
+      "replay": {
+        "status": "operational_failure",
+        "completed_native_calls": 0,
+        "error": "FEREG_TEST_THREADS is ABI-only; unset it for --replay",
+        "harness_process_rc": 2,
+        "supervisor_process_rc": 1,
+        "retry": "Separate replay-only operational repair 8327539 passed; original failed job and its stage verdicts remain unchanged."
+      },
+      "evidence_sha256": {
+        "summary": "155c028cbcdf6f3edabec211b9194ea385d1c09945d4a72a7854a70b11d7a6b7",
+        "environment": "98f9f39c899b27fe0a17429034299f67dc4dcb8e8174c7e1a59200f658fddc5d",
+        "outputs_manifest": "c5a7cad0a49dd37721c1d1f101af1115d553ac07cf56cd441cb7bd599a86e872",
+        "replay_process": "43790e8b6da11a4b9ead749a464e63d9d7b6235f523363b2c24199bc385c8730",
+        "replay_stderr": "ec7f92af75bbe8ac790477f063dcfb81734a3826afb31eb53ff6673d3c571595",
+        "accounting": "539af07d85e445d03a56d64c66ebbee7ec3932cf137fffd93a0f7a64d0efa269"
+      },
+      "verified_output_manifest_entries": 312,
+      "launcher_review_limitation": "The ABI-only environment inheritance was not caught by source review; the original failure and all independent stage results are retained."
+    },
+    "stata_fixtures": {
+      "status": "passed",
+      "passed": 67,
+      "failed": 0,
+      "fixture_profile": "ci/stata_profiles.json",
+      "profile_sha256": "e8603c64c90b50a88a860890461cfd505cc35ed8c3c792e77e34743ddda00b13",
+      "ordered_fixture_list_sha256": "e7260d178b5f6e8d045db1acd1c29768155224a07282a6f512e55ccf2aed8c7e",
+      "stata": {
+        "stata_version": "19",
+        "stata_edition": "MP",
+        "stata_machine_type": "PC (64-bit x86-64)"
+      },
+      "supervisor": {
+        "process_rc": 0,
+        "timed_out": false,
+        "launch_error": null
+      },
+      "summary_sha256": "97a19915d6d782a96b132446f890d9be6b0458d6b96a8b3f73ae246a52776a96"
+    },
+    "lsmr_break": {
+      "status": "passed",
+      "runs": [
+        {
+          "case": "ols-lsmr-t1",
+          "workers": 1,
+          "backend": "within",
+          "passed": true,
+          "completed_iterations": [
+            1,
+            1
+          ],
+          "upstream_cancelled_events": 2,
+          "followup_fits": 2,
+          "runner_rc": 0,
+          "stata_cleanup_rc": -15,
+          "evidence_sha256": {
+            "evidence.json": "9e44d2b9d450e820a2288ee7cc77e801caa6788c3ce315a50a9f338bc2e32477",
+            "evidence.trace": "894b89059d2eebb15c48559aaa2a392533717db66914cc79cce31091a6ba7517",
+            "evidence.pty": "d5f8b6ef5258d8f19aa5837ec34cfd36ec7ea9300dcf6a9db1b2013720850014",
+            "process.json": "db550592dc810539423b21480e3f0c79d2cff0b52ad6a9096c11f18bf9627e7c",
+            "stdout.log": "4c88392822798aa2e21320ea52f9716ffe32a1c6b43f15ef1e1581fdcf956041",
+            "stderr.log": "009cc060b02b50bd09cf2b2a076edbe609b873c020c5722900f5ea7a0f09a766"
+          }
+        },
+        {
+          "case": "ols-lsmr-t4",
+          "workers": 4,
+          "backend": "within",
+          "passed": true,
+          "completed_iterations": [
+            1,
+            1
+          ],
+          "upstream_cancelled_events": 2,
+          "followup_fits": 2,
+          "runner_rc": 0,
+          "stata_cleanup_rc": -15,
+          "evidence_sha256": {
+            "evidence.json": "f986bc71a293f897450c7c9367feeb28059199866634f53886bfa2338cc9daf1",
+            "evidence.trace": "28deed24e7b583ba5fb08c887c5aaf210217a14b6b8da8ad14dcec732512c2ed",
+            "evidence.pty": "376d1e6c4a94e84b545696e7a3fc705fa792976c6cc7d71ebb0b27f70aefa48d",
+            "process.json": "c9a68b5c10114cf4acd37964f7df58e2df8d4151395b2a2133c32e5efd7d0e59",
+            "stdout.log": "c0ebcb593aea9d016d5d59080e137d38da4dc3ed27a3325d5fb11ba560e56d12",
+            "stderr.log": "509f9d1a41c7c0ef62d48059fb365dd342a168a487fcfb42ab5dbb932de77748"
+          }
+        },
+        {
+          "case": "ppml-lsmr-t1",
+          "workers": 1,
+          "backend": "ppml_joint",
+          "passed": true,
+          "completed_iterations": [
+            1,
+            1
+          ],
+          "upstream_cancelled_events": 2,
+          "followup_fits": 2,
+          "runner_rc": 0,
+          "stata_cleanup_rc": -15,
+          "evidence_sha256": {
+            "evidence.json": "dc242f6f85ec685749da497319bbf86bff8fb826161f2a621cc8122032455396",
+            "evidence.trace": "a204d0088fb8b3f05e9a3f239153009f8da5cf34d5e4966d569b1d1091ed5c25",
+            "evidence.pty": "20b85eb7b12ddce95f43662f681f321a761755a1d77200d27f1882aa98ad88b3",
+            "process.json": "0e0feda91e1c96c536e51886428cc0ef009276778be06c0012b2511e320d44d2",
+            "stdout.log": "f2c8db78e3e26118c4a145f12ba18bab96e89f6a1332febbfdfafb22ae0cbe3e",
+            "stderr.log": "d97223d2c09bc912d68171d981e6c312e2ece2e6dc6dd8c73eefb5085b4752f8"
+          }
+        },
+        {
+          "case": "ppml-lsmr-t4",
+          "workers": 4,
+          "backend": "ppml_joint",
+          "passed": true,
+          "completed_iterations": [
+            1,
+            1
+          ],
+          "upstream_cancelled_events": 2,
+          "followup_fits": 2,
+          "runner_rc": 0,
+          "stata_cleanup_rc": -15,
+          "evidence_sha256": {
+            "evidence.json": "74ad9f13e6d884103eae02d4094045e6519c02263b5baacfb4190b18d5965d72",
+            "evidence.trace": "cbae089812e452766d41e3ff632a606299099522c1f5c23fb1ab94391324c3ea",
+            "evidence.pty": "e842e4ad65c721c1825963a6f8661a32463fe670a98000d78129f7cb9f0e340b",
+            "process.json": "13a0fc25d1c9ed1a7a68062660d73390f32ce76e316e4bafccd5056bb0c38120",
+            "stdout.log": "e3df53f2e515ac4527697930d203cd35ac9ec426a6439b56ddc40b52f0c3a2bf",
+            "stderr.log": "00967c8a9231e46aed16037cf55a34bfe9c748a33ded2670cab135b75dbd5fdd"
+          }
+        }
+      ],
+      "scope": {
+        "attempts_per_case": 2,
+        "effects": "three categorical intercept fixed effects",
+        "followup_successes": 8,
+        "outer_tolerance": "1e-10",
+        "platform": "Linux x86_64",
+        "prior_estimates": [
+          "populated",
+          "null"
+        ],
+        "rows": 720,
+        "solver": "explicit LSMR",
+        "stata": "19.0 MP, fixture version18.0",
+        "total_breaks": 8,
+        "weights": {
+          "ols": "aweight",
+          "ppml": "fweight"
+        },
+        "worker_counts": [
+          1,
+          4
+        ]
+      },
+      "verified_contract": [
+        "Break returns Stata rc1 only after a completed continuing upstream iteration.",
+        "Both interruptions have a distinct actual upstream Cancelled trace, in readiness/cancel order.",
+        "Data signature, prior e() scalars/macros/matrices/functions and populated e(sample) are restored.",
+        "All requested saved-FE and observation outputs and new estimation receipts remain absent.",
+        "Requested processors remain set through rollback; original processors restore before the terminal sentinel.",
+        "Both same-process follow-up fits exactly match initial coefficients, covariance, residuals and sample.",
+        "Frozen source and plugin hashes match all records; loaded selftest reports the full candidate source commit."
+      ],
+      "cleanup_interpretation": "Each supervisor returned0. After the success sentinel and validation, finish_attempt terminates/reaps interactive Stata; the recorded-15 is expected SIGTERM cleanup, not a test timeout or scientific failure."
+    },
+    "replay_repair": {
+      "status": "passed",
+      "job": "8327539",
+      "host": "scc-b24",
+      "source_revision": "d96eccfc269b8b5045038ee0dcee5fc2c788a86d",
+      "source_tree": "63381bb986718532ce313540347f484b1a91f7b3",
+      "harness_sha256": "f50150d268043377a1ef0e0c8c6df34078707bb6d2bc7575cea8b9c533a63c30",
+      "scope": "linux",
+      "native_calls": 693,
+      "cases": 77,
+      "worker_counts": [
+        1,
+        2,
+        4,
+        8
+      ],
+      "scientific_pass_cases": 77,
+      "baseline_scientific_pass_cases": 77,
+      "fixed_worker_repeats": 308,
+      "cross_worker_scientific_and_discrete_comparisons": 231,
+      "exact_unaffected_comparison_pass_cases": 77,
+      "transaction_inventory_sha256": "6f5e8efe4b988476b280cbbf54bb7721270684e004a752acdca07b17e3b9c35d",
+      "transaction_inventory_format": "SHA256 two-spaces basename newline, sorted by basename; nine stored transactions per case",
+      "affinity": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "operation": "Replay-only diagnosed launcher repair: removed ABI-only FEREG_TEST_THREADS=8. Original job remains failed; no passed fixture/Break stage or build rerun.",
+      "supervisor": {
+        "process_rc": 0,
+        "timed_out": false,
+        "launch_error": null
+      },
+      "evidence_sha256": {
+        "summary.json": "0014a7a5ee61a51d468ab2d9197f335ac393b8f7d023e6996ce2b7346da075d0",
+        "environment.json": "303384616b1aeb0ac9334217fe274d5995f6d829127b7ae93f7032ff9a1816e7",
+        "OUTPUTS.SHA256SUMS": "ccd9183cbe75c05575bfe2b6d8dfcccaaa879f68d609a0237ec2dfb76006c1a2",
+        "SHA256SUMS": "1b3e197bb6d81b27fee417afbc70c96b7a3684444a2bdbf27466d5fc0006aaf7",
+        "replay.py": "46191bdb72ee55d1bc44d97fec7faefacdf48f77e7ad3870731c9ed59070089d",
+        "job.sh": "a7ac77f1dd8c2506a138cc9d5a5d9f3a3c7223ea1d56a12e437c09caa7c091c9",
+        "replay/process.json": "96fe1cb23e394a546960e740841d6f43c3d45b0597f7acddbc390e8107ae215f",
+        "replay/stdout.log": "330c9daaf5ab3994e5627d6b86c682c497a010805106fe6dea85825fb505abaf",
+        "replay/stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "replay/results/summary.json": "b3e307ae43f201c33a750026539e531fec0d2ac344501157d58347515ac94967",
+        "accounting.txt": "fe29b9007d510fb42adf7da898ea161e572fa47dbd0ada2941052f3fd25c9196"
+      },
+      "accounting": {
+        "jobnumber": "8327539",
+        "hostname": "scc-b24.scc.bu.edu",
+        "qname": "b8",
+        "slots": "16",
+        "failed": "0",
+        "exit_status": "0",
+        "ru_wallclock": "16",
+        "cpu": "9.409",
+        "maxvmem": "564.168M",
+        "start_time": "Thu Oct 29 09:02:51 2026",
+        "end_time": "Thu Oct 29 09:03:07 2026"
+      },
+      "independent_read_only_review": {
+        "status": "passed",
+        "transaction_files": 693,
+        "verified_input_hashes": 308,
+        "fixed_worker_repeat_pairs": 308,
+        "cross_worker_discrete_pairs": 231,
+        "baseline_comparisons": 77,
+        "cases_with_changes_only_in_declared_leaves": 19,
+        "fully_unaffected_exact_cases": 58,
+        "stored_reference_scientific_checks": 693,
+        "verified_input_manifest_entries": 3,
+        "verified_output_manifest_entries": 940,
+        "limitation": "No native rerun. The extra two Decimal OLS and five CMG target regenerations were not repeated in this audit; their original recorded checks passed and were reused."
+      }
+    },
+    "public_slope_boundary": {
+      "status": "passed",
+      "job": "8327553",
+      "host": "scc-b23",
+      "witness_revision": "3d61d4e05cf093a920bb91ca71ca7bec542a95ae",
+      "runtime_revision": "d96eccfc269b8b5045038ee0dcee5fc2c788a86d",
+      "plugin_sha256": "a01a1fc905e95db1621e288b21f45e47bd628c789cb0931240241dbc4f0b8cfc",
+      "source_and_input_sha256": {
+        "bench/prepare_within_plugin_boundary.py": "202626a287b2bc2e356448616bac40bf5478a76e8ccad151b73857eb339ddb37",
+        "bench/results/within-plugin-slope-boundary-declaration.json": "d4e87adec59172f5a804a4cf8a4295ad08f041e7d8026e83c8fb889d45d502fa",
+        "tests/fixtures/ols/within_plugin_slope_boundary.csv": "8c982c7b4baa995fec0ca6219c9444a73f2a81c39597acf41b8997936c00b40f",
+        "tests/stata/development/within_plugin_slope_boundary.do": "7e9099b975112da823818fd1dccfd51800c5069ca0a2d13e2dbb478af3eb7194"
+      },
+      "affinity": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "native_estimation_calls": 16,
+      "workers": [
+        1,
+        4
+      ],
+      "repeats_per_worker": 2,
+      "successful_oracle_fits": 8,
+      "successful_cases": [
+        1,
+        4
+      ],
+      "expected_atomic_rc459_calls": 8,
+      "rejected_cases": [
+        2,
+        3
+      ],
+      "frontend_only_rc498_rejections": 4,
+      "contract": [
+        "binary64 transport verified before fitting",
+        "independent weighted rational retained-span and finite oracle on successful cases",
+        "original factor slots, base flags, omitted coefficient/covariance rows and columns",
+        "sample, rank and covariance",
+        "coefficients, fitted values and residuals with unchanged 1e-8 bounds",
+        "independent normalized moments 1e-9",
+        "exact fixed-worker b/V/status/sample/residual/fitted/solver repetitions excluding timing",
+        "cross-worker science and exact discrete decisions",
+        "populated e() and data/output rollback for expected rejections"
+      ],
+      "preserved_failures_and_user_decision": "The macos.public_slope_boundary prior failures, bounded beta.10 diagnostics and user decision remain unchanged. Cases2/3 are rejected fits on this platform too, not accepted estimates.",
+      "supervisor": {
+        "process_rc": 0,
+        "timed_out": false,
+        "launch_error": null
+      },
+      "evidence_sha256": {
+        "config.json": "ad7c76cb39399b69a3a03772a0b4231b542beb1dd853deb6154786575aa1587d",
+        "environment.json": "b012a4ee395f6e288a09fe81dfcf0561f29ba3bf16bf37f788771c1d0ef45c06",
+        "SHA256SUMS": "a6ad67ce94a63efd34513d600ef890c061976ef12ddcab4747d7f4186058edb3",
+        "run.py": "f044fb08480fa79baeb3490897d45616e9dfdf13aa1c72080e55c06827df1dd6",
+        "job.sh": "70d3e8d82cb709d98f55b40d3e660db729e49c2c5991d2088ad0354d62ecd6d8",
+        "results/summary.json": "3068ae6235b0a9ee407ed5a401d44582689eadf36d126bd1521dd837d21a1df2",
+        "results/process.json": "ac5f35ebe4e861c78ef9a804e732beb10cb28d28a33e13f51726ec0d902d7943",
+        "results/stdout.log": "81f783de12bda4850f68642d8801eb1466fe4c2dcb3eb6c57eb268e845549484",
+        "results/stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "results/fixture-logs/tests__stata__development__within_plugin_slope_boundary.do.log": "c66e93f2b8868f84a01a7c3171a205450b81e6dffe039d12dbf7d65dddfb5116",
+        "results/fixture-logs/tests__stata__development__within_plugin_slope_boundary.do.status": "3731fea513404a03ba60e47a0e5cd29c5a0ae1cfc7273e3f8d0d0fed88cdd1be",
+        "accounting.txt": "009fdb0a5610c5d40719dbbf5ddae360475e7203828a770d7517f90695422cdf"
+      },
+      "accounting": {
+        "jobnumber": "8327553",
+        "hostname": "scc-b23.scc.bu.edu",
+        "qname": "b8",
+        "slots": "16",
+        "failed": "0",
+        "exit_status": "0",
+        "ru_wallclock": "5",
+        "cpu": "2.929",
+        "maxvmem": "7.967G",
+        "start_time": "Thu Oct 29 09:02:51 2026",
+        "end_time": "Thu Oct 29 09:02:56 2026"
+      },
+      "independent_read_only_review": {
+        "status": "passed",
+        "verified_input_manifest_entries": 9,
+        "verified": [
+          "all successful/rejected/frontend calls in exact sequence",
+          "terminal sentinel and authoritative status",
+          "source/input/runner/supervisor/plugin identities",
+          "16-CPU affinity and final scheduler accounting"
+        ]
+      }
+    }
+  },
+  "limitations": [
+    "Source suites and licensed native tests are correctness evidence; SCC allocations are not verified isolated performance hosts.",
+    "Explicit larger worker pools in correctness fixtures remain bounded by the 16-CPU affinity mask.",
+    "The sanctioned Break witness uses 720-row weighted three-categorical-FE explicit LSMR; it does not establish construction latency or a performance bound.",
+    "Original Mac replay declaration failure and Linux replay launcher failure remain retained; neither is relabelled as a successful original run.",
+    "Slope-boundary rank decisions have separate evidence and Johannes-approved fail-closed limitations; these native replay cases do not replace that evidence.",
+    "No independent Intel Mac runtime, Windows build, installed-package admission or beta.10 performance qualification is established.",
+    "Upstream publication remains subject to discussion with Johannes; all candidate work remains on the fork."
+  ],
+  "independent_review": {
+    "status": "passed_bounded_source_and_stored_evidence_review",
+    "verified": [
+      "SCC source/native build identities/accounting and outputs",
+      "Mac/Linux exact fixture lists and terminal statuses",
+      "Mac/Linux actual iteration/Cancelled trace ordering and rollback/reset contracts",
+      "Mac four-case boundary metadata/sentinels/source and unchanged original inputs",
+      "Linux 693-transaction replay checks and final scheduler accounting",
+      "Linux four-case public boundary checks and final scheduler accounting",
+      "Additional Mac mapped OLS reuse and augmented PPML oracle fixtures"
+    ],
+    "pending": []
+  }
+}
