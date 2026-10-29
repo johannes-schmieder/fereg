@@ -23,6 +23,76 @@ forvalues case = 1/3 {
     use `source', clear
     keep if case == `case'
     assert _N == 128 & row == _n
+    if `case' == 2 {
+        * Johannes approved preserving this existing rejection after both
+        * beta.10 and the candidate failed the unchanged independent FE check.
+        * The exact retained-span oracle remains in the CSV; it is not a
+        * published estimate when fereg's fuller raw-span certificate rejects.
+        quietly regress y q v i.g [aw=w]
+        generate byte prior_sample = e(sample)
+        local prior_scalars : e(scalars)
+        local prior_macros : e(macros)
+        local prior_matrices : e(matrices)
+        local prior_functions : e(functions)
+        foreach item of local prior_scalars {
+            local prior_scalar_`item' : display %21x e(`item')
+        }
+        foreach item of local prior_macros {
+            local prior_macro_`item' `"`e(`item')'"'
+        }
+        local prior_matrix_index 0
+        foreach item of local prior_matrices {
+            local ++prior_matrix_index
+            tempname prior_matrix_`prior_matrix_index'
+            matrix `prior_matrix_`prior_matrix_index'' = e(`item')
+            local prior_matrix_name_`item' `prior_matrix_`prior_matrix_index''
+            local prior_rows_`item' : rowfullnames e(`item')
+            local prior_cols_`item' : colfullnames e(`item')
+        }
+        quietly datasignature set, reset
+        foreach attempt in w1a w1b w4a w4b base {
+            local workers = cond(substr("`attempt'",2,1) == "4",4,1)
+            local rhs i.g
+            local expected_rc 459
+            if "`attempt'" == "base" {
+                local rhs ib3.g
+                local expected_rc 498
+            }
+            capture noisily fereg y q v `rhs' [aw=w], absorb(g##c.(z1 z2)) ///
+                solver(lsmr) preconditioner(off) memory(fast) ///
+                tolerance(1e-10) iterate(100) threads(`workers') deterministic ///
+                residuals(actual_r)
+            local observed_rc = _rc
+            assert `observed_rc' == `expected_rc'
+            confirm new variable actual_r
+            confirm new variable actual_f
+            quietly datasignature confirm
+            foreach kind in scalars macros matrices functions {
+                local after_`kind' : e(`kind')
+                local missing : list prior_`kind' - after_`kind'
+                local extra : list after_`kind' - prior_`kind'
+                assert `"`missing'`extra'"' == ""
+            }
+            foreach item of local prior_scalars {
+                local after_scalar : display %21x e(`item')
+                assert `"`after_scalar'"' == `"`prior_scalar_`item''"'
+            }
+            foreach item of local prior_macros {
+                assert `"`e(`item')'"' == `"`prior_macro_`item''"'
+            }
+            foreach item of local prior_matrices {
+                local before_matrix `"`prior_matrix_name_`item''"'
+                assert mreldif(e(`item'),`before_matrix') == 0
+                local after_rows : rowfullnames e(`item')
+                local after_cols : colfullnames e(`item')
+                assert `"`after_rows'"' == `"`prior_rows_`item''"'
+                assert `"`after_cols'"' == `"`prior_cols_`item''"'
+            }
+            assert e(sample) == prior_sample
+            display "BOUNDARY_REJECTION|case=2|attempt=`attempt'|workers=`workers'|rc=`observed_rc'|rollback=1"
+        }
+        continue
+    }
     local expected_names "q v 3b.g 11o.g 29o.g 97o.g _cons"
     if `case' == 3 local expected_names "q o.v 3b.g 11o.g 29o.g 97o.g _cons"
     foreach workers in 1 4 {
