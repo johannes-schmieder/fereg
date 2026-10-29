@@ -85,7 +85,11 @@ setting; a separate replay-only repair passed without repeating the independent
 fixture/Break stages. Both platforms also pass the four-case public slope
 contract: eight oracle fits, eight expected atomic rank-boundary rejections and
 four frontend refusals each. Earlier failed expectations remain recorded under
-Johannes's instruction to preserve existing rejections. Package admission,
+Johannes's instruction to preserve existing rejections. Two additional mapped
+fixtures pass on each platform, covering four weighted OLS reuse fits and
+eight offset PPML fits against Poisson references. Their traces establish
+ordinary Within OLS and augmented joint-PPML execution; the Linux timing
+harness was compiled but made no performance calls. Package admission,
 beta.10 performance and production acceptance remain outstanding.
 
 The separate sparse back-substitution optimization completed its practical Mac

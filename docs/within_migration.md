@@ -620,11 +620,15 @@ Johannes instructed us to preserve those rejections. The original three-case
 inputs, oracles and tolerances are unchanged; the appended orthogonal fourth
 case is a positive control, not an accepted estimate for either rejected case.
 
-Two additional Mac fixtures pass outside the full profile: four weighted OLS
-fits exercise low-memory pool limits 1/5/10 and fast mode; eight offset PPML
-fits agree with Poisson references at one/four workers. Traces establish
-ordinary Within OLS and augmented joint-PPML solves, not wide-RHS Within PPML
-batching, continuation or predictor coverage. The record preserves their bounds
+Two additional fixtures pass on both platforms outside the full profile:
+four weighted OLS fits exercise low-memory pool limits 1/5/10 and fast mode;
+eight offset PPML fits agree with Poisson references at one/four workers.
+Linux job `8327607` on `scc-pg8` records 52 OLS RHS results and 28 augmented
+joint-PPML frames, including eight successful strict final results, matching
+the Mac path counts. This does not establish high-level PPML checkpoint,
+wide-RHS Within batching, continuation or predictor coverage. The same job
+compiled the source-bound C timing harness with GCC 12.2.0 and made zero native
+performance calls. The record preserves exact hashes, configurations, bounds
 and limitations. All successful SCC jobs have verified zero scheduler and
 application exit statuses and a 16-CPU affinity cap; they make no performance
 isolation claim. Independent Intel Mac runtime, Windows, package admission and

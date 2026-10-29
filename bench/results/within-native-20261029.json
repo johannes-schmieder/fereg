@@ -1198,6 +1198,246 @@
           "16-CPU affinity and final scheduler accounting"
         ]
       }
+    },
+    "additional_mapped_fixtures": {
+      "status": "passed",
+      "source_revision": "d96eccfc269b8b5045038ee0dcee5fc2c788a86d",
+      "plugin_sha256": "a01a1fc905e95db1621e288b21f45e47bd628c789cb0931240241dbc4f0b8cfc",
+      "job": "8327607",
+      "host": "scc-pg8",
+      "accounting": {
+        "jobnumber": "8327607",
+        "hostname": "scc-pg8.scc.bu.edu",
+        "qname": "p16",
+        "slots": "16",
+        "failed": "0",
+        "exit_status": "0",
+        "ru_wallclock": "62",
+        "cpu": "102.084",
+        "maxvmem": "1.213G",
+        "start_time": "Thu Oct 29 09:21:06 2026",
+        "end_time": "Thu Oct 29 09:22:08 2026"
+      },
+      "affinity": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "python": "3.12.4 (main, Jul  1 2024, 10:14:11) [GCC 12.2.0]",
+      "configuration": {
+        "requested_slots": 16,
+        "rayon_workers": 8,
+        "abi_test_workers": 8,
+        "rust_test_threads": 1,
+        "blas_openmp_workers": 1,
+        "stata": "19 MP",
+        "trace_enabled": true,
+        "shared_licensed_stata_lock": true,
+        "fixture_timeout_seconds": 300,
+        "job_timeout_seconds": 900
+      },
+      "fixture_passed": 2,
+      "fixture_failed": 0,
+      "outside_full_profile": true,
+      "source_sha256": {
+        "tests/stata/development/ols_lsmr_reuse.do": "14faa3425c7c81ef402c0b2e405cd4727bd9af525301e19b49450057cfe3b058",
+        "tests/stata/development/lsmr_batch_oracle.do": "6c84caa179bb36b7dbcda3b0b5cf5147037a7a0dd0173f7494565af15444379c",
+        "scripts/run_stata_tests.py": "4a6aadb6cbc6aca378c67d64a2b2f2c6fe088aaa2227697a3a99009305f468a3",
+        "ci/supervise_stata.py": "6099917349f1f1f9f7aa57cce1c01ed8c4d460966ba48a23bdac021549510c5f",
+        "bench/build_timing_harness.sh": "5da7d5188bed3d36c41b6efd266bb34c630614aa78d1d6d326294a10000bfa78",
+        "tests/mock_spi/actual_plugin_loader_test.c": "ad7d3512288b17353fb223e3100ae53f4fac4177606fa79abd26b574180fc78e",
+        "tests/mock_spi/replay.h": "418989fad54101a9184771e38cb80f2a408a8a4fe888fe5c6466ae0a7641f76f",
+        "tests/mock_spi/replay_io.h": "3deb82453208da903790b73c523eef6173edf2c1cdd4e2aae3502d2f8af01b72",
+        "plugin/stplugin.h": "2ff392f78fdef0a41602994f6cf540ead3e1bfe4f1ef8336a5f2055fd2f2b3f1"
+      },
+      "runs": [
+        {
+          "fixture": "tests/stata/development/ols_lsmr_reuse.do",
+          "passed": true,
+          "trace_events": 73,
+          "trace_phases": {
+            "lsmr_rhs": 52,
+            "lsmr_session": 21
+          },
+          "supervisor": {
+            "process_rc": 0,
+            "timed_out": false,
+            "launch_error": null
+          },
+          "stata_version": "19",
+          "stata_edition": "MP",
+          "stata_machine_type": "PC (64-bit x86-64)"
+        },
+        {
+          "fixture": "tests/stata/development/lsmr_batch_oracle.do",
+          "passed": true,
+          "trace_events": 148,
+          "trace_phases": {
+            "historical_preconditioner_attempt": 16,
+            "historical_preconditioner_geometry": 16,
+            "historical_preconditioner_result": 16,
+            "irls_convergence": 36,
+            "joint_lsmr_frame": 28,
+            "profile_final_products": 8,
+            "strict_decision": 8,
+            "strict_result": 8,
+            "strict_settling": 4,
+            "strict_worst_row": 8
+          },
+          "supervisor": {
+            "process_rc": 0,
+            "timed_out": false,
+            "launch_error": null
+          },
+          "stata_version": "19",
+          "stata_edition": "MP",
+          "stata_machine_type": "PC (64-bit x86-64)"
+        }
+      ],
+      "fit_counts": {
+        "fereg_ols": 4,
+        "feppml": 8,
+        "dummy_ols_reference": 1,
+        "poisson_reference": 8
+      },
+      "ols": {
+        "rows": 1400,
+        "regressors": 10,
+        "categorical_fixed_effects": 3,
+        "weights": "analytic",
+        "low_memory_pool_limits": [
+          1,
+          5,
+          10
+        ],
+        "low_memory_requested_workers": 7,
+        "fast_memory_workers": 1,
+        "coefficient_covariance_bound": 1e-10,
+        "fitted_residual_bound": 1e-09,
+        "other_checks": [
+          "rank",
+          "degrees of freedom",
+          "saved-FE reconstruction",
+          "centering"
+        ]
+      },
+      "ppml": {
+        "rows": 4096,
+        "regressors": 65,
+        "categorical_fixed_effects": 2,
+        "offset": true,
+        "workers": [
+          1,
+          4
+        ],
+        "designs": [
+          "unit robust covariance",
+          "unit clustered covariance",
+          "frequency-weight clustered covariance",
+          "probability-weight clustered covariance"
+        ],
+        "coefficient_covariance_bound": 1e-07,
+        "mean_bound": "1e-7*(1+abs(reference))",
+        "reference": "Poisson coefficients and Mata Hessian/meat; Mata reuses the package small-sample multiplier."
+      },
+      "trace_events": {
+        "total": 221,
+        "solver_events": 80,
+        "lsmr_rhs": 52,
+        "joint_lsmr_frame": 28,
+        "lsmr_session": 21,
+        "strict_result_converged": 8,
+        "retained_ols_sessions": 4
+      },
+      "path_evidence": "Within OLS RHS solves and augmented joint-PPML mlsmr_cancellable executed. The PPML test is not evidence of wide-RHS Within batching.",
+      "limitations": [
+        "No fixed-worker bitwise repeatability, absorbed-slope, active cancellation, separation or performance claim from these two fixtures.",
+        "PPML continuation and predictor flags remain zero.",
+        "Trace observations establish declared path execution, not broader-route coverage."
+      ],
+      "evidence_sha256": {
+        "environment.json": "666c242fa432946138a03bf584f8ea5d29068897afcdbc9cfee95cdd2ed51ee1",
+        "summary.json": "2247545b7353bb6a93130b3b35a94a636873e39781bc4e972c79214d8dcb1b53",
+        "accounting.txt": "6a3b2d0fe104eeffa71ba7351b0e56d2656a1835391cc08c47467f6cb7655d44",
+        "SHA256SUMS": "02d77d2a4a8688757c69d0251082b2aa9bcc45b88a4814cb1ff49b24ea7f0c9e",
+        "job.sh": "389d675a66dbc23eca8285be9a330a55881f30b122ff983de392582ae5759be0",
+        "fixtures.PASS": "1cbdef50d2ce9c628fd3e8f003d72cd4dd990fe8fc14d8b488ff61b5fe8a5835",
+        "exit-status.txt": "984a00f5cab23d0470742b00e5536dda3d14b04bbf5aedeb540499e53b4347a7",
+        "timing-harness-build.json": "f9be0f9de05a7ede7edd180c0660df2bef3fdc3b86db45243d0229f7ee1e8a8a",
+        "timing-harness-build.log": "20cb8c74c02773949cd76f41f8262a99d851f28ad0ae0488d10a4ba55aa19cad",
+        "ols_lsmr_reuse/summary.json": "f8e8bbdab259eb0393353cfc516e569519e650077ee80297337b7baf18b18bdc",
+        "ols_lsmr_reuse/stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "ols_lsmr_reuse/solver-trace.log": "1aa7a409899ceecd7606974e93296d2e6ff70a5f5f33bd83a13d9f3c00fb4909",
+        "ols_lsmr_reuse/stdout.log": "d9eb31274155122974607c8981c388d0b3d7e6782387a07ba69541383229e9ae",
+        "ols_lsmr_reuse/process.json": "4e288f9ccbbc6095a65904005a3b9fd9c6e2fb0256ce9e9d65206db820021df3",
+        "ols_lsmr_reuse/fixture-logs/tests__stata__development__ols_lsmr_reuse.do.invocation.json": "6d30252dd4da9cb0c12757cdb83fc63528448b67f59054a0d48cf010c7744546",
+        "ols_lsmr_reuse/fixture-logs/tests__stata__development__ols_lsmr_reuse.do.status": "3731fea513404a03ba60e47a0e5cd29c5a0ae1cfc7273e3f8d0d0fed88cdd1be",
+        "ols_lsmr_reuse/fixture-logs/tests__stata__development__ols_lsmr_reuse.do.log": "2f0e0f18a5ecf61389472b7e1566bb284eb4b3f1cdb75a701dbd72ad1d99c972",
+        "lsmr_batch_oracle/summary.json": "3d4198329dbe86682051057400cec4a387ba9c738c8a6f905ce7888018f80585",
+        "lsmr_batch_oracle/stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "lsmr_batch_oracle/solver-trace.log": "54e9e1c18a3dba60e974f596a8e0f177fa972925d9effe37abab248904b06442",
+        "lsmr_batch_oracle/stdout.log": "41fa5e899fe645e8f6f5b825e4e7c2e88be604b5267f46606637881cc10bec1f",
+        "lsmr_batch_oracle/process.json": "d56d975790b98bd42277fef8547e73e8d926f165cc164cf579cfb8b59a648d92",
+        "lsmr_batch_oracle/fixture-logs/tests__stata__development__lsmr_batch_oracle.do.status": "3731fea513404a03ba60e47a0e5cd29c5a0ae1cfc7273e3f8d0d0fed88cdd1be",
+        "lsmr_batch_oracle/fixture-logs/tests__stata__development__lsmr_batch_oracle.do.invocation.json": "77e4db108d9e3cca073b4f38beed2af50a1894416f222a81cde21f9f70410626",
+        "lsmr_batch_oracle/fixture-logs/tests__stata__development__lsmr_batch_oracle.do.log": "3b61c69ccb7e4ff998a900974b24c962e1542520f1881aa813c0500dd59a9cc3"
+      },
+      "independent_read_only_review": "passed: source/fixture hashes, process and Stata return codes, sentinels, exact phase counts and scheduler accounting verified",
+      "timing_harness_build": {
+        "status": "passed_compilation_only",
+        "source_revision": "d96eccfc269b8b5045038ee0dcee5fc2c788a86d",
+        "source_sha256": {
+          "scripts/run_stata_tests.py": "4a6aadb6cbc6aca378c67d64a2b2f2c6fe088aaa2227697a3a99009305f468a3",
+          "ci/supervise_stata.py": "6099917349f1f1f9f7aa57cce1c01ed8c4d460966ba48a23bdac021549510c5f",
+          "bench/build_timing_harness.sh": "5da7d5188bed3d36c41b6efd266bb34c630614aa78d1d6d326294a10000bfa78",
+          "tests/mock_spi/actual_plugin_loader_test.c": "ad7d3512288b17353fb223e3100ae53f4fac4177606fa79abd26b574180fc78e",
+          "tests/mock_spi/replay.h": "418989fad54101a9184771e38cb80f2a408a8a4fe888fe5c6466ae0a7641f76f",
+          "tests/mock_spi/replay_io.h": "3deb82453208da903790b73c523eef6173edf2c1cdd4e2aae3502d2f8af01b72",
+          "plugin/stplugin.h": "2ff392f78fdef0a41602994f6cf540ead3e1bfe4f1ef8336a5f2055fd2f2b3f1"
+        },
+        "compiler": "gcc (GCC) 12.2.0",
+        "compiler_sha256": "2d474d25511872d27549d3bbc34d33fe78f985c1c53e018f47f4d534ff9a4b1e",
+        "harness_sha256": "63dda1c1dd6436305aae2fdb3ffb410f3af9d3d5220cc0be3c0599ed7d19ba67",
+        "max_rows": 10000000,
+        "max_cells": 800000000,
+        "flags": [
+          "-std=c11",
+          "-O2",
+          "-Wall",
+          "-Wextra",
+          "-Wpedantic",
+          "-Wconversion",
+          "-Wshadow",
+          "-Wstrict-prototypes",
+          "-Wmissing-prototypes",
+          "-Werror",
+          "-D_POSIX_C_SOURCE=200809L",
+          "-DREPLAY_TIMING",
+          "-DSYSTEM=OPUNIX",
+          "-DREPLAY_MAX_ROWS=10000000",
+          "-DREPLAY_MAX_CELLS=800000000U",
+          "-I<source>/plugin",
+          "-ldl"
+        ],
+        "include_directory": "plugin, relative to the verified source checkout",
+        "native_performance_calls": 0,
+        "process_rc": 0,
+        "limitation": "Compilation does not establish runtime, scientific or performance acceptance of the timing harness.",
+        "flag_path_normalization": "Only the verified checkout path in -I is represented relative to source; all other compiler flags are literal."
+      }
     }
   },
   "limitations": [
@@ -1218,7 +1458,8 @@
       "Mac four-case boundary metadata/sentinels/source and unchanged original inputs",
       "Linux 693-transaction replay checks and final scheduler accounting",
       "Linux four-case public boundary checks and final scheduler accounting",
-      "Additional Mac mapped OLS reuse and augmented PPML oracle fixtures"
+      "Additional Mac mapped OLS reuse and augmented PPML oracle fixtures",
+      "Additional Linux mapped OLS reuse and augmented PPML oracle fixtures, source-bound timing-harness compilation and scheduler accounting"
     ],
     "pending": []
   }
