@@ -27,7 +27,7 @@ class CampaignTests(unittest.TestCase):
     def test_license_and_matrix(self):
         cells=configurations()
         self.assertEqual(len(cells),len({c['id'] for c in cells}))
-        self.assertEqual({c['regressors'] for c in cells},{4,16,64})
+        self.assertEqual({c['regressors'] for c in cells},{4,16,32})
         self.assertTrue(all(c['regressors']==16 or c['section']=='controls' for c in cells))
         for c in cells:
             if c['threads']>4:self.assertFalse({'reghdfe','ppmlhdfe','areg'} & set(arms(c)))
@@ -47,17 +47,51 @@ class CampaignTests(unittest.TestCase):
             self.assertFalse({'julia','julia-strict'} & set(arms(cell)) and cell['model']=='ppml')
             eligible=cell['model']=='ols' and cell['threads']<=4 and not cell['save_fe']
             self.assertEqual('areg' in arms(cell),eligible)
-        self.assertEqual(sum('areg' in arms(c) for c in configurations()),20)
+        self.assertEqual(sum('areg' in arms(c) for c in configurations()),21)
         metadata=dict(df_a='239',arm='areg')
         self.assertEqual(absorbed_rank(metadata,dict(model='ols'),None),240.)
 
     def test_control_counts_join_the_main_grid(self):
         controls=[c for c in configurations() if c['section']=='controls']
         self.assertEqual(sorted((c['model'],c['regressors']) for c in controls),
-                         [('ols',4),('ols',64),('ppml',4),('ppml',64)])
+                         [('ols',4),('ols',32),('ppml',4),('ppml',32)])
         self.assertTrue(all(c['id'].endswith(f"-k{c['regressors']}") and dataset_key(c).endswith(f"-k{c['regressors']}")
                             and c['arms'][0]=='fereg' for c in controls))
         self.assertIn('areg',[c for c in controls if c['model']=='ols'][0]['arms'])
+
+    def test_new_designs_and_strict_pyfixest(self):
+        cells=configurations()
+        designs={(c['model'],c['design']) for c in cells if c['section']=='design'}
+        self.assertIn(('ols','akm-clustered'),designs)
+        self.assertIn(('ppml','akm-clustered'),designs)
+        self.assertIn(('ppml','gravity'),designs)
+        self.assertNotIn(('ols','gravity'),designs)
+        gravity=next(c for c in cells if c['design']=='gravity')
+        self.assertEqual(gravity['effects'],3)
+        for cell in cells+configurations(True):
+            # Strict PyFixest accompanies strict fixest in every cell.
+            self.assertEqual('pyfixest-within-strict' in arms(cell),'fixest-strict' in arms(cell))
+        self.assertIn('pyfixest-within-strict',gravity['arms'])
+
+    def test_new_topologies(self):
+        from campaign import clustered_topology,gravity_topology,gravity_outcome
+        import pandas as pd
+        groups=clustered_topology(20000,np.random.default_rng(3))
+        self.assertEqual(len(groups['g1']),20000)
+        self.assertEqual(int(groups['g1'].max()),4000)
+        sizes=np.bincount(groups['g2'])
+        self.assertGreater(sizes.max(),10*np.median(sizes[sizes>0]))
+        gravity=gravity_topology(1200)
+        self.assertEqual({len(v) for v in gravity.values()},{1200})
+        self.assertTrue(np.all(np.diff(gravity['g3'])>=0))
+        frame=pd.DataFrame(gravity)
+        rng=np.random.default_rng(5)
+        for j in range(1,5):frame[f'x{j}']=rng.normal(size=len(frame))
+        record=gravity_outcome(frame,dict(regressors=4))
+        flagged=frame.x4==1
+        self.assertTrue((frame.y[flagged]==0).all() and set(frame.x4.unique())<={0.,1.})
+        self.assertEqual(record['covariate_separated_rows'],int(flagged.sum()))
+        self.assertGreater(record['zero_outcomes'],.3*len(frame))
 
     def test_pyfixest_saved_effects_fill_the_omitted_reference(self):
         import pandas as pd

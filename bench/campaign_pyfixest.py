@@ -5,7 +5,9 @@ Mirrors campaign_r.R: the same inputs, memory handshake, timing window,
 saved-FE recovery and output files. `pyfixest-within` is a pinned main
 revision whose default is the `within` LSMR demeaner; `pyfixest`, the 0.60.0
 release with its default Rust MAP demeaner, remains readable for earlier
-campaigns. Both keep their default estimation tolerances.
+campaigns. Both keep their default estimation tolerances; an arm named
+`<arm>-strict` reuses its base arm's environment with the policy's strict
+demeaning (and, for PPML, IWLS) tolerances.
 """
 from __future__ import annotations
 
@@ -124,7 +126,8 @@ def main(configuration):
     import numpy as np
     import pandas as pd
     import pyfixest as pf
-    version, commit = check_pin(c['arm'])
+    strict = c['arm'].endswith('-strict')
+    version, commit = check_pin(c['arm'].removesuffix('-strict'))
     output = Path(c['output'])
     model, k, q = c['model'], int(c['k']), int(c['effects'])
     terms = [f'x{i}' for i in range(1, k+1)]
@@ -133,6 +136,13 @@ def main(configuration):
     options = dict(vcov=vcov)
     if model == 'ppml':
         options['ssc'] = pf.ssc(k_adj=False, G_adj=True)
+    tolerance = 'default'
+    if strict:
+        policy = json.loads((HERE/'campaign.json').read_text())
+        tolerance = float(policy['pyfixest_strict_tolerance'])
+        options['demeaner'] = pf.LsmrDemeaner(fixef_atol=tolerance, fixef_btol=tolerance)
+        if model == 'ppml':
+            options['iwls_tol'] = float(policy['pyfixest_strict_iwls_tolerance'])
     estimator = pf.feols if model == 'ols' else pf.fepois
 
     def fit_model(data, fixed_effects):
@@ -163,7 +173,7 @@ def main(configuration):
     meta = dict(rc=1 if fit is None else 0, seconds=repr(seconds), complete=1,
                 pyfixest_version=version, pyfixest_commit=commit or 'release',
                 requested_threads=threads, configured_threads=os.environ['RAYON_NUM_THREADS'],
-                reference_profile=c['arm'])
+                reference_profile=c['arm'], tolerance=tolerance)
     if fit is not None:
         counts = Counts(fit)
         b = fit.coef()

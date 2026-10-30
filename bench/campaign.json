@@ -2,7 +2,7 @@
   "schema": 2,
   "seed": 739391,
   "controls": 16,
-  "control_variants": [4, 64],
+  "control_variants": [4, 32],
   "baseline_rows": 1000000,
   "sizes": [100000, 300000, 1000000, 3000000, 10000000],
   "size_series": [["ols", "akm-baseline"], ["ppml", "akm-baseline"], ["ols", "three-sparse"]],
@@ -29,6 +29,8 @@
   "pyfixest": {
     "pyfixest-within": {"version": "0.60.0", "commit": "0f41fffd7276f89cbd87528ef13e8c0261622932", "within_py": "0.4.0"}
   },
+  "pyfixest_strict_tolerance": 1e-11,
+  "pyfixest_strict_iwls_tolerance": 1e-10,
   "julia": {"julia": "1.11.7", "FixedEffectModels": "2.1.0"},
-  "purpose": "Descriptive SCC comparison of one frozen runtime: options, designs and controls at one million rows and four cores; core scaling; size series on one node each; FixedEffectModels.jl for linear models"
+  "purpose": "Descriptive SCC comparison of one frozen runtime: options, designs (including a clustered heavy-tailed worker-firm design and a PPML gravity design with zeros and separation) and controls at one million rows and four cores; core scaling; size series on one node each; FixedEffectModels.jl for linear models; strict-tolerance fixest, PyFixest and FixedEffectModels.jl arms"
 }

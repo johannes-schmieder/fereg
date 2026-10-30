@@ -27,6 +27,8 @@ from placement import socket_ordered_cpus, placement_metadata, bound_command
 HERE = Path(__file__).resolve().parent
 POLICY = json.loads((HERE/'campaign.json').read_text())
 PYFIXEST_ARMS = list(POLICY['pyfixest'])
+# Strict arms reuse their base arm's environment with tighter tolerances.
+PYFIXEST_STRICT_ARMS = [f'{arm}-strict' for arm in PYFIXEST_ARMS] if 'pyfixest_strict_tolerance' in POLICY else []
 # FixedEffectModels.jl at its default tolerance and at 1e-10 (linear models only).
 JULIA_ARMS = ['julia','julia-strict'] if 'julia' in POLICY else []
 STATA_REFERENCES = ['reghdfe','ppmlhdfe','areg']
@@ -57,7 +59,7 @@ def configurations(smoke=False):
         vce = vce or ('iid' if model=='ols' else 'robust')
         cell = dict(model=model,design=design,rows=rows,threads=threads,vce=vce,
                     save_fe=save_fe,section=section,regressors=regressors,weights='unit')
-        cell['effects'] = 1 if design=='one-fe' else 3 if design.startswith('three-') else 2
+        cell['effects'] = 1 if design=='one-fe' else 3 if design.startswith('three-') or design=='gravity' else 2
         cell['id'] = f'{model}-{design}-n{rows}-t{threads}-{vce}-fe{int(save_fe)}'+controls_suffix(cell)
         cell['arms'] = arms(cell)
         cell['repetitions'] = 1 if smoke else repetitions(cell)
@@ -66,7 +68,7 @@ def configurations(smoke=False):
         for model in ['ols','ppml']:
             for vce in (['iid','robust','cluster'] if model=='ols' else ['robust','cluster']):
                 add(model,rows=1200,vce=vce,save_fe=True,section='smoke')
-            for design in ['two-sparse','three-dense','three-sparse']:
+            for design in ['two-sparse','three-dense','three-sparse','akm-clustered',*(['gravity'] if model=='ppml' else [])]:
                 add(model,design,rows=1200,save_fe=True,section='smoke')
         return result
     for model in ['ols','ppml']:
@@ -76,7 +78,8 @@ def configurations(smoke=False):
             if threads!=POLICY['main_threads']: add(model,threads=threads,section='scaling')
         add(model,threads=16,vce='cluster',save_fe=True,section='scaling')
         for k in POLICY['control_variants']: add(model,regressors=k,section='controls')
-        for design in ['one-fe','two-dense','two-sparse','three-dense','three-sparse']: add(model,design,section='design')
+        for design in ['one-fe','two-dense','two-sparse','three-dense','three-sparse','akm-clustered',
+                       *(['gravity'] if model=='ppml' else [])]: add(model,design,section='design')
         for design in ['two-dense','three-sparse']: add(model,design,threads=16,section='scaling')
     # Size series repeat the four-core default specification; their
     # one-million-row cells are the option and design cells above.
@@ -107,10 +110,13 @@ def arms(cell):
     # cannot save individual effects, and Stata is licensed for four cores.
     if cell['model']=='ols' and cell['threads']<=4 and not cell['save_fe']:
         result.append('areg')
-    if cell['model']=='ppml' and cell['design'] in ['akm-baseline','two-sparse','three-sparse'] and cell['rows']==1000000 and cell['threads']==4:
-        result.append('fixest-strict')
-    if cell['model']=='ols' or cell['section']=='smoke': result.append('fixest-strict')
+    if (cell['model']=='ppml' and cell['design'] in STRICT_PPML_DESIGNS and cell['rows']==1000000
+            and cell['threads']==4) or cell['model']=='ols' or cell['section']=='smoke':
+        result.extend(['fixest-strict',*PYFIXEST_STRICT_ARMS])
     return result
+
+
+STRICT_PPML_DESIGNS = ['akm-baseline','two-sparse','three-sparse','akm-clustered','gravity']
 
 
 def dataset_key(cell):
@@ -120,12 +126,17 @@ def dataset_key(cell):
 # Approximate seconds per fit at one million rows and four cores, used only to
 # balance bundles (beta.7 SCC medians, rounded). Each fresh process also loads
 # its input, and a timeout stops a command's later repetitions and sizes.
-PACKING_SECONDS = {'fereg':2,'fixest':3,'fixest-strict':4,'pyfixest-within':3,'julia':3,'julia-strict':4,
+PACKING_SECONDS = {'fereg':2,'fixest':3,'fixest-strict':4,'pyfixest-within':3,'pyfixest-within-strict':4,
+                   'julia':3,'julia-strict':4,
                    'reghdfe':25,'areg':25,'ppmlhdfe':90}
 
 
+DESIGN_COST = {'akm-clustered':2,'gravity':4}
+
+
 def estimated_seconds(cell):
-    scale = cell['rows']/1e6*(4 if cell['model']=='ppml' else 1)*(4 if 'sparse' in cell['design'] else 1)
+    scale = cell['rows']/1e6*(4 if cell['model']=='ppml' else 1)*DESIGN_COST.get(
+        cell['design'],4 if 'sparse' in cell['design'] else 1)
     total = 0.
     for arm in arms(cell):
         command = PACKING_SECONDS[arm]*scale*(cell.get('regressors',16)/16)**.5
@@ -171,6 +182,8 @@ def make_dataset(cell, path):
     original = generator.groups
     def topology(_cell,rng):
         row=np.arange(n,dtype=np.int64)
+        if design=='akm-clustered': return clustered_topology(n,rng)
+        if design=='gravity': return gravity_topology(n)
         if design in ['two-dense','three-dense']:
             levels=max(8,int((n/4)**(1/q)))
             return {f'g{j+1}':(row//levels**j)%levels+1 for j in range(q)}
@@ -191,6 +204,7 @@ def make_dataset(cell, path):
     try: metadata=generate(spec,POLICY['seed'],path)
     finally: generator.groups=original
     frame=pd.read_stata(path,convert_categoricals=False)
+    if design=='gravity': metadata['separation']=gravity_outcome(frame,spec)
     # A natural AKM worker cluster, including nested-FE small-sample corrections.
     frame['cluster']=frame['g1']
     from datetime import datetime
@@ -199,7 +213,8 @@ def make_dataset(cell, path):
     assert all(np.array_equal(frame[c],decoded[c]) for c in frame)
     codes=[pd.factorize(frame[f'g{j}'],sort=True)[0] for j in range(1,q+1)]
     levels=[int(c.max()+1) for c in codes]
-    graph=dict(levels=levels,mobility=.2 if design=='akm-baseline' else .02 if 'sparse' in design else None)
+    graph=dict(levels=levels,mobility=.2 if design=='akm-baseline' else .02 if 'sparse' in design
+               else CLUSTERED['mobility'] if design=='akm-clustered' else None)
     if q>=2:
         a,b=codes[0],codes[1]+levels[0]
         G=sparse.coo_matrix((np.ones(2*n,dtype=np.int8),(np.r_[a,b],np.r_[b,a])),shape=(sum(levels[:2]),)*2).tocsr()
@@ -219,6 +234,86 @@ def make_dataset(cell, path):
                     column_sha256={c:hashlib.sha256(frame[c].to_numpy(dtype='<f8').tobytes()).hexdigest() for c in frame})
     write_json(path.with_suffix('.json'),metadata)
     return frame,metadata
+
+
+# Heavy-tailed firm sizes and mobility concentrated within regions: weakly
+# linked clusters of firms, unlike the well-mixed baseline.
+CLUSTERED = dict(periods=5,mobility=.1,within_region=.95,pareto_shape=1.5,max_regions=50)
+
+
+def clustered_topology(n, rng):
+    c = CLUSTERED
+    periods = c['periods']
+    workers = (n+periods-1)//periods
+    firms = max(8,workers//20)
+    regions = max(2,min(c['max_regions'],firms//20))
+    size = rng.pareto(c['pareto_shape'],firms)+1
+    region = rng.integers(0,regions,firms)
+    order = np.lexsort((np.arange(firms),region))
+    # key[i] = region + cumulative within-region size share, so that a region r
+    # and u in (0,1] select firm order[searchsorted(key, r+u)] with probability
+    # proportional to its size.
+    sorted_region, sorted_size = region[order], size[order]
+    totals = np.bincount(sorted_region,weights=sorted_size,minlength=regions)
+    within = np.cumsum(sorted_size)-np.r_[0,np.cumsum(totals)][sorted_region]
+    key = sorted_region+within/totals[sorted_region]
+    occupied = np.unique(region)
+    def draw(target):
+        u = 1-rng.random(len(target))
+        return order[np.minimum(np.searchsorted(key,target+u),firms-1)]
+    assignment = np.empty((workers,periods),dtype=np.int64)
+    assignment[:,0] = draw(rng.choice(occupied,workers,p=totals[occupied]/totals.sum()))
+    for t in range(1,periods):
+        stay_region = rng.random(workers)<c['within_region']
+        target = np.where(stay_region,region[assignment[:,t-1]],rng.choice(occupied,workers))
+        moves = rng.random(workers)<c['mobility']
+        assignment[:,t] = np.where(moves,draw(target),assignment[:,t-1])
+    row = np.arange(n,dtype=np.int64)
+    return {'g1':row//periods+1,'g2':assignment.reshape(-1)[:n]+1}
+
+
+def gravity_topology(n):
+    """Directed country pairs over years: exporter-year, importer-year and pair effects."""
+    years = 25 if n>=100000 else 5
+    countries = 2
+    while countries*(countries-1)*years<n: countries += 1
+    exporter, importer = np.nonzero(~np.eye(countries,dtype=bool))
+    pair = np.repeat(np.arange(len(exporter)),years)[:n]
+    year = np.tile(np.arange(years),len(exporter))[:n]
+    return {'g1':exporter[pair]*years+year+1,'g2':importer[pair]*years+year+1,'g3':pair+1}
+
+
+GRAVITY = dict(zero_share=.45,separated_exporter_years=.03,separated_by_covariate=.01)
+
+
+def gravity_outcome(frame, spec):
+    """Poisson flows with many zeros, all-zero exporter-years (separated by the
+    fixed effects) and a binary last control that is one only where trade is zero
+    (separated by a covariate). The other controls keep the generator's slopes."""
+    g = GRAVITY
+    k = spec['regressors']
+    rng = np.random.default_rng(np.random.SeedSequence([POLICY['seed'],907]))
+    xb = sum((.30/j if j%2 else -.20/j)*frame[f'x{j}'].to_numpy() for j in range(1,k))
+    eta = sum(.15/j*np.sin(frame[f'g{j}'].to_numpy()/(5+j)) for j in range(1,4))
+    low, high = -10., 10.
+    for _ in range(60):
+        middle = (low+high)/2
+        if np.mean(np.exp(-np.exp(middle+xb+eta)))>g['zero_share']: low = middle
+        else: high = middle
+    y = rng.poisson(np.exp(high+xb+eta)).astype(float)
+    groups = np.unique(frame.g1.to_numpy())
+    empty = rng.choice(groups,max(1,int(g['separated_exporter_years']*len(groups))),replace=False)
+    by_fe = np.isin(frame.g1.to_numpy(),empty)
+    y[by_fe] = 0.
+    candidates = np.flatnonzero(~by_fe)
+    flagged = rng.choice(candidates,max(1,int(g['separated_by_covariate']*len(frame))),replace=False)
+    indicator = np.zeros(len(frame))
+    indicator[flagged] = 1.
+    y[flagged] = 0.
+    frame['y'] = y
+    frame[f'x{k}'] = indicator
+    return dict(g,intercept=high,zero_outcomes=int((y==0).sum()),fe_separated_rows=int(by_fe.sum()),
+                covariate_separated_rows=int(len(flagged)))
 
 
 def physical_cpus():
@@ -446,8 +541,8 @@ def fit(root, cell, arm, repetition, frame, cpus):
         # JULIA_DEPOT_PATH (set by the job) holds the instantiated, precompiled pins.
         command=[os.environ.get('JULIA_BIN','julia'),'--startup-file=no',f"--threads={cell['threads']}",
                  f"--project={root/'environment/julia'}",str(HERE/'campaign_julia.jl'),str(directory/'config.tsv')]
-    elif arm in PYFIXEST_ARMS:
-        interpreter=root/'environment'/arm/'bin/python'
+    elif arm in PYFIXEST_ARMS or arm in PYFIXEST_STRICT_ARMS:
+        interpreter=root/'environment'/arm.removesuffix('-strict')/'bin/python'
         command=[str(interpreter),'-I','-B',str(HERE/'campaign_pyfixest.py'),str(directory/'config.tsv')]
     else:
         command_file=directory/'command.do'

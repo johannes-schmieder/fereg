@@ -30,13 +30,15 @@ LIGHT = '#EEF3F6'
 ARM_NAMES = {'fereg': 'fereg', 'fixest': 'fixest', 'fixest-strict': 'fixest strict',
              'reghdfe': 'reghdfe', 'ppmlhdfe': 'ppmlhdfe', 'areg': 'areg',
              'pyfixest': 'pyfixest 0.60', 'pyfixest-within': 'pyfixest within',
+             'pyfixest-within-strict': 'pyfixest within strict',
              'julia': 'FixedEffectModels.jl', 'julia-strict': 'FixedEffectModels.jl strict'}
 STATA_ARMS = ['fereg', 'reghdfe', 'ppmlhdfe', 'areg']
 ARM_COLORS = {'fereg': BLUE, 'fixest': GOLD, 'reghdfe': INK, 'ppmlhdfe': INK,
               'pyfixest-within': '#5B8C5A', 'julia': '#8E5B9B'}
 DESIGNS = {'akm-baseline': 'AKM baseline', 'one-fe': 'One FE',
            'two-dense': 'Two FE / dense', 'two-sparse': 'Two FE / sparse',
-           'three-dense': 'Three FE / dense', 'three-sparse': 'Three FE / sparse'}
+           'three-dense': 'Three FE / dense', 'three-sparse': 'Three FE / sparse',
+           'akm-clustered': 'AKM clustered', 'gravity': 'Gravity, zeros'}
 VCE_NAMES = {'iid': 'Regular', 'robust': 'Robust', 'cluster': 'Worker cluster'}
 TIMING_FOOTNOTE = ('* Descriptive timing outside the scientific comparison. '
                    'Discrepancies include precision and saved-prediction scores; see the discrepancy appendix. '
@@ -69,7 +71,8 @@ def stopping(policy):
             f"{cleanup//3600} h {cleanup%3600//60} min cleanup threshold; {policy['job_wall_seconds']//3600} h production job")
 
 
-OTHER_ARMS = {'pyfixest': '0.60', 'pyfixest-within': 'within', 'julia': 'jl', 'julia-strict': 'jl strict'}
+OTHER_ARMS = {'pyfixest': '0.60', 'pyfixest-within': 'within', 'pyfixest-within-strict': 'within strict',
+              'julia': 'jl', 'julia-strict': 'jl strict'}
 
 
 def package_pages(pdf, frame, manifest):
