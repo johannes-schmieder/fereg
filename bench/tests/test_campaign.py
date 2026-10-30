@@ -146,6 +146,8 @@ class CampaignTests(unittest.TestCase):
             self.assertEqual([(r['arm'],r['pass']) for r in rows],[('stata',False),('diverging',False)])
             self.assertTrue(all(rows[0]['checks'][k] for k in ['coefficients','fitted','sample']))
             self.assertFalse(rows[1]['checks']['fitted'])
+            # Inputs without a cluster variable, such as the Veneto panels, need none.
+            capture(Path(stata['directory']),cell,frame.drop(columns=['cluster']),stata['metadata'])
             # Designs without separation keep the strict sample and rank checks.
             with self.assertRaisesRegex(ValueError,'omitted/missing finite coefficient'):
                 capture(Path(stata['directory']),dict(cell,design='three-sparse'),frame,stata['metadata'])

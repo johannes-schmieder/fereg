@@ -477,7 +477,7 @@ def capture(directory, cell, frame, metadata):
     if cell['model']=='ppml' and float(metadata['converged'])!=1:raise ValueError('missing affirmative PPML convergence')
     if float(metadata['N'])!=selected.sum():raise ValueError('reported sample count mismatch')
     if not np.isfinite(float(metadata['df_a'])):raise ValueError('invalid absorbed DoF evidence')
-    clusters=frame.cluster[selected].nunique()
+    clusters=int(frame.cluster[selected].nunique()) if cell['vce']=='cluster' else None
     if cell['vce']=='cluster' and float(metadata['N_clust'])!=clusters:raise ValueError('cluster count mismatch')
     # The gravity design has no singletons, so every deleted row is separated.
     result=dict(beta=beta.tolist(),covariance=cov.tolist(),names=finite,N=int(selected.sum()),
@@ -487,7 +487,7 @@ def capture(directory, cell, frame, metadata):
                 finite_slope_rank=len(finite),singleton_deletions=0,separation_deletions=int((~selected).sum()),
                 covariance_policy=metadata['covariance_policy'],absorbed_dof=absorbed_rank(metadata,cell,frame),
                 reported_absorbed_dof=float(metadata['df_a']),
-                clusters=int(clusters) if cell['vce']=='cluster' else None)
+                clusters=clusters)
     if cell['model']=='ols':
         if not metadata.get('df_r') or metadata['df_r']=='.':raise ValueError('missing residual DoF')
         result['residual_dof']=float(metadata['df_r'])
