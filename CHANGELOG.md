@@ -4,6 +4,27 @@
 
 No changes yet.
 
+## 0.5.0 beta.11 — 2026-10-30
+
+- Migrates the numerical dependency to a small patch stack on frozen upstream
+  within, retained in Johannes's fork. Fereg keeps its existing Auto routing,
+  Jacobi-to-Schwarz escalation, iteration budgets, independent certificates,
+  memory controls and cancellation behavior. Explicit OLS/PPML solvers remain
+  supported; controlled warm starts replace the fork's resumable-session API.
+- Includes the accepted counts, gather, Fold accumulation and sparse
+  back-substitution improvements. The original sparse three-FE Mac slowdown is
+  recovered. Eight-/sixteen-FE settings retain accepted complete-call regressions
+  of about 8–11% on Linux and 11–14% on Mac; other inconclusive comparisons remain
+  disclosed. This release does not claim a general performance improvement.
+- Uses upstream's corrected slope whitening, with independent exact-input
+  boundary witnesses. Existing near-collinear inputs that fail fereg's separate
+  certificate continue to reject safely.
+- Independent error bounds resolve the large OLS/PPML fitted-value disagreements
+  with the external reference. Actual beta.10/beta.11 estimates pass the original
+  accuracy tolerances on Mac and Linux; original failed comparisons remain
+  retained. See [validation](docs/VALIDATION.md#upstream-migration-candidate)
+  for the evidence and platform qualification limits.
+
 ## 0.5.0 beta.10 — 2026-10-28
 
 - OLS Auto with three or more categorical-intercept effects no longer falls

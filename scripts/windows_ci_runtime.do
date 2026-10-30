@@ -63,5 +63,13 @@ do "tests/stata/development/ols_solver_reporting.do"
 do "tests/stata/development/ols_cmg_raw_residual_oracle.do"
 do "tests/stata/development/ols_mixed_solver_reports.do"
 do "tests/stata/parity_ppmlhdfe/feppml_one_fe_dummy_oracle.do"
+* Exercise the migrated within paths with independent dummy-model witnesses.
+do "tests/stata/development/within_weighted_ols.do"
+do "tests/stata/development/ols_three_fe_batch_oracle.do"
+do "tests/stata/development/lsmr_batch_oracle.do"
+* This fixture locates its exact input through the source ado path. The installed
+* binary has already been hash-verified; the source and installed ado bytes match.
+adopath ++ "stata"
+do "tests/stata/development/within_plugin_slope_boundary.do"
 shell powershell.exe -NoLogo -NoProfile -NonInteractive ///
     -ExecutionPolicy Bypass -File "scripts/windows_ci_report.ps1" -Action pass
