@@ -17,24 +17,25 @@ this combined candidate. Scatter slices remain excluded. There is no
 processor-specific dispatch or change to scientific semantics.
 
 This final source passes combined source, native and preflight checks on Mac
-and Linux. The approved companion continuation passes all 28 native and four
-memory checks on Mac, plus eight weighted-OLS and sixteen slope calls on Linux;
-Linux also retains its four previously passed weighted-OLS memory checks.
-The [current validation record](VALIDATION.md#upstream-migration-candidate)
-keeps the final Mac and six-host Linux performance regressions, the two original
-beta.10/reference fitted-value comparisons after the approved DoF normalization,
-and the 600-second Linux beta.10 PPML timeout explicit. That timeout was not
-retried. Johannes has now conditionally accepted the disclosed eight-/sixteen-FE
-regressions, provided the numerical investigation supports the estimates. An
-independent bridge-cell witness proves reference error on a subset of the
-failing rows, and an independent optimum enclosure now covers both full
-retained beta.10 fits. All eight Mac beta.10/beta.11 calls against those enclosures
-now pass. The new Linux beta.11 ten-million-row OLS call timed out at 600 seconds,
-leaving six checks unstarted; this execution limit needs review before continuing.
-Mac also passed the four remaining PPML memory cells, completing all 36 native
-and eight memory checks in its original large companion panel. The larger
-companion panel remains incomplete, and beta.11 remains an unpublished review
-candidate until that condition is met.
+and Linux. The [current validation record](VALIDATION.md#upstream-migration-candidate)
+retains the final Mac and six-host Linux performance results, both original
+beta.10/reference fitted-value failures, and the original Linux execution
+timeouts. The numerical acceptance condition is now met: independent optimum
+enclosures cover both full retained beta.10 fits, and all eight actual
+beta.10/beta.11 calls against those enclosures pass on each platform. Johannes's
+conditional acceptance of the disclosed eight-/sixteen-FE regressions therefore
+applies to this beta.11 migration candidate. No adverse or inconclusive timing
+classification is relabeled.
+
+Mac passes all 36 native and eight memory cells in the large companion panel.
+Linux passes 32 of 36 native cells, including all formerly disputed OLS/PPML
+cells, plus its four previously passed weighted-OLS memory checks. Its approved
+single retry of the candidate OLS T1 timeout completed successfully on `scc-b11`;
+that does not establish why the earlier call timed out on `scc-pf8`. The separate
+ten-million-row two-FE PPML beta.10 timeout was not retried and leaves four
+control cells incomplete. Windows beta.11 is not qualified here. The selected
+beta.11 candidate remains unpublished; production adoption and publication are
+separate decisions, and the incomplete Linux controls remain explicit.
 No new estimates ran during the failed fitted-value rechecks or their read-only
 diagnostic; the later native continuation excluded both affected families.
 Earlier counts-only fereg `c1f4d5ad` and dependency `534ea64f`

@@ -108,6 +108,11 @@ is less than 20% of its unchanged tolerance. For PPML, the sharpened all-row
 tolerance ratio is at most `0.704551`, and each finite coefficient error is at
 most `6.74899e-10`, below the smallest coefficient tolerance `1.27198e-9`.
 All 1,317 OLS and nineteen PPML disputed rows are covered. These conclusions
-apply to those two retained beta.10 captures. Other workers, platforms and the
-beta.11 artifacts require their own checks against the enclosed solution;
-original reference failures remain unchanged.
+apply directly to those two retained beta.10 captures. The subsequent
+[Mac checks](../bench/results/within-enclosed-companions-mac-20261030.json) and
+[Linux completion](../bench/results/within-enclosed-continuation-linux-20261030.json)
+also pass every beta.10/beta.11 call at one and four workers on both designs.
+Those checks add the independently bounded center uncertainty to each new
+result's distance from that center before applying the original tolerance.
+They preserve the original failed reference comparisons and establish no new
+performance or fixed-worker repeatability claim.

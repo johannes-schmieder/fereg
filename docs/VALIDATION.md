@@ -21,9 +21,14 @@ is included. Combined source, native and preflight checks passed on Mac and Linu
 Johannes conditionally accepted the disclosed eight-/sixteen-FE performance
 regressions on 2026-10-30, provided investigation of the two large fitted-value
 disagreements supports the accuracy of the estimates. That numerical condition
-remains open for the unfinished Linux qualification; the larger companion panel
-remains incomplete. The earlier counts-only `534ea64f` candidate had 55 passed Mac
-cells, two inconclusive cells and one regression; its five valid Linux hosts
+is now met: independent optimum enclosures and actual beta.10/beta.11 checks pass
+for both full designs on Mac and Linux. His acceptance of the disclosed
+eight-/sixteen-FE performance tradeoffs therefore applies. This selects the
+beta.11 migration candidate without relabeling the adverse performance results.
+The separate Linux ten-million-row two-FE PPML control remains incomplete after
+its baseline timeout; Windows beta.11 is unqualified here. Production adoption
+and publication remain separate. The earlier counts-only `534ea64f` candidate had
+55 passed Mac cells, two inconclusive cells and one regression; its five valid Linux hosts
 were below the six-host requirement. Those classifications remain unchanged.
 
 The final combined artifacts bind fereg `65500be6` and within `8d401d82`.
@@ -58,8 +63,9 @@ are respectively +10.54%, +11.63%, +11.78% and +14.36%; these are distinct from
 ratios of the displayed call medians. The four-worker 64-regressor AKM setting
 is inconclusive. Fixed-worker scientific fingerprints, independent references
 and cross-worker checks pass. Ordinary desktop activity remains in the timings;
-the Mac is one machine, not a set of independent Linux hosts. These results do
-not accept beta.11, authorize another optimization round or permit publication.
+the Mac is one machine, not a set of independent Linux hosts. These performance
+results alone did not accept beta.11; Johannes's subsequent conditional decision
+is recorded above. They authorize no further optimization round or publication.
 
 The [initial final Linux panel](../bench/results/within-final-linux-initial-20261030.json)
 retains 1,981 calls: 580 on each of three completed physical hosts and 241 in
@@ -201,11 +207,29 @@ of estimation or explain the timeout. The sequence stops, leaving six cells
 unstarted. Job 8359778 on `scc-pf8` records scheduler `failed=0`, process exit 1,
 988 seconds wall time and 11.256 GB maximum virtual memory. This is incomplete
 qualification, not an observed numerical mismatch or a performance verdict.
-The numerical investigation and all Mac calls pass, but full candidate
-acceptance remains pending review of this new Linux execution limit. A proposed
-single retry at 1,200 seconds plus the six unstarted checks, within a further
-3,800-second total limit, is prepared but has not been approved or run. Both
-Linux timeouts and all original reference comparisons remain retained.
+Johannes approved one retry at 1,200 seconds plus the six unstarted checks,
+within a further 3,800-second total limit. Both original Linux timeouts and all
+original reference comparisons remain retained.
+
+The [approved Linux completion](../bench/results/within-enclosed-continuation-linux-20261030.json)
+passes all eight beta.10/beta.11 cells on the two formerly held designs at one
+and four workers. It reuses the original baseline OLS T1 result and runs exactly
+seven new calls, including the one approved retry; no further resampling occurs.
+The previously timed-out candidate OLS T1 call completes in 153.94 seconds on
+`scc-b11`. This does not diagnose its earlier timeout on `scc-pf8` or establish
+a performance comparison against the reused baseline from a different host.
+All eight cross-arm/cross-worker comparisons pass. Maximum fitted bound ratios
+are 0.193735 for OLS and 0.704552 for PPML; maximum finite-coefficient ratios are
+0.002651 and 0.530589. All calls execute within, with 403 OLS and 149 PPML
+dependency iterations. Scalar/covariance, model-score, reconstruction and
+discrete checks pass; all 1,317/19 raw reference discrepancies remain recorded.
+Job 8360696 has successful terminal accounting, 557 seconds wall time and
+14.519 GB maximum virtual memory. The checker/controller takes 555.1 seconds,
+within the approved 3,800-second budget. This closes both fitted-value accuracy
+questions for the actual candidate on Mac and Linux. Linux now passes 32 of
+36 large native companion cells; the older two-FE PPML control timeout still
+leaves four uncompleted cells. No performance or new fixed-worker repeatability
+claim is added by this science-only completion.
 
 The [Linux continuation](../bench/results/within-unaffected-companions-linux-20261030.json)
 passes all eight weighted-OLS Auto/LSMR calls, then stops when the ten-million-row
@@ -241,9 +265,10 @@ confused the reference JSON and NPZ hashes. Its narrow correction checks each
 file against its own pinned hash, and both the failure and correction remain in
 the record. Completed captures and staged inputs were removed after verification.
 These checks establish correctness for the approved subset, not performance or
-new fixed-worker repeatability evidence. The later optimum enclosures and Mac completion above resolve the two numerical
-concerns on Mac. Linux still has the original PPML timeout and the new OLS
-candidate timeout; its remaining large-panel qualification is incomplete.
+new fixed-worker repeatability evidence. The later optimum enclosures and Mac/Linux
+completion above resolve the two numerical concerns on both platforms. Linux
+still has the original two-FE PPML control timeout; those four large-panel cells
+remain incomplete.
 
 The separate [Fold accumulator comparison](../bench/results/within-fold-performance-20261030.json)
 completes all 516 calls with exact science and solver work. The affected Mac
