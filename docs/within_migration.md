@@ -954,6 +954,33 @@ attempts remain failures. These references do not execute the large companion
 native or eight-call memory-admission panels, which remain outstanding.
 The confirmed Mac regression and Linux uncertainty still block acceptance.
 
+The subsequent [Mac solve diagnosis](../bench/results/within-mac-solve-diagnosis-20261029.json)
+retains all four sampled call graphs from the actual beta.10 and counts-only
+plugins in fixed ABBA order. Every call passes the unchanged independent oracle,
+its own main-panel scientific fingerprint and discrete signature, and the
+trace records 390 iterations over 19 RHS solves. Sampling is at 1 ms, with a
+120-second native-call cap and zero retries. The record binds the source,
+artifacts, arm64 image UUIDs, parser and full scientific result heads.
+
+Disjoint ancestry attribution places 1,472–1,488 samples in current categorical
+Fold, including descendants. Gather has 550–566 versus 545 samples; explicit
+reorthogonalization has 134–140 versus 284–303. Historical fusion excluding
+gather has 1,026–1,036 samples but combines update, norm and adjoint work, so it
+is not a directly comparable Fold timing. Counts are samples, not milliseconds;
+blocked waiting and input parsing are separated. Coalesced PC offsets have no
+individual weights, both small FE terms share the same specialization, and no
+hardware counters establish cache traffic or dependency stalls. These two
+calls per arm localize investigation without establishing causality or recovery.
+
+The next hypothesis is an isolated private Fold running accumulator: initialize
+from the existing coefficient sum, perform each original row addition, flush
+on a level change and reload on revisits, preserving leaves and merge order.
+It differs from historical run subtotals, which changed arithmetic. The second
+Fold term has 215,878 leaf-bounded runs per million rows; the third has 999,052,
+so frequent-transition overhead remains a required control. This experiment is
+untested and absent from the profiled binaries. The earlier Astra source review
+predates these four profiles and does not endorse the unseen experiment.
+
 The [bounded diagnosis](../bench/results/within-scatter-diagnosis-20261029.json)
 retains the restoration checks, existing control observations, generated-code
 audit and exactly two profiled calls. All 60 original weighted-control calls
