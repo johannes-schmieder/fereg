@@ -17,8 +17,8 @@ back-substitution, gather and the general Fold running accumulator. Johannes
 accepted all four optimizations and their disclosed individual-patch tradeoffs
 on 2026-10-30, and authorized combined building and qualification. Scatter slices
 remain excluded; no processor-specific dispatch or scientific-semantic change
-is included. Combined source checks passed on Mac and Linux, and the final Mac native and
-preflight checks passed; beta.10 performance qualification remains pending. The earlier counts-only `534ea64f` candidate had 55 passed Mac
+is included. Combined source, native and preflight checks passed on Mac and Linux; beta.10
+performance qualification remains pending. The earlier counts-only `534ea64f` candidate had 55 passed Mac
 cells, two inconclusive cells and one regression; its five valid Linux hosts
 were below the six-host requirement. Those classifications remain unchanged.
 
@@ -35,7 +35,12 @@ and seven cross-worker family checks. Six families execute within; the dense
 three-FE MAP-completed family remains an exact control. These records preserve
 source/artifact identities, scientific results and output hashes; large captures
 are disposable after verification. They establish correctness prerequisites,
-not combined performance acceptance or publication.
+not combined performance acceptance or publication. The corresponding
+[Linux native record](../bench/results/within-final-native-linux-20261030.json)
+and [Linux final preflight](../bench/results/within-final-preflight-linux-20261030.json)
+pass the same twelve native stages, sixteen large-design calls and final
+28-call science grid, with successful terminal SCC accounting. The larger
+companion panel and combined performance comparison remain separate gates.
 
 The separate [Fold accumulator comparison](../bench/results/within-fold-performance-20261030.json)
 completes all 516 calls with exact science and solver work. The affected Mac
