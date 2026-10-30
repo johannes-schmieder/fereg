@@ -20,6 +20,20 @@ Mac has 55 passed cells, two inconclusive cells and one regression; Linux has
 five valid hosts and all 58 cells remain below the required six-host minimum.
 The earlier `d3407a16` and `4beaa8af` results remain historical, unaccepted
 evidence. This does not establish performance recovery or beta.11 acceptance.
+
+The separate [Fold accumulator comparison](../bench/results/within-fold-performance-20261030.json)
+completes all 516 calls with exact science and solver work. The affected Mac
+single-worker fit improves 14.89%; solve medians fall from 5.201078 to 4.313869
+seconds, with nearly unchanged setup and 390 iterations over 19 RHS solves. All twelve
+Mac intervals pass. Linux has five passed primary intervals and one inconclusive
+weighted categorical T1 control, including an 11.15% slower host with both
+blocks adverse. Actual sparse fits slow by host medians of 2.96% at one worker
+and 1.87% at four. Two construction intervals are also inconclusive. All four
+adverse primary and four adverse construction blocks remain retained; no host
+is replaced. The generic patch remains outside the combined candidate, pending
+discussion, missing Fold arity-two-through-four performance evidence and a fresh
+beta.10 comparison. This diagnostic does not accept beta.11.
+
 Johannes approved retiring the general more-than-two-FE pair-upgrade experiment;
 its explicit h/k and builder-Break requests must fail clearly. Two-FE h/k and
 builder-Break behavior, public Auto escalation, supported OLS/PPML paths and

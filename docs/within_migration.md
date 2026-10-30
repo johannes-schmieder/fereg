@@ -972,7 +972,7 @@ individual weights, both small FE terms share the same specialization, and no
 hardware counters establish cache traffic or dependency stalls. These two
 calls per arm localize investigation without establishing causality or recovery.
 
-The next hypothesis is an isolated private Fold running accumulator: initialize
+The profile led to an isolated private Fold running accumulator: initialize
 from the existing coefficient sum, perform each original row addition, flush
 on a level change and reload on revisits, preserving leaves and merge order.
 It differs from historical run subtotals, which changed arithmetic. The second
@@ -988,10 +988,10 @@ strict library Clippy. Four focused Mac witnesses also passed and are included
 in the full suite. Linux job `8346716` completed on `scc-tb4` with accounting
 `failed=0` and `exit_status=0`. Independent coefficient-order witnesses cover
 all fixed arities, weighted/sloped and scalar fallback dispatch, run revisits,
-leaf boundaries, numerical edges and panic behavior. Performance remains
-unmeasured: frequent transitions and register pressure can offset savings.
-Counts, held scatter slices and gather zeroing remain separate; these checks
-neither demonstrate recovery of the Mac regression nor approve adoption.
+leaf boundaries, numerical edges and panic behavior. These checks establish
+arithmetic preservation; performance is evaluated separately below. Counts,
+held scatter slices and gather zeroing remain separate. Correctness alone
+neither demonstrates recovery of the Mac regression nor approves adoption.
 
 The independent [gather comparison](../bench/results/within-gather-performance-20261030.json)
 tests only chunk-local zeroing, `de67f402` against `d3407a16`, using matched
@@ -1033,10 +1033,73 @@ The paired point estimate is about 16 ms faster on the affected Mac single-worke
 fit and does not resolve the earlier roughly 0.69-second increase against beta.10. Its large
 Linux weighted-control gains warrant separate consideration, but do not clear
 the Mac concern or demonstrate beta.10 non-regression. Gather remains outside
-the combined candidate. The independently tested Fold accumulator is the next
-proposed performance experiment; its gain is still unmeasured. Beta.10 remains
-accepted, and these results authorize neither migration adoption nor upstream
-publication.
+the combined candidate. The separate Fold accumulator comparison follows.
+Beta.10 remains accepted, and these results authorize neither migration adoption
+nor upstream publication.
+
+The independent [Fold comparison](../bench/results/within-fold-performance-20261030.json)
+tests only `303ba33e` against `d3407a16`, with fereg `c1f4d5ad` and no counts,
+gather, held scatter-slice or back-substitution patch. Both platforms rebuild
+matched arms at the same private source path with Rust 1.85.1 and identical
+release flags. Mac uses Apple clang 21; Linux uses GCC 12.2.0. Both platforms
+pass 16 scientific preflight processes, and all 516 comparison calls complete:
+156 on Mac and 60 on each of six isolated 28-core SCC hosts. Every call preserves
+its scientific fingerprint and solver work. No scientific or observer failure,
+timing retry or exclusion occurs. The refreshed reference environment verifies
+all 26,018 pinned files before timing.
+
+| Primary endpoint | Mac change | Linux change |
+| --- | ---: | ---: |
+| Actual sparse three-FE, one worker | -14.89% | +2.96% |
+| Actual sparse three-FE, four workers | -10.57% | +1.87% |
+| Weighted categorical solve, one worker | -50.36% | -5.05% |
+| Weighted categorical solve, four workers | -44.23% | -3.85% |
+| Weighted mixed three-slope solve, one worker | -45.52% | -10.69% |
+| Weighted mixed three-slope solve, four workers | -41.23% | -7.10% |
+
+Mac changes are medians of six paired-block ratios; Linux changes are medians
+of six host-median ratios. The record also retains all 12 Linux block ratios.
+Linux inference uses six host-median excess scores and has no simultaneous
+six-cell guarantee. Mac intervals remain descriptive, with ordinary desktop
+activity and all five bound Claude processes retained as noise.
+
+For the affected Mac T1 fit, all six blocks improve by 14.60–15.04%. Across all
+12 timed calls per arm, complete-fit medians fall from 5.956652 to 5.073316
+seconds, solve medians from 5.201078 to 4.313869, and setup medians remain
+0.149674 versus 0.149621. Both arms retain 390 iterations over 19 RHS solves.
+The 0.887208-second solve saving exceeds the historical 0.690537-second loss
+as context; these separate comparisons do not establish beta.10 non-regression.
+All twelve Mac primary/construction intervals pass, with no adverse blocks.
+
+Linux does not fully qualify this generic patch. All six hosts slow the actual
+T1 fit by 2.24–4.41%, although its interval remains inside the 5% allowance.
+Five primary intervals pass. Weighted categorical T1 is inconclusive: five
+host medians improve by 4.79–5.46%, while `scc-zj4` worsens by 11.15%, with
+both blocks adverse (+11.47% and +10.82%). That host uses Gold 6132; the other
+five use E5-2680v4. This association is descriptive and does not establish a
+processor-level cause or justify exclusion. Its host-median excess interval is
+[-0.337550, +0.180489] seconds. Sparse T4 also retains adverse blocks of
++5.05% on `scc-wo4` and +6.28% on `scc-xa2`, despite its passed host interval.
+Four construction intervals pass; categorical T1 and mixed-sloped T1 remain
+inconclusive. All four adverse primary and four adverse construction blocks
+remain in the record. No slower host is excluded or replaced.
+
+SCC array `8353171` runs on `scc-wo4`, `scc-zj4`, `scc-we4`, `scc-wj3`,
+`scc-wf4` and `scc-xa2`; report `8353172` runs on `scc-gr4`. All scheduler
+records have failure/exit 0/0. One bounded whole-array accounting query supplies
+all six records, followed by one report invocation. Maximum virtual memory
+ranges from 1.922G to 2.119G. Mac observation records 22.98 sampled Claude CPU
+seconds, 12.8% peak summed sampled CPU and 3,428,352 KiB peak summed RSS;
+these counters do not establish the absence of unsampled interference.
+
+These six cells execute the changed Fold kernel only at arity one. The slope
+term in the mixed design uses Owner; its categorical terms use Fold. The
+independent correctness suite covers other arities, but Fold arities two through
+four still lack performance evidence for this generic implementation. The Mac
+result supports the accumulator diagnosis, while the Linux slowdowns and
+inconclusive controls require discussion before proceeding. The patch remains
+separate from the combined migration candidate. No integration, beta.11
+acceptance or upstream publication is authorized by this comparison.
 
 The [bounded diagnosis](../bench/results/within-scatter-diagnosis-20261029.json)
 retains the restoration checks, existing control observations, generated-code
