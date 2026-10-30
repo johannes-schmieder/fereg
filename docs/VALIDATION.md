@@ -34,6 +34,17 @@ is replaced. The generic patch remains outside the combined candidate, pending
 discussion, missing Fold arity-two-through-four performance evidence and a fresh
 beta.10 comparison. This diagnostic does not accept beta.11.
 
+The [final bounded diagnosis](../bench/results/within-final-slowdown-diagnosis-20261030.json)
+uses retained evidence and independently reproduced disassembly, with no new
+timing or profiling. Loss of FMA does not explain the inspected hot loops.
+Changed categorical accumulation is the strongest supported Mac explanation;
+the general Fold patch restores register accumulation without restoring the old
+arithmetic or whole-operator fusion. Counts removes unnecessary compensation
+for exact dense counts, and the five completed Linux hosts descriptively recover
+the original setup penalty. Hardware-level attribution, the missing sixth host
+and adverse optimization controls remain unresolved. The diagnostic effort is
+closed; final optimization inclusion and combined verification remain separate.
+
 Johannes approved retiring the general more-than-two-FE pair-upgrade experiment;
 its explicit h/k and builder-Break requests must fail clearly. Two-FE h/k and
 builder-Break behavior, public Auto escalation, supported OLS/PPML paths and

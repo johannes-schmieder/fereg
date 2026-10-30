@@ -1125,6 +1125,52 @@ proof of no scheduling activity; native resource reports show nonzero switches.
 Scatter remains held, the counts control remains inconclusive, and the original
 beta.11 regressions remain unresolved. No qualification or acceptance follows.
 
+### Final bounded slowdown diagnosis
+
+Johannes requested one final diagnostic attempt, then consolidation of existing
+general improvements with clear gains and only minor regressions. The
+[final diagnosis](../bench/results/within-final-slowdown-diagnosis-20261030.json)
+uses the retained profiles, source and exact profiled plugins. It adds no native
+calls, timing rounds or architecture-specific implementation. An independent
+Astra audit and lead reproduction agree on the selected disassembly.
+
+Loss of FMA does not explain the inspected Mac hot loops. Beta.10's 802-instruction
+fused lane function contains no FMA instructions: both its affine update and
+squared norm use separate multiply/add instructions. The current categorical
+Fold leaf contains no multiplication at all. Historical "fusion" combined
+operator passes; it did not imply fused multiply-add arithmetic. This is a
+statement about the selected functions, not every instruction in either plugin.
+
+The strongest supported Mac explanation is changed categorical accumulation.
+The current leaf loads, adds and stores the coefficient for every row; the old
+buffered route retained sums across repeated levels. The separate Fold patch
+restores register accumulation while preserving the current addition order,
+leaf boundaries and merge tree. On the affected second factor it avoids 784,122
+logical coefficient loads and stores per adjoint, because one million rows
+contain 215,878 leaf-bounded runs. These are source-derived accesses, not measured
+cache misses or DRAM traffic. The third factor changes levels almost every row,
+so it receives little traffic reduction and adds transition bookkeeping.
+
+The Fold intervention saves 0.887 seconds in the Mac solve while leaving the
+full observation vector and separate operator passes intact. This supports the
+accumulation explanation without proving an exact decomposition of the original
+0.691-second loss. Branching, compiler layout and lost tile locality can also
+contribute; existing samples cannot separate them. Restoring the historical
+arithmetic or adding processor-specific dispatch is not justified by this audit.
+
+The original Linux setup increase was 14.9–16.7 ms across six hosts, with the
+same 71 iterations over five RHS solves. Upstream's dense construction adds a
+correction allocation, compensated updates and a finishing sweep even for exact
+integer counts. Counts removes that unnecessary work; its independent large
+dense construction ratios are 0.554–0.568. The five completed counts-only main
+hosts have setup ratios 0.943–0.964 and complete-call ratios 0.967–0.981 versus
+beta.10. That is descriptive recovery, not a six-host qualification pass. The
+missing host and inconclusive sparse construction control remain unchanged.
+
+Diagnosis ends at this implementation-level attribution. The retained Linux
+Fold and gather regressions still govern inclusion; independent benefits cannot
+be added together to claim combined beta.10 non-regression.
+
 Independent tests to preserve include the dense QR and weighted/disconnected
 families in [routing_portfolio](../crates/fereg-oracle/tests/routing_portfolio.rs),
 the sealed [weak-graph decimal oracle](../crates/fereg-testkit/tests/weak_graph_decimal_oracle.rs),

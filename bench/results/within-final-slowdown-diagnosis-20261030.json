@@ -1,0 +1,216 @@
+{
+  "date": "2026-10-30",
+  "decision": "End slowdown diagnosis at source/compiled-loop attribution. Do not claim a hardware-stall cause or add an architecture-dependent optimization. Inclusion and combined integration are separate decisions.",
+  "evidence": [
+    {
+      "path": "bench/results/within-mac-solve-diagnosis-20261029.json",
+      "sha256": "52a9d9917cb0a1adb4bc2990ed21a06a146023682aa8ec0b4f7263805b8c0c98"
+    },
+    {
+      "path": "bench/results/within-fold-performance-20261030.json",
+      "sha256": "067c8c9585f25c50aa7fb5121bb90ddc0fed880b6993fa24549483a3556c304f"
+    },
+    {
+      "path": "bench/results/within-gather-performance-20261030.json",
+      "sha256": "9fe7e636ce3404bf8b83164201373459d67501212a6f4fa4ad27d262011d91a1"
+    },
+    {
+      "path": "bench/results/within-counts-qualification-20261029.json",
+      "sha256": "f27cb4060ea7a14b847187f3641be4016c27a3a0c220add9d3068cb89b522c80"
+    },
+    {
+      "path": "bench/results/within-optimization-performance-20261029.json",
+      "sha256": "56afe05e8a463b5f9131ea1e54f08135cbf537212b0bab9c6456bbbb803f93f6"
+    }
+  ],
+  "kind": "final-bounded-slowdown-diagnosis",
+  "linux": {
+    "evidence_sha256": {
+      "bench/results/within-counts-qualification-20261029.json": "f27cb4060ea7a14b847187f3641be4016c27a3a0c220add9d3068cb89b522c80",
+      "bench/results/within-optimization-performance-20261029.json": "56afe05e8a463b5f9131ea1e54f08135cbf537212b0bab9c6456bbbb803f93f6",
+      "bench/results/within-optimizations-20261029.json": "53b6a2201dd85d33760ea09c11e0a5b2bafba6d2b42ff1c81467159232c336d7",
+      "bench/results/within-qualification-20261029.json": "6d44362145cfa19ea2376daf053a2c8a38e98aea871611b19058a442e0abca4c"
+    },
+    "findings": [
+      {
+        "basis": "Six-host retained solver-row sums; setup increase14.9\u201316.7ms; same5RHS/71iterations; solve duration is lower in the candidate.",
+        "causal_limit": "Phase attribution does not isolate one kernel.",
+        "claim": "The original Linux near-confounded T4 increase is localized to recorded setup, not extra solver iterations."
+      },
+      {
+        "basis": "Exactly representable integer additions through2^53 need no compensation; correction allocation, update accesses/arithmetic and finishing sweep disappear. Main table, scan, CSR and factorization remain.",
+        "causal_limit": "No claim that each saved cycle is allocation, arithmetic, cache or page-fault cost.",
+        "claim": "Counts removes a provably unnecessary architecture-independent construction cost on eligible dense unweighted categorical pairs."
+      },
+      {
+        "basis": "Six-host matched exact-source comparison; large dense median construction ratios0.554\u20130.568.",
+        "causal_limit": "It does not establish an overall qualification pass; sparse construction control remains inconclusive.",
+        "claim": "The isolated base-plus-counts intervention establishes aggregate construction gains in the changed dense cells."
+      },
+      {
+        "basis": "All five completed hosts have candidate setup and complete-call medians below beta10 with unchanged work.",
+        "causal_limit": "The missing sixth host prevents the declared qualification; do not relabel historical failure or claim recovered acceptance.",
+        "claim": "The earlier near-confounded setup penalty does not persist descriptively in the completed counts-only main hosts."
+      }
+    ],
+    "fixture": {
+      "allocation_note": "Source-derived aggregate correction allocation, not measured peak RSS; all three tables stay dense under the existing40MB accumulator threshold.",
+      "correction_bytes_sum": 20880000,
+      "generator": "bench/routing_cases.py:75-90",
+      "level_counts": [
+        5000,
+        500,
+        20
+      ],
+      "pair_table_cells": [
+        2500000,
+        100000,
+        10000
+      ],
+      "rows": 100000,
+      "sha256": "e060940f2f6f149520c33e4c0f8428fb028b3df0dee0ba7ba48102c0b489b99b"
+    },
+    "profile": {
+      "candidate": {
+        "CSR_conversion_descendants": 21,
+        "cross_tab_stack_union": 60,
+        "samples": 1745,
+        "stacks_sha256": "ba8a5e42c2d7e37f32b085058a64ba07e53ac9a5fd9599f946966fef5701d0d6"
+      },
+      "incumbent": {
+        "CSR_conversion_descendants": 16,
+        "cross_tab_stack_union": 29,
+        "samples": 1722,
+        "stacks_sha256": "ebc6d1303584ef1c5a24804153223595efbd98359989752c0ddd64d44523248c"
+      }
+    },
+    "source": [
+      {
+        "finding": "Historical dense path allocates correction storage only for weighted Unit pairs; no-weight Unit pairs use ordinary addition.",
+        "lines": "197-229",
+        "path": "crates/within/src/domain/cross_tab/accumulate.rs",
+        "revision": "3b5b9b9ab9b79e4a8cac2841f7c1d41bb2276104",
+        "sha256": "0450b007424c65328368da7126330070bb6c09312b9ee4279376ff954367ec0e"
+      },
+      {
+        "finding": "Dense path always allocates corrections, performs compensated updates, and finishes every table cell.",
+        "lines": "183-201",
+        "path": "crates/within/src/domain/cross_tab/accumulate.rs",
+        "revision": "d3407a16dec3715f6e9eee13fb9b6646d5b28035",
+        "sha256": "9f2691e194d3566fe985bf3fb7c0d936efc9c5fe422e145efece498e7d3091c0"
+      },
+      {
+        "finding": "Exact count guard bypasses correction allocation/update/finish, leaving original generic fallback and CSR conversion.",
+        "lines": "188-219",
+        "path": "crates/within/src/domain/cross_tab/accumulate.rs",
+        "revision": "534ea64f7b0e26b772f93ca087f43837c1e187e4",
+        "sha256": "1898683e917322b03eca0f29f58e370015c72bbbf6de6469fc2c303ef63008bf"
+      }
+    ],
+    "unresolved": [
+      "Original single profile per arm cannot apportion setup overhead or measure kernel/page-fault effects; task-clock:u excludes kernel time.",
+      "Sparse construction control remains inconclusive despite unchanged sparse implementation; source parity does not prove identical generated code or exclude noise.",
+      "Five-host counts main result cannot meet declared six-host inference.",
+      "Counts does not address the separate Mac sparse-three-FE solve regression; no architecture-specific branch is justified by this setup evidence."
+    ]
+  },
+  "linux_descriptive_counts_recovery": {
+    "case": "near-confounded-third-t4",
+    "hosts": 5,
+    "native_ratio_range": [
+      0.967296054209497,
+      0.9810880002525119
+    ],
+    "qualification": "insufficient_hosts; all original observations and failures remain unchanged",
+    "setup_ratio_range": [
+      0.9432057911344436,
+      0.9641223043526611
+    ],
+    "work": {
+      "iterations": 71,
+      "rhs_solves": 5
+    }
+  },
+  "mac": {
+    "artifacts": [
+      {
+        "arm64_uuid": "ACCF6518-5A0B-328D-B234-0B7BADA43282",
+        "artifact_sha256": "aa453ba70c90a605877c1c85383f574ea6cbd5e4ba3a2875b61b451e9d7ceae0",
+        "assembly_sha256": "88e1219cc5171927d32c03edb42e2c3dffdfc65b1a4fd74040e51cefe30567df",
+        "binding": "SHA256 equals macos-current.json plan entry; LC_UUID equals retained profile image identity.",
+        "command": [
+          "xcrun",
+          "llvm-objdump",
+          "--arch=arm64",
+          "--disassemble",
+          "--dis-symname",
+          "__ZN6within8operator6design5fused9run_lanes28_$u7b$$u7b$closure$u7d$$u7d$17h0a9be97ce0b24baaE",
+          "<exact-plugin-with-recorded-sha256>"
+        ],
+        "fused_fp_instruction_count": 0,
+        "instruction_count": 802,
+        "name": "beta10-fused-lane",
+        "scope": "Selected function only; no whole-binary absence claim.",
+        "symbol": "__ZN6within8operator6design5fused9run_lanes28_$u7b$$u7b$closure$u7d$$u7d$17h0a9be97ce0b24baaE"
+      },
+      {
+        "arm64_uuid": "A6DBCDB6-E2FD-308A-9203-D6808751ABBE",
+        "artifact_sha256": "20344bd143f4a85ff64f808b1d02621a16b8568b552042ba70f28edb37f43af5",
+        "assembly_sha256": "c5125b13a878718ca52c939babc6c98fe7cde79751b1bc0c45b4e3f9155716b5",
+        "binding": "SHA256 equals macos-current.json plan entry; LC_UUID equals retained profile image identity.",
+        "command": [
+          "xcrun",
+          "llvm-objdump",
+          "--arch=arm64",
+          "--disassemble",
+          "--dis-symname",
+          "__ZN6within8operator6design7scatter10fixed_tree17hd133876cf6ee02aeE",
+          "<exact-plugin-with-recorded-sha256>"
+        ],
+        "fused_fp_instruction_count": 0,
+        "instruction_count": 235,
+        "name": "counts534-categorical-fold",
+        "scope": "Selected function only; no whole-binary absence claim.",
+        "symbol": "__ZN6within8operator6design7scatter10fixed_tree17hd133876cf6ee02aeE"
+      }
+    ],
+    "build_calls": 0,
+    "causal_limits": [
+      "The 0.887208-second separate Fold gain does not establish that it explains all of the original 0.690537-second beta.10-to-beta.11 loss or establish combined beta.10 non-regression. It does show whole operator fusion need not be restored to obtain a large gain on this workload.",
+      "Separate historical timing panels, retained desktop noise, changed library internals and current compiler layout leave no exact cost decomposition. Existing profiles have no PC weights or hardware counters and combine both Fold terms.",
+      "Gather zeroing yielded only about 16 ms on affected Mac T1, weakening zeroing alone as principal mechanism. Similar gather, lower reorthogonalization, small direct allocator descendants and unchanged 390 iterations/19 RHS weaken these alternative explanations.",
+      "Linux sparse T1 regresses 2.24-4.41% across six hosts under Fold patch; categorical T1 has an adverse 11.15% host. This establishes workload/platform tradeoffs, not a particular CPU cause; arities 2-4 lack performance coverage.",
+      "Patch changes branches and compiler opportunities as well as logical stores; no measured proof isolates store-to-load forwarding latency, cache miss cost, bounds checks or branch overhead."
+    ],
+    "conclusion": "Strongest defensible explanation is changed categorical accumulation: removal of run-register locality creates repeated indexed load/add/store dependencies, amplified on the affected Mac; loss of whole-tile locality is plausible secondary cost. Source, selected actual code, profiles and arithmetic-preserving Fold intervention agree. Loss of FMA is contradicted in these compared hot loops.",
+    "findings": [
+      "The historical beta.10 run_lanes closure contains 802 instructions and no floating fused-multiply-add/subtract instruction. Its scalar affine update at 0x58add8/0x58addc uses fmul/fadd, squared norm at 0x58ade4/0x58ade8 also fmul/fadd. Vector affine update at 0x58b144-0x58b160 similarly separates fmul.2d and fadd.2d.",
+      "Historical buffered route retains a run subtotal in d0. At0x58af90-0x58afc8 it only reads/writes the indexed coefficient buffer when the level changes. Source fused.rs:280-296 starts each subtotal from zero, hence this historical grouping is not arithmetic-equivalent to current Fold.",
+      "Actual counts 534 categorical Fold fixed_tree starts at 0x5977e0. Row leaf at 0x5979f0-0x597a34 reloads input slice metadata, checks bounds, loads level and input, loads coefficient at 0x597a1c, fadd at 0x597a24 and stores coefficient at 0x597a28 on every row. No multiply occurs in this leaf.",
+      "Retained profiles name this exact categorical Fold specialization. Coalesced offsets 540 and 584 map respectively to input slice length load 0x5979fc and coefficient store 0x597a28. Individual offset sample weights are unavailable, so this is location mapping only, not stall attribution.",
+      "Old fused.rs gathers4,096 rows, updates u/norm and accumulates all eligible adjoints while the tile is resident. Current bidiag.rs:478-498 separately materializes full av, updates u/norm, then traverses adjoints per term. Extra full-vector storage/passes are real; DRAM traffic and cache misses are unmeasured.",
+      "303ba33e changes only the Fold leaf accumulation structure plus tests: starts the register sum from existing coefficient, performs each original addition and flushes on transition. It leaves av materialization, gather/update separation, leaf allocations and merge tree unchanged. It is distinct from historical run subtotals.",
+      "Second factor:1,000,000 rows and215,878 leaf-bounded runs imply 784,122 fewer coefficient-slot loads and stores per adjoint from the register structure (conditional on ordinary execution; not measured hardware counts). Across 390 ordinary steps this is 305,807,580 fewer loads and equally many stores. Third factor: 999,052 runs offers almost no reduction and adds transition bookkeeping."
+    ],
+    "independent_reproduction": "Lead reran both exact symbol disassemblies and verified artifact and disassembly SHA256; selected functions contain no FMA instructions.",
+    "instruction_excerpts": {
+      "beta10": [
+        "0x58add8 fmul d1, d20, d1",
+        "0x58addc fadd d0, d0, d1",
+        "0x58ade4 fmul d1, d0, d0",
+        "0x58ade8 fadd d8, d8, d1"
+      ],
+      "counts534": [
+        "0x597a1c ldr d1, [x21, x10, lsl #3]",
+        "0x597a24 fadd d0, d0, d1",
+        "0x597a28 str d0, [x21, x10, lsl #3]"
+      ]
+    },
+    "kind": "bounded-static-causal-audit",
+    "native_calls": 0,
+    "profile_calls": 0,
+    "timing_calls": 0
+  },
+  "schema": 1,
+  "scope": "One final static/source/generated-code and retained-evidence audit; no new builds, native calls, profiling or timing; no architecture-specific changes."
+}
