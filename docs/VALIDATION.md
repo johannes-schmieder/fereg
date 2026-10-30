@@ -80,6 +80,22 @@ from absorbed rank. PPML covariance remains unchanged. Full checks of retained
 native arrays and the unfinished companion calls remain required; the graph
 witness alone does not qualify those estimates.
 
+The subsequent [retained-array diagnostic](../bench/results/within-companion-fitted-diagnostic-20261030.json)
+records a separate unresolved fitted-value disagreement on beta.10. Rechecking
+saved captures started no new native calls. After the approved reference
+normalization, coefficients, covariance and scalar criteria pass, but 1,317 of
+ten million OLS rows and 19 of one million PPML rows exceed the unchanged
+`1e-9 + 1e-7 * max(abs(native), abs(reference))` fitted criterion. Maximum
+absolute differences are `4.5843e-6` and `5.6730e-7`; RMS differences are
+`3.9842e-9` and `1.1754e-9`. Ordered input hashes, sample, reconstruction,
+objectives and normalized model scores pass for both fits. Beta.10's maximum
+normalized scores are `2.4602e-13` and `2.4550e-11`, compared with reference
+scores `4.6608e-9` and `6.7322e-9`. This raises a reference-accuracy concern
+but does not establish pointwise correctness. The diagnostic completed in
+15.98 seconds with successful terminal SCC accounting and zero fits. Both
+fitted gates remain failed; dependent companion qualification is held for
+Johannes's decision. No numerical tolerance or production behavior changed.
+
 The separate [Fold accumulator comparison](../bench/results/within-fold-performance-20261030.json)
 completes all 516 calls with exact science and solver work. The affected Mac
 single-worker fit improves 14.89%; solve medians fall from 5.201078 to 4.313869

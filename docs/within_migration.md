@@ -16,8 +16,13 @@ their gains and adverse host observations, and authorized building and qualifyin
 this combined candidate. Scatter slices remain excluded. There is no
 processor-specific dispatch or change to scientific semantics.
 
-This final source has not yet completed combined native or performance
-qualification. Earlier counts-only fereg `c1f4d5ad` and dependency `534ea64f`
+This final source passes combined source, native and preflight checks on Mac
+and Linux. Combined performance qualification and the larger companion panel
+remain incomplete. The [current validation record](VALIDATION.md#upstream-migration-candidate)
+retains the final Mac regressions, incomplete Linux evidence and two unresolved
+beta.10/reference fitted-value comparisons after the approved DoF normalization.
+No new estimates ran during those failed rechecks or their read-only diagnostic.
+Earlier counts-only fereg `c1f4d5ad` and dependency `534ea64f`
 results remain retained: Mac had 55 passed cells, two inconclusive cells and one
 regression; Linux had five valid hosts, below the declared six-host minimum.
 The new approval accepts the disclosed individual-patch tradeoffs; it does not
