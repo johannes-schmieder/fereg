@@ -118,6 +118,18 @@ Linux reuses the four already passed weighted-OLS admission/refusal checks.
 Both held families remain outside this continuation, and a new failure stops
 the subset. No numerical tolerance or production behavior changed.
 
+The [Linux continuation](../bench/results/within-unaffected-companions-linux-20261030.json)
+passes all eight weighted-OLS Auto/LSMR calls, then stops when the ten-million-row
+two-FE PPML beta.10 call reaches its 600-second limit. No candidate PPML or slope
+call starts after that timeout. The final trace reports an inner reduced solve
+with nineteen iterations; it does not establish the cause of the timeout.
+Terminal accounting records `failed=0`, `exit_status=1`, and 12.363 GB maximum
+virtual memory. This is incomplete qualification, not a numerical mismatch or a
+performance comparison. Johannes approved the sixteen previously unstarted
+Linux slope calls within a further 4,800 seconds of the original budget. Job
+8357906 runs only those calls and stops at the first new failure; it does not
+retry PPML. The independent Mac subset continues under its original limits.
+
 The separate [Fold accumulator comparison](../bench/results/within-fold-performance-20261030.json)
 completes all 516 calls with exact science and solver work. The affected Mac
 single-worker fit improves 14.89%; solve medians fall from 5.201078 to 4.313869
