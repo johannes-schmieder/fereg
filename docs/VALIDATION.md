@@ -17,8 +17,9 @@ back-substitution, gather and the general Fold running accumulator. Johannes
 accepted all four optimizations and their disclosed individual-patch tradeoffs
 on 2026-10-30, and authorized combined building and qualification. Scatter slices
 remain excluded; no processor-specific dispatch or scientific-semantic change
-is included. Combined source, native and preflight checks passed on Mac and Linux; beta.10
-performance qualification remains pending. The earlier counts-only `534ea64f` candidate had 55 passed Mac
+is included. Combined source, native and preflight checks passed on Mac and Linux.
+The final Mac comparison needs discussion; Linux qualification and the larger
+companion panel remain incomplete. The earlier counts-only `534ea64f` candidate had 55 passed Mac
 cells, two inconclusive cells and one regression; its five valid Linux hosts
 were below the six-host requirement. Those classifications remain unchanged.
 
@@ -41,6 +42,21 @@ and [Linux final preflight](../bench/results/within-final-preflight-linux-202610
 pass the same twelve native stages, sixteen large-design calls and final
 28-call science grid, with successful terminal SCC accounting. The larger
 companion panel and combined performance comparison remain separate gates.
+
+The [final Mac comparison](../bench/results/within-final-macos-20261030.json)
+retains all 1,508 calls across 58 settings and six mirrored blocks, with no
+retries, exclusions or scientific failures: 53 settings pass, four regress and
+one is inconclusive. The sparse three-FE full-call medians improve from 5.268 to
+5.026 seconds at one worker and from 1.916 to 1.681 seconds at four; the original
+Mac slowdown is recovered. Eight-FE medians increase from 181.2 to 200.7 ms at
+one worker and from 82.6 to 92.2 ms at four. Sixteen-FE medians increase from
+444.3 to 497.0 ms and from 201.0 to 229.9 ms. Their qualified median block ratios
+are respectively +10.54%, +11.63%, +11.78% and +14.36%; these are distinct from
+ratios of the displayed call medians. The four-worker 64-regressor AKM setting
+is inconclusive. Fixed-worker scientific fingerprints, independent references
+and cross-worker checks pass. Ordinary desktop activity remains in the timings;
+the Mac is one machine, not a set of independent Linux hosts. These results do
+not accept beta.11, authorize another optimization round or permit publication.
 
 The separate [Fold accumulator comparison](../bench/results/within-fold-performance-20261030.json)
 completes all 516 calls with exact science and solver work. The affected Mac
