@@ -993,6 +993,51 @@ unmeasured: frequent transitions and register pressure can offset savings.
 Counts, held scatter slices and gather zeroing remain separate; these checks
 neither demonstrate recovery of the Mac regression nor approve adoption.
 
+The independent [gather comparison](../bench/results/within-gather-performance-20261030.json)
+tests only chunk-local zeroing, `de67f402` against `d3407a16`, using matched
+plugins from fereg `c1f4d5ad`. Counts, scatter slices, back-substitution and the
+Fold accumulator are absent. All 516 calls are retained: 156 on Mac and 60 on
+each of six isolated 28-core SCC hosts. The six cells cover the actual
+one-million-row sparse three-FE public Auto fit at one/four workers, plus
+4,194,304-row weighted categorical and three-slope controls at both worker
+counts. Both platforms first pass the 16-process scientific preflight; measured
+calls preserve those scientific fingerprints and solver work. There are no
+native, scientific or observer failures, timing exclusions or timing retries.
+
+| Primary endpoint | Mac change | Linux change |
+| --- | ---: | ---: |
+| Actual sparse three-FE, one worker | -0.26% | -0.45% |
+| Actual sparse three-FE, four workers | +2.28% | -1.35% |
+| Weighted categorical solve, four workers | -1.56% | -15.45% |
+| Weighted three-slope solve, four workers | -1.59% | -15.24% |
+
+Mac percentages are medians of six paired-block ratios; Linux percentages are
+medians of six host-median ratios. The report also retains the different
+12-block descriptive medians. Inference uses six physical hosts' median excess
+scores, with no simultaneous guarantee across cells. All six Linux primary
+endpoints satisfy the allowance, but three secondary construction endpoints
+remain inconclusive and six adverse construction blocks remain included.
+Mac's four-worker native fit is inconclusive, including a +5.46% block and an
+upper excess bound of +8.76 ms. Its other eleven primary/secondary endpoints
+satisfy the allowance. Bound Claude activity remains measurement noise.
+
+The original Linux report retains six missing-accounting errors: each accounting
+query exceeded its ten-second cap. One bounded 90-second array query recovered
+all six successful records. An independently reviewed accounting-only supplement
+revalidates the unchanged observations and scoring; it repeats no native calls
+and leaves the original report intact. Array `8347704` ran on `scc-wf1`,
+`scc-wf4`, `scc-wk2`, `scc-wk4`, `scc-xe2` and `scc-xe1`, with scheduler
+failure/exit 0/0 throughout.
+
+The paired point estimate is about 16 ms faster on the affected Mac single-worker
+fit and does not resolve the earlier roughly 0.69-second increase against beta.10. Its large
+Linux weighted-control gains warrant separate consideration, but do not clear
+the Mac concern or demonstrate beta.10 non-regression. Gather remains outside
+the combined candidate. The independently tested Fold accumulator is the next
+proposed performance experiment; its gain is still unmeasured. Beta.10 remains
+accepted, and these results authorize neither migration adoption nor upstream
+publication.
+
 The [bounded diagnosis](../bench/results/within-scatter-diagnosis-20261029.json)
 retains the restoration checks, existing control observations, generated-code
 audit and exactly two profiled calls. All 60 original weighted-control calls
