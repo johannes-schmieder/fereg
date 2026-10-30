@@ -110,8 +110,10 @@ def prepare_panel(path, panel):
                 g2=pd.factorize(source.firm, sort=True)[0].astype(np.int32)+1,
                 y=source.y.to_numpy(dtype=float))
     if long:
-        data.update(x1=((source.age.to_numpy(dtype=float)-40)/40)**2,
-                    x2=((source.age.to_numpy(dtype=float)-40)/40)**3)
+        # Products are exactly rounded on every host; a vectorized pow is not,
+        # and a rebuilt panel must match the scheduled one byte for byte.
+        z = (source.age.to_numpy(dtype=float)-40)/40
+        data.update(x1=z*z, x2=z*z*z)
         for j, year in enumerate(p['years'][:-1], 3):
             data[f'x{j}'] = (source.year == year).to_numpy(dtype=np.int8)
     else:
