@@ -42,23 +42,14 @@ for the methodological sources and
 
 ## Install in Stata
 
-Install the current package from `main`, using the same community-contributed
-[`github` installer](https://github.com/haghish/github) as `fevc`:
-
-```stata
-* Install the github command once, if needed
-net install github, from("https://haghish.github.io/github/")
-github install johannes-schmieder/fereg
-fereg, selftest
-```
-
-Or install directly without the `github` command:
+Install the current package from `main` in a fresh Stata session:
 
 ```stata
 net install fereg, from("https://raw.githubusercontent.com/johannes-schmieder/fereg/main/") replace
+fereg, selftest
 ```
 
-Both routes install `fereg`, `feppml`, help files and the current native plugin
+This installs `fereg`, `feppml`, help files and the current native plugin
 from `main`, which carries the
 [v0.5.0-beta.11](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0-beta.11)
 runtime. The beta requires Stata 18 or newer and includes native binaries
@@ -67,6 +58,8 @@ No Rust, Python or extra Stata packages are needed to use the binary package.
 Exit Stata before updating, then install in a fresh session so the previous
 plugin is unloaded.
 
+The community `github` helper currently errors while querying release metadata
+after downloading the package; use the tested `net install` command above.
 See the [installation guide](docs/installation.md) for versioned and offline
 installation, source builds and troubleshooting. Changes by release are in the
 [changelog](CHANGELOG.md). Native build identity, checksums and

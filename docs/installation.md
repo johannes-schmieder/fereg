@@ -11,20 +11,20 @@ The Linux binary requires glibc 2.28 or newer.
 Start a fresh Stata session and run:
 
 ```stata
-* Install the github command once, if needed
-net install github, from("https://haghish.github.io/github/")
-github install johannes-schmieder/fereg
+net install fereg, from("https://raw.githubusercontent.com/johannes-schmieder/fereg/main/") replace
 fereg, selftest
 help fereg
 help feppml
 ```
 
-The installer reads the root `fereg.pkg` from `main`, as it does for `fevc`.
-A direct installation without the `github` command is equivalent:
-
-```stata
-net install fereg, from("https://raw.githubusercontent.com/johannes-schmieder/fereg/main/") replace
-```
+This reads the root `fereg.pkg` from `main`. The built-in `net install` route
+passes the public installation checks. During beta.11 qualification, the
+community-contributed [`github` installer](https://github.com/haghish/github)
+downloaded all 35 correct package files but returned `r(132)` in its subsequent
+release-metadata query. The official current query helper has the same code.
+Use `net install` while that helper limitation remains unresolved; the
+[public verification record](../bench/results/beta11-publication-20261030.json)
+retains the failure and the successful direct installation checks.
 
 Both commands and their shared native plugin are installed together. Rust,
 Python, BLAS, OpenMP and other Stata packages are not needed to use this binary
@@ -62,8 +62,7 @@ fereg, selftest
 ## Update or remove
 
 Exit every Stata session that has loaded fereg before updating. Reopen Stata,
-then rerun `github install johannes-schmieder/fereg` (which replaces its prior
-installation), or the direct `net install` command with `replace`. `clear all`
+then rerun the direct `net install` command above with `replace`. `clear all`
 does not reliably unload a native plugin. On Windows, loaded plugin files also cannot
 be overwritten. To remove an installed package, run `ado uninstall fereg`.
 

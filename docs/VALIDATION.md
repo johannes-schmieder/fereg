@@ -9,7 +9,7 @@ and PPML reporting are unchanged.
 
 ## Upstream migration candidate
 
-Beta.11 is the selected migration from beta.10. The
+Beta.11 is the published current migration from beta.10. The
 [compatibility report](within_migration.md) records the frozen dependency bases,
 patch evidence, qualification results and accepted performance tradeoffs.
 The final source pin is `8d401d82`: the essential migration stack plus counts,
@@ -1739,6 +1739,26 @@ resource quantity, test, input or limit.
 
 Native Intel-host Stata execution remains unqualified; both Mac processor
 slices are supplied. Existing source and native releases remain immutable.
+
+The [public verification record](../bench/results/beta11-publication-20261030.json)
+confirms all 50 published asset digests and sizes and fresh Stata 19/MP
+installations from the versioned beta.11 URL and raw GitHub `main` URL.
+All 34/35 installed files match, native selftest passes, and independent OLS
+and PPML coefficient checks pass (relative differences `3.17e-14` and
+`1.12e-10`). The OLS covariance check also passes; PPML covariance is covered
+by the maintained independent-sandwich fixtures.
+
+The actual community `github install` command is a documented limitation:
+it downloads all 35 correct files but then returns `r(132)` inside its
+release-metadata parser, before the smoke estimates. A standalone query
+reproduces that error; the official current helper is identical. A bounded
+instrumented offline diagnostic returns a different parser error (`r(133)`)
+and does not establish the exact cause. Neither failure is relabeled as a
+successful command. Two earlier attempts stopped before installation because
+the isolated bootstrap omitted the helper's `PLUS/g` directory; both are
+retained, including the first unsuccessful repair command. The tested built-in
+`net install` route is now the primary installation instruction. This changes
+no runtime, package file, scientific assertion or published asset.
 
 ### Beta.10 integration packaging
 
