@@ -9,9 +9,9 @@ and PPML reporting are unchanged.
 
 ## Upstream migration candidate
 
-The unpublished beta.11 candidate is separate from the accepted beta.10 release.
-The [compatibility report](within_migration.md) records the frozen dependency
-bases, patch evidence and outstanding integration and performance requirements.
+Beta.11 is the selected migration from beta.10. The
+[compatibility report](within_migration.md) records the frozen dependency bases,
+patch evidence, qualification results and accepted performance tradeoffs.
 The final source pin is `8d401d82`: the essential migration stack plus counts,
 back-substitution, gather and the general Fold running accumulator. Johannes
 accepted all four optimizations and their disclosed individual-patch tradeoffs
@@ -228,9 +228,9 @@ discrete checks pass; all 1,317/19 raw reference discrepancies remain recorded.
 Job 8360696 has successful terminal accounting, 557 seconds wall time and
 14.519 GB maximum virtual memory. The checker/controller takes 555.1 seconds,
 within the approved 3,800-second budget. This closes both fitted-value accuracy
-questions for the actual candidate on Mac and Linux. Linux now passes 32 of
-36 large native companion cells; the older two-FE PPML control timeout still
-leaves four uncompleted cells. No performance or new fixed-worker repeatability
+questions for the actual candidate on Mac and Linux. At this checkpoint Linux
+passed 32 of 36 large native companion cells; the final PPML completion below subsequently
+closed the four remaining cells. No performance or new fixed-worker repeatability
 claim is added by this science-only completion.
 
 The [Linux memory completion](../bench/results/within-enclosed-memory-linux-20261030.json)
@@ -276,10 +276,10 @@ passes all sixteen calls and the cross-arm/cross-worker comparisons on
 Job 8357906 completed in 856 seconds with `failed=0`, `exit_status=0`, and
 5.052 GB maximum virtual memory. Each call executes within and passes its
 independent analytic witness. There were no retries or tolerance changes; the
-PPML timeout was not retried. Together with the earlier eight weighted-OLS
-calls, Linux has passed 24 of the 28 calls in the approved unaffected subset;
-its four PPML checks remain incomplete. The four previously passed Linux
-weighted-OLS memory checks remain valid.
+PPML timeout was not retried. At this checkpoint, the earlier eight weighted-OLS
+calls brought Linux to 24 of the 28 calls in the approved unaffected subset.
+The final PPML completion above subsequently closed the remaining four checks.
+The four previously passed Linux weighted-OLS memory checks remain valid.
 
 The [Mac continuation](../bench/results/within-unaffected-companions-mac-20261030.json)
 passes all 28 native calls and 28 cross-arm/cross-worker comparisons across the
@@ -296,9 +296,9 @@ file against its own pinned hash, and both the failure and correction remain in
 the record. Completed captures and staged inputs were removed after verification.
 These checks establish correctness for the approved subset, not performance or
 new fixed-worker repeatability evidence. The later optimum enclosures and Mac/Linux
-completion above resolve the two numerical concerns on both platforms. Linux
-still has the original two-FE PPML control timeout; those four large-panel cells
-remain incomplete.
+completion above resolve the two numerical concerns on both platforms. The original
+Linux two-FE PPML control timeout remains retained; the final PPML completion
+above closes those four large-panel cells.
 
 The separate [Fold accumulator comparison](../bench/results/within-fold-performance-20261030.json)
 completes all 516 calls with exact science and solver work. The affected Mac
@@ -310,8 +310,9 @@ blocks adverse. Actual sparse fits slow by host medians of 2.96% at one worker
 and 1.87% at four. Two construction intervals are also inconclusive. All four
 adverse primary and four adverse construction blocks remain retained; no host
 is replaced. Johannes accepted this tradeoff for inclusion in the final candidate. Fold
-arity-two-through-four performance remains unmeasured, and the combined beta.10
-comparison is still required. This independent comparison does not accept beta.11.
+arity-two-through-four performance remains unmeasured, and this independent
+comparison did not accept beta.11. The combined beta.10 comparison and subsequent
+acceptance are recorded above.
 
 The [final bounded diagnosis](../bench/results/within-final-slowdown-diagnosis-20261030.json)
 uses retained evidence and independently reproduced disassembly, with no new
@@ -1690,6 +1691,55 @@ head (`d64fdc0d`):
 
 ## Package checks
 
+### Beta.11 migration packaging
+
+Beta.11 retains the selected migration runtime `65500be6` and within pin
+`8d401d82`, including counts, gather, Fold and sparse back-substitution.
+No optimization or scientific tolerance changed during release qualification.
+The large companion panel passes all 36 native and eight memory cells on each
+of Mac and Linux. The accepted eight-/sixteen-FE regressions and the inconclusive
+performance settings above remain part of the release decision.
+
+The [Mac release record](../bench/results/beta11-macos-release-20261030.json)
+passes all 77 exact replay cases (693 native calls across one, two, four and
+eight workers), all 67 licensed Stata fixtures, native ABI/load/panic checks
+and the universal binary audit. Its plugin was built with Rust 1.85.1 offline
+from the vendored `6c2231c2` source archive and an empty Cargo home.
+The [Windows release record](../bench/results/beta11-windows-release-20261030.json)
+passes the MSVC build, numeric and native-loader checks, actual local package
+installation and ten mapped Stata fixtures at the same source revision.
+Two preceding Windows failures are retained: a diagnostic-only driver localized
+the failure to the slope fixture's source-location assertion, and using an
+absolute ado path fixed the harness without changing the fixture or runtime.
+The qualified Linux plugin retains its original `65500be6` build and unchanged
+native, replay, Break/rollback and large-companion evidence.
+
+All production and dependency inputs in packaging source `b58474bc` match the
+offline-built source. The archive comparison checks every file: its differences
+are documentation, completed validation records and generated metadata only.
+The source ZIP is `b8b6f33e3f1ad581658bd6748805a73afd40a2309ca26736551ac5105eadd558`;
+the binary ZIP is `5c4e551877efc0f023cf3de81de54cec87334a6f18a707e70daeff9ba60b300e`.
+The dependency audit reports no advisories. The strict default
+`./scripts/run_tests.sh` passes with all three refreshed native plugins,
+including the installed-package binding, complexity, FFI and allocator checks.
+The current [native metadata](../dist/fereg-native.json) binds each actual
+build commit, plugin checksum and the corresponding-source archive.
+
+The [package qualification record](../bench/results/beta11-release-package-20261030.json)
+binds all 50 release assets and the completed checks. The exact binary archive
+passes all eleven staged-package fixtures on both Mac and Linux. Fresh local
+installations verify all 35 main-package files on Mac and all 34 flat-package
+files on Linux, native selftest and independent OLS/PPML examples. Linux job
+8362394 on `scc-222` has successful terminal accounting, 15 seconds wall time
+and 2.804 GB maximum virtual memory. Its 32-slot request covers the existing
+`threads(32)` installation test; no host or processor was selected. The job
+waited about 42 minutes before execution. Switching the queued job to the
+general `omp` environment and requesting a scheduler reservation changed no
+resource quantity, test, input or limit.
+
+Native Intel-host Stata execution remains unqualified; both Mac processor
+slices are supplied. Existing source and native releases remain immutable.
+
 ### Beta.10 integration packaging
 
 Beta.10 ships the integration round described in
@@ -1699,8 +1749,9 @@ built at `7674cf06` (run `win-20261028T183336Z-bc5a4e6b`), and universal macOS w
 the corresponding-source archive at `7674cf06`. Runtime production inputs are
 unchanged across these revisions (`scripts/check_complexity.py
 --compare-production 3348fe45`: 225 runtime modules, 58 artifact inputs). The
-[package metadata](../dist/fereg-native.json) records each actual build
-commit, binary checksum, runtime identity and corresponding-source hash.
+[beta.10 package metadata](https://github.com/johannes-schmieder/fereg/blob/v0.5.0-beta.10/dist/fereg-native.json)
+records each actual build commit, binary checksum, runtime identity and
+corresponding-source hash.
 
 | Platform | Beta.10 checks |
 | --- | --- |

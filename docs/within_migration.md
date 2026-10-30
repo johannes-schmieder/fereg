@@ -4,8 +4,8 @@ The baseline audit compares fereg `7f56d06ee4c004741f32d4692bc0e40b898a51d7`
 with upstream `py-econometrics/within` main frozen at
 `32dde1bdd604f33012e592270781129e09e82a92`. That fereg baseline used
 [historical fork revision `3b5b9b9`](https://github.com/johannes-schmieder/within/commit/3b5b9b9ab9b79e4a8cac2841f7c1d41bb2276104)
-for both `within` and `schwarz-precond`. The active source for the unpublished
-beta.11 final test candidate pins both dependencies through its
+for both `within` and `schwarz-precond`. The selected beta.11 migration
+pins both dependencies through its
 [dependency declarations](../crates/fereg-core/Cargo.toml) and
 [lockfile](../Cargo.lock) to
 [`8d401d8278ac783b2f258c459e057f30cd80d595`](https://github.com/johannes-schmieder/within/commit/8d401d8278ac783b2f258c459e057f30cd80d595).
@@ -57,7 +57,7 @@ decisions, public memory controls and transactional failure remain requirements.
 ## Comparison identities
 
 The protected beta.10 tag is `435f42ce97d090e23c94625efac5fd48daa9b8fb`.
-[Its native metadata](../dist/fereg-native.json) records these actual plugins:
+[Its native metadata](https://github.com/johannes-schmieder/fereg/blob/v0.5.0-beta.10/dist/fereg-native.json) records these actual plugins:
 
 | Platform | Source revision | Plugin SHA-256 |
 |---|---|---|
