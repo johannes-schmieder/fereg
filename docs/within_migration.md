@@ -17,9 +17,9 @@ this combined candidate. Scatter slices remain excluded. There is no
 processor-specific dispatch or change to scientific semantics.
 
 This final source passes combined source, native and preflight checks on Mac
-and Linux. Combined performance qualification and the larger companion panel
-remain incomplete. The [current validation record](VALIDATION.md#upstream-migration-candidate)
-retains the final Mac regressions, incomplete Linux evidence and two unresolved
+and Linux. Combined performance comparisons need discussion, and the larger companion
+panel remains incomplete. The [current validation record](VALIDATION.md#upstream-migration-candidate)
+retains the final Mac and six-host Linux regressions and two unresolved
 beta.10/reference fitted-value comparisons after the approved DoF normalization.
 No new estimates ran during those failed rechecks or their read-only diagnostic.
 Earlier counts-only fereg `c1f4d5ad` and dependency `534ea64f`

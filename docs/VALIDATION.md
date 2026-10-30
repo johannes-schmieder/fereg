@@ -18,8 +18,8 @@ accepted all four optimizations and their disclosed individual-patch tradeoffs
 on 2026-10-30, and authorized combined building and qualification. Scatter slices
 remain excluded; no processor-specific dispatch or scientific-semantic change
 is included. Combined source, native and preflight checks passed on Mac and Linux.
-The final Mac comparison needs discussion; Linux qualification and the larger
-companion panel remain incomplete. The earlier counts-only `534ea64f` candidate had 55 passed Mac
+The final Mac and Linux comparisons need discussion; the larger companion
+panel remains incomplete. The earlier counts-only `534ea64f` candidate had 55 passed Mac
 cells, two inconclusive cells and one regression; its five valid Linux hosts
 were below the six-host requirement. Those classifications remain unchanged.
 
@@ -68,6 +68,24 @@ host medians on all three completed hosts; these observations remain retained.
 The bounded observer-only completion preserves these hosts and all failed
 attempts, and permits only the three missing independent units.
 
+That [completion](../bench/results/within-final-linux-completion-20261030.json)
+now supplies six distinct isolated physical hosts and all 3,480 eligible calls;
+all 241 original failed-attempt calls also remain retained. All array tasks and
+the report have successful terminal accounting, and report validation has no
+errors. Of 58 unique endpoints, 50 pass, four regress and four are inconclusive.
+Eight-FE complete-call medians increase from 421.1 to 462.5 ms at one worker
+and 213.2 to 229.9 ms at four; sixteen-FE medians increase from 895.8 to
+992.4 ms and 468.9 to 516.7 ms. Their median block ratios are respectively
++9.72%, +8.20%, +10.74% and +9.75%, distinct from ratios of the pooled call
+medians. All six host excesses are positive for each of these four endpoints.
+Sparse three-FE at one worker is inconclusive (+4.89% median block ratio;
+12.731 to 13.362 seconds in full-call medians). The four-worker 16-regressor
+AKM, four-FE T1 and small-third T1 endpoints are also inconclusive. The original
+near-confounded-third T4 setup regression is recovered: its complete-call
+comparison passes at a -2.28% median block ratio. These combined results require
+Johannes's acceptance decision; the individual optimization approvals do not
+waive these regressions. No further timing or optimization loop is authorized.
+
 The large companion panel first stopped on a baseline OLS reference convention:
 fereg's documented pairwise absorbed DoF is 2,095,755, whereas the strict fixest
 reference reports 2,095,753. Johannes approved preserving the pairwise policy.
@@ -93,8 +111,12 @@ normalized scores are `2.4602e-13` and `2.4550e-11`, compared with reference
 scores `4.6608e-9` and `6.7322e-9`. This raises a reference-accuracy concern
 but does not establish pointwise correctness. The diagnostic completed in
 15.98 seconds with successful terminal SCC accounting and zero fits. Both
-fitted gates remain failed; dependent companion qualification is held for
-Johannes's decision. No numerical tolerance or production behavior changed.
+fitted gates remain failed. Johannes subsequently approved continuing the seven
+unaffected families, retaining both failures. The bounded continuation covers
+28 native calls per platform; Mac adds four weighted-OLS memory calls, while
+Linux reuses the four already passed weighted-OLS admission/refusal checks.
+Both held families remain outside this continuation, and a new failure stops
+the subset. No numerical tolerance or production behavior changed.
 
 The separate [Fold accumulator comparison](../bench/results/within-fold-performance-20261030.json)
 completes all 516 calls with exact science and solver work. The affected Mac
