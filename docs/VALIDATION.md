@@ -21,7 +21,7 @@ is included. Combined source, native and preflight checks passed on Mac and Linu
 Johannes conditionally accepted the disclosed eight-/sixteen-FE performance
 regressions on 2026-10-30, provided investigation of the two large fitted-value
 disagreements supports the accuracy of the estimates. That numerical condition
-remains open for the actual candidate artifacts; the larger companion panel
+remains open for the unfinished Linux qualification; the larger companion panel
 remains incomplete. The earlier counts-only `534ea64f` candidate had 55 passed Mac
 cells, two inconclusive cells and one regression; its five valid Linux hosts
 were below the six-host requirement. Those classifications remain unchanged.
@@ -170,6 +170,43 @@ verified interval-arithmetic implementation. The actual beta.11 artifacts and
 remaining worker/platform cells are being checked against this enclosed
 solution, including the center's uncertainty inside the original tolerance.
 
+The [completed Mac enclosure checks](../bench/results/within-enclosed-companions-mac-20261030.json)
+pass all eight beta.10/beta.11 calls on the two formerly held families, at one
+and four workers, plus all eight cross-arm/cross-worker comparisons. Each call
+adds the independently proved center uncertainty to its difference from that
+center before applying the unchanged accuracy tolerance. The worst fitted bound
+uses 19.3736% of tolerance for OLS and 70.4552% for PPML; the worst coefficient
+bound uses 0.2651% and 53.0589%, respectively. Both arms execute within, with
+403 OLS and 149 PPML dependency iterations in every call. Scalar/covariance,
+model-score, reconstruction and discrete checks also pass. The controller
+completed in 524.2 seconds, with zero retries. These are correctness checks,
+not a new performance or fixed-worker repeatability comparison. Together with
+the earlier unaffected subset, all 36 planned Mac native cells now pass.
+
+The [Mac PPML memory completion](../bench/results/within-enclosed-memory-mac-20261030.json)
+passes the four remaining original memory cells: beta.10 and beta.11 both meet
+the independent optimum enclosure when admitted with 64 GiB available; both
+refuse at 512 MiB available (zero usable bytes), preserving every matrix and
+observation column and performing no solver work. It completed in 78.9 seconds,
+with zero retries. Combined with the earlier weighted-OLS checks, all eight
+planned Mac memory cells pass. This tests early refusal, not late allocation
+failure or performance, and does not close the separate Linux coverage gaps.
+
+The [Linux enclosure attempt](../bench/results/within-enclosed-companions-linux-20261030.json)
+passes both retained-center preflights and revalidates the original beta.10 OLS
+cell, but the first new beta.11 ten-million-row OLS T1 call reaches its fixed
+600-second limit without returning estimates. Its last trace reports a certified
+FE solve, with all seventeen RHSs converged; that does not establish completion
+of estimation or explain the timeout. The sequence stops, leaving six cells
+unstarted. Job 8359778 on `scc-pf8` records scheduler `failed=0`, process exit 1,
+988 seconds wall time and 11.256 GB maximum virtual memory. This is incomplete
+qualification, not an observed numerical mismatch or a performance verdict.
+The numerical investigation and all Mac calls pass, but full candidate
+acceptance remains pending review of this new Linux execution limit. A proposed
+single retry at 1,200 seconds plus the six unstarted checks, within a further
+3,800-second total limit, is prepared but has not been approved or run. Both
+Linux timeouts and all original reference comparisons remain retained.
+
 The [Linux continuation](../bench/results/within-unaffected-companions-linux-20261030.json)
 passes all eight weighted-OLS Auto/LSMR calls, then stops when the ten-million-row
 two-FE PPML beta.10 call reaches its 600-second limit. No candidate PPML or slope
@@ -204,9 +241,9 @@ confused the reference JSON and NPZ hashes. Its narrow correction checks each
 file against its own pinned hash, and both the failure and correction remain in
 the record. Completed captures and staged inputs were removed after verification.
 These checks establish correctness for the approved subset, not performance or
-new fixed-worker repeatability evidence. The two held fitted-value gates and
-Linux PPML timeout remain unresolved; combined performance acceptance is also
-still required.
+new fixed-worker repeatability evidence. The later optimum enclosures and Mac completion above resolve the two numerical
+concerns on Mac. Linux still has the original PPML timeout and the new OLS
+candidate timeout; its remaining large-panel qualification is incomplete.
 
 The separate [Fold accumulator comparison](../bench/results/within-fold-performance-20261030.json)
 completes all 516 calls with exact science and solver work. The affected Mac

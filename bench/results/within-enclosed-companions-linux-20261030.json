@@ -1,0 +1,329 @@
+{
+  "schema": "within-enclosed-companions-v1",
+  "date": "2026-10-30",
+  "platform": "Linux",
+  "status": "failed",
+  "timing": false,
+  "source_commit": "65500be6e5dbaaa11bab6e6644e33e98ffbfa08a",
+  "within_revision": "8d401d8278ac783b2f258c459e057f30cd80d595",
+  "summary": {
+    "status": "failed",
+    "timing": false,
+    "new_native_calls": 1,
+    "reused_calls": 1,
+    "calls_started": 2,
+    "calls": 0,
+    "budget_seconds": 4800,
+    "host": "scc-pf8",
+    "job": "8359778",
+    "config_sha256": "76fb28385580a855082738cb1a5a566ba055b57a5deb6774221ca9075b258f9c",
+    "families": [],
+    "center_science_preflight": [
+      {
+        "family": "ols-three-sparse-10m",
+        "science": {
+          "passed": true,
+          "independent_scope": "16 finite coefficients and their covariance; sample/rank; fitted response, objective and model score",
+          "constant_scope": "normalized constant status and reconstruction only; no independent constant coordinate/VCE claim",
+          "comparison": {
+            "eligible": true,
+            "reasons": [],
+            "agreement": "exact",
+            "covariance_scale": 1.0
+          },
+          "normalization": {
+            "policy": "fereg pairwise mobility components in declared FE order",
+            "proof_sha256": "c52ffc7d6111dc7ffa632dc374a576806a88254e4088ba4d8336ddc9e8d5cf4d",
+            "builder_sha256": "16087d1e738b8b2c55680367ad57ee0d9e359cd9e5d5f4080d351621e48fe8c1",
+            "raw_reference_sha256": "05baad382358f5244ef27d03da92708d35a65a4222648d50badc06665398eff8",
+            "pairwise_absorbed_dof": 2095755,
+            "covariance_factor": 1.0000002530291063,
+            "exact_joint_rank_claim": false,
+            "ppml_constant_transfer": false
+          },
+          "maximum_model_score": 2.4601652726559227e-13,
+          "replayed_objective": 1975933.38129764,
+          "independent_optimum_enclosed": true,
+          "maximum_optimum_tolerance_ratio": 0.19373423010261648,
+          "original_reference_failed_rows": 1317,
+          "original_reference_maximum_absolute": 4.584270094643017e-06,
+          "original_reference_comparison_retained": true,
+          "center_sha256": "56c012231762b2a4e2031155c2d3105d50925603347c53f86eec4be8d45be4fd",
+          "proof_sha256": "f8501a98549670e0ee6640f54951f48c4bd080a69cbf0c15d6a67b2fac7ffe98",
+          "maximum_coefficient_optimum_tolerance_ratio": 0.002650293250501511,
+          "finite_coefficients_optimum_enclosed": true
+        }
+      },
+      {
+        "family": "ppml-three-sparse-1m-lsmr",
+        "science": {
+          "passed": true,
+          "independent_scope": "16 finite coefficients and their covariance; sample/rank; fitted response, objective and model score",
+          "constant_scope": "normalized constant status and reconstruction only; no independent constant coordinate/VCE claim",
+          "comparison": {
+            "eligible": true,
+            "reasons": [],
+            "agreement": "exact",
+            "covariance_scale": 1.0
+          },
+          "normalization": {
+            "policy": "fereg pairwise mobility components in declared FE order",
+            "proof_sha256": "c52ffc7d6111dc7ffa632dc374a576806a88254e4088ba4d8336ddc9e8d5cf4d",
+            "builder_sha256": "16087d1e738b8b2c55680367ad57ee0d9e359cd9e5d5f4080d351621e48fe8c1",
+            "raw_reference_sha256": "2ecf445ffc93a2330d4af1a5c818600c4dd9499573a4236cce7607d28da5c338",
+            "pairwise_absorbed_dof": 209586,
+            "covariance_factor": 1.0,
+            "exact_joint_rank_claim": false,
+            "ppml_constant_transfer": true
+          },
+          "maximum_model_score": 2.455016086476827e-11,
+          "replayed_objective": -1373892.2012349253,
+          "independent_optimum_enclosed": true,
+          "maximum_optimum_tolerance_ratio": 0.7045509019914004,
+          "original_reference_failed_rows": 19,
+          "original_reference_maximum_absolute": 5.673037146713966e-07,
+          "original_reference_comparison_retained": true,
+          "center_sha256": "69d8083b779fd983c0a1482100efce131bc8ff7c6a569cf87ec08e439f1cbeca",
+          "proof_sha256": "f8501a98549670e0ee6640f54951f48c4bd080a69cbf0c15d6a67b2fac7ffe98",
+          "maximum_coefficient_optimum_tolerance_ratio": 0.5305887612834111,
+          "finite_coefficients_optimum_enclosed": true
+        }
+      }
+    ],
+    "error": "See retained source/result identities; raw path omitted.",
+    "elapsed_seconds": 764.1825054410147
+  },
+  "summary_sha256": "7ca1302518cf56d8141ddbfcec2fb746744bbaad1f859d93f94c866c894a84e2",
+  "families": [
+    {
+      "summary_sha256": "ffb04119924d04e6c81c05d39a45307575e4120fb022a66ea09ecd3d14a337ab",
+      "family": "ols-three-sparse-10m",
+      "phase": "preflight",
+      "config_sha256": "76fb28385580a855082738cb1a5a566ba055b57a5deb6774221ca9075b258f9c",
+      "calls": [
+        {
+          "workers": 1,
+          "arm": "baseline",
+          "repetition": -1,
+          "started_monotonic_ns": 666105711505497,
+          "wall_s": 204.5555766579928,
+          "user_s": 190.24915,
+          "system_s": 12.600698,
+          "maxrss_bytes": 12820541440,
+          "reused": true,
+          "finished_monotonic_ns": 666144154143773,
+          "result_sha256": "f2a04173d5e8c331442e2fb0a0c8972254320f2953e51f7c9962e6e224326b55",
+          "trace_sha256": "e258cd5f105b44ad36ea79a54891484549fe1194090735b3778e91754d40d394",
+          "seconds": 154.911090032,
+          "fingerprint": "562c8b162bf296341581e5ebff54968438e3dde7bce2d4fc64af437d280e4424",
+          "discrete": "d66dd5cb801e26b132d6f7cd42ff899158ca373707ede14815b07d74656bb102",
+          "column_hashes": [
+            "9f31b0cd3734866d5cf9f7abad112968b73badabf0df236f2e999a61fd28fbe2",
+            "a28bc62758a5b3f345cdd080dd70c0fa8cedf6d4c2e2dbe0c1e3a2fa61ad7813",
+            "88c79d1b834b7899bc94feb7501e288660cf86bc51a846488c0f7129db9bfff1",
+            "1dbcabe3e8f862c4fb432185261420d09b5eaf0ba91b9881bd58e5de0f3148d6",
+            "92fcc7f41d67d898fe48777760000a725cfd5e152d8797d23f86f875e4c954c7",
+            "6ab71c58c48c9b55b5307ac6a0ade95005cd82d6467facfd5d492b4e0f9d284d",
+            "8c6914208288cd266d6e78374c7b97fa85aa056868556a084b3cd3827b593ae8",
+            "cd970393608d72ecb96df9b5910a14c665f88a9888918cb475ddbc3c1bf83a8d",
+            "9ebfdfa0a4e180361947d796422ffc6ead437d9386769bb6a2933eea8f7bcc00",
+            "036e95a384351eb65e7da7923504ceab1ff8e7d3dfbf44f5c5c87e5e6c8ad1e8",
+            "6f71864d3198b8d3a1243881081b8af03a52239dfced6044726b50880aa1efb0",
+            "775c1211d9ae67f658241088b80d99e519690ffb4ddc18328075545780f838d7",
+            "8d99190dd43932c64472a7bf5c11e536db2f3f958ddba38887a851b440900a39",
+            "7b95e76f7e634680921504e7fe6345e6fb0b7922a6c07cd4a2a97326463d32b7",
+            "541a80d64f324c9fa8dec9dedd1c60ec986d58291776f41c0a01a63e3862adce",
+            "05ac687acf336d391796840d93282530230fb49c144e8f7270a411d8573df29f",
+            "296c50c6bae0d5c9326dd2cc4aab8b7f944dcf37f5aab02646cad1e4a0891a89",
+            "ad94448296bf2108948e35bd294c3585b48995d971214dade414ad5bfc0fc067",
+            "ac282dd3aab94b294dddfd215b725886c18357c2938237c5860596b8dac42b20",
+            "2bb2a41da7ebbc96f5f49b4dc755e337cbc96da3bea8d2276da7458a9c524187",
+            "be46a23b33e90708656054635543b1238553eaa8f824302822cd8e741aa4b8c5",
+            "9f31b0cd3734866d5cf9f7abad112968b73badabf0df236f2e999a61fd28fbe2",
+            "8f7626de3293271c02153263465d36402250aa9ad7c2b318b8e9059ad4ef718d",
+            "6e59c9b4002c8ee5842dcbc7ed9af13d894e525f2832bc54d5fc997a8b81df96",
+            "c87df4fb6120e65bb9dde7ff5f4d769085e2b2aae894b6f9ff91c70ba62194cf",
+            "56c012231762b2a4e2031155c2d3105d50925603347c53f86eec4be8d45be4fd",
+            "b77456723f21e71474ec1522d8b112548074d507f4d0fa16c6ea131939db6ced"
+          ],
+          "science": {
+            "passed": true,
+            "independent_scope": "16 finite coefficients and their covariance; sample/rank; fitted response, objective and model score",
+            "constant_scope": "normalized constant status and reconstruction only; no independent constant coordinate/VCE claim",
+            "comparison": {
+              "eligible": true,
+              "reasons": [],
+              "agreement": "exact",
+              "covariance_scale": 1.0
+            },
+            "normalization": {
+              "policy": "fereg pairwise mobility components in declared FE order",
+              "proof_sha256": "c52ffc7d6111dc7ffa632dc374a576806a88254e4088ba4d8336ddc9e8d5cf4d",
+              "builder_sha256": "16087d1e738b8b2c55680367ad57ee0d9e359cd9e5d5f4080d351621e48fe8c1",
+              "raw_reference_sha256": "05baad382358f5244ef27d03da92708d35a65a4222648d50badc06665398eff8",
+              "pairwise_absorbed_dof": 2095755,
+              "covariance_factor": 1.0000002530291063,
+              "exact_joint_rank_claim": false,
+              "ppml_constant_transfer": false
+            },
+            "maximum_model_score": 2.4601652726559227e-13,
+            "replayed_objective": 1975933.38129764,
+            "independent_optimum_enclosed": true,
+            "maximum_optimum_tolerance_ratio": 0.19373423010261648,
+            "original_reference_failed_rows": 1317,
+            "original_reference_maximum_absolute": 4.584270094643017e-06,
+            "original_reference_comparison_retained": true,
+            "center_sha256": "56c012231762b2a4e2031155c2d3105d50925603347c53f86eec4be8d45be4fd",
+            "proof_sha256": "f8501a98549670e0ee6640f54951f48c4bd080a69cbf0c15d6a67b2fac7ffe98",
+            "maximum_coefficient_optimum_tolerance_ratio": 0.002650293250501511,
+            "finite_coefficients_optimum_enclosed": true
+          },
+          "dependency_iterations": 403,
+          "checkpoint": false
+        },
+        {
+          "workers": 1,
+          "arm": "candidate",
+          "repetition": -1,
+          "started_monotonic_ns": 666176078070223
+        }
+      ],
+      "status": "failed",
+      "error": "See retained source/result identities; raw path omitted."
+    }
+  ],
+  "plan": {
+    "scope": "The two formerly held large families, original fixed artifacts and inputs, unchanged scientific tolerances.",
+    "families": [
+      "ols-three-sparse-10m",
+      "ppml-three-sparse-1m-lsmr"
+    ],
+    "workers": [
+      1,
+      4
+    ],
+    "arms": [
+      "baseline",
+      "candidate"
+    ],
+    "linux": {
+      "cells": 8,
+      "new_calls": 7,
+      "reused_calls": 1,
+      "budget_seconds": 4800,
+      "slots": 16,
+      "memory_per_slot": "6G"
+    },
+    "mac": {
+      "cells": 8,
+      "new_calls": 8,
+      "budget_seconds": 4800,
+      "per_family_staging": true
+    },
+    "per_call_timeout_seconds": 600,
+    "timing": false,
+    "stop_at_first_failure": true,
+    "native_retries": 0,
+    "original_reference_failures_retained": true,
+    "proof_sha256": "f8501a98549670e0ee6640f54951f48c4bd080a69cbf0c15d6a67b2fac7ffe98",
+    "fitted_test": "abs(new-center) + independently proved center error <= 1e-9 + 1e-7*abs(new)",
+    "finite_coefficient_test": "abs(new-center) + independent coefficient error bound <= 1e-10 + 1e-7*abs(new)",
+    "other_checks": "Existing scalar, covariance, sample/rank, model scores, reconstruction, trace coverage and cross-arm/worker comparisons stay unchanged."
+  },
+  "plan_sha256": "0e592e0e006dd4cf06895addb01bb9c27e78923025434a33ef950a76ee4430c8",
+  "proof_record": "within-companion-optimum-enclosure-20261030.json",
+  "proof_sha256": "f8501a98549670e0ee6640f54951f48c4bd080a69cbf0c15d6a67b2fac7ffe98",
+  "helper_sha256": "a2aeaf42ba0a5613469d2c2c5f99b3557dce385a92a9912ee49d9311e9344c3e",
+  "center_manifest": {
+    "proof_sha256": "f8501a98549670e0ee6640f54951f48c4bd080a69cbf0c15d6a67b2fac7ffe98",
+    "native_calls": 0,
+    "centers": {
+      "ols-three-sparse-10m": {
+        "file": "ols-three-sparse-10m.f64",
+        "sha256": "56c012231762b2a4e2031155c2d3105d50925603347c53f86eec4be8d45be4fd",
+        "rows": 10000000,
+        "case_sha256": "5ea29ff095f69f261bc5677dfb6e251ef55b4b3b62ab411d2fc16d01ba64fa4c",
+        "body_sha256": "71040ffe6d72a5b42e0c00a4a20aa9c4dfae77a63b8fe837d7333e12ab9be9bf",
+        "source_columns_sha256": "91b0683075ff7ec40ebfb8f3cfb40e76cc4331e0bd50e3fc1c03414a00ff7bd8",
+        "source_result_sha256": "f2a04173d5e8c331442e2fb0a0c8972254320f2953e51f7c9962e6e224326b55",
+        "beta": [
+          0.3001392505319974,
+          -0.10007627286441441,
+          0.09986816529927679,
+          -0.04986808289516453,
+          0.05990904397129615,
+          -0.03359167801447218,
+          0.042481696985766586,
+          -0.025138387443666366,
+          0.033271504373435574,
+          -0.01978334753552387,
+          0.027080863120042705,
+          -0.016853468253485642,
+          0.023433396612977365,
+          -0.013970983858278361,
+          0.01997470164912808,
+          -0.01259866929405312
+        ],
+        "coefficient_absolute_bound": 3.6040461445831136e-12,
+        "fitted_tolerance_ratio_bound": 0.19373423010261645
+      },
+      "ppml-three-sparse-1m-lsmr": {
+        "file": "ppml-three-sparse-1m-lsmr.f64",
+        "sha256": "69d8083b779fd983c0a1482100efce131bc8ff7c6a569cf87ec08e439f1cbeca",
+        "rows": 1000000,
+        "case_sha256": "f61664c8cfa263839168f73660ad03cd28e3a15e49efcd0bd58bd7fefbaca1b2",
+        "body_sha256": "fdba60814a3f8e8e0b9b1e95c948b3e9528a379376b53ba6fc0e799bf80be549",
+        "source_columns_sha256": "5f1f01a696dc507af4b939bd8a173c8668a0ac8c8d4fbeb0ec3d1097944bad22",
+        "source_result_sha256": "dc667a7a604aca7dd812711f743a6f68f2a6af8e4792c4a137f56ba43fc67a71",
+        "beta": [
+          0.30025084142953984,
+          -0.10024246472024313,
+          0.10160203670057577,
+          -0.05095179020103991,
+          0.05890223869005592,
+          -0.03328742445459664,
+          0.04350071605393689,
+          -0.02513632933576631,
+          0.03399039939542592,
+          -0.019432887609632445,
+          0.02687038951864914,
+          -0.015359766321324096,
+          0.022301233288389507,
+          -0.013585870036741755,
+          0.020550121201793004,
+          -0.011719803185802256
+        ],
+        "coefficient_absolute_bound": 6.748984616123607e-10,
+        "fitted_tolerance_ratio_bound": 0.7045509019914002
+      }
+    }
+  },
+  "center_manifest_sha256": "9acee18357faefb29ba0450a0e2804ddaa32d8a9eb45da4bae2ea0d53bf9952a",
+  "comparison_contract": "Only the retained baseline OLS cell and both center preflights passed. The new candidate OLS T1 call timed out at 600 seconds before returning estimates; six cells never started. No performance conclusion or numerical mismatch is established.",
+  "field_note": "The unused zero from the base checker maximum_fitted_absolute_difference field is omitted. original_reference_maximum_absolute and original_reference_failed_rows retain the actual unfavorable comparisons.",
+  "scope_limit": "Linux large-panel candidate qualification remains incomplete. The separate earlier Linux two-FE PPML timeout also remains retained. No native retry has run.",
+  "cells": {
+    "passed_reused": 1,
+    "timed_out_new": 1,
+    "unstarted": 6
+  },
+  "timeout_log_sha256": "0761c4d343d6dd1342285cb36d0e99807dae3eff7200a3b9c5c0cc71448cd2f7",
+  "accounting": {
+    "jobnumber": "8359778",
+    "hostname": "scc-pf8.scc.bu.edu",
+    "slots": "16",
+    "failed": "0",
+    "exit_status": "1",
+    "ru_wallclock": "988",
+    "cpu": "787.685",
+    "maxvmem": "11.256G"
+  },
+  "accounting_sha256": "3cbd53b2030caeb04f9553ff57a368d047106eea62f2fc9027edc003b65436ba",
+  "log_sha256": "f350c926b2769f8fa36db61f9ce04f1d027bed7555bbb119158c930b110fb96e",
+  "manifest_sha256": "c62a3a535fba4105934d1ecc0c31cebd0454f09e4b43dd5d5bdcaa69a56e33a3",
+  "artifact_sha256": {
+    "baseline": "a79641166c17e5c193dc5f86a7fd487265d6978076e60ab7ca72f32f240f9f08",
+    "candidate": "af65682bfbe124a3e0138c8586fd9d63703f84291ecde444483e57ceb118b65b",
+    "harness": "63dda1c1dd6436305aae2fdb3ffb410f3af9d3d5220cc0be3c0599ed7d19ba67"
+  }
+}

@@ -21,14 +21,18 @@ and Linux. The approved companion continuation passes all 28 native and four
 memory checks on Mac, plus eight weighted-OLS and sixteen slope calls on Linux;
 Linux also retains its four previously passed weighted-OLS memory checks.
 The [current validation record](VALIDATION.md#upstream-migration-candidate)
-keeps the final Mac and six-host Linux performance regressions, two unresolved
+keeps the final Mac and six-host Linux performance regressions, the two original
 beta.10/reference fitted-value comparisons after the approved DoF normalization,
 and the 600-second Linux beta.10 PPML timeout explicit. That timeout was not
 retried. Johannes has now conditionally accepted the disclosed eight-/sixteen-FE
 regressions, provided the numerical investigation supports the estimates. An
 independent bridge-cell witness proves reference error on a subset of the
 failing rows, and an independent optimum enclosure now covers both full
-retained beta.10 fits. Actual-candidate checks against that enclosure remain open. The larger
+retained beta.10 fits. All eight Mac beta.10/beta.11 calls against those enclosures
+now pass. The new Linux beta.11 ten-million-row OLS call timed out at 600 seconds,
+leaving six checks unstarted; this execution limit needs review before continuing.
+Mac also passed the four remaining PPML memory cells, completing all 36 native
+and eight memory checks in its original large companion panel. The larger
 companion panel remains incomplete, and beta.11 remains an unpublished review
 candidate until that condition is met.
 No new estimates ran during the failed fitted-value rechecks or their read-only
