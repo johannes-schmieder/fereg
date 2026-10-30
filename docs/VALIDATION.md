@@ -231,6 +231,28 @@ questions for the actual candidate on Mac and Linux. Linux now passes 32 of
 leaves four uncompleted cells. No performance or new fixed-worker repeatability
 claim is added by this science-only completion.
 
+The [Linux memory completion](../bench/results/within-enclosed-memory-linux-20261030.json)
+passes all eight original admission/refusal cells: it revalidates five retained
+cells and runs only the three unstarted PPML cells, with no native retries.
+Both PPML arms pass the independent optimum enclosure with 64 GiB available.
+Both refuse with 512 MiB available (zero usable bytes), preserve every matrix
+and all 28 observation columns, and enter no solver work. Job 8360885 on
+`scc-fi2` completes with successful terminal accounting, 179 seconds wall time
+and 2.533 GB maximum virtual memory. The prior memory jobs plus this completion
+use 470 seconds of the original 3,600-second budget. This verifies early
+refusal and rollback, not late allocation failure or performance.
+
+The large companion coverage is therefore:
+
+| Platform | Native cells passed | Memory cells passed | Remaining limitation |
+|---|---:|---:|---|
+| Mac | 36/36 | 8/8 | No remaining cell in this panel |
+| Linux | 32/36 | 8/8 | Four two-FE PPML control cells incomplete after the beta.10 timeout |
+
+This completes the two numerical investigations and supports the selected
+beta.11 candidate with Johannes's accepted eight-/sixteen-FE tradeoffs. It does
+not turn the remaining Linux control timeout into a success or qualify Windows.
+
 The [Linux continuation](../bench/results/within-unaffected-companions-linux-20261030.json)
 passes all eight weighted-OLS Auto/LSMR calls, then stops when the ten-million-row
 two-FE PPML beta.10 call reaches its 600-second limit. No candidate PPML or slope

@@ -29,8 +29,7 @@ classification is relabeled.
 
 Mac passes all 36 native and eight memory cells in the large companion panel.
 Linux passes 32 of 36 native cells, including all formerly disputed OLS/PPML
-cells, plus its four previously passed weighted-OLS memory checks. Its approved
-single retry of the candidate OLS T1 timeout completed successfully on `scc-b11`;
+cells, and all eight original memory cells. Its approved single retry of the candidate OLS T1 timeout completed successfully on `scc-b11`;
 that does not establish why the earlier call timed out on `scc-pf8`. The separate
 ten-million-row two-FE PPML beta.10 timeout was not retried and leaves four
 control cells incomplete. Windows beta.11 is not qualified here. The selected
