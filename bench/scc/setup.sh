@@ -56,7 +56,8 @@ else
     bash scripts/build_linux.sh > "$RUN_ROOT/logs/build.log" 2>&1
 fi
 python3 bench/build_clock.py --output "$RUN_ROOT/environment/command-clock.plugin" > "$RUN_ROOT/logs/clock-build.log" 2>&1
-python3 -m unittest discover -s bench/tests > "$RUN_ROOT/logs/harness-tests.log" 2>&1
+# A policy override shapes only this run's schedule; the tests check the full policy.
+env -u CAMPAIGN_POLICY_OVERRIDE python3 -m unittest discover -s bench/tests > "$RUN_ROOT/logs/harness-tests.log" 2>&1
 cd "$RUN_ROOT/environment/references"
 stata-mp -b do "$RUN_ROOT/source/bench/scc/prepare_references.do" "$RUN_ROOT/environment/references"
 mv references.log "$RUN_ROOT/logs/reference-prepare.log"
