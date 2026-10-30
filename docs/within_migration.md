@@ -5,23 +5,24 @@ with upstream `py-econometrics/within` main frozen at
 `32dde1bdd604f33012e592270781129e09e82a92`. That fereg baseline used
 [historical fork revision `3b5b9b9`](https://github.com/johannes-schmieder/within/commit/3b5b9b9ab9b79e4a8cac2841f7c1d41bb2276104)
 for both `within` and `schwarz-precond`. The active source for the unpublished
-beta.11 counts-only test candidate pins both dependencies through its
+beta.11 final test candidate pins both dependencies through its
 [dependency declarations](../crates/fereg-core/Cargo.toml) and
 [lockfile](../Cargo.lock) to
-`534ea64f7b0e26b772f93ca087f43837c1e187e4`: the tested migration stack
-`d3407a16` plus the dense categorical-count optimization. Johannes approved
-advancing this counts-only candidate to testing after the bounded diagnosis.
-Scatter remains held. Under his later clear-gains/minor-regressions instruction,
-counts plus back-substitution is prepared separately as described below; the
-active fereg pin has not yet changed. Fereg `c1f4d5ad` now has actual
-counts-only Mac/Linux plugins, completed native correctness checks and the
-[bounded main comparison](../bench/results/within-counts-qualification-20261029.json).
-Mac has 55 passed cells, two inconclusive cells and one regression; Linux has
-five valid hosts, leaving all 58 cells below the declared six-host minimum.
-Beta.11 is not performance-qualified; installed-package admission also remains
-outstanding. Earlier `d3407a16` and combined `4beaa8af` results remain historical,
-unaccepted evidence below. No result authorizes acceptance, adoption or a
-production release.
+[`8d401d8278ac783b2f258c459e057f30cd80d595`](https://github.com/johannes-schmieder/within/commit/8d401d8278ac783b2f258c459e057f30cd80d595).
+It combines the tested essential migration stack `d3407a16` with counts,
+back-substitution, gather chunk zeroing and the general Fold running accumulator.
+Johannes explicitly accepted all four optimizations on 2026-10-30 after reviewing
+their gains and adverse host observations, and authorized building and qualifying
+this combined candidate. Scatter slices remain excluded. There is no
+processor-specific dispatch or change to scientific semantics.
+
+This final source has not yet completed combined native or performance
+qualification. Earlier counts-only fereg `c1f4d5ad` and dependency `534ea64f`
+results remain retained: Mac had 55 passed cells, two inconclusive cells and one
+regression; Linux had five valid hosts, below the declared six-host minimum.
+The new approval accepts the disclosed individual-patch tradeoffs; it does not
+relabel old failures or establish combined beta.10 non-regression. Production
+adoption and publication remain separate from this test candidate.
 
 Johannes's current instruction is to develop and push these patches only in
 `johannes-schmieder/within`. Any upstream push or pull request requires prior
@@ -1186,11 +1187,16 @@ and `96bd65d46eebf0a767bd097d9faee0c4c03a75b79db559362da6f0ab53ac8598`.
 Two sandbox-blocked launcher attempts reached no compiler or tests and were
 stopped and joined before the successful direct-toolchain host invocation.
 
-This source has no gather, Fold accumulator or scatter-slice change. The final
-combined build awaits Johannes's choice about gather/Fold's disclosed larger
-regressions. Full integration checks remain pending; the active fereg dependency
-pin, protected plugins and accepted beta.10 release are unchanged. No upstream
-submission or production publication occurs.
+This intermediate source has no gather, Fold accumulator or scatter-slice
+change. Johannes subsequently accepted gather and Fold as well. The final
+`8d401d82` source adds their exact independent patches as `13ee0c0` and
+`8d401d8`, without conflicts; the resulting tree is
+`0c2a0b195843dbe19dd281ef576a5c04a981b8be`. Combined validation requires exact scientific fields,
+arithmetic order, solver work, routes, memory policy and cancellation against the
+migration stack; the existing declared numerical differences from beta.10 remain
+unchanged. Full combined checks and one bounded beta.10 comparison are the next
+qualification boundary. Protected plugins and the accepted beta.10 release are
+unchanged; no upstream submission or production publication occurs.
 
 Independent tests to preserve include the dense QR and weighted/disconnected
 families in [routing_portfolio](../crates/fereg-oracle/tests/routing_portfolio.rs),

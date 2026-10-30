@@ -12,15 +12,15 @@ and PPML reporting are unchanged.
 The unpublished beta.11 candidate is separate from the accepted beta.10 release.
 The [compatibility report](within_migration.md) records the frozen dependency
 bases, patch evidence and outstanding integration and performance requirements.
-The active source pin is the counts-only stack `534ea64f`, whose parent is
-`d3407a16`. Johannes approved advancing it to testing after the bounded diagnosis.
-Scatter remains held; counts plus back-substitution is now prepared as the next
-dependency candidate, with the active fereg pin unchanged. Fereg `c1f4d5ad` has tested actual
-Mac/Linux plugins and a [counts-only comparison](../bench/results/within-counts-qualification-20261029.json):
-Mac has 55 passed cells, two inconclusive cells and one regression; Linux has
-five valid hosts and all 58 cells remain below the required six-host minimum.
-The earlier `d3407a16` and `4beaa8af` results remain historical, unaccepted
-evidence. This does not establish performance recovery or beta.11 acceptance.
+The final source pin is `8d401d82`: the essential migration stack plus counts,
+back-substitution, gather and the general Fold running accumulator. Johannes
+accepted all four optimizations and their disclosed individual-patch tradeoffs
+on 2026-10-30, and authorized combined building and qualification. Scatter slices
+remain excluded; no processor-specific dispatch or scientific-semantic change
+is included. Combined source/native checks and beta.10 performance qualification
+remain pending. The earlier counts-only `534ea64f` candidate had 55 passed Mac
+cells, two inconclusive cells and one regression; its five valid Linux hosts
+were below the six-host requirement. Those classifications remain unchanged.
 
 The separate [Fold accumulator comparison](../bench/results/within-fold-performance-20261030.json)
 completes all 516 calls with exact science and solver work. The affected Mac
@@ -31,9 +31,9 @@ weighted categorical T1 control, including an 11.15% slower host with both
 blocks adverse. Actual sparse fits slow by host medians of 2.96% at one worker
 and 1.87% at four. Two construction intervals are also inconclusive. All four
 adverse primary and four adverse construction blocks remain retained; no host
-is replaced. The generic patch remains outside the combined candidate, pending
-discussion, missing Fold arity-two-through-four performance evidence and a fresh
-beta.10 comparison. This diagnostic does not accept beta.11.
+is replaced. Johannes accepted this tradeoff for inclusion in the final candidate. Fold
+arity-two-through-four performance remains unmeasured, and the combined beta.10
+comparison is still required. This independent comparison does not accept beta.11.
 
 The [final bounded diagnosis](../bench/results/within-final-slowdown-diagnosis-20261030.json)
 uses retained evidence and independently reproduced disassembly, with no new
@@ -46,8 +46,8 @@ the original setup penalty. Hardware-level attribution, the missing sixth host
 and adverse optimization controls remain unresolved. The diagnostic effort is
 closed; final optimization inclusion and combined verification remain separate.
 The separate counts/back-substitution commit `d1721a25` passes independent source
-review, 26 focused solver tests and strict library Clippy. Final integration
-awaits the gather/Fold tradeoff decision and the full combined native checks.
+review, 26 focused solver tests and strict library Clippy. The final four-patch stack now proceeds to combined source and native checks
+and a separately declared beta.10 comparison.
 
 Johannes approved retiring the general more-than-two-FE pair-upgrade experiment;
 its explicit h/k and builder-Break requests must fail clearly. Two-FE h/k and
