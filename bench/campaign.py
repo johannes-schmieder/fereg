@@ -121,6 +121,8 @@ def arms(cell):
 
 
 STRICT_PPML_DESIGNS = ['akm-baseline','two-sparse','three-sparse','akm-clustered','gravity']
+# Designs whose PPML sample and rank depend on separation by construction.
+SEPARATION_DESIGNS = {'gravity'}
 
 
 def dataset_key(cell):
@@ -455,31 +457,37 @@ def capture(directory, cell, frame, metadata):
     names=[f'x{i}' for i in range(1,k+1)]
     b={r['name']:float(r['value']) for r in csv.DictReader((directory/'coefficients.csv').open())}
     V={(r['row'],r['column']):float(r['value']) for r in csv.DictReader((directory/'covariance.csv').open())}
-    if not set(names)<=b.keys(): raise ValueError('omitted/missing finite coefficient')
-    beta=np.array([b[n] for n in names]);cov=np.array([[V[a,c] for c in names] for a in names])
+    # Only separation designs may delete rows or omit their separating control;
+    # Stata posts an omitted slope as o.x, the other packages drop it.
+    separation=cell['design'] in SEPARATION_DESIGNS
+    finite=[n for n in names if n in b];omitted=[n for n in names if n not in b]
+    if omitted and not separation:raise ValueError('omitted/missing finite coefficient')
+    beta=np.array([b[n] for n in finite]);cov=np.array([[V[a,c] for c in finite] for a in finite])
     if not np.isfinite(beta).all() or not np.isfinite(cov).all():raise ValueError('nonfinite coefficient/covariance')
     rows=pd.read_csv(directory/'rows.csv',na_values=['.'],float_precision='round_trip')
     if not np.array_equal(rows.obs_id.to_numpy(),frame.obs_id.to_numpy()):raise ValueError('original row order changed')
     selected=rows.retained.to_numpy()==1
     if not np.isin(rows.retained,[0,1]).all():raise ValueError('invalid sample indicator')
-    if not selected.all():raise ValueError('unexpected sample deletion in frozen retained inputs')
+    if not separation and not selected.all():raise ValueError('unexpected sample deletion in frozen retained inputs')
     required=['finite_slope_rank','slope_omissions','df_a','covariance_policy','N']
     if cell['model']=='ppml':required.append('converged')
     if cell['vce']=='cluster':required.append('N_clust')
     if any(not metadata.get(key) or metadata[key]=='.' for key in required):raise ValueError('missing scientific metadata')
-    if float(metadata['finite_slope_rank'])!=k or float(metadata['slope_omissions'])!=0:raise ValueError('finite rank/omission mismatch')
+    if float(metadata['finite_slope_rank'])!=len(finite) or float(metadata['slope_omissions'])!=len(omitted):raise ValueError('finite rank/omission mismatch')
     if cell['model']=='ppml' and float(metadata['converged'])!=1:raise ValueError('missing affirmative PPML convergence')
     if float(metadata['N'])!=selected.sum():raise ValueError('reported sample count mismatch')
     if not np.isfinite(float(metadata['df_a'])):raise ValueError('invalid absorbed DoF evidence')
-    if cell['vce']=='cluster' and float(metadata['N_clust'])!=frame.cluster.nunique():raise ValueError('cluster count mismatch')
-    result=dict(beta=beta.tolist(),covariance=cov.tolist(),N=int(selected.sum()),
+    clusters=frame.cluster[selected].nunique()
+    if cell['vce']=='cluster' and float(metadata['N_clust'])!=clusters:raise ValueError('cluster count mismatch')
+    # The gravity design has no singletons, so every deleted row is separated.
+    result=dict(beta=beta.tolist(),covariance=cov.tolist(),names=finite,N=int(selected.sum()),
                 sample_sha256=hashlib.sha256(rows.obs_id.to_numpy(dtype='<i8')[selected].tobytes()).hexdigest(),
-                omitted=[name for name in b if name.startswith('o.') and name!='o._cons'],
+                omitted=['o.'+name for name in omitted],
                 publication_omitted=[name for name in b if name.startswith('o.')],retained_all=bool(selected.all()),
-                finite_slope_rank=int(float(metadata['finite_slope_rank'])),singleton_deletions=0,separation_deletions=0,
+                finite_slope_rank=len(finite),singleton_deletions=0,separation_deletions=int((~selected).sum()),
                 covariance_policy=metadata['covariance_policy'],absorbed_dof=absorbed_rank(metadata,cell,frame),
                 reported_absorbed_dof=float(metadata['df_a']),
-                clusters=int(frame.cluster.nunique()) if cell['vce']=='cluster' else None)
+                clusters=int(clusters) if cell['vce']=='cluster' else None)
     if cell['model']=='ols':
         if not metadata.get('df_r') or metadata['df_r']=='.':raise ValueError('missing residual DoF')
         result['residual_dof']=float(metadata['df_r'])
@@ -487,42 +495,50 @@ def capture(directory, cell, frame, metadata):
     if cell['save_fe']:
         fitted=rows.fitted.to_numpy(float)
         if not np.isfinite(fitted[selected]).all():raise ValueError('missing saved prediction')
-        residual=frame.y.to_numpy()-fitted
-        normalizer=np.maximum(1,np.bincount(frame.g1.to_numpy(dtype=int),weights=np.abs(frame.y)+np.abs(fitted)))
-        moment=np.bincount(frame.g1.to_numpy(dtype=int),weights=residual)
-        result['maximum_worker_score']=float(np.max(np.abs(moment)/normalizer))
-        result['objective']=float(residual@residual) if cell['model']=='ols' else float(np.sum(fitted-frame.y*np.log(fitted)))
+        fitted[~selected]=np.nan
         np.savez_compressed(directory/'fitted.npz',fitted=fitted)
+        # Scores and objectives use the estimation sample only.
+        data=frame[selected];fitted=fitted[selected];y=data.y.to_numpy()
+        residual=y-fitted
+        normalizer=np.maximum(1,np.bincount(data.g1.to_numpy(dtype=int),weights=np.abs(y)+np.abs(fitted)))
+        moment=np.bincount(data.g1.to_numpy(dtype=int),weights=residual)
+        result['maximum_worker_score']=float(np.max(np.abs(moment)/normalizer))
+        result['objective']=float(residual@residual) if cell['model']=='ols' else float(np.sum(fitted-y*np.log(fitted)))
         # Per-level channels must be constant on each retained categorical level.
         result['saved_channels_finite']=all(np.isfinite(rows[f'saved{j}'][selected]).all() for j in range(1,cell['effects']+1))
         if not result['saved_channels_finite']:raise ValueError('nonfinite saved FE channel')
         moments=[]
         for j in range(1,cell['effects']+1):
-            code=frame[f'g{j}'].to_numpy(dtype=int)
-            channel=rows[f'saved{j}'].to_numpy(float)
+            code=data[f'g{j}'].to_numpy(dtype=int)
+            channel=rows[f'saved{j}'].to_numpy(float)[selected]
             minimum=np.full(code.max()+1,np.inf);maximum=np.full(code.max()+1,-np.inf)
             np.minimum.at(minimum,code,channel);np.maximum.at(maximum,code,channel)
             active=np.isfinite(minimum)
             if not close_values(minimum[active],maximum[active],1e-12,1e-10):raise ValueError('saved channel varies within level')
             moment=np.bincount(code,weights=residual)
-            scale=np.maximum(1,np.bincount(code,weights=np.abs(frame.y)+np.abs(fitted)))
+            scale=np.maximum(1,np.bincount(code,weights=np.abs(y)+np.abs(fitted)))
             moments.append(float(np.max(abs(moment)/scale)))
-        X=frame[names].to_numpy()
-        moments.append(float(np.max(abs(X.T@residual)/np.maximum(1,abs(X).T@(abs(frame.y)+abs(fitted))))))
+        X=data[finite].to_numpy()
+        moments.append(float(np.max(abs(X.T@residual)/np.maximum(1,abs(X).T@(abs(y)+abs(fitted))))))
         result['maximum_model_score']=max(moments)
-        if result['maximum_model_score']>1e-7:raise ValueError('saved predictor fails independent model score')
-        objective=float(residual@residual) if cell['model']=='ols' else float(np.sum(frame.y*np.log(fitted)-fitted-gammaln(frame.y+1)))
+        # A package that keeps separated rows cannot meet the score, because
+        # the separating slope diverges; its comparisons record the failure.
+        if result['maximum_model_score']>1e-7 and not separation:raise ValueError('saved predictor fails independent model score')
+        objective=float(residual@residual) if cell['model']=='ols' else float(np.sum(y*np.log(fitted)-fitted-gammaln(y+1)))
         reported=metadata.get('rss' if cell['model']=='ols' else 'll')
         if reported is None or not close_values([objective],[float(reported)],POLICY['objective_rtol'],POLICY['objective_atol']):
             raise ValueError('saved predictor does not replay reported objective')
         if metadata.get('native_arm')=='1' and cell['effects']>=2:
-            components=np.load(directory.parents[2]/'data'/(dataset_key(cell)+'.components.npz'))['component']
-            weights=fitted if cell['model']=='ppml' else np.ones(len(frame))
+            # Retained components refine the full-sample ones, so zero means
+            # on each retained component imply zero means on these.
+            components=np.load(directory.parents[2]/'data'/(dataset_key(cell)+'.components.npz'))['component'][selected]
+            weights=fitted if cell['model']=='ppml' else np.ones(len(data))
             mass=np.bincount(components,weights=weights)
+            active=mass>0
             for j in range(2,cell['effects']+1):
-                channel=rows[f'saved{j}'].to_numpy(float)
-                means=np.bincount(components,weights=weights*channel)/mass
-                scale=np.bincount(components,weights=weights*abs(channel))/mass
+                channel=rows[f'saved{j}'].to_numpy(float)[selected]
+                means=np.bincount(components,weights=weights*channel)[active]/mass[active]
+                scale=np.bincount(components,weights=weights*abs(channel))[active]/mass[active]
                 if np.any(abs(means)>1e-9+1e-7*scale):raise ValueError('native saved FE component gauge mismatch')
     # Full row captures remain on SCC; compact collection uses exact hashes.
     write_json(directory/'capture.json',result)
@@ -604,9 +620,22 @@ def compare_records(a,b,cell):
     if va is None or vb is None or not close_values([float(va)],[float(vb)],POLICY['objective_rtol'],POLICY['objective_atol']):reasons.append('objective')
     if cell['save_fe']:
         p=np.load(Path(a['directory'])/'fitted.npz')['fitted'];q=np.load(Path(b['directory'])/'fitted.npz')['fitted']
-        if not close_values(p,q,POLICY['fitted_rtol'],POLICY['fitted_atol']):reasons.append('saved prediction')
+        # Predictions are missing outside the estimation sample; a sample
+        # difference is already a reason of its own.
+        retained=np.isfinite(p)
+        if x['sample_sha256']==y['sample_sha256'] and (not np.array_equal(retained,np.isfinite(q))
+                or not close_values(p[retained],q[retained],POLICY['fitted_rtol'],POLICY['fitted_atol'])):
+            reasons.append('saved prediction')
         if max(x['maximum_model_score'],y['maximum_model_score'])>1e-7:reasons.append('model score')
-    return dict(eligible=not reasons,reasons=reasons,**agreement(x,y,reasons))
+    result=dict(eligible=not reasons,reasons=reasons,**agreement(x,y,reasons))
+    if 'names' in x and 'names' in y and x['names']!=y['names']:
+        # Informational: whether the slopes both packages estimate agree when
+        # one of them keeps a separated control.
+        common=[n for n in x['names'] if n in y['names']]
+        result['common_coefficients']=close_values([x['beta'][x['names'].index(n)] for n in common],
+                                                   [y['beta'][y['names'].index(n)] for n in common],
+                                                   POLICY['coefficient_rtol'],POLICY['coefficient_atol'])
+    return result
 
 
 def agreement(x, y, reasons):

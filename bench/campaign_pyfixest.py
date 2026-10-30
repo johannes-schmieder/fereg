@@ -64,8 +64,8 @@ class Counts:
             self.converged = getattr(fit, '_convergence', True)
 
 
-def saved_effects(fit, data, q):
-    """Recover every FE and map it to observations by numeric level ID."""
+def saved_effects(fit, data, q, selected):
+    """Recover every FE and map it to retained observations by numeric level ID."""
     import numpy as np
     import pandas as pd
     effects = fit.fixef(atol=FIXEF_TOLERANCE, btol=FIXEF_TOLERANCE)
@@ -84,7 +84,7 @@ def saved_effects(fit, data, q):
         table = {float(key): value for key, value in
                  (tables.get(f'g{j}', {}) if omitted and j > 1 else tables[f'g{j}']).items()}
         if omitted and j > 1:
-            missing = set(np.unique(data[f'g{j}'].to_numpy(dtype=float)))-set(table)
+            missing = set(np.unique(data[f'g{j}'].to_numpy(dtype=float)[selected]))-set(table)
             if len(missing) != 1:
                 raise ValueError('expected one omitted reference level')
             table[missing.pop()] = 0.
@@ -93,14 +93,16 @@ def saved_effects(fit, data, q):
         if not np.isfinite(keys).all() or len(np.unique(keys)) != len(keys):
             raise ValueError('invalid or ambiguous numeric saved-FE IDs')
         order = np.argsort(keys)
-        ids = data[f'g{j}'].to_numpy(dtype=float)
+        # Levels of separated observations have no estimated effect.
+        ids = data[f'g{j}'].to_numpy(dtype=float)[selected]
         positions = np.searchsorted(keys[order], ids)
         positions = np.minimum(positions, len(keys)-1)
         if not np.array_equal(keys[order][positions], ids):
             raise ValueError('saved-FE ID is absent from pyfixest effects')
-        channel = values[order][positions]
-        if not np.isfinite(channel).all():
+        if not np.isfinite(values[order][positions]).all():
             raise ValueError('nonfinite saved FE')
+        channel = np.full(len(data), np.nan)
+        channel[selected] = values[order][positions]
         saved.append(channel)
     return saved
 
@@ -164,7 +166,9 @@ def main(configuration):
         if model == 'ppml' and not Counts(fit).converged:
             raise RuntimeError('pyfixest did not converge')
         if c['save_fe'] == '1':
-            saved = saved_effects(fit, data, q)
+            retained = np.ones(len(data), dtype=bool)
+            retained[sorted(Counts(fit).dropped)] = False
+            saved = saved_effects(fit, data, q, retained)
     except Exception as failure:  # The record keeps every failed command.
         error, fit = f'{type(failure).__name__}: {failure}', None
     seconds = time.perf_counter()-start

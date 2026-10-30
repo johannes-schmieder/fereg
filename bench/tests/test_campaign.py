@@ -93,6 +93,50 @@ class CampaignTests(unittest.TestCase):
         self.assertEqual(record['covariate_separated_rows'],int(flagged.sum()))
         self.assertGreater(record['zero_outcomes'],.3*len(frame))
 
+    def test_gravity_separation_reaches_capture_and_oracle(self):
+        import csv
+        import pandas as pd
+        from campaign import capture
+        from campaign_oracle import separation
+        cell=dict(next(c for c in configurations(True) if c['design']=='gravity'),save_fe=False)
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d)
+            frame,_=make_dataset(cell,root/'input.dta')
+            selected,omitted=separation(frame,cell)
+            # feppml and ppmlhdfe retained these 1,133 rows in the SCC smoke.
+            self.assertEqual((int(selected.sum()),omitted),(1133,['x16']))
+            expected=oracle(frame,cell)
+            self.assertLess(expected['residual_score'],1e-9)
+            self.assertEqual(expected['names'],[f'x{j}' for j in range(1,16)])
+            def write(name,coefficients,rows,omissions):
+                directory=root/name;directory.mkdir()
+                with (directory/'coefficients.csv').open('w',newline='') as f:
+                    w=csv.writer(f);w.writerow(['name','value']);w.writerows(coefficients.items())
+                with (directory/'covariance.csv').open('w',newline='') as f:
+                    w=csv.writer(f);w.writerow(['row','column','value'])
+                    w.writerows([a,b,float(a==b)] for a in coefficients for b in coefficients)
+                pd.DataFrame(dict(obs_id=frame.obs_id,retained=rows.astype(int))).to_csv(directory/'rows.csv',index=False)
+                metadata=dict(finite_slope_rank=str(16-omissions),slope_omissions=str(omissions),df_a='371',N=str(int(rows.sum())),
+                              covariance_policy='stock-ppml-robust',converged='1',ll='-1')
+                record=dict(status='ok',directory=str(directory),metadata=metadata)
+                record['capture']=capture(directory,cell,frame,metadata)
+                return record
+            beta=dict(zip(expected['names'],expected['beta']))
+            stata=write('stata',{**beta,'o.x16':0.},selected,1)
+            fixest=write('fixest',beta,selected,1)
+            self.assertEqual(stata['capture']['omitted'],['o.x16'])
+            self.assertEqual(compare_records(stata,fixest,cell)['agreement'],'exact')
+            # A package that keeps the covariate-separated rows estimates x16.
+            kept=selected|(frame.x16==1).to_numpy()
+            diverging=write('diverging',{**beta,'x16':-16.},kept,0)
+            result=compare_records(stata,diverging,cell)
+            self.assertEqual(result['agreement'],'differs')
+            self.assertTrue({'N','sample_sha256','omitted','finite_slope_rank','separation_deletions'}<=set(result['reasons']))
+            self.assertTrue(result['common_coefficients'])
+            # Designs without separation keep the strict sample and rank checks.
+            with self.assertRaisesRegex(ValueError,'omitted/missing finite coefficient'):
+                capture(root/'stata',dict(cell,design='three-sparse'),frame,stata['metadata'])
+
     def test_pyfixest_saved_effects_fill_the_omitted_reference(self):
         import pandas as pd
         from campaign_pyfixest import saved_effects
@@ -105,17 +149,22 @@ class CampaignTests(unittest.TestCase):
                 return pd.DataFrame(dict(variable=['g1']*3+['g2']*2,level=['1','2','3','10','20'],
                                          coefficient=[.5,-1.,2.,0.,.25]))
         for fit in [Release(),Main()]:
-            first,second=saved_effects(fit,data,2)
+            first,second=saved_effects(fit,data,2,np.ones(4,dtype=bool))
             np.testing.assert_array_equal(first,[.5,-1.,-1.,2.])
             np.testing.assert_array_equal(second,[0.,.25,0.,.25])
         class Missing:
             def fixef(self,atol,btol):
                 return {'C(g1)':{'1':.5,'2':-1.},'C(g2)':{'20':.25}}
-        with self.assertRaises(ValueError):saved_effects(Missing(),data,2)
+        everything=np.ones(4,dtype=bool)
+        with self.assertRaises(ValueError):saved_effects(Missing(),data,2,everything)
+        # A level that only separated rows carry has no estimated effect.
+        first,second=saved_effects(Missing(),data,2,np.array([True,True,True,False]))
+        np.testing.assert_array_equal(first,[.5,-1.,-1.,np.nan])
+        np.testing.assert_array_equal(second,[0.,.25,0.,np.nan])
         class OneLevel:
             def fixef(self,atol,btol):
                 return {'C(g1)':{'1':.5,'2':-1.,'3':2.}}
-        _,second=saved_effects(OneLevel(),data.assign(g2=10.),2)
+        _,second=saved_effects(OneLevel(),data.assign(g2=10.),2,everything)
         np.testing.assert_array_equal(second,[0.,0.,0.,0.])
 
     def test_strict_ols_profiles_are_frozen_separately(self):
