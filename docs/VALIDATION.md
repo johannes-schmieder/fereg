@@ -58,6 +58,28 @@ and cross-worker checks pass. Ordinary desktop activity remains in the timings;
 the Mac is one machine, not a set of independent Linux hosts. These results do
 not accept beta.11, authorize another optimization round or permit publication.
 
+The [initial final Linux panel](../bench/results/within-final-linux-initial-20261030.json)
+retains 1,981 calls: 580 on each of three completed physical hosts and 241 in
+three incomplete attempts on a fourth host. The first process-observation gap
+exceeded 7.5 seconds after the observer added a fresh five-second delay to an
+initial scheduler census. All 116 scorer comparisons remain insufficient at
+three hosts. Eight- and sixteen-FE settings at both worker counts have adverse
+host medians on all three completed hosts; these observations remain retained.
+The bounded observer-only completion preserves these hosts and all failed
+attempts, and permits only the three missing independent units.
+
+The large companion panel first stopped on a baseline OLS reference convention:
+fereg's documented pairwise absorbed DoF is 2,095,755, whereas the strict fixest
+reference reports 2,095,753. Johannes approved preserving the pairwise policy.
+The [independent input-graph witness](../bench/results/within-companion-reference-conventions-20261030.json)
+reproduces fereg's counts and supplies the matching OLS covariance normalization
+without changing raw references, production semantics or tolerances. It also
+checks PPML's separate convention: sixteen identified slopes, reported finite
+rank seventeen including the normalized constant, and one direction removed
+from absorbed rank. PPML covariance remains unchanged. Full checks of retained
+native arrays and the unfinished companion calls remain required; the graph
+witness alone does not qualify those estimates.
+
 The separate [Fold accumulator comparison](../bench/results/within-fold-performance-20261030.json)
 completes all 516 calls with exact science and solver work. The affected Mac
 single-worker fit improves 14.89%; solve medians fall from 5.201078 to 4.313869
