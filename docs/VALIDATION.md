@@ -14,12 +14,12 @@ The [compatibility report](within_migration.md) records the frozen dependency
 bases, patch evidence and outstanding integration and performance requirements.
 The active source pin is the counts-only stack `534ea64f`, whose parent is
 `d3407a16`. Johannes approved advancing it to testing after the bounded diagnosis;
-scatter and back-substitution remain held. The completed native and main
-performance evidence below still binds `d3407a16`. The `4beaa8af` combined source
-and its checks remain historical, unaccepted evidence. The counts-only source
-suite passed; new actual-plugin checks and a separately declared beta.10
-comparison are pending. This does not establish performance recovery or beta.11
-acceptance.
+scatter and back-substitution remain held. Fereg `c1f4d5ad` now has tested actual
+Mac/Linux plugins and a [counts-only comparison](../bench/results/within-counts-qualification-20261029.json):
+Mac has 55 passed cells, two inconclusive cells and one regression; Linux has
+five valid hosts and all 58 cells remain below the required six-host minimum.
+The earlier `d3407a16` and `4beaa8af` results remain historical, unaccepted
+evidence. This does not establish performance recovery or beta.11 acceptance.
 Johannes approved retiring the general more-than-two-FE pair-upgrade experiment;
 its explicit h/k and builder-Break requests must fail clearly. Two-FE h/k and
 builder-Break behavior, public Auto escalation, supported OLS/PPML paths and
@@ -32,8 +32,8 @@ fork/candidate rank-parity failure remains recorded. The native checks below
 cover declared published results, factor slots/base flags, PPML and replay;
 beta.10 performance must still pass. This decision does not authorize production
 adoption or acceptance of the documented rejected near-boundary fits. The completed
-main performance panels below do not qualify beta.11: both contain a regression
-and inconclusive comparisons.
+original `d3407a16` main panels below each contain a regression and inconclusive
+comparisons; the new counts-only panels also do not qualify beta.11.
 
 Focused Rust 1.85.1 adapter checks passed 79 main tests and four subprocess
 witnesses, including explicit LSMR, controlled routing, selector retirement,
@@ -240,8 +240,9 @@ workspace and 64-package fuzz workspace. No plugin rebuild or new fereg native
 test was run.
 The original beta.11-versus-beta.10 regressions remain distinct from the standalone
 scatter weighted-control concern. No recovery or acceptance follows from the
-restoration. Additional strict-reference fits remain unapproved. The held
-back-substitution patch, upstream submission and
+restoration. At that stage, additional strict-reference fits remained unapproved;
+the approved extension below now has results. The held back-substitution patch,
+upstream submission and
 production adoption remain outside this result.
 
 Johannes subsequently approved testing counts-only `534ea64f`; it is now the
@@ -250,11 +251,45 @@ source-only suite passed 324 Python tests, 1,537 core tests (three ignored),
 189 non-FFI and 219 FFI plugin tests, independent scientific oracles, allocation
 audits, strict Clippy, fuzz, portable/C guards and complexity checks. The
 [migration account](within_migration.md#independent-performance-and-combined-source-candidate)
-binds the exact pin diff, environment and log hash. New native and performance
-checks remain pending. Standalone counts' inconclusive sparse control and every
-prior beta.11 performance failure remain retained; this is authorization to test,
-not acceptance. The main 58-cell comparison is independent of the unfinished
-large-companion references. The gather-zeroing investigation is separate.
+binds the exact pin diff, environment and log hash. Actual-plugin checks now pass
+on both platforms: all 67 licensed fixtures, four iteration-Break runs, mapped
+memory/reuse/slope checks and the 77-case/693-call replay. Replay matches protected
+`d3407a16` exactly with 308 fixed-worker and 231 cross-worker checks. Each platform
+also passes 24 targeted calls covering dense unweighted Schwarz counts, actual
+generation-2 retained-CG-to-LSMR retries and public Auto controls. The unchanged
+28-call preflight against beta.10 passes on each platform. Operational launch,
+build and environment failures remain recorded with their bounded repairs.
+
+The [counts-only record](../bench/results/within-counts-qualification-20261029.json)
+retains all 4,489 main-panel calls (713 warmups and 3,776 timed calls), full
+ordered scientific/work fingerprints, source/artifact/environment hashes and
+report decisions. Mac's 1,508 calls produce 55 passed cells, two inconclusive
+cells and one regression. Sparse three-FE at one worker has median paired ratio
+`1.130373` (+13.0373%). Across all 12 timed calls per arm, complete-call medians
+increase from 5.294788 to 5.983382 seconds, summed solver-row solve medians from
+4.527583 to 5.218120, and setup medians decrease from 0.151976 to 0.150099.
+Both warmup traces retain 390 iterations and 19 RHS solves. This identifies the
+affected phase, not its cause. Bound desktop activity remains measurement noise,
+with no retry or excluded adverse measurement.
+
+Linux retains 2,981 calls. Five whole-node hosts complete 580 calls each; the
+sixth stops after 81 calls on a startup observer gap of 7.843798 seconds against
+the frozen 7.5-second limit. No native/scientific failure or competing process
+is recorded. The unchanged report excludes that entire host but the compact
+record retains every call, including its final unpaired warmup. All five-host
+cell medians are within the allowance descriptively; all 58 cells are still
+`insufficient_hosts`, with null one-sided `.025` bounds. Report job `8345728`
+completes with scheduler failure/exit 0/0. There are no actual retries or
+discarded attempts. The confirmed Mac regression and Linux uncertainty block
+acceptance; every earlier adverse observation remains retained.
+
+The three strict large references now pass under Johannes's approved bounded
+extension (job `8342499`, four workers, no retries): sparse three-FE OLS at ten
+million rows, sparse three-FE PPML at one million and AKM PPML at ten million.
+Scientific thresholds are unchanged, and earlier timeouts remain failures.
+The separate large companion and eight-call memory-admission panels remain
+unrun. Their status does not change the completed main-panel decisions.
+The gather-zeroing investigation remains separate from this fixed candidate.
 
 The [bounded diagnosis](../bench/results/within-scatter-diagnosis-20261029.json)
 finds real weighted caller code changes but no cause for the adverse controls.

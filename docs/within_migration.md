@@ -11,15 +11,15 @@ beta.11 counts-only test candidate pins both dependencies through its
 `534ea64f7b0e26b772f93ca087f43837c1e187e4`: the tested migration stack
 `d3407a16` plus the dense categorical-count optimization. Johannes approved
 advancing this counts-only candidate to testing after the bounded diagnosis;
-scatter and back-substitution remain held. The existing actual plugins and
-completed Mac/Linux native checks still bind `d3407a16`; the new candidate's
-native checks and separately declared comparison against beta.10 are pending.
-The combined `4beaa8af` source and its checks remain historical, unaccepted
-evidence below. The completed main performance
-panels each contain a regression and inconclusive comparisons, so beta.11 is
-not performance-qualified; installed-package admission also remains outstanding.
-The counts-only source checks establish neither recovered performance nor
-acceptance, adoption or readiness for a production release.
+scatter and back-substitution remain held. Fereg `c1f4d5ad` now has actual
+counts-only Mac/Linux plugins, completed native correctness checks and the
+[bounded main comparison](../bench/results/within-counts-qualification-20261029.json).
+Mac has 55 passed cells, two inconclusive cells and one regression; Linux has
+five valid hosts, leaving all 58 cells below the declared six-host minimum.
+Beta.11 is not performance-qualified; installed-package admission also remains
+outstanding. Earlier `d3407a16` and combined `4beaa8af` results remain historical,
+unaccepted evidence below. No result authorizes acceptance, adoption or a
+production release.
 
 Johannes's current instruction is to develop and push these patches only in
 `johannes-schmieder/within`. Any upstream push or pull request requires prior
@@ -855,8 +855,9 @@ Rust 1.85.1; no plugin rebuild or new fereg native test was performed for the
 restoration. The bounded diagnosis is complete; scatter remains held
 with the cause unresolved. The standalone scatter weighted-control concern and the original `d3407a16` versus
 beta.10 regressions are distinct comparisons; restoring the pin resolves neither.
-The additional strict-reference-fit budget remains unapproved. The held
-back-substitution patch remains excluded. There has
+At that stage, the additional strict-reference-fit budget remained unapproved.
+The later approved extension is recorded below. The held back-substitution
+patch remains excluded. There has
 been no upstream push or PR, and these source checks do not authorize adoption.
 
 Johannes subsequently approved testing the counts-only stack `534ea64f`.
@@ -877,11 +878,11 @@ tests, isolated allocation audits, scientific integration/oracles, strict Clippy
 fuzz compilation, portable/C checks and the complexity ratchet. The source log
 SHA-256 is `23944c13168735406fbf560d9b456303fdfd5a1b598301573bbeee0dda762f38`.
 The run used Python 3.12.2, four Cargo jobs, serial Rust test threads, eight
-Rayon/fereg workers and single-threaded BLAS. Native refresh and the fixed
-58-cell comparison remain prerequisites. Those cells retain all seven previously
-nonpassing cells; the missing large companion references block their own panel,
-not independent preparation of this main comparison. A separate gather-zeroing
-investigation is excluded from this fixed counts candidate.
+Rayon/fereg workers and single-threaded BLAS. The subsequent native refresh and
+fixed 58-cell comparison are recorded below, including every previously
+nonpassing cell. The large companion panel is separate from this main
+comparison. A separate gather-zeroing investigation is excluded from this
+fixed counts candidate.
 
 The exact dependency stack also passed focused Mac Rust 1.85.1 checks:
 325 top-level tests and one isolated subprocess, with no failures or ignored
@@ -890,6 +891,68 @@ residual output, repeatability, Schwarz and iteration budgets. Both changed
 files match standalone `ba409ada` byte for byte; formatting and clean-tree
 checks passed. The dependency test log SHA-256 is
 `bcda6d90ef8dbf1013b9a1b39dd71f7aa4ee31644278f00ac28b7315faab0e60`.
+
+### Counts-only native and main comparison
+
+The [counts-only record](../bench/results/within-counts-qualification-20261029.json)
+binds fereg `c1f4d5ad`, within/schwarz `534ea64f`, the actual Mac plugin
+`20344bd1` and Linux plugin `226181ae`. On each platform, all 67 licensed
+fixtures, four OLS/PPML iteration-Break checks, mapped memory/reuse/slope
+fixtures and the 77-case, 693-call replay pass. Replay scientific results and
+solver work match protected `d3407a16` exactly, with 308 fixed-worker and 231
+cross-worker checks. The 24 targeted calls per platform also pass: eight
+explicit unweighted Schwarz calls exercise dense counts, eight retained-CG
+calls reach the generation-2 LSMR retry, and eight public Auto controls agree.
+The independent LP sample remains 228 original rows. The record preserves
+operational build/host-name guard failures and their narrow repairs.
+
+Both platforms then pass the unchanged 28-call science preflight against
+beta.10, with seven families, two actual binaries and one/four workers. Linux's
+first preflight stopped before native execution on an environment-version
+mismatch; restoring the frozen environment preserved all input and science
+thresholds. These results do not waive the separately declared timing gate.
+
+| Counts-only main panel | Recorded calls | Report-eligible calls | Unique-cell verdicts |
+| --- | ---: | ---: | --- |
+| Mac | 1,508 | 1,508 | 55 passed, 2 inconclusive, 1 regression |
+| Linux | 2,981 | 2,900 | All 58 insufficient hosts |
+
+The compact record retains all 4,489 calls: 713 warmups and 3,776 timed calls,
+with full ordered result objects, scientific/work fingerprints, frozen plans,
+source/artifact/environment bindings and report hashes. There were no actual
+retries or discarded attempts. Original and incumbent again alias beta.10;
+comparison rows are counted once in the table.
+
+Mac `campaign-three-sparse-t1` has median paired ratio `1.130373`, a 13.0373%
+regression. Across all 12 timed calls per arm, complete-call medians increase
+from 5.294788 to 5.983382 seconds; summed solver-row solve medians increase from
+4.527583 to 5.218120, while setup medians decrease from 0.151976 to 0.150099.
+Both arms' warmup traces retain 390 iterations and 19 RHS solves. All six paired
+block ratios lie between `1.126548` and `1.136977`. This locates the increase
+in the solve phase but does not identify its cause. The two inconclusive cells
+are `campaign-akm-k64-t4` and `wide-rhs-t1`. Bound Claude activity is retained
+desktop noise (70.19 sampled CPU seconds); no adverse timing is excluded.
+
+Linux array `8343686` completes five 580-call hosts. Task 1 stops operationally
+after 81 recorded calls when the initial synchronous census plus the first
+five-second observer wait produces a 7.843798-second process-observation gap,
+exceeding the frozen 7.5-second limit. No competing process or native/scientific
+failure is recorded. All 81 calls remain retained, including the last unpaired
+warmup; the unchanged report excludes the entire incomplete host. Report job
+`8345728` ends with scheduler failure/exit 0/0. Every five-host cell is within
+the allowance descriptively, but one-sided `.025` bounds are undefined with
+five independent hosts and the six-host requirement is unmet. All 116
+reference-labelled rows are `insufficient_hosts`; no Linux pass is claimed.
+
+Johannes also approved one bounded extension for the three strict large
+references. Job `8342499` passes all three independent references with unchanged
+scientific thresholds: sparse three-FE OLS at ten million rows, sparse three-FE
+PPML at one million, and AKM PPML at ten million. It uses four workers, process
+caps of 40, 30 and 20 minutes respectively, and no retries; accounting records
+2,876 seconds wall time and 12.742G maximum virtual memory. Earlier timeout
+attempts remain failures. These references do not execute the large companion
+native or eight-call memory-admission panels, which remain outstanding.
+The confirmed Mac regression and Linux uncertainty still block acceptance.
 
 The [bounded diagnosis](../bench/results/within-scatter-diagnosis-20261029.json)
 retains the restoration checks, existing control observations, generated-code
