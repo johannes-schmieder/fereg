@@ -115,10 +115,11 @@ def validate_smoke(result):
                                     and close_values(a['beta'],e['beta'],POLICY['coefficient_rtol'],POLICY['coefficient_atol']))
             checks['covariance']=close_values(a['covariance'],e['covariance'],POLICY['vce_rtol'],POLICY['vce_atol'])
             p=np.load(Path(record['directory'])/'fitted.npz')['fitted']
-            checks['fitted']=(np.isnan(p[~e['selected']]).all()
+            checks['fitted']=(bool(np.isnan(p[~e['selected']]).all())
                               and close_values(p[e['selected']],e['fitted'],POLICY['fitted_rtol'],POLICY['fitted_atol']))
             checks['sample']=a['N']==int(e['selected'].sum()) and a['sample_sha256']==e['sample_sha256']
             if cell['model']=='ppml':checks['absorbed_rank']=a['absorbed_dof']==e['pairwise_rank']
+            checks={name:bool(value) for name,value in checks.items()}
         # Informational: a covariance that matches up to one degrees-of-freedom scalar.
         scale=None
         if checks.get('covariance') is False:

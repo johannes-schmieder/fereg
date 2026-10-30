@@ -101,7 +101,7 @@ class CampaignTests(unittest.TestCase):
         cell=dict(next(c for c in configurations(True) if c['design']=='gravity'),save_fe=False)
         with tempfile.TemporaryDirectory() as d:
             root=Path(d)
-            frame,_=make_dataset(cell,root/'input.dta')
+            frame,_=make_dataset(cell,root/'data'/(dataset_key(cell)+'.dta'))
             selected,omitted=separation(frame,cell)
             # feppml and ppmlhdfe retained these 1,133 rows in the SCC smoke.
             self.assertEqual((int(selected.sum()),omitted),(1133,['x16']))
@@ -109,7 +109,7 @@ class CampaignTests(unittest.TestCase):
             self.assertLess(expected['residual_score'],1e-9)
             self.assertEqual(expected['names'],[f'x{j}' for j in range(1,16)])
             def write(name,coefficients,rows,omissions):
-                directory=root/name;directory.mkdir()
+                directory=root/'output'/cell['id']/f'{name}-r1';directory.mkdir(parents=True)
                 with (directory/'coefficients.csv').open('w',newline='') as f:
                     w=csv.writer(f);w.writerow(['name','value']);w.writerows(coefficients.items())
                 with (directory/'covariance.csv').open('w',newline='') as f:
@@ -118,8 +118,12 @@ class CampaignTests(unittest.TestCase):
                 pd.DataFrame(dict(obs_id=frame.obs_id,retained=rows.astype(int))).to_csv(directory/'rows.csv',index=False)
                 metadata=dict(finite_slope_rank=str(16-omissions),slope_omissions=str(omissions),df_a='371',N=str(int(rows.sum())),
                               covariance_policy='stock-ppml-robust',converged='1',ll='-1')
-                record=dict(status='ok',directory=str(directory),metadata=metadata)
+                record=dict(status='ok',directory=str(directory),metadata=metadata,cell=cell['id'],arm=name)
                 record['capture']=capture(directory,cell,frame,metadata)
+                fitted=np.full(len(frame),np.nan)
+                fitted[rows]=expected['fitted'].mean()
+                fitted[selected]=expected['fitted']
+                np.savez_compressed(directory/'fitted.npz',fitted=fitted)
                 return record
             beta=dict(zip(expected['names'],expected['beta']))
             stata=write('stata',{**beta,'o.x16':0.},selected,1)
@@ -133,9 +137,18 @@ class CampaignTests(unittest.TestCase):
             self.assertEqual(result['agreement'],'differs')
             self.assertTrue({'N','sample_sha256','omitted','finite_slope_rank','separation_deletions'}<=set(result['reasons']))
             self.assertTrue(result['common_coefficients'])
+            # The smoke gate accepts the separated fit and rejects the one that
+            # keeps separated rows, and its record serializes.
+            from campaign_oracle import validate_smoke
+            rows=validate_smoke(dict(cells=[cell],records=[stata,diverging]))
+            import json
+            json.dumps(rows)
+            self.assertEqual([(r['arm'],r['pass']) for r in rows],[('stata',False),('diverging',False)])
+            self.assertTrue(all(rows[0]['checks'][k] for k in ['coefficients','fitted','sample']))
+            self.assertFalse(rows[1]['checks']['fitted'])
             # Designs without separation keep the strict sample and rank checks.
             with self.assertRaisesRegex(ValueError,'omitted/missing finite coefficient'):
-                capture(root/'stata',dict(cell,design='three-sparse'),frame,stata['metadata'])
+                capture(Path(stata['directory']),dict(cell,design='three-sparse'),frame,stata['metadata'])
 
     def test_pyfixest_saved_effects_fill_the_omitted_reference(self):
         import pandas as pd
