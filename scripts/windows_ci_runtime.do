@@ -87,7 +87,7 @@ capture noisily do "tests/stata/development/lsmr_batch_oracle.do"
 if _rc exit 9109
 * This fixture locates its exact input through the source ado path. The installed
 * binary has already been hash-verified; the source and installed ado bytes match.
-adopath ++ "stata"
+adopath ++ "`root'/stata"
 * Diagnostic r(9110) identifies this unchanged fixture; it cannot confer PASS.
 capture noisily do "tests/stata/development/within_plugin_slope_boundary.do"
 if _rc exit 9110
