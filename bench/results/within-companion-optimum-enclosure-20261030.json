@@ -1,0 +1,244 @@
+{
+  "status": "independent-enclosures-passed",
+  "scope": "Only the two retained beta.10 fits; candidate and other worker/platform calls remain to be checked.",
+  "native_calls": 0,
+  "reference_fits": 0,
+  "original_failures_preserved": true,
+  "tolerances_unchanged": true,
+  "sufficient_fitted_tolerance": "1e-9 + 1e-7 * abs(native)",
+  "finite_coefficient_tolerance": "1e-10 + 1e-7 * abs(native coefficient)",
+  "original_diagnostic": "within-companion-fitted-diagnostic-20261030.json",
+  "bridge_witness": "within-companion-bridge-witness-20261030.json",
+  "first_attempt": {
+    "status": "reporting-failed",
+    "job": "8359140",
+    "host": "scc-ei3",
+    "error": "NumPy bool could not be serialized in the PPML summary; the completed OLS bound was retained.",
+    "retained": {
+      "status": "running",
+      "budget_seconds": 600,
+      "job": "8359140",
+      "hostname": "scc-ei3",
+      "script_sha256": "ed588cdf59aff25566d2db49fd293e9bcdcda5dba74666d1ce84d6012abdb11f",
+      "scans": [
+        {
+          "family": "ols-three-sparse-10m",
+          "columns_sha256": "91b0683075ff7ec40ebfb8f3cfb40e76cc4331e0bd50e3fc1c03414a00ff7bd8",
+          "native_calls": 0,
+          "reference_fits": 0,
+          "pair": {
+            "norm": 3.5848005525950356e-09,
+            "round_norm": 2.1900226721681612e-12,
+            "score_round_l1": 3.898924267479994e-15,
+            "root_score_l1": 3.923097726301422e-27,
+            "moment_discrepancy_l1": 5.793934237408421e-25,
+            "tree_max_depth": 101242,
+            "minimum_cell_mass": 1.0
+          },
+          "global_part": {
+            "minimum_eigenvalue": 3487.4507762518074,
+            "formation_bound": 34.76311362960912,
+            "eigensolver_bound": 1.9771871006190513e-05,
+            "certified_minimum_eigenvalue": 3452.6876428503274,
+            "norm": 1.6848756384338374e-09,
+            "score_round_norm": 9.638870288265884e-08,
+            "global_score_norm": 1.179960899578798e-07,
+            "solve_residual_norm": 4.959922114961775e-23,
+            "stayer_rows": 9223220
+          },
+          "feasibility": {
+            "maximum_predictor_distance": 8.579093949465926e-14,
+            "weighted_l2_distance": 9.118351212133238e-12
+          },
+          "optimum": {
+            "kind": "OLS orthogonal projection",
+            "admitted": true,
+            "dual_norm": 3.963200110878648e-09,
+            "feasible_distance": 9.118351212133238e-12,
+            "radius": 3.972318462090781e-09
+          },
+          "finite_coefficient_absolute_error_bound": 6.760291354402303e-11,
+          "finite_coefficient_minimum_tolerance": 1.359866929405312e-09,
+          "finite_coefficients_enclosed": true,
+          "all_predictions_enclosed": false,
+          "original_failed_rows_enclosed": 1039,
+          "original_failed_rows": 1317,
+          "maximum_prediction_error_bound": 3.972404253030276e-09,
+          "maximum_tolerance_ratio": 3.972062320923748,
+          "maximum_failed_tolerance_ratio": 3.928596857809979,
+          "limitation": "Diagnostic bound only until its floating error accounting and analytic witnesses are reviewed. Original reference checks are not reclassified by this script."
+        }
+      ]
+    },
+    "wall_seconds": 60,
+    "failed": 0,
+    "exit_status": 1,
+    "maxvmem": "4.329G"
+  },
+  "refined_attempt": {
+    "status": "diagnostic-complete",
+    "prior_attempt": "8359140",
+    "refinement": "BFS flow, pairwise extended-precision score sums, inverse-residual bound; reporting bool repair",
+    "budget_seconds": 400,
+    "job": "8359452",
+    "hostname": "scc-gr4",
+    "script_sha256": "eafb9c826b7ba8c2cb9dbc237e5fb6aa750424d7cf55a98e406983e1b9e56388",
+    "scans": [
+      {
+        "family": "ols-three-sparse-10m",
+        "columns_sha256": "91b0683075ff7ec40ebfb8f3cfb40e76cc4331e0bd50e3fc1c03414a00ff7bd8",
+        "native_calls": 0,
+        "reference_fits": 0,
+        "pair": {
+          "norm": 1.4477322377808004e-10,
+          "round_norm": 3.596466976997122e-17,
+          "score_round_l1": 6.402833943476764e-20,
+          "root_score_l1": 3.9793040657984194e-27,
+          "moment_discrepancy_l1": 4.381953373093481e-25,
+          "tree_max_depth": 31,
+          "minimum_cell_mass": 1.0
+        },
+        "global_part": {
+          "minimum_eigenvalue": 3487.4507762518074,
+          "formation_bound": 34.76311362960912,
+          "eigensolver_bound": 0.0,
+          "certified_minimum_eigenvalue": 2889.9226840515944,
+          "norm": 4.8204101767803334e-11,
+          "inverse_residual_bound": 2.5247928353887316e-14,
+          "inverse_norm_bound": 0.0003419170704739671,
+          "all_design_energy_bound": 169744756.95333105,
+          "score_reduction_levels": 17,
+          "score_round_norm": 2.7477524529392014e-10,
+          "global_score_norm": 1.1628915534452411e-07,
+          "solve_residual_norm": 2.3380757297563895e-23,
+          "stayer_rows": 9223220
+        },
+        "feasibility": {
+          "maximum_predictor_distance": 6.6488479628272455e-15,
+          "weighted_l2_distance": 7.60238874672668e-13
+        },
+        "optimum": {
+          "kind": "OLS orthogonal projection",
+          "admitted": true,
+          "dual_norm": 1.9298607779007838e-10,
+          "feasible_distance": 7.60238874672668e-13,
+          "radius": 1.9374631666475105e-10
+        },
+        "finite_coefficient_absolute_error_bound": 3.6040461445831136e-12,
+        "finite_coefficient_minimum_tolerance": 1.359866929405312e-09,
+        "finite_coefficients_enclosed": true,
+        "all_predictions_enclosed": true,
+        "original_failed_rows_enclosed": 1317,
+        "original_failed_rows": 1317,
+        "maximum_prediction_error_bound": 1.9375296551271387e-10,
+        "maximum_tolerance_ratio": 0.19373423010261645,
+        "maximum_failed_tolerance_ratio": 0.1916138634301897,
+        "limitation": "Diagnostic bound only until its floating error accounting and analytic witnesses are reviewed. Original reference checks are not reclassified by this script."
+      },
+      {
+        "family": "ppml-three-sparse-1m-lsmr",
+        "columns_sha256": "5f1f01a696dc507af4b939bd8a173c8668a0ac8c8d4fbeb0ec3d1097944bad22",
+        "native_calls": 0,
+        "reference_fits": 0,
+        "pair": {
+          "norm": 4.404131785496678e-09,
+          "round_norm": 7.3753871487823605e-16,
+          "score_round_l1": 5.061634587876824e-19,
+          "root_score_l1": 1.09169277382178e-25,
+          "moment_discrepancy_l1": 2.5655758747986938e-23,
+          "tree_max_depth": 27,
+          "minimum_cell_mass": 0.014724104121873211
+        },
+        "global_part": {
+          "minimum_eigenvalue": 536.9745068916762,
+          "formation_bound": 0.5723214150927227,
+          "eigensolver_bound": 0.0,
+          "certified_minimum_eigenvalue": 451.9452328899666,
+          "norm": 9.934017687691584e-09,
+          "inverse_residual_bound": 1.9325594191465256e-14,
+          "inverse_norm_bound": 0.0022098590220123097,
+          "all_design_energy_bound": 27916616.629716825,
+          "score_reduction_levels": 13,
+          "score_round_norm": 5.51982336119606e-11,
+          "global_score_norm": 6.223188747394402e-07,
+          "solve_residual_norm": 1.7238246786760315e-21,
+          "stayer_rows": 923020
+        },
+        "feasibility": {
+          "maximum_predictor_distance": 3.221006095771908e-15,
+          "weighted_l2_distance": 2.6086489902404543e-13
+        },
+        "optimum": {
+          "kind": "Poisson local curvature",
+          "admitted": true,
+          "dual_norm": 1.4338333515303746e-08,
+          "feasible_mean_distance": 9.331898143808033e-12,
+          "weighted_radius": 2.869533082689541e-08,
+          "maximum_radius_over_sqrt_mean": 2.3648129562300557e-07
+        },
+        "finite_coefficient_absolute_error_bound": 1.3497966040229954e-09,
+        "finite_coefficient_minimum_tolerance": 1.2719803185802257e-09,
+        "finite_coefficients_enclosed": false,
+        "all_predictions_enclosed": false,
+        "original_failed_rows_enclosed": 13,
+        "original_failed_rows": 19,
+        "maximum_prediction_error_bound": 1.4045661847768898e-07,
+        "maximum_tolerance_ratio": 1.408332419396538,
+        "maximum_failed_tolerance_ratio": 1.3492568985561424,
+        "limitation": "Diagnostic bound only until its floating error accounting and analytic witnesses are reviewed. Original reference checks are not reclassified by this script."
+      }
+    ],
+    "elapsed_seconds": 64.74207552301232
+  },
+  "refined_accounting": {
+    "job": "8359452",
+    "host": "scc-gr4",
+    "slots": 4,
+    "failed": 0,
+    "exit_status": 0,
+    "wall_seconds": 67,
+    "maxvmem": "4.179G"
+  },
+  "poisson_algebraic_refinement": {
+    "method": "curvature inside the independently admitted ball",
+    "radius_factor": 0.5000001182406618,
+    "weighted_radius": 1.434766880640302e-08,
+    "maximum_tolerance_ratio_bound": 0.7045509019914002,
+    "maximum_failed_tolerance_ratio_bound": 0.675013134586073,
+    "finite_coefficient_absolute_error_bound": 6.748984616123607e-10,
+    "finite_coefficients_enclosed": true,
+    "all_predictions_enclosed": true,
+    "original_failed_rows_enclosed": 19
+  },
+  "review": {
+    "unchanged_computational_functions": [
+      "topology",
+      "exact_pair_scores",
+      "pair_correction",
+      "design_block",
+      "gram_and_score",
+      "feasibility"
+    ],
+    "ast_identity_verified": true,
+    "small_analytic_cases_mac": 18,
+    "small_analytic_cases_linux": 12,
+    "standard_floating_arithmetic": true,
+    "proof": "docs/within_numerical_enclosure.md",
+    "no_new_estimates": true,
+    "test_cases_mac": 3
+  },
+  "bindings": {
+    "accuracy-enclosure.py": "ed588cdf59aff25566d2db49fd293e9bcdcda5dba74666d1ce84d6012abdb11f",
+    "accuracy-enclosure.json": "faa78335b7b411c55efc294415f91c7cb2b7cd33dd41cc9a28bb52d6d8b8ff6b",
+    "accuracy-enclosure.log": "e555c76857954bb212b21e1e785b7a112d112d7afb47eebd1af78e93e2f62e76",
+    "accuracy-enclosure-accounting.txt": "4baebb3f2d8039a31a4748fabadcd165ddd284267a4f6716e1935ecf5ad00668",
+    "accuracy-enclosure-refined.py": "eafb9c826b7ba8c2cb9dbc237e5fb6aa750424d7cf55a98e406983e1b9e56388",
+    "accuracy-enclosure-refined.json": "ae5c01d71bafc698af1b6ffc3193156b0181f0d26544c4bd12c6f76b54f78784",
+    "accuracy-enclosure-refined.log": "358d4b2bdf47a1623609ca4a7690ea93a631a595890d75d6ffcd24b96e1f7083",
+    "accuracy-enclosure-refined-accounting.txt": "f92c3a8f56e78745a2fb3fbc5f8742a47098c773e0c1a3ffdf0679a04fb9eb6e"
+  },
+  "maintained_witness": {
+    "crates/fereg-oracle/python/panel_optimum_enclosure.py": "b893251b0d2014b5b52eaf5b1b200fe8af608e026bfe5d36d20b175b7b6faacd",
+    "tests/python/test_panel_optimum_enclosure.py": "ff85ab765c72549a50e088d5ca539898fc26c44db6ef0d6932bdfe626ece2ed4"
+  }
+}

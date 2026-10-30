@@ -18,8 +18,11 @@ accepted all four optimizations and their disclosed individual-patch tradeoffs
 on 2026-10-30, and authorized combined building and qualification. Scatter slices
 remain excluded; no processor-specific dispatch or scientific-semantic change
 is included. Combined source, native and preflight checks passed on Mac and Linux.
-The final Mac and Linux comparisons need discussion; the larger companion
-panel remains incomplete. The earlier counts-only `534ea64f` candidate had 55 passed Mac
+Johannes conditionally accepted the disclosed eight-/sixteen-FE performance
+regressions on 2026-10-30, provided investigation of the two large fitted-value
+disagreements supports the accuracy of the estimates. That numerical condition
+remains open for the actual candidate artifacts; the larger companion panel
+remains incomplete. The earlier counts-only `534ea64f` candidate had 55 passed Mac
 cells, two inconclusive cells and one regression; its five valid Linux hosts
 were below the six-host requirement. Those classifications remain unchanged.
 
@@ -82,9 +85,11 @@ Sparse three-FE at one worker is inconclusive (+4.89% median block ratio;
 12.731 to 13.362 seconds in full-call medians). The four-worker 16-regressor
 AKM, four-FE T1 and small-third T1 endpoints are also inconclusive. The original
 near-confounded-third T4 setup regression is recovered: its complete-call
-comparison passes at a -2.28% median block ratio. These combined results require
-Johannes's acceptance decision; the individual optimization approvals do not
-waive these regressions. No further timing or optimization loop is authorized.
+comparison passes at a -2.28% median block ratio. Johannes subsequently accepted
+these eight-/sixteen-FE regressions conditionally
+on resolving the numerical concerns below. The original classifications and
+inconclusive settings remain retained. No further timing or optimization loop
+is authorized.
 
 The large companion panel first stopped on a baseline OLS reference convention:
 fereg's documented pairwise absorbed DoF is 2,095,755, whereas the strict fixest
@@ -117,6 +122,53 @@ unaffected families, retaining both failures. The bounded continuation covers
 Linux reuses the four already passed weighted-OLS admission/refusal checks.
 Both held families remain outside this continuation, and a new failure stops
 the subset. No numerical tolerance or production behavior changed.
+
+The subsequent [bridge witness](../bench/results/within-companion-bridge-witness-20261030.json)
+establishes reference error on a subset, independently of either estimator.
+In the worker/firm incidence graph, a bridge cell has a free intercept even
+with the finite regressors and third FE present. At an OLS or positive-outcome
+Poisson optimum its fitted sum must equal its outcome sum. A single-row bridge
+therefore has the exact optimum `fitted = y`. All 7,506 OLS and 728 PPML
+single-row bridges pass for fereg; the reference fails on 104 and 12 rows.
+Maximum fereg errors there are `1.1257e-11` and `2.5644e-10`, respectively.
+The graph algorithm passes eleven independent edge-removal checks and every
+claimed bridge cut among the failing cells is checked against all original
+unique mover edges. Job 8358713 completed on `scc-gr4` in sixteen seconds with
+successful terminal accounting and no estimation calls. The maintained
+[graph oracle](../crates/fereg-oracle/python/bridge_optimum_witness.py) and
+[four independent tests](../tests/python/test_bridge_optimum_witness.py) also
+pass locally, including weighted dummy OLS with extra regressors and an extra FE.
+
+Conditionally optimizing each bridge-cell intercept removes 399 OLS and eighteen
+PPML discrepancies, leaving 918 OLS rows and one PPML row. Multirow cell
+corrections hold their within-cell contrasts fixed and are not an enclosure of
+the full optimum. They therefore do not close either original fitted gate or
+qualify the candidate. No reference, tolerance or runtime behavior has changed.
+
+The [independent optimum enclosure](../bench/results/within-companion-optimum-enclosure-20261030.json)
+now covers both complete retained beta.10 fits, including all 1,317 OLS and
+nineteen PPML disputed rows. The [derivation](within_numerical_enclosure.md)
+constructs explicit score-balancing graph flows and a small stayer contrast
+matrix, separately checks model-space feasibility, and converts these into
+prediction and identified-coefficient bounds. OLS fitted error is bounded by
+`1.93753e-10` and finite coefficient error by `3.60405e-12`. PPML's sharpened
+curvature bound places every fitted error below 70.46% of its unchanged tolerance
+and finite coefficient error below `6.74899e-10`, versus the smallest coefficient
+tolerance `1.27198e-9`. This supports the estimates independently of fixest.
+The original comparator failures remain failed comparisons, with proved
+reference errors on the exact bridge subset; they are not migration bugs.
+
+The first diagnostic's PPML report failed on NumPy boolean serialization after
+retaining its looser OLS bound. Its failed exit and result remain in the record.
+The bounded refinement passed on `scc-gr4`, with successful terminal accounting,
+67 seconds wall time and 4.179 GB maximum virtual memory. It shortened the
+explicit graph-flow paths and tightened score reduction bounds; it ran no new
+native estimate or reference fit. Twelve dense analytic checks passed on Linux;
+eighteen expanded OLS/Poisson cases plus the scalar curvature refinement pass
+on Mac. Standard floating-arithmetic allowances apply; this is not a formally
+verified interval-arithmetic implementation. The actual beta.11 artifacts and
+remaining worker/platform cells are being checked against this enclosed
+solution, including the center's uncertainty inside the original tolerance.
 
 The [Linux continuation](../bench/results/within-unaffected-companions-linux-20261030.json)
 passes all eight weighted-OLS Auto/LSMR calls, then stops when the ten-million-row

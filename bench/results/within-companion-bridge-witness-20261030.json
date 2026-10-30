@@ -1,0 +1,476 @@
+{
+  "status": "diagnostic-complete",
+  "native_calls": 0,
+  "reference_fits": 0,
+  "budget_seconds": 300,
+  "job": "8358713",
+  "hostname": "scc-gr4",
+  "script_sha256": "6fb53d405b7290e5d736b1cac5cd96b3f1a2c62be6055ee49161f69ef6571355",
+  "scans": [
+    {
+      "family": "ols-three-sparse-10m",
+      "rows": 10000000,
+      "columns_sha256": "91b0683075ff7ec40ebfb8f3cfb40e76cc4331e0bd50e3fc1c03414a00ff7bd8",
+      "fitted_sha256": "23ca74507945a6609ff26fa645f23675beb0bb69d927898659f0fa4c403e36b3",
+      "original_failed_rows": 1317,
+      "failed_bridge_rows": 399,
+      "failed_singleton_bridge_rows": 104,
+      "failed_nonbridge_rows": 918,
+      "independent_failed_cell_cut_checks": 245,
+      "all_singleton_bridge_rows": 7506,
+      "conditional_correction_remaining_failed_rows": 918,
+      "conditional_correction_maximum": 1.5163001312323843e-06,
+      "scope": "Only single-row bridge cells have an unconditional exact optimum y. Multirow updates optimize the cell intercept conditional on unchanged contrasts; they do not certify all coefficients.",
+      "singleton_optimum": {
+        "native": {
+          "failed_rows": 0,
+          "maximum_absolute": 1.1256107157464612e-11,
+          "maximum_tolerance_ratio": 8.257867321691946e-05
+        },
+        "reference": {
+          "failed_rows": 104,
+          "maximum_absolute": 4.58427008753759e-06,
+          "maximum_tolerance_ratio": 166.10002632149568
+        }
+      },
+      "failed_cell_counts": {
+        "1": 435,
+        "2": 328,
+        "3": 309,
+        "4": 245,
+        "5": 0
+      },
+      "remaining_rows": [
+        {
+          "row": 8346,
+          "bridge": false,
+          "count": 1,
+          "native": -0.226876367030324,
+          "reference": -0.22687629842353652,
+          "absolute": 6.860678747333537e-08
+        },
+        {
+          "row": 19071,
+          "bridge": false,
+          "count": 1,
+          "native": 0.09143807077334316,
+          "reference": 0.09143805156255486,
+          "absolute": 1.9210788307355564e-08
+        },
+        {
+          "row": 30140,
+          "bridge": false,
+          "count": 1,
+          "native": -0.1063125489123984,
+          "reference": -0.10631252966893862,
+          "absolute": 1.924345978399078e-08
+        },
+        {
+          "row": 32176,
+          "bridge": false,
+          "count": 1,
+          "native": -0.06305925473943058,
+          "reference": -0.06305930460966189,
+          "absolute": 4.9870231305648716e-08
+        },
+        {
+          "row": 38426,
+          "bridge": false,
+          "count": 1,
+          "native": 0.20858034680089121,
+          "reference": 0.20858036866675,
+          "absolute": 2.186585879027092e-08
+        },
+        {
+          "row": 70585,
+          "bridge": false,
+          "count": 1,
+          "native": 0.018712308235585784,
+          "reference": 0.018712313891479537,
+          "absolute": 5.655893753342411e-09
+        },
+        {
+          "row": 83430,
+          "bridge": false,
+          "count": 1,
+          "native": -0.005039101056599122,
+          "reference": -0.005039099311497819,
+          "absolute": 1.7451013030467255e-09
+        },
+        {
+          "row": 135211,
+          "bridge": false,
+          "count": 2,
+          "native": 0.03923451766541297,
+          "reference": 0.03923451135694822,
+          "absolute": 6.308464750581777e-09
+        },
+        {
+          "row": 135212,
+          "bridge": false,
+          "count": 2,
+          "native": -0.013900483974673222,
+          "reference": -0.013900490292582557,
+          "absolute": 6.317909334585536e-09
+        },
+        {
+          "row": 139324,
+          "bridge": false,
+          "count": 2,
+          "native": 0.004606072383832871,
+          "reference": 0.00460607090524956,
+          "absolute": 1.4785833113428737e-09
+        },
+        {
+          "row": 140400,
+          "bridge": false,
+          "count": 1,
+          "native": 0.11681870556952469,
+          "reference": 0.11681868539526613,
+          "absolute": 2.017425855538324e-08
+        },
+        {
+          "row": 147722,
+          "bridge": false,
+          "count": 2,
+          "native": 0.32370010455177883,
+          "reference": 0.3237000457674398,
+          "absolute": 5.878433900763369e-08
+        },
+        {
+          "row": 151851,
+          "bridge": false,
+          "count": 1,
+          "native": 0.040247624530426906,
+          "reference": 0.04024763449660185,
+          "absolute": 9.96617494086749e-09
+        },
+        {
+          "row": 163425,
+          "bridge": false,
+          "count": 2,
+          "native": 1.6320797008594956,
+          "reference": 1.6320798696522991,
+          "absolute": 1.687928035121189e-07
+        },
+        {
+          "row": 177642,
+          "bridge": false,
+          "count": 2,
+          "native": 0.026893431424981296,
+          "reference": 0.026893427482510557,
+          "absolute": 3.942470738760306e-09
+        },
+        {
+          "row": 178006,
+          "bridge": false,
+          "count": 1,
+          "native": 0.41507597526170553,
+          "reference": 0.41507613384231273,
+          "absolute": 1.585806072013085e-07
+        },
+        {
+          "row": 194566,
+          "bridge": false,
+          "count": 3,
+          "native": 0.0027706350300537586,
+          "reference": 0.0027706322265607652,
+          "absolute": 2.8034929933085095e-09
+        },
+        {
+          "row": 205975,
+          "bridge": false,
+          "count": 1,
+          "native": 0.0036691368274325564,
+          "reference": 0.0036691354296407575,
+          "absolute": 1.3977917989738131e-09
+        },
+        {
+          "row": 216570,
+          "bridge": false,
+          "count": 1,
+          "native": -0.00201536155855353,
+          "reference": -0.002015362912482388,
+          "absolute": 1.3539288579167419e-09
+        },
+        {
+          "row": 228523,
+          "bridge": false,
+          "count": 3,
+          "native": 0.01953644294504952,
+          "reference": 0.019536439809530015,
+          "absolute": 3.1355195037607864e-09
+        }
+      ],
+      "worst_rows": [
+        {
+          "row": 4381357,
+          "y": -0.0661771587216996,
+          "native": 0.18017691247070672,
+          "reference": 0.18017555051843104,
+          "bridge": true,
+          "count": 2,
+          "corrected_difference": 4.731409708469414e-12
+        },
+        {
+          "row": 3962850,
+          "y": 1.0978313399794104,
+          "native": 1.1088935763361703,
+          "reference": 1.1088950926363015,
+          "bridge": false,
+          "count": 1,
+          "corrected_difference": -1.5163001312323843e-06
+        },
+        {
+          "row": 3645846,
+          "y": 1.384070699053182,
+          "native": 1.38407069905318,
+          "reference": 1.3840724720901796,
+          "bridge": true,
+          "count": 1,
+          "corrected_difference": 0.0
+        },
+        {
+          "row": 9691876,
+          "y": 0.2603402712089845,
+          "native": 0.26034027120898456,
+          "reference": 0.26034217768857026,
+          "bridge": true,
+          "count": 1,
+          "corrected_difference": 0.0
+        },
+        {
+          "row": 9077410,
+          "y": 1.3151812178088171,
+          "native": 1.269781055466407,
+          "reference": 1.2697791184689717,
+          "bridge": true,
+          "count": 2,
+          "corrected_difference": -6.041833700010102e-13
+        },
+        {
+          "row": 9077409,
+          "y": 1.8925554373242073,
+          "native": 1.9379555996666176,
+          "reference": 1.937953662667974,
+          "bridge": true,
+          "count": 2,
+          "corrected_difference": 6.039613253960852e-13
+        },
+        {
+          "row": 495565,
+          "y": 0.26646256710062566,
+          "native": 0.2664625671012449,
+          "reference": 0.26646010846725265,
+          "bridge": true,
+          "count": 1,
+          "corrected_difference": 0.0
+        },
+        {
+          "row": 5395335,
+          "y": -0.15230075240801516,
+          "native": -0.15230075240802307,
+          "reference": -0.1523034482687181,
+          "bridge": true,
+          "count": 1,
+          "corrected_difference": 0.0
+        },
+        {
+          "row": 970431,
+          "y": 2.251227038029168,
+          "native": 2.25122703802916,
+          "reference": 2.2512304269077688,
+          "bridge": true,
+          "count": 1,
+          "corrected_difference": 0.0
+        },
+        {
+          "row": 77406,
+          "y": 2.057266057591595,
+          "native": 2.057266057591602,
+          "reference": 2.0572614733215073,
+          "bridge": true,
+          "count": 1,
+          "corrected_difference": 0.0
+        }
+      ]
+    },
+    {
+      "family": "ppml-three-sparse-1m-lsmr",
+      "rows": 1000000,
+      "columns_sha256": "5f1f01a696dc507af4b939bd8a173c8668a0ac8c8d4fbeb0ec3d1097944bad22",
+      "fitted_sha256": "ff73337eda8d2ceee408831f796381fe83bd6e416633b527e1951cb08d0602e3",
+      "original_failed_rows": 19,
+      "failed_bridge_rows": 18,
+      "failed_singleton_bridge_rows": 12,
+      "failed_nonbridge_rows": 1,
+      "independent_failed_cell_cut_checks": 14,
+      "all_singleton_bridge_rows": 728,
+      "conditional_correction_remaining_failed_rows": 1,
+      "conditional_correction_maximum": 3.5474026605086806e-07,
+      "scope": "Only single-row bridge cells have an unconditional exact optimum y. Multirow updates optimize the cell intercept conditional on unchanged contrasts; they do not certify all coefficients.",
+      "singleton_optimum": {
+        "native": {
+          "failed_rows": 0,
+          "maximum_absolute": 2.5643576151423986e-10,
+          "maximum_tolerance_ratio": 0.06599111471647089
+        },
+        "reference": {
+          "failed_rows": 12,
+          "maximum_absolute": 5.673039533693469e-07,
+          "maximum_tolerance_ratio": 21.09758433883347
+        }
+      },
+      "failed_cell_counts": {
+        "1": 13,
+        "2": 2,
+        "3": 0,
+        "4": 4,
+        "5": 0
+      },
+      "remaining_rows": [
+        {
+          "row": 741885,
+          "bridge": false,
+          "count": 1,
+          "native": 2.6404057077342715,
+          "reference": 2.6404060624745376,
+          "absolute": 3.5474026605086806e-07
+        }
+      ],
+      "worst_rows": [
+        {
+          "row": 676476,
+          "y": 0.05575612037497518,
+          "native": 0.05575612045411372,
+          "reference": 0.05575602602126227,
+          "bridge": true,
+          "count": 1,
+          "corrected_difference": -6.938893903907228e-18
+        },
+        {
+          "row": 312211,
+          "y": 0.7766777408818484,
+          "native": 0.7560835986607718,
+          "reference": 0.7560834886178212,
+          "bridge": true,
+          "count": 2,
+          "corrected_difference": 4.253375429641437e-12
+        },
+        {
+          "row": 485523,
+          "y": 0.45807393248443395,
+          "native": 1.1135209023996204,
+          "reference": 1.1135210169726204,
+          "bridge": true,
+          "count": 4,
+          "corrected_difference": -3.369748924342275e-12
+        },
+        {
+          "row": 264756,
+          "y": 0.04671330205736071,
+          "native": 0.04671330182202339,
+          "reference": 0.046713421708980477,
+          "bridge": true,
+          "count": 1,
+          "corrected_difference": 0.0
+        },
+        {
+          "row": 485522,
+          "y": 3.2603785461692825,
+          "native": 1.2146885696568133,
+          "reference": 1.2146886946271576,
+          "bridge": true,
+          "count": 4,
+          "corrected_difference": 8.378631122241131e-12
+        },
+        {
+          "row": 485521,
+          "y": 0.4353087886949301,
+          "native": 1.2917262645589846,
+          "reference": 1.2917263974459847,
+          "bridge": true,
+          "count": 4,
+          "corrected_difference": 1.8094192810735876e-11
+        },
+        {
+          "row": 485524,
+          "y": 1.3599549430217763,
+          "native": 1.8937804737555088,
+          "reference": 1.893780668628774,
+          "bridge": true,
+          "count": 4,
+          "corrected_difference": -2.3102630919424882e-11
+        },
+        {
+          "row": 741885,
+          "y": 1.9648591311430565,
+          "native": 2.6404057077342715,
+          "reference": 2.6404060624745376,
+          "bridge": false,
+          "count": 1,
+          "corrected_difference": -3.5474026605086806e-07
+        },
+        {
+          "row": 594916,
+          "y": 0.362629185009498,
+          "native": 0.3626291850095424,
+          "reference": 0.3626297024604223,
+          "bridge": true,
+          "count": 1,
+          "corrected_difference": 0.0
+        },
+        {
+          "row": 485525,
+          "y": 1.648617339157853,
+          "native": 1.6486173391576142,
+          "reference": 1.6486167718538995,
+          "bridge": true,
+          "count": 1,
+          "corrected_difference": 2.220446049250313e-16
+        }
+      ]
+    }
+  ],
+  "analytic_self_checks": 11,
+  "elapsed_seconds": 12.618454377050512,
+  "diagnostic_only": true,
+  "scope": "Exact one-row bridge optima and conditional multirow bridge intercept corrections; not an enclosure of the full optimum.",
+  "retries": 0,
+  "accounting": {
+    "job": "8358713",
+    "host": "scc-gr4",
+    "failed": 0,
+    "exit_status": 0,
+    "wall_seconds": 16,
+    "cpu_seconds": 12.832,
+    "maximum_virtual_memory": "3.175G",
+    "slots": 4,
+    "memory_per_slot": "3G",
+    "wall_limit_seconds": 420
+  },
+  "bindings": {
+    "bridge-diagnostic.py": "6fb53d405b7290e5d736b1cac5cd96b3f1a2c62be6055ee49161f69ef6571355",
+    "bridge-diagnostic-job.sh": "628a172193a307c4cd260b991c36a2118b01616cab6b1b525338f744563fc6e5",
+    "BRIDGE-DIAGNOSTIC.SHA256SUMS": "fd09c5ef3a803bebba0551ce216b43bbfe9e8d62e35833010213aa5f80beb775",
+    "bridge-diagnostic.json": "856675d23f02be1222277a2aa437dea670f8a20862c8bf6e1ecaa3fe3feeac10",
+    "bridge-diagnostic-accounting.txt": "6bc742b591badadeacf684813fac47e0f7ee42bfad28126f4c690a625d26f9fd",
+    "bridge-diagnostic-exit.txt": "599d2d1cc7b72600965c2d5c8b6ae8adc7b37a74117eec2d61925839d3bb7c38",
+    "bridge-diagnostic.log": "233eb7e0a17434096d79865342067af7a5770a72ff8e9cf4ff1f5801e06d0451"
+  },
+  "prior_diagnostic": "within-companion-fitted-diagnostic-20261030.json",
+  "original_failures_preserved": true,
+  "qualification_accepted": false,
+  "maintained_witness": {
+    "crates/fereg-oracle/python/bridge_optimum_witness.py": "3db9414a68d52cdde88fa2eec7032f9a3059fd9c1a61fc3ffa769b57654b030a",
+    "tests/python/test_bridge_optimum_witness.py": "780b11ac307467550e129a85cd6eb7217da18e07a0674a174e02c9ef5b15cd76"
+  },
+  "maintained_witness_checks": {
+    "platform": "macOS",
+    "python": "3.12.2",
+    "numpy": "1.26.4",
+    "scipy": "1.13.1",
+    "tests_passed": 4,
+    "runtime_changed": false
+  }
+}

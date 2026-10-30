@@ -24,8 +24,13 @@ The [current validation record](VALIDATION.md#upstream-migration-candidate)
 keeps the final Mac and six-host Linux performance regressions, two unresolved
 beta.10/reference fitted-value comparisons after the approved DoF normalization,
 and the 600-second Linux beta.10 PPML timeout explicit. That timeout was not
-retried. The larger companion panel remains incomplete, and beta.11 remains
-an unpublished review candidate rather than an accepted replacement.
+retried. Johannes has now conditionally accepted the disclosed eight-/sixteen-FE
+regressions, provided the numerical investigation supports the estimates. An
+independent bridge-cell witness proves reference error on a subset of the
+failing rows, and an independent optimum enclosure now covers both full
+retained beta.10 fits. Actual-candidate checks against that enclosure remain open. The larger
+companion panel remains incomplete, and beta.11 remains an unpublished review
+candidate until that condition is met.
 No new estimates ran during the failed fitted-value rechecks or their read-only
 diagnostic; the later native continuation excluded both affected families.
 Earlier counts-only fereg `c1f4d5ad` and dependency `534ea64f`
