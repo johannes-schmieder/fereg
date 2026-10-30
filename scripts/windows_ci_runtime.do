@@ -55,21 +55,41 @@ file close `verification'
 assert `"`installed_verified'"' == `"`verified'"'
 shell powershell.exe -NoLogo -NoProfile -NonInteractive ///
     -ExecutionPolicy Bypass -File "scripts/windows_ci_report.ps1" -Action start -Stage stata_smoke
-do "tests/stata/installation/windows_ci_smoke.do"
+* Diagnostic r(9101) identifies this unchanged fixture; it cannot confer PASS.
+capture noisily do "tests/stata/installation/windows_ci_smoke.do"
+if _rc exit 9101
 shell powershell.exe -NoLogo -NoProfile -NonInteractive ///
     -ExecutionPolicy Bypass -File "scripts/windows_ci_report.ps1" -Action start -Stage single_runtime
-do "tests/stata/installation/single_runtime.do"
-do "tests/stata/development/ols_solver_reporting.do"
-do "tests/stata/development/ols_cmg_raw_residual_oracle.do"
-do "tests/stata/development/ols_mixed_solver_reports.do"
-do "tests/stata/parity_ppmlhdfe/feppml_one_fe_dummy_oracle.do"
+* Diagnostic r(9102) identifies this unchanged fixture; it cannot confer PASS.
+capture noisily do "tests/stata/installation/single_runtime.do"
+if _rc exit 9102
+* Diagnostic r(9103) identifies this unchanged fixture; it cannot confer PASS.
+capture noisily do "tests/stata/development/ols_solver_reporting.do"
+if _rc exit 9103
+* Diagnostic r(9104) identifies this unchanged fixture; it cannot confer PASS.
+capture noisily do "tests/stata/development/ols_cmg_raw_residual_oracle.do"
+if _rc exit 9104
+* Diagnostic r(9105) identifies this unchanged fixture; it cannot confer PASS.
+capture noisily do "tests/stata/development/ols_mixed_solver_reports.do"
+if _rc exit 9105
+* Diagnostic r(9106) identifies this unchanged fixture; it cannot confer PASS.
+capture noisily do "tests/stata/parity_ppmlhdfe/feppml_one_fe_dummy_oracle.do"
+if _rc exit 9106
 * Exercise the migrated within paths with independent dummy-model witnesses.
-do "tests/stata/development/within_weighted_ols.do"
-do "tests/stata/development/ols_three_fe_batch_oracle.do"
-do "tests/stata/development/lsmr_batch_oracle.do"
+* Diagnostic r(9107) identifies this unchanged fixture; it cannot confer PASS.
+capture noisily do "tests/stata/development/within_weighted_ols.do"
+if _rc exit 9107
+* Diagnostic r(9108) identifies this unchanged fixture; it cannot confer PASS.
+capture noisily do "tests/stata/development/ols_three_fe_batch_oracle.do"
+if _rc exit 9108
+* Diagnostic r(9109) identifies this unchanged fixture; it cannot confer PASS.
+capture noisily do "tests/stata/development/lsmr_batch_oracle.do"
+if _rc exit 9109
 * This fixture locates its exact input through the source ado path. The installed
 * binary has already been hash-verified; the source and installed ado bytes match.
 adopath ++ "stata"
-do "tests/stata/development/within_plugin_slope_boundary.do"
+* Diagnostic r(9110) identifies this unchanged fixture; it cannot confer PASS.
+capture noisily do "tests/stata/development/within_plugin_slope_boundary.do"
+if _rc exit 9110
 shell powershell.exe -NoLogo -NoProfile -NonInteractive ///
     -ExecutionPolicy Bypass -File "scripts/windows_ci_report.ps1" -Action pass
