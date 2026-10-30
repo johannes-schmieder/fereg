@@ -1,0 +1,254 @@
+{
+  "schema_version": 1,
+  "status": "Mac and Linux source correctness passed; performance unmeasured and no adoption.",
+  "source": {
+    "commit": "303ba33e4f2a45f1d5dc3d6146e036392a1bbd45",
+    "base_commit": "d3407a16dec3715f6e9eee13fb9b6646d5b28035",
+    "tree": "949386d11f87910e0d50cef9509cbeb0d01797f6",
+    "archive_sha256": "f7991bbf18bd917f138b87ffb640d9039837758db28faeab52205a85ea7e468c",
+    "file_sha256": {
+      "Cargo.lock": "525b3330ed4dc739d0103f8431e1a4daadb3498ab06d63995293113bbaece68f",
+      "crates/within/src/operator/design/scatter.rs": "38113cf0f8ca970d7a8f152fba048094225104b50620040e5e7138388f7a03b6",
+      "crates/within/src/operator/design/scatter/tests.rs": "0a74cda9b13cde062b4cf5e0e1de5a9670f4ed69828d71db7b15f4a17db6cdb4"
+    }
+  },
+  "scope_sha256": "6475c8d08e65ea0a7e0ef0fec501c227d63fd172e3039a7db6c2d7f350f1158f",
+  "declared_scope": {
+    "production_scope": "Private scatter_term Fold leaf, all supported column arities and weighted/unweighted loadings. Owner path and all dispatch, summation leaf boundaries and fixed merge trees unchanged.",
+    "change": "Keep each adjacent-run accumulator initialized from the existing leaf coefficient sum; perform each existing row expression and addition in the same sequence, then store on level change/end. Returning to a level reloads its earlier sum. No run subtotal, reassociation, FMA, new heap allocation or API.",
+    "numerical_contract": "Exact scientific bits, solver work and discrete decisions on the same machine/build at fixed workers; preserve independent scientific certificates and stable decisions across workers. No model/rank/omission/selection/separation changes.",
+    "resource_contract": "Only bounded stack accumulators; preserve heap memory admission and cancellation/error boundaries for valid prepared inputs.",
+    "excluded": [
+      "gather zeroing",
+      "counts",
+      "held scatter specialization",
+      "backsub",
+      "historical fused arithmetic"
+    ]
+  },
+  "witnesses": [
+    {
+      "name": "operator::design::scatter::tests::fold_runs_preserve_coefficient_order_all_arities_and_leaf_boundaries",
+      "description": "Independent coefficient-first row-index accumulation and unchanged tree: C1\u20134; ordinary and4*C*L leaves; tails, cross-leaf runs, revisits/random/singleton/long codes, extreme finite cancellation, subnormals and exact1/4-worker repeats."
+    },
+    {
+      "name": "operator::design::scatter::tests::fold_runs_match_weighted_sloped_and_general_operator_dispatch",
+      "description": "Actual DesignOperator for10 intercept/sloped shapes, weighted/unweighted including zero weights; specialized arities/general scalar fallback; independent coefficient reference and exact1/4-worker repeats."
+    },
+    {
+      "name": "operator::design::scatter::tests::fold_runs_preserve_nonfinite_and_signed_zero_kernel_edges",
+      "description": "Low-level signed zero, maximum finite overflow, infinities and quiet-NaN payload against ordered coefficient accumulation on each tested build."
+    },
+    {
+      "name": "operator::design::scatter::tests::fold_runs_callback_order_and_panic_leave_output_unpublished",
+      "description": "Single-leaf callback order/count and panic leaving destination unchanged; empty observations remain rejected before the kernel."
+    }
+  ],
+  "existing_coverage": "Full suites include independent dense weighted/sloped adjoint witnesses, pool repeatability, controlled solves, iteration budgets, cancellation and numerical safeguards.",
+  "counts_per_full_suite": {
+    "top_level_passes_including_doctests": 587,
+    "nested_subprocess_repeats": 2,
+    "passed_result_entries": 589,
+    "failed": 0,
+    "preexisting_ignored": 1,
+    "ignored_test": "regenerate_wire_format_fixture",
+    "result_groups": 29,
+    "counting_note": "Four focused Mac passes repeat tests included in the full suite; filtered integration targets reported zero tests."
+  },
+  "mac": {
+    "platform": "Darwin",
+    "architecture": "aarch64",
+    "rustc": "rustc 1.85.1 (4eb161250 2025-03-15)\nbinary: rustc\ncommit-hash: 4eb161250e340c8f48f66e2b929ef4a5bed7c181\ncommit-date: 2025-03-15\nhost: aarch64-apple-darwin\nrelease: 1.85.1\nLLVM version: 19.1.7",
+    "rustc_info_sha256": "82ceabeb7e9a98d37f1ac43dcd167f46153e87bf74076a86292a27770568c3f6",
+    "commands": {
+      "focused": {
+        "command": [
+          "cargo",
+          "test",
+          "--locked",
+          "--offline",
+          "-p",
+          "within",
+          "operator::design::scatter::tests",
+          "--",
+          "--test-threads=1"
+        ],
+        "process_exit": 0,
+        "timed_out": false,
+        "duration_seconds": 43.876,
+        "process_record_sha256": "9b35297642118e38c632aa1ed38fd502ff8d559480f2e7d8c4395f08c44c11da",
+        "stdout_sha256": "53b1c1229a5a71a5c86bf817723a6073945290c1d132cc00a1dd7dd8a6fd6638",
+        "stderr_sha256": "7d799067f55d1ace8719a29cae1761ca4191cd9befc3d9d4d6c97bc76c512cc8"
+      },
+      "suite": {
+        "command": [
+          "cargo",
+          "test",
+          "--locked",
+          "--offline",
+          "-p",
+          "within",
+          "-p",
+          "schwarz-precond",
+          "--",
+          "--test-threads=1"
+        ],
+        "process_exit": 0,
+        "timed_out": false,
+        "duration_seconds": 458.52,
+        "process_record_sha256": "a002124572ad7a5d9c7edbc8cee7b201e1bb65e794bcbd6ad285df98afd1dff0",
+        "stdout_sha256": "c35364feb2b66cef3e34b2e69de98403b6f755e8600ba8735c5af40c6d4b1c33",
+        "stderr_sha256": "007124cf06cd66df801e743d3494685d583df4ac9afb31ebf5427587ab68426e"
+      },
+      "clippy": {
+        "command": [
+          "cargo",
+          "clippy",
+          "--locked",
+          "--offline",
+          "-p",
+          "within",
+          "-p",
+          "schwarz-precond",
+          "--lib",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "process_exit": 0,
+        "timed_out": false,
+        "duration_seconds": 8.733,
+        "process_record_sha256": "89f8a3eebf815ee698bd148cbe1014f61a4f8963f0f42a38b36a87fe5e8180b1",
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_sha256": "fbbeaa26b5b6a238283c676a80636c4488317db2121c42fed9d5b5e941bb00bd"
+      }
+    },
+    "strict_library_clippy": "passed",
+    "warnings_in_captured_stderr": 0,
+    "environment_limit": "Process records bind commands and selected environment hashes, not a complete build-environment snapshot. No native plugin was built or qualified by these checks."
+  },
+  "linux": {
+    "job": {
+      "id": "8346716",
+      "host": "scc-tb4.scc.bu.edu",
+      "project": "welfgr",
+      "parallel_environment": "omp16",
+      "slots": 16,
+      "reserved_memory_gb": 48,
+      "walltime_limit_seconds": 2700,
+      "failed": 0,
+      "exit_status": 0,
+      "wallclock_seconds": 1088,
+      "cpu_seconds": 2302.436,
+      "maxvmem": "4.733G",
+      "start_time_scc_local": "Thu Oct 29 21:29:13 2026",
+      "end_time_scc_local": "Thu Oct 29 21:47:21 2026"
+    },
+    "environment": {
+      "rustc": "rustc 1.85.1 (4eb161250 2025-03-15)\nbinary: rustc\ncommit-hash: 4eb161250e340c8f48f66e2b929ef4a5bed7c181\ncommit-date: 2025-03-15\nhost: x86_64-unknown-linux-gnu\nrelease: 1.85.1\nLLVM version: 19.1.7",
+      "cargo": "cargo 1.85.1 (d73d2caf9 2024-12-31)",
+      "gcc": "12.2.0",
+      "python": "3.12.4",
+      "cpu_affinity": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "build_jobs": 4,
+      "rayon_default_workers": 8,
+      "test_threads": 1,
+      "blas_threads": 1,
+      "rustflags": "-C target-cpu=generic"
+    },
+    "commands": {
+      "offline_metadata": [
+        "cargo",
+        "metadata",
+        "--locked",
+        "--offline",
+        "--format-version",
+        "1",
+        "--filter-platform",
+        "x86_64-unknown-linux-gnu"
+      ],
+      "suite": [
+        "cargo",
+        "test",
+        "--locked",
+        "--offline",
+        "-p",
+        "within",
+        "-p",
+        "schwarz-precond",
+        "--",
+        "--test-threads=1"
+      ],
+      "clippy": [
+        "cargo",
+        "clippy",
+        "--locked",
+        "--offline",
+        "-p",
+        "within",
+        "-p",
+        "schwarz-precond",
+        "--lib",
+        "--",
+        "-D",
+        "warnings"
+      ]
+    },
+    "timeouts_seconds": {
+      "offline_metadata": 30,
+      "suite": 1800,
+      "clippy": 300
+    },
+    "suite_invocations": 1,
+    "retries": 0,
+    "strict_library_clippy": "passed",
+    "allocation": "Shared correctness allocation; no performance isolation claim.",
+    "verification": "Collected command-log hashes, manifest/archive, pinned lock/production/test files,29 result groups,4 witnesses, process statuses, accounting and sentinels agree. Extraction and metadata logs were not collected; their reported hashes are retained without an independent content check.",
+    "uncollected_command_log_hashes": {
+      "extract.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "metadata.log": "ea8ceddd579cc72b9ec73d870e41c29f3f03c03dc94fa4bff7f9c0936207a5cf"
+    },
+    "evidence_sha256": {
+      "job.sh": "6d2c46965907d70f2a873e0a401d6c0f4738b8607ab6641b03277bb57c6a6c4f",
+      "manifest.json": "faf3ac3d682ba3683263aef48cd095f6d36f54320ad8e60d8841ec8ca9a746da",
+      "SHA256SUMS": "01b433766aac80ab6d21c75d5139173ed27ca68ecd626e5189f5baf4d8074191",
+      "result.json": "84b587e0e7e45fc7997413fcfd8ae32b6075061a76eb5e36685a91c30b59cfdc",
+      "tests.log": "521039e9f742095e624dee02ad4abe1386d94bb0aaa7c783500fe85d1174d1c6",
+      "clippy.log": "58c0d212984afb51b49cc2e333a65d3a96a58981a199c50d0a58e04af53ef476",
+      "rustc.txt": "e569d7e196207e57f20aae13320a6b747b909de88c603c401bdb14ee3eeb121c",
+      "cargo.txt": "c8cd2e547fb0745a8738926a5c1318d17af1507f07b382d13dc704cc38684566",
+      "gcc.txt": "4211530c8fb0d148aab950b0005433a64dd6f19f26460831515c07d12fc826a9",
+      "COMPLETE": "8a228709f3e91ffdc8768bee145cb2ca77ef94b52e2af8916a81f2cdf744cf28",
+      "exit-status.txt": "ef0a04b62c5234ec91652b2c08b522eca71ab064a0f0508535e95da5259889cf",
+      "accounting.txt": "ec632fbadb7be9c1736129b800bab01f9fcb91dd7c063322ed78bb9a5b541438",
+      "input-verification.log": "9aa931f886da2886abe2a75971150d49cb5ac9281b18a3a398f3428ba4f85828",
+      "affinity.log": "6040861c00c3e179348013242e16e536f9e84e2e71822ad0a8b274464175dd33",
+      "sge.log": "ef0a04b62c5234ec91652b2c08b522eca71ab064a0f0508535e95da5259889cf"
+    }
+  },
+  "limitations": [
+    "No performance measurements or recovery of the Mac slowdown are established. Random/singleton transitions add branching without reducing coefficient stores; multi-column register pressure remains unmeasured.",
+    "The isolated d340-based patch excludes counts, held scatter slices, gather zeroing and back-substitution. No active fereg pin, routing, rank or scientific semantics were changed by this record.",
+    "NaN payload checks describe each tested machine/build; no cross-platform NaN-payload guarantee.",
+    "The panic witness covers private Fold output, not a fresh Stata Break/rollback test. No native plugin calls or actual base-versus-patch plugin comparison.",
+    "No production adoption, beta.11 acceptance or upstream publication follows from these checks."
+  ],
+  "retention": "Compact counts, commands, scope, source and artifact/log hashes are retained. Raw logs and datasets are not embedded or cited as durable evidence."
+}

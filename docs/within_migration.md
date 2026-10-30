@@ -977,9 +977,21 @@ from the existing coefficient sum, perform each original row addition, flush
 on a level change and reload on revisits, preserving leaves and merge order.
 It differs from historical run subtotals, which changed arithmetic. The second
 Fold term has 215,878 leaf-bounded runs per million rows; the third has 999,052,
-so frequent-transition overhead remains a required control. This experiment is
-untested and absent from the profiled binaries. The earlier Astra source review
-predates these four profiles and does not endorse the unseen experiment.
+so frequent-transition overhead remains a required control. This experiment was
+absent from the profiled binaries. The earlier Astra source review predates
+these four profiles and did not review this implementation.
+
+The separate [Fold correctness record](../bench/results/within-fold-register-checks-20261030.json)
+checks commit `303ba33e` on `d3407a16`. Mac and Linux each passed 587 top-level
+tests plus two nested subprocess repeats, with one existing ignored test, and
+strict library Clippy. Four focused Mac witnesses also passed and are included
+in the full suite. Linux job `8346716` completed on `scc-tb4` with accounting
+`failed=0` and `exit_status=0`. Independent coefficient-order witnesses cover
+all fixed arities, weighted/sloped and scalar fallback dispatch, run revisits,
+leaf boundaries, numerical edges and panic behavior. Performance remains
+unmeasured: frequent transitions and register pressure can offset savings.
+Counts, held scatter slices and gather zeroing remain separate; these checks
+neither demonstrate recovery of the Mac regression nor approve adoption.
 
 The [bounded diagnosis](../bench/results/within-scatter-diagnosis-20261029.json)
 retains the restoration checks, existing control observations, generated-code
