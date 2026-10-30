@@ -1,0 +1,588 @@
+{
+  "accounting": {
+    "cpu_seconds": 2929.474,
+    "exit_record": {
+      "bytes": 79,
+      "sha256": "761e894326588f62edb8aab007bb96ec4a8d44a7fb20568b86726693d5e81d41"
+    },
+    "exit_status": 0,
+    "failed": 0,
+    "host": "scc-ei3.scc.bu.edu",
+    "job": 8354634,
+    "maximum_virtual_memory": "5.640G",
+    "parallel_environment": "omp16",
+    "queue": "econ",
+    "record": {
+      "bytes": 1423,
+      "sha256": "d622fd45c3ff3abab27e5dfc83c3391f5a7f039131fe65f65ed7e4a0fc3718a5"
+    },
+    "slots": 16,
+    "wall_seconds": 1362,
+    "whole_job_accounting_not_benchmark_measurement": true
+  },
+  "build": {
+    "actual_plugin_abi_self_test_passed": true,
+    "elf_audit": {
+      "dependencies": [
+        "libdl.so.2",
+        "libpthread.so.0",
+        "libm.so.6",
+        "librt.so.1",
+        "libutil.so.1",
+        "libgcc_s.so.1",
+        "libc.so.6",
+        "ld-linux-x86-64.so.2"
+      ],
+      "exports": [
+        "pginit",
+        "stata_call"
+      ],
+      "format": "elf",
+      "passed": true,
+      "target": "x86_64-unknown-linux-gnu",
+      "unresolved_symbols": []
+    },
+    "expected_injected_panic_contained": true,
+    "gnu_elf_audit_skipped": false,
+    "input_guard_passes": 2,
+    "loader_sha256": "f50150d268043377a1ef0e0c8c6df34078707bb6d2bc7575cea8b9c533a63c30",
+    "metadata": {
+      "bytes": 2640,
+      "sha256": "fa66c62a1d819ddbb04689374f1d144610d323aa9631418a79b07411921bacb5"
+    },
+    "output_guard_passes": 2,
+    "plugin_sha256": "af65682bfbe124a3e0138c8586fd9d63703f84291ecde444483e57ceb118b65b",
+    "processes": {
+      "control-build": {
+        "bytes": 355,
+        "duration_seconds": 36.67033531202469,
+        "process_rc": 0,
+        "sha256": "3fe2fdf6e85cd06223f74e55e2a6cfb0d8a6f165a486c0d4e8b5feba80688cd5",
+        "timed_out": false,
+        "timeout_seconds": 300
+      },
+      "native-build": {
+        "bytes": 189,
+        "duration_seconds": 120.71631200006232,
+        "process_rc": 0,
+        "sha256": "9697f03576af20127df3bf311ff127e6a5a681c8278cb6e900837772a6cb1dcf",
+        "timed_out": false,
+        "timeout_seconds": 1200
+      }
+    },
+    "stderr": {
+      "bytes": 1091,
+      "sha256": "d03ffb7b1165d32d215232aff351177ab6eb6cef95fa864f67e85d3b057195ca"
+    },
+    "stdout": {
+      "bytes": 8036,
+      "sha256": "39a02ec1fa01d71f49df8980c7eac57e6abd663e6ba21cf6453329adf7cc7234"
+    },
+    "within_control_lock_sha256": "683eb7f7e1ef9ae491dbead88b708819270434cd5536d7b891515596c262c478",
+    "within_control_sha256": "5bb3dba360a4012773d95b323e2e95eaf04fb71eed096509af0b420c43a44600",
+    "within_control_source_sha256": "328a99b2e97ab6e0c2b535c0edb83975e477ae5b6b11dada0edf7b853808266d"
+  },
+  "dependency": {
+    "commands": [
+      "cargo test --locked --offline -p within -p schwarz-precond"
+    ],
+    "failed": 0,
+    "filtered_groups": 2,
+    "filtered_passed": 2,
+    "format_and_strict_clippy": "Reused exact-source Mac evidence; not rerun as separate Linux dependency commands.",
+    "groups": 29,
+    "histogram": [
+      {
+        "filtered_out_per_group": 0,
+        "groups": 1,
+        "ignored_per_group": 0,
+        "passed_per_group": 1
+      },
+      {
+        "filtered_out_per_group": 23,
+        "groups": 1,
+        "ignored_per_group": 0,
+        "passed_per_group": 1
+      },
+      {
+        "filtered_out_per_group": 154,
+        "groups": 1,
+        "ignored_per_group": 0,
+        "passed_per_group": 1
+      },
+      {
+        "filtered_out_per_group": 0,
+        "groups": 2,
+        "ignored_per_group": 0,
+        "passed_per_group": 2
+      },
+      {
+        "filtered_out_per_group": 0,
+        "groups": 1,
+        "ignored_per_group": 0,
+        "passed_per_group": 3
+      },
+      {
+        "filtered_out_per_group": 0,
+        "groups": 4,
+        "ignored_per_group": 0,
+        "passed_per_group": 4
+      },
+      {
+        "filtered_out_per_group": 0,
+        "groups": 1,
+        "ignored_per_group": 1,
+        "passed_per_group": 4
+      },
+      {
+        "filtered_out_per_group": 0,
+        "groups": 3,
+        "ignored_per_group": 0,
+        "passed_per_group": 5
+      },
+      {
+        "filtered_out_per_group": 0,
+        "groups": 2,
+        "ignored_per_group": 0,
+        "passed_per_group": 6
+      },
+      {
+        "filtered_out_per_group": 0,
+        "groups": 2,
+        "ignored_per_group": 0,
+        "passed_per_group": 7
+      },
+      {
+        "filtered_out_per_group": 0,
+        "groups": 2,
+        "ignored_per_group": 0,
+        "passed_per_group": 8
+      },
+      {
+        "filtered_out_per_group": 0,
+        "groups": 2,
+        "ignored_per_group": 0,
+        "passed_per_group": 11
+      },
+      {
+        "filtered_out_per_group": 0,
+        "groups": 1,
+        "ignored_per_group": 0,
+        "passed_per_group": 12
+      },
+      {
+        "filtered_out_per_group": 0,
+        "groups": 1,
+        "ignored_per_group": 0,
+        "passed_per_group": 15
+      },
+      {
+        "filtered_out_per_group": 0,
+        "groups": 1,
+        "ignored_per_group": 0,
+        "passed_per_group": 23
+      },
+      {
+        "filtered_out_per_group": 0,
+        "groups": 1,
+        "ignored_per_group": 0,
+        "passed_per_group": 24
+      },
+      {
+        "filtered_out_per_group": 0,
+        "groups": 1,
+        "ignored_per_group": 0,
+        "passed_per_group": 31
+      },
+      {
+        "filtered_out_per_group": 0,
+        "groups": 1,
+        "ignored_per_group": 0,
+        "passed_per_group": 155
+      },
+      {
+        "filtered_out_per_group": 0,
+        "groups": 1,
+        "ignored_per_group": 0,
+        "passed_per_group": 228
+      }
+    ],
+    "ignored_occurrences": 1,
+    "ignored_tests": [
+      "regenerate_wire_format_fixture"
+    ],
+    "mac_source_evidence": {
+      "bytes": 20512,
+      "sha256": "e5a76c136654d826b6e69a270d508f0b09ac39fda508cc1bc1fa39806b26b09e"
+    },
+    "nested_subprocess_passed": 2,
+    "passed_executions": 597,
+    "timeout_seconds": 1800,
+    "top_level_passed": 595,
+    "unfiltered_groups": 27,
+    "unfiltered_passed": 595
+  },
+  "environment": {
+    "affinity": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15
+    ],
+    "blas_threads": 1,
+    "cargo": "cargo 1.85.1 (d73d2caf9 2024-12-31)",
+    "cargo_jobs": 4,
+    "fereg_test_threads": 8,
+    "gcc": "12.2.0",
+    "host": "scc-ei3",
+    "job": "8354634",
+    "native_record": {
+      "bytes": 3012,
+      "sha256": "1c218785f7ecdf3ab99f65636fc7f18179854e735b7fd6657fc131dba251ca01"
+    },
+    "packages": {
+      "numpy": "2.5.4",
+      "pandas": "3.1.0",
+      "scipy": "1.18.1"
+    },
+    "purpose": "Shared correctness allocation; no performance inference.",
+    "python": "3.12.4 (main, Jul  1 2024, 10:14:11) [GCC 12.2.0]",
+    "rayon_threads": 8,
+    "record": {
+      "bytes": 2100,
+      "sha256": "a24a6e2c92dc01eedbacb4be9c04da2be4b0391fc91153f90733b84dcee4d21e"
+    },
+    "rust_test_threads": 1,
+    "rustc": "rustc 1.85.1 (4eb161250 2025-03-15)",
+    "slots": 16,
+    "target": "x86_64-unknown-linux-gnu"
+  },
+  "fereg_source": {
+    "command": "./scripts/run_tests.sh --source-only",
+    "completed_checks": [
+      "Workspace formatting",
+      "Fuzz workspace formatting and locked compilation",
+      "Strict workspace all-target Clippy without default features",
+      "Strict plugin FFI Clippy",
+      "Workspace scientific and integration tests",
+      "PPML separation census and repeatability",
+      "Portable shell, Python, TOML and strict C checks",
+      "Complexity ratchet and oracle size checks",
+      "Mock SPI bridge",
+      "Numeric input and output guards for both APPLEMAC and OPUNIX definitions",
+      "GCC static analyzer",
+      "Mock Linux plugin load/audit"
+    ],
+    "complexity_ratchet": {
+      "fereg-core": {
+        "chunk_candidates": 13,
+        "dispatch_candidates": 1451,
+        "files_over_1500": 15,
+        "functions_over_150": 59,
+        "production_lines": 113029
+      },
+      "fereg-plugin": {
+        "chunk_candidates": 3,
+        "dispatch_candidates": 143,
+        "files_over_1500": 3,
+        "functions_over_150": 12,
+        "production_lines": 15675
+      }
+    },
+    "independent_oracles": {
+      "boundary_binary64_rows": 79,
+      "boundary_rank": 24,
+      "cancellation_decimal_precision_digits": 100,
+      "fma_exact_rounding_vectors": 6,
+      "schur_vs_full_dummy_svd_cases": 92
+    },
+    "installed_package_admission": false,
+    "python": {
+      "complexity_parser_passed": 7,
+      "failed": 0,
+      "unittest_discovery_passed": 324
+    },
+    "rust": {
+      "core_unit_ignored": 3,
+      "core_unit_passed": 1537,
+      "counting_note": "Execution counts include nested processes and separate allocator audits, not unique test functions. Linux architecture-specific test availability differs from Mac.",
+      "failed": 0,
+      "filtered_groups": 71,
+      "filtered_passed": 71,
+      "groups": 120,
+      "histogram": [
+        {
+          "filtered_out_per_group": 0,
+          "groups": 10,
+          "ignored_per_group": 0,
+          "passed_per_group": 0
+        },
+        {
+          "filtered_out_per_group": 0,
+          "groups": 4,
+          "ignored_per_group": 0,
+          "passed_per_group": 1
+        },
+        {
+          "filtered_out_per_group": 196,
+          "groups": 11,
+          "ignored_per_group": 0,
+          "passed_per_group": 1
+        },
+        {
+          "filtered_out_per_group": 234,
+          "groups": 28,
+          "ignored_per_group": 0,
+          "passed_per_group": 1
+        },
+        {
+          "filtered_out_per_group": 1539,
+          "groups": 32,
+          "ignored_per_group": 0,
+          "passed_per_group": 1
+        },
+        {
+          "filtered_out_per_group": 0,
+          "groups": 6,
+          "ignored_per_group": 0,
+          "passed_per_group": 2
+        },
+        {
+          "filtered_out_per_group": 0,
+          "groups": 1,
+          "ignored_per_group": 1,
+          "passed_per_group": 2
+        },
+        {
+          "filtered_out_per_group": 0,
+          "groups": 6,
+          "ignored_per_group": 0,
+          "passed_per_group": 3
+        },
+        {
+          "filtered_out_per_group": 0,
+          "groups": 1,
+          "ignored_per_group": 0,
+          "passed_per_group": 4
+        },
+        {
+          "filtered_out_per_group": 0,
+          "groups": 5,
+          "ignored_per_group": 0,
+          "passed_per_group": 5
+        },
+        {
+          "filtered_out_per_group": 0,
+          "groups": 2,
+          "ignored_per_group": 0,
+          "passed_per_group": 6
+        },
+        {
+          "filtered_out_per_group": 0,
+          "groups": 1,
+          "ignored_per_group": 1,
+          "passed_per_group": 6
+        },
+        {
+          "filtered_out_per_group": 0,
+          "groups": 5,
+          "ignored_per_group": 0,
+          "passed_per_group": 8
+        },
+        {
+          "filtered_out_per_group": 0,
+          "groups": 1,
+          "ignored_per_group": 0,
+          "passed_per_group": 9
+        },
+        {
+          "filtered_out_per_group": 0,
+          "groups": 1,
+          "ignored_per_group": 0,
+          "passed_per_group": 11
+        },
+        {
+          "filtered_out_per_group": 0,
+          "groups": 1,
+          "ignored_per_group": 0,
+          "passed_per_group": 12
+        },
+        {
+          "filtered_out_per_group": 0,
+          "groups": 1,
+          "ignored_per_group": 0,
+          "passed_per_group": 13
+        },
+        {
+          "filtered_out_per_group": 0,
+          "groups": 1,
+          "ignored_per_group": 0,
+          "passed_per_group": 14
+        },
+        {
+          "filtered_out_per_group": 0,
+          "groups": 1,
+          "ignored_per_group": 0,
+          "passed_per_group": 197
+        },
+        {
+          "filtered_out_per_group": 0,
+          "groups": 1,
+          "ignored_per_group": 10,
+          "passed_per_group": 225
+        },
+        {
+          "filtered_out_per_group": 0,
+          "groups": 1,
+          "ignored_per_group": 3,
+          "passed_per_group": 1537
+        }
+      ],
+      "ignored_occurrences": 15,
+      "nested_subprocess_passes": 61,
+      "passed_executions": 2212,
+      "plugin_ffi_initial_ignored": 10,
+      "plugin_ffi_passed_before_separate_audits": 225,
+      "plugin_without_ffi_passed": 197,
+      "remaining_ignored_tests": [
+        {
+          "name": "fe::map::tests::slope_coefficient_frozen_frame",
+          "reason": "bounded frozen-frame development diagnostic; requires FEREG_SLOPE_FRAME"
+        },
+        {
+          "name": "ols::linear_session::bias_linear::tests::anchored_recovery_external_capture",
+          "reason": "private diagnostic capture; requires FEREG_RECOVERY_INPUT and FEREG_RECOVERY_OUTPUT"
+        },
+        {
+          "name": "ppml::bias::support::bias_support_timing_probe",
+          "reason": "focused support-screen timing, run explicitly with --ignored --nocapture"
+        },
+        {
+          "name": "census_cell",
+          "reason": "diagnostic; selects one census cell from FEREG_SEPARATION_CENSUS_CELL"
+        },
+        {
+          "name": "default_routes_long_differential_suite",
+          "reason": "long differential suite: 2,000 independent seeded designs"
+        }
+      ],
+      "separately_run_allocator_audit_passes": 10,
+      "unfiltered_groups": 49,
+      "unfiltered_passed": 2141
+    },
+    "source_manifest_before_after_exact": true,
+    "timeout_seconds": 3600
+  },
+  "inputs": {
+    "build_config": {
+      "bytes": 1219,
+      "sha256": "c9ddfe7afadd32e9fc699952dcfda3fb27839f8169ec94e3866562f0a2e5b1d0"
+    },
+    "builder": {
+      "bytes": 14403,
+      "sha256": "9a464157b20a7c7a2c186dc575e46abd0373d94438600012fb044f8bb113b6ae"
+    },
+    "large_science_plan": {
+      "bytes": 7490,
+      "sha256": "38a35dc44621f9f274edfd03efa21bc6e9dbe6bbd74a80c9467d6efb55c8b893"
+    },
+    "source_job": {
+      "bytes": 7572,
+      "sha256": "ecf88ec0da1be7a5309e50179e299bc41a66344dddc95c9885ee7a51ce48b519"
+    },
+    "source_metadata": {
+      "bytes": 709,
+      "sha256": "6e93e164a8c062a31bdb079962fdde03a95442ce0d12cbebcbe3318596c1b572"
+    }
+  },
+  "limitations": [
+    "The source suite intentionally excludes installed-package admission and cannot qualify publication.",
+    "The build does run the actual native ABI/self-test and both numeric guard definitions; it does not replace the separate twelve native stages or sixteen large-science processes.",
+    "The GNU ELF load/audit runs on Linux; the corresponding Mac source check is unsupported and was recorded as skipped.",
+    "No beta.10 performance comparison, release acceptance or production publication is implied."
+  ],
+  "logs": {
+    "affinity.txt": {
+      "bytes": 80,
+      "sha256": "6fa77f3abe34b91241a7c3ab4691c6dfaf5cb6d6b62ff7abcccaa7c16b892177"
+    },
+    "dependency-suite.log": {
+      "bytes": 63945,
+      "sha256": "8e42096bf407af51ac62ecd1542d2997280c3d7cd387960eb0c33fa24085bec9"
+    },
+    "fetch.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "input-verification.log": {
+      "bytes": 551,
+      "sha256": "48d96c0a3283973654165f3f354c48dea2329143e6552dd24ba04b4c75e0def4"
+    },
+    "local-dependency-fetch.log": {
+      "bytes": 144,
+      "sha256": "86d9fc4f9e45de6a76304d29e92434dd608d6147ec55a2d5f0e0f1657132bc39"
+    },
+    "native-driver.log": {
+      "bytes": 2468,
+      "sha256": "012d5a0484b61edca60631f1b063621f804b780fe3f6fcb21af111e003243224"
+    },
+    "output-verification.log": {
+      "bytes": 1389,
+      "sha256": "94487b7d48565de4d997bac8b6a0cf2cd3bd94b517c66fdf8ac23f7ede28bc9d"
+    },
+    "source-after-tests.log": {
+      "bytes": 86086,
+      "sha256": "6583982d9c994ee0b8339aa61a4c76be673d3b7b3389d725b4ee3e0f3b2c3a15"
+    },
+    "source-suite.log": {
+      "bytes": 254123,
+      "sha256": "8c3c904adcd288bec4ce567822def028625157ec87939587cb3cd7bab41d1412"
+    },
+    "source-verification.log": {
+      "bytes": 86086,
+      "sha256": "6583982d9c994ee0b8339aa61a4c76be673d3b7b3389d725b4ee3e0f3b2c3a15"
+    },
+    "stage-verification.log": {
+      "bytes": 609,
+      "sha256": "bcb085db6a1c4829b2bbc1c4e82f5437113743c7c7c910aab7ae6fe4b76de1ef"
+    },
+    "within-verification.log": {
+      "bytes": 12731,
+      "sha256": "e91c56bdfea99b2b4ed875e29b34584b3644184c763c762732a0f898178990c0"
+    }
+  },
+  "output_manifest": {
+    "bytes": 3063,
+    "entries": 27,
+    "sha256": "c794ea59e89cae45a0cf3159bea57c3a08d8c8adfba4f0feaa8f7eb5f7e7cc6d",
+    "verified_bytes": 19201193,
+    "verified_entries": 27
+  },
+  "pin_sha256": {
+    "Cargo.lock": "4975de767595cf184cd5328e6ec7f7a55e7871c545d3c51adbc92da1544696d5",
+    "crates/fereg-core/Cargo.toml": "6d8d5db6137f8511bca86edc6321acc05a46df01092a1396b82b0e35c2f39e0c",
+    "fuzz/Cargo.lock": "1a23818cb09f0a5f0f2b87b65fe31142a9b08e2794eea4d8f443f2ebedf117a8"
+  },
+  "schema": 1,
+  "scope": "Linux dependency/source integration and actual build/ABI correctness; separate Linux licensed-native, replay and large-science stages are not claimed by this record.",
+  "source": {
+    "build_date": "2026-10-30",
+    "commit": "65500be6e5dbaaa11bab6e6644e33e98ffbfa08a",
+    "tree": "fab7c0744c610f78d7a1195e27b16a666a44c9c1",
+    "within_revision": "8d401d8278ac783b2f258c459e057f30cd80d595",
+    "within_tree": "0c2a0b195843dbe19dd281ef576a5c04a981b8be"
+  },
+  "status": "passed"
+}

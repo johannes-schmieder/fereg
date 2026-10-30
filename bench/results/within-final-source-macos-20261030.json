@@ -1,0 +1,697 @@
+{
+  "schema": 1,
+  "scope": "Mac source and dependency correctness only, for the final four-patch test candidate. No native migration or performance qualification is claimed.",
+  "status": "source_checks_passed",
+  "source": {
+    "fereg_commit": "65500be6e5dbaaa11bab6e6644e33e98ffbfa08a",
+    "fereg_tree": "fab7c0744c610f78d7a1195e27b16a666a44c9c1",
+    "within_commit": "8d401d8278ac783b2f258c459e057f30cd80d595",
+    "within_tree": "0c2a0b195843dbe19dd281ef576a5c04a981b8be",
+    "runtime_change": "Dependency pins only; within combines counts, sparse back-substitution slices, gather locality and Fold running accumulators. No processor-specific dispatch."
+  },
+  "inputs": {
+    "dependency_tests": {
+      "name": "final-dependency-tests.log",
+      "sha256": "d5e9a4a1f936443b7ca3c9b46285003aeea950c14a3399a02fdd761fc608c8e9",
+      "bytes": 61417
+    },
+    "dependency_format": {
+      "name": "final-dependency-format.log",
+      "sha256": "ff12ed9e28951ddba0c4f39f7feb35a7ee66113c84c5d88059fd663c864f00d2",
+      "bytes": 118
+    },
+    "dependency_clippy": {
+      "name": "final-dependency-clippy.log",
+      "sha256": "14b80f2ffeea9aaa8b1ad3b78a46c828163ae0648c25ad75ac24078044a9643f",
+      "bytes": 499
+    },
+    "source_stdout": {
+      "name": "mac-source.stdout",
+      "sha256": "edaae434e21cc82ebf57d6bc0dfb1bb523c4cf0f1a47718db693aa36adaf930b",
+      "bytes": 236731
+    },
+    "source_stderr": {
+      "name": "mac-source.stderr",
+      "sha256": "6bd32ed249eacdba35a9a43f2f74a6c229b69a8b5dcabab3719fa0b81f30692b",
+      "bytes": 13494
+    },
+    "source_process": {
+      "name": "mac-source.process.json",
+      "sha256": "2c3e898e112efbebb5ae0b45c6e1461aa44046601a2c5266f9e3035867a66626",
+      "bytes": 1044
+    },
+    "source_launcher": {
+      "name": "mac-source.sh",
+      "sha256": "b4f307f32ae1a720dec62e0b14b5976650cd93acfec48afbdf63c53ef6d110de",
+      "bytes": 1427
+    },
+    "maintained_source_suite": {
+      "name": "run_tests.sh",
+      "sha256": "0d08ea0363584e4270ff9a6ecaa818b9218a417d9cb3801e35a14d2a5f3a34c8",
+      "bytes": 2844
+    },
+    "toolchain": {
+      "name": "rust-toolchain.toml",
+      "sha256": "f93479dd58b2bce65dd3a0e579efe4c0988894247e7243e1479f8de84f16d81d",
+      "bytes": 209
+    }
+  },
+  "source_process": {
+    "started_at": "2026-10-30T11:17:41.388261Z",
+    "completed_at": "2026-10-30T11:24:02.452287Z",
+    "duration_seconds": 381.062,
+    "process_rc": 0,
+    "timed_out": false,
+    "launch_error": null
+  },
+  "source_command": [
+    "bash",
+    "scripts/run_tests.sh",
+    "--source-only"
+  ],
+  "declared_environment": {
+    "basis": "Pinned source launcher and recorded dependency command, not an additional environment probe.",
+    "rust_cargo": "1.85.1",
+    "platform": "Darwin",
+    "fereg_profile": "ci",
+    "dependency_profile": "test/debug",
+    "cargo_jobs": 4,
+    "rust_test_threads": 1,
+    "rayon_workers": 8,
+    "fereg_test_threads": 8,
+    "blas_openmp_threads": 1,
+    "dependency_fetch": "The source launcher performs locked fetches first, then sets Cargo offline for its checks."
+  },
+  "dependency": {
+    "commands": {
+      "format": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "clippy": [
+        "cargo",
+        "clippy",
+        "--locked",
+        "-p",
+        "within",
+        "-p",
+        "schwarz-precond",
+        "--lib",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "tests": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "within",
+        "-p",
+        "schwarz-precond",
+        "--",
+        "--test-threads=1"
+      ]
+    },
+    "top_level_result_groups": 27,
+    "top_level_passed": 595,
+    "nested_subprocess_result_groups": 2,
+    "nested_subprocess_passed": 2,
+    "total_result_groups": 29,
+    "total_passed_executions": 597,
+    "failed": 0,
+    "ignored": 1,
+    "ignored_tests": [
+      "regenerate_wire_format_fixture"
+    ],
+    "doctests_passed": 4,
+    "format_log": "Contains the declared format command and no diagnostics; no separate exit marker is embedded in this log.",
+    "clippy_log": "Contains the declared strict library Clippy command and completed dev-profile marker; no warnings/errors.",
+    "groups": [
+      {
+        "status": "ok",
+        "passed": 228,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "suite": "schwarz-precond unit",
+        "nested_child": false
+      },
+      {
+        "status": "ok",
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "suite": "tests/iteration_budget.rs",
+        "nested_child": false
+      },
+      {
+        "status": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 23,
+        "suite": "tests/schwarz.rs",
+        "nested_child": true
+      },
+      {
+        "status": "ok",
+        "passed": 24,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "suite": "tests/schwarz.rs",
+        "nested_child": false
+      },
+      {
+        "status": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 154,
+        "suite": "within unit",
+        "nested_child": true
+      },
+      {
+        "status": "ok",
+        "passed": 155,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "suite": "within unit",
+        "nested_child": false
+      },
+      {
+        "status": "ok",
+        "passed": 12,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "suite": "tests/adaptive.rs",
+        "nested_child": false
+      },
+      {
+        "status": "ok",
+        "passed": 6,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "suite": "tests/api_pinning.rs",
+        "nested_child": false
+      },
+      {
+        "status": "ok",
+        "passed": 5,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "suite": "tests/cancellation.rs",
+        "nested_child": false
+      },
+      {
+        "status": "ok",
+        "passed": 11,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "suite": "tests/controlled.rs",
+        "nested_child": false
+      },
+      {
+        "status": "ok",
+        "passed": 7,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "suite": "tests/domain.rs",
+        "nested_child": false
+      },
+      {
+        "status": "ok",
+        "passed": 15,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "suite": "tests/edge_cases.rs",
+        "nested_child": false
+      },
+      {
+        "status": "ok",
+        "passed": 23,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "suite": "tests/error_paths.rs",
+        "nested_child": false
+      },
+      {
+        "status": "ok",
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "suite": "tests/ingest.rs",
+        "nested_child": false
+      },
+      {
+        "status": "ok",
+        "passed": 8,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "suite": "tests/metamorphic.rs",
+        "nested_child": false
+      },
+      {
+        "status": "ok",
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "suite": "tests/migration_repeatability.rs",
+        "nested_child": false
+      },
+      {
+        "status": "ok",
+        "passed": 6,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "suite": "tests/orchestrate_high_level.rs",
+        "nested_child": false
+      },
+      {
+        "status": "ok",
+        "passed": 5,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "suite": "tests/orchestrate_solve.rs",
+        "nested_child": false
+      },
+      {
+        "status": "ok",
+        "passed": 8,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "suite": "tests/precond_deser_robustness.rs",
+        "nested_child": false
+      },
+      {
+        "status": "ok",
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "suite": "tests/properties.rs",
+        "nested_child": false
+      },
+      {
+        "status": "ok",
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "suite": "tests/property_gaps.rs",
+        "nested_child": false
+      },
+      {
+        "status": "ok",
+        "passed": 5,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "suite": "tests/residual_output.rs",
+        "nested_child": false
+      },
+      {
+        "status": "ok",
+        "passed": 7,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "suite": "tests/slopes.rs",
+        "nested_child": false
+      },
+      {
+        "status": "ok",
+        "passed": 11,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "suite": "tests/slopes_routing.rs",
+        "nested_child": false
+      },
+      {
+        "status": "ok",
+        "passed": 31,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "suite": "tests/solver.rs",
+        "nested_child": false
+      },
+      {
+        "status": "ok",
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "suite": "tests/warnings.rs",
+        "nested_child": false
+      },
+      {
+        "status": "ok",
+        "passed": 4,
+        "failed": 0,
+        "ignored": 1,
+        "measured": 0,
+        "filtered_out": 0,
+        "suite": "tests/wire_format_fixture.rs",
+        "nested_child": false
+      },
+      {
+        "status": "ok",
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "suite": "Doc-tests schwarz_precond",
+        "nested_child": false
+      },
+      {
+        "status": "ok",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 0,
+        "suite": "Doc-tests within",
+        "nested_child": false
+      }
+    ]
+  },
+  "fereg_source_suite": {
+    "python": {
+      "unittest_discovery_passed": 324,
+      "complexity_parser_tests_passed": 7,
+      "failed": 0
+    },
+    "rust": {
+      "result_groups": 120,
+      "passed_executions": 2198,
+      "failed": 0,
+      "measured": 0,
+      "unfiltered_result_groups": 49,
+      "unfiltered_passed": 2127,
+      "nested_one_test_subprocess_groups": 61,
+      "individually_invoked_allocator_audit_groups": 10,
+      "allocator_audit_discovery_process": 1,
+      "core_unit": {
+        "passed": 1537,
+        "ignored": 3
+      },
+      "plugin_without_ffi_unit": {
+        "passed": 189,
+        "ignored": 0
+      },
+      "plugin_ffi_unit_before_separate_audits": {
+        "passed": 219,
+        "ignored": 10
+      },
+      "initial_ignored_occurrences": 15,
+      "ignored_audits_run_separately": [
+        {
+          "name": "estimate::tests::action_metadata_matches_independent_deallocation_and_counts_spare_capacity",
+          "reason": "process-global allocator audit; run with --test-threads=1"
+        },
+        {
+          "name": "estimate::tests::inference_residual_overlap_stays_within_existing_frame",
+          "reason": "process-global allocator audit; run with --test-threads=1"
+        },
+        {
+          "name": "estimate::tests::model_recovery_workspace_bounds_observed_allocator_peak",
+          "reason": "process-global allocator audit; run with --test-threads=1"
+        },
+        {
+          "name": "estimate::tests::numeric_dictionary_growth_stays_inside_construction_envelope",
+          "reason": "process-global allocator audit; run with --test-threads=1"
+        },
+        {
+          "name": "estimate::tests::saved_slope_recovery_workspace_bounds_observed_allocator_peak",
+          "reason": "process-global allocator audit; run with --test-threads=1"
+        },
+        {
+          "name": "ffi::tests::whole_action_stitches_prefix_and_legacy_reset_without_losing_early_peak",
+          "reason": "process-global allocator audit; run with --test-threads=1"
+        },
+        {
+          "name": "input_memory::tests::simultaneous_dictionaries_bound_independent_allocator_peak",
+          "reason": "allocator audit; run individually with --test-threads=1"
+        },
+        {
+          "name": "ppml_estimate::tests::core_publication_observation_has_no_obsolete_fit_or_generation_owner",
+          "reason": "process-global allocator audit; run with --test-threads=1"
+        },
+        {
+          "name": "ppml_estimate::tests::publication_owners_match_independent_deallocation_and_exact_admission",
+          "reason": "process-global allocator audit; run with --test-threads=1"
+        },
+        {
+          "name": "ppml_execution::tests::repeated_scoped_family_work_and_callbacks_allocate_nothing_after_warmup",
+          "reason": "process-global allocator audit; run with --test-threads=1"
+        }
+      ],
+      "remaining_ignored_tests": [
+        {
+          "name": "fe::map::tests::slope_coefficient_frozen_frame",
+          "reason": "bounded frozen-frame development diagnostic; requires FEREG_SLOPE_FRAME"
+        },
+        {
+          "name": "ols::linear_session::bias_linear::tests::anchored_recovery_external_capture",
+          "reason": "private diagnostic capture; requires FEREG_RECOVERY_INPUT and FEREG_RECOVERY_OUTPUT"
+        },
+        {
+          "name": "ppml::bias::support::bias_support_timing_probe",
+          "reason": "focused support-screen timing, run explicitly with --ignored --nocapture"
+        },
+        {
+          "name": "census_cell",
+          "reason": "diagnostic; selects one census cell from FEREG_SEPARATION_CENSUS_CELL"
+        },
+        {
+          "name": "default_routes_long_differential_suite",
+          "reason": "long differential suite: 2,000 independent seeded designs"
+        }
+      ],
+      "remaining_ignored_count": 5,
+      "counting_note": "Execution counts include nested subprocess reruns and the ten separately invoked audits; they are not counts of unique test functions. The audit-list discovery invocation has no test-result group.",
+      "result_histogram": [
+        {
+          "groups": 10,
+          "passed_per_group": 0,
+          "ignored_per_group": 0,
+          "filtered_out_per_group": 0
+        },
+        {
+          "groups": 4,
+          "passed_per_group": 1,
+          "ignored_per_group": 0,
+          "filtered_out_per_group": 0
+        },
+        {
+          "groups": 11,
+          "passed_per_group": 1,
+          "ignored_per_group": 0,
+          "filtered_out_per_group": 188
+        },
+        {
+          "groups": 28,
+          "passed_per_group": 1,
+          "ignored_per_group": 0,
+          "filtered_out_per_group": 228
+        },
+        {
+          "groups": 32,
+          "passed_per_group": 1,
+          "ignored_per_group": 0,
+          "filtered_out_per_group": 1539
+        },
+        {
+          "groups": 6,
+          "passed_per_group": 2,
+          "ignored_per_group": 0,
+          "filtered_out_per_group": 0
+        },
+        {
+          "groups": 1,
+          "passed_per_group": 2,
+          "ignored_per_group": 1,
+          "filtered_out_per_group": 0
+        },
+        {
+          "groups": 6,
+          "passed_per_group": 3,
+          "ignored_per_group": 0,
+          "filtered_out_per_group": 0
+        },
+        {
+          "groups": 1,
+          "passed_per_group": 4,
+          "ignored_per_group": 0,
+          "filtered_out_per_group": 0
+        },
+        {
+          "groups": 5,
+          "passed_per_group": 5,
+          "ignored_per_group": 0,
+          "filtered_out_per_group": 0
+        },
+        {
+          "groups": 2,
+          "passed_per_group": 6,
+          "ignored_per_group": 0,
+          "filtered_out_per_group": 0
+        },
+        {
+          "groups": 1,
+          "passed_per_group": 6,
+          "ignored_per_group": 1,
+          "filtered_out_per_group": 0
+        },
+        {
+          "groups": 5,
+          "passed_per_group": 8,
+          "ignored_per_group": 0,
+          "filtered_out_per_group": 0
+        },
+        {
+          "groups": 1,
+          "passed_per_group": 9,
+          "ignored_per_group": 0,
+          "filtered_out_per_group": 0
+        },
+        {
+          "groups": 1,
+          "passed_per_group": 11,
+          "ignored_per_group": 0,
+          "filtered_out_per_group": 0
+        },
+        {
+          "groups": 1,
+          "passed_per_group": 12,
+          "ignored_per_group": 0,
+          "filtered_out_per_group": 0
+        },
+        {
+          "groups": 1,
+          "passed_per_group": 13,
+          "ignored_per_group": 0,
+          "filtered_out_per_group": 0
+        },
+        {
+          "groups": 1,
+          "passed_per_group": 14,
+          "ignored_per_group": 0,
+          "filtered_out_per_group": 0
+        },
+        {
+          "groups": 1,
+          "passed_per_group": 189,
+          "ignored_per_group": 0,
+          "filtered_out_per_group": 0
+        },
+        {
+          "groups": 1,
+          "passed_per_group": 219,
+          "ignored_per_group": 10,
+          "filtered_out_per_group": 0
+        },
+        {
+          "groups": 1,
+          "passed_per_group": 1537,
+          "ignored_per_group": 3,
+          "filtered_out_per_group": 0
+        }
+      ]
+    },
+    "independent_oracles": {
+      "schur_vs_full_dummy_svd_cases": 92,
+      "fma_exact_rounding_vectors": 6,
+      "boundary_binary64_rows": 79,
+      "boundary_rank": 24,
+      "cancellation_decimal_precision_digits": 100
+    },
+    "other_completed_checks": [
+      "Workspace formatting",
+      "Fuzz workspace formatting and locked compilation",
+      "Strict workspace all-target Clippy without default features",
+      "Strict plugin FFI Clippy",
+      "Workspace scientific and integration tests",
+      "PPML separation census and repeatability",
+      "Portable shell, Python, TOML and strict C checks",
+      "Complexity ratchet and oracle size checks",
+      "Mock SPI bridge",
+      "Numeric input and output guards for both APPLEMAC and OPUNIX definitions"
+    ],
+    "complexity_ratchet": {
+      "fereg-core": {
+        "chunk_candidates": 13,
+        "dispatch_candidates": 1451,
+        "files_over_1500": 15,
+        "functions_over_150": 59,
+        "production_lines": 113029
+      },
+      "fereg-plugin": {
+        "chunk_candidates": 3,
+        "dispatch_candidates": 143,
+        "files_over_1500": 3,
+        "functions_over_150": 12,
+        "production_lines": 15675
+      }
+    },
+    "guard_counts": {
+      "INPUT_GUARD_PASS": 2,
+      "OUTPUT_GUARD_PASS": 2
+    }
+  },
+  "limitations": [
+    "The Linux mock-plugin GNU ELF audit is explicitly skipped on Mac: it requires a GNU ELF linker. The portable C checks and mock numeric guards still ran.",
+    "Installed-package binding, inventory, hash, actual ABI and Mata admission are explicitly not performed by this source-only suite. The synthetic GitHub-install test output is not installed-package admission.",
+    "The five listed development-only ignored fereg tests and dependency wire-fixture regenerator were not run; the ten allocator audits initially marked ignored were all executed separately.",
+    "Source validation does not establish final actual-plugin replay, licensed Stata transactions, Break, large scientific controls, beta.10 performance non-regression or production acceptance.",
+    "The three dependency logs retain command/output evidence but no separate supervisor exit-status record. Their full test summaries, completed Clippy output and parent-observed terminal completion are the evidence; the fereg source suite has an explicit successful supervisor record."
+  ]
+}

@@ -17,10 +17,25 @@ back-substitution, gather and the general Fold running accumulator. Johannes
 accepted all four optimizations and their disclosed individual-patch tradeoffs
 on 2026-10-30, and authorized combined building and qualification. Scatter slices
 remain excluded; no processor-specific dispatch or scientific-semantic change
-is included. Combined source/native checks and beta.10 performance qualification
-remain pending. The earlier counts-only `534ea64f` candidate had 55 passed Mac
+is included. Combined source checks passed on Mac and Linux, and the final Mac native and
+preflight checks passed; beta.10 performance qualification remains pending. The earlier counts-only `534ea64f` candidate had 55 passed Mac
 cells, two inconclusive cells and one regression; its five valid Linux hosts
 were below the six-host requirement. Those classifications remain unchanged.
+
+The final combined artifacts bind fereg `65500be6` and within `8d401d82`.
+[Mac source checks](../bench/results/within-final-source-macos-20261030.json)
+and [Linux source checks](../bench/results/within-final-source-linux-20261030.json)
+pass the complete source suites and dependency checks. The
+[Mac native record](../bench/results/within-final-native-macos-20261030.json)
+passes all twelve native stages, including replay, licensed fixtures, actual
+Break/rollback, memory checks and sixteen large-design calls. The
+[Mac final preflight](../bench/results/within-final-preflight-macos-20261030.json)
+passes all 28 actual beta.10/final-candidate calls, fourteen arm comparisons
+and seven cross-worker family checks. Six families execute within; the dense
+three-FE MAP-completed family remains an exact control. These records preserve
+source/artifact identities, scientific results and output hashes; large captures
+are disposable after verification. They establish correctness prerequisites,
+not combined performance acceptance or publication.
 
 The separate [Fold accumulator comparison](../bench/results/within-fold-performance-20261030.json)
 completes all 516 calls with exact science and solver work. The affected Mac
