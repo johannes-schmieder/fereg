@@ -126,9 +126,35 @@ with nineteen iterations; it does not establish the cause of the timeout.
 Terminal accounting records `failed=0`, `exit_status=1`, and 12.363 GB maximum
 virtual memory. This is incomplete qualification, not a numerical mismatch or a
 performance comparison. Johannes approved the sixteen previously unstarted
-Linux slope calls within a further 4,800 seconds of the original budget. Job
-8357906 runs only those calls and stops at the first new failure; it does not
-retry PPML. The independent Mac subset continues under its original limits.
+Linux slope calls within a further 4,800 seconds of the original budget. That
+[slope-only continuation](../bench/results/within-slope-companions-linux-20261030.json)
+passes all sixteen calls and the cross-arm/cross-worker comparisons on
+`scc-ei3`, covering sorted and permuted ten-million-row one-/three-slope designs.
+Job 8357906 completed in 856 seconds with `failed=0`, `exit_status=0`, and
+5.052 GB maximum virtual memory. Each call executes within and passes its
+independent analytic witness. There were no retries or tolerance changes; the
+PPML timeout was not retried. Together with the earlier eight weighted-OLS
+calls, Linux has passed 24 of the 28 calls in the approved unaffected subset;
+its four PPML checks remain incomplete. The four previously passed Linux
+weighted-OLS memory checks remain valid.
+
+The [Mac continuation](../bench/results/within-unaffected-companions-mac-20261030.json)
+passes all 28 native calls and 28 cross-arm/cross-worker comparisons across the
+seven approved families: weighted OLS Auto and explicit LSMR, ten-million-row
+two-FE PPML Auto, and ten-million-row one-/three-slope designs with sorted and
+permuted rows. Six families execute within; the PPML family is an independent
+unaffected route control. The four weighted-OLS memory calls also pass: both
+plugins meet the reference when admitted, and both refusals preserve every
+matrix and observation column without solver work. The controller completed in
+2,405.3 seconds including transfer and staging, with zero native retries. One
+preparation-only failure occurred before any native call: the original helper
+confused the reference JSON and NPZ hashes. Its narrow correction checks each
+file against its own pinned hash, and both the failure and correction remain in
+the record. Completed captures and staged inputs were removed after verification.
+These checks establish correctness for the approved subset, not performance or
+new fixed-worker repeatability evidence. The two held fitted-value gates and
+Linux PPML timeout remain unresolved; combined performance acceptance is also
+still required.
 
 The separate [Fold accumulator comparison](../bench/results/within-fold-performance-20261030.json)
 completes all 516 calls with exact science and solver work. The affected Mac

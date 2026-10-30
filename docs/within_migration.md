@@ -17,11 +17,17 @@ this combined candidate. Scatter slices remain excluded. There is no
 processor-specific dispatch or change to scientific semantics.
 
 This final source passes combined source, native and preflight checks on Mac
-and Linux. Combined performance comparisons need discussion, and the larger companion
-panel remains incomplete. The [current validation record](VALIDATION.md#upstream-migration-candidate)
-retains the final Mac and six-host Linux regressions and two unresolved
-beta.10/reference fitted-value comparisons after the approved DoF normalization.
-No new estimates ran during those failed rechecks or their read-only diagnostic.
+and Linux. The approved companion continuation passes all 28 native and four
+memory checks on Mac, plus eight weighted-OLS and sixteen slope calls on Linux;
+Linux also retains its four previously passed weighted-OLS memory checks.
+The [current validation record](VALIDATION.md#upstream-migration-candidate)
+keeps the final Mac and six-host Linux performance regressions, two unresolved
+beta.10/reference fitted-value comparisons after the approved DoF normalization,
+and the 600-second Linux beta.10 PPML timeout explicit. That timeout was not
+retried. The larger companion panel remains incomplete, and beta.11 remains
+an unpublished review candidate rather than an accepted replacement.
+No new estimates ran during the failed fitted-value rechecks or their read-only
+diagnostic; the later native continuation excluded both affected families.
 Earlier counts-only fereg `c1f4d5ad` and dependency `534ea64f`
 results remain retained: Mac had 55 passed cells, two inconclusive cells and one
 regression; Linux had five valid hosts, below the declared six-host minimum.
