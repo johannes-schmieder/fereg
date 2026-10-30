@@ -10,8 +10,10 @@ beta.11 counts-only test candidate pins both dependencies through its
 [lockfile](../Cargo.lock) to
 `534ea64f7b0e26b772f93ca087f43837c1e187e4`: the tested migration stack
 `d3407a16` plus the dense categorical-count optimization. Johannes approved
-advancing this counts-only candidate to testing after the bounded diagnosis;
-scatter and back-substitution remain held. Fereg `c1f4d5ad` now has actual
+advancing this counts-only candidate to testing after the bounded diagnosis.
+Scatter remains held. Under his later clear-gains/minor-regressions instruction,
+counts plus back-substitution is prepared separately as described below; the
+active fereg pin has not yet changed. Fereg `c1f4d5ad` now has actual
 counts-only Mac/Linux plugins, completed native correctness checks and the
 [bounded main comparison](../bench/results/within-counts-qualification-20261029.json).
 Mac has 55 passed cells, two inconclusive cells and one regression; Linux has
@@ -1170,6 +1172,25 @@ missing host and inconclusive sparse construction control remain unchanged.
 Diagnosis ends at this implementation-level attribution. The retained Linux
 Fold and gather regressions still govern inclusion; independent benefits cannot
 be added together to claim combined beta.10 non-regression.
+
+The uncontested next dependency candidate is
+[`d1721a25`](https://github.com/johannes-schmieder/within/commit/d1721a25a4c1be6c04e2c4b26871c1b6392ab0f8),
+counts `534ea64f` plus the exact back-substitution production change and three
+independent witnesses from `3303a6eb`. Its tree is
+`b5cf07159525fc3e8299ac53385e52973ab08baf`. The two-file patch preserves products,
+addition order, row order, thresholds, allocation and current workspace/grounding
+tests. Independent review, Rust 1.85.1 formatting, 26 block-elimination solver
+tests and strict within/schwarz library Clippy pass. Test and Clippy log hashes
+are respectively `aa992f12e5a2c152b1ae03652dd8325809a4d244e57e6c5a4a6c214df0edb1b4`
+and `96bd65d46eebf0a767bd097d9faee0c4c03a75b79db559362da6f0ab53ac8598`.
+Two sandbox-blocked launcher attempts reached no compiler or tests and were
+stopped and joined before the successful direct-toolchain host invocation.
+
+This source has no gather, Fold accumulator or scatter-slice change. The final
+combined build awaits Johannes's choice about gather/Fold's disclosed larger
+regressions. Full integration checks remain pending; the active fereg dependency
+pin, protected plugins and accepted beta.10 release are unchanged. No upstream
+submission or production publication occurs.
 
 Independent tests to preserve include the dense QR and weighted/disconnected
 families in [routing_portfolio](../crates/fereg-oracle/tests/routing_portfolio.rs),

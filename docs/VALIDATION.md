@@ -13,8 +13,9 @@ The unpublished beta.11 candidate is separate from the accepted beta.10 release.
 The [compatibility report](within_migration.md) records the frozen dependency
 bases, patch evidence and outstanding integration and performance requirements.
 The active source pin is the counts-only stack `534ea64f`, whose parent is
-`d3407a16`. Johannes approved advancing it to testing after the bounded diagnosis;
-scatter and back-substitution remain held. Fereg `c1f4d5ad` now has tested actual
+`d3407a16`. Johannes approved advancing it to testing after the bounded diagnosis.
+Scatter remains held; counts plus back-substitution is now prepared as the next
+dependency candidate, with the active fereg pin unchanged. Fereg `c1f4d5ad` has tested actual
 Mac/Linux plugins and a [counts-only comparison](../bench/results/within-counts-qualification-20261029.json):
 Mac has 55 passed cells, two inconclusive cells and one regression; Linux has
 five valid hosts and all 58 cells remain below the required six-host minimum.
@@ -44,6 +45,9 @@ for exact dense counts, and the five completed Linux hosts descriptively recover
 the original setup penalty. Hardware-level attribution, the missing sixth host
 and adverse optimization controls remain unresolved. The diagnostic effort is
 closed; final optimization inclusion and combined verification remain separate.
+The separate counts/back-substitution commit `d1721a25` passes independent source
+review, 26 focused solver tests and strict library Clippy. Final integration
+awaits the gather/Fold tradeoff decision and the full combined native checks.
 
 Johannes approved retiring the general more-than-two-FE pair-upgrade experiment;
 its explicit h/k and builder-Break requests must fail clearly. Two-FE h/k and
