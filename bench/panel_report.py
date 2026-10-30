@@ -13,9 +13,9 @@ from pathlib import Path
 import campaign_report as report
 from panel_collect import load
 
-ORDER = ['fixest', 'fixest-strict', 'pyfixest', 'pyfixest-within', 'julia', 'julia-strict', 'reghdfe']
+ORDER = ['fixest', 'fixest-strict', 'pyfixest', 'pyfixest-within', 'pyfixest-within-strict', 'julia', 'julia-strict', 'reghdfe']
 DESCRIPTIONS = {'fixest': 'fixest 0.14.2 default', 'fixest-strict': 'fixest strict',
-                'pyfixest': 'PyFixest 0.60.0 (Rust MAP)', 'pyfixest-within': 'PyFixest main (within LSMR)',
+                'pyfixest': 'PyFixest 0.60.0 (Rust MAP)', 'pyfixest-within': 'PyFixest main (within LSMR)', 'pyfixest-within-strict': 'PyFixest main (within LSMR, strict)',
                 'julia': 'FixedEffectModels.jl (tolerance 1e-6)', 'julia-strict': 'FixedEffectModels.jl (1e-10)'}
 
 

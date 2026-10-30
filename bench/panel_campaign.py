@@ -43,7 +43,8 @@ def cell_for(panel, frame, threads, save_fe=True):
     return dict(id=f'veneto-{panel}-t{threads}'+('' if save_fe else '-fe0'), model='ols', design='veneto-'+panel,
                 section='veneto', rows=len(frame), regressors=len([c for c in frame if c.startswith('x')]),
                 effects=2, save_fe=save_fe, vce='iid', weights='unit', threads=threads,
-                arms=['fereg', 'fixest', 'fixest-strict', *campaign.PYFIXEST_ARMS, *campaign.JULIA_ARMS]
+                arms=['fereg', 'fixest', 'fixest-strict', *campaign.PYFIXEST_ARMS, *campaign.PYFIXEST_STRICT_ARMS,
+                      *campaign.JULIA_ARMS]
                 + (['reghdfe'] if threads <= 4 else []))
 
 
