@@ -79,6 +79,24 @@ class PanelTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 panel.reuse(Path(d)/'other', old, panels=['middle'])
 
+    def test_largest_connected_set_panel_has_no_fevc_key(self):
+        rng = np.random.default_rng(4)
+        rows = []
+        for worker in range(40):
+            for year in range(1996, 2002):
+                rows.append(dict(worker=1000+worker, firm=1+(worker+year) % 5, year=year,
+                                 y=rng.normal(), age=30+year-1996))
+        source = pd.DataFrame(rows).sample(frac=1, random_state=1)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)/'lcs.csv'
+            source.to_csv(path, index=False)
+            spec = dict(panel.LCS_PANELS['long-lcs'], rows=240, workers=40, firms=5)
+            with patch.dict(panel.LCS_PANELS, {'long-lcs': spec}):
+                frame = panel.prepare_panel(path, 'long-lcs')
+        self.assertEqual(frame.obs_id.tolist(), list(range(1, 241)))
+        self.assertEqual([c for c in frame if c.startswith('x')], [f'x{j}' for j in range(1, 8)])
+        self.assertEqual(panel.cell_for('long-lcs', frame, 4, False)['design'], 'veneto-long-lcs')
+
     def test_manifest_ladder_and_license(self):
         frame = pd.DataFrame(dict(x1=[1.], y=[2.]))
         cells = [panel.cell_for(p, frame, t) for p in panel.PANELS for t in panel.THREADS]

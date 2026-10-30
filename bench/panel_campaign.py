@@ -33,6 +33,18 @@ PANELS = {
     'short': dict(years=[1999, 2001], rows=1319994, workers=659997,
                   firms=42489, regressors=1),
 }
+# The largest connected set of the long panel (KSS's connected_set before the
+# leave-one-out pruning, then iterative removal of singleton workers and firms),
+# prepared from the same raw data; it has no retained fevc counterpart, so its
+# input audit rebuilds it from the recorded source.
+LCS_PANELS = {
+    'long-lcs': dict(years=list(range(1996, 2002)), rows=5509415, workers=1182935,
+                     firms=117208, regressors=7),
+}
+
+
+def panel_spec(panel):
+    return PANELS[panel] if panel in PANELS else LCS_PANELS[panel]
 THREADS = [1, 2, 4, 8, 16]
 REPETITIONS = 3
 # Fit budget of one reused panel run; two runs share a twelve-hour pair job.
@@ -80,10 +92,14 @@ def save_dataset(frame, path):
 
 def prepare_panel(path, panel):
     source = pd.read_csv(path, float_precision='round_trip')
-    required = ['year', 'worker', 'firm', 'observation_key', 'y']+(['age'] if panel == 'long' else [])
+    long = panel in ('long', 'long-lcs')
+    required = ['year', 'worker', 'firm', 'y']+(['observation_key'] if panel in PANELS else [])+(['age'] if long else [])
     if source[required].isna().any().any() or source.duplicated(['worker', 'year']).any():
         raise ValueError('missing or duplicate private panel records')
-    p = PANELS[panel]
+    if panel not in PANELS:
+        source = source.sort_values(['worker', 'year']).reset_index(drop=True)
+        source['observation_key'] = np.arange(1, len(source)+1)
+    p = panel_spec(panel)
     if (len(source) != p['rows'] or source.worker.nunique() != p['workers']
             or source.firm.nunique() != p['firms'] or sorted(source.year.unique()) != p['years']
             or not source.observation_key.is_unique):
@@ -93,7 +109,7 @@ def prepare_panel(path, panel):
                 g1=pd.factorize(source.worker, sort=True)[0].astype(np.int32)+1,
                 g2=pd.factorize(source.firm, sort=True)[0].astype(np.int32)+1,
                 y=source.y.to_numpy(dtype=float))
-    if panel == 'long':
+    if long:
         data.update(x1=((source.age.to_numpy(dtype=float)-40)/40)**2,
                     x2=((source.age.to_numpy(dtype=float)-40)/40)**3)
         for j, year in enumerate(p['years'][:-1], 3):
@@ -122,9 +138,10 @@ def small_panel(frame):
     return small.reset_index(drop=True)
 
 
-def prepare(root, long, short):
+def prepare(root, long=None, short=None, long_lcs=None, save_fe=True):
     datasets, cells = {}, []
-    for panel, path in [('long', long), ('short', short)]:
+    selected = [(panel, path) for panel, path in [('long', long), ('short', short), ('long-lcs', long_lcs)] if path]
+    for panel, path in selected:
         frame = prepare_panel(path, panel)
         cell = cell_for(panel, frame, 4)
         datasets[panel] = save_dataset(frame, root/'data'/(dataset_key(cell)+'.dta'))
@@ -135,13 +152,15 @@ def prepare(root, long, short):
         expected = oracle(small, smoke_cell)
         if expected['residual_score'] > 1e-10:
             raise ValueError('dense real-data smoke oracle failed')
-        cells.extend(cell_for(panel, frame, t) for t in THREADS)
+        cells.extend(cell_for(panel, frame, t, save_fe) for t in THREADS)
     warm = dict(model='ols', design='one-fe', rows=512, effects=1, regressors=7, weights='unit')
     campaign.make_dataset(warm, root/'data/warm.dta')
     shutil.copy2(root/'data/warm.dta', root/'smoke-data/warm.dta')
-    write_json(root/'manifest.json', dict(schema=1, panels=PANELS, cells=cells, datasets=datasets,
+    write_json(root/'manifest.json', dict(schema=1, panels={panel: panel_spec(panel) for panel, _ in selected},
+               cells=cells, datasets=datasets,
                policy=dict(threads=THREADS, repetitions=REPETITIONS, command_timeout_seconds=600,
-                           process_timeout_seconds=900, bundles=2, job_cleanup_seconds=13800,
+                           process_timeout_seconds=900, bundles=len(selected), save_fe=save_fe,
+                           job_cleanup_seconds=13800 if save_fe else REUSE_CLEANUP_SECONDS,
                            scientific_tolerances={k: v for k, v in campaign.POLICY.items()
                                                   if k.endswith(('_rtol', '_atol'))},
                            interference='No resampling. Whole-host reservation and passive observation required.'),
@@ -202,13 +221,21 @@ def audit_prior(frame, prior):
 
 def audit_inputs(root):
     previous = json.loads((root/'input/prior-panels.json').read_text())
+    panels = json.loads((root/'manifest.json').read_text())['panels']
     results = {}
-    for panel in PANELS:
+    for panel in panels:
         path = Path(previous[panel]['path'])
         if sha256(path) != previous[panel]['sha256']:
-            raise ValueError('retained fevc input hash differs')
-        frame = pd.read_stata(root/'data'/f"ols-veneto-{panel}-n{PANELS[panel]['rows']}.dta", convert_categoricals=False)
-        results[panel] = audit_prior(frame, pd.read_csv(path, float_precision='round_trip'))
+            raise ValueError('retained panel input hash differs')
+        frame = pd.read_stata(root/'data'/f"ols-veneto-{panel}-n{panel_spec(panel)['rows']}.dta", convert_categoricals=False)
+        if panel in PANELS:
+            results[panel] = audit_prior(frame, pd.read_csv(path, float_precision='round_trip'))
+        else:
+            rebuilt = prepare_panel(path, panel)
+            if list(rebuilt) != list(frame) or not all(np.array_equal(rebuilt[c].to_numpy(), frame[c].to_numpy())
+                                                         for c in rebuilt):
+                raise ValueError('rebuilt panel differs from the scheduled input')
+            results[panel] = dict(rows=len(frame), rebuilt_from_source=True)
     write_json(root/'environment/input-audit.json', results)
     print('PANEL_INPUT_AUDIT_PASS', flush=True)
 
@@ -282,7 +309,7 @@ def run(root, task, smoke):
         if len(cpus) < (4 if smoke else 16):
             raise ValueError('insufficient physical cores')
         for panel in selected:
-            specification = PANELS[panel]
+            specification = panel_spec(panel)
             if smoke:
                 matches = list((root/'smoke-data').glob(f'ols-veneto-{panel}-n*.dta'))
             else:
@@ -391,15 +418,16 @@ if __name__ == '__main__':
     parser.add_argument('root', type=Path)
     parser.add_argument('--long', type=Path)
     parser.add_argument('--short', type=Path)
+    parser.add_argument('--long-lcs', type=Path, help='prepare: the largest-connected-set long panel')
     parser.add_argument('--previous', type=Path, help='prior run whose audited inputs are reused')
     parser.add_argument('--without-saved-fe', action='store_true',
-                        help='reuse: time estimation and inference without saving FE')
+                        help='prepare/reuse: time estimation and inference without saving FE')
     parser.add_argument('--panels', nargs='+', choices=list(PANELS),
                         help='reuse: schedule only these panels, one production task each')
     parser.add_argument('--task', type=int, choices=[1, 2], default=1)
     args = parser.parse_args()
     if args.mode == 'prepare':
-        prepare(args.root, args.long, args.short)
+        prepare(args.root, args.long, args.short, args.long_lcs, not args.without_saved_fe)
     elif args.mode == 'reuse':
         reuse(args.root, args.previous, not args.without_saved_fe, args.panels)
     elif args.mode == 'audit':

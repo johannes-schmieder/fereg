@@ -9,7 +9,7 @@
 set -euo pipefail
 umask 077
 : "${RUN_ROOT:?}" "${MODE:?}" "${UPSTREAM_JOB:?}"
-test "$NSLOTS" = 28
+test "$NSLOTS" = "${EXPECTED_SLOTS:-28}"
 test -f "$RUN_ROOT/environment/COMPLETE"
 module purge
 module load python3/3.12.4 stata-mp/19 R/4.5.2 julia/1.11.7

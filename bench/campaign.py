@@ -26,6 +26,9 @@ from placement import socket_ordered_cpus, placement_metadata, bound_command
 
 HERE = Path(__file__).resolve().parent
 POLICY = json.loads((HERE/'campaign.json').read_text())
+# A run-scoped subset (for example the baseline cells as one bundle on another
+# node type) is set at prepare time and recorded in the manifest's policy.
+POLICY.update(json.loads(os.environ.get('CAMPAIGN_POLICY_OVERRIDE','{}')))
 PYFIXEST_ARMS = list(POLICY['pyfixest'])
 # Strict arms reuse their base arm's environment with tighter tolerances.
 PYFIXEST_STRICT_ARMS = [f'{arm}-strict' for arm in PYFIXEST_ARMS] if 'pyfixest_strict_tolerance' in POLICY else []
@@ -85,6 +88,7 @@ def configurations(smoke=False):
     # one-million-row cells are the option and design cells above.
     for model,design in POLICY['size_series']:
         for rows in POLICY['sizes']: add(model,design,rows=rows,section='size')
+    if 'sections' in POLICY: result=[c for c in result if c['section'] in POLICY['sections']]
     return result
 
 

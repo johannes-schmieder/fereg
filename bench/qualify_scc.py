@@ -18,6 +18,9 @@ import block_host
 LIBRARY_LIMITS = {name: '1' for name in
                   ('OMP_NUM_THREADS', 'OPENBLAS_NUM_THREADS', 'MKL_NUM_THREADS', 'NUMEXPR_NUM_THREADS')}
 MPI_WHOLE_HOST_PE = 'mpi_28_tasks_per_node_u'
+# Whole-host parallel environments and the host size each reserves. The MPI
+# PEs reserve one host through their allocation rule; no MPI ranks are started.
+WHOLE_HOST_PES = {'omp28': 28, MPI_WHOLE_HOST_PE: 28, 'mpi_64_tasks_per_node_4': 64}
 
 
 class OperationalError(RuntimeError):
@@ -83,24 +86,25 @@ def ordinary_activity(processes, previous, owned):
 def validate_reservation(raw, host, required_threads):
     """Slots plus the all-queue consumable quota establish the reservation."""
     n = host['slots']
-    require(n == 28 and 1 <= required_threads <= n, 'expected complete 28-core host and fitting worker count')
+    expected_pe = host.get('pe', 'omp28')  # Historical omp28 evidence predates this field.
+    require(WHOLE_HOST_PES.get(expected_pe) == n and 1 <= required_threads <= n,
+            'expected a complete host of the PE size and a fitting worker count')
     lines = [line.split() for line in raw['pe_hostfile'].splitlines() if line.strip()]
     require(len(lines) == 1 and len(lines[0]) >= 3 and short_host(lines[0][0]) == short_host(host['hostname'])
             and lines[0][1] == str(n), 'PE allocation does not cover one whole host')
     pe = fields(raw['pe'])
-    expected_pe = host.get('pe', 'omp28')  # Historical omp28 evidence predates this field.
     require(pe.get('pe_name') == expected_pe, 'PE allocation identity differs')
-    if expected_pe == MPI_WHOLE_HOST_PE:
-        # This PE reserves one 28-slot host; the launcher does not start MPI ranks.
+    if expected_pe != 'omp28':
+        # An MPI PE reserves one whole host; the launcher does not start MPI ranks.
         # Its audited hooks create/remove TMPDIR files outside the timed calls.
-        expected = {'allocation_rule': '28', 'control_slaves': 'TRUE',
+        expected = {'allocation_rule': str(n), 'control_slaves': 'TRUE',
                     'job_is_first_task': 'FALSE', 'accounting_summary': 'FALSE',
                     'start_proc_args': '/usr/local/sge/sge_root/mpi/startmpi.sh -catch_rsh $pe_hostfile',
                     'stop_proc_args': '/usr/local/sge/sge_root/mpi/stopmpi.sh'}
         require(all(' '.join(pe.get(key, '').split()) == value for key, value in expected.items()),
                 'invalid whole-host MPI PE contract')
     else:
-        require(expected_pe == 'omp28' and pe.get('allocation_rule') == '$pe_slots', 'invalid PE allocation rule')
+        require(pe.get('allocation_rule') == '$pe_slots', 'invalid PE allocation rule')
     quota = fields(raw['quota'])
     limits = [line.strip().split() for line in raw['quota'].splitlines() if line.strip().startswith('limit ')]
     require(quota.get('name') == 'max_slots_per_host' and quota.get('enabled') == 'TRUE'
@@ -127,11 +131,11 @@ def validate_census(job_text, queue_xml, host):
     job = fields(job_text, colon=True)
     require(job.get('job_number') == host['job_id'] and job.get('project') == 'welfgr', 'wrong scheduler job/project')
     expected_pe = host.get('pe', 'omp28')
-    require(expected_pe in {'omp28', MPI_WHOLE_HOST_PE}
-            and job.get('parallel environment', '').split() == [expected_pe, 'range:', '28'],
+    n = WHOLE_HOST_PES.get(expected_pe)
+    require(n is not None and job.get('parallel environment', '').split() == [expected_pe, 'range:', str(n)],
             'wrong scheduler PE request')
     resources = dict(part.split('=', 1) for part in job.get('hard resource_list', '').split(',') if '=' in part)
-    require(resources.get('num_proc') == '28', 'missing whole-node num_proc request')
+    require(resources.get('num_proc') == str(n), 'missing whole-node num_proc request')
     queues = ET.fromstring(queue_xml).findall('./queue_info/Queue-List')
     require(queues and all(short_host(q.findtext('name', '').split('@')[-1]) == short_host(host['hostname'])
                            for q in queues), 'wrong all-queue host census')
@@ -139,7 +143,7 @@ def validate_census(job_text, queue_xml, host):
     require(len(jobs) == 1, 'co-tenancy or missing full reservation')
     queue, current = jobs[0]
     require(queue.split('@')[0] == host['queue'].split('@')[0] and current.findtext('JB_job_number') == host['job_id']
-            and current.findtext('slots') == '28', 'wrong granted allocation')
+            and current.findtext('slots') == str(n), 'wrong granted allocation')
     task = current.findtext('tasks') or current.findtext('JAT_task_number')
     require(task == host['task_id'] if host['task_id'] != '0' else task in {None, '', '0'}, 'wrong or missing array task identity')
 
@@ -266,7 +270,7 @@ class HostMonitor:
     def _admit(self):
         require(sys.platform.startswith('linux') and os.environ.get('JOB_ID'), 'SCC monitor requires a Linux SGE job')
         require(all(os.environ.get(k) == v for k, v in LIBRARY_LIMITS.items()), 'library thread limits must be one')
-        require(os.environ.get('PE') in {'omp28', MPI_WHOLE_HOST_PE}, 'unsupported SCC whole-host PE')
+        require(os.environ.get('PE') in WHOLE_HOST_PES, 'unsupported SCC whole-host PE')
         task = os.environ.get('SGE_TASK_ID', '0')
         task = '0' if task == 'undefined' else task
         require(task.isdigit() and os.environ['JOB_ID'].isdigit(), 'invalid SGE identity')

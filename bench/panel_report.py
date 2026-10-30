@@ -105,6 +105,7 @@ def render(campaign, frame, output):
               'covariance, sample, rank and RSS. ')+
              'Import, export and checks are outside timing. '+
              ' '.join({'long': 'Long: 1996-2001; normalized age squared and cubed plus 1996-2000 indicators (2001 base).',
+                       'long-lcs': 'Long, largest connected set: 1996-2001 with the controls of the long panel.',
                        'short': 'Short: 1999/2001, with a 2001 indicator.'}[p] for p in panels))
     planned = sum(len(c['arms']) for c in campaign['manifest']['cells'])*campaign['manifest']['policy']['repetitions']
     pdf.text(f'{repetitions} repetitions at 1/2/4/8/16 physical cores for fereg, '+
