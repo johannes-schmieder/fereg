@@ -11,8 +11,8 @@ installed. Keep `rustup`, `clang`, `strip`, `lipo`, `codesign`, `nm`, `otool` an
 `python3` on PATH. Both slices are built; this does not establish native Intel-host
 Stata qualification.
 
-Verify the published archive checksum, extract it preserving executable permissions
-and enter `fereg-0.5.0-source`. Run the following in Bash. The fresh Cargo home
+Verify the published archive checksum, extract it with `unzip fereg-0.5.0-source.zip`
+(which preserves the recorded executable permissions), and enter `fereg-0.5.0-source`. Run the following in Bash. The fresh Cargo home
 makes missing dependency sources visible; Rust path remaps prevent local paths
 from entering diagnostic strings in the distributed binary.
 

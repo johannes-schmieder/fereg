@@ -28,21 +28,21 @@ applies to this beta.11 migration candidate. No adverse or inconclusive timing
 classification is relabeled.
 
 Mac passes all 36 native and eight memory cells in the large companion panel.
-Linux passes 32 of 36 native cells, including all formerly disputed OLS/PPML
-cells, and all eight original memory cells. Its approved single retry of the candidate OLS T1 timeout completed successfully on `scc-b11`;
-that does not establish why the earlier call timed out on `scc-pf8`. The separate
-ten-million-row two-FE PPML beta.10 timeout was not retried and leaves four
-control cells incomplete. Windows beta.11 is not qualified here. The selected
-beta.11 candidate remains unpublished; production adoption and publication are
-separate decisions, and the incomplete Linux controls remain explicit.
+Linux also passes all 36 native cells, including the formerly disputed OLS/PPML
+cells and the final four two-FE PPML controls, plus all eight original memory
+cells. The approved OLS retry completed on `scc-b11`; the final PPML control
+completion passed on `scc-tn3`. Neither success establishes why the original
+calls timed out. Both failures remain retained. Johannes subsequently directed
+that this candidate be retained, release qualification completed without further
+optimization, and beta.11 published as the current GitHub version. Native and
+installation qualification are recorded in [package checks](VALIDATION.md#package-checks).
 No new estimates ran during the failed fitted-value rechecks or their read-only
 diagnostic; the later native continuation excluded both affected families.
 Earlier counts-only fereg `c1f4d5ad` and dependency `534ea64f`
 results remain retained: Mac had 55 passed cells, two inconclusive cells and one
 regression; Linux had five valid hosts, below the declared six-host minimum.
-The new approval accepts the disclosed individual-patch tradeoffs; it does not
-relabel old failures or establish combined beta.10 non-regression. Production
-adoption and publication remain separate from this test candidate.
+The acceptance and release instruction do not relabel old failures or establish
+universal beta.10 non-regression.
 
 Johannes's current instruction is to develop and push these patches only in
 `johannes-schmieder/within`. Any upstream push or pull request requires prior

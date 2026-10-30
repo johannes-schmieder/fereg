@@ -25,9 +25,11 @@ is now met: independent optimum enclosures and actual beta.10/beta.11 checks pas
 for both full designs on Mac and Linux. His acceptance of the disclosed
 eight-/sixteen-FE performance tradeoffs therefore applies. This selects the
 beta.11 migration candidate without relabeling the adverse performance results.
-The separate Linux ten-million-row two-FE PPML control remains incomplete after
-its baseline timeout; Windows beta.11 is unqualified here. Production adoption
-and publication remain separate. The earlier counts-only `534ea64f` candidate had
+The final Linux two-FE PPML control completion now passes all four cells,
+including the previously timed-out baseline. The original failure remains
+retained. Johannes subsequently authorized finishing release qualification and
+publishing beta.11 as the current GitHub version; the package checks below
+record native and installation qualification. The earlier counts-only `534ea64f` candidate had
 55 passed Mac cells, two inconclusive cells and one regression; its five valid Linux hosts
 were below the six-host requirement. Those classifications remain unchanged.
 
@@ -64,8 +66,8 @@ ratios of the displayed call medians. The four-worker 64-regressor AKM setting
 is inconclusive. Fixed-worker scientific fingerprints, independent references
 and cross-worker checks pass. Ordinary desktop activity remains in the timings;
 the Mac is one machine, not a set of independent Linux hosts. These performance
-results alone did not accept beta.11; Johannes's subsequent conditional decision
-is recorded above. They authorize no further optimization round or publication.
+results alone did not accept beta.11; Johannes's subsequent acceptance and
+release instruction are recorded above. No further optimization round is included.
 
 The [initial final Linux panel](../bench/results/within-final-linux-initial-20261030.json)
 retains 1,981 calls: 580 on each of three completed physical hosts and 241 in
@@ -172,9 +174,9 @@ explicit graph-flow paths and tightened score reduction bounds; it ran no new
 native estimate or reference fit. Twelve dense analytic checks passed on Linux;
 eighteen expanded OLS/Poisson cases plus the scalar curvature refinement pass
 on Mac. Standard floating-arithmetic allowances apply; this is not a formally
-verified interval-arithmetic implementation. The actual beta.11 artifacts and
-remaining worker/platform cells are being checked against this enclosed
-solution, including the center's uncertainty inside the original tolerance.
+verified interval-arithmetic implementation. The subsequent completed Mac/Linux
+checks below include the center's uncertainty inside the original tolerance
+when checking the actual beta.11 artifacts against this enclosed solution.
 
 The [completed Mac enclosure checks](../bench/results/within-enclosed-companions-mac-20261030.json)
 pass all eight beta.10/beta.11 calls on the two formerly held families, at one
@@ -247,11 +249,17 @@ The large companion coverage is therefore:
 | Platform | Native cells passed | Memory cells passed | Remaining limitation |
 |---|---:|---:|---|
 | Mac | 36/36 | 8/8 | No remaining cell in this panel |
-| Linux | 32/36 | 8/8 | Four two-FE PPML control cells incomplete after the beta.10 timeout |
+| Linux | 36/36 | 8/8 | Original execution timeouts retained; completed controls pass |
 
-This completes the two numerical investigations and supports the selected
-beta.11 candidate with Johannes's accepted eight-/sixteen-FE tradeoffs. It does
-not turn the remaining Linux control timeout into a success or qualify Windows.
+The [final Linux PPML completion](../bench/results/within-ppml-release-linux-20261030.json)
+passes both versions at one and four workers and all cross-version/cross-worker
+comparisons on the ten-million-row two-FE control. Job 8361190 on `scc-tn3`
+completes within its 4,000-second controller budget, with successful terminal
+accounting. It retains the original 600-second baseline timeout and does not
+establish its cause. No runtime, input or scientific tolerance changed. This
+completes the two numerical investigations and the full Mac/Linux companion
+panel, supporting the selected beta.11 candidate with Johannes's accepted
+eight-/sixteen-FE tradeoffs. Windows and package-installation evidence are separate.
 
 The [Linux continuation](../bench/results/within-unaffected-companions-linux-20261030.json)
 passes all eight weighted-OLS Auto/LSMR calls, then stops when the ten-million-row

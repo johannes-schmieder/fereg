@@ -1,0 +1,199 @@
+{
+  "schema": "beta11-windows-release-v1",
+  "date": "2026-10-30",
+  "status": "passed",
+  "receipt": {
+    "schema_version": 4,
+    "run_id": "win-20261030T195514Z-506cf985",
+    "project": "fereg",
+    "profile": "stata-do",
+    "source_revision": "commit-6c2231c257bba1f33193afc58f0c4bba231cd626",
+    "source_sha256": "ea784ff634d2007328cf0a70331a99e05d8b964c3157e4e00917c460b906b828",
+    "windows_target": "x86_64",
+    "execution_identity": "SYSTEM",
+    "status": "PASS",
+    "error_code": null,
+    "checks": {
+      "execution_identity": true,
+      "source_hash": true,
+      "archive_paths": true,
+      "source_manifest": true,
+      "shutdown_backstop": true,
+      "stata": true,
+      "project_test": true
+    },
+    "completed_at_utc": "2026-10-30T20:12:18.7765959Z",
+    "controller_sha256": "e635d58609f24fa8564ce4c3b6787eccd9df36892edb636069cdc2ebcdfdaf00",
+    "diagnostic_guard_sha256": "14fe3f6515439c55d0732e99fba797280b76dfd9638345794a639a00a44ffd12",
+    "process": {
+      "outcome": "passed",
+      "elapsed_ms": 957840,
+      "exit_code": 0
+    },
+    "diagnostics": {
+      "available": true,
+      "compiler_errors": [],
+      "completed": [
+        "startup",
+        "toolchain",
+        "source_identity",
+        "cargo_build",
+        "exact_fma",
+        "fused_kernels",
+        "c_bridge",
+        "numeric_guards",
+        "plugin_link",
+        "binary_audit",
+        "native_loader",
+        "build_complete",
+        "checksum",
+        "stata_smoke",
+        "single_runtime"
+      ],
+      "native_rc": null,
+      "plugin_sha256": "4876099f0a4c45bd27edb03ccd314a61ad005c2b43bc6d87efc36cf8d5172280",
+      "reason": "none",
+      "stage": "complete",
+      "stage_elapsed_ms": 2873,
+      "stata_rc": null,
+      "status": "PASS"
+    }
+  },
+  "receipt_sha256": "89fa878b11ad108067722614282039807a270ee98b493f68d51d1aaeb6d89b55",
+  "plugin_bytes": 11825152,
+  "cleanup": {
+    "instance_stopped": true,
+    "transient_objects_deleted": true,
+    "lock_released": true
+  },
+  "prior_attempts": [
+    {
+      "schema_version": 4,
+      "run_id": "win-20261030T191144Z-e5742507",
+      "project": "fereg",
+      "profile": "stata-do",
+      "source_revision": "commit-ef38d3c582840b89f0d71f0f9937571ba7507332",
+      "source_sha256": "edbac7dcd0fa5d178aa9e547fc1f4fe471c58b965a9f2c423ca3f39b72588b7a",
+      "windows_target": "x86_64",
+      "execution_identity": "SYSTEM",
+      "status": "FAIL",
+      "error_code": "STATA_DRIVER_FAILED",
+      "checks": {
+        "execution_identity": true,
+        "source_hash": true,
+        "archive_paths": true,
+        "source_manifest": true,
+        "shutdown_backstop": true,
+        "stata": false,
+        "project_test": false
+      },
+      "completed_at_utc": "2026-10-30T19:29:50.0596714Z",
+      "controller_sha256": "e635d58609f24fa8564ce4c3b6787eccd9df36892edb636069cdc2ebcdfdaf00",
+      "diagnostic_guard_sha256": "14fe3f6515439c55d0732e99fba797280b76dfd9638345794a639a00a44ffd12",
+      "process": {
+        "outcome": "reported_failure",
+        "elapsed_ms": 1025630,
+        "exit_code": 0
+      },
+      "diagnostics": {
+        "available": true,
+        "compiler_errors": [],
+        "completed": [
+          "startup",
+          "toolchain",
+          "source_identity",
+          "cargo_build",
+          "exact_fma",
+          "fused_kernels",
+          "c_bridge",
+          "numeric_guards",
+          "plugin_link",
+          "binary_audit",
+          "native_loader",
+          "build_complete",
+          "checksum",
+          "stata_smoke"
+        ],
+        "native_rc": null,
+        "plugin_sha256": null,
+        "reason": "stata_error",
+        "stage": "single_runtime",
+        "stage_elapsed_ms": 15585,
+        "stata_rc": 9,
+        "status": "FAIL"
+      }
+    },
+    {
+      "schema_version": 4,
+      "run_id": "win-20261030T193401Z-f9fcb330",
+      "project": "fereg",
+      "profile": "stata-do",
+      "source_revision": "commit-3683af43866c4352bf4e4a28848a0028ca0bf314",
+      "source_sha256": "acb0e34a9c08f79e8ea4c1b70cee536f4d497faaa9ca9fb49f0460903e6dd412",
+      "windows_target": "x86_64",
+      "execution_identity": "SYSTEM",
+      "status": "FAIL",
+      "error_code": "STATA_DRIVER_FAILED",
+      "checks": {
+        "execution_identity": true,
+        "source_hash": true,
+        "archive_paths": true,
+        "source_manifest": true,
+        "shutdown_backstop": true,
+        "stata": false,
+        "project_test": false
+      },
+      "completed_at_utc": "2026-10-30T19:51:14.2120604Z",
+      "controller_sha256": "e635d58609f24fa8564ce4c3b6787eccd9df36892edb636069cdc2ebcdfdaf00",
+      "diagnostic_guard_sha256": "14fe3f6515439c55d0732e99fba797280b76dfd9638345794a639a00a44ffd12",
+      "process": {
+        "outcome": "reported_failure",
+        "elapsed_ms": 970509,
+        "exit_code": 0
+      },
+      "diagnostics": {
+        "available": true,
+        "compiler_errors": [],
+        "completed": [
+          "startup",
+          "toolchain",
+          "source_identity",
+          "cargo_build",
+          "exact_fma",
+          "fused_kernels",
+          "c_bridge",
+          "numeric_guards",
+          "plugin_link",
+          "binary_audit",
+          "native_loader",
+          "build_complete",
+          "checksum",
+          "stata_smoke"
+        ],
+        "native_rc": null,
+        "plugin_sha256": null,
+        "reason": "stata_error",
+        "stage": "single_runtime",
+        "stage_elapsed_ms": 16131,
+        "stata_rc": 9110,
+        "status": "FAIL"
+      }
+    }
+  ],
+  "diagnosis": {
+    "status": "diagnosed-harness-failure",
+    "initial_receipt_sha256": "45eaa31b2ba185753647e3158cdd9c1d654fe08840993d15422f05fcf973b625",
+    "diagnostic_receipt_sha256": "634a3ee358eeaaa16884047f40383bba12835dd4295a028b8ab9d500732f3eec",
+    "diagnostic_code": 9110,
+    "fixture": "tests/stata/development/within_plugin_slope_boundary.do",
+    "relative_path_reproducer": "findfile returns stata/fereg.ado; the fixture requires the /stata/fereg.ado suffix and an absolute source root.",
+    "correction": "Add the absolute source ado path from the already normalized root local.",
+    "correction_commit": "6c2231c257bba1f33193afc58f0c4bba231cd626",
+    "runtime_changes": false,
+    "tolerance_changes": false,
+    "raw_windows_logs_retrieved": false,
+    "prior_runs_stopped_and_cleaned": true,
+    "fixed_run_status": "passed"
+  },
+  "scope": "Native build, exact-FMA/fused kernels, C guards, PE audit, loader, actual local net install, single-runtime checks, weighted OLS, many-FE OLS, PPML LSMR and exact-input slope boundary. All original assertions and tolerances retained; no runtime change or performance measurement."
+}

@@ -60,7 +60,7 @@ net install fereg, from("https://raw.githubusercontent.com/johannes-schmieder/fe
 
 Both routes install `fereg`, `feppml`, help files and the current native plugin
 from `main`, which carries the
-[v0.5.0-beta.10](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0-beta.10)
+[v0.5.0-beta.11](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0-beta.11)
 runtime. The beta requires Stata 18 or newer and includes native binaries
 for Linux x86-64, Windows x86-64 and macOS (Apple Silicon/Intel universal).
 No Rust, Python or extra Stata packages are needed to use the binary package.
@@ -120,6 +120,12 @@ self-contained examples. A simulated bilateral-trade comparison against
 `ppmlhdfe` is in `tests/manual/simple_PPML.do`.
 
 ## Performance
+
+Beta.11 retains the reviewed upstream-dependency migration. Its original sparse-three-FE
+Mac and near-confounded-three-FE Linux regressions are recovered. The accepted
+eight-/sixteen-FE settings remain about 8–11% slower on Linux and 11–14% slower
+on Mac; several other settings are inconclusive. The [validation report](docs/VALIDATION.md#upstream-migration-candidate)
+retains those results alongside the gains and numerical checks.
 
 Descriptive Linux comparisons on whole 28-core SCC nodes are in
 [Comparing fereg with fixest](docs/fixest_benchmarks.md) (50 synthetic OLS and
