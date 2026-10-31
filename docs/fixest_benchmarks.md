@@ -1,7 +1,102 @@
 # Comparing fereg with fixest
 
-The current published beta.10 synthetic and [Veneto AKM comparisons](veneto_benchmarks.md)
-use the fixed beta.8 schedule and references. Earlier campaigns are retained below.
+The current published beta.11 synthetic and [Veneto AKM comparisons](veneto_benchmarks.md)
+extend the beta.10 schedule with new designs and comparators. Earlier campaigns
+are retained below.
+
+## October 30, 2026: published beta.11 campaign
+
+Run `20261030T234005Z-beta11-campaign-461f8d2a` measured the published
+v0.5.0-beta.11 Linux plugin `af65682b...` (runtime source `65500be6`) with the
+beta.10 comparator pins and frozen inputs. The schedule adds a clustered-mobility
+AKM design (Pareto firm sizes, 95% of moves within 50 regions), a PPML gravity
+design with zeros, all-zero exporter-years and a control that separates some
+zeros, strict-tolerance PyFixest (`within` LSMR 1e-11, IWLS 1e-10) wherever strict
+fixest runs, and 32 instead of 64 controls. It covers 1,725 positions on six
+whole 28-core E5-2680 v4 nodes; all 261 native fits outside the superseded
+cells passed, with fixed-worker repeats, cross-worker science and the 14
+independent smoke witnesses. Every setup passed its harness suite (438 tests;
+442 in the clustered rerun).
+
+**Superseded clustered cells.** The one-million-row clustered input left one
+firm with a single worker-year. Every command except areg deleted it, so the
+frozen-input check rejected every capture of both clustered cells. The
+generator now keeps that observation at the worker's neighbouring firm
+(`4ddc8cb6`), and run `20261031T015227Z-beta11-clustered-4ddc8cb6` reran the
+two cells once on `scc-xc3` (reference 0.93 seconds). The campaign keeps the
+failed positions; its export lists the cells as superseded.
+
+**Hosts.** The PPML AKM bundle (baseline, cores, controls and sizes) ran on
+`scc-wo4`, whose native reference median was 1.67 seconds against 0.92-0.94 on
+the other five hosts; fereg slowed more there than ppmlhdfe. The observation is
+retained, and absolute times across bundles are not comparable.
+
+**Agreeing package comparisons** (campaign and clustered rerun; ratios divide
+the comparator's median by fereg's on the same host):
+
+| Comparator | Model | Agreeing cells | fereg faster | Ratio range | Median ratio |
+| --- | --- | ---: | ---: | ---: | ---: |
+| reghdfe | OLS | 20 | 20 | 4.55–51.30 | 15.95 |
+| ppmlhdfe | PPML | 15 | 15 | 5.55–73.27 | 13.79 |
+| areg | OLS | 16 | 16 | 1.84–95.06 | 9.45 |
+| fixest | OLS | 24 | 24 | 1.31–6.51 | 2.30 |
+| fixest | PPML | 20 | 19 | 0.83–8.19 | 1.64 |
+| fixest strict | OLS | 25 | 25 | 1.41–36.51 | 3.20 |
+| fixest strict | PPML | 7 | 7 | 1.27–16.34 | 2.12 |
+| PyFixest within | OLS | 25 | 19 | 0.66–4.30 | 1.82 |
+| PyFixest within | PPML | 20 | 14 | 0.53–2.68 | 1.68 |
+| PyFixest within strict | OLS | 25 | 21 | 0.80–6.04 | 2.33 |
+| PyFixest within strict | PPML | 9 | 9 | 1.14–3.06 | 2.24 |
+| FEM.jl | OLS | 17 | 14 | 0.57–2.57 | 1.67 |
+| FEM.jl strict | OLS | 25 | 22 | 0.57–9.34 | 2.92 |
+
+At one million rows and four workers, AKM OLS takes 0.92 seconds in fereg, 14.72
+in reghdfe and 8.98 in areg; AKM PPML takes 6.82 seconds in fereg (on
+`scc-wo4`) and 98.09 in ppmlhdfe. Default fixest's only faster agreeing cell is
+PPML with four controls (0.83); the beta.10 dense three-FE OLS exception no
+longer occurs. PyFixest is faster with three FE below ten million rows and in
+dense or one-FE PPML; FEM.jl is faster with one FE and in dense designs.
+
+**New designs.** Clustered mobility is hard for alternating projections:
+reghdfe takes 40.0 and ppmlhdfe 43.7 times as long as fereg, areg 70.2, fixest
+4.3 and 4.5, PyFixest 2.3 and 1.5. In the gravity design fereg and ppmlhdfe
+drop the same 40,000 separated rows (30,000 in all-zero exporter-years, 10,000
+separated by the control) and omit that control; ppmlhdfe takes 5.55 times as
+long. fixest and PyFixest, default or strict, drop only the 30,000 rows and
+report the control at about -15 (default) or -20 (strict); their other
+coefficients agree, but the cells are marked as differing. Default fixest and
+PyFixest take 0.82 and 0.92 times fereg's time there.
+
+**Ten million rows.** AKM OLS takes 9.21 seconds in fereg and AKM PPML 71.87
+(on `scc-wo4`), where ppmlhdfe reaches the 600-second limit. Sparse three-FE
+OLS completes at 52.18–52.38 seconds (median **52.21**) with 11.06 GiB, against
+54.98 seconds and 12.67 GiB for PyFixest. At three million rows fereg uses
+3.99 GiB, now less than PyFixest's 4.24 but more than reghdfe, fixest and FEM.jl.
+
+**Newer node.** Run `20261030T234115Z-beta11-icelake-baseline-461f8d2a` repeated
+the baseline section on one 64-core Xeon Platinum 8358 (Ice Lake) node,
+`scc-4b05` (reference 1.02 seconds). fereg takes 0.83 seconds in AKM OLS and
+4.04 in AKM PPML; reghdfe takes 15.0, ppmlhdfe 14.9 and areg 8.4 times as long.
+fereg and the Stata commands are faster than on the E5-2680 v4 nodes in every
+cell; FEM.jl is slightly slower in some.
+
+Five earlier roots stopped before any timed fit (gravity separation rejected by
+the capture, a NumPy boolean in the smoke results, and the Veneto preparation
+issues below); the [completion record](../bench/results/scc-20261030-beta11-completion.json)
+lists them with every job. Retained evidence:
+[summary](../bench/results/scc-20261030-beta11-summary.csv),
+[positions](../bench/results/scc-20261030-beta11-observations.csv),
+[inputs](../bench/results/scc-20261030-beta11-inputs.json);
+clustered rerun [summary](../bench/results/scc-20261030-beta11-clustered-summary.csv),
+[positions](../bench/results/scc-20261030-beta11-clustered-observations.csv),
+[inputs](../bench/results/scc-20261030-beta11-clustered-inputs.json);
+Ice Lake [summary](../bench/results/scc-20261030-beta11-icelake-summary.csv),
+[positions](../bench/results/scc-20261030-beta11-icelake-observations.csv),
+[inputs](../bench/results/scc-20261030-beta11-icelake-inputs.json). The
+[accuracy study](../bench/results/scc-20261030-beta11-accuracy.json) compares
+coefficients across `tolerance()` with untimed fits. This is descriptive
+measurement of an already-published release; no timed fit was retried or
+excluded, and no scientific tolerance changed.
 
 ## October 28, 2026: published beta.10 campaign
 

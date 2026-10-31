@@ -121,21 +121,22 @@ on Mac; several other settings are inconclusive. The [validation report](docs/VA
 retains those results alongside the gains and numerical checks.
 
 Descriptive Linux comparisons on whole 28-core SCC nodes are in
-[Comparing fereg with fixest](docs/fixest_benchmarks.md) (50 synthetic OLS and
-PPML configurations up to ten million rows) and
-[Veneto AKM comparisons](docs/veneto_benchmarks.md) (real worker-firm panels,
-with and without saved effects). Speed ratios count only when results agree,
-exactly or up to how absorbed degrees of freedom are counted. In the beta.10
-campaign all 286 native fits passed (256 synthetic and 30 Veneto). `fereg` was
-faster than `reghdfe`, `ppmlhdfe` and `areg` in every agreeing configuration;
-default `fixest` was faster in dense three-FE OLS. PyFixest and
-FixedEffectModels.jl were faster in several designs. On the real long Veneto
-panel `fereg` was faster than every agreeing comparator at one to sixteen
-workers; when saving worker and firm effects, every comparator timed out or
-failed a scientific check. Sparse three-FE OLS at ten million rows completed
-in a median 53.18 seconds with a 12.50 GiB kernel peak. The comparisons are
-within-host descriptive results, not universal rankings or absolute speedups
-over beta.8 on different hosts.
+[Comparing fereg with fixest](docs/fixest_benchmarks.md) (synthetic OLS and
+PPML configurations up to ten million rows, including clustered-mobility and
+gravity designs, and the Stata-comparison cells on an Ice Lake node) and
+[Veneto AKM comparisons](docs/veneto_benchmarks.md) (the real long worker-firm
+panel on the leave-one-out and largest connected sets). Speed ratios count only
+when results agree, exactly or up to how absorbed degrees of freedom are
+counted. In the beta.11 campaign all 357 native fits outside two superseded
+cells passed; those cells' input left one singleton firm-year and were rerun on
+a corrected input. `fereg` was faster than `reghdfe`, `ppmlhdfe` and `areg` in
+every agreeing configuration and than default `fixest` in all but PPML with four
+controls. PyFixest and FixedEffectModels.jl were faster in several designs. On
+both Veneto samples `fereg` was faster than every agreeing comparator at one to
+sixteen workers. Sparse three-FE OLS at ten million rows completed in a median
+52.21 seconds with an 11.06 GiB kernel peak. The comparisons are within-host
+descriptive results, not universal rankings or absolute speedups over beta.10
+on different hosts.
 
 ## Command syntax
 

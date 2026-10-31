@@ -1,5 +1,63 @@
 # Veneto AKM comparisons
 
+## October 30, 2026: published beta.11 long panel, two samples
+
+Runs `20261030T223053Z-beta11-veneto-long-nofe-4c74e45e` (leave-one-out
+connected set, as before) and `20261030T235721Z-beta11-veneto-lcs-nofe-d2b4b60e`
+(largest connected set) measured the published beta.11 Linux plugin
+`af65682b...` (runtime source `65500be6`) without saved effects, three
+repetitions at 1/2/4/8/16 workers, each on its own whole 28-core E5-2680 v4
+node (`scc-xa2` and `scc-xe2`). The saved-effects variant of earlier campaigns
+was dropped. Arms add strict PyFixest (`within` LSMR 1e-11). The largest
+connected set was prepared from the original sources with the recorded stage-1
+cleaning and KSS `connected_set` (CHK 2013) instead of the leave-one-out pruning,
+followed by iterative removal of singleton workers and firms: 5,509,415 rows,
+1,182,935 workers and 117,208 firms (5,811,476 rows before singleton removal).
+The setup rebuilds the panel from its prepared source and requires exact equality;
+the age polynomial is built by multiplication so that every node type rebuilds it
+identically. Only aggregate preparation records (code, counts and source hashes)
+are retained here; rows stay on SCC.
+
+All 30 fereg fits passed, with exact fixed-worker repeats and cross-worker
+science; setups passed their harness suites (436 and 438 tests). Median command
+seconds (`c`: agreement up to absorbed degrees-of-freedom counting; `*`: results
+differ beyond the frozen tolerances; `>600`: time limit):
+
+| Workers | fereg | PyFixest | PyFixest strict | FEM.jl | FEM.jl strict | fixest | fixest strict | reghdfe |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| *Leave-one-out set* | | | | | | | | |
+| 1 | 9.66 | 26.85 | 35.00 | 44.49* | 109.35c | 59.63 | 111.52 | 508.97 |
+| 2 | 6.91 | 15.41 | 19.57 | 28.11* | 67.68c | 34.76 | 63.86 | 285.84 |
+| 4 | 4.77 | 9.89 | 13.04 | 19.30* | 45.93c | 20.76 | 36.98 | 203.11 |
+| 8 | 3.52 | 7.04 | 8.42 | 14.83* | 34.77c | 13.02 | 22.67 | — |
+| 16 | 3.18 | 6.19 | 7.34 | 25.81* | 62.29c | 13.13 | 22.58 | — |
+| *Largest connected set* | | | | | | | | |
+| 1 | 12.44 | 48.60 | 65.52 | 61.89* | 174.82c | 77.64 | 166.16 | >600 |
+| 2 | 9.93 | 27.84 | 36.71 | 40.33* | 113.08c | 45.79 | 96.19 | 453.31 |
+| 4 | 7.96 | 17.32 | 23.82 | 29.12* | 79.20c | 26.30 | 54.76 | 320.65 |
+| 8 | 6.56 | 11.64 | 14.35 | 24.18* | 65.54c | 16.02 | 33.19 | — |
+| 16 | 5.93 | 10.10 | 12.17 | 38.98* | 104.11c | 17.68 | 35.46 | — |
+
+fereg is faster than every comparator at every worker count on both samples.
+reghdfe reached the 600-second limit with one worker on the largest connected
+set; its later repetitions there were skipped. Kernel peaks are 1.45–1.65 GiB
+for fereg, 1.49–1.89 for FEM.jl, 1.99–2.59 for fixest, 2.10–2.25 for reghdfe and
+2.61–3.87 for PyFixest. The two samples ran on different hosts, so their
+absolute times are not compared.
+
+Retained evidence: leave-one-out [summary](../bench/results/scc-20261030-beta11-veneto-long-nofe-summary.csv),
+[observations](../bench/results/scc-20261030-beta11-veneto-long-nofe-observations.csv),
+[science](../bench/results/scc-20261030-beta11-veneto-long-nofe-science.json),
+[inputs](../bench/results/scc-20261030-beta11-veneto-long-nofe-inputs.json);
+largest connected set [summary](../bench/results/scc-20261030-beta11-veneto-long-lcs-summary.csv),
+[observations](../bench/results/scc-20261030-beta11-veneto-long-lcs-observations.csv),
+[science](../bench/results/scc-20261030-beta11-veneto-long-lcs-science.json),
+[inputs](../bench/results/scc-20261030-beta11-veneto-long-lcs-inputs.json).
+Two earlier largest-connected-set roots stopped before any timed fit (an input
+audit that differed by one rounding step between node types, and a capture that
+counted clusters on a panel without a cluster variable); see the
+[completion record](../bench/results/scc-20261030-beta11-completion.json).
+
 ## October 28, 2026: published beta.10 long-panel campaign
 
 Runs `20261028T200905Z-beta10-veneto-long-{nofe,saved}-7c5d9f39` measured the
