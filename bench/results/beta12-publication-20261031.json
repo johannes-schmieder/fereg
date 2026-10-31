@@ -1,0 +1,203 @@
+{
+ "schema": "beta12-publication-v1",
+ "date": "2026-10-31",
+ "status": "passed",
+ "release": "https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0-beta.12",
+ "release_commit": "4fe6b6194c8468f951c3391bfd04e44c455d2937",
+ "runtime_commit": "864960f1a6c2a2d1d58747d63a4475843c9c4e28",
+ "published_assets": [
+  {
+   "name": "fereg-0.5.0-source.zip",
+   "digest": "sha256:a4717974377419e6bcd7828441176cc08a32ecfb06c8995a9bbe38c811bb034b",
+   "size": 34110870
+  },
+  {
+   "name": "fereg-0.5.0-source.zip.sha256",
+   "digest": "sha256:b4467af2fef80b957b36739e000257a9a6266d1fb5622674fe299733054701f1",
+   "size": 89
+  },
+  {
+   "name": "fereg-0.5.0.zip",
+   "digest": "sha256:cf508943de83bc5cb233becde22eb68ace6e4b518817fe0aee5a9100a7e232fd",
+   "size": 18106062
+  },
+  {
+   "name": "fereg-0.5.0.zip.sha256",
+   "digest": "sha256:afbc72aa7e030cb05f1324baa3017b3731f3a5049a2f2d710633ba4dafa3e119",
+   "size": 82
+  },
+  {
+   "name": "macos_source_build.md",
+   "digest": "sha256:6798db113daf34e716270e5f89ccee5c3a8c7b21eb2625ab3201432579ffc3ec",
+   "size": 2826
+  }
+ ],
+ "local_asset_digests_match": true,
+ "github_helper": {
+  "root_cause": "githubquery reads https://api.github.com/repos/johannes-schmieder/fereg/releases as one line; Stata truncates file read lines at c(macrolen), 645,200 characters on SE/MP with the default maxvar 5000 and 264,392 on BE. Per-file assets (about 50 per release, ~1.6 KB of JSON each) made the response 906,445 characters, so the truncated line left unbalanced quotes (r(132)).",
+  "offline_reproduction": "The helper's parser on the exact response reproduced r(132); the newest 7 releases (596,644 characters) parsed, 8 did not; archive-only releases parsed at both limits.",
+  "fix": "Releases carry only archives, checksums and build notes; versioned installs use the release tag.",
+  "response_characters_before": 906445,
+  "response_characters_after": 148286
+ },
+ "asset_removal": {
+  "approved_by": "Johannes, 2026-10-31",
+  "releases": {
+   "v0.5.0-beta.11": {
+    "kept": [
+     "fereg-0.5.0-source.zip",
+     "fereg-0.5.0-source.zip.sha256",
+     "fereg-0.5.0.zip",
+     "fereg-0.5.0.zip.sha256",
+     "macos_source_build.md"
+    ],
+    "removed": 45,
+    "binary_zip_sha256": "5c4e551877efc0f023cf3de81de54cec87334a6f18a707e70daeff9ba60b300e"
+   },
+   "v0.5.0-beta.9": {
+    "kept": [
+     "fereg-0.5.0-source.zip",
+     "fereg-0.5.0-source.zip.sha256",
+     "fereg-0.5.0.zip",
+     "fereg-0.5.0.zip.sha256",
+     "macos_source_build.md"
+    ],
+    "removed": 45,
+    "binary_zip_sha256": "ae409717f30440191e1ce633695d14079714f8e74f02e6d834f2dc2de5ae7fac"
+   },
+   "v0.5.0-beta.10": {
+    "kept": [
+     "fereg-0.5.0-source.zip",
+     "fereg-0.5.0-source.zip.sha256",
+     "fereg-0.5.0.zip",
+     "fereg-0.5.0.zip.sha256",
+     "macos_source_build.md"
+    ],
+    "removed": 45,
+    "binary_zip_sha256": "1a4de46983daaea92643dd0adba682007fd2dce6b8410219079e9e1ba94dc9cf"
+   },
+   "v0.5.0-beta.8": {
+    "kept": [
+     "fereg-0.5.0-source.zip",
+     "fereg-0.5.0-source.zip.sha256",
+     "fereg-0.5.0.zip",
+     "fereg-0.5.0.zip.sha256",
+     "macos_source_build.md"
+    ],
+    "removed": 45,
+    "binary_zip_sha256": "aafc8ce74dbe0df876a07c4375f6e34f0c860fbcd44f76d29bb7ec67a7ebd843"
+   },
+   "v0.5.0-beta.7": {
+    "kept": [
+     "fereg-0.5.0-source.zip",
+     "fereg-0.5.0-source.zip.sha256",
+     "fereg-0.5.0.zip",
+     "fereg-0.5.0.zip.sha256",
+     "MACOS_SOURCE_BUILD.md"
+    ],
+    "removed": 45,
+    "binary_zip_sha256": "32f4eefa6e5fba1b1d3a441e0b8e950350241503ae29e9ae2f7a37d15baef7e6"
+   },
+   "v0.5.0-beta.6": {
+    "kept": [
+     "fereg-0.5.0-source.zip",
+     "fereg-0.5.0-source.zip.sha256",
+     "fereg-0.5.0.zip",
+     "fereg-0.5.0.zip.sha256",
+     "MACOS_SOURCE_BUILD.md"
+    ],
+    "removed": 45,
+    "binary_zip_sha256": "c2edc3800df08061923ba01d95bc865f6df8c3e6d442801e5075b49fd275e888"
+   },
+   "v0.5.0-beta.5": {
+    "kept": [
+     "fereg-0.5.0-source.zip",
+     "fereg-0.5.0-source.zip.sha256",
+     "fereg-0.5.0.zip",
+     "fereg-0.5.0.zip.sha256",
+     "MACOS_SOURCE_BUILD.md"
+    ],
+    "removed": 45,
+    "binary_zip_sha256": "e4e54cce39ed22ac027f27c98bff34acbb1fb17d0469330eea121e559c2628f0"
+   },
+   "v0.5.0-beta.4": {
+    "kept": [
+     "fereg-0.5.0-source.zip",
+     "fereg-0.5.0-source.zip.sha256",
+     "fereg-0.5.0.zip",
+     "fereg-0.5.0.zip.sha256",
+     "macos_source_build.md"
+    ],
+    "removed": 41,
+    "binary_zip_sha256": "79fd5981a73321c796eece09e2edcffeb87e6684234d1109cdccf6ae6d4a6b59"
+   },
+   "v0.5.0-beta.3": {
+    "kept": [
+     "fereg-0.5.0-build-instructions.md",
+     "fereg-0.5.0-source.zip",
+     "fereg-0.5.0-source.zip.sha256",
+     "fereg-0.5.0.zip",
+     "fereg-0.5.0.zip.sha256"
+    ],
+    "removed": 41,
+    "binary_zip_sha256": "7c982e6fd14d500390008bfea5026de5ddcf9ae70a8b1331a01d0be1775a4a69"
+   },
+   "v0.5.0-beta.2": {
+    "kept": [
+     "fereg-0.5.0-build-instructions.md",
+     "fereg-0.5.0-source.zip",
+     "fereg-0.5.0-source.zip.sha256",
+     "fereg-0.5.0.zip",
+     "fereg-0.5.0.zip.sha256",
+     "SHA256SUMS"
+    ],
+    "removed": 41,
+    "binary_zip_sha256": "c97be548a8b2abc8ca6861d175405c4dfa39d59beac31b09c23ad74ce10428a5"
+   },
+   "v0.5.0-beta.1": {
+    "kept": [
+     "fereg-0.5.0-source.zip",
+     "fereg-0.5.0-source.zip.sha256",
+     "fereg-0.5.0.zip",
+     "fereg-0.5.0.zip.sha256"
+    ],
+    "removed": 41,
+    "binary_zip_sha256": "8faf8cca170268d55e71c9ae139ce7628d98e0c9014aa348d2bb48219ea25379"
+   }
+  },
+  "removed_total": 479,
+  "verification": "Before removal, every removed asset's GitHub SHA-256 digest equalled the same file inside that release's binary ZIP, whose own digest matched; beta.2's SHA256SUMS is not in its ZIP and was kept.",
+  "tag_install": "Each tag from beta.2 to beta.11 carries in dist/ exactly the plugins of its release ZIP; beta.2-beta.4 were macOS-only and beta.1 has no root package. A fresh net install from the beta.11 tag installed the published beta.11 Mac plugin (dfb50318...)."
+ },
+ "public_installations": {
+  "macos": {
+   "stata": [
+    "19",
+    "15.1"
+   ],
+   "routes": {
+    "tag": "net install from raw.githubusercontent.com/johannes-schmieder/fereg/v0.5.0-beta.12/",
+    "main": "net install from raw.githubusercontent.com/johannes-schmieder/fereg/main/",
+    "github": "net install github from haghish.github.io/github/, then github install johannes-schmieder/fereg"
+   },
+   "result": "All six installations passed: 35 of 35 installed files byte-identical to the package, selftest r(fereg_version) 0.5.0-beta.12, OLS and PPML agree with regress and poisson dummy fits (relative differences 7.1e-15 and 7.3e-11); github list records v0.5.0-beta.12 as installed and latest."
+  },
+  "linux": {
+   "job": "8370667",
+   "host": "scc-gr4.scc.bu.edu",
+   "failed": 0,
+   "exit_status": 0,
+   "wallclock_seconds": 59,
+   "stata": [
+    "19",
+    "15.1"
+   ],
+   "routes": [
+    "tag",
+    "main",
+    "github"
+   ],
+   "result": "All six installations passed: 35 of 35 installed files byte-identical to the package, selftest, OLS and PPML agree with regress and poisson dummy fits; github list records v0.5.0-beta.12 as installed and latest."
+  }
+ }
+}

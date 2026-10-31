@@ -1745,6 +1745,20 @@ the selftest and independent OLS/PPML comparisons with `regress` and `poisson`
 (relative differences `7e-15` and `7e-11`). The strict default
 `./scripts/run_tests.sh` passes with the refreshed plugins.
 
+Beta.12 was published with archives only (binary and source ZIPs, checksums
+and Mac build notes). The community `github` helper had failed since beta.11
+because it reads the whole release list as one Stata line, truncated at
+`c(macrolen)` (645,200 characters on SE/MP, 264,392 on BE); per-file assets had
+made that list 906,445 characters. With Johannes's approval the 479 per-file
+assets of beta.1 to beta.11 were removed after each was verified byte-identical
+to its copy in that release's binary ZIP; the list is now 148,286 characters.
+Versioned installations use the release tag, whose `dist/` carries exactly the
+released plugins from beta.2 onward. Fresh installations from the beta.12 tag,
+from `main` and with `github install johannes-schmieder/fereg` pass on Mac in
+Stata 19 and 15.1 (35 of 35 files byte-identical, selftest, OLS/PPML checks);
+see the [publication record](../bench/results/beta12-publication-20261031.json)
+for these and the Linux installations.
+
 ### Beta.11 migration packaging
 
 Beta.11 retains the selected migration runtime `65500be6` and within pin
