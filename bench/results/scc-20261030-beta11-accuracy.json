@@ -15,7 +15,8 @@
    "run_id": "20261030T231021Z-beta11-accuracy-6e1910c6",
    "remote_root": "/projectnb/welfgr/fereg/runs/20261030T231021Z-beta11-accuracy-6e1910c6",
    "task_notes": {
-    "4": "Used the superseded largest-connected-set panel (input audit failure in its benchmark root); rerun on the benchmarked panel in a separate accuracy-lcs root."
+    "4": "Used the superseded largest-connected-set panel (input audit failure in its benchmark root); rerun on the benchmarked panel in a separate accuracy-lcs root.",
+    "2": "Input generated before fereg 4ddc8cb6: one firm has a single worker-year, which fereg deleted as a singleton in every fit (N = 999,999), so the comparison across tolerances is unaffected. The benchmark reran its clustered cells on the corrected input."
    }
   },
   {
