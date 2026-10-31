@@ -58,8 +58,13 @@ No Rust, Python or extra Stata packages are needed to use the binary package.
 Exit Stata before updating, then install in a fresh session so the previous
 plugin is unloaded.
 
-The community `github` helper currently errors while querying release metadata
-after downloading the package; use the tested `net install` command above.
+The community [`github`](https://github.com/haghish/github) helper also works:
+
+```stata
+net install github, from("https://haghish.github.io/github/")
+github install johannes-schmieder/fereg
+```
+
 See the [installation guide](docs/installation.md) for versioned and offline
 installation, source builds and troubleshooting. Changes by release are in the
 [changelog](CHANGELOG.md). Native build identity, checksums and

@@ -116,7 +116,10 @@ same scientific rules; integrate dependency changes through reviewed pins.
 Native publication permissions are resolved in `docs/licensing.md`. Main is a
 live Stata installation source: refresh its package with runtime changes, test
 the actual installed binary and publish matching corresponding source. Keep old
-releases immutable and report platform limitations honestly.
+release archives immutable and report platform limitations honestly. Releases
+carry only binary/source archives, checksums and build notes; Johannes approved
+removing per-file assets from all releases on 2026-10-31 so that `github install`
+works, and versioned installs use the release tag (see `docs/release_process.md`).
 
 ## Repository hygiene
 

@@ -17,14 +17,23 @@ help fereg
 help feppml
 ```
 
-This reads the root `fereg.pkg` from `main`. The built-in `net install` route
-passes the public installation checks. During beta.11 qualification, the
-community-contributed [`github` installer](https://github.com/haghish/github)
-downloaded all 35 correct package files but returned `r(132)` in its subsequent
-release-metadata query. The official current query helper has the same code.
-Use `net install` while that helper limitation remains unresolved; the
-[public verification record](../bench/results/beta11-publication-20261030.json)
-retains the failure and the successful direct installation checks.
+This reads the root `fereg.pkg` from `main`. The community-contributed
+[`github` installer](https://github.com/haghish/github) installs the same
+package from `main`:
+
+```stata
+net install github, from("https://haghish.github.io/github/")
+github install johannes-schmieder/fereg
+fereg, selftest
+```
+
+After installing, the helper reads the repository's GitHub release list as a
+single Stata line. When per-file release assets had made that list longer than
+Stata's line limit (`c(macrolen)`: 645,200 characters on Stata/SE and MP with the
+default `maxvar`, 264,392 on Stata/BE), the helper failed with `r(132)` after the
+files were installed. Releases therefore carry only archives, checksums and build
+notes, which keeps the list well below both limits; see the
+[beta.12 publication record](../bench/results/beta12-publication-20261031.json).
 
 Both commands and their shared native plugin are installed together. Rust,
 Python, BLAS, OpenMP and other Stata packages are not needed to use this binary
@@ -41,13 +50,18 @@ fereg price mpg, absorb(rep78) vce(robust)
 feppml price mpg, absorb(rep78) vce(robust)
 ```
 
-To install beta.12 independently of later changes to `main`, use a fresh Stata
-session:
+To install beta.12 independently of later changes to `main`, use its release
+tag in a fresh Stata session. The tagged root package carries that release's
+plugins; replace the tag to install another beta:
 
 ```stata
-net install fereg, from("https://github.com/johannes-schmieder/fereg/releases/download/v0.5.0-beta.12/") replace
+net install fereg, from("https://raw.githubusercontent.com/johannes-schmieder/fereg/v0.5.0-beta.12/") replace
 fereg, selftest
 ```
+
+Each tag from beta.2 onward carries exactly the plugins released with it;
+beta.2 to beta.4 were macOS-only. Beta.1 predates the root package; install it
+from its binary ZIP as described below.
 
 For an offline installation, download `fereg-0.5.0.zip` from the
 [beta release](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0-beta.12),

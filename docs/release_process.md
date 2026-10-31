@@ -27,8 +27,8 @@ and test-only commits may retain a binary when the runtime identity matches.
 
 Publish the exact corresponding-source archive and dependency audit before
 pushing the root package that refers to them. Use a new versioned release for
-each replacement binary; never replace an existing source archive with different
-bytes. Store only the current plugins on `main`. Keep the checksum filename
+each replacement binary; never replace an existing source or binary archive
+with different bytes. Store only the current plugins on `main`. Keep the checksum filename
 relative and update `dist/fereg-SOURCE.txt` and the root package distribution date.
 Test both the root package locally and the actual `github install` command over
 HTTP in a fresh Stata process with isolated user ado directories. Verify all
@@ -79,13 +79,21 @@ Use the [Mac build instructions](macos_source_build.md) included in the source
 archive. The offline archive build can supply the actual release plugin, avoiding
 a redundant second build. Publish the instructions as a companion asset too.
 
-For each versioned beta, upload the binary/source ZIPs and checksums, plus
-every flat file from the binary package as individual GitHub release assets.
-This supplies the versioned `net install` URL in the
-[installation guide](installation.md). Run a fresh Stata installation from that
-public URL into an isolated PLUS directory, verify the installed hashes, then
-run selftest and OLS/PPML checks. A local package test alone is not an HTTP
-installation test.
+For each versioned beta, upload only the binary and source ZIPs, their checksums
+and the Mac build instructions. Do not upload the flat package files as separate
+assets. The community `github` helper reads the repository's whole release list
+(`https://api.github.com/repos/johannes-schmieder/fereg/releases`) as one Stata
+line, which Stata truncates at `c(macrolen)` (645,200 characters on SE/MP with the
+default `maxvar`, 264,392 on BE); about 50 per-file assets per release had made
+the list 906,445 characters by beta.11, and `github install` failed with `r(132)`.
+Keep that response below 264,392 characters and check it after publishing.
+Versioned installation uses the release tag,
+`https://raw.githubusercontent.com/johannes-schmieder/fereg/<tag>/`: tag the
+commit whose `dist/` holds that release's plugins, so the tagged root package
+installs exactly the released binaries. Run fresh Stata installations from the
+tag URL, from `main` and with `github install` into isolated PLUS directories,
+verify the installed hashes, then run selftest and OLS/PPML checks. A local
+package test alone is not an HTTP installation test.
 
 Use one `target/tmp/<task>/` directory for clean source snapshots, generated
 packages, builds and logs. Packaging tools require output outside their source
