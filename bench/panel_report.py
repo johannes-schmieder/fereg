@@ -62,6 +62,20 @@ def timing(row):
     return value+'<br/><font size="6">n=1; later positions skipped</font>'
 
 
+def input_audit(audit, panels):
+    # A panel prepared in its own run is rebuilt from its source and must match exactly.
+    rebuilt = [p for p in panels if audit[p].get('rebuilt_from_source')]
+    retained = [p for p in panels if p not in rebuilt]
+    parts = []
+    if retained:
+        parts.append('Exact fevc identifiers. Control-adjustment max errors: '+', '.join(
+            f"{audit[p]['adjustment_max_error']:.3g} {p}" for p in retained)+' (gate 1e-12).')
+    if rebuilt:
+        parts.append('Rebuilt exactly from the prepared source: '+', '.join(
+            f"{audit[p]['rows']:,} rows {p}" for p in rebuilt)+'.')
+    return ' '.join(parts)
+
+
 def render(campaign, frame, output):
     report.configure_plots()
     from matplotlib.font_manager import findfont, FontProperties
@@ -162,8 +176,7 @@ def render(campaign, frame, output):
                ['Independent witnesses', 'Every native dense-design real-data smoke passes coefficients'+(', covariance and fitted values' if saved else ' and covariance')+
                 '. Full-panel graph rank'+(', model scores and objective replay pass.' if saved else ' passes.')],
                ['Host evidence', 'Every complete reservation and all-queue census replays successfully; continuous samples report no known competing compute.'],
-               ['Retained input audit', 'Exact fevc identifiers. Control-adjustment max errors: '+
-                ', '.join(f"{campaign['input_audit'][p]['adjustment_max_error']:.3g} {p}" for p in panels)+' (gate 1e-12).']],
+               ['Retained input audit', input_audit(campaign['input_audit'], panels)]],
               [132, 375], padding=5)
     pdf.text('Reference accuracy and interpretation', 'SectionCustom')
     if saved:
