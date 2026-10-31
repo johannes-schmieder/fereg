@@ -1731,6 +1731,20 @@ Estimates are the same across Stata releases: a feature check on Stata 15.1
 and 19 agrees to `4e-16` relative difference, and 26 OLS/PPML statistics are
 bitwise equal to beta.11.
 
+The [package record](../bench/results/beta12-release-package-20261031.json)
+binds all 50 release assets. Packaging source `8bd119ad` differs from the
+offline-built `864960f1` archive only in its records and generated metadata
+(3,471 identical files). The source ZIP is
+`a4717974377419e6bcd7828441176cc08a32ecfb06c8995a9bbe38c811bb034b`; the
+binary ZIP is `cf508943de83bc5cb233becde22eb68ace6e4b518817fe0aee5a9100a7e232fd`.
+The dependency audit reports no advisories. The exact binary archive passes
+all twelve staged-package fixtures (the eleven earlier ones plus the replay
+fixture) on Mac and on Linux (job 8370604). Fresh local `net install` sessions
+of the root package on Stata 19 and Stata 15.1 verify all 35 installed files,
+the selftest and independent OLS/PPML comparisons with `regress` and `poisson`
+(relative differences `7e-15` and `7e-11`). The strict default
+`./scripts/run_tests.sh` passes with the refreshed plugins.
+
 ### Beta.11 migration packaging
 
 Beta.11 retains the selected migration runtime `65500be6` and within pin
