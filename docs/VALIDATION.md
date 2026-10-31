@@ -1710,6 +1710,27 @@ head (`d64fdc0d`):
 
 ## Package checks
 
+### Beta.12 interface packaging
+
+Beta.12 changes the Stata interface only; runtime `864960f1` keeps beta.11's
+arithmetic, routing, iteration budgets and certificates. It lowers the minimum
+release to Stata 15, adds replay (so `estimates replay`, `bootstrap:` and
+`jackknife:` work), posts `e(fereg_version)`, states the passed accuracy check
+in the OLS header, quiets saved-output placeholders and replaces the failed
+score-certificate message with one that names the loose `tolerance()`.
+The [native record](../bench/results/beta12-native-20261031.json) binds the
+three plugins and checks below.
+
+| Platform | Beta.12 checks |
+| --- | --- |
+| macOS | Rust 1.85.1 universal build offline from the vendored `864960f1` source archive (`b0f6aaf4...`) with an empty Cargo home and path remaps; binary audit and actual ABI/load/panic checks passed. All 77 replay cases are exact against the beta.11 Mac plugin (`dfb50318...`), with the same three repaired reference defects. All 68 fixtures of the full Stata 19/MP profile and both Break rollback fixtures passed; the Stata 15-syntax replay fixture passed on Stata 15.1 and 18. Scratch copies of the 67 earlier full-profile fixtures, with `version 15.0` and Stata 15 matrix syntax in their assertions only, passed 66 of 67 on Stata 15.1; the remaining fixture's own `poisson` oracle rejects negative factor levels in Stata 15, after its `fereg` fits passed. The local Stata 17 license has expired. |
+| Linux x86-64 | SCC build job 8370549 and check job 8370550 (both `failed=0`, `exit_status=0`): ELF audit and actual ABI/load/panic checks passed, all 68 fixtures of the full Stata 19/MP profile passed, and the Stata 15-syntax fixture passed on Stata/MP 15.1, 16.1, 17 and 18. |
+| Windows x86-64 | Run `win-20261031T095017Z-ec6e9c7d` at `864960f1` passed the Rust 1.85.1/MSVC build, PE archive-path and source-manifest checks, the native loader and the licensed Stata/MP 19 `stata-do` driver, whose ten mapped fixtures now include the Stata 15-syntax replay fixture; the controller's execution-identity, source-hash and shutdown-backstop checks passed and the instance stopped (receipt `4eb0539b...`, plugin `5f97813d...`). |
+
+Estimates are the same across Stata releases: a feature check on Stata 15.1
+and 19 agrees to `4e-16` relative difference, and 26 OLS/PPML statistics are
+bitwise equal to beta.11.
+
 ### Beta.11 migration packaging
 
 Beta.11 retains the selected migration runtime `65500be6` and within pin
