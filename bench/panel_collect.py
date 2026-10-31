@@ -84,9 +84,15 @@ def load(root):
     stages = ['setup', 'smoke', *(['prepare'] if 'prepare_job' in context else [])]
     expected = {*((str(context[stage+'_job']), 'undefined') for stage in stages),
                 *((str(context['production_job']), str(task)) for task in tasks)}
+    # job.sh runs a one-panel production submitted without -t as task 1; the
+    # scheduler, observer and results then record no task number.
+    def recorded(task, value):
+        return str(value) == str(task) or (len(tasks) == 1 and str(value) in ['undefined', '0', 'None'])
     seen = set()
     for job in jobs:
         task = job['taskid'] if job['taskid'] not in ['0', 'NONE'] else 'undefined'
+        if job['jobnumber'] == str(context['production_job']) and recorded(1, task):
+            task = '1'
         key = job['jobnumber'], task
         if key in seen or key not in expected or job['failed'] != '0' or job['exit_status'] != '0':
             raise ValueError('unsuccessful, duplicate or unexpected scheduler accounting')
@@ -123,15 +129,15 @@ def load(root):
         label = f'task-{task}'
         result = json.loads((root/label/'results.json').read_text())
         host = json.loads((root/('host-'+label)/'host.json').read_text())
-        accounted = next(j for j in jobs if j['jobnumber'] == str(context['production_job']) and j['taskid'] == str(task))
+        accounted = next(j for j in jobs if j['jobnumber'] == str(context['production_job']) and recorded(task, j['taskid']))
         if (not host.get('isolation_ok') or host.get('errors')
                 or host['host']['job_id'] != str(context['production_job'])
-                or host['host']['task_id'] != str(task)
+                or not recorded(task, host['host']['task_id'])
                 or host['host']['hostname'].split('.')[0] != accounted['hostname'].split('.')[0]):
             raise ValueError('whole-host observation/accounting mismatch: '+label)
         if (not result.get('complete') or not result.get('native_gate_pass')
                 or str(result['job']) != str(context['production_job'])
-                or str(result['task']) != str(task)
+                or not recorded(task, result['task'])
                 or (root/label/'COMPLETE').read_text().strip() != 'PANEL_TASK_COMPLETE'):
             raise ValueError('production output incomplete: '+label)
         marker = f"PANEL_JOB_COMPLETE job={context['production_job']} task={task}"

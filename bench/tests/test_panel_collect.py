@@ -116,6 +116,16 @@ class PanelCollectionTests(unittest.TestCase):
                 science=[dict(kind='dense-oracle', arm='fereg', passed=True)])))
             (root/'environment/input-audit.json').write_text(json.dumps({'long-lcs': dict(rows=5509415, rebuilt_from_source=True)}))
             self.assertEqual(len(load(root)['records']), 54)
+            # A one-panel production submitted without -t has no task number.
+            production = str(context['production_job'])
+            for job in jobs:
+                if job['jobnumber'] == production: job['taskid'] = 'undefined'
+            (root/'accounting.json').write_text(json.dumps(jobs))
+            for path, key, value in [(root/'host-task-1/host.json', 'host', '0'), (root/'task-1/results.json', None, 'undefined')]:
+                data = json.loads(path.read_text())
+                (data[key] if key else data)['task_id' if key else 'task'] = value
+                path.write_text(json.dumps(data))
+            self.assertEqual(len(load(root)['records']), 54)
             (root/'preparation/inputs.json').write_text('{"changed": 1}')
             with self.assertRaisesRegex(ValueError, 'preparation record'):
                 load(root)
