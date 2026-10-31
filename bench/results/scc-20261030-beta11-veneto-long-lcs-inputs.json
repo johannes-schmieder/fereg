@@ -1,0 +1,1162 @@
+{
+  "run_id": "20261030T235721Z-beta11-veneto-lcs-nofe-d2b4b60e",
+  "remote_root": "/projectnb/welfgr/fereg/runs/20261030T235721Z-beta11-veneto-lcs-nofe-d2b4b60e",
+  "source": "d2b4b60e685b563652eed00cf9fa72c9f7c504e7",
+  "runtime_source": "65500be6e5dbaaa11bab6e6644e33e98ffbfa08a",
+  "linux_plugin_sha256": "af65682bfbe124a3e0138c8586fd9d63703f84291ecde444483e57ceb118b65b",
+  "resources": {
+    "prepare": {
+      "slots": 4,
+      "pe": "omp",
+      "mem_per_core": "4G",
+      "h_rt": "02:00:00"
+    },
+    "setup": {
+      "slots": 4,
+      "pe": "omp",
+      "mem_per_core": "3G",
+      "h_rt": "02:00:00"
+    },
+    "smoke": {
+      "slots": 4,
+      "pe": "omp"
+    },
+    "production": {
+      "slots": 28,
+      "pe": "omp28",
+      "num_proc": 28,
+      "cpu_type": "E5-2680v4",
+      "mem_per_core": "3G",
+      "h_rt": "12:00:00"
+    }
+  },
+  "preparation_sha256": {
+    "inputs.json": "2618e88a28aee8353a614accbc7f977141d6ef1cd9289a8c4e4e67a31040f6ae",
+    "stage1.do": "cd807e66d7e66dd806f148cb4bbe55b0016e3cbc0c9e899eba50c54d2d251fda",
+    "stage1.log": "df4f826261e09481604746fd65f6ec686ba1d61ef21957a92a964cd2ec7dcf7d",
+    "stage2_lcs.m": "60908bd29cfec58033067a2b415bf42cdc4f8bab5ad7d31f833f2d38a3dc69f0",
+    "stage2_lcs.out": "ac810a298ed7afd2f7916eb56ab8d23b6283fb1903a06d6ed058bc9022ba3829"
+  },
+  "preparation_notes": [
+    "Largest connected set of the 1996-2001 Veneto panel: the original stage-1 cleaning, then KSS connected_set (CHK 2013) in place of the leave-one-out pruning, then iterative removal of singleton workers and firms.",
+    "Connected set 5,811,476 rows; after singleton removal 5,509,415 rows, 1,182,935 workers and 117,208 firms.",
+    "Long panel only, without saved effects; arms as in the beta.11 leave-one-out run."
+  ],
+  "preparation_root": "/projectnb/welfgr/vckss/private-veneto/20261030-lcs-1996-2001",
+  "preparation_files": {
+    "preparation/inputs.json": "2618e88a28aee8353a614accbc7f977141d6ef1cd9289a8c4e4e67a31040f6ae",
+    "preparation/stage1.do": "cd807e66d7e66dd806f148cb4bbe55b0016e3cbc0c9e899eba50c54d2d251fda",
+    "preparation/stage2_lcs.m": "60908bd29cfec58033067a2b415bf42cdc4f8bab5ad7d31f833f2d38a3dc69f0",
+    "preparation/stage2_lcs.out": "ac810a298ed7afd2f7916eb56ab8d23b6283fb1903a06d6ed058bc9022ba3829",
+    "inputs/long_panel_lcs_nosingletons.json": "ad00a17e0f325ce16ac65028380803fd93ed65c15ccdc3aad55d3ebc1f52c949"
+  },
+  "preparation_retention": "Aggregate preparation records only (source hashes, counts, code); stage1.log stays in the private directory.",
+  "supersedes": [
+    "/projectnb/welfgr/fereg/runs/20261030T230359Z-beta11-veneto-lcs-nofe-f108a9cb",
+    "/projectnb/welfgr/fereg/runs/20261030T232516Z-beta11-veneto-lcs-nofe-a1ee5ec6"
+  ],
+  "schema": 1,
+  "manifest": {
+    "schema": 1,
+    "panels": {
+      "long-lcs": {
+        "years": [
+          1996,
+          1997,
+          1998,
+          1999,
+          2000,
+          2001
+        ],
+        "rows": 5509415,
+        "workers": 1182935,
+        "firms": 117208,
+        "regressors": 7
+      }
+    },
+    "cells": [
+      {
+        "id": "veneto-long-lcs-t1-fe0",
+        "model": "ols",
+        "design": "veneto-long-lcs",
+        "section": "veneto",
+        "rows": 5509415,
+        "regressors": 7,
+        "effects": 2,
+        "save_fe": false,
+        "vce": "iid",
+        "weights": "unit",
+        "threads": 1,
+        "arms": [
+          "fereg",
+          "fixest",
+          "fixest-strict",
+          "pyfixest-within",
+          "pyfixest-within-strict",
+          "julia",
+          "julia-strict",
+          "reghdfe"
+        ]
+      },
+      {
+        "id": "veneto-long-lcs-t2-fe0",
+        "model": "ols",
+        "design": "veneto-long-lcs",
+        "section": "veneto",
+        "rows": 5509415,
+        "regressors": 7,
+        "effects": 2,
+        "save_fe": false,
+        "vce": "iid",
+        "weights": "unit",
+        "threads": 2,
+        "arms": [
+          "fereg",
+          "fixest",
+          "fixest-strict",
+          "pyfixest-within",
+          "pyfixest-within-strict",
+          "julia",
+          "julia-strict",
+          "reghdfe"
+        ]
+      },
+      {
+        "id": "veneto-long-lcs-t4-fe0",
+        "model": "ols",
+        "design": "veneto-long-lcs",
+        "section": "veneto",
+        "rows": 5509415,
+        "regressors": 7,
+        "effects": 2,
+        "save_fe": false,
+        "vce": "iid",
+        "weights": "unit",
+        "threads": 4,
+        "arms": [
+          "fereg",
+          "fixest",
+          "fixest-strict",
+          "pyfixest-within",
+          "pyfixest-within-strict",
+          "julia",
+          "julia-strict",
+          "reghdfe"
+        ]
+      },
+      {
+        "id": "veneto-long-lcs-t8-fe0",
+        "model": "ols",
+        "design": "veneto-long-lcs",
+        "section": "veneto",
+        "rows": 5509415,
+        "regressors": 7,
+        "effects": 2,
+        "save_fe": false,
+        "vce": "iid",
+        "weights": "unit",
+        "threads": 8,
+        "arms": [
+          "fereg",
+          "fixest",
+          "fixest-strict",
+          "pyfixest-within",
+          "pyfixest-within-strict",
+          "julia",
+          "julia-strict"
+        ]
+      },
+      {
+        "id": "veneto-long-lcs-t16-fe0",
+        "model": "ols",
+        "design": "veneto-long-lcs",
+        "section": "veneto",
+        "rows": 5509415,
+        "regressors": 7,
+        "effects": 2,
+        "save_fe": false,
+        "vce": "iid",
+        "weights": "unit",
+        "threads": 16,
+        "arms": [
+          "fereg",
+          "fixest",
+          "fixest-strict",
+          "pyfixest-within",
+          "pyfixest-within-strict",
+          "julia",
+          "julia-strict"
+        ]
+      }
+    ],
+    "datasets": {
+      "long-lcs": {
+        "rows": 5509415,
+        "sha256": "4a0b503c4e744a344b8879346bff55355d03c1e04ab863d763f191ef4930cfe3",
+        "column_sha256": {
+          "obs_id": "658bc5122a681a5752f95f60b84af79de0d622c21f7fc7714fc4118e002f7340",
+          "g1": "422abd666f99fe041818a760ed77a1a08a3b1416ea8466d09efc2994f50b4a1c",
+          "g2": "aa437a83b9d1ff30a2ce7fc66a468f7564a28f37a550b4ce37df3c843ae7abff",
+          "y": "ceca7c8ad6881f93a30e4a7602ee218c507060cca17885a287e2b742c16b1dc2",
+          "x1": "83c4550bf287c38b8d661ea0d69ff22163a1340cedd7196cff52ed2883d45212",
+          "x2": "14f8ea67ae12b9cfcd1a5c725a62b4fb345a342ba62ed484ef980e1c3201eb8b",
+          "x3": "c60655268baa5cfc8eda87acf6c02dc7d47576ed924608453d9f7e88302629c4",
+          "x4": "aa60a3cbac647df8e35526fa2d3991dffad6fb93101cc307d84337ac372952a6",
+          "x5": "ea558a77a25a4c58aba3f932d93fea05ab19d5ec7bfc72f44b1165ad2f1528f5",
+          "x6": "5174d440e27831c74f3a13beacc6df3bcddf5f0031024ae05b3477e894a61093",
+          "x7": "7221d2f1f096276e1e31748ae4e47a2b28d1b51d14bd1d99faf11efee4d9ae33"
+        },
+        "topology": {
+          "levels": [
+            1182935,
+            117208
+          ],
+          "components": 1,
+          "first_pair_rank": 1300142,
+          "distinct_first_pair_links": 1827555
+        }
+      },
+      "smoke-long-lcs": {
+        "rows": 771,
+        "sha256": "88c09049b36662d9b1c3fd842d31eba9e25c68b7d6e042daa1eb2cfc7c1e86ea",
+        "column_sha256": {
+          "obs_id": "0d7b59c51c50934a86dcfdea9bbf56724bf604c00265dffdfb8c7e32d4b46532",
+          "g1": "0cbedc6617e29e0b0c098341986e2d01a2ba821644513fed97c19788ec027791",
+          "g2": "e1918f464d298c6c381d8035885ba26ae411bf7248ce24b0c9bd8607366dedc6",
+          "y": "672f3e4133e085e71d6ba1e82e3fbdccf872959888e13da85b929a3e944f256f",
+          "x1": "93f11c8b29143357c28f121c515509013d9e78df5ce41a419850b3ebe633104b",
+          "x2": "ce9840650c6027832be16dc5985f36519ed6b25c130bf5bc4f39c778ea5e2249",
+          "x3": "1a4d161174326e01dbffeb4567a40073056b923bb3563c49dc555881438331fb",
+          "x4": "bb89522557177b637dbd78371b6f95ca5bb1da3fd1f57ec197897620261a1aed",
+          "x5": "37c460338eb0d903f8efc243a21429dbef495ebe6dbe39b097463efbc4efe502",
+          "x6": "8fe456e999703b1664adb619ce494e47d81087e403aa1ccc08928c869aa42591",
+          "x7": "ab4c47e3c2b6c62b4f9543109406424efc1919047335d7fa6875ce33f1963c37"
+        },
+        "topology": {
+          "levels": [
+            199,
+            8
+          ],
+          "components": 1,
+          "first_pair_rank": 206,
+          "distinct_first_pair_links": 292
+        }
+      }
+    },
+    "policy": {
+      "threads": [
+        1,
+        2,
+        4,
+        8,
+        16
+      ],
+      "repetitions": 3,
+      "command_timeout_seconds": 600,
+      "process_timeout_seconds": 900,
+      "bundles": 1,
+      "save_fe": false,
+      "job_cleanup_seconds": 20000,
+      "scientific_tolerances": {
+        "coefficient_rtol": 1e-07,
+        "coefficient_atol": 1e-10,
+        "vce_rtol": 1e-06,
+        "vce_atol": 1e-10,
+        "fitted_rtol": 1e-07,
+        "fitted_atol": 1e-09,
+        "objective_rtol": 1e-08,
+        "objective_atol": 1e-10
+      },
+      "interference": "No resampling. Whole-host reservation and passive observation required."
+    },
+    "timed_fits": 114
+  },
+  "accounting": [
+    {
+      "qname": "econ",
+      "hostname": "scc-tb4.scc.bu.edu",
+      "group": "welfgr",
+      "owner": "johannes",
+      "project": "welfgr",
+      "department": "defaultdepartment",
+      "jobname": "b11_lcs_setup",
+      "jobnumber": "8364696",
+      "taskid": "undefined",
+      "account": "sge",
+      "priority": "0",
+      "qsub_time": "Fri Oct 30 19:57:45 2026",
+      "start_time": "Fri Oct 30 20:02:59 2026",
+      "end_time": "Fri Oct 30 20:06:40 2026",
+      "granted_pe": "omp",
+      "slots": "4",
+      "failed": "0",
+      "exit_status": "0",
+      "ru_wallclock": "221",
+      "ru_utime": "157.977",
+      "ru_stime": "19.193",
+      "ru_maxrss": "1361956",
+      "ru_ixrss": "0",
+      "ru_ismrss": "0",
+      "ru_idrss": "0",
+      "ru_isrss": "0",
+      "ru_minflt": "933421",
+      "ru_majflt": "0",
+      "ru_nswap": "0",
+      "ru_inblock": "654360",
+      "ru_oublock": "2492696",
+      "ru_msgsnd": "0",
+      "ru_msgrcv": "0",
+      "ru_nsignals": "0",
+      "ru_nvcsw": "127065",
+      "ru_nivcsw": "4403",
+      "cpu": "177.170",
+      "mem": "115.987",
+      "io": "7.114",
+      "iow": "0.000",
+      "maxvmem": "1.385G",
+      "arid": "undefined"
+    },
+    {
+      "qname": "econ",
+      "hostname": "scc-ei3.scc.bu.edu",
+      "group": "welfgr",
+      "owner": "johannes",
+      "project": "welfgr",
+      "department": "defaultdepartment",
+      "jobname": "b11_lcs_smoke",
+      "jobnumber": "8364698",
+      "taskid": "undefined",
+      "account": "sge",
+      "priority": "0",
+      "qsub_time": "Fri Oct 30 19:57:45 2026",
+      "start_time": "Fri Oct 30 20:08:32 2026",
+      "end_time": "Fri Oct 30 20:09:55 2026",
+      "granted_pe": "omp",
+      "slots": "4",
+      "failed": "0",
+      "exit_status": "0",
+      "ru_wallclock": "83",
+      "ru_utime": "51.574",
+      "ru_stime": "9.308",
+      "ru_maxrss": "714720",
+      "ru_ixrss": "0",
+      "ru_ismrss": "0",
+      "ru_idrss": "0",
+      "ru_isrss": "0",
+      "ru_minflt": "556284",
+      "ru_majflt": "2878",
+      "ru_nswap": "0",
+      "ru_inblock": "16615880",
+      "ru_oublock": "2736",
+      "ru_msgsnd": "0",
+      "ru_msgrcv": "0",
+      "ru_nsignals": "0",
+      "ru_nvcsw": "160290",
+      "ru_nivcsw": "1635",
+      "cpu": "60.881",
+      "mem": "45.390",
+      "io": "18.614",
+      "iow": "0.000",
+      "maxvmem": "2.108G",
+      "arid": "undefined"
+    },
+    {
+      "qname": "onrcc-m512-pub",
+      "hostname": "scc-xe2.scc.bu.edu",
+      "group": "welfgr",
+      "owner": "johannes",
+      "project": "welfgr",
+      "department": "defaultdepartment",
+      "jobname": "b11_lcs_prod",
+      "jobnumber": "8364700",
+      "taskid": "undefined",
+      "account": "sge",
+      "priority": "0",
+      "qsub_time": "Fri Oct 30 19:57:45 2026",
+      "start_time": "Fri Oct 30 20:12:34 2026",
+      "end_time": "Fri Oct 30 23:07:44 2026",
+      "granted_pe": "omp28",
+      "slots": "28",
+      "failed": "0",
+      "exit_status": "0",
+      "ru_wallclock": "10510",
+      "ru_utime": "22334.846",
+      "ru_stime": "2898.149",
+      "ru_maxrss": "4065720",
+      "ru_ixrss": "0",
+      "ru_ismrss": "0",
+      "ru_idrss": "0",
+      "ru_isrss": "0",
+      "ru_minflt": "49267933",
+      "ru_majflt": "2470",
+      "ru_nswap": "0",
+      "ru_inblock": "23920336",
+      "ru_oublock": "14668952",
+      "ru_msgsnd": "0",
+      "ru_msgrcv": "0",
+      "ru_nsignals": "0",
+      "ru_nvcsw": "2172680",
+      "ru_nivcsw": "205707",
+      "cpu": "25232.995",
+      "mem": "60642.492",
+      "io": "148.865",
+      "iow": "0.000",
+      "maxvmem": "7.953G",
+      "arid": "undefined"
+    },
+    {
+      "qname": "econ",
+      "hostname": "scc-gr4.scc.bu.edu",
+      "group": "welfgr",
+      "owner": "johannes",
+      "project": "welfgr",
+      "department": "defaultdepartment",
+      "jobname": "b11_lcs_prep",
+      "jobnumber": "8364694",
+      "taskid": "undefined",
+      "account": "sge",
+      "priority": "0",
+      "qsub_time": "Fri Oct 30 19:57:45 2026",
+      "start_time": "Fri Oct 30 19:59:48 2026",
+      "end_time": "Fri Oct 30 20:00:03 2026",
+      "granted_pe": "omp",
+      "slots": "4",
+      "failed": "0",
+      "exit_status": "0",
+      "ru_wallclock": "15",
+      "ru_utime": "9.794",
+      "ru_stime": "2.455",
+      "ru_maxrss": "1612392",
+      "ru_ixrss": "0",
+      "ru_ismrss": "0",
+      "ru_idrss": "0",
+      "ru_isrss": "0",
+      "ru_minflt": "245546",
+      "ru_majflt": "25",
+      "ru_nswap": "0",
+      "ru_inblock": "1149520",
+      "ru_oublock": "656608",
+      "ru_msgsnd": "0",
+      "ru_msgrcv": "0",
+      "ru_nsignals": "0",
+      "ru_nvcsw": "12536",
+      "ru_nivcsw": "130",
+      "cpu": "12.249",
+      "mem": "10.768",
+      "io": "1.343",
+      "iow": "0.000",
+      "maxvmem": "1.384G",
+      "arid": "undefined"
+    }
+  ],
+  "input_audit": {
+    "long-lcs": {
+      "rows": 5509415,
+      "rebuilt_from_source": true
+    }
+  },
+  "prior_panels": {
+    "long-lcs": {
+      "path": "/projectnb/welfgr/vckss/private-veneto/20261030-lcs-1996-2001/inputs/long_panel_lcs_nosingletons.csv",
+      "sha256": "dd6934a6b76839f266e1009247de9f0787f7fc3e64e32a01cebdf79c09586169"
+    }
+  },
+  "references": {
+    "references": "/projectnb/welfgr/fereg/runs/20260929-rebuild-m16-cdfa8f85/environment/references",
+    "r_library": "/projectnb/welfgr/fereg/runs/20260929-rebuild-m16-cdfa8f85/environment/r-library",
+    "source_hashes": {
+      "reghdfe": "b8c2c5dcfa23fe59ff1ca72d2f7fedf507763757ea2ad52fe301a5fe686a01bd",
+      "ftools": "d112fc4b662945c1f76c8462a0d6c904ddc336813f24fb8c83c3aad3a0f49680",
+      "require": "d190c105f703b12d696b9aa426cd70c6c05dbd7102e62a1fcf59f0ae30616cf1",
+      "ppmlhdfe": "366ddb71ebbe53bb4d7e0d4066e0a419ec6f0b689d0004be2da23e0c295d953e",
+      "fixest": "17372a789aaf9a3b04e8e0324feaf0f3c3c16f517baeb75e46289340332f0ee9"
+    }
+  },
+  "host_validation": {
+    "1": {
+      "host": {
+        "affinity": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27
+        ],
+        "hostname": "scc-xe2",
+        "job_id": "8364700",
+        "pe": "omp28",
+        "queue": "onrcc-m512-pub@scc-xe2.scc.bu.edu",
+        "slots": 28,
+        "task_id": "0"
+      },
+      "reservation_checks": 2,
+      "samples": {
+        "process": {
+          "count": 2047,
+          "maximum_gap_seconds": 7.156606142
+        },
+        "census": {
+          "count": 172,
+          "maximum_gap_seconds": 62.076772977
+        }
+      },
+      "observations_sha256": "cc8de630ad32ba4430cfd3634d85a9cfe79ad646a20a27327299c682dc02ef8e",
+      "passed": true
+    }
+  },
+  "native_cells": [
+    {
+      "cell": "veneto-long-lcs-t1-fe0",
+      "N": 5509415,
+      "sample_sha256": "48de9a103b39d5d8159efff5da2aa22e46c35b7c0dc32b361bf3006f033e74f7",
+      "finite_slope_rank": 7,
+      "absorbed_dof": 1300142.0,
+      "omitted": [],
+      "publication_omitted": [],
+      "singleton_deletions": 0,
+      "separation_deletions": 0,
+      "saved_fe_sha256": null,
+      "scientific_sha256": {
+        "coefficients.csv": "0596c589446a5eef5964a64f8a515e7d54b334168d8066ccbcca06175aae202c",
+        "covariance.csv": "22a662e1c2d109938615f9b90d4c61050e4dc734b4245a0bda576df489ef3d71",
+        "rows.csv": "c2fcccb8868f9f48da2e28044eb5e62eb8357b75d3ae96eccf411f2f67ba6555"
+      },
+      "exact_reported_rss": [
+        "77070.550231509085",
+        "77070.550231509085",
+        "77070.550231509085"
+      ],
+      "maximum_model_score": null,
+      "placement": {
+        "cpus": [
+          0
+        ],
+        "sockets": [
+          0
+        ],
+        "memory_nodes": [
+          0
+        ]
+      },
+      "cpu_model": "Intel(R) Xeon(R) CPU E5-2680 v4 @ 2.40GHz"
+    },
+    {
+      "cell": "veneto-long-lcs-t2-fe0",
+      "N": 5509415,
+      "sample_sha256": "48de9a103b39d5d8159efff5da2aa22e46c35b7c0dc32b361bf3006f033e74f7",
+      "finite_slope_rank": 7,
+      "absorbed_dof": 1300142.0,
+      "omitted": [],
+      "publication_omitted": [],
+      "singleton_deletions": 0,
+      "separation_deletions": 0,
+      "saved_fe_sha256": null,
+      "scientific_sha256": {
+        "coefficients.csv": "0596c589446a5eef5964a64f8a515e7d54b334168d8066ccbcca06175aae202c",
+        "covariance.csv": "22a662e1c2d109938615f9b90d4c61050e4dc734b4245a0bda576df489ef3d71",
+        "rows.csv": "c2fcccb8868f9f48da2e28044eb5e62eb8357b75d3ae96eccf411f2f67ba6555"
+      },
+      "exact_reported_rss": [
+        "77070.550231509085",
+        "77070.550231509085",
+        "77070.550231509085"
+      ],
+      "maximum_model_score": null,
+      "placement": {
+        "cpus": [
+          0,
+          2
+        ],
+        "sockets": [
+          0
+        ],
+        "memory_nodes": [
+          0
+        ]
+      },
+      "cpu_model": "Intel(R) Xeon(R) CPU E5-2680 v4 @ 2.40GHz"
+    },
+    {
+      "cell": "veneto-long-lcs-t4-fe0",
+      "N": 5509415,
+      "sample_sha256": "48de9a103b39d5d8159efff5da2aa22e46c35b7c0dc32b361bf3006f033e74f7",
+      "finite_slope_rank": 7,
+      "absorbed_dof": 1300142.0,
+      "omitted": [],
+      "publication_omitted": [],
+      "singleton_deletions": 0,
+      "separation_deletions": 0,
+      "saved_fe_sha256": null,
+      "scientific_sha256": {
+        "coefficients.csv": "0596c589446a5eef5964a64f8a515e7d54b334168d8066ccbcca06175aae202c",
+        "covariance.csv": "22a662e1c2d109938615f9b90d4c61050e4dc734b4245a0bda576df489ef3d71",
+        "rows.csv": "c2fcccb8868f9f48da2e28044eb5e62eb8357b75d3ae96eccf411f2f67ba6555"
+      },
+      "exact_reported_rss": [
+        "77070.550231509085",
+        "77070.550231509085",
+        "77070.550231509085"
+      ],
+      "maximum_model_score": null,
+      "placement": {
+        "cpus": [
+          0,
+          2,
+          4,
+          6
+        ],
+        "sockets": [
+          0
+        ],
+        "memory_nodes": [
+          0
+        ]
+      },
+      "cpu_model": "Intel(R) Xeon(R) CPU E5-2680 v4 @ 2.40GHz"
+    },
+    {
+      "cell": "veneto-long-lcs-t8-fe0",
+      "N": 5509415,
+      "sample_sha256": "48de9a103b39d5d8159efff5da2aa22e46c35b7c0dc32b361bf3006f033e74f7",
+      "finite_slope_rank": 7,
+      "absorbed_dof": 1300142.0,
+      "omitted": [],
+      "publication_omitted": [],
+      "singleton_deletions": 0,
+      "separation_deletions": 0,
+      "saved_fe_sha256": null,
+      "scientific_sha256": {
+        "coefficients.csv": "0596c589446a5eef5964a64f8a515e7d54b334168d8066ccbcca06175aae202c",
+        "covariance.csv": "22a662e1c2d109938615f9b90d4c61050e4dc734b4245a0bda576df489ef3d71",
+        "rows.csv": "c2fcccb8868f9f48da2e28044eb5e62eb8357b75d3ae96eccf411f2f67ba6555"
+      },
+      "exact_reported_rss": [
+        "77070.550231509085",
+        "77070.550231509085",
+        "77070.550231509085"
+      ],
+      "maximum_model_score": null,
+      "placement": {
+        "cpus": [
+          0,
+          2,
+          4,
+          6,
+          8,
+          10,
+          12,
+          14
+        ],
+        "sockets": [
+          0
+        ],
+        "memory_nodes": [
+          0
+        ]
+      },
+      "cpu_model": "Intel(R) Xeon(R) CPU E5-2680 v4 @ 2.40GHz"
+    },
+    {
+      "cell": "veneto-long-lcs-t16-fe0",
+      "N": 5509415,
+      "sample_sha256": "48de9a103b39d5d8159efff5da2aa22e46c35b7c0dc32b361bf3006f033e74f7",
+      "finite_slope_rank": 7,
+      "absorbed_dof": 1300142.0,
+      "omitted": [],
+      "publication_omitted": [],
+      "singleton_deletions": 0,
+      "separation_deletions": 0,
+      "saved_fe_sha256": null,
+      "scientific_sha256": {
+        "coefficients.csv": "0596c589446a5eef5964a64f8a515e7d54b334168d8066ccbcca06175aae202c",
+        "covariance.csv": "22a662e1c2d109938615f9b90d4c61050e4dc734b4245a0bda576df489ef3d71",
+        "rows.csv": "c2fcccb8868f9f48da2e28044eb5e62eb8357b75d3ae96eccf411f2f67ba6555"
+      },
+      "exact_reported_rss": [
+        "77070.550231509085",
+        "77070.550231509085",
+        "77070.550231509085"
+      ],
+      "maximum_model_score": null,
+      "placement": {
+        "cpus": [
+          0,
+          2,
+          4,
+          6,
+          8,
+          10,
+          12,
+          14,
+          16,
+          18,
+          20,
+          22,
+          24,
+          26,
+          1,
+          3
+        ],
+        "sockets": [
+          0,
+          1
+        ],
+        "memory_nodes": [
+          0,
+          1
+        ]
+      },
+      "cpu_model": "Intel(R) Xeon(R) CPU E5-2680 v4 @ 2.40GHz"
+    }
+  ],
+  "smoke_science": [
+    {
+      "panel": "long-lcs",
+      "threads": 4,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long-lcs",
+      "arm": "fixest",
+      "kind": "dense-oracle",
+      "checks": {
+        "coefficients": true,
+        "covariance": true
+      },
+      "passed": true
+    },
+    {
+      "panel": "long-lcs",
+      "arm": "fixest-strict",
+      "kind": "dense-oracle",
+      "checks": {
+        "coefficients": true,
+        "covariance": true
+      },
+      "passed": true
+    },
+    {
+      "panel": "long-lcs",
+      "arm": "pyfixest-within",
+      "kind": "dense-oracle",
+      "checks": {
+        "coefficients": true,
+        "covariance": true
+      },
+      "passed": true
+    },
+    {
+      "panel": "long-lcs",
+      "arm": "pyfixest-within-strict",
+      "kind": "dense-oracle",
+      "checks": {
+        "coefficients": true,
+        "covariance": true
+      },
+      "passed": true
+    },
+    {
+      "panel": "long-lcs",
+      "arm": "julia",
+      "kind": "dense-oracle",
+      "checks": {
+        "coefficients": true,
+        "covariance": false
+      },
+      "passed": false
+    },
+    {
+      "panel": "long-lcs",
+      "arm": "julia-strict",
+      "kind": "dense-oracle",
+      "checks": {
+        "coefficients": true,
+        "covariance": false
+      },
+      "passed": false
+    },
+    {
+      "panel": "long-lcs",
+      "arm": "reghdfe",
+      "kind": "dense-oracle",
+      "checks": {
+        "coefficients": true,
+        "covariance": true
+      },
+      "passed": true
+    },
+    {
+      "panel": "long-lcs",
+      "arm": "fereg",
+      "kind": "dense-oracle",
+      "checks": {
+        "coefficients": true,
+        "covariance": true
+      },
+      "passed": true
+    }
+  ],
+  "science": [
+    {
+      "panel": "long-lcs",
+      "threads": 1,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long-lcs",
+      "threads": 1,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long-lcs",
+      "threads": 1,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long-lcs",
+      "threads": 1,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long-lcs",
+      "threads": 1,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long-lcs",
+      "threads": 2,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long-lcs",
+      "threads": 2,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long-lcs",
+      "threads": 2,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long-lcs",
+      "threads": 2,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long-lcs",
+      "threads": 2,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long-lcs",
+      "threads": 4,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long-lcs",
+      "threads": 4,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long-lcs",
+      "threads": 4,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long-lcs",
+      "threads": 4,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long-lcs",
+      "threads": 4,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long-lcs",
+      "threads": 8,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long-lcs",
+      "threads": 8,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long-lcs",
+      "threads": 8,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long-lcs",
+      "threads": 8,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long-lcs",
+      "threads": 8,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long-lcs",
+      "threads": 16,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long-lcs",
+      "threads": 16,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long-lcs",
+      "threads": 16,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long-lcs",
+      "threads": 16,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long-lcs",
+      "threads": 16,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    }
+  ],
+  "status_counts": {
+    "ok": 111,
+    "command-timeout": 1,
+    "skipped-after-failure": 2
+  },
+  "eligible_arm_cells": 27,
+  "preparation": {
+    "preparation/inputs.json": [
+      {
+        "member": "Veneto Workers Histories (VWH) TATTARA/anagr.dta",
+        "bytes": 237272187,
+        "sha256": "8a142efee0823fbab4d783139fcc95337d7b4168f0d3267e03e1d70b2ae7dfd3"
+      },
+      {
+        "member": "Veneto Workers Histories (VWH) TATTARA/azien.dta",
+        "bytes": 323329908,
+        "sha256": "e071f5636c0cf6e1b31ee6fcc5f2828f9bbeb8254c2075dca6f32efb05386845"
+      },
+      {
+        "member": "Veneto Workers Histories (VWH) TATTARA/contr.dta",
+        "bytes": 2437238404,
+        "sha256": "50fea6507c6678895b5b4e7f3486f61981d7bf01ac7cd3eff098da20438df934"
+      }
+    ],
+    "preparation/stage1.do": "version 19.0\nclear all\nset more off\nadopath ++ \"/private/tmp/fevc-veneto-lcs-20261030/preparation\"\nset processors 4\nset seed 20260917\nset sortseed 20260917\ncd \"/private/tmp/fevc-veneto-lcs-20261030\"\nlog using \"logs/stage1.log\", text name(preparation)\nglobal dir_tmp \"/private/tmp/fevc-veneto-lcs-20261030/work\"\n// KSS uses distinct only for logging one identifier's counts. Supply that\n// narrow interface with built-ins, without installing an unrelated package.\nprogram define distinct, rclass\n    syntax varname\n    tempvar tag\n    quietly egen byte `tag' = tag(`varlist')\n    quietly count if `tag'==1\n    local ndist = r(N)\n    quietly count\n    return scalar N = r(N)\n    return scalar ndistinct = `ndist'\nend\ncapture noisily {\n    preserve\n    clear\n    set obs 3\n    gen id = cond(_n==3,2,1)\n    distinct id\n    assert r(N)==3 & r(ndistinct)==2\n    restore\n    // Original KSS build bytes; `gior' resolves to gior_r under Stata abbreviation.\n    do \"build.do\"\n    use \"$dir_tmp/py_final_1985_2001_veneto_only.dta\", clear\n    keep if inrange(year,1996,2001)\n    drop if missing(female,age,year)\n    isid id year\n    assert !missing(id,firmid,year,log_dailywages,age)\n    assert inrange(year,1996,2001)\n    rename id worker\n    rename firmid firm\n    rename log_dailywages y\n    keep worker firm year y age\n    sort worker year\n    format worker firm %20.0f\n    format y %24.17g\n    export delimited worker firm year y age using \"work/long_panel_preprune.csv\", replace\n    save \"work/long_panel_preprune.dta\", replace\n    count\n    display as result \"VENETO_1996_2001_STAGE1_PASS\"\n}\nlocal rc = _rc\nlog close preparation\nexit `rc'\n",
+    "preparation/stage2_lcs.m": "function stage2_lcs()\n% Largest connected set of the 1996-2001 Veneto panel: the original stage-2\n% preparation up to KSS's connected_set (CHK 2013), without the leave-one-out\n% pruning or singleton removal that follow it in prepare_stage2.m.\nroot='/private/tmp/fevc-veneto-lcs-20261030';\naddpath(fullfile(root,'preparation'));\nmaxNumCompThreads(4);\ndiary(fullfile(root,'logs','stage2_lcs.log'));\ndata=readtable(fullfile(root,'work','long_panel_preprune.csv'),'VariableNamingRule','preserve');\nassert(isequal(data.Properties.VariableNames,{'worker','firm','year','y','age'}));\nassert(all(ismember(data.year,1996:2001)) && all(isfinite(data.y)));\ndata=sortrows(data,{'worker','year'});\nassert(size(unique([data.worker data.year],'rows'),1)==height(data));\nid=data.worker;firm=data.firm;y=data.y;controls=[data.year data.age (1:height(data))'];\noriginal_rows=height(data);clear data;\nlag=[NaN;firm(1:end-1)];lag([true;diff(id)~=0])=NaN;\n[y,id,firm,io,fo,controls]=connected_set(y,id,firm,lag,controls);\nconnected_rows=numel(y);\n% Independent check on the retained worker-firm graph.\npairs=unique([id firm],'rows');workers=max(id);firms=max(firm);\nB=sparse(pairs(:,1),pairs(:,2),1,workers,firms);\nG=graph([sparse(workers,workers),B;B',sparse(firms,firms)]);\nassert(max(conncomp(G))==1,'largest connected set is not connected');\n% Seventeen significant digits keep every double exact.\nfid=fopen(fullfile(root,'work','long_panel_lcs.csv'),'w');\nfprintf(fid,'worker,firm,year,y,age\\n');\nfprintf(fid,'%.17g,%.17g,%.17g,%.17g,%.17g\\n',[io fo controls(:,1) y controls(:,2)]');\nfclose(fid);\nfprintf('VENETO_LCS original_rows=%d connected_rows=%d workers=%d firms=%d\\n',...\n    original_rows,connected_rows,workers,firms);\ndiary off;\nend\n",
+    "preparation/stage2_lcs.out": "WARNING: package sun.awt.X11 not in java.desktop\nWARNING: package sun.awt.X11 not in java.desktop\n[\bWarning: Name is nonexistent or not a directory:\n/Users/johannes/.cursor/extensions/mathworks.language-matlab-1.3.2/server/matlab]\b \n[\bWarning: Directory access failure: /Users/johannes/Documents/MATLAB]\b \nVENETO_LCS original_rows=6044422 connected_rows=5811476 workers=1472080 firms=130124\n",
+    "inputs/long_panel_lcs_nosingletons.json": {
+      "rows": 5509415,
+      "workers": 1182935,
+      "firms": 117208,
+      "singleton_rounds": 6,
+      "connected_components": 1,
+      "largest_connected_rows": 5811476,
+      "source_archive_sha256": "17737a31881f9f57c15a22f1c3a4a401e41b7fb9ffb992d417bf61a8ae7947f4",
+      "preprune_sha256": "8c03ec514b969cb80eea3ece2fdb0a611049c18206dfa19267128d9ffac1a547",
+      "sha256": "dd6934a6b76839f266e1009247de9f0787f7fc3e64e32a01cebdf79c09586169",
+      "definition": "KSS connected_set (CHK 2013) on the 1996-2001 pre-pruning panel, then iterative removal of singleton workers and firms; no leave-one-out pruning"
+    }
+  },
+  "retained_runtime_inventory": {
+    "sha256": "a5121c5a69f7dfe8327589b826b8a4cc42ac58aebca44240cf61c552a7aa455a",
+    "files": 26095,
+    "critical_files": {
+      "environment/command-clock.plugin": "4b4083bdbe5b766591e2d8aee1ab68c9f6a414332eb4619eefcd1063f9da8c80",
+      "manifest.json": "acbd5cec75c66cdf54228e51605fec7488f558f49cdff04048cac858daa2d2ba",
+      "source/bench/block_host.py": "fccf59236f74f077e890685acd2abc996a1c7be8ecabecde095da6932974944d",
+      "source/bench/campaign.py": "f81350eb4127f23656c84de1c297769fcd5917143ca79a61278400cb4ed723a6",
+      "source/bench/campaign_fixest.R": "495906c50f684cddb883707214b606bf8c217edcec302de91bed0569a348f99c",
+      "source/bench/campaign_julia.jl": "54287b75855d002890205d0e13b32efde72f8ce44930129a94aef43241caef8d",
+      "source/bench/campaign_oracle.py": "519beacdfacc7f9efc60c2259c9996c6b376daad92e49a02c02f378b301fb3bd",
+      "source/bench/campaign_pyfixest.py": "8eabfc9d27f54a931eb06db2dd0844671ec8b62a1893bddcfbb44c5242079005",
+      "source/bench/campaign_r.R": "642fd5883298490a04287814ab7871ca9169235a959667a4466a0fc3f2089356",
+      "source/bench/campaign_stata.do": "13b66578121f2ee8f628f4045bb9d286a099749f265a5bf9a2369a0e3333ac6d",
+      "source/bench/panel_campaign.py": "e6cb8472a7442e1917ecf4a5e19967ea83d453601ee4f15d97758f23803570a0",
+      "source/bench/qualify_scc.py": "64e3182857912cbd8f053982af55bf4fd511d7b6231556c72b708a6a61d884ce",
+      "source/dist/fereg_linux.plugin": "af65682bfbe124a3e0138c8586fd9d63703f84291ecde444483e57ceb118b65b"
+    }
+  },
+  "artifacts_sha256": {
+    "scc-20261030-beta11-veneto-long-lcs-observations.csv": "49fa3d829d8634aefbf84b12d6214f1173576f262c970c39491b629879a7ce02",
+    "scc-20261030-beta11-veneto-long-lcs-science.json": "e77d487f659effd5a3a88f43339f8bcfdfba849c9b9415d90e1e7fcfde25b87e",
+    "scc-20261030-beta11-veneto-long-lcs-summary.csv": "d5d26e5c31944666dccc9637a1983b38043073f21017dfeb09b8ba4b60f33ebb",
+    "veneto-akm.pdf": "fe1c0d14ad018ac9edbeb6a1ecb599a88503c8cdd537d235960d2cec6f229df2"
+  },
+  "collected_aggregate_sha256": {
+    "accounting.json": "982433590de83e62cf28dd99eb2ff1095cc5937c475c447fec3d835ff7a90246",
+    "context.json": "7a940499ffd9250290c98d65be7225048462da09c3356277e691253bf9d5b4cb",
+    "environment/COMPLETE": "756e62f28ae30b22558028188bea81ff23f4a5f23cbff615b154f32975164dde",
+    "environment/input-audit.json": "d8e369191bbb33edb4961bec8dc67afee741f898253cdc85e2ad3194ba061e55",
+    "environment/julia/Manifest.toml": "455f675f13599c229874ade21a7b2c043f75168d6e8630ceada7214e80a45fcf",
+    "environment/julia-versions.json": "c3d2c691970550a10240a53c366005d0a7f6b2abb5f8a0ed9d95de27f92d8370",
+    "environment/pyfixest-within-freeze.txt": "eaab6085281e5695bd39efbc02eb211f6b3e278a127c2d55b8444bdaf6dafac2",
+    "environment/r-package-paths.json": "b19cbb999cc73292635311d71671656e59f004a6605f5e93c6562809589fb80b",
+    "environment/reference-origin.json": "ded108478b24b62e4323bbc1667845f781808423ae4341680f8dbf390e42af26",
+    "environment/runtime.json": "a5121c5a69f7dfe8327589b826b8a4cc42ac58aebca44240cf61c552a7aa455a",
+    "host-task-1/host.json": "7ce5b7387d4a4fe0b9b3adbe41111cbf75d64ef7c97ea51552231f924c1784d0",
+    "host-validation.json": "71a471b4b522bad4a40c2b230edb655c9f95178bb0e5dc0f20a265a4f4ad0c75",
+    "input/prior-panels.json": "ce7c2ba696c1f0d57890aea990271bd9c7e453fe88f677e009df0ed0ca3a8c1c",
+    "input/source.json": "143b668f71cef9dc255f05f0715c2abd2efb184415ef7500dc05978445f2c59d",
+    "inputs/long_panel_lcs_nosingletons.json": "ad00a17e0f325ce16ac65028380803fd93ed65c15ccdc3aad55d3ebc1f52c949",
+    "job.sh": "521895a31b764fc8f6fa9f0514b20291d81a25c9fc50d2cd6fa483d6ae71e3f6",
+    "logs/harness-tests.log": "96f77273e52e7fb0bffd05937b11cfb41fb78ff455fc4b044a3876c46cecfe81",
+    "logs/input-audit.log": "ea061d0ced19bb552159b5dd06281c5ceb45a846417b140ff3a3ca4b60c4702b",
+    "logs/julia-environment.log": "7b4cb53bf4d324867ec123a40651ff7efe01f8f73bd90a07a7a9ee370af5906f",
+    "logs/package-check.log": "f72416253a9631ef3e88130ef8f6f0d5b60bfabf8bf13820f8e87b9f18057609",
+    "logs/prepare.sge": "98a22f57b4a291ace477152386be7f64e73f6211d6de6d6e28298200577a23e7",
+    "logs/production.1.sge": "515b59f4545195f0f2097ced3ab67fe5e1e3685614112ea34995339dfaf85977",
+    "logs/setup.sge": "8a581efdfcfaab08699b3f6c6c26fda02255174cb7751d993d5d5a1481caae71",
+    "logs/smoke.sge": "19d5b5426eba747fdb1046ccd6cf4f089755b65636d0eeae51265b357fb41f28",
+    "manifest.json": "acbd5cec75c66cdf54228e51605fec7488f558f49cdff04048cac858daa2d2ba",
+    "observations.csv": "49fa3d829d8634aefbf84b12d6214f1173576f262c970c39491b629879a7ce02",
+    "preparation/inputs.json": "2618e88a28aee8353a614accbc7f977141d6ef1cd9289a8c4e4e67a31040f6ae",
+    "preparation/stage1.do": "cd807e66d7e66dd806f148cb4bbe55b0016e3cbc0c9e899eba50c54d2d251fda",
+    "preparation/stage2_lcs.m": "60908bd29cfec58033067a2b415bf42cdc4f8bab5ad7d31f833f2d38a3dc69f0",
+    "preparation/stage2_lcs.out": "ac810a298ed7afd2f7916eb56ab8d23b6283fb1903a06d6ed058bc9022ba3829",
+    "prepare-accounting.txt": "6698f10ebdaa5485f841678fcc7f6e6bdc99f4f781240088b31d991d2b1859e0",
+    "prepare.sge": "fda82bc6db444b8bc7e832b30c93fb5eef84cb356823db62d968949b6990c3c2",
+    "production-accounting.txt": "3fdc3401e3ebcfd1b3da4e4f0facb5622e5d46336f902ff7ea4ad697e83c131e",
+    "science.json": "e77d487f659effd5a3a88f43339f8bcfdfba849c9b9415d90e1e7fcfde25b87e",
+    "setup-accounting.txt": "6143d858e2f8d14b113e647af0bf6b51bde078a80e699d84bc95d27078eacb73",
+    "setup.sh": "14b0d0e775d47bc29ac150c46d99ab6b3aa46f3da246ac476f5eaa6b64aaf592",
+    "smoke/COMPLETE": "48a5f888b37146f7e455fcb963de4aa3b78e7043f830f1c054d0d27e63ec9e06",
+    "smoke/results.json": "684a45886d71c062d318b246ec60fc403e69f66696688d69016f04e1614ff5a8",
+    "smoke-accounting.txt": "f1288af21278822cb0df4500a24d60902264999f16fbefac3f90c4867a772f11",
+    "summary.csv": "d5d26e5c31944666dccc9637a1983b38043073f21017dfeb09b8ba4b60f33ebb",
+    "task-1/COMPLETE": "48a5f888b37146f7e455fcb963de4aa3b78e7043f830f1c054d0d27e63ec9e06",
+    "task-1/results.json": "dc125e765f5614de993c266b1971c610c70bed743930a0c9c401704754022989"
+  },
+  "analysis_tools_sha256": {
+    "panel_collect.py": "0e0b3a9ba0b787df0c4e47f7f9fe8f5937d49e3de142f72840c72a103950d9ca",
+    "panel_report.py": "29a6da8678eb7c7f10799a0db513b1fdf96b6b00057bab38e6f27a02d75d29f5"
+  }
+}

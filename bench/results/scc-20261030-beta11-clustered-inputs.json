@@ -1,0 +1,2835 @@
+{
+  "schema": 2,
+  "run_id": "20261031T015227Z-beta11-clustered-4ddc8cb6",
+  "remote_root": "/projectnb/welfgr/fereg/runs/20261031T015227Z-beta11-clustered-4ddc8cb6",
+  "purpose": "Descriptive SCC comparison of one frozen runtime: options, designs (including a clustered heavy-tailed worker-firm design and a PPML gravity design with zeros and separation) and controls at one million rows and four cores; core scaling; size series on one node each; FixedEffectModels.jl for linear models; strict-tolerance fixest, PyFixest and FixedEffectModels.jl arms",
+  "source_commit": "4ddc8cb6c0e76e6926520be2689b51e0ecc5fb0e",
+  "source_archive_sha256": "e2b54d5773fb3ca6b7cd416bb6b588bfe8eb6a49470470be58debc44fffdcd54",
+  "plugin_sha256": "af65682bfbe124a3e0138c8586fd9d63703f84291ecde444483e57ceb118b65b",
+  "plugin_origin": "dist",
+  "packaged_runtime_sha256": "abb59cb9522848283fe0891bd28c2ec2bef48fe77060ead52db0381c02dc8690",
+  "comparators": {
+    "pyfixest": {
+      "pyfixest-within": {
+        "version": "0.60.0",
+        "commit": "0f41fffd7276f89cbd87528ef13e8c0261622932",
+        "within_py": "0.4.0"
+      }
+    },
+    "julia": {
+      "julia": "1.11.7",
+      "FixedEffectModels": "2.1.0"
+    },
+    "freeze_sha256": {
+      "pyfixest-within-freeze.txt": "eaab6085281e5695bd39efbc02eb211f6b3e278a127c2d55b8444bdaf6dafac2"
+    },
+    "fixest_versions": [
+      "0.14.2"
+    ],
+    "julia_manifest_sha256": "455f675f13599c229874ade21a7b2c043f75168d6e8630ceada7214e80a45fcf"
+  },
+  "policy": {
+    "schema": 2,
+    "seed": 739391,
+    "controls": 16,
+    "control_variants": [
+      4,
+      32
+    ],
+    "baseline_rows": 1000000,
+    "sizes": [
+      100000,
+      300000,
+      1000000,
+      3000000,
+      10000000
+    ],
+    "size_series": [
+      [
+        "ols",
+        "akm-baseline"
+      ],
+      [
+        "ppml",
+        "akm-baseline"
+      ],
+      [
+        "ols",
+        "three-sparse"
+      ]
+    ],
+    "threads": [
+      1,
+      2,
+      4,
+      8,
+      16
+    ],
+    "main_threads": 4,
+    "repetitions": 5,
+    "large_rows": 1000000,
+    "large_repetitions": 3,
+    "reference_repetitions": 3,
+    "bundles": 1,
+    "command_timeout_seconds": 600,
+    "process_timeout_seconds": 1500,
+    "job_wall_seconds": 43200,
+    "job_cleanup_seconds": 41400,
+    "coefficient_rtol": 1e-07,
+    "coefficient_atol": 1e-10,
+    "vce_rtol": 1e-06,
+    "vce_atol": 1e-10,
+    "fitted_rtol": 1e-07,
+    "fitted_atol": 1e-09,
+    "objective_rtol": 1e-08,
+    "objective_atol": 1e-10,
+    "covariance_scale_bound": 0.01,
+    "pyfixest": {
+      "pyfixest-within": {
+        "version": "0.60.0",
+        "commit": "0f41fffd7276f89cbd87528ef13e8c0261622932",
+        "within_py": "0.4.0"
+      }
+    },
+    "pyfixest_strict_tolerance": 1e-11,
+    "pyfixest_strict_iwls_tolerance": 1e-10,
+    "julia": {
+      "julia": "1.11.7",
+      "FixedEffectModels": "2.1.0"
+    },
+    "purpose": "Descriptive SCC comparison of one frozen runtime: options, designs (including a clustered heavy-tailed worker-firm design and a PPML gravity design with zeros and separation) and controls at one million rows and four cores; core scaling; size series on one node each; FixedEffectModels.jl for linear models; strict-tolerance fixest, PyFixest and FixedEffectModels.jl arms",
+    "sections": [
+      "design"
+    ],
+    "designs": [
+      "akm-clustered"
+    ]
+  },
+  "configurations": [
+    {
+      "model": "ols",
+      "design": "akm-baseline",
+      "rows": 1000000,
+      "threads": 4,
+      "vce": "iid",
+      "save_fe": false,
+      "section": "reference",
+      "regressors": 16,
+      "weights": "unit",
+      "effects": 2,
+      "id": "ols-akm-baseline-n1000000-t4-iid-fe0-ref1",
+      "arms": [
+        "fereg"
+      ],
+      "repetitions": 3
+    },
+    {
+      "model": "ols",
+      "design": "akm-clustered",
+      "rows": 1000000,
+      "threads": 4,
+      "vce": "iid",
+      "save_fe": false,
+      "section": "design",
+      "regressors": 16,
+      "weights": "unit",
+      "effects": 2,
+      "id": "ols-akm-clustered-n1000000-t4-iid-fe0",
+      "arms": [
+        "fereg",
+        "fixest",
+        "pyfixest-within",
+        "julia",
+        "julia-strict",
+        "reghdfe",
+        "areg",
+        "fixest-strict",
+        "pyfixest-within-strict"
+      ],
+      "repetitions": 5
+    },
+    {
+      "model": "ppml",
+      "design": "akm-clustered",
+      "rows": 1000000,
+      "threads": 4,
+      "vce": "robust",
+      "save_fe": false,
+      "section": "design",
+      "regressors": 16,
+      "weights": "unit",
+      "effects": 2,
+      "id": "ppml-akm-clustered-n1000000-t4-robust-fe0",
+      "arms": [
+        "fereg",
+        "fixest",
+        "pyfixest-within",
+        "ppmlhdfe",
+        "fixest-strict",
+        "pyfixest-within-strict"
+      ],
+      "repetitions": 5
+    }
+  ],
+  "bundles": [
+    [
+      {
+        "model": "ols",
+        "design": "akm-baseline",
+        "rows": 1000000,
+        "threads": 4,
+        "vce": "iid",
+        "save_fe": false,
+        "section": "reference",
+        "regressors": 16,
+        "weights": "unit",
+        "effects": 2,
+        "id": "ols-akm-baseline-n1000000-t4-iid-fe0-ref1",
+        "arms": [
+          "fereg"
+        ],
+        "repetitions": 3
+      },
+      {
+        "model": "ppml",
+        "design": "akm-clustered",
+        "rows": 1000000,
+        "threads": 4,
+        "vce": "robust",
+        "save_fe": false,
+        "section": "design",
+        "regressors": 16,
+        "weights": "unit",
+        "effects": 2,
+        "id": "ppml-akm-clustered-n1000000-t4-robust-fe0",
+        "arms": [
+          "fereg",
+          "fixest",
+          "pyfixest-within",
+          "ppmlhdfe",
+          "fixest-strict",
+          "pyfixest-within-strict"
+        ],
+        "repetitions": 5
+      },
+      {
+        "model": "ols",
+        "design": "akm-clustered",
+        "rows": 1000000,
+        "threads": 4,
+        "vce": "iid",
+        "save_fe": false,
+        "section": "design",
+        "regressors": 16,
+        "weights": "unit",
+        "effects": 2,
+        "id": "ols-akm-clustered-n1000000-t4-iid-fe0",
+        "arms": [
+          "fereg",
+          "fixest",
+          "pyfixest-within",
+          "julia",
+          "julia-strict",
+          "reghdfe",
+          "areg",
+          "fixest-strict",
+          "pyfixest-within-strict"
+        ],
+        "repetitions": 5
+      }
+    ]
+  ],
+  "datasets": {
+    "ols-akm-baseline-n1000000": {
+      "cell": {
+        "model": "ols",
+        "design": "akm-baseline",
+        "rows": 1000000,
+        "threads": 4,
+        "vce": "cluster",
+        "save_fe": false,
+        "section": "baseline",
+        "regressors": 16,
+        "weights": "unit",
+        "effects": 2,
+        "id": "ols-akm-baseline-n1000000-t4-iid-fe0",
+        "program_data": true
+      },
+      "seed": 739391,
+      "sha256": "5fd1a5cf2039c4cc5c0399326c238502fbd16fc10811799c2bde7047d1931425",
+      "numpy": "1.26.4",
+      "pandas": "2.2.2",
+      "rows": 1000000,
+      "zero_outcomes": 0,
+      "topology": {
+        "levels": [
+          200000,
+          10000
+        ],
+        "mobility": 0.2,
+        "first_pair_components": 1,
+        "first_pair_rank": 209999,
+        "distinct_first_pair_links": 359298,
+        "first_pair_mean_worker_degree": 1.79649,
+        "components": 1
+      },
+      "column_sha256": {
+        "obs_id": "fa132727fa403eac1c0c81533ae33037e077edc1c1c4c1a4ce5e99c10ffbb6b8",
+        "g1": "18642472bc74312750a52de58eebbd658927d662e44eb142cd71cc68ef8e0c9b",
+        "g2": "f200790c3a2e9d72edb84ac3cbf1606054d6d7206e51ceab83cff94733a1bf85",
+        "x1": "c4ec631346bbceefebf1ea08b4e2af29e29be8d033f0596eba3c7ff4ebada304",
+        "x2": "f20c0eb42cf5bf24dec3d6f2e6eaa7ea4c18cb561662f43bbd61e1ec4623ba4f",
+        "x3": "dbead67b84567cee97ea1049f031dbfccf51197c8c0d147368f5ad86139b6f6a",
+        "x4": "aa4360d1dc47a23561ab7ce2744e2bfdd3b300a5a936992350876cd55042b166",
+        "x5": "5bbfaa3bebc8e3aa0865d1cef7b41e78d3c7d570ce7f12e17ade03f14b91136f",
+        "x6": "98976ea98fe1e0199cc25dd50ff5a38253bdd60bc9e6fc5561d6af6aa980f37c",
+        "x7": "b796aae2e00c1fe788086880449681ed03c751e4d3914111a2c122241c52ca6a",
+        "x8": "e758259b0f32c1cfd4ce273e209f0e7f3f934ddb25fe8b8536e044f27bb4151a",
+        "x9": "5d40ed015e2815e158f3bc8f50e8c61b2cd78ef9089459738420c565f3a699f5",
+        "x10": "016406719fa33b20640bbe3a0a216cbcdd16d1cb604af99b611b097822028578",
+        "x11": "755cf97e480f6eee07d5885792b14c0589ede3c4d2ff99b3cd48e036c4531b9c",
+        "x12": "bf769918445dfcf9000b7a8968890a84700098495d9abd83051e9f8472b48623",
+        "x13": "0f0908a535c436bc2ff5604ee7c2cb6639bf0233ae6ad596f0e2594cf5265f71",
+        "x14": "06d531c0fa39f3040bc96061abfc76e6408e7aceece0101f0424ec7b0eb5950d",
+        "x15": "83d0beb0438ef556fa9cdcc4cc6d3f186871cf684bdc9ab44d2e088e6c132323",
+        "x16": "4f783bd7ac3765e2eb3a3c6e93cac387a56b49cab56be884d2dba8b12c2ed7b6",
+        "y": "2210bb3f48dca14f90c09133bf9bb371233dbbf053ba16e67450e7d0039c0c00",
+        "cluster": "18642472bc74312750a52de58eebbd658927d662e44eb142cd71cc68ef8e0c9b",
+        "cluster2": "c6b6414f973387ff26bd581fde6230aad80d232bf835bef7624f4bacd4bbb3f3",
+        "biasunit": "2cc1e050a3fddef87925673fd036669758612caffe44b6a1f08be49884275cc9",
+        "factor": "e7a152f186def39cdcde53ca57e45d9ac4f05be26c3b5f0355c691db04bfc8c7"
+      }
+    },
+    "ppml-akm-clustered-n1000000": {
+      "cell": {
+        "model": "ppml",
+        "design": "akm-clustered",
+        "rows": 1000000,
+        "threads": 4,
+        "vce": "cluster",
+        "save_fe": false,
+        "section": "design",
+        "regressors": 16,
+        "weights": "unit",
+        "effects": 2,
+        "id": "ppml-akm-clustered-n1000000-t4-robust-fe0",
+        "arms": [
+          "fereg",
+          "fixest",
+          "pyfixest-within",
+          "ppmlhdfe",
+          "fixest-strict",
+          "pyfixest-within-strict"
+        ],
+        "repetitions": 5,
+        "program_data": true
+      },
+      "seed": 739391,
+      "sha256": "5d3c1ce6f096f93cc629739d8b6c96551c42d889801d3d0364d9b6a34465c9ec",
+      "numpy": "1.26.4",
+      "pandas": "2.2.2",
+      "rows": 1000000,
+      "zero_outcomes": 0,
+      "topology": {
+        "levels": [
+          200000,
+          9999
+        ],
+        "mobility": 0.1,
+        "first_pair_components": 19,
+        "first_pair_rank": 209980,
+        "distinct_first_pair_links": 271721,
+        "first_pair_mean_worker_degree": 1.358605,
+        "components": 19
+      },
+      "column_sha256": {
+        "obs_id": "fa132727fa403eac1c0c81533ae33037e077edc1c1c4c1a4ce5e99c10ffbb6b8",
+        "g1": "18642472bc74312750a52de58eebbd658927d662e44eb142cd71cc68ef8e0c9b",
+        "g2": "f54799450c0940b020fe8897d104fa5ecad4498f8c013a757a90e42da033c0a7",
+        "x1": "c4ec631346bbceefebf1ea08b4e2af29e29be8d033f0596eba3c7ff4ebada304",
+        "x2": "f20c0eb42cf5bf24dec3d6f2e6eaa7ea4c18cb561662f43bbd61e1ec4623ba4f",
+        "x3": "dbead67b84567cee97ea1049f031dbfccf51197c8c0d147368f5ad86139b6f6a",
+        "x4": "aa4360d1dc47a23561ab7ce2744e2bfdd3b300a5a936992350876cd55042b166",
+        "x5": "5bbfaa3bebc8e3aa0865d1cef7b41e78d3c7d570ce7f12e17ade03f14b91136f",
+        "x6": "98976ea98fe1e0199cc25dd50ff5a38253bdd60bc9e6fc5561d6af6aa980f37c",
+        "x7": "b796aae2e00c1fe788086880449681ed03c751e4d3914111a2c122241c52ca6a",
+        "x8": "e758259b0f32c1cfd4ce273e209f0e7f3f934ddb25fe8b8536e044f27bb4151a",
+        "x9": "5d40ed015e2815e158f3bc8f50e8c61b2cd78ef9089459738420c565f3a699f5",
+        "x10": "016406719fa33b20640bbe3a0a216cbcdd16d1cb604af99b611b097822028578",
+        "x11": "755cf97e480f6eee07d5885792b14c0589ede3c4d2ff99b3cd48e036c4531b9c",
+        "x12": "bf769918445dfcf9000b7a8968890a84700098495d9abd83051e9f8472b48623",
+        "x13": "0f0908a535c436bc2ff5604ee7c2cb6639bf0233ae6ad596f0e2594cf5265f71",
+        "x14": "06d531c0fa39f3040bc96061abfc76e6408e7aceece0101f0424ec7b0eb5950d",
+        "x15": "83d0beb0438ef556fa9cdcc4cc6d3f186871cf684bdc9ab44d2e088e6c132323",
+        "x16": "4f783bd7ac3765e2eb3a3c6e93cac387a56b49cab56be884d2dba8b12c2ed7b6",
+        "y": "2de1846f2db8acfd636da717f89892c6bbab216f425763e4b1295ae6a51f5f69",
+        "cluster": "18642472bc74312750a52de58eebbd658927d662e44eb142cd71cc68ef8e0c9b",
+        "cluster2": "c6b6414f973387ff26bd581fde6230aad80d232bf835bef7624f4bacd4bbb3f3",
+        "biasunit": "2cc1e050a3fddef87925673fd036669758612caffe44b6a1f08be49884275cc9",
+        "factor": "e7a152f186def39cdcde53ca57e45d9ac4f05be26c3b5f0355c691db04bfc8c7"
+      }
+    },
+    "ols-akm-clustered-n1000000": {
+      "cell": {
+        "model": "ols",
+        "design": "akm-clustered",
+        "rows": 1000000,
+        "threads": 4,
+        "vce": "cluster",
+        "save_fe": false,
+        "section": "design",
+        "regressors": 16,
+        "weights": "unit",
+        "effects": 2,
+        "id": "ols-akm-clustered-n1000000-t4-iid-fe0",
+        "arms": [
+          "fereg",
+          "fixest",
+          "pyfixest-within",
+          "julia",
+          "julia-strict",
+          "reghdfe",
+          "areg",
+          "fixest-strict",
+          "pyfixest-within-strict"
+        ],
+        "repetitions": 5,
+        "program_data": true
+      },
+      "seed": 739391,
+      "sha256": "77f3b955a9dccafcbfdabcf98b326b177cb4eac8437e142eb5569d6d84bad9e6",
+      "numpy": "1.26.4",
+      "pandas": "2.2.2",
+      "rows": 1000000,
+      "zero_outcomes": 0,
+      "topology": {
+        "levels": [
+          200000,
+          9999
+        ],
+        "mobility": 0.1,
+        "first_pair_components": 19,
+        "first_pair_rank": 209980,
+        "distinct_first_pair_links": 271721,
+        "first_pair_mean_worker_degree": 1.358605,
+        "components": 19
+      },
+      "column_sha256": {
+        "obs_id": "fa132727fa403eac1c0c81533ae33037e077edc1c1c4c1a4ce5e99c10ffbb6b8",
+        "g1": "18642472bc74312750a52de58eebbd658927d662e44eb142cd71cc68ef8e0c9b",
+        "g2": "f54799450c0940b020fe8897d104fa5ecad4498f8c013a757a90e42da033c0a7",
+        "x1": "c4ec631346bbceefebf1ea08b4e2af29e29be8d033f0596eba3c7ff4ebada304",
+        "x2": "f20c0eb42cf5bf24dec3d6f2e6eaa7ea4c18cb561662f43bbd61e1ec4623ba4f",
+        "x3": "dbead67b84567cee97ea1049f031dbfccf51197c8c0d147368f5ad86139b6f6a",
+        "x4": "aa4360d1dc47a23561ab7ce2744e2bfdd3b300a5a936992350876cd55042b166",
+        "x5": "5bbfaa3bebc8e3aa0865d1cef7b41e78d3c7d570ce7f12e17ade03f14b91136f",
+        "x6": "98976ea98fe1e0199cc25dd50ff5a38253bdd60bc9e6fc5561d6af6aa980f37c",
+        "x7": "b796aae2e00c1fe788086880449681ed03c751e4d3914111a2c122241c52ca6a",
+        "x8": "e758259b0f32c1cfd4ce273e209f0e7f3f934ddb25fe8b8536e044f27bb4151a",
+        "x9": "5d40ed015e2815e158f3bc8f50e8c61b2cd78ef9089459738420c565f3a699f5",
+        "x10": "016406719fa33b20640bbe3a0a216cbcdd16d1cb604af99b611b097822028578",
+        "x11": "755cf97e480f6eee07d5885792b14c0589ede3c4d2ff99b3cd48e036c4531b9c",
+        "x12": "bf769918445dfcf9000b7a8968890a84700098495d9abd83051e9f8472b48623",
+        "x13": "0f0908a535c436bc2ff5604ee7c2cb6639bf0233ae6ad596f0e2594cf5265f71",
+        "x14": "06d531c0fa39f3040bc96061abfc76e6408e7aceece0101f0424ec7b0eb5950d",
+        "x15": "83d0beb0438ef556fa9cdcc4cc6d3f186871cf684bdc9ab44d2e088e6c132323",
+        "x16": "4f783bd7ac3765e2eb3a3c6e93cac387a56b49cab56be884d2dba8b12c2ed7b6",
+        "y": "f4db89229750e7305c20afdce52a6ba43978872b8583fdbb6496e50186a81f07",
+        "cluster": "18642472bc74312750a52de58eebbd658927d662e44eb142cd71cc68ef8e0c9b",
+        "cluster2": "c6b6414f973387ff26bd581fde6230aad80d232bf835bef7624f4bacd4bbb3f3",
+        "biasunit": "2cc1e050a3fddef87925673fd036669758612caffe44b6a1f08be49884275cc9",
+        "factor": "e7a152f186def39cdcde53ca57e45d9ac4f05be26c3b5f0355c691db04bfc8c7"
+      }
+    }
+  },
+  "accounting": [
+    {
+      "jobnumber": "8367865",
+      "taskid": "undefined",
+      "hostname": "scc-xf1.scc.bu.edu",
+      "qname": "onrcc-m512-pub",
+      "slots": "28",
+      "failed": "0",
+      "exit_status": "0",
+      "start_time": "Fri Oct 30 21:54:58 2026",
+      "end_time": "Fri Oct 30 22:03:12 2026",
+      "ru_wallclock": "494",
+      "cpu": "1367.522",
+      "maxvmem": "7.947G"
+    },
+    {
+      "jobnumber": "8367866",
+      "taskid": "undefined",
+      "hostname": "scc-xf2.scc.bu.edu",
+      "qname": "onrcc-m512-pub",
+      "slots": "28",
+      "failed": "0",
+      "exit_status": "0",
+      "start_time": "Fri Oct 30 22:05:18 2026",
+      "end_time": "Fri Oct 30 22:15:22 2026",
+      "ru_wallclock": "604",
+      "cpu": "407.974",
+      "maxvmem": "2.243G"
+    },
+    {
+      "jobnumber": "8367868",
+      "taskid": "1",
+      "hostname": "scc-xc3.scc.bu.edu",
+      "qname": "onrcc-m512-pub",
+      "slots": "28",
+      "failed": "0",
+      "exit_status": "0",
+      "start_time": "Fri Oct 30 22:17:50 2026",
+      "end_time": "Fri Oct 30 23:24:01 2026",
+      "ru_wallclock": "3971",
+      "cpu": "11755.563",
+      "maxvmem": "4.086G"
+    }
+  ],
+  "launchers": {
+    "setup.sh": "5e04c943a33b46c98c08e65c7b352f5b43fca1a3641d7e3541545710ffb94ce0",
+    "job.sh": "58314439a6bfcee4ac93f52c13afd60592dcbe9a2b00d8fbbb38d34d827449b3"
+  },
+  "stopped_tasks": [],
+  "task_jobs": {},
+  "superseded_cells": {},
+  "scc_benchmark_tests": {
+    "count": 442,
+    "passed": true
+  },
+  "host_isolation": [
+    {
+      "label": "smoke",
+      "host": {
+        "affinity": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27
+        ],
+        "hostname": "scc-xf2",
+        "job_id": "8367866",
+        "pe": "omp28",
+        "queue": "onrcc-m512-pub@scc-xf2.scc.bu.edu",
+        "slots": 28,
+        "task_id": "0"
+      },
+      "isolation_ok": true,
+      "scheduler_checks_replayed": true,
+      "process_samples": 86,
+      "maximum_process_gap_s": 6.336070449,
+      "observations_sha256": "9c68208cf8dcd32850141a68e978955c804596373538493721bfe59a9153e016"
+    },
+    {
+      "label": "task-1",
+      "host": {
+        "affinity": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27
+        ],
+        "hostname": "scc-xc3",
+        "job_id": "8367868",
+        "pe": "omp28",
+        "queue": "onrcc-m512-pub@scc-xc3.scc.bu.edu",
+        "slots": 28,
+        "task_id": "1"
+      },
+      "isolation_ok": true,
+      "scheduler_checks_replayed": true,
+      "process_samples": 761,
+      "maximum_process_gap_s": 6.384612321,
+      "observations_sha256": "587135e0d02d2a2e775ff553397ba0ba849c87083a8f191d0fdb20b4e2ff113a"
+    }
+  ],
+  "node_reference": [
+    {
+      "task": 1,
+      "host": "scc-xc3",
+      "seconds": 0.927029112,
+      "seconds_min": 0.913720654,
+      "seconds_max": 0.9313424020000001
+    }
+  ],
+  "validation": {
+    "planned_positions": 78,
+    "arm_cells": 16,
+    "eligible_arm_cells": 7,
+    "convention_arm_cells": 8,
+    "statuses": {
+      "ok": 78
+    },
+    "native_fits": 13,
+    "native_all_pass": true,
+    "native_command_limits": [],
+    "exact_memory_positions": 78,
+    "smoke_oracle_counts": {
+      "fereg": {
+        "passed": 14,
+        "total": 14
+      },
+      "fixest": {
+        "passed": 2,
+        "total": 14
+      },
+      "fixest-strict": {
+        "passed": 11,
+        "total": 14
+      },
+      "julia": {
+        "passed": 0,
+        "total": 7
+      },
+      "julia-strict": {
+        "passed": 0,
+        "total": 7
+      },
+      "ppmlhdfe": {
+        "passed": 2,
+        "total": 7
+      },
+      "pyfixest-within": {
+        "passed": 10,
+        "total": 14
+      },
+      "pyfixest-within-strict": {
+        "passed": 13,
+        "total": 14
+      },
+      "reghdfe": {
+        "passed": 1,
+        "total": 7
+      }
+    }
+  },
+  "smoke_independent_science": [
+    {
+      "cell": "ols-akm-baseline-n1200-t4-iid-fe1",
+      "arm": "fixest",
+      "checks": {},
+      "covariance_scale": null,
+      "pass": false
+    },
+    {
+      "cell": "ols-akm-baseline-n1200-t4-iid-fe1",
+      "arm": "pyfixest-within",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ols-akm-baseline-n1200-t4-iid-fe1",
+      "arm": "julia",
+      "checks": {},
+      "covariance_scale": null,
+      "pass": false
+    },
+    {
+      "cell": "ols-akm-baseline-n1200-t4-iid-fe1",
+      "arm": "julia-strict",
+      "checks": {
+        "coefficients": true,
+        "covariance": false,
+        "fitted": true,
+        "sample": true
+      },
+      "covariance_scale": 1.0010729613733904,
+      "pass": false
+    },
+    {
+      "cell": "ols-akm-baseline-n1200-t4-iid-fe1",
+      "arm": "reghdfe",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": false,
+        "sample": true
+      },
+      "covariance_scale": null,
+      "pass": false
+    },
+    {
+      "cell": "ols-akm-baseline-n1200-t4-iid-fe1",
+      "arm": "fixest-strict",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ols-akm-baseline-n1200-t4-iid-fe1",
+      "arm": "pyfixest-within-strict",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ols-akm-baseline-n1200-t4-iid-fe1",
+      "arm": "fereg",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ols-akm-baseline-n1200-t4-robust-fe1",
+      "arm": "fixest",
+      "checks": {},
+      "covariance_scale": null,
+      "pass": false
+    },
+    {
+      "cell": "ols-akm-baseline-n1200-t4-robust-fe1",
+      "arm": "pyfixest-within",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ols-akm-baseline-n1200-t4-robust-fe1",
+      "arm": "julia",
+      "checks": {},
+      "covariance_scale": null,
+      "pass": false
+    },
+    {
+      "cell": "ols-akm-baseline-n1200-t4-robust-fe1",
+      "arm": "julia-strict",
+      "checks": {
+        "coefficients": true,
+        "covariance": false,
+        "fitted": true,
+        "sample": true
+      },
+      "covariance_scale": 1.0010729613493896,
+      "pass": false
+    },
+    {
+      "cell": "ols-akm-baseline-n1200-t4-robust-fe1",
+      "arm": "reghdfe",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": false,
+        "sample": true
+      },
+      "covariance_scale": null,
+      "pass": false
+    },
+    {
+      "cell": "ols-akm-baseline-n1200-t4-robust-fe1",
+      "arm": "fixest-strict",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ols-akm-baseline-n1200-t4-robust-fe1",
+      "arm": "pyfixest-within-strict",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ols-akm-baseline-n1200-t4-robust-fe1",
+      "arm": "fereg",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ols-akm-baseline-n1200-t4-cluster-fe1",
+      "arm": "fixest",
+      "checks": {},
+      "covariance_scale": null,
+      "pass": false
+    },
+    {
+      "cell": "ols-akm-baseline-n1200-t4-cluster-fe1",
+      "arm": "pyfixest-within",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ols-akm-baseline-n1200-t4-cluster-fe1",
+      "arm": "julia",
+      "checks": {},
+      "covariance_scale": null,
+      "pass": false
+    },
+    {
+      "cell": "ols-akm-baseline-n1200-t4-cluster-fe1",
+      "arm": "julia-strict",
+      "checks": {
+        "coefficients": true,
+        "covariance": false,
+        "fitted": true,
+        "sample": true
+      },
+      "covariance_scale": 1.0008539709466966,
+      "pass": false
+    },
+    {
+      "cell": "ols-akm-baseline-n1200-t4-cluster-fe1",
+      "arm": "reghdfe",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": false,
+        "sample": true
+      },
+      "covariance_scale": null,
+      "pass": false
+    },
+    {
+      "cell": "ols-akm-baseline-n1200-t4-cluster-fe1",
+      "arm": "fixest-strict",
+      "checks": {
+        "coefficients": true,
+        "covariance": false,
+        "fitted": true,
+        "sample": true
+      },
+      "covariance_scale": null,
+      "pass": false
+    },
+    {
+      "cell": "ols-akm-baseline-n1200-t4-cluster-fe1",
+      "arm": "pyfixest-within-strict",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ols-akm-baseline-n1200-t4-cluster-fe1",
+      "arm": "fereg",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ols-two-sparse-n1200-t4-iid-fe1",
+      "arm": "fixest",
+      "checks": {},
+      "covariance_scale": null,
+      "pass": false
+    },
+    {
+      "cell": "ols-two-sparse-n1200-t4-iid-fe1",
+      "arm": "pyfixest-within",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ols-two-sparse-n1200-t4-iid-fe1",
+      "arm": "julia",
+      "checks": {},
+      "covariance_scale": null,
+      "pass": false
+    },
+    {
+      "cell": "ols-two-sparse-n1200-t4-iid-fe1",
+      "arm": "julia-strict",
+      "checks": {
+        "coefficients": true,
+        "covariance": false,
+        "fitted": true,
+        "sample": true
+      },
+      "covariance_scale": 1.0010729613733909,
+      "pass": false
+    },
+    {
+      "cell": "ols-two-sparse-n1200-t4-iid-fe1",
+      "arm": "reghdfe",
+      "checks": {},
+      "covariance_scale": null,
+      "pass": false
+    },
+    {
+      "cell": "ols-two-sparse-n1200-t4-iid-fe1",
+      "arm": "fixest-strict",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ols-two-sparse-n1200-t4-iid-fe1",
+      "arm": "pyfixest-within-strict",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ols-two-sparse-n1200-t4-iid-fe1",
+      "arm": "fereg",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ols-three-dense-n1200-t4-iid-fe1",
+      "arm": "fixest",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ols-three-dense-n1200-t4-iid-fe1",
+      "arm": "pyfixest-within",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ols-three-dense-n1200-t4-iid-fe1",
+      "arm": "julia",
+      "checks": {
+        "coefficients": true,
+        "covariance": false,
+        "fitted": true,
+        "sample": true
+      },
+      "covariance_scale": 1.0017241379310344,
+      "pass": false
+    },
+    {
+      "cell": "ols-three-dense-n1200-t4-iid-fe1",
+      "arm": "julia-strict",
+      "checks": {
+        "coefficients": true,
+        "covariance": false,
+        "fitted": true,
+        "sample": true
+      },
+      "covariance_scale": 1.0017241379310344,
+      "pass": false
+    },
+    {
+      "cell": "ols-three-dense-n1200-t4-iid-fe1",
+      "arm": "reghdfe",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ols-three-dense-n1200-t4-iid-fe1",
+      "arm": "fixest-strict",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ols-three-dense-n1200-t4-iid-fe1",
+      "arm": "pyfixest-within-strict",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ols-three-dense-n1200-t4-iid-fe1",
+      "arm": "fereg",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ols-three-sparse-n1200-t4-iid-fe1",
+      "arm": "fixest",
+      "checks": {},
+      "covariance_scale": null,
+      "pass": false
+    },
+    {
+      "cell": "ols-three-sparse-n1200-t4-iid-fe1",
+      "arm": "pyfixest-within",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ols-three-sparse-n1200-t4-iid-fe1",
+      "arm": "julia",
+      "checks": {},
+      "covariance_scale": null,
+      "pass": false
+    },
+    {
+      "cell": "ols-three-sparse-n1200-t4-iid-fe1",
+      "arm": "julia-strict",
+      "checks": {
+        "coefficients": true,
+        "covariance": false,
+        "fitted": true,
+        "sample": true
+      },
+      "covariance_scale": 1.0022222222222221,
+      "pass": false
+    },
+    {
+      "cell": "ols-three-sparse-n1200-t4-iid-fe1",
+      "arm": "reghdfe",
+      "checks": {},
+      "covariance_scale": null,
+      "pass": false
+    },
+    {
+      "cell": "ols-three-sparse-n1200-t4-iid-fe1",
+      "arm": "fixest-strict",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ols-three-sparse-n1200-t4-iid-fe1",
+      "arm": "pyfixest-within-strict",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ols-three-sparse-n1200-t4-iid-fe1",
+      "arm": "fereg",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ols-akm-clustered-n1200-t4-iid-fe1",
+      "arm": "fixest",
+      "checks": {},
+      "covariance_scale": null,
+      "pass": false
+    },
+    {
+      "cell": "ols-akm-clustered-n1200-t4-iid-fe1",
+      "arm": "pyfixest-within",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ols-akm-clustered-n1200-t4-iid-fe1",
+      "arm": "julia",
+      "checks": {},
+      "covariance_scale": null,
+      "pass": false
+    },
+    {
+      "cell": "ols-akm-clustered-n1200-t4-iid-fe1",
+      "arm": "julia-strict",
+      "checks": {
+        "coefficients": true,
+        "covariance": false,
+        "fitted": true,
+        "sample": true
+      },
+      "covariance_scale": 1.0010729613733906,
+      "pass": false
+    },
+    {
+      "cell": "ols-akm-clustered-n1200-t4-iid-fe1",
+      "arm": "reghdfe",
+      "checks": {},
+      "covariance_scale": null,
+      "pass": false
+    },
+    {
+      "cell": "ols-akm-clustered-n1200-t4-iid-fe1",
+      "arm": "fixest-strict",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ols-akm-clustered-n1200-t4-iid-fe1",
+      "arm": "pyfixest-within-strict",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ols-akm-clustered-n1200-t4-iid-fe1",
+      "arm": "fereg",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ppml-akm-baseline-n1200-t4-robust-fe1",
+      "arm": "fixest",
+      "checks": {},
+      "covariance_scale": null,
+      "pass": false
+    },
+    {
+      "cell": "ppml-akm-baseline-n1200-t4-robust-fe1",
+      "arm": "pyfixest-within",
+      "checks": {},
+      "covariance_scale": null,
+      "pass": false
+    },
+    {
+      "cell": "ppml-akm-baseline-n1200-t4-robust-fe1",
+      "arm": "ppmlhdfe",
+      "checks": {},
+      "covariance_scale": null,
+      "pass": false
+    },
+    {
+      "cell": "ppml-akm-baseline-n1200-t4-robust-fe1",
+      "arm": "fixest-strict",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true,
+        "absorbed_rank": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ppml-akm-baseline-n1200-t4-robust-fe1",
+      "arm": "pyfixest-within-strict",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true,
+        "absorbed_rank": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ppml-akm-baseline-n1200-t4-robust-fe1",
+      "arm": "fereg",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true,
+        "absorbed_rank": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ppml-akm-baseline-n1200-t4-cluster-fe1",
+      "arm": "fixest",
+      "checks": {},
+      "covariance_scale": null,
+      "pass": false
+    },
+    {
+      "cell": "ppml-akm-baseline-n1200-t4-cluster-fe1",
+      "arm": "pyfixest-within",
+      "checks": {},
+      "covariance_scale": null,
+      "pass": false
+    },
+    {
+      "cell": "ppml-akm-baseline-n1200-t4-cluster-fe1",
+      "arm": "ppmlhdfe",
+      "checks": {},
+      "covariance_scale": null,
+      "pass": false
+    },
+    {
+      "cell": "ppml-akm-baseline-n1200-t4-cluster-fe1",
+      "arm": "fixest-strict",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true,
+        "absorbed_rank": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ppml-akm-baseline-n1200-t4-cluster-fe1",
+      "arm": "pyfixest-within-strict",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true,
+        "absorbed_rank": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ppml-akm-baseline-n1200-t4-cluster-fe1",
+      "arm": "fereg",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true,
+        "absorbed_rank": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ppml-two-sparse-n1200-t4-robust-fe1",
+      "arm": "fixest",
+      "checks": {},
+      "covariance_scale": null,
+      "pass": false
+    },
+    {
+      "cell": "ppml-two-sparse-n1200-t4-robust-fe1",
+      "arm": "pyfixest-within",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true,
+        "absorbed_rank": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ppml-two-sparse-n1200-t4-robust-fe1",
+      "arm": "ppmlhdfe",
+      "checks": {},
+      "covariance_scale": null,
+      "pass": false
+    },
+    {
+      "cell": "ppml-two-sparse-n1200-t4-robust-fe1",
+      "arm": "fixest-strict",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true,
+        "absorbed_rank": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ppml-two-sparse-n1200-t4-robust-fe1",
+      "arm": "pyfixest-within-strict",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true,
+        "absorbed_rank": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ppml-two-sparse-n1200-t4-robust-fe1",
+      "arm": "fereg",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true,
+        "absorbed_rank": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ppml-three-dense-n1200-t4-robust-fe1",
+      "arm": "fixest",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true,
+        "absorbed_rank": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ppml-three-dense-n1200-t4-robust-fe1",
+      "arm": "pyfixest-within",
+      "checks": {
+        "coefficients": true,
+        "covariance": false,
+        "fitted": true,
+        "sample": true,
+        "absorbed_rank": true
+      },
+      "covariance_scale": null,
+      "pass": false
+    },
+    {
+      "cell": "ppml-three-dense-n1200-t4-robust-fe1",
+      "arm": "ppmlhdfe",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true,
+        "absorbed_rank": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ppml-three-dense-n1200-t4-robust-fe1",
+      "arm": "fixest-strict",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true,
+        "absorbed_rank": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ppml-three-dense-n1200-t4-robust-fe1",
+      "arm": "pyfixest-within-strict",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true,
+        "absorbed_rank": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ppml-three-dense-n1200-t4-robust-fe1",
+      "arm": "fereg",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true,
+        "absorbed_rank": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ppml-three-sparse-n1200-t4-robust-fe1",
+      "arm": "fixest",
+      "checks": {},
+      "covariance_scale": null,
+      "pass": false
+    },
+    {
+      "cell": "ppml-three-sparse-n1200-t4-robust-fe1",
+      "arm": "pyfixest-within",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true,
+        "absorbed_rank": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ppml-three-sparse-n1200-t4-robust-fe1",
+      "arm": "ppmlhdfe",
+      "checks": {},
+      "covariance_scale": null,
+      "pass": false
+    },
+    {
+      "cell": "ppml-three-sparse-n1200-t4-robust-fe1",
+      "arm": "fixest-strict",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true,
+        "absorbed_rank": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ppml-three-sparse-n1200-t4-robust-fe1",
+      "arm": "pyfixest-within-strict",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true,
+        "absorbed_rank": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ppml-three-sparse-n1200-t4-robust-fe1",
+      "arm": "fereg",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true,
+        "absorbed_rank": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ppml-akm-clustered-n1200-t4-robust-fe1",
+      "arm": "fixest",
+      "checks": {},
+      "covariance_scale": null,
+      "pass": false
+    },
+    {
+      "cell": "ppml-akm-clustered-n1200-t4-robust-fe1",
+      "arm": "pyfixest-within",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true,
+        "absorbed_rank": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ppml-akm-clustered-n1200-t4-robust-fe1",
+      "arm": "ppmlhdfe",
+      "checks": {},
+      "covariance_scale": null,
+      "pass": false
+    },
+    {
+      "cell": "ppml-akm-clustered-n1200-t4-robust-fe1",
+      "arm": "fixest-strict",
+      "checks": {
+        "coefficients": true,
+        "covariance": false,
+        "fitted": true,
+        "sample": true,
+        "absorbed_rank": true
+      },
+      "covariance_scale": null,
+      "pass": false
+    },
+    {
+      "cell": "ppml-akm-clustered-n1200-t4-robust-fe1",
+      "arm": "pyfixest-within-strict",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true,
+        "absorbed_rank": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ppml-akm-clustered-n1200-t4-robust-fe1",
+      "arm": "fereg",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true,
+        "absorbed_rank": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ppml-gravity-n1200-t4-robust-fe1",
+      "arm": "fixest",
+      "checks": {
+        "coefficients": false,
+        "covariance": false,
+        "fitted": false,
+        "sample": false,
+        "absorbed_rank": false
+      },
+      "covariance_scale": null,
+      "pass": false
+    },
+    {
+      "cell": "ppml-gravity-n1200-t4-robust-fe1",
+      "arm": "pyfixest-within",
+      "checks": {
+        "coefficients": false,
+        "covariance": false,
+        "fitted": false,
+        "sample": false,
+        "absorbed_rank": false
+      },
+      "covariance_scale": null,
+      "pass": false
+    },
+    {
+      "cell": "ppml-gravity-n1200-t4-robust-fe1",
+      "arm": "ppmlhdfe",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true,
+        "absorbed_rank": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    },
+    {
+      "cell": "ppml-gravity-n1200-t4-robust-fe1",
+      "arm": "fixest-strict",
+      "checks": {
+        "coefficients": false,
+        "covariance": false,
+        "fitted": false,
+        "sample": false,
+        "absorbed_rank": false
+      },
+      "covariance_scale": null,
+      "pass": false
+    },
+    {
+      "cell": "ppml-gravity-n1200-t4-robust-fe1",
+      "arm": "pyfixest-within-strict",
+      "checks": {
+        "coefficients": false,
+        "covariance": false,
+        "fitted": false,
+        "sample": false,
+        "absorbed_rank": false
+      },
+      "covariance_scale": null,
+      "pass": false
+    },
+    {
+      "cell": "ppml-gravity-n1200-t4-robust-fe1",
+      "arm": "fereg",
+      "checks": {
+        "coefficients": true,
+        "covariance": true,
+        "fitted": true,
+        "sample": true,
+        "absorbed_rank": true
+      },
+      "covariance_scale": null,
+      "pass": true
+    }
+  ],
+  "production_comparisons": [
+    {
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof"
+      ],
+      "cell": "ppml-akm-clustered-n1000000-t4-robust-fe0",
+      "arm": "fixest",
+      "repetition": 1,
+      "ratio": 0.2165436202985075
+    },
+    {
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof"
+      ],
+      "cell": "ppml-akm-clustered-n1000000-t4-robust-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 1,
+      "ratio": 0.655184247104086
+    },
+    {
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0,
+      "cell": "ppml-akm-clustered-n1000000-t4-robust-fe0",
+      "arm": "ppmlhdfe",
+      "repetition": 1,
+      "ratio": 0.02248566333119714
+    },
+    {
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof"
+      ],
+      "cell": "ppml-akm-clustered-n1000000-t4-robust-fe0",
+      "arm": "fixest-strict",
+      "repetition": 1,
+      "ratio": 0.06088866353307063
+    },
+    {
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof"
+      ],
+      "cell": "ppml-akm-clustered-n1000000-t4-robust-fe0",
+      "arm": "pyfixest-within-strict",
+      "repetition": 1,
+      "ratio": 0.4529260111067889
+    },
+    {
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof"
+      ],
+      "cell": "ppml-akm-clustered-n1000000-t4-robust-fe0",
+      "arm": "fixest",
+      "repetition": 2,
+      "ratio": 0.222708862341522
+    },
+    {
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof"
+      ],
+      "cell": "ppml-akm-clustered-n1000000-t4-robust-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 2,
+      "ratio": 0.668645501336028
+    },
+    {
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0,
+      "cell": "ppml-akm-clustered-n1000000-t4-robust-fe0",
+      "arm": "ppmlhdfe",
+      "repetition": 2,
+      "ratio": 0.022929645266073762
+    },
+    {
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof"
+      ],
+      "cell": "ppml-akm-clustered-n1000000-t4-robust-fe0",
+      "arm": "fixest-strict",
+      "repetition": 2,
+      "ratio": 0.06089683421225535
+    },
+    {
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof"
+      ],
+      "cell": "ppml-akm-clustered-n1000000-t4-robust-fe0",
+      "arm": "pyfixest-within-strict",
+      "repetition": 2,
+      "ratio": 0.4626626987710916
+    },
+    {
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof"
+      ],
+      "cell": "ppml-akm-clustered-n1000000-t4-robust-fe0",
+      "arm": "fixest",
+      "repetition": 3,
+      "ratio": 0.22000908557924065
+    },
+    {
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof"
+      ],
+      "cell": "ppml-akm-clustered-n1000000-t4-robust-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 3,
+      "ratio": 0.6692066994259597
+    },
+    {
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0,
+      "cell": "ppml-akm-clustered-n1000000-t4-robust-fe0",
+      "arm": "ppmlhdfe",
+      "repetition": 3,
+      "ratio": 0.02289211164527848
+    },
+    {
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof"
+      ],
+      "cell": "ppml-akm-clustered-n1000000-t4-robust-fe0",
+      "arm": "fixest-strict",
+      "repetition": 3,
+      "ratio": 0.06133934561813835
+    },
+    {
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof"
+      ],
+      "cell": "ppml-akm-clustered-n1000000-t4-robust-fe0",
+      "arm": "pyfixest-within-strict",
+      "repetition": 3,
+      "ratio": 0.46100518608780067
+    },
+    {
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof"
+      ],
+      "cell": "ppml-akm-clustered-n1000000-t4-robust-fe0",
+      "arm": "fixest",
+      "repetition": 4,
+      "ratio": 0.2055737499611934
+    },
+    {
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof"
+      ],
+      "cell": "ppml-akm-clustered-n1000000-t4-robust-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 4,
+      "ratio": 0.6284289476666585
+    },
+    {
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0,
+      "cell": "ppml-akm-clustered-n1000000-t4-robust-fe0",
+      "arm": "ppmlhdfe",
+      "repetition": 4,
+      "ratio": 0.021575604111525388
+    },
+    {
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof"
+      ],
+      "cell": "ppml-akm-clustered-n1000000-t4-robust-fe0",
+      "arm": "fixest-strict",
+      "repetition": 4,
+      "ratio": 0.0576725897087514
+    },
+    {
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof"
+      ],
+      "cell": "ppml-akm-clustered-n1000000-t4-robust-fe0",
+      "arm": "pyfixest-within-strict",
+      "repetition": 4,
+      "ratio": 0.4364789287531345
+    },
+    {
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof"
+      ],
+      "cell": "ppml-akm-clustered-n1000000-t4-robust-fe0",
+      "arm": "fixest",
+      "repetition": 5,
+      "ratio": 0.21826866125547809
+    },
+    {
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof"
+      ],
+      "cell": "ppml-akm-clustered-n1000000-t4-robust-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 5,
+      "ratio": 0.6703199508341637
+    },
+    {
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0,
+      "cell": "ppml-akm-clustered-n1000000-t4-robust-fe0",
+      "arm": "ppmlhdfe",
+      "repetition": 5,
+      "ratio": 0.02302897514446042
+    },
+    {
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof"
+      ],
+      "cell": "ppml-akm-clustered-n1000000-t4-robust-fe0",
+      "arm": "fixest-strict",
+      "repetition": 5,
+      "ratio": 0.06110436282421248
+    },
+    {
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof"
+      ],
+      "cell": "ppml-akm-clustered-n1000000-t4-robust-fe0",
+      "arm": "pyfixest-within-strict",
+      "repetition": 5,
+      "ratio": 0.4703238454659487
+    },
+    {
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ],
+      "cell": "ols-akm-clustered-n1000000-t4-iid-fe0",
+      "arm": "fixest",
+      "repetition": 1,
+      "ratio": 0.23076410102669404
+    },
+    {
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ],
+      "cell": "ols-akm-clustered-n1000000-t4-iid-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 1,
+      "ratio": 0.43585610069608355
+    },
+    {
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof",
+        "objective"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ],
+      "cell": "ols-akm-clustered-n1000000-t4-iid-fe0",
+      "arm": "julia",
+      "repetition": 1
+    },
+    {
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ],
+      "cell": "ols-akm-clustered-n1000000-t4-iid-fe0",
+      "arm": "julia-strict",
+      "repetition": 1,
+      "ratio": 0.13290220070894088
+    },
+    {
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0,
+      "cell": "ols-akm-clustered-n1000000-t4-iid-fe0",
+      "arm": "reghdfe",
+      "repetition": 1,
+      "ratio": 0.024862571736579093
+    },
+    {
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0,
+      "cell": "ols-akm-clustered-n1000000-t4-iid-fe0",
+      "arm": "areg",
+      "repetition": 1,
+      "ratio": 0.014155163529321607
+    },
+    {
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0,
+      "cell": "ols-akm-clustered-n1000000-t4-iid-fe0",
+      "arm": "fixest-strict",
+      "repetition": 1,
+      "ratio": 0.11320853953863201
+    },
+    {
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ],
+      "cell": "ols-akm-clustered-n1000000-t4-iid-fe0",
+      "arm": "pyfixest-within-strict",
+      "repetition": 1,
+      "ratio": 0.37493827305106275
+    },
+    {
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ],
+      "cell": "ols-akm-clustered-n1000000-t4-iid-fe0",
+      "arm": "fixest",
+      "repetition": 2,
+      "ratio": 0.22530891381780963
+    },
+    {
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ],
+      "cell": "ols-akm-clustered-n1000000-t4-iid-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 2,
+      "ratio": 0.42829647682416017
+    },
+    {
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof",
+        "objective"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ],
+      "cell": "ols-akm-clustered-n1000000-t4-iid-fe0",
+      "arm": "julia",
+      "repetition": 2
+    },
+    {
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ],
+      "cell": "ols-akm-clustered-n1000000-t4-iid-fe0",
+      "arm": "julia-strict",
+      "repetition": 2,
+      "ratio": 0.13231124613824033
+    },
+    {
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0,
+      "cell": "ols-akm-clustered-n1000000-t4-iid-fe0",
+      "arm": "reghdfe",
+      "repetition": 2,
+      "ratio": 0.024355477884249147
+    },
+    {
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0,
+      "cell": "ols-akm-clustered-n1000000-t4-iid-fe0",
+      "arm": "areg",
+      "repetition": 2,
+      "ratio": 0.013801264286668596
+    },
+    {
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0,
+      "cell": "ols-akm-clustered-n1000000-t4-iid-fe0",
+      "arm": "fixest-strict",
+      "repetition": 2,
+      "ratio": 0.11056092857860371
+    },
+    {
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ],
+      "cell": "ols-akm-clustered-n1000000-t4-iid-fe0",
+      "arm": "pyfixest-within-strict",
+      "repetition": 2,
+      "ratio": 0.3661426298950102
+    },
+    {
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ],
+      "cell": "ols-akm-clustered-n1000000-t4-iid-fe0",
+      "arm": "fixest",
+      "repetition": 3,
+      "ratio": 0.23201931066176473
+    },
+    {
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ],
+      "cell": "ols-akm-clustered-n1000000-t4-iid-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 3,
+      "ratio": 0.4411931409045815
+    },
+    {
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof",
+        "objective"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ],
+      "cell": "ols-akm-clustered-n1000000-t4-iid-fe0",
+      "arm": "julia",
+      "repetition": 3
+    },
+    {
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ],
+      "cell": "ols-akm-clustered-n1000000-t4-iid-fe0",
+      "arm": "julia-strict",
+      "repetition": 3,
+      "ratio": 0.1347709939277862
+    },
+    {
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0,
+      "cell": "ols-akm-clustered-n1000000-t4-iid-fe0",
+      "arm": "reghdfe",
+      "repetition": 3,
+      "ratio": 0.025073332086277524
+    },
+    {
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0,
+      "cell": "ols-akm-clustered-n1000000-t4-iid-fe0",
+      "arm": "areg",
+      "repetition": 3,
+      "ratio": 0.014258113633510459
+    },
+    {
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0,
+      "cell": "ols-akm-clustered-n1000000-t4-iid-fe0",
+      "arm": "fixest-strict",
+      "repetition": 3,
+      "ratio": 0.11335860143698233
+    },
+    {
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ],
+      "cell": "ols-akm-clustered-n1000000-t4-iid-fe0",
+      "arm": "pyfixest-within-strict",
+      "repetition": 3,
+      "ratio": 0.38030420128283193
+    },
+    {
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ],
+      "cell": "ols-akm-clustered-n1000000-t4-iid-fe0",
+      "arm": "fixest",
+      "repetition": 4,
+      "ratio": 0.2311777691995948
+    },
+    {
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ],
+      "cell": "ols-akm-clustered-n1000000-t4-iid-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 4,
+      "ratio": 0.4432514353141369
+    },
+    {
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof",
+        "objective"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ],
+      "cell": "ols-akm-clustered-n1000000-t4-iid-fe0",
+      "arm": "julia",
+      "repetition": 4
+    },
+    {
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ],
+      "cell": "ols-akm-clustered-n1000000-t4-iid-fe0",
+      "arm": "julia-strict",
+      "repetition": 4,
+      "ratio": 0.1356562272462496
+    },
+    {
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0,
+      "cell": "ols-akm-clustered-n1000000-t4-iid-fe0",
+      "arm": "reghdfe",
+      "repetition": 4,
+      "ratio": 0.02519191522451714
+    },
+    {
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0,
+      "cell": "ols-akm-clustered-n1000000-t4-iid-fe0",
+      "arm": "areg",
+      "repetition": 4,
+      "ratio": 0.014417044917437437
+    },
+    {
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0,
+      "cell": "ols-akm-clustered-n1000000-t4-iid-fe0",
+      "arm": "fixest-strict",
+      "repetition": 4,
+      "ratio": 0.11424617374324054
+    },
+    {
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ],
+      "cell": "ols-akm-clustered-n1000000-t4-iid-fe0",
+      "arm": "pyfixest-within-strict",
+      "repetition": 4,
+      "ratio": 0.3807835593303959
+    },
+    {
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ],
+      "cell": "ols-akm-clustered-n1000000-t4-iid-fe0",
+      "arm": "fixest",
+      "repetition": 5,
+      "ratio": 0.23060616269113152
+    },
+    {
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ],
+      "cell": "ols-akm-clustered-n1000000-t4-iid-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 5,
+      "ratio": 0.4376934770087553
+    },
+    {
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof",
+        "objective"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ],
+      "cell": "ols-akm-clustered-n1000000-t4-iid-fe0",
+      "arm": "julia",
+      "repetition": 5
+    },
+    {
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ],
+      "cell": "ols-akm-clustered-n1000000-t4-iid-fe0",
+      "arm": "julia-strict",
+      "repetition": 5,
+      "ratio": 0.1349101106541814
+    },
+    {
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0,
+      "cell": "ols-akm-clustered-n1000000-t4-iid-fe0",
+      "arm": "reghdfe",
+      "repetition": 5,
+      "ratio": 0.025083931637571878
+    },
+    {
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0,
+      "cell": "ols-akm-clustered-n1000000-t4-iid-fe0",
+      "arm": "areg",
+      "repetition": 5,
+      "ratio": 0.014311151166046625
+    },
+    {
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0,
+      "cell": "ols-akm-clustered-n1000000-t4-iid-fe0",
+      "arm": "fixest-strict",
+      "repetition": 5,
+      "ratio": 0.11371501236553737
+    },
+    {
+      "eligible": false,
+      "reasons": [
+        "absorbed_dof",
+        "residual_dof",
+        "correction_dof"
+      ],
+      "agreement": "convention",
+      "covariance_scale": null,
+      "convention_reasons": [
+        "absorbed_dof",
+        "correction_dof",
+        "residual_dof"
+      ],
+      "cell": "ols-akm-clustered-n1000000-t4-iid-fe0",
+      "arm": "pyfixest-within-strict",
+      "repetition": 5,
+      "ratio": 0.37727410413332607
+    }
+  ],
+  "production_comparison_ratio_convention": "Per-fit ratio is fereg/comparator; summary CSV speedup is the median paired comparator/fereg ratio over agreeing repetitions.",
+  "capture_hash_encoding": "SHA-256 of UTF-8 json.dumps({capture, objective}, sort_keys=True, separators=(',', ':'), allow_nan=False). Objective is parsed as binary64.",
+  "capture_sha256": {
+    "ols-akm-baseline-n1000000-t4-iid-fe0-ref1/fereg-r1": "0848290a0b2c86d40c9a84bfa6bf5992833d72fe680b43e1e14066d6c2d11f23",
+    "ols-akm-baseline-n1000000-t4-iid-fe0-ref1/fereg-r2": "0848290a0b2c86d40c9a84bfa6bf5992833d72fe680b43e1e14066d6c2d11f23",
+    "ols-akm-baseline-n1000000-t4-iid-fe0-ref1/fereg-r3": "0848290a0b2c86d40c9a84bfa6bf5992833d72fe680b43e1e14066d6c2d11f23",
+    "ppml-akm-clustered-n1000000-t4-robust-fe0/fixest-r1": "97343a280749a0bdf8614cb623435579a05fc58cf2e4e39fdfddba24c73d074d",
+    "ppml-akm-clustered-n1000000-t4-robust-fe0/pyfixest-within-r1": "ad53523cc482e6dacb79a3f42d226bc64aa62fa0903b7d67da7295fe74bbcb43",
+    "ppml-akm-clustered-n1000000-t4-robust-fe0/ppmlhdfe-r1": "6b48d29fb113e6cd4b0c645e2c36eaca139ac17ddff6a3a63094beab710f5779",
+    "ppml-akm-clustered-n1000000-t4-robust-fe0/fixest-strict-r1": "5cc368580cc800bea58ad09c2392773fb550ae607129c3a1615b9e2488f386c8",
+    "ppml-akm-clustered-n1000000-t4-robust-fe0/pyfixest-within-strict-r1": "c0e530e5ef3e58b039ddf97aafe005d65770df7fc55427c14ea4ef69cc7c8416",
+    "ppml-akm-clustered-n1000000-t4-robust-fe0/fereg-r1": "89810d068d1b9c89f36de5a5c0eb1badb3331f6e1c11c92ab10ebb4bd5b53e41",
+    "ppml-akm-clustered-n1000000-t4-robust-fe0/pyfixest-within-r2": "2afcc9c14baf6bb503c39e7329b2fa3ffea301143cbcd962dd5accb8ab83b80e",
+    "ppml-akm-clustered-n1000000-t4-robust-fe0/ppmlhdfe-r2": "6b48d29fb113e6cd4b0c645e2c36eaca139ac17ddff6a3a63094beab710f5779",
+    "ppml-akm-clustered-n1000000-t4-robust-fe0/fixest-strict-r2": "5cc368580cc800bea58ad09c2392773fb550ae607129c3a1615b9e2488f386c8",
+    "ppml-akm-clustered-n1000000-t4-robust-fe0/pyfixest-within-strict-r2": "25fa264dec5d9eb48fb88cb18eb473620e754e52c94978a120444e8bdfba4bdb",
+    "ppml-akm-clustered-n1000000-t4-robust-fe0/fereg-r2": "89810d068d1b9c89f36de5a5c0eb1badb3331f6e1c11c92ab10ebb4bd5b53e41",
+    "ppml-akm-clustered-n1000000-t4-robust-fe0/fixest-r2": "97343a280749a0bdf8614cb623435579a05fc58cf2e4e39fdfddba24c73d074d",
+    "ppml-akm-clustered-n1000000-t4-robust-fe0/ppmlhdfe-r3": "6b48d29fb113e6cd4b0c645e2c36eaca139ac17ddff6a3a63094beab710f5779",
+    "ppml-akm-clustered-n1000000-t4-robust-fe0/fixest-strict-r3": "5cc368580cc800bea58ad09c2392773fb550ae607129c3a1615b9e2488f386c8",
+    "ppml-akm-clustered-n1000000-t4-robust-fe0/pyfixest-within-strict-r3": "115d83c0d3c252de14f25e9565d315260187cde9abab30e03d093f4513a8a390",
+    "ppml-akm-clustered-n1000000-t4-robust-fe0/fereg-r3": "89810d068d1b9c89f36de5a5c0eb1badb3331f6e1c11c92ab10ebb4bd5b53e41",
+    "ppml-akm-clustered-n1000000-t4-robust-fe0/fixest-r3": "97343a280749a0bdf8614cb623435579a05fc58cf2e4e39fdfddba24c73d074d",
+    "ppml-akm-clustered-n1000000-t4-robust-fe0/pyfixest-within-r3": "1e395a07370c748c34218c741de561714aed16599a0467c1a9ad76eb5fdc40d0",
+    "ppml-akm-clustered-n1000000-t4-robust-fe0/fixest-strict-r4": "5cc368580cc800bea58ad09c2392773fb550ae607129c3a1615b9e2488f386c8",
+    "ppml-akm-clustered-n1000000-t4-robust-fe0/pyfixest-within-strict-r4": "dda45cc59135f5b0d238cce6e34d0beaf1f4bb06635aeb541721cd379dd7325d",
+    "ppml-akm-clustered-n1000000-t4-robust-fe0/fereg-r4": "89810d068d1b9c89f36de5a5c0eb1badb3331f6e1c11c92ab10ebb4bd5b53e41",
+    "ppml-akm-clustered-n1000000-t4-robust-fe0/fixest-r4": "97343a280749a0bdf8614cb623435579a05fc58cf2e4e39fdfddba24c73d074d",
+    "ppml-akm-clustered-n1000000-t4-robust-fe0/pyfixest-within-r4": "a1e1bf30af8a9f92c26f847a98f61f97eda2a03ade19a0513ffebc3cb60af821",
+    "ppml-akm-clustered-n1000000-t4-robust-fe0/ppmlhdfe-r4": "6b48d29fb113e6cd4b0c645e2c36eaca139ac17ddff6a3a63094beab710f5779",
+    "ppml-akm-clustered-n1000000-t4-robust-fe0/pyfixest-within-strict-r5": "81d811d38e756389006bd069c2f2fe77cd69a464486d28a5a744cad7686ceede",
+    "ppml-akm-clustered-n1000000-t4-robust-fe0/fereg-r5": "89810d068d1b9c89f36de5a5c0eb1badb3331f6e1c11c92ab10ebb4bd5b53e41",
+    "ppml-akm-clustered-n1000000-t4-robust-fe0/fixest-r5": "97343a280749a0bdf8614cb623435579a05fc58cf2e4e39fdfddba24c73d074d",
+    "ppml-akm-clustered-n1000000-t4-robust-fe0/pyfixest-within-r5": "7bffbd17c1beb763267fa988dcf81f8765dbd4609d50d6a3df8ce18226c65b36",
+    "ppml-akm-clustered-n1000000-t4-robust-fe0/ppmlhdfe-r5": "6b48d29fb113e6cd4b0c645e2c36eaca139ac17ddff6a3a63094beab710f5779",
+    "ppml-akm-clustered-n1000000-t4-robust-fe0/fixest-strict-r5": "5cc368580cc800bea58ad09c2392773fb550ae607129c3a1615b9e2488f386c8",
+    "ols-akm-clustered-n1000000-t4-iid-fe0/fixest-r1": "f159adab47164c72d73ca8772aa3163918b9e9c3a2f236cd07b1e7bcfd24e499",
+    "ols-akm-clustered-n1000000-t4-iid-fe0/pyfixest-within-r1": "314c48e6a8494685fd9ada90034b351a94e020f3e3e0c9bc89c7f53d2ca869d5",
+    "ols-akm-clustered-n1000000-t4-iid-fe0/julia-r1": "d2a3377c5f725f591fb9cdf76922381d34d75046e59880b3271da569bc124f3b",
+    "ols-akm-clustered-n1000000-t4-iid-fe0/julia-strict-r1": "371928822790b7c72d2f3216851d882b50f0c78e61c99b894bef39c016586986",
+    "ols-akm-clustered-n1000000-t4-iid-fe0/reghdfe-r1": "9be02ac6ef0ca10cd8a58b8f2218c552b0e0262e49099d1b3811572cb2a6dd02",
+    "ols-akm-clustered-n1000000-t4-iid-fe0/areg-r1": "29af144bbc3e261c9a64ad7a5f8a76b358b9cd9c6b7aacabe9fbadd2f6537c98",
+    "ols-akm-clustered-n1000000-t4-iid-fe0/fixest-strict-r1": "6b33f8743ddf5094ed42cddd34eef08cbbcb39e26b316992cd07373014da7849",
+    "ols-akm-clustered-n1000000-t4-iid-fe0/pyfixest-within-strict-r1": "159e5a12cca898e0b320ebb1aadb0c447b8ba525d96be8fb770708f961741547",
+    "ols-akm-clustered-n1000000-t4-iid-fe0/fereg-r1": "edebf74fcbe4985e95b486ce4f8daafc8e6ea82d73e8a67779aebe07d8be527d",
+    "ols-akm-clustered-n1000000-t4-iid-fe0/pyfixest-within-r2": "a82264293ea7d0ce2fde21cba0c9d159c9f0ca23c49f1d18b9c25d3db20f0c44",
+    "ols-akm-clustered-n1000000-t4-iid-fe0/julia-r2": "d2a3377c5f725f591fb9cdf76922381d34d75046e59880b3271da569bc124f3b",
+    "ols-akm-clustered-n1000000-t4-iid-fe0/julia-strict-r2": "371928822790b7c72d2f3216851d882b50f0c78e61c99b894bef39c016586986",
+    "ols-akm-clustered-n1000000-t4-iid-fe0/reghdfe-r2": "9be02ac6ef0ca10cd8a58b8f2218c552b0e0262e49099d1b3811572cb2a6dd02",
+    "ols-akm-clustered-n1000000-t4-iid-fe0/areg-r2": "29af144bbc3e261c9a64ad7a5f8a76b358b9cd9c6b7aacabe9fbadd2f6537c98",
+    "ols-akm-clustered-n1000000-t4-iid-fe0/fixest-strict-r2": "6b33f8743ddf5094ed42cddd34eef08cbbcb39e26b316992cd07373014da7849",
+    "ols-akm-clustered-n1000000-t4-iid-fe0/pyfixest-within-strict-r2": "2aa5fb556cf20586ab4c2b1b23c30debd073f95352a10409617d2c54efc5f1bc",
+    "ols-akm-clustered-n1000000-t4-iid-fe0/fereg-r2": "edebf74fcbe4985e95b486ce4f8daafc8e6ea82d73e8a67779aebe07d8be527d",
+    "ols-akm-clustered-n1000000-t4-iid-fe0/fixest-r2": "f159adab47164c72d73ca8772aa3163918b9e9c3a2f236cd07b1e7bcfd24e499",
+    "ols-akm-clustered-n1000000-t4-iid-fe0/julia-r3": "d2a3377c5f725f591fb9cdf76922381d34d75046e59880b3271da569bc124f3b",
+    "ols-akm-clustered-n1000000-t4-iid-fe0/julia-strict-r3": "371928822790b7c72d2f3216851d882b50f0c78e61c99b894bef39c016586986",
+    "ols-akm-clustered-n1000000-t4-iid-fe0/reghdfe-r3": "9be02ac6ef0ca10cd8a58b8f2218c552b0e0262e49099d1b3811572cb2a6dd02",
+    "ols-akm-clustered-n1000000-t4-iid-fe0/areg-r3": "29af144bbc3e261c9a64ad7a5f8a76b358b9cd9c6b7aacabe9fbadd2f6537c98",
+    "ols-akm-clustered-n1000000-t4-iid-fe0/fixest-strict-r3": "6b33f8743ddf5094ed42cddd34eef08cbbcb39e26b316992cd07373014da7849",
+    "ols-akm-clustered-n1000000-t4-iid-fe0/pyfixest-within-strict-r3": "c391248c5dac5f8306ffa929689122bad1ae187de33d959bb82f6d5f902a5621",
+    "ols-akm-clustered-n1000000-t4-iid-fe0/fereg-r3": "edebf74fcbe4985e95b486ce4f8daafc8e6ea82d73e8a67779aebe07d8be527d",
+    "ols-akm-clustered-n1000000-t4-iid-fe0/fixest-r3": "f159adab47164c72d73ca8772aa3163918b9e9c3a2f236cd07b1e7bcfd24e499",
+    "ols-akm-clustered-n1000000-t4-iid-fe0/pyfixest-within-r3": "d28401dd781c5c0b152c7acca424cbae278f993381c2c2dc4dbf2a33035d5b10",
+    "ols-akm-clustered-n1000000-t4-iid-fe0/julia-strict-r4": "371928822790b7c72d2f3216851d882b50f0c78e61c99b894bef39c016586986",
+    "ols-akm-clustered-n1000000-t4-iid-fe0/reghdfe-r4": "9be02ac6ef0ca10cd8a58b8f2218c552b0e0262e49099d1b3811572cb2a6dd02",
+    "ols-akm-clustered-n1000000-t4-iid-fe0/areg-r4": "29af144bbc3e261c9a64ad7a5f8a76b358b9cd9c6b7aacabe9fbadd2f6537c98",
+    "ols-akm-clustered-n1000000-t4-iid-fe0/fixest-strict-r4": "6b33f8743ddf5094ed42cddd34eef08cbbcb39e26b316992cd07373014da7849",
+    "ols-akm-clustered-n1000000-t4-iid-fe0/pyfixest-within-strict-r4": "9e6bde9c267c2e2ca2b2b63242673c61095dff773083251731e8c3c7640042f8",
+    "ols-akm-clustered-n1000000-t4-iid-fe0/fereg-r4": "edebf74fcbe4985e95b486ce4f8daafc8e6ea82d73e8a67779aebe07d8be527d",
+    "ols-akm-clustered-n1000000-t4-iid-fe0/fixest-r4": "f159adab47164c72d73ca8772aa3163918b9e9c3a2f236cd07b1e7bcfd24e499",
+    "ols-akm-clustered-n1000000-t4-iid-fe0/pyfixest-within-r4": "c87557ebb89b1d74dfa87b8e357abbf60c296d1d0058a55b4a2b5d7277ad669e",
+    "ols-akm-clustered-n1000000-t4-iid-fe0/julia-r4": "d2a3377c5f725f591fb9cdf76922381d34d75046e59880b3271da569bc124f3b",
+    "ols-akm-clustered-n1000000-t4-iid-fe0/reghdfe-r5": "9be02ac6ef0ca10cd8a58b8f2218c552b0e0262e49099d1b3811572cb2a6dd02",
+    "ols-akm-clustered-n1000000-t4-iid-fe0/areg-r5": "29af144bbc3e261c9a64ad7a5f8a76b358b9cd9c6b7aacabe9fbadd2f6537c98",
+    "ols-akm-clustered-n1000000-t4-iid-fe0/fixest-strict-r5": "6b33f8743ddf5094ed42cddd34eef08cbbcb39e26b316992cd07373014da7849",
+    "ols-akm-clustered-n1000000-t4-iid-fe0/pyfixest-within-strict-r5": "93b3a00733d79e686b2f3767da2d83ed76fd159a489b53da8e3c7f18a2fd094e",
+    "ols-akm-clustered-n1000000-t4-iid-fe0/fereg-r5": "edebf74fcbe4985e95b486ce4f8daafc8e6ea82d73e8a67779aebe07d8be527d",
+    "ols-akm-clustered-n1000000-t4-iid-fe0/fixest-r5": "f159adab47164c72d73ca8772aa3163918b9e9c3a2f236cd07b1e7bcfd24e499",
+    "ols-akm-clustered-n1000000-t4-iid-fe0/pyfixest-within-r5": "9fc36a75e9aaec9e802c24b9e8eba86fac812552d2e2246654275807f08473ed",
+    "ols-akm-clustered-n1000000-t4-iid-fe0/julia-r5": "d2a3377c5f725f591fb9cdf76922381d34d75046e59880b3271da569bc124f3b",
+    "ols-akm-clustered-n1000000-t4-iid-fe0/julia-strict-r5": "371928822790b7c72d2f3216851d882b50f0c78e61c99b894bef39c016586986"
+  },
+  "artifacts": {
+    "setup-accounting.txt": "d9bc41e079dcc2376157139d1027bc7282d43c86b4a71848bfaeb1ba912b37e2",
+    "setup.sh": "5e04c943a33b46c98c08e65c7b352f5b43fca1a3641d7e3541545710ffb94ce0",
+    "production-accounting.txt": "fadfba14ffa5f4992f966bf5b7107e12a74439d9e2aa48ba6c9556def88498d9",
+    "accounting.json": "7aab05cad329db0661bfe1410ea6519f0c11c3f816b09b6c6bab0565e4826f73",
+    "context.json": "aef1cc273ef38c85e762a9ba04c043a65b8258124276c87ed00b30d66fc664dc",
+    "manifest.json": "760f415606830371828fe57b514505a4b9c01e4b51a3253c8e98cadac82aec4a",
+    "smoke-accounting.txt": "bc085ff537496caaac4bd84eb85b9783c9c69211e9497b67ecc536dd4e3f8964",
+    "job.sh": "58314439a6bfcee4ac93f52c13afd60592dcbe9a2b00d8fbbb38d34d827449b3",
+    "smoke/COMPLETE": "ba20d4aeb310f82092148dfc19e6172353a82d63373655cf2f874e1d0205c138",
+    "smoke/results.json": "685d84a005efe4a9a2ebe6e843a9e426897bb9f9fd75d47b11b6db8cfff32cf9",
+    "task-1/COMPLETE": "ba20d4aeb310f82092148dfc19e6172353a82d63373655cf2f874e1d0205c138",
+    "task-1/results.json": "98b7bb1fa1f0a871a1fbc455d17727404991fafffdbd21e53fabf93bccba9e5f",
+    "input/source.json": "4512982979c2d345d6910a8af223492f55ccf8193adcab31626aa268b7613ff6",
+    "host-task-1/host-observations.jsonl": "587135e0d02d2a2e775ff553397ba0ba849c87083a8f191d0fdb20b4e2ff113a",
+    "host-task-1/host.json": "c0b8677765663adec685b8f7a1a7640482e9d91fa236d4992f9eb14a6a9d0652",
+    "logs/harness-tests.log": "0a6753247c09e068adb520b8d1f84f13e2fca92d36b915771e7434e104aaece3",
+    "logs/clock-build.log": "c5862eb0e6e94e0f359ce09d92e74a502d512642a844f0e2833ca42f97afdc3a",
+    "logs/reference-prepare.log": "a623cbd340a002996fc15ae192dbc0cc0b6710b4c977d6ae3ccd6b960fe9d7f1",
+    "logs/smoke.sge": "1467f88f8ea148924974eb0969b9ea5f6daaba2578c2e3cbbcb34076b60d4948",
+    "logs/setup.sge": "e26dd8f9d9c0ddf6c23d91b1dd9597b1b4411f10586714a109ff5526b0f70a86",
+    "logs/production.1.sge": "5b909890f31f94065012153dc91a390b3393699476f6301e8ab29cf66c7ba002",
+    "logs/julia-environment.log": "c700d48ecba8d0bf2e2877c526d4a43671255330d64ec60dfc45c0a2b2c07ffe",
+    "logs/build.log": "fb72f864e71b5740e3a1cd07c4fbe21392ba78d12df9b6167b7b043f7e51be3a",
+    "environment/runtime.json": "cfbd9d5c516ca20dede713620f3fbc6d6d8d552f7b5c3c625ec6484b7c20b403",
+    "environment/julia-versions.json": "c3d2c691970550a10240a53c366005d0a7f6b2abb5f8a0ed9d95de27f92d8370",
+    "environment/COMPLETE": "f68ff00c745fffebb4ada396b67c6a435e3a093a60986fe4ac46463cc8c9dcdb",
+    "environment/pyfixest-within-freeze.txt": "eaab6085281e5695bd39efbc02eb211f6b3e278a127c2d55b8444bdaf6dafac2",
+    "environment/reference-origin.json": "ded108478b24b62e4323bbc1667845f781808423ae4341680f8dbf390e42af26",
+    "environment/r-package-paths.json": "b19cbb999cc73292635311d71671656e59f004a6605f5e93c6562809589fb80b",
+    "host-smoke/host-observations.jsonl": "9c68208cf8dcd32850141a68e978955c804596373538493721bfe59a9153e016",
+    "host-smoke/host.json": "d0863d8d1b74b068278e9be6c279efe0459664401c7e69dc61c649500dc38e0f",
+    "environment/julia/Manifest.toml": "455f675f13599c229874ade21a7b2c043f75168d6e8630ceada7214e80a45fcf",
+    "environment/julia/Project.toml": "ff14e5108e9e76c3799dcc1285cfcab8adaeb4f4f87bd900045ff6e665a7fbc2"
+  },
+  "runtime_inventory_sha256": "cfbd9d5c516ca20dede713620f3fbc6d6d8d552f7b5c3c625ec6484b7c20b403",
+  "exporter_sha256": "71620cfe860b6f8228045a5c3beaf3d3af07319c62f77d11178a7ae1a26bd8e2",
+  "report_pdf_sha256": "7eb43c35f4b8f50f8dc964aba0f3c7cfa7b2c2358df734ae09c7e61aaac30774",
+  "report_pdf_pages": 19,
+  "retained_csv_sha256": {
+    "scc-20261030-beta11-clustered-summary.csv": "412ef121acea75e36c8186feec4fdefefc4d91aa3952cd42b5735809dbfda9c5",
+    "scc-20261030-beta11-clustered-observations.csv": "f943e9ad65cc5884226e307bb49f6624d60709b56b93b8eb8d3566178810a8d2"
+  },
+  "limitations": [
+    "Descriptive Linux comparison on one fixed seed; three to five repetitions per configuration.",
+    "Each design and model ran on one node; absolute times across designs and nodes also reflect node speed, recorded by the per-node reference cell.",
+    "Agreement by convention removes one covariance scalar from absorbed degrees-of-freedom counting; strict eligibility and tolerances are unchanged.",
+    "A command that reached the time limit was not attempted at larger sizes of its series."
+  ]
+}

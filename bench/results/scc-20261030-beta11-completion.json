@@ -1,0 +1,423 @@
+{
+ "schema": 1,
+ "purpose": "Descriptive rerun of the published beta.11 package (October 30, 2026); no new runtime qualification.",
+ "runtime_source": "65500be6e5dbaaa11bab6e6644e33e98ffbfa08a",
+ "plugin_sha256": "af65682bfbe124a3e0138c8586fd9d63703f84291ecde444483e57ceb118b65b",
+ "runs": {
+  "synthetic": {
+   "run_id": "20261030T234005Z-beta11-campaign-461f8d2a",
+   "source": "461f8d2aad471e718e306690ac8467b869c75e5d",
+   "resources": {
+    "setup": {
+     "slots": 28,
+     "pe": "omp28",
+     "num_proc": 28,
+     "cpu_type": "E5-2680v4",
+     "mem_per_core": "3G",
+     "h_rt": "02:00:00"
+    },
+    "smoke": {
+     "slots": 28,
+     "pe": "omp28",
+     "num_proc": 28,
+     "cpu_type": "E5-2680v4"
+    },
+    "production": {
+     "slots": 28,
+     "pe": "omp28",
+     "num_proc": 28,
+     "cpu_type": "E5-2680v4",
+     "mem_per_core": "3G",
+     "h_rt": "12:00:00"
+    }
+   },
+   "jobs": {
+    "setup_job": "8364513",
+    "smoke_job": "8364514",
+    "production_job": "8364515"
+   },
+   "supersedes": [
+    "/projectnb/welfgr/fereg/runs/20261030T220248Z-beta11-campaign-135aa166",
+    "/projectnb/welfgr/fereg/runs/20261030T230202Z-beta11-campaign-f108a9cb"
+   ],
+   "planned_positions": 1725,
+   "statuses": {
+    "ok": 1535,
+    "capture-error": 15,
+    "skipped-after-failure": 86,
+    "command-timeout": 8,
+    "skipped-after-timeout": 6
+   },
+   "native_fits": 261,
+   "native_all_pass": true,
+   "harness_tests": {
+    "count": 438,
+    "passed": true
+   },
+   "hosts": [
+    "scc-wo4",
+    "scc-xa1",
+    "scc-xb2",
+    "scc-xd1",
+    "scc-xd3",
+    "scc-xe1",
+    "scc-xf3"
+   ],
+   "node_reference": [
+    {
+     "task": 1,
+     "host": "scc-wo4",
+     "seconds": 1.668657201,
+     "seconds_min": 1.637945556,
+     "seconds_max": 1.7363178000000001
+    },
+    {
+     "task": 2,
+     "host": "scc-xb2",
+     "seconds": 0.924308251,
+     "seconds_min": 0.918637208,
+     "seconds_max": 0.924545076
+    },
+    {
+     "task": 3,
+     "host": "scc-xa1",
+     "seconds": 0.928267084,
+     "seconds_min": 0.917936076,
+     "seconds_max": 0.929508109
+    },
+    {
+     "task": 4,
+     "host": "scc-xf3",
+     "seconds": 0.928094866,
+     "seconds_min": 0.9173052970000001,
+     "seconds_max": 0.9335613410000001
+    },
+    {
+     "task": 5,
+     "host": "scc-xe1",
+     "seconds": 0.9319594280000001,
+     "seconds_min": 0.922090575,
+     "seconds_max": 0.9337301320000001
+    },
+    {
+     "task": 6,
+     "host": "scc-xd3",
+     "seconds": 0.94079882,
+     "seconds_min": 0.9370209570000001,
+     "seconds_max": 0.9419370960000001
+    }
+   ],
+   "superseded_cells": {
+    "ols-akm-clustered-n1000000-t4-iid-fe0": {
+     "reason": "The one-million-row clustered-mobility input left one firm with a single worker-year. Every command but areg deleted it, so the frozen-input check rejected every capture (fereg 4ddc8cb6 keeps that observation at the worker's neighbouring firm; the PPML input shares the topology).",
+     "replacement_root": "/projectnb/welfgr/fereg/runs/20261031T015227Z-beta11-clustered-4ddc8cb6",
+     "statuses": {
+      "capture-error": 8,
+      "ok": 5,
+      "skipped-after-failure": 32
+     }
+    },
+    "ppml-akm-clustered-n1000000-t4-robust-fe0": {
+     "reason": "The one-million-row clustered-mobility input left one firm with a single worker-year. Every command but areg deleted it, so the frozen-input check rejected every capture (fereg 4ddc8cb6 keeps that observation at the worker's neighbouring firm; the PPML input shares the topology).",
+     "replacement_root": "/projectnb/welfgr/fereg/runs/20261031T015227Z-beta11-clustered-4ddc8cb6",
+     "statuses": {
+      "capture-error": 6,
+      "skipped-after-failure": 24
+     }
+    }
+   }
+  },
+  "clustered-rerun": {
+   "run_id": "20261031T015227Z-beta11-clustered-4ddc8cb6",
+   "source": "4ddc8cb6c0e76e6926520be2689b51e0ecc5fb0e",
+   "resources": {
+    "setup": {
+     "slots": 28,
+     "pe": "omp28",
+     "num_proc": 28,
+     "cpu_type": "E5-2680v4",
+     "mem_per_core": "3G",
+     "h_rt": "02:00:00"
+    },
+    "smoke": {
+     "slots": 28,
+     "pe": "omp28",
+     "num_proc": 28,
+     "cpu_type": "E5-2680v4"
+    },
+    "production": {
+     "slots": 28,
+     "pe": "omp28",
+     "num_proc": 28,
+     "cpu_type": "E5-2680v4",
+     "mem_per_core": "3G",
+     "h_rt": "12:00:00"
+    }
+   },
+   "jobs": {
+    "setup_job": "8367865",
+    "smoke_job": "8367866",
+    "production_job": "8367868"
+   },
+   "supersedes": null,
+   "planned_positions": 78,
+   "statuses": {
+    "ok": 78
+   },
+   "native_fits": 13,
+   "native_all_pass": true,
+   "harness_tests": {
+    "count": 442,
+    "passed": true
+   },
+   "hosts": [
+    "scc-xc3",
+    "scc-xf2"
+   ],
+   "node_reference": [
+    {
+     "task": 1,
+     "host": "scc-xc3",
+     "seconds": 0.927029112,
+     "seconds_min": 0.913720654,
+     "seconds_max": 0.9313424020000001
+    }
+   ],
+   "superseded_cells": {}
+  },
+  "icelake": {
+   "run_id": "20261030T234115Z-beta11-icelake-baseline-461f8d2a",
+   "source": "461f8d2aad471e718e306690ac8467b869c75e5d",
+   "resources": {
+    "setup": {
+     "slots": 64,
+     "pe": "mpi_64_tasks_per_node_4",
+     "num_proc": 64,
+     "cpu_type": "Platinum-8358",
+     "mem_per_core": "3G",
+     "h_rt": "02:00:00"
+    },
+    "smoke": {
+     "slots": 64,
+     "pe": "mpi_64_tasks_per_node_4",
+     "num_proc": 64,
+     "cpu_type": "Platinum-8358",
+     "mem_per_core": "3G",
+     "h_rt": "12:00:00"
+    },
+    "production": {
+     "slots": 64,
+     "pe": "mpi_64_tasks_per_node_4",
+     "num_proc": 64,
+     "cpu_type": "Platinum-8358",
+     "mem_per_core": "3G",
+     "h_rt": "12:00:00"
+    }
+   },
+   "jobs": {
+    "setup_job": "8364519",
+    "smoke_job": "8364520",
+    "production_job": "8364522"
+   },
+   "supersedes": "/projectnb/welfgr/fereg/runs/20261030T230714Z-beta11-icelake-baseline-6d5446c6",
+   "planned_positions": 378,
+   "statuses": {
+    "ok": 318,
+    "capture-error": 12,
+    "skipped-after-failure": 48
+   },
+   "native_fits": 53,
+   "native_all_pass": true,
+   "harness_tests": {
+    "count": 438,
+    "passed": true
+   },
+   "hosts": [
+    "scc-4a01",
+    "scc-4b05"
+   ],
+   "node_reference": [
+    {
+     "task": 1,
+     "host": "scc-4b05",
+     "seconds": 1.015177059,
+     "seconds_min": 1.014865976,
+     "seconds_max": 1.0151980090000001
+    }
+   ],
+   "superseded_cells": {}
+  },
+  "veneto-long-nofe": {
+   "run_id": "20261030T223053Z-beta11-veneto-long-nofe-4c74e45e",
+   "source": "4c74e45e3d4b4b2d8f73e4bca460dc6fdba0ac7e",
+   "resources": {
+    "reuse": {
+     "slots": 4,
+     "pe": "omp"
+    },
+    "setup": {
+     "slots": 4,
+     "pe": "omp",
+     "mem_per_core": "3G",
+     "h_rt": "02:00:00"
+    },
+    "smoke": {
+     "slots": 4,
+     "pe": "omp"
+    },
+    "production": {
+     "slots": 28,
+     "pe": "omp28",
+     "num_proc": 28,
+     "cpu_type": "E5-2680v4",
+     "mem_per_core": "3G",
+     "h_rt": "12:00:00"
+    }
+   },
+   "jobs": {
+    "setup_job": "8363757",
+    "smoke_job": "8363758",
+    "production_job": "8363759"
+   },
+   "supersedes": null,
+   "planned_positions": 114,
+   "statuses": {
+    "ok": 114
+   },
+   "native_fits": 15,
+   "hosts": [
+    "scc-xa2"
+   ],
+   "eligible_arm_cells": 28
+  },
+  "veneto-long-lcs": {
+   "run_id": "20261030T235721Z-beta11-veneto-lcs-nofe-d2b4b60e",
+   "source": "d2b4b60e685b563652eed00cf9fa72c9f7c504e7",
+   "resources": {
+    "prepare": {
+     "slots": 4,
+     "pe": "omp",
+     "mem_per_core": "4G",
+     "h_rt": "02:00:00"
+    },
+    "setup": {
+     "slots": 4,
+     "pe": "omp",
+     "mem_per_core": "3G",
+     "h_rt": "02:00:00"
+    },
+    "smoke": {
+     "slots": 4,
+     "pe": "omp"
+    },
+    "production": {
+     "slots": 28,
+     "pe": "omp28",
+     "num_proc": 28,
+     "cpu_type": "E5-2680v4",
+     "mem_per_core": "3G",
+     "h_rt": "12:00:00"
+    }
+   },
+   "jobs": {
+    "prepare_job": "8364694",
+    "setup_job": "8364696",
+    "smoke_job": "8364698",
+    "production_job": "8364700"
+   },
+   "supersedes": [
+    "/projectnb/welfgr/fereg/runs/20261030T230359Z-beta11-veneto-lcs-nofe-f108a9cb",
+    "/projectnb/welfgr/fereg/runs/20261030T232516Z-beta11-veneto-lcs-nofe-a1ee5ec6"
+   ],
+   "planned_positions": 114,
+   "statuses": {
+    "ok": 111,
+    "command-timeout": 1,
+    "skipped-after-failure": 2
+   },
+   "native_fits": 15,
+   "hosts": [
+    "scc-xe2"
+   ],
+   "eligible_arm_cells": 27
+  }
+ },
+ "planned_positions": 2409,
+ "native_fits": 357,
+ "accuracy": {
+  "file": "scc-20261030-beta11-accuracy.json",
+  "sha256": "249e28f97fe727ffb6113ad0b3d11188e983f326964f37a5aed1cbf48323d4a7"
+ },
+ "stopped_roots": {
+  "20261030T220248Z-beta11-campaign-135aa166": {
+   "at": "2026-10-30",
+   "production_job": "8363552",
+   "state": "held before start; deleted",
+   "reason": "Independent native smoke failed on ppml-gravity-n1200-t4-robust-fe1: the capture rejected the separated rows and omitted control that the gravity design creates by construction (fereg/ppmlhdfe: capture-error \"omitted/missing finite coefficient\"). No production task ran. Superseded by a run at fereg f108a9cb with separation-aware captures and oracle."
+  },
+  "20261030T230202Z-beta11-campaign-f108a9cb": {
+   "at": "2026-10-30",
+   "production_job": "8364234",
+   "state": "released after the failed smoke; all six tasks exited at the upstream accounting gate (13-16 s), before any fit",
+   "reason": "Smoke 8364233 completed every fit (fereg passed the independent oracle on all 14 cells when replayed) but could not write its results: a NumPy bool in the gravity fitted check was not JSON serializable. Superseded by a run at fereg 461f8d2a."
+  },
+  "20261030T230359Z-beta11-veneto-lcs-nofe-f108a9cb": {
+   "at": "2026-10-30",
+   "jobs": [
+    "8364251",
+    "8364252"
+   ],
+   "state": "smoke and production held; deleted before start",
+   "reason": "Setup 8364250 failed its input audit: the panel rebuilt from the source CSV on the setup host differed from the panel prepared on another host by an ulp in the cubic age term (NumPy vectorized pow). No fit ran. Superseded by a run at fereg a1ee5ec6, which builds the polynomial from products."
+  },
+  "20261030T230714Z-beta11-icelake-baseline-6d5446c6": {
+   "at": "2026-10-30",
+   "production_job": "8364270",
+   "state": "released after the failed smoke; exited at the upstream accounting gate before any fit",
+   "reason": "Smoke 8364269 completed its fits but could not write its results: a NumPy bool in the gravity fitted check was not JSON serializable. Superseded by a run at fereg 461f8d2a."
+  },
+  "20261030T232516Z-beta11-veneto-lcs-nofe-a1ee5ec6": {
+   "at": "2026-10-30",
+   "jobs": [
+    "8364400",
+    "8364401"
+   ],
+   "state": "smoke failed at its first capture; production released afterwards and exited at the upstream accounting gate before any fit",
+   "reason": "Smoke 8364400 stopped in the first capture: the separation-aware capture counted clusters on every fit, and the Veneto panels have no cluster variable. No comparison was recorded. Superseded by a run at fereg d2b4b60e."
+  }
+ },
+ "policy": {
+  "retries_of_timed_fits": 0,
+  "exclusions": 0,
+  "tolerance_changes": 0,
+  "reruns": "The two clustered-mobility cells were rerun on a corrected input (one singleton firm-year); no other cell was repeated."
+ },
+ "limitations": [
+  "All ratios compare packages within a configuration and host; no absolute speedup over beta.10 is claimed.",
+  "The PPML worker-firm bundle (task 1, scc-wo4) ran on a node whose native reference median was 1.67 s, against 0.92-0.94 s on the other synthetic hosts; its absolute times and possibly its ratios reflect that node.",
+  "The clustered-mobility cells come from a separate root on a node of the same type (reference 0.93 s).",
+  "reghdfe did not finish within 600 s at one core on the largest connected set; its later repetitions were skipped.",
+  "Comparator errors, time limits, scientific discrepancies and prescribed skipped positions remain retained.",
+  "Private Veneto rows and fixed effects remain on SCC."
+ ],
+ "retained_evidence_sha256": {
+  "scc-20261030-beta11-accuracy.json": "249e28f97fe727ffb6113ad0b3d11188e983f326964f37a5aed1cbf48323d4a7",
+  "scc-20261030-beta11-clustered-inputs.json": "06753352b41e50e7f5733977c23a867e221d958f24eed92752a9a1d51e434e5d",
+  "scc-20261030-beta11-clustered-observations.csv": "f943e9ad65cc5884226e307bb49f6624d60709b56b93b8eb8d3566178810a8d2",
+  "scc-20261030-beta11-clustered-summary.csv": "412ef121acea75e36c8186feec4fdefefc4d91aa3952cd42b5735809dbfda9c5",
+  "scc-20261030-beta11-icelake-inputs.json": "7fc9e7f57647905586ac29ef6c801a6bba0978854d4850a5a00ed02833e12cf7",
+  "scc-20261030-beta11-icelake-observations.csv": "f4fac6c058ab520bf085b63ca0f8b00e23915bae1314da145a4593a1b21a50ad",
+  "scc-20261030-beta11-icelake-summary.csv": "bd7991f086ae94ce1ca69573a15e307781a448b0e2b11eac4d4ddcc1ff2488aa",
+  "scc-20261030-beta11-inputs.json": "77b8c7ba40366e4ec279665674a9626df4196e8f6232078780c281902cb633b6",
+  "scc-20261030-beta11-observations.csv": "e9ec8bac439628bf89beffdae6dc2606a95a98e0e505f470943e56ef15783c4e",
+  "scc-20261030-beta11-summary.csv": "49676f05b29d338d5b6e8702563d372883245a02f251298197825f63a7bc06c4",
+  "scc-20261030-beta11-veneto-long-lcs-inputs.json": "58863cb8c7699b414abb36520bebf51736dde407a02b2c0a57a320d6ddfee61a",
+  "scc-20261030-beta11-veneto-long-lcs-observations.csv": "49fa3d829d8634aefbf84b12d6214f1173576f262c970c39491b629879a7ce02",
+  "scc-20261030-beta11-veneto-long-lcs-science.json": "e77d487f659effd5a3a88f43339f8bcfdfba849c9b9415d90e1e7fcfde25b87e",
+  "scc-20261030-beta11-veneto-long-lcs-summary.csv": "d5d26e5c31944666dccc9637a1983b38043073f21017dfeb09b8ba4b60f33ebb",
+  "scc-20261030-beta11-veneto-long-nofe-inputs.json": "46b2fc47f71f3025ad880992a428b4e050ed7e111b5ed1f27280ecb1b86d8d74",
+  "scc-20261030-beta11-veneto-long-nofe-observations.csv": "77fe8fe4986a88eff9ebb3863478bcb3a333adbe9ab11e64f6ab043a2f5e1853",
+  "scc-20261030-beta11-veneto-long-nofe-science.json": "b49de8e98143620288540e8f69f733d80d8e46f764cd4db65190ce7631a4848c",
+  "scc-20261030-beta11-veneto-long-nofe-summary.csv": "60adcf1c99ddcff5a2a73372a9b23c04947eae85ba54b886a35e2f0f61a1cbed"
+ }
+}
