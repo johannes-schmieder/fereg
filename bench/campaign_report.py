@@ -143,6 +143,13 @@ def check_host_observations(root, context, manifest, accounting):
             raise ValueError('host observation/accounting mismatch: '+label)
 
 
+def expected_slots(context, job):
+    """Whole-node slots recorded for a job's role; earlier contexts imply 28."""
+    roles = {str(context.get(f'{role}_job')): role for role in ['setup', 'smoke', 'production']}
+    role = roles.get(str(job['jobnumber']), 'production')
+    return int(context.get('resources', {}).get(role, {}).get('slots', 28))
+
+
 def load_campaign(root):
     for name, expected in json.loads((root/'collection-sha256.json').read_text()).items():
         path = Path(name)
@@ -165,7 +172,7 @@ def load_campaign(root):
         if key in actual_jobs:
             raise ValueError('duplicate job accounting')
         actual_jobs.add(key)
-        if int(job['failed']) != 0 or int(job['exit_status']) != 0 or int(job['slots']) != 28:
+        if int(job['failed']) != 0 or int(job['exit_status']) != 0 or int(job['slots']) != expected_slots(context, job):
             raise ValueError('job accounting has an unsuccessful or non-full-node task')
         if float(job['ru_wallclock']) >= 12*3600:
             raise ValueError('job exceeded the campaign walltime bound')

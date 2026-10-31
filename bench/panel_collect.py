@@ -80,7 +80,9 @@ def load(root):
     jobs = json.loads((root/'accounting.json').read_text())
     panels = manifest.get('panels', {'long': None, 'short': None})
     tasks = range(1, len(panels)+1)
-    expected = {(str(context['setup_job']), 'undefined'), (str(context['smoke_job']), 'undefined'),
+    # A run that prepares its own panel records the prepare job as well.
+    stages = ['setup', 'smoke', *(['prepare'] if 'prepare_job' in context else [])]
+    expected = {*((str(context[stage+'_job']), 'undefined') for stage in stages),
                 *((str(context['production_job']), str(task)) for task in tasks)}
     seen = set()
     for job in jobs:
@@ -99,8 +101,12 @@ def load(root):
     for name, expected_hash in context['launcher_sha256'].items():
         if hashlib.sha256((root/name).read_bytes()).hexdigest() != expected_hash:
             raise ValueError('launcher changed: '+name)
+    for name, expected_hash in context.get('preparation_files', {}).items():
+        if hashlib.sha256((root/name).read_bytes()).hexdigest() != expected_hash:
+            raise ValueError('preparation record changed: '+name)
     for name, sentinel in [('logs/setup.sge', 'PANEL_SETUP_COMPLETE'),
-                           ('logs/smoke.sge', 'PANEL_JOB_COMPLETE')]:
+                           ('logs/smoke.sge', 'PANEL_JOB_COMPLETE'),
+                           *([('logs/prepare.sge', 'PREPARE_COMPLETE')] if 'prepare_job' in context else [])]:
         if sentinel not in (root/name).read_text():
             raise ValueError('missing application sentinel: '+name)
     if (root/'environment/COMPLETE').read_text().strip() != 'PANEL_SETUP_COMPLETE':
@@ -150,7 +156,11 @@ def load(root):
         raise ValueError('native cross-worker scientific agreement failed')
     for panel in panels:
         audit = json.loads((root/'environment/input-audit.json').read_text())[panel]
-        if not audit['exact_identifiers'] or audit['adjustment_max_error'] > 1e-12:
+        if audit.get('rebuilt_from_source'):
+            # Panels without retained fevc inputs are rebuilt exactly from their source.
+            if audit['rows'] != panels[panel]['rows']:
+                raise ValueError('rebuilt panel audit failed')
+        elif not audit['exact_identifiers'] or audit['adjustment_max_error'] > 1e-12:
             raise ValueError('retained fevc input audit failed')
     return dict(manifest=manifest, context=context, accounting=jobs, smoke=smoke,
                 records=records, comparisons=comparisons, science=science)
@@ -164,7 +174,7 @@ def collect(context_path, output):
     output.mkdir(parents=True)
     (output/'context.json').write_text(json.dumps(context, indent=2)+'\n')
     jobs = []
-    for stage in ['setup', 'smoke', 'production']:
+    for stage in ['setup', 'smoke', 'production', *(['prepare'] if 'prepare_job' in context else [])]:
         job = str(context[stage+'_job'])
         if not job.isdigit():
             raise ValueError('invalid submitted job')
@@ -173,12 +183,14 @@ def collect(context_path, output):
         jobs.extend(accounting_records(raw))
     (output/'accounting.json').write_text(json.dumps(jobs, indent=2)+'\n')
     preparation = ['preparation/inputs.json', 'preparation/long-sample.json', 'preparation/short-sample.json']
-    # A reused-input run retains its preparation records in the prior run.
+    # A reused-input run retains its preparation records in the prior run; a
+    # run that prepares its own panel names the aggregate records to retain.
     reused = context.get('previous_root')
+    prepared = context.get('preparation_root')
     manifest = json.loads(remote('cat '+shlex.quote(run+'/manifest.json')))
     arms = {arm for cell in manifest['cells'] for arm in cell['arms']}
     files = ['manifest.json', 'input/source.json', 'input/prior-panels.json', 'setup.sh', 'job.sh',
-             *([] if reused else preparation), 'environment/runtime.json', 'environment/COMPLETE', 'environment/input-audit.json',
+             *([] if reused or prepared else preparation), 'environment/runtime.json', 'environment/COMPLETE', 'environment/input-audit.json',
              'environment/reference-origin.json', 'environment/r-package-paths.json',
              *[f'environment/{arm}-freeze.txt' for arm in ['pyfixest', 'pyfixest-within'] if arm in arms],
              *(['environment/julia-versions.json', 'environment/julia/Manifest.toml', 'logs/julia-environment.log']
@@ -191,7 +203,11 @@ def collect(context_path, output):
                   f'host-task-{task}/host.json', f'logs/production.{task}.sge']
     if reused:
         files += ['reuse.sge', 'logs/reuse.sge']
-    archives = [(run, files)]+([(reused, preparation)] if reused else [])
+    if 'prepare_job' in context:
+        files.append('logs/prepare.sge')
+    files += [name for name in context['launcher_sha256'] if name not in files]
+    archives = ([(run, files)]+([(reused, preparation)] if reused else [])
+                +([(prepared, list(context['preparation_files']))] if prepared else []))
     for directory, names in archives:
         raw = remote('cd '+shlex.quote(directory)+' && tar -cf - '+' '.join(shlex.quote(f) for f in names))
         with tarfile.open(fileobj=io.BytesIO(raw)) as archive:

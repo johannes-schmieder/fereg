@@ -174,6 +174,16 @@ class CampaignReportTests(unittest.TestCase):
                     check_host_observations(root,context,manifest,accounting)
 
 
+    def test_whole_node_slots_follow_the_recorded_resources(self):
+        from campaign_report import expected_slots
+        node = dict(slots=64, pe='mpi_64_tasks_per_node_4', cpu_type='Platinum-8358')
+        context = dict(setup_job='1', smoke_job='2', production_job='3',
+                       resources=dict(setup=node, smoke=node, production=node))
+        self.assertEqual([expected_slots(context, dict(jobnumber=j)) for j in ['1', '2', '3']], [64]*3)
+        # Contexts without resources come from the 28-core E5-2680v4 campaigns.
+        self.assertEqual(expected_slots(dict(setup_job='1'), dict(jobnumber='1')), 28)
+        self.assertEqual(expected_slots(dict(context, resources=dict(setup=dict(slots=4))), dict(jobnumber='3')), 28)
+
     def test_a_resubmitted_task_keeps_its_own_job(self):
         context = dict(production_job='11', task_jobs={'1': '12'},
                        stopped_tasks=[dict(job='11', task='1', reason='wrong processor type')])

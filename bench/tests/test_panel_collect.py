@@ -92,6 +92,38 @@ class PanelCollectionTests(unittest.TestCase):
             result = load(root)
             self.assertEqual(len(result['records']), 108)
 
+    def test_prepared_panel_run_with_rebuilt_audit(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d); fixture(root)
+            # One largest-connected-set panel, prepared in its own job.
+            manifest = json.loads((root/'manifest.json').read_text())
+            manifest['panels'] = {'long-lcs': dict(rows=5509415)}
+            manifest['cells'] = [c for c in manifest['cells'] if c['id'].startswith('long-')]
+            (root/'manifest.json').write_text(json.dumps(manifest))
+            (root/'task-2/results.json').unlink()
+            (root/'preparation').mkdir()
+            (root/'preparation/inputs.json').write_text('{}')
+            (root/'prepare.sge').write_text('prepare')
+            (root/'logs/prepare.sge').write_text('PREPARE_COMPLETE\n')
+            context = json.loads((root/'context.json').read_text())
+            context.update(prepare_job=4, preparation_files={'preparation/inputs.json': hashlib.sha256(b'{}').hexdigest()})
+            context['launcher_sha256']['prepare.sge'] = hashlib.sha256(b'prepare').hexdigest()
+            (root/'context.json').write_text(json.dumps(context))
+            jobs = [j for j in json.loads((root/'accounting.json').read_text()) if j['taskid'] != '2']
+            jobs.append(dict(jobnumber='4', taskid='undefined', failed='0', exit_status='0', slots='4', hostname='h'))
+            (root/'accounting.json').write_text(json.dumps(jobs))
+            (root/'smoke/results.json').write_text(json.dumps(dict(complete=True, native_gate_pass=True, records=[{}]*8,
+                science=[dict(kind='dense-oracle', arm='fereg', passed=True)])))
+            (root/'environment/input-audit.json').write_text(json.dumps({'long-lcs': dict(rows=5509415, rebuilt_from_source=True)}))
+            self.assertEqual(len(load(root)['records']), 54)
+            (root/'preparation/inputs.json').write_text('{"changed": 1}')
+            with self.assertRaisesRegex(ValueError, 'preparation record'):
+                load(root)
+            (root/'preparation/inputs.json').write_text('{}')
+            (root/'environment/input-audit.json').write_text(json.dumps({'long-lcs': dict(rows=1, rebuilt_from_source=True)}))
+            with self.assertRaisesRegex(ValueError, 'rebuilt panel audit'):
+                load(root)
+
     def test_reject_missing_failed_or_duplicate_accounting(self):
         for change in ['missing', 'failed', 'duplicate']:
             with self.subTest(change=change), tempfile.TemporaryDirectory() as d:
