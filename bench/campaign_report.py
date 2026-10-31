@@ -472,6 +472,10 @@ def scaling_plot(frame, output):
         subset = frame[(frame.model == model) & (frame.design == 'akm-baseline') & (frame.section != 'reference') &
                        (frame.rows == 1000000) & (~frame.save_fe) & (frame.regressors == 16) &
                        (frame.vce == ('iid' if model == 'ols' else 'robust'))]
+        if subset.threads.nunique() < 2:
+            # A partial run (one section, or reruns of some designs) has no core series.
+            ax.set_axis_off(); ax.text(.5, .5, f'{model.upper()}: no core series in this run', ha='center')
+            continue
         for arm in series_arms(model):
             selected = subset[(subset.arm == arm) & (subset.timed_repetitions == subset.repetitions)].sort_values('threads')
             ax.plot(selected.threads, selected.observed_seconds, marker='o', color=ARM_COLORS[arm], label=ARM_NAMES[arm])
@@ -480,7 +484,8 @@ def scaling_plot(frame, output):
         ax.set(title=model.upper(), xlabel='Physical cores', ylabel='Median estimation seconds')
         ax.set_xscale('log', base=2); ax.set_xticks(sorted(subset.threads.unique()), labels=sorted(subset.threads.unique()))
         ax.set_yscale('log'); ax.grid(axis='y', alpha=.6)
-    axes[1].legend(frameon=False, fontsize=8)
+    if axes[1].get_legend_handles_labels()[0]:
+        axes[1].legend(frameon=False, fontsize=8)
     fig.savefig(output, dpi=180); plt.close(fig)
 
 
@@ -491,6 +496,11 @@ def size_plot(frame, policy, output):
         subset = frame[(frame.model == model) & (frame.design == design) & (frame.threads == 4) &
                        (frame.section != 'reference') & (~frame.save_fe) & (frame.regressors == 16) &
                        (frame.vce == ('iid' if model == 'ols' else 'robust'))]
+        if subset.rows.nunique() < 2:
+            for ax in axes[:, column]:
+                ax.set_axis_off()
+            axes[0, column].text(.5, .5, f'{model.upper()} / {DESIGNS[design]}: no size series in this run', ha='center')
+            continue
         for arm in series_arms(model):
             selected = subset[subset.arm == arm].sort_values('rows')
             timed = selected[selected.timed_repetitions == selected.repetitions]
@@ -502,7 +512,8 @@ def size_plot(frame, policy, output):
         for ax in axes[:, column]:
             ax.set_xscale('log'); ax.set_yscale('log'); ax.grid(axis='y', alpha=.6)
             ax.set_xticks(policy['sizes'], labels=[size_label(n) for n in policy['sizes']])
-    axes[0, 0].legend(frameon=False, fontsize=8)
+    if axes[0, 0].get_legend_handles_labels()[0]:
+        axes[0, 0].legend(frameon=False, fontsize=8)
     fig.savefig(output, dpi=180); plt.close(fig)
 
 
@@ -619,6 +630,7 @@ def render(campaign, frame, output, saved_retests=None):
                   {(production_job(context, i), str(i)) for i in tasks}]
     policy = manifest['policy']
     cores = ' / '.join(map(str, policy['threads']))
+    slots = expected_slots(context, production[0]) if production else 28
     sizes = ' / '.join(f'{n:,}' for n in policy['sizes'])
     planned = ('one' if policy['repetitions'] == 1 else f"{policy['repetitions']}")
     if 'large_repetitions' in policy:
@@ -628,7 +640,7 @@ def render(campaign, frame, output, saved_retests=None):
     pdf.text(f"October 2026 · Frozen source <b>{source}</b> · Boston University SCC")
     pdf.table([['Configurations', 'Planned fits', 'Primary cores', 'Whole-node reservations'],
                [len(manifest['cells']), len(campaign['records']), f"{policy['main_threads']}; selected {cores}",
-                f"{manifest['policy']['bundles']} tasks × 28 reserved cores"]],
+                f"{manifest['policy']['bundles']} tasks × {slots} reserved cores"]],
               [115, 105, 165, 155])
     agreed = pairs[pairs.agreement == 'convention']
     pdf.text(f"<b>{len(eligible)} of {len(pairs)} primary package comparisons</b> meet the scientific gates in every paired repetition, "
@@ -644,7 +656,7 @@ def render(campaign, frame, output, saved_retests=None):
         pdf.text('<b>Observed comparator / fereg time:</b><br/>'+'<br/>'.join(byarm))
     pdf.text(f"Production occupied {sum(float(j['ru_wallclock']) for j in production)/3600:.2f} node-hours. "
              f"The longest production reservation lasted {max(float(j['ru_wallclock']) for j in production)/3600:.2f} hours. "
-             "Every task used 28 reserved slots and finished within the requested walltime.")
+             f"Every task used {slots} reserved slots and finished within the requested walltime.")
     pdf.text('This is a descriptive, fixed-seed campaign. The selected workloads cover distinct dimensions; '
              'the results do not establish a universal package ranking. Comparisons use the same data and physical-core budget within each cell.',
              'SmallCustom')
