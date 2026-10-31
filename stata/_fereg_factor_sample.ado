@@ -1,6 +1,6 @@
 *! fereg factor expansion availability 0.5.0
 program define _fereg_factor_sample, rclass
-    version 18.0
+    version 15.0
     syntax varlist(fv ts numeric), TOUSE(varname numeric) GENerate(name) ///
         [ABSorb(string asis) CLUster(string asis) AWEIGHT(varname numeric) ///
          FWEIGHT(varname numeric) PWEIGHT(varname numeric) ///

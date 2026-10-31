@@ -1,6 +1,6 @@
 *! fereg estat adapter 0.5.0 24aug2026
 program define fereg_estat, rclass
-    version 18.0
+    version 15.0
     if !inlist(`"`e(cmd)'"', "fereg", "_fereg_estimate_ols_test", ///
         "_fereg_ols_hidden_numeric_v1") {
         error 301

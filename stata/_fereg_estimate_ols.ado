@@ -3,7 +3,7 @@
 // evaluation do not sort, and native row maps are used for all output stores.
 // Do not add a sorting operation without restoring order on every exit.
 program define _fereg_estimate_ols, eclass
-    version 18.0
+    version 15.0
     quietly _fereg_memory_baseline
     local stata_used_entry = strtrim(string(r(used), "%21.0f"))
     local stata_alloc_entry = strtrim(string(r(allocated), "%21.0f"))
@@ -444,27 +444,27 @@ program define _fereg_estimate_ols, eclass
     local output_absorbed 0
     local output_variables `sample_shadow'
     if `"`residual'"' != "" {
-        generate double `residual_shadow' = .
+        quietly generate double `residual_shadow' = .
         label variable `residual_shadow' "Residuals"
         local output_residual = `n_bindings' + 2
         local output_variables `output_variables' `residual_shadow'
     }
     if `"`xb'"' != "" {
-        generate double `xb_shadow' = .
+        quietly generate double `xb_shadow' = .
         label variable `xb_shadow' "Linear prediction"
         local output_variables `output_variables' `xb_shadow'
         local output_variable_count : word count `output_variables'
         local output_xb = `n_bindings' + `output_variable_count'
     }
     if `"`xbd'"' != "" {
-        generate double `xbd_shadow' = .
+        quietly generate double `xbd_shadow' = .
         label variable `xbd_shadow' "Linear prediction plus absorbed contribution"
         local output_variables `output_variables' `xbd_shadow'
         local output_variable_count : word count `output_variables'
         local output_xbd = `n_bindings' + `output_variable_count'
     }
     if `"`d'"' != "" {
-        generate double `d_shadow' = .
+        quietly generate double `d_shadow' = .
         label variable `d_shadow' "Absorbed contribution"
         local output_variables `output_variables' `d_shadow'
         local output_variable_count : word count `output_variables'
@@ -491,7 +491,7 @@ program define _fereg_estimate_ols, eclass
                         local target `"`saved_base'_Slope`slope_index'"'
                     }
                     tempvar saved_shadow
-                    generate double `saved_shadow' = .
+                    quietly generate double `saved_shadow' = .
                     label variable `saved_shadow' "[FE] `target'"
                     local output_variables `output_variables' `saved_shadow'
                     local output_variable_count : word count `output_variables'
@@ -873,7 +873,7 @@ program define _fereg_estimate_ols, eclass
 end
 
 program define _fereg_eols_validate, rclass
-    version 18.0
+    version 15.0
     syntax namelist(min=14 max=14), CAPACITY(integer) VCECODE(integer) ABSORBROWS(integer) ///
         CLUSTERS(integer) SUBSETS(integer) RESIDUAL(integer)
     local b : word 1 of `namelist'

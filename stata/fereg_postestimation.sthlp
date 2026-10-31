@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 0.5.0 24oct2026}{...}
+{* *! version 0.5.0 31oct2026}{...}
 {vieweralsosee "fereg" "help fereg"}{...}
 {title:Title}
 
@@ -15,6 +15,8 @@
 {p 8 15 2}{cmd:test} {it:hypothesis}
 
 {p 8 15 2}{cmd:estat summarize} [{it:varlist}]
+
+{p 8 15 2}{cmd:fereg} [{cmd:,} {cmd:level(}{it:#}{cmd:)} {it:display_options}]
 
 {title:Description}
 
@@ -35,13 +37,17 @@ specified.
 {pstd}
 {cmd:test} uses the posted {cmd:e(b)} and {cmd:e(V)}. {cmd:estat summarize}
 summarizes estimation-sample variables through Stata's standard estimator
-summary machinery.
+summary machinery. {cmd:fereg} without a variable list redisplays the last
+results, which also serves {cmd:estimates replay}, {cmd:bootstrap:} and
+{cmd:jackknife:}.
 
 {title:Solver diagnostics}
 
 {pstd}
 {cmd:e(fereg_solver_used)} names the absorption method and
-{cmd:e(fereg_solver_residual)} names the final residual-check method.
+{cmd:e(fereg_solver_residual)} names the method of the final residual
+projection. The output line above the coefficient table states that the
+accuracy check passed and at which tolerance.
 {cmd:e(fereg_solver_fallback)} records whether either phase used a fallback.
 Use {cmd:matrix list e(fereg_solver)} for the two named rows, iteration counts,
 fallback indicators and certificates. On the automatic two-effect path,

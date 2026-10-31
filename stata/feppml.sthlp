@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 0.5.0 26oct2026}{...}
+{* *! version 0.5.0 31oct2026}{...}
 {.-}
 help for {cmd:feppml} {right:(Johannes F. Schmieder)}
 {.-}
@@ -598,6 +598,10 @@ more than one statistic, returns {cmd:r(198)} and creates no target.
 
 {pstd}
 {cmd:feppml} stores {cmd:e(b)}, {cmd:e(V)}, and the final {cmd:e(sample)}.
+{cmd:e(fereg_version)} records the release that produced the results.
+Typing {cmd:feppml} without a variable list redisplays the last results;
+{cmd:level()} and Stata's standard display options apply, and
+{cmd:estimates replay}, {cmd:bootstrap:} and {cmd:jackknife:} use this replay.
 {cmd:e(N)} is effective N: it equals retained physical rows unless fweights
 are used. Core sample and model scalars are
 
@@ -949,11 +953,11 @@ contract, and the fitted-mean prediction on the final sample.
               biasstream(0) biasfe(bf) mu(saved_mu)
           assert `"`e(cmd)'"' == "feppml"
           assert e(converged) == 1
-          assert e(bias_support)[1,2] == 10
-          assert e(bias_support)[2,2] == 40
+          assert el(e(bias_support),1,2) == 10
+          assert el(e(bias_support),2,2) == 40
           matrix list e(bias_support)
-          assert e(bias_diagnostics)[2,1] == 40
-          assert e(bias_diagnostics)[5,1] == 0
+          assert el(e(bias_diagnostics),2,1) == 40
+          assert el(e(bias_diagnostics),5,1) == 0
           assert reldif(bf_1_bc,bf_1_raw+bf_1_total) < 1e-12
           matrix list e(b_bc)
           predict double predicted_mu, mu
@@ -971,7 +975,7 @@ contract, and the fitted-mean prediction on the final sample.
 {title:Requirements}
 
 {pstd}
-{cmd:feppml} requires Stata 18 or newer and exactly one matching self-contained
+{cmd:feppml} requires Stata 15 or newer and exactly one matching self-contained
 package plugin on the ado-path: {cmd:fereg_windows.plugin},
 {cmd:fereg_linux.plugin}, or the universal {cmd:fereg_macos.plugin}. Users do
 not need Rust, Python, Julia, a compiler, BLAS, or a separate native runtime.

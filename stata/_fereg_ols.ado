@@ -1,6 +1,6 @@
 *! fereg public OLS syntax and result adapter 0.5.0 24aug2026
 program define _fereg_ols, eclass sortpreserve
-    version 18.0
+    version 15.0
     syntax varlist(fv ts numeric min=1) [if] [in] [fw aw pw iw], ///
         [ABSorb(string asis) VCE(string asis) DOF(string asis) ///
          KEEPsingletons RESIDuals(name) XB(name) XBD(name) D(name) NOCONStant ///
@@ -88,14 +88,14 @@ program define _fereg_ols, eclass sortpreserve
         poolsize(`poolsize') threads(`threads') tolerance(`tolerance') ///
         iterate(`iterate') `deterministic'
 
-    local coefficient_count = e(fereg_receipt)[1,5]
+    local coefficient_count = el(e(fereg_receipt),1,5)
     local posted_indepvars
     if `coefficient_count' > 0 {
         local posted_indepvars : colfullnames e(b)
     }
     _fereg_indepvars, target(intended_indepvars) count(`coefficient_count') ///
         status(e(fereg_status)) names(`"`posted_indepvars'"')
-    ereturn scalar fereg_v_determinant = e(fereg_certificate)[31,2]
+    ereturn scalar fereg_v_determinant = el(e(fereg_certificate),31,2)
     ereturn local indepvars `"`intended_indepvars'"'
     ereturn local cmd "_fereg_ols"
     ereturn local cmdline `"_fereg_ols `0'"'

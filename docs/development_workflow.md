@@ -138,8 +138,8 @@ witnesses. Retirement is not a waiver of integration, cancellation, memory or
 beta.10 performance qualification.
 
 After editing `_fereg_ppml_result_mata.ado`, rebuild its three `.mo` files and
-receipt using the actual Stata 18 compiler with `scripts/build_ppml_mata.py`.
-A newer compiler's version statement does not ensure Stata 18 compatibility.
+receipt using the actual Stata 15 compiler with `scripts/build_ppml_mata.py`.
+A newer compiler's version statement does not ensure Stata 15 compatibility.
 Staging validates the source/object hashes. There is no runtime compilation fallback.
 
 ## Outputs and release maintenance

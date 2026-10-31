@@ -1619,9 +1619,7 @@ fn fit_projection_only_internal<P: PreparedOlsFitView + ?Sized, R: FitReservatio
         config.score_tolerance,
     )?;
     if !score_certificate.passed {
-        return Err(invalid_data(
-            "prepared projection finite score certificate did not pass",
-        ));
+        return Err(score_certificate_failure(config.absorb.map.tolerance));
     }
     let coefficients = build_coefficient_slots(prepared, &qr, reservation)?;
     // A deferred absorbed-model intercept is not part of the finite rank
@@ -4597,6 +4595,22 @@ fn checked_norm(scale: f64, scaled_square_sum: f64) -> Result<f64> {
     } else {
         Err(invalid_data("prepared OLS weighted norm is not finite"))
     }
+}
+
+/// The finite score certificate fails when the absorbed variables are not
+/// accurate enough to certify the coefficients, which in practice means a
+/// loose `tolerance()`. Users see this message, so it names the remedy.
+fn score_certificate_failure(tolerance: f64) -> FeregError {
+    let example = if tolerance > 1e-8 {
+        ", such as the default 1e-8"
+    } else {
+        ""
+    };
+    invalid_data(format!(
+        "coefficient accuracy check failed: tolerance({tolerance:e}) is too loose \
+         to certify the coefficients of this model; specify a smaller \
+         tolerance(){example}"
+    ))
 }
 
 #[allow(clippy::too_many_arguments)]

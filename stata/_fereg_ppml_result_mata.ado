@@ -1,4 +1,4 @@
-version 18.0
+version 15.0
 
 // Bounded transport validation stays independent of the native producer.
 // Local matrix copies avoid repeated Stata expression parsing and SPI reads;

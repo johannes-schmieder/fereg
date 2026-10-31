@@ -1,6 +1,6 @@
 # Installation
 
-`fereg` and `feppml` require Stata 18 or newer. The current binary beta supports
+`fereg` and `feppml` require Stata 15 or newer. The current binary beta supports
 Linux x86-64, Windows x86-64 and macOS. The macOS plugin contains Apple Silicon
 and Intel code; licensed Mac testing uses Apple Silicon. See
 [validation](VALIDATION.md) for the checks performed on each platform.
@@ -118,8 +118,8 @@ uses the included dependencies; `cargo build --offline --locked --release
 -p fereg-plugin` checks that Cargo needs no network downloads. Rust toolchains,
 system compilers and Stata itself are prerequisites and are not bundled.
 The source archive also includes the Mata source used to produce the included
-Stata 18 `.mo` objects; `scripts/build_ppml_mata.py --stata /path/to/stata18`
-rebuilds them with Stata 18.
+Stata 15 `.mo` objects; `scripts/build_ppml_mata.py --stata /path/to/stata15`
+rebuilds them with Stata 15.
 
 ## Troubleshooting
 

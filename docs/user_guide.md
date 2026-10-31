@@ -20,7 +20,14 @@ fereg depvar [indepvars] [if] [in] [weight], [options]
 fereg, selftest [threads(#) verbose]
 
 feppml depvar [indepvars] [if] [in] [fweight|pweight], [options]
+
+fereg [, level(#) display_options]
+feppml [, level(#) display_options]
 ```
+
+Without a variable list, each command redisplays its last results. This replay
+also serves `estimates replay`, `bootstrap:` and `jackknife:`; the `by:`
+prefix is not supported.
 
 `fereg` accepts `aweight`, `fweight`, and `pweight`; it recognizes `iweight`
 only to return the pinned `r(101)` rejection. PPML weight support is described
@@ -279,7 +286,7 @@ cluster counts, singleton counts, and absorbed-effect metadata. The following
 diagnostics are specific to `fereg`:
 
 - `e(fereg_solver_used)` names the method used for outcome/regressor absorption;
-- `e(fereg_solver_residual)` names the method used for the final residual check;
+- `e(fereg_solver_residual)` names the method used for the final residual projection;
 - `e(fereg_solver_requested)` retains the user's request, including `auto`;
 - `e(fereg_solver_fallback)` is one if either phase used a certified fallback;
 - `e(fereg_solver)` records both phases, iterations, fallback and certification;
@@ -289,7 +296,10 @@ diagnostics are specific to `fereg`:
 - `e(fereg_status)`, `e(fereg_dof)`, `e(fereg_fe)`, `e(fereg_cluster)`, and
   related matrices expose the detailed result contract.
 
-The ordinary output prints the two method names. `cg` denotes the guarded
+The line above the coefficient table names the absorption method and states
+that the accuracy check passed at the effective tolerance; results that fail
+the check are never posted. `e(fereg_version)` records the release that
+produced the results. `cg` denotes the guarded
 Schur-PCG recurrence on the automatic two-FE path; `cmgschur` means that path
 actually applied a CMG preconditioner. This does not enable an explicit
 `solver(cg)` request. A MAP fallback is reported as `map` with fallback set.
@@ -309,7 +319,7 @@ The reported method describes the certified result, not every attempted build.
 
 ```stata
 display "Absorption: `e(fereg_solver_used)'"
-display "Residual check: `e(fereg_solver_residual)'"
+display "Final residual method: `e(fereg_solver_residual)'"
 matrix list e(fereg_solver)
 ```
 

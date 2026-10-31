@@ -1,6 +1,6 @@
 *! fereg shared memory shadow validation 0.5.0 18sep2026
 program define _fereg_memory_validate
-    version 18.0
+    version 15.0
     args report
     if rowsof(`report') != 11 | colsof(`report') != 2 exit 459
     forvalues row = 1/11 {

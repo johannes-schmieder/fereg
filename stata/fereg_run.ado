@@ -1,7 +1,7 @@
 *! fereg_run 0.5.0 26aug2026
 *! Run named examples embedded in fereg.sthlp.
 program define fereg_run
-    version 18.0
+    version 15.0
 
     syntax anything(name=example_name id="example name") using/
 
@@ -18,7 +18,7 @@ program define fereg_run
 end
 
 program define _fereg_run_example
-    version 18.0
+    version 15.0
 
     syntax anything(name=example_name id="example name") using/
 

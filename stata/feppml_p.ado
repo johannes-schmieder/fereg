@@ -1,6 +1,6 @@
 *! fereg PPML prediction adapter 0.5.0 31aug2026
 program define feppml_p
-    version 18.0
+    version 15.0
     if !inlist(`"`e(cmd)'"', "feppml", "_fereg_estimate_ppml") {
         error 301
     }
@@ -218,7 +218,7 @@ program define feppml_p
 end
 
 program define _fereg_ppml_prediction_validate
-    version 18.0
+    version 15.0
     syntax varname(numeric), TOUSE(varname numeric) [POSitive NONNegative]
 
     local validity `"`varlist' < ."'

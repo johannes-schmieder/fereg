@@ -4,6 +4,31 @@
 
 No changes yet.
 
+## 0.5.0 beta.12 — 2026-10-31
+
+Interface changes only; the numerical code is unchanged and estimates are
+identical to beta.11.
+
+- Supports Stata 15 or newer instead of Stata 18 or newer. The ado-files use
+  Stata 15 syntax, the PPML Mata objects are compiled by Stata 15, and the
+  plugin accepts Stata 15. Estimates agree across Stata 15, 18 and 19.
+- `fereg` and `feppml` without a variable list redisplay their last results
+  with Stata's display options, so `estimates replay`, `bootstrap:` and
+  `jackknife:` now work. Other options without a variable list still fail
+  with `r(198)`.
+- Both commands store the release label in `e(fereg_version)`;
+  `fereg, selftest` returns it in `r(fereg_version)`.
+- The line above the OLS coefficient table now reads, for example,
+  `Fixed-effect solver: cg   Accuracy check: passed (tolerance 1e-08)`
+  instead of naming the final residual method; `e(fereg_solver_residual)` keeps
+  that method.
+- Saving `d()`, `mu()`, residuals or fixed effects no longer prints
+  "missing values generated" messages.
+- When a loose `tolerance()` prevents certifying the OLS coefficients, the
+  error now says so and suggests a smaller tolerance, instead of reporting
+  an unexplained failed "finite score certificate". The return code stays
+  `r(459)`.
+
 ## 0.5.0 beta.11 — 2026-10-30
 
 - Migrates the numerical dependency to a small patch stack on frozen upstream

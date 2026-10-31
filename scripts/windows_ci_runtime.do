@@ -91,5 +91,9 @@ adopath ++ "`root'/stata"
 * Diagnostic r(9110) identifies this unchanged fixture; it cannot confer PASS.
 capture noisily do "tests/stata/development/within_plugin_slope_boundary.do"
 if _rc exit 9110
+* Replay, bootstrap:/jackknife: and the displayed header on Windows.
+* Diagnostic r(9111) identifies this fixture; it cannot confer PASS.
+capture noisily do "tests/stata/postestimation/replay_and_prefixes.do"
+if _rc exit 9111
 shell powershell.exe -NoLogo -NoProfile -NonInteractive ///
     -ExecutionPolicy Bypass -File "scripts/windows_ci_report.ps1" -Action pass

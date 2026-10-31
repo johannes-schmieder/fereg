@@ -1,6 +1,6 @@
 *! fereg developer-only numeric-factor OLS preparation boundary 0.5.0 24aug2026
 program define _fereg_prepare_ols_test, rclass sortpreserve
-    version 18.0
+    version 15.0
     syntax varlist(fv numeric min=1) [if] [in], ///
         ORIGINALOBS(name) RETAINED(name) DROPREASON(name) ///
         [NOCONStant AWEIGHT(varname numeric) FWEIGHT(varname numeric) ///

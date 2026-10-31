@@ -25,6 +25,9 @@ Useful profiles include version, smoke, syntax, quick, mata-unit, plugin-build,
 plugin-load, numerical-small, differential, fereg-regression, ppml-scientific,
 ppml-hidden, benchmark-small and full. Use quick for the OLS screen and
 ppml-scientific for the public PPML fixtures; neither stands in for the other.
+`older-stata` runs the fixture written in Stata 15 syntax; run it with the oldest
+supported release (Stata 15) as well as the current one. The other fixtures
+declare `version 18.0` and need Stata 18 or newer.
 Build the universal Mac plugin with `./scripts/build_macos.sh`.
 
 The current formal runner checks a committed source archive in an isolated

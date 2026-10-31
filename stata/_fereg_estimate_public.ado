@@ -1,6 +1,6 @@
 *! fereg public OLS dispatcher 0.5.0 24aug2026
 program define _fereg_estimate_public, eclass
-    version 18.0
+    version 15.0
     syntax varlist(fv ts numeric min=1) [if] [in] [fw aw pw iw], ///
         [ABSorb(string asis) VCE(string asis) DOF(string asis) ///
          KEEPsingletons RESIDuals(name) SAVEFEs(string asis) ///
@@ -168,18 +168,19 @@ program define _fereg_estimate_public, eclass
 
     // Preserve the public coefficient-axis adapter without paying for a
     // second full syntax/parser program invocation on every estimate.
-    local coefficient_count = e(fereg_receipt)[1,5]
+    local coefficient_count = el(e(fereg_receipt),1,5)
     local posted_indepvars
     if `coefficient_count' > 0 local posted_indepvars : colfullnames e(b)
     _fereg_indepvars, target(intended_indepvars) count(`coefficient_count') ///
         status(e(fereg_status)) names(`"`posted_indepvars'"')
-    ereturn scalar fereg_v_determinant = e(fereg_certificate)[31,2]
+    ereturn scalar fereg_v_determinant = el(e(fereg_certificate),31,2)
     ereturn local indepvars `"`intended_indepvars'"'
     ereturn local fereg_gate "public_ols_v1"
     ereturn local fereg_intended_public_command "fereg"
 
     ereturn local cmd "fereg"
     ereturn local cmdline `"fereg `0'"'
+    ereturn local fereg_version "0.5.0-beta.12"
     ereturn local predict "fereg_p"
     local selected_memory_code = el(e(fereg_runtime), 2, 2)
     local selected_memory = cond(`selected_memory_code' == 1, "fast", "low")

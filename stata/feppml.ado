@@ -1,6 +1,17 @@
-*! version 0.5.0 01sep2026
+*! version 0.5.0 31oct2026
 program define feppml, eclass
-    version 18.0
+    version 15.0
+    if replay() {
+        syntax [, *]
+        _get_diopts diopts options, `options'
+        if `"`options'"' != "" {
+            di as error `"option `options' not allowed"'
+            exit 198
+        }
+        if `"`e(cmd)'"' != "feppml" error 301
+        ereturn display, `diopts'
+        exit
+    }
     local host_processors = c(processors)
     local quiet_prefix
     if !c(noisily) local quiet_prefix quietly

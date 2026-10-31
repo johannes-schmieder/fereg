@@ -1,10 +1,10 @@
 *! fereg plugin loader 0.5.0 24aug2026
 program define _fereg_load, rclass
-    version 18.0
+    version 15.0
     syntax , ACTION(string) [THREADS(integer 0) VERBOSE]
 
-    if c(stata_version) < 18 {
-        di as error "fereg requires Stata 18 or newer"
+    if c(stata_version) < 15 {
+        di as error "fereg requires Stata 15 or newer"
         exit 9
     }
 

@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 
 pub const ADO_VERSION: &str = "0.5.0";
 pub const PLUGIN_VERSION: &str = env!("CARGO_PKG_VERSION");
-pub const MINIMUM_STATA_MAJOR: u16 = 18;
+pub const MINIMUM_STATA_MAJOR: u16 = 15;
 pub const SPI_MAJOR: u16 = 3;
 pub const SPI_MINOR: u16 = 0;
 
@@ -755,13 +755,12 @@ mod tests {
 
     #[test]
     fn old_stata_is_rejected() {
-        assert_eq!(
-            Handshake::current(17)
-                .validate()
-                .expect_err("must reject")
-                .code,
-            ErrorCode::Unsupported
-        );
+        let error = Handshake::current(14).validate().expect_err("must reject");
+        assert_eq!(error.code, ErrorCode::Unsupported);
+        assert!(error.message.contains("requires Stata 15 or newer"));
+        Handshake::current(15)
+            .validate()
+            .expect("Stata 15 is the oldest supported release");
     }
 
     #[test]

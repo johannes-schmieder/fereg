@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 0.5.0 26oct2026}{...}
+{* *! version 0.5.0 31oct2026}{...}
 {.-}
 help for {cmd:fereg} {right:(Johannes F. Schmieder)}
 {.-}
@@ -34,6 +34,8 @@ observations are removed to a fixed point.
 
 {p 8 16 2}{cmd:fereg,} {cmd:selftest}
 [{cmd:threads(}{it:#}{cmd:)} {cmd:verbose}]
+
+{p 8 16 2}{cmd:fereg} [{cmd:,} {cmd:level(}{it:#}{cmd:)} {it:display_options}]
 
 {p 8 16 2}
 {cmd:fereg} {it:depvar} [{it:indepvars}] {ifin} {weight},
@@ -303,6 +305,12 @@ Standard {cmd:test} uses the posted coefficient and covariance matrices.
 {cmd:estat summarize} reports estimation-sample summaries. See
 {help fereg_postestimation:fereg postestimation}.
 
+{pstd}
+Typing {cmd:fereg} without a variable list redisplays the last {cmd:fereg}
+results; {cmd:level()} and Stata's standard display options apply. This replay
+also lets {cmd:estimates replay}, {cmd:bootstrap:} and {cmd:jackknife:} display
+{cmd:fereg} results. The {cmd:by:} prefix is not supported.
+
 {marker stored}
 {title:Stored results}
 
@@ -313,7 +321,10 @@ counts, singleton counts, and absorbed-effect metadata. {cmd:ereturn list}
 shows the complete result set.
 
 {pstd}
-Normal output shows the absorption and final residual-check methods.
+The line above the coefficient table names the fixed-effect solver used for
+absorption and states that the accuracy check passed at the effective
+tolerance; estimates that fail the check are never posted.
+{cmd:e(fereg_version)} records the release that produced the results.
 {cmd:e(fereg_solver_requested)} preserves the request, including {cmd:auto};
 {cmd:e(fereg_solver_used)} names the method used for outcome/regressor
 absorption, and {cmd:e(fereg_solver_residual)} names the final residual method.
@@ -345,7 +356,7 @@ A zero-iteration {cmd:map} row may be an already-orthogonal input check.
 The method identifies the certified result, not every attempted construction.
 
 {phang2}{cmd:. display "Absorption: `e(fereg_solver_used)'"}{p_end}
-{phang2}{cmd:. display "Residual check: `e(fereg_solver_residual)'"}{p_end}
+{phang2}{cmd:. display "Final residual method: `e(fereg_solver_residual)'"}{p_end}
 {phang2}{cmd:. matrix list e(fereg_solver)}{p_end}
 
 {pstd}
@@ -843,7 +854,7 @@ the frozen exact-SHA benchmark suite, not this example.
 {title:Requirements and development status}
 
 {pstd}
-{cmd:fereg} requires Stata 18 or newer and one self-contained plugin for its
+{cmd:fereg} requires Stata 15 or newer and one self-contained plugin for its
 platform: {cmd:fereg_macos.plugin}, {cmd:fereg_linux.plugin}, or
 {cmd:fereg_windows.plugin}. Users do not need a compiler or separate runtime.
 There is one maintained engine and no engine selector.

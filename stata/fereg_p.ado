@@ -1,6 +1,6 @@
 *! fereg prediction adapter 0.5.0 24aug2026
 program define fereg_p
-    version 18.0
+    version 15.0
     if !inlist(`"`e(cmd)'"', "fereg", "_fereg_estimate_ols_test", ///
         "_fereg_ols_hidden_numeric_v1") {
         error 301
@@ -63,7 +63,7 @@ program define fereg_p
 end
 
 program define _fereg_p_xb
-    version 18.0
+    version 15.0
     syntax newvarname [if] [in], STORage(string)
     // Plain numeric coefficient names need no factor or time-series expansion.
     // Score current data; no fitted-value cache survives data edits or sorting.

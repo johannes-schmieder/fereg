@@ -1,6 +1,6 @@
 *! fereg guarded PPML eclass transaction 0.5.0 02sep2026
 program define _fereg_estimate_ppml, eclass
-    version 18.0
+    version 15.0
     quietly _fereg_memory_baseline
     local stata_used_entry = strtrim(string(r(used), "%21.0f"))
     local stata_alloc_entry = strtrim(string(r(allocated), "%21.0f"))
@@ -592,7 +592,7 @@ program define _fereg_estimate_ppml, eclass
     local output_dropreason 0
     if `"`residual'"' != "" {
         tempvar residual_shadow
-        generate double `residual_shadow' = .
+        quietly generate double `residual_shadow' = .
         label variable `residual_shadow' "PPML `residual_wire' residual"
         local output_variables `output_variables' `residual_shadow'
         local output_variable_count : word count `output_variables'
@@ -600,7 +600,7 @@ program define _fereg_estimate_ppml, eclass
     }
     if `"`xb'"' != "" {
         tempvar xb_shadow
-        generate double `xb_shadow' = .
+        quietly generate double `xb_shadow' = .
         label variable `xb_shadow' "Finite linear prediction including adjustment"
         local output_variables `output_variables' `xb_shadow'
         local output_variable_count : word count `output_variables'
@@ -608,7 +608,7 @@ program define _fereg_estimate_ppml, eclass
     }
     if `"`d'"' != "" {
         tempvar d_shadow
-        generate double `d_shadow' = .
+        quietly generate double `d_shadow' = .
         label variable `d_shadow' "Absorbed contribution"
         local output_variables `output_variables' `d_shadow'
         local output_variable_count : word count `output_variables'
@@ -616,7 +616,7 @@ program define _fereg_estimate_ppml, eclass
     }
     if `"`eta_target'"' != "" {
         tempvar eta_shadow
-        generate double `eta_shadow' = .
+        quietly generate double `eta_shadow' = .
         label variable `eta_shadow' "Total PPML linear prediction"
         local output_variables `output_variables' `eta_shadow'
         local output_variable_count : word count `output_variables'
@@ -624,7 +624,7 @@ program define _fereg_estimate_ppml, eclass
     }
     if `"`mu'"' != "" {
         tempvar mu_shadow
-        generate double `mu_shadow' = .
+        quietly generate double `mu_shadow' = .
         label variable `mu_shadow' "PPML conditional mean"
         local output_variables `output_variables' `mu_shadow'
         local output_variable_count : word count `output_variables'
@@ -632,7 +632,7 @@ program define _fereg_estimate_ppml, eclass
     }
     if `"`dropreason'"' != "" {
         tempvar dropreason_shadow
-        generate long `dropreason_shadow' = .
+        quietly generate long `dropreason_shadow' = .
         label variable `dropreason_shadow' "fereg PPML final-sample drop reason"
         local output_variables `output_variables' `dropreason_shadow'
         local output_variable_count : word count `output_variables'
@@ -654,7 +654,7 @@ program define _fereg_estimate_ppml, eclass
                     local ++saved_target_cursor
                     local target : word `saved_target_cursor' of `saved_target_variables'
                     tempvar saved_shadow
-                    generate double `saved_shadow' = .
+                    quietly generate double `saved_shadow' = .
                     label variable `saved_shadow' "[FE] `target'"
                     local output_variables `output_variables' `saved_shadow'
                     local output_variable_count : word count `output_variables'
@@ -676,7 +676,7 @@ program define _fereg_estimate_ppml, eclass
         local output_bias_registry
         foreach target of local bias_target_variables {
             tempvar bias_shadow_variable
-            generate double `bias_shadow_variable' = .
+            quietly generate double `bias_shadow_variable' = .
             label variable `bias_shadow_variable' "[PPML bias] `target'"
             local output_variables `output_variables' `bias_shadow_variable'
             local output_variable_count : word count `output_variables'
@@ -1296,6 +1296,7 @@ program define _fereg_estimate_ppml, eclass
     else {
         ereturn local cmd "feppml"
         ereturn local cmdline `"`publiccmdline'"'
+        ereturn local fereg_version "0.5.0-beta.12"
         ereturn local feppml_gate "public_ppml_v1"
         ereturn local feppml_memory_requested "`memory_mode'"
         ereturn scalar feppml_poolsize = `poolsize'
@@ -1421,7 +1422,7 @@ program define _fereg_estimate_ppml, eclass
 end
 
 program define _fereg_eppml_validate, rclass
-    version 18.0
+    version 15.0
     syntax namelist(min=16 max=16), CAPACITY(integer) CLUSTERS(integer) ///
         FEROWS(integer) SUBSETS(integer) SEPARATIONS(integer) ///
         RESIDUAL(integer) SAVED(integer) ADJUSTMENT(integer) VCECODE(integer) ///

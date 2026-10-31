@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Optional
 
 VERSION = "0.5.0"
-RELEASE_TAG = "v0.5.0-beta.11"
+RELEASE_TAG = "v0.5.0-beta.12"
 PACKAGE_NAME = f"fereg-{VERSION}"
 FIXED_TIME = (2026, 10, 30, 0, 0, 0)
 FIXED_UTC = "2026-10-30T00:00:00Z"
@@ -260,11 +260,11 @@ def validate_ppml_mata_objects(stata: Path) -> None:
     receipt = json.loads((stata / "_fereg_ppml_result_mata.json").read_text())
     expected = {name for name in PRODUCTION_STATA_FILES if name.endswith(".mo")}
     if (receipt.get("schema") != "fereg-ppml-mata-v1"
-            or receipt.get("compiler_release") != "18"
+            or receipt.get("compiler_release") != "15"
             or set(receipt.get("objects", {})) != expected
             or receipt.get("source_sha256") != digest(stata / "_fereg_ppml_result_mata.ado")
             or any(receipt["objects"][name] != digest(stata / name) for name in expected)):
-        raise RuntimeError("PPML Mata objects are stale or lack a Stata 18 source binding")
+        raise RuntimeError("PPML Mata objects are stale or lack a Stata 15 source binding")
 
 
 def copy_release_files(

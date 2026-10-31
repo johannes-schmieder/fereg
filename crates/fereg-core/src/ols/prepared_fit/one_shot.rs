@@ -1159,13 +1159,7 @@ fn finish_one_shot<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     )?;
     trace.lap(0);
     if !score_certificate.passed {
-        return Err(invalid_data(
-            if config.execution.mode == PreparedOlsExecutionMode::Fast {
-                "prepared OLS finite score certificate did not pass"
-            } else {
-                "prepared OLS low-memory finite score certificate did not pass"
-            },
-        ));
+        return Err(score_certificate_failure(config.absorb.map.tolerance));
     }
     let recovered_fe_coefficients = if config.execution.mode == PreparedOlsExecutionMode::Fast {
         combine_recovered_fe_coefficients(

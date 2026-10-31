@@ -24,6 +24,13 @@ class ReleaseStagingTests(unittest.TestCase):
         "fereg_postestimation.sthlp", "fereg.pkg", "stata.toc",
     )
 
+    def test_posted_release_label_matches_the_release_tag(self) -> None:
+        # e(fereg_version) and the selftest's r(fereg_version) name the release.
+        label = stage_release.RELEASE_TAG.removeprefix("v")
+        for name in ("fereg.ado", "_fereg_estimate_public.ado", "_fereg_estimate_ppml.ado"):
+            text = (ROOT / "stata" / name).read_text()
+            self.assertIn(f'fereg_version "{label}"', text, name)
+
     def test_runtime_release_inventory_is_exact(self) -> None:
         self.assertEqual(
             stage_release.PRODUCTION_STATA_FILES,

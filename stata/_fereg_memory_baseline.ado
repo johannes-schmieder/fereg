@@ -1,6 +1,6 @@
 *! fereg Stata memory adapter 0.5.0 18sep2026
 program define _fereg_memory_baseline, rclass
-    version 18.0
+    version 15.0
     // These are hidden Stata fields. Unknown versions/layouts fail to missing,
     // never to zero. No observations, strings or matrices are materialized.
     local used .

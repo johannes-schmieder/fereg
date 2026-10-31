@@ -140,7 +140,7 @@ def render_fixture_wrapper(
     bound_plugin: Path | None, bound_ado_root: Path | None,
 ) -> bytes:
     status_path = run_dir / "fixture.status"
-    lines = ["version 18.0", "clear all", "set more off"]
+    lines = ["version 15.0", "clear all", "set more off"]
     if bound_plugin is not None:
         isolated = run_dir / "sysdirs"
         for name in ("PERSONAL", "PLUS", "OLDPLACE", "SITE"):

@@ -169,12 +169,13 @@ local allowed_macros cmd cmdline model depvar indepvars vce vcetype absvars ///
     feppml_memory_requested feppml_memory_method solver feppml_solver_requested ///
     feppml_solver_selected feppml_solver_engine feppml_solver_effective ///
     feppml_solver_engine_effective feppml_solver_checkpoint ///
-    feppml_solver_fallback_reason properties
+    feppml_solver_fallback_reason properties fereg_version
 local actual_macros : e(macros)
 foreach field of local actual_macros {
     local allowed : list field in allowed_macros
     assert `allowed'
 }
+if `"`e(cmd)'"' == "feppml" assert strpos(`"`e(fereg_version)'"', "0.5.0-beta.") == 1
 
 local allowed_matrices b V feppml_status feppml_fit feppml_dof feppml_fe ///
     feppml_cluster feppml_subset feppml_separation feppml_inference ///

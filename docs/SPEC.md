@@ -73,7 +73,11 @@ elapsed-time routing. See the [development protocol](development_workflow.md#com
 
 Both commands accept `depvar [indepvars] [if] [in] [weight], [options]`.
 The dependent variable is plain numeric; the finite list can be empty.
-Stata 18 is the minimum host. The installed diagnostic is
+Stata 15 is the minimum host. Without a variable list, `fereg` and `feppml`
+replay their own last results (Stata's standard display options only), which
+`estimates replay`, `bootstrap:` and `jackknife:` require; other options without
+a variable list fail with `r(198)` and a missing result with `r(301)`. Both
+commands post `e(fereg_version)`, the release label. The installed diagnostic is
 `fereg, selftest [threads(#) verbose]`; developer actions are not public commands.
 It reports installed versions, validates ado/plugin compatibility and runs bounded
 installation checks. `verbose` adds build, host and per-check details; failed
@@ -997,7 +1001,9 @@ application on that path is code 8. A MAP continuation is code 2 with fallback
 set; already-certified zero-work inputs retain code 2 with zero iterations.
 Low aggregation preserves CMG use across blocks unless a certified fallback
 takes precedence. Requested solver remains unchanged. The public macros
-`fereg_solver_used` and `fereg_solver_residual` expose the method names;
+`fereg_solver_used` and `fereg_solver_residual` expose the method names; the
+displayed line names the absorption method and the passed accuracy check with
+the effective tolerance;
 `fereg_solver_fallback` is the OR of the two fallback fields. This reporting
 correction changes only method/fallback telemetry, not arithmetic, route
 decisions, iteration budgets, science or the PPML solver contract.
@@ -1439,7 +1445,7 @@ UTF-8 byte lengths and cleans all temporary externals independently on error.
 
 Bounded compiled Mata validation/publication may remain in the control plane;
 no observation-scale design/estimation work enters Mata. If retained, ship
-objects compiled by Stata 18 and verify source/object identity. A `version 18`
+objects compiled by Stata 15 and verify source/object identity. A `version 15`
 statement in a newer compiler does not suffice. Missing/stale helpers fail
 atomically; no runtime source-compilation fallback.
 

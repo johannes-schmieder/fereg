@@ -71,6 +71,15 @@
       "timeout_seconds": 900,
       "required_outputs": []
     },
+    "older-stata": {
+      "driver": "fereg-fixtures",
+      "build_plugin": false,
+      "fixtures": [
+        "tests/stata/postestimation/replay_and_prefixes.do"
+      ],
+      "timeout_seconds": 900,
+      "required_outputs": []
+    },
     "quick": {
       "driver": "fereg-fixtures",
       "build_plugin": true,
@@ -330,6 +339,7 @@
         "tests/stata/parser/string_sources.do",
         "tests/stata/parser/time_series_marker.do",
         "tests/stata/postestimation/fail_closed.do",
+        "tests/stata/postestimation/replay_and_prefixes.do",
         "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_transaction.do",
         "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_allocation.do",
         "tests/stata/parity_ppmlhdfe/estimate_ppml_runtime_validator.do",

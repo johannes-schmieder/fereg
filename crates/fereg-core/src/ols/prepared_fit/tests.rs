@@ -10003,3 +10003,14 @@ fn derived_final_residual_leaves_explicit_binding_solvers_projected() {
         );
     }
 }
+
+#[test]
+fn score_certificate_failure_names_the_tolerance_remedy() {
+    let loose = score_certificate_failure(1e-6);
+    assert_eq!(loose.code, ErrorCode::InvalidData);
+    assert!(loose.message.contains("tolerance(1e-6) is too loose"));
+    assert!(loose.message.contains("such as the default 1e-8"));
+    let tight = score_certificate_failure(1e-10);
+    assert!(tight.message.contains("specify a smaller tolerance()"));
+    assert!(!tight.message.contains("default"));
+}

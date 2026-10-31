@@ -34,9 +34,9 @@ def build(stata: str, output: Path) -> dict:
         work = Path(temporary)
         fixture = work / "build_ppml_mata.do"
         fixture.write_text(
-            "version 18.0\nclear all\nset more off\n"
+            "version 15.0\nclear all\nset more off\n"
             # Version control does not make newer object code backwards readable.
-            "assert c(stata_version) == 18\n"
+            "assert floor(c(stata_version)) == 15\n"
             "mata: mata set matastrict on\n"
             "mata: mata set mataoptimize on\n"
             "mata: mata set matafavor space\n"
@@ -50,10 +50,10 @@ def build(stata: str, output: Path) -> dict:
         result = run_fixture(stata, fixture, ROOT, require_status=True)
         if result.error or result.process_returncode != 0 or result.stata_rc != 0:
             raise RuntimeError(f"Mata object build failed: {result.error}")
-        if result.metadata.get("stata_version") != "18":
-            raise RuntimeError("Mata objects require the Stata 18 compiler")
+        if str(result.metadata.get("stata_version", "")).split(".")[0] != "15":
+            raise RuntimeError("Mata objects require the Stata 15 compiler")
         receipt = dict(
-            schema="fereg-ppml-mata-v1", compiler_release="18",
+            schema="fereg-ppml-mata-v1", compiler_release="15",
             source_sha256=digest(source),
             objects={name + ".mo": digest(work / (name + ".mo")) for name in FUNCTIONS},
         )

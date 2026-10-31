@@ -1,6 +1,6 @@
 v 3
 d fereg 0.5.0: high-dimensional fixed-effect OLS/WLS and PPML
-d Current main-branch package; Linux, Windows and universal macOS beta, Stata 18 or newer.
+d Current main-branch package; Linux, Windows and universal macOS beta, Stata 15 or newer.
 d Distribution-Date: 20261030
 f stata/fereg.ado
 f stata/fereg_run.ado
