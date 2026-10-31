@@ -943,12 +943,12 @@ def render(campaign, frame, output, saved_retests=None):
     rows = [['Design / N', 'FE levels', 'Components', 'First-pair links', 'Worker mean degree']]
     seen = set()
     for key, data in sorted(campaign['datasets'].items(), key=lambda kv: kv[1]['rows']):
-        # Control-count variants share their design's graph.
-        cell = next(c for c in manifest['cells']
-                    if f"{c['model']}-{c['design']}-n{c['rows']}"+('' if c.get('regressors', 16) == 16 else f"-k{c['regressors']}") == key)
-        design, n = cell['design'], cell['rows']
-        if (design, n) in seen:
+        # Control-count variants share their design's graph; inputs of superseded cells have none.
+        cell = next((c for c in manifest['cells']
+                     if f"{c['model']}-{c['design']}-n{c['rows']}"+('' if c.get('regressors', 16) == 16 else f"-k{c['regressors']}") == key), None)
+        if cell is None or (cell['design'], cell['rows']) in seen:
             continue
+        design, n = cell['design'], cell['rows']
         seen.add((design, n)); graph = data['topology']
         rows.append([DESIGNS[design]+' / '+size_label(n), ' / '.join(f'{x:,}' for x in graph['levels']),
                      f"{graph['components']:,}", f"{graph['distinct_first_pair_links']:,}" if 'distinct_first_pair_links' in graph else '-',
