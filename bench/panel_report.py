@@ -212,7 +212,9 @@ def export(root, output):
     render(campaign, frame, output)
     context = campaign['context']
     evidence = {k: context[k] for k in ['run_id', 'remote_root', 'source', 'runtime_source',
-                'linux_plugin_sha256', 'fevc_source', 'resources', 'preparation_sha256', 'preparation_notes']}
+                'linux_plugin_sha256', 'resources', 'preparation_sha256', 'preparation_notes']}
+    evidence.update({k: context[k] for k in ['fevc_source', 'preparation_root', 'preparation_files',
+                                             'preparation_retention', 'supersedes'] if k in context})
     runtime = json.loads((root/'environment/runtime.json').read_text())
     critical = {'source/dist/fereg_linux.plugin', 'environment/command-clock.plugin', 'manifest.json'}
     critical.update('source/bench/'+name for name in ['panel_campaign.py', 'campaign.py', 'campaign_stata.do',
@@ -221,11 +223,18 @@ def export(root, output):
                                                     'qualify_scc.py', 'block_host.py'])
     critical &= set(runtime)
     preparation = {}
-    for name in ['inputs.json', 'long-sample.json', 'short-sample.json']:
-        path = root/'preparation'/name
-        if sha256(path) != context['preparation_sha256'][name]:
-            raise ValueError('preparation metadata hash differs: '+name)
-        preparation[name] = json.loads(path.read_text())
+    if 'preparation_files' in context:
+        # A run that prepares its own panel retains the records it names (code,
+        # counts and source hashes); load() has checked their hashes.
+        for name in context['preparation_files']:
+            text = (root/name).read_text()
+            preparation[name] = json.loads(text) if name.endswith('.json') else text
+    else:
+        for name in ['inputs.json', 'long-sample.json', 'short-sample.json']:
+            path = root/'preparation'/name
+            if sha256(path) != context['preparation_sha256'][name]:
+                raise ValueError('preparation metadata hash differs: '+name)
+            preparation[name] = json.loads(path.read_text())
     evidence.update(schema=1, manifest=campaign['manifest'], accounting=campaign['accounting'],
                     input_audit=json.loads((root/'environment/input-audit.json').read_text()),
                     prior_panels=json.loads((root/'input/prior-panels.json').read_text()),
