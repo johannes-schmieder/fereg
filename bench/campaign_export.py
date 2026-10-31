@@ -82,7 +82,8 @@ def export(root, report, output, prefix):
     output.mkdir(parents=True, exist_ok=True)
     summary.to_csv(output/(prefix+'-summary.csv'), index=False)
     rows = []
-    for record in campaign['records']:
+    # Superseded cells keep their positions here; the summary omits them.
+    for record in campaign['records']+campaign['superseded_records']:
         meta = record.get('metadata', {})
         row = {key: record.get(key) for key in FIELDS}
         row.update(seconds=meta.get('seconds'), error=record.get('error', meta.get('error')),
@@ -116,13 +117,17 @@ def export(root, report, output, prefix):
         accounting=[{k: r[k] for k in accounting_keys if k in r} for r in campaign['accounting']['jobs']],
         launchers=context.get('launcher_sha256', {}),
         stopped_tasks=context.get('stopped_tasks', []), task_jobs=context.get('task_jobs', {}),
+        superseded_cells={cell: dict(value, statuses=dict(Counter(r['status'] for r in campaign['superseded_records']
+                                                                if r['cell'] == cell)))
+                          for cell, value in context.get('superseded_cells', {}).items()},
         scc_benchmark_tests=dict(count=int(re.findall(r'^Ran (\d+) tests', harness, re.M)[-1]),
                                  passed=harness.rstrip().endswith('OK')),
         host_isolation=hosts,
         node_reference=[dict(task=int(r.cell.rsplit('ref', 1)[1]), host=r.host, seconds=r.seconds,
                              seconds_min=r.seconds_min, seconds_max=r.seconds_max)
                         for r in references.itertuples()],
-        validation=dict(planned_positions=len(campaign['records']), arm_cells=len(summary),
+        validation=dict(planned_positions=len(campaign['records'])+len(campaign['superseded_records']),
+                        arm_cells=len(summary),
                         eligible_arm_cells=int(summary.eligible.sum()),
                         convention_arm_cells=int((summary.agreement == 'convention').sum()),
                         statuses=dict(Counter(r['status'] for r in campaign['records'])),

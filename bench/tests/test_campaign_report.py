@@ -205,6 +205,21 @@ class CampaignReportTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 check_host_observations(root, context, dict(policy=dict(bundles=2)), accounting)
 
+    def test_superseded_cells_leave_the_summary_but_keep_their_positions(self):
+        from campaign_report import supersede
+        campaign = dict(fixture(), context=dict(superseded_cells={'cell-16': dict(
+            reason='input left a singleton level', replacement_root='/runs/rerun')}))
+        result = supersede(campaign)
+        self.assertEqual(set(summarize(result).cell), {'cell-4'})
+        self.assertEqual(len(result['superseded_records']), 9)
+        self.assertEqual(len(result['records'])+len(result['superseded_records']), len(campaign['records']))
+        self.assertTrue(all(r['cell'] == 'cell-4' for r in result['comparisons']))
+        for superseded in [{'cell-99': dict(reason='r', replacement_root='/x')}, {'cell-16': dict(reason='r')}]:
+            with self.assertRaises(ValueError):
+                supersede(dict(campaign, context=dict(superseded_cells=superseded)))
+        unchanged = supersede(dict(campaign, context={}))
+        self.assertEqual((unchanged['records'], unchanged['superseded_records']), (campaign['records'], []))
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -55,7 +55,7 @@ def repetitions(cell):
     return POLICY['large_repetitions'] if cell['rows']>POLICY['large_rows'] else POLICY['repetitions']
 
 
-def configurations(smoke=False):
+def configurations(smoke=False, select=True):
     result = []
     def add(model, design='akm-baseline', rows=POLICY['baseline_rows'], threads=POLICY['main_threads'], vce=None,
             save_fe=False, section='baseline', regressors=POLICY['controls']):
@@ -88,7 +88,10 @@ def configurations(smoke=False):
     # one-million-row cells are the option and design cells above.
     for model,design in POLICY['size_series']:
         for rows in POLICY['sizes']: add(model,design,rows=rows,section='size')
-    if 'sections' in POLICY: result=[c for c in result if c['section'] in POLICY['sections']]
+    # A partial run (another node type, or cells rerun on corrected inputs)
+    # selects sections and designs of the full plan.
+    if select and 'sections' in POLICY: result=[c for c in result if c['section'] in POLICY['sections']]
+    if select and 'designs' in POLICY: result=[c for c in result if c['design'] in POLICY['designs']]
     return result
 
 
@@ -165,7 +168,7 @@ def prepare(root):
         bundles[slot].extend(sorted(group,key=lambda c:c['rows']))
         costs[slot] += sum(map(estimated_seconds,group))
     # Every node first times the same native reference cell, recording its speed.
-    reference = next(c for c in cells if c['section']=='baseline' and c['model']=='ols'
+    reference = next(c for c in configurations(select=False) if c['section']=='baseline' and c['model']=='ols'
                      and c['vce']=='iid' and not c['save_fe'])
     references = []
     for task, bundle in enumerate(bundles, 1):
@@ -274,6 +277,13 @@ def clustered_topology(n, rng):
         target = np.where(stay_region,region[assignment[:,t-1]],rng.choice(occupied,workers))
         moves = rng.random(workers)<c['mobility']
         assignment[:,t] = np.where(moves,draw(target),assignment[:,t-1])
+    # Pareto sizes can leave a firm with a single worker-year. That observation
+    # stays at the worker's firm in the neighbouring period, so that, as in the
+    # other designs, no command deletes singletons from the frozen input.
+    counts = np.bincount(assignment.reshape(-1)[:n],minlength=firms)
+    for w,t in zip(*np.nonzero(counts[assignment]==1)):
+        if w*periods+t<n: assignment[w,t] = assignment[w,t-1] if t else assignment[w,1]
+    if (np.bincount(assignment.reshape(-1)[:n])==1).any(): raise RuntimeError('singleton firm in clustered topology')
     row = np.arange(n,dtype=np.int64)
     return {'g1':row//periods+1,'g2':assignment.reshape(-1)[:n]+1}
 

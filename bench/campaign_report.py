@@ -194,8 +194,25 @@ def load_campaign(root):
         raise ValueError('manifest and observation coverage disagree')
     if any(str(r.get('job')) != production_job(context, r.get('task')) for r in records if 'directory' in r):
         raise ValueError('application observation job identity mismatch')
-    return dict(manifest=manifest, context=context, smoke=smoke, accounting=accounting,
-                records=records, comparisons=comparisons, datasets=datasets, tasks=tasks)
+    return supersede(dict(manifest=manifest, context=context, smoke=smoke, accounting=accounting,
+                          records=records, comparisons=comparisons, datasets=datasets, tasks=tasks))
+
+
+def supersede(campaign):
+    """Set aside cells that a later root reran on corrected inputs.
+
+    Their positions stay in the collected evidence and the exported
+    observations, but leave the summaries and the native checks."""
+    superseded = campaign['context'].get('superseded_cells', {})
+    if not set(superseded) <= {c['id'] for c in campaign['manifest']['cells']}:
+        raise ValueError('superseded cell is not planned')
+    if any(not v.get('reason') or not v.get('replacement_root') for v in superseded.values()):
+        raise ValueError('superseded cell lacks a reason or replacement')
+    kept = [r for r in campaign['records'] if r['cell'] not in superseded]
+    return dict(campaign, manifest=dict(campaign['manifest'], cells=[c for c in campaign['manifest']['cells']
+                                                                     if c['id'] not in superseded]),
+                records=kept, comparisons=[r for r in campaign['comparisons'] if r['cell'] not in superseded],
+                superseded_records=[r for r in campaign['records'] if r['cell'] in superseded])
 
 
 def summarize(campaign):

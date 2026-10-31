@@ -81,6 +81,11 @@ class CampaignTests(unittest.TestCase):
         self.assertEqual(int(groups['g1'].max()),4000)
         sizes=np.bincount(groups['g2'])
         self.assertGreater(sizes.max(),10*np.median(sizes[sizes>0]))
+        # The campaign's one-million-row draw once left a single worker-year
+        # in a firm, which every command but areg deleted.
+        from campaign import POLICY
+        groups=clustered_topology(1000000,np.random.Generator(np.random.PCG64(POLICY['seed'])))
+        self.assertFalse((np.bincount(groups['g2'])==1).any() or (np.bincount(groups['g1'])==1).any())
         gravity=gravity_topology(1200)
         self.assertEqual({len(v) for v in gravity.values()},{1200})
         self.assertTrue(np.all(np.diff(gravity['g3'])>=0))
@@ -214,6 +219,17 @@ class CampaignTests(unittest.TestCase):
                 self.assertEqual(len(owners),1,cell['id'])
             self.assertEqual(plan['timed_fits'],sum(len(c['arms'])*c['repetitions'] for c in plan['cells']))
             self.assertEqual(len(plan['cells']),len(configurations())+POLICY['bundles'])
+
+    def test_a_partial_run_selects_designs_and_keeps_the_reference(self):
+        import json
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as d, mock.patch.dict(POLICY,sections=['design'],designs=['akm-clustered'],bundles=1):
+            root=Path(d);prepare(root)
+            plan=json.loads((root/'manifest.json').read_text())
+            self.assertEqual([c['id'] for c in plan['cells']],
+                             ['ols-akm-baseline-n1000000-t4-iid-fe0-ref1','ols-akm-clustered-n1000000-t4-iid-fe0',
+                              'ppml-akm-clustered-n1000000-t4-robust-fe0'])
+            self.assertEqual(plan['policy']['designs'],['akm-clustered'])
 
     def test_a_timeout_ends_its_size_series_on_the_node(self):
         import json
