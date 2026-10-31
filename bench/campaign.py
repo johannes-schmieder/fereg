@@ -88,10 +88,11 @@ def configurations(smoke=False, select=True):
     # one-million-row cells are the option and design cells above.
     for model,design in POLICY['size_series']:
         for rows in POLICY['sizes']: add(model,design,rows=rows,section='size')
-    # A partial run (another node type, or cells rerun on corrected inputs)
-    # selects sections and designs of the full plan.
+    # A partial run (another node type, or cells rerun on corrected inputs or
+    # another node) selects sections, designs and models of the full plan.
     if select and 'sections' in POLICY: result=[c for c in result if c['section'] in POLICY['sections']]
     if select and 'designs' in POLICY: result=[c for c in result if c['design'] in POLICY['designs']]
+    if select and 'models' in POLICY: result=[c for c in result if c['model'] in POLICY['models']]
     return result
 
 

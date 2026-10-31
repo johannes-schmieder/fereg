@@ -231,6 +231,19 @@ class CampaignTests(unittest.TestCase):
                               'ppml-akm-clustered-n1000000-t4-robust-fe0'])
             self.assertEqual(plan['policy']['designs'],['akm-clustered'])
 
+    def test_a_partial_run_selects_one_model_of_a_design(self):
+        import json
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as d, mock.patch.dict(POLICY,designs=['akm-baseline'],models=['ppml'],bundles=1):
+            root=Path(d);prepare(root)
+            plan=json.loads((root/'manifest.json').read_text())
+            ids=[c['id'] for c in plan['cells']]
+            self.assertEqual(ids[0],'ols-akm-baseline-n1000000-t4-iid-fe0-ref1')
+            self.assertTrue(all(i.startswith('ppml-akm-baseline-') for i in ids[1:]))
+            full=[c['id'] for c in configurations(select=False) if c['model']=='ppml' and c['design']=='akm-baseline']
+            self.assertEqual(sorted(ids[1:]),sorted(full))
+            self.assertEqual(len(full),15)
+
     def test_a_timeout_ends_its_size_series_on_the_node(self):
         import json
         from unittest import mock
