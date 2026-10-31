@@ -652,15 +652,17 @@ The October 30 SCC campaign of the published Linux plugin `af65682b...` (runtime
 source `65500be6`) adds clustered-mobility and gravity designs, strict PyFixest,
 32 instead of 64 controls, the Stata-comparison cells on an Ice Lake node, and
 the Veneto long panel on the leave-one-out and largest connected sets. All 357
-native fits outside two superseded cells passed their repeat, cross-worker and
-independent smoke checks; the superseded clustered-mobility cells were rerun once
-after the generator stopped leaving a singleton firm-year. Setups passed their
-harness suites, and accounting, sentinels, host observations and frozen
-inventories verified. No timed fit was retried or excluded and no tolerance
-changed; five roots stopped before any timed fit are recorded in the
-[completion record](../bench/results/scc-20261030-beta11-completion.json). The
-PPML AKM bundle ran on a node whose reference fit was 1.8 times slower; that
-observation is retained. This is descriptive measurement of a published release,
+native fits outside eighteen superseded cells passed their repeat, cross-worker
+and independent smoke checks. The two clustered-mobility cells were rerun once
+after the generator stopped leaving a singleton firm-year. The PPML AKM bundle
+first ran on a node whose reference fit was 1.8 times slower; its fifteen cells
+and reference were rerun once on a normal-speed node. Superseded positions are
+retained. Setups passed their harness suites, and accounting, sentinels, host
+observations and frozen inventories verified. No other timed fit was repeated or
+excluded and no tolerance changed; five roots stopped before any timed fit are
+recorded in the
+[completion record](../bench/results/scc-20261030-beta11-completion.json).
+This is descriptive measurement of a published release,
 not new runtime qualification. See the [synthetic](fixest_benchmarks.md) and
 [Veneto](veneto_benchmarks.md) reports and the
 [accuracy study](../bench/results/scc-20261030-beta11-accuracy.json).

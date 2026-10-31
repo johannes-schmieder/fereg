@@ -42,13 +42,13 @@
    ],
    "planned_positions": 1725,
    "statuses": {
-    "ok": 1535,
-    "capture-error": 15,
-    "skipped-after-failure": 86,
-    "command-timeout": 8,
+    "ok": 1246,
+    "capture-error": 7,
+    "skipped-after-failure": 52,
+    "command-timeout": 7,
     "skipped-after-timeout": 6
    },
-   "native_fits": 261,
+   "native_fits": 187,
    "native_all_pass": true,
    "harness_tests": {
     "count": 438,
@@ -64,13 +64,6 @@
     "scc-xf3"
    ],
    "node_reference": [
-    {
-     "task": 1,
-     "host": "scc-wo4",
-     "seconds": 1.668657201,
-     "seconds_min": 1.637945556,
-     "seconds_max": 1.7363178000000001
-    },
     {
      "task": 2,
      "host": "scc-xb2",
@@ -123,6 +116,126 @@
      "statuses": {
       "capture-error": 6,
       "skipped-after-failure": 24
+     }
+    },
+    "ols-akm-baseline-n1000000-t4-iid-fe0-ref1": {
+     "reason": "Task 1 ran on scc-wo4, whose native reference fit took 1.67 s against 0.92-0.94 s on the five other campaign nodes. Its fifteen PPML worker-firm cells and reference were rerun from the same plugin, inputs and comparator environments on scc-xe1 (reference 0.93 s) under a node rule frozen before timing, requested by Johannes on 2026-10-31.",
+     "replacement_root": "/projectnb/welfgr/fereg/runs/20261031T113159Z-beta11-ppml-akm-deed0131",
+     "statuses": {
+      "ok": 3
+     }
+    },
+    "ppml-akm-baseline-n100000-t4-robust-fe0": {
+     "reason": "Task 1 ran on scc-wo4, whose native reference fit took 1.67 s against 0.92-0.94 s on the five other campaign nodes. Its fifteen PPML worker-firm cells and reference were rerun from the same plugin, inputs and comparator environments on scc-xe1 (reference 0.93 s) under a node rule frozen before timing, requested by Johannes on 2026-10-31.",
+     "replacement_root": "/projectnb/welfgr/fereg/runs/20261031T113159Z-beta11-ppml-akm-deed0131",
+     "statuses": {
+      "ok": 20
+     }
+    },
+    "ppml-akm-baseline-n300000-t4-robust-fe0": {
+     "reason": "Task 1 ran on scc-wo4, whose native reference fit took 1.67 s against 0.92-0.94 s on the five other campaign nodes. Its fifteen PPML worker-firm cells and reference were rerun from the same plugin, inputs and comparator environments on scc-xe1 (reference 0.93 s) under a node rule frozen before timing, requested by Johannes on 2026-10-31.",
+     "replacement_root": "/projectnb/welfgr/fereg/runs/20261031T113159Z-beta11-ppml-akm-deed0131",
+     "statuses": {
+      "ok": 20
+     }
+    },
+    "ppml-akm-baseline-n1000000-t1-robust-fe0": {
+     "reason": "Task 1 ran on scc-wo4, whose native reference fit took 1.67 s against 0.92-0.94 s on the five other campaign nodes. Its fifteen PPML worker-firm cells and reference were rerun from the same plugin, inputs and comparator environments on scc-xe1 (reference 0.93 s) under a node rule frozen before timing, requested by Johannes on 2026-10-31.",
+     "replacement_root": "/projectnb/welfgr/fereg/runs/20261031T113159Z-beta11-ppml-akm-deed0131",
+     "statuses": {
+      "ok": 20
+     }
+    },
+    "ppml-akm-baseline-n1000000-t2-robust-fe0": {
+     "reason": "Task 1 ran on scc-wo4, whose native reference fit took 1.67 s against 0.92-0.94 s on the five other campaign nodes. Its fifteen PPML worker-firm cells and reference were rerun from the same plugin, inputs and comparator environments on scc-xe1 (reference 0.93 s) under a node rule frozen before timing, requested by Johannes on 2026-10-31.",
+     "replacement_root": "/projectnb/welfgr/fereg/runs/20261031T113159Z-beta11-ppml-akm-deed0131",
+     "statuses": {
+      "ok": 20
+     }
+    },
+    "ppml-akm-baseline-n1000000-t4-robust-fe0": {
+     "reason": "Task 1 ran on scc-wo4, whose native reference fit took 1.67 s against 0.92-0.94 s on the five other campaign nodes. Its fifteen PPML worker-firm cells and reference were rerun from the same plugin, inputs and comparator environments on scc-xe1 (reference 0.93 s) under a node rule frozen before timing, requested by Johannes on 2026-10-31.",
+     "replacement_root": "/projectnb/welfgr/fereg/runs/20261031T113159Z-beta11-ppml-akm-deed0131",
+     "statuses": {
+      "ok": 30
+     }
+    },
+    "ppml-akm-baseline-n1000000-t4-robust-fe1": {
+     "reason": "Task 1 ran on scc-wo4, whose native reference fit took 1.67 s against 0.92-0.94 s on the five other campaign nodes. Its fifteen PPML worker-firm cells and reference were rerun from the same plugin, inputs and comparator environments on scc-xe1 (reference 0.93 s) under a node rule frozen before timing, requested by Johannes on 2026-10-31.",
+     "replacement_root": "/projectnb/welfgr/fereg/runs/20261031T113159Z-beta11-ppml-akm-deed0131",
+     "statuses": {
+      "capture-error": 3,
+      "ok": 15,
+      "skipped-after-failure": 12
+     }
+    },
+    "ppml-akm-baseline-n1000000-t4-cluster-fe0": {
+     "reason": "Task 1 ran on scc-wo4, whose native reference fit took 1.67 s against 0.92-0.94 s on the five other campaign nodes. Its fifteen PPML worker-firm cells and reference were rerun from the same plugin, inputs and comparator environments on scc-xe1 (reference 0.93 s) under a node rule frozen before timing, requested by Johannes on 2026-10-31.",
+     "replacement_root": "/projectnb/welfgr/fereg/runs/20261031T113159Z-beta11-ppml-akm-deed0131",
+     "statuses": {
+      "ok": 30
+     }
+    },
+    "ppml-akm-baseline-n1000000-t4-cluster-fe1": {
+     "reason": "Task 1 ran on scc-wo4, whose native reference fit took 1.67 s against 0.92-0.94 s on the five other campaign nodes. Its fifteen PPML worker-firm cells and reference were rerun from the same plugin, inputs and comparator environments on scc-xe1 (reference 0.93 s) under a node rule frozen before timing, requested by Johannes on 2026-10-31.",
+     "replacement_root": "/projectnb/welfgr/fereg/runs/20261031T113159Z-beta11-ppml-akm-deed0131",
+     "statuses": {
+      "capture-error": 3,
+      "ok": 15,
+      "skipped-after-failure": 12
+     }
+    },
+    "ppml-akm-baseline-n1000000-t8-robust-fe0": {
+     "reason": "Task 1 ran on scc-wo4, whose native reference fit took 1.67 s against 0.92-0.94 s on the five other campaign nodes. Its fifteen PPML worker-firm cells and reference were rerun from the same plugin, inputs and comparator environments on scc-xe1 (reference 0.93 s) under a node rule frozen before timing, requested by Johannes on 2026-10-31.",
+     "replacement_root": "/projectnb/welfgr/fereg/runs/20261031T113159Z-beta11-ppml-akm-deed0131",
+     "statuses": {
+      "ok": 15
+     }
+    },
+    "ppml-akm-baseline-n1000000-t16-robust-fe0": {
+     "reason": "Task 1 ran on scc-wo4, whose native reference fit took 1.67 s against 0.92-0.94 s on the five other campaign nodes. Its fifteen PPML worker-firm cells and reference were rerun from the same plugin, inputs and comparator environments on scc-xe1 (reference 0.93 s) under a node rule frozen before timing, requested by Johannes on 2026-10-31.",
+     "replacement_root": "/projectnb/welfgr/fereg/runs/20261031T113159Z-beta11-ppml-akm-deed0131",
+     "statuses": {
+      "ok": 15
+     }
+    },
+    "ppml-akm-baseline-n1000000-t16-cluster-fe1": {
+     "reason": "Task 1 ran on scc-wo4, whose native reference fit took 1.67 s against 0.92-0.94 s on the five other campaign nodes. Its fifteen PPML worker-firm cells and reference were rerun from the same plugin, inputs and comparator environments on scc-xe1 (reference 0.93 s) under a node rule frozen before timing, requested by Johannes on 2026-10-31.",
+     "replacement_root": "/projectnb/welfgr/fereg/runs/20261031T113159Z-beta11-ppml-akm-deed0131",
+     "statuses": {
+      "capture-error": 2,
+      "ok": 5,
+      "skipped-after-failure": 8
+     }
+    },
+    "ppml-akm-baseline-n1000000-t4-robust-fe0-k4": {
+     "reason": "Task 1 ran on scc-wo4, whose native reference fit took 1.67 s against 0.92-0.94 s on the five other campaign nodes. Its fifteen PPML worker-firm cells and reference were rerun from the same plugin, inputs and comparator environments on scc-xe1 (reference 0.93 s) under a node rule frozen before timing, requested by Johannes on 2026-10-31.",
+     "replacement_root": "/projectnb/welfgr/fereg/runs/20261031T113159Z-beta11-ppml-akm-deed0131",
+     "statuses": {
+      "ok": 30
+     }
+    },
+    "ppml-akm-baseline-n1000000-t4-robust-fe0-k32": {
+     "reason": "Task 1 ran on scc-wo4, whose native reference fit took 1.67 s against 0.92-0.94 s on the five other campaign nodes. Its fifteen PPML worker-firm cells and reference were rerun from the same plugin, inputs and comparator environments on scc-xe1 (reference 0.93 s) under a node rule frozen before timing, requested by Johannes on 2026-10-31.",
+     "replacement_root": "/projectnb/welfgr/fereg/runs/20261031T113159Z-beta11-ppml-akm-deed0131",
+     "statuses": {
+      "ok": 30
+     }
+    },
+    "ppml-akm-baseline-n3000000-t4-robust-fe0": {
+     "reason": "Task 1 ran on scc-wo4, whose native reference fit took 1.67 s against 0.92-0.94 s on the five other campaign nodes. Its fifteen PPML worker-firm cells and reference were rerun from the same plugin, inputs and comparator environments on scc-xe1 (reference 0.93 s) under a node rule frozen before timing, requested by Johannes on 2026-10-31.",
+     "replacement_root": "/projectnb/welfgr/fereg/runs/20261031T113159Z-beta11-ppml-akm-deed0131",
+     "statuses": {
+      "ok": 12
+     }
+    },
+    "ppml-akm-baseline-n10000000-t4-robust-fe0": {
+     "reason": "Task 1 ran on scc-wo4, whose native reference fit took 1.67 s against 0.92-0.94 s on the five other campaign nodes. Its fifteen PPML worker-firm cells and reference were rerun from the same plugin, inputs and comparator environments on scc-xe1 (reference 0.93 s) under a node rule frozen before timing, requested by Johannes on 2026-10-31.",
+     "replacement_root": "/projectnb/welfgr/fereg/runs/20261031T113159Z-beta11-ppml-akm-deed0131",
+     "statuses": {
+      "ok": 9,
+      "command-timeout": 1,
+      "skipped-after-failure": 2
      }
     }
    }
@@ -181,6 +294,67 @@
      "seconds": 0.927029112,
      "seconds_min": 0.913720654,
      "seconds_max": 0.9313424020000001
+    }
+   ],
+   "superseded_cells": {}
+  },
+  "ppml-rerun": {
+   "run_id": "20261031T113159Z-beta11-ppml-akm-deed0131",
+   "source": "deed013109c7543d3505263bba35b8a4529974e5",
+   "resources": {
+    "setup": {
+     "slots": 28,
+     "pe": "omp28",
+     "num_proc": 28,
+     "cpu_type": "E5-2680v4",
+     "mem_per_core": "3G",
+     "h_rt": "02:00:00"
+    },
+    "smoke": {
+     "slots": 28,
+     "pe": "omp28",
+     "num_proc": 28,
+     "cpu_type": "E5-2680v4"
+    },
+    "production": {
+     "slots": 28,
+     "pe": "omp28",
+     "num_proc": 28,
+     "cpu_type": "E5-2680v4",
+     "mem_per_core": "3G",
+     "h_rt": "12:00:00"
+    }
+   },
+   "jobs": {
+    "setup_job": "8370735",
+    "smoke_job": "8370736",
+    "production_job": "8370737"
+   },
+   "supersedes": null,
+   "planned_positions": 332,
+   "statuses": {
+    "ok": 289,
+    "capture-error": 8,
+    "skipped-after-failure": 34,
+    "command-timeout": 1
+   },
+   "native_fits": 74,
+   "native_all_pass": true,
+   "harness_tests": {
+    "count": 443,
+    "passed": true
+   },
+   "hosts": [
+    "scc-wo4",
+    "scc-xe1"
+   ],
+   "node_reference": [
+    {
+     "task": 1,
+     "host": "scc-xe1",
+     "seconds": 0.9262480460000001,
+     "seconds_min": 0.9181927240000001,
+     "seconds_max": 0.934298209
     }
    ],
    "superseded_cells": {}
@@ -342,7 +516,7 @@
    "eligible_arm_cells": 27
   }
  },
- "planned_positions": 2409,
+ "planned_positions": 2741,
  "native_fits": 357,
  "accuracy": {
   "file": "scc-20261030-beta11-accuracy.json",
@@ -390,11 +564,12 @@
   "retries_of_timed_fits": 0,
   "exclusions": 0,
   "tolerance_changes": 0,
-  "reruns": "The two clustered-mobility cells were rerun on a corrected input (one singleton firm-year); no other cell was repeated."
+  "reruns": "The two clustered-mobility cells were rerun on a corrected input (one singleton firm-year). The fifteen PPML worker-firm cells of task 1 and its reference were rerun once on a normal-speed node (scc-xe1, reference 0.93 s) because scc-wo4's reference fit took 1.67 s; no other cell was repeated."
  },
  "limitations": [
   "All ratios compare packages within a configuration and host; no absolute speedup over beta.10 is claimed.",
-  "The PPML worker-firm bundle (task 1, scc-wo4) ran on a node whose native reference median was 1.67 s, against 0.92-0.94 s on the other synthetic hosts; its absolute times and possibly its ratios reflect that node.",
+  "The PPML worker-firm bundle first ran on scc-wo4, whose native reference median was 1.67 s against 0.92-0.94 s on the other synthetic hosts; its positions are retained as superseded, and the rerun on scc-xe1 (reference 0.93 s) replaces it in the summaries.",
+  "The PPML rerun's setup and smoke jobs ran on scc-wo4; only its production task was timed on scc-xe1.",
   "The clustered-mobility cells come from a separate root on a node of the same type (reference 0.93 s).",
   "reghdfe did not finish within 600 s at one core on the largest connected set; its later repetitions were skipped.",
   "Comparator errors, time limits, scientific discrepancies and prescribed skipped positions remain retained.",
@@ -408,9 +583,12 @@
   "scc-20261030-beta11-icelake-inputs.json": "7fc9e7f57647905586ac29ef6c801a6bba0978854d4850a5a00ed02833e12cf7",
   "scc-20261030-beta11-icelake-observations.csv": "f4fac6c058ab520bf085b63ca0f8b00e23915bae1314da145a4593a1b21a50ad",
   "scc-20261030-beta11-icelake-summary.csv": "bd7991f086ae94ce1ca69573a15e307781a448b0e2b11eac4d4ddcc1ff2488aa",
-  "scc-20261030-beta11-inputs.json": "77b8c7ba40366e4ec279665674a9626df4196e8f6232078780c281902cb633b6",
-  "scc-20261030-beta11-observations.csv": "e9ec8bac439628bf89beffdae6dc2606a95a98e0e505f470943e56ef15783c4e",
-  "scc-20261030-beta11-summary.csv": "49676f05b29d338d5b6e8702563d372883245a02f251298197825f63a7bc06c4",
+  "scc-20261030-beta11-inputs.json": "ae192405399a9e823a75b3f09a98ee32be8fd6dac7ab6adefeb70cf0a1054f35",
+  "scc-20261030-beta11-observations.csv": "46da86af50d79902de380802dde9115d6627f2e3d58450058011ec3bc848014e",
+  "scc-20261030-beta11-ppml-inputs.json": "b08eb3cbe10a40351e6e60da42dce5483f86f7f1f41eb78d33dfc68f906c1e37",
+  "scc-20261030-beta11-ppml-observations.csv": "614714958f3595545ca9905462a2458257e702337c45b0fa3696a2cda171f516",
+  "scc-20261030-beta11-ppml-summary.csv": "151eb60ae1bdb6fa32f261e8da41e5e72e84bb94f0d33948c861b34d3180a92b",
+  "scc-20261030-beta11-summary.csv": "fcd1c767f44044b2385a007080ad79f021307d8e7d7c9e61602ef7cacd0f634b",
   "scc-20261030-beta11-veneto-long-lcs-inputs.json": "58863cb8c7699b414abb36520bebf51736dde407a02b2c0a57a320d6ddfee61a",
   "scc-20261030-beta11-veneto-long-lcs-observations.csv": "49fa3d829d8634aefbf84b12d6214f1173576f262c970c39491b629879a7ce02",
   "scc-20261030-beta11-veneto-long-lcs-science.json": "e77d487f659effd5a3a88f43339f8bcfdfba849c9b9415d90e1e7fcfde25b87e",
