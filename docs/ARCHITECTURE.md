@@ -139,6 +139,17 @@ the projected bank `Z = P X`, reconstruction forms `P(y - D a) - Z (b/s)` and
 the finite scores `Z'r / s` in parallel instead of rescanning row-major
 representatives.
 
+The compact coupling's eliminated-group products (`fe/slope_coefficients/coupling.rs`)
+dominate a sparse many-FE joint frame. When every coupling pair is
+single-channel, they read one group-major stream (one offset array, `u32`
+retained coordinates and values, refreshed from the per-pair banks once per
+frame) instead of offsets, targets and values for each pair. Each group's
+edges keep their pair-then-edge order, so the products are bitwise those of
+the per-pair loop. Six concurrent streams per worker had made L2 conflict
+misses depend on where the banks were allocated: on Linux, a fit's frames ran
+either about 4.2 or 5-10 ms per step for the whole fit. Slope designs keep the
+per-pair loop.
+
 ## Host and execution
 
 `model_metadata.rs` owns shared model decoding and wire construction.

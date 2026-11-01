@@ -736,10 +736,43 @@ public Auto PPML with explicit `solver(lsmr)`, whose retained core-pair Schwarz
 factor needs 15 to 24 steps per frame. On sparse three-FE, Auto took 25.9 s in
 three fits and 33.6-34.1 s in three, explicit LSMR 24.0-25.1 s and PyFixest
 20.8-21.8 s. On dense three-FE, Auto took 6.1 s, explicit LSMR 10.3 s and
-PyFixest 5.6 s. Explicit LSMR is therefore no general replacement, and Auto's
-slow sparse fits, now seen on two node classes, have no explanation yet.
+PyFixest 5.6 s. Explicit LSMR is therefore no general replacement. Auto's
+slow sparse fits, seen on two node classes, are explained below.
 Coefficients repeated exactly in every arm and stayed within 3.3e-12 of the
 strict fits.
+
+### Joint-frame slow mode and the coupling stream (development, 2026-11-01)
+
+Diagnosis (jobs 8384403 and 8384428 on `scc-zj4`, Xeon Gold 6132, beta.12,
+sparse three-FE PPML, node-0 cores 0, 2, 4 and 6, one warm-up and two timed fits
+per process, per-fit `perf` counters and per-second thread samples). The joint
+frames' coupling operator ran either at 4.16 ms per step or at 5.3-9.9 ms per
+step, constant through every frame of a fit. Ten of the 11 default slow fits
+were a process's first timed fit. Slow fits executed the same instructions at
+the same clock with 0.52-0.84 times the instructions per cycle,
+10-30% more L2 misses served from L3 and unchanged L3 misses. Disabling
+transparent huge pages for the process (`prctl`) still gave 2 slow fits of 8,
+and large allocations from glibc arenas 1 of 8, against 11 of 24 by default; no
+two running threads shared a core. The operator streamed offsets, targets and
+values for each of its two coupling pairs, six arrays per worker, and whether
+they conflicted in L2 depended on where a fit's banks were allocated.
+
+Change: single-channel compact couplings now read one group-major stream (see
+[ARCHITECTURE](ARCHITECTURE.md)). Each group keeps its pair-then-edge
+operation order, so results are bitwise unchanged: a unit witness compares the
+stream with the per-pair products bit for bit, the 77-case macOS replay is
+identical to beta.12, and every timed fit below produced the same coefficient
+file in both arms.
+
+A/B (job 8384441, `scc-wo4`, Xeon E5-2680 v4, the node of the route diagnostic,
+six processes per arm alternating, the same placement): beta.12 took 25.6-26.2 s
+in nine fits and 32.9-39.3 s in three first fits; the stream took 18.4-18.9 s in
+all twelve. The operator went from 4.09-4.31 ms per step (8.8 in a slow fit) to
+1.61-1.63 ms, with identical step counts in every frame. On the Mac the fit went
+from 9.3-10.0 to 7.2-7.3 s and the operator from 1.6-1.9 to 0.84-0.88 ms per
+step. PyFixest took 20.8-21.8 s on `scc-wo4` the day before (job 8381971), so
+fereg's sparse three-FE PPML is now about 12% ahead of it there; other node
+classes were not remeasured. The two checkpoint solves (about 7 s) are unchanged.
 
 ## Published beta.11 descriptive campaign
 

@@ -345,6 +345,17 @@ impl SlopeCoefficientWorkspace {
             }
         }
         assert!(used > 0, "test must exercise a prepared numerical operator");
+        let streamed = (0..3).all(|phase| {
+            let direction: Vec<_> = (0..self.coefficients)
+                .map(|i| ((i * 23 + phase * 11) as f64).cos())
+                .collect();
+            coupling.check_stream_matches_pairs(&direction)
+        });
+        let single_channel = design.effects().iter().all(|effect| effect.channels() == 1);
+        assert!(
+            !single_channel || streamed || !coupling.is_compact(),
+            "a compact single-channel coupling uses the stream"
+        );
         let mut direction = vec![0.; self.coefficients];
         assert!(coupling.apply(&direction, &mut actual, &mut work).is_none());
         for invalid in [f64::NAN, f64::INFINITY] {

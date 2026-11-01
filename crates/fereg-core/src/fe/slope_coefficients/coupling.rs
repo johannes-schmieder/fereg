@@ -251,6 +251,98 @@ impl PairBlocks {
     }
 }
 
+/// Group-major copy of single-channel coupling pairs for the eliminated-group
+/// products: every eliminated group's edges of all coupling pairs, in pair
+/// order, as one offset, coordinate and value stream instead of three per
+/// pair. Fewer concurrent streams make the products' memory traffic
+/// independent of where the pair banks were allocated; the products keep
+/// their operation order, so results are unchanged.
+struct CouplingStream {
+    offsets: Vec<usize>,
+    coordinates: Vec<u32>,
+    values: Vec<f64>,
+}
+
+impl CouplingStream {
+    fn eligible(pairs: &[PairBlocks], dimension: usize) -> bool {
+        u32::try_from(dimension).is_ok()
+            && pairs
+                .iter()
+                .all(|pair| pair.left_channels == 1 && pair.right_channels == 1)
+    }
+
+    fn new(pairs: &[PairBlocks]) -> Result<Self> {
+        let groups = pairs[0].offsets.len() - 1;
+        let edges = pairs.iter().try_fold(0usize, |sum, pair| {
+            sum.checked_add(pair.targets.len()).ok_or_else(allocation)
+        })?;
+        let mut offsets = filled(groups.checked_add(1).ok_or_else(allocation)?, 0usize)?;
+        let mut coordinates = filled(edges, 0u32)?;
+        let mut at = 0;
+        for (group, start) in offsets[..groups].iter_mut().enumerate() {
+            *start = at;
+            for pair in pairs {
+                for edge in pair.offsets[group]..pair.offsets[group + 1] {
+                    coordinates[at] = u32::try_from(pair.right_start + pair.targets[edge])
+                        .map_err(|_| allocation())?;
+                    at += 1;
+                }
+            }
+        }
+        offsets[groups] = at;
+        Ok(Self {
+            offsets,
+            coordinates,
+            values: filled(edges, 0.)?,
+        })
+    }
+
+    /// Copy the freshly filled pair values into stream order.
+    fn gather(&mut self, pairs: &[PairBlocks]) {
+        let Self {
+            offsets, values, ..
+        } = self;
+        let groups = offsets.len() - 1;
+        let fill = |levels: std::ops::Range<usize>, out: &mut [f64]| {
+            let mut at = 0;
+            for group in levels {
+                for pair in pairs {
+                    let edges = pair.offsets[group]..pair.offsets[group + 1];
+                    out[at..at + edges.len()].copy_from_slice(&pair.values[edges.clone()]);
+                    at += edges.len();
+                }
+            }
+        };
+        split_levels(0..groups, offsets, 1, values, &fill);
+    }
+
+    /// The exact single-channel `subtract_eliminated` sequence.
+    fn subtract_eliminated(
+        &self,
+        x: &[f64],
+        y: &mut [f64],
+        c: &mut [f64],
+        groups: std::ops::Range<usize>,
+    ) {
+        for group in groups {
+            let edges = self.offsets[group]..self.offsets[group + 1];
+            let mut local = 0.;
+            for edge in edges.clone() {
+                local = product_sum(self.values[edge], x[self.coordinates[edge] as usize], local);
+            }
+            for edge in edges {
+                let at = self.coordinates[edge] as usize;
+                y[at] = product_sum(-self.values[edge], local, y[at]);
+            }
+            c[0] = local;
+        }
+    }
+
+    fn elements(&self) -> usize {
+        self.offsets.capacity() + self.coordinates.capacity().div_ceil(2) + self.values.capacity()
+    }
+}
+
 pub(super) struct PreparedCoupling {
     eliminated: usize,
     dimension: usize,
@@ -265,6 +357,8 @@ pub(super) struct PreparedCoupling {
     row_values: Vec<f64>,
     row_columns: Vec<usize>,
     representation: Representation,
+    /// Stream order of the coupling pairs for the compact products.
+    stream: Option<CouplingStream>,
     curvature_error_scale: f64,
     #[cfg(test)]
     pub(super) preparations: usize,
@@ -307,11 +401,31 @@ impl PreparedCoupling {
                 numbers += numeric as u128;
             }
         }
+        // A compact representation of single-channel coupling pairs adds the
+        // stream copy of their coordinates and values; charge it whenever the
+        // representation could be compact.
+        let effects = design.effects();
+        let mut stream = 0u128;
+        if u32::try_from(s.p).is_ok() && effects.iter().all(|e| e.channels() == 1) {
+            let eliminated = &effects[s.eliminated];
+            let edges: u128 = effects
+                .iter()
+                .enumerate()
+                .filter(|(i, _)| *i != s.eliminated)
+                .map(|(_, r)| {
+                    (design.nobs() as u128)
+                        .min(eliminated.n_levels() as u128 * r.n_levels() as u128)
+                })
+                .sum();
+            stream = (eliminated.n_levels() as u128 + 1) * std::mem::size_of::<usize>() as u128
+                + edges * (std::mem::size_of::<u32>() as u128 + 8);
+        }
         Ok(Some(
             std::mem::size_of::<Self>() as u128
                 + s.pairs as u128 * std::mem::size_of::<PairBlocks>() as u128
                 + indices * std::mem::size_of::<usize>() as u128
-                + numbers * 8,
+                + numbers * 8
+                + stream,
         ))
     }
 
@@ -415,6 +529,13 @@ impl PreparedCoupling {
         for pair in &mut pairs {
             pair.values = filled(pair.numeric_len()?, 0.)?;
         }
+        let stream = if representation == Representation::Coupling
+            && CouplingStream::eligible(&pairs[..coupling_pairs], s.p)
+        {
+            Some(CouplingStream::new(&pairs[..coupling_pairs])?)
+        } else {
+            None
+        };
         let dense = if representation == Representation::Schur {
             s.dense
         } else {
@@ -435,6 +556,7 @@ impl PreparedCoupling {
             row_values: filled(row, 0.)?,
             row_columns: filled(row, 0)?,
             representation,
+            stream,
             curvature_error_scale: 64.
                 * f64::EPSILON
                 * (design.nobs() as f64 + s.q as f64 + s.p as f64)
@@ -454,6 +576,7 @@ impl PreparedCoupling {
             + self.row_values.capacity()
             + self.row_columns.capacity()
             + self.pairs.iter().map(PairBlocks::elements).sum::<usize>()
+            + self.stream.as_ref().map_or(0, CouplingStream::elements)
     }
 
     #[cfg(test)]
@@ -478,10 +601,16 @@ impl PreparedCoupling {
                 .iter()
                 .map(|p| p.values.capacity())
                 .sum::<usize>();
+        let stream = self.stream.as_ref().map_or(0, |stream| {
+            (stream.offsets.capacity() * std::mem::size_of::<usize>()
+                + stream.coordinates.capacity() * std::mem::size_of::<u32>()
+                + stream.values.capacity() * 8) as u128
+        });
         std::mem::size_of::<Self>() as u128
             + self.pairs.capacity() as u128 * std::mem::size_of::<PairBlocks>() as u128
             + indices as u128 * std::mem::size_of::<usize>() as u128
             + numbers as u128 * 8
+            + stream
     }
 
     pub(super) fn prepare(
@@ -568,6 +697,9 @@ impl PreparedCoupling {
         });
         if self.representation == Representation::Schur {
             self.form_schur(design, groups);
+        }
+        if let Some(stream) = self.stream.as_mut() {
+            stream.gather(&self.pairs[..self.coupling_pairs]);
         }
     }
 
@@ -730,6 +862,20 @@ impl PreparedCoupling {
         c: &mut [f64],
         groups: std::ops::Range<usize>,
     ) {
+        match &self.stream {
+            Some(stream) => stream.subtract_eliminated(x, y, c, groups),
+            None => self.subtract_eliminated_pairs(x, y, c, groups),
+        }
+    }
+
+    #[inline(always)]
+    fn subtract_eliminated_pairs(
+        &self,
+        x: &[f64],
+        y: &mut [f64],
+        c: &mut [f64],
+        groups: std::ops::Range<usize>,
+    ) {
         // Finish C and C' for one eliminated group while its block values
         // are hot. Each invocation writes only its own output and scratch.
         let lc = self.pairs[0].left_channels;
@@ -830,6 +976,39 @@ impl PreparedCoupling {
     #[cfg(test)]
     pub(super) fn force_compact_for_test(&mut self) {
         self.representation = Representation::Coupling;
+        if self.stream.is_none()
+            && CouplingStream::eligible(&self.pairs[..self.coupling_pairs], self.dimension)
+        {
+            let mut stream = CouplingStream::new(&self.pairs[..self.coupling_pairs]).unwrap();
+            stream.gather(&self.pairs[..self.coupling_pairs]);
+            self.stream = Some(stream);
+        }
+    }
+
+    #[cfg(test)]
+    pub(super) fn is_compact(&self) -> bool {
+        self.representation == Representation::Coupling
+    }
+
+    /// The stream products repeat the per-pair products bit for bit.
+    #[cfg(test)]
+    pub(super) fn check_stream_matches_pairs(&self, input: &[f64]) -> bool {
+        let Some(stream) = &self.stream else {
+            return false;
+        };
+        let groups = self.pairs[0].offsets.len() - 1;
+        let lc = self.pairs[0].left_channels;
+        let mut from_stream = vec![0.25; input.len()];
+        let mut from_pairs = vec![0.25; input.len()];
+        let (mut c_stream, mut c_pairs) = (vec![0.; lc], vec![0.; lc]);
+        stream.subtract_eliminated(input, &mut from_stream, &mut c_stream, 0..groups);
+        self.subtract_eliminated_pairs(input, &mut from_pairs, &mut c_pairs, 0..groups);
+        assert!(from_stream
+            .iter()
+            .zip(&from_pairs)
+            .all(|(a, b)| a.to_bits() == b.to_bits()));
+        assert_eq!(c_stream[0].to_bits(), c_pairs[0].to_bits());
+        true
     }
 }
 

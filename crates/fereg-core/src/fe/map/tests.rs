@@ -1261,6 +1261,95 @@ fn slope_coefficients_preserve_analytic_projection_across_weights_rank_and_threa
 }
 
 #[test]
+fn intercept_coupling_stream_repeats_pair_products_exactly() {
+    // Three single-channel intercepts on two components: the compact
+    // coupling streams its two coupling pairs, and its products must equal the
+    // per-pair products bit for bit and the observation-space operator.
+    let rows = 2 * 8 * 6 * 2;
+    let mut codes = [Vec::new(), Vec::new(), Vec::new()];
+    for component in 0..2 {
+        for i in 0..8 {
+            for j in 0..6 {
+                for t in 0..2 {
+                    codes[0].push((component * 8 + i) as u32);
+                    codes[1].push((component * 6 + j) as u32);
+                    codes[2].push((component * 2 + t) as u32);
+                }
+            }
+        }
+    }
+    let [g1, g2, g3] = codes;
+    let design = FeDesign::new(
+        rows,
+        vec![
+            EffectTerm::new(g1, 16, true, vec![]).unwrap(),
+            EffectTerm::new(g2, 12, true, vec![]).unwrap(),
+            EffectTerm::new(g3, 4, true, vec![]).unwrap(),
+        ],
+    )
+    .unwrap();
+    for threads in [1, 4] {
+        let pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(threads)
+            .build()
+            .unwrap();
+        let mut solver = ReusableMapAbsorber::new(design.clone(), 3).unwrap();
+        solver.enable_certificate_geometry().unwrap();
+        solver.enable_coefficient_solver(threads).unwrap();
+        solver.enable_coefficient_coupling().unwrap();
+        solver
+            .coefficient_solver
+            .as_mut()
+            .unwrap()
+            .force_compact_coupling_for_test();
+        for generation in 0..2 {
+            let weights: Vec<_> = (0..rows)
+                .map(|row| 0.5 + ((row * 7 + generation * 3) % 11) as f64 * 0.1)
+                .collect();
+            let mut values = DenseMatrix::zeros(rows, 3).unwrap();
+            for row in 0..rows {
+                for col in 0..3 {
+                    values[(row, col)] = ((row * (col + 2) + generation) as f64 * 0.37).sin();
+                }
+            }
+            let norms = weighted_column_norms(&values, &weights).unwrap();
+            let result = pool
+                .install(|| {
+                    solver.absorb(
+                        &weights,
+                        values,
+                        MapConfig {
+                            tolerance: 1e-12,
+                            ..MapConfig::default()
+                        },
+                        false,
+                    )
+                })
+                .unwrap();
+            assert!(
+                certify_residuals_with_reference_norms(
+                    &design,
+                    &weights,
+                    result.residualized(),
+                    &norms,
+                    1e-12
+                )
+                .unwrap()
+                .passed
+            );
+            solver
+                .coefficient_solver
+                .as_ref()
+                .unwrap()
+                .check_coupling_products(
+                    solver.design(),
+                    solver.certificate_geometry.as_ref().unwrap(),
+                );
+        }
+    }
+}
+
+#[test]
 fn slope_coefficients_fail_closed_and_recover_after_a_short_solve() {
     let n = 180;
     let design = FeDesign::new(

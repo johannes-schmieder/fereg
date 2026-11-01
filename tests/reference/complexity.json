@@ -2,28 +2,16 @@
   "definition": "docs/development_workflow.md#complexity-inventory",
   "growth": [
     {
-      "after": 1452,
-      "before": 1451,
+      "after": 1454,
+      "before": 1452,
       "metric": "fereg-core/dispatch_candidates",
-      "reason": "The drift bound is known only after a certified frame with a retained factor; otherwise it is infinite and the factor is rebuilt as before."
+      "reason": "The stream applies only to compact couplings whose pairs are all single-channel; other couplings keep the per-pair loop."
     },
     {
-      "after": 113062,
-      "before": 113033,
+      "after": 113183,
+      "before": 113062,
       "metric": "fereg-core/production_lines",
-      "reason": "Explicit PPML LSMR core-pair reuse (SPEC 13): the weight-drift bound, its accounting and the bounded-reuse decision and trace fields replace the unconditional long-frame refresh."
-    },
-    {
-      "after": 2119,
-      "before": 2090,
-      "metric": "file/crates/fereg-core/src/ppml/categorical_lsmr.rs",
-      "reason": "The drift bound, its documented constant and the two trace fields live with the joint LSMR predictor and solver that use them."
-    },
-    {
-      "after": 273,
-      "before": 259,
-      "metric": "function/crates/fereg-core/src/ppml/categorical_lsmr.rs/solve_installed#1",
-      "reason": "solve_installed advances the drift bound from the frame weight change it already computes and disarms the staleness escalation for a bounded reuse."
+      "reason": "Compact single-channel coupling stream: the eliminated-group products of the joint recurrence read one group-major offset, coordinate and value stream instead of three arrays per coupling pair, with its per-frame gather, the exact operation order and its memory charge."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -7288,11 +7276,11 @@
           },
           {
             "condition": "rhs == 0 || rhs > self . max_rhs || norms . len ( ) < rhs || geometry . ranks . len ( ) != self . groups . len ( ) || n == 0 || weights . len ( ) != n || values . nrows ( ) != n",
-            "line": 403
+            "line": 414
           },
           {
             "condition": "rhs == 1 && self . workers . len ( ) > 1",
-            "line": 449
+            "line": 460
           }
         ],
         "functions": {
@@ -7309,7 +7297,7 @@
             "lines": 16
           },
           "coupling_bytes#1": {
-            "line": 378,
+            "line": 389,
             "lines": 3
           },
           "dimensions#1": {
@@ -7317,7 +7305,7 @@
             "lines": 26
           },
           "dot#1": {
-            "line": 573,
+            "line": 584,
             "lines": 3
           },
           "elements#1": {
@@ -7329,7 +7317,7 @@
             "lines": 8
           },
           "enable_coupling#1": {
-            "line": 382,
+            "line": 393,
             "lines": 6
           },
           "enable_joint#1": {
@@ -7341,7 +7329,7 @@
             "lines": 9
           },
           "forward#1": {
-            "line": 493,
+            "line": 504,
             "lines": 22
           },
           "invalid#1": {
@@ -7365,23 +7353,23 @@
             "lines": 17
           },
           "project_eliminated#1": {
-            "line": 552,
+            "line": 563,
             "lines": 20
           },
           "reconstruct#1": {
-            "line": 582,
+            "line": 593,
             "lines": 12
           },
           "solve#1": {
-            "line": 391,
+            "line": 402,
             "lines": 91
           },
           "solve#2": {
-            "line": 594,
+            "line": 605,
             "lines": 76
           },
           "transpose#1": {
-            "line": 515,
+            "line": 526,
             "lines": 37
           }
         },
@@ -7403,33 +7391,41 @@
             "line": 143
           },
           {
+            "condition": "u32 :: try_from ( s . p ) . is_ok ( ) && effects . iter ( ) . all ( | e | e . channels ( ) == 1 )",
+            "line": 409
+          },
+          {
             "condition": "pairs . capacity ( ) > s . pairs",
-            "line": 349
+            "line": 463
+          },
+          {
+            "condition": "representation == Representation :: Coupling && CouplingStream :: eligible ( & pairs [ .. coupling_pairs ] , s . p )",
+            "line": 532
           },
           {
             "condition": "effect + 1 < self . effect_groups . len ( )",
-            "line": 690
+            "line": 822
           },
           {
             "condition": "self . representation == Representation :: Schur || width < 2",
-            "line": 790
+            "line": 936
           }
         ],
         "functions": {
           "apply#1": {
-            "line": 643,
+            "line": 775,
             "lines": 32
           },
           "apply_with_helpers#1": {
-            "line": 780,
+            "line": 926,
             "lines": 49
           },
           "bytes#1": {
-            "line": 274,
-            "lines": 43
+            "line": 368,
+            "lines": 63
           },
           "compact_base#1": {
-            "line": 676,
+            "line": 808,
             "lines": 48
           },
           "elements#1": {
@@ -7437,12 +7433,24 @@
             "lines": 6
           },
           "elements#2": {
-            "line": 447,
-            "lines": 11
+            "line": 341,
+            "lines": 3
+          },
+          "elements#3": {
+            "line": 569,
+            "lines": 12
+          },
+          "eligible#1": {
+            "line": 267,
+            "lines": 6
           },
           "form_schur#1": {
-            "line": 574,
+            "line": 706,
             "lines": 68
+          },
+          "gather#1": {
+            "line": 301,
+            "lines": 17
           },
           "new#1": {
             "line": 53,
@@ -7453,16 +7461,20 @@
             "lines": 71
           },
           "new#3": {
-            "line": 318,
-            "lines": 128
+            "line": 274,
+            "lines": 25
+          },
+          "new#4": {
+            "line": 432,
+            "lines": 136
           },
           "numeric_len#1": {
             "line": 239,
             "lines": 7
           },
           "prepare#1": {
-            "line": 487,
-            "lines": 86
+            "line": 616,
+            "lines": 89
           },
           "product_dot#1": {
             "line": 27,
@@ -7477,11 +7489,19 @@
             "lines": 20
           },
           "subtract_eliminated#1": {
-            "line": 726,
+            "line": 320,
+            "lines": 20
+          },
+          "subtract_eliminated#2": {
+            "line": 858,
+            "lines": 12
+          },
+          "subtract_eliminated_pairs#1": {
+            "line": 872,
             "lines": 49
           }
         },
-        "production_lines": 747
+        "production_lines": 868
       },
       "crates/fereg-core/src/fe/slope_coefficients/joint.rs": {
         "chunk_candidates": [],
@@ -25017,10 +25037,10 @@
     "metrics": {
       "fereg-core": {
         "chunk_candidates": 13,
-        "dispatch_candidates": 1452,
+        "dispatch_candidates": 1454,
         "files_over_1500": 15,
         "functions_over_150": 59,
-        "production_lines": 113062
+        "production_lines": 113183
       },
       "fereg-plugin": {
         "chunk_candidates": 3,
@@ -25032,5 +25052,5 @@
     },
     "schema": 1
   },
-  "reason": "Explicit PPML LSMR core-pair Schwarz factor reuse within a Hessian log-weight drift bound (reuse approved by Johannes, 2026-10-31). Public Auto routes, arithmetic and certificates are unchanged."
+  "reason": "PPML joint recurrence: a group-major coupling stream for single-channel designs; arithmetic, routes and certificates are unchanged."
 }
