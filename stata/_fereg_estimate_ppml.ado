@@ -963,18 +963,23 @@ program define _fereg_estimate_ppml, eclass
         }
     }
 
-    capture assert inlist(`sample_shadow', 0, 1) & !missing(`sample_shadow')
-    if _rc {
+    // The marker is the byte variable generated above, so its values are
+    // integers: no missing value, minimum 0 and maximum 1 make it a total
+    // binary map, and its sum is its row count. One summary pass and one
+    // containment pass replace three full passes; the failure order is kept.
+    local sample_type : type `sample_shadow'
+    quietly summarize `sample_shadow', meanonly
+    if "`sample_type'" != "byte" | r(N) != _N | (_N & (r(min) < 0 | r(max) > 1)) {
         di as error "PPML sample output is not a total binary map"
         exit 3499
     }
-    capture assert `sample_shadow' <= `touse'
-    if _rc {
+    local sample_rows = r(sum)
+    quietly count if `sample_shadow' > `touse'
+    if r(N) {
         di as error "PPML sample output escaped the Stata candidate sample"
         exit 3499
     }
-    quietly count if `sample_shadow'
-    if r(N) != `receipt_shadow'[1,9] {
+    if `sample_rows' != `receipt_shadow'[1,9] {
         di as error "PPML sample output disagrees with the committed final row count"
         exit 3499
     }
