@@ -930,6 +930,46 @@ sequential scan that a chunked parallel scan with first-row reductions could
 replace, shared with OLS), the finite solve's kernels and the score
 certificate's cost; none changes the iteration structure.
 
+### One-FE PPML exact speedups (development, 2026-11-01)
+
+Three arithmetic-preserving changes; coefficients and covariance are bitwise
+unchanged, and each passed the 77-case macOS replay against the branch head
+without a scope and `./scripts/run_tests.sh --source-only`:
+
+- `64d4bb30`: numeric sample classification checks availability once per
+  2,048-row block with branch-free column folds and applies only the domain
+  policy on available blocks. The PPML preflight pass must stay allocation-free
+  on Stata's main thread (the early-preflight allocator test counts events), so
+  it was made cheaper rather than parallel. Mac: 0.052 to 0.0125 s per fit.
+- `a89ab4c1`: the implicit one-FE design refresh stages each row's normalized
+  weight once in the projected bank, schedules group means per (column, group)
+  and fills the projected response in parallel. Mac: FE projection 0.106 to
+  0.098 s, strict final solve 0.221 to 0.212 s.
+- `86b6f936`: the one-FE profile binds numeric column slices and forms step
+  coefficients once per 4,096-row block, keeping each row's fused sequence, and
+  fills Poisson means on the team with first-row error order. Mac, per profile
+  step: predictor 4.6 to 1.7 ms, means 5.7 to 1.4 ms. A column-major variant
+  was slower and was dropped; fusing the score certificate's columns showed no
+  gain and was reverted.
+
+Mac native one-FE PPML (1M rows, 4 workers): 1.078 to about 0.99 s. SCC, four
+node-0 cores, Stata at four processors and `threads(4)`, branch plugin against a
+candidate built in the job, with PyFixest, rotating arms, no retries: job
+8385792 (`scc-zj4`, all three changes, six rounds of two fits) one-FE PPML
+2.959 to 2.763 s (-6.6%; native 2.828 to 2.618 s) against PyFixest's 2.921 s,
+and one-FE OLS 0.649 to 0.661 s (+1.8%, ranges 0.632-0.672 and 0.641-0.692 s)
+against PyFixest's 0.745 s; the Mac shows no OLS phase difference beyond noise.
+Job 8385700 (`scc-wo4`, the first two changes, four rounds) measured one-FE
+PPML -1.4% (wider spread), one-FE OLS -9.7% and dense two-FE PPML +0.7%. Every
+arm repeated its coefficients exactly and the candidate matched the branch.
+
+Two measured costs were left for decision: keeping freed memory in the heap
+across fits (`MALLOC_MMAP_MAX_=0`, no trimming; job 8385639, `scc-zj4`) saved
+0.10 s of a 2.78 s one-FE fit, mostly first-touch page faults in preparation;
+and with Stata's processors kept from one million observations, Stata's OpenMP
+workers spin after the frontend's parallel passes (11.6% of busy samples in a
+Mac profile), the competition ADR 0240 described.
+
 ## Published beta.11 descriptive campaign
 
 The October 30 SCC campaign of the published Linux plugin `af65682b...` (runtime
