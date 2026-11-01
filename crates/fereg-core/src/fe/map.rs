@@ -510,6 +510,7 @@ impl ReusableMapAbsorber {
             .and_then(|s| s.joint.as_deref_mut())
         {
             joint.report = None;
+            joint.clear_seed();
         }
     }
 
@@ -522,6 +523,7 @@ impl ReusableMapAbsorber {
         response: &[f64],
         config: MapConfig,
         generation: MapGeometryGeneration,
+        columns: Option<&[usize]>,
         block: Option<&mut dyn super::slope_coefficients::joint::JointBlockPreconditioner>,
     ) -> Result<()> {
         self.solve_joint_slopes_with(
@@ -529,6 +531,7 @@ impl ReusableMapAbsorber {
             response,
             config,
             generation,
+            columns,
             |joint, owner, design, geometry, reusable| {
                 joint.solve(
                     owner, design, geometry, weights, controls, selected, response, config,
@@ -549,6 +552,7 @@ impl ReusableMapAbsorber {
         response: &[f64],
         config: MapConfig,
         generation: MapGeometryGeneration,
+        columns: Option<&[usize]>,
         block: Option<&mut dyn super::slope_coefficients::joint::JointBlockPreconditioner>,
     ) -> Result<()> {
         self.solve_joint_slopes_with(
@@ -556,6 +560,7 @@ impl ReusableMapAbsorber {
             response,
             config,
             generation,
+            columns,
             |joint, owner, design, geometry, reusable| {
                 joint.solve_streamed(
                     owner, design, geometry, weights, controls, selected, response, config,
@@ -565,12 +570,17 @@ impl ReusableMapAbsorber {
         )
     }
 
+    /// `columns` names the selected finite columns' identity for the caller's
+    /// sample and topology. A named call may start from the fitted values of
+    /// the last certified call with the same identity and retains its own.
+    #[allow(clippy::too_many_arguments)]
     fn solve_joint_slopes_with(
         &mut self,
         weights: &[f64],
         response: &[f64],
         config: MapConfig,
         generation: MapGeometryGeneration,
+        columns: Option<&[usize]>,
         solve: impl FnOnce(
             &mut super::slope_coefficients::joint::JointFiniteWorkspace,
             &mut super::slope_coefficients::SlopeCoefficientWorkspace,
@@ -595,6 +605,7 @@ impl ReusableMapAbsorber {
                 )
             })?;
         joint.report = None;
+        joint.take_seed(generation.sample, generation.topology, columns);
         let result = (|| {
             validate_config(config)?;
             if weights.len() != self.design.nobs()
@@ -658,6 +669,7 @@ impl ReusableMapAbsorber {
                 solving.elapsed().as_secs_f64(),
             ));
             self.certificate_geometry.as_mut().unwrap().generation = Some(generation);
+            joint.record_seed(response, generation.sample, generation.topology, columns);
             Ok(())
         })();
         self.coefficient_solver.as_mut().unwrap().joint = Some(joint);

@@ -114,6 +114,7 @@ fn joint_slope_directions_match_analytic_weighted_oracle_and_revoke_failed_frame
                         config,
                         generation,
                         None,
+                        None,
                     )
                 })
                 .unwrap();
@@ -135,6 +136,7 @@ fn joint_slope_directions_match_analytic_weighted_oracle_and_revoke_failed_frame
                         config,
                         generation,
                         None,
+                        None,
                     )
                 })
                 .unwrap();
@@ -148,6 +150,7 @@ fn joint_slope_directions_match_analytic_weighted_oracle_and_revoke_failed_frame
                         &zero,
                         config,
                         generation,
+                        None,
                         None,
                     )
                 })
@@ -179,6 +182,7 @@ fn joint_slope_directions_match_analytic_weighted_oracle_and_revoke_failed_frame
                             short,
                             generation,
                             None,
+                            None,
                         )
                     })
                     .unwrap_err();
@@ -194,6 +198,7 @@ fn joint_slope_directions_match_analytic_weighted_oracle_and_revoke_failed_frame
                             &y,
                             config,
                             generation,
+                            None,
                             None,
                         )
                     })
@@ -215,13 +220,23 @@ fn joint_slope_directions_match_analytic_weighted_oracle_and_revoke_failed_frame
                         config,
                         generation,
                         None,
+                        None,
                     )
                 })
                 .unwrap();
                 let mut bad = weights.clone();
                 bad[0] = f64::NAN;
                 assert!(owner
-                    .solve_joint_slopes(&bad, &controls, &[2, 0], &y, config, generation, None)
+                    .solve_joint_slopes(
+                        &bad,
+                        &controls,
+                        &[2, 0],
+                        &y,
+                        config,
+                        generation,
+                        None,
+                        None
+                    )
                     .is_err());
                 assert!(owner.joint_slopes().unwrap().report.is_none());
                 assert!(owner
@@ -380,6 +395,7 @@ fn check_streamed_joint_slope_directions<const COLUMNS: bool>() {
                         config,
                         generation,
                         None,
+                        None,
                     )
                 })
                 .unwrap();
@@ -409,6 +425,7 @@ fn check_streamed_joint_slope_directions<const COLUMNS: bool>() {
                         config,
                         generation,
                         None,
+                        None,
                     )
                 })
                 .unwrap();
@@ -422,6 +439,7 @@ fn check_streamed_joint_slope_directions<const COLUMNS: bool>() {
                         &zero,
                         config,
                         generation,
+                        None,
                         None,
                     )
                 })
@@ -453,6 +471,7 @@ fn check_streamed_joint_slope_directions<const COLUMNS: bool>() {
                             short,
                             generation,
                             None,
+                            None,
                         )
                     })
                     .unwrap_err();
@@ -469,6 +488,7 @@ fn check_streamed_joint_slope_directions<const COLUMNS: bool>() {
                             &y,
                             config,
                             generation,
+                            None,
                             None,
                         )
                     })
@@ -491,6 +511,7 @@ fn check_streamed_joint_slope_directions<const COLUMNS: bool>() {
                         config,
                         generation,
                         None,
+                        None,
                     )
                 })
                 .unwrap();
@@ -504,6 +525,7 @@ fn check_streamed_joint_slope_directions<const COLUMNS: bool>() {
                         &y,
                         config,
                         generation,
+                        None,
                         None
                     )
                     .is_err());
@@ -1256,6 +1278,95 @@ fn slope_coefficients_preserve_analytic_projection_across_weights_rank_and_threa
                     }
                 }
             }
+        }
+    }
+}
+
+#[test]
+fn intercept_coupling_stream_repeats_pair_products_exactly() {
+    // Three single-channel intercepts on two components: the compact
+    // coupling streams its two coupling pairs, and its products must equal the
+    // per-pair products bit for bit and the observation-space operator.
+    let rows = 2 * 8 * 6 * 2;
+    let mut codes = [Vec::new(), Vec::new(), Vec::new()];
+    for component in 0..2 {
+        for i in 0..8 {
+            for j in 0..6 {
+                for t in 0..2 {
+                    codes[0].push((component * 8 + i) as u32);
+                    codes[1].push((component * 6 + j) as u32);
+                    codes[2].push((component * 2 + t) as u32);
+                }
+            }
+        }
+    }
+    let [g1, g2, g3] = codes;
+    let design = FeDesign::new(
+        rows,
+        vec![
+            EffectTerm::new(g1, 16, true, vec![]).unwrap(),
+            EffectTerm::new(g2, 12, true, vec![]).unwrap(),
+            EffectTerm::new(g3, 4, true, vec![]).unwrap(),
+        ],
+    )
+    .unwrap();
+    for threads in [1, 4] {
+        let pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(threads)
+            .build()
+            .unwrap();
+        let mut solver = ReusableMapAbsorber::new(design.clone(), 3).unwrap();
+        solver.enable_certificate_geometry().unwrap();
+        solver.enable_coefficient_solver(threads).unwrap();
+        solver.enable_coefficient_coupling().unwrap();
+        solver
+            .coefficient_solver
+            .as_mut()
+            .unwrap()
+            .force_compact_coupling_for_test();
+        for generation in 0..2 {
+            let weights: Vec<_> = (0..rows)
+                .map(|row| 0.5 + ((row * 7 + generation * 3) % 11) as f64 * 0.1)
+                .collect();
+            let mut values = DenseMatrix::zeros(rows, 3).unwrap();
+            for row in 0..rows {
+                for col in 0..3 {
+                    values[(row, col)] = ((row * (col + 2) + generation) as f64 * 0.37).sin();
+                }
+            }
+            let norms = weighted_column_norms(&values, &weights).unwrap();
+            let result = pool
+                .install(|| {
+                    solver.absorb(
+                        &weights,
+                        values,
+                        MapConfig {
+                            tolerance: 1e-12,
+                            ..MapConfig::default()
+                        },
+                        false,
+                    )
+                })
+                .unwrap();
+            assert!(
+                certify_residuals_with_reference_norms(
+                    &design,
+                    &weights,
+                    result.residualized(),
+                    &norms,
+                    1e-12
+                )
+                .unwrap()
+                .passed
+            );
+            solver
+                .coefficient_solver
+                .as_ref()
+                .unwrap()
+                .check_coupling_products(
+                    solver.design(),
+                    solver.certificate_geometry.as_ref().unwrap(),
+                );
         }
     }
 }
@@ -2314,7 +2425,16 @@ fn joint_block_refusal_is_exact_and_an_installed_block_reaches_the_same_solution
             let block = block.map(|b| {
                 b as &mut dyn super::super::slope_coefficients::joint::JointBlockPreconditioner
             });
-            owner.solve_joint_slopes(&weights, &controls, &[0, 1], &y, config, generation, block)
+            owner.solve_joint_slopes(
+                &weights,
+                &controls,
+                &[0, 1],
+                &y,
+                config,
+                generation,
+                None,
+                block,
+            )
         })
         .map(|()| {
             let joint = owner.joint_slopes().unwrap();
@@ -2374,6 +2494,245 @@ fn joint_block_refusal_is_exact_and_an_installed_block_reaches_the_same_solution
     let error = solve(&mut owner, Some(&mut failing)).unwrap_err();
     assert_eq!(error.code, ErrorCode::Interrupted);
     assert!(owner.joint_slopes().unwrap().report.is_none());
+}
+
+#[test]
+fn seeded_joint_frames_keep_the_full_response_guarantee_and_refuse_stale_seeds() {
+    // IRLS-like frames: weights drift and the response converges. A frame
+    // named by its columns solves for the correction from the last certified
+    // fitted values, still scaled and stopped by the full response.
+    let (mut workers, mut firms, mut x, mut z) = (Vec::new(), Vec::new(), Vec::new(), Vec::new());
+    for link in 0..29 {
+        for slot in 0..2 {
+            for (period, firm) in [link, link + 1, link].into_iter().enumerate() {
+                let row = workers.len() as f64;
+                workers.push((link * 2 + slot) as u32);
+                firms.push(firm as u32);
+                x.push((row * 0.37 + period as f64).sin());
+                z.push((row * 0.11).cos());
+            }
+        }
+    }
+    let n = workers.len();
+    let design = FeDesign::new(
+        n,
+        vec![
+            EffectTerm::new(workers.clone(), 58, true, vec![]).unwrap(),
+            EffectTerm::new(firms.clone(), 30, true, vec![]).unwrap(),
+        ],
+    )
+    .unwrap();
+    let controls =
+        DenseMatrix::from_row_major(n, 2, x.iter().zip(&z).flat_map(|(&a, &b)| [a, b]).collect())
+            .unwrap();
+    let config = MapConfig {
+        tolerance: 1e-11,
+        ..MapConfig::default()
+    };
+    let frame = |k: usize| {
+        let weights: Vec<f64> = (0..n)
+            .map(|i| (0.5 + (i % 7) as f64 * 0.3) * (1. + 0.05 * k as f64 * (i as f64).sin()))
+            .collect();
+        let y: Vec<f64> = (0..n)
+            .map(|i| {
+                0.4 * x[i] - 0.25 * z[i]
+                    + (firms[i] as f64 * 0.21).sin()
+                    + (workers[i] as f64 * 0.13).cos()
+                    + (i % 5) as f64 * 1e-3
+                    + 0.3f64.powi(k as i32) * ((i * 13 % 17) as f64 - 8.) * 1e-2
+            })
+            .collect();
+        (weights, y)
+    };
+    let columns = [11usize, 4];
+    let generation = |sample, weights| MapGeometryGeneration {
+        sample,
+        topology: 1,
+        weights,
+    };
+    let bits = |values: &[f64]| values.iter().map(|v| v.to_bits()).collect::<Vec<_>>();
+    for threads in [1, 3] {
+        let pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(threads)
+            .build()
+            .unwrap();
+        let owner = || {
+            let mut owner = ReusableMapAbsorber::new(design.clone(), 3).unwrap();
+            owner.enable_certificate_geometry().unwrap();
+            owner.enable_coefficient_solver(threads).unwrap();
+            owner.enable_certificate_workspace().unwrap();
+            owner.enable_coefficient_coupling().unwrap();
+            owner.enable_joint_slopes().unwrap();
+            owner
+        };
+        let (mut seeded, mut cold) = (owner(), owner());
+        let charged = ReusableMapAbsorber::joint_slope_bytes(&design, 2).unwrap();
+        let joint = seeded.joint_slopes().unwrap();
+        assert!(charged >= 8 * joint.elements() as u128 + std::mem::size_of_val(joint) as u128);
+        // Both owners see the same generations; only `seeded` names columns.
+        let call = |seeded: &mut ReusableMapAbsorber,
+                    cold: &mut ReusableMapAbsorber,
+                    identity: Option<&[usize]>,
+                    (weights, y): &(Vec<f64>, Vec<f64>),
+                    generation: MapGeometryGeneration,
+                    config: MapConfig| {
+            let run = |owner: &mut ReusableMapAbsorber, identity| {
+                pool.install(|| {
+                    owner.solve_joint_slopes(
+                        weights,
+                        &controls,
+                        &[0, 1],
+                        y,
+                        config,
+                        generation,
+                        identity,
+                        None,
+                    )
+                })
+                .map(|()| {
+                    let joint = owner.joint_slopes().unwrap();
+                    (
+                        joint.beta().to_vec(),
+                        joint.residuals.as_slice().to_vec(),
+                        joint.report.as_ref().unwrap().iterations,
+                        joint.seeded_for_test(),
+                    )
+                })
+            };
+            (run(seeded, identity), run(cold, None))
+        };
+        let mut saved = 0;
+        for k in 0..6 {
+            let inputs = frame(k);
+            let (s, c) = call(
+                &mut seeded,
+                &mut cold,
+                Some(&columns[..]),
+                &inputs,
+                generation(1, k as u64 + 1),
+                config,
+            );
+            let (s, c) = (s.unwrap(), c.unwrap());
+            assert!(!c.3);
+            if k == 0 {
+                assert!(!s.3);
+                assert_eq!((bits(&s.0), bits(&s.1), s.2), (bits(&c.0), bits(&c.1), c.2));
+                continue;
+            }
+            assert!(s.3, "frame {k} starts from the certified seed");
+            assert!(s.2 <= c.2, "frame {k}: {} > {}", s.2, c.2);
+            saved += c.2 - s.2;
+            // The full-response guarantee, checked independently: each
+            // finite score of the residual, scaled by the column's and the
+            // full response's weighted norms, stays within the tolerance.
+            let (weights, y) = &inputs;
+            let norm = |v: &dyn Fn(usize) -> f64| {
+                (0..n).map(|i| weights[i] * v(i) * v(i)).sum::<f64>().sqrt()
+            };
+            let ynorm = norm(&|i| y[i]);
+            for column in [&x, &z] {
+                let score = (0..n)
+                    .map(|i| weights[i] * column[i] * s.1[i])
+                    .sum::<f64>()
+                    .abs();
+                assert!(score <= config.tolerance * norm(&|i| column[i]) * ynorm);
+            }
+            for (actual, expected) in s.0.iter().zip(&c.0).chain(s.1.iter().zip(&c.1)) {
+                assert!((actual - expected).abs() <= 1e-9, "{actual} != {expected}");
+            }
+        }
+        assert!(saved > 0, "seeded frames save recurrence steps");
+        // Every stale or absent seed solves the full response bit for bit.
+        let inputs = frame(6);
+        let stale = |s: Result<(Vec<f64>, Vec<f64>, usize, bool)>,
+                     c: Result<(Vec<f64>, Vec<f64>, usize, bool)>| {
+            let (s, c) = (s.unwrap(), c.unwrap());
+            assert!(!s.3);
+            assert_eq!((bits(&s.0), bits(&s.1), s.2), (bits(&c.0), bits(&c.1), c.2));
+        };
+        // Other column identities.
+        let (s, c) = call(
+            &mut seeded,
+            &mut cold,
+            Some(&[11, 5][..]),
+            &inputs,
+            generation(1, 7),
+            config,
+        );
+        stale(s, c);
+        // Back to the first identity, whose seed was replaced, then a new sample.
+        let (s, c) = call(
+            &mut seeded,
+            &mut cold,
+            Some(&columns[..]),
+            &inputs,
+            generation(1, 8),
+            config,
+        );
+        stale(s, c);
+        let (s, c) = call(
+            &mut seeded,
+            &mut cold,
+            Some(&columns[..]),
+            &inputs,
+            generation(2, 9),
+            config,
+        );
+        stale(s, c);
+        // A failed call leaves no seed.
+        let short = MapConfig {
+            max_iterations: 1,
+            ..config
+        };
+        let (s, c) = call(
+            &mut seeded,
+            &mut cold,
+            Some(&columns[..]),
+            &frame(7),
+            generation(2, 10),
+            short,
+        );
+        assert!(s.is_err() && c.is_err());
+        let (s, c) = call(
+            &mut seeded,
+            &mut cold,
+            Some(&columns[..]),
+            &inputs,
+            generation(2, 11),
+            config,
+        );
+        stale(s, c);
+        // Invalidation clears the seed.
+        seeded.invalidate_joint_slopes();
+        cold.invalidate_joint_slopes();
+        let (s, c) = call(
+            &mut seeded,
+            &mut cold,
+            Some(&columns[..]),
+            &inputs,
+            generation(2, 12),
+            config,
+        );
+        stale(s, c);
+        // A correction no smaller than the response is refused: a zero
+        // response keeps its exact zero solution.
+        let zero = (inputs.0.clone(), vec![0.; n]);
+        let (s, c) = call(
+            &mut seeded,
+            &mut cold,
+            Some(&columns[..]),
+            &zero,
+            generation(2, 13),
+            config,
+        );
+        stale(s, c);
+        let joint = seeded.joint_slopes().unwrap();
+        assert!(joint
+            .beta()
+            .iter()
+            .chain(joint.residuals.as_slice())
+            .all(|&v| v == 0.));
+    }
 }
 
 #[test]
@@ -2444,6 +2803,7 @@ fn exact_joint_sections_keep_every_bit_at_one_to_eight_workers() {
                         &y,
                         config,
                         generation,
+                        None,
                         None,
                     )
                 })

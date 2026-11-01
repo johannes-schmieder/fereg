@@ -43,8 +43,9 @@ foreach host of local host_values {
 }
 
 program drop _fereg_ppml
+global FEREG_SCOPE_EXPECT_PROCESSORS 1
 program define _fereg_ppml, eclass
-    assert c(processors) == 1
+    assert c(processors) == $FEREG_SCOPE_EXPECT_PROCESSORS
     assert c(noisily) == $FEREG_SCOPE_EXPECT_NOISILY
     _fereg_estimate_ppml `0'
 end
@@ -77,7 +78,28 @@ foreach host of local host_values {
         }
     }
 }
-macro drop FEREG_SCOPE_EXPECT_NOISILY
+* From one million observations the caller's processor count stays in place
+* through the public call, and is still restored on failure and success.
+preserve
+quietly expand 12500
+assert _N == 1000000
+foreach host of local host_values {
+    set processors `host'
+    global FEREG_SCOPE_EXPECT_PROCESSORS `host'
+    global FEREG_SCOPE_EXPECT_NOISILY 0
+    capture noisily quietly feppml y x, absorb(failed_fe=fe) threads(4) inject(postplugin)
+    assert _rc == 3498
+    assert c(processors) == `host'
+    confirm new variable failed_fe
+    global FEREG_SCOPE_EXPECT_NOISILY 1
+    capture noisily noisily feppml y x, absorb(large_fe=fe) threads(4)
+    assert _rc == 0
+    assert e(converged) == 1
+    assert c(processors) == `host'
+    drop large_fe
+}
+restore
+macro drop FEREG_SCOPE_EXPECT_NOISILY FEREG_SCOPE_EXPECT_PROCESSORS
 program drop _fereg_ppml
 quietly feppml y x, absorb(saved_fe=fe) mu(saved_mu) threads(4)
 assert e(converged) == 1

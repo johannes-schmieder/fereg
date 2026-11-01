@@ -1609,6 +1609,14 @@ pub(crate) enum FrozenLinearFailureInjection {
 // Test frozen-solve fault plan; shipped builds compile its branches out.
 crate::fault::fault_plan! {
     static FROZEN_FAILURE_INJECTION: u8 = 0;
+    static JOINT_SEED_DISABLED: bool = false;
+}
+
+/// Solve every PPML joint frame from its full response, as before seeding,
+/// so tests can reach paths that seeded frames no longer need.
+#[cfg(test)]
+pub(crate) fn disable_joint_seed_for_test(disabled: bool) {
+    JOINT_SEED_DISABLED.set(disabled);
 }
 
 #[cfg(test)]
@@ -2472,7 +2480,8 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         }
         self.check_frozen_failure_injection()?;
         let team = ThreadTeam::new(self.config.execution.threads);
-        let result = team.install(|| self.solve_joint_ppml_internal())?;
+        let seed = !JOINT_SEED_DISABLED.get();
+        let result = team.install(|| self.solve_joint_ppml_internal(seed))?;
         if let Err(error) = result {
             if let Some(FeSession {
                 general: Some(projector),
@@ -2514,7 +2523,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         ))
     }
 
-    fn solve_joint_ppml_internal(&mut self) -> Result<()> {
+    fn solve_joint_ppml_internal(&mut self, seed: bool) -> Result<()> {
         self.ensure_bound()?;
         self.recycle_frame();
         self.fill_reusable_map_weights()?;
@@ -2578,6 +2587,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 &self.frozen_workspace.response,
                 self.config.absorb.map,
                 self.generations.map_geometry(),
+                seed.then(|| basis.kept_generated_columns()),
                 block,
             )?,
             RetainedWithinStorage::Scratch(_) | RetainedWithinStorage::Implicit(_) => projector
@@ -2595,6 +2605,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                     &self.frozen_workspace.response,
                     self.config.absorb.map,
                     self.generations.map_geometry(),
+                    seed.then(|| basis.kept_generated_columns()),
                     block,
                 )?,
         }

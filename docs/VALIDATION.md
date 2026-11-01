@@ -646,6 +646,330 @@ observation and instructed us to hold the optional upstream PR. This patch is
 absent from the combined candidate and does not establish beta.11 performance
 acceptance.
 
+## PyFixest parity policies (development, 2026-10-31)
+
+Johannes approved three policies from the October 31 PyFixest diagnostic: the
+many-FE geometry recurrence stopping at the request with `within`'s stall rule
+for the Jacobi trial, an ordinary PPML frame floor of 0.1 times the tolerance,
+and Schwarz preconditioner reuse across PPML frames. Measured, only the third
+holds up, and on the benchmarked routes it changes nothing. This is development
+evidence, not qualification.
+
+Setup: one whole SCC node (`scc-zj4`, Xeon Gold 6132, job 8381889) on the
+beta.11 campaign's frozen inputs with PyFixest 0.60.0 `within` at its defaults
+from the campaign environment. Every process ran on the same four cores
+(0-3, which span both sockets on this node) with memory bound to node 0. Each
+process made one untimed warm-up fit and two timed fits, three rounds with arms
+interleaved. Accuracy is the largest relative coefficient error against the
+diagnostic run's strict fereg fits (1e-14; 1e-12 for sparse PPML). Fixed-worker
+coefficients repeated exactly in every arm. Seconds are medians of six fits:
+fereg native (`e(fereg_runtime)` row 20 or `feppml` total) and Stata command,
+PyFixest's fit call after `read_stata`. Arm `diag` is the recurrence at the
+request with the previous trial rule; `cand` adds the stall rule (OLS) or the
+ordinary floor (PPML).
+
+| Cell (1M rows unless noted) | beta.12 native / command | `diag` | `cand` | PyFixest | beta.12 error | PyFixest error |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| OLS three-sparse 100k | 0.418 / 0.474 | r(459) | 0.417 | 0.299 | 3.5e-14 | 2.4e-14 |
+| OLS three-sparse | 4.401 / 4.764 | 4.092 | 4.234 | 3.583 | 9.3e-14 | 7.2e-14 |
+| OLS three-dense | 0.958 / 1.349 | 0.955 | 0.939 | 1.112 | 8.9e-14 | 5.2e-14 |
+| PPML three-sparse, steady fits | 25.59-25.74 / 25.99-26.41 | - | 25.18-25.44 | 19.42 | 5.2e-13 | 8.8e-15 |
+| PPML three-dense | 4.596 / 5.150 | - | 4.492 | 3.935 | 1.2e-14 | 5.2e-11 |
+| PPML one-FE | 3.068 / 3.695 | - | 3.113 | 3.259 | 2.0e-16 | 2.1e-14 |
+
+Six of twelve sparse PPML fereg fits, the first fit of a process in both arms,
+took 41-68 s; the table gives the other six, and every fit is in the private
+run record. PyFixest showed no such fits. On native time fereg is already ahead
+on dense OLS and one-FE PPML; the Stata command adds 0.06-0.6 s of input
+transfer and ado work that PyFixest's timer does not count.
+
+Many-FE recurrence at the request: not adopted. The one-decade margin was not
+idle. The Fast derived residual (§7) inherits the recurrence's accuracy, and
+the independent dense full-dummy witnesses in
+`fereg-oracle/tests/derived_residual.rs` then miss the §20 residual envelope
+(2.4e-9 against a bound of 1.2e-9, and 2.0e-9 against 1.4e-9). The finite
+score certificate also loses its margin and has no correction path: `diag`
+refused the 100k sparse cell with r(459) in all three rounds, where beta.12
+publishes. On the 1M cell it was 7% faster.
+
+`within`'s stall rule for the Jacobi trial: not adopted. It needs four
+contractions above 0.7, so on the sparse design the trial escalates after six
+to nine Jacobi iterations instead of four or five and finishes in 24 to 27
+iterations instead of 22 to 23 (21 at the request). It was 3.5% slower than
+the previous rule at the same target on SCC and 4-5% slower than beta.12 on the
+Mac at the beta.12 target, and it would lengthen the documented near-confounded
+exception.
+
+Ordinary PPML frame floor: implemented on the separate branch
+`pyfixest-parity-ordinary-floor`, not adopted. The literal floor, applied also
+to the frame after the outer diagnostics pass, publishes a point 1.6e-6 (eta)
+from the strict solution on the sparse design. Its checkpoint is rejected,
+refined to 1e-14 and repeated, for ten IRLS iterations; it was slower (10.1-10.7
+against 9.4-10.0 s on the Mac), and four unit fixtures that require `eta`
+within 1e-10 of the exact optimum fail. The branch keeps the strict target for
+that frame. Its accuracy matches beta.12, and it was 8% faster on the Mac's
+sparse fit. On SCC the last floored frame leaves the next strict-target step
+moving eta by 2.9e-6 instead of 6.7e-7, so the strict-entry rule defers once
+and adds a 595-step frame: nine instead of eight IRLS iterations and 1.6% less
+time. Two replay cases also raise their outer iteration count from five to six,
+which the affected-scope contract cannot declare. Dense was 2% faster and
+one-FE 1.5% slower, within noise.
+
+Schwarz reuse across PPML frames: implemented as specified in §13 for explicit
+`solver(lsmr)` with three or more effects. Public Auto rebuilds no Schwarz
+factor per frame: its MAP-family joint Schur recurrence preconditions the
+retained block with the current diagonal, and its two Schwarz builds are the
+initial and strict checkpoint sessions. Between them the per-frame maxima of
+the Hessian log-weight change sum to 3.4 on the sparse design, far beyond any
+bound that would justify reuse. Explicit LSMR already retained its
+factor whenever frames stayed short. On every benchmarked design they did (15-24
+steps on sparse, 6-10 on dense), so the drift rule changes no benchmarked fit.
+The 77-case replay was bit-identical to beta.12, and the unit witnesses cover
+reuse, refresh, invalidation and per-frame certification.
+
+Remaining gaps: sparse three-FE OLS (4.40 against 3.58 s native) and PPML
+(25.6 against 19.4 s steady). The sparse PPML frames take 160 to 600 joint
+Schur steps each, so the frame preconditioner, not the stopping target,
+dominates their cost. A follow-up diagnostic (job 8381971, `scc-wo4`, Xeon
+E5-2680 v4, the same protocol on node-0 cores 0, 2, 4 and 6) compared beta.12's
+public Auto PPML with explicit `solver(lsmr)`, whose retained core-pair Schwarz
+factor needs 15 to 24 steps per frame. On sparse three-FE, Auto took 25.9 s in
+three fits and 33.6-34.1 s in three, explicit LSMR 24.0-25.1 s and PyFixest
+20.8-21.8 s. On dense three-FE, Auto took 6.1 s, explicit LSMR 10.3 s and
+PyFixest 5.6 s. Explicit LSMR is therefore no general replacement. Auto's
+slow sparse fits, seen on two node classes, are explained below.
+Coefficients repeated exactly in every arm and stayed within 3.3e-12 of the
+strict fits.
+
+### Joint-frame slow mode and the coupling stream (development, 2026-11-01)
+
+Diagnosis (jobs 8384403 and 8384428 on `scc-zj4`, Xeon Gold 6132, beta.12,
+sparse three-FE PPML, node-0 cores 0, 2, 4 and 6, one warm-up and two timed fits
+per process, per-fit `perf` counters and per-second thread samples). The joint
+frames' coupling operator ran either at 4.16 ms per step or at 5.3-9.9 ms per
+step, constant through every frame of a fit. Ten of the 11 default slow fits
+were a process's first timed fit. Slow fits executed the same instructions at
+the same clock with 0.52-0.84 times the instructions per cycle,
+10-30% more L2 misses served from L3 and unchanged L3 misses. Disabling
+transparent huge pages for the process (`prctl`) still gave 2 slow fits of 8,
+and large allocations from glibc arenas 1 of 8, against 11 of 24 by default; no
+two running threads shared a core. The operator streamed offsets, targets and
+values for each of its two coupling pairs, six arrays per worker, and whether
+they conflicted in L2 depended on where a fit's banks were allocated.
+
+Change: single-channel compact couplings now read one group-major stream (see
+[ARCHITECTURE](ARCHITECTURE.md)). Each group keeps its pair-then-edge
+operation order, so results are bitwise unchanged: a unit witness compares the
+stream with the per-pair products bit for bit, the 77-case macOS replay is
+identical to beta.12, and every timed fit below produced the same coefficient
+file in both arms.
+
+A/B (job 8384441, `scc-wo4`, Xeon E5-2680 v4, the node of the route diagnostic,
+six processes per arm alternating, the same placement): beta.12 took 25.6-26.2 s
+in nine fits and 32.9-39.3 s in three first fits; the stream took 18.4-18.9 s in
+all twelve. The operator went from 4.09-4.31 ms per step (8.8 in a slow fit) to
+1.61-1.63 ms, with identical step counts in every frame. On the Mac the fit went
+from 9.3-10.0 to 7.2-7.3 s and the operator from 1.6-1.9 to 0.84-0.88 ms per
+step. PyFixest took 20.8-21.8 s on `scc-wo4` the day before (job 8381971), so
+fereg's sparse three-FE PPML is now about 12% ahead of it there; other node
+classes were not remeasured. The two checkpoint solves (about 7 s) are unchanged.
+
+### Seeded PPML joint frames (development, 2026-11-01)
+
+Change (`e0e607c8`, SPEC §13): an ordinary PPML Auto joint frame whose sample,
+topology and kept generated columns match the last certified joint frame solves
+for the correction from that frame's fitted values and adds its coefficients
+back; the full response's norm still scales every stopping and acceptance test.
+Witnesses: a lockstep seeded/cold unit test with independent full-response
+finite scores and bitwise cold results for stale, refused, failed and
+invalidated seeds (1 and 3 workers); the 1e13-disparity disconnected-slope
+fixture, whose seeded fit passes its first strict check at eta error 1.7e-14
+(cold: two strict rejections, 1.8e-11), with the cold path's rejection
+assertions kept behind a test-only fault plan; the 77-case macOS replay against
+`a6dda3a4` with the declared scope, where 12 PPML cases change numerical leaves
+only and no discrete field, at 1, 2 and 4 workers; and
+`./scripts/run_tests.sh --source-only`.
+
+Mac, sparse three-FE PPML (1M rows, 4 workers), three alternating processes per
+arm with two timed fits each: `a6dda3a4` 7.18-7.33 s native, seeded 6.11-6.53 s.
+The seven ordinary frames took 181, 246, 337, 426, 511, 547 and 596 steps
+before and 181, 220, 269, 342, 329, 245 and 135 after (2,844 to 1,721), with 8
+IRLS iterations in both.
+
+SCC (job 8384682, `scc-zj4`, Xeon Gold 6132; both plugins built in the job from
+their commits; node-0 cores 0, 2, 4 and 6 and node-0 memory; six rounds of
+base, seeded and PyFixest processes in rotating order, each an untimed warm-up
+and two timed fits; no retries or exclusions): base 16.38-16.62 s native
+(Stata timer 16.77-16.99 s), seeded 14.22-14.42 s (timer 14.59-14.78 s) and
+PyFixest 17.03-17.52 s per fit call, data loading excluded. Frame steps went
+from 181/247/336/430/512/547/599 to 181/220/269/343/328/238/130, 8 IRLS
+iterations in every fit. Base and seeded each repeated their coefficients
+exactly in all six processes and agree within 4.9e-13 relative; the seeded
+coefficients are within 9.2e-14 of PyFixest's (base 5.2e-13). The branch head
+had no slow fit on this node, where beta.12 had taken 23.4-24.3 s in second
+fits and up to 35 s in first fits (job 8384403). On this node fereg's Stata
+command (median 14.66 s) is now 15% faster than PyFixest's fit call (median
+17.28 s) on sparse three-FE PPML; other node classes and cells were not
+remeasured.
+
+### PPML cells remeasured after the parity branch (development, 2026-11-01)
+
+Descriptive remeasurement of the beta.11 PPML cells where PyFixest default was
+faster: published beta.12, the branch plugin built from `e0e607c8` and PyFixest
+default in one allocation per job, on the beta.11 inputs (recorded hashes), with
+campaign placement (socket-ordered physical cores, `numactl` CPU and memory
+binding), three rounds of rotating arm order, an untimed warm-up and two timed
+fits per process, no retries or exclusions. Medians of the Stata command timer
+for fereg and the fit call for PyFixest, 1M rows:
+
+| Cell | Workers | Node | beta.12 | branch | PyFixest | PyFixest / branch |
+| --- | ---: | --- | ---: | ---: | ---: | ---: |
+| Sparse three-FE | 4 | `scc-wo4` | 26.59 | 17.52 | 21.68 | 1.24 |
+| Sparse three-FE | 16 | `scc-zj4` | 16.85 | 9.80 | 9.47 | 0.97 |
+| Dense two-FE | 4 | `scc-wo4` | 6.25 | 6.18 | 5.57 | 0.90 |
+| Dense two-FE | 16 | `scc-zj4` | 2.72 | 2.73 | 2.40 | 0.88 |
+| Dense three-FE | 4 | `scc-wo4` | 6.82 | 6.82 | 5.82 | 0.85 |
+| Gravity | 4 | `scc-wo4` | 20.88 | 20.42 | 20.57 | 1.01 |
+| One-FE | 4 | `scc-wo4` | 5.38 | 5.30 | 4.28 | 0.81 |
+
+Jobs 8384884 (`scc-wo4`, Xeon E5-2680 v4) and 8385014 (`scc-zj4`, Xeon Gold
+6132). The first job's 16-worker fereg processes stopped at `set processors 16`
+(Stata-MP is licensed for four) before fitting; 8385014 reran both 16-worker
+cells, all three arms, with Stata's own processors capped as in the campaign and
+`threads(16)` unchanged. Every arm repeated its coefficients exactly across
+processes except PyFixest, which is not bitwise repeatable; the branch agrees
+with beta.12 within 4.9e-13 and with PyFixest within 5.4e-11. beta.12's sparse
+fits still showed the slow mode (up to 34.0 s at 4 and 18.4 s at 16 workers).
+
+Native time is now close to PyFixest's in every cell: sparse three-FE at 16
+workers 9.28-9.94 s against 9.38-9.96 s, dense two-FE 5.40-5.78 against
+5.26-5.80 s (4 workers) and 2.29-2.40 against 2.33-2.46 s (16), dense three-FE
+5.75-6.26 against 5.47-6.21 s; one-FE remains slower natively (4.57-4.84 against
+3.80-4.70 s). The rest of each gap is the PPML Stata frontend outside the native
+call: 0.54-0.77 s per fit on `scc-wo4` and about 0.36 s on `scc-zj4`, against
+0.17 s on the Mac. A timer-instrumented scratch copy of the unchanged frontend
+(job 8385168, `scc-wo4`, one-FE input, four node-0 cores) attributes 0.45-0.56 s
+at 1M rows to per-row passes: `marksample` 0.07-0.12 s, generating the sample
+marker 0.08-0.12 s, and three post-plugin checks of the returned marker (binary,
+within the candidate sample, count) 0.10-0.11, 0.09-0.10 and 0.04-0.05 s;
+`ereturn post` takes 0.015 s. The same passes take 0.12 s on the Mac. `feppml`
+runs the whole public call with one Stata processor (ADR 0241, measured on 30k
+to 123k rows), so Stata cannot spread these passes over cores; the OLS frontend
+has neither the serial host nor the three marker checks.
+
+### PPML frontend passes and host scope (development, 2026-11-01)
+
+Marker checks (`73f85bd0`): one `summarize, meanonly` pass and one `count if`
+pass replace the three post-plugin passes over the sample marker, with the same
+failures, messages and order. Host scope: `feppml` keeps the one-processor scope
+of ADR 0241 below one million observations and the caller's processor count
+from there (SPEC §18). Arms were scratch copies of the frontend with the branch
+plugin; every process used four node-0 cores, Stata at four processors and
+`threads(4)`, arm order rotating by round, no retries or exclusions.
+
+Job 8385337 (`scc-zj4`, Xeon Gold 6132, campaign one-FE and dense two-FE PPML,
+three rounds of three timed fits per size), medians of the Stata command time:
+
+| Arm | One-FE 1M | Two-FE 1M | One-FE 100k | Two-FE 100k |
+| --- | ---: | ---: | ---: | ---: |
+| Before the marker change | 3.078 | 3.592 | 0.326 | 0.372 |
+| Marker change, serial host (V0) | 2.995 | 3.436 | 0.318 | 0.363 |
+| No host switch (V1) | 2.938 | 3.317 | 0.356 | 0.424 |
+| Serial through the native call (V2) | 2.887 | 3.361 | 0.340 | 0.420 |
+| Serial only around the plugin call (V3) | 2.913 | 3.354 | 0.377 | 0.423 |
+
+The marker change lowered the time outside the native call from 0.38 to 0.29 s
+at 1M rows and from 0.040 to 0.033 s at 100k; the other arms lowered it to
+0.15-0.21 s at 1M but added 0.03-0.09 s of native time, the interference ADR
+0240 described, which dominates at 100k. Coefficients were identical in every
+arm and round.
+
+Job 8385376 (`scc-wo4`, Xeon E5-2680 v4, campaign AKM baseline PPML: leading
+300k, 600k, 1M and 3M rows of the 3M input in four rounds of two fits, the 10M
+input in two rounds of one fit), median Stata command time against V0:
+
+| Rows | V0 | V1 | V2 |
+| ---: | ---: | ---: | ---: |
+| 300k | 5.27 s | -9.7% | -7.4% |
+| 600k | 5.91 s | -8.5% | -8.7% |
+| 1M | 7.22 s | -8.0% | -3.9% |
+| 3M | 18.55 s | -4.9% | -0.6% |
+| 10M | 75.04 s | -4.1% | -1.1% |
+
+V1's frontend overhead was 0.21, 0.65 and 1.53 s at 1M, 3M and 10M against
+0.47, 1.32 and 3.21 s for V0; this node showed no native interference. The
+measured per-row savings (0.14-0.26 microseconds) against the largest fixed
+interference (0.08 s, `scc-zj4`) break even near 600k rows, so the switch is
+kept below one million observations. The public-scope fixture now also checks
+a one-million-row call (caller's count inside, restoration after an injected
+failure and a success); it, the host-processor and transaction fixtures, both
+genuine PPML Break modes and the Python suite pass on the Mac.
+
+Strict checkpoint seeding (investigated, not changed): the strict checkpoint
+already re-projects the retained design, which holds the regressors projected
+at the initial checkpoint's weights, so it starts warm. On sparse three-FE PPML
+(job 8384884's traced fit) all 17 columns needed 23-24 LSMR iterations at
+1e-12, the response 23, because the weights move far between the checkpoints.
+A response seed from the joint frames cannot shorten the batch, and a regressor
+seed at near-final weights would need another 17-column projection (the initial
+one took 11 iterations to 1e-6), costing about what it saves.
+
+One-FE PPML (job 8385347, `scc-wo4`, campaign one-FE input, four node-0 cores):
+fereg's native 4.54 s splits into preparation 0.76 s, FE projection 0.59,
+finite solve 1.04, line search 0.41, strict final solve 0.78, inference 0.08
+and publication 0.24 (4 IRLS iterations plus the strict solve); PyFixest's fit
+(3.92-4.52 s) also makes five weighted solves, with 1.26 s in `demean`. fereg's
+projection is faster per solve (0.15 against 0.25 s). A macOS `sample` of
+twelve one-FE fits showed the four workers idle 41-49% of the time behind
+serial sections on Stata's main thread (input reading, which must stay there,
+numeric classification, result construction, inference) and on the driving
+worker; inside the parallel work, the per-iteration score certificate and the
+compensated norm statistics cost about as much as the Gram and projection
+kernels. The levers are the serial sections (numeric classification is a
+sequential scan that a chunked parallel scan with first-row reductions could
+replace, shared with OLS), the finite solve's kernels and the score
+certificate's cost; none changes the iteration structure.
+
+### One-FE PPML exact speedups (development, 2026-11-01)
+
+Three arithmetic-preserving changes; coefficients and covariance are bitwise
+unchanged, and each passed the 77-case macOS replay against the branch head
+without a scope and `./scripts/run_tests.sh --source-only`:
+
+- `64d4bb30`: numeric sample classification checks availability once per
+  2,048-row block with branch-free column folds and applies only the domain
+  policy on available blocks. The PPML preflight pass must stay allocation-free
+  on Stata's main thread (the early-preflight allocator test counts events), so
+  it was made cheaper rather than parallel. Mac: 0.052 to 0.0125 s per fit.
+- `a89ab4c1`: the implicit one-FE design refresh stages each row's normalized
+  weight once in the projected bank, schedules group means per (column, group)
+  and fills the projected response in parallel. Mac: FE projection 0.106 to
+  0.098 s, strict final solve 0.221 to 0.212 s.
+- `86b6f936`: the one-FE profile binds numeric column slices and forms step
+  coefficients once per 4,096-row block, keeping each row's fused sequence, and
+  fills Poisson means on the team with first-row error order. Mac, per profile
+  step: predictor 4.6 to 1.7 ms, means 5.7 to 1.4 ms. A column-major variant
+  was slower and was dropped; fusing the score certificate's columns showed no
+  gain and was reverted.
+
+Mac native one-FE PPML (1M rows, 4 workers): 1.078 to about 0.99 s. SCC, four
+node-0 cores, Stata at four processors and `threads(4)`, branch plugin against a
+candidate built in the job, with PyFixest, rotating arms, no retries: job
+8385792 (`scc-zj4`, all three changes, six rounds of two fits) one-FE PPML
+2.959 to 2.763 s (-6.6%; native 2.828 to 2.618 s) against PyFixest's 2.921 s,
+and one-FE OLS 0.649 to 0.661 s (+1.8%, ranges 0.632-0.672 and 0.641-0.692 s)
+against PyFixest's 0.745 s; the Mac shows no OLS phase difference beyond noise.
+Job 8385700 (`scc-wo4`, the first two changes, four rounds) measured one-FE
+PPML -1.4% (wider spread), one-FE OLS -9.7% and dense two-FE PPML +0.7%. Every
+arm repeated its coefficients exactly and the candidate matched the branch.
+
+Two measured costs were left for decision: keeping freed memory in the heap
+across fits (`MALLOC_MMAP_MAX_=0`, no trimming; job 8385639, `scc-zj4`) saved
+0.10 s of a 2.78 s one-FE fit, mostly first-touch page faults in preparation;
+and with Stata's processors kept from one million observations, Stata's OpenMP
+workers spin after the frontend's parallel passes (11.6% of busy samples in a
+Mac profile), the competition ADR 0240 described.
+
 ## Published beta.11 descriptive campaign
 
 The October 30 SCC campaign of the published Linux plugin `af65682b...` (runtime

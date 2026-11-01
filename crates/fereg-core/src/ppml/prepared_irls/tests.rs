@@ -6,8 +6,9 @@ use crate::metadata::{
     TermId, TermOrder, TimeSeriesState,
 };
 use crate::ols::{
-    inject_frozen_linear_failure, prepare_model, FrozenLinearFailureInjection, LoadedNumericColumn,
-    LoadedOlsInput, OlsInputBinding, OlsInputRole, OlsRequestV1, PreparedOlsData,
+    disable_joint_seed_for_test, inject_frozen_linear_failure, prepare_model,
+    FrozenLinearFailureInjection, LoadedNumericColumn, LoadedOlsInput, OlsInputBinding,
+    OlsInputRole, OlsRequestV1, PreparedOlsData,
 };
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -206,6 +207,28 @@ fn original_profile_columns_match_cold_design_across_bindings_and_weight_frames(
             }
         }
         assert!(ProfiledRawColumns::new(&prepared, &[usize::MAX]).is_err());
+        // The column-block predictor repeats the row-by-row fused sequence:
+        // every row adds its terms in column order, one multiply-add each.
+        let all: Vec<_> = (0..prepared.fit_model().columns.len()).collect();
+        let raw = ProfiledRawColumns::new(&prepared, &all).unwrap();
+        let terms: Vec<_> = (0..all.len()).map(|j| 0.7 - j as f64 * 0.13).collect();
+        for range in [0..rows, 1..rows.min(77), rows / 2..rows] {
+            let start: Vec<_> = range.clone().map(|r| (r as f64 / 7.).sin()).collect();
+            let mut blocked = start.clone();
+            (&raw)
+                .accumulate_predictor(range.clone(), &terms, &mut blocked)
+                .unwrap();
+            let mut expected = start;
+            for (row, value) in range.zip(expected.iter_mut()) {
+                for (column, &coefficient) in terms.iter().enumerate() {
+                    *value = coefficient.mul_add((&raw).value(row, column).unwrap(), *value);
+                }
+            }
+            assert_eq!(
+                blocked.iter().map(|v| v.to_bits()).collect::<Vec<_>>(),
+                expected.iter().map(|v| v.to_bits()).collect::<Vec<_>>()
+            );
+        }
         let offset: Vec<_> = (0..rows).map(|r| (r as f64 / 19.).cos() * 0.1).collect();
         let coefficients = vec![0.03; prepared.fit_model().coefficients.len()];
         for threads in [1, 4] {
@@ -3015,35 +3038,52 @@ fn canonical_final_preserves_strict_disconnected_slope_truth() {
                     .unwrap();
                     assert!(relative_infinity_difference(baseline.eta(), &eta) < 1e-10);
                 }
-                for mode in [0, 1, 2, 3] {
-                    profile_final_test_mode(mode);
-                    let fit = fit_prepared_ppml_irls(
-                        &prepared,
-                        &y,
-                        &weights,
-                        &vec![0.; n],
-                        config,
-                        plan_ppml_memory(memory_dimensions(&prepared, config), config.memory)
-                            .unwrap(),
-                        None,
-                    )
-                    .unwrap();
-                    let accepted = profile_final_test_mode(0);
-                    assert_eq!(accepted, 0);
-                    assert!(fit.diagnostics().strict_profile_rejections > 0);
-                    assert!(
-                        fit.diagnostics().converged
-                            && fit.diagnostics().two_consecutive_convergence
-                    );
-                    assert!(fit.diagnostics().final_score.passed);
-                    assert!(
-                        relative_infinity_difference(fit.eta(), &eta) < 1e-10,
-                        "disparity={disparity} mode={mode} storage={execution:?} threads={threads} eta_error={:.17e}",
-                        relative_infinity_difference(fit.eta(), &eta)
-                    );
-                    assert!((fit.coefficients()[0].value.unwrap() - 0.2).abs() < 1e-10);
-                    validate_final_hessian_frame(fit.linear().weights(), &weights, fit.mean())
+                // Joint frames solved from their full responses lose the light
+                // component below the heavy one's stopping scale: the strict
+                // check rejects the profile and the products shortcut declines.
+                // Seeded frames keep the accepted light component, so the first
+                // strict check passes and the guarded shortcut may serve.
+                for seeded in [false, true] {
+                    disable_joint_seed_for_test(!seeded);
+                    for mode in [0, 1, 2, 3] {
+                        profile_final_test_mode(mode);
+                        let fit = fit_prepared_ppml_irls(
+                            &prepared,
+                            &y,
+                            &weights,
+                            &vec![0.; n],
+                            config,
+                            plan_ppml_memory(memory_dimensions(&prepared, config), config.memory)
+                                .unwrap(),
+                            None,
+                        )
                         .unwrap();
+                        let accepted = profile_final_test_mode(0);
+                        let error = relative_infinity_difference(fit.eta(), &eta);
+                        if seeded {
+                            assert_eq!(accepted, usize::from(mode == 0));
+                            assert_eq!(fit.diagnostics().strict_profile_rejections, 0);
+                            assert!(
+                                error < 1e-12,
+                                "mode={mode} threads={threads} eta_error={error:.17e}"
+                            );
+                        } else {
+                            assert_eq!(accepted, 0);
+                            assert!(fit.diagnostics().strict_profile_rejections > 0);
+                        }
+                        assert!(
+                            fit.diagnostics().converged
+                                && fit.diagnostics().two_consecutive_convergence
+                        );
+                        assert!(fit.diagnostics().final_score.passed);
+                        assert!(
+                            error < 1e-10,
+                            "disparity={disparity} mode={mode} storage={execution:?} threads={threads} eta_error={error:.17e}",
+                        );
+                        assert!((fit.coefficients()[0].value.unwrap() - 0.2).abs() < 1e-10);
+                        validate_final_hessian_frame(fit.linear().weights(), &weights, fit.mean())
+                            .unwrap();
+                    }
                 }
             }
         }

@@ -305,14 +305,25 @@ impl ImplicitCenteredDesign {
                 return Err(invalid());
             }
         }
+        // The projected bank holds each row's normalized weight until its final
+        // fill: every pass reads the same `weight` value instead of dividing
+        // again per column. Each sum keeps its terms and order.
+        projected
+            .try_reserve(rows.saturating_sub(projected.len()))
+            .map_err(|_| allocation())?;
+        projected.resize(rows, 0.);
+        projected
+            .par_iter_mut()
+            .enumerate()
+            .try_for_each(|(row, value)| -> Result<()> {
+                *value = weight(weights, divisor, row)?;
+                Ok(())
+            })?;
+        let normalized = &projected[..];
         let mut weight_sum = 0.;
         let mut weight_correction = 0.;
-        for row in 0..rows {
-            compensated_add(
-                weight(weights, divisor, row)?,
-                &mut weight_sum,
-                &mut weight_correction,
-            )?;
+        for &value in normalized {
+            compensated_add(value, &mut weight_sum, &mut weight_correction)?;
         }
         let total = weight_sum + weight_correction;
         if !total.is_finite() || total <= 0. {
@@ -325,7 +336,7 @@ impl ImplicitCenteredDesign {
             |(group, target)| -> Result<()> {
                 let (mut sum, mut correction) = (0., 0.);
                 for &row in effect.level_index().members(group) {
-                    compensated_add(weight(weights, divisor, row)?, &mut sum, &mut correction)?;
+                    compensated_add(normalized[row], &mut sum, &mut correction)?;
                 }
                 *target = sum + correction;
                 if !target.is_finite() || *target <= 0. {
@@ -334,29 +345,33 @@ impl ImplicitCenteredDesign {
                 Ok(())
             },
         )?;
+        // Each (column, group) mean is independent; schedule them together
+        // rather than one task per column, so workers stay balanced.
+        let group_weights = &self.group_weights;
+        let generated = &self.generated;
         self.centers
-            .par_chunks_mut(groups)
+            .par_iter_mut()
             .enumerate()
-            .try_for_each(|(position, centers)| -> Result<()> {
+            .with_min_len(CENTER_TASK_GROUPS)
+            .try_for_each(|(index, center)| -> Result<()> {
+                let (position, group) = (index / groups, index % groups);
                 let column = if position == columns {
                     BoundColumn::Numeric(response)
                 } else {
-                    BoundColumn::new(prepared, self.generated[position])?
+                    BoundColumn::new(prepared, generated[position])?
                 };
-                for (group, center) in centers.iter_mut().enumerate() {
-                    *center = group_mean(
-                        column,
-                        effect.level_index().members(group),
-                        0.,
-                        weights,
-                        divisor,
-                        self.group_weights[group],
-                    )?;
-                }
+                *center = group_mean(
+                    column,
+                    effect.level_index().members(group),
+                    0.,
+                    normalized,
+                    group_weights[group],
+                )?;
                 Ok(())
             })?;
         let setup_seconds = start.elapsed().as_secs_f64();
         let start = Instant::now();
+        let centers = &self.centers;
         self.stats
             .par_iter_mut()
             .enumerate()
@@ -364,16 +379,15 @@ impl ImplicitCenteredDesign {
                 let column = if position == columns {
                     BoundColumn::Numeric(response)
                 } else {
-                    BoundColumn::new(prepared, self.generated[position])?
+                    BoundColumn::new(prepared, generated[position])?
                 };
                 let (mut raw_scale, mut raw_sum, mut within_scale, mut within_sum) =
                     (0., 1., 0., 1.);
                 let (mut sum, mut correction) = (0., 0.);
-                for row in 0..rows {
-                    let w = weight(weights, divisor, row)?;
+                for (row, &w) in normalized.iter().enumerate() {
                     let value = column.value(row)?;
                     let centered =
-                        value - self.centers[position * groups + effect.codes()[row] as usize];
+                        value - centers[position * groups + effect.codes()[row] as usize];
                     update_scaled_square(w.sqrt() * value, &mut raw_scale, &mut raw_sum)?;
                     update_scaled_square(w.sqrt() * centered, &mut within_scale, &mut within_sum)?;
                     compensated_add(w * value, &mut sum, &mut correction)?;
@@ -389,13 +403,6 @@ impl ImplicitCenteredDesign {
                 }
                 Ok(())
             })?;
-        projected
-            .try_reserve(rows.saturating_sub(projected.len()))
-            .map_err(|_| allocation())?;
-        projected.resize(rows, 0.);
-        for (row, value) in projected.iter_mut().enumerate() {
-            *value = response[row] - self.centers[columns * groups + effect.codes()[row] as usize];
-        }
         let solve_seconds = start.elapsed().as_secs_f64();
         let start = Instant::now();
         // Replay original-minus-proposed effects. Never reuse the construction's
@@ -407,17 +414,16 @@ impl ImplicitCenteredDesign {
                 let column = if position == columns {
                     BoundColumn::Numeric(response)
                 } else {
-                    BoundColumn::new(prepared, self.generated[position])?
+                    BoundColumn::new(prepared, generated[position])?
                 };
                 let denominator = stats.raw_norm.max(stats.within_norm);
                 for group in 0..groups {
                     let moment = group_mean(
                         column,
                         effect.level_index().members(group),
-                        self.centers[position * groups + group],
-                        weights,
-                        divisor,
-                        self.group_weights[group],
+                        centers[position * groups + group],
+                        normalized,
+                        group_weights[group],
                     )?;
                     let ratio = if denominator == 0. {
                         if moment != 0. {
@@ -425,19 +431,18 @@ impl ImplicitCenteredDesign {
                         }
                         0.
                     } else {
-                        moment.abs() / denominator * self.group_weights[group].sqrt()
+                        moment.abs() / denominator * group_weights[group].sqrt()
                     };
                     if !ratio.is_finite() {
                         return Err(numerical());
                     }
                     stats.relative = stats.relative.max(ratio);
                     stats.squares = ratio.mul_add(ratio, stats.squares);
-                    let normalized = moment.abs() * self.group_weights[group];
-                    stats.absolute = stats.absolute.max(if normalized == 0. {
-                        0.
-                    } else {
-                        normalized * divisor
-                    });
+                    let scaled = moment.abs() * group_weights[group];
+                    stats.absolute =
+                        stats
+                            .absolute
+                            .max(if scaled == 0. { 0. } else { scaled * divisor });
                 }
                 Ok(())
             })?;
@@ -465,6 +470,17 @@ impl ImplicitCenteredDesign {
                 "implicit centered projection did not certify",
             ));
         }
+        let certification_seconds = start.elapsed().as_secs_f64();
+        // The weights are no longer needed: write the projected response.
+        let start = Instant::now();
+        let response_centers = &self.centers[columns * groups..];
+        projected
+            .par_iter_mut()
+            .zip(response.par_iter().zip(effect.codes().par_iter()))
+            .for_each(|(value, (&response, &code))| {
+                *value = response - response_centers[code as usize];
+            });
+        let solve_seconds = solve_seconds + start.elapsed().as_secs_f64();
         for (position, stats) in self.stats[..columns].iter().enumerate() {
             raw_norms[position] = stats.raw_norm;
             means[position] = stats.mean;
@@ -479,7 +495,7 @@ impl ImplicitCenteredDesign {
                 normal_equation_residual: 0.,
                 setup_seconds,
                 solve_seconds,
-                certification_seconds: start.elapsed().as_secs_f64(),
+                certification_seconds,
                 pilot_contraction: 0.,
                 ..SolveReport::single_route(
                     FeSolverKind::Map,
@@ -490,12 +506,15 @@ impl ImplicitCenteredDesign {
         ))
     }
 }
+/// Group means per scheduled task, at least, when scheduling (column, group) pairs.
+const CENTER_TASK_GROUPS: usize = 64;
+
+/// `normalized[row]` is `weight(weights, divisor, row)`, already validated.
 fn group_mean(
     column: BoundColumn<'_>,
     members: &[usize],
     center: f64,
-    weights: BorrowedMapWeights<'_>,
-    divisor: f64,
+    normalized: &[f64],
     total: f64,
 ) -> Result<f64> {
     let mut scale = 0_f64;
@@ -512,7 +531,7 @@ fn group_mean(
     let (mut sum, mut correction) = (0., 0.);
     for &row in members {
         compensated_add(
-            weight(weights, divisor, row)? * ((column.value(row)? - center) / scale),
+            normalized[row] * ((column.value(row)? - center) / scale),
             &mut sum,
             &mut correction,
         )?;
