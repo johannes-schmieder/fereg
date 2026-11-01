@@ -2,16 +2,16 @@
   "definition": "docs/development_workflow.md#complexity-inventory",
   "growth": [
     {
-      "after": 1455,
-      "before": 1454,
-      "metric": "fereg-core/dispatch_candidates",
-      "reason": "The classifiers choose between the available-block path and the complete row classifier per block."
+      "after": 113382,
+      "before": 113372,
+      "metric": "fereg-core/production_lines",
+      "reason": "The implicit one-FE design refresh computes each row's normalized weight once into the projected bank, schedules (column, group) means together and fills the projected response in parallel after the certificate."
     },
     {
-      "after": 113372,
-      "before": 113284,
-      "metric": "fereg-core/production_lines",
-      "reason": "Numeric sample classification checks availability once per 2,048-row block with branch-free column folds and applies only the domain policy on available blocks; the row classifier gains a compile-time availability flag so both paths share one decision sequence."
+      "after": 232,
+      "before": 216,
+      "metric": "function/crates/fereg-core/src/ols/implicit_centered.rs/refresh#1",
+      "reason": "The refresh stages normalized weights in the projected bank before its final parallel fill and schedules group means per (column, group)."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -10658,24 +10658,24 @@
           },
           {
             "condition": "position == columns",
-            "line": 341
+            "line": 358
           },
           {
             "condition": "position == columns",
-            "line": 364
+            "line": 379
           },
           {
             "condition": "position == columns",
-            "line": 407
+            "line": 414
           },
           {
             "condition": "weights",
-            "line": 528
+            "line": 547
           }
         ],
         "functions": {
           "allocation#1": {
-            "line": 560,
+            "line": 579,
             "lines": 6
           },
           "bind_columns#1": {
@@ -10715,19 +10715,19 @@
             "lines": 20
           },
           "filled#1": {
-            "line": 543,
+            "line": 562,
             "lines": 5
           },
           "group_mean#1": {
-            "line": 493,
-            "lines": 34
+            "line": 513,
+            "lines": 33
           },
           "groups#1": {
             "line": 87,
             "lines": 3
           },
           "invalid#1": {
-            "line": 548,
+            "line": 567,
             "lines": 6
           },
           "invalidate#1": {
@@ -10747,15 +10747,15 @@
             "lines": 33
           },
           "numerical#1": {
-            "line": 554,
+            "line": 573,
             "lines": 6
           },
           "refresh#1": {
             "line": 276,
-            "lines": 216
+            "lines": 232
           },
           "reserve#1": {
-            "line": 538,
+            "line": 557,
             "lines": 5
           },
           "resident_bytes#1": {
@@ -10779,7 +10779,7 @@
             "lines": 13
           },
           "weight#1": {
-            "line": 527,
+            "line": 546,
             "lines": 11
           },
           "write_dense#1": {
@@ -10787,7 +10787,7 @@
             "lines": 24
           }
         },
-        "production_lines": 547
+        "production_lines": 557
       },
       "crates/fereg-core/src/ols/joint_checks.rs": {
         "chunk_candidates": [],
@@ -25076,7 +25076,7 @@
         "dispatch_candidates": 1455,
         "files_over_1500": 15,
         "functions_over_150": 59,
-        "production_lines": 113372
+        "production_lines": 113382
       },
       "fereg-plugin": {
         "chunk_candidates": 3,
