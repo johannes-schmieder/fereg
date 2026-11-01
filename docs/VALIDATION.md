@@ -812,6 +812,51 @@ command (median 14.66 s) is now 15% faster than PyFixest's fit call (median
 17.28 s) on sparse three-FE PPML; other node classes and cells were not
 remeasured.
 
+### PPML cells remeasured after the parity branch (development, 2026-11-01)
+
+Descriptive remeasurement of the beta.11 PPML cells where PyFixest default was
+faster: published beta.12, the branch plugin built from `e0e607c8` and PyFixest
+default in one allocation per job, on the beta.11 inputs (recorded hashes), with
+campaign placement (socket-ordered physical cores, `numactl` CPU and memory
+binding), three rounds of rotating arm order, an untimed warm-up and two timed
+fits per process, no retries or exclusions. Medians of the Stata command timer
+for fereg and the fit call for PyFixest, 1M rows:
+
+| Cell | Workers | Node | beta.12 | branch | PyFixest | PyFixest / branch |
+| --- | ---: | --- | ---: | ---: | ---: | ---: |
+| Sparse three-FE | 4 | `scc-wo4` | 26.59 | 17.52 | 21.68 | 1.24 |
+| Sparse three-FE | 16 | `scc-zj4` | 16.85 | 9.80 | 9.47 | 0.97 |
+| Dense two-FE | 4 | `scc-wo4` | 6.25 | 6.18 | 5.57 | 0.90 |
+| Dense two-FE | 16 | `scc-zj4` | 2.72 | 2.73 | 2.40 | 0.88 |
+| Dense three-FE | 4 | `scc-wo4` | 6.82 | 6.82 | 5.82 | 0.85 |
+| Gravity | 4 | `scc-wo4` | 20.88 | 20.42 | 20.57 | 1.01 |
+| One-FE | 4 | `scc-wo4` | 5.38 | 5.30 | 4.28 | 0.81 |
+
+Jobs 8384884 (`scc-wo4`, Xeon E5-2680 v4) and 8385014 (`scc-zj4`, Xeon Gold
+6132). The first job's 16-worker fereg processes stopped at `set processors 16`
+(Stata-MP is licensed for four) before fitting; 8385014 reran both 16-worker
+cells, all three arms, with Stata's own processors capped as in the campaign and
+`threads(16)` unchanged. Every arm repeated its coefficients exactly across
+processes except PyFixest, which is not bitwise repeatable; the branch agrees
+with beta.12 within 4.9e-13 and with PyFixest within 5.4e-11. beta.12's sparse
+fits still showed the slow mode (up to 34.0 s at 4 and 18.4 s at 16 workers).
+
+Native time is now close to PyFixest's in every cell: sparse three-FE at 16
+workers 9.28-9.94 s against 9.38-9.96 s, dense two-FE 5.40-5.78 against
+5.26-5.80 s (4 workers) and 2.29-2.40 against 2.33-2.46 s (16), dense three-FE
+5.75-6.26 against 5.47-6.21 s; one-FE remains slower natively (4.57-4.84 against
+3.80-4.70 s). The rest of each gap is the PPML Stata frontend outside the native
+call: 0.54-0.77 s per fit on `scc-wo4` and about 0.36 s on `scc-zj4`, against
+0.17 s on the Mac. A timer-instrumented scratch copy of the unchanged frontend
+(job 8385168, `scc-wo4`, one-FE input, four node-0 cores) attributes 0.45-0.56 s
+at 1M rows to per-row passes: `marksample` 0.07-0.12 s, generating the sample
+marker 0.08-0.12 s, and three post-plugin checks of the returned marker (binary,
+within the candidate sample, count) 0.10-0.11, 0.09-0.10 and 0.04-0.05 s;
+`ereturn post` takes 0.015 s. The same passes take 0.12 s on the Mac. `feppml`
+runs the whole public call with one Stata processor (ADR 0241, measured on 30k
+to 123k rows), so Stata cannot spread these passes over cores; the OLS frontend
+has neither the serial host nor the three marker checks.
+
 ## Published beta.11 descriptive campaign
 
 The October 30 SCC campaign of the published Linux plugin `af65682b...` (runtime
