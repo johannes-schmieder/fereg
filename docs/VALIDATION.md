@@ -2082,12 +2082,39 @@ cells and the checked and unchecked accessors return identical bits.
 | macOS arm64, Stata 18.0 MP | GUI executable (`-e`) | pass (65 parallel runs) | pass | not run¹ | — |
 | Linux x86_64 (SCC `scc-tb4`, Xeon E5-2660 v3), Stata 17/18/19 MP | console | pass | pass | pass | pass |
 | Linux x86_64 (SCC `scc-gd4`), Stata 17/18/19 MP | GUI `xstata-mp` (Xvfb, `-e`) | pass (64 parallel runs each) | pass | not run | — |
+| Windows x86-64 (AWS, 2 vCPUs), Stata 19 MP | GUI executable (`/e`) | pass (2 and 8 workers)² | pass | not run² | pass |
 
 ¹ A live GUI Break needs Stata's AppleScript `UtilSetStataBreak`, which requires
 a one-time macOS Automation approval; SIGINT terminates the GUI process instead.
 Mac Stata 15/17 installations on the test Mac do not start ("cannot find Stata
-directory"); Windows has no installation available. Both are unqualified and
-keep the serial reader, as do SE/BE editions, which were not exercised.
+directory"); they are unqualified and keep the serial reader, as do SE/BE
+editions, which were not exercised.
+
+² Windows (branch `windows-parallel-input`, run
+`win-20261101T223215Z-7f874c46` at `5405afa9`, receipt `f2f34c5e...`, plugin
+`8728826c...`; the instance stopped). The `stata-do` driver builds the
+candidate with the Windows Stata/MP 19 GUI row, installs and hash-verifies it,
+runs the ten mapped fixtures (which now load through the window) and then:
+builds the missing-value witness with MSVC and checks all 80 cells; runs the
+input oracle in a second Stata/MP process started with the solver trace (the
+controller starts the driver's Stata without it) at the default two workers
+and at eight, where the trace checker requires 64 cases, 184 runs, identical
+input digests within every case and the window in every parallel run but the
+tiny sample; runs the worker-panic and read-failure fixture; and applies the
+frozen paired timing rule (`bench/parallel_input_paired.do`: hidden adapters
+with and without `inject(serial_input)` alternating in one process, 1M rows,
+cells c1-c5 and c7, two workers, five repetitions; a regression is a median
+wall time more than 5% and 1 ms above the serial reader). Every step passed.
+The controller returns only a sanitized receipt, so the timing medians and
+oracle counts stay on the machine; the pass of each rule is the evidence. No
+interactive session exists for a live Break; Break between phases rests on the
+unit tests and the console Break evidence on macOS and Linux, through the same
+Rust/C window code. Two earlier runs (`win-20261101T214908Z-cc726ec3`,
+`win-20261101T221240Z-eedd9b90`) stopped at r(9113) because the witness
+fixture's `clear all` dropped the driver's result-check program before the
+oracle step's result was read; the check is now a do-file. The same 1M-row
+paired rule on the Mac at two workers gave wall ratios 0.74-0.97 and input
+loading 0.39-0.83 of the serial reader.
 
 Timing: a frozen paired comparison in licensed Stata (the replay timing
 harness mocks the accessor, so `bench/qualify.py` cannot measure this change).

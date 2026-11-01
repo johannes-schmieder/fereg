@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-No changes yet.
+- Parallel loading of numeric variables is qualified on Windows Stata/MP 19 as
+  well (x86-64). Until a release carries the rebuilt plugins, installed
+  Windows packages keep the serial reader.
 
 ## 0.5.0 beta.13 — 2026-11-01
 
