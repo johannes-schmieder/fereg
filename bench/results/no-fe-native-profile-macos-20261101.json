@@ -1,0 +1,6321 @@
+{
+  "protocol": {
+    "purpose": "Diagnostic phase traces and function samples of unchanged published binary; no qualification or candidate changes",
+    "calls": [
+      [
+        "fereg",
+        1,
+        1,
+        0
+      ],
+      [
+        "fereg",
+        1,
+        8,
+        0
+      ],
+      [
+        "fereg",
+        1,
+        16,
+        0
+      ],
+      [
+        "fereg",
+        16,
+        1,
+        0
+      ],
+      [
+        "fereg",
+        16,
+        8,
+        0
+      ],
+      [
+        "fereg",
+        16,
+        16,
+        0
+      ],
+      [
+        "fereg",
+        64,
+        1,
+        0
+      ],
+      [
+        "fereg",
+        64,
+        8,
+        0
+      ],
+      [
+        "fereg",
+        64,
+        16,
+        0
+      ],
+      [
+        "fereg",
+        16,
+        1,
+        1
+      ],
+      [
+        "fereg",
+        64,
+        1,
+        1
+      ],
+      [
+        "fereg",
+        1,
+        1,
+        1
+      ],
+      [
+        "fereg",
+        16,
+        16,
+        1
+      ],
+      [
+        "fereg",
+        64,
+        16,
+        1
+      ],
+      [
+        "fereg",
+        16,
+        8,
+        1
+      ],
+      [
+        "fereg",
+        64,
+        8,
+        1
+      ],
+      [
+        "fereg",
+        1,
+        8,
+        1
+      ],
+      [
+        "fereg",
+        1,
+        16,
+        1
+      ],
+      [
+        "fereg",
+        64,
+        1,
+        2
+      ],
+      [
+        "fereg",
+        16,
+        8,
+        2
+      ],
+      [
+        "fereg",
+        1,
+        1,
+        2
+      ],
+      [
+        "fereg",
+        64,
+        16,
+        2
+      ],
+      [
+        "fereg",
+        16,
+        1,
+        2
+      ],
+      [
+        "fereg",
+        64,
+        8,
+        2
+      ],
+      [
+        "fereg",
+        16,
+        16,
+        2
+      ],
+      [
+        "fereg",
+        1,
+        8,
+        2
+      ],
+      [
+        "fereg",
+        1,
+        16,
+        2
+      ],
+      [
+        "fereg",
+        64,
+        1,
+        3
+      ],
+      [
+        "fereg",
+        1,
+        16,
+        3
+      ],
+      [
+        "fereg",
+        1,
+        1,
+        3
+      ],
+      [
+        "fereg",
+        64,
+        8,
+        3
+      ],
+      [
+        "fereg",
+        16,
+        8,
+        3
+      ],
+      [
+        "fereg",
+        64,
+        16,
+        3
+      ],
+      [
+        "fereg",
+        16,
+        16,
+        3
+      ],
+      [
+        "fereg",
+        16,
+        1,
+        3
+      ],
+      [
+        "fereg",
+        1,
+        8,
+        3
+      ]
+    ],
+    "timing_interpretation": "trace-enabled phase times only; reuse original campaign full-command comparison",
+    "sample_plan": [
+      {
+        "arm": "fereg",
+        "k": 16,
+        "threads": 8,
+        "fits": 40,
+        "sample_seconds": 10
+      },
+      {
+        "arm": "fereg",
+        "k": 64,
+        "threads": 8,
+        "fits": 20,
+        "sample_seconds": 10
+      },
+      {
+        "arm": "regress",
+        "k": 64,
+        "threads": 8,
+        "fits": 80,
+        "sample_seconds": 10
+      }
+    ],
+    "plugin_sha256": "28aed23eb1c8b8575fb1e1d3d49e7a2513066507353cd694f8c5269afc94f75c",
+    "retries": 0,
+    "noise_policy": "ordinary desktop noise retained; no builds/tests/agent source reads during capture; no retries for unfavorable results",
+    "numerical_change_scope": [],
+    "route_changes": [],
+    "worker_counts": [
+      1,
+      8,
+      16
+    ],
+    "max_process_seconds": 180,
+    "source_benchmark": "simple-regress-macos-20261101.json"
+  },
+  "phase_records": [
+    {
+      "k": 1,
+      "threads": 1,
+      "repetition": 0,
+      "outer_s": 0.19931895833333338,
+      "native_s": 0.116230459,
+      "input_s": 0.051235541,
+      "phases": {
+        "categorical_prepare": [
+          {
+            "stage": "factorization",
+            "seconds": 5.83e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "recipes",
+            "seconds": 4.17e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "membership",
+            "seconds": 4.2e-08,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "singletons",
+            "seconds": 4.2e-08,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "topology",
+            "seconds": 3.6333e-05,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "retention",
+            "seconds": 1.1542e-05,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "rebase",
+            "seconds": 2.08e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "validation",
+            "seconds": 0.000823042,
+            "rows": 1000000.0
+          }
+        ],
+        "ols_prepare": [
+          {
+            "seconds": 0.002551541
+          }
+        ],
+        "ols_prepare_moments": [
+          {
+            "seconds": 0.002573292
+          }
+        ],
+        "dense_raw": [
+          {
+            "total": 0.018363833,
+            "rhs": 0.004927542,
+            "rhs_count": 1.0,
+            "moments": 0.013435875,
+            "moments_count": 1.0,
+            "norms": 1.25e-07,
+            "norms_count": 1.0,
+            "loaded_rows": 0.0,
+            "reused_rows": 0.0
+          }
+        ],
+        "map_wrapper": [
+          {
+            "total": 0.042234584,
+            "scan": 0.001193125,
+            "scan_count": 1.0,
+            "norms": 0.00486825,
+            "norms_count": 1.0,
+            "initial_certificate": 0.008896709,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 3.0
+          },
+          {
+            "total": 0.010773542,
+            "scan": 0.000398292,
+            "scan_count": 1.0,
+            "norms": 0.003486541,
+            "norms_count": 1.0,
+            "initial_certificate": 0.006887875,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 1.0
+          }
+        ],
+        "project_dense": [
+          {
+            "total": 0.060752625,
+            "dense_raw": 0.018400916,
+            "dense_raw_count": 1.0,
+            "absorb": 0.042351125,
+            "absorb_count": 1.0
+          }
+        ],
+        "fit_finalize": [
+          {
+            "total": 0.007099375,
+            "certify_scores": 0.007097666,
+            "certify_scores_count": 1.0,
+            "publication": 1.084e-06,
+            "publication_count": 1.0
+          }
+        ],
+        "fit": [
+          {
+            "projection": 0.060786334,
+            "finite_solve": 0.009060375,
+            "bread_raw_residual": 0.005297917,
+            "residual_absorb": 0.018672,
+            "finalize": 0.007121166,
+            "total": 0.100937917
+          }
+        ],
+        "iid": [
+          {
+            "setup_statistics": 0.010961166,
+            "covariance": 6.25e-07,
+            "wald": 7.5e-07,
+            "certificate": 1.7209e-05,
+            "total": 0.010980042
+          }
+        ],
+        "iid_plugin": [
+          {
+            "prepare": 0.00277425,
+            "inference": 0.113320083,
+            "outputs": 5.42e-07,
+            "shadow": 2.5875e-05,
+            "prestore_total": 0.116135833
+          }
+        ]
+      }
+    },
+    {
+      "k": 1,
+      "threads": 8,
+      "repetition": 0,
+      "outer_s": 0.19031545833333338,
+      "native_s": 0.097468084,
+      "input_s": 0.046867916,
+      "phases": {
+        "categorical_prepare": [
+          {
+            "stage": "factorization",
+            "seconds": 1.125e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "recipes",
+            "seconds": 5e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "membership",
+            "seconds": 1.67e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "singletons",
+            "seconds": 4.1e-08,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "topology",
+            "seconds": 2.167e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "retention",
+            "seconds": 7.09e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "rebase",
+            "seconds": 7.08e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "validation",
+            "seconds": 0.000244959,
+            "rows": 1000000.0
+          }
+        ],
+        "ols_prepare": [
+          {
+            "seconds": 0.000917792
+          }
+        ],
+        "ols_prepare_moments": [
+          {
+            "seconds": 0.000930542
+          }
+        ],
+        "dense_raw": [
+          {
+            "total": 0.003802958,
+            "rhs": 0.001784208,
+            "rhs_count": 1.0,
+            "moments": 0.002018167,
+            "moments_count": 1.0,
+            "norms": 1.25e-07,
+            "norms_count": 1.0,
+            "loaded_rows": 0.0,
+            "reused_rows": 0.0
+          }
+        ],
+        "map_wrapper": [
+          {
+            "total": 0.047393916,
+            "scan": 0.000278875,
+            "scan_count": 1.0,
+            "norms": 0.005174708,
+            "norms_count": 1.0,
+            "initial_certificate": 0.009474458,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 3.0
+          },
+          {
+            "total": 0.011113917,
+            "scan": 0.0001125,
+            "scan_count": 1.0,
+            "norms": 0.003614417,
+            "norms_count": 1.0,
+            "initial_certificate": 0.007385833,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 1.0
+          }
+        ],
+        "project_dense": [
+          {
+            "total": 0.051272,
+            "dense_raw": 0.00383825,
+            "dense_raw_count": 1.0,
+            "absorb": 0.047433166,
+            "absorb_count": 1.0
+          }
+        ],
+        "fit_finalize": [
+          {
+            "total": 0.004270625,
+            "certify_scores": 0.004269084,
+            "certify_scores_count": 1.0,
+            "publication": 1.291e-06,
+            "publication_count": 1.0
+          }
+        ],
+        "fit": [
+          {
+            "projection": 0.051288,
+            "finite_solve": 0.006893375,
+            "bread_raw_residual": 0.005386833,
+            "residual_absorb": 0.0191245,
+            "finalize": 0.004286125,
+            "total": 0.086979083
+          }
+        ],
+        "iid": [
+          {
+            "setup_statistics": 0.00796325,
+            "covariance": 3.083e-06,
+            "wald": 1.291e-06,
+            "certificate": 1.459e-06,
+            "total": 0.007969209
+          }
+        ],
+        "iid_plugin": [
+          {
+            "prepare": 0.001130375,
+            "inference": 0.096259584,
+            "outputs": 5.83e-07,
+            "shadow": 5.375e-06,
+            "prestore_total": 0.097409
+          }
+        ]
+      }
+    },
+    {
+      "k": 1,
+      "threads": 16,
+      "repetition": 0,
+      "outer_s": 0.19603683333333338,
+      "native_s": 0.1021385,
+      "input_s": 0.046562167,
+      "phases": {
+        "categorical_prepare": [
+          {
+            "stage": "factorization",
+            "seconds": 8.75e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "recipes",
+            "seconds": 5e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "membership",
+            "seconds": 4.1e-08,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "singletons",
+            "seconds": 4.1e-08,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "topology",
+            "seconds": 1.208e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "retention",
+            "seconds": 8.33e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "rebase",
+            "seconds": 7.09e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "validation",
+            "seconds": 0.000302916,
+            "rows": 1000000.0
+          }
+        ],
+        "ols_prepare": [
+          {
+            "seconds": 0.000970375
+          }
+        ],
+        "ols_prepare_moments": [
+          {
+            "seconds": 0.000979917
+          }
+        ],
+        "dense_raw": [
+          {
+            "total": 0.003161375,
+            "rhs": 0.001807625,
+            "rhs_count": 1.0,
+            "moments": 0.001353375,
+            "moments_count": 1.0,
+            "norms": 8.3e-08,
+            "norms_count": 1.0,
+            "loaded_rows": 0.0,
+            "reused_rows": 0.0
+          }
+        ],
+        "map_wrapper": [
+          {
+            "total": 0.051233875,
+            "scan": 0.000307083,
+            "scan_count": 1.0,
+            "norms": 0.005111417,
+            "norms_count": 1.0,
+            "initial_certificate": 0.009507291,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 3.0
+          },
+          {
+            "total": 0.011238125,
+            "scan": 0.0001065,
+            "scan_count": 1.0,
+            "norms": 0.003720708,
+            "norms_count": 1.0,
+            "initial_certificate": 0.007410042,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 1.0
+          }
+        ],
+        "project_dense": [
+          {
+            "total": 0.054466708,
+            "dense_raw": 0.003191083,
+            "dense_raw_count": 1.0,
+            "absorb": 0.051275083,
+            "absorb_count": 1.0
+          }
+        ],
+        "fit_finalize": [
+          {
+            "total": 0.004677083,
+            "certify_scores": 0.004674333,
+            "certify_scores_count": 1.0,
+            "publication": 2.167e-06,
+            "publication_count": 1.0
+          }
+        ],
+        "fit": [
+          {
+            "projection": 0.054476833,
+            "finite_solve": 0.007082,
+            "bread_raw_residual": 0.005284542,
+            "residual_absorb": 0.019681333,
+            "finalize": 0.00470475,
+            "total": 0.091229666
+          }
+        ],
+        "iid": [
+          {
+            "setup_statistics": 0.008060208,
+            "covariance": 7.5e-07,
+            "wald": 1.209e-06,
+            "certificate": 1.083e-06,
+            "total": 0.0080635
+          }
+        ],
+        "iid_plugin": [
+          {
+            "prepare": 0.001379209,
+            "inference": 0.100682834,
+            "outputs": 2.92e-07,
+            "shadow": 6e-06,
+            "prestore_total": 0.102082042
+          }
+        ]
+      }
+    },
+    {
+      "k": 16,
+      "threads": 1,
+      "repetition": 0,
+      "outer_s": 0.5843340000000001,
+      "native_s": 0.4183720830000001,
+      "input_s": 0.112685375,
+      "phases": {
+        "categorical_prepare": [
+          {
+            "stage": "factorization",
+            "seconds": 6.66e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "recipes",
+            "seconds": 2.459e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "membership",
+            "seconds": 4.1e-08,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "singletons",
+            "seconds": 0.0,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "topology",
+            "seconds": 1.292e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "retention",
+            "seconds": 1e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "rebase",
+            "seconds": 7.08e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "validation",
+            "seconds": 0.007231959,
+            "rows": 1000000.0
+          }
+        ],
+        "ols_prepare": [
+          {
+            "seconds": 0.020061416
+          }
+        ],
+        "ols_prepare_moments": [
+          {
+            "seconds": 0.020070334
+          }
+        ],
+        "dense_raw": [
+          {
+            "total": 0.098560083,
+            "rhs": 0.037111208,
+            "rhs_count": 1.0,
+            "moments": 0.0614485,
+            "moments_count": 1.0,
+            "norms": 2.92e-07,
+            "norms_count": 1.0,
+            "loaded_rows": 0.0,
+            "reused_rows": 0.0
+          }
+        ],
+        "map_wrapper": [
+          {
+            "total": 0.161398208,
+            "scan": 0.00752875,
+            "scan_count": 1.0,
+            "norms": 0.022047916,
+            "norms_count": 1.0,
+            "initial_certificate": 0.033379792,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 18.0
+          },
+          {
+            "total": 0.011217792,
+            "scan": 0.000415875,
+            "scan_count": 1.0,
+            "norms": 0.003619958,
+            "norms_count": 1.0,
+            "initial_certificate": 0.007180834,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 1.0
+          }
+        ],
+        "project_dense": [
+          {
+            "total": 0.260044959,
+            "dense_raw": 0.09859625,
+            "dense_raw_count": 1.0,
+            "absorb": 0.161448167,
+            "absorb_count": 1.0
+          }
+        ],
+        "fit_finalize": [
+          {
+            "total": 0.007325791,
+            "certify_scores": 0.0073235,
+            "certify_scores_count": 1.0,
+            "publication": 1.666e-06,
+            "publication_count": 1.0
+          }
+        ],
+        "fit": [
+          {
+            "projection": 0.260056166,
+            "finite_solve": 0.0875515,
+            "bread_raw_residual": 0.010295125,
+            "residual_absorb": 0.019509875,
+            "finalize": 0.007354708,
+            "total": 0.384767833
+          }
+        ],
+        "iid": [
+          {
+            "setup_statistics": 0.011641708,
+            "covariance": 2.917e-06,
+            "wald": 5.25e-06,
+            "certificate": 2.042e-06,
+            "total": 0.011652083
+          }
+        ],
+        "iid_plugin": [
+          {
+            "prepare": 0.0204575,
+            "inference": 0.397801375,
+            "outputs": 6.25e-07,
+            "shadow": 2.0166e-05,
+            "prestore_total": 0.418297917
+          }
+        ]
+      }
+    },
+    {
+      "k": 16,
+      "threads": 8,
+      "repetition": 0,
+      "outer_s": 0.43468708333333345,
+      "native_s": 0.282074583,
+      "input_s": 0.104150292,
+      "phases": {
+        "categorical_prepare": [
+          {
+            "stage": "factorization",
+            "seconds": 1.041e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "recipes",
+            "seconds": 5.41e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "membership",
+            "seconds": 1.67e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "singletons",
+            "seconds": 4.1e-08,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "topology",
+            "seconds": 1.25e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "retention",
+            "seconds": 1e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "rebase",
+            "seconds": 8.34e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "validation",
+            "seconds": 0.001187916,
+            "rows": 1000000.0
+          }
+        ],
+        "ols_prepare": [
+          {
+            "seconds": 0.00313275
+          }
+        ],
+        "ols_prepare_moments": [
+          {
+            "seconds": 0.003141084
+          }
+        ],
+        "dense_raw": [
+          {
+            "total": 0.013596583,
+            "rhs": 0.005275542,
+            "rhs_count": 1.0,
+            "moments": 0.0083205,
+            "moments_count": 1.0,
+            "norms": 2.08e-07,
+            "norms_count": 1.0,
+            "loaded_rows": 0.0,
+            "reused_rows": 0.0
+          }
+        ],
+        "map_wrapper": [
+          {
+            "total": 0.184092125,
+            "scan": 0.001069833,
+            "scan_count": 1.0,
+            "norms": 0.022474917,
+            "norms_count": 1.0,
+            "initial_certificate": 0.033987792,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 18.0
+          },
+          {
+            "total": 0.010575875,
+            "scan": 0.000131541,
+            "scan_count": 1.0,
+            "norms": 0.003532917,
+            "norms_count": 1.0,
+            "initial_certificate": 0.006910708,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 1.0
+          }
+        ],
+        "project_dense": [
+          {
+            "total": 0.197784083,
+            "dense_raw": 0.013643458,
+            "dense_raw_count": 1.0,
+            "absorb": 0.184139917,
+            "absorb_count": 1.0
+          }
+        ],
+        "fit_finalize": [
+          {
+            "total": 0.004078833,
+            "certify_scores": 0.004076625,
+            "certify_scores_count": 1.0,
+            "publication": 1.541e-06,
+            "publication_count": 1.0
+          }
+        ],
+        "fit": [
+          {
+            "projection": 0.197802375,
+            "finite_solve": 0.04420925,
+            "bread_raw_residual": 0.005514917,
+            "residual_absorb": 0.018084208,
+            "finalize": 0.004096166,
+            "total": 0.269707083
+          }
+        ],
+        "iid": [
+          {
+            "setup_statistics": 0.007554792,
+            "covariance": 1.459e-06,
+            "wald": 3.875e-06,
+            "certificate": 1.417e-06,
+            "total": 0.00756175
+          }
+        ],
+        "iid_plugin": [
+          {
+            "prepare": 0.003362833,
+            "inference": 0.278616834,
+            "outputs": 2.08e-07,
+            "shadow": 1.0459e-05,
+            "prestore_total": 0.282005833
+          }
+        ]
+      }
+    },
+    {
+      "k": 16,
+      "threads": 16,
+      "repetition": 0,
+      "outer_s": 0.4214141250000001,
+      "native_s": 0.271697833,
+      "input_s": 0.101839834,
+      "phases": {
+        "categorical_prepare": [
+          {
+            "stage": "factorization",
+            "seconds": 1.083e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "recipes",
+            "seconds": 8.75e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "membership",
+            "seconds": 4.2e-08,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "singletons",
+            "seconds": 4.2e-08,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "topology",
+            "seconds": 1.334e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "retention",
+            "seconds": 7.92e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "rebase",
+            "seconds": 7.5e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "validation",
+            "seconds": 0.001082333,
+            "rows": 1000000.0
+          }
+        ],
+        "ols_prepare": [
+          {
+            "seconds": 0.002839333
+          }
+        ],
+        "ols_prepare_moments": [
+          {
+            "seconds": 0.002849709
+          }
+        ],
+        "dense_raw": [
+          {
+            "total": 0.012581625,
+            "rhs": 0.005267292,
+            "rhs_count": 1.0,
+            "moments": 0.007313833,
+            "moments_count": 1.0,
+            "norms": 8.4e-08,
+            "norms_count": 1.0,
+            "loaded_rows": 0.0,
+            "reused_rows": 0.0
+          }
+        ],
+        "map_wrapper": [
+          {
+            "total": 0.187231458,
+            "scan": 0.001113042,
+            "scan_count": 1.0,
+            "norms": 0.022545958,
+            "norms_count": 1.0,
+            "initial_certificate": 0.03403825,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 18.0
+          },
+          {
+            "total": 0.010764958,
+            "scan": 0.0002605,
+            "scan_count": 1.0,
+            "norms": 0.003611875,
+            "norms_count": 1.0,
+            "initial_certificate": 0.006890917,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 1.0
+          }
+        ],
+        "project_dense": [
+          {
+            "total": 0.199907084,
+            "dense_raw": 0.012620334,
+            "dense_raw_count": 1.0,
+            "absorb": 0.187286208,
+            "absorb_count": 1.0
+          }
+        ],
+        "fit_finalize": [
+          {
+            "total": 0.0040835,
+            "certify_scores": 0.004081125,
+            "certify_scores_count": 1.0,
+            "publication": 1.125e-06,
+            "publication_count": 1.0
+          }
+        ],
+        "fit": [
+          {
+            "projection": 0.199924125,
+            "finite_solve": 0.031796375,
+            "bread_raw_residual": 0.005262459,
+            "residual_absorb": 0.018365459,
+            "finalize": 0.004101209,
+            "total": 0.259449833
+          }
+        ],
+        "iid": [
+          {
+            "setup_statistics": 0.007496708,
+            "covariance": 8.33e-07,
+            "wald": 4.209e-06,
+            "certificate": 1.541e-06,
+            "total": 0.007503416
+          }
+        ],
+        "iid_plugin": [
+          {
+            "prepare": 0.003269542,
+            "inference": 0.268329458,
+            "outputs": 4.17e-07,
+            "shadow": 1.0459e-05,
+            "prestore_total": 0.271628625
+          }
+        ]
+      }
+    },
+    {
+      "k": 64,
+      "threads": 1,
+      "repetition": 0,
+      "outer_s": 2.0691043333333337,
+      "native_s": 1.67261275,
+      "input_s": 0.324082042,
+      "phases": {
+        "categorical_prepare": [
+          {
+            "stage": "factorization",
+            "seconds": 8.75e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "recipes",
+            "seconds": 6.67e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "membership",
+            "seconds": 4.1e-08,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "singletons",
+            "seconds": 4.1e-08,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "topology",
+            "seconds": 1.167e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "retention",
+            "seconds": 8.75e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "rebase",
+            "seconds": 1e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "validation",
+            "seconds": 0.0259645,
+            "rows": 1000000.0
+          }
+        ],
+        "ols_prepare": [
+          {
+            "seconds": 0.079764583
+          }
+        ],
+        "ols_prepare_moments": [
+          {
+            "seconds": 0.079772542
+          }
+        ],
+        "dense_raw": [
+          {
+            "total": 0.405849708,
+            "rhs": 0.156229416,
+            "rhs_count": 1.0,
+            "moments": 0.249619667,
+            "moments_count": 1.0,
+            "norms": 4.58e-07,
+            "norms_count": 1.0,
+            "loaded_rows": 0.0,
+            "reused_rows": 0.0
+          }
+        ],
+        "map_wrapper": [
+          {
+            "total": 0.596113417,
+            "scan": 0.026474625,
+            "scan_count": 1.0,
+            "norms": 0.091570917,
+            "norms_count": 1.0,
+            "initial_certificate": 0.109168167,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 66.0
+          },
+          {
+            "total": 0.010772209,
+            "scan": 0.000395375,
+            "scan_count": 1.0,
+            "norms": 0.003465625,
+            "norms_count": 1.0,
+            "initial_certificate": 0.006909084,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 1.0
+          }
+        ],
+        "project_dense": [
+          {
+            "total": 1.002061666,
+            "dense_raw": 0.405894416,
+            "dense_raw_count": 1.0,
+            "absorb": 0.596166792,
+            "absorb_count": 1.0
+          }
+        ],
+        "fit_finalize": [
+          {
+            "total": 0.007043125,
+            "certify_scores": 0.007011708,
+            "certify_scores_count": 1.0,
+            "publication": 1.667e-06,
+            "publication_count": 1.0
+          }
+        ],
+        "fit": [
+          {
+            "projection": 1.002074375,
+            "finite_solve": 0.497083208,
+            "bread_raw_residual": 0.055111542,
+            "residual_absorb": 0.018632875,
+            "finalize": 0.007059,
+            "total": 1.579961292
+          }
+        ],
+        "iid": [
+          {
+            "setup_statistics": 0.010934667,
+            "covariance": 3.792e-06,
+            "wald": 5.1958e-05,
+            "certificate": 1.0125e-05,
+            "total": 0.01100075
+          }
+        ],
+        "iid_plugin": [
+          {
+            "prepare": 0.08016875,
+            "inference": 1.592266083,
+            "outputs": 6.25e-07,
+            "shadow": 9.6042e-05,
+            "prestore_total": 1.672548583
+          }
+        ]
+      }
+    },
+    {
+      "k": 64,
+      "threads": 8,
+      "repetition": 0,
+      "outer_s": 1.3790928333333337,
+      "native_s": 1.001199792,
+      "input_s": 0.3076805,
+      "phases": {
+        "categorical_prepare": [
+          {
+            "stage": "factorization",
+            "seconds": 1.417e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "recipes",
+            "seconds": 7.5e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "membership",
+            "seconds": 4.1e-08,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "singletons",
+            "seconds": 0.0,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "topology",
+            "seconds": 1.416e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "retention",
+            "seconds": 1.041e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "rebase",
+            "seconds": 1.208e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "validation",
+            "seconds": 0.004250125,
+            "rows": 1000000.0
+          }
+        ],
+        "ols_prepare": [
+          {
+            "seconds": 0.011008916
+          }
+        ],
+        "ols_prepare_moments": [
+          {
+            "seconds": 0.011017333
+          }
+        ],
+        "dense_raw": [
+          {
+            "total": 0.154892042,
+            "rhs": 0.033568375,
+            "rhs_count": 1.0,
+            "moments": 0.121323125,
+            "moments_count": 1.0,
+            "norms": 3.33e-07,
+            "norms_count": 1.0,
+            "loaded_rows": 0.0,
+            "reused_rows": 0.0
+          }
+        ],
+        "map_wrapper": [
+          {
+            "total": 0.596167667,
+            "scan": 0.005121125,
+            "scan_count": 1.0,
+            "norms": 0.091623167,
+            "norms_count": 1.0,
+            "initial_certificate": 0.109204666,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 66.0
+          },
+          {
+            "total": 0.010682,
+            "scan": 0.000193667,
+            "scan_count": 1.0,
+            "norms": 0.003544375,
+            "norms_count": 1.0,
+            "initial_certificate": 0.0069415,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 1.0
+          }
+        ],
+        "project_dense": [
+          {
+            "total": 0.75116,
+            "dense_raw": 0.154945708,
+            "dense_raw_count": 1.0,
+            "absorb": 0.596214042,
+            "absorb_count": 1.0
+          }
+        ],
+        "fit_finalize": [
+          {
+            "total": 0.004060583,
+            "certify_scores": 0.004057958,
+            "certify_scores_count": 1.0,
+            "publication": 1.792e-06,
+            "publication_count": 1.0
+          }
+        ],
+        "fit": [
+          {
+            "projection": 0.751178083,
+            "finite_solve": 0.160143292,
+            "bread_raw_residual": 0.046793709,
+            "residual_absorb": 0.018671625,
+            "finalize": 0.004094792,
+            "total": 0.980881708
+          }
+        ],
+        "iid": [
+          {
+            "setup_statistics": 0.007545416,
+            "covariance": 5.833e-06,
+            "wald": 5.5958e-05,
+            "certificate": 1.0625e-05,
+            "total": 0.007618
+          }
+        ],
+        "iid_plugin": [
+          {
+            "prepare": 0.011207791,
+            "inference": 0.989812333,
+            "outputs": 2.5e-07,
+            "shadow": 0.000101542,
+            "prestore_total": 1.00114275
+          }
+        ]
+      }
+    },
+    {
+      "k": 64,
+      "threads": 16,
+      "repetition": 0,
+      "outer_s": 1.4256886250000003,
+      "native_s": 1.050549125,
+      "input_s": 0.306865791,
+      "phases": {
+        "categorical_prepare": [
+          {
+            "stage": "factorization",
+            "seconds": 1.459e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "recipes",
+            "seconds": 8.33e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "membership",
+            "seconds": 4.2e-08,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "singletons",
+            "seconds": 0.0,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "topology",
+            "seconds": 1.375e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "retention",
+            "seconds": 9.58e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "rebase",
+            "seconds": 8.33e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "validation",
+            "seconds": 0.002667292,
+            "rows": 1000000.0
+          }
+        ],
+        "ols_prepare": [
+          {
+            "seconds": 0.006392166
+          }
+        ],
+        "ols_prepare_moments": [
+          {
+            "seconds": 0.006401625
+          }
+        ],
+        "dense_raw": [
+          {
+            "total": 0.24807975,
+            "rhs": 0.030140791,
+            "rhs_count": 1.0,
+            "moments": 0.217938625,
+            "moments_count": 1.0,
+            "norms": 8.4e-08,
+            "norms_count": 1.0,
+            "loaded_rows": 0.0,
+            "reused_rows": 0.0
+          }
+        ],
+        "map_wrapper": [
+          {
+            "total": 0.591202459,
+            "scan": 0.002820625,
+            "scan_count": 1.0,
+            "norms": 0.093673709,
+            "norms_count": 1.0,
+            "initial_certificate": 0.109179541,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 66.0
+          },
+          {
+            "total": 0.010873417,
+            "scan": 0.0003185,
+            "scan_count": 1.0,
+            "norms": 0.00353525,
+            "norms_count": 1.0,
+            "initial_certificate": 0.007018125,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 1.0
+          }
+        ],
+        "project_dense": [
+          {
+            "total": 0.839398417,
+            "dense_raw": 0.248140375,
+            "dense_raw_count": 1.0,
+            "absorb": 0.5912575,
+            "absorb_count": 1.0
+          }
+        ],
+        "fit_finalize": [
+          {
+            "total": 0.004085375,
+            "certify_scores": 0.004079542,
+            "certify_scores_count": 1.0,
+            "publication": 4.791e-06,
+            "publication_count": 1.0
+          }
+        ],
+        "fit": [
+          {
+            "projection": 0.839429333,
+            "finite_solve": 0.124061417,
+            "bread_raw_residual": 0.048450709,
+            "residual_absorb": 0.018504333,
+            "finalize": 0.004111833,
+            "total": 1.034557917
+          }
+        ],
+        "iid": [
+          {
+            "setup_statistics": 0.00768225,
+            "covariance": 3.625e-06,
+            "wald": 5.3125e-05,
+            "certificate": 9.958e-06,
+            "total": 0.007749125
+          }
+        ],
+        "iid_plugin": [
+          {
+            "prepare": 0.006784417,
+            "inference": 1.0435925,
+            "outputs": 2.92e-07,
+            "shadow": 0.0001025,
+            "prestore_total": 1.05049575
+          }
+        ]
+      }
+    },
+    {
+      "k": 16,
+      "threads": 1,
+      "repetition": 1,
+      "outer_s": 0.5542677500000002,
+      "native_s": 0.396441791,
+      "input_s": 0.103109959,
+      "phases": {
+        "categorical_prepare": [
+          {
+            "stage": "factorization",
+            "seconds": 6.25e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "recipes",
+            "seconds": 9.58e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "membership",
+            "seconds": 1.66e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "singletons",
+            "seconds": 0.0,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "topology",
+            "seconds": 1.375e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "retention",
+            "seconds": 7.5e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "rebase",
+            "seconds": 8.34e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "validation",
+            "seconds": 0.0069335,
+            "rows": 1000000.0
+          }
+        ],
+        "ols_prepare": [
+          {
+            "seconds": 0.018830333
+          }
+        ],
+        "ols_prepare_moments": [
+          {
+            "seconds": 0.018838458
+          }
+        ],
+        "dense_raw": [
+          {
+            "total": 0.091621208,
+            "rhs": 0.032583125,
+            "rhs_count": 1.0,
+            "moments": 0.059037666,
+            "moments_count": 1.0,
+            "norms": 2.92e-07,
+            "norms_count": 1.0,
+            "loaded_rows": 0.0,
+            "reused_rows": 0.0
+          }
+        ],
+        "map_wrapper": [
+          {
+            "total": 0.154792708,
+            "scan": 0.007171041,
+            "scan_count": 1.0,
+            "norms": 0.021176292,
+            "norms_count": 1.0,
+            "initial_certificate": 0.032033458,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 18.0
+          },
+          {
+            "total": 0.010822959,
+            "scan": 0.000395959,
+            "scan_count": 1.0,
+            "norms": 0.00353625,
+            "norms_count": 1.0,
+            "initial_certificate": 0.006887041,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 1.0
+          }
+        ],
+        "project_dense": [
+          {
+            "total": 0.246486917,
+            "dense_raw": 0.091658709,
+            "dense_raw_count": 1.0,
+            "absorb": 0.154827458,
+            "absorb_count": 1.0
+          }
+        ],
+        "fit_finalize": [
+          {
+            "total": 0.007053375,
+            "certify_scores": 0.007051666,
+            "certify_scores_count": 1.0,
+            "publication": 1.334e-06,
+            "publication_count": 1.0
+          }
+        ],
+        "fit": [
+          {
+            "projection": 0.246497959,
+            "finite_solve": 0.083093791,
+            "bread_raw_residual": 0.00966975,
+            "residual_absorb": 0.018525416,
+            "finalize": 0.0070655,
+            "total": 0.364852584
+          }
+        ],
+        "iid": [
+          {
+            "setup_statistics": 0.010997291,
+            "covariance": 9.58e-07,
+            "wald": 3.833e-06,
+            "certificate": 1.583e-06,
+            "total": 0.011003791
+          }
+        ],
+        "iid_plugin": [
+          {
+            "prepare": 0.019177416,
+            "inference": 0.377160583,
+            "outputs": 5.83e-07,
+            "shadow": 1.4041e-05,
+            "prestore_total": 0.396373333
+          }
+        ]
+      }
+    },
+    {
+      "k": 64,
+      "threads": 1,
+      "repetition": 1,
+      "outer_s": 2.025947166666667,
+      "native_s": 1.659457125,
+      "input_s": 0.293880209,
+      "phases": {
+        "categorical_prepare": [
+          {
+            "stage": "factorization",
+            "seconds": 1.292e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "recipes",
+            "seconds": 6.25e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "membership",
+            "seconds": 2.08e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "singletons",
+            "seconds": 4.1e-08,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "topology",
+            "seconds": 1.583e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "retention",
+            "seconds": 1.25e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "rebase",
+            "seconds": 1.166e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "validation",
+            "seconds": 0.023274792,
+            "rows": 1000000.0
+          }
+        ],
+        "ols_prepare": [
+          {
+            "seconds": 0.067597334
+          }
+        ],
+        "ols_prepare_moments": [
+          {
+            "seconds": 0.067606042
+          }
+        ],
+        "dense_raw": [
+          {
+            "total": 0.406574917,
+            "rhs": 0.156604125,
+            "rhs_count": 1.0,
+            "moments": 0.249970708,
+            "moments_count": 1.0,
+            "norms": 4.2e-08,
+            "norms_count": 1.0,
+            "loaded_rows": 0.0,
+            "reused_rows": 0.0
+          }
+        ],
+        "map_wrapper": [
+          {
+            "total": 0.603172208,
+            "scan": 0.026407333,
+            "scan_count": 1.0,
+            "norms": 0.095603,
+            "norms_count": 1.0,
+            "initial_certificate": 0.114205292,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 66.0
+          },
+          {
+            "total": 0.010746166,
+            "scan": 0.000399083,
+            "scan_count": 1.0,
+            "norms": 0.003477125,
+            "norms_count": 1.0,
+            "initial_certificate": 0.006868792,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 1.0
+          }
+        ],
+        "project_dense": [
+          {
+            "total": 1.009851666,
+            "dense_raw": 0.406626708,
+            "dense_raw_count": 1.0,
+            "absorb": 0.603224708,
+            "absorb_count": 1.0
+          }
+        ],
+        "fit_finalize": [
+          {
+            "total": 0.007048875,
+            "certify_scores": 0.007046417,
+            "certify_scores_count": 1.0,
+            "publication": 1.292e-06,
+            "publication_count": 1.0
+          }
+        ],
+        "fit": [
+          {
+            "projection": 1.009862417,
+            "finite_solve": 0.496673042,
+            "bread_raw_residual": 0.047054416,
+            "residual_absorb": 0.018628084,
+            "finalize": 0.007060542,
+            "total": 1.57927875
+          }
+        ],
+        "iid": [
+          {
+            "setup_statistics": 0.010921833,
+            "covariance": 3.5e-06,
+            "wald": 5.2667e-05,
+            "certificate": 1.0083e-05,
+            "total": 0.010988166
+          }
+        ],
+        "iid_plugin": [
+          {
+            "prepare": 0.067634541,
+            "inference": 1.591615834,
+            "outputs": 5.42e-07,
+            "shadow": 9.8292e-05,
+            "prestore_total": 1.659370333
+          }
+        ]
+      }
+    },
+    {
+      "k": 1,
+      "threads": 1,
+      "repetition": 1,
+      "outer_s": 0.21201425000000004,
+      "native_s": 0.113630917,
+      "input_s": 0.04904275,
+      "phases": {
+        "categorical_prepare": [
+          {
+            "stage": "factorization",
+            "seconds": 6.25e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "recipes",
+            "seconds": 4.59e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "membership",
+            "seconds": 1.67e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "singletons",
+            "seconds": 4.2e-08,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "topology",
+            "seconds": 1.25e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "retention",
+            "seconds": 7.5e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "rebase",
+            "seconds": 9.58e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "validation",
+            "seconds": 0.000808167,
+            "rows": 1000000.0
+          }
+        ],
+        "ols_prepare": [
+          {
+            "seconds": 0.002356625
+          }
+        ],
+        "ols_prepare_moments": [
+          {
+            "seconds": 0.00236525
+          }
+        ],
+        "dense_raw": [
+          {
+            "total": 0.017705417,
+            "rhs": 0.004815708,
+            "rhs_count": 1.0,
+            "moments": 0.012889459,
+            "moments_count": 1.0,
+            "norms": 4.1e-08,
+            "norms_count": 1.0,
+            "loaded_rows": 0.0,
+            "reused_rows": 0.0
+          }
+        ],
+        "map_wrapper": [
+          {
+            "total": 0.040306625,
+            "scan": 0.001191792,
+            "scan_count": 1.0,
+            "norms": 0.00490025,
+            "norms_count": 1.0,
+            "initial_certificate": 0.009207833,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 3.0
+          },
+          {
+            "total": 0.011304,
+            "scan": 0.000412833,
+            "scan_count": 1.0,
+            "norms": 0.003648667,
+            "norms_count": 1.0,
+            "initial_certificate": 0.007241375,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 1.0
+          }
+        ],
+        "project_dense": [
+          {
+            "total": 0.058059292,
+            "dense_raw": 0.017727792,
+            "dense_raw_count": 1.0,
+            "absorb": 0.040331208,
+            "absorb_count": 1.0
+          }
+        ],
+        "fit_finalize": [
+          {
+            "total": 0.007356,
+            "certify_scores": 0.007354875,
+            "certify_scores_count": 1.0,
+            "publication": 7.09e-07,
+            "publication_count": 1.0
+          }
+        ],
+        "fit": [
+          {
+            "projection": 0.058071542,
+            "finite_solve": 0.008932,
+            "bread_raw_residual": 0.005072334,
+            "residual_absorb": 0.019380583,
+            "finalize": 0.007367041,
+            "total": 0.09882375
+          }
+        ],
+        "iid": [
+          {
+            "setup_statistics": 0.011040166,
+            "covariance": 2.708e-06,
+            "wald": 9.17e-07,
+            "certificate": 7.92e-07,
+            "total": 0.011044833
+          }
+        ],
+        "iid_plugin": [
+          {
+            "prepare": 0.002390709,
+            "inference": 0.1111575,
+            "outputs": 3.33e-07,
+            "shadow": 5.917e-06,
+            "prestore_total": 0.113570625
+          }
+        ]
+      }
+    },
+    {
+      "k": 16,
+      "threads": 16,
+      "repetition": 1,
+      "outer_s": 0.4056094166666668,
+      "native_s": 0.253759,
+      "input_s": 0.102819625,
+      "phases": {
+        "categorical_prepare": [
+          {
+            "stage": "factorization",
+            "seconds": 1e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "recipes",
+            "seconds": 4.58e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "membership",
+            "seconds": 2.08e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "singletons",
+            "seconds": 4.1e-08,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "topology",
+            "seconds": 9.58e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "retention",
+            "seconds": 7.08e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "rebase",
+            "seconds": 4.58e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "validation",
+            "seconds": 0.001144458,
+            "rows": 1000000.0
+          }
+        ],
+        "ols_prepare": [
+          {
+            "seconds": 0.002758
+          }
+        ],
+        "ols_prepare_moments": [
+          {
+            "seconds": 0.002767125
+          }
+        ],
+        "dense_raw": [
+          {
+            "total": 0.021357,
+            "rhs": 0.015475,
+            "rhs_count": 1.0,
+            "moments": 0.005881709,
+            "moments_count": 1.0,
+            "norms": 8.3e-08,
+            "norms_count": 1.0,
+            "loaded_rows": 0.0,
+            "reused_rows": 0.0
+          }
+        ],
+        "map_wrapper": [
+          {
+            "total": 0.162904292,
+            "scan": 0.001231917,
+            "scan_count": 1.0,
+            "norms": 0.022518417,
+            "norms_count": 1.0,
+            "initial_certificate": 0.034207,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 18.0
+          },
+          {
+            "total": 0.0106615,
+            "scan": 0.000169292,
+            "scan_count": 1.0,
+            "norms": 0.003555541,
+            "norms_count": 1.0,
+            "initial_certificate": 0.006931875,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 1.0
+          }
+        ],
+        "project_dense": [
+          {
+            "total": 0.18434325,
+            "dense_raw": 0.021403875,
+            "dense_raw_count": 1.0,
+            "absorb": 0.162939,
+            "absorb_count": 1.0
+          }
+        ],
+        "fit_finalize": [
+          {
+            "total": 0.003979542,
+            "certify_scores": 0.003977292,
+            "certify_scores_count": 1.0,
+            "publication": 1.125e-06,
+            "publication_count": 1.0
+          }
+        ],
+        "fit": [
+          {
+            "projection": 0.184355958,
+            "finite_solve": 0.029536333,
+            "bread_raw_residual": 0.005444541,
+            "residual_absorb": 0.018317542,
+            "finalize": 0.004010542,
+            "total": 0.241665125
+          }
+        ],
+        "iid": [
+          {
+            "setup_statistics": 0.00762825,
+            "covariance": 1.542e-06,
+            "wald": 3.875e-06,
+            "certificate": 1.584e-06,
+            "total": 0.007635333
+          }
+        ],
+        "iid_plugin": [
+          {
+            "prepare": 0.003054875,
+            "inference": 0.250633083,
+            "outputs": 3.75e-07,
+            "shadow": 9.792e-06,
+            "prestore_total": 0.253711375
+          }
+        ]
+      }
+    },
+    {
+      "k": 64,
+      "threads": 16,
+      "repetition": 1,
+      "outer_s": 1.4133951666666669,
+      "native_s": 1.033132875,
+      "input_s": 0.308973042,
+      "phases": {
+        "categorical_prepare": [
+          {
+            "stage": "factorization",
+            "seconds": 1.208e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "recipes",
+            "seconds": 8.75e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "membership",
+            "seconds": 4.2e-08,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "singletons",
+            "seconds": 4.2e-08,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "topology",
+            "seconds": 2.042e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "retention",
+            "seconds": 1.333e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "rebase",
+            "seconds": 1.25e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "validation",
+            "seconds": 0.003750834,
+            "rows": 1000000.0
+          }
+        ],
+        "ols_prepare": [
+          {
+            "seconds": 0.009818083
+          }
+        ],
+        "ols_prepare_moments": [
+          {
+            "seconds": 0.009828125
+          }
+        ],
+        "dense_raw": [
+          {
+            "total": 0.225574625,
+            "rhs": 0.030533666,
+            "rhs_count": 1.0,
+            "moments": 0.195040667,
+            "moments_count": 1.0,
+            "norms": 8.3e-08,
+            "norms_count": 1.0,
+            "loaded_rows": 0.0,
+            "reused_rows": 0.0
+          }
+        ],
+        "map_wrapper": [
+          {
+            "total": 0.59488925,
+            "scan": 0.002370625,
+            "scan_count": 1.0,
+            "norms": 0.093595375,
+            "norms_count": 1.0,
+            "initial_certificate": 0.109017875,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 66.0
+          },
+          {
+            "total": 0.010589792,
+            "scan": 0.000155125,
+            "scan_count": 1.0,
+            "norms": 0.003517833,
+            "norms_count": 1.0,
+            "initial_certificate": 0.006912417,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 1.0
+          }
+        ],
+        "project_dense": [
+          {
+            "total": 0.820553541,
+            "dense_raw": 0.225615458,
+            "dense_raw_count": 1.0,
+            "absorb": 0.594937625,
+            "absorb_count": 1.0
+          }
+        ],
+        "fit_finalize": [
+          {
+            "total": 0.004005959,
+            "certify_scores": 0.004002875,
+            "certify_scores_count": 1.0,
+            "publication": 2e-06,
+            "publication_count": 1.0
+          }
+        ],
+        "fit": [
+          {
+            "projection": 0.820577667,
+            "finite_solve": 0.124089792,
+            "bread_raw_residual": 0.047251,
+            "residual_absorb": 0.01818325,
+            "finalize": 0.004021125,
+            "total": 1.014123125
+          }
+        ],
+        "iid": [
+          {
+            "setup_statistics": 0.007619208,
+            "covariance": 4.375e-06,
+            "wald": 5.1792e-05,
+            "certificate": 1.0083e-05,
+            "total": 0.007685625
+          }
+        ],
+        "iid_plugin": [
+          {
+            "prepare": 0.009864375,
+            "inference": 1.023106791,
+            "outputs": 5.83e-07,
+            "shadow": 9.8417e-05,
+            "prestore_total": 1.03308475
+          }
+        ]
+      }
+    },
+    {
+      "k": 16,
+      "threads": 8,
+      "repetition": 1,
+      "outer_s": 0.43254604166666677,
+      "native_s": 0.278998292,
+      "input_s": 0.104465208,
+      "phases": {
+        "categorical_prepare": [
+          {
+            "stage": "factorization",
+            "seconds": 1.125e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "recipes",
+            "seconds": 7.92e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "membership",
+            "seconds": 4.2e-08,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "singletons",
+            "seconds": 4.2e-08,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "topology",
+            "seconds": 1.291e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "retention",
+            "seconds": 7.92e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "rebase",
+            "seconds": 7.5e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "validation",
+            "seconds": 0.001165917,
+            "rows": 1000000.0
+          }
+        ],
+        "ols_prepare": [
+          {
+            "seconds": 0.003202167
+          }
+        ],
+        "ols_prepare_moments": [
+          {
+            "seconds": 0.003210583
+          }
+        ],
+        "dense_raw": [
+          {
+            "total": 0.023074333,
+            "rhs": 0.013371958,
+            "rhs_count": 1.0,
+            "moments": 0.009702125,
+            "moments_count": 1.0,
+            "norms": 4.2e-08,
+            "norms_count": 1.0,
+            "loaded_rows": 0.0,
+            "reused_rows": 0.0
+          }
+        ],
+        "map_wrapper": [
+          {
+            "total": 0.169811208,
+            "scan": 0.001223792,
+            "scan_count": 1.0,
+            "norms": 0.022349791,
+            "norms_count": 1.0,
+            "initial_certificate": 0.033943542,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 18.0
+          },
+          {
+            "total": 0.010461709,
+            "scan": 8.0084e-05,
+            "scan_count": 1.0,
+            "norms": 0.00349575,
+            "norms_count": 1.0,
+            "initial_certificate": 0.006884458,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 1.0
+          }
+        ],
+        "project_dense": [
+          {
+            "total": 0.192971375,
+            "dense_raw": 0.023114291,
+            "dense_raw_count": 1.0,
+            "absorb": 0.169856667,
+            "absorb_count": 1.0
+          }
+        ],
+        "fit_finalize": [
+          {
+            "total": 0.004087042,
+            "certify_scores": 0.004085167,
+            "certify_scores_count": 1.0,
+            "publication": 1.458e-06,
+            "publication_count": 1.0
+          }
+        ],
+        "fit": [
+          {
+            "projection": 0.192982,
+            "finite_solve": 0.04516025,
+            "bread_raw_residual": 0.005641459,
+            "residual_absorb": 0.018100041,
+            "finalize": 0.004103333,
+            "total": 0.265987375
+          }
+        ],
+        "iid": [
+          {
+            "setup_statistics": 0.007879917,
+            "covariance": 1.25e-06,
+            "wald": 5.042e-06,
+            "certificate": 1.875e-06,
+            "total": 0.00788825
+          }
+        ],
+        "iid_plugin": [
+          {
+            "prepare": 0.003683125,
+            "inference": 0.275213167,
+            "outputs": 4.16e-07,
+            "shadow": 9.583e-06,
+            "prestore_total": 0.278922959
+          }
+        ]
+      }
+    },
+    {
+      "k": 64,
+      "threads": 8,
+      "repetition": 1,
+      "outer_s": 1.3592463333333336,
+      "native_s": 0.985093416,
+      "input_s": 0.306023334,
+      "phases": {
+        "categorical_prepare": [
+          {
+            "stage": "factorization",
+            "seconds": 1.042e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "recipes",
+            "seconds": 1e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "membership",
+            "seconds": 4.2e-08,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "singletons",
+            "seconds": 4.2e-08,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "topology",
+            "seconds": 1.584e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "retention",
+            "seconds": 1.25e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "rebase",
+            "seconds": 1.167e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "validation",
+            "seconds": 0.005486584,
+            "rows": 1000000.0
+          }
+        ],
+        "ols_prepare": [
+          {
+            "seconds": 0.012257708
+          }
+        ],
+        "ols_prepare_moments": [
+          {
+            "seconds": 0.012266417
+          }
+        ],
+        "dense_raw": [
+          {
+            "total": 0.1268585,
+            "rhs": 0.034365125,
+            "rhs_count": 1.0,
+            "moments": 0.092492916,
+            "moments_count": 1.0,
+            "norms": 1.25e-07,
+            "norms_count": 1.0,
+            "loaded_rows": 0.0,
+            "reused_rows": 0.0
+          }
+        ],
+        "map_wrapper": [
+          {
+            "total": 0.606219,
+            "scan": 0.005449917,
+            "scan_count": 1.0,
+            "norms": 0.096716291,
+            "norms_count": 1.0,
+            "initial_certificate": 0.117434542,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 66.0
+          },
+          {
+            "total": 0.010508709,
+            "scan": 6.2625e-05,
+            "scan_count": 1.0,
+            "norms": 0.003531375,
+            "norms_count": 1.0,
+            "initial_certificate": 0.006911292,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 1.0
+          }
+        ],
+        "project_dense": [
+          {
+            "total": 0.733202375,
+            "dense_raw": 0.126941542,
+            "dense_raw_count": 1.0,
+            "absorb": 0.606260375,
+            "absorb_count": 1.0
+          }
+        ],
+        "fit_finalize": [
+          {
+            "total": 0.0041175,
+            "certify_scores": 0.00411525,
+            "certify_scores_count": 1.0,
+            "publication": 1.25e-06,
+            "publication_count": 1.0
+          }
+        ],
+        "fit": [
+          {
+            "projection": 0.733221459,
+            "finite_solve": 0.161107666,
+            "bread_raw_residual": 0.047096708,
+            "residual_absorb": 0.018040792,
+            "finalize": 0.0041445,
+            "total": 0.963611375
+          }
+        ],
+        "iid": [
+          {
+            "setup_statistics": 0.007655625,
+            "covariance": 4.292e-06,
+            "wald": 5.2375e-05,
+            "certificate": 9.958e-06,
+            "total": 0.007722333
+          }
+        ],
+        "iid_plugin": [
+          {
+            "prepare": 0.012307125,
+            "inference": 0.972625291,
+            "outputs": 4.17e-07,
+            "shadow": 9.8458e-05,
+            "prestore_total": 0.985046042
+          }
+        ]
+      }
+    },
+    {
+      "k": 1,
+      "threads": 8,
+      "repetition": 1,
+      "outer_s": 0.19053633333333336,
+      "native_s": 0.095025417,
+      "input_s": 0.047825791,
+      "phases": {
+        "categorical_prepare": [
+          {
+            "stage": "factorization",
+            "seconds": 9.58e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "recipes",
+            "seconds": 5.42e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "membership",
+            "seconds": 1.67e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "singletons",
+            "seconds": 4.1e-08,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "topology",
+            "seconds": 1.167e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "retention",
+            "seconds": 7.09e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "rebase",
+            "seconds": 5e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "validation",
+            "seconds": 0.000218333,
+            "rows": 1000000.0
+          }
+        ],
+        "ols_prepare": [
+          {
+            "seconds": 0.000748125
+          }
+        ],
+        "ols_prepare_moments": [
+          {
+            "seconds": 0.000757458
+          }
+        ],
+        "dense_raw": [
+          {
+            "total": 0.005180334,
+            "rhs": 0.003353,
+            "rhs_count": 1.0,
+            "moments": 0.001826959,
+            "moments_count": 1.0,
+            "norms": 8.3e-08,
+            "norms_count": 1.0,
+            "loaded_rows": 0.0,
+            "reused_rows": 0.0
+          }
+        ],
+        "map_wrapper": [
+          {
+            "total": 0.044082334,
+            "scan": 0.000272042,
+            "scan_count": 1.0,
+            "norms": 0.0051,
+            "norms_count": 1.0,
+            "initial_certificate": 0.009554125,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 3.0
+          },
+          {
+            "total": 0.011123375,
+            "scan": 0.000135916,
+            "scan_count": 1.0,
+            "norms": 0.003643625,
+            "norms_count": 1.0,
+            "initial_certificate": 0.007342417,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 1.0
+          }
+        ],
+        "project_dense": [
+          {
+            "total": 0.049334334,
+            "dense_raw": 0.005205334,
+            "dense_raw_count": 1.0,
+            "absorb": 0.044128333,
+            "absorb_count": 1.0
+          }
+        ],
+        "fit_finalize": [
+          {
+            "total": 0.0042215,
+            "certify_scores": 0.004220334,
+            "certify_scores_count": 1.0,
+            "publication": 9.16e-07,
+            "publication_count": 1.0
+          }
+        ],
+        "fit": [
+          {
+            "projection": 0.049345,
+            "finite_solve": 0.007024417,
+            "bread_raw_residual": 0.005103458,
+            "residual_absorb": 0.01915325,
+            "finalize": 0.0042385,
+            "total": 0.08486475
+          }
+        ],
+        "iid": [
+          {
+            "setup_statistics": 0.0079665,
+            "covariance": 5e-07,
+            "wald": 8.75e-07,
+            "certificate": 1.083e-06,
+            "total": 0.007969125
+          }
+        ],
+        "iid_plugin": [
+          {
+            "prepare": 0.0007875,
+            "inference": 0.094167459,
+            "outputs": 2.5e-07,
+            "shadow": 5.917e-06,
+            "prestore_total": 0.0949725
+          }
+        ]
+      }
+    },
+    {
+      "k": 1,
+      "threads": 16,
+      "repetition": 1,
+      "outer_s": 0.19761145833333338,
+      "native_s": 0.101222,
+      "input_s": 0.049074167,
+      "phases": {
+        "categorical_prepare": [
+          {
+            "stage": "factorization",
+            "seconds": 7.09e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "recipes",
+            "seconds": 4.58e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "membership",
+            "seconds": 2.5e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "singletons",
+            "seconds": 4.2e-08,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "topology",
+            "seconds": 1.875e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "retention",
+            "seconds": 1.917e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "rebase",
+            "seconds": 1.083e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "validation",
+            "seconds": 0.000377625,
+            "rows": 1000000.0
+          }
+        ],
+        "ols_prepare": [
+          {
+            "seconds": 0.002214834
+          }
+        ],
+        "ols_prepare_moments": [
+          {
+            "seconds": 0.002310042
+          }
+        ],
+        "dense_raw": [
+          {
+            "total": 0.00624025,
+            "rhs": 0.003343084,
+            "rhs_count": 1.0,
+            "moments": 0.002896166,
+            "moments_count": 1.0,
+            "norms": 5e-07,
+            "norms_count": 1.0,
+            "loaded_rows": 0.0,
+            "reused_rows": 0.0
+          }
+        ],
+        "map_wrapper": [
+          {
+            "total": 0.043541625,
+            "scan": 0.00043,
+            "scan_count": 1.0,
+            "norms": 0.005292334,
+            "norms_count": 1.0,
+            "initial_certificate": 0.009485583,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 3.0
+          },
+          {
+            "total": 0.011811958,
+            "scan": 0.000147625,
+            "scan_count": 1.0,
+            "norms": 0.00419175,
+            "norms_count": 1.0,
+            "initial_certificate": 0.007470625,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 1.0
+          }
+        ],
+        "project_dense": [
+          {
+            "total": 0.049958666,
+            "dense_raw": 0.006348166,
+            "dense_raw_count": 1.0,
+            "absorb": 0.043609834,
+            "absorb_count": 1.0
+          }
+        ],
+        "fit_finalize": [
+          {
+            "total": 0.004727708,
+            "certify_scores": 0.004725917,
+            "certify_scores_count": 1.0,
+            "publication": 1.166e-06,
+            "publication_count": 1.0
+          }
+        ],
+        "fit": [
+          {
+            "projection": 0.049999167,
+            "finite_solve": 0.007588,
+            "bread_raw_residual": 0.00516625,
+            "residual_absorb": 0.019996084,
+            "finalize": 0.004793375,
+            "total": 0.087543084
+          }
+        ],
+        "iid": [
+          {
+            "setup_statistics": 0.008031834,
+            "covariance": 6.67e-07,
+            "wald": 1.25e-06,
+            "certificate": 1.5e-06,
+            "total": 0.008035541
+          }
+        ],
+        "iid_plugin": [
+          {
+            "prepare": 0.002836334,
+            "inference": 0.097868209,
+            "outputs": 5e-07,
+            "shadow": 6.417e-06,
+            "prestore_total": 0.10072875
+          }
+        ]
+      }
+    },
+    {
+      "k": 64,
+      "threads": 1,
+      "repetition": 2,
+      "outer_s": 2.092293291666667,
+      "native_s": 1.709795708,
+      "input_s": 0.302432125,
+      "phases": {
+        "categorical_prepare": [
+          {
+            "stage": "factorization",
+            "seconds": 8.33e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "recipes",
+            "seconds": 1e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "membership",
+            "seconds": 1.67e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "singletons",
+            "seconds": 4.1e-08,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "topology",
+            "seconds": 1.333e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "retention",
+            "seconds": 8.75e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "rebase",
+            "seconds": 1.042e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "validation",
+            "seconds": 0.021081042,
+            "rows": 1000000.0
+          }
+        ],
+        "ols_prepare": [
+          {
+            "seconds": 0.064763375
+          }
+        ],
+        "ols_prepare_moments": [
+          {
+            "seconds": 0.064787542
+          }
+        ],
+        "dense_raw": [
+          {
+            "total": 0.410475667,
+            "rhs": 0.153926417,
+            "rhs_count": 1.0,
+            "moments": 0.256548291,
+            "moments_count": 1.0,
+            "norms": 9.17e-07,
+            "norms_count": 1.0,
+            "loaded_rows": 0.0,
+            "reused_rows": 0.0
+          }
+        ],
+        "map_wrapper": [
+          {
+            "total": 0.617989333,
+            "scan": 0.029005792,
+            "scan_count": 1.0,
+            "norms": 0.100494333,
+            "norms_count": 1.0,
+            "initial_certificate": 0.115948375,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 66.0
+          },
+          {
+            "total": 0.011075666,
+            "scan": 0.000397541,
+            "scan_count": 1.0,
+            "norms": 0.003467125,
+            "norms_count": 1.0,
+            "initial_certificate": 0.007207834,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 1.0
+          }
+        ],
+        "project_dense": [
+          {
+            "total": 1.028562042,
+            "dense_raw": 0.410520875,
+            "dense_raw_count": 1.0,
+            "absorb": 0.618040542,
+            "absorb_count": 1.0
+          }
+        ],
+        "fit_finalize": [
+          {
+            "total": 0.008119333,
+            "certify_scores": 0.008115041,
+            "certify_scores_count": 1.0,
+            "publication": 2.459e-06,
+            "publication_count": 1.0
+          }
+        ],
+        "fit": [
+          {
+            "projection": 1.028575333,
+            "finite_solve": 0.524585334,
+            "bread_raw_residual": 0.05057725,
+            "residual_absorb": 0.018960583,
+            "finalize": 0.008153209,
+            "total": 1.630852458
+          }
+        ],
+        "iid": [
+          {
+            "setup_statistics": 0.012233333,
+            "covariance": 5.333e-06,
+            "wald": 5.7333e-05,
+            "certificate": 1.1e-05,
+            "total": 0.012307209
+          }
+        ],
+        "iid_plugin": [
+          {
+            "prepare": 0.065128708,
+            "inference": 1.644476917,
+            "outputs": 4.17e-07,
+            "shadow": 0.000101708,
+            "prestore_total": 1.70973325
+          }
+        ]
+      }
+    },
+    {
+      "k": 16,
+      "threads": 8,
+      "repetition": 2,
+      "outer_s": 0.43369966666666676,
+      "native_s": 0.273384292,
+      "input_s": 0.107612667,
+      "phases": {
+        "categorical_prepare": [
+          {
+            "stage": "factorization",
+            "seconds": 1e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "recipes",
+            "seconds": 7.92e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "membership",
+            "seconds": 4.2e-08,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "singletons",
+            "seconds": 0.0,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "topology",
+            "seconds": 1.291e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "retention",
+            "seconds": 8.33e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "rebase",
+            "seconds": 7.92e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "validation",
+            "seconds": 0.001027542,
+            "rows": 1000000.0
+          }
+        ],
+        "ols_prepare": [
+          {
+            "seconds": 0.003406958
+          }
+        ],
+        "ols_prepare_moments": [
+          {
+            "seconds": 0.003416542
+          }
+        ],
+        "dense_raw": [
+          {
+            "total": 0.023059708,
+            "rhs": 0.014750833,
+            "rhs_count": 1.0,
+            "moments": 0.008308459,
+            "moments_count": 1.0,
+            "norms": 4.1e-08,
+            "norms_count": 1.0,
+            "loaded_rows": 0.0,
+            "reused_rows": 0.0
+          }
+        ],
+        "map_wrapper": [
+          {
+            "total": 0.15983925,
+            "scan": 0.00122075,
+            "scan_count": 1.0,
+            "norms": 0.022553542,
+            "norms_count": 1.0,
+            "initial_certificate": 0.034021208,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 18.0
+          },
+          {
+            "total": 0.011293875,
+            "scan": 0.000167,
+            "scan_count": 1.0,
+            "norms": 0.003745,
+            "norms_count": 1.0,
+            "initial_certificate": 0.007377583,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 1.0
+          }
+        ],
+        "project_dense": [
+          {
+            "total": 0.1829855,
+            "dense_raw": 0.023094291,
+            "dense_raw_count": 1.0,
+            "absorb": 0.159890625,
+            "absorb_count": 1.0
+          }
+        ],
+        "fit_finalize": [
+          {
+            "total": 0.004100875,
+            "certify_scores": 0.004099,
+            "certify_scores_count": 1.0,
+            "publication": 1.209e-06,
+            "publication_count": 1.0
+          }
+        ],
+        "fit": [
+          {
+            "projection": 0.1830015,
+            "finite_solve": 0.048690917,
+            "bread_raw_residual": 0.00555375,
+            "residual_absorb": 0.019110125,
+            "finalize": 0.004137917,
+            "total": 0.260494625
+          }
+        ],
+        "iid": [
+          {
+            "setup_statistics": 0.0077965,
+            "covariance": 1.834e-06,
+            "wald": 4.416e-06,
+            "certificate": 1.917e-06,
+            "total": 0.00780475
+          }
+        ],
+        "iid_plugin": [
+          {
+            "prepare": 0.003626667,
+            "inference": 0.269678333,
+            "outputs": 4.16e-07,
+            "shadow": 1.0333e-05,
+            "prestore_total": 0.2733315
+          }
+        ]
+      }
+    },
+    {
+      "k": 1,
+      "threads": 1,
+      "repetition": 2,
+      "outer_s": 0.22292208333333338,
+      "native_s": 0.113607042,
+      "input_s": 0.052595125,
+      "phases": {
+        "categorical_prepare": [
+          {
+            "stage": "factorization",
+            "seconds": 5.83e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "recipes",
+            "seconds": 5e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "membership",
+            "seconds": 1.67e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "singletons",
+            "seconds": 4.2e-08,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "topology",
+            "seconds": 1.375e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "retention",
+            "seconds": 6.25e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "rebase",
+            "seconds": 7.5e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "validation",
+            "seconds": 0.000843125,
+            "rows": 1000000.0
+          }
+        ],
+        "ols_prepare": [
+          {
+            "seconds": 0.002566667
+          }
+        ],
+        "ols_prepare_moments": [
+          {
+            "seconds": 0.00257525
+          }
+        ],
+        "dense_raw": [
+          {
+            "total": 0.018836625,
+            "rhs": 0.005265417,
+            "rhs_count": 1.0,
+            "moments": 0.01357075,
+            "moments_count": 1.0,
+            "norms": 2.08e-07,
+            "norms_count": 1.0,
+            "loaded_rows": 0.0,
+            "reused_rows": 0.0
+          }
+        ],
+        "map_wrapper": [
+          {
+            "total": 0.040142209,
+            "scan": 0.001250292,
+            "scan_count": 1.0,
+            "norms": 0.005099042,
+            "norms_count": 1.0,
+            "initial_certificate": 0.009240791,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 3.0
+          },
+          {
+            "total": 0.010766125,
+            "scan": 0.000404416,
+            "scan_count": 1.0,
+            "norms": 0.003488292,
+            "norms_count": 1.0,
+            "initial_certificate": 0.006872833,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 1.0
+          }
+        ],
+        "project_dense": [
+          {
+            "total": 0.059046625,
+            "dense_raw": 0.018864917,
+            "dense_raw_count": 1.0,
+            "absorb": 0.040181417,
+            "absorb_count": 1.0
+          }
+        ],
+        "fit_finalize": [
+          {
+            "total": 0.007012333,
+            "certify_scores": 0.0070115,
+            "certify_scores_count": 1.0,
+            "publication": 6.25e-07,
+            "publication_count": 1.0
+          }
+        ],
+        "fit": [
+          {
+            "projection": 0.059057292,
+            "finite_solve": 0.00854675,
+            "bread_raw_residual": 0.004844167,
+            "residual_absorb": 0.018453917,
+            "finalize": 0.007021958,
+            "total": 0.097924417
+          }
+        ],
+        "iid": [
+          {
+            "setup_statistics": 0.011345375,
+            "covariance": 1.709e-06,
+            "wald": 2.584e-06,
+            "certificate": 1.833e-06,
+            "total": 0.011351792
+          }
+        ],
+        "iid_plugin": [
+          {
+            "prepare": 0.002846541,
+            "inference": 0.110673084,
+            "outputs": 5e-07,
+            "shadow": 5.833e-06,
+            "prestore_total": 0.113550958
+          }
+        ]
+      }
+    },
+    {
+      "k": 64,
+      "threads": 16,
+      "repetition": 2,
+      "outer_s": 1.485794666666667,
+      "native_s": 1.091257792,
+      "input_s": 0.320454458,
+      "phases": {
+        "categorical_prepare": [
+          {
+            "stage": "factorization",
+            "seconds": 1.25e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "recipes",
+            "seconds": 5.83e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "membership",
+            "seconds": 8.3e-08,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "singletons",
+            "seconds": 4.2e-08,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "topology",
+            "seconds": 1.167e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "retention",
+            "seconds": 1.042e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "rebase",
+            "seconds": 9.17e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "validation",
+            "seconds": 0.003816708,
+            "rows": 1000000.0
+          }
+        ],
+        "ols_prepare": [
+          {
+            "seconds": 0.0085055
+          }
+        ],
+        "ols_prepare_moments": [
+          {
+            "seconds": 0.008514667
+          }
+        ],
+        "dense_raw": [
+          {
+            "total": 0.267323625,
+            "rhs": 0.031417917,
+            "rhs_count": 1.0,
+            "moments": 0.235905208,
+            "moments_count": 1.0,
+            "norms": 2.92e-07,
+            "norms_count": 1.0,
+            "loaded_rows": 0.0,
+            "reused_rows": 0.0
+          }
+        ],
+        "map_wrapper": [
+          {
+            "total": 0.613427375,
+            "scan": 0.003193875,
+            "scan_count": 1.0,
+            "norms": 0.096839209,
+            "norms_count": 1.0,
+            "initial_certificate": 0.114081583,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 66.0
+          },
+          {
+            "total": 0.010688375,
+            "scan": 0.000254167,
+            "scan_count": 1.0,
+            "norms": 0.003481833,
+            "norms_count": 1.0,
+            "initial_certificate": 0.006949167,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 1.0
+          }
+        ],
+        "project_dense": [
+          {
+            "total": 0.880851667,
+            "dense_raw": 0.267370875,
+            "dense_raw_count": 1.0,
+            "absorb": 0.61348025,
+            "absorb_count": 1.0
+          }
+        ],
+        "fit_finalize": [
+          {
+            "total": 0.004020416,
+            "certify_scores": 0.004018,
+            "certify_scores_count": 1.0,
+            "publication": 1.375e-06,
+            "publication_count": 1.0
+          }
+        ],
+        "fit": [
+          {
+            "projection": 0.880868584,
+            "finite_solve": 0.123167459,
+            "bread_raw_residual": 0.046568083,
+            "residual_absorb": 0.018402583,
+            "finalize": 0.004065042,
+            "total": 1.073072042
+          }
+        ],
+        "iid": [
+          {
+            "setup_statistics": 0.007802208,
+            "covariance": 4.291e-06,
+            "wald": 5.2459e-05,
+            "certificate": 9.875e-06,
+            "total": 0.007868916
+          }
+        ],
+        "iid_plugin": [
+          {
+            "prepare": 0.008841583,
+            "inference": 1.082232083,
+            "outputs": 5.83e-07,
+            "shadow": 9.875e-05,
+            "prestore_total": 1.091189458
+          }
+        ]
+      }
+    },
+    {
+      "k": 16,
+      "threads": 1,
+      "repetition": 2,
+      "outer_s": 0.5977379583333334,
+      "native_s": 0.4311615420000001,
+      "input_s": 0.104353042,
+      "phases": {
+        "categorical_prepare": [
+          {
+            "stage": "factorization",
+            "seconds": 1.042e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "recipes",
+            "seconds": 6.67e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "membership",
+            "seconds": 1.67e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "singletons",
+            "seconds": 0.0,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "topology",
+            "seconds": 1.125e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "retention",
+            "seconds": 6.67e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "rebase",
+            "seconds": 9.17e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "validation",
+            "seconds": 0.007066958,
+            "rows": 1000000.0
+          }
+        ],
+        "ols_prepare": [
+          {
+            "seconds": 0.019094208
+          }
+        ],
+        "ols_prepare_moments": [
+          {
+            "seconds": 0.019103167
+          }
+        ],
+        "dense_raw": [
+          {
+            "total": 0.10143175,
+            "rhs": 0.040706375,
+            "rhs_count": 1.0,
+            "moments": 0.060724375,
+            "moments_count": 1.0,
+            "norms": 9.58e-07,
+            "norms_count": 1.0,
+            "loaded_rows": 0.0,
+            "reused_rows": 0.0
+          }
+        ],
+        "map_wrapper": [
+          {
+            "total": 0.161556125,
+            "scan": 0.007784708,
+            "scan_count": 1.0,
+            "norms": 0.02260325,
+            "norms_count": 1.0,
+            "initial_certificate": 0.032531625,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 18.0
+          },
+          {
+            "total": 0.011491792,
+            "scan": 0.000431333,
+            "scan_count": 1.0,
+            "norms": 0.003658042,
+            "norms_count": 1.0,
+            "initial_certificate": 0.007400917,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 1.0
+          }
+        ],
+        "project_dense": [
+          {
+            "total": 0.263091,
+            "dense_raw": 0.101474,
+            "dense_raw_count": 1.0,
+            "absorb": 0.161616416,
+            "absorb_count": 1.0
+          }
+        ],
+        "fit_finalize": [
+          {
+            "total": 0.007817375,
+            "certify_scores": 0.007814583,
+            "certify_scores_count": 1.0,
+            "publication": 1.834e-06,
+            "publication_count": 1.0
+          }
+        ],
+        "fit": [
+          {
+            "projection": 0.263106916,
+            "finite_solve": 0.088875625,
+            "bread_raw_residual": 0.018234959,
+            "residual_absorb": 0.020209458,
+            "finalize": 0.007843625,
+            "total": 0.398271083
+          }
+        ],
+        "iid": [
+          {
+            "setup_statistics": 0.01188975,
+            "covariance": 2.667e-06,
+            "wald": 4.792e-06,
+            "certificate": 1.75e-06,
+            "total": 0.011899125
+          }
+        ],
+        "iid_plugin": [
+          {
+            "prepare": 0.01949475,
+            "inference": 0.411543625,
+            "outputs": 5.83e-07,
+            "shadow": 1.2417e-05,
+            "prestore_total": 0.431078916
+          }
+        ]
+      }
+    },
+    {
+      "k": 64,
+      "threads": 8,
+      "repetition": 2,
+      "outer_s": 1.4231446250000004,
+      "native_s": 1.025376208,
+      "input_s": 0.324088958,
+      "phases": {
+        "categorical_prepare": [
+          {
+            "stage": "factorization",
+            "seconds": 1.292e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "recipes",
+            "seconds": 9.17e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "membership",
+            "seconds": 4.2e-08,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "singletons",
+            "seconds": 4.1e-08,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "topology",
+            "seconds": 1.458e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "retention",
+            "seconds": 1e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "rebase",
+            "seconds": 8.34e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "validation",
+            "seconds": 0.004923833,
+            "rows": 1000000.0
+          }
+        ],
+        "ols_prepare": [
+          {
+            "seconds": 0.0117055
+          }
+        ],
+        "ols_prepare_moments": [
+          {
+            "seconds": 0.0117155
+          }
+        ],
+        "dense_raw": [
+          {
+            "total": 0.146897833,
+            "rhs": 0.037390625,
+            "rhs_count": 1.0,
+            "moments": 0.109506833,
+            "moments_count": 1.0,
+            "norms": 4.2e-08,
+            "norms_count": 1.0,
+            "loaded_rows": 0.0,
+            "reused_rows": 0.0
+          }
+        ],
+        "map_wrapper": [
+          {
+            "total": 0.616641458,
+            "scan": 0.00434375,
+            "scan_count": 1.0,
+            "norms": 0.095455958,
+            "norms_count": 1.0,
+            "initial_certificate": 0.124247459,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 66.0
+          },
+          {
+            "total": 0.010935375,
+            "scan": 0.000100833,
+            "scan_count": 1.0,
+            "norms": 0.0036335,
+            "norms_count": 1.0,
+            "initial_certificate": 0.007198958,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 1.0
+          }
+        ],
+        "project_dense": [
+          {
+            "total": 0.763647542,
+            "dense_raw": 0.146952084,
+            "dense_raw_count": 1.0,
+            "absorb": 0.616695041,
+            "absorb_count": 1.0
+          }
+        ],
+        "fit_finalize": [
+          {
+            "total": 0.004188375,
+            "certify_scores": 0.004186417,
+            "certify_scores_count": 1.0,
+            "publication": 9.17e-07,
+            "publication_count": 1.0
+          }
+        ],
+        "fit": [
+          {
+            "projection": 0.763657917,
+            "finite_solve": 0.165261583,
+            "bread_raw_residual": 0.051893458,
+            "residual_absorb": 0.0188,
+            "finalize": 0.004230958,
+            "total": 1.003844334
+          }
+        ],
+        "iid": [
+          {
+            "setup_statistics": 0.00794225,
+            "covariance": 4.875e-06,
+            "wald": 5.6e-05,
+            "certificate": 1.0959e-05,
+            "total": 0.008014208
+          }
+        ],
+        "iid_plugin": [
+          {
+            "prepare": 0.011947416,
+            "inference": 1.013247,
+            "outputs": 5.84e-07,
+            "shadow": 9.9833e-05,
+            "prestore_total": 1.025314083
+          }
+        ]
+      }
+    },
+    {
+      "k": 16,
+      "threads": 16,
+      "repetition": 2,
+      "outer_s": 0.4088489166666668,
+      "native_s": 0.252878,
+      "input_s": 0.104869916,
+      "phases": {
+        "categorical_prepare": [
+          {
+            "stage": "factorization",
+            "seconds": 1.166e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "recipes",
+            "seconds": 7.08e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "membership",
+            "seconds": 4.2e-08,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "singletons",
+            "seconds": 0.0,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "topology",
+            "seconds": 1.291e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "retention",
+            "seconds": 8.33e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "rebase",
+            "seconds": 7.08e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "validation",
+            "seconds": 0.0011455,
+            "rows": 1000000.0
+          }
+        ],
+        "ols_prepare": [
+          {
+            "seconds": 0.002951084
+          }
+        ],
+        "ols_prepare_moments": [
+          {
+            "seconds": 0.002961583
+          }
+        ],
+        "dense_raw": [
+          {
+            "total": 0.022751334,
+            "rhs": 0.015417209,
+            "rhs_count": 1.0,
+            "moments": 0.007333708,
+            "moments_count": 1.0,
+            "norms": 8.3e-08,
+            "norms_count": 1.0,
+            "loaded_rows": 0.0,
+            "reused_rows": 0.0
+          }
+        ],
+        "map_wrapper": [
+          {
+            "total": 0.158240792,
+            "scan": 0.0012065,
+            "scan_count": 1.0,
+            "norms": 0.022543334,
+            "norms_count": 1.0,
+            "initial_certificate": 0.034132666,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 18.0
+          },
+          {
+            "total": 0.010871208,
+            "scan": 9.2208e-05,
+            "scan_count": 1.0,
+            "norms": 0.003623333,
+            "norms_count": 1.0,
+            "initial_certificate": 0.007154667,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 1.0
+          }
+        ],
+        "project_dense": [
+          {
+            "total": 0.181086083,
+            "dense_raw": 0.022799583,
+            "dense_raw_count": 1.0,
+            "absorb": 0.158286125,
+            "absorb_count": 1.0
+          }
+        ],
+        "fit_finalize": [
+          {
+            "total": 0.004307417,
+            "certify_scores": 0.004304917,
+            "certify_scores_count": 1.0,
+            "publication": 1.833e-06,
+            "publication_count": 1.0
+          }
+        ],
+        "fit": [
+          {
+            "projection": 0.181102833,
+            "finite_solve": 0.030638167,
+            "bread_raw_residual": 0.005447083,
+            "residual_absorb": 0.018734917,
+            "finalize": 0.00434725,
+            "total": 0.240271
+          }
+        ],
+        "iid": [
+          {
+            "setup_statistics": 0.007779083,
+            "covariance": 1.917e-06,
+            "wald": 4.417e-06,
+            "certificate": 1.5e-06,
+            "total": 0.007787125
+          }
+        ],
+        "iid_plugin": [
+          {
+            "prepare": 0.003377667,
+            "inference": 0.249397208,
+            "outputs": 4.17e-07,
+            "shadow": 1.1125e-05,
+            "prestore_total": 0.252810167
+          }
+        ]
+      }
+    },
+    {
+      "k": 1,
+      "threads": 8,
+      "repetition": 2,
+      "outer_s": 0.19407158333333338,
+      "native_s": 0.094162667,
+      "input_s": 0.050576125,
+      "phases": {
+        "categorical_prepare": [
+          {
+            "stage": "factorization",
+            "seconds": 8.75e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "recipes",
+            "seconds": 7.08e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "membership",
+            "seconds": 0.0,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "singletons",
+            "seconds": 4.2e-08,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "topology",
+            "seconds": 1.25e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "retention",
+            "seconds": 8.34e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "rebase",
+            "seconds": 5.41e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "validation",
+            "seconds": 0.000279083,
+            "rows": 1000000.0
+          }
+        ],
+        "ols_prepare": [
+          {
+            "seconds": 0.000869667
+          }
+        ],
+        "ols_prepare_moments": [
+          {
+            "seconds": 0.000879166
+          }
+        ],
+        "dense_raw": [
+          {
+            "total": 0.006210541,
+            "rhs": 0.003672208,
+            "rhs_count": 1.0,
+            "moments": 0.002538083,
+            "moments_count": 1.0,
+            "norms": 0.0,
+            "norms_count": 1.0,
+            "loaded_rows": 0.0,
+            "reused_rows": 0.0
+          }
+        ],
+        "map_wrapper": [
+          {
+            "total": 0.040605834,
+            "scan": 0.00023675,
+            "scan_count": 1.0,
+            "norms": 0.005228417,
+            "norms_count": 1.0,
+            "initial_certificate": 0.009492917,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 3.0
+          },
+          {
+            "total": 0.01122125,
+            "scan": 0.000117792,
+            "scan_count": 1.0,
+            "norms": 0.00372525,
+            "norms_count": 1.0,
+            "initial_certificate": 0.007373916,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 1.0
+          }
+        ],
+        "project_dense": [
+          {
+            "total": 0.046891416,
+            "dense_raw": 0.006250416,
+            "dense_raw_count": 1.0,
+            "absorb": 0.040640542,
+            "absorb_count": 1.0
+          }
+        ],
+        "fit_finalize": [
+          {
+            "total": 0.004417666,
+            "certify_scores": 0.004413166,
+            "certify_scores_count": 1.0,
+            "publication": 4.25e-06,
+            "publication_count": 1.0
+          }
+        ],
+        "fit": [
+          {
+            "projection": 0.046903917,
+            "finite_solve": 0.007429375,
+            "bread_raw_residual": 0.00519675,
+            "residual_absorb": 0.019290083,
+            "finalize": 0.004441292,
+            "total": 0.083261833
+          }
+        ],
+        "iid": [
+          {
+            "setup_statistics": 0.007976292,
+            "covariance": 1.084e-06,
+            "wald": 1.292e-06,
+            "certificate": 1.208e-06,
+            "total": 0.00798
+          }
+        ],
+        "iid_plugin": [
+          {
+            "prepare": 0.001412042,
+            "inference": 0.092640209,
+            "outputs": 5.41e-07,
+            "shadow": 6.583e-06,
+            "prestore_total": 0.094078
+          }
+        ]
+      }
+    },
+    {
+      "k": 1,
+      "threads": 16,
+      "repetition": 2,
+      "outer_s": 0.19579358333333338,
+      "native_s": 0.096037042,
+      "input_s": 0.051862792,
+      "phases": {
+        "categorical_prepare": [
+          {
+            "stage": "factorization",
+            "seconds": 1.542e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "recipes",
+            "seconds": 1.083e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "membership",
+            "seconds": 1.66e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "singletons",
+            "seconds": 8.4e-08,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "topology",
+            "seconds": 1.25e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "retention",
+            "seconds": 9.17e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "rebase",
+            "seconds": 5.84e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "validation",
+            "seconds": 0.000292625,
+            "rows": 1000000.0
+          }
+        ],
+        "ols_prepare": [
+          {
+            "seconds": 0.001118834
+          }
+        ],
+        "ols_prepare_moments": [
+          {
+            "seconds": 0.001140959
+          }
+        ],
+        "dense_raw": [
+          {
+            "total": 0.005875542,
+            "rhs": 0.003294917,
+            "rhs_count": 1.0,
+            "moments": 0.002579875,
+            "moments_count": 1.0,
+            "norms": 2.91e-07,
+            "norms_count": 1.0,
+            "loaded_rows": 0.0,
+            "reused_rows": 0.0
+          }
+        ],
+        "map_wrapper": [
+          {
+            "total": 0.04176325,
+            "scan": 0.0003805,
+            "scan_count": 1.0,
+            "norms": 0.005428333,
+            "norms_count": 1.0,
+            "initial_certificate": 0.009536542,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 3.0
+          },
+          {
+            "total": 0.011284375,
+            "scan": 0.000165292,
+            "scan_count": 1.0,
+            "norms": 0.003724208,
+            "norms_count": 1.0,
+            "initial_certificate": 0.007392208,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 1.0
+          }
+        ],
+        "project_dense": [
+          {
+            "total": 0.047735208,
+            "dense_raw": 0.005920333,
+            "dense_raw_count": 1.0,
+            "absorb": 0.04181425,
+            "absorb_count": 1.0
+          }
+        ],
+        "fit_finalize": [
+          {
+            "total": 0.004764,
+            "certify_scores": 0.004760584,
+            "certify_scores_count": 1.0,
+            "publication": 3e-06,
+            "publication_count": 1.0
+          }
+        ],
+        "fit": [
+          {
+            "projection": 0.047747625,
+            "finite_solve": 0.007257208,
+            "bread_raw_residual": 0.005200375,
+            "residual_absorb": 0.019587416,
+            "finalize": 0.004792458,
+            "total": 0.0845855
+          }
+        ],
+        "iid": [
+          {
+            "setup_statistics": 0.008124666,
+            "covariance": 1.166e-06,
+            "wald": 9.17e-07,
+            "certificate": 1.042e-06,
+            "total": 0.008128125
+          }
+        ],
+        "iid_plugin": [
+          {
+            "prepare": 0.001687333,
+            "inference": 0.094241042,
+            "outputs": 5.84e-07,
+            "shadow": 7e-06,
+            "prestore_total": 0.095955708
+          }
+        ]
+      }
+    },
+    {
+      "k": 64,
+      "threads": 1,
+      "repetition": 3,
+      "outer_s": 2.160740041666667,
+      "native_s": 1.768718209,
+      "input_s": 0.314588916,
+      "phases": {
+        "categorical_prepare": [
+          {
+            "stage": "factorization",
+            "seconds": 1.042e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "recipes",
+            "seconds": 1.125e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "membership",
+            "seconds": 1.25e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "singletons",
+            "seconds": 4.1e-08,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "topology",
+            "seconds": 1.5e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "retention",
+            "seconds": 8.75e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "rebase",
+            "seconds": 9.58e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "validation",
+            "seconds": 0.026532625,
+            "rows": 1000000.0
+          }
+        ],
+        "ols_prepare": [
+          {
+            "seconds": 0.069404958
+          }
+        ],
+        "ols_prepare_moments": [
+          {
+            "seconds": 0.069414083
+          }
+        ],
+        "dense_raw": [
+          {
+            "total": 0.449664375,
+            "rhs": 0.175789334,
+            "rhs_count": 1.0,
+            "moments": 0.273874,
+            "moments_count": 1.0,
+            "norms": 1e-06,
+            "norms_count": 1.0,
+            "loaded_rows": 0.0,
+            "reused_rows": 0.0
+          }
+        ],
+        "map_wrapper": [
+          {
+            "total": 0.628243083,
+            "scan": 0.028626833,
+            "scan_count": 1.0,
+            "norms": 0.097555583,
+            "norms_count": 1.0,
+            "initial_certificate": 0.116411792,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 66.0
+          },
+          {
+            "total": 0.01124075,
+            "scan": 0.000413417,
+            "scan_count": 1.0,
+            "norms": 0.00363225,
+            "norms_count": 1.0,
+            "initial_certificate": 0.00719275,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 1.0
+          }
+        ],
+        "project_dense": [
+          {
+            "total": 1.078033333,
+            "dense_raw": 0.449726125,
+            "dense_raw_count": 1.0,
+            "absorb": 0.62830675,
+            "absorb_count": 1.0
+          }
+        ],
+        "fit_finalize": [
+          {
+            "total": 0.007021792,
+            "certify_scores": 0.007019667,
+            "certify_scores_count": 1.0,
+            "publication": 1.125e-06,
+            "publication_count": 1.0
+          }
+        ],
+        "fit": [
+          {
+            "projection": 1.078049166,
+            "finite_solve": 0.528835958,
+            "bread_raw_residual": 0.05217075,
+            "residual_absorb": 0.019655,
+            "finalize": 0.007033209,
+            "total": 1.685744333
+          }
+        ],
+        "iid": [
+          {
+            "setup_statistics": 0.011443209,
+            "covariance": 6.125e-06,
+            "wald": 5.7042e-05,
+            "certificate": 1.0709e-05,
+            "total": 0.01151725
+          }
+        ],
+        "iid_plugin": [
+          {
+            "prepare": 0.069844667,
+            "inference": 1.698682583,
+            "outputs": 5e-07,
+            "shadow": 9.9291e-05,
+            "prestore_total": 1.76864975
+          }
+        ]
+      }
+    },
+    {
+      "k": 1,
+      "threads": 16,
+      "repetition": 3,
+      "outer_s": 0.19700258333333337,
+      "native_s": 0.095967459,
+      "input_s": 0.052917666,
+      "phases": {
+        "categorical_prepare": [
+          {
+            "stage": "factorization",
+            "seconds": 6.66e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "recipes",
+            "seconds": 7.09e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "membership",
+            "seconds": 4.2e-08,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "singletons",
+            "seconds": 0.0,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "topology",
+            "seconds": 7.08e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "retention",
+            "seconds": 5e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "rebase",
+            "seconds": 5.83e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "validation",
+            "seconds": 0.000180916,
+            "rows": 1000000.0
+          }
+        ],
+        "ols_prepare": [
+          {
+            "seconds": 0.000759917
+          }
+        ],
+        "ols_prepare_moments": [
+          {
+            "seconds": 0.000769125
+          }
+        ],
+        "dense_raw": [
+          {
+            "total": 0.006756083,
+            "rhs": 0.004073416,
+            "rhs_count": 1.0,
+            "moments": 0.00268225,
+            "moments_count": 1.0,
+            "norms": 8.4e-08,
+            "norms_count": 1.0,
+            "loaded_rows": 0.0,
+            "reused_rows": 0.0
+          }
+        ],
+        "map_wrapper": [
+          {
+            "total": 0.041789875,
+            "scan": 0.000363833,
+            "scan_count": 1.0,
+            "norms": 0.005598833,
+            "norms_count": 1.0,
+            "initial_certificate": 0.009506125,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 3.0
+          },
+          {
+            "total": 0.011201958,
+            "scan": 0.000160375,
+            "scan_count": 1.0,
+            "norms": 0.0037275,
+            "norms_count": 1.0,
+            "initial_certificate": 0.007312833,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 1.0
+          }
+        ],
+        "project_dense": [
+          {
+            "total": 0.048638167,
+            "dense_raw": 0.006802917,
+            "dense_raw_count": 1.0,
+            "absorb": 0.041834458,
+            "absorb_count": 1.0
+          }
+        ],
+        "fit_finalize": [
+          {
+            "total": 0.00466475,
+            "certify_scores": 0.0046625,
+            "certify_scores_count": 1.0,
+            "publication": 1.708e-06,
+            "publication_count": 1.0
+          }
+        ],
+        "fit": [
+          {
+            "projection": 0.04865175,
+            "finite_solve": 0.007278416,
+            "bread_raw_residual": 0.005339792,
+            "residual_absorb": 0.019377917,
+            "finalize": 0.004694667,
+            "total": 0.08534325
+          }
+        ],
+        "iid": [
+          {
+            "setup_statistics": 0.008035792,
+            "covariance": 8.75e-07,
+            "wald": 1.208e-06,
+            "certificate": 1.084e-06,
+            "total": 0.008039375
+          }
+        ],
+        "iid_plugin": [
+          {
+            "prepare": 0.001085042,
+            "inference": 0.094780834,
+            "outputs": 4.16e-07,
+            "shadow": 7.209e-06,
+            "prestore_total": 0.095892833
+          }
+        ]
+      }
+    },
+    {
+      "k": 1,
+      "threads": 1,
+      "repetition": 3,
+      "outer_s": 0.21625379166666672,
+      "native_s": 0.114113416,
+      "input_s": 0.049292209,
+      "phases": {
+        "categorical_prepare": [
+          {
+            "stage": "factorization",
+            "seconds": 6.25e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "recipes",
+            "seconds": 2.5e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "membership",
+            "seconds": 1.67e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "singletons",
+            "seconds": 0.0,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "topology",
+            "seconds": 1.208e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "retention",
+            "seconds": 9.16e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "rebase",
+            "seconds": 5e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "validation",
+            "seconds": 0.000843666,
+            "rows": 1000000.0
+          }
+        ],
+        "ols_prepare": [
+          {
+            "seconds": 0.002478875
+          }
+        ],
+        "ols_prepare_moments": [
+          {
+            "seconds": 0.00248775
+          }
+        ],
+        "dense_raw": [
+          {
+            "total": 0.017236167,
+            "rhs": 0.003775792,
+            "rhs_count": 1.0,
+            "moments": 0.013460333,
+            "moments_count": 1.0,
+            "norms": 0.0,
+            "norms_count": 1.0,
+            "loaded_rows": 0.0,
+            "reused_rows": 0.0
+          }
+        ],
+        "map_wrapper": [
+          {
+            "total": 0.040470959,
+            "scan": 0.001239042,
+            "scan_count": 1.0,
+            "norms": 0.005079292,
+            "norms_count": 1.0,
+            "initial_certificate": 0.009268333,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 3.0
+          },
+          {
+            "total": 0.011198334,
+            "scan": 0.000418584,
+            "scan_count": 1.0,
+            "norms": 0.003620666,
+            "norms_count": 1.0,
+            "initial_certificate": 0.007158125,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 1.0
+          }
+        ],
+        "project_dense": [
+          {
+            "total": 0.057764917,
+            "dense_raw": 0.017266875,
+            "dense_raw_count": 1.0,
+            "absorb": 0.040497375,
+            "absorb_count": 1.0
+          }
+        ],
+        "fit_finalize": [
+          {
+            "total": 0.007320333,
+            "certify_scores": 0.007319125,
+            "certify_scores_count": 1.0,
+            "publication": 8.33e-07,
+            "publication_count": 1.0
+          }
+        ],
+        "fit": [
+          {
+            "projection": 0.057774667,
+            "finite_solve": 0.009001458,
+            "bread_raw_residual": 0.005080833,
+            "residual_absorb": 0.019226916,
+            "finalize": 0.007334292,
+            "total": 0.0984185
+          }
+        ],
+        "iid": [
+          {
+            "setup_statistics": 0.0113515,
+            "covariance": 7.92e-07,
+            "wald": 1e-06,
+            "certificate": 1.208e-06,
+            "total": 0.011354542
+          }
+        ],
+        "iid_plugin": [
+          {
+            "prepare": 0.002912458,
+            "inference": 0.11111925,
+            "outputs": 5e-07,
+            "shadow": 5.375e-06,
+            "prestore_total": 0.114061208
+          }
+        ]
+      }
+    },
+    {
+      "k": 64,
+      "threads": 8,
+      "repetition": 3,
+      "outer_s": 1.3971603750000003,
+      "native_s": 1.009749375,
+      "input_s": 0.315563084,
+      "phases": {
+        "categorical_prepare": [
+          {
+            "stage": "factorization",
+            "seconds": 1.167e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "recipes",
+            "seconds": 6.66e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "membership",
+            "seconds": 1.25e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "singletons",
+            "seconds": 4.2e-08,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "topology",
+            "seconds": 1.292e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "retention",
+            "seconds": 1.083e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "rebase",
+            "seconds": 1.083e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "validation",
+            "seconds": 0.004202208,
+            "rows": 1000000.0
+          }
+        ],
+        "ols_prepare": [
+          {
+            "seconds": 0.010903041
+          }
+        ],
+        "ols_prepare_moments": [
+          {
+            "seconds": 0.010911708
+          }
+        ],
+        "dense_raw": [
+          {
+            "total": 0.145972083,
+            "rhs": 0.035916625,
+            "rhs_count": 1.0,
+            "moments": 0.110055083,
+            "moments_count": 1.0,
+            "norms": 1.67e-07,
+            "norms_count": 1.0,
+            "loaded_rows": 0.0,
+            "reused_rows": 0.0
+          }
+        ],
+        "map_wrapper": [
+          {
+            "total": 0.60440975,
+            "scan": 0.004799917,
+            "scan_count": 1.0,
+            "norms": 0.099477375,
+            "norms_count": 1.0,
+            "initial_certificate": 0.118741291,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 66.0
+          },
+          {
+            "total": 0.010570208,
+            "scan": 0.000125583,
+            "scan_count": 1.0,
+            "norms": 0.003520083,
+            "norms_count": 1.0,
+            "initial_certificate": 0.006922209,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 1.0
+          }
+        ],
+        "project_dense": [
+          {
+            "total": 0.750494417,
+            "dense_raw": 0.146022167,
+            "dense_raw_count": 1.0,
+            "absorb": 0.604471708,
+            "absorb_count": 1.0
+          }
+        ],
+        "fit_finalize": [
+          {
+            "total": 0.004543916,
+            "certify_scores": 0.004541416,
+            "certify_scores_count": 1.0,
+            "publication": 1.334e-06,
+            "publication_count": 1.0
+          }
+        ],
+        "fit": [
+          {
+            "projection": 0.750510541,
+            "finite_solve": 0.165365,
+            "bread_raw_residual": 0.04973225,
+            "residual_absorb": 0.018924417,
+            "finalize": 0.004571042,
+            "total": 0.98910375
+          }
+        ],
+        "iid": [
+          {
+            "setup_statistics": 0.00801275,
+            "covariance": 4.667e-06,
+            "wald": 5.6417e-05,
+            "certificate": 1.0625e-05,
+            "total": 0.008084625
+          }
+        ],
+        "iid_plugin": [
+          {
+            "prepare": 0.011090791,
+            "inference": 0.998480833,
+            "outputs": 4.17e-07,
+            "shadow": 9.9875e-05,
+            "prestore_total": 1.009687875
+          }
+        ]
+      }
+    },
+    {
+      "k": 16,
+      "threads": 8,
+      "repetition": 3,
+      "outer_s": 0.4164420000000001,
+      "native_s": 0.262160125,
+      "input_s": 0.103249083,
+      "phases": {
+        "categorical_prepare": [
+          {
+            "stage": "factorization",
+            "seconds": 7.5e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "recipes",
+            "seconds": 6.25e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "membership",
+            "seconds": 4.1e-08,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "singletons",
+            "seconds": 4.2e-08,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "topology",
+            "seconds": 1.167e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "retention",
+            "seconds": 8.75e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "rebase",
+            "seconds": 7.08e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "validation",
+            "seconds": 0.001162625,
+            "rows": 1000000.0
+          }
+        ],
+        "ols_prepare": [
+          {
+            "seconds": 0.003133792
+          }
+        ],
+        "ols_prepare_moments": [
+          {
+            "seconds": 0.003143833
+          }
+        ],
+        "dense_raw": [
+          {
+            "total": 0.02317225,
+            "rhs": 0.014868208,
+            "rhs_count": 1.0,
+            "moments": 0.008303792,
+            "moments_count": 1.0,
+            "norms": 4.2e-08,
+            "norms_count": 1.0,
+            "loaded_rows": 0.0,
+            "reused_rows": 0.0
+          }
+        ],
+        "map_wrapper": [
+          {
+            "total": 0.155261625,
+            "scan": 0.001542792,
+            "scan_count": 1.0,
+            "norms": 0.022606958,
+            "norms_count": 1.0,
+            "initial_certificate": 0.03366675,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 18.0
+          },
+          {
+            "total": 0.010462208,
+            "scan": 0.00010125,
+            "scan_count": 1.0,
+            "norms": 0.00348925,
+            "norms_count": 1.0,
+            "initial_certificate": 0.006868333,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 1.0
+          }
+        ],
+        "project_dense": [
+          {
+            "total": 0.178522833,
+            "dense_raw": 0.023207125,
+            "dense_raw_count": 1.0,
+            "absorb": 0.15531525,
+            "absorb_count": 1.0
+          }
+        ],
+        "fit_finalize": [
+          {
+            "total": 0.004100208,
+            "certify_scores": 0.004092083,
+            "certify_scores_count": 1.0,
+            "publication": 7.459e-06,
+            "publication_count": 1.0
+          }
+        ],
+        "fit": [
+          {
+            "projection": 0.178536375,
+            "finite_solve": 0.04403075,
+            "bread_raw_residual": 0.005376125,
+            "residual_absorb": 0.018011125,
+            "finalize": 0.004119792,
+            "total": 0.2500745
+          }
+        ],
+        "iid": [
+          {
+            "setup_statistics": 0.00745825,
+            "covariance": 1.958e-06,
+            "wald": 4.583e-06,
+            "certificate": 1.625e-06,
+            "total": 0.007466542
+          }
+        ],
+        "iid_plugin": [
+          {
+            "prepare": 0.003178917,
+            "inference": 0.258886542,
+            "outputs": 4.17e-07,
+            "shadow": 9.75e-06,
+            "prestore_total": 0.262094583
+          }
+        ]
+      }
+    },
+    {
+      "k": 64,
+      "threads": 16,
+      "repetition": 3,
+      "outer_s": 1.4781766250000004,
+      "native_s": 1.087505375,
+      "input_s": 0.3093855,
+      "phases": {
+        "categorical_prepare": [
+          {
+            "stage": "factorization",
+            "seconds": 1e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "recipes",
+            "seconds": 7.08e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "membership",
+            "seconds": 4.1e-08,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "singletons",
+            "seconds": 0.0,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "topology",
+            "seconds": 7.92e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "retention",
+            "seconds": 8.75e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "rebase",
+            "seconds": 8.33e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "validation",
+            "seconds": 0.003020084,
+            "rows": 1000000.0
+          }
+        ],
+        "ols_prepare": [
+          {
+            "seconds": 0.007636292
+          }
+        ],
+        "ols_prepare_moments": [
+          {
+            "seconds": 0.007647583
+          }
+        ],
+        "dense_raw": [
+          {
+            "total": 0.252349041,
+            "rhs": 0.030593333,
+            "rhs_count": 1.0,
+            "moments": 0.221755375,
+            "moments_count": 1.0,
+            "norms": 1.67e-07,
+            "norms_count": 1.0,
+            "loaded_rows": 0.0,
+            "reused_rows": 0.0
+          }
+        ],
+        "map_wrapper": [
+          {
+            "total": 0.608359,
+            "scan": 0.002823625,
+            "scan_count": 1.0,
+            "norms": 0.095894375,
+            "norms_count": 1.0,
+            "initial_certificate": 0.114819542,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 66.0
+          },
+          {
+            "total": 0.011061875,
+            "scan": 0.000252333,
+            "scan_count": 1.0,
+            "norms": 0.003632542,
+            "norms_count": 1.0,
+            "initial_certificate": 0.007175625,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 1.0
+          }
+        ],
+        "project_dense": [
+          {
+            "total": 0.860861625,
+            "dense_raw": 0.252428125,
+            "dense_raw_count": 1.0,
+            "absorb": 0.608432708,
+            "absorb_count": 1.0
+          }
+        ],
+        "fit_finalize": [
+          {
+            "total": 0.004090625,
+            "certify_scores": 0.004087167,
+            "certify_scores_count": 1.0,
+            "publication": 2.333e-06,
+            "publication_count": 1.0
+          }
+        ],
+        "fit": [
+          {
+            "projection": 0.860884375,
+            "finite_solve": 0.132193459,
+            "bread_raw_residual": 0.053589834,
+            "residual_absorb": 0.01900475,
+            "finalize": 0.004121458,
+            "total": 1.069794291
+          }
+        ],
+        "iid": [
+          {
+            "setup_statistics": 0.007940625,
+            "covariance": 4.584e-06,
+            "wald": 5.5458e-05,
+            "certificate": 1.025e-05,
+            "total": 0.008011083
+          }
+        ],
+        "iid_plugin": [
+          {
+            "prepare": 0.008090583,
+            "inference": 1.079215,
+            "outputs": 1.67e-07,
+            "shadow": 9.8625e-05,
+            "prestore_total": 1.087424125
+          }
+        ]
+      }
+    },
+    {
+      "k": 16,
+      "threads": 16,
+      "repetition": 3,
+      "outer_s": 0.4214729583333334,
+      "native_s": 0.262636209,
+      "input_s": 0.107132583,
+      "phases": {
+        "categorical_prepare": [
+          {
+            "stage": "factorization",
+            "seconds": 1.292e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "recipes",
+            "seconds": 5.83e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "membership",
+            "seconds": 4.2e-08,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "singletons",
+            "seconds": 0.0,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "topology",
+            "seconds": 1.458e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "retention",
+            "seconds": 1.041e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "rebase",
+            "seconds": 8.75e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "validation",
+            "seconds": 0.001136625,
+            "rows": 1000000.0
+          }
+        ],
+        "ols_prepare": [
+          {
+            "seconds": 0.003201834
+          }
+        ],
+        "ols_prepare_moments": [
+          {
+            "seconds": 0.003214875
+          }
+        ],
+        "dense_raw": [
+          {
+            "total": 0.024042541,
+            "rhs": 0.01635525,
+            "rhs_count": 1.0,
+            "moments": 0.007686875,
+            "moments_count": 1.0,
+            "norms": 0.0,
+            "norms_count": 1.0,
+            "loaded_rows": 0.0,
+            "reused_rows": 0.0
+          }
+        ],
+        "map_wrapper": [
+          {
+            "total": 0.166689125,
+            "scan": 0.001130666,
+            "scan_count": 1.0,
+            "norms": 0.022699459,
+            "norms_count": 1.0,
+            "initial_certificate": 0.034011166,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 18.0
+          },
+          {
+            "total": 0.0106415,
+            "scan": 0.000196416,
+            "scan_count": 1.0,
+            "norms": 0.003501917,
+            "norms_count": 1.0,
+            "initial_certificate": 0.006941583,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 1.0
+          }
+        ],
+        "project_dense": [
+          {
+            "total": 0.190840084,
+            "dense_raw": 0.024100334,
+            "dense_raw_count": 1.0,
+            "absorb": 0.166739333,
+            "absorb_count": 1.0
+          }
+        ],
+        "fit_finalize": [
+          {
+            "total": 0.004181583,
+            "certify_scores": 0.004179125,
+            "certify_scores_count": 1.0,
+            "publication": 1.583e-06,
+            "publication_count": 1.0
+          }
+        ],
+        "fit": [
+          {
+            "projection": 0.190852625,
+            "finite_solve": 0.030707083,
+            "bread_raw_residual": 0.005513042,
+            "residual_absorb": 0.018697042,
+            "finalize": 0.004205,
+            "total": 0.249975125
+          }
+        ],
+        "iid": [
+          {
+            "setup_statistics": 0.007882666,
+            "covariance": 2.709e-06,
+            "wald": 4.166e-06,
+            "certificate": 1.792e-06,
+            "total": 0.0078915
+          }
+        ],
+        "iid_plugin": [
+          {
+            "prepare": 0.003265916,
+            "inference": 0.259280209,
+            "outputs": 3.75e-07,
+            "shadow": 1.0583e-05,
+            "prestore_total": 0.262572166
+          }
+        ]
+      }
+    },
+    {
+      "k": 16,
+      "threads": 1,
+      "repetition": 3,
+      "outer_s": 0.5524917083333335,
+      "native_s": 0.390663792,
+      "input_s": 0.105297208,
+      "phases": {
+        "categorical_prepare": [
+          {
+            "stage": "factorization",
+            "seconds": 6.25e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "recipes",
+            "seconds": 1.083e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "membership",
+            "seconds": 1.25e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "singletons",
+            "seconds": 0.0,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "topology",
+            "seconds": 1.25e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "retention",
+            "seconds": 1e-06,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "rebase",
+            "seconds": 9.59e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "validation",
+            "seconds": 0.007369667,
+            "rows": 1000000.0
+          }
+        ],
+        "ols_prepare": [
+          {
+            "seconds": 0.019751459
+          }
+        ],
+        "ols_prepare_moments": [
+          {
+            "seconds": 0.019765667
+          }
+        ],
+        "dense_raw": [
+          {
+            "total": 0.085969625,
+            "rhs": 0.025453625,
+            "rhs_count": 1.0,
+            "moments": 0.060515416,
+            "moments_count": 1.0,
+            "norms": 5.42e-07,
+            "norms_count": 1.0,
+            "loaded_rows": 0.0,
+            "reused_rows": 0.0
+          }
+        ],
+        "map_wrapper": [
+          {
+            "total": 0.153832625,
+            "scan": 0.007141666,
+            "scan_count": 1.0,
+            "norms": 0.020908834,
+            "norms_count": 1.0,
+            "initial_certificate": 0.031652666,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 18.0
+          },
+          {
+            "total": 0.010758541,
+            "scan": 0.000400041,
+            "scan_count": 1.0,
+            "norms": 0.003472209,
+            "norms_count": 1.0,
+            "initial_certificate": 0.006885416,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 1.0
+          }
+        ],
+        "project_dense": [
+          {
+            "total": 0.23989175,
+            "dense_raw": 0.086015625,
+            "dense_raw_count": 1.0,
+            "absorb": 0.153875541,
+            "absorb_count": 1.0
+          }
+        ],
+        "fit_finalize": [
+          {
+            "total": 0.007022292,
+            "certify_scores": 0.007020208,
+            "certify_scores_count": 1.0,
+            "publication": 1.375e-06,
+            "publication_count": 1.0
+          }
+        ],
+        "fit": [
+          {
+            "projection": 0.239904334,
+            "finite_solve": 0.082991334,
+            "bread_raw_residual": 0.009677084,
+            "residual_absorb": 0.018463167,
+            "finalize": 0.007033833,
+            "total": 0.358070042
+          }
+        ],
+        "iid": [
+          {
+            "setup_statistics": 0.01094775,
+            "covariance": 1.542e-06,
+            "wald": 3.833e-06,
+            "certificate": 1.542e-06,
+            "total": 0.01095475
+          }
+        ],
+        "iid_plugin": [
+          {
+            "prepare": 0.020141417,
+            "inference": 0.370434875,
+            "outputs": 4.58e-07,
+            "shadow": 1.025e-05,
+            "prestore_total": 0.390604333
+          }
+        ]
+      }
+    },
+    {
+      "k": 1,
+      "threads": 8,
+      "repetition": 3,
+      "outer_s": 0.19180658333333336,
+      "native_s": 0.094186458,
+      "input_s": 0.050957917,
+      "phases": {
+        "categorical_prepare": [
+          {
+            "stage": "factorization",
+            "seconds": 6.66e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "recipes",
+            "seconds": 7.5e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "membership",
+            "seconds": 4.1e-08,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "singletons",
+            "seconds": 0.0,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "topology",
+            "seconds": 7.08e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "retention",
+            "seconds": 8.33e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "rebase",
+            "seconds": 4.17e-07,
+            "rows": 1000000.0
+          },
+          {
+            "stage": "validation",
+            "seconds": 0.000274417,
+            "rows": 1000000.0
+          }
+        ],
+        "ols_prepare": [
+          {
+            "seconds": 0.000793709
+          }
+        ],
+        "ols_prepare_moments": [
+          {
+            "seconds": 0.000806584
+          }
+        ],
+        "dense_raw": [
+          {
+            "total": 0.005424125,
+            "rhs": 0.003543875,
+            "rhs_count": 1.0,
+            "moments": 0.001879708,
+            "moments_count": 1.0,
+            "norms": 8.4e-08,
+            "norms_count": 1.0,
+            "loaded_rows": 0.0,
+            "reused_rows": 0.0
+          }
+        ],
+        "map_wrapper": [
+          {
+            "total": 0.041018792,
+            "scan": 0.000314583,
+            "scan_count": 1.0,
+            "norms": 0.005209959,
+            "norms_count": 1.0,
+            "initial_certificate": 0.009526541,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 3.0
+          },
+          {
+            "total": 0.011262708,
+            "scan": 7.3625e-05,
+            "scan_count": 1.0,
+            "norms": 0.003755375,
+            "norms_count": 1.0,
+            "initial_certificate": 0.007432125,
+            "initial_certificate_count": 1.0,
+            "sweep": 0.0,
+            "sweep_count": 0.0,
+            "certify": 0.0,
+            "certify_count": 0.0,
+            "rows": 1000000.0,
+            "rhs": 1.0
+          }
+        ],
+        "project_dense": [
+          {
+            "total": 0.046539917,
+            "dense_raw": 0.005470917,
+            "dense_raw_count": 1.0,
+            "absorb": 0.041068375,
+            "absorb_count": 1.0
+          }
+        ],
+        "fit_finalize": [
+          {
+            "total": 0.004226709,
+            "certify_scores": 0.004225459,
+            "certify_scores_count": 1.0,
+            "publication": 8.33e-07,
+            "publication_count": 1.0
+          }
+        ],
+        "fit": [
+          {
+            "projection": 0.046558833,
+            "finite_solve": 0.0079295,
+            "bread_raw_residual": 0.005316125,
+            "residual_absorb": 0.019568709,
+            "finalize": 0.004240084,
+            "total": 0.083613625
+          }
+        ],
+        "iid": [
+          {
+            "setup_statistics": 0.007998667,
+            "covariance": 6.67e-07,
+            "wald": 1.125e-06,
+            "certificate": 1.709e-06,
+            "total": 0.008002334
+          }
+        ],
+        "iid_plugin": [
+          {
+            "prepare": 0.001039458,
+            "inference": 0.093048958,
+            "outputs": 6.25e-07,
+            "shadow": 6.209e-06,
+            "prestore_total": 0.094108166
+          }
+        ]
+      }
+    }
+  ],
+  "summary": [
+    {
+      "k": 1,
+      "threads": 1,
+      "native": 0.113630917,
+      "input": 0.049292209,
+      "prepare": 0.002846541,
+      "projection": 0.058071542,
+      "raw": 0.017705417,
+      "raw_rhs": 0.004815708,
+      "raw_moments": 0.013460333,
+      "absorb": 0.040331208,
+      "map_initial": 0.009240791,
+      "map_norms": 0.005079292,
+      "finite": 0.008932,
+      "bread": 0.005072334,
+      "residual": 0.019226916,
+      "finalize": 0.007334292,
+      "iid": 0.011351792
+    },
+    {
+      "k": 1,
+      "threads": 8,
+      "native": 0.094186458,
+      "input": 0.050576125,
+      "prepare": 0.001039458,
+      "projection": 0.046903917,
+      "raw": 0.005424125,
+      "raw_rhs": 0.003543875,
+      "raw_moments": 0.001879708,
+      "absorb": 0.041068375,
+      "map_initial": 0.009526541,
+      "map_norms": 0.005209959,
+      "finite": 0.007429375,
+      "bread": 0.00519675,
+      "residual": 0.019290083,
+      "finalize": 0.004240084,
+      "iid": 0.00798
+    },
+    {
+      "k": 1,
+      "threads": 16,
+      "native": 0.096037042,
+      "input": 0.051862792,
+      "prepare": 0.001687333,
+      "projection": 0.04865175,
+      "raw": 0.00624025,
+      "raw_rhs": 0.003343084,
+      "raw_moments": 0.00268225,
+      "absorb": 0.041834458,
+      "map_initial": 0.009506125,
+      "map_norms": 0.005428333,
+      "finite": 0.007278416,
+      "bread": 0.005200375,
+      "residual": 0.019587416,
+      "finalize": 0.004792458,
+      "iid": 0.008039375
+    },
+    {
+      "k": 16,
+      "threads": 1,
+      "native": 0.396441791,
+      "input": 0.104353042,
+      "prepare": 0.01949475,
+      "projection": 0.246497959,
+      "raw": 0.091621208,
+      "raw_rhs": 0.032583125,
+      "raw_moments": 0.060515416,
+      "absorb": 0.154827458,
+      "map_initial": 0.032033458,
+      "map_norms": 0.021176292,
+      "finite": 0.083093791,
+      "bread": 0.009677084,
+      "residual": 0.018525416,
+      "finalize": 0.0070655,
+      "iid": 0.011003791
+    },
+    {
+      "k": 16,
+      "threads": 8,
+      "native": 0.273384292,
+      "input": 0.104465208,
+      "prepare": 0.003626667,
+      "projection": 0.1830015,
+      "raw": 0.023074333,
+      "raw_rhs": 0.014750833,
+      "raw_moments": 0.008308459,
+      "absorb": 0.159890625,
+      "map_initial": 0.033943542,
+      "map_norms": 0.022553542,
+      "finite": 0.04516025,
+      "bread": 0.00555375,
+      "residual": 0.018100041,
+      "finalize": 0.004119792,
+      "iid": 0.00780475
+    },
+    {
+      "k": 16,
+      "threads": 16,
+      "native": 0.253759,
+      "input": 0.104869916,
+      "prepare": 0.003265916,
+      "projection": 0.184355958,
+      "raw": 0.022751334,
+      "raw_rhs": 0.015475,
+      "raw_moments": 0.007333708,
+      "absorb": 0.162939,
+      "map_initial": 0.034132666,
+      "map_norms": 0.022543334,
+      "finite": 0.030638167,
+      "bread": 0.005447083,
+      "residual": 0.018697042,
+      "finalize": 0.004205,
+      "iid": 0.007787125
+    },
+    {
+      "k": 64,
+      "threads": 1,
+      "native": 1.709795708,
+      "input": 0.302432125,
+      "prepare": 0.067634541,
+      "projection": 1.028575333,
+      "raw": 0.410475667,
+      "raw_rhs": 0.156604125,
+      "raw_moments": 0.256548291,
+      "absorb": 0.618040542,
+      "map_initial": 0.115948375,
+      "map_norms": 0.097555583,
+      "finite": 0.524585334,
+      "bread": 0.05057725,
+      "residual": 0.018960583,
+      "finalize": 0.007060542,
+      "iid": 0.01151725
+    },
+    {
+      "k": 64,
+      "threads": 8,
+      "native": 1.009749375,
+      "input": 0.315563084,
+      "prepare": 0.011947416,
+      "projection": 0.750510541,
+      "raw": 0.145972083,
+      "raw_rhs": 0.035916625,
+      "raw_moments": 0.109506833,
+      "absorb": 0.606260375,
+      "map_initial": 0.118741291,
+      "map_norms": 0.096716291,
+      "finite": 0.165261583,
+      "bread": 0.04973225,
+      "residual": 0.0188,
+      "finalize": 0.004230958,
+      "iid": 0.008014208
+    },
+    {
+      "k": 64,
+      "threads": 16,
+      "native": 1.087505375,
+      "input": 0.3093855,
+      "prepare": 0.008841583,
+      "projection": 0.860884375,
+      "raw": 0.252349041,
+      "raw_rhs": 0.030593333,
+      "raw_moments": 0.221755375,
+      "absorb": 0.608432708,
+      "map_initial": 0.114081583,
+      "map_norms": 0.095894375,
+      "finite": 0.124089792,
+      "bread": 0.047251,
+      "residual": 0.018402583,
+      "finalize": 0.004065042,
+      "iid": 0.007868916
+    }
+  ],
+  "science": {
+    "fits": 36,
+    "all_pass": true,
+    "fixed_workers_exact": true,
+    "max_coefficient_error": 1.6264767310758543e-14,
+    "max_covariance_error": 1.3298417271892515e-19,
+    "max_rss_relative_error": 4.973799150320701e-14
+  },
+  "hashes": {
+    "phases.do": "adabe8bb356653a2ac71a6974a962ee1796a2be1eb3eb8074413be093d5ff824",
+    "phases.stderr": "e49d4778a28161107ae071b707555ee7bbe035b5370b2256356b1e2b90bed844",
+    "timings.tsv": "69e57366b6e8649b2081a4b446fb59551b49eff6d88a0976a473405309816aa6",
+    "science.tsv": "9d877d43f2fcc41f165c9f1f700b48765f9b5604d73c3bc4f7d778ef208d9f17",
+    "command_clock_plugin": "d98ead7644c396d898ca264dc84268144bf304c5038f322de37b0a63041f2f06",
+    "protocol": "9b4ab2a6894293811ebdeed41e4ccde70ccdb1f38c5ade9325e1493c630ab18e"
+  },
+  "sampling": [
+    {
+      "arm": "fereg",
+      "k": 16,
+      "threads": 8,
+      "fits": 40,
+      "sample_seconds": 10,
+      "returncode": 0,
+      "sample_returncode": 0,
+      "elapsed_seconds": 18.998567083,
+      "sample_sha256": "9a1ee08ca665af582f73db5631428c173787866238712322ec8714ab8f21cacc",
+      "final_fit_science": {
+        "all_pass": true,
+        "max_b_error": 1.5265566588595902e-14,
+        "max_V_error": 8.343274530454858e-20,
+        "rss_relative_error": 1.887379141862766e-15
+      },
+      "named_fereg_hotspots": [
+        {
+          "symbol": "fereg_core::ols::finite_wls_kernel::accumulate_standardized_rows",
+          "all_thread_top_of_stack_count": 2507
+        },
+        {
+          "symbol": "fereg_core::fe::borrowed_map::structural_constant_means",
+          "all_thread_top_of_stack_count": 1710
+        },
+        {
+          "symbol": "fereg_core::fe::norms::leaf",
+          "all_thread_top_of_stack_count": 753
+        },
+        {
+          "symbol": "fereg_core::parallel::stage_producer",
+          "all_thread_top_of_stack_count": 517
+        },
+        {
+          "symbol": "fereg_core::parallel::stage_producer",
+          "all_thread_top_of_stack_count": 515
+        },
+        {
+          "symbol": "fereg_core::fe::borrowed_map::project_structural_constant",
+          "all_thread_top_of_stack_count": 460
+        },
+        {
+          "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper",
+          "all_thread_top_of_stack_count": 255
+        },
+        {
+          "symbol": "fereg_core::ols::prepared::is_full_retained_unweighted_sample::_$u7b$$u7b$closure$u7d$$u7d$",
+          "all_thread_top_of_stack_count": 215
+        },
+        {
+          "symbol": "fereg_spi_vdata_columns",
+          "all_thread_top_of_stack_count": 214
+        },
+        {
+          "symbol": "fereg_core::ols::prepared_fit::finite::dense_within_residuals::_$u7b$$u7b$closure$u7d$$u7d$",
+          "all_thread_top_of_stack_count": 196
+        },
+        {
+          "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper",
+          "all_thread_top_of_stack_count": 165
+        },
+        {
+          "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper",
+          "all_thread_top_of_stack_count": 148
+        },
+        {
+          "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper",
+          "all_thread_top_of_stack_count": 129
+        },
+        {
+          "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper",
+          "all_thread_top_of_stack_count": 129
+        },
+        {
+          "symbol": "fereg_core::ols::prepared_categorical_data::valid_complete_sample::_$u7b$$u7b$closure$u7d$$u7d$",
+          "all_thread_top_of_stack_count": 127
+        },
+        {
+          "symbol": "fereg_core::ols::prepared_unadjusted::update_scaled_sum_of_squares",
+          "all_thread_top_of_stack_count": 86
+        },
+        {
+          "symbol": "fereg_core::ols::finite_wls_kernel::validate_retained_source",
+          "all_thread_top_of_stack_count": 85
+        },
+        {
+          "symbol": "fereg_core::ols::prepared_fit::NormalizedWeights::root",
+          "all_thread_top_of_stack_count": 74
+        },
+        {
+          "symbol": "fereg_core::ols::prepared_fit::compensated_add",
+          "all_thread_top_of_stack_count": 72
+        },
+        {
+          "symbol": "fereg_core::ols::prepared_fit::update_scaled_sum_of_squares",
+          "all_thread_top_of_stack_count": 58
+        },
+        {
+          "symbol": "fereg_core::ols::prepared_unadjusted::compensated_add",
+          "all_thread_top_of_stack_count": 47
+        },
+        {
+          "symbol": "fereg_core::parallel::stage_producer",
+          "all_thread_top_of_stack_count": 38
+        },
+        {
+          "symbol": "_$LT$fereg_plugin..ffi..SpiSession$u20$as$u20$fereg_plugin..input..SpiApi$GT$::read_numeric_columns",
+          "all_thread_top_of_stack_count": 37
+        },
+        {
+          "symbol": "fereg_plugin::model_metadata::reserved_filled",
+          "all_thread_top_of_stack_count": 34
+        },
+        {
+          "symbol": "fereg_core::ols::prepared_fit::certify_scores",
+          "all_thread_top_of_stack_count": 33
+        },
+        {
+          "symbol": "fereg_core::ols::prepared_unadjusted::weighted_sum_of_squares",
+          "all_thread_top_of_stack_count": 30
+        },
+        {
+          "symbol": "fereg_core::ols::prepared_unadjusted::independent_outcome_sum",
+          "all_thread_top_of_stack_count": 23
+        },
+        {
+          "symbol": "fereg_core::ols::prepared_fit::LinearSolveFrame::from_prepared_ols",
+          "all_thread_top_of_stack_count": 21
+        },
+        {
+          "symbol": "fereg_core::ols::prepared_fit::weighted_mean_slice",
+          "all_thread_top_of_stack_count": 15
+        },
+        {
+          "symbol": "fereg_core::ols::prepared_fit::weighted_matrix_column_norm",
+          "all_thread_top_of_stack_count": 11
+        },
+        {
+          "symbol": "crossbeam_deque::deque::Stealer$LT$T$GT$::steal",
+          "all_thread_top_of_stack_count": 8
+        },
+        {
+          "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper",
+          "all_thread_top_of_stack_count": 7
+        },
+        {
+          "symbol": "fereg_core::ols::prepared_fit::one_shot::derived_scale",
+          "all_thread_top_of_stack_count": 6
+        },
+        {
+          "symbol": "fereg_core::parallel::stage_producer",
+          "all_thread_top_of_stack_count": 6
+        },
+        {
+          "symbol": "rayon_core::join::join_context::_$u7b$$u7b$closure$u7d$$u7d$",
+          "all_thread_top_of_stack_count": 6
+        },
+        {
+          "symbol": "fereg_core::fe::borrowed_map::update_workspace_norms",
+          "all_thread_top_of_stack_count": 5
+        },
+        {
+          "symbol": "fereg_core::ols::prepared_rhs::validate_prepared_rhs_inputs",
+          "all_thread_top_of_stack_count": 5
+        }
+      ],
+      "cholesky_solution_sampled": false,
+      "structural_means_sampled": true,
+      "profile_loop_elapsed_is_benchmark_score": false,
+      "science_coverage": "N and residual DoF asserted for each loop fit; final b, V and RSS independently checked. Only the 36 trace fits have every coefficient/covariance vector exported and checked."
+    },
+    {
+      "arm": "fereg",
+      "k": 64,
+      "threads": 8,
+      "fits": 20,
+      "sample_seconds": 10,
+      "returncode": 0,
+      "sample_returncode": 0,
+      "elapsed_seconds": 30.280334083999996,
+      "sample_sha256": "da1d740c1c6c888f2e4e93ad55ff059b835dfaf6c71b5387af249b3c730e2f18",
+      "final_fit_science": {
+        "all_pass": true,
+        "max_b_error": 1.6264767310758543e-14,
+        "max_V_error": 1.3298417271892515e-19,
+        "rss_relative_error": 4.973799150320701e-14
+      },
+      "named_fereg_hotspots": [
+        {
+          "symbol": "fereg_core::ols::finite_wls_kernel::accumulate_standardized_rows",
+          "all_thread_top_of_stack_count": 3667
+        },
+        {
+          "symbol": "fereg_core::parallel::stage_producer",
+          "all_thread_top_of_stack_count": 2521
+        },
+        {
+          "symbol": "fereg_core::fe::borrowed_map::structural_constant_means",
+          "all_thread_top_of_stack_count": 1651
+        },
+        {
+          "symbol": "fereg_core::fe::norms::leaf",
+          "all_thread_top_of_stack_count": 963
+        },
+        {
+          "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper",
+          "all_thread_top_of_stack_count": 696
+        },
+        {
+          "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper",
+          "all_thread_top_of_stack_count": 621
+        },
+        {
+          "symbol": "fereg_core::fe::borrowed_map::project_structural_constant",
+          "all_thread_top_of_stack_count": 292
+        },
+        {
+          "symbol": "fereg_core::ols::prepared_fit::finite::dense_within_residuals::_$u7b$$u7b$closure$u7d$$u7d$",
+          "all_thread_top_of_stack_count": 279
+        },
+        {
+          "symbol": "fereg_core::ols::prepared::is_full_retained_unweighted_sample::_$u7b$$u7b$closure$u7d$$u7d$",
+          "all_thread_top_of_stack_count": 278
+        },
+        {
+          "symbol": "fereg_core::ols::prepared_fit::NormalizedWeights::root",
+          "all_thread_top_of_stack_count": 192
+        },
+        {
+          "symbol": "_$LT$fereg_core..ols..prepared_categorical_data..PreparedOlsData$u20$as$u20$fereg_core..ols..prepared_fit_view..PreparedOlsFitView$GT$::fit_subtract_raw_column",
+          "all_thread_top_of_stack_count": 190
+        },
+        {
+          "symbol": "fereg_spi_vdata_columns",
+          "all_thread_top_of_stack_count": 180
+        },
+        {
+          "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper",
+          "all_thread_top_of_stack_count": 180
+        },
+        {
+          "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper",
+          "all_thread_top_of_stack_count": 176
+        },
+        {
+          "symbol": "fereg_core::ols::prepared_categorical_data::valid_complete_sample::_$u7b$$u7b$closure$u7d$$u7d$",
+          "all_thread_top_of_stack_count": 169
+        },
+        {
+          "symbol": "fereg_plugin::model_metadata::reserved_filled",
+          "all_thread_top_of_stack_count": 59
+        },
+        {
+          "symbol": "_$LT$fereg_plugin..ffi..SpiSession$u20$as$u20$fereg_plugin..input..SpiApi$GT$::read_numeric_columns",
+          "all_thread_top_of_stack_count": 44
+        },
+        {
+          "symbol": "fereg_core::ols::prepared_fit::compensated_add",
+          "all_thread_top_of_stack_count": 29
+        },
+        {
+          "symbol": "fereg_core::parallel::stage_producer",
+          "all_thread_top_of_stack_count": 28
+        },
+        {
+          "symbol": "fereg_core::ols::finite_wls_kernel::validate_retained_source",
+          "all_thread_top_of_stack_count": 25
+        },
+        {
+          "symbol": "fereg_core::ols::prepared_unadjusted::update_scaled_sum_of_squares",
+          "all_thread_top_of_stack_count": 20
+        },
+        {
+          "symbol": "fereg_core::ols::prepared_fit::update_scaled_sum_of_squares",
+          "all_thread_top_of_stack_count": 14
+        },
+        {
+          "symbol": "fereg_core::ols::prepared_unadjusted::weighted_sum_of_squares",
+          "all_thread_top_of_stack_count": 14
+        },
+        {
+          "symbol": "rayon::iter::plumbing::bridge_producer_consumer::helper",
+          "all_thread_top_of_stack_count": 12
+        },
+        {
+          "symbol": "fereg_core::ols::prepared_unadjusted::compensated_add",
+          "all_thread_top_of_stack_count": 11
+        },
+        {
+          "symbol": "fereg_core::ols::prepared_unadjusted::independent_outcome_sum",
+          "all_thread_top_of_stack_count": 11
+        },
+        {
+          "symbol": "fereg_core::ols::prepared_fit::LinearSolveFrame::from_prepared_ols",
+          "all_thread_top_of_stack_count": 7
+        },
+        {
+          "symbol": "fereg_core::ols::prepared_fit::certify_scores",
+          "all_thread_top_of_stack_count": 6
+        },
+        {
+          "symbol": "fereg_core::ols::prepared_fit::weighted_mean_slice",
+          "all_thread_top_of_stack_count": 6
+        },
+        {
+          "symbol": "fereg_core::ols::prepared_fit::weighted_matrix_column_norm",
+          "all_thread_top_of_stack_count": 5
+        }
+      ],
+      "cholesky_solution_sampled": true,
+      "structural_means_sampled": true,
+      "profile_loop_elapsed_is_benchmark_score": false,
+      "science_coverage": "N and residual DoF asserted for each loop fit; final b, V and RSS independently checked. Only the 36 trace fits have every coefficient/covariance vector exported and checked."
+    },
+    {
+      "arm": "regress",
+      "k": 64,
+      "threads": 8,
+      "fits": 80,
+      "sample_seconds": 10,
+      "returncode": 0,
+      "sample_returncode": 0,
+      "elapsed_seconds": 26.044918000000003,
+      "sample_sha256": "b1e539b73de6b28c4a1e10a3d4f3c91110f5a951a656be20e6394807555b5197",
+      "final_fit_science": {
+        "all_pass": true,
+        "max_b_error": 6.5503158452884236e-15,
+        "max_V_error": 1.4844252400631613e-19,
+        "rss_relative_error": 4.707345624410664e-14
+      },
+      "named_fereg_hotspots": [],
+      "cholesky_solution_sampled": false,
+      "structural_means_sampled": false,
+      "profile_loop_elapsed_is_benchmark_score": false,
+      "science_coverage": "N and residual DoF asserted for each loop fit; final b, V and RSS independently checked. Only the 36 trace fits have every coefficient/covariance vector exported and checked."
+    }
+  ],
+  "sampling_interpretation": "All-thread sample counts are hotspot witnesses, not wall-time shares. Profiled loops are not performance estimates. Stata internal routines are stripped, so no exact current kernel implementation is inferred from them.",
+  "source_revision": "c213801ba99760829212eade548c1abfcc7e5347",
+  "runtime_source_revision": "864960f1a6c2a2d1d58747d63a4475843c9c4e28",
+  "host": {
+    "cpu": "Apple M2 Ultra",
+    "physical_cores": 24,
+    "memory_gib": 192,
+    "macos": "26.6.2",
+    "stata": "Stata/MP 19, Apple Silicon, revision 12 Aug 2026",
+    "stata_licensed_processors": 8
+  },
+  "comparison_reference": "simple-regress-macos-20261101.json",
+  "references": [
+    "https://www.stata.com/manuals/rregress.pdf",
+    "https://www.stata.com/statamp/performance-report/",
+    "https://www.stata.com/statalist/archive/2004-05/msg00057.html",
+    "https://www.stata.com/statalist/archive/2013-04/msg00211.html",
+    "https://blog.stata.com/2016/01/05/programming-an-estimation-command-in-stata-computing-ols-objects-in-mata/"
+  ],
+  "reproduction": {
+    "preparation": "Use reproduction.prepare_source from simple-regress-macos-20261101.json with the same NumPy and SciPy versions and WORK_DIRECTORY. Build the unchanged bench/clock.c with bench/build_clock.py. Replace WORK_DIRECTORY and REPOSITORY_DIRECTORY in phase_stata_source. Run phase_stata_source with FEREG_PHASE_TIMING=1 and FEREG_SOLVER_TRACE=1. Run sample_runner_source from the work directory after replacing REPOSITORY_DIRECTORY. Profile loops have tracing disabled. Write the top-level protocol object to protocol.json in WORK_DIRECTORY before running the sampling supervisor or phase analyzer.",
+    "phase_stata_source": "version 19\nclear all\nset more off\nset varabbrev off\nset linesize 255\nadopath ++ \"REPOSITORY_DIRECTORY/stata\"\nadopath ++ \"REPOSITORY_DIRECTORY/dist\"\nquietly findfile fereg_macos.plugin\nassert r(fn) == \"REPOSITORY_DIRECTORY/dist/fereg_macos.plugin\"\nprogram _clock, plugin using(\"WORK_DIRECTORY/command-clock.plugin\")\nquietly use \"WORK_DIRECTORY/data.dta\", clear\nmata: ft=fopen(\"WORK_DIRECTORY/timings.tsv\",\"w\"); fs=fopen(\"WORK_DIRECTORY/science.tsv\",\"w\")\nprogram _run\n    args arm k threads repetition\n    local processors=min(`threads',c(processors_lic),c(processors_mach))\n    set processors `processors'\n    local options\n    if \"`arm'\" == \"fereg\" local options , threads(`threads')\n    tempname secs res\n    scalar `secs'=.\n    scalar `res'=.\n    plugin call _clock, start\n    capture noisily quietly `arm' y x1-x`k' `options'\n    local rc=_rc\n    plugin call _clock, stop `secs' `res'\n    if `rc' exit `rc'\n    assert scalar(`secs')>0 & scalar(`secs')<120\n    assert scalar(`res')>0 & scalar(`res')<=0.0000005\n    assert e(N)==1000000 & e(df_r)==1000000-`k'-1\n    local native=.\n    local input=.\n    local preflight=.\n    local total=.\n    local workers=`processors'\n    if \"`arm'\"==\"fereg\" {\n        local native=el(e(fereg_runtime),20,2)\n        local input=el(e(fereg_runtime),19,2)\n        local preflight=el(e(fereg_runtime),18,2)\n        local total=el(e(fereg_runtime),21,2)\n        local workers=e(fereg_threads)\n        assert `workers'==`threads'\n        assert e(df_a)==1\n    }\n    mata: fput(ft, \"`arm' `k' `threads' `processors' `repetition' \"+strofreal(st_numscalar(\"`secs'\"),\"%24.17g\")+\" `native' `input' `preflight' `total' `workers'\"); fput(fs,\"`arm' `k' `threads' `repetition' \"+invtokens(strofreal((st_matrix(\"e(b)\"),vec(st_matrix(\"e(V)\"))',st_numscalar(\"e(rss)\"),st_numscalar(\"e(N)\"),st_numscalar(\"e(N)\")-st_numscalar(\"e(df_r)\"),st_numscalar(\"e(df_r)\")),\"%24.17g\")))\n    display \"DONE `arm' k=`k' t=`threads' rep=`repetition' secs=\" scalar(`secs')\nend\n_run fereg 1 1 0\n_run fereg 1 8 0\n_run fereg 1 16 0\n_run fereg 16 1 0\n_run fereg 16 8 0\n_run fereg 16 16 0\n_run fereg 64 1 0\n_run fereg 64 8 0\n_run fereg 64 16 0\n_run fereg 16 1 1\n_run fereg 64 1 1\n_run fereg 1 1 1\n_run fereg 16 16 1\n_run fereg 64 16 1\n_run fereg 16 8 1\n_run fereg 64 8 1\n_run fereg 1 8 1\n_run fereg 1 16 1\n_run fereg 64 1 2\n_run fereg 16 8 2\n_run fereg 1 1 2\n_run fereg 64 16 2\n_run fereg 16 1 2\n_run fereg 64 8 2\n_run fereg 16 16 2\n_run fereg 1 8 2\n_run fereg 1 16 2\n_run fereg 64 1 3\n_run fereg 1 16 3\n_run fereg 1 1 3\n_run fereg 64 8 3\n_run fereg 16 8 3\n_run fereg 64 16 3\n_run fereg 16 16 3\n_run fereg 16 1 3\n_run fereg 1 8 3\nmata: fclose(ft); fclose(fs)\ndisplay \"NATIVE_PROFILE_COMPLETE\"\nexit, clear\n",
+    "sample_runner_source": "from pathlib import Path\nimport json,subprocess,time,os,hashlib\np=Path(__file__).resolve().parent;root=Path('REPOSITORY_DIRECTORY');prot=json.loads((p/'protocol.json').read_text()); results=[]\nfor case in prot['sample_plan']:\n arm=case['arm'];k=case['k'];t=case['threads'];fits=case['fits'];name=f'{arm}-k{k}-t{t}';ready=p/(name+'.ready');go=p/(name+'.go');options=f', threads({t})' if arm=='fereg' else ''\n source=f'''version 19\nclear all\nset more off\nset processors {min(t,8)}\nadopath ++ \"{root}/stata\"\nadopath ++ \"{root}/dist\"\nuse \"{p}/data.dta\", clear\nquietly {arm} y x1-x{k} {options}\nfile open ready using \"{ready}\", write text replace\nfile write ready \"ready\"\nfile close ready\ncapture confirm file \"{go}\"\nwhile _rc {{\n    sleep 10\n    capture confirm file \"{go}\"\n}}\nforvalues r=1/{fits} {{\n    quietly {arm} y x1-x{k} {options}\n    assert e(N)==1000000 & e(df_r)=={1000000-k-1}\n}}\nmata: f=fopen(\"{p}/{name}.science\",\"w\");fput(f,invtokens(strofreal((st_matrix(\"e(b)\"),vec(st_matrix(\"e(V)\"))',st_numscalar(\"e(rss)\")),\"%24.17g\")));fclose(f)\ndisplay \"SAMPLE_FITS_COMPLETE\"\nexit, clear\n'''\n (p/(name+'.do')).write_text(source);env=os.environ.copy()\n for key in list(env):\n  if key.startswith('FEREG_'):env.pop(key)\n print('Starting',name,flush=True);started=time.monotonic()\n with (p/(name+'.stderr')).open('w') as out:\n  proc=subprocess.Popen(['/Applications/Stata/StataMP.app/Contents/MacOS/stata-mp','-b','do',name+'.do'],cwd=p,stdout=out,stderr=subprocess.STDOUT,env=env)\n  while not ready.exists():\n   if proc.poll() is not None or time.monotonic()-started>30:raise RuntimeError('Stata did not reach ready')\n   time.sleep(.05)\n  with (p/(name+'.sampler-output')).open('w') as slog:\n   sampler=subprocess.Popen(['/usr/bin/sample',str(proc.pid),str(case['sample_seconds']),'1','-file',str(p/(name+'.sample'))],stdout=slog,stderr=subprocess.STDOUT)\n   time.sleep(.2);go.write_text('go\\n');sample_rc=sampler.wait(timeout=30)\n  rc=proc.wait(timeout=180)\n assert rc==0 and 'SAMPLE_FITS_COMPLETE' in (p/(name+'.log')).read_text()\n record={**case,'returncode':rc,'sample_returncode':sample_rc,'elapsed_seconds':time.monotonic()-started,'sample_sha256':hashlib.sha256((p/(name+'.sample')).read_bytes()).hexdigest() if (p/(name+'.sample')).exists() else None}\n results.append(record);(p/'sample-runs.json').write_text(json.dumps(results,indent=2)+'\\n');print('Finished',name,record,flush=True)\n",
+    "phase_analysis_source": "from pathlib import Path\nimport json,math,statistics,hashlib\np=Path(__file__).resolve().parent;root=Path('REPOSITORY_DIRECTORY');old=json.loads((root/'bench/results/simple-regress-macos-20261101.json').read_text());prot=json.loads((p/'protocol.json').read_text());refs=old['science']['oracle_reference']\nassert 'NATIVE_PROFILE_COMPLETE' in (p/'phases.log').read_text()\nassert prot['plugin_sha256']==hashlib.sha256((root/'dist/fereg_macos.plugin').read_bytes()).hexdigest()\ngroups=[];group={}\nfor line in (p/'phases.stderr').read_text().splitlines():\n if not line.startswith('FEREG_PHASE|'):continue\n tokens=line.split('|');name=tokens[1];fields={}\n for item in tokens[2:]:\n  key,value=item.split('=',1)\n  try:fields[key]=float(value)\n  except ValueError:fields[key]=value\n group.setdefault(name,[]).append(fields)\n if name=='iid_plugin':groups.append(group);group={}\nassert not group and len(groups)==36\nrecords=[];baselines={};maxb=maxv=maxrss=0.\nfor idx,(a,k,t,rep) in enumerate(prot['calls']):\n timing=(p/'timings.tsv').read_text().splitlines()[idx].split();s=(p/'science.tsv').read_text().splitlines()[idx].split()\n assert timing[:3]==[a,str(k),str(t)] and int(timing[4])==rep\n assert s[:4]==[a,str(k),str(t),str(rep)]\n v=list(map(float,s[4:]));d=k+1;b=v[:d];cov=v[d:d+d*d];rss,n,rank,df=v[-4:];ref=refs[str(k)]\n assert (n,rank,df)==(1e6,k+1,1e6-k-1)\n rb=ref['b'];rv=[ref['V'][i][j] for j in range(d) for i in range(d)]\n assert all(math.isclose(x,y,rel_tol=1e-7,abs_tol=1e-10) for x,y in zip(b,rb))\n assert all(math.isclose(x,y,rel_tol=1e-6,abs_tol=1e-10) for x,y in zip(cov,rv))\n assert math.isclose(rss,ref['rss'],rel_tol=1e-8,abs_tol=1e-10)\n key=(k,t)\n if key in baselines:assert v==baselines[key]\n else:baselines[key]=v\n maxb=max(maxb,max(abs(x-y) for x,y in zip(b,rb)));maxv=max(maxv,max(abs(x-y) for x,y in zip(cov,rv)));maxrss=max(maxrss,abs(rss/ref['rss']-1))\n records.append({'k':k,'threads':t,'repetition':rep,'outer_s':float(timing[5]),'native_s':float(timing[6]),'input_s':float(timing[7]),'phases':groups[idx]})\nsummary=[]\nfor k in (1,16,64):\n for t in (1,8,16):\n  rs=[r for r in records if r['k']==k and r['threads']==t and r['repetition']>0]\n  m=lambda fun:statistics.median(fun(r) for r in rs)\n  ph=lambda name,key,ind=0:m(lambda r:r['phases'][name][ind][key])\n  row={'k':k,'threads':t,'native':m(lambda r:r['native_s']),'input':m(lambda r:r['input_s']),'prepare':ph('iid_plugin','prepare'),'projection':ph('fit','projection'),'raw':ph('dense_raw','total'),'raw_rhs':ph('dense_raw','rhs'),'raw_moments':ph('dense_raw','moments'),'absorb':ph('project_dense','absorb'),'map_initial':ph('map_wrapper','initial_certificate'),'map_norms':ph('map_wrapper','norms'),'finite':ph('fit','finite_solve'),'bread':ph('fit','bread_raw_residual'),'residual':ph('fit','residual_absorb'),'finalize':ph('fit','finalize'),'iid':ph('iid','total')}\n  summary.append(row);print(json.dumps(row))\nresult={'protocol':prot,'phase_records':records,'summary':summary,'science':{'fits':36,'all_pass':True,'fixed_workers_exact':True,'max_coefficient_error':maxb,'max_covariance_error':maxv,'max_rss_relative_error':maxrss},'hashes':{name:hashlib.sha256((p/name).read_bytes()).hexdigest() for name in ['phases.do','phases.stderr','timings.tsv','science.tsv']}}\n(p/'phase-result.json').write_text(json.dumps(result,indent=2)+'\\n')\n"
+  }
+}
