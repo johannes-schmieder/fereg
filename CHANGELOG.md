@@ -4,6 +4,28 @@
 
 No changes yet.
 
+## 0.5.0 beta.13 — 2026-11-01
+
+Faster loading and faster PPML. OLS estimates are identical to beta.12; PPML
+estimates with several fixed effects can differ in the last digits because the
+solver now starts from better values, with every tolerance and accuracy check
+unchanged.
+
+- Numeric variables are read from Stata in parallel on qualified installations:
+  Stata 18 and 19 MP on Apple Silicon Macs and Stata 17, 18 and 19 MP on Linux,
+  console and GUI. Loading a million rows takes a fraction of its former time
+  (for example 0.31 s to 0.05 s for 64 regressors on eight workers), and whole
+  commands are up to twice as fast. Other installations, alias variables and
+  string variables keep the previous reader, and the loaded data are the same.
+- PPML with several fixed effects starts each joint solve from the last
+  certified fit and streams its coupling terms in one pass, which makes sparse
+  three-FE PPML about a third faster. One-FE PPML is faster too.
+- Explicit `solver(lsmr)` PPML reuses its core factor while weights change little.
+- `feppml` keeps Stata's processors from one million observations, where its
+  own per-row passes cost more than running them serially.
+- The ado-files and plugin now use action protocol 1.7; install both together
+  and restart Stata after updating.
+
 ## 0.5.0 beta.12 — 2026-10-31
 
 Interface changes only; the numerical code is unchanged and estimates are

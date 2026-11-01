@@ -11,6 +11,7 @@ f stata/_fereg_factor_sample.ado
 f stata/_fereg_indepvars.ado
 f stata/_fereg_memory_baseline.ado
 f stata/_fereg_memory_validate.ado
+f stata/_fereg_input_host.ado
 f stata/feppml.ado
 f stata/_fereg_ppml.ado
 f stata/_fereg_estimate_ppml.ado
