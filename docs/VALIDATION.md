@@ -1771,7 +1771,12 @@ Mac M2 Ultra, threads 4/8, eight cells, all 384 timed calls retained
 ([summary](../bench/results/parallel-input-macos-20261101.md)): no regression;
 at eight workers complete OLS input loading falls to 0.10–0.22 of the incumbent
 in all-numeric cells (0.65 with a string FE, whose strings stay serial) and
-whole-command time to 0.49–0.84; allocation peaks are unchanged.
+whole-command time to 0.49–0.84; allocation peaks are unchanged. Linux, one
+whole SCC node (`scc-wo4`, 28 cores), threads 4/16/28, all 576 timed calls
+retained ([summary](../bench/results/parallel-input-linux-20261101.md)): no
+regression; at 28 workers all-numeric OLS loading falls to 0.04–0.12 of the
+incumbent (0.74 with the string FE) and whole-command time to 0.46–0.78 (PPML
+0.88). A 28-worker exactness oracle passed in the same allocation first.
 
 ## Package checks
 
