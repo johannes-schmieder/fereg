@@ -2149,6 +2149,14 @@ differences `7e-15` and `7e-11`); Mac Stata 15 no longer starts on the test
 Mac, and Linux runs the Stata 15.1 checks. The strict default
 `./scripts/run_tests.sh` passes with the refreshed plugins.
 
+Beta.13 was published with archives only, from tag commit `87a5a4e7`, to
+which `main` was fast-forwarded; the release list is 189,940 characters. Fresh
+installations from the beta.13 tag, from `main` and with `github install
+johannes-schmieder/fereg` pass on Mac in Stata 19 and on Linux (job 8387946)
+in Stata 19 and 15.1: 36 of 36 installed files byte-identical, selftest and
+the OLS/PPML checks, with `github list` recording beta.13 as installed and
+latest. See the [publication record](../bench/results/beta13-publication-20261101.json).
+
 ### Beta.12 interface packaging
 
 Beta.12 changes the Stata interface only; runtime `864960f1` keeps beta.11's

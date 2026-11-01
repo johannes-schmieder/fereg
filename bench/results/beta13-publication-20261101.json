@@ -1,0 +1,73 @@
+{
+ "schema": "beta13-publication-v1",
+ "date": "2026-11-01",
+ "status": "passed",
+ "release": "https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0-beta.13",
+ "release_commit": "87a5a4e73fe10d3427b9b4f949d1f26116c3fc81",
+ "runtime_commit": "ee61833e1a083c37f57fbebe028e98b18df73afb",
+ "main_fast_forward": {
+  "from": "8cf25f74606d1854607d60102348200c3650d92d",
+  "to": "87a5a4e73fe10d3427b9b4f949d1f26116c3fc81"
+ },
+ "published_assets": [
+  {
+   "name": "fereg-0.5.0-source.zip",
+   "digest": "sha256:533c063325c94d9f0ad1cf8c35c0dfb461f518f7ce718ba8503c49b174ac02d1",
+   "size": 34352955
+  },
+  {
+   "name": "fereg-0.5.0-source.zip.sha256",
+   "digest": "sha256:317420e47e57876e2a5ef9824c10ca3e16b792c59bf3581c836eb9bfc984786a",
+   "size": 89
+  },
+  {
+   "name": "fereg-0.5.0.zip",
+   "digest": "sha256:81086e04c88e0197e5d468628d8c9bba0905f5f00f63e1149a5d57a6a3d1a46d",
+   "size": 18273460
+  },
+  {
+   "name": "fereg-0.5.0.zip.sha256",
+   "digest": "sha256:b39fac43ff708f6e681850bf4ce54fa5a5b6ef2f9afbe3d295922c36b878f559",
+   "size": 82
+  },
+  {
+   "name": "macos_source_build.md",
+   "digest": "sha256:6798db113daf34e716270e5f89ccee5c3a8c7b21eb2625ab3201432579ffc3ec",
+   "size": 2826
+  }
+ ],
+ "local_asset_digests_match": true,
+ "release_list_characters": 189940,
+ "release_list_limit_characters": 264392,
+ "public_installations": {
+  "macos": {
+   "stata": [
+    "19"
+   ],
+   "routes": {
+    "tag": "net install from raw.githubusercontent.com/johannes-schmieder/fereg/v0.5.0-beta.13/",
+    "main": "net install from raw.githubusercontent.com/johannes-schmieder/fereg/main/",
+    "github": "net install github from haghish.github.io/github/, then github install johannes-schmieder/fereg"
+   },
+   "result": "All three installations passed: 36 of 36 installed files byte-identical to the package, selftest r(fereg_version) 0.5.0-beta.13, OLS and PPML agree with regress and poisson dummy fits (relative differences 7.1e-15 and 7.3e-11); github list records v0.5.0-beta.13 as installed and latest. Mac Stata 15 no longer starts on the test Mac."
+  },
+  "linux": {
+   "job": "8387946",
+   "host": "scc-tb4.scc.bu.edu",
+   "failed": 0,
+   "exit_status": 0,
+   "wallclock_seconds": 87,
+   "maxvmem": "6.016G",
+   "stata": [
+    "19",
+    "15.1"
+   ],
+   "routes": [
+    "tag",
+    "main",
+    "github"
+   ],
+   "result": "All six installations passed: 36 of 36 installed files byte-identical to the package, selftest r(fereg_version) 0.5.0-beta.13, OLS and PPML agree with regress and poisson dummy fits (Stata 19: 7.1e-15 and 4.3e-17; Stata 15.1: 4.3e-15 and 2.2e-10); github list records v0.5.0-beta.13 as installed and latest."
+  }
+ }
+}
