@@ -52,6 +52,7 @@ const QUALIFIED: &[(&str, &str, u32, &str, &str)] = &[
     ("linux", "x86_64", 18, "MP", "gui"),
     ("linux", "x86_64", 19, "MP", "console"),
     ("linux", "x86_64", 19, "MP", "gui"),
+    ("windows", "x86_64", 19, "MP", "gui"),
 ];
 
 /// Host capability decided from public request metadata before any read.

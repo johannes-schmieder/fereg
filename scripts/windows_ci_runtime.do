@@ -95,5 +95,54 @@ if _rc exit 9110
 * Diagnostic r(9111) identifies this fixture; it cannot confer PASS.
 capture noisily do "tests/stata/postestimation/replay_and_prefixes.do"
 if _rc exit 9111
+
+* Parallel numeric input on this host (Stata/MP 19, GUI executable): the
+* fixtures above already loaded through the window. Each step below has its
+* own diagnostic code; none can confer PASS by itself.
+capture program drop _windows_input_result
+program define _windows_input_result
+    args file prefix
+    confirm file `"`file'"'
+    tempname handle
+    file open `handle' using `"`file'"', read text
+    file read `handle' line
+    file close `handle'
+    assert substr(`"`line'"', 1, strlen(`"`prefix'"')) == `"`prefix'"'
+    display as text `"`line'"'
+end
+assert c(MP) & floor(c(stata_version)) == 19
+quietly _fereg_input_host
+assert `"`r(edition)'"' == "MP" & `"`r(interface)'"' == "gui"
+* Diagnostic r(9112): missing-value witness (MSVC build, then the SDK check).
+shell powershell.exe -NoLogo -NoProfile -NonInteractive ///
+    -ExecutionPolicy Bypass -File "scripts/windows_input_qualification.ps1" ///
+    -Action witness -Result "target/windows-input-witness.result"
+capture noisily _windows_input_result "target/windows-input-witness.result" ///
+    "WINDOWS_INPUT_WITNESS_BUILD=PASS"
+if _rc exit 9112
+capture noisily do "tests/licensed_stata/missing_witness.do" ///
+    "`root'/target/native-windows/missing_witness.plugin"
+if _rc exit 9112
+* Diagnostic r(9113)/r(9114): the input oracle in a second Stata/MP process
+* with the solver trace, at the default worker count and at eight workers.
+shell powershell.exe -NoLogo -NoProfile -NonInteractive ///
+    -ExecutionPolicy Bypass -File "scripts/windows_input_qualification.ps1" ///
+    -Action oracle -Workers 0 -Result "target/windows-input-oracle-0.result"
+capture noisily _windows_input_result "target/windows-input-oracle-0.result" ///
+    "WINDOWS_INPUT_ORACLE=PASS|workers=0|"
+if _rc exit 9113
+shell powershell.exe -NoLogo -NoProfile -NonInteractive ///
+    -ExecutionPolicy Bypass -File "scripts/windows_input_qualification.ps1" ///
+    -Action oracle -Workers 8 -Result "target/windows-input-oracle-8.result"
+capture noisily _windows_input_result "target/windows-input-oracle-8.result" ///
+    "WINDOWS_INPUT_ORACLE=PASS|workers=8|"
+if _rc exit 9114
+* Diagnostic r(9115): worker panic and read failure after the first phase.
+capture noisily do "tests/stata/development/parallel_input_failures.do"
+if _rc exit 9115
+* Diagnostic r(9116): frozen paired timing rule at two workers.
+capture mkdir "`root'/target/windows-input-bench"
+capture noisily do "bench/parallel_input_paired.do" "`root'/target/windows-input-bench" 2 5
+if _rc exit 9116
 shell powershell.exe -NoLogo -NoProfile -NonInteractive ///
     -ExecutionPolicy Bypass -File "scripts/windows_ci_report.ps1" -Action pass

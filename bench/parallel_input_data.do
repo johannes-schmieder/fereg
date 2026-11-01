@@ -1,7 +1,8 @@
 version 17.0
 * Frozen inputs for the parallel numeric input comparison (bench/parallel_input.py).
-* usage: do parallel_input_data.do <output directory>
-args out
+* usage: do parallel_input_data.do <output directory> [1m]
+* The optional 1m argument writes only the 1M-row file (paired host checks).
+args out only
 clear all
 set more off
 set seed 739391
@@ -19,6 +20,10 @@ generate double e = exp(.01 * mod(_n, 7))
 generate double py = exp(.2 * x1 + .1 * x2 + sin(g / 11) / 4) * e
 quietly replace x5 = . if mod(_n, 997) == 0
 save `"`out'/inputs_1m.dta"', replace
+if `"`only'"' == "1m" {
+    display as result "END_FIXTURE|parallel_input_data|rc=0"
+    exit
+}
 clear
 set obs 10000000
 generate double x1 = rnormal()

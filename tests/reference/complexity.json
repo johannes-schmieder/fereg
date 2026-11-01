@@ -2,64 +2,10 @@
   "definition": "docs/development_workflow.md#complexity-inventory",
   "growth": [
     {
-      "after": 1457,
-      "before": 1451,
-      "metric": "fereg-core/dispatch_candidates",
-      "reason": "The profile predictor chooses bound numeric slices or the per-value accessor, and stack coefficients or per-row coefficients for models wider than 64 columns."
-    },
-    {
-      "after": 113448,
-      "before": 113033,
-      "metric": "fereg-core/production_lines",
-      "reason": "The one-FE profile forms each step coefficient once per 4,096-row block and, for directly stored numeric columns, binds their slices once per block (the same fused per-row sequence); Poisson means use the installed team with first-row error order."
-    },
-    {
-      "after": 1782,
-      "before": 1773,
-      "metric": "file/crates/fereg-core/src/fe/map.rs",
-      "reason": "PyFixest parity merge, e0e607c8: PPML joint frames start from the last certified fitted values, carried through the joint session (declared replay scope 2026-11-01-ppml-seeded-joint-frames-macos)."
-    },
-    {
-      "after": 5586,
-      "before": 5582,
-      "metric": "file/crates/fereg-core/src/ols/linear_session.rs",
-      "reason": "PyFixest parity merge, e0e607c8: PPML joint frames start from the last certified fitted values, carried through the joint session (declared replay scope 2026-11-01-ppml-seeded-joint-frames-macos)."
-    },
-    {
-      "after": 2119,
-      "before": 2090,
-      "metric": "file/crates/fereg-core/src/ppml/categorical_lsmr.rs",
-      "reason": "PyFixest parity merge, d69f1ff4: explicit solver(lsmr) reuses the core-pair factor while the log-weight drift stays within 0.05."
-    },
-    {
-      "after": 205,
-      "before": 202,
-      "metric": "function/crates/fereg-core/src/fe/slope_coefficients/joint.rs/iterate#1",
-      "reason": "PyFixest parity merge, e0e607c8: PPML joint frames start from the last certified fitted values, carried through the joint session (declared replay scope 2026-11-01-ppml-seeded-joint-frames-macos)."
-    },
-    {
-      "after": 171,
-      "before": 169,
-      "metric": "function/crates/fereg-core/src/fe/slope_coefficients/joint.rs/solve_streamed#1",
-      "reason": "PyFixest parity merge, e0e607c8: PPML joint frames start from the last certified fitted values, carried through the joint session (declared replay scope 2026-11-01-ppml-seeded-joint-frames-macos)."
-    },
-    {
-      "after": 232,
-      "before": 216,
-      "metric": "function/crates/fereg-core/src/ols/implicit_centered.rs/refresh#1",
-      "reason": "PyFixest parity merge, a89ab4c1: the exact one-FE refresh stages normalized weights and balances group means on the team."
-    },
-    {
-      "after": 212,
-      "before": 210,
-      "metric": "function/crates/fereg-core/src/ols/linear_session.rs/solve_joint_ppml_internal#1",
-      "reason": "PyFixest parity merge, e0e607c8: PPML joint frames start from the last certified fitted values, carried through the joint session (declared replay scope 2026-11-01-ppml-seeded-joint-frames-macos)."
-    },
-    {
-      "after": 273,
-      "before": 259,
-      "metric": "function/crates/fereg-core/src/ppml/categorical_lsmr.rs/solve_installed#1",
-      "reason": "PyFixest parity merge, d69f1ff4: the core-pair factor reuse decision and its drift bound live in the installed LSMR solve."
+      "after": 16949,
+      "before": 16948,
+      "metric": "fereg-plugin/production_lines",
+      "reason": "Windows x86-64 Stata/MP 19 (GUI executable) joins the qualified parallel-input host table after its AWS qualification run."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -24227,136 +24173,136 @@
         "dispatch_candidates": [
           {
             "condition": "! policy . enabled ( ) || rows == 0 || width == 0 || ! spi . supports_numeric_window ( ) || matches ! ( candidate , Candidate :: Known ( UniformValuesRef :: Repeated",
-            "line": 236
+            "line": 237
           },
           {
             "condition": "StagePlan :: new ( rows as u128 * slots as u128 , blocks , team . threads ( ) ) . lanes < 2",
-            "line": 251
+            "line": 252
           },
           {
             "condition": "memory . retain ( descriptor_bytes ) . is_err ( )",
-            "line": 262
+            "line": 263
           },
           {
             "condition": "let Some ( failure ) = read_marker ( source , bank , start , rows , output )",
-            "line": 628
+            "line": 629
           },
           {
             "condition": "let Some ( failure ) = read_payload ( source , bank , start , rows , retained )",
-            "line": 637
+            "line": 638
           },
           {
             "condition": "read ( start , rows ) . is_ok ( )",
-            "line": 707
+            "line": 708
           }
         ],
         "functions": {
           "block#1": {
-            "line": 605,
+            "line": 606,
             "lines": 4
           },
           "bytes#1": {
-            "line": 826,
+            "line": 827,
             "lines": 6
           },
           "check_reserved#1": {
-            "line": 441,
+            "line": 442,
             "lines": 35
           },
           "column#1": {
-            "line": 832,
+            "line": 833,
             "lines": 9
           },
           "enabled#1": {
-            "line": 143,
+            "line": 144,
             "lines": 3
           },
           "error#1": {
-            "line": 503,
+            "line": 504,
             "lines": 7
           },
           "finish#1": {
-            "line": 893,
+            "line": 894,
             "lines": 11
           },
           "from_host#1": {
-            "line": 91,
+            "line": 92,
             "lines": 27
           },
           "from_request#1": {
-            "line": 119,
+            "line": 120,
             "lines": 9
           },
           "marker#1": {
-            "line": 591,
+            "line": 592,
             "lines": 3
           },
           "new#1": {
-            "line": 157,
+            "line": 158,
             "lines": 6
           },
           "new#2": {
-            "line": 556,
+            "line": 557,
             "lines": 34
           },
           "new#3": {
-            "line": 884,
+            "line": 885,
             "lines": 8
           },
           "payload_failure#1": {
-            "line": 800,
+            "line": 801,
             "lines": 10
           },
           "positions#1": {
-            "line": 596,
+            "line": 597,
             "lines": 8
           },
           "read_block#1": {
-            "line": 617,
+            "line": 618,
             "lines": 40
           },
           "read_marker#1": {
-            "line": 660,
+            "line": 661,
             "lines": 74
           },
           "read_payload#1": {
-            "line": 735,
+            "line": 736,
             "lines": 64
           },
           "record#1": {
-            "line": 519,
+            "line": 520,
             "lines": 9
           },
           "reserved#1": {
-            "line": 611,
+            "line": 612,
             "lines": 5
           },
           "run_phases#1": {
-            "line": 367,
+            "line": 368,
             "lines": 73
           },
           "serial#1": {
-            "line": 131,
+            "line": 132,
             "lines": 3
           },
           "spi_failure#1": {
-            "line": 512,
+            "line": 513,
             "lines": 6
           },
           "trace_loaded_input#1": {
-            "line": 815,
+            "line": 816,
             "lines": 59
           },
           "try_read#1": {
-            "line": 223,
+            "line": 224,
             "lines": 114
           },
           "with_fault#1": {
-            "line": 136,
+            "line": 137,
             "lines": 6
           }
         },
-        "production_lines": 743
+        "production_lines": 744
       },
       "crates/fereg-plugin/src/ppml_bias.rs": {
         "chunk_candidates": [],
@@ -25375,10 +25321,10 @@
         "dispatch_candidates": 156,
         "files_over_1500": 3,
         "functions_over_150": 12,
-        "production_lines": 16948
+        "production_lines": 16949
       }
     },
     "schema": 1
   },
-  "reason": "beta.12 interface release: one user-facing message helper for a failed finite score certificate replaces three internal messages and names the tolerance() remedy. Arithmetic, routing and certificates are unchanged; the two reduced functions are lowered."
+  "reason": "Windows parallel-input qualification: one qualified host row; no arithmetic, routing or certificate change."
 }
