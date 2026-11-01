@@ -207,6 +207,28 @@ fn original_profile_columns_match_cold_design_across_bindings_and_weight_frames(
             }
         }
         assert!(ProfiledRawColumns::new(&prepared, &[usize::MAX]).is_err());
+        // The column-block predictor repeats the row-by-row fused sequence:
+        // every row adds its terms in column order, one multiply-add each.
+        let all: Vec<_> = (0..prepared.fit_model().columns.len()).collect();
+        let raw = ProfiledRawColumns::new(&prepared, &all).unwrap();
+        let terms: Vec<_> = (0..all.len()).map(|j| 0.7 - j as f64 * 0.13).collect();
+        for range in [0..rows, 1..rows.min(77), rows / 2..rows] {
+            let start: Vec<_> = range.clone().map(|r| (r as f64 / 7.).sin()).collect();
+            let mut blocked = start.clone();
+            (&raw)
+                .accumulate_predictor(range.clone(), &terms, &mut blocked)
+                .unwrap();
+            let mut expected = start;
+            for (row, value) in range.zip(expected.iter_mut()) {
+                for (column, &coefficient) in terms.iter().enumerate() {
+                    *value = coefficient.mul_add((&raw).value(row, column).unwrap(), *value);
+                }
+            }
+            assert_eq!(
+                blocked.iter().map(|v| v.to_bits()).collect::<Vec<_>>(),
+                expected.iter().map(|v| v.to_bits()).collect::<Vec<_>>()
+            );
+        }
         let offset: Vec<_> = (0..rows).map(|r| (r as f64 / 19.).cos() * 0.1).collect();
         let coefficients = vec![0.03; prepared.fit_model().coefficients.len()];
         for threads in [1, 4] {

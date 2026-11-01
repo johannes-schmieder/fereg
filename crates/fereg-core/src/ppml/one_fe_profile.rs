@@ -1,7 +1,7 @@
 //! Concentrated Poisson steps after the canonical one-intercept-FE rank decision.
 //! Group effects are optimized analytically at every beta trial; the PPML owner
 //! still supplies independent outer and canonical strict/final certificates.
-use super::family::{means_from_eta, CompensatedSum, PreparedPoissonInputs};
+use super::family::{fill_means_in_team, CompensatedSum, PreparedPoissonInputs};
 use super::{PoissonObjective, PpmlConfig, PpmlIterationWorkspace, PpmlLineSearchAcceptance};
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
@@ -14,11 +14,36 @@ use crate::parallel::{InstalledThreadTeam, ThreadTeam};
 use rayon::prelude::*;
 
 const GROUPS_PER_BLOCK: usize = 64;
+/// Rows per predictor block: one task, and one column-major pass per column.
+const PREDICTOR_ROWS: usize = 4096;
+/// Coefficients formed once per predictor block on the stack (no allocation
+/// inside an iteration); wider models form them per row as before.
+const PREDICTOR_STACK_COLUMNS: usize = 64;
 
 pub(super) trait ProfiledDesign: Copy + Sync {
     fn rows(self) -> usize;
     fn columns(self) -> usize;
     fn value(self, row: usize, column: usize) -> Result<f64>;
+
+    /// Add `coefficients[j] * value(row, j)` to each `eta` entry, `j` in
+    /// increasing order, one fused multiply-add per term: `eta[i]` is row
+    /// `rows.start + i`. A design that stores columns directly may run the
+    /// same per-row sequence column by column.
+    fn accumulate_predictor(
+        self,
+        rows: std::ops::Range<usize>,
+        coefficients: &[f64],
+        eta: &mut [f64],
+    ) -> Result<()> {
+        for (row, value) in rows.zip(eta.iter_mut()) {
+            let mut sum = *value;
+            for (column, &coefficient) in coefficients.iter().enumerate() {
+                sum = coefficient.mul_add(self.value(row, column)?, sum);
+            }
+            *value = sum;
+        }
+        Ok(())
+    }
 }
 
 /// Low storage already owns the original loaded columns. Borrow their recipes
@@ -62,6 +87,41 @@ impl<P: PreparedOlsFitView + ?Sized> ProfiledDesign for &ProfiledRawColumns<'_, 
             Some(numeric) => Ok(numeric.raw_columns()[generated].map_or(1., |v| v[row])),
             None => self.prepared.fit_column_value(generated, row),
         }
+    }
+    fn accumulate_predictor(
+        self,
+        rows: std::ops::Range<usize>,
+        coefficients: &[f64],
+        eta: &mut [f64],
+    ) -> Result<()> {
+        let numeric = match &self.numeric {
+            Some(numeric) if coefficients.len() <= PREDICTOR_STACK_COLUMNS => numeric,
+            _ => {
+                for (row, value) in rows.zip(eta.iter_mut()) {
+                    let mut sum = *value;
+                    for (column, &coefficient) in coefficients.iter().enumerate() {
+                        sum = coefficient.mul_add(self.value(row, column)?, sum);
+                    }
+                    *value = sum;
+                }
+                return Ok(());
+            }
+        };
+        // Bind each column's slice once per block; `None` is the exact one.
+        let mut sources: [Option<&[f64]>; PREDICTOR_STACK_COLUMNS] =
+            [None; PREDICTOR_STACK_COLUMNS];
+        for (source, &generated) in sources.iter_mut().zip(self.active) {
+            *source = numeric.raw_columns()[generated];
+        }
+        let sources = &sources[..coefficients.len()];
+        for (row, value) in rows.zip(eta.iter_mut()) {
+            let mut sum = *value;
+            for (&coefficient, source) in coefficients.iter().zip(sources) {
+                sum = coefficient.mul_add(source.map_or(1., |values| values[row]), sum);
+            }
+            *value = sum;
+        }
+        Ok(())
     }
 }
 
@@ -480,16 +540,26 @@ impl ProfiledOneFe {
         let direction = &self.direction;
         self.team.install(|| {
             self.eta
-                .par_iter_mut()
+                .par_chunks_mut(PREDICTOR_ROWS)
                 .enumerate()
-                .try_for_each(|(row, eta)| -> Result<()> {
-                    let mut value = offset[row];
-                    for j in 0..k {
-                        value = (step.mul_add(direction[j], base[j]))
-                            .mul_add(data.value(row, j)?, value);
+                .try_for_each(|(block, eta)| -> Result<()> {
+                    let start = block * PREDICTOR_ROWS;
+                    eta.copy_from_slice(&offset[start..start + eta.len()]);
+                    if k > PREDICTOR_STACK_COLUMNS {
+                        for (row, value) in (start..).zip(eta.iter_mut()) {
+                            for j in 0..k {
+                                *value = (step.mul_add(direction[j], base[j]))
+                                    .mul_add(data.value(row, j)?, *value);
+                            }
+                        }
+                        return Ok(());
                     }
-                    *eta = value;
-                    Ok(())
+                    // The same coefficient value as forming it for each row.
+                    let mut coefficients = [0.0; PREDICTOR_STACK_COLUMNS];
+                    for (j, coefficient) in coefficients[..k].iter_mut().enumerate() {
+                        *coefficient = step.mul_add(direction[j], base[j]);
+                    }
+                    data.accumulate_predictor(start..start + eta.len(), &coefficients[..k], eta)
                 })
         })?;
         trace.lap(0);
@@ -527,7 +597,9 @@ impl ProfiledOneFe {
                 .for_each(|(row, eta)| *eta += shifts[codes[row] as usize])
         });
         trace.lap(2);
-        let result = means_from_eta(&self.eta, config.bounds, &mut self.mean);
+        let result = self
+            .team
+            .install(|| fill_means_in_team(&self.eta, config.bounds, &mut self.mean));
         trace.lap(3);
         result
     }

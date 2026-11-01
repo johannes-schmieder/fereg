@@ -89,6 +89,30 @@ fn numerical_nonconvergence(message: impl Into<String>) -> FeregError {
     FeregError::new(ErrorCode::NonConvergence, message)
 }
 
+/// [`means_from_eta`] on the installed team: every row's mean, and the error
+/// of the first failing row in row order.
+pub(crate) fn fill_means_in_team(
+    eta: &[f64],
+    bounds: PoissonBounds,
+    mean: &mut [f64],
+) -> Result<()> {
+    bounds.validate()?;
+    if eta.len() != mean.len() {
+        return Err(FeregError::new(
+            ErrorCode::InvalidArgument,
+            "eta and mean buffers have different lengths",
+        ));
+    }
+    crate::parallel::stage_try_for_each(
+        mean.par_iter_mut().zip(eta).enumerate(),
+        eta.len() as u128 * 4,
+        |(row, (output, &value))| -> Result<()> {
+            *output = mean_row(row, value, bounds)?;
+            Ok(())
+        },
+    )
+}
+
 pub(crate) fn means_from_eta(eta: &[f64], bounds: PoissonBounds, mean: &mut [f64]) -> Result<()> {
     bounds.validate()?;
     if eta.len() != mean.len() {
@@ -599,24 +623,7 @@ impl<'a> PreparedPoissonInputs<'a> {
         let Some(team) = &self.team else {
             return means_from_eta(eta, bounds, mean);
         };
-        bounds.validate()?;
-        if eta.len() != mean.len() {
-            return Err(FeregError::new(
-                ErrorCode::InvalidArgument,
-                "eta and mean buffers have different lengths",
-            ));
-        }
-        team.install(|| {
-            crate::parallel::stage_try_for_each(
-                mean.par_iter_mut().zip(eta).enumerate(),
-                self.outcome.len() as u128 * 4,
-                |(row, (output, &value))| -> Result<()> {
-                    *output = mean_row(row, value, bounds)?;
-                    Ok(())
-                },
-            )
-        })?;
-        Ok(())
+        team.install(|| fill_means_in_team(eta, bounds, mean))
     }
 
     pub(crate) fn fill_working_state_and_scores(

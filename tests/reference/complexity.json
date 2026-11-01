@@ -2,16 +2,16 @@
   "definition": "docs/development_workflow.md#complexity-inventory",
   "growth": [
     {
-      "after": 113382,
-      "before": 113372,
-      "metric": "fereg-core/production_lines",
-      "reason": "The implicit one-FE design refresh computes each row's normalized weight once into the projected bank, schedules (column, group) means together and fills the projected response in parallel after the certificate."
+      "after": 1457,
+      "before": 1455,
+      "metric": "fereg-core/dispatch_candidates",
+      "reason": "The profile predictor chooses bound numeric slices or the per-value accessor, and stack coefficients or per-row coefficients for models wider than 64 columns."
     },
     {
-      "after": 232,
-      "before": 216,
-      "metric": "function/crates/fereg-core/src/ols/implicit_centered.rs/refresh#1",
-      "reason": "The refresh stages normalized weights in the projected bank before its final parallel fill and schedules group means per (column, group)."
+      "after": 113448,
+      "before": 113382,
+      "metric": "fereg-core/production_lines",
+      "reason": "The one-FE profile forms each step coefficient once per 4,096-row block and, for directly stored numeric columns, binds their slices once per block (the same fused per-row sequence); Poisson means use the installed team with first-row error order."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -16962,11 +16962,11 @@
         "chunk_candidates": [
           {
             "condition": "tile . capacity ( ) as u128 * std :: mem :: size_of :: < [ f64",
-            "line": 223
+            "line": 247
           },
           {
             "condition": "objective_tile_rows ( outcome . len ( ) , threads . resolved ( ) ) == 0",
-            "line": 469
+            "line": 493
           }
         ],
         "dispatch_candidates": [
@@ -16980,76 +16980,76 @@
           },
           {
             "condition": "eta . len ( ) != mean . len ( )",
-            "line": 94
-          },
-          {
-            "condition": "outcome . len ( ) != mean . len ( ) || outcome . len ( ) != prior_weights . len ( )",
-            "line": 183
-          },
-          {
-            "condition": "rows == 0",
-            "line": 212
-          },
-          {
-            "condition": "outcome . is_empty ( ) || outcome . len ( ) != prior_weights . len ( )",
-            "line": 270
-          },
-          {
-            "condition": "! y . is_finite ( ) || y < 0.0 || ! weight . is_finite ( ) || weight <= 0.0",
-            "line": 281
-          },
-          {
-            "condition": "let Some ( mean ) = scaled_null_mean ( outcome , prior_weights , maximum_weight , maximum_outcome )",
-            "line": 296
-          },
-          {
-            "condition": "! weight . is_normal ( )",
-            "line": 314
-          },
-          {
-            "condition": "! maximum_weight_log . is_finite ( ) || ! maximum_outcome_term_log . is_finite ( )",
-            "line": 344
-          },
-          {
-            "condition": "outcome . len ( ) != prior_weights . len ( ) || outcome . len ( ) != offset . len ( )",
-            "line": 448
-          },
-          {
-            "condition": "eta . len ( ) != self . outcome . len ( ) || mean . len ( ) != self . outcome . len ( ) || partials_storage . len ( ) % 4 != 0",
-            "line": 523
+            "line": 100
           },
           {
             "condition": "eta . len ( ) != mean . len ( )",
-            "line": 603
-          },
-          {
-            "condition": "[ mean . len ( ) , eta . len ( ) , weights . len ( ) , response . len ( ) , scores . len ( ) , ] . iter ( ) . any ( | & length | length != n )",
-            "line": 631
+            "line": 118
           },
           {
             "condition": "outcome . len ( ) != mean . len ( ) || outcome . len ( ) != prior_weights . len ( )",
-            "line": 721
+            "line": 207
+          },
+          {
+            "condition": "rows == 0",
+            "line": 236
+          },
+          {
+            "condition": "outcome . is_empty ( ) || outcome . len ( ) != prior_weights . len ( )",
+            "line": 294
+          },
+          {
+            "condition": "! y . is_finite ( ) || y < 0.0 || ! weight . is_finite ( ) || weight <= 0.0",
+            "line": 305
+          },
+          {
+            "condition": "let Some ( mean ) = scaled_null_mean ( outcome , prior_weights , maximum_weight , maximum_outcome )",
+            "line": 320
+          },
+          {
+            "condition": "! weight . is_normal ( )",
+            "line": 338
+          },
+          {
+            "condition": "! maximum_weight_log . is_finite ( ) || ! maximum_outcome_term_log . is_finite ( )",
+            "line": 368
+          },
+          {
+            "condition": "outcome . len ( ) != prior_weights . len ( ) || outcome . len ( ) != offset . len ( )",
+            "line": 472
+          },
+          {
+            "condition": "eta . len ( ) != self . outcome . len ( ) || mean . len ( ) != self . outcome . len ( ) || partials_storage . len ( ) % 4 != 0",
+            "line": 547
+          },
+          {
+            "condition": "[ mean . len ( ) , eta . len ( ) , weights . len ( ) , response . len ( ) , scores . len ( ) , ] . iter ( ) . any ( | & length | length != n )",
+            "line": 638
+          },
+          {
+            "condition": "outcome . len ( ) != mean . len ( ) || outcome . len ( ) != prior_weights . len ( )",
+            "line": 728
           },
           {
             "condition": "eta . is_some_and ( | values | values . len ( ) != outcome . len ( ) )",
-            "line": 727
+            "line": 734
           },
           {
             "condition": "! weight . is_finite ( ) || weight <= 0.0",
-            "line": 777
+            "line": 784
           },
           {
             "condition": "! prior_weight . is_finite ( ) || prior_weight <= 0.0",
-            "line": 903
+            "line": 910
           },
           {
             "condition": "! weight . is_finite ( ) || weight <= 0.0 || ! response . is_finite ( )",
-            "line": 929
+            "line": 936
           }
         ],
         "functions": {
           "add#1": {
-            "line": 970,
+            "line": 977,
             "lines": 3
           },
           "default#1": {
@@ -17057,59 +17057,63 @@
             "lines": 11
           },
           "evaluate#1": {
-            "line": 504,
+            "line": 528,
             "lines": 9
           },
           "evaluate_tiled#1": {
-            "line": 514,
+            "line": 538,
             "lines": 78
           },
           "fallible_output#1": {
-            "line": 955,
+            "line": 962,
             "lines": 7
           },
           "fill_means#1": {
-            "line": 593,
-            "lines": 28
+            "line": 617,
+            "lines": 11
+          },
+          "fill_means_in_team#1": {
+            "line": 94,
+            "lines": 21
           },
           "fill_working_state_and_scores#1": {
-            "line": 622,
+            "line": 629,
             "lines": 61
           },
           "final_replay_tile_rows#1": {
-            "line": 258,
+            "line": 282,
             "lines": 10
           },
           "finish_null_objective#1": {
-            "line": 389,
+            "line": 413,
             "lines": 13
           },
           "finish_objective#1": {
-            "line": 807,
+            "line": 814,
             "lines": 14
           },
           "log_gamma#1": {
-            "line": 1054,
+            "line": 1061,
             "lines": 20
           },
           "log_scaled_null_mean#1": {
-            "line": 332,
+            "line": 356,
             "lines": 38
           },
           "mean_row#1": {
-            "line": 107,
+            "line": 131,
             "lines": 24
           },
           "means_from_eta#1": {
-            "line": 92,
+            "line": 116,
             "lines": 13
           },
           "new_with_threads#1": {
-            "line": 442,
+            "line": 466,
             "lines": 57
           },
           "null_likelihood_row#1": {
-            "line": 372,
+            "line": 396,
             "lines": 16
           },
           "numerical_nonconvergence#1": {
@@ -17125,51 +17129,51 @@
             "lines": 7
           },
           "offset_from_exposure#1": {
-            "line": 937,
+            "line": 944,
             "lines": 17
           },
           "one_plus_x_log1p_minus_x#1": {
-            "line": 1038,
+            "line": 1045,
             "lines": 15
           },
           "outcome#1": {
-            "line": 500,
+            "line": 524,
             "lines": 3
           },
           "poisson_deviance_contribution#1": {
-            "line": 1016,
+            "line": 1023,
             "lines": 21
           },
           "poisson_half_deviance_with_logs#1": {
-            "line": 985,
+            "line": 992,
             "lines": 27
           },
           "poisson_null_mean#1": {
-            "line": 269,
+            "line": 293,
             "lines": 32
           },
           "poisson_null_objective#1": {
-            "line": 140,
+            "line": 164,
             "lines": 18
           },
           "poisson_objective#1": {
-            "line": 132,
+            "line": 156,
             "lines": 7
           },
           "poisson_objective_impl#1": {
-            "line": 705,
+            "line": 712,
             "lines": 8
           },
           "replay_final_objectives_with_threads#1": {
-            "line": 176,
+            "line": 200,
             "lines": 81
           },
           "scaled_null_mean#1": {
-            "line": 304,
+            "line": 328,
             "lines": 27
           },
           "total#1": {
-            "line": 980,
+            "line": 987,
             "lines": 3
           },
           "validate#1": {
@@ -17177,7 +17181,7 @@
             "lines": 17
           }
         },
-        "production_lines": 869
+        "production_lines": 873
       },
       "crates/fereg-core/src/ppml/memory.rs": {
         "chunk_candidates": [],
@@ -17807,156 +17811,172 @@
         "dispatch_candidates": [
           {
             "condition": "active . iter ( ) . any ( | & j | j >= prepared . fit_model ( ) . columns . len ( ) )",
-            "line": 35
+            "line": 60
+          },
+          {
+            "condition": "coefficients . len ( ) <= PREDICTOR_STACK_COLUMNS => numeric , _ =>",
+            "line": 98
           },
           {
             "condition": "positions . iter ( ) . any ( | & j | j >= values . ncols ( ) )",
-            "line": 85
+            "line": 145
           },
           {
             "condition": "design . effects ( ) . len ( ) != 1 || ! design . effects ( ) [ 0 ] . has_intercept ( ) || ! design . effects ( ) [ 0 ] . slopes ( ) . is_empty ( ) || y . len ( ) != design . nobs ( ) || q . len ( ) != y . len ( )",
-            "line": 167
+            "line": 227
           },
           {
             "condition": "self . rows != y . len ( ) || self . groups != design . effects ( ) [ 0 ] . n_levels ( ) || active . len ( ) > self . columns",
-            "line": 178
+            "line": 238
           },
           {
             "condition": "v . capacity ( ) > n",
-            "line": 239
+            "line": 299
           },
           {
             "condition": "partials . capacity ( ) > blocks",
-            "line": 285
+            "line": 345
           },
           {
             "condition": "! weight . is_finite ( ) || weight <= 0.",
-            "line": 319
+            "line": 379
+          },
+          {
+            "condition": "k > PREDICTOR_STACK_COLUMNS",
+            "line": 548
           },
           {
             "condition": "data . rows ( ) != y . len ( ) || data . columns ( ) != self . columns",
-            "line": 578
+            "line": 650
           },
           {
             "condition": "solve_linear_system ( & mut self . factor , & mut self . direction , k , 1 , 1e - 12 ) ? != k",
-            "line": 683
+            "line": 755
           }
         ],
         "functions": {
           "accept#1": {
-            "line": 718,
+            "line": 790,
             "lines": 62
           },
+          "accumulate_predictor#1": {
+            "line": 32,
+            "lines": 15
+          },
+          "accumulate_predictor#2": {
+            "line": 91,
+            "lines": 35
+          },
           "active_columns#1": {
-            "line": 247,
+            "line": 307,
             "lines": 3
           },
           "active_rank#1": {
-            "line": 352,
+            "line": 412,
             "lines": 3
           },
           "active_slots#1": {
-            "line": 349,
+            "line": 409,
             "lines": 3
           },
           "allocation#1": {
-            "line": 224,
+            "line": 284,
             "lines": 6
           },
           "bytes#1": {
-            "line": 133,
+            "line": 193,
             "lines": 25
           },
           "capacities_unchanged#1": {
-            "line": 359,
+            "line": 419,
             "lines": 30
           },
           "columns#1": {
-            "line": 56,
+            "line": 81,
             "lines": 3
           },
           "columns#2": {
-            "line": 98,
+            "line": 158,
             "lines": 3
           },
           "columns#3": {
-            "line": 107,
+            "line": 167,
             "lines": 3
           },
           "construct#1": {
-            "line": 158,
+            "line": 218,
             "lines": 45
           },
           "filled#1": {
-            "line": 236,
+            "line": 296,
             "lines": 9
           },
           "fresh_direction_equivalent#1": {
-            "line": 394,
+            "line": 454,
             "lines": 58
           },
           "initialize_groups#1": {
-            "line": 317,
+            "line": 377,
             "lines": 31
           },
           "new#1": {
-            "line": 34,
+            "line": 59,
             "lines": 16
           },
           "new#2": {
-            "line": 124,
+            "line": 184,
             "lines": 9
           },
           "numerical#1": {
-            "line": 230,
+            "line": 290,
             "lines": 6
           },
           "prepare_direction#1": {
-            "line": 539,
+            "line": 611,
             "lines": 26
           },
           "prepare_direction_in_team#1": {
-            "line": 568,
+            "line": 640,
             "lines": 147
           },
           "profile#1": {
-            "line": 453,
+            "line": 513,
             "lines": 11
           },
           "profile_in_team#1": {
-            "line": 465,
-            "lines": 69
+            "line": 525,
+            "lines": 81
           },
           "reserve_layout#1": {
-            "line": 273,
+            "line": 333,
             "lines": 43
           },
           "rows#1": {
-            "line": 53,
+            "line": 78,
             "lines": 3
           },
           "rows#2": {
-            "line": 104,
+            "line": 164,
             "lines": 3
           },
           "selected#1": {
-            "line": 84,
+            "line": 144,
             "lines": 11
           },
           "value#1": {
-            "line": 59,
+            "line": 84,
             "lines": 7
           },
           "value#2": {
-            "line": 95,
+            "line": 155,
             "lines": 3
           },
           "value#3": {
-            "line": 110,
+            "line": 170,
             "lines": 3
           }
         },
-        "production_lines": 708
+        "production_lines": 770
       },
       "crates/fereg-core/src/ppml/preparation_trace.rs": {
         "chunk_candidates": [],
@@ -25073,10 +25093,10 @@
     "metrics": {
       "fereg-core": {
         "chunk_candidates": 13,
-        "dispatch_candidates": 1455,
+        "dispatch_candidates": 1457,
         "files_over_1500": 15,
         "functions_over_150": 59,
-        "production_lines": 113382
+        "production_lines": 113448
       },
       "fereg-plugin": {
         "chunk_candidates": 3,
