@@ -1103,6 +1103,29 @@ Require two consecutive accepted passes satisfying this and independently
 recomputed normalized finite and FE scores. A small objective change alone
 is insufficient, particularly near small coefficients.
 
+Ordinary weighted-linear solves are inexact. Their target starts at 1e-6 and
+tightens through eight stages and with accepted deviance and score progress.
+In a publication fit it stops tightening at the ordinary floor
+`min(1e-6, 0.1×outer_tolerance)` (approved by Johannes, 2026-10-31, and held for his
+decision after measurement, see VALIDATION; previously
+the strict target below). Once both outer diagnostics meet their bounds, the
+next ordinary solve uses the strict target: the strict checkpoint only
+witnesses the accepted point, which is published, and the recurrences stop on
+a normal-equation criterion whose absolute error does not shrink with the
+Newton step. A floor at the converged frame instead left the accepted point
+outside the strict envelope and cost a rejected checkpoint. Invalid
+diagnostics fail closed to the strict target, and a target already required by
+a rejected checkpoint is never loosened. The private Mu exploration of the
+separation phase keeps the strict floor. Declared scope: PPML publication fits
+with unconverged frames beyond the stage where the strict schedule tightened
+past the ordinary floor may change IRLS paths, inner iteration counts, solver
+signatures, coefficients, covariance, fit statistics, residuals and FE
+coordinates within §20 tolerances; sample, rank, omission, separation and other
+discrete decisions remain unchanged. Witnesses: the schedule's floor, strict
+convergence target and fail-closed unit tests, and the unchanged dense
+small-dynamic-range accuracy fixtures (`eta` within 1e-10 of the exact optimum
+in Fast and Low memory), which the floor at the converged frame fails.
+
 Apparent convergence triggers fresh strict WLS at
 `min(1e-12,0.1×outer_tolerance)`. A publication fit first waits while its
 contracting predictor is predicted to keep moving: with the strict profile

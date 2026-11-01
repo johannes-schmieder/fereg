@@ -182,27 +182,52 @@ pub(crate) fn strict_inner_tolerance(config: PpmlConfig) -> f64 {
     (0.1 * config.tolerance).min(1e-12)
 }
 
+/// Before the outer diagnostics converge, ordinary IRLS frames of a
+/// publication fit stop their weighted-linear solve at a tenth of the
+/// requested outer tolerance, never looser than the initial target (decided by
+/// Johannes, 2026-10-31); they no longer tighten toward the strict target while
+/// the Newton iterate still moves. The private Mu exploration of the
+/// separation phase keeps the strict floor: its terminal decision is a
+/// separation decision this policy does not change.
+pub(crate) fn ordinary_inner_tolerance_floor(config: PpmlConfig, publication: bool) -> f64 {
+    let strict = strict_schedule_target(config);
+    if publication {
+        (0.1 * config.tolerance)
+            .min(config.inner_tolerance_initial)
+            .max(strict)
+    } else {
+        strict
+    }
+}
+
+fn strict_schedule_target(config: PpmlConfig) -> f64 {
+    config
+        .inner_tolerance_final
+        .min(strict_inner_tolerance(config))
+}
+
 /// Deterministic, monotone tolerance policy shared by the prepared production
-/// session. The staged target preserves the
-/// bounded early-iteration policy, while accepted deviance and score progress
-/// can tighten the next solve sooner. Once both outer diagnostics meet their
-/// convergence bounds, the next ordinary solve uses the publication target;
-/// a loose direction would otherwise spend a final checkpoint discovering its
-/// avoidable linear error. Both outer passes and the strict checkpoint remain
-/// mandatory. It is deliberately route-independent so
-/// fast and low memory modes follow the same scientific path. Invalid progress
-/// fails closed to the strict floor instead of silently permitting a loose
-/// solve.
+/// session. The staged target preserves the bounded early-iteration policy
+/// down to [`ordinary_inner_tolerance_floor`], while accepted deviance and
+/// score progress can tighten the next solve sooner. Once both outer
+/// diagnostics meet their convergence bounds, the next ordinary solve uses the
+/// strict target: the strict checkpoint only witnesses the accepted point,
+/// which is published, and both the categorical and joint recurrences stop on
+/// a normal-equation criterion whose absolute error does not shrink with the
+/// Newton step. Both outer passes and the strict checkpoint remain mandatory.
+/// It is deliberately route-independent so fast and low memory modes follow
+/// the same scientific path. Invalid progress fails closed to the strict
+/// target instead of silently permitting a loose solve.
 pub(crate) fn scheduled_inner_tolerance(
     config: PpmlConfig,
+    publication: bool,
     iteration: usize,
     previous_tolerance: f64,
     progress: Option<PpmlInnerToleranceProgress>,
 ) -> f64 {
     const STAGES: usize = 8;
-    let floor = config
-        .inner_tolerance_final
-        .min(strict_inner_tolerance(config));
+    let floor = ordinary_inner_tolerance_floor(config, publication);
+    let strict = strict_schedule_target(config);
     let staged_target = if iteration >= STAGES {
         floor
     } else {
@@ -212,22 +237,21 @@ pub(crate) fn scheduled_inner_tolerance(
     let previous_target = if previous_tolerance.is_finite() && previous_tolerance > 0.0 {
         previous_tolerance.min(config.inner_tolerance_initial)
     } else {
-        floor
+        strict
     };
     let progress_target = match progress {
-        Some(progress) => progress
-            .scale()
-            .map(|scale| {
-                if progress.relative_deviance_change <= config.tolerance
-                    && progress.score_relative_infinity_norm <= config.score_tolerance
-                {
-                    floor
-                } else {
-                    (0.1 * scale).clamp(floor, config.inner_tolerance_initial)
-                }
-            })
-            .unwrap_or(floor),
         None => config.inner_tolerance_initial,
+        Some(progress) => match progress.scale() {
+            Some(scale)
+                if progress.relative_deviance_change > config.tolerance
+                    || progress.score_relative_infinity_norm > config.score_tolerance =>
+            {
+                (0.1 * scale).clamp(floor, config.inner_tolerance_initial)
+            }
+            // A converged outer point prepares its publication state at the
+            // strict target; invalid diagnostics fail closed to it.
+            _ => return strict.min(previous_target),
+        },
     };
     // The nominal scheduling floor bounds newly chosen targets, not an
     // accuracy already required by a rejected strict checkpoint. Loosening
@@ -286,18 +310,21 @@ mod tests {
         let config = PpmlConfig::default();
         let deviance_limited = scheduled_inner_tolerance(
             config,
+            true,
             2,
             config.inner_tolerance_initial,
             Some(PpmlInnerToleranceProgress::new(1e-5, 1e-12)),
         );
         let score_limited = scheduled_inner_tolerance(
             config,
+            true,
             2,
             config.inner_tolerance_initial,
             Some(PpmlInnerToleranceProgress::new(1e-12, 1e-5)),
         );
         let both_improved = scheduled_inner_tolerance(
             config,
+            true,
             2,
             config.inner_tolerance_initial,
             Some(PpmlInnerToleranceProgress::new(1e-10, 1e-10)),
@@ -308,6 +335,49 @@ mod tests {
     }
 
     #[test]
+    fn ordinary_frames_floor_at_a_tenth_of_the_request_and_strict_stays() {
+        for (outer, ordinary, strict) in [
+            (1e-8, 1e-9, 1e-12),
+            (1e-10, 1e-11, 1e-12),
+            (1e-12, 1e-13, 1e-13),
+            (1e-14, 1e-15, 1e-15),
+            // Never looser than the initial target.
+            (1e-4, 1e-6, 1e-12),
+        ] {
+            let config = PpmlConfig::with_outer_controls(outer, 100).unwrap();
+            let close = |left: f64, right: f64| (left - right).abs() <= 1e-12 * right;
+            assert!(close(
+                ordinary_inner_tolerance_floor(config, true),
+                ordinary
+            ));
+            assert!(close(strict_inner_tolerance(config), strict));
+            // The Mu exploration of the separation phase keeps its strict floor.
+            assert!(close(ordinary_inner_tolerance_floor(config, false), strict));
+            // Late unconverged frames of a publication fit stop at the floor.
+            let late = |publication| {
+                scheduled_inner_tolerance(
+                    config,
+                    publication,
+                    8,
+                    config.inner_tolerance_initial,
+                    Some(PpmlInnerToleranceProgress::new(1e-2, 1e-2)),
+                )
+            };
+            assert!(close(late(true), ordinary));
+            assert!(close(late(false), strict));
+            // Progress tightens toward, but never below, the floor.
+            let improving = scheduled_inner_tolerance(
+                config,
+                true,
+                2,
+                config.inner_tolerance_initial,
+                Some(PpmlInnerToleranceProgress::new(outer * 10.0, outer * 1e-4)),
+            );
+            assert!(improving >= ordinary_inner_tolerance_floor(config, true));
+        }
+    }
+
+    #[test]
     fn inner_tolerance_prepares_a_converged_outer_point_for_publication() {
         for (outer, score) in [(1e-8, 1e-8), (1e-8, 1e-10), (1e-14, 1e-12)] {
             let config = PpmlConfig {
@@ -315,27 +385,37 @@ mod tests {
                 score_tolerance: score,
                 ..PpmlConfig::default()
             };
-            let floor = config
+            let strict = config
                 .inner_tolerance_final
                 .min(strict_inner_tolerance(config));
-            let next = |deviance, score, previous| {
-                scheduled_inner_tolerance(
-                    config,
-                    2,
-                    previous,
-                    Some(PpmlInnerToleranceProgress::new(deviance, score)),
-                )
-            };
-            assert_eq!(next(outer, score, config.inner_tolerance_initial), floor);
-            assert_eq!(next(0.0, score, config.inner_tolerance_initial), floor);
-            assert_eq!(next(outer, 0.0, config.inner_tolerance_initial), floor);
-            assert_eq!(next(outer, score, floor * 0.01), floor * 0.01);
-            // Both independent diagnostics must pass. A small score alone
-            // cannot authorize the publication target on a moving objective.
-            assert!(next(1e-3, 0.0, config.inner_tolerance_initial) > floor);
-            assert!(next(0.0, 1e-3, config.inner_tolerance_initial) > floor);
-            assert_eq!(next(f64::NAN, score, config.inner_tolerance_initial), floor);
-            assert_eq!(next(outer, -1.0, config.inner_tolerance_initial), floor);
+            for publication in [true, false] {
+                let floor = ordinary_inner_tolerance_floor(config, publication);
+                assert!(floor >= strict);
+                let next = |deviance, score, previous| {
+                    scheduled_inner_tolerance(
+                        config,
+                        publication,
+                        2,
+                        previous,
+                        Some(PpmlInnerToleranceProgress::new(deviance, score)),
+                    )
+                };
+                assert_eq!(next(outer, score, config.inner_tolerance_initial), strict);
+                assert_eq!(next(0.0, score, config.inner_tolerance_initial), strict);
+                assert_eq!(next(outer, 0.0, config.inner_tolerance_initial), strict);
+                assert_eq!(next(outer, score, strict * 0.01), strict * 0.01);
+                // Both independent diagnostics must pass. A small score alone
+                // cannot authorize the publication target on a moving objective.
+                assert!(next(1e-3, 0.0, config.inner_tolerance_initial) >= floor);
+                assert!(next(0.0, 1e-3, config.inner_tolerance_initial) >= floor);
+                assert!(next(1e-3, 0.0, config.inner_tolerance_initial) > strict);
+                // Invalid diagnostics fail closed to the strict target.
+                assert_eq!(
+                    next(f64::NAN, score, config.inner_tolerance_initial),
+                    strict
+                );
+                assert_eq!(next(outer, -1.0, config.inner_tolerance_initial), strict);
+            }
         }
     }
 
@@ -345,21 +425,25 @@ mod tests {
         config.tolerance = 1e-14;
         config.score_tolerance = config.tolerance;
         let floor = strict_inner_tolerance(config);
-        let first = scheduled_inner_tolerance(config, 1, config.inner_tolerance_initial, None);
+        let first =
+            scheduled_inner_tolerance(config, true, 1, config.inner_tolerance_initial, None);
         let improved = scheduled_inner_tolerance(
             config,
+            true,
             2,
             first,
             Some(PpmlInnerToleranceProgress::new(1e-9, 1e-9)),
         );
         let worsened = scheduled_inner_tolerance(
             config,
+            true,
             3,
             improved,
             Some(PpmlInnerToleranceProgress::new(1e-2, 1e-2)),
         );
         let final_stage = scheduled_inner_tolerance(
             config,
+            true,
             8,
             worsened,
             Some(PpmlInnerToleranceProgress::new(1e-2, 1e-2)),
@@ -370,6 +454,7 @@ mod tests {
         assert_eq!(floor, 1e-15);
         let resumed_after_strict = scheduled_inner_tolerance(
             config,
+            true,
             3,
             strict_inner_tolerance(config),
             Some(PpmlInnerToleranceProgress::new(1e-2, 1e-2)),
@@ -387,11 +472,19 @@ mod tests {
                     Some(PpmlInnerToleranceProgress::new(1e-2, 1e-2)),
                     Some(PpmlInnerToleranceProgress::new(f64::NAN, 1e-2)),
                 ] {
-                    let next = scheduled_inner_tolerance(config, iteration, previous, progress);
-                    assert!(
-                        next <= previous,
-                        "checkpoint {previous:e} loosened to {next:e}"
-                    );
+                    for publication in [true, false] {
+                        let next = scheduled_inner_tolerance(
+                            config,
+                            publication,
+                            iteration,
+                            previous,
+                            progress,
+                        );
+                        assert!(
+                            next <= previous,
+                            "checkpoint {previous:e} loosened to {next:e}"
+                        );
+                    }
                 }
             }
         }
@@ -402,6 +495,7 @@ mod tests {
         let config = PpmlConfig::default();
         let tolerance = scheduled_inner_tolerance(
             config,
+            true,
             2,
             config.inner_tolerance_initial,
             Some(PpmlInnerToleranceProgress::new(f64::NAN, 1e-4)),

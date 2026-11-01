@@ -856,8 +856,14 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     let mut objective = workspace.evaluate_current_objective(&objective_inputs)?;
     let workspace_seconds = preparation_trace.lap();
     let mut score_workspace = PpmlScoreWorkspace::new(&fe_design, config.linear.execution.threads)?;
-    let initial_tolerance =
-        scheduled_inner_tolerance(config.ppml, 1, config.ppml.inner_tolerance_initial, None);
+    let publication = matches!(purpose, PreparedPpmlIrlsPurpose::Publication);
+    let initial_tolerance = scheduled_inner_tolerance(
+        config.ppml,
+        publication,
+        1,
+        config.ppml.inner_tolerance_initial,
+        None,
+    );
     let initial_config = ppml_linear_config(config, initial_tolerance)?;
     let frame = LinearSolveFrame::from_parts(
         workspace.working_response(),
@@ -955,6 +961,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         completed_iterations = iteration;
         let inner_tolerance = scheduled_inner_tolerance(
             config.ppml,
+            publication,
             iteration,
             previous_inner_tolerance,
             previous_outer_progress,
