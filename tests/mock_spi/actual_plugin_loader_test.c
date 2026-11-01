@@ -50,6 +50,7 @@ static ST_int result_matrix_name_index(const char *name)
 
 static ST_int mock_poll(void) { return 0; }
 static ST_int mock_nobs(void) { return 5; }
+static ST_int mock_in1(void) { return 1; }
 static ST_int mock_nvars(void) { return plugin_nvars; }
 static ST_boolean mock_isstr(ST_int variable)
 {
@@ -1219,6 +1220,8 @@ int main(int argc, char *argv[])
     plugin.spouterr = append_error;
     plugin.pollstd = mock_poll;
     plugin.nobs = mock_nobs;
+    plugin.nobs1 = mock_in1;
+    plugin.nobs2 = mock_nobs;
     plugin.nvars = mock_nvars;
     plugin.nvar = mock_nvars;
     plugin.isstr = mock_isstr;
