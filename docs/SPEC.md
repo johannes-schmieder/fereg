@@ -1139,6 +1139,35 @@ counts, solver signatures and low bits within §20; discrete decisions remain
 unchanged. Witnesses: the drift-bound policy unit test and a three-effect
 core-pair solve that reuses within the bound, refreshes beyond it, loses the
 bound after invalidation and certifies every frame against current weights.
+An ordinary joint frame of PPML Auto (§1's recurrence over the retained FE and
+finite coordinates) may start from the last certified joint frame with the same
+sample, topology and kept generated columns. That frame's fitted values `f`
+(its response minus its residual) lie in the span of the effects and those
+columns, so the next frame solves for the correction `z - f` of its working
+response `z` and adds the seed's finite coefficients to its own: the warm start
+at the previous solution, after an undamped step the Newton correction
+`(y - mu) / mu`. The weighted norm of the full response `z` still scales the
+recurrence and every stopping, reconstruction and acceptance test, and the
+residual that the independent FE certificate and the original-input finite
+scores check is the full response's, so each frame keeps its guarantee. A
+correction whose weighted norm is not below the response's is refused and the
+frame solves `z` itself, bitwise as without a seed; a failed or invalidated
+frame and any other column identity, sample or topology leave no seed. The
+fitted values are one observation vector in the joint workspace's admitted
+memory (approved by Johannes, 2026-11-01). Declared scope: PPML Auto joint
+frames after the first may change inner iteration counts, solver signatures and
+low bits within §20; on the replay inputs IRLS iterations and every discrete
+decision are unchanged
+(`tests/replay/scopes/2026-11-01-ppml-seeded-joint-frames-macos.json`). The
+accepted iterate may itself be closer to the optimum: on two disconnected
+components whose weights differ by 1e13, cold frames lose the light component
+below the heavy one's stopping scale and the strict check rejects twice, while
+seeded frames pass the first strict check (eta error 1.7e-14 instead of 1.8e-11)
+and the guarded final-products reuse then applies; a test-only fault plan keeps
+the cold path's rejection coverage. Witnesses: seeded and cold frames in
+lockstep with independent full-response finite scores and bitwise cold results
+for every stale or refused seed at one and three workers, that fixture in both
+forms, and the 77-case replay at one, two and four workers.
 Sample mutation invalidates all reuse. Warm starts are guesses, never certificates. Final inference and correction
 use this same accepted state. Output tolerance (§5) does not remove the
 strict PPML/final-Hessian requirements.

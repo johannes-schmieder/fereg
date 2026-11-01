@@ -6,8 +6,9 @@ use crate::metadata::{
     TermId, TermOrder, TimeSeriesState,
 };
 use crate::ols::{
-    inject_frozen_linear_failure, prepare_model, FrozenLinearFailureInjection, LoadedNumericColumn,
-    LoadedOlsInput, OlsInputBinding, OlsInputRole, OlsRequestV1, PreparedOlsData,
+    disable_joint_seed_for_test, inject_frozen_linear_failure, prepare_model,
+    FrozenLinearFailureInjection, LoadedNumericColumn, LoadedOlsInput, OlsInputBinding,
+    OlsInputRole, OlsRequestV1, PreparedOlsData,
 };
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -3015,35 +3016,52 @@ fn canonical_final_preserves_strict_disconnected_slope_truth() {
                     .unwrap();
                     assert!(relative_infinity_difference(baseline.eta(), &eta) < 1e-10);
                 }
-                for mode in [0, 1, 2, 3] {
-                    profile_final_test_mode(mode);
-                    let fit = fit_prepared_ppml_irls(
-                        &prepared,
-                        &y,
-                        &weights,
-                        &vec![0.; n],
-                        config,
-                        plan_ppml_memory(memory_dimensions(&prepared, config), config.memory)
-                            .unwrap(),
-                        None,
-                    )
-                    .unwrap();
-                    let accepted = profile_final_test_mode(0);
-                    assert_eq!(accepted, 0);
-                    assert!(fit.diagnostics().strict_profile_rejections > 0);
-                    assert!(
-                        fit.diagnostics().converged
-                            && fit.diagnostics().two_consecutive_convergence
-                    );
-                    assert!(fit.diagnostics().final_score.passed);
-                    assert!(
-                        relative_infinity_difference(fit.eta(), &eta) < 1e-10,
-                        "disparity={disparity} mode={mode} storage={execution:?} threads={threads} eta_error={:.17e}",
-                        relative_infinity_difference(fit.eta(), &eta)
-                    );
-                    assert!((fit.coefficients()[0].value.unwrap() - 0.2).abs() < 1e-10);
-                    validate_final_hessian_frame(fit.linear().weights(), &weights, fit.mean())
+                // Joint frames solved from their full responses lose the light
+                // component below the heavy one's stopping scale: the strict
+                // check rejects the profile and the products shortcut declines.
+                // Seeded frames keep the accepted light component, so the first
+                // strict check passes and the guarded shortcut may serve.
+                for seeded in [false, true] {
+                    disable_joint_seed_for_test(!seeded);
+                    for mode in [0, 1, 2, 3] {
+                        profile_final_test_mode(mode);
+                        let fit = fit_prepared_ppml_irls(
+                            &prepared,
+                            &y,
+                            &weights,
+                            &vec![0.; n],
+                            config,
+                            plan_ppml_memory(memory_dimensions(&prepared, config), config.memory)
+                                .unwrap(),
+                            None,
+                        )
                         .unwrap();
+                        let accepted = profile_final_test_mode(0);
+                        let error = relative_infinity_difference(fit.eta(), &eta);
+                        if seeded {
+                            assert_eq!(accepted, usize::from(mode == 0));
+                            assert_eq!(fit.diagnostics().strict_profile_rejections, 0);
+                            assert!(
+                                error < 1e-12,
+                                "mode={mode} threads={threads} eta_error={error:.17e}"
+                            );
+                        } else {
+                            assert_eq!(accepted, 0);
+                            assert!(fit.diagnostics().strict_profile_rejections > 0);
+                        }
+                        assert!(
+                            fit.diagnostics().converged
+                                && fit.diagnostics().two_consecutive_convergence
+                        );
+                        assert!(fit.diagnostics().final_score.passed);
+                        assert!(
+                            error < 1e-10,
+                            "disparity={disparity} mode={mode} storage={execution:?} threads={threads} eta_error={error:.17e}",
+                        );
+                        assert!((fit.coefficients()[0].value.unwrap() - 0.2).abs() < 1e-10);
+                        validate_final_hessian_frame(fit.linear().weights(), &weights, fit.mean())
+                            .unwrap();
+                    }
                 }
             }
         }

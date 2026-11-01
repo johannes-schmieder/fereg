@@ -37,8 +37,9 @@ pub(crate) use finite_wls_kernel::{solve_finite_direction, FiniteDirectionWorksp
 pub(crate) use implicit_centered::ImplicitCenteredDesign;
 #[cfg(test)]
 pub(crate) use linear_session::{
-    begin_frozen_qr_fallback_observation, finish_frozen_qr_fallback_observation,
-    inject_frozen_linear_failure, CertifiedFrozenLinearOutput, FrozenLinearFailureInjection,
+    begin_frozen_qr_fallback_observation, disable_joint_seed_for_test,
+    finish_frozen_qr_fallback_observation, inject_frozen_linear_failure,
+    CertifiedFrozenLinearOutput, FrozenLinearFailureInjection,
 };
 pub(crate) use linear_session::{
     classify_frozen_linear_fallback, CertifiedLinearSession, CertifiedLinearSessionOutput,

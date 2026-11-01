@@ -1,5 +1,6 @@
 //! Joint ordinary WLS directions over the FE Schur and finite coordinates.
-//! The canonical session owns rank and final bread. This owner retains capacity,
+//! The canonical session owns rank and final bread. This owner retains capacity
+//! and, as a starting point only, the last certified frame's fitted values;
 //! never finite products or acceptance across a changing response/weight frame.
 use super::*;
 use crate::fe::SolveReport;
@@ -145,6 +146,16 @@ pub(crate) struct JointFiniteWorkspace {
     pub(crate) report: Option<SolveReport>,
     max_controls: usize,
     active: usize,
+    /// Fitted values `response - residuals` and finite coefficients of the
+    /// last certified call that named its columns: a point in the span of the
+    /// effects and those columns, so the next frame may solve for its
+    /// correction. Valid only for `seed_key`'s sample, topology and columns.
+    seed: Vec<f64>,
+    seed_beta: Vec<f64>,
+    seed_columns: Vec<usize>,
+    seed_key: Option<(u64, u64, usize)>,
+    /// This call solves for the correction from the seed.
+    seeded: bool,
 }
 
 fn failed() -> FeregError {
@@ -253,16 +264,22 @@ impl JointFiniteWorkspace {
             .and_then(|n| n.checked_mul(5))
             .ok_or_else(allocation)?;
         let gram = (gram_lanes(controls) * GRAM_LEAVES) as u128;
+        // Residuals and the seed's fitted values; the seed's coefficients.
+        let observations = (design.nobs() as u128)
+            .checked_mul(2)
+            .and_then(|n| n.checked_add(k))
+            .ok_or_else(allocation)?;
         let values = (p as u128)
             .checked_mul(k)
             .and_then(|n| n.checked_add(square))
             .and_then(|n| n.checked_add(small))
             .and_then(|n| n.checked_add(vectors))
             .and_then(|n| n.checked_add(gram))
-            .and_then(|n| n.checked_add(design.nobs() as u128))
+            .and_then(|n| n.checked_add(observations))
             .ok_or_else(allocation)?;
         values
             .checked_mul(8)
+            .and_then(|n| n.checked_add(k * std::mem::size_of::<usize>() as u128))
             .and_then(|n| n.checked_add(std::mem::size_of::<Self>() as u128))
             .ok_or_else(allocation)
     }
@@ -288,6 +305,11 @@ impl JointFiniteWorkspace {
             report: None,
             max_controls: controls,
             active: 0,
+            seed: filled(design.nobs(), 0.)?,
+            seed_beta: filled(controls, 0.)?,
+            seed_columns: filled(controls, 0)?,
+            seed_key: None,
+            seeded: false,
         })
     }
 
@@ -305,11 +327,94 @@ impl JointFiniteWorkspace {
             &self.preconditioned,
             &self.beta,
             &self.gram,
+            &self.seed,
+            &self.seed_beta,
         ]
         .iter()
         .map(|v| v.capacity())
         .sum::<usize>()
             + self.residuals.as_slice().len()
+            + self.seed_columns.capacity()
+    }
+
+    /// Decide whether this call solves for the correction from the seed: only
+    /// when the seed was certified on the same sample, topology and columns.
+    /// The key is consumed, so a call that fails leaves no seed.
+    pub(in crate::fe) fn take_seed(
+        &mut self,
+        sample: u64,
+        topology: u64,
+        columns: Option<&[usize]>,
+    ) {
+        let key = self.seed_key.take();
+        self.seeded = columns.is_some_and(|columns| {
+            key == Some((sample, topology, columns.len()))
+                && self.seed_columns[..columns.len()] == *columns
+        });
+    }
+
+    /// Retain this certified call's fitted values and coefficients.
+    pub(in crate::fe) fn record_seed(
+        &mut self,
+        response: &[f64],
+        sample: u64,
+        topology: u64,
+        columns: Option<&[usize]>,
+    ) {
+        let Some(columns) = columns.filter(|columns| columns.len() == self.active) else {
+            return;
+        };
+        self.seed
+            .par_iter_mut()
+            .zip(response.par_iter())
+            .zip(self.residuals.as_slice().par_iter())
+            .for_each(|((fitted, &response), &residual)| *fitted = response - residual);
+        self.seed_beta[..columns.len()].copy_from_slice(&self.beta[..columns.len()]);
+        self.seed_columns[..columns.len()].copy_from_slice(columns);
+        self.seed_key = Some((sample, topology, columns.len()));
+    }
+
+    pub(in crate::fe) fn clear_seed(&mut self) {
+        self.seed_key = None;
+        self.seeded = false;
+    }
+
+    #[cfg(test)]
+    pub(crate) fn seeded_for_test(&self) -> bool {
+        self.seeded
+    }
+
+    /// With a seed, replace the weighted response in `original` by its
+    /// weighted correction `sqrt(w) (y - seed)` when that is strictly smaller
+    /// in norm. The caller keeps the full response's scale, so the stopping
+    /// tests keep their meaning; a refused seed restores the exact response.
+    fn seed_correction(
+        &mut self,
+        original: &mut [f64],
+        response: &[f64],
+        roots: &[f64],
+        response_norm: f64,
+    ) {
+        if !self.seeded {
+            return;
+        }
+        let seed = &self.seed[..original.len()];
+        original
+            .par_iter_mut()
+            .zip(response.par_iter().zip(seed.par_iter()))
+            .zip(roots.par_iter())
+            .for_each(|((value, (&response, &fitted)), &root)| {
+                *value = (response - fitted) * root;
+            });
+        let correction_norm = super::super::map::parallel_norm(original);
+        if correction_norm < response_norm {
+            return;
+        }
+        self.seeded = false;
+        original
+            .par_iter_mut()
+            .zip(response.par_iter().zip(roots.par_iter()))
+            .for_each(|(value, (&response, &root))| *value = response * root);
     }
 
     pub(crate) fn beta(&self) -> &[f64] {
@@ -599,6 +704,8 @@ impl JointFiniteWorkspace {
             return Err(failed());
         }
         let scale_y = if ynorm == 0. { 1. } else { ynorm };
+        self.seed_correction(original, response, roots, ynorm);
+        ledger.facts(&[("seeded", u64::from(self.seeded))]);
         original.par_iter_mut().for_each(|value| *value /= scale_y);
         let roots = &*roots;
         // Row-major controls are streamed once per group of selected columns,
@@ -800,6 +907,9 @@ impl JointFiniteWorkspace {
                 if maximum <= config.tolerance * 0.5 {
                     for j in 0..k {
                         self.beta[j] = self.coefficients[p + j] * scale_y / self.scales[j];
+                        if self.seeded {
+                            self.beta[j] += self.seed_beta[j];
+                        }
                         if !self.beta[j].is_finite() {
                             return Err(failed());
                         }
@@ -1022,6 +1132,8 @@ impl JointFiniteWorkspace {
             return Err(failed());
         }
         let scale_y = if ynorm == 0. { 1. } else { ynorm };
+        self.seed_correction(original, response, roots, ynorm);
+        ledger.facts(&[("seeded", u64::from(self.seeded))]);
         for value in original.iter_mut() {
             *value /= scale_y;
         }
