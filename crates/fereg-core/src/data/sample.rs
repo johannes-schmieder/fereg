@@ -508,15 +508,21 @@ pub(crate) fn classify_numeric_sample_with_source_uses<
     check_output_dimensions(input, n_original, n_candidate)?;
 
     let mut n_active = 0_usize;
-    for original_row in 0..n_original {
-        let reason = classify_row(input, Some(source_uses), policy, original_row)?;
-        visit(original_row, reason)?;
-        if reason == DropReason::Retained {
-            n_active = n_active
-                .checked_add(1)
-                .ok_or_else(|| allocation_error("active observation count overflows"))?;
-        }
-    }
+    for_each_classified_row(
+        input,
+        Some(source_uses),
+        policy,
+        0..n_original,
+        |original_row, reason| {
+            visit(original_row, reason)?;
+            if reason == DropReason::Retained {
+                n_active = n_active
+                    .checked_add(1)
+                    .ok_or_else(|| allocation_error("active observation count overflows"))?;
+            }
+            Ok(())
+        },
+    )?;
     Ok(NumericSampleClassification {
         n_original,
         n_candidate,
@@ -556,15 +562,17 @@ pub(crate) fn classify_numeric_sample_into_mask<P: NumericDomainPolicy + Sync>(
     }
     const CHUNK_ROWS: usize = 16_384;
     let classify = |(chunk, reasons): (usize, &mut [DropReason])| -> Result<()> {
-        for (offset, reason) in reasons.iter_mut().enumerate() {
-            *reason = classify_row(
-                input,
-                Some(source_uses),
-                policy,
-                chunk * CHUNK_ROWS + offset,
-            )?;
-        }
-        Ok(())
+        let start = chunk * CHUNK_ROWS;
+        for_each_classified_row(
+            input,
+            Some(source_uses),
+            policy,
+            start..start + reasons.len(),
+            |original_row, reason| {
+                reasons[original_row - start] = reason;
+                Ok(())
+            },
+        )
     };
     if input.regressors.len() >= 8
         && n_original >= CHUNK_ROWS
@@ -671,31 +679,39 @@ fn prepare_numeric_sample_with_plan<P: NumericDomainPolicy, R: Reserve>(
         )?),
     };
 
-    for original_row in 0..n_original {
-        let reason = classify_row(input, source_uses, policy, original_row)?;
-        drop_reasons.push(reason);
-        if reason != DropReason::Retained {
-            continue;
-        }
+    for_each_classified_row(
+        input,
+        source_uses,
+        policy,
+        0..n_original,
+        |original_row, reason| {
+            drop_reasons.push(reason);
+            if reason != DropReason::Retained {
+                return Ok(());
+            }
 
-        original_row_by_active.push(original_row);
-        outcome.push(input.outcome.values[original_row]);
-        for (destination, source) in regressors.iter_mut().zip(input.regressors) {
-            destination.push(source.values[original_row]);
-        }
-        if let (PreparedWeights::Provided { values, .. }, WeightInput::Provided { column, .. }) =
-            (&mut weights, input.weights)
-        {
-            values.push(column.values[original_row]);
-        }
-        match (&mut adjustment, input.adjustment) {
-            (PreparedAdjustment::Offset(values), AdjustmentInput::Offset(column))
-            | (PreparedAdjustment::Exposure(values), AdjustmentInput::Exposure(column)) => {
+            original_row_by_active.push(original_row);
+            outcome.push(input.outcome.values[original_row]);
+            for (destination, source) in regressors.iter_mut().zip(input.regressors) {
+                destination.push(source.values[original_row]);
+            }
+            if let (
+                PreparedWeights::Provided { values, .. },
+                WeightInput::Provided { column, .. },
+            ) = (&mut weights, input.weights)
+            {
                 values.push(column.values[original_row]);
             }
-            _ => {}
-        }
-    }
+            match (&mut adjustment, input.adjustment) {
+                (PreparedAdjustment::Offset(values), AdjustmentInput::Offset(column))
+                | (PreparedAdjustment::Exposure(values), AdjustmentInput::Exposure(column)) => {
+                    values.push(column.values[original_row]);
+                }
+                _ => {}
+            }
+            Ok(())
+        },
+    )?;
 
     debug_assert_eq!(drop_reasons.len(), n_original);
     debug_assert!(original_row_by_active
@@ -718,17 +734,110 @@ fn prepare_numeric_sample_with_plan<P: NumericDomainPolicy, R: Reserve>(
     })
 }
 
+/// Rows per availability block of [`for_each_classified_row`].
+const AVAILABILITY_BLOCK_ROWS: usize = 2048;
+
+/// Classify `rows` in observation order and pass each decision to `visit`.
+///
+/// A block whose candidate rows, outcome, sources, weights and adjustment are
+/// all available (no masked entry, no non-finite value) passes every
+/// availability test of [`classify_row`] on every row, so only the domain
+/// policy can still decide those rows; branch-free column folds establish
+/// that once per block. Other blocks use the complete row classifier. Both
+/// paths call the policy in row order with the same arguments, so decisions
+/// and the first error are those of the row-by-row scan. No allocation.
+fn for_each_classified_row<P: NumericDomainPolicy>(
+    input: &NumericPreparationInput<'_>,
+    source_uses: Option<&[NumericSourceUse]>,
+    policy: &P,
+    rows: std::ops::Range<usize>,
+    mut visit: impl FnMut(usize, DropReason) -> Result<()>,
+) -> Result<()> {
+    let mut start = rows.start;
+    while start < rows.end {
+        let end = rows.end.min(start.saturating_add(AVAILABILITY_BLOCK_ROWS));
+        if block_available(input, start..end) {
+            for original_row in start..end {
+                visit(
+                    original_row,
+                    classify_row_with::<true, P>(input, source_uses, policy, original_row)?,
+                )?;
+            }
+        } else {
+            for original_row in start..end {
+                visit(
+                    original_row,
+                    classify_row(input, source_uses, policy, original_row)?,
+                )?;
+            }
+        }
+        start = end;
+    }
+    Ok(())
+}
+
+/// Every row of `rows` is a candidate, and every numeric input, used or not,
+/// is unmasked and finite there.
+fn block_available(input: &NumericPreparationInput<'_>, rows: std::ops::Range<usize>) -> bool {
+    let column = |column: &NumericColumnView<'_>| column_available(column, rows.clone());
+    input.candidate.slice(rows.clone()).all_true()
+        && column(&input.outcome)
+        && input.regressors.iter().all(column)
+        && match input.weights {
+            WeightInput::None => true,
+            WeightInput::Provided {
+                column: weights, ..
+            } => column(&weights),
+        }
+        && match input.adjustment {
+            AdjustmentInput::None => true,
+            AdjustmentInput::Offset(adjustment) | AdjustmentInput::Exposure(adjustment) => {
+                column(&adjustment)
+            }
+        }
+}
+
+/// No masked entry and no non-finite value (exponent field all ones) in
+/// `rows`. The lane folds have no data-dependent branch.
+fn column_available(column: &NumericColumnView<'_>, rows: std::ops::Range<usize>) -> bool {
+    const EXPONENT: u64 = 0x7ff0_0000_0000_0000;
+    let nonfinite = column.values[rows.clone()]
+        .iter()
+        .fold(0_u64, |any, value| {
+            any | u64::from(value.to_bits() & EXPONENT == EXPONENT)
+        });
+    let masked = column.missing.map_or(0_u8, |mask| {
+        mask[rows]
+            .iter()
+            .fold(0_u8, |any, &missing| any | u8::from(missing))
+    });
+    nonfinite == 0 && masked == 0
+}
+
 fn classify_row<P: NumericDomainPolicy>(
     input: &NumericPreparationInput<'_>,
     source_uses: Option<&[NumericSourceUse]>,
     policy: &P,
     original_row: usize,
 ) -> Result<DropReason> {
-    if !input.candidate[original_row] {
+    classify_row_with::<false, P>(input, source_uses, policy, original_row)
+}
+
+/// The authoritative row decision. `AVAILABLE` states that the row is a
+/// candidate and every numeric input is available there, which removes only
+/// tests that would pass; the precedence of the remaining policy tests is
+/// unchanged.
+fn classify_row_with<const AVAILABLE: bool, P: NumericDomainPolicy>(
+    input: &NumericPreparationInput<'_>,
+    source_uses: Option<&[NumericSourceUse]>,
+    policy: &P,
+    original_row: usize,
+) -> Result<DropReason> {
+    if !AVAILABLE && !input.candidate[original_row] {
         return Ok(DropReason::ExcludedByIfIn);
     }
 
-    if input.outcome.is_unavailable(original_row) {
+    if !AVAILABLE && input.outcome.is_unavailable(original_row) {
         return Ok(DropReason::MissingOutcome);
     }
     if policy.outcome(original_row, input.outcome.values[original_row])? == DomainDecision::Drop {
@@ -739,11 +848,13 @@ fn classify_row<P: NumericDomainPolicy>(
     // below is unchanged (ordinary, then weight, then FE, then cluster).
     let (mut missing_ordinary, mut missing_fixed_effect, mut missing_cluster) =
         (false, false, false);
-    for (index, column) in input.regressors.iter().enumerate() {
-        if column.is_unavailable(original_row) {
-            missing_ordinary |= source_is_ordinary(source_uses, index);
-            missing_fixed_effect |= source_is_fixed_effect(source_uses, index);
-            missing_cluster |= source_is_cluster(source_uses, index);
+    if !AVAILABLE {
+        for (index, column) in input.regressors.iter().enumerate() {
+            if column.is_unavailable(original_row) {
+                missing_ordinary |= source_is_ordinary(source_uses, index);
+                missing_fixed_effect |= source_is_fixed_effect(source_uses, index);
+                missing_cluster |= source_is_cluster(source_uses, index);
+            }
         }
     }
     if missing_ordinary {
@@ -751,7 +862,7 @@ fn classify_row<P: NumericDomainPolicy>(
     }
 
     if let WeightInput::Provided { kind, column } = input.weights {
-        if column.is_unavailable(original_row) {
+        if !AVAILABLE && column.is_unavailable(original_row) {
             return Ok(DropReason::InvalidOrMissingWeight);
         }
         if policy.weight(original_row, kind, column.values[original_row])? == DomainDecision::Drop {
@@ -770,7 +881,7 @@ fn classify_row<P: NumericDomainPolicy>(
     match input.adjustment {
         AdjustmentInput::None => {}
         AdjustmentInput::Offset(column) => {
-            if column.is_unavailable(original_row) {
+            if !AVAILABLE && column.is_unavailable(original_row) {
                 return Ok(DropReason::MissingOffsetOrExposure);
             }
             if policy.offset(original_row, column.values[original_row])? == DomainDecision::Drop {
@@ -778,7 +889,7 @@ fn classify_row<P: NumericDomainPolicy>(
             }
         }
         AdjustmentInput::Exposure(column) => {
-            if column.is_unavailable(original_row) {
+            if !AVAILABLE && column.is_unavailable(original_row) {
                 return Ok(DropReason::MissingOffsetOrExposure);
             }
             if policy.exposure(original_row, column.values[original_row])? == DomainDecision::Drop {
@@ -973,6 +1084,172 @@ mod allocation_tests {
         fn exposure(&self, _row: usize, _value: f64) -> Result<DomainDecision> {
             Ok(DomainDecision::Retain)
         }
+    }
+
+    #[test]
+    fn available_blocks_repeat_every_row_decision_and_the_first_error() {
+        // A policy that drops some rows and fails on one, so blocks that skip
+        // the availability tests must still apply it row by row in order.
+        struct Mixed {
+            fail_row: Option<usize>,
+        }
+        impl NumericDomainPolicy for Mixed {
+            fn outcome(&self, row: usize, value: f64) -> Result<DomainDecision> {
+                if Some(row) == self.fail_row {
+                    return Err(FeregError::new(
+                        ErrorCode::InvalidData,
+                        format!("row {row}"),
+                    ));
+                }
+                Ok(if value > 9.5 {
+                    DomainDecision::Drop
+                } else {
+                    DomainDecision::Retain
+                })
+            }
+            fn weight(&self, _row: usize, _kind: WeightKind, value: f64) -> Result<DomainDecision> {
+                Ok(if value < 0.15 {
+                    DomainDecision::Drop
+                } else {
+                    DomainDecision::Retain
+                })
+            }
+            fn offset(&self, _row: usize, value: f64) -> Result<DomainDecision> {
+                Ok(if value > 0.98 {
+                    DomainDecision::Drop
+                } else {
+                    DomainDecision::Retain
+                })
+            }
+            fn exposure(&self, row: usize, value: f64) -> Result<DomainDecision> {
+                self.offset(row, value)
+            }
+        }
+        let n = 3 * AVAILABILITY_BLOCK_ROWS + 517;
+        let wave = |row: usize, step: usize| ((row * step) % 1000) as f64 / 100.0;
+        let outcome: Vec<_> = (0..n).map(|row| wave(row, 7)).collect();
+        let weights: Vec<_> = (0..n).map(|row| 0.1 + wave(row, 13) / 10.0).collect();
+        let adjustment: Vec<_> = (0..n).map(|row| wave(row, 17) / 10.0).collect();
+        let mut x: Vec<Vec<f64>> = (0..5)
+            .map(|j| (0..n).map(|row| wave(row, j + 3)).collect())
+            .collect();
+        // The second block holds problems; the others stay available.
+        let dirty = AVAILABILITY_BLOCK_ROWS + 100;
+        x[1][dirty] = f64::NAN;
+        x[3][dirty + 7] = f64::NEG_INFINITY;
+        let mut missing = vec![false; n];
+        missing[dirty + 40] = true;
+        let mut candidate = vec![true; n];
+        candidate[dirty + 90] = false;
+        let mut outcome_with_gap = outcome.clone();
+        outcome_with_gap[dirty + 120] = f64::INFINITY;
+        let uses = [
+            NumericSourceUse {
+                ordinary: true,
+                fixed_effect: false,
+                cluster: false,
+            },
+            NumericSourceUse {
+                ordinary: true,
+                fixed_effect: true,
+                cluster: false,
+            },
+            NumericSourceUse {
+                ordinary: false,
+                fixed_effect: true,
+                cluster: false,
+            },
+            NumericSourceUse {
+                ordinary: false,
+                fixed_effect: false,
+                cluster: true,
+            },
+            NumericSourceUse {
+                ordinary: false,
+                fixed_effect: false,
+                cluster: false,
+            },
+        ];
+        let mut columns: Vec<_> = x
+            .iter()
+            .map(|column| NumericColumnView::new(column))
+            .collect();
+        columns[2].missing = Some(&missing);
+        for (weighted, adjusted, fail_row) in [
+            (false, false, None),
+            (true, false, None),
+            (true, true, None),
+            (false, true, Some(dirty + 300)),
+            (true, true, Some(3 * AVAILABILITY_BLOCK_ROWS + 9)),
+        ] {
+            let input = NumericPreparationInput {
+                candidate: (&candidate[..]).into(),
+                outcome: NumericColumnView::new(&outcome_with_gap),
+                regressors: &columns,
+                weights: if weighted {
+                    WeightInput::Provided {
+                        kind: WeightKind::Probability,
+                        column: NumericColumnView::new(&weights),
+                    }
+                } else {
+                    WeightInput::None
+                },
+                adjustment: if adjusted {
+                    AdjustmentInput::Offset(NumericColumnView::new(&adjustment))
+                } else {
+                    AdjustmentInput::None
+                },
+            };
+            let policy = Mixed { fail_row };
+            let mut expected = Vec::new();
+            let expected_error = (0..n).try_for_each(|row| {
+                expected.push(classify_row(&input, Some(&uses), &policy, row)?);
+                Ok(())
+            });
+            let mut actual = Vec::new();
+            let actual_error =
+                for_each_classified_row(&input, Some(&uses), &policy, 0..n, |row, reason| {
+                    assert_eq!(row, actual.len());
+                    actual.push(reason);
+                    Ok(())
+                });
+            assert_eq!(actual, expected);
+            assert_eq!(
+                actual_error.map_err(|error| error.message),
+                expected_error.map_err(|error: FeregError| error.message)
+            );
+            if fail_row.is_none() {
+                // Every reason class this input can produce appears.
+                for reason in [
+                    DropReason::Retained,
+                    DropReason::ExcludedByIfIn,
+                    DropReason::MissingOutcome,
+                    DropReason::OtherModelExclusion,
+                    DropReason::MissingRegressor,
+                    DropReason::MissingFixedEffect,
+                ] {
+                    assert!(expected.contains(&reason), "{reason:?}");
+                }
+                assert_eq!(
+                    expected.contains(&DropReason::InvalidOrMissingWeight),
+                    weighted
+                );
+                assert_eq!(
+                    expected.contains(&DropReason::MissingOffsetOrExposure),
+                    adjusted
+                );
+            }
+        }
+        assert!(!block_available(
+            &NumericPreparationInput {
+                candidate: (&candidate[..]).into(),
+                outcome: NumericColumnView::new(&outcome),
+                regressors: &columns,
+                weights: WeightInput::None,
+                adjustment: AdjustmentInput::None,
+            },
+            dirty..dirty + 1
+        ));
     }
 
     #[test]

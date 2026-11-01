@@ -2,40 +2,16 @@
   "definition": "docs/development_workflow.md#complexity-inventory",
   "growth": [
     {
-      "after": 113284,
-      "before": 113183,
+      "after": 1455,
+      "before": 1454,
+      "metric": "fereg-core/dispatch_candidates",
+      "reason": "The classifiers choose between the available-block path and the complete row classifier per block."
+    },
+    {
+      "after": 113372,
+      "before": 113284,
       "metric": "fereg-core/production_lines",
-      "reason": "Seeded PPML joint frames: the joint workspace retains the last certified frame's fitted values, coefficients and column identity, decides and records the seed, and forms the weighted correction with its norm guard; the map wrapper and the PPML caller pass the column identity."
-    },
-    {
-      "after": 1782,
-      "before": 1773,
-      "metric": "file/crates/fereg-core/src/fe/map.rs",
-      "reason": "The joint wrappers carry the column identity, take the seed before a solve, record it after the independent FE certificate and clear it on invalidation."
-    },
-    {
-      "after": 5586,
-      "before": 5582,
-      "metric": "file/crates/fereg-core/src/ols/linear_session.rs",
-      "reason": "The PPML joint frame names its kept generated columns as the seed identity. A test-only fault plan lets tests solve frames from their full responses."
-    },
-    {
-      "after": 205,
-      "before": 202,
-      "metric": "function/crates/fereg-core/src/fe/slope_coefficients/joint.rs/iterate#1",
-      "reason": "Accepted coefficients add back the seed's coefficients when the frame solved for the correction."
-    },
-    {
-      "after": 171,
-      "before": 169,
-      "metric": "function/crates/fereg-core/src/fe/slope_coefficients/joint.rs/solve_streamed#1",
-      "reason": "The streamed frame forms the seeded correction under the full response's scale and traces whether it was used."
-    },
-    {
-      "after": 212,
-      "before": 210,
-      "metric": "function/crates/fereg-core/src/ols/linear_session.rs/solve_joint_ppml_internal#1",
-      "reason": "The PPML joint frame names its kept generated columns as the seed identity."
+      "reason": "Numeric sample classification checks availability once per 2,048-row block with branch-free column folds and applies only the domain policy on available blocks; the row classifier gains a compile-time availability flag so both paths share one decision sequence."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -258,77 +234,93 @@
           },
           {
             "condition": "reasons . len ( ) != n_original",
-            "line": 551
+            "line": 557
           },
           {
             "condition": "input . regressors . len ( ) >= 8 && n_original >= CHUNK_ROWS && rayon :: current_thread_index ( ) . is_some ( ) && rayon :: current_num_threads ( ) > 1",
-            "line": 569
+            "line": 577
           },
           {
             "condition": "input . weights",
-            "line": 646
+            "line": 654
+          },
+          {
+            "condition": "input . weights",
+            "line": 786
           },
           {
             "condition": "policy . weight ( original_row , kind , column . values [ original_row ] ) ? == DomainDecision :: Drop",
-            "line": 757
+            "line": 868
           },
           {
             "condition": "source_uses . len ( ) != input . regressors . len ( )",
-            "line": 812
+            "line": 923
           },
           {
             "condition": "column . values . len ( ) != expected",
-            "line": 851
+            "line": 962
           },
           {
             "condition": "mask . len ( ) != expected",
-            "line": 861
+            "line": 972
           },
           {
             "condition": "matches ! ( input . weights , WeightInput :: Provided",
-            "line": 903
+            "line": 1014
           },
           {
             "condition": "! reserve . allow_reservation ( buffer , elements , size_of :: < T > ( ) )",
-            "line": 939
+            "line": 1050
           }
         ],
         "functions": {
           "allocation_error#1": {
-            "line": 950,
+            "line": 1061,
             "lines": 3
           },
           "allow_reservation#1": {
             "line": 447,
             "lines": 8
           },
+          "block_available#1": {
+            "line": 781,
+            "lines": 18
+          },
           "check_output_dimensions#1": {
-            "line": 874,
+            "line": 985,
             "lines": 45
           },
           "checked_add#1": {
-            "line": 926,
+            "line": 1037,
             "lines": 4
           },
           "checked_bytes#1": {
-            "line": 920,
+            "line": 1031,
             "lines": 5
           },
           "classify_numeric_sample_into_mask#1": {
-            "line": 540,
-            "lines": 55
+            "line": 546,
+            "lines": 57
           },
           "classify_numeric_sample_with_source_uses#1": {
             "line": 493,
-            "lines": 33
+            "lines": 39
           },
           "classify_row#1": {
-            "line": 721,
-            "lines": 71
+            "line": 817,
+            "lines": 8
+          },
+          "classify_row_with#1": {
+            "line": 830,
+            "lines": 73
           },
           "code#1": {
             "line": 32,
             "lines": 3
+          },
+          "column_available#1": {
+            "line": 802,
+            "lines": 14
           },
           "compact_active_rows#1": {
             "line": 258,
@@ -341,6 +333,10 @@
           "fixed_effect#1": {
             "line": 123,
             "lines": 7
+          },
+          "for_each_classified_row#1": {
+            "line": 749,
+            "lines": 29
           },
           "is_retained#1": {
             "line": 235,
@@ -379,15 +375,15 @@
             "lines": 6
           },
           "prepare_numeric_sample_with_plan#1": {
-            "line": 605,
-            "lines": 115
+            "line": 613,
+            "lines": 123
           },
           "prepare_numeric_sample_with_source_uses#1": {
             "line": 476,
             "lines": 7
           },
           "reserved_vec#1": {
-            "line": 931,
+            "line": 1042,
             "lines": 18
           },
           "retained_rows#1": {
@@ -395,27 +391,27 @@
             "lines": 3
           },
           "source_is_cluster#1": {
-            "line": 801,
+            "line": 912,
             "lines": 3
           },
           "source_is_fixed_effect#1": {
-            "line": 797,
+            "line": 908,
             "lines": 3
           },
           "source_is_ordinary#1": {
-            "line": 793,
+            "line": 904,
             "lines": 3
           },
           "validate_column#1": {
-            "line": 850,
+            "line": 961,
             "lines": 23
           },
           "validate_input#1": {
-            "line": 834,
+            "line": 945,
             "lines": 15
           },
           "validate_source_uses#1": {
-            "line": 805,
+            "line": 916,
             "lines": 28
           },
           "with_missing#1": {
@@ -423,7 +419,7 @@
             "lines": 6
           }
         },
-        "production_lines": 809
+        "production_lines": 897
       },
       "crates/fereg-core/src/data/uniform_values.rs": {
         "chunk_candidates": [],
@@ -25077,10 +25073,10 @@
     "metrics": {
       "fereg-core": {
         "chunk_candidates": 13,
-        "dispatch_candidates": 1454,
+        "dispatch_candidates": 1455,
         "files_over_1500": 15,
         "functions_over_150": 59,
-        "production_lines": 113284
+        "production_lines": 113372
       },
       "fereg-plugin": {
         "chunk_candidates": 3,
