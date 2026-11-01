@@ -1,0 +1,172 @@
+{
+ "schema": "beta13-native-v1",
+ "date": "2026-11-01",
+ "status": "passed",
+ "timing": false,
+ "runtime_commit": "ee61833e1a083c37f57fbebe028e98b18df73afb",
+ "scope": "Parallel numeric input on qualified Stata hosts (macOS arm64 Stata 18/19 MP, Linux x86-64 Stata 17/18/19 MP; console and GUI) with action protocol 1.7, merged with the PyFixest parity work (seeded PPML joint frames, joint-frame slow mode, PPML frontend passes and host scope, one-FE PPML exact speedups). Loaded values are bit-identical to the serial reader; PPML science changes only inside the declared seeded-frame replay scope. Timing claims are in the parallel-input and parity records, not here.",
+ "macos": {
+  "plugin_sha256": "e01c9b7e0b2bbc17d5a6e4a2dbf716e0a1108b5959e1fa1335d1eddcfc34d845",
+  "bytes": 21120448,
+  "source_archive_sha256": "c064aa92aab15f9fc38bf2b05f7aa83e8176657573f946ffb2a9d7b313172ba9",
+  "build": {
+   "rust": "1.85.1",
+   "universal": true,
+   "offline": true,
+   "fresh_cargo_home": true,
+   "path_remaps": true,
+   "binary_audit": "passed",
+   "native_abi_load_panic": "passed",
+   "log_sha256": "898fcca1c2698e973112d93ce1d802150c4036ba2b9e00721858d43382dd8f14"
+  },
+  "replay_against_pre_merge_branch": {
+   "baseline_commit": "686ab424",
+   "baseline_sha256": "ae336950630e4435a3beda45cb756473ef9b5ff16e1809048fc4c68c9cb72636",
+   "baseline_equivalence": "686ab424 on protocol 1.7 inputs equals the beta.12 plugin on the same inputs restored to protocol 1.6 in every case's exact view (77 cases)",
+   "affected_scope": "tests/replay/scopes/2026-11-01-ppml-seeded-joint-frames-macos.json",
+   "affected_scope_sha256": "eda7e41ba032ddb136275a60a56fab2c676953c123c73f28714e6ca111ac1dea",
+   "cases": 77,
+   "scientific_pass_cases": 77,
+   "scoped_cases": 12,
+   "exact_differences_outside_scope": 0,
+   "thread_counts": [
+    2,
+    4
+   ],
+   "repaired_reference_defects": [
+    "frequency-singleton",
+    "full-matrix-covariance",
+    "slope-dof"
+   ],
+   "passed": true,
+   "summary_sha256": "a7371b81d51300809f24e75ad61de22b23a4be1e345a6398eab81494748a32e8"
+  },
+  "stata19_full_profile": {
+   "status": "success",
+   "tests_passed": 68,
+   "tests_failed": 0,
+   "stata_version": "19",
+   "stata_edition": "MP",
+   "stata_machine_type": "Mac (Apple Silicon)",
+   "stata_processors": 8
+  },
+  "stata19_full_profile_summary_sha256": "820ebe1bf8b6444a48f9a403220d93c5617996df8a2ee75dad2af982d2edc6ca",
+  "break_rollback": {
+   "ols": "passed",
+   "ppml": "passed",
+   "parallel_input": "passed"
+  },
+  "parallel_input": {
+   "oracle_cases": 64,
+   "oracle_runs": 184,
+   "parallel_runs": 65,
+   "trace_digests": "passed",
+   "failure_injections": "passed"
+  },
+  "older_stata_fixture": {
+   "18": "passed"
+  }
+ },
+ "linux": {
+  "build_job": "8387492",
+  "build_host": "scc-tb4.scc.bu.edu",
+  "checks_job": "8387493",
+  "checks_host": "scc-tb4.scc.bu.edu",
+  "plugin_sha256": "9bbb0a35c1238e07227b71d7ee388ee374f558e94f9d9c81cc7c40f7d44284fc",
+  "bytes": 16866168,
+  "accounting": {
+   "build": {
+    "failed": 0,
+    "exit_status": 0,
+    "wallclock_seconds": 175,
+    "maxvmem": "4.256G"
+   },
+   "checks": {
+    "failed": 0,
+    "exit_status": 0,
+    "wallclock_seconds": 208,
+    "maxvmem": "8.936G"
+   }
+  },
+  "binary_audit": "passed",
+  "native_abi_load_panic": "passed",
+  "stata19_full_profile": {
+   "status": "success",
+   "tests_passed": 68,
+   "tests_failed": 0,
+   "stata_version": "19",
+   "stata_edition": "MP",
+   "stata_processors": 4
+  },
+  "parallel_input": {
+   "oracle_cases": 64,
+   "oracle_runs": 184,
+   "parallel_runs": 65,
+   "trace_digests": "passed",
+   "failure_injections": "passed",
+   "live_break": "passed"
+  },
+  "fixtures_log_sha256": "4df883cf32dd369963b9a4355fa6a2d5796c90483412ecdd07ca19360db9daa0",
+  "build_log_sha256": "fcc3269e4c425f3cf6702467485833cd297db466a7d25fdadfdf4b37394d9f99",
+  "older_stata_fixture": {
+   "15.1": "passed",
+   "16.1": "passed",
+   "17": "passed",
+   "18": "passed"
+  }
+ },
+ "windows": {
+  "run_id": "win-20261101T205555Z-e008d473",
+  "profile": "stata-do",
+  "source_revision": "commit-ee61833e1a083c37f57fbebe028e98b18df73afb",
+  "source_archive_sha256": "5728594e316506d98c7a0ff5d6bf117c47709c91b86e5c79a49808f0173282ad",
+  "status": "PASS",
+  "checks": {
+   "execution_identity": true,
+   "source_hash": true,
+   "archive_paths": true,
+   "source_manifest": true,
+   "shutdown_backstop": true,
+   "stata": true,
+   "project_test": true
+  },
+  "stages_completed": [
+   "startup",
+   "toolchain",
+   "source_identity",
+   "cargo_build",
+   "exact_fma",
+   "fused_kernels",
+   "c_bridge",
+   "numeric_guards",
+   "plugin_link",
+   "binary_audit",
+   "native_loader",
+   "build_complete",
+   "checksum",
+   "stata_smoke",
+   "single_runtime"
+  ],
+  "fixtures_after_single_runtime": [
+   "ols_solver_reporting",
+   "ols_cmg_raw_residual_oracle",
+   "ols_mixed_solver_reports",
+   "feppml_one_fe_dummy_oracle",
+   "within_weighted_ols",
+   "ols_three_fe_batch_oracle",
+   "lsmr_batch_oracle",
+   "within_plugin_slope_boundary",
+   "replay_and_prefixes"
+  ],
+  "plugin_sha256": "66e06389272e6a54ec0be2d3cc66fe15268e0ff6a4c9df151607cbcee9017ab5",
+  "bytes": 11964416,
+  "receipt_sha256": "de9156dbff8bdc297e9c436b8a4b3318e53274fb9ebbe1dd3d26f797a49bbd59",
+  "process_elapsed_ms": 1076988,
+  "cleanup": {
+   "instance_stopped": true,
+   "transient_objects_deleted": true,
+   "lock_released": true
+  },
+  "note": "Windows hosts are not in the parallel-input qualification table, so this build keeps the serial reader. The driver writes WINDOWS_CI=PASS only after every listed fixture passes. Windows Stata is version 19."
+ }
+}

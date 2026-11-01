@@ -2034,7 +2034,7 @@ head (`d64fdc0d`):
   three-FE derived-residual cases differ as described in the derived-residual
   section.
 
-## Parallel numeric input (development branch `parallel-numeric-loading`)
+## Parallel numeric input (beta.13)
 
 Transport-only change (SPEC §17): workers call Stata's numeric accessor inside
 a validated window; loaded values, missing flags, candidates, fills, error
@@ -2117,6 +2117,23 @@ PPML public-scope fixture and the candidate-input oracle pass with the merged
 Mac plugin.
 
 ## Package checks
+
+### Beta.13 parallel input and parity packaging
+
+Beta.13 runtime `ee61833e` combines parallel numeric input on qualified hosts
+(action protocol 1.7) with the PyFixest parity work: seeded PPML joint frames,
+joint-frame slow mode, PPML frontend passes and host scope, and the one-FE PPML
+exact speedups. Loaded values are bit-identical to the serial reader, and the OLS
+replay results are bit-identical to beta.12. PPML results differ only in the 12 cases
+of the declared seeded-frame replay scope, where every scientific check still passes.
+The [native record](../bench/results/beta13-native-20261101.json) binds the
+three plugins and checks below.
+
+| Platform | Beta.13 checks |
+| --- | --- |
+| macOS | Rust 1.85.1 universal build offline from the vendored `ee61833e` source archive (`c064aa92...`) with an empty Cargo home and path remaps; binary audit and actual ABI/load/panic checks passed. All 77 replay cases pass against the pre-merge branch plugin `686ab424` (`ae336950...`, itself exact against beta.12) at 1, 2 and 4 workers: the 12 seeded-frame cases differ within their declared scope and no other case differs. All 68 fixtures of the full Stata 19/MP profile, the OLS, PPML and parallel-input Break rollback fixtures, the parallel-input oracle (64 cases, 65 parallel runs, identical trace digests) and its failure injections passed; the Stata 15-syntax replay fixture passed on Stata 18. |
+| Linux x86-64 | SCC build job 8387492 and check job 8387493 (both on `scc-tb4`, `failed=0`, `exit_status=0`): ELF audit and actual ABI/load/panic checks passed, all 68 fixtures of the full Stata 19/MP profile passed, the parallel-input oracle (64 cases, identical trace digests), failure injections and live Break passed on Stata 19, and the Stata 15-syntax fixture passed on Stata/MP 15.1, 16.1, 17 and 18. |
+| Windows x86-64 | Run `win-20261101T205555Z-e008d473` at `ee61833e` passed the Rust 1.85.1/MSVC build, PE archive-path and source-manifest checks, the native loader and the licensed Stata/MP 19 `stata-do` driver with its ten mapped fixtures; the controller's execution-identity, source-hash and shutdown-backstop checks passed and the instance stopped (receipt `de9156db...`, plugin `66e06389...`). Windows is not a qualified parallel-input host and keeps the serial reader. |
 
 ### Beta.12 interface packaging
 
