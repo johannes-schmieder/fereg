@@ -1710,6 +1710,69 @@ head (`d64fdc0d`):
   three-FE derived-residual cases differ as described in the derived-residual
   section.
 
+## Parallel numeric input (development branch `parallel-numeric-loading`)
+
+Transport-only change (SPEC §17): workers call Stata's numeric accessor inside
+a validated window; loaded values, missing flags, candidates, fills, error
+precedence and all scientific results are unchanged. Independent review found
+two blockers and nine should-fix items before implementation: concurrent
+`vdata` safety rests on qualification, aliases are excluded up front, the input
+team stays separate from the tiled-pipeline gates, the completeness check uses
+the loaded columns, refusals after the first phase are errors, the overlapped
+factorization is not combined with parallel reading, and a leaked window cannot
+brick the plugin. All were adopted.
+
+Native evidence: transport unit tests (exact values/flags/candidates for widths
+1–130, all-candidate/runs/scattered/tail/none samples, 2/3/8 workers, block and
+phase edges, marker and payload error precedence, Break between phases, worker
+panic, read failure, declines before dispatch, repeatability across worker
+counts); loader equivalence of every path (tiled with packed RHS and
+factorization hint, batched unrestricted/restricted, string peer, weights) at
+2/3/8 workers; C window guards (open validation, refusal of every other wrapper
+while open, worker reads only inside the window and generation, leaked-window
+recovery) under UBSan; `scripts/run_tests.sh --source-only` and the complexity
+ratchet with eight declared growth entries.
+
+Stata qualification: Mac rows use `84704edb` (plugin sha256 `aa7eef3f…`), Linux
+rows `e2fee7a4` (identical runtime source; `84704edb` adds the oracle's segment
+case, so Linux oracles have 62–63 cases). The oracle (`parallel_input_oracle.do`) covers byte/int/long/
+float/double with all 27 missing codes, unrestricted/`if`/`in`/`if`+`in`/
+scattered/tiny/empty samples, aw/fw/pw, factors, slopes, two FEs with
+clustering, a string FE, PPML offset and exposure, reordered and sorted data,
+`preserve`, a non-default frame, small storage segments, repeated calls and
+alias variables (serial). Every case's input digest is identical across
+threads(1), forced-serial and parallel runs; forced-serial and parallel results
+are bit-identical at equal workers. `parallel_input_failures.do` injects a
+worker panic and a read failure (r(3499), full rollback, no serial retry, exact
+follow-up). `estimate_input_break.do` sends a real Control-C through the PTY
+harness after the first joined phase (OLS and PPML roll back; exact follow-up).
+`missing_witness` stores NaN, ±Inf, `DBL_MAX`, the `.` boundary ±1 ulp and all
+missing codes: Stata's `ismissing` equals `value >= SV_missval` for all 80
+cells and the checked and unchecked accessors return identical bits.
+
+| Host | Interface | Oracle | Failures | Live Break | Witness |
+|---|---|---|---|---|---|
+| macOS arm64, Stata 19.0 MP (12 Aug 2026) | console | pass (64 cases, 65 parallel runs) | pass | pass | pass |
+| macOS arm64, Stata 19.0 MP | GUI executable (`-e`) | pass (65 parallel runs) | pass | not run¹ | — |
+| macOS arm64, Stata 18.0 MP (20 Dec 2023) | console | pass (65 parallel runs) | pass | pass | pass |
+| macOS arm64, Stata 18.0 MP | GUI executable (`-e`) | pass (65 parallel runs) | pass | not run¹ | — |
+| Linux x86_64 (SCC `scc-tb4`, Xeon E5-2660 v3), Stata 17/18/19 MP | console | pass | pass | pass | pass |
+| Linux x86_64 (SCC `scc-gd4`), Stata 17/18/19 MP | GUI `xstata-mp` (Xvfb, `-e`) | pass (64 parallel runs each) | pass | not run | — |
+
+¹ A live GUI Break needs Stata's AppleScript `UtilSetStataBreak`, which requires
+a one-time macOS Automation approval; SIGINT terminates the GUI process instead.
+Mac Stata 15/17 installations on the test Mac do not start ("cannot find Stata
+directory"); Windows has no installation available. Both are unqualified and
+keep the serial reader, as do SE/BE editions, which were not exercised.
+
+Timing: a frozen paired comparison in licensed Stata (the replay timing
+harness mocks the accessor, so `bench/qualify.py` cannot measure this change).
+Mac M2 Ultra, threads 4/8, eight cells, all 384 timed calls retained
+([summary](../bench/results/parallel-input-macos-20261101.md)): no regression;
+at eight workers complete OLS input loading falls to 0.10–0.22 of the incumbent
+in all-numeric cells (0.65 with a string FE, whose strings stay serial) and
+whole-command time to 0.49–0.84; allocation peaks are unchanged.
+
 ## Package checks
 
 ### Beta.12 interface packaging
