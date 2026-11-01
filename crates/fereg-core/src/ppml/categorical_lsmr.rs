@@ -34,6 +34,14 @@ const JOINT_LSMR_PREDICTOR_MAX_LOG_WEIGHT_CHANGE: f64 = 0.5;
 const JOINT_LSMR_PREDICTOR_MIN_SCHEDULE_RATIO: f64 = 0.01;
 const JOINT_LSMR_PREDICTOR_CERTIFICATE_TARGET: f64 = 0.5;
 const JOINT_LSMR_CORE_PAIR_REFRESH_ITERATIONS: usize = 128;
+/// Largest cumulative Hessian log-weight drift since a retained core-pair
+/// factor was built at which a long frame reuses it instead of refreshing it.
+/// Current weights within `exp(+-d)` of the build weights bound the core Gram
+/// between `exp(-d)` and `exp(d)` times the build Gram, so the preconditioned
+/// condition number grows by at most `exp(2 d)` and LSMR's iteration bound by
+/// at most `exp(d)`, about 5% here. Reuse across frames was approved by
+/// Johannes on 2026-10-31; this bound is its rebuild criterion.
+const JOINT_LSMR_FACTOR_REUSE_MAX_LOG_WEIGHT_DRIFT: f64 = 0.05;
 
 /// Numeric preconditioner lifecycle for categorical PPML LSMR.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -146,12 +154,16 @@ pub(crate) struct JointLsmrFrameDiagnostic {
     pub(crate) weight_change_valid: bool,
     pub(crate) predictor_used: bool,
     pub(crate) predictor_refreshed_preconditioner: bool,
+    /// Bound on the largest Hessian log-weight change since the retained
+    /// factor was built; infinite when unknown or without a factor.
+    pub(crate) factor_log_weight_drift: f64,
+    pub(crate) predictor_bounded_reuse: bool,
     pub(crate) continuation: JointLsmrContinuationCause,
 }
 
 fn joint_lsmr_frame_trace_line(frame: JointLsmrFrameDiagnostic) -> String {
     format!(
-        "FEREG_SOLVER_TRACE|phase=joint_lsmr_frame|scheduled={:.17e}|first_tolerance={:.17e}|effective={:.17e}|first_iterations={}|continuation_iterations={}|first_normal={:.17e}|final_normal={:.17e}|first_certificate={:.17e}|finite_max={:.17e}|fe_max={:.17e}|weight_change={:.17e}|weight_change_valid={}|predictor_used={}|predictor_refresh={}|recurrence_continuation={}|certificate_continuation={}|staleness_continuation={}",
+        "FEREG_SOLVER_TRACE|phase=joint_lsmr_frame|scheduled={:.17e}|first_tolerance={:.17e}|effective={:.17e}|first_iterations={}|continuation_iterations={}|first_normal={:.17e}|final_normal={:.17e}|first_certificate={:.17e}|finite_max={:.17e}|fe_max={:.17e}|weight_change={:.17e}|weight_change_valid={}|predictor_used={}|predictor_refresh={}|factor_drift={:.17e}|bounded_reuse={}|recurrence_continuation={}|certificate_continuation={}|staleness_continuation={}",
         frame.scheduled_tolerance,
         frame.first_pass_tolerance,
         frame.effective_tolerance,
@@ -166,6 +178,8 @@ fn joint_lsmr_frame_trace_line(frame: JointLsmrFrameDiagnostic) -> String {
         u8::from(frame.weight_change_valid),
         u8::from(frame.predictor_used),
         u8::from(frame.predictor_refreshed_preconditioner),
+        frame.factor_log_weight_drift,
+        u8::from(frame.predictor_bounded_reuse),
         u8::from(frame.continuation.recurrence),
         u8::from(frame.continuation.certificate),
         u8::from(frame.continuation.staleness),
@@ -190,6 +204,10 @@ struct JointLsmrFirstPassPolicy {
     tolerance: f64,
     used_predictor: bool,
     refresh_preconditioner: bool,
+    /// A long frame keeps the retained factor within the drift bound and runs
+    /// without the staleness escalation, whose slow-contraction signal is the
+    /// problem's own conditioning there, not a stale factor.
+    bounded_reuse: bool,
 }
 
 impl JointLsmrFirstPassPredictor {
@@ -198,12 +216,14 @@ impl JointLsmrFirstPassPredictor {
         scheduled_tolerance: f64,
         weight_change_valid: bool,
         max_abs_log_weight_change: f64,
+        factor_log_weight_drift: f64,
         preconditioner_policy: CategoricalLsmrPolicy,
     ) -> JointLsmrFirstPassPolicy {
         let fallback = JointLsmrFirstPassPolicy {
             tolerance: scheduled_tolerance,
             used_predictor: false,
             refresh_preconditioner: false,
+            bounded_reuse: false,
         };
         if preconditioner_policy != CategoricalLsmrPolicy::CorePair {
             return fallback;
@@ -245,15 +265,21 @@ impl JointLsmrFirstPassPredictor {
         let prior_iterations = prior
             .first_pass_iterations
             .saturating_add(prior.continuation_iterations);
+        // In the measured sparse-three-FE regime, a long certified frame
+        // predicts that the retained two-way core will trip staleness on the
+        // next nearby Hessian, because its contraction is slow on any factor.
+        // Within the drift bound the retained factor is spectrally equivalent
+        // to a fresh one and is reused without that escalation. Beyond it, or
+        // when the drift is unknown, the same factor is built from current
+        // weights before recurrence instead of discarding a short pass.
+        let long_frame = prior.continuation.staleness
+            || prior_iterations >= JOINT_LSMR_CORE_PAIR_REFRESH_ITERATIONS;
+        let bounded = factor_log_weight_drift <= JOINT_LSMR_FACTOR_REUSE_MAX_LOG_WEIGHT_DRIFT;
         JointLsmrFirstPassPolicy {
             tolerance,
             used_predictor: true,
-            // In the measured sparse-three-FE regime, a long certified frame
-            // predicts that the retained two-way core will trip staleness on
-            // the next nearby Hessian. Build the same factor from current
-            // weights before recurrence instead of discarding a short pass.
-            refresh_preconditioner: prior.continuation.staleness
-                || prior_iterations >= JOINT_LSMR_CORE_PAIR_REFRESH_ITERATIONS,
+            refresh_preconditioner: long_frame && !bounded,
+            bounded_reuse: long_frame && bounded,
         }
     }
 
@@ -290,6 +316,9 @@ pub(crate) struct ReusableCategoricalJointLsmr {
     warm_start_valid: bool,
     first_pass_predictor: JointLsmrFirstPassPredictor,
     preconditioner: Option<Preconditioner>,
+    /// Bound on the largest Hessian log-weight change since `preconditioner`
+    /// was built: the sum of certified frames' maxima, infinite when unknown.
+    factor_log_weight_drift: f64,
     core_pair_bridge_scratch: Mutex<CorePairBridgeScratch>,
     policy: CategoricalLsmrPolicy,
     #[cfg(test)]
@@ -448,6 +477,7 @@ impl ReusableCategoricalJointLsmr {
             warm_start_valid: false,
             first_pass_predictor: JointLsmrFirstPassPredictor::default(),
             preconditioner: None,
+            factor_log_weight_drift: f64::INFINITY,
             core_pair_bridge_scratch: Mutex::new(core_pair_bridge_scratch),
             policy,
             #[cfg(test)]
@@ -517,10 +547,19 @@ impl ReusableCategoricalJointLsmr {
             &mut self.finite_factor,
         );
         let warm_start_attempted = self.warm_start_valid;
+        // The triangle inequality over consecutive certified frames bounds the
+        // log-weight change since the retained factor's build.
+        self.factor_log_weight_drift = if weight_change_valid && self.preconditioner.is_some() {
+            self.factor_log_weight_drift + max_abs_log_hessian_weight_change
+        } else {
+            f64::INFINITY
+        };
+        let factor_log_weight_drift = self.factor_log_weight_drift;
         let first_pass_policy = self.first_pass_predictor.policy(
             tolerance,
             weight_change_valid,
             max_abs_log_hessian_weight_change,
+            factor_log_weight_drift,
             self.policy,
         );
         let (mut use_schwarz, mut rebuilt) =
@@ -548,7 +587,10 @@ impl ReusableCategoricalJointLsmr {
         // An unfactored two-effect frame starts with the current diagonal.
         // Stalled progress promotes it to Schwarz using the same continuation
         // as a stale factor. A newly built factor cannot be refreshed again.
-        let use_escalation = self.policy != CategoricalLsmrPolicy::Diagonal && !rebuilt;
+        // A factor reused within the drift bound runs without it.
+        let use_escalation = self.policy != CategoricalLsmrPolicy::Diagonal
+            && !rebuilt
+            && !first_pass_policy.bounded_reuse;
         #[cfg(test)]
         if use_escalation {
             self.instrumentation.escalation_armed =
@@ -722,6 +764,8 @@ impl ReusableCategoricalJointLsmr {
             weight_change_valid,
             predictor_used: first_pass_policy.used_predictor,
             predictor_refreshed_preconditioner: first_pass_policy.refresh_preconditioner,
+            factor_log_weight_drift,
+            predictor_bounded_reuse: first_pass_policy.bounded_reuse,
             continuation,
         };
         self.first_pass_predictor.record_certified(frame);
@@ -932,6 +976,11 @@ impl ReusableCategoricalJointLsmr {
             )
         })?;
         self.preconditioner = solver.preconditioner().cloned();
+        self.factor_log_weight_drift = if self.preconditioner.is_some() {
+            0.0
+        } else {
+            f64::INFINITY
+        };
         Ok(self.preconditioner.is_some())
     }
 

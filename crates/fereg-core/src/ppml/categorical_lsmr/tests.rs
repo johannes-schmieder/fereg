@@ -43,6 +43,8 @@ fn predictor_frame(
         weight_change_valid: true,
         predictor_used: false,
         predictor_refreshed_preconditioner: false,
+        factor_log_weight_drift: f64::INFINITY,
+        predictor_bounded_reuse: false,
         continuation,
     }
 }
@@ -50,7 +52,13 @@ fn predictor_frame(
 #[test]
 fn first_pass_predictor_initializes_to_the_scheduled_tolerance() {
     let predictor = JointLsmrFirstPassPredictor::default();
-    let policy = predictor.policy(1e-8, true, 0.1, CategoricalLsmrPolicy::CorePair);
+    let policy = predictor.policy(
+        1e-8,
+        true,
+        0.1,
+        f64::INFINITY,
+        CategoricalLsmrPolicy::CorePair,
+    );
     assert_eq!(policy.tolerance.to_bits(), 1e-8_f64.to_bits());
     assert!(!policy.used_predictor);
     assert!(!policy.refresh_preconditioner);
@@ -70,7 +78,13 @@ fn first_pass_predictor_clamps_prior_certificate_misses() {
             staleness: false,
         },
     ));
-    let predicted = predictor.policy(1e-9, true, 0.1, CategoricalLsmrPolicy::CorePair);
+    let predicted = predictor.policy(
+        1e-9,
+        true,
+        0.1,
+        f64::INFINITY,
+        CategoricalLsmrPolicy::CorePair,
+    );
     assert!((predicted.tolerance - 1e-11).abs() <= 1e-26);
     assert!(predicted.used_predictor);
     assert!(predicted.refresh_preconditioner);
@@ -87,7 +101,13 @@ fn first_pass_predictor_clamps_prior_certificate_misses() {
             staleness: false,
         },
     ));
-    let floor = floor_predictor.policy(5e-14, true, 0.1, CategoricalLsmrPolicy::CorePair);
+    let floor = floor_predictor.policy(
+        5e-14,
+        true,
+        0.1,
+        f64::INFINITY,
+        CategoricalLsmrPolicy::CorePair,
+    );
     assert_eq!(
         floor.tolerance.to_bits(),
         JOINT_LSMR_NUMERICAL_FLOOR.to_bits()
@@ -102,11 +122,17 @@ fn first_pass_predictor_clamps_prior_certificate_misses() {
         10,
         JointLsmrContinuationCause::default(),
     ));
-    let scheduled = passing.policy(1e-9, true, 0.1, CategoricalLsmrPolicy::CorePair);
+    let scheduled = passing.policy(
+        1e-9,
+        true,
+        0.1,
+        f64::INFINITY,
+        CategoricalLsmrPolicy::CorePair,
+    );
     assert_eq!(scheduled.tolerance.to_bits(), 1e-9_f64.to_bits());
     assert!(!scheduled.refresh_preconditioner);
 
-    let two_effect = predictor.policy(1e-9, true, 0.1, CategoricalLsmrPolicy::Reuse);
+    let two_effect = predictor.policy(1e-9, true, 0.1, f64::INFINITY, CategoricalLsmrPolicy::Reuse);
     assert_eq!(two_effect.tolerance.to_bits(), 1e-9_f64.to_bits());
     assert!(!two_effect.used_predictor);
     assert!(!two_effect.refresh_preconditioner);
@@ -123,18 +149,105 @@ fn first_pass_predictor_rejects_weight_and_schedule_jumps() {
         JointLsmrContinuationCause::default(),
     ));
     for policy in [
-        predictor.policy(1e-9, false, 0.1, CategoricalLsmrPolicy::CorePair),
+        predictor.policy(
+            1e-9,
+            false,
+            0.1,
+            f64::INFINITY,
+            CategoricalLsmrPolicy::CorePair,
+        ),
         predictor.policy(
             1e-9,
             true,
             JOINT_LSMR_PREDICTOR_MAX_LOG_WEIGHT_CHANGE + f64::EPSILON,
+            f64::INFINITY,
             CategoricalLsmrPolicy::CorePair,
         ),
-        predictor.policy(1e-11, true, 0.1, CategoricalLsmrPolicy::CorePair),
-        predictor.policy(2e-8, true, 0.1, CategoricalLsmrPolicy::CorePair),
+        predictor.policy(
+            1e-11,
+            true,
+            0.1,
+            f64::INFINITY,
+            CategoricalLsmrPolicy::CorePair,
+        ),
+        predictor.policy(
+            2e-8,
+            true,
+            0.1,
+            f64::INFINITY,
+            CategoricalLsmrPolicy::CorePair,
+        ),
     ] {
         assert!(!policy.used_predictor);
         assert!(!policy.refresh_preconditioner);
+    }
+}
+
+#[test]
+fn first_pass_predictor_reuses_a_long_frame_factor_within_the_drift_bound() {
+    let mut long = JointLsmrFirstPassPredictor::default();
+    long.record_certified(predictor_frame(
+        1e-9,
+        1e-9,
+        5e-10,
+        200,
+        JointLsmrContinuationCause::default(),
+    ));
+    let policy = |drift| long.policy(1e-9, true, 0.01, drift, CategoricalLsmrPolicy::CorePair);
+    for drift in [0.0, 0.01, JOINT_LSMR_FACTOR_REUSE_MAX_LOG_WEIGHT_DRIFT] {
+        let reused = policy(drift);
+        assert!(reused.used_predictor);
+        assert!(reused.bounded_reuse);
+        assert!(!reused.refresh_preconditioner);
+        assert_eq!(reused.tolerance.to_bits(), 1e-9_f64.to_bits());
+    }
+    for drift in [0.051, 1.0, f64::INFINITY, f64::NAN] {
+        let refreshed = policy(drift);
+        assert!(refreshed.refresh_preconditioner);
+        assert!(!refreshed.bounded_reuse);
+    }
+    // A short frame keeps the retained factor with its staleness escalation.
+    let mut short = JointLsmrFirstPassPredictor::default();
+    short.record_certified(predictor_frame(
+        1e-9,
+        1e-9,
+        5e-10,
+        20,
+        JointLsmrContinuationCause::default(),
+    ));
+    for drift in [0.0, f64::INFINITY] {
+        let kept = short.policy(1e-9, true, 0.01, drift, CategoricalLsmrPolicy::CorePair);
+        assert!(!kept.refresh_preconditioner);
+        assert!(!kept.bounded_reuse);
+    }
+    // A prior staleness continuation is a long frame too.
+    let mut stalled = JointLsmrFirstPassPredictor::default();
+    stalled.record_certified(predictor_frame(
+        1e-9,
+        1e-9,
+        5e-10,
+        20,
+        JointLsmrContinuationCause {
+            recurrence: false,
+            certificate: false,
+            staleness: true,
+        },
+    ));
+    assert!(
+        stalled
+            .policy(1e-9, true, 0.01, 0.01, CategoricalLsmrPolicy::CorePair)
+            .bounded_reuse
+    );
+    // Two effects and invalid predictor inputs never take the bounded rule.
+    for (valid, change, policy) in [
+        (true, 0.01, CategoricalLsmrPolicy::Reuse),
+        (false, 0.01, CategoricalLsmrPolicy::CorePair),
+        (true, 0.6, CategoricalLsmrPolicy::CorePair),
+    ] {
+        let declined = long.policy(1e-9, valid, change, 0.0, policy);
+        assert!(!declined.used_predictor);
+        assert!(!declined.bounded_reuse);
+        assert!(!declined.refresh_preconditioner);
     }
 }
 
@@ -144,7 +257,13 @@ fn first_pass_predictor_invalidation_is_atomic_and_matches_engine_replacement() 
     let mut predictor = JointLsmrFirstPassPredictor::default();
     predictor.record_certified(frame);
     let snapshot = predictor;
-    let _speculative = predictor.policy(1e-9, true, 0.1, CategoricalLsmrPolicy::CorePair);
+    let _speculative = predictor.policy(
+        1e-9,
+        true,
+        0.1,
+        f64::INFINITY,
+        CategoricalLsmrPolicy::CorePair,
+    );
     assert_eq!(predictor, snapshot);
 
     predictor.invalidate();
@@ -185,6 +304,8 @@ fn joint_lsmr_frame_trace_is_deterministic_and_complete() {
         "weight_change=",
         "predictor_used=1",
         "predictor_refresh=1",
+        "factor_drift=",
+        "bounded_reuse=",
         "recurrence_continuation=1",
         "certificate_continuation=1",
         "staleness_continuation=1",
@@ -771,6 +892,7 @@ fn topology_identity_rejects_an_equal_shaped_replacement() {
         warm_start_valid: false,
         first_pass_predictor: JointLsmrFirstPassPredictor::default(),
         preconditioner: None,
+        factor_log_weight_drift: f64::INFINITY,
         core_pair_bridge_scratch: Mutex::new(CorePairBridgeScratch::default()),
         policy: CategoricalLsmrPolicy::Diagonal,
         instrumentation: JointLsmrInstrumentation::default(),
@@ -867,6 +989,7 @@ fn joint_solver_reuses_a_certified_incremental_state_across_weight_frames() {
             warm_start_valid: false,
             first_pass_predictor: JointLsmrFirstPassPredictor::default(),
             preconditioner: None,
+            factor_log_weight_drift: f64::INFINITY,
             core_pair_bridge_scratch: Mutex::new(CorePairBridgeScratch::default()),
             policy: CategoricalLsmrPolicy::Reuse,
             instrumentation: JointLsmrInstrumentation::default(),
@@ -1019,6 +1142,7 @@ fn joint_solver_tracks_retained_team_across_one_four_one() {
             warm_start_valid: false,
             first_pass_predictor: JointLsmrFirstPassPredictor::default(),
             preconditioner: None,
+            factor_log_weight_drift: f64::INFINITY,
             core_pair_bridge_scratch: Mutex::new(CorePairBridgeScratch::default()),
             policy: CategoricalLsmrPolicy::Diagonal,
             instrumentation: JointLsmrInstrumentation::default(),
@@ -1084,6 +1208,7 @@ fn joint_solver_supports_zero_finite_columns_with_three_effects() {
         warm_start_valid: false,
         first_pass_predictor: JointLsmrFirstPassPredictor::default(),
         preconditioner: None,
+        factor_log_weight_drift: f64::INFINITY,
         core_pair_bridge_scratch: Mutex::new(
             CorePairBridgeScratch::new(9).expect("bridge scratch"),
         ),
@@ -1102,6 +1227,126 @@ fn joint_solver_supports_zero_finite_columns_with_three_effects() {
     for (actual, expected) in solver.delta_eta.iter().zip(&target) {
         assert!((actual - expected).abs() <= 1e-9);
     }
+}
+
+#[test]
+fn core_pair_factor_is_reused_within_the_drift_bound_and_refreshed_beyond_it() {
+    let rows = 60;
+    let first_codes = (0..rows).map(|row| (row % 5) as u32).collect::<Vec<_>>();
+    let second_codes = (0..rows)
+        .map(|row| ((row / 2) % 4) as u32)
+        .collect::<Vec<_>>();
+    let third_codes = (0..rows)
+        .map(|row| ((row / 3) % 3) as u32)
+        .collect::<Vec<_>>();
+    let design = FeDesign::new(
+        rows,
+        vec![
+            EffectTerm::new(first_codes.clone(), 5, true, Vec::new()).expect("first"),
+            EffectTerm::new(second_codes.clone(), 4, true, Vec::new()).expect("second"),
+            EffectTerm::new(third_codes.clone(), 3, true, Vec::new()).expect("third"),
+        ],
+    )
+    .expect("design");
+    let first_effect = [-0.04, -0.02, 0.0, 0.02, 0.04];
+    let second_effect = [-0.03, -0.01, 0.01, 0.03];
+    let third_effect = [-0.02, 0.0, 0.02];
+    let outcome = (0..rows)
+        .map(|row| {
+            1.0 + first_effect[first_codes[row] as usize]
+                + second_effect[second_codes[row] as usize]
+                + third_effect[third_codes[row] as usize]
+        })
+        .collect::<Vec<_>>();
+    let mut solver = ReusableCategoricalJointLsmr {
+        team: test_team(2),
+        active_design: DenseMatrix::from_row_major(rows, 0, Vec::new())
+            .expect("empty active design"),
+        active_slots: Vec::new(),
+        topology: FeTopologyIdentity::capture(&design),
+        effect_offsets: vec![0, 5, 9, 12],
+        core_effects: Some([0, 1]),
+        sqrt_weights: vec![0.0; rows],
+        rhs: vec![0.0; rows],
+        target: vec![0.0; rows],
+        delta_eta: vec![0.0; rows],
+        residual: vec![0.0; rows],
+        warm_start: vec![0.0; 12],
+        finite_inverse: Vec::new(),
+        finite_factor: Vec::new(),
+        finite_factor_ready: false,
+        fe_inverse: vec![0.0; 12],
+        finite_certificate: Vec::new(),
+        fe_certificate: vec![DirectionCertificate::default(); 12],
+        warm_start_valid: false,
+        first_pass_predictor: JointLsmrFirstPassPredictor::default(),
+        preconditioner: None,
+        factor_log_weight_drift: f64::INFINITY,
+        core_pair_bridge_scratch: Mutex::new(
+            CorePairBridgeScratch::new(9).expect("bridge scratch"),
+        ),
+        policy: CategoricalLsmrPolicy::CorePair,
+        instrumentation: JointLsmrInstrumentation::default(),
+    };
+    // Every frame solves and certifies its own current-weight system; the
+    // uniform weights keep the exact Newton target in the FE span.
+    let frame = |solver: &mut ReusableCategoricalJointLsmr, level: f64| {
+        let mean = vec![level; rows];
+        let report = solver
+            .solve(&design, &outcome, &mean, &mean, 1e-10, 1_000)
+            .expect("core-pair correction");
+        assert!(report.certificate.passed);
+        assert!(report.used_schwarz);
+        for (actual, y) in solver.delta_eta.iter().zip(&outcome) {
+            assert!((actual - (y / level - 1.0)).abs() <= 1e-9);
+        }
+        report
+    };
+    let long_prior = |solver: &mut ReusableCategoricalJointLsmr, report: JointLsmrReport| {
+        let mut prior = report.frame;
+        prior.first_pass_iterations = JOINT_LSMR_CORE_PAIR_REFRESH_ITERATIONS;
+        solver.first_pass_predictor.record_certified(prior);
+    };
+
+    let built = frame(&mut solver, 1.0);
+    assert!(built.rebuilt_preconditioner);
+    assert_eq!(solver.instrumentation.schwarz_rebuilds, 1);
+    assert_eq!(solver.factor_log_weight_drift, 0.0);
+    assert_eq!(solver.instrumentation.escalation_armed, 0);
+
+    // A long frame with a small weight change keeps the factor, unarmed.
+    long_prior(&mut solver, built);
+    let reused = frame(&mut solver, 1.02);
+    let drift = 1.02_f64.ln();
+    assert!(reused.frame.predictor_bounded_reuse);
+    assert!(!reused.frame.predictor_refreshed_preconditioner);
+    assert!(!reused.rebuilt_preconditioner);
+    assert!((reused.frame.factor_log_weight_drift - drift).abs() <= 1e-12);
+    assert_eq!(solver.instrumentation.schwarz_rebuilds, 1);
+    assert_eq!(solver.instrumentation.escalation_armed, 0);
+
+    // Accumulated drift beyond the bound refreshes the factor on current weights.
+    long_prior(&mut solver, reused);
+    let refreshed = frame(&mut solver, 1.02 * 1.35);
+    assert!(refreshed.frame.predictor_refreshed_preconditioner);
+    assert!(!refreshed.frame.predictor_bounded_reuse);
+    assert!(refreshed.rebuilt_preconditioner);
+    assert!((refreshed.frame.factor_log_weight_drift - (drift + 1.35_f64.ln())).abs() <= 1e-12);
+    assert_eq!(solver.instrumentation.schwarz_rebuilds, 2);
+    assert_eq!(solver.factor_log_weight_drift, 0.0);
+
+    // A short frame keeps the retained factor with the staleness escalation.
+    let short = frame(&mut solver, 1.02 * 1.35);
+    assert!(!short.frame.predictor_bounded_reuse);
+    assert!(!short.rebuilt_preconditioner);
+    assert_eq!(solver.instrumentation.escalation_armed, 1);
+
+    // An invalidated trajectory loses the drift bound.
+    solver.reset_warm_start();
+    long_prior(&mut solver, short);
+    let unknown = frame(&mut solver, 1.02 * 1.35);
+    assert!(unknown.frame.factor_log_weight_drift.is_infinite());
+    assert!(!unknown.frame.predictor_bounded_reuse);
 }
 
 #[test]

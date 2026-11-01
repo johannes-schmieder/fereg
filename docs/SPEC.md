@@ -1122,7 +1122,24 @@ acceleration, with its build identity retained and compatibility, memory and
 work limits checked. It carries no current-weight, certificate, canonical-rank
 or Hessian authority; the operator, RHS, stopping target and independent
 certification still use the current problem. The two-FE Auto CMG hierarchy
-(§1) is such state. Sample mutation invalidates all reuse. Warm starts are guesses, never certificates. Final inference and correction
+(§1) is such state. So is the core-pair Schwarz factor of explicit
+`solver(lsmr)` with three or more effects. After a long certified frame (at
+least 128 recurrence steps, or a staleness continuation) that factor is rebuilt
+from current weights before the next recurrence unless a bound on the largest
+Hessian log-weight change since its build, the sum of consecutive certified
+frames' maxima, is at most 0.05. Within that bound the core Gram lies between
+`exp(-0.05)` and `exp(0.05)` times the build Gram, so the preconditioned
+condition number grows by at most `exp(0.1)`; the factor is reused without the
+staleness escalation, which on such frames reflects the problem's slow
+contraction rather than a stale factor. An unknown bound rebuilds, and a
+recurrence or certificate miss still rebuilds on current weights and continues
+(reuse approved by Johannes, 2026-10-31). Declared scope: explicit PPML LSMR fits with
+three or more effects that reach a long frame may change inner iteration
+counts, solver signatures and low bits within §20; discrete decisions remain
+unchanged. Witnesses: the drift-bound policy unit test and a three-effect
+core-pair solve that reuses within the bound, refreshes beyond it, loses the
+bound after invalidation and certifies every frame against current weights.
+Sample mutation invalidates all reuse. Warm starts are guesses, never certificates. Final inference and correction
 use this same accepted state. Output tolerance (§5) does not remove the
 strict PPML/final-Hessian requirements.
 

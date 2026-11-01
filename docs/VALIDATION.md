@@ -646,6 +646,92 @@ observation and instructed us to hold the optional upstream PR. This patch is
 absent from the combined candidate and does not establish beta.11 performance
 acceptance.
 
+## PyFixest parity policies (development, 2026-10-31)
+
+Johannes approved three policies from the October 31 PyFixest diagnostic: the
+many-FE geometry recurrence stopping at the request with `within`'s stall rule
+for the Jacobi trial, an ordinary PPML frame floor of 0.1 times the tolerance,
+and Schwarz preconditioner reuse across PPML frames. Measured, only the third
+holds up, and on the benchmarked routes it changes nothing. This is development
+evidence, not qualification.
+
+Setup: one whole SCC node (`scc-zj4`, Xeon Gold 6132, job 8381889) on the
+beta.11 campaign's frozen inputs with PyFixest 0.60.0 `within` at its defaults
+from the campaign environment. Every process ran on the same four cores
+(0-3, which span both sockets on this node) with memory bound to node 0. Each
+process made one untimed warm-up fit and two timed fits, three rounds with arms
+interleaved. Accuracy is the largest relative coefficient error against the
+diagnostic run's strict fereg fits (1e-14; 1e-12 for sparse PPML). Fixed-worker
+coefficients repeated exactly in every arm. Seconds are medians of six fits:
+fereg native (`e(fereg_runtime)` row 20 or `feppml` total) and Stata command,
+PyFixest's fit call after `read_stata`. Arm `diag` is the recurrence at the
+request with the previous trial rule; `cand` adds the stall rule (OLS) or the
+ordinary floor (PPML).
+
+| Cell (1M rows unless noted) | beta.12 native / command | `diag` | `cand` | PyFixest | beta.12 error | PyFixest error |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| OLS three-sparse 100k | 0.418 / 0.474 | r(459) | 0.417 | 0.299 | 3.5e-14 | 2.4e-14 |
+| OLS three-sparse | 4.401 / 4.764 | 4.092 | 4.234 | 3.583 | 9.3e-14 | 7.2e-14 |
+| OLS three-dense | 0.958 / 1.349 | 0.955 | 0.939 | 1.112 | 8.9e-14 | 5.2e-14 |
+| PPML three-sparse, steady fits | 25.59-25.74 / 25.99-26.41 | - | 25.18-25.44 | 19.42 | 5.2e-13 | 8.8e-15 |
+| PPML three-dense | 4.596 / 5.150 | - | 4.492 | 3.935 | 1.2e-14 | 5.2e-11 |
+| PPML one-FE | 3.068 / 3.695 | - | 3.113 | 3.259 | 2.0e-16 | 2.1e-14 |
+
+Six of twelve sparse PPML fereg fits, the first fit of a process in both arms,
+took 41-68 s; the table gives the other six, and every fit is in the private
+run record. PyFixest showed no such fits. On native time fereg is already ahead
+on dense OLS and one-FE PPML; the Stata command adds 0.06-0.6 s of input
+transfer and ado work that PyFixest's timer does not count.
+
+Many-FE recurrence at the request: not adopted. The one-decade margin was not
+idle. The Fast derived residual (§7) inherits the recurrence's accuracy, and
+the independent dense full-dummy witnesses in
+`fereg-oracle/tests/derived_residual.rs` then miss the §20 residual envelope
+(2.4e-9 against a bound of 1.2e-9, and 2.0e-9 against 1.4e-9). The finite
+score certificate also loses its margin and has no correction path: `diag`
+refused the 100k sparse cell with r(459) in all three rounds, where beta.12
+publishes. On the 1M cell it was 7% faster.
+
+`within`'s stall rule for the Jacobi trial: not adopted. It needs four
+contractions above 0.7, so on the sparse design the trial escalates after six
+to nine Jacobi iterations instead of four or five and finishes in 24 to 27
+iterations instead of 22 to 23 (21 at the request). It was 3.5% slower than
+the previous rule at the same target on SCC and 4-5% slower than beta.12 on the
+Mac at the beta.12 target, and it would lengthen the documented near-confounded
+exception.
+
+Ordinary PPML frame floor: implemented on the separate branch
+`pyfixest-parity-ordinary-floor`, not adopted. The literal floor, applied also
+to the frame after the outer diagnostics pass, publishes a point 1.6e-6 (eta)
+from the strict solution on the sparse design. Its checkpoint is rejected,
+refined to 1e-14 and repeated, for ten IRLS iterations; it was slower (10.1-10.7
+against 9.4-10.0 s on the Mac), and four unit fixtures that require `eta`
+within 1e-10 of the exact optimum fail. The branch keeps the strict target for
+that frame. Its accuracy matches beta.12, and it was 8% faster on the Mac's
+sparse fit. On SCC the last floored frame leaves the next strict-target step
+moving eta by 2.9e-6 instead of 6.7e-7, so the strict-entry rule defers once
+and adds a 595-step frame: nine instead of eight IRLS iterations and 1.6% less
+time. Two replay cases also raise their outer iteration count from five to six,
+which the affected-scope contract cannot declare. Dense was 2% faster and
+one-FE 1.5% slower, within noise.
+
+Schwarz reuse across PPML frames: implemented as specified in §13 for explicit
+`solver(lsmr)` with three or more effects. Public Auto rebuilds no Schwarz
+factor per frame: its MAP-family joint Schur recurrence preconditions the
+retained block with the current diagonal, and its two Schwarz builds are the
+initial and strict checkpoint sessions. Between them the per-frame maxima of
+the Hessian log-weight change sum to 3.4 on the sparse design, far beyond any
+bound that would justify reuse. Explicit LSMR already retained its
+factor whenever frames stayed short. On every benchmarked design they did (15-24
+steps on sparse, 6-10 on dense), so the drift rule changes no benchmarked fit.
+The 77-case replay was bit-identical to beta.12, and the unit witnesses cover
+reuse, refresh, invalidation and per-frame certification.
+
+Remaining gaps: sparse three-FE OLS (4.40 against 3.58 s native) and PPML
+(25.6 against 19.4 s steady). The sparse PPML frames take 160 to 600 joint
+Schur steps each, so the frame preconditioner, not the stopping target,
+dominates their cost.
+
 ## Published beta.11 descriptive campaign
 
 The October 30 SCC campaign of the published Linux plugin `af65682b...` (runtime
