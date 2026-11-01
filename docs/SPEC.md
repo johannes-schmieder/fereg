@@ -1523,7 +1523,12 @@ available solver/route signatures against the parent under equal build settings.
 Numerical fixes declare affected cases/fields; unaffected science remains exact.
 Exclude timing, build identity and environmental resource observations only.
 A tolerance pass cannot silently waive an unexplained exact-change failure.
-Preserve Stata processor restoration on success, error and Break.
+Preserve Stata processor restoration on success, error and Break. `feppml`
+runs its public call on one Stata processor below one million observations,
+because Stata's MP workers once active compete with the native team, and keeps
+the caller's count from one million observations, where the frontend's per-row
+passes on one processor cost more than that competition (Johannes's 1M+
+performance target, 2026-11-01).
 
 Every additive-Schwarz preconditioner fereg builds in the pinned solver (OLS
 borrowed and owned LSMR, the many-FE Jacobi trial's escalation, explicit

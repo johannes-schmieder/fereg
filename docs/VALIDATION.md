@@ -857,6 +857,79 @@ runs the whole public call with one Stata processor (ADR 0241, measured on 30k
 to 123k rows), so Stata cannot spread these passes over cores; the OLS frontend
 has neither the serial host nor the three marker checks.
 
+### PPML frontend passes and host scope (development, 2026-11-01)
+
+Marker checks (`73f85bd0`): one `summarize, meanonly` pass and one `count if`
+pass replace the three post-plugin passes over the sample marker, with the same
+failures, messages and order. Host scope: `feppml` keeps the one-processor scope
+of ADR 0241 below one million observations and the caller's processor count
+from there (SPEC §18). Arms were scratch copies of the frontend with the branch
+plugin; every process used four node-0 cores, Stata at four processors and
+`threads(4)`, arm order rotating by round, no retries or exclusions.
+
+Job 8385337 (`scc-zj4`, Xeon Gold 6132, campaign one-FE and dense two-FE PPML,
+three rounds of three timed fits per size), medians of the Stata command time:
+
+| Arm | One-FE 1M | Two-FE 1M | One-FE 100k | Two-FE 100k |
+| --- | ---: | ---: | ---: | ---: |
+| Before the marker change | 3.078 | 3.592 | 0.326 | 0.372 |
+| Marker change, serial host (V0) | 2.995 | 3.436 | 0.318 | 0.363 |
+| No host switch (V1) | 2.938 | 3.317 | 0.356 | 0.424 |
+| Serial through the native call (V2) | 2.887 | 3.361 | 0.340 | 0.420 |
+| Serial only around the plugin call (V3) | 2.913 | 3.354 | 0.377 | 0.423 |
+
+The marker change lowered the time outside the native call from 0.38 to 0.29 s
+at 1M rows and from 0.040 to 0.033 s at 100k; the other arms lowered it to
+0.15-0.21 s at 1M but added 0.03-0.09 s of native time, the interference ADR
+0240 described, which dominates at 100k. Coefficients were identical in every
+arm and round.
+
+Job 8385376 (`scc-wo4`, Xeon E5-2680 v4, campaign AKM baseline PPML: leading
+300k, 600k, 1M and 3M rows of the 3M input in four rounds of two fits, the 10M
+input in two rounds of one fit), median Stata command time against V0:
+
+| Rows | V0 | V1 | V2 |
+| ---: | ---: | ---: | ---: |
+| 300k | 5.27 s | -9.7% | -7.4% |
+| 600k | 5.91 s | -8.5% | -8.7% |
+| 1M | 7.22 s | -8.0% | -3.9% |
+| 3M | 18.55 s | -4.9% | -0.6% |
+| 10M | 75.04 s | -4.1% | -1.1% |
+
+V1's frontend overhead was 0.21, 0.65 and 1.53 s at 1M, 3M and 10M against
+0.47, 1.32 and 3.21 s for V0; this node showed no native interference. The
+measured per-row savings (0.14-0.26 microseconds) against the largest fixed
+interference (0.08 s, `scc-zj4`) break even near 600k rows, so the switch is
+kept below one million observations. The public-scope fixture now also checks
+a one-million-row call (caller's count inside, restoration after an injected
+failure and a success); it, the host-processor and transaction fixtures, both
+genuine PPML Break modes and the Python suite pass on the Mac.
+
+Strict checkpoint seeding (investigated, not changed): the strict checkpoint
+already re-projects the retained design, which holds the regressors projected
+at the initial checkpoint's weights, so it starts warm. On sparse three-FE PPML
+(job 8384884's traced fit) all 17 columns needed 23-24 LSMR iterations at
+1e-12, the response 23, because the weights move far between the checkpoints.
+A response seed from the joint frames cannot shorten the batch, and a regressor
+seed at near-final weights would need another 17-column projection (the initial
+one took 11 iterations to 1e-6), costing about what it saves.
+
+One-FE PPML (job 8385347, `scc-wo4`, campaign one-FE input, four node-0 cores):
+fereg's native 4.54 s splits into preparation 0.76 s, FE projection 0.59,
+finite solve 1.04, line search 0.41, strict final solve 0.78, inference 0.08
+and publication 0.24 (4 IRLS iterations plus the strict solve); PyFixest's fit
+(3.92-4.52 s) also makes five weighted solves, with 1.26 s in `demean`. fereg's
+projection is faster per solve (0.15 against 0.25 s). A macOS `sample` of
+twelve one-FE fits showed the four workers idle 41-49% of the time behind
+serial sections on Stata's main thread (input reading, which must stay there,
+numeric classification, result construction, inference) and on the driving
+worker; inside the parallel work, the per-iteration score certificate and the
+compensated norm statistics cost about as much as the Gram and projection
+kernels. The levers are the serial sections (numeric classification is a
+sequential scan that a chunked parallel scan with first-row reductions could
+replace, shared with OLS), the finite solve's kernels and the score
+certificate's cost; none changes the iteration structure.
+
 ## Published beta.11 descriptive campaign
 
 The October 30 SCC campaign of the published Linux plugin `af65682b...` (runtime
