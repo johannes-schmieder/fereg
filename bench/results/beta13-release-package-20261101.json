@@ -1,0 +1,136 @@
+{
+ "schema": "beta13-release-package-v1",
+ "date": "2026-11-01",
+ "status": "passed",
+ "timing": false,
+ "package_source_commit": "118c21880250894b1e66536daaf4e7b74a92fc4e",
+ "runtime_commit": "ee61833e1a083c37f57fbebe028e98b18df73afb",
+ "binary_archive_sha256": "81086e04c88e0197e5d468628d8c9bba0905f5f00f63e1149a5d57a6a3d1a46d",
+ "source_archive_sha256": "533c063325c94d9f0ad1cf8c35c0dfb461f518f7ce718ba8503c49b174ac02d1",
+ "source_equivalence": {
+  "status": "passed",
+  "offline_build_archive_sha256": "c064aa92aab15f9fc38bf2b05f7aa83e8176657573f946ffb2a9d7b313172ba9",
+  "changed_files": [
+   "DEPENDENCY_AUDIT.json",
+   "MANIFEST.sha256",
+   "SBOM.spdx.json",
+   "SOURCE_MANIFEST.json",
+   "bench/results/beta13-native-20261101.json",
+   "docs/VALIDATION.md"
+  ],
+  "identical_other_archive_files": 3498,
+  "production_and_dependency_source_changes": false
+ },
+ "dependency_audit": {
+  "advisory_count": 0,
+  "cargo_lock_sha256": "4975de767595cf184cd5328e6ec7f7a55e7871c545d3c51adbc92da1544696d5",
+  "schema": 1,
+  "source_sha": "118c21880250894b1e66536daaf4e7b74a92fc4e",
+  "status": "pass",
+  "toolchain": "1.85.1"
+ },
+ "plugins": {
+  "fereg_linux.plugin": "9bbb0a35c1238e07227b71d7ee388ee374f558e94f9d9c81cc7c40f7d44284fc",
+  "fereg_windows.plugin": "66e06389272e6a54ec0be2d3cc66fe15268e0ff6a4c9df151607cbcee9017ab5",
+  "fereg_macos.plugin": "e01c9b7e0b2bbc17d5a6e4a2dbf716e0a1108b5959e1fa1335d1eddcfc34d845"
+ },
+ "binary_archive_files": 46,
+ "staged_fixtures": [
+  "tests/stata/installation/factor_availability.do",
+  "tests/stata/installation/feppml_installation_smoke.do",
+  "tests/stata/installation/frequency_singleton_validation.do",
+  "tests/stata/installation/installation_smoke.do",
+  "tests/stata/installation/observation_stores.do",
+  "tests/stata/installation/ols_vce_case.do",
+  "tests/stata/installation/ols_weight_expression.do",
+  "tests/stata/installation/reload_loop.do",
+  "tests/stata/installation/single_runtime.do",
+  "tests/stata/installation/slope_dof_validation.do",
+  "tests/stata/installation/staged_plugin_binary.do",
+  "tests/stata/postestimation/replay_and_prefixes.do"
+ ],
+ "package_checks": {
+  "macos_staged": {
+   "status": "success",
+   "tests_passed": 12,
+   "tests_failed": 0,
+   "stata_version": "19",
+   "stata_edition": "MP",
+   "stata_machine_type": "Mac (Apple Silicon)",
+   "archive_sha256": "81086e04c88e0197e5d468628d8c9bba0905f5f00f63e1149a5d57a6a3d1a46d"
+  },
+  "linux_staged": {
+   "job": "8387820",
+   "host": "scc-tb4.scc.bu.edu",
+   "failed": 0,
+   "exit_status": 0,
+   "wallclock_seconds": 22,
+   "maxvmem": "1.909G",
+   "status": "success",
+   "tests_passed": 12,
+   "tests_failed": 0,
+   "stata_version": "19",
+   "stata_edition": "MP",
+   "stata_machine_type": "PC (64-bit x86-64)",
+   "archive_sha256": "81086e04c88e0197e5d468628d8c9bba0905f5f00f63e1149a5d57a6a3d1a46d",
+   "log_sha256": "8acc6bcfa6981c09da09b68afee7c87af8d38fce39ce515c2bdb8586572db74b"
+  },
+  "macos_local_installation": {
+   "route": "net install from the root package",
+   "stata": [
+    "19"
+   ],
+   "selftest": "passed",
+   "ols_relative_difference_vs_regress": 7.095e-15,
+   "ppml_relative_difference_vs_poisson": 7.323e-11
+  }
+ },
+ "strict_integration": {
+  "command": "./scripts/run_tests.sh",
+  "mode": "strict-default",
+  "exit_code": 0,
+  "log_sha256": "d4eeba7a412ffa0f65d6e9fcc4d2eea9e927321f8c3c870b5c46df5e7617ed64",
+  "python_tests": [
+   332,
+   7
+  ],
+  "rust_successful_test_processes": 120,
+  "package_files": 36,
+  "compiler": "Rust 1.85.1",
+  "runtime_commit": "ee61833e1a083c37f57fbebe028e98b18df73afb",
+  "linux_mock_elf_check": "not applicable on macOS; the Linux artifact has its own retained audit"
+ },
+ "release_assets": [
+  {
+   "name": "fereg-0.5.0-source.zip",
+   "sha256": "533c063325c94d9f0ad1cf8c35c0dfb461f518f7ce718ba8503c49b174ac02d1",
+   "bytes": 34352955
+  },
+  {
+   "name": "fereg-0.5.0-source.zip.sha256",
+   "sha256": "317420e47e57876e2a5ef9824c10ca3e16b792c59bf3581c836eb9bfc984786a",
+   "bytes": 89
+  },
+  {
+   "name": "fereg-0.5.0.zip",
+   "sha256": "81086e04c88e0197e5d468628d8c9bba0905f5f00f63e1149a5d57a6a3d1a46d",
+   "bytes": 18273460
+  },
+  {
+   "name": "fereg-0.5.0.zip.sha256",
+   "sha256": "b39fac43ff708f6e681850bf4ce54fa5a5b6ef2f9afbe3d295922c36b878f559",
+   "bytes": 82
+  },
+  {
+   "name": "macos_source_build.md",
+   "sha256": "6798db113daf34e716270e5f89ccee5c3a8c7b21eb2625ab3201432579ffc3ec",
+   "bytes": 2826
+  }
+ ],
+ "scope": "Release package and local installation qualification for beta.13. Public HTTP installation is recorded separately after publication.",
+ "limitations": [
+  "Native Intel-host Stata execution remains outstanding; the universal Mac plugin has both slices.",
+  "Parallel numeric input is qualified only on macOS arm64 Stata 18/19 MP and Linux x86-64 Stata 17/18/19 MP; Windows, SE/BE and other hosts keep the serial reader.",
+  "Mac Stata 15 and 17 do not start on the test Mac (console: 'cannot find Stata directory'; the Stata 15 GUI executable did not reach the do-file); Stata 15.1, 16.1 and 17 ran on Linux."
+ ]
+}

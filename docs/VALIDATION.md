@@ -2135,6 +2135,20 @@ three plugins and checks below.
 | Linux x86-64 | SCC build job 8387492 and check job 8387493 (both on `scc-tb4`, `failed=0`, `exit_status=0`): ELF audit and actual ABI/load/panic checks passed, all 68 fixtures of the full Stata 19/MP profile passed, the parallel-input oracle (64 cases, identical trace digests), failure injections and live Break passed on Stata 19, and the Stata 15-syntax fixture passed on Stata/MP 15.1, 16.1, 17 and 18. |
 | Windows x86-64 | Run `win-20261101T205555Z-e008d473` at `ee61833e` passed the Rust 1.85.1/MSVC build, PE archive-path and source-manifest checks, the native loader and the licensed Stata/MP 19 `stata-do` driver with its ten mapped fixtures; the controller's execution-identity, source-hash and shutdown-backstop checks passed and the instance stopped (receipt `de9156db...`, plugin `66e06389...`). Windows is not a qualified parallel-input host and keeps the serial reader. |
 
+The [package record](../bench/results/beta13-release-package-20261101.json)
+binds the five release assets. Packaging source `118c2188` differs from the
+offline-built `ee61833e` archive only in its records and generated metadata
+(3,498 identical files). The source ZIP is
+`533c063325c94d9f0ad1cf8c35c0dfb461f518f7ce718ba8503c49b174ac02d1`; the
+binary ZIP is `81086e04c88e0197e5d468628d8c9bba0905f5f00f63e1149a5d57a6a3d1a46d`.
+The dependency audit reports no advisories. The exact binary archive passes
+all twelve staged-package fixtures on Mac and on Linux (job 8387820). A fresh
+local `net install` of the root package on Stata 19 passes the selftest and the
+independent OLS/PPML comparisons with `regress` and `poisson` (relative
+differences `7e-15` and `7e-11`); Mac Stata 15 no longer starts on the test
+Mac, and Linux runs the Stata 15.1 checks. The strict default
+`./scripts/run_tests.sh` passes with the refreshed plugins.
+
 ### Beta.12 interface packaging
 
 Beta.12 changes the Stata interface only; runtime `864960f1` keeps beta.11's

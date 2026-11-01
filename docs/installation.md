@@ -50,12 +50,12 @@ fereg price mpg, absorb(rep78) vce(robust)
 feppml price mpg, absorb(rep78) vce(robust)
 ```
 
-To install beta.12 independently of later changes to `main`, use its release
+To install beta.13 independently of later changes to `main`, use its release
 tag in a fresh Stata session. The tagged root package carries that release's
 plugins; replace the tag to install another beta:
 
 ```stata
-net install fereg, from("https://raw.githubusercontent.com/johannes-schmieder/fereg/v0.5.0-beta.12/") replace
+net install fereg, from("https://raw.githubusercontent.com/johannes-schmieder/fereg/v0.5.0-beta.13/") replace
 fereg, selftest
 ```
 
@@ -64,7 +64,7 @@ beta.2 to beta.4 were macOS-only. Beta.1 predates the root package; install it
 from its binary ZIP as described below.
 
 For an offline installation, download `fereg-0.5.0.zip` from the
-[beta release](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0-beta.12),
+[beta release](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0-beta.13),
 extract it, and use the absolute path of the extracted directory containing
 `fereg.pkg`:
 
