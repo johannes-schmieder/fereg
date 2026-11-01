@@ -26,12 +26,11 @@ pub(crate) const MAX_WINDOW_SLOTS: usize = 64;
 /// Target values per block: a bounded worker task that still amortizes one
 /// window call per slot group.
 const BLOCK_VALUES: usize = 1 << 15;
-const MIN_BLOCK_ROWS: usize = 256;
 const MAX_BLOCK_ROWS: usize = 16_384;
-/// Values per phase: Break is polled between phases, so this bounds latency
-/// (about 16M accessor calls, tens of milliseconds even on one lane).
+/// Work units per phase: reads, flag writes, marker validation, diagnostic
+/// replay and RHS copies. Elapsed Break latency still depends on the host.
 #[cfg(not(test))]
-const PHASE_VALUES: usize = 1 << 24;
+const PHASE_VALUES: usize = 1 << 23;
 /// Unit tests exercise many phases on small inputs.
 #[cfg(test)]
 const PHASE_VALUES: usize = 1 << 16;
@@ -65,9 +64,9 @@ pub(crate) struct Policy {
 /// Developer injections (hidden adapters only) on the parallel path.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Fault {
-    /// Park on Stata's thread after the first phase until a real Break,
-    /// after creating the native marker named by the hidden token.
-    BreakAfterFirstPhase { token: [u8; 32], ppml: bool },
+    /// Park one worker inside the first open window until the controller
+    /// delivers Break and removes the native marker; workers never poll SPI.
+    BreakDuringFirstPhase { token: [u8; 32], ppml: bool },
     /// Panic inside one worker block of the first phase.
     WorkerPanic,
     /// One worker block of the first phase reports SDK return code 919.
@@ -226,42 +225,63 @@ pub(crate) fn try_read(
     transport: Transport,
     memory: &mut InputMemory,
     rows: usize,
-    targets: &mut [Target<'_>],
+    target_storage: (&mut [Target<'_>], usize),
     candidate: Candidate<'_>,
     mut rhs: Option<(&mut Vec<f64>, NumericRhsLayout)>,
     operation: &'static str,
 ) -> Result<bool> {
     let Transport { policy, team } = transport;
+    let (targets, target_capacity) = target_storage;
     let width = targets.len();
     let marker = matches!(candidate, Candidate::Marker { .. });
-    if !policy.enabled()
-        || rows == 0
-        || width == 0
-        || !spi.supports_numeric_window()
-        || matches!(
-            candidate,
-            Candidate::Known(UniformValuesRef::Repeated { value: false, .. })
-        )
-    {
-        return Ok(false);
+    let reason = if !policy.enabled() {
+        Some("host_policy")
+    } else if rows == 0 || width == 0 {
+        Some("empty_input")
+    } else if !spi.supports_numeric_window() {
+        Some("window_unavailable")
+    } else if matches!(
+        candidate,
+        Candidate::Known(UniformValuesRef::Repeated { value: false, .. })
+    ) {
+        Some("empty_candidate")
+    } else {
+        None
+    };
+    if let Some(reason) = reason {
+        return decline(reason);
     }
     check_reserved(rows, targets, &candidate, rhs.as_ref())?;
     let slots = width + usize::from(marker);
-    let block_rows = (BLOCK_VALUES / slots).clamp(MIN_BLOCK_ROWS, MAX_BLOCK_ROWS);
+    let range = if matches!(candidate, Candidate::All) {
+        0..rows
+    } else {
+        crate::input::checked_input_range(spi, rows)?
+    };
+    // Admit a block plus its diagnostic replay, including marker validation
+    // and output flags. Excluded fills use the same conservative work bound.
+    let work_per_row = width
+        .saturating_mul(4)
+        .saturating_add(usize::from(marker) * 6)
+        .saturating_add(rhs.as_ref().map_or(0, |(_, layout)| layout.width * 2));
+    if work_per_row > PHASE_VALUES {
+        return decline("phase_row_budget");
+    }
+    let block_rows = (BLOCK_VALUES / slots)
+        .clamp(1, MAX_BLOCK_ROWS)
+        .min(PHASE_VALUES / work_per_row);
     let blocks = rows.div_ceil(block_rows);
     if StagePlan::new(rows as u128 * slots as u128, blocks, team.threads()).lanes < 2 {
-        return Ok(false);
+        return decline("work_plan");
     }
     // Bounded descriptors: positions, pointer tables and fills. A tight budget
     // keeps the serial reader before any observation is read.
-    let descriptor_bytes = slots as u128
-        * (std::mem::size_of::<u32>()
-            + 2 * std::mem::size_of::<*mut f64>()
-            + std::mem::size_of::<f64>()
-            + std::mem::size_of::<bool>()) as u128
-        + std::mem::size_of::<Mutex<Option<Failure>>>() as u128;
+    let target_bytes = target_capacity as u128 * std::mem::size_of::<Target<'_>>() as u128;
+    let fixed_bytes = target_bytes + std::mem::size_of::<Mutex<Option<Failure>>>() as u128;
+    let per_target = 2 * std::mem::size_of::<*mut f64>() + 8 + 1;
+    let mut descriptor_bytes = fixed_bytes + slots as u128 * 4 + width as u128 * per_target as u128;
     if memory.retain(descriptor_bytes).is_err() {
-        return Ok(false);
+        return decline("descriptor_budget");
     }
     let (retained, mut candidate_output) = match candidate {
         Candidate::All | Candidate::Known(UniformValuesRef::Repeated { .. }) => {
@@ -280,29 +300,39 @@ pub(crate) fn try_read(
         let Some(bank) = Bank::new(
             rows,
             block_rows,
+            range.clone(),
             targets,
             retained,
             candidate_output.as_deref_mut(),
             rhs.as_mut()
                 .map(|(values, layout)| (&mut **values, *layout)),
         ) else {
-            return Ok(false);
+            return decline("descriptor_allocation");
         };
         let Some(positions) = bank.positions(targets) else {
-            return Ok(false);
+            return decline("position_table");
         };
-        let trace = Trace::new(rows, width, marker);
+        let actual_bytes = fixed_bytes
+            + bank.descriptor_bytes()
+            + positions.capacity() as u128 * std::mem::size_of::<i32>() as u128;
+        if actual_bytes > descriptor_bytes {
+            if memory.retain(actual_bytes - descriptor_bytes).is_err() {
+                return decline("descriptor_capacity");
+            }
+            descriptor_bytes = actual_bytes;
+        }
+        let trace = Trace::new(rows, width, marker, range.clone());
         let failures = Mutex::new(None::<Failure>);
-        let Some(phases) = run_phases(
+        let Some((phases, longest_phase)) = run_phases(
             spi,
             Transport { policy, team },
             &bank,
             &positions,
-            (rows, blocks, block_rows * slots),
+            (rows, blocks, block_rows * work_per_row),
             &failures,
         )?
         else {
-            return Ok(false);
+            return decline("window_refused");
         };
         drop(bank);
         if let Some(failure) = failures
@@ -329,16 +359,16 @@ pub(crate) fn try_read(
             // SAFETY: as above; every row wrote `layout.width` values.
             unsafe { values.set_len(rows * layout.width) };
         }
-        trace.finish(phases, blocks, team.threads());
+        trace.finish(phases, blocks, team.threads(), longest_phase);
         Ok(true)
     })();
     memory.release(descriptor_bytes)?;
     result
 }
 
-/// Developer Break injection: with the window closed and the phase joined,
-/// publish the native marker and poll until Stata delivers a real Break.
-fn park_for_break(spi: &mut dyn SpiApi, token: &[u8; 32], ppml: bool) -> Result<()> {
+/// Developer handshake inside an active window. The controller sends Break
+/// before removing the marker. Only the main thread polls after workers join.
+fn park_for_break(token: &[u8; 32], ppml: bool) -> Result<()> {
     let token = std::str::from_utf8(token)
         .map_err(|_| FeregError::new(ErrorCode::Internal, "invalid input Break token"))?;
     let (prefix, marker) = if ppml {
@@ -351,8 +381,11 @@ fn park_for_break(spi: &mut dyn SpiApi, token: &[u8; 32], ppml: bool) -> Result<
     };
     crate::developer_injection::create_native_break_marker(prefix, marker, token)?;
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(120);
+    let path = crate::developer_injection::native_break_marker_path(prefix, token);
     while std::time::Instant::now() < deadline {
-        spi.check_interrupted()?;
+        if !path.exists() {
+            return Ok(());
+        }
         std::thread::sleep(std::time::Duration::from_millis(5));
     }
     Err(FeregError::new(
@@ -369,23 +402,22 @@ fn run_phases(
     spi: &mut dyn SpiApi,
     transport: Transport,
     bank: &Bank<'_>,
-    positions: &[u32],
+    positions: &[i32],
     shape: (usize, usize, usize),
     failures: &Mutex<Option<Failure>>,
-) -> Result<Option<usize>> {
+) -> Result<Option<(usize, f64)>> {
     let Transport { policy, team } = transport;
     let (rows, blocks, block_values) = shape;
-    // A phase holds a bounded number of values (Break latency), but at least
-    // a few blocks per worker (join imbalance).
-    let phase_blocks = (PHASE_VALUES / block_values.max(1))
-        .max(team.threads().saturating_mul(4))
-        .max(1);
+    // The work cap takes precedence over worker occupancy.
+    let phase_blocks = (PHASE_VALUES / block_values.max(1)).max(1);
     let mut payload = true;
     let mut phases = 0_usize;
+    let mut longest_phase = 0.0_f64;
     for phase_start in (0..blocks).step_by(phase_blocks) {
         spi.check_interrupted()?;
         let phase = phase_start..(phase_start + phase_blocks).min(blocks);
         let fault = (phases == 0).then_some(policy.fault).flatten();
+        let started = fereg_core::diagnostics::solver_trace_enabled().then(std::time::Instant::now);
         let opened = spi.with_numeric_window(positions, rows, &mut |source| {
             team.install(|| {
                 phase
@@ -399,6 +431,21 @@ fn run_phases(
                             }
                             Some(Fault::ReadFailure) if block == phase.end - 1 => {
                                 Some(payload_failure(bank.block(block).0, 0, 919))
+                            }
+                            Some(Fault::BreakDuringFirstPhase { token, ppml })
+                                if block == phase.start =>
+                            {
+                                park_for_break(&token, ppml)
+                                    .err()
+                                    .map(|error| Failure {
+                                        key: FailureKey {
+                                            class: PAYLOAD,
+                                            row: bank.block(block).0,
+                                            slot: 0,
+                                        },
+                                        kind: FailureKind::Marker(error),
+                                    })
+                                    .or_else(|| read_block(source, bank, block, payload))
                             }
                             _ => read_block(source, bank, block, payload),
                         };
@@ -417,6 +464,9 @@ fn run_phases(
                 "Stata numeric window was refused after parallel loading began",
             ));
         }
+        if let Some(started) = started {
+            longest_phase = longest_phase.max(started.elapsed().as_secs_f64());
+        }
         phases += 1;
         let class = failures
             .lock()
@@ -432,11 +482,8 @@ fn run_phases(
             Some(_) => break,
             None => {}
         }
-        if let Some(Fault::BreakAfterFirstPhase { token, ppml }) = fault {
-            park_for_break(spi, &token, ppml)?;
-        }
     }
-    Ok(Some(phases))
+    Ok(Some((phases, longest_phase)))
 }
 
 fn check_reserved(
@@ -540,6 +587,7 @@ enum Retained<'a> {
 struct Bank<'a> {
     rows: usize,
     block_rows: usize,
+    range: std::ops::Range<usize>,
     values: Vec<*mut f64>,
     missing: Vec<*mut bool>,
     excluded_values: Vec<f64>,
@@ -557,6 +605,7 @@ impl<'a> Bank<'a> {
     fn new(
         rows: usize,
         block_rows: usize,
+        range: std::ops::Range<usize>,
         targets: &mut [Target<'_>],
         mut retained: Retained<'a>,
         candidate: Option<&mut Vec<bool>>,
@@ -579,6 +628,7 @@ impl<'a> Bank<'a> {
         Some(Self {
             rows,
             block_rows,
+            range,
             values,
             missing,
             excluded_values,
@@ -594,13 +644,22 @@ impl<'a> Bank<'a> {
     }
 
     /// Window variables: the targets, then the marker in the last slot.
-    fn positions(&self, targets: &[Target<'_>]) -> Option<Vec<u32>> {
+    fn positions(&self, targets: &[Target<'_>]) -> Option<Vec<i32>> {
         let mut positions = reserved(targets.len() + usize::from(self.marker()))?;
-        positions.extend(targets.iter().map(|target| target.position));
+        for target in targets {
+            positions.push(i32::try_from(target.position).ok()?);
+        }
         if let Retained::Marker { position, .. } = self.retained {
-            positions.push(position);
+            positions.push(i32::try_from(position).ok()?);
         }
         Some(positions)
+    }
+
+    fn descriptor_bytes(&self) -> u128 {
+        (self.values.capacity() * std::mem::size_of::<*mut f64>()
+            + self.missing.capacity() * std::mem::size_of::<*mut bool>()
+            + self.excluded_values.capacity() * std::mem::size_of::<f64>()
+            + self.excluded_missing.capacity() * std::mem::size_of::<bool>()) as u128
     }
 
     fn block(&self, block: usize) -> (usize, usize) {
@@ -621,7 +680,16 @@ fn read_block(
     block: usize,
     payload: bool,
 ) -> Option<Failure> {
-    let (start, rows) = bank.block(block);
+    let (block_start, block_rows) = bank.block(block);
+    let block_end = block_start + block_rows;
+    let start = block_start.max(bank.range.start).min(block_end);
+    let end = block_end.min(bank.range.end).max(start);
+    fill_excluded(bank, block_start, start - block_start);
+    fill_excluded(bank, end, block_end - end);
+    let rows = end - start;
+    if rows == 0 {
+        return None;
+    }
     let retained: *const bool = match bank.retained {
         Retained::All => std::ptr::null(),
         Retained::Known(flags) => flags[start..start + rows].as_ptr(),
@@ -654,6 +722,44 @@ fn read_block(
         }
     }
     None
+}
+
+/// Initialize excluded original rows without a host accessor call. Every
+/// addressed row belongs to the current worker's disjoint, bounded block.
+fn fill_excluded(bank: &Bank<'_>, start: usize, rows: usize) {
+    if rows == 0 {
+        return;
+    }
+    for slot in 0..bank.values.len() {
+        // SAFETY: raw writes initialize our reserved rows without creating
+        // references to uninitialized storage.
+        unsafe {
+            let values = bank.values[slot].add(start);
+            if bank.excluded_values[slot].to_bits() == 0 {
+                values.write_bytes(0, rows);
+            } else {
+                for row in 0..rows {
+                    values.add(row).write(bank.excluded_values[slot]);
+                }
+            }
+            bank.missing[slot]
+                .add(start)
+                .write_bytes(u8::from(bank.excluded_missing[slot]), rows);
+        }
+    }
+    if let Retained::Marker { output, .. } = bank.retained {
+        // SAFETY: the candidate has the same original-row ownership.
+        unsafe { output.add(start).write_bytes(0, rows) };
+    }
+}
+
+fn decline(reason: &str) -> Result<bool> {
+    if fereg_core::diagnostics::solver_trace_enabled() {
+        fereg_core::diagnostics::emit_solver_trace(&format!(
+            "FEREG_SOLVER_TRACE|phase=input_transport_declined|reason={reason}"
+        ));
+    }
+    Ok(false)
 }
 
 /// Read and validate this block's marker. The first target's value and flag
@@ -705,14 +811,17 @@ fn read_marker(
         unsafe { output.add(row).write(retained) };
         Ok(())
     };
-    if read(start, rows).is_ok() {
-        for offset in 0..rows {
-            if let Err(failure) = validate(offset) {
-                return Some(failure);
+    let original_rc = match read(start, rows) {
+        Ok(()) => {
+            for offset in 0..rows {
+                if let Err(failure) = validate(offset) {
+                    return Some(failure);
+                }
             }
+            return None;
         }
-        return None;
-    }
+        Err(rc) => rc,
+    };
     // Locate the first failing row exactly, validating earlier rows in serial
     // order (the scalar marker pass reads and validates row by row).
     for offset in 0..rows {
@@ -730,7 +839,17 @@ fn read_marker(
             return Some(failure);
         }
     }
-    None
+    // Replay locates persistent errors; it must never turn a transient SDK
+    // failure into a successful load. The original block is the earliest
+    // coordinate we can establish when all diagnostic reads succeed.
+    Some(Failure {
+        key: FailureKey {
+            class: MARKER,
+            row: start,
+            slot: 0,
+        },
+        kind: FailureKind::MarkerRead(original_rc),
+    })
 }
 
 fn read_payload(
@@ -879,25 +998,29 @@ struct Trace {
     rows: usize,
     width: usize,
     marker: bool,
+    range: std::ops::Range<usize>,
 }
 
 impl Trace {
-    fn new(rows: usize, width: usize, marker: bool) -> Self {
+    fn new(rows: usize, width: usize, marker: bool, range: std::ops::Range<usize>) -> Self {
         Self {
             started: fereg_core::diagnostics::solver_trace_enabled().then(std::time::Instant::now),
             rows,
             width,
             marker,
+            range,
         }
     }
 
-    fn finish(&self, phases: usize, blocks: usize, workers: usize) {
+    fn finish(&self, phases: usize, blocks: usize, workers: usize, longest_phase: f64) {
         if let Some(started) = self.started {
             fereg_core::diagnostics::emit_solver_trace(&format!(
-                "FEREG_SOLVER_TRACE|phase=input_transport|mode=parallel|rows={}|width={}|marker={}|workers={workers}|phases={phases}|blocks={blocks}|seconds={:.9}",
+                "FEREG_SOLVER_TRACE|phase=input_transport|mode=parallel|rows={}|width={}|marker={}|workers={workers}|phases={phases}|blocks={blocks}|range_first={}|range_end={}|phase_work_cap={PHASE_VALUES}|longest_phase_s={longest_phase:.9}|seconds={:.9}",
                 self.rows,
                 self.width,
                 u8::from(self.marker),
+                self.range.start,
+                self.range.end,
                 started.elapsed().as_secs_f64()
             ));
         }
@@ -924,8 +1047,14 @@ mod tests {
         polls: usize,
         interrupt_at_poll: Option<usize>,
         fail: Option<(usize, u32, i32)>,
+        fail_once: Option<(usize, u32, i32)>,
+        failed_once: std::sync::atomic::AtomicBool,
         workers: std::sync::Mutex<HashSet<std::thread::ThreadId>>,
         reads: AtomicUsize,
+        range: Option<std::ops::Range<usize>>,
+        break_during_read: bool,
+        break_requested: std::sync::atomic::AtomicBool,
+        phase_reads: Vec<usize>,
     }
 
     impl TestSpi {
@@ -938,8 +1067,14 @@ mod tests {
                 polls: 0,
                 interrupt_at_poll: None,
                 fail: None,
+                fail_once: None,
+                failed_once: std::sync::atomic::AtomicBool::new(false),
                 workers: std::sync::Mutex::new(HashSet::new()),
                 reads: AtomicUsize::new(0),
+                range: None,
+                break_during_read: false,
+                break_requested: std::sync::atomic::AtomicBool::new(false),
+                phase_reads: Vec::new(),
             }
         }
 
@@ -954,7 +1089,7 @@ mod tests {
 
     struct TestWindow<'a> {
         spi: &'a TestSpi,
-        variables: Vec<u32>,
+        variables: Vec<i32>,
     }
 
     // SAFETY: on Ok every addressed row of every requested slot is written,
@@ -983,7 +1118,21 @@ mod tests {
                             }
                             continue;
                         }
-                        let variable = self.variables[request.first_slot + slot];
+                        if let Some(range) = &self.spi.range {
+                            assert!(range.contains(&row));
+                        }
+                        if self.spi.break_during_read {
+                            self.spi.break_requested.store(true, Ordering::SeqCst);
+                        }
+                        let variable = self.variables[request.first_slot + slot] as u32;
+                        if let Some((r, v, rc)) = self.spi.fail_once {
+                            if r == row
+                                && v == variable
+                                && !self.spi.failed_once.swap(true, Ordering::Relaxed)
+                            {
+                                return Err(rc);
+                            }
+                        }
                         if self
                             .spi
                             .fail
@@ -1023,6 +1172,10 @@ mod tests {
             assert!(!self.is_open());
             Ok(self.rows())
         }
+        fn input_range(&mut self, rows: usize) -> Result<std::ops::Range<usize>> {
+            assert!(!self.is_open());
+            Ok(self.range.clone().unwrap_or(0..rows))
+        }
         fn nvars(&mut self) -> Result<usize> {
             Ok(self.columns.len())
         }
@@ -1042,7 +1195,7 @@ mod tests {
         }
         fn with_numeric_window(
             &mut self,
-            variables: &[u32],
+            variables: &[i32],
             rows: usize,
             run: &mut dyn FnMut(&dyn NumericBlockSource) -> Result<()>,
         ) -> Result<bool> {
@@ -1057,11 +1210,15 @@ mod tests {
             self.opens += 1;
             self.open.store(true, Ordering::SeqCst);
             let _close = CloseOnDrop(&self.open);
+            let before = self.reads.load(Ordering::Relaxed);
             let window = TestWindow {
                 spi: self,
                 variables: variables.to_vec(),
             };
-            run(&window).map(|()| true)
+            let result = run(&window).map(|()| true);
+            self.phase_reads
+                .push(self.reads.load(Ordering::Relaxed) - before);
+            result
         }
         fn read_string(&mut self, _: u32, _: usize) -> Result<Vec<u8>> {
             unreachable!("numeric fixture")
@@ -1093,7 +1250,9 @@ mod tests {
                 "Break is polled only with the window closed"
             );
             self.polls += 1;
-            if self.interrupt_at_poll == Some(self.polls) {
+            if self.interrupt_at_poll == Some(self.polls)
+                || self.break_requested.load(Ordering::SeqCst)
+            {
                 return Err(FeregError::new(ErrorCode::Interrupted, "test Break"));
             }
             Ok(())
@@ -1186,17 +1345,22 @@ mod tests {
                 (_, _, Some(flags)) => Candidate::Known(UniformValuesRef::Explicit(flags)),
                 _ => Candidate::All,
             };
+            let target_capacity = targets.capacity();
             try_read(
                 spi,
                 transport,
                 &mut memory,
                 rows,
-                &mut targets,
+                (targets.as_mut_slice(), target_capacity),
                 candidate_arg,
                 rhs.as_mut().zip(rhs_layout),
                 "numeric column read",
             )
         };
+        assert_eq!(
+            memory.remaining(),
+            budget.map_or(usize::MAX, |v| v as usize)
+        );
         (
             result,
             Loaded {
@@ -1329,6 +1493,85 @@ mod tests {
     }
 
     #[test]
+    fn bounded_candidates_skip_host_reads_and_preserve_full_row_buffers() {
+        let (rows, width) = (30_000, 70);
+        for range in [0..1, 17..18, 271..2_013, 29_997..30_000, 40..40] {
+            for marker in [false, true] {
+                let mut columns = dataset(rows, width, 5);
+                let flags: Vec<bool> = (0..rows)
+                    .map(|r| range.contains(&r) && r % 3 != 1)
+                    .collect();
+                if marker {
+                    columns.push(flags.iter().map(|&v| f64::from(v)).collect());
+                }
+                let mut spi = TestSpi::new(columns);
+                spi.range = Some(range.clone());
+                let fill = if marker { (0.0, false) } else { (-0.0, true) };
+                let (result, loaded) = run(
+                    &mut spi,
+                    transport(Policy::PARALLEL, 4),
+                    width,
+                    marker.then_some(width as u32 + 1),
+                    (!marker).then_some(flags.as_slice()),
+                    fill,
+                    None,
+                    None,
+                );
+                assert_eq!(result, Ok(true));
+                let (values, missing) = expected(&spi, width, &|r| flags[r], fill);
+                assert_eq!(bits(&loaded.values), values);
+                assert_eq!(loaded.missing, missing);
+                if marker {
+                    assert_eq!(loaded.candidate.unwrap(), flags);
+                }
+                assert_eq!(
+                    spi.reads.load(Ordering::Relaxed),
+                    flags.iter().filter(|&&v| v).count() * width
+                        + if marker { range.len() } else { 0 }
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn phase_budget_dominates_worker_occupancy_and_active_break_joins() {
+        for width in [1, 64, 130] {
+            let mut spi = TestSpi::new(dataset(30_000, width, 1));
+            let (result, _) = run(
+                &mut spi,
+                transport(Policy::PARALLEL, 8),
+                width,
+                None,
+                None,
+                (0.0, false),
+                None,
+                None,
+            );
+            assert_eq!(result, Ok(true));
+            assert!(spi
+                .phase_reads
+                .iter()
+                .all(|reads| reads * 4 <= PHASE_VALUES));
+            spi.break_during_read = true;
+            let opens = spi.opens;
+            let (result, loaded) = run(
+                &mut spi,
+                transport(Policy::PARALLEL, 8),
+                width,
+                None,
+                None,
+                (0.0, false),
+                None,
+                None,
+            );
+            assert_eq!(result.unwrap_err().code, ErrorCode::Interrupted);
+            assert_eq!(spi.opens, opens + 1);
+            assert!(!spi.is_open());
+            assert!(loaded.values.iter().all(Vec::is_empty));
+        }
+    }
+
+    #[test]
     fn packed_rows_match_the_tile_recipe() {
         for append_intercept in [false, true] {
             let (rows, width) = (9_001, 5);
@@ -1420,6 +1663,32 @@ mod tests {
     }
 
     #[test]
+    fn descriptor_budget_includes_caller_targets_and_is_released() {
+        let width = 4;
+        let required = (width
+            * (std::mem::size_of::<Target<'_>>() + 4 + 2 * std::mem::size_of::<*mut f64>() + 8 + 1)
+            + std::mem::size_of::<Mutex<Option<Failure>>>()) as u128;
+        for budget in [required - 1, required] {
+            let mut spi = TestSpi::new(dataset(50_000, width, 3));
+            let (result, loaded) = run(
+                &mut spi,
+                transport(Policy::PARALLEL, 4),
+                width,
+                None,
+                None,
+                (0.0, false),
+                None,
+                Some(budget),
+            );
+            assert_eq!(result, Ok(budget == required));
+            if budget < required {
+                assert_eq!(spi.reads.load(Ordering::Relaxed), 0);
+                assert!(loaded.values.iter().all(Vec::is_empty));
+            }
+        }
+    }
+
+    #[test]
     fn errors_follow_serial_precedence_and_never_expose_partial_storage() {
         let (rows, width) = (40_000, 3);
         let marker = width as u32 + 1;
@@ -1492,6 +1761,37 @@ mod tests {
             result.unwrap_err().message,
             "Stata SPI numeric read failed with return code 918"
         );
+    }
+
+    #[test]
+    fn transient_marker_errors_survive_clean_replay_and_dominate_payload() {
+        for threads in [2, 5, 8] {
+            let (rows, width) = (40_000, 3);
+            let mut columns = dataset(rows, width, 11);
+            columns.push(marker_column(rows, "runs"));
+            let mut spi = TestSpi::new(columns);
+            spi.fail_once = Some((12_345, 4, 918));
+            spi.fail = Some((5, 1, 917));
+            let (result, loaded) = run(
+                &mut spi,
+                transport(Policy::PARALLEL, threads),
+                width,
+                Some(4),
+                None,
+                (0.0, false),
+                None,
+                None,
+            );
+            assert!(spi.failed_once.load(Ordering::Relaxed));
+            assert_eq!(
+                result.unwrap_err().message,
+                "Stata SPI numeric read failed with return code 918"
+            );
+            assert!(loaded.values.iter().all(Vec::is_empty));
+            assert!(loaded.missing.iter().all(Vec::is_empty));
+            assert!(loaded.candidate.unwrap().is_empty());
+            assert!(!spi.is_open());
+        }
     }
 
     #[test]

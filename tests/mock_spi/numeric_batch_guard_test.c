@@ -25,6 +25,9 @@ static ST_int store_value(ST_int v, ST_int o, ST_double value)
 }
 static ST_int nobs(void) { return 65540; }
 static ST_int nvars(void) { return 4; }
+static ST_int range_first = 17, range_end = 290;
+static ST_int in1(void) { return range_first; }
+static ST_int in2(void) { return range_end; }
 static ST_boolean isstr(ST_int v) { assert(v >= 1 && v <= 4); return (ST_boolean)(v == 3); }
 static ST_int read_value(ST_int v, ST_int o, ST_double *d)
 {
@@ -55,6 +58,8 @@ static void worker_checks(void)
     assert(fereg_spi_vdata_rows(vars, 1, 1, 1, data, &missing) == 498);
     const double *outputs[] = {data};
     assert(fereg_spi_vstore_columns(vars, 1, 1, outputs) == 498);
+    int first, end;
+    assert(fereg_spi_input_range(&first, &end) == 498);
 }
 
 #if SYSTEM == STWIN32
@@ -278,6 +283,7 @@ int main(void)
     double a[4] = {0}, b[4] = {0}, c[4] = {0}, *cols[] = {a, b, c}, missing;
     memset(&plugin, 0, sizeof(plugin));
     plugin.nobs = nobs; plugin.nvars = nvars; plugin.isstr = isstr;
+    plugin.nobs1 = in1; plugin.nobs2 = in2;
     plugin.safevdata = checked_read; plugin.vdata = read_value;
     plugin.safestore = store_value; plugin.store = store_value;
     plugin.missval = 0x1p+1023;
@@ -286,6 +292,15 @@ int main(void)
     assert(pginit(&plugin) == SD_PLUGINVER);
     assert(fereg_spi_vdata_columns(vars, 3, 1, 4, cols, &missing) == 498);
     assert(stata_call(0, NULL) == 0);
+    int observed_first, observed_end;
+    assert(fereg_spi_input_range(&observed_first, &observed_end) == 0 && observed_first == 16 && observed_end == 290);
+    range_first = 0;
+    assert(fereg_spi_input_range(&observed_first, &observed_end) == 198);
+    range_first = 291;
+    assert(fereg_spi_input_range(&observed_first, &observed_end) == 198);
+    range_first = 17; range_end = 65541;
+    assert(fereg_spi_input_range(&observed_first, &observed_end) == 198);
+    range_end = 290;
 #if SYSTEM == STWIN32
     HANDLE thread = CreateThread(NULL, 0, worker, NULL, 0, NULL);
     assert(thread != NULL);

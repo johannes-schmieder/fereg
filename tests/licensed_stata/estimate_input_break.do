@@ -3,9 +3,9 @@ clear all
 set more off
 
 * Live Break during parallel numeric loading. The hidden input_break injection
-* completes the first parallel phase (every worker joined, window closed),
-* publishes the native marker and polls on Stata's thread; the PTY controller
-* then sends a real Control-C. The transaction must roll back, and the same
+* parks a worker inside the first open numeric window. The PTY controller
+* sends a real Control-C before releasing that worker; all workers then join,
+* the window closes and Stata's thread polls Break. The transaction must roll back, and the same
 * session must load and estimate again exactly.
 local workers = min(4, c(processors_mach), c(processors_lic))
 assert `workers' >= 2

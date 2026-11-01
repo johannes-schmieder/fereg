@@ -51,7 +51,7 @@ impl InputInjection {
         use crate::parallel_input::Fault;
         match self {
             Self::Serial => policy.serial(),
-            Self::Break(token) => policy.with_fault(Fault::BreakAfterFirstPhase { token, ppml }),
+            Self::Break(token) => policy.with_fault(Fault::BreakDuringFirstPhase { token, ppml }),
             Self::WorkerPanic => policy.with_fault(Fault::WorkerPanic),
             Self::ReadFailure => policy.with_fault(Fault::ReadFailure),
         }

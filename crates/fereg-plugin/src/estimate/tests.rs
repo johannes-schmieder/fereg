@@ -436,6 +436,7 @@ struct FakeSpi {
     stores: Vec<StoreEvent>,
     store_error: Option<FeregError>,
     numeric_window: bool,
+    input_range: Option<std::ops::Range<usize>>,
     numeric_window_opens: usize,
 }
 
@@ -443,7 +444,7 @@ struct FakeSpi {
 /// classification, as in the fake's serial reads.
 struct FakeWindow<'a> {
     data: &'a BTreeMap<(u32, usize), (f64, bool)>,
-    variables: Vec<u32>,
+    variables: Vec<i32>,
 }
 
 // SAFETY: on Ok every addressed row of every requested slot is written (values,
@@ -470,7 +471,7 @@ unsafe impl crate::parallel_input::NumericBlockSource for FakeWindow<'_> {
                         let variable = self.variables[request.first_slot + slot];
                         *self
                             .data
-                            .get(&(variable, request.first_row + offset + 1))
+                            .get(&(variable as u32, request.first_row + offset + 1))
                             .ok_or(198)?
                     };
                     value_out.write(value);
@@ -485,19 +486,24 @@ unsafe impl crate::parallel_input::NumericBlockSource for FakeWindow<'_> {
 }
 
 impl SpiApi for FakeSpi {
+    fn input_range(&mut self, rows: usize) -> Result<std::ops::Range<usize>> {
+        Ok(self.input_range.clone().unwrap_or(0..rows))
+    }
     fn supports_numeric_window(&self) -> bool {
         self.numeric_window
     }
 
     fn with_numeric_window(
         &mut self,
-        variables: &[u32],
+        variables: &[i32],
         rows: usize,
         run: &mut dyn FnMut(&dyn crate::parallel_input::NumericBlockSource) -> Result<()>,
     ) -> Result<bool> {
         if !self.numeric_window
             || rows != self.nobs
-            || variables.iter().any(|v| self.string_variables.contains(v))
+            || variables
+                .iter()
+                .any(|v| self.string_variables.contains(&(*v as u32)))
         {
             return Ok(false);
         }
@@ -1101,6 +1107,7 @@ fn fixture(vce: OlsVceKind) -> (Vec<String>, FakeSpi) {
                 "injected SPI output-store failure",
             )),
             numeric_window: false,
+            input_range: None,
             numeric_window_opens: 0,
         },
     )
@@ -2762,6 +2769,7 @@ fn candidate_numeric_runs_preserve_coordinates_and_bound_bulk_reads() {
     let mut missing = vec![true; rows];
     let mut peer_missing = vec![true; rows];
     read_numeric_columns_in_chunks(
+        None,
         &mut spi,
         &[2, 3],
         &mut [&mut values, &mut peer],
@@ -2807,6 +2815,7 @@ fn candidate_numeric_loading_rejects_bad_shapes_and_polls_empty_runs() {
     let mut values = [0.0; 4];
     let mut missing = [true; 3];
     assert!(read_numeric_columns_in_chunks(
+        None,
         &mut spi,
         &[2],
         &mut [&mut values],
@@ -2816,6 +2825,7 @@ fn candidate_numeric_loading_rejects_bad_shapes_and_polls_empty_runs() {
     .is_err());
     let mut missing = [true; 4];
     assert!(read_numeric_columns_in_chunks(
+        None,
         &mut spi,
         &[2],
         &mut [&mut values],
@@ -2829,6 +2839,7 @@ fn candidate_numeric_loading_rejects_bad_shapes_and_polls_empty_runs() {
     let candidate = vec![false; values.len()];
     spi.interrupt_at = Some(2);
     let error = read_numeric_columns_in_chunks(
+        None,
         &mut spi,
         &[2],
         &mut [&mut values],
@@ -3021,6 +3032,7 @@ fn candidate_uniform_false_chunk_view_skips_reads_but_preserves_shape_and_break_
         value: &false,
     };
     read_numeric_columns_in_chunks(
+        None,
         &mut spi,
         &[2],
         &mut [&mut values],
@@ -3036,6 +3048,7 @@ fn candidate_uniform_false_chunk_view_skips_reads_but_preserves_shape_and_break_
         value: &false,
     };
     assert!(read_numeric_columns_in_chunks(
+        None,
         &mut spi,
         &[2],
         &mut [&mut values],
@@ -3046,6 +3059,7 @@ fn candidate_uniform_false_chunk_view_skips_reads_but_preserves_shape_and_break_
     spi.interrupt_at = Some(spi.interrupt_checks + 2);
     assert_eq!(
         read_numeric_columns_in_chunks(
+            None,
             &mut spi,
             &[2],
             &mut [&mut values],
@@ -5153,6 +5167,26 @@ fn fe_release_ceiling_covers_concurrent_moments_and_exact_loaded_rhs_capacity() 
             ceiling + metadata + rhs_bytes + moments
         );
     }
+}
+
+#[test]
+fn preparation_diagnostics_ignore_estimation_envelopes_for_marker_and_payload() {
+    let (args, mut spi) = fixture(OlsVceKind::Iid);
+    let action = EstimateActionSpec::parse(&args)
+        .unwrap()
+        .decode_with_memory_limit(&mut spi, || Ok(None))
+        .unwrap();
+    spi.nobs = INPUT_CANDIDATE_BATCH_MIN_ROWS + 1;
+    spi.data.clear();
+    for row in 1..=spi.nobs {
+        spi.data.insert((1, row), (1.0, false));
+        spi.data.insert((2, row), (row as f64, false));
+        spi.data.insert((3, row), ((row as f64).sin(), false));
+    }
+    let expected = load_preparation_input(&action.request, &mut spi.clone()).unwrap();
+    spi.input_range = Some(17..31);
+    let bounded = load_preparation_input(&action.request, &mut spi).unwrap();
+    assert_eq!(bounded, expected);
 }
 
 /// The parallel window changes only how observations are read: for restricted

@@ -616,6 +616,7 @@ extern "C" {
     fn fereg_spi_poll() -> c_int;
     fn fereg_spi_stop_requested() -> c_int;
     fn fereg_spi_nobs() -> c_int;
+    fn fereg_spi_input_range(first: *mut c_int, end: *mut c_int) -> c_int;
     fn fereg_spi_nvars() -> c_int;
     fn fereg_spi_var_is_string(variable: c_int) -> c_int;
     fn fereg_spi_var_is_strl(variable: c_int) -> c_int;
@@ -704,6 +705,10 @@ unsafe fn fereg_spi_stop_requested() -> c_int {
 #[cfg(test)]
 unsafe fn fereg_spi_nobs() -> c_int {
     -1
+}
+#[cfg(test)]
+unsafe fn fereg_spi_input_range(_first: *mut c_int, _end: *mut c_int) -> c_int {
+    498
 }
 #[cfg(test)]
 unsafe fn fereg_spi_nvars() -> c_int {
@@ -839,15 +844,15 @@ unsafe fn fereg_spi_numeric_window_close(_generation: c_int) -> c_int {
 }
 
 /// Closes the C numeric window on Stata's thread when the phase returns or
-/// unwinds. It owns the validated variable array the C bridge reads, which
-/// therefore outlives the window. `Rc` keeps the guard on this thread.
-struct NumericWindowGuard {
+/// unwinds. Its borrow keeps the validated position table alive until close;
+/// `Rc` keeps the guard on this thread.
+struct NumericWindowGuard<'a> {
     generation: c_int,
-    _variables: Vec<c_int>,
+    _variables: &'a [c_int],
     _main_thread: PhantomData<Rc<()>>,
 }
 
-impl Drop for NumericWindowGuard {
+impl Drop for NumericWindowGuard<'_> {
     fn drop(&mut self) {
         // SAFETY: the guard was created on the bound Stata thread by a
         // successful open and never leaves it. Every worker of the phase has
@@ -1027,6 +1032,20 @@ impl SpiApi for SpiSession {
                 format!("Stata SPI returned invalid observation count {value}"),
             )
         })
+    }
+
+    fn input_range(&mut self, rows: usize) -> Result<std::ops::Range<usize>, FeregError> {
+        let (mut first, mut end) = (0, 0);
+        // SAFETY: live output pointers; this session stays on Stata's thread.
+        let rc = unsafe { fereg_spi_input_range(&mut first, &mut end) };
+        Self::spi_rc(rc, "input range read")?;
+        if first < 0 || end < first || end as usize > rows {
+            return Err(FeregError::new(
+                ErrorCode::Internal,
+                "invalid Stata input range",
+            ));
+        }
+        Ok(first as usize..end as usize)
     }
 
     fn nvars(&mut self) -> Result<usize, FeregError> {
@@ -1261,35 +1280,25 @@ impl SpiApi for SpiSession {
 
     fn with_numeric_window(
         &mut self,
-        variables: &[u32],
+        variables: &[i32],
         rows: usize,
         run: &mut dyn FnMut(
             &dyn crate::parallel_input::NumericBlockSource,
         ) -> Result<(), FeregError>,
     ) -> Result<bool, FeregError> {
-        let mut positions = Vec::new();
-        positions.try_reserve_exact(variables.len()).map_err(|_| {
-            FeregError::new(
-                ErrorCode::Allocation,
-                "unable to reserve numeric window positions",
-            )
-        })?;
-        for variable in variables {
-            positions.push(Self::position(*variable, "variable position")?);
-        }
         let (Ok(count), Ok(observations)) =
-            (c_int::try_from(positions.len()), c_int::try_from(rows))
+            (c_int::try_from(variables.len()), c_int::try_from(rows))
         else {
             return Ok(false);
         };
         let mut missing_value = 0.0;
         let mut generation = 0;
         // SAFETY: this session is confined to the bound Stata thread; the
-        // output pointers are live, and `positions` moves into the guard below
-        // (its heap buffer does not move) and outlives the open window.
+        // output pointers are live, and the guard borrows the immutable
+        // position table through close. C validates positions before opening.
         let rc = unsafe {
             fereg_spi_numeric_window_open(
-                positions.as_ptr(),
+                variables.as_ptr(),
                 count,
                 observations,
                 &mut missing_value,
@@ -1303,7 +1312,7 @@ impl SpiApi for SpiSession {
         }
         let guard = NumericWindowGuard {
             generation,
-            _variables: positions,
+            _variables: variables,
             _main_thread: PhantomData,
         };
         if !missing_value.is_finite() || missing_value <= 0.0 {

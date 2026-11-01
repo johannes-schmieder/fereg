@@ -1,5 +1,37 @@
 # Validation status
 
+## Beta.14 input-transport qualification scope
+
+The input-transport candidate preserves all scientific arithmetic, loaded value
+bits, missing flags, original row identities, sample/rank/omission/separation
+decisions and solver signatures. Its declared changes are transport work:
+Stata-resolved `in` bounds, bounded read/fill/copy phases, complete descriptor
+admission and a sticky marker SDK error after diagnostic replay. It also
+integrates the separately qualified Windows numeric-window host row. There is
+no compact candidate storage or estimator routing change.
+
+Independent witnesses are the scalar input oracle (including all Stata numeric
+storage types and missing codes), exact incumbent plugin replay, fixed-worker
+repeatability and cross-worker scientific agreement, and transaction/Break
+fixtures. Qualification must use the actual installed candidate plugins and
+traces proving each changed loading path ran. No new timing or release result
+is asserted by this scope declaration.
+
+The fixed timing design is the eight existing input cells plus narrow/wide
+1% scattered OLS, a short contiguous `in` inside ten million original rows,
+restricted weighted multi-FE OLS, restricted string-FE OLS and restricted PPML
+with exposure. Each host uses four mirrored arm blocks and three repetitions,
+with a warmup per cell/worker/block; no timing is discarded or resampled.
+Linux workers are 4/16/28 in one verified whole-node allocation; Mac workers
+are 4/8 with ordinary desktop activity retained. The incumbent is beta.13.
+The wall-time regression rule is max(5%, 1 ms). No eligible family's science
+or estimator route differs, so the numerical-change and derived-route scopes
+are both empty. Actual Stata execution is required; the mock-accessor replay
+cannot measure transport. `bench/qualify.py input` runs and reports the maintained
+licensed-Stata harness, after its per-cell path and exact input-digest preflight.
+There is no external estimator environment in this transport comparison;
+Stata/toolchain/plugin/input identities must be pinned in the execution record.
+
 The many-FE, two-FE structural-gate and ownership/deferred-cell improvements are
 accepted, as are the many-FE geometry policy with one documented timing exception
 and the PPML two-FE CMG reuse and lean protocol released in v0.5.0-beta.7.

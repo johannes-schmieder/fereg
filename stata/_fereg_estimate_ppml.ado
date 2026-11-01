@@ -795,7 +795,7 @@ program define _fereg_estimate_ppml, eclass
     }
     else local request_bundle `"bundle=`request_bundle'"'
     plugin call `plugin_handle' `touse' `depvar' `source_vars' ///
-        `weight_variable' `adjustment_variable' `biasunit' `output_variables', ///
+        `weight_variable' `adjustment_variable' `biasunit' `output_variables' `in', ///
         `"estimate-ppml"' `"`request_bundle'"'
 
     // Developer-only publication-boundary mutations prove that malformed

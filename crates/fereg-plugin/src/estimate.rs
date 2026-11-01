@@ -1630,6 +1630,11 @@ fn load_ols_input_with_team(
     mut load_hint: Option<crate::numeric_pipeline::PreparedLoadTarget<'_>>,
 ) -> Result<LoadedOlsInput> {
     let n = spi.nobs()?;
+    let range = if candidate_all || candidate_first {
+        0..n
+    } else {
+        crate::input::checked_input_range(spi, n)?
+    };
     let mut candidate_position = if candidate_all {
         None
     } else {
@@ -1909,6 +1914,8 @@ fn load_ols_input_with_team(
                 .expect("marker reads own explicit storage")
                 .iter_mut()
                 .enumerate()
+                .take(range.end)
+                .skip(range.start)
             {
                 if row % INPUT_INTERRUPT_POLL_STRIDE == 0 {
                     spi.check_interrupted()?;
@@ -1953,6 +1960,7 @@ fn load_ols_input_with_team(
         }
         if !reserved_read && !transported {
             read_numeric_columns_in_chunks(
+                Some(range.clone()),
                 spi,
                 &positions,
                 &mut columns,
@@ -1982,7 +1990,13 @@ fn load_ols_input_with_team(
                 if !matches!(loader, OlsSourceLoader::FixedWidthString { .. }) {
                     continue;
                 }
-                for (row, retained) in candidate.iter().copied().enumerate() {
+                for (row, retained) in candidate
+                    .iter()
+                    .copied()
+                    .enumerate()
+                    .take(range.end)
+                    .skip(range.start)
+                {
                     if row % INPUT_INTERRUPT_POLL_STRIDE == 0 {
                         spi.check_interrupted()?;
                     }
@@ -1993,7 +2007,7 @@ fn load_ols_input_with_team(
             }
         }
     } else {
-        for zero_based in 0..n {
+        for zero_based in range {
             if zero_based % INPUT_INTERRUPT_POLL_STRIDE == 0 {
                 spi.check_interrupted()?;
             }
@@ -2075,7 +2089,16 @@ fn read_batch_parallel(
             excluded: (0.0, false),
         }
     }
-    let mut targets = reserved_empty(sources.0.len() + 2, "parallel numeric input targets")?;
+    let capacity = sources.0.len() + 2;
+    if memory
+        .admit(capacity as u128 * std::mem::size_of::<crate::parallel_input::Target<'_>>() as u128)
+        .is_err()
+    {
+        return Ok(false);
+    }
+    let Ok(mut targets) = reserved_empty(capacity, "parallel numeric input targets") else {
+        return Ok(false);
+    };
     targets.push(target(outcome.0, outcome.1));
     for ((_, loader), position) in sources.0.iter_mut().zip(sources.1) {
         if let OlsSourceLoader::Numeric(column) = loader {
@@ -2087,6 +2110,7 @@ fn read_batch_parallel(
             targets.push(target(position, column));
         }
     }
+    let target_capacity = targets.capacity();
     let marker = match candidate {
         (Some(position), fereg_core::data::UniformValues::Explicit(output)) => {
             crate::parallel_input::Candidate::Marker { position, output }
@@ -2098,7 +2122,7 @@ fn read_batch_parallel(
         transport,
         memory,
         rows,
-        &mut targets,
+        (targets.as_mut_slice(), target_capacity),
         marker,
         None,
         "numeric column read",
@@ -2136,6 +2160,7 @@ pub(crate) fn candidate_marker_value(
 }
 
 pub(crate) fn read_numeric_columns_in_chunks(
+    range: Option<std::ops::Range<usize>>,
     spi: &mut dyn SpiApi,
     positions: &[u32],
     columns: &mut [&mut [f64]],
@@ -2154,9 +2179,15 @@ pub(crate) fn read_numeric_columns_in_chunks(
         return Err(invalid("numeric SPI column batch has an invalid shape"));
     }
     let rows = columns[0].len();
-    let mut start = 0;
-    let mut next_poll = 0;
-    while start < rows {
+    let range = range.unwrap_or(0..rows);
+    if range.start > range.end || range.end > rows {
+        return Err(invalid(
+            "numeric SPI candidate envelope has an invalid shape",
+        ));
+    }
+    let mut start = range.start;
+    let mut next_poll = range.start;
+    while start < range.end {
         if start >= next_poll {
             spi.check_interrupted()?;
             next_poll = start.saturating_add(INPUT_INTERRUPT_POLL_STRIDE);
@@ -2164,7 +2195,7 @@ pub(crate) fn read_numeric_columns_in_chunks(
         if let Some(candidate) = candidate {
             if !candidate[start] {
                 start += 1;
-                while start < rows && !candidate[start] {
+                while start < range.end && !candidate[start] {
                     if start >= next_poll {
                         spi.check_interrupted()?;
                         next_poll = start.saturating_add(INPUT_INTERRUPT_POLL_STRIDE);
@@ -2174,7 +2205,9 @@ pub(crate) fn read_numeric_columns_in_chunks(
                 continue;
             }
         }
-        let mut end = start.saturating_add(INPUT_BULK_READ_CHUNK_ROWS).min(rows);
+        let mut end = start
+            .saturating_add(INPUT_BULK_READ_CHUNK_ROWS)
+            .min(range.end);
         if let Some(candidate) = candidate {
             if let Some(excluded) = candidate
                 .slice(start..end)

@@ -35,6 +35,7 @@ FEREG_BRIDGE_INTERNAL ST_int fereg_spi_error(const char *message);
 FEREG_BRIDGE_INTERNAL ST_int fereg_spi_poll(void);
 FEREG_BRIDGE_INTERNAL ST_int fereg_spi_stop_requested(void);
 FEREG_BRIDGE_INTERNAL ST_int fereg_spi_nobs(void);
+FEREG_BRIDGE_INTERNAL ST_int fereg_spi_input_range(ST_int *first, ST_int *end);
 FEREG_BRIDGE_INTERNAL ST_int fereg_spi_nvars(void);
 FEREG_BRIDGE_INTERNAL ST_int fereg_spi_var_is_string(ST_int variable);
 FEREG_BRIDGE_INTERNAL ST_int fereg_spi_var_is_strl(ST_int variable);

@@ -1646,6 +1646,9 @@ def report(manifest_path, output, accounting_dir=None, *, allocation_amendment=N
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest='action', required=True)
+    inputs = commands.add_parser('input', help='actual Stata accessor qualification')
+    inputs.add_argument('operation', choices=('verify', 'run', 'report'))
+    inputs.add_argument('config', type=Path)
     prepare = commands.add_parser('plan')
     prepare.add_argument('config', type=Path)
     prepare.add_argument('--output', type=Path, required=True)
@@ -1671,6 +1674,12 @@ def main():
             command.add_argument('--accounting', type=Path)
             command.add_argument('--allocation-amendment', type=Path)
     args = parser.parse_args()
+    if args.action == 'input':
+        import parallel_input
+        config = json.loads(args.config.read_text())
+        result = {'verify': parallel_input.command_verify, 'run': parallel_input.command_run,
+                  'report': parallel_input.command_report}[args.operation](config)
+        return 1 if result and result['status'] != 'passed' else 0
     if args.action == 'recovery-plan':
         recovery_plan(args.manifest, args.results, args.host, args.review, args.output)
         print('Planned clean-cell reuse and bounded Mac cell recovery; no native calls.')

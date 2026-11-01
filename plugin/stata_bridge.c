@@ -124,6 +124,29 @@ ST_int fereg_spi_nvars(void)
     return SF_nvars();
 }
 
+/* Stata parses `in`, including negative and L bounds; Rust never reparses it.
+   Output uses original zero-based coordinates and an exclusive upper bound. */
+ST_int fereg_spi_input_range(ST_int *first, ST_int *end)
+{
+    ST_int lo, hi, rows;
+    if (first == NULL || end == NULL) return FEREG_SPI_RC_SYNTAX;
+    if (fereg_bridge_require_main_thread() != 0 ||
+        _stata_->nobs1 == NULL || _stata_->nobs2 == NULL) {
+        return FEREG_SPI_RC_UNAVAILABLE;
+    }
+    rows = SF_nobs();
+    lo = SF_in1();
+    hi = SF_in2();
+    if (rows == 0 && hi == 0 && (lo == 0 || lo == 1)) {
+        *first = *end = 0;
+        return 0;
+    }
+    if (lo < 1 || hi < lo || hi > rows) return FEREG_SPI_RC_SYNTAX;
+    *first = lo - 1;
+    *end = hi;
+    return 0;
+}
+
 ST_int fereg_spi_var_is_string(ST_int variable)
 {
     if (fereg_bridge_require_main_thread() != 0) {

@@ -83,13 +83,14 @@ def main() -> int:
             for prefix in ("fereg", "feppml"):
                 marker = work / f"{prefix}-native-break-{token}.marker"
                 if breaks < args.break_markers and marker.exists():
-                    marker.unlink()
                     if args.break_signal:
                         process.send_signal(signal.SIGINT)
                     else:
                         subprocess.run(["osascript", "-e",
                                         f'tell application "{args.app}" to UtilSetStataBreak'],
                                        check=True, timeout=20, capture_output=True)
+                    # Release an input worker only after Break delivery.
+                    marker.unlink()
                     breaks += 1
                     print(f"BREAK_SENT|{prefix}|{breaks}", flush=True)
             if time.monotonic() > deadline:

@@ -95,6 +95,18 @@ impl PreparedMatrixStoreName {
     }
 }
 
+/// Validate the candidate envelope before using it to address buffers.
+pub(crate) fn checked_input_range(
+    spi: &mut dyn SpiApi,
+    rows: usize,
+) -> Result<std::ops::Range<usize>> {
+    let range = spi.input_range(rows)?;
+    if range.start > range.end || range.end > rows {
+        return Err(invalid("Stata input range is outside the original rows"));
+    }
+    Ok(range)
+}
+
 /// Safe abstraction over a Stata-thread-confined SPI session.
 pub trait SpiApi {
     /// Read the caller's fixed local `fereg_request_bundle`, including its
@@ -107,6 +119,11 @@ pub trait SpiApi {
         ))
     }
     fn nobs(&mut self) -> Result<usize>;
+    /// Stata-resolved `in` bounds in original, zero-based row coordinates.
+    /// This is a candidate envelope, never a missingness or estimation sample.
+    fn input_range(&mut self, rows: usize) -> Result<std::ops::Range<usize>> {
+        Ok(0..rows)
+    }
     fn nvars(&mut self) -> Result<usize>;
     fn variable_is_string(&mut self, variable: u32) -> Result<bool>;
     fn variable_is_strl(&mut self, variable: u32) -> Result<bool>;
@@ -182,7 +199,7 @@ pub trait SpiApi {
     /// was refused before any read (the caller keeps its serial reader).
     fn with_numeric_window(
         &mut self,
-        _variables: &[u32],
+        _variables: &[i32],
         _rows: usize,
         _run: &mut dyn FnMut(&dyn crate::parallel_input::NumericBlockSource) -> Result<()>,
     ) -> Result<bool> {

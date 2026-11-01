@@ -1263,12 +1263,15 @@ fn load_optional_numeric(
             transport,
             memory,
             rows,
-            &mut [crate::parallel_input::Target {
-                position,
-                values: &mut values,
-                missing: &mut missing,
-                excluded: (0.0, true),
-            }],
+            (
+                &mut [crate::parallel_input::Target {
+                    position,
+                    values: &mut values,
+                    missing: &mut missing,
+                    excluded: (0.0, true),
+                }],
+                0,
+            ),
             crate::parallel_input::Candidate::Known(candidate),
             None,
             "numeric column read",
@@ -1281,6 +1284,7 @@ fn load_optional_numeric(
     let mut values = reserved_filled(rows, 0.0, "PPML adjustment values")?;
     let mut missing = reserved_filled(rows, true, "PPML adjustment missing mask")?;
     read_numeric_columns_in_chunks(
+        Some(crate::input::checked_input_range(spi, rows)?),
         spi,
         &[position],
         &mut [values.as_mut_slice()],

@@ -148,11 +148,11 @@ function Invoke-Oracle {
     }
     # The checker already fails any parallel-mode run (other than the tiny
     # sample) that did not use the window; also require the fixture's full
-    # coverage (64 cases, 184 runs, as on macOS and Linux).
+    # coverage (70 cases, 202 runs, as on macOS and Linux).
     $line = @($summary | Where-Object { $_ -cmatch '\Acases=(\d+) runs=(\d+) parallel_runs=(\d+)\z' })
     if ($line.Count -ne 1) { throw 'missing oracle summary' }
     $null = $line[0] -cmatch '\Acases=(\d+) runs=(\d+) parallel_runs=(\d+)\z'
-    if ([int]$Matches[1] -ne 64 -or [int]$Matches[2] -ne 184 -or [int]$Matches[3] -lt 64) {
+    if ([int]$Matches[1] -ne 70 -or [int]$Matches[2] -ne 202 -or [int]$Matches[3] -lt 70) {
         $script:FailureCode = 70000 + [Math]::Min([int]$Matches[2], 999)
         throw 'unexpected oracle coverage'
     }

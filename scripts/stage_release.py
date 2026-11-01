@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Optional
 
 VERSION = "0.5.0"
-RELEASE_TAG = "v0.5.0-beta.13"
+RELEASE_TAG = "v0.5.0-beta.14"
 PACKAGE_NAME = f"fereg-{VERSION}"
 FIXED_TIME = (2026, 10, 30, 0, 0, 0)
 FIXED_UTC = "2026-10-30T00:00:00Z"

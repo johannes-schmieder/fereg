@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import csv
 import json
+import math
 import os
 import random
 import statistics
@@ -28,7 +29,7 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-CELLS = ("c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8")
+CELLS = tuple(f"c{index}" for index in range(1, 15))
 FIELDS = ("arm", "block", "cell", "threads", "rep", "rows", "n", "wall_s", "load_s",
           "native_s", "alloc_peak")
 
@@ -84,10 +85,38 @@ def command_run(config: dict) -> None:
             print(f"block {block} {arm} done", flush=True)
 
 
+def verify_trace(text: str, arm: str, threads: int) -> dict:
+    groups, current = {}, None
+    for line in text.splitlines():
+        if not line.startswith("FEREG_SOLVER_TRACE|"):
+            continue
+        fields = dict(part.split("=", 1) for part in line.split("|")[1:] if "=" in part)
+        if fields.get("phase") == "input_benchmark":
+            current = fields["cell"]
+            if current in groups or int(fields["threads"]) != threads:
+                raise RuntimeError("duplicate or unexpected input cell")
+            groups[current] = {"digests": [], "windows": []}
+        elif current and fields.get("phase") == "input_digest":
+            groups[current]["digests"].append(fields["digest"])
+        elif current and fields.get("phase") == "input_transport" and fields.get("mode") == "parallel":
+            groups[current]["windows"].append(fields)
+    if set(groups) != set(CELLS):
+        raise RuntimeError(f"{arm}: incomplete input cell trace")
+    for cell, group in groups.items():
+        if len(group["digests"]) != 2 or len(set(group["digests"])) != 1 or len(group["windows"]) < 2:
+            raise RuntimeError(f"{arm}/{cell}: incomplete window/digest coverage or unstable input bits")
+        if cell == "c11" and arm == "candidate" and any(
+                (window.get("range_first"), window.get("range_end")) != ("4995000", "5005000")
+                for window in group["windows"]):
+            raise RuntimeError("candidate/c11: short original-row envelope did not execute")
+    return {cell: group["digests"] for cell, group in groups.items()}
+
+
 def command_verify(config: dict) -> None:
     output = Path(config["output"])
     output.mkdir(parents=True, exist_ok=True)
     threads = max(config["threads"])
+    digests = {}
     for arm in config["arms"]:
         trace = output / f"verify-{arm}.txt"
         trace.unlink(missing_ok=True)
@@ -96,16 +125,39 @@ def command_verify(config: dict) -> None:
         environment = dict(os.environ, FEREG_SOLVER_TRACE="1", FEREG_SOLVER_TRACE_FILE=str(trace))
         run_arm(config, arm, f'{stata_string(Path(config["data_dir"]))} {stata_string(scratch)} '
                              f'{arm} 0 "{threads}" 1', environment)
-        text = trace.read_text() if trace.exists() else ""
-        parallel = sum("phase=input_transport|mode=parallel" in line for line in text.splitlines())
-        print(f"{arm}: parallel window reads={parallel}")
+        digests[arm] = verify_trace(trace.read_text(), arm, threads)
+        print(f"{arm}: every input cell executed its numeric window")
+    if digests["incumbent"] != digests["candidate"]:
+        raise RuntimeError("incumbent/candidate input digests differ")
+    print("INPUT_BITS=EXACT")
 
 
 def command_report(config: dict) -> None:
-    rows = list(csv.DictReader((Path(config["output"]) / "results.csv").open()))
+    with (Path(config["output"]) / "results.csv").open() as stream:
+        rows = list(csv.DictReader(stream))
     groups: dict[tuple, dict[str, list[dict]]] = {}
     for row in rows:
         groups.setdefault((row["cell"], int(row["threads"])), {}).setdefault(row["arm"], []).append(row)
+    expected = {(cell, threads) for cell in CELLS for threads in config["threads"]}
+    if set(groups) != expected:
+        raise RuntimeError("incomplete timing cell coverage")
+    identifiers = {(block, rep) for block in range(1, config["blocks"] + 1)
+                   for rep in range(1, config["reps"] + 1)}
+    for (cell, _), arms in groups.items():
+        if set(arms) != {"incumbent", "candidate"}:
+            raise RuntimeError("missing timing arm")
+        for arm_rows in arms.values():
+            ids = [(int(row["block"]), int(row["rep"])) for row in arm_rows]
+            if len(ids) != len(set(ids)) or set(ids) != identifiers:
+                raise RuntimeError("duplicate or missing timing observations")
+            for row in arm_rows:
+                for metric in ("wall_s", "native_s", "load_s", "alloc_peak"):
+                    if cell in ("c7", "c14") and metric in ("load_s", "alloc_peak") and row[metric] == ".":
+                        continue
+                    value = float(row[metric])
+                    if not math.isfinite(value) or value < 0:
+                        raise RuntimeError(f"invalid timing {cell}/{metric}")
+    regressions = []
     print("cell threads metric incumbent_median candidate_median ratio n_inc n_cand flag")
     for (cell, threads), arms in sorted(groups.items()):
         for metric in ("wall_s", "load_s", "native_s", "alloc_peak"):
@@ -118,8 +170,14 @@ def command_report(config: dict) -> None:
             flag = ""
             if metric == "wall_s" and cand > inc * 1.05 and cand - inc > 0.001:
                 flag = "REGRESSION"
+                regressions.append([cell, threads])
             print(f"{cell} {threads} {metric} {inc:.6g} {cand:.6g} {ratio:.4f} "
                   f"{values['incumbent'][1]} {values['candidate'][1]} {flag}")
+
+    result = {"status": "regression" if regressions else "passed", "regressions": regressions,
+              "observations": len(rows), "cells": len(groups), "resampling": False}
+    (Path(config["output"]) / "summary.json").write_text(json.dumps(result, indent=2) + "\n")
+    return result
 
 
 def main() -> int:
@@ -127,8 +185,8 @@ def main() -> int:
         print(__doc__)
         return 2
     config = json.loads(Path(sys.argv[2]).read_text())
-    {"run": command_run, "verify": command_verify, "report": command_report}[sys.argv[1]](config)
-    return 0
+    result = {"run": command_run, "verify": command_verify, "report": command_report}[sys.argv[1]](config)
+    return 1 if result and result["status"] != "passed" else 0
 
 
 if __name__ == "__main__":

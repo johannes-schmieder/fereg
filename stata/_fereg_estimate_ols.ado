@@ -618,7 +618,7 @@ program define _fereg_estimate_ols, eclass
     }
     else local request_bundle `"bundle=`request_bundle'"'
     plugin call `plugin_handle' `candidate_variable' `depvar' `source_vars' ///
-        `weight_variable' `output_variables', ///
+        `weight_variable' `output_variables' `in', ///
         `"estimate-ols"' `"`request_bundle'"'
 
     if `"`inject'"' == "breakpostplugin" {

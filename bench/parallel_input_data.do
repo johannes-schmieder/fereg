@@ -19,6 +19,8 @@ generate double y = x1 + .5 * x2 - .25 * x3 + .1 * x4 + sin(g / 11) + rnormal()
 generate double e = exp(.01 * mod(_n, 7))
 generate double py = exp(.2 * x1 + .1 * x2 + sin(g / 11) / 4) * e
 quietly replace x5 = . if mod(_n, 997) == 0
+generate int g2 = mod(_n, 97)
+generate double w = 1 + mod(_n, 5)
 save `"`out'/inputs_1m.dta"', replace
 if `"`only'"' == "1m" {
     display as result "END_FIXTURE|parallel_input_data|rc=0"

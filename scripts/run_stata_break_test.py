@@ -27,7 +27,7 @@ BREAK_FIXTURES = {
     "ols-builder": ("estimate_ols_builder_break.do", ("FEREG_NATIVE_BREAK_ARMED", "FEREG_NATIVE_BREAK_ARMED")),
     "ols-lsmr": ("estimate_lsmr_iteration_break.do", ("FEREG_NATIVE_BREAK_ARMED", "FEREG_NATIVE_BREAK_ARMED")),
     "ppml-lsmr": ("estimate_lsmr_iteration_break.do", ("FEPPML_NATIVE_BREAK_ARMED", "FEPPML_NATIVE_BREAK_ARMED")),
-    # Parallel numeric loading: OLS, then PPML, park after their first phase.
+    # Parallel numeric loading: deliver Break during an active OLS/PPML window.
     "input": ("estimate_input_break.do", ("FEREG_NATIVE_BREAK_ARMED", "FEPPML_NATIVE_BREAK_ARMED")),
     "ppml": (
         "estimate_ppml_eclass_break.do",
@@ -468,12 +468,16 @@ def main() -> None:
                     args.timeout,
                     capture,
                 )
-                native_marker_path.unlink()
+                if args.fixture_kind != "input":
+                    native_marker_path.unlink()
             else:
                 transcript += read_until(master, process, armed, args.timeout, capture)
             if armed == "FEPPML_PREDICT_BREAK_ARMED":
                 time.sleep(0.05)
             os.write(master, b"\x03")
+            if args.fixture_kind == "input":
+                # Worker cannot finish its open phase until Break was sent.
+                native_marker_path.unlink()
         expected = f"END_FIXTURE|{fixture.stem}|rc=0"
         transcript += read_until(master, process, expected, args.timeout, capture)
         error = validate_fixture_log(fixture, transcript)

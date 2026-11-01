@@ -156,6 +156,54 @@ forvalues p = 1/4 {
     }
 }
 
+* Short original-row envelopes, including Stata's negative and L bounds.
+local range1 "in 1/2000"
+local range2 "if keep_scattered in 30001/34000"
+local range3 "in -2000/l"
+forvalues r = 1/3 {
+    local sample `range`r''
+    foreach method in ols ppml {
+        local label `method'_short`r'
+        foreach mode in serial forced parallel {
+            local t = cond("`mode'" == "serial", 1, `workers')
+            local injection = cond("`mode'" == "forced", "inject(serial_input)", "")
+            _parallel_case `"`trace'"' `label'|`mode'
+            if "`method'" == "ols" {
+                if "`mode'" == "serial" {
+                    quietly fereg y b f d `sample' [aw=1+w], absorb(sg g2) threads(`t')
+                }
+                else {
+                    tempvar expression_weight
+                    quietly generate double `expression_weight' = 1+w
+                    quietly _fereg_estimate_ols_test y b f d `sample', ///
+                        aweight(`expression_weight') absorb(sg g2) threads(`t') `injection'
+                    drop `expression_weight'
+                }
+            }
+            else {
+                quietly _fereg_estimate_ppml py b f d `sample', ///
+                    absorb(g2) exposure(expo) threads(`t') `injection'
+            }
+            if "`mode'" == "serial" {
+                matrix short_b = e(b)
+                generate byte short_sample = e(sample)
+            }
+            if "`mode'" == "forced" {
+                matrix short_forced_b = e(b)
+                matrix short_forced_V = e(V)
+            }
+            if "`mode'" == "parallel" {
+                assert mreldif(e(b), short_forced_b) == 0
+                assert mreldif(e(V), short_forced_V) == 0
+                assert mreldif(e(b), short_b) < 1e-8
+                assert e(sample) == short_sample
+                drop short_sample
+            }
+            assert row == _n
+        }
+    }
+}
+
 * Variable order, sort order, preserve/restore and a non-default frame change
 * nothing but which rows/variables the SDK maps; repeated calls stay exact.
 _parallel_case `"`trace'"' ols_reordered|serial

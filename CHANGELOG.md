@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Numeric loading uses Stata-resolved `in` bounds across OLS, PPML and their
+  numeric extra columns, preserving original row identities and excluded fills.
+- Parallel loading bounds reads, fills, validation and copies between Break
+  checks. Its descriptor tables are admitted by capacity, and one immutable
+  position table is borrowed across phases.
+- A transient candidate-marker SDK failure remains an error even if diagnostic
+  replay succeeds. Real Break tests now signal while the numeric window is open.
+
 - Parallel loading of numeric variables is qualified on Windows Stata/MP 19 as
   well (x86-64). Until a release carries the rebuilt plugins, installed
   Windows packages keep the serial reader.

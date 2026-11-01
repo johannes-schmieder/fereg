@@ -432,15 +432,16 @@ fn try_read_prepared_parallel(
     if memory.admit(temporary).is_err() {
         return Ok(false);
     }
-    let Some(mut targets) = transport_targets(positions, columns, missing) else {
+    let Some(mut targets) = transport_targets(positions, columns, missing, memory) else {
         return Ok(false);
     };
+    let target_capacity = targets.capacity();
     if !crate::parallel_input::try_read(
         spi,
         transport,
         memory,
         rows,
-        &mut targets,
+        (targets.as_mut_slice(), target_capacity),
         crate::parallel_input::Candidate::All,
         rhs,
         "numeric row read",
@@ -488,18 +489,21 @@ pub(crate) fn try_read_reserved(
     transport: Option<crate::parallel_input::Transport>,
 ) -> Result<bool> {
     if let Some(transport) = transport {
-        let read = match transport_targets(positions, columns, missing) {
-            Some(mut targets) => crate::parallel_input::try_read(
-                spi,
-                transport,
-                memory,
-                rows,
-                &mut targets,
-                crate::parallel_input::Candidate::All,
-                rhs.as_mut()
-                    .map(|(values, layout)| (&mut **values, *layout)),
-                "numeric row read",
-            )?,
+        let read = match transport_targets(positions, columns, missing, memory) {
+            Some(mut targets) => {
+                let target_capacity = targets.capacity();
+                crate::parallel_input::try_read(
+                    spi,
+                    transport,
+                    memory,
+                    rows,
+                    (targets.as_mut_slice(), target_capacity),
+                    crate::parallel_input::Candidate::All,
+                    rhs.as_mut()
+                        .map(|(values, layout)| (&mut **values, *layout)),
+                    "numeric row read",
+                )?
+            }
             None => false,
         };
         if read {
@@ -516,10 +520,17 @@ fn transport_targets<'a>(
     positions: &[u32],
     columns: &'a mut [&mut Vec<f64>],
     missing: &'a mut [&mut Vec<bool>],
+    memory: &mut InputMemory,
 ) -> Option<Vec<crate::parallel_input::Target<'a>>> {
     if columns.len() != positions.len() || missing.len() != positions.len() {
         return None;
     }
+    memory
+        .admit(
+            positions.len() as u128
+                * std::mem::size_of::<crate::parallel_input::Target<'_>>() as u128,
+        )
+        .ok()?;
     let mut targets = Vec::new();
     targets.try_reserve_exact(positions.len()).ok()?;
     for ((position, values), flags) in positions

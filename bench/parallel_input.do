@@ -13,14 +13,29 @@ local c5 "fereg y x1-x8, absorb(sg)"
 local c6 "fereg y x1-x4, absorb(g)"
 local c7 "feppml py x1-x4 if keep, absorb(g) exposure(e)"
 local c8 "fereg y x1-x32, absorb(g) memory(low)"
+* Restricted input coverage: 1% scattered, short contiguous original range,
+* weights/multiple FE, string FE, and PPML exposure.
+local c9 "fereg y x1 x2 if mod(row,100)==0, absorb(g)"
+local c10 "fereg y x1-x64 if mod(row,100)==0,"
+local c11 "fereg y x1-x4 in 4995001/5005000,"
+local c12 "fereg y x1-x8 if mod(row,100)==0 [aw=w], absorb(g g2)"
+local c13 "fereg y x1-x8 if mod(row,100)==0, absorb(sg)"
+local c14 "feppml py x1-x4 if mod(row,100)==0, absorb(g) exposure(e)"
 tempname handle
 file open `handle' using `"`results'"', write append text
-foreach cell in c1 c2 c3 c4 c5 c6 c7 c8 {
-    local file = cond("`cell'" == "c6", "inputs_10m", "inputs_1m")
+foreach cell in c1 c2 c3 c4 c5 c6 c7 c8 c9 c10 c11 c12 c13 c14 {
+    local file = cond(inlist("`cell'", "c6", "c11"), "inputs_10m", "inputs_1m")
     quietly use `"`data'/`file'.dta"', clear
     local command ``cell''
     local ppml = substr(`"`command'"', 1, 6) == "feppml"
     foreach t of local threads {
+        local trace : environment FEREG_SOLVER_TRACE_FILE
+        if `"`trace'"' != "" {
+            tempname trace_handle
+            file open `trace_handle' using `"`trace'"', write append text
+            file write `trace_handle' "FEREG_SOLVER_TRACE|phase=input_benchmark|cell=`cell'|threads=`t'" _n
+            file close `trace_handle'
+        }
         * One untimed warmup per cell and worker count.
         quietly `command' threads(`t')
         forvalues r = 1/`reps' {

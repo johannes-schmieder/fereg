@@ -1488,6 +1488,22 @@ variable among the bound inputs; unknown combinations keep the serial reader.
 StataCorp documents no thread-safety guarantee for `vdata`; the capability
 rests on the recorded qualification (VALIDATION).
 
+Estimation forwards the original `in` qualifier to the native call, where
+Stata's main-thread `SF_in1`/`SF_in2` provide the candidate envelope. The `if`
+expression is evaluated only by the existing frontend marker. Ordinary serial
+and parallel loaders skip marker and payload access outside that envelope;
+parallel workers initialize those original rows with the unchanged excluded
+fills. Preparation diagnostics still validate the complete marker. Full-length
+buffers, PPML extra-column fills and original observation identity are preserved.
+Phase admission counts reads, value/missing writes, marker validation, possible
+diagnostic replay and packed-RHS copies; worker occupancy cannot enlarge the
+cap. A diagnostic retry never cancels an original SDK error. Immutable window
+positions are validated once and borrowed across phases. The parallel reader
+admits the actual capacities of its target and bank descriptor tables before
+dispatch; these are additional to the ordinary loader's existing array and
+serial-transport allowances. Developer traces expose bounds and fallback causes.
+
+
 COMPLETE is the last native operation; no allocation, polling, display,
 computation or store follows it. A partial physical SPI write has no logical
 meaning. The final ado commit protects posting and public output renames.
