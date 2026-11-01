@@ -730,7 +730,16 @@ reuse, refresh, invalidation and per-frame certification.
 Remaining gaps: sparse three-FE OLS (4.40 against 3.58 s native) and PPML
 (25.6 against 19.4 s steady). The sparse PPML frames take 160 to 600 joint
 Schur steps each, so the frame preconditioner, not the stopping target,
-dominates their cost.
+dominates their cost. A follow-up diagnostic (job 8381971, `scc-wo4`, Xeon
+E5-2680 v4, the same protocol on node-0 cores 0, 2, 4 and 6) compared beta.12's
+public Auto PPML with explicit `solver(lsmr)`, whose retained core-pair Schwarz
+factor needs 15 to 24 steps per frame. On sparse three-FE, Auto took 25.9 s in
+three fits and 33.6-34.1 s in three, explicit LSMR 24.0-25.1 s and PyFixest
+20.8-21.8 s. On dense three-FE, Auto took 6.1 s, explicit LSMR 10.3 s and
+PyFixest 5.6 s. Explicit LSMR is therefore no general replacement, and Auto's
+slow sparse fits, now seen on two node classes, have no explanation yet.
+Coefficients repeated exactly in every arm and stayed within 3.3e-12 of the
+strict fits.
 
 ## Published beta.11 descriptive campaign
 
