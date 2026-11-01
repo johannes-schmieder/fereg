@@ -1,7 +1,7 @@
 {
  "cases": {
   "ppml-09": {
-   "input_sha256": "1f59e65ca736e0ff91cff3a6fa131a061b483bba97118372c27bf9b63f89f09e",
+   "input_sha256": "ef3ed4de3a81686497d9487da65429091996a96b0205b736066db6b52fec1a33",
    "reason": "Seeded PPML joint frames (SPEC 13, development 2026-11-01): an ordinary joint Schur frame whose identified finite columns, sample and topology match the last certified joint frame solves for the correction from that frame's fitted values; the response's weighted norm still scales the recurrence and every stopping and acceptance test, and the frame's coefficients add back the seed's. Inner iteration counts, solver signatures and numerical results change within SPEC 20 tolerances; sample, rank, omission, separation, IRLS iteration counts, statuses and other discrete decisions are unchanged. This scope binds the macOS replay input.",
    "allowed_paths": [
     "/matrices/RB/bits/0",
@@ -40,7 +40,7 @@
    ]
   },
   "ppml-12": {
-   "input_sha256": "022f1591ba64f21c47cd3baceb7697ea5e01951ca5658961d98f4510442a5e67",
+   "input_sha256": "60bbd931af3e78649f2b7a119c6c4d6495238ad16e5235a64bda919e815c2148",
    "reason": "Seeded PPML joint frames (SPEC 13, development 2026-11-01): an ordinary joint Schur frame whose identified finite columns, sample and topology match the last certified joint frame solves for the correction from that frame's fitted values; the response's weighted norm still scales the recurrence and every stopping and acceptance test, and the frame's coefficients add back the seed's. Inner iteration counts, solver signatures and numerical results change within SPEC 20 tolerances; sample, rank, omission, separation, IRLS iteration counts, statuses and other discrete decisions are unchanged. This scope binds the macOS replay input.",
    "allowed_paths": [
     "/matrices/RB/bits/0",
@@ -78,7 +78,7 @@
    ]
   },
   "ppml-15": {
-   "input_sha256": "fd57f0ae612468605ea361cc901469a3725e0df35decee05c1418c3951a45059",
+   "input_sha256": "5c3a1eef6e93cf0c703d5c7c287f8031e363bef15e021e1dd4c00c807c04c378",
    "reason": "Seeded PPML joint frames (SPEC 13, development 2026-11-01): an ordinary joint Schur frame whose identified finite columns, sample and topology match the last certified joint frame solves for the correction from that frame's fitted values; the response's weighted norm still scales the recurrence and every stopping and acceptance test, and the frame's coefficients add back the seed's. Inner iteration counts, solver signatures and numerical results change within SPEC 20 tolerances; sample, rank, omission, separation, IRLS iteration counts, statuses and other discrete decisions are unchanged. This scope binds the macOS replay input.",
    "allowed_paths": [
     "/matrices/RB/bits/0",
@@ -113,7 +113,7 @@
    ]
   },
   "ppml-24": {
-   "input_sha256": "13f3bcc6b384a8b1f0978a9d8b5b33ce7054044e76339828ad5c6f90629b22aa",
+   "input_sha256": "01d7c9e5a6b6a31b6c4aa56901d7e49563136dbeee21b85773d2bf3fba0b689b",
    "reason": "Seeded PPML joint frames (SPEC 13, development 2026-11-01): an ordinary joint Schur frame whose identified finite columns, sample and topology match the last certified joint frame solves for the correction from that frame's fitted values; the response's weighted norm still scales the recurrence and every stopping and acceptance test, and the frame's coefficients add back the seed's. Inner iteration counts, solver signatures and numerical results change within SPEC 20 tolerances; sample, rank, omission, separation, IRLS iteration counts, statuses and other discrete decisions are unchanged. This scope binds the macOS replay input.",
    "allowed_paths": [
     "/matrices/RB/bits/0",
@@ -151,7 +151,7 @@
    ]
   },
   "ppml-27": {
-   "input_sha256": "5f0e46bc75da6bb7083033f0ece30d72723e12bb22273a40c13675c401673bac",
+   "input_sha256": "2f5bd851ef554138cf26696d481eb059b34e747e2df40604c7f431e314510acd",
    "reason": "Seeded PPML joint frames (SPEC 13, development 2026-11-01): an ordinary joint Schur frame whose identified finite columns, sample and topology match the last certified joint frame solves for the correction from that frame's fitted values; the response's weighted norm still scales the recurrence and every stopping and acceptance test, and the frame's coefficients add back the seed's. Inner iteration counts, solver signatures and numerical results change within SPEC 20 tolerances; sample, rank, omission, separation, IRLS iteration counts, statuses and other discrete decisions are unchanged. This scope binds the macOS replay input.",
    "allowed_paths": [
     "/matrices/RB/bits/0",
@@ -185,7 +185,7 @@
    ]
   },
   "ppml-30": {
-   "input_sha256": "10445e0c7faab54df59abdf8ea32ea85482828c85adcf21fc24939cdd69b6de4",
+   "input_sha256": "fdfca3989b1020849adaf8d4f7cc572594fff2fda395993a6e4cd5f3dda87bf9",
    "reason": "Seeded PPML joint frames (SPEC 13, development 2026-11-01): an ordinary joint Schur frame whose identified finite columns, sample and topology match the last certified joint frame solves for the correction from that frame's fitted values; the response's weighted norm still scales the recurrence and every stopping and acceptance test, and the frame's coefficients add back the seed's. Inner iteration counts, solver signatures and numerical results change within SPEC 20 tolerances; sample, rank, omission, separation, IRLS iteration counts, statuses and other discrete decisions are unchanged. This scope binds the macOS replay input.",
    "allowed_paths": [
     "/matrices/RB/bits/0",
@@ -224,7 +224,7 @@
    ]
   },
   "ppml-bias-exact": {
-   "input_sha256": "8c3a1c0cfd37dd89713e7c6c7907c0030d962aa2e5f510dc98a18e97a933726f",
+   "input_sha256": "84be56fa7c320c8f0d031c509a8ffa251faa49675abdbb33632d93f476506ac7",
    "reason": "Seeded PPML joint frames (SPEC 13, development 2026-11-01): an ordinary joint Schur frame whose identified finite columns, sample and topology match the last certified joint frame solves for the correction from that frame's fitted values; the response's weighted norm still scales the recurrence and every stopping and acceptance test, and the frame's coefficients add back the seed's. Inner iteration counts, solver signatures and numerical results change within SPEC 20 tolerances; sample, rank, omission, separation, IRLS iteration counts, statuses and other discrete decisions are unchanged. This scope binds the macOS replay input.",
    "allowed_paths": [
     "/matrices/RB/bits/0",
@@ -283,7 +283,7 @@
    ]
   },
   "ppml-bias-randomized": {
-   "input_sha256": "0e55c53cddf5fb42610e11953351e794971a384e063bc33cf3f49a5d26d7a1a9",
+   "input_sha256": "3b064b89ad95cd20549721c56d19d0a0e8902859b72c03d1b45386bab81a9792",
    "reason": "Seeded PPML joint frames (SPEC 13, development 2026-11-01): an ordinary joint Schur frame whose identified finite columns, sample and topology match the last certified joint frame solves for the correction from that frame's fitted values; the response's weighted norm still scales the recurrence and every stopping and acceptance test, and the frame's coefficients add back the seed's. Inner iteration counts, solver signatures and numerical results change within SPEC 20 tolerances; sample, rank, omission, separation, IRLS iteration counts, statuses and other discrete decisions are unchanged. This scope binds the macOS replay input.",
    "allowed_paths": [
     "/matrices/RB/bits/0",
@@ -350,7 +350,7 @@
    ]
   },
   "ppml-separation-fe": {
-   "input_sha256": "261be021949423a05ebd184ea56cd34f94d545e60177df17d6c27bfa9cdf3ee8",
+   "input_sha256": "3eea5aec2b26c2a10920cc7ed05e6f999ccd9f64bc4f7e080ad02748f741d067",
    "reason": "Seeded PPML joint frames (SPEC 13, development 2026-11-01): an ordinary joint Schur frame whose identified finite columns, sample and topology match the last certified joint frame solves for the correction from that frame's fitted values; the response's weighted norm still scales the recurrence and every stopping and acceptance test, and the frame's coefficients add back the seed's. Inner iteration counts, solver signatures and numerical results change within SPEC 20 tolerances; sample, rank, omission, separation, IRLS iteration counts, statuses and other discrete decisions are unchanged. This scope binds the macOS replay input.",
    "allowed_paths": [
     "/matrices/RB/bits/0",
@@ -387,7 +387,7 @@
    ]
   },
   "ppml-separation-ir": {
-   "input_sha256": "f9e7efb7fb3024de86cfb881ab956ff7e9c019ad2cb0d00e727f27a5069948a3",
+   "input_sha256": "d235c098d1700e3014973fb4e912c2af786b607d0429e0962750177b71e1f1bc",
    "reason": "Seeded PPML joint frames (SPEC 13, development 2026-11-01): an ordinary joint Schur frame whose identified finite columns, sample and topology match the last certified joint frame solves for the correction from that frame's fitted values; the response's weighted norm still scales the recurrence and every stopping and acceptance test, and the frame's coefficients add back the seed's. Inner iteration counts, solver signatures and numerical results change within SPEC 20 tolerances; sample, rank, omission, separation, IRLS iteration counts, statuses and other discrete decisions are unchanged. This scope binds the macOS replay input.",
    "allowed_paths": [
     "/matrices/RB/bits/0",
@@ -424,7 +424,7 @@
    ]
   },
   "ppml-separation-mu": {
-   "input_sha256": "a1993ef67c77da0d61a6b0b54662c816b267036a89ad3e44c4aeceededda90ae",
+   "input_sha256": "80005a4a2204f3c81879f9293e7cd7b3cd4d0c003e6ae96f044dce8ad2d970e2",
    "reason": "Seeded PPML joint frames (SPEC 13, development 2026-11-01): an ordinary joint Schur frame whose identified finite columns, sample and topology match the last certified joint frame solves for the correction from that frame's fitted values; the response's weighted norm still scales the recurrence and every stopping and acceptance test, and the frame's coefficients add back the seed's. Inner iteration counts, solver signatures and numerical results change within SPEC 20 tolerances; sample, rank, omission, separation, IRLS iteration counts, statuses and other discrete decisions are unchanged. This scope binds the macOS replay input.",
    "allowed_paths": [
     "/matrices/RB/bits/0",
@@ -461,7 +461,7 @@
    ]
   },
   "ppml-separation-simplex": {
-   "input_sha256": "8a4ca5d1e312bf7e5535db824e7ae66d2986d7c83f8568aa6aca155d382b9433",
+   "input_sha256": "e803c572cc53dbe81c518dac35dc24ca4b3352f8e502ef50b1ef371785787e75",
    "reason": "Seeded PPML joint frames (SPEC 13, development 2026-11-01): an ordinary joint Schur frame whose identified finite columns, sample and topology match the last certified joint frame solves for the correction from that frame's fitted values; the response's weighted norm still scales the recurrence and every stopping and acceptance test, and the frame's coefficients add back the seed's. Inner iteration counts, solver signatures and numerical results change within SPEC 20 tolerances; sample, rank, omission, separation, IRLS iteration counts, statuses and other discrete decisions are unchanged. This scope binds the macOS replay input.",
    "allowed_paths": [
     "/matrices/RB/bits/0",

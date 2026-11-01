@@ -6,7 +6,7 @@
   },
   "cases": {
     "ppml-bias-exact": {
-      "input_sha256": "8c3a1c0cfd37dd89713e7c6c7907c0030d962aa2e5f510dc98a18e97a933726f",
+      "input_sha256": "84be56fa7c320c8f0d031c509a8ffa251faa49675abdbb33632d93f476506ac7",
       "bias": {
         "method": "exact",
         "coefficient_columns": 3,
@@ -91,7 +91,7 @@
       }
     },
     "ppml-bias-randomized": {
-      "input_sha256": "0e55c53cddf5fb42610e11953351e794971a384e063bc33cf3f49a5d26d7a1a9",
+      "input_sha256": "3b064b89ad95cd20549721c56d19d0a0e8902859b72c03d1b45386bab81a9792",
       "bias": {
         "method": "randomized",
         "coefficient_columns": 3,

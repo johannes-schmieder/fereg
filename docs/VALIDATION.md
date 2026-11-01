@@ -2102,6 +2102,20 @@ regression; at 28 workers all-numeric OLS loading falls to 0.04–0.12 of the
 incumbent (0.74 with the string FE) and whole-command time to 0.46–0.78 (PPML
 0.88). A 28-worker exactness oracle passed in the same allocation first.
 
+Merge with the PyFixest parity work (`0e98ccbe`). The action protocol bump
+changes one request field in every replay case, so two input bindings were
+rebound: the 12 cases of the seeded-frame scope and the two bias-reference
+inputs. Each new hash was accepted only when restoring `protocol_minor=6` in the
+regenerated case reproduced the recorded hash exactly; declared leaves, reasons
+and the pinned independent bias targets are unchanged. Replay chain (Mac,
+77 cases): the pre-merge branch `686ab424` on protocol 1.7 inputs equals the
+beta.12 plugin on the same inputs restored to 1.6 in every case's exact view;
+the merged plugin against `686ab424` passes with the seeded-frame scope at 1,
+2 and 4 workers (77 scientific passes, no unscoped difference). The source-only
+`run_tests.sh`, the parallel-input oracle (64 cases) and failure fixtures, the
+PPML public-scope fixture and the candidate-input oracle pass with the merged
+Mac plugin.
+
 ## Package checks
 
 ### Beta.12 interface packaging
