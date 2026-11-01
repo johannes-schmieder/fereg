@@ -101,14 +101,17 @@ if _rc exit 9111
 * own diagnostic code; none can confer PASS by itself.
 capture program drop _windows_input_result
 program define _windows_input_result
-    args file prefix
+    args file prefix detailed
     confirm file `"`file'"'
     tempname handle
     file open `handle' using `"`file'"', read text
     file read `handle' line
     file close `handle'
-    assert substr(`"`line'"', 1, strlen(`"`prefix'"')) == `"`prefix'"'
     display as text `"`line'"'
+    if substr(`"`line'"', 1, strlen(`"`prefix'"')) == `"`prefix'"' exit
+    * The helper's numeric failure code (10000-99999) identifies the step.
+    if "`detailed'" != "" & regexm(`"`line'"', "\|code=([0-9]+)$") exit real(regexs(1))
+    exit 9
 end
 assert c(MP) & floor(c(stata_version)) == 19
 quietly _fereg_input_host
@@ -125,11 +128,13 @@ capture noisily do "tests/licensed_stata/missing_witness.do" ///
 if _rc exit 9112
 * Diagnostic r(9113)/r(9114): the input oracle in a second Stata/MP process
 * with the solver trace, at the default worker count and at eight workers.
+* The default-worker step reports the helper's failure code (10000-99999).
 shell powershell.exe -NoLogo -NoProfile -NonInteractive ///
     -ExecutionPolicy Bypass -File "scripts/windows_input_qualification.ps1" ///
     -Action oracle -Workers 0 -Result "target/windows-input-oracle-0.result"
 capture noisily _windows_input_result "target/windows-input-oracle-0.result" ///
-    "WINDOWS_INPUT_ORACLE=PASS|workers=0|"
+    "WINDOWS_INPUT_ORACLE=PASS|workers=0|" detailed
+if _rc >= 10000 exit _rc
 if _rc exit 9113
 shell powershell.exe -NoLogo -NoProfile -NonInteractive ///
     -ExecutionPolicy Bypass -File "scripts/windows_input_qualification.ps1" ///
