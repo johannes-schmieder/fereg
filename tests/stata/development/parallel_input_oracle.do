@@ -13,6 +13,9 @@ if `"`trace'"' == "" {
     exit 198
 }
 local workers = min(4, c(processors_mach), c(processors_lic))
+* Stress runs may raise the parallel worker count (fixture input only).
+local stress : environment FEREG_ORACLE_WORKERS
+if `"`stress'"' != "" local workers = `stress'
 assert `workers' >= 2
 
 program define _parallel_case
@@ -172,6 +175,25 @@ quietly fereg y b i l f d if keep_scattered, absorb(g1) threads(`workers')
 assert mreldif(e(b), sorted_b) == 0
 restore
 assert row == _n
+
+* Small storage segments: the SDK resolves rows across many segments.
+tempfile segmented
+quietly save `segmented'
+local default_segment = c(segmentsize)
+clear
+set segmentsize 1m
+quietly use `segmented'
+_parallel_case `"`trace'"' ols_segments|serial
+quietly fereg y b i l f d if keep_scattered, absorb(g1) threads(1)
+matrix segment_b = e(b)
+_parallel_case `"`trace'"' ols_segments|parallel
+quietly fereg y b i l f d if keep_scattered, absorb(g1) threads(`workers')
+assert mreldif(e(b), segment_b) < 1e-9
+clear
+set segmentsize `default_segment'
+quietly use `segmented'
+assert row == _n
+
 frame copy default other
 frame other {
     drop if mod(row, 5) == 0
