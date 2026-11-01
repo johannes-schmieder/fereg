@@ -774,6 +774,44 @@ step. PyFixest took 20.8-21.8 s on `scc-wo4` the day before (job 8381971), so
 fereg's sparse three-FE PPML is now about 12% ahead of it there; other node
 classes were not remeasured. The two checkpoint solves (about 7 s) are unchanged.
 
+### Seeded PPML joint frames (development, 2026-11-01)
+
+Change (`e0e607c8`, SPEC §13): an ordinary PPML Auto joint frame whose sample,
+topology and kept generated columns match the last certified joint frame solves
+for the correction from that frame's fitted values and adds its coefficients
+back; the full response's norm still scales every stopping and acceptance test.
+Witnesses: a lockstep seeded/cold unit test with independent full-response
+finite scores and bitwise cold results for stale, refused, failed and
+invalidated seeds (1 and 3 workers); the 1e13-disparity disconnected-slope
+fixture, whose seeded fit passes its first strict check at eta error 1.7e-14
+(cold: two strict rejections, 1.8e-11), with the cold path's rejection
+assertions kept behind a test-only fault plan; the 77-case macOS replay against
+`a6dda3a4` with the declared scope, where 12 PPML cases change numerical leaves
+only and no discrete field, at 1, 2 and 4 workers; and
+`./scripts/run_tests.sh --source-only`.
+
+Mac, sparse three-FE PPML (1M rows, 4 workers), three alternating processes per
+arm with two timed fits each: `a6dda3a4` 7.18-7.33 s native, seeded 6.11-6.53 s.
+The seven ordinary frames took 181, 246, 337, 426, 511, 547 and 596 steps
+before and 181, 220, 269, 342, 329, 245 and 135 after (2,844 to 1,721), with 8
+IRLS iterations in both.
+
+SCC (job 8384682, `scc-zj4`, Xeon Gold 6132; both plugins built in the job from
+their commits; node-0 cores 0, 2, 4 and 6 and node-0 memory; six rounds of
+base, seeded and PyFixest processes in rotating order, each an untimed warm-up
+and two timed fits; no retries or exclusions): base 16.38-16.62 s native
+(Stata timer 16.77-16.99 s), seeded 14.22-14.42 s (timer 14.59-14.78 s) and
+PyFixest 17.03-17.52 s per fit call, data loading excluded. Frame steps went
+from 181/247/336/430/512/547/599 to 181/220/269/343/328/238/130, 8 IRLS
+iterations in every fit. Base and seeded each repeated their coefficients
+exactly in all six processes and agree within 4.9e-13 relative; the seeded
+coefficients are within 9.2e-14 of PyFixest's (base 5.2e-13). The branch head
+had no slow fit on this node, where beta.12 had taken 23.4-24.3 s in second
+fits and up to 35 s in first fits (job 8384403). On this node fereg's Stata
+command (median 14.66 s) is now 15% faster than PyFixest's fit call (median
+17.28 s) on sparse three-FE PPML; other node classes and cells were not
+remeasured.
+
 ## Published beta.11 descriptive campaign
 
 The October 30 SCC campaign of the published Linux plugin `af65682b...` (runtime
