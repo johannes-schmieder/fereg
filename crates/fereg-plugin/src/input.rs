@@ -170,6 +170,24 @@ pub trait SpiApi {
         }
         Ok(())
     }
+    /// Optional read-only numeric window (SPEC §17). Only the main-thread
+    /// adapter and test sources enable it.
+    fn supports_numeric_window(&self) -> bool {
+        false
+    }
+    /// Open a numeric window over `variables` on this (main) thread, run `run`
+    /// with its worker-callable source and close it before returning, also on
+    /// unwind. `run` must join every worker it lends the source to. While the
+    /// window is open no other SPI call is possible. `Ok(false)`: the window
+    /// was refused before any read (the caller keeps its serial reader).
+    fn with_numeric_window(
+        &mut self,
+        _variables: &[u32],
+        _rows: usize,
+        _run: &mut dyn FnMut(&dyn crate::parallel_input::NumericBlockSource) -> Result<()>,
+    ) -> Result<bool> {
+        Ok(false)
+    }
     fn read_string(&mut self, variable: u32, observation: usize) -> Result<Vec<u8>>;
     /// The production SPI checks the required buffer size before reserving.
     /// Test SPI implementations may use this capacity-checked default.

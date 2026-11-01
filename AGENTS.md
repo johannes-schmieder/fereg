@@ -39,8 +39,10 @@ storage changes; unaffected scientific results remain exact. Timing, build
 identity and observed memory are not scientific bit targets.
 
 Keep one substantive native call per estimation, validation before publication,
-atomic failure/rollback and Break checks. SPI stays on Stata's main thread;
-workers access Rust-owned memory. Catch panics at FFI and keep safe crates unsafe-free.
+atomic failure/rollback and Break checks. SPI stays on Stata's main thread, except
+that workers may call the read-only numeric accessor inside a validated, qualified
+numeric window while the main thread waits and makes no SPI call (SPEC §17);
+workers write only Rust-owned memory. Catch panics at FFI and keep safe crates unsafe-free.
 Unsupported explicit requests fail clearly. Use general resource/worker policies
 and mathematical solver families; never add benchmark-specific routing fences.
 

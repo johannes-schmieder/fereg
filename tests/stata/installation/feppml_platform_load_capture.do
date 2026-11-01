@@ -64,7 +64,7 @@ if !_rc {
 capture program drop __feppml_platform_load_probe
 program define __feppml_platform_load_probe, plugin using(`"`plugin_path'"')
 capture noisily plugin call __feppml_platform_load_probe, selftest ///
-    "ado=0.5.0" "protocol_major=1" "protocol_minor=6" ///
+    "ado=0.5.0" "protocol_major=1" "protocol_minor=7" ///
     "stata=`c(stata_version)'" "threads=1" "verbose=1"
 local plugin_load_rc = _rc
 if `plugin_load_rc' {

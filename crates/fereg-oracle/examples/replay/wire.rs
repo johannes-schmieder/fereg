@@ -340,7 +340,7 @@ pub(super) fn configure(
     for field in [
         "ado=0.5.0",
         "protocol_major=1",
-        "protocol_minor=6",
+        "protocol_minor=7",
         "stata=18.0",
         "plugin=0.5.0",
         "result_major=1",

@@ -386,14 +386,14 @@ static int check_selftest_verbose(stata_call_function call, int threads)
 {
     char worker_argument[32];
     char *arguments[] = {
-        "selftest", "ado=0.5.0", "protocol_major=1", "protocol_minor=6",
+        "selftest", "ado=0.5.0", "protocol_major=1", "protocol_minor=7",
         "stata=18.0", worker_argument, "verbose=1"
     };
     (void) snprintf(worker_argument, sizeof(worker_argument), "threads=%d", threads < 2 ? threads : 2);
     clear_output();
     if (call((int) (sizeof(arguments) / sizeof(arguments[0])), arguments) != 0) return 1;
     if (strstr(display_buffer, "fereg.plugin_version=0.5.0") == NULL ||
-        strstr(display_buffer, "fereg.action_protocol=1.6") == NULL ||
+        strstr(display_buffer, "fereg.action_protocol=1.7") == NULL ||
         strstr(display_buffer, "fereg.model_wire=2.1") == NULL ||
         strstr(display_buffer, "fereg.ols_result_wire=1.5") == NULL ||
         strstr(display_buffer, "fereg.ppml_request_wire=1.8") == NULL ||
@@ -1028,7 +1028,7 @@ static ST_int call_estimate_ols_test(stata_call_function call, ST_int candidate_
         "estimate-ols",
         "ado=0.5.0",
         "protocol_major=1",
-        "protocol_minor=6",
+        "protocol_minor=7",
         "stata=18.0",
         "confirm=fereg-estimation",
         "plugin=0.5.0",

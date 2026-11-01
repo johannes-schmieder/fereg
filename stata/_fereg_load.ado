@@ -51,7 +51,7 @@ program define _fereg_load, rclass
         plugin call `handle', selftest ///
             `"ado=0.5.0"' ///
             `"protocol_major=1"' ///
-            `"protocol_minor=6"' ///
+            `"protocol_minor=7"' ///
             `"stata=`c(stata_version)'"' ///
             `"threads=`threads'"' ///
             `"plugin_file=`plugin_file'"' ///

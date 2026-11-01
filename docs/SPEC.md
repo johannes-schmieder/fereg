@@ -1415,11 +1415,32 @@ completion and independent bounded transport validation. Rust loads observations
 prepares the sample, estimates, certifies and validates all N/K/K² products
 before the first SPI store. All source/output identities, dimensions and
 nonaliasing bindings are checked before observations. SPI calls and Break
-polling occur only on Stata's main thread; workers touch Rust-owned memory.
-Native work from preparation through derived outputs and saved-FE recovery
-runs under Break polling, and long serial row passes checkpoint at a fixed
-row stride.
+polling occur on Stata's main thread, with one exception below; workers touch
+Rust-owned memory. Native work from preparation through derived outputs and
+saved-FE recovery runs under Break polling, and long serial row passes
+checkpoint at a fixed row stride.
 Catch Rust panics at FFI; no unwind crosses C. Safe crates forbid unsafe code.
+
+Parallel numeric input. On a qualified host, action workers may call Stata's
+read-only numeric accessor (`vdata`) inside a numeric window. The main thread
+opens a window after validating the variables (numeric, in range) and the
+observation count, lends one bounded phase of original-row blocks to the
+action team and waits; while a window is open the bridge refuses every other
+SPI call, including Break polling, display, metadata and stores. It closes the
+window when every worker of the phase has returned (also on unwind) and polls
+Break between phases. No Stata memory or dataset layout is used or retained,
+and no window outlives the phase. Workers write disjoint rows of reserved
+Rust-owned destinations; lengths are set only after every block succeeded.
+Values, `value >= SV_missval` flags, excluded-row fills, candidate validation
+and error precedence equal the serial readers, and destinations keep their
+representation and row order, so loaded inputs and scientific results are
+unchanged. A refusal before the first phase (policy, work plan, admission,
+window) keeps the serial reader; any failure after the first phase starts is
+returned, never retried serially. Qualification keys on public facts: plugin
+target, Stata major version, edition, `c(console)` interface, and no alias
+variable among the bound inputs; unknown combinations keep the serial reader.
+StataCorp documents no thread-safety guarantee for `vdata`; the capability
+rests on the recorded qualification (VALIDATION).
 
 COMPLETE is the last native operation; no allocation, polling, display,
 computation or store follows it. A partial physical SPI write has no logical

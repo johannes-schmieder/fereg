@@ -212,7 +212,9 @@ program define _fereg_estimate_ppml, eclass
     local inject_known = `inject_known' | inlist(`"`inject'"', ///
         "breakpostplugin", "breakpostpublic", "mutatewire", ///
         "mutatesemantic", "mutatesolver", "mutateoutput", "panic", "breaknative", ///
-        "allocation") | inlist(`"`inject'"', "ppml_separation_cg", "lsmr_iteration_break")
+        "allocation") | inlist(`"`inject'"', "ppml_separation_cg", "lsmr_iteration_break") ///
+        | inlist(`"`inject'"', "serial_input", "input_worker_panic", ///
+        "input_read_failure", "input_break")
     if !`inject_known' {
         di as error "unknown developer PPML transaction injection stage: `inject'"
         exit 198
@@ -744,17 +746,20 @@ program define _fereg_estimate_ppml, eclass
     if `"`inject'"' == "lsmr_iteration_break" local plugin_inject "lsmr_iteration_break"
     if `"`inject'"' == "allocation" local plugin_inject "allocation"
     if `"`inject'"' == "ppml_separation_cg" local plugin_inject "ppml_separation_cg"
+    if inlist(`"`inject'"', "serial_input", "input_worker_panic", ///
+        "input_read_failure", "input_break") local plugin_inject `"`inject'"'
     quietly _fereg_memory_baseline
     local stata_used_before = strtrim(string(r(used), "%21.0f"))
     local stata_alloc_before = strtrim(string(r(allocated), "%21.0f"))
-    local request_arguments `"ado=0.5.0;protocol_major=1;protocol_minor=6;stata=`c(stata_version)';confirm=feppml-estimation;plugin=0.5.0;result_major=1;result_minor=5;request_major=1;request_minor=8;model_major=`model_major';model_minor=`model_minor';source_matrix=`model_sources';source_count=`n_sources';term_matrix=`model_terms';term_count=`n_terms';component_matrix=`model_components';component_count=`n_components';source_names=`source_registry';canonical_tokens=`token_registry';raw_component_operators=`raw_registry';raw_time_series_operators=`ts_registry';absorb_term_matrix=`absorb_terms';absorb_term_count=`n_absorb_terms';absorb_component_matrix=`absorb_components';absorb_component_count=`n_absorb_components';absorb_labels=`absorb_label_registry';absorb_saved_names=`absorb_saved_registry';cluster_term_matrix=`cluster_terms';cluster_term_count=`n_cluster_terms';cluster_component_matrix=`cluster_components';cluster_component_count=`n_cluster_components';cluster_labels=`cluster_label_registry';binding_matrix=`input_bindings';binding_count=`n_bindings';include_intercept=1;candidate_all=`candidate_all';input_complete=`input_complete';keep_singletons=`keep_singletons';adjustment=`adjustment_kind';adjustment_position=`adjustment_position';residual=`residual_wire';vce=`vce_request_wire';memory=`memory_mode';poolsize=`poolsize';threads=`threads';deterministic=`deterministic_wire';allocation_audit=`allocation_audit_wire';solver=`solver_mode';tolerance=`tolerance';iterate=`iterate';separation=`separation_wire';separation_tolerance=`septolerance';separation_max_iterations=`sepiterate';simplex_max_iterations=`simplexiterate';simplex_max_tableau_cells=`simplexcells';output_sample=`output_sample';output_residual=`output_residual';output_xb=`output_xb';output_absorbed=`output_absorbed';output_eta=`output_eta';output_mean=`output_mu';output_drop_reason=`output_dropreason';output_saved_count=`output_saved_count';output_saved_channels=`output_saved_registry';output_b_matrix=`b_shadow';output_v_matrix=`v_shadow';output_status_matrix=`status_shadow';output_fit_matrix=`fit_shadow';output_dof_matrix=`dof_shadow';output_fe_matrix=`fe_shadow';output_cluster_matrix=`cluster_shadow';output_subset_matrix=`subset_shadow';output_separation_matrix=`separation_shadow';output_inference_matrix=`inference_shadow';output_drop_counts_matrix=`drop_counts_shadow';output_separation_sequence_matrix=`separation_sequence_shadow';output_certificate_matrix=`certificate_shadow';output_solver_matrix=`solver_shadow';output_runtime_matrix=`runtime_shadow';output_memory_matrix=`memory_shadow';stata_used_entry=`stata_used_entry';stata_alloc_entry=`stata_alloc_entry';stata_used_before=`stata_used_before';stata_alloc_before=`stata_alloc_before';output_receipt_matrix=`receipt_shadow';"'
+    quietly _fereg_input_host `touse' `depvar' `source_vars' `weight_variable' `adjustment_variable' `biasunit'
+    local request_arguments `"ado=0.5.0;protocol_major=1;protocol_minor=7;stata=`c(stata_version)';host_edition=`r(edition)';host_interface=`r(interface)';host_aliases=`r(aliases)';confirm=feppml-estimation;plugin=0.5.0;result_major=1;result_minor=5;request_major=1;request_minor=8;model_major=`model_major';model_minor=`model_minor';source_matrix=`model_sources';source_count=`n_sources';term_matrix=`model_terms';term_count=`n_terms';component_matrix=`model_components';component_count=`n_components';source_names=`source_registry';canonical_tokens=`token_registry';raw_component_operators=`raw_registry';raw_time_series_operators=`ts_registry';absorb_term_matrix=`absorb_terms';absorb_term_count=`n_absorb_terms';absorb_component_matrix=`absorb_components';absorb_component_count=`n_absorb_components';absorb_labels=`absorb_label_registry';absorb_saved_names=`absorb_saved_registry';cluster_term_matrix=`cluster_terms';cluster_term_count=`n_cluster_terms';cluster_component_matrix=`cluster_components';cluster_component_count=`n_cluster_components';cluster_labels=`cluster_label_registry';binding_matrix=`input_bindings';binding_count=`n_bindings';include_intercept=1;candidate_all=`candidate_all';input_complete=`input_complete';keep_singletons=`keep_singletons';adjustment=`adjustment_kind';adjustment_position=`adjustment_position';residual=`residual_wire';vce=`vce_request_wire';memory=`memory_mode';poolsize=`poolsize';threads=`threads';deterministic=`deterministic_wire';allocation_audit=`allocation_audit_wire';solver=`solver_mode';tolerance=`tolerance';iterate=`iterate';separation=`separation_wire';separation_tolerance=`septolerance';separation_max_iterations=`sepiterate';simplex_max_iterations=`simplexiterate';simplex_max_tableau_cells=`simplexcells';output_sample=`output_sample';output_residual=`output_residual';output_xb=`output_xb';output_absorbed=`output_absorbed';output_eta=`output_eta';output_mean=`output_mu';output_drop_reason=`output_dropreason';output_saved_count=`output_saved_count';output_saved_channels=`output_saved_registry';output_b_matrix=`b_shadow';output_v_matrix=`v_shadow';output_status_matrix=`status_shadow';output_fit_matrix=`fit_shadow';output_dof_matrix=`dof_shadow';output_fe_matrix=`fe_shadow';output_cluster_matrix=`cluster_shadow';output_subset_matrix=`subset_shadow';output_separation_matrix=`separation_shadow';output_inference_matrix=`inference_shadow';output_drop_counts_matrix=`drop_counts_shadow';output_separation_sequence_matrix=`separation_sequence_shadow';output_certificate_matrix=`certificate_shadow';output_solver_matrix=`solver_shadow';output_runtime_matrix=`runtime_shadow';output_memory_matrix=`memory_shadow';stata_used_entry=`stata_used_entry';stata_alloc_entry=`stata_alloc_entry';stata_used_before=`stata_used_before';stata_alloc_before=`stata_alloc_before';output_receipt_matrix=`receipt_shadow';"'
     if `has_bias' {
         local request_arguments `"`request_arguments'bias_method=`bias_method';bias_unit=`bias_unit_position';bias_probes=`biasprobes';bias_seed=`biasseed';bias_stream=`biasstream';output_bias_count=`output_bias_count';output_bias_channels=`output_bias_registry';output_bias_matrix=`bias_shadow';output_bias_diagnostics=`bias_diagnostics_shadow';output_bias_support=`bias_support_shadow';"'
     }
     if `"`plugin_inject'"' != "" {
         local request_arguments `"`request_arguments'inject=`plugin_inject';"'
     }
-    if inlist(`"`plugin_inject'"', "breaknative", "lsmr_iteration_break") {
+    if inlist(`"`plugin_inject'"', "breaknative", "lsmr_iteration_break", "input_break") {
         local break_marker_token : environment FEREG_PPML_BREAK_MARKER_TOKEN
         if strtrim(`"`break_marker_token'"') == "" {
             di as error "hidden PPML breaknative requires FEREG_PPML_BREAK_MARKER_TOKEN"
@@ -1373,7 +1378,7 @@ program define _fereg_estimate_ppml, eclass
     ereturn local feppml_solver_engine_effective "`solver_engine_effective'"
     ereturn local feppml_solver_checkpoint "`solver_checkpoint'"
     ereturn local feppml_solver_fallback_reason "`solver_fallback_reason'"
-    ereturn local feppml_action_protocol "1.6"
+    ereturn local feppml_action_protocol "1.7"
     ereturn local feppml_model_wire "2.1"
     ereturn local feppml_request_wire "1.8"
     ereturn local feppml_result_wire "1.5"

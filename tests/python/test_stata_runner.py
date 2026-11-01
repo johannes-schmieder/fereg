@@ -108,7 +108,7 @@ class StataRunnerSentinelTests(unittest.TestCase):
             self.assertIn(str(plugin.resolve()), observed_wrapper)
             self.assertNotIn(str((root / "dist").resolve()), observed_wrapper)
             self.assertIn("plugin call __fereg_runner_provenance, selftest", observed_wrapper)
-            self.assertIn('"ado=0.5.0" "protocol_major=1" "protocol_minor=6"', observed_wrapper)
+            self.assertIn('"ado=0.5.0" "protocol_major=1" "protocol_minor=7"', observed_wrapper)
             self.assertIn('"threads=1" "verbose=1"', observed_wrapper)
             self.assertNotIn("__fereg_runner_provenance, version", observed_wrapper)
 

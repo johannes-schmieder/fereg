@@ -113,7 +113,9 @@ program define _fereg_estimate_ols, eclass
     local it_injection = `"`inject'"' == "it_coefficients"
     local ownership_injection = regexm(`"`inject'"', "^ownership_(moments|scores|both)$")
     local cells_injection = regexm(`"`inject'"', "^cells_(eager|deferred)(_(moments|scores|both))?$")
-    if `"`inject'"' != "" & !`routing_injection' & !`it_injection' & !`ownership_injection' & !`cells_injection' & !inlist(`"`inject'"', ///
+    local input_injection = inlist(`"`inject'"', "serial_input", ///
+        "input_worker_panic", "input_read_failure", "input_break")
+    if `"`inject'"' != "" & !`routing_injection' & !`it_injection' & !`ownership_injection' & !`cells_injection' & !`input_injection' & !inlist(`"`inject'"', ///
         "posthold", "postplugin", "poststripe", "postereturn", ///
         "postscalars", "postdiagnostics", "precommit", ///
         "breakpostplugin", "breaknative") & `"`inject'"' != "lsmr_iteration_break" {
@@ -565,7 +567,8 @@ program define _fereg_estimate_ols, eclass
     quietly _fereg_memory_baseline
     local stata_used_before = strtrim(string(r(used), "%21.0f"))
     local stata_alloc_before = strtrim(string(r(allocated), "%21.0f"))
-    local request_arguments `"ado=0.5.0;protocol_major=1;protocol_minor=6;stata=`c(stata_version)';confirm=fereg-estimation;plugin=0.5.0;result_major=1;result_minor=5;model_major=`model_major';model_minor=`model_minor';source_matrix=`model_sources';source_count=`n_sources';term_matrix=`model_terms';term_count=`n_terms';component_matrix=`model_components';component_count=`n_components';source_names=`source_registry';canonical_tokens=`token_registry';raw_component_operators=`raw_registry';raw_time_series_operators=`ts_registry';absorb_term_matrix=`absorb_terms';absorb_term_count=`n_absorb_terms';absorb_component_matrix=`absorb_components';absorb_component_count=`n_absorb_components';absorb_labels=`absorb_label_registry';absorb_saved_names=`absorb_saved_registry';cluster_term_matrix=`cluster_terms';cluster_term_count=`n_cluster_terms';cluster_component_matrix=`cluster_components';cluster_component_count=`n_cluster_components';cluster_labels=`cluster_label_registry';binding_matrix=`input_bindings';binding_count=`n_bindings';include_intercept=`include_intercept';candidate_all=`candidate_all';input_complete=`input_complete';keep_singletons=`keep_singletons';vce=`vce_wire';dof=`dof_wire';account_cluster_nesting=`account_cluster_nesting';memory=`memory_mode';solver=`solver_mode';preconditioner=`preconditioner_mode';poolsize=`poolsize';threads=`threads';deterministic=`deterministic_wire';tolerance=`tolerance';iterate=`iterate';output_sample=`output_sample';output_residual=`output_residual';output_drop_reason=0;output_xb=`output_xb';output_xbd=`output_xbd';output_absorbed=`output_absorbed';output_saved_count=`output_saved_count';output_saved_channels=`output_saved_registry';output_b_matrix=`b_shadow';output_v_matrix=`v_shadow';output_status_matrix=`status_shadow';output_marker_b_matrix=`marker_b_shadow';output_marker_v_matrix=`marker_v_shadow';output_fit_matrix=`fit_shadow';output_dof_matrix=`dof_shadow';output_solver_matrix=`solver_shadow';output_fe_matrix=`fe_shadow';output_cluster_matrix=`cluster_shadow';output_subset_matrix=`subset_shadow';output_certificate_matrix=`certificate_shadow';output_runtime_matrix=`runtime_shadow';output_memory_matrix=`memory_shadow';stata_used_entry=`stata_used_entry';stata_alloc_entry=`stata_alloc_entry';stata_used_before=`stata_used_before';stata_alloc_before=`stata_alloc_before';output_receipt_matrix=`receipt_shadow';"'
+    quietly _fereg_input_host `candidate_variable' `depvar' `source_vars' `weight_variable'
+    local request_arguments `"ado=0.5.0;protocol_major=1;protocol_minor=7;stata=`c(stata_version)';host_edition=`r(edition)';host_interface=`r(interface)';host_aliases=`r(aliases)';confirm=fereg-estimation;plugin=0.5.0;result_major=1;result_minor=5;model_major=`model_major';model_minor=`model_minor';source_matrix=`model_sources';source_count=`n_sources';term_matrix=`model_terms';term_count=`n_terms';component_matrix=`model_components';component_count=`n_components';source_names=`source_registry';canonical_tokens=`token_registry';raw_component_operators=`raw_registry';raw_time_series_operators=`ts_registry';absorb_term_matrix=`absorb_terms';absorb_term_count=`n_absorb_terms';absorb_component_matrix=`absorb_components';absorb_component_count=`n_absorb_components';absorb_labels=`absorb_label_registry';absorb_saved_names=`absorb_saved_registry';cluster_term_matrix=`cluster_terms';cluster_term_count=`n_cluster_terms';cluster_component_matrix=`cluster_components';cluster_component_count=`n_cluster_components';cluster_labels=`cluster_label_registry';binding_matrix=`input_bindings';binding_count=`n_bindings';include_intercept=`include_intercept';candidate_all=`candidate_all';input_complete=`input_complete';keep_singletons=`keep_singletons';vce=`vce_wire';dof=`dof_wire';account_cluster_nesting=`account_cluster_nesting';memory=`memory_mode';solver=`solver_mode';preconditioner=`preconditioner_mode';poolsize=`poolsize';threads=`threads';deterministic=`deterministic_wire';tolerance=`tolerance';iterate=`iterate';output_sample=`output_sample';output_residual=`output_residual';output_drop_reason=0;output_xb=`output_xb';output_xbd=`output_xbd';output_absorbed=`output_absorbed';output_saved_count=`output_saved_count';output_saved_channels=`output_saved_registry';output_b_matrix=`b_shadow';output_v_matrix=`v_shadow';output_status_matrix=`status_shadow';output_marker_b_matrix=`marker_b_shadow';output_marker_v_matrix=`marker_v_shadow';output_fit_matrix=`fit_shadow';output_dof_matrix=`dof_shadow';output_solver_matrix=`solver_shadow';output_fe_matrix=`fe_shadow';output_cluster_matrix=`cluster_shadow';output_subset_matrix=`subset_shadow';output_certificate_matrix=`certificate_shadow';output_runtime_matrix=`runtime_shadow';output_memory_matrix=`memory_shadow';stata_used_entry=`stata_used_entry';stata_alloc_entry=`stata_alloc_entry';stata_used_before=`stata_used_before';stata_alloc_before=`stata_alloc_before';output_receipt_matrix=`receipt_shadow';"'
     if `"`solver_mode'"' == "cmgschur" {
         local request_arguments `"`request_arguments'cmgdegree=`cmgdegree';"'
         if `cmgsamples_explicit' local request_arguments ///
@@ -573,7 +576,7 @@ program define _fereg_estimate_ols, eclass
         if `cmgseed_explicit' local request_arguments ///
             `"`request_arguments'cmgseed=`cmgseed';"'
     }
-    if inlist(`"`inject'"', "breaknative", "routing_builder_break", "lsmr_iteration_break") {
+    if inlist(`"`inject'"', "breaknative", "routing_builder_break", "lsmr_iteration_break", "input_break") {
         local break_marker_token : environment FEREG_BREAK_MARKER_TOKEN
         if strtrim(`"`break_marker_token'"') == "" {
             di as error "hidden OLS breaknative requires FEREG_BREAK_MARKER_TOKEN"
@@ -582,7 +585,7 @@ program define _fereg_estimate_ols, eclass
         local request_arguments ///
             `"`request_arguments'inject=`inject';break_marker_token=`break_marker_token';"'
     }
-    else if `routing_injection' | `it_injection' | `ownership_injection' | `cells_injection' {
+    else if `routing_injection' | `it_injection' | `ownership_injection' | `cells_injection' | `input_injection' {
         local request_arguments `"`request_arguments'inject=`inject';"'
     }
     else if `"`breakmarkertoken'"' != "" {
@@ -847,7 +850,7 @@ program define _fereg_estimate_ols, eclass
         else ereturn local wexp "= `pweight'"
     }
     if `"`residual'"' != "" ereturn local resid "`residual'"
-    ereturn local fereg_action_protocol "1.6"
+    ereturn local fereg_action_protocol "1.7"
     ereturn local fereg_model_wire "2.1"
     ereturn local fereg_result_wire "1.5"
     ereturn local fereg_plugin "0.5.0"

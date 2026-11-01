@@ -196,6 +196,75 @@ impl PreparedLoadTarget<'_> {
     }
 }
 
+/// Identity, partition and capsule admission shared by the tiled and parallel
+/// prepared readers.
+struct PreparedPlan {
+    ids: Vec<fereg_core::metadata::SourceId>,
+    scratch: u128,
+    descriptor_bytes: u128,
+    temporary: u128,
+    owned_columns: Vec<(fereg_core::metadata::SourceId, LoadedNumericColumn)>,
+}
+
+/// `None` keeps the ordinary loader; nothing has been read.
+#[allow(clippy::too_many_arguments)]
+fn prepared_plan(
+    spi: &mut dyn SpiApi,
+    request: &OlsRequestV1,
+    width: usize,
+    rows: usize,
+    team: ThreadTeam,
+    memory: &mut InputMemory,
+    copied_rhs: usize,
+    target: &PreparedLoadTarget<'_>,
+) -> Option<PreparedPlan> {
+    if !(1..=MAX_COLUMNS).contains(&width)
+        || request.model.sources.len() >= width
+        || !spi.supports_numeric_rows()
+        || memory.admit(4096).is_err()
+    {
+        return None;
+    }
+    // Admit the bounded identity/partition descriptors before even the first
+    // optional Vec allocation; a tight budget retains the ordinary loader.
+    let ids = PreparedOlsLoadHint::source_ids(request).ok()?;
+    if ids.is_empty() || ids.len() >= width {
+        return None;
+    }
+    if request
+        .model
+        .sources
+        .iter()
+        .enumerate()
+        .any(|(index, source)| index + 1 < copied_rhs && ids.contains(&source.id))
+    {
+        return None;
+    }
+    if [ids.len(), width - ids.len()].into_iter().any(|columns| {
+        fereg_core::parallel::StagePlan::new(rows as u128 * columns as u128, 2, team.threads())
+            .lanes
+            <= 1
+    }) {
+        return None;
+    }
+    let scratch = PreparedOlsLoadHint::workspace_bytes(rows, ids.len())?;
+    let descriptor_bytes = target.descriptor_bytes(ids.len());
+    let temporary = scratch + 4096 + descriptor_bytes;
+    // Both partition banks and the owned capsule are admitted before reading.
+    let tiles = 2 * TILE_ROWS * width * std::mem::size_of::<f64>() + std::mem::size_of::<Handoff>();
+    if temporary + tiles as u128 > memory.remaining() as u128 {
+        return None;
+    }
+    let owned_columns = target.reserve_columns(ids.len())?;
+    Some(PreparedPlan {
+        ids,
+        scratch,
+        descriptor_bytes,
+        temporary,
+        owned_columns,
+    })
+}
+
 /// Complete the categorical columns before lending them to optional native
 /// factorization. The original source registry and numeric RHS recipe survive.
 #[allow(clippy::too_many_arguments)]
@@ -208,25 +277,12 @@ pub(crate) fn try_read_prepared_reserved(
     missing: &mut [&mut Vec<bool>],
     team: ThreadTeam,
     memory: &mut InputMemory,
-    rhs: Option<(&mut Vec<f64>, NumericRhsLayout)>,
+    mut rhs: Option<(&mut Vec<f64>, NumericRhsLayout)>,
     target: &mut PreparedLoadTarget<'_>,
+    transport: Option<crate::parallel_input::Transport>,
 ) -> Result<bool> {
     let width = positions.len();
-    if !(1..=MAX_COLUMNS).contains(&width)
-        || request.model.sources.len() >= width
-        || columns.len() != width
-        || missing.len() != width
-        || !spi.supports_numeric_rows()
-        || memory.admit(4096).is_err()
-    {
-        return Ok(false);
-    }
-    // Admit the bounded identity/partition descriptors before even the first
-    // optional Vec allocation; a tight budget retains the ordinary loader.
-    let Ok(ids) = PreparedOlsLoadHint::source_ids(request) else {
-        return Ok(false);
-    };
-    if ids.is_empty() || ids.len() >= width {
+    if columns.len() != width || missing.len() != width {
         return Ok(false);
     }
     let copied_rhs = rhs.as_ref().map_or(0, |(_, layout)| {
@@ -234,36 +290,39 @@ pub(crate) fn try_read_prepared_reserved(
             .width
             .saturating_sub(usize::from(layout.append_intercept))
     });
-    if request
-        .model
-        .sources
-        .iter()
-        .enumerate()
-        .any(|(index, source)| index + 1 < copied_rhs && ids.contains(&source.id))
-    {
-        return Ok(false);
-    }
-    if [ids.len(), width - ids.len()].into_iter().any(|columns| {
-        fereg_core::parallel::StagePlan::new(rows as u128 * columns as u128, 2, team.threads())
-            .lanes
-            <= 1
-    }) {
-        return Ok(false);
-    }
-    let Some(scratch) = PreparedOlsLoadHint::workspace_bytes(rows, ids.len()) else {
+    let Some(plan) = prepared_plan(spi, request, width, rows, team, memory, copied_rhs, target)
+    else {
         return Ok(false);
     };
+    let PreparedPlan {
+        ids,
+        scratch,
+        descriptor_bytes,
+        temporary,
+        owned_columns,
+    } = plan;
     let owns_columns = matches!(target, PreparedLoadTarget::Owned(_));
-    let descriptor_bytes = target.descriptor_bytes(ids.len());
-    let temporary = scratch + 4096 + descriptor_bytes;
-    // Both partition banks and the owned capsule are admitted before reading.
-    let tiles = 2 * TILE_ROWS * width * std::mem::size_of::<f64>() + std::mem::size_of::<Handoff>();
-    if temporary + tiles as u128 > memory.remaining() as u128 {
-        return Ok(false);
+    let mut owned_columns = Some(owned_columns);
+    if let Some(transport) = transport {
+        if try_read_prepared_parallel(
+            spi,
+            request,
+            positions,
+            rows,
+            columns,
+            missing,
+            team,
+            memory,
+            rhs.as_mut()
+                .map(|(values, layout)| (&mut **values, *layout)),
+            target,
+            transport,
+            (&ids, temporary, scratch + descriptor_bytes),
+            &mut owned_columns,
+        )? {
+            return Ok(true);
+        }
     }
-    let Some(owned_columns) = target.reserve_columns(ids.len()) else {
-        return Ok(false);
-    };
     let Some((mut early, mut late)) =
         ReservedColumns::partition(request, positions, columns, missing, &ids)
     else {
@@ -312,7 +371,7 @@ pub(crate) fn try_read_prepared_reserved(
                     &ids,
                     rows,
                     scratch + descriptor_bytes,
-                    owns_columns.then_some(owned_columns),
+                    owned_columns.take().filter(|_| owns_columns),
                 )
             },
             |spi| {
@@ -348,6 +407,71 @@ pub(crate) fn try_read_prepared_reserved(
     result
 }
 
+/// With the parallel reader every worker reads: load all columns first, then
+/// factorize the categorical ones on the team (no read/factorize overlap,
+/// which would only compete for the same workers). `Ok(false)` declines before
+/// any read and leaves the columns and the owned-column capsule untouched.
+/// `budget` is (categorical ids, temporary bytes, preparation admission).
+#[allow(clippy::too_many_arguments)]
+fn try_read_prepared_parallel(
+    spi: &mut dyn SpiApi,
+    request: &OlsRequestV1,
+    positions: &[u32],
+    rows: usize,
+    columns: &mut [&mut Vec<f64>],
+    missing: &mut [&mut Vec<bool>],
+    team: ThreadTeam,
+    memory: &mut InputMemory,
+    rhs: Option<(&mut Vec<f64>, NumericRhsLayout)>,
+    target: &mut PreparedLoadTarget<'_>,
+    transport: crate::parallel_input::Transport,
+    budget: (&[fereg_core::metadata::SourceId], u128, u128),
+    owned_columns: &mut Option<Vec<(fereg_core::metadata::SourceId, LoadedNumericColumn)>>,
+) -> Result<bool> {
+    let (ids, temporary, admitted) = budget;
+    if memory.admit(temporary).is_err() {
+        return Ok(false);
+    }
+    let Some(mut targets) = transport_targets(positions, columns, missing) else {
+        return Ok(false);
+    };
+    if !crate::parallel_input::try_read(
+        spi,
+        transport,
+        memory,
+        rows,
+        &mut targets,
+        crate::parallel_input::Candidate::All,
+        rhs,
+        "numeric row read",
+    )? {
+        return Ok(false);
+    }
+    drop(targets);
+    let (mut early, _) = ReservedColumns::partition(request, positions, columns, missing, ids)
+        .ok_or_else(|| {
+            FeregError::new(
+                ErrorCode::Internal,
+                "parallel input lost its categorical partition",
+            )
+        })?;
+    let owned = owned_columns
+        .take()
+        .filter(|_| matches!(target, PreparedLoadTarget::Owned(_)));
+    memory.retain(temporary)?;
+    let prepared = crate::cancellable::run(
+        team,
+        || Ok(early.prepare(ids, rows, admitted, owned)),
+        &mut || spi.check_interrupted_while_waiting(),
+    );
+    memory.release(temporary)?;
+    target.store(prepared?);
+    if let PreparedLoadTarget::Owned(Some(columns)) = target {
+        memory.retain(columns.descriptor_bytes())?;
+    }
+    Ok(true)
+}
+
 /// Fill reserved empty columns directly from owned tiles. Each push initializes
 /// one element; the preflight guarantees capacity for the complete input.
 // Keep admitted buffers separate from the main-thread SPI handle.
@@ -360,11 +484,57 @@ pub(crate) fn try_read_reserved(
     missing: &mut [&mut Vec<bool>],
     team: ThreadTeam,
     memory: &mut InputMemory,
-    rhs: Option<(&mut Vec<f64>, NumericRhsLayout)>,
+    mut rhs: Option<(&mut Vec<f64>, NumericRhsLayout)>,
+    transport: Option<crate::parallel_input::Transport>,
 ) -> Result<bool> {
+    if let Some(transport) = transport {
+        let read = match transport_targets(positions, columns, missing) {
+            Some(mut targets) => crate::parallel_input::try_read(
+                spi,
+                transport,
+                memory,
+                rows,
+                &mut targets,
+                crate::parallel_input::Candidate::All,
+                rhs.as_mut()
+                    .map(|(values, layout)| (&mut **values, *layout)),
+                "numeric row read",
+            )?,
+            None => false,
+        };
+        if read {
+            return Ok(true);
+        }
+    }
     try_read_reserved_with_tiles(
         spi, positions, rows, columns, missing, team, memory, rhs, None,
     )
+}
+
+/// Every pipeline column as a parallel-reader target (all rows retained).
+fn transport_targets<'a>(
+    positions: &[u32],
+    columns: &'a mut [&mut Vec<f64>],
+    missing: &'a mut [&mut Vec<bool>],
+) -> Option<Vec<crate::parallel_input::Target<'a>>> {
+    if columns.len() != positions.len() || missing.len() != positions.len() {
+        return None;
+    }
+    let mut targets = Vec::new();
+    targets.try_reserve_exact(positions.len()).ok()?;
+    for ((position, values), flags) in positions
+        .iter()
+        .zip(columns.iter_mut())
+        .zip(missing.iter_mut())
+    {
+        targets.push(crate::parallel_input::Target {
+            position: *position,
+            values,
+            missing: flags,
+            excluded: (0.0, false),
+        });
+    }
+    Some(targets)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -734,6 +904,7 @@ mod tests {
             ThreadTeam::new(ThreadConfig::from_requested(threads, false).unwrap()),
             memory,
             None,
+            None,
         )?;
         if read {
             for column in 0..width {
@@ -850,6 +1021,7 @@ mod tests {
                                 },
                             )),
                             &mut target,
+                            None,
                         )
                     }));
                     (outcome, target.has_missing())
@@ -1043,6 +1215,7 @@ mod tests {
                                     append_intercept,
                                 },
                             )),
+                            None,
                         );
                         if failure == usize::MAX {
                             assert_eq!(result, Ok(true));
@@ -1103,7 +1276,8 @@ mod tests {
             &mut flags.iter_mut().collect::<Vec<_>>(),
             ThreadTeam::new(ThreadConfig::from_requested(4, false).unwrap()),
             &mut InputMemory::new(Some(1000), 0).unwrap(),
-            None
+            None,
+            None,
         )
         .unwrap());
         assert_eq!(input.calls, 0);

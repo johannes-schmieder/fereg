@@ -58,7 +58,7 @@ pub fn phase_timing_enabled() -> bool {
 
 /// Write one solver-trace line to standard error and, when
 /// `FEREG_SOLVER_TRACE_FILE` names a file, append it there as well.
-pub(crate) fn emit_solver_trace(line: &str) {
+pub fn emit_solver_trace(line: &str) {
     eprintln!("{line}");
     let Some(path) = std::env::var_os("FEREG_SOLVER_TRACE_FILE") else {
         return;

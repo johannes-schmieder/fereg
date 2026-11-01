@@ -27,6 +27,8 @@ BREAK_FIXTURES = {
     "ols-builder": ("estimate_ols_builder_break.do", ("FEREG_NATIVE_BREAK_ARMED", "FEREG_NATIVE_BREAK_ARMED")),
     "ols-lsmr": ("estimate_lsmr_iteration_break.do", ("FEREG_NATIVE_BREAK_ARMED", "FEREG_NATIVE_BREAK_ARMED")),
     "ppml-lsmr": ("estimate_lsmr_iteration_break.do", ("FEPPML_NATIVE_BREAK_ARMED", "FEPPML_NATIVE_BREAK_ARMED")),
+    # Parallel numeric loading: OLS, then PPML, park after their first phase.
+    "input": ("estimate_input_break.do", ("FEREG_NATIVE_BREAK_ARMED", "FEPPML_NATIVE_BREAK_ARMED")),
     "ppml": (
         "estimate_ppml_eclass_break.do",
         (
@@ -442,7 +444,7 @@ def main() -> None:
                 "if `provenance_load_rc' != 0 & `provenance_load_rc' != 110 "
                 "exit `provenance_load_rc'",
                 'plugin call __fereg_break_provenance, selftest "ado=0.5.0" '
-                '"protocol_major=1" "protocol_minor=6" '
+                '"protocol_major=1" "protocol_minor=7" '
                 '"stata=`c(stata_version)\'" "threads=1" "verbose=1"',
             ]
         )
@@ -507,6 +509,10 @@ def main() -> None:
                 print("LSMR: " + event)
             print("TRACE_SHA256: " + sha256_file(trace_path))
             print(f"BOUNDARY: completed {backend} iteration and upstream Cancelled, workers={args.lsmr_workers or 4}, populated/null estimates and exact follow-up fits")
+        if args.fixture_kind == "input":
+            if "FEREG_INPUT_BREAK_RESET_VERIFIED" not in transcript:
+                raise RuntimeError("input Break fixture did not verify rollback/reset")
+            print("BOUNDARY: parallel numeric input after its first joined phase (OLS, PPML), exact follow-up")
         if args.fixture_kind == "ols":
             print(f"BOUNDARY: OLS solver({args.ols_solver})")
             if args.cmg_samples:

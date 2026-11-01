@@ -107,7 +107,7 @@ mod tests {
             "selftest",
             "ado=0.5.0",
             "protocol_major=1",
-            "protocol_minor=6",
+            "protocol_minor=7",
             "stata=18.0",
             "threads=2",
         ]
@@ -139,7 +139,7 @@ mod tests {
         )
         .expect("selftest");
         for field in [
-            "action_protocol=1.6",
+            "action_protocol=1.7",
             "model_wire=2.1",
             "ols_result_wire=1.5",
             "ppml_request_wire=1.8",

@@ -25,6 +25,55 @@ pub(crate) struct OlsInjection {
     /// The selected hidden many-FE policy is public Auto's own preset; it keeps
     /// public two-FE activation so selected-hidden/public science is exact.
     pub(crate) public_activation: bool,
+    pub(crate) input: Option<InputInjection>,
+}
+
+/// Hidden input-transport injections (OLS and PPML). They change only how
+/// observations are read, never the request's arithmetic or public policy.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum InputInjection {
+    /// Keep the serial reader on a qualified host (exact A/B at equal workers).
+    Serial,
+    /// Park after the first parallel phase until a real Break arrives.
+    Break([u8; 32]),
+    /// Panic in one worker block of the first parallel phase.
+    WorkerPanic,
+    /// Report SDK return code 919 from one block of the first parallel phase.
+    ReadFailure,
+}
+
+impl InputInjection {
+    pub(crate) fn apply(
+        self,
+        policy: crate::parallel_input::Policy,
+        ppml: bool,
+    ) -> crate::parallel_input::Policy {
+        use crate::parallel_input::Fault;
+        match self {
+            Self::Serial => policy.serial(),
+            Self::Break(token) => policy.with_fault(Fault::BreakAfterFirstPhase { token, ppml }),
+            Self::WorkerPanic => policy.with_fault(Fault::WorkerPanic),
+            Self::ReadFailure => policy.with_fault(Fault::ReadFailure),
+        }
+    }
+}
+
+/// Decode an input-transport injection; `None` for every other stage.
+pub(crate) fn parse_input_injection(stage: &str, token: &str) -> Result<Option<InputInjection>> {
+    let injection = match stage {
+        "serial_input" => InputInjection::Serial,
+        "input_worker_panic" => InputInjection::WorkerPanic,
+        "input_read_failure" => InputInjection::ReadFailure,
+        "input_break" => {
+            validate_break_marker_token(true, token)?;
+            let mut bytes = [0; 32];
+            bytes.copy_from_slice(token.as_bytes());
+            return Ok(Some(InputInjection::Break(bytes)));
+        }
+        _ => return Ok(None),
+    };
+    validate_break_marker_token(false, token)?;
+    Ok(Some(injection))
 }
 
 /// Resolve mechanism ownership independently of routing and marker controls.
@@ -106,6 +155,19 @@ fn parse_checkpoint_preset(stage: &str, solver: FeSolverKind) -> Result<RoutingP
 /// Decode the bounded OLS experiment presets without adding public syntax.
 pub(crate) fn parse_ols(stage: &str, solver: FeSolverKind, token: &str) -> Result<OlsInjection> {
     let (ownership, cells) = ols_mechanisms(stage, solver)?;
+    if let Some(input) = parse_input_injection(stage, token)? {
+        // Input injections keep the public policy, so only loading differs.
+        return Ok(OlsInjection {
+            routing: None,
+            ownership,
+            cells,
+            it_coefficients: false,
+            native_break_token: None,
+            lsmr_iteration_break: false,
+            public_activation: true,
+            input: Some(input),
+        });
+    }
     let (routing, break_native) = match stage {
         // A marker alone observes the public request; it must not select an
         // experimental preset or suppress the public ownership/cell policy.
@@ -230,6 +292,7 @@ pub(crate) fn parse_ols(stage: &str, solver: FeSolverKind, token: &str) -> Resul
         // Selected public policies keep public two-FE activation, so the
         // hidden invocation equals uninjected Auto on every design.
         public_activation: PUBLIC_ACTIVATION.contains(&stage),
+        input: None,
     })
 }
 

@@ -1507,8 +1507,14 @@ fn with_certified_fixture_probe(
         &mut spi,
     )
     .expect("PPML fixture input");
-    let adjustment = load_adjustment(action.adjustment, loaded.candidate.view(), &mut spi)
-        .expect("PPML fixture adjustment");
+    let adjustment = load_adjustment(
+        action.adjustment,
+        loaded.candidate.view(),
+        &mut spi,
+        None,
+        &mut crate::input_memory::InputMemory::new(None, 0).unwrap(),
+    )
+    .expect("PPML fixture adjustment");
     let result = fit_prepared_ppml(
         PreparedPpmlRequestV1 {
             bias: None,
@@ -1903,8 +1909,14 @@ fn no_route_rejects_before_canonical_numeric_allocation_and_stores_nothing() {
             &mut spi,
         )
         .expect("N=100,000 loaded input");
-        let adjustment = load_adjustment(action.adjustment, loaded.candidate.view(), &mut spi)
-            .expect("N=100,000 adjustment");
+        let adjustment = load_adjustment(
+            action.adjustment,
+            loaded.candidate.view(),
+            &mut spi,
+            None,
+            &mut crate::input_memory::InputMemory::new(None, 0).unwrap(),
+        )
+        .expect("N=100,000 adjustment");
         let mut memory = action.memory;
         memory.available_bytes = Some(1);
         memory.embedding_resident_bytes = 0;
@@ -2313,6 +2325,7 @@ fn numeric_loader_hint_is_adopted_by_ppml_generation_zero() {
         &mut memory,
         &mut spi,
         action.linear.execution.threads,
+        crate::parallel_input::Policy::SERIAL,
         Some(&mut hint),
     )
     .unwrap();

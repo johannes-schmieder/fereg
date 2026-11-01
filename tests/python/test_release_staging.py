@@ -15,7 +15,7 @@ from scripts import package_release, stage_release, stage_local_install  # noqa:
 class ReleaseStagingTests(unittest.TestCase):
     PRODUCTION_STATA_FILES = (
         "fereg.ado", "fereg_run.ado", "_fereg_estimate_public.ado",
-        "_fereg_estimate_ols.ado", "_fereg_load.ado", "_fereg_factor_sample.ado", "_fereg_indepvars.ado", "_fereg_memory_baseline.ado", "_fereg_memory_validate.ado",
+        "_fereg_estimate_ols.ado", "_fereg_load.ado", "_fereg_factor_sample.ado", "_fereg_indepvars.ado", "_fereg_memory_baseline.ado", "_fereg_memory_validate.ado", "_fereg_input_host.ado",
         "feppml.ado", "_fereg_ppml.ado", "_fereg_estimate_ppml.ado", "_fereg_ppml_result_mata.ado",
         "_fereg_ppml_result_mata.json", "_fereg_ppml_validation_error.mo",
         "_fereg_ppml_validate_result.mo", "_fereg_ppml_post_scalars.mo",
@@ -136,7 +136,7 @@ class ReleaseStagingTests(unittest.TestCase):
             self.assertFalse(any('fereg_legacy_' in name for name in names))
             self.assertEqual(manifest["version"], "0.5.0")
             self.assertEqual(manifest["phase"], "beta")
-            self.assertEqual(manifest["action_protocol"], "1.6")
+            self.assertEqual(manifest["action_protocol"], "1.7")
             self.assertEqual(manifest["ols_result_wire"], "1.5")
             self.assertEqual(manifest["model_wire"], "2.1")
             self.assertEqual(manifest["ppml_request_wire"], "1.8")

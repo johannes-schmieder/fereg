@@ -46,7 +46,7 @@ static ST_retcode fake_call(int argc, char *argv[])
     }
     if (found != 1) return 999;
     strcpy(display_buffer,
-           "fereg.plugin_version=0.5.0 fereg.action_protocol=1.6 "
+           "fereg.plugin_version=0.5.0 fereg.action_protocol=1.7 "
            "fereg.model_wire=2.1 fereg.ols_result_wire=1.5 "
            "fereg.ppml_request_wire=1.8 fereg.ppml_result_wire=1.5 "
            "fereg.selftest.overall=pass fereg.ado_plugin_compatible=yes");

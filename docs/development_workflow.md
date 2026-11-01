@@ -113,7 +113,10 @@ Run broad suites at integration boundaries, not after each prose-only edit.
 
 ## Native and frontend boundaries
 
-SPI runs on the main thread. Rust workers use owned memory. Keep panic containment,
+SPI runs on the main thread, except the read-only numeric accessor inside the
+qualified parallel numeric window (SPEC §17); extend that window's host table only
+with recorded qualification (oracle, failure and live-Break fixtures, missing
+witness) for the new combination. Rust workers use owned memory. Keep panic containment,
 fallible allocation, Break handling, validation-before-publication and rollback.
 Original factor slots/base flags, independent certificates and both bias modes
 remain mandatory. Different workers need scientific agreement and stable decisions;

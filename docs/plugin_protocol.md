@@ -11,7 +11,7 @@ request/result layouts are independently versioned:
 
 | Contract | 0.5.0 version |
 |---|---:|
-| Action protocol | 1.6 |
+| Action protocol | 1.7 |
 | Model wire | 2.1 |
 | OLS result wire | 1.5 |
 | PPML request wire | 1.8 |
@@ -58,6 +58,10 @@ the routing injections below select experimental algorithms for qualification.
 |---|---|---|
 | `inject=breaknative` + `break_marker_token=<32 lowercase hex>` | OLS, PPML | Arms native Break: displays `FEREG_NATIVE_BREAK_ARMED` (OLS) or `FEPPML_NATIVE_BREAK_ARMED` (PPML), creates `<tmp>/<fereg\|feppml>-native-break-<token>.marker`, and waits for Stata Break inside the native call |
 | `inject=lsmr_iteration_break` + `break_marker_token=<32 lowercase hex>` | OLS, PPML | Requires explicit `solver=lsmr` and at least two categorical intercept FEs. Parks after a completed, continuing upstream iteration; the main-thread poller emits the native marker, real Break sets the cancellation signal, and all work joins before rollback |
+| `inject=serial_input` | OLS, PPML | Keeps the serial readers on a qualified host; public policy and arithmetic unchanged, so equal worker counts compare loading paths exactly |
+| `inject=input_break` + `break_marker_token=<32 lowercase hex>` | OLS, PPML | After the first parallel input phase has joined and closed its window, creates the native marker and polls until a real Break; the transaction rolls back |
+| `inject=input_worker_panic` | OLS, PPML | Panics in one worker block of the first parallel input phase; the window closes during unwind and the FFI boundary returns r(3499) |
+| `inject=input_read_failure` | OLS, PPML | One block of the first parallel input phase reports SDK code 919; the failure is returned (never retried serially) and rolls back |
 | `inject=panic` | PPML | Panics after validation to prove ABI panic containment (OLS uses the `panic-test` action) |
 | `inject=allocation` | PPML | Fails the FE-recovery reservation to prove atomic allocation failure |
 | `inject=routing_h{4\|8\|16\|32}_k{0\|1\|2}` | OLS | Selects one of 12 eligible two-FE routing arms: the incumbent reaches iteration `h` before a bounded optional CMG build; `k` is the high-degree worker tree sample count (zero retains the hybrid graph). More-than-two-FE categorical requests fail clearly |
@@ -158,9 +162,30 @@ sets both and sends Break only after the marker file exists. Fixtures:
 `parity_ppmlhdfe/estimate_ppml_hidden_allocation.do` and the PPML public-scope
 fixtures.
 
+## Parallel numeric input
+
+Action protocol 1.7 adds three optional public host facts to the OLS and PPML
+requests, computed by `_fereg_input_host` from `c()` values: `host_edition`
+(`c(edition_real)`, else from `c(MP)`/`c(SE)`), `host_interface` (`console` when
+`c(console)` is `console`, otherwise `gui`) and `host_aliases` (1 when any
+variable the plugin reads is a frame alias, Stata 18+). With the existing
+`stata` version, the plugin's compiled host table decides whether the numeric
+window may be used; absent or unknown facts keep the serial readers.
+
+The C bridge exports `fereg_spi_numeric_window_open`, `_read` and `_close`.
+Open and close run on the bound Stata thread; open validates the observation
+count and every variable (in range, numeric) and captures `_stata_->vdata` and
+`SV_missval`. Read is the only wrapper callable from another thread, and only
+inside an open window with its generation; on success it writes every requested
+row and slot (values, `>= SV_missval` flags, or the slot fills for excluded
+rows). While a window is open every other wrapper, including `SF_poll`, refuses
+with 498. A window found open at a later `stata_call` entry (a leaked guard) is
+closed, reported once and the call fails; the next call proceeds.
+
 ## Break and cancellation
 
-SPI polling stays on Stata's thread. OLS preparation, inference and derived
+SPI polling stays on Stata's thread; during parallel numeric input it happens
+between window phases. OLS preparation, inference and derived
 observation outputs, including saved fixed-effect recovery, run on the action
 team while Stata's thread polls Break every 20 ms; PPML polls at its
 IRLS, separation, inference and publication safe points. On Break the plugin

@@ -435,9 +435,80 @@ struct FakeSpi {
     waiting_checks: usize,
     stores: Vec<StoreEvent>,
     store_error: Option<FeregError>,
+    numeric_window: bool,
+    numeric_window_opens: usize,
+}
+
+/// Worker-callable view of the fake's cells. Flags are the stored SDK
+/// classification, as in the fake's serial reads.
+struct FakeWindow<'a> {
+    data: &'a BTreeMap<(u32, usize), (f64, bool)>,
+    variables: Vec<u32>,
+}
+
+// SAFETY: on Ok every addressed row of every requested slot is written (values,
+// flags, or the slot fills for excluded rows); destinations are disjoint.
+unsafe impl crate::parallel_input::NumericBlockSource for FakeWindow<'_> {
+    unsafe fn read(
+        &self,
+        request: &crate::parallel_input::BlockRead,
+    ) -> std::result::Result<(), i32> {
+        for offset in 0..request.rows {
+            // SAFETY: the caller's pointers cover `rows` rows and `slots` slots.
+            unsafe {
+                let excluded = !request.retained.is_null() && !request.retained.add(offset).read();
+                for slot in 0..request.slots {
+                    let value_out = request.values.add(slot).read().add(offset);
+                    let flag_out = (!request.missing.is_null())
+                        .then(|| request.missing.add(slot).read().add(offset));
+                    let (value, missing) = if excluded {
+                        (
+                            request.excluded_values.add(slot).read(),
+                            request.excluded_missing.add(slot).read(),
+                        )
+                    } else {
+                        let variable = self.variables[request.first_slot + slot];
+                        *self
+                            .data
+                            .get(&(variable, request.first_row + offset + 1))
+                            .ok_or(198)?
+                    };
+                    value_out.write(value);
+                    if let Some(flag) = flag_out {
+                        flag.write(missing);
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
 }
 
 impl SpiApi for FakeSpi {
+    fn supports_numeric_window(&self) -> bool {
+        self.numeric_window
+    }
+
+    fn with_numeric_window(
+        &mut self,
+        variables: &[u32],
+        rows: usize,
+        run: &mut dyn FnMut(&dyn crate::parallel_input::NumericBlockSource) -> Result<()>,
+    ) -> Result<bool> {
+        if !self.numeric_window
+            || rows != self.nobs
+            || variables.iter().any(|v| self.string_variables.contains(v))
+        {
+            return Ok(false);
+        }
+        self.numeric_window_opens += 1;
+        run(&FakeWindow {
+            data: &self.data,
+            variables: variables.to_vec(),
+        })
+        .map(|()| true)
+    }
+
     fn supports_numeric_rows(&self) -> bool {
         self.numeric_rows_enabled
     }
@@ -1029,6 +1100,8 @@ fn fixture(vce: OlsVceKind) -> (Vec<String>, FakeSpi) {
                 ErrorCode::Internal,
                 "injected SPI output-store failure",
             )),
+            numeric_window: false,
+            numeric_window_opens: 0,
         },
     )
 }
@@ -2179,6 +2252,7 @@ fn optional_membership_scratch_preserves_ols_modes_and_moment_cache_at_budget_bo
         &mut loading,
         &mut spi,
         Some(ThreadTeam::new(unrestricted.fit.execution.threads)),
+        None,
         &mut rhs,
         usize::MAX,
         unrestricted.loaded_rhs_layout,
@@ -2375,6 +2449,7 @@ fn owned_load_columns_preserve_completeness_and_preparation() {
             &mut memory,
             &mut spi,
             Some(ThreadTeam::new(action.fit.execution.threads)),
+            None,
             &mut rhs,
             usize::MAX,
             action.loaded_rhs_layout,
@@ -3369,6 +3444,7 @@ fn loaded_rhs_admission_recipe_and_missing_fallback_preserve_estimates() {
                 Some(ThreadTeam::new(
                     ThreadConfig::from_requested(threads, false).unwrap(),
                 )),
+                None,
                 &mut rhs,
                 budget,
                 compiled_width,
@@ -3607,6 +3683,7 @@ fn slope_loaded_rhs_preserves_classification_and_inference() {
                 &mut memory,
                 &mut spi,
                 team,
+                None,
                 &mut rhs,
                 required,
                 compiled,
@@ -3813,6 +3890,7 @@ fn weighted_loaded_rhs_preserves_sample_domains_and_inference() {
                     &mut memory,
                     &mut spi,
                     Some(ThreadTeam::new(threads)),
+                    None,
                     &mut rhs,
                     budget,
                     compiled_width,
@@ -4101,6 +4179,7 @@ fn string_loading_budget_and_interruption_leave_no_public_stores() {
             false,
             &mut memory,
             &mut spi,
+            None,
             None,
             &mut None,
             0,
@@ -5073,5 +5152,192 @@ fn fe_release_ceiling_covers_concurrent_moments_and_exact_loaded_rhs_capacity() 
                 .unwrap(),
             ceiling + metadata + rhs_bytes + moments
         );
+    }
+}
+
+/// The parallel window changes only how observations are read: for restricted
+/// and unrestricted samples, every loader path, weights and a string peer,
+/// the loaded input, packed rows and prepared model equal the serial reader's.
+#[test]
+fn parallel_numeric_window_loads_exactly_what_the_serial_reader_loads() {
+    let (_, mut base) = fixture(OlsVceKind::Iid);
+    base.nobs = 40_003;
+    base.nvars = 14;
+    base.numeric_rows_enabled = true;
+    base.data.clear();
+    for row in 1..=base.nobs {
+        for variable in 1..=13_u32 {
+            let value = match variable {
+                1 => f64::from(u8::from(row % 3 != 1 && row % 1_000 != 7)),
+                9 => ((row - 1) / 7) as f64,
+                11 => (1 + row % 7) as f64,
+                12 => ((row - 1) / 13) as f64,
+                _ => ((row * variable as usize) as f64).sin(),
+            };
+            // Missing cells use the fake tile reader's boundary value.
+            let cell = if matches!(variable, 3..=8 | 13) && row % 97 == variable as usize {
+                (1e100, true)
+            } else {
+                (value, false)
+            };
+            base.data.insert((variable, row), cell);
+        }
+        base.string_data
+            .insert((14, row), format!("s{}", (row * 7) % 11).into_bytes());
+    }
+    base.string_variables.insert(14);
+    let mut template = OlsRequestV1 {
+        model: CompiledTermGraph {
+            sources: Vec::new(),
+            terms: Vec::new(),
+        },
+        bindings: vec![
+            OlsInputBinding {
+                stata_var_position: 1,
+                role: OlsInputRole::Candidate,
+            },
+            OlsInputBinding {
+                stata_var_position: 2,
+                role: OlsInputRole::Outcome,
+            },
+        ],
+        absorbed_terms: vec![AbsorbedTerm {
+            id: AbsorbTermId::new(1).unwrap(),
+            intercept: true,
+            categorical_sources: vec![SourceId::new(7).unwrap()],
+            slope_sources: vec![SourceId::new(8).unwrap()],
+            label: "g##c.z".into(),
+            saved_name: String::new(),
+        }],
+        include_intercept: true,
+        keep_singletons: false,
+    };
+    for id in 1..=8 {
+        let source = SourceId::new(id).unwrap();
+        template.model.sources.push(SourceEntry {
+            id: source,
+            canonical_name: format!("x{id}"),
+        });
+        template.bindings.push(OlsInputBinding {
+            stata_var_position: id + 2,
+            role: OlsInputRole::NumericSource(source),
+        });
+        if id <= 6 {
+            let mut term = continuous_term(source);
+            term.id = TermId::new(id).unwrap();
+            term.order = TermOrder::new(id).unwrap();
+            term.coefficient_slot = CoefficientSlot::new(id).unwrap();
+            term.canonical_token = format!("c.x{id}");
+            template.model.terms.push(term);
+        }
+    }
+    // Shapes: pipeline FE (path A), a second categorical term (batched path
+    // even when unrestricted), a string categorical peer (strings stay on the
+    // caller thread after the numeric window), and a lone string FE (the
+    // pipeline team exists, but string input uses the batched loader).
+    for shape in 0..4 {
+        for weighted in [false, true] {
+            let mut request = template.clone();
+            if weighted {
+                request.bindings.push(OlsInputBinding {
+                    stata_var_position: 11,
+                    role: OlsInputRole::AnalyticWeight,
+                });
+            }
+            if shape > 0 {
+                let (position, name) = if shape == 1 { (12, "h") } else { (14, "s") };
+                if shape == 3 {
+                    // Replace the numeric FE and slope sources (ids 7, 8).
+                    request.absorbed_terms.clear();
+                    let fe = |id: SourceId| (7..=8).contains(&id.get());
+                    request.model.sources.retain(|entry| !fe(entry.id));
+                    request.bindings.retain(|binding| {
+                        !matches!(binding.role, OlsInputRole::NumericSource(id) if fe(id))
+                    });
+                }
+                let source = SourceId::new(if shape == 3 { 7 } else { 9 }).unwrap();
+                request.model.sources.push(SourceEntry {
+                    id: source,
+                    canonical_name: name.into(),
+                });
+                request.bindings.push(OlsInputBinding {
+                    stata_var_position: position,
+                    role: OlsInputRole::NumericSource(source),
+                });
+                request.absorbed_terms.push(AbsorbedTerm {
+                    id: AbsorbTermId::new(if shape == 3 { 1 } else { 2 }).unwrap(),
+                    intercept: true,
+                    categorical_sources: vec![source],
+                    slope_sources: Vec::new(),
+                    label: name.into(),
+                    saved_name: String::new(),
+                });
+            }
+            let compiled = numeric_loaded_rhs_layout(&request.validate_ppml_and_compile().unwrap());
+            for candidate_all in [true, false] {
+                let reference =
+                    load_ols_input(&request, candidate_all, false, &mut base.clone()).unwrap();
+                for threads in [2, 3, 8] {
+                    let config = ThreadConfig::from_requested(threads, false).unwrap();
+                    let team = (candidate_all && numeric_pipeline_effects_supported(&request))
+                        .then(|| ThreadTeam::new(config));
+                    let load = |window: bool| {
+                        let mut spi = base.clone();
+                        spi.numeric_window = window;
+                        let mut rhs = None;
+                        let mut hint = None;
+                        let budget = spi.nobs * 16 * 8;
+                        let mut memory = loading_memory(&request, spi.nobs, 0, 0, None).unwrap();
+                        let loaded = load_ols_input_with_team(
+                            &request,
+                            candidate_all,
+                            false,
+                            &mut memory,
+                            &mut spi,
+                            team,
+                            crate::parallel_input::Transport::new(
+                                crate::parallel_input::Policy::PARALLEL,
+                                config,
+                            ),
+                            &mut rhs,
+                            budget,
+                            compiled,
+                            false,
+                            Some(crate::numeric_pipeline::PreparedLoadTarget::Borrowed(
+                                &mut hint,
+                            )),
+                        )
+                        .unwrap();
+                        (loaded, rhs, hint, spi.numeric_window_opens)
+                    };
+                    let (serial, serial_rhs, serial_hint, _) = load(false);
+                    let (parallel, parallel_rhs, parallel_hint, opens) = load(true);
+                    let label = format!(
+                        "shape={shape} weighted={weighted} all={candidate_all} threads={threads}"
+                    );
+                    assert!(opens > 0, "{label}: the window path did not execute");
+                    assert_eq!(serial, reference, "{label}");
+                    assert_eq!(parallel, reference, "{label}");
+                    assert_eq!(parallel_rhs, serial_rhs, "{label}");
+                    assert_eq!(parallel_hint.is_some(), serial_hint.is_some(), "{label}");
+                    let prepare = |loaded, hint| {
+                        fereg_core::ols::prepare_model_owned_with_load_hint(
+                            &request,
+                            &[],
+                            loaded,
+                            true,
+                            hint,
+                            0,
+                        )
+                        .unwrap()
+                    };
+                    assert_eq!(
+                        prepare(parallel, parallel_hint),
+                        prepare(serial, serial_hint),
+                        "{label}"
+                    );
+                }
+            }
+        }
     }
 }

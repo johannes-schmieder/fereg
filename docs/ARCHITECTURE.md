@@ -8,7 +8,7 @@ inference. [SPEC](SPEC.md) defines the scientific contract.
 |---|---|
 | `stata/` | Public ado, parsing, result validation, publication and rollback |
 | `plugin/` | Small C bridge to Stata SPI |
-| `crates/fereg-plugin` | Main-thread SPI loading, FFI panic boundary and publication |
+| `crates/fereg-plugin` | SPI loading (main thread, or the qualified parallel numeric window), FFI panic boundary and publication |
 | `crates/fereg-core` | Safe numerical core, memory admission and worker policies |
 | `crates/fereg-oracle` | Independent dense scientific oracles; development only |
 | `crates/fereg-testkit` | Native fixtures and independent regression support |
@@ -34,6 +34,25 @@ Dense, scratch and implicit storage retain mathematically appropriate kernels.
 The Low path keeps one row-major scratch file through fit and inference. Scratch
 read failures revoke cached pages; mutation failures poison the affected owner.
 Public memory choices, fallible allocation and transactional failure are preserved.
+
+Parallel numeric input (`parallel_input.rs`, SPEC §17) is one transport for
+every eligible observation read: the tiled pipeline's columns and packed RHS,
+the batched loader's outcome, numeric sources, weights and candidate marker
+(restricted samples read the marker per block and skip excluded payload), and
+PPML offset/exposure and bias-unit columns. Each phase opens the C bridge's
+numeric window, lends a bounded set of original-row blocks to the action team
+(`threads()` workers; the main thread waits without SPI calls), closes it and
+polls Break. Blocks write disjoint rows of reserved destinations directly
+(slot groups of 64, no zero-fill or extra full-dataset matrix); lengths are set
+after every block succeeded. The only unsafe code is the window FFI adapter
+(`ffi.rs`) and this module's raw block writes and `set_len`. Small inputs (the
+general `StagePlan` work rule), unqualified hosts, alias variables, refused
+admission or a refused first window keep the serial readers below; string
+sources stay on Stata's thread after the numeric window. With the parallel
+reader, the categorical prepared-load path reads every column first and then
+factorizes on the team, without overlap. Developer injections (`serial_input`,
+`input_break`, `input_worker_panic`, `input_read_failure`) and the solver-trace
+input digest support qualification.
 
 The unrestricted numeric loader can complete categorical sources first and
 factorize their Rust-owned columns while the caller reads remaining columns.
@@ -146,7 +165,8 @@ representatives.
 Each estimator has one named matrix schema for layout, capacity, precommit and
 publication. `publication.rs` supplies ordered scalar/matrix/output publication;
 completion is written last. Workers only touch Rust-owned memory. FFI catches
-panics; SPI stays on Stata's main thread.
+panics; SPI stays on Stata's main thread except the read-only numeric accessor
+inside the parallel numeric window, while the main thread waits.
 
 `kernels.rs` holds hot `mul_add` loops and the borrowed-MAP group-mean passes.
 Baseline x86-64 code calls the library

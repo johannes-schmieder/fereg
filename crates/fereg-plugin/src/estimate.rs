@@ -172,6 +172,7 @@ struct EstimateAction {
     /// Hidden-adapter Break injection token; `None` for every ordinary action.
     native_break_token: Option<String>,
     lsmr_iteration_break: bool,
+    input_policy: crate::parallel_input::Policy,
 }
 
 #[derive(Debug)]
@@ -214,6 +215,7 @@ struct EstimateActionSpec {
     matrices: ResultMatrices,
     native_break_token: Option<String>,
     lsmr_iteration_break: bool,
+    input_policy: crate::parallel_input::Policy,
 }
 
 #[derive(Debug)]
@@ -273,6 +275,7 @@ pub fn estimate_ols(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         &mut input_memory,
         spi,
         input_team,
+        crate::parallel_input::Transport::new(action.input_policy, action.fit.execution.threads),
         &mut loaded_rhs,
         rhs_budget,
         action.loaded_rhs_layout,
@@ -281,6 +284,7 @@ pub fn estimate_ols(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
             &mut load_columns,
         )),
     )?;
+    crate::parallel_input::trace_loaded_input("ols", &loaded, load_columns.as_ref(), &[]);
     action.loaded_fit_workspace_bytes = loaded_rhs
         .as_ref()
         .map_or(0, |rows| rows.capacity() as u128 * 8);
@@ -1052,6 +1056,7 @@ impl EstimateActionSpec {
             values.get("break_marker_token").map_or("", String::as_str),
         )?;
         let threads = parse_usize(&values, "threads")?;
+        let input_policy = crate::parallel_input::Policy::from_request(&values);
         let (cmg_schur_degree, cmg_schur_samples, cmg_schur_seed) =
             parse_cmg_schur_options(&values, solver)?;
         let specification = Self {
@@ -1128,6 +1133,9 @@ impl EstimateActionSpec {
             },
             native_break_token: injection.native_break_token,
             lsmr_iteration_break: injection.lsmr_iteration_break,
+            input_policy: injection
+                .input
+                .map_or(input_policy, |input| input.apply(input_policy, false)),
         };
         reject_unknown_fields(ACTION_ESTIMATE_OLS, &values, OLS_FIELDS)?;
         if specification.cells != fereg_core::ols::PreparedOlsCells::Off
@@ -1406,6 +1414,7 @@ impl EstimateActionSpec {
             matrices,
             native_break_token: self.native_break_token.clone(),
             lsmr_iteration_break: self.lsmr_iteration_break,
+            input_policy: self.input_policy,
         };
         action.metadata_owner_bytes = action
             .metadata_capacity_bytes()
@@ -1459,6 +1468,7 @@ pub(crate) fn load_ols_input(
         &mut memory,
         spi,
         None,
+        None,
         &mut None,
         0,
         None,
@@ -1478,6 +1488,7 @@ pub(crate) fn load_preparation_input(
         false,
         &mut memory,
         spi,
+        None,
         None,
         &mut None,
         0,
@@ -1546,6 +1557,7 @@ pub(crate) fn loading_memory(
 /// Load with the action's worker team when every candidate is retained and
 /// the effects support the tiled numeric pipeline, as the OLS action does.
 /// Loaded values are identical; only the reading schedule changes.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn load_ols_input_with_action_team(
     request: &OlsRequestV1,
     candidate_all: bool,
@@ -1553,6 +1565,7 @@ pub(crate) fn load_ols_input_with_action_team(
     memory: &mut InputMemory,
     spi: &mut dyn SpiApi,
     threads: fereg_core::ThreadConfig,
+    policy: crate::parallel_input::Policy,
     load_hint: Option<&mut Option<PreparedOlsLoadHint>>,
 ) -> Result<LoadedOlsInput> {
     let team = (candidate_all && numeric_pipeline_effects_supported(request))
@@ -1564,6 +1577,7 @@ pub(crate) fn load_ols_input_with_action_team(
         memory,
         spi,
         team,
+        crate::parallel_input::Transport::new(policy, threads),
         &mut None,
         0,
         None,
@@ -1608,6 +1622,7 @@ fn load_ols_input_with_team(
     memory: &mut InputMemory,
     spi: &mut dyn SpiApi,
     team: Option<ThreadTeam>,
+    transport: Option<crate::parallel_input::Transport>,
     rhs: &mut Option<Vec<f64>>,
     rhs_budget: usize,
     compiled_rhs_layout: Option<crate::numeric_pipeline::NumericRhsLayout>,
@@ -1615,18 +1630,53 @@ fn load_ols_input_with_team(
     mut load_hint: Option<crate::numeric_pipeline::PreparedLoadTarget<'_>>,
 ) -> Result<LoadedOlsInput> {
     let n = spi.nobs()?;
+    let mut candidate_position = if candidate_all {
+        None
+    } else {
+        Some(role_position(request, InputRoleTag::Candidate)?)
+    };
+    let has_weight = request.bindings.iter().any(|binding| {
+        matches!(
+            binding.role,
+            OlsInputRole::AnalyticWeight
+                | OlsInputRole::FrequencyWeight
+                | OlsInputRole::ProbabilityWeight
+        )
+    });
+    let numeric_width = request.model.sources.len() + 1 + usize::from(has_weight);
+    // The tiled pipeline keeps its own team and gates; the parallel reader
+    // only replaces how its tiles, or the batched loader's chunks, are read.
+    let defer_columns = candidate_all
+        && (1..=64).contains(&numeric_width)
+        && team.is_some_and(|t| {
+            fereg_core::parallel::StagePlan::new(n as u128 * numeric_width as u128, 2, t.threads())
+                .lanes
+                > 1
+        })
+        && spi.supports_numeric_rows();
+    // The batched loader below (unrestricted all-numeric input, or at least
+    // INPUT_CANDIDATE_BATCH_MIN_ROWS rows) may read through the parallel
+    // window. Its destinations and marker are then reserved, not zero-filled.
+    // The tiled pipeline reads only all-numeric input; a string peer leaves
+    // the deferred columns to the batched loader.
+    let batch_transport = match transport {
+        Some(transport) if !candidate_first => {
+            let numeric = all_sources_numeric(request, spi)?;
+            let batched = n >= INPUT_CANDIDATE_BATCH_MIN_ROWS || (candidate_all && numeric);
+            (batched && !(defer_columns && numeric)).then_some(transport)
+        }
+        _ => None,
+    };
+    let reserve_columns = defer_columns || batch_transport.is_some();
     let mut candidate = if candidate_all {
         fereg_core::data::UniformValues::Repeated {
             len: n,
             value: true,
         }
+    } else if batch_transport.is_some() {
+        reserved_empty::<bool>(n, "OLS candidate marker")?.into()
     } else {
         reserved_filled(n, false, "OLS candidate marker")?.into()
-    };
-    let mut candidate_position = if candidate_all {
-        None
-    } else {
-        Some(role_position(request, InputRoleTag::Candidate)?)
     };
     if candidate_first {
         if let Some(position) = candidate_position.take() {
@@ -1643,24 +1693,7 @@ fn load_ols_input_with_team(
             }
         }
     }
-    let has_weight = request.bindings.iter().any(|binding| {
-        matches!(
-            binding.role,
-            OlsInputRole::AnalyticWeight
-                | OlsInputRole::FrequencyWeight
-                | OlsInputRole::ProbabilityWeight
-        )
-    });
-    let numeric_width = request.model.sources.len() + 1 + usize::from(has_weight);
-    let defer_columns = candidate_all
-        && (1..=64).contains(&numeric_width)
-        && team.is_some_and(|t| {
-            fereg_core::parallel::StagePlan::new(n as u128 * numeric_width as u128, 2, t.threads())
-                .lanes
-                > 1
-        })
-        && spi.supports_numeric_rows();
-    let mut outcome = loaded_column_reservation(n, "OLS outcome", defer_columns)?;
+    let mut outcome = loaded_column_reservation(n, "OLS outcome", reserve_columns)?;
     let mut source_loaders = reserved_empty(request.model.sources.len(), "OLS source table")?;
     for source in &request.model.sources {
         let position = source_position(request, source.id)?;
@@ -1685,7 +1718,7 @@ fn load_ols_input_with_team(
             OlsSourceLoader::Numeric(loaded_column_reservation(
                 n,
                 "OLS numeric source",
-                defer_columns,
+                reserve_columns,
             )?)
         };
         push_reserved(
@@ -1699,13 +1732,13 @@ fn load_ols_input_with_team(
     let frequency_position = weight_position(request, OlsInputRole::FrequencyWeight);
     let probability_position = weight_position(request, OlsInputRole::ProbabilityWeight);
     let mut analytic_weight = analytic_position
-        .map(|_| loaded_column_reservation(n, "analytic weight", defer_columns))
+        .map(|_| loaded_column_reservation(n, "analytic weight", reserve_columns))
         .transpose()?;
     let mut frequency_weight = frequency_position
-        .map(|_| loaded_column_reservation(n, "frequency weight", defer_columns))
+        .map(|_| loaded_column_reservation(n, "frequency weight", reserve_columns))
         .transpose()?;
     let mut probability_weight = probability_position
-        .map(|_| loaded_column_reservation(n, "probability weight", defer_columns))
+        .map(|_| loaded_column_reservation(n, "probability weight", reserve_columns))
         .transpose()?;
     let mut source_positions = reserved_empty(request.model.sources.len(), "OLS source positions")?;
     for source in &request.model.sources {
@@ -1801,6 +1834,7 @@ fn load_ols_input_with_team(
                 memory,
                 rhs.as_mut().zip(rhs_layout),
                 hint,
+                transport,
             )?
         } else {
             false
@@ -1815,13 +1849,39 @@ fn load_ols_input_with_team(
                 team.expect("deferred input has a team"),
                 memory,
                 rhs.as_mut().zip(rhs_layout),
+                transport,
             )?
     } else {
         false
     };
-    if defer_columns && !reserved_read {
+    // The batched loader's numeric sources (strings stay on Stata's thread
+    // below) and, for a restricted sample, its candidate marker.
+    let transported = match batch_transport {
+        Some(transport) => read_batch_parallel(
+            spi,
+            transport,
+            memory,
+            n,
+            (outcome_position, &mut outcome),
+            (&mut source_loaders, &source_positions),
+            [
+                (analytic_position, analytic_weight.as_mut()),
+                (frequency_position, frequency_weight.as_mut()),
+                (probability_position, probability_weight.as_mut()),
+            ],
+            (candidate_position, &mut candidate),
+        )?,
+        None => false,
+    };
+    if transported {
+        candidate_position = None;
+    }
+    if reserve_columns && !reserved_read && !transported {
         // A rejected optional path has not read observations. Restore the
         // initialized arrays required by the ordinary loader before fallback.
+        if let fereg_core::data::UniformValues::Explicit(values) = &mut candidate {
+            values.resize(n, false);
+        }
         outcome.values.resize(n, 0.0);
         outcome.missing.resize(n, false);
         for (_, loader) in &mut source_loaders {
@@ -1891,7 +1951,7 @@ fn load_ols_input_with_team(
                 missing.push(destination.missing.as_mut_slice());
             }
         }
-        if !reserved_read {
+        if !reserved_read && !transported {
             read_numeric_columns_in_chunks(
                 spi,
                 &positions,
@@ -1990,8 +2050,83 @@ fn load_ols_input_with_team(
     })
 }
 
+/// Read the batched loader's reserved numeric columns (outcome, numeric
+/// sources, weight) and, with a marker position, the candidate through the
+/// parallel window. `Ok(false)` declines before any observation is read.
+#[allow(clippy::too_many_arguments)]
+fn read_batch_parallel(
+    spi: &mut dyn SpiApi,
+    transport: crate::parallel_input::Transport,
+    memory: &mut InputMemory,
+    rows: usize,
+    outcome: (u32, &mut LoadedNumericColumn),
+    sources: (&mut [(SourceId, OlsSourceLoader)], &[u32]),
+    weights: [(Option<u32>, Option<&mut LoadedNumericColumn>); 3],
+    candidate: (Option<u32>, &mut fereg_core::data::UniformValues<bool>),
+) -> Result<bool> {
+    fn target(
+        position: u32,
+        column: &mut LoadedNumericColumn,
+    ) -> crate::parallel_input::Target<'_> {
+        crate::parallel_input::Target {
+            position,
+            values: &mut column.values,
+            missing: &mut column.missing,
+            excluded: (0.0, false),
+        }
+    }
+    let mut targets = reserved_empty(sources.0.len() + 2, "parallel numeric input targets")?;
+    targets.push(target(outcome.0, outcome.1));
+    for ((_, loader), position) in sources.0.iter_mut().zip(sources.1) {
+        if let OlsSourceLoader::Numeric(column) = loader {
+            targets.push(target(*position, column));
+        }
+    }
+    for (position, column) in weights {
+        if let (Some(position), Some(column)) = (position, column) {
+            targets.push(target(position, column));
+        }
+    }
+    let marker = match candidate {
+        (Some(position), fereg_core::data::UniformValues::Explicit(output)) => {
+            crate::parallel_input::Candidate::Marker { position, output }
+        }
+        _ => crate::parallel_input::Candidate::All,
+    };
+    crate::parallel_input::try_read(
+        spi,
+        transport,
+        memory,
+        rows,
+        &mut targets,
+        marker,
+        None,
+        "numeric column read",
+    )
+}
+
+/// Metadata-only pre-scan (no observation read). The source loop below
+/// remains the authoritative string/strL validation.
+fn all_sources_numeric(request: &OlsRequestV1, spi: &mut dyn SpiApi) -> Result<bool> {
+    for source in &request.model.sources {
+        if spi.variable_is_string(source_position(request, source.id)?)? {
+            return Ok(false);
+        }
+    }
+    Ok(true)
+}
+
 fn read_candidate_marker(spi: &mut dyn SpiApi, position: u32, observation: usize) -> Result<bool> {
     let (value, missing) = spi.read_numeric(position, observation)?;
+    candidate_marker_value(value, missing, observation)
+}
+
+/// The one candidate-marker rule shared by the serial and parallel readers.
+pub(crate) fn candidate_marker_value(
+    value: f64,
+    missing: bool,
+    observation: usize,
+) -> Result<bool> {
     if missing || !value.is_finite() || !matches!(value, 0.0 | 1.0) {
         return Err(invalid_data(format!(
             "candidate marker at observation {observation} must be nonmissing zero or one",

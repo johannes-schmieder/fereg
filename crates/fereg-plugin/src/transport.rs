@@ -297,6 +297,10 @@ pub(crate) const COMMON_ESTIMATE_FIELDS: &[&str] = &[
     "output_receipt_matrix",
     "inject",
     "break_marker_token",
+    // Public host facts for the parallel input policy (action protocol 1.7).
+    "host_edition",
+    "host_interface",
+    "host_aliases",
 ];
 
 /// Reject any field outside the shared and estimator-specific allowlists.

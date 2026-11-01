@@ -19,6 +19,7 @@ mod ols_frame_memory;
 mod ols_preparation_memory;
 mod ols_publication_memory;
 mod output;
+mod parallel_input;
 mod ppml_estimate;
 mod ppml_execution;
 mod ppml_result;

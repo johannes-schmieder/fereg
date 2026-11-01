@@ -64,6 +64,36 @@ FEREG_BRIDGE_INTERNAL ST_int fereg_spi_vdata_rows(
     ST_double *values,
     ST_double *missing_value
 );
+/*
+ * Read-only numeric window. open/close run on the bound main thread; while it
+ * is open every other wrapper refuses with 498, so the main thread makes no SPI
+ * call. read is the only wrapper callable from another thread, and only inside
+ * an open window with its generation. It uses the validated variables (by slot)
+ * and observations; on success every row of every requested slot is written.
+ * Retained rows receive SDK doubles and `value >= SV_missval` flags; excluded
+ * rows (retained[o] == 0) receive the slot fills. The variable array stays owned
+ * by the caller and must outlive the window.
+ */
+FEREG_BRIDGE_INTERNAL ST_int fereg_spi_numeric_window_open(
+    const ST_int *variables,
+    ST_int variable_count,
+    ST_int observations,
+    ST_double *missing_value,
+    ST_int *generation
+);
+FEREG_BRIDGE_INTERNAL ST_int fereg_spi_numeric_window_read(
+    ST_int generation,
+    ST_int first_slot,
+    ST_int slot_count,
+    ST_int first_observation,
+    ST_int observation_count,
+    const unsigned char *retained,
+    const ST_double *excluded_values,
+    const unsigned char *excluded_missing,
+    ST_double *const *values,
+    unsigned char *const *missing
+);
+FEREG_BRIDGE_INTERNAL ST_int fereg_spi_numeric_window_close(ST_int generation);
 FEREG_BRIDGE_INTERNAL ST_int fereg_spi_vstore(
     ST_int variable,
     ST_int observation,

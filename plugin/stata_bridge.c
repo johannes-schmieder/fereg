@@ -17,7 +17,23 @@ static DWORD bridge_main_thread = 0;
 static pthread_t bridge_main_thread;
 #endif
 
-static ST_int fereg_bridge_require_main_thread(void)
+/*
+ * One read-only numeric window (see fereg_spi_numeric_window_open). The main
+ * thread writes these fields only while no worker can call the window: Rust
+ * opens it before dispatching a phase and closes it after joining every
+ * worker of that phase, so workers only read them.
+ */
+static struct {
+    ST_int open;
+    ST_int generation;
+    const ST_int *variables;
+    ST_int variable_count;
+    ST_int observations;
+    ST_double missing_value;
+    ST_int (*reader)(ST_int, ST_int, ST_double *);
+} numeric_window;
+
+static ST_int fereg_bridge_on_main_thread(void)
 {
     if (_stata_ == NULL || !bridge_thread_bound) {
         return FEREG_SPI_RC_UNAVAILABLE;
@@ -34,6 +50,17 @@ static ST_int fereg_bridge_require_main_thread(void)
     return 0;
 }
 
+/* Every SPI wrapper except the window's own read/close requires the bound
+   main thread and a closed numeric window: while workers read, the main thread
+   makes no SPI call (no polling, display, metadata or stores). */
+static ST_int fereg_bridge_require_main_thread(void)
+{
+    if (fereg_bridge_on_main_thread() != 0 || numeric_window.open) {
+        return FEREG_SPI_RC_UNAVAILABLE;
+    }
+    return 0;
+}
+
 static void fereg_bridge_bind_main_thread(void)
 {
 #if SYSTEM==STWIN32
@@ -46,7 +73,7 @@ static void fereg_bridge_bind_main_thread(void)
 
 ST_int fereg_spi_is_main_thread(void)
 {
-    return fereg_bridge_require_main_thread() == 0 ? 1 : 0;
+    return fereg_bridge_on_main_thread() == 0 ? 1 : 0;
 }
 
 ST_int fereg_spi_display(const char *message)
@@ -241,6 +268,120 @@ ST_int fereg_spi_vdata_rows(
     return 0;
 }
 
+ST_int fereg_spi_numeric_window_open(
+    const ST_int *variables,
+    ST_int variable_count,
+    ST_int observations,
+    ST_double *missing_value,
+    ST_int *generation
+)
+{
+    ST_int variable;
+    ST_int variables_available;
+    ST_int (*reader)(ST_int, ST_int, ST_double *);
+    if (variables == NULL || missing_value == NULL || generation == NULL ||
+        variable_count <= 0 || observations <= 0) {
+        return FEREG_SPI_RC_SYNTAX;
+    }
+    if (fereg_bridge_require_main_thread() != 0) return FEREG_SPI_RC_UNAVAILABLE;
+    if (SF_nobs() != observations) return FEREG_SPI_RC_UNAVAILABLE;
+    variables_available = SF_nvars();
+    for (variable = 0; variable < variable_count; ++variable) {
+        if (variables[variable] <= 0 || variables[variable] > variables_available ||
+            SF_var_is_string(variables[variable])) {
+            return FEREG_SPI_RC_UNAVAILABLE;
+        }
+    }
+    reader = _stata_->vdata;
+    if (reader == NULL) return FEREG_SPI_RC_UNAVAILABLE;
+    numeric_window.variables = variables;
+    numeric_window.variable_count = variable_count;
+    numeric_window.observations = observations;
+    numeric_window.missing_value = SV_missval;
+    numeric_window.reader = reader;
+    numeric_window.generation =
+        numeric_window.generation >= 0x7fffffff ? 1 : numeric_window.generation + 1;
+    numeric_window.open = 1;
+    *missing_value = numeric_window.missing_value;
+    *generation = numeric_window.generation;
+    return 0;
+}
+
+ST_int fereg_spi_numeric_window_read(
+    ST_int generation,
+    ST_int first_slot,
+    ST_int slot_count,
+    ST_int first_observation,
+    ST_int observation_count,
+    const unsigned char *retained,
+    const ST_double *excluded_values,
+    const unsigned char *excluded_missing,
+    ST_double *const *values,
+    unsigned char *const *missing
+)
+{
+    ST_int observation, slot, rc;
+    ST_double value, boundary;
+    const ST_int *variables;
+    ST_int (*reader)(ST_int, ST_int, ST_double *);
+    /* Callable from any thread, but only inside the main thread's open window.
+       It reads the window state without SPI metadata calls. */
+    if (!numeric_window.open || generation != numeric_window.generation) {
+        return FEREG_SPI_RC_UNAVAILABLE;
+    }
+    if (values == NULL || slot_count <= 0 || slot_count > 64 || first_slot < 0 ||
+        first_slot > numeric_window.variable_count - slot_count ||
+        first_observation <= 0 || observation_count <= 0 ||
+        first_observation > numeric_window.observations ||
+        observation_count > numeric_window.observations - first_observation + 1 ||
+        (retained != NULL &&
+         (excluded_values == NULL || (missing != NULL && excluded_missing == NULL)))) {
+        return FEREG_SPI_RC_SYNTAX;
+    }
+    for (slot = 0; slot < slot_count; ++slot) {
+        if (values[slot] == NULL || (missing != NULL && missing[slot] == NULL)) {
+            return FEREG_SPI_RC_SYNTAX;
+        }
+    }
+    reader = numeric_window.reader;
+    variables = numeric_window.variables + first_slot;
+    boundary = numeric_window.missing_value;
+    for (observation = 0; observation < observation_count; ++observation) {
+        if (retained != NULL && retained[observation] == 0) {
+            for (slot = 0; slot < slot_count; ++slot) {
+                values[slot][observation] = excluded_values[slot];
+                if (missing != NULL) missing[slot][observation] = excluded_missing[slot];
+            }
+            continue;
+        }
+        /* Stata stores every numeric missing code at or above `.`; the SDK
+           converts each storage type to this double, as in the serial batch. */
+        for (slot = 0; slot < slot_count; ++slot) {
+            rc = reader(variables[slot], first_observation + observation, &value);
+            if (rc != 0) return rc;
+            values[slot][observation] = value;
+            if (missing != NULL) {
+                missing[slot][observation] = (unsigned char) (value >= boundary ? 1 : 0);
+            }
+        }
+    }
+    return 0;
+}
+
+ST_int fereg_spi_numeric_window_close(ST_int generation)
+{
+    if (fereg_bridge_on_main_thread() != 0 || !numeric_window.open ||
+        generation != numeric_window.generation) {
+        return FEREG_SPI_RC_UNAVAILABLE;
+    }
+    numeric_window.open = 0;
+    numeric_window.variables = NULL;
+    numeric_window.variable_count = 0;
+    numeric_window.observations = 0;
+    numeric_window.reader = NULL;
+    return 0;
+}
+
 ST_int fereg_spi_vstore(ST_int variable, ST_int observation, ST_double value)
 {
     if (fereg_bridge_require_main_thread() != 0) {
@@ -373,7 +514,19 @@ STDLL stata_call(int argc, char *argv[])
     if (!bridge_thread_bound) {
         fereg_bridge_bind_main_thread();
     }
-    else if (fereg_bridge_require_main_thread() != 0) {
+    else if (fereg_bridge_on_main_thread() != 0) {
+        return FEREG_SPI_RC_UNAVAILABLE;
+    }
+    if (numeric_window.open) {
+        /* No action is running and every worker joined before the previous
+           call returned, so a window still open here is a leaked guard. Close
+           it and fail this call visibly instead of refusing every later one. */
+        numeric_window.open = 0;
+        numeric_window.variables = NULL;
+        numeric_window.variable_count = 0;
+        numeric_window.observations = 0;
+        numeric_window.reader = NULL;
+        SF_error((char *) "fereg: internal: a numeric input window was left open and has been closed\n");
         return FEREG_SPI_RC_UNAVAILABLE;
     }
     arguments = (const char *const *) argv;

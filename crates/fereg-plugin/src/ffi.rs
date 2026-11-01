@@ -655,6 +655,26 @@ extern "C" {
         values: *mut f64,
         missing_value: *mut f64,
     ) -> c_int;
+    fn fereg_spi_numeric_window_open(
+        variables: *const c_int,
+        variable_count: c_int,
+        observations: c_int,
+        missing_value: *mut f64,
+        generation: *mut c_int,
+    ) -> c_int;
+    fn fereg_spi_numeric_window_read(
+        generation: c_int,
+        first_slot: c_int,
+        slot_count: c_int,
+        first_observation: c_int,
+        observation_count: c_int,
+        retained: *const u8,
+        excluded_values: *const f64,
+        excluded_missing: *const u8,
+        values: *const *mut f64,
+        missing: *const *mut u8,
+    ) -> c_int;
+    fn fereg_spi_numeric_window_close(generation: c_int) -> c_int;
     fn fereg_spi_matrix_rows(name: *const c_char) -> c_int;
     fn fereg_spi_matrix_cols(name: *const c_char) -> c_int;
     fn fereg_spi_mat_el(name: *const c_char, row: c_int, column: c_int, value: *mut f64) -> c_int;
@@ -783,6 +803,109 @@ unsafe fn fereg_spi_mat_store(
 #[cfg(test)]
 unsafe fn fereg_spi_is_main_thread() -> c_int {
     0
+}
+
+#[cfg(test)]
+unsafe fn fereg_spi_numeric_window_open(
+    _variables: *const c_int,
+    _variable_count: c_int,
+    _observations: c_int,
+    _missing_value: *mut f64,
+    _generation: *mut c_int,
+) -> c_int {
+    498
+}
+
+#[cfg(test)]
+#[allow(clippy::too_many_arguments)]
+unsafe fn fereg_spi_numeric_window_read(
+    _generation: c_int,
+    _first_slot: c_int,
+    _slot_count: c_int,
+    _first_observation: c_int,
+    _observation_count: c_int,
+    _retained: *const u8,
+    _excluded_values: *const f64,
+    _excluded_missing: *const u8,
+    _values: *const *mut f64,
+    _missing: *const *mut u8,
+) -> c_int {
+    498
+}
+
+#[cfg(test)]
+unsafe fn fereg_spi_numeric_window_close(_generation: c_int) -> c_int {
+    498
+}
+
+/// Closes the C numeric window on Stata's thread when the phase returns or
+/// unwinds. It owns the validated variable array the C bridge reads, which
+/// therefore outlives the window. `Rc` keeps the guard on this thread.
+struct NumericWindowGuard {
+    generation: c_int,
+    _variables: Vec<c_int>,
+    _main_thread: PhantomData<Rc<()>>,
+}
+
+impl Drop for NumericWindowGuard {
+    fn drop(&mut self) {
+        // SAFETY: the guard was created on the bound Stata thread by a
+        // successful open and never leaves it. Every worker of the phase has
+        // returned (the phase joins before this guard drops, also on unwind).
+        let _ = unsafe { fereg_spi_numeric_window_close(self.generation) };
+    }
+}
+
+/// The worker-shareable part of an open window: only its generation.
+struct SpiNumericWindow {
+    generation: c_int,
+}
+
+// SAFETY: `fereg_spi_numeric_window_read` writes, on success, every addressed
+// row of every requested slot: retained rows receive `_stata_->vdata` doubles
+// and `value >= SV_missval` as `unsigned char` 0/1 (valid `bool` bytes),
+// excluded rows the slot fills. It reads only the window state written by the
+// main thread before the phase started and calls no other SPI function, so
+// concurrent calls for disjoint destinations are permitted by the bridge.
+unsafe impl crate::parallel_input::NumericBlockSource for SpiNumericWindow {
+    unsafe fn read(
+        &self,
+        request: &crate::parallel_input::BlockRead,
+    ) -> std::result::Result<(), i32> {
+        let (Ok(first_slot), Ok(slots), Ok(first_observation), Ok(rows)) = (
+            c_int::try_from(request.first_slot),
+            c_int::try_from(request.slots),
+            request
+                .first_row
+                .checked_add(1)
+                .and_then(|row| c_int::try_from(row).ok())
+                .ok_or(()),
+            c_int::try_from(request.rows),
+        ) else {
+            return Err(198);
+        };
+        // SAFETY: the caller guarantees every pointer is valid for the extents
+        // in `request`; `bool` has the layout of a 0/1 byte.
+        let rc = unsafe {
+            fereg_spi_numeric_window_read(
+                self.generation,
+                first_slot,
+                slots,
+                first_observation,
+                rows,
+                request.retained.cast(),
+                request.excluded_values,
+                request.excluded_missing.cast(),
+                request.values,
+                request.missing.cast(),
+            )
+        };
+        if rc == 0 {
+            Ok(())
+        } else {
+            Err(rc)
+        }
+    }
 }
 
 #[cfg(test)]
@@ -1130,6 +1253,69 @@ impl SpiApi for SpiSession {
             }
         }
         Ok(())
+    }
+
+    fn supports_numeric_window(&self) -> bool {
+        true
+    }
+
+    fn with_numeric_window(
+        &mut self,
+        variables: &[u32],
+        rows: usize,
+        run: &mut dyn FnMut(
+            &dyn crate::parallel_input::NumericBlockSource,
+        ) -> Result<(), FeregError>,
+    ) -> Result<bool, FeregError> {
+        let mut positions = Vec::new();
+        positions.try_reserve_exact(variables.len()).map_err(|_| {
+            FeregError::new(
+                ErrorCode::Allocation,
+                "unable to reserve numeric window positions",
+            )
+        })?;
+        for variable in variables {
+            positions.push(Self::position(*variable, "variable position")?);
+        }
+        let (Ok(count), Ok(observations)) =
+            (c_int::try_from(positions.len()), c_int::try_from(rows))
+        else {
+            return Ok(false);
+        };
+        let mut missing_value = 0.0;
+        let mut generation = 0;
+        // SAFETY: this session is confined to the bound Stata thread; the
+        // output pointers are live, and `positions` moves into the guard below
+        // (its heap buffer does not move) and outlives the open window.
+        let rc = unsafe {
+            fereg_spi_numeric_window_open(
+                positions.as_ptr(),
+                count,
+                observations,
+                &mut missing_value,
+                &mut generation,
+            )
+        };
+        if rc != 0 {
+            // Refused before any read: the caller keeps its serial reader,
+            // which reports any invalid coordinate authoritatively.
+            return Ok(false);
+        }
+        let guard = NumericWindowGuard {
+            generation,
+            _variables: positions,
+            _main_thread: PhantomData,
+        };
+        if !missing_value.is_finite() || missing_value <= 0.0 {
+            drop(guard);
+            return Err(FeregError::new(
+                ErrorCode::Internal,
+                "Stata SPI returned an invalid numeric missing boundary",
+            ));
+        }
+        let result = run(&SpiNumericWindow { generation });
+        drop(guard);
+        result.map(|()| true)
     }
 
     fn read_string(&mut self, variable: u32, observation: usize) -> Result<Vec<u8>, FeregError> {

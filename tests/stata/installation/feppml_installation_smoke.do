@@ -42,7 +42,7 @@ feppml y c.x, separation(none) memory(fast) threads(1) deterministic ///
 assert `"`e(cmd)'"' == "feppml"
 assert `"`e(predict)'"' == "feppml_p"
 assert `"`e(feppml_gate)'"' == "public_ppml_v1"
-assert `"`e(feppml_action_protocol)'"' == "1.6"
+assert `"`e(feppml_action_protocol)'"' == "1.7"
 assert `"`e(feppml_model_wire)'"' == "2.1"
 assert `"`e(feppml_request_wire)'"' == "1.8"
 assert `"`e(feppml_result_wire)'"' == "1.5"

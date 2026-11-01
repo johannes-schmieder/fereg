@@ -103,6 +103,8 @@ enum PpmlDeveloperInjection {
     Allocation,
     Topology,
     SeparationCg,
+    /// An input-transport injection; it lives in the action's input policy.
+    Input,
 }
 
 #[cfg(test)]
@@ -285,6 +287,7 @@ struct EstimatePpmlAction {
     matrices: PreparedResultMatrices,
     injection: PpmlDeveloperInjection,
     break_marker_token: String,
+    input_policy: crate::parallel_input::Policy,
 }
 
 #[derive(Debug)]
@@ -327,6 +330,7 @@ struct EstimatePpmlSpec {
     matrices: ResultMatrices,
     injection: PpmlDeveloperInjection,
     break_marker_token: String,
+    input_policy: crate::parallel_input::Policy,
 }
 
 pub fn estimate_ppml(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
@@ -366,6 +370,7 @@ pub fn estimate_ppml(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         &mut input_memory,
         spi,
         action.linear.execution.threads,
+        action.input_policy,
         Some(&mut load_hint),
     )?;
     // Continue charging the surviving capsule through adjustment/bias reads.
@@ -379,8 +384,7 @@ pub fn estimate_ppml(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         drop(load_hint.take());
         0
     };
-    let adjustment = load_adjustment(action.adjustment, loaded.candidate.view(), spi)?;
-    let bias_units = load_optional_numeric(action.bias_unit, loaded.candidate.view(), spi)?;
+    let (adjustment, bias_units) = load_ppml_extras(&action, &loaded, spi, &mut input_memory)?;
     spi.check_interrupted()?;
     input_memory.release(hint_bytes)?;
     let phase_probe = ppml_phase_allocator_probe(action.allocation_audit);
@@ -832,6 +836,11 @@ impl EstimatePpmlSpec {
         let cluster_term_count = parse_usize(&values, "cluster_term_count")?;
         let cluster_component_count = parse_usize(&values, "cluster_component_count")?;
         let bias_request = bias::parse(&values)?;
+        let input_injection = crate::developer_injection::parse_input_injection(
+            values.get("inject").map_or("", String::as_str),
+            values.get("break_marker_token").map_or("", String::as_str),
+        )?;
+        let input_policy = crate::parallel_input::Policy::from_request(&values);
         let specification = Self {
             bias: bias_request,
             bias_unit: if bias_request.is_some() {
@@ -932,6 +941,7 @@ impl EstimatePpmlSpec {
                 receipt: required(&values, "output_receipt_matrix")?.to_owned(),
             },
             injection: match values.get("inject").map(String::as_str).unwrap_or("") {
+                _ if input_injection.is_some() => PpmlDeveloperInjection::Input,
                 "" => PpmlDeveloperInjection::None,
                 "panic" => PpmlDeveloperInjection::Panic,
                 "breaknative" => PpmlDeveloperInjection::BreakNative,
@@ -949,6 +959,8 @@ impl EstimatePpmlSpec {
                 .get("break_marker_token")
                 .cloned()
                 .unwrap_or_default(),
+            input_policy: input_injection
+                .map_or(input_policy, |input| input.apply(input_policy, true)),
         };
         reject_unknown_fields(ACTION_ESTIMATE_PPML, &values, PPML_FIELDS)?;
         Ok(specification)
@@ -965,13 +977,17 @@ impl EstimatePpmlSpec {
                 "PPML tolerances must lie strictly between zero and one",
             ));
         }
-        crate::developer_injection::validate_break_marker_token(
-            matches!(
-                self.injection,
-                PpmlDeveloperInjection::BreakNative | PpmlDeveloperInjection::BreakLsmrIteration
-            ),
-            &self.break_marker_token,
-        )?;
+        // Input injections validated their own token while parsing.
+        if self.injection != PpmlDeveloperInjection::Input {
+            crate::developer_injection::validate_break_marker_token(
+                matches!(
+                    self.injection,
+                    PpmlDeveloperInjection::BreakNative
+                        | PpmlDeveloperInjection::BreakLsmrIteration
+                ),
+                &self.break_marker_token,
+            )?;
+        }
 
         let memory = PpmlMemoryConfig {
             requested: self.memory,
@@ -1173,6 +1189,7 @@ impl EstimatePpmlSpec {
             matrices,
             injection: self.injection,
             break_marker_token: self.break_marker_token,
+            input_policy: self.input_policy,
         })
     }
 
@@ -1189,6 +1206,28 @@ impl EstimatePpmlSpec {
     }
 }
 
+/// Offset/exposure and bias-unit columns share the action's input transport;
+/// the developer digest covers them with the main input.
+fn load_ppml_extras(
+    action: &EstimatePpmlAction,
+    loaded: &fereg_core::ols::LoadedOlsInput,
+    spi: &mut dyn SpiApi,
+    memory: &mut crate::input_memory::InputMemory,
+) -> Result<(Option<LoadedNumericColumn>, Option<LoadedNumericColumn>)> {
+    let transport =
+        crate::parallel_input::Transport::new(action.input_policy, action.linear.execution.threads);
+    let candidate = loaded.candidate.view();
+    let adjustment = load_adjustment(action.adjustment, candidate, spi, transport, memory)?;
+    let bias_units = load_optional_numeric(action.bias_unit, candidate, spi, transport, memory)?;
+    crate::parallel_input::trace_loaded_input(
+        "ppml",
+        loaded,
+        None,
+        &[adjustment.as_ref(), bias_units.as_ref()],
+    );
+    Ok((adjustment, bias_units))
+}
+
 /// Parse the hidden PPML control plane without infallibly duplicating the
 /// potentially coefficient-sized registry values. Protocol field count is
 /// fixed and bounded; each key and value payload is copied only after a
@@ -1197,20 +1236,50 @@ fn load_adjustment(
     binding: AdjustmentBinding,
     candidate: fereg_core::data::UniformValuesRef<'_, bool>,
     spi: &mut dyn SpiApi,
+    transport: Option<crate::parallel_input::Transport>,
+    memory: &mut crate::input_memory::InputMemory,
 ) -> Result<Option<LoadedNumericColumn>> {
-    load_optional_numeric(binding.position(), candidate, spi)
+    load_optional_numeric(binding.position(), candidate, spi, transport, memory)
 }
 
+/// Excluded rows keep `(0.0, missing)`, the storage contract of these columns.
 fn load_optional_numeric(
     position: Option<u32>,
     candidate: fereg_core::data::UniformValuesRef<'_, bool>,
     spi: &mut dyn SpiApi,
+    transport: Option<crate::parallel_input::Transport>,
+    memory: &mut crate::input_memory::InputMemory,
 ) -> Result<Option<LoadedNumericColumn>> {
     let Some(position) = position else {
         return Ok(None);
     };
-    let mut values = reserved_filled(candidate.len(), 0.0, "PPML adjustment values")?;
-    let mut missing = reserved_filled(candidate.len(), true, "PPML adjustment missing mask")?;
+    let rows = candidate.len();
+    if let Some(transport) = transport {
+        let mut values = crate::model_metadata::reserved_empty(rows, "PPML adjustment values")?;
+        let mut missing =
+            crate::model_metadata::reserved_empty(rows, "PPML adjustment missing mask")?;
+        let read = crate::parallel_input::try_read(
+            spi,
+            transport,
+            memory,
+            rows,
+            &mut [crate::parallel_input::Target {
+                position,
+                values: &mut values,
+                missing: &mut missing,
+                excluded: (0.0, true),
+            }],
+            crate::parallel_input::Candidate::Known(candidate),
+            None,
+            "numeric column read",
+        )?;
+        if read {
+            spi.check_interrupted()?;
+            return Ok(Some(LoadedNumericColumn { values, missing }));
+        }
+    }
+    let mut values = reserved_filled(rows, 0.0, "PPML adjustment values")?;
+    let mut missing = reserved_filled(rows, true, "PPML adjustment missing mask")?;
     read_numeric_columns_in_chunks(
         spi,
         &[position],
