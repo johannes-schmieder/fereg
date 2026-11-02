@@ -1,0 +1,2131 @@
+{
+  "schema": 1,
+  "platform": "macos",
+  "runtime_source": "657edd144b21d2c2981037bd0d6f686b2a8fafec",
+  "plugin_sha256": "89061fdef679a2fe0e09d0f28745454d36f3d0c03cba1a8f804a3f2290acf27f",
+  "incumbent": "beta.13",
+  "change": "Worker-scaled accounted phase work (8 Mi minimum, 2 Mi per resolved worker, 64 Mi ceiling), default Rayon grouping; range/error/buffer policy retained.",
+  "numerical_scope": [],
+  "estimator_route_scope": [],
+  "source_integration": {
+    "status": "passed",
+    "mode": "source-only; full installed-package gate remains outstanding",
+    "log_sha256": "2089c222d36195d78e0568e8dd72f78678432abce482c9d1a95abd03f50c3c4c",
+    "focused_reader_tests": 14,
+    "harness_tests": 4,
+    "independent_architecture_review": "no blockers"
+  },
+  "native": {
+    "fixtures": 68,
+    "incumbent_exact_replay_cases": 77,
+    "replay_summary_sha256": "bb2d5960889851ff0a8b0018c53d92860f55f68607c337ca2fa95932d333a763",
+    "scalar_oracle_workers": [
+      4,
+      8
+    ],
+    "failure_rollback": "passed",
+    "real_console_break": [
+      "open_input_window_ols",
+      "open_input_window_ppml",
+      "ols",
+      "ppml"
+    ],
+    "universal_binary_audit": "passed",
+    "actual_abi_load_panic": "passed",
+    "stata18_console": {
+      "workers": 8,
+      "cases": 70,
+      "runs": 202,
+      "parallel_runs": 71,
+      "status": "passed"
+    }
+  },
+  "performance": {
+    "status": "passed",
+    "regressions": [],
+    "observations": 672,
+    "cells": 28,
+    "resampling": false,
+    "workers": [
+      4,
+      8
+    ],
+    "blocks": 4,
+    "repetitions": 3,
+    "warmups_per_cell_worker_block": 1,
+    "regression_rule": "candidate wall median > incumbent + max(5%, 0.001 seconds)",
+    "all_observations_retained": true,
+    "host_observation_passed": true,
+    "host_record_sha256": "280a3a6bd35dca90fe719a82cb344641b0024da617ff7bd029c0a0b155fbaf14",
+    "observation_record_sha256": "a972e5370addece84b1a4a62985f8b9a6c1e9ef5bbda37e5eff4798f3446c4a3",
+    "input_digest_preflight": "exact across both arms and every requested worker count for all 14 cells",
+    "source_and_input_pins_sha256": "6b1bc2d18e221600e9d907c0d229b1d1d804d7668b025ee7460b3ef10643669f",
+    "rows": [
+      {
+        "cell": "c1",
+        "threads": 4,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.141,
+            "load_s": 0.0260839165,
+            "native_s": 0.0934164795,
+            "alloc_peak": 76605219.0
+          },
+          "candidate": {
+            "wall_s": 0.141,
+            "load_s": 0.0265840835,
+            "native_s": 0.0933770835,
+            "alloc_peak": 76605219.0
+          }
+        },
+        "wall_ratio": 1.0,
+        "observations_per_arm": 12
+      },
+      {
+        "cell": "c1",
+        "threads": 8,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.121,
+            "load_s": 0.0144962085,
+            "native_s": 0.073148375,
+            "alloc_peak": 77133219.0
+          },
+          "candidate": {
+            "wall_s": 0.122,
+            "load_s": 0.0147960625,
+            "native_s": 0.07355856250000001,
+            "alloc_peak": 77133219.0
+          }
+        },
+        "wall_ratio": 1.0082644628099173,
+        "observations_per_arm": 12
+      },
+      {
+        "cell": "c2",
+        "threads": 4,
+        "arms": {
+          "incumbent": {
+            "wall_s": 1.4289999999999998,
+            "load_s": 0.098581625,
+            "native_s": 1.3559580415,
+            "alloc_peak": 1064729070.0
+          },
+          "candidate": {
+            "wall_s": 1.4300000000000002,
+            "load_s": 0.1004467705,
+            "native_s": 1.3580475415,
+            "alloc_peak": 1064729070.0
+          }
+        },
+        "wall_ratio": 1.0006997900629813,
+        "observations_per_arm": 12
+      },
+      {
+        "cell": "c2",
+        "threads": 8,
+        "arms": {
+          "incumbent": {
+            "wall_s": 1.154,
+            "load_s": 0.0506941045,
+            "native_s": 1.0833017085,
+            "alloc_peak": 1064741678.0
+          },
+          "candidate": {
+            "wall_s": 1.1575,
+            "load_s": 0.0545477495,
+            "native_s": 1.0859338545,
+            "alloc_peak": 1064741678.0
+          }
+        },
+        "wall_ratio": 1.0030329289428077,
+        "observations_per_arm": 12
+      },
+      {
+        "cell": "c3",
+        "threads": 4,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.4495,
+            "load_s": 0.068959459,
+            "native_s": 0.391269646,
+            "alloc_peak": 591177355.0
+          },
+          "candidate": {
+            "wall_s": 0.454,
+            "load_s": 0.0727736665,
+            "native_s": 0.395785771,
+            "alloc_peak": 591177355.0
+          }
+        },
+        "wall_ratio": 1.010011123470523,
+        "observations_per_arm": 12
+      },
+      {
+        "cell": "c3",
+        "threads": 8,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.3135,
+            "load_s": 0.036617729,
+            "native_s": 0.255034271,
+            "alloc_peak": 591189963.0
+          },
+          "candidate": {
+            "wall_s": 0.315,
+            "load_s": 0.039424561999999996,
+            "native_s": 0.25692997949999996,
+            "alloc_peak": 591189963.0
+          }
+        },
+        "wall_ratio": 1.0047846889952152,
+        "observations_per_arm": 12
+      },
+      {
+        "cell": "c4",
+        "threads": 4,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.2225,
+            "load_s": 0.041116729000000005,
+            "native_s": 0.1303060415,
+            "alloc_peak": 184062630.0
+          },
+          "candidate": {
+            "wall_s": 0.222,
+            "load_s": 0.0423498535,
+            "native_s": 0.1305348545,
+            "alloc_peak": 184062630.0
+          }
+        },
+        "wall_ratio": 0.9977528089887641,
+        "observations_per_arm": 12
+      },
+      {
+        "cell": "c4",
+        "threads": 8,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.18899999999999995,
+            "load_s": 0.0224985005,
+            "native_s": 0.096794375,
+            "alloc_peak": 200059238.0
+          },
+          "candidate": {
+            "wall_s": 0.1914999999999999,
+            "load_s": 0.023387125,
+            "native_s": 0.0975942085,
+            "alloc_peak": 200059238.0
+          }
+        },
+        "wall_ratio": 1.013227513227513,
+        "observations_per_arm": 12
+      },
+      {
+        "cell": "c5",
+        "threads": 4,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.365,
+            "load_s": 0.20202020850000002,
+            "native_s": 0.31314845849999995,
+            "alloc_peak": 180994444.0
+          },
+          "candidate": {
+            "wall_s": 0.366,
+            "load_s": 0.202604521,
+            "native_s": 0.312732896,
+            "alloc_peak": 180994444.0
+          }
+        },
+        "wall_ratio": 1.0027397260273974,
+        "observations_per_arm": 12
+      },
+      {
+        "cell": "c5",
+        "threads": 8,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.3295,
+            "load_s": 0.1892980835,
+            "native_s": 0.2777830835,
+            "alloc_peak": 181008204.0
+          },
+          "candidate": {
+            "wall_s": 0.3355,
+            "load_s": 0.1924502085,
+            "native_s": 0.282915896,
+            "alloc_peak": 181008204.0
+          }
+        },
+        "wall_ratio": 1.0182094081942337,
+        "observations_per_arm": 12
+      },
+      {
+        "cell": "c6",
+        "threads": 4,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.9275,
+            "load_s": 0.096208041,
+            "native_s": 0.8497107915,
+            "alloc_peak": 1085686195.0
+          },
+          "candidate": {
+            "wall_s": 0.9295,
+            "load_s": 0.1004873545,
+            "native_s": 0.8502717295,
+            "alloc_peak": 1085686195.0
+          }
+        },
+        "wall_ratio": 1.0021563342318058,
+        "observations_per_arm": 12
+      },
+      {
+        "cell": "c6",
+        "threads": 8,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.7595000000000001,
+            "load_s": 0.0570049795,
+            "native_s": 0.6815760415,
+            "alloc_peak": 1090500915.0
+          },
+          "candidate": {
+            "wall_s": 0.764,
+            "load_s": 0.0603568745,
+            "native_s": 0.6850752085,
+            "alloc_peak": 1090500915.0
+          }
+        },
+        "wall_ratio": 1.0059249506254113,
+        "observations_per_arm": 12
+      },
+      {
+        "cell": "c7",
+        "threads": 4,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.4935,
+            "load_s": null,
+            "native_s": 0.39261064599999995,
+            "alloc_peak": null
+          },
+          "candidate": {
+            "wall_s": 0.496,
+            "load_s": null,
+            "native_s": 0.39417010350000004,
+            "alloc_peak": null
+          }
+        },
+        "wall_ratio": 1.005065856129686,
+        "observations_per_arm": 12
+      },
+      {
+        "cell": "c7",
+        "threads": 8,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.43300000000000005,
+            "load_s": null,
+            "native_s": 0.3324940005,
+            "alloc_peak": null
+          },
+          "candidate": {
+            "wall_s": 0.4320000000000001,
+            "load_s": null,
+            "native_s": 0.332160812,
+            "alloc_peak": null
+          }
+        },
+        "wall_ratio": 0.9976905311778292,
+        "observations_per_arm": 12
+      },
+      {
+        "cell": "c8",
+        "threads": 4,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.8075,
+            "load_s": 0.053987875,
+            "native_s": 0.7482158544999999,
+            "alloc_peak": 382701602.0
+          },
+          "candidate": {
+            "wall_s": 0.816,
+            "load_s": 0.054902625,
+            "native_s": 0.7577403540000001,
+            "alloc_peak": 382701602.0
+          }
+        },
+        "wall_ratio": 1.0105263157894737,
+        "observations_per_arm": 12
+      },
+      {
+        "cell": "c8",
+        "threads": 8,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.6385000000000001,
+            "load_s": 0.0283739375,
+            "native_s": 0.579635729,
+            "alloc_peak": 382714210.0
+          },
+          "candidate": {
+            "wall_s": 0.6295,
+            "load_s": 0.0294774375,
+            "native_s": 0.5716156875,
+            "alloc_peak": 382714210.0
+          }
+        },
+        "wall_ratio": 0.9859044635865307,
+        "observations_per_arm": 12
+      },
+      {
+        "cell": "c9",
+        "threads": 4,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.1,
+            "load_s": 0.009482062999999999,
+            "native_s": 0.015470583,
+            "alloc_peak": 38393667.0
+          },
+          "candidate": {
+            "wall_s": 0.1,
+            "load_s": 0.0095178125,
+            "native_s": 0.015538437499999998,
+            "alloc_peak": 38393667.0
+          }
+        },
+        "wall_ratio": 1.0,
+        "observations_per_arm": 12
+      },
+      {
+        "cell": "c9",
+        "threads": 8,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.095,
+            "load_s": 0.0050738745000000005,
+            "native_s": 0.011254311999999999,
+            "alloc_peak": 38406275.0
+          },
+          "candidate": {
+            "wall_s": 0.096,
+            "load_s": 0.0051344375,
+            "native_s": 0.0113781665,
+            "alloc_peak": 38406275.0
+          }
+        },
+        "wall_ratio": 1.0105263157894737,
+        "observations_per_arm": 12
+      },
+      {
+        "cell": "c10",
+        "threads": 4,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.271,
+            "load_s": 0.1425125,
+            "native_s": 0.16570849999999998,
+            "alloc_peak": 587495173.0
+          },
+          "candidate": {
+            "wall_s": 0.277,
+            "load_s": 0.14968852100000002,
+            "native_s": 0.171850708,
+            "alloc_peak": 587495173.0
+          }
+        },
+        "wall_ratio": 1.022140221402214,
+        "observations_per_arm": 12
+      },
+      {
+        "cell": "c10",
+        "threads": 8,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.2,
+            "load_s": 0.0752586455,
+            "native_s": 0.094749938,
+            "alloc_peak": 587787501.0
+          },
+          "candidate": {
+            "wall_s": 0.204,
+            "load_s": 0.07854987499999999,
+            "native_s": 0.098348604,
+            "alloc_peak": 587827461.0
+          }
+        },
+        "wall_ratio": 1.0199999999999998,
+        "observations_per_arm": 12
+      },
+      {
+        "cell": "c11",
+        "threads": 4,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.228,
+            "load_s": 0.025376146000000002,
+            "native_s": 0.053184042,
+            "alloc_peak": 470234144.0
+          },
+          "candidate": {
+            "wall_s": 0.205,
+            "load_s": 0.0032835625,
+            "native_s": 0.0310805005,
+            "alloc_peak": 470234144.0
+          }
+        },
+        "wall_ratio": 0.8991228070175438,
+        "observations_per_arm": 12
+      },
+      {
+        "cell": "c11",
+        "threads": 8,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.217,
+            "load_s": 0.0134873335,
+            "native_s": 0.041672583,
+            "alloc_peak": 470246752.0
+          },
+          "candidate": {
+            "wall_s": 0.205,
+            "load_s": 0.0030361665,
+            "native_s": 0.031417208,
+            "alloc_peak": 470246752.0
+          }
+        },
+        "wall_ratio": 0.944700460829493,
+        "observations_per_arm": 12
+      },
+      {
+        "cell": "c12",
+        "threads": 4,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.116,
+            "load_s": 0.021061188,
+            "native_s": 0.029523874999999998,
+            "alloc_peak": 110475711.0
+          },
+          "candidate": {
+            "wall_s": 0.117,
+            "load_s": 0.0215116665,
+            "native_s": 0.029643458499999997,
+            "alloc_peak": 110475711.0
+          }
+        },
+        "wall_ratio": 1.0086206896551724,
+        "observations_per_arm": 12
+      },
+      {
+        "cell": "c12",
+        "threads": 8,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.106,
+            "load_s": 0.010781042000000001,
+            "native_s": 0.0194763955,
+            "alloc_peak": 110408399.0
+          },
+          "candidate": {
+            "wall_s": 0.107,
+            "load_s": 0.0112828545,
+            "native_s": 0.020177853500000002,
+            "alloc_peak": 110528279.0
+          }
+        },
+        "wall_ratio": 1.009433962264151,
+        "observations_per_arm": 12
+      },
+      {
+        "cell": "c13",
+        "threads": 4,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.108,
+            "load_s": 0.0181609995,
+            "native_s": 0.022033,
+            "alloc_peak": 92475465.0
+          },
+          "candidate": {
+            "wall_s": 0.109,
+            "load_s": 0.0185996665,
+            "native_s": 0.0225919165,
+            "alloc_peak": 92475465.0
+          }
+        },
+        "wall_ratio": 1.0092592592592593,
+        "observations_per_arm": 12
+      },
+      {
+        "cell": "c13",
+        "threads": 8,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.1025,
+            "load_s": 0.011794666499999999,
+            "native_s": 0.015671395499999997,
+            "alloc_peak": 92328233.0
+          },
+          "candidate": {
+            "wall_s": 0.103,
+            "load_s": 0.012186124999999999,
+            "native_s": 0.0161925415,
+            "alloc_peak": 92408153.0
+          }
+        },
+        "wall_ratio": 1.0048780487804878,
+        "observations_per_arm": 12
+      },
+      {
+        "cell": "c14",
+        "threads": 4,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.1625,
+            "load_s": null,
+            "native_s": 0.0618623745,
+            "alloc_peak": null
+          },
+          "candidate": {
+            "wall_s": 0.161,
+            "load_s": null,
+            "native_s": 0.0617634585,
+            "alloc_peak": null
+          }
+        },
+        "wall_ratio": 0.9907692307692307,
+        "observations_per_arm": 12
+      },
+      {
+        "cell": "c14",
+        "threads": 8,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.1565,
+            "load_s": null,
+            "native_s": 0.058619625,
+            "alloc_peak": null
+          },
+          "candidate": {
+            "wall_s": 0.157,
+            "load_s": null,
+            "native_s": 0.0584654795,
+            "alloc_peak": null
+          }
+        },
+        "wall_ratio": 1.0031948881789137,
+        "observations_per_arm": 12
+      }
+    ],
+    "ordinary_desktop_noise_retained": true
+  },
+  "preflight_traces": [
+    {
+      "file": "verify-candidate-4.txt",
+      "sha256": "a872bd1dee5b26637eb6d5cbac2bb44c75cda720a2b714cf8ce6c6a5b23ab8db",
+      "windows": [
+        {
+          "cell": "c1",
+          "rows": "1000000",
+          "width": "4",
+          "marker": "0",
+          "workers": "4",
+          "phases": "3",
+          "blocks": "123",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "8388608",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.010224250"
+        },
+        {
+          "cell": "c1",
+          "rows": "1000000",
+          "width": "4",
+          "marker": "0",
+          "workers": "4",
+          "phases": "3",
+          "blocks": "123",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "8388608",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.008848542"
+        },
+        {
+          "cell": "c2",
+          "rows": "1000000",
+          "width": "65",
+          "marker": "0",
+          "workers": "4",
+          "phases": "32",
+          "blocks": "1985",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "8388608",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.003721375"
+        },
+        {
+          "cell": "c2",
+          "rows": "1000000",
+          "width": "65",
+          "marker": "0",
+          "workers": "4",
+          "phases": "32",
+          "blocks": "1985",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "8388608",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.003408709"
+        },
+        {
+          "cell": "c3",
+          "rows": "1000000",
+          "width": "34",
+          "marker": "0",
+          "workers": "4",
+          "phases": "25",
+          "blocks": "1039",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "8388608",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.003324625"
+        },
+        {
+          "cell": "c3",
+          "rows": "1000000",
+          "width": "34",
+          "marker": "0",
+          "workers": "4",
+          "phases": "25",
+          "blocks": "1039",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "8388608",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.002903958"
+        },
+        {
+          "cell": "c4",
+          "rows": "1000000",
+          "width": "18",
+          "marker": "1",
+          "workers": "4",
+          "phases": "10",
+          "blocks": "581",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "8388608",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.004624916"
+        },
+        {
+          "cell": "c4",
+          "rows": "1000000",
+          "width": "18",
+          "marker": "1",
+          "workers": "4",
+          "phases": "10",
+          "blocks": "581",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "8388608",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.006364375"
+        },
+        {
+          "cell": "c5",
+          "rows": "1000000",
+          "width": "9",
+          "marker": "0",
+          "workers": "4",
+          "phases": "5",
+          "blocks": "275",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "8388608",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.008767416"
+        },
+        {
+          "cell": "c5",
+          "rows": "1000000",
+          "width": "9",
+          "marker": "0",
+          "workers": "4",
+          "phases": "5",
+          "blocks": "275",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "8388608",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.006951375"
+        },
+        {
+          "cell": "c6",
+          "rows": "10000000",
+          "width": "6",
+          "marker": "0",
+          "workers": "4",
+          "phases": "44",
+          "blocks": "1832",
+          "range_first": "0",
+          "range_end": "10000000",
+          "phase_work_cap": "8388608",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.002671000"
+        },
+        {
+          "cell": "c6",
+          "rows": "10000000",
+          "width": "6",
+          "marker": "0",
+          "workers": "4",
+          "phases": "44",
+          "blocks": "1832",
+          "range_first": "0",
+          "range_end": "10000000",
+          "phase_work_cap": "8388608",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.003857750"
+        },
+        {
+          "cell": "c7",
+          "rows": "1000000",
+          "width": "6",
+          "marker": "1",
+          "workers": "4",
+          "phases": "4",
+          "blocks": "214",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "8388608",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.006263125"
+        },
+        {
+          "cell": "c7",
+          "rows": "1000000",
+          "width": "1",
+          "marker": "0",
+          "workers": "4",
+          "phases": "1",
+          "blocks": "62",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "8388608",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.004630625"
+        },
+        {
+          "cell": "c7",
+          "rows": "1000000",
+          "width": "6",
+          "marker": "1",
+          "workers": "4",
+          "phases": "4",
+          "blocks": "214",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "8388608",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.006176375"
+        },
+        {
+          "cell": "c7",
+          "rows": "1000000",
+          "width": "1",
+          "marker": "0",
+          "workers": "4",
+          "phases": "1",
+          "blocks": "62",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "8388608",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.004644000"
+        },
+        {
+          "cell": "c8",
+          "rows": "1000000",
+          "width": "34",
+          "marker": "0",
+          "workers": "4",
+          "phases": "17",
+          "blocks": "1039",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "8388608",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.003269708"
+        },
+        {
+          "cell": "c8",
+          "rows": "1000000",
+          "width": "34",
+          "marker": "0",
+          "workers": "4",
+          "phases": "17",
+          "blocks": "1039",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "8388608",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.003304000"
+        },
+        {
+          "cell": "c9",
+          "rows": "1000000",
+          "width": "4",
+          "marker": "1",
+          "workers": "4",
+          "phases": "3",
+          "blocks": "153",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "8388608",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.003660167"
+        },
+        {
+          "cell": "c9",
+          "rows": "1000000",
+          "width": "4",
+          "marker": "1",
+          "workers": "4",
+          "phases": "3",
+          "blocks": "153",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "8388608",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.003670208"
+        },
+        {
+          "cell": "c10",
+          "rows": "1000000",
+          "width": "65",
+          "marker": "1",
+          "workers": "4",
+          "phases": "33",
+          "blocks": "2017",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "8388608",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.004954083"
+        },
+        {
+          "cell": "c10",
+          "rows": "1000000",
+          "width": "65",
+          "marker": "1",
+          "workers": "4",
+          "phases": "33",
+          "blocks": "2017",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "8388608",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.004715875"
+        },
+        {
+          "cell": "c11",
+          "rows": "10000000",
+          "width": "5",
+          "marker": "1",
+          "workers": "4",
+          "phases": "32",
+          "blocks": "1832",
+          "range_first": "4995000",
+          "range_end": "5005000",
+          "phase_work_cap": "8388608",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.000534000"
+        },
+        {
+          "cell": "c11",
+          "rows": "10000000",
+          "width": "5",
+          "marker": "1",
+          "workers": "4",
+          "phases": "32",
+          "blocks": "1832",
+          "range_first": "4995000",
+          "range_end": "5005000",
+          "phase_work_cap": "8388608",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.000321250"
+        },
+        {
+          "cell": "c12",
+          "rows": "1000000",
+          "width": "12",
+          "marker": "1",
+          "workers": "4",
+          "phases": "7",
+          "blocks": "397",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "8388608",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.003350292"
+        },
+        {
+          "cell": "c12",
+          "rows": "1000000",
+          "width": "12",
+          "marker": "1",
+          "workers": "4",
+          "phases": "7",
+          "blocks": "397",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "8388608",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.003331041"
+        },
+        {
+          "cell": "c13",
+          "rows": "1000000",
+          "width": "9",
+          "marker": "1",
+          "workers": "4",
+          "phases": "6",
+          "blocks": "306",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "8388608",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.002727291"
+        },
+        {
+          "cell": "c13",
+          "rows": "1000000",
+          "width": "9",
+          "marker": "1",
+          "workers": "4",
+          "phases": "6",
+          "blocks": "306",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "8388608",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.002725750"
+        },
+        {
+          "cell": "c14",
+          "rows": "1000000",
+          "width": "6",
+          "marker": "1",
+          "workers": "4",
+          "phases": "4",
+          "blocks": "214",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "8388608",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.002728667"
+        },
+        {
+          "cell": "c14",
+          "rows": "1000000",
+          "width": "1",
+          "marker": "0",
+          "workers": "4",
+          "phases": "1",
+          "blocks": "62",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "8388608",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.000697542"
+        },
+        {
+          "cell": "c14",
+          "rows": "1000000",
+          "width": "6",
+          "marker": "1",
+          "workers": "4",
+          "phases": "4",
+          "blocks": "214",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "8388608",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.002716375"
+        },
+        {
+          "cell": "c14",
+          "rows": "1000000",
+          "width": "1",
+          "marker": "0",
+          "workers": "4",
+          "phases": "1",
+          "blocks": "62",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "8388608",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.000736666"
+        }
+      ]
+    },
+    {
+      "file": "verify-candidate-8.txt",
+      "sha256": "4dac91ffb8446691b34a9a1c4ece03e578166f616c8f49295589654b7bd46659",
+      "windows": [
+        {
+          "cell": "c1",
+          "rows": "1000000",
+          "width": "4",
+          "marker": "0",
+          "workers": "8",
+          "phases": "2",
+          "blocks": "123",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "16777216",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.009861500"
+        },
+        {
+          "cell": "c1",
+          "rows": "1000000",
+          "width": "4",
+          "marker": "0",
+          "workers": "8",
+          "phases": "2",
+          "blocks": "123",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "16777216",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.009358917"
+        },
+        {
+          "cell": "c2",
+          "rows": "1000000",
+          "width": "65",
+          "marker": "0",
+          "workers": "8",
+          "phases": "16",
+          "blocks": "1985",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "16777216",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.004926791"
+        },
+        {
+          "cell": "c2",
+          "rows": "1000000",
+          "width": "65",
+          "marker": "0",
+          "workers": "8",
+          "phases": "16",
+          "blocks": "1985",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "16777216",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.003478458"
+        },
+        {
+          "cell": "c3",
+          "rows": "1000000",
+          "width": "34",
+          "marker": "0",
+          "workers": "8",
+          "phases": "13",
+          "blocks": "1039",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "16777216",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.003862500"
+        },
+        {
+          "cell": "c3",
+          "rows": "1000000",
+          "width": "34",
+          "marker": "0",
+          "workers": "8",
+          "phases": "13",
+          "blocks": "1039",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "16777216",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.003325917"
+        },
+        {
+          "cell": "c4",
+          "rows": "1000000",
+          "width": "18",
+          "marker": "1",
+          "workers": "8",
+          "phases": "5",
+          "blocks": "581",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "16777216",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.005569916"
+        },
+        {
+          "cell": "c4",
+          "rows": "1000000",
+          "width": "18",
+          "marker": "1",
+          "workers": "8",
+          "phases": "5",
+          "blocks": "581",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "16777216",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.005478042"
+        },
+        {
+          "cell": "c5",
+          "rows": "1000000",
+          "width": "9",
+          "marker": "0",
+          "workers": "8",
+          "phases": "3",
+          "blocks": "275",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "16777216",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.007091916"
+        },
+        {
+          "cell": "c5",
+          "rows": "1000000",
+          "width": "9",
+          "marker": "0",
+          "workers": "8",
+          "phases": "3",
+          "blocks": "275",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "16777216",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.006913750"
+        },
+        {
+          "cell": "c6",
+          "rows": "10000000",
+          "width": "6",
+          "marker": "0",
+          "workers": "8",
+          "phases": "22",
+          "blocks": "1832",
+          "range_first": "0",
+          "range_end": "10000000",
+          "phase_work_cap": "16777216",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.003346292"
+        },
+        {
+          "cell": "c6",
+          "rows": "10000000",
+          "width": "6",
+          "marker": "0",
+          "workers": "8",
+          "phases": "22",
+          "blocks": "1832",
+          "range_first": "0",
+          "range_end": "10000000",
+          "phase_work_cap": "16777216",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.002276334"
+        },
+        {
+          "cell": "c7",
+          "rows": "1000000",
+          "width": "6",
+          "marker": "1",
+          "workers": "8",
+          "phases": "2",
+          "blocks": "214",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "16777216",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.006559750"
+        },
+        {
+          "cell": "c7",
+          "rows": "1000000",
+          "width": "1",
+          "marker": "0",
+          "workers": "8",
+          "phases": "1",
+          "blocks": "62",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "16777216",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.002716584"
+        },
+        {
+          "cell": "c7",
+          "rows": "1000000",
+          "width": "6",
+          "marker": "1",
+          "workers": "8",
+          "phases": "2",
+          "blocks": "214",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "16777216",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.006445959"
+        },
+        {
+          "cell": "c7",
+          "rows": "1000000",
+          "width": "1",
+          "marker": "0",
+          "workers": "8",
+          "phases": "1",
+          "blocks": "62",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "16777216",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.002662750"
+        },
+        {
+          "cell": "c8",
+          "rows": "1000000",
+          "width": "34",
+          "marker": "0",
+          "workers": "8",
+          "phases": "9",
+          "blocks": "1039",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "16777216",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.003447709"
+        },
+        {
+          "cell": "c8",
+          "rows": "1000000",
+          "width": "34",
+          "marker": "0",
+          "workers": "8",
+          "phases": "9",
+          "blocks": "1039",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "16777216",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.003598500"
+        },
+        {
+          "cell": "c9",
+          "rows": "1000000",
+          "width": "4",
+          "marker": "1",
+          "workers": "8",
+          "phases": "2",
+          "blocks": "153",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "16777216",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.003629833"
+        },
+        {
+          "cell": "c9",
+          "rows": "1000000",
+          "width": "4",
+          "marker": "1",
+          "workers": "8",
+          "phases": "2",
+          "blocks": "153",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "16777216",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.003735959"
+        },
+        {
+          "cell": "c10",
+          "rows": "1000000",
+          "width": "65",
+          "marker": "1",
+          "workers": "8",
+          "phases": "16",
+          "blocks": "2017",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "16777216",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.005641958"
+        },
+        {
+          "cell": "c10",
+          "rows": "1000000",
+          "width": "65",
+          "marker": "1",
+          "workers": "8",
+          "phases": "16",
+          "blocks": "2017",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "16777216",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.005549875"
+        },
+        {
+          "cell": "c11",
+          "rows": "10000000",
+          "width": "5",
+          "marker": "1",
+          "workers": "8",
+          "phases": "16",
+          "blocks": "1832",
+          "range_first": "4995000",
+          "range_end": "5005000",
+          "phase_work_cap": "16777216",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.000840000"
+        },
+        {
+          "cell": "c11",
+          "rows": "10000000",
+          "width": "5",
+          "marker": "1",
+          "workers": "8",
+          "phases": "16",
+          "blocks": "1832",
+          "range_first": "4995000",
+          "range_end": "5005000",
+          "phase_work_cap": "16777216",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.000317209"
+        },
+        {
+          "cell": "c12",
+          "rows": "1000000",
+          "width": "12",
+          "marker": "1",
+          "workers": "8",
+          "phases": "4",
+          "blocks": "397",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "16777216",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.005289667"
+        },
+        {
+          "cell": "c12",
+          "rows": "1000000",
+          "width": "12",
+          "marker": "1",
+          "workers": "8",
+          "phases": "4",
+          "blocks": "397",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "16777216",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.003621750"
+        },
+        {
+          "cell": "c13",
+          "rows": "1000000",
+          "width": "9",
+          "marker": "1",
+          "workers": "8",
+          "phases": "3",
+          "blocks": "306",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "16777216",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.002943834"
+        },
+        {
+          "cell": "c13",
+          "rows": "1000000",
+          "width": "9",
+          "marker": "1",
+          "workers": "8",
+          "phases": "3",
+          "blocks": "306",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "16777216",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.003063667"
+        },
+        {
+          "cell": "c14",
+          "rows": "1000000",
+          "width": "6",
+          "marker": "1",
+          "workers": "8",
+          "phases": "2",
+          "blocks": "214",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "16777216",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.002898958"
+        },
+        {
+          "cell": "c14",
+          "rows": "1000000",
+          "width": "1",
+          "marker": "0",
+          "workers": "8",
+          "phases": "1",
+          "blocks": "62",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "16777216",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.000506667"
+        },
+        {
+          "cell": "c14",
+          "rows": "1000000",
+          "width": "6",
+          "marker": "1",
+          "workers": "8",
+          "phases": "2",
+          "blocks": "214",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "16777216",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.002865625"
+        },
+        {
+          "cell": "c14",
+          "rows": "1000000",
+          "width": "1",
+          "marker": "0",
+          "workers": "8",
+          "phases": "1",
+          "blocks": "62",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "16777216",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.000455500"
+        }
+      ]
+    },
+    {
+      "file": "verify-incumbent-4.txt",
+      "sha256": "784567c70b447aeb49f218d0ce36b3a8e2c84eb06386e31b49900877cc7e7a23",
+      "windows": [
+        {
+          "cell": "c1",
+          "rows": "1000000",
+          "width": "4",
+          "marker": "0",
+          "workers": "4",
+          "phases": "1",
+          "blocks": "123"
+        },
+        {
+          "cell": "c1",
+          "rows": "1000000",
+          "width": "4",
+          "marker": "0",
+          "workers": "4",
+          "phases": "1",
+          "blocks": "123"
+        },
+        {
+          "cell": "c2",
+          "rows": "1000000",
+          "width": "65",
+          "marker": "0",
+          "workers": "4",
+          "phases": "4",
+          "blocks": "1985"
+        },
+        {
+          "cell": "c2",
+          "rows": "1000000",
+          "width": "65",
+          "marker": "0",
+          "workers": "4",
+          "phases": "4",
+          "blocks": "1985"
+        },
+        {
+          "cell": "c3",
+          "rows": "1000000",
+          "width": "34",
+          "marker": "0",
+          "workers": "4",
+          "phases": "3",
+          "blocks": "1039"
+        },
+        {
+          "cell": "c3",
+          "rows": "1000000",
+          "width": "34",
+          "marker": "0",
+          "workers": "4",
+          "phases": "3",
+          "blocks": "1039"
+        },
+        {
+          "cell": "c4",
+          "rows": "1000000",
+          "width": "18",
+          "marker": "1",
+          "workers": "4",
+          "phases": "2",
+          "blocks": "581"
+        },
+        {
+          "cell": "c4",
+          "rows": "1000000",
+          "width": "18",
+          "marker": "1",
+          "workers": "4",
+          "phases": "2",
+          "blocks": "581"
+        },
+        {
+          "cell": "c5",
+          "rows": "1000000",
+          "width": "9",
+          "marker": "0",
+          "workers": "4",
+          "phases": "1",
+          "blocks": "275"
+        },
+        {
+          "cell": "c5",
+          "rows": "1000000",
+          "width": "9",
+          "marker": "0",
+          "workers": "4",
+          "phases": "1",
+          "blocks": "275"
+        },
+        {
+          "cell": "c6",
+          "rows": "10000000",
+          "width": "6",
+          "marker": "0",
+          "workers": "4",
+          "phases": "4",
+          "blocks": "1832"
+        },
+        {
+          "cell": "c6",
+          "rows": "10000000",
+          "width": "6",
+          "marker": "0",
+          "workers": "4",
+          "phases": "4",
+          "blocks": "1832"
+        },
+        {
+          "cell": "c7",
+          "rows": "1000000",
+          "width": "6",
+          "marker": "1",
+          "workers": "4",
+          "phases": "1",
+          "blocks": "214"
+        },
+        {
+          "cell": "c7",
+          "rows": "1000000",
+          "width": "1",
+          "marker": "0",
+          "workers": "4",
+          "phases": "1",
+          "blocks": "62"
+        },
+        {
+          "cell": "c7",
+          "rows": "1000000",
+          "width": "6",
+          "marker": "1",
+          "workers": "4",
+          "phases": "1",
+          "blocks": "214"
+        },
+        {
+          "cell": "c7",
+          "rows": "1000000",
+          "width": "1",
+          "marker": "0",
+          "workers": "4",
+          "phases": "1",
+          "blocks": "62"
+        },
+        {
+          "cell": "c8",
+          "rows": "1000000",
+          "width": "34",
+          "marker": "0",
+          "workers": "4",
+          "phases": "3",
+          "blocks": "1039"
+        },
+        {
+          "cell": "c8",
+          "rows": "1000000",
+          "width": "34",
+          "marker": "0",
+          "workers": "4",
+          "phases": "3",
+          "blocks": "1039"
+        },
+        {
+          "cell": "c9",
+          "rows": "1000000",
+          "width": "4",
+          "marker": "1",
+          "workers": "4",
+          "phases": "1",
+          "blocks": "153"
+        },
+        {
+          "cell": "c9",
+          "rows": "1000000",
+          "width": "4",
+          "marker": "1",
+          "workers": "4",
+          "phases": "1",
+          "blocks": "153"
+        },
+        {
+          "cell": "c10",
+          "rows": "1000000",
+          "width": "65",
+          "marker": "1",
+          "workers": "4",
+          "phases": "4",
+          "blocks": "2017"
+        },
+        {
+          "cell": "c10",
+          "rows": "1000000",
+          "width": "65",
+          "marker": "1",
+          "workers": "4",
+          "phases": "4",
+          "blocks": "2017"
+        },
+        {
+          "cell": "c11",
+          "rows": "10000000",
+          "width": "5",
+          "marker": "1",
+          "workers": "4",
+          "phases": "4",
+          "blocks": "1832"
+        },
+        {
+          "cell": "c11",
+          "rows": "10000000",
+          "width": "5",
+          "marker": "1",
+          "workers": "4",
+          "phases": "4",
+          "blocks": "1832"
+        },
+        {
+          "cell": "c12",
+          "rows": "1000000",
+          "width": "12",
+          "marker": "1",
+          "workers": "4",
+          "phases": "1",
+          "blocks": "397"
+        },
+        {
+          "cell": "c12",
+          "rows": "1000000",
+          "width": "12",
+          "marker": "1",
+          "workers": "4",
+          "phases": "1",
+          "blocks": "397"
+        },
+        {
+          "cell": "c13",
+          "rows": "1000000",
+          "width": "9",
+          "marker": "1",
+          "workers": "4",
+          "phases": "1",
+          "blocks": "306"
+        },
+        {
+          "cell": "c13",
+          "rows": "1000000",
+          "width": "9",
+          "marker": "1",
+          "workers": "4",
+          "phases": "1",
+          "blocks": "306"
+        },
+        {
+          "cell": "c14",
+          "rows": "1000000",
+          "width": "6",
+          "marker": "1",
+          "workers": "4",
+          "phases": "1",
+          "blocks": "214"
+        },
+        {
+          "cell": "c14",
+          "rows": "1000000",
+          "width": "1",
+          "marker": "0",
+          "workers": "4",
+          "phases": "1",
+          "blocks": "62"
+        },
+        {
+          "cell": "c14",
+          "rows": "1000000",
+          "width": "6",
+          "marker": "1",
+          "workers": "4",
+          "phases": "1",
+          "blocks": "214"
+        },
+        {
+          "cell": "c14",
+          "rows": "1000000",
+          "width": "1",
+          "marker": "0",
+          "workers": "4",
+          "phases": "1",
+          "blocks": "62"
+        }
+      ]
+    },
+    {
+      "file": "verify-incumbent-8.txt",
+      "sha256": "11a42edcafc979936cec02b3d9fa7b09350bbc2edec08446ccd977eafe9a6b5f",
+      "windows": [
+        {
+          "cell": "c1",
+          "rows": "1000000",
+          "width": "4",
+          "marker": "0",
+          "workers": "8",
+          "phases": "1",
+          "blocks": "123"
+        },
+        {
+          "cell": "c1",
+          "rows": "1000000",
+          "width": "4",
+          "marker": "0",
+          "workers": "8",
+          "phases": "1",
+          "blocks": "123"
+        },
+        {
+          "cell": "c2",
+          "rows": "1000000",
+          "width": "65",
+          "marker": "0",
+          "workers": "8",
+          "phases": "4",
+          "blocks": "1985"
+        },
+        {
+          "cell": "c2",
+          "rows": "1000000",
+          "width": "65",
+          "marker": "0",
+          "workers": "8",
+          "phases": "4",
+          "blocks": "1985"
+        },
+        {
+          "cell": "c3",
+          "rows": "1000000",
+          "width": "34",
+          "marker": "0",
+          "workers": "8",
+          "phases": "3",
+          "blocks": "1039"
+        },
+        {
+          "cell": "c3",
+          "rows": "1000000",
+          "width": "34",
+          "marker": "0",
+          "workers": "8",
+          "phases": "3",
+          "blocks": "1039"
+        },
+        {
+          "cell": "c4",
+          "rows": "1000000",
+          "width": "18",
+          "marker": "1",
+          "workers": "8",
+          "phases": "2",
+          "blocks": "581"
+        },
+        {
+          "cell": "c4",
+          "rows": "1000000",
+          "width": "18",
+          "marker": "1",
+          "workers": "8",
+          "phases": "2",
+          "blocks": "581"
+        },
+        {
+          "cell": "c5",
+          "rows": "1000000",
+          "width": "9",
+          "marker": "0",
+          "workers": "8",
+          "phases": "1",
+          "blocks": "275"
+        },
+        {
+          "cell": "c5",
+          "rows": "1000000",
+          "width": "9",
+          "marker": "0",
+          "workers": "8",
+          "phases": "1",
+          "blocks": "275"
+        },
+        {
+          "cell": "c6",
+          "rows": "10000000",
+          "width": "6",
+          "marker": "0",
+          "workers": "8",
+          "phases": "4",
+          "blocks": "1832"
+        },
+        {
+          "cell": "c6",
+          "rows": "10000000",
+          "width": "6",
+          "marker": "0",
+          "workers": "8",
+          "phases": "4",
+          "blocks": "1832"
+        },
+        {
+          "cell": "c7",
+          "rows": "1000000",
+          "width": "6",
+          "marker": "1",
+          "workers": "8",
+          "phases": "1",
+          "blocks": "214"
+        },
+        {
+          "cell": "c7",
+          "rows": "1000000",
+          "width": "1",
+          "marker": "0",
+          "workers": "8",
+          "phases": "1",
+          "blocks": "62"
+        },
+        {
+          "cell": "c7",
+          "rows": "1000000",
+          "width": "6",
+          "marker": "1",
+          "workers": "8",
+          "phases": "1",
+          "blocks": "214"
+        },
+        {
+          "cell": "c7",
+          "rows": "1000000",
+          "width": "1",
+          "marker": "0",
+          "workers": "8",
+          "phases": "1",
+          "blocks": "62"
+        },
+        {
+          "cell": "c8",
+          "rows": "1000000",
+          "width": "34",
+          "marker": "0",
+          "workers": "8",
+          "phases": "3",
+          "blocks": "1039"
+        },
+        {
+          "cell": "c8",
+          "rows": "1000000",
+          "width": "34",
+          "marker": "0",
+          "workers": "8",
+          "phases": "3",
+          "blocks": "1039"
+        },
+        {
+          "cell": "c9",
+          "rows": "1000000",
+          "width": "4",
+          "marker": "1",
+          "workers": "8",
+          "phases": "1",
+          "blocks": "153"
+        },
+        {
+          "cell": "c9",
+          "rows": "1000000",
+          "width": "4",
+          "marker": "1",
+          "workers": "8",
+          "phases": "1",
+          "blocks": "153"
+        },
+        {
+          "cell": "c10",
+          "rows": "1000000",
+          "width": "65",
+          "marker": "1",
+          "workers": "8",
+          "phases": "4",
+          "blocks": "2017"
+        },
+        {
+          "cell": "c10",
+          "rows": "1000000",
+          "width": "65",
+          "marker": "1",
+          "workers": "8",
+          "phases": "4",
+          "blocks": "2017"
+        },
+        {
+          "cell": "c11",
+          "rows": "10000000",
+          "width": "5",
+          "marker": "1",
+          "workers": "8",
+          "phases": "4",
+          "blocks": "1832"
+        },
+        {
+          "cell": "c11",
+          "rows": "10000000",
+          "width": "5",
+          "marker": "1",
+          "workers": "8",
+          "phases": "4",
+          "blocks": "1832"
+        },
+        {
+          "cell": "c12",
+          "rows": "1000000",
+          "width": "12",
+          "marker": "1",
+          "workers": "8",
+          "phases": "1",
+          "blocks": "397"
+        },
+        {
+          "cell": "c12",
+          "rows": "1000000",
+          "width": "12",
+          "marker": "1",
+          "workers": "8",
+          "phases": "1",
+          "blocks": "397"
+        },
+        {
+          "cell": "c13",
+          "rows": "1000000",
+          "width": "9",
+          "marker": "1",
+          "workers": "8",
+          "phases": "1",
+          "blocks": "306"
+        },
+        {
+          "cell": "c13",
+          "rows": "1000000",
+          "width": "9",
+          "marker": "1",
+          "workers": "8",
+          "phases": "1",
+          "blocks": "306"
+        },
+        {
+          "cell": "c14",
+          "rows": "1000000",
+          "width": "6",
+          "marker": "1",
+          "workers": "8",
+          "phases": "1",
+          "blocks": "214"
+        },
+        {
+          "cell": "c14",
+          "rows": "1000000",
+          "width": "1",
+          "marker": "0",
+          "workers": "8",
+          "phases": "1",
+          "blocks": "62"
+        },
+        {
+          "cell": "c14",
+          "rows": "1000000",
+          "width": "6",
+          "marker": "1",
+          "workers": "8",
+          "phases": "1",
+          "blocks": "214"
+        },
+        {
+          "cell": "c14",
+          "rows": "1000000",
+          "width": "1",
+          "marker": "0",
+          "workers": "8",
+          "phases": "1",
+          "blocks": "62"
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "One physical host per platform; no universal architecture speed claim.",
+    "Longest preflight phases are observations, not worst-case Break latency guarantees.",
+    "Prior failed qualification and mixed cap ablation remain retained.",
+    "Native Intel Stata and interactive GUI Break remain unqualified."
+  ]
+}

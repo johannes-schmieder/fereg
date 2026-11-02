@@ -240,7 +240,20 @@ against beta.13, with the same workers, mirrored blocks, repetitions, whole-call
 threshold and no exclusion/resampling rule. Actual-plugin science/path checks
 and verified relative-path environment manifests precede timing. The earlier
 failed qualification and mixed diagnostic remain evidence; neither is replaced
-by this authorized revision. No revised-candidate qualification is yet claimed.
+by this authorized revision.
+
+The [revised Mac comparison](../bench/results/input-beta14-revised-macos-20261102.json)
+passes all 28 settings with [all 672 calls](../bench/results/input-beta14-revised-macos-20261102.csv)
+retained, no resampling and successful host observation. Short-`in` whole-call
+medians improve from 228 to 205 ms at four workers and 217 to 205 ms at eight.
+The full ten-million-row case changes from 927.5 to 929.5 ms at four workers and
+759.5 to 764 ms at eight. Exact input preflights pass across both arms and both
+worker counts. The universal Mac build/ABI audit, 68 Stata 19 fixtures, 77 exact
+incumbent replays, scalar oracles, failure rollback and live console Break checks
+pass. The Stata 18 console oracle also passes 70 cases/202 runs (71 parallel).
+Full source integration passes in source-only mode; installed-package admission
+awaits matching candidate binaries. Linux timing and the revised Windows run
+remain outstanding, so this Mac result does not authorize beta.14 publication.
 
 The actual candidate binaries pass 68 licensed Stata 19 fixtures on both Mac
 and Linux, all 77 exact incumbent replay cases on each, scalar input oracles at
