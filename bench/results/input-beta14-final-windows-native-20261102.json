@@ -1,0 +1,86 @@
+{
+  "schema": 1,
+  "status": "native and installed science passed",
+  "qualification": "Serial input only. This record does not waive the Linux performance gate.",
+  "receipt": {
+    "schema_version": 4,
+    "run_id": "win-20261102T064347Z-e70e9ea3",
+    "project": "fereg",
+    "profile": "stata-do",
+    "source_revision": "commit-e43d534cd69cce88ae433caf441ca02769556c0e",
+    "source_sha256": "ca4d35d439b75496d3dd0bc416fd639e9854d473e652179b5552a32619dbdac2",
+    "windows_target": "x86_64",
+    "execution_identity": "SYSTEM",
+    "status": "PASS",
+    "error_code": null,
+    "checks": {
+      "execution_identity": true,
+      "source_hash": true,
+      "archive_paths": true,
+      "source_manifest": true,
+      "shutdown_backstop": true,
+      "stata": true,
+      "project_test": true
+    },
+    "completed_at_utc": "2026-11-02T07:01:35.5715223Z",
+    "controller_sha256": "e635d58609f24fa8564ce4c3b6787eccd9df36892edb636069cdc2ebcdfdaf00",
+    "diagnostic_guard_sha256": "14fe3f6515439c55d0732e99fba797280b76dfd9638345794a639a00a44ffd12",
+    "process": {
+      "outcome": "passed",
+      "elapsed_ms": 1005314,
+      "exit_code": 0
+    },
+    "diagnostics": {
+      "available": true,
+      "compiler_errors": [],
+      "completed": [
+        "startup",
+        "toolchain",
+        "source_identity",
+        "cargo_build",
+        "exact_fma",
+        "fused_kernels",
+        "c_bridge",
+        "numeric_guards",
+        "plugin_link",
+        "binary_audit",
+        "native_loader",
+        "build_complete",
+        "checksum",
+        "stata_smoke",
+        "single_runtime"
+      ],
+      "native_rc": null,
+      "plugin_sha256": "d7bd09e69e930bab19c8d6bd9087a48ab324c62d33135c8dc4b75fbcdc222810",
+      "reason": "none",
+      "stage": "complete",
+      "stage_elapsed_ms": 3156,
+      "stata_rc": null,
+      "status": "PASS"
+    }
+  },
+  "receipt_sha256": "88849e7782611d06d20931f4c78373f5c5c7e9d8e5ac268922993375a5095adf",
+  "input_oracle": {
+    "cases_per_run": 70,
+    "estimations_per_run": 202,
+    "worker_requests": [
+      0,
+      8
+    ],
+    "numeric_windows": 0,
+    "input_digests": "exact",
+    "cross_worker_science": "passed"
+  },
+  "missing_value_witness": "passed",
+  "ols_ppml_transaction_fixtures": "passed",
+  "local_installed_plugin_checksum": "exact",
+  "cleanup": {
+    "instance_stopped": true,
+    "transient_objects_deleted": true,
+    "lock_released": true
+  },
+  "source_difference_from_unix_binaries": "Documentation and PowerShell argument-array repair only; native runtime inputs unchanged.",
+  "limitations": [
+    "Parallel Windows input remains disabled pending live Break qualification."
+  ]
+}

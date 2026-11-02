@@ -505,8 +505,14 @@ reproduced that argument error, verified the typed-array correction, checked
 both accepted modes and rejected a forbidden numeric window. It deliberately
 returned diagnostic code 97001 and confers no release qualification. Both
 runs stopped the machine, deleted transient objects and released the lock.
-The fix changes only the test launcher; the final Windows native/installed
-checks are rerun through the guarded driver.
+The fix changes only the test launcher. The corrected
+[Windows native and installed run](../bench/results/input-beta14-final-windows-native-20261102.json)
+passes at exact source `e43d534c`: both oracle runs cover 70 cases/202 estimations
+with zero numeric windows, equal digests and scientific agreement. The missing
+witness, native/MSVC/ABI checks and OLS/PPML transaction fixtures pass. The
+controller records 1,005.314 seconds, transient objects deleted, lock released
+and the machine stopped. This resolves the launcher failure and confirms the
+serial fallback; it does not waive the failed Linux performance gate.
 
 The actual candidate binaries pass 68 licensed Stata 19 fixtures on both Mac
 and Linux, all 77 exact incumbent replay cases on each, scalar input oracles at
