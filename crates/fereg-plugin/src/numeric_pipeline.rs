@@ -851,6 +851,7 @@ mod tests {
         panic: bool,
         boundary: f64,
         missing_modulo: usize,
+        signed_zero: bool,
         batches: Vec<Vec<u32>>,
         interrupt: bool,
         polled: Option<std::sync::Arc<std::sync::atomic::AtomicBool>>,
@@ -865,6 +866,7 @@ mod tests {
                 panic: false,
                 boundary: 1e100,
                 missing_modulo: 197,
+                signed_zero: false,
                 batches: Vec::new(),
                 interrupt: false,
                 polled: None,
@@ -897,6 +899,8 @@ mod tests {
                     *value = if self.missing_modulo != 0 && (first + row) % self.missing_modulo == 0
                     {
                         self.boundary
+                    } else if self.signed_zero && first + row == 1 && variables[column] == 1 {
+                        -0.0
                     } else {
                         (first + row) as f64 + f64::from(variables[column]) * 100000.0
                     };
@@ -987,12 +991,15 @@ mod tests {
                     let expected_missing = (row + 1) % 197 == 0;
                     assert_eq!(flags[column][row], expected_missing);
                     assert_eq!(
-                        values[column][row],
+                        values[column][row].to_bits(),
                         if expected_missing {
                             input.boundary
+                        } else if input.signed_zero && row == 0 && positions[column] == 1 {
+                            -0.0
                         } else {
                             (row + 1) as f64 + f64::from(positions[column]) * 100000.0
                         }
+                        .to_bits()
                     );
                 }
             }
@@ -1533,6 +1540,7 @@ mod tests {
     fn numeric_pipeline_transposes_tail_and_preserves_missing_on_caller_thread() {
         for width in [16, 52, 63, 64, 65, 66, 128, 130] {
             let mut input = Input::new();
+            input.signed_zero = true;
             let mut memory = InputMemory::new(None, 1234).unwrap();
             assert!(run(&mut input, 16387, width, 4, &mut memory).unwrap());
             assert_eq!(input.calls, 16387_usize.div_ceil(tile_rows(width).unwrap()));
