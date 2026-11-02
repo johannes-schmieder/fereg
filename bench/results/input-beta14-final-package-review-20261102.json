@@ -1,0 +1,116 @@
+{
+  "schema": 1,
+  "status": "review package checks passed; publication blocked by Linux performance gate",
+  "review_only": true,
+  "publication_eligible": false,
+  "complete_run_tests": {
+    "status": "passed",
+    "source": "c78c34eecbdb960afabfb99e0fe2274ede981a3d",
+    "package_binding": "all 36 files and final runtime identity",
+    "log_sha256": "b375b672e7bc5889e8a2dea50456ba10f12ce859a710251462ae50005115260b"
+  },
+  "review_archive_sha256": "c21ebfc770ff2e60ea0e004c13d10761c9aaea38dd9b7d64a31f862124132235",
+  "source_archive_sha256": "6a416750845ed51c28bedc195e38265417954c71930b61a7adf5b309e56f3c52",
+  "source_closure": {
+    "status": "passed",
+    "files": 2794,
+    "scope": [
+      "Rust and C sources",
+      "native build scripts",
+      "all archived Stata files",
+      "locked vendored dependency closure",
+      "toolchain and Cargo configuration",
+      "dependency licenses"
+    ],
+    "offline_build_archive_sha256": "cc0d3459cc04a87745c75f90c15639f7d0d488ed869d9ffd4eab4141250eee4c",
+    "candidate_source_archive_sha256": "6a416750845ed51c28bedc195e38265417954c71930b61a7adf5b309e56f3c52"
+  },
+  "dependency_audit": {
+    "advisory_count": 0,
+    "cargo_lock_sha256": "4975de767595cf184cd5328e6ec7f7a55e7871c545d3c51adbc92da1544696d5",
+    "schema": 1,
+    "source_sha": "c78c34eecbdb960afabfb99e0fe2274ede981a3d",
+    "status": "pass",
+    "toolchain": "1.85.1"
+  },
+  "native_binding": {
+    "schema": 1,
+    "version": "0.5.0",
+    "source_sha": "8b7a2bf0ad7940c83404c2e2b9c8634771b23990",
+    "runtime_sha256": "3cba8e33e32cd7bad8302c71d2c300cde019cc88173329210314af578fa9c054",
+    "plugins": [
+      {
+        "path": "fereg_linux.plugin",
+        "source_sha": "8b7a2bf0ad7940c83404c2e2b9c8634771b23990",
+        "sha256": "afc932eea51487ca74019dedce933fb94b558ecbe23823229cec7c86ee87804d",
+        "bytes": 16873912
+      },
+      {
+        "path": "fereg_windows.plugin",
+        "source_sha": "e43d534cd69cce88ae433caf441ca02769556c0e",
+        "sha256": "d7bd09e69e930bab19c8d6bd9087a48ab324c62d33135c8dc4b75fbcdc222810",
+        "bytes": 11974144
+      },
+      {
+        "path": "fereg_macos.plugin",
+        "source_sha": "8b7a2bf0ad7940c83404c2e2b9c8634771b23990",
+        "sha256": "8d899bfa34e615634014841bf984f08bc2fa3d280ab284e24ad1910afd94b8ae",
+        "bytes": 21140896
+      }
+    ],
+    "included_platforms": [
+      "linux",
+      "windows",
+      "macos"
+    ],
+    "support_caveats": [
+      "Local review candidate: three Linux performance settings exceed the release guard; publication is blocked.",
+      "The Linux binary requires glibc 2.28 or newer.",
+      "Windows retains serial input pending live Break qualification.",
+      "Native Intel-host Stata testing is outstanding; the macOS plugin contains both processor slices."
+    ],
+    "corresponding_source_sha256": "6a416750845ed51c28bedc195e38265417954c71930b61a7adf5b309e56f3c52",
+    "corresponding_source_commit": "c78c34eecbdb960afabfb99e0fe2274ede981a3d"
+  },
+  "fresh_local_installations": {
+    "macos_stata19": {
+      "source": "local root package",
+      "installed_files": 36,
+      "status": "passed",
+      "selftest_version": "0.5.0-beta.14",
+      "independent_ols_ppml": "passed",
+      "restricted_sample": "if plus in",
+      "all_installed_hashes": "exact"
+    },
+    "linux_stata15": {
+      "source": "local root package",
+      "installed_files": 36,
+      "status": "passed",
+      "selftest_version": "0.5.0-beta.14",
+      "independent_ols_ppml": "passed",
+      "restricted_sample": "if plus in",
+      "all_installed_hashes": "exact"
+    },
+    "linux_stata19": {
+      "source": "local root package",
+      "installed_files": 36,
+      "status": "passed",
+      "selftest_version": "0.5.0-beta.14",
+      "independent_ols_ppml": "passed",
+      "restricted_sample": "if plus in",
+      "all_installed_hashes": "exact"
+    }
+  },
+  "linux_install_accounting": {
+    "jobnumber": "8394188",
+    "hostname": "scc-ei3.scc.bu.edu",
+    "granted_pe": "omp",
+    "slots": "4",
+    "failed": "0",
+    "exit_status": "0",
+    "ru_wallclock": "6",
+    "maxvmem": "817.668M"
+  },
+  "http_installation": "not attempted: candidate is unpublished",
+  "release_decision": "The Linux result remains a regression (39/42 pass); no timing excluded or repeated. No release/tag/main publication was performed."
+}

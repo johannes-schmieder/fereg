@@ -514,6 +514,18 @@ controller records 1,005.314 seconds, transient objects deleted, lock released
 and the machine stopped. This resolves the launcher failure and confirms the
 serial fallback; it does not waive the failed Linux performance gate.
 
+The assembled [three-platform review package](../bench/results/input-beta14-final-package-review-20261102.json)
+passes the complete `scripts/run_tests.sh`, including native runtime binding and
+all 36 package files. Fresh local installations on Mac Stata 19 and Linux Stata
+15/19 verify every installed byte, beta.14 selftest and independent restricted
+OLS/PPML coefficient, variance and sample witnesses. Linux install job 8394188
+exits zero. The source archive has zero dependency advisories and 2,794 native,
+Stata, build and dependency files identical to the offline-tested archive.
+The review manifest explicitly sets `publication_eligible=false`. No HTTP install,
+release tag or main-package publication is claimed. The candidate and current
+inputs are retained for the performance decision; superseded local diagnostic
+captures, archives and source snapshots were removed after recording summaries.
+
 The actual candidate binaries pass 68 licensed Stata 19 fixtures on both Mac
 and Linux, all 77 exact incumbent replay cases on each, scalar input oracles at
 multiple worker counts, accessor-failure rollback, and live console Break while
