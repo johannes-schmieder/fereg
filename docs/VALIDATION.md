@@ -526,6 +526,32 @@ release tag or main-package publication is claimed. The candidate and current
 inputs are retained for the performance decision; superseded local diagnostic
 captures, archives and source snapshots were removed after recording summaries.
 
+Johannes subsequently made `in` performance secondary and authorized accepting
+an `in` regression. The three remaining cleanup failures are full-sample cells,
+so this does not waive those failures. One narrower candidate restores the
+incumbent's 16 Mi slot-work phases and one-block Rayon splitting, subject to a
+128 Mi complete-work ceiling, with no occupancy override or minimum row floor.
+For every validated layout, `4*width + 6*marker + 2*rhs_width <= 8*slots`;
+the factor eight includes the one-source/two-RHS appended-intercept case.
+This preserves ordinary incumbent scheduling geometry while retaining descriptor
+admission, sticky errors, bounded original-row work and the `in` read envelope.
+It replaces the worker-adaptive scheduling policy rather than adding another
+route, knob, affinity policy or model-specific exception. Independent review
+finds this a defensible compatibility narrowing, not a demonstrated performance
+fix. Later-native penalties in c3/c8 remain unexplained. Longer work between
+Break polls is an explicit responsiveness tradeoff.
+
+Scientific arithmetic, storage, loaded bits and estimator routes remain unchanged;
+the numerical-change and derived-route scopes are empty. Before timing, the
+actual plugins must pass exact input/science preflights for every cell and worker,
+including full samples and the existing independent witnesses. The same fixed
+four-block, three-repetition, fourteen-cell Linux/Mac design applies. c11 (`in`)
+is retained and reported but advisory under Johannes's instruction; the other
+thirteen cells retain max(5%, 1 ms) whole-call protection. All observations are
+kept, with no interference exclusions or retries. Environment and input pins
+must be reverified from the run root. This is one frozen candidate, not a search
+over phase constants, and no new timing or release success is asserted here.
+
 The actual candidate binaries pass 68 licensed Stata 19 fixtures on both Mac
 and Linux, all 77 exact incumbent replay cases on each, scalar input oracles at
 multiple worker counts, accessor-failure rollback, and live console Break while

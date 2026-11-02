@@ -27,22 +27,18 @@ pub(crate) const MAX_WINDOW_SLOTS: usize = 64;
 /// window call per slot group.
 const BLOCK_VALUES: usize = 1 << 15;
 const MAX_BLOCK_ROWS: usize = 16_384;
-/// Accounted work per worker between joins: reads, flag writes, marker
-/// validation, diagnostic replay and RHS copies. Four workers' work is the
-/// minimum phase; the fixed ceiling takes precedence over worker occupancy.
-/// These are work bounds, not elapsed-time guarantees for Break delivery.
+/// Keep the incumbent's slot-work geometry for ordinary inputs. A slot is
+/// one target or the marker at one original row, including excluded rows.
 #[cfg(not(test))]
-const PHASE_WORK_PER_WORKER: usize = 1 << 21;
-/// Exercise the same policy with many phases on small unit-test inputs.
+const PHASE_VALUES: usize = 1 << 24;
+/// Exercise multiple phases on small unit-test inputs.
 #[cfg(test)]
-const PHASE_WORK_PER_WORKER: usize = 1 << 14;
-const PHASE_WORK_CEILING: usize = PHASE_WORK_PER_WORKER * 32;
-
-fn phase_work_budget(workers: usize) -> usize {
-    workers
-        .saturating_mul(PHASE_WORK_PER_WORKER)
-        .clamp(PHASE_WORK_PER_WORKER * 4, PHASE_WORK_CEILING)
-}
+const PHASE_VALUES: usize = 1 << 16;
+/// Also bound reads, writes, validation, diagnostic replay and RHS copies.
+/// A validated RHS has at most width + 1 columns, so accounted work per row
+/// is at most eight times its slot count. Never enlarge either bound to occupy
+/// workers. These are work bounds, not elapsed-time guarantees for Break.
+const PHASE_WORK_CEILING: usize = PHASE_VALUES * 8;
 
 /// Host combinations whose numeric window passed qualification: plugin
 /// target, Stata major version, edition and interface (`c(console)`). Every
@@ -272,13 +268,13 @@ pub(crate) fn try_read(
         .saturating_mul(4)
         .saturating_add(usize::from(marker) * 6)
         .saturating_add(rhs.as_ref().map_or(0, |(_, layout)| layout.width * 2));
-    let phase_work = phase_work_budget(team.threads());
-    if work_per_row > phase_work {
+    if slots > PHASE_VALUES || work_per_row > PHASE_WORK_CEILING {
         return decline("phase_row_budget");
     }
     let block_rows = (BLOCK_VALUES / slots)
         .clamp(1, MAX_BLOCK_ROWS)
-        .min(phase_work / work_per_row);
+        .min(PHASE_VALUES / slots)
+        .min(PHASE_WORK_CEILING / work_per_row);
     let blocks = rows.div_ceil(block_rows);
     if StagePlan::new(rows as u128 * slots as u128, blocks, team.threads()).lanes < 2 {
         return decline("work_plan");
@@ -337,7 +333,7 @@ pub(crate) fn try_read(
             Transport { policy, team },
             &bank,
             &positions,
-            (rows, blocks, block_rows * work_per_row, phase_work),
+            (rows, blocks, block_rows * slots, block_rows * work_per_row),
             &failures,
         )?
         else {
@@ -368,7 +364,7 @@ pub(crate) fn try_read(
             // SAFETY: as above; every row wrote `layout.width` values.
             unsafe { values.set_len(rows * layout.width) };
         }
-        trace.finish(phases, blocks, team.threads(), phase_work, longest_phase);
+        trace.finish(phases, blocks, team.threads(), longest_phase);
         Ok(true)
     })();
     memory.release(descriptor_bytes)?;
@@ -406,7 +402,7 @@ fn park_for_break(token: &[u8; 32], ppml: bool) -> Result<()> {
 /// Run every phase: poll Break, open the window, read the phase's blocks on
 /// the team and close the window once every worker has returned. `Ok(None)`:
 /// the first window was refused, so nothing was read. `shape` is (rows,
-/// blocks, work per block, work budget); failures accumulate in serial precedence.
+/// blocks, slots per block, work per block); failures accumulate in serial precedence.
 fn run_phases(
     spi: &mut dyn SpiApi,
     transport: Transport,
@@ -416,10 +412,12 @@ fn run_phases(
     failures: &Mutex<Option<Failure>>,
 ) -> Result<Option<(usize, f64)>> {
     let Transport { policy, team } = transport;
-    let (rows, blocks, block_work, phase_work) = shape;
-    // Admission guarantees a nonempty block fits. Round down; never enlarge
-    // this budget to occupy workers. Rayon may group adjacent blocks naturally.
-    let phase_blocks = (phase_work / block_work).max(1);
+    let (rows, blocks, block_values, block_work) = shape;
+    // Admission guarantees a nonempty block fits both bounds. Retain the
+    // incumbent slot geometry; neither bound has a worker-occupancy override.
+    let phase_blocks = (PHASE_VALUES / block_values)
+        .min(PHASE_WORK_CEILING / block_work)
+        .max(1);
     let mut payload = true;
     let mut phases = 0_usize;
     let mut longest_phase = 0.0_f64;
@@ -430,35 +428,39 @@ fn run_phases(
         let started = fereg_core::diagnostics::solver_trace_enabled().then(std::time::Instant::now);
         let opened = spi.with_numeric_window(positions, rows, &mut |source| {
             team.install(|| {
-                phase.clone().into_par_iter().for_each(|block| {
-                    let failure = match fault {
-                        Some(Fault::WorkerPanic) if block == phase.end - 1 => {
-                            panic!("injected parallel input worker panic")
+                phase
+                    .clone()
+                    .into_par_iter()
+                    .with_max_len(1)
+                    .for_each(|block| {
+                        let failure = match fault {
+                            Some(Fault::WorkerPanic) if block == phase.end - 1 => {
+                                panic!("injected parallel input worker panic")
+                            }
+                            Some(Fault::ReadFailure) if block == phase.end - 1 => {
+                                Some(payload_failure(bank.block(block).0, 0, 919))
+                            }
+                            Some(Fault::BreakDuringFirstPhase { token, ppml })
+                                if block == phase.start =>
+                            {
+                                park_for_break(&token, ppml)
+                                    .err()
+                                    .map(|error| Failure {
+                                        key: FailureKey {
+                                            class: PAYLOAD,
+                                            row: bank.block(block).0,
+                                            slot: 0,
+                                        },
+                                        kind: FailureKind::Marker(error),
+                                    })
+                                    .or_else(|| read_block(source, bank, block, payload))
+                            }
+                            _ => read_block(source, bank, block, payload),
+                        };
+                        if let Some(failure) = failure {
+                            record(failures, failure);
                         }
-                        Some(Fault::ReadFailure) if block == phase.end - 1 => {
-                            Some(payload_failure(bank.block(block).0, 0, 919))
-                        }
-                        Some(Fault::BreakDuringFirstPhase { token, ppml })
-                            if block == phase.start =>
-                        {
-                            park_for_break(&token, ppml)
-                                .err()
-                                .map(|error| Failure {
-                                    key: FailureKey {
-                                        class: PAYLOAD,
-                                        row: bank.block(block).0,
-                                        slot: 0,
-                                    },
-                                    kind: FailureKind::Marker(error),
-                                })
-                                .or_else(|| read_block(source, bank, block, payload))
-                        }
-                        _ => read_block(source, bank, block, payload),
-                    };
-                    if let Some(failure) = failure {
-                        record(failures, failure);
-                    }
-                });
+                    });
             })
         })?;
         if !opened {
@@ -1018,17 +1020,10 @@ impl Trace {
         }
     }
 
-    fn finish(
-        &self,
-        phases: usize,
-        blocks: usize,
-        workers: usize,
-        phase_work: usize,
-        longest_phase: f64,
-    ) {
+    fn finish(&self, phases: usize, blocks: usize, workers: usize, longest_phase: f64) {
         if let Some(started) = self.started {
             fereg_core::diagnostics::emit_solver_trace(&format!(
-                "FEREG_SOLVER_TRACE|phase=input_transport|mode=parallel|rows={}|width={}|marker={}|workers={workers}|phases={phases}|blocks={blocks}|range_first={}|range_end={}|phase_work_cap={phase_work}|phase_work_ceiling={PHASE_WORK_CEILING}|longest_phase_s={longest_phase:.9}|seconds={:.9}",
+                "FEREG_SOLVER_TRACE|phase=input_transport|mode=parallel|rows={}|width={}|marker={}|workers={workers}|phases={phases}|blocks={blocks}|range_first={}|range_end={}|phase_value_cap={PHASE_VALUES}|phase_work_cap={PHASE_WORK_CEILING}|phase_work_ceiling={PHASE_WORK_CEILING}|longest_phase_s={longest_phase:.9}|seconds={:.9}",
                 self.rows,
                 self.width,
                 u8::from(self.marker),
@@ -1547,14 +1542,36 @@ mod tests {
     }
 
     #[test]
-    fn phase_work_scales_with_workers_but_never_exceeds_the_ceiling() {
-        let minimum = phase_work_budget(4);
-        assert_eq!(phase_work_budget(2), minimum);
-        assert_eq!(phase_work_budget(8), minimum * 2);
-        assert_eq!(phase_work_budget(16), minimum * 4);
-        assert_eq!(phase_work_budget(28), minimum * 7);
-        assert_eq!(phase_work_budget(32), PHASE_WORK_CEILING);
-        assert_eq!(phase_work_budget(usize::MAX), PHASE_WORK_CEILING);
+    fn phase_slot_bound_covers_the_widest_valid_rhs_and_ignores_worker_occupancy() {
+        // One source plus an appended intercept is the maximum work/slot ratio.
+        // Exercise the real reader with enough workers that an occupancy floor
+        // would exceed the phase bounds, and compare exact packed output.
+        let rows = PHASE_VALUES * 2 + 17;
+        let mut spi = TestSpi::new(dataset(rows, 1, 9));
+        let (result, loaded) = run(
+            &mut spi,
+            transport(Policy::PARALLEL, 8),
+            1,
+            None,
+            None,
+            (0.0, false),
+            Some(NumericRhsLayout {
+                width: 2,
+                append_intercept: true,
+            }),
+            None,
+        );
+        assert_eq!(result, Ok(true));
+        assert_eq!(spi.phase_reads, [PHASE_VALUES, PHASE_VALUES, 17]);
+        assert!(spi
+            .phase_reads
+            .iter()
+            .all(|reads| reads * 8 <= PHASE_WORK_CEILING));
+        let rhs = loaded.rhs.unwrap();
+        for row in 0..rows {
+            assert_eq!(rhs[row * 2].to_bits(), spi.columns[0][row].to_bits());
+            assert_eq!(rhs[row * 2 + 1], 1.0);
+        }
     }
 
     #[test]
@@ -1575,7 +1592,7 @@ mod tests {
             assert!(spi
                 .phase_reads
                 .iter()
-                .all(|reads| reads * 4 <= phase_work_budget(8)));
+                .all(|reads| *reads <= PHASE_VALUES && reads * 4 <= PHASE_WORK_CEILING));
             spi.break_during_read = true;
             let opens = spi.opens;
             let (result, loaded) = run(
@@ -1727,7 +1744,7 @@ mod tests {
         };
         // The first invalid marker row wins, even over an earlier payload error.
         for threads in [2, 5, 8] {
-            let mut spi = setup(&[39_000, 7_001, 30_000]);
+            let mut spi = setup(&[39_000, 17_001, 30_000]);
             spi.fail = Some((5, 1, 917));
             let (result, loaded) = run(
                 &mut spi,
@@ -1742,7 +1759,7 @@ mod tests {
             let error = result.unwrap_err();
             assert_eq!(error.code, ErrorCode::InvalidData);
             assert!(
-                error.message.contains("observation 7002"),
+                error.message.contains("observation 17002"),
                 "{}",
                 error.message
             );
@@ -1794,7 +1811,7 @@ mod tests {
             let mut columns = dataset(rows, width, 11);
             columns.push(marker_column(rows, "runs"));
             let mut spi = TestSpi::new(columns);
-            spi.fail_once = Some((12_345, 4, 918));
+            spi.fail_once = Some((35_000, 4, 918));
             spi.fail = Some((5, 1, 917));
             let (result, loaded) = run(
                 &mut spi,
@@ -1807,6 +1824,10 @@ mod tests {
                 None,
             );
             assert!(spi.failed_once.load(Ordering::Relaxed));
+            assert!(
+                spi.opens > 1,
+                "the marker failure must follow a payload-only phase"
+            );
             assert_eq!(
                 result.unwrap_err().message,
                 "Stata SPI numeric read failed with return code 918"
