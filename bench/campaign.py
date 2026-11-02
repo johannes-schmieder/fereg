@@ -358,7 +358,8 @@ def frozen_dataset(cell, destination, inventory):
     key = dataset_key(cell)
     expected = inventory['datasets'][key]
     origin=inventory.get('dataset_roots',{}).get(key,inventory['remote_root'])
-    matches = list(Path(origin).glob('task-*/data/' + key + '.dta'))
+    explicit=inventory.get('dataset_paths',{}).get(key)
+    matches = [Path(explicit)] if explicit else list(Path(origin).glob('task-*/data/' + key + '.dta'))
     if len(matches) != 1:
         raise RuntimeError('missing or ambiguous frozen dataset: ' + key)
     source = matches[0]
