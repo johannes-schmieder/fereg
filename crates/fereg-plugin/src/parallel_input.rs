@@ -27,13 +27,22 @@ pub(crate) const MAX_WINDOW_SLOTS: usize = 64;
 /// window call per slot group.
 const BLOCK_VALUES: usize = 1 << 15;
 const MAX_BLOCK_ROWS: usize = 16_384;
-/// Work units per phase: reads, flag writes, marker validation, diagnostic
-/// replay and RHS copies. Elapsed Break latency still depends on the host.
+/// Accounted work per worker between joins: reads, flag writes, marker
+/// validation, diagnostic replay and RHS copies. Four workers' work is the
+/// minimum phase; the fixed ceiling takes precedence over worker occupancy.
+/// These are work bounds, not elapsed-time guarantees for Break delivery.
 #[cfg(not(test))]
-const PHASE_VALUES: usize = 1 << 23;
-/// Unit tests exercise many phases on small inputs.
+const PHASE_WORK_PER_WORKER: usize = 1 << 21;
+/// Exercise the same policy with many phases on small unit-test inputs.
 #[cfg(test)]
-const PHASE_VALUES: usize = 1 << 16;
+const PHASE_WORK_PER_WORKER: usize = 1 << 14;
+const PHASE_WORK_CEILING: usize = PHASE_WORK_PER_WORKER * 32;
+
+fn phase_work_budget(workers: usize) -> usize {
+    workers
+        .saturating_mul(PHASE_WORK_PER_WORKER)
+        .clamp(PHASE_WORK_PER_WORKER * 4, PHASE_WORK_CEILING)
+}
 
 /// Host combinations whose numeric window passed qualification: plugin
 /// target, Stata major version, edition and interface (`c(console)`). Every
@@ -264,12 +273,13 @@ pub(crate) fn try_read(
         .saturating_mul(4)
         .saturating_add(usize::from(marker) * 6)
         .saturating_add(rhs.as_ref().map_or(0, |(_, layout)| layout.width * 2));
-    if work_per_row > PHASE_VALUES {
+    let phase_work = phase_work_budget(team.threads());
+    if work_per_row > phase_work {
         return decline("phase_row_budget");
     }
     let block_rows = (BLOCK_VALUES / slots)
         .clamp(1, MAX_BLOCK_ROWS)
-        .min(PHASE_VALUES / work_per_row);
+        .min(phase_work / work_per_row);
     let blocks = rows.div_ceil(block_rows);
     if StagePlan::new(rows as u128 * slots as u128, blocks, team.threads()).lanes < 2 {
         return decline("work_plan");
@@ -328,7 +338,7 @@ pub(crate) fn try_read(
             Transport { policy, team },
             &bank,
             &positions,
-            (rows, blocks, block_rows * work_per_row),
+            (rows, blocks, block_rows * work_per_row, phase_work),
             &failures,
         )?
         else {
@@ -359,7 +369,7 @@ pub(crate) fn try_read(
             // SAFETY: as above; every row wrote `layout.width` values.
             unsafe { values.set_len(rows * layout.width) };
         }
-        trace.finish(phases, blocks, team.threads(), longest_phase);
+        trace.finish(phases, blocks, team.threads(), phase_work, longest_phase);
         Ok(true)
     })();
     memory.release(descriptor_bytes)?;
@@ -397,19 +407,20 @@ fn park_for_break(token: &[u8; 32], ppml: bool) -> Result<()> {
 /// Run every phase: poll Break, open the window, read the phase's blocks on
 /// the team and close the window once every worker has returned. `Ok(None)`:
 /// the first window was refused, so nothing was read. `shape` is (rows,
-/// blocks, values per block); failures accumulate in serial precedence.
+/// blocks, work per block, work budget); failures accumulate in serial precedence.
 fn run_phases(
     spi: &mut dyn SpiApi,
     transport: Transport,
     bank: &Bank<'_>,
     positions: &[i32],
-    shape: (usize, usize, usize),
+    shape: (usize, usize, usize, usize),
     failures: &Mutex<Option<Failure>>,
 ) -> Result<Option<(usize, f64)>> {
     let Transport { policy, team } = transport;
-    let (rows, blocks, block_values) = shape;
-    // The work cap takes precedence over worker occupancy.
-    let phase_blocks = (PHASE_VALUES / block_values.max(1)).max(1);
+    let (rows, blocks, block_work, phase_work) = shape;
+    // Admission guarantees a nonempty block fits. Round down; never enlarge
+    // this budget to occupy workers. Rayon may group adjacent blocks naturally.
+    let phase_blocks = (phase_work / block_work).max(1);
     let mut payload = true;
     let mut phases = 0_usize;
     let mut longest_phase = 0.0_f64;
@@ -420,39 +431,35 @@ fn run_phases(
         let started = fereg_core::diagnostics::solver_trace_enabled().then(std::time::Instant::now);
         let opened = spi.with_numeric_window(positions, rows, &mut |source| {
             team.install(|| {
-                phase
-                    .clone()
-                    .into_par_iter()
-                    .with_max_len(1)
-                    .for_each(|block| {
-                        let failure = match fault {
-                            Some(Fault::WorkerPanic) if block == phase.end - 1 => {
-                                panic!("injected parallel input worker panic")
-                            }
-                            Some(Fault::ReadFailure) if block == phase.end - 1 => {
-                                Some(payload_failure(bank.block(block).0, 0, 919))
-                            }
-                            Some(Fault::BreakDuringFirstPhase { token, ppml })
-                                if block == phase.start =>
-                            {
-                                park_for_break(&token, ppml)
-                                    .err()
-                                    .map(|error| Failure {
-                                        key: FailureKey {
-                                            class: PAYLOAD,
-                                            row: bank.block(block).0,
-                                            slot: 0,
-                                        },
-                                        kind: FailureKind::Marker(error),
-                                    })
-                                    .or_else(|| read_block(source, bank, block, payload))
-                            }
-                            _ => read_block(source, bank, block, payload),
-                        };
-                        if let Some(failure) = failure {
-                            record(failures, failure);
+                phase.clone().into_par_iter().for_each(|block| {
+                    let failure = match fault {
+                        Some(Fault::WorkerPanic) if block == phase.end - 1 => {
+                            panic!("injected parallel input worker panic")
                         }
-                    });
+                        Some(Fault::ReadFailure) if block == phase.end - 1 => {
+                            Some(payload_failure(bank.block(block).0, 0, 919))
+                        }
+                        Some(Fault::BreakDuringFirstPhase { token, ppml })
+                            if block == phase.start =>
+                        {
+                            park_for_break(&token, ppml)
+                                .err()
+                                .map(|error| Failure {
+                                    key: FailureKey {
+                                        class: PAYLOAD,
+                                        row: bank.block(block).0,
+                                        slot: 0,
+                                    },
+                                    kind: FailureKind::Marker(error),
+                                })
+                                .or_else(|| read_block(source, bank, block, payload))
+                        }
+                        _ => read_block(source, bank, block, payload),
+                    };
+                    if let Some(failure) = failure {
+                        record(failures, failure);
+                    }
+                });
             })
         })?;
         if !opened {
@@ -1012,10 +1019,17 @@ impl Trace {
         }
     }
 
-    fn finish(&self, phases: usize, blocks: usize, workers: usize, longest_phase: f64) {
+    fn finish(
+        &self,
+        phases: usize,
+        blocks: usize,
+        workers: usize,
+        phase_work: usize,
+        longest_phase: f64,
+    ) {
         if let Some(started) = self.started {
             fereg_core::diagnostics::emit_solver_trace(&format!(
-                "FEREG_SOLVER_TRACE|phase=input_transport|mode=parallel|rows={}|width={}|marker={}|workers={workers}|phases={phases}|blocks={blocks}|range_first={}|range_end={}|phase_work_cap={PHASE_VALUES}|longest_phase_s={longest_phase:.9}|seconds={:.9}",
+                "FEREG_SOLVER_TRACE|phase=input_transport|mode=parallel|rows={}|width={}|marker={}|workers={workers}|phases={phases}|blocks={blocks}|range_first={}|range_end={}|phase_work_cap={phase_work}|phase_work_ceiling={PHASE_WORK_CEILING}|longest_phase_s={longest_phase:.9}|seconds={:.9}",
                 self.rows,
                 self.width,
                 u8::from(self.marker),
@@ -1534,6 +1548,17 @@ mod tests {
     }
 
     #[test]
+    fn phase_work_scales_with_workers_but_never_exceeds_the_ceiling() {
+        let minimum = phase_work_budget(4);
+        assert_eq!(phase_work_budget(2), minimum);
+        assert_eq!(phase_work_budget(8), minimum * 2);
+        assert_eq!(phase_work_budget(16), minimum * 4);
+        assert_eq!(phase_work_budget(28), minimum * 7);
+        assert_eq!(phase_work_budget(32), PHASE_WORK_CEILING);
+        assert_eq!(phase_work_budget(usize::MAX), PHASE_WORK_CEILING);
+    }
+
+    #[test]
     fn phase_budget_dominates_worker_occupancy_and_active_break_joins() {
         for width in [1, 64, 130] {
             let mut spi = TestSpi::new(dataset(30_000, width, 1));
@@ -1551,7 +1576,7 @@ mod tests {
             assert!(spi
                 .phase_reads
                 .iter()
-                .all(|reads| reads * 4 <= PHASE_VALUES));
+                .all(|reads| reads * 4 <= phase_work_budget(8)));
             spi.break_during_read = true;
             let opens = spi.opens;
             let (result, loaded) = run(

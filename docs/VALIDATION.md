@@ -215,6 +215,33 @@ bounded investigation ends with the original candidate still rejected and no
 cap change applied to main; further candidate work must address the disclosed
 mixed result rather than retune or repeat this experiment until it passes.
 
+Johannes authorized continuation after the mixed diagnostic on November 2,
+with a preference for a clean general implementation. The single revised
+candidate changes only the shared transport scheduler: a phase budget of
+`min(64 Mi, max(8 Mi, resolved_workers * 2 Mi))` accounted work units, rounded
+down to whole admitted blocks, and removal of forced one-block Rayon leaves.
+The same computed budget governs row admission, block size and phase size.
+Original-order contiguous phases, per-block work, failure reduction, storage,
+loaded bits and arithmetic remain unchanged. It adds no user knob, host-specific
+route, affinity policy or persistent lane ownership. A bounded independent
+high-effort design review found no architectural blocker and required checking
+both the selected budget and fixed ceiling, including Break and error paths.
+
+This sizing is a fixed engineering choice motivated by the diagnostic, not an
+established optimum. Four-worker phases retain the rejected candidate's 8 Mi
+budget; sixteen and twenty-eight workers use 32 Mi and 56 Mi respectively.
+Rayon grouping does not guarantee NUMA placement. Higher-worker phases can
+lengthen Break latency, and the c6 downstream-compute penalty remains an open
+qualification risk. Scientific and estimator-route scopes are still empty;
+the independent scalar oracle, exact incumbent replay, cross-worker agreement,
+fixed-worker repeatability and transaction/active-window Break witnesses apply.
+The revised candidate must pass the original fourteen-cell Linux/Mac comparison
+against beta.13, with the same workers, mirrored blocks, repetitions, whole-call
+threshold and no exclusion/resampling rule. Actual-plugin science/path checks
+and verified relative-path environment manifests precede timing. The earlier
+failed qualification and mixed diagnostic remain evidence; neither is replaced
+by this authorized revision. No revised-candidate qualification is yet claimed.
+
 The actual candidate binaries pass 68 licensed Stata 19 fixtures on both Mac
 and Linux, all 77 exact incumbent replay cases on each, scalar input oracles at
 multiple worker counts, accessor-failure rollback, and live console Break while

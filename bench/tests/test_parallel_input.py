@@ -33,6 +33,23 @@ class InputQualification(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 subject.verify_trace(trace, 'candidate', 4)
 
+    def test_preflight_checks_each_worker_and_rejects_cross_worker_drift(self):
+        with tempfile.TemporaryDirectory() as name, patch.object(subject, 'CELLS', ('c11',)):
+            calls = []
+            def run(config, arm, args, environment):
+                threads = int(args.split('"')[-2])
+                calls.append((arm, threads))
+                trace = self.trace().replace('threads=4', f'threads={threads}')
+                if threads == 8:
+                    trace = trace.replace('0123456789abcdef', 'fedcba9876543210')
+                Path(environment['FEREG_SOLVER_TRACE_FILE']).write_text(trace)
+            with patch.object(subject, 'run_arm', run):
+                with self.assertRaisesRegex(RuntimeError, 'across arms or workers'):
+                    subject.command_verify(dict(output=name, data_dir=name, threads=[4, 8],
+                                                arms={'incumbent': {}, 'candidate': {}}))
+            self.assertEqual(calls, [('incumbent', 4), ('incumbent', 8),
+                                     ('candidate', 4), ('candidate', 8)])
+
     def test_report_requires_complete_finite_unique_observations(self):
         with tempfile.TemporaryDirectory() as name, patch.object(subject, 'CELLS', ('c1',)):
             root = Path(name)

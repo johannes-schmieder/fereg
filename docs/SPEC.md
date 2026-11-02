@@ -1496,8 +1496,11 @@ parallel workers initialize those original rows with the unchanged excluded
 fills. Preparation diagnostics still validate the complete marker. Full-length
 buffers, PPML extra-column fills and original observation identity are preserved.
 Phase admission counts reads, value/missing writes, marker validation, possible
-diagnostic replay and packed-RHS copies; worker occupancy cannot enlarge the
-cap. A diagnostic retry never cancels an original SDK error. Immutable window
+diagnostic replay and packed-RHS copies. The phase budget scales with the resolved
+worker count, from 8 Mi to at most 64 Mi accounted work units (2 Mi per worker);
+worker occupancy cannot enlarge that fixed ceiling. Contiguous original-row
+phases retain serial error precedence; Rayon may group adjacent blocks without
+changing their disjoint writes. A diagnostic retry never cancels an original SDK error. Immutable window
 positions are validated once and borrowed across phases. The parallel reader
 admits the actual capacities of its target and bank descriptor tables before
 dispatch; these are additional to the ordinary loader's existing array and

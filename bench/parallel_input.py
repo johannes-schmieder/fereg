@@ -115,20 +115,20 @@ def verify_trace(text: str, arm: str, threads: int) -> dict:
 def command_verify(config: dict) -> None:
     output = Path(config["output"])
     output.mkdir(parents=True, exist_ok=True)
-    threads = max(config["threads"])
-    digests = {}
+    digests = []
     for arm in config["arms"]:
-        trace = output / f"verify-{arm}.txt"
-        trace.unlink(missing_ok=True)
-        scratch = output / f"verify-{arm}.csv"
-        scratch.write_text(",".join(FIELDS) + "\n")
-        environment = dict(os.environ, FEREG_SOLVER_TRACE="1", FEREG_SOLVER_TRACE_FILE=str(trace))
-        run_arm(config, arm, f'{stata_string(Path(config["data_dir"]))} {stata_string(scratch)} '
-                             f'{arm} 0 "{threads}" 1', environment)
-        digests[arm] = verify_trace(trace.read_text(), arm, threads)
-        print(f"{arm}: every input cell executed its numeric window")
-    if digests["incumbent"] != digests["candidate"]:
-        raise RuntimeError("incumbent/candidate input digests differ")
+        for threads in config["threads"]:
+            trace = output / f"verify-{arm}-{threads}.txt"
+            trace.unlink(missing_ok=True)
+            scratch = output / f"verify-{arm}-{threads}.csv"
+            scratch.write_text(",".join(FIELDS) + "\n")
+            environment = dict(os.environ, FEREG_SOLVER_TRACE="1", FEREG_SOLVER_TRACE_FILE=str(trace))
+            run_arm(config, arm, f'{stata_string(Path(config["data_dir"]))} {stata_string(scratch)} '
+                                 f'{arm} 0 "{threads}" 1', environment)
+            digests.append(verify_trace(trace.read_text(), arm, threads))
+            print(f"{arm}/{threads}: every input cell executed its numeric window")
+    if not digests or any(digest != digests[0] for digest in digests[1:]):
+        raise RuntimeError("input digests differ across arms or workers")
     print("INPUT_BITS=EXACT")
 
 
