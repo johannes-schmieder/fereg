@@ -1,5 +1,15 @@
 # Validation status
 
+## Beta.14 publication decision
+
+On November 2, after reviewing the final wide-input results and the remaining
+no-FE regressions, Johannes explicitly authorized pushing and publishing
+beta.14. This accepts the measured performance exceptions for the frozen
+candidate; it does not change the failed comparison statuses, discard timings,
+or authorize a new candidate. Scientific checks remain passing. The release
+retains serial input on Windows and the existing untested native Intel-Mac
+caveat. Final package and installation evidence is recorded with the release.
+
 ## Wide-input transport follow-up
 
 Johannes authorized investigation and repair of the remaining 64-input-column
@@ -111,9 +121,10 @@ loader code does not establish the cause or cancel these measured failures.
 The earlier million-row, 64-regressor no-FE Linux failure also remains:
 5.9270 to 6.2615 seconds (+5.64%). The new grid neither replaces nor resamples it.
 Johannes's acceptance of possible `in` regressions does not waive these
-unrestricted-sample failures. **The combined beta.14 candidate remains
-unqualified and unpublished.** The wide-FE repair is retained locally; no
-additional implementation or timing round follows automatically from this result.
+unrestricted-sample failures. **The fixed performance gate was not met.**
+The candidate remained unpublished until Johannes subsequently authorized
+publication with these exceptions, as recorded above. No additional
+implementation or timing round followed from this result.
 
 Scientific checks pass with no declared numerical or estimator-route change.
 Each Unix platform passes 68 native fixtures, 77 exact beta.13 replays,
@@ -129,9 +140,9 @@ zero, missing codes, first SDK error precedence, maximum tile bounds, and
 simultaneous descriptor/source-ID memory admission.
 
 The complete source-only integration suite passes, including the complexity
-ratchet and C bridge checks. Final root-package admission is not performed for
-this unpublished candidate; the current root package still contains the preceding
-review artifacts and must be refreshed before any publication. The
+ratchet and C bridge checks. At the end of this investigation, final root-package admission had not been
+performed and the root package still contained beta.13 artifacts. Publication
+requires matching package artifacts and separate installed-package checks. The
 [Windows report](../bench/results/input-width-beta14-windows-20261102.json)
 records successful native build/audit and actual locally installed Stata science,
 including 72 input-oracle cases/208 calls at default and eight requested workers,

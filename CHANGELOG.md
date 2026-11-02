@@ -1,6 +1,18 @@
 # Changelog
 
-## Unreleased
+## 0.5.0 beta.14 — 2026-11-02
+
+More robust input transport and removal of the serial FE loading cutoff above
+64 total numeric input columns. Scientific results agree exactly with beta.13
+at fixed worker counts. Performance is mixed: the wide serial FE cases improve,
+while some unrestricted no-FE cases retain measured regressions of about 6%.
+These regressions were reviewed and accepted for this beta; this release does
+not claim a universal speedup. See [validation](docs/VALIDATION.md).
+
+- Wide numeric FE inputs use tiles bounded by value count, preserving the
+  narrow tile shape and admitting all prepared storage against the memory limit.
+  In the 100,003-row Linux test at four workers, serial loading improves about
+  20–23% at 65/130 input columns and whole estimation improves about 6–9%.
 
 - Numeric loading uses Stata-resolved `in` bounds across OLS, PPML and their
   numeric extra columns, preserving original row identities and excluded fills.
@@ -9,7 +21,6 @@
   position table is borrowed across phases.
 - A transient candidate-marker SDK failure remains an error even if diagnostic
   replay succeeds. Real Break tests now signal while the numeric window is open.
-
 - Successful OLS and PPML calls retire obsolete private sample markers together,
   reducing Stata's automatic cleanup work while preserving rollback and e(sample).
 - Windows retains serial input pending live Break qualification; the shared
