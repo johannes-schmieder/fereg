@@ -23,6 +23,18 @@ scc-tb4. Windows's previously validated installed binary is reused byte for byte
 The published source is unchanged in production code from the frozen candidate;
 later source differences are test, harness and documentation changes.
 
+Beta.14 is published at [the release tag](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0-beta.14),
+and `main` carries the same native package. Unauthenticated downloads of both
+archives match their retained SHA-256 values. Fresh public installations from
+both the tag and `main` pass on Mac and Linux; the actual `github install`
+command also passes in an isolated Mac Stata environment. Every route verifies
+all 36 installed files, selftest and independent OLS/PPML results. Linux HTTP
+installation job 8395583 exits zero on scc-gr4. The release contains only the
+five archive/checksum/build-note assets, and the release-list response remains
+below the smallest supported Stata macro limit. The first isolated GitHub-helper
+check lacked `githubdb`; supplying the helper's own ado dependencies resolved
+that harness setup error without changing fereg or its checks.
+
 ## Wide-input transport follow-up
 
 Johannes authorized investigation and repair of the remaining 64-input-column
