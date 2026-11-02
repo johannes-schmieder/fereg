@@ -135,7 +135,8 @@ function Invoke-Oracle {
         throw 'nested oracle failed'
     }
     if ($note -cne 'WINDOWS_INPUT_ORACLE=PASS') { throw 'invalid oracle marker' }
-    $traceOptions = if ($RequireSerial) { @('--require-serial') } else { @('--serial-ok', 'ols_tiny') }
+    # A one-item if output is a scalar string; splatting it sends characters.
+    [string[]]$traceOptions = if ($RequireSerial) { '--require-serial' } else { '--serial-ok', 'ols_tiny' }
     $summary = @(& python "$Root\scripts\check_input_trace.py" $trace @traceOptions)
     if ($LASTEXITCODE -ne 0) {
         $failures = @($summary | Where-Object { $_ -clike 'FAIL *' })
