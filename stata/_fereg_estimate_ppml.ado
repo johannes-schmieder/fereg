@@ -1421,6 +1421,17 @@ program define _fereg_estimate_ppml, eclass
             }
         }
         _estimates unhold `held_estimates', not
+        // Rollback is disabled; retire its sample and the private input marker
+        // together. The posted sample was consumed by ereturn post.
+        local obsolete_samples `held_sample'
+        if "`touse'" != "`sample_shadow'" ///
+            local obsolete_samples `obsolete_samples' `touse'
+        local drop_samples
+        foreach sample of local obsolete_samples {
+            capture confirm variable `sample', exact
+            if !_rc local drop_samples `drop_samples' `sample'
+        }
+        if "`drop_samples'" != "" capture quietly drop `drop_samples'
     }
     // Reporting follows the committed transaction and stays interruptible.
     if `"`publictimeit'"' != "" {
