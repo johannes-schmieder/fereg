@@ -19,10 +19,10 @@ tempname B1 V1 B V S
 forvalues case = 1/9 {
     preserve
     if `case' == 7 quietly replace x8 = .a in 4097
-    local method = cond(`case' >= 8, "ppml", "ols")
     local outcome = cond(`case' >= 8, "py", "y")
+    local command = cond(`case' >= 8, "_fereg_estimate_ppml", "_fereg_estimate_ols_test")
     local opts `opts`case''
-    quietly _fereg_estimate_`method'_test `outcome' x1-x64, `opts' threads(1)
+    quietly `command' `outcome' x1-x64, `opts' threads(1)
     matrix `B1' = e(b)
     matrix `V1' = e(V)
     tempvar sample1
@@ -33,7 +33,7 @@ forvalues case = 1/9 {
             file open widetrace using `"`trace'"', write append text
             file write widetrace "FEREG_SOLVER_TRACE|phase=width_extra|case=`case'|mode=`mode'|threads=`t'" _n
             file close widetrace
-            quietly _fereg_estimate_`method'_test `outcome' x1-x64, `opts' threads(`t') `inject'
+            quietly `command' `outcome' x1-x64, `opts' threads(`t') `inject'
             assert mreldif(e(b),`B1') < 1e-9
             assert mreldif(e(V),`V1') < 1e-8
             assert e(sample) == `sample1'
