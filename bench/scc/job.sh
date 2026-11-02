@@ -9,6 +9,10 @@
 set -euo pipefail
 umask 077
 : "${RUN_ROOT:?}" "${MODE:?}" "${UPSTREAM_JOB:?}"
+if [[ -f "$RUN_ROOT/input/policy.json" ]]; then
+    export CAMPAIGN_POLICY_OVERRIDE
+    CAMPAIGN_POLICY_OVERRIDE=$(cat "$RUN_ROOT/input/policy.json")
+fi
 test "$NSLOTS" = "${EXPECTED_SLOTS:-28}"
 test -f "$RUN_ROOT/environment/COMPLETE"
 module purge

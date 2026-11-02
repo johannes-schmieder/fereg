@@ -8,6 +8,10 @@
 set -euo pipefail
 umask 077
 : "${RUN_ROOT:?}" "${REFERENCE_ROOT:?}"
+if [[ -f "$RUN_ROOT/input/policy.json" ]]; then
+    export CAMPAIGN_POLICY_OVERRIDE
+    CAMPAIGN_POLICY_OVERRIDE=$(cat "$RUN_ROOT/input/policy.json")
+fi
 cd "$RUN_ROOT"
 sha256sum -c input/SHA256SUMS
 mkdir source environment
@@ -87,7 +91,7 @@ paths=[r/'source/dist/fereg_linux.plugin',r/'environment/command-clock.plugin',
        *[p for arm in policy['pyfixest'] for p in sorted((r/'environment'/arm).rglob('*'))],
        *sorted((r/'environment/julia').rglob('*')),*sorted((depot/'packages').rglob('*')),
        *sorted((depot/'artifacts').rglob('*')),
-       *sorted((r/'source/bench').rglob('*')),r/'manifest.json',r/'input/frozen-inputs.json']
+       *sorted((r/'source/bench').rglob('*')),r/'manifest.json',r/'input/frozen-inputs.json',r/'input/policy.json']
 for folder in json.loads((r/'environment/r-package-paths.json').read_text()).values():
     paths.extend(sorted(pathlib.Path(folder).rglob('*')))
 paths.extend(pathlib.Path(shutil.which(name)).resolve() for name in ['stata-mp','Rscript','julia'])

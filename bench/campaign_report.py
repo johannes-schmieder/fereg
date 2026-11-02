@@ -363,6 +363,7 @@ def check_native_repetitions(campaign):
         else:
             keys = ['N', 'sample_sha256', 'finite_slope_rank', 'omitted', 'publication_omitted', 'singleton_deletions',
                     'separation_deletions', 'absorbed_dof', 'clusters', 'covariance_policy', 'beta', 'covariance']
+            if cell.get('effects')==0:keys += ['intercept','intercept_covariance']
             metric = 'rss' if cell['model'] == 'ols' else 'll'
             budget_key = 'fereg_threads' if cell['model'] == 'ols' else 'feppml_threads'
             for record in records:
