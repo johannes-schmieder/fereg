@@ -1,0 +1,159 @@
+{
+  "schema": 1,
+  "release": "v0.5.0-beta.14",
+  "publication_authorized": "2026-11-02, after disclosure of the no-FE performance regressions",
+  "package_commit": "2e8f57ce463429de43fa31197ce9dad393df1874",
+  "binding": {
+    "schema": 1,
+    "version": "0.5.0",
+    "source_sha": "673ca1ab4fb43e6abb280552aef1575efaba7961",
+    "runtime_sha256": "82f8389986b2afaf50566fa59ec1f34960d09c7556d08c8a9a657c1718580dab",
+    "plugins": [
+      {
+        "path": "fereg_linux.plugin",
+        "source_sha": "673ca1ab4fb43e6abb280552aef1575efaba7961",
+        "sha256": "c5912c13bd52db8c7b2e2c83dcc9b14dccc52908fba2813745229be3d2ee2e2b",
+        "bytes": 16875560
+      },
+      {
+        "path": "fereg_windows.plugin",
+        "source_sha": "ee402880534fc97385e202d1876ff3b85c3a2a5e",
+        "sha256": "5571022392f31e0cd7750a814f3d729b90ba43611094d756721a5b66277a142c",
+        "bytes": 11977728
+      },
+      {
+        "path": "fereg_macos.plugin",
+        "source_sha": "673ca1ab4fb43e6abb280552aef1575efaba7961",
+        "sha256": "f6563222d90bdd3728a77344540e4ac7f53f637948910ca0c177c5fbae367748",
+        "bytes": 21138480
+      }
+    ],
+    "included_platforms": [
+      "linux",
+      "windows",
+      "macos"
+    ],
+    "support_caveats": [
+      "Only platforms named in included_platforms are supplied by this package.",
+      "The Linux binary requires glibc 2.28 or newer.",
+      "Windows retains serial input pending live Break qualification.",
+      "Native Intel-host Stata testing is outstanding; the macOS plugin contains both processor slices.",
+      "Measured no-FE performance regressions of about 6% were explicitly accepted for beta.14; see docs/VALIDATION.md."
+    ],
+    "corresponding_source_sha256": "22d0b3c8b3d6cdfd8fb5c86bd202563bc074ded3be00590ba22d42c20f81d27b",
+    "corresponding_source_commit": "1ced84f0306036cb5821096d9e16f41ce4c3fd06"
+  },
+  "archives": {
+    "fereg-0.5.0.zip": {
+      "sha256": "d5c02433252f82c3757cf46821c45453d0f453ddf440ff4963a7b9fd414f05c8",
+      "bytes": 18299947
+    },
+    "fereg-0.5.0-source.zip": {
+      "sha256": "22d0b3c8b3d6cdfd8fb5c86bd202563bc074ded3be00590ba22d42c20f81d27b",
+      "bytes": 34688844
+    }
+  },
+  "dependency_audit": {
+    "advisory_count": 0,
+    "cargo_lock_sha256": "4975de767595cf184cd5328e6ec7f7a55e7871c545d3c51adbc92da1544696d5",
+    "schema": 1,
+    "source_sha": "1ced84f0306036cb5821096d9e16f41ce4c3fd06",
+    "status": "pass",
+    "toolchain": "1.85.1"
+  },
+  "full_integration": {
+    "command": "./scripts/run_tests.sh",
+    "status": "passed",
+    "log_sha256": "c59de212b01ed917d20256400e933530a784067da51ba85fe7e7c41556a4014c"
+  },
+  "source_archive": {
+    "manifest_files_verified": 3559,
+    "fresh_offline_build": "passed",
+    "native_audit": "passed",
+    "native_abi": "passed",
+    "log_sha256": "e8012486d0986c5fc5a9df6b47a1626573df8d3d0970b01588a2d1496edaf389",
+    "rebuilt_artifact_is_distributed": false
+  },
+  "staged_archive": {
+    "archive_sha256": "d5c02433252f82c3757cf46821c45453d0f453ddf440ff4963a7b9fd414f05c8",
+    "manifest_sha256": "235b6fb23eb18030b62cbdbc2ed04b727e3f84de5a4015e5ef3231f33fe9400c",
+    "status": "success",
+    "tests_passed": 2,
+    "tests_failed": 0,
+    "results": [
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/installation/installation_smoke.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_one_fe_dummy_oracle.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      }
+    ]
+  },
+  "local_installations": {
+    "macos_19": {
+      "source": "local root package",
+      "installed_files": 36,
+      "status": "passed",
+      "selftest_version": "0.5.0-beta.14",
+      "independent_ols_ppml": "passed",
+      "restricted_sample": "if plus in",
+      "all_installed_hashes": "exact"
+    },
+    "linux_15": {
+      "source": "local root package",
+      "installed_files": 36,
+      "status": "passed",
+      "selftest_version": "0.5.0-beta.14",
+      "independent_ols_ppml": "passed",
+      "restricted_sample": "if plus in",
+      "all_installed_hashes": "exact"
+    },
+    "linux_19": {
+      "source": "local root package",
+      "installed_files": 36,
+      "status": "passed",
+      "selftest_version": "0.5.0-beta.14",
+      "independent_ols_ppml": "passed",
+      "restricted_sample": "if plus in",
+      "all_installed_hashes": "exact"
+    }
+  },
+  "windows_installation": {
+    "status": "passed with the identical released plugin",
+    "report": "input-width-beta14-windows-20261102.json",
+    "policy": "serial input"
+  },
+  "linux_installation_accounting": {
+    "jobnumber": "8395498",
+    "hostname": "scc-tb4.scc.bu.edu",
+    "failed": "0",
+    "exit_status": "0",
+    "slots": "4",
+    "ru_wallclock": "9",
+    "maxvmem": "817.059M"
+  },
+  "performance": {
+    "decision": "Measured exceptions accepted for publication; original comparison verdicts are unchanged.",
+    "retained_reports": [
+      "input-beta14-geometry-linux-20261102.json",
+      "input-width-beta14-linux-20261102.json",
+      "input-width-beta14-macos-20261102.json"
+    ],
+    "resampled": false
+  },
+  "publication": {
+    "status": "ready; public HTTP installation checks follow publication",
+    "release_asset_count": 5,
+    "uploaded_asset_hashes": "exact"
+  }
+}

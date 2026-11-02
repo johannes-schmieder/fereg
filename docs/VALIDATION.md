@@ -10,6 +10,19 @@ or authorize a new candidate. Scientific checks remain passing. The release
 retains serial input on Windows and the existing untested native Intel-Mac
 caveat. Final package and installation evidence is recorded with the release.
 
+The [final package verification](../bench/results/beta14-publication-20261102.json)
+records the complete passing `scripts/run_tests.sh`, exact binding of all three
+released binaries to the tested candidate, zero dependency advisories and
+verification of all 3,559 source-archive manifest entries. A fresh offline build
+of the corresponding source passes native audit and ABI checks. The exact binary
+archive passes Mac installation and independent PPML smoke fixtures. Fresh local
+root-package installations on Mac Stata 19 and Linux Stata 15/19 verify all 36
+installed files, beta.14 selftest, and independent restricted-sample OLS/PPML
+coefficient, variance and sample witnesses. Linux job 8395498 exits zero on
+scc-tb4. Windows's previously validated installed binary is reused byte for byte.
+The published source is unchanged in production code from the frozen candidate;
+later source differences are test, harness and documentation changes.
+
 ## Wide-input transport follow-up
 
 Johannes authorized investigation and repair of the remaining 64-input-column
