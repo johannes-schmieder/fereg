@@ -47,7 +47,9 @@ def main() -> int:
         phase = record.get("phase")
         if phase == "case":
             case, _, mode = record["label"].partition("|")
-            runs.append({"case": case, "mode": mode, "digests": [], "parallel": 0})
+            runs.append({"case": case, "mode": mode, "digests": [], "parallel": 0, "layouts": []})
+        elif runs and phase == "input_layout":
+            runs[-1]["layouts"].append(record)
         elif runs and phase == "input_digest":
             runs[-1]["digests"].append(record["digest"])
         elif phase == "input_transport" and record.get("mode") == "parallel":
@@ -70,6 +72,10 @@ def main() -> int:
         digests[run["case"]].update(run["digests"])
         if (args.require_serial or run["mode"] in ("serial", "forced", "alias")) and run["parallel"]:
             failures.append(f"{label}: the numeric window ran")
+        if run["case"].startswith("ols_wide") and run["mode"] in ("forced", "parallel"):
+            if not run["layouts"] or any(record.get("reserved") != "true"
+                    or record.get("packed_rhs") != "true" for record in run["layouts"]):
+                failures.append(f"{label}: wide packed loading did not execute")
         if run["mode"] == "parallel":
             if run["parallel"]:
                 parallel_runs += 1

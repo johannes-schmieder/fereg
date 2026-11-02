@@ -267,4 +267,36 @@ if c(stata_version) >= 18 {
     quietly fereg y b f z, threads(`workers')
 }
 
+* The serial fallback also prepares packed input above 64 source columns.
+clear
+set seed 739391
+set obs 16387
+forvalues j=1/128 {
+    quietly generate double x`j' = rnormal()
+}
+quietly generate int g = mod(_n,101)
+quietly generate double y = x1 + .5*x2 + sin(g/11) + rnormal()
+foreach k in 64 128 {
+    quietly areg y x1-x`k', absorb(g)
+    matrix wide_reference_b = e(b)
+    matrix wide_reference_V = e(V)
+    foreach mode in serial forced parallel {
+        local t = cond("`mode'"=="serial",1,`workers')
+        local inject = cond("`mode'"=="forced","inject(serial_input)","")
+        _parallel_case `"`trace'"' ols_wide`k'|`mode'
+        quietly _fereg_estimate_ols_test y x1-x`k', absorb(g) threads(`t') `inject'
+        assert mreldif(e(b),wide_reference_b) < 1e-9
+        assert mreldif(e(V),wide_reference_V) < 1e-8
+        assert e(N) == _N
+        if "`mode'"=="forced" {
+            matrix wide_forced_b = e(b)
+            matrix wide_forced_V = e(V)
+        }
+        if "`mode'"=="parallel" {
+            assert mreldif(e(b),wide_forced_b) == 0
+            assert mreldif(e(V),wide_forced_V) == 0
+        }
+    }
+}
+
 display as result "END_FIXTURE|parallel_input_oracle|rc=0"
