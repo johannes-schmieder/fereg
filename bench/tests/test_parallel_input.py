@@ -79,6 +79,25 @@ class InputQualification(unittest.TestCase):
 
 
 class InputDiagnostics(unittest.TestCase):
+    def test_scope_instrumentation_keeps_calls_and_drops_only_after_commit(self):
+        root = Path(__file__).resolve().parents[2] / 'stata'
+        for kind, wrapper in [('ols', '_fereg_estimate_public'), ('ppml', '_fereg_ppml')]:
+            original = (root / f'_fereg_estimate_{kind}.ado').read_text()
+            automatic = diagnostics.instrument_ado(original)
+            explicit = diagnostics.instrument_ado(original, True)
+            drop = "if scalar(__diag_marker_live) quietly drop `touse'"
+            self.assertNotIn(drop, automatic)
+            self.assertEqual(explicit.count(drop), 1)
+            self.assertLess(explicit.index('_estimates unhold'), explicit.index(drop))
+            self.assertLess(explicit.index(drop), explicit.index('\nend'))
+            self.assertEqual(explicit.count("plugin call `plugin_handle'"), 1)
+            outer = diagnostics.instrument_wrapper((root / f'{wrapper}.ado').read_text(),
+                                                   f'_fereg_estimate_{kind}')
+            call = outer.index(f'    _fereg_estimate_{kind} ')
+            self.assertLess(outer.index('timer on 95'), call)
+            self.assertGreater(outer.index('timer off 95'), call)
+            self.assertLess(outer.index('scalar __diag_public_post'), outer.index('\nend'))
+
     def test_residual_timings_are_computed_per_call_and_grid_is_complete(self):
         # Medians of differences differ from differences of medians here.
         with tempfile.TemporaryDirectory() as name:
@@ -93,7 +112,8 @@ class InputDiagnostics(unittest.TestCase):
                             [(10, 9, 8), (11, 3, 2), (100, 99, 1)], 1):
                         rows.append(dict(zip(diagnostics.FIELDS,
                             [arm, 'default', 'default', 4, block, 'c3', 16, rep,
-                             1000, wall, .1, plugin, .1, .1, .1, snapshot])))
+                             1000, wall, .1, plugin, .1, .1, .1, snapshot,
+                             .1, plugin + 1, .1, .01, 0, 1, 0])))
             def report(records):
                 with (root / 'results.csv').open('w') as handle:
                     writer = csv.DictWriter(handle, diagnostics.FIELDS)

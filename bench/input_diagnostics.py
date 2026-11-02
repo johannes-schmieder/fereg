@@ -23,10 +23,12 @@ from parallel_input import ROOT, stata_string
 
 FIELDS = ('arm', 'placement', 'host_mode', 'host_processors', 'block', 'cell',
           'threads', 'rep', 'n', 'wall_s', 'frontend_pre_s', 'plugin_s',
-          'frontend_post_s', 'load_s', 'compute_s', 'snapshot_s')
+          'frontend_post_s', 'load_s', 'compute_s', 'snapshot_s',
+          'public_pre_s', 'hidden_call_s', 'public_post_s', 'public_syntax_s',
+          'explicit_cleanup_s', 'candidate_marker_live', 'rollback_marker_live')
 
 
-def instrument_ado(text: str) -> str:
+def instrument_ado(text: str, drop_candidate_marker: bool = False) -> str:
     """Time the sole substantive call without changing its arguments or order."""
     lines = text.splitlines()
     starts = [i for i, line in enumerate(lines) if line.startswith("    plugin call `plugin_handle'")]
@@ -45,7 +47,43 @@ def instrument_ado(text: str) -> str:
     lines[version + 1:version + 1] = ['    timer clear 98', '    timer on 98']
     end = lines.index('end')
     lines[end:end] = ['    timer off 99', '    quietly timer list 99',
-                     '    scalar __diag_post = r(t99)']
+                     '    scalar __diag_post = r(t99)',
+                     '    capture confirm variable `touse\'',
+                     '    scalar __diag_marker_live = (_rc == 0)',
+                     '    capture confirm variable `held_sample\'',
+                     '    scalar __diag_rollback_live = (_rc == 0)',
+                     '    timer clear 92', '    timer on 92',
+                     *(['    if scalar(__diag_marker_live) quietly drop `touse\'']
+                       if drop_candidate_marker else []),
+                     '    timer off 92', '    quietly timer list 92',
+                     '    scalar __diag_cleanup = r(t92)']
+    return '\n'.join(lines) + '\n'
+
+
+def instrument_wrapper(text: str, estimator: str) -> str:
+    """Measure call/return boundaries, including hidden-estimator scope teardown."""
+    lines = text.splitlines()
+    first = next(i for i, line in enumerate(lines) if line.startswith('    ' + estimator + ' '))
+    last = first
+    while lines[last].rstrip().endswith('///'):
+        last += 1
+    lines[first:last + 1] = [
+        '    timer off 96', '    quietly timer list 96',
+        '    scalar __diag_public_pre = r(t96)', '    timer clear 95', '    timer on 95',
+        *lines[first:last + 1],
+        '    timer off 95', '    quietly timer list 95',
+        '    scalar __diag_hidden_call = r(t95)', '    timer clear 94', '    timer on 94']
+    version = next(i for i, line in enumerate(lines) if line.strip().startswith('version '))
+    lines[version + 1:version + 1] = ['    timer clear 96', '    timer on 96',
+                                    '    timer clear 90', '    timer on 90']
+    syntax = next(i for i, line in enumerate(lines) if line.strip().startswith('syntax '))
+    while lines[syntax].rstrip().endswith('///'):
+        syntax += 1
+    lines[syntax + 1:syntax + 1] = ['    timer off 90', '    quietly timer list 90',
+                                  '    scalar __diag_public_syntax = r(t90)']
+    end = lines.index('end')
+    lines[end:end] = ['    timer off 94', '    quietly timer list 94',
+                     '    scalar __diag_public_post = r(t94)']
     return '\n'.join(lines) + '\n'
 
 
@@ -89,7 +127,12 @@ def run_process(config, output, arm, placement, mode, block, *, preflight):
                           'file close diagtrace', 'capture profiler clear', 'profiler on',
                           f'quietly {command} threads({workers})', 'profiler off',
                           f'display "DIAGNOSTIC_PROFILE|{cell}|{workers}"', 'profiler report',
-                          f'mata: fh=fopen({stata_string(science)}, "a"); fput(fh,"{cell}|{workers}|"+invtokens(strofreal(vec(st_matrix("e(b)"))\',"%21x"))+"|"+invtokens(strofreal(vec(st_matrix("e(V)"))\',"%21x"))+"|"+strofreal(st_numscalar("e(N)"),"%21x")); fclose(fh)']
+                          'tempvar diag_sample', 'quietly generate byte `diag_sample\' = e(sample)',
+                          'quietly _datasignature `diag_sample\', nonames',
+                          'local diag_sample_signature `"`r(datasignature)\'"\'',
+                          'assert strtrim(`"`diag_sample_signature\'"\') != ""',
+                          'quietly drop `diag_sample\'',
+                          f'mata: fh=fopen({stata_string(science)}, "a"); fput(fh,"{cell}|{workers}|"+invtokens(strofreal(vec(st_matrix("e(b)"))\',"%21x"))+"|"+invtokens(strofreal(vec(st_matrix("e(V)"))\',"%21x"))+"|"+strofreal(st_numscalar("e(N)"),"%21x")+"|"+st_local("diag_sample_signature")); fclose(fh)']
                 continue
             lines += [f'quietly {command} threads({workers})',
                       f'forvalues r = 1/{config["reps"]} {{',
@@ -103,7 +146,7 @@ def run_process(config, output, arm, placement, mode, block, *, preflight):
                 lines += ['    local load = el(e(fereg_runtime),19,2)',
                           '    local compute = el(e(fereg_runtime),20,2)',
                           '    local snapshot = el(e(fereg_runtime),21,2)']
-            lines += [f'    file write `handle\' "{arm},{placement},{mode},`host_processors\',{block},{cell},{workers},`r\',`e(N)\',`wall\',`=scalar(__diag_pre)\',`=scalar(__diag_plugin)\',`=scalar(__diag_post)\',`load\',`compute\',`snapshot\'" _n', '}']
+            lines += [f'    file write `handle\' "{arm},{placement},{mode},`host_processors\',{block},{cell},{workers},`r\',`e(N)\',`wall\',`=scalar(__diag_pre)\',`=scalar(__diag_plugin)\',`=scalar(__diag_post)\',`load\',`compute\',`snapshot\',`=scalar(__diag_public_pre)\',`=scalar(__diag_hidden_call)\',`=scalar(__diag_public_post)\',`=scalar(__diag_public_syntax)\',`=scalar(__diag_cleanup)\',`=scalar(__diag_marker_live)\',`=scalar(__diag_rollback_live)\'" _n', '}']
     lines += ['file close `handle\'', 'display "END_DIAGNOSTIC|rc=0"']
     (work / 'run.do').write_text('\n'.join(lines) + '\n')
     env = dict(os.environ)
@@ -197,7 +240,11 @@ def command_diagnose(config):
         pins[f'{arm}/plugin'] = hashlib.sha256(Path(spec['plugin']).read_bytes()).hexdigest()
         for name in ('_fereg_estimate_ols.ado','_fereg_estimate_ppml.ado'):
             p=dest/name
-            p.write_text(instrument_ado(p.read_text()))
+            p.write_text(instrument_ado(p.read_text(), spec.get('drop_candidate_marker', False)))
+        for name, estimator in (('_fereg_estimate_public.ado', '_fereg_estimate_ols'),
+                                ('_fereg_ppml.ado', '_fereg_estimate_ppml')):
+            p = dest/name
+            p.write_text(instrument_wrapper(p.read_text(), estimator))
     for path in sorted(Path(config['data_dir']).glob('*.dta')):
         pins[path.name]=hashlib.sha256(path.read_bytes()).hexdigest()
     (output/'plan.json').write_text(json.dumps({'config':config,'pins':pins},indent=2)+'\n')

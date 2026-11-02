@@ -338,6 +338,28 @@ binding. No further sampling or candidate substitution follows automatically.
 Johannes must decide any acceptance of the disclosed performance tradeoff or
 broader investigation before publication.
 
+Johannes authorized a further bounded investigation on November 2. Static
+review identifies automatic estimator scope cleanup as a specific hypothesis:
+restricted OLS and PPML retain a private full-length input marker after result
+posting consumes the separate sample output. The public wrapper has no matching
+observation-scale operation in these cases. Stata documents move semantics for
+`_estimates hold` and consumption of `esample()` by `ereturn post`; removing
+rollback or assuming duplicate estimate copies is therefore unsupported.
+
+The cleanup diagnostic compares the same revised native binary and ado sources,
+with one scratch-only difference: the candidate explicitly drops the still-live
+private `touse` marker after transaction commit, before estimator return. Both
+arms receive identical call/return, wrapper-syntax and body timers; they record
+whether candidate and rollback markers still exist at return. The frozen grid
+is c1/c11/c12/c13/c14, sixteen Rust workers, default Stata processors and memory
+placement, two mirrored blocks, three observations after one warmup: sixty calls.
+Exact coefficients, covariance, sample count, full posted sample signature and
+input digests precede timing. No science or route changes, exclusions, retries
+or release-acceptance inference are allowed. Existing native correctness evidence
+is reused; actual Mac OLS/PPML smoke checks validate the added instrumentation.
+A movement of time into explicit `drop` would establish attribution only; a
+whole-call gain is required before selecting any production cleanup change.
+
 The actual candidate binaries pass 68 licensed Stata 19 fixtures on both Mac
 and Linux, all 77 exact incumbent replay cases on each, scalar input oracles at
 multiple worker counts, accessor-failure rollback, and live console Break while
