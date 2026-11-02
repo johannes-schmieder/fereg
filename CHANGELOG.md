@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.5.0 beta.15 — 2026-11-02
+
+Faster parallel OLS without fixed effects. The new path applies to Fast,
+unweighted IID fits with an intercept, automatic solvers and no optional
+observation outputs. It uses stable centered row-block products, guarded
+factorization, packed-input reuse and a certified residual shortcut. Independent
+original-data checks, rank rules and accuracy tolerances remain unchanged.
+Other supported models retain their existing paths.
+
+At one million observations and 64 regressors, 16-worker command time falls
+from 3.101 to 0.709 seconds on the measured Linux host and from 1.157 to 0.316
+seconds on Mac. Fereg does not consistently beat Stata regress at equal processor
+counts. The Linux 16-regressor, one-worker case is 7.3% slower than beta.14;
+Johannes explicitly accepted this measured exception for publication. See the
+[complete performance evidence](bench/results/no-fe-preparation-20261102.md).
+No observations were discarded or timing rounds repeated. Low-bit numerical
+changes remain within the existing scientific tolerances; sample, rank and
+omission decisions are unchanged.
+
 ## 0.5.0 beta.14 — 2026-11-02
 
 More robust input transport and removal of the serial FE loading cutoff above

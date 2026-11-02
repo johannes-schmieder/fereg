@@ -3146,6 +3146,10 @@ fn axis_shadow_preflight_checks_residuals_on_sealed_full_and_partial_samples() {
 fn omitted_observation_outputs_preserve_science_sample_drops_and_receipt() {
     for missing in [false, true] {
         let (mut args, mut reference) = fixture(OlsVceKind::Iid);
+        // Explicit MAP keeps exact arithmetic across output ownership. Auto's
+        // approved no-output numerical route has its own independent witness.
+        replace_argument(&mut args, "solver", "solver=map".to_owned());
+        replace_argument(&mut args, "preconditioner", "preconditioner=off".to_owned());
         replace_argument(&mut args, "candidate_all", "candidate_all=1".to_owned());
         if missing {
             reference.data.insert((2, 3), (0.0, true));
@@ -5373,5 +5377,200 @@ fn parallel_numeric_window_loads_exactly_what_the_serial_reader_loads() {
                 }
             }
         }
+    }
+}
+
+#[test]
+fn no_fe_auto_without_outputs_matches_rational_ols_and_repeats() {
+    // Exact rational OLS for the six integer (x,y) rows in fixture(), and for
+    // the same sample with x=2 excluded. No production estimator supplies it.
+    for missing in [false, true] {
+        let beta = if missing {
+            [101.0 / 86.0, 133.0 / 86.0]
+        } else {
+            [43.0 / 35.0, 23.0 / 21.0]
+        };
+        let covariance = if missing {
+            [
+                [4075.0 / 22188.0, -10595.0 / 22188.0],
+                [-10595.0 / 22188.0, 13855.0 / 7396.0],
+            ]
+        } else {
+            [
+                [652.0 / 3675.0, -326.0 / 735.0],
+                [-326.0 / 735.0, 3586.0 / 2205.0],
+            ]
+        };
+        let (mut args, mut source) = fixture(OlsVceKind::Iid);
+        replace_argument(&mut args, "candidate_all", "candidate_all=1".into());
+        replace_argument(&mut args, "output_residual", "output_residual=0".into());
+        replace_argument(
+            &mut args,
+            "output_drop_reason",
+            "output_drop_reason=0".into(),
+        );
+        source.nvars -= 2;
+        if missing {
+            source.data.insert((2, 3), (0.0, true));
+        }
+        let mut first: Option<FakeSpi> = None;
+        for workers in [1, 4, 16] {
+            replace_argument(&mut args, "threads", format!("threads={workers}"));
+            for _ in 0..2 {
+                let mut actual = source.clone();
+                estimate_ols(&args, &mut actual).unwrap();
+                for (a, b) in actual.matrices["RB"][0].iter().zip(beta) {
+                    assert!((a - b).abs() < 1e-12);
+                }
+                for (a, b) in actual.matrices["RV"]
+                    .iter()
+                    .flatten()
+                    .zip(covariance.iter().flatten())
+                {
+                    assert!((a - b).abs() < 1e-12);
+                }
+                assert_eq!(actual.receipt_complete(), 1.0);
+                if let Some(first) = &first {
+                    for name in ["RB", "RV", "RSTATUS", "RFIT", "RDOF", "RFE", "RCERT"] {
+                        assert_eq!(actual.matrices[name], first.matrices[name], "{name}");
+                    }
+                } else {
+                    first = Some(actual);
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn no_fe_optional_outputs_disable_only_the_no_fe_fast_policy() {
+    for output in ["output_xb", "output_drop_reason", "output_residual"] {
+        let (mut args, mut spi) = fixture(OlsVceKind::Iid);
+        replace_argument(&mut args, "output_residual", "output_residual=0".into());
+        replace_argument(
+            &mut args,
+            "output_drop_reason",
+            "output_drop_reason=0".into(),
+        );
+        spi.nvars = 4;
+        let plain = EstimateActionSpec::parse(&args)
+            .unwrap()
+            .decode_with_memory_limit(&mut spi, || Ok(None))
+            .unwrap();
+        assert!(plain.fit.allow_no_fe_fast_path);
+        assert!(plain.fit.final_residual_tolerance.is_none());
+        replace_argument(&mut args, output, format!("{output}=5"));
+        spi.nvars = 5;
+        let requested = EstimateActionSpec::parse(&args)
+            .unwrap()
+            .decode_with_memory_limit(&mut spi, || Ok(None))
+            .unwrap();
+        assert!(!requested.fit.allow_no_fe_fast_path);
+        assert_eq!(
+            requested.fit.final_residual_tolerance,
+            (output == "output_residual").then_some(1e-14)
+        );
+    }
+}
+
+#[test]
+fn no_fe_loaded_rows_adopt_with_budget_and_reject_changed_sample() {
+    let (mut args, mut source) = fixture(OlsVceKind::Iid);
+    replace_argument(&mut args, "output_residual", "output_residual=0".into());
+    replace_argument(
+        &mut args,
+        "output_drop_reason",
+        "output_drop_reason=0".into(),
+    );
+    source.nvars = 4;
+    let action = EstimateActionSpec::parse(&args)
+        .unwrap()
+        .decode_with_memory_limit(&mut source, || Ok(None))
+        .unwrap();
+    assert!(action.centered_summary_eligible());
+    let request = action.request;
+    source.nobs = 16_387;
+    source.numeric_rows_enabled = true;
+    source.data.clear();
+    for row in 1..=source.nobs {
+        let x = (row as f64 * 0.13).sin();
+        for (variable, value) in [(1, 1.), (2, 2. + 3. * x + (row as f64).cos()), (3, x)] {
+            source.data.insert((variable, row), (value, false));
+        }
+    }
+    let layout = numeric_loaded_rhs_layout(&request.validate_and_compile().unwrap()).unwrap();
+    assert_eq!(layout.width, 3);
+    assert!(layout.append_intercept);
+    let required = source.nobs * layout.width * 8;
+    for (threads, budget, missing, candidate_all, window) in [
+        (1, required, false, true, false),
+        (4, required, false, true, false),
+        (16, required, false, true, true),
+        (4, required - 1, false, true, true),
+        (4, required, true, true, false),
+        (16, required, true, true, true),
+        (4, required, false, false, false),
+    ] {
+        let mut spi = source.clone();
+        spi.numeric_window = window;
+        if missing {
+            spi.data.insert((2, 3), (1e100, true));
+        }
+        if !candidate_all {
+            spi.data.insert((1, 7), (0., false));
+        }
+        let reference = load_ols_input(&request, candidate_all, false, &mut spi.clone()).unwrap();
+        let config = ThreadConfig::from_requested(threads, false).unwrap();
+        let mut rhs = None;
+        let mut memory = loading_memory(&request, spi.nobs, 0, 0, None).unwrap();
+        let loaded = load_ols_input_with_team(
+            &request,
+            candidate_all,
+            false,
+            &mut memory,
+            &mut spi,
+            Some(ThreadTeam::new(config)),
+            crate::parallel_input::Transport::new(crate::parallel_input::Policy::PARALLEL, config),
+            &mut rhs,
+            budget,
+            Some(layout),
+            false,
+            None,
+        )
+        .unwrap();
+        assert!(loaded == reference, "loaded input differs: workers={threads}, missing={missing}, all={candidate_all}, window={window}");
+        assert_eq!(
+            rhs.is_some(),
+            threads > 1 && budget == required && candidate_all
+        );
+        if let Some(rows) = &rhs {
+            assert_eq!(rows.len() * 8, required);
+            assert!(memory.peak() >= required as u128);
+            for row in rows.chunks_exact(3) {
+                assert_eq!(row[2], 1.);
+            }
+        }
+        if window {
+            assert!(spi.numeric_window_opens > 0);
+        }
+        let prepared = prepare_model_owned(&request, &[], loaded, false).unwrap();
+        let mut fit = PreparedOlsUnadjustedConfig::default();
+        fit.fit.execution.threads = config;
+        let reference =
+            fit_prepared_model_unadjusted_with_loaded_moments(prepared.ols(), fit, None).unwrap();
+        let cached = rhs.map(|rows| {
+            let bytes = LoadedOlsRows::centered_workspace_bytes(spi.nobs, 3).unwrap();
+            ThreadTeam::new(config)
+                .install(|| {
+                    LoadedOlsRows::from(rows).with_unit_centered_summary(spi.nobs, 3, bytes)
+                })
+                .unwrap()
+        });
+        let actual =
+            fit_prepared_model_unadjusted_with_loaded_moments(prepared.ols(), fit, cached).unwrap();
+        assert_eq!(reference.fit().coefficients(), actual.fit().coefficients());
+        assert_eq!(reference.covariance(), actual.covariance());
+        assert_eq!(reference.statistics(), actual.statistics());
+        assert_eq!(reference.certificate(), actual.certificate());
     }
 }

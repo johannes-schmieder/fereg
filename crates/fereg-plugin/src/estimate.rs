@@ -263,7 +263,9 @@ pub fn estimate_ols(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         action.metadata_owner_bytes,
         action.memory_plan.usable_bytes,
     )?;
-    let input_team = (action.candidate_all && numeric_pipeline_effects_supported(&action.request))
+    let no_fe_rows = action.centered_summary_eligible();
+    let input_team = (action.candidate_all
+        && (numeric_pipeline_effects_supported(&action.request) || no_fe_rows))
         .then(|| ThreadTeam::new(action.fit.execution.threads));
     let mut loaded_rhs = None;
     let mut load_columns = None;
@@ -278,7 +280,9 @@ pub fn estimate_ols(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         crate::parallel_input::Transport::new(action.input_policy, action.fit.execution.threads),
         &mut loaded_rhs,
         rhs_budget,
-        action.loaded_rhs_layout,
+        action
+            .loaded_rhs_layout
+            .filter(|_| !action.request.absorbed_terms.is_empty() || no_fe_rows),
         false,
         Some(crate::numeric_pipeline::PreparedLoadTarget::Owned(
             &mut load_columns,
@@ -506,7 +510,13 @@ fn prepare_loaded_ols_with_moments<T: Send>(
         .generated_columns
         .checked_add(1)
         .ok_or_else(|| allocation("loaded OLS moment width overflows"))?;
-    let moment_bytes = LoadedOlsRows::moment_workspace_bytes(nrows, columns).filter(|bytes| {
+    let centered_summary = action.centered_summary_eligible();
+    let summary_bytes = if centered_summary {
+        LoadedOlsRows::centered_workspace_bytes(nrows, columns)
+    } else {
+        LoadedOlsRows::moment_workspace_bytes(nrows, columns)
+    };
+    let moment_bytes = summary_bytes.filter(|bytes| {
         loaded_rhs.is_some()
             && loaded.analytic_weight.is_none()
             && loaded.frequency_weight.is_none()
@@ -574,7 +584,12 @@ fn prepare_loaded_ols_with_moments<T: Send>(
                 || prepare(request, loaded, membership_scratch, release_ceiling),
                 || {
                     loaded_rhs.map(|rows| {
-                        LoadedOlsRows::from(rows).with_unit_moments(nrows, columns, bytes)
+                        let rows = LoadedOlsRows::from(rows);
+                        if centered_summary {
+                            rows.with_unit_centered_summary(nrows, columns, bytes)
+                        } else {
+                            rows.with_unit_moments(nrows, columns, bytes)
+                        }
                     })
                 },
             );
@@ -641,6 +656,30 @@ fn prepare_loaded_ols<T: Send>(
 }
 
 impl EstimateAction {
+    /// The authorized no-FE numerical family; other requests keep transport
+    /// and arithmetic policies exactly. Sample/output binding is checked again
+    /// when the packed row owner reaches core.
+    fn centered_summary_eligible(&self) -> bool {
+        self.fit.allow_no_fe_fast_path
+            && self.request.absorbed_terms.is_empty()
+            && self.request.include_intercept
+            && self.memory_plan.selected == MemoryMode::Fast
+            && self.vce == OlsVceKind::Iid
+            && self.fit.absorb.solver == FeSolverKind::Auto
+            && self.fit.absorb.lsmr.preconditioner == LsmrPreconditioner::Auto
+            && self.fit.absorb.routing.is_none()
+            && !self.fit.absorb.retain_coefficients
+            && self.fit.final_residual_tolerance.is_none()
+            && !self.request.bindings.iter().any(|binding| {
+                matches!(
+                    binding.role,
+                    OlsInputRole::AnalyticWeight
+                        | OlsInputRole::FrequencyWeight
+                        | OlsInputRole::ProbabilityWeight
+                )
+            })
+    }
+
     /// Admit the optional packed RHS beside the existing preparation peak.
     fn loaded_rhs_budget(&self) -> usize {
         if self.fit.execution.mode != PreparedOlsExecutionMode::Fast {
@@ -1296,6 +1335,12 @@ impl EstimateActionSpec {
             ownership: self.ownership,
             cells: self.cells,
             allow_final_fe_recovery: true,
+            allow_no_fe_fast_path: self.outputs.residual.is_none()
+                && self.outputs.drop_reason.is_none()
+                && self.outputs.xb.is_none()
+                && self.outputs.xbd.is_none()
+                && self.outputs.absorbed.is_none()
+                && self.outputs.saved_channels.iter().all(Option::is_none),
             // Residual-derived outputs need pointwise accuracy even when low
             // memory deliberately omits retained FE coefficient products.
             final_residual_tolerance: (self.outputs.residual.is_some()
@@ -1769,10 +1814,12 @@ fn load_ols_input_with_team(
                 .lanes
                     > 1
                 && crate::numeric_pipeline::tile_rows(width).is_some()
-                && numeric_pipeline_effects_supported(request)
+                && (numeric_pipeline_effects_supported(request)
+                    || (request.absorbed_terms.is_empty() && compiled_rhs_layout.is_some()))
             {
                 if let Some(layout) = compiled_rhs_layout.filter(|layout| {
-                    (2..=width).contains(&layout.width)
+                    layout.width >= 2
+                        && layout.width - usize::from(layout.append_intercept) <= width
                         && (layout.append_intercept
                             || (request.absorbed_terms.len() == 1
                                 && (1..=3)

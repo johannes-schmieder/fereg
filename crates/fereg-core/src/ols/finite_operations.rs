@@ -34,6 +34,7 @@ pub(super) struct FactorBanks<'a> {
     pub coefficients: &'a mut Vec<f64>,
     pub inverse: &'a mut Vec<f64>,
     pub selected: &'a mut Vec<usize>,
+    pub compression: &'a mut Vec<f64>,
 }
 
 pub(super) struct BasisRelations<'a> {
@@ -74,7 +75,7 @@ pub(super) fn solve_factor<R: FitReservation>(
     mut banks: FactorBanks<'_>,
     reservation: &mut R,
     mut capture: impl FnMut(BasisRelations<'_>, usize, f64) -> Result<()>,
-) -> Result<FactorResult> {
+) -> Result<Option<FactorResult>> {
     let count = identities.len();
     let square = count.checked_mul(count).ok_or_else(|| {
         FeregError::new(ErrorCode::Allocation, "finite operation square overflows")
@@ -90,7 +91,10 @@ pub(super) fn solve_factor<R: FitReservation>(
         ));
     }
     prepare_factor(source, count, square, &mut banks, reservation)?;
-    let cholesky = if allow_cholesky {
+    let centered = matches!(source, FixedBlockMomentSource::Centered { .. });
+    // Parallel orthogonal compression is a solve strategy, never a new rank
+    // authority. Even a forced QR retry must first clear this stronger guard.
+    let cholesky = if allow_cholesky || centered {
         factor_finite_cholesky(
             banks.auxiliary,
             banks.solve,
@@ -101,11 +105,19 @@ pub(super) fn solve_factor<R: FitReservation>(
     } else {
         None
     };
-    if let Some(report) = cholesky {
+    if centered && cholesky.is_none() {
+        return Ok(None);
+    }
+    if let Some(report) = cholesky.filter(|_| allow_cholesky) {
         let failure = cholesky_solution(count, identities, &mut banks, reservation)?;
         let certified = failure.is_none();
         if certified {
-            return Ok(FactorResult {
+            if crate::diagnostics::solver_trace_enabled() {
+                crate::diagnostics::emit_solver_trace(
+                    "FEREG_SOLVER_TRACE|phase=finite_factor|method=cholesky",
+                );
+            }
+            return Ok(Some(FactorResult {
                 report: RankRevealingQrReport {
                     rank: count,
                     initial_norm: 0.0,
@@ -114,7 +126,7 @@ pub(super) fn solve_factor<R: FitReservation>(
                     ambiguous: false,
                 },
                 used_qr: false,
-            });
+            }));
         }
         if request != RankRequest::OlsDiscover {
             let inverse = failure == Some(CholeskyFailure::Inverse);
@@ -132,6 +144,15 @@ pub(super) fn solve_factor<R: FitReservation>(
             ));
         }
     }
+    let compressed = matches!(source, FixedBlockMomentSource::Centered { .. });
+    if compressed {
+        resize(
+            banks.compression,
+            centered_compression_elements(source)?,
+            0.,
+            reservation,
+        )?;
+    }
     let report = factor_rank_revealing_retained_qr(
         source,
         identities,
@@ -141,7 +162,23 @@ pub(super) fn solve_factor<R: FitReservation>(
         banks.solve,
         banks.scores,
         banks.permutation,
+        compressed.then_some(banks.compression.as_mut_slice()),
     )?;
+    if crate::diagnostics::solver_trace_enabled() {
+        crate::diagnostics::emit_solver_trace(if compressed {
+            "FEREG_SOLVER_TRACE|phase=finite_factor|method=tsqr"
+        } else {
+            "FEREG_SOLVER_TRACE|phase=finite_factor|method=canonical_qr"
+        });
+    }
+    // A new centered/compressed representation never owns an omission or a
+    // threshold-boundary decision. Return before inverse construction, dropped
+    // span certification, and the OLS ambiguity normalization below.
+    if matches!(source, FixedBlockMomentSource::Centered { .. })
+        && (report.ambiguous || report.rank != count)
+    {
+        return Ok(None);
+    }
     if request == RankRequest::Frozen && (report.ambiguous || report.rank != count) {
         return Err(request.error(
             "retained weighted-linear rank decision is numerically ambiguous",
@@ -171,10 +208,10 @@ pub(super) fn solve_factor<R: FitReservation>(
         ));
     }
     report.ambiguous &= request != RankRequest::OlsDiscover;
-    Ok(FactorResult {
+    Ok(Some(FactorResult {
         report,
         used_qr: true,
-    })
+    }))
 }
 
 fn prepare_factor<R: FitReservation>(
@@ -188,6 +225,7 @@ fn prepare_factor<R: FitReservation>(
         FixedBlockMomentSource::Dense { stored_columns, .. } => stored_columns,
         FixedBlockMomentSource::Scratch { values, .. } => values.columns(),
         FixedBlockMomentSource::Implicit { values, .. } => values.columns(),
+        FixedBlockMomentSource::Centered { values, .. } => values.columns(),
     };
     resize(banks.factor, square, 0., reservation)?;
     resize(banks.solve, count, 0., reservation)?;
@@ -328,3 +366,6 @@ fn qr_solution<R: FitReservation>(
     }
     Ok(report)
 }
+
+#[cfg(test)]
+mod tests;

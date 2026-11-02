@@ -545,6 +545,7 @@ fn retained_qr_report(
         &mut rhs,
         &mut trailing,
         &mut permutation,
+        None,
     )?;
     Ok((report, permutation))
 }
@@ -582,6 +583,7 @@ fn retained_qr_solution(
         &mut rhs,
         &mut trailing,
         &mut permutation,
+        None,
     )?;
     let mut pivot_solution = vec![0.0_f64; report.rank];
     let mut selected_ids = vec![usize::MAX; report.rank];
@@ -635,6 +637,7 @@ fn retained_qr_direct_span_certificate(
         &mut rhs,
         &mut standardized_row,
         &mut permutation,
+        None,
     )?;
     let dropped = columns - report.rank;
     let mut projection = vec![0.0_f64; report.rank * dropped];
@@ -724,6 +727,7 @@ fn scratch_qr_scan_matches_dense_weighted_rank_and_bounds_reads() {
                 &mut rhs,
                 &mut trailing,
                 &mut permutation,
+                None,
             )
             .unwrap();
             assert_eq!(report.rank, if deficient { 2 } else { 3 });

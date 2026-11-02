@@ -20,6 +20,7 @@ mod categorical_prefix;
 pub(crate) mod derived_residual;
 mod eager_cells;
 mod fused_sweep;
+pub(crate) mod structural_direct;
 use eager_cells::ReuseState;
 mod initial_screen;
 mod irons_tuck;
@@ -6701,7 +6702,7 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
     }
 
     if design.effects().is_empty() {
-        project_structural_constant(weights, &mut values, &mut workspace)?;
+        subtract_structural_constant(&mut values, &workspace.group_sums)?;
         let certificate =
             certify_structural_constant(weights, &values, config.tolerance, &mut workspace)?;
         if !certificate.passed {
@@ -7127,7 +7128,10 @@ fn absorb_with_reservation_mode<R: WorkspaceReservation>(
     }
 
     if design.effects().is_empty() {
-        project_structural_constant(weights, &mut values, &mut workspace)?;
+        // The complete initial certificate left the exact means of this
+        // unchanged matrix in group_sums. Keep its zero-iteration decision,
+        // reuse the means, then independently certify the residual below.
+        subtract_structural_constant(&mut values, &workspace.group_sums)?;
         let certificate =
             certify_structural_constant(weights, &values, config.tolerance, &mut workspace)?;
         if !certificate.passed {
@@ -7241,24 +7245,27 @@ fn validate_weights(weights: BorrowedMapWeights<'_>, nrows: usize) -> Result<Val
     }
 }
 
-fn project_structural_constant(
-    weights: ValidatedWeights<'_>,
-    values: &mut DenseMatrix,
-    workspace: &mut BorrowedMapWorkspace,
-) -> Result<()> {
-    structural_constant_means(weights, values, workspace)?;
-    for observation in 0..values.nrows() {
-        for rhs in 0..values.ncols() {
-            let residual = values[(observation, rhs)] - workspace.group_sums[rhs];
-            if !residual.is_finite() {
-                return Err(invalid_data(
-                    "borrowed MAP structural-constant projection produced a nonfinite residual",
-                ));
+fn subtract_structural_constant(values: &mut DenseMatrix, means: &[f64]) -> Result<()> {
+    let columns = values.ncols();
+    assert_eq!(means.len(), columns, "structural mean dimensions differ");
+    let work = values.as_slice().len() as u128;
+    crate::parallel::stage_try_for_each(
+        values.as_mut_slice().par_chunks_mut(columns).enumerate(),
+        work,
+        |(row, values)| {
+            crate::interrupt::row_checkpoint(row)?;
+            for (value, mean) in values.iter_mut().zip(means) {
+                let residual = *value - mean;
+                if !residual.is_finite() {
+                    return Err(invalid_data(
+                        "borrowed MAP structural-constant projection produced a nonfinite residual",
+                    ));
+                }
+                *value = residual;
             }
-            values[(observation, rhs)] = residual;
-        }
-    }
-    Ok(())
+            Ok(())
+        },
+    )
 }
 
 fn structural_constant_means(
@@ -7266,21 +7273,24 @@ fn structural_constant_means(
     values: &DenseMatrix,
     workspace: &mut BorrowedMapWorkspace,
 ) -> Result<f64> {
-    workspace.value_scales.fill(0.0);
-    workspace.group_sums.fill(0.0);
-    workspace.group_corrections.fill(0.0);
+    structural_constant_means_with_scales(weights, values, workspace, false)
+}
+
+fn structural_constant_means_with_scales(
+    weights: ValidatedWeights<'_>,
+    values: &DenseMatrix,
+    workspace: &mut BorrowedMapWorkspace,
+    cached_scales: bool,
+) -> Result<f64> {
     let mut weight_sum = 0.0_f64;
     let mut weight_correction = 0.0_f64;
     for observation in 0..values.nrows() {
+        crate::interrupt::row_checkpoint(observation)?;
         compensated_add(
             weights.normalized(observation),
             &mut weight_sum,
             &mut weight_correction,
         )?;
-        for rhs in 0..values.ncols() {
-            workspace.value_scales[rhs] =
-                workspace.value_scales[rhs].max(values[(observation, rhs)].abs());
-        }
     }
     let total_weight = weight_sum + weight_correction;
     if !total_weight.is_finite() || total_weight <= 0.0 {
@@ -7288,33 +7298,70 @@ fn structural_constant_means(
             "borrowed MAP structural-constant weight sum is invalid",
         ));
     }
-    for observation in 0..values.nrows() {
-        let weight = weights.normalized(observation);
-        for rhs in 0..values.ncols() {
-            let scale = workspace.value_scales[rhs];
-            if scale != 0.0 {
-                compensated_add(
-                    weight * (values[(observation, rhs)] / scale),
-                    &mut workspace.group_sums[rhs],
-                    &mut workspace.group_corrections[rhs],
-                )?;
+    // Private bounded bands avoid sharing accumulator cache lines. Each
+    // column keeps its original row order, scaling and compensated arithmetic;
+    // changing the band width or worker count cannot change its result.
+    const BAND: usize = 64;
+    let columns = values.ncols();
+    let work = (values.nrows() as u128) * (columns as u128) * 2;
+    let band = crate::parallel::StagePlan::current(work, columns)
+        .chunk(columns)
+        .min(BAND);
+    crate::parallel::stage_try_for_each(
+        workspace
+            .value_scales
+            .par_chunks_mut(band)
+            .zip(workspace.group_sums.par_chunks_mut(band))
+            .zip(workspace.group_corrections.par_chunks_mut(band))
+            .enumerate(),
+        work,
+        |(partition, ((out_scales, out_means), out_corrections))| {
+            let first = partition * band;
+            let width = out_scales.len();
+            let mut scales = [0.0_f64; BAND];
+            let mut sums = [0.0_f64; BAND];
+            let mut corrections = [0.0_f64; BAND];
+            if cached_scales {
+                scales[..width].copy_from_slice(out_scales);
+            } else {
+                for row in 0..values.nrows() {
+                    crate::interrupt::row_checkpoint(row)?;
+                    for rhs in 0..width {
+                        scales[rhs] = scales[rhs].max(values[(row, first + rhs)].abs());
+                    }
+                }
             }
-        }
-    }
-    for rhs in 0..values.ncols() {
-        let scale = workspace.value_scales[rhs];
-        let mean = if scale == 0.0 {
-            0.0
-        } else {
-            scale * ((workspace.group_sums[rhs] + workspace.group_corrections[rhs]) / total_weight)
-        };
-        if !mean.is_finite() {
-            return Err(invalid_data(
-                "borrowed MAP structural-constant mean is not finite",
-            ));
-        }
-        workspace.group_sums[rhs] = mean;
-    }
+            for row in 0..values.nrows() {
+                crate::interrupt::row_checkpoint(row)?;
+                let weight = weights.normalized(row);
+                for rhs in 0..width {
+                    if scales[rhs] != 0.0 {
+                        compensated_add(
+                            weight * (values[(row, first + rhs)] / scales[rhs]),
+                            &mut sums[rhs],
+                            &mut corrections[rhs],
+                        )?;
+                    }
+                }
+            }
+            for rhs in 0..width {
+                let mean = if scales[rhs] == 0.0 {
+                    0.0
+                } else {
+                    scales[rhs] * ((sums[rhs] + corrections[rhs]) / total_weight)
+                };
+                if !mean.is_finite() {
+                    return Err(invalid_data(
+                        "borrowed MAP structural-constant mean is not finite",
+                    ));
+                }
+                out_means[rhs] = mean;
+            }
+            out_scales.copy_from_slice(&scales[..width]);
+            out_corrections.copy_from_slice(&corrections[..width]);
+            Ok(())
+        },
+    )?;
     Ok(total_weight)
 }
 
@@ -7355,13 +7402,29 @@ fn certify_structural_constant_with_current_norms(
         }
         workspace.rhs_scales[rhs] = scale;
     }
-    let hardware = crate::kernels::installed();
     let group_weight = structural_constant_means(weights, residuals, workspace)?;
+    structural_constant_certificate(
+        weights,
+        group_weight,
+        residuals.ncols(),
+        tolerance,
+        workspace,
+    )
+}
+
+fn structural_constant_certificate(
+    weights: ValidatedWeights<'_>,
+    group_weight: f64,
+    columns: usize,
+    tolerance: f64,
+    workspace: &BorrowedMapWorkspace,
+) -> Result<FeCertificate> {
+    let hardware = crate::kernels::installed();
     let root_group_weight = group_weight.sqrt();
     let mut absolute_infinity_norm = 0.0_f64;
     let mut relative_infinity_norm = 0.0_f64;
     let mut relative_square_sum = 0.0_f64;
-    for rhs in 0..residuals.ncols() {
+    for rhs in 0..columns {
         let mean = workspace.group_sums[rhs];
         let denominator = workspace.rhs_scales[rhs];
         let relative = if denominator == 0.0 {
@@ -7393,7 +7456,7 @@ fn certify_structural_constant_with_current_norms(
             f64::INFINITY
         });
     }
-    let relative_two_norm = (relative_square_sum / residuals.ncols() as f64).sqrt();
+    let relative_two_norm = (relative_square_sum / columns as f64).sqrt();
     if !relative_two_norm.is_finite() {
         return Err(invalid_data(
             "borrowed MAP structural-constant certificate norm is not finite",
@@ -9695,6 +9758,9 @@ mod initial_screen_tests;
 mod ppml_topology_tests;
 #[cfg(test)]
 mod routing_tests;
+#[cfg(test)]
+mod structural_constant_tests;
+
 #[cfg(test)]
 mod tests;
 

@@ -1,11 +1,14 @@
 //! One OLS lifecycle; storage implements projection and physical finite kernels.
 use super::*;
+use crate::ols::centered::{CenteredRows, CenteredSummary};
+mod centered_pipeline;
 use crate::fe::routing_observer::ObserverRef;
 use crate::fe::routing_remaining::Demand;
 
 struct DenseRaw {
     values: crate::ols::OlsProjectionInput,
     moments: Option<RawMomentCache>,
+    centered: Option<CenteredSummary>,
     reference_norms: Vec<f64>,
     reference_mean_scales: Vec<f64>,
     strided_score_means: Option<Vec<f64>>,
@@ -15,6 +18,8 @@ struct DenseProjected {
     within: Option<DenseMatrix>,
     raw: DenseRaw,
     cached_norms: Vec<f64>,
+    no_fe: bool,
+    direct_structural: bool,
 }
 struct ScratchProjected {
     scratch: PreparedOlsScratch,
@@ -22,6 +27,7 @@ struct ScratchProjected {
 }
 
 enum ProjectedStorage {
+    Centered(DenseRaw),
     Dense(DenseProjected),
     Scratch(ScratchProjected),
 }
@@ -39,7 +45,7 @@ struct OneShotInputs {
 impl OneShotInputs {
     fn score_norms(&self) -> &[f64] {
         match self.storage {
-            ProjectedStorage::Dense(_) => &self.norms[1..],
+            ProjectedStorage::Dense(_) | ProjectedStorage::Centered(_) => &self.norms[1..],
             ProjectedStorage::Scratch(_) => &self.norms,
         }
     }
@@ -52,6 +58,7 @@ fn dense_raw<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     retain_fast_score_cache: bool,
     max_fast_score_cache_bytes: usize,
     loaded_rows: Option<LoadedOlsRows>,
+    centered: bool,
 ) -> Result<DenseRaw> {
     let weights = frame.weights();
     let generated_columns = prepared.fit_model().columns.len();
@@ -60,12 +67,43 @@ fn dense_raw<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         "dense_raw",
         ["rhs", "moments", "norms"],
     );
-    let (rows, pending_moments) =
-        loaded_rows.map_or((None, None), |loaded| (Some(loaded.rows), loaded.moments));
+    let (rows, pending_moments, pending_centered) = loaded_rows
+        .map_or((None, None, None), |loaded| {
+            (Some(loaded.rows), loaded.moments, loaded.centered)
+        });
     trace.fact("loaded_rows", u64::from(rows.is_some()));
-    let (raw, reused_rows) = prepared.fit_build_rhs_with_loaded_rows(frame.response(), rows)?;
+    let (raw, reused_rows) =
+        prepared.fit_build_rhs_with_loaded_rows(frame.response(), rows, centered)?;
     trace.fact("reused_rows", u64::from(reused_rows));
+    trace.fact(
+        "reused_centered_summary",
+        u64::from(centered && reused_rows && pending_centered.is_some()),
+    );
     trace.lap(0);
+    if centered {
+        if reused_rows {
+            if let Some(Err(error)) = pending_moments {
+                return Err(error);
+            }
+        }
+        if let Some(raw) = centered_pipeline::prepare_raw(
+            raw,
+            reused_rows.then_some(pending_centered).flatten(),
+            reservation,
+        )? {
+            return Ok(raw);
+        }
+        // An unsupported numerical range declines before any publication.
+        return dense_raw(
+            prepared,
+            frame,
+            reservation,
+            retain_fast_score_cache,
+            max_fast_score_cache_bytes,
+            None,
+            false,
+        );
+    }
     let pending_moments = if reused_rows && weights.values.is_none() {
         pending_moments
     } else {
@@ -113,38 +151,13 @@ fn dense_raw<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         None
     };
     trace.lap(1);
-    let threads = rayon::current_num_threads();
-    let blocked_raw = threads == 1 || generated_columns.div_ceil(8) >= threads;
-    if raw_moments.is_none() && blocked_raw {
-        // One row-major pass per eight-column block; per-column order is the
-        // scalar norm's, and the column maxima are exact.
-        fill_weighted_matrix_norms_blocked::<8>(&raw, 1, weights, &mut reference_norms)?;
-        if retain_fast_score_cache {
-            fill_column_maxima_blocked::<8>(&raw, 1, &mut reference_mean_scales)?;
-        }
-    } else if retain_fast_score_cache && raw_moments.is_none() {
-        crate::parallel::stage_try_for_each(
-            reference_norms
-                .par_iter_mut()
-                .zip(reference_mean_scales.par_iter_mut())
-                .enumerate(),
-            raw.nrows() as u128 * generated_columns as u128,
-            |(column, (norm, mean_scale))| -> Result<()> {
-                *norm = weighted_matrix_column_norm(&raw, column + 1, weights)?;
-                for row in 0..raw.nrows() {
-                    *mean_scale = mean_scale.max(raw[(row, column + 1)].abs());
-                }
-                Ok(())
-            },
-        )?;
-    } else if raw_moments.is_none() {
-        crate::parallel::stage_try_for_each(
-            reference_norms.par_iter_mut().enumerate(),
-            raw.nrows() as u128 * generated_columns as u128,
-            |(column, norm)| -> Result<()> {
-                *norm = weighted_matrix_column_norm(&raw, column + 1, weights)?;
-                Ok(())
-            },
+    if raw_moments.is_none() {
+        fill_reference_norms(
+            &raw,
+            weights,
+            retain_fast_score_cache,
+            &mut reference_norms,
+            &mut reference_mean_scales,
         )?;
     }
     trace.lap(2);
@@ -166,10 +179,56 @@ fn dense_raw<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     Ok(DenseRaw {
         values: raw,
         moments: raw_moments,
+        centered: None,
         reference_norms,
         reference_mean_scales,
         strided_score_means,
     })
+}
+
+fn fill_reference_norms(
+    raw: &DenseMatrix,
+    weights: NormalizedWeights<'_>,
+    retain_fast_score_cache: bool,
+    reference_norms: &mut [f64],
+    reference_mean_scales: &mut [f64],
+) -> Result<()> {
+    let generated_columns = reference_norms.len();
+    let threads = rayon::current_num_threads();
+    let blocked_raw = threads == 1 || generated_columns.div_ceil(8) >= threads;
+    if blocked_raw {
+        // One row-major pass per eight-column block; per-column order is the
+        // scalar norm's, and the column maxima are exact.
+        fill_weighted_matrix_norms_blocked::<8>(raw, 1, weights, reference_norms)?;
+        if retain_fast_score_cache {
+            fill_column_maxima_blocked::<8>(raw, 1, reference_mean_scales)?;
+        }
+    } else if retain_fast_score_cache {
+        crate::parallel::stage_try_for_each(
+            reference_norms
+                .par_iter_mut()
+                .zip(reference_mean_scales.par_iter_mut())
+                .enumerate(),
+            raw.nrows() as u128 * generated_columns as u128,
+            |(column, (norm, mean_scale))| -> Result<()> {
+                *norm = weighted_matrix_column_norm(raw, column + 1, weights)?;
+                for row in 0..raw.nrows() {
+                    *mean_scale = mean_scale.max(raw[(row, column + 1)].abs());
+                }
+                Ok(())
+            },
+        )?;
+    } else {
+        crate::parallel::stage_try_for_each(
+            reference_norms.par_iter_mut().enumerate(),
+            raw.nrows() as u128 * generated_columns as u128,
+            |(column, norm)| -> Result<()> {
+                *norm = weighted_matrix_column_norm(raw, column + 1, weights)?;
+                Ok(())
+            },
+        )?;
+    }
+    Ok(())
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -185,6 +244,7 @@ fn project_dense<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     retained_fe_parent: u128,
     reuse_absorption_norms: bool,
     remaining: Option<ObserverRef<'_>>,
+    allow_centered: bool,
 ) -> Result<OneShotInputs> {
     let weights = frame.weights();
     // Trace-only laps (FEREG_PHASE_TIMING): no arithmetic or decision effect.
@@ -192,6 +252,14 @@ fn project_dense<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         "project_dense",
         ["dense_raw", "absorb"],
     );
+    let eligible = no_fe_auto_iid(
+        cmg,
+        frame,
+        *config,
+        retain_fast_score_cache,
+        prepared.fit_report_intercept(),
+    );
+    let centered = allow_centered && eligible && centered_pipeline::admitted(prepared, *config)?;
     let mut raw = dense_raw(
         prepared,
         frame,
@@ -199,25 +267,56 @@ fn project_dense<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         retain_fast_score_cache,
         max_fast_score_cache_bytes,
         loaded_rows,
+        centered,
     )?;
     trace.lap(0);
-    let mut absorbed = cmg.project_initial_ols(
-        weights.borrowed(),
-        std::mem::replace(
-            &mut raw.values,
-            DenseMatrix::from_row_major(0, 0, Vec::new())?.into(),
-        ),
-        config.absorb,
-        frame.dense_norm_handoff(config.execution.mode, reuse_absorption_norms),
-        remaining.map(|state| {
-            (
-                state,
-                Demand::Packed {
-                    regressors: prepared.fit_model().columns.len(),
-                },
-            )
-        }),
-    )?;
+    if raw.centered.is_some() {
+        if centered_pipeline::compatible_classification(prepared, &raw, *config)? {
+            return centered_pipeline::project(raw, *config, reservation);
+        }
+        raw.centered = None;
+        raw.moments = Some(build_raw_moment_cache(&raw.values, weights, reservation)?);
+        raw.reference_norms
+            .copy_from_slice(&raw.moments.as_ref().unwrap().norms[1..]);
+    }
+    let direct = no_fe_auto_iid(
+        cmg,
+        frame,
+        *config,
+        retain_fast_score_cache,
+        prepared.fit_report_intercept(),
+    )
+    .then(|| {
+        prepared
+            .fit_model()
+            .columns
+            .iter()
+            .position(|column| matches!(column.kind, PreparedOlsColumnKind::Intercept))
+    })
+    .flatten();
+    let values = std::mem::replace(
+        &mut raw.values,
+        DenseMatrix::from_row_major(0, 0, Vec::new())?.into(),
+    );
+    let direct_structural = direct.is_some() && raw.moments.is_some();
+    let mut absorbed = if let (Some(constant), Some(moments)) = (direct, raw.moments.as_ref()) {
+        cmg.project_structural_ols(values, &moments.scales, constant + 1, config.absorb)?
+    } else {
+        cmg.project_initial_ols(
+            weights.borrowed(),
+            values,
+            config.absorb,
+            frame.dense_norm_handoff(config.execution.mode, reuse_absorption_norms),
+            remaining.map(|state| {
+                (
+                    state,
+                    Demand::Packed {
+                        regressors: prepared.fit_model().columns.len(),
+                    },
+                )
+            }),
+        )?
+    };
     trace.lap(1);
     if !absorbed.report().certified() {
         return Err(invalid_data(
@@ -246,6 +345,8 @@ fn project_dense<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
             within: Some(within),
             raw,
             cached_norms,
+            no_fe: cmg.binding.as_ref().is_some_and(|d| d.effects().is_empty()),
+            direct_structural,
         }),
         reference_norms,
         norms: Vec::new(),
@@ -537,20 +638,28 @@ fn project_scratch_columns<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation
     Ok(intercept_cross)
 }
 
-fn solve_one_shot<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
-    prepared: &P,
+#[allow(clippy::too_many_arguments)]
+fn solve_one_shot<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
+    prepared: &'a P,
     inputs: &mut OneShotInputs,
-    frame: LinearSolveFrame<'_>,
+    frame: LinearSolveFrame<'a>,
     config: PreparedOlsFitConfig,
     reservation: &mut R,
     perturbations: FitPerturbations,
     retain_fast_score_cache: bool,
+    cmg: &mut crate::fe::FeSession<'a>,
 ) -> Result<FiniteFit> {
     let norms = match &inputs.storage {
-        ProjectedStorage::Dense(_) => &inputs.norms[1..],
+        ProjectedStorage::Dense(_) | ProjectedStorage::Centered(_) => &inputs.norms[1..],
         ProjectedStorage::Scratch(_) => &inputs.norms,
     };
     let storage = match &mut inputs.storage {
+        ProjectedStorage::Centered(raw) => {
+            finite::ProjectedFiniteRows::Centered(CenteredRows::new(
+                &raw.values,
+                raw.centered.as_ref().expect("centered summary"),
+            )?)
+        }
         ProjectedStorage::Dense(dense) => finite::ProjectedFiniteRows::Dense(
             dense.within.as_mut().expect("projected dense owner"),
         ),
@@ -559,7 +668,7 @@ fn solve_one_shot<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
             outcome: &mut low.outcome,
         },
     };
-    let qr = finite::solve_one_shot(
+    let qr = match finite::solve_one_shot(
         prepared,
         storage,
         frame.weights(),
@@ -571,7 +680,47 @@ fn solve_one_shot<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         perturbations.first_coefficient,
         perturbations.finite_bread,
         true,
-    )?;
+    ) {
+        Ok(qr) => qr,
+        Err(error)
+            if error.code == ErrorCode::InvalidData
+                && matches!(inputs.storage, ProjectedStorage::Centered(_))
+                && !perturbations.first_coefficient
+                && !perturbations.finite_bread =>
+        {
+            None
+        }
+        Err(error) => return Err(error),
+    };
+    let Some(qr) = qr else {
+        centered_pipeline::compatibility_projection(
+            prepared,
+            frame,
+            inputs,
+            config,
+            reservation,
+            cmg,
+        )?;
+        dense_finite_inputs(
+            prepared,
+            inputs,
+            frame.weights(),
+            reservation,
+            false,
+            0,
+            config,
+        )?;
+        return solve_one_shot(
+            prepared,
+            inputs,
+            frame,
+            config,
+            reservation,
+            perturbations,
+            retain_fast_score_cache,
+            cmg,
+        );
+    };
     if let ProjectedStorage::Dense(dense) = &mut inputs.storage {
         if retain_fast_score_cache && inputs.fast_score_cache.is_none() {
             inputs.fast_score_cache = Some(build_selected_fast_score_cache(
@@ -600,6 +749,121 @@ fn solve_one_shot<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         dense.within = None;
     }
     Ok(qr)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn solve_and_report<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
+    prepared: &'a P,
+    frame: LinearSolveFrame<'a>,
+    inputs: &mut OneShotInputs,
+    config: PreparedOlsFitConfig,
+    reservation: &mut R,
+    perturbations: FitPerturbations,
+    retain_fast_score_cache: bool,
+    cmg: &mut crate::fe::FeSession<'a>,
+) -> Result<(FiniteFit, PreparedOlsBread, Vec<f64>, f64, f64)> {
+    let mut finite_seconds = 0.0;
+    let mut bread_seconds = 0.0;
+    loop {
+        let started = Instant::now();
+        let mut qr = solve_one_shot(
+            prepared,
+            inputs,
+            frame,
+            config,
+            reservation,
+            perturbations,
+            retain_fast_score_cache,
+            cmg,
+        )?;
+        finite_seconds += started.elapsed().as_secs_f64();
+        let started = Instant::now();
+        let reported = reported_bread(
+            prepared,
+            inputs,
+            frame,
+            &mut qr,
+            config,
+            reservation,
+            perturbations,
+            retain_fast_score_cache,
+        );
+        let (bread, seed) = match reported {
+            Ok(result) => result,
+            Err(error)
+                if error.code == ErrorCode::InvalidData
+                    && matches!(inputs.storage, ProjectedStorage::Centered(_))
+                    && !perturbations.reported_intercept
+                    && !perturbations.reported_bread_extension
+                    && !perturbations.reconstructed_within_residual_constant =>
+            {
+                drop(qr);
+                centered_pipeline::compatibility_projection(
+                    prepared,
+                    frame,
+                    inputs,
+                    config,
+                    reservation,
+                    cmg,
+                )?;
+                dense_finite_inputs(
+                    prepared,
+                    inputs,
+                    frame.weights(),
+                    reservation,
+                    false,
+                    0,
+                    config,
+                )?;
+                bread_seconds += started.elapsed().as_secs_f64();
+                continue;
+            }
+            Err(error) => return Err(error),
+        };
+        if let ProjectedStorage::Centered(raw) = &inputs.storage {
+            let checked = match centered_pipeline::original_scores(
+                raw,
+                &seed,
+                &qr,
+                inputs.score_norms(),
+                inputs.within_outcome_norm,
+                config.score_tolerance,
+                reservation,
+            ) {
+                Ok(checked) => checked,
+                Err(error) if error.code == ErrorCode::InvalidData => None,
+                Err(error) => return Err(error),
+            };
+            if let Some(score) = checked {
+                qr.finite_score = score;
+            } else {
+                // The immutable original owner still exists. Release this
+                // candidate before rebuilding the canonical projected owner.
+                drop((qr, bread, seed));
+                centered_pipeline::compatibility_projection(
+                    prepared,
+                    frame,
+                    inputs,
+                    config,
+                    reservation,
+                    cmg,
+                )?;
+                dense_finite_inputs(
+                    prepared,
+                    inputs,
+                    frame.weights(),
+                    reservation,
+                    false,
+                    0,
+                    config,
+                )?;
+                bread_seconds += started.elapsed().as_secs_f64();
+                continue;
+            }
+        }
+        bread_seconds += started.elapsed().as_secs_f64();
+        return Ok((qr, bread, seed, finite_seconds, bread_seconds));
+    }
 }
 
 fn trace_score_ownership<P: PreparedOlsFitView + ?Sized>(
@@ -690,6 +954,19 @@ fn reported_bread<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     retain_fast_score_cache: bool,
 ) -> Result<(PreparedOlsBread, Vec<f64>)> {
     let (mut raw_residuals, moments, means) = match &inputs.storage {
+        ProjectedStorage::Centered(raw) => (
+            Some(match qr.pre_intercept_raw_residuals.take() {
+                Some(values) => {
+                    finite::validate_cached_raw_residuals(prepared, &values)?;
+                    values
+                }
+                None => {
+                    build_independent_raw_residuals(prepared, frame.response(), qr, reservation)?
+                }
+            }),
+            raw.moments.as_ref(),
+            None,
+        ),
         ProjectedStorage::Dense(dense) => {
             let needs_raw = prepared.fit_has_absorbed_intercept()
                 && dense.raw.moments.is_some()
@@ -734,7 +1011,7 @@ fn reported_bread<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         None,
     )?;
     let residuals = match inputs.storage {
-        ProjectedStorage::Dense(_) => {
+        ProjectedStorage::Dense(_) | ProjectedStorage::Centered(_) => {
             let mut values = qr.within_residuals.take().ok_or_else(|| {
                 invalid_argument("fast prepared OLS QR did not retain its within residual")
             })?;
@@ -839,6 +1116,7 @@ pub(super) fn fit<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
             retained_fe_parent,
             reuse_absorption_norms,
             remaining.as_mut().map(ObserverRef::reborrow),
+            true,
         )
     } else {
         project_scratch(
@@ -871,25 +1149,15 @@ pub(super) fn fit<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         config,
     )?;
     crate::interrupt::checkpoint()?;
-    let mut qr = solve_one_shot(
+    let (qr, bread, seed, finite_seconds, bread_seconds) = solve_and_report(
         prepared,
+        frame,
         &mut inputs,
-        frame,
         config,
         reservation,
         perturbations,
         retain_fast_score_cache,
-    )?;
-    let finite_seconds = trace.lap();
-    let (bread, seed) = reported_bread(
-        prepared,
-        &inputs,
-        frame,
-        &mut qr,
-        config,
-        reservation,
-        perturbations,
-        retain_fast_score_cache,
+        &mut cmg,
     )?;
     let initial_absorbed_outcome_sum_of_squares = scaled_initial_sum_of_squares(
         inputs.initial_sum_of_squares,
@@ -897,7 +1165,7 @@ pub(super) fn fit<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         dense,
     )?;
     drop(finite_phase);
-    let bread_seconds = trace.lap();
+    trace.lap();
     let residual_projection_phase = LinearSessionPhaseAllocationGuard::new(
         phase_probe,
         phase_observation,
@@ -943,6 +1211,33 @@ pub(super) fn fit<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     Ok(fit)
 }
 
+/// Model/resource policy for the direct structural-constant OLS family.
+/// Explicit choices and other inference/storage families keep their paths.
+fn no_fe_auto_iid(
+    session: &crate::fe::FeSession<'_>,
+    frame: LinearSolveFrame<'_>,
+    config: PreparedOlsFitConfig,
+    retain_fast_score_cache: bool,
+    report_intercept: bool,
+) -> bool {
+    report_intercept
+        && config.allow_no_fe_fast_path
+        && frame.prepared_ols
+        && session
+            .binding
+            .as_ref()
+            .is_some_and(|d| d.effects().is_empty())
+        && session.structural_constant
+        && config.execution.mode == PreparedOlsExecutionMode::Fast
+        && frame.weights().values.is_none()
+        && !retain_fast_score_cache
+        && config.absorb.solver == FeSolverKind::Auto
+        && config.absorb.lsmr.preconditioner == crate::fe::LsmrPreconditioner::Auto
+        && config.absorb.routing.is_none()
+        && !config.absorb.retain_coefficients
+        && config.final_residual_tolerance.is_none()
+}
+
 fn scaled_initial_sum_of_squares(value: f64, multiplier: f64, dense: bool) -> Result<f64> {
     let scaled = value * multiplier;
     if !scaled.is_finite() || scaled < 0.0 {
@@ -968,6 +1263,11 @@ fn derived_scale(
     inputs: &OneShotInputs,
     qr: &FiniteFit,
 ) -> Result<Option<f64>> {
+    // Initial preparation records the scoped no-FE policy once, before any
+    // output ownership changes. Other FE families retain their existing gate.
+    if matches!(&inputs.storage, ProjectedStorage::Dense(d) if d.no_fe && !d.direct_structural) {
+        return Ok(None);
+    }
     if !dense || config.absorb.retain_coefficients || config.final_residual_tolerance.is_some() {
         return Ok(None);
     }

@@ -258,7 +258,9 @@ class HostMonitor:
             self._record('error', {'error': str(error), 'monotonic_ns': time.monotonic_ns()})
 
     def _loop(self, kind):
-        deadline = time.monotonic() + self.intervals[kind]
+        # Initial scheduler queries run after the first process sample. Anchor
+        # cadence to that sample, not to when this helper finally starts.
+        deadline = self.samples[kind]['start'] / 1e9 + self.intervals[kind]
         while not self.stop.wait(max(0, deadline-time.monotonic())):
             try:
                 self._sample(kind)

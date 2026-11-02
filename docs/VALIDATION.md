@@ -1,5 +1,328 @@
 # Validation status
 
+## Beta.15 publication decision
+
+On November 2, after reviewing the completed no-FE performance evidence,
+Johannes instructed: “accept and publish this candidate.” This explicitly accepts
+the Linux 16-regressor, one-worker +7.3% performance exception for the frozen
+candidate. The original failed guard and all timing observations remain unchanged.
+It does not waive scientific checks or claim that fereg consistently beats regress.
+The release uses the accepted runtime, with release-label and qualification-driver
+updates only. Publication still requires corresponding source, platform native
+checks, the strict integration gate and actual installed-package verification.
+Windows keeps serial input; native Intel-Mac Stata execution remains untested.
+
+## Revised no-FE candidate: preparation and loader integration
+
+The [completed revised report](../bench/results/no-fe-preparation-20261102.md)
+retains all 1,080 timing observations across Mac and Linux. The candidate is
+**did not pass the automatic performance gate**: Linux's 16-regressor, one-worker command median
+rises from 1,367.0 to 1,466.3 ms (+7.3%), failing the max(5%, 1 ms) guard.
+The other 14 Linux guards and all 15 Mac guards pass. Every parallel cell improves
+relative to beta.14. At 64 regressors and 16 Rust workers, Linux falls from
+3,100.5 to 708.9 ms and Mac from 1,156.7 to 315.6 ms. Regress takes 748.8/297.3 ms
+respectively, but its licenses cap it at four/eight processors. At equal four
+workers on Linux, the candidate still takes 1,778.3 ms versus 751.7 ms for regress.
+There was no timing retry or exclusion. Johannes subsequently accepted this
+performance exception for publication, as recorded above.
+
+The final source gate passes, including 1,582 core unit tests (three ignored),
+portable paths, allocator/FFI/SPI audits and the reviewed complexity ratchet.
+Both native plugins pass ABI checks, all 77 unaffected scientific replay cases
+exactly and both actual Stata fixtures. All 630 scientific exports per platform
+pass the unchanged independent QR references, fixed-worker exact repetition,
+cross-worker scientific agreement and stable discrete decisions. Actual traces
+confirm packed-row and summary adoption for every multithreaded target cell;
+serial cells retain the existing loader. Maximum coefficient/covariance absolute
+errors are 3.253e-14/1.589e-19 and maximum relative RSS error is 4.974e-14.
+
+Linux build 8400668 completed on scc-ei3 (296 s); the sole timing job 8400671
+completed on scc-yj3 (670 s, 28-slot omp28 plus num_proc=28). Both exited zero,
+and the timing report returned the retained performance-failure decision.
+Whole-node reservation and process/census coverage passed. The frozen source
+hash is `ad2188f8bfa03bbafe3967bfc1ed90807dcc9f32cff2479012ca84b16c0f528b`;
+Mac/Linux plugin hashes are
+`ee8b2c3e3e7d1b3748405322da2832b330be41285eee849fbf27ce4efd586e0f` /
+`0808d720d54061fbbf6bbcb8914ccb7370daf9bd8a2786a813b883a1c1ad4951`.
+One Linux host supplies descriptive evidence, not multi-host qualification.
+The load counter now includes packed-row production; stable summary construction
+runs after loading, alongside preparation. Native-counter gains therefore include
+some relocated work, and full-command time governs the decision. Neither that
+counter nor regress's command timer isolates the small-matrix solver.
+
+Johannes authorized one revised candidate after the retained Mac serial
+regressions and inconclusive Linux run. The eligible family, numerical scope,
+canonical rank authority, tolerances, output exclusions and performance guards
+above beta.14 remain unchanged. The revised work first targets exact bulk
+high/low centering and packing, with dimensions checked at the bulk boundary,
+and actual no-FE packed loading with exact owner/sample binding. No raw-total
+subtraction, broad fast-math, benchmark-specific routing or weaker certificate
+is permitted. A reduced summary/score scan requires its own mathematical
+argument and independent witnesses before implementation.
+
+The supplied assembly audit identifies existing packed NEON/AVX FMA product
+loops and repeated scalar `center_value` calls during packing; it makes no
+speedup claim. One bounded Mac function-sampling diagnostic uses the frozen
+centered binary, the existing million-row input, 64 regressors and one worker:
+12 complete fits, a single ten-second sample at one-millisecond cadence, no
+repeat or timing qualification. This establishes a cost distribution with
+sampling uncertainty before selecting the coherent candidate. Exact packing
+witnesses cover selected/permuted columns, all panel tails, extreme scales,
+nonfinite refusal, cancellation and arithmetic equality. Loader witnesses cover
+full/missing/restricted samples, memory refusal, SPI/Break/rollback and exact
+adoption. Actual trace evidence must show any claimed handoff. The final
+candidate receives one frozen declaration, scientific preflight and bounded
+qualification; prior evidence is never replaced.
+
+The diagnostic completed all 12 fits. Of 5,874 sampled worker stacks inside
+native fitting, 1,612 were in moment building; about 568 of those involved
+scalar row filling/centering. The three summary scans accounted for approximately
+1,910 stacks; `center_value` itself appeared in 1,265 samples across fitting.
+These overlapping, correlated stack counts describe one ten-second window;
+they are not independent timing observations or a measured speedup. The sample
+capture SHA-256 was
+`425b1936cbdd69df1632ae58d0f41a2ab52d3b37ae05f0da7af148d330a76480`.
+
+The revision preserves the stable three-scan summary. With multiple workers,
+the existing loader now packs eligible no-FE rows and computes that summary
+alongside model preparation, followed by exact sample/value binding at adoption.
+Single-worker and inadmissible requests retain fit-time packing and summaries.
+Bulk panel preparation retains both `two_sum` operations and division order,
+uses immutable extrema to guard finite subtraction, and replays the original
+scalar tile on a numerical refusal. Continuous/intercept designs compute the
+two separately ordered centered/raw FMA residuals during one traversal; factor
+designs retain their original path. This removes one raw-design traversal while
+retaining the residual-vector validation at its original error boundary and the
+independent compensated original-score pass. The dead factor workspace is
+released before both residual vectors coexist. Independent review found no
+scientific, scope, error-order or admitted-memory blocker in these changes.
+
+The first actual revised-binary preflight caught a missing wide-descriptor
+handoff before timing: 64 regressors plus the intercept exceed the existing
+64-column stack binding, so those rows and summaries were correctly refused
+but rebuilt unnecessarily. The preflight binary
+`6df227f63ec7ace649c0debea672036c806b5bbf3a71c8cf653fda50fe69acfe`
+(source `ac175755dc79be19b397b964441aded01d2cc8a00e18f273abcb603f64fbf671`)
+passed both Stata fixtures and all 30 target scientific exports matched the
+previous centered candidate exactly. The held timing job 8399981 was deleted
+before execution; build job 8399980 was cancelled as superseded. No timing
+qualification ran. The repair reuses the already charged, fallible wide numeric
+descriptor only within centered admission, retaining exact source/response bits,
+original allocation identity, shape checks and ordinary fallback. Other families
+retain their existing handoff scope. Width-boundary and stale-row witnesses pass in the frozen final candidate.
+
+## No-FE row-parallel numerical redesign
+
+On November 2 Johannes authorized arithmetic and storage changes for an
+ambitious native solver, including loader–solver integration, subject to the
+existing scientific safeguards. The next candidate uses the same Fast,
+unweighted IID, global-intercept, Auto/Auto family defined below. The declared
+continuous numerical scope includes centers, norms, cross-products, coefficients,
+bread, residuals, covariance, fit statistics and numerical certificates. Initial
+projection diagnostics and finite factor/fallback traces may change; the approved
+derived residual row remains in scope. Sample membership, original factor/base
+slots, rank, omission and all other discrete scientific decisions remain fixed.
+Unaffected families retain exact science and solver signatures.
+
+The intended pipeline is stable global summaries, explicitly centered/scaled
+row-block symmetric products, guarded Cholesky or parallel orthogonal compression,
+then independent original-source residual/score checks. Bounded packed panels and
+a deterministic reduction tree avoid a full centered matrix and worker-count
+limits imposed by the number of regressors. No centered Gram or RSS is obtained
+by subtracting large raw totals. Existing canonical classification and QR retain
+authority at collinearity/rank boundaries and whenever a new factor would omit a
+column. Loader summaries may replace fit-time summaries only after the existing
+exact sample/value/column binding succeeds; speculative errors remain deferred.
+The plugin owns transport and admission; all numerical mathematics stays in core.
+
+Witnesses must cover independent Householder/high-precision b/V/RSS and original
+scores, large offsets with few-ULP variation, extreme scales, exact fits, zero and
+constant outcomes, duplicates, scaled/permuted columns, rank/pivot boundaries,
+block-local constants, partial leaves and N near K. Fixed-worker repetition,
+cross-worker discrete agreement, portable/hardware paths, memory boundaries,
+allocation failure, Break and rollback remain required. Actual traces must prove
+the Cholesky, orthogonal and compatibility routes execute. The final candidate
+gets one frozen science preflight and bounded qualification; the completed first
+round below remains separate. No additional scan-only timing campaign or public
+activation is authorized by this declaration.
+
+The bounded mathematical review rejected a provisional `gamma(64N)` classifier
+margin because it lacked a derived error enclosure. The implementation instead
+uses the one-sided original-extrema/LASSQ bound documented in ARCHITECTURE. A
+constructed rank-boundary case also showed that full rank from TSQR alone could
+bypass a canonical dropped-span failure. That reproducer now requires canonical
+fallback: the existing stronger Cholesky guard must clear before any compressed
+retry, including a forced QR retry after bread refusal. Neither change alters a
+scientific tolerance or canonical omission decision.
+
+Focused tests pass for three-scan summaries, extreme/subnormal values, bounded
+allocation and cancellation, row-block products, panel Householder compression,
+forced production QR retry, full-fit analytic coefficients/inverse/residuals,
+rank-boundary outcomes, cached-owner binding and exact worker repetition.
+Independent high-effort review accepted the classifier bound and stronger rank
+guard. The universal Mac artifact passes the native ABI audit and all 77 existing
+plugin replay cases exactly; those replay cases exercise unaffected output paths.
+The actual Stata no-FE fixture separately checks workers 1/4/16, ordinary/factor
+and restricted/missing samples, zero/constant/exact outcomes, intercept-only fits,
+extreme scaling, duplicates, public/hidden equality and publication rollback.
+At 1e-100/1e100 regressor scales, Stata regress drops the tiny regressor; the test
+therefore uses the independent orthogonal-design b/V/RSS witness. Fereg retains
+the same full-rank model as its established scale-aware path. Traces show the
+new Cholesky route and canonical compatibility. The compressed retry currently
+has production-kernel test evidence, not an actual-plugin performance claim.
+
+The Mac million-row preflight passes all 90 calls against the existing independent
+QR references, stable model degrees of freedom, fixed-worker bit repetition and
+cross-worker science. All 15 candidate cells execute centered projection/products,
+Cholesky and the derived residual row. Preflight elapsed times are diagnostic
+only. The full `scripts/run_tests.sh --source-only` gate passes for the frozen
+artifact, including allocator audits, portable checks, SPI guards and complexity.
+
+The [completed numerical-round report](../bench/results/no-fe-centered-20261102.md)
+retains all 540 Mac observations and the incomplete Linux baseline arm. Parallel
+native work improves substantially, but 16/64-regressor single-worker command
+medians regress by 15.7%/11.8%, failing the max(5%, 1 ms) guard. The candidate is
+not qualified for promotion. Linux actual-plugin science preflight passes all
+90 calls; timing job 8398094 stops after the first baseline arm because the
+monitor's initial scheduler census precedes its five-second process wait. The
+resulting 7.708-second observation gap exceeds its frozen 7.5-second limit.
+No competing compute was observed, but monitoring coverage is invalid; this
+round supplies no Linux speed comparison and was not resampled. The monitor startup
+deadline is now anchored to its existing sample, with 21 focused monitor tests
+passing; the observation limits remain unchanged. No round was rerun.
+
+Every target cell reports zero loaded/reused rows. The measured improvement
+therefore does not establish loader-summary handoff or copy savings. The
+candidate still spends substantial native time on summary scans and independent
+original-data checks; these are the proposed focus of a subsequent candidate,
+subject to discussion of the failed/inconclusive results with Johannes.
+
+A final scope review found that `xb()` alone was not represented by the
+pointwise-residual tolerance proxy. A separate no-FE eligibility flag now
+excludes all optional observation outputs (including `xb()` and `dropreason()`)
+from the centered/direct/derived paths and loader summaries. It does not change
+the output policy of other FE families. This scope repair is separate from the
+frozen timed artifact; the no-output timing cells retain their original candidate
+and all observations. No timing is being replaced or repeated. The actual internal xb adapter stays on the canonical route, with exact
+b/V/RSS/predictions, at workers 1/4/16. Both Stata fixtures pass. The repaired
+plugin exports exactly the same scientific bytes as the frozen candidate for
+all 15 no-output cells and both repetitions; centered/Cholesky/derived routes
+remain unchanged. This is science validation, not a new performance round.
+
+The scope-repaired universal Mac binary passes its ABI audit and all 77
+unaffected replay cases exactly. Native source integration checks pass, including
+1,573 core unit tests, plugin/FFI tests, allocator audits, portable checks,
+complexity, mock SPI and numeric-window guards. The full script reached a stale
+complexity declaration; after documenting the six-line output-policy increase,
+the ratchet and remaining gate checks pass. An additional 436-test benchmark
+suite has four unrelated errors: three missing `reportlab` imports and one
+unchanged input-report test whose patched global no longer overrides the
+function's captured default (and whose fixture lacks arms). The affected source
+and test match HEAD. Focused no-FE harness and monitor tests pass.
+
+## No-FE certified-residual extension
+
+Johannes approved extending the derived residual shortcut on November 2. The
+new candidate follows the completed, separately frozen structural scheduling
+candidate below; its timing evidence is not substituted for that first round.
+The initial scope is no-FE Fast, unweighted IID OLS, with a global intercept,
+Auto solver/preconditioner, no optional observation outputs and no
+developer routing override. The derived residual solver row may change to stop
+code 5 with zero iterations. Residual-based fit statistics and IID covariance
+may change in low bits within existing tolerances. Coefficients, bread, sample,
+rank, omission/status and all unaffected models remain exact. The structural
+moment is recomputed from the final residual at the existing derived scale;
+failed checks or insufficient workspace retain the certified final projection.
+
+Independent witnesses cover offset/scale and constant outcomes, duplicates and
+rank-deficient regressors, independent QR/score/bread checks, forced certificate
+failure, corrupted residual recovery, fixed-worker repetition and cross-worker
+agreement. Explicit solvers, weighted fits, robust/cluster inference, requested
+outputs, no-constant and Low fits must retain their prior behavior. Actual-plugin
+science and trace checks precede timing; this declaration is not qualification
+or public activation.
+
+The next initial-projection optimization uses the same eligible family and
+keeps dense storage and projection arithmetic. A proven generated constant RHS
+provides a rejection-only initial-certificate screen; tolerances where that
+screen cannot reject keep the complete incumbent path and its zero-iteration
+decision. Validated raw maxima from the existing adopted-row moment cache avoid
+recomputing maxima. Original structural means retain observation-order
+compensated sums; their scan also computes the original 512-row-leaf FE norms.
+After the same in-place subtraction, residual norms supply exact residual
+maxima for a fresh independent structural-moment scan. No cache means become
+projection centers. Finite reference norms, FE reference norms and FE within
+norms retain their distinct arithmetic. This initial operation has empty
+numerical and solver-route scopes, with a new trace identifying its execution.
+It retains existing O(K) heap banks and admission, adding only bounded worker
+stack arrays. Exact witnesses cover original/centered panels, both norm banks,
+certificates, loose-tolerance screening, cache widths and worker counts. This
+work does not introduce a new finite solver or observation source.
+
+Before the numerical redesign, this direct/derived checkpoint passed the full
+source-only suite, native universal-Mac build/ABI audit, all 77 actual-plugin
+replay cases with zero science differences, and `ols_no_fe_direct.do`. The Stata
+fixture covers workers 1/4/16, factors and excluded inference/storage/options.
+Its private Mac plugin SHA-256 is
+`cd6c3aef49a4e7f78e8e1daffd1ca33bd08d48bf7c79aa5a8d4ff358a54de19d`;
+the frozen source archive SHA-256 is
+`b1d583406070e2204ed3feba001f728a737ca11330f207bbbb8c3b6d57886ed6`.
+This checkpoint was not timed or published. These checks do not qualify the
+new numerical pipeline.
+
+## Structural-constant scheduling candidate
+
+The [completed first-round report](../bench/results/no-fe-centering-20261102.md)
+retains all 1,080 Mac/Linux timing observations and platform/license limits.
+Both target panels pass the median regression guard, exact incumbent science,
+independent QR and fixed-worker repetition. Linux used isolated host scc-wf2
+(job 8396235, exit zero); its Stata license permits four processors. Mac permits
+eight. These results do not qualify the subsequent direct candidate above or
+replace protected routing qualification.
+
+The no-FE speed work starts from published beta.14. Its first candidate reuses
+the complete initial structural certificate's means for subtraction in the
+borrowed MAP and CG empty-design branches, computes structural means in bounded
+parallel column bands, and subtracts means over disjoint rows. Each column keeps
+its original scale, observation-order compensated accumulation and mean formula;
+the final independent certificate and zero-iteration decision remain unchanged.
+Declared numerical and route-change scopes are empty. Posted science, norms,
+certificates and solver signatures must match beta.14 exactly at fixed workers.
+Additional cancellation checkpoints are intentional; interrupted poll counts
+and elapsed times are not exact comparison targets. The three private 64-double
+arrays use at most 1,536 bytes of stack per active mean task and add no heap bank.
+
+The shared scaled-norm helper also schedules independent column bands when it
+has no partial bank and runs inside an installed team. This affects borrowed
+and owned FE/PPML callers satisfying that resource condition, not only no-FE
+OLS. Each column retains its 512-row leaves and ascending leaf merge order;
+row-major error replay and serial norm finalization remain authoritative.
+Four private 64-double arrays use at most 2,048 bytes per active norm task.
+There is no new heap allocation, admission rule or outside-team parallelism.
+
+Witnesses include a frozen scalar arithmetic reference in fereg-testkit,
+independent OLS/FE oracles, weighted and extreme-scale panels, narrow and wide
+column boundaries, the zero-iteration shortcut, fallible O(K) workspace
+admission, fixed-worker repeats, cross-worker agreement, actual-plugin replay
+and mapped Break/transaction tests. Qualification must compare one frozen
+candidate against current beta.14, retain protected original/Auto coverage and
+show this structural path executes in the no-FE target cells. This declaration
+does not assert a performance result or authorize public activation.
+
+The frozen target panel uses the prior million-row Gaussian design and QR
+reference (seed 739391), RHS widths 1/16/64, workers 1/2/4/8/16, and three arms:
+published beta.14, this candidate, and Stata regress. Six mirrored/rotated blocks
+put each arm in each order position twice, with one warmup and one measured call
+per cell per block. It records full-command time and fereg's separate input,
+native and total-runtime diagnostics; regress supplies only full-command time.
+The Stata processor ceiling is recorded for every cell. This descriptive target
+panel, dispatched by `bench/qualify.py input`, does not replace protected routing
+qualification. No exclusions, timing retries or candidate replacement are allowed.
+Science-only preflight requires independent QR, exact candidate/incumbent
+exported science, fixed-worker repetition and traces of the structural projection.
+All timed calls also export science outside the clock. Linux uses a separately
+verified whole-node allocation; Mac retains ordinary desktop activity.
+
 ## Beta.14 publication decision
 
 On November 2, after reviewing the final wide-input results and the remaining

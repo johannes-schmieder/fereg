@@ -35,6 +35,55 @@ The Low path keeps one row-major scratch file through fit and inference. Scratch
 read failures revoke cached pages; mutation failures poison the affected owner.
 Public memory choices, fallible allocation and transactional failure are preserved.
 
+Eligible no-FE Fast unweighted IID Auto/Auto OLS keeps the packed raw owner
+immutable. The caller explicitly disables this policy for every optional
+observation output; the mandatory estimation sample remains eligible. Core
+computes bounded, shape-fixed row summaries in three scans:
+raw norms/extrema, scaled anchored means with a high/low center, then actual
+centered norms and means. The loader may prepare the same summary after its
+numeric window closes; exact sample/value/column binding governs adoption.
+These are core mathematics, not a second estimator in the plugin. This avoids
+in-place centering writes, but does not claim to remove an N-by-K allocation:
+the preceding route already centered the moved packed owner in place.
+The eligible multiworker loader appends the intercept in its separately admitted
+packed destination, then computes the stable summary alongside ordinary model
+preparation. Single-worker and refused-admission inputs retain fit-time packing.
+The handoff trace records packed-row and centered-summary adoption separately.
+Bulk moment packing checks dimensions once per panel and retains the scalar
+high/low `two_sum` sequence and division order. Immutable endpoint extrema prove
+finite first subtraction; an extreme range or failed tile uses scalar evaluation.
+For continuous/intercept layouts, centered and pre-intercept raw residuals use
+separate FMA accumulators in one row traversal. The raw vector is validated at
+the original reported-intercept boundary; factor layouts retain their original
+subtraction semantics. Factor workspace is released before both N-vectors
+coexist, and the independent original-data score pass remains separate.
+
+A one-sided original-extrema bound proves canonical FE retention; uncertain
+columns use canonical projection. For N≤2^53, the canonical raw LASSQ norm is
+at most `U = RN(maxabs * RN(sqrt(N)))`; each scaled-square sum is bounded by its
+exact integer row count. Any finite canonical center leaves a rounded endpoint
+residual at least `L = max(0, next_down(0.5 * next_down(max-min)))`. Admission
+requires finite positive U, a finite span, and `(L/U)^2` strictly above the
+existing FE tolerance, as well as retention by the new actual norm ratio. A
+failed bound never authorizes an omission. Complete symmetric products use bounded
+column-packed panels, row partitions and a fixed reduction tree, independently
+of worker count. The existing stronger Cholesky guard remains the boundary of
+the new finite route. Guard refusal uses canonical projection/QR; a later
+solution/inverse/bread refusal may use panel Householder TSQR only after that
+guard passed. Compressed rank ambiguity or deficiency also uses canonical QR.
+This preserves existing rank authority rather than asserting a universal
+floating-point rank-parity theorem for two distinct algorithms.
+
+Reported coefficients are independently checked against original-source
+residuals and compensated scores. Numerical refusal uses the retained raw
+owner for compatibility; cancellation, allocation and injected failures retain
+their error behavior. Summary, product and compression envelopes are charged
+before admission, and product/compression scratch reuse one bank. The final
+residual can use SPEC §7's independently certified shortcut. Explicit solvers,
+other inference/storage choices and requested output paths keep their current
+operations. The compatible structural projection reuses exact cached maxima,
+fuses original means and FE norms, centers in place and freshly certifies.
+
 Parallel numeric input (`parallel_input.rs`, SPEC §17) is one transport for
 every eligible observation read: the tiled pipeline's columns and packed RHS,
 the batched loader's outcome, numeric sources, weights and candidate marker

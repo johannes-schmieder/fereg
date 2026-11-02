@@ -139,7 +139,7 @@ fn build_prepared_ols_rhs_with_loaded_rows(
     response: &[f64],
     rows: Option<Vec<f64>>,
 ) -> Result<PreparedOlsRhs> {
-    build_prepared_ols_rhs_with_loaded_rows_and_reuse(prepared, response, rows)
+    build_prepared_ols_rhs_with_loaded_rows_and_reuse(prepared, response, rows, true)
         .map(|result| result.0)
 }
 
@@ -147,24 +147,27 @@ pub(crate) fn build_prepared_ols_rhs_with_loaded_rows_and_reuse(
     prepared: &PreparedOlsData,
     response: &[f64],
     rows: Option<Vec<f64>>,
+    allow_wide: bool,
 ) -> Result<(PreparedOlsRhs, bool)> {
     if let Some(rows) = rows {
         validate_prepared_rhs_inputs(prepared, response)?;
-        if let Some(columns) =
-            NumericOlsColumns::bind_loaded_rhs(&prepared.model, &prepared.sample)?
-        {
-            if columns.matches_rhs(response, &rows) {
-                return Ok((
-                    PreparedOlsRhs {
-                        values: DenseMatrix::from_row_major(
-                            response.len(),
-                            prepared.model.columns.len() + 1,
-                            rows,
-                        )?,
-                    },
-                    true,
-                ));
-            }
+        if NumericOlsColumns::matches_loaded_rhs(
+            &prepared.model,
+            &prepared.sample,
+            response,
+            &rows,
+            allow_wide,
+        )? {
+            return Ok((
+                PreparedOlsRhs {
+                    values: DenseMatrix::from_row_major(
+                        response.len(),
+                        prepared.model.columns.len() + 1,
+                        rows,
+                    )?,
+                },
+                true,
+            ));
         }
     }
     build_prepared_ols_rhs_with_response(prepared, response).map(|rhs| (rhs, false))
@@ -353,6 +356,48 @@ fn fill_bound_rhs(
     Ok(())
 }
 
+fn matches_bound_rhs(
+    columns: &[Option<&[f64]>],
+    rows: usize,
+    response: &[f64],
+    data: &[f64],
+) -> bool {
+    let Some(width) = columns.len().checked_add(1) else {
+        return false;
+    };
+    if response.len() != rows || rows.checked_mul(width) != Some(data.len()) {
+        return false;
+    }
+    let Some(tile_cells) = NUMERIC_TILE_ROWS.checked_mul(width) else {
+        return false;
+    };
+    let check = |(tile, input): (usize, &[f64])| {
+        let start = tile * NUMERIC_TILE_ROWS;
+        for (offset, row) in input.chunks_exact(width).enumerate() {
+            if row[0].to_bits() != response[start + offset].to_bits() {
+                return false;
+            }
+        }
+        for (column, source) in columns.iter().enumerate() {
+            for (offset, row) in input.chunks_exact(width).enumerate() {
+                let expected = source.map_or(1.0, |values| values[start + offset]);
+                if row[column + 1].to_bits() != expected.to_bits() {
+                    return false;
+                }
+            }
+        }
+        true
+    };
+    if crate::parallel::StagePlan::current(data.len() as u128, data.len().div_ceil(tile_cells))
+        .lanes
+        > 1
+    {
+        data.par_chunks(tile_cells).enumerate().all(check)
+    } else {
+        data.chunks(tile_cells).enumerate().all(check)
+    }
+}
+
 const NUMERIC_TILE_ROWS: usize = 128;
 pub(crate) const MAX_BOUND_NUMERIC_COLUMNS: usize = 64;
 
@@ -460,37 +505,25 @@ impl<'a> NumericOlsColumns<'a> {
         }))
     }
 
+    pub(crate) fn matches_loaded_rhs(
+        model: &super::PreparedOlsModel,
+        sample: &'a crate::data::PreparedNumericSample<impl NumericSourceBank>,
+        response: &[f64],
+        data: &[f64],
+        allow_wide: bool,
+    ) -> Result<bool> {
+        if let Some(columns) = Self::bind_loaded_rhs(model, sample)? {
+            return Ok(columns.matches_rhs(response, data));
+        }
+        // The admitted centered family may use the existing, charged wide
+        // descriptor. Drop it here before a refused handoff rebuilds anything.
+        Ok(allow_wide
+            && WideRhsColumns::bind(model, sample)
+                .is_some_and(|columns| columns.matches_rhs(response, data)))
+    }
+
     pub(crate) fn matches_rhs(&self, response: &[f64], data: &[f64]) -> bool {
-        let width = self.width + 1;
-        if response.len() != self.rows || self.rows.checked_mul(width) != Some(data.len()) {
-            return false;
-        }
-        let tile_cells = NUMERIC_TILE_ROWS * width;
-        let check = |(tile, input): (usize, &[f64])| {
-            let start = tile * NUMERIC_TILE_ROWS;
-            for (offset, row) in input.chunks_exact(width).enumerate() {
-                if row[0].to_bits() != response[start + offset].to_bits() {
-                    return false;
-                }
-            }
-            for (column, source) in self.columns[..self.width].iter().enumerate() {
-                for (offset, row) in input.chunks_exact(width).enumerate() {
-                    let expected = source.map_or(1.0, |values| values[start + offset]);
-                    if row[column + 1].to_bits() != expected.to_bits() {
-                        return false;
-                    }
-                }
-            }
-            true
-        };
-        if crate::parallel::StagePlan::current(data.len() as u128, data.len().div_ceil(tile_cells))
-            .lanes
-            > 1
-        {
-            data.par_chunks(tile_cells).enumerate().all(check)
-        } else {
-            data.chunks(tile_cells).enumerate().all(check)
-        }
+        matches_bound_rhs(self.raw_columns(), self.rows, response, data)
     }
 
     pub(crate) fn fill_reserved_rhs(&self, response: &[f64], data: &mut Vec<f64>) -> Result<()> {
@@ -1172,6 +1205,9 @@ mod tests {
             (12, 4099),
             (52, 4099),
             (64, 4099),
+            (65, 4099),
+            (66, 4099),
+            (98, 4099),
         ] {
             let mut request = request(false, true);
             request.model.sources.clear();
@@ -1217,12 +1253,23 @@ mod tests {
                 ThreadTeam::new(ThreadConfig::from_requested(threads, false).unwrap())
                     .install(|| {
                         let reference = build_prepared_ols_rhs(&prepared).unwrap().into_values();
+                        if width - 1 > MAX_BOUND_NUMERIC_COLUMNS {
+                            let (_, reused) = build_prepared_ols_rhs_with_loaded_rows_and_reuse(
+                                &prepared,
+                                &prepared.sample.outcome,
+                                Some(reference.as_slice().to_vec()),
+                                false,
+                            )
+                            .unwrap();
+                            assert!(!reused, "other families retain the previous handoff scope");
+                        }
                         let rows = reference.as_slice().to_vec();
                         let pointer = rows.as_ptr();
                         let (rhs, transferred) = build_prepared_ols_rhs_with_loaded_rows_and_reuse(
                             &prepared,
                             &prepared.sample.outcome,
                             Some(rows),
+                            true,
                         )
                         .unwrap();
                         let reused = rhs.into_values();
@@ -1822,6 +1869,7 @@ mod tests {
                                         &prepared,
                                         &prepared.sample.outcome,
                                         reuse.then(|| raw.as_slice().to_vec()),
+                                        false,
                                     )
                                     .unwrap();
                                 assert_eq!(reused, reuse);

@@ -255,10 +255,29 @@ class LifecycleTests(unittest.TestCase):
                 monitor.check()
             self.assertFalse(monitor.report()['isolation_ok'])
 
+    def test_initial_census_delay_does_not_shift_process_deadline(self):
+        for startup_delay in [0., 2.7, 6.]:
+            with self.subTest(startup_delay=startup_delay), tempfile.TemporaryDirectory() as tmp:
+                monitor = scc.HostMonitor(tmp, 2)
+                now = [10. + startup_delay]
+                waits, observed = [], []
+                monitor.samples['process'] = {'start': 10_000_000_000, 'finish': 10_010_000_000, 'count': 1}
+                def wait(delay):
+                    waits.append(delay)
+                    now[0] += delay
+                    return len(waits) > 1
+                monitor.stop.wait = wait
+                monitor._sample = lambda kind: observed.append((kind, now[0]))
+                with patch.object(scc.time, 'monotonic', side_effect=lambda: now[0]):
+                    monitor._loop('process')
+                self.assertEqual(observed, [('process', max(15., 10. + startup_delay))])
+                self.assertAlmostEqual(waits[0], max(0., 5. - startup_delay))
+
     def test_background_fault_stops_loop_and_shutdown_reaps(self):
         with tempfile.TemporaryDirectory() as tmp:
             monitor = self.monitor(tmp)
             seen = threading.Event()
+            monitor._sample('census')
             def failed(kind):
                 seen.set()
                 raise scc.OperationalError('missing census')

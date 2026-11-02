@@ -5,7 +5,7 @@
 //! generic per-cell recipe evaluator in bounded row tiles. The descriptor is
 //! one pointer-sized pair per generated column and is charged by the memory
 //! estimate; any irregularity or failed reservation keeps the generic builder.
-use super::{fill_bound_rhs, MAX_BOUND_NUMERIC_COLUMNS};
+use super::{fill_bound_rhs, matches_bound_rhs, MAX_BOUND_NUMERIC_COLUMNS};
 use crate::data::NumericSourceBank;
 use crate::error::Result;
 use crate::ols::PreparedOlsColumnKind;
@@ -45,6 +45,10 @@ impl<'a> WideRhsColumns<'a> {
             });
         }
         Some(Self { columns, rows })
+    }
+
+    pub(crate) fn matches_rhs(&self, response: &[f64], data: &[f64]) -> bool {
+        matches_bound_rhs(&self.columns, self.rows, response, data)
     }
 
     pub(crate) fn fill_reserved_rhs(&self, response: &[f64], data: &mut Vec<f64>) -> Result<()> {

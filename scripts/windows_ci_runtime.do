@@ -135,5 +135,11 @@ capture noisily do "tests/stata/installation/estimate_ols_eclass_transaction.do"
 if _rc exit 9117
 capture noisily do "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_transaction.do"
 if _rc exit 9118
+* Qualify the approved no-FE centered and derived-residual paths.
+* Diagnostic r(9119)/r(9120) identify these scientific fixtures.
+capture noisily do "tests/stata/development/ols_no_fe_direct.do"
+if _rc exit 9119
+capture noisily do "tests/stata/development/ols_no_fe_centered.do"
+if _rc exit 9120
 shell powershell.exe -NoLogo -NoProfile -NonInteractive ///
     -ExecutionPolicy Bypass -File "scripts/windows_ci_report.ps1" -Action pass

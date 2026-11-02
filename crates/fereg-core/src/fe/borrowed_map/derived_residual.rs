@@ -68,8 +68,11 @@ fn certify_at_derived_scale(
     tolerance: f64,
     workspace: &mut BorrowedMapWorkspace,
 ) -> Result<FeCertificate> {
-    let mut certificate =
-        certify_with_current_norms(design, weights, values, tolerance, workspace)?;
+    let mut certificate = if design.effects().is_empty() {
+        certify_structural_constant_with_current_norms(weights, values, tolerance, workspace)?
+    } else {
+        certify_with_current_norms(design, weights, values, tolerance, workspace)?
+    };
     if FAIL_DERIVED_CERTIFICATE_ONCE.replace(false) {
         certificate.passed = false;
     }
@@ -94,8 +97,8 @@ impl ReusableCategoricalMapAbsorber<'_> {
     }
 }
 
-/// The derived certificate over a direct binding design (one FE or the
-/// many-FE route), or `None` when its one-RHS workspace exceeds the admitted
+/// The derived certificate over a direct binding design (the structural
+/// constant, one FE or the many-FE route), or `None` when its workspace exceeds the admitted
 /// solver budget and the caller keeps its projection path.
 pub(crate) fn certify_binding_derived(
     design: &BorrowedInterceptFeDesign<'_>,
@@ -106,11 +109,6 @@ pub(crate) fn certify_binding_derived(
     budget: Option<FeSolverMemoryBudget>,
 ) -> Result<Option<FeCertificate>> {
     validate(values, design.nobs(), tolerance, amplification)?;
-    if design.effects().is_empty() {
-        return Err(invalid_argument(
-            "derived residual certificate needs an absorbed effect",
-        ));
-    }
     let weights = validate_weights(weights, values.nrows())?;
     let bytes = BorrowedMapWorkspace::planned_payload_bytes(
         design,

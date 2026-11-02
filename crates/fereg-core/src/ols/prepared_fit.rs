@@ -67,6 +67,9 @@ pub struct PreparedOlsFitConfig {
     /// residual; shared weighted-linear callers keep their existing policy.
     /// Other weighted-linear callers retain their coefficient requirement.
     pub allow_final_fe_recovery: bool,
+    /// Permit the scoped no-FE Auto arithmetic when the caller requests no
+    /// optional observation outputs. Other FE families ignore this gate.
+    pub allow_no_fe_fast_path: bool,
     /// Optional tighter final projection for pointwise residual-derived outputs.
     /// Independent of whether the execution mode retains FE coefficients.
     pub final_residual_tolerance: Option<f64>,
@@ -156,6 +159,7 @@ impl Default for PreparedOlsFitConfig {
             rank_tolerance_multiplier: 128.0,
             final_residual_tolerance: None,
             allow_final_fe_recovery: false,
+            allow_no_fe_fast_path: true,
             fixed_effect_collinearity_tolerance: 1e-9,
             score_tolerance: 5e-10,
             coefficient_tolerance: None,
@@ -959,6 +963,7 @@ pub(super) struct FiniteFit {
     pub(super) finite_score: FiniteScoreDraft,
     pub(super) bread: Option<FiniteBreadDraft>,
     pub(super) within_residuals: Option<Vec<f64>>,
+    pub(super) pre_intercept_raw_residuals: Option<Vec<f64>>,
 }
 
 /// Published fit products belong to one owner after independent certificates.
@@ -981,6 +986,10 @@ impl FiniteFit {
             || self.rank != self.kept.len()
             || self
                 .within_residuals
+                .as_ref()
+                .is_some_and(|values| values.len() != rows)
+            || self
+                .pre_intercept_raw_residuals
                 .as_ref()
                 .is_some_and(|values| values.len() != rows)
             || self.bread.as_ref().is_some_and(|bread| {
@@ -1076,6 +1085,7 @@ struct RawMomentCache {
 pub struct LoadedOlsRows {
     rows: Vec<f64>,
     moments: Option<Result<RawMomentCache>>,
+    centered: Option<Result<super::centered::CenteredSummary>>,
 }
 
 impl From<Vec<f64>> for LoadedOlsRows {
@@ -1083,11 +1093,48 @@ impl From<Vec<f64>> for LoadedOlsRows {
         Self {
             rows,
             moments: None,
+            centered: None,
         }
     }
 }
 
 impl LoadedOlsRows {
+    /// Full peak of the optional core-owned centered summary. The transport
+    /// caller admits it before the preparation/summary overlap starts.
+    pub fn centered_workspace_bytes(nrows: usize, columns: usize) -> Option<usize> {
+        super::centered::CenteredSummary::workspace_bytes(nrows, columns)
+            .ok()?
+            .try_into()
+            .ok()
+    }
+
+    /// Same private-owner and deferred-error contract as ordinary raw moments.
+    pub fn with_unit_centered_summary(
+        mut self,
+        nrows: usize,
+        columns: usize,
+        admitted_bytes: usize,
+    ) -> Self {
+        if self.centered.is_some()
+            || self.moments.is_some()
+            || nrows.checked_mul(columns) != Some(self.rows.len())
+            || Self::centered_workspace_bytes(nrows, columns)
+                .is_none_or(|bytes| bytes > admitted_bytes)
+        {
+            return self;
+        }
+        let raw = DenseMatrix::from_row_major(nrows, columns, std::mem::take(&mut self.rows))
+            .expect("checked loaded centered row dimensions");
+        self.centered = Some(super::centered::CenteredSummary::build(
+            &raw,
+            &mut LoadedMomentReservation {
+                remaining: admitted_bytes,
+            },
+        ));
+        self.rows = raw.into_row_major();
+        self
+    }
+
     /// Bound the three result vectors and deterministic fused partial bank.
     /// Returning None keeps the ordinary fit-time computation.
     pub fn moment_workspace_bytes(nrows: usize, columns: usize) -> Option<usize> {
@@ -1582,7 +1629,8 @@ fn fit_projection_only_internal<P: PreparedOlsFitView + ?Sized, R: FitReservatio
         false,
         false,
         false,
-    )?;
+    )?
+    .ok_or_else(|| invalid_argument("ordinary finite projection declined its source"))?;
     if qr.bread.is_some() {
         return Err(invalid_argument(
             "prepared projection-only finite solve unexpectedly constructed bread",

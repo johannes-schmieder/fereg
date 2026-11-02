@@ -241,8 +241,9 @@ pub(crate) trait PreparedOlsFitView: Sync {
         &self,
         response: &[f64],
         rows: Option<Vec<f64>>,
+        allow_wide: bool,
     ) -> Result<(super::OlsProjectionInput, bool)> {
-        fit_build_rhs_with_loaded_rows_generic(self, response, rows)
+        fit_build_rhs_with_loaded_rows_generic(self, response, rows, allow_wide)
     }
 
     /// Build a bounded generated-column block beside a borrowed response.
@@ -545,14 +546,15 @@ impl PreparedOlsFitView for PreparedOlsData {
         &self,
         response: &[f64],
         rows: Option<Vec<f64>>,
+        allow_wide: bool,
     ) -> Result<(super::OlsProjectionInput, bool)> {
         if !self.uses_categorical_preparation() {
             let (rhs, reused) = crate::ols::build_prepared_ols_rhs_with_loaded_rows_and_reuse(
-                self, response, rows,
+                self, response, rows, allow_wide,
             )?;
             return Ok((super::OlsProjectionInput::Prepared(rhs), reused));
         }
-        fit_build_rhs_with_loaded_rows_generic(self, response, rows)
+        fit_build_rhs_with_loaded_rows_generic(self, response, rows, allow_wide)
     }
 
     fn fit_subtract_raw_column(
@@ -844,23 +846,25 @@ fn fit_build_rhs_with_loaded_rows_generic<P: PreparedOlsFitView + ?Sized>(
     prepared: &P,
     response: &[f64],
     rows: Option<Vec<f64>>,
+    allow_wide: bool,
 ) -> Result<(super::OlsProjectionInput, bool)> {
     if let Some(rows) = rows {
-        if let Some(columns) = crate::ols::NumericOlsColumns::bind_loaded_rhs(
+        if crate::ols::NumericOlsColumns::matches_loaded_rhs(
             prepared.fit_model(),
             prepared.fit_sample(),
+            response,
+            &rows,
+            allow_wide,
         )? {
-            if columns.matches_rhs(response, &rows) {
-                return Ok((
-                    DenseMatrix::from_row_major(
-                        response.len(),
-                        prepared.fit_model().columns.len() + 1,
-                        rows,
-                    )?
-                    .into(),
-                    true,
-                ));
-            }
+            return Ok((
+                DenseMatrix::from_row_major(
+                    response.len(),
+                    prepared.fit_model().columns.len() + 1,
+                    rows,
+                )?
+                .into(),
+                true,
+            ));
         }
     }
     prepared

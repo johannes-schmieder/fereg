@@ -839,6 +839,19 @@ coordinates, and reconstruct residuals from original sources. Independently
 certify FE orthogonality, finite score, bread/inverse, covariance and fit.
 No iterative recurrence status alone permits publication.
 
+For no-FE Fast unweighted IID Auto/Auto fits with a global intercept and no
+requested outputs or developer routing override, row-parallel stable centered
+moments and orthogonal compression are permitted (Johannes, 2026-11-02).
+Arithmetic and storage may change within existing scientific tolerances;
+original-data residual/score and bread/covariance certificates remain mandatory.
+Explicit centered values, rather than cancellation-prone subtraction of raw
+cross-products, define the finite problem. Canonical sample, rank, omission and
+factor-slot semantics are unchanged: an uncertain classification or an apparent
+rank-deficient compressed factor must use the compatible canonical path.
+Validated loader summaries may be consumed by core only with their exact
+prepared row/column/sample binding. Public memory controls and one-call atomic
+publication continue to apply.
+
 A Fast fit that requests no residual, xbd, d or saved-FE output may keep its
 within residual `r = y~ - X~b` instead of projecting it again, when the derived
 certificate of §16 passes; its residual solver row reports the absorption's
@@ -846,10 +859,13 @@ method, zero iterations, zero pilot work and stop code 5. The derived residual
 serves the two-FE categorical owner (decided by Johannes, 2026-10-27) and, for
 beta.10, the direct one-FE Auto route and the many-FE Auto geometry policy,
 whose MAP pilot, LSMR session and MAP fallback all certify at the requested
-tolerance (decided by Johannes, 2026-10-28). Requested outputs, Low memory,
-explicit CMG, LSMR, MAP, CG, IT or SQUAREM sessions, many-FE developer routing
-arms outside the geometry policy, designs without an absorbed effect and a
-failing derived certificate keep the certified final projection. Residuals,
+tolerance (decided by Johannes, 2026-10-28). It also serves no-FE Fast,
+unweighted IID fits with a global intercept and Auto solver/preconditioner,
+without developer routing overrides (decided by Johannes, 2026-11-02). Their
+certificate independently recomputes the structural-constant moment. Requested
+outputs, Low memory, explicit CMG, LSMR, MAP, CG, IT or SQUAREM sessions,
+many-FE developer routing arms outside the geometry policy, other no-FE fits
+and a failing derived certificate keep the certified final projection. Residuals,
 fitted values, residual-based fit statistics and every covariance (iid through
 its residual sum of squares, robust/cluster through the scores) may differ from
 the projected residual in low bits within the certified tolerance, wherever the

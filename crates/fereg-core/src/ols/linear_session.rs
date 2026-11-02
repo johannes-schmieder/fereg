@@ -4829,6 +4829,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                     coefficients: &mut workspace.coefficients,
                     inverse: &mut workspace.bread,
                     selected: &mut workspace.kept,
+                    compression: &mut workspace.moment_partials,
                 },
                 &mut super::prepared_fit::SystemFitReservation,
                 |relations, rank, initial_norm| {
@@ -4843,7 +4844,10 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                     )?;
                     Ok(())
                 },
-            )?;
+            )?
+            .ok_or_else(|| {
+                invalid_data("retained finite source unexpectedly requested compatibility")
+            })?;
             (
                 result.report.rank,
                 result.report.maximum_dropped_relative_norm,
@@ -5355,6 +5359,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 right_inverse_relative_infinity_norm: right_inverse_error,
             }),
             within_residuals: Some(residuals.into_row_major()),
+            pre_intercept_raw_residuals: None,
         };
         let draft = RetainedFitContext {
             raw_column_means: CurrentFrameColumnMeans {
@@ -6377,10 +6382,12 @@ fn stream_frozen_solve(
             coefficients: &mut workspace.coefficients,
             inverse: &mut workspace.bread,
             selected: &mut workspace.candidate_positions,
+            compression: &mut workspace.moment_partials,
         },
         &mut super::prepared_fit::SystemFitReservation,
         |_, _, _| Ok(()),
-    )?;
+    )?
+    .ok_or_else(|| invalid_data("retained finite source unexpectedly requested compatibility"))?;
     #[cfg(test)]
     if result.used_qr {
         FROZEN_QR_FALLBACK_OBSERVED.store(true, Ordering::SeqCst);

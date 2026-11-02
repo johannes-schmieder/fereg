@@ -1679,7 +1679,8 @@ def main():
         from input_diagnostics import command_diagnose
         import input_width
         config = json.loads(args.config.read_text())
-        module = input_width if config.get('suite') == 'width' else parallel_input
+        import no_fe_speed
+        module = {'width': input_width, 'no-fe': no_fe_speed}.get(config.get('suite'), parallel_input)
         result = {'verify': module.command_verify, 'run': module.command_run,
                   'report': module.command_report, 'diagnose': command_diagnose}[args.operation](config)
         return 1 if result and result['status'] != 'passed' else 0

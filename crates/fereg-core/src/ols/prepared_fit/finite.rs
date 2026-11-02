@@ -6,6 +6,7 @@ use crate::ols::finite_wls_kernel::{
 };
 
 pub(super) enum ProjectedFiniteRows<'a> {
+    Centered(crate::ols::centered::CenteredRows<'a>),
     Dense(&'a DenseMatrix),
     Scratch {
         scratch: &'a PreparedOlsScratch,
@@ -21,6 +22,11 @@ impl ProjectedFiniteRows<'_> {
         weight_scale: PreparedOlsBreadWeightScale,
     ) -> FixedBlockMomentSource<'a> {
         match self {
+            Self::Centered(values) => FixedBlockMomentSource::Centered {
+                values: *values,
+                selected_columns: Some(selected),
+                column_scales: Some(scales),
+            },
             Self::Dense(values) => FixedBlockMomentSource::Dense {
                 values: FiniteDenseRows::projected(values),
                 rows: values.nrows(),
@@ -56,10 +62,13 @@ pub(super) fn solve_one_shot<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     perturb_first_coefficient: bool,
     perturb_bread: bool,
     build_bread: bool,
-) -> Result<FiniteFit> {
+) -> Result<Option<FiniteFit>> {
     let rows = prepared.fit_sample().n_active();
     let columns = prepared.fit_model().columns.len();
     let valid = match &storage {
+        ProjectedFiniteRows::Centered(values) => {
+            values.rows() == rows && values.columns() == columns
+        }
         ProjectedFiniteRows::Dense(values) => {
             values.nrows() == rows && values.ncols() == columns + 1
         }
@@ -91,7 +100,7 @@ pub(super) fn solve_one_shot<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         config.fixed_effect_collinearity_tolerance,
         "finite candidate capacity exhausted",
         |column| match storage {
-            ProjectedFiniteRows::Dense(_) => {
+            ProjectedFiniteRows::Dense(_) | ProjectedFiniteRows::Centered(_) => {
                 fast_qr_norms(reference_norms[column], score_norms[column])
             }
             ProjectedFiniteRows::Scratch { .. } => {
@@ -134,35 +143,14 @@ pub(super) fn solve_one_shot<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         };
         (report, bread)
     } else {
-        let source = storage.source(
-            &workspace.candidate_ids,
-            &workspace.candidate_scales,
+        prepare_moments(
+            &storage,
+            &mut workspace,
             weights,
             bread_weight_scale,
-        );
-        let layout_source = validate_moment_source(source)?;
-        let layout = layout_source.layout();
-        let count = workspace.candidate_ids.len();
-        resize(
-            &mut workspace.moment_partials,
-            layout.partial_elements,
-            0.,
             reservation,
         )?;
-        resize(
-            &mut workspace.gram,
-            checked_square(count, "finite Gram dimensions overflow")?,
-            0.,
-            reservation,
-        )?;
-        resize(&mut workspace.rhs, count, 0., reservation)?;
-        fill_finite_wls_moments(
-            layout_source,
-            &mut workspace.moment_partials,
-            &mut workspace.rhs,
-            &mut workspace.gram,
-        )?;
-        factor_and_bread(
+        let Some(result) = factor_and_bread(
             &storage,
             weights,
             &mut workspace,
@@ -174,7 +162,16 @@ pub(super) fn solve_one_shot<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
             perturb_bread,
             build_bread,
         )?
+        else {
+            return Ok(None);
+        };
+        result
     };
+    if matches!(storage, ProjectedFiniteRows::Centered(_))
+        && (report.rank != workspace.candidate_ids.len() || report.ambiguous)
+    {
+        return Ok(None);
+    }
     finish(
         prepared,
         storage,
@@ -188,6 +185,52 @@ pub(super) fn solve_one_shot<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         reservation,
         perturb_first_coefficient,
     )
+    .map(Some)
+}
+
+fn prepare_moments<R: FitReservation>(
+    storage: &ProjectedFiniteRows<'_>,
+    workspace: &mut FiniteWorkspace,
+    weights: NormalizedWeights<'_>,
+    bread_weight_scale: PreparedOlsBreadWeightScale,
+    reservation: &mut R,
+) -> Result<()> {
+    let source = storage.source(
+        &workspace.candidate_ids,
+        &workspace.candidate_scales,
+        weights,
+        bread_weight_scale,
+    );
+    let layout_source = validate_moment_source(source)?;
+    let layout = layout_source.layout();
+    let count = workspace.candidate_ids.len();
+    let partial_elements = if matches!(storage, ProjectedFiniteRows::Centered(_)) {
+        layout
+            .partial_elements
+            .max(crate::ols::finite_wls_kernel::centered_compression_elements(source)?)
+    } else {
+        layout.partial_elements
+    };
+    resize(
+        &mut workspace.moment_partials,
+        partial_elements,
+        0.,
+        reservation,
+    )?;
+    resize(
+        &mut workspace.gram,
+        checked_square(count, "finite Gram dimensions overflow")?,
+        0.,
+        reservation,
+    )?;
+    resize(&mut workspace.rhs, count, 0., reservation)?;
+    fill_finite_wls_moments(
+        layout_source,
+        &mut workspace.moment_partials[..layout.partial_elements],
+        &mut workspace.rhs,
+        &mut workspace.gram,
+    )?;
+    Ok(())
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -202,10 +245,12 @@ fn factor_and_bread<R: FitReservation>(
     reservation: &mut R,
     perturb_bread: bool,
     build_bread: bool,
-) -> Result<(
-    super::super::finite_wls_kernel::RankRevealingQrReport,
-    Option<FiniteBreadDraft>,
-)> {
+) -> Result<
+    Option<(
+        super::super::finite_wls_kernel::RankRevealingQrReport,
+        Option<FiniteBreadDraft>,
+    )>,
+> {
     let mut allow_cholesky = true;
     loop {
         let source = storage.source(
@@ -232,10 +277,19 @@ fn factor_and_bread<R: FitReservation>(
                 coefficients: &mut workspace.coefficients,
                 inverse: &mut workspace.bread,
                 selected: &mut workspace.kept,
+                compression: &mut workspace.moment_partials,
             },
             reservation,
             |_, _, _| Ok(()),
         )?;
+        let Some(factor) = factor else {
+            return Ok(None);
+        };
+        if matches!(storage, ProjectedFiniteRows::Centered(_))
+            && (factor.report.rank != workspace.candidate_ids.len() || factor.report.ambiguous)
+        {
+            return Ok(None);
+        }
         let bread = if build_bread {
             match build_one_shot_bread(
                 workspace,
@@ -262,7 +316,7 @@ fn factor_and_bread<R: FitReservation>(
         } else {
             None
         };
-        return Ok((factor.report, bread));
+        return Ok(Some((factor.report, bread)));
     }
 }
 
@@ -312,7 +366,7 @@ fn build_one_shot_bread<R: FitReservation>(
 fn finish<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     prepared: &P,
     storage: ProjectedFiniteRows<'_>,
-    workspace: FiniteWorkspace,
+    mut workspace: FiniteWorkspace,
     mut statuses: Vec<PreparedOlsFitStatus>,
     report: super::super::finite_wls_kernel::RankRevealingQrReport,
     relative_threshold: f64,
@@ -351,14 +405,36 @@ fn finish<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         reference_norms,
         score_norms,
     )?;
-    let within_residuals = match storage {
-        ProjectedFiniteRows::Dense(within) => Some(dense_within_residuals(
-            within,
-            &workspace.kept,
-            &coefficients,
-            reservation,
-        )?),
-        ProjectedFiniteRows::Scratch { .. } => None,
+    // These numerical banks are dead once coefficients, bread and the finite
+    // score exist. Drop them before the two residual vectors coexist, matching
+    // the previous peak lifetime at reported-intercept finalization.
+    let kept = std::mem::take(&mut workspace.kept);
+    drop(workspace);
+    let (within_residuals, pre_intercept_raw_residuals) = match storage {
+        ProjectedFiniteRows::Centered(values) => {
+            // Ordinary factor subtraction can skip zero indicators whereas a
+            // generic factor view executes an FMA. Keep that signed-zero policy
+            // untouched; only continuous/intercept layouts share exact order.
+            let numeric_layout = prepared.fit_model().columns.iter().all(|column| {
+                matches!(
+                    column.kind,
+                    PreparedOlsColumnKind::Continuous { .. } | PreparedOlsColumnKind::Intercept
+                )
+            });
+            let (within, raw) =
+                centered_residuals(values, &kept, &coefficients, numeric_layout, reservation)?;
+            (Some(within), raw)
+        }
+        ProjectedFiniteRows::Dense(within) => (
+            Some(dense_within_residuals(
+                within,
+                &kept,
+                &coefficients,
+                reservation,
+            )?),
+            None,
+        ),
+        ProjectedFiniteRows::Scratch { .. } => (None, None),
     };
     let mut dropped = reserved_empty(
         reservation,
@@ -374,7 +450,7 @@ fn finish<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     Ok(FiniteFit {
         generated_coefficients: coefficients,
         generated_statuses: statuses,
-        kept: workspace.kept,
+        kept,
         dropped,
         rank: report.rank,
         certificate: PreparedOlsRankCertificate {
@@ -386,7 +462,123 @@ fn finish<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         finite_score,
         bread,
         within_residuals,
+        pre_intercept_raw_residuals,
     })
+}
+
+/// Arithmetic-preserving relative to the centered candidate: the centered
+/// residual keeps its selected-column FMA order, and the optional independent
+/// raw residual keeps canonical coefficient-slot FMA order. Only their physical
+/// row traversal is shared. The original compensated score pass is unchanged.
+fn centered_residuals<R: FitReservation>(
+    values: crate::ols::centered::CenteredRows<'_>,
+    kept: &[usize],
+    coefficients: &[Option<f64>],
+    build_raw: bool,
+    reservation: &mut R,
+) -> Result<(Vec<f64>, Option<Vec<f64>>)> {
+    if coefficients.len() != values.columns()
+        || kept.windows(2).any(|pair| pair[0] >= pair[1])
+        || kept
+            .iter()
+            .any(|&column| coefficients.get(column).is_none_or(|v| v.is_none()))
+        || coefficients
+            .iter()
+            .flatten()
+            .any(|value| !value.is_finite())
+        || coefficients.iter().flatten().count() != kept.len()
+    {
+        return Err(invalid_argument(
+            "centered residual coefficient axes are inconsistent",
+        ));
+    }
+    let mut residuals = reserved_filled(
+        reservation,
+        values.rows(),
+        0.0,
+        "unable to reserve centered original-source residuals",
+    )?;
+    let work = values.rows() as u128 * kept.len() as u128;
+    if !build_raw {
+        crate::parallel::stage_try_for_each(
+            residuals.par_iter_mut().enumerate(),
+            work,
+            |(row, target)| {
+                *target = centered_residual_row::<false>(values, row, kept, coefficients)?.0;
+                Ok(())
+            },
+        )?;
+        return Ok((residuals, None));
+    }
+    let mut raw = reserved_filled(
+        reservation,
+        values.rows(),
+        0.0,
+        "unable to reserve prepared OLS independent raw residual",
+    )?;
+    crate::parallel::stage_try_for_each(
+        residuals.par_iter_mut().zip(raw.par_iter_mut()).enumerate(),
+        work,
+        |(row, (within, original))| {
+            (*within, *original) = centered_residual_row::<true>(values, row, kept, coefficients)?;
+            Ok(())
+        },
+    )?;
+    // Validation belongs to reported_bread, where the separate raw builder
+    // previously failed. Its canonical fallback and injection exclusions must
+    // still decide the outcome of raw overflow after this centered pass succeeds.
+    Ok((residuals, Some(raw)))
+}
+
+pub(super) fn validate_cached_raw_residuals<P: PreparedOlsFitView + ?Sized>(
+    prepared: &P,
+    values: &[f64],
+) -> Result<()> {
+    let message = if super::super::prepared_rhs::NumericOlsColumns::bind(
+        prepared.fit_model(),
+        prepared.fit_sample(),
+    )?
+    .is_some()
+    {
+        "numeric OLS raw residual is not finite"
+    } else {
+        "prepared OLS raw residual is not finite"
+    };
+    validate_raw_residuals(values, message)
+}
+
+fn validate_raw_residuals(values: &[f64], message: &'static str) -> Result<()> {
+    for (row, &value) in values.iter().enumerate() {
+        crate::interrupt::row_checkpoint(row)?;
+        if !value.is_finite() {
+            return Err(invalid_data(message));
+        }
+    }
+    Ok(())
+}
+
+fn centered_residual_row<const RAW: bool>(
+    values: crate::ols::centered::CenteredRows<'_>,
+    row: usize,
+    kept: &[usize],
+    coefficients: &[Option<f64>],
+) -> Result<(f64, f64)> {
+    crate::interrupt::row_checkpoint(row)?;
+    let mut centered = values.response(row)?;
+    let mut original = if RAW { values.raw()[(row, 0)] } else { 0.0 };
+    for &column in kept {
+        let coefficient = -coefficients[column].expect("validated kept coefficient");
+        centered = coefficient.mul_add(values.value(row, column)?, centered);
+        if RAW {
+            original = coefficient.mul_add(values.raw()[(row, column + 1)], original);
+        }
+    }
+    if !centered.is_finite() {
+        return Err(invalid_data(
+            "centered original-source residual is not finite",
+        ));
+    }
+    Ok((centered, original))
 }
 
 fn dense_within_residuals<R: FitReservation>(
@@ -522,3 +714,7 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "finite/residual_tests.rs"]
+mod residual_tests;

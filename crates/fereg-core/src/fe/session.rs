@@ -874,9 +874,10 @@ impl<'a> FeSession<'a> {
     }
 
     /// The Auto binding whose projections certify at the requested tolerance:
-    /// the direct one-FE route and the many-FE geometry policy (its LSMR
-    /// session, MAP pilot and MAP fallback). Explicit solvers, developer
-    /// routing arms and empty designs keep the final projection.
+    /// the structural constant, direct one-FE route and many-FE geometry
+    /// policy (its LSMR session, MAP pilot and MAP fallback). The one-shot
+    /// caller further limits the structural route to eligible IID fits.
+    /// Explicit solvers and developer routing arms keep the final projection.
     fn derived_binding(&self) -> Option<&super::BorrowedInterceptFeDesign<'a>> {
         let design = self.binding.as_ref()?;
         let config = self.absorb_config?;
@@ -886,7 +887,12 @@ impl<'a> FeSession<'a> {
         (self.general.is_none()
             && self.owned.is_none()
             && config.solver == super::FeSolverKind::Auto
-            && (design.effects().len() == 1 || design.effects().len() >= 3 && geometry))
+            && (design.effects().is_empty()
+                && self.structural_constant
+                && config.routing.is_none()
+                && config.lsmr.preconditioner == super::LsmrPreconditioner::Auto
+                || design.effects().len() == 1
+                || design.effects().len() >= 3 && geometry))
             .then_some(design)
     }
 
@@ -909,6 +915,46 @@ impl<'a> FeSession<'a> {
             false,
             remaining,
         )
+    }
+
+    /// Initial no-FE unit-weight projection using maxima already validated by
+    /// the OLS packed-row owner. Other projections keep the ordinary entry.
+    pub(crate) fn project_structural_ols(
+        &mut self,
+        values: crate::ols::OlsProjectionInput,
+        maxima: &[f64],
+        constant: usize,
+        mut config: super::AbsorbConfig,
+    ) -> Result<CertifiedBorrowedMap> {
+        if !self.structural_constant
+            || config.solver != super::FeSolverKind::Auto
+            || config.lsmr.preconditioner != super::LsmrPreconditioner::Auto
+            || config.retain_coefficients
+        {
+            return Err(crate::error::invalid_argument(
+                "direct structural projection request is invalid",
+            ));
+        }
+        config.solver_memory_budget = self.absorb_config.and_then(|c| c.solver_memory_budget);
+        let design = self
+            .binding
+            .as_ref()
+            .ok_or_else(|| crate::error::invalid_argument("direct structural binding is absent"))?;
+        let mut result = super::borrowed_map::structural_direct::project(
+            design,
+            values,
+            super::borrowed_map::structural_direct::RawMaxima {
+                scales: maxima,
+                constant,
+            },
+            config,
+        )?;
+        crate::interrupt::checkpoint()?;
+        let norms = result.take_residual_norms();
+        let (values, mut report) = result.into_parts();
+        report.setup_seconds += std::mem::take(&mut self.setup_seconds);
+        report.solver_workspace_peak = report.solver_workspace_peak.max(self.peak);
+        CertifiedBorrowedMap::from_certified_parts(values, report)?.with_residual_norms(norms)
     }
 
     pub(crate) fn project_initial_ols(

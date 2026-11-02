@@ -8,7 +8,7 @@ use rayon::prelude::*;
 mod dense;
 pub(super) use dense::column_norms as column_norms_with_dense;
 
-const LEAF_ROWS: usize = super::borrowed_map::PARALLEL_DOT_CHUNK_ROWS;
+pub(super) const LEAF_ROWS: usize = super::borrowed_map::PARALLEL_DOT_CHUNK_ROWS;
 const TILE_COLUMNS: usize = 64;
 const MAX_WAVE_LEAVES: usize = 128;
 
@@ -27,6 +27,29 @@ pub(super) fn column_norms(
     sums.fill(1.0);
     let leaves = values.nrows().div_ceil(LEAF_ROWS);
     let result = (|| {
+        if partials.is_empty() && rayon::current_thread_index().is_some() {
+            let work = values.as_slice().len() as u128;
+            let band = crate::parallel::StagePlan::current(work, values.ncols())
+                .chunk(values.ncols())
+                .min(TILE_COLUMNS);
+            return crate::parallel::stage_try_for_each(
+                scales
+                    .par_chunks_mut(band)
+                    .zip(sums.par_chunks_mut(band))
+                    .enumerate(),
+                work,
+                |(index, (scales, sums))| {
+                    column_band(
+                        values,
+                        &root_weight,
+                        index * band,
+                        scales,
+                        sums,
+                        value_error,
+                    )
+                },
+            );
+        }
         for first in (0..values.ncols()).step_by(TILE_COLUMNS) {
             let width = (values.ncols() - first).min(TILE_COLUMNS);
             let wave = (partials.len() / (2 * width)).min(MAX_WAVE_LEAVES);
@@ -65,28 +88,14 @@ pub(super) fn column_norms(
                     }
                 }
             } else {
-                // No allocation or admission is needed for the identical tree.
-                let mut scale = [0.0; TILE_COLUMNS];
-                let mut sum = [1.0; TILE_COLUMNS];
-                for index in 0..leaves {
-                    leaf(
-                        values,
-                        &root_weight,
-                        index,
-                        first,
-                        &mut scale[..width],
-                        &mut sum[..width],
-                        value_error,
-                    )?;
-                    for column in 0..width {
-                        merge(
-                            scale[column],
-                            sum[column],
-                            &mut scales[first + column],
-                            &mut sums[first + column],
-                        );
-                    }
-                }
+                column_band(
+                    values,
+                    &root_weight,
+                    first,
+                    &mut scales[first..first + width],
+                    &mut sums[first..first + width],
+                    value_error,
+                )?;
             }
         }
         Ok(())
@@ -107,6 +116,45 @@ pub(super) fn column_norms(
     for column in 0..values.ncols() {
         output[column] = finish(scales[column], sums[column], norm_error)?;
     }
+    Ok(())
+}
+
+fn column_band(
+    values: &DenseMatrix,
+    root_weight: &(impl Fn(usize) -> Result<f64> + Sync),
+    first: usize,
+    scales: &mut [f64],
+    sums: &mut [f64],
+    message: &'static str,
+) -> Result<()> {
+    // Private state avoids false sharing without allocating a partial bank.
+    // Every column retains the original leaf boundaries and merge order.
+    let width = scales.len();
+    let mut scale = [0.0; TILE_COLUMNS];
+    let mut sum = [1.0; TILE_COLUMNS];
+    let mut merged_scales = [0.0; TILE_COLUMNS];
+    let mut merged_sums = [1.0; TILE_COLUMNS];
+    for index in 0..values.nrows().div_ceil(LEAF_ROWS) {
+        leaf(
+            values,
+            root_weight,
+            index,
+            first,
+            &mut scale[..width],
+            &mut sum[..width],
+            message,
+        )?;
+        for column in 0..width {
+            merge(
+                scale[column],
+                sum[column],
+                &mut merged_scales[column],
+                &mut merged_sums[column],
+            );
+        }
+    }
+    scales.copy_from_slice(&merged_scales[..width]);
+    sums.copy_from_slice(&merged_sums[..width]);
     Ok(())
 }
 
@@ -139,7 +187,7 @@ fn leaf(
     Ok(())
 }
 
-fn merge(other_scale: f64, other_sum: f64, scale: &mut f64, sum: &mut f64) {
+pub(super) fn merge(other_scale: f64, other_sum: f64, scale: &mut f64, sum: &mut f64) {
     if other_scale == 0.0 {
         return;
     }
@@ -157,7 +205,12 @@ fn merge(other_scale: f64, other_sum: f64, scale: &mut f64, sum: &mut f64) {
     }
 }
 
-fn update(value: f64, scale: &mut f64, sum: &mut f64, message: &'static str) -> Result<()> {
+pub(super) fn update(
+    value: f64,
+    scale: &mut f64,
+    sum: &mut f64,
+    message: &'static str,
+) -> Result<()> {
     if !value.is_finite() {
         return Err(FeregError::new(ErrorCode::InvalidData, message));
     }
@@ -175,7 +228,7 @@ fn update(value: f64, scale: &mut f64, sum: &mut f64, message: &'static str) -> 
     Ok(())
 }
 
-fn finish(scale: f64, sum: f64, message: &'static str) -> Result<f64> {
+pub(super) fn finish(scale: f64, sum: f64, message: &'static str) -> Result<f64> {
     let norm = if scale == 0.0 {
         0.0
     } else {
@@ -313,6 +366,10 @@ mod tests {
     fn fixed_leaf_norms_match_independent_integer_power_witness() {
         // Integer square sums are exact; the reference has no scaled-sum
         // recurrence, row leaves, or shared production arithmetic.
+        let team = rayon::ThreadPoolBuilder::new()
+            .num_threads(4)
+            .build()
+            .unwrap();
         for rows in [0, 1, 511, 512, 513, 1_537, 65_539] {
             for width in [1, 17, 65, 129] {
                 let coefficient =
@@ -334,7 +391,7 @@ mod tests {
                             root * root
                         })
                         .collect();
-                    let (actual, _, _) = run(&values, &weights, 0);
+                    let (actual, _, _) = team.install(|| run(&values, &weights, 0));
                     for (c, actual) in actual.iter().copied().enumerate() {
                         let expected = reference::integer_power_norm(
                             (0..rows).map(|r| coefficient(r, c) * multiplier(r)),

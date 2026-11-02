@@ -1,6 +1,7 @@
 //! Certified Frisch-Waugh-Lovell OLS core.
 
 mod canonical_products;
+mod centered;
 mod finite_operations;
 mod finite_wls_kernel;
 pub(crate) use canonical_products::canonical_three_workspace_bytes;

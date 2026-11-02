@@ -8,6 +8,8 @@
 
 mod axis;
 mod direction;
+mod row_blocks;
+mod tsqr;
 mod wide_private;
 mod workspace;
 pub(super) use axis::{FiniteDenseRows, FiniteResponse};
@@ -37,6 +39,11 @@ pub(super) const FIXED_BLOCK_MOMENT_MAX_COLUMNS: usize = 64;
 
 #[derive(Debug, Clone, Copy)]
 pub(super) enum FixedBlockMomentSource<'a> {
+    Centered {
+        values: super::centered::CenteredRows<'a>,
+        selected_columns: Option<&'a [usize]>,
+        column_scales: Option<&'a [f64]>,
+    },
     /// Reusable dense representation: unscaled response and design with an
     /// explicit current solver-weight divisor.
     Dense {
@@ -72,6 +79,7 @@ pub(super) enum FixedBlockMomentSource<'a> {
 impl FixedBlockMomentSource<'_> {
     pub(super) fn rows(self) -> usize {
         match self {
+            Self::Centered { values, .. } => values.rows(),
             Self::Dense { rows, .. } => rows,
             Self::Scratch { values, .. } => values.rows(),
             Self::Implicit { values, .. } => values.rows(),
@@ -80,6 +88,11 @@ impl FixedBlockMomentSource<'_> {
 
     pub(super) fn dimension(self) -> usize {
         match self {
+            Self::Centered {
+                values,
+                selected_columns,
+                ..
+            } => selected_columns.map_or(values.columns(), <[usize]>::len),
             Self::Dense {
                 stored_columns,
                 selected_columns,
@@ -100,6 +113,7 @@ impl FixedBlockMomentSource<'_> {
 
     fn row_workspace(self) -> usize {
         match self {
+            Self::Centered { values, .. } => values.columns(),
             Self::Scratch { values, .. } => {
                 let columns = values.columns();
                 if columns == 0 {
@@ -126,6 +140,22 @@ impl FixedBlockMomentSource<'_> {
             ));
         }
         match self {
+            Self::Centered {
+                values,
+                selected_columns,
+                column_scales,
+            } => {
+                validate_retained_source(
+                    values.rows() * values.columns(),
+                    values.rows(),
+                    values.columns(),
+                    selected_columns,
+                    FiniteResponse::Column(values.raw(), 0),
+                    BorrowedMapWeights::Unit,
+                    1.0,
+                    column_scales,
+                )?;
+            }
             Self::Dense {
                 values,
                 rows,
@@ -231,6 +261,9 @@ pub(super) fn validate_moment_source(
 }
 
 fn plan_moment_layout(source: FixedBlockMomentSource<'_>) -> Result<FiniteWlsMomentLayout> {
+    if let FixedBlockMomentSource::Centered { values, .. } = source {
+        return row_blocks::layout(values.rows(), source.dimension(), values.columns());
+    }
     FiniteWlsMomentLayout::plan(
         source.dimension(),
         source.row_workspace(),
@@ -252,6 +285,23 @@ impl FiniteWlsMomentLayout {
                 .checked_mul(row_workspace)
                 .ok_or_else(|| allocation("finite-WLS retained row workspace overflows"))?,
         })
+    }
+}
+
+pub(super) fn centered_moment_workspace_bytes(rows: usize, columns: usize) -> Result<u128> {
+    if columns == 0 {
+        return Ok(0);
+    }
+    Ok(row_blocks::workspace_bytes(rows, columns, columns)?
+        .max(tsqr::workspace_envelope_bytes(rows, columns, columns)?))
+}
+
+pub(super) fn centered_compression_elements(source: FixedBlockMomentSource<'_>) -> Result<usize> {
+    match source {
+        FixedBlockMomentSource::Centered { values, .. } => {
+            tsqr::workspace_elements(values.rows(), source.dimension(), values.columns())
+        }
+        _ => Ok(0),
     }
 }
 
@@ -334,6 +384,7 @@ pub(super) fn factor_rank_revealing_retained_qr(
     transformed_rhs: &mut [f64],
     trailing_norms: &mut [f64],
     permutation: &mut [usize],
+    compression: Option<&mut [f64]>,
 ) -> Result<RankRevealingQrReport> {
     source.validate()?;
     let dimension = source.dimension();
@@ -356,6 +407,7 @@ pub(super) fn factor_rank_revealing_retained_qr(
         FixedBlockMomentSource::Dense { stored_columns, .. } => stored_columns,
         FixedBlockMomentSource::Scratch { values, .. } => values.columns(),
         FixedBlockMomentSource::Implicit { values, .. } => values.columns(),
+        FixedBlockMomentSource::Centered { values, .. } => values.columns(),
     };
     if stored_row.len() != stored_columns {
         return Err(invalid_argument(
@@ -370,56 +422,60 @@ pub(super) fn factor_rank_revealing_retained_qr(
         *destination = position;
     }
 
-    // `trailing_norms` is the selected/standardized incoming row during the
-    // streaming reduction. It is overwritten by actual trailing norms below.
-    let mut scratch_reader = match source {
-        FixedBlockMomentSource::Scratch { values, .. } => Some(values.shared_reader()),
-        _ => None,
-    };
-    for observation in 0..source.rows() {
-        crate::interrupt::row_checkpoint(observation)?;
-        let mut outcome = fill_retained_qr_row(
-            source,
-            observation,
-            stored_row,
-            trailing_norms,
-            scratch_reader.as_mut(),
-        )?;
-        for step in 0..dimension {
-            let diagonal = qr[step * dimension + step];
-            let incoming = trailing_norms[step];
-            if incoming == 0.0 {
-                continue;
-            }
-            let rotated = diagonal.hypot(incoming);
-            if !rotated.is_finite() || rotated <= 0.0 {
-                return Err(invalid_data(
-                    "retained finite-WLS streaming QR rotation is invalid",
-                ));
-            }
-            let cosine = diagonal / rotated;
-            let sine = incoming / rotated;
-            qr[step * dimension + step] = rotated;
-            trailing_norms[step] = 0.0;
-            for column in (step + 1)..dimension {
-                let upper = qr[step * dimension + column];
-                let row_value = trailing_norms[column];
-                qr[step * dimension + column] = cosine * upper + sine * row_value;
-                trailing_norms[column] = -sine * upper + cosine * row_value;
-            }
-            let upper_outcome = transformed_rhs[step];
-            transformed_rhs[step] = cosine * upper_outcome + sine * outcome;
-            outcome = -sine * upper_outcome + cosine * outcome;
-            if qr[step * dimension..(step + 1) * dimension]
-                .iter()
-                .chain(&transformed_rhs[step..=step])
-                .chain(&trailing_norms[step..])
-                .any(|value| !value.is_finite())
-                || !outcome.is_finite()
-            {
-                return Err(invalid_data(
-                    "retained finite-WLS streaming QR is not finite",
-                ));
+    if let Some(workspace) = compression {
+        tsqr::compress(source, workspace, qr, transformed_rhs)?;
+    } else {
+        // `trailing_norms` is the selected/standardized incoming row during the
+        // streaming reduction. It is overwritten by actual trailing norms below.
+        let mut scratch_reader = match source {
+            FixedBlockMomentSource::Scratch { values, .. } => Some(values.shared_reader()),
+            _ => None,
+        };
+        for observation in 0..source.rows() {
+            crate::interrupt::row_checkpoint(observation)?;
+            let mut outcome = fill_retained_qr_row(
+                source,
+                observation,
+                stored_row,
+                trailing_norms,
+                scratch_reader.as_mut(),
+            )?;
+            for step in 0..dimension {
+                let diagonal = qr[step * dimension + step];
+                let incoming = trailing_norms[step];
+                if incoming == 0.0 {
+                    continue;
+                }
+                let rotated = diagonal.hypot(incoming);
+                if !rotated.is_finite() || rotated <= 0.0 {
+                    return Err(invalid_data(
+                        "retained finite-WLS streaming QR rotation is invalid",
+                    ));
+                }
+                let cosine = diagonal / rotated;
+                let sine = incoming / rotated;
+                qr[step * dimension + step] = rotated;
+                trailing_norms[step] = 0.0;
+                for column in (step + 1)..dimension {
+                    let upper = qr[step * dimension + column];
+                    let row_value = trailing_norms[column];
+                    qr[step * dimension + column] = cosine * upper + sine * row_value;
+                    trailing_norms[column] = -sine * upper + cosine * row_value;
+                }
+                let upper_outcome = transformed_rhs[step];
+                transformed_rhs[step] = cosine * upper_outcome + sine * outcome;
+                outcome = -sine * upper_outcome + cosine * outcome;
+                if qr[step * dimension..(step + 1) * dimension]
+                    .iter()
+                    .chain(&transformed_rhs[step..=step])
+                    .chain(&trailing_norms[step..])
+                    .any(|value| !value.is_finite())
+                    || !outcome.is_finite()
+                {
+                    return Err(invalid_data(
+                        "retained finite-WLS streaming QR is not finite",
+                    ));
+                }
             }
         }
     }
@@ -586,6 +642,7 @@ pub(super) fn certify_retained_qr_dropped_span(
                 FixedBlockMomentSource::Dense { stored_columns, .. } => stored_columns,
                 FixedBlockMomentSource::Scratch { values, .. } => values.columns(),
                 FixedBlockMomentSource::Implicit { values, .. } => values.columns(),
+                FixedBlockMomentSource::Centered { values, .. } => values.columns(),
             }
         || standardized_row.len() != dimension
         || projection_coefficients.len()
@@ -811,7 +868,21 @@ fn fill_retained_qr_row(
     output: &mut [f64],
     scratch_reader: Option<&mut PreparedOlsScratchReader<'_>>,
 ) -> Result<f64> {
+    if let FixedBlockMomentSource::Centered {
+        values,
+        selected_columns,
+        column_scales,
+    } = source
+    {
+        values.fill_row(observation, stored_row)?;
+        for (position, destination) in output.iter_mut().enumerate() {
+            let source = selected_columns.map_or(position, |ids| ids[position]);
+            *destination = scaled_column(stored_row[source], column_scales, position)?;
+        }
+        return values.response(observation);
+    }
     let (selected_columns, response, weights, divisor, scales) = match source {
+        FixedBlockMomentSource::Centered { .. } => unreachable!("centered row returned above"),
         FixedBlockMomentSource::Dense {
             values,
             stored_columns: _,
@@ -1537,6 +1608,19 @@ fn fill_retained_partitioned(
     gram: &mut [f64],
 ) -> Result<()> {
     match source {
+        FixedBlockMomentSource::Centered {
+            values,
+            selected_columns,
+            column_scales,
+        } => row_blocks::fill(
+            values,
+            selected_columns,
+            column_scales,
+            layout,
+            partials,
+            rhs,
+            gram,
+        ),
         FixedBlockMomentSource::Dense {
             values,
             selected_columns,

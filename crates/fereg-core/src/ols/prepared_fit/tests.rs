@@ -138,7 +138,7 @@ fn qr_classification_preserves_norm_errors_and_deferred_intercept_order() {
                 assert_eq!(error.code, ErrorCode::InvalidData);
                 assert_eq!(error.message, message);
             } else {
-                let qr = result.unwrap();
+                let qr = result.unwrap().unwrap();
                 assert_eq!(qr.rank, 0);
                 assert_eq!(
                     qr.generated_statuses,
@@ -148,7 +148,7 @@ fn qr_classification_preserves_norm_errors_and_deferred_intercept_order() {
         }
     }
     for low in [false, true] {
-        let qr = run(&intercept, f64::NAN, f64::NAN, low).unwrap();
+        let qr = run(&intercept, f64::NAN, f64::NAN, low).unwrap().unwrap();
         assert_eq!(qr.rank, 0);
         assert_eq!(
             qr.generated_statuses,
@@ -2569,55 +2569,57 @@ fn loaded_moments_preserve_fit_bits_fallback_and_admission() {
                     + (r as f64).cos() * 0.1
             })
             .collect();
-        let data = prepared(
-            &response,
-            &columns,
-            &vec![false; width],
-            Some(&groups),
-            true,
-            TestWeights::Unit,
-        );
-        let raw = data
-            .fit_build_rhs_with_response(&data.fit_sample().outcome)
-            .unwrap();
-        let required = LoadedOlsRows::moment_workspace_bytes(n, raw.ncols());
-        for threads in [4, 8, 16] {
-            let mut config = PreparedOlsFitConfig::default();
-            config.execution.threads = ThreadConfig::from_requested(threads, true).unwrap();
-            let expected =
-                without_solve_timings(fit_prepared_model_coefficients(&data, config).unwrap());
-            for short in [false, true] {
-                for stale in [false, true] {
-                    let mut rows = raw.as_slice().to_vec();
-                    if stale {
-                        rows[1] += 0.25;
+        for with_fe in [false, true] {
+            let data = prepared(
+                &response,
+                &columns,
+                &vec![false; width],
+                with_fe.then_some(groups.as_slice()),
+                true,
+                TestWeights::Unit,
+            );
+            let raw = data
+                .fit_build_rhs_with_response(&data.fit_sample().outcome)
+                .unwrap();
+            let required = LoadedOlsRows::moment_workspace_bytes(n, raw.ncols());
+            for threads in [4, 8, 16] {
+                let mut config = PreparedOlsFitConfig::default();
+                config.execution.threads = ThreadConfig::from_requested(threads, true).unwrap();
+                let expected =
+                    without_solve_timings(fit_prepared_model_coefficients(&data, config).unwrap());
+                for short in [false, true] {
+                    for stale in [false, true] {
+                        let mut rows = raw.as_slice().to_vec();
+                        if stale {
+                            rows[1] += 0.25;
+                        }
+                        let budget = required.map_or(0, |b| b - usize::from(short));
+                        let loaded = ThreadTeam::new(config.execution.threads)
+                            .install(|| {
+                                LoadedOlsRows::from(rows).with_unit_moments(n, raw.ncols(), budget)
+                            })
+                            .unwrap();
+                        assert_eq!(
+                            loaded.moments.is_some(),
+                            required.is_some()
+                                && !short
+                                && crate::parallel::StagePlan::new(
+                                    n as u128 * raw.ncols() as u128,
+                                    2,
+                                    threads
+                                )
+                                .lanes
+                                    > 1
+                        );
+                        let actual = without_solve_timings(
+                            fit_prepared_ols_coefficients_with_loaded_rows(&data, config, loaded)
+                                .unwrap(),
+                        );
+                        assert!(
+                            expected == actual,
+                            "N={n}, width={width}, threads={threads}, short={short}, stale={stale}"
+                        );
                     }
-                    let budget = required.map_or(0, |b| b - usize::from(short));
-                    let loaded = ThreadTeam::new(config.execution.threads)
-                        .install(|| {
-                            LoadedOlsRows::from(rows).with_unit_moments(n, raw.ncols(), budget)
-                        })
-                        .unwrap();
-                    assert_eq!(
-                        loaded.moments.is_some(),
-                        required.is_some()
-                            && !short
-                            && crate::parallel::StagePlan::new(
-                                n as u128 * raw.ncols() as u128,
-                                2,
-                                threads
-                            )
-                            .lanes
-                                > 1
-                    );
-                    let actual = without_solve_timings(
-                        fit_prepared_ols_coefficients_with_loaded_rows(&data, config, loaded)
-                            .unwrap(),
-                    );
-                    assert!(
-                        expected == actual,
-                        "N={n}, width={width}, threads={threads}, short={short}, stale={stale}"
-                    );
                 }
             }
         }
@@ -2664,6 +2666,7 @@ fn loaded_moment_errors_remain_after_validation_and_stale_rows_are_discarded() {
             LoadedOlsRows {
                 rows,
                 moments: Some(Err(error.clone())),
+                centered: None,
             }
         };
         assert_eq!(
@@ -9748,7 +9751,15 @@ fn incremental_family_fits_match_portfolio_or_incumbent_with_analytic_witnesses(
                             } else {
                                 None
                             };
-                        let expected = fit_prepared_model_coefficients(&data, config).unwrap();
+                        let mut reference = config;
+                        if count == 0 {
+                            // Developer routing requests retain the original
+                            // final projection. Request that same projection
+                            // at the unchanged tolerance for this comparator;
+                            // ordinary no-FE Auto now has a derived residual.
+                            reference.final_residual_tolerance = Some(config.absorb.map.tolerance);
+                        }
+                        let expected = fit_prepared_model_coefficients(&data, reference).unwrap();
                         config.absorb.routing = Some(preset);
                         let actual = fit_prepared_model_coefficients(&data, config).unwrap();
                         let repeated = fit_prepared_model_coefficients(&data, config).unwrap();
@@ -10013,4 +10024,354 @@ fn score_certificate_failure_names_the_tolerance_remedy() {
     let tight = score_certificate_failure(1e-10);
     assert!(tight.message.contains("specify a smaller tolerance()"));
     assert!(!tight.message.contains("default"));
+}
+
+#[test]
+fn no_fe_derived_residual_has_independent_witness_and_projected_fallbacks() {
+    let n = 4_096;
+    // Orthogonal sign columns give beta=2, intercept=3 and the stated error
+    // independently of any production moment or factorization routine.
+    let x: Vec<_> = (0..n).map(|r| [-1., -1., 1., 1.][r % 4] + 32.).collect();
+    let error: Vec<_> = (0..n)
+        .map(|r| [-0.125, 0.125, -0.125, 0.125][r % 4])
+        .collect();
+    let y: Vec<_> = (0..n).map(|r| 3. + 2. * x[r] + error[r]).collect();
+    let data = prepared(
+        &y,
+        &[x.clone(), x.clone()],
+        &[false; 2],
+        None,
+        true,
+        TestWeights::Unit,
+    );
+    let mut first: Option<CertifiedPreparedOlsFit> = None;
+    for workers in [1, 4, 16] {
+        let mut config = PreparedOlsFitConfig::default();
+        config.execution.threads = ThreadConfig::from_requested(workers, false).unwrap();
+        let actual = fit_prepared_model_coefficients(&data, config).unwrap();
+        assert_eq!(
+            actual.residual_absorption_report().stop_reason,
+            SolveStopReason::DerivedCertificate
+        );
+        assert_eq!(actual.residual_absorption_report().iterations, 0);
+        assert!(actual.score_certificate().passed);
+        assert_close(actual.coefficients()[0].value.unwrap(), 2., 1e-12);
+        assert_eq!(
+            actual.coefficients()[1].status,
+            PreparedOlsFitStatus::NumericallyRankDeficient
+        );
+        assert_close(
+            actual.coefficients().last().unwrap().value.unwrap(),
+            3.,
+            1e-11,
+        );
+        for (&observed, &expected) in actual.residuals().iter().zip(&error) {
+            assert_close(observed, expected, 1e-11);
+        }
+        let repeat = fit_prepared_model_coefficients(&data, config).unwrap();
+        assert_incremental_fit_exact(&actual, &repeat);
+        if let Some(first) = &first {
+            assert_eq!(actual.coefficients(), first.coefficients());
+            assert_eq!(actual.bread(), first.bread());
+            assert_eq!(actual.residuals(), first.residuals());
+        } else {
+            first = Some(actual);
+        }
+    }
+    let derived = first.unwrap();
+    let forced = {
+        crate::fe::inject_derived_certificate_failure_once();
+        fit_with_controls_internal(
+            &data,
+            PreparedOlsFitConfig::default(),
+            &mut InjectedReservation::default(),
+            FitPerturbations::default(),
+        )
+        .unwrap()
+    };
+    let corrected = fit_with_controls_internal(
+        &data,
+        PreparedOlsFitConfig::default(),
+        &mut InjectedReservation::default(),
+        FitPerturbations {
+            reconstructed_within_residual_constant: true,
+            ..FitPerturbations::default()
+        },
+    )
+    .unwrap();
+    for projected in [forced, corrected] {
+        assert_eq!(
+            projected.residual_absorption_report().stop_reason,
+            SolveStopReason::Certified
+        );
+        assert_eq!(derived.coefficients(), projected.coefficients());
+        assert_eq!(derived.bread(), projected.bread());
+        for (&a, &b) in projected.residuals().iter().zip(&error) {
+            assert_close(a, b, 1e-11);
+        }
+    }
+    let mut variants = vec![PreparedOlsFitConfig::default(); 6];
+    variants[0].execution.mode = PreparedOlsExecutionMode::Low;
+    variants[1].absorb.solver = FeSolverKind::Map;
+    variants[2].absorb.lsmr.preconditioner = crate::fe::LsmrPreconditioner::Diagonal;
+    variants[3].final_residual_tolerance = Some(1e-14);
+    variants[4].absorb.retain_coefficients = true;
+    variants[5].allow_no_fe_fast_path = false;
+    for config in variants {
+        let fit = fit_prepared_model_coefficients(&data, config).unwrap();
+        assert_eq!(
+            fit.residual_absorption_report().stop_reason,
+            SolveStopReason::Certified
+        );
+        for (&a, &b) in fit.residuals().iter().zip(&error) {
+            assert_close(a, b, 1e-11);
+        }
+    }
+    let robust = fit_prepared_ols_coefficients_view_map_for_inference(
+        &data,
+        PreparedOlsFitConfig::default(),
+    )
+    .unwrap()
+    .0;
+    assert_eq!(
+        robust.residual_absorption_report().stop_reason,
+        SolveStopReason::Certified
+    );
+    let weights = vec![1.; n];
+    let weighted = prepared(
+        &y,
+        &[x.clone()],
+        &[false],
+        None,
+        true,
+        TestWeights::Analytic(&weights),
+    );
+    let weighted =
+        fit_prepared_model_coefficients(&weighted, PreparedOlsFitConfig::default()).unwrap();
+    assert_eq!(
+        weighted.residual_absorption_report().stop_reason,
+        SolveStopReason::Certified
+    );
+    let no_constant = prepared(&y, &[x], &[false], None, false, TestWeights::Unit);
+    let fit =
+        fit_prepared_model_coefficients(&no_constant, PreparedOlsFitConfig::default()).unwrap();
+    assert_ne!(
+        fit.residual_absorption_report().stop_reason,
+        SolveStopReason::DerivedCertificate
+    );
+    for value in [0., 7.] {
+        let constant = prepared(&vec![value; n], &[], &[], None, true, TestWeights::Unit);
+        let fit =
+            fit_prepared_model_coefficients(&constant, PreparedOlsFitConfig::default()).unwrap();
+        assert!(fit.score_certificate().passed);
+        assert_eq!(
+            fit.residual_absorption_report().stop_reason,
+            SolveStopReason::DerivedCertificate
+        );
+        assert!(fit.residuals().iter().all(|v| *v == 0.));
+    }
+}
+
+#[test]
+fn no_fe_centered_pipeline_preserves_boundary_rank_and_repeats() {
+    let n = 1024;
+    let x: Vec<_> = (0..n)
+        .map(|r| if r & 1 == 0 { -1.0 } else { 1.0 })
+        .collect();
+    let z: Vec<_> = (0..n)
+        .map(|r| if r & 2 == 0 { -1.0 } else { 1.0 })
+        .collect();
+    let error: Vec<_> = (0..n)
+        .map(|r| if r & 4 == 0 { -0.125 } else { 0.125 })
+        .collect();
+    let threshold =
+        PreparedOlsFitConfig::default().rank_tolerance_multiplier * f64::EPSILON * n as f64;
+    for offset in [0.0, 64.0, 1e6] {
+        for delta in [0.0, threshold / 2.0, threshold, threshold * 2.0, 1e-8, 1e-4] {
+            let first: Vec<_> = x.iter().map(|x| x + offset).collect();
+            let second: Vec<_> = x
+                .iter()
+                .zip(&z)
+                .map(|(x, z)| x + delta * z + offset)
+                .collect();
+            let y: Vec<_> = (0..n)
+                .map(|r| 3.0 + 2.0 * first[r] - 0.5 * second[r] + error[r])
+                .collect();
+            let data = prepared(
+                &y,
+                &[first, second],
+                &[false; 2],
+                None,
+                true,
+                TestWeights::Unit,
+            );
+            let mut canonical = PreparedOlsFitConfig::default();
+            canonical.absorb.solver = FeSolverKind::Map;
+            let expected = fit_prepared_model_coefficients(&data, canonical);
+            for workers in [1, 4, 16] {
+                let mut config = PreparedOlsFitConfig::default();
+                config.execution.threads = ThreadConfig::from_requested(workers, false).unwrap();
+                let actual = fit_prepared_model_coefficients(&data, config);
+                match (&expected, actual) {
+                    (Ok(expected), Ok(actual)) => {
+                        assert_eq!(actual.rank(), expected.rank(), "offset={offset}, delta={delta}, workers={workers}");
+                        for (a,b) in actual.coefficients().iter().zip(expected.coefficients()) {
+                            assert_eq!(a.status, b.status, "offset={offset}, delta={delta}");
+                        }
+                        let repeat = fit_prepared_model_coefficients(&data, config).unwrap();
+                        assert_incremental_fit_exact(&actual, &repeat);
+                        for (a,b) in actual.residuals().iter().zip(expected.residuals()) {
+                            assert_close(*a,*b,1e-8);
+                        }
+                    }
+                    (Err(expected), Err(actual)) => assert_eq!(actual.code, expected.code),
+                    (expected,actual) => panic!("incompatible boundary outcome: offset={offset}, delta={delta}, expected={expected:?}, actual={actual:?}"),
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn no_fe_centered_complete_fit_has_scaled_orthogonal_witness() {
+    for (n, width) in [(128, 65), (32_768, 3), (1024, 1)] {
+        let sign = |row: usize, mask: usize| {
+            if (row & mask).count_ones() % 2 == 0 {
+                1.0
+            } else {
+                -1.0
+            }
+        };
+        let scales: Vec<_> = (0..width)
+            .map(|c| 2.0f64.powi((c as i32 % 5 - 2) * 20))
+            .collect();
+        let offsets: Vec<_> = (0..width).map(|c| (c % 3) as f64 - 1.0).collect();
+        let slopes: Vec<_> = (0..width)
+            .map(|c| if c % 2 == 0 { 2.0 } else { -0.5 })
+            .collect();
+        let columns: Vec<Vec<_>> = (0..width)
+            .map(|c| {
+                (0..n)
+                    .map(|r| scales[c] * (offsets[c] + sign(r, c + 1)))
+                    .collect()
+            })
+            .collect();
+        let error: Vec<_> = (0..n).map(|r| 0.125 * sign(r, 127)).collect();
+        let y: Vec<_> = (0..n)
+            .map(|r| {
+                3.0 + (0..width)
+                    .map(|c| slopes[c] * (offsets[c] + sign(r, c + 1)))
+                    .sum::<f64>()
+                    + error[r]
+            })
+            .collect();
+        let data = prepared(
+            &y,
+            &columns,
+            &vec![false; width],
+            None,
+            true,
+            TestWeights::Unit,
+        );
+        let mut first: Option<CertifiedPreparedOlsFit> = None;
+        for workers in [1, 4, 16] {
+            let mut config = PreparedOlsFitConfig::default();
+            config.execution.threads = ThreadConfig::from_requested(workers, false).unwrap();
+            let actual = fit_prepared_model_coefficients(&data, config).unwrap();
+            assert_eq!(actual.finite_rank(), width);
+            assert!(actual.score_certificate().passed);
+            assert!(actual.bread().certificate().passed);
+            for c in 0..width {
+                assert_close(
+                    actual.coefficients()[c].value.unwrap() * scales[c],
+                    slopes[c],
+                    2e-12,
+                );
+                for d in 0..width {
+                    let normalized = actual.bread().values()[c * (width + 1) + d]
+                        * scales[c]
+                        * scales[d]
+                        * n as f64;
+                    assert_close(normalized, if c == d { 1.0 } else { 0.0 }, 2e-12);
+                }
+                assert_close(
+                    actual.bread().values()[c * (width + 1) + width] * scales[c] * n as f64,
+                    -offsets[c],
+                    2e-12,
+                );
+            }
+            assert_close(actual.coefficients()[width].value.unwrap(), 3.0, 2e-12);
+            assert_close(
+                actual.bread().values()[width * (width + 2)] * n as f64,
+                1.0 + offsets.iter().map(|v| v * v).sum::<f64>(),
+                2e-12,
+            );
+            for (a, b) in actual.residuals().iter().zip(&error) {
+                assert_close(*a, *b, 2e-12);
+            }
+            let repeat = fit_prepared_model_coefficients(&data, config).unwrap();
+            assert_incremental_fit_exact(&actual, &repeat);
+            if let Some(first) = &first {
+                assert_eq!(actual.coefficients(), first.coefficients());
+                assert_eq!(actual.bread(), first.bread());
+                assert_eq!(actual.residuals(), first.residuals());
+            } else {
+                first = Some(actual);
+            }
+        }
+    }
+}
+
+#[test]
+fn loaded_centered_summary_requires_exact_owner_binding_and_budget() {
+    let n = 32_771;
+    let x: Vec<_> = (0..n).map(|r| (r % 13) as f64 - 6.0).collect();
+    let y: Vec<_> = (0..n)
+        .map(|r| 3.0 + 2.0 * x[r] + (r as f64).sin())
+        .collect();
+    let data = prepared(&y, &[x], &[false], None, true, TestWeights::Unit);
+    let raw = data
+        .fit_build_rhs_with_response(&data.fit_sample().outcome)
+        .unwrap();
+    let budget = LoadedOlsRows::centered_workspace_bytes(n, raw.ncols()).unwrap();
+    for workers in [1, 4, 16] {
+        let mut config = PreparedOlsFitConfig::default();
+        config.execution.threads = ThreadConfig::from_requested(workers, false).unwrap();
+        let expected = fit_prepared_model_coefficients(&data, config).unwrap();
+        for stale in [false, true] {
+            for short in [false, true] {
+                let mut values = raw.as_slice().to_vec();
+                if stale {
+                    values[1] += 0.25;
+                }
+                let loaded = LoadedOlsRows::from(values).with_unit_centered_summary(
+                    n,
+                    raw.ncols(),
+                    budget - usize::from(short),
+                );
+                assert_eq!(loaded.centered.is_some(), !short);
+                let actual =
+                    fit_prepared_ols_coefficients_with_loaded_rows(&data, config, loaded).unwrap();
+                assert_incremental_fit_exact(&actual, &expected);
+            }
+        }
+        for error in [
+            invalid_data("unsupported centered range"),
+            allocation("centered allocation failure"),
+        ] {
+            let mut loaded = LoadedOlsRows::from(raw.as_slice().to_vec());
+            loaded.centered = Some(Err(error.clone()));
+            let actual = fit_prepared_ols_coefficients_with_loaded_rows(&data, config, loaded);
+            if error.code == ErrorCode::Allocation {
+                assert_eq!(actual.unwrap_err(), error);
+            } else {
+                let mut canonical = config;
+                canonical.absorb.solver = FeSolverKind::Map;
+                let canonical = fit_prepared_model_coefficients(&data, canonical).unwrap();
+                let actual = actual.unwrap();
+                assert_eq!(actual.coefficients(), canonical.coefficients());
+                assert_eq!(actual.bread(), canonical.bread());
+            }
+        }
+    }
 }
