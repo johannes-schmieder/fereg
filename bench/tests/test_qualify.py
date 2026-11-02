@@ -274,13 +274,17 @@ class Qualification(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             log, marker = Path(tmp) / 'child.log', Path(tmp) / 'survivor'
             handlers = {sig: signal.getsignal(sig) for sig in (signal.SIGALRM, signal.SIGINT, signal.SIGTERM)}
-            code = ('import os,time,pathlib; print(os.getpid(),flush=True); child=os.fork(); '
+            # Trigger the alarm only after both owned processes exist. Interpreter
+            # startup on a shared filesystem need not finish within 0.2 seconds.
+            code = ('import os,time,pathlib,signal; child=os.fork(); '
+                    'print(os.getpid(),flush=True) if child else None; '
+                    'os.kill(os.getppid(),signal.SIGALRM) if child else None; '
                     'time.sleep(.6 if child==0 else 20); '
                     f'pathlib.Path({str(marker)!r}).write_text("survived")')
             with patch.object(os, 'killpg', wraps=os.killpg) as kill:
                 with self.assertRaises(qualify.BudgetExpired):
-                    with qualify.Deadline(.2, time.monotonic()):
-                        qualify.run_process([sys.executable, '-c', code], log, 5)
+                    with qualify.Deadline(10, time.monotonic()):
+                        qualify.run_process([sys.executable, '-c', code], log, 15)
                 kill.assert_called_once_with(int(log.read_text().strip()), signal.SIGKILL)
             with self.assertRaises(ChildProcessError):
                 os.waitpid(int(log.read_text().strip()), os.WNOHANG)
