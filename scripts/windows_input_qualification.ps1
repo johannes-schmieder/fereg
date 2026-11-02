@@ -154,8 +154,8 @@ function Invoke-Oracle {
     $line = @($summary | Where-Object { $_ -cmatch '\Acases=(\d+) runs=(\d+) parallel_runs=(\d+)\z' })
     if ($line.Count -ne 1) { throw 'missing oracle summary' }
     $null = $line[0] -cmatch '\Acases=(\d+) runs=(\d+) parallel_runs=(\d+)\z'
-    $windowCoverage = if ($RequireSerial) { [int]$Matches[3] -eq 0 } else { [int]$Matches[3] -ge 70 }
-    if ([int]$Matches[1] -ne 70 -or [int]$Matches[2] -ne 202 -or -not $windowCoverage) {
+    $windowCoverage = if ($RequireSerial) { [int]$Matches[3] -eq 0 } else { [int]$Matches[3] -ge 72 }
+    if ([int]$Matches[1] -ne 72 -or [int]$Matches[2] -ne 208 -or -not $windowCoverage) {
         $script:FailureCode = 70000 + [Math]::Min([int]$Matches[2], 999)
         throw 'unexpected oracle coverage'
     }
