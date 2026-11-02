@@ -1,26 +1,26 @@
 {
   "schema": 1,
   "version": "0.5.0",
-  "source_sha": "ee61833e1a083c37f57fbebe028e98b18df73afb",
-  "runtime_sha256": "c2a8232c6ce9e787ee44018c05737209cb8b9889290cb9fe7b57f62c33c309cf",
+  "source_sha": "673ca1ab4fb43e6abb280552aef1575efaba7961",
+  "runtime_sha256": "82f8389986b2afaf50566fa59ec1f34960d09c7556d08c8a9a657c1718580dab",
   "plugins": [
     {
       "path": "fereg_linux.plugin",
-      "source_sha": "ee61833e1a083c37f57fbebe028e98b18df73afb",
-      "sha256": "9bbb0a35c1238e07227b71d7ee388ee374f558e94f9d9c81cc7c40f7d44284fc",
-      "bytes": 16866168
+      "source_sha": "673ca1ab4fb43e6abb280552aef1575efaba7961",
+      "sha256": "c5912c13bd52db8c7b2e2c83dcc9b14dccc52908fba2813745229be3d2ee2e2b",
+      "bytes": 16875560
     },
     {
       "path": "fereg_windows.plugin",
-      "source_sha": "ee61833e1a083c37f57fbebe028e98b18df73afb",
-      "sha256": "66e06389272e6a54ec0be2d3cc66fe15268e0ff6a4c9df151607cbcee9017ab5",
-      "bytes": 11964416
+      "source_sha": "ee402880534fc97385e202d1876ff3b85c3a2a5e",
+      "sha256": "5571022392f31e0cd7750a814f3d729b90ba43611094d756721a5b66277a142c",
+      "bytes": 11977728
     },
     {
       "path": "fereg_macos.plugin",
-      "source_sha": "ee61833e1a083c37f57fbebe028e98b18df73afb",
-      "sha256": "e01c9b7e0b2bbc17d5a6e4a2dbf716e0a1108b5959e1fa1335d1eddcfc34d845",
-      "bytes": 21120448
+      "source_sha": "673ca1ab4fb43e6abb280552aef1575efaba7961",
+      "sha256": "f6563222d90bdd3728a77344540e4ac7f53f637948910ca0c177c5fbae367748",
+      "bytes": 21138480
     }
   ],
   "included_platforms": [
@@ -31,8 +31,10 @@
   "support_caveats": [
     "Only platforms named in included_platforms are supplied by this package.",
     "The Linux binary requires glibc 2.28 or newer.",
-    "Native Intel-host Stata testing is outstanding; the macOS plugin contains both processor slices."
+    "Windows retains serial input pending live Break qualification.",
+    "Native Intel-host Stata testing is outstanding; the macOS plugin contains both processor slices.",
+    "Measured no-FE performance regressions of about 6% were explicitly accepted for beta.14; see docs/VALIDATION.md."
   ],
-  "corresponding_source_sha256": "533c063325c94d9f0ad1cf8c35c0dfb461f518f7ce718ba8503c49b174ac02d1",
-  "corresponding_source_commit": "118c21880250894b1e66536daaf4e7b74a92fc4e"
+  "corresponding_source_sha256": "22d0b3c8b3d6cdfd8fb5c86bd202563bc074ded3be00590ba22d42c20f81d27b",
+  "corresponding_source_commit": "1ced84f0306036cb5821096d9e16f41ce4c3fd06"
 }
