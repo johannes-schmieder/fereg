@@ -1,0 +1,407 @@
+{
+  "schema": 1,
+  "release": "v0.5.0-beta.15",
+  "publication_authorized": "2026-11-02: accept and publish this candidate",
+  "binding": {
+    "schema": 1,
+    "version": "0.5.0",
+    "source_sha": "1306301d17aff6bee4f90660a17043d762215e3f",
+    "runtime_sha256": "a46e892c04443d8d9e4a1fadad08f15346a042144f8985566dd7d5650d4037dc",
+    "plugins": [
+      {
+        "path": "fereg_linux.plugin",
+        "source_sha": "1306301d17aff6bee4f90660a17043d762215e3f",
+        "sha256": "4dd4494eda9b8c02d867cc62c2058814a5e5ea3013064e8a3bf12d8e2a8c22a6",
+        "bytes": 17143184
+      },
+      {
+        "path": "fereg_windows.plugin",
+        "source_sha": "1306301d17aff6bee4f90660a17043d762215e3f",
+        "sha256": "9fa89bc7b12e2bf07e78f2c8f09ff66a47ab2b4cebbd941c68ebd56756451546",
+        "bytes": 12246528
+      },
+      {
+        "path": "fereg_macos.plugin",
+        "source_sha": "1306301d17aff6bee4f90660a17043d762215e3f",
+        "sha256": "2c8f6af8e10653a675c693e98560e94648e2f795ce5dfc605cf3f93f617d2200",
+        "bytes": 21623488
+      }
+    ],
+    "included_platforms": [
+      "linux",
+      "windows",
+      "macos"
+    ],
+    "support_caveats": [
+      "Only platforms named in included_platforms are supplied by this package.",
+      "The Linux binary requires glibc 2.28 or newer.",
+      "Windows retains serial input pending live Break qualification.",
+      "Native Intel-host Stata testing is outstanding; the macOS plugin contains both processor slices.",
+      "The Linux no-FE 16-regressor, one-worker slowdown of 7.3% versus beta.14 was explicitly accepted for beta.15; see docs/VALIDATION.md."
+    ],
+    "corresponding_source_sha256": "e2b1917ae39a97a4d103dee04f3a0b67a5fbc0cefd18c952103b4fdba2798abd",
+    "corresponding_source_commit": "c92b1118fbb135dc204ac2ff59ec4f180532b2fb"
+  },
+  "packaging_source_equality": {
+    "native_build_commit": "1306301d17aff6bee4f90660a17043d762215e3f",
+    "packaging_commit": "c92b1118fbb135dc204ac2ff59ec4f180532b2fb",
+    "changed_files": [
+      "README.md"
+    ],
+    "native_sources_exact": true
+  },
+  "timed_candidate_source_equality": {
+    "candidate_archive_sha256": "ad2188f8bfa03bbafe3967bfc1ed90807dcc9f32cff2479012ca84b16c0f528b",
+    "compared_native_source_files": 431,
+    "exact": true,
+    "publication_only_changes": [
+      "release label",
+      "Windows scientific fixture driver",
+      "acceptance documentation"
+    ]
+  },
+  "archives": {
+    "fereg-0.5.0.zip": {
+      "sha256": "c4bf3e5cf44427f92de01eb1d90369fe7ceb927c1ba081364c98208aeef32737",
+      "bytes": 18626326
+    },
+    "fereg-0.5.0-source.zip": {
+      "sha256": "e2b1917ae39a97a4d103dee04f3a0b67a5fbc0cefd18c952103b4fdba2798abd",
+      "bytes": 34891086
+    }
+  },
+  "dependency_audit": {
+    "advisory_count": 0,
+    "cargo_lock_sha256": "4975de767595cf184cd5328e6ec7f7a55e7871c545d3c51adbc92da1544696d5",
+    "schema": 1,
+    "source_sha": "c92b1118fbb135dc204ac2ff59ec4f180532b2fb",
+    "status": "pass",
+    "toolchain": "1.85.1"
+  },
+  "full_integration": {
+    "command": "./scripts/run_tests.sh",
+    "status": "passed",
+    "log_sha256": "43f883ee43ac4c8bee9da4cb8df64bff1cae3bfb0b804e9945909b0232ebb864"
+  },
+  "source_archive": {
+    "source_sha": "c92b1118fbb135dc204ac2ff59ec4f180532b2fb",
+    "verified_files": 3587,
+    "passed": true,
+    "offline_build": "passed",
+    "native_audit": "passed",
+    "native_abi": "passed",
+    "rebuilt_final_archive_artifact_is_distributed": false,
+    "log_sha256": "e127a78cb741508629c4c8cc725ed95c09efcbef94718ee46e15bcb0ccf6388e"
+  },
+  "native": {
+    "macos": {
+      "abi_and_binary_audit": "passed",
+      "replay": {
+        "scientific_pass_cases": 77,
+        "exact_timed_candidate": true
+      },
+      "fixtures": {
+        "completed": true,
+        "failure_detail": null,
+        "failure_kind": null,
+        "results": [
+          {
+            "failure_detail": null,
+            "failure_kind": null,
+            "fixture": "tests/stata/development/ols_no_fe_direct.do",
+            "process_rc": 0,
+            "stata_rc": 0,
+            "status": "success"
+          },
+          {
+            "failure_detail": null,
+            "failure_kind": null,
+            "fixture": "tests/stata/development/ols_no_fe_centered.do",
+            "process_rc": 0,
+            "stata_rc": 0,
+            "status": "success"
+          },
+          {
+            "failure_detail": null,
+            "failure_kind": null,
+            "fixture": "tests/stata/installation/estimate_ols_eclass_transaction.do",
+            "process_rc": 0,
+            "stata_rc": 0,
+            "status": "success"
+          },
+          {
+            "failure_detail": null,
+            "failure_kind": null,
+            "fixture": "tests/stata/parity_ppmlhdfe/feppml_one_fe_dummy_oracle.do",
+            "process_rc": 0,
+            "stata_rc": 0,
+            "status": "success"
+          }
+        ],
+        "schema_version": 1,
+        "stata_edition": "MP",
+        "stata_machine_type": "Mac (Apple Silicon)",
+        "stata_os": "Unix",
+        "stata_processors": 8,
+        "stata_rc": 0,
+        "stata_version": "19",
+        "status": "success",
+        "tests_failed": 0,
+        "tests_passed": 4
+      },
+      "no_fe_science": {
+        "observations": 90,
+        "fixed_worker_repeatability": true,
+        "cross_worker_scientific_agreement": true,
+        "maximum_errors": {
+          "b": 3.2529534621517087e-14,
+          "V": 1.5881867761018131e-19,
+          "rss_relative": 4.973799150320701e-14
+        }
+      },
+      "no_fe_exports_exact_timed_candidate": true
+    },
+    "linux": {
+      "abi_and_binary_audit": "passed",
+      "replay": {
+        "scientific_pass_cases": 77,
+        "exact_timed_candidate": true
+      },
+      "fixtures": {
+        "completed": true,
+        "failure_detail": null,
+        "failure_kind": null,
+        "results": [
+          {
+            "failure_detail": null,
+            "failure_kind": null,
+            "fixture": "tests/stata/development/ols_no_fe_direct.do",
+            "process_rc": 0,
+            "stata_rc": 0,
+            "status": "success"
+          },
+          {
+            "failure_detail": null,
+            "failure_kind": null,
+            "fixture": "tests/stata/development/ols_no_fe_centered.do",
+            "process_rc": 0,
+            "stata_rc": 0,
+            "status": "success"
+          },
+          {
+            "failure_detail": null,
+            "failure_kind": null,
+            "fixture": "tests/stata/installation/estimate_ols_eclass_transaction.do",
+            "process_rc": 0,
+            "stata_rc": 0,
+            "status": "success"
+          },
+          {
+            "failure_detail": null,
+            "failure_kind": null,
+            "fixture": "tests/stata/parity_ppmlhdfe/feppml_one_fe_dummy_oracle.do",
+            "process_rc": 0,
+            "stata_rc": 0,
+            "status": "success"
+          }
+        ],
+        "schema_version": 1,
+        "stata_edition": "MP",
+        "stata_machine_type": "PC (64-bit x86-64)",
+        "stata_os": "Unix",
+        "stata_processors": 4,
+        "stata_rc": 0,
+        "stata_version": "19",
+        "status": "success",
+        "tests_failed": 0,
+        "tests_passed": 4
+      },
+      "no_fe_science": {
+        "observations": 90,
+        "fixed_worker_repeatability": true,
+        "cross_worker_scientific_agreement": true,
+        "maximum_errors": {
+          "b": 3.2529534621517087e-14,
+          "V": 1.5881867761018131e-19,
+          "rss_relative": 4.973799150320701e-14
+        }
+      },
+      "no_fe_exports_exact_timed_candidate": true
+    }
+  },
+  "staged_archive": {
+    "archive_bytes": 18626326,
+    "archive_sha256": "c4bf3e5cf44427f92de01eb1d90369fe7ceb927c1ba081364c98208aeef32737",
+    "completed": true,
+    "manifest_sha256": "b920d82dcb4a6e93b1fb3933ce73c45fc40127d41d97d6b2f230df579f15e584",
+    "plugin_bytes": 21623488,
+    "plugin_sha256": "2c8f6af8e10653a675c693e98560e94648e2f795ce5dfc605cf3f93f617d2200",
+    "results": [
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/installation/installation_smoke.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_one_fe_dummy_oracle.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      }
+    ],
+    "schema_version": 1,
+    "source_sha": "c92b1118fbb135dc204ac2ff59ec4f180532b2fb",
+    "stata_edition": "MP",
+    "stata_executable_sha256": "178db3b78a3768ebfe88c36e845df292611b4b8ef0342c47a58e4641d0e6a16b",
+    "stata_executable_size_bytes": 119946864,
+    "stata_machine_type": "Mac (Apple Silicon)",
+    "stata_os": "Unix",
+    "stata_processors": 8,
+    "stata_version": "19",
+    "status": "success",
+    "tests_failed": 0,
+    "tests_passed": 2
+  },
+  "local_installations": {
+    "macos_19": {
+      "source": "local root package",
+      "installed_files": 36,
+      "status": "passed",
+      "selftest_version": "0.5.0-beta.15",
+      "independent_ols_ppml": "passed",
+      "restricted_sample": "if plus in",
+      "all_installed_hashes": "exact",
+      "no_fe_derived_row": 5
+    },
+    "linux_15": {
+      "source": "local root package",
+      "installed_files": 36,
+      "status": "passed",
+      "selftest_version": "0.5.0-beta.15",
+      "independent_ols_ppml": "passed",
+      "restricted_sample": "if plus in",
+      "all_installed_hashes": "exact",
+      "no_fe_derived_row": 5
+    },
+    "linux_19": {
+      "source": "local root package",
+      "installed_files": 36,
+      "status": "passed",
+      "selftest_version": "0.5.0-beta.15",
+      "independent_ols_ppml": "passed",
+      "restricted_sample": "if plus in",
+      "all_installed_hashes": "exact",
+      "no_fe_derived_row": 5
+    }
+  },
+  "windows": {
+    "receipt": {
+      "schema_version": 4,
+      "run_id": "win-20261102T192458Z-d0678b9d",
+      "project": "fereg",
+      "profile": "stata-do",
+      "source_revision": "commit-1306301d17aff6bee4f90660a17043d762215e3f",
+      "source_sha256": "8144b04b7ec60340dd9e78f3d97969983956fab262a3c4eb124568319e82e890",
+      "windows_target": "x86_64",
+      "execution_identity": "SYSTEM",
+      "status": "PASS",
+      "error_code": null,
+      "checks": {
+        "execution_identity": true,
+        "source_hash": true,
+        "archive_paths": true,
+        "source_manifest": true,
+        "shutdown_backstop": true,
+        "stata": true,
+        "project_test": true
+      },
+      "completed_at_utc": "2026-11-02T19:44:36.2738860Z",
+      "controller_sha256": "e635d58609f24fa8564ce4c3b6787eccd9df36892edb636069cdc2ebcdfdaf00",
+      "diagnostic_guard_sha256": "14fe3f6515439c55d0732e99fba797280b76dfd9638345794a639a00a44ffd12",
+      "process": {
+        "outcome": "passed",
+        "elapsed_ms": 1109740,
+        "exit_code": 0
+      },
+      "diagnostics": {
+        "available": true,
+        "compiler_errors": [],
+        "completed": [
+          "startup",
+          "toolchain",
+          "source_identity",
+          "cargo_build",
+          "exact_fma",
+          "fused_kernels",
+          "c_bridge",
+          "numeric_guards",
+          "plugin_link",
+          "binary_audit",
+          "native_loader",
+          "build_complete",
+          "checksum",
+          "stata_smoke",
+          "single_runtime"
+        ],
+        "native_rc": null,
+        "plugin_sha256": "9fa89bc7b12e2bf07e78f2c8f09ff66a47ab2b4cebbd941c68ebd56756451546",
+        "reason": "none",
+        "stage": "complete",
+        "stage_elapsed_ms": 3581,
+        "stata_rc": null,
+        "status": "PASS"
+      }
+    },
+    "instance_stopped": true,
+    "transient_objects_deleted": true,
+    "lock_released": true
+  },
+  "linux_native_accounting": {
+    "job": 8401878,
+    "host": "scc-ei3",
+    "slots": 16,
+    "failed": 0,
+    "exit_status": 0,
+    "wall_seconds": 322,
+    "maxvmem": "7.841G",
+    "no_fe_exports_exact_timed_candidate": true
+  },
+  "linux_local_accounting": {
+    "job": 8402322,
+    "host": "scc-pi1",
+    "slots": 4,
+    "failed": 0,
+    "exit_status": 0,
+    "wall_seconds": 10,
+    "maxvmem": "1.829G"
+  },
+  "installation_harness_repairs": {
+    "initial": "Stata r(509) in version-15 mreldif(e(b), ...) expression after successful installation and selftest",
+    "repair": "Name the actual coefficient and covariance matrices before using mreldif; preserve every tolerance and assertion",
+    "runtime_changed": false,
+    "second": "The temporary driver compared robust-default feppml covariance with model-based poisson covariance; coefficients and OLS checks passed.",
+    "second_repair": "Compute independent Poisson Hessian/score sandwich with SPEC correction N/(N-1); retain the existing 1e-6 covariance tolerance."
+  },
+  "optional_mac_stata15": {
+    "status": "not executed; local console could not locate its Stata directory",
+    "process_return_code": 0,
+    "authoritative_pass_marker": false,
+    "stderr": "cannot find Stata directory",
+    "platform_claim": "Mac qualification uses Stata 19; Stata 15 qualification uses Linux"
+  },
+  "performance": {
+    "decision": "Explicitly accepted the Linux k16/t1 +7.3% exception; automatic failed guard retained",
+    "retained_report": "no-fe-preparation-20261102.json",
+    "new_timing_round": false
+  },
+  "publication": {
+    "status": "ready; not uploaded",
+    "tag": "v0.5.0-beta.15"
+  },
+  "package_commit": "9b45998b1590456646612265f0281b5c2c14f6e5"
+}

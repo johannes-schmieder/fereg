@@ -8,9 +8,39 @@ the Linux 16-regressor, one-worker +7.3% performance exception for the frozen
 candidate. The original failed guard and all timing observations remain unchanged.
 It does not waive scientific checks or claim that fereg consistently beats regress.
 The release uses the accepted runtime, with release-label and qualification-driver
-updates only. Publication still requires corresponding source, platform native
-checks, the strict integration gate and actual installed-package verification.
+updates only. The corresponding-source, platform native, strict integration and local
+installed-package prerequisites now pass as recorded below.
 Windows keeps serial input; native Intel-Mac Stata execution remains untested.
+
+The [beta.15 package verification](../bench/results/beta15-publication-20261102.json)
+records the passing strict `scripts/run_tests.sh`, all three qualified plugins,
+zero dependency advisories and 3,587 verified corresponding-source manifest
+entries. The final source archive builds offline and passes binary/ABI checks.
+The native build commit and packaging source differ only in the README download
+link; all 431 compared native-source files match the timed candidate exactly.
+Both Mac and Linux release plugins pass all 77 replay cases and reproduce the
+timed candidate's 30 no-FE scientific exports exactly. Their four mapped Stata
+fixtures and 90-call independent scientific checks pass.
+
+Windows run `win-20261102T192458Z-d0678b9d` passes its exact-source native build,
+FMA/kernel/ABI checks, installed-plugin checksum, existing OLS/PPML/transaction
+fixtures and both new no-FE fixtures. The machine is stopped, its transient
+objects deleted and lock released. Linux native job 8401878 exits zero on scc-ei3.
+Fresh root installations on Mac Stata 19 and Linux Stata 15/19 verify all 36
+installed bytes, beta.15 selftest, the no-FE derived row, sample membership and
+independent OLS/PPML coefficient and covariance witnesses. Linux installation
+job 8402322 exits zero on scc-pi1. The exact binary archive also passes Mac
+installation and independent PPML smoke checks.
+
+The temporary installation driver needed two bounded repairs: Stata 15 matrix
+expression syntax and an incorrect model-based Poisson covariance reference for
+robust-default PPML. The corrected driver uses the independent score sandwich
+with the specified N/(N-1) correction and unchanged tolerances. An optional Mac
+Stata 15 console attempt cannot locate its local Stata directory and supplies
+no qualification evidence; Stata 15 qualification here is Linux. The Windows
+wrapper's initial clean-tree check rejected unrelated untracked files before
+starting the host; the clean source snapshot passed. None of these repairs
+changes fereg or the frozen performance observations.
 
 ## Revised no-FE candidate: preparation and loader integration
 
