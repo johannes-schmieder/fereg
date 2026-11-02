@@ -1,0 +1,3386 @@
+{
+  "scope": "Adaptive bounded serial tiles and wide FE input preparation; no numerical or estimator-route changes.",
+  "runtime_source": "673ca1ab4fb43e6abb280552aef1575efaba7961",
+  "extra_science_families": 9,
+  "science_calls_per_platform": 456,
+  "native_checks": {
+    "fixtures": 68,
+    "exact_replays": 77,
+    "input_oracle_workers": [
+      4,
+      8
+    ],
+    "live_break": [
+      "input",
+      "ols",
+      "ppml"
+    ],
+    "source_integration": "passed source-only; final package admission not performed"
+  },
+  "platform": "linux",
+  "performance": {
+    "status": "passed",
+    "regressions": [],
+    "observations": 720,
+    "cells": 40,
+    "resampling": false,
+    "comparisons": [
+      {
+        "reference": "incumbent",
+        "cell": "w130-fe-parallel",
+        "threads": 4,
+        "metric": "wall_s",
+        "reference_median": 0.5974999999999999,
+        "candidate_median": 0.599,
+        "ratio": 1.0025104602510462,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w130-fe-parallel",
+        "threads": 4,
+        "metric": "load_s",
+        "reference_median": 0.0566446605,
+        "candidate_median": 0.06554182450000001,
+        "ratio": 1.1570697735932236,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w130-fe-parallel",
+        "threads": 4,
+        "metric": "native_s",
+        "reference_median": 0.4976924165,
+        "candidate_median": 0.49882834200000004,
+        "ratio": 1.0022823845860227,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w130-fe-parallel",
+        "threads": 4,
+        "metric": "alloc_peak",
+        "reference_median": 210682970.0,
+        "candidate_median": 221575463.0,
+        "ratio": 1.0517008707443227,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w130-fe-parallel",
+        "threads": 4,
+        "metric": "wall_s",
+        "reference_median": 0.5774999999999999,
+        "candidate_median": 0.599,
+        "ratio": 1.0372294372294373,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w130-fe-parallel",
+        "threads": 4,
+        "metric": "load_s",
+        "reference_median": 0.056108389,
+        "candidate_median": 0.06554182450000001,
+        "ratio": 1.1681287890835719,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w130-fe-parallel",
+        "threads": 4,
+        "metric": "native_s",
+        "reference_median": 0.4789179815,
+        "candidate_median": 0.49882834200000004,
+        "ratio": 1.041573633208842,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w130-fe-parallel",
+        "threads": 4,
+        "metric": "alloc_peak",
+        "reference_median": 210680666.0,
+        "candidate_median": 221575463.0,
+        "ratio": 1.0517123721262587,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w130-fe-parallel",
+        "threads": 16,
+        "metric": "wall_s",
+        "reference_median": 0.3845,
+        "candidate_median": 0.394,
+        "ratio": 1.024707412223667,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w130-fe-parallel",
+        "threads": 16,
+        "metric": "load_s",
+        "reference_median": 0.023438228,
+        "candidate_median": 0.0267189885,
+        "ratio": 1.139974766863775,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w130-fe-parallel",
+        "threads": 16,
+        "metric": "native_s",
+        "reference_median": 0.28312967850000004,
+        "candidate_median": 0.2924817575,
+        "ratio": 1.0330310797848765,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w130-fe-parallel",
+        "threads": 16,
+        "metric": "alloc_peak",
+        "reference_median": 210726666.0,
+        "candidate_median": 221620079.0,
+        "ratio": 1.051694515966005,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w130-fe-parallel",
+        "threads": 16,
+        "metric": "wall_s",
+        "reference_median": 0.383,
+        "candidate_median": 0.394,
+        "ratio": 1.0287206266318538,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w130-fe-parallel",
+        "threads": 16,
+        "metric": "load_s",
+        "reference_median": 0.0228818145,
+        "candidate_median": 0.0267189885,
+        "ratio": 1.167695354754318,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w130-fe-parallel",
+        "threads": 16,
+        "metric": "native_s",
+        "reference_median": 0.282348159,
+        "candidate_median": 0.2924817575,
+        "ratio": 1.0358904358926597,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w130-fe-parallel",
+        "threads": 16,
+        "metric": "alloc_peak",
+        "reference_median": 210726666.0,
+        "candidate_median": 221620079.0,
+        "ratio": 1.051694515966005,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w130-fe-serial",
+        "threads": 4,
+        "metric": "wall_s",
+        "reference_median": 0.7755000000000001,
+        "candidate_median": 0.73,
+        "ratio": 0.9413281753707284,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w130-fe-serial",
+        "threads": 4,
+        "metric": "load_s",
+        "reference_median": 0.21516706600000002,
+        "candidate_median": 0.1654250855,
+        "ratio": 0.7688215886161686,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w130-fe-serial",
+        "threads": 4,
+        "metric": "native_s",
+        "reference_median": 0.671817646,
+        "candidate_median": 0.6273083859999999,
+        "ratio": 0.9337480039933335,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w130-fe-serial",
+        "threads": 4,
+        "metric": "alloc_peak",
+        "reference_median": 210692874.0,
+        "candidate_median": 225353407.0,
+        "ratio": 1.069582481465415,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w130-fe-serial",
+        "threads": 4,
+        "metric": "wall_s",
+        "reference_median": 0.7695000000000001,
+        "candidate_median": 0.73,
+        "ratio": 0.9486679662118257,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w130-fe-serial",
+        "threads": 4,
+        "metric": "load_s",
+        "reference_median": 0.216436917,
+        "candidate_median": 0.1654250855,
+        "ratio": 0.7643108569135644,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w130-fe-serial",
+        "threads": 4,
+        "metric": "native_s",
+        "reference_median": 0.6655625700000001,
+        "candidate_median": 0.6273083859999999,
+        "ratio": 0.942523534639275,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w130-fe-serial",
+        "threads": 4,
+        "metric": "alloc_peak",
+        "reference_median": 210692874.0,
+        "candidate_median": 225353407.0,
+        "ratio": 1.069582481465415,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w130-fe-serial",
+        "threads": 16,
+        "metric": "wall_s",
+        "reference_median": 0.61,
+        "candidate_median": 0.5505,
+        "ratio": 0.9024590163934426,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w130-fe-serial",
+        "threads": 16,
+        "metric": "load_s",
+        "reference_median": 0.22050920899999998,
+        "candidate_median": 0.16540175899999998,
+        "ratio": 0.7500900291198269,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w130-fe-serial",
+        "threads": 16,
+        "metric": "native_s",
+        "reference_median": 0.5042288375,
+        "candidate_median": 0.44411823699999997,
+        "ratio": 0.8807870632746188,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w130-fe-serial",
+        "threads": 16,
+        "metric": "alloc_peak",
+        "reference_median": 210726666.0,
+        "candidate_median": 225387199.0,
+        "ratio": 1.0695713232610058,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w130-fe-serial",
+        "threads": 16,
+        "metric": "wall_s",
+        "reference_median": 0.5965,
+        "candidate_median": 0.5505,
+        "ratio": 0.922883487007544,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w130-fe-serial",
+        "threads": 16,
+        "metric": "load_s",
+        "reference_median": 0.2129673375,
+        "candidate_median": 0.16540175899999998,
+        "ratio": 0.7766531757481355,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w130-fe-serial",
+        "threads": 16,
+        "metric": "native_s",
+        "reference_median": 0.4848604355,
+        "candidate_median": 0.44411823699999997,
+        "ratio": 0.9159712867518554,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w130-fe-serial",
+        "threads": 16,
+        "metric": "alloc_peak",
+        "reference_median": 210726666.0,
+        "candidate_median": 225387199.0,
+        "ratio": 1.0695713232610058,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w130-none-parallel",
+        "threads": 4,
+        "metric": "wall_s",
+        "reference_median": 0.8125,
+        "candidate_median": 0.8175,
+        "ratio": 1.0061538461538462,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w130-none-parallel",
+        "threads": 4,
+        "metric": "load_s",
+        "reference_median": 0.057298767,
+        "candidate_median": 0.055815979,
+        "ratio": 0.9741218166177992,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w130-none-parallel",
+        "threads": 4,
+        "metric": "native_s",
+        "reference_median": 0.7119177095,
+        "candidate_median": 0.717694297,
+        "ratio": 1.0081141224932542,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w130-none-parallel",
+        "threads": 4,
+        "metric": "alloc_peak",
+        "reference_median": 210434445.0,
+        "candidate_median": 210434445.0,
+        "ratio": 1.0,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w130-none-parallel",
+        "threads": 4,
+        "metric": "wall_s",
+        "reference_median": 0.8285,
+        "candidate_median": 0.8175,
+        "ratio": 0.9867229933614967,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w130-none-parallel",
+        "threads": 4,
+        "metric": "load_s",
+        "reference_median": 0.0561126285,
+        "candidate_median": 0.055815979,
+        "ratio": 0.9947133201931541,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w130-none-parallel",
+        "threads": 4,
+        "metric": "native_s",
+        "reference_median": 0.7298151534999999,
+        "candidate_median": 0.717694297,
+        "ratio": 0.9833918815718315,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w130-none-parallel",
+        "threads": 4,
+        "metric": "alloc_peak",
+        "reference_median": 210423273.0,
+        "candidate_median": 210434445.0,
+        "ratio": 1.0000530929865348,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w130-none-parallel",
+        "threads": 16,
+        "metric": "wall_s",
+        "reference_median": 0.7095,
+        "candidate_median": 0.706,
+        "ratio": 0.9950669485553205,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w130-none-parallel",
+        "threads": 16,
+        "metric": "load_s",
+        "reference_median": 0.0238414265,
+        "candidate_median": 0.023094028500000002,
+        "ratio": 0.9686512885460106,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w130-none-parallel",
+        "threads": 16,
+        "metric": "native_s",
+        "reference_median": 0.6074784915,
+        "candidate_median": 0.605614799,
+        "ratio": 0.9969320847962895,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w130-none-parallel",
+        "threads": 16,
+        "metric": "alloc_peak",
+        "reference_median": 210468237.0,
+        "candidate_median": 210468237.0,
+        "ratio": 1.0,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w130-none-parallel",
+        "threads": 16,
+        "metric": "wall_s",
+        "reference_median": 0.727,
+        "candidate_median": 0.706,
+        "ratio": 0.9711141678129298,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w130-none-parallel",
+        "threads": 16,
+        "metric": "load_s",
+        "reference_median": 0.023715024,
+        "candidate_median": 0.023094028500000002,
+        "ratio": 0.973814257999486,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w130-none-parallel",
+        "threads": 16,
+        "metric": "native_s",
+        "reference_median": 0.6275977335,
+        "candidate_median": 0.605614799,
+        "ratio": 0.9649728905529898,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w130-none-parallel",
+        "threads": 16,
+        "metric": "alloc_peak",
+        "reference_median": 210468237.0,
+        "candidate_median": 210468237.0,
+        "ratio": 1.0,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w130-none-serial",
+        "threads": 4,
+        "metric": "wall_s",
+        "reference_median": 1.0285,
+        "candidate_median": 1.0255,
+        "ratio": 0.9970831307729705,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w130-none-serial",
+        "threads": 4,
+        "metric": "load_s",
+        "reference_median": 0.215483019,
+        "candidate_median": 0.214099268,
+        "ratio": 0.9935783756584551,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w130-none-serial",
+        "threads": 4,
+        "metric": "native_s",
+        "reference_median": 0.9265413485,
+        "candidate_median": 0.9247167175,
+        "ratio": 0.9980307074228754,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w130-none-serial",
+        "threads": 4,
+        "metric": "alloc_peak",
+        "reference_median": 210434445.0,
+        "candidate_median": 210434445.0,
+        "ratio": 1.0,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w130-none-serial",
+        "threads": 4,
+        "metric": "wall_s",
+        "reference_median": 1.0114999999999998,
+        "candidate_median": 1.0255,
+        "ratio": 1.0138408304498272,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w130-none-serial",
+        "threads": 4,
+        "metric": "load_s",
+        "reference_median": 0.217176245,
+        "candidate_median": 0.214099268,
+        "ratio": 0.9858318896709906,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w130-none-serial",
+        "threads": 4,
+        "metric": "native_s",
+        "reference_median": 0.9084911755,
+        "candidate_median": 0.9247167175,
+        "ratio": 1.0178598784859632,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w130-none-serial",
+        "threads": 4,
+        "metric": "alloc_peak",
+        "reference_median": 210434445.0,
+        "candidate_median": 210434445.0,
+        "ratio": 1.0,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w130-none-serial",
+        "threads": 16,
+        "metric": "wall_s",
+        "reference_median": 0.9035,
+        "candidate_median": 0.902,
+        "ratio": 0.9983397897066962,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w130-none-serial",
+        "threads": 16,
+        "metric": "load_s",
+        "reference_median": 0.2138240525,
+        "candidate_median": 0.213923869,
+        "ratio": 1.0004668160519499,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w130-none-serial",
+        "threads": 16,
+        "metric": "native_s",
+        "reference_median": 0.7950828305,
+        "candidate_median": 0.796865714,
+        "ratio": 1.0022423871219541,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w130-none-serial",
+        "threads": 16,
+        "metric": "alloc_peak",
+        "reference_median": 210468237.0,
+        "candidate_median": 210468237.0,
+        "ratio": 1.0,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w130-none-serial",
+        "threads": 16,
+        "metric": "wall_s",
+        "reference_median": 0.9275,
+        "candidate_median": 0.902,
+        "ratio": 0.9725067385444744,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w130-none-serial",
+        "threads": 16,
+        "metric": "load_s",
+        "reference_median": 0.216441926,
+        "candidate_median": 0.213923869,
+        "ratio": 0.9883661310609478,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w130-none-serial",
+        "threads": 16,
+        "metric": "native_s",
+        "reference_median": 0.817301056,
+        "candidate_median": 0.796865714,
+        "ratio": 0.9749965550026157,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w130-none-serial",
+        "threads": 16,
+        "metric": "alloc_peak",
+        "reference_median": 210468237.0,
+        "candidate_median": 210468237.0,
+        "ratio": 1.0,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w63-fe-parallel",
+        "threads": 4,
+        "metric": "wall_s",
+        "reference_median": 0.2015,
+        "candidate_median": 0.201,
+        "ratio": 0.9975186104218362,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w63-fe-parallel",
+        "threads": 4,
+        "metric": "load_s",
+        "reference_median": 0.035905557,
+        "candidate_median": 0.0340704765,
+        "ratio": 0.9488914626780475,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w63-fe-parallel",
+        "threads": 4,
+        "metric": "native_s",
+        "reference_median": 0.148477602,
+        "candidate_median": 0.1482043015,
+        "ratio": 0.9981593149652296,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w63-fe-parallel",
+        "threads": 4,
+        "metric": "alloc_peak",
+        "reference_median": 107653535.0,
+        "candidate_median": 107660787.0,
+        "ratio": 1.0000673642532965,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w63-fe-parallel",
+        "threads": 4,
+        "metric": "wall_s",
+        "reference_median": 0.2025,
+        "candidate_median": 0.201,
+        "ratio": 0.9925925925925926,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w63-fe-parallel",
+        "threads": 4,
+        "metric": "load_s",
+        "reference_median": 0.036459695,
+        "candidate_median": 0.0340704765,
+        "ratio": 0.9344695971812161,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w63-fe-parallel",
+        "threads": 4,
+        "metric": "native_s",
+        "reference_median": 0.14994743100000002,
+        "candidate_median": 0.1482043015,
+        "ratio": 0.9883750625911022,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w63-fe-parallel",
+        "threads": 4,
+        "metric": "alloc_peak",
+        "reference_median": 107651919.0,
+        "candidate_median": 107660787.0,
+        "ratio": 1.0000823766086324,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w63-fe-parallel",
+        "threads": 16,
+        "metric": "wall_s",
+        "reference_median": 0.1365,
+        "candidate_median": 0.138,
+        "ratio": 1.010989010989011,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w63-fe-parallel",
+        "threads": 16,
+        "metric": "load_s",
+        "reference_median": 0.015060175499999998,
+        "candidate_median": 0.01623639,
+        "ratio": 1.07810098228935,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w63-fe-parallel",
+        "threads": 16,
+        "metric": "native_s",
+        "reference_median": 0.0874281995,
+        "candidate_median": 0.0917777015,
+        "ratio": 1.0497494175206021,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w63-fe-parallel",
+        "threads": 16,
+        "metric": "alloc_peak",
+        "reference_median": 107694581.0,
+        "candidate_median": 107694581.0,
+        "ratio": 1.0,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w63-fe-parallel",
+        "threads": 16,
+        "metric": "wall_s",
+        "reference_median": 0.1385,
+        "candidate_median": 0.138,
+        "ratio": 0.9963898916967509,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w63-fe-parallel",
+        "threads": 16,
+        "metric": "load_s",
+        "reference_median": 0.0151763925,
+        "candidate_median": 0.01623639,
+        "ratio": 1.0698451558893196,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w63-fe-parallel",
+        "threads": 16,
+        "metric": "native_s",
+        "reference_median": 0.089662978,
+        "candidate_median": 0.0917777015,
+        "ratio": 1.023585247190875,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w63-fe-parallel",
+        "threads": 16,
+        "metric": "alloc_peak",
+        "reference_median": 107694581.0,
+        "candidate_median": 107694581.0,
+        "ratio": 1.0,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w63-fe-serial",
+        "threads": 4,
+        "metric": "wall_s",
+        "reference_median": 0.264,
+        "candidate_median": 0.2645,
+        "ratio": 1.0018939393939394,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w63-fe-serial",
+        "threads": 4,
+        "metric": "load_s",
+        "reference_median": 0.0848140455,
+        "candidate_median": 0.0835580145,
+        "ratio": 0.9851907665458547,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w63-fe-serial",
+        "threads": 4,
+        "metric": "native_s",
+        "reference_median": 0.2084191535,
+        "candidate_median": 0.2102259275,
+        "ratio": 1.0086689441428902,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w63-fe-serial",
+        "threads": 4,
+        "metric": "alloc_peak",
+        "reference_median": 111722397.0,
+        "candidate_median": 111723549.0,
+        "ratio": 1.0000103112717855,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w63-fe-serial",
+        "threads": 4,
+        "metric": "wall_s",
+        "reference_median": 0.262,
+        "candidate_median": 0.2645,
+        "ratio": 1.0095419847328244,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w63-fe-serial",
+        "threads": 4,
+        "metric": "load_s",
+        "reference_median": 0.0836022825,
+        "candidate_median": 0.0835580145,
+        "ratio": 0.9994704929258361,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w63-fe-serial",
+        "threads": 4,
+        "metric": "native_s",
+        "reference_median": 0.206054165,
+        "candidate_median": 0.2102259275,
+        "ratio": 1.0202459508644244,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w63-fe-serial",
+        "threads": 4,
+        "metric": "alloc_peak",
+        "reference_median": 111702365.0,
+        "candidate_median": 111723549.0,
+        "ratio": 1.0001896468351408,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w63-fe-serial",
+        "threads": 16,
+        "metric": "wall_s",
+        "reference_median": 0.2325,
+        "candidate_median": 0.236,
+        "ratio": 1.01505376344086,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w63-fe-serial",
+        "threads": 16,
+        "metric": "load_s",
+        "reference_median": 0.0851604235,
+        "candidate_median": 0.08679137549999999,
+        "ratio": 1.019151525238716,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w63-fe-serial",
+        "threads": 16,
+        "metric": "native_s",
+        "reference_median": 0.17911243300000002,
+        "candidate_median": 0.1857986985,
+        "ratio": 1.0373299909336835,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w63-fe-serial",
+        "threads": 16,
+        "metric": "alloc_peak",
+        "reference_median": 111757343.0,
+        "candidate_median": 111757343.0,
+        "ratio": 1.0,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w63-fe-serial",
+        "threads": 16,
+        "metric": "wall_s",
+        "reference_median": 0.2355,
+        "candidate_median": 0.236,
+        "ratio": 1.0021231422505308,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w63-fe-serial",
+        "threads": 16,
+        "metric": "load_s",
+        "reference_median": 0.085846778,
+        "candidate_median": 0.08679137549999999,
+        "ratio": 1.0110032958953916,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w63-fe-serial",
+        "threads": 16,
+        "metric": "native_s",
+        "reference_median": 0.18145259749999998,
+        "candidate_median": 0.1857986985,
+        "ratio": 1.02395171554378,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w63-fe-serial",
+        "threads": 16,
+        "metric": "alloc_peak",
+        "reference_median": 111757343.0,
+        "candidate_median": 111757343.0,
+        "ratio": 1.0,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w63-none-parallel",
+        "threads": 4,
+        "metric": "wall_s",
+        "reference_median": 0.34450000000000003,
+        "candidate_median": 0.337,
+        "ratio": 0.9782293178519593,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w63-none-parallel",
+        "threads": 4,
+        "metric": "load_s",
+        "reference_median": 0.0351950195,
+        "candidate_median": 0.0339776945,
+        "ratio": 0.9654120095032197,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w63-none-parallel",
+        "threads": 4,
+        "metric": "native_s",
+        "reference_median": 0.2889366685,
+        "candidate_median": 0.284418976,
+        "ratio": 0.9843644196375165,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w63-none-parallel",
+        "threads": 4,
+        "metric": "alloc_peak",
+        "reference_median": 102621954.0,
+        "candidate_median": 102621954.0,
+        "ratio": 1.0,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w63-none-parallel",
+        "threads": 4,
+        "metric": "wall_s",
+        "reference_median": 0.3465,
+        "candidate_median": 0.337,
+        "ratio": 0.9725829725829728,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w63-none-parallel",
+        "threads": 4,
+        "metric": "load_s",
+        "reference_median": 0.0335132605,
+        "candidate_median": 0.0339776945,
+        "ratio": 1.0138582159142648,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w63-none-parallel",
+        "threads": 4,
+        "metric": "native_s",
+        "reference_median": 0.2922696205,
+        "candidate_median": 0.284418976,
+        "ratio": 0.9731390334494241,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w63-none-parallel",
+        "threads": 4,
+        "metric": "alloc_peak",
+        "reference_median": 102621954.0,
+        "candidate_median": 102621954.0,
+        "ratio": 1.0,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w63-none-parallel",
+        "threads": 16,
+        "metric": "wall_s",
+        "reference_median": 0.303,
+        "candidate_median": 0.294,
+        "ratio": 0.9702970297029703,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w63-none-parallel",
+        "threads": 16,
+        "metric": "load_s",
+        "reference_median": 0.015323879499999998,
+        "candidate_median": 0.0146930445,
+        "ratio": 0.9588332053903192,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w63-none-parallel",
+        "threads": 16,
+        "metric": "native_s",
+        "reference_median": 0.24887947449999998,
+        "candidate_median": 0.241521448,
+        "ratio": 0.9704353823681833,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w63-none-parallel",
+        "threads": 16,
+        "metric": "alloc_peak",
+        "reference_median": 102725764.0,
+        "candidate_median": 102725764.0,
+        "ratio": 1.0,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w63-none-parallel",
+        "threads": 16,
+        "metric": "wall_s",
+        "reference_median": 0.306,
+        "candidate_median": 0.294,
+        "ratio": 0.9607843137254901,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w63-none-parallel",
+        "threads": 16,
+        "metric": "load_s",
+        "reference_median": 0.015001595,
+        "candidate_median": 0.0146930445,
+        "ratio": 0.9794321537143218,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w63-none-parallel",
+        "threads": 16,
+        "metric": "native_s",
+        "reference_median": 0.252716662,
+        "candidate_median": 0.241521448,
+        "ratio": 0.9557005307390457,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w63-none-parallel",
+        "threads": 16,
+        "metric": "alloc_peak",
+        "reference_median": 102725764.0,
+        "candidate_median": 102725764.0,
+        "ratio": 1.0,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w63-none-serial",
+        "threads": 4,
+        "metric": "wall_s",
+        "reference_median": 0.432,
+        "candidate_median": 0.43,
+        "ratio": 0.9953703703703703,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w63-none-serial",
+        "threads": 4,
+        "metric": "load_s",
+        "reference_median": 0.10948458,
+        "candidate_median": 0.108521706,
+        "ratio": 0.991205391663374,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w63-none-serial",
+        "threads": 4,
+        "metric": "native_s",
+        "reference_median": 0.37483063149999996,
+        "candidate_median": 0.3726472455,
+        "ratio": 0.994175006478893,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w63-none-serial",
+        "threads": 4,
+        "metric": "alloc_peak",
+        "reference_median": 102691992.0,
+        "candidate_median": 102691992.0,
+        "ratio": 1.0,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w63-none-serial",
+        "threads": 4,
+        "metric": "wall_s",
+        "reference_median": 0.44099999999999995,
+        "candidate_median": 0.43,
+        "ratio": 0.9750566893424037,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w63-none-serial",
+        "threads": 4,
+        "metric": "load_s",
+        "reference_median": 0.10894521600000001,
+        "candidate_median": 0.108521706,
+        "ratio": 0.9961126333440835,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w63-none-serial",
+        "threads": 4,
+        "metric": "native_s",
+        "reference_median": 0.3830220045,
+        "candidate_median": 0.3726472455,
+        "ratio": 0.9729134126026433,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w63-none-serial",
+        "threads": 4,
+        "metric": "alloc_peak",
+        "reference_median": 102691992.0,
+        "candidate_median": 102691992.0,
+        "ratio": 1.0,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w63-none-serial",
+        "threads": 16,
+        "metric": "wall_s",
+        "reference_median": 0.3945,
+        "candidate_median": 0.4045,
+        "ratio": 1.0253485424588087,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w63-none-serial",
+        "threads": 16,
+        "metric": "load_s",
+        "reference_median": 0.10544202350000001,
+        "candidate_median": 0.1057084125,
+        "ratio": 1.0025264025780005,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w63-none-serial",
+        "threads": 16,
+        "metric": "native_s",
+        "reference_median": 0.340512464,
+        "candidate_median": 0.3490747705,
+        "ratio": 1.025145354150678,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w63-none-serial",
+        "threads": 16,
+        "metric": "alloc_peak",
+        "reference_median": 102725786.0,
+        "candidate_median": 102725786.0,
+        "ratio": 1.0,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w63-none-serial",
+        "threads": 16,
+        "metric": "wall_s",
+        "reference_median": 0.4125,
+        "candidate_median": 0.4045,
+        "ratio": 0.9806060606060607,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w63-none-serial",
+        "threads": 16,
+        "metric": "load_s",
+        "reference_median": 0.10575913049999999,
+        "candidate_median": 0.1057084125,
+        "ratio": 0.9995204385686587,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w63-none-serial",
+        "threads": 16,
+        "metric": "native_s",
+        "reference_median": 0.3568573175,
+        "candidate_median": 0.3490747705,
+        "ratio": 0.9781914322101578,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w63-none-serial",
+        "threads": 16,
+        "metric": "alloc_peak",
+        "reference_median": 102725786.0,
+        "candidate_median": 102725786.0,
+        "ratio": 1.0,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w64-fe-parallel",
+        "threads": 4,
+        "metric": "wall_s",
+        "reference_median": 0.203,
+        "candidate_median": 0.201,
+        "ratio": 0.9901477832512315,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w64-fe-parallel",
+        "threads": 4,
+        "metric": "load_s",
+        "reference_median": 0.0364303565,
+        "candidate_median": 0.034540194499999996,
+        "ratio": 0.9481157424303547,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w64-fe-parallel",
+        "threads": 4,
+        "metric": "native_s",
+        "reference_median": 0.15003255399999998,
+        "candidate_median": 0.148714778,
+        "ratio": 0.9912167328698545,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w64-fe-parallel",
+        "threads": 4,
+        "metric": "alloc_peak",
+        "reference_median": 109354962.0,
+        "candidate_median": 109346094.0,
+        "ratio": 0.999918906286118,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w64-fe-parallel",
+        "threads": 4,
+        "metric": "wall_s",
+        "reference_median": 0.203,
+        "candidate_median": 0.201,
+        "ratio": 0.9901477832512315,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w64-fe-parallel",
+        "threads": 4,
+        "metric": "load_s",
+        "reference_median": 0.03505227700000001,
+        "candidate_median": 0.034540194499999996,
+        "ratio": 0.9853908920096686,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w64-fe-parallel",
+        "threads": 4,
+        "metric": "native_s",
+        "reference_median": 0.1505736275,
+        "candidate_median": 0.148714778,
+        "ratio": 0.9876548800021437,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w64-fe-parallel",
+        "threads": 4,
+        "metric": "alloc_peak",
+        "reference_median": 109350238.0,
+        "candidate_median": 109346094.0,
+        "ratio": 0.9999621034203876,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w64-fe-parallel",
+        "threads": 16,
+        "metric": "wall_s",
+        "reference_median": 0.1365,
+        "candidate_median": 0.136,
+        "ratio": 0.9963369963369964,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w64-fe-parallel",
+        "threads": 16,
+        "metric": "load_s",
+        "reference_median": 0.0145813505,
+        "candidate_median": 0.015494694,
+        "ratio": 1.0626377851626294,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w64-fe-parallel",
+        "threads": 16,
+        "metric": "native_s",
+        "reference_median": 0.08726666599999999,
+        "candidate_median": 0.08777056999999999,
+        "ratio": 1.0057743010372369,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w64-fe-parallel",
+        "threads": 16,
+        "metric": "alloc_peak",
+        "reference_median": 109395204.0,
+        "candidate_median": 109395204.0,
+        "ratio": 1.0,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w64-fe-parallel",
+        "threads": 16,
+        "metric": "wall_s",
+        "reference_median": 0.135,
+        "candidate_median": 0.136,
+        "ratio": 1.0074074074074073,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w64-fe-parallel",
+        "threads": 16,
+        "metric": "load_s",
+        "reference_median": 0.015206220999999999,
+        "candidate_median": 0.015494694,
+        "ratio": 1.018970722574662,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w64-fe-parallel",
+        "threads": 16,
+        "metric": "native_s",
+        "reference_median": 0.087007237,
+        "candidate_median": 0.08777056999999999,
+        "ratio": 1.0087732127386138,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w64-fe-parallel",
+        "threads": 16,
+        "metric": "alloc_peak",
+        "reference_median": 109395204.0,
+        "candidate_median": 109395204.0,
+        "ratio": 1.0,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w64-fe-serial",
+        "threads": 4,
+        "metric": "wall_s",
+        "reference_median": 0.2735,
+        "candidate_median": 0.2725,
+        "ratio": 0.9963436928702011,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w64-fe-serial",
+        "threads": 4,
+        "metric": "load_s",
+        "reference_median": 0.09154528249999999,
+        "candidate_median": 0.09133462349999999,
+        "ratio": 0.9976988546624453,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w64-fe-serial",
+        "threads": 4,
+        "metric": "native_s",
+        "reference_median": 0.2180095655,
+        "candidate_median": 0.2172128955,
+        "ratio": 0.9963457108032262,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w64-fe-serial",
+        "threads": 4,
+        "metric": "alloc_peak",
+        "reference_median": 113489572.0,
+        "candidate_median": 113488420.0,
+        "ratio": 0.9999898492876509,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w64-fe-serial",
+        "threads": 4,
+        "metric": "wall_s",
+        "reference_median": 0.27,
+        "candidate_median": 0.2725,
+        "ratio": 1.0092592592592593,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w64-fe-serial",
+        "threads": 4,
+        "metric": "load_s",
+        "reference_median": 0.09001962150000001,
+        "candidate_median": 0.09133462349999999,
+        "ratio": 1.0146079485570818,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w64-fe-serial",
+        "threads": 4,
+        "metric": "native_s",
+        "reference_median": 0.2139831355,
+        "candidate_median": 0.2172128955,
+        "ratio": 1.0150935259101295,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w64-fe-serial",
+        "threads": 4,
+        "metric": "alloc_peak",
+        "reference_median": 113489572.0,
+        "candidate_median": 113488420.0,
+        "ratio": 0.9999898492876509,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w64-fe-serial",
+        "threads": 16,
+        "metric": "wall_s",
+        "reference_median": 0.235,
+        "candidate_median": 0.2425,
+        "ratio": 1.0319148936170213,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w64-fe-serial",
+        "threads": 16,
+        "metric": "load_s",
+        "reference_median": 0.091396717,
+        "candidate_median": 0.0938129335,
+        "ratio": 1.0264365786792977,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w64-fe-serial",
+        "threads": 16,
+        "metric": "native_s",
+        "reference_median": 0.18387999700000002,
+        "candidate_median": 0.18753277299999999,
+        "ratio": 1.0198649992364313,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w64-fe-serial",
+        "threads": 16,
+        "metric": "alloc_peak",
+        "reference_median": 113523366.0,
+        "candidate_median": 113523366.0,
+        "ratio": 1.0,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w64-fe-serial",
+        "threads": 16,
+        "metric": "wall_s",
+        "reference_median": 0.234,
+        "candidate_median": 0.2425,
+        "ratio": 1.0363247863247862,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w64-fe-serial",
+        "threads": 16,
+        "metric": "load_s",
+        "reference_median": 0.0915689885,
+        "candidate_median": 0.0938129335,
+        "ratio": 1.0245055125840994,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w64-fe-serial",
+        "threads": 16,
+        "metric": "native_s",
+        "reference_median": 0.1829888355,
+        "candidate_median": 0.18753277299999999,
+        "ratio": 1.0248317745046254,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w64-fe-serial",
+        "threads": 16,
+        "metric": "alloc_peak",
+        "reference_median": 113523366.0,
+        "candidate_median": 113523366.0,
+        "ratio": 1.0,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w64-none-parallel",
+        "threads": 4,
+        "metric": "wall_s",
+        "reference_median": 0.332,
+        "candidate_median": 0.3315,
+        "ratio": 0.9984939759036144,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w64-none-parallel",
+        "threads": 4,
+        "metric": "load_s",
+        "reference_median": 0.029445876500000003,
+        "candidate_median": 0.0285568155,
+        "ratio": 0.9698069439366153,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w64-none-parallel",
+        "threads": 4,
+        "metric": "native_s",
+        "reference_median": 0.277173579,
+        "candidate_median": 0.279121278,
+        "ratio": 1.0070270009393643,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w64-none-parallel",
+        "threads": 4,
+        "metric": "alloc_peak",
+        "reference_median": 104297487.0,
+        "candidate_median": 104295299.0,
+        "ratio": 0.9999790215463197,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w64-none-parallel",
+        "threads": 4,
+        "metric": "wall_s",
+        "reference_median": 0.34,
+        "candidate_median": 0.3315,
+        "ratio": 0.975,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w64-none-parallel",
+        "threads": 4,
+        "metric": "load_s",
+        "reference_median": 0.0303533575,
+        "candidate_median": 0.0285568155,
+        "ratio": 0.9408124125971896,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w64-none-parallel",
+        "threads": 4,
+        "metric": "native_s",
+        "reference_median": 0.2858903535,
+        "candidate_median": 0.279121278,
+        "ratio": 0.9763228265062813,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w64-none-parallel",
+        "threads": 4,
+        "metric": "alloc_peak",
+        "reference_median": 104282859.0,
+        "candidate_median": 104295299.0,
+        "ratio": 1.0001192909373533,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w64-none-parallel",
+        "threads": 16,
+        "metric": "wall_s",
+        "reference_median": 0.3159999999999999,
+        "candidate_median": 0.33,
+        "ratio": 1.0443037974683549,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w64-none-parallel",
+        "threads": 16,
+        "metric": "load_s",
+        "reference_median": 0.0142870325,
+        "candidate_median": 0.015061942500000002,
+        "ratio": 1.0542386951244076,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w64-none-parallel",
+        "threads": 16,
+        "metric": "native_s",
+        "reference_median": 0.265261535,
+        "candidate_median": 0.2781526445,
+        "ratio": 1.0485977339307788,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w64-none-parallel",
+        "threads": 16,
+        "metric": "alloc_peak",
+        "reference_median": 104331281.0,
+        "candidate_median": 104331281.0,
+        "ratio": 1.0,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w64-none-parallel",
+        "threads": 16,
+        "metric": "wall_s",
+        "reference_median": 0.331,
+        "candidate_median": 0.33,
+        "ratio": 0.9969788519637462,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w64-none-parallel",
+        "threads": 16,
+        "metric": "load_s",
+        "reference_median": 0.0135567635,
+        "candidate_median": 0.015061942500000002,
+        "ratio": 1.1110279013128763,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w64-none-parallel",
+        "threads": 16,
+        "metric": "native_s",
+        "reference_median": 0.27973527200000003,
+        "candidate_median": 0.2781526445,
+        "ratio": 0.9943424099196184,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w64-none-parallel",
+        "threads": 16,
+        "metric": "alloc_peak",
+        "reference_median": 104331281.0,
+        "candidate_median": 104331281.0,
+        "ratio": 1.0,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w64-none-serial",
+        "threads": 4,
+        "metric": "wall_s",
+        "reference_median": 0.4165,
+        "candidate_median": 0.4165,
+        "ratio": 1.0,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w64-none-serial",
+        "threads": 4,
+        "metric": "load_s",
+        "reference_median": 0.108763646,
+        "candidate_median": 0.1075828125,
+        "ratio": 0.989143123245427,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w64-none-serial",
+        "threads": 4,
+        "metric": "native_s",
+        "reference_median": 0.36029349,
+        "candidate_median": 0.3602080165,
+        "ratio": 0.9997627670153019,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w64-none-serial",
+        "threads": 4,
+        "metric": "alloc_peak",
+        "reference_median": 104297509.0,
+        "candidate_median": 104297509.0,
+        "ratio": 1.0,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w64-none-serial",
+        "threads": 4,
+        "metric": "wall_s",
+        "reference_median": 0.424,
+        "candidate_median": 0.4165,
+        "ratio": 0.9823113207547169,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w64-none-serial",
+        "threads": 4,
+        "metric": "load_s",
+        "reference_median": 0.1083905535,
+        "candidate_median": 0.1075828125,
+        "ratio": 0.9925478653451105,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w64-none-serial",
+        "threads": 4,
+        "metric": "native_s",
+        "reference_median": 0.369387813,
+        "candidate_median": 0.3602080165,
+        "ratio": 0.9751486211051581,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w64-none-serial",
+        "threads": 4,
+        "metric": "alloc_peak",
+        "reference_median": 104297509.0,
+        "candidate_median": 104297509.0,
+        "ratio": 1.0,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w64-none-serial",
+        "threads": 16,
+        "metric": "wall_s",
+        "reference_median": 0.4165,
+        "candidate_median": 0.4145,
+        "ratio": 0.9951980792316927,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w64-none-serial",
+        "threads": 16,
+        "metric": "load_s",
+        "reference_median": 0.107088437,
+        "candidate_median": 0.1067880775,
+        "ratio": 0.9971952200590993,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w64-none-serial",
+        "threads": 16,
+        "metric": "native_s",
+        "reference_median": 0.3625560245,
+        "candidate_median": 0.361194849,
+        "ratio": 0.9962456133452003,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w64-none-serial",
+        "threads": 16,
+        "metric": "alloc_peak",
+        "reference_median": 104331303.0,
+        "candidate_median": 104331303.0,
+        "ratio": 1.0,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w64-none-serial",
+        "threads": 16,
+        "metric": "wall_s",
+        "reference_median": 0.4245,
+        "candidate_median": 0.4145,
+        "ratio": 0.9764428739693757,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w64-none-serial",
+        "threads": 16,
+        "metric": "load_s",
+        "reference_median": 0.1073269435,
+        "candidate_median": 0.1067880775,
+        "ratio": 0.9949792104160685,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w64-none-serial",
+        "threads": 16,
+        "metric": "native_s",
+        "reference_median": 0.3708693475,
+        "candidate_median": 0.361194849,
+        "ratio": 0.9739139981095364,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w64-none-serial",
+        "threads": 16,
+        "metric": "alloc_peak",
+        "reference_median": 104331303.0,
+        "candidate_median": 104331303.0,
+        "ratio": 1.0,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w65-fe-parallel",
+        "threads": 4,
+        "metric": "wall_s",
+        "reference_median": 0.222,
+        "candidate_median": 0.2215,
+        "ratio": 0.9977477477477478,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w65-fe-parallel",
+        "threads": 4,
+        "metric": "load_s",
+        "reference_median": 0.031076113500000002,
+        "candidate_median": 0.0338142445,
+        "ratio": 1.0881104710857745,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w65-fe-parallel",
+        "threads": 4,
+        "metric": "native_s",
+        "reference_median": 0.168624559,
+        "candidate_median": 0.168119258,
+        "ratio": 0.9970033961660353,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w65-fe-parallel",
+        "threads": 4,
+        "metric": "alloc_peak",
+        "reference_median": 105600231.0,
+        "candidate_median": 111059969.0,
+        "ratio": 1.051701951295921,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w65-fe-parallel",
+        "threads": 4,
+        "metric": "wall_s",
+        "reference_median": 0.2205,
+        "candidate_median": 0.2215,
+        "ratio": 1.0045351473922903,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w65-fe-parallel",
+        "threads": 4,
+        "metric": "load_s",
+        "reference_median": 0.0308037705,
+        "candidate_median": 0.0338142445,
+        "ratio": 1.097730698259812,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w65-fe-parallel",
+        "threads": 4,
+        "metric": "native_s",
+        "reference_median": 0.167398112,
+        "candidate_median": 0.168119258,
+        "ratio": 1.0043079697338522,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w65-fe-parallel",
+        "threads": 4,
+        "metric": "alloc_peak",
+        "reference_median": 105625451.0,
+        "candidate_median": 111059969.0,
+        "ratio": 1.0514508383022194,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w65-fe-parallel",
+        "threads": 16,
+        "metric": "wall_s",
+        "reference_median": 0.1705,
+        "candidate_median": 0.1665,
+        "ratio": 0.9765395894428153,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w65-fe-parallel",
+        "threads": 16,
+        "metric": "load_s",
+        "reference_median": 0.0134662605,
+        "candidate_median": 0.016590917,
+        "ratio": 1.232035946430711,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w65-fe-parallel",
+        "threads": 16,
+        "metric": "native_s",
+        "reference_median": 0.11966582949999999,
+        "candidate_median": 0.11633624149999999,
+        "ratio": 0.9721759501947045,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w65-fe-parallel",
+        "threads": 16,
+        "metric": "alloc_peak",
+        "reference_median": 105659245.0,
+        "candidate_median": 111093763.0,
+        "ratio": 1.0514343822918666,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w65-fe-parallel",
+        "threads": 16,
+        "metric": "wall_s",
+        "reference_median": 0.1685,
+        "candidate_median": 0.1665,
+        "ratio": 0.9881305637982196,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w65-fe-parallel",
+        "threads": 16,
+        "metric": "load_s",
+        "reference_median": 0.013134463499999999,
+        "candidate_median": 0.016590917,
+        "ratio": 1.2631590928704475,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w65-fe-parallel",
+        "threads": 16,
+        "metric": "native_s",
+        "reference_median": 0.1193556875,
+        "candidate_median": 0.11633624149999999,
+        "ratio": 0.974702118824459,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w65-fe-parallel",
+        "threads": 16,
+        "metric": "alloc_peak",
+        "reference_median": 105659245.0,
+        "candidate_median": 111093763.0,
+        "ratio": 1.0514343822918666,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w65-fe-serial",
+        "threads": 4,
+        "metric": "wall_s",
+        "reference_median": 0.3100000000000001,
+        "candidate_median": 0.2835,
+        "ratio": 0.9145161290322577,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w65-fe-serial",
+        "threads": 4,
+        "metric": "load_s",
+        "reference_median": 0.1102013875,
+        "candidate_median": 0.088144999,
+        "ratio": 0.7998538040185746,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w65-fe-serial",
+        "threads": 4,
+        "metric": "native_s",
+        "reference_median": 0.2532048475,
+        "candidate_median": 0.22700682249999998,
+        "ratio": 0.8965342675755842,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w65-fe-serial",
+        "threads": 4,
+        "metric": "alloc_peak",
+        "reference_median": 105625473.0,
+        "candidate_median": 114828151.0,
+        "ratio": 1.0871255554046135,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w65-fe-serial",
+        "threads": 4,
+        "metric": "wall_s",
+        "reference_median": 0.31,
+        "candidate_median": 0.2835,
+        "ratio": 0.914516129032258,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w65-fe-serial",
+        "threads": 4,
+        "metric": "load_s",
+        "reference_median": 0.109546063,
+        "candidate_median": 0.088144999,
+        "ratio": 0.804638675148006,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w65-fe-serial",
+        "threads": 4,
+        "metric": "native_s",
+        "reference_median": 0.2533400895,
+        "candidate_median": 0.22700682249999998,
+        "ratio": 0.896055665520715,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w65-fe-serial",
+        "threads": 4,
+        "metric": "alloc_peak",
+        "reference_median": 105622133.0,
+        "candidate_median": 114828151.0,
+        "ratio": 1.087159932662977,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w65-fe-serial",
+        "threads": 16,
+        "metric": "wall_s",
+        "reference_median": 0.2905,
+        "candidate_median": 0.2575,
+        "ratio": 0.8864027538726335,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w65-fe-serial",
+        "threads": 16,
+        "metric": "load_s",
+        "reference_median": 0.113949566,
+        "candidate_median": 0.094178463,
+        "ratio": 0.8264925116081618,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w65-fe-serial",
+        "threads": 16,
+        "metric": "native_s",
+        "reference_median": 0.229004137,
+        "candidate_median": 0.203213911,
+        "ratio": 0.8873809602837001,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w65-fe-serial",
+        "threads": 16,
+        "metric": "alloc_peak",
+        "reference_median": 105659267.0,
+        "candidate_median": 114861945.0,
+        "ratio": 1.087097689216413,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w65-fe-serial",
+        "threads": 16,
+        "metric": "wall_s",
+        "reference_median": 0.2815,
+        "candidate_median": 0.2575,
+        "ratio": 0.9147424511545295,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w65-fe-serial",
+        "threads": 16,
+        "metric": "load_s",
+        "reference_median": 0.107917543,
+        "candidate_median": 0.094178463,
+        "ratio": 0.8726890955995913,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w65-fe-serial",
+        "threads": 16,
+        "metric": "native_s",
+        "reference_median": 0.2213887045,
+        "candidate_median": 0.203213911,
+        "ratio": 0.9179055067825287,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w65-fe-serial",
+        "threads": 16,
+        "metric": "alloc_peak",
+        "reference_median": 105659267.0,
+        "candidate_median": 114861945.0,
+        "ratio": 1.087097689216413,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w65-none-parallel",
+        "threads": 4,
+        "metric": "wall_s",
+        "reference_median": 0.356,
+        "candidate_median": 0.3555,
+        "ratio": 0.9985955056179775,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w65-none-parallel",
+        "threads": 4,
+        "metric": "load_s",
+        "reference_median": 0.033349837,
+        "candidate_median": 0.03365181,
+        "ratio": 1.0090547069240547,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w65-none-parallel",
+        "threads": 4,
+        "metric": "native_s",
+        "reference_median": 0.30224619649999995,
+        "candidate_median": 0.3019641825,
+        "ratio": 0.9990669394577478,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w65-none-parallel",
+        "threads": 4,
+        "metric": "alloc_peak",
+        "reference_median": 105893412.0,
+        "candidate_median": 105896172.0,
+        "ratio": 1.0000260639443745,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w65-none-parallel",
+        "threads": 4,
+        "metric": "wall_s",
+        "reference_median": 0.3655,
+        "candidate_median": 0.3555,
+        "ratio": 0.9726402188782489,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w65-none-parallel",
+        "threads": 4,
+        "metric": "load_s",
+        "reference_median": 0.033768888999999996,
+        "candidate_median": 0.03365181,
+        "ratio": 0.9965329330200944,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w65-none-parallel",
+        "threads": 4,
+        "metric": "native_s",
+        "reference_median": 0.3116043705,
+        "candidate_median": 0.3019641825,
+        "ratio": 0.9690627317436807,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w65-none-parallel",
+        "threads": 4,
+        "metric": "alloc_peak",
+        "reference_median": 105902048.0,
+        "candidate_median": 105896172.0,
+        "ratio": 0.9999445147651913,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w65-none-parallel",
+        "threads": 16,
+        "metric": "wall_s",
+        "reference_median": 0.344,
+        "candidate_median": 0.3395,
+        "ratio": 0.986918604651163,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w65-none-parallel",
+        "threads": 16,
+        "metric": "load_s",
+        "reference_median": 0.014574678,
+        "candidate_median": 0.0138878825,
+        "ratio": 0.9528774838113061,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w65-none-parallel",
+        "threads": 16,
+        "metric": "native_s",
+        "reference_median": 0.2890152235,
+        "candidate_median": 0.28637096149999997,
+        "ratio": 0.9908507864465486,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w65-none-parallel",
+        "threads": 16,
+        "metric": "alloc_peak",
+        "reference_median": 105936878.0,
+        "candidate_median": 105936878.0,
+        "ratio": 1.0,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w65-none-parallel",
+        "threads": 16,
+        "metric": "wall_s",
+        "reference_median": 0.3565,
+        "candidate_median": 0.3395,
+        "ratio": 0.9523141654978963,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w65-none-parallel",
+        "threads": 16,
+        "metric": "load_s",
+        "reference_median": 0.0141103525,
+        "candidate_median": 0.0138878825,
+        "ratio": 0.9842335618475868,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w65-none-parallel",
+        "threads": 16,
+        "metric": "native_s",
+        "reference_median": 0.3044424825,
+        "candidate_median": 0.28637096149999997,
+        "ratio": 0.9406406068837648,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w65-none-parallel",
+        "threads": 16,
+        "metric": "alloc_peak",
+        "reference_median": 105936878.0,
+        "candidate_median": 105936878.0,
+        "ratio": 1.0,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w65-none-serial",
+        "threads": 4,
+        "metric": "wall_s",
+        "reference_median": 0.44199999999999995,
+        "candidate_median": 0.44149999999999995,
+        "ratio": 0.998868778280543,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w65-none-serial",
+        "threads": 4,
+        "metric": "load_s",
+        "reference_median": 0.1092676175,
+        "candidate_median": 0.108209132,
+        "ratio": 0.9903129076645237,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w65-none-serial",
+        "threads": 4,
+        "metric": "native_s",
+        "reference_median": 0.386464869,
+        "candidate_median": 0.386306473,
+        "ratio": 0.9995901412710297,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w65-none-serial",
+        "threads": 4,
+        "metric": "alloc_peak",
+        "reference_median": 105903106.0,
+        "candidate_median": 105903106.0,
+        "ratio": 1.0,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w65-none-serial",
+        "threads": 4,
+        "metric": "wall_s",
+        "reference_median": 0.451,
+        "candidate_median": 0.44149999999999995,
+        "ratio": 0.9789356984478934,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w65-none-serial",
+        "threads": 4,
+        "metric": "load_s",
+        "reference_median": 0.10953316399999999,
+        "candidate_median": 0.108209132,
+        "ratio": 0.9879120446114386,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w65-none-serial",
+        "threads": 4,
+        "metric": "native_s",
+        "reference_median": 0.395729783,
+        "candidate_median": 0.386306473,
+        "ratio": 0.97618751379145,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w65-none-serial",
+        "threads": 4,
+        "metric": "alloc_peak",
+        "reference_median": 105902070.0,
+        "candidate_median": 105903106.0,
+        "ratio": 1.000009782622757,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w65-none-serial",
+        "threads": 16,
+        "metric": "wall_s",
+        "reference_median": 0.4415,
+        "candidate_median": 0.438,
+        "ratio": 0.9920724801812004,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w65-none-serial",
+        "threads": 16,
+        "metric": "load_s",
+        "reference_median": 0.10757266800000001,
+        "candidate_median": 0.107033875,
+        "ratio": 0.9949913578419379,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w65-none-serial",
+        "threads": 16,
+        "metric": "native_s",
+        "reference_median": 0.387928062,
+        "candidate_median": 0.381678421,
+        "ratio": 0.9838896908674784,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w65-none-serial",
+        "threads": 16,
+        "metric": "alloc_peak",
+        "reference_median": 105936900.0,
+        "candidate_median": 105936900.0,
+        "ratio": 1.0,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w65-none-serial",
+        "threads": 16,
+        "metric": "wall_s",
+        "reference_median": 0.451,
+        "candidate_median": 0.438,
+        "ratio": 0.9711751662971175,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w65-none-serial",
+        "threads": 16,
+        "metric": "load_s",
+        "reference_median": 0.107647929,
+        "candidate_median": 0.107033875,
+        "ratio": 0.9942957193352043,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w65-none-serial",
+        "threads": 16,
+        "metric": "native_s",
+        "reference_median": 0.39362652,
+        "candidate_median": 0.381678421,
+        "ratio": 0.9696461026050786,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w65-none-serial",
+        "threads": 16,
+        "metric": "alloc_peak",
+        "reference_median": 105936900.0,
+        "candidate_median": 105936900.0,
+        "ratio": 1.0,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w66-fe-parallel",
+        "threads": 4,
+        "metric": "wall_s",
+        "reference_median": 0.246,
+        "candidate_median": 0.25,
+        "ratio": 1.016260162601626,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w66-fe-parallel",
+        "threads": 4,
+        "metric": "load_s",
+        "reference_median": 0.03445366800000001,
+        "candidate_median": 0.039539014,
+        "ratio": 1.1475995531157956,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w66-fe-parallel",
+        "threads": 4,
+        "metric": "native_s",
+        "reference_median": 0.191096148,
+        "candidate_median": 0.197574429,
+        "ratio": 1.0339006362388843,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w66-fe-parallel",
+        "threads": 4,
+        "metric": "alloc_peak",
+        "reference_median": 107241935.0,
+        "candidate_median": 112760436.0,
+        "ratio": 1.0514584243561067,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w66-fe-parallel",
+        "threads": 4,
+        "metric": "wall_s",
+        "reference_median": 0.243,
+        "candidate_median": 0.25,
+        "ratio": 1.02880658436214,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w66-fe-parallel",
+        "threads": 4,
+        "metric": "load_s",
+        "reference_median": 0.0337826325,
+        "candidate_median": 0.039539014,
+        "ratio": 1.1703946991105563,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w66-fe-parallel",
+        "threads": 4,
+        "metric": "native_s",
+        "reference_median": 0.1898547505,
+        "candidate_median": 0.197574429,
+        "ratio": 1.0406609709773893,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w66-fe-parallel",
+        "threads": 4,
+        "metric": "alloc_peak",
+        "reference_median": 107230879.0,
+        "candidate_median": 112760436.0,
+        "ratio": 1.0515668345868918,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w66-fe-parallel",
+        "threads": 16,
+        "metric": "wall_s",
+        "reference_median": 0.189,
+        "candidate_median": 0.19049999999999995,
+        "ratio": 1.0079365079365077,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w66-fe-parallel",
+        "threads": 16,
+        "metric": "load_s",
+        "reference_median": 0.01430029,
+        "candidate_median": 0.0154338645,
+        "ratio": 1.0792693364959731,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w66-fe-parallel",
+        "threads": 16,
+        "metric": "native_s",
+        "reference_median": 0.13739561649999998,
+        "candidate_median": 0.1391720265,
+        "ratio": 1.0129291606621236,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w66-fe-parallel",
+        "threads": 16,
+        "metric": "alloc_peak",
+        "reference_median": 107275729.0,
+        "candidate_median": 112794230.0,
+        "ratio": 1.0514422139233377,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w66-fe-parallel",
+        "threads": 16,
+        "metric": "wall_s",
+        "reference_median": 0.18999999999999995,
+        "candidate_median": 0.19049999999999995,
+        "ratio": 1.0026315789473683,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w66-fe-parallel",
+        "threads": 16,
+        "metric": "load_s",
+        "reference_median": 0.0140364465,
+        "candidate_median": 0.0154338645,
+        "ratio": 1.09955639413437,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w66-fe-parallel",
+        "threads": 16,
+        "metric": "native_s",
+        "reference_median": 0.13829113799999998,
+        "candidate_median": 0.1391720265,
+        "ratio": 1.0063698116360862,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w66-fe-parallel",
+        "threads": 16,
+        "metric": "alloc_peak",
+        "reference_median": 107275729.0,
+        "candidate_median": 112794230.0,
+        "ratio": 1.0514422139233377,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w66-fe-serial",
+        "threads": 4,
+        "metric": "wall_s",
+        "reference_median": 0.332,
+        "candidate_median": 0.31300000000000006,
+        "ratio": 0.9427710843373495,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w66-fe-serial",
+        "threads": 4,
+        "metric": "load_s",
+        "reference_median": 0.112417734,
+        "candidate_median": 0.089497169,
+        "ratio": 0.7961125510677879,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w66-fe-serial",
+        "threads": 4,
+        "metric": "native_s",
+        "reference_median": 0.27525154350000003,
+        "candidate_median": 0.257382749,
+        "ratio": 0.9350819462343904,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w66-fe-serial",
+        "threads": 4,
+        "metric": "alloc_peak",
+        "reference_median": 107240805.0,
+        "candidate_median": 116528698.0,
+        "ratio": 1.0866078261907863,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w66-fe-serial",
+        "threads": 4,
+        "metric": "wall_s",
+        "reference_median": 0.332,
+        "candidate_median": 0.31300000000000006,
+        "ratio": 0.9427710843373495,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w66-fe-serial",
+        "threads": 4,
+        "metric": "load_s",
+        "reference_median": 0.111883392,
+        "candidate_median": 0.089497169,
+        "ratio": 0.7999146915388479,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w66-fe-serial",
+        "threads": 4,
+        "metric": "native_s",
+        "reference_median": 0.2755562405,
+        "candidate_median": 0.257382749,
+        "ratio": 0.9340479770408249,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w66-fe-serial",
+        "threads": 4,
+        "metric": "alloc_peak",
+        "reference_median": 107237465.0,
+        "candidate_median": 116528698.0,
+        "ratio": 1.0866416694948915,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w66-fe-serial",
+        "threads": 16,
+        "metric": "wall_s",
+        "reference_median": 0.3115,
+        "candidate_median": 0.275,
+        "ratio": 0.882825040128411,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w66-fe-serial",
+        "threads": 16,
+        "metric": "load_s",
+        "reference_median": 0.1197263425,
+        "candidate_median": 0.09167879949999999,
+        "ratio": 0.7657362413789596,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w66-fe-serial",
+        "threads": 16,
+        "metric": "native_s",
+        "reference_median": 0.254379225,
+        "candidate_median": 0.218726639,
+        "ratio": 0.8598447416450774,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w66-fe-serial",
+        "threads": 16,
+        "metric": "alloc_peak",
+        "reference_median": 107275751.0,
+        "candidate_median": 116562492.0,
+        "ratio": 1.0865688742649773,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w66-fe-serial",
+        "threads": 16,
+        "metric": "wall_s",
+        "reference_median": 0.3165,
+        "candidate_median": 0.275,
+        "ratio": 0.8688783570300158,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w66-fe-serial",
+        "threads": 16,
+        "metric": "load_s",
+        "reference_median": 0.1159988075,
+        "candidate_median": 0.09167879949999999,
+        "ratio": 0.7903426033065037,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w66-fe-serial",
+        "threads": 16,
+        "metric": "native_s",
+        "reference_median": 0.252934977,
+        "candidate_median": 0.218726639,
+        "ratio": 0.8647544186820789,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w66-fe-serial",
+        "threads": 16,
+        "metric": "alloc_peak",
+        "reference_median": 107275751.0,
+        "candidate_median": 116562492.0,
+        "ratio": 1.0865688742649773,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w66-none-parallel",
+        "threads": 4,
+        "metric": "wall_s",
+        "reference_median": 0.3745,
+        "candidate_median": 0.3735,
+        "ratio": 0.9973297730307076,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w66-none-parallel",
+        "threads": 4,
+        "metric": "load_s",
+        "reference_median": 0.033624017500000006,
+        "candidate_median": 0.033084531,
+        "ratio": 0.9839553230068356,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w66-none-parallel",
+        "threads": 4,
+        "metric": "native_s",
+        "reference_median": 0.31813361149999997,
+        "candidate_median": 0.3190860325,
+        "ratio": 1.0029937767201313,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w66-none-parallel",
+        "threads": 4,
+        "metric": "alloc_peak",
+        "reference_median": 107508761.0,
+        "candidate_median": 107505305.0,
+        "ratio": 0.9999678537826326,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w66-none-parallel",
+        "threads": 4,
+        "metric": "wall_s",
+        "reference_median": 0.387,
+        "candidate_median": 0.3735,
+        "ratio": 0.9651162790697674,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w66-none-parallel",
+        "threads": 4,
+        "metric": "load_s",
+        "reference_median": 0.0337249395,
+        "candidate_median": 0.033084531,
+        "ratio": 0.9810108332440448,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w66-none-parallel",
+        "threads": 4,
+        "metric": "native_s",
+        "reference_median": 0.3339748465,
+        "candidate_median": 0.3190860325,
+        "ratio": 0.9554193552118304,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w66-none-parallel",
+        "threads": 4,
+        "metric": "alloc_peak",
+        "reference_median": 107508761.0,
+        "candidate_median": 107505305.0,
+        "ratio": 0.9999678537826326,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w66-none-parallel",
+        "threads": 16,
+        "metric": "wall_s",
+        "reference_median": 0.3565,
+        "candidate_median": 0.361,
+        "ratio": 1.0126227208976157,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w66-none-parallel",
+        "threads": 16,
+        "metric": "load_s",
+        "reference_median": 0.015091492500000001,
+        "candidate_median": 0.014735389,
+        "ratio": 0.976403692345207,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w66-none-parallel",
+        "threads": 16,
+        "metric": "native_s",
+        "reference_median": 0.3026164595,
+        "candidate_median": 0.3100494285,
+        "ratio": 1.0245623420889967,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w66-none-parallel",
+        "threads": 16,
+        "metric": "alloc_peak",
+        "reference_median": 107542555.0,
+        "candidate_median": 107542555.0,
+        "ratio": 1.0,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w66-none-parallel",
+        "threads": 16,
+        "metric": "wall_s",
+        "reference_median": 0.3785,
+        "candidate_median": 0.361,
+        "ratio": 0.9537648612945838,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w66-none-parallel",
+        "threads": 16,
+        "metric": "load_s",
+        "reference_median": 0.014201314,
+        "candidate_median": 0.014735389,
+        "ratio": 1.0376074354809703,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w66-none-parallel",
+        "threads": 16,
+        "metric": "native_s",
+        "reference_median": 0.32552626949999997,
+        "candidate_median": 0.3100494285,
+        "ratio": 0.9524559384292641,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w66-none-parallel",
+        "threads": 16,
+        "metric": "alloc_peak",
+        "reference_median": 107542555.0,
+        "candidate_median": 107542555.0,
+        "ratio": 1.0,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w66-none-serial",
+        "threads": 4,
+        "metric": "wall_s",
+        "reference_median": 0.4685,
+        "candidate_median": 0.4635,
+        "ratio": 0.9893276414087513,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w66-none-serial",
+        "threads": 4,
+        "metric": "load_s",
+        "reference_median": 0.118510927,
+        "candidate_median": 0.112461082,
+        "ratio": 0.9489511629590072,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w66-none-serial",
+        "threads": 4,
+        "metric": "native_s",
+        "reference_median": 0.4113385975,
+        "candidate_median": 0.4053679905,
+        "ratio": 0.9854849337351571,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w66-none-serial",
+        "threads": 4,
+        "metric": "alloc_peak",
+        "reference_median": 107504175.0,
+        "candidate_median": 107507747.0,
+        "ratio": 1.0000332266165477,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w66-none-serial",
+        "threads": 4,
+        "metric": "wall_s",
+        "reference_median": 0.4755,
+        "candidate_median": 0.4635,
+        "ratio": 0.9747634069400631,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w66-none-serial",
+        "threads": 4,
+        "metric": "load_s",
+        "reference_median": 0.1126432715,
+        "candidate_median": 0.112461082,
+        "ratio": 0.998382597579297,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w66-none-serial",
+        "threads": 4,
+        "metric": "native_s",
+        "reference_median": 0.41728968,
+        "candidate_median": 0.4053679905,
+        "ratio": 0.9714306629869207,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w66-none-serial",
+        "threads": 4,
+        "metric": "alloc_peak",
+        "reference_median": 107500031.0,
+        "candidate_median": 107507747.0,
+        "ratio": 1.0000717767234877,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w66-none-serial",
+        "threads": 16,
+        "metric": "wall_s",
+        "reference_median": 0.462,
+        "candidate_median": 0.452,
+        "ratio": 0.9783549783549783,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w66-none-serial",
+        "threads": 16,
+        "metric": "load_s",
+        "reference_median": 0.11186567350000001,
+        "candidate_median": 0.110355512,
+        "ratio": 0.9865002243069675,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w66-none-serial",
+        "threads": 16,
+        "metric": "native_s",
+        "reference_median": 0.4034410995,
+        "candidate_median": 0.4004855455,
+        "ratio": 0.9926741375539999,
+        "regression": false
+      },
+      {
+        "reference": "incumbent",
+        "cell": "w66-none-serial",
+        "threads": 16,
+        "metric": "alloc_peak",
+        "reference_median": 107542577.0,
+        "candidate_median": 107542577.0,
+        "ratio": 1.0,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w66-none-serial",
+        "threads": 16,
+        "metric": "wall_s",
+        "reference_median": 0.481,
+        "candidate_median": 0.452,
+        "ratio": 0.9397089397089398,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w66-none-serial",
+        "threads": 16,
+        "metric": "load_s",
+        "reference_median": 0.111384609,
+        "candidate_median": 0.110355512,
+        "ratio": 0.9907608689455472,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w66-none-serial",
+        "threads": 16,
+        "metric": "native_s",
+        "reference_median": 0.423011847,
+        "candidate_median": 0.4004855455,
+        "ratio": 0.9467478235899147,
+        "regression": false
+      },
+      {
+        "reference": "review",
+        "cell": "w66-none-serial",
+        "threads": 16,
+        "metric": "alloc_peak",
+        "reference_median": 107542577.0,
+        "candidate_median": 107542577.0,
+        "ratio": 1.0,
+        "regression": false
+      }
+    ]
+  },
+  "science": {
+    "status": "passed",
+    "cells": 20,
+    "threads": [
+      4,
+      16
+    ],
+    "arms": [
+      "incumbent",
+      "candidate",
+      "review"
+    ],
+    "exact": [
+      "input_bits",
+      "b",
+      "V",
+      "N",
+      "sample"
+    ],
+    "independent": [
+      "regress",
+      "areg"
+    ],
+    "resampling": false
+  },
+  "artifacts": {
+    "incumbent": {
+      "plugin_sha256": "9bbb0a35c1238e07227b71d7ee388ee374f558e94f9d9c81cc7c40f7d44284fc"
+    },
+    "candidate": {
+      "plugin_sha256": "c5912c13bd52db8c7b2e2c83dcc9b14dccc52908fba2813745229be3d2ee2e2b"
+    },
+    "review": {
+      "plugin_sha256": "9e6404458cce576834fd9efd4ba74496ea6e7449dcdbecb35aab99dbcc97c93d"
+    }
+  },
+  "schedule": {
+    "widths": [
+      63,
+      64,
+      65,
+      66,
+      130
+    ],
+    "rows": 100003,
+    "effects": [
+      "none",
+      "one-fe"
+    ],
+    "transports": [
+      "public-parallel",
+      "forced-serial"
+    ],
+    "threads": [
+      4,
+      16
+    ],
+    "blocks": 6,
+    "repetitions": 1,
+    "seed": 739391,
+    "observations": 720,
+    "discarded": 0,
+    "resampled": false,
+    "guard": "max(5%, 1 ms) of whole-call wall time, against both references"
+  },
+  "input_sha256": "f4687159d46b7a6e6545f7d6d1c571091653d3aa32f5959b2098fe230a6be623",
+  "config_sha256": "bfd5b082fe8f2e35c091272f91be7cecfa7f770115a5b5487b1faf4e69d7ecee",
+  "pin_manifest_sha256": "7e729f8c667f9d0fc6e8b79eac3512b00df7346fc5883d5be1b9fb5a82ce4527",
+  "retained_previous_failure": {
+    "report": "input-beta14-geometry-linux-20261102.json",
+    "cell": "c2",
+    "workers": 4,
+    "incumbent_seconds": 5.927,
+    "candidate_seconds": 6.2615,
+    "reason": "No-FE loading is unchanged; new width timings do not waive or replace the earlier failure."
+  },
+  "limitations": [
+    "One physical Linux host and one Mac; Windows remains on serial numeric input.",
+    "Core moment/Gram policies and no-absorb loading were not changed."
+  ],
+  "host_record": {
+    "host": {
+      "affinity": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27
+      ],
+      "hostname": "scc-zj4",
+      "job_id": "8394862",
+      "pe": "omp28",
+      "queue": "econ@scc-zj4.scc.bu.edu",
+      "slots": 28,
+      "task_id": "0"
+    },
+    "scope": "Sampled known competing compute; ordinary OS activity retained. SCC also requires a whole-node reservation.",
+    "isolation_ok": true,
+    "errors": [],
+    "samples": {
+      "census": {
+        "count": 11,
+        "finish": 878941945196730,
+        "start": 878940935768224
+      },
+      "process": {
+        "count": 117,
+        "finish": 878940935354039,
+        "start": 878940870266968
+      }
+    },
+    "schema": 1,
+    "accounting_required": true
+  },
+  "scheduler": {
+    "build_science_job": 8394861,
+    "timing_job": 8394862,
+    "build_science_host": "scc-wo4.scc.bu.edu",
+    "timing_host": "scc-zj4.scc.bu.edu",
+    "whole_node_slots": 28,
+    "build_science_exit_status": 0,
+    "timing_exit_status": 0,
+    "build_science_seconds": 1296,
+    "timing_seconds": 583
+  },
+  "numerical_scope": [],
+  "estimator_route_scope": [],
+  "publication_status": "Blocked by the retained earlier Linux no-FE failure and the new Mac no-FE control failures; no observations discarded or resampled.",
+  "harness_repairs_before_timing": [
+    "Correct the PPML test adapter name to the existing implementation.",
+    "Separate extra-science trace groups from the final boundary cell.",
+    "Use the complete matching ado tree for the review arm; its production ado files and plugin identity are unchanged."
+  ]
+}

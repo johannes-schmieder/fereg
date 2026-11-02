@@ -1,0 +1,99 @@
+{
+  "schema": 1,
+  "status": "native and locally installed science passed",
+  "qualification": "Serial input only. Combined beta.14 performance acceptance remains blocked.",
+  "receipt": {
+    "schema_version": 4,
+    "run_id": "win-20261102T120642Z-5acbebe6",
+    "project": "fereg",
+    "profile": "stata-do",
+    "source_revision": "commit-ee402880534fc97385e202d1876ff3b85c3a2a5e",
+    "source_sha256": "e69e1a9c128ac93a51719b9aa541119e4b417acebb21f29b05e3a59471aad582",
+    "windows_target": "x86_64",
+    "execution_identity": "SYSTEM",
+    "status": "PASS",
+    "error_code": null,
+    "checks": {
+      "execution_identity": true,
+      "source_hash": true,
+      "archive_paths": true,
+      "source_manifest": true,
+      "shutdown_backstop": true,
+      "stata": true,
+      "project_test": true
+    },
+    "completed_at_utc": "2026-11-02T12:26:16.5945838Z",
+    "controller_sha256": "e635d58609f24fa8564ce4c3b6787eccd9df36892edb636069cdc2ebcdfdaf00",
+    "diagnostic_guard_sha256": "14fe3f6515439c55d0732e99fba797280b76dfd9638345794a639a00a44ffd12",
+    "process": {
+      "outcome": "passed",
+      "elapsed_ms": 1046127,
+      "exit_code": 0
+    },
+    "diagnostics": {
+      "available": true,
+      "compiler_errors": [],
+      "completed": [
+        "startup",
+        "toolchain",
+        "source_identity",
+        "cargo_build",
+        "exact_fma",
+        "fused_kernels",
+        "c_bridge",
+        "numeric_guards",
+        "plugin_link",
+        "binary_audit",
+        "native_loader",
+        "build_complete",
+        "checksum",
+        "stata_smoke",
+        "single_runtime"
+      ],
+      "native_rc": null,
+      "plugin_sha256": "5571022392f31e0cd7750a814f3d729b90ba43611094d756721a5b66277a142c",
+      "reason": "none",
+      "stage": "complete",
+      "stage_elapsed_ms": 2735,
+      "stata_rc": null,
+      "status": "PASS"
+    }
+  },
+  "receipt_sha256": "8157834640428ad0b668de80aa02b55edc1dcb5e558e0dfbac6a9764b702e675",
+  "input_oracle": {
+    "cases_per_run": 72,
+    "estimations_per_run": 208,
+    "worker_requests": [
+      0,
+      8
+    ],
+    "numeric_windows": 0,
+    "input_digests": "exact",
+    "cross_worker_science": "passed",
+    "wide_preparation": "Trace-verified reserved columns and packed RHS in both new wide cases."
+  },
+  "missing_value_witness": "passed",
+  "ols_ppml_transaction_fixtures": "passed",
+  "local_installed_plugin_checksum": "exact",
+  "cleanup": {
+    "instance_stopped": true,
+    "transient_objects_deleted": true,
+    "lock_released": true
+  },
+  "runtime_equivalence": "Production code unchanged from frozen Unix candidate 673ca1ab4fb43e6abb280552aef1575efaba7961; later commits change tests, harness and documentation only.",
+  "bounded_harness_repair": {
+    "failed_run_id": "win-20261102T113706Z-9e93cb45",
+    "failed_source_revision": "77f65146c6b41fb1010667ff46f7b4e5e9fe154e",
+    "failed_receipt_sha256": "6ef0f748ace79c1a73342fdf23dc48f8c07e45e14eee49acb428ab07249ae524",
+    "failure_code": 70208,
+    "cause": "The default-worker oracle and its digest/path checker passed; the final coverage assertion still expected 70 cases/202 calls instead of 72/208.",
+    "repair": "Update the fixed expected coverage to include the two added wide cases; repeat the complete Windows run with unchanged runtime.",
+    "timing_performed": false
+  },
+  "limitations": [
+    "Windows parallel input remains disabled pending live Break qualification.",
+    "No Windows performance qualification was performed."
+  ],
+  "numerical_scope": [],
+  "estimator_route_scope": []
+}

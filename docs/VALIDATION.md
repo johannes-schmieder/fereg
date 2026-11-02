@@ -12,9 +12,10 @@ the narrow pipeline's categorical-first ordering across the old boundary.
 Parallel accessor groups and phase limits remain unchanged.
 
 The affected storage/admission scope is unrestricted numeric OLS and PPML input
-with supported numeric FE recipes above 64 source columns, including weights,
-FE/cluster sources and supported slopes. No-absorb loading is an unchanged control. A newly admitted packed RHS or categorical capsule consumes its
-full accounted memory; budget refusal retains the ordinary loader. The core
+with supported numeric FE recipes above 64 total numeric input columns, including
+weights, FE/cluster sources and supported slopes. No-absorb loading is an unchanged
+control. A newly admitted packed RHS or categorical capsule consumes its full
+accounted memory; budget refusal retains the ordinary loader. The core
 moment algorithms and their separate width policies are unchanged. Scientific
 arithmetic, samples, rank, omissions, separation, solver signatures and results
 must remain exact against the incumbent at fixed workers; intended numerical
@@ -42,6 +43,113 @@ transaction checks are repeated for this candidate. Preflight includes exact pos
 fixed-worker repeats, cross-worker agreement and nine wide weighted, clustered,
 slope, memory-low, missing-value and PPML variants. No external-interference
 retry or exclusion is permitted; host-monitor failure makes timing inconclusive.
+
+### Completed wide-input investigation
+
+The frozen candidate removes a real admission discontinuity in the serial FE
+loader and its optional prepared storage. The old 64-column limit forced wider
+inputs out of the bounded row-tile/packed-RHS path. The replacement chooses
+`min(4096, floor(262144 / width))` rows, so a pair of double buffers remains at
+most 4 MiB. It accounts separately for dynamic column positions, descriptors,
+source IDs and the full prepared columns/RHS. Insufficient memory retains the
+ordinary loader. This is a general width/resource rule; it does not select
+individual models or benchmark cells. The narrow path and the parallel
+accessor's group and phase geometry are unchanged.
+
+Width here means **total numeric input columns**, including the outcome and
+numeric FE, cluster and weight sources, rather than the displayed regressor
+count. A one-FE example with 62 regressors, outcome and FE source has width 64.
+The core's separate 64-column fused-moment policy is unchanged; this work does
+not claim to remove every width-dependent computational transition.
+
+The [Linux report](../bench/results/input-width-beta14-linux-20261102.json) and
+[Mac report](../bench/results/input-width-beta14-macos-20261102.json) retain all
+720 observations per host, with full [Linux](../bench/results/input-width-beta14-linux-20261102.csv)
+and [Mac](../bench/results/input-width-beta14-macos-20261102.csv) tables. Linux
+passes all 40 cell/worker settings against both references. Mac passes 36 of 40;
+all settings exercising the changed FE path pass on both hosts. Both host
+observers pass, with no exclusions or resampling. Linux timing ran in one
+verified isolated 28-core allocation on scc-zj4; native building/science ran
+separately on scc-wo4. These are one Linux timing host and one Mac, not broad
+cross-architecture performance estimates.
+
+Representative four-worker, one-FE, forced-serial medians are:
+
+| Host | Total input columns | Beta.13 load | Candidate load | Beta.13 whole call | Candidate whole call |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Linux | 63 | 84.81 ms | 83.56 ms | 264.0 ms | 264.5 ms |
+| Linux | 64 | 91.55 ms | 91.33 ms | 273.5 ms | 272.5 ms |
+| Linux | 65 | 110.20 ms | 88.14 ms | 310.0 ms | 283.5 ms |
+| Linux | 66 | 112.42 ms | 89.50 ms | 332.0 ms | 313.0 ms |
+| Linux | 130 | 215.17 ms | 165.43 ms | 775.5 ms | 730.0 ms |
+| Mac | 65 | 31.83 ms | 30.61 ms | 128.5 ms | 120.5 ms |
+| Mac | 130 | 61.34 ms | 53.56 ms | 291.0 ms | 283.5 ms |
+
+The Linux serial loading jump from width 64 to 65 disappears: beta.13 rises
+20.4%, while the candidate decreases slightly. At width 65, loading improves
+20.0% and the whole call improves 8.5%; at width 130 the improvements are 23.1%
+and 5.9%. Mac's loading discontinuity was smaller, but its whole serial FE calls
+also benefit. These observations establish a useful repair for the tested path,
+not a universal speedup.
+
+Parallel loading can take longer because the newly admitted packed RHS performs
+preparation during loading. For example, Linux width 130 at four workers rises
+from 56.64 to 65.54 ms in loading, while the whole call changes from 597.5 to
+599.0 ms and passes the guard. Whole-call performance also passes against the
+preceding review arm (577.5 ms). Prepared storage increases accounted peak
+memory: Mac serial width 65 rises from 100.70 to 109.48 MiB and width 130 from
+200.90 to 214.88 MiB. The tile bound does not bound the complete estimator's
+memory; admission includes these additional allocations.
+
+The Mac failures are unchanged no-FE controls. At four workers, width-65
+parallel increases from 170.0 to 180.5 ms against both references (+6.18%),
+width-65 serial from 193.5 to 205.0 ms against beta.13 (+5.94%), and width-66
+parallel from 166.0 to 176.0 ms against the review arm (+6.02%). At eight
+workers, width-66 serial increases from 183.5 to 194.0 ms against beta.13
+(+5.72%). That is four settings and five reference comparisons. Unchanged
+loader code does not establish the cause or cancel these measured failures.
+The earlier million-row, 64-regressor no-FE Linux failure also remains:
+5.9270 to 6.2615 seconds (+5.64%). The new grid neither replaces nor resamples it.
+Johannes's acceptance of possible `in` regressions does not waive these
+unrestricted-sample failures. **The combined beta.14 candidate remains
+unqualified and unpublished.** The wide-FE repair is retained locally; no
+additional implementation or timing round follows automatically from this result.
+
+Scientific checks pass with no declared numerical or estimator-route change.
+Each Unix platform passes 68 native fixtures, 77 exact beta.13 replays,
+input-oracle runs at four/eight workers, failure checks, and live Break in input,
+OLS and PPML. Each boundary preflight executes 456 fereg science calls across
+three arms and two worker settings, covering all width cells and nine additional
+weighted, clustered, slope, low-memory, missing-value and PPML families. Exact
+input bits and posted science agree at fixed workers, public/forced-serial
+results agree, fixed-worker repeats agree, and cross-worker science passes the
+independent one-worker and regress/areg witnesses. Traces prove the widened
+reserved-column/packed-RHS path actually ran. Native witnesses also cover signed
+zero, missing codes, first SDK error precedence, maximum tile bounds, and
+simultaneous descriptor/source-ID memory admission.
+
+The complete source-only integration suite passes, including the complexity
+ratchet and C bridge checks. Final root-package admission is not performed for
+this unpublished candidate; the current root package still contains the preceding
+review artifacts and must be refreshed before any publication. The
+[Windows report](../bench/results/input-width-beta14-windows-20261102.json)
+records successful native build/audit and actual locally installed Stata science,
+including 72 input-oracle cases/208 calls at default and eight requested workers,
+wide-path trace checks, the independent missing-value witness and OLS/PPML
+transactions. Windows continues to use serial input; live parallel Break and
+Windows performance are not qualified. The machine is stopped, transient objects
+deleted and its lock released.
+
+Bounded harness repairs preceded timing: use the existing PPML adapter name,
+separate extra-science trace groups, and provide the review arm's matching
+complete ado tree including its developer serial adapter. Production ado and
+runtime identities did not change. The Mac build also needed an external vendor
+path added to binary path remapping before its privacy audit passed. Windows's
+first run passed its default-worker oracle but stopped at a stale coverage
+assertion (70/202 instead of the new 72/208); after correcting that assertion,
+the full run passed. These repairs did not relax scientific checks, alter the
+frozen runtime, or discard any timings. Independent high-effort review supports
+retaining the bounded repair while leaving overall performance acceptance open.
 
 ## Beta.14 input-transport qualification scope
 
