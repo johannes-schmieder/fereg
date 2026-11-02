@@ -8,11 +8,23 @@ use fereg_core::ols::{
 };
 use fereg_core::parallel::ThreadTeam;
 
-use crate::input::SpiApi;
+use crate::input::{SpiApi, NUMERIC_ROW_MAX_ROWS, NUMERIC_ROW_MAX_VALUES};
 use crate::input_memory::InputMemory;
 
-const TILE_ROWS: usize = 4096;
-const MAX_COLUMNS: usize = 64;
+const TILE_ROWS: usize = NUMERIC_ROW_MAX_ROWS;
+// Preserve categorical-first serial preparation only on its existing domain.
+const PARTITIONED_COLUMNS: usize = 64;
+
+pub(crate) fn tile_rows(width: usize) -> Option<usize> {
+    let rows = NUMERIC_ROW_MAX_VALUES.checked_div(width)?.min(TILE_ROWS);
+    (rows != 0).then_some(rows)
+}
+
+pub(crate) fn workspace_bytes(width: usize) -> Option<usize> {
+    let elements = tile_rows(width)?.checked_mul(width)?;
+    let positions = if width > 64 { width.checked_mul(4)? } else { 0 };
+    elements.checked_mul(16)?.checked_add(positions)
+}
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct NumericRhsLayout {
@@ -82,7 +94,10 @@ impl<'a> ReservedColumns<'a> {
         result.positions.try_reserve_exact(width).ok()?;
         result.values.try_reserve_exact(width).ok()?;
         result.missing.try_reserve_exact(width).ok()?;
-        Some(result)
+        (result.positions.capacity() == width
+            && result.values.capacity() == width
+            && result.missing.capacity() == width)
+            .then_some(result)
     }
 
     fn prepare(
@@ -218,17 +233,26 @@ fn prepared_plan(
     copied_rhs: usize,
     target: &PreparedLoadTarget<'_>,
 ) -> Option<PreparedPlan> {
-    if !(1..=MAX_COLUMNS).contains(&width)
+    if tile_rows(width).is_none()
         || request.model.sources.len() >= width
         || !spi.supports_numeric_rows()
-        || memory.admit(4096).is_err()
     {
         return None;
     }
     // Admit the bounded identity/partition descriptors before even the first
     // optional Vec allocation; a tight budget retains the ordinary loader.
+    let id_bound = request
+        .model
+        .sources
+        .len()
+        .checked_mul(std::mem::size_of::<fereg_core::metadata::SourceId>())?
+        .max(4096);
+    memory.admit(id_bound as u128).ok()?;
     let ids = PreparedOlsLoadHint::source_ids(request).ok()?;
-    if ids.is_empty() || ids.len() >= width {
+    let id_bytes = ids
+        .capacity()
+        .checked_mul(std::mem::size_of::<fereg_core::metadata::SourceId>())?;
+    if ids.is_empty() || ids.len() >= width || id_bytes > id_bound {
         return None;
     }
     if request
@@ -249,9 +273,16 @@ fn prepared_plan(
     }
     let scratch = PreparedOlsLoadHint::workspace_bytes(rows, ids.len())?;
     let descriptor_bytes = target.descriptor_bytes(ids.len());
-    let temporary = scratch + 4096 + descriptor_bytes;
-    // Both partition banks and the owned capsule are admitted before reading.
-    let tiles = 2 * TILE_ROWS * width * std::mem::size_of::<f64>() + std::mem::size_of::<Handoff>();
+    let partition_bytes = width
+        .checked_mul(2 * (std::mem::size_of::<u32>() + 2 * std::mem::size_of::<&mut Vec<f64>>()))?
+        .checked_add(
+            ids.capacity()
+                .checked_mul(std::mem::size_of::<fereg_core::metadata::SourceId>())?,
+        )?;
+    let temporary = scratch + partition_bytes.max(4096) as u128 + descriptor_bytes;
+    // Narrow partitions share the old full-width allowance; wide input loads
+    // one complete bank before preparation, preserving serial read order.
+    let tiles = workspace_bytes(width)?.checked_add(std::mem::size_of::<Handoff>())?;
     if temporary + tiles as u128 > memory.remaining() as u128 {
         return None;
     }
@@ -303,8 +334,8 @@ pub(crate) fn try_read_prepared_reserved(
     } = plan;
     let owns_columns = matches!(target, PreparedLoadTarget::Owned(_));
     let mut owned_columns = Some(owned_columns);
-    if let Some(transport) = transport {
-        if try_read_prepared_parallel(
+    if transport.is_some() || width > PARTITIONED_COLUMNS {
+        if try_read_prepared_whole(
             spi,
             request,
             positions,
@@ -317,10 +348,20 @@ pub(crate) fn try_read_prepared_reserved(
                 .map(|(values, layout)| (&mut **values, *layout)),
             target,
             transport,
-            (&ids, temporary, scratch + descriptor_bytes),
+            (
+                &ids,
+                temporary,
+                scratch + descriptor_bytes,
+                ids.capacity() as u128
+                    * std::mem::size_of::<fereg_core::metadata::SourceId>() as u128
+                    + descriptor_bytes,
+            ),
             &mut owned_columns,
         )? {
             return Ok(true);
+        }
+        if width > PARTITIONED_COLUMNS {
+            return Ok(false);
         }
     }
     let Some((mut early, mut late)) =
@@ -407,13 +448,14 @@ pub(crate) fn try_read_prepared_reserved(
     result
 }
 
-/// With the parallel reader every worker reads: load all columns first, then
-/// factorize the categorical ones on the team (no read/factorize overlap,
-/// which would only compete for the same workers). `Ok(false)` declines before
-/// any read and leaves the columns and the owned-column capsule untouched.
-/// `budget` is (categorical ids, temporary bytes, preparation admission).
+/// Load all columns first, then prepare categorical inputs. Parallel readers
+/// share the team; newly admitted wide serial readers preserve the incumbent's
+/// original row-major error precedence instead of reading categories first.
+/// `Ok(false)` declines before any read and leaves columns untouched.
+/// `budget` is (categorical ids, temporary bytes, preparation admission,
+/// descriptors live during loading).
 #[allow(clippy::too_many_arguments)]
-fn try_read_prepared_parallel(
+fn try_read_prepared_whole(
     spi: &mut dyn SpiApi,
     request: &OlsRequestV1,
     positions: &[u32],
@@ -424,36 +466,46 @@ fn try_read_prepared_parallel(
     memory: &mut InputMemory,
     rhs: Option<(&mut Vec<f64>, NumericRhsLayout)>,
     target: &mut PreparedLoadTarget<'_>,
-    transport: crate::parallel_input::Transport,
-    budget: (&[fereg_core::metadata::SourceId], u128, u128),
+    transport: Option<crate::parallel_input::Transport>,
+    budget: (&[fereg_core::metadata::SourceId], u128, u128, u128),
     owned_columns: &mut Option<Vec<(fereg_core::metadata::SourceId, LoadedNumericColumn)>>,
 ) -> Result<bool> {
-    let (ids, temporary, admitted) = budget;
+    let (ids, temporary, admitted, live_descriptors) = budget;
     if memory.admit(temporary).is_err() {
         return Ok(false);
     }
-    let Some(mut targets) = transport_targets(positions, columns, missing, memory) else {
-        return Ok(false);
-    };
-    let target_capacity = targets.capacity();
-    if !crate::parallel_input::try_read(
-        spi,
-        transport,
-        memory,
-        rows,
-        (targets.as_mut_slice(), target_capacity),
-        crate::parallel_input::Candidate::All,
-        rhs,
-        "numeric row read",
-    )? {
+    memory.retain(live_descriptors)?;
+    let read = (|| {
+        if let Some(transport) = transport {
+            let Some(mut targets) = transport_targets(positions, columns, missing, memory) else {
+                return Ok(false);
+            };
+            let capacity = targets.capacity();
+            crate::parallel_input::try_read(
+                spi,
+                transport,
+                memory,
+                rows,
+                (targets.as_mut_slice(), capacity),
+                crate::parallel_input::Candidate::All,
+                rhs,
+                "numeric row read",
+            )
+        } else {
+            try_read_reserved_with_tiles(
+                spi, positions, rows, columns, missing, team, memory, rhs, None,
+            )
+        }
+    })();
+    memory.release(live_descriptors)?;
+    if !read? {
         return Ok(false);
     }
-    drop(targets);
     let (mut early, _) = ReservedColumns::partition(request, positions, columns, missing, ids)
         .ok_or_else(|| {
             FeregError::new(
                 ErrorCode::Internal,
-                "parallel input lost its categorical partition",
+                "numeric input lost its categorical partition",
             )
         })?;
     let owned = owned_columns
@@ -562,7 +614,7 @@ fn try_read_reserved_with_tiles(
 ) -> Result<bool> {
     let width = positions.len();
     if !spi.supports_numeric_rows()
-        || !(1..=MAX_COLUMNS).contains(&width)
+        || tile_rows(width).is_none()
         || fereg_core::parallel::StagePlan::new(rows as u128 * width as u128, 2, team.threads())
             .lanes
             <= 1
@@ -646,7 +698,14 @@ fn append_rhs(
 }
 
 fn reserve_tiles(width: usize) -> Result<[Vec<f64>; 2]> {
-    let elements = TILE_ROWS * width;
+    let elements = tile_rows(width)
+        .and_then(|rows| rows.checked_mul(width))
+        .ok_or_else(|| {
+            FeregError::new(
+                ErrorCode::Allocation,
+                "numeric input tile exceeds work bound",
+            )
+        })?;
     let mut buffers = [Vec::new(), Vec::new()];
     for buffer in &mut buffers {
         buffer.try_reserve_exact(elements).map_err(|_| {
@@ -669,8 +728,12 @@ fn read_tiles(
     mut consume: impl FnMut(usize, usize, &mut [f64], f64) + Send,
 ) -> Result<bool> {
     let width = positions.len();
-    let elements = TILE_ROWS * width;
-    let bytes = 2 * elements * std::mem::size_of::<f64>() + std::mem::size_of::<Handoff>();
+    let Some(tile_rows) = tile_rows(width) else {
+        return Ok(false);
+    };
+    let elements = tile_rows * width;
+    let bytes = workspace_bytes(width).expect("admitted numeric tile width")
+        + std::mem::size_of::<Handoff>();
     if bytes > memory.remaining() {
         return Ok(false);
     }
@@ -683,7 +746,8 @@ fn read_tiles(
         .iter()
         .map(|buffer| buffer.capacity() as u128 * 8)
         .sum::<u128>()
-        + std::mem::size_of::<Handoff>() as u128;
+        + std::mem::size_of::<Handoff>() as u128
+        + if width > 64 { width as u128 * 4 } else { 0 };
     memory.admit(actual)?;
     for buffer in &mut buffers {
         buffer.resize(elements, 0.0);
@@ -730,7 +794,7 @@ fn read_tiles(
             }
         });
         let _close = CloseOnDrop(&handoff);
-        for (sequence, start) in (0..rows).step_by(TILE_ROWS).enumerate() {
+        for (sequence, start) in (0..rows).step_by(tile_rows).enumerate() {
             let index = sequence % 2;
             let waited = trace.start();
             let mut buffer = {
@@ -750,7 +814,7 @@ fn read_tiles(
             };
             trace.add(PipelineTrace::WAIT, waited);
             spi.check_interrupted()?;
-            let count = (rows - start).min(TILE_ROWS);
+            let count = (rows - start).min(tile_rows);
             let read = trace.start();
             let boundary =
                 spi.read_numeric_rows(positions, start + 1, &mut buffer[..count * width])?;
@@ -1121,6 +1185,171 @@ mod tests {
     }
 
     #[test]
+    fn wide_preparation_preserves_full_row_order_and_memory_refusal() {
+        if isolate_cancellation_test(
+            "numeric_pipeline::tests::wide_preparation_preserves_full_row_order_and_memory_refusal",
+        ) {
+            return;
+        }
+        use fereg_core::metadata::{
+            AbsorbTermId, AbsorbedTerm, CompiledTermGraph, SourceEntry, SourceId,
+        };
+        let request = |width: usize| OlsRequestV1 {
+            model: CompiledTermGraph {
+                sources: (1..width as u32)
+                    .map(|id| SourceEntry {
+                        id: SourceId::new(id).unwrap(),
+                        canonical_name: format!("x{id}"),
+                    })
+                    .collect(),
+                terms: Vec::new(),
+            },
+            absorbed_terms: vec![AbsorbedTerm {
+                id: AbsorbTermId::new(1).unwrap(),
+                intercept: true,
+                categorical_sources: vec![SourceId::new(width as u32 - 1).unwrap()],
+                slope_sources: Vec::new(),
+                label: "g".into(),
+                saved_name: String::new(),
+            }],
+            bindings: Vec::new(),
+            include_intercept: true,
+            keep_singletons: false,
+        };
+        let team = ThreadTeam::new(ThreadConfig::from_requested(4, false).unwrap());
+        let mut input = Input::new();
+        let mut hint = None;
+        // Refuse before the optional ID vector when its bound cannot fit.
+        assert!(prepared_plan(
+            &mut input,
+            &request(20_001),
+            20_001,
+            16_387,
+            team,
+            &mut InputMemory::new(Some(4096), 0).unwrap(),
+            0,
+            &PreparedLoadTarget::Borrowed(&mut hint)
+        )
+        .is_none());
+        assert_eq!(input.calls, 0);
+        // IDs remain live while the parallel target table is allocated.
+        // A table which fits alone must still decline if their sum does not.
+        let width = 40_000;
+        let table_bytes =
+            width as u128 * std::mem::size_of::<crate::parallel_input::Target<'_>>() as u128;
+        let ids = vec![SourceId::new(1).unwrap(); 1025];
+        let live = ids.capacity() as u128 * std::mem::size_of::<SourceId>() as u128;
+        let mut memory = InputMemory::new(Some(table_bytes), 0).unwrap();
+        let mut values = vec![Vec::new(); width];
+        let mut flags = vec![Vec::new(); width];
+        assert!(!try_read_prepared_whole(
+            &mut input,
+            &request(2),
+            &(1..=width as u32).collect::<Vec<_>>(),
+            1,
+            &mut values.iter_mut().collect::<Vec<_>>(),
+            &mut flags.iter_mut().collect::<Vec<_>>(),
+            team,
+            &mut memory,
+            None,
+            &mut PreparedLoadTarget::Borrowed(&mut hint),
+            Some(crate::parallel_input::Transport {
+                policy: crate::parallel_input::Policy::PARALLEL,
+                team
+            }),
+            (&ids, live, 0, live),
+            &mut Some(Vec::new())
+        )
+        .unwrap());
+        assert_eq!(memory.remaining(), table_bytes as usize);
+        assert_eq!(input.calls, 0);
+        for width in [65, 130] {
+            let rows = 16_387;
+            let positions = (1..=width as u32).collect::<Vec<_>>();
+            let mut peak = 0;
+            for case in 0..4 {
+                let mut input = Input::new();
+                input.missing_modulo = if case == 1 { 197 } else { 0 };
+                input.failure = if case == 2 { 2 } else { usize::MAX };
+                let mut values = (0..width)
+                    .map(|_| Vec::with_capacity(rows))
+                    .collect::<Vec<_>>();
+                let mut flags = (0..width)
+                    .map(|_| Vec::with_capacity(rows))
+                    .collect::<Vec<_>>();
+                let mut rhs = Vec::with_capacity(rows * width);
+                let mut capsule = None;
+                let mut memory = InputMemory::new((case == 3).then(|| peak - 1), 0).unwrap();
+                let result = try_read_prepared_reserved(
+                    &mut input,
+                    &request(width),
+                    &positions,
+                    rows,
+                    &mut values.iter_mut().collect::<Vec<_>>(),
+                    &mut flags.iter_mut().collect::<Vec<_>>(),
+                    team,
+                    &mut memory,
+                    Some((
+                        &mut rhs,
+                        NumericRhsLayout {
+                            width,
+                            append_intercept: true,
+                        },
+                    )),
+                    &mut PreparedLoadTarget::Owned(&mut capsule),
+                    None,
+                );
+                if case == 0 {
+                    peak = memory.peak();
+                }
+                if case == 3 {
+                    assert_eq!(result, Ok(false));
+                    assert_eq!(input.calls, 0);
+                    assert!(rhs.is_empty() && capsule.is_none());
+                    continue;
+                }
+                // Include all original columns in order even on failure.
+                assert!(input.batches.iter().all(|batch| batch == &positions));
+                if case == 2 {
+                    assert_eq!(result.unwrap_err().code, ErrorCode::Interrupted);
+                    assert!(capsule.is_none());
+                    assert_eq!(rhs.len(), tile_rows(width).unwrap() * width);
+                    continue;
+                }
+                assert_eq!(result, Ok(true));
+                let capsule = capsule.unwrap();
+                let (_, category) = capsule.columns().next().unwrap();
+                assert_eq!(input.calls, rows.div_ceil(tile_rows(width).unwrap()));
+                for row in 0..rows {
+                    let missing = case == 1 && (row + 1) % 197 == 0;
+                    for column in 0..width {
+                        let expected = if missing {
+                            input.boundary
+                        } else {
+                            (row + 1) as f64 + (column + 1) as f64 * 100000.
+                        };
+                        let (v, m) = if column == width - 1 {
+                            (&category.values, &category.missing)
+                        } else {
+                            (&values[column], &flags[column])
+                        };
+                        assert_eq!(v[row].to_bits(), expected.to_bits());
+                        assert_eq!(m[row], missing);
+                        assert_eq!(
+                            rhs[row * width + column].to_bits(),
+                            if column == width - 1 {
+                                1.0_f64.to_bits()
+                            } else {
+                                expected.to_bits()
+                            }
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
     fn input_preparation_tail_polls_caller_and_joins_cancellation_or_unwind() {
         if isolate_cancellation_test("numeric_pipeline::tests::input_preparation_tail_polls_caller_and_joins_cancellation_or_unwind") { return; }
         use std::sync::atomic::{AtomicBool, Ordering};
@@ -1193,6 +1422,8 @@ mod tests {
                 (16, 4),
                 (52, 4),
                 (64, 4),
+                (65, 4),
+                (130, 4),
             ] {
                 for rhs_width in [
                     2,
@@ -1233,8 +1464,11 @@ mod tests {
                         } else {
                             assert_eq!(result.unwrap_err().code, ErrorCode::Interrupted);
                         }
-                        let initialized =
-                            rows.min(failure.saturating_sub(1).saturating_mul(TILE_ROWS));
+                        let initialized = rows.min(
+                            failure
+                                .saturating_sub(1)
+                                .saturating_mul(tile_rows(width).unwrap()),
+                        );
                         assert_eq!(rhs.len(), initialized * rhs_width);
                         for column in 0..width {
                             assert_eq!(pointers[column], values[column].as_ptr());
@@ -1297,21 +1531,26 @@ mod tests {
 
     #[test]
     fn numeric_pipeline_transposes_tail_and_preserves_missing_on_caller_thread() {
-        for width in [16, 52, 64] {
+        for width in [16, 52, 63, 64, 65, 66, 128, 130] {
             let mut input = Input::new();
             let mut memory = InputMemory::new(None, 1234).unwrap();
             assert!(run(&mut input, 16387, width, 4, &mut memory).unwrap());
-            assert_eq!(input.calls, 5);
-            assert!(memory.peak() >= 1234 + 2 * 4096 * width as u128 * 8);
+            assert_eq!(input.calls, 16387_usize.div_ceil(tile_rows(width).unwrap()));
+            assert!(memory.peak() >= 1234 + workspace_bytes(width).unwrap() as u128);
         }
     }
 
     #[test]
     fn numeric_pipeline_declines_before_reads_and_accounts_scratch() {
+        assert_eq!(tile_rows(0), None);
+        assert_eq!(tile_rows(NUMERIC_ROW_MAX_VALUES + 1), None);
+        assert_eq!(tile_rows(NUMERIC_ROW_MAX_VALUES), Some(1));
+        assert_eq!(tile_rows(64), Some(4096));
+        assert_eq!(tile_rows(65), Some(4032));
         for (rows, width, threads, usable) in [
             (256, 52, 4, None),
             (8192, 1, 4, None),
-            (16384, 65, 4, None),
+            (16384, 65, 4, Some(1000)),
             (16384, 52, 1, None),
             (16384, 52, 4, Some(1000)),
         ] {

@@ -1,5 +1,46 @@
 # Validation status
 
+## Wide-input transport follow-up
+
+Johannes authorized investigation and repair of the remaining 64-input-column
+boundary. One candidate replaces the serial row tile's width limit with its
+existing maximum element budget (262,144 doubles, at most 4,096 rows), and uses
+the same admission for deferred columns and packed RHS construction. Narrow
+inputs retain their tile shapes. Wide serial input reads all columns in original
+row-major order before optional categorical preparation; it must not introduce
+the narrow pipeline's categorical-first ordering across the old boundary.
+Parallel accessor groups and phase limits remain unchanged.
+
+The affected storage/admission scope is unrestricted numeric OLS and PPML input
+with supported numeric FE recipes above 64 source columns, including weights,
+FE/cluster sources and supported slopes. No-absorb loading is an unchanged control. A newly admitted packed RHS or categorical capsule consumes its
+full accounted memory; budget refusal retains the ordinary loader. The core
+moment algorithms and their separate width policies are unchanged. Scientific
+arithmetic, samples, rank, omissions, separation, solver signatures and results
+must remain exact against the incumbent at fixed workers; intended numerical
+and estimator-route change scopes are empty. A science or route discrepancy
+blocks timing and requires diagnosis, not relaxed tolerances.
+
+Independent witnesses cover scalar input bits, missing codes and signed zero,
+packed RHS assembly, original SDK failure precedence, memory refusal, actual
+plugin science/repeatability, and transactions/Break. Boundary timing must show
+the widened path executed, compare one frozen candidate with beta.13 and the
+preceding review candidate, retain every observation, and use the existing
+max(5%, 1 ms) guard. The preceding full-sample failure is not waived or relabeled.
+No performance outcome is asserted by this declaration.
+
+The boundary suite freezes 100,003 rows, total input widths 63/64/65/66/130,
+no-FE and one-FE models, and public-parallel versus forced-serial transport.
+Three arms are beta.13, the preceding geometry review, and this candidate;
+six mirrored/rotated blocks with one retained repetition give each arm every
+order position. Linux workers are 4/16; focused Mac workers are 4/8. Every
+cell has one warmup per block. The existing fourteen-cell production suite
+also compares beta.13 with this candidate using its four-block/three-repetition
+schedule. Preflight includes exact posted science, independent regress/areg,
+fixed-worker repeats, cross-worker agreement and nine wide weighted, clustered,
+slope, memory-low, missing-value and PPML variants. No external-interference
+retry or exclusion is permitted; host-monitor failure makes timing inconclusive.
+
 ## Beta.14 input-transport qualification scope
 
 The input-transport candidate preserves all scientific arithmetic, loaded value

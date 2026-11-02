@@ -1510,6 +1510,15 @@ dispatch; these are additional to the ordinary loader's existing array and
 serial-transport allowances. Developer traces expose bounds and fallback causes.
 
 
+The main-thread numeric row pipeline admits at most 262,144 doubles per tile
+and at most 4,096 rows, reducing rows as input width grows. Eligible numeric
+FE designs retain deferred column initialization, optional categorical
+preparation and packed RHS reuse beyond 64 source columns, subject to complete
+memory admission. Newly eligible wide serial preparation reads complete rows
+in original column order before preparing categories. No-absorb loading,
+parallel accessor group sizes and core moment/Gram width policies are unchanged.
+
+
 COMPLETE is the last native operation; no allocation, polling, display,
 computation or store follows it. A partial physical SPI write has no logical
 meaning. The final ado commit protects posting and public output renames.

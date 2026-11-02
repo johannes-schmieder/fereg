@@ -1652,7 +1652,7 @@ fn load_ols_input_with_team(
     // The tiled pipeline keeps its own team and gates; the parallel reader
     // only replaces how its tiles, or the batched loader's chunks, are read.
     let defer_columns = candidate_all
-        && (1..=64).contains(&numeric_width)
+        && crate::numeric_pipeline::tile_rows(numeric_width).is_some()
         && team.is_some_and(|t| {
             fereg_core::parallel::StagePlan::new(n as u128 * numeric_width as u128, 2, t.threads())
                 .lanes
@@ -1768,7 +1768,7 @@ fn load_ols_input_with_team(
                 )
                 .lanes
                     > 1
-                && (1..=64).contains(&width)
+                && crate::numeric_pipeline::tile_rows(width).is_some()
                 && numeric_pipeline_effects_supported(request)
             {
                 if let Some(layout) = compiled_rhs_layout.filter(|layout| {
@@ -1782,9 +1782,11 @@ fn load_ols_input_with_team(
                         if let Some(bytes) = elements.checked_mul(8).filter(|bytes| {
                             *bytes <= rhs_budget
                                 && *bytes
-                                    <= memory
-                                        .remaining()
-                                        .saturating_sub(2 * 4096 * width * 8 + 4096)
+                                    <= memory.remaining().saturating_sub(
+                                        crate::numeric_pipeline::workspace_bytes(width)
+                                            .unwrap_or(usize::MAX)
+                                            .saturating_add(4096),
+                                    )
                         }) {
                             memory.admit(bytes as u128)?;
                             let mut rows = Vec::new();
@@ -2046,6 +2048,12 @@ fn load_ols_input_with_team(
         }
     }
     spi.check_interrupted()?;
+    if fereg_core::diagnostics::solver_trace_enabled() {
+        fereg_core::diagnostics::emit_solver_trace(&format!(
+            "FEREG_SOLVER_TRACE|phase=input_layout|width={numeric_width}|reserved={reserved_read}|packed_rhs={}",
+            rhs.as_ref().is_some_and(|rows| !rows.is_empty()),
+        ));
+    }
     let mut numeric_sources = reserved_empty(source_loaders.len(), "final OLS source table")?;
     for (source, loader) in source_loaders {
         push_reserved(

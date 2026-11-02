@@ -252,8 +252,9 @@ ST_int fereg_spi_vdata_rows(
     ST_int observations, variables_available;
     ST_int (*reader)(ST_int, ST_int, ST_double *);
     if (variables == NULL || values == NULL || missing_value == NULL ||
-        variable_count <= 0 || variable_count > 64 || first_observation <= 0 ||
-        observation_count <= 0 || observation_count > 4096) {
+        variable_count <= 0 || first_observation <= 0 ||
+        observation_count <= 0 || observation_count > 4096 ||
+        variable_count > (4096 * 64) / observation_count) {
         return FEREG_SPI_RC_SYNTAX;
     }
     if (fereg_bridge_require_main_thread() != 0) return FEREG_SPI_RC_UNAVAILABLE;

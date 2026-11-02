@@ -41,7 +41,8 @@ def stata_string(path: Path) -> str:
     return f'"{text}"'
 
 
-def run_arm(config: dict, arm: str, args: str, environment: dict | None = None) -> str:
+def run_arm(config: dict, arm: str, args: str, environment: dict | None = None, *,
+            fixture: str = "parallel_input") -> str:
     spec = config["arms"][arm]
     with tempfile.TemporaryDirectory(prefix="fereg-parallel-input-") as name:
         run = Path(name)
@@ -52,18 +53,18 @@ def run_arm(config: dict, arm: str, args: str, environment: dict | None = None) 
         lines += [
             f"adopath ++ {stata_string(Path(spec['ado']))}",
             f"adopath ++ {stata_string(Path(spec['plugin']).parent)}",
-            f"do {stata_string(ROOT / 'bench/parallel_input.do')} {args}",
+            f"do {stata_string(ROOT / 'bench' / (fixture + '.do'))} {args}",
         ]
         (run / "run.do").write_text("\n".join(lines) + "\n")
         subprocess.run([config["stata"], "-q", "-b", "do", "run.do"], cwd=run, check=False,
                        env=environment)
         log = (run / "run.log").read_text(errors="replace")
-    if "END_FIXTURE|parallel_input|rc=0" not in log:
+    if f"END_FIXTURE|{fixture}|rc=0" not in log:
         raise RuntimeError(f"{arm} failed:\n{log[-4000:]}")
     return log
 
 
-def command_run(config: dict) -> None:
+def command_run(config: dict, *, fixture: str = "parallel_input") -> None:
     output = Path(config["output"])
     output.mkdir(parents=True, exist_ok=True)
     results = output / "results.csv"
@@ -73,15 +74,18 @@ def command_run(config: dict) -> None:
     rng = random.Random(config["seed"])
     first = rng.choice(sorted(config["arms"]))
     order = []
+    pair = [first, *(arm for arm in config["arms"] if arm != first)]
     for block in range(config["blocks"]):
-        pair = [first, next(arm for arm in config["arms"] if arm != first)]
-        order.append(pair if block % 2 == 0 else pair[::-1])
+        rotation = (block // 2) % len(pair)
+        rotated = pair[rotation:] + pair[:rotation] if len(pair) > 2 else pair
+        order.append(rotated if block % 2 == 0 else rotated[::-1])
     (output / "plan.json").write_text(json.dumps({"config": config, "order": order}, indent=2) + "\n")
     threads = " ".join(str(t) for t in config["threads"])
     for block, arms in enumerate(order, start=1):
         for arm in arms:
             run_arm(config, arm, f'{stata_string(Path(config["data_dir"]))} '
-                                 f'{stata_string(results)} {arm} {block} "{threads}" {config["reps"]}')
+                                 f'{stata_string(results)} {arm} {block} "{threads}" {config["reps"]}',
+                    fixture=fixture)
             print(f"block {block} {arm} done", flush=True)
 
 
@@ -132,19 +136,19 @@ def command_verify(config: dict) -> None:
     print("INPUT_BITS=EXACT")
 
 
-def command_report(config: dict) -> None:
+def command_report(config: dict, *, cells=CELLS) -> dict:
     with (Path(config["output"]) / "results.csv").open() as stream:
         rows = list(csv.DictReader(stream))
     groups: dict[tuple, dict[str, list[dict]]] = {}
     for row in rows:
         groups.setdefault((row["cell"], int(row["threads"])), {}).setdefault(row["arm"], []).append(row)
-    expected = {(cell, threads) for cell in CELLS for threads in config["threads"]}
+    expected = {(cell, threads) for cell in cells for threads in config["threads"]}
     if set(groups) != expected:
         raise RuntimeError("incomplete timing cell coverage")
     identifiers = {(block, rep) for block in range(1, config["blocks"] + 1)
                    for rep in range(1, config["reps"] + 1)}
     for (cell, _), arms in groups.items():
-        if set(arms) != {"incumbent", "candidate"}:
+        if set(arms) != set(config["arms"]):
             raise RuntimeError("missing timing arm")
         for arm_rows in arms.values():
             ids = [(int(row["block"]), int(row["rep"])) for row in arm_rows]
@@ -157,25 +161,36 @@ def command_report(config: dict) -> None:
                     value = float(row[metric])
                     if not math.isfinite(value) or value < 0:
                         raise RuntimeError(f"invalid timing {cell}/{metric}")
-    regressions = []
-    print("cell threads metric incumbent_median candidate_median ratio n_inc n_cand flag")
+    regressions, comparisons = [], []
+    print("reference cell threads metric reference_median candidate_median ratio n_ref n_cand flag")
     for (cell, threads), arms in sorted(groups.items()):
-        for metric in ("wall_s", "load_s", "native_s", "alloc_peak"):
-            values = {}
-            for arm in ("incumbent", "candidate"):
-                data = [float(r[metric]) for r in arms.get(arm, []) if r[metric] not in ("", ".")]
-                values[arm] = (statistics.median(data), len(data)) if data else (float("nan"), 0)
-            inc, cand = values["incumbent"][0], values["candidate"][0]
-            ratio = cand / inc if inc and inc == inc else float("nan")
-            flag = ""
-            if metric == "wall_s" and cand > inc * 1.05 and cand - inc > 0.001:
-                flag = "REGRESSION"
-                regressions.append([cell, threads])
-            print(f"{cell} {threads} {metric} {inc:.6g} {cand:.6g} {ratio:.4f} "
-                  f"{values['incumbent'][1]} {values['candidate'][1]} {flag}")
+        for reference in config["arms"]:
+            if reference == "candidate":
+                continue
+            for metric in ("wall_s", "load_s", "native_s", "alloc_peak"):
+                values = {}
+                for arm in (reference, "candidate"):
+                    data = [float(r[metric]) for r in arms[arm] if r[metric] not in ("", ".")]
+                    values[arm] = (statistics.median(data), len(data)) if data else (float("nan"), 0)
+                inc, cand = values[reference][0], values["candidate"][0]
+                ratio = cand / inc if inc and inc == inc else float("nan")
+                flag = ""
+                if metric == "wall_s" and cand > inc * 1.05 and cand - inc > 0.001:
+                    flag = "REGRESSION"
+                    if [cell, threads] not in regressions:
+                        regressions.append([cell, threads])
+                comparisons.append(dict(reference=reference, cell=cell, threads=threads,
+                                        metric=metric,
+                                        reference_median=inc if math.isfinite(inc) else None,
+                                        candidate_median=cand if math.isfinite(cand) else None,
+                                        ratio=ratio if math.isfinite(ratio) else None,
+                                        regression=bool(flag)))
+                print(f"{reference} {cell} {threads} {metric} {inc:.6g} {cand:.6g} {ratio:.4f} "
+                      f"{values[reference][1]} {values['candidate'][1]} {flag}")
 
     result = {"status": "regression" if regressions else "passed", "regressions": regressions,
-              "observations": len(rows), "cells": len(groups), "resampling": False}
+              "observations": len(rows), "cells": len(groups), "resampling": False,
+              "comparisons": comparisons}
     (Path(config["output"]) / "summary.json").write_text(json.dumps(result, indent=2) + "\n")
     return result
 

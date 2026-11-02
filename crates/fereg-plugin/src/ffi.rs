@@ -1122,17 +1122,39 @@ impl SpiApi for SpiSession {
         values: &mut [f64],
     ) -> Result<f64, FeregError> {
         if variables.is_empty()
-            || variables.len() > 64
+            || values.len() > crate::input::NUMERIC_ROW_MAX_VALUES
             || values.is_empty()
             || values.len() % variables.len() != 0
-            || values.len() / variables.len() > 4096
+            || values.len() / variables.len() > crate::input::NUMERIC_ROW_MAX_ROWS
         {
             return Err(FeregError::new(
                 ErrorCode::InvalidArgument,
                 "numeric SPI row batch has an invalid shape",
             ));
         }
-        let mut positions = [0; 64];
+        let mut stack_positions = [0; 64];
+        let mut wide_positions = Vec::new();
+        let positions = if variables.len() <= stack_positions.len() {
+            &mut stack_positions[..variables.len()]
+        } else {
+            wide_positions
+                .try_reserve_exact(variables.len())
+                .map_err(|_| {
+                    FeregError::new(
+                        ErrorCode::Allocation,
+                        "unable to reserve numeric row positions",
+                    )
+                })?;
+            // The pipeline admits exactly this descriptor capacity.
+            if wide_positions.capacity() != variables.len() {
+                return Err(FeregError::new(
+                    ErrorCode::Allocation,
+                    "numeric row position capacity exceeds admission",
+                ));
+            }
+            wide_positions.resize(variables.len(), 0);
+            wide_positions.as_mut_slice()
+        };
         for (destination, variable) in positions.iter_mut().zip(variables) {
             *destination = Self::position(*variable, "variable position")?;
         }

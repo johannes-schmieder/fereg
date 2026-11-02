@@ -1677,9 +1677,11 @@ def main():
     if args.action == 'input':
         import parallel_input
         from input_diagnostics import command_diagnose
+        import input_width
         config = json.loads(args.config.read_text())
-        result = {'verify': parallel_input.command_verify, 'run': parallel_input.command_run,
-                  'report': parallel_input.command_report, 'diagnose': command_diagnose}[args.operation](config)
+        module = input_width if config.get('suite') == 'width' else parallel_input
+        result = {'verify': module.command_verify, 'run': module.command_run,
+                  'report': module.command_report, 'diagnose': command_diagnose}[args.operation](config)
         return 1 if result and result['status'] != 'passed' else 0
     if args.action == 'recovery-plan':
         recovery_plan(args.manifest, args.results, args.host, args.review, args.output)

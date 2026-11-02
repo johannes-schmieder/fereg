@@ -107,6 +107,11 @@ pub(crate) fn checked_input_range(
     Ok(range)
 }
 
+/// Serial row transport limits match the C bridge. Width uses an element budget,
+/// so widening an input shortens its tile instead of disabling the pipeline.
+pub(crate) const NUMERIC_ROW_MAX_ROWS: usize = 4096;
+pub(crate) const NUMERIC_ROW_MAX_VALUES: usize = NUMERIC_ROW_MAX_ROWS * 64;
+
 /// Safe abstraction over a Stata-thread-confined SPI session.
 pub trait SpiApi {
     /// Read the caller's fixed local `fereg_request_bundle`, including its

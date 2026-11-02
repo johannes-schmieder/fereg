@@ -9,6 +9,7 @@
 #include <pthread.h>
 #endif
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 static int calls, failure_at;
@@ -350,7 +351,7 @@ int main(void)
     calls = 0;
     assert(fereg_spi_vdata_rows(NULL, 3, 1, 1, rows, &missing) == 198);
     assert(fereg_spi_vdata_rows(vars, 0, 1, 1, rows, &missing) == 198);
-    assert(fereg_spi_vdata_rows(vars, 65, 1, 1, rows, &missing) == 198);
+    assert(fereg_spi_vdata_rows(vars, 262145, 1, 1, rows, &missing) == 198);
     assert(fereg_spi_vdata_rows(vars, 3, 1, 4097, rows, &missing) == 198);
     assert(fereg_spi_vdata_rows(vars, 3, 1, 1, NULL, &missing) == 198);
     assert(fereg_spi_vdata_rows(vars, 3, 1, 1, rows, NULL) == 198);
@@ -366,10 +367,10 @@ int main(void)
     failure_at = 5;
     assert(fereg_spi_vdata_rows(vars, 3, 1, 4, rows, &missing) == 919);
     assert(calls == 5 && rows[0] == 400001 && rows[3] == 400002 && rows[12] == -77);
-    for (int width = 1; width <= 64; ++width) {
+    for (int width = 1; width <= 130; ++width) {
         const int order[] = {4, 1, 2};
-        int positions[64];
-        double batch[3 * 64 + 1];
+        int positions[130];
+        double batch[3 * 130 + 1];
         for (int j = 0; j < width; ++j) positions[j] = order[j % 3];
         for (int edge = 0; edge < 2; ++edge) {
             const int first = edge == 0 ? 1 : 65538;
@@ -390,6 +391,24 @@ int main(void)
             }
         }
     }
+    /* The work bound limits values, including at widths above the old limit. */
+    int *wide_positions = malloc(262144 * sizeof(int));
+    double *wide_values = malloc(262145 * sizeof(double));
+    assert(wide_positions && wide_values);
+    for (int j = 0; j < 262144; ++j) wide_positions[j] = 1;
+    for (int width = 64; width <= 65; ++width) {
+        int count = 262144 / width;
+        calls = 0; failure_at = 0;
+        wide_values[width * count] = -77;
+        assert(fereg_spi_vdata_rows(wide_positions, width, 1, count, wide_values, &missing) == 0);
+        assert(calls == width * count && wide_values[width * count] == -77);
+        assert(fereg_spi_vdata_rows(wide_positions, width, 1, count + 1, wide_values, &missing) == 198);
+    }
+    calls = 0; failure_at = 0;
+    wide_values[262144] = -77;
+    assert(fereg_spi_vdata_rows(wide_positions, 262144, 1, 1, wide_values, &missing) == 0);
+    assert(calls == 262144 && wide_values[262144] == -77);
+    free(wide_positions); free(wide_values);
     puts("INPUT_GUARD_PASS");
     window_checks(&plugin);
     const double *outputs[] = {a, b, c};
