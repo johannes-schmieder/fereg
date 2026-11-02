@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "status": "argument bug reproduced; correction and checker assertions passed",
+  "qualification": "none; deliberate diagnostic failure 97001",
+  "receipt": {
+    "schema_version": 4,
+    "run_id": "win-20261102T064015Z-44e644e2",
+    "project": "fereg",
+    "profile": "stata-do",
+    "source_revision": "dirty-ac1e3ab9f77a1e2ab4f6a3cbe23a1398a2a005c104d7a1cc0939be75eca636ab",
+    "source_sha256": "9b2d72ec3202c96974a8923a33359cd34374d8bbd3a49ced49bfd881a6413de4",
+    "windows_target": "x86_64",
+    "execution_identity": "SYSTEM",
+    "status": "FAIL",
+    "error_code": "STATA_DRIVER_FAILED",
+    "checks": {
+      "execution_identity": true,
+      "source_hash": true,
+      "archive_paths": true,
+      "source_manifest": true,
+      "shutdown_backstop": true,
+      "stata": false,
+      "project_test": false
+    },
+    "completed_at_utc": "2026-11-02T06:41:28.0881146Z",
+    "controller_sha256": "e635d58609f24fa8564ce4c3b6787eccd9df36892edb636069cdc2ebcdfdaf00",
+    "diagnostic_guard_sha256": "14fe3f6515439c55d0732e99fba797280b76dfd9638345794a639a00a44ffd12",
+    "process": {
+      "outcome": "reported_failure",
+      "elapsed_ms": 4057,
+      "exit_code": 0
+    },
+    "diagnostics": {
+      "available": true,
+      "compiler_errors": [],
+      "completed": [],
+      "native_rc": null,
+      "plugin_sha256": null,
+      "reason": "stata_error",
+      "stage": "startup",
+      "stage_elapsed_ms": 2326,
+      "stata_rc": 97001,
+      "status": "FAIL"
+    }
+  },
+  "receipt_sha256": "85e2680278b0481fbb4ed61c05ccbe6b21d8b5485963b98c70aa71e5f1c5e504",
+  "assertions": [
+    "untyped scalar splat sends the wrong native argv",
+    "typed string array sends exactly --require-serial",
+    "corrected serial checker accepts equal digests without a window",
+    "qualified-mode checker retains two-option behavior",
+    "serial checker rejects an actual numeric-window trace"
+  ],
+  "cleanup": {
+    "instance_stopped": true,
+    "transient_objects_deleted": true,
+    "lock_released": true
+  },
+  "runtime_change": false
+}

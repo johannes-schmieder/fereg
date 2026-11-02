@@ -1,0 +1,68 @@
+{
+  "schema": 1,
+  "status": "passed experimental tests; parallel host not activated",
+  "receipt": {
+    "schema_version": 4,
+    "run_id": "win-20261102T054900Z-c9530311",
+    "project": "fereg",
+    "profile": "stata-do",
+    "source_revision": "commit-e2d91989c7a4cde5589a3bf9c3e5df432f88fee1",
+    "source_sha256": "7d4df1405307e6c38a283bddedcdb6845dba1c20c62c3154c97f87e532b70c86",
+    "windows_target": "x86_64",
+    "execution_identity": "SYSTEM",
+    "status": "PASS",
+    "error_code": null,
+    "checks": {
+      "execution_identity": true,
+      "source_hash": true,
+      "archive_paths": true,
+      "source_manifest": true,
+      "shutdown_backstop": true,
+      "stata": true,
+      "project_test": true
+    },
+    "completed_at_utc": "2026-11-02T06:10:23.1922603Z",
+    "controller_sha256": "e635d58609f24fa8564ce4c3b6787eccd9df36892edb636069cdc2ebcdfdaf00",
+    "diagnostic_guard_sha256": "14fe3f6515439c55d0732e99fba797280b76dfd9638345794a639a00a44ffd12",
+    "process": {
+      "outcome": "passed",
+      "elapsed_ms": 1218493,
+      "exit_code": 0
+    },
+    "diagnostics": {
+      "available": true,
+      "compiler_errors": [],
+      "completed": [
+        "startup",
+        "toolchain",
+        "source_identity",
+        "cargo_build",
+        "exact_fma",
+        "fused_kernels",
+        "c_bridge",
+        "numeric_guards",
+        "plugin_link",
+        "binary_audit",
+        "native_loader",
+        "build_complete",
+        "checksum",
+        "stata_smoke",
+        "single_runtime"
+      ],
+      "native_rc": null,
+      "plugin_sha256": "81db9e10760f46e7e5cde0ae791b856f34fcfc76163705cc45779089dd93d124",
+      "reason": "none",
+      "stage": "complete",
+      "stage_elapsed_ms": 3615,
+      "stata_rc": null,
+      "status": "PASS"
+    }
+  },
+  "receipt_sha256": "adddd4be537cb5f2c53b23a9818585247a70a2bfdac5475baced8427c71e46b7",
+  "cleanup": {
+    "instance_stopped": true,
+    "transient_objects_deleted": true,
+    "lock_released": true
+  },
+  "limitation": "This experimental parallel Windows run lacks the required live Break witness. The final candidate removes Windows from the qualified host table."
+}

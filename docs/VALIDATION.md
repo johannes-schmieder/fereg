@@ -456,6 +456,58 @@ still required. Independent review finds no blockers in the final Windows
 fallback or exact-name postcommit cleanup and accepts Linux/Mac timing reuse
 for the Windows-only policy removal, subject to rebuilt-artifact checks.
 
+The final cleanup [Linux comparison](../bench/results/input-beta14-cleanup-linux-20261102.json)
+retains [all 1,008 calls](../bench/results/input-beta14-cleanup-linux-20261102.csv).
+It passes 39 of 42 settings and fails the declared release gate in three:
+
+| Setting | Workers | Beta.13 | Cleanup candidate | Change |
+| --- | ---: | ---: | ---: | ---: |
+| One FE, 32 regressors | 28 | 1.1195 s | 1.2180 s | +8.8% |
+| Ten million rows, four regressors | 4 | 4.0885 s | 4.3370 s | +6.1% |
+| One FE, 32 regressors, `memory(low)` | 16 | 2.9865 s | 3.2635 s | +9.3% |
+
+The 32-regressor and low-memory penalties appear in all four block medians;
+the ten-million-row penalty appears in three. Low-memory loading is nearly
+unchanged (98.3/99.4 ms), while native time including loading rises from
+2.7042 to 2.9175 seconds. The 32-regressor loading difference is only 3.1 ms;
+its later native work and work outside the native runtime also rise. The
+large-input case has a 98.3 ms loading increase plus slower subsequent work.
+Separate medians are not additive. Memory placement and cache effects remain
+possible explanations, not established causes, and these observations do not
+justify excluding any block.
+
+Restricted whole-call improvements are 14–27% for short `in`, 21–24% for
+weighted multi-FE OLS, 21–32% for string-FE OLS and 6–7% for PPML. All 84
+Linux exact-science preflight calls pass, including complete sample signatures.
+Isolation passes; job 8393922 on scc-wo4 records `failed=0`, `exit_status=1`,
+2,992 seconds and 9.441 GB maximum virtual memory. Exit one is the performance
+gate rejecting the three settings, not a native or scientific failure. No
+observations were excluded or resampled. Beta.14 remains unpublished pending
+a performance-policy decision or a newly declared, narrower candidate.
+
+The final rebuilt [Mac](../bench/results/input-beta14-final-macos-native-20261102.json)
+and [Linux](../bench/results/input-beta14-final-linux-native-20261102.json)
+artifacts pass all 68 fixtures, scalar input oracles at four/eight workers,
+failure/rollback, real input/OLS/PPML console Break and all 77 exact incumbent
+replay cases. The Linux native job ran separately on scc-we3 (8394017, exit
+zero), outside the measured host. The Mac build came from the offline source
+archive; its stored executable permissions were restored after Python ZIP
+extraction omitted them, then the actual ABI/load/panic harness passed.
+
+The [experimental Windows cleanup run](../bench/results/input-beta14-windows-experimental-20261102.json)
+passed its driver, but lacks the live Break prerequisite for parallel activation.
+The subsequent [serial-policy run](../bench/results/input-beta14-windows-harness-failure-20261102.json)
+passed the nested scientific oracle, then failed the trace-checker launcher with
+code 65000. A one-option PowerShell `if` output became a scalar string, so
+splatting passed individual characters to Python. The
+[bounded Windows probe](../bench/results/input-beta14-windows-argv-probe-20261102.json)
+reproduced that argument error, verified the typed-array correction, checked
+both accepted modes and rejected a forbidden numeric window. It deliberately
+returned diagnostic code 97001 and confers no release qualification. Both
+runs stopped the machine, deleted transient objects and released the lock.
+The fix changes only the test launcher; the final Windows native/installed
+checks are rerun through the guarded driver.
+
 The actual candidate binaries pass 68 licensed Stata 19 fixtures on both Mac
 and Linux, all 77 exact incumbent replay cases on each, scalar input oracles at
 multiple worker counts, accessor-failure rollback, and live console Break while

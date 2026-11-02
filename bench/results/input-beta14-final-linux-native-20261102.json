@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "platform": "linux",
+  "status": "native checks passed",
+  "source": "8b7a2bf0ad7940c83404c2e2b9c8634771b23990",
+  "runtime_sha256": "3cba8e33e32cd7bad8302c71d2c300cde019cc88173329210314af578fa9c054",
+  "plugin_sha256": "afc932eea51487ca74019dedce933fb94b558ecbe23823229cec7c86ee87804d",
+  "full_fixtures": 68,
+  "input_oracle_workers": [
+    4,
+    8
+  ],
+  "input_values": "exact scalar/forced-serial/parallel digests",
+  "failure_rollback": "passed",
+  "live_console_break": [
+    "input window OLS and PPML",
+    "OLS",
+    "PPML"
+  ],
+  "incumbent_exact_replay_cases": 77,
+  "incumbent_plugin_sha256": "9bbb0a35c1238e07227b71d7ee388ee374f558e94f9d9c81cc7c40f7d44284fc",
+  "replay_summary_sha256": "7aa9430cee729b11ac61bf0f2abc5bbbf3fcb7a61e14835643438fafe31d29cb",
+  "build_abi_load_panic_checks": "passed",
+  "numerical_scope": [],
+  "estimator_route_scope": [],
+  "timing": "Reuses the frozen cleanup comparison; native change since its candidate is Windows-only qualified-host removal.",
+  "limitations": [
+    "This native record does not itself qualify timing or installation.",
+    "Interactive GUI Break remains unqualified."
+  ],
+  "terminal_accounting": {
+    "jobnumber": "8394017",
+    "hostname": "scc-we3.scc.bu.edu",
+    "granted_pe": "omp28",
+    "slots": "28",
+    "failed": "0",
+    "exit_status": "0",
+    "ru_wallclock": "343",
+    "maxvmem": "9.515G"
+  }
+}

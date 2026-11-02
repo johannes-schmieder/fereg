@@ -1,0 +1,68 @@
+{
+  "schema": 1,
+  "status": "failed harness; not qualified",
+  "receipt": {
+    "schema_version": 4,
+    "run_id": "win-20261102T061536Z-ece16810",
+    "project": "fereg",
+    "profile": "stata-do",
+    "source_revision": "commit-8b7a2bf0ad7940c83404c2e2b9c8634771b23990",
+    "source_sha256": "eaf896ee95e4819c46f934f97a88a59c2601cad0c352aac8f1a441465520f64b",
+    "windows_target": "x86_64",
+    "execution_identity": "SYSTEM",
+    "status": "FAIL",
+    "error_code": "STATA_DRIVER_FAILED",
+    "checks": {
+      "execution_identity": true,
+      "source_hash": true,
+      "archive_paths": true,
+      "source_manifest": true,
+      "shutdown_backstop": true,
+      "stata": false,
+      "project_test": false
+    },
+    "completed_at_utc": "2026-11-02T06:34:39.5487116Z",
+    "controller_sha256": "e635d58609f24fa8564ce4c3b6787eccd9df36892edb636069cdc2ebcdfdaf00",
+    "diagnostic_guard_sha256": "14fe3f6515439c55d0732e99fba797280b76dfd9638345794a639a00a44ffd12",
+    "process": {
+      "outcome": "reported_failure",
+      "elapsed_ms": 1082977,
+      "exit_code": 0
+    },
+    "diagnostics": {
+      "available": true,
+      "compiler_errors": [],
+      "completed": [
+        "startup",
+        "toolchain",
+        "source_identity",
+        "cargo_build",
+        "exact_fma",
+        "fused_kernels",
+        "c_bridge",
+        "numeric_guards",
+        "plugin_link",
+        "binary_audit",
+        "native_loader",
+        "build_complete",
+        "checksum",
+        "stata_smoke"
+      ],
+      "native_rc": null,
+      "plugin_sha256": null,
+      "reason": "stata_error",
+      "stage": "single_runtime",
+      "stage_elapsed_ms": 44385,
+      "stata_rc": 65000,
+      "status": "FAIL"
+    }
+  },
+  "receipt_sha256": "5301140573e339970be2b36ef242b6f495feff346750a1ac2fdd81be79882243",
+  "cleanup": {
+    "instance_stopped": true,
+    "transient_objects_deleted": true,
+    "lock_released": true
+  },
+  "diagnosis": "The checker was invoked by splatting a scalar PowerShell string, which enumerates its characters. The nested scientific oracle passed; the checker exited before producing any FAIL rows. A separate bounded native-Windows argument probe will verify the typed-array correction.",
+  "runtime_change_for_repair": false
+}

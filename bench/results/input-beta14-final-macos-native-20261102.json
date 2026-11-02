@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "platform": "macos",
+  "status": "native checks passed",
+  "source": "8b7a2bf0ad7940c83404c2e2b9c8634771b23990",
+  "runtime_sha256": "3cba8e33e32cd7bad8302c71d2c300cde019cc88173329210314af578fa9c054",
+  "plugin_sha256": "8d899bfa34e615634014841bf984f08bc2fa3d280ab284e24ad1910afd94b8ae",
+  "full_fixtures": 68,
+  "input_oracle_workers": [
+    4,
+    8
+  ],
+  "input_values": "exact scalar/forced-serial/parallel digests",
+  "failure_rollback": "passed",
+  "live_console_break": [
+    "input window OLS and PPML",
+    "OLS",
+    "PPML"
+  ],
+  "incumbent_exact_replay_cases": 77,
+  "incumbent_plugin_sha256": "e01c9b7e0b2bbc17d5a6e4a2dbf716e0a1108b5959e1fa1335d1eddcfc34d845",
+  "replay_summary_sha256": "586963c348fc5ab91aced63f46c6fc9f433f1314d18e5decff2fe00d44f00ae4",
+  "build_abi_load_panic_checks": "passed",
+  "numerical_scope": [],
+  "estimator_route_scope": [],
+  "timing": "Reuses the frozen cleanup comparison; native change since its candidate is Windows-only qualified-host removal.",
+  "limitations": [
+    "This native record does not itself qualify timing or installation.",
+    "Interactive GUI Break remains unqualified.",
+    "Licensed Stata execution is on Apple Silicon; native Intel-host Stata is outstanding."
+  ],
+  "offline_source_archive_sha256": "cc0d3459cc04a87745c75f90c15639f7d0d488ed869d9ffd4eab4141250eee4c",
+  "universal_slices": [
+    "aarch64",
+    "x86_64"
+  ],
+  "archive_extraction_repair": "The Python ZIP extraction omitted executable permissions. Restored the stored ZIP modes, then completed the actual ABI harness successfully; no source or binary changed."
+}
