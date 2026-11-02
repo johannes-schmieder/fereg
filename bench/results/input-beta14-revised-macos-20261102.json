@@ -9,11 +9,12 @@
   "estimator_route_scope": [],
   "source_integration": {
     "status": "passed",
-    "mode": "source-only; full installed-package gate remains outstanding",
+    "mode": "full run_tests.sh including candidate package binding, inventory, hashes, ABI and Mata checks",
     "log_sha256": "2089c222d36195d78e0568e8dd72f78678432abce482c9d1a95abd03f50c3c4c",
     "focused_reader_tests": 14,
     "harness_tests": 4,
-    "independent_architecture_review": "no blockers"
+    "independent_architecture_review": "no blockers",
+    "full_package_log_sha256": "8eaa490970da0b60942d5948d8c0cf8e704d6fad670a154dce2a221cd7c707ac"
   },
   "native": {
     "fixtures": 68,

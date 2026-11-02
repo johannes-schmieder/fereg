@@ -251,8 +251,8 @@ The full ten-million-row case changes from 927.5 to 929.5 ms at four workers and
 worker counts. The universal Mac build/ABI audit, 68 Stata 19 fixtures, 77 exact
 incumbent replays, scalar oracles, failure rollback and live console Break checks
 pass. The Stata 18 console oracle also passes 70 cases/202 runs (71 parallel).
-Full source integration passes in source-only mode; installed-package admission
-awaits final package admission. A fresh Mac installation verifies all 36 files,
+Full source integration and the complete suite with the actual candidate root
+package pass. A fresh Mac installation verifies all 36 files,
 self-test and independent restricted OLS/PPML examples. The
 [revised Windows qualification](../bench/results/input-beta14-revised-windows-20261102.json)
 passes its exact-source installed-plugin, scalar-oracle, missing-value, rollback
@@ -261,8 +261,44 @@ remain unqualified. The guarded controller collected the verified plugin,
 deleted transient transfer objects, released the lock and stopped the instance.
 The corresponding source closure matches every compiled source and dependency
 file; only generated audit/SBOM/manifests differ, and the fresh dependency audit
-reports zero advisories. Linux timing remains outstanding, so these results do
-not yet authorize beta.14 publication.
+reports zero advisories. These passing correctness results do not override the
+failed revised Linux performance comparison below.
+
+The [revised Linux comparison](../bench/results/input-beta14-revised-linux-20261102.json)
+retains [all 1,008 calls](../bench/results/input-beta14-revised-linux-20261102.csv)
+on the isolated 28-core host: 31 settings pass and eleven exceed the unchanged
+whole-call allowance. The failures are c1/28, c8/16, c9/4, c11/16, c12/4/16,
+c13/4/16/28 and c14/4/16. Exact actual-plugin preflights pass for all fourteen
+families at all three worker counts, and all native/scientific/transaction
+checks pass. Scheduler accounting records a performance-gate exit, with no
+native or host-monitor failure. Fresh Linux 15/19 installations verify all 36
+files, self-test and independent restricted OLS/PPML examples.
+
+The revised c3/c6 whole-call results are within the allowance at every worker
+count, but loading does not improve uniformly. Short-`in` c11 at sixteen workers
+loads in 59.6/36.0 ms (incumbent/revised), while its whole call takes 1.154/1.343 s.
+The candidate's whole-call penalty occurs in all four mirrored blocks. The
+per-call residual `wall_s - native_s`, then aggregated, has medians of
+879.0/1089.7 ms; this includes frontend/wrapper work AND native work after the
+runtime snapshot. It is not solely frontend time. Weighted restricted c12/16
+has whole-call medians of 294.5/346.5 ms and residuals of 233.1/282.9 ms.
+String-FE c13/16 takes 264.0/316.5 ms, including loading of 28.6/39.5 ms;
+its loading penalty occurs in all four blocks. Low-memory c8 and PPML c14 also
+show native-time penalties. Separate medians are not additive, and these
+observations do not establish a single causal mechanism. The revised candidate
+remains unqualified; the public release stays beta.13.
+
+One bounded follow-up uses these unchanged binaries and the existing diagnostic
+harness to partition frontend setup, the complete plugin call and frontend
+publication. It freezes c8/c11/c12/c13/c14 at sixteen Rust workers, default Stata
+processors and memory placement, two mirrored blocks, one warmup and three
+observations per cell/arm/block: sixty observed calls. Both arms first verify
+exact coefficients, covariance, sample counts and input digests for every cell.
+The verified environment pins and whole-node host monitoring remain required;
+there are no exclusions, retries, hardware profiles or new runtime builds.
+Science and estimator-route scopes are empty. This mechanism diagnostic cannot
+replace either failed qualification or qualify the release. Instrumentation
+and process history may affect the observed costs and must be acknowledged.
 
 The actual candidate binaries pass 68 licensed Stata 19 fixtures on both Mac
 and Linux, all 77 exact incumbent replay cases on each, scalar input oracles at
