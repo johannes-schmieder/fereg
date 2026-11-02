@@ -567,6 +567,14 @@ checkout with the same binary. Passing fixtures and the initial failure evidence
 were retained. This is not a scientific or timing retry. Linux qualification
 remains required; no publication is authorized by the Mac pass alone.
 
+The narrower [Windows run](../bench/results/input-beta14-geometry-windows-20261102.json)
+passes with the same native source as Mac/Linux. Its unchanged qualification
+driver verifies the build, ABI, installed-plugin checksum, missing-value witness,
+OLS/PPML transactions and both 70-case/202-estimation input oracles with zero
+numeric windows. Run `win-20261102T074954Z-393b5d4e` reports 1,032.382 seconds,
+all transient objects deleted, the lock released and the machine stopped.
+Windows remains serial; this result does not qualify parallel input there.
+
 The actual candidate binaries pass 68 licensed Stata 19 fixtures on both Mac
 and Linux, all 77 exact incumbent replay cases on each, scalar input oracles at
 multiple worker counts, accessor-failure rollback, and live console Break while
