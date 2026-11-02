@@ -552,6 +552,21 @@ kept, with no interference exclusions or retries. Environment and input pins
 must be reverified from the run root. This is one frozen candidate, not a search
 over phase constants, and no new timing or release success is asserted here.
 
+The narrower [Mac comparison](../bench/results/input-beta14-geometry-macos-20261102.json)
+passes all 28 settings and retains [all 672 observations](../bench/results/input-beta14-geometry-macos-20261102.csv).
+The c11 advisory exception is unused: short-`in` whole-call medians improve from
+229/217 ms to 130/131 ms at four/eight workers. Full-sample ten-million-row medians
+are 923/760 ms for beta.13 and 908.5/737 ms for the candidate. Actual-plugin
+preflight confirms exact input/scientific agreement and identical incumbent
+phase/block geometry in every frozen cell and worker setting. All 68 native
+fixtures, scalar input oracles, failure rollback, live console Break and 77 exact
+incumbent replays pass. The initial Mac fixture launcher used the source archive,
+which deliberately omits test-only OLS ado adapters; command-not-found failures
+were repaired by running only those affected fixtures from the full exact-source
+checkout with the same binary. Passing fixtures and the initial failure evidence
+were retained. This is not a scientific or timing retry. Linux qualification
+remains required; no publication is authorized by the Mac pass alone.
+
 The actual candidate binaries pass 68 licensed Stata 19 fixtures on both Mac
 and Linux, all 77 exact incumbent replay cases on each, scalar input oracles at
 multiple worker counts, accessor-failure rollback, and live console Break while
