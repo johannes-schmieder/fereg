@@ -60,7 +60,6 @@ const QUALIFIED: &[(&str, &str, u32, &str, &str)] = &[
     ("linux", "x86_64", 18, "MP", "gui"),
     ("linux", "x86_64", 19, "MP", "console"),
     ("linux", "x86_64", 19, "MP", "gui"),
-    ("windows", "x86_64", 19, "MP", "gui"),
 ];
 
 /// Host capability decided from public request metadata before any read.
@@ -1894,9 +1893,12 @@ mod tests {
             .iter()
             .find(|&&(os, arch, ..)| os == std::env::consts::OS && arch == std::env::consts::ARCH);
         let Some(&(_, _, version, edition, interface)) = qualified else {
-            assert!(
-                !Policy::from_host(Some("19"), Some("MP"), Some("console"), Some("0")).enabled()
-            );
+            for interface in ["console", "gui"] {
+                assert!(
+                    !Policy::from_host(Some("19"), Some("MP"), Some(interface), Some("0"))
+                        .enabled()
+                );
+            }
             return;
         };
         let version = format!("{version}.5");

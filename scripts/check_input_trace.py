@@ -7,6 +7,7 @@ window ran and one `phase=input_digest` line per loaded action. Within a case,
 every digest must be identical (serial, forced-serial and parallel readers).
 Modes `serial`, `forced` and `alias` must not use the window; `parallel` must,
 unless the case is listed with --serial-ok (inputs below the work policy).
+--require-serial verifies an unqualified host: no run may open a numeric window.
 """
 from __future__ import annotations
 
@@ -34,8 +35,11 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("trace", type=Path)
     parser.add_argument("--serial-ok", action="append", default=[])
+    parser.add_argument("--require-serial", action="store_true",
+                        help="require the serial fallback in every run")
     args = parser.parse_args()
     runs: list[dict[str, object]] = []
+    unassigned_windows = 0
     for line in args.trace.read_text(encoding="utf-8").splitlines():
         if not line.startswith("FEREG_SOLVER_TRACE|"):
             continue
@@ -46,12 +50,17 @@ def main() -> int:
             runs.append({"case": case, "mode": mode, "digests": [], "parallel": 0})
         elif runs and phase == "input_digest":
             runs[-1]["digests"].append(record["digest"])
-        elif runs and phase == "input_transport" and record.get("mode") == "parallel":
-            runs[-1]["parallel"] += 1
+        elif phase == "input_transport" and record.get("mode") == "parallel":
+            if runs:
+                runs[-1]["parallel"] += 1
+            else:
+                unassigned_windows += 1
     if not runs:
         print("no fixture cases in trace", file=sys.stderr)
         return 1
     failures = []
+    if args.require_serial and unassigned_windows:
+        failures.append("the numeric window ran before the first case")
     digests: dict[str, set[str]] = collections.defaultdict(set)
     parallel_runs = 0
     for run in runs:
@@ -59,12 +68,12 @@ def main() -> int:
         if not run["digests"]:
             failures.append(f"{label}: no input digest")
         digests[run["case"]].update(run["digests"])
-        if run["mode"] in ("serial", "forced", "alias") and run["parallel"]:
+        if (args.require_serial or run["mode"] in ("serial", "forced", "alias")) and run["parallel"]:
             failures.append(f"{label}: the numeric window ran")
         if run["mode"] == "parallel":
             if run["parallel"]:
                 parallel_runs += 1
-            elif run["case"] not in args.serial_ok:
+            elif not args.require_serial and run["case"] not in args.serial_ok:
                 failures.append(f"{label}: the numeric window did not run")
     for case, observed in sorted(digests.items()):
         if len(observed) != 1:

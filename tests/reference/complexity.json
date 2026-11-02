@@ -1,13 +1,6 @@
 {
   "definition": "docs/development_workflow.md#complexity-inventory",
-  "growth": [
-    {
-      "after": 17134,
-      "before": 17124,
-      "metric": "fereg-plugin/production_lines",
-      "reason": "Shared input scheduling uses one bounded worker-scaled phase budget and native Rayon grouping; no new route, storage or scientific arithmetic."
-    }
-  ],
+  "growth": [],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
   "inventory": {
     "files": {
@@ -24201,108 +24194,108 @@
         "dispatch_candidates": [
           {
             "condition": "rows == 0 || width == 0",
-            "line": 248
+            "line": 247
           },
           {
             "condition": "StagePlan :: new ( rows as u128 * slots as u128 , blocks , team . threads ( ) ) . lanes < 2",
-            "line": 284
+            "line": 283
           },
           {
             "condition": "memory . retain ( descriptor_bytes ) . is_err ( )",
-            "line": 293
+            "line": 292
           },
           {
             "condition": "memory . retain ( actual_bytes - descriptor_bytes ) . is_err ( )",
-            "line": 329
+            "line": 328
           },
           {
             "condition": "rows == 0",
-            "line": 697
+            "line": 696
           },
           {
             "condition": "let Some ( failure ) = read_marker ( source , bank , start , rows , output )",
-            "line": 704
+            "line": 703
           },
           {
             "condition": "let Some ( failure ) = read_payload ( source , bank , start , rows , retained )",
-            "line": 713
+            "line": 712
           },
           {
             "condition": "rows == 0",
-            "line": 737
+            "line": 736
           },
           {
             "condition": "read ( start , rows )",
-            "line": 821
+            "line": 820
           }
         ],
         "functions": {
           "block#1": {
-            "line": 672,
+            "line": 671,
             "lines": 4
           },
           "bytes#1": {
-            "line": 953,
+            "line": 952,
             "lines": 6
           },
           "check_reserved#1": {
-            "line": 496,
+            "line": 495,
             "lines": 35
           },
           "column#1": {
-            "line": 959,
+            "line": 958,
             "lines": 9
           },
           "decline#1": {
-            "line": 763,
+            "line": 762,
             "lines": 8
           },
           "descriptor_bytes#1": {
-            "line": 665,
+            "line": 664,
             "lines": 6
           },
           "enabled#1": {
-            "line": 152,
+            "line": 151,
             "lines": 3
           },
           "error#1": {
-            "line": 558,
+            "line": 557,
             "lines": 7
           },
           "fill_excluded#1": {
-            "line": 736,
+            "line": 735,
             "lines": 26
           },
           "finish#1": {
-            "line": 1022,
+            "line": 1021,
             "lines": 20
           },
           "from_host#1": {
-            "line": 100,
+            "line": 99,
             "lines": 27
           },
           "from_request#1": {
-            "line": 128,
+            "line": 127,
             "lines": 9
           },
           "marker#1": {
-            "line": 649,
+            "line": 648,
             "lines": 3
           },
           "new#1": {
-            "line": 166,
+            "line": 165,
             "lines": 6
           },
           "new#2": {
-            "line": 612,
+            "line": 611,
             "lines": 36
           },
           "new#3": {
-            "line": 1012,
+            "line": 1011,
             "lines": 9
           },
           "payload_failure#1": {
-            "line": 927,
+            "line": 926,
             "lines": 10
           },
           "phase_work_budget#1": {
@@ -24310,55 +24303,55 @@
             "lines": 5
           },
           "positions#1": {
-            "line": 654,
+            "line": 653,
             "lines": 10
           },
           "read_block#1": {
-            "line": 684,
+            "line": 683,
             "lines": 49
           },
           "read_marker#1": {
-            "line": 774,
+            "line": 773,
             "lines": 87
           },
           "read_payload#1": {
-            "line": 862,
+            "line": 861,
             "lines": 64
           },
           "record#1": {
-            "line": 574,
+            "line": 573,
             "lines": 9
           },
           "reserved#1": {
-            "line": 678,
+            "line": 677,
             "lines": 5
           },
           "run_phases#1": {
-            "line": 411,
+            "line": 410,
             "lines": 84
           },
           "serial#1": {
-            "line": 140,
+            "line": 139,
             "lines": 3
           },
           "spi_failure#1": {
-            "line": 567,
+            "line": 566,
             "lines": 6
           },
           "trace_loaded_input#1": {
-            "line": 942,
+            "line": 941,
             "lines": 59
           },
           "try_read#1": {
-            "line": 232,
+            "line": 231,
             "lines": 146
           },
           "with_fault#1": {
-            "line": 145,
+            "line": 144,
             "lines": 6
           }
         },
-        "production_lines": 865
+        "production_lines": 864
       },
       "crates/fereg-plugin/src/ppml_bias.rs": {
         "chunk_candidates": [],
@@ -25377,10 +25370,10 @@
         "dispatch_candidates": 163,
         "files_over_1500": 3,
         "functions_over_150": 12,
-        "production_lines": 17134
+        "production_lines": 17133
       }
     },
     "schema": 1
   },
-  "reason": "Windows parallel-input qualification: one qualified host row; no arithmetic, routing or certificate change."
+  "reason": "Remove the unqualified Windows numeric-window host row; retain serial input until live Break is qualified."
 }

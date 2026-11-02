@@ -2,6 +2,7 @@
 param(
     [Parameter(Mandatory = $true)][ValidateSet('witness', 'oracle')][string]$Action,
     [ValidateRange(0, 64)][int]$Workers = 0,
+    [switch]$RequireSerial,
     [Parameter(Mandatory = $true)][ValidatePattern('\Atarget/[A-Za-z0-9_.-]+\z')][string]$Result
 )
 
@@ -134,7 +135,8 @@ function Invoke-Oracle {
         throw 'nested oracle failed'
     }
     if ($note -cne 'WINDOWS_INPUT_ORACLE=PASS') { throw 'invalid oracle marker' }
-    $summary = @(& python "$Root\scripts\check_input_trace.py" $trace --serial-ok ols_tiny)
+    $traceOptions = if ($RequireSerial) { @('--require-serial') } else { @('--serial-ok', 'ols_tiny') }
+    $summary = @(& python "$Root\scripts\check_input_trace.py" $trace @traceOptions)
     if ($LASTEXITCODE -ne 0) {
         $failures = @($summary | Where-Object { $_ -clike 'FAIL *' })
         $kind = 0
@@ -146,13 +148,13 @@ function Invoke-Oracle {
         $script:FailureCode = 60000 + 1000 * $kind + [Math]::Min($failures.Count, 999)
         throw 'input digests or window use failed'
     }
-    # The checker already fails any parallel-mode run (other than the tiny
-    # sample) that did not use the window; also require the fixture's full
-    # coverage (70 cases, 202 runs, as on macOS and Linux).
+    # Require complete science coverage, plus the selected host policy:
+    # qualified hosts use windows; unqualified hosts must never open one.
     $line = @($summary | Where-Object { $_ -cmatch '\Acases=(\d+) runs=(\d+) parallel_runs=(\d+)\z' })
     if ($line.Count -ne 1) { throw 'missing oracle summary' }
     $null = $line[0] -cmatch '\Acases=(\d+) runs=(\d+) parallel_runs=(\d+)\z'
-    if ([int]$Matches[1] -ne 70 -or [int]$Matches[2] -ne 202 -or [int]$Matches[3] -lt 70) {
+    $windowCoverage = if ($RequireSerial) { [int]$Matches[3] -eq 0 } else { [int]$Matches[3] -ge 70 }
+    if ([int]$Matches[1] -ne 70 -or [int]$Matches[2] -ne 202 -or -not $windowCoverage) {
         $script:FailureCode = 70000 + [Math]::Min([int]$Matches[2], 999)
         throw 'unexpected oracle coverage'
     }
