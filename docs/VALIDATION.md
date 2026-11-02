@@ -300,6 +300,44 @@ Science and estimator-route scopes are empty. This mechanism diagnostic cannot
 replace either failed qualification or qualify the release. Instrumentation
 and process history may affect the observed costs and must be acknowledged.
 
+The [revised diagnostic](../bench/results/input-beta14-revised-diagnostic-linux-20261102.json)
+completed with [all sixty calls](../bench/results/input-beta14-revised-diagnostic-linux-20261102.csv),
+ten exact science/input preflight calls, successful isolation and scheduler
+accounting. It ran on the same physical host; Stata used four processors and
+Rust sixteen. Its incumbent/revised medians are:
+
+| Cell | Whole call | Complete plugin | Input loading |
+| --- | ---: | ---: | ---: |
+| Low-memory wide OLS (c8) | 3254.5 / 3333 ms | 2854.5 / 2775.5 ms | 104.5 / 103.6 ms |
+| Short `in` (c11) | 1490 / 1083 ms | 312.5 / 286 ms | 63.5 / 41.7 ms |
+| Restricted weighted OLS (c12) | 383.5 / 310.5 ms | 63.5 / 65 ms | 16.2 / 17.7 ms |
+| Restricted string FE (c13) | 303 / 265 ms | 53.5 / 53 ms | 29.7 / 29.6 ms |
+| Restricted PPML (c14) | 734 / 704 ms | 387 / 369 ms | Not separately reported |
+
+The restricted-case whole-call direction reverses in this shorter instrumented
+run. c11's candidate is faster in both blocks; its per-call remainder outside
+the three estimator timers has medians of 714.5/457.5 ms. This remainder includes
+outer wrappers, automatic scope cleanup and timer boundaries, and must not be
+called purely cleanup. c12 retains a small loading penalty; c13's larger loading
+penalty does not recur here. No new frontend algorithm is implicated by the
+source comparison: only forwarded `in` bounds and version labels changed there.
+
+For c8, the pooled plugin median is misleading if read as a causal improvement:
+the candidate's plugin block medians are slower by 70 and 35 ms, and whole-call
+block medians are slower by 78 and 204 ms. Separate pooled medians cannot be
+added or used to exonerate native work. Instrumentation, process history and
+ordinary host behavior remain possible influences; none has been established
+as the cause of the qualification penalties or as a valid exclusion.
+
+The bounded investigation therefore ends with the revised candidate still
+unqualified. Independent high-effort review agrees that another phase constant,
+affinity policy, allocator change or sample-specific route lacks supporting
+evidence. The small shared scheduler implementation remains available for
+review, with passing correctness and Mac checks; the failed Linux gate remains
+binding. No further sampling or candidate substitution follows automatically.
+Johannes must decide any acceptance of the disclosed performance tradeoff or
+broader investigation before publication.
+
 The actual candidate binaries pass 68 licensed Stata 19 fixtures on both Mac
 and Linux, all 77 exact incumbent replay cases on each, scalar input oracles at
 multiple worker counts, accessor-failure rollback, and live console Break while

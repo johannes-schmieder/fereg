@@ -1,0 +1,749 @@
+{
+  "schema": 1,
+  "date_utc": "2026-11-02",
+  "status": "completed_diagnostic_not_release_qualification",
+  "purpose": "Partition remaining revised-candidate slowdowns using unchanged binaries. Failed release qualification remains binding.",
+  "runtime_source": "657edd144b21d2c2981037bd0d6f686b2a8fafec",
+  "runtime_sha256": "813caff7d80f35a4ef339c81c07c91dd4a4baa1188846a904e428e62691e0c0c",
+  "config": {
+    "threads": [
+      16
+    ],
+    "blocks": 2,
+    "reps": 3,
+    "seed": 739391,
+    "cells": [
+      "c8",
+      "c11",
+      "c12",
+      "c13",
+      "c14"
+    ],
+    "placements": [
+      "default"
+    ],
+    "host_modes": [
+      "default"
+    ],
+    "perf_stat": false
+  },
+  "observations": 60,
+  "exclusions": [],
+  "resampling": false,
+  "numerical_scope": [],
+  "estimator_route_scope": [],
+  "binary_pins": {
+    "incumbent/plugin": "9bbb0a35c1238e07227b71d7ee388ee374f558e94f9d9c81cc7c40f7d44284fc",
+    "candidate/plugin": "eb8bcb40ee85345ddba4131479b8c7306a2e5f92e5a1dfbab6e66380ec1158a9"
+  },
+  "input_pins": {
+    "inputs_10m.dta": "3d945515b329437b1d2f82dbe66beb6f4057d8112f8e0b71d39e72f1fd5ca360",
+    "inputs_1m.dta": "8446bc4c7fd7f601477993bc617d90c97ea01d420a0342588cea1acd1843fd29"
+  },
+  "ado_tree_pins": {
+    "incumbent": "3c5cc9501b4a090b31b229da1b28134afed7f11e3de77591f5fb2cc6233b743c",
+    "candidate": "d72f230b0471565940fc44048d01b804a12d5bcc52d299deeff93c369b504273"
+  },
+  "harness_pins": {
+    "bench/input_diagnostics.py": "e647873c540627deb98203bace30321bf7a2969fbc6b76b6774a1b8b0f354b29",
+    "bench/qualify.py": "053e73bf43290833f4f3fc127b2319d77dc982e0ddf7645bfd67071650a171cf",
+    "bench/parallel_input.py": "81298d9fb92b24e719e908caffaea39d3e9e974ba51dcfe9a147387e5dc4188f",
+    "bench/parallel_input.do": "1710590a0070895bf87c4c24298385d25bf85b905dc08af3cf321ed3ff93fb60",
+    "bench/qualify_scc.py": "64e3182857912cbd8f053982af55bf4fd511d7b6231556c72b708a6a61d884ce",
+    "bench/block_host.py": "fccf59236f74f077e890685acd2abc996a1c7be8ecabecde095da6932974944d",
+    "bench/campaign.json": "fdccfdf11eebda90f58cfeab7c14eca28f8329e8ebeec129f504954d1298219b"
+  },
+  "environment_manifest_sha256": "079f37a3990ac8ade55e088bc7239404075d160f96ee8087d76a3630bd79e64c",
+  "diagnostic_config_sha256": "fe7013ce220e8a7f3f9ba0bd9f85edc50c66232124519845ffcac39a48501af3",
+  "diagnostic_script_sha256": "92c2e8e35fa69a36e341e86f6ac71c721f9e622414659ec816e84021c40c017c",
+  "relative_manifest_verified_before_submission_and_execution": true,
+  "scientific_preflight": {
+    "exact_science_and_input_bits": true,
+    "variants": 2
+  },
+  "host": {
+    "affinity": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27
+    ],
+    "hostname": "scc-wo4",
+    "job_id": "8391105",
+    "pe": "omp28",
+    "queue": "econ@scc-wo4.scc.bu.edu",
+    "slots": 28,
+    "task_id": "0",
+    "isolation_ok": true,
+    "errors": [],
+    "observed_stata_processors": [
+      4
+    ],
+    "same_physical_host_as_qualification": true
+  },
+  "accounting": {
+    "jobnumber": "8391105",
+    "hostname": "scc-wo4.scc.bu.edu",
+    "granted_pe": "omp28",
+    "slots": "28",
+    "failed": "0",
+    "exit_status": "0",
+    "ru_wallclock": "140",
+    "maxvmem": "2.944G"
+  },
+  "timer_definitions": {
+    "frontend_pre_s": "Inside hidden estimator ado: after version through just before the sole plugin command.",
+    "plugin_s": "Entire substantive plugin command, including entry, loading, estimation, publication and destruction.",
+    "frontend_post_s": "Inside hidden estimator ado: immediately after plugin through just before program end.",
+    "snapshot_s": "Existing native runtime snapshot; OLS includes loading and excludes subsequent publication/destruction. PPML has a different, later snapshot location.",
+    "plugin_tail_s": "Per-call plugin_s minus snapshot_s, then median; includes work after snapshot and command boundary overhead.",
+    "outside_plugin_s": "Per-call wall_s minus plugin_s, then median.",
+    "wrapper_remainder_s": "Per-call wall_s minus frontend_pre_s, plugin_s and frontend_post_s, then median. Includes outer wrappers, automatic scope cleanup, timer instrumentation and other unmeasured boundaries; not exclusively cleanup."
+  },
+  "groups": [
+    {
+      "cell": "c8",
+      "threads": 16,
+      "medians_s": {
+        "incumbent": {
+          "wall_s": 3.2545,
+          "frontend_pre_s": 0.0955,
+          "plugin_s": 2.8545,
+          "frontend_post_s": 0.05,
+          "load_s": 0.1045288715,
+          "compute_s": 2.699209767,
+          "snapshot_s": 2.8084365035000003,
+          "plugin_tail_s": 0.05720204399999984,
+          "outside_plugin_s": 0.2469999999999999,
+          "wrapper_remainder_s": 0.09649999999999968
+        },
+        "candidate": {
+          "wall_s": 3.333,
+          "frontend_pre_s": 0.0955,
+          "plugin_s": 2.7755,
+          "frontend_post_s": 0.11499999999999999,
+          "load_s": 0.103648199,
+          "compute_s": 2.621244351,
+          "snapshot_s": 2.736590339,
+          "plugin_tail_s": 0.05148249249999992,
+          "outside_plugin_s": 0.35450000000000026,
+          "wrapper_remainder_s": 0.11250000000000032
+        }
+      },
+      "block_medians_s": {
+        "incumbent": [
+          {
+            "block": 1,
+            "wall_s": 3.473,
+            "plugin_s": 3.209,
+            "frontend_pre_s": 0.095,
+            "frontend_post_s": 0.053,
+            "wrapper_remainder_s": 0.09799999999999946
+          },
+          {
+            "block": 2,
+            "wall_s": 3.082,
+            "plugin_s": 2.72,
+            "frontend_pre_s": 0.096,
+            "frontend_post_s": 0.047,
+            "wrapper_remainder_s": 0.0949999999999999
+          }
+        ],
+        "candidate": [
+          {
+            "block": 1,
+            "wall_s": 3.551,
+            "plugin_s": 3.279,
+            "frontend_pre_s": 0.094,
+            "frontend_post_s": 0.051,
+            "wrapper_remainder_s": 0.11600000000000037
+          },
+          {
+            "block": 2,
+            "wall_s": 3.286,
+            "plugin_s": 2.755,
+            "frontend_pre_s": 0.097,
+            "frontend_post_s": 0.323,
+            "wrapper_remainder_s": 0.10299999999999976
+          }
+        ]
+      }
+    },
+    {
+      "cell": "c11",
+      "threads": 16,
+      "medians_s": {
+        "incumbent": {
+          "wall_s": 1.49,
+          "frontend_pre_s": 0.2815,
+          "plugin_s": 0.3125,
+          "frontend_post_s": 0.126,
+          "load_s": 0.063546558,
+          "compute_s": 0.211755568,
+          "snapshot_s": 0.275722309,
+          "plugin_tail_s": 0.04315510149999999,
+          "outside_plugin_s": 1.162,
+          "wrapper_remainder_s": 0.7144999999999999
+        },
+        "candidate": {
+          "wall_s": 1.0830000000000002,
+          "frontend_pre_s": 0.262,
+          "plugin_s": 0.286,
+          "frontend_post_s": 0.075,
+          "load_s": 0.041722528499999995,
+          "compute_s": 0.213337361,
+          "snapshot_s": 0.255433486,
+          "plugin_tail_s": 0.02710061350000001,
+          "outside_plugin_s": 0.8,
+          "wrapper_remainder_s": 0.4575
+        }
+      },
+      "block_medians_s": {
+        "incumbent": [
+          {
+            "block": 1,
+            "wall_s": 1.502,
+            "plugin_s": 0.3100000000000001,
+            "frontend_pre_s": 0.28,
+            "frontend_post_s": 0.126,
+            "wrapper_remainder_s": 0.793
+          },
+          {
+            "block": 2,
+            "wall_s": 1.478,
+            "plugin_s": 0.318,
+            "frontend_pre_s": 0.283,
+            "frontend_post_s": 0.126,
+            "wrapper_remainder_s": 0.6839999999999999
+          }
+        ],
+        "candidate": [
+          {
+            "block": 1,
+            "wall_s": 1.125,
+            "plugin_s": 0.291,
+            "frontend_pre_s": 0.262,
+            "frontend_post_s": 0.091,
+            "wrapper_remainder_s": 0.4770000000000001
+          },
+          {
+            "block": 2,
+            "wall_s": 1.076,
+            "plugin_s": 0.282,
+            "frontend_pre_s": 0.262,
+            "frontend_post_s": 0.07,
+            "wrapper_remainder_s": 0.456
+          }
+        ]
+      }
+    },
+    {
+      "cell": "c12",
+      "threads": 16,
+      "medians_s": {
+        "incumbent": {
+          "wall_s": 0.3835,
+          "frontend_pre_s": 0.1235,
+          "plugin_s": 0.0635,
+          "frontend_post_s": 0.035,
+          "load_s": 0.0161920835,
+          "compute_s": 0.042559946,
+          "snapshot_s": 0.060434952,
+          "plugin_tail_s": 0.0033822205000000015,
+          "outside_plugin_s": 0.3175,
+          "wrapper_remainder_s": 0.1575
+        },
+        "candidate": {
+          "wall_s": 0.3105,
+          "frontend_pre_s": 0.1095,
+          "plugin_s": 0.065,
+          "frontend_post_s": 0.0285,
+          "load_s": 0.017721401999999997,
+          "compute_s": 0.0421141585,
+          "snapshot_s": 0.060376486,
+          "plugin_tail_s": 0.003893984500000003,
+          "outside_plugin_s": 0.2455,
+          "wrapper_remainder_s": 0.10750000000000001
+        }
+      },
+      "block_medians_s": {
+        "incumbent": [
+          {
+            "block": 1,
+            "wall_s": 0.362,
+            "plugin_s": 0.062,
+            "frontend_pre_s": 0.127,
+            "frontend_post_s": 0.035,
+            "wrapper_remainder_s": 0.144
+          },
+          {
+            "block": 2,
+            "wall_s": 0.405,
+            "plugin_s": 0.067,
+            "frontend_pre_s": 0.12,
+            "frontend_post_s": 0.038,
+            "wrapper_remainder_s": 0.18000000000000005
+          }
+        ],
+        "candidate": [
+          {
+            "block": 1,
+            "wall_s": 0.354,
+            "plugin_s": 0.066,
+            "frontend_pre_s": 0.131,
+            "frontend_post_s": 0.034,
+            "wrapper_remainder_s": 0.12299999999999997
+          },
+          {
+            "block": 2,
+            "wall_s": 0.277,
+            "plugin_s": 0.062,
+            "frontend_pre_s": 0.092,
+            "frontend_post_s": 0.027,
+            "wrapper_remainder_s": 0.09600000000000003
+          }
+        ]
+      }
+    },
+    {
+      "cell": "c13",
+      "threads": 16,
+      "medians_s": {
+        "incumbent": {
+          "wall_s": 0.303,
+          "frontend_pre_s": 0.0925,
+          "plugin_s": 0.0535,
+          "frontend_post_s": 0.029,
+          "load_s": 0.029706196499999997,
+          "compute_s": 0.020405146,
+          "snapshot_s": 0.050501776,
+          "plugin_tail_s": 0.0029928214999999994,
+          "outside_plugin_s": 0.25,
+          "wrapper_remainder_s": 0.129
+        },
+        "candidate": {
+          "wall_s": 0.265,
+          "frontend_pre_s": 0.091,
+          "plugin_s": 0.053,
+          "frontend_post_s": 0.0225,
+          "load_s": 0.029581990500000002,
+          "compute_s": 0.0203059265,
+          "snapshot_s": 0.050457959999999996,
+          "plugin_tail_s": 0.002688237999999999,
+          "outside_plugin_s": 0.21300000000000002,
+          "wrapper_remainder_s": 0.09650000000000002
+        }
+      },
+      "block_medians_s": {
+        "incumbent": [
+          {
+            "block": 1,
+            "wall_s": 0.295,
+            "plugin_s": 0.052,
+            "frontend_pre_s": 0.088,
+            "frontend_post_s": 0.029,
+            "wrapper_remainder_s": 0.126
+          },
+          {
+            "block": 2,
+            "wall_s": 0.333,
+            "plugin_s": 0.055,
+            "frontend_pre_s": 0.103,
+            "frontend_post_s": 0.029,
+            "wrapper_remainder_s": 0.13400000000000004
+          }
+        ],
+        "candidate": [
+          {
+            "block": 1,
+            "wall_s": 0.266,
+            "plugin_s": 0.052,
+            "frontend_pre_s": 0.091,
+            "frontend_post_s": 0.022,
+            "wrapper_remainder_s": 0.09900000000000003
+          },
+          {
+            "block": 2,
+            "wall_s": 0.253,
+            "plugin_s": 0.053,
+            "frontend_pre_s": 0.082,
+            "frontend_post_s": 0.023,
+            "wrapper_remainder_s": 0.09400000000000006
+          }
+        ]
+      }
+    },
+    {
+      "cell": "c14",
+      "threads": 16,
+      "medians_s": {
+        "incumbent": {
+          "wall_s": 0.734,
+          "frontend_pre_s": 0.101,
+          "plugin_s": 0.387,
+          "frontend_post_s": 0.079,
+          "snapshot_s": 0.3869441495,
+          "plugin_tail_s": 0.00040111400000000796,
+          "outside_plugin_s": 0.347,
+          "wrapper_remainder_s": 0.16699999999999998
+        },
+        "candidate": {
+          "wall_s": 0.704,
+          "frontend_pre_s": 0.0905,
+          "plugin_s": 0.369,
+          "frontend_post_s": 0.0795,
+          "snapshot_s": 0.369318477,
+          "plugin_tail_s": 0.00015530099999999658,
+          "outside_plugin_s": 0.3305,
+          "wrapper_remainder_s": 0.14450000000000002
+        }
+      },
+      "block_medians_s": {
+        "incumbent": [
+          {
+            "block": 1,
+            "wall_s": 0.8180000000000001,
+            "plugin_s": 0.428,
+            "frontend_pre_s": 0.111,
+            "frontend_post_s": 0.084,
+            "wrapper_remainder_s": 0.174
+          },
+          {
+            "block": 2,
+            "wall_s": 0.7150000000000001,
+            "plugin_s": 0.384,
+            "frontend_pre_s": 0.097,
+            "frontend_post_s": 0.073,
+            "wrapper_remainder_s": 0.1610000000000001
+          }
+        ],
+        "candidate": [
+          {
+            "block": 1,
+            "wall_s": 0.707,
+            "plugin_s": 0.372,
+            "frontend_pre_s": 0.095,
+            "frontend_post_s": 0.077,
+            "wrapper_remainder_s": 0.15999999999999998
+          },
+          {
+            "block": 2,
+            "wall_s": 0.654,
+            "plugin_s": 0.361,
+            "frontend_pre_s": 0.086,
+            "frontend_post_s": 0.08,
+            "wrapper_remainder_s": 0.12700000000000006
+          }
+        ]
+      }
+    }
+  ],
+  "actual_path_traces": [
+    {
+      "arm": "incumbent",
+      "windows": [
+        {
+          "phase": "input_transport",
+          "mode": "parallel",
+          "rows": "1000000",
+          "width": "34",
+          "marker": "0",
+          "workers": "16",
+          "phases": "3",
+          "blocks": "1039",
+          "seconds": "0.104971752",
+          "cell": "c8"
+        },
+        {
+          "phase": "input_transport",
+          "mode": "parallel",
+          "rows": "10000000",
+          "width": "5",
+          "marker": "1",
+          "workers": "16",
+          "phases": "4",
+          "blocks": "1832",
+          "seconds": "0.068934168",
+          "cell": "c11"
+        },
+        {
+          "phase": "input_transport",
+          "mode": "parallel",
+          "rows": "1000000",
+          "width": "12",
+          "marker": "1",
+          "workers": "16",
+          "phases": "1",
+          "blocks": "397",
+          "seconds": "0.017406695",
+          "cell": "c12"
+        },
+        {
+          "phase": "input_transport",
+          "mode": "parallel",
+          "rows": "1000000",
+          "width": "9",
+          "marker": "1",
+          "workers": "16",
+          "phases": "1",
+          "blocks": "306",
+          "seconds": "0.014023017",
+          "cell": "c13"
+        },
+        {
+          "phase": "input_transport",
+          "mode": "parallel",
+          "rows": "1000000",
+          "width": "6",
+          "marker": "1",
+          "workers": "16",
+          "phases": "1",
+          "blocks": "214",
+          "seconds": "0.011205245",
+          "cell": "c14"
+        },
+        {
+          "phase": "input_transport",
+          "mode": "parallel",
+          "rows": "1000000",
+          "width": "1",
+          "marker": "0",
+          "workers": "16",
+          "phases": "1",
+          "blocks": "62",
+          "seconds": "0.001951887",
+          "cell": "c14"
+        }
+      ],
+      "digests": [
+        {
+          "cell": "c8",
+          "phase": "input_digest",
+          "action": "ols",
+          "rows": "1000000",
+          "digest": "edbe10c14ee3aadb"
+        },
+        {
+          "cell": "c11",
+          "phase": "input_digest",
+          "action": "ols",
+          "rows": "10000000",
+          "digest": "83514d2ae7bb9813"
+        },
+        {
+          "cell": "c12",
+          "phase": "input_digest",
+          "action": "ols",
+          "rows": "1000000",
+          "digest": "c35a26d486775d46"
+        },
+        {
+          "cell": "c13",
+          "phase": "input_digest",
+          "action": "ols",
+          "rows": "1000000",
+          "digest": "ddf3677cd94c5cdd"
+        },
+        {
+          "cell": "c14",
+          "phase": "input_digest",
+          "action": "ppml",
+          "rows": "1000000",
+          "digest": "24eb87d936204e2c"
+        }
+      ]
+    },
+    {
+      "arm": "candidate",
+      "windows": [
+        {
+          "phase": "input_transport",
+          "mode": "parallel",
+          "rows": "1000000",
+          "width": "34",
+          "marker": "0",
+          "workers": "16",
+          "phases": "5",
+          "blocks": "1039",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "33554432",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.030831460",
+          "seconds": "0.108102518",
+          "cell": "c8"
+        },
+        {
+          "phase": "input_transport",
+          "mode": "parallel",
+          "rows": "10000000",
+          "width": "5",
+          "marker": "1",
+          "workers": "16",
+          "phases": "8",
+          "blocks": "1832",
+          "range_first": "4995000",
+          "range_end": "5005000",
+          "phase_work_cap": "33554432",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.006392964",
+          "seconds": "0.047874627",
+          "cell": "c11"
+        },
+        {
+          "phase": "input_transport",
+          "mode": "parallel",
+          "rows": "1000000",
+          "width": "12",
+          "marker": "1",
+          "workers": "16",
+          "phases": "2",
+          "blocks": "397",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "33554432",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.011432334",
+          "seconds": "0.018269261",
+          "cell": "c12"
+        },
+        {
+          "phase": "input_transport",
+          "mode": "parallel",
+          "rows": "1000000",
+          "width": "9",
+          "marker": "1",
+          "workers": "16",
+          "phases": "2",
+          "blocks": "306",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "33554432",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.011122123",
+          "seconds": "0.014242526",
+          "cell": "c13"
+        },
+        {
+          "phase": "input_transport",
+          "mode": "parallel",
+          "rows": "1000000",
+          "width": "6",
+          "marker": "1",
+          "workers": "16",
+          "phases": "1",
+          "blocks": "214",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "33554432",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.010261265",
+          "seconds": "0.010268211",
+          "cell": "c14"
+        },
+        {
+          "phase": "input_transport",
+          "mode": "parallel",
+          "rows": "1000000",
+          "width": "1",
+          "marker": "0",
+          "workers": "16",
+          "phases": "1",
+          "blocks": "62",
+          "range_first": "0",
+          "range_end": "1000000",
+          "phase_work_cap": "33554432",
+          "phase_work_ceiling": "67108864",
+          "longest_phase_s": "0.001888387",
+          "seconds": "0.001891128",
+          "cell": "c14"
+        }
+      ],
+      "digests": [
+        {
+          "cell": "c8",
+          "phase": "input_digest",
+          "action": "ols",
+          "rows": "1000000",
+          "digest": "edbe10c14ee3aadb"
+        },
+        {
+          "cell": "c11",
+          "phase": "input_digest",
+          "action": "ols",
+          "rows": "10000000",
+          "digest": "83514d2ae7bb9813"
+        },
+        {
+          "cell": "c12",
+          "phase": "input_digest",
+          "action": "ols",
+          "rows": "1000000",
+          "digest": "c35a26d486775d46"
+        },
+        {
+          "cell": "c13",
+          "phase": "input_digest",
+          "action": "ols",
+          "rows": "1000000",
+          "digest": "ddf3677cd94c5cdd"
+        },
+        {
+          "cell": "c14",
+          "phase": "input_digest",
+          "action": "ppml",
+          "rows": "1000000",
+          "digest": "24eb87d936204e2c"
+        }
+      ]
+    }
+  ],
+  "findings": [
+    "All sixty calls retained; exact coefficient/covariance/sample/input comparisons and host isolation pass.",
+    "Restricted c11/c12/c13/c14 have lower candidate whole-call medians here, reversing their failed qualification direction. This does not invalidate or replace qualification.",
+    "c11 loading is 63.547/41.723 ms and full-plugin medians are 312.5/286 ms. Most of the large whole-call swing occurs outside the plugin. The wrapper remainder is 714.5/457.5 ms; it is not purely cleanup.",
+    "c12 retains about 1.5 ms extra loading. c13 loading and native time are nearly equal here; its preceding loading penalty is not stable across these execution conditions.",
+    "c8 uses memory(low), one categorical FE and 32 regressors. Whole-call medians are 3254.5/3333 ms. Although pooled plugin medians decrease, candidate plugin block medians worsen by 70 and 35 ms. Pooled medians do not exonerate native work or form an additive causal decomposition.",
+    "Frontend source changes only forward in-bounds and change version labels. Evidence does not establish a new frontend algorithm, allocator, NUMA or scheduler defect.",
+    "Independent high-effort review agrees: retain the failed gate and discuss the unresolved mechanism. Further scheduler tuning, permanent affinity or sample-specific routes are unsupported."
+  ],
+  "limitations": [
+    "One Linux physical host, two mirrored blocks and six calls per arm/cell. Other failed worker/cell combinations are not diagnosed.",
+    "Temporary ado instrumentation and process history differ from release qualification and may change observed behavior.",
+    "Separate medians are not additive. Stata timer resolution can produce small negative per-call derived tails.",
+    "Untimed profiler preflights do not identify a particular frontend line or automatic cleanup operation.",
+    "Public release remains beta.13. The revised candidate is unqualified; any performance exception requires Johannes decision."
+  ],
+  "capture_sha256": {
+    "results.csv": "8d9702e0fdc5eee0ce4b0bd952b695958d2cfdc0266a54520d784c36e15869bc",
+    "plan.json": "d410007281441f577fb6becfdbb9540eefb6414480c48affa8d1cac71bfdcca6",
+    "summary.json": "a9e35da19eb1ec9adcaa24ce8550b59689f9a25f20dfd9623921a0f83eee0f62",
+    "host.json": "f1e47411c2e9946a4196276d429f48d1a75b5912e1b9a8251544595295a33765",
+    "host-observations.jsonl": "8db8d34cc3e39764abfa151db68434dbc8a1fb2bd6080f5d9008b52d63a33888",
+    "preflight.json": "6ba49f6aeb99503883de007bb00a4ec98b781acb8b8e76d976a834b2fc602125"
+  }
+}
