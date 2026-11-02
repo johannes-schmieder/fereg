@@ -10,13 +10,17 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class InputTraceTests(unittest.TestCase):
-    def check_trace(self, *, window=False, same_digest=True, require_serial=True, orphan=False):
+    def check_trace(self, *, window=False, same_digest=True, require_serial=True, orphan=False, wide=False, packed=None):
         lines = [
             'FEREG_SOLVER_TRACE|phase=case|label=example|serial',
             'FEREG_SOLVER_TRACE|phase=input_digest|digest=abc',
             'FEREG_SOLVER_TRACE|phase=case|label=example|parallel',
             'FEREG_SOLVER_TRACE|phase=input_digest|digest=' + ('abc' if same_digest else 'def'),
         ]
+        if wide:
+            lines = [line.replace('example|', 'ols_wide64|') for line in lines]
+        if packed is not None:
+            lines.append('FEREG_SOLVER_TRACE|phase=input_layout|reserved=true|packed_rhs=' + str(packed).lower())
         if orphan:
             lines.insert(0, 'FEREG_SOLVER_TRACE|phase=input_transport|mode=parallel')
         if window:
@@ -52,3 +56,10 @@ class InputTraceTests(unittest.TestCase):
     def test_qualified_host_still_requires_its_window(self):
         self.assertNotEqual(self.check_trace(require_serial=False).returncode, 0)
         self.assertEqual(self.check_trace(window=True, require_serial=False).returncode, 0)
+
+    def test_wide_fallback_requires_proof_of_packed_loading(self):
+        for packed in (None, False):
+            result = self.check_trace(wide=True, packed=packed)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn('wide packed loading did not execute', result.stdout)
+        self.assertEqual(self.check_trace(wide=True, packed=True).returncode, 0)
