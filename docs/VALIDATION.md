@@ -444,6 +444,18 @@ worker count; it must not relabel serial fallback as a parallel success. Existin
 Mac/Linux active-window Break evidence remains applicable. Windows activation
 stays deferred until the missing live test can be performed.
 
+The cleanup candidate's [Mac qualification](../bench/results/input-beta14-cleanup-macos-20261102.json)
+passes all 28 settings and retains [all 672 calls](../bench/results/input-beta14-cleanup-macos-20261102.csv).
+Its 56 preflight calls agree exactly on coefficients, covariance, N, full sample
+signatures and input digests. All 68 native fixtures and input/OLS/PPML live
+console Break checks pass. Ordinary desktop noise is retained. At eight workers,
+beta.13/candidate whole-call medians are 216/131 ms for short `in`, 107.5/79.5 ms
+for restricted weighted OLS, 103/75 ms for restricted string-FE OLS and 158/132 ms
+for restricted PPML. These are measured Mac results; the frozen Linux gate is
+still required. Independent review finds no blockers in the final Windows
+fallback or exact-name postcommit cleanup and accepts Linux/Mac timing reuse
+for the Windows-only policy removal, subject to rebuilt-artifact checks.
+
 The actual candidate binaries pass 68 licensed Stata 19 fixtures on both Mac
 and Linux, all 77 exact incumbent replay cases on each, scalar input oracles at
 multiple worker counts, accessor-failure rollback, and live console Break while

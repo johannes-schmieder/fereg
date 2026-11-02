@@ -1,0 +1,598 @@
+{
+  "schema": 1,
+  "platform": "macos",
+  "candidate_native_source": "657edd144b21d2c2981037bd0d6f686b2a8fafec",
+  "candidate_plugin_sha256": "89061fdef679a2fe0e09d0f28745454d36f3d0c03cba1a8f804a3f2290acf27f",
+  "candidate_cleanup_source": "65da572f",
+  "incumbent": "v0.5.0-beta.13",
+  "change": "Worker-aware bounded input phases and natural task grouping, plus one postcommit deletion of obsolete private sample markers.",
+  "numerical_scope": [],
+  "estimator_route_scope": [],
+  "native": {
+    "status": "passed",
+    "plugin_sha256": "89061fdef679a2fe0e09d0f28745454d36f3d0c03cba1a8f804a3f2290acf27f",
+    "fixtures": 68,
+    "break": [
+      "input",
+      "ols",
+      "ppml"
+    ]
+  },
+  "science_preflight": {
+    "status": "passed",
+    "cells": 14,
+    "workers": [
+      4,
+      8
+    ],
+    "calls": 56,
+    "exact": [
+      "coefficient",
+      "covariance",
+      "N",
+      "full_sample_signature",
+      "input_digest"
+    ]
+  },
+  "performance": {
+    "status": "passed",
+    "regressions": [],
+    "observations": 672,
+    "cells": 28,
+    "resampling": false,
+    "workers": [
+      4,
+      8
+    ],
+    "blocks": 4,
+    "repetitions": 3,
+    "warmups_per_setting_block": 1,
+    "regression_rule": "candidate whole-call median > incumbent + max(5%, 0.001 seconds)",
+    "all_observations_retained": true,
+    "host_observation_passed": true,
+    "host_record_sha256": "79f343b3b96f56463f2046e58705cbf2bda2d492845dc2274eec30bcfb400626",
+    "observation_record_sha256": "2e3153d5bbe9ce22f4de496481da29fc3f66a62f14d438a2f3699046274e3176",
+    "configuration_and_input_pins_sha256": "d07d447223b0e1c95ac72f7e182bae8dd5a2efaee98c37a3a38f31b1a70ba93a",
+    "rows": [
+      {
+        "cell": "c1",
+        "workers": 4,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.142,
+            "load_s": 0.025636396,
+            "native_s": 0.092778208,
+            "alloc_peak": 76605219.0
+          },
+          "candidate": {
+            "wall_s": 0.136,
+            "load_s": 0.0272804375,
+            "native_s": 0.094674125,
+            "alloc_peak": 76605219.0
+          }
+        },
+        "wall_ratio": 0.9577464788732396
+      },
+      {
+        "cell": "c1",
+        "workers": 8,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.121,
+            "load_s": 0.014352499500000001,
+            "native_s": 0.0729963545,
+            "alloc_peak": 77133219.0
+          },
+          "candidate": {
+            "wall_s": 0.115,
+            "load_s": 0.0146943335,
+            "native_s": 0.074134458,
+            "alloc_peak": 77133219.0
+          }
+        },
+        "wall_ratio": 0.9504132231404959
+      },
+      {
+        "cell": "c2",
+        "workers": 4,
+        "arms": {
+          "incumbent": {
+            "wall_s": 1.4535,
+            "load_s": 0.0981562505,
+            "native_s": 1.3802965415,
+            "alloc_peak": 1064729070.0
+          },
+          "candidate": {
+            "wall_s": 1.4575,
+            "load_s": 0.10069547949999999,
+            "native_s": 1.3909349375,
+            "alloc_peak": 1064729070.0
+          }
+        },
+        "wall_ratio": 1.002751977984176
+      },
+      {
+        "cell": "c2",
+        "workers": 8,
+        "arms": {
+          "incumbent": {
+            "wall_s": 1.161,
+            "load_s": 0.0508969165,
+            "native_s": 1.087932667,
+            "alloc_peak": 1064741678.0
+          },
+          "candidate": {
+            "wall_s": 1.166,
+            "load_s": 0.053391479,
+            "native_s": 1.101031208,
+            "alloc_peak": 1064741678.0
+          }
+        },
+        "wall_ratio": 1.004306632213609
+      },
+      {
+        "cell": "c3",
+        "workers": 4,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.4515,
+            "load_s": 0.06917981249999999,
+            "native_s": 0.3935521875,
+            "alloc_peak": 591177355.0
+          },
+          "candidate": {
+            "wall_s": 0.448,
+            "load_s": 0.0739060205,
+            "native_s": 0.39713204150000003,
+            "alloc_peak": 591177355.0
+          }
+        },
+        "wall_ratio": 0.9922480620155039
+      },
+      {
+        "cell": "c3",
+        "workers": 8,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.31349999999999995,
+            "load_s": 0.036523104,
+            "native_s": 0.2544998755,
+            "alloc_peak": 591189963.0
+          },
+          "candidate": {
+            "wall_s": 0.308,
+            "load_s": 0.039426040999999995,
+            "native_s": 0.257068458,
+            "alloc_peak": 591189963.0
+          }
+        },
+        "wall_ratio": 0.9824561403508774
+      },
+      {
+        "cell": "c4",
+        "workers": 4,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.2225,
+            "load_s": 0.041580208,
+            "native_s": 0.1312212295,
+            "alloc_peak": 184062630.0
+          },
+          "candidate": {
+            "wall_s": 0.1955,
+            "load_s": 0.0423656045,
+            "native_s": 0.131808896,
+            "alloc_peak": 184061594.0
+          }
+        },
+        "wall_ratio": 0.8786516853932584
+      },
+      {
+        "cell": "c4",
+        "workers": 8,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.18799999999999994,
+            "load_s": 0.022087311999999998,
+            "native_s": 0.0950731455,
+            "alloc_peak": 200059238.0
+          },
+          "candidate": {
+            "wall_s": 0.161,
+            "load_s": 0.0232069585,
+            "native_s": 0.096746521,
+            "alloc_peak": 200059238.0
+          }
+        },
+        "wall_ratio": 0.8563829787234045
+      },
+      {
+        "cell": "c5",
+        "workers": 4,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.3645,
+            "load_s": 0.198612292,
+            "native_s": 0.3106191665,
+            "alloc_peak": 180995596.0
+          },
+          "candidate": {
+            "wall_s": 0.359,
+            "load_s": 0.201820375,
+            "native_s": 0.3146255415,
+            "alloc_peak": 180995596.0
+          }
+        },
+        "wall_ratio": 0.9849108367626886
+      },
+      {
+        "cell": "c5",
+        "workers": 8,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.3335,
+            "load_s": 0.18843625,
+            "native_s": 0.280453896,
+            "alloc_peak": 181008204.0
+          },
+          "candidate": {
+            "wall_s": 0.324,
+            "load_s": 0.19006681250000002,
+            "native_s": 0.27921275,
+            "alloc_peak": 181008204.0
+          }
+        },
+        "wall_ratio": 0.9715142428785607
+      },
+      {
+        "cell": "c6",
+        "workers": 4,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.9405,
+            "load_s": 0.094717771,
+            "native_s": 0.8603546870000001,
+            "alloc_peak": 1085686195.0
+          },
+          "candidate": {
+            "wall_s": 0.915,
+            "load_s": 0.101062646,
+            "native_s": 0.8540293539999999,
+            "alloc_peak": 1085686195.0
+          }
+        },
+        "wall_ratio": 0.9728867623604466
+      },
+      {
+        "cell": "c6",
+        "workers": 8,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.7615000000000001,
+            "load_s": 0.05782875,
+            "native_s": 0.683201625,
+            "alloc_peak": 1090500915.0
+          },
+          "candidate": {
+            "wall_s": 0.7475,
+            "load_s": 0.060827916999999995,
+            "native_s": 0.6853968545,
+            "alloc_peak": 1090500915.0
+          }
+        },
+        "wall_ratio": 0.9816152330925804
+      },
+      {
+        "cell": "c7",
+        "workers": 4,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.5005,
+            "load_s": null,
+            "native_s": 0.39974985399999996,
+            "alloc_peak": null
+          },
+          "candidate": {
+            "wall_s": 0.467,
+            "load_s": null,
+            "native_s": 0.39392237500000005,
+            "alloc_peak": null
+          }
+        },
+        "wall_ratio": 0.9330669330669332
+      },
+      {
+        "cell": "c7",
+        "workers": 8,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.43999999999999995,
+            "load_s": null,
+            "native_s": 0.3364130625,
+            "alloc_peak": null
+          },
+          "candidate": {
+            "wall_s": 0.4065,
+            "load_s": null,
+            "native_s": 0.3342234375,
+            "alloc_peak": null
+          }
+        },
+        "wall_ratio": 0.9238636363636364
+      },
+      {
+        "cell": "c8",
+        "workers": 4,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.8165,
+            "load_s": 0.053819208,
+            "native_s": 0.757268583,
+            "alloc_peak": 382701602.0
+          },
+          "candidate": {
+            "wall_s": 0.8025,
+            "load_s": 0.054942771,
+            "native_s": 0.7506845415,
+            "alloc_peak": 382701602.0
+          }
+        },
+        "wall_ratio": 0.9828536436007348
+      },
+      {
+        "cell": "c8",
+        "workers": 8,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.635,
+            "load_s": 0.028332896,
+            "native_s": 0.5762628955,
+            "alloc_peak": 382714210.0
+          },
+          "candidate": {
+            "wall_s": 0.63,
+            "load_s": 0.029433958500000003,
+            "native_s": 0.5785975624999999,
+            "alloc_peak": 382714210.0
+          }
+        },
+        "wall_ratio": 0.9921259842519685
+      },
+      {
+        "cell": "c9",
+        "workers": 4,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.1,
+            "load_s": 0.009469646,
+            "native_s": 0.015428333,
+            "alloc_peak": 38393667.0
+          },
+          "candidate": {
+            "wall_s": 0.074,
+            "load_s": 0.0095868125,
+            "native_s": 0.0156876245,
+            "alloc_peak": 38386987.0
+          }
+        },
+        "wall_ratio": 0.7399999999999999
+      },
+      {
+        "cell": "c9",
+        "workers": 8,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.096,
+            "load_s": 0.0049248125,
+            "native_s": 0.011091021,
+            "alloc_peak": 38366275.0
+          },
+          "candidate": {
+            "wall_s": 0.068,
+            "load_s": 0.005168437499999999,
+            "native_s": 0.011440000499999999,
+            "alloc_peak": 38406275.0
+          }
+        },
+        "wall_ratio": 0.7083333333333334
+      },
+      {
+        "cell": "c10",
+        "workers": 4,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.2735,
+            "load_s": 0.1444733125,
+            "native_s": 0.166454583,
+            "alloc_peak": 587495173.0
+          },
+          "candidate": {
+            "wall_s": 0.2495,
+            "load_s": 0.14961529099999998,
+            "native_s": 0.172604813,
+            "alloc_peak": 587495173.0
+          }
+        },
+        "wall_ratio": 0.9122486288848263
+      },
+      {
+        "cell": "c10",
+        "workers": 8,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.2,
+            "load_s": 0.07504125049999999,
+            "native_s": 0.09444581299999999,
+            "alloc_peak": 587827461.0
+          },
+          "candidate": {
+            "wall_s": 0.174,
+            "load_s": 0.078054,
+            "native_s": 0.09733781250000001,
+            "alloc_peak": 587827461.0
+          }
+        },
+        "wall_ratio": 0.8699999999999999
+      },
+      {
+        "cell": "c11",
+        "workers": 4,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.2275,
+            "load_s": 0.025468167,
+            "native_s": 0.0533025205,
+            "alloc_peak": 470234144.0
+          },
+          "candidate": {
+            "wall_s": 0.132,
+            "load_s": 0.0033492705000000003,
+            "native_s": 0.0312836045,
+            "alloc_peak": 470232992.0
+          }
+        },
+        "wall_ratio": 0.5802197802197803
+      },
+      {
+        "cell": "c11",
+        "workers": 8,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.216,
+            "load_s": 0.0135783125,
+            "native_s": 0.041393770999999996,
+            "alloc_peak": 470246752.0
+          },
+          "candidate": {
+            "wall_s": 0.131,
+            "load_s": 0.0030745415,
+            "native_s": 0.031416729000000004,
+            "alloc_peak": 470246752.0
+          }
+        },
+        "wall_ratio": 0.6064814814814815
+      },
+      {
+        "cell": "c12",
+        "workers": 4,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.1185,
+            "load_s": 0.0210285205,
+            "native_s": 0.0297293335,
+            "alloc_peak": 110475711.0
+          },
+          "candidate": {
+            "wall_s": 0.089,
+            "load_s": 0.0214990625,
+            "native_s": 0.029806313,
+            "alloc_peak": 110475711.0
+          }
+        },
+        "wall_ratio": 0.7510548523206751
+      },
+      {
+        "cell": "c12",
+        "workers": 8,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.1075,
+            "load_s": 0.010721771,
+            "native_s": 0.019621458,
+            "alloc_peak": 110368439.0
+          },
+          "candidate": {
+            "wall_s": 0.0795,
+            "load_s": 0.011269104,
+            "native_s": 0.0203641875,
+            "alloc_peak": 110368439.0
+          }
+        },
+        "wall_ratio": 0.7395348837209302
+      },
+      {
+        "cell": "c13",
+        "workers": 4,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.111,
+            "load_s": 0.018182729,
+            "native_s": 0.0221178125,
+            "alloc_peak": 92475465.0
+          },
+          "candidate": {
+            "wall_s": 0.081,
+            "load_s": 0.018747167000000002,
+            "native_s": 0.0225593335,
+            "alloc_peak": 92475465.0
+          }
+        },
+        "wall_ratio": 0.7297297297297297
+      },
+      {
+        "cell": "c13",
+        "workers": 8,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.103,
+            "load_s": 0.0117195,
+            "native_s": 0.015716041,
+            "alloc_peak": 92567993.0
+          },
+          "candidate": {
+            "wall_s": 0.075,
+            "load_s": 0.012386271,
+            "native_s": 0.016524895499999998,
+            "alloc_peak": 92328233.0
+          }
+        },
+        "wall_ratio": 0.7281553398058253
+      },
+      {
+        "cell": "c14",
+        "workers": 4,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.1635,
+            "load_s": null,
+            "native_s": 0.062063020499999996,
+            "alloc_peak": null
+          },
+          "candidate": {
+            "wall_s": 0.133,
+            "load_s": null,
+            "native_s": 0.062153624500000004,
+            "alloc_peak": null
+          }
+        },
+        "wall_ratio": 0.8134556574923547
+      },
+      {
+        "cell": "c14",
+        "workers": 8,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.158,
+            "load_s": null,
+            "native_s": 0.058921937,
+            "alloc_peak": null
+          },
+          "candidate": {
+            "wall_s": 0.132,
+            "load_s": null,
+            "native_s": 0.0592890625,
+            "alloc_peak": null
+          }
+        },
+        "wall_ratio": 0.8354430379746836
+      }
+    ],
+    "ordinary_desktop_noise_retained": true
+  },
+  "final_binary_policy": "The subsequent Windows-only removal from the qualified-host table does not change Linux or Mac execution. This report measures the recorded binary; final rebuilt artifacts require separate ABI/science/installation checks.",
+  "limitations": [
+    "One physical host; no universal architecture speed claim.",
+    "Prior failed qualifications remain failed; this is the prospectively frozen cleanup candidate.",
+    "No observations excluded or resampled."
+  ]
+}
