@@ -252,8 +252,17 @@ worker counts. The universal Mac build/ABI audit, 68 Stata 19 fixtures, 77 exact
 incumbent replays, scalar oracles, failure rollback and live console Break checks
 pass. The Stata 18 console oracle also passes 70 cases/202 runs (71 parallel).
 Full source integration passes in source-only mode; installed-package admission
-awaits matching candidate binaries. Linux timing and the revised Windows run
-remain outstanding, so this Mac result does not authorize beta.14 publication.
+awaits final package admission. A fresh Mac installation verifies all 36 files,
+self-test and independent restricted OLS/PPML examples. The
+[revised Windows qualification](../bench/results/input-beta14-revised-windows-20261102.json)
+passes its exact-source installed-plugin, scalar-oracle, missing-value, rollback
+and paired serial/parallel checks. Its beta.13 comparison and interactive Break
+remain unqualified. The guarded controller collected the verified plugin,
+deleted transient transfer objects, released the lock and stopped the instance.
+The corresponding source closure matches every compiled source and dependency
+file; only generated audit/SBOM/manifests differ, and the fresh dependency audit
+reports zero advisories. Linux timing remains outstanding, so these results do
+not yet authorize beta.14 publication.
 
 The actual candidate binaries pass 68 licensed Stata 19 fixtures on both Mac
 and Linux, all 77 exact incumbent replay cases on each, scalar input oracles at

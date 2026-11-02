@@ -1,0 +1,97 @@
+{
+  "schema": 1,
+  "receipt": {
+    "schema_version": 4,
+    "run_id": "win-20261102T021833Z-20ed9969",
+    "project": "fereg",
+    "profile": "stata-do",
+    "source_revision": "commit-657edd144b21d2c2981037bd0d6f686b2a8fafec",
+    "source_sha256": "06632b0d4ea7ecf0a93450684ca228987ec300844d81b710e992cb81d57ee317",
+    "windows_target": "x86_64",
+    "execution_identity": "SYSTEM",
+    "status": "PASS",
+    "error_code": null,
+    "checks": {
+      "execution_identity": true,
+      "source_hash": true,
+      "archive_paths": true,
+      "source_manifest": true,
+      "shutdown_backstop": true,
+      "stata": true,
+      "project_test": true
+    },
+    "completed_at_utc": "2026-11-02T02:39:36.4328968Z",
+    "controller_sha256": "e635d58609f24fa8564ce4c3b6787eccd9df36892edb636069cdc2ebcdfdaf00",
+    "diagnostic_guard_sha256": "14fe3f6515439c55d0732e99fba797280b76dfd9638345794a639a00a44ffd12",
+    "process": {
+      "outcome": "passed",
+      "elapsed_ms": 1201798,
+      "exit_code": 0
+    },
+    "diagnostics": {
+      "available": true,
+      "compiler_errors": [],
+      "completed": [
+        "startup",
+        "toolchain",
+        "source_identity",
+        "cargo_build",
+        "exact_fma",
+        "fused_kernels",
+        "c_bridge",
+        "numeric_guards",
+        "plugin_link",
+        "binary_audit",
+        "native_loader",
+        "build_complete",
+        "checksum",
+        "stata_smoke",
+        "single_runtime"
+      ],
+      "native_rc": null,
+      "plugin_sha256": "9ff8fd15eab20c1b93dacd631a5dc86d659a9b8feb08594f2e5276da87994a8e",
+      "reason": "none",
+      "stage": "complete",
+      "stage_elapsed_ms": 3591,
+      "stata_rc": null,
+      "status": "PASS"
+    }
+  },
+  "receipt_sha256": "7c6f159c04ecd78aed0472cca2a8d8265729f042f223bf7f95622e989e67b155",
+  "instance_stopped": true,
+  "transient_objects_deleted": true,
+  "lock_released": true,
+  "qualified_driver": {
+    "installed_plugin_hash_verification": true,
+    "missing_witness_cells": 80,
+    "input_oracle_workers": [
+      2,
+      8
+    ],
+    "required_cases_per_oracle": 70,
+    "required_runs_per_oracle": 202,
+    "minimum_parallel_runs_per_oracle": 70,
+    "exact_digests_required": true,
+    "failure_rollback": "passed",
+    "paired_serial_parallel_rule": "passed: six 1M-row cells, two workers, five repetitions, max(5%,1 ms)",
+    "beta13_beta14_timing": "not measured on Windows",
+    "live_break": "not qualified: no interactive test session",
+    "mapped_fixture_paths": [
+      "tests/stata/installation/windows_ci_smoke.do",
+      "tests/stata/installation/single_runtime.do",
+      "tests/stata/development/ols_solver_reporting.do",
+      "tests/stata/development/ols_cmg_raw_residual_oracle.do",
+      "tests/stata/development/ols_mixed_solver_reports.do",
+      "tests/stata/parity_ppmlhdfe/feppml_one_fe_dummy_oracle.do",
+      "tests/stata/development/within_weighted_ols.do",
+      "tests/stata/development/ols_three_fe_batch_oracle.do",
+      "tests/stata/development/lsmr_batch_oracle.do",
+      "tests/stata/development/within_plugin_slope_boundary.do",
+      "tests/stata/postestimation/replay_and_prefixes.do",
+      "tests/licensed_stata/missing_witness.do",
+      "tests/stata/development/parallel_input_failures.do"
+    ]
+  },
+  "note": "The guarded controller retains only a sanitized receipt; numeric timing medians remain on Windows and are not available in this report.",
+  "change": "Same shared bounded worker-scaled phase policy and natural Rayon grouping as the Mac/Linux candidate."
+}

@@ -38,6 +38,16 @@
       "runs": 202,
       "parallel_runs": 71,
       "status": "passed"
+    },
+    "fresh_install": {
+      "source": "local root package",
+      "installed_files": 36,
+      "status": "passed",
+      "selftest_version": "0.5.0-beta.14",
+      "independent_ols_ppml": "passed",
+      "restricted_sample": "if plus in",
+      "all_installed_hashes": "exact",
+      "harness_repair": "Use filesystem identity for the unique case-insensitive ancillary filename match; existing installation and science evidence reused without rerunning."
     }
   },
   "performance": {
@@ -2127,5 +2137,25 @@
     "Longest preflight phases are observations, not worst-case Break latency guarantees.",
     "Prior failed qualification and mixed cap ablation remain retained.",
     "Native Intel Stata and interactive GUI Break remain unqualified."
-  ]
+  ],
+  "source_closure": {
+    "archive_sha256": "facf0756af7d5d92ae4d7207ca9055efbd326c3097491d6ba27f41ee03b1d574",
+    "compared_files": 3523,
+    "differences": [
+      "DEPENDENCY_AUDIT.json",
+      "MANIFEST.sha256",
+      "SBOM.spdx.json",
+      "SOURCE_MANIFEST.json"
+    ],
+    "interpretation": "All compiled source and vendored dependency files match; differences are regenerated dependency audit, SBOM and source/file manifests.",
+    "dependency_audit": {
+      "advisory_count": 0,
+      "cargo_lock_sha256": "4975de767595cf184cd5328e6ec7f7a55e7871c545d3c51adbc92da1544696d5",
+      "schema": 1,
+      "source_sha": "657edd144b21d2c2981037bd0d6f686b2a8fafec",
+      "status": "pass",
+      "toolchain": "1.85.1"
+    },
+    "repository_runtime_sha256": "813caff7d80f35a4ef339c81c07c91dd4a4baa1188846a904e428e62691e0c0c"
+  }
 }
