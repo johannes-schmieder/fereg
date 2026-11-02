@@ -1,0 +1,726 @@
+{
+  "schema": 1,
+  "status": "completed_causal_ablation_with_mixed_performance_not_release_qualification",
+  "date_utc": "2026-11-02",
+  "purpose": "Test whether phase frequency causes the loading penalty, changing only one production constant in a temporary build. No runtime/package change applied to the main working tree.",
+  "arms": {
+    "incumbent": "Unreleased beta.14 candidate with 2^23 accounted work units per phase",
+    "candidate": "Same source and ado with 2^26 accounted work units per phase"
+  },
+  "config": {
+    "threads": [
+      4,
+      16,
+      28
+    ],
+    "blocks": 2,
+    "reps": 3,
+    "seed": 739391,
+    "cells": [
+      "c3",
+      "c6",
+      "c11"
+    ],
+    "placements": [
+      "default"
+    ],
+    "host_modes": [
+      "default"
+    ],
+    "perf_stat": false
+  },
+  "observations": 108,
+  "resampling": false,
+  "order": "Two mirrored blocks: candidate/incumbent, incumbent/candidate. Each cell visits 4,16,28 workers and retains all three calls after one warmup.",
+  "binary_pins": {
+    "incumbent/plugin": "b8670d74a7d83c7f166073d2d78398341363f743fe4629eadae82f363a057cd9",
+    "candidate/plugin": "368c10b05da5289feec14d85469b10bfb0da8deee7afe2afd45b5cc8a9b2027a"
+  },
+  "input_pins": {
+    "inputs_10m.dta": "3d945515b329437b1d2f82dbe66beb6f4057d8112f8e0b71d39e72f1fd5ca360",
+    "inputs_1m.dta": "8446bc4c7fd7f601477993bc617d90c97ea01d420a0342588cea1acd1843fd29"
+  },
+  "source_change": {
+    "old_sha256": "2116c2aa3d7a250f935cbf5d72157f5b6507f23427ae109afb9ee6379ca1cf54",
+    "new_sha256": "a066d5174a62a697baec0dea88e6b28d26844dd65f8f518bb6cc6966ffbbf3cd",
+    "only_change": "non-test PHASE_VALUES 1<<23 to 1<<26"
+  },
+  "source_audit": {
+    "differences": [
+      "crates/fereg-plugin/src/parallel_input.rs"
+    ],
+    "base_tree_sha256": "093aa580db47912b5a62159fc1eff27d0cc5ad7db6fc1cc54a4691ea45dd655c",
+    "probe_tree_sha256": "e68e89a0ab8c439de4d0c6a4e6f58a6c57eeecce0c4f7089fd056da6264d9de9",
+    "files_checked": 1195,
+    "excluded_generated_directories": [
+      "target",
+      "dist",
+      ".cargo",
+      ".git"
+    ]
+  },
+  "harness_pins": {
+    "scc-cap-probe.sge": "4f91a49a5b4d56ddd760d3143b18abc4d8f1003e74c54ed408f3f36aa294ee59",
+    "cap-probe.patch": "85f39e21161302af5ffb5a9d02097cb2d534fdc9fafccb881dc61a3e7886cc9c",
+    "profile-code/bench/qualify.py": "053e73bf43290833f4f3fc127b2319d77dc982e0ddf7645bfd67071650a171cf",
+    "profile-code/bench/input_diagnostics.py": "1ae2e2ae50151ca6ce25f2bd0a85891ac2e76a3bb221c1d5682e0bfae9642528"
+  },
+  "native_build_checks": [
+    "Linux native build and binary audit",
+    "actual-plugin ABI/self-test harness",
+    "numeric input/window/output guards"
+  ],
+  "scientific_preflight": {
+    "exact_science_and_input_bits": true,
+    "variants": 2
+  },
+  "host": {
+    "name": "scc-wo4",
+    "physical_cores": 28,
+    "stata_processors": 4,
+    "memory_policy": "default",
+    "isolation_ok": true,
+    "monitor_errors": [],
+    "same_physical_host_as_failed_comparison": true
+  },
+  "accounting": {
+    "jobnumber": "8389594",
+    "hostname": "scc-wo4.scc.bu.edu",
+    "failed": "0",
+    "exit_status": "0",
+    "ru_wallclock": "457",
+    "cpu": "1676.330",
+    "maxvmem": "5.436G"
+  },
+  "transport_preflight": [
+    {
+      "arm": "incumbent",
+      "cell": "c3",
+      "phase": "input_transport",
+      "mode": "parallel",
+      "rows": "1000000",
+      "width": "34",
+      "marker": "0",
+      "workers": "4",
+      "phases": "25",
+      "blocks": "1039",
+      "range_first": "0",
+      "range_end": "1000000",
+      "phase_work_cap": "8388608",
+      "longest_phase_s": "0.019190589",
+      "seconds": "0.442260256"
+    },
+    {
+      "arm": "incumbent",
+      "cell": "c3",
+      "phase": "input_transport",
+      "mode": "parallel",
+      "rows": "1000000",
+      "width": "34",
+      "marker": "0",
+      "workers": "16",
+      "phases": "25",
+      "blocks": "1039",
+      "range_first": "0",
+      "range_end": "1000000",
+      "phase_work_cap": "8388608",
+      "longest_phase_s": "0.008001699",
+      "seconds": "0.151138327"
+    },
+    {
+      "arm": "incumbent",
+      "cell": "c3",
+      "phase": "input_transport",
+      "mode": "parallel",
+      "rows": "1000000",
+      "width": "34",
+      "marker": "0",
+      "workers": "28",
+      "phases": "25",
+      "blocks": "1039",
+      "range_first": "0",
+      "range_end": "1000000",
+      "phase_work_cap": "8388608",
+      "longest_phase_s": "0.010433836",
+      "seconds": "0.139128529"
+    },
+    {
+      "arm": "incumbent",
+      "cell": "c6",
+      "phase": "input_transport",
+      "mode": "parallel",
+      "rows": "10000000",
+      "width": "6",
+      "marker": "0",
+      "workers": "4",
+      "phases": "44",
+      "blocks": "1832",
+      "range_first": "0",
+      "range_end": "10000000",
+      "phase_work_cap": "8388608",
+      "longest_phase_s": "0.015647828",
+      "seconds": "0.580061147"
+    },
+    {
+      "arm": "incumbent",
+      "cell": "c6",
+      "phase": "input_transport",
+      "mode": "parallel",
+      "rows": "10000000",
+      "width": "6",
+      "marker": "0",
+      "workers": "16",
+      "phases": "44",
+      "blocks": "1832",
+      "range_first": "0",
+      "range_end": "10000000",
+      "phase_work_cap": "8388608",
+      "longest_phase_s": "0.007412404",
+      "seconds": "0.190698597"
+    },
+    {
+      "arm": "incumbent",
+      "cell": "c6",
+      "phase": "input_transport",
+      "mode": "parallel",
+      "rows": "10000000",
+      "width": "6",
+      "marker": "0",
+      "workers": "28",
+      "phases": "44",
+      "blocks": "1832",
+      "range_first": "0",
+      "range_end": "10000000",
+      "phase_work_cap": "8388608",
+      "longest_phase_s": "0.007071189",
+      "seconds": "0.178662498"
+    },
+    {
+      "arm": "incumbent",
+      "cell": "c11",
+      "phase": "input_transport",
+      "mode": "parallel",
+      "rows": "10000000",
+      "width": "5",
+      "marker": "1",
+      "workers": "4",
+      "phases": "32",
+      "blocks": "1832",
+      "range_first": "4995000",
+      "range_end": "5005000",
+      "phase_work_cap": "8388608",
+      "longest_phase_s": "0.005525927",
+      "seconds": "0.163769609"
+    },
+    {
+      "arm": "incumbent",
+      "cell": "c11",
+      "phase": "input_transport",
+      "mode": "parallel",
+      "rows": "10000000",
+      "width": "5",
+      "marker": "1",
+      "workers": "16",
+      "phases": "32",
+      "blocks": "1832",
+      "range_first": "4995000",
+      "range_end": "5005000",
+      "phase_work_cap": "8388608",
+      "longest_phase_s": "0.002364866",
+      "seconds": "0.056055858"
+    },
+    {
+      "arm": "incumbent",
+      "cell": "c11",
+      "phase": "input_transport",
+      "mode": "parallel",
+      "rows": "10000000",
+      "width": "5",
+      "marker": "1",
+      "workers": "28",
+      "phases": "32",
+      "blocks": "1832",
+      "range_first": "4995000",
+      "range_end": "5005000",
+      "phase_work_cap": "8388608",
+      "longest_phase_s": "0.003544664",
+      "seconds": "0.063221646"
+    },
+    {
+      "arm": "candidate",
+      "cell": "c3",
+      "phase": "input_transport",
+      "mode": "parallel",
+      "rows": "1000000",
+      "width": "34",
+      "marker": "0",
+      "workers": "4",
+      "phases": "4",
+      "blocks": "1039",
+      "range_first": "0",
+      "range_end": "1000000",
+      "phase_work_cap": "67108864",
+      "longest_phase_s": "0.168485763",
+      "seconds": "0.508242815"
+    },
+    {
+      "arm": "candidate",
+      "cell": "c3",
+      "phase": "input_transport",
+      "mode": "parallel",
+      "rows": "1000000",
+      "width": "34",
+      "marker": "0",
+      "workers": "16",
+      "phases": "4",
+      "blocks": "1039",
+      "range_first": "0",
+      "range_end": "1000000",
+      "phase_work_cap": "67108864",
+      "longest_phase_s": "0.043607878",
+      "seconds": "0.118497456"
+    },
+    {
+      "arm": "candidate",
+      "cell": "c3",
+      "phase": "input_transport",
+      "mode": "parallel",
+      "rows": "1000000",
+      "width": "34",
+      "marker": "0",
+      "workers": "28",
+      "phases": "4",
+      "blocks": "1039",
+      "range_first": "0",
+      "range_end": "1000000",
+      "phase_work_cap": "67108864",
+      "longest_phase_s": "0.029823808",
+      "seconds": "0.082642120"
+    },
+    {
+      "arm": "candidate",
+      "cell": "c6",
+      "phase": "input_transport",
+      "mode": "parallel",
+      "rows": "10000000",
+      "width": "6",
+      "marker": "0",
+      "workers": "4",
+      "phases": "6",
+      "blocks": "1832",
+      "range_first": "0",
+      "range_end": "10000000",
+      "phase_work_cap": "67108864",
+      "longest_phase_s": "0.098076256",
+      "seconds": "0.486824100"
+    },
+    {
+      "arm": "candidate",
+      "cell": "c6",
+      "phase": "input_transport",
+      "mode": "parallel",
+      "rows": "10000000",
+      "width": "6",
+      "marker": "0",
+      "workers": "16",
+      "phases": "6",
+      "blocks": "1832",
+      "range_first": "0",
+      "range_end": "10000000",
+      "phase_work_cap": "67108864",
+      "longest_phase_s": "0.027230624",
+      "seconds": "0.144365521"
+    },
+    {
+      "arm": "candidate",
+      "cell": "c6",
+      "phase": "input_transport",
+      "mode": "parallel",
+      "rows": "10000000",
+      "width": "6",
+      "marker": "0",
+      "workers": "28",
+      "phases": "6",
+      "blocks": "1832",
+      "range_first": "0",
+      "range_end": "10000000",
+      "phase_work_cap": "67108864",
+      "longest_phase_s": "0.029847728",
+      "seconds": "0.123130584"
+    },
+    {
+      "arm": "candidate",
+      "cell": "c11",
+      "phase": "input_transport",
+      "mode": "parallel",
+      "rows": "10000000",
+      "width": "5",
+      "marker": "1",
+      "workers": "4",
+      "phases": "4",
+      "blocks": "1832",
+      "range_first": "4995000",
+      "range_end": "5005000",
+      "phase_work_cap": "67108864",
+      "longest_phase_s": "0.019207959",
+      "seconds": "0.070212091"
+    },
+    {
+      "arm": "candidate",
+      "cell": "c11",
+      "phase": "input_transport",
+      "mode": "parallel",
+      "rows": "10000000",
+      "width": "5",
+      "marker": "1",
+      "workers": "16",
+      "phases": "4",
+      "blocks": "1832",
+      "range_first": "4995000",
+      "range_end": "5005000",
+      "phase_work_cap": "67108864",
+      "longest_phase_s": "0.009598175",
+      "seconds": "0.034136876"
+    },
+    {
+      "arm": "candidate",
+      "cell": "c11",
+      "phase": "input_transport",
+      "mode": "parallel",
+      "rows": "10000000",
+      "width": "5",
+      "marker": "1",
+      "workers": "28",
+      "phases": "4",
+      "blocks": "1832",
+      "range_first": "4995000",
+      "range_end": "5005000",
+      "phase_work_cap": "67108864",
+      "longest_phase_s": "0.013034982",
+      "seconds": "0.043700646"
+    }
+  ],
+  "timing_groups": [
+    {
+      "placement": "default",
+      "host_mode": "default",
+      "cell": "c3",
+      "threads": 4,
+      "incumbent": {
+        "wall_s": 1.992,
+        "frontend_pre_s": 0.094,
+        "plugin_s": 1.643,
+        "frontend_post_s": 0.11449999999999999,
+        "load_s": 0.3663947115,
+        "compute_s": 1.2041627634999998,
+        "snapshot_s": 1.593681745,
+        "plugin_tail_s": 0.05000484650000003,
+        "outside_plugin_s": 0.3385,
+        "host_processors": [
+          4
+        ]
+      },
+      "candidate": {
+        "wall_s": 1.841,
+        "frontend_pre_s": 0.098,
+        "plugin_s": 1.5815000000000001,
+        "frontend_post_s": 0.0625,
+        "load_s": 0.402618921,
+        "compute_s": 1.1196656059999999,
+        "snapshot_s": 1.548532866,
+        "plugin_tail_s": 0.04188687149999992,
+        "outside_plugin_s": 0.27400000000000013,
+        "host_processors": [
+          4
+        ]
+      }
+    },
+    {
+      "placement": "default",
+      "host_mode": "default",
+      "cell": "c3",
+      "threads": 16,
+      "incumbent": {
+        "wall_s": 1.3170000000000002,
+        "frontend_pre_s": 0.097,
+        "plugin_s": 0.9664999999999999,
+        "frontend_post_s": 0.126,
+        "load_s": 0.1578774665,
+        "compute_s": 0.7589760160000001,
+        "snapshot_s": 0.9162983945000001,
+        "plugin_tail_s": 0.051401586999999915,
+        "outside_plugin_s": 0.3400000000000001,
+        "host_processors": [
+          4
+        ]
+      },
+      "candidate": {
+        "wall_s": 1.2175,
+        "frontend_pre_s": 0.0975,
+        "plugin_s": 0.9305,
+        "frontend_post_s": 0.05,
+        "load_s": 0.117396271,
+        "compute_s": 0.7616816694999999,
+        "snapshot_s": 0.8773133355,
+        "plugin_tail_s": 0.05455631750000001,
+        "outside_plugin_s": 0.2705,
+        "host_processors": [
+          4
+        ]
+      }
+    },
+    {
+      "placement": "default",
+      "host_mode": "default",
+      "cell": "c3",
+      "threads": 28,
+      "incumbent": {
+        "wall_s": 1.254,
+        "frontend_pre_s": 0.096,
+        "plugin_s": 0.9704999999999999,
+        "frontend_post_s": 0.052000000000000005,
+        "load_s": 0.131060775,
+        "compute_s": 0.7720168380000001,
+        "snapshot_s": 0.9071758965000001,
+        "plugin_tail_s": 0.062338689999999974,
+        "outside_plugin_s": 0.27699999999999997,
+        "host_processors": [
+          4
+        ]
+      },
+      "candidate": {
+        "wall_s": 1.2875,
+        "frontend_pre_s": 0.0985,
+        "plugin_s": 0.9484999999999999,
+        "frontend_post_s": 0.0915,
+        "load_s": 0.088517374,
+        "compute_s": 0.7991024904999999,
+        "snapshot_s": 0.887675787,
+        "plugin_tail_s": 0.06128213299999996,
+        "outside_plugin_s": 0.326,
+        "host_processors": [
+          4
+        ]
+      }
+    },
+    {
+      "placement": "default",
+      "host_mode": "default",
+      "cell": "c6",
+      "threads": 4,
+      "incumbent": {
+        "wall_s": 4.334,
+        "frontend_pre_s": 0.0715,
+        "plugin_s": 3.682,
+        "frontend_post_s": 0.118,
+        "load_s": 0.62467339,
+        "compute_s": 3.0123986695,
+        "snapshot_s": 3.657819704,
+        "plugin_tail_s": 0.03395107700000022,
+        "outside_plugin_s": 0.6520000000000001,
+        "host_processors": [
+          4
+        ]
+      },
+      "candidate": {
+        "wall_s": 4.5005,
+        "frontend_pre_s": 0.077,
+        "plugin_s": 3.7375,
+        "frontend_post_s": 0.202,
+        "load_s": 0.6826619905,
+        "compute_s": 3.0031853059999998,
+        "snapshot_s": 3.6981311405,
+        "plugin_tail_s": 0.05013456000000027,
+        "outside_plugin_s": 0.7839999999999998,
+        "host_processors": [
+          4
+        ]
+      }
+    },
+    {
+      "placement": "default",
+      "host_mode": "default",
+      "cell": "c6",
+      "threads": 16,
+      "incumbent": {
+        "wall_s": 3.5445,
+        "frontend_pre_s": 0.0725,
+        "plugin_s": 2.895,
+        "frontend_post_s": 0.118,
+        "load_s": 0.285709055,
+        "compute_s": 2.5639879575,
+        "snapshot_s": 2.8486629775,
+        "plugin_tail_s": 0.04800674650000003,
+        "outside_plugin_s": 0.6585000000000001,
+        "host_processors": [
+          4
+        ]
+      },
+      "candidate": {
+        "wall_s": 3.7895,
+        "frontend_pre_s": 0.0715,
+        "plugin_s": 3.0679999999999996,
+        "frontend_post_s": 0.2385,
+        "load_s": 0.2404885255,
+        "compute_s": 2.7821454460000004,
+        "snapshot_s": 3.0235907685,
+        "plugin_tail_s": 0.04440923149999976,
+        "outside_plugin_s": 0.7235,
+        "host_processors": [
+          4
+        ]
+      }
+    },
+    {
+      "placement": "default",
+      "host_mode": "default",
+      "cell": "c6",
+      "threads": 28,
+      "incumbent": {
+        "wall_s": 3.529,
+        "frontend_pre_s": 0.0765,
+        "plugin_s": 2.8810000000000002,
+        "frontend_post_s": 0.1255,
+        "load_s": 0.2542915485,
+        "compute_s": 2.5705738175,
+        "snapshot_s": 2.8232642205,
+        "plugin_tail_s": 0.06673670750000005,
+        "outside_plugin_s": 0.6905000000000003,
+        "host_processors": [
+          4
+        ]
+      },
+      "candidate": {
+        "wall_s": 3.779,
+        "frontend_pre_s": 0.07050000000000001,
+        "plugin_s": 2.99,
+        "frontend_post_s": 0.3665,
+        "load_s": 0.203996721,
+        "compute_s": 2.72655298,
+        "snapshot_s": 2.929477213,
+        "plugin_tail_s": 0.06248284100000001,
+        "outside_plugin_s": 0.7955000000000001,
+        "host_processors": [
+          4
+        ]
+      }
+    },
+    {
+      "placement": "default",
+      "host_mode": "default",
+      "cell": "c11",
+      "threads": 4,
+      "incumbent": {
+        "wall_s": 1.3345,
+        "frontend_pre_s": 0.2925,
+        "plugin_s": 0.3615,
+        "frontend_post_s": 0.0995,
+        "load_s": 0.1267521395,
+        "compute_s": 0.20531075699999995,
+        "snapshot_s": 0.332248633,
+        "plugin_tail_s": 0.026708236999999996,
+        "outside_plugin_s": 0.968,
+        "host_processors": [
+          4
+        ]
+      },
+      "candidate": {
+        "wall_s": 1.0695000000000001,
+        "frontend_pre_s": 0.253,
+        "plugin_s": 0.2715,
+        "frontend_post_s": 0.0755,
+        "load_s": 0.06689338149999999,
+        "compute_s": 0.17790571,
+        "snapshot_s": 0.245382035,
+        "plugin_tail_s": 0.026460901000000023,
+        "outside_plugin_s": 0.7969999999999999,
+        "host_processors": [
+          4
+        ]
+      }
+    },
+    {
+      "placement": "default",
+      "host_mode": "default",
+      "cell": "c11",
+      "threads": 16,
+      "incumbent": {
+        "wall_s": 1.4855,
+        "frontend_pre_s": 0.2905000000000001,
+        "plugin_s": 0.3375,
+        "frontend_post_s": 0.122,
+        "load_s": 0.0570465795,
+        "compute_s": 0.227679504,
+        "snapshot_s": 0.285100911,
+        "plugin_tail_s": 0.05277501450000002,
+        "outside_plugin_s": 1.139,
+        "host_processors": [
+          4
+        ]
+      },
+      "candidate": {
+        "wall_s": 1.2165,
+        "frontend_pre_s": 0.2595,
+        "plugin_s": 0.2835,
+        "frontend_post_s": 0.096,
+        "load_s": 0.0329625015,
+        "compute_s": 0.207950676,
+        "snapshot_s": 0.24128495249999998,
+        "plugin_tail_s": 0.0390874105,
+        "outside_plugin_s": 0.931,
+        "host_processors": [
+          4
+        ]
+      }
+    },
+    {
+      "placement": "default",
+      "host_mode": "default",
+      "cell": "c11",
+      "threads": 28,
+      "incumbent": {
+        "wall_s": 1.4985,
+        "frontend_pre_s": 0.2705,
+        "plugin_s": 0.355,
+        "frontend_post_s": 0.1135,
+        "load_s": 0.06922531700000001,
+        "compute_s": 0.23482364050000004,
+        "snapshot_s": 0.3026521725,
+        "plugin_tail_s": 0.052033610499999994,
+        "outside_plugin_s": 1.1475,
+        "host_processors": [
+          4
+        ]
+      },
+      "candidate": {
+        "wall_s": 1.108,
+        "frontend_pre_s": 0.2635,
+        "plugin_s": 0.2995,
+        "frontend_post_s": 0.0755,
+        "load_s": 0.044773222,
+        "compute_s": 0.228069758,
+        "snapshot_s": 0.2723167865,
+        "plugin_tail_s": 0.026618257499999992,
+        "outside_plugin_s": 0.8135,
+        "host_processors": [
+          4
+        ]
+      }
+    }
+  ],
+  "limitations": [
+    "One host, two blocks, six calls per arm/setting; mixed results cannot qualify a release.",
+    "The larger cap permits eight times as much accounted work between Break polls. Preflight longest-phase observations are not worst-case interruption guarantees.",
+    "Four-worker full-input loading worsens; ten-million-row whole calls worsen at sixteen/twenty-eight workers despite faster loading.",
+    "Later compute slowdown could involve first-touch/placement/cache effects, but no particular mechanism is established by this experiment.",
+    "No PPML, Mac, Windows, low-worker error/replay or interactive Break qualification was performed for the temporary build.",
+    "Input/coef/covariance/sample-count comparisons are exact; scientific arithmetic and estimator-route change scopes are empty."
+  ],
+  "inherited_manifest_format": {
+    "note": "Existing input preflights verified absolute file names. A matching relative-path manifest was added and verified after diagnostics; hashes and files are unchanged. New diagnostic harness/build manifests already used relative paths.",
+    "entries": 55
+  },
+  "relative_input_manifest_sha256": "1c3d3c7e74ef3c864756f7b883ebe49145291b699c7ff77640e29bf90a9b877c",
+  "retained_observations": "input-beta14-cap-probe-linux-20261102.csv",
+  "observations_sha256": "5358a50dbfd2fc1915186527ff4f7c2f54b773d20b4d4597767f69bd5dcb43a2"
+}

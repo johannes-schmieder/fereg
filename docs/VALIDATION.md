@@ -166,6 +166,55 @@ are retained; there is no cap search, resampling or release-acceptance inference
 The harness's `incumbent` label means the rejected 8 Mi-work candidate in this
 ablation, not beta.13; `candidate` means the temporary 64 Mi-work build.
 
+The [completed cap ablation](../bench/results/input-beta14-cap-probe-linux-20261102.json)
+retains [all 108 observations](../bench/results/input-beta14-cap-probe-linux-20261102.csv),
+18 exact-science/path preflights and the source audit confirming that the cap was
+the only source change. Native ABI/guard checks, isolation and scheduler
+accounting pass. Results are mixed (Mi means 2^20 accounted work units):
+
+| Cell | Workers | Loading, 8 Mi cap | Loading, 64 Mi cap | Loading change | Whole-call change |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 32 regressors (c3) | 4 | 366.4 ms | 402.6 ms | +9.9% | -7.6% |
+| 32 regressors (c3) | 16 | 157.9 ms | 117.4 ms | -25.6% | -7.6% |
+| 32 regressors (c3) | 28 | 131.1 ms | 88.5 ms | -32.5% | +2.7% |
+| Ten million rows (c6) | 4 | 624.7 ms | 682.7 ms | +9.3% | +3.8% |
+| Ten million rows (c6) | 16 | 285.7 ms | 240.5 ms | -15.8% | +6.9% |
+| Ten million rows (c6) | 28 | 254.3 ms | 204.0 ms | -19.8% | +7.1% |
+| Short `in` (c11) | 4 | 126.8 ms | 66.9 ms | -47.2% | -19.9% |
+| Short `in` (c11) | 16 | 57.0 ms | 33.0 ms | -42.2% | -18.1% |
+| Short `in` (c11) | 28 | 69.2 ms | 44.8 ms | -35.3% | -26.1% |
+
+The c3 phase count falls from 25 to four, c6 from 44 to six and c11 from
+32 to four, without changing block counts or loaded bits. This supplies causal
+evidence that the phase-budget choice contributes substantially to high-worker
+loading cost. It does not show that one larger global cap is a general fix.
+At four workers the full-input loading medians worsen. At sixteen workers c6's
+native compute median rises from 2.5640 to 2.7821 seconds, outweighing its 45 ms
+loading gain; the later work is also slower in both mirrored blocks. Memory
+first-touch, task placement and cache effects are plausible mechanisms, not
+established causes. c6 was not included in the initial NUMA-control grid.
+The same host and exact scientific results do not make memory placement fixed.
+
+The responsiveness tradeoff is measurable: c3's longest traced phase at four
+workers rises from 19.2 to 168.5 ms (at sixteen: 8.0 to 43.6 ms). These untimed
+preflight observations are not worst-case bounds, especially under accessor
+errors/replay. The temporary build has no new PPML, Mac, Windows or interactive
+Break qualification and is not selected for publication.
+
+The next repair direction is a shared worker-aware phase policy under a strict
+absolute work ceiling, together with efficient task grouping and explicit
+investigation of input first-touch effects on subsequent computation. It should
+preserve original-order phase coverage and serial error precedence; assigning
+workers permanent separated row regions would require extra logic before an
+observed marker failure could terminate unread earlier rows. Logical lane
+stability alone does not guarantee physical CPU or NUMA placement. A fill-only
+optimization can help short `in` ranges but cannot address c3, which uses the
+full envelope. Compact sample storage remains a separate architectural change.
+These are design directions, not demonstrated universal improvements. The
+bounded investigation ends with the original candidate still rejected and no
+cap change applied to main; further candidate work must address the disclosed
+mixed result rather than retune or repeat this experiment until it passes.
+
 The actual candidate binaries pass 68 licensed Stata 19 fixtures on both Mac
 and Linux, all 77 exact incumbent replay cases on each, scalar input oracles at
 multiple worker counts, accessor-failure rollback, and live console Break while

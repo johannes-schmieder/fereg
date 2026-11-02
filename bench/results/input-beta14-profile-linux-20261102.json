@@ -696,7 +696,8 @@
           "dso": "fereg_linux.plugin",
           "symbol": "rayon_core::registry::WorkerThread::find_work"
         }
-      ]
+      ],
+      "raw_perf_data_sha256": "51c8d58364887a39bd40d2584d50dd43300a3442688e961741d21d4fadf75577"
     },
     {
       "process": "candidate-default-default-2",
@@ -1376,7 +1377,8 @@
           "dso": "fereg_linux.plugin",
           "symbol": "rayon_core::registry::WorkerThread::find_work"
         }
-      ]
+      ],
+      "raw_perf_data_sha256": "c6883e540200542f57671fd41e38b1d6294f9b2b7002f451fc0eb753f9b79211"
     },
     {
       "process": "incumbent-default-default-1",
@@ -2030,7 +2032,8 @@
           "dso": "fereg_linux.plugin",
           "symbol": "rayon_core::registry::WorkerThread::find_work"
         }
-      ]
+      ],
+      "raw_perf_data_sha256": "7d423cddee9353603cc5c9d674558c84e0a9e8f38b763493b6350fc271a8ad54"
     },
     {
       "process": "incumbent-default-default-2",
@@ -2659,7 +2662,8 @@
           "dso": "fereg_linux.plugin",
           "symbol": "rayon_core::registry::WorkerThread::find_work"
         }
-      ]
+      ],
+      "raw_perf_data_sha256": "fc345137a0920ede42765ebbd06a62244c1844351ba7712555289e0854657b1a"
     }
   ],
   "timing_groups": [
