@@ -48,7 +48,7 @@ Tables show median milliseconds. Native time starts after numeric loading and in
 
 ## Interpretation
 
-On the primary Linux host, the 16-regressor, one-worker median rises from 1367.0 to 1466.3 ms (+7.3%), failing the max(5%, 1 ms) protection guard. The 64-regressor, one-worker cell rises 4.7%, just inside the guard. Every parallel cell improves relative to beta.14. At 64 regressors and 16 Rust workers, command time falls 77.1% to 708.9 ms, versus 748.8 ms for regress capped at four processors; this is not an equal-core win. At four workers each, the candidate takes 1778.3 ms versus 751.7 ms. More optimization is required before promotion.
+On the primary Linux host, the 16-regressor, one-worker median rises from 1367.0 to 1466.3 ms (+7.3%), failing the max(5%, 1 ms) protection guard. The 64-regressor, one-worker cell rises 4.7%, just inside the guard. Every parallel cell improves relative to beta.14. At 64 regressors and 16 Rust workers, command time falls 77.1% to 708.9 ms, versus 748.8 ms for regress capped at four processors; this is not an equal-core win. At four workers each, the candidate takes 1778.3 ms versus 751.7 ms. Johannes accepted this candidate for publication; more optimization is required to consistently outperform regress.
 
 The Mac candidate beats regress at one worker with 1 or 16 regressors and at two workers with one regressor. It is still slower in the other Mac target cells. At equal eight-worker limits, 64 regressors take 441.1 ms versus 297.0 ms for regress; at 16 Rust workers the candidate reaches 315.6 ms, while regress remains capped at eight. The goal of consistently beating regress is therefore not achieved.
 

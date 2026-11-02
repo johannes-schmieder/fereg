@@ -385,7 +385,9 @@
     "repair": "Name the actual coefficient and covariance matrices before using mreldif; preserve every tolerance and assertion",
     "runtime_changed": false,
     "second": "The temporary driver compared robust-default feppml covariance with model-based poisson covariance; coefficients and OLS checks passed.",
-    "second_repair": "Compute independent Poisson Hessian/score sandwich with SPEC correction N/(N-1); retain the existing 1e-6 covariance tolerance."
+    "second_repair": "Compute independent Poisson Hessian/score sandwich with SPEC correction N/(N-1); retain the existing 1e-6 covariance tolerance.",
+    "github_initial": "The temporary isolated PLUS setup copied the github helper outside its expected g subdirectory; githubdb returned r(603) before package installation.",
+    "github_repair": "Create the standard PLUS/g directory and put the unchanged github helper files there. The fresh github install, all 36 installed-byte checks and independent science then pass."
   },
   "optional_mac_stata15": {
     "status": "not executed; local console could not locate its Stata directory",
@@ -400,8 +402,106 @@
     "new_timing_round": false
   },
   "publication": {
-    "status": "ready; not uploaded",
-    "tag": "v0.5.0-beta.15"
+    "url": "https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0-beta.15",
+    "published_at": "2026-11-02T19:59:59Z",
+    "prerelease": true,
+    "assets": {
+      "fereg-0.5.0.zip": {
+        "sha256": "c4bf3e5cf44427f92de01eb1d90369fe7ceb927c1ba081364c98208aeef32737",
+        "bytes": 18626326,
+        "exact": true
+      },
+      "fereg-0.5.0.zip.sha256": {
+        "sha256": "3f5dac0fb1c67cf04cdfa585ef3c88f31747b0119b784b4bdcaedccfc737b858",
+        "bytes": 82,
+        "exact": true
+      },
+      "fereg-0.5.0-source.zip": {
+        "sha256": "e2b1917ae39a97a4d103dee04f3a0b67a5fbc0cefd18c952103b4fdba2798abd",
+        "bytes": 34891086,
+        "exact": true
+      },
+      "fereg-0.5.0-source.zip.sha256": {
+        "sha256": "6d95c1a43d2b9e68e7ee3eeb4d159a3ff1fb13d2f86cae16e6b97d2da0b01e7f",
+        "bytes": 89,
+        "exact": true
+      },
+      "macos_source_build.md": {
+        "sha256": "6798db113daf34e716270e5f89ccee5c3a8c7b21eb2625ab3201432579ffc3ec",
+        "bytes": 2826,
+        "exact": true
+      }
+    },
+    "release_list_bytes": 185417,
+    "release_list_limit_bytes": 264392,
+    "unauthenticated_downloads": true,
+    "status": "published",
+    "tag": "v0.5.0-beta.15",
+    "tag_commit": "44d82058a33e1f5b1c53075ba89f4254d6ed847d",
+    "main_installation": "published and verified",
+    "asset_count": 5
   },
-  "package_commit": "9b45998b1590456646612265f0281b5c2c14f6e5"
+  "package_commit": "9b45998b1590456646612265f0281b5c2c14f6e5",
+  "http_installations": {
+    "macos_main": {
+      "source": "https://raw.githubusercontent.com/johannes-schmieder/fereg/main/",
+      "installed_files": 36,
+      "status": "passed",
+      "selftest_version": "0.5.0-beta.15",
+      "independent_ols_ppml": "passed",
+      "restricted_sample": "if plus in",
+      "all_installed_hashes": "exact",
+      "no_fe_derived_row": 5
+    },
+    "macos_tag": {
+      "source": "https://raw.githubusercontent.com/johannes-schmieder/fereg/v0.5.0-beta.15/",
+      "installed_files": 36,
+      "status": "passed",
+      "selftest_version": "0.5.0-beta.15",
+      "independent_ols_ppml": "passed",
+      "restricted_sample": "if plus in",
+      "all_installed_hashes": "exact",
+      "no_fe_derived_row": 5
+    },
+    "macos_github": {
+      "source": "github",
+      "installed_files": 36,
+      "status": "passed",
+      "selftest_version": "0.5.0-beta.15",
+      "independent_ols_ppml": "passed",
+      "restricted_sample": "if plus in",
+      "all_installed_hashes": "exact",
+      "no_fe_derived_row": 5
+    },
+    "linux_main": {
+      "source": "https://raw.githubusercontent.com/johannes-schmieder/fereg/main/",
+      "installed_files": 36,
+      "status": "passed",
+      "selftest_version": "0.5.0-beta.15",
+      "independent_ols_ppml": "passed",
+      "restricted_sample": "if plus in",
+      "all_installed_hashes": "exact",
+      "no_fe_derived_row": 5
+    },
+    "linux_tag": {
+      "source": "https://raw.githubusercontent.com/johannes-schmieder/fereg/v0.5.0-beta.15/",
+      "installed_files": 36,
+      "status": "passed",
+      "selftest_version": "0.5.0-beta.15",
+      "independent_ols_ppml": "passed",
+      "restricted_sample": "if plus in",
+      "all_installed_hashes": "exact",
+      "no_fe_derived_row": 5
+    }
+  },
+  "http_installation_driver_sha256": "bfafe24f2b3f1223cb5d539157f3789cdb36e12de30c02a854775923aa7441b1",
+  "linux_http_accounting": {
+    "job": 8402509,
+    "host": "scc-pi1",
+    "slots": 4,
+    "failed": 0,
+    "exit_status": 0,
+    "wall_seconds": 21,
+    "maxvmem": "1.829G"
+  }
 }

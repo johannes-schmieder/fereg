@@ -8,8 +8,9 @@ the Linux 16-regressor, one-worker +7.3% performance exception for the frozen
 candidate. The original failed guard and all timing observations remain unchanged.
 It does not waive scientific checks or claim that fereg consistently beats regress.
 The release uses the accepted runtime, with release-label and qualification-driver
-updates only. The corresponding-source, platform native, strict integration and local
-installed-package prerequisites now pass as recorded below.
+updates only. [Beta.15](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0-beta.15)
+is published, and the corresponding-source, platform native, strict integration
+and installed-package checks pass as recorded below.
 Windows keeps serial input; native Intel-Mac Stata execution remains untested.
 
 The [beta.15 package verification](../bench/results/beta15-publication-20261102.json)
@@ -27,10 +28,18 @@ FMA/kernel/ABI checks, installed-plugin checksum, existing OLS/PPML/transaction
 fixtures and both new no-FE fixtures. The machine is stopped, its transient
 objects deleted and lock released. Linux native job 8401878 exits zero on scc-ei3.
 Fresh root installations on Mac Stata 19 and Linux Stata 15/19 verify all 36
-installed bytes, beta.15 selftest, the no-FE derived row, sample membership and
+installed files' bytes, beta.15 selftest, the no-FE derived row, sample membership and
 independent OLS/PPML coefficient and covariance witnesses. Linux installation
 job 8402322 exits zero on scc-pi1. The exact binary archive also passes Mac
 installation and independent PPML smoke checks.
+
+All five public release assets match their local hashes when downloaded without
+authentication. The release-list response is 185,417 bytes, below the 264,392-byte
+installation-helper limit. Fresh HTTP installations from `main` and the beta.15
+tag pass on Mac and Linux Stata 19; Mac's actual `github install` command also
+passes. Each checks all 36 installed files, selftest, sample membership, the
+no-FE derived row and independent OLS/PPML coefficients and covariance. Linux
+HTTP job 8402509 exits zero on scc-pi1 (21 seconds, 1.829 GB maximum virtual memory).
 
 The temporary installation driver needed two bounded repairs: Stata 15 matrix
 expression syntax and an incorrect model-based Poisson covariance reference for
@@ -39,13 +48,15 @@ with the specified N/(N-1) correction and unchanged tolerances. An optional Mac
 Stata 15 console attempt cannot locate its local Stata directory and supplies
 no qualification evidence; Stata 15 qualification here is Linux. The Windows
 wrapper's initial clean-tree check rejected unrelated untracked files before
-starting the host; the clean source snapshot passed. None of these repairs
-changes fereg or the frozen performance observations.
+starting the host; the clean source snapshot passed. The initial `github install`
+test setup omitted the helper's standard `PLUS/g` directory and failed before
+package installation; restoring that layout makes the unchanged helper pass.
+None of these repairs changes fereg or the frozen performance observations.
 
 ## Revised no-FE candidate: preparation and loader integration
 
 The [completed revised report](../bench/results/no-fe-preparation-20261102.md)
-retains all 1,080 timing observations across Mac and Linux. The candidate is
+retains all 1,080 timing observations across Mac and Linux. The candidate
 **did not pass the automatic performance gate**: Linux's 16-regressor, one-worker command median
 rises from 1,367.0 to 1,466.3 ms (+7.3%), failing the max(5%, 1 ms) guard.
 The other 14 Linux guards and all 15 Mac guards pass. Every parallel cell improves
