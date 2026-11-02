@@ -609,6 +609,13 @@ coefficient, variance and sample witnesses. Linux installation job 8394495 exits
 zero. These checks make the candidate reviewable but do not waive the remaining
 full-sample performance failure; no beta.14 release or main-package push occurred.
 
+The final three-platform review archive also passes its exact-archive Mac Stata
+19 installation smoke test. Its source archive has zero dependency advisories;
+2,794 native, Stata, build, dependency and license files match the offline-built
+source archive byte for byte. The package report retains both archive hashes,
+packaging source and smoke result. Its review-only manifest remains ineligible
+for publication until the full-sample performance decision.
+
 The actual candidate binaries pass 68 licensed Stata 19 fixtures on both Mac
 and Linux, all 77 exact incumbent replay cases on each, scalar input oracles at
 multiple worker counts, accessor-failure rollback, and live console Break while

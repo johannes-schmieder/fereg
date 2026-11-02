@@ -75,5 +75,38 @@
     "Windows retains serial input pending live Break qualification.",
     "Interactive GUI Break and native Intel-host Stata remain unqualified.",
     "HTTP publication and versioned installations have not occurred."
-  ]
+  ],
+  "review_archive": {
+    "source_sha": "79001c250fa19948653cb8ef72d99a1420983fbd",
+    "archive_sha256": "e1a4486607d4570412b936b74a03b1a8da2584e9f6ec5c7d08edbb8e68f49c35",
+    "archive_bytes": 18292939,
+    "manifest_sha256": "1080ab699f42a0c18802c8d96d4937a0dfe2d180446f4a66f6ab0876a6ec8ca8",
+    "source_archive_sha256": "44eeeffdeb15b1ba65b5aa9d3f09c9b2a442eca45ad5a2c16f12691a2518a90b",
+    "review_only": true,
+    "publication_eligible": false,
+    "dependency_audit": {
+      "advisory_count": 0,
+      "cargo_lock_sha256": "4975de767595cf184cd5328e6ec7f7a55e7871c545d3c51adbc92da1544696d5",
+      "schema": 1,
+      "source_sha": "79001c250fa19948653cb8ef72d99a1420983fbd",
+      "status": "pass",
+      "toolchain": "1.85.1"
+    },
+    "source_closure": {
+      "comparison": "offline-built source archive",
+      "compared_files": 2794,
+      "differences": 0
+    },
+    "staged_installation_smoke": {
+      "status": "success",
+      "fixture": "tests/stata/installation/installation_smoke.do",
+      "stata_version": "19",
+      "stata_edition": "MP",
+      "stata_machine_type": "Mac (Apple Silicon)",
+      "plugin_sha256": "84af14c20c605b541fc0e046247193aff19a0134c6f891e191fd7daec6acf08e",
+      "process_rc": 0,
+      "stata_rc": 0,
+      "summary_sha256": "11f4e828551e0ac7f16a491e7a52bd5f1a0d4886e5f12b182e6d6cae6e1d1c5b"
+    }
+  }
 }
