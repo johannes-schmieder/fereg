@@ -1,0 +1,79 @@
+{
+  "schema": 1,
+  "status": "complete native and local root-package checks; performance gate failed in one Linux setting",
+  "publication_eligible": false,
+  "candidate_native_source": "721b0420958c4b601f8aec7c702bd14c824479bf",
+  "runtime_sha256": "1769c5c6fb59f05c12776dfdfbda752f0ab96b4aafb9b86f8329569c065c0fca",
+  "plugins": [
+    {
+      "path": "fereg_linux.plugin",
+      "source_sha": "721b0420958c4b601f8aec7c702bd14c824479bf",
+      "sha256": "9e6404458cce576834fd9efd4ba74496ea6e7449dcdbecb35aab99dbcc97c93d",
+      "bytes": 16871280
+    },
+    {
+      "path": "fereg_windows.plugin",
+      "source_sha": "721b0420958c4b601f8aec7c702bd14c824479bf",
+      "sha256": "5ba81f59a73bdf48d55b15cd42505675ff8000ae7a1a1b5b3dfa4322b3e4ae8e",
+      "bytes": 11974144
+    },
+    {
+      "path": "fereg_macos.plugin",
+      "source_sha": "721b0420958c4b601f8aec7c702bd14c824479bf",
+      "sha256": "84af14c20c605b541fc0e046247193aff19a0134c6f891e191fd7daec6acf08e",
+      "bytes": 21138208
+    }
+  ],
+  "full_suite": {
+    "command": "./scripts/run_tests.sh",
+    "source": "1dceef79",
+    "status": "passed",
+    "log_sha256": "947d5738926509c482584ee46f3862ba9b61e84678be77506ffb263bfd0de986",
+    "root_package_files": 36
+  },
+  "installed": {
+    "macos-19": {
+      "source": "local root package",
+      "installed_files": 36,
+      "status": "passed",
+      "selftest_version": "0.5.0-beta.14",
+      "independent_ols_ppml": "passed",
+      "restricted_sample": "if plus in",
+      "all_installed_hashes": "exact"
+    },
+    "linux-15": {
+      "source": "local root package",
+      "installed_files": 36,
+      "status": "passed",
+      "selftest_version": "0.5.0-beta.14",
+      "independent_ols_ppml": "passed",
+      "restricted_sample": "if plus in",
+      "all_installed_hashes": "exact"
+    },
+    "linux-19": {
+      "source": "local root package",
+      "installed_files": 36,
+      "status": "passed",
+      "selftest_version": "0.5.0-beta.14",
+      "independent_ols_ppml": "passed",
+      "restricted_sample": "if plus in",
+      "all_installed_hashes": "exact"
+    }
+  },
+  "linux_install_accounting": {
+    "jobnumber": "8394495",
+    "hostname": "scc-gd4.scc.bu.edu",
+    "failed": "0",
+    "exit_status": "0",
+    "ru_wallclock": "7",
+    "maxvmem": "817.309M"
+  },
+  "root_metadata_sha256": "be6dfde4bac9414e87ad2ec53abd9d4d982ad0887545df9b8d0f5d1e6dfce15b",
+  "build_source_archive_sha256": "4bbb88fcc5da2cb6ba70a9a3682246da9980df71c86e163ee0c18ac7a9dc3610",
+  "limitations": [
+    "Review candidate only; c2 at four workers exceeds the protected Linux timing guard by 5.64% versus incumbent.",
+    "Windows retains serial input pending live Break qualification.",
+    "Interactive GUI Break and native Intel-host Stata remain unqualified.",
+    "HTTP publication and versioned installations have not occurred."
+  ]
+}

@@ -575,6 +575,39 @@ numeric windows. Run `win-20261102T074954Z-393b5d4e` reports 1,032.382 seconds,
 all transient objects deleted, the lock released and the machine stopped.
 Windows remains serial; this result does not qualify parallel input there.
 
+The narrower [Linux comparison](../bench/results/input-beta14-geometry-linux-20261102.json)
+retains [all 1,008 observations](../bench/results/input-beta14-geometry-linux-20261102.csv)
+and passes 41 of 42 settings (38 of 39 protected settings plus all three advisory
+`in` settings). The prior c3/28, c6/4 and c8/16 regressions are within the guard:
+whole-call incumbent/candidate medians are 1.134/1.1275, 4.279/4.283 and
+3.174/3.001 seconds respectively. One protected full-sample setting fails:
+64 regressors at four workers (c2), 5.927/6.2615 seconds, **+5.64%**. It is slower
+in every paired block (+5.89%, +7.80%, +4.64%, +4.99%). Loading medians are nearly
+unchanged (641.5/646.1 ms); native time including loading is 5.4817/5.7560 seconds.
+Per-call native-minus-load medians are 4.8593/5.0607 seconds. These separate
+medians are not additive, and no causal explanation for the later penalty is
+established. The candidate must not be represented as passing the release guard.
+
+Short-`in` whole-call medians improve by 23–39% on Linux; the advisory exception
+is unused. All 84 actual-plugin science preflights pass exactly, including full
+sample signatures, and every frozen workload retains incumbent phase/block
+geometry. The build/science job 8394306 exits zero on scc-wo4. Timing job 8394307
+on the same physical host retains every observation, passes isolation and records
+`failed=0`, `exit_status=1`, 2,288 seconds and 5.569 GB maximum virtual memory.
+The exit is the single performance rejection. No observations were excluded or
+resampled. This completes the declared compatibility narrowing; another candidate
+or timing run is not selected automatically. Johannes's `in` waiver does not
+cover this full-sample case. The implementation and native artifacts remain a
+review candidate pending the performance-policy decision.
+
+The narrower [three-platform root package](../bench/results/input-beta14-geometry-package-review-20261102.json)
+passes the full `scripts/run_tests.sh`, including all 36 installation files and
+native runtime binding. Fresh installations on Mac Stata 19 and Linux Stata 15/19
+verify every installed byte, beta.14 selftest and independent restricted OLS/PPML
+coefficient, variance and sample witnesses. Linux installation job 8394495 exits
+zero. These checks make the candidate reviewable but do not waive the remaining
+full-sample performance failure; no beta.14 release or main-package push occurred.
+
 The actual candidate binaries pass 68 licensed Stata 19 fixtures on both Mac
 and Linux, all 77 exact incumbent replay cases on each, scalar input oracles at
 multiple worker counts, accessor-failure rollback, and live console Break while

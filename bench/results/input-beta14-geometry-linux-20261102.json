@@ -1,0 +1,987 @@
+{
+  "schema": 1,
+  "platform": "linux",
+  "candidate_native_source": "721b0420958c4b601f8aec7c702bd14c824479bf",
+  "candidate_plugin_sha256": "9e6404458cce576834fd9efd4ba74496ea6e7449dcdbecb35aab99dbcc97c93d",
+  "incumbent": "v0.5.0-beta.13",
+  "change": "Retain incumbent 16 Mi slot-work phases and one-block splitting, add complete 128 Mi work bound, preserve input safety and postcommit marker cleanup.",
+  "numerical_scope": [],
+  "estimator_route_scope": [],
+  "native": {
+    "status": "passed",
+    "source": "721b0420958c4b601f8aec7c702bd14c824479bf",
+    "plugin_sha256": "9e6404458cce576834fd9efd4ba74496ea6e7449dcdbecb35aab99dbcc97c93d",
+    "fixtures": 68,
+    "input_oracle_workers": [
+      4,
+      8
+    ],
+    "failure_rollback": "passed",
+    "live_console_break": [
+      "input",
+      "ols",
+      "ppml"
+    ],
+    "exact_incumbent_replays": 77,
+    "incumbent_plugin_sha256": "9bbb0a35c1238e07227b71d7ee388ee374f558e94f9d9c81cc7c40f7d44284fc",
+    "replay_summary_sha256": "7167c3feee11d25a6f5332a60d1be9cbec22ccbc39619cf24412b3fd7b8d2a09",
+    "build_abi_load_panic_checks": "passed"
+  },
+  "science_preflight": {
+    "status": "passed",
+    "cells": 14,
+    "workers": [
+      4,
+      16,
+      28
+    ],
+    "calls": 84,
+    "exact": [
+      "coefficient",
+      "covariance",
+      "N",
+      "full_sample_signature",
+      "input_digest"
+    ]
+  },
+  "preflight_geometry": "Every actual phase/block sequence equals incumbent for all frozen cell widths and worker counts.",
+  "largest_observed_preflight_phase_s": 0.219490695,
+  "phase_latency_limit": "This is an untimed observation, not an elapsed-time upper bound; a fixed work cap permits longer Break intervals than the preceding candidate.",
+  "performance": {
+    "status": "regression",
+    "regressions": [
+      [
+        "c2",
+        4
+      ]
+    ],
+    "observations": 1008,
+    "cells": 42,
+    "resampling": false,
+    "advisory_cells": [
+      "c11"
+    ],
+    "protected_regressions": [
+      [
+        "c2",
+        4
+      ]
+    ],
+    "policy_status": "regression",
+    "workers": [
+      4,
+      16,
+      28
+    ],
+    "blocks": 4,
+    "repetitions": 3,
+    "warmups_per_setting_block": 1,
+    "regression_rule": "candidate whole-call median > incumbent + max(5%, 0.001 seconds); only c11 is prospectively advisory by user instruction",
+    "all_observations_retained": true,
+    "host_observation_passed": true,
+    "host_record_sha256": "fe3abe8ec42a9024d08baed57558425a4d571c73cc1f57148e6cea34ac4be3aa",
+    "observation_record_sha256": "3fd56a760b2d955a56d50341186aab04456087cf08799197fa2d1c9ab948485d",
+    "configuration_and_input_pins_sha256": "a0400c73b7de1c6088ed9b201d26bf062f7708ae1ad3c8c5965d047976e84ea8",
+    "rows": [
+      {
+        "cell": "c1",
+        "workers": 4,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.6765000000000001,
+            "load_s": 0.0843672085,
+            "native_s": 0.4564759855,
+            "alloc_peak": 76603451.0
+          },
+          "candidate": {
+            "wall_s": 0.637,
+            "load_s": 0.0791665885,
+            "native_s": 0.4530194305,
+            "alloc_peak": 76603451.0
+          }
+        },
+        "wall_ratio": 0.941611234294161
+      },
+      {
+        "cell": "c1",
+        "workers": 16,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.565,
+            "load_s": 0.031423919499999994,
+            "native_s": 0.347869053,
+            "alloc_peak": 78148413.0
+          },
+          "candidate": {
+            "wall_s": 0.539,
+            "load_s": 0.030339658999999998,
+            "native_s": 0.3505501815,
+            "alloc_peak": 78148413.0
+          }
+        },
+        "wall_ratio": 0.953982300884956
+      },
+      {
+        "cell": "c1",
+        "workers": 28,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.5625,
+            "load_s": 0.025396112,
+            "native_s": 0.340299338,
+            "alloc_peak": 79223929.0
+          },
+          "candidate": {
+            "wall_s": 0.532,
+            "load_s": 0.026036734,
+            "native_s": 0.343482467,
+            "alloc_peak": 79247997.0
+          }
+        },
+        "wall_ratio": 0.9457777777777778
+      },
+      {
+        "cell": "c2",
+        "workers": 4,
+        "arms": {
+          "incumbent": {
+            "wall_s": 5.927,
+            "load_s": 0.641496241,
+            "native_s": 5.481741899999999,
+            "alloc_peak": 1064814822.0
+          },
+          "candidate": {
+            "wall_s": 6.2615,
+            "load_s": 0.646055932,
+            "native_s": 5.7559953675,
+            "alloc_peak": 1064791558.0
+          }
+        },
+        "wall_ratio": 1.0564366458579384
+      },
+      {
+        "cell": "c2",
+        "workers": 16,
+        "arms": {
+          "incumbent": {
+            "wall_s": 4.939,
+            "load_s": 0.172240479,
+            "native_s": 4.4243573195,
+            "alloc_peak": 1064796104.0
+          },
+          "candidate": {
+            "wall_s": 5.156499999999999,
+            "load_s": 0.16768582999999998,
+            "native_s": 4.4783922535,
+            "alloc_peak": 1064796104.0
+          }
+        },
+        "wall_ratio": 1.0440372545049603
+      },
+      {
+        "cell": "c2",
+        "workers": 28,
+        "arms": {
+          "incumbent": {
+            "wall_s": 5.1495,
+            "load_s": 0.113884137,
+            "native_s": 4.4603095695,
+            "alloc_peak": 1064934920.0
+          },
+          "candidate": {
+            "wall_s": 4.945,
+            "load_s": 0.11281432,
+            "native_s": 4.325327128,
+            "alloc_peak": 1064934920.0
+          }
+        },
+        "wall_ratio": 0.9602874065443248
+      },
+      {
+        "cell": "c3",
+        "workers": 4,
+        "arms": {
+          "incumbent": {
+            "wall_s": 1.897,
+            "load_s": 0.3807704885,
+            "native_s": 1.570307092,
+            "alloc_peak": 591263107.0
+          },
+          "candidate": {
+            "wall_s": 1.9769999999999999,
+            "load_s": 0.3600990585,
+            "native_s": 1.622746685,
+            "alloc_peak": 591261955.0
+          }
+        },
+        "wall_ratio": 1.0421718502899313
+      },
+      {
+        "cell": "c3",
+        "workers": 16,
+        "arms": {
+          "incumbent": {
+            "wall_s": 1.2115,
+            "load_s": 0.119299363,
+            "native_s": 0.893698737,
+            "alloc_peak": 591193021.0
+          },
+          "candidate": {
+            "wall_s": 1.1905000000000001,
+            "load_s": 0.1168605855,
+            "native_s": 0.905665329,
+            "alloc_peak": 591193021.0
+          }
+        },
+        "wall_ratio": 0.9826661163846472
+      },
+      {
+        "cell": "c3",
+        "workers": 28,
+        "arms": {
+          "incumbent": {
+            "wall_s": 1.134,
+            "load_s": 0.0852543305,
+            "native_s": 0.821498915,
+            "alloc_peak": 591374801.0
+          },
+          "candidate": {
+            "wall_s": 1.1275,
+            "load_s": 0.08171322,
+            "native_s": 0.8236146975,
+            "alloc_peak": 591383205.0
+          }
+        },
+        "wall_ratio": 0.994268077601411
+      },
+      {
+        "cell": "c4",
+        "workers": 4,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.9974999999999999,
+            "load_s": 0.1652187885,
+            "native_s": 0.660072715,
+            "alloc_peak": 184148382.0
+          },
+          "candidate": {
+            "wall_s": 0.927,
+            "load_s": 0.1597841975,
+            "native_s": 0.6653810474999999,
+            "alloc_peak": 184114982.0
+          }
+        },
+        "wall_ratio": 0.9293233082706768
+      },
+      {
+        "cell": "c4",
+        "workers": 16,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.6865,
+            "load_s": 0.042579306,
+            "native_s": 0.35700112149999996,
+            "alloc_peak": 232081664.0
+          },
+          "candidate": {
+            "wall_s": 0.611,
+            "load_s": 0.043564047499999994,
+            "native_s": 0.36345619149999997,
+            "alloc_peak": 232081664.0
+          }
+        },
+        "wall_ratio": 0.8900218499635834
+      },
+      {
+        "cell": "c4",
+        "workers": 28,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.751,
+            "load_s": 0.0307702475,
+            "native_s": 0.358473939,
+            "alloc_peak": 236203468.0
+          },
+          "candidate": {
+            "wall_s": 0.624,
+            "load_s": 0.031762140499999994,
+            "native_s": 0.3656086365,
+            "alloc_peak": 236216480.0
+          }
+        },
+        "wall_ratio": 0.8308921438082557
+      },
+      {
+        "cell": "c5",
+        "workers": 4,
+        "arms": {
+          "incumbent": {
+            "wall_s": 1.541,
+            "load_s": 0.6424272470000001,
+            "native_s": 1.29913216,
+            "alloc_peak": 181058200.0
+          },
+          "candidate": {
+            "wall_s": 1.5565,
+            "load_s": 0.697782286,
+            "native_s": 1.3304384495,
+            "alloc_peak": 181073632.0
+          }
+        },
+        "wall_ratio": 1.010058403634004
+      },
+      {
+        "cell": "c5",
+        "workers": 16,
+        "arms": {
+          "incumbent": {
+            "wall_s": 1.29,
+            "load_s": 0.6122793045,
+            "native_s": 1.0269346065,
+            "alloc_peak": 181062630.0
+          },
+          "candidate": {
+            "wall_s": 1.2125,
+            "load_s": 0.5975940685000001,
+            "native_s": 1.0204996865,
+            "alloc_peak": 181062630.0
+          }
+        },
+        "wall_ratio": 0.9399224806201549
+      },
+      {
+        "cell": "c5",
+        "workers": 28,
+        "arms": {
+          "incumbent": {
+            "wall_s": 1.1444999999999999,
+            "load_s": 0.5522286755,
+            "native_s": 0.938529207,
+            "alloc_peak": 181201446.0
+          },
+          "candidate": {
+            "wall_s": 1.1825,
+            "load_s": 0.592067882,
+            "native_s": 0.986980264,
+            "alloc_peak": 181201446.0
+          }
+        },
+        "wall_ratio": 1.033202271734382
+      },
+      {
+        "cell": "c6",
+        "workers": 4,
+        "arms": {
+          "incumbent": {
+            "wall_s": 4.279,
+            "load_s": 0.648247477,
+            "native_s": 3.4911846375,
+            "alloc_peak": 1085770795.0
+          },
+          "candidate": {
+            "wall_s": 4.283,
+            "load_s": 0.6798275475,
+            "native_s": 3.4860623320000004,
+            "alloc_peak": 1085745691.0
+          }
+        },
+        "wall_ratio": 1.000934797849965
+      },
+      {
+        "cell": "c6",
+        "workers": 16,
+        "arms": {
+          "incumbent": {
+            "wall_s": 3.7315,
+            "load_s": 0.244298645,
+            "native_s": 2.9622342565,
+            "alloc_peak": 1100159565.0
+          },
+          "candidate": {
+            "wall_s": 3.6605,
+            "load_s": 0.243217947,
+            "native_s": 2.95478239,
+            "alloc_peak": 1100159565.0
+          }
+        },
+        "wall_ratio": 0.980972799142436
+      },
+      {
+        "cell": "c6",
+        "workers": 28,
+        "arms": {
+          "incumbent": {
+            "wall_s": 3.831,
+            "load_s": 0.190821385,
+            "native_s": 2.933775692,
+            "alloc_peak": 1109902605.0
+          },
+          "candidate": {
+            "wall_s": 3.601,
+            "load_s": 0.1887733995,
+            "native_s": 2.827952847,
+            "alloc_peak": 1109902605.0
+          }
+        },
+        "wall_ratio": 0.9399634560167058
+      },
+      {
+        "cell": "c7",
+        "workers": 4,
+        "arms": {
+          "incumbent": {
+            "wall_s": 2.6105,
+            "load_s": null,
+            "native_s": 2.0989010725000004,
+            "alloc_peak": null
+          },
+          "candidate": {
+            "wall_s": 2.5195,
+            "load_s": null,
+            "native_s": 2.17526294,
+            "alloc_peak": null
+          }
+        },
+        "wall_ratio": 0.9651407776288067
+      },
+      {
+        "cell": "c7",
+        "workers": 16,
+        "arms": {
+          "incumbent": {
+            "wall_s": 2.121,
+            "load_s": null,
+            "native_s": 1.6617472795000001,
+            "alloc_peak": null
+          },
+          "candidate": {
+            "wall_s": 2.0675,
+            "load_s": null,
+            "native_s": 1.6850313075,
+            "alloc_peak": null
+          }
+        },
+        "wall_ratio": 0.9747760490334747
+      },
+      {
+        "cell": "c7",
+        "workers": 28,
+        "arms": {
+          "incumbent": {
+            "wall_s": 2.2235,
+            "load_s": null,
+            "native_s": 1.7811647320000001,
+            "alloc_peak": null
+          },
+          "candidate": {
+            "wall_s": 2.1319999999999997,
+            "load_s": null,
+            "native_s": 1.762969113,
+            "alloc_peak": null
+          }
+        },
+        "wall_ratio": 0.9588486620193387
+      },
+      {
+        "cell": "c8",
+        "workers": 4,
+        "arms": {
+          "incumbent": {
+            "wall_s": 4.3925,
+            "load_s": 0.3563531325,
+            "native_s": 4.099517773,
+            "alloc_peak": 382787348.0
+          },
+          "candidate": {
+            "wall_s": 4.4205000000000005,
+            "load_s": 0.35849377699999996,
+            "native_s": 4.073372214,
+            "alloc_peak": 382787348.0
+          }
+        },
+        "wall_ratio": 1.006374501992032
+      },
+      {
+        "cell": "c8",
+        "workers": 16,
+        "arms": {
+          "incumbent": {
+            "wall_s": 3.174,
+            "load_s": 0.1015484985,
+            "native_s": 2.6883248635,
+            "alloc_peak": 382768630.0
+          },
+          "candidate": {
+            "wall_s": 3.001,
+            "load_s": 0.0963920785,
+            "native_s": 2.6903882745,
+            "alloc_peak": 382768630.0
+          }
+        },
+        "wall_ratio": 0.9454946439823566
+      },
+      {
+        "cell": "c8",
+        "workers": 28,
+        "arms": {
+          "incumbent": {
+            "wall_s": 3.1390000000000002,
+            "load_s": 0.072463644,
+            "native_s": 2.6997165195,
+            "alloc_peak": 382907446.0
+          },
+          "candidate": {
+            "wall_s": 3.2935,
+            "load_s": 0.06941599600000001,
+            "native_s": 2.874439808,
+            "alloc_peak": 382906294.0
+          }
+        },
+        "wall_ratio": 1.0492194966549855
+      },
+      {
+        "cell": "c9",
+        "workers": 4,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.3655,
+            "load_s": 0.026108450499999998,
+            "native_s": 0.0549722205,
+            "alloc_peak": 38333779.0
+          },
+          "candidate": {
+            "wall_s": 0.248,
+            "load_s": 0.023529442499999997,
+            "native_s": 0.0526186355,
+            "alloc_peak": 38395079.0
+          }
+        },
+        "wall_ratio": 0.6785225718194254
+      },
+      {
+        "cell": "c9",
+        "workers": 16,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.3525,
+            "load_s": 0.00637075,
+            "native_s": 0.036404030000000004,
+            "alloc_peak": 38380701.0
+          },
+          "candidate": {
+            "wall_s": 0.245,
+            "load_s": 0.00612566,
+            "native_s": 0.036659886,
+            "alloc_peak": 38460701.0
+          }
+        },
+        "wall_ratio": 0.6950354609929078
+      },
+      {
+        "cell": "c9",
+        "workers": 28,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.3105,
+            "load_s": 0.0047072355,
+            "native_s": 0.036239998999999995,
+            "alloc_peak": 38550765.0
+          },
+          "candidate": {
+            "wall_s": 0.256,
+            "load_s": 0.0046719945,
+            "native_s": 0.0360992065,
+            "alloc_peak": 38599517.0
+          }
+        },
+        "wall_ratio": 0.8244766505636071
+      },
+      {
+        "cell": "c10",
+        "workers": 4,
+        "arms": {
+          "incumbent": {
+            "wall_s": 1.032,
+            "load_s": 0.448676017,
+            "native_s": 0.5829311349999999,
+            "alloc_peak": 587580925.0
+          },
+          "candidate": {
+            "wall_s": 0.907,
+            "load_s": 0.3716793655,
+            "native_s": 0.5483568825,
+            "alloc_peak": 587580925.0
+          }
+        },
+        "wall_ratio": 0.8788759689922481
+      },
+      {
+        "cell": "c10",
+        "workers": 16,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.6855,
+            "load_s": 0.111846247,
+            "native_s": 0.2654340725,
+            "alloc_peak": 588521247.0
+          },
+          "candidate": {
+            "wall_s": 0.6315,
+            "load_s": 0.105444937,
+            "native_s": 0.2751875835,
+            "alloc_peak": 588521247.0
+          }
+        },
+        "wall_ratio": 0.9212253829321663
+      },
+      {
+        "cell": "c10",
+        "workers": 28,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.6675,
+            "load_s": 0.08225486300000001,
+            "native_s": 0.2536816335,
+            "alloc_peak": 589259463.0
+          },
+          "candidate": {
+            "wall_s": 0.595,
+            "load_s": 0.08145749099999999,
+            "native_s": 0.254722229,
+            "alloc_peak": 589370127.0
+          }
+        },
+        "wall_ratio": 0.8913857677902621
+      },
+      {
+        "cell": "c11",
+        "workers": 4,
+        "arms": {
+          "incumbent": {
+            "wall_s": 1.5030000000000001,
+            "load_s": 0.20676451950000002,
+            "native_s": 0.38328948799999996,
+            "alloc_peak": 470319896.0
+          },
+          "candidate": {
+            "wall_s": 0.914,
+            "load_s": 0.069188021,
+            "native_s": 0.2498777795,
+            "alloc_peak": 470306768.0
+          }
+        },
+        "wall_ratio": 0.6081170991350632
+      },
+      {
+        "cell": "c11",
+        "workers": 16,
+        "arms": {
+          "incumbent": {
+            "wall_s": 1.3119999999999998,
+            "load_s": 0.062373541000000005,
+            "native_s": 0.2533944065,
+            "alloc_peak": 470381178.0
+          },
+          "candidate": {
+            "wall_s": 1.0135,
+            "load_s": 0.027312553,
+            "native_s": 0.2241661885,
+            "alloc_peak": 470461178.0
+          }
+        },
+        "wall_ratio": 0.7724847560975612
+      },
+      {
+        "cell": "c11",
+        "workers": 28,
+        "arms": {
+          "incumbent": {
+            "wall_s": 1.4529999999999998,
+            "load_s": 0.0459774445,
+            "native_s": 0.273370257,
+            "alloc_peak": 470599994.0
+          },
+          "candidate": {
+            "wall_s": 1.0605,
+            "load_s": 0.034078188,
+            "native_s": 0.2497141305,
+            "alloc_peak": 470584562.0
+          }
+        },
+        "wall_ratio": 0.7298692360633173
+      },
+      {
+        "cell": "c12",
+        "workers": 4,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.3785,
+            "load_s": 0.056875666500000005,
+            "native_s": 0.099586754,
+            "alloc_peak": 110561463.0
+          },
+          "candidate": {
+            "wall_s": 0.3135,
+            "load_s": 0.0567620915,
+            "native_s": 0.10031729149999999,
+            "alloc_peak": 110561463.0
+          }
+        },
+        "wall_ratio": 0.8282694848084544
+      },
+      {
+        "cell": "c12",
+        "workers": 16,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.3295,
+            "load_s": 0.015794102,
+            "native_s": 0.057430994,
+            "alloc_peak": 110702585.0
+          },
+          "candidate": {
+            "wall_s": 0.2435,
+            "load_s": 0.015525737500000001,
+            "native_s": 0.057661448500000004,
+            "alloc_peak": 110982305.0
+          }
+        },
+        "wall_ratio": 0.7389984825493171
+      },
+      {
+        "cell": "c12",
+        "workers": 28,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.34450000000000003,
+            "load_s": 0.0127737495,
+            "native_s": 0.0621298635,
+            "alloc_peak": 111081161.0
+          },
+          "candidate": {
+            "wall_s": 0.2575,
+            "load_s": 0.011813164000000001,
+            "native_s": 0.0562862395,
+            "alloc_peak": 111121121.0
+          }
+        },
+        "wall_ratio": 0.7474600870827286
+      },
+      {
+        "cell": "c13",
+        "workers": 4,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.33099999999999996,
+            "load_s": 0.060690717500000005,
+            "native_s": 0.0838364015,
+            "alloc_peak": 92561217.0
+          },
+          "candidate": {
+            "wall_s": 0.2575,
+            "load_s": 0.059976807,
+            "native_s": 0.0800498425,
+            "alloc_peak": 92554305.0
+          }
+        },
+        "wall_ratio": 0.7779456193353476
+      },
+      {
+        "cell": "c13",
+        "workers": 16,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.278,
+            "load_s": 0.0288340265,
+            "native_s": 0.049446384999999995,
+            "alloc_peak": 92542499.0
+          },
+          "candidate": {
+            "wall_s": 0.2185,
+            "load_s": 0.0289171575,
+            "native_s": 0.049155370500000004,
+            "alloc_peak": 92542499.0
+          }
+        },
+        "wall_ratio": 0.7859712230215826
+      },
+      {
+        "cell": "c13",
+        "workers": 28,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.34299999999999997,
+            "load_s": 0.037802975,
+            "native_s": 0.0625264375,
+            "alloc_peak": 92791407.0
+          },
+          "candidate": {
+            "wall_s": 0.2515,
+            "load_s": 0.0387817925,
+            "native_s": 0.060259532000000005,
+            "alloc_peak": 92761235.0
+          }
+        },
+        "wall_ratio": 0.7332361516034986
+      },
+      {
+        "cell": "c14",
+        "workers": 4,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.7985,
+            "load_s": null,
+            "native_s": 0.42731475350000003,
+            "alloc_peak": null
+          },
+          "candidate": {
+            "wall_s": 0.604,
+            "load_s": null,
+            "native_s": 0.361670363,
+            "alloc_peak": null
+          }
+        },
+        "wall_ratio": 0.7564182842830307
+      },
+      {
+        "cell": "c14",
+        "workers": 16,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.7545,
+            "load_s": null,
+            "native_s": 0.39509091350000003,
+            "alloc_peak": null
+          },
+          "candidate": {
+            "wall_s": 0.6415,
+            "load_s": null,
+            "native_s": 0.36134442499999997,
+            "alloc_peak": null
+          }
+        },
+        "wall_ratio": 0.8502319416832339
+      },
+      {
+        "cell": "c14",
+        "workers": 28,
+        "arms": {
+          "incumbent": {
+            "wall_s": 0.77,
+            "load_s": null,
+            "native_s": 0.408080467,
+            "alloc_peak": null
+          },
+          "candidate": {
+            "wall_s": 0.738,
+            "load_s": null,
+            "native_s": 0.41729769650000004,
+            "alloc_peak": null
+          }
+        },
+        "wall_ratio": 0.9584415584415584
+      }
+    ],
+    "physical_hosts": 1,
+    "whole_node_slots": 28
+  },
+  "environment_scope": "Input-only Stata comparison. Reused Stata, plugin, ado, synthetic data and execution-file pins verified. No external PyFixest/Julia estimator environment is used; unchanged campaign.json is recorded, not substituted for verification of such an environment.",
+  "limitations": [
+    "One physical host; no universal architecture speed claim.",
+    "Prior failed candidates remain failed. No observations excluded or resampled.",
+    "Interactive GUI Break and native Intel-host Stata remain unqualified. Windows retains serial input."
+  ],
+  "terminal_accounting": {
+    "jobnumber": "8394307",
+    "hostname": "scc-wo4.scc.bu.edu",
+    "granted_pe": "omp28",
+    "slots": "28",
+    "failed": "0",
+    "exit_status": "1",
+    "ru_wallclock": "2288",
+    "maxvmem": "5.569G"
+  },
+  "regression_details": [
+    {
+      "cell": "c2",
+      "workers": 4,
+      "block_medians": [
+        {
+          "block": 1,
+          "arms": {
+            "incumbent": {
+              "wall_s": 5.945,
+              "load_s": 0.6664144089999999,
+              "native_s": 5.321037733
+            },
+            "candidate": {
+              "wall_s": 6.295,
+              "load_s": 0.695568982,
+              "native_s": 5.784097157
+            }
+          },
+          "wall_ratio": 1.0588730025231285
+        },
+        {
+          "block": 2,
+          "arms": {
+            "incumbent": {
+              "wall_s": 5.73,
+              "load_s": 0.608752082,
+              "native_s": 5.356609885
+            },
+            "candidate": {
+              "wall_s": 6.177,
+              "load_s": 0.6368105879999999,
+              "native_s": 5.74342101
+            }
+          },
+          "wall_ratio": 1.0780104712041882
+        },
+        {
+          "block": 3,
+          "arms": {
+            "incumbent": {
+              "wall_s": 5.909,
+              "load_s": 0.5794674009999999,
+              "native_s": 5.533062505
+            },
+            "candidate": {
+              "wall_s": 6.183,
+              "load_s": 0.630483124,
+              "native_s": 5.548369367
+            }
+          },
+          "wall_ratio": 1.046369944152987
+        },
+        {
+          "block": 4,
+          "arms": {
+            "incumbent": {
+              "wall_s": 6.507,
+              "load_s": 0.677634812,
+              "native_s": 5.808357425
+            },
+            "candidate": {
+              "wall_s": 6.832,
+              "load_s": 0.648699723,
+              "native_s": 6.212399409
+            }
+          },
+          "wall_ratio": 1.049946211771938
+        }
+      ],
+      "per_call_residual_medians": {
+        "incumbent": {
+          "wall_minus_native_s": 0.5031783695000005,
+          "native_minus_load_s": 4.859303226
+        },
+        "candidate": {
+          "wall_minus_native_s": 0.5652517170000002,
+          "native_minus_load_s": 5.060679039499999
+        }
+      },
+      "interpretation": "Loading medians differ by only 4.6 ms. Most of the whole-call penalty occurs later; no cause is established by these timings. Separate medians are not additive."
+    }
+  ]
+}
