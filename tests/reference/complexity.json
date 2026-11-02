@@ -24194,164 +24194,160 @@
         "dispatch_candidates": [
           {
             "condition": "rows == 0 || width == 0",
-            "line": 247
+            "line": 243
           },
           {
             "condition": "StagePlan :: new ( rows as u128 * slots as u128 , blocks , team . threads ( ) ) . lanes < 2",
-            "line": 283
+            "line": 279
           },
           {
             "condition": "memory . retain ( descriptor_bytes ) . is_err ( )",
-            "line": 292
+            "line": 288
           },
           {
             "condition": "memory . retain ( actual_bytes - descriptor_bytes ) . is_err ( )",
-            "line": 328
+            "line": 324
           },
           {
             "condition": "rows == 0",
-            "line": 696
+            "line": 698
           },
           {
             "condition": "let Some ( failure ) = read_marker ( source , bank , start , rows , output )",
-            "line": 703
+            "line": 705
           },
           {
             "condition": "let Some ( failure ) = read_payload ( source , bank , start , rows , retained )",
-            "line": 712
+            "line": 714
           },
           {
             "condition": "rows == 0",
-            "line": 736
+            "line": 738
           },
           {
             "condition": "read ( start , rows )",
-            "line": 820
+            "line": 822
           }
         ],
         "functions": {
           "block#1": {
-            "line": 671,
+            "line": 673,
             "lines": 4
           },
           "bytes#1": {
-            "line": 952,
+            "line": 954,
             "lines": 6
           },
           "check_reserved#1": {
-            "line": 495,
+            "line": 497,
             "lines": 35
           },
           "column#1": {
-            "line": 958,
+            "line": 960,
             "lines": 9
           },
           "decline#1": {
-            "line": 762,
+            "line": 764,
             "lines": 8
           },
           "descriptor_bytes#1": {
-            "line": 664,
+            "line": 666,
             "lines": 6
           },
           "enabled#1": {
-            "line": 151,
+            "line": 147,
             "lines": 3
           },
           "error#1": {
-            "line": 557,
+            "line": 559,
             "lines": 7
           },
           "fill_excluded#1": {
-            "line": 735,
+            "line": 737,
             "lines": 26
           },
           "finish#1": {
-            "line": 1021,
-            "lines": 20
+            "line": 1023,
+            "lines": 13
           },
           "from_host#1": {
-            "line": 99,
+            "line": 95,
             "lines": 27
           },
           "from_request#1": {
-            "line": 127,
+            "line": 123,
             "lines": 9
           },
           "marker#1": {
-            "line": 648,
+            "line": 650,
             "lines": 3
           },
           "new#1": {
-            "line": 165,
+            "line": 161,
             "lines": 6
           },
           "new#2": {
-            "line": 611,
+            "line": 613,
             "lines": 36
           },
           "new#3": {
-            "line": 1011,
+            "line": 1013,
             "lines": 9
           },
           "payload_failure#1": {
-            "line": 926,
+            "line": 928,
             "lines": 10
           },
-          "phase_work_budget#1": {
-            "line": 41,
-            "lines": 5
-          },
           "positions#1": {
-            "line": 653,
+            "line": 655,
             "lines": 10
           },
           "read_block#1": {
-            "line": 683,
+            "line": 685,
             "lines": 49
           },
           "read_marker#1": {
-            "line": 773,
+            "line": 775,
             "lines": 87
           },
           "read_payload#1": {
-            "line": 861,
+            "line": 863,
             "lines": 64
           },
           "record#1": {
-            "line": 573,
+            "line": 575,
             "lines": 9
           },
           "reserved#1": {
-            "line": 677,
+            "line": 679,
             "lines": 5
           },
           "run_phases#1": {
-            "line": 410,
-            "lines": 84
+            "line": 406,
+            "lines": 90
           },
           "serial#1": {
-            "line": 139,
+            "line": 135,
             "lines": 3
           },
           "spi_failure#1": {
-            "line": 566,
+            "line": 568,
             "lines": 6
           },
           "trace_loaded_input#1": {
-            "line": 941,
+            "line": 943,
             "lines": 59
           },
           "try_read#1": {
-            "line": 231,
+            "line": 227,
             "lines": 146
           },
           "with_fault#1": {
-            "line": 144,
+            "line": 140,
             "lines": 6
           }
         },
-        "production_lines": 864
+        "production_lines": 858
       },
       "crates/fereg-plugin/src/ppml_bias.rs": {
         "chunk_candidates": [],
@@ -25370,7 +25366,7 @@
         "dispatch_candidates": 163,
         "files_over_1500": 3,
         "functions_over_150": 12,
-        "production_lines": 17133
+        "production_lines": 17127
       }
     },
     "schema": 1
