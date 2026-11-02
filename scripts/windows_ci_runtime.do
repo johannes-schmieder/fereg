@@ -131,6 +131,13 @@ if _rc exit 9114
 * Diagnostic r(9115): worker panic and read failure after the first phase.
 capture noisily do "tests/stata/development/parallel_input_failures.do"
 if _rc exit 9115
+* Postcommit marker cleanup must preserve populated/null rollback and the
+* full posted sample on Windows as well as the Unix hosts.
+* Diagnostic r(9117)/r(9118): OLS and PPML transaction fixtures.
+capture noisily do "tests/stata/installation/estimate_ols_eclass_transaction.do"
+if _rc exit 9117
+capture noisily do "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_transaction.do"
+if _rc exit 9118
 * Diagnostic r(9116): frozen paired timing rule at two workers.
 capture mkdir "`root'/target/windows-input-bench"
 capture noisily do "bench/parallel_input_paired.do" "`root'/target/windows-input-bench" 2 5
