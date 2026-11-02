@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import parallel_input as subject
+import input_diagnostics as diagnostics
 
 
 class InputQualification(unittest.TestCase):
@@ -58,6 +59,44 @@ class InputQualification(unittest.TestCase):
             for row in bad:
                 if row['arm'] == 'candidate': row['wall_s'] = .02
             self.assertEqual(report(bad)['status'], 'regression')
+
+
+class InputDiagnostics(unittest.TestCase):
+    def test_residual_timings_are_computed_per_call_and_grid_is_complete(self):
+        # Medians of differences differ from differences of medians here.
+        with tempfile.TemporaryDirectory() as name:
+            root = Path(name)
+            config = dict(arms={'incumbent': {}, 'candidate': {}},
+                          placements=['default'], host_modes=['default'],
+                          blocks=2, reps=3, cells=['c3'], threads=[16])
+            rows = []
+            for arm in config['arms']:
+                for block in (1, 2):
+                    for rep, (wall, plugin, snapshot) in enumerate(
+                            [(10, 9, 8), (11, 3, 2), (100, 99, 1)], 1):
+                        rows.append(dict(zip(diagnostics.FIELDS,
+                            [arm, 'default', 'default', 4, block, 'c3', 16, rep,
+                             1000, wall, .1, plugin, .1, .1, .1, snapshot])))
+            def report(records):
+                with (root / 'results.csv').open('w') as handle:
+                    writer = csv.DictWriter(handle, diagnostics.FIELDS)
+                    writer.writeheader()
+                    writer.writerows(records)
+                return diagnostics.summarize(config, root)
+            result = report(rows)
+            self.assertEqual(result['observations'], 12)
+            for arm in config['arms']:
+                metrics = result['rows'][0][arm]
+                self.assertEqual(metrics['outside_plugin_s'], 1)
+                self.assertEqual(metrics['plugin_tail_s'], 1)
+            for broken in (rows[:-1], [rows[0], *rows[:-1]]):
+                with self.assertRaises(RuntimeError):
+                    report(broken)
+            for value in ('nan', 'inf', -1):
+                bad = [dict(row) for row in rows]
+                bad[0]['plugin_s'] = value
+                with self.assertRaises(RuntimeError):
+                    report(bad)
 
 
 if __name__ == '__main__':

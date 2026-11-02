@@ -67,6 +67,105 @@ direction. The hard work cap, exact input bits and memory admission remain
 requirements. No follow-up timing or candidate substitution is authorized by
 this failed result itself.
 
+Johannes authorized investigation of these regressions on November 2. The
+bounded diagnostic grid uses the unchanged incumbent and candidate binaries,
+cells c1/c3/c5/c11/c12/c13, sixteen Rust workers, Stata's observed default
+processor setting versus one processor, and default versus interleaved NUMA
+memory placement. Two mirrored blocks retain three calls after one warmup per
+cell/variant: 288 timed observations, with no exclusions or retries. The full
+28-core CPU affinity remains available to both arms. Every variant first checks
+exact coefficient, covariance, sample-count and input-digest agreement; existing
+independent native/scalar witnesses remain applicable because neither binary
+changes. Numerical and estimator-route scopes remain empty.
+
+Temporary ado copies add timers before, around and after the substantive plugin
+call; the public ado files are unchanged. The diagnostic uses the existing
+runtime snapshot separately from the complete plugin call and profiles the
+untimed science calls. Optional hardware counters are used only if a preflight
+capability probe succeeds; unavailable counters are recorded, not grounds to
+repeat a timed observation. Both memory policies must be available before any
+timing. One whole-node SCC allocation runs the grid through
+`bench/qualify.py input diagnose`; its results explain costs and cannot replace
+the failed release comparison or establish release acceptance.
+
+The [completed diagnostic](../bench/results/input-beta14-diagnostics-linux-20261102.json)
+retains [all 288 calls](../bench/results/input-beta14-diagnostics-linux-20261102.csv).
+It ran on the same physical host as the failed qualification, with successful
+scheduler accounting, isolation checks and all eight exact-science preflights.
+Stata's observed default was four processors, independently of the sixteen Rust
+workers. Its instrumentation distinguishes the native runtime snapshot (which
+already includes input loading) from the entire plugin call; adding `load_s` to
+the old `native_s` field would double-count loading.
+
+The 32-regressor c3 loading penalty is reproducible in all four diagnostic
+configurations: incumbent/candidate medians are 117.5/151.4 ms under defaults,
+120.1/159.4 ms with one Stata processor, 126.1/165.1 ms with interleaved memory,
+and 126.0/166.3 ms with both controls. Loaded bits, coefficient/covariance bits
+and sample counts agree exactly. The transport trace changes from three to
+25 phases over the same 1,039 blocks. The candidate accounts for worst-case
+read/write/replay/RHS work while halving the nominal cap; in this cell a phase
+contains only 42 blocks, about 2.6 blocks per worker. Frequent joins and partly
+occupied final task waves are plausible overhead; the cached pool is not
+recreated for each phase. The current measurements do not separately identify
+polling, window validation, dispatch, cache effects and join imbalance.
+
+The earlier 28–45% whole-call penalties for c11/c12/c13 do not recur at that
+size. Under the default diagnostic configuration their incumbent/candidate
+whole-call medians are respectively 1.2125/1.1530 s, 0.3050/0.3005 s and
+0.2635/0.2670 s. c12/c13 retain small loading penalties (about 3–4 ms), while
+c11 loading is approximately 60 ms in both arms. c11's complete plugin call is
+approximately 0.29 s; about 0.85–0.91 s lies outside it, including frontend
+preparation, wrapper work and automatic cleanup. This identifies a large
+shared cost, but cannot retrospectively attribute the original extra 0.3 s.
+The failed qualification remains failed; differences in instrumentation,
+process history, placement and ordinary host variation are not exclusion rules.
+
+Neither control is a general repair. One Stata processor usually increases
+frontend preparation and substantially worsens the restricted calls. Memory
+interleaving reduces some whole-call costs while the c3 loading gap persists;
+it can increase c11 loading. Untimed whole-process counters show substantially
+fewer page faults with interleaving in both arms, but include dataset startup
+and cannot attribute faults or NUMA locality to a particular reader phase.
+No claim of a causal allocator/NUMA fault is established.
+
+The completed diagnostic grid motivates one bounded function-sampling follow-up
+for the reproducible c3 loading cost: unchanged binaries, sixteen Rust workers,
+default Stata processors and memory placement, two mirrored blocks, one warmup
+and eight observed calls per arm/block (32 calls). A 99 Hz user-cycle profile
+with DWARF call stacks records each fresh process; two separate exact-science
+preflights precede sampling. This is a mechanism profile with sampling overhead,
+not another release comparison. No profile or observation is excluded or retried.
+
+The [function profile](../bench/results/input-beta14-profile-linux-20261102.json)
+retains [32 observed calls](../bench/results/input-beta14-profile-linux-20261102.csv)
+and summaries of 37,928 samples, with zero samples reported lost. Both arms
+spend similar aggregate user cycles under the numeric-window accessor (about
+11–12% of the profiled process). The candidate exposes a separate `read_block`
+symbol whereas the incumbent inlines that work. There is no demonstrated new
+CPU hotspot explaining the full wall gap. In particular, the large inclusive
+`wait_until_cold` percentage includes estimator work executed underneath the
+scheduler; it is not evidence of idle time or spinning. The profiled loading
+medians remain 123.2/157.9 ms. These samples cannot measure sleeping/barrier wall
+time or directly assign kernel page-fault cost.
+
+One
+fixed causal ablation therefore compares the current candidate with a temporary
+build differing only in the production work cap: `2^23` versus `2^26`. The larger
+cap is chosen once to approximate the incumbent's original amount of fully
+accounted work, while preserving the hard bound and prohibiting an occupancy
+override. It permits eight times as much accounted work between Break polls;
+this is an explicit responsiveness tradeoff, not a claimed free improvement.
+No runtime change is applied to the working source or distributed binaries.
+
+The ablation freezes c3/c6/c11, workers 4/16/28, default Stata processors and
+memory policy, two mirrored blocks and three observations after one warmup per
+setting: 108 observed calls plus 18 exact-science/input-digest preflights. The
+same beta.14 ado files serve both arms. Build/ABI checks finish before the
+isolated measured interval. All observations and actual transport phase traces
+are retained; there is no cap search, resampling or release-acceptance inference.
+The harness's `incumbent` label means the rejected 8 Mi-work candidate in this
+ablation, not beta.13; `candidate` means the temporary 64 Mi-work build.
+
 The actual candidate binaries pass 68 licensed Stata 19 fixtures on both Mac
 and Linux, all 77 exact incumbent replay cases on each, scalar input oracles at
 multiple worker counts, accessor-failure rollback, and live console Break while

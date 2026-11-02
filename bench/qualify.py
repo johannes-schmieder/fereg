@@ -1647,7 +1647,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest='action', required=True)
     inputs = commands.add_parser('input', help='actual Stata accessor qualification')
-    inputs.add_argument('operation', choices=('verify', 'run', 'report'))
+    inputs.add_argument('operation', choices=('verify', 'run', 'report', 'diagnose'))
     inputs.add_argument('config', type=Path)
     prepare = commands.add_parser('plan')
     prepare.add_argument('config', type=Path)
@@ -1676,9 +1676,10 @@ def main():
     args = parser.parse_args()
     if args.action == 'input':
         import parallel_input
+        from input_diagnostics import command_diagnose
         config = json.loads(args.config.read_text())
         result = {'verify': parallel_input.command_verify, 'run': parallel_input.command_run,
-                  'report': parallel_input.command_report}[args.operation](config)
+                  'report': parallel_input.command_report, 'diagnose': command_diagnose}[args.operation](config)
         return 1 if result and result['status'] != 'passed' else 0
     if args.action == 'recovery-plan':
         recovery_plan(args.manifest, args.results, args.host, args.review, args.output)
