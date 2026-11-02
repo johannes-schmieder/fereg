@@ -401,6 +401,34 @@ resampling or release inference are allowed. A useful whole-call improvement
 is a prerequisite to carrying this candidate into full release qualification;
 the preceding failed Linux release gate remains binding.
 
+The [batched-cleanup comparison](../bench/results/input-beta14-batched-linux-20261102.json)
+completed on isolated scc-wo4 (job 8393894, exit zero, 90 seconds, 2.986 GB).
+All sixty observations are retained and all ten exact-science preflights pass.
+Automatic/batched whole-call medians are 609/552, 1308/1216, 350/300.5,
+333.5/258.5 and 745/715.5 ms for c1/c11/c12/c13/c14. Both private markers are
+absent before candidate return; the hidden-scope remainder falls to 1–1.5 ms.
+c12's first block is 2 ms worse and c13's first block ties; other block
+comparisons favor batching. The result supports carrying this small general
+change into qualification, with no claim that every observed difference is
+caused by cleanup. Source identity confirms all 227 native production modules
+and 58 compiled artifact inputs are unchanged. Five mapped actual Mac fixtures
+and exact OLS/PPML sample/result witnesses pass; independent review required
+`confirm variable, exact` to prevent a missing temporary name matching a user
+variable abbreviation, followed by both transaction fixtures passing again.
+
+The final cleanup candidate is frozen for one full original fourteen-cell
+comparison against beta.13: Linux workers 4/16/28 and Mac workers 4/8, four
+mirrored blocks, three observations after one warmup per setting/block. This
+retains 1,008 Linux and 672 Mac calls, with max(5%, 1 ms) whole-call protection,
+no exclusions or retries, verified isolation on Linux and ordinary desktop
+noise retained on Mac. Scientific and route scopes remain empty for every OLS
+and PPML family. Actual-plugin preflight checks every cell/worker's input path,
+input digest, coefficients, covariance, N and full e(sample). Existing unchanged
+native science/ABI/portable evidence is reused; frontend transaction and installed
+package checks are refreshed for the final source. Passing this new candidate's
+full gate is required before beta.14 publication; the diagnostic alone does not
+supersede either prior failed release comparison.
+
 The actual candidate binaries pass 68 licensed Stata 19 fixtures on both Mac
 and Linux, all 77 exact incumbent replay cases on each, scalar input oracles at
 multiple worker counts, accessor-failure rollback, and live console Break while
