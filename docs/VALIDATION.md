@@ -34,9 +34,11 @@ no-FE and one-FE models, and public-parallel versus forced-serial transport.
 Three arms are beta.13, the preceding geometry review, and this candidate;
 six mirrored/rotated blocks with one retained repetition give each arm every
 order position. Linux workers are 4/16; focused Mac workers are 4/8. Every
-cell has one warmup per block. The existing fourteen-cell production suite
-also compares beta.13 with this candidate using its four-block/three-repetition
-schedule. Preflight includes exact posted science, independent regress/areg,
+cell has one warmup per block. The existing fourteen-cell production timing is retained as unaffected evidence:
+its widest FE case is below the changed width boundary, and its 64-regressor
+no-FE failure does not exercise the widened path. New boundary timings cannot
+turn that prior failure into a pass. The full actual-plugin scientific and
+transaction checks are repeated for this candidate. Preflight includes exact posted science, independent regress/areg,
 fixed-worker repeats, cross-worker agreement and nine wide weighted, clustered,
 slope, memory-low, missing-value and PPML variants. No external-interference
 retry or exclusion is permitted; host-monitor failure makes timing inconclusive.
