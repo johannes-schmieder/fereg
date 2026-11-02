@@ -152,7 +152,8 @@ function main(path)
         end
         write_rows(joinpath(output, "rows.csv"), rows)
         effects = [view(data[!, "g$j"], retained) for j in 1:q]
-        levels = [length(unique(effect)) for effect in effects]
+        # Keep the zero-FE count summable when the effects list is empty.
+        levels = Int[length(unique(effect)) for effect in effects]
         # FixedEffectModels counts every level; an effect nested in the
         # cluster variable absorbs one degree of freedom (fit.jl).
         absorbed = sum(levels)
