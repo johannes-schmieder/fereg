@@ -14,6 +14,7 @@
   "reference_repetitions": 3,
   "bundles": 6,
   "command_timeout_seconds": 600,
+  "command_timeout_by_arm": {"reghdfe": 3600, "ppmlhdfe": 3600},
   "process_timeout_seconds": 1500,
   "job_wall_seconds": 43200,
   "job_cleanup_seconds": 41400,

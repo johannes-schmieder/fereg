@@ -97,6 +97,20 @@ class PanelTests(unittest.TestCase):
         self.assertEqual([c for c in frame if c.startswith('x')], [f'x{j}' for j in range(1, 8)])
         self.assertEqual(panel.cell_for('long-lcs', frame, 4, False)['design'], 'veneto-long-lcs')
 
+    def test_ppml_uses_same_panel_with_poisson_comparators(self):
+        frame=pd.DataFrame(dict(x1=[1.,2.],y=[2.,3.]))
+        ols=panel.cell_for('long-lcs',frame,4,False)
+        ppml=panel.cell_for('long-lcs',frame,4,False,'ppml')
+        self.assertEqual(ppml['rows'],ols['rows'])
+        self.assertEqual(ppml['regressors'],ols['regressors'])
+        self.assertEqual(ppml['vce'],'robust')
+        self.assertIn('ppmlhdfe',ppml['arms'])
+        self.assertFalse({'reghdfe','julia','julia-strict'} & set(ppml['arms']))
+        self.assertNotEqual(ppml['id'],ols['id'])
+        self.assertEqual(panel.smoke_fits(['long-lcs'],'ppml'),6)
+        with self.assertRaises(ValueError):
+            panel.cell_for('long-lcs',frame,4,True,'ppml')
+
     def test_manifest_ladder_and_license(self):
         frame = pd.DataFrame(dict(x1=[1.], y=[2.]))
         cells = [panel.cell_for(p, frame, t) for p in panel.PANELS for t in panel.THREADS]

@@ -28,14 +28,14 @@ GOLD = '#C88927'
 RED = '#A14543'
 LIGHT = '#EEF3F6'
 ARM_NAMES = {'fereg': 'fereg', 'fixest': 'fixest', 'fixest-strict': 'fixest strict',
-             'reghdfe': 'reghdfe', 'ppmlhdfe': 'ppmlhdfe', 'areg': 'areg',
+             'reghdfe': 'reghdfe', 'ppmlhdfe': 'ppmlhdfe', 'areg': 'areg / regress',
              'pyfixest': 'pyfixest 0.60', 'pyfixest-within': 'pyfixest within',
              'pyfixest-within-strict': 'pyfixest within strict',
              'julia': 'FixedEffectModels.jl', 'julia-strict': 'FixedEffectModels.jl strict'}
 STATA_ARMS = ['fereg', 'reghdfe', 'ppmlhdfe', 'areg']
 ARM_COLORS = {'fereg': BLUE, 'fixest': GOLD, 'reghdfe': INK, 'ppmlhdfe': INK,
               'pyfixest-within': '#5B8C5A', 'julia': '#8E5B9B'}
-DESIGNS = {'akm-baseline': 'AKM baseline', 'one-fe': 'One FE',
+DESIGNS = {'akm-baseline': 'AKM baseline', 'no-fe': 'No FE', 'one-fe': 'One FE',
            'two-dense': 'Two FE / dense', 'two-sparse': 'Two FE / sparse',
            'three-dense': 'Three FE / dense', 'three-sparse': 'Three FE / sparse',
            'akm-clustered': 'AKM clustered', 'gravity': 'Gravity, zeros'}
@@ -67,7 +67,9 @@ def planned_arms(cell):
 
 def stopping(policy):
     cleanup = policy['job_cleanup_seconds']
-    return (f"{policy['command_timeout_seconds']} s command; {policy['process_timeout_seconds']} s process; "
+    overrides = ', '.join(f'{arm}: {seconds} s' for arm,seconds in policy.get('command_timeout_by_arm', {}).items())
+    return (f"{policy['command_timeout_seconds']} s command ({overrides or 'all arms'}); "
+            f"process limit is at least command limit + 900 s; "
             f"{cleanup//3600} h {cleanup%3600//60} min cleanup threshold; {policy['job_wall_seconds']//3600} h production job")
 
 
@@ -432,7 +434,9 @@ def unresolved_detail(campaign, row):
     details = set()
     for run in runs:
         if run['status'] == 'command-timeout':
-            details.add('600 s command limit; later repetitions skipped')
+            policy=campaign['manifest']['policy']
+            limit=run.get('command_timeout_seconds',policy.get('command_timeout_by_arm',{}).get(row.arm,policy['command_timeout_seconds']))
+            details.add(f'{limit} s command limit; later repetitions skipped')
         elif run['status'] == 'skipped-after-timeout':
             details.add(f"not attempted after the command limit at {run['timed_out_rows']:,} rows")
         elif run['status'] == 'capture-error':

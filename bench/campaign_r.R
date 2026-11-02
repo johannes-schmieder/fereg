@@ -9,13 +9,15 @@ stopifnot(as.character(packageVersion("fixest")) == "0.14.2")
 k <- as.integer(c$k); q <- as.integer(c$effects); threads <- as.integer(c$threads)
 setFixest_nthreads(threads)
 terms <- paste0("x", seq_len(k))
-fml <- as.formula(paste("y ~",paste(terms,collapse=" + "),"|",paste(paste0("g",seq_len(q)),collapse=" + ")))
+formula_text <- paste("y ~",paste(terms,collapse=" + "))
+if(q > 0) formula_text <- paste(formula_text,"|",paste(paste0("g",seq_len(q)),collapse=" + "))
+fml <- as.formula(formula_text)
 options <- list(fml=fml,nthreads=threads,notes=FALSE)
 options$vcov <- switch(c$vce,iid="iid",robust="hetero",cluster=~cluster)
 options <- c(options, campaign_fixest_options(c$model, c$arm))
 fit_model <- function(data, warm=FALSE) {
     o <- options; o$data <- data
-    if (warm) o$fml <- as.formula(paste("y ~",paste(terms,collapse=" + "),"| g1"))
+    if (warm && q > 0) o$fml <- as.formula(paste("y ~",paste(terms,collapse=" + "),"| g1"))
     do.call(if(c$model=="ols") feols else fepois,o)
 }
 invisible(fit_model(foreign::read.dta(c$warm,convert.factors=FALSE),TRUE))
@@ -81,13 +83,13 @@ if(!is.null(fit)) {
     }
     write.csv(rows,file.path(c$output,"rows.csv"),row.names=FALSE,na=".")
     absorbed <- fit$nparams-length(b)
-    if(c$model=="ols" && (c$vce=="cluster" || c$arm=="fixest-strict")) {
+    if(q > 0 && c$model=="ols" && (c$vce=="cluster" || c$arm=="fixest-strict")) {
         stopifnot(is.finite(attr(Vstock,"df.K")))
         absorbed <- attr(Vstock,"df.K")-length(b)-as.integer(c$vce=="cluster")
     }
     meta <- c(meta,N=nobs(fit),df_a=absorbed,df_a_unadjusted=fit$nparams-length(b),df_m=length(b),
               converged=1,covariance_multiplier=multiplier,
-              finite_slope_rank=length(b),slope_omissions=length(fit$collin.var),
+              finite_slope_rank=sum(names(b) %in% terms),slope_omissions=sum(fit$collin.var %in% terms),
               covariance_policy=paste(c$model,c$vce,if(c$model=="ppml") "K.adj=FALSE" else
                   if(c$arm=="fixest-strict") "K.exact=TRUE" else "stock",sep="-"))
     if(c$model=="ols") meta <- c(meta,df_r=attr(Vstock,"df.t"),correction_df=nobs(fit)-attr(Vstock,"df.K"))

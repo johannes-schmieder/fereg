@@ -41,14 +41,14 @@ def oracle(frame, cell):
     n=len(frame);k=len(names)
     X=frame[names].to_numpy()
     F=np.column_stack([pd.get_dummies(frame[f'g{j}'],dtype=float).to_numpy()
-                       for j in range(1,cell['effects']+1)])
+                       for j in range(1,cell['effects']+1)]) if cell['effects'] else np.ones((n,1))
     Q,R,piv=qr(F,mode='economic',pivoting=True)
     rank=int(np.sum(np.abs(np.diag(R))>1e-10*np.max(np.abs(np.diag(R)))))
     # Reported counts find redundancies between the first effect and each
     # later one; this is the exact rank with two effects and an upper bound
     # with more, as in the gravity design's exporter, importer and pair effects.
     codes=[pd.factorize(frame[f'g{j}'])[0] for j in range(1,cell['effects']+1)]
-    first=int(codes[0].max()+1);pairwise=first
+    first=int(codes[0].max()+1) if codes else 0;pairwise=first
     for code in codes[1:]:
         levels=int(code.max()+1)
         graph=sparse.coo_matrix((np.ones(n),(codes[0],code+first)),shape=(first+levels,)*2)
@@ -94,9 +94,13 @@ def oracle(frame, cell):
             meat=scores.T@scores
             correction=n/(n-1) if cell['model']=='ppml' else n/(n-k-rank)
         V=bread@meat@bread*correction
-    return dict(beta=theta[:k].tolist(),covariance=V[:k,:k].tolist(),fitted=fitted,rank=rank,
+    result=dict(beta=theta[:k].tolist(),covariance=V[:k,:k].tolist(),fitted=fitted,rank=rank,
                 pairwise_rank=int(pairwise),names=names,selected=selected,sample_sha256=sample,
                 residual_score=float(np.max(abs(D.T@residual)/np.maximum(1,abs(D).T@(abs(y)+abs(fitted))))))
+    if not cell['effects']:
+        result.update(intercept=float(theta[k]*Q[0,0]),
+                      intercept_covariance=[*(V[k,:k]*Q[0,0]).tolist(),float(V[k,k]*Q[0,0]**2)])
+    return result
 
 
 def validate_smoke(result):
@@ -114,9 +118,13 @@ def validate_smoke(result):
             checks['coefficients']=(a.get('names')==e['names']
                                     and close_values(a['beta'],e['beta'],POLICY['coefficient_rtol'],POLICY['coefficient_atol']))
             checks['covariance']=close_values(a['covariance'],e['covariance'],POLICY['vce_rtol'],POLICY['vce_atol'])
-            p=np.load(Path(record['directory'])/'fitted.npz')['fitted']
-            checks['fitted']=(bool(np.isnan(p[~e['selected']]).all())
-                              and close_values(p[e['selected']],e['fitted'],POLICY['fitted_rtol'],POLICY['fitted_atol']))
+            if cell['save_fe'] or (Path(record['directory'])/'fitted.npz').exists():
+                p=np.load(Path(record['directory'])/'fitted.npz')['fitted']
+                checks['fitted']=(bool(np.isnan(p[~e['selected']]).all())
+                                  and close_values(p[e['selected']],e['fitted'],POLICY['fitted_rtol'],POLICY['fitted_atol']))
+            if not cell['effects']:
+                checks['intercept']=close_values(a['intercept'],e['intercept'],POLICY['coefficient_rtol'],POLICY['coefficient_atol'])
+                checks['intercept_covariance']=close_values(a['intercept_covariance'],e['intercept_covariance'],POLICY['vce_rtol'],POLICY['vce_atol'])
             checks['sample']=a['N']==int(e['selected'].sum()) and a['sample_sha256']==e['sample_sha256']
             if cell['model']=='ppml':checks['absorbed_rank']=a['absorbed_dof']==e['pairwise_rank']
             checks={name:bool(value) for name,value in checks.items()}

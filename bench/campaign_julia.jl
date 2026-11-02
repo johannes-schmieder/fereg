@@ -36,7 +36,8 @@ end
 function model_formula(effects, k)
     terms = join(["x$i" for i in 1:k], " + ")
     absorb = join(["fe($e)" for e in effects], " + ")
-    eval(Meta.parse("@formula(y ~ $terms + $absorb)"))
+    rhs = isempty(effects) ? "1 + $terms" : "$terms + $absorb"
+    eval(Meta.parse("@formula(y ~ $rhs)"))
 end
 
 covariance(vce) = vce == "iid" ? Vcov.simple() : vce == "robust" ? Vcov.robust() : Vcov.cluster(:cluster)
@@ -161,7 +162,7 @@ function main(path)
         end
         n = nobs(fit)
         append!(meta, ["N" => n, "df_a" => absorbed, "df_a_unadjusted" => sum(levels), "df_m" => k,
-                       "df_r" => dof_residual(fit), "correction_df" => n - k - absorbed,
+                       "df_r" => dof_residual(fit), "correction_df" => n - k - absorbed - (q == 0),
                        "converged" => 1, "iterations" => fit.iterations, "finite_slope_rank" => k,
                        "slope_omissions" => count(i -> V[i, i] == 0, eachindex(b)),
                        "covariance_policy" => "ols-$vce-stock", "rss" => repr(deviance(fit))])

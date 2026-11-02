@@ -62,7 +62,7 @@ def configurations(smoke=False, select=True):
         vce = vce or ('iid' if model=='ols' else 'robust')
         cell = dict(model=model,design=design,rows=rows,threads=threads,vce=vce,
                     save_fe=save_fe,section=section,regressors=regressors,weights='unit')
-        cell['effects'] = 1 if design=='one-fe' else 3 if design.startswith('three-') or design=='gravity' else 2
+        cell['effects'] = 0 if design=='no-fe' else 1 if design=='one-fe' else 3 if design.startswith('three-') or design=='gravity' else 2
         cell['id'] = f'{model}-{design}-n{rows}-t{threads}-{vce}-fe{int(save_fe)}'+controls_suffix(cell)
         cell['arms'] = arms(cell)
         cell['repetitions'] = 1 if smoke else repetitions(cell)
@@ -73,6 +73,7 @@ def configurations(smoke=False, select=True):
                 add(model,rows=1200,vce=vce,save_fe=True,section='smoke')
             for design in ['two-sparse','three-dense','three-sparse','akm-clustered',*(['gravity'] if model=='ppml' else [])]:
                 add(model,design,rows=1200,save_fe=True,section='smoke')
+            add(model,'no-fe',rows=1200,section='smoke')
         return result
     for model in ['ols','ppml']:
         for vce in (['iid','robust','cluster'] if model=='ols' else ['robust','cluster']):
@@ -81,7 +82,7 @@ def configurations(smoke=False, select=True):
             if threads!=POLICY['main_threads']: add(model,threads=threads,section='scaling')
         add(model,threads=16,vce='cluster',save_fe=True,section='scaling')
         for k in POLICY['control_variants']: add(model,regressors=k,section='controls')
-        for design in ['one-fe','two-dense','two-sparse','three-dense','three-sparse','akm-clustered',
+        for design in ['no-fe','one-fe','two-dense','two-sparse','three-dense','three-sparse','akm-clustered',
                        *(['gravity'] if model=='ppml' else [])]: add(model,design,section='design')
         for design in ['two-dense','three-sparse']: add(model,design,threads=16,section='scaling')
     # Size series repeat the four-core default specification; their
@@ -124,7 +125,7 @@ def arms(cell):
     return result
 
 
-STRICT_PPML_DESIGNS = ['akm-baseline','two-sparse','three-sparse','akm-clustered','gravity']
+STRICT_PPML_DESIGNS = ['no-fe','akm-baseline','two-sparse','three-sparse','akm-clustered','gravity']
 # Designs whose PPML sample and rank depend on separation by construction.
 SEPARATION_DESIGNS = {'gravity'}
 
@@ -144,13 +145,21 @@ PACKING_SECONDS = {'fereg':2,'fixest':3,'fixest-strict':4,'pyfixest-within':3,'p
 DESIGN_COST = {'akm-clustered':2,'gravity':4}
 
 
+def command_timeout(arm):
+    return POLICY.get('command_timeout_by_arm', {}).get(arm, POLICY['command_timeout_seconds'])
+
+
+def process_timeout(arm):
+    return max(POLICY['process_timeout_seconds'], command_timeout(arm)+900)
+
+
 def estimated_seconds(cell):
     scale = cell['rows']/1e6*(4 if cell['model']=='ppml' else 1)*DESIGN_COST.get(
         cell['design'],4 if 'sparse' in cell['design'] else 1)
     total = 0.
     for arm in arms(cell):
         command = PACKING_SECONDS[arm]*scale*(cell.get('regressors',16)/16)**.5
-        if command>=POLICY['command_timeout_seconds']: total += POLICY['command_timeout_seconds']
+        if command>=command_timeout(arm): total += command_timeout(arm)
         else: total += cell['repetitions']*(command+10+5*cell['rows']/1e6)
     return total
 
@@ -191,6 +200,7 @@ def make_dataset(cell, path):
     import generate as generator
     original = generator.groups
     def topology(_cell,rng):
+        if q==0: return {}
         row=np.arange(n,dtype=np.int64)
         if design=='akm-clustered': return clustered_topology(n,rng)
         if design=='gravity': return gravity_topology(n)
@@ -216,7 +226,7 @@ def make_dataset(cell, path):
     frame=pd.read_stata(path,convert_categoricals=False)
     if design=='gravity': metadata['separation']=gravity_outcome(frame,spec)
     # A natural AKM worker cluster, including nested-FE small-sample corrections.
-    frame['cluster']=frame['g1']
+    if q: frame['cluster']=frame['g1']
     from datetime import datetime
     frame.to_stata(path,write_index=False,version=114,time_stamp=datetime(2000,1,1))
     decoded=pd.read_stata(path,convert_categoricals=False)
@@ -237,9 +247,12 @@ def make_dataset(cell, path):
             components,labels=connected_components(G,directed=False)
         np.savez_compressed(path.with_suffix('.components.npz'),component=labels[codes[0]])
         graph['components']=int(components)
-    else:
+    elif q:
         np.savez_compressed(path.with_suffix('.components.npz'),component=codes[0])
         graph['components']=levels[0]
+    else:
+        np.savez_compressed(path.with_suffix('.components.npz'),component=np.zeros(n,dtype=np.int32))
+        graph['components']=1
     metadata.update(sha256=sha256(path),topology=graph,
                     column_sha256={c:hashlib.sha256(frame[c].to_numpy(dtype='<f8').tobytes()).hexdigest() for c in frame})
     write_json(path.with_suffix('.json'),metadata)
@@ -344,7 +357,8 @@ def frozen_dataset(cell, destination, inventory):
     """Copy retained inputs and verify both file bytes and decoded columns."""
     key = dataset_key(cell)
     expected = inventory['datasets'][key]
-    matches = list(Path(inventory['remote_root']).glob('task-*/data/' + key + '.dta'))
+    origin=inventory.get('dataset_roots',{}).get(key,inventory['remote_root'])
+    matches = list(Path(origin).glob('task-*/data/' + key + '.dta'))
     if len(matches) != 1:
         raise RuntimeError('missing or ambiguous frozen dataset: ' + key)
     source = matches[0]
@@ -375,7 +389,7 @@ def process_memory(pid, field):
     raise ValueError('missing '+field)
 
 
-def execute(command, directory, cpus, timeout):
+def execute(command, directory, cpus, timeout, command_limit=None):
     """Run one arm; the timed window lies between its READY and DONE files.
 
     After READY the arm waits for GO while the kernel's peak resident set
@@ -384,6 +398,7 @@ def execute(command, directory, cpus, timeout):
     keeping output writing out of that peak. The 20 ms RSS samples remain a
     cross-check.
     """
+    command_limit = POLICY['command_timeout_seconds'] if command_limit is None else command_limit
     placement=placement_metadata(cpus)
     env=dict(os.environ,OPENBLAS_NUM_THREADS='1',MKL_NUM_THREADS='1',NUMEXPR_NUM_THREADS='1',
              OMP_NUM_THREADS=str(len(cpus)))
@@ -424,7 +439,7 @@ def execute(command, directory, cpus, timeout):
                 (directory/'ACK').write_text('ack\n')
             if ready and not done:
                 if monitor_started is None: monitor_started=time.monotonic()
-                if time.monotonic()-monitor_started>POLICY['command_timeout_seconds']:
+                if time.monotonic()-monitor_started>command_limit:
                     status='command-timeout';os.killpg(process.pid,signal.SIGTERM)
                     try:process.wait(timeout=3)
                     except subprocess.TimeoutExpired:os.killpg(process.pid,signal.SIGKILL);process.wait()
@@ -437,7 +452,8 @@ def execute(command, directory, cpus, timeout):
         rc=process.wait()
     if status=='ok' and rc!=0:status='error'
     return dict(status=status,process_rc=rc,wall_seconds=time.monotonic()-start,
-                estimator_tree_rss_bytes=peak,memory_sweeps=sweeps,placement=placement,**memory)
+                estimator_tree_rss_bytes=peak,memory_sweeps=sweeps,placement=placement,
+                command_timeout_seconds=command_limit,process_timeout_seconds=timeout,**memory)
 
 
 def absorbed_rank(metadata, cell, frame):
@@ -449,6 +465,8 @@ def absorbed_rank(metadata, cell, frame):
     Raw published counts remain in every observation's metadata and capture.
     """
     rank=float(metadata['df_a'])
+    if cell.get('effects')==0:
+        return rank
     if metadata.get('arm')=='areg':
         # areg reports the intercept outside e(df_a); reghdfe counts it there.
         rank+=1
@@ -502,7 +520,15 @@ def capture(directory, cell, frame, metadata):
     if cell['model']=='ols':
         if not metadata.get('df_r') or metadata['df_r']=='.':raise ValueError('missing residual DoF')
         result['residual_dof']=float(metadata['df_r'])
-        result['correction_dof']=float(metadata['correction_df']) if 'correction_df' in metadata else len(frame)-k-result['absorbed_dof']-(cell['vce']=='cluster')
+        result['correction_dof']=float(metadata['correction_df']) if 'correction_df' in metadata else len(frame)-k-result['absorbed_dof']-(cell['vce']=='cluster' or cell['effects']==0)
+    if cell['effects']==0:
+        constants=[name for name in ('_cons','(Intercept)','Intercept') if name in b]
+        if len(constants)!=1:raise ValueError('missing or ambiguous no-FE intercept')
+        constant=constants[0]
+        result['intercept']=b[constant]
+        result['intercept_covariance']=[V[constant,n] for n in finite]+[V[constant,constant]]
+        if not np.isfinite([result['intercept'],*result['intercept_covariance']]).all():
+            raise ValueError('nonfinite no-FE intercept/covariance')
     if cell['save_fe']:
         fitted=rows.fitted.to_numpy(float)
         if not np.isfinite(fitted[selected]).all():raise ValueError('missing saved prediction')
@@ -579,7 +605,7 @@ def fit(root, cell, arm, repetition, frame, cpus):
         command_file=directory/'command.do'
         command_file.write_text(f'do "{HERE}/campaign_stata.do" "{directory}/config.do"\n')
         command=[os.environ.get('STATA_BIN','stata-mp'),'-b','do',str(command_file)]
-    observation=execute(command,directory,cpus[:cell['threads']],POLICY['process_timeout_seconds'])
+    observation=execute(command,directory,cpus[:cell['threads']],process_timeout(arm),command_timeout(arm))
     meta=read_metadata(directory/'metadata.tsv')
     meta['native_arm']='1' if arm=='fereg' else '0'
     meta['arm']=arm
@@ -626,6 +652,10 @@ def compare_records(a,b,cell):
             elif x[key]!=y[key]:reasons.append(key)
     if not close_values(x['beta'],y['beta'],POLICY['coefficient_rtol'],POLICY['coefficient_atol']):reasons.append('coefficients')
     if not close_values(x['covariance'],y['covariance'],POLICY['vce_rtol'],POLICY['vce_atol']):reasons.append('covariance')
+    if cell.get('effects')==0:
+        for key,rtol,atol in [('intercept',POLICY['coefficient_rtol'],POLICY['coefficient_atol']),
+                              ('intercept_covariance',POLICY['vce_rtol'],POLICY['vce_atol'])]:
+            if key not in x or key not in y or not close_values(x[key],y[key],rtol,atol):reasons.append(key)
     metric='rss' if cell['model']=='ols' else 'll'
     va=a['metadata'].get(metric);vb=b['metadata'].get(metric)
     if va is None or vb is None or not close_values([float(va)],[float(vb)],POLICY['objective_rtol'],POLICY['objective_atol']):reasons.append('objective')
@@ -713,7 +743,7 @@ def run_bundle(root, task, smoke=False, frozen_inputs=None, monitor=None):
                 if arm in failed:
                     records.append(dict(cell=cell['id'],arm=arm,repetition=repetition,status='skipped-after-failure',metadata={}))
                     continue
-                if time.monotonic()-started+POLICY['process_timeout_seconds']>POLICY['job_cleanup_seconds']:break
+                if time.monotonic()-started+process_timeout(arm)>POLICY['job_cleanup_seconds']:break
                 record=fit(taskroot,cell,arm,repetition,frame,cpus)
                 if monitor:monitor.check()
                 records.append(record);current[arm]=record

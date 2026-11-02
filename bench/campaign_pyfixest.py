@@ -148,9 +148,10 @@ def main(configuration):
     estimator = pf.feols if model == 'ols' else pf.fepois
 
     def fit_model(data, fixed_effects):
-        return estimator(f"y ~ {' + '.join(terms)} | {fixed_effects}", data, **options)
+        formula = f"y ~ {' + '.join(terms)}" + (f" | {fixed_effects}" if fixed_effects else '')
+        return estimator(formula, data, **options)
 
-    fit_model(pd.read_stata(c['warm'], convert_categoricals=False), 'g1')
+    fit_model(pd.read_stata(c['warm'], convert_categoricals=False), 'g1' if q else '')
     data = pd.read_stata(c['dataset'], convert_categoricals=False)
     identity = json.loads(Path(c['dataset']).with_suffix('.json').read_text())
     for name, expected in identity['column_sha256'].items():
@@ -205,12 +206,12 @@ def main(configuration):
                 rows[f'saved{j}'] = np.where(selected, channel, np.nan)
         rows.to_csv(output/'rows.csv', index=False, na_rep='.', float_format='%.17g')
         # fixest's nparams convention: one reference level per additional FE.
-        absorbed = sum(counts.levels)-(q-1)
-        if model == 'ols' and c['vce'] == 'cluster':
+        absorbed = sum(counts.levels)-(q-1) if q else 0
+        if q and model == 'ols' and c['vce'] == 'cluster':
             absorbed = counts.df_k-len(b)-1
-        meta.update(N=counts.N, df_a=absorbed, df_a_unadjusted=sum(counts.levels)-(q-1), df_m=len(b),
-                    converged=1, covariance_multiplier=repr(multiplier), finite_slope_rank=len(b),
-                    slope_omissions=len(counts.collinear),
+        meta.update(N=counts.N, df_a=absorbed, df_a_unadjusted=sum(counts.levels)-(q-1) if q else 0, df_m=len(b),
+                    converged=1, covariance_multiplier=repr(multiplier), finite_slope_rank=sum(n in terms for n in names),
+                    slope_omissions=sum(n in terms for n in counts.collinear),
                     covariance_policy=f"{model}-{c['vce']}-"+('K.adj=FALSE' if model == 'ppml' else 'stock'))
         if model == 'ols':
             meta.update(df_r=repr(counts.df_t), correction_df=repr(counts.N-counts.df_k),

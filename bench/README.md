@@ -31,7 +31,7 @@ Generated captures belong under `target/tmp/` and are deleted after inspection.
 
 `campaign.json` freezes the descriptive OLS/PPML comparison against pinned fixest
 0.14.2 (default and strict profiles), PyFixest, FixedEffectModels.jl, reghdfe,
-ppmlhdfe and Stata 19 areg. At one million rows and four cores it covers the
+ppmlhdfe and Stata 19 areg/regress. At one million rows and four cores it covers the
 AKM baseline with every covariance type with and without saved FE, 4 and 64
 controls instead of 16, and one-FE and dense/sparse two-/three-FE designs. Core
 series at 1/2/4/8/16 workers use the AKM baseline, and size series from
@@ -43,7 +43,8 @@ demeaner, with default estimation tolerances and saved FE recovered at 1e-11
 like the fixest arms. FixedEffectModels.jl runs in linear cells only, at its
 default tolerance (1e-6) and at 1e-10 (`julia-strict`); `julia --threads` sets
 its workers and a warm-up fit of the same specification keeps compilation out
-of timing. areg runs in every OLS configuration with at most four workers and
+of timing. The `no-fe` design estimates an intercept and the same 16 controls without absorption;
+the areg arm dispatches to Stata `regress` there. areg runs in every other OLS configuration with at most four workers and
 no saved FE (it cannot save individual effects). With several effects it uses
 `dfabsorb noabsorbtest tolerance(1e-8) iterate(16000)`, the options of the
 August 2026 comparison. Its absorbed count is compared after adding back the
@@ -98,7 +99,9 @@ interference exclusions.
 
 Timing includes estimation, inference and requested FE recovery, including
 fixest's lazy extraction and row materialization. Import, generation and disk
-export are excluded. Scientific gates and per-fit limits remain in `campaign.json`;
+export are excluded. Scientific gates and per-fit limits remain in `campaign.json`; reghdfe and
+ppmlhdfe have a fixed 3,600-second command limit, other commands 600 seconds,
+and process limits leave at least 900 seconds beyond each command limit;
 failed or unavailable observations stay visible. This descriptive comparison
 does not qualify a runtime change or establish a universal speed advantage.
 
@@ -110,6 +113,21 @@ fixed-worker exact repeatability and cross-worker agreement, and
 `campaign_export.py DIRECTORY --report REPORT --output RESULTS --prefix PREFIX`
 writes the compact summary, observation and input records kept in `results/`.
 See the [comparison guide](../docs/fixest_benchmarks.md) for interpretation.
+
+The November 2 rerun measures the frozen beta.15 package without runtime changes.
+It retains the latest corrected synthetic inputs, adds no-FE OLS/PPML cells,
+and schedules only the Veneto largest connected set: OLS on log daily wages
+and PPML on daily wages (the inverse of the audited logarithm), with the same
+seven controls and robust PPML covariance. Each panel has its own whole-node
+allocation and a 41,400-second cleanup threshold. The independent dense OLS/Poisson
+smoke checks cover the new designs before production; no scientific tolerances,
+model semantics, exclusion rules or resampling rules change.
+
+Set `CAMPAIGN_REUSE_ENVIRONMENT=1` with `REFERENCE_ROOT` to reuse matching pinned
+Python/Julia packages. Requirement/project/manifest bytes and installed versions
+are checked, and Julia's writable compilation caches remain private to each run.
+`frozen-inputs.json` can name a `dataset_roots` map for corrected datasets retained
+in a supplement; all datasets still require exact file and decoded-column hashes.
 
 ## Private Veneto panels
 
@@ -148,7 +166,9 @@ audited panel inputs, smoke witnesses and policy byte for byte and rebuilds only
 the per-cell arm lists; `--without-saved-fe` schedules the same cells without
 saved FE, so commands time estimation and inference and comparisons cover
 slopes, covariance, sample, rank and RSS. A reused run has a 20,000-second fit
-budget. The collector retains the reuse job and the prior run's preparation
+budget. `--model ppml --without-saved-fe` reconstructs positive wage levels and verifies
+that sample identities and controls exactly match the audited log-wage panel.
+`--panels long-lcs` selects the largest connected set. The collector retains the reuse job and the prior run's preparation
 records. `--panels long` schedules one panel;
 `scc/panel_pair.sh` then runs the production task of several such runs back to
 back in one whole-node job (for example the long panel with and without saved

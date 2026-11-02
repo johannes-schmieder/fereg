@@ -37,10 +37,12 @@ forvalues j=1/`k' {
     local xvars `xvars' x`j'
 }
 local absorb
+if `effects' > 0 {
 forvalues j=1/`effects' {
     local term g`j'
     if `save_fe' local term saved`j'=g`j'
     local absorb `absorb' `term'
+}
 }
 local inference vce(`vce')
 if "`vce'" == "iid" local inference vce(unadjusted)
@@ -48,6 +50,10 @@ if "`vce'" == "iid" & "`arm'" == "areg" local inference vce(ols)
 if "`vce'" == "cluster" local inference vce(cluster cluster)
 local command `arm'
 if "`arm'" == "fereg" & "`model'" == "ppml" local command feppml
+if "`arm'" == "areg" & `effects' == 0 local command regress
+local absorption
+if `effects' > 0 local absorption absorb(`absorb')
+if `effects' == 0 & "`arm'" == "reghdfe" local absorption noabsorb
 * Stata 19 areg absorbs several categorical effects but cannot save them.
 if "`arm'" == "areg" & ("`model'" != "ols" | `save_fe') exit 198
 local options
@@ -59,7 +65,9 @@ local timed_options `options'
 if "`arm'" == "areg" & `effects' > 1 local timed_options `options' dfabsorb noabsorbtest tolerance(1e-8) iterate(16000)
 * Initialization uses a separate small input and is excluded from timing.
 quietly use `"`warm'"', clear
-capture noisily quietly `command' y `xvars', absorb(g1) `inference' `options'
+local warm_absorption absorb(g1)
+if `effects' == 0 local warm_absorption `absorption'
+capture noisily quietly `command' y `xvars', `warm_absorption' `inference' `options'
 local init_rc = _rc
 if `init_rc' exit `init_rc', clear
 quietly use `"`dataset'"', clear
@@ -74,7 +82,7 @@ file close ready
 * The harness resets the kernel memory peak before GO and reads it before ACK.
 _campaign_wait `"`output'/GO"'
 plugin call _campaign_clock, start
-capture noisily quietly `command' y `xvars', absorb(`absorb') `inference' `timed_options'
+capture noisily quietly `command' y `xvars', `absorption' `inference' `timed_options'
 local rc = _rc
 plugin call _campaign_clock, stop `command_seconds' `resolution'
 file open done using `"`output'/DONE"', write text replace
@@ -87,6 +95,7 @@ file write `meta' "rc" _tab "`rc'" _n
 file write `meta' "seconds" _tab %24.17g (scalar(`command_seconds')) _n
 file write `meta' "clock_resolution" _tab %24.17g (scalar(`resolution')) _n
 file write `meta' "processors" _tab "`processors'" _n
+file write `meta' "command" _tab "`command'" _n
 file write `meta' "processors_licensed" _tab %24.17g (c(processors_lic)) _n
 if !`rc' {
     if "`arm'" == "fereg" {
@@ -110,6 +119,8 @@ if !`rc' {
         capture local value = e(`scalar')
         if !_rc file write `meta' "`scalar'" _tab %24.17g (`value') _n
     }
+    * regress has no absorbed term and does not post e(df_a).
+    if "`command'" == "regress" file write `meta' "df_a" _tab "0" _n
     tempname coefficients covariance
     matrix `coefficients' = e(b)
     matrix `covariance' = e(V)

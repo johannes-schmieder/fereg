@@ -13,7 +13,7 @@ from pathlib import Path
 import campaign_report as report
 from panel_collect import load
 
-ORDER = ['fixest', 'fixest-strict', 'pyfixest', 'pyfixest-within', 'pyfixest-within-strict', 'julia', 'julia-strict', 'reghdfe']
+ORDER = ['fixest', 'fixest-strict', 'pyfixest', 'pyfixest-within', 'pyfixest-within-strict', 'julia', 'julia-strict', 'reghdfe', 'ppmlhdfe']
 DESCRIPTIONS = {'fixest': 'fixest 0.14.2 default', 'fixest-strict': 'fixest strict',
                 'pyfixest': 'PyFixest 0.60.0 (Rust MAP)', 'pyfixest-within': 'PyFixest main (within LSMR)', 'pyfixest-within-strict': 'PyFixest main (within LSMR, strict)',
                 'julia': 'FixedEffectModels.jl (tolerance 1e-6)', 'julia-strict': 'FixedEffectModels.jl (1e-10)'}
@@ -150,7 +150,8 @@ def render(campaign, frame, output):
                               and reason != 'application unavailable'})
             if any(r['status'] == 'command-timeout' for r in campaign['records']
                    if r['cell'].startswith('veneto-'+panel+'-') and r['arm'] == arm):
-                reasons.append('600-second command limit')
+                limit=campaign['manifest']['policy'].get('command_timeout_by_arm',{}).get(arm,campaign['manifest']['policy']['command_timeout_seconds'])
+                reasons.append(f'{limit}-second command limit')
             convention = int((arm_cells.agreement == 'convention').sum())
             details.append(f'{report.ARM_NAMES[arm]}: {int(arm_cells.eligible.sum())}/{len(arm_cells)} eligible cells'+
                            (f', {convention} more up to degrees-of-freedom conventions. ' if convention else '. ')+
@@ -265,7 +266,8 @@ def export(root, output):
         evidence['native_cells'].append(dict(cell=cell['id'], **{k: c.get(k) for k in
             ['N', 'sample_sha256', 'finite_slope_rank', 'absorbed_dof', 'omitted', 'publication_omitted',
              'singleton_deletions', 'separation_deletions', 'saved_fe_sha256', 'scientific_sha256']},
-            exact_reported_rss=[r['metadata']['rss'].strip() for r in runs],
+            **{('exact_reported_rss' if cell['model']=='ols' else 'exact_reported_ll'):
+               [str(r['metadata']['rss' if cell['model']=='ols' else 'll']).strip() for r in runs]},
             maximum_model_score=max((r['capture'].get('maximum_model_score') for r in runs
                                      if 'maximum_model_score' in r['capture']), default=None),
             placement={k: runs[0]['placement'][k] for k in ['cpus', 'sockets', 'memory_nodes']},

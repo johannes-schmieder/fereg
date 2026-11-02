@@ -1,7 +1,7 @@
 #!/bin/bash -l
 #$ -P welfgr
 #$ -N fereg_bench
-#$ -pe mpi_28_tasks_per_node_u 28
+#$ -pe omp28 28
 #$ -l num_proc=28
 #$ -l mem_per_core=3G
 #$ -l h_rt=12:00:00

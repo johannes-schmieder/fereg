@@ -51,18 +51,20 @@ REPETITIONS = 3
 REUSE_CLEANUP_SECONDS = 20000
 
 
-def cell_for(panel, frame, threads, save_fe=True):
-    return dict(id=f'veneto-{panel}-t{threads}'+('' if save_fe else '-fe0'), model='ols', design='veneto-'+panel,
+def cell_for(panel, frame, threads, save_fe=True, model='ols'):
+    if model=='ppml' and save_fe:
+        raise ValueError('the PPML panel campaign requires unsaved effects')
+    return dict(id=f'veneto-{panel}'+('-ppml' if model=='ppml' else '')+f'-t{threads}'+('' if save_fe else '-fe0'), model=model, design='veneto-'+panel,
                 section='veneto', rows=len(frame), regressors=len([c for c in frame if c.startswith('x')]),
-                effects=2, save_fe=save_fe, vce='iid', weights='unit', threads=threads,
+                effects=2, save_fe=save_fe, vce='iid' if model=='ols' else 'robust', weights='unit', threads=threads,
                 arms=['fereg', 'fixest', 'fixest-strict', *campaign.PYFIXEST_ARMS, *campaign.PYFIXEST_STRICT_ARMS,
-                      *campaign.JULIA_ARMS]
-                + (['reghdfe'] if threads <= 4 else []))
+                      *(campaign.JULIA_ARMS if model=='ols' else [])]
+                + (['reghdfe' if model=='ols' else 'ppmlhdfe'] if threads <= 4 else []))
 
 
-def smoke_fits(panels=PANELS):
+def smoke_fits(panels=PANELS, model='ols'):
     """One four-worker fit of every arm on each scheduled panel's real-data smoke."""
-    return len(panels)*len(cell_for('long', pd.DataFrame(), 4)['arms'])
+    return len(panels)*len(cell_for('long', pd.DataFrame(), 4, model=='ols', model)['arms'])
 
 
 def save_dataset(frame, path):
@@ -169,7 +171,7 @@ def prepare(root, long=None, short=None, long_lcs=None, save_fe=True):
                timed_fits=sum(len(c['arms']) for c in cells)*REPETITIONS))
 
 
-def reuse(root, previous, save_fe=True, panels=None):
+def reuse(root, previous, save_fe=True, panels=None, model='ols'):
     """Schedule the current arms on a prior run's audited panel inputs.
 
     The datasets, smoke witnesses, retained-input record and policy are copied
@@ -177,7 +179,11 @@ def reuse(root, previous, save_fe=True, panels=None):
     optional panel subset are rebuilt. Without saved FE, commands time
     estimation and inference only.
     """
+    if model=='ppml' and save_fe:
+        raise ValueError('PPML reuse requires --without-saved-fe')
     old = json.loads((previous/'manifest.json').read_text())
+    if any(c['model']!='ols' for c in old['cells']):
+        raise ValueError('reuse requires the audited log-wage OLS source panel')
     for folder in ['data', 'smoke-data']:
         shutil.copytree(previous/folder, root/folder)
     (root/'input').mkdir(exist_ok=True)
@@ -190,11 +196,31 @@ def reuse(root, previous, save_fe=True, panels=None):
     selected = [panel for panel in old['panels'] if panel in (panels or old['panels'])]
     if not selected or set(panels or []) - set(selected):
         raise ValueError('unknown panel subset')
-    cells = [dict(c, **{k: v for k, v in cell_for(c['design'][7:], pd.DataFrame(), c['threads'], save_fe).items()
-                        if k in ('id', 'arms', 'save_fe')}) for c in old['cells'] if c['design'][7:] in selected]
-    write_json(root/'manifest.json', dict(old, cells=cells, reused_inputs=str(previous),
+    cells = [dict(c, **{k: v for k, v in cell_for(c['design'][7:], pd.DataFrame(), c['threads'], save_fe, model).items()
+                        if k in ('id', 'arms', 'save_fe', 'model', 'vce')}) for c in old['cells'] if c['design'][7:] in selected]
+    datasets = old['datasets'].copy()
+    if model=='ppml':
+        for folder in ['data','smoke-data']:
+            for panel in selected:
+                source, = (root/folder).glob(f'ols-veneto-{panel}-n*.dta')
+                frame = pd.read_stata(source,convert_categoricals=False)
+                frame['y'] = np.exp(frame.y)
+                if not np.isfinite(frame.y).all() or not (frame.y>0).all():
+                    raise ValueError('invalid wage level reconstructed from log wages')
+                destination=source.with_name(source.name.replace('ols-','ppml-',1))
+                key=('smoke-' if folder=='smoke-data' else '')+panel
+                datasets[key]=save_dataset(frame,destination)
+        warm=dict(model='ppml',design='one-fe',rows=512,effects=1,regressors=7,weights='unit')
+        campaign.make_dataset(warm,root/'data/warm.dta')
+        shutil.copy2(root/'data/warm.dta',root/'smoke-data/warm.dta')
+    write_json(root/'manifest.json', dict(old, cells=cells, datasets=datasets, model=model,
+               outcome='daily wage = exp(unadjusted log daily wage)' if model=='ppml' else 'unadjusted log daily wage',
+               reused_inputs=str(previous),
                panels={panel: old['panels'][panel] for panel in selected},
-               policy=dict(old['policy'], save_fe=save_fe, job_cleanup_seconds=REUSE_CLEANUP_SECONDS),
+               policy=dict(old['policy'], save_fe=save_fe, job_cleanup_seconds=campaign.POLICY['job_cleanup_seconds'],
+                           command_timeout_seconds=campaign.POLICY['command_timeout_seconds'],
+                           command_timeout_by_arm=campaign.POLICY.get('command_timeout_by_arm',{}),
+                           process_timeout_seconds=campaign.POLICY['process_timeout_seconds']),
                timed_fits=sum(len(c['arms']) for c in cells)*REPETITIONS))
 
 
@@ -223,21 +249,30 @@ def audit_prior(frame, prior):
 
 def audit_inputs(root):
     previous = json.loads((root/'input/prior-panels.json').read_text())
-    panels = json.loads((root/'manifest.json').read_text())['panels']
+    manifest=json.loads((root/'manifest.json').read_text())
+    panels = manifest['panels']
+    model=manifest.get('model','ols')
     results = {}
     for panel in panels:
         path = Path(previous[panel]['path'])
         if sha256(path) != previous[panel]['sha256']:
             raise ValueError('retained panel input hash differs')
-        frame = pd.read_stata(root/'data'/f"ols-veneto-{panel}-n{panel_spec(panel)['rows']}.dta", convert_categoricals=False)
+        frame = pd.read_stata(root/'data'/f"{model}-veneto-{panel}-n{panel_spec(panel)['rows']}.dta", convert_categoricals=False)
+        log_frame = pd.read_stata(root/'data'/f"ols-veneto-{panel}-n{panel_spec(panel)['rows']}.dta", convert_categoricals=False) if model=='ppml' else frame
+        if model=='ppml':
+            if list(log_frame)!=list(frame) or not all(np.array_equal(frame[c],log_frame[c]) for c in frame if c!='y'):
+                raise ValueError('PPML input changed the OLS sample or controls')
+            if not np.isfinite(frame.y).all() or not (frame.y>0).all() or not np.allclose(np.log(frame.y),log_frame.y,rtol=0,atol=8e-15):
+                raise ValueError('PPML wage levels do not invert the audited log wages')
         if panel in PANELS:
-            results[panel] = audit_prior(frame, pd.read_csv(path, float_precision='round_trip'))
+            results[panel] = audit_prior(log_frame, pd.read_csv(path, float_precision='round_trip'))
         else:
             rebuilt = prepare_panel(path, panel)
-            if list(rebuilt) != list(frame) or not all(np.array_equal(rebuilt[c].to_numpy(), frame[c].to_numpy())
+            if list(rebuilt) != list(log_frame) or not all(np.array_equal(rebuilt[c].to_numpy(), log_frame[c].to_numpy())
                                                          for c in rebuilt):
                 raise ValueError('rebuilt panel differs from the scheduled input')
             results[panel] = dict(rows=len(frame), rebuilt_from_source=True)
+        if model=='ppml':results[panel]['wage_level_transform_verified']=True
     write_json(root/'environment/input-audit.json', results)
     print('PANEL_INPUT_AUDIT_PASS', flush=True)
 
@@ -287,6 +322,9 @@ def compare(a, b, cell):
 def run(root, task, smoke):
     campaign.verify_runtime(root)
     manifest = json.loads((root/'manifest.json').read_text())
+    model=manifest.get('model','ols')
+    for key in ['command_timeout_seconds','command_timeout_by_arm','process_timeout_seconds']:
+        if key in manifest['policy']:campaign.POLICY[key]=manifest['policy'][key]
     scheduled = list(manifest['panels'])
     selected = scheduled if smoke else [scheduled[task-1]]
     label = 'smoke' if smoke else f'task-{task}'
@@ -313,9 +351,9 @@ def run(root, task, smoke):
         for panel in selected:
             specification = panel_spec(panel)
             if smoke:
-                matches = list((root/'smoke-data').glob(f'ols-veneto-{panel}-n*.dta'))
+                matches = list((root/'smoke-data').glob(f'{model}-veneto-{panel}-n*.dta'))
             else:
-                matches = [root/'data'/f"ols-veneto-{panel}-n{specification['rows']}.dta"]
+                matches = [root/'data'/f"{model}-veneto-{panel}-n{specification['rows']}.dta"]
             if len(matches) != 1:
                 raise ValueError('ambiguous panel input')
             path = matches[0]
@@ -327,7 +365,7 @@ def run(root, task, smoke):
             threads = [4] if smoke else THREADS
             reference = None
             for t in threads:
-                cell = cell_for(panel, frame, t, manifest['policy'].get('save_fe', True))
+                cell = cell_for(panel, frame, t, manifest['policy'].get('save_fe', True), model)
                 baseline, failed = {}, set()
                 for rep in range(1, (1 if smoke else REPETITIONS)+1):
                     current = {}
@@ -337,7 +375,7 @@ def run(root, task, smoke):
                             records.append(dict(cell=cell['id'], arm=arm, repetition=rep,
                                                 status='skipped-after-failure', metadata={}))
                             continue
-                        if time.monotonic()-started+campaign.POLICY['process_timeout_seconds'] > manifest['policy']['job_cleanup_seconds']:
+                        if time.monotonic()-started+campaign.process_timeout(arm) > manifest['policy']['job_cleanup_seconds']:
                             raise RuntimeError('fixed campaign budget exhausted; partial evidence retained')
                         if monitor:
                             monitor.check()
@@ -350,7 +388,7 @@ def run(root, task, smoke):
                                 expected = sum(identity['topology']['levels']) if arm in campaign.JULIA_ARMS else rank
                                 if record['capture']['absorbed_dof'] != expected:
                                     raise ValueError('independent graph rank differs')
-                                if arm == 'fereg' and float(record['metadata'].get('fereg_threads', 'nan')) != t:
+                                if arm == 'fereg' and float(record['metadata'].get('fereg_threads' if model=='ols' else 'feppml_threads', 'nan')) != t:
                                     raise ValueError('native worker budget is unverified')
                             except (ValueError, OSError, KeyError) as error:
                                 record.update(status='capture-error', error=str(error))
@@ -403,7 +441,7 @@ def run(root, task, smoke):
             if sha256(path) != identity['sha256']:
                 raise ValueError('panel input changed during timing')
     campaign.verify_runtime(root)
-    expected_count = smoke_fits(scheduled) if smoke else sum(len(c['arms']) for c in manifest['cells'] if c['design'] == 'veneto-'+selected[0])*REPETITIONS
+    expected_count = smoke_fits(scheduled,model) if smoke else sum(len(c['arms']) for c in manifest['cells'] if c['design'] == 'veneto-'+selected[0])*REPETITIONS
     result = dict(records=records, comparisons=comparisons, science=science, complete=len(records) == expected_count,
                   expected_fits=expected_count, host=socket.gethostname(), job=os.environ['JOB_ID'],
                   task=os.environ.get('SGE_TASK_ID'), native_gate_pass=True)
@@ -424,14 +462,15 @@ if __name__ == '__main__':
     parser.add_argument('--previous', type=Path, help='prior run whose audited inputs are reused')
     parser.add_argument('--without-saved-fe', action='store_true',
                         help='prepare/reuse: time estimation and inference without saving FE')
-    parser.add_argument('--panels', nargs='+', choices=list(PANELS),
+    parser.add_argument('--model', choices=['ols','ppml'], default='ols',help='reuse: PPML uses wage levels on the same sample')
+    parser.add_argument('--panels', nargs='+', choices=[*PANELS,*LCS_PANELS],
                         help='reuse: schedule only these panels, one production task each')
     parser.add_argument('--task', type=int, choices=[1, 2], default=1)
     args = parser.parse_args()
     if args.mode == 'prepare':
         prepare(args.root, args.long, args.short, args.long_lcs, not args.without_saved_fe)
     elif args.mode == 'reuse':
-        reuse(args.root, args.previous, not args.without_saved_fe, args.panels)
+        reuse(args.root, args.previous, not args.without_saved_fe, args.panels,args.model)
     elif args.mode == 'audit':
         audit_inputs(args.root)
     else:

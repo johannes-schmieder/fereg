@@ -27,6 +27,11 @@ export OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 OMP_NUM_THREADS=1 NUMEXPR_NUM_TH
 export PYTHONDONTWRITEBYTECODE=1 MPLCONFIGDIR="$RUN_ROOT/environment/matplotlib"
 export R_LIBS_USER="$RUN_ROOT/environment/r-library"
 cd source
+if [[ -n "${PANEL_PREVIOUS_ROOT:-}" ]]; then
+    python3 bench/panel_campaign.py reuse "$RUN_ROOT" --previous "$PANEL_PREVIOUS_ROOT" \
+        --panels "${PANEL_NAME:-long-lcs}" --model "${PANEL_MODEL:-ols}" --without-saved-fe \
+        > "$RUN_ROOT/logs/input-reuse.log" 2>&1
+fi
 bash bench/scc/pyfixest_environment.sh "$RUN_ROOT/environment" > "$RUN_ROOT/logs/pyfixest-environment.log" 2>&1
 bash bench/scc/julia_environment.sh "$RUN_ROOT/environment" > "$RUN_ROOT/logs/julia-environment.log" 2>&1
 python3 -m unittest discover -s bench/tests > "$RUN_ROOT/logs/harness-tests.log" 2>&1

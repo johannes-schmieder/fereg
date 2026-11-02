@@ -13,8 +13,14 @@ export RUSTUP_TOOLCHAIN=1.85.1-x86_64-unknown-linux-gnu
 export PATH="$CARGO_HOME/bin:$PATH" CARGO_NET_OFFLINE=false CARGO_BUILD_JOBS=4
 export PIP_DISABLE_PIP_VERSION_CHECK=1 PIP_NO_CACHE_DIR=1
 for arm in $(python3 -c 'import json,sys; print(*json.load(open(sys.argv[1]))["pyfixest"])' "$SOURCE/bench/campaign.json"); do
+    if [[ "${CAMPAIGN_REUSE_ENVIRONMENT:-0}" == 1 ]]; then
+        : "${REFERENCE_ROOT:?}"
+        cmp "$SOURCE/bench/pyfixest/$arm.txt" "$REFERENCE_ROOT/source/bench/pyfixest/$arm.txt"
+        ln -s "$REFERENCE_ROOT/environment/$arm" "$ENVIRONMENT/$arm"
+    else
     python3 -m venv "$ENVIRONMENT/$arm"
     "$ENVIRONMENT/$arm/bin/python" -I -m pip install --no-deps -r "$SOURCE/bench/pyfixest/$arm.txt"
+    fi
     "$ENVIRONMENT/$arm/bin/python" -I -m pip check
     "$ENVIRONMENT/$arm/bin/python" -I -m pip freeze --all > "$ENVIRONMENT/$arm-freeze.txt"
     "$ENVIRONMENT/$arm/bin/python" -I -c 'import sys; sys.path.insert(0, sys.argv[1]); from campaign_pyfixest import check_pin; print(*check_pin(sys.argv[2]))' "$SOURCE/bench" "$arm"

@@ -13,6 +13,28 @@ from campaign_oracle import oracle
 
 
 class CampaignTests(unittest.TestCase):
+    def test_no_fe_inputs_and_independent_intercept_witness(self):
+        for model in ['ols', 'ppml']:
+            cell=next(c for c in configurations(True) if c['model']==model and c['design']=='no-fe')
+            self.assertEqual(cell['effects'],0)
+            self.assertFalse(cell['save_fe'])
+            with tempfile.TemporaryDirectory() as d:
+                frame,meta=make_dataset(cell,Path(d)/'input.dta')
+                expected=oracle(frame,cell)
+            self.assertFalse(any(c.startswith('g') for c in frame))
+            self.assertEqual(expected['rank'],1)
+            self.assertEqual(expected['pairwise_rank'],0)
+            self.assertLess(expected['residual_score'],1e-11)
+            self.assertTrue(np.isfinite(expected['intercept']))
+            self.assertEqual(len(expected['intercept_covariance']),17)
+            self.assertEqual(meta['topology']['levels'],[])
+
+    def test_extended_command_limit_leaves_export_time(self):
+        self.assertEqual(campaign.command_timeout('reghdfe'),3600)
+        self.assertEqual(campaign.command_timeout('ppmlhdfe'),3600)
+        self.assertGreaterEqual(campaign.process_timeout('reghdfe'),4500)
+        self.assertEqual(campaign.command_timeout('fereg'),600)
+
     def test_fixest_saved_fe_large_numeric_ids(self):
         executable=shutil.which('Rscript')
         if not executable:self.skipTest('Rscript unavailable; SCC setup runs this with pinned fixest')
@@ -47,7 +69,7 @@ class CampaignTests(unittest.TestCase):
             self.assertFalse({'julia','julia-strict'} & set(arms(cell)) and cell['model']=='ppml')
             eligible=cell['model']=='ols' and cell['threads']<=4 and not cell['save_fe']
             self.assertEqual('areg' in arms(cell),eligible)
-        self.assertEqual(sum('areg' in arms(c) for c in configurations()),21)
+        self.assertEqual(sum('areg' in arms(c) for c in configurations()),22)
         metadata=dict(df_a='239',arm='areg')
         self.assertEqual(absorbed_rank(metadata,dict(model='ols'),None),240.)
 

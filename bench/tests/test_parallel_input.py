@@ -53,7 +53,7 @@ class InputQualification(unittest.TestCase):
     def test_report_requires_complete_finite_unique_observations(self):
         with tempfile.TemporaryDirectory() as name, patch.object(subject, 'CELLS', ('c1',)):
             root = Path(name)
-            config = dict(output=name, threads=[4], blocks=2, reps=2)
+            config = dict(output=name, threads=[4], blocks=2, reps=2, arms={"incumbent": {}, "candidate": {}})
             rows = [dict(zip(subject.FIELDS, [arm, block, 'c1', 4, rep, 1000, 1000,
                                             .01, .003, .008, 1000]))
                     for arm in ('incumbent', 'candidate') for block in (1, 2) for rep in (1, 2)]
@@ -62,7 +62,7 @@ class InputQualification(unittest.TestCase):
                     writer = csv.DictWriter(handle, subject.FIELDS)
                     writer.writeheader()
                     writer.writerows(records)
-                return subject.command_report(config)
+                return subject.command_report(config, cells=subject.CELLS)
             self.assertEqual(report(rows)['status'], 'passed')
             self.assertEqual(json.loads((root / 'summary.json').read_text())['observations'], 8)
             with self.assertRaises(RuntimeError):

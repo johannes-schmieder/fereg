@@ -12,7 +12,21 @@ export JULIA_DEPOT_PATH="$ENVIRONMENT/julia-depot"
 export JULIA_CPU_TARGET='generic;sandybridge,-xsaveopt,clone_all;haswell,-rdrnd,base(1)'
 mkdir -p "$ENVIRONMENT/julia"
 cp "$SOURCE/bench/julia/Project.toml" "$SOURCE/bench/julia/Manifest.toml" "$ENVIRONMENT/julia/"
+if [[ "${CAMPAIGN_REUSE_ENVIRONMENT:-0}" == 1 ]]; then
+    : "${REFERENCE_ROOT:?}"
+    cmp "$SOURCE/bench/julia/Manifest.toml" "$REFERENCE_ROOT/environment/julia/Manifest.toml"
+    cmp "$SOURCE/bench/julia/Project.toml" "$REFERENCE_ROOT/environment/julia/Project.toml"
+    mkdir -p "$JULIA_DEPOT_PATH"
+    for directory in packages artifacts; do
+        ln -s "$REFERENCE_ROOT/environment/julia-depot/$directory" "$JULIA_DEPOT_PATH/$directory"
+    done
+    # Compilation caches/logs remain writable and private to the new campaign.
+    if [[ -d "$REFERENCE_ROOT/environment/julia-depot/compiled" ]]; then
+        cp -a "$REFERENCE_ROOT/environment/julia-depot/compiled" "$JULIA_DEPOT_PATH/"
+    fi
+else
 julia --startup-file=no --project="$ENVIRONMENT/julia" -e 'using Pkg; Pkg.instantiate(); Pkg.precompile(); Pkg.status()'
+fi
 cmp "$SOURCE/bench/julia/Manifest.toml" "$ENVIRONMENT/julia/Manifest.toml"
 julia --startup-file=no --project="$ENVIRONMENT/julia" -e '
 using FixedEffectModels, DataFrames, ReadStatTables, JSON

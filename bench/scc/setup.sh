@@ -1,8 +1,7 @@
 #!/bin/bash -l
 #$ -P welfgr
 #$ -N fereg_bench_setup
-#$ -pe mpi_28_tasks_per_node_u 28
-#$ -l num_proc=28
+#$ -pe omp 4
 #$ -l mem_per_core=3G
 #$ -l h_rt=02:00:00
 #$ -j y
@@ -38,7 +37,7 @@ PY
 export CARGO_HOME=/projectnb/welfgr/johannes/fereg-rust-1.85.1/cargo
 export RUSTUP_HOME=/projectnb/welfgr/johannes/fereg-rust-1.85.1/rustup
 export RUSTUP_TOOLCHAIN=1.85.1-x86_64-unknown-linux-gnu
-export CARGO_NET_OFFLINE=false CARGO_BUILD_JOBS=8
+export CARGO_NET_OFFLINE=false CARGO_BUILD_JOBS=${NSLOTS:-4}
 export PATH="$CARGO_HOME/bin:$PATH"
 export OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 OMP_NUM_THREADS=1
 export PYTHONDONTWRITEBYTECODE=1
