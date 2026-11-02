@@ -8,7 +8,9 @@
   "source_suite": {
     "status": "passed",
     "log_sha256": "a36db0ef7e7b533d2f60929af43e6ce5e740bbcb0623145b6875f127d541a47d",
-    "dependency_advisories": 0
+    "dependency_advisories": 0,
+    "strict_candidate_package_suite": "passed",
+    "strict_candidate_package_suite_log_sha256": "f6aac1886e08ec2b72ec5e54635a822a528c0003ef6d70b0d00258495ae6a306"
   },
   "native": {
     "universal_binary_audit": "passed",
@@ -71,7 +73,17 @@
       "ppml"
     ],
     "gui_live_break": "unqualified: AppleScript delivery timed out; SIGINT terminated the GUI process",
-    "older_local_installations": "Stata 15 and 17 exited before fixture startup; no qualification inferred"
+    "older_local_installations": "Stata 15 and 17 exited before fixture startup; no qualification inferred",
+    "local_installed_check": {
+      "source": "local root package",
+      "installed_files": 36,
+      "status": "passed",
+      "selftest_version": "0.5.0-beta.14",
+      "independent_ols_ppml": "passed",
+      "restricted_sample": "if plus in",
+      "all_installed_hashes": "exact"
+    },
+    "staged_archive_fixtures": 6
   },
   "performance": {
     "status": "passed",

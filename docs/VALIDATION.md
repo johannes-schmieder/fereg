@@ -32,6 +32,61 @@ licensed-Stata harness, after its per-cell path and exact input-digest preflight
 There is no external estimator environment in this transport comparison;
 Stata/toolchain/plugin/input identities must be pinned in the execution record.
 
+The candidate is **not qualified for beta.14 publication**. The completed
+[Linux comparison](../bench/results/input-beta14-linux-20261102.json) retains
+all 1,008 observations across 42 settings on one isolated 28-core physical host:
+19 settings pass and 23 exceed the declared wall-time regression allowance.
+Host observation passes without errors; scheduler accounting reports `failed=0`
+and `exit_status=1` because the performance report rejects the candidate.
+No observations were excluded or resampled. The
+[Mac comparison](../bench/results/input-beta14-macos-20261101.json) retains all
+672 observations and passes all 28 settings with ordinary desktop noise retained.
+The complete [Linux](../bench/results/input-beta14-linux-20261102.csv) and
+[Mac](../bench/results/input-beta14-macos-20261101.csv) timing tables are retained.
+The Linux result blocks publication despite the passing Mac comparison and
+correctness checks. The public release remains beta.13.
+
+Representative Linux whole-call medians are:
+
+| Setting | Workers | Beta.13 | Candidate | Change |
+| --- | ---: | ---: | ---: | ---: |
+| 64 regressors, full sample | 4 | 5.1245 s | 5.3885 s | +5.15% |
+| Ten million rows, four regressors | 4 | 3.9445 s | 4.3435 s | +10.12% |
+| Short `in` inside ten million rows | 16 | 1.1250 s | 1.4380 s | +27.82% |
+| Weighted multi-FE, 1% scattered sample | 16 | 0.2915 s | 0.4030 s | +38.25% |
+| String FE, 1% scattered sample | 16 | 0.2785 s | 0.4035 s | +44.88% |
+
+The short-`in` case at 16 workers has native medians of 0.2692/0.2690 seconds
+and loading medians of 0.0606/0.0544 seconds, despite its whole-call slowdown.
+These separate medians do not decompose one individual call, but they show why
+an exclusively reader-based explanation is premature. Block variability is
+retained in the Linux record. A proposed next step is one bounded diagnostic
+round separating frontend/host work, loading, phase barriers and subsequent
+native work, followed by one frozen revised candidate only after Johannes's
+direction. The hard work cap, exact input bits and memory admission remain
+requirements. No follow-up timing or candidate substitution is authorized by
+this failed result itself.
+
+The actual candidate binaries pass 68 licensed Stata 19 fixtures on both Mac
+and Linux, all 77 exact incumbent replay cases on each, scalar input oracles at
+multiple worker counts, accessor-failure rollback, and live console Break while
+an OLS or PPML numeric window is open. The full source suite and the strict suite
+with the candidate root package pass. Fresh local installations verify all 36
+installed files and independent restricted-sample OLS/PPML examples on Mac 19
+and Linux 15/19. Linux 15–18 replay/prefix checks and Linux 17/18 input oracles
+also pass.
+
+The [Mac record](../bench/results/input-beta14-macos-20261101.json) includes
+passing Stata 18/19 GUI input oracles. Interactive GUI Break remains unqualified:
+AppleScript delivery timed out with an open window, and SIGINT terminated the
+GUI process. Local Mac 15/17 installations did not reach fixture startup.
+Native Intel-host Stata testing remains outstanding. The
+[Windows record](../bench/results/input-beta14-windows-20261101.json) retains
+the guarded Stata/MP 19 qualification, including installation, independent
+missing-value witnesses, input oracles at two/eight workers and failure rollback.
+Its serial/parallel comparison passed the frozen rule; beta.13/beta.14 timing
+and interactive Windows Break were not measured.
+
 The many-FE, two-FE structural-gate and ownership/deferred-cell improvements are
 accepted, as are the many-FE geometry policy with one documented timing exception
 and the PPML two-FE CMG reuse and lean protocol released in v0.5.0-beta.7.
