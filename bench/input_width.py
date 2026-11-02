@@ -88,6 +88,11 @@ def command_verify(config):
                 results[cell] = value
             if set(results) != set(CELLS) | {f"extra{i}" for i in range(1, 10)}:
                 raise RuntimeError("incomplete width science")
+            for width in WIDTHS:
+                for effect in ("none", "fe"):
+                    parallel, serial = (f"w{width}-{effect}-{mode}" for mode in ("parallel", "serial"))
+                    if results[parallel] != results[serial] or digests[parallel] != digests[serial]:
+                        raise RuntimeError(f"{arm}/{width}/{effect}: public/forced science differs")
             # Transport changes must be exact at each worker count. Independent
             # Stata regress/areg checks also execute in the fixture, outside timing.
             witness = (digests, results)

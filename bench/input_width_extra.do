@@ -22,6 +22,9 @@ forvalues case = 1/9 {
     local outcome = cond(`case' >= 8, "py", "y")
     local command = cond(`case' >= 8, "_fereg_estimate_ppml", "_fereg_estimate_ols_test")
     local opts `opts`case''
+    file open widetrace using `"`trace'"', write append text
+    file write widetrace "FEREG_SOLVER_TRACE|phase=width_extra|case=`case'|mode=reference|threads=1" _n
+    file close widetrace
     quietly `command' `outcome' x1-x64, `opts' threads(1)
     matrix `B1' = e(b)
     matrix `V1' = e(V)
