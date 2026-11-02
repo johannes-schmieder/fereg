@@ -10,9 +10,10 @@
 - A transient candidate-marker SDK failure remains an error even if diagnostic
   replay succeeds. Real Break tests now signal while the numeric window is open.
 
-- Parallel loading of numeric variables is qualified on Windows Stata/MP 19 as
-  well (x86-64). Until a release carries the rebuilt plugins, installed
-  Windows packages keep the serial reader.
+- Successful OLS and PPML calls retire obsolete private sample markers together,
+  reducing Stata's automatic cleanup work while preserving rollback and e(sample).
+- Windows retains serial input pending live Break qualification; the shared
+  bounds, error handling and cleanup improvements apply there too.
 
 ## 0.5.0 beta.13 — 2026-11-01
 

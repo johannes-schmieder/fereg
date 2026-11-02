@@ -7,7 +7,7 @@ bits, missing flags, original row identities, sample/rank/omission/separation
 decisions and solver signatures. Its declared changes are transport work:
 Stata-resolved `in` bounds, bounded read/fill/copy phases, complete descriptor
 admission and a sticky marker SDK error after diagnostic replay. It also
-integrates the separately qualified Windows numeric-window host row. There is
+retains the serial reader on Windows pending live Break qualification. There is
 no compact candidate storage or estimator routing change.
 
 Independent witnesses are the scalar input oracle (including all Stata numeric
@@ -428,6 +428,21 @@ native science/ABI/portable evidence is reused; frontend transaction and install
 package checks are refreshed for the final source. Passing this new candidate's
 full gate is required before beta.14 publication; the diagnostic alone does not
 supersede either prior failed release comparison.
+
+Publication review found that the experimental Windows host-table addition lacks
+its required live Break witness (development workflow, native/frontend boundaries).
+The Windows oracle, injected-failure and missing-value results remain useful
+experimental evidence, but do not authorize activation. Before publication the
+Windows Stata/MP 19 GUI row is removed, retaining the existing serial fallback.
+This policy change affects Windows transport only: no OLS/PPML arithmetic,
+sample or estimator routing changes, and no Linux/Mac host decisions change.
+The frozen Linux/Mac comparisons finish with their unchanged artifacts; their
+timing is reused for this platform-only policy correction. Rebuilt artifacts
+must pass actual native/scientific/transaction and installed-package checks.
+The Windows oracle must additionally prove that no numeric window runs at any
+worker count; it must not relabel serial fallback as a parallel success. Existing
+Mac/Linux active-window Break evidence remains applicable. Windows activation
+stays deferred until the missing live test can be performed.
 
 The actual candidate binaries pass 68 licensed Stata 19 fixtures on both Mac
 and Linux, all 77 exact incumbent replay cases on each, scalar input oracles at
