@@ -360,6 +360,47 @@ is reused; actual Mac OLS/PPML smoke checks validate the added instrumentation.
 A movement of time into explicit `drop` would establish attribution only; a
 whole-call gain is required before selecting any production cleanup change.
 
+The [completed cleanup diagnostic](../bench/results/input-beta14-frontend-linux-20261102.json)
+retains all sixty calls on isolated scc-wo4 (job 8393677, accounting exit zero,
+95 seconds, 2.990 GB maximum virtual memory). The ten science calls agree exactly,
+including full sample signatures. Public wrapper preparation/publication and
+outer scope each take about 0–2 ms. Almost all previously unpartitioned time
+belongs to the hidden estimator call/return. The obsolete rollback marker is
+still live after `unhold, not` in every observed call; the candidate marker is
+live in restricted calls and already consumed in full-universe OLS.
+
+Explicit candidate-marker deletion takes median 210.5 ms for ten-million-row
+c11, 63.5 ms for c12/c13 and 83.5 ms for PPML c14. The hidden-scope remainder
+falls substantially, identifying cleanup as a real cost without establishing
+Stata's internal deletion algorithm. Whole-call medians (automatic/explicit)
+are 586/584, 1453.5/1320, 367/380.5, 374.5/341.5 and 758.5/732.5 ms for
+c1/c11/c12/c13/c14. c11's block directions disagree and c12 worsens in both
+blocks. Moving a single deletion is therefore not selected as a repair.
+Separate timer medians are not additive; the scope remainder includes timer
+and entry/exit gaps. The report records pre-timing harness repairs, including
+cancellation of job 8393674 before any output because its copied import closure
+was incomplete. No timing observations were excluded or repeated.
+
+The next bounded candidate batches deletion of the two obsolete private markers
+in OLS and PPML, inside the final `nobreak` block immediately after `unhold, not`.
+Only existing private variables are included; a consumed sample output is skipped.
+Deletion is best-effort, with automatic scope cleanup as fallback. All sample
+validation, output publication and precommit rollback stay in their existing
+order. Scientific and routing scopes are empty; coefficients, covariance,
+full posted samples and all discrete decisions must remain exact. Independent
+review rejected input/output marker aliasing because it would violate native
+nonaliasing admission and make PPML containment validation vacuous.
+
+Before timing, actual Mac transaction fixtures and full-sample witnesses must
+pass. One sixty-call Linux comparison uses the same five cells, sixteen workers,
+two mirrored blocks and three observations after warmup, with the same native
+binary in both arms. The only production difference is batched cleanup. It
+reuses the verified environment and diagnostic instrumentation, with exact
+science and input preflight and whole-node isolation checks. No exclusions,
+resampling or release inference are allowed. A useful whole-call improvement
+is a prerequisite to carrying this candidate into full release qualification;
+the preceding failed Linux release gate remains binding.
+
 The actual candidate binaries pass 68 licensed Stata 19 fixtures on both Mac
 and Linux, all 77 exact incumbent replay cases on each, scalar input oracles at
 multiple worker counts, accessor-failure rollback, and live console Break while

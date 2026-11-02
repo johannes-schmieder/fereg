@@ -1,0 +1,465 @@
+{
+  "schema": 1,
+  "status": "completed_causal_diagnostic_not_release_qualification",
+  "date_utc": "2026-11-02",
+  "purpose": "Locate hidden estimator scope teardown and test explicit private candidate-marker deletion after commit. Both arms use the identical revised beta14 binary.",
+  "plugin_sha256": "eb8bcb40ee85345ddba4131479b8c7306a2e5f92e5a1dfbab6e66380ec1158a9",
+  "config": {
+    "threads": [
+      16
+    ],
+    "blocks": 2,
+    "reps": 3,
+    "seed": 739391,
+    "cells": [
+      "c1",
+      "c11",
+      "c12",
+      "c13",
+      "c14"
+    ],
+    "placements": [
+      "default"
+    ],
+    "host_modes": [
+      "default"
+    ],
+    "perf_stat": false
+  },
+  "arms": {
+    "incumbent": "automatic scope cleanup",
+    "candidate": "explicit drop of still-live touse after commit, then automatic cleanup"
+  },
+  "observations": 60,
+  "resampling": false,
+  "exclusions": [],
+  "numerical_scope": [],
+  "route_scope": [],
+  "preflight": {
+    "coefficient_covariance_N_sample_signature_and_input_digest_exact": true,
+    "calls": 10,
+    "mac_instrumentation_smoke": "OLS and PPML passed"
+  },
+  "harness_repairs": [
+    "Initial smoke used user datasignature syntax instead of _datasignature; corrected before timing.",
+    "Nonempty sample signature assertion detected a wrong returned-field name; corrected to r(datasignature) before timing.",
+    "Copied entrypoint lacked replay helper/oracle imports. Queued job8393674 canceled before any output, closure completed and entrypoint verified before job8393677."
+  ],
+  "host": {
+    "affinity": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27
+    ],
+    "hostname": "scc-wo4",
+    "job_id": "8393677",
+    "pe": "omp28",
+    "queue": "econ@scc-wo4.scc.bu.edu",
+    "slots": 28,
+    "task_id": "0"
+  },
+  "isolation_ok": true,
+  "accounting": {
+    "jobnumber": "8393677",
+    "hostname": "scc-wo4.scc.bu.edu",
+    "slots": "28",
+    "failed": "0",
+    "exit_status": "0",
+    "ru_wallclock": "95",
+    "maxvmem": "2.990G"
+  },
+  "metrics_notes": [
+    "All timing values are seconds; marker-live values are booleans represented as0/1.",
+    "hidden_scope_s is calculated per call as hidden_call minus inner pre/plugin/post/explicit-cleanup timers. It includes entry/exit and instrumentation gaps; source/timer evidence identifies return cleanup as the dominant remaining operation, not a measured specific Stata internal algorithm.",
+    "outer_scope_s is per-call wall minus public_pre/hidden_call/public_post. Separate medians are not additive.",
+    "blocks are listed in order1,2; no observations discarded."
+  ],
+  "groups": [
+    {
+      "cell": "c1",
+      "medians": {
+        "incumbent": {
+          "frontend_pre_s": 0.066,
+          "plugin_s": 0.358,
+          "frontend_post_s": 0.044,
+          "load_s": 0.029424686,
+          "compute_s": 0.31924083150000004,
+          "snapshot_s": 0.3496896485,
+          "public_pre_s": 0.0005,
+          "hidden_call_s": 0.585,
+          "public_post_s": 0.0,
+          "public_syntax_s": 0.0,
+          "explicit_cleanup_s": 0.0,
+          "candidate_marker_live": 0.0,
+          "rollback_marker_live": 1.0,
+          "hidden_scope_s": 0.11949999999999998,
+          "outer_scope_s": 0.0
+        },
+        "candidate": {
+          "frontend_pre_s": 0.066,
+          "plugin_s": 0.3555,
+          "frontend_post_s": 0.043,
+          "load_s": 0.0300778075,
+          "compute_s": 0.3158319125,
+          "snapshot_s": 0.346704024,
+          "public_pre_s": 0.001,
+          "hidden_call_s": 0.5825,
+          "public_post_s": 0.001,
+          "public_syntax_s": 0.0005,
+          "explicit_cleanup_s": 0.0,
+          "candidate_marker_live": 0.0,
+          "rollback_marker_live": 1.0,
+          "hidden_scope_s": 0.11899999999999997,
+          "outer_scope_s": 8.673617379884035e-19
+        }
+      },
+      "blocks": {
+        "incumbent": [
+          {
+            "wall_s": 0.5900000000000001,
+            "plugin_s": 0.357,
+            "explicit_cleanup_s": 0.0,
+            "hidden_scope_s": 0.11799999999999992
+          },
+          {
+            "wall_s": 0.582,
+            "plugin_s": 0.359,
+            "explicit_cleanup_s": 0.0,
+            "hidden_scope_s": 0.11999999999999993
+          }
+        ],
+        "candidate": [
+          {
+            "wall_s": 0.5900000000000001,
+            "plugin_s": 0.36,
+            "explicit_cleanup_s": 0.0,
+            "hidden_scope_s": 0.12000000000000005
+          },
+          {
+            "wall_s": 0.5780000000000001,
+            "plugin_s": 0.351,
+            "explicit_cleanup_s": 0.0,
+            "hidden_scope_s": 0.11800000000000004
+          }
+        ]
+      }
+    },
+    {
+      "cell": "c11",
+      "medians": {
+        "incumbent": {
+          "frontend_pre_s": 0.3605,
+          "plugin_s": 0.304,
+          "frontend_post_s": 0.1125,
+          "load_s": 0.045351556,
+          "compute_s": 0.22062475650000002,
+          "snapshot_s": 0.266098466,
+          "public_pre_s": 0.0005,
+          "hidden_call_s": 1.4515,
+          "public_post_s": 0.0005,
+          "public_syntax_s": 0.0005,
+          "explicit_cleanup_s": 0.0,
+          "candidate_marker_live": 1.0,
+          "rollback_marker_live": 1.0,
+          "hidden_scope_s": 0.6239999999999999,
+          "outer_scope_s": 1.6696713456276768e-16
+        },
+        "candidate": {
+          "frontend_pre_s": 0.35750000000000004,
+          "plugin_s": 0.295,
+          "frontend_post_s": 0.105,
+          "load_s": 0.043903530999999996,
+          "compute_s": 0.22501640150000002,
+          "snapshot_s": 0.2689534255,
+          "public_pre_s": 0.0,
+          "hidden_call_s": 1.3195000000000001,
+          "public_post_s": 0.0,
+          "public_syntax_s": 0.0,
+          "explicit_cleanup_s": 0.2105,
+          "candidate_marker_live": 1.0,
+          "rollback_marker_live": 1.0,
+          "hidden_scope_s": 0.23150000000000012,
+          "outer_scope_s": 0.0
+        }
+      },
+      "blocks": {
+        "incumbent": [
+          {
+            "wall_s": 1.411,
+            "plugin_s": 0.302,
+            "explicit_cleanup_s": 0.0,
+            "hidden_scope_s": 0.686
+          },
+          {
+            "wall_s": 1.496,
+            "plugin_s": 0.306,
+            "explicit_cleanup_s": 0.0,
+            "hidden_scope_s": 0.5380000000000001
+          }
+        ],
+        "candidate": [
+          {
+            "wall_s": 1.438,
+            "plugin_s": 0.295,
+            "explicit_cleanup_s": 0.361,
+            "hidden_scope_s": 0.2899999999999999
+          },
+          {
+            "wall_s": 1.202,
+            "plugin_s": 0.295,
+            "explicit_cleanup_s": 0.21,
+            "hidden_scope_s": 0.23099999999999996
+          }
+        ]
+      }
+    },
+    {
+      "cell": "c12",
+      "medians": {
+        "incumbent": {
+          "frontend_pre_s": 0.1195,
+          "plugin_s": 0.07050000000000001,
+          "frontend_post_s": 0.034,
+          "load_s": 0.018676538,
+          "compute_s": 0.047536591,
+          "snapshot_s": 0.06697707950000001,
+          "public_pre_s": 0.0,
+          "hidden_call_s": 0.3655,
+          "public_post_s": 0.001,
+          "public_syntax_s": 0.0,
+          "explicit_cleanup_s": 0.0,
+          "candidate_marker_live": 1.0,
+          "rollback_marker_live": 1.0,
+          "hidden_scope_s": 0.13899999999999998,
+          "outer_scope_s": 8.673617379884035e-19
+        },
+        "candidate": {
+          "frontend_pre_s": 0.1275,
+          "plugin_s": 0.07,
+          "frontend_post_s": 0.0335,
+          "load_s": 0.018829526,
+          "compute_s": 0.045050187000000005,
+          "snapshot_s": 0.0665816255,
+          "public_pre_s": 0.0005,
+          "hidden_call_s": 0.3795,
+          "public_post_s": 0.001,
+          "public_syntax_s": 0.0,
+          "explicit_cleanup_s": 0.0635,
+          "candidate_marker_live": 1.0,
+          "rollback_marker_live": 1.0,
+          "hidden_scope_s": 0.08650000000000005,
+          "outer_scope_s": 8.673617379884035e-19
+        }
+      },
+      "blocks": {
+        "incumbent": [
+          {
+            "wall_s": 0.378,
+            "plugin_s": 0.069,
+            "explicit_cleanup_s": 0.0,
+            "hidden_scope_s": 0.147
+          },
+          {
+            "wall_s": 0.356,
+            "plugin_s": 0.072,
+            "explicit_cleanup_s": 0.0,
+            "hidden_scope_s": 0.13399999999999998
+          }
+        ],
+        "candidate": [
+          {
+            "wall_s": 0.417,
+            "plugin_s": 0.069,
+            "explicit_cleanup_s": 0.065,
+            "hidden_scope_s": 0.097
+          },
+          {
+            "wall_s": 0.357,
+            "plugin_s": 0.071,
+            "explicit_cleanup_s": 0.0629999999999999,
+            "hidden_scope_s": 0.086
+          }
+        ]
+      }
+    },
+    {
+      "cell": "c13",
+      "medians": {
+        "incumbent": {
+          "frontend_pre_s": 0.11,
+          "plugin_s": 0.0665,
+          "frontend_post_s": 0.035,
+          "load_s": 0.037648606,
+          "compute_s": 0.0245513225,
+          "snapshot_s": 0.0633597165,
+          "public_pre_s": 0.001,
+          "hidden_call_s": 0.3725,
+          "public_post_s": 0.001,
+          "public_syntax_s": 0.001,
+          "explicit_cleanup_s": 0.0,
+          "candidate_marker_live": 1.0,
+          "rollback_marker_live": 1.0,
+          "hidden_scope_s": 0.15,
+          "outer_scope_s": 8.673617379884035e-19
+        },
+        "candidate": {
+          "frontend_pre_s": 0.10200000000000001,
+          "plugin_s": 0.062,
+          "frontend_post_s": 0.029,
+          "load_s": 0.033633736,
+          "compute_s": 0.024458096,
+          "snapshot_s": 0.059009768500000004,
+          "public_pre_s": 0.0005,
+          "hidden_call_s": 0.3405,
+          "public_post_s": 0.0,
+          "public_syntax_s": 0.0,
+          "explicit_cleanup_s": 0.0635,
+          "candidate_marker_live": 1.0,
+          "rollback_marker_live": 1.0,
+          "hidden_scope_s": 0.077,
+          "outer_scope_s": 0.0
+        }
+      },
+      "blocks": {
+        "incumbent": [
+          {
+            "wall_s": 0.369,
+            "plugin_s": 0.058,
+            "explicit_cleanup_s": 0.0,
+            "hidden_scope_s": 0.142
+          },
+          {
+            "wall_s": 0.38,
+            "plugin_s": 0.073,
+            "explicit_cleanup_s": 0.0,
+            "hidden_scope_s": 0.158
+          }
+        ],
+        "candidate": [
+          {
+            "wall_s": 0.316,
+            "plugin_s": 0.057,
+            "explicit_cleanup_s": 0.059,
+            "hidden_scope_s": 0.06800000000000003
+          },
+          {
+            "wall_s": 0.342,
+            "plugin_s": 0.064,
+            "explicit_cleanup_s": 0.067,
+            "hidden_scope_s": 0.08300000000000002
+          }
+        ]
+      }
+    },
+    {
+      "cell": "c14",
+      "medians": {
+        "incumbent": {
+          "frontend_pre_s": 0.113,
+          "plugin_s": 0.404,
+          "frontend_post_s": 0.0765,
+          "snapshot_s": 0.403901657,
+          "public_pre_s": 0.001,
+          "hidden_call_s": 0.7575000000000001,
+          "public_post_s": 0.0,
+          "public_syntax_s": 0.0,
+          "explicit_cleanup_s": 0.0,
+          "candidate_marker_live": 1.0,
+          "rollback_marker_live": 1.0,
+          "hidden_scope_s": 0.1645,
+          "outer_scope_s": 0.0
+        },
+        "candidate": {
+          "frontend_pre_s": 0.1065,
+          "plugin_s": 0.3705,
+          "frontend_post_s": 0.0785,
+          "snapshot_s": 0.370547406,
+          "public_pre_s": 0.0,
+          "hidden_call_s": 0.732,
+          "public_post_s": 0.0,
+          "public_syntax_s": 0.0,
+          "explicit_cleanup_s": 0.08349999999999999,
+          "candidate_marker_live": 1.0,
+          "rollback_marker_live": 1.0,
+          "hidden_scope_s": 0.07349999999999998,
+          "outer_scope_s": 0.0005000000000000004
+        }
+      },
+      "blocks": {
+        "incumbent": [
+          {
+            "wall_s": 0.727,
+            "plugin_s": 0.381,
+            "explicit_cleanup_s": 0.0,
+            "hidden_scope_s": 0.15299999999999997
+          },
+          {
+            "wall_s": 0.8220000000000001,
+            "plugin_s": 0.425,
+            "explicit_cleanup_s": 0.0,
+            "hidden_scope_s": 0.17299999999999993
+          }
+        ],
+        "candidate": [
+          {
+            "wall_s": 0.718,
+            "plugin_s": 0.358,
+            "explicit_cleanup_s": 0.072,
+            "hidden_scope_s": 0.06800000000000007
+          },
+          {
+            "wall_s": 0.733,
+            "plugin_s": 0.38,
+            "explicit_cleanup_s": 0.093,
+            "hidden_scope_s": 0.07899999999999999
+          }
+        ]
+      }
+    }
+  ],
+  "findings": [
+    "Public pre/post syntax/metadata and outer scope each take about0\u20132ms; almost all formerly unpartitioned time belongs to the hidden estimator call/return.",
+    "Private rollback marker still exists after unhold,not in every observed call. Candidate marker remains live in restricted OLS/PPML and has been consumed in full-universe OLS.",
+    "Explicit touse deletion costs210.5ms for c11,63.5ms for c12/c13,83.5ms for c14. Hidden-scope remainder falls substantially, supporting cleanup attribution.",
+    "Moving one deletion is not a uniform repair: c12 whole time worsens367/380.5ms; c11 pooled gain has mixed block direction. This is not a selected production change.",
+    "The documented next hypothesis is one batched deletion of obsolete touse and held_sample after unhold,not discards prior results. Existing validation and rollback stay intact."
+  ],
+  "source_references": [
+    "https://www.stata.com/manuals/p_estimates.pdf",
+    "https://www.stata.com/manuals/pereturn.pdf"
+  ],
+  "capture_sha256": {
+    "results.csv": "108e6c98f11bd400cd5d9aaf00cc03c11290e0ec6b22dcf7ee978e68a9d69fb0",
+    "plan.json": "1b506b03fddfbc5762bdf45ce385f86b694a6245d91a4fe124f9c9827b0a2e00",
+    "host.json": "bfaf4dba0ac5cfb470b4117177ffb8566247562d7f21f420e96a48c8708fff90",
+    "host-observations.jsonl": "94fceb466e2ba6de733d2e95e327e8c217754c37f2ce6a71e6165a9833fb64a8",
+    "preflight.json": "6ba49f6aeb99503883de007bb00a4ec98b781acb8b8e76d976a834b2fc602125"
+  },
+  "harness_sha256": "d20d9253234f1f2175045e8015ab7ae246c9edb781400fc7a31eb164d5938d46",
+  "environment_manifest_sha256": "079f37a3990ac8ade55e088bc7239404075d160f96ee8087d76a3630bd79e64c"
+}
