@@ -71,7 +71,7 @@
   "root_metadata_sha256": "be6dfde4bac9414e87ad2ec53abd9d4d982ad0887545df9b8d0f5d1e6dfce15b",
   "build_source_archive_sha256": "4bbb88fcc5da2cb6ba70a9a3682246da9980df71c86e163ee0c18ac7a9dc3610",
   "limitations": [
-    "Review candidate only; c2 at four workers exceeds the protected Linux timing guard by 5.64% versus incumbent.",
+    "Review candidate only; c2 at four workers is 5.64% slower than beta.13, exceeding the 5% allowance by 38.15 ms.",
     "Windows retains serial input pending live Break qualification.",
     "Interactive GUI Break and native Intel-host Stata remain unqualified.",
     "HTTP publication and versioned installations have not occurred."

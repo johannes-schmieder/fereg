@@ -80,7 +80,6 @@
     "all_observations_retained": true,
     "host_observation_passed": true,
     "host_record_sha256": "fe3abe8ec42a9024d08baed57558425a4d571c73cc1f57148e6cea34ac4be3aa",
-    "observation_record_sha256": "3fd56a760b2d955a56d50341186aab04456087cf08799197fa2d1c9ab948485d",
     "configuration_and_input_pins_sha256": "a0400c73b7de1c6088ed9b201d26bf062f7708ae1ad3c8c5965d047976e84ea8",
     "rows": [
       {
@@ -883,7 +882,9 @@
       }
     ],
     "physical_hosts": 1,
-    "whole_node_slots": 28
+    "whole_node_slots": 28,
+    "host_observations_sha256": "3fd56a760b2d955a56d50341186aab04456087cf08799197fa2d1c9ab948485d",
+    "timing_csv_sha256": "d02301c58462ab87bef4ffe43ce0532e658a5812879fedb2a4950f51a2cf9587"
   },
   "environment_scope": "Input-only Stata comparison. Reused Stata, plugin, ado, synthetic data and execution-file pins verified. No external PyFixest/Julia estimator environment is used; unchanged campaign.json is recorded, not substituted for verification of such an environment.",
   "limitations": [

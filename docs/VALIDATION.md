@@ -581,7 +581,8 @@ and passes 41 of 42 settings (38 of 39 protected settings plus all three advisor
 `in` settings). The prior c3/28, c6/4 and c8/16 regressions are within the guard:
 whole-call incumbent/candidate medians are 1.134/1.1275, 4.279/4.283 and
 3.174/3.001 seconds respectively. One protected full-sample setting fails:
-64 regressors at four workers (c2), 5.927/6.2615 seconds, **+5.64%**. It is slower
+64 regressors at four workers (c2), 5.927/6.2615 seconds, **+5.64%**
+(38.15 ms beyond the 5% allowance). It is slower
 in every paired block (+5.89%, +7.80%, +4.64%, +4.99%). Loading medians are nearly
 unchanged (641.5/646.1 ms); native time including loading is 5.4817/5.7560 seconds.
 Per-call native-minus-load medians are 4.8593/5.0607 seconds. These separate
