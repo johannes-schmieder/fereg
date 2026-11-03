@@ -603,6 +603,17 @@ more than one statistic, returns {cmd:r(198)} and creates no target.
 Typing {cmd:feppml} without a variable list redisplays the last results;
 {cmd:level()} and Stata's standard display options apply, and
 {cmd:estimates replay}, {cmd:bootstrap:} and {cmd:jackknife:} use this replay.
+
+{pstd}
+The output shows convergence iterations, observations, residual degrees of
+freedom, the Wald chi-square test and p-value, pseudo-R-squared, log
+pseudolikelihood and deviance. Cluster counts and an absorbed-degrees-of-freedom
+table accompany the coefficient table. As with {cmd:fereg}, {cmd:*} marks
+cluster-nested effects and {cmd:?} marks potentially understated redundancy.
+Undefined tests remain missing. Bootstrap and jackknife replay retain Stata's
+inference display.
+
+{pstd}
 {cmd:e(N)} is effective N: it equals retained physical rows unless fweights
 are used. Core sample and model scalars are
 

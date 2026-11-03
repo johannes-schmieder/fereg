@@ -28,6 +28,7 @@ EXPECTED_PLUGINS = tuple(PLATFORM_PLUGINS.values())
 
 PRODUCTION_STATA_FILES = (
     "fereg.ado",
+    "_fereg_display.ado",
     "fereg_run.ado",
     "_fereg_estimate_public.ado",
     "_fereg_estimate_ols.ado",

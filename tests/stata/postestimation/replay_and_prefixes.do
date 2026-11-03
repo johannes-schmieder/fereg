@@ -112,30 +112,55 @@ confirm variable res fe_w fe_f dd mm
 
 * Validate the printed statistics against stored results, including missing
 * statistics, without changing coefficients, covariance, fit, DoF or sample.
-program define check_ols_display
-    tempname b v fit dof after handle
+program define check_model_display
+    local command "`e(cmd)'"
+    local ppml = "`command'" == "feppml"
+    local prefix = cond(`ppml', "feppml", "fereg")
+    local footer = e(N_hdfe) > 0
+    tempname b v fit native_dof dof after handle
     tempvar sample
     matrix `b' = e(b)
     matrix `v' = e(V)
-    matrix `fit' = e(fereg_fit)
-    matrix `dof' = e(dof_table)
+    matrix `fit' = e(`prefix'_fit)
+    matrix `native_dof' = e(`prefix'_dof)
+    if `footer' matrix `dof' = e(dof_table)
     generate byte `sample' = e(sample)
     local N : display %10.0fc e(N)
     local expected1 = itrim("Number of obs = `N'")
-    local F : display %10.2f e(F)
-    local dfm : display %4.0f e(df_m)
-    local dfr : display %7.0f e(df_r)
-    local expected2 = itrim("F(`dfm',`dfr') = `F'")
-    local p : display %10.4f Ftail(e(df_m), e(df_r), e(F))
-    local expected3 = itrim("Prob > F = `p'")
-    local row 3
-    foreach stat in r2 r2_a r2_within rmse {
-        local ++row
-        local value : display %10.4f e(`stat')
-        local label = cond("`stat'" == "r2", "R-squared", ///
-            cond("`stat'" == "r2_a", "Adj R-squared", ///
-            cond("`stat'" == "r2_within", "Within R-sq.", "Root MSE")))
-        local expected`row' = itrim("`label' = `value'")
+    if `ppml' {
+        local dfr : display %10.0fc e(df_resid)
+        local df = cond(missing(e(df_chi2)), e(df_m), e(df_chi2))
+        local wald : display %10.2f e(chi2)
+        local p : display %10.4f chi2tail(`df', e(chi2))
+        local deviance : display %12.0g e(deviance)
+        local ll : display %12.0g e(ll)
+        local r2 : display %10.4f e(r2_p)
+        local expected2 = itrim("Residual df = `dfr'")
+        local expected3 = itrim("Wald chi2(`df') = `wald'")
+        local expected4 = itrim("Prob > chi2 = `p'")
+        local expected5 = itrim("Deviance = `deviance'")
+        local expected6 = itrim("Log pseudolikelihood = `ll'")
+        local expected7 = itrim("Pseudo R2 = `r2'")
+        local plural = cond(e(ic) == 1, "", "s")
+        local expected8 "(PPML estimator converged in `=e(ic)' iteration`plural')"
+        local row 8
+    }
+    else {
+        local F : display %10.2f e(F)
+        local dfm : display %4.0f e(df_m)
+        local dfr : display %7.0f e(df_r)
+        local expected2 = itrim("F(`dfm',`dfr') = `F'")
+        local p : display %10.4f Ftail(e(df_m), e(df_r), e(F))
+        local expected3 = itrim("Prob > F = `p'")
+        local row 3
+        foreach stat in r2 r2_a r2_within rmse {
+            local ++row
+            local value : display %10.4f e(`stat')
+            local label = cond("`stat'" == "r2", "R-squared", ///
+                cond("`stat'" == "r2_a", "Adj R-squared", ///
+                cond("`stat'" == "r2_within", "Within R-sq.", "Root MSE")))
+            local expected`row' = itrim("`label' = `value'")
+        }
     }
     local ++row
     local expected`row' "[90% conf. interval]"
@@ -145,7 +170,6 @@ program define check_ols_display
         local value : display %10.0fc e(N_clust`i')
         local expected`row' = itrim("Number of clusters (`e(clustvar`i')') = `value'")
     }
-    local footer = e(N_hdfe) > 0
     if `footer' {
         local names : rownames `dof'
         forvalues i = 1/`=rowsof(`dof')' {
@@ -164,22 +188,31 @@ program define check_ols_display
     }
     local found_footer 0
     tempfile output
-    quietly log using `"`output'"', text replace name(ols_summary)
-    fereg, level(90)
-    quietly log close ols_summary
+    quietly log using `"`output'"', text replace name(model_summary)
+    `command', level(90)
+    quietly log close model_summary
     matrix `after' = e(b)
     assert mreldif(`b', `after') == 0
     matrix `after' = e(V)
     assert mreldif(`v', `after') == 0
-    matrix `after' = e(fereg_fit)
+    matrix `after' = e(`prefix'_fit)
     assert mreldif(`fit', `after') == 0
-    matrix `after' = e(dof_table)
-    assert mreldif(`dof', `after') == 0
+    matrix `after' = e(`prefix'_dof)
+    assert mreldif(`native_dof', `after') == 0
+    if `footer' {
+        matrix `after' = e(dof_table)
+        assert mreldif(`dof', `after') == 0
+    }
     assert `sample' == e(sample)
     file open `handle' using `"`output'"', read text
     file read `handle' line
     while r(eof) == 0 {
         local line = itrim(strtrim(`"`macval(line)'"'))
+        if `ppml' {
+            foreach label in "R-squared" "Within R-sq." "Root MSE" "Prob > F" {
+                assert strpos(`"`macval(line)'"', "`label'") == 0
+            }
+        }
         forvalues i = 1/`row' {
             if strpos(`"`macval(line)'"', `"`expected`i''"') local found`i' 1
         }
@@ -195,23 +228,55 @@ program define check_ols_display
 end
 
 quietly fereg y x z, absorb(worker firm)
-check_ols_display
+check_model_display
 quietly fereg y x z, absorb(worker) vce(robust) noconstant
-check_ols_display
+check_model_display
 quietly fereg y x z, absorb(worker firm) vce(cluster worker firm)
-check_ols_display
+check_model_display
 quietly fereg y x z, absorb(worker##c.period firm)
-check_ols_display
+check_model_display
 quietly fereg y x z, absorb(worker firm period)
-check_ols_display
+check_model_display
 quietly fereg y x z
-check_ols_display
+check_model_display
 quietly fereg y
 assert missing(e(F))
-check_ols_display
+check_model_display
 clonevar long_firm_identifier = firm
 quietly fereg y x z, absorb(worker long_firm_identifier) vce(cluster long_firm_identifier)
-check_ols_display
+check_model_display
+
+* PPML uses its own fit statistics and z inference, including missing Wald
+* statistics, weighted counts, absorbed slopes and clustered DoF markers.
+quietly feppml count x z, absorb(worker firm)
+check_model_display
+quietly feppml count x z, absorb(worker firm) vce(cluster worker firm)
+check_model_display
+quietly feppml count x z, absorb(worker##c.period firm)
+check_model_display
+quietly feppml count x z [fw=w], absorb(firm)
+check_model_display
+quietly feppml count x z
+check_model_display
+quietly feppml count
+assert missing(e(chi2))
+check_model_display
+quietly feppml count x z, absorb(worker long_firm_identifier) vce(cluster long_firm_identifier)
+check_model_display
+
+* Resampling replay does not label the original fit's Wald test as bootstrap inference.
+bootstrap, reps(4) seed(1) nodots cluster(firm): feppml count x z, absorb(worker firm)
+quietly log using `"`output'"', text replace name(prefix_display)
+feppml
+quietly log close prefix_display
+file open `handle' using `"`output'"', read text
+file read `handle' line
+while r(eof) == 0 {
+    assert strpos(`"`macval(line)'"', "HDFE PPML regression") == 0
+    assert strpos(`"`macval(line)'"', "Absorbed degrees of freedom:") == 0
+    file read `handle' line
+}
+file close `handle'
 
 di as result "replay_and_prefixes.do: PASS"
 di as result "END_FIXTURE|replay_and_prefixes|rc=0"

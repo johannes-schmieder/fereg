@@ -1010,6 +1010,13 @@ ll_0 uses that mean and pseudo-R² is `1−ll/ll_0` when defined. Publish outer
 and inner counts, halvings and convergence. Do not post OLS RSS/TSS/MSS,
 R²/adjusted R², RMSE, F or e(df_r) for PPML.
 
+The PPML frontend displays convergence iterations, effective N, residual DoF,
+Wald chi-square and its p-value, pseudo-R², log pseudolikelihood and deviance,
+plus cluster counts and the same absorbed-DoF table used by OLS. Wald inference
+uses `e(df_chi2)` when available; an undefined test remains missing. Both
+commands share a Stata display helper; PPML reporting remains after transaction
+commit, and prefix replay retains Stata's inference display.
+
 Both estimators preserve e(b), e(V), e(sample), coefficient/equation stripes,
 model/command/weight/cluster metadata, effective and physical N, candidate/full
 counts, ranks, absorbed metadata, singleton accounting, prediction binding

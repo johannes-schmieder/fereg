@@ -175,7 +175,7 @@ foreach field of local actual_macros {
     local allowed : list field in allowed_macros
     assert `allowed'
 }
-if `"`e(cmd)'"' == "feppml" assert strpos(`"`e(fereg_version)'"', "0.5.0-beta.") == 1
+if `"`e(cmd)'"' == "feppml" assert `"`e(fereg_version)'"' == "0.5.0"
 
 local allowed_matrices b V feppml_status feppml_fit feppml_dof feppml_fe ///
     feppml_cluster feppml_subset feppml_separation feppml_inference ///

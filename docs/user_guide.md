@@ -45,6 +45,12 @@ the documented `r(101)` rejection. After estimation, `predict` supports
 required retained state is available. See `help feppml` for the exact syntax,
 drop codes, stored results, failure atomicity, and runnable examples.
 
+The PPML output reports convergence iterations, observations, residual degrees
+of freedom, the Wald chi-square test and p-value, pseudo-R², log
+pseudolikelihood and deviance. It also shows cluster counts and the absorbed
+categories, redundancy and coefficient counts. Replay uses the same summary;
+bootstrap and jackknife replay retain Stata's inference display.
+
 Leave `solver(auto)` in place unless you need a specific method. It selects
 the MAP projection family, whose internal numerical method depends on the
 design and available memory. For eligible two-effect categorical designs it

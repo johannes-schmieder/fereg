@@ -14,7 +14,7 @@ from scripts import package_release, stage_release, stage_local_install  # noqa:
 
 class ReleaseStagingTests(unittest.TestCase):
     PRODUCTION_STATA_FILES = (
-        "fereg.ado", "fereg_run.ado", "_fereg_estimate_public.ado",
+        "fereg.ado", "_fereg_display.ado", "fereg_run.ado", "_fereg_estimate_public.ado",
         "_fereg_estimate_ols.ado", "_fereg_load.ado", "_fereg_factor_sample.ado", "_fereg_indepvars.ado", "_fereg_memory_baseline.ado", "_fereg_memory_validate.ado", "_fereg_input_host.ado",
         "feppml.ado", "_fereg_ppml.ado", "_fereg_estimate_ppml.ado", "_fereg_ppml_result_mata.ado",
         "_fereg_ppml_result_mata.json", "_fereg_ppml_validation_error.mo",

@@ -1,5 +1,39 @@
 # Validation status
 
+## PPML display update, November 3, 2026
+
+`feppml` now reports convergence iterations, effective N, residual DoF, Wald
+chi-square and p-value, pseudo-R², log pseudolikelihood, deviance and cluster
+counts, followed by the absorbed-DoF table. OLS and PPML share an installed
+Stata display helper; the OLS summary and absorbed-table implementations are
+unchanged. PPML calls it at the existing reporting point after transaction
+commit and on replay. No native code, binary, Mata object, scientific result
+or timing boundary changes; prior qualification remains applicable.
+
+On Apple Silicon Mac Stata/MP 19, `replay_and_prefixes.do` passes its eight OLS
+variants plus seven PPML variants covering two FEs, two-way clustering,
+absorbed slopes, fweights, no FEs, intercept-only with missing Wald inference,
+and long names. It checks printed values, missing tests, 90% intervals,
+prefix behavior, and exact preservation of coefficients, covariance, fit,
+DoF and sample on replay. `feppml_command_contract.do` also passes after
+updating its stale beta-only version assertion to 0.5.0.
+
+All 34 focused help/package Python tests pass, including the updated helper
+inventory. A fresh local net installation verifies all 32 installed file hashes,
+loads the helper from its isolated installed directory, and passes selftest,
+OLS/PPML calls and an independent dummy-variable Poisson coefficient check.
+The root package check passes with 37 files and unchanged native identity,
+plugin hashes and Mata objects; `git diff --check` passes. The Mac plugin is
+identical to the OLS display record below. No native rebuild or new numerical
+or performance campaign was needed; Linux and Windows were not rerun.
+The PPML help examples are unchanged and the reviewed help hash is updated.
+
+Passing Stata log SHA-256 identities:
+
+- Isolated installation: `4b0c4ac3149d540eb7d32202de4fbc504b0f47ae0d9c46eeedaed70eb6d3f1d8`.
+- `feppml_command_contract.do`: `8c6b29b0e3720f338cd9266269f0be662976cbaf6eeddfd081b617e774041aaa`.
+- `replay_and_prefixes.do`: `b6f194b6844a8178a6ca4b34869d31c2972faa82a3cb29a022d3327976f964ae`.
+
 ## OLS display update, November 3, 2026
 
 `fereg.ado` now displays a reghdfe-style fit summary, cluster counts and an

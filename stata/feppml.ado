@@ -1,4 +1,4 @@
-*! version 0.5.0 31oct2026
+*! version 0.5.0 03nov2026
 program define feppml, eclass
     version 15.0
     if replay() {
@@ -9,7 +9,7 @@ program define feppml, eclass
             exit 198
         }
         if `"`e(cmd)'"' != "feppml" error 301
-        ereturn display, `diopts'
+        _fereg_display, `diopts'
         exit
     }
     local host_processors = c(processors)

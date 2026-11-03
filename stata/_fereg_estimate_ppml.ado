@@ -1439,7 +1439,7 @@ program define _fereg_estimate_ppml, eclass
             as result %9.4f `runtime_shadow'[1,1]
         di as txt "feppml action memory: partial estimate; combined peak unavailable"
     }
-    if `"`publicdisplay'"' != "" ereturn display
+    if `"`publicdisplay'"' != "" _fereg_display
 end
 
 program define _fereg_eppml_validate, rclass
