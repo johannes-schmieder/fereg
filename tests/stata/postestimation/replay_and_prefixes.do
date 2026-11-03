@@ -8,7 +8,7 @@ set more off
 
 fereg, selftest
 local release `"`r(fereg_version)'"'
-assert strpos(`"`release'"', "0.5.0-beta.") == 1
+assert `"`release'"' == "0.5.0"
 
 set seed 20261031
 set obs 600
@@ -109,6 +109,109 @@ file close `handle'
 assert `header' == 1
 assert `missing' == 0
 confirm variable res fe_w fe_f dd mm
+
+* Validate the printed statistics against stored results, including missing
+* statistics, without changing coefficients, covariance, fit, DoF or sample.
+program define check_ols_display
+    tempname b v fit dof after handle
+    tempvar sample
+    matrix `b' = e(b)
+    matrix `v' = e(V)
+    matrix `fit' = e(fereg_fit)
+    matrix `dof' = e(dof_table)
+    generate byte `sample' = e(sample)
+    local N : display %10.0fc e(N)
+    local expected1 = itrim("Number of obs = `N'")
+    local F : display %10.2f e(F)
+    local dfm : display %4.0f e(df_m)
+    local dfr : display %7.0f e(df_r)
+    local expected2 = itrim("F(`dfm',`dfr') = `F'")
+    local p : display %10.4f Ftail(e(df_m), e(df_r), e(F))
+    local expected3 = itrim("Prob > F = `p'")
+    local row 3
+    foreach stat in r2 r2_a r2_within rmse {
+        local ++row
+        local value : display %10.4f e(`stat')
+        local label = cond("`stat'" == "r2", "R-squared", ///
+            cond("`stat'" == "r2_a", "Adj R-squared", ///
+            cond("`stat'" == "r2_within", "Within R-sq.", "Root MSE")))
+        local expected`row' = itrim("`label' = `value'")
+    }
+    local ++row
+    local expected`row' "[90% conf. interval]"
+    local nclusters = cond(missing(e(N_clustervars)), 0, e(N_clustervars))
+    forvalues i = 1/`nclusters' {
+        local ++row
+        local value : display %10.0fc e(N_clust`i')
+        local expected`row' = itrim("Number of clusters (`e(clustvar`i')') = `value'")
+    }
+    local footer = e(N_hdfe) > 0
+    if `footer' {
+        local names : rownames `dof'
+        forvalues i = 1/`=rowsof(`dof')' {
+            local ++row
+            local name : word `i' of `names'
+            local name = subinstr("`name'", "1.", "", .)
+            forvalues j = 1/3 {
+                local value`j' : display %10.0g `dof'[`i',`j']
+            }
+            local note = cond(`dof'[`i',5] == 1, "*", cond(`dof'[`i',4] == 1, "?", ""))
+            local expected`row' = itrim("`name' | `value1' `value2' `value3' `note' |")
+        }
+    }
+    forvalues i = 1/`row' {
+        local found`i' 0
+    }
+    local found_footer 0
+    tempfile output
+    quietly log using `"`output'"', text replace name(ols_summary)
+    fereg, level(90)
+    quietly log close ols_summary
+    matrix `after' = e(b)
+    assert mreldif(`b', `after') == 0
+    matrix `after' = e(V)
+    assert mreldif(`v', `after') == 0
+    matrix `after' = e(fereg_fit)
+    assert mreldif(`fit', `after') == 0
+    matrix `after' = e(dof_table)
+    assert mreldif(`dof', `after') == 0
+    assert `sample' == e(sample)
+    file open `handle' using `"`output'"', read text
+    file read `handle' line
+    while r(eof) == 0 {
+        local line = itrim(strtrim(`"`macval(line)'"'))
+        forvalues i = 1/`row' {
+            if strpos(`"`macval(line)'"', `"`expected`i''"') local found`i' 1
+        }
+        if `"`macval(line)'"' == "Absorbed degrees of freedom:" local found_footer 1
+        file read `handle' line
+    }
+    file close `handle'
+    forvalues i = 1/`row' {
+        if !`found`i'' di as error `"Missing display field: `expected`i''"'
+        assert `found`i'' == 1
+    }
+    assert `found_footer' == `footer'
+end
+
+quietly fereg y x z, absorb(worker firm)
+check_ols_display
+quietly fereg y x z, absorb(worker) vce(robust) noconstant
+check_ols_display
+quietly fereg y x z, absorb(worker firm) vce(cluster worker firm)
+check_ols_display
+quietly fereg y x z, absorb(worker##c.period firm)
+check_ols_display
+quietly fereg y x z, absorb(worker firm period)
+check_ols_display
+quietly fereg y x z
+check_ols_display
+quietly fereg y
+assert missing(e(F))
+check_ols_display
+clonevar long_firm_identifier = firm
+quietly fereg y x z, absorb(worker long_firm_identifier) vce(cluster long_firm_identifier)
+check_ols_display
 
 di as result "replay_and_prefixes.do: PASS"
 di as result "END_FIXTURE|replay_and_prefixes|rc=0"

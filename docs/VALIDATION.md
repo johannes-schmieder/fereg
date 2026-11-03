@@ -1,5 +1,34 @@
 # Validation status
 
+## OLS display update, November 3, 2026
+
+`fereg.ado` now displays a reghdfe-style fit summary, cluster counts and an
+absorbed-DoF table from the existing posted results. The solver diagnostic
+and coefficient table remain, and prefix replay retains Stata's inference
+display. Estimation adapters, native code, binaries and result semantics are
+unchanged; prior scientific and performance qualification remains applicable.
+
+The maintained `replay_and_prefixes.do` fixture passes on Apple Silicon Mac
+Stata/MP 19 with the released plugin. It checks eight display variants: two
+categorical FEs, robust one-FE without a constant, two-way clustering, absorbed
+slopes, three FEs, no FEs, intercept-only with missing F, and long FE/cluster
+names. Printed statistics and DoF rows match stored results; replay preserves
+coefficients, covariance, fit and DoF matrices and sample membership exactly.
+The fixture also covers saved-estimate replay, 90% intervals and coefficient
+formatting, bootstrap/jackknife, independent OLS/PPML coefficient witnesses,
+selftest and saved outputs. Its old beta-only version assertion was updated
+for the stable release. During test development, incorrect assumptions about
+returned `r(table)` and matrix-expression syntax were corrected; no scientific
+tolerance or runtime behavior changed.
+
+The 36-file installation check confirms the unchanged native runtime identity,
+plugin hashes and Mata objects; `git diff --check` passes. No native rebuild,
+performance campaign or Linux/Windows rerun is required for this display-only
+change. Mac plugin SHA-256:
+`2c8f6af8e10653a675c693e98560e94648e2f795ce5dfc605cf3f93f617d2200`.
+Passing Stata fixture log SHA-256:
+`e7a298cb23c42fd91d4c9a17bee6211745e3d6d24a1f39c873ec2630c701d7db`.
+
 ## Public documentation review, November 3, 2026
 
 The post-release review reconciles the README, installation and user guides,

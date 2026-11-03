@@ -263,6 +263,15 @@ constructed natively.
 
 ## OLS results and postestimation
 
+The output follows the familiar `reghdfe` layout: sample size, model F-test and
+p-value, R-squared, adjusted and within R-squared, and Root MSE appear above the
+coefficient table. Clustered models also report counts for each cluster
+dimension. Below the coefficients, the absorbed-DoF table lists categories,
+redundant parameters and coefficient counts; `*` marks effects nested within
+clusters and `?` marks potentially understated redundancy. These displays use
+the existing stored results, including missing values for undefined statistics.
+Replay after `bootstrap:` or `jackknife:` uses Stata's prefix inference display.
+
 The command posts the standard `e(b)`, `e(V)`, `e(sample)`, sample size, rank,
 residual and absorbed degrees of freedom, fit statistics, weight metadata,
 cluster counts, singleton counts, and absorbed-effect metadata. The following

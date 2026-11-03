@@ -995,6 +995,13 @@ Robust and clustered covariance may be legitimately singular (for example
 G < K); a pivot within the certificate tolerance of the largest slope variance
 leaves F missing, and a clearly negative pivot is an error.
 
+The OLS frontend displays the stored sample size, model F and its F-tail
+p-value, R², adjusted and within R², RMSE and per-dimension cluster counts
+above the coefficient table. Its absorbed-DoF table uses `e(dof_table)` and
+preserves the inexact and cluster-nesting markers. Undefined statistics remain
+missing. Display and replay do not change posted estimates, sample or native
+execution; prefix replay retains Stata's own inference display.
+
 PPML deviance is `2 sum q_i[mu_i−y_i+y_i log(y_i/mu_i)]`, with zero-outcome
 contribution `2q_i mu_i`. Log likelihood is
 `sum q_i[y_i eta_i−mu_i−lgamma(y_i+1)]`, including fractional outcomes.

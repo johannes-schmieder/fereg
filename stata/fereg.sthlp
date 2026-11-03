@@ -104,6 +104,16 @@ the fixed effects, estimates the finite regression and covariance matrix,
 checks the result, and writes requested outputs. No partial estimate is posted
 after an error or Break.
 
+{pstd}
+The output reports sample size, the model F-test and p-value, R-squared,
+adjusted and within R-squared, and Root MSE above the coefficient table.
+Clustered models also show counts for each cluster dimension. The absorbed
+degrees-of-freedom table below the coefficients reports categories, redundant
+parameters and coefficient counts. Its {cmd:*} marker denotes effects nested
+within clusters; {cmd:?} means redundancy may be understated. Undefined
+statistics remain missing. Replay after {cmd:bootstrap:} or {cmd:jackknife:}
+uses Stata's prefix inference display.
+
 {marker absorb}
 {title:Absorbed terms}
 
