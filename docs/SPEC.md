@@ -896,6 +896,39 @@ dependent slope channels; a singular local Gram block is not automatically
 an invalid model. Weak-graph tests retain identified combinations even where
 individual FE coordinates are not unique.
 
+The OLS exceptional-ratio candidate (2026-11-02) covers a global intercept
+without FEs and one or two categorical-intercept FE terms. In this scope the
+existing squared within/raw norm cutoff is an investigation trigger, not an
+omission certificate. Exact constancy in an included intercept span, or an
+exactly reconstructed absorbed representation, may establish omission cheaply.
+If that proof is unavailable, bounded verification uses the original source
+columns and outcome. Once repair is necessary, every finite candidate and the
+outcome must have a projection-error bound; reusing an uncertified ordinary
+column would leave dependence between repaired and ordinary columns unresolved.
+Resolved columns use their within norms as finite solve scales. Original raw
+scales remain available for source diagnostics and reconstruction.
+
+The existing deterministic factorization selects the finite basis. Verify its
+retained coordinates with an inverse/Gram perturbation bound, including Gram
+formation error and the aggregate standardized projection error. For each
+omitted finite column, independently reconstruct its representation in the
+retained columns. If `Delta` bounds the standardized matrix error and `a` is
+any stored representation vector, the true dropped-span residual is bounded by
+`||xhat_j - Xhat_kept a|| + Delta (1 + ||a||)`. Evaluate the first term directly
+from rows with rounding enclosures; a small difference of Gram products is
+insufficient. Retention uses an upper norm scale and omission uses a lower norm
+scale in the unchanged rank threshold. These checks certify the selected named
+basis; they do not claim that exact QR would choose the same names at a pivot
+tie. Original slots, deterministic tie breaking and cross-worker omission
+agreement remain required. A failed or unresolved certificate fails atomically,
+without a new automatic omission or a weaker tolerance.
+
+This candidate leaves the existing policy outside that graph scope unchanged,
+including higher-way and slope absorption and PPML. It does not recover signal
+already rounded away in the stored input. Its independent witnesses and the
+qualification boundary are recorded in [VALIDATION](VALIDATION.md); the
+[rank-verification note](rank_verification.md) gives the bounds and their limits.
+
 PPML freezes canonical finite rank/status after the final separation/singleton
 sample. Positive changing IRLS weights cannot silently change public omission
 decisions. Revalidate that basis against the accepted final Hessian; a final
@@ -1428,6 +1461,67 @@ design/weights, not a recurrence's own residual or stale weighted factor.
 Local rank-aware bases prevent slope scaling/rotation from changing the span
 test. Residual reconstruction and small D'Wr are necessary, not a universal
 forward-accuracy bound; §20 independently tests weak graphs.
+
+The exceptional OLS verification in §8 uses a deterministic spanning forest
+of the categorical incidence graph; zero/one-FE intercept cases use the
+corresponding constant/star representation. For incidence matrix A, deflate an
+original RHS by a forest potential, `t = v - A a`, and reconstruct a fresh
+projection `rhat = t - A ahat`. Bound both reconstruction errors explicitly.
+An exact zero defect proves membership only when its arithmetic error is also
+zero. For the exact moment vector `g = A' W rhat`, subtree sums give feasible
+tree-edge flows f. Component compatibility follows from the incidence identity;
+do not manufacture it by adjusting rounded moments. Enclose the subtree sums
+and weighted norm so that
+
+`||rhat - M_A v||_W <= rho_deflate + rho_reconstruct + sqrt(sum_e f_e^2 / w_e)`.
+
+The flow term bounds the remaining absorbed component without assuming that
+small local moments imply forward accuracy. A weak forest or small tree-edge
+weights can make this sufficient bound loose; bounded refinement may then end
+in an unresolved error. Preserve the configured explicit solver, memory limits,
+Break checks and atomic publication while performing verification.
+
+Before finalizing an activated repair's finite coefficients, perform at most
+three compensated residual-score corrections using its already certified finite
+inverse and existing workspace. Rank and column order stay fixed. This reduces
+coefficient roundoff that a large original mean can magnify in the reported
+intercept; it introduces no alternative convergence threshold. The independent
+score, bread and terminal checks below still govern acceptance.
+
+A repaired fit also bounds its quotient-space scores using the independently
+certified design and outcome errors. For reconstructed within residual rhat,
+its error includes the outcome bound, `sum_j |beta_j| E_j`, and arithmetic in
+the residual combination. The finite-score check includes these uncertainties
+at the unchanged tolerance. Any terminal residual projection must additionally
+pass a weighted movement check against that certified residual and its error
+budget; a fresh FE-moment pass alone does not establish coefficient accuracy.
+Independently recompute the final FE moments on the declared levels; an exactly
+zero residual satisfies that condition directly. A zero quotient outcome is
+accepted only with exact zero rows, a zero outcome-error bound and zero finite
+coefficients. Original-source reconstruction and requested saved-effect recovery remain
+mandatory. The candidate adds these safeguards only to the declared repair path;
+it does not replace the ordinary or PPML certificates.
+
+For robust and clustered inference on an activated repair, retain quotient
+score rows `[within X, 1]` instead of adding large original means back. With
+finite bread C, weighted column means mu and reference weight sum S, the map
+to reported coefficient influences is `J = [[C, 0], [-mu' C, 1/S]]`.
+Compute covariance as `J meat J'`, with the existing score multipliers and
+finite-sample corrections, and independently certify that formula. Construct J
+directly from the finite block and intercept normalization; do not obtain it by
+cancellation-prone products of the full reported bread. Public bread and
+coefficient normalization remain unchanged. Admit the additional map within the
+public inference memory budget. Ordinary inference retains its numerical path.
+
+For clustered inference on this repair path, the Jacobi eigensolver uses
+`128 epsilon` times the smallest positive original row maximum as its stopping
+target. A global maximum can prematurely stop rotations needed to reconstruct a
+small slope row beside a large reported-intercept variance. Skip exactly zero
+rows and use no unit floor; an underflowed target requires exact annihilation or
+bounded failure. The existing iteration limit, independent reconstruction and
+orthogonality tolerances remain authoritative. Eigenvalues, numerical-rank
+thresholds and any multiway clipping still refer to the full covariance in
+reported coordinates; changing coordinates for clipping would change the policy.
 
 A derived certificate applies to a residual formed as a linear combination of
 certified projections, `r = y~ - X~b`. The moments are recomputed from the

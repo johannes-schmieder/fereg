@@ -3159,6 +3159,10 @@ pub(crate) mod tests {
                     *value = (*value as f32) as f64;
                 }
             }
+            // The decimal fixture's float32 values have cycle contrast
+            // -3/2^26, so they are not exactly FE-absorbed. Use exactly
+            // representable additive values for this rank-zero witness.
+            loaded.numeric_sources[0].1.values[5..].copy_from_slice(&[-0.75, -0.25, 0.25, 0.75]);
             let prepared =
                 prepare_model(&request, &[], &loaded, false).expect("singleton preparation");
             let inference = super::super::fit_prepared_model_unadjusted_with_loaded_moments(
@@ -3168,9 +3172,9 @@ pub(crate) mod tests {
             )
             .expect("rank-zero singleton inference");
             assert_eq!(inference.fit().finite_rank(), 0);
-            // The FE-collinear slope has no finite score coordinate, while the
-            // deferred reported constant retains its raw score-mutation check.
-            assert_eq!(inference.fit().score_certificate().moments, 1);
+            // The repaired quotient has no finite score coordinates. The
+            // reported constant is covered by the fresh terminal FE checks.
+            assert_eq!(inference.fit().score_certificate().moments, 0);
             assert_eq!(
                 inference.fit().coefficients()[0].status,
                 super::super::PreparedOlsFitStatus::CollinearWithFixedEffects
@@ -3207,6 +3211,47 @@ pub(crate) mod tests {
                         <= 5e-16
                 );
             }
+        }
+    }
+
+    #[test]
+    fn rounded_singleton_fixture_retains_the_exact_stored_cycle_direction() {
+        for keep_singletons in [false, true] {
+            let mut request = two_way_singleton_request(keep_singletons);
+            request.model.terms.truncate(1);
+            let mut loaded = two_way_singleton_input();
+            for value in &mut loaded.outcome.values {
+                *value = (*value as f32) as f64;
+            }
+            for (_, column) in &mut loaded.numeric_sources {
+                for value in &mut column.values {
+                    *value = (*value as f32) as f64;
+                }
+            }
+            let x = &loaded.numeric_sources[0].1.values[5..];
+            let y = &loaded.outcome.values[5..];
+            // Exact binary32-to-binary64 arithmetic: one cycle identifies x.
+            assert_eq!(x[0] - x[1] - x[2] + x[3], -3.0 / 67_108_864.0);
+            assert_eq!(y[0] - y[1] - y[2] + y[3], 209_715.0 / 2_097_152.0);
+            let prepared = prepare_model(&request, &[], &loaded, false).unwrap();
+            let fit = super::super::fit_prepared_model_coefficients(
+                &prepared,
+                super::super::PreparedOlsFitConfig::default(),
+            )
+            .expect("stored nonzero cycle is identified");
+            assert_eq!(fit.finite_rank(), 1);
+            assert_eq!(
+                fit.coefficients()[0].status,
+                super::super::PreparedOlsFitStatus::Kept
+            );
+            assert!((fit.coefficients()[0].value.unwrap() + 2_236_960.0).abs() < 1e-6);
+            let error = super::super::fit_prepared_model_unadjusted_with_loaded_moments(
+                &prepared,
+                super::super::PreparedOlsUnadjustedConfig::default(),
+                None,
+            )
+            .expect_err("the identified cycle exhausts residual degrees of freedom");
+            assert_eq!(error.code, crate::ErrorCode::InsufficientObservations);
         }
     }
 

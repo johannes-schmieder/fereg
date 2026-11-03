@@ -386,6 +386,7 @@ fn compose_view_internal<P: PreparedOlsInferenceView + ?Sized, R: PreparedInfere
         config.certificate_tolerance,
         reservation,
         score_scratch,
+        config.fit.absorb.solver_memory_budget,
     )?;
     if perturbations.score_design && score_design.finite_rank() > 0 {
         score_design.certificate.passed = false;
@@ -603,10 +604,12 @@ fn build_covariance<R: PreparedInferenceReservation>(
     if !hc1_correction.is_finite() || hc1_correction <= 0.0 {
         return Err(invalid_data("prepared robust HC1 correction is invalid"));
     }
+    let bread = scores.sandwich_bread(fit);
     if let Some(dense) = scores.dense_view() {
         return build_dense_covariance(
             fit,
             dense,
+            bread,
             weight_view,
             weights,
             hc1_correction,
@@ -625,7 +628,7 @@ fn build_covariance<R: PreparedInferenceReservation>(
             // `(sqrt(HC1) * weight_root) * residual`.
             correction_root: hc1_correction.sqrt(),
         },
-        fit.bread().values(),
+        bread,
         reservation,
     )?;
     let standard_errors = standard_errors(&values, dimension, reservation)?;
@@ -639,9 +642,11 @@ fn build_covariance<R: PreparedInferenceReservation>(
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 fn build_dense_covariance<R: PreparedInferenceReservation>(
     fit: &CertifiedPreparedOlsFit,
     scores: PreparedOlsDenseScoreView<'_>,
+    bread: &[f64],
     weight_view: ReferenceWeightView<'_>,
     weights: PreparedOlsReferenceWeightReport,
     hc1_correction: f64,
@@ -685,7 +690,7 @@ fn build_dense_covariance<R: PreparedInferenceReservation>(
         reservation,
     )?;
     let values = bread_meat_bread(
-        fit.bread().values(),
+        bread,
         &meats.production,
         dimension,
         SandwichCorrectionPolicy::Scale(hc1_correction),
@@ -719,12 +724,13 @@ fn certify_covariance_formula<R: PreparedInferenceReservation>(
     dense_certificate_meat: Option<&[f64]>,
     reservation: &mut R,
 ) -> Result<(f64, f64, f64, f64)> {
+    let bread = scores.sandwich_bread(fit);
     let dimension = covariance.dimension();
     let square = checked_square(
         dimension,
         "prepared robust certificate dimensions overflow usize",
     )?;
-    if covariance.values.len() != square || fit.bread().values().len() != square {
+    if covariance.values.len() != square || bread.len() != square {
         return Err(invalid_argument(
             "prepared robust certificate covariance dimensions are inconsistent",
         ));
@@ -765,8 +771,7 @@ fn certify_covariance_formula<R: PreparedInferenceReservation>(
             let mut correction = 0.0_f64;
             for inner in 0..dimension {
                 compensated_add(
-                    fit.bread().values()[row * dimension + inner]
-                        * meat[inner * dimension + column],
+                    bread[row * dimension + inner] * meat[inner * dimension + column],
                     &mut value,
                     &mut correction,
                 )?;
@@ -787,8 +792,7 @@ fn certify_covariance_formula<R: PreparedInferenceReservation>(
             let mut correction = 0.0_f64;
             for inner in 0..dimension {
                 compensated_add(
-                    left_product[row * dimension + inner]
-                        * fit.bread().values()[column * dimension + inner],
+                    left_product[row * dimension + inner] * bread[column * dimension + inner],
                     &mut expected,
                     &mut correction,
                 )?;
@@ -1781,6 +1785,7 @@ mod tests {
             config.certificate_tolerance,
             &mut reservation,
             scores,
+            config.fit.absorb.solver_memory_budget,
         )
         .expect("low-memory score design");
         assert!(scores.dense_view().is_none());

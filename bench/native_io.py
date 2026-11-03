@@ -61,18 +61,46 @@ def case_header(stream):
     return shape, arguments
 
 
-def prepare_case(source: Path, destination: Path, threads: int):
+def action_protocol_arguments(arguments, target):
+    """Select only the action handshake for the serial OLS 1.6/1.7 transport.
+
+    Protocol 1.7 adds optional host facts. Their absence preserves the legacy
+    serial reader; never drop facts or translate model/result/numeric data.
+    """
+    if target not in ('1.6', '1.7'):
+        raise ValueError('action_protocol must be 1.6 or 1.7')
+    fields = {}
+    for argument in arguments[1:]:
+        pair = argument.split(b'=', 1)
+        if len(pair) != 2 or pair[0] in fields:
+            raise ValueError('action protocol selection requires unique request fields')
+        fields[pair[0]] = pair[1]
+    expected = {b'protocol_major': b'1', b'model_major': b'2', b'model_minor': b'1',
+                b'result_major': b'1', b'result_minor': b'5'}
+    if (arguments[0] != b'estimate-ols' or any(fields.get(k) != v for k, v in expected.items())
+            or fields.get(b'protocol_minor') not in (b'6', b'7')):
+        raise ValueError('action protocol selection requires serial OLS action 1.6/1.7, model 2.1 and result 1.5')
+    if any(key.startswith(b'host_') for key in fields):
+        raise ValueError('action protocol selection requires absent host facts')
+    replacement = b'protocol_minor=' + target.split('.')[1].encode()
+    return [replacement if value.startswith(b'protocol_minor=') else value for value in arguments]
+
+
+def prepare_case(source: Path, destination: Path, threads: int, *, action_protocol=None):
     """Rewrite just the length-framed argument section, then stream the body."""
     if not 1 <= threads <= 1024:
         raise ValueError('threads must be 1..1024')
-    with source.open('rb') as stream, destination.open('xb') as output:
+    with source.open('rb') as stream:
         shape, arguments = case_header(stream)
-        output.write(b'FEREG_REPLAY_V1\n' + (' '.join(map(str, shape)) + '\n').encode())
-        for value in arguments:
-            if value.startswith(b'threads='):
-                value = f'threads={threads}'.encode()
-            output.write(str(len(value)).encode() + b'\n' + value + b'\n')
-        shutil.copyfileobj(stream, output, CHUNK)
+        if action_protocol is not None:
+            arguments = action_protocol_arguments(arguments, action_protocol)
+        with destination.open('xb') as output:
+            output.write(b'FEREG_REPLAY_V1\n' + (' '.join(map(str, shape)) + '\n').encode())
+            for value in arguments:
+                if value.startswith(b'threads='):
+                    value = f'threads={threads}'.encode()
+                output.write(str(len(value)).encode() + b'\n' + value + b'\n')
+            shutil.copyfileobj(stream, output, CHUNK)
     return {'rows': shape[0], 'columns': shape[1], 'poisson': arguments[0] == b'estimate-ppml'}
 
 

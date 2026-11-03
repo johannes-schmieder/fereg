@@ -56,6 +56,8 @@ use crate::ols::{
 use crate::sandwich::SandwichDesign;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+mod scale_invariance;
+
 /// The deleted categorical recovery wrapper tightened the MAP tolerance to
 /// this ceiling before recovering slope channels; the recovery test keeps
 /// that exact configuration.

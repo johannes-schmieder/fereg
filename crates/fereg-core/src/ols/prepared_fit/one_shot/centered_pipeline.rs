@@ -212,6 +212,8 @@ pub(super) fn project<R: FitReservation>(
         initial_fe_coefficients: None,
         scratch_bytes: 0,
         fast_score_cache: None,
+        rank_resolution: None,
+        rank_score: None,
     })
 }
 

@@ -35,19 +35,22 @@ import routing_oracle
 import routing_science as science
 import qualify_ownership as ownership
 from native import run_process
-from native_io import ROOT, case_header, diagnostics, digest, numbers, prepare_case, validate_result
+from native_io import (ROOT, action_protocol_arguments, case_header, diagnostics, digest, numbers,
+                       prepare_case, validate_result)
 from replay_plugins import exact_view
 
 FAMILIES = {'no-fe', 'one-fe', 'slopes', 'low-saved', *routing_cases.NATIVE_CASES,
             *routing_cases.SYNTHETIC_CASES, *routing_cases.EXTENDED_CASES,
             *routing_cases.SAMPLED_CASES}
 CAMPAIGN_FAMILIES = set(routing_cases.CAMPAIGN_CASES)
-# Qualification coverages and their complete family sets, at workers [1, 4].
+# Complete qualification coverages, at workers [1, 4]. A routing subset uses
+# the same checks but can only support a result for its selected families.
 COVERAGES = {'routing': FAMILIES, 'campaign': CAMPAIGN_FAMILIES,
              'routing-campaign': FAMILIES | CAMPAIGN_FAMILIES}
 # Public two-FE Auto policies an original/incumbent artifact may declare it runs;
 # omission keeps the meaning of configurations written before beta.8.
 PUBLIC_POLICIES = (routing.GATES, routing.GATES_V2)
+INCUMBENT_EXACT = 'incumbent-exact-v1'
 ENVIRONMENT = ('FEREG_SOLVER_TRACE', 'FEREG_SOLVER_TRACE_FILE', 'FEREG_PHASE_TIMING',
                'FEREG_CMG_ORDINARY', 'FEREG_ACTION_MEMORY_AUDIT', 'FEREG_PPML_MEMORY_TRACE',
                'FEREG_MEMORY_LIMIT_BYTES', 'LLVM_PROFILE_FILE')
@@ -238,11 +241,12 @@ def plan(config_path, output, *, configuration=None):
     if 'min_distinct_hosts_per_cell' in value:
         required.add('min_distinct_hosts_per_cell')
     require(set(value) == required, 'configuration needs exactly: ' + ', '.join(sorted(required)))
-    require(value['scope'] in {'exact', 'many', 'two', science.WITHIN_MIGRATION}, 'unsupported numerical scope')
+    require(value['scope'] in {'exact', INCUMBENT_EXACT, 'many', 'two', science.WITHIN_MIGRATION},
+            'unsupported numerical scope')
     require(not within_migration or not diagnostic and not ownership_mode,
             'within migration cannot change routing or ownership policies')
     require(value['platform'] in {'Darwin', 'Linux'}, 'platform must be Darwin or Linux')
-    require(value['coverage'] in ({'ownership'} if ownership_mode else {*COVERAGES, 'smoke'}), 'unsupported coverage')
+    require(value['coverage'] in ({'ownership'} if ownership_mode else {*COVERAGES, 'routing-subset', 'smoke'}), 'unsupported coverage')
     for field, low, high in [('blocks', 1, 24), ('shards', 1, 42), ('replicas', 1, 12),
                              ('seed', 0, 2**64 - 1), ('timeout_s', 1, 120), ('budget_s', 1, 14400)]:
         require(type(value[field]) is int and low <= value[field] <= high, 'invalid ' + field)
@@ -265,10 +269,16 @@ def plan(config_path, output, *, configuration=None):
         return key
 
     for role, artifact in artifacts.items():
-        require(set(artifact) - {'public_policy'} == {'path', 'revision', 'build', 'request', 'families'},
+        require(set(artifact) - {'public_policy', 'public_many_policy', 'action_protocol'} ==
+                {'path', 'revision', 'build', 'request', 'families'},
                 'invalid artifact ' + role)
+        require('action_protocol' not in artifact or artifact['action_protocol'] in ('1.6', '1.7')
+                and not ownership_mode, 'invalid action protocol for ' + role)
         require('public_policy' not in artifact or artifact['public_policy'] in PUBLIC_POLICIES
                 and artifact['request'] == 'auto' and not ownership_mode, 'invalid public two-FE policy for ' + role)
+        require('public_many_policy' not in artifact or artifact['public_many_policy'] == routing.GEOMETRY_MANY
+                and artifact['request'] == 'auto' and not ownership_mode,
+                'invalid public many-FE policy for ' + role)
         require(isinstance(artifact['revision'], str) and artifact['revision'], 'record artifact revision')
         require(isinstance(artifact['build'], str) and artifact['build'], 'record compiler and build settings')
         require(artifact['request'] in ({'auto', *ownership.REQUESTS} if ownership_mode else
@@ -286,7 +296,18 @@ def plan(config_path, output, *, configuration=None):
             value['policy_binding'][name] = bind(value['policy_binding'][name])
     if ownership_mode:
         value['ownership_binding'] = {k: bind(v) for k, v in value['ownership_binding'].items()}
-    if within_migration:
+    if value['scope'] == INCUMBENT_EXACT:
+        require(not diagnostic and not ownership_mode and set(artifacts) == {'original', 'incumbent', 'candidate'}
+                and all(a['request'] == 'auto' for a in artifacts.values()),
+                'incumbent-exact compares three unchanged public Auto requests')
+        require(artifacts['original']['families'] == [] and
+                set(artifacts['candidate']['families']) == set(artifacts['incumbent']['families']),
+                'incumbent-exact cannot declare a new numerical family')
+        require(all(artifacts['candidate'].get(key, default) == artifacts['incumbent'].get(key, default)
+                    for key, default in [('public_policy', routing.GATES),
+                                         ('public_many_policy', 'incremental-many')]),
+                'incumbent-exact cannot change public routing policies')
+    elif within_migration:
         require(set(artifacts) == {'original', 'incumbent', 'candidate'}
                 and all(a['request'] == 'auto' for a in artifacts.values())
                 and len({a.get('public_policy', routing.GATES) for a in artifacts.values()}) == 1,
@@ -331,6 +352,9 @@ def plan(config_path, output, *, configuration=None):
         require(not any(a.startswith((b'inject=', b'break_marker_token=')) for a in arguments),
                 'source contains developer instrumentation')
         require(arguments[0] == b'estimate-ols', 'routing qualification is OLS; PPML uses the mapped feature/replay suite')
+        for artifact in artifacts.values():
+            if 'action_protocol' in artifact:
+                action_protocol_arguments(arguments, artifact['action_protocol'])
         item['shape'] = shape[:2]
         item['metadata'] = None
         sidecar = source.with_suffix('.json')
@@ -356,11 +380,17 @@ def plan(config_path, output, *, configuration=None):
             require(options.get('solver') == options.get('preconditioner') == 'auto',
                     'routing qualification requires source Auto/Auto')
     require(value['cases'] and value['shards'] <= len(value['cases']), 'empty case shard')
+    if value['coverage'] == 'routing-subset':
+        selected = [c['family'] for c in value['cases']]
+        require(len(selected) == len(set(selected)) and set(selected) <= FAMILIES
+                and sorted(workers) == [1, 4],
+                'routing-subset requires unique known routing families at workers [1, 4]')
     if value['coverage'] in COVERAGES:
         expected = COVERAGES[value['coverage']]
         require(len(value['cases']) == len(expected) and {c['family'] for c in value['cases']} == expected
                 and sorted(workers) == [1, 4],
                 f"{value['coverage']} qualification requires all {2 * len(expected)} workload cells")
+    if value['coverage'] in COVERAGES or value['coverage'] == 'routing-subset':
         require(value['blocks'] % 2 == 0 and value['blocks'] >= (6 if value['platform'] == 'Darwin' else 2),
                 'qualification requires balanced blocks and enough independent measurements')
     if value.get('diagnostic') in ('two-fe-remaining-calibration-v1', 'two-fe-gates-development-v1'):
@@ -749,6 +779,8 @@ def resource_policy(manifest, role, meta):
         # An uninjected public invocation attests the public two-FE policy it
         # declares; configurations without the field keep gates v1.
         request = artifact.get('public_policy', routing.GATES)
+    if request == 'auto' and family == 'many':
+        request = artifact.get('public_many_policy', 'incremental-many')
     if family == 'two' and request in (*routing.REMAINING, *routing.GATE_RULES):
         return request
     if family == 'many' and request == routing.GEOMETRY_MANY:
@@ -759,7 +791,7 @@ def resource_policy(manifest, role, meta):
 def artifact_aliases(manifest):
     keys, aliases = {}, {}
     for role, artifact in manifest['artifacts'].items():
-        key = (manifest['files'][artifact['path']], artifact['request'])
+        key = (manifest['files'][artifact['path']], artifact['request'], artifact.get('action_protocol'))
         aliases[role] = keys.setdefault(key, role)
     return aliases
 
@@ -770,6 +802,26 @@ def compare_artifacts(manifest, meta, snapshots):
     if diagnostic_mode(manifest):
         return diagnostic_tool(manifest).compare_science(manifest, meta, snapshots)
     candidate = snapshots['candidate']
+    if manifest['scope'] == INCUMBENT_EXACT:
+        incumbent, original = snapshots['incumbent'], snapshots['original']
+        require(candidate[2]['fingerprint'] == incumbent[2]['fingerprint'],
+                'incumbent: unaffected science changed')
+        if original[2]['fingerprint'] == incumbent[2]['fingerprint']:
+            return
+        if science.derived_residual_only(original[0], incumbent[0], meta):
+            # The accepted projection-to-derived reporting change also covered
+            # one-FE requests. It changed no published value or output column.
+            require(digest(original[1]) == digest(incumbent[1]),
+                    'original: historical derived residual output columns changed')
+            return
+        require(affected(meta, manifest['artifacts']['incumbent']['families']),
+                'original: science changed outside accepted historical families')
+        selected = (routing.GEOMETRY_MANY if resource_policy(manifest, 'incumbent', meta) == routing.GEOMETRY_MANY
+                    else routing.PORTFOLIO_UNSEEDED)
+        # Historical differences are checked against the accepted incumbent.
+        # No numerical or discrete candidate change can use this allowance.
+        return science.compatibility(original[0], incumbent[0], original[1], incumbent[1], meta, 'auto',
+                                     selected_policy=routing.policy(selected))
     for role in ('original', 'incumbent', 'hidden'):
         if role not in snapshots:
             continue
@@ -864,6 +916,15 @@ def compare_saved(left, right, meta):
             require(np.array_equal(finite, np.isfinite(yv) & (np.abs(yv) < 8e307) & sample)
                     and np.array_equal(x[key][~finite], y[key][~finite]), 'cross-host missingness changed')
             cmgschur.close(xv[finite], yv[finite], 'cross-host outputs', 1e-7, 1e-9)
+
+
+def prepare_request(source, destination, artifact, workers):
+    """Use the same declared transport and route for preflight and timed calls."""
+    options = ({'action_protocol': artifact['action_protocol']} if 'action_protocol' in artifact else {})
+    if artifact['request'] == 'preserve':
+        return prepare_case(source, destination, workers, **options)
+    arm = 'baseline' if artifact['request'] == 'auto' else artifact['request']
+    return routing.prepare(source, destination, arm, workers, **options)
 
 
 def run(manifest_path, output, shard=0, replica=0, resume=False, execute=run_process):
@@ -994,10 +1055,8 @@ def _run(manifest_path, output, manifest, deadline, shard, replica, resume, exec
                         source = resolve(manifest_path, item['input'])
                         if ownership.enabled(manifest):
                             ownership.prepare(source, request, artifact['request'], workers)
-                        elif artifact['request'] == 'preserve':
-                            prepare_case(source, request, workers)
                         else:
-                            routing.prepare(source, request, 'baseline' if artifact['request'] == 'auto' else artifact['request'], workers)
+                            prepare_request(source, request, artifact, workers)
                         prepared[role] = request
                         with request.open('rb') as stream:
                             _, arguments = case_header(stream)
@@ -1588,6 +1647,7 @@ def report(manifest_path, output, accounting_dir=None, *, allocation_amendment=N
     passed = complete and all(row['status'] == 'passed' for row in rows)
     summary = {'schema': 1, 'manifest_sha256': routing.identity(manifest), 'platform': manifest['platform'],
                'status': 'smoke_complete' if complete and manifest['coverage'] == 'smoke' else
+                         'subset_passed' if passed and manifest['coverage'] == 'routing-subset' else
                          'passed' if passed else 'needs_discussion',
                'errors': errors, 'comparisons': rows, 'native_calls': sum(
                    len(c['warmups']) + sum(len(b['calls']) for b in c['blocks']) for r in results for c in r['cases']),
@@ -1595,6 +1655,11 @@ def report(manifest_path, output, accounting_dir=None, *, allocation_amendment=N
                'coverage': 'One-sided .025 bounds conditional on independent unit scores with a common median; no simultaneous interval claim.',
                'next_action': 'Review platform-specific evidence; no automatic activation or successor.' if passed else
                               'Discuss failed, missing or inconclusive evidence with Johannes; keep candidate and defaults.'}
+    if manifest['coverage'] == 'routing-subset':
+        selected = sorted(c['family'] for c in manifest['cases'])
+        summary.update(qualification='routing-subset', selected_families=selected,
+                       omitted_families=sorted(FAMILIES - set(selected)), activation_qualified=False,
+                       interpretation='Limited to the declared routing families and workers; omitted families and campaign coverage are not qualified by this round.')
     if ownership.enabled(manifest):
         summary['qualification'] = ownership.MODE
         summary['ownership_binding'] = manifest['ownership_binding']
@@ -1705,7 +1770,7 @@ def main():
         return 0 if result['status'] == 'complete' else 1
     result = report(args.manifest, args.output, args.accounting, allocation_amendment=args.allocation_amendment)
     print(result['status'])
-    return 0 if result['status'] in {'passed', 'smoke_complete'} else 1
+    return 0 if result['status'] in {'passed', 'subset_passed', 'smoke_complete'} else 1
 
 
 if __name__ == '__main__':

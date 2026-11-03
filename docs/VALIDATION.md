@@ -1,5 +1,551 @@
 # Validation status
 
+## 2026-11-02: OLS nearly absorbed regressors, candidate scope
+
+The independent reproducer has 800 rows: every cell of a 10-by-10 crossed
+categorical-FE design contains all eight sign combinations of u, v and w.
+Set `y = 5g + 7h + 2u - 3v + w`, `x = 10000g + u` and `z = v`.
+The exact within design is `[u, v]`, its cross-product is `800 I`, the slopes
+are `(2, -3)`, the residual is w and RSS is 800. Yet x has squared within/raw
+norm ratio `1 / (3850000000 + 1)`, below the historical fixed `1e-9` cutoff.
+That cutoff omits x and changes the model to one with RSS 4000. Changing the
+public absorption tolerance does not change this separate cutoff. This is an
+identified-signal counterexample, not evidence that all small computed within
+residuals should be retained.
+
+The candidate turns that cutoff into a verification trigger for OLS with a
+global intercept and no FEs, or one/two categorical-intercept FE terms.
+Cheap exact structural proofs still permit absorption omissions. Other cases
+use original-source deflation, fresh projection and the forest-flow forward
+bound specified in [SPEC §8](SPEC.md#8-rank-and-collinearity) and
+[§16](SPEC.md#16-certificates-and-errors). Once this
+path activates, its design candidates and outcome require independent error
+bounds. Finite rank is checked on resolved within scales, with an independently
+certified retained basis and a direct primal check for every dropped finite
+column. Quotient-space scores and terminal residual movement must also pass;
+existing floating-point scientific tolerances are not weakened.
+
+The analytical family covers absorbed shifts through `1e8`, opposite regressor
+units, exact absorption, cell-constant positive weights, global-intercept shifts
+and saved-effect reconstruction. Additional cycle designs with unique joint FE
+cells check identification without repeated-cell contrasts. Exact duplicate
+finite columns exercise retained-subset and dropped-span certification; near
+boundary and loose-bound cases must produce an explicit unresolved failure.
+The candidate also needs fixed-worker repetition, cross-worker scientific and
+omission agreement, Fast/Low and supported explicit-solver coverage, and native
+failure/rollback checks. These are independent mathematical witnesses and
+qualification requirements, not a report that the final candidate has passed.
+
+Source integration also exposed an incorrect exact-absorption premise in the
+singleton fixture. The stored float32 values `[-0.8, -0.2, 0.3, 0.9]`, promoted
+to float64, have exact two-by-two cycle contrast `-3/2^26`, not zero. With the
+stored response `[4, 4.5, 5, 5.6]`, the exact slope is `-2236960`; the identified
+cycle exhausts residual degrees of freedom. The new witness requires retention
+and inference refusal for both singleton policies. The separate omission test
+uses exactly additive binary fractions `[-0.75, -0.25, 0.25, 0.75]` and retains
+its original FE-only RSS, covariance and degrees-of-freedom targets. No tolerance
+was relaxed to accommodate either case. The [mathematical review](rank_verification.md)
+distinguishes stored-data identification from intended decimal relationships.
+
+The source checkpoint passes `scripts/run_tests.sh --source-only`: 349 Python
+tests, 1,615 core tests (three diagnostic tests ignored), the remaining workspace
+and FFI tests, isolated allocator audits, strict Clippy, fuzz compilation,
+portable/C/SPI guards and the complexity ratchet. All 17 integrated scale/offset
+witnesses pass, as do the separate exact and rounded singleton witnesses. The
+129 qualification-tool tests pass, including the requirement that an ordinary
+candidate exactly reproduce the current incumbent even when an older original
+has a previously accepted numerical or derived-residual difference. This is
+source evidence only; native and performance prerequisites below remain open.
+
+Native development at source checkpoint `2f39802a` exposed a memory-admission
+integration defect: the first shifted Stata fit refused with code 909 because
+repair treated an unknown historical FE-workspace peak as live retained storage.
+The other six mapped Stata fixtures passed. The correction releases the completed
+FE session only after repair activates, admits the actual surviving bound vectors
+alongside score scratch, then frees those vectors before terminal projection.
+Historical unknown diagnostics remain unknown. The added Auto Fast/Low regression
+uses a public-style nonzero memory budget, requires exact scientific agreement
+with unbounded fits, and preserves the separate insufficient-budget refusal.
+All 17 focused scale/offset tests and the complete source integration gate pass.
+Independent lifecycle review found no remaining overlap or retry issue; rebuilt
+native checks remain prerequisites.
+The complexity inventory decreases by nine production lines and two dispatch
+candidates, with no new oversized file or function.
+
+The rebuilt native checkpoint `6ef2a39a` passes the 24 shifted Stata IID fits
+(unit/analytic weights, Fast/Low, Auto/LSMR/CMG), but its extreme-offset robust
+fit is correctly refused when the reported-coordinate sandwich develops an
+invalid diagonal. Independent algebra identifies cancellation from adding a
+mean near `5.5e8` back to score rows and multiplying the full normalized-intercept
+bread. The correction uses quotient score rows and the direct influence map
+specified in §16, for robust and clustered production and certificates. The
+public bread stays unchanged. Independent eight-sign-group covariance formulas
+cover all reported coordinates, analytic weights, finite-sample corrections and
+Wald statistics. Additional map storage and retained saved-FE products require
+explicit admission together.
+
+That checkpoint also shows slope errors of only `2.80e-14` and `-7.28e-14`, yet
+its normalized intercept differs by `1.55e-5` because of the large mean. Its
+residual and full prediction errors are about `1.01e-13`; this is amplification
+of coefficient roundoff, not lost fitted signal. Three bounded quotient-score
+corrections reuse existing finite workspace before independent certification.
+All 18 scale/offset tests, including a strict absolute `2e-6` intercept/component
+witness, pass after refinement. The original tolerance is retained.
+
+The larger 25,600-row, four-worker clustered witness also identifies premature
+Jacobi stopping: the largest reported-intercept variance sets a global target
+that ignores a small slope/intercept coupling, failing the independent
+row-relative reconstruction certificate. The repair uses the smaller row scale
+specified in §16, with unchanged iteration and certificate limits. All nine
+focused refinement, quotient-inference and eigensystem tests pass, including
+Fast/Low, weighted covariance/Wald formulas, fixed-worker repeatability,
+cross-worker agreement, memory admission and known reported-coordinate clipping.
+Independent review confirms unchanged ordinary arithmetic and clipping policy.
+The integrated candidate passes the full source gate: 349 Python tests, 1,624
+core tests (three diagnostic tests ignored), workspace/FFI tests, isolated
+allocator audits, strict Clippy, fuzz compilation, C/SPI guards and complexity.
+The scoped addition is 269 production lines and three dispatch candidates;
+there is no new oversized file/function, and one existing oversized function is
+removed by sharing score-axis construction.
+
+The private universal Mac plugin built from `d4fa58f4` has SHA-256
+`9cac4bdfdb45251f515478b15c580445ae8f604f28b8c5cca24532517d6ac6bc`.
+Its binary/ABI audit passes. All 33 actual-plugin analytical calls pass: 32
+successful cases spanning shifts, opposite units, structural absorption,
+Fast/Low and one/four workers, plus a memory-refusal/nonpublication case.
+All 77 replay cases pass their independent witnesses and match beta.15 exactly;
+fixed-worker repetitions and the additional four-worker checks pass. The seven
+mapped Stata fixtures pass, including 24 shifted IID fits, weighted robust and
+clustered inference, saved-effect reconstruction and postestimation. The new
+fixture uses public `vce(cluster ...)` and `predict` syntax. Its one-step initial
+LSMR projection returns the established certificate-refusal code 459 and
+preserves prior estimates and requested-output rollback in both memory modes.
+Public OLS Break and completed four-worker LSMR iteration cancellation also
+pass with populated/null estimates and exact follow-up fits. The retained
+[source and Mac record](../bench/results/rhs-rank-native-20261103.json) includes
+artifact identities, structured results, prior failures and raw-capture hashes.
+No native binary is published by this work; performance qualification remains
+open at this checkpoint.
+
+The private Linux plugin built from `e9b877a1` has SHA-256
+`e6ea8c105255ace9980ebe4a7d8261a429ffd984d187f834d795314d5d9e23b7`.
+Build/ABI job 8412210 passes on scc-gd4. Preflight job 8412211 on scc-ei3
+passes the 33 exceptional native calls, the updated public Stata fixture and
+rollback, and all 26,187 pinned comparator-environment files. Its first ordinary
+call then refuses the harness's stale action protocol 1.6: beta.15 and the
+candidate require 1.7, while beta.7 requires 1.6. This occurs before estimation
+and before any ordinary call completes. All six timing tasks in job 8412212
+and report job 8412213 stop at their prerequisite guard; no timing begins.
+The failed preflight and scheduler evidence are retained for the bounded
+transport repair. The candidate binary, numerical input bytes, six-host
+schedule and acceptance rules remain fixed. This is a harness failure,
+not an ordinary scientific or performance result. The shared replay transport
+now validates each plugin's supported action protocol and changes only the
+framed protocol minor; the numerical request body remains byte-identical.
+All 170 focused qualification, native-transport, routing and migration tests
+pass, including six new protocol cases. The qualification source overlay
+is `67264387`; the Linux runtime remains the plugin built from `e9b877a1`.
+
+Corrected preflight job 8412319 passes on scc-gd4. All 174 ordinary calls
+(29 families, one/four workers, three artifacts) pass their independent
+scientific witnesses, candidate/incumbent exact comparison, accepted historical
+original allowances, cross-worker decisions and resource gates. The 33
+exceptional calls and public Stata shift/rollback fixture also pass using the
+actual Linux plugin. All 26,187 pinned environment files and the input manifest
+are verified before measurement.
+
+In the timing array, task 2 of job 8412320 fails while querying terminal
+preflight accounting, before entering either native measurement driver.
+It creates no ordinary or exceptional run and makes zero native calls. The
+other five allocations continue unchanged. A bounded accounting repair uses
+the already saved, strictly validated terminal record before querying the
+scheduler; its eleven tests pass. A prospective operational amendment permits
+exactly one replacement of this empty allocation, job 8412482 task 2, and
+explicitly qualifies the original-allocation wording. No measured observation
+is repeated, removed or selected. The plugin, plan, cell order, total call
+budget, acceptance rules and six-distinct-host requirement stay fixed.
+The unstarted held report 8412321 is cancelled and replaced by report 8412483,
+which waits for both timing job IDs and retains the failed allocation's record.
+
+The prospective Linux comparison reuses 112 retained input files totaling
+5,236,078,385 bytes. All match the retained manifest with SHA-256
+`5989d0558ce17a15226b67bc93ab51d8bad426b8d83e0ece9b68ff2a60941fc1`.
+This input verification is a prerequisite, not performance evidence.
+
+
+All six timing allocations complete on six distinct physical hosts
+(scc-zj4, scc-wo4, scc-wf1, scc-wc2, scc-yj4 and scc-zk3). They retain all
+5,220 ordinary calls (1,044 warmups and 4,176 measured calls) and all 1,926
+exceptional-panel calls. Every ordinary run is complete with no failures;
+the actual-plugin ordinary preflight has zero rank-repair trace events.
+Thus these ordinary cells protect unaffected work, while the separate panel
+measures the path that changed.
+
+Report 8412483 initially admits only three hosts because three terminal
+accounting queries time out. Its 116 insufficient-host decisions and failed
+scheduler exit remain evidence. Two bounded whole-job accounting queries
+recover the missing successful records for original tasks 1/3 and replacement
+task 2. A prospective report-only amendment binds all thirty observation files
+and preserves both incomplete reports, prior submissions, accounting and log.
+Report 8412740 on scc-tb4 regenerates each report once from the same six runs,
+adding zero native calls and changing no source, plan, observations or thresholds.
+Its scheduler record has failed=0 and exit_status=1 because the complete
+ordinary performance gate remains inconclusive.
+
+The retained [Linux qualification record](../bench/results/rhs-rank-linux-20261103.json)
+contains all call-level timings, formal decisions, identities, scientific scope,
+host/isolation summaries and both report outcomes. Recorded task paths and raw
+capture hashes are provenance; the linked committed record is the retained
+evidence. The complete report has no operational/scientific errors:
+108 of 116 comparisons pass, eight are inconclusive, and none meets the
+regression criterion. Both beta.15 incumbent and beta.7 original comparisons
+pass 54 of 58 bounds. The fixed guard is max(5%, 1 ms), with one-sided .025
+physical-host bounds and no simultaneous-coverage claim.
+
+| Reference | Inconclusive cell | Median paired ratio change | Upper excess beyond guard (ms) |
+| --- | --- | ---: | ---: |
+| beta.15 incumbent | eight-fe, 4 workers | -0.54% | 0.413 |
+| beta.15 incumbent | four-fe, 1 worker | +1.09% | 1.332 |
+| beta.15 incumbent | sixteen-fe, 4 workers | +1.37% | 4.982 |
+| beta.15 incumbent | weak, 4 workers | -0.24% | 0.490 |
+| beta.7 original | inactive-columns, 1 worker | +0.42% | 1.817 |
+| beta.7 original | sixteen-fe, 1 worker | +11.10% | 126.864 |
+| beta.7 original | sixteen-fe, 4 workers | +6.84% | 43.276 |
+| beta.7 original | small-retained, 4 workers | +3.95% | 2.042 |
+
+The exceptional cost report passes its science, trace and accounting checks
+on all six hosts. Among all 72 host/settings groups where repair actually
+executes, median paired additional time ranges from 1.018 to 3.884 ms, with
+median 2.907 ms; the corresponding median ratios range from 1.569 to 2.080,
+with median 1.753. These are descriptive comparisons of 800-row shifted models
+against an equivalent unshifted model using the same candidate, not a
+noninferiority result or a claim about large pathological workloads.
+
+The candidate therefore has completed source, Mac and Linux scientific
+evidence but **has not passed the full performance gate**. No observation
+is excluded or repeated, no successor candidate is sampled, and no release
+or main-package update is authorized. Johannes's decision is required before
+accepting the inconclusive comparisons or starting a separately declared
+follow-up. Intel Mac Stata execution and Windows remain untested for this
+candidate; the universal Mac ABI audit does not establish those runtime checks.
+
+
+### Authorized performance follow-up, 2026-11-03
+
+Johannes requests one performance follow-up and a careful discussion of its
+results. The new round preserves the first report and reuses the exact
+candidate, beta.15 and beta.7 Linux binaries above; there is no runtime or
+scientific-policy change. The frozen input subset comprises no-fe, dense,
+small-retained, four-fe, eight-fe, weak, sixteen-fe and inactive-columns.
+Both one and four workers run for every family: sixteen settings contain
+all seven settings with unresolved comparisons, plus nine predeclared controls.
+The eight reference/setting pairs in the table above are the primary questions;
+all thirty-two candidate/reference comparisons are reported and gated.
+
+The fixed schedule uses twelve distinct physical hosts, one warmup per arm
+and four randomized mirrored blocks per setting, totaling 5,184 native calls.
+The seed is 2026110301. Each native call retains its 120-second limit; each
+allocation has a 2,400-second driver budget and a 75-minute scheduler limit.
+General eligible whole-node allocations use the existing omp28 contract,
+with no queue or processor-model restriction. A separate, bounded 900-second
+admission barrier requires all twelve distinct hosts before measurement.
+Duplicate hosts or incomplete admission fail without replacement. Registration
+does not prove isolation: the maintained host observer remains authoritative.
+There are no timing exclusions, retries, automatic extensions or successor
+candidates in this round.
+
+Actual-plugin preflight refreshes all 48 selected ordinary scientific calls,
+the 33 exceptional calls and the 35 Stata fits, verifies the unchanged harness,
+all 112 retained input files and every pinned comparator-environment file, and
+checks at least 20 GB of free project space. The candidate is reused from
+runtime source e9b877a1; source and Mac evidence remains valid because native
+inputs and the candidate binary are unchanged. Every selected ordinary family
+requires exact candidate/incumbent science and no new rank-repair trace.
+Previously accepted original/incumbent two-FE and many-FE differences retain
+their existing validators. The refreshed exceptional shift-p4/p6/p8 families
+retain their previously declared rank, inference and output changes, including
+terminal projection in place of the ordinary derived-residual row. The existing
+72 actual-repair cost groups remain descriptive evidence; this follow-up adds
+no exceptional-path timing or claim about large pathological workloads.
+
+One maintained qualify.py report evaluates the selected subset using the
+unchanged max(5%, 1 ms) guard and per-physical-host median excess. With twelve
+independent hosts, its one-sided .025 upper bound is the third-largest host
+score, rather than the largest at six hosts. This fixed sample size is not a
+power guarantee. A passing report is explicitly limited to the selected subset.
+Direct beta.15/beta.7 contrasts from the same mirrored blocks are secondary
+attribution evidence; median ratios or nonlinear guarded scores are not
+subtracted, and an inherited difference cannot waive the beta.7 guard.
+
+The new round is analyzed alone. Old and new observations are not pooled,
+repeat blocks are not counted as independent hosts, and any overlap with
+first-round hardware is disclosed. Earlier results remain visible, including
+inconclusive bounds; retained evidence for unaffected settings is reused as
+such, not relabeled as a simultaneous new 116-comparison qualification.
+Any remaining regression, inconclusive bound or failed scientific prerequisite
+ends this round for discussion rather than further sampling.
+
+The generic subset support passes all 142 qualification tests, including five
+new subset checks, and 80 native-transport, routing, oracle/science and migration
+tests. Independent review confirms that controls remain gated and full-coverage
+behavior is unchanged. These are tooling prerequisites, not new timing evidence.
+
+#### Follow-up outcome: admission failure before measurement
+
+The [retained follow-up record](../bench/results/rhs-rank-linux-followup-20261103.json)
+records an unsuccessful launch, not a new performance result. It is 115,266
+bytes with SHA-256
+`91131e395d69b55408299f881668f4ca50502f85d9c057687b167e64f01ddaa4`.
+The unchanged candidate and references were bound to tooling revision 2e562353
+before submission. Preflight 8412869 passes on scc-gr4: all 48 ordinary calls,
+33 exceptional calls and 35 Stata fits pass; the harness, 112 inputs and 26,187
+environment files match. Free project space is 94.96 GB. Admission accounting
+job 8412870 also exits zero.
+
+Timing array 8412871 obtains only four simultaneous whole-node allocations:
+scc-yj4, scc-yj3, scc-wj4 and scc-wk3. No allocation passes the twelve-host
+barrier. Its fixed 900-second window expires, and tasks 1-4 exit 1 before
+the ordinary runner. The remaining queued tasks 5-12 are cancelled after that
+shared prerequisite fails; the retained record includes the cancellation,
+queued-task identities and their expected absence from accounting. There are
+no registered successful admissions and no ordinary run results. The exporter
+reports zero published calls and leaves the exact attempted-call count null
+instead of inferring it merely from absent results.
+
+The sole report 8412872 exits 1 on scc-gr4, with scheduler failed=0.
+It retains the four adverse task records and eight missing cancelled tasks.
+The formal summary is needs_discussion with zero admitted calls, no numerical
+comparisons and 44 missing-run/host errors. The secondary contrast is incomplete;
+the compact record is explicitly incomplete_evidence and accepted=false.
+No numerical observation is excluded, pooled or replaced, and no successor
+run or candidate is sampled.
+
+The all-host barrier was a restrictive launch-policy choice, not a requirement
+of the per-physical-host statistical calculation. It prevented this follow-up
+from answering its performance question under the available allocations.
+Any further round should first revise and declare a bounded admission policy
+that can obtain twelve distinct eligible hosts without requiring simultaneous
+availability. Fixed observations per host, independent scientific witnesses,
+both reference guards and all adverse outcomes must still be retained. This
+record does not authorize or silently start that additional round.
+
+The prior 108 passed / 8 inconclusive / 0 classified-regression result therefore
+remains the performance evidence. Four unresolved beta.15 comparisons have
+median paired changes from -0.54% to +1.37%; these small point estimates do not
+establish nonregression because their upper guarded bounds remain positive.
+The sixteen-FE beta.7 comparisons have larger point changes (+11.10% at one
+worker and +6.84% at four), while the corresponding beta.15 point changes are
++3.31% and +1.37%. Those separately measured contrasts suggest that historical
+runtime differences matter, but cannot allocate the full difference to history
+or waive either original guard. The repair itself never executes in these
+ordinary cells. Its previously measured 800-row exceptional cost remains
+descriptive (median additional 2.907 ms); it neither measures routine overhead
+nor establishes cost on large pathological workloads. The refreshed preflight
+supports correctness, but a general claim of negligible performance cost remains
+unqualified. The PR stays draft.
+
+The task-local launch/accounting/admission checks pass 15 tests and the compact
+exporter passes 14 tests, including failed admission and cancellation handling;
+independent reviews cover both. No runtime source or arithmetic changed in this
+follow-up, so the existing source and Mac evidence is reused.
+
+#### Authorized asynchronous timing round, 2026-11-03
+
+Johannes requests another timing run and explicitly directs submission of all
+jobs without requiring prompt scheduling: wait until they are scheduled and
+run. This supersedes the unsuccessful round's simultaneous-host admission
+policy. The new round keeps the exact candidate, beta.7 and beta.15 binaries,
+eight selected families, workers one/four, seed 2026110301, four mirrored
+blocks and one warmup per arm. Twelve fixed allocations each execute 432
+calls, for 5,184 calls total. There is no successor candidate, added sampling,
+timing-based exclusion, or pooling with the earlier six-host measurements.
+
+The preflight, accounting admission, twelve-task timing array and sole report
+are submitted together with scheduler dependencies. There is no queue-wait
+deadline, all-host barrier, duplicate-host execution refusal or cancellation
+because scheduling is slow. Each allocation verifies its own prerequisite and
+whole-node identity, records its physical host and starts independently when
+SGE grants its resources. Runtime limits remain 120 seconds per native call,
+2,400 seconds for each ordinary driver and 75 minutes per timing allocation;
+these limits do not include time waiting in the queue. General eligible SCC
+28-core hosts remain unrestricted by queue or processor model.
+
+The statistical contract remains unchanged: both reference guards are
+max(5%, 1 ms), and twelve distinct physical hosts per setting are required
+for qualification. Scheduler allocations are not independent hosts. All
+observations from repeat allocations on one machine are pooled within that
+physical host before computing the guarded bound. Every scheduled task runs
+even if a machine is reused; fewer than twelve distinct hosts is reported as
+insufficient-host evidence and never converted to a pass. The descriptive
+beta.15/beta.7 contrast also groups all blocks by actual physical host and
+shows the resulting independent-unit count. It cannot waive the formal guard.
+
+Actual-plugin preflight again verifies the unchanged harness, all 112 input
+files and 26,187 pinned environment files, and refreshes the 48 selected
+ordinary scientific calls, 33 exceptional calls and 35 Stata fits. The declared
+exceptional science and terminal-projection route changes remain shift-p4,
+shift-p6 and shift-p8 as above; ordinary science remains incumbent-exact with
+no repair activation. Existing source/Mac evidence and exceptional cost timing
+are reused because the native candidate is unchanged. All failures and adverse
+timings remain in the final report, which runs only after every timing task
+terminates. Queue waiting alone does not end this authorized round.
+
+The declared numerical scope is the exceptional repair path and its dependent
+coefficients, bread/covariance, residuals, saved effects, diagnostics and rank
+statuses. Correcting a false omission may intentionally change finite rank and
+fit. Ordinary unaffected science must remain exact against the beta.15 plugin,
+including unaffected OLS and PPML paths. The private Mac evidence above covers
+that comparison and actual Stata loading. It is not release qualification or
+performance evidence; no timing claim is attached to this section.
+
+#### Accounting-only completion amendment, 2026-11-03
+
+The asynchronous round completed all twelve timing allocations on twelve
+distinct physical hosts, with scheduler failure and exit codes both zero.
+The preflight and admission jobs also succeeded. The sole scheduled report
+(job 8413270) exited one because its single 60-second query for whole-array
+accounting timed out. Subsequent monitoring obtained complete successful
+accounting for all twelve tasks. This is an accounting collection failure;
+no native measurement is being repeated.
+
+Before examining the numerical comparison results, this operational amendment
+permits exactly one deterministic re-evaluation with the unchanged maintained
+qualifier, frozen configuration, observations and statistical guards. It uses
+the now-available terminal accounting and writes a separate recovery report.
+The original timeout, failed collection, original formal and secondary reports,
+and report-job exit remain retained as failed operational evidence. The
+recovery cannot turn those original records into successes.
+
+All 5,184 scheduled calls and all twelve physical hosts remain in the analysis.
+There is no replacement allocation, timing exclusion, candidate change, new
+sampling, threshold change or pooling with earlier rounds. Observation hashes
+must match before and after re-evaluation. The recovered report is retained
+whether it passes, remains inconclusive or finds a regression; it authorizes
+no further report attempt. This narrow accounting repair supersedes only the
+earlier prohibition on another report invocation, using the bounded harness
+repair authority in AGENTS.md.
+
+#### Completed independently scheduled timings, 2026-11-03
+
+The twelve fixed allocations all ran to completion on twelve distinct
+physical hosts: scc-wf1, scc-yj4, scc-wk3, scc-wj4, scc-wo4, scc-tr3,
+scc-zk2, scc-tj3, scc-tj4, scc-zk1, scc-tr2 and scc-ul2. All 5,184
+planned calls are retained (576 warmups and 4,608 measured calls), with no
+replacement, exclusion or pooling with earlier rounds. Every allocation met
+its driver budget and completed all 432 calls. The asynchronous schedule
+worked: tasks started when resources became available, without a common
+start barrier. Scheduler wall times were 237–504 seconds per timing task.
+
+Preflight again passed 48 ordinary actual-plugin scientific checks, 33
+exceptional checks and 35 Stata fits. It verified all declared environment
+pins and 26,187 environment files; ordinary candidate science stayed exact
+against beta.15, with no exceptional repair activation. Existing source and
+Mac evidence remains applicable because the native binary is unchanged.
+
+The scheduled report failed only at accounting collection: its 60-second
+whole-array query timed out, producing 44 missing-accounting/host errors and
+zero admitted comparisons. The complete records were subsequently retrieved:
+all timing tasks have scheduler failure zero and exit zero. The original
+report exit one, collection failure, reports and errors remain retained.
+The separately declared accounting-only job 8413444 evaluated the identical
+observations with the unchanged qualifier and thresholds. It made no native
+calls, confirmed that all nineteen original evidence files stayed unchanged,
+and completed in 96 scheduler seconds with failure zero and exit one, matching
+its inconclusive numerical verdict.
+
+The recovered numerical result is **30/32 protected comparisons passed,
+two inconclusive, zero classified regressions**. All **16/16 comparisons
+against beta.15 pass**; **14/16 against beta.7 pass**. Six of the eight
+previously inconclusive comparisons pass in this independent round; the
+remaining two are small-retained with four workers and sixteen-FE with one
+worker, both against beta.7. The subset therefore remains
+**needs_discussion**, not an overall performance pass or release qualification.
+
+[The retained queued-round record](../bench/results/rhs-rank-linux-queued-20261103.json)
+contains every call, host score, original failure, recovered report, baseline
+contrast and terminal accounting outcome. The original operational acceptance
+remains false; recovery has its own separate verdict and cannot rewrite that
+failure. The compact record is 919,158 bytes, SHA256
+`35955d2d9057c39e8d645354defcf48cb03790a68410b6c584aa3ea8ae304b08`.
+The independent-admission launcher passes 18 focused tests; the final exporter
+passes 22 tests and the accounting-only recovery script passes six. Independent
+read-only reviews covered admission, physical-host grouping, recovery,
+retention and numerical interpretation. The local exporter completed without
+dropping observations; its acceptance flags remain false.
+
+Absolute native times below are milliseconds: take the geometric mean of the
+two calls per arm in each mirrored block, the median of four blocks within a
+physical host, then the median over twelve hosts. Percentage differences are
+the median of all 48 paired block ratios, matching the qualifier's displayed
+effect estimate; they are not ratios of the absolute medians. Guarded
+uncertainty instead uses one median excess score per physical host, with the
+unchanged max(5%, 1 ms) budget and one-sided .025 bounds. Asterisks mark the
+two inconclusive beta.7 comparisons; every other displayed comparison passes.
+
+| Setting | beta.7 ms | beta.15 ms | Candidate ms | Change vs beta.15 | Change vs beta.7 |
+|---|---:|---:|---:|---:|---:|
+| no-fe-t1 | 0.975 | 0.968 | 0.999 | +5.84% | +7.53% |
+| no-fe-t4 | 1.051 | 1.074 | 1.133 | +3.82% | +4.45% |
+| dense-t1 | 99.458 | 98.613 | 98.211 | -0.30% | -1.04% |
+| dense-t4 | 64.853 | 65.925 | 65.886 | -0.40% | +1.40% |
+| small-retained-t1 | 62.145 | 61.614 | 61.307 | -0.38% | -1.14% |
+| small-retained-t4 | 44.682 | 46.971 | 46.619 | -0.49% | +4.75% * |
+| four-fe-t1 | 320.403 | 266.073 | 266.478 | +0.26% | -16.40% |
+| four-fe-t4 | 154.930 | 136.415 | 136.106 | +0.09% | -11.54% |
+| eight-fe-t1 | 540.748 | 460.861 | 461.917 | +0.35% | -14.22% |
+| eight-fe-t4 | 251.348 | 230.181 | 229.566 | +0.10% | -8.22% |
+| weak-t1 | 99.947 | 83.705 | 83.495 | +0.27% | -16.01% |
+| weak-t4 | 67.818 | 62.221 | 62.560 | -0.03% | -7.18% |
+| sixteen-fe-t1 | 956.740 | 987.362 | 1002.154 | +1.63% | +4.85% * |
+| sixteen-fe-t4 | 495.620 | 511.939 | 516.526 | +0.75% | +4.29% |
+| inactive-columns-t1 | 61.998 | 62.567 | 62.339 | -0.34% | +0.69% |
+| inactive-columns-t4 | 46.877 | 47.127 | 47.031 | -0.19% | +0.56% |
+
+For small-retained/four workers, the paired candidate/beta.7 effect is +4.75%;
+the lower and upper guarded-excess bounds are −0.383 and +0.324 ms.
+For sixteen-FE/one worker, the effect is +4.85%, with bounds −11.506 and
++120.260 ms. Both intervals cross zero: neither a pass nor a classified
+regression follows. Sixteen-FE/four workers now passes against beta.7,
+but its upper guarded excess is only −0.563 ms, so that result has little
+margin. The no-FE percentage changes concern roughly one-millisecond fits;
+the absolute one-millisecond protection budget is the relevant guard there.
+
+The direct same-block beta.15/beta.7 contrast helps interpret the residual
+gap. For sixteen-FE, its paired medians are +3.12% with one worker and +3.47%
+with four; candidate/beta.15 adds +1.63% and +0.75%, respectively. For
+small-retained/four workers, beta.15/beta.7 is +5.28%, while the candidate is
+0.49% faster than beta.15. These contrasts support an inherited component to
+the beta.7 gap, without waiving either guard or exactly decomposing medians.
+The per-block ratios multiply exactly; their separately aggregated medians
+need not.
+
+Host heterogeneity remains material. On scc-yj4, scc-zk1 and scc-zk2,
+sixteen-FE/one-worker candidate/beta.7 host medians are about 18.3–18.8%
+slower, with beta.15/beta.7 already about 13.4–14.0% slower. The other nine
+hosts show about 3.5–5.5%. The lower pooled median in this round does not erase
+the earlier result or these slower hosts. Three hosts overlap the first
+round; neither round is pooled with the other. Hardware-specific causal
+claims would require separate evidence.
+
+This follow-up supports a small ordinary-path cost relative to the current
+beta.15 incumbent in the selected settings. It does not establish zero cost,
+all-family qualification, or a blanket no-regression claim against beta.7.
+None of these ordinary timing cells activates repair. The earlier 72
+actual-repair host/settings groups remain the cost evidence for the
+800-row pathological examples: median additional time 2.907 ms, range
+1.018–3.884 ms, and median paired ratio 1.753. Large pathological workloads
+remain unqualified. Keep the PR in draft; no new candidate, further timing
+round, public package update or release follows from this result.
+
+The graph certificate is sufficient and can be conservative on weak forests
+or tiny tree-edge weights. Unresolved cases fail without publication. Stored
+input rounding can erase signal before estimation, which this work cannot
+reverse. Higher-way or slope absorption keeps its existing policy, and this
+candidate makes no PPML rank or separation change. Certification validates the
+existing deterministic named basis, not a claim that exact arithmetic would
+choose identical pivot names at a tie. Any future extension requires its own
+numerical scope and independent witnesses.
+
 ## Beta.15 publication decision
 
 On November 2, after reviewing the completed no-FE performance evidence,

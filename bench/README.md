@@ -228,6 +228,17 @@ round. The runner never builds artifacts, changes defaults or chooses a successo
 The [development workflow](../docs/development_workflow.md#compact-candidate-qualification)
 sets the scientific, platform and operational rules.
 
+Artifacts may declare `action_protocol: "1.6"` or `"1.7"` when comparing
+released plugins with different exact action handshakes. The shared
+`qualify.prepare_request` path validates OLS model 2.1/result 1.5 and absence of
+all `host_*` facts, then changes only the framed action minor version. This
+retains the same native harness and serial input semantics across arms: protocol
+1.7's optional host facts are absent, so it cannot activate parallel input.
+Model metadata, numeric columns, output bindings and scientific tolerances stay
+unchanged. Without the field, existing preparation is unchanged. The selector
+is part of plan/artifact identity and deduplication; preflight must use the same
+helper as timed calls. It is not a general wire converter or a scientific waiver.
+
 The default routing coverage is 21 families at one and four workers: no/one FE,
 slopes, low-memory saved effects, dense and small-retained two-FE, three/four/eight/
 sixteen-FE, weights, weak/disconnected connectivity, repeated cells, wide RHS,
@@ -239,13 +250,24 @@ longer mandatory for each candidate. The routing cells are at most 100,000 rows
 and 5 regressors, so a [campaign coverage](#campaign-coverage) adds the
 million-row designs of the SCC package comparison.
 
+A prospective `routing-subset` round selects one fixture per included routing
+family and keeps both worker counts, independent oracles, artifact/scientific
+checks, balanced blocks, isolation and the original/incumbent performance guards.
+It uses the same report and decision thresholds as full coverage. All declared
+comparisons are gated, including any controls; selecting a subset never waives
+an unfavorable observation. A passing result is `subset_passed`, explicitly
+lists selected and omitted families, and cannot claim qualification of omitted
+routing families or campaign workloads. Freeze the selection and sample size
+before timing. A follow-up is a separate round; it does not pool or replace the
+observations or verdict of an earlier round.
+
 The configuration is a JSON object with these fields:
 
 | Field | Meaning |
 | --- | --- |
-| `scope` | `exact`, `many`, `two` or `within-migration-v1`; declares which eligible Auto family may change numerically. |
+| `scope` | `exact`, `incumbent-exact-v1`, `many`, `two` or `within-migration-v1`; declares the numerical comparison contract. |
 | `platform` | `Darwin` or `Linux`; build and measure native artifacts for that host. |
-| `artifacts` | `original`, `incumbent`, `candidate`, plus `hidden` for public activation. Each has `path`, `revision`, `build`, `request` and `families`, and optionally `public_policy`. |
+| `artifacts` | `original`, `incumbent`, `candidate`, plus `hidden` for public activation. Each has `path`, `revision`, `build`, `request` and `families`, and optionally `public_policy` and `public_many_policy`. |
 | `harness` | Built complete-native-call timing harness. |
 | `cases` | One row per fixture: `id`, `family`, `input`, `oracle`, `memory_limit_bytes` (positive bytes or `null`). |
 | `threads` | `[1, 4]` for routing and campaign coverage. |
@@ -254,7 +276,7 @@ The configuration is a JSON object with these fields:
 | `min_distinct_hosts_per_cell` | Optional Linux-only minimum, an integer from 1 through `replicas` (at most 12). Every cell/reference must have the declared number of accounted physical hosts. |
 | `seed` | Unsigned 64-bit ordering seed. |
 | `timeout_s`, `budget_s` | Fixed per-call and per-job limits, at most 120 and 14,400 seconds. |
-| `coverage` | `routing` requires all 42 cells, `campaign` the 16 campaign cells and `routing-campaign` all 58; `smoke` only checks tooling and cannot qualify a candidate. |
+| `coverage` | `routing` requires all 42 cells, `campaign` the 16 campaign cells and `routing-campaign` all 58; `routing-subset` selects unique known routing families at both worker counts; `smoke` only checks tooling and cannot qualify a candidate. |
 
 Artifact `build` records compiler and build settings in a short string. `request`
 is `auto`, `preserve`, `incremental-many`, `many-geometry-v1`, `incremental-two`,
@@ -312,6 +334,22 @@ numerical truth, typed scope certificates and setup/iteration/memory contracts.
 Every timed call must reproduce that artifact/cell's exact complete output
 fingerprint. Cross-worker comparisons require scientific agreement and stable
 discrete decisions. All checks run outside the complete native-call timer.
+
+The `incumbent-exact-v1` scope compares three public Auto artifacts when the
+candidate must reproduce the accepted incumbent's complete scientific
+fingerprint on every ordinary cell. Only the original-versus-incumbent
+comparison receives the incumbent's declared, previously accepted many/two
+family allowances. The original-to-incumbent comparison also accepts the
+previously approved [projection-to-derived residual reporting change](../docs/VALIDATION.md#beta10-integration-qualification), including
+one-FE requests, only when the existing derived-row validator passes, every
+other scientific field is exact and the full observation-column hashes match.
+This scope permits no new candidate rank, omission, numerical or routing
+change. Candidate and incumbent must declare the same
+families and public policies. The optional artifact field
+`public_many_policy: "many-geometry-v1"` identifies the accepted public
+many-FE policy; omission preserves the historical `incremental-many` meaning.
+Corrected rank cases require separate independent witnesses and explicit cost
+evidence; they cannot use this ordinary-performance contract.
 
 The `within-migration-v1` scope compares unchanged public Auto requests against
 the protected references. All three roles declare the same public two-FE

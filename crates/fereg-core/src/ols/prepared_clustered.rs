@@ -34,6 +34,8 @@ use super::{
     PreparedOlsReferenceWeightReport, PreparedOlsResidualDofReport,
 };
 
+mod quotient_psd;
+
 const CLUSTER_REDUCTION_MAX_BLOCKS: usize = 64;
 const CLUSTER_PARTIAL_BUDGET_BYTES: usize = 32 << 20;
 
@@ -294,10 +296,10 @@ impl<R: PreparedInferenceReservation> QualifiedClusterSubsetMeatProvider<R>
         let certificate = if self.scores.dense_view().is_some() {
             QualifiedClusterCertificateRoute::OlsIndependentRaw
         } else {
-            QualifiedClusterCertificateRoute::OlsPerGroupBread(self.fit.bread().values())
+            QualifiedClusterCertificateRoute::OlsPerGroupBread(self.scores.sandwich_bread(self.fit))
         };
         let meats = if let Some(batch) = self.group_batch {
-            batch.reduce_subset(mask, self.fit.bread().values(), reservation)?
+            batch.reduce_subset(mask, self.scores.sandwich_bread(self.fit), reservation)?
         } else {
             reduce_qualified_cluster_subset(
                 self.scores,
@@ -503,6 +505,7 @@ fn compose_clustered_view<P: PreparedOlsClusteredView + ?Sized, R: PreparedInfer
         config.certificate_tolerance,
         reservation,
         score_scratch,
+        config.fit.absorb.solver_memory_budget,
     )?;
     if perturbations.score_design {
         scores.certificate.passed = false;
@@ -594,6 +597,7 @@ fn compose_clustered_view<P: PreparedOlsClusteredView + ?Sized, R: PreparedInfer
             prepared,
             &covariance,
             config.certificate_tolerance,
+            fit.uses_quotient_inference(),
             reservation,
         )?;
     let statistic_error = certify_statistics(
@@ -842,12 +846,17 @@ fn build_raw_covariance<R: PreparedInferenceReservation>(
         // meat.  Apply the bread only once after inclusion-exclusion instead
         // of once per cluster group; this is algebraically identical and
         // removes the dominant O(G K^2) matrix-vector work for wide designs.
-        sandwich(fit.bread().values(), &combined_influence, p, reservation)?
+        sandwich(
+            scores.sandwich_bread(fit),
+            &combined_influence,
+            p,
+            reservation,
+        )?
     } else {
         symmetrize(&mut combined_influence, p)?;
         combined_influence
     };
-    let uncorrected = sandwich(fit.bread().values(), &combined_meat, p, reservation)?;
+    let uncorrected = sandwich(scores.sandwich_bread(fit), &combined_meat, p, reservation)?;
     let correction = cluster_correction(weight_report, dof)?;
     let mut corrected = reserved_filled(
         reservation,
@@ -1011,7 +1020,8 @@ fn apply_psd_policy<P: PreparedOlsClusteredView + ?Sized, R: PreparedInferenceRe
     )?;
     symmetric.copy_from_slice(raw);
     symmetrize(&mut symmetric, p)?;
-    let raw_eigen = symmetric_eigensystem(&symmetric, p, reservation)?;
+    let quotient_accuracy = fit.uses_quotient_inference();
+    let raw_eigen = symmetric_eigensystem(&symmetric, p, quotient_accuracy, reservation)?;
     let minimum_raw = raw_eigen
         .values
         .iter()
@@ -1048,7 +1058,12 @@ fn apply_psd_policy<P: PreparedOlsClusteredView + ?Sized, R: PreparedInferenceRe
     // One eigensystem therefore serves both the pre-restore and final checks.
     symmetrize(&mut output, p)?;
     let adjusted_eigen = if full_adjusted {
-        Some(symmetric_eigensystem(&output, p, reservation)?)
+        Some(symmetric_eigensystem(
+            &output,
+            p,
+            quotient_accuracy,
+            reservation,
+        )?)
     } else {
         None
     };
@@ -1123,6 +1138,7 @@ fn apply_psd_policy<P: PreparedOlsClusteredView + ?Sized, R: PreparedInferenceRe
 fn symmetric_eigensystem<R: PreparedInferenceReservation>(
     matrix: &[f64],
     dimension: usize,
+    quotient_accuracy: bool,
     reservation: &mut R,
 ) -> Result<SymmetricEigensystem> {
     let square = checked_square(
@@ -1152,7 +1168,11 @@ fn symmetric_eigensystem<R: PreparedInferenceReservation>(
         vectors[index * dimension + index] = 1.0;
     }
     if dimension > 1 {
-        let scale = covariance_scale(&work, dimension)?;
+        let scale = if quotient_accuracy {
+            quotient_psd::stopping_scale(&work, dimension)?
+        } else {
+            covariance_scale(&work, dimension)?
+        };
         let threshold = 128.0 * f64::EPSILON * scale;
         let maximum_iterations = dimension
             .checked_mul(dimension)
@@ -1160,6 +1180,9 @@ fn symmetric_eigensystem<R: PreparedInferenceReservation>(
             .ok_or_else(|| allocation("prepared clustered Jacobi iteration limit overflows"))?;
         let mut converged = false;
         for _ in 0..maximum_iterations {
+            if quotient_accuracy {
+                crate::interrupt::checkpoint()?;
+            }
             let mut pivot_row = 0_usize;
             let mut pivot_column = 1_usize;
             let mut maximum = 0.0_f64;
@@ -1295,6 +1318,7 @@ fn certify_psd_state<P: PreparedOlsClusteredView + ?Sized, R: PreparedInferenceR
     prepared: &P,
     covariance: &PreparedOlsClusteredCovariance,
     tolerance: f64,
+    quotient_accuracy: bool,
     reservation: &mut R,
 ) -> Result<(f64, f64, f64)> {
     let p = covariance.dimension();
@@ -1331,7 +1355,7 @@ fn certify_psd_state<P: PreparedOlsClusteredView + ?Sized, R: PreparedInferenceR
     )?;
     raw.copy_from_slice(&covariance.raw_values);
     symmetrize(&mut raw, p)?;
-    let raw_eigen = symmetric_eigensystem(&raw, p, reservation)?;
+    let raw_eigen = symmetric_eigensystem(&raw, p, quotient_accuracy, reservation)?;
     let raw_minimum = raw_eigen
         .values
         .iter()
@@ -1343,7 +1367,7 @@ fn certify_psd_state<P: PreparedOlsClusteredView + ?Sized, R: PreparedInferenceR
     } else {
         (raw, 0)
     };
-    let pre_restore_eigen = symmetric_eigensystem(&expected, p, reservation)?;
+    let pre_restore_eigen = symmetric_eigensystem(&expected, p, quotient_accuracy, reservation)?;
     let pre_restore_minimum = pre_restore_eigen
         .values
         .iter()
@@ -1359,7 +1383,8 @@ fn certify_psd_state<P: PreparedOlsClusteredView + ?Sized, R: PreparedInferenceR
 
     symmetrize(&mut expected, p)?;
     let transform_error = matrix_relative_infinity_norm(&expected, covariance.values(), p)?;
-    let final_eigen = symmetric_eigensystem(covariance.values(), p, reservation)?;
+    let final_eigen =
+        symmetric_eigensystem(covariance.values(), p, quotient_accuracy, reservation)?;
     let final_minimum = final_eigen
         .values
         .iter()
