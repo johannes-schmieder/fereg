@@ -398,6 +398,33 @@ including unaffected OLS and PPML paths. The private Mac evidence above covers
 that comparison and actual Stata loading. It is not release qualification or
 performance evidence; no timing claim is attached to this section.
 
+#### Accounting-only completion amendment, 2026-11-03
+
+The asynchronous round completed all twelve timing allocations on twelve
+distinct physical hosts, with scheduler failure and exit codes both zero.
+The preflight and admission jobs also succeeded. The sole scheduled report
+(job 8413270) exited one because its single 60-second query for whole-array
+accounting timed out. Subsequent monitoring obtained complete successful
+accounting for all twelve tasks. This is an accounting collection failure;
+no native measurement is being repeated.
+
+Before examining the numerical comparison results, this operational amendment
+permits exactly one deterministic re-evaluation with the unchanged maintained
+qualifier, frozen configuration, observations and statistical guards. It uses
+the now-available terminal accounting and writes a separate recovery report.
+The original timeout, failed collection, original formal and secondary reports,
+and report-job exit remain retained as failed operational evidence. The
+recovery cannot turn those original records into successes.
+
+All 5,184 scheduled calls and all twelve physical hosts remain in the analysis.
+There is no replacement allocation, timing exclusion, candidate change, new
+sampling, threshold change or pooling with earlier rounds. Observation hashes
+must match before and after re-evaluation. The recovered report is retained
+whether it passes, remains inconclusive or finds a regression; it authorizes
+no further report attempt. This narrow accounting repair supersedes only the
+earlier prohibition on another report invocation, using the bounded harness
+repair authority in AGENTS.md.
+
 The graph certificate is sufficient and can be conservative on weak forests
 or tiny tree-edge weights. Unresolved cases fail without publication. Stored
 input rounding can erase signal before estimation, which this work cannot
