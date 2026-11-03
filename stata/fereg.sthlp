@@ -419,8 +419,8 @@ Each estimation example creates its own synthetic data and wraps the block in
 {cmd:preserve}/{cmd:restore}, so it can be copied into a do-file without
 replacing the caller's dataset. The blocks set Stata's random-number seed.
 The clickable link runs the entire marked block through {cmd:fereg_run}, which
-also restores the caller's data. Example 12 additionally requires an installed
-{cmd:reghdfe} and Stata 19.
+also restores the caller's data. Example 2 compares whichever regression
+commands are installed and uses a table command supported by your Stata release.
 
 {space 2}{hline 8} {it:Example 1 - Basic two-way fixed effects} {hline 8}
 {cmd}{...}
@@ -445,7 +445,136 @@ also restores the caller's data. Example 12 additionally requires an installed
 {space 2}{hline 76}
 {space 2}{it:({stata fereg_run basic_two_way using fereg.sthlp:click to run})}
 
-{space 2}{hline 8} {it:Example 2 - Factor variables, interactions, and if} {hline 8}
+{space 2}{hline 8} {it:Example 2 - Compare coefficients and estimation times} {hline 8}
+
+{pstd}
+Simulate 250,000 observations on 25,000 workers and 10,000 firms, then compare
+{cmd:fereg}, {cmd:reghdfe}, {cmd:greg}, and {cmd:areg} when available.
+Every worker and firm appears more than once, so there are no singletons.
+The table uses {helpb etable} in updated Stata 17 or newer; otherwise it uses
+{helpb estimates table}, including on Stata 15 and 16. No table add-on is needed.
+Multiple absorbed effects in {cmd:areg} require Stata 19 or newer.
+
+{cmd}{...}
+          preserve
+{* example_start - benchmark}{...}
+          version 15.0
+          clear
+          set seed 2026082612
+          local N 250000
+          set obs `N'
+          generate long worker = ceil(_n/10)
+          bysort worker: generate byte period = _n
+          generate long firm = mod(worker + 7919*period, 10000) + 1
+          generate double x1 = rnormal()
+          generate double x2 = rnormal()
+          bysort worker: generate double worker_fe = rnormal() if _n == 1
+          bysort worker: replace worker_fe = worker_fe[1]
+          bysort firm: generate double firm_fe = .5*rnormal() if _n == 1
+          bysort firm: replace firm_fe = firm_fe[1]
+          generate double y = 1 + .6*x1 - .3*x2 + worker_fe + firm_fe + rnormal()
+
+          * Attach elapsed time to e() without a table add-on.
+          tempname add_runtime greg_result
+          program define `add_runtime', eclass
+              args seconds cmd
+              ereturn scalar runtime = `seconds'
+              * Complete greg's table metadata without changing b or V.
+              if "`cmd'" == "greg" {c -(}
+                  ereturn local cmd "greg"
+                  ereturn local depvar "y"
+              {c )-}
+          end
+
+          * Time estimation only; data generation is excluded.
+          local models
+          foreach cmd in fereg reghdfe greg areg {c -(}
+              if "`cmd'" == "areg" & c(stata_version) < 19 {c -(}
+                  display as text "areg skipped: multiple FEs require Stata 19."
+                  continue
+              {c )-}
+              capture which `cmd'
+              if _rc {c -(}
+                  display as text "`cmd' skipped: command is not installed."
+                  continue
+              {c )-}
+              local fit "`cmd'"
+              local options
+              if "`cmd'" == "fereg" local options "threads(`c(processors)')"
+              if "`cmd'" == "areg" {c -(}
+                  local fit "version 19: areg"
+                  local options "dfabsorb tolerance(1e-12) iterate(10000)"
+              {c )-}
+              if "`cmd'" == "greg" {c -(}
+                  local old_beta : copy global GTOOLS_BETA
+                  local old_table : copy global GTOOLS_GREGTABLE
+                  global GTOOLS_BETA "I KNOW WHAT I AM DOING"
+                  global GTOOLS_GREGTABLE 1
+                  local options "mata(`greg_result')"
+                  mata: st_local("mata_before", invtokens(direxternal("__*")'))
+              {c )-}
+              timer clear 99
+              timer on 99
+              capture quietly `fit' y x1 x2, absorb(worker firm) `options'
+              local rc = _rc
+              timer off 99
+              quietly timer list 99
+              local seconds = r(t99)
+              if "`cmd'" == "greg" {c -(}
+                  global GTOOLS_BETA `"`old_beta'"'
+                  global GTOOLS_GREGTABLE `"`old_table'"'
+                  * Remove only temporary Mata objects newly created by greg.
+                  mata: st_local("mata_after", invtokens(direxternal("__*")'))
+                  local mata_new : list mata_after - mata_before
+                  if "`mata_new'" != "" mata: mata drop `mata_new'
+              {c )-}
+              if `rc' {c -(}
+                  display as text "`cmd' skipped: estimation returned r(`rc')."
+                  continue
+              {c )-}
+              assert e(N) == `N'
+              `add_runtime' `seconds' `cmd'
+              estimates store `cmd'
+              local models `models' `cmd'
+          {c )-}
+          timer clear 99
+          program drop `add_runtime'
+
+          if "`models'" != "" {c -(}
+              capture which etable
+              if _rc == 0 & c(stata_version) >= 17 {c -(}
+                  etable, estimates(`models') column(estimates) keep(x1 x2) ///
+                      cstat(_r_b, nformat(%9.6f)) ///
+                      cstat(_r_se, nformat(%9.6f)) ///
+                      mstat(N, label("Observations") nformat(%12.0fc)) ///
+                      mstat(runtime, label("Time (s)") nformat(%9.3f))
+              {c )-}
+              else {c -(}
+                  estimates table `models', keep(x1 x2) ///
+                      b(%9.6f) se(%9.6f) stats(N runtime) stfmt(%12.3f)
+                  display as text "runtime is elapsed estimation time in seconds."
+              {c )-}
+          {c )-}
+{* example_end}{...}
+          restore
+{txt}{...}
+{space 2}{hline 76}
+{space 2}{it:({stata fereg_run benchmark using fereg.sthlp:click to run})}
+
+{pstd}
+The true coefficients are 0.6 on {cmd:x1} and -0.3 on {cmd:x2}.
+The table reports each command's own standard errors; absorbed degrees-of-freedom
+rules can differ. Times are one elapsed run per command, including any initial
+loading, and depend on the machine, processor setting, and command versions.
+{cmd:areg} uses {cmd:dfabsorb} and a tighter convergence tolerance;
+{cmd:fereg} receives the current Stata processor allowance. This is a local
+illustration, not a performance qualification. Change {cmd:local N} to adjust
+sample size. The example uses timer 99 and stores estimates under the command
+names, replacing stored results with those names. It temporarily enables
+{cmd:greg}'s beta regression and coefficient-table bridge, then restores the
+two {cmd:GTOOLS} globals.
+
+{space 2}{hline 8} {it:Example 3 - Factor variables, interactions, and if} {hline 8}
 {cmd}{...}
           preserve
 {* example_start - factor_if}{...}
@@ -472,7 +601,7 @@ also restores the caller's data. Example 12 additionally requires an installed
 {space 2}{hline 76}
 {space 2}{it:({stata fereg_run factor_if using fereg.sthlp:click to run})}
 
-{space 2}{hline 8} {it:Example 3 - Analytic, frequency, and probability weights} {hline 8}
+{space 2}{hline 8} {it:Example 4 - Analytic, frequency, and probability weights} {hline 8}
 {cmd}{...}
           preserve
 {* example_start - weights}{...}
@@ -503,7 +632,7 @@ also restores the caller's data. Example 12 additionally requires an installed
 {space 2}{hline 76}
 {space 2}{it:({stata fereg_run weights using fereg.sthlp:click to run})}
 
-{space 2}{hline 8} {it:Example 4 - Multiway and interacted clusters} {hline 8}
+{space 2}{hline 8} {it:Example 5 - Multiway and interacted clusters} {hline 8}
 {cmd}{...}
           preserve
 {* example_start - clusters}{...}
@@ -531,7 +660,7 @@ also restores the caller's data. Example 12 additionally requires an installed
 {space 2}{hline 76}
 {space 2}{it:({stata fereg_run clusters using fereg.sthlp:click to run})}
 
-{space 2}{hline 8} {it:Example 5 - A fixed-width string fixed effect} {hline 8}
+{space 2}{hline 8} {it:Example 6 - A fixed-width string fixed effect} {hline 8}
 {cmd}{...}
           preserve
 {* example_start - string_fe}{...}
@@ -555,7 +684,7 @@ also restores the caller's data. Example 12 additionally requires an installed
 {space 2}{hline 76}
 {space 2}{it:({stata fereg_run string_fe using fereg.sthlp:click to run})}
 
-{space 2}{hline 8} {it:Example 6 - An interacted firm-year fixed effect} {hline 8}
+{space 2}{hline 8} {it:Example 7 - An interacted firm-year fixed effect} {hline 8}
 {cmd}{...}
           preserve
 {* example_start - interacted_fe}{...}
@@ -580,7 +709,7 @@ also restores the caller's data. Example 12 additionally requires an installed
 {space 2}{hline 76}
 {space 2}{it:({stata fereg_run interacted_fe using fereg.sthlp:click to run})}
 
-{space 2}{hline 8} {it:Example 7 - Firm intercepts and firm-specific slopes} {hline 8}
+{space 2}{hline 8} {it:Example 8 - Firm intercepts and firm-specific slopes} {hline 8}
 {cmd}{...}
           preserve
 {* example_start - absorbed_slope}{...}
@@ -607,7 +736,7 @@ also restores the caller's data. Example 12 additionally requires an installed
 {space 2}{hline 76}
 {space 2}{it:({stata fereg_run absorbed_slope using fereg.sthlp:click to run})}
 
-{space 2}{hline 8} {it:Example 8 - Multiple slope-only absorbed channels} {hline 8}
+{space 2}{hline 8} {it:Example 9 - Multiple slope-only absorbed channels} {hline 8}
 {cmd}{...}
           preserve
 {* example_start - slope_only}{...}
@@ -638,7 +767,7 @@ also restores the caller's data. Example 12 additionally requires an installed
 {space 2}{hline 76}
 {space 2}{it:({stata fereg_run slope_only using fereg.sthlp:click to run})}
 
-{space 2}{hline 8} {it:Example 9 - Saved effects, residuals, and prediction} {hline 8}
+{space 2}{hline 8} {it:Example 10 - Saved effects, residuals, and prediction} {hline 8}
 {cmd}{...}
           preserve
 {* example_start - saved_outputs}{...}
@@ -670,7 +799,7 @@ also restores the caller's data. Example 12 additionally requires an installed
 {space 2}{hline 76}
 {space 2}{it:({stata fereg_run saved_outputs using fereg.sthlp:click to run})}
 
-{space 2}{hline 8} {it:Example 10 - No finite regressors and disconnected components} {hline 8}
+{space 2}{hline 8} {it:Example 11 - No finite regressors and disconnected components} {hline 8}
 {cmd}{...}
           preserve
 {* example_start - disconnected}{...}
@@ -695,7 +824,7 @@ also restores the caller's data. Example 12 additionally requires an installed
 {space 2}{hline 76}
 {space 2}{it:({stata fereg_run disconnected using fereg.sthlp:click to run})}
 
-{space 2}{hline 8} {it:Example 11 - Low-memory execution and solver diagnostics} {hline 8}
+{space 2}{hline 8} {it:Example 12 - Low-memory execution and solver diagnostics} {hline 8}
 {cmd}{...}
           preserve
 {* example_start - low_memory}{...}
@@ -721,131 +850,6 @@ also restores the caller's data. Example 12 additionally requires an installed
 {txt}{...}
 {space 2}{hline 76}
 {space 2}{it:({stata fereg_run low_memory using fereg.sthlp:click to run})}
-
-{space 2}{hline 8} {it:Example 12 - Benchmark against reghdfe and Stata 19 areg} {hline 8}
-{cmd}{...}
-          preserve
-{* example_start - benchmark}{...}
-          version 19.0
-          which reghdfe
-          clear
-          set seed 2026082612
-          local N 250000
-          local repetitions 3
-          local comparison_threads = c(processors)
-          set obs `N'
-          generate long worker = ceil(_n/10)
-          bysort worker: generate byte period = _n
-          generate long firm = mod(worker + 7919*period, 10000) + 1
-          generate double x1 = rnormal()
-          generate double x2 = rnormal()
-          bysort worker: generate double worker_fe = rnormal() if _n == 1
-          bysort worker: replace worker_fe = worker_fe[1]
-          bysort firm: generate double firm_fe = .5*rnormal() if _n == 1
-          bysort firm: replace firm_fe = firm_fe[1]
-          generate double y = 1 + .6*x1 - .3*x2 + worker_fe + firm_fe + rnormal()
-
-          quietly fereg y x1 x2, absorb(worker firm) dof(pairwise) ///
-              threads(`comparison_threads')
-          scalar __fereg_doc_b_fereg = _b[x1]
-          scalar __fereg_doc_rss_fereg = e(rss)
-          scalar __fereg_doc_N_fereg = e(N)
-          quietly reghdfe y x1 x2, absorb(worker firm) dof(pairwise)
-          scalar __fereg_doc_b_reghdfe = _b[x1]
-          scalar __fereg_doc_rss_reghdfe = e(rss)
-          scalar __fereg_doc_N_reghdfe = e(N)
-          quietly areg y x1 x2, absorb(worker firm) dfabsorb ///
-              tolerance(1e-12) iterate(10000)
-          scalar __fereg_doc_b_areg = _b[x1]
-          scalar __fereg_doc_rss_areg = e(rss)
-          scalar __fereg_doc_N_areg = e(N)
-
-          display as text "Coefficient on x1: fereg=" ///
-              as result %12.8f __fereg_doc_b_fereg ///
-              as text " reghdfe=" as result %12.8f __fereg_doc_b_reghdfe ///
-              as text " areg=" as result %12.8f __fereg_doc_b_areg
-          display as text "RSS: fereg=" as result %12.4f __fereg_doc_rss_fereg ///
-              as text " reghdfe=" as result %12.4f __fereg_doc_rss_reghdfe ///
-              as text " areg=" as result %12.4f __fereg_doc_rss_areg
-
-          assert __fereg_doc_N_fereg == __fereg_doc_N_reghdfe
-          assert __fereg_doc_N_fereg == __fereg_doc_N_areg
-          assert reldif(__fereg_doc_b_fereg,__fereg_doc_b_reghdfe) < 1e-6
-          assert reldif(__fereg_doc_b_fereg,__fereg_doc_b_areg) < 1e-6
-          assert reldif(__fereg_doc_rss_fereg,__fereg_doc_rss_reghdfe) < 1e-6
-          assert reldif(__fereg_doc_rss_fereg,__fereg_doc_rss_areg) < 1e-6
-
-          timer clear 97
-          timer clear 98
-          timer clear 99
-          timer on 97
-          quietly fereg y x1 x2, absorb(worker firm) dof(pairwise) ///
-              threads(`comparison_threads')
-          timer off 97
-          timer on 98
-          quietly reghdfe y x1 x2, absorb(worker firm) dof(pairwise)
-          timer off 98
-          timer on 99
-          quietly areg y x1 x2, absorb(worker firm) dfabsorb ///
-              tolerance(1e-12) iterate(10000)
-          timer off 99
-          timer on 97
-          quietly fereg y x1 x2, absorb(worker firm) dof(pairwise) ///
-              threads(`comparison_threads')
-          timer off 97
-          timer on 98
-          quietly reghdfe y x1 x2, absorb(worker firm) dof(pairwise)
-          timer off 98
-          timer on 99
-          quietly areg y x1 x2, absorb(worker firm) dfabsorb ///
-              tolerance(1e-12) iterate(10000)
-          timer off 99
-          timer on 97
-          quietly fereg y x1 x2, absorb(worker firm) dof(pairwise) ///
-              threads(`comparison_threads')
-          timer off 97
-          timer on 98
-          quietly reghdfe y x1 x2, absorb(worker firm) dof(pairwise)
-          timer off 98
-          timer on 99
-          quietly areg y x1 x2, absorb(worker firm) dfabsorb ///
-              tolerance(1e-12) iterate(10000)
-          timer off 99
-
-          quietly timer list
-          scalar __fereg_doc_t_fereg = r(t97)/`repetitions'
-          scalar __fereg_doc_t_reghdfe = r(t98)/`repetitions'
-          scalar __fereg_doc_t_areg = r(t99)/`repetitions'
-          display as text "Mean warm seconds over `repetitions' repetitions:"
-          display as text "  fereg             " as result %9.4f __fereg_doc_t_fereg
-          display as text "  reghdfe           " as result %9.4f __fereg_doc_t_reghdfe
-          display as text "  Stata 19 areg HDFE" as result %9.4f __fereg_doc_t_areg
-          display as text "  fereg/reghdfe     " ///
-              as result %9.3f (__fereg_doc_t_fereg/__fereg_doc_t_reghdfe)
-          display as text "  fereg/areg        " ///
-              as result %9.3f (__fereg_doc_t_fereg/__fereg_doc_t_areg)
-          timer clear 97
-          timer clear 98
-          timer clear 99
-          scalar drop __fereg_doc_b_fereg __fereg_doc_rss_fereg ///
-              __fereg_doc_N_fereg __fereg_doc_b_reghdfe ///
-              __fereg_doc_rss_reghdfe __fereg_doc_N_reghdfe ///
-              __fereg_doc_b_areg __fereg_doc_rss_areg __fereg_doc_N_areg ///
-              __fereg_doc_t_fereg __fereg_doc_t_reghdfe __fereg_doc_t_areg
-{* example_end}{...}
-          restore
-{txt}{...}
-{space 2}{hline 76}
-{space 2}{it:({stata fereg_run benchmark using fereg.sthlp:click to run benchmark})}
-
-{pstd}
-Example 12 warms all three commands before timing, verifies the coefficient on
-{cmd:x1}, the estimation sample size, and RSS, and averages three end-to-end
-runs. It uses a tighter {cmd:areg} convergence tolerance for numerical parity,
-the current Stata processor setting for Stata's commands, and passes the same
-allowance to {cmd:fereg}. Change {cmd:local N} and the number
-of repetitions for a more demanding local comparison. Release claims require
-the frozen exact-SHA benchmark suite, not this example.
 
 {marker requirements}
 {title:Requirements}

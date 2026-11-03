@@ -349,12 +349,16 @@ Stata 19 extends `areg, absorb()` to multiple high-dimensional categorical
 variables. Its `dfabsorb` option adjusts absorbed degrees of freedom for
 pairwise collinearity; see Stata's
 [HDFE overview](https://www.stata.com/new-in-stata/high-dimensional-fixed-effects/)
-and [`areg` manual](https://www.stata.com/manuals/rareg.pdf). The benchmark in
-`help fereg` uses a design without singletons, the same two absorbed effects,
-IID inference, the default pairwise policy in `fereg` and `reghdfe`, and
-`dfabsorb` in `areg`. It records three warm end-to-end repetitions in one Stata
-session and checks coefficients and RSS before printing times. It is a
-reproducible local comparison, not release qualification.
+and [`areg` manual](https://www.stata.com/manuals/rareg.pdf). Example 2 in
+`help fereg` simulates 250,000 observations without singletons and compares
+the installed `fereg`, `reghdfe`, `greg`, and (on Stata 19 or newer) `areg`.
+It reports coefficients, native standard errors, observations, and elapsed
+estimation time in one table. It uses `etable` when available in Stata 17 or
+newer, with built-in `estimates table` as the fallback. The example uses
+`dfabsorb` and a tighter tolerance for `areg`; other inference settings are
+command defaults. Each time is a single run including initial loading.
+Data generation is excluded. This is a local illustration, not release
+qualification.
 
 Use the [maintained local benchmark](../bench/README.md) for descriptive development
 measurements. Descriptive Linux comparisons with fixest, PyFixest, reghdfe,
@@ -369,7 +373,8 @@ same sole native runtime.
 
 Type `help fereg` for twelve self-contained examples. Each estimation example
 creates synthetic data and preserves/restores the caller's dataset. The
-benchmark additionally requires Stata 19 and an installed `reghdfe`.
+comparison skips unavailable commands and supports Stata 15 or newer without
+installing a table add-on.
 
 Version 0.5.0 does not support IV/GMM, group outcomes with individual
 fixed effects, HAC or Driscoll--Kraay covariance estimators, other GLMs, or GPU
