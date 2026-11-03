@@ -1,5 +1,23 @@
 # Validation status
 
+## Stable 0.5.0 promotion
+
+On November 3 Johannes authorized the regular v0.5.0 release. It uses the exact
+beta.15 native binaries on all three platforms and the same native runtime source.
+The only executable frontend changes replace the selftest and posted OLS/PPML
+release labels with `0.5.0`; package metadata, help and installation links are
+updated. Prior native scientific and platform qualification therefore remains
+applicable, including its limitations and accepted performance regressions.
+
+The [stable package verification](../bench/results/v050-publication-20261103.json)
+retains the plugin and archive identities, zero-advisory dependency audit, 51
+passing focused Python tests, 3,624 verified source-archive entries, and a fresh
+offline universal Mac build with binary/ABI checks. The rebuilt artifact is a
+source-closure check; the distributed binaries remain exactly beta.15.
+The stable archive passes installation and independent PPML fixtures; a fresh
+root installation verifies all 36 file hashes, stable selftest/OLS/PPML labels,
+and independent OLS/PPML coefficients, covariance and sample checks.
+
 ## Beta.15 publication decision
 
 On November 2, after reviewing the completed no-FE performance evidence,

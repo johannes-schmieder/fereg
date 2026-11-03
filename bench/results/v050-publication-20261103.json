@@ -1,0 +1,144 @@
+{
+  "schema": 1,
+  "release": "v0.5.0",
+  "date": "2026-11-03",
+  "promotion_of": "v0.5.0-beta.15",
+  "prior_platform_qualification": "bench/results/beta15-publication-20261102.json",
+  "campaign": "bench/results/scc-20261102-beta15.md",
+  "packaging_source_commit": "a7e5732100e9adc13b5b9cf5a7d5b8014d465c66",
+  "native_source_commit": "1306301d17aff6bee4f90660a17043d762215e3f",
+  "runtime_sha256": "a46e892c04443d8d9e4a1fadad08f15346a042144f8985566dd7d5650d4037dc",
+  "native_binaries_exact_beta15": true,
+  "native_sources_exact_beta15": true,
+  "frontend_change": "Selftest and OLS/PPML release labels only; estimation logic unchanged.",
+  "plugins": [
+    {
+      "path": "fereg_linux.plugin",
+      "source_sha": "1306301d17aff6bee4f90660a17043d762215e3f",
+      "sha256": "4dd4494eda9b8c02d867cc62c2058814a5e5ea3013064e8a3bf12d8e2a8c22a6",
+      "bytes": 17143184
+    },
+    {
+      "path": "fereg_windows.plugin",
+      "source_sha": "1306301d17aff6bee4f90660a17043d762215e3f",
+      "sha256": "9fa89bc7b12e2bf07e78f2c8f09ff66a47ab2b4cebbd941c68ebd56756451546",
+      "bytes": 12246528
+    },
+    {
+      "path": "fereg_macos.plugin",
+      "source_sha": "1306301d17aff6bee4f90660a17043d762215e3f",
+      "sha256": "2c8f6af8e10653a675c693e98560e94648e2f795ce5dfc605cf3f93f617d2200",
+      "bytes": 21623488
+    }
+  ],
+  "support_caveats": [
+    "Only platforms named in included_platforms are supplied by this package.",
+    "The Linux binary requires glibc 2.28 or newer.",
+    "Windows retains serial input pending live Break qualification.",
+    "Native Intel-host Stata testing is outstanding; the macOS plugin contains both processor slices.",
+    "The accepted Linux no-FE 16-regressor, one-worker slowdown of 7.3% versus beta.14 remains; see docs/VALIDATION.md."
+  ],
+  "assets": {
+    "fereg-0.5.0.zip": {
+      "sha256": "96628dcc585a1eba00ecd843bd7771ba7d36bb2c06372dbc20f4fcb3989c34f3",
+      "bytes": 18626781
+    },
+    "fereg-0.5.0.zip.sha256": {
+      "sha256": "5f21ec076cf25aab0df3ea9e6645a4a54c5bc25519982014ee255c35d31cf65a",
+      "bytes": 82
+    },
+    "fereg-0.5.0-source.zip": {
+      "sha256": "c02488604fe4c79a387c53290732e041f35eca1c7d01fb08128716a0d74948e6",
+      "bytes": 35300103
+    },
+    "fereg-0.5.0-source.zip.sha256": {
+      "sha256": "1db18d9c2e6adae6d746aab100496deff753517f0ac61746c0f96342f60bd16d",
+      "bytes": 89
+    },
+    "macos_source_build.md": {
+      "sha256": "6798db113daf34e716270e5f89ccee5c3a8c7b21eb2625ab3201432579ffc3ec",
+      "bytes": 2826
+    }
+  },
+  "dependency_audit": {
+    "advisory_count": 0,
+    "cargo_lock_sha256": "4975de767595cf184cd5328e6ec7f7a55e7871c545d3c51adbc92da1544696d5",
+    "schema": 1,
+    "source_sha": "a7e5732100e9adc13b5b9cf5a7d5b8014d465c66",
+    "status": "pass",
+    "toolchain": "1.85.1"
+  },
+  "focused_python_tests": {
+    "release_staging": 14,
+    "staged_runner": 9,
+    "github_install": 4,
+    "binary_audit": 24,
+    "all_passed": true
+  },
+  "source_archive": {
+    "phase": "stable-source",
+    "verified_files": 3624,
+    "vendored_dependencies": true,
+    "offline_build": "passed",
+    "fresh_cargo_home": true,
+    "native_binary_audit": "passed",
+    "native_abi": "passed",
+    "rebuilt_plugin_is_distributed": false,
+    "build_log_sha256": "6bc1732f254a043b3c2ee83a9b52847ee9c9d61557cdf82c9a33c601e886d859"
+  },
+  "distributed_macos_plugin": {
+    "binary_audit": "passed",
+    "actual_abi_selftest_panic_containment": "passed",
+    "binary_audit_sha256": "487efd178a307dcc85fd9c06f8666c1b0ee1df9294dcca89dfd6d81791ea6e76",
+    "abi_log_sha256": "2260be29b42e8e3716d555cebf2439a7097d1db8557bf6b920e2c10524d318a8"
+  },
+  "staged_archive": {
+    "archive_bytes": 18626781,
+    "archive_sha256": "96628dcc585a1eba00ecd843bd7771ba7d36bb2c06372dbc20f4fcb3989c34f3",
+    "completed": true,
+    "manifest_sha256": "f75b0829fe8bd164f6efb66afa8743bc77de0538ff4e16a196e9c14cb6618a0f",
+    "plugin_bytes": 21623488,
+    "plugin_sha256": "2c8f6af8e10653a675c693e98560e94648e2f795ce5dfc605cf3f93f617d2200",
+    "results": [
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/installation/installation_smoke.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_one_fe_dummy_oracle.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      }
+    ],
+    "schema_version": 1,
+    "source_sha": "a7e5732100e9adc13b5b9cf5a7d5b8014d465c66",
+    "stata_edition": "MP",
+    "stata_executable_sha256": "178db3b78a3768ebfe88c36e845df292611b4b8ef0342c47a58e4641d0e6a16b",
+    "stata_executable_size_bytes": 119946864,
+    "stata_machine_type": "Mac (Apple Silicon)",
+    "stata_os": "Unix",
+    "stata_processors": 8,
+    "stata_version": "19",
+    "status": "success",
+    "tests_failed": 0,
+    "tests_passed": 2
+  },
+  "local_installation": {
+    "status": "pass",
+    "mode": "local",
+    "selftest_version": "0.5.0",
+    "installed_files": 36,
+    "installed_hashes_exact": true,
+    "independent_ols_coefficients_covariance_sample": "pass",
+    "independent_ppml_coefficients_covariance_sample": "pass",
+    "log_sha256": "0f77676f527cd268a3d10ad24ff102486435d8835751fca43b591304780764b8"
+  },
+  "qualification_reuse": "Linux/Windows native and scientific evidence reused for exact unchanged plugin bytes; fresh package/source/installed checks on Apple Silicon Mac Stata 19."
+}
