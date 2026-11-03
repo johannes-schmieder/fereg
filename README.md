@@ -1,4 +1,4 @@
-# fereg: Fixed-effect OLS and PPML in Stata
+# fereg: Fast high-dimensional fixed-effects regressions in Stata
 
 `fereg` fits linear models by ordinary or weighted least squares. `feppml`
 fits Poisson pseudo-maximum-likelihood models, including nonnegative outcomes
