@@ -140,5 +140,66 @@
     "independent_ppml_coefficients_covariance_sample": "pass",
     "log_sha256": "0f77676f527cd268a3d10ad24ff102486435d8835751fca43b591304780764b8"
   },
-  "qualification_reuse": "Linux/Windows native and scientific evidence reused for exact unchanged plugin bytes; fresh package/source/installed checks on Apple Silicon Mac Stata 19."
+  "qualification_reuse": "Linux/Windows native and scientific evidence reused for exact unchanged plugin bytes; fresh package/source/installed checks on Apple Silicon Mac Stata 19.",
+  "publication": {
+    "url": "https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0",
+    "tag": "v0.5.0",
+    "release_id": 432724771,
+    "published_at": "2026-11-03T13:20:46Z",
+    "draft": false,
+    "prerelease": false,
+    "latest": true,
+    "all_five_public_downloads_exact": true,
+    "unauthenticated_downloads": true,
+    "release_list_bytes": 234266,
+    "release_list_limit_bytes": 264392,
+    "release_notes_sha256": "3882d83ece9a01f1ea1401011d52abc5fc54ac5479904ebdb559fd07e3849734",
+    "tag_commit": "ff5088502d660618364bf5733590cd3c12bb2d58",
+    "beta15_release_and_assets_unchanged": true,
+    "stata_release_list_bytes": 198376
+  },
+  "http_installations": {
+    "tag": {
+      "status": "pass",
+      "mode": "tag",
+      "source": "https://raw.githubusercontent.com/johannes-schmieder/fereg/v0.5.0/",
+      "selftest_version": "0.5.0",
+      "installed_files": 36,
+      "installed_hashes_exact": true,
+      "independent_ols_coefficients_covariance_sample": "pass",
+      "independent_ppml_coefficients_covariance_sample": "pass",
+      "log_sha256": "ce9f3687ae2b23eac278b89179331e179c82799a9d890828b299239b30a43fce"
+    },
+    "main": {
+      "status": "pass",
+      "mode": "main",
+      "source": "https://raw.githubusercontent.com/johannes-schmieder/fereg/main/",
+      "selftest_version": "0.5.0",
+      "installed_files": 36,
+      "installed_hashes_exact": true,
+      "independent_ols_coefficients_covariance_sample": "pass",
+      "independent_ppml_coefficients_covariance_sample": "pass",
+      "log_sha256": "e583617a94472dc76d3bbd687caa1179c4ca1ef77999dbe44bfe2a90eae2cc77"
+    },
+    "github": {
+      "status": "pass",
+      "mode": "github",
+      "source": "github install johannes-schmieder/fereg",
+      "selftest_version": "0.5.0",
+      "installed_files": 36,
+      "installed_hashes_exact": true,
+      "independent_ols_coefficients_covariance_sample": "pass",
+      "independent_ppml_coefficients_covariance_sample": "pass",
+      "log_sha256": "390091fec34f4f249dc74e88b09377d4d8ddc78606fa4eba06d5a9a19a6bd421"
+    }
+  },
+  "http_installation_harness_sha256": "d8ba829b70144a2a543ebb59ca6a5e241c823ae7fb907f67590ed4c22faef461",
+  "github_installer_initial_error": {
+    "stage": "Release-list query after package files were installed",
+    "stata_rc": 132,
+    "message": "too few ')' or ']'",
+    "cause": "Not established; direct and nested release-query diagnostics subsequently passed without package, helper or release changes.",
+    "initial_log_sha256": "7a267f0026706406092fa9248d6dcce53188d6b949a2e19032c3051b98f6ec0e",
+    "bounded_followup": "One fresh isolated github install passed all 36 byte checks, stable labels and independent OLS/PPML checks."
+  }
 }

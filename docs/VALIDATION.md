@@ -18,6 +18,17 @@ The stable archive passes installation and independent PPML fixtures; a fresh
 root installation verifies all 36 file hashes, stable selftest/OLS/PPML labels,
 and independent OLS/PPML coefficients, covariance and sample checks.
 
+[Version 0.5.0](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0)
+is published as the regular Latest release. All five unauthenticated asset
+downloads match their retained hashes; beta.15 and its assets remain unchanged.
+Fresh Mac Stata 19 installations from the stable tag, `main` and the community
+`github install` command pass all 36 installed-byte checks and independent
+OLS/PPML checks. The release list is 234,266 bytes (198,376 in Stata's compact
+response), below the 264,392-byte limit. The first community-helper attempt
+returned `r(132)` after installation; direct and nested query diagnostics then
+passed without changes, followed by one successful fresh installation. Its
+cause is not established; the initial failure hash is retained in the record.
+
 ## Beta.15 publication decision
 
 On November 2, after reviewing the completed no-FE performance evidence,
