@@ -120,6 +120,16 @@ class ReleaseStagingTests(unittest.TestCase):
             self.assertIn(prefix + "RELEASE_MANIFEST.json", names)
             self.assertIn(prefix + "SBOM.spdx.json", names)
             self.assertIn(prefix + "DEPENDENCY_AUDIT.json", names)
+            self.assertIn(prefix + "CMG-MIT.txt", names)
+            # The archive must also be accepted by the independent installer.
+            from scripts.run_staged_stata_tests import extract_staged_release
+            staged = extract_staged_release(
+                output, stage_release.digest(output), root / "extracted"
+            )
+            self.assertEqual(
+                (staged.package_root / "CMG-MIT.txt").read_bytes(),
+                (ROOT / "licenses/CMG-MIT.txt").read_bytes(),
+            )
             self.assertNotIn(prefix + "_fereg_estimate_ols_test.ado", names)
             self.assertNotIn(prefix + "_fereg_ols_hidden_numeric_v1.ado", names)
             private_ppml_files = (
@@ -197,6 +207,16 @@ class ReleaseStagingTests(unittest.TestCase):
             self.assertIn(prefix + "Cargo.lock", names)
             self.assertIn(prefix + "SBOM.spdx.json", names)
             self.assertIn(prefix + "DEPENDENCY_AUDIT.json", names)
+            self.assertIn(prefix + "CMG-MIT.txt", names)
+            # The archive must also be accepted by the independent installer.
+            from scripts.run_staged_stata_tests import extract_staged_release
+            staged = extract_staged_release(
+                output, stage_release.digest(output), root / "extracted"
+            )
+            self.assertEqual(
+                (staged.package_root / "CMG-MIT.txt").read_bytes(),
+                (ROOT / "licenses/CMG-MIT.txt").read_bytes(),
+            )
             self.assertNotIn(
                 prefix + "stata/_fereg_estimate_ols_test.ado", names
             )

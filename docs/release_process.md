@@ -6,6 +6,12 @@ promoting the qualified beta.15 runtime to the regular v0.5.0 release. See
 [licensing](licensing.md), [validation](VALIDATION.md) and
 [development checks](development_workflow.md). GitHub tests remain paused.
 
+Johannes explicitly authorized refreshing the existing v0.5.0 tag and archives
+from current main on 2026-11-03, including the Stata output, help and MIT
+licensing updates. This is a one-time exception to the archive/tag immutability
+rule below. Retain the original identities in the publication record and keep
+all native plugin bytes unchanged; beta releases remain untouched.
+
 ## Main-branch installation
 
 The root `fereg.pkg` and `stata.toc` support `github install

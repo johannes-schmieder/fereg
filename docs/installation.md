@@ -63,15 +63,19 @@ then rerun the direct `net install` command above with `replace`. `clear all`
 does not reliably unload a native plugin. On Windows, loaded plugin files also cannot
 be overwritten. To remove an installed package, run `ado uninstall fereg`.
 
-## Corrections to the bundled 0.5.0 documentation
+## Refreshed 0.5.0 package
 
-The release archives and tag remain fixed. The current [user guide](user_guide.md)
-and help files on `main` correct two descriptions: PPML Auto selects the MAP
-projection family, and `feppml` sets Stata's processors to one only when the
-dataset has fewer than one million observations. The dependency notice now
-names the `within` and `schwarz-precond` version actually shipped (0.5.0,
-revision `8d401d82`), matching the release lockfile and bundled license texts.
-These are documentation corrections; the commands and native binaries are unchanged.
+At the author's request, the v0.5.0 tag and release archives were refreshed on
+2026-11-03 with the current Stata files, help, documentation and MIT licenses.
+Reinstall with `replace` to receive the complete OLS/PPML output and the new
+250,000-observation comparison in Example 2 of `help fereg`.
+
+The package also includes the corrected PPML Auto/thread descriptions and
+numerical acknowledgements. All three native plugins are byte-for-byte
+unchanged, with their actual build commits and prior qualification retained.
+The [publication record](../bench/results/v050-publication-20261103.json)
+preserves the original archive identities. For an exact historical installation,
+use its recorded Git commit rather than the refreshed tag.
 
 ## Build from source
 

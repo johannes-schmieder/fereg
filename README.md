@@ -75,8 +75,9 @@ fereg y x, absorb(worker firm) vce(cluster firm)
 Type `help fereg` in Stata for the complete syntax and twelve copy-ready
 examples, including categorical factor-variable models, string and interacted
 fixed effects, absorbed slopes, weights, multiway clustering, saved effects,
-prediction, low-memory execution, and a benchmark against `reghdfe` and Stata
-19's HDFE `areg`.
+prediction, low-memory execution, and a coefficient/time comparison with
+installed `reghdfe`, `greg`, and Stata 19 `areg`. The comparison uses `etable`
+when available and `estimates table` on older Stata releases.
 
 For PPML with high-dimensional fixed effects, use for example:
 

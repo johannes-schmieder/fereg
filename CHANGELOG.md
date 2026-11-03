@@ -1,12 +1,5 @@
 # Changelog
 
-## Unreleased
-
-- License fereg and its incorporated CMG code under MIT following permission
-  from CMG's developers via Ioannis Koutis, confirmed by Johannes Schmieder on
-  2026-11-03. Retain the exact CMG dependency pin, third-party notices, native
-  binaries, and historical release archives.
-
 ## 0.5.0 — 2026-11-03
 
 Stable release of the qualified beta.15 runtime. The Linux, Windows and universal
@@ -30,11 +23,17 @@ limitations or comparator discrepancies. Linux requires glibc 2.28 or newer;
 licensed Intel-Mac Stata testing remains outstanding. The accepted Linux
 16-regressor, one-worker no-FE regression of 7.3% against beta.14 remains.
 
-A subsequent documentation review corrects the PPML Auto solver and host-thread
-descriptions, dependency attribution, platform requirements and benchmark
-summaries on `main`. The [installation guide](docs/installation.md#corrections-to-the-bundled-050-documentation)
-identifies the corrections to the fixed release documentation. Native binaries,
-release archives and the tag are unchanged.
+The author requested a refresh of the v0.5.0 tag and archives on 2026-11-03:
+
+- Include the full OLS and PPML summary output and absorbed-DoF tables.
+- Expand acknowledgements, clarify supported interactions, simplify solver help,
+  and add the 250,000-observation regression/time comparison as Example 2.
+- Include the corrected PPML Auto/thread descriptions, dependency attribution,
+  platform requirements and benchmark summaries.
+- License fereg and its incorporated CMG code under MIT, following permission
+  from CMG's developers via Ioannis Koutis and Johannes's license selection.
+- Keep all native plugin bytes unchanged and preserve the original release
+  identities in the [publication record](bench/results/v050-publication-20261103.json).
 
 ## 0.5.0 beta.15 — 2026-11-02
 

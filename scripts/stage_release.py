@@ -291,8 +291,8 @@ def copy_release_files(
         path = source / name
         if not path.is_file():
             raise RuntimeError(f"missing release file: {path}")
-        (staging / name).parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(path, staging / name)
+        # Binary packages are flat; source paths may include a license directory.
+        shutil.copy2(path, staging / Path(name).name)
     shutil.copy2(source / "LICENSE", staging / "fereg-LICENSE.txt")
     shutil.copy2(source / "THIRD_PARTY_NOTICES.md", staging / "fereg-THIRD-PARTY-NOTICES.txt")
     (staging / "fereg-SOURCE.txt").write_text(
