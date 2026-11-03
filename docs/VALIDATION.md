@@ -425,6 +425,118 @@ no further report attempt. This narrow accounting repair supersedes only the
 earlier prohibition on another report invocation, using the bounded harness
 repair authority in AGENTS.md.
 
+#### Completed independently scheduled timings, 2026-11-03
+
+The twelve fixed allocations all ran to completion on twelve distinct
+physical hosts: scc-wf1, scc-yj4, scc-wk3, scc-wj4, scc-wo4, scc-tr3,
+scc-zk2, scc-tj3, scc-tj4, scc-zk1, scc-tr2 and scc-ul2. All 5,184
+planned calls are retained (576 warmups and 4,608 measured calls), with no
+replacement, exclusion or pooling with earlier rounds. Every allocation met
+its driver budget and completed all 432 calls. The asynchronous schedule
+worked: tasks started when resources became available, without a common
+start barrier. Scheduler wall times were 237–504 seconds per timing task.
+
+Preflight again passed 48 ordinary actual-plugin scientific checks, 33
+exceptional checks and 35 Stata fits. It verified all declared environment
+pins and 26,187 environment files; ordinary candidate science stayed exact
+against beta.15, with no exceptional repair activation. Existing source and
+Mac evidence remains applicable because the native binary is unchanged.
+
+The scheduled report failed only at accounting collection: its 60-second
+whole-array query timed out, producing 44 missing-accounting/host errors and
+zero admitted comparisons. The complete records were subsequently retrieved:
+all timing tasks have scheduler failure zero and exit zero. The original
+report exit one, collection failure, reports and errors remain retained.
+The separately declared accounting-only job 8413444 evaluated the identical
+observations with the unchanged qualifier and thresholds. It made no native
+calls, confirmed that all nineteen original evidence files stayed unchanged,
+and completed in 96 scheduler seconds with failure zero and exit one, matching
+its inconclusive numerical verdict.
+
+The recovered numerical result is **30/32 protected comparisons passed,
+two inconclusive, zero classified regressions**. All **16/16 comparisons
+against beta.15 pass**; **14/16 against beta.7 pass**. Six of the eight
+previously inconclusive comparisons pass in this independent round; the
+remaining two are small-retained with four workers and sixteen-FE with one
+worker, both against beta.7. The subset therefore remains
+**needs_discussion**, not an overall performance pass or release qualification.
+
+[The retained queued-round record](../bench/results/rhs-rank-linux-queued-20261103.json)
+contains every call, host score, original failure, recovered report, baseline
+contrast and terminal accounting outcome. The original operational acceptance
+remains false; recovery has its own separate verdict and cannot rewrite that
+failure. The compact record is 919,158 bytes, SHA256
+`35955d2d9057c39e8d645354defcf48cb03790a68410b6c584aa3ea8ae304b08`.
+The independent-admission launcher passes 18 focused tests; the final exporter
+passes 22 tests and the accounting-only recovery script passes six. Independent
+read-only reviews covered admission, physical-host grouping, recovery,
+retention and numerical interpretation. The local exporter completed without
+dropping observations; its acceptance flags remain false.
+
+Absolute native times below are milliseconds: take the geometric mean of the
+two calls per arm in each mirrored block, the median of four blocks within a
+physical host, then the median over twelve hosts. Percentage differences are
+the median of all 48 paired block ratios, matching the qualifier's displayed
+effect estimate; they are not ratios of the absolute medians. Guarded
+uncertainty instead uses one median excess score per physical host, with the
+unchanged max(5%, 1 ms) budget and one-sided .025 bounds. Asterisks mark the
+two inconclusive beta.7 comparisons; every other displayed comparison passes.
+
+| Setting | beta.7 ms | beta.15 ms | Candidate ms | Change vs beta.15 | Change vs beta.7 |
+|---|---:|---:|---:|---:|---:|
+| no-fe-t1 | 0.975 | 0.968 | 0.999 | +5.84% | +7.53% |
+| no-fe-t4 | 1.051 | 1.074 | 1.133 | +3.82% | +4.45% |
+| dense-t1 | 99.458 | 98.613 | 98.211 | -0.30% | -1.04% |
+| dense-t4 | 64.853 | 65.925 | 65.886 | -0.40% | +1.40% |
+| small-retained-t1 | 62.145 | 61.614 | 61.307 | -0.38% | -1.14% |
+| small-retained-t4 | 44.682 | 46.971 | 46.619 | -0.49% | +4.75% * |
+| four-fe-t1 | 320.403 | 266.073 | 266.478 | +0.26% | -16.40% |
+| four-fe-t4 | 154.930 | 136.415 | 136.106 | +0.09% | -11.54% |
+| eight-fe-t1 | 540.748 | 460.861 | 461.917 | +0.35% | -14.22% |
+| eight-fe-t4 | 251.348 | 230.181 | 229.566 | +0.10% | -8.22% |
+| weak-t1 | 99.947 | 83.705 | 83.495 | +0.27% | -16.01% |
+| weak-t4 | 67.818 | 62.221 | 62.560 | -0.03% | -7.18% |
+| sixteen-fe-t1 | 956.740 | 987.362 | 1002.154 | +1.63% | +4.85% * |
+| sixteen-fe-t4 | 495.620 | 511.939 | 516.526 | +0.75% | +4.29% |
+| inactive-columns-t1 | 61.998 | 62.567 | 62.339 | -0.34% | +0.69% |
+| inactive-columns-t4 | 46.877 | 47.127 | 47.031 | -0.19% | +0.56% |
+
+For small-retained/four workers, the paired candidate/beta.7 effect is +4.75%;
+the lower and upper guarded-excess bounds are −0.383 and +0.324 ms.
+For sixteen-FE/one worker, the effect is +4.85%, with bounds −11.506 and
++120.260 ms. Both intervals cross zero: neither a pass nor a classified
+regression follows. Sixteen-FE/four workers now passes against beta.7,
+but its upper guarded excess is only −0.563 ms, so that result has little
+margin. The no-FE percentage changes concern roughly one-millisecond fits;
+the absolute one-millisecond protection budget is the relevant guard there.
+
+The direct same-block beta.15/beta.7 contrast helps interpret the residual
+gap. For sixteen-FE, its paired medians are +3.12% with one worker and +3.47%
+with four; candidate/beta.15 adds +1.63% and +0.75%, respectively. For
+small-retained/four workers, beta.15/beta.7 is +5.28%, while the candidate is
+0.49% faster than beta.15. These contrasts support an inherited component to
+the beta.7 gap, without waiving either guard or exactly decomposing medians.
+The per-block ratios multiply exactly; their separately aggregated medians
+need not.
+
+Host heterogeneity remains material. On scc-yj4, scc-zk1 and scc-zk2,
+sixteen-FE/one-worker candidate/beta.7 host medians are about 18.3–18.8%
+slower, with beta.15/beta.7 already about 13.4–14.0% slower. The other nine
+hosts show about 3.5–5.5%. The lower pooled median in this round does not erase
+the earlier result or these slower hosts. Three hosts overlap the first
+round; neither round is pooled with the other. Hardware-specific causal
+claims would require separate evidence.
+
+This follow-up supports a small ordinary-path cost relative to the current
+beta.15 incumbent in the selected settings. It does not establish zero cost,
+all-family qualification, or a blanket no-regression claim against beta.7.
+None of these ordinary timing cells activates repair. The earlier 72
+actual-repair host/settings groups remain the cost evidence for the
+800-row pathological examples: median additional time 2.907 ms, range
+1.018–3.884 ms, and median paired ratio 1.753. Large pathological workloads
+remain unqualified. Keep the PR in draft; no new candidate, further timing
+round, public package update or release follows from this result.
+
 The graph certificate is sufficient and can be conservative on weak forests
 or tiny tree-edge weights. Unresolved cases fail without publication. Stored
 input rounding can erase signal before estimation, which this work cannot
