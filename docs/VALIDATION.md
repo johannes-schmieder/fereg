@@ -121,8 +121,11 @@ fixture uses public `vce(cluster ...)` and `predict` syntax. Its one-step initia
 LSMR projection returns the established certificate-refusal code 459 and
 preserves prior estimates and requested-output rollback in both memory modes.
 Public OLS Break and completed four-worker LSMR iteration cancellation also
-pass with populated/null estimates and exact follow-up fits. No native binary
-is published by this work. Linux and performance qualification remain open.
+pass with populated/null estimates and exact follow-up fits. The retained
+[source and Mac record](../bench/results/rhs-rank-native-20261103.json) includes
+artifact identities, structured results, prior failures and raw-capture hashes.
+No native binary is published by this work; performance qualification remains
+open at this checkpoint.
 
 The private Linux plugin built from `e9b877a1` has SHA-256
 `e6ea8c105255ace9980ebe4a7d8261a429ffd984d187f834d795314d5d9e23b7`.
@@ -136,7 +139,33 @@ and report job 8412213 stop at their prerequisite guard; no timing begins.
 The failed preflight and scheduler evidence are retained for the bounded
 transport repair. The candidate binary, numerical input bytes, six-host
 schedule and acceptance rules remain fixed. This is a harness failure,
-not an ordinary scientific or performance result.
+not an ordinary scientific or performance result. The shared replay transport
+now validates each plugin's supported action protocol and changes only the
+framed protocol minor; the numerical request body remains byte-identical.
+All 170 focused qualification, native-transport, routing and migration tests
+pass, including six new protocol cases. The qualification source overlay
+is `67264387`; the Linux runtime remains the plugin built from `e9b877a1`.
+
+Corrected preflight job 8412319 passes on scc-gd4. All 174 ordinary calls
+(29 families, one/four workers, three artifacts) pass their independent
+scientific witnesses, candidate/incumbent exact comparison, accepted historical
+original allowances, cross-worker decisions and resource gates. The 33
+exceptional calls and public Stata shift/rollback fixture also pass using the
+actual Linux plugin. All 26,187 pinned environment files and the input manifest
+are verified before measurement.
+
+In the timing array, task 2 of job 8412320 fails while querying terminal
+preflight accounting, before entering either native measurement driver.
+It creates no ordinary or exceptional run and makes zero native calls. The
+other five allocations continue unchanged. A bounded accounting repair uses
+the already saved, strictly validated terminal record before querying the
+scheduler; its eleven tests pass. A prospective operational amendment permits
+exactly one replacement of this empty allocation, job 8412482 task 2, and
+explicitly qualifies the original-allocation wording. No measured observation
+is repeated, removed or selected. The plugin, plan, cell order, total call
+budget, acceptance rules and six-distinct-host requirement stay fixed.
+The unstarted held report 8412321 is cancelled and replaced by report 8412483,
+which waits for both timing job IDs and retains the failed allocation's record.
 
 The prospective Linux comparison reuses 112 retained input files totaling
 5,236,078,385 bytes. All match the retained manifest with SHA-256
