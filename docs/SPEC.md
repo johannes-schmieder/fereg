@@ -1481,6 +1481,13 @@ weights can make this sufficient bound loose; bounded refinement may then end
 in an unresolved error. Preserve the configured explicit solver, memory limits,
 Break checks and atomic publication while performing verification.
 
+Before finalizing an activated repair's finite coefficients, perform at most
+three compensated residual-score corrections using its already certified finite
+inverse and existing workspace. Rank and column order stay fixed. This reduces
+coefficient roundoff that a large original mean can magnify in the reported
+intercept; it introduces no alternative convergence threshold. The independent
+score, bread and terminal checks below still govern acceptance.
+
 A repaired fit also bounds its quotient-space scores using the independently
 certified design and outcome errors. For reconstructed within residual rhat,
 its error includes the outcome bound, `sum_j |beta_j| E_j`, and arithmetic in
@@ -1494,6 +1501,27 @@ accepted only with exact zero rows, a zero outcome-error bound and zero finite
 coefficients. Original-source reconstruction and requested saved-effect recovery remain
 mandatory. The candidate adds these safeguards only to the declared repair path;
 it does not replace the ordinary or PPML certificates.
+
+For robust and clustered inference on an activated repair, retain quotient
+score rows `[within X, 1]` instead of adding large original means back. With
+finite bread C, weighted column means mu and reference weight sum S, the map
+to reported coefficient influences is `J = [[C, 0], [-mu' C, 1/S]]`.
+Compute covariance as `J meat J'`, with the existing score multipliers and
+finite-sample corrections, and independently certify that formula. Construct J
+directly from the finite block and intercept normalization; do not obtain it by
+cancellation-prone products of the full reported bread. Public bread and
+coefficient normalization remain unchanged. Admit the additional map within the
+public inference memory budget. Ordinary inference retains its numerical path.
+
+For clustered inference on this repair path, the Jacobi eigensolver uses
+`128 epsilon` times the smallest positive original row maximum as its stopping
+target. A global maximum can prematurely stop rotations needed to reconstruct a
+small slope row beside a large reported-intercept variance. Skip exactly zero
+rows and use no unit floor; an underflowed target requires exact annihilation or
+bounded failure. The existing iteration limit, independent reconstruction and
+orthogonality tolerances remain authoritative. Eigenvalues, numerical-rank
+thresholds and any multiway clipping still refer to the full covariance in
+reported coordinates; changing coordinates for clipping would change the policy.
 
 A derived certificate applies to a residual formed as a linear combination of
 certified projections, `r = y~ - X~b`. The moments are recomputed from the

@@ -1,5 +1,7 @@
 use std::cell::RefCell;
 
+mod quotient;
+
 use crate::data::DenseMatrix;
 use crate::error::{allocation, invalid_argument, invalid_data, Result};
 use crate::ols::prepared_fit_view::PreparedOlsFitView;
@@ -69,6 +71,7 @@ pub(super) struct CertifiedPreparedOlsScoreDesign<'a> {
     finite_row_buffer: RefCell<Vec<f64>>,
     reported_to_finite: Vec<usize>,
     normalized_intercept_position: Option<usize>,
+    quotient_bread: Option<Vec<f64>>,
     pub(super) certificate: PreparedOlsScoreDesignCertificate,
 }
 
@@ -100,6 +103,12 @@ struct PreparedOlsScoreRowCache {
 }
 
 impl CertifiedPreparedOlsScoreDesign<'_> {
+    pub(super) fn sandwich_bread<'a>(&'a self, fit: &'a CertifiedPreparedOlsFit) -> &'a [f64] {
+        self.quotient_bread
+            .as_deref()
+            .unwrap_or_else(|| fit.bread().values())
+    }
+
     pub(super) const fn nrows(&self) -> usize {
         self.nrows
     }
@@ -149,7 +158,7 @@ impl CertifiedPreparedOlsScoreDesign<'_> {
                 .filter(|finite| **finite != usize::MAX)
                 .ok_or_else(|| invalid_argument("prepared robust score coordinate is absent"))?;
             *value = finite[finite_position]
-                + if self.normalized_intercept_position.is_some() {
+                + if self.normalized_intercept_position.is_some() && self.quotient_bread.is_none() {
                     self.means[finite_position]
                 } else {
                     0.0
@@ -178,6 +187,7 @@ impl CertifiedPreparedOlsScoreDesign<'_> {
                 means: &self.means,
                 reported_to_finite: &self.reported_to_finite,
                 normalized_intercept_position: self.normalized_intercept_position,
+                quotient_coordinates: self.quotient_bread.is_some(),
             }),
             PreparedOlsScoreStorage::Selected(strided) => Some(PreparedOlsDenseScoreView {
                 storage: PreparedOlsDenseScoreStorageView::Selected {
@@ -189,6 +199,7 @@ impl CertifiedPreparedOlsScoreDesign<'_> {
                 means: &self.means,
                 reported_to_finite: &self.reported_to_finite,
                 normalized_intercept_position: self.normalized_intercept_position,
+                quotient_coordinates: self.quotient_bread.is_some(),
             }),
             PreparedOlsScoreStorage::Scratch(_) => None,
         }
@@ -234,6 +245,7 @@ pub(super) struct PreparedOlsDenseScoreView<'a> {
     means: &'a [f64],
     reported_to_finite: &'a [usize],
     normalized_intercept_position: Option<usize>,
+    quotient_coordinates: bool,
 }
 
 impl PreparedOlsDenseScoreView<'_> {
@@ -283,7 +295,7 @@ impl PreparedOlsDenseScoreView<'_> {
                 }
             };
             *value = finite_value
-                + if self.normalized_intercept_position.is_some() {
+                + if self.normalized_intercept_position.is_some() && !self.quotient_coordinates {
                     self.means[finite_position]
                 } else {
                     0.0
@@ -359,30 +371,19 @@ impl PreparedOlsScratchScoreStorage {
     }
 }
 
-pub(super) fn build_prepared_ols_score_design<
-    'a,
-    P: PreparedOlsFitView + ?Sized,
-    R: PreparedInferenceReservation,
->(
-    prepared: &'a P,
-    fit: &mut CertifiedPreparedOlsFit,
-    weights: ReferenceWeightView<'a>,
-    tolerance: f64,
+struct ScoreAxes {
+    generated_columns: Vec<usize>,
+    finite_positions: Vec<usize>,
+    reported_to_finite: Vec<usize>,
+    normalized_intercept_position: Option<usize>,
+}
+
+fn score_axes<R: PreparedInferenceReservation>(
+    fit: &CertifiedPreparedOlsFit,
     reservation: &mut R,
-    score_product: PreparedOlsScoreProduct,
-) -> Result<CertifiedPreparedOlsScoreDesign<'a>> {
-    let phase_timing = crate::diagnostics::phase_timing_enabled();
-    let total_started = Instant::now();
-    let phase_started = Instant::now();
-    let nrows = prepared.fit_sample().n_active();
+) -> Result<ScoreAxes> {
     let rank = fit.finite_rank();
     let dimension = fit.bread().dimension();
-    if nrows == 0 || !tolerance.is_finite() || tolerance <= 0.0 || tolerance >= 1.0 {
-        return Err(invalid_argument(
-            "prepared robust score design has invalid sample or tolerance",
-        ));
-    }
-
     let mut generated_columns = reserved_filled(
         reservation,
         rank,
@@ -434,6 +435,45 @@ pub(super) fn build_prepared_ols_score_design<
             "prepared robust score design rank and bread coordinates disagree",
         ));
     }
+
+    Ok(ScoreAxes {
+        generated_columns,
+        finite_positions,
+        reported_to_finite,
+        normalized_intercept_position,
+    })
+}
+
+pub(super) fn build_prepared_ols_score_design<
+    'a,
+    P: PreparedOlsFitView + ?Sized,
+    R: PreparedInferenceReservation,
+>(
+    prepared: &'a P,
+    fit: &mut CertifiedPreparedOlsFit,
+    weights: ReferenceWeightView<'a>,
+    tolerance: f64,
+    reservation: &mut R,
+    score_product: PreparedOlsScoreProduct,
+    memory_budget: Option<crate::memory::FeSolverMemoryBudget>,
+) -> Result<CertifiedPreparedOlsScoreDesign<'a>> {
+    let phase_timing = crate::diagnostics::phase_timing_enabled();
+    let total_started = Instant::now();
+    let phase_started = Instant::now();
+    let nrows = prepared.fit_sample().n_active();
+    let rank = fit.finite_rank();
+    if nrows == 0 || !tolerance.is_finite() || tolerance <= 0.0 || tolerance >= 1.0 {
+        return Err(invalid_argument(
+            "prepared robust score design has invalid sample or tolerance",
+        ));
+    }
+
+    let ScoreAxes {
+        generated_columns,
+        finite_positions,
+        reported_to_finite,
+        normalized_intercept_position,
+    } = score_axes(fit, reservation)?;
 
     let setup_seconds = phase_started.elapsed().as_secs_f64();
     let phase_started = Instant::now();
@@ -524,6 +564,12 @@ pub(super) fn build_prepared_ols_score_design<
         0.0_f64,
         "unable to reserve prepared robust finite score row buffer",
     )?;
+    let quotient_bread = quotient::build_bread(
+        fit,
+        normalized_intercept_position,
+        memory_budget,
+        reservation,
+    )?;
     let finalize_seconds = phase_started.elapsed().as_secs_f64();
     if phase_timing {
         eprintln!(
@@ -541,6 +587,7 @@ pub(super) fn build_prepared_ols_score_design<
         finite_row_buffer: RefCell::new(finite_row_buffer),
         reported_to_finite,
         normalized_intercept_position,
+        quotient_bread,
         certificate,
     })
 }

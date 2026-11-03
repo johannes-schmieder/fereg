@@ -72,6 +72,48 @@ native checks remain prerequisites.
 The complexity inventory decreases by nine production lines and two dispatch
 candidates, with no new oversized file or function.
 
+The rebuilt native checkpoint `6ef2a39a` passes the 24 shifted Stata IID fits
+(unit/analytic weights, Fast/Low, Auto/LSMR/CMG), but its extreme-offset robust
+fit is correctly refused when the reported-coordinate sandwich develops an
+invalid diagonal. Independent algebra identifies cancellation from adding a
+mean near `5.5e8` back to score rows and multiplying the full normalized-intercept
+bread. The correction uses quotient score rows and the direct influence map
+specified in §16, for robust and clustered production and certificates. The
+public bread stays unchanged. Independent eight-sign-group covariance formulas
+cover all reported coordinates, analytic weights, finite-sample corrections and
+Wald statistics. Additional map storage and retained saved-FE products require
+explicit admission together.
+
+That checkpoint also shows slope errors of only `2.80e-14` and `-7.28e-14`, yet
+its normalized intercept differs by `1.55e-5` because of the large mean. Its
+residual and full prediction errors are about `1.01e-13`; this is amplification
+of coefficient roundoff, not lost fitted signal. Three bounded quotient-score
+corrections reuse existing finite workspace before independent certification.
+All 18 scale/offset tests, including a strict absolute `2e-6` intercept/component
+witness, pass after refinement. The original tolerance is retained.
+
+The larger 25,600-row, four-worker clustered witness also identifies premature
+Jacobi stopping: the largest reported-intercept variance sets a global target
+that ignores a small slope/intercept coupling, failing the independent
+row-relative reconstruction certificate. The repair uses the smaller row scale
+specified in §16, with unchanged iteration and certificate limits. All nine
+focused refinement, quotient-inference and eigensystem tests pass, including
+Fast/Low, weighted covariance/Wald formulas, fixed-worker repeatability,
+cross-worker agreement, memory admission and known reported-coordinate clipping.
+Independent review confirms unchanged ordinary arithmetic and clipping policy.
+The integrated candidate passes the full source gate: 349 Python tests, 1,624
+core tests (three diagnostic tests ignored), workspace/FFI tests, isolated
+allocator audits, strict Clippy, fuzz compilation, C/SPI guards and complexity.
+The scoped addition is 269 production lines and three dispatch candidates;
+there is no new oversized file/function, and one existing oversized function is
+removed by sharing score-axis construction. Native rebuild and performance
+qualification remain open for these changes.
+
+The prospective Linux comparison reuses 112 retained input files totaling
+5,236,078,385 bytes. All match the retained manifest with SHA-256
+`5989d0558ce17a15226b67bc93ab51d8bad426b8d83e0ece9b68ff2a60941fc1`.
+This input verification is a prerequisite, not performance evidence.
+
 The declared numerical scope is the exceptional repair path and its dependent
 coefficients, bread/covariance, residuals, saved effects, diagnostics and rank
 statuses. Correcting a false omission may intentionally change finite rank and

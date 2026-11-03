@@ -335,6 +335,7 @@ pub struct CertifiedPreparedOlsFit {
     residuals: DenseMatrix,
     recovered_fe_coefficients: Option<FeCoefficientBatch>,
     fast_score_cache: Option<PreparedOlsFastScoreCache>,
+    quotient_inference: bool,
     execution: PreparedOlsExecutionReport,
 }
 
@@ -697,6 +698,18 @@ impl CertifiedPreparedOlsFit {
             .max(self.residual_absorption_report.solver_workspace_peak)
     }
 
+    pub(super) const fn uses_quotient_inference(&self) -> bool {
+        self.quotient_inference
+    }
+
+    pub(super) fn record_inference_workspace(&mut self, bytes: u128) -> Result<()> {
+        self.absorption_report.solver_workspace_peak = self
+            .absorption_report
+            .solver_workspace_peak
+            .max(crate::memory::SolverWorkspacePeak::from_bytes(bytes)?);
+        Ok(())
+    }
+
     pub(super) fn record_additional_scratch_peak(&mut self, bytes: u64) {
         self.execution.scratch_bytes = self.execution.scratch_bytes.max(bytes);
     }
@@ -976,6 +989,7 @@ struct FitPublication {
     residuals: DenseMatrix,
     recovered_fe_coefficients: Option<FeCoefficientBatch>,
     fast_score_cache: Option<PreparedOlsFastScoreCache>,
+    quotient_inference: bool,
     execution: PreparedOlsExecutionReport,
 }
 
@@ -1025,6 +1039,7 @@ impl FiniteFit {
             residuals: products.residuals,
             recovered_fe_coefficients: products.recovered_fe_coefficients,
             fast_score_cache: products.fast_score_cache,
+            quotient_inference: products.quotient_inference,
             execution: products.execution,
         }
     }

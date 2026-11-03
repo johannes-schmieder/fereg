@@ -150,6 +150,44 @@ algebraic dependence nor identify the names an exact QR would choose at a
 pivot tie. Canonical slots and cross-worker omission agreement remain separate
 requirements.
 
+**Coefficient roundoff and inference coordinates.** Before finalization, an
+activated repair performs up to three compensated residual-score corrections
+with the certified finite inverse. This reuses its existing row and score banks,
+keeps rank and column order fixed, and costs at most three additional row passes.
+Subsequent independent certificates, at their unchanged tolerances, determine
+acceptance. Refinement can improve a reported intercept whose large mean
+magnifies slope roundoff; it does not give a uniform absolute intercept-error
+bound under arbitrary shifts.
+
+For robust or clustered inference, adding the original column means back to
+within scores can destroy the gain: multiplying the full reported bread by
+that meat subtracts terms of order the squared mean to recover a small slope
+variance. Let $C$ be the finite bread, $\mu$ the weighted original means and
+$S$ the reference weight sum. In quotient score coordinates $[\widetilde X,1]$,
+the map to reported coefficient influences is
+
+$$
+ J=\begin{pmatrix}C&0\\-\mu'C&1/S\end{pmatrix}.
+$$
+
+The covariance is $J M J'$, where $M$ uses the existing robust or grouped score
+multipliers and finite-sample corrections. Constructing this map directly avoids
+cancellation in the slope block. The production and independent certificate
+products use these same mathematical coordinates with their separate reductions.
+The public coefficient normalization and bread are unchanged; the extra map
+requires explicit memory admission. Only activated repairs use this calculation.
+
+The clustered PSD eigensolver must also resolve rows at their own scales. On
+this path its Jacobi stopping target is $128\epsilon$ times the smallest
+positive original row maximum, with the same bounded rotation count. This
+forces small rotations that a global covariance scale can hide. Exactly zero
+rows are skipped; there is no unit floor. The target is sufficient to improve
+convergence in the witness, not a universal error proof: the unchanged
+independent reconstruction and orthogonality checks decide acceptance. Full
+multiway spectral clipping and numerical-rank diagnostics retain their reported
+coordinates and existing thresholds. A congruence transformation preserves
+inertia but would generally change the Euclidean clipping policy.
+
 **Original-quotient scores and published residuals.** For the returned finite
 coefficient vector $\beta$, let $e=b-\sum_j a_j\beta_j$. Independently
 form $q=\operatorname{fl}(\widehat b-\sum_j\widehat a_j\beta_j)$.

@@ -140,6 +140,43 @@ fn absorbed_shifts_preserve_resolved_within_rank() {
 }
 
 #[test]
+fn quotient_refinement_preserves_extreme_offset_component_accuracy() {
+    let data = CrossedSignCube::new();
+    let shift = 1e8;
+    let regressors = data.regressors(shift, 1., true);
+    let prepared = data.prepare(shift, 1., true);
+    for mut config in configs() {
+        config.allow_final_fe_recovery = true;
+        config.final_residual_tolerance = Some(1e-14);
+        let fit = fit_prepared_model_coefficients(&prepared, config).expect("refined shifted fit");
+        check_identified_fit(&fit, &data, 1.);
+        let beta = fit
+            .coefficients()
+            .iter()
+            .map(|coefficient| coefficient.value.expect("reported coefficient"))
+            .collect::<Vec<_>>();
+        // Absolute component accuracy is attainable on this exactly
+        // represented design. A few dozen slope ulps otherwise amplify to
+        // 1e-5 in the normalized intercept despite tiny outcome residual error.
+        assert!(
+            (beta[2] - (66. - 11. * shift)).abs() <= 2e-6,
+            "mode={:?}, solver={:?}, beta={beta:?}",
+            config.execution.mode,
+            config.absorb.solver
+        );
+        for row in 0..data.outcome.len() {
+            let xb = beta[0].mul_add(
+                regressors[0][row],
+                beta[1].mul_add(regressors[1][row], beta[2]),
+            );
+            let expected = 66. + 2. * shift * (data.effects[0][row] - 5.5) + 2. * data.u[row]
+                - 3. * data.v[row];
+            assert!((xb - expected).abs() <= 2e-6);
+        }
+    }
+}
+
+#[test]
 fn opposite_rhs_units_preserve_coefficients_and_inverse_cross_product() {
     let data = CrossedSignCube::new();
     for unit in [1e-8, 1.0, 1e8] {

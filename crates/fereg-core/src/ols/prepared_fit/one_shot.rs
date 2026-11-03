@@ -1521,6 +1521,7 @@ fn finish_one_shot<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         "fit_finalize",
         ["certify_scores", "publication"],
     );
+    let quotient_inference = inputs.rank_score.is_some();
     let score_certificate = if let Some(witness) = inputs.rank_score.take() {
         witness.finish(prepared, residuals.as_slice(), weights, config)?
     } else {
@@ -1569,6 +1570,7 @@ fn finish_one_shot<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
             residuals,
             recovered_fe_coefficients,
             fast_score_cache: inputs.fast_score_cache,
+            quotient_inference,
             execution: PreparedOlsExecutionReport::from_config(config, inputs.scratch_bytes),
         },
     ))

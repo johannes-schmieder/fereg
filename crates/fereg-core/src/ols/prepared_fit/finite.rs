@@ -1,5 +1,6 @@
 //! One-shot adapter to the common stateless immutable-row finite service.
 mod rank_bound;
+mod rank_refinement;
 use super::*;
 use crate::ols::finite_operations::{resize, solve_factor, FactorBanks, RankRequest};
 use crate::ols::finite_wls_kernel::{
@@ -406,6 +407,9 @@ fn factor_and_bread<R: FitReservation>(
                 error,
                 reservation,
             )?;
+        }
+        if relative_projection_error.is_some() {
+            rank_refinement::refine(storage, weights, workspace, reference_norms, reservation)?;
         }
         let bread = if build_bread {
             match build_one_shot_bread(

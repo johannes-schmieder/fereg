@@ -76,11 +76,44 @@ foreach mode in fast low {
     assert abs(_se[x]-sqrt(robust_variance)) <= 1e-9
     assert abs(_se[v]-sqrt(robust_variance)) <= 1e-9
     assert abs(e(V)[1,2]) <= 1e-10
+    assert abs(e(F)/(13/(2*robust_variance))-1) <= 1e-8
     assert e(df_r) == 779
     assert abs(robust_residual-w) <= 1e-6
     assert e(fereg_certificate)[24,2] == 1
     assert e(fereg_certificate)[32,2] == 1
     drop robust_residual
+}
+
+* Each sign triple forms a cluster spanning every FE cell, so no FE is nested.
+* The eight quotient score sums are (W/8)*(u*w,v*w,w), whose Gram is W^2/8*I.
+* Thus the uncorrected covariance is I/8 for either weight kind. CR1 multiplies
+* it by (799/779)*(8/7); slope variance is 799/5453 and Wald F is 13/(2*variance).
+scalar cluster_variance = 799/5453
+foreach weight_kind in unit analytic {
+    local weight ""
+    if "`weight_kind'" == "analytic" local weight "[aw=aw]"
+    foreach mode in fast low {
+        quietly fereg y x v `weight', absorb(g h) cluster(sign_id) ///
+            memory(`mode') poolsize(1) threads(1) residuals(cluster_residual)
+        assert e(N) == 800 & e(sample) == 1
+        assert e(rank) == 2 & e(df_m) == 2
+        assert e(df_a) == 19 & e(df_a_nested) == 0 & e(df_r) == 7
+        assert e(fereg_df_fit) == 779 & e(fereg_df_correction) == 779
+        assert e(N_clust) == 8 & e(N_clust1) == 8
+        assert e(converged) == 1 & e(num_singletons) == 0
+        assert abs(_b[x]-2) <= 1e-8 & abs(_b[v]+3) <= 1e-8
+        assert abs(e(rss)-800) <= 1e-5
+        assert abs(_se[x]-sqrt(cluster_variance)) <= 1e-9
+        assert abs(_se[v]-sqrt(cluster_variance)) <= 1e-9
+        assert abs(e(V)[1,2]) <= 1e-10
+        assert abs(e(F)/(13/(2*cluster_variance))-1) <= 1e-8
+        assert abs(cluster_residual-w) <= 1e-6
+        assert e(fereg_certificate)[7,2] <= 5e-10
+        assert e(fereg_certificate)[24,2] == 1
+        assert e(fereg_certificate)[32,2] == 1
+        assert "`e(fereg_memory_selected)'" == "`mode'"
+        drop cluster_residual
+    }
 }
 
 * The original-scale products contain large cancelling terms. Check their
