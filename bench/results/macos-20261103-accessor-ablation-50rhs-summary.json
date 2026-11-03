@@ -1,0 +1,291 @@
+{
+  "status": "passed",
+  "regressions": [],
+  "observations": 12,
+  "cells": 1,
+  "resampling": false,
+  "comparisons": [
+    {
+      "reference": "incumbent",
+      "cell": "loading",
+      "threads": 20,
+      "metric": "wall_s",
+      "reference_median": 10.6555,
+      "candidate_median": 6.9805,
+      "ratio": 0.6551076908638731,
+      "regression": false
+    },
+    {
+      "reference": "incumbent",
+      "cell": "loading",
+      "threads": 20,
+      "metric": "load_s",
+      "reference_median": 4.5974070005000005,
+      "candidate_median": 0.958430687,
+      "ratio": 0.20847201191797113,
+      "regression": false
+    },
+    {
+      "reference": "incumbent",
+      "cell": "loading",
+      "threads": 20,
+      "metric": "native_s",
+      "reference_median": 8.935917916000001,
+      "candidate_median": 5.2652062915,
+      "ratio": 0.5892182919532538,
+      "regression": false
+    },
+    {
+      "reference": "incumbent",
+      "cell": "loading",
+      "threads": 20,
+      "metric": "alloc_peak",
+      "reference_median": 17763582840.0,
+      "candidate_median": 17760298614.0,
+      "ratio": 0.9998151146629831,
+      "regression": false
+    }
+  ],
+  "verification": {
+    "status": "passed",
+    "fits": {
+      "serial1": {
+        "digests": [
+          "8f028cc6ded3cb03"
+        ],
+        "windows": []
+      },
+      "serial2": {
+        "digests": [
+          "8f028cc6ded3cb03"
+        ],
+        "windows": []
+      },
+      "parallel1": {
+        "digests": [
+          "8f028cc6ded3cb03"
+        ],
+        "windows": [
+          {
+            "phase": "input_transport",
+            "mode": "parallel",
+            "rows": "20000000",
+            "width": "52",
+            "marker": "0",
+            "workers": "20",
+            "phases": "63",
+            "blocks": "31747",
+            "range_first": "0",
+            "range_end": "20000000",
+            "phase_value_cap": "16777216",
+            "phase_work_cap": "134217728",
+            "phase_work_ceiling": "134217728",
+            "longest_phase_s": "0.015560625",
+            "seconds": "0.924312292"
+          }
+        ]
+      },
+      "parallel2": {
+        "digests": [
+          "8f028cc6ded3cb03"
+        ],
+        "windows": [
+          {
+            "phase": "input_transport",
+            "mode": "parallel",
+            "rows": "20000000",
+            "width": "52",
+            "marker": "0",
+            "workers": "20",
+            "phases": "63",
+            "blocks": "31747",
+            "range_first": "0",
+            "range_end": "20000000",
+            "phase_value_cap": "16777216",
+            "phase_work_cap": "134217728",
+            "phase_work_ceiling": "134217728",
+            "longest_phase_s": "0.016260750",
+            "seconds": "0.922377000"
+          }
+        ]
+      },
+      "public": {
+        "digests": [
+          "8f028cc6ded3cb03"
+        ],
+        "windows": [
+          {
+            "phase": "input_transport",
+            "mode": "parallel",
+            "rows": "20000000",
+            "width": "52",
+            "marker": "0",
+            "workers": "20",
+            "phases": "63",
+            "blocks": "31747",
+            "range_first": "0",
+            "range_end": "20000000",
+            "phase_value_cap": "16777216",
+            "phase_work_cap": "134217728",
+            "phase_work_ceiling": "134217728",
+            "longest_phase_s": "0.016126959",
+            "seconds": "0.932640917"
+          }
+        ]
+      },
+      "one": {
+        "digests": [
+          "8f028cc6ded3cb03"
+        ],
+        "windows": []
+      }
+    },
+    "science": [
+      {
+        "fit": "serial1",
+        "max_abs_b_vs_areg": "2.37254660362e-13",
+        "max_abs_V_vs_areg": "1.21562462821e-20",
+        "n": "20000000",
+        "df_r": "19994947",
+        "df_a": "5003",
+        "rank": "50"
+      },
+      {
+        "fit": "serial2",
+        "max_abs_b_vs_areg": "2.37254660362e-13",
+        "max_abs_V_vs_areg": "1.21562462821e-20",
+        "n": "20000000",
+        "df_r": "19994947",
+        "df_a": "5003",
+        "rank": "50"
+      },
+      {
+        "fit": "parallel1",
+        "max_abs_b_vs_areg": "2.37254660362e-13",
+        "max_abs_V_vs_areg": "1.21562462821e-20",
+        "n": "20000000",
+        "df_r": "19994947",
+        "df_a": "5003",
+        "rank": "50"
+      },
+      {
+        "fit": "parallel2",
+        "max_abs_b_vs_areg": "2.37254660362e-13",
+        "max_abs_V_vs_areg": "1.21562462821e-20",
+        "n": "20000000",
+        "df_r": "19994947",
+        "df_a": "5003",
+        "rank": "50"
+      },
+      {
+        "fit": "public",
+        "max_abs_b_vs_areg": "2.37254660362e-13",
+        "max_abs_V_vs_areg": "1.21562462821e-20",
+        "n": "20000000",
+        "df_r": "19994947",
+        "df_a": "5003",
+        "rank": "50"
+      },
+      {
+        "fit": "one",
+        "max_abs_b_vs_areg": "2.37254660362e-13",
+        "max_abs_V_vs_areg": "1.21562462821e-20",
+        "n": "20000000",
+        "df_r": "19994947",
+        "df_a": "5003",
+        "rank": "50"
+      }
+    ],
+    "input_sha256": "73f0b85bf369f2be33e28f537be594f9903cda2d244d89ef95a0beda0b8001fc",
+    "trace_sha256": "1a049767552a4ec3b197efaab21f9c137cd914e86224f9a8092f7c4da9fb9b90",
+    "same_worker_b_V_sample_discrete": "exact",
+    "independent_areg_max_abs_tolerance": 1e-08,
+    "cross_worker_max_abs_b_tolerance": 1e-09,
+    "cross_worker_max_abs_V_tolerance": 1e-08
+  },
+  "plan": {
+    "config": {
+      "suite": "accessor-ablation",
+      "rows": 20000000,
+      "controls": 50,
+      "threads": [
+        20
+      ],
+      "blocks": 6,
+      "reps": 1,
+      "seed": 739391,
+      "arms": {
+        "incumbent": "forced serial reader",
+        "candidate": "qualified parallel reader; same binary"
+      },
+      "declaration": {
+        "model": "OLS; one categorical fixed effect with 5003 levels; 50 double controls; unweighted conventional covariance",
+        "numerical_scope": "None. Same packaged beta.15 binary, data and 20 estimation workers; only inject(serial_input) differs. No route or arithmetic changes.",
+        "warmups": "one per reader before six alternating pairs",
+        "exclusions": "none; ordinary desktop noise retained; no resampling or additional trials for adverse timings",
+        "host": "Mac14,14 Apple M2 Ultra; 24 physical cores (16 performance, 8 efficiency); 192 GiB; macOS 26.6.2 build 25G83; Stata/MP 19 licensed 8 cores; Rust 20 workers",
+        "interpretation": "same-Mac loading ablation, not Linux campaign effect or 20-core speedup",
+        "runtime_seconds": "native runtime includes loading; wall includes Stata frontend",
+        "source_commit": "f4a4dc234df3713b34768411b16f5e8b069adba8",
+        "request": "Johannes requested 50 RHS variables after the retained 16-control comparison. This is a new fixed specification, not a retry.",
+        "input_note": "Same generator and seed; with 50 controls the noise draw follows all 50 generated columns. Both readers use exactly the same frozen dataset."
+      }
+    },
+    "identities": {
+      "bench/accessor_ablation.do": "97fac35a7501d387b9ee00fa598e2c3eabc084780bf3634785d20fc735bac139",
+      "bench/accessor_ablation.py": "4ddb49b6e391ea4bd5b38132e3af06eec70deba4f36f9d5b7e75faf51bf4a1ff",
+      "bench/parallel_input.py": "9c4b54acb7690b6feebecf169dde1bba1ff445d23a9485849fcbab0427ea40bb",
+      "bench/qualify.py": "d7689af41f817c1fc8dc6ab0a02bf8f689f5bdc0913d905d56150992c31c94a4",
+      "dist/fereg_macos.plugin": "2c8f6af8e10653a675c693e98560e94648e2f795ce5dfc605cf3f93f617d2200",
+      "stata/_fereg_estimate_ols.ado": "c755f78694a97a171a99a4d55c25afc4ac2eac7f9e953b6489e228a596053483",
+      "stata/_fereg_estimate_ols_test.ado": "2e60cb5ee98b2a484c4ea20779be902b4890cdb0b58b18bbd01002f1f2881af7",
+      "stata/_fereg_estimate_ppml.ado": "58e12e8c4a4549de71e1ab3066bdd3bf925aec336d93c723e2aa583079093e31",
+      "stata/_fereg_estimate_public.ado": "cc5b3015afdf3e4f0a72fc230abd3b5e0f9ac95c886fb76a0fcb8df7930ce906",
+      "stata/_fereg_factor_sample.ado": "226ea5432757bfeaf5a46e5ac7f8053373bf501f91c9a84e9da704fa66a21fde",
+      "stata/_fereg_indepvars.ado": "3b05163a31f2ae9f2e2db91b3212b832bf49132baa50bd29d0b6f6e57ebdcdee",
+      "stata/_fereg_input_host.ado": "3c7e9df30a5daf1c195c0e643b25b17eafedc289e54b14d755d6ae2b7cc2d2a8",
+      "stata/_fereg_load.ado": "1b12ac5bf59adf9ec5816688433e14dccdbed1486fcbdd559c0c1a77d72682df",
+      "stata/_fereg_memory_baseline.ado": "28a2239115239cf0e448b0033a986c2f5c3655173bcc9996ec6ec850c79f9151",
+      "stata/_fereg_memory_validate.ado": "71dff23039659bcf90d9a8a9b4af6e10c3da6adac026950c44b5a74960f656d3",
+      "stata/_fereg_ols.ado": "2f44419b4ee956038d1a88df0cf6eed2c3eb38a0f27107742c3fa683b99ed4cf",
+      "stata/_fereg_ols_hidden_numeric_v1.ado": "b6ab045d8f9070bfa5b908a312e42455df8ea805109f5f5946252f0a4fec548f",
+      "stata/_fereg_ppml.ado": "6520498adea5a3880481b1b6a9aeafc681c7e36e48c68aac846e18a256049491",
+      "stata/_fereg_ppml_result_mata.ado": "d379f5f14429882ab081adadc9c95a0f776c600a77ab23a864ad11be32a89f41",
+      "stata/_fereg_prepare_ols_test.ado": "23a8fd60f86aad7dbfed1a7463d83a7b86fc583705c960ac1af55a83e9f13615",
+      "stata/feppml.ado": "b4c169bc18470613c8c04ed76ce9a2536d601e934b448b09d61402615445fba5",
+      "stata/feppml_p.ado": "29d2cd2571bb538820ff288b12f05766886d1e9338f62146cdc8480a42f0c9ce",
+      "stata/fereg.ado": "8be5f614393de0fcb52da1e9a9daca8b5633447c81513ecb4d43f4982c9ca8e3",
+      "stata/fereg_estat.ado": "5c23e4ac164177b5dbf06f173888f505a0ebbb7f3b462a64e8cc3f1db8ccc72f",
+      "stata/fereg_p.ado": "1ed4dc9010b470e1e007d4990f761e1655aeec6e4eb092ffabd632c443bbbcd5",
+      "stata/fereg_parse.ado": "2813c1b349d231b394e1ecca2d33c5202aa6c3d096ec478a7ac3ca1c52758501",
+      "stata/fereg_run.ado": "779c16f533fc1e70dae7344a4ae9860cf3f9610124875798d63433503383c7a6"
+    },
+    "order": [
+      [
+        "incumbent",
+        "candidate"
+      ],
+      [
+        "candidate",
+        "incumbent"
+      ],
+      [
+        "incumbent",
+        "candidate"
+      ],
+      [
+        "candidate",
+        "incumbent"
+      ],
+      [
+        "incumbent",
+        "candidate"
+      ],
+      [
+        "candidate",
+        "incumbent"
+      ]
+    ]
+  },
+  "raw_sha256": "90ea977f20056016001524ed7d2f70a1e3365b2c4fb4838e0c17661378ba6e63"
+}
