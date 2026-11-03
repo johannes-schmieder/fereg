@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Stage the deterministic, audited fereg 0.5.0 beta distribution."""
+"""Stage the deterministic, audited fereg 0.5.0 distribution."""
 from __future__ import annotations
 
 import argparse
@@ -14,10 +14,10 @@ from pathlib import Path
 from typing import Optional
 
 VERSION = "0.5.0"
-RELEASE_TAG = "v0.5.0-beta.15"
+RELEASE_TAG = "v0.5.0"
 PACKAGE_NAME = f"fereg-{VERSION}"
-FIXED_TIME = (2026, 10, 30, 0, 0, 0)
-FIXED_UTC = "2026-10-30T00:00:00Z"
+FIXED_TIME = (2026, 11, 3, 0, 0, 0)
+FIXED_UTC = "2026-11-03T00:00:00Z"
 PLATFORM_PLUGINS = {
     "linux": "fereg_linux.plugin",
     "windows": "fereg_windows.plugin",
@@ -65,7 +65,10 @@ ROOT_FILES = (
 )
 SUPPORT_CAVEATS = (
     "Only platforms named in included_platforms are supplied by this package.",
+    "The Linux binary requires glibc 2.28 or newer.",
+    "Windows retains serial input pending live Break qualification.",
     "Native Intel-host Stata testing is outstanding; the macOS plugin contains both processor slices.",
+    "The accepted Linux no-FE 16-regressor, one-worker slowdown of 7.3% versus beta.14 remains; see docs/VALIDATION.md.",
 )
 
 
@@ -290,7 +293,7 @@ def copy_release_files(
     shutil.copy2(source / "LICENSE", staging / "fereg-LICENSE.txt")
     shutil.copy2(source / "THIRD_PARTY_NOTICES.md", staging / "fereg-THIRD-PARTY-NOTICES.txt")
     (staging / "fereg-SOURCE.txt").write_text(
-        "The corresponding source for this beta, including pinned dependency sources,\n"
+        "The corresponding source for this release, including pinned dependency sources,\n"
         "licenses, and build instructions, is available alongside the binary package:\n"
         f"https://github.com/johannes-schmieder/fereg/releases/download/{RELEASE_TAG}/"
         f"{PACKAGE_NAME}-source.zip\n\n"
@@ -328,7 +331,7 @@ def write_manifest(
         "schema": 2,
         "package": PACKAGE_NAME,
         "version": VERSION,
-        "phase": "beta",
+        "phase": "stable",
         "created_utc": FIXED_UTC,
         "source_sha": source_sha,
         "source_dirty": source_dirty,
@@ -463,7 +466,7 @@ def main() -> None:
                         help="actual build commit for a reused plugin; repeat per platform")
     selection = parser.add_mutually_exclusive_group()
     selection.add_argument("--platforms", nargs="+", choices=tuple(PLATFORM_PLUGINS),
-                           help="include only these explicitly supported beta platforms")
+                           help="include only these explicitly supported release platforms")
     selection.add_argument("--review-platforms", nargs="+", choices=tuple(PLATFORM_PLUGINS),
                         help="create a visibly review-only subset; never a release package")
     args = parser.parse_args()

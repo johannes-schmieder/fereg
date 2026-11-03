@@ -1,4 +1,4 @@
-*! fereg 0.5.0 beta OLS 31oct2026
+*! fereg 0.5.0 OLS 03nov2026
 program define fereg, rclass
     version 15.0
 
@@ -42,7 +42,7 @@ program define fereg, rclass
         local plugin_file `"`r(plugin_file)'"'
 
         return local ado_version "0.5.0"
-        return local fereg_version "0.5.0-beta.15"
+        return local fereg_version "0.5.0"
 
         return local action_protocol "1.7"
         return local model_wire "2.1"

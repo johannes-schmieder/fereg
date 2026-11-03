@@ -180,7 +180,7 @@ program define _fereg_estimate_public, eclass
 
     ereturn local cmd "fereg"
     ereturn local cmdline `"fereg `0'"'
-    ereturn local fereg_version "0.5.0-beta.15"
+    ereturn local fereg_version "0.5.0"
     ereturn local predict "fereg_p"
     local selected_memory_code = el(e(fereg_runtime), 2, 2)
     local selected_memory = cond(`selected_memory_code' == 1, "fast", "low")

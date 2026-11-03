@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.5.0 — 2026-11-03
+
+Stable release of the qualified beta.15 runtime. The Linux, Windows and universal
+macOS plugin bytes are unchanged; package labels, selftest version, installation
+links and corresponding-source metadata now identify v0.5.0.
+
+- OLS/WLS with high-dimensional fixed effects, factor variables and absorbed
+  slopes; PPML through `feppml`, with separation handling and prediction.
+- Automatic and explicit supported solvers, robust and clustered inference,
+  memory controls, deterministic repeats at fixed worker counts, and certified
+  numerical checks before results are published.
+- Qualified parallel numeric input on supported Mac/Linux Stata installations;
+  Windows retains serial input. No external language runtime is required.
+- Complete locked dependency sources, license notices, checksums and build
+  instructions accompany the native package.
+
+The [beta.15 publication record](bench/results/beta15-publication-20261102.json)
+and [completed SCC campaign](bench/results/scc-20261102-beta15.md) retain the
+qualification evidence. This promotion does not reset prior performance
+limitations or comparator discrepancies. Linux requires glibc 2.28 or newer;
+licensed Intel-Mac Stata testing remains outstanding. The accepted Linux
+16-regressor, one-worker no-FE regression of 7.3% against beta.14 remains.
+
 ## 0.5.0 beta.15 — 2026-11-02
 
 Faster parallel OLS without fixed effects. The new path applies to Fast,

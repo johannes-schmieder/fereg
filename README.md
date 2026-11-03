@@ -51,8 +51,8 @@ fereg, selftest
 
 This installs `fereg`, `feppml`, help files and the current native plugin
 from `main`, which carries the
-[v0.5.0-beta.15](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0-beta.15)
-runtime. The beta requires Stata 15 or newer and includes native binaries
+[v0.5.0](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0)
+runtime. Version 0.5.0 requires Stata 15 or newer and includes native binaries
 for Linux x86-64, Windows x86-64 and macOS (Apple Silicon/Intel universal).
 No Rust, Python or extra Stata packages are needed to use the binary package.
 Exit Stata before updating, then install in a fresh session so the previous
@@ -119,29 +119,26 @@ self-contained examples. A simulated bilateral-trade comparison against
 
 ## Performance
 
-Beta.11 retains the reviewed upstream-dependency migration. Its original sparse-three-FE
-Mac and near-confounded-three-FE Linux regressions are recovered. The accepted
-eight-/sixteen-FE settings remain about 8–11% slower on Linux and 11–14% slower
-on Mac; several other settings are inconclusive. The [validation report](docs/VALIDATION.md#upstream-migration-candidate)
-retains those results alongside the gains and numerical checks.
+Version 0.5.0 promotes the qualified beta.15 runtime without changing its native
+binaries. The [November 2–3 SCC campaign](bench/results/scc-20261102-beta15.md)
+reports synthetic OLS and PPML, Veneto's largest connected set, and separate
+Skylake, Ice Lake and Granite Rapids comparisons. Independent native science,
+fixed-worker repeatability and cross-worker agreement passed. Comparator
+failures and numerical discrepancies remain visible; speed ratios are
+meaningful only for scientifically agreeing fits paired on the same host.
 
-Descriptive Linux comparisons on whole 28-core SCC nodes are in
-[Comparing fereg with fixest](docs/fixest_benchmarks.md) (synthetic OLS and
-PPML configurations up to ten million rows, including clustered-mobility and
-gravity designs, and the Stata-comparison cells on an Ice Lake node) and
-[Veneto AKM comparisons](docs/veneto_benchmarks.md) (the real long worker-firm
-panel on the leave-one-out and largest connected sets). Speed ratios count only
-when results agree, exactly or up to how absorbed degrees of freedom are
-counted. In the beta.11 campaign all 357 native fits outside two superseded
-cells passed; those cells' input left one singleton firm-year and were rerun on
-a corrected input. `fereg` was faster than `reghdfe`, `ppmlhdfe` and `areg` in
-every agreeing configuration and than default `fixest` in all but PPML with four
-controls. PyFixest and FixedEffectModels.jl were faster in several designs. On
-both Veneto samples `fereg` was faster than every agreeing comparator at one to
-sixteen workers. Sparse three-FE OLS at ten million rows completed in a median
-52.21 seconds with an 11.06 GiB kernel peak. The comparisons are within-host
-descriptive results, not universal rankings or absolute speedups over beta.10
-on different hosts.
+The campaign covers different designs, sizes, worker counts and inference
+settings; rankings vary across them. It does not isolate the software effect
+from hardware changes relative to earlier campaigns. The
+[validation report](docs/VALIDATION.md) also retains accepted regressions,
+including the Linux no-FE 16-regressor, one-worker slowdown of 7.3% against
+beta.14.
+
+A separate [controlled Mac loading test](bench/results/macos-20261103-accessor-ablation-50rhs.md)
+uses the same binary and 20 workers with 20 million rows, 50 controls and one
+fixed effect. Median loading time falls from 4.60 to 0.96 seconds with parallel
+input; whole-command time falls from 10.66 to 6.98 seconds. These are measurements
+on the tested Apple M2 Ultra, not a general speed guarantee.
 
 ## Command syntax
 

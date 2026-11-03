@@ -1,7 +1,8 @@
 # Packaging
 
 Johannes authorized public source/native beta publication on 2026-10-13 and
-confirmed the required distribution permissions. See
+confirmed the required distribution permissions. On 2026-11-03 he authorized
+promoting the qualified beta.15 runtime to the regular v0.5.0 release. See
 [licensing](licensing.md), [validation](VALIDATION.md) and
 [development checks](development_workflow.md). GitHub tests remain paused.
 
@@ -57,7 +58,7 @@ unchanged, `--plugin-source PLUGIN=SHA` preserves each actual native build commi
 the manifest separately records the packaging commit. The dependency audit and
 corresponding-source archive bind the packaging source. Confirm the runtime
 identity before reusing binaries. `--platforms macos`
-creates an explicitly macOS-only beta and filters `fereg.pkg` to that platform.
+creates an explicitly macOS-only package and filters `fereg.pkg` to that platform.
 The manifest names included and missing platforms. It makes no qualification
 claim for omitted platforms or for an untested processor/host.
 `--review-platforms macos` creates a visibly incomplete review archive; passing its
@@ -79,7 +80,7 @@ Use the [Mac build instructions](macos_source_build.md) included in the source
 archive. The offline archive build can supply the actual release plugin, avoiding
 a redundant second build. Publish the instructions as a companion asset too.
 
-For each versioned beta, upload only the binary and source ZIPs, their checksums
+For each versioned release, upload only the binary and source ZIPs, their checksums
 and the Mac build instructions. Do not upload the flat package files as separate
 assets. The community `github` helper reads the repository's whole release list
 (`https://api.github.com/repos/johannes-schmieder/fereg/releases`) as one Stata

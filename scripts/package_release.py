@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create a deterministic, exact-SHA fereg 0.5.0 beta source archive."""
+"""Create a deterministic, exact-SHA fereg 0.5.0 source archive."""
 from __future__ import annotations
 
 import argparse
@@ -95,7 +95,7 @@ def write_source_manifest(
         "schema": 2,
         "package": PACKAGE_NAME,
         "version": stage_release.VERSION,
-        "phase": "beta-source",
+        "phase": "stable-source",
         "created_utc": stage_release.FIXED_UTC,
         "source_sha": source_sha,
         "source_dirty": source_dirty,

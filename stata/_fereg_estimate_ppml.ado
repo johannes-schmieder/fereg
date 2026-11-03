@@ -1306,7 +1306,7 @@ program define _fereg_estimate_ppml, eclass
     else {
         ereturn local cmd "feppml"
         ereturn local cmdline `"`publiccmdline'"'
-        ereturn local fereg_version "0.5.0-beta.15"
+        ereturn local fereg_version "0.5.0"
         ereturn local feppml_gate "public_ppml_v1"
         ereturn local feppml_memory_requested "`memory_mode'"
         ereturn scalar feppml_poolsize = `poolsize'

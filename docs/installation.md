@@ -1,6 +1,6 @@
 # Installation
 
-`fereg` and `feppml` require Stata 15 or newer. The current binary beta supports
+`fereg` and `feppml` require Stata 15 or newer. The 0.5.0 binary release supports
 Linux x86-64, Windows x86-64 and macOS. The macOS plugin contains Apple Silicon
 and Intel code; licensed Mac testing uses Apple Silicon. See
 [validation](VALIDATION.md) for the checks performed on each platform.
@@ -50,12 +50,12 @@ fereg price mpg, absorb(rep78) vce(robust)
 feppml price mpg, absorb(rep78) vce(robust)
 ```
 
-To install beta.13 independently of later changes to `main`, use its release
+To install stable version 0.5.0 independently of later changes to `main`, use its release
 tag in a fresh Stata session. The tagged root package carries that release's
-plugins; replace the tag to install another beta:
+plugins; replace the tag to install another release:
 
 ```stata
-net install fereg, from("https://raw.githubusercontent.com/johannes-schmieder/fereg/v0.5.0-beta.13/") replace
+net install fereg, from("https://raw.githubusercontent.com/johannes-schmieder/fereg/v0.5.0/") replace
 fereg, selftest
 ```
 
@@ -64,7 +64,7 @@ beta.2 to beta.4 were macOS-only. Beta.1 predates the root package; install it
 from its binary ZIP as described below.
 
 For an offline installation, download `fereg-0.5.0.zip` from the
-[beta release](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0-beta.13),
+[0.5.0 release](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0),
 extract it, and use the absolute path of the extracted directory containing
 `fereg.pkg`:
 
@@ -85,7 +85,7 @@ be overwritten. To remove an installed package, run `ado uninstall fereg`.
 Source builds need Git, Python 3.11 or newer, Rust installed through
 [rustup](https://rustup.rs/), and a platform C compiler. The repository pins
 Rust 1.85.1; run the commands from the repository root. Native outputs go in
-`dist/`. This builds the same runtime used by the binary beta.
+`dist/`. This builds the same runtime used by the binary release.
 
 ```bash
 git clone --depth 1 --branch main https://github.com/johannes-schmieder/fereg.git

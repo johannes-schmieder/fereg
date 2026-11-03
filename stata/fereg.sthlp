@@ -245,7 +245,7 @@ with {cmd:solver(cmgschur)}.
 The solver matrix uses code 8 for this route. {cmd:e(fereg_cmg_degree)},
 {cmd:e(fereg_cmg_samples)}, and {cmd:e(fereg_cmg_seed)} record the requested
 cutoff, tree count, and seed. This experimental explicit option is included in
-the current beta on all three platforms. Its default unsampled graph differs
+version 0.5.0 on all three platforms. Its default unsampled graph differs
 from the automatic upgrade, which uses cutoff 5, one sampled tree and seed zero.
 
 {pstd}
@@ -282,7 +282,7 @@ stage traces distinguish lane limits and independent work from this budget.
 {cmd:deterministic} fixes the work partition
 and merge order for the same architecture and thread count; it may be slower.
 {cmd:timeit} prints the selected memory plan, native allocation, scratch, RSS,
-timing, and requested/effective threads. In this beta, {cmd:verbose(#)} is
+timing, and requested/effective threads. In version 0.5.0, {cmd:verbose(#)} is
 stored for interface compatibility; {cmd:timeit} is the printed diagnostic.
 
 {marker postestimation}
@@ -380,7 +380,7 @@ slope, explicit RHS base operators such as {cmd:ib2.region} and {cmd:fvset}
 base overrides are also unavailable in the current final-sample rebasing path.
 
 {pstd}
-{cmd:fereg} does not implement PPML; use {help feppml}. The beta does not
+{cmd:fereg} does not implement PPML; use {help feppml}. Version 0.5.0 does not
 implement IV/GMM, group outcomes with individual fixed effects, HAC or
 Driscoll--Kraay covariance estimators, other GLMs, or GPU execution.
 Unsupported requests return an explicit error.
@@ -860,7 +860,7 @@ platform: {cmd:fereg_macos.plugin}, {cmd:fereg_linux.plugin}, or
 There is one maintained engine and no engine selector.
 
 {pstd}
-Version 0.5.0 is available as a binary beta for Linux x86-64, Windows x86-64
+Version 0.5.0 is available as a binary release for Linux x86-64, Windows x86-64
 and macOS (Apple Silicon/Intel universal). See {cmd:docs/VALIDATION.md} for
 platform-specific test coverage and limitations, and
 {cmd:docs/fixest_benchmarks.md} and {cmd:docs/veneto_benchmarks.md} for
