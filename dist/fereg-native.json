@@ -2,7 +2,7 @@
   "schema": 1,
   "version": "0.5.0",
   "source_sha": "1306301d17aff6bee4f90660a17043d762215e3f",
-  "runtime_sha256": "a46e892c04443d8d9e4a1fadad08f15346a042144f8985566dd7d5650d4037dc",
+  "runtime_sha256": "8b70b3d59cbe2fb1e9fb5647ee9c0fc766a9d51efe7ade4d332f83aa9bb18cdf",
   "plugins": [
     {
       "path": "fereg_linux.plugin",

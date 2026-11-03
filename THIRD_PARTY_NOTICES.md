@@ -27,17 +27,17 @@ The upstream [MIT license](https://github.com/johannes-schmieder/within/blob/8d4
 retains copyright notices for within contributors and the appliedAI Institute
 for Europe gGmbH. Preserve those notices with source distributions.
 
-The GPL-3.0-only [CMG Rust port](https://github.com/johannes-schmieder/CMG) is
+The MIT-licensed [CMG Rust port](https://github.com/johannes-schmieder/CMG) is
 pinned to `5c5b5b2b138226ea928514fa9db27439ba1cffdb` and statically linked for
 graph-Laplacian/SDDM preconditioning and PCG. It derives from Koutis and Miller's
 [original MATLAB/C implementation](https://github.com/ikoutis/cmg-solver/tree/19752fc102f8cae8e34f66457bfaccb1aaa60375)
 of the method by
 [Koutis, Miller, and Tolliver (2011)](https://doi.org/10.1016/j.cviu.2011.05.013).
-Preserve its original license and notices. Exact current runtime pins are
+Preserve its copyright and license notices, including the MIT grant below. Exact current runtime pins are
 recorded in [Cargo.lock](Cargo.lock) and
 [the core crate manifest](crates/fereg-core/Cargo.toml).
 
-fereg is distributed under GPL-3.0-only. On 2026-10-13 Johannes confirmed
+fereg is distributed under MIT. On 2026-10-13 Johannes confirmed
 that the required native-distribution permissions had been obtained; see the
 [licensing decision](docs/licensing.md). Third-party sources retain their own
 copyrights and licenses. The matching source archive includes the pinned Cargo
@@ -50,16 +50,20 @@ available under MIT OR Apache-2.0. Preserve both license files in source
 packages; the local fork's notices are in `vendor/rayon-core/LICENSE-MIT` and
 `vendor/rayon-core/LICENSE-APACHE`.
 
-## Earlier fereg source notice
+## CMG MIT permission and notice
 
-The following notice is retained for fereg code previously offered under MIT.
-The current project distribution uses GPL-3.0-only; this does not revoke the
-license grants made by earlier revisions.
+On 2026-11-03 Johannes Schmieder confirmed that CMG's developers had granted
+official permission, communicated through Ioannis Koutis, to release CMG under
+the MIT license. Johannes selected MIT for CMG, fevc, and fereg on that basis.
+
+The following MIT grant covers the pinned CMG Rust source identified above,
+including the CMG code incorporated into fereg.
 
 ```text
 MIT License
 
-Copyright (c) 2026 fereg contributors
+Copyright (c) 2008-2020 Ioannis Koutis and Gary Miller
+Copyright (c) 2026 Johannes Schmieder and contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

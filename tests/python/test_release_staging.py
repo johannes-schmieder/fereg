@@ -257,7 +257,7 @@ class ReleaseStagingTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 stage_release.selected_plugins(selection)
 
-    def test_explicit_macos_beta_has_only_its_installable_files_and_gpl_metadata(self):
+    def test_explicit_macos_beta_has_only_its_installable_files_and_mit_metadata(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             plugins = root / "plugins"
@@ -286,7 +286,7 @@ class ReleaseStagingTests(unittest.TestCase):
                 self.assertEqual(manifest["included_platforms"], ["macos"])
                 self.assertEqual(manifest["missing_platforms"], ["linux", "windows"])
                 self.assertNotIn("review_only", manifest)
-                self.assertEqual(sbom["packages"][0]["licenseDeclared"], "GPL-3.0-only")
+                self.assertEqual(sbom["packages"][0]["licenseDeclared"], "MIT")
 
     def test_local_install_is_complete_and_rejects_reuse_or_bad_checksum(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -317,12 +317,30 @@ class ReleaseStagingTests(unittest.TestCase):
             (crate / ".cargo-checksum.json").write_text('{}\n')
             # r-efi records its license grant in AUTHORS rather than LICENSE.
             (crate / "AUTHORS").write_text("retained dependency license\n")
+            cmg = vendor / "cmg-0.1.0"
+            cmg.mkdir()
+            cmg_files = {
+                "Cargo.toml": '[package]\nname="cmg"\nversion="0.1.0"\nlicense="OLD"\n',
+                "Cargo.toml.orig": '[package]\nname="cmg"\nversion="0.1.0"\nlicense="OLD"\n',
+                "LICENSE": "previous license text\n",
+                "lib.rs": "pub fn unchanged() {}\n",
+            }
+            for name, text in cmg_files.items():
+                (cmg / name).write_text(text)
+            (cmg / ".cargo-checksum.json").write_text(json.dumps({
+                "package": None,
+                "files": {name: hashlib.sha256(text.encode()).hexdigest()
+                          for name, text in cmg_files.items()},
+            }))
             configuration = root / "config.toml"
             configuration.write_text('[source.crates-io]\nreplace-with="vendored-sources"\n'
                                      '[source.vendored-sources]\ndirectory='
                                      + json.dumps(str(vendor)) + '\n')
             staging = root / "source"
             staging.mkdir()
+            (staging / "licenses").mkdir()
+            cmg_mit = (ROOT / "licenses/CMG-MIT.txt").read_text()
+            (staging / "licenses/CMG-MIT.txt").write_text(cmg_mit)
             rayon = staging / "vendor/rayon-core"
             rayon.mkdir(parents=True)
             (rayon / "LICENSE-MIT").write_text("local fork notice\n")
@@ -335,6 +353,17 @@ class ReleaseStagingTests(unittest.TestCase):
             notices = (staging / "THIRD_PARTY_LICENSES.txt").read_text()
             self.assertIn("retained dependency license", notices)
             self.assertIn("local fork notice", notices)
+            packaged_cmg = staging / "vendor/dependencies/cmg-0.1.0"
+            self.assertEqual((packaged_cmg / "LICENSE").read_text(), cmg_mit)
+            self.assertIn('license = "MIT"', (packaged_cmg / "Cargo.toml").read_text())
+            self.assertIn('license = "MIT"', (packaged_cmg / "Cargo.toml.orig").read_text())
+            self.assertEqual((packaged_cmg / "lib.rs").read_text(), cmg_files["lib.rs"])
+            self.assertEqual((cmg / "LICENSE").read_text(), cmg_files["LICENSE"])
+            checksums = json.loads((packaged_cmg / ".cargo-checksum.json").read_text())
+            for name, expected in checksums["files"].items():
+                self.assertEqual(stage_release.digest(packaged_cmg / name), expected)
+            self.assertIn(cmg_mit.rstrip(), notices)
+            self.assertNotIn("previous license text", notices)
             with self.assertRaisesRegex(RuntimeError, "does not match"):
                 package_release.copy_dependency_sources(staging, root, configuration)
 

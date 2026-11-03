@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- License fereg and its incorporated CMG code under MIT following permission
+  from CMG's developers via Ioannis Koutis, confirmed by Johannes Schmieder on
+  2026-11-03. Retain the exact CMG dependency pin, third-party notices, native
+  binaries, and historical release archives.
+
 ## 0.5.0 — 2026-11-03
 
 Stable release of the qualified beta.15 runtime. The Linux, Windows and universal

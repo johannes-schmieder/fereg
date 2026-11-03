@@ -74,7 +74,7 @@ archive includes the complete dependency
 closure, its license texts and a relocatable offline Cargo configuration.
 Extract its `THIRD_PARTY_LICENSES.txt` and pass that file to native staging with
 `--third-party-licenses`; the installed package carries the combined notices,
-GPLv3 text and corresponding-source URL. Test a build from the source archive
+MIT text, CMG permission notice and corresponding-source URL. Test a build from the source archive
 with Cargo offline before publishing it alongside the exact binary package.
 Use the [Mac build instructions](macos_source_build.md) included in the source
 archive. The offline archive build can supply the actual release plugin, avoiding

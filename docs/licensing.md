@@ -1,21 +1,28 @@
-# Dependency and native-distribution decision
+# Licensing
 
-Johannes approved retaining the pinned within and GPL-3.0-only CMG dependencies
-and a GPLv3 distribution for fereg. On 2026-10-13, when asked about the outstanding
-Stata/SPI distribution restriction, he confirmed: “The required native-distribution
-permissions have been obtained.” This resolves the previously recorded permission
-gate and accompanies his instruction to publish fereg under `fe-tools` on GitHub.
+fereg is licensed under MIT; see [`LICENSE`](../LICENSE).
 
-The current fereg source and package metadata use GPL-3.0-only. Preserve
-third-party licenses and copyright notices: this project's license does not
-relicense StataCorp's SPI sources, the MIT numerical dependencies, or the
-MIT/Apache-2.0 Rayon sources. Earlier fereg MIT notices remain in
-[THIRD_PARTY_NOTICES](../THIRD_PARTY_NOTICES.md).
+On 2026-11-03 Johannes Schmieder confirmed official permission from CMG's
+developers, communicated through Ioannis Koutis, to release CMG under MIT.
+Johannes selected MIT for CMG, fevc, and fereg.
 
-Native release assets must include their checksums and dependency audit, plus a
-matching corresponding-source archive with the exact Cargo.lock dependency
-sources, their licenses, build scripts, and an offline Cargo configuration.
-Only publish the platforms actually included and tested. Checks on one platform
-do not establish another platform's behavior or general performance.
-GitHub testing remains paused. The packaging and installation procedures are in
-[release process](release_process.md) and [installation](installation.md).
+The MIT grant for the pinned CMG Rust dependency is reproduced in
+[`licenses/CMG-MIT.txt`](../licenses/CMG-MIT.txt) and the package's combined
+third-party notices. The dependency version and numerical code are unchanged.
+Source packaging includes the MIT license with the CMG dependency.
+
+Preserve third-party licenses and copyright notices. StataCorp's SPI sources,
+the MIT numerical dependencies, and MIT/Apache-2.0 Rayon sources retain their
+own notices. Johannes confirmed the required Stata/SPI native-distribution
+permissions on 2026-10-13.
+
+Native releases include checksums, a dependency audit, matching source with
+locked dependencies, license notices, and an offline Cargo configuration.
+Report the platforms actually included and tested. GitHub testing remains
+paused; see [release process](release_process.md) and
+[installation](installation.md).
+
+The 2026-11-03 license update changes only the Cargo license field among native
+build inputs; runtime source tokens and plugin bytes are unchanged. The current
+installation identity reflects that metadata change and retains the actual
+native build commits and plugin checksums.

@@ -62,6 +62,7 @@ ROOT_FILES = (
     "CHANGELOG.md",
     "LICENSE",
     "THIRD_PARTY_NOTICES.md",
+    "licenses/CMG-MIT.txt",
     "references.lock.toml",
 )
 SUPPORT_CAVEATS = (
@@ -204,8 +205,8 @@ def write_sbom(source: Path, output: Path, source_sha: str) -> None:
             "versionInfo": VERSION,
             "downloadLocation": "NOASSERTION",
             "filesAnalyzed": False,
-            "licenseConcluded": "GPL-3.0-only",
-            "licenseDeclared": "GPL-3.0-only",
+            "licenseConcluded": "MIT",
+            "licenseDeclared": "MIT",
             "supplier": "Organization: fereg contributors",
             "checksums": [
                 {"algorithm": "SHA1", "checksumValue": source_sha}
@@ -290,6 +291,7 @@ def copy_release_files(
         path = source / name
         if not path.is_file():
             raise RuntimeError(f"missing release file: {path}")
+        (staging / name).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(path, staging / name)
     shutil.copy2(source / "LICENSE", staging / "fereg-LICENSE.txt")
     shutil.copy2(source / "THIRD_PARTY_NOTICES.md", staging / "fereg-THIRD-PARTY-NOTICES.txt")

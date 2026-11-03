@@ -8,7 +8,7 @@ They share one native Rust runtime and require no separate language runtime.
 
 Use the [installation guide](docs/installation.md) to get started and the
 [user guide](docs/user_guide.md) for syntax, examples and limitations.
-The source is licensed under GPL-3.0-only; third-party terms are preserved in
+The source is licensed under MIT; third-party terms are preserved in
 [Third-party notices](THIRD_PARTY_NOTICES.md).
 
 ## Install in Stata

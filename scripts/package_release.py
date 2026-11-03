@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shutil
 import subprocess
 import tempfile
@@ -128,7 +129,39 @@ def copy_dependency_sources(staging: Path, directory: Path, configuration: Path)
     if tomllib.loads(rewritten)["source"]["vendored-sources"]["directory"] != "vendor/dependencies":
         raise RuntimeError("could not make the vendor configuration relocatable")
     (config_directory / "config.toml").write_text(rewritten, encoding="utf-8")
-    roots = crates + [staging / "vendor" / "rayon-core"]
+    packaged_crates = sorted((staging / "vendor" / "dependencies").iterdir())
+    for crate in packaged_crates:
+        manifest_path = crate / "Cargo.toml"
+        manifest_text = manifest_path.read_text(encoding="utf-8")
+        if tomllib.loads(manifest_text)["package"]["name"] != "cmg":
+            continue
+        # Apply the developers' MIT grant to the pinned CMG distribution.
+        license_text = (staging / "licenses" / "CMG-MIT.txt").read_text(encoding="utf-8")
+        (crate / "LICENSE").write_text(license_text, encoding="utf-8")
+        for name in ("Cargo.toml", "Cargo.toml.orig"):
+            path = crate / name
+            if path.is_file():
+                text = path.read_text(encoding="utf-8")
+                text, count = re.subn(r'(?m)^license\s*=\s*"[^"\n]*"', 'license = "MIT"', text)
+                if count != 1:
+                    raise RuntimeError(f"expected one CMG license declaration: {name}")
+                path.write_text(text, encoding="utf-8")
+        for name in ("README.md", "docs/UPSTREAM.md"):
+            path = crate / name
+            if path.is_file():
+                text = path.read_text(encoding="utf-8")
+                text = text.replace("GNU GPL version 3 only", "MIT")
+                text = text.replace("GNU GPL version 3", "MIT")
+                text = text.replace("License: GPL v3", "License: MIT")
+                text = text.replace("License-GPL_v3", "License-MIT")
+                path.write_text(text, encoding="utf-8")
+        checksum_path = crate / ".cargo-checksum.json"
+        checksums = json.loads(checksum_path.read_text(encoding="utf-8"))
+        for name in ("LICENSE", "Cargo.toml", "Cargo.toml.orig", "README.md", "docs/UPSTREAM.md"):
+            if (crate / name).is_file():
+                checksums["files"][name] = stage_release.digest(crate / name)
+        checksum_path.write_text(json.dumps(checksums, sort_keys=True) + "\n", encoding="utf-8")
+    roots = packaged_crates + [staging / "vendor" / "rayon-core"]
     texts = []
     for crate in sorted(roots):
         licenses = [p for p in sorted(crate.rglob("*")) if p.is_file() and any(
