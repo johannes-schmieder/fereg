@@ -349,6 +349,47 @@ exporter passes 14 tests, including failed admission and cancellation handling;
 independent reviews cover both. No runtime source or arithmetic changed in this
 follow-up, so the existing source and Mac evidence is reused.
 
+#### Authorized asynchronous timing round, 2026-11-03
+
+Johannes requests another timing run and explicitly directs submission of all
+jobs without requiring prompt scheduling: wait until they are scheduled and
+run. This supersedes the unsuccessful round's simultaneous-host admission
+policy. The new round keeps the exact candidate, beta.7 and beta.15 binaries,
+eight selected families, workers one/four, seed 2026110301, four mirrored
+blocks and one warmup per arm. Twelve fixed allocations each execute 432
+calls, for 5,184 calls total. There is no successor candidate, added sampling,
+timing-based exclusion, or pooling with the earlier six-host measurements.
+
+The preflight, accounting admission, twelve-task timing array and sole report
+are submitted together with scheduler dependencies. There is no queue-wait
+deadline, all-host barrier, duplicate-host execution refusal or cancellation
+because scheduling is slow. Each allocation verifies its own prerequisite and
+whole-node identity, records its physical host and starts independently when
+SGE grants its resources. Runtime limits remain 120 seconds per native call,
+2,400 seconds for each ordinary driver and 75 minutes per timing allocation;
+these limits do not include time waiting in the queue. General eligible SCC
+28-core hosts remain unrestricted by queue or processor model.
+
+The statistical contract remains unchanged: both reference guards are
+max(5%, 1 ms), and twelve distinct physical hosts per setting are required
+for qualification. Scheduler allocations are not independent hosts. All
+observations from repeat allocations on one machine are pooled within that
+physical host before computing the guarded bound. Every scheduled task runs
+even if a machine is reused; fewer than twelve distinct hosts is reported as
+insufficient-host evidence and never converted to a pass. The descriptive
+beta.15/beta.7 contrast also groups all blocks by actual physical host and
+shows the resulting independent-unit count. It cannot waive the formal guard.
+
+Actual-plugin preflight again verifies the unchanged harness, all 112 input
+files and 26,187 pinned environment files, and refreshes the 48 selected
+ordinary scientific calls, 33 exceptional calls and 35 Stata fits. The declared
+exceptional science and terminal-projection route changes remain shift-p4,
+shift-p6 and shift-p8 as above; ordinary science remains incumbent-exact with
+no repair activation. Existing source/Mac evidence and exceptional cost timing
+are reused because the native candidate is unchanged. All failures and adverse
+timings remain in the final report, which runs only after every timing task
+terminates. Queue waiting alone does not end this authorized round.
+
 The declared numerical scope is the exceptional repair path and its dependent
 coefficients, bread/covariance, residuals, saved effects, diagnostics and rank
 statuses. Correcting a false omission may intentionally change finite rank and
