@@ -228,6 +228,17 @@ round. The runner never builds artifacts, changes defaults or chooses a successo
 The [development workflow](../docs/development_workflow.md#compact-candidate-qualification)
 sets the scientific, platform and operational rules.
 
+Artifacts may declare `action_protocol: "1.6"` or `"1.7"` when comparing
+released plugins with different exact action handshakes. The shared
+`qualify.prepare_request` path validates OLS model 2.1/result 1.5 and absence of
+all `host_*` facts, then changes only the framed action minor version. This
+retains the same native harness and serial input semantics across arms: protocol
+1.7's optional host facts are absent, so it cannot activate parallel input.
+Model metadata, numeric columns, output bindings and scientific tolerances stay
+unchanged. Without the field, existing preparation is unchanged. The selector
+is part of plan/artifact identity and deduplication; preflight must use the same
+helper as timed calls. It is not a general wire converter or a scientific waiver.
+
 The default routing coverage is 21 families at one and four workers: no/one FE,
 slopes, low-memory saved effects, dense and small-retained two-FE, three/four/eight/
 sixteen-FE, weights, weak/disconnected connectivity, repeated cells, wide RHS,

@@ -35,7 +35,8 @@ import routing_oracle
 import routing_science as science
 import qualify_ownership as ownership
 from native import run_process
-from native_io import ROOT, case_header, diagnostics, digest, numbers, prepare_case, validate_result
+from native_io import (ROOT, action_protocol_arguments, case_header, diagnostics, digest, numbers,
+                       prepare_case, validate_result)
 from replay_plugins import exact_view
 
 FAMILIES = {'no-fe', 'one-fe', 'slopes', 'low-saved', *routing_cases.NATIVE_CASES,
@@ -267,9 +268,11 @@ def plan(config_path, output, *, configuration=None):
         return key
 
     for role, artifact in artifacts.items():
-        require(set(artifact) - {'public_policy', 'public_many_policy'} ==
+        require(set(artifact) - {'public_policy', 'public_many_policy', 'action_protocol'} ==
                 {'path', 'revision', 'build', 'request', 'families'},
                 'invalid artifact ' + role)
+        require('action_protocol' not in artifact or artifact['action_protocol'] in ('1.6', '1.7')
+                and not ownership_mode, 'invalid action protocol for ' + role)
         require('public_policy' not in artifact or artifact['public_policy'] in PUBLIC_POLICIES
                 and artifact['request'] == 'auto' and not ownership_mode, 'invalid public two-FE policy for ' + role)
         require('public_many_policy' not in artifact or artifact['public_many_policy'] == routing.GEOMETRY_MANY
@@ -348,6 +351,9 @@ def plan(config_path, output, *, configuration=None):
         require(not any(a.startswith((b'inject=', b'break_marker_token=')) for a in arguments),
                 'source contains developer instrumentation')
         require(arguments[0] == b'estimate-ols', 'routing qualification is OLS; PPML uses the mapped feature/replay suite')
+        for artifact in artifacts.values():
+            if 'action_protocol' in artifact:
+                action_protocol_arguments(arguments, artifact['action_protocol'])
         item['shape'] = shape[:2]
         item['metadata'] = None
         sidecar = source.with_suffix('.json')
@@ -778,7 +784,7 @@ def resource_policy(manifest, role, meta):
 def artifact_aliases(manifest):
     keys, aliases = {}, {}
     for role, artifact in manifest['artifacts'].items():
-        key = (manifest['files'][artifact['path']], artifact['request'])
+        key = (manifest['files'][artifact['path']], artifact['request'], artifact.get('action_protocol'))
         aliases[role] = keys.setdefault(key, role)
     return aliases
 
@@ -903,6 +909,15 @@ def compare_saved(left, right, meta):
             require(np.array_equal(finite, np.isfinite(yv) & (np.abs(yv) < 8e307) & sample)
                     and np.array_equal(x[key][~finite], y[key][~finite]), 'cross-host missingness changed')
             cmgschur.close(xv[finite], yv[finite], 'cross-host outputs', 1e-7, 1e-9)
+
+
+def prepare_request(source, destination, artifact, workers):
+    """Use the same declared transport and route for preflight and timed calls."""
+    options = ({'action_protocol': artifact['action_protocol']} if 'action_protocol' in artifact else {})
+    if artifact['request'] == 'preserve':
+        return prepare_case(source, destination, workers, **options)
+    arm = 'baseline' if artifact['request'] == 'auto' else artifact['request']
+    return routing.prepare(source, destination, arm, workers, **options)
 
 
 def run(manifest_path, output, shard=0, replica=0, resume=False, execute=run_process):
@@ -1033,10 +1048,8 @@ def _run(manifest_path, output, manifest, deadline, shard, replica, resume, exec
                         source = resolve(manifest_path, item['input'])
                         if ownership.enabled(manifest):
                             ownership.prepare(source, request, artifact['request'], workers)
-                        elif artifact['request'] == 'preserve':
-                            prepare_case(source, request, workers)
                         else:
-                            routing.prepare(source, request, 'baseline' if artifact['request'] == 'auto' else artifact['request'], workers)
+                            prepare_request(source, request, artifact, workers)
                         prepared[role] = request
                         with request.open('rb') as stream:
                             _, arguments = case_header(stream)

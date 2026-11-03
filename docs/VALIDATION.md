@@ -124,6 +124,20 @@ Public OLS Break and completed four-worker LSMR iteration cancellation also
 pass with populated/null estimates and exact follow-up fits. No native binary
 is published by this work. Linux and performance qualification remain open.
 
+The private Linux plugin built from `e9b877a1` has SHA-256
+`e6ea8c105255ace9980ebe4a7d8261a429ffd984d187f834d795314d5d9e23b7`.
+Build/ABI job 8412210 passes on scc-gd4. Preflight job 8412211 on scc-ei3
+passes the 33 exceptional native calls, the updated public Stata fixture and
+rollback, and all 26,187 pinned comparator-environment files. Its first ordinary
+call then refuses the harness's stale action protocol 1.6: beta.15 and the
+candidate require 1.7, while beta.7 requires 1.6. This occurs before estimation
+and before any ordinary call completes. All six timing tasks in job 8412212
+and report job 8412213 stop at their prerequisite guard; no timing begins.
+The failed preflight and scheduler evidence are retained for the bounded
+transport repair. The candidate binary, numerical input bytes, six-host
+schedule and acceptance rules remain fixed. This is a harness failure,
+not an ordinary scientific or performance result.
+
 The prospective Linux comparison reuses 112 retained input files totaling
 5,236,078,385 bytes. All match the retained manifest with SHA-256
 `5989d0558ce17a15226b67bc93ab51d8bad426b8d83e0ece9b68ff2a60941fc1`.

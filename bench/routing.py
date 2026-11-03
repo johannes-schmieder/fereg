@@ -11,7 +11,7 @@ from pathlib import Path
 import re
 import shutil
 
-from native_io import case_header
+from native_io import action_protocol_arguments, case_header
 
 ABLATIONS = {name: 'routing_' + name for name in ['diagonal', 'cells', 'direct']}
 PREFIXES = {'prefix-none': ('none', 0), 'prefix-map4': ('map4', 4), 'prefix-it4': ('it4', 8)}
@@ -122,7 +122,7 @@ def policy(arm):
     return result
 
 
-def prepare(source, destination, arm, threads):
+def prepare(source, destination, arm, threads, *, action_protocol=None):
     """Preserve framed input/model bytes while selecting a sanctioned route arm."""
     selected = ({'injection': 'it_coefficients'} if arm == COMPACT_IT else
                 {'injection': ABLATIONS[arm]} if arm in ABLATIONS else policy(arm))
@@ -130,6 +130,8 @@ def prepare(source, destination, arm, threads):
         raise ValueError('threads must be 1..1024')
     with source.open('rb') as stream:
         shape, arguments = case_header(stream)
+        if action_protocol is not None:
+            arguments = action_protocol_arguments(arguments, action_protocol)
         if arguments[0] != b'estimate-ols':
             raise ValueError('routing policy requests require OLS')
         if any(a.startswith(b'inject=') or a.startswith(b'break_marker_token=') for a in arguments):
