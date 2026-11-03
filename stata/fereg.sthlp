@@ -82,19 +82,22 @@ rejects importance weights ({cmd:iweight}) with {cmd:r(101)}.
 {pstd}
 Both estimators use the installed fereg native plugin. Use {cmd:fereg, selftest}
 to inspect and check it. A missing binary
-returns {cmd:r(601)}. The former {cmd:engine()} option has been removed.
+returns {cmd:r(601)}.
 
 {marker description}
 {title:Description}
 
 {pstd}
 {cmd:fereg} fits OLS and weighted least-squares models with no fixed effects,
-one fixed effect, or multiple high-dimensional fixed effects. The finite
-regressor list accepts Stata continuous variables, numeric factor main effects,
-all-categorical factor interactions, and time-series operators applied to
-continuous variables. Categorical-by-continuous and continuous-by-continuous
-RHS interactions are not yet supported. The regressor list may be omitted for
-a no-finite-regressor model.
+one fixed effect, or multiple high-dimensional fixed effects. The regressor
+list before the comma accepts continuous variables, numeric factor main
+effects, all-categorical factor interactions, and time-series operators applied
+to continuous variables. Interaction notation involving continuous regressors,
+such as {cmd:i.region#c.tenure} or {cmd:c.tenure#c.age}, is unsupported in this
+list. Group-specific continuous slopes are supported inside {cmd:absorb()},
+for example {cmd:absorb(region#c.tenure)} or {cmd:absorb(region##c.tenure)};
+see {help fereg##absorb:Absorbed terms}. The regressor list may be omitted
+for a model containing only absorbed effects and the constant.
 
 {pstd}
 Stata evaluates {cmd:if}, {cmd:in}, factor-variable syntax, and time-series
@@ -231,38 +234,14 @@ Explicit {cmd:lsmr} iterates to one hundredth of {cmd:tolerance()} (at least
 explicit methods fail closed on a failed independent fixed-effect certificate.
 
 {pstd}
-{cmd:solver(cmgschur)} is an experimental OLS solver for exactly two
-categorical intercept fixed effects. It uses an implicit worker-eliminated
-Schur operator and a CMG preconditioner built from a hybrid graph.
-{cmd:cmgdegree(4|5|6)} controls the largest distinct-employer degree whose
-workers are eliminated from the preconditioner graph; higher-degree workers
-remain as auxiliary vertices by default. The default cutoff is 5.
-{cmd:cmgsamples(}{it:k}{cmd:)} optionally replaces each higher-degree worker
-with the average of {it:k} sampled weighted trees on its distinct firms.
-The count must be an integer in 0..4294967295. Its default, zero, retains
-the original hybrid graph. With a positive count, {cmd:cmgseed(}{it:s}{cmd:)}
-selects a seed in 0..9007199254740991; its default is zero. Write these
-integers as decimal digits. An explicit {cmd:cmgseed()} requires positive
-{cmd:cmgsamples()}, including when the requested seed is zero.
-The graph is sampled once and remains fixed throughout the solve.
-These options change only preconditioner construction; the Schur operator,
-fitted model, and sample are unchanged. The solve retains its independent
-final numerical certificate. Weights,
-regressors, saved fixed effects, and both memory modes are supported.
-It is unavailable for PPML, absorbed slopes, or other numbers of fixed effects.
-{cmd:cmgdegree()}, {cmd:cmgsamples()}, and {cmd:cmgseed()} are accepted only
-with {cmd:solver(cmgschur)}.
-The solver matrix uses code 8 for this route. {cmd:e(fereg_cmg_degree)},
-{cmd:e(fereg_cmg_samples)}, and {cmd:e(fereg_cmg_seed)} record the requested
-cutoff, tree count, and seed. This experimental explicit option is included in
-version 0.5.0 on all three platforms. Its default unsampled graph differs
-from the automatic upgrade, which uses cutoff 5, one sampled tree and seed zero.
-
-{pstd}
-Explicit {cmd:solver(cg)} returns error 198 because its residual certificate
-does not establish projection accuracy. Use {cmd:solver(lsmr)} or
-{cmd:solver(cmg)}. Low-memory CMG projects raw residuals through the full graph
-solve before final certification.
+{cmd:solver(cmgschur)} is an experimental CMG-preconditioned Schur solver
+for exactly two categorical intercept effects. It supports weights, finite
+regressors, saved effects, and both memory modes; absorbed slopes are unsupported.
+Its advanced controls are {cmd:cmgdegree(4|5|6)} (default 5),
+{cmd:cmgsamples(}{it:k}{cmd:)} (default 0), and {cmd:cmgseed(}{it:s}{cmd:)}
+(default 0). An explicit seed requires a positive sample count. See the
+{browse "https://github.com/johannes-schmieder/fereg/blob/main/docs/SPEC.md":numerical specification}
+for construction details and parameter ranges.
 
 {pstd}
 Automatic upgrades are available in both memory modes and include hierarchy
@@ -292,8 +271,8 @@ stage traces distinguish lane limits and independent work from this budget.
 {cmd:deterministic} fixes the work partition
 and merge order for the same architecture and thread count; it may be slower.
 {cmd:timeit} prints the selected memory plan, native allocation, scratch, RSS,
-timing, and requested/effective threads. In version 0.5.0, {cmd:verbose(#)} is
-stored for interface compatibility; {cmd:timeit} is the printed diagnostic.
+timing, and requested/effective threads. {cmd:verbose(#)} records the
+requested verbosity; use {cmd:timeit} to print execution diagnostics.
 
 {marker postestimation}
 {title:Prediction and postestimation}
@@ -345,8 +324,7 @@ fallback. No developer trace is required.
 For automatic two-effect fits, {cmd:cg} means the guarded Schur-PCG recurrence
 without multigrid and {cmd:cmgschur} means a CMG preconditioner was actually
 applied. An allocated but unused hierarchy is not reported as CMG use.
-Explicit {cmd:solver(cg)} remains unsupported. A MAP continuation reports
-{cmd:map} and sets fallback.
+A MAP continuation reports {cmd:map} and sets fallback.
 
 {pstd}
 {cmd:e(fereg_solver)} is a 2-by-16 matrix with rows {cmd:absorption} and
@@ -397,20 +375,13 @@ unavailable because Stata's used-data counter is frame-local; the allocated
 baseline includes the resident segments and shared pools.
 
 {marker limitations}
-{title:Current limitations}
+{title:Limitations}
 
 {pstd}
 Fixed-width string categorical sources are supported; {cmd:strL} sources are
-not. Categorical-by-continuous and continuous-by-continuous RHS interactions
-are not yet supported. When {cmd:absorb()} contains an interaction or absorbed
-slope, explicit RHS base operators such as {cmd:ib2.region} and {cmd:fvset}
-base overrides are also unavailable in the current final-sample rebasing path.
-
-{pstd}
-{cmd:fereg} does not implement PPML; use {help feppml}. Version 0.5.0 does not
-implement IV/GMM, group outcomes with individual fixed effects, HAC or
-Driscoll--Kraay covariance estimators, other GLMs, or GPU execution.
-Unsupported requests return an explicit error.
+not. When {cmd:absorb()} contains an interaction or absorbed slope, explicit
+RHS base operators such as {cmd:ib2.region} and {cmd:fvset} base overrides
+are unsupported.
 
 {marker utilities}
 {title:Installation diagnostics}
@@ -431,12 +402,11 @@ worker execution. It does not provide comprehensive OLS or PPML qualification.
 processor information, and individual check results. Failed checks always show
 their details and return a nonzero code. Available version information is shown
 before compatibility or check failures. {cmd:threads(#)} selects the worker count;
-zero selects the native default. The former {cmd:version} and {cmd:doctor}
-options are no longer supported.
+zero selects the native default.
 
 {pstd}
 After installing or updating fereg in a Stata session that has already used
-it, restart Stata: the previously loaded plugin can stay in memory until Stata
+it, restart Stata: the loaded plugin can stay in memory until Stata
 exits (on Windows it always does). On Windows, restart before updating, because
 a loaded plugin file cannot be overwritten. A plugin that does not match the
 installed ado files fails with {cmd:r(499)} and asks for a restart.
@@ -884,10 +854,9 @@ the frozen exact-SHA benchmark suite, not this example.
 {cmd:fereg} requires Stata 15 or newer and one self-contained plugin for its
 platform: {cmd:fereg_macos.plugin}, {cmd:fereg_linux.plugin}, or
 {cmd:fereg_windows.plugin}. Users do not need a compiler or separate runtime.
-There is one maintained engine and no engine selector.
 
 {pstd}
-Version 0.5.0 provides Linux x86-64, Windows x86-64 and universal macOS
+The package provides Linux x86-64, Windows x86-64 and universal macOS
 binaries. Linux requires glibc 2.28 or newer. Mac testing uses Apple Silicon;
 the Intel Mac code has not been tested in a licensed Intel Mac Stata session.
 Windows loads numeric data serially. See the
@@ -898,19 +867,104 @@ and {browse "https://github.com/johannes-schmieder/fereg/blob/main/docs/VALIDATI
 {title:Sources and acknowledgements}
 
 {pstd}
-Development and compatibility validation use the independently maintained
-{browse "https://github.com/sergiocorreia/reghdfe":reghdfe},
-{browse "https://github.com/sergiocorreia/ppmlhdfe":ppmlhdfe}, and
-{browse "https://github.com/py-econometrics/pyfixest":PyFixest} projects as
-scientific or behavioral references. They are not called by {cmd:fereg} at
-runtime, and their source is not copied into the package.
+{cmd:fereg} builds on open-source numerical software. Its LSMR solver and
+pairwise Schwarz preconditioner use an adapted
+{browse "https://github.com/johannes-schmieder/within":fork} of
+{browse "https://github.com/py-econometrics/within":within}, developed by
+Alexander Fischer, Kristof Schröder, and contributors at the appliedAI
+Institute for Europe and in the PyFixest community. Fischer and Schröder's
+{browse "https://github.com/py-econometrics/within-paper":graph-preconditioning paper}
+describes the approach. The fork adapts data access, iteration control,
+memory allocation, reproducible reductions, and cancellation for Stata.
 
 {pstd}
-The native bridge uses the official
+The CMG backend uses a
+{browse "https://github.com/johannes-schmieder/CMG":Rust port} of
+Ioannis Koutis and Gary L. Miller's
+{browse "https://github.com/ikoutis/cmg-solver":MATLAB/C implementation},
+based on the combinatorial multigrid method of Koutis, Miller, and Tolliver
+(2011). These numerical components are integrated with Stata estimation,
+automatic solver selection, and independent convergence checks.
+
+{pstd}
+David Roodman's {browse "https://github.com/droodman/julia.ado":julia package}
+and accompanying Stata Journal article (2025) provide a precedent for parallel
+copying of data from Stata. {cmd:fereg} confines this to a qualified read-only
+numeric loading phase; the precedent does not establish thread safety for
+arbitrary Stata plugin operations.
+
+{pstd}
+We also acknowledge {browse "https://github.com/sergiocorreia/reghdfe":reghdfe},
+{browse "https://github.com/sergiocorreia/ppmlhdfe":ppmlhdfe}, and
+{browse "https://github.com/py-econometrics/pyfixest":PyFixest} as development
+and compatibility references. The native bridge uses the official
 {browse "https://www.stata.com/plugins/":Stata Plugin Interface} sources
-published by StataCorp LP. Exact reference revisions, licenses, and dependency
-boundaries are recorded in the source distribution's
-{cmd:references.lock.toml} and {cmd:THIRD_PARTY_NOTICES.md}.
+published by StataCorp LP. Licenses and code provenance are documented in
+{browse "https://github.com/johannes-schmieder/fereg/blob/main/THIRD_PARTY_NOTICES.md":Third-party notices};
+{cmd:references.lock.toml} records the pinned comparison packages.
+
+{marker references}
+{title:Selected references}
+
+{phang}
+Fischer, Alexander, and Kristof Schröder (2026).
+{browse "https://github.com/py-econometrics/within-paper":Graph Preconditioning for High-Dimensional Fixed Effects Regression}.
+Working paper.
+
+{phang}
+Koutis, Ioannis, Gary L. Miller, and David Tolliver (2011).
+{browse "https://doi.org/10.1016/j.cviu.2011.05.013":Combinatorial Preconditioners and Multilevel Solvers for Problems in Computer Vision and Image Processing}.
+{it:Computer Vision and Image Understanding} 115(12): 1638–1646.
+
+{phang}
+Roodman, David (2025).
+{browse "https://doi.org/10.1177/1536867X251341105":Julia as a Universal Platform for Statistical Software Development}.
+{it:Stata Journal} 25(2): 255–284.
+
+{phang}
+Fong, David Chin-Lung, and Michael A. Saunders (2011).
+{browse "https://doi.org/10.1137/10079687X":LSMR: An Iterative Algorithm for Sparse Least-Squares Problems}.
+{it:SIAM Journal on Scientific Computing} 33(5): 2950–2971.
+
+{phang}
+Gao, Yuan, Rasmus Kyng, and Daniel A. Spielman (2026).
+{browse "https://doi.org/10.1137/24M1673577":AC(k): Robust Solution of Laplacian Equations by Randomized Approximate Cholesky Factorization}.
+{it:SIAM Journal on Scientific Computing} 48(3): A1643–A1684.
+
+{phang}
+Somaini, Paulo, and Frank A. Wolak (2016).
+{browse "https://doi.org/10.1515/jem-2014-0008":An Algorithm to Estimate the Two-Way Fixed Effects Model}.
+{it:Journal of Econometric Methods} 5(1): 143–152.
+
+{phang}
+Guimarães, Paulo, and Pedro Portugal (2010).
+{browse "https://doi.org/10.1177/1536867X1101000406":A Simple Feasible Procedure to Fit Models with High-Dimensional Fixed Effects}.
+{it:Stata Journal} 10(4): 628–649.
+
+{phang}
+Gaure, Simen (2013).
+{browse "https://doi.org/10.1016/j.csda.2013.03.024":OLS with Multiple High Dimensional Category Variables}.
+{it:Computational Statistics & Data Analysis} 66: 8–18.
+
+{phang}
+Correia, Sergio (2016).
+{browse "https://www.scorreia.com/research/hdfe.pdf":A Feasible Estimator for Linear Models with Multi-Way Fixed Effects}.
+Working paper.
+
+{phang}
+Correia, Sergio, Paulo Guimarães, and Thomas Zylkin (2020).
+{browse "https://doi.org/10.1177/1536867X20909691":Fast Poisson Estimation with High-Dimensional Fixed Effects}.
+{it:Stata Journal} 20(1): 95–115.
+
+{phang}
+Irons, Bruce M., and Robert C. Tuck (1969).
+{browse "https://doi.org/10.1002/nme.1620010306":A Version of the Aitken Accelerator for Computer Iteration}.
+{it:International Journal for Numerical Methods in Engineering} 1(3): 275–277.
+
+{phang}
+Varadhan, Ravi, and Christophe Roland (2008).
+{browse "https://doi.org/10.1111/j.1467-9469.2007.00585.x":Simple and Globally Convergent Methods for Accelerating the Convergence of Any EM Algorithm}.
+{it:Scandinavian Journal of Statistics} 35(2): 335–353.
 
 {marker also}
 {title:Also see}

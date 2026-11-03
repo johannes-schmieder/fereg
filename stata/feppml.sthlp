@@ -38,7 +38,7 @@ transaction. An error or Break posts no partial result.
 {pstd}
 Both estimators use the installed fereg native plugin. Use {cmd:fereg, selftest}
 to inspect and check it. A missing binary
-returns {cmd:r(601)}. The former {cmd:engine()} option has been removed.
+returns {cmd:r(601)}.
 
 {marker syntax}
 {title:Syntax}
@@ -1031,6 +1031,11 @@ The native bridge uses the official
 published by StataCorp LP. Exact reference revisions, licenses, and dependency
 boundaries are recorded in the source distribution's
 {cmd:references.lock.toml} and {cmd:THIRD_PARTY_NOTICES.md}.
+
+{pstd}
+See {help fereg##sources:Sources and acknowledgements} and
+{help fereg##references:Selected references} for the numerical libraries,
+contributors, and methodological sources shared by both commands.
 
 {marker also}
 {title:Also see}
