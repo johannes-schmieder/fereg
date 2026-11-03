@@ -322,6 +322,50 @@
       "log_sha256": "641a44cd56225ec36d1d45bda5bf39ba12e326c869b91c6efceafc60aa63738b",
       "source_commit": "846feb8b2643844a1fa9a0678a6e128336454e19"
     },
-    "qualification_reuse": "Exact original plugins retain Linux/Windows/Mac native qualification. Fresh source/archive/installation/display/oracle checks use Mac Stata 19. No new native Intel-Mac or older-Stata qualification is claimed."
+    "qualification_reuse": "Exact original plugins retain Linux/Windows/Mac native qualification. Fresh source/archive/installation/display/oracle checks use Mac Stata 19. No new native Intel-Mac or older-Stata qualification is claimed.",
+    "publication": {
+      "release_url": "https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0",
+      "release_id": 432724771,
+      "tag_object": "34cf4b5ddab898b245a85fea37db383e327d2bb9",
+      "tag_commit": "7a85cd7b9ba2414699f0f87a6f7588c44fa2e3fe",
+      "remote_asset_digests_verified": true,
+      "release_list_bytes": 216798
+    },
+    "http_installations": [
+      {
+        "mode": "tag",
+        "source": "https://raw.githubusercontent.com/johannes-schmieder/fereg/v0.5.0/",
+        "process_rc": 0,
+        "stata_success": true,
+        "installed_files": 37,
+        "installed_hashes_exact": true,
+        "example_2_present": true,
+        "selftest_and_display_ols_ppml_oracles": true,
+        "log_sha256": "6b13e463756b6ef3b301bb6b56ef9109802fabbc60a8ecabb218723e5332f961"
+      },
+      {
+        "mode": "main",
+        "source": "https://raw.githubusercontent.com/johannes-schmieder/fereg/main/",
+        "process_rc": 0,
+        "stata_success": true,
+        "installed_files": 37,
+        "installed_hashes_exact": true,
+        "example_2_present": true,
+        "selftest_and_display_ols_ppml_oracles": true,
+        "log_sha256": "91326db03e430b96d3838e7513e2b418d9a34c02403fbf6d6428b12e9eb15359"
+      },
+      {
+        "mode": "github",
+        "source": "github install johannes-schmieder/fereg",
+        "process_rc": 0,
+        "stata_success": true,
+        "installed_files": 37,
+        "installed_hashes_exact": true,
+        "example_2_present": true,
+        "selftest_and_display_ols_ppml_oracles": true,
+        "log_sha256": "82429d7dd0c53222231410c5350e164f2c04c7f8598d119f2515fb9901f7ca9d"
+      }
+    ],
+    "http_installation_harness_sha256": "abc5fb279192a3946db0f6b016f5aab1a0eb34ac843e5a82fc29172b46834247"
   }
 }
