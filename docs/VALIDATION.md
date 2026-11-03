@@ -1,5 +1,79 @@
 # Validation status
 
+## 2026-11-02: OLS nearly absorbed regressors, candidate scope
+
+The independent reproducer has 800 rows: every cell of a 10-by-10 crossed
+categorical-FE design contains all eight sign combinations of u, v and w.
+Set `y = 5g + 7h + 2u - 3v + w`, `x = 10000g + u` and `z = v`.
+The exact within design is `[u, v]`, its cross-product is `800 I`, the slopes
+are `(2, -3)`, the residual is w and RSS is 800. Yet x has squared within/raw
+norm ratio `1 / (3850000000 + 1)`, below the historical fixed `1e-9` cutoff.
+That cutoff omits x and changes the model to one with RSS 4000. Changing the
+public absorption tolerance does not change this separate cutoff. This is an
+identified-signal counterexample, not evidence that all small computed within
+residuals should be retained.
+
+The candidate turns that cutoff into a verification trigger for OLS with a
+global intercept and no FEs, or one/two categorical-intercept FE terms.
+Cheap exact structural proofs still permit absorption omissions. Other cases
+use original-source deflation, fresh projection and the forest-flow forward
+bound specified in [SPEC §8](SPEC.md#8-rank-and-collinearity) and
+[§16](SPEC.md#16-certificates-and-errors). Once this
+path activates, its design candidates and outcome require independent error
+bounds. Finite rank is checked on resolved within scales, with an independently
+certified retained basis and a direct primal check for every dropped finite
+column. Quotient-space scores and terminal residual movement must also pass;
+existing floating-point scientific tolerances are not weakened.
+
+The analytical family covers absorbed shifts through `1e8`, opposite regressor
+units, exact absorption, cell-constant positive weights, global-intercept shifts
+and saved-effect reconstruction. Additional cycle designs with unique joint FE
+cells check identification without repeated-cell contrasts. Exact duplicate
+finite columns exercise retained-subset and dropped-span certification; near
+boundary and loose-bound cases must produce an explicit unresolved failure.
+The candidate also needs fixed-worker repetition, cross-worker scientific and
+omission agreement, Fast/Low and supported explicit-solver coverage, and native
+failure/rollback checks. These are independent mathematical witnesses and
+qualification requirements, not a report that the final candidate has passed.
+
+Source integration also exposed an incorrect exact-absorption premise in the
+singleton fixture. The stored float32 values `[-0.8, -0.2, 0.3, 0.9]`, promoted
+to float64, have exact two-by-two cycle contrast `-3/2^26`, not zero. With the
+stored response `[4, 4.5, 5, 5.6]`, the exact slope is `-2236960`; the identified
+cycle exhausts residual degrees of freedom. The new witness requires retention
+and inference refusal for both singleton policies. The separate omission test
+uses exactly additive binary fractions `[-0.75, -0.25, 0.25, 0.75]` and retains
+its original FE-only RSS, covariance and degrees-of-freedom targets. No tolerance
+was relaxed to accommodate either case. The [mathematical review](rank_verification.md)
+distinguishes stored-data identification from intended decimal relationships.
+
+The source checkpoint passes `scripts/run_tests.sh --source-only`: 349 Python
+tests, 1,614 core tests (three diagnostic tests ignored), the remaining workspace
+and FFI tests, isolated allocator audits, strict Clippy, fuzz compilation,
+portable/C/SPI guards and the complexity ratchet. All 16 integrated scale/offset
+witnesses pass, as do the separate exact and rounded singleton witnesses. The
+129 qualification-tool tests pass, including the requirement that an ordinary
+candidate exactly reproduce the current incumbent even when an older original
+has a previously accepted numerical or derived-residual difference. This is
+source evidence only; native and performance prerequisites below remain open.
+
+The declared numerical scope is the exceptional repair path and its dependent
+coefficients, bread/covariance, residuals, saved effects, diagnostics and rank
+statuses. Correcting a false omission may intentionally change finite rank and
+fit. Ordinary unaffected science must remain exact against the beta.15 plugin,
+including unaffected OLS and PPML paths. Candidate/beta.15 native and installed
+binary qualification is planned; no completed native qualification or timing
+claim is attached to this section.
+
+The graph certificate is sufficient and can be conservative on weak forests
+or tiny tree-edge weights. Unresolved cases fail without publication. Stored
+input rounding can erase signal before estimation, which this work cannot
+reverse. Higher-way or slope absorption keeps its existing policy, and this
+candidate makes no PPML rank or separation change. Certification validates the
+existing deterministic named basis, not a claim that exact arithmetic would
+choose identical pivot names at a tie. Any future extension requires its own
+numerical scope and independent witnesses.
+
 ## Beta.15 publication decision
 
 On November 2, after reviewing the completed no-FE performance evidence,

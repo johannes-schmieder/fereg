@@ -48,6 +48,7 @@ COVERAGES = {'routing': FAMILIES, 'campaign': CAMPAIGN_FAMILIES,
 # Public two-FE Auto policies an original/incumbent artifact may declare it runs;
 # omission keeps the meaning of configurations written before beta.8.
 PUBLIC_POLICIES = (routing.GATES, routing.GATES_V2)
+INCUMBENT_EXACT = 'incumbent-exact-v1'
 ENVIRONMENT = ('FEREG_SOLVER_TRACE', 'FEREG_SOLVER_TRACE_FILE', 'FEREG_PHASE_TIMING',
                'FEREG_CMG_ORDINARY', 'FEREG_ACTION_MEMORY_AUDIT', 'FEREG_PPML_MEMORY_TRACE',
                'FEREG_MEMORY_LIMIT_BYTES', 'LLVM_PROFILE_FILE')
@@ -238,7 +239,8 @@ def plan(config_path, output, *, configuration=None):
     if 'min_distinct_hosts_per_cell' in value:
         required.add('min_distinct_hosts_per_cell')
     require(set(value) == required, 'configuration needs exactly: ' + ', '.join(sorted(required)))
-    require(value['scope'] in {'exact', 'many', 'two', science.WITHIN_MIGRATION}, 'unsupported numerical scope')
+    require(value['scope'] in {'exact', INCUMBENT_EXACT, 'many', 'two', science.WITHIN_MIGRATION},
+            'unsupported numerical scope')
     require(not within_migration or not diagnostic and not ownership_mode,
             'within migration cannot change routing or ownership policies')
     require(value['platform'] in {'Darwin', 'Linux'}, 'platform must be Darwin or Linux')
@@ -265,10 +267,14 @@ def plan(config_path, output, *, configuration=None):
         return key
 
     for role, artifact in artifacts.items():
-        require(set(artifact) - {'public_policy'} == {'path', 'revision', 'build', 'request', 'families'},
+        require(set(artifact) - {'public_policy', 'public_many_policy'} ==
+                {'path', 'revision', 'build', 'request', 'families'},
                 'invalid artifact ' + role)
         require('public_policy' not in artifact or artifact['public_policy'] in PUBLIC_POLICIES
                 and artifact['request'] == 'auto' and not ownership_mode, 'invalid public two-FE policy for ' + role)
+        require('public_many_policy' not in artifact or artifact['public_many_policy'] == routing.GEOMETRY_MANY
+                and artifact['request'] == 'auto' and not ownership_mode,
+                'invalid public many-FE policy for ' + role)
         require(isinstance(artifact['revision'], str) and artifact['revision'], 'record artifact revision')
         require(isinstance(artifact['build'], str) and artifact['build'], 'record compiler and build settings')
         require(artifact['request'] in ({'auto', *ownership.REQUESTS} if ownership_mode else
@@ -286,7 +292,18 @@ def plan(config_path, output, *, configuration=None):
             value['policy_binding'][name] = bind(value['policy_binding'][name])
     if ownership_mode:
         value['ownership_binding'] = {k: bind(v) for k, v in value['ownership_binding'].items()}
-    if within_migration:
+    if value['scope'] == INCUMBENT_EXACT:
+        require(not diagnostic and not ownership_mode and set(artifacts) == {'original', 'incumbent', 'candidate'}
+                and all(a['request'] == 'auto' for a in artifacts.values()),
+                'incumbent-exact compares three unchanged public Auto requests')
+        require(artifacts['original']['families'] == [] and
+                set(artifacts['candidate']['families']) == set(artifacts['incumbent']['families']),
+                'incumbent-exact cannot declare a new numerical family')
+        require(all(artifacts['candidate'].get(key, default) == artifacts['incumbent'].get(key, default)
+                    for key, default in [('public_policy', routing.GATES),
+                                         ('public_many_policy', 'incremental-many')]),
+                'incumbent-exact cannot change public routing policies')
+    elif within_migration:
         require(set(artifacts) == {'original', 'incumbent', 'candidate'}
                 and all(a['request'] == 'auto' for a in artifacts.values())
                 and len({a.get('public_policy', routing.GATES) for a in artifacts.values()}) == 1,
@@ -749,6 +766,8 @@ def resource_policy(manifest, role, meta):
         # An uninjected public invocation attests the public two-FE policy it
         # declares; configurations without the field keep gates v1.
         request = artifact.get('public_policy', routing.GATES)
+    if request == 'auto' and family == 'many':
+        request = artifact.get('public_many_policy', 'incremental-many')
     if family == 'two' and request in (*routing.REMAINING, *routing.GATE_RULES):
         return request
     if family == 'many' and request == routing.GEOMETRY_MANY:
@@ -770,6 +789,26 @@ def compare_artifacts(manifest, meta, snapshots):
     if diagnostic_mode(manifest):
         return diagnostic_tool(manifest).compare_science(manifest, meta, snapshots)
     candidate = snapshots['candidate']
+    if manifest['scope'] == INCUMBENT_EXACT:
+        incumbent, original = snapshots['incumbent'], snapshots['original']
+        require(candidate[2]['fingerprint'] == incumbent[2]['fingerprint'],
+                'incumbent: unaffected science changed')
+        if original[2]['fingerprint'] == incumbent[2]['fingerprint']:
+            return
+        if science.derived_residual_only(original[0], incumbent[0], meta):
+            # The accepted projection-to-derived reporting change also covered
+            # one-FE requests. It changed no published value or output column.
+            require(digest(original[1]) == digest(incumbent[1]),
+                    'original: historical derived residual output columns changed')
+            return
+        require(affected(meta, manifest['artifacts']['incumbent']['families']),
+                'original: science changed outside accepted historical families')
+        selected = (routing.GEOMETRY_MANY if resource_policy(manifest, 'incumbent', meta) == routing.GEOMETRY_MANY
+                    else routing.PORTFOLIO_UNSEEDED)
+        # Historical differences are checked against the accepted incumbent.
+        # No numerical or discrete candidate change can use this allowance.
+        return science.compatibility(original[0], incumbent[0], original[1], incumbent[1], meta, 'auto',
+                                     selected_policy=routing.policy(selected))
     for role in ('original', 'incumbent', 'hidden'):
         if role not in snapshots:
             continue

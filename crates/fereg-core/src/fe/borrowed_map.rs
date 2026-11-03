@@ -209,6 +209,22 @@ impl FeCoefficientBatch {
         Ok(&self.values[start..start + self.coefficients_per_rhs])
     }
 
+    /// Replace one verified intercept-only projection after quotient repair.
+    pub(crate) fn replace_intercept_rhs(&mut self, rhs: usize, values: &[f64]) -> Result<()> {
+        if rhs >= self.rhs_count
+            || values.len() != self.coefficients_per_rhs
+            || self.effect_channels.iter().any(|channels| *channels != 1)
+            || values.iter().any(|value| !value.is_finite())
+        {
+            return Err(invalid_argument(
+                "verified FE coefficient replacement is not aligned",
+            ));
+        }
+        let start = rhs * self.coefficients_per_rhs;
+        self.values[start..start + self.coefficients_per_rhs].copy_from_slice(values);
+        Ok(())
+    }
+
     pub(crate) fn add_intercept(
         &mut self,
         effect: usize,

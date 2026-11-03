@@ -1,4 +1,5 @@
 //! One-shot adapter to the common stateless immutable-row finite service.
+mod rank_bound;
 use super::*;
 use crate::ols::finite_operations::{resize, solve_factor, FactorBanks, RankRequest};
 use crate::ols::finite_wls_kernel::{
@@ -63,24 +64,79 @@ pub(super) fn solve_one_shot<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     perturb_bread: bool,
     build_bread: bool,
 ) -> Result<Option<FiniteFit>> {
-    let rows = prepared.fit_sample().n_active();
-    let columns = prepared.fit_model().columns.len();
-    let valid = match &storage {
-        ProjectedFiniteRows::Centered(values) => {
-            values.rows() == rows && values.columns() == columns
-        }
-        ProjectedFiniteRows::Dense(values) => {
-            values.nrows() == rows && values.ncols() == columns + 1
-        }
-        ProjectedFiniteRows::Scratch { scratch, outcome } => {
-            scratch.rows() == rows && scratch.columns() == columns && outcome.len() == rows
-        }
-    };
-    if !valid || reference_norms.len() != columns || score_norms.len() != columns {
-        return Err(invalid_argument(
-            "prepared finite projected axes are inconsistent",
-        ));
-    }
+    solve_one_shot_impl(
+        prepared,
+        storage,
+        weights,
+        bread_weight_scale,
+        reference_norms,
+        score_norms,
+        config,
+        reservation,
+        perturb_first_coefficient,
+        perturb_bread,
+        build_bread,
+        None,
+    )
+}
+
+/// Exceptional OLS projection repair. The final argument bounds the Frobenius
+/// norm of all candidate-column errors after division by `reference_norms`,
+/// in the solver's normalized weight frame. The caller must verify every
+/// candidate when activating this exceptional path.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn solve_one_shot_verified<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
+    prepared: &P,
+    storage: ProjectedFiniteRows<'_>,
+    weights: NormalizedWeights<'_>,
+    bread_weight_scale: PreparedOlsBreadWeightScale,
+    reference_norms: &[f64],
+    score_norms: &[f64],
+    config: PreparedOlsFitConfig,
+    reservation: &mut R,
+    perturb_first_coefficient: bool,
+    perturb_bread: bool,
+    build_bread: bool,
+    relative_projection_error: f64,
+) -> Result<Option<FiniteFit>> {
+    solve_one_shot_impl(
+        prepared,
+        storage,
+        weights,
+        bread_weight_scale,
+        reference_norms,
+        score_norms,
+        config,
+        reservation,
+        perturb_first_coefficient,
+        perturb_bread,
+        build_bread,
+        Some(relative_projection_error),
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn solve_one_shot_impl<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
+    prepared: &P,
+    storage: ProjectedFiniteRows<'_>,
+    weights: NormalizedWeights<'_>,
+    bread_weight_scale: PreparedOlsBreadWeightScale,
+    reference_norms: &[f64],
+    score_norms: &[f64],
+    config: PreparedOlsFitConfig,
+    reservation: &mut R,
+    perturb_first_coefficient: bool,
+    perturb_bread: bool,
+    build_bread: bool,
+    relative_projection_error: Option<f64>,
+) -> Result<Option<FiniteFit>> {
+    let (rows, columns) = validate_projected_axes(
+        prepared,
+        &storage,
+        reference_norms,
+        score_norms,
+        relative_projection_error,
+    )?;
     let mut workspace = FiniteWorkspace::<()>::default();
     let mut statuses = reserved_filled(
         reservation,
@@ -122,6 +178,11 @@ pub(super) fn solve_one_shot<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     let relative_threshold =
         config.rank_tolerance_multiplier * f64::EPSILON * rows.max(columns).max(1) as f64;
     let (report, bread) = if workspace.candidate_ids.is_empty() {
+        if relative_projection_error.is_some_and(|error| error > 0.0) {
+            return Err(invalid_data(
+                "OLS projection repair left finite numerical rank unresolved",
+            ));
+        }
         let report = super::super::finite_wls_kernel::RankRevealingQrReport {
             rank: 0,
             initial_norm: 0.,
@@ -150,6 +211,17 @@ pub(super) fn solve_one_shot<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
             bread_weight_scale,
             reservation,
         )?;
+        if relative_projection_error.is_some() {
+            rank_bound::validate_arithmetic(
+                &storage,
+                weights,
+                bread_weight_scale,
+                &workspace.candidate_ids,
+                &workspace.candidate_scales,
+                &mut workspace.row,
+                reservation,
+            )?;
+        }
         let Some(result) = factor_and_bread(
             &storage,
             weights,
@@ -161,6 +233,7 @@ pub(super) fn solve_one_shot<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
             reservation,
             perturb_bread,
             build_bread,
+            relative_projection_error,
         )?
         else {
             return Ok(None);
@@ -186,6 +259,37 @@ pub(super) fn solve_one_shot<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         perturb_first_coefficient,
     )
     .map(Some)
+}
+
+fn validate_projected_axes<P: PreparedOlsFitView + ?Sized>(
+    prepared: &P,
+    storage: &ProjectedFiniteRows<'_>,
+    reference_norms: &[f64],
+    score_norms: &[f64],
+    relative_projection_error: Option<f64>,
+) -> Result<(usize, usize)> {
+    if relative_projection_error.is_some_and(|error| !error.is_finite() || error < 0.0) {
+        return Err(invalid_data("OLS projection repair error bound is invalid"));
+    }
+    let rows = prepared.fit_sample().n_active();
+    let columns = prepared.fit_model().columns.len();
+    let valid = match storage {
+        ProjectedFiniteRows::Centered(values) => {
+            values.rows() == rows && values.columns() == columns
+        }
+        ProjectedFiniteRows::Dense(values) => {
+            values.nrows() == rows && values.ncols() == columns + 1
+        }
+        ProjectedFiniteRows::Scratch { scratch, outcome } => {
+            scratch.rows() == rows && scratch.columns() == columns && outcome.len() == rows
+        }
+    };
+    if !valid || reference_norms.len() != columns || score_norms.len() != columns {
+        return Err(invalid_argument(
+            "prepared finite projected axes are inconsistent",
+        ));
+    }
+    Ok((rows, columns))
 }
 
 fn prepare_moments<R: FitReservation>(
@@ -245,6 +349,7 @@ fn factor_and_bread<R: FitReservation>(
     reservation: &mut R,
     perturb_bread: bool,
     build_bread: bool,
+    relative_projection_error: Option<f64>,
 ) -> Result<
     Option<(
         super::super::finite_wls_kernel::RankRevealingQrReport,
@@ -289,6 +394,18 @@ fn factor_and_bread<R: FitReservation>(
             && (factor.report.rank != workspace.candidate_ids.len() || factor.report.ambiguous)
         {
             return Ok(None);
+        }
+        if let Some(error) = relative_projection_error {
+            rank_bound::verify(
+                storage,
+                weights,
+                workspace,
+                factor.report.rank,
+                factor.report.initial_norm,
+                threshold,
+                error,
+                reservation,
+            )?;
         }
         let bread = if build_bread {
             match build_one_shot_bread(

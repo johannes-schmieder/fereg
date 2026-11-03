@@ -100,6 +100,7 @@
     "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_cluster_parity.do",
     "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_keepsingletons_parity.do",
     "tests/stata/parity_reghdfe/estimate_ols_saved_outputs_parity.do",
+    "tests/stata/parity_reghdfe/estimate_ols_shift_invariance.do",
     "tests/stata/parity_reghdfe/estimate_ols_slope_only_multiple_parity.do",
     "tests/stata/parity_reghdfe/estimate_ols_intercept_slope_parity.do",
     "tests/stata/parity_ppmlhdfe/feppml_command_contract.do",

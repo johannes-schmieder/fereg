@@ -243,9 +243,9 @@ The configuration is a JSON object with these fields:
 
 | Field | Meaning |
 | --- | --- |
-| `scope` | `exact`, `many`, `two` or `within-migration-v1`; declares which eligible Auto family may change numerically. |
+| `scope` | `exact`, `incumbent-exact-v1`, `many`, `two` or `within-migration-v1`; declares the numerical comparison contract. |
 | `platform` | `Darwin` or `Linux`; build and measure native artifacts for that host. |
-| `artifacts` | `original`, `incumbent`, `candidate`, plus `hidden` for public activation. Each has `path`, `revision`, `build`, `request` and `families`, and optionally `public_policy`. |
+| `artifacts` | `original`, `incumbent`, `candidate`, plus `hidden` for public activation. Each has `path`, `revision`, `build`, `request` and `families`, and optionally `public_policy` and `public_many_policy`. |
 | `harness` | Built complete-native-call timing harness. |
 | `cases` | One row per fixture: `id`, `family`, `input`, `oracle`, `memory_limit_bytes` (positive bytes or `null`). |
 | `threads` | `[1, 4]` for routing and campaign coverage. |
@@ -312,6 +312,22 @@ numerical truth, typed scope certificates and setup/iteration/memory contracts.
 Every timed call must reproduce that artifact/cell's exact complete output
 fingerprint. Cross-worker comparisons require scientific agreement and stable
 discrete decisions. All checks run outside the complete native-call timer.
+
+The `incumbent-exact-v1` scope compares three public Auto artifacts when the
+candidate must reproduce the accepted incumbent's complete scientific
+fingerprint on every ordinary cell. Only the original-versus-incumbent
+comparison receives the incumbent's declared, previously accepted many/two
+family allowances. The original-to-incumbent comparison also accepts the
+previously approved [projection-to-derived residual reporting change](../docs/VALIDATION.md#beta10-integration-qualification), including
+one-FE requests, only when the existing derived-row validator passes, every
+other scientific field is exact and the full observation-column hashes match.
+This scope permits no new candidate rank, omission, numerical or routing
+change. Candidate and incumbent must declare the same
+families and public policies. The optional artifact field
+`public_many_policy: "many-geometry-v1"` identifies the accepted public
+many-FE policy; omission preserves the historical `incremental-many` meaning.
+Corrected rank cases require separate independent witnesses and explicit cost
+evidence; they cannot use this ordinary-performance contract.
 
 The `within-migration-v1` scope compares unchanged public Auto requests against
 the protected references. All three roles declare the same public two-FE
