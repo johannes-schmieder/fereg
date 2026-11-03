@@ -1,0 +1,115 @@
+cell,arm,repetition,status,host,job,task,estimator_tree_rss_bytes,memory_sweeps,error,seconds
+veneto-long-lcs-t1-fe0,fixest,1,ok,scc-yj3,8402874,undefined,2296487936,2161,,65.438
+veneto-long-lcs-t1-fe0,fixest-strict,1,ok,scc-yj3,8402874,undefined,2702692352,4714,,142.938
+veneto-long-lcs-t1-fe0,pyfixest-within,1,ok,scc-yj3,8402874,undefined,2958475264,1448,,43.87982664899937
+veneto-long-lcs-t1-fe0,pyfixest-within-strict,1,ok,scc-yj3,8402874,undefined,2949599232,1954,,59.25407935699877
+veneto-long-lcs-t1-fe0,julia,1,ok,scc-yj3,8402874,undefined,1660588032,1746,,52.915405517
+veneto-long-lcs-t1-fe0,julia-strict,1,ok,scc-yj3,8402874,undefined,1653346304,5065,,153.638587542
+veneto-long-lcs-t1-fe0,reghdfe,1,ok,scc-yj3,8402874,undefined,2414702592,20924,,      631.21548170200003
+veneto-long-lcs-t1-fe0,fereg,1,ok,scc-yj3,8402874,undefined,1669013504,363,,      10.926670467000001
+veneto-long-lcs-t1-fe0,fixest-strict,2,ok,scc-yj3,8402874,undefined,2702589952,4738,,143.555
+veneto-long-lcs-t1-fe0,pyfixest-within,2,ok,scc-yj3,8402874,undefined,2939871232,1437,,43.537201205999736
+veneto-long-lcs-t1-fe0,pyfixest-within-strict,2,ok,scc-yj3,8402874,undefined,2931687424,1954,,59.205966542998794
+veneto-long-lcs-t1-fe0,julia,2,ok,scc-yj3,8402874,undefined,1662222336,1766,,53.520227647
+veneto-long-lcs-t1-fe0,julia-strict,2,ok,scc-yj3,8402874,undefined,1672679424,5023,,152.236243507
+veneto-long-lcs-t1-fe0,reghdfe,2,ok,scc-yj3,8402874,undefined,2413600768,21120,,      637.44114861600008
+veneto-long-lcs-t1-fe0,fereg,2,ok,scc-yj3,8402874,undefined,1673007104,367,,            11.049120324
+veneto-long-lcs-t1-fe0,fixest,2,ok,scc-yj3,8402874,undefined,2296700928,2206,,66.967
+veneto-long-lcs-t1-fe0,pyfixest-within,3,ok,scc-yj3,8402874,undefined,2934857728,1413,,42.799585852000746
+veneto-long-lcs-t1-fe0,pyfixest-within-strict,3,ok,scc-yj3,8402874,undefined,2937679872,1912,,57.98119108500032
+veneto-long-lcs-t1-fe0,julia,3,ok,scc-yj3,8402874,undefined,1668554752,1739,,52.671456095
+veneto-long-lcs-t1-fe0,julia-strict,3,ok,scc-yj3,8402874,undefined,1663483904,4864,,147.593871147
+veneto-long-lcs-t1-fe0,reghdfe,3,ok,scc-yj3,8402874,undefined,2412761088,20765,,      626.10008604300003
+veneto-long-lcs-t1-fe0,fereg,3,ok,scc-yj3,8402874,undefined,1668472832,357,,            10.785646797
+veneto-long-lcs-t1-fe0,fixest,3,ok,scc-yj3,8402874,undefined,2298499072,2176,,65.932
+veneto-long-lcs-t1-fe0,fixest-strict,3,ok,scc-yj3,8402874,undefined,2702671872,4631,,140.22
+veneto-long-lcs-t2-fe0,fixest,1,ok,scc-yj3,8402874,undefined,2308026368,1061,,36.553
+veneto-long-lcs-t2-fe0,fixest-strict,1,ok,scc-yj3,8402874,undefined,2714206208,2177,,77.08
+veneto-long-lcs-t2-fe0,pyfixest-within,1,ok,scc-yj3,8402874,undefined,3067580416,658,,23.319461876999412
+veneto-long-lcs-t2-fe0,pyfixest-within-strict,1,ok,scc-yj3,8402874,undefined,3067977728,864,,30.79888764399948
+veneto-long-lcs-t2-fe0,julia,1,ok,scc-yj3,8402874,undefined,1710456832,973,,34.330908025
+veneto-long-lcs-t2-fe0,julia-strict,1,ok,scc-yj3,8402874,undefined,1710034944,2715,,96.144349083
+veneto-long-lcs-t2-fe0,reghdfe,1,ok,scc-yj3,8402874,undefined,2414866432,10323,,      365.19991351200002
+veneto-long-lcs-t2-fe0,fereg,1,ok,scc-yj3,8402874,undefined,1765437440,230,,      8.1212354659999999
+veneto-long-lcs-t2-fe0,fixest-strict,2,ok,scc-yj3,8402874,undefined,2714447872,2192,,77.39
+veneto-long-lcs-t2-fe0,pyfixest-within,2,ok,scc-yj3,8402874,undefined,3056676864,649,,23.016469480000524
+veneto-long-lcs-t2-fe0,pyfixest-within-strict,2,ok,scc-yj3,8402874,undefined,3067035648,857,,30.420567605000542
+veneto-long-lcs-t2-fe0,julia,2,ok,scc-yj3,8402874,undefined,1716310016,950,,33.742018555
+veneto-long-lcs-t2-fe0,julia-strict,2,ok,scc-yj3,8402874,undefined,1712017408,2671,,94.723926637
+veneto-long-lcs-t2-fe0,reghdfe,2,ok,scc-yj3,8402874,undefined,2414891008,10260,,           362.454151013
+veneto-long-lcs-t2-fe0,fereg,2,ok,scc-yj3,8402874,undefined,1767317504,235,,      8.2976138870000007
+veneto-long-lcs-t2-fe0,fixest,2,ok,scc-yj3,8402874,undefined,2307981312,1028,,36.527
+veneto-long-lcs-t2-fe0,pyfixest-within,3,ok,scc-yj3,8402874,undefined,3057664000,660,,23.402964114997303
+veneto-long-lcs-t2-fe0,pyfixest-within-strict,3,ok,scc-yj3,8402874,undefined,3033518080,872,,31.0431393200015
+veneto-long-lcs-t2-fe0,julia,3,ok,scc-yj3,8402874,undefined,1704931328,975,,34.539811715
+veneto-long-lcs-t2-fe0,julia-strict,3,ok,scc-yj3,8402874,undefined,1712574464,2699,,95.26440434
+veneto-long-lcs-t2-fe0,reghdfe,3,ok,scc-yj3,8402874,undefined,2412773376,10436,,           369.244364797
+veneto-long-lcs-t2-fe0,fereg,3,ok,scc-yj3,8402874,undefined,1764794368,234,,      8.3503221659999998
+veneto-long-lcs-t2-fe0,fixest,3,ok,scc-yj3,8402874,undefined,2308620288,1029,,36.809
+veneto-long-lcs-t2-fe0,fixest-strict,3,ok,scc-yj3,8402874,undefined,2714484736,2210,,78.107
+veneto-long-lcs-t4-fe0,fixest,1,ok,scc-yj3,8402874,undefined,2331000832,559,,19.919
+veneto-long-lcs-t4-fe0,fixest-strict,1,ok,scc-yj3,8402874,undefined,2736721920,1179,,41.974
+veneto-long-lcs-t4-fe0,pyfixest-within,1,ok,scc-yj3,8402874,undefined,3318824960,422,,14.908487537999463
+veneto-long-lcs-t4-fe0,pyfixest-within-strict,1,ok,scc-yj3,8402874,undefined,3309617152,496,,17.57754506099809
+veneto-long-lcs-t4-fe0,julia,1,ok,scc-yj3,8402874,undefined,1752621056,677,,24.001435522
+veneto-long-lcs-t4-fe0,julia-strict,1,ok,scc-yj3,8402874,undefined,1723793408,1849,,65.53066387
+veneto-long-lcs-t4-fe0,reghdfe,1,ok,scc-yj3,8402874,undefined,2412589056,7057,,            250.67317882
+veneto-long-lcs-t4-fe0,fereg,1,ok,scc-yj3,8402874,undefined,1745289216,157,,      5.3252069670000006
+veneto-long-lcs-t4-fe0,fixest-strict,2,ok,scc-yj3,8402874,undefined,2736787456,1168,,41.467
+veneto-long-lcs-t4-fe0,pyfixest-within,2,ok,scc-yj3,8402874,undefined,3322982400,420,,14.932670138001413
+veneto-long-lcs-t4-fe0,pyfixest-within-strict,2,ok,scc-yj3,8402874,undefined,3318673408,493,,17.47626858500007
+veneto-long-lcs-t4-fe0,julia,2,ok,scc-yj3,8402874,undefined,1730265088,693,,24.591844218
+veneto-long-lcs-t4-fe0,julia-strict,2,ok,scc-yj3,8402874,undefined,1730826240,1908,,67.436502866
+veneto-long-lcs-t4-fe0,reghdfe,2,ok,scc-yj3,8402874,undefined,2414862336,7109,,           252.557739803
+veneto-long-lcs-t4-fe0,fereg,2,ok,scc-yj3,8402874,undefined,1769070592,153,,             5.407070901
+veneto-long-lcs-t4-fe0,fixest,2,ok,scc-yj3,8402874,undefined,2331025408,570,,20.18
+veneto-long-lcs-t4-fe0,pyfixest-within,3,ok,scc-yj3,8402874,undefined,3340931072,390,,13.625065453001298
+veneto-long-lcs-t4-fe0,pyfixest-within-strict,3,ok,scc-yj3,8402874,undefined,3287019520,547,,19.44340161999935
+veneto-long-lcs-t4-fe0,julia,3,ok,scc-yj3,8402874,undefined,1707454464,682,,24.219111983
+veneto-long-lcs-t4-fe0,julia-strict,3,ok,scc-yj3,8402874,undefined,1715240960,1881,,66.79066266
+veneto-long-lcs-t4-fe0,reghdfe,3,ok,scc-yj3,8402874,undefined,2414350336,7215,,      255.45797056400002
+veneto-long-lcs-t4-fe0,fereg,3,ok,scc-yj3,8402874,undefined,1773223936,151,,      5.3251322270000001
+veneto-long-lcs-t4-fe0,fixest,3,ok,scc-yj3,8402874,undefined,2331291648,557,,19.775
+veneto-long-lcs-t4-fe0,fixest-strict,3,ok,scc-yj3,8402874,undefined,2736816128,1169,,41.506
+veneto-long-lcs-t8-fe0,fixest,1,ok,scc-yj3,8402874,undefined,2734551040,339,,12.024
+veneto-long-lcs-t8-fe0,fixest-strict,1,ok,scc-yj3,8402874,undefined,2784690176,715,,25.299
+veneto-long-lcs-t8-fe0,pyfixest-within,1,ok,scc-yj3,8402874,undefined,4049952768,244,,8.646973424001771
+veneto-long-lcs-t8-fe0,pyfixest-within-strict,1,ok,scc-yj3,8402874,undefined,4047224832,304,,10.752783152998745
+veneto-long-lcs-t8-fe0,julia,1,ok,scc-yj3,8402874,undefined,1730154496,530,,18.7789095
+veneto-long-lcs-t8-fe0,julia-strict,1,ok,scc-yj3,8402874,undefined,1795473408,1459,,51.848986189
+veneto-long-lcs-t8-fe0,fereg,1,ok,scc-yj3,8402874,undefined,1767256064,105,,      3.7308727570000002
+veneto-long-lcs-t8-fe0,fixest-strict,2,ok,scc-yj3,8402874,undefined,2783182848,711,,25.211
+veneto-long-lcs-t8-fe0,pyfixest-within,2,ok,scc-yj3,8402874,undefined,4019695616,246,,8.684260768997774
+veneto-long-lcs-t8-fe0,pyfixest-within-strict,2,ok,scc-yj3,8402874,undefined,4084969472,306,,10.80368860299859
+veneto-long-lcs-t8-fe0,julia,2,ok,scc-yj3,8402874,undefined,1759588352,553,,19.630002439
+veneto-long-lcs-t8-fe0,julia-strict,2,ok,scc-yj3,8402874,undefined,1797349376,1462,,51.877184454
+veneto-long-lcs-t8-fe0,fereg,2,ok,scc-yj3,8402874,undefined,1737777152,107,,      3.7634816530000004
+veneto-long-lcs-t8-fe0,fixest,2,ok,scc-yj3,8402874,undefined,2687893504,342,,12.159
+veneto-long-lcs-t8-fe0,pyfixest-within,3,ok,scc-yj3,8402874,undefined,4065910784,243,,8.65863339200223
+veneto-long-lcs-t8-fe0,pyfixest-within-strict,3,ok,scc-yj3,8402874,undefined,4016021504,301,,10.77676324800268
+veneto-long-lcs-t8-fe0,julia,3,ok,scc-yj3,8402874,undefined,1717489664,552,,19.718767424
+veneto-long-lcs-t8-fe0,julia-strict,3,ok,scc-yj3,8402874,undefined,1775730688,1534,,54.171716738
+veneto-long-lcs-t8-fe0,fereg,3,ok,scc-yj3,8402874,undefined,1764044800,107,,      3.7947498200000003
+veneto-long-lcs-t8-fe0,fixest,3,ok,scc-yj3,8402874,undefined,2731737088,344,,12.207
+veneto-long-lcs-t8-fe0,fixest-strict,3,ok,scc-yj3,8402874,undefined,2782826496,705,,25.05
+veneto-long-lcs-t16-fe0,fixest,1,ok,scc-yj3,8402874,undefined,2644623360,429,,13.477
+veneto-long-lcs-t16-fe0,fixest-strict,1,ok,scc-yj3,8402874,undefined,2782834688,904,,27.528
+veneto-long-lcs-t16-fe0,pyfixest-within,1,ok,scc-yj3,8402874,undefined,4140363776,249,,7.59097580299931
+veneto-long-lcs-t16-fe0,pyfixest-within-strict,1,ok,scc-yj3,8402874,undefined,4247261184,307,,9.499528358999669
+veneto-long-lcs-t16-fe0,julia,1,ok,scc-yj3,8402874,undefined,1968791552,877,,31.496663583
+veneto-long-lcs-t16-fe0,julia-strict,1,ok,scc-yj3,8402874,undefined,2048475136,3230,,113.135781087
+veneto-long-lcs-t16-fe0,fereg,1,ok,scc-yj3,8402874,undefined,1749696512,102,,      3.4412638870000003
+veneto-long-lcs-t16-fe0,fixest-strict,2,ok,scc-yj3,8402874,undefined,2782961664,885,,27.714
+veneto-long-lcs-t16-fe0,pyfixest-within,2,ok,scc-yj3,8402874,undefined,4117274624,237,,7.604323654999462
+veneto-long-lcs-t16-fe0,pyfixest-within-strict,2,ok,scc-yj3,8402874,undefined,4141309952,301,,9.582316454998363
+veneto-long-lcs-t16-fe0,julia,2,ok,scc-yj3,8402874,undefined,2033332224,857,,30.592006469
+veneto-long-lcs-t16-fe0,julia-strict,2,ok,scc-yj3,8402874,undefined,2049228800,2367,,84.387085003
+veneto-long-lcs-t16-fe0,fereg,2,ok,scc-yj3,8402874,undefined,1739608064,101,,      3.3746444920000003
+veneto-long-lcs-t16-fe0,fixest,2,ok,scc-yj3,8402874,undefined,2644512768,416,,13.069
+veneto-long-lcs-t16-fe0,pyfixest-within,3,ok,scc-yj3,8402874,undefined,4243701760,246,,7.677223409002181
+veneto-long-lcs-t16-fe0,pyfixest-within-strict,3,ok,scc-yj3,8402874,undefined,4251168768,307,,9.551721257997997
+veneto-long-lcs-t16-fe0,julia,3,ok,scc-yj3,8402874,undefined,2024103936,842,,30.024823608
+veneto-long-lcs-t16-fe0,julia-strict,3,ok,scc-yj3,8402874,undefined,1994182656,2335,,83.405219942
+veneto-long-lcs-t16-fe0,fereg,3,ok,scc-yj3,8402874,undefined,1770717184,102,,      3.3819094730000003
+veneto-long-lcs-t16-fe0,fixest,3,ok,scc-yj3,8402874,undefined,2688598016,459,,14.144
+veneto-long-lcs-t16-fe0,fixest-strict,3,ok,scc-yj3,8402874,undefined,2782699520,880,,27.556

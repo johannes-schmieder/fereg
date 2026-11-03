@@ -1,0 +1,859 @@
+{
+  "source": "275b7ac4b6fbdeff3dc7c210efb949fd4c4706d1",
+  "science": [
+    {
+      "panel": "long-lcs",
+      "threads": 1,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long-lcs",
+      "threads": 1,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long-lcs",
+      "threads": 1,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long-lcs",
+      "threads": 1,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long-lcs",
+      "threads": 1,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long-lcs",
+      "threads": 2,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long-lcs",
+      "threads": 2,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long-lcs",
+      "threads": 2,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long-lcs",
+      "threads": 2,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long-lcs",
+      "threads": 2,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long-lcs",
+      "threads": 4,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long-lcs",
+      "threads": 4,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long-lcs",
+      "threads": 4,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long-lcs",
+      "threads": 4,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long-lcs",
+      "threads": 4,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long-lcs",
+      "threads": 8,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long-lcs",
+      "threads": 8,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long-lcs",
+      "threads": 8,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long-lcs",
+      "threads": 8,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long-lcs",
+      "threads": 8,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long-lcs",
+      "threads": 16,
+      "repetition": 1,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long-lcs",
+      "threads": 16,
+      "repetition": 2,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long-lcs",
+      "threads": 16,
+      "repetition": 2,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "panel": "long-lcs",
+      "threads": 16,
+      "repetition": 3,
+      "kind": "fixed-worker-exact",
+      "passed": true
+    },
+    {
+      "panel": "long-lcs",
+      "threads": 16,
+      "repetition": 3,
+      "kind": "cross-worker",
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    }
+  ],
+  "comparisons": [
+    {
+      "cell": "veneto-long-lcs-ppml-t1-fe0",
+      "arm": "fixest",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "covariance"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": []
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t1-fe0",
+      "arm": "fixest-strict",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "application unavailable"
+      ],
+      "agreement": "unavailable"
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t1-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t1-fe0",
+      "arm": "pyfixest-within-strict",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t1-fe0",
+      "arm": "ppmlhdfe",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t1-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t1-fe0",
+      "arm": "pyfixest-within-strict",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t1-fe0",
+      "arm": "ppmlhdfe",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t1-fe0",
+      "arm": "fixest",
+      "repetition": 2,
+      "eligible": false,
+      "reasons": [
+        "covariance"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": []
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t1-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t1-fe0",
+      "arm": "pyfixest-within-strict",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t1-fe0",
+      "arm": "ppmlhdfe",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t1-fe0",
+      "arm": "fixest",
+      "repetition": 3,
+      "eligible": false,
+      "reasons": [
+        "covariance"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": []
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t2-fe0",
+      "arm": "fixest",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "covariance"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": []
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t2-fe0",
+      "arm": "fixest-strict",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "application unavailable"
+      ],
+      "agreement": "unavailable"
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t2-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t2-fe0",
+      "arm": "pyfixest-within-strict",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t2-fe0",
+      "arm": "ppmlhdfe",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t2-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t2-fe0",
+      "arm": "pyfixest-within-strict",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t2-fe0",
+      "arm": "ppmlhdfe",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t2-fe0",
+      "arm": "fixest",
+      "repetition": 2,
+      "eligible": false,
+      "reasons": [
+        "covariance"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": []
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t2-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t2-fe0",
+      "arm": "pyfixest-within-strict",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t2-fe0",
+      "arm": "ppmlhdfe",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t2-fe0",
+      "arm": "fixest",
+      "repetition": 3,
+      "eligible": false,
+      "reasons": [
+        "covariance"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": []
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t4-fe0",
+      "arm": "fixest",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "covariance"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": []
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t4-fe0",
+      "arm": "fixest-strict",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t4-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t4-fe0",
+      "arm": "pyfixest-within-strict",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t4-fe0",
+      "arm": "ppmlhdfe",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t4-fe0",
+      "arm": "fixest-strict",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t4-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t4-fe0",
+      "arm": "pyfixest-within-strict",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t4-fe0",
+      "arm": "ppmlhdfe",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t4-fe0",
+      "arm": "fixest",
+      "repetition": 2,
+      "eligible": false,
+      "reasons": [
+        "covariance"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": []
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t4-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t4-fe0",
+      "arm": "pyfixest-within-strict",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t4-fe0",
+      "arm": "ppmlhdfe",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t4-fe0",
+      "arm": "fixest",
+      "repetition": 3,
+      "eligible": false,
+      "reasons": [
+        "covariance"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": []
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t4-fe0",
+      "arm": "fixest-strict",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t8-fe0",
+      "arm": "fixest",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "covariance"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": []
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t8-fe0",
+      "arm": "fixest-strict",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t8-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t8-fe0",
+      "arm": "pyfixest-within-strict",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t8-fe0",
+      "arm": "fixest-strict",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t8-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t8-fe0",
+      "arm": "pyfixest-within-strict",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t8-fe0",
+      "arm": "fixest",
+      "repetition": 2,
+      "eligible": false,
+      "reasons": [
+        "covariance"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": []
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t8-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t8-fe0",
+      "arm": "pyfixest-within-strict",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t8-fe0",
+      "arm": "fixest",
+      "repetition": 3,
+      "eligible": false,
+      "reasons": [
+        "covariance"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": []
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t8-fe0",
+      "arm": "fixest-strict",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t16-fe0",
+      "arm": "fixest",
+      "repetition": 1,
+      "eligible": false,
+      "reasons": [
+        "covariance"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": []
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t16-fe0",
+      "arm": "fixest-strict",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t16-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t16-fe0",
+      "arm": "pyfixest-within-strict",
+      "repetition": 1,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t16-fe0",
+      "arm": "fixest-strict",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t16-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t16-fe0",
+      "arm": "pyfixest-within-strict",
+      "repetition": 2,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t16-fe0",
+      "arm": "fixest",
+      "repetition": 2,
+      "eligible": false,
+      "reasons": [
+        "covariance"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": []
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t16-fe0",
+      "arm": "pyfixest-within",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t16-fe0",
+      "arm": "pyfixest-within-strict",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t16-fe0",
+      "arm": "fixest",
+      "repetition": 3,
+      "eligible": false,
+      "reasons": [
+        "covariance"
+      ],
+      "agreement": "differs",
+      "covariance_scale": null,
+      "convention_reasons": []
+    },
+    {
+      "cell": "veneto-long-lcs-ppml-t16-fe0",
+      "arm": "fixest-strict",
+      "repetition": 3,
+      "eligible": true,
+      "reasons": [],
+      "agreement": "exact",
+      "covariance_scale": 1.0
+    }
+  ]
+}
