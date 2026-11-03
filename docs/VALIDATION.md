@@ -172,6 +172,63 @@ The prospective Linux comparison reuses 112 retained input files totaling
 `5989d0558ce17a15226b67bc93ab51d8bad426b8d83e0ece9b68ff2a60941fc1`.
 This input verification is a prerequisite, not performance evidence.
 
+
+All six timing allocations complete on six distinct physical hosts
+(scc-zj4, scc-wo4, scc-wf1, scc-wc2, scc-yj4 and scc-zk3). They retain all
+5,220 ordinary calls (1,044 warmups and 4,176 measured calls) and all 1,926
+exceptional-panel calls. Every ordinary run is complete with no failures;
+the actual-plugin ordinary preflight has zero rank-repair trace events.
+Thus these ordinary cells protect unaffected work, while the separate panel
+measures the path that changed.
+
+Report 8412483 initially admits only three hosts because three terminal
+accounting queries time out. Its 116 insufficient-host decisions and failed
+scheduler exit remain evidence. Two bounded whole-job accounting queries
+recover the missing successful records for original tasks 1/3 and replacement
+task 2. A prospective report-only amendment binds all thirty observation files
+and preserves both incomplete reports, prior submissions, accounting and log.
+Report 8412740 on scc-tb4 regenerates each report once from the same six runs,
+adding zero native calls and changing no source, plan, observations or thresholds.
+Its scheduler record has failed=0 and exit_status=1 because the complete
+ordinary performance gate remains inconclusive.
+
+The retained [Linux qualification record](../bench/results/rhs-rank-linux-20261103.json)
+contains all call-level timings, formal decisions, identities, scientific scope,
+host/isolation summaries and both report outcomes. Recorded task paths and raw
+capture hashes are provenance; the linked committed record is the retained
+evidence. The complete report has no operational/scientific errors:
+108 of 116 comparisons pass, eight are inconclusive, and none meets the
+regression criterion. Both beta.15 incumbent and beta.7 original comparisons
+pass 54 of 58 bounds. The fixed guard is max(5%, 1 ms), with one-sided .025
+physical-host bounds and no simultaneous-coverage claim.
+
+| Reference | Inconclusive cell | Median paired ratio change | Upper excess beyond guard (ms) |
+| --- | --- | ---: | ---: |
+| beta.15 incumbent | eight-fe, 4 workers | -0.54% | 0.413 |
+| beta.15 incumbent | four-fe, 1 worker | +1.09% | 1.332 |
+| beta.15 incumbent | sixteen-fe, 4 workers | +1.37% | 4.982 |
+| beta.15 incumbent | weak, 4 workers | -0.24% | 0.490 |
+| beta.7 original | inactive-columns, 1 worker | +0.42% | 1.817 |
+| beta.7 original | sixteen-fe, 1 worker | +11.10% | 126.864 |
+| beta.7 original | sixteen-fe, 4 workers | +6.84% | 43.276 |
+| beta.7 original | small-retained, 4 workers | +3.95% | 2.042 |
+
+The exceptional cost report passes its science, trace and accounting checks
+on all six hosts. Among all 72 host/settings groups where repair actually
+executes, median paired additional time ranges from 1.018 to 3.884 ms, with
+median 2.907 ms; the corresponding median ratios range from 1.569 to 2.080,
+with median 1.753. These are descriptive comparisons of 800-row shifted models
+against an equivalent unshifted model using the same candidate, not a
+noninferiority result or a claim about large pathological workloads.
+
+The candidate therefore has completed source, Mac and Linux scientific
+evidence but **has not passed the full performance gate**. No observation
+is excluded or repeated, no successor candidate is sampled, and no release
+or main-package update is authorized. Johannes's decision is required before
+accepting the inconclusive comparisons or starting a separately declared
+follow-up. Intel Mac Stata execution and Windows remain untested for this
+candidate; the universal Mac ABI audit does not establish those runtime checks.
+
 The declared numerical scope is the exceptional repair path and its dependent
 coefficients, bread/covariance, residuals, saved effects, diagnostics and rank
 statuses. Correcting a false omission may intentionally change finite rank and
