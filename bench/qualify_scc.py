@@ -20,7 +20,7 @@ LIBRARY_LIMITS = {name: '1' for name in
 MPI_WHOLE_HOST_PE = 'mpi_28_tasks_per_node_u'
 # Whole-host parallel environments and the host size each reserves. The MPI
 # PEs reserve one host through their allocation rule; no MPI ranks are started.
-WHOLE_HOST_PES = {'omp28': 28, MPI_WHOLE_HOST_PE: 28, 'mpi_64_tasks_per_node_4': 64}
+WHOLE_HOST_PES = {'omp28': 28, 'omp32': 32, MPI_WHOLE_HOST_PE: 28, 'mpi_64_tasks_per_node_4': 64}
 
 
 class OperationalError(RuntimeError):
@@ -94,7 +94,7 @@ def validate_reservation(raw, host, required_threads):
             and lines[0][1] == str(n), 'PE allocation does not cover one whole host')
     pe = fields(raw['pe'])
     require(pe.get('pe_name') == expected_pe, 'PE allocation identity differs')
-    if expected_pe != 'omp28':
+    if expected_pe not in {'omp28', 'omp32'}:
         # An MPI PE reserves one whole host; the launcher does not start MPI ranks.
         # Its audited hooks create/remove TMPDIR files outside the timed calls.
         expected = {'allocation_rule': str(n), 'control_slaves': 'TRUE',

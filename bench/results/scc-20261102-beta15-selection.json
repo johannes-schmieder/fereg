@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "selected": "skylake",
+  "selection_rule": "First successfully validated modern supplement by terminal production accounting end time; never by measured speed.",
+  "production": {
+    "job": "8409508",
+    "task": "1",
+    "host": "scc-zk3",
+    "cpu": "Intel Xeon Gold 6132",
+    "end_time_utc": "2026-11-03T04:43:33Z",
+    "failed": 0,
+    "exit_status": 0
+  },
+  "later_completed": {
+    "granite-rapids": {
+      "job": "8410266",
+      "end_time_utc": "2026-11-03T04:53:36Z",
+      "cpu": "Intel Xeon 6737P",
+      "failed": 0,
+      "exit_status": 0
+    }
+  },
+  "pending_at_selection": [
+    "8404215.1"
+  ],
+  "linux_plugin_sha256": "4dd4494eda9b8c02d867cc62c2058814a5e5ea3013064e8a3bf12d8e2a8c22a6",
+  "validation": "Maintained collectors and reports accepted complete scheduler accounting, application markers, coverage including failures, independent native science, fixed-worker repeatability, cross-worker agreement and whole-host replay for both completed supplements.",
+  "changes_from_beta11": [
+    "Beta.15 fixed candidate; frozen prior inputs and references reused.",
+    "reghdfe and ppmlhdfe command limits increased from 600 to 3600 seconds; other arms retain 600 seconds.",
+    "OLS No FE complete cell replaced after predeclared Julia metadata-only repair; original failures retained in synthetic observations.",
+    "Main synthetic task 5 ran on Gold 6132; other main tasks and corrected No FE on E5-2680 v4. Ratios remain paired within hosts.",
+    "Both Veneto panels use the largest connected set, on separate Gold 6132 nodes: OLS log daily wages and PPML daily wages in levels.",
+    "Hardware supplement changes from prior Ice Lake to Skylake; cross-campaign absolute time changes are not software-only effects."
+  ]
+}

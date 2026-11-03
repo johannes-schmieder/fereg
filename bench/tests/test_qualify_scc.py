@@ -70,6 +70,30 @@ class ReservationTests(unittest.TestCase):
         scc.validate_census(*census(), host)
         scc.validate_census(*census(), {**host, 'queue': 'batch@scc-a'})
 
+    def test_omp32_requires_the_complete_physical_host_and_exclusive_census(self):
+        host, raw = allocation()
+        host.update(pe='omp32', slots=32, affinity=list(range(32)))
+        raw = {key: value.replace('28', '32') for key, value in raw.items()}
+        raw['topology'] = '\n'.join(f'{i},{i},0,Y' for i in range(32))
+        self.assertEqual(scc.validate_reservation(raw, host, 32), host['queue'])
+        job, xml = (value.replace('28', '32') for value in census())
+        scc.validate_census(job, xml, host)
+        for changed_host, changed_raw, workers in [
+                ({**host, 'slots': 28}, raw, 4),
+                ({**host, 'affinity': list(range(31))}, raw, 4),
+                (host, raw, 33),
+                (host, {**raw, 'pe': raw['pe'].replace('$pe_slots', '32')}, 4),
+                (host, {**raw, 'quota': raw['quota'].replace('TRUE', 'FALSE')}, 4),
+                (host, {**raw, 'host': raw['host'].replace('processors 32', 'processors 64')}, 4),
+                (host, {**raw, 'pe_hostfile': raw['pe_hostfile'] + 'scc-b 32 batch@scc-b\n'}, 4)]:
+            with self.assertRaises(scc.OperationalError):
+                scc.validate_reservation(changed_raw, changed_host, workers)
+        for bad_job, bad_xml in [(job.replace('num_proc=32', 'num_proc=28'), xml),
+                (job, xml.replace('<slots>32</slots>', '<slots>28</slots>')),
+                (job, xml.replace('</Queue-List>', '<job_list/></Queue-List>'))]:
+            with self.assertRaises(scc.OperationalError):
+                scc.validate_census(bad_job, bad_xml, host)
+
     def test_slots_alone_or_missing_all_queue_quota_cannot_pass(self):
         host, raw = allocation()
         for key, value in [('quota', raw['quota'].replace('TRUE', 'FALSE')),
@@ -243,6 +267,19 @@ class LifecycleTests(unittest.TestCase):
                 self.assertTrue(all(not t.is_alive() for t in monitor.threads))
                 self.assertTrue(Path(tmp, 'host.json').exists())
                 self.assertTrue(monitor.report()['isolation_ok'])
+
+    def test_omp32_enters_monitor_with_matching_slot_and_affinity_evidence(self):
+        with tempfile.TemporaryDirectory() as tmp, self.environment(), \
+                patch.dict(os.environ, {'PE': 'omp32', 'NSLOTS': '32'}), \
+                patch.object(scc.sys, 'platform', 'linux'), \
+                patch.object(scc.os, 'sched_getaffinity', return_value=set(range(32)), create=True):
+            monitor = self.monitor(tmp)
+            with monitor:
+                monitor.check()
+            self.assertTrue(monitor.report()['isolation_ok'])
+            host = json.loads(Path(tmp, 'host.json').read_text())['host']
+            self.assertEqual(host['pe'], 'omp32')
+            self.assertEqual(host['slots'], 32)
 
     def test_observer_fault_blocks_and_is_retained(self):
         with tempfile.TemporaryDirectory() as tmp:

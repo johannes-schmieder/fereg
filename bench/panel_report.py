@@ -16,7 +16,8 @@ from panel_collect import load
 ORDER = ['fixest', 'fixest-strict', 'pyfixest', 'pyfixest-within', 'pyfixest-within-strict', 'julia', 'julia-strict', 'reghdfe', 'ppmlhdfe']
 DESCRIPTIONS = {'fixest': 'fixest 0.14.2 default', 'fixest-strict': 'fixest strict',
                 'pyfixest': 'PyFixest 0.60.0 (Rust MAP)', 'pyfixest-within': 'PyFixest main (within LSMR)', 'pyfixest-within-strict': 'PyFixest main (within LSMR, strict)',
-                'julia': 'FixedEffectModels.jl (tolerance 1e-6)', 'julia-strict': 'FixedEffectModels.jl (1e-10)'}
+                'julia': 'FixedEffectModels.jl (tolerance 1e-6)', 'julia-strict': 'FixedEffectModels.jl (1e-10)',
+                'reghdfe': 'reghdfe 6.14.1', 'ppmlhdfe': 'ppmlhdfe 2.3.4'}
 
 
 def reference_arms(manifest):
@@ -91,6 +92,9 @@ def render(campaign, frame, output):
     arms = reference_arms(campaign["manifest"])
     pdf = report.CampaignPDF(output/'veneto-akm.pdf', campaign['context']['run_id'])
     saved = campaign['manifest']['policy'].get('save_fe', True)
+    models = {c['model'] for c in campaign['manifest']['cells']}
+    model_description = ('PPML of daily wages in levels, with robust covariance' if models == {'ppml'}
+                         else 'OLS of unadjusted log daily wages, with regular IID covariance')
     pdf.text('Veneto AKM<br/>Core scaling and '+('saved effects' if saved else 'estimation without saved effects'), 'TitleCustom')
     date = datetime.strptime(campaign['context']['run_id'][:8], '%Y%m%d').strftime('%d %B %Y')
     pdf.text(date+'  /  Linux SCC  /  Frozen packaged runtime', 'SmallCustom')
@@ -112,8 +116,7 @@ def render(campaign, frame, output):
                  f'{last.seconds:.3f} at sixteen: {first.seconds/last.seconds:.2f}x within-panel scaling. '
                  f'All three-command native ranges and every reference observation follow.')
     pdf.text('Model and command boundary', 'SectionCustom')
-    pdf.text('OLS of unadjusted log daily wages on worker and firm intercept effects, with unit '
-             'weights and regular IID covariance. '+
+    pdf.text(model_description+' on worker and firm intercept effects, with unit weights. '+
              ('Both FE channels are saved inside command timing. ' if saved else
               'No FE are saved; commands time estimation and inference, and comparisons cover slopes, '
               'covariance, sample, rank and RSS. ')+
@@ -123,8 +126,9 @@ def render(campaign, frame, output):
                        'short': 'Short: 1999/2001, with a 2001 indicator.'}[p] for p in panels))
     planned = sum(len(c['arms']) for c in campaign['manifest']['cells'])*campaign['manifest']['policy']['repetitions']
     pdf.text(f'{repetitions} repetitions at 1/2/4/8/16 physical cores for fereg, '+
-             ', '.join(DESCRIPTIONS[a] for a in arms if a != 'reghdfe')+
-             '; reghdfe 6.14.1 at 1/2/4 because Stata is licensed for four cores. '
+             ', '.join(DESCRIPTIONS[a] for a in arms if a not in ('reghdfe', 'ppmlhdfe'))+
+             '; '+', '.join(DESCRIPTIONS[a] for a in arms if a in ('reghdfe', 'ppmlhdfe'))+
+             ' at 1/2/4 because Stata is licensed for four cores. '
              f'{planned} planned positions. One isolated allocation per panel.')
     for panel in panels:
         selected = frame[frame.design == 'veneto-'+panel]
@@ -165,7 +169,8 @@ def render(campaign, frame, output):
     pdf.page('Validation, discrepancies and limits')
     counts = Counter(r['status'] for r in campaign['records'])
     pdf.text(f"All {len(campaign['records'])} positions are retained: {counts['ok']} successful captures, "
-             f"{counts['capture-error']} capture errors and {counts['skipped-after-failure']} skipped positions. "
+             f"{counts['capture-error']} capture errors, {counts['command-timeout']} command timeouts and "
+             f"{counts['skipped-after-failure']} skipped positions. "
              'Every failed observation remains visible. No replacement observations or tolerance changes were used.')
     pdf.table([['Gate', 'Outcome'],
                ['Scheduler and application', 'Setup, smoke and '+('both production tasks' if len(panels) == 2 else 'the production task')+
@@ -195,14 +200,18 @@ def render(campaign, frame, output):
              'despite smoke passes. No full-panel dense oracle was run. Tolerances: coefficients '
              '1e-7/1e-10, covariance 1e-6/1e-10, fitted '
              'values and centered FEs 1e-7/1e-9, objective 1e-8/1e-10 (relative/absolute).', 'SmallCustom')
-    pdf.text('Each panel uses one 28-core Broadwell allocation with common socket-ordered CPU '
+    cpu_models = sorted({line.split(':', 1)[1].strip() for r in campaign['records']
+                         for line in r.get('placement', {}).get('lscpu', '').splitlines()
+                         if line.startswith('Model name:')})
+    pdf.text('Recorded CPU models: '+', '.join(cpu_models)+'. Each panel uses one whole allocation with common socket-ordered CPU '
              'prefixes and NUMA binding for all arms. Sixteen cores crosses sockets. The panels '
              'have different models, sizes and hosts; do not interpret their timing difference as '
              'a controlled panel-length effect. Three process repetitions do not measure between-host '
              'uncertainty. Passive observation covers known compute; ordinary OS activity is retained.', 'SmallCustom')
     context = campaign['context']
     pdf.text('Identity and retention', 'SectionCustom')
-    pdf.text('Harness source '+context['source'][:12]+'; packaged native source '+context['runtime_source'][:12]+
+    pdf.text('Harness source '+context['source'][:12]+
+             ('; packaged native source '+context['runtime_source'][:12] if context.get('runtime_source') else '')+
              '. Plugin SHA-256 '+context['linux_plugin_sha256']+'. Compact CSV/JSON evidence and '
              'the maintained renderer are committed in bench/. Full captures, '+('saved effects, ' if saved else '')+'host '
              'observations and this report remain private under the recorded SCC campaign root.', 'SmallCustom')
@@ -225,8 +234,10 @@ def export(root, output):
     campaign['input_audit'] = json.loads((root/'environment/input-audit.json').read_text())
     render(campaign, frame, output)
     context = campaign['context']
-    evidence = {k: context[k] for k in ['run_id', 'remote_root', 'source', 'runtime_source',
-                'linux_plugin_sha256', 'resources', 'preparation_sha256', 'preparation_notes']}
+    evidence = {k: context[k] for k in ['run_id', 'remote_root', 'source',
+                'linux_plugin_sha256', 'resources']}
+    evidence.update({k: context[k] for k in ['runtime_source', 'preparation_sha256', 'preparation_notes']
+                     if k in context})
     evidence.update({k: context[k] for k in ['fevc_source', 'preparation_root', 'preparation_files',
                                              'preparation_retention', 'supersedes'] if k in context})
     runtime = json.loads((root/'environment/runtime.json').read_text())
@@ -242,7 +253,9 @@ def export(root, output):
         # counts and source hashes); load() has checked their hashes.
         for name in context['preparation_files']:
             text = (root/name).read_text()
-            preparation[name] = json.loads(text) if name.endswith('.json') else text
+            preparation[name] = (json.loads(text) if name.endswith('.json') else
+                                 {'sha256': sha256(root/name), 'bytes': (root/name).stat().st_size,
+                                  'retained_on_scc': True})
     else:
         for name in ['inputs.json', 'long-sample.json', 'short-sample.json']:
             path = root/'preparation'/name
