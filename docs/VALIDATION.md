@@ -290,6 +290,65 @@ new subset checks, and 80 native-transport, routing, oracle/science and migratio
 tests. Independent review confirms that controls remain gated and full-coverage
 behavior is unchanged. These are tooling prerequisites, not new timing evidence.
 
+#### Follow-up outcome: admission failure before measurement
+
+The [retained follow-up record](../bench/results/rhs-rank-linux-followup-20261103.json)
+records an unsuccessful launch, not a new performance result. It is 115,266
+bytes with SHA-256
+`91131e395d69b55408299f881668f4ca50502f85d9c057687b167e64f01ddaa4`.
+The unchanged candidate and references were bound to tooling revision 2e562353
+before submission. Preflight 8412869 passes on scc-gr4: all 48 ordinary calls,
+33 exceptional calls and 35 Stata fits pass; the harness, 112 inputs and 26,187
+environment files match. Free project space is 94.96 GB. Admission accounting
+job 8412870 also exits zero.
+
+Timing array 8412871 obtains only four simultaneous whole-node allocations:
+scc-yj4, scc-yj3, scc-wj4 and scc-wk3. No allocation passes the twelve-host
+barrier. Its fixed 900-second window expires, and tasks 1-4 exit 1 before
+the ordinary runner. The remaining queued tasks 5-12 are cancelled after that
+shared prerequisite fails; the retained record includes the cancellation,
+queued-task identities and their expected absence from accounting. There are
+no registered successful admissions and no ordinary run results. The exporter
+reports zero published calls and leaves the exact attempted-call count null
+instead of inferring it merely from absent results.
+
+The sole report 8412872 exits 1 on scc-gr4, with scheduler failed=0.
+It retains the four adverse task records and eight missing cancelled tasks.
+The formal summary is needs_discussion with zero admitted calls, no numerical
+comparisons and 44 missing-run/host errors. The secondary contrast is incomplete;
+the compact record is explicitly incomplete_evidence and accepted=false.
+No numerical observation is excluded, pooled or replaced, and no successor
+run or candidate is sampled.
+
+The all-host barrier was a restrictive launch-policy choice, not a requirement
+of the per-physical-host statistical calculation. It prevented this follow-up
+from answering its performance question under the available allocations.
+Any further round should first revise and declare a bounded admission policy
+that can obtain twelve distinct eligible hosts without requiring simultaneous
+availability. Fixed observations per host, independent scientific witnesses,
+both reference guards and all adverse outcomes must still be retained. This
+record does not authorize or silently start that additional round.
+
+The prior 108 passed / 8 inconclusive / 0 classified-regression result therefore
+remains the performance evidence. Four unresolved beta.15 comparisons have
+median paired changes from -0.54% to +1.37%; these small point estimates do not
+establish nonregression because their upper guarded bounds remain positive.
+The sixteen-FE beta.7 comparisons have larger point changes (+11.10% at one
+worker and +6.84% at four), while the corresponding beta.15 point changes are
++3.31% and +1.37%. Those separately measured contrasts suggest that historical
+runtime differences matter, but cannot allocate the full difference to history
+or waive either original guard. The repair itself never executes in these
+ordinary cells. Its previously measured 800-row exceptional cost remains
+descriptive (median additional 2.907 ms); it neither measures routine overhead
+nor establishes cost on large pathological workloads. The refreshed preflight
+supports correctness, but a general claim of negligible performance cost remains
+unqualified. The PR stays draft.
+
+The task-local launch/accounting/admission checks pass 15 tests and the compact
+exporter passes 14 tests, including failed admission and cancellation handling;
+independent reviews cover both. No runtime source or arithmetic changed in this
+follow-up, so the existing source and Mac evidence is reused.
+
 The declared numerical scope is the exceptional repair path and its dependent
 coefficients, bread/covariance, residuals, saved effects, diagnostics and rank
 statuses. Correcting a false omission may intentionally change finite rank and
