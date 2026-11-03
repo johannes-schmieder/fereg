@@ -201,5 +201,127 @@
     "cause": "Not established; direct and nested release-query diagnostics subsequently passed without package, helper or release changes.",
     "initial_log_sha256": "7a267f0026706406092fa9248d6dcce53188d6b949a2e19032c3051b98f6ec0e",
     "bounded_followup": "One fresh isolated github install passed all 36 byte checks, stable labels and independent OLS/PPML checks."
+  },
+  "refresh_20261103": {
+    "authorization": "Johannes explicitly requested replacing the frozen v0.5.0 release with current main, including help and other files.",
+    "original_tag_object": "371e89166c74523610ec9cf10ad278a3259a00e4",
+    "original_tag_commit": "ff5088502d660618364bf5733590cd3c12bb2d58",
+    "packaging_source_commit": "846feb8b2643844a1fa9a0678a6e128336454e19",
+    "changes": "Current OLS/PPML display, help comparison example, documentation and MIT notices; flat binary-archive CMG grant; all native plugins unchanged.",
+    "assets": {
+      "fereg-0.5.0-source.zip": {
+        "sha256": "4b767cbe25ffccb1e578874e66b56930acbde14d95e0cc2556c82c0eeeb3ce43",
+        "bytes": 35305113
+      },
+      "fereg-0.5.0-source.zip.sha256": {
+        "sha256": "36cba6c6ae1a93246635202645beeff2cf178f2562db05390cefc21833c8fc89",
+        "bytes": 89
+      },
+      "fereg-0.5.0.zip": {
+        "sha256": "4597ef376de56a8866a852dddd7a279ed61a0e9adf5c3e5604fc491f7540cad8",
+        "bytes": 18609128
+      },
+      "fereg-0.5.0.zip.sha256": {
+        "sha256": "99f0e94e86ed8dbbc7f33df7ec956b4d69e67387c95662158c90e1eaacb3dfb3",
+        "bytes": 82
+      },
+      "macos_source_build.md": {
+        "sha256": "6a1a71f8b9d6fa005ecae7f837e544508cd5ee1efbc5ebcb610fdd69302d608b",
+        "bytes": 2826
+      }
+    },
+    "dependency_audit": {
+      "advisory_count": 0,
+      "cargo_lock_sha256": "4975de767595cf184cd5328e6ec7f7a55e7871c545d3c51adbc92da1544696d5",
+      "schema": 1,
+      "source_sha": "846feb8b2643844a1fa9a0678a6e128336454e19",
+      "status": "pass",
+      "toolchain": "1.85.1"
+    },
+    "native_plugins_exact_original_release": true,
+    "runtime_sha256": "8b70b3d59cbe2fb1e9fb5647ee9c0fc766a9d51efe7ade4d332f83aa9bb18cdf",
+    "source_archive": {
+      "verified_files": 3627,
+      "vendored_dependencies": true,
+      "dependency_lock_exact_original_release": true,
+      "offline_universal_macos_build": "passed",
+      "fresh_cargo_home": true,
+      "native_binary_audit": "passed",
+      "actual_abi_and_panic_containment": "passed",
+      "rebuilt_plugin_is_distributed": false,
+      "build_log_sha256": "f5db12d97e09aa1070f597374e9a953d9e64dc9c08fe787c2f22e8e104f5172c"
+    },
+    "focused_python_tests": {
+      "passed": 27,
+      "failed": 0
+    },
+    "staged_archive": {
+      "archive_bytes": 18609128,
+      "archive_sha256": "4597ef376de56a8866a852dddd7a279ed61a0e9adf5c3e5604fc491f7540cad8",
+      "completed": true,
+      "manifest_sha256": "4f3a318637b997b10f0fd8933f99a5173eca370ac0d803bad83c13d1ab309638",
+      "plugin": "fereg_macos.plugin",
+      "plugin_bytes": 21623488,
+      "plugin_sha256": "2c8f6af8e10653a675c693e98560e94648e2f795ce5dfc605cf3f93f617d2200",
+      "results": [
+        {
+          "failure_detail": null,
+          "failure_kind": null,
+          "fixture": "tests/stata/installation/installation_smoke.do",
+          "process_rc": 0,
+          "stata_rc": 0,
+          "status": "success"
+        },
+        {
+          "failure_detail": null,
+          "failure_kind": null,
+          "fixture": "tests/stata/parity_ppmlhdfe/feppml_one_fe_dummy_oracle.do",
+          "process_rc": 0,
+          "stata_rc": 0,
+          "status": "success"
+        },
+        {
+          "failure_detail": null,
+          "failure_kind": null,
+          "fixture": "tests/stata/postestimation/replay_and_prefixes.do",
+          "process_rc": 0,
+          "stata_rc": 0,
+          "status": "success"
+        },
+        {
+          "failure_detail": null,
+          "failure_kind": null,
+          "fixture": "tests/stata/documentation/help_benchmark_optional.do",
+          "process_rc": 0,
+          "stata_rc": 0,
+          "status": "success"
+        }
+      ],
+      "schema_version": 1,
+      "source_sha": "846feb8b2643844a1fa9a0678a6e128336454e19",
+      "stata_edition": "MP",
+      "stata_executable": "/Applications/Stata/StataMP.app/Contents/MacOS/stata-mp",
+      "stata_executable_sha256": "178db3b78a3768ebfe88c36e845df292611b4b8ef0342c47a58e4641d0e6a16b",
+      "stata_executable_size_bytes": 119946864,
+      "stata_machine_type": "Mac (Apple Silicon)",
+      "stata_os": "Unix",
+      "stata_processors": 8,
+      "stata_version": "19",
+      "status": "success",
+      "tests_failed": 0,
+      "tests_passed": 4
+    },
+    "local_installation": {
+      "mode": "local",
+      "process_rc": 0,
+      "stata_success": true,
+      "installed_files": 37,
+      "installed_hashes_exact": true,
+      "example_2_present": true,
+      "selftest_and_display_ols_ppml_oracles": true,
+      "log_sha256": "641a44cd56225ec36d1d45bda5bf39ba12e326c869b91c6efceafc60aa63738b",
+      "source_commit": "846feb8b2643844a1fa9a0678a6e128336454e19"
+    },
+    "qualification_reuse": "Exact original plugins retain Linux/Windows/Mac native qualification. Fresh source/archive/installation/display/oracle checks use Mac Stata 19. No new native Intel-Mac or older-Stata qualification is claimed."
   }
 }
