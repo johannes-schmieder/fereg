@@ -366,6 +366,18 @@
         "log_sha256": "82429d7dd0c53222231410c5350e164f2c04c7f8598d119f2515fb9901f7ca9d"
       }
     ],
-    "http_installation_harness_sha256": "abc5fb279192a3946db0f6b016f5aab1a0eb34ac843e5a82fc29172b46834247"
+    "http_installation_harness_sha256": "abc5fb279192a3946db0f6b016f5aab1a0eb34ac843e5a82fc29172b46834247",
+    "github_replace_followup": {
+      "command": "github install johannes-schmieder/fereg, replace",
+      "setup": "Isolated Stata 19 PLUS with a tracked package and the original v0.5.0 help file.",
+      "installed_files": 37,
+      "installed_hashes_exact_current_main": true,
+      "native_selftest": "passed",
+      "helper_version": "2.3.0",
+      "tracked_upgrade_log_sha256": "d2604ea5c01634285753e0b72d2dbfb938f491581976c88ebf81f5cffb994d62",
+      "help_path_resolution": "A stale help file earlier on adopath masks the updated PLUS installation; removing that path resolves the installed help file.",
+      "help_path_resolution_test": "passed",
+      "help_path_resolution_log_sha256": "155bff90c045c2621ad08fa420db147319f6041f012743f1f334c47f61f80ef4"
+    }
   }
 }
