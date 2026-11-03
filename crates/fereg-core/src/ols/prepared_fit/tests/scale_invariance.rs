@@ -511,6 +511,65 @@ fn repaired_columns_repeat_at_fixed_workers_and_agree_across_workers() {
 }
 
 #[test]
+fn auto_rank_repair_admits_live_workspace_with_a_public_style_budget() {
+    let data = CrossedSignCube::new();
+    let prepared = data.prepare(1e4, 1.0, true);
+    for mode in [
+        PreparedOlsExecutionMode::Fast,
+        PreparedOlsExecutionMode::Low,
+    ] {
+        let mut config = PreparedOlsFitConfig::default();
+        config.execution.mode = mode;
+        config.allow_final_fe_recovery = true;
+        config.final_residual_tolerance = Some(1e-14);
+        let reference = fit_prepared_model_coefficients(&prepared, config)
+            .expect("unbounded Auto shifted-model reference");
+        check_identified_fit(&reference, &data, 1.0);
+        let historical_peak = reference.absorption_report().solver_workspace_peak;
+        // This Auto route has an unmodeled historical scope. A finite memory
+        // budget must not turn that history into a claim of zero allocation,
+        // or treat the released original FE owner as a live unknown parent.
+        assert_eq!(historical_peak.bytes(), None, "mode={mode:?}");
+        let execution_bytes = 1 << 20;
+        let usable_bytes = execution_bytes + (1 << 20);
+        config.absorb.solver_memory_budget = Some(crate::memory::FeSolverMemoryBudget {
+            execution_bytes,
+            usable_bytes,
+        });
+        let bounded = fit_prepared_model_coefficients(&prepared, config)
+            .unwrap_or_else(|error| panic!("bounded Auto mode={mode:?}: {error}"));
+        check_identified_fit(&bounded, &data, 1.0);
+        assert_eq!(bounded.coefficients(), reference.coefficients());
+        assert_eq!(
+            bounded.kept_generated_columns(),
+            reference.kept_generated_columns()
+        );
+        assert_eq!(
+            bounded.dropped_generated_columns(),
+            reference.dropped_generated_columns()
+        );
+        assert_eq!(bounded.residuals(), reference.residuals());
+        assert_eq!(bounded.bread(), reference.bread());
+        assert_eq!(bounded.rank_certificate(), reference.rank_certificate());
+        assert_eq!(bounded.score_certificate(), reference.score_certificate());
+        assert_eq!(
+            bounded.absorption_report().solver_workspace_peak,
+            historical_peak
+        );
+        assert_eq!(bounded.solver_workspace_peak().bytes(), None);
+        // Modeled sub-operations still report a peak within the caller's
+        // remaining budget; unknown historical coverage remains explicit.
+        if let Some(bytes) = bounded
+            .residual_absorption_report()
+            .solver_workspace_peak
+            .bytes()
+        {
+            assert!(execution_bytes + u128::from(bytes) <= usable_bytes);
+        }
+    }
+}
+
+#[test]
 fn rank_repair_honors_the_explicit_memory_limit() {
     let data = CrossedSignCube::new();
     let ordinary = data.prepare(0.0, 1.0, true);

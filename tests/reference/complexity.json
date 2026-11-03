@@ -1,24 +1,5 @@
 {
-  "growth": [
-    {
-      "after": 1510,
-      "before": 1480,
-      "metric": "fereg-core/dispatch_candidates",
-      "reason": "OLS rank repair for structural/global and one/two categorical-intercept FE designs adds cancellation-aware forest projection bounds, finite-rank margins, and original-quotient score checks on suspect columns; ordinary fits retain their numerical path. Independent exact-shift, unit-scale, omission, fault and worker witnesses cover the added scope."
-    },
-    {
-      "after": 117840,
-      "before": 115708,
-      "metric": "fereg-core/production_lines",
-      "reason": "OLS rank repair for structural/global and one/two categorical-intercept FE designs adds cancellation-aware forest projection bounds, finite-rank margins, and original-quotient score checks on suspect columns; ordinary fits retain their numerical path. Independent exact-shift, unit-scale, omission, fault and worker witnesses cover the added scope."
-    },
-    {
-      "after": 9006,
-      "before": 8992,
-      "metric": "file/crates/fereg-core/src/fe/borrowed_map.rs",
-      "reason": "OLS rank repair for structural/global and one/two categorical-intercept FE designs adds cancellation-aware forest projection bounds, finite-rank margins, and original-quotient score checks on suspect columns; ordinary fits retain their numerical path. Independent exact-shift, unit-scale, omission, fault and worker witnesses cover the added scope."
-    }
-  ],
+  "growth": [],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
   "inventory": {
     "files": {
@@ -14650,35 +14631,35 @@
           },
           {
             "condition": "retain_fast_score_cache && inputs . fast_score_cache . is_none ( )",
-            "line": 757
+            "line": 759
           },
           {
             "condition": "dense . raw . strided_score_means . is_none ( ) ) && matches ! ( inputs . fast_score_cache , Some ( PreparedOlsFastScoreCache :: Selected",
-            "line": 891
+            "line": 893
           },
           {
             "condition": "& inputs . fast_score_cache",
-            "line": 910
+            "line": 912
           },
           {
             "condition": "let Some ( budget ) = config . absorb . solver_memory_budget . as_mut ( )",
-            "line": 1081
+            "line": 1083
           },
           {
             "condition": "! budget . fits ( 0 )",
-            "line": 1086
+            "line": 1088
           },
           {
             "condition": "within_norms . len ( ) != coefficients . len ( ) + 1 || raw_norms . len ( ) != coefficients . len ( )",
-            "line": 1378
+            "line": 1380
           },
           {
             "condition": "let Some ( report ) = derived_residual ( cmg , & matrix , weights , config , scale , absorption ) ?",
-            "line": 1455
+            "line": 1457
           },
           {
             "condition": "let ( ProjectedStorage :: Scratch ( low ) , Some ( destination ) ) = ( inputs . storage , retained_scratch )",
-            "line": 1554
+            "line": 1556
           }
         ],
         "functions": {
@@ -14691,15 +14672,15 @@
             "lines": 134
           },
           "derived_residual#1": {
-            "line": 1398,
+            "line": 1400,
             "lines": 41
           },
           "derived_residual_scale#1": {
-            "line": 1372,
+            "line": 1374,
             "lines": 23
           },
           "derived_scale#1": {
-            "line": 1331,
+            "line": 1333,
             "lines": 24
           },
           "fill_reference_norms#1": {
@@ -14707,23 +14688,23 @@
             "lines": 44
           },
           "finish_one_shot#1": {
-            "line": 1502,
+            "line": 1504,
             "lines": 72
           },
           "fit#1": {
-            "line": 1095,
+            "line": 1097,
             "lines": 149
           },
           "initial_projection#1": {
-            "line": 1246,
+            "line": 1248,
             "lines": 40
           },
           "no_fe_auto_iid#1": {
-            "line": 1289,
+            "line": 1291,
             "lines": 24
           },
           "original_residuals#1": {
-            "line": 925,
+            "line": 927,
             "lines": 35
           },
           "project_dense#1": {
@@ -14731,7 +14712,7 @@
             "lines": 128
           },
           "project_residual#1": {
-            "line": 1441,
+            "line": 1443,
             "lines": 59
           },
           "project_scratch#1": {
@@ -14743,15 +14724,15 @@
             "lines": 96
           },
           "reported_bread#1": {
-            "line": 962,
+            "line": 964,
             "lines": 89
           },
           "retained_fe_budget#1": {
-            "line": 1052,
+            "line": 1054,
             "lines": 41
           },
           "scaled_initial_sum_of_squares#1": {
-            "line": 1314,
+            "line": 1316,
             "lines": 11
           },
           "score_norms#1": {
@@ -14759,23 +14740,23 @@
             "lines": 6
           },
           "solve_and_report#1": {
-            "line": 787,
+            "line": 789,
             "lines": 97
           },
           "solve_one_shot#1": {
             "line": 652,
-            "lines": 133
+            "lines": 135
           },
           "trace_score_ownership#1": {
-            "line": 885,
+            "line": 887,
             "lines": 39
           },
           "weighted_response_norm#1": {
-            "line": 1356,
+            "line": 1358,
             "lines": 12
           }
         },
-        "production_lines": 1490
+        "production_lines": 1491
       },
       "crates/fereg-core/src/ols/prepared_fit/one_shot/centered_pipeline.rs": {
         "chunk_candidates": [],
@@ -14974,43 +14955,39 @@
         "dispatch_candidates": [
           {
             "condition": "design . effects ( ) . len ( ) > 2",
-            "line": 65
-          },
-          {
-            "condition": "config . absorb . solver_memory_budget . is_some ( ) =>",
-            "line": 98
+            "line": 66
           },
           {
             "condition": "let Some ( budget ) = & mut absorb . solver_memory_budget",
-            "line": 109
+            "line": 103
           },
           {
             "condition": "! budget . fits ( 0 )",
-            "line": 114
+            "line": 108
           },
           {
             "condition": "design . effects ( ) . len ( ) < 2",
-            "line": 230
+            "line": 224
           },
           {
             "condition": "attempt == 1 || design . effects ( ) . len ( ) < 2 || absorb . map . max_iterations == 0 || absorb . lsmr . max_iterations == 0",
-            "line": 302
+            "line": 296
           },
           {
             "condition": "target . len ( ) != shifted . len ( )",
-            "line": 337
+            "line": 331
           },
           {
             "condition": "& mut inputs . fast_score_cache",
-            "line": 484
+            "line": 478
           },
           {
             "condition": "let Some ( position ) = generated_columns . iter ( ) . position ( | & generated | generated == column )",
-            "line": 490
+            "line": 484
           },
           {
             "condition": "generated_columns . contains ( & column )",
-            "line": 507
+            "line": 501
           }
         ],
         "functions": {
@@ -15019,39 +14996,39 @@
             "lines": 7
           },
           "direct_coefficients#1": {
-            "line": 399,
+            "line": 393,
             "lines": 46
           },
           "patch_column#1": {
-            "line": 446,
+            "line": 440,
             "lines": 75
           },
           "projection_coefficients#1": {
-            "line": 317,
+            "line": 311,
             "lines": 35
           },
           "record#1": {
-            "line": 522,
+            "line": 516,
             "lines": 19
           },
           "resolve_inputs#1": {
             "line": 36,
-            "lines": 137
+            "lines": 131
           },
           "resolve_rhs#1": {
-            "line": 175,
+            "line": 169,
             "lines": 139
           },
           "structural_column#1": {
-            "line": 355,
+            "line": 349,
             "lines": 43
           },
           "unresolved#1": {
-            "line": 542,
+            "line": 536,
             "lines": 3
           }
         },
-        "production_lines": 515
+        "production_lines": 506
       },
       "crates/fereg-core/src/ols/prepared_fit/one_shot/rank_score.rs": {
         "chunk_candidates": [],
@@ -15065,81 +15042,77 @@
             "line": 27
           },
           {
-            "condition": "config . absorb . solver_memory_budget . is_some ( ) =>",
-            "line": 98
-          },
-          {
             "condition": "config . absorb . solver_memory_budget . is_some_and ( | budget | ! budget . fits ( peak ) )",
-            "line": 108
+            "line": 109
           },
           {
             "condition": "! zero_rows || resolved . outcome_error != 0. || qr . generated_coefficients . iter ( ) . flatten ( ) . any ( | coefficient | * coefficient != 0. )",
-            "line": 152
+            "line": 153
           },
           {
             "condition": "residuals . len ( ) != self . target . len ( )",
-            "line": 383
+            "line": 384
           }
         ],
         "functions": {
           "abs_upper#1": {
-            "line": 549,
+            "line": 550,
             "lines": 6
           },
           "add#1": {
-            "line": 519,
+            "line": 520,
             "lines": 6
           },
           "admit#1": {
             "line": 87,
-            "lines": 36
+            "lines": 37
           },
           "certify_fe#1": {
-            "line": 423,
+            "line": 424,
             "lines": 66
           },
           "divide#1": {
-            "line": 540,
+            "line": 541,
             "lines": 9
           },
           "finish#1": {
-            "line": 376,
+            "line": 377,
             "lines": 46
           },
           "finite_column#1": {
-            "line": 491,
+            "line": 492,
             "lines": 9
           },
           "lower#1": {
-            "line": 578,
+            "line": 579,
             "lines": 3
           },
           "multiply#1": {
-            "line": 525,
+            "line": 526,
             "lines": 15
           },
           "norm_lower#1": {
-            "line": 562,
+            "line": 563,
             "lines": 4
           },
           "norm_upper#1": {
-            "line": 555,
+            "line": 556,
             "lines": 7
           },
           "point#1": {
-            "line": 513,
+            "line": 514,
             "lines": 6
           },
           "prepare#1": {
-            "line": 127,
+            "line": 128,
             "lines": 130
           },
           "projection_moments#1": {
-            "line": 268,
+            "line": 269,
             "lines": 100
           },
           "retained_bytes#1": {
-            "line": 370,
+            "line": 371,
             "lines": 3
           },
           "scratch_residual#1": {
@@ -15151,15 +15124,15 @@
             "lines": 35
           },
           "unresolved#1": {
-            "line": 501,
+            "line": 502,
             "lines": 5
           },
           "upper#1": {
-            "line": 567,
+            "line": 568,
             "lines": 11
           }
         },
-        "production_lines": 554
+        "production_lines": 553
       },
       "crates/fereg-core/src/ols/prepared_fit/raw_moment_bands.rs": {
         "chunk_candidates": [],
@@ -26314,10 +26287,10 @@
     "metrics": {
       "fereg-core": {
         "chunk_candidates": 13,
-        "dispatch_candidates": 1510,
+        "dispatch_candidates": 1508,
         "files_over_1500": 15,
         "functions_over_150": 59,
-        "production_lines": 117840
+        "production_lines": 117831
       },
       "fereg-plugin": {
         "chunk_candidates": 6,

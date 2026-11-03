@@ -48,14 +48,29 @@ was relaxed to accommodate either case. The [mathematical review](rank_verificat
 distinguishes stored-data identification from intended decimal relationships.
 
 The source checkpoint passes `scripts/run_tests.sh --source-only`: 349 Python
-tests, 1,614 core tests (three diagnostic tests ignored), the remaining workspace
+tests, 1,615 core tests (three diagnostic tests ignored), the remaining workspace
 and FFI tests, isolated allocator audits, strict Clippy, fuzz compilation,
-portable/C/SPI guards and the complexity ratchet. All 16 integrated scale/offset
+portable/C/SPI guards and the complexity ratchet. All 17 integrated scale/offset
 witnesses pass, as do the separate exact and rounded singleton witnesses. The
 129 qualification-tool tests pass, including the requirement that an ordinary
 candidate exactly reproduce the current incumbent even when an older original
 has a previously accepted numerical or derived-residual difference. This is
 source evidence only; native and performance prerequisites below remain open.
+
+Native development at source checkpoint `2f39802a` exposed a memory-admission
+integration defect: the first shifted Stata fit refused with code 909 because
+repair treated an unknown historical FE-workspace peak as live retained storage.
+The other six mapped Stata fixtures passed. The correction releases the completed
+FE session only after repair activates, admits the actual surviving bound vectors
+alongside score scratch, then frees those vectors before terminal projection.
+Historical unknown diagnostics remain unknown. The added Auto Fast/Low regression
+uses a public-style nonzero memory budget, requires exact scientific agreement
+with unbounded fits, and preserves the separate insufficient-budget refusal.
+All 17 focused scale/offset tests and the complete source integration gate pass.
+Independent lifecycle review found no remaining overlap or retry issue; rebuilt
+native checks remain prerequisites.
+The complexity inventory decreases by nine production lines and two dispatch
+candidates, with no new oversized file or function.
 
 The declared numerical scope is the exceptional repair path and its dependent
 coefficients, bread/covariance, residuals, saved effects, diagnostics and rank

@@ -39,6 +39,7 @@ pub(super) fn resolve_inputs<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     inputs: &mut OneShotInputs,
     config: PreparedOlsFitConfig,
     reservation: &mut R,
+    session: &mut crate::fe::FeSession<'_>,
 ) -> Result<()> {
     if inputs.rank_resolution.is_some()
         || !frame.prepared_ols
@@ -91,20 +92,13 @@ pub(super) fn resolve_inputs<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     let helper = Forest::workspace_bytes(&design)?
         .checked_add(rows as u128 * 32 + levels as u128 * 32 + columns as u128 * 16)
         .ok_or_else(|| allocation("rank verification workspace overflows"))?;
-    // Capture the live original session once. Merged peaks describe historical
-    // maxima and must not become a cumulative retained charge for later RHSs.
-    let prior = match inputs.absorption_report.solver_workspace_peak.bytes() {
-        Some(bytes) => u128::from(bytes),
-        None if config.absorb.solver_memory_budget.is_some() => {
-            return Err(allocation(
-                "rank verification cannot admit an unmodeled retained FE workspace",
-            ))
-        }
-        None => 0,
-    };
-    let retained = helper
-        .checked_add(prior)
-        .ok_or_else(|| allocation("rank verification retained workspace overflows"))?;
+    // The original FE session is no longer needed once repair is active.
+    // Release its actual owners before allocating helpers, and rebuild the
+    // terminal session after the quotient witness is prepared. A historical
+    // report peak (possibly unmodeled) is not a bound on live session storage.
+    // The report itself remains unchanged, preserving any unmodeled history.
+    drop(std::mem::take(session));
+    let retained = helper;
     let mut absorb = config.absorb;
     if let Some(budget) = &mut absorb.solver_memory_budget {
         budget.execution_bytes = budget

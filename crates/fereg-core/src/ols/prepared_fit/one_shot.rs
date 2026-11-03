@@ -659,7 +659,7 @@ fn solve_one_shot<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     retain_fast_score_cache: bool,
     cmg: &mut crate::fe::FeSession<'a>,
 ) -> Result<FiniteFit> {
-    rank_resolution::resolve_inputs(prepared, frame, inputs, config, reservation)?;
+    rank_resolution::resolve_inputs(prepared, frame, inputs, config, reservation, cmg)?;
     let norms = match &inputs.storage {
         ProjectedStorage::Dense(_) | ProjectedStorage::Centered(_) => &inputs.norms[1..],
         ProjectedStorage::Scratch(_) => &inputs.norms,
@@ -752,6 +752,8 @@ fn solve_one_shot<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
             config.score_tolerance,
             reservation,
         )?);
+        // The witness now owns the terminal check; release its input bounds.
+        inputs.rank_resolution = None;
     }
     if let ProjectedStorage::Dense(dense) = &mut inputs.storage {
         if retain_fast_score_cache && inputs.fast_score_cache.is_none() {
@@ -1013,7 +1015,7 @@ fn reported_bread<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         frame.response(),
         qr,
         match (&inputs.storage, raw_residuals.as_deref_mut()) {
-            (ProjectedStorage::Scratch(_), Some(values)) if inputs.rank_resolution.is_none() => {
+            (ProjectedStorage::Scratch(_), Some(values)) if inputs.rank_score.is_none() => {
                 Some(RawResiduals::Seed(values))
             }
             (_, values) => values.map(|values| RawResiduals::MeanOnly(values)),
@@ -1040,7 +1042,7 @@ fn reported_bread<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
             }
             values
         }
-        ProjectedStorage::Scratch(ref low) if inputs.rank_resolution.is_some() => {
+        ProjectedStorage::Scratch(ref low) if inputs.rank_score.is_some() => {
             drop(raw_residuals);
             rank_score::scratch_residual(low, qr, reservation)?
         }

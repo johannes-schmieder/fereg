@@ -93,17 +93,18 @@ pub(super) fn admit(
         .checked_mul(8)
         .and_then(|bytes| bytes.checked_add(inputs.reference_norms.len() as u128 * 48 + 8))
         .ok_or_else(|| allocation("rank repair score workspace overflows"))?;
-    let prior = match inputs.absorption_report.solver_workspace_peak.bytes() {
-        Some(bytes) => u128::from(bytes),
-        None if config.absorb.solver_memory_budget.is_some() => {
-            return Err(allocation(
-                "rank repair score cannot admit an unmodeled FE workspace",
-            ))
-        }
-        None => 0,
-    };
+    // Repair released the original FE session. Only its two bound vectors
+    // survive alongside the score workspace; the diagnostic peak is historical.
+    let resolved = inputs
+        .rank_resolution
+        .as_ref()
+        .expect("resolved projection");
+    let retained = (resolved.scales.capacity() as u128)
+        .checked_add(resolved.absolute_errors.capacity() as u128)
+        .and_then(|values| values.checked_mul(8))
+        .ok_or_else(|| allocation("rank repair retained bounds overflow"))?;
     let peak = extra
-        .checked_add(prior)
+        .checked_add(retained)
         .ok_or_else(|| allocation("rank repair score workspace overflows"))?;
     if config
         .absorb
