@@ -93,7 +93,7 @@ foreach weight_kind in unit analytic {
     local weight ""
     if "`weight_kind'" == "analytic" local weight "[aw=aw]"
     foreach mode in fast low {
-        quietly fereg y x v `weight', absorb(g h) cluster(sign_id) ///
+        quietly fereg y x v `weight', absorb(g h) vce(cluster sign_id) ///
             memory(`mode') poolsize(1) threads(1) residuals(cluster_residual)
         assert e(N) == 800 & e(sample) == 1
         assert e(rank) == 2 & e(df_m) == 2
@@ -120,7 +120,10 @@ foreach weight_kind in unit analytic {
 * reconstruction in the small outcome units, without a tolerance proportional
 * to the large nuisance contribution. Requested FE channels remain normalized.
 quietly fereg y x v, absorb(saved_g=g saved_h=h) memory(fast) threads(1) ///
-    residuals(saved_residual) xb(saved_xb) xbd(saved_xbd) d(saved_d)
+    residuals(saved_residual)
+predict double saved_xb, xb
+predict double saved_xbd, xbd
+predict double saved_d, d
 assert abs(_b[x]-2) <= 1e-8 & abs(_b[v]+3) <= 1e-8
 assert abs(y-saved_xbd-saved_residual) <= 2e-6
 assert abs(y-saved_xb-saved_g-saved_h-saved_residual) <= 2e-6
@@ -151,6 +154,8 @@ drop exactly_absorbed omitted_residual
 * A finite iteration budget is a resource contract, not an omission policy.
 * Establish success first, then require atomic refusal of the same valid
 * weighted model when its explicit iterative solver receives only one step.
+* Initial borrowed absorption rejects its uncertified product with 459, before
+* exceptional rank verification; preserve that existing certificate contract.
 quietly fereg y x v [aw=aw], absorb(g h) solver(lsmr) tolerance(1e-12) threads(1)
 assert e(rank) == 2 & e(fereg_solver)[1,3] > 1
 quietly regress y u v if g <= 4
@@ -163,10 +168,10 @@ local prior_df_r = e(df_r)
 foreach mode in fast low {
     capture noisily fereg y x v [aw=aw], absorb(failed_g=g failed_h=h) ///
         solver(lsmr) tolerance(1e-12) iterate(1) memory(`mode') poolsize(1) ///
-        threads(1) residuals(failed_residual) xb(failed_xb) xbd(failed_xbd) d(failed_d)
+        threads(1) residuals(failed_residual)
     local refusal_rc = _rc
-    assert `refusal_rc' == 430
-    foreach output in failed_g failed_h failed_residual failed_xb failed_xbd failed_d {
+    assert `refusal_rc' == 459
+    foreach output in failed_g failed_h failed_residual {
         confirm new variable `output'
     }
     assert "`e(cmd)'" == "regress"

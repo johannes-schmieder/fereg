@@ -106,8 +106,23 @@ core tests (three diagnostic tests ignored), workspace/FFI tests, isolated
 allocator audits, strict Clippy, fuzz compilation, C/SPI guards and complexity.
 The scoped addition is 269 production lines and three dispatch candidates;
 there is no new oversized file/function, and one existing oversized function is
-removed by sharing score-axis construction. Native rebuild and performance
-qualification remain open for these changes.
+removed by sharing score-axis construction.
+
+The private universal Mac plugin built from `d4fa58f4` has SHA-256
+`9cac4bdfdb45251f515478b15c580445ae8f604f28b8c5cca24532517d6ac6bc`.
+Its binary/ABI audit passes. All 33 actual-plugin analytical calls pass: 32
+successful cases spanning shifts, opposite units, structural absorption,
+Fast/Low and one/four workers, plus a memory-refusal/nonpublication case.
+All 77 replay cases pass their independent witnesses and match beta.15 exactly;
+fixed-worker repetitions and the additional four-worker checks pass. The seven
+mapped Stata fixtures pass, including 24 shifted IID fits, weighted robust and
+clustered inference, saved-effect reconstruction and postestimation. The new
+fixture uses public `vce(cluster ...)` and `predict` syntax. Its one-step initial
+LSMR projection returns the established certificate-refusal code 459 and
+preserves prior estimates and requested-output rollback in both memory modes.
+Public OLS Break and completed four-worker LSMR iteration cancellation also
+pass with populated/null estimates and exact follow-up fits. No native binary
+is published by this work. Linux and performance qualification remain open.
 
 The prospective Linux comparison reuses 112 retained input files totaling
 5,236,078,385 bytes. All match the retained manifest with SHA-256
@@ -118,9 +133,9 @@ The declared numerical scope is the exceptional repair path and its dependent
 coefficients, bread/covariance, residuals, saved effects, diagnostics and rank
 statuses. Correcting a false omission may intentionally change finite rank and
 fit. Ordinary unaffected science must remain exact against the beta.15 plugin,
-including unaffected OLS and PPML paths. Candidate/beta.15 native and installed
-binary qualification is planned; no completed native qualification or timing
-claim is attached to this section.
+including unaffected OLS and PPML paths. The private Mac evidence above covers
+that comparison and actual Stata loading. It is not release qualification or
+performance evidence; no timing claim is attached to this section.
 
 The graph certificate is sufficient and can be conservative on weak forests
 or tiny tree-edge weights. Unresolved cases fail without publication. Stored
