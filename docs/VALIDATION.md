@@ -229,6 +229,67 @@ accepting the inconclusive comparisons or starting a separately declared
 follow-up. Intel Mac Stata execution and Windows remain untested for this
 candidate; the universal Mac ABI audit does not establish those runtime checks.
 
+
+### Authorized performance follow-up, 2026-11-03
+
+Johannes requests one performance follow-up and a careful discussion of its
+results. The new round preserves the first report and reuses the exact
+candidate, beta.15 and beta.7 Linux binaries above; there is no runtime or
+scientific-policy change. The frozen input subset comprises no-fe, dense,
+small-retained, four-fe, eight-fe, weak, sixteen-fe and inactive-columns.
+Both one and four workers run for every family: sixteen settings contain
+all seven settings with unresolved comparisons, plus nine predeclared controls.
+The eight reference/setting pairs in the table above are the primary questions;
+all thirty-two candidate/reference comparisons are reported and gated.
+
+The fixed schedule uses twelve distinct physical hosts, one warmup per arm
+and four randomized mirrored blocks per setting, totaling 5,184 native calls.
+The seed is 2026110301. Each native call retains its 120-second limit; each
+allocation has a 2,400-second driver budget and a 75-minute scheduler limit.
+General eligible whole-node allocations use the existing omp28 contract,
+with no queue or processor-model restriction. A separate, bounded 900-second
+admission barrier requires all twelve distinct hosts before measurement.
+Duplicate hosts or incomplete admission fail without replacement. Registration
+does not prove isolation: the maintained host observer remains authoritative.
+There are no timing exclusions, retries, automatic extensions or successor
+candidates in this round.
+
+Actual-plugin preflight refreshes all 48 selected ordinary scientific calls,
+the 33 exceptional calls and the 35 Stata fits, verifies the unchanged harness,
+all 112 retained input files and every pinned comparator-environment file, and
+checks at least 20 GB of free project space. The candidate is reused from
+runtime source e9b877a1; source and Mac evidence remains valid because native
+inputs and the candidate binary are unchanged. Every selected ordinary family
+requires exact candidate/incumbent science and no new rank-repair trace.
+Previously accepted original/incumbent two-FE and many-FE differences retain
+their existing validators. The refreshed exceptional shift-p4/p6/p8 families
+retain their previously declared rank, inference and output changes, including
+terminal projection in place of the ordinary derived-residual row. The existing
+72 actual-repair cost groups remain descriptive evidence; this follow-up adds
+no exceptional-path timing or claim about large pathological workloads.
+
+One maintained qualify.py report evaluates the selected subset using the
+unchanged max(5%, 1 ms) guard and per-physical-host median excess. With twelve
+independent hosts, its one-sided .025 upper bound is the third-largest host
+score, rather than the largest at six hosts. This fixed sample size is not a
+power guarantee. A passing report is explicitly limited to the selected subset.
+Direct beta.15/beta.7 contrasts from the same mirrored blocks are secondary
+attribution evidence; median ratios or nonlinear guarded scores are not
+subtracted, and an inherited difference cannot waive the beta.7 guard.
+
+The new round is analyzed alone. Old and new observations are not pooled,
+repeat blocks are not counted as independent hosts, and any overlap with
+first-round hardware is disclosed. Earlier results remain visible, including
+inconclusive bounds; retained evidence for unaffected settings is reused as
+such, not relabeled as a simultaneous new 116-comparison qualification.
+Any remaining regression, inconclusive bound or failed scientific prerequisite
+ends this round for discussion rather than further sampling.
+
+The generic subset support passes all 142 qualification tests, including five
+new subset checks, and 80 native-transport, routing, oracle/science and migration
+tests. Independent review confirms that controls remain gated and full-coverage
+behavior is unchanged. These are tooling prerequisites, not new timing evidence.
+
 The declared numerical scope is the exceptional repair path and its dependent
 coefficients, bread/covariance, residuals, saved effects, diagnostics and rank
 statuses. Correcting a false omission may intentionally change finite rank and

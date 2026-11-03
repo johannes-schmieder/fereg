@@ -43,7 +43,8 @@ FAMILIES = {'no-fe', 'one-fe', 'slopes', 'low-saved', *routing_cases.NATIVE_CASE
             *routing_cases.SYNTHETIC_CASES, *routing_cases.EXTENDED_CASES,
             *routing_cases.SAMPLED_CASES}
 CAMPAIGN_FAMILIES = set(routing_cases.CAMPAIGN_CASES)
-# Qualification coverages and their complete family sets, at workers [1, 4].
+# Complete qualification coverages, at workers [1, 4]. A routing subset uses
+# the same checks but can only support a result for its selected families.
 COVERAGES = {'routing': FAMILIES, 'campaign': CAMPAIGN_FAMILIES,
              'routing-campaign': FAMILIES | CAMPAIGN_FAMILIES}
 # Public two-FE Auto policies an original/incumbent artifact may declare it runs;
@@ -245,7 +246,7 @@ def plan(config_path, output, *, configuration=None):
     require(not within_migration or not diagnostic and not ownership_mode,
             'within migration cannot change routing or ownership policies')
     require(value['platform'] in {'Darwin', 'Linux'}, 'platform must be Darwin or Linux')
-    require(value['coverage'] in ({'ownership'} if ownership_mode else {*COVERAGES, 'smoke'}), 'unsupported coverage')
+    require(value['coverage'] in ({'ownership'} if ownership_mode else {*COVERAGES, 'routing-subset', 'smoke'}), 'unsupported coverage')
     for field, low, high in [('blocks', 1, 24), ('shards', 1, 42), ('replicas', 1, 12),
                              ('seed', 0, 2**64 - 1), ('timeout_s', 1, 120), ('budget_s', 1, 14400)]:
         require(type(value[field]) is int and low <= value[field] <= high, 'invalid ' + field)
@@ -379,11 +380,17 @@ def plan(config_path, output, *, configuration=None):
             require(options.get('solver') == options.get('preconditioner') == 'auto',
                     'routing qualification requires source Auto/Auto')
     require(value['cases'] and value['shards'] <= len(value['cases']), 'empty case shard')
+    if value['coverage'] == 'routing-subset':
+        selected = [c['family'] for c in value['cases']]
+        require(len(selected) == len(set(selected)) and set(selected) <= FAMILIES
+                and sorted(workers) == [1, 4],
+                'routing-subset requires unique known routing families at workers [1, 4]')
     if value['coverage'] in COVERAGES:
         expected = COVERAGES[value['coverage']]
         require(len(value['cases']) == len(expected) and {c['family'] for c in value['cases']} == expected
                 and sorted(workers) == [1, 4],
                 f"{value['coverage']} qualification requires all {2 * len(expected)} workload cells")
+    if value['coverage'] in COVERAGES or value['coverage'] == 'routing-subset':
         require(value['blocks'] % 2 == 0 and value['blocks'] >= (6 if value['platform'] == 'Darwin' else 2),
                 'qualification requires balanced blocks and enough independent measurements')
     if value.get('diagnostic') in ('two-fe-remaining-calibration-v1', 'two-fe-gates-development-v1'):
@@ -1640,6 +1647,7 @@ def report(manifest_path, output, accounting_dir=None, *, allocation_amendment=N
     passed = complete and all(row['status'] == 'passed' for row in rows)
     summary = {'schema': 1, 'manifest_sha256': routing.identity(manifest), 'platform': manifest['platform'],
                'status': 'smoke_complete' if complete and manifest['coverage'] == 'smoke' else
+                         'subset_passed' if passed and manifest['coverage'] == 'routing-subset' else
                          'passed' if passed else 'needs_discussion',
                'errors': errors, 'comparisons': rows, 'native_calls': sum(
                    len(c['warmups']) + sum(len(b['calls']) for b in c['blocks']) for r in results for c in r['cases']),
@@ -1647,6 +1655,11 @@ def report(manifest_path, output, accounting_dir=None, *, allocation_amendment=N
                'coverage': 'One-sided .025 bounds conditional on independent unit scores with a common median; no simultaneous interval claim.',
                'next_action': 'Review platform-specific evidence; no automatic activation or successor.' if passed else
                               'Discuss failed, missing or inconclusive evidence with Johannes; keep candidate and defaults.'}
+    if manifest['coverage'] == 'routing-subset':
+        selected = sorted(c['family'] for c in manifest['cases'])
+        summary.update(qualification='routing-subset', selected_families=selected,
+                       omitted_families=sorted(FAMILIES - set(selected)), activation_qualified=False,
+                       interpretation='Limited to the declared routing families and workers; omitted families and campaign coverage are not qualified by this round.')
     if ownership.enabled(manifest):
         summary['qualification'] = ownership.MODE
         summary['ownership_binding'] = manifest['ownership_binding']
@@ -1757,7 +1770,7 @@ def main():
         return 0 if result['status'] == 'complete' else 1
     result = report(args.manifest, args.output, args.accounting, allocation_amendment=args.allocation_amendment)
     print(result['status'])
-    return 0 if result['status'] in {'passed', 'smoke_complete'} else 1
+    return 0 if result['status'] in {'passed', 'subset_passed', 'smoke_complete'} else 1
 
 
 if __name__ == '__main__':

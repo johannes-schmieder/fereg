@@ -250,6 +250,17 @@ longer mandatory for each candidate. The routing cells are at most 100,000 rows
 and 5 regressors, so a [campaign coverage](#campaign-coverage) adds the
 million-row designs of the SCC package comparison.
 
+A prospective `routing-subset` round selects one fixture per included routing
+family and keeps both worker counts, independent oracles, artifact/scientific
+checks, balanced blocks, isolation and the original/incumbent performance guards.
+It uses the same report and decision thresholds as full coverage. All declared
+comparisons are gated, including any controls; selecting a subset never waives
+an unfavorable observation. A passing result is `subset_passed`, explicitly
+lists selected and omitted families, and cannot claim qualification of omitted
+routing families or campaign workloads. Freeze the selection and sample size
+before timing. A follow-up is a separate round; it does not pool or replace the
+observations or verdict of an earlier round.
+
 The configuration is a JSON object with these fields:
 
 | Field | Meaning |
@@ -265,7 +276,7 @@ The configuration is a JSON object with these fields:
 | `min_distinct_hosts_per_cell` | Optional Linux-only minimum, an integer from 1 through `replicas` (at most 12). Every cell/reference must have the declared number of accounted physical hosts. |
 | `seed` | Unsigned 64-bit ordering seed. |
 | `timeout_s`, `budget_s` | Fixed per-call and per-job limits, at most 120 and 14,400 seconds. |
-| `coverage` | `routing` requires all 42 cells, `campaign` the 16 campaign cells and `routing-campaign` all 58; `smoke` only checks tooling and cannot qualify a candidate. |
+| `coverage` | `routing` requires all 42 cells, `campaign` the 16 campaign cells and `routing-campaign` all 58; `routing-subset` selects unique known routing families at both worker counts; `smoke` only checks tooling and cannot qualify a candidate. |
 
 Artifact `build` records compiler and build settings in a short string. `request`
 is `auto`, `preserve`, `incremental-many`, `many-geometry-v1`, `incremental-two`,
