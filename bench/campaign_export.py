@@ -36,6 +36,15 @@ def canonical(value):
     return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(',', ':'), allow_nan=False).encode()).hexdigest()
 
 
+def harness_test_summary(harness):
+    """unittest writes its result to stderr; buffered stdout may follow it."""
+    counts = re.findall(r'^Ran (\d+) tests', harness, re.M)
+    if not counts:
+        raise ValueError('missing harness test summary')
+    return dict(count=int(counts[-1]), passed=bool(re.search(r'^OK$', harness, re.M))
+                and not re.search(r'^FAILED(?: |$)', harness, re.M))
+
+
 def host_replay(root, manifest):
     hosts = []
     for label in ['smoke', *[f'task-{i}' for i in range(1, manifest['policy']['bundles']+1)]]:
@@ -111,7 +120,7 @@ def export(root, report, output, prefix):
         schema=2, run_id=context['run_id'], remote_root=context['remote_root'], purpose=manifest['policy']['purpose'],
         source_commit=context['source'], source_archive_sha256=context['source_sha256'],
         plugin_sha256=inventory['source/dist/fereg_linux.plugin'], plugin_origin=context.get('plugin', 'build'),
-        packaged_runtime_sha256=json.loads((root/'input/source.json').read_text())['runtime_sha256'],
+        packaged_runtime_sha256=json.loads((root/'input/source.json').read_text()).get('runtime_sha256'),
         comparators=pins, policy=manifest['policy'], configurations=manifest['cells'], bundles=manifest['bundles'],
         datasets=campaign['datasets'],
         accounting=[{k: r[k] for k in accounting_keys if k in r} for r in campaign['accounting']['jobs']],
@@ -120,8 +129,7 @@ def export(root, report, output, prefix):
         superseded_cells={cell: dict(value, statuses=dict(Counter(r['status'] for r in campaign['superseded_records']
                                                                 if r['cell'] == cell)))
                           for cell, value in context.get('superseded_cells', {}).items()},
-        scc_benchmark_tests=dict(count=int(re.findall(r'^Ran (\d+) tests', harness, re.M)[-1]),
-                                 passed=harness.rstrip().endswith('OK')),
+        scc_benchmark_tests=harness_test_summary(harness),
         host_isolation=hosts,
         node_reference=[dict(task=int(r.cell.rsplit('ref', 1)[1]), host=r.host, seconds=r.seconds,
                              seconds_min=r.seconds_min, seconds_max=r.seconds_max)
