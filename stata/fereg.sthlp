@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 0.5.0 31oct2026}{...}
+{* *! version 0.5.0 03nov2026}{...}
 {.-}
 help for {cmd:fereg} {right:(Johannes F. Schmieder)}
 {.-}
@@ -16,8 +16,8 @@ squares
 {title:Quick start}
 
 {pstd}
-{cmd:fereg} estimates linear models while absorbing one or more categorical
-fixed effects and, when requested, group-specific continuous slopes. A typical
+{cmd:fereg} estimates linear models with optional categorical fixed effects and
+group-specific continuous slopes. A typical
 two-way fixed-effect model with firm-clustered standard errors is
 
 {phang2}{cmd:. fereg log_wage education experience, ///}{p_end}
@@ -74,7 +74,7 @@ observations are removed to a fixed point.
 {pstd}
 The public weight forms are {cmd:[aw=}{it:exp}{cmd:]},
 {cmd:[fw=}{it:exp}{cmd:]}, and {cmd:[pw=}{it:exp}{cmd:]}. The command
-recognizes {cmd:iweight} only to return the pinned {cmd:r(101)} rejection.
+rejects importance weights ({cmd:iweight}) with {cmd:r(101)}.
 
 {marker runtime}
 {title:Native runtime}
@@ -368,6 +368,23 @@ convergence, {cmd:e(fereg_runtime)} for memory/timing/thread diagnostics,
 inference metadata. Macros and scalars beginning with {cmd:e(fereg_)} record
 requested and effective numerical policies. Utility calls return loader and
 protocol information in {cmd:r()}.
+
+{dlgtab:Memory report}
+
+{pstd}
+{cmd:e(fereg_memory)} is an 11-by-2 presence/value report for action
+memory. Its schema version and estimate status distinguish unavailable (0),
+partial (1), and calibrated practical estimates (2). Schema 2 supplies a
+combined peak and additional reserve when the Stata-19 baseline and all native
+stages are known. It accounts for native execution and later result posting as
+separate phases. The reserve excludes already resident memory. Calibration
+targets the larger of 10% and 64 MiB on development cases; it is an estimate,
+not a guaranteed RSS bound. Strict proof gaps and safety headroom remain visible.
+Unknown scopes stay partial, without a combined peak or reserve. Absent values
+have presence zero and value zero. This report does not change memory admission
+or the existing runtime report. With multiple Stata frames, used memory is
+unavailable because Stata's used-data counter is frame-local; the allocated
+baseline includes the resident segments and shared pools.
 
 {marker limitations}
 {title:Current limitations}
@@ -851,7 +868,7 @@ of repetitions for a more demanding local comparison. Release claims require
 the frozen exact-SHA benchmark suite, not this example.
 
 {marker requirements}
-{title:Requirements and development status}
+{title:Requirements}
 
 {pstd}
 {cmd:fereg} requires Stata 15 or newer and one self-contained plugin for its
@@ -860,11 +877,12 @@ platform: {cmd:fereg_macos.plugin}, {cmd:fereg_linux.plugin}, or
 There is one maintained engine and no engine selector.
 
 {pstd}
-Version 0.5.0 is available as a binary release for Linux x86-64, Windows x86-64
-and macOS (Apple Silicon/Intel universal). See {cmd:docs/VALIDATION.md} for
-platform-specific test coverage and limitations, and
-{cmd:docs/fixest_benchmarks.md} and {cmd:docs/veneto_benchmarks.md} for
-descriptive comparisons with fixest, PyFixest, reghdfe and {cmd:areg}.
+Version 0.5.0 provides Linux x86-64, Windows x86-64 and universal macOS
+binaries. Linux requires glibc 2.28 or newer. Mac testing uses Apple Silicon;
+the Intel Mac code has not been tested in a licensed Intel Mac Stata session.
+Windows loads numeric data serially. See the
+{browse "https://github.com/johannes-schmieder/fereg/blob/main/docs/installation.md":installation guide}
+and {browse "https://github.com/johannes-schmieder/fereg/blob/main/docs/VALIDATION.md":platform validation record}.
 
 {marker sources}
 {title:Sources and acknowledgements}
@@ -896,21 +914,6 @@ Online: {help regress}, {help areg}, {help xtreg}, {help fvvarlist},
 {p 4 4 2}
 Web: {browse "https://www.stata.com/new-in-stata/high-dimensional-fixed-effects/":Stata 19 high-dimensional fixed effects}
 
-
-{pstd}
-{cmd:e(fereg_memory)} is an 11-by-2 presence/value report for action
-memory. Its schema version and estimate status distinguish unavailable (0),
-partial (1), and calibrated practical estimates (2). Schema 2 supplies a
-combined peak and additional reserve when the Stata-19 baseline and all native
-stages are known. It accounts for native execution and later result posting as
-separate phases. The reserve excludes already resident memory. Calibration
-targets the larger of 10% and 64 MiB on development cases; it is an estimate,
-not a guaranteed RSS bound. Strict proof gaps and safety headroom remain visible.
-Unknown scopes stay partial, without a combined peak or reserve. Absent values
-have presence zero and value zero. This report does not change memory admission
-or the existing runtime report. With multiple Stata frames, used memory is
-unavailable because Stata's used-data counter is frame-local; the allocated
-baseline includes the resident segments and shared pools.
 
 {marker author}
 {title:Author}

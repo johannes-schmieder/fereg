@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 0.5.0 31oct2026}{...}
+{* *! version 0.5.0 03nov2026}{...}
 {.-}
 help for {cmd:feppml} {right:(Johannes F. Schmieder)}
 {.-}
@@ -447,20 +447,21 @@ sets the available native team for the call. {cmd:e(feppml_requested_threads)} r
 and {cmd:e(feppml_threads)} records the resolved command budget. Stages may use fewer
 workers according to work, independent tasks and admitted storage. Existing
 stage traces distinguish lane limits and independent work from this budget.
-For the duration of the call {cmd:feppml} sets Stata's {cmd:processors} to 1, so
-Stata's own workers do not compete with the native team; the caller's setting is
-restored on success, error, and Break.
+When the dataset in memory has fewer than one million observations,
+{cmd:feppml} temporarily sets Stata's {cmd:processors} to 1 to limit competition
+with the native team. At one million observations or more, it keeps the caller's
+setting. The original setting is restored on success, error, and Break.
 {cmd:deterministic} fixes reduction
 partitions and merge order for the same platform, route, and thread count.
 {cmd:solver(auto)} is the default. It selects the MAP-owned projection family.
 Its numerical engine and workspace depend on the fixed-effect design and
 admitted storage. LSMR and CMG remain explicit solver requests. With exactly
-two categorical intercept effects and no slopes, automatic publication fits
+two categorical intercept effects and no slopes, automatic fits
 reuse one CMG preconditioner across IRLS iterations to accelerate their joint
 fixed-effect solves and canonical products; this is not {cmd:solver(cmg)}, and
-every result is still certified. Every publication fit enters the strict
+every result is still certified. Every fit enters the strict
 convergence checkpoint only once the accepted predictor is predicted to settle
-within the strict envelope, so iteration counts can differ from earlier betas.
+within the strict convergence envelope.
 {cmd:solver(map)} requests the canonical MAP-owned projection family explicitly.
 For multiple effects with absorbed slopes, this family uses a current-weight
 coefficient-space Schur/CG kernel when its workspace fits. It prepares weighted
@@ -479,7 +480,7 @@ The canonical session owns the first full-width rank decision, strict
 convergence checkpoint, and exact final-Hessian synchronization.
 
 {pstd}
-The initial LSMR rollout supports at least two categorical intercept fixed
+Explicit LSMR supports at least two categorical intercept fixed
 effects; CMG supports exactly two or three. For three effects, its two largest
 retained dimensions form the graph core; the remaining dimension may have at
 most 64 non-base indicators. This limit does not count finite regressors.
@@ -647,7 +648,7 @@ allocation, timing, thread, and certificate evidence.
 
 {pstd}
 {cmd:e(feppml_solver)} has rows {cmd:map}, {cmd:lsmr_fused},
-{cmd:lsmr_joint}, and {cmd:cmg_prepared}. Its fixed 22-column result-wire 1.2
+{cmd:lsmr_joint}, and {cmd:cmg_prepared}. Its fixed 22-column
 layout records repeated request/selection/effective/checkpoint identities and
 per-engine frame, retry, fallback, iteration, timing, and certificate maxima.
 The macros {cmd:e(solver)}, {cmd:e(feppml_solver_requested)},
@@ -669,6 +670,23 @@ Standard macros include {cmd:e(cmd)} = {cmd:feppml}, {cmd:e(cmdline)},
 {cmd:e(resid)}, {cmd:e(xb_var)}, {cmd:e(d_var)}, {cmd:e(eta_var)},
 {cmd:e(mu_var)}, and {cmd:e(drop_reason_var)} when present. Use
 {cmd:ereturn list} and {cmd:matrix list} for the complete versioned inventory.
+
+{dlgtab:Memory report}
+
+{pstd}
+{cmd:e(feppml_memory)} is an 11-by-2 presence/value report for action
+memory. Its schema version and estimate status distinguish unavailable (0),
+partial (1), and calibrated practical estimates (2). Schema 2 supplies a
+combined peak and additional reserve when the Stata-19 baseline and all native
+stages are known. It accounts for native execution and later result posting as
+separate phases. The reserve excludes already resident memory. Calibration
+targets the larger of 10% and 64 MiB on development cases; it is an estimate,
+not a guaranteed RSS bound. Strict proof gaps and safety headroom remain visible.
+Unknown scopes stay partial, without a combined peak or reserve. Absent values
+have presence zero and value zero. This report does not change memory admission
+or the existing runtime report. With multiple Stata frames, used memory is
+unavailable because Stata's used-data counter is frame-local; the allocated
+baseline includes the resident segments and shared pools.
 
 {marker failure}
 {title:Failure behavior and atomicity}
@@ -979,8 +997,11 @@ contract, and the fitted-mean prediction on the final sample.
 package plugin on the ado-path: {cmd:fereg_windows.plugin},
 {cmd:fereg_linux.plugin}, or the universal {cmd:fereg_macos.plugin}. Users do
 not need Rust, Python, Julia, a compiler, BLAS, or a separate native runtime.
-Descriptive comparisons with fixest, PyFixest and ppmlhdfe are in
-{cmd:docs/fixest_benchmarks.md} of the source repository.
+Linux x86-64 requires glibc 2.28 or newer. Mac testing uses Apple Silicon;
+the Intel Mac code has not been tested in a licensed Intel Mac Stata session.
+Windows x86-64 loads numeric data serially. See the
+{browse "https://github.com/johannes-schmieder/fereg/blob/main/docs/installation.md":installation guide}
+and {browse "https://github.com/johannes-schmieder/fereg/blob/main/docs/VALIDATION.md":platform validation record}.
 
 {marker sources}
 {title:Sources and acknowledgements}
@@ -1008,21 +1029,6 @@ Online: {help poisson}, {help glm}, {help fvvarlist}, {help tsvarlist},
 {help weights}, {help predict}, {help fereg}
 {p_end}
 
-
-{pstd}
-{cmd:e(feppml_memory)} is an 11-by-2 presence/value report for action
-memory. Its schema version and estimate status distinguish unavailable (0),
-partial (1), and calibrated practical estimates (2). Schema 2 supplies a
-combined peak and additional reserve when the Stata-19 baseline and all native
-stages are known. It accounts for native execution and later result posting as
-separate phases. The reserve excludes already resident memory. Calibration
-targets the larger of 10% and 64 MiB on development cases; it is an estimate,
-not a guaranteed RSS bound. Strict proof gaps and safety headroom remain visible.
-Unknown scopes stay partial, without a combined peak or reserve. Absent values
-have presence zero and value zero. This report does not change memory admission
-or the existing runtime report. With multiple Stata frames, used memory is
-unavailable because Stata's used-data counter is frame-local; the allocated
-baseline includes the resident segments and shared pools.
 
 {marker author}
 {title:Author}

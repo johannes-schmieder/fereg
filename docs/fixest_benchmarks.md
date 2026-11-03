@@ -1,8 +1,43 @@
-# Comparing fereg with fixest
+# Synthetic OLS and PPML benchmarks
 
-The current published beta.11 synthetic and [Veneto AKM comparisons](veneto_benchmarks.md)
-extend the beta.10 schedule with new designs and comparators. Earlier campaigns
-are retained below.
+## November 2–3, 2026: the runtime released as 0.5.0
+
+The latest completed campaign measured beta.15. Stable 0.5.0 ships the same
+native binaries, so these results describe the released runtime. The campaign
+covers synthetic designs, sizes, worker counts and output requests, with
+separate Skylake, Ice Lake and Granite Rapids hardware supplements. See the
+[complete campaign report](../bench/results/scc-20261102-beta15.md) for frozen
+inputs, software identities, scientific checks and all retained failures.
+
+At one million observations, 16 controls and four workers, the main AKM
+baseline takes 0.819 seconds for OLS and 5.720 seconds for PPML, without saved
+effects and with IID OLS / robust PPML inference. On the
+Granite Rapids supplement, the corresponding times are 0.489 and 2.222 seconds.
+fereg is faster than every compared command in those baseline cells, but the
+ranking varies across designs. Timings alone do not establish an advantage:
+the summaries distinguish scientific agreement, degrees-of-freedom conventions,
+failed captures and timeouts. Every reported speed ratio compares commands
+on the same host.
+
+The main campaign used five Broadwell hosts and one Skylake host. Hardware
+supplements are descriptive comparisons across hosts, not isolated estimates
+of CPU effects. Granite Rapids is the paper's selected supplement; Skylake
+and Ice Lake remain available in the retained evidence. The paper excludes
+No FE cells, while the benchmark exports retain them.
+
+The reghdfe and ppmlhdfe limits were extended to 3,600 seconds; other commands
+retain a 600-second limit. Numerical discrepancies and failed observations
+were retained, not resampled. Compared with beta.11 on separate hosts, the
+main OLS baseline takes 11.0% less time and PPML takes 37.9% more; these changes
+cannot be attributed to the software alone.
+
+Retained summaries: [main synthetic campaign](../bench/results/scc-20261102-beta15-synthetic-summary.csv),
+[corrected No FE cell](../bench/results/scc-20261102-beta15-no-fe-summary.csv),
+[Skylake](../bench/results/scc-20261103-beta15-skylake-summary.csv),
+[Ice Lake](../bench/results/scc-20261102-beta15-icelake-summary.csv), and
+[Granite Rapids](../bench/results/scc-20261103-beta15-granite-rapids-summary.csv).
+The [Veneto benchmarks](veneto_benchmarks.md) cover real worker–firm data.
+Earlier campaigns follow under their original dates.
 
 ## October 30, 2026: published beta.11 campaign
 

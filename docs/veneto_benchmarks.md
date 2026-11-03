@@ -1,4 +1,50 @@
-# Veneto AKM comparisons
+# Veneto worker–firm benchmarks
+
+## November 2–3, 2026: the runtime released as 0.5.0
+
+The latest campaign uses only the largest connected set: 5,509,415 observations,
+1,182,935 workers and 117,208 firms after iterative singleton removal. OLS uses
+log daily wages; PPML uses the same wages in levels. Both models include worker
+and firm effects and seven controls. OLS uses conventional covariance and PPML
+uses robust covariance. Fixed effects are not saved. Each model ran on its own
+whole 28-core Xeon Gold 6132 (Skylake) host, with three repetitions at each
+worker count. Stable 0.5.0 contains the same native binaries as the measured
+beta.15 package.
+
+Median fereg command times:
+
+| Workers | OLS seconds | PPML seconds |
+| ---: | ---: | ---: |
+| 1 | 10.93 | 61.09 |
+| 2 | 8.30 | 39.37 |
+| 4 | 5.33 | 27.64 |
+| 8 | 3.76 | 21.70 |
+| 16 | 3.38 | 21.52 |
+
+All native fits passed the independent numerical checks, fixed-worker
+repeatability and cross-worker agreement. fereg was faster than every
+scientifically agreeing comparator at each tested worker count. Model and
+hardware changes prevent treating the new PPML panel as a speed comparison
+with the earlier OLS panels.
+
+The limits for reghdfe and ppmlhdfe were raised to 3,600 seconds; other
+comparators retained 600 seconds. The OLS panel contains all 114 planned
+positions. PPML contains all 84: 78 successful executions, two timeouts and
+four subsequent repetitions skipped under the frozen failure rule.
+
+Default fixest fails the PPML covariance comparison. Its strict profile passes
+the independent smoke check but times out in production at one and two workers.
+Default FixedEffectModels.jl fails the OLS coefficient and objective checks;
+its strict profile agrees after accounting for the recorded absorbed-
+degrees-of-freedom covariance convention. These distinctions remain visible
+in the summaries; a completed command is not automatically a scientifically
+comparable result.
+
+Retained evidence: [OLS summary](../bench/results/scc-20261102-beta15-veneto-ols-summary.csv),
+[PPML summary](../bench/results/scc-20261102-beta15-veneto-ppml-summary.csv), and
+[complete campaign report](../bench/results/scc-20261102-beta15.md).
+Only aggregate results and input identities are public; private rows remain
+on SCC. Earlier campaigns, including the leave-one-out sample, follow below.
 
 ## October 30, 2026: published beta.11 long panel, two samples
 

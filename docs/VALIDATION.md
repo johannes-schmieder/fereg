@@ -1,5 +1,19 @@
 # Validation status
 
+## Public documentation review, November 3, 2026
+
+The post-release review reconciles the README, installation and user guides,
+installed help, benchmark summaries, protocol version descriptions and dependency
+notices with the released 0.5.0 runtime and frozen evidence. The public help's
+19 executable example blocks are unchanged; all 18 non-benchmark examples pass
+on Mac Stata 19 through the two maintained documentation fixtures. The optional
+benchmark example was not rerun. All 16 help-contract tests pass, and the
+36-file installation check confirms that the native runtime identity is unchanged.
+Relative links and anchors across the 28 maintained documentation pages pass,
+as does `git diff --check`. The reviewed PPML help hash is retained in
+`scripts/feppml_help_contract.py`. The fixed release tag and archives retain
+their original bytes; the release page links the documentation corrections.
+
 ## Stable 0.5.0 promotion
 
 On November 3 Johannes authorized the regular v0.5.0 release. It uses the exact

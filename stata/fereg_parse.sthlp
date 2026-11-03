@@ -35,5 +35,5 @@ component/time-series operator registries. The returned model wire version is
 {pstd}
 Model wire 2.1 adds length-framed absorbed-term labels and saved-name entries;
 an absent saved name is represented unambiguously as {cmd:0:}. Public
-estimation consumes this metadata through {cmd:fereg}; direct parser use is
+estimation consumes this metadata through {cmd:fereg} and {cmd:feppml}; direct parser use is
 intended only for diagnostics and qualification.

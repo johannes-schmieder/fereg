@@ -4,43 +4,27 @@
 Linux x86-64, Windows x86-64 and macOS. The macOS plugin contains Apple Silicon
 and Intel code; licensed Mac testing uses Apple Silicon. See
 [validation](VALIDATION.md) for the checks performed on each platform.
-The Linux binary requires glibc 2.28 or newer.
+The Linux binary requires glibc 2.28 or newer. Windows uses serial data loading;
+parallel loading is enabled only on qualified Mac and Linux hosts. The Intel
+Mac code is included but has not been tested in a licensed Intel Mac Stata session.
 
-## Install the current package from main
+## Install stable version 0.5.0
 
 Start a fresh Stata session and run:
 
 ```stata
-net install fereg, from("https://raw.githubusercontent.com/johannes-schmieder/fereg/main/") replace
+net install fereg, from("https://raw.githubusercontent.com/johannes-schmieder/fereg/v0.5.0/") replace
 fereg, selftest
 help fereg
 help feppml
 ```
 
-This reads the root `fereg.pkg` from `main`. The community-contributed
-[`github` installer](https://github.com/haghish/github) installs the same
-package from `main`:
-
-```stata
-net install github, from("https://haghish.github.io/github/")
-github install johannes-schmieder/fereg
-fereg, selftest
-```
-
-After installing, the helper reads the repository's GitHub release list as a
-single Stata line. When per-file release assets had made that list longer than
-Stata's line limit (`c(macrolen)`: 645,200 characters on Stata/SE and MP with the
-default `maxvar`, 264,392 on Stata/BE), the helper failed with `r(132)` after the
-files were installed. Releases therefore carry only archives, checksums and build
-notes, which keeps the list well below both limits; see the
-[beta.12 publication record](../bench/results/beta12-publication-20261031.json).
-
-Both commands and their shared native plugin are installed together. Rust,
-Python, BLAS, OpenMP and other Stata packages are not needed to use this binary
-package. Stata normally installs user packages in its PLUS directory; `sysdir`
-shows that location. Use the repository root URL above: the `stata/` subdirectory
-contains the release template, while the root package includes the maintained
-native binary.
+The release tag pins the complete package, including its native plugins.
+Both commands are installed together. Rust, Python, Julia, BLAS, OpenMP and
+other Stata packages are not needed to use the binary package. Stata normally
+installs user packages in its PLUS directory; `sysdir` shows that location.
+Use the repository root URL: the `stata/` subdirectory is a packaging template
+and does not contain the native binaries.
 
 Test an OLS and a PPML fit:
 
@@ -50,18 +34,17 @@ fereg price mpg, absorb(rep78) vce(robust)
 feppml price mpg, absorb(rep78) vce(robust)
 ```
 
-To install stable version 0.5.0 independently of later changes to `main`, use its release
-tag in a fresh Stata session. The tagged root package carries that release's
-plugins; replace the tag to install another release:
+To install the development package, change `v0.5.0` in the URL to `main`.
+The community-contributed [`github` installer](https://github.com/haghish/github)
+also installs from `main`:
 
 ```stata
-net install fereg, from("https://raw.githubusercontent.com/johannes-schmieder/fereg/v0.5.0/") replace
+net install github, from("https://haghish.github.io/github/")
+github install johannes-schmieder/fereg
 fereg, selftest
 ```
 
-Each tag from beta.2 onward carries exactly the plugins released with it;
-beta.2 to beta.4 were macOS-only. Beta.1 predates the root package; install it
-from its binary ZIP as described below.
+Use the tagged `net install` command when you need a fixed release for replication.
 
 For an offline installation, download `fereg-0.5.0.zip` from the
 [0.5.0 release](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0),
@@ -80,15 +63,26 @@ then rerun the direct `net install` command above with `replace`. `clear all`
 does not reliably unload a native plugin. On Windows, loaded plugin files also cannot
 be overwritten. To remove an installed package, run `ado uninstall fereg`.
 
+## Corrections to the bundled 0.5.0 documentation
+
+The release archives and tag remain fixed. The current [user guide](user_guide.md)
+and help files on `main` correct two descriptions: PPML Auto selects the MAP
+projection family, and `feppml` sets Stata's processors to one only when the
+dataset has fewer than one million observations. The dependency notice now
+names the `within` and `schwarz-precond` version actually shipped (0.5.0,
+revision `8d401d82`), matching the release lockfile and bundled license texts.
+These are documentation corrections; the commands and native binaries are unchanged.
+
 ## Build from source
 
 Source builds need Git, Python 3.11 or newer, Rust installed through
 [rustup](https://rustup.rs/), and a platform C compiler. The repository pins
 Rust 1.85.1; run the commands from the repository root. Native outputs go in
-`dist/`. This builds the same runtime used by the binary release.
+`dist/`. The commands below check out stable 0.5.0. Use `--branch main` only
+when you intend to build the development version.
 
 ```bash
-git clone --depth 1 --branch main https://github.com/johannes-schmieder/fereg.git
+git clone --depth 1 --branch v0.5.0 https://github.com/johannes-schmieder/fereg.git
 cd fereg
 ```
 
@@ -142,6 +136,8 @@ rebuilds them with Stata 15.
 | `fereg` is not found | Run `which fereg` and check that installation completed into a directory on `adopath`. |
 | `r(601)`, missing plugin | Install the complete package, including the native plugin for your platform. |
 | `r(499)`, incompatible files | Exit Stata, install/update the complete package, and restart. Use `which fereg, all` to locate older copies earlier on `adopath`. |
+| A Linux loader error names `GLIBC_2.28` | Use a system with glibc 2.28 or newer, or build from source for your supported local environment. |
+| `github install` ends with `r(132)` | Restart Stata and use the direct tagged `net install` command above, then run the self-test. The helper can fail while reading GitHub release metadata even after installing the files. |
 | macOS refuses to load the plugin | Use the package installed directly by Stata, or the local source build, then run `fereg, selftest verbose` for the loader error. |
 | A build cannot find Python, Cargo or a C compiler | Install the listed build prerequisites and make sure they are on PATH before rerunning from the repository root. |
 

@@ -12,7 +12,7 @@ relicense StataCorp's SPI sources, the MIT numerical dependencies, or the
 MIT/Apache-2.0 Rayon sources. Earlier fereg MIT notices remain in
 [THIRD_PARTY_NOTICES](../THIRD_PARTY_NOTICES.md).
 
-Native beta assets must include their checksums and dependency audit, plus a
+Native release assets must include their checksums and dependency audit, plus a
 matching corresponding-source archive with the exact Cargo.lock dependency
 sources, their licenses, build scripts, and an offline Cargo configuration.
 Only publish the platforms actually included and tested. Checks on one platform

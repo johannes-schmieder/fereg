@@ -23,6 +23,12 @@ limitations or comparator discrepancies. Linux requires glibc 2.28 or newer;
 licensed Intel-Mac Stata testing remains outstanding. The accepted Linux
 16-regressor, one-worker no-FE regression of 7.3% against beta.14 remains.
 
+A subsequent documentation review corrects the PPML Auto solver and host-thread
+descriptions, dependency attribution, platform requirements and benchmark
+summaries on `main`. The [installation guide](docs/installation.md#corrections-to-the-bundled-050-documentation)
+identifies the corrections to the fixed release documentation. Native binaries,
+release archives and the tag are unchanged.
+
 ## 0.5.0 beta.15 — 2026-11-02
 
 Faster parallel OLS without fixed effects. The new path applies to Fast,

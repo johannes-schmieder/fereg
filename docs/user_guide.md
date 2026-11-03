@@ -1,25 +1,22 @@
 # fereg user guide
 
-`fereg` fits linear models while absorbing one or more high-dimensional fixed
-effects. Stata parses the command, factor variables, time-series operators, and
-requested outputs. A single native call constructs the final sample, absorbs
-the fixed effects, estimates the finite coefficients and covariance matrix,
-checks the result, and writes the requested outputs.
+Version 0.5.0 provides two commands: `fereg` for ordinary and weighted least
+squares, and `feppml` for Poisson pseudo-maximum likelihood. Both allow models
+with no fixed effects, one fixed effect, or several high-dimensional effects.
+They validate the estimates and requested outputs before publishing results.
 
-Install both commands using the [installation guide](installation.md).
-
-This guide describes the public OLS and PPML commands in the 0.5.0 beta. `feppml` is active through the same guarded Rust-backed transaction and
-shared certified-linear engine as `fereg`. Binary packages support Linux, Windows
-and macOS; see [validation](VALIDATION.md) for platform-specific test coverage.
+Start with the [installation guide](installation.md). The same package installs
+both commands and their native plugin. Platform requirements and tested coverage
+are listed there and in [validation](VALIDATION.md).
 
 ## Syntax
 
 ```stata
-fereg depvar [indepvars] [if] [in] [weight], [options]
+fereg depvar [indepvars] [if] [in] [weight] [, options]
 
 fereg, selftest [threads(#) verbose]
 
-feppml depvar [indepvars] [if] [in] [fweight|pweight], [options]
+feppml depvar [indepvars] [if] [in] [fweight|pweight] [, options]
 
 fereg [, level(#) display_options]
 feppml [, level(#) display_options]
@@ -29,11 +26,10 @@ Without a variable list, each command redisplays its last results. This replay
 also serves `estimates replay`, `bootstrap:` and `jackknife:`; the `by:`
 prefix is not supported.
 
-`fereg` accepts `aweight`, `fweight`, and `pweight`; it recognizes `iweight`
-only to return the pinned `r(101)` rejection. PPML weight support is described
-below.
+`fereg` accepts analytic, frequency and probability weights. Importance
+weights return `r(101)`. PPML weight support is described below.
 
-### PPML surface
+### PPML models and options
 
 `feppml` fits a log-link Poisson pseudo-maximum-likelihood mean with zero or
 more absorbed effects. Robust inference is the default; one- through five-way
@@ -49,37 +45,25 @@ the documented `r(101)` rejection. After estimation, `predict` supports
 required retained state is available. See `help feppml` for the exact syntax,
 drop codes, stored results, failure atomicity, and runnable examples.
 
-`solver(auto)` selects LSMR for exactly two or three categorical intercept
-effects when fast-memory execution and the complete specialized workspace fit
-the native memory plan. Otherwise it selects MAP, including low-memory and
-absorbed-slope designs. It does not select the explicit CMG solver. With
-exactly two categorical intercept effects and no slopes, Auto publication fits
-also reuse one CMG preconditioner across IRLS iterations to accelerate their
-joint FE solves and canonical products. This is solve acceleration inside Auto,
-not `solver(cmg)`, and every result is still certified. Every PPML publication
-fit enters the strict convergence checkpoint only once the accepted predictor
-is predicted to settle within the strict envelope, so iteration counts can
-differ from earlier betas. This is the development-admitted policy, not a
-formal qualification claim.
-Explicit `solver(lsmr)` selects one native fused or joint LSMR implementation
-for the fit, and `solver(cmg)` means the prepared fused-FWL CMG implementation.
-Concrete LSMR preconditioner and reuse choices remain internal and are not
-additional command options.
-LSMR initially supports at least two categorical intercept effects and CMG
-exactly two or three. Both retain the full PPML output surface, including
-saved fixed effects recovered from the accepted canonical final-Hessian state,
-and require fast-memory execution; a recognized request outside that envelope
-returns `r(498)`. Numerical CMG nonconvergence falls back permanently and
-visibly to MAP for ordinary frames. On admitted two- or three-effect LSMR/CMG
-fits, including automatic LSMR, the initial
-full-width basis-freezing projection and the strict and final-Hessian
-projections use current-weight LSMR at every retained sample size,
-only after independent canonical recertification. Canonical rank/status
-authority remains unchanged. Numerical
-failure visibly retries the untouched checkpoint through MAP, while other
-errors remain fatal.
-`e(feppml_solver)` and the accompanying macros distinguish requested,
-selected, concrete, effective, checkpoint, and fallback identities.
+Leave `solver(auto)` in place unless you need a specific method. It selects
+the MAP projection family, whose internal numerical method depends on the
+design and available memory. For eligible two-effect categorical designs it
+can reuse a CMG preconditioner across IRLS iterations. That internal
+acceleration does not mean the command selected explicit `solver(cmg)`.
+
+Explicit `solver(lsmr)` requires at least two categorical intercept effects;
+`solver(cmg)` supports exactly two or three. Both require the fast-memory
+route and support the full PPML output interface. In the three-effect CMG
+case, the two largest retained dimensions form the graph core; the remaining
+dimension may have at most 64 non-base indicators. Absorbed slopes and explicit
+`memory(low)` are outside these two solvers' supported scope. Unsupported
+requests return `r(498)`; a supported workspace that cannot fit returns `r(909)`.
+
+All routes retain the rank, convergence, final-Hessian and covariance checks.
+A permitted numerical fallback is reported explicitly. Inspect
+`e(feppml_solver)` and its accompanying macros for the requested solver,
+selected engine, final method and fallback details. The
+[installed help](../stata/feppml.sthlp) gives the complete contract.
 
 ### Optional PPML coefficient mean correction
 
@@ -177,7 +161,7 @@ dimension. Cluster interactions use `#`, not `##`.
 | `iterate(#)` | `16000` | Set the fixed-effect solver iteration limit. |
 | `deterministic` | off | Fix the native work partition and merge order for the same architecture and thread count. |
 | `timeit` | off | Print timing, selected memory plan, allocation, scratch, RSS, and thread diagnostics. |
-| `verbose(#)` | `0` | Record the requested verbosity level. In the current beta, `timeit` is the printed execution diagnostic. |
+| `verbose(#)` | `0` | Record the requested verbosity level. `timeit` prints the execution diagnostics. |
 
 `preconditioner()` is valid only with `solver(auto)` or `solver(lsmr)`.
 Explicit MAP, Irons--Tuck, SQUAREM, and CMG requests therefore use
@@ -251,9 +235,8 @@ term creates only the suffixed slope variables. Saved fixed-effect
 normalizations are not unique; fitted absorbed contributions are the stable
 identified object.
 
-Saved names and `residuals()` must refer to new, distinct variables. The
-legacy-style `savefes()` option is not a saving interface in this beta; name
-each requested effect inside `absorb()` instead.
+Saved names and `residuals()` must refer to new, distinct variables. Use names
+inside `absorb()` to save OLS effects; `savefes()` is rejected.
 
 ## OLS samples, weights, and fixed effects
 
@@ -308,9 +291,9 @@ actually applied a CMG preconditioner. This does not enable an explicit
 `residual`. Its first two columns, `requested` and `used`, use these codes:
 1 auto, 2 map, 3 lsmr, 4 cg, 5 it, 6 squarem, 7 cmg, 8 cmgschur.
 Column 3 is iterations, column 4 the stop code (1 no fixed effects,
-2 certified, 5 derived certificate) and column 11 is fallback. Without
-`residuals()`, `xbd()`, `d()` or saved fixed effects, the default memory mode
-certifies the within residual of the absorbed outcome and regressors directly
+2 certified, 5 derived certificate) and column 11 is fallback. For automatic
+categorical-intercept fits without `residuals()` or named saved fixed effects,
+the default memory mode certifies the within residual of the absorbed outcome and regressors directly
 (stop code 5, zero iterations) instead of absorbing it again. Low-memory absorption
 summarizes all blocks: a fallback takes precedence; otherwise CMG use is
 retained even if an earlier or later block finished without it. A zero-iteration
@@ -327,7 +310,7 @@ Use `ereturn list` for the complete set. Developer tracing is not needed to
 identify the reported method.
 
 `predict newvar` and `predict newvar, xb` return the finite-regressor linear
-prediction. Models fit with `residuals(saved_residual)` additionally support:
+prediction on the estimation sample. Models fit with `residuals(saved_residual)` additionally support:
 
 ```stata
 predict fitted, xbd
@@ -361,8 +344,9 @@ reproducible local comparison, not release qualification.
 Use the [maintained local benchmark](../bench/README.md) for descriptive development
 measurements. Descriptive Linux comparisons with fixest, PyFixest, reghdfe,
 ppmlhdfe and `areg` are in [Comparing fereg with fixest](fixest_benchmarks.md)
-and, on real AKM panels with and without saved effects, in
-[Veneto AKM comparisons](veneto_benchmarks.md). [Validation](VALIDATION.md)
+and, for OLS and PPML on Veneto's largest connected set, in
+[Veneto comparisons](veneto_benchmarks.md). Earlier campaigns are retained
+under dated headings. [Validation](VALIDATION.md)
 records scientific evidence and timing limits. Both public commands use the
 same sole native runtime.
 
@@ -372,11 +356,14 @@ Type `help fereg` for twelve self-contained examples. Each estimation example
 creates synthetic data and preserves/restores the caller's dataset. The
 benchmark additionally requires Stata 19 and an installed `reghdfe`.
 
-The public 0.5.0 beta does not expose IV/GMM, group outcomes with individual
+Version 0.5.0 does not support IV/GMM, group outcomes with individual
 fixed effects, HAC or Driscoll--Kraay covariance estimators, other GLMs, or GPU
-execution. During each call `feppml` temporarily sets Stata's `processors` to 1 so that
-Stata's own workers do not compete with the native team; the caller's setting
-is restored on success, error and Break. `feppml` does not expose a model-based IID covariance,
+execution. When the dataset in memory has fewer than one million observations,
+`feppml` temporarily sets Stata's `processors` to 1 to limit competition with
+the native team. At one million observations or more it keeps the caller's
+setting. The original setting is restored on success, error and Break.
+
+`feppml` does not expose a model-based IID covariance,
 preconditioner or DoF-policy controls, analytic/importance weights, or
 developer injection.
 Fixed-width string categorical sources are supported, but

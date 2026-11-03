@@ -12,7 +12,8 @@ installed. Keep `rustup`, `clang`, `strip`, `lipo`, `codesign`, `nm`, `otool` an
 Stata qualification.
 
 Verify the published archive checksum, extract it with `unzip fereg-0.5.0-source.zip`
-(which preserves the recorded executable permissions), and enter `fereg-0.5.0-source`. Run the following in Bash. The fresh Cargo home
+(which preserves the recorded executable permissions), and enter
+`fereg-0.5.0-source`. Run the following in Bash. The fresh Cargo home
 makes missing dependency sources visible; Rust path remaps prevent local paths
 from entering diagnostic strings in the distributed binary.
 
@@ -31,7 +32,7 @@ FEREG_RUSTUP_ROOT="${RUSTUP_HOME:-$HOME/.rustup}"
 FEREG_REMAP_SEPARATOR=$'\x1f'
 export CARGO_ENCODED_RUSTFLAGS="--remap-path-prefix=$FEREG_SOURCE_ROOT=/fereg-source${FEREG_REMAP_SEPARATOR}--remap-path-prefix=$CARGO_TARGET_DIR=/fereg-target${FEREG_REMAP_SEPARATOR}--remap-path-prefix=$CARGO_HOME=/cargo${FEREG_REMAP_SEPARATOR}--remap-path-prefix=$FEREG_RUSTUP_ROOT=/rust-toolchain"
 export FEREG_GIT_COMMIT="$(python3 -c 'import json; print(json.load(open("SOURCE_MANIFEST.json"))["source_sha"][:12])')"
-export FEREG_BUILD_DATE=2026-10-30
+export FEREG_BUILD_DATE=2026-11-03
 bash scripts/build_macos.sh
 ```
 

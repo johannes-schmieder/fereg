@@ -52,8 +52,7 @@ accuracy check passed and at which tolerance.
 Use {cmd:matrix list e(fereg_solver)} for the two named rows, iteration counts,
 fallback indicators and certificates. On the automatic two-effect path,
 {cmd:cg} is Schur PCG and {cmd:cmgschur} is CMG-preconditioned Schur PCG.
-See {help fereg##stored:Stored results} for the numeric codes and Low-block
-aggregation. These diagnostics do not require saving residuals.
+See {help fereg##stored:Stored results} for the numeric codes and aggregation across low-memory blocks. These diagnostics do not require saving residuals.
 
 {title:Example}
 

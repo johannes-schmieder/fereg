@@ -1,64 +1,37 @@
-# fereg: Fast High Dimensional Fixed Effects Regressions in Stata
+# fereg: Fixed-effect OLS and PPML in Stata
 
-`fereg` is a Rust-backed Stata estimator for linear models with many fixed
-effects. It supports OLS and weighted least squares, multiple absorbed effects,
-heterogeneous slopes, numeric factors and categorical interactions, singleton
-removal, robust and multiway-clustered inference, and saved fixed-effect
-outputs. Estimation runs in one native call and publishes results only after
-the numerical and covariance checks pass.
+`fereg` fits linear models by ordinary or weighted least squares. `feppml`
+fits Poisson pseudo-maximum-likelihood models, including nonnegative outcomes
+with zeros. Both support multiple high-dimensional fixed effects, robust and
+multiway-clustered inference, and saved fitted values and fixed effects.
+They share one native Rust runtime and require no separate language runtime.
 
-`fereg` and `feppml` share one maintained native runtime. Scientific
-requirements live in [SPEC](docs/SPEC.md), with current validation scope in
-[VALIDATION](docs/VALIDATION.md). The source is licensed under GPL-3.0-only, with third-party terms preserved in
-[THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md).
-
-## Upstream software and acknowledgments
-
-fereg builds on established open-source numerical software. Its LSMR solver
-and pairwise Schwarz preconditioner use a pinned, adapted
-[fork](https://github.com/johannes-schmieder/within) of
-[within](https://github.com/py-econometrics/within), developed by Alexander
-Fischer, Kristof Schröder, and contributors at the appliedAI Institute for
-Europe and in the PyFixest community. Their
-[graph-preconditioning paper](https://github.com/py-econometrics/within-paper)
-describes the approach. The fork adapts data access, resumable iterations,
-allocation, reproducible reductions, and cancellation for fereg; the upstream
-LSMR and preconditioning algorithms are shared numerical building blocks.
-
-The CMG backend uses a [Rust port](https://github.com/johannes-schmieder/CMG)
-of Koutis and Miller's
-[original MATLAB/C implementation](https://github.com/ikoutis/cmg-solver),
-based on the combinatorial multigrid method of
-[Koutis, Miller, and Tolliver (2011)](https://doi.org/10.1016/j.cviu.2011.05.013).
-fereg integrates these components with Stata estimation, automatic solver
-selection, and independent convergence checks.
-
-We also acknowledge [reghdfe](https://github.com/sergiocorreia/reghdfe),
-[ppmlhdfe](https://github.com/sergiocorreia/ppmlhdfe), and
-[PyFixest](https://github.com/py-econometrics/pyfixest) as development and
-compatibility references. See [Selected references](#selected-references)
-for the methodological sources and
-[Third-party notices](THIRD_PARTY_NOTICES.md) for licenses and code provenance.
+Use the [installation guide](docs/installation.md) to get started and the
+[user guide](docs/user_guide.md) for syntax, examples and limitations.
+The source is licensed under GPL-3.0-only; third-party terms are preserved in
+[Third-party notices](THIRD_PARTY_NOTICES.md).
 
 ## Install in Stata
 
-Install the current package from `main` in a fresh Stata session:
+Install stable version 0.5.0 in a fresh Stata session:
 
 ```stata
-net install fereg, from("https://raw.githubusercontent.com/johannes-schmieder/fereg/main/") replace
+net install fereg, from("https://raw.githubusercontent.com/johannes-schmieder/fereg/v0.5.0/") replace
 fereg, selftest
 ```
 
-This installs `fereg`, `feppml`, help files and the current native plugin
-from `main`, which carries the
-[v0.5.0](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0)
-runtime. Version 0.5.0 requires Stata 15 or newer and includes native binaries
-for Linux x86-64, Windows x86-64 and macOS (Apple Silicon/Intel universal).
-No Rust, Python or extra Stata packages are needed to use the binary package.
-Exit Stata before updating, then install in a fresh session so the previous
-plugin is unloaded.
+This installs both commands, their help files and the native plugin from the
+[0.5.0 release](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0).
+It requires Stata 15 or newer. Linux x86-64 needs glibc 2.28 or newer;
+Windows x86-64 and universal macOS binaries are also included. Mac Stata
+qualification uses Apple Silicon; native Intel-Mac testing remains outstanding.
+Windows uses serial numeric input. No compiler or extra Stata package is needed.
 
-The community [`github`](https://github.com/haghish/github) helper also works:
+Exit Stata before updating so that the previous plugin is unloaded. To follow
+the current development package, replace `v0.5.0` in the URL with `main`.
+
+The community [`github`](https://github.com/haghish/github) helper installs the
+current package from `main`:
 
 ```stata
 net install github, from("https://haghish.github.io/github/")
@@ -140,10 +113,10 @@ fixed effect. Median loading time falls from 4.60 to 0.96 seconds with parallel
 input; whole-command time falls from 10.66 to 6.98 seconds. These are measurements
 on the tested Apple M2 Ultra, not a general speed guarantee.
 
-## Command syntax
+## OLS command syntax
 
 ```stata
-fereg depvar [indepvars] [if] [in] [weight], [options]
+fereg depvar [indepvars] [if] [in] [weight] [, options]
 ```
 
 Common options are:
@@ -173,17 +146,18 @@ Absorbed-term notation follows these rules:
 | `fe_firm=firm` | Save a normalized firm effect in `fe_firm` |
 
 The estimator accepts analytic, frequency, and probability weights. Probability
-weights use robust inference by default; importance weights are rejected to
-match the pinned `reghdfe` contract. Unless `keepsingletons` is specified,
+weights use robust inference by default; importance weights are not supported. Unless `keepsingletons` is specified,
 singleton observations are removed to a fixed point.
 
 ## Prediction and postestimation
 
-After estimation, `predict` supports `xb`. If the model was fit with
-`residuals(newvar)`, it also supports `xbd`, `d`, and `residuals`. Standard
+After `fereg`, `predict` supports `xb` on the estimation sample. If the model
+was fit with `residuals(newvar)`, it also supports `xbd`, `d`, and `residuals`. Standard
 `test` and `estat summarize` are available. See
 [`stata/fereg_postestimation.sthlp`](stata/fereg_postestimation.sthlp) for the
-exact postestimation contract.
+exact OLS postestimation contract. After `feppml`, use `help feppml` for
+`mu`, `eta`, `xb`, absorbed contributions and residuals; predictions involving
+fixed effects require retained fitted-state information.
 
 ## Diagnostics and development
 
@@ -230,18 +204,52 @@ Licensed profiles and platform limitations are documented in
 
 Development is consolidated on `main`.
 
-## Working paper
+## Methods and evidence
 
-The manuscript, publication assets, and frozen paper evidence live in the
-sibling `fereg-paper` repository. Build it there with
-`make paper`; the paper build does not require this implementation checkout.
-The maintained benchmark tooling, qualification harness and SCC comparison
-campaigns are in [bench](bench/README.md).
+The companion working paper is maintained separately. Public documentation
+of the methods and numerical checks is available in the [specification](docs/SPEC.md)
+and [validation record](docs/VALIDATION.md). The maintained benchmark tools,
+qualification harness and cluster comparison results are in [bench](bench/README.md).
+
+## Upstream software and acknowledgments
+
+fereg builds on established open-source numerical software. Its LSMR solver
+and pairwise Schwarz preconditioner use a pinned, adapted
+[fork](https://github.com/johannes-schmieder/within) of
+[within](https://github.com/py-econometrics/within), developed by Alexander
+Fischer, Kristof Schröder, and contributors at the appliedAI Institute for
+Europe and in the PyFixest community. Their
+[graph-preconditioning paper](https://github.com/py-econometrics/within-paper)
+describes the approach. The fork adapts data access, resumable iterations,
+allocation, reproducible reductions, and cancellation for fereg; the upstream
+LSMR and preconditioning algorithms are shared numerical building blocks.
+
+The CMG backend uses a [Rust port](https://github.com/johannes-schmieder/CMG)
+of Koutis and Miller's
+[original MATLAB/C implementation](https://github.com/ikoutis/cmg-solver),
+based on the combinatorial multigrid method of
+[Koutis, Miller, and Tolliver (2011)](https://doi.org/10.1016/j.cviu.2011.05.013).
+fereg integrates these components with Stata estimation, automatic solver
+selection, and independent convergence checks.
+
+Parallel copying from Stata has precedent in David Roodman's
+[`julia` package](https://github.com/droodman/julia.ado), described in his
+[2025 Stata Journal article](https://doi.org/10.1177/1536867X251341105).
+Its C++ plugin copies data across columns concurrently. fereg uses a qualified
+read-only numeric loading phase; this precedent does not establish thread
+safety for arbitrary Stata plugin operations.
+
+We also acknowledge [reghdfe](https://github.com/sergiocorreia/reghdfe),
+[ppmlhdfe](https://github.com/sergiocorreia/ppmlhdfe), and
+[PyFixest](https://github.com/py-econometrics/pyfixest) as development and
+compatibility references. See [Selected references](#selected-references)
+for the methodological sources and
+[Third-party notices](THIRD_PARTY_NOTICES.md) for licenses and code provenance.
 
 ## Selected references
 
 These sources describe the numerical and econometric methods used by fereg
-and its dependencies.
+and its dependencies, along with prior work on parallel data transfer.
 
 - **Fischer, Alexander, and Kristof Schröder (2026).**
   [*Graph Preconditioning for High-Dimensional Fixed Effects Regression*](https://github.com/py-econometrics/within-paper).
@@ -250,6 +258,9 @@ and its dependencies.
   [*Combinatorial Preconditioners and Multilevel Solvers for Problems in Computer Vision and Image Processing*](https://doi.org/10.1016/j.cviu.2011.05.013).
   *Computer Vision and Image Understanding* 115(12): 1638–1646.
   The combinatorial multigrid method underlying the CMG backend.
+- **Roodman, David (2025).**
+  [*Julia as a Universal Platform for Statistical Software Development*](https://doi.org/10.1177/1536867X251341105).
+  *Stata Journal* 25(2): 255–284. Parallel Stata-to-native data copying in `julia`.
 - **Fong, David Chin-Lung, and Michael A. Saunders (2011).**
   [*LSMR: An Iterative Algorithm for Sparse Least-Squares Problems*](https://doi.org/10.1137/10079687X).
   *SIAM Journal on Scientific Computing* 33(5): 2950–2971.

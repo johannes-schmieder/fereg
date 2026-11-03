@@ -1,5 +1,10 @@
 # Upstream within compatibility
 
+This is the historical beta.11 migration record from October 2026. Its dated
+candidate decisions and benchmark observations are retained as evidence.
+For the current release and supported behavior, see the [changelog](../CHANGELOG.md),
+[specification](SPEC.md) and [validation record](VALIDATION.md).
+
 The baseline audit compares fereg `7f56d06ee4c004741f32d4692bc0e40b898a51d7`
 with upstream `py-econometrics/within` main frozen at
 `32dde1bdd604f33012e592270781129e09e82a92`. That fereg baseline used

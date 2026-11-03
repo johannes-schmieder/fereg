@@ -12,8 +12,8 @@ They are not relicensed by fereg.
 The MIT-licensed `within` and `schwarz-precond` runtime dependencies come from
 [within](https://github.com/py-econometrics/within), developed by Alexander
 Fischer, Kristof Schröder, and contributors at the appliedAI Institute for
-Europe and in the PyFixest community. fereg uses version 0.4.0 from its
-[adapted fork at `3b5b9b9a`](https://github.com/johannes-schmieder/within/tree/3b5b9b9ab9b79e4a8cac2841f7c1d41bb2276104).
+Europe and in the PyFixest community. fereg uses version 0.5.0 from its
+[adapted fork at `8d401d82`](https://github.com/johannes-schmieder/within/tree/8d401d8278ac783b2f258c459e057f30cd80d595).
 The upstream library supplies LSMR, pairwise Schwarz preconditioning, local
 approximate factorizations, and an adaptive preconditioner strategy. The fork
 adapts borrowed data access, resumable iterations, bounded allocation,
@@ -23,7 +23,7 @@ data and independently check the returned weighted fixed-effect residuals
 before accepting an estimate. The numerical methods and their sources are
 acknowledged in the [README](README.md#selected-references).
 
-The upstream [MIT license](https://github.com/johannes-schmieder/within/blob/3b5b9b9ab9b79e4a8cac2841f7c1d41bb2276104/LICENSE)
+The upstream [MIT license](https://github.com/johannes-schmieder/within/blob/8d401d8278ac783b2f258c459e057f30cd80d595/LICENSE)
 retains copyright notices for within contributors and the appliedAI Institute
 for Europe gGmbH. Preserve those notices with source distributions.
 

@@ -32,7 +32,7 @@ Generated captures belong under `target/tmp/` and are deleted after inspection.
 `campaign.json` freezes the descriptive OLS/PPML comparison against pinned fixest
 0.14.2 (default and strict profiles), PyFixest, FixedEffectModels.jl, reghdfe,
 ppmlhdfe and Stata 19 areg/regress. At one million rows and four cores it covers the
-AKM baseline with every covariance type with and without saved FE, 4 and 64
+AKM baseline with every covariance type with and without saved FE, 4 and 32
 controls instead of 16, and one-FE and dense/sparse two-/three-FE designs. Core
 series at 1/2/4/8/16 workers use the AKM baseline, and size series from
 100,000 to ten million rows cover AKM OLS, AKM PPML and sparse three-FE OLS.
@@ -114,9 +114,10 @@ fixed-worker exact repeatability and cross-worker agreement, and
 writes the compact summary, observation and input records kept in `results/`.
 See the [comparison guide](../docs/fixest_benchmarks.md) for interpretation.
 
-The November 2 rerun measures the frozen beta.15 package without runtime changes.
+The [November 2–3 campaign](results/scc-20261102-beta15.md) measured the frozen
+beta.15 package; stable 0.5.0 contains the same native binaries.
 It retains the latest corrected synthetic inputs, adds no-FE OLS/PPML cells,
-and schedules only the Veneto largest connected set: OLS on log daily wages
+and uses only the Veneto largest connected set: OLS on log daily wages
 and PPML on daily wages (the inverse of the audited logarithm), with the same
 seven controls and robust PPML covariance. Each panel has its own whole-node
 allocation and a 41,400-second cleanup threshold. The independent dense OLS/Poisson
@@ -133,7 +134,10 @@ in a supplement; all datasets still require exact file and decoded-column hashes
 
 `panel_campaign.py` uses the same pinned estimator entrypoints, timers, numerical
 tolerances and Linux placement as the synthetic campaign, with the actual fevc
-retained panels. The long panel is 1996–2001 (5,163,428 observations); it jointly
+retained panels. The current campaign uses the largest connected set described
+above and in the [Veneto comparison guide](../docs/veneto_benchmarks.md).
+The runner also supports the earlier fevc samples described here.
+The long panel is 1996–2001 (5,163,428 observations); it jointly
 fits worker/firm effects, `((age-40)/40)^2`, `((age-40)/40)^3` and year indicators
 with 2001 omitted. The short panel is the pooled 1999/2001 sample (1,319,994
 observations), jointly fitting worker/firm effects and a 2001 indicator. Both

@@ -138,7 +138,7 @@ fereg's public solver policy. Johannes approved retiring only the general
 more-than-two-FE pair-upgrade experiment; keep the two-FE h/k and builder-Break
 selectors, other supported comparison policies and independent scientific
 witnesses. Retirement is not a waiver of integration, cancellation, memory or
-beta.10 performance qualification.
+the declared performance qualification.
 
 After editing `_fereg_ppml_result_mata.ado`, rebuild its three `.mo` files and
 receipt using the actual Stata 15 compiler with `scripts/build_ppml_mata.py`.
