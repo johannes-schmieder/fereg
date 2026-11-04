@@ -31,6 +31,27 @@ plugin passes its binary audit and actual ABI/selftest/panic-containment check.
 This repair's licensed execution is Apple Silicon Mac Stata 19; no new Linux,
 Windows, native Intel-Mac or Stata 15 execution is claimed.
 
+At Johannes's explicit request, main and the existing v0.5.0 tag and release
+archives now include the repair. The [publication record](../bench/results/v050-publication-20261103.json)
+retains the previous tag and all six previous asset identities, the seven
+replacement asset identities, test hashes and the fresh checks. All 3,628 source
+manifest entries verify, and all 2,695 native/dependency source files match the
+prior source archive. A fresh offline universal Mac build from the new source
+archive passes its binary audit and actual ABI tests; its rebuilt plugin is not
+distributed. All three released plugin binaries remain exact.
+
+Fresh local binary-archive and SSC-layout installations verify all 36 and 34
+installed files, respectively, and pass tilde-path loading and independent
+OLS/PPML checks. Four staged fixtures pass, including plugin deletion and prior
+estimate preservation. Fresh HTTP installations from main and v0.5.0, and the
+actual `github install ..., replace` command, each verify all 37 installed
+files and the same path/scientific checks. The first GitHub-helper attempt
+stopped before package download because its isolated PLUS/g directory was
+missing; creating the helper in the correct isolated directory resolved the
+harness error. All seven unauthenticated public asset downloads match their
+prepared hashes. The release-list response is 204,332 bytes, below Stata's
+264,392-byte limit. Beta releases were not changed.
+
 ## Home-directory plugin path investigation, November 4, 2026
 
 Mauricio Caceres Bravo's [issue #35](https://github.com/johannes-schmieder/fereg/issues/35)

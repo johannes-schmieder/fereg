@@ -578,6 +578,56 @@
         "log_sha256": "d288cd6c7fb372438b075fc56961b845829c695ddb9a8d37d497f6268b349c4d"
       }
     ],
-    "qualification_reuse": "All native binaries and native/dependency source files are unchanged. Fresh frontend/package/source-build checks on Apple Silicon Mac Stata 19; no new Linux, Windows, native Intel-Mac or Stata 15 execution."
+    "qualification_reuse": "All native binaries and native/dependency source files are unchanged. Fresh frontend/package/source-build checks on Apple Silicon Mac Stata 19; no new Linux, Windows, native Intel-Mac or Stata 15 execution.",
+    "publication": {
+      "unauthenticated_public_downloads_exact": true,
+      "release_list_bytes": 204332,
+      "release_list_limit_bytes": 264392,
+      "release_id": 432724771,
+      "release_notes_sha256": "940387ed6ba0092c335c6dca8ac75825ba26556c8ba977f71f8d86264c2256b9",
+      "url": "https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0",
+      "tag_object": "2ccdc2be0283d5dcfce2fa5ccc45a96bf5f4c9c8",
+      "tag_commit": "f791f057b539da4d17f5cccff51341871425f839",
+      "asset_count": 7,
+      "beta_releases_untouched": true
+    },
+    "http_installations": [
+      {
+        "mode": "main",
+        "status": "pass",
+        "installed_files": 37,
+        "installed_hashes_exact": true,
+        "tilde_loader_and_plugin_paths": true,
+        "path_fixture_and_two_fe_oracles": "pass",
+        "independent_ppml_dummy_fixture": "pass",
+        "log_sha256": "0b17b2e6104a080b60991e173cb1a5f288bc080dc7d8df27a405744c9c181a14"
+      },
+      {
+        "mode": "tag",
+        "status": "pass",
+        "installed_files": 37,
+        "installed_hashes_exact": true,
+        "tilde_loader_and_plugin_paths": true,
+        "path_fixture_and_two_fe_oracles": "pass",
+        "independent_ppml_dummy_fixture": "pass",
+        "log_sha256": "22767653d87fa86f3f49ba8188cb4127d8c5ec80d2834cef409ae300de2d89bc"
+      },
+      {
+        "mode": "github",
+        "status": "pass",
+        "installed_files": 37,
+        "installed_hashes_exact": true,
+        "tilde_loader_and_plugin_paths": true,
+        "path_fixture_and_two_fe_oracles": "pass",
+        "independent_ppml_dummy_fixture": "pass",
+        "log_sha256": "36cdc26f7742a1954b0a7ca1ae664223debc8fcbc6d728b897c692865328d5a6"
+      }
+    ],
+    "github_installation_setup_failure": {
+      "stata_rc": 603,
+      "cause": "Isolated github helper directory existed but PLUS/g, where the helper creates github.dta, did not. Failure preceded package download.",
+      "log_sha256": "9b2578a971ea253bb5adbccbc2e50b3b807f229dd8c1730c9012f3c43b5384a7"
+    },
+    "http_installation_harness_sha256": "0411953e8149902f4d72457ed8d42f1da59d21267c22f516b9dcd9db6895b477"
   }
 }
