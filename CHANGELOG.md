@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.0 loader repair — 2026-11-04
+
+Resolve the plugin filename to an absolute path before loading it. This fixes
+`r(601)` when `findfile` returns a home-directory abbreviation (`~/...`).
+The resolver also handles relative paths and spaces, preserves the working
+directory and existing Mata variables, and lives inside the existing loader
+file. Thanks to Mauricio Caceres Bravo for reporting and suggesting the repair
+in [issue #35](https://github.com/johannes-schmieder/fereg/issues/35).
+Johannes authorized updating main and the existing v0.5.0 tag and archives;
+all three native plugin binaries remain unchanged.
+
 ## 0.5.0 — 2026-11-03
 
 Stable release of the qualified beta.15 runtime. The Linux, Windows and universal

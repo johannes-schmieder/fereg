@@ -1,4 +1,4 @@
-*! fereg plugin loader 0.5.0 24aug2026
+*! fereg plugin loader 0.5.0 04nov2026
 program define _fereg_load, rclass
     version 15.0
     syntax , ACTION(string) [THREADS(integer 0) VERBOSE]
@@ -35,6 +35,7 @@ program define _fereg_load, rclass
         di as error "Build the target-native plugin and place it on the ado-path."
         exit 601
     }
+    _fereg_fullpath `"`r(fn)'"'
     local plugin_file `"`r(fn)'"'
 
     capture program `handle', plugin using(`"`plugin_file'"')
@@ -65,4 +66,24 @@ program define _fereg_load, rclass
     return local handle "`handle'"
     return local plugin_name "`plugin_name'"
     return local plugin_file `"`plugin_file'"'
+end
+
+program define _fereg_fullpath, rclass
+    version 15.0
+    local cur `"`c(pwd)'"'
+    mata: st_local("base", pathbasename(st_local("1")))
+    * Strip only the filename: pathgetparent() simplifies ~/../ before cd
+    * can expand ~, which would change the meaning of that path.
+    local dir = substr(`"`1'"', 1, strlen(`"`1'"') - strlen(`"`base'"'))
+    if `"`dir'"' == "" local dir .
+    * cd expands home/relative paths that program, plugin does not expand.
+    * Preserve the caller's directory even on Break or path-construction error.
+    nobreak {
+        quietly cd `"`dir'"'
+        capture mata: st_local("full", pathjoin(pwd(), st_local("base")))
+        local path_rc = _rc
+        quietly cd `"`cur'"'
+    }
+    if `path_rc' exit `path_rc'
+    return local fn `"`full'"'
 end

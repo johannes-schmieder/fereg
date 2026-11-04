@@ -87,6 +87,7 @@
         "ci/fereg_smoke.do",
         "tests/stata/development/ols_cmg_raw_residual_oracle.do",
         "tests/stata/installation/installation_smoke.do",
+        "tests/stata/installation/plugin_paths.do",
         "tests/stata/documentation/help_examples.do",
         "tests/stata/installation/reload_loop.do",
         "tests/stata/parser/ordinary_factor_terms.do",
@@ -157,6 +158,7 @@
       "fixtures": [
         "ci/fereg_smoke.do",
         "tests/stata/installation/installation_smoke.do",
+        "tests/stata/installation/plugin_paths.do",
         "tests/stata/installation/reload_loop.do"
       ],
       "timeout_seconds": 3600,
@@ -328,6 +330,7 @@
         "tests/stata/installation/ols_vce_case.do",
         "tests/stata/installation/ols_weight_expression.do",
         "tests/stata/installation/installation_smoke.do",
+        "tests/stata/installation/plugin_paths.do",
         "tests/stata/documentation/help_examples.do",
         "tests/stata/installation/prepare_ols_boundary.do",
         "tests/stata/installation/reload_loop.do",

@@ -12,6 +12,12 @@ licensing updates. This is a one-time exception to the archive/tag immutability
 rule below. Retain the original identities in the publication record and keep
 all native plugin bytes unchanged; beta releases remain untouched.
 
+On 2026-11-04 Johannes also explicitly authorized repairing the plugin loader
+on main and in the existing published/tagged v0.5.0 version. That exception
+covers replacing the tag and the binary, corresponding-source and SSC archives
+with the path-resolution repair. Retain the prior tag/asset identities and all
+native plugin bytes; beta releases remain unchanged.
+
 ## Main-branch installation
 
 The root `fereg.pkg` and `stata.toc` support `github install

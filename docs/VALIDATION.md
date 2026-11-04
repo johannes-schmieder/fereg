@@ -1,5 +1,36 @@
 # Validation status
 
+## Home-directory plugin loader repair, November 4, 2026
+
+The loader now resolves the filename returned by `findfile` before registering
+the native plugin. Its private helper stays in `_fereg_load.ado`; the installed
+file inventory is unchanged. It uses program-local macros, preserves the
+working directory, and defers Break only across the short directory-resolution
+block. The final implementation strips the basename without simplifying the
+directory: the new regression exposed that `pathgetparent()` prematurely
+reduces `~/../`, losing the home-directory meaning before `cd` expands it.
+No native code, binary, scientific arithmetic or solver routing changes.
+
+The maintained `plugin_paths.do` fixture fails on the incumbent with `r(601)`
+and passes on Mac Stata/MP 19 after the repair. It covers tilde plus parent
+traversal, absolute, relative and parent-traversal paths containing spaces,
+fresh plugin registration, exact working-directory/Mata-variable preservation,
+and independent two-FE OLS/PPML coefficient witnesses. It is included in the
+quick, plugin-load and full Stata profiles. The existing 100-reload, OLS
+transaction and PPML command fixtures also pass. A fresh local root-package
+installation verifies all 37 installed file hashes, deliberately resolves both
+the loader and plugin through `~/...`, and passes the path fixture and an
+independent dummy-variable PPML fixture.
+
+`scripts/run_tests.sh` passes with Python 3.12, including all 349 Python tests,
+Rust/FFI/allocator checks, portable C/SPI checks and the unchanged complexity
+ratchet. The initial invocation selected system Python 3.9 and stopped on
+missing modules before native checks; rerunning with the documented Python
+3.11-or-newer environment resolved that environment error. The released Mac
+plugin passes its binary audit and actual ABI/selftest/panic-containment check.
+This repair's licensed execution is Apple Silicon Mac Stata 19; no new Linux,
+Windows, native Intel-Mac or Stata 15 execution is claimed.
+
 ## Home-directory plugin path investigation, November 4, 2026
 
 Mauricio Caceres Bravo's [issue #35](https://github.com/johannes-schmieder/fereg/issues/35)
@@ -26,11 +57,11 @@ with independent Stata dummy-variable regressions at relative tolerances
 syntax and an already-dropped plugin-handle assumption; these were harness
 errors, not additional product failures.
 
-This is investigation evidence, not a shipped repair: the production loader,
-native binaries and release archives are unchanged. Only Mac Stata 19 was
+At the investigation checkpoint the production loader, native binaries and
+release archives were unchanged. Only Mac Stata 19 was
 executed; Stata 15, Linux and Windows path handling remain untested here.
-The recommended repair is confined to frontend path resolution and needs a
-maintained installation regression test. No native numerical change is needed.
+The subsequent frontend repair and maintained regression test are recorded
+above. No native numerical change is needed.
 
 SHA-256 identities:
 
