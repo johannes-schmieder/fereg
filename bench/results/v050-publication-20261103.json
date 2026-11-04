@@ -379,5 +379,205 @@
       "help_path_resolution_test": "passed",
       "help_path_resolution_log_sha256": "155bff90c045c2621ad08fa420db147319f6041f012743f1f334c47f61f80ef4"
     }
+  },
+  "refresh_20261104": {
+    "authorization": "Johannes explicitly requested implementing the path fix, pushing main, and fixing the existing published and tagged 0.5.0 version.",
+    "issue": "https://github.com/johannes-schmieder/fereg/issues/35",
+    "original_tag_object": "34cf4b5ddab898b245a85fea37db383e327d2bb9",
+    "original_tag_commit": "7a85cd7b9ba2414699f0f87a6f7588c44fa2e3fe",
+    "previous_assets": {
+      "fereg-0.5.0-source.zip": {
+        "sha256": "4b767cbe25ffccb1e578874e66b56930acbde14d95e0cc2556c82c0eeeb3ce43",
+        "bytes": 35305113
+      },
+      "fereg-0.5.0-source.zip.sha256": {
+        "sha256": "36cba6c6ae1a93246635202645beeff2cf178f2562db05390cefc21833c8fc89",
+        "bytes": 89
+      },
+      "fereg-0.5.0-ssc.zip": {
+        "sha256": "3e462fec9e4d18878b52e48b9c5c87522b91fba968d952d56bd0ed5e90d60132",
+        "bytes": 53154782
+      },
+      "fereg-0.5.0.zip": {
+        "sha256": "4597ef376de56a8866a852dddd7a279ed61a0e9adf5c3e5604fc491f7540cad8",
+        "bytes": 18609128
+      },
+      "fereg-0.5.0.zip.sha256": {
+        "sha256": "99f0e94e86ed8dbbc7f33df7ec956b4d69e67387c95662158c90e1eaacb3dfb3",
+        "bytes": 82
+      },
+      "macos_source_build.md": {
+        "sha256": "6a1a71f8b9d6fa005ecae7f837e544508cd5ee1efbc5ebcb610fdd69302d608b",
+        "bytes": 2826
+      }
+    },
+    "packaging_source_commit": "2889939cec1297c332f5f1975b61eaa641f0871a",
+    "changes": "Resolve home and relative plugin filenames in a private subprogram in the existing loader; preserve working directory and Mata variables. Native binaries, arithmetic and solver routing unchanged.",
+    "assets": {
+      "fereg-0.5.0-source.zip": {
+        "sha256": "91a547afaf8861c683089152c69bc999b81902b1b6283121ce983037d6b46fac",
+        "bytes": 35310552
+      },
+      "fereg-0.5.0-source.zip.sha256": {
+        "sha256": "6e0c88f18cc4f422a62fa5e32671bf2ba4f5246f7353b43885c66228edecca90",
+        "bytes": 89
+      },
+      "fereg-0.5.0-ssc.zip": {
+        "sha256": "0e9d6b44bab4414dd414e9ae4d25f1754e746a0f749a145eea139d9df535a47f",
+        "bytes": 53284269
+      },
+      "fereg-0.5.0-ssc.zip.sha256": {
+        "sha256": "b01223ffe395aac75ee3e3a9165f720b99cfd2d1e4a29ff84a505a9ef18c7ef9",
+        "bytes": 86
+      },
+      "fereg-0.5.0.zip": {
+        "sha256": "6c0889b3f07e2a59c05c5b8042af5a7e1f962dba4ad851a769cbc0ef93465233",
+        "bytes": 18609716
+      },
+      "fereg-0.5.0.zip.sha256": {
+        "sha256": "9c93dfd776b97f359302b7f66ebdd8a36ec4af4ca7a62da597dbcb94b56e9ac9",
+        "bytes": 82
+      },
+      "macos_source_build.md": {
+        "sha256": "6a1a71f8b9d6fa005ecae7f837e544508cd5ee1efbc5ebcb610fdd69302d608b",
+        "bytes": 2826
+      }
+    },
+    "native_plugins_exact_previous_release": true,
+    "runtime_sha256": "8b70b3d59cbe2fb1e9fb5647ee9c0fc766a9d51efe7ade4d332f83aa9bb18cdf",
+    "dependency_audit": {
+      "advisory_count": 0,
+      "cargo_lock_sha256": "4975de767595cf184cd5328e6ec7f7a55e7871c545d3c51adbc92da1544696d5",
+      "schema": 1,
+      "source_sha": "2889939cec1297c332f5f1975b61eaa641f0871a",
+      "status": "pass",
+      "toolchain": "1.85.1"
+    },
+    "source_archive": {
+      "verified_files": 3628,
+      "native_and_dependency_files_exact_previous_source": 2695,
+      "vendored_dependencies": true,
+      "offline_universal_macos_build": "pass",
+      "fresh_cargo_home": true,
+      "binary_audit_and_actual_abi": "pass",
+      "rebuilt_plugin_is_distributed": false,
+      "build_log_sha256": "4d889f0684cfd0f82ee64976113dafe0928f3f6c67f4cbca273dc4f2f5e96ad3"
+    },
+    "source_integration": {
+      "command": "scripts/run_tests.sh",
+      "python": "3.12",
+      "python_tests_passed": 349,
+      "status": "pass",
+      "log_sha256": "4c6e7aba2900df2461b0387520e063b53a4ace9c5061bd2f5891198a1f0cfe38",
+      "initial_environment_failure": "System Python 3.9 lacked required modules; stopped before native checks. Supported Python 3.12 run passed.",
+      "initial_failure_log_sha256": "101c4f2ed932193eccb33e82f8b421e8aa88790ad3a5514d6cf54c7d4f22a2f6"
+    },
+    "path_regression": {
+      "fixture": "tests/stata/installation/plugin_paths.do",
+      "incumbent_stata_rc": 601,
+      "repaired_status": "pass",
+      "covered": "tilde with parent traversal; absolute, relative and parent-traversal paths with spaces; reload; cwd and Mata state; independent two-FE OLS/PPML witnesses",
+      "log_sha256": "332b9b0596649f482afe84c2e246ee283d18b48a717e08b3a06872d7aa8078de",
+      "development_failure": "The initial pathgetparent-based helper returned r(170) on ~/../; preserving the literal directory until cd expands it repaired the case."
+    },
+    "mapped_checks": [
+      "reload_loop.do: pass (100 reloads)",
+      "estimate_ols_eclass_transaction.do: pass",
+      "feppml_command_contract.do: pass"
+    ],
+    "distributed_macos_plugin": {
+      "binary_audit": "pass",
+      "actual_abi_selftest_panic_containment": "pass",
+      "binary_audit_sha256": "fa3cab83537893047a327e782103f3f2692c00174cbc6c3e3c0eed3f93a31222",
+      "abi_log_sha256": "2260be29b42e8e3716d555cebf2439a7097d1db8557bf6b920e2c10524d318a8"
+    },
+    "staged_archive": {
+      "archive_bytes": 18609716,
+      "archive_sha256": "6c0889b3f07e2a59c05c5b8042af5a7e1f962dba4ad851a769cbc0ef93465233",
+      "completed": true,
+      "manifest_sha256": "47b7c694a99a72a339348169620c9ad80a2f72e33a42bd46f1ebf858d0a65a7d",
+      "plugin": "fereg_macos.plugin",
+      "plugin_bytes": 21623488,
+      "plugin_sha256": "2c8f6af8e10653a675c693e98560e94648e2f795ce5dfc605cf3f93f617d2200",
+      "schema_version": 1,
+      "source_sha": "2889939cec1297c332f5f1975b61eaa641f0871a",
+      "stata_edition": "MP",
+      "stata_executable_sha256": "178db3b78a3768ebfe88c36e845df292611b4b8ef0342c47a58e4641d0e6a16b",
+      "stata_executable_size_bytes": 119946864,
+      "stata_machine_type": "Mac (Apple Silicon)",
+      "stata_os": "Unix",
+      "stata_processors": 8,
+      "stata_version": "19",
+      "status": "success",
+      "tests_failed": 0,
+      "tests_passed": 4
+    },
+    "staged_fixtures": [
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/installation/plugin_paths.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/installation/installation_smoke.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/installation/staged_plugin_binary.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_one_fe_dummy_oracle.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      }
+    ],
+    "local_installations": [
+      {
+        "mode": "local",
+        "status": "pass",
+        "installed_files": 37,
+        "installed_hashes_exact": true,
+        "tilde_loader_and_plugin_paths": true,
+        "path_fixture_and_two_fe_oracles": "pass",
+        "independent_ppml_dummy_fixture": "pass",
+        "log_sha256": "6f6786b6cb0b17595baaf5ba602f9df2b776f6e07ede928476569bba3869e6f9"
+      },
+      {
+        "mode": "binary",
+        "status": "pass",
+        "installed_files": 36,
+        "installed_hashes_exact": true,
+        "tilde_loader_and_plugin_paths": true,
+        "path_fixture_and_two_fe_oracles": "pass",
+        "independent_ppml_dummy_fixture": "pass",
+        "log_sha256": "79925d5f996c7191491d66d5f5b11ea7af57c06de6e271728bd18aefaadaeccf"
+      },
+      {
+        "mode": "ssc",
+        "status": "pass",
+        "installed_files": 34,
+        "installed_hashes_exact": true,
+        "tilde_loader_and_plugin_paths": true,
+        "path_fixture_and_two_fe_oracles": "pass",
+        "independent_ppml_dummy_fixture": "pass",
+        "log_sha256": "d288cd6c7fb372438b075fc56961b845829c695ddb9a8d37d497f6268b349c4d"
+      }
+    ],
+    "qualification_reuse": "All native binaries and native/dependency source files are unchanged. Fresh frontend/package/source-build checks on Apple Silicon Mac Stata 19; no new Linux, Windows, native Intel-Mac or Stata 15 execution."
   }
 }

@@ -35,6 +35,6 @@
     "Native Intel-host Stata testing is outstanding; the macOS plugin contains both processor slices.",
     "The accepted Linux no-FE 16-regressor, one-worker slowdown of 7.3% versus beta.14 remains; see docs/VALIDATION.md."
   ],
-  "corresponding_source_sha256": "4b767cbe25ffccb1e578874e66b56930acbde14d95e0cc2556c82c0eeeb3ce43",
-  "corresponding_source_commit": "846feb8b2643844a1fa9a0678a6e128336454e19"
+  "corresponding_source_sha256": "91a547afaf8861c683089152c69bc999b81902b1b6283121ce983037d6b46fac",
+  "corresponding_source_commit": "2889939cec1297c332f5f1975b61eaa641f0871a"
 }
