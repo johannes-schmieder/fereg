@@ -1,5 +1,44 @@
 # Validation status
 
+## Home-directory plugin path investigation, November 4, 2026
+
+Mauricio Caceres Bravo's [issue #35](https://github.com/johannes-schmieder/fereg/issues/35)
+is reproduced on Apple Silicon Mac Stata/MP 19 at `083cd5c7`.
+With a `~/...` ado-path entry, `findfile` returns that spelling and `confirm
+file` succeeds, but `program, plugin using()` and `fereg, selftest` return
+`r(601)`. The same released plugin loads through an absolute path. The shared
+loader passes `r(fn)` directly to `program, plugin`; the isolated installation
+runners use absolute paths and do not exercise this case. Mata's
+`pathresolve(pwd(), path)` alone does not expand `~` in this host.
+
+A temporary copy of the loader with Mauricio's proposed resolver passes
+selftest and independent no-FE OLS/PPML coefficient checks, including a path
+containing spaces. His literal helper overwrites existing Mata variables
+named `dir` and `base`. An adjusted temporary helper instead uses
+`pathgetparent()` and `pathbasename()` through `st_local()`, encloses the
+directory change and restoration in `nobreak`, and restores the original
+directory before propagating a captured path-construction error.
+It passes tilde, absolute, `./`, `../` and bare-filename checks; invalid-directory
+failure returns `r(170)` without changing the working directory. Existing Mata
+variables remain exact. Two-way categorical-FE OLS and PPML coefficients agree
+with independent Stata dummy-variable regressions at relative tolerances
+`1e-10` and `1e-7`, respectively. Probe development corrected matrix-expression
+syntax and an already-dropped plugin-handle assumption; these were harness
+errors, not additional product failures.
+
+This is investigation evidence, not a shipped repair: the production loader,
+native binaries and release archives are unchanged. Only Mac Stata 19 was
+executed; Stata 15, Linux and Windows path handling remain untested here.
+The recommended repair is confined to frontend path resolution and needs a
+maintained installation regression test. No native numerical change is needed.
+
+SHA-256 identities:
+
+- Released Mac plugin: `2c8f6af8e10653a675c693e98560e94648e2f795ce5dfc605cf3f93f617d2200`.
+- Adjusted temporary loader: `99ff4b1d9de4bedb177a167ac6508fa1387509978ed208e9b90078045de2b9ab`.
+- Original-suggestion probe log: `b7d8abc357dc75d2a4556947cefa55bf2e1af7a01009436d3ff1a073f5f11e8e`.
+- Adjusted-resolver probe log: `f391f3245bd2f7e80086eb086c740edac37ec48f4427aa5b2df7fa348603e61f`.
+
 ## PPML display update, November 3, 2026
 
 `feppml` now reports convergence iterations, effective N, residual DoF, Wald
