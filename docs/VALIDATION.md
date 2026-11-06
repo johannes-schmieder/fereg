@@ -1,5 +1,35 @@
 # Validation status
 
+## Live SSC installation, November 6, 2026
+
+A fresh Apple Silicon Mac Stata/MP 19 session successfully ran `ssc describe
+fereg` and `ssc install fereg` against the live SSC server. The listing identifies
+Johannes F. Schmieder's package with distribution date `20261106`; the installed
+ado and native runtime versions are both `0.5.0`. PLUS, PERSONAL, SITE and
+OLDPLACE were isolated, and `which fereg` failed before installation. All 30
+installed files match the corresponding current release files byte-for-byte,
+including the repaired loader. SSC selects the Mac plugin for this platform;
+its checksum matches the installed sidecar.
+
+The verbose native self-test and maintained `installation_smoke.do` fixture
+passed. A two-group PPML fit matched its independent closed-form coefficients
+and conditional means within `1e-8`, with `predict` matching the requested saved
+means within `1e-12`. On Stata's auto data, absorbed OLS and PPML both used 69
+observations, and their mpg coefficients matched Stata's `regress` and `poisson`
+with explicit repair-record dummies within `1e-8`. Reinstallation with `replace`
+and a subsequent plain installation both reported the package up to date.
+The test completed with Stata return code zero and its terminal success marker.
+This verifies live SSC installation on Apple Silicon Mac Stata 19; no new Linux,
+Windows, Intel-Mac or Stata 15 execution is claimed.
+
+SHA-256 identities:
+
+- Live SSC manifest: `dd3c0686d2301351232713a1ef995bddf9c1da5fa7f7fffe52b3c550a500962d`.
+- Installed Mac plugin: `2c8f6af8e10653a675c693e98560e94648e2f795ce5dfc605cf3f93f617d2200`.
+- Installed loader: `766857e25b1e441af058938e9de0574a412ee048cdbb6741c8ff4f72d49b6735`.
+- Test script: `bc53795f2179e85a18488993d1fc0f784b70c67fd0345e26c039ed070fe537f7`.
+- Successful Stata log: `1e29c410b7b9f0619d979b4fa65021641b979187a7386a76bc605be76676c0b1`.
+
 ## Home-directory plugin loader repair, November 4, 2026
 
 The loader now resolves the filename returned by `findfile` before registering
