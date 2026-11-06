@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 0.5.0 03nov2026}{...}
+{* *! version 0.5.1 06nov2026}{...}
 {.-}
 help for {cmd:fereg} {right:(Johannes F. Schmieder)}
 {.-}

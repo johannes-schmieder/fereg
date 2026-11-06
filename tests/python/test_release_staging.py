@@ -36,7 +36,7 @@ class ReleaseStagingTests(unittest.TestCase):
             stage_release.PRODUCTION_STATA_FILES,
             self.PRODUCTION_STATA_FILES,
         )
-        self.assertEqual(stage_release.VERSION, "0.5.0")
+        self.assertEqual(stage_release.VERSION, "0.5.1")
     def test_ppml_objects_are_bound_to_source_and_oldest_compiler(self):
         stage_release.validate_ppml_mata_objects(ROOT / "stata")
         with tempfile.TemporaryDirectory() as directory:
@@ -144,7 +144,7 @@ class ReleaseStagingTests(unittest.TestCase):
             self.assertIn(prefix + '_fereg_factor_sample.ado', names)
             self.assertNotIn(prefix + 'LEGACY_COMPARATOR.json', names)
             self.assertFalse(any('fereg_legacy_' in name for name in names))
-            self.assertEqual(manifest["version"], "0.5.0")
+            self.assertEqual(manifest["version"], "0.5.1")
             self.assertEqual(manifest["phase"], "stable")
             self.assertEqual(manifest["action_protocol"], "1.7")
             self.assertEqual(manifest["ols_result_wire"], "1.5")
@@ -222,7 +222,7 @@ class ReleaseStagingTests(unittest.TestCase):
                 )
             )
             self.assertFalse(any(name.endswith(".pdf") for name in names))
-            self.assertEqual(source_manifest["version"], "0.5.0")
+            self.assertEqual(source_manifest["version"], "0.5.1")
 
     def test_checksum_mismatch_fails_closed(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -328,12 +328,12 @@ class ReleaseStagingTests(unittest.TestCase):
             (crate / ".cargo-checksum.json").write_text('{}\n')
             # r-efi records its license grant in AUTHORS rather than LICENSE.
             (crate / "AUTHORS").write_text("retained dependency license\n")
-            cmg = vendor / "cmg-0.1.0"
+            cmg = vendor / "cmg-0.2.0"
             cmg.mkdir()
             cmg_files = {
-                "Cargo.toml": '[package]\nname="cmg"\nversion="0.1.0"\nlicense="OLD"\n',
-                "Cargo.toml.orig": '[package]\nname="cmg"\nversion="0.1.0"\nlicense="OLD"\n',
-                "LICENSE": "previous license text\n",
+                "Cargo.toml": '[package]\nname="cmg"\nversion="0.2.0"\nlicense="MIT"\n',
+                "Cargo.toml.orig": '[package]\nname="cmg"\nversion="0.2.0"\nlicense="MIT"\n',
+                "LICENSE": (ROOT / "licenses/CMG-MIT.txt").read_text(),
                 "lib.rs": "pub fn unchanged() {}\n",
             }
             for name, text in cmg_files.items():
@@ -355,6 +355,20 @@ class ReleaseStagingTests(unittest.TestCase):
             rayon = staging / "vendor/rayon-core"
             rayon.mkdir(parents=True)
             (rayon / "LICENSE-MIT").write_text("local fork notice\n")
+            repository = "https://github.com/johannes-schmieder/CMG"
+            revision = "a" * 40
+            source_key = f"git+{repository}?rev={revision}"
+            with configuration.open("a") as handle:
+                handle.write(f'\n[source."{source_key}"]\ngit="{repository}"\nrev="{revision}"\n'
+                             'replace-with="vendored-sources"\n')
+            (staging / "crates/fereg-core").mkdir(parents=True)
+            (staging / "crates/fereg-core/Cargo.toml").write_text(
+                f'[dependencies.cmg]\ngit="{repository}"\nrev="{revision}"\n')
+            (staging / "Cargo.lock").write_text(
+                f'[[package]]\nname="cmg"\nversion="0.2.0"\nsource="{source_key}#{revision}"\n')
+            provenance = {"repository": repository, "revision": revision, "version": "0.2.0",
+                          "files": {p.name: stage_release.digest(p) for p in cmg.iterdir()}}
+            (staging / "licenses/CMG-SOURCE.json").write_text(json.dumps(provenance))
             package_release.copy_dependency_sources(staging, vendor, configuration)
             self.assertEqual((staging / "vendor/dependencies/sample-1.0.0/AUTHORS").read_text(),
                              "retained dependency license\n")
@@ -364,10 +378,10 @@ class ReleaseStagingTests(unittest.TestCase):
             notices = (staging / "THIRD_PARTY_LICENSES.txt").read_text()
             self.assertIn("retained dependency license", notices)
             self.assertIn("local fork notice", notices)
-            packaged_cmg = staging / "vendor/dependencies/cmg-0.1.0"
+            packaged_cmg = staging / "vendor/dependencies/cmg-0.2.0"
             self.assertEqual((packaged_cmg / "LICENSE").read_text(), cmg_mit)
-            self.assertIn('license = "MIT"', (packaged_cmg / "Cargo.toml").read_text())
-            self.assertIn('license = "MIT"', (packaged_cmg / "Cargo.toml.orig").read_text())
+            self.assertEqual((packaged_cmg / "Cargo.toml").read_text(), cmg_files["Cargo.toml"])
+            self.assertEqual((packaged_cmg / "Cargo.toml.orig").read_text(), cmg_files["Cargo.toml.orig"])
             self.assertEqual((packaged_cmg / "lib.rs").read_text(), cmg_files["lib.rs"])
             self.assertEqual((cmg / "LICENSE").read_text(), cmg_files["LICENSE"])
             checksums = json.loads((packaged_cmg / ".cargo-checksum.json").read_text())
@@ -375,6 +389,19 @@ class ReleaseStagingTests(unittest.TestCase):
                 self.assertEqual(stage_release.digest(packaged_cmg / name), expected)
             self.assertIn(cmg_mit.rstrip(), notices)
             self.assertNotIn("previous license text", notices)
+            sources = package_release.tomllib.loads(configuration.read_text())["source"]
+            for path, changed in [(cmg / "lib.rs", "private patch"),
+                                  (cmg / "Cargo.toml", cmg_files["Cargo.toml"].replace("MIT", "GPL-3.0-only")),
+                                  (staging / "Cargo.lock", (staging / "Cargo.lock").read_text().replace(revision, "b" * 40))]:
+                original = path.read_text()
+                path.write_text(changed)
+                with self.assertRaisesRegex(RuntimeError, "CMG"):
+                    package_release.verify_cmg_source(staging, vendor, sources)
+                path.write_text(original)
+            (cmg / "extra.rs").write_text("unexpected")
+            with self.assertRaisesRegex(RuntimeError, "CMG"):
+                package_release.verify_cmg_source(staging, vendor, sources)
+            (cmg / "extra.rs").unlink()
             with self.assertRaisesRegex(RuntimeError, "does not match"):
                 package_release.copy_dependency_sources(staging, root, configuration)
 

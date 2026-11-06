@@ -1,4 +1,4 @@
-*! fereg shared memory shadow validation 0.5.0 18sep2026
+*! fereg shared memory shadow validation 0.5.1 06nov2026
 program define _fereg_memory_validate
     version 15.0
     args report

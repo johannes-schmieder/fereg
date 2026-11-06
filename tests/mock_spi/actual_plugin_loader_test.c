@@ -387,13 +387,13 @@ static int check_selftest_verbose(stata_call_function call, int threads)
 {
     char worker_argument[32];
     char *arguments[] = {
-        "selftest", "ado=0.5.0", "protocol_major=1", "protocol_minor=7",
+        "selftest", "ado=0.5.1", "protocol_major=1", "protocol_minor=7",
         "stata=18.0", worker_argument, "verbose=1"
     };
     (void) snprintf(worker_argument, sizeof(worker_argument), "threads=%d", threads < 2 ? threads : 2);
     clear_output();
     if (call((int) (sizeof(arguments) / sizeof(arguments[0])), arguments) != 0) return 1;
-    if (strstr(display_buffer, "fereg.plugin_version=0.5.0") == NULL ||
+    if (strstr(display_buffer, "fereg.plugin_version=0.5.1") == NULL ||
         strstr(display_buffer, "fereg.action_protocol=1.7") == NULL ||
         strstr(display_buffer, "fereg.model_wire=2.1") == NULL ||
         strstr(display_buffer, "fereg.ols_result_wire=1.5") == NULL ||
@@ -410,7 +410,7 @@ static int check_selftest(stata_call_function call, int threads)
     char worker_argument[32];
     char *arguments[] = {
         "selftest",
-        "ado=0.5.0",
+        "ado=0.5.1",
         "protocol_major=1",
         "protocol_minor=0",
         "stata=18.0",
@@ -432,7 +432,7 @@ static int check_protocol_mismatch(stata_call_function call)
 {
     char *arguments[] = {
         "selftest",
-        "ado=0.5.0",
+        "ado=0.5.1",
         "protocol_major=99",
         "protocol_minor=0",
         "stata=18.0"
@@ -441,7 +441,7 @@ static int check_protocol_mismatch(stata_call_function call)
     if (call((int) (sizeof(arguments) / sizeof(arguments[0])), arguments) != 499) return 1;
     if (strstr(error_buffer, "protocol_mismatch") == NULL ||
         strstr(error_buffer, "restart Stata") == NULL ||
-        strstr(display_buffer, "fereg.plugin_version=0.5.0") == NULL ||
+        strstr(display_buffer, "fereg.plugin_version=0.5.1") == NULL ||
         strstr(display_buffer, "fereg.ado_plugin_compatible=no") == NULL ||
         strstr(display_buffer, "fereg.selftest.overall=") != NULL) return 2;
     return 0;
@@ -472,7 +472,7 @@ static int check_prepare_ols_test(stata_call_function call)
 {
     char *arguments[] = {
         "prepare-ols-test",
-        "ado=0.5.0",
+        "ado=0.5.1",
         "protocol_major=1",
         "protocol_minor=0",
         "stata=18.0",
@@ -554,7 +554,7 @@ static int check_prepare_ols_factor(stata_call_function call)
 {
     char *arguments[] = {
         "prepare-ols-test",
-        "ado=0.5.0",
+        "ado=0.5.1",
         "protocol_major=1",
         "protocol_minor=0",
         "stata=18.0",
@@ -625,7 +625,7 @@ static int check_prepare_ols_categorical_interaction(stata_call_function call)
 {
     char *arguments[] = {
         "prepare-ols-test",
-        "ado=0.5.0",
+        "ado=0.5.1",
         "protocol_major=1",
         "protocol_minor=0",
         "stata=18.0",
@@ -724,7 +724,7 @@ static int check_prepare_ols_aweight(stata_call_function call)
 {
     char *arguments[] = {
         "prepare-ols-test",
-        "ado=0.5.0",
+        "ado=0.5.1",
         "protocol_major=1",
         "protocol_minor=0",
         "stata=18.0",
@@ -816,7 +816,7 @@ static int check_prepare_ols_fweight(stata_call_function call)
 {
     char *arguments[] = {
         "prepare-ols-test",
-        "ado=0.5.0",
+        "ado=0.5.1",
         "protocol_major=1",
         "protocol_minor=0",
         "stata=18.0",
@@ -903,7 +903,7 @@ static int check_prepare_ols_pweight(stata_call_function call)
 {
     char *arguments[] = {
         "prepare-ols-test",
-        "ado=0.5.0",
+        "ado=0.5.1",
         "protocol_major=1",
         "protocol_minor=0",
         "stata=18.0",
@@ -1027,12 +1027,12 @@ static ST_int call_estimate_ols_test(stata_call_function call, ST_int candidate_
 {
     char *arguments[] = {
         "estimate-ols",
-        "ado=0.5.0",
+        "ado=0.5.1",
         "protocol_major=1",
         "protocol_minor=7",
         "stata=18.0",
         "confirm=fereg-estimation",
-        "plugin=0.5.0",
+        "plugin=0.5.1",
         "result_major=1",
         "result_minor=5",
         "model_major=2",

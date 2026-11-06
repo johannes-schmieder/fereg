@@ -1,6 +1,6 @@
 # Installation
 
-`fereg` and `feppml` require Stata 15 or newer. The 0.5.0 binary release supports
+`fereg` and `feppml` require Stata 15 or newer. The 0.5.1 binary release supports
 Linux x86-64, Windows x86-64 and macOS. The macOS plugin contains Apple Silicon
 and Intel code; licensed Mac testing uses Apple Silicon. See
 [validation](VALIDATION.md) for the checks performed on each platform.
@@ -8,12 +8,12 @@ The Linux binary requires glibc 2.28 or newer. Windows uses serial data loading;
 parallel loading is enabled only on qualified Mac and Linux hosts. The Intel
 Mac code is included but has not been tested in a licensed Intel Mac Stata session.
 
-## Install stable version 0.5.0
+## Install stable version 0.5.1
 
 Start a fresh Stata session and run:
 
 ```stata
-net install fereg, from("https://raw.githubusercontent.com/johannes-schmieder/fereg/v0.5.0/") replace
+net install fereg, from("https://raw.githubusercontent.com/johannes-schmieder/fereg/v0.5.1/") replace
 fereg, selftest
 help fereg
 help feppml
@@ -34,7 +34,7 @@ fereg price mpg, absorb(rep78) vce(robust)
 feppml price mpg, absorb(rep78) vce(robust)
 ```
 
-To install the development package, change `v0.5.0` in the URL to `main`.
+To install the development package, change `v0.5.1` in the URL to `main`.
 The community-contributed [`github` installer](https://github.com/haghish/github)
 also installs from `main`:
 
@@ -46,13 +46,13 @@ fereg, selftest
 
 Use the tagged `net install` command when you need a fixed release for replication.
 
-For an offline installation, download `fereg-0.5.0.zip` from the
-[0.5.0 release](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.0),
+For an offline installation, download `fereg-0.5.1.zip` from the
+[0.5.1 release](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.1),
 extract it, and use the absolute path of the extracted directory containing
 `fereg.pkg`:
 
 ```stata
-net install fereg, from("/absolute/path/to/fereg-0.5.0") replace
+net install fereg, from("/absolute/path/to/fereg-0.5.1") replace
 fereg, selftest
 ```
 
@@ -63,30 +63,23 @@ then rerun the direct `net install` command above with `replace`. `clear all`
 does not reliably unload a native plugin. On Windows, loaded plugin files also cannot
 be overwritten. To remove an installed package, run `ado uninstall fereg`.
 
-## Refreshed 0.5.0 package
+## CMG dependency consolidation
 
-At the author's request, the v0.5.0 tag and release archives were refreshed on
-2026-11-03 with the current Stata files, help, documentation and MIT licenses.
-Reinstall with `replace` to receive the complete OLS/PPML output and the new
-250,000-observation comparison in Example 2 of `help fereg`.
-
-The package also includes the corrected PPML Auto/thread descriptions and
-numerical acknowledgements. All three native plugins are byte-for-byte
-unchanged, with their actual build commits and prior qualification retained.
-The [publication record](../bench/results/v050-publication-20261103.json)
-preserves the original archive identities. For an exact historical installation,
-use its recorded Git commit rather than the refreshed tag.
+Version 0.5.1 uses the consolidated upstream CMG 0.2.0 source with its native
+MIT metadata. It retains the existing 32-level hierarchy default and solver
+behavior. Corresponding-source packaging verifies the exact locked dependency
+and its complete vendored file inventory without modifying its license or code.
 
 ## Build from source
 
 Source builds need Git, Python 3.11 or newer, Rust installed through
 [rustup](https://rustup.rs/), and a platform C compiler. The repository pins
 Rust 1.85.1; run the commands from the repository root. Native outputs go in
-`dist/`. The commands below check out stable 0.5.0. Use `--branch main` only
+`dist/`. The commands below check out stable 0.5.1. Use `--branch main` only
 when you intend to build the development version.
 
 ```bash
-git clone --depth 1 --branch v0.5.0 https://github.com/johannes-schmieder/fereg.git
+git clone --depth 1 --branch v0.5.1 https://github.com/johannes-schmieder/fereg.git
 cd fereg
 ```
 
@@ -110,7 +103,7 @@ directory is `target/local-install`; to stage another build, choose a fresh
 directory with `--output`. Building successfully on one platform does not
 establish qualification on another.
 
-The release's `fereg-0.5.0-source.zip` contains the project source, exact Cargo
+The release's `fereg-0.5.1-source.zip` contains the project source, exact Cargo
 dependency sources and their license files. Extract it and set the source
 identity from its manifest before using the platform build commands above.
 On macOS/Linux:

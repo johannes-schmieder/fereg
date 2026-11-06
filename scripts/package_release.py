@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Create a deterministic, exact-SHA fereg 0.5.0 source archive."""
+"""Create a deterministic, exact-SHA fereg 0.5.1 source archive."""
 from __future__ import annotations
 
 import argparse
 import json
-import re
 import shutil
 import subprocess
 import tempfile
@@ -111,6 +110,41 @@ def write_source_manifest(
     )
 
 
+def verify_cmg_source(staging: Path, directory: Path, sources: dict) -> None:
+    """Bind Cargo's normalized vendor payload to the reviewed upstream pin."""
+    provenance = json.loads((staging / "licenses/CMG-SOURCE.json").read_text())
+    repository, revision = provenance["repository"], provenance["revision"]
+    if (repository != "https://github.com/johannes-schmieder/CMG"
+            or len(revision) != 40 or any(c not in "0123456789abcdef" for c in revision)):
+        raise RuntimeError("invalid CMG source provenance")
+    manifest = tomllib.loads((staging / "crates/fereg-core/Cargo.toml").read_text())
+    dependency = manifest["dependencies"]["cmg"]
+    lock = tomllib.loads((staging / "Cargo.lock").read_text())
+    locked = [p for p in lock["package"] if p["name"] == "cmg"]
+    source_key = f"git+{repository}?rev={revision}"
+    if (dependency.get("git") != repository or dependency.get("rev") != revision
+            or len(locked) != 1 or locked[0].get("source") != f"{source_key}#{revision}"
+            or locked[0]["version"] != provenance["version"]
+            or sources.get(source_key) != {"git": repository, "rev": revision,
+                                           "replace-with": "vendored-sources"}):
+        raise RuntimeError("CMG manifest, lock, vendor configuration and provenance pins differ")
+    crates = [p for p in directory.iterdir()
+              if tomllib.loads((p / "Cargo.toml").read_text())["package"]["name"] == "cmg"]
+    if len(crates) != 1:
+        raise RuntimeError("expected exactly one vendored CMG dependency")
+    crate = crates[0]
+    actual = {}
+    for path in sorted(crate.rglob("*")):
+        if path.is_symlink():
+            raise RuntimeError("vendored CMG symlinks are not permitted")
+        if path.is_file():
+            actual[path.relative_to(crate).as_posix()] = stage_release.digest(path)
+    if actual != provenance["files"]:
+        raise RuntimeError("vendored CMG differs from its reviewed source inventory")
+    if tomllib.loads((crate / "Cargo.toml").read_text())["package"].get("license") != "MIT":
+        raise RuntimeError("CMG must carry upstream MIT metadata; refresh the exact pin")
+
+
 def copy_dependency_sources(staging: Path, directory: Path, configuration: Path) -> None:
     config_text = configuration.read_text(encoding="utf-8")
     config = tomllib.loads(config_text)
@@ -122,6 +156,7 @@ def copy_dependency_sources(staging: Path, directory: Path, configuration: Path)
     if not crates or any(not (crate / "Cargo.toml").is_file()
                          or not (crate / ".cargo-checksum.json").is_file() for crate in crates):
         raise RuntimeError("dependency directory is not a complete cargo vendor output")
+    verify_cmg_source(staging, directory, sources)
     shutil.copytree(directory, staging / "vendor" / "dependencies")
     config_directory = staging / ".cargo"
     config_directory.mkdir(exist_ok=True)
@@ -130,37 +165,6 @@ def copy_dependency_sources(staging: Path, directory: Path, configuration: Path)
         raise RuntimeError("could not make the vendor configuration relocatable")
     (config_directory / "config.toml").write_text(rewritten, encoding="utf-8")
     packaged_crates = sorted((staging / "vendor" / "dependencies").iterdir())
-    for crate in packaged_crates:
-        manifest_path = crate / "Cargo.toml"
-        manifest_text = manifest_path.read_text(encoding="utf-8")
-        if tomllib.loads(manifest_text)["package"]["name"] != "cmg":
-            continue
-        # Apply the developers' MIT grant to the pinned CMG distribution.
-        license_text = (staging / "licenses" / "CMG-MIT.txt").read_text(encoding="utf-8")
-        (crate / "LICENSE").write_text(license_text, encoding="utf-8")
-        for name in ("Cargo.toml", "Cargo.toml.orig"):
-            path = crate / name
-            if path.is_file():
-                text = path.read_text(encoding="utf-8")
-                text, count = re.subn(r'(?m)^license\s*=\s*"[^"\n]*"', 'license = "MIT"', text)
-                if count != 1:
-                    raise RuntimeError(f"expected one CMG license declaration: {name}")
-                path.write_text(text, encoding="utf-8")
-        for name in ("README.md", "docs/UPSTREAM.md"):
-            path = crate / name
-            if path.is_file():
-                text = path.read_text(encoding="utf-8")
-                text = text.replace("GNU GPL version 3 only", "MIT")
-                text = text.replace("GNU GPL version 3", "MIT")
-                text = text.replace("License: GPL v3", "License: MIT")
-                text = text.replace("License-GPL_v3", "License-MIT")
-                path.write_text(text, encoding="utf-8")
-        checksum_path = crate / ".cargo-checksum.json"
-        checksums = json.loads(checksum_path.read_text(encoding="utf-8"))
-        for name in ("LICENSE", "Cargo.toml", "Cargo.toml.orig", "README.md", "docs/UPSTREAM.md"):
-            if (crate / name).is_file():
-                checksums["files"][name] = stage_release.digest(crate / name)
-        checksum_path.write_text(json.dumps(checksums, sort_keys=True) + "\n", encoding="utf-8")
     roots = packaged_crates + [staging / "vendor" / "rayon-core"]
     texts = []
     for crate in sorted(roots):

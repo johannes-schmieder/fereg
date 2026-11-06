@@ -38,7 +38,7 @@ mod tests {
     fn selftest_action_is_available_without_live_spi() {
         let capture = run_action(&[
             "selftest",
-            "ado=0.5.0",
+            "ado=0.5.1",
             "protocol_major=1",
             "protocol_minor=7",
             "stata=18.0",
@@ -52,7 +52,7 @@ mod tests {
     fn selftest_runs_with_32_requested_threads() {
         let capture = run_action(&[
             "selftest",
-            "ado=0.5.0",
+            "ado=0.5.1",
             "protocol_major=1",
             "protocol_minor=0",
             "stata=18.0",

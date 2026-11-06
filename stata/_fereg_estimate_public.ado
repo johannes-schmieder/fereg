@@ -1,4 +1,4 @@
-*! fereg public OLS dispatcher 0.5.0 24aug2026
+*! fereg public OLS dispatcher 0.5.1 06nov2026
 program define _fereg_estimate_public, eclass
     version 15.0
     syntax varlist(fv ts numeric min=1) [if] [in] [fw aw pw iw], ///
@@ -180,7 +180,7 @@ program define _fereg_estimate_public, eclass
 
     ereturn local cmd "fereg"
     ereturn local cmdline `"fereg `0'"'
-    ereturn local fereg_version "0.5.0"
+    ereturn local fereg_version "0.5.1"
     ereturn local predict "fereg_p"
     local selected_memory_code = el(e(fereg_runtime), 2, 2)
     local selected_memory = cond(`selected_memory_code' == 1, "fast", "low")

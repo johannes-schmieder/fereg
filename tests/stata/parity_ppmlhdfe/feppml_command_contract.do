@@ -35,7 +35,7 @@ assert `"`e(feppml_action_protocol)'"' == "1.7"
 assert `"`e(feppml_model_wire)'"' == "2.1"
 assert `"`e(feppml_request_wire)'"' == "1.8"
 assert `"`e(feppml_result_wire)'"' == "1.5"
-assert `"`e(feppml_plugin)'"' == "0.5.0"
+assert `"`e(feppml_plugin)'"' == "0.5.1"
 assert `"`e(solver)'"' == "auto"
 assert `"`e(feppml_solver_requested)'"' == "auto"
 assert `"`e(feppml_solver_selected)'"' == "map"
@@ -175,7 +175,7 @@ foreach field of local actual_macros {
     local allowed : list field in allowed_macros
     assert `allowed'
 }
-if `"`e(cmd)'"' == "feppml" assert `"`e(fereg_version)'"' == "0.5.0"
+if `"`e(cmd)'"' == "feppml" assert `"`e(fereg_version)'"' == "0.5.1"
 
 local allowed_matrices b V feppml_status feppml_fit feppml_dof feppml_fe ///
     feppml_cluster feppml_subset feppml_separation feppml_inference ///

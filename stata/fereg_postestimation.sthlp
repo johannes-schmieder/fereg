@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 0.5.0 31oct2026}{...}
+{* *! version 0.5.1 06nov2026}{...}
 {vieweralsosee "fereg" "help fereg"}{...}
 {title:Title}
 

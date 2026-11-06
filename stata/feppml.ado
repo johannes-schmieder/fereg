@@ -1,4 +1,4 @@
-*! version 0.5.0 03nov2026
+*! version 0.5.1 06nov2026
 program define feppml, eclass
     version 15.0
     if replay() {

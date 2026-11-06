@@ -1,4 +1,4 @@
-*! fereg public PPML syntax and result adapter 0.5.0 02sep2026
+*! fereg public PPML syntax and result adapter 0.5.1 06nov2026
 program define _fereg_ppml, eclass
     version 15.0
     local public_display = c(noisily)

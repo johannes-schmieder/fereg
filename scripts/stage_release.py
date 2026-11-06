@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Stage the deterministic, audited fereg 0.5.0 distribution."""
+"""Stage the deterministic, audited fereg 0.5.1 distribution."""
 from __future__ import annotations
 
 import argparse
@@ -13,11 +13,11 @@ import zipfile
 from pathlib import Path
 from typing import Optional
 
-VERSION = "0.5.0"
-RELEASE_TAG = "v0.5.0"
+VERSION = "0.5.1"
+RELEASE_TAG = "v0.5.1"
 PACKAGE_NAME = f"fereg-{VERSION}"
-FIXED_TIME = (2026, 11, 4, 0, 0, 0)
-FIXED_UTC = "2026-11-04T00:00:00Z"
+FIXED_TIME = (2026, 11, 6, 0, 0, 0)
+FIXED_UTC = "2026-11-06T00:00:00Z"
 PLATFORM_PLUGINS = {
     "linux": "fereg_linux.plugin",
     "windows": "fereg_windows.plugin",

@@ -114,7 +114,7 @@ class StagedStataRunnerTests(unittest.TestCase):
             root = Path(raw)
             archive = root / "unsafe.zip"
             with zipfile.ZipFile(archive, "w") as output:
-                output.writestr("fereg-0.5.0/../escape", b"bad")
+                output.writestr("fereg-0.5.1/../escape", b"bad")
                 output.writestr("other/file", b"bad")
             digest = stage_release.digest(archive)
             with self.assertRaisesRegex(
