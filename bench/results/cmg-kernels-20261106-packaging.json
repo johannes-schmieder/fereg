@@ -1,0 +1,353 @@
+{
+  "status": "PREPARED_NOT_PUBLISHED",
+  "source_build": "84e8973768cfcd54aaf82e584ae2d1a8bd06ff3e",
+  "package_commit": "5f324106248c122332fac753ab1c1901a00b9a78",
+  "source_tests": "PASS349Python;native/platform evidence in cmg-kernels-20261106.json",
+  "focused_packaging_tests": "PASS18",
+  "ssc_archive": {
+    "archive": "fereg-0.5.1-ssc.zip",
+    "sha256": "fec669db82cfa3a83458549df273cff7a9236415ebb950cc8e1382792a8114da",
+    "files": 41,
+    "metadata_files": [
+      "CHANGELOG.md",
+      "CMG-MIT.txt",
+      "DEPENDENCY_AUDIT.json",
+      "LICENSE",
+      "MANIFEST.sha256",
+      "README.md",
+      "RELEASE_MANIFEST.json",
+      "SBOM.spdx.json",
+      "THIRD_PARTY_NOTICES.md",
+      "references.lock.toml"
+    ],
+    "source_sha256": "7046740e3d662254ae253002f353ef3692d5be234af85509eaba0bea7bdb637e",
+    "payload_identity": "All installed program/plugin/license files are byte-identical to qualified native release staging.",
+    "publication": "not published; no SSC submission"
+  },
+  "ssc_installation": {
+    "status": "PASS",
+    "platform": "macOS arm64",
+    "modes": [
+      "fresh",
+      "replacement"
+    ],
+    "files": [
+      {
+        "name": "_fereg_ppml_result_mata.json",
+        "sha256": "b22605942e68e0b35e4af8d09e8429ddb43b7c2a6304e4582ffed72d0ee28237"
+      },
+      {
+        "name": "_fereg_display.ado",
+        "sha256": "4a47df7e0b7721aa21c049b45ef5a8c8f89f9b2ca3366a6ab7d6941f4094318f"
+      },
+      {
+        "name": "_fereg_ppml_result_mata.ado",
+        "sha256": "d379f5f14429882ab081adadc9c95a0f776c600a77ab23a864ad11be32a89f41"
+      },
+      {
+        "name": "_fereg_ppml.ado",
+        "sha256": "08540f969eaed6e1ebb7f98dd892e8d862bfb82ae5049a6092fb308b46869ce3"
+      },
+      {
+        "name": "_fereg_memory_validate.ado",
+        "sha256": "56d9a3e61bdafa21745a83346fe73e0a36a172510d8d2e8257a3761310897876"
+      },
+      {
+        "name": "_fereg_indepvars.ado",
+        "sha256": "1fc7bc3b8dcf8638d994dfcc06ec0b584ce5117176fea04abe759e95c310b612"
+      },
+      {
+        "name": "_fereg_memory_baseline.ado",
+        "sha256": "8aece13b289e66317d1ca7069b5ce281036ec6b0a086efcc945697478b5bbf31"
+      },
+      {
+        "name": "_fereg_ppml_validation_error.mo",
+        "sha256": "9232a5be494ea41b13d0c69016ffa5fd35c6d03062dfbaa6da5c5ea4739aeca7"
+      },
+      {
+        "name": "_fereg_ppml_validate_result.mo",
+        "sha256": "1b34397bb3ce1df178155a5d061307b467686d432726941576c2bd07976beb99"
+      },
+      {
+        "name": "_fereg_estimate_public.ado",
+        "sha256": "88e07e5148cc6be8b875640e858d9c8b9bad87c5c6ba05a30345ce74439c93e9"
+      },
+      {
+        "name": "_fereg_ppml_post_scalars.mo",
+        "sha256": "6ac01b45c76dd26c03671c29ffc9897481c031a86ee5fbe8ea5b1cb5f929b9bd"
+      },
+      {
+        "name": "_fereg_estimate_ppml.ado",
+        "sha256": "ff162fdfb124289d0ccc7e4ee76c8ec12cf6f29c33d7d944bcfb08a610c8bce2"
+      },
+      {
+        "name": "_fereg_estimate_ols.ado",
+        "sha256": "da56b7f310ae32bd54c756d595b36bdc671d6fd99f71615a6320a5e6de664df2"
+      },
+      {
+        "name": "_fereg_factor_sample.ado",
+        "sha256": "996920e24c6b78dc71c09e47c0047f578c8a482640933852a47318e89bfae1fd"
+      },
+      {
+        "name": "_fereg_load.ado",
+        "sha256": "4863d520cf5315e996a5461dda0baed0f5911abb65b7a9c334af0ff7df7d07f3"
+      },
+      {
+        "name": "_fereg_input_host.ado",
+        "sha256": "13af84712b6398269abb4a80f0f778dfd9e571063c48305a52180a5b99f02789"
+      },
+      {
+        "name": "feppml.sthlp",
+        "sha256": "c35adc0ffbb81c095ebc123f8ebecd5a738438048de2175950b99d957b2b1427"
+      },
+      {
+        "name": "fereg_windows.plugin.sha256",
+        "sha256": "7995551a7ee5c41f6aa0fc1a646d8700d2ee5e7edca1e0534fb1a87b9c6e5041"
+      },
+      {
+        "name": "feppml_p.ado",
+        "sha256": "c9998d27f6a4583fce6f6812b392901d7560fbcbad203c3faa306f7cd656c97e"
+      },
+      {
+        "name": "feppml.ado",
+        "sha256": "59928197932fe1f55122910ce6492fd9b794797bb230e7ee26306635db3d9fed"
+      },
+      {
+        "name": "fereg_macos.plugin",
+        "sha256": "b5ae3b87ea4daf6b5d1486dd54312af62fed302b5f214b462058b17224185a06"
+      },
+      {
+        "name": "fereg_parse.ado",
+        "sha256": "2451297609f4009448ffa66aef2308c58134962dce06f49f9813fa60aa2fdfb6"
+      },
+      {
+        "name": "fereg-source.txt",
+        "sha256": "24b93048182621e7566192e2d43d1d3537d5dd55e0acc5af9ed7d52478108478"
+      },
+      {
+        "name": "fereg.ado",
+        "sha256": "65aa4a31e4b80f52517b147783edca53569e188c2995aaad49289bd631d4fbf9"
+      },
+      {
+        "name": "fereg_p.ado",
+        "sha256": "4347592c965c4d9f90c08dd937631bd551557e4b7ac12f552c18621de86b20ab"
+      },
+      {
+        "name": "fereg_postestimation.sthlp",
+        "sha256": "f54b51b04292cd376edfacdbb4fb9641c7daf93cb33d9acd777a358af4470317"
+      },
+      {
+        "name": "fereg.sthlp",
+        "sha256": "300e79c8ed39f99a1c76ff4feb7f165336c589d276f2f68b1a0bccbf476a19b3"
+      },
+      {
+        "name": "fereg_estat.ado",
+        "sha256": "114c2ae8a9c145431dd87df778b747c6db65f450af95af4a00c70d5b120eaaab"
+      },
+      {
+        "name": "fereg-license.txt",
+        "sha256": "842faf424865b9550b5609298d68ad5be11a1a295f16fe740d9906bdba5297f1"
+      },
+      {
+        "name": "fereg-third-party-notices.txt",
+        "sha256": "ffae87e4750a9c00c90e44c5bf040357e82bc1971467b2f2835f056cfebf797e"
+      },
+      {
+        "name": "fereg_run.ado",
+        "sha256": "997a2204e41c4219e38cbbcc36dc097a2b2a91a0b1ea6a97c6fa37f62e6a6c12"
+      },
+      {
+        "name": "fereg_macos.plugin.sha256",
+        "sha256": "a9dd425459f9af73f16185e58d8d48962991fb6e282f55f26e7d4b3738e3061e"
+      },
+      {
+        "name": "fereg_linux.plugin.sha256",
+        "sha256": "0b1ebfce4e315029e8a253f65783506eb2c63cf4433e5a678b078d907af17f06"
+      },
+      {
+        "name": "fereg_parse.sthlp",
+        "sha256": "b66e68c5450279883543ff967082a4bb0513f63750c3edacde64781124be0c67"
+      }
+    ],
+    "source": "84e8973768cfcd54aaf82e584ae2d1a8bd06ff3e",
+    "checks": [
+      "native selftest",
+      "independent OLS/Poisson oracles",
+      "SSC platform selection",
+      "all34installedhashes"
+    ],
+    "log_sha256": "bcbefc440157ce1bef7c6eae31ea3ba89e6ad61f6db662431ea81574827c3785",
+    "scope": "Prepared SSC-form archive; not a submission or live SSC replacement.",
+    "checker_correction": "Initial checker assumed 30 files from the current live SSC catalog. This prepared catalog installs 34; the exact expected names are derived from its manifest. Existing installed bytes and successful Stata calls rechecked without rerunning native tests."
+  },
+  "root_installation": {
+    "status": "PASS",
+    "source_build": "84e8973768cfcd54aaf82e584ae2d1a8bd06ff3e",
+    "modes": [
+      "fresh",
+      "replacement"
+    ],
+    "checks": [
+      "installed selftest",
+      "independent OLS oracle",
+      "independent Poisson oracle",
+      "all installed hashes"
+    ],
+    "files": [
+      {
+        "name": "stata/fereg.ado",
+        "sha256": "65aa4a31e4b80f52517b147783edca53569e188c2995aaad49289bd631d4fbf9"
+      },
+      {
+        "name": "stata/_fereg_display.ado",
+        "sha256": "4a47df7e0b7721aa21c049b45ef5a8c8f89f9b2ca3366a6ab7d6941f4094318f"
+      },
+      {
+        "name": "stata/fereg_run.ado",
+        "sha256": "997a2204e41c4219e38cbbcc36dc097a2b2a91a0b1ea6a97c6fa37f62e6a6c12"
+      },
+      {
+        "name": "stata/_fereg_estimate_public.ado",
+        "sha256": "88e07e5148cc6be8b875640e858d9c8b9bad87c5c6ba05a30345ce74439c93e9"
+      },
+      {
+        "name": "stata/_fereg_estimate_ols.ado",
+        "sha256": "da56b7f310ae32bd54c756d595b36bdc671d6fd99f71615a6320a5e6de664df2"
+      },
+      {
+        "name": "stata/_fereg_load.ado",
+        "sha256": "4863d520cf5315e996a5461dda0baed0f5911abb65b7a9c334af0ff7df7d07f3"
+      },
+      {
+        "name": "stata/_fereg_factor_sample.ado",
+        "sha256": "996920e24c6b78dc71c09e47c0047f578c8a482640933852a47318e89bfae1fd"
+      },
+      {
+        "name": "stata/_fereg_indepvars.ado",
+        "sha256": "1fc7bc3b8dcf8638d994dfcc06ec0b584ce5117176fea04abe759e95c310b612"
+      },
+      {
+        "name": "stata/_fereg_memory_baseline.ado",
+        "sha256": "8aece13b289e66317d1ca7069b5ce281036ec6b0a086efcc945697478b5bbf31"
+      },
+      {
+        "name": "stata/_fereg_memory_validate.ado",
+        "sha256": "56d9a3e61bdafa21745a83346fe73e0a36a172510d8d2e8257a3761310897876"
+      },
+      {
+        "name": "stata/_fereg_input_host.ado",
+        "sha256": "13af84712b6398269abb4a80f0f778dfd9e571063c48305a52180a5b99f02789"
+      },
+      {
+        "name": "stata/feppml.ado",
+        "sha256": "59928197932fe1f55122910ce6492fd9b794797bb230e7ee26306635db3d9fed"
+      },
+      {
+        "name": "stata/_fereg_ppml.ado",
+        "sha256": "08540f969eaed6e1ebb7f98dd892e8d862bfb82ae5049a6092fb308b46869ce3"
+      },
+      {
+        "name": "stata/_fereg_estimate_ppml.ado",
+        "sha256": "ff162fdfb124289d0ccc7e4ee76c8ec12cf6f29c33d7d944bcfb08a610c8bce2"
+      },
+      {
+        "name": "stata/_fereg_ppml_result_mata.ado",
+        "sha256": "d379f5f14429882ab081adadc9c95a0f776c600a77ab23a864ad11be32a89f41"
+      },
+      {
+        "name": "stata/_fereg_ppml_result_mata.json",
+        "sha256": "b22605942e68e0b35e4af8d09e8429ddb43b7c2a6304e4582ffed72d0ee28237"
+      },
+      {
+        "name": "stata/_fereg_ppml_validation_error.mo",
+        "sha256": "9232a5be494ea41b13d0c69016ffa5fd35c6d03062dfbaa6da5c5ea4739aeca7"
+      },
+      {
+        "name": "stata/_fereg_ppml_validate_result.mo",
+        "sha256": "1b34397bb3ce1df178155a5d061307b467686d432726941576c2bd07976beb99"
+      },
+      {
+        "name": "stata/_fereg_ppml_post_scalars.mo",
+        "sha256": "6ac01b45c76dd26c03671c29ffc9897481c031a86ee5fbe8ea5b1cb5f929b9bd"
+      },
+      {
+        "name": "stata/feppml_p.ado",
+        "sha256": "c9998d27f6a4583fce6f6812b392901d7560fbcbad203c3faa306f7cd656c97e"
+      },
+      {
+        "name": "stata/fereg_parse.ado",
+        "sha256": "2451297609f4009448ffa66aef2308c58134962dce06f49f9813fa60aa2fdfb6"
+      },
+      {
+        "name": "stata/fereg_p.ado",
+        "sha256": "4347592c965c4d9f90c08dd937631bd551557e4b7ac12f552c18621de86b20ab"
+      },
+      {
+        "name": "stata/fereg_estat.ado",
+        "sha256": "114c2ae8a9c145431dd87df778b747c6db65f450af95af4a00c70d5b120eaaab"
+      },
+      {
+        "name": "stata/fereg.sthlp",
+        "sha256": "300e79c8ed39f99a1c76ff4feb7f165336c589d276f2f68b1a0bccbf476a19b3"
+      },
+      {
+        "name": "stata/feppml.sthlp",
+        "sha256": "c35adc0ffbb81c095ebc123f8ebecd5a738438048de2175950b99d957b2b1427"
+      },
+      {
+        "name": "stata/fereg_parse.sthlp",
+        "sha256": "b66e68c5450279883543ff967082a4bb0513f63750c3edacde64781124be0c67"
+      },
+      {
+        "name": "stata/fereg_postestimation.sthlp",
+        "sha256": "f54b51b04292cd376edfacdbb4fb9641c7daf93cb33d9acd777a358af4470317"
+      },
+      {
+        "name": "dist/fereg-LICENSE.txt",
+        "sha256": "842faf424865b9550b5609298d68ad5be11a1a295f16fe740d9906bdba5297f1"
+      },
+      {
+        "name": "dist/fereg-THIRD-PARTY-NOTICES.txt",
+        "sha256": "ffae87e4750a9c00c90e44c5bf040357e82bc1971467b2f2835f056cfebf797e"
+      },
+      {
+        "name": "dist/fereg-SOURCE.txt",
+        "sha256": "24b93048182621e7566192e2d43d1d3537d5dd55e0acc5af9ed7d52478108478"
+      },
+      {
+        "name": "dist/fereg-native.json",
+        "sha256": "b2e7b4e06e55d18bb11abcf9a14c85a6cb59501dadafa820d5ae7cbc572729e2"
+      },
+      {
+        "name": "dist/fereg_macos.plugin",
+        "sha256": "b5ae3b87ea4daf6b5d1486dd54312af62fed302b5f214b462058b17224185a06"
+      },
+      {
+        "name": "dist/fereg_macos.plugin.sha256",
+        "sha256": "a9dd425459f9af73f16185e58d8d48962991fb6e282f55f26e7d4b3738e3061e"
+      },
+      {
+        "name": "dist/fereg_linux.plugin",
+        "sha256": "03967cda5a62dd454734a1af024736b1a91797385fad635abec1787d0dceca9b"
+      },
+      {
+        "name": "dist/fereg_linux.plugin.sha256",
+        "sha256": "0b1ebfce4e315029e8a253f65783506eb2c63cf4433e5a678b078d907af17f06"
+      },
+      {
+        "name": "dist/fereg_windows.plugin",
+        "sha256": "1927cd5df863afd56442ee1699f43b856f3c153d476f3194e848897a63a74655"
+      },
+      {
+        "name": "dist/fereg_windows.plugin.sha256",
+        "sha256": "7995551a7ee5c41f6aa0fc1a646d8700d2ee5e7edca1e0534fb1a87b9c6e5041"
+      }
+    ],
+    "platform": "macOS arm64",
+    "log_sha256": "6e324bcd8bfce4194afb1da6cb3da69f4dd6b044212962d10dcfdb91b3bf4714",
+    "scope": "Prepared root package; published installations remain a separate gate."
+  },
+  "unchanged_runtime_identity": "6b61e442497264c35fad4d4b21b948d25f143ab966888caed2b074d31507be28",
+  "acceptance": "Pending owner decision on two Mac inconclusive cells; Linux12of12PASS; no resampling",
+  "scope": "Prepared native and SSC-form archives; actual published installs and SSC submission are not claimed."
+}
