@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "accepted_release_qualified",
+  "status": "accepted_published_v0.5.3",
   "date": "2026-11-07",
   "baseline": "7f6d87b1",
   "release_baseline": "0.5.2",
@@ -908,7 +908,7 @@
     "paper_performance_integration": false
   },
   "release_053": {
-    "status": "qualified_publication_pending",
+    "status": "published_and_http_verified",
     "packaging_source_commit": "c788fac06409c435955bfd489ccd5d0e91ba278c",
     "runtime_sha256": "f72d536e5f23b4bba5a9c321f53a3dabd2af9647f36e33ace78d40c739a65d19",
     "source_archive_sha256": "1e2da13ece55c3122ceac8fbfe0c5b696c6cc9734e4c469b0859136920357c35",
@@ -1257,6 +1257,81 @@
       "tests_failed": 0,
       "tests_passed": 5
     },
-    "license_texts": "Unchanged bodies; headings and ordering follow cargo vendor --versioned-dirs."
+    "license_texts": "Unchanged bodies; headings and ordering follow cargo vendor --versioned-dirs.",
+    "publication": {
+      "status": "pass",
+      "url": "https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.3",
+      "tag": "v0.5.3",
+      "tag_commit": "969c9d1d589147ddcf049b9e409de85c3e9ffd06",
+      "release_list_bytes": 258135,
+      "limit": 264392,
+      "assets": [
+        {
+          "name": "fereg-0.5.3.zip",
+          "sha256": "91ffaad67ba727f92b5e2595dad67a01f7b101f1f7010d8b88e0c1648ee1ed99",
+          "bytes": 18641674
+        },
+        {
+          "name": "fereg-0.5.3.zip.sha256",
+          "sha256": "1e78ed5cd93875d3afe4b4a5f4dfb9848e4292d3d70174b37f4ed22e5f6eb258",
+          "bytes": 82
+        },
+        {
+          "name": "fereg-0.5.3-source.zip",
+          "sha256": "1e2da13ece55c3122ceac8fbfe0c5b696c6cc9734e4c469b0859136920357c35",
+          "bytes": 35600890
+        },
+        {
+          "name": "fereg-0.5.3-source.zip.sha256",
+          "sha256": "775e61a80d8719886d8476b542f0727177f4df5664bcb7e0bac52d733ad795f4",
+          "bytes": 89
+        },
+        {
+          "name": "macos_source_build.md",
+          "sha256": "39fb1f6cfe55a016e2b2798c4b06c2bf88a844a8d81e6c634a884a197aa5f651",
+          "bytes": 2826
+        }
+      ]
+    },
+    "http_installations": [
+      {
+        "status": "pass",
+        "mode": "tag",
+        "version": "0.5.3",
+        "native_selftest": "pass",
+        "ols_independent_regress": "pass",
+        "ppml_independent_group_means": "pass",
+        "isolated_plus": true,
+        "installed_file_count": 37
+      },
+      {
+        "status": "pass",
+        "mode": "main",
+        "version": "0.5.3",
+        "native_selftest": "pass",
+        "ols_independent_regress": "pass",
+        "ppml_independent_group_means": "pass",
+        "isolated_plus": true,
+        "installed_file_count": 37
+      },
+      {
+        "status": "pass",
+        "mode": "github",
+        "version": "0.5.3",
+        "native_selftest": "pass",
+        "ols_independent_regress": "pass",
+        "ppml_independent_group_means": "pass",
+        "isolated_plus": true,
+        "installed_file_count": 37
+      }
+    ],
+    "installation_harness_repair": {
+      "initial_github_check": "r(603) before any package installation: isolated PLUS directory lacked the g subdirectory required by the existing githubdb helper.",
+      "repair": "Create the empty helper directory, then run the unchanged actual github install command in a fresh isolated PLUS. All 37 hashes and science checks pass.",
+      "failed_log_preserved": true,
+      "package_changed": false
+    },
+    "staged_runner_preflight": "Wrong development path for the installation fixture rejected before any Stata call; corrected to the maintained tests/stata/installation/staged_plugin_binary.do path. Five fixtures then passed.",
+    "evidence": "Retained with the existing external ppml-repair-20261107/refinement evidence under release-053; source/native release assets are public."
   }
 }

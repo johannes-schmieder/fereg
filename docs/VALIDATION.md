@@ -65,7 +65,8 @@ raw row arrays are intentionally not retained.
 
 This is one physical Linux host, so intervals describe within-host variation.
 Johannes accepted the refinement and all reported trade-offs and authorized
-commit and push to main. The 0.5.3 package is qualified for publication; the outreach campaign stays stopped.
+commit and push to main. **Published as [v0.5.3](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.3)
+and pushed to main.** The outreach campaign stays stopped.
 The release-version universal Mac offline build and four mapped Stata fixtures
 pass. Windows build, binary audit and the licensed Stata driver pass from
 `1974e383`; the instance stopped, transfer objects were deleted and the lock
@@ -90,8 +91,14 @@ native selftest, independent OLS coefficients/SEs and PPML group means. Five
 Stata fixtures also pass from the exact three-platform native archive. The
 source closure has zero advisories and matches the successful offline Mac
 build except for test isolation, the fixture terminal marker and source metadata.
-Actual HTTP installations remain pending publication. Native Intel-Mac execution
-remains unqualified.
+The five published assets download with the qualified hashes. Fresh HTTP
+installs from the release tag, main and the actual `github install` command each
+verify all 37 installed files, native selftest and independent OLS/PPML checks.
+The GitHub helper initially stopped before installation because the isolated
+PLUS lacked its `g` database directory; creating that directory fixes the test
+setup without changing the package. The failed log is retained. The release
+list is 258,135 bytes, below the 264,392-character helper limit. Native Intel-Mac
+execution remains unqualified.
 The completed monitor was deleted before collection. Full compact evidence is
 retained in the existing external `ppml-repair-20261107/refinement` archive;
 all observations, hashes and checks are indexed in the
