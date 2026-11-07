@@ -17,6 +17,20 @@ $FailureCode = 81999
 if ($Probe -and -not $Worker) {
     New-Item -ItemType Directory -Force -Path $Work | Out-Null
     try {
+        # The installed application does not register Automation by default.
+        # Use Stata's documented setup switch only when its ProgID is absent;
+        # never replace a registration pointing at another installed edition.
+        if (-not (Test-Path -LiteralPath 'Registry::HKEY_CLASSES_ROOT\stata.StataOLEApp\CLSID')) {
+            $FailureCode = 81020
+            $registration = Start-Process -FilePath $StataPath -ArgumentList '/Register' -PassThru
+            $null = $registration.Handle
+            if (-not $registration.WaitForExit(30000)) {
+                $registration.Kill()
+                $registration.WaitForExit()
+                throw 'automation registration timed out'
+            }
+            if ($registration.ExitCode -ne 0) { throw 'automation registration failed' }
+        }
         $FailureCode = 81010
         $class = (Get-Item -LiteralPath 'Registry::HKEY_CLASSES_ROOT\stata.StataOLEApp\CLSID').GetValue('')
         $FailureCode = 81011
