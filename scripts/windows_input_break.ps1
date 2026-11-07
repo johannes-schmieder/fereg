@@ -17,14 +17,17 @@ $FailureCode = 81999
 if ($Probe -and -not $Worker) {
     New-Item -ItemType Directory -Force -Path $Work | Out-Null
     try {
-        $type = [Type]::GetTypeFromProgID('stata.StataOLEApp', $true)
-        $key = Get-Item -LiteralPath ('Registry::HKEY_CLASSES_ROOT\CLSID\{' + $type.GUID + '}\LocalServer32')
+        $FailureCode = 81010
+        $class = (Get-Item -LiteralPath 'Registry::HKEY_CLASSES_ROOT\stata.StataOLEApp\CLSID').GetValue('')
+        $FailureCode = 81011
+        $key = Get-Item -LiteralPath ('Registry::HKEY_CLASSES_ROOT\CLSID\' + $class + '\LocalServer32')
         $server = [string]$key.GetValue('')
+        $FailureCode = 81012
         if ($server -notmatch '^"?C:\\Program Files\\Stata19\\StataMP-64\.exe"?(?:\s.*)?$') {
             throw 'wrong automation server'
         }
     } catch {
-        [IO.File]::WriteAllText($Result, "WINDOWS_INPUT_QUALIFICATION=FAIL|code=81000`r`n")
+        [IO.File]::WriteAllText($Result, "WINDOWS_INPUT_QUALIFICATION=FAIL|code=$FailureCode`r`n")
         exit 1
     }
 }
