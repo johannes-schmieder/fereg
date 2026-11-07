@@ -3637,36 +3637,54 @@ impl SeparationDigest {
     }
 }
 
-fn stable_usize_slice_digest(domain: &[u8], values: &[usize]) -> Result<u64> {
+/// Word-level digest of fixed 64Ki-element chunks, hashed in parallel and
+/// folded in chunk order into the byte digest; independent of the team.
+fn chunked_word_digest(
+    domain: &[u8],
+    len: usize,
+    word: impl Fn(usize) -> Option<u64> + Sync,
+) -> Result<u64> {
+    use rayon::prelude::*;
+    const CHUNK: usize = 1 << 16;
     let mut digest = SeparationDigest::new();
     digest.usize(domain.len())?;
     for byte in domain {
         digest.byte(*byte);
     }
-    digest.usize(values.len())?;
-    for value in values {
-        digest.usize(*value)?;
+    digest.usize(len)?;
+    let chunks: Vec<Option<u64>> = (0..len.div_ceil(CHUNK))
+        .into_par_iter()
+        .map(|chunk| {
+            let mut h = SeparationDigest::OFFSET ^ chunk as u64;
+            for index in chunk * CHUNK..((chunk + 1) * CHUNK).min(len) {
+                let value = word(index)?;
+                h = (h ^ value).wrapping_mul(0x9e37_79b9_7f4a_7c15);
+                h ^= h >> 29;
+            }
+            Some(h)
+        })
+        .collect();
+    for chunk in chunks {
+        let value = chunk.ok_or_else(|| {
+            FeregError::new(
+                ErrorCode::Internal,
+                "PPML separation generation binding contains a nonfinite value",
+            )
+        })?;
+        digest.u64(value);
     }
     Ok(digest.0)
 }
 
+fn stable_usize_slice_digest(domain: &[u8], values: &[usize]) -> Result<u64> {
+    chunked_word_digest(domain, values.len(), |index| Some(values[index] as u64))
+}
+
 fn stable_f64_slice_digest(domain: &[u8], values: &[f64]) -> Result<u64> {
-    let mut digest = SeparationDigest::new();
-    digest.usize(domain.len())?;
-    for byte in domain {
-        digest.byte(*byte);
-    }
-    digest.usize(values.len())?;
-    for value in values {
-        if !value.is_finite() {
-            return Err(FeregError::new(
-                ErrorCode::Internal,
-                "PPML separation generation binding contains a nonfinite value",
-            ));
-        }
-        digest.u64(value.to_bits());
-    }
-    Ok(digest.0)
+    chunked_word_digest(domain, values.len(), |index| {
+        let value = values[index];
+        value.is_finite().then(|| value.to_bits())
+    })
 }
 
 fn separation_report_digest(report: &SeparationReport) -> Result<u64> {
@@ -3678,22 +3696,23 @@ fn separation_report_digest(report: &SeparationReport) -> Result<u64> {
     digest.usize(report.singleton_count)?;
     digest.usize(report.separated_count)?;
     digest.usize(report.generations)?;
-    digest.usize(report.active.len())?;
-    for active in &report.active {
-        digest.bool(*active);
-    }
-    digest.usize(report.retained_observations.len())?;
-    for row in &report.retained_observations {
-        digest.usize(*row)?;
-    }
-    digest.usize(report.dropped_observations.len())?;
-    for row in &report.dropped_observations {
-        digest.usize(*row)?;
-    }
-    digest.usize(report.drop_reasons.len())?;
-    for reason in &report.drop_reasons {
-        digest.byte(reason_code(*reason) as u8);
-    }
+    // Observation-length vectors use the chunked word digest.
+    digest.u64(chunked_word_digest(b"active", report.active.len(), |i| {
+        Some(u64::from(report.active[i]))
+    })?);
+    digest.u64(stable_usize_slice_digest(
+        b"retained",
+        &report.retained_observations,
+    )?);
+    digest.u64(stable_usize_slice_digest(
+        b"dropped",
+        &report.dropped_observations,
+    )?);
+    digest.u64(chunked_word_digest(
+        b"reasons",
+        report.drop_reasons.len(),
+        |i| Some(reason_code(report.drop_reasons[i]) as u64),
+    )?);
     digest.usize(report.generation_hashes.len())?;
     for hash in &report.generation_hashes {
         digest.u64(*hash);

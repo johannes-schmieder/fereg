@@ -2453,9 +2453,16 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
     }
 
     pub(crate) fn supports_joint_ppml_direction(&self) -> bool {
-        self.frozen_basis
-            .as_ref()
-            .is_some_and(|b| !b.kept_generated_columns().is_empty())
+        // With the exact block elimination available on the categorical
+        // owner, ordinary frames reproject the retained design instead of
+        // running the joint slope recurrence.
+        let elimination = crate::fe::block_schur::enabled()
+            && matches!(self.fe_projector.as_ref(), Some(FeSession { categorical: Some(owner), .. }) if owner.borrowed_design().effects().len() >= 2);
+        !elimination
+            && self
+                .frozen_basis
+                .as_ref()
+                .is_some_and(|b| !b.kept_generated_columns().is_empty())
             && matches!(self.fe_projector.as_ref(), Some(FeSession { general: Some(projector), coefficients: true, .. }) if projector.joint_slopes().is_some())
     }
 
@@ -3601,6 +3608,13 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         self.pending_preconditioner = None;
         if !reuse_preconditioner {
             self.accepted_preconditioner = None;
+        }
+        // The exact block elimination on the categorical owner serves strict
+        // projections directly; canonical products are not needed.
+        if crate::fe::block_schur::enabled()
+            && matches!(self.fe_projector.as_ref(), Some(FeSession { categorical: Some(owner), .. }) if owner.borrowed_design().effects().len() >= 2)
+        {
+            return Ok(None);
         }
         let Some((generated, allowance)) = self.canonical_products_inputs()? else {
             return Ok(None);
@@ -6531,19 +6545,38 @@ fn weighted_mean_slice(
     weights: BorrowedMapWeights<'_>,
     bread_weight_scale: super::PreparedOlsBreadWeightScale,
 ) -> Result<f64> {
+    // Fixed row chunks keep their own compensated sums, merged in order.
+    const ROWS: usize = 1 << 14;
+    let parts: Vec<Result<[f64; 4]>> = values
+        .par_chunks(ROWS)
+        .enumerate()
+        .map(|(chunk, values)| {
+            let mut sums = [0.0_f64; 4];
+            for (offset, value) in values.iter().copied().enumerate() {
+                if !value.is_finite() {
+                    return Err(invalid_data(
+                        "frozen weighted-linear mean input is not finite",
+                    ));
+                }
+                let weight =
+                    normalized_solver_weight(weights, bread_weight_scale, chunk * ROWS + offset)?;
+                let [n, nc, d, dc] = &mut sums;
+                compensated_add(weight * value, n, nc)?;
+                compensated_add(weight, d, dc)?;
+            }
+            Ok(sums)
+        })
+        .collect();
     let mut numerator = 0.0_f64;
     let mut numerator_correction = 0.0_f64;
     let mut denominator = 0.0_f64;
     let mut denominator_correction = 0.0_f64;
-    for (row, value) in values.iter().copied().enumerate() {
-        if !value.is_finite() {
-            return Err(invalid_data(
-                "frozen weighted-linear mean input is not finite",
-            ));
-        }
-        let weight = normalized_solver_weight(weights, bread_weight_scale, row)?;
-        compensated_add(weight * value, &mut numerator, &mut numerator_correction)?;
-        compensated_add(weight, &mut denominator, &mut denominator_correction)?;
+    for part in parts {
+        let [n, nc, d, dc] = part?;
+        compensated_add(n, &mut numerator, &mut numerator_correction)?;
+        compensated_add(nc, &mut numerator, &mut numerator_correction)?;
+        compensated_add(d, &mut denominator, &mut denominator_correction)?;
+        compensated_add(dc, &mut denominator, &mut denominator_correction)?;
     }
     let denominator = denominator + denominator_correction;
     let mean = (numerator + numerator_correction) / denominator;

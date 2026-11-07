@@ -393,21 +393,7 @@ fn dense_finite_inputs<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         )?
     };
     if !has_cached_norms {
-        if rayon::current_num_threads() == 1 {
-            fill_weighted_matrix_norms_fused(within, weights, &mut within_norms, reservation)?;
-        } else if within.ncols().div_ceil(8) >= rayon::current_num_threads() {
-            // Keep enough independent blocks to occupy the existing worker team.
-            fill_weighted_matrix_norms_blocked::<8>(within, 0, weights, &mut within_norms)?;
-        } else {
-            crate::parallel::stage_try_for_each(
-                within_norms.par_iter_mut().enumerate(),
-                within.nrows() as u128 * within.ncols() as u128,
-                |(column, norm)| -> Result<()> {
-                    *norm = weighted_matrix_column_norm(within, column, weights)?;
-                    Ok(())
-                },
-            )?;
-        }
+        fast_weighted_column_norms(within, 0, weights, &mut within_norms)?;
     }
     let within_outcome_norm = within_norms[0];
     let normalized_initial_within_sum_of_squares =

@@ -391,19 +391,30 @@ impl Weights {
             .zip(st.lanes.par_iter())
             .zip(mass_acc.par_iter_mut().zip(diag_acc.par_iter_mut()))
             .map(|((inverse, lane), (mass, diag))| {
-                let mut partial: Vec<(u32, f64)> = Vec::new();
+                // Per-segment level sums `a_j` use a stamped lane accumulator;
+                // the Schur diagonal is `mass_j - sum_s a_sj^2 / W_s`.
+                let mut sums = vec![0.0_f64; m];
+                let mut stamp = vec![u32::MAX; m];
+                let mut touched: Vec<u32> = Vec::new();
                 let mut bad = false;
                 for (s, inv) in lane.segments.clone().zip(inverse.iter_mut()) {
                     let (c0, c1) = (st.seg_cells[s], st.seg_cells[s + 1]);
                     let mut total = 0.0;
-                    partial.clear();
+                    touched.clear();
+                    let tag = s as u32;
                     for c in c0..c1 {
                         let w = if unit { 1.0 } else { cell[c] };
                         total += w;
                         for &code in &st.codes[c * nb..(c + 1) * nb] {
-                            mass[code as usize] += w;
-                            diag[code as usize] += w;
-                            partial.push((code, w));
+                            let j = code as usize;
+                            mass[j] += w;
+                            if stamp[j] == tag {
+                                sums[j] += w;
+                            } else {
+                                stamp[j] = tag;
+                                sums[j] = w;
+                                touched.push(code);
+                            }
                         }
                     }
                     if !(total.is_finite() && total > 0.0) {
@@ -412,16 +423,10 @@ impl Weights {
                     }
                     let inverse_total = 1.0 / total;
                     *inv = inverse_total;
-                    partial.sort_unstable_by_key(|entry| entry.0);
-                    let mut i = 0;
-                    while i < partial.len() {
-                        let code = partial[i].0;
-                        let mut a = 0.0;
-                        while i < partial.len() && partial[i].0 == code {
-                            a += partial[i].1;
-                            i += 1;
-                        }
-                        diag[code as usize] -= a * a * inverse_total;
+                    for &code in &touched {
+                        let j = code as usize;
+                        let a = sums[j];
+                        diag[j] += a - a * a * inverse_total;
                     }
                 }
                 bad

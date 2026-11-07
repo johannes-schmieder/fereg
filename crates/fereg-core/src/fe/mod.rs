@@ -10,6 +10,7 @@ pub(crate) mod routing_gates;
 mod routing_kernel;
 pub(crate) mod routing_observer;
 pub(crate) mod routing_remaining;
+pub(crate) use borrowed_map::block_schur;
 pub(crate) use borrowed_map::three_fe_schur;
 mod categorical_request;
 mod certificate;
