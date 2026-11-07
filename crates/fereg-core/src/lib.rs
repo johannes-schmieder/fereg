@@ -20,6 +20,8 @@ pub mod ppml_separation;
 pub mod protocol;
 mod sandwich;
 pub mod selftest;
+#[cfg(test)]
+mod test_support;
 
 pub use data::{
     prepare_numeric_sample, prepare_numeric_sample_with_source_uses, AdjustmentInput, DenseMatrix,

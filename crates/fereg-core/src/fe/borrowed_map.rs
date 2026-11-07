@@ -27,11 +27,11 @@ mod irons_tuck;
 mod lsmr_norms;
 mod map_wrapper_trace;
 pub(crate) use irons_tuck::absorb_borrowed_intercept_irons_tuck_certified;
+pub(crate) mod block_schur;
 mod ppml_cmg;
 pub(crate) mod routing_lsmr;
 pub(crate) mod three_fe_map;
 pub(crate) mod three_fe_schur;
-pub(crate) mod block_schur;
 pub(crate) use ppml_cmg::{JointCmgBlock, PpmlCmg, PpmlCmgScratch, PpmlCmgView};
 
 pub(crate) const PARALLEL_PROJECTION_MIN_ROWS: usize = 16_384;
@@ -2093,7 +2093,9 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         {
             validate_config(config)?;
             if values.nrows() != self.design.nobs() || !values.all_finite() {
-                return Err(invalid_data("reusable categorical MAP values must be finite"));
+                return Err(invalid_data(
+                    "reusable categorical MAP values must be finite",
+                ));
             }
             match self.block_schur.project(
                 &self.design,
@@ -2104,6 +2106,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                 block_schur::Request {
                     retain_coefficients: self.retain_coefficients,
                     fresh_weights: true,
+                    coefficient_accuracy: true,
                 },
             )? {
                 block_schur::Outcome::Done(mut result) => {

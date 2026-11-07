@@ -160,6 +160,7 @@ fn joint_block_applies_the_retained_hierarchy_in_joint_coordinates() {
 
 #[test]
 fn estimation_builds_at_most_three_times_and_refreshes_only_stale_strict_hierarchies() {
+    let _established_routes = crate::fe::block_schur::disable_for_test();
     let chain = Chain::new(120, 2);
     let mut absorber = chain.absorber();
     absorber.enable_ppml_cmg(None, u128::MAX).unwrap();

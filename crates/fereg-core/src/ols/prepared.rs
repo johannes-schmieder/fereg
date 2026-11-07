@@ -828,20 +828,29 @@ fn is_full_retained_unweighted_sample(loaded: &LoadedOlsInput) -> bool {
     // The caller has validated every column against the candidate row axis.
     // This Boolean chooses an ownership shortcut, not error order; a failed
     // check still enters the authoritative classification path.
+    // Branch-free block scans (vectorizable OR reductions) with an early exit
+    // per block; the same predicates as element-wise `all`.
+    const BLOCK: usize = 4096;
+    let none_missing = |flags: &[bool]| {
+        flags
+            .chunks(BLOCK)
+            .all(|block| !block.iter().fold(false, |any, &flag| any | flag))
+    };
+    let all_finite = |values: &[f64]| {
+        const EXPONENT: u64 = 0x7ff0_0000_0000_0000;
+        values.chunks(BLOCK).all(|block| {
+            block.iter().fold(0_u64, |bad, value| {
+                bad | u64::from(value.to_bits() & EXPONENT == EXPONENT)
+            }) == 0
+        })
+    };
     let complete = |range: std::ops::Range<usize>| {
         let (start, end) = (range.start, range.end);
         loaded.candidate.view().slice(range).all_true()
-            && loaded.outcome.missing[start..end]
-                .iter()
-                .all(|missing| !*missing)
-            && loaded.outcome.values[start..end]
-                .iter()
-                .all(|value| value.is_finite())
+            && none_missing(&loaded.outcome.missing[start..end])
+            && all_finite(&loaded.outcome.values[start..end])
             && loaded.numeric_sources.iter().all(|(_, column)| {
-                column.missing[start..end].iter().all(|missing| !*missing)
-                    && column.values[start..end]
-                        .iter()
-                        .all(|value| value.is_finite())
+                none_missing(&column.missing[start..end]) && all_finite(&column.values[start..end])
             })
     };
     let rows = loaded.candidate.len();

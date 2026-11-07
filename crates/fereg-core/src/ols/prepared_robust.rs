@@ -1665,7 +1665,13 @@ mod tests {
             )
             .expect("strided robust fit");
             assert!(strided.certificate().passed);
-            assert_eq!(packed.fit().coefficients(), strided.fit().coefficients());
+            // Both storages share every discrete decision; their norm sums
+            // use different fixed orders, so values agree to rounding.
+            crate::test_support::assert_debug_close(
+                &packed.fit().coefficients(),
+                &strided.fit().coefficients(),
+                1e-12,
+            );
             for (actual, expected) in strided
                 .covariance()
                 .values()

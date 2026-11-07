@@ -2918,6 +2918,7 @@ fn check_strict_candidate_categorical_projection(rebuild: bool) {
 
 #[test]
 fn rejected_categorical_curve_allows_joint_strict_recovery() {
+    let _established_routes = crate::fe::block_schur::disable_for_test();
     let n = 240;
     let g: Vec<_> = (0..n).map(|i| (i / 5 % 4) as f64).collect();
     let h: Vec<_> = (0..n).map(|i| (i / 20 % 3) as f64).collect();
@@ -3236,6 +3237,7 @@ fn canonical_final_preserves_slope_truth_current_hessian_and_reuse_refusal() {
 
 #[test]
 fn low_three_fe_audit_certifies_map_window_independently_of_checkpoint_engine() {
+    let _established_routes = crate::fe::block_schur::disable_for_test();
     fn stable_probe() -> PpmlAllocatorSnapshot {
         PpmlAllocatorSnapshot {
             current_bytes: 16384,
@@ -3433,6 +3435,7 @@ fn fast_categorical_lsmr_strict_final_preserves_truth_and_canonical_retry() {
 
 #[test]
 fn low_categorical_joint_strict_final_preserves_truth_and_canonical_retry() {
+    let _established_routes = crate::fe::block_schur::disable_for_test();
     // Preserve coverage of the fallback when the optional curve is absent.
     let _canonical = CanonicalFinalTestGuard::disabled();
     let _curve = ProfileCurveTestGuard::disabled();
@@ -4711,6 +4714,7 @@ fn strict_caller_error_and_unwind_restore_a_usable_prior_session() {
 
 #[test]
 fn ppml_topology_publication_follows_strict_commit_and_preserves_accepted_on_rollback() {
+    let _established_routes = crate::fe::block_schur::disable_for_test();
     let (prepared, outcome) = prepared_three_fe([0, 1, 2], false, None);
     let n = outcome.len();
     let weights = vec![1.; n];
@@ -5019,6 +5023,7 @@ fn preconditioner_prepared_many(
 
 #[test]
 fn historical_preconditioner_session_acceptance_weight_frames_checkpoint_and_rollback() {
+    let _established_routes = crate::fe::block_schur::disable_for_test();
     let n = 4096;
     let g: Vec<_> = (0..n).map(|i| (i % 8) as f64).collect();
     let h: Vec<_> = (0..n).map(|i| (i / 8 % 8) as f64).collect();
@@ -5131,6 +5136,7 @@ fn historical_preconditioner_session_acceptance_weight_frames_checkpoint_and_rol
 
 #[test]
 fn historical_preconditioner_complete_ppml_known_optimum_hits_and_matches_cold() {
+    let _established_routes = crate::fe::block_schur::disable_for_test();
     let n = 8192;
     // Every pair has identical design and opposite Poisson disturbances.
     let g: Vec<_> = (0..n).map(|i| (i / 2 % 8) as f64).collect();

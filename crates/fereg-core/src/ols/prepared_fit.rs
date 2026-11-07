@@ -4220,8 +4220,7 @@ where
     F: Fn(usize) -> Result<f64> + Sync,
 {
     let mut needs_rescale = false;
-    let mean =
-        weighted_mean_with_scale(nrows, weights, &value, bound, Some(&mut needs_rescale))?;
+    let mean = weighted_mean_with_scale(nrows, weights, &value, bound, Some(&mut needs_rescale))?;
     // Cancellation can make a valid upper bound much larger than the actual
     // residual. Recover the original maximum scan if scaling loses precision
     // to subnormal arithmetic; the optimization never just discards that tail.
@@ -4855,8 +4854,7 @@ fn certify_scores<P: PreparedOlsFitView + ?Sized>(
                 && matches!(
                     prepared.fit_model().columns[column].kind,
                     PreparedOlsColumnKind::Intercept
-                )
-            {
+                ) {
                 // Preserve the independently scaled compensated score, while
                 // hoisting the unit intercept and weight out of the row loop.
                 let left = 1.0 / denominator;
@@ -4934,10 +4932,7 @@ fn score_denominator(
 
 /// Compensated sum of `term(row)` over fixed row chunks, each chunk's sum and
 /// correction merged in chunk order with the same compensation.
-fn chunked_compensated_sum(
-    rows: usize,
-    term: impl Fn(usize) -> Result<f64> + Sync,
-) -> Result<f64> {
+fn chunked_compensated_sum(rows: usize, term: impl Fn(usize) -> Result<f64> + Sync) -> Result<f64> {
     const ROWS: usize = 1 << 14;
     let parts: Vec<Result<(f64, f64)>> = (0..rows.div_ceil(ROWS))
         .into_par_iter()

@@ -583,6 +583,7 @@ fn canonical_budget_credits_only_released_capacity() {
 
 #[test]
 fn canonical_phase_peak_admits_wide_weighted_oracle_within_the_existing_pool() {
+    let _established_routes = crate::fe::block_schur::disable_for_test();
     use crate::ols::linear_session::{CertifiedLinearSession, LinearSessionGenerations};
     use crate::ols::prepared_fit::LinearSolveFrame;
     use crate::ols::{PreparedOlsBreadWeightScale, PreparedOlsExecutionMode, PreparedOlsFitConfig};
@@ -706,16 +707,19 @@ fn canonical_phase_peak_admits_wide_weighted_oracle_within_the_existing_pool() {
 
 #[test]
 fn streamed_canonical_groups_admit_wide_nonzero_weighted_contrasts() {
+    let _established_routes = crate::fe::block_schur::disable_for_test();
     weighted_streaming_case(8640, 100, 36, 1, &[1, 8], false);
 }
 
 #[test]
 fn tiled_canonical_output_matches_independent_wls_under_changing_weights() {
+    let _established_routes = crate::fe::block_schur::disable_for_test();
     weighted_streaming_case(14400, 144, 32, 1, &[1, 8], true);
 }
 
 #[test]
 fn column_owned_rhs_admits_disconnected_wls_below_the_old_reduction_peak() {
+    let _established_routes = crate::fe::block_schur::disable_for_test();
     weighted_streaming_case(16320, 100, 124, 4, &[4], true);
 }
 
@@ -978,6 +982,7 @@ fn weighted_streaming_case(
 
 #[test]
 fn canonical_work_history_admits_changed_weights_and_reclaims_only_after_preflight() {
+    let _established_routes = crate::fe::block_schur::disable_for_test();
     use crate::ols::linear_session::{CertifiedLinearSession, LinearSessionGenerations};
     use crate::ols::prepared_fit::LinearSolveFrame;
     use crate::ols::{PreparedOlsBreadWeightScale, PreparedOlsExecutionMode, PreparedOlsFitConfig};
@@ -1104,6 +1109,7 @@ fn canonical_work_history_admits_changed_weights_and_reclaims_only_after_preflig
 
 #[test]
 fn canonical_products_session_keeps_rank_and_strict_rollback_across_weights() {
+    let _established_routes = crate::fe::block_schur::disable_for_test();
     use crate::ols::linear_session::{CertifiedLinearSession, LinearSessionGenerations};
     use crate::ols::prepared_fit::LinearSolveFrame;
     use crate::ols::{PreparedOlsBreadWeightScale, PreparedOlsExecutionMode, PreparedOlsFitConfig};

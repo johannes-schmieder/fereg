@@ -340,6 +340,7 @@ mod tests {
 
     #[test]
     fn centered_three_fe_projection_matches_constructed_weighted_oracle() {
+        let _established_routes = crate::fe::block_schur::disable_for_test();
         for nested in 0..3 {
             let codes = codes(nested);
             let levels = [5, 4, 3];

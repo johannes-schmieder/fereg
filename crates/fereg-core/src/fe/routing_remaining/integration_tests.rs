@@ -637,6 +637,7 @@ fn real_session_forced_routes_refusal_direct_and_cancellation_isolated() {
 
 #[test]
 fn gates_shell_preserves_old_parent_boundary() {
+    let _established_routes = crate::fe::block_schur::disable_for_test();
     use crate::fe::routing_gates::GateState;
     let fixture = PairedCells::new(false);
     let data = fixture.prepared(2);
@@ -682,6 +683,7 @@ fn gates_shell_preserves_old_parent_boundary() {
 
 #[test]
 fn gates_real_callers_routes_refusal_direct_and_cancel() {
+    let _established_routes = crate::fe::block_schur::disable_for_test();
     use crate::fe::routing_gates::GateState;
     const CHILD: &str = "FEREG_GATES_REAL_CALLER_CHILD";
     if std::env::var_os(CHILD).is_none() {
@@ -1007,6 +1009,7 @@ fn gates_unaffected_auto_families_are_exact() {
 
 #[test]
 fn real_ols_eager_cells_preserve_analytic_fit_and_fixed_worker_repeats() {
+    let _established_routes = crate::fe::block_schur::disable_for_test();
     let fixture = PairedCells::new(false);
     let data = fixture.prepared(2);
     for workers in [1, 4] {

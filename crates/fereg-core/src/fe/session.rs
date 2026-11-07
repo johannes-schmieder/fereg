@@ -351,6 +351,18 @@ impl<'a> FeSession<'a> {
                         config.absorb,
                     )?);
                 }
+                // The block elimination serves the binding first; a decline
+                // builds the two-FE owner on demand in the binding route.
+                super::FeSolverKind::Auto
+                    if design.effects().len() == 2
+                        && block_schur_enabled()
+                        && config.absorb.lsmr.preconditioner == super::LsmrPreconditioner::Auto
+                        && routing.is_none_or(|preset| {
+                            preset == super::RoutingPreset::gates_two_v2()
+                        }) =>
+                {
+                    owner.binding = Some(design);
+                }
                 super::FeSolverKind::Auto | super::FeSolverKind::CmgSchur
                     if design.effects().len() == 2 =>
                 {
@@ -1046,6 +1058,9 @@ impl<'a> FeSession<'a> {
             super::borrowed_map::block_schur::Request {
                 retain_coefficients: config.retain_coefficients,
                 fresh_weights: false,
+                // Weighted projections (PPML separation frames) also bound
+                // coefficient errors; unit-weight OLS keeps the moment rule.
+                coefficient_accuracy: !matches!(weights, BorrowedMapWeights::Unit),
             },
         )? {
             Outcome::Done(result) => {

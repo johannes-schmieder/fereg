@@ -7,7 +7,6 @@
 //! repeated/reordered interaction terms reuse one topology source, and an exact
 //! repeated partition is fully redundant under the mobility search.
 
-
 use crate::error::{allocation, invalid_argument, invalid_data, Result};
 use crate::fe::{CategoricalCodeView, CategoricalTopologySource, FinalizedCategoricalTopology};
 use crate::memory::push_reserved;
@@ -338,9 +337,7 @@ fn apply_mobility_policy<R: TopologyDofReservation>(
     reservation: &mut R,
 ) -> Result<()> {
     let pairs: Vec<(usize, usize, bool)> = match policy {
-        CategoricalTopologyDofPolicy::None | CategoricalTopologyDofPolicy::Continuous => {
-            Vec::new()
-        }
+        CategoricalTopologyDofPolicy::None | CategoricalTopologyDofPolicy::Continuous => Vec::new(),
         CategoricalTopologyDofPolicy::FirstPair if eligible_indices.len() >= 2 => {
             vec![(eligible_indices[0], eligible_indices[1], true)]
         }
@@ -363,7 +360,11 @@ fn apply_mobility_policy<R: TopologyDofReservation>(
     // Admit every pair's parent bank first, then count the independent pairs
     // concurrently. Component counts are exact, so the order is immaterial.
     let mut jobs = Vec::new();
-    reservation.reserve_vec(&mut jobs, pairs.len(), "unable to reserve absorbed-DoF pairs")?;
+    reservation.reserve_vec(
+        &mut jobs,
+        pairs.len(),
+        "unable to reserve absorbed-DoF pairs",
+    )?;
     for &(earlier, later, _) in &pairs {
         let earlier_source = effect_source(topology, earlier)?;
         let later_source = effect_source(topology, later)?;
@@ -385,7 +386,16 @@ fn apply_mobility_policy<R: TopologyDofReservation>(
             0_u32,
             "unable to reserve categorical absorbed-DoF union-find parents",
         )?;
-        jobs.push((earlier_codes, later_codes, earlier_source.n_levels(), parent));
+        push_reserved(
+            &mut jobs,
+            (
+                earlier_codes,
+                later_codes,
+                earlier_source.n_levels(),
+                parent,
+            ),
+            "categorical absorbed-DoF pair capacity exhausted",
+        )?;
     }
     use rayon::prelude::*;
     let counts: Vec<Result<usize>> = jobs

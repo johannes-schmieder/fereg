@@ -28,8 +28,33 @@ use std::ops::Range;
 
 /// Developer switch: `FEREG_BLOCK_SCHUR=0` keeps the established routes.
 pub(crate) fn enabled() -> bool {
+    #[cfg(test)]
+    if TEST_DISABLED.load(std::sync::atomic::Ordering::SeqCst) > 0 {
+        return false;
+    }
     static ENABLED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
     *ENABLED.get_or_init(|| std::env::var("FEREG_BLOCK_SCHUR").map_or(true, |v| v != "0"))
+}
+
+#[cfg(test)]
+static TEST_DISABLED: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+
+/// Tests of the established routes' own machinery disable the elimination
+/// while the guard lives (process-wide; other tests only see a fallback).
+#[cfg(test)]
+pub(crate) struct DisabledForTest;
+
+#[cfg(test)]
+pub(crate) fn disable_for_test() -> DisabledForTest {
+    TEST_DISABLED.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+    DisabledForTest
+}
+
+#[cfg(test)]
+impl Drop for DisabledForTest {
+    fn drop(&mut self) {
+        TEST_DISABLED.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
+    }
 }
 
 /// Retained (non-eliminated) blocks with specialized kernels.
@@ -331,6 +356,8 @@ pub(crate) struct Weights {
     inverse_diagonal: Vec<f64>,
     inverse_root_mass: Vec<f64>,
     raw_scale: f64,
+    /// Total normalized weight of the sample.
+    total_mass: f64,
     bytes: u128,
 }
 
@@ -467,6 +494,7 @@ impl Weights {
         }
         let bytes = (cell.capacity() + seg_inverse.capacity() + 3 * m) as u128 * 8
             + 2 * (lanes * m) as u128 * 8;
+        let total_mass: f64 = seg_inverse.iter().map(|inverse| 1.0 / inverse).sum();
         Ok(Some(Self {
             cell,
             seg_inverse,
@@ -474,6 +502,7 @@ impl Weights {
             inverse_diagonal,
             inverse_root_mass,
             raw_scale: weights.raw_scale,
+            total_mass,
             bytes,
         }))
     }
@@ -487,6 +516,9 @@ pub(crate) struct Request {
     /// Recompute the weight state even for the same weight slice (callers
     /// that refill one buffer between frames).
     pub(crate) fresh_weights: bool,
+    /// Also bound every level's Jacobi coefficient-error estimate (callers
+    /// that check fitted predictors row by row, such as PPML).
+    pub(crate) coefficient_accuracy: bool,
 }
 
 /// Outcome of one projection request.
@@ -578,7 +610,9 @@ impl Cache {
             return Ok(None);
         }
         if !(amplification.is_finite() && amplification >= 1.0) {
-            return Err(invalid_argument("derived residual amplification is invalid"));
+            return Err(invalid_argument(
+                "derived residual amplification is invalid",
+            ));
         }
         let elim_codes = design.effects()[st.eliminated].codes();
         let block_codes: Vec<&[u32]> = st
@@ -673,6 +707,7 @@ struct Ctx<'d, 'w, const NB: usize> {
     codes_b: [&'d [u32]; NB],
     offs: [u32; NB],
     weights: ValidatedWeights<'w>,
+    coefficient_accuracy: bool,
 }
 
 #[inline(always)]
@@ -938,7 +973,11 @@ fn rhs<const R: usize, const NB: usize, const WEIGHTED: bool>(
     };
     let results: Vec<([f64; R], [f64; R])> = if lanes == 1 {
         let mut parts = seg_parts;
-        vec![run(&st.lanes[0], &mut work.accs[0], parts.pop().expect("lane"))]
+        vec![run(
+            &st.lanes[0],
+            &mut work.accs[0],
+            parts.pop().expect("lane"),
+        )]
     } else {
         work.accs[..lanes]
             .par_iter_mut()
@@ -964,14 +1003,32 @@ enum Solve {
     Declined(&'static str),
 }
 
+/// `value / target` with an exact zero target accepting only exact zeros.
+fn ratio(value: f64, target: f64) -> f64 {
+    if target > 0.0 {
+        value / target
+    } else if value == 0.0 {
+        0.0
+    } else {
+        f64::INFINITY
+    }
+}
+
 /// Lockstep Jacobi-preconditioned CG on `S x = r0` (r0 already in `work.r`).
+/// A column stops when its largest scaled moment `|r_j| / sqrt(m_j)` is at
+/// most `target` and, when `coefficient_target` is given, its largest
+/// Jacobi coefficient-error estimate `|r_j| / d_j` is at most that target.
 fn pcg<const R: usize, const NB: usize, const UNIT: bool>(
     st: &Structure,
     w: &Weights,
     work: &mut Work<R>,
     target: [f64; R],
+    coefficient_target: Option<[f64; R]>,
     cap: usize,
 ) -> Result<Solve> {
+    let measure = |moment: f64, coefficient: f64, c: usize| {
+        ratio(moment, target[c]).max(coefficient_target.map_or(0.0, |t| ratio(coefficient, t[c])))
+    };
     let m = st.reduced;
     let serial = m * R < PARALLEL_WORK;
     let inv_diag = &w.inverse_diagonal;
@@ -979,6 +1036,7 @@ fn pcg<const R: usize, const NB: usize, const UNIT: bool>(
     // z = M^-1 r, rz, inf over the initial residual; x = 0, p = z.
     let mut rz = [0.0; R];
     let mut inf = [0.0_f64; R];
+    let mut zinf = [0.0_f64; R];
     {
         let (r, z) = (&work.r, &mut work.z);
         for j in 0..m {
@@ -986,24 +1044,27 @@ fn pcg<const R: usize, const NB: usize, const UNIT: bool>(
                 z[j][c] = inv_diag[j] * r[j][c];
                 rz[c] += r[j][c] * z[j][c];
                 inf[c] = inf[c].max(r[j][c].abs() * inv_root[j]);
+                zinf[c] = zinf[c].max(z[j][c].abs());
             }
         }
     }
     work.x.fill([0.0; R]);
     let mut active = [false; R];
+    let mut progress = [0.0_f64; R];
     for c in 0..R {
-        if !inf[c].is_finite() || !rz[c].is_finite() {
+        if !inf[c].is_finite() || !rz[c].is_finite() || !zinf[c].is_finite() {
             return Ok(Solve::Declined("nonfinite initial reduced residual"));
         }
-        active[c] = inf[c] > target[c];
+        progress[c] = measure(inf[c], zinf[c], c);
+        active[c] = progress[c] > 1.0;
     }
     for (p, z) in work.p.iter_mut().zip(&work.z) {
         for c in 0..R {
             p[c] = if active[c] { z[c] } else { 0.0 };
         }
     }
-    let mut best = inf;
-    let mut checkpoint_best = inf;
+    let mut best = progress;
+    let mut checkpoint_best = progress;
     let mut iterations = 0;
     while active.contains(&true) {
         if iterations >= cap {
@@ -1023,6 +1084,7 @@ fn pcg<const R: usize, const NB: usize, const UNIT: bool>(
         }
         let mut next = [0.0; R];
         let mut inf = [0.0_f64; R];
+        let mut zinf = [0.0_f64; R];
         {
             let Work {
                 x, r, z, p, accs, ..
@@ -1034,6 +1096,7 @@ fn pcg<const R: usize, const NB: usize, const UNIT: bool>(
                         z: &mut [[f64; R]]| {
                 let mut s = [0.0; R];
                 let mut h = [0.0_f64; R];
+                let mut hz = [0.0_f64; R];
                 for (k, j) in range.enumerate() {
                     for c in 0..R {
                         x[k][c] += alpha[c] * p[j][c];
@@ -1041,11 +1104,12 @@ fn pcg<const R: usize, const NB: usize, const UNIT: bool>(
                         z[k][c] = inv_diag[j] * r[k][c];
                         s[c] += r[k][c] * z[k][c];
                         h[c] = h[c].max(r[k][c].abs() * inv_root[j]);
+                        hz[c] = hz[c].max(z[k][c].abs());
                     }
                 }
-                (s, h)
+                (s, h, hz)
             };
-            let parts: Vec<([f64; R], [f64; R])> = if serial {
+            let parts: Vec<([f64; R], [f64; R], [f64; R])> = if serial {
                 vec![body(0..m, x, r, z)]
             } else {
                 x.par_chunks_mut(CHUNK)
@@ -1058,10 +1122,11 @@ fn pcg<const R: usize, const NB: usize, const UNIT: bool>(
                     })
                     .collect()
             };
-            for (s, h) in parts {
+            for (s, h, hz) in parts {
                 for c in 0..R {
                     next[c] += s[c];
                     inf[c] = inf[c].max(h[c]);
+                    zinf[c] = zinf[c].max(hz[c]);
                 }
             }
         }
@@ -1071,11 +1136,12 @@ fn pcg<const R: usize, const NB: usize, const UNIT: bool>(
             if !active[c] {
                 continue;
             }
-            if !(inf[c].is_finite() && next[c].is_finite()) {
+            if !(inf[c].is_finite() && next[c].is_finite() && zinf[c].is_finite()) {
                 return Ok(Solve::Declined("nonfinite reduced residual"));
             }
-            best[c] = best[c].min(inf[c]);
-            if inf[c] <= target[c] {
+            let current = measure(inf[c], zinf[c], c);
+            best[c] = best[c].min(current);
+            if current <= 1.0 {
                 active[c] = false;
             } else {
                 beta[c] = next[c] / rz[c];
@@ -1207,7 +1273,11 @@ fn residualize<const R: usize, const NB: usize, const WEIGHTED: bool>(
     let parts = split_parts(values.as_mut_slice(), &lengths);
     let results: Vec<[f64; R]> = if lanes == 1 {
         let mut parts = parts;
-        vec![run(st.rows[0].clone(), parts.pop().expect("lane"), &mut accs[0])]
+        vec![run(
+            st.rows[0].clone(),
+            parts.pop().expect("lane"),
+            &mut accs[0],
+        )]
     } else {
         parts
             .into_par_iter()
@@ -1277,8 +1347,18 @@ fn run<const R: usize, const NB: usize, const UNIT: bool, const WEIGHTED: bool>(
     for j in 0..R {
         target[j] = 0.5 * tolerance * scale[j];
     }
+    // Coefficient accuracy: Jacobi error estimates within the tolerance of
+    // the column's root-mean-square magnitude.
+    let coefficient_target = ctx.coefficient_accuracy.then(|| {
+        let root_total = ctx.w.total_mass.sqrt();
+        let mut t = [0.0; R];
+        for j in 0..R {
+            t[j] = 0.5 * tolerance * scale[j] / root_total;
+        }
+        t
+    });
     let started = Instant::now();
-    let solved = pcg::<R, NB, UNIT>(st, ctx.w, &mut work, target, cap)?;
+    let solved = pcg::<R, NB, UNIT>(st, ctx.w, &mut work, target, coefficient_target, cap)?;
     facts.pcg_seconds += started.elapsed().as_secs_f64();
     let iterations = match solved {
         Solve::Converged(iterations) => iterations,
@@ -1361,8 +1441,12 @@ fn certify_batch<const R: usize>(
 }
 
 fn merge_fold(total: &mut CertificateFold, part: &CertificateFold) {
-    total.absolute_infinity_norm = total.absolute_infinity_norm.max(part.absolute_infinity_norm);
-    total.relative_infinity_norm = total.relative_infinity_norm.max(part.relative_infinity_norm);
+    total.absolute_infinity_norm = total
+        .absolute_infinity_norm
+        .max(part.absolute_infinity_norm);
+    total.relative_infinity_norm = total
+        .relative_infinity_norm
+        .max(part.relative_infinity_norm);
     total.relative_square_sum += part.relative_square_sum;
     total.relative_count += part.relative_count;
 }
@@ -1384,54 +1468,46 @@ fn dispatch<const NB: usize>(
     macro_rules! go {
         ($r:literal) => {
             match (unit, weighted) {
-                (true, false) => {
-                    run::<$r, NB, true, false>(
-                        ctx,
-                        values,
-                        first,
-                        reference,
-                        tolerance,
-                        cap,
-                        facts,
-                        coefficients,
-                    )
-                }
-                (true, true) => {
-                    run::<$r, NB, true, true>(
-                        ctx,
-                        values,
-                        first,
-                        reference,
-                        tolerance,
-                        cap,
-                        facts,
-                        coefficients,
-                    )
-                }
-                (false, false) => {
-                    run::<$r, NB, false, false>(
-                        ctx,
-                        values,
-                        first,
-                        reference,
-                        tolerance,
-                        cap,
-                        facts,
-                        coefficients,
-                    )
-                }
-                (false, true) => {
-                    run::<$r, NB, false, true>(
-                        ctx,
-                        values,
-                        first,
-                        reference,
-                        tolerance,
-                        cap,
-                        facts,
-                        coefficients,
-                    )
-                }
+                (true, false) => run::<$r, NB, true, false>(
+                    ctx,
+                    values,
+                    first,
+                    reference,
+                    tolerance,
+                    cap,
+                    facts,
+                    coefficients,
+                ),
+                (true, true) => run::<$r, NB, true, true>(
+                    ctx,
+                    values,
+                    first,
+                    reference,
+                    tolerance,
+                    cap,
+                    facts,
+                    coefficients,
+                ),
+                (false, false) => run::<$r, NB, false, false>(
+                    ctx,
+                    values,
+                    first,
+                    reference,
+                    tolerance,
+                    cap,
+                    facts,
+                    coefficients,
+                ),
+                (false, true) => run::<$r, NB, false, true>(
+                    ctx,
+                    values,
+                    first,
+                    reference,
+                    tolerance,
+                    cap,
+                    facts,
+                    coefficients,
+                ),
             }
         };
     }
@@ -1494,6 +1570,7 @@ fn project_nb<const NB: usize>(
         codes_b: std::array::from_fn(|b| design.effects()[st.blocks[b]].codes()),
         offs: std::array::from_fn(|b| st.offsets[b]),
         weights,
+        coefficient_accuracy: request.coefficient_accuracy,
     };
     let tolerance = map.tolerance;
     let cap = map.max_iterations.clamp(1, MAX_ITERATIONS);
@@ -1578,14 +1655,18 @@ fn project_nb<const NB: usize>(
         requested_solver: FeSolverKind::Auto,
         iterations: facts.iterations,
         solver_workspace_peak: SolverWorkspacePeak::from_bytes(bytes)?,
+        // The certificate is fused into the residual pass, so its time is
+        // part of the solve.
         solve_seconds: started.elapsed().as_secs_f64(),
-        certification_seconds: facts.residual_seconds,
+        certification_seconds: 0.0,
         ..SolveReport::single_route(FeSolverKind::Cg, SolveStopReason::Certified, certificate)
     };
     match coefficients {
-        Some(coefficients) => {
-            CertifiedBorrowedMap::from_certified_parts_with_coefficients(values, report, coefficients)
-        }
+        Some(coefficients) => CertifiedBorrowedMap::from_certified_parts_with_coefficients(
+            values,
+            report,
+            coefficients,
+        ),
         None => CertifiedBorrowedMap::from_certified_parts(values, report),
     }?
     .with_residual_norms(residual_norms)
@@ -1602,3 +1683,5 @@ fn trace_decline(reason: &str, facts: Facts) {
     }
 }
 
+#[cfg(test)]
+mod tests;

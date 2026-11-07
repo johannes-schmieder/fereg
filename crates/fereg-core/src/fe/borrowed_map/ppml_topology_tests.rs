@@ -61,6 +61,7 @@ fn report(mut report: SolveReport) -> SolveReport {
 
 #[test]
 fn ppml_topology_keeps_weighted_projections_and_signatures_exact() {
+    let _established_routes = crate::fe::block_schur::disable_for_test();
     for effects in [2, 3] {
         for threads in [1, 4] {
             rayon::ThreadPoolBuilder::new()

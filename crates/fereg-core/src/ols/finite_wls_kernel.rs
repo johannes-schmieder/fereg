@@ -1868,7 +1868,8 @@ fn fill_retained_dense_standardized_rows(
                 let source = values.row(row);
                 let weight = normalized_weight(weights, divisor, row)?;
                 for column in 0..dimension {
-                    let source_column = selected_columns.map_or(column, |selected| selected[column]);
+                    let source_column =
+                        selected_columns.map_or(column, |selected| selected[column]);
                     standardized[column] = scaled_column(source[source_column], scales, column)?;
                 }
                 crate::kernels::upper_rank_one(

@@ -582,6 +582,7 @@ fn checkpoint_schur_copy_respects_exact_transient_admission() {
 
 #[test]
 fn checkpoint_schur_reuses_full_progress_and_falls_back_on_untouched_inputs() {
+    let _established_routes = crate::fe::block_schur::disable_for_test();
     for width in [1, 2, 3, 8, 15, 16, 17] {
         check_checkpoint_schur_width(width);
     }
@@ -1981,6 +1982,7 @@ fn reusable_trailing_norms_do_not_publish_on_mismatch_or_failure() {
 
 #[test]
 fn pilot_group_scratch_matches_weighted_ring_oracle_and_restores_on_failure() {
+    let _established_routes = crate::fe::block_schur::disable_for_test();
     let mut left = Vec::new();
     let mut right = Vec::new();
     let mut cells = Vec::new();
@@ -2128,6 +2130,7 @@ fn direct_two_fe_schur_matches_weighted_contrasts_across_frames_and_widths() {
 
 #[test]
 fn checkpoint_schur_preserves_component_contrasts_across_frames_and_widths() {
+    let _established_routes = crate::fe::block_schur::disable_for_test();
     check_direct_two_fe_weighted_contrasts(true, false);
 }
 
@@ -2363,6 +2366,7 @@ fn reusable_categorical_map_matches_one_shot_across_weight_frames_and_rhs_widths
 
 #[test]
 fn component_checkpoint_rechecks_small_drift_before_accepting_warm_residuals() {
+    let _established_routes = crate::fe::block_schur::disable_for_test();
     // A repeated-row contrast is exactly orthogonal to the explicit design.
     // A tiny FE term in the low-weight component passes a global norm check
     // despite a material predictor error; component scaling must also govern
@@ -2719,6 +2723,7 @@ fn selective_checkpoint_retry_preserves_weighted_oracle_and_bounded_full_fallbac
 
 #[test]
 fn checkpoint_lsmr_recertifies_and_numerical_failure_falls_back_transactionally() {
+    let _established_routes = crate::fe::block_schur::disable_for_test();
     let first_codes = [0_u32, 0, 1, 1, 2, 2, 0, 1, 2];
     let second_codes = [0_u32, 1, 0, 1, 0, 1, 2, 2, 2];
     let first_index = LevelIndex::from_codes(&first_codes, 3).expect("first index");
@@ -2800,6 +2805,7 @@ fn checkpoint_lsmr_recertifies_and_numerical_failure_falls_back_transactionally(
 
 #[test]
 fn sparse_two_fe_pcg_acceleration_matches_certified_map() {
+    let _established_routes = crate::fe::block_schur::disable_for_test();
     let rows = 256_usize;
     let first_levels = 80_usize;
     let second_levels = 64_usize;
@@ -3094,6 +3100,7 @@ fn weighted_graph_operator_and_projection_match_independent_paths() {
 
 #[test]
 fn unit_graph_projection_matches_independent_map() {
+    let _established_routes = crate::fe::block_schur::disable_for_test();
     let rows = 20_000;
     for disconnected in [false, true] {
         let left_codes = (0..rows)
@@ -3367,6 +3374,7 @@ fn schur_rhs_tiles_match_exact_weighted_bipartite_operator() {
 
 #[test]
 fn large_two_fe_pcg_recurrence_is_bit_stable_across_threads() {
+    let _established_routes = crate::fe::block_schur::disable_for_test();
     let rows = 16_384;
     let first_levels = 1_024;
     let second_levels = 997;
