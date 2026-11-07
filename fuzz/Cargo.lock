@@ -146,7 +146,7 @@ checksum = "edd0f118536f44f5ccd48bcb8b111bdc3de888b58c74639dfb034a357d0f206d"
 
 [[package]]
 name = "fereg-core"
-version = "0.5.2"
+version = "0.5.3"
 dependencies = [
  "cmg",
  "rayon",
@@ -165,7 +165,7 @@ dependencies = [
 
 [[package]]
 name = "fereg-plugin"
-version = "0.5.2"
+version = "0.5.3"
 dependencies = [
  "fereg-core",
  "libc",

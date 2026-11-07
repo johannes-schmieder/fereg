@@ -1,4 +1,4 @@
-*! fereg Stata memory adapter 0.5.2 07nov2026
+*! fereg Stata memory adapter 0.5.3 07nov2026
 program define _fereg_memory_baseline, rclass
     version 15.0
     // These are hidden Stata fields. Unknown versions/layouts fail to missing,

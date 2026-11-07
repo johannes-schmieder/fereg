@@ -1462,6 +1462,37 @@ fn recover_strict_intercepts(
     tolerance: f64,
     peak: crate::memory::SolverWorkspacePeak,
 ) -> Result<super::RecoveredCategoricalEffects> {
+    // A small bounded attempt preserves cheap well-conditioned recovery. Keep
+    // at least three quarters of the original budget for the robust solve.
+    let pilot_limit = 8.min(r.map.max_iterations / 4);
+    let mut consumed = 0;
+    if pilot_limit > 0 {
+        let attempt = super::topology_slope_map::try_strict_intercept_map(
+            r.topology,
+            r.effects,
+            r.weights,
+            r.target,
+            r.requested_channels,
+            MapConfig {
+                tolerance: r.map.tolerance.min(1e-12),
+                max_iterations: pilot_limit,
+                ..r.map
+            },
+            tolerance,
+            r.known_connected,
+            r.materialize_absorbed_sum,
+        )?;
+        consumed = attempt.iterations;
+        if crate::diagnostics::solver_trace_enabled() {
+            crate::diagnostics::emit_solver_trace(&format!(
+                "FEREG_SOLVER_TRACE|phase=saved_intercept_recovery|method=map_pilot|iterations={consumed}|limit={pilot_limit}|certified={}",
+                attempt.result.is_some()
+            ));
+        }
+        if let Some(value) = attempt.result {
+            return Ok(value.with_solver_workspace_peak(peak));
+        }
+    }
     if crate::diagnostics::solver_trace_enabled() {
         crate::diagnostics::emit_solver_trace(&format!(
             "FEREG_SOLVER_TRACE|phase=saved_intercept_recovery|method=cg|rows={}|effects={}|tolerance={tolerance:.17e}",
@@ -1476,13 +1507,17 @@ fn recover_strict_intercepts(
         r.requested_channels,
         MapConfig {
             tolerance: r.map.tolerance.min(1e-12),
+            max_iterations: r.map.max_iterations - consumed,
             ..r.map
         },
         tolerance,
         r.known_connected,
         r.materialize_absorbed_sum,
     )
-    .map(|v| v.with_solver_workspace_peak(peak))
+    .map(|v| {
+        v.include_prior_iterations(consumed)
+            .with_solver_workspace_peak(peak)
+    })
 }
 fn numerical_recovery_miss(e: &FeregError) -> bool {
     e.code == ErrorCode::NonConvergence

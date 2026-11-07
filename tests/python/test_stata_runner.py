@@ -108,7 +108,7 @@ class StataRunnerSentinelTests(unittest.TestCase):
             self.assertIn(str(plugin.resolve()), observed_wrapper)
             self.assertNotIn(str((root / "dist").resolve()), observed_wrapper)
             self.assertIn("plugin call __fereg_runner_provenance, selftest", observed_wrapper)
-            self.assertIn('"ado=0.5.2" "protocol_major=1" "protocol_minor=7"', observed_wrapper)
+            self.assertIn('"ado=0.5.3" "protocol_major=1" "protocol_minor=7"', observed_wrapper)
             self.assertIn('"threads=1" "verbose=1"', observed_wrapper)
             self.assertNotIn("__fereg_runner_provenance, version", observed_wrapper)
 
@@ -148,7 +148,7 @@ class StataRunnerSentinelTests(unittest.TestCase):
 
         root = Path(__file__).resolve().parents[2]
         with tempfile.TemporaryDirectory() as raw:
-            package = Path(raw) / "fereg-0.5.2"
+            package = Path(raw) / "fereg-0.5.3"
             package.mkdir()
             (package / "fereg.pkg").write_text("v 3\n", encoding="utf-8")
             (package / "stata.toc").write_text("v 3\n", encoding="utf-8")

@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.3 — 2026-11-07
+
+- Try a bounded, independently certified MAP recovery before the existing CG
+  path for saved categorical PPML effects. A numerical miss discards the pilot
+  state and runs CG from the original target within the shared iteration budget.
+  Scientific tolerances and fits without saved effects are unchanged.
+- On the fixed isolated Linux comparison, easy saved effects improve 5.7%
+  versus 0.5.2, leaving a 1.5% historical gap; difficult saved effects cost 2.1%.
+  All fixed gates pass. Johannes accepted these trade-offs; earlier failures
+  and the 0.5.2 performance exception remain recorded in docs/VALIDATION.md.
+
 ## 0.5.2 — 2026-11-07
 
 - Repair strict PPML convergence after a rejected categorical profiling curve,

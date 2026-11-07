@@ -200,7 +200,7 @@ def extract_staged_release(
         if (manifest.get("review_only") is not True
                 or manifest.get("publication_eligible") is not False
                 or manifest.get("phase") != "beta-review"
-                or package_name != "fereg-0.5.2-review"):
+                or package_name != "fereg-0.5.3-review"):
             raise StagedReleaseError("invalid review-only publication boundary")
         included = manifest.get("included_platforms")
         missing = manifest.get("missing_platforms")
@@ -223,7 +223,7 @@ def extract_staged_release(
     elif (manifest.get("review_only") or manifest.get("phase") == "beta-review"
           or package_name.endswith("-review")):
         raise StagedReleaseError("review-only package must use the review schema")
-    if manifest.get("package") != package_name or manifest.get("version") != "0.5.2":
+    if manifest.get("package") != package_name or manifest.get("version") != "0.5.3":
         raise StagedReleaseError("release manifest package identity is inconsistent")
     source_sha = manifest.get("source_sha")
     if not isinstance(source_sha, str) or HEX_GIT_SHA.fullmatch(source_sha) is None:

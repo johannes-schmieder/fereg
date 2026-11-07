@@ -4422,7 +4422,7 @@ fn licensed_stata_bundle_matches_ordinary_argv_and_rejects_malformed_pre_read() 
 
     let (args, mut mixed_spi) = fixture(OlsVceKind::Iid);
     let mut mixed = bundled(&args);
-    mixed.push("ado=0.5.2".to_owned());
+    mixed.push("ado=0.5.3".to_owned());
     let error =
         estimate_ols(&mixed, &mut mixed_spi).expect_err("mixed bundle and argv are rejected");
     assert_eq!(error.code, ErrorCode::Syntax);
@@ -4452,7 +4452,7 @@ fn local_estimation_bundle_validates_capacity_bytes_and_framing_before_reads() {
     }
     let (_, mut spi) = fixture(OlsVceKind::Iid);
     assert!(estimate_ols(
-        &["bundle_local=6".to_owned(), "ado=0.5.2".to_owned()],
+        &["bundle_local=6".to_owned(), "ado=0.5.3".to_owned()],
         &mut spi
     )
     .is_err());

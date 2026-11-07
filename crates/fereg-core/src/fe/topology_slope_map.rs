@@ -81,6 +81,11 @@ impl RecoveredCategoricalEffects {
         self.solver_workspace_peak
     }
 
+    pub(crate) fn include_prior_iterations(mut self, iterations: usize) -> Self {
+        self.iterations += iterations;
+        self
+    }
+
     pub(crate) fn with_solver_workspace_peak(mut self, peak: SolverWorkspacePeak) -> Self {
         self.solver_workspace_peak = peak;
         self
@@ -449,6 +454,7 @@ pub(crate) fn recover_finalized_categorical_effects_map_selected_certified(
         requested_channels,
         config,
         reconstruction_tolerance,
+        None,
         &mut reservation,
     )
     .map(|mut recovered| {
@@ -456,6 +462,67 @@ pub(crate) fn recover_finalized_categorical_effects_map_selected_certified(
             recovered.absorbed_sum = None;
         }
         recovered
+    })
+}
+
+pub(crate) struct StrictMapAttempt {
+    pub(crate) result: Option<RecoveredCategoricalEffects>,
+    pub(crate) iterations: usize,
+}
+
+struct StrictMapRecovery {
+    known_connected: bool,
+    materialize_absorbed_sum: bool,
+    iterations: usize,
+}
+
+/// A failed bounded attempt returns only its work count, never a residual or seed.
+/// Break, allocation and malformed-input errors cannot trigger another solver.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn try_strict_intercept_map(
+    topology: &FinalizedCategoricalTopology,
+    effects: &[CategoricalAbsorbedEffectView<'_>],
+    weights: BorrowedMapWeights<'_>,
+    target: &[f64],
+    requested: &[bool],
+    config: MapConfig,
+    reconstruction_tolerance: f64,
+    known_connected: bool,
+    materialize_absorbed_sum: bool,
+) -> Result<StrictMapAttempt> {
+    if effects.len() < 2
+        || effects
+            .iter()
+            .any(|e| !e.has_intercept() || !e.slopes().is_empty())
+    {
+        return Err(invalid_argument(
+            "strict MAP recovery requires categorical intercepts",
+        ));
+    }
+    let mut mode = StrictMapRecovery {
+        known_connected,
+        materialize_absorbed_sum,
+        iterations: 0,
+    };
+    let result = recover_with_reservation(
+        topology,
+        effects,
+        weights,
+        target,
+        requested,
+        config,
+        Some(reconstruction_tolerance),
+        Some(&mut mode),
+        &mut SystemSlopeWorkspaceReservation,
+    );
+    let result = match result {
+        Ok(value) => Some(value),
+        Err(error) if error.code == ErrorCode::NonConvergence => None,
+        Err(error) => return Err(error),
+    };
+    Ok(StrictMapAttempt {
+        result,
+        iterations: mode.iterations,
     })
 }
 
@@ -2263,6 +2330,7 @@ fn recover_with_reservation<R: SlopeWorkspaceReservation>(
     requested_channels: &[bool],
     config: MapConfig,
     reconstruction_tolerance: Option<f64>,
+    mut strict: Option<&mut StrictMapRecovery>,
     reservation: &mut R,
 ) -> Result<RecoveredCategoricalEffects> {
     validate_config(config)?;
@@ -2389,17 +2457,22 @@ fn recover_with_reservation<R: SlopeWorkspaceReservation>(
             target,
             requested_channels,
             &effect_offsets,
-            &alphas,
+            &mut alphas,
             &residual,
             0,
             config.tolerance,
             reconstruction_threshold,
+            weights,
+            strict.as_deref(),
             reservation,
         );
     }
 
     for iteration in 1..=config.max_iterations {
         crate::interrupt::checkpoint()?;
+        if let Some(mode) = strict.as_mut() {
+            mode.iterations = iteration;
+        }
         for (effect_index, effect) in effects.iter().enumerate() {
             project_effect_and_accumulate(
                 topology,
@@ -2454,11 +2527,13 @@ fn recover_with_reservation<R: SlopeWorkspaceReservation>(
                     target,
                     requested_channels,
                     &effect_offsets,
-                    &alphas,
+                    &mut alphas,
                     &residual,
                     iteration,
                     config.tolerance,
                     reconstruction_threshold,
+                    weights,
+                    strict.as_deref(),
                     reservation,
                 );
             }
@@ -2472,11 +2547,13 @@ fn recover_with_reservation<R: SlopeWorkspaceReservation>(
                     target,
                     requested_channels,
                     &effect_offsets,
-                    &alphas,
+                    &mut alphas,
                     &residual,
                     iteration,
                     config.tolerance,
                     reconstruction_threshold,
+                    weights,
+                    strict.as_deref(),
                     reservation,
                 );
             }
@@ -2558,13 +2635,63 @@ fn finish_recovery<R: SlopeWorkspaceReservation>(
     target: &[f64],
     requested_channels: &[bool],
     effect_offsets: &[usize],
-    alphas: &[f64],
+    alphas: &mut [f64],
     residual: &DenseMatrix,
     iterations: usize,
     tolerance: f64,
     reconstruction_threshold: f64,
+    weights: ValidatedWeights<'_>,
+    strict: Option<&StrictMapRecovery>,
     reservation: &mut R,
 ) -> Result<RecoveredCategoricalEffects> {
+    if let Some(mode) = strict {
+        normalize_intercept_components(topology, effects, weights, alphas, mode.known_connected)?;
+        if !coefficient_reconstruction_passed(
+            topology,
+            effects,
+            target,
+            effect_offsets,
+            alphas,
+            reconstruction_threshold,
+        ) {
+            return Err(FeregError::new(
+                ErrorCode::NonConvergence,
+                "strict MAP coefficient product failed original-target reconstruction",
+            ));
+        }
+        let recovered = finish_channel_major_recovery(
+            topology,
+            effects,
+            weights,
+            target,
+            requested_channels,
+            alphas,
+            iterations,
+            tolerance,
+            CategoricalRecoveryMethod::Map,
+            mode.materialize_absorbed_sum,
+        )
+        .map_err(|error| {
+            if error.code == ErrorCode::InvalidData
+                && (error.message
+                    == "categorical recovery coefficient product failed its FE certificate"
+                    || error.message.starts_with(
+                        "categorical recovery coefficient product failed reconstruction:",
+                    ))
+            {
+                FeregError::new(ErrorCode::NonConvergence, error.message)
+            } else {
+                error
+            }
+        })?;
+        if recovered.reconstruction_relative_infinity > reconstruction_threshold {
+            return Err(FeregError::new(
+                ErrorCode::NonConvergence,
+                "strict MAP coefficient product failed global reconstruction",
+            ));
+        }
+        return Ok(recovered);
+    }
     let reconstruction_relative_infinity =
         recovery_reconstruction_relative_infinity(target, residual)?;
     if reconstruction_relative_infinity > reconstruction_threshold {

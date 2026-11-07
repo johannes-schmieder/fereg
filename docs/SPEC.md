@@ -808,7 +808,13 @@ status. Unsupported explicit backend structures fail before publication.
 
 PPML categorical saved-effect recovery may use owned coefficient-space CG
 when retained coefficients and direct two-effect graph reconstruction do not
-certify. The original accepted absorbed predictor remains the target. Recovery
+certify. Before CG, a bounded MAP attempt may use at most eight sweeps and at
+most one quarter of the original iteration budget. It must pass the same fresh
+original-target, FE-moment and final-Hessian component-normalization checks.
+An uncertified attempt releases all of its workspace; CG starts from the original
+target with the remaining budget, and reported recovery iterations include the
+attempt. Allocation, interruption and input errors propagate without retry.
+The original accepted absorbed predictor remains the target. Recovery
 uses the existing admitted coefficient banks, reconstructs search directions from
 them, and permits one reliable residual replacement from the original target
 within the same total iteration budget. Reconstruction and independently recomputed
@@ -1579,7 +1585,7 @@ postestimation path makes an extra substantive estimation call.
 
 Retain independently versioned exact estimation handshakes. Current
 versions are action 1.7, model 2.1, OLS result 1.5, PPML request 1.8, PPML
-result 1.5, ado identity 0.5.2 and SPI 3.0. Diagnostics accept same-major,
+result 1.5, ado identity 0.5.3 and SPI 3.0. Diagnostics accept same-major,
 not-newer-minor action callers. Model 2.0 is readable only for the bounded
 no-absorbed-metadata shape;
 unknown/newer identities and malformed framing fail before observation access.

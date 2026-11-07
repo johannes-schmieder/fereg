@@ -1,4 +1,4 @@
-*! fereg e(indepvars) reconstruction shared by OLS and PPML 0.5.2 07nov2026
+*! fereg e(indepvars) reconstruction shared by OLS and PPML 0.5.3 07nov2026
 program define _fereg_indepvars
     version 15.0
     // Pinned reghdfe's e(indepvars) excludes syntax/base coordinates,

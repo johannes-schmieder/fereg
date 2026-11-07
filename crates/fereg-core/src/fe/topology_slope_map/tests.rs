@@ -1487,6 +1487,182 @@ fn retained_coefficient_saved_only_plan_omits_combined_observation_vector() {
 }
 
 #[test]
+fn strict_map_pilot_certifies_independent_components_and_partial_channels() {
+    let (mut a, mut b, mut c, mut target, mut weights) = (vec![], vec![], vec![], vec![], vec![]);
+    for component in 0..2 {
+        for i in 0..4 {
+            for j in 0..3 {
+                for k in 0..2 {
+                    a.push(component * 4 + i);
+                    b.push(component * 3 + j);
+                    c.push(component * 2 + k);
+                    target.push(component as f64 * 1e6 + i as f64 * 0.25 + j as f64 - k as f64);
+                    weights.push((i + 1) as f64 * (j + 1) as f64 * (k + 1) as f64);
+                }
+            }
+        }
+    }
+    let topology = finalize_categorical_topology(
+        &[
+            CategoricalCodeView::new(&a, 8),
+            CategoricalCodeView::new(&b, 6),
+            CategoricalCodeView::new(&c, 4),
+        ],
+        &[&[0], &[1], &[2]],
+        &vec![true; target.len()],
+    )
+    .unwrap();
+    let effects = (0..3)
+        .map(|_| CategoricalAbsorbedEffectView::new(true, vec![]).unwrap())
+        .collect::<Vec<_>>();
+    let config = MapConfig {
+        tolerance: 1e-12,
+        max_iterations: 32,
+        check_every: 19,
+        symmetric: true,
+    };
+    for threads in [1, 4] {
+        let pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(threads)
+            .build()
+            .unwrap();
+        for requested in [[true; 3], [true, false, true]] {
+            let recover = || {
+                crate::fe::FeSession::recover(crate::fe::session::RecoveryRequest {
+                    topology: &topology,
+                    effects: &effects,
+                    weights: BorrowedMapWeights::Provided(&weights),
+                    target: &target,
+                    requested_channels: &requested,
+                    retained: None,
+                    known_connected: false,
+                    materialize_absorbed_sum: true,
+                    lsmr: LsmrConfig::default(),
+                    map: config,
+                    memory_budget: None,
+                    reconstruction_tolerance: Some(1e-12),
+                })
+                .unwrap()
+            };
+            let value = pool.install(recover);
+            assert_eq!(value.recovery_method(), CategoricalRecoveryMethod::Map);
+            assert_eq!(value.iterations(), 8); // Mandatory final check even beyond check_every.
+            assert_eq!(value, pool.install(recover));
+            assert!(value.reconstruction_relative_infinity() <= 1e-12);
+            for row in 0..target.len() {
+                let component = a[row] / 4;
+                let expected = [
+                    component as f64 * 1e6 + (a[row] % 4) as f64 * 0.25 + 2.0 / 3.0,
+                    (b[row] % 3) as f64 - 4.0 / 3.0,
+                    -((c[row] % 2) as f64) + 2.0 / 3.0,
+                ];
+                assert!((value.absorbed_sum()[row] - target[row]).abs() <= 1e-9);
+                for channel in 0..3 {
+                    if requested[channel] {
+                        let observed = value.channels()[channel].as_ref().unwrap()[row];
+                        assert!((observed - expected[channel]).abs() <= 1e-9);
+                    } else {
+                        assert!(value.channels()[channel].is_none());
+                    }
+                }
+            }
+            for component in 0..2 {
+                for channel in [1, 2] {
+                    if let Some(values) = &value.channels()[channel] {
+                        let weighted_sum: f64 = (0..target.len())
+                            .filter(|&row| a[row] / 4 == component)
+                            .map(|row| values[row] * weights[row])
+                            .sum();
+                        assert!(weighted_sum.abs() <= 1e-8);
+                    }
+                }
+            }
+        }
+    }
+    // A real reservation failure in strict mode returns Allocation, with no result.
+    let mut mode = StrictMapRecovery {
+        known_connected: false,
+        materialize_absorbed_sum: true,
+        iterations: 0,
+    };
+    let mut reservation = InjectedReservation {
+        fail_at: Some(0),
+        ..InjectedReservation::default()
+    };
+    assert_eq!(
+        recover_with_reservation(
+            &topology,
+            &effects,
+            BorrowedMapWeights::Provided(&weights),
+            &target,
+            &[true; 3],
+            config,
+            Some(1e-12),
+            Some(&mut mode),
+            &mut reservation
+        )
+        .unwrap_err()
+        .code,
+        ErrorCode::Allocation
+    );
+    assert_eq!(mode.iterations, 0);
+}
+
+#[test]
+fn strict_map_pilot_interrupts_without_fallback() {
+    const CHILD: &str = "FEREG_STRICT_MAP_INTERRUPT_CHILD";
+    if std::env::var_os(CHILD).is_none() {
+        assert!(std::process::Command::new(std::env::current_exe().unwrap())
+            .env(CHILD, "1")
+            .args([
+                "fe::topology_slope_map::tests::strict_map_pilot_interrupts_without_fallback",
+                "--exact",
+                "--test-threads=1"
+            ])
+            .status()
+            .unwrap()
+            .success());
+        return;
+    }
+    let a = [0, 0, 1, 1, 0, 0, 1, 1];
+    let b = [0, 1, 0, 1, 0, 1, 0, 1];
+    let c = [0, 0, 0, 0, 1, 1, 1, 1];
+    let target = [0., 2., 1., 3., 4., 6., 5., 7.];
+    let topology = finalize_categorical_topology(
+        &[
+            CategoricalCodeView::new(&a, 2),
+            CategoricalCodeView::new(&b, 2),
+            CategoricalCodeView::new(&c, 2),
+        ],
+        &[&[0], &[1], &[2]],
+        &[true; 8],
+    )
+    .unwrap();
+    let effects = (0..3)
+        .map(|_| CategoricalAbsorbedEffectView::new(true, vec![]).unwrap())
+        .collect::<Vec<_>>();
+    crate::interrupt::test_polls::cancel_at(Some(0));
+    let error = crate::fe::FeSession::recover(crate::fe::session::RecoveryRequest {
+        topology: &topology,
+        effects: &effects,
+        weights: BorrowedMapWeights::Unit,
+        target: &target,
+        requested_channels: &[true; 3],
+        retained: None,
+        known_connected: true,
+        materialize_absorbed_sum: true,
+        lsmr: LsmrConfig::default(),
+        map: config(),
+        memory_budget: None,
+        reconstruction_tolerance: Some(1e-12),
+    })
+    .unwrap_err();
+    assert_eq!(error.code, ErrorCode::Interrupted);
+    assert_eq!(crate::interrupt::test_polls::polls(), 1);
+    crate::interrupt::test_polls::cancel_at(None);
+}
+
+#[test]
 fn strict_cg_recovery_certifies_weak_three_effect_targets_and_refuses_outside_span() {
     const GROUPS: usize = 24;
     let (mut worker, mut firm, mut time) = (Vec::new(), Vec::new(), Vec::new());
@@ -1586,6 +1762,94 @@ fn strict_cg_recovery_certifies_weak_three_effect_targets_and_refuses_outside_sp
                 }
             }
         }
+    }
+    // The weak witness exhausts the pilot; CG starts from the original target.
+    let attempt = try_strict_intercept_map(
+        &topology,
+        &effects,
+        BorrowedMapWeights::Provided(&weights),
+        &target,
+        &[true; 3],
+        MapConfig {
+            max_iterations: 8,
+            ..config
+        },
+        1e-12,
+        false,
+        true,
+    )
+    .unwrap();
+    assert!(attempt.result.is_none());
+    assert_eq!(attempt.iterations, 8);
+    let direct = recover_finalized_intercepts_cg_certified(
+        &topology,
+        &effects,
+        BorrowedMapWeights::Provided(&weights),
+        &target,
+        &[true; 3],
+        MapConfig {
+            max_iterations: config.max_iterations - 8,
+            ..config
+        },
+        1e-12,
+        false,
+        true,
+    )
+    .unwrap();
+    let hybrid = recover(&target, &weights).unwrap();
+    assert_eq!(hybrid.iterations(), direct.iterations() + 8);
+    assert_eq!(hybrid.absorbed_sum(), direct.absorbed_sum());
+    assert_eq!(hybrid.channels(), direct.channels());
+    for max_iterations in [1, 2, 3, 4, 7, 8, 31, 32] {
+        let error = crate::fe::FeSession::recover(crate::fe::session::RecoveryRequest {
+            topology: &topology,
+            effects: &effects,
+            weights: BorrowedMapWeights::Provided(&weights),
+            target: &target,
+            requested_channels: &[true; 3],
+            retained: None,
+            known_connected: false,
+            materialize_absorbed_sum: true,
+            lsmr: LsmrConfig::default(),
+            map: MapConfig {
+                max_iterations,
+                check_every: 100,
+                ..config
+            },
+            memory_budget: None,
+            reconstruction_tolerance: Some(1e-12),
+        });
+        match error {
+            Ok(value) => assert!(value.iterations() <= max_iterations),
+            Err(error) => assert_eq!(error.code, ErrorCode::NonConvergence),
+        }
+    }
+    for invalid in [
+        MapConfig {
+            max_iterations: 0,
+            ..config
+        },
+        MapConfig {
+            check_every: 0,
+            ..config
+        },
+    ] {
+        let error = crate::fe::FeSession::recover(crate::fe::session::RecoveryRequest {
+            topology: &topology,
+            effects: &effects,
+            weights: BorrowedMapWeights::Provided(&weights),
+            target: &target,
+            requested_channels: &[true; 3],
+            retained: None,
+            known_connected: false,
+            materialize_absorbed_sum: true,
+            lsmr: LsmrConfig::default(),
+            map: invalid,
+            memory_budget: None,
+            reconstruction_tolerance: Some(1e-12),
+        })
+        .unwrap_err();
+        assert_eq!(error.code, ErrorCode::InvalidArgument);
     }
     // Weight units do not change the recovered model or component gauge.
     let reference = recover(&target, &weights).unwrap();

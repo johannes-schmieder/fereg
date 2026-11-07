@@ -1,5 +1,77 @@
 # Validation status
 
+## Bounded saved-effect recovery refinement, November 7, 2026
+
+Johannes requested a performance refinement on integrated 0.5.2 (`7f6d87b1`).
+The candidate gives strict categorical MAP at most eight sweeps and one quarter
+of the shared recovery budget. A certified success uses the same fresh product
+checks and component normalization as CG; otherwise the unchanged CG recurrence
+starts from the original target with the remaining budget. Earlier results and
+the accepted 0.5.2 performance exception remain unchanged.
+
+Thirty recovery-module checks pass. Independent review covers certification,
+workspace lifetime and budget accounting. The universal Mac candidate passes
+binary/actual-interface checks, three focused Stata fixtures, and an independent
+balanced-model public fast-path check with exact repeats and saved/unsaved fits.
+Linux source integration passes: 2,308 Rust executions across 127 groups, 349
+Python tests plus seven portable checks, complexity and actual-plugin ABI checks
+(job 8498484). All four mapped Stata fixtures pass. The original million-row
+three-effect saved-output reproducer passes default and tighter settings at
+sixteen workers, with exact saved/unsaved fits and repeats (8498535). Maximum
+row reconstruction errors are 1.469e-10 and 2.845e-13, respectively.
+
+Performance preflight 8498485 reached the historical easy-case arm and stopped
+because its 0.5.1 plugin received a 0.5.2 protocol header. Zero timing calls ran;
+the failure, preceding science checks and complete accounting are preserved.
+The first wrapper repair (8498879) corrected `ado` but missed the separate
+`plugin` version field; it also stopped before any timing. Both failed attempts
+and their science captures remain preserved. Source inspection confirms those
+two version strings are the only release changes in the replay header. The
+corrected adapter changes both and verifies every remaining input byte. Its
+four-slot actual-plugin preflight (8503484) passes on the easy saved cell with all
+three plugins at one and four workers, including protected exact outputs,
+cross-worker science and the candidate's certified eight-sweep MAP path.
+Accounting is complete: failure/exit both zero, 11 seconds, 612.277 MB on scc-gd4.
+The unchanged 63-call comparison **passes** (8503585, isolated `scc-ul2`,
+28 slots, 2,870 seconds, 2.961 GB maximum virtual memory; scheduler failure and
+exit both zero). All prescribed calls are present: six repetitions and one
+warmup per arm/cell. Recomputed comparisons use the frozen paired-median
+bootstrap and max(5%, 1 ms) gate. Times below are individual-arm medians;
+ratios are medians of paired ratios, so they need not equal ratios of medians.
+
+| Cell (four native workers) | Current 0.5.2 | Candidate | Paired ratio [95% interval] | Gate |
+| --- | ---: | ---: | ---: | --- |
+| Two-effect, 1m rows, no save | 5.592 s | 5.611 s | 1.0053 [0.9921, 1.0115] | Pass |
+| Three-effect, 1m rows, no save | 15.762 s | 15.775 s | 0.9960 [0.9875, 1.0142] | Pass |
+| Easy saved effects, 10k rows | 56.437 ms | 53.134 ms | 0.9433 [0.9318, 0.9520] | Pass |
+| Difficult saved effects, 1m rows | 95.118 s | 97.235 s | 1.0208 [1.0096, 1.0262] | Pass |
+
+In the same three-arm easy-case schedule, the historical 0.5.1 median is
+52.347 ms. Candidate/legacy is 1.0147 [1.0097, 1.0237], also within the gate.
+The refinement removes the earlier large easy-case regression under this
+criterion: 5.7% faster than the integrated repair, with a remaining 1.5%
+historical gap. It costs 2.1% on the difficult saved case; it is not cost-free.
+The original 10.2% regression and both zero-timing protocol failures remain
+preserved, with no resampling of adverse measurements.
+
+All 63 native calls retain exact repeats and accepted certificates. Protected
+cross-arm fields and discrete decisions pass; worker 1/4 scientific comparisons
+pass. Traces verify certified eight-sweep MAP on the easy cell and eight-sweep
+exhaustion followed by original-target CG on the difficult cell. The 48 host
+censuses and 564 process observations pass isolation checks. Collected compact
+files match their remote hashes; frozen source, binaries, tools, inputs and
+pins are verified. Row reconstruction and sample checks ran on node scratch;
+raw row arrays are intentionally not retained.
+
+This is one physical Linux host, so intervals describe within-host variation.
+Johannes accepted the refinement and all reported trade-offs and authorized
+commit and push to main. The 0.5.3 package refresh and Windows qualification
+are pending; the outreach campaign stays stopped.
+The completed monitor was deleted before collection. Full compact evidence is
+retained in the existing external `ppml-repair-20261107/refinement` archive;
+all observations, hashes and checks are indexed in the
+[refinement receipt](../bench/results/ppml-recovery-refinement-20261107.json).
+
 ## Combined Windows/PPML release 0.5.2, November 7, 2026
 
 **Published as v0.5.2 and merged into main (PR #36).** Johannes requested
