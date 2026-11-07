@@ -44,6 +44,19 @@ confirm new variable __failed_mu
 assert `"`e(cmd)'"' == `"`prior_cmd'"'
 assert mreldif(e(b), `prior_b') == 0
 
+assert mreldif(e(V), `prior_V') == 0
+assert e(sample) == __prior_sample
+* Prove that the window reopened after PPML cancellation, even on a host
+* whose automation process cannot inherit the solver-trace environment.
+capture noisily _fereg_estimate_ols_test y x1 x2 x3 x4 x5 if keep, ///
+    absorb(g) threads(`workers') residual(__failed_resid) inject(input_read_failure)
+assert _rc == 3499
+confirm new variable __failed_resid
+assert `"`e(cmd)'"' == `"`prior_cmd'"'
+assert mreldif(e(b), `prior_b') == 0
+assert mreldif(e(V), `prior_V') == 0
+assert e(sample) == __prior_sample
+
 * The same session reads in parallel again; equal worker counts are exact.
 quietly _fereg_estimate_ols_test y x1 x2 x3 x4 x5 if keep, absorb(g) ///
     threads(`workers') inject(serial_input)
