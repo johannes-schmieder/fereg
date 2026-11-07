@@ -508,6 +508,9 @@ fn compose_view_internal<P: PreparedOlsInferenceView + ?Sized, R: PreparedInfere
         passed,
     };
     if !certificate.passed {
+        if phase_timing {
+            eprintln!("FEREG_PHASE|robust_certificate_failure|{certificate:?}");
+        }
         return Err(invalid_data(
             "prepared robust covariance or statistic certificate did not pass",
         ));

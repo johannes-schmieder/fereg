@@ -794,17 +794,6 @@ impl PreparedCategoricalModelSource {
             })
             .transpose()
     }
-
-    pub(crate) fn level_value(
-        &self,
-        _topology: &FinalizedCategoricalTopology,
-        final_level: u32,
-    ) -> Result<f64> {
-        self.level_values()
-            .get(final_level as usize)
-            .copied()
-            .ok_or_else(|| invalid("ordinary categorical level is out of range"))
-    }
 }
 
 #[derive(Debug, PartialEq)]

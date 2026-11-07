@@ -770,19 +770,40 @@ fn validate_categorical_sources(prepared: &PreparedOlsData) -> Result<()> {
                 "prepared categorical levels are not finite, canonical, and strictly ordered",
             ));
         }
-        for (row, code) in codes.iter().copied().enumerate() {
-            if code as usize >= categorical.n_levels(prepared.fe_topology())? {
-                return Err(invalid_argument(
-                    "prepared categorical code is out of range",
-                ));
-            }
-            let level = categorical.level_value(prepared.fe_topology(), code)?;
-            if raw.is_some_and(|raw| level.to_bits() != canonical_factor_value(raw[row]).to_bits())
-            {
-                return Err(invalid_argument(
-                    "prepared categorical codes do not represent their numeric source",
-                ));
-            }
+        // One row scan per source in fixed row chunks; the same two checks as
+        // the per-row lookups, with the level table hoisted out of the loop.
+        use rayon::prelude::*;
+        const CHUNK: usize = 1 << 16;
+        let (range, mismatch) = codes
+            .par_chunks(CHUNK)
+            .enumerate()
+            .map(|(chunk, codes)| {
+                let first = chunk * CHUNK;
+                let mut range = false;
+                let mut mismatch = false;
+                for (offset, &code) in codes.iter().enumerate() {
+                    match levels.get(code as usize) {
+                        None => range = true,
+                        Some(level) => {
+                            if let Some(raw) = raw {
+                                mismatch |= level.to_bits()
+                                    != canonical_factor_value(raw[first + offset]).to_bits();
+                            }
+                        }
+                    }
+                }
+                (range, mismatch)
+            })
+            .reduce(|| (false, false), |a, b| (a.0 | b.0, a.1 | b.1));
+        if range {
+            return Err(invalid_argument(
+                "prepared categorical code is out of range",
+            ));
+        }
+        if mismatch {
+            return Err(invalid_argument(
+                "prepared categorical codes do not represent their numeric source",
+            ));
         }
     }
     Ok(())

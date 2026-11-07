@@ -219,14 +219,7 @@ fn fill_reference_norms(
             },
         )?;
     } else {
-        crate::parallel::stage_try_for_each(
-            reference_norms.par_iter_mut().enumerate(),
-            raw.nrows() as u128 * generated_columns as u128,
-            |(column, norm)| -> Result<()> {
-                *norm = weighted_matrix_column_norm(raw, column + 1, weights)?;
-                Ok(())
-            },
-        )?;
+        fast_weighted_column_norms(raw, 1, weights, reference_norms)?;
     }
     Ok(())
 }
@@ -1331,7 +1324,9 @@ fn derived_residual(
     absorption: &SolveReport,
 ) -> Result<Option<SolveReport>> {
     let started = std::time::Instant::now();
-    let norm = weighted_matrix_column_norm(matrix, 0, weights)?;
+    let mut norm = [0.0];
+    fast_weighted_column_norms(matrix, 0, weights, &mut norm)?;
+    let norm = norm[0];
     // r is at most its terms' sum; rounding can only make the ratio smaller.
     let amplification = if norm > 0.0 {
         (scale / norm).max(1.0)

@@ -31,6 +31,14 @@ pub(crate) struct FeSession<'a> {
     general_routing: Option<super::borrowed_map::routing_lsmr::GeneralRoutingState<'a>>,
     pub(crate) structural_constant: bool,
     pub(crate) absorb_config: Option<super::AbsorbConfig>,
+    block_schur: super::borrowed_map::block_schur::Cache,
+    pub(crate) block_schur_used: bool,
+}
+
+/// Developer switch: `FEREG_BLOCK_SCHUR=0` keeps the established routes.
+fn block_schur_enabled() -> bool {
+    static ENABLED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ENABLED.get_or_init(|| std::env::var("FEREG_BLOCK_SCHUR").map_or(true, |v| v != "0"))
 }
 
 /// Select invocation identity before canonical portfolio construction. Refused
@@ -240,6 +248,8 @@ impl Default for FeSession<'_> {
             general_routing: None,
             structural_constant: false,
             absorb_config: None,
+            block_schur: Default::default(),
+            block_schur_used: false,
         }
     }
 }
@@ -741,7 +751,7 @@ impl<'a> FeSession<'a> {
         result: CertifiedBorrowedMap,
         admission: super::AbsorbConfig,
     ) -> Result<CertifiedBorrowedMap> {
-        if self.general.is_none() && self.categorical.is_none() {
+        if self.general.is_none() && self.categorical.is_none() || result.has_residual_norms() {
             return Ok(result);
         }
         // Low fits retain their established fixed-leaf norm reduction. A
@@ -976,6 +986,54 @@ impl<'a> FeSession<'a> {
         )
     }
 
+    /// Exact global elimination of the largest effect for Auto OLS with at
+    /// least two categorical intercept effects; a decline returns the input
+    /// for the session's established route.
+    fn try_block_schur(
+        &mut self,
+        weights: BorrowedMapWeights<'_>,
+        values: crate::ols::OlsProjectionInput,
+        config: super::AbsorbConfig,
+    ) -> Result<std::result::Result<CertifiedBorrowedMap, crate::ols::OlsProjectionInput>> {
+        use super::borrowed_map::block_schur::Outcome;
+        let default_routing = config.routing.is_none_or(|preset| {
+            preset == super::RoutingPreset::geometry_many()
+                || preset == super::RoutingPreset::gates_two_v2()
+        });
+        let eligible = block_schur_enabled()
+            && config.solver == super::FeSolverKind::Auto
+            && config.lsmr.preconditioner == super::LsmrPreconditioner::Auto
+            && !config.retain_coefficients
+            && config.declined_recheck.is_none()
+            && default_routing
+            && self.cmg.is_none()
+            && self.lsmr.is_none()
+            && self.general.is_none()
+            && self.owned.is_none();
+        if !eligible {
+            return Ok(Err(values));
+        }
+        let design = match (&self.categorical, &self.binding) {
+            (Some(owner), _) => owner.borrowed_design(),
+            (None, Some(design)) if design.effects().len() >= 2 => design,
+            _ => return Ok(Err(values)),
+        };
+        let matrix = values.into_values();
+        match self.block_schur.project(
+            design,
+            weights,
+            matrix,
+            config.map,
+            config.solver_memory_budget,
+        )? {
+            Outcome::Done(result) => {
+                self.block_schur_used = true;
+                Ok(Ok(result))
+            }
+            Outcome::Declined(matrix) => Ok(Err(matrix.into())),
+        }
+    }
+
     #[allow(clippy::too_many_arguments)]
     fn project_ols_binding(
         &mut self,
@@ -987,6 +1045,10 @@ impl<'a> FeSession<'a> {
         dense_norms: bool,
         remaining: Option<ObserverRef<'_>>,
     ) -> Result<CertifiedBorrowedMap> {
+        let values = match self.try_block_schur(weights, values, config)? {
+            Ok(result) => return Ok(result),
+            Err(values) => values,
+        };
         if let Some(p) = self.cmg.as_mut() {
             let values = values.into_values();
             if final_residual {
@@ -1853,6 +1915,8 @@ pub(crate) struct LegacyFeSession<'a> {
     general_routing: Option<super::borrowed_map::routing_lsmr::GeneralRoutingState<'a>>,
     pub(crate) structural_constant: bool,
     pub(crate) absorb_config: Option<super::AbsorbConfig>,
+    block_schur: super::borrowed_map::block_schur::Cache,
+    pub(crate) block_schur_used: bool,
 }
 #[cfg(test)]
 #[test]

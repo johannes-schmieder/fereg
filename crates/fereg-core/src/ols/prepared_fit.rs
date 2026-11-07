@@ -4174,40 +4174,54 @@ fn raw_residual_at<P: PreparedOlsFitView + ?Sized>(
     }
 }
 
-fn weighted_mean_by<F>(nrows: usize, weights: NormalizedWeights<'_>, mut value: F) -> Result<f64>
+/// Rows per fixed chunk of the parallel weighted means; chunk boundaries
+/// depend only on the row count.
+const MEAN_ROWS: usize = 1 << 14;
+
+fn weighted_mean_by<F>(nrows: usize, weights: NormalizedWeights<'_>, value: F) -> Result<f64>
 where
-    F: FnMut(usize) -> Result<f64>,
+    F: Fn(usize) -> Result<f64> + Sync,
 {
     if nrows == 0 {
         return Err(invalid_argument(
             "prepared OLS weighted mean requires a nonempty sample",
         ));
     }
+    let maxima: Vec<Result<f64>> = (0..nrows.div_ceil(MEAN_ROWS))
+        .into_par_iter()
+        .map(|chunk| {
+            let mut scale = 0.0_f64;
+            for row in chunk * MEAN_ROWS..((chunk + 1) * MEAN_ROWS).min(nrows) {
+                let current = value(row)?;
+                if !current.is_finite() {
+                    return Err(invalid_data(
+                        "prepared OLS weighted-mean value is not finite",
+                    ));
+                }
+                scale = scale.max(current.abs());
+            }
+            Ok(scale)
+        })
+        .collect();
     let mut value_scale = 0.0_f64;
-    for row in 0..nrows {
-        let current = value(row)?;
-        if !current.is_finite() {
-            return Err(invalid_data(
-                "prepared OLS weighted-mean value is not finite",
-            ));
-        }
-        value_scale = value_scale.max(current.abs());
+    for maximum in maxima {
+        value_scale = value_scale.max(maximum?);
     }
-    weighted_mean_with_scale(nrows, weights, value, value_scale, None)
+    weighted_mean_with_scale(nrows, weights, &value, value_scale, None)
 }
 
 fn weighted_mean_with_bound<F>(
     nrows: usize,
     weights: NormalizedWeights<'_>,
-    mut value: F,
+    value: F,
     bound: f64,
 ) -> Result<f64>
 where
-    F: FnMut(usize) -> Result<f64>,
+    F: Fn(usize) -> Result<f64> + Sync,
 {
     let mut needs_rescale = false;
     let mean =
-        weighted_mean_with_scale(nrows, weights, &mut value, bound, Some(&mut needs_rescale))?;
+        weighted_mean_with_scale(nrows, weights, &value, bound, Some(&mut needs_rescale))?;
     // Cancellation can make a valid upper bound much larger than the actual
     // residual. Recover the original maximum scan if scaling loses precision
     // to subnormal arithmetic; the optimization never just discards that tail.
@@ -4218,52 +4232,72 @@ where
     }
 }
 
+/// Compensated scaled weighted mean: each fixed row chunk keeps its own
+/// Neumaier sums, merged in chunk order with the same compensation.
 fn weighted_mean_with_scale<F>(
     nrows: usize,
     weights: NormalizedWeights<'_>,
-    mut value: F,
+    value: F,
     value_scale: f64,
-    mut underflow: Option<&mut bool>,
+    underflow: Option<&mut bool>,
 ) -> Result<f64>
 where
-    F: FnMut(usize) -> Result<f64>,
+    F: Fn(usize) -> Result<f64> + Sync,
 {
     if value_scale == 0.0 {
         return Ok(0.0);
     }
-    let mut numerator = 0.0_f64;
-    let mut numerator_correction = 0.0_f64;
-    // Unit mass sums exactly to N through 2^53; keep the value reduction's
-    // scale, compensation and observation order unchanged.
-    let denominator = if weights.values.is_none() && (nrows as u128) <= (1_u128 << 53) {
-        for row in 0..nrows {
-            let current = value(row)?;
-            let scaled = current / value_scale;
-            if let Some(flag) = underflow.as_deref_mut() {
-                *flag |= current != 0.0 && scaled.abs() < f64::MIN_POSITIVE;
+    // Unit mass sums exactly to N through 2^53.
+    let unit = weights.values.is_none() && (nrows as u128) <= (1_u128 << 53);
+    let parts: Vec<Result<(f64, f64, f64, f64, bool)>> = (0..nrows.div_ceil(MEAN_ROWS))
+        .into_par_iter()
+        .map(|chunk| {
+            let (mut numerator, mut numerator_correction) = (0.0_f64, 0.0_f64);
+            let (mut denominator, mut denominator_correction) = (0.0_f64, 0.0_f64);
+            let mut flag = false;
+            for row in chunk * MEAN_ROWS..((chunk + 1) * MEAN_ROWS).min(nrows) {
+                let current = value(row)?;
+                if unit {
+                    let scaled = current / value_scale;
+                    flag |= current != 0.0 && scaled.abs() < f64::MIN_POSITIVE;
+                    compensated_add(scaled, &mut numerator, &mut numerator_correction)?;
+                } else {
+                    let weight = weights.value(row)?;
+                    let scaled = weight * (current / value_scale);
+                    flag |= current != 0.0 && scaled.abs() < f64::MIN_POSITIVE;
+                    compensated_add(scaled, &mut numerator, &mut numerator_correction)?;
+                    compensated_add(weight, &mut denominator, &mut denominator_correction)?;
+                }
             }
-            compensated_add(scaled, &mut numerator, &mut numerator_correction)?;
-        }
+            Ok((
+                numerator,
+                numerator_correction,
+                denominator,
+                denominator_correction,
+                flag,
+            ))
+        })
+        .collect();
+    let (mut numerator, mut numerator_correction) = (0.0_f64, 0.0_f64);
+    let (mut denominator, mut denominator_correction) = (0.0_f64, 0.0_f64);
+    let mut flag = false;
+    for part in parts {
+        let (n, nc, d, dc, f) = part?;
+        compensated_add(n, &mut numerator, &mut numerator_correction)?;
+        compensated_add(nc, &mut numerator, &mut numerator_correction)?;
+        compensated_add(d, &mut denominator, &mut denominator_correction)?;
+        compensated_add(dc, &mut denominator, &mut denominator_correction)?;
+        flag |= f;
+    }
+    let denominator = if unit {
         nrows as f64
     } else {
-        let mut denominator = 0.0_f64;
-        let mut denominator_correction = 0.0_f64;
-        for row in 0..nrows {
-            let weight = weights.value(row)?;
-            let current = value(row)?;
-            let scaled = weight * (current / value_scale);
-            if let Some(flag) = underflow.as_deref_mut() {
-                *flag |= current != 0.0 && scaled.abs() < f64::MIN_POSITIVE;
-            }
-            compensated_add(scaled, &mut numerator, &mut numerator_correction)?;
-            compensated_add(weight, &mut denominator, &mut denominator_correction)?;
-        }
         denominator + denominator_correction
     };
     let numerator = numerator + numerator_correction;
     let scaled_mean = numerator / denominator;
-    if let Some(flag) = underflow {
-        *flag |= numerator != 0.0 && scaled_mean.abs() < f64::MIN_POSITIVE;
+    if let Some(underflow) = underflow {
+        *underflow |= flag || (numerator != 0.0 && scaled_mean.abs() < f64::MIN_POSITIVE);
     }
     let mean = value_scale * scaled_mean;
     if mean.is_finite() && denominator.is_finite() && denominator > 0.0 {
@@ -4322,6 +4356,70 @@ fn symmetry_relative_infinity_norm(values: &[f64], dimension: usize) -> Result<f
 /// QR reflector norms need accurate tail energy even when each squared term is
 /// below one ulp of a large leading term. A fixed scale and compensated sum
 /// avoid N-dependent loss; the pre-absorption reference-norm policy is separate.
+/// Weighted norms of columns `first..` in one parallel row pass with plain
+/// sums of squares over fixed row chunks combined in order. A column whose
+/// largest magnitude lies outside `[1e-140, 1e140]`, or whose sum is not finite
+/// (including non-finite values), uses the scaled scalar norm and its errors.
+fn fast_weighted_column_norms(
+    matrix: &DenseMatrix,
+    first: usize,
+    weights: NormalizedWeights<'_>,
+    output: &mut [f64],
+) -> Result<()> {
+    let ncols = matrix.ncols();
+    if first > ncols || output.len() != ncols - first {
+        return Err(invalid_argument(
+            "prepared OLS fast weighted norm output has the wrong width",
+        ));
+    }
+    let width = output.len();
+    if width == 0 {
+        return Ok(());
+    }
+    const ROWS: usize = 8192;
+    let parts: Vec<(Vec<f64>, Vec<f64>, bool)> = matrix
+        .as_slice()
+        .par_chunks(ROWS * ncols)
+        .enumerate()
+        .map(|(chunk, data)| {
+            let mut sq = vec![0.0_f64; width];
+            let mut big = vec![0.0_f64; width];
+            let mut valid = true;
+            for (offset, row) in data.chunks_exact(ncols).enumerate() {
+                let w = weights
+                    .values
+                    .map_or(1.0, |v| v[chunk * ROWS + offset] / weights.raw_scale);
+                valid &= w.is_finite() && w > 0.0;
+                for ((s, b), &x) in sq.iter_mut().zip(big.iter_mut()).zip(&row[first..]) {
+                    *s += w * x * x;
+                    *b = b.max(x.abs());
+                }
+            }
+            (sq, big, valid)
+        })
+        .collect();
+    let mut sq = vec![0.0_f64; width];
+    let mut big = vec![0.0_f64; width];
+    let mut valid = true;
+    for (s, b, v) in parts {
+        valid &= v;
+        for j in 0..width {
+            sq[j] += s[j];
+            big[j] = big[j].max(b[j]);
+        }
+    }
+    for j in 0..width {
+        output[j] = if valid && big[j] == 0.0 && sq[j] == 0.0 {
+            0.0
+        } else if valid && sq[j].is_finite() && (1e-140..=1e140).contains(&big[j]) {
+            sq[j].sqrt()
+        } else {
+            weighted_matrix_column_norm(matrix, first + j, weights)?
+        };
+    }
+    Ok(())
+}
+
 fn weighted_matrix_column_norm(
     matrix: &DenseMatrix,
     column: usize,

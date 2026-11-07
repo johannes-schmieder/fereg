@@ -31,6 +31,7 @@ mod ppml_cmg;
 pub(crate) mod routing_lsmr;
 pub(crate) mod three_fe_map;
 pub(crate) mod three_fe_schur;
+pub(crate) mod block_schur;
 pub(crate) use ppml_cmg::{JointCmgBlock, PpmlCmg, PpmlCmgScratch, PpmlCmgView};
 
 pub(crate) const PARALLEL_PROJECTION_MIN_ROWS: usize = 16_384;
@@ -703,6 +704,10 @@ impl CertifiedBorrowedMap {
     pub(crate) fn take_residual_norms(&mut self) -> Vec<f64> {
         std::mem::take(&mut self.residual_norms)
     }
+    pub(crate) fn has_residual_norms(&self) -> bool {
+        !self.residual_norms.is_empty()
+    }
+
     pub(crate) fn with_residual_norms(mut self, norms: Vec<f64>) -> Result<Self> {
         if norms.len() != self.residualized.ncols()
             || norms.iter().any(|v| !v.is_finite() || *v < 0.0)
@@ -1535,6 +1540,10 @@ impl Drop for PcgPilotGroupScratch<'_> {
 }
 
 impl<'a> ReusableCategoricalMapAbsorber<'a> {
+    pub(crate) fn borrowed_design(&self) -> &BorrowedInterceptFeDesign<'a> {
+        &self.design
+    }
+
     pub(crate) fn gates_enabled(&self) -> bool {
         self.gate_rule().is_some()
     }

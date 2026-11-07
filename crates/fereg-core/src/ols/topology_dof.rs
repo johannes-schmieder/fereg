@@ -7,7 +7,6 @@
 //! repeated/reordered interaction terms reuse one topology source, and an exact
 //! repeated partition is fully redundant under the mobility search.
 
-use std::cmp::Ordering;
 
 use crate::error::{allocation, invalid_argument, invalid_data, Result};
 use crate::fe::{CategoricalCodeView, CategoricalTopologySource, FinalizedCategoricalTopology};
@@ -338,48 +337,122 @@ fn apply_mobility_policy<R: TopologyDofReservation>(
     exact: &mut [bool],
     reservation: &mut R,
 ) -> Result<()> {
-    match policy {
-        CategoricalTopologyDofPolicy::None | CategoricalTopologyDofPolicy::Continuous => {}
-        CategoricalTopologyDofPolicy::FirstPair => {
-            if eligible_indices.len() >= 2 {
-                let earlier = eligible_indices[0];
-                let later = eligible_indices[1];
-                let components = pair_components_for_effects(
-                    topology,
-                    source_views,
-                    earlier,
-                    later,
-                    reservation,
-                )?;
-                redundant[later] = redundant[later].max(components);
-                exact[later] = true;
-            }
+    let pairs: Vec<(usize, usize, bool)> = match policy {
+        CategoricalTopologyDofPolicy::None | CategoricalTopologyDofPolicy::Continuous => {
+            Vec::new()
         }
-        CategoricalTopologyDofPolicy::Pairwise => {
-            for later_position in 1..eligible_indices.len() {
-                let later = eligible_indices[later_position];
-                for (earlier_position, earlier) in eligible_indices
-                    .iter()
-                    .copied()
-                    .enumerate()
-                    .take(later_position)
-                {
-                    let components = pair_components_for_effects(
-                        topology,
-                        source_views,
-                        earlier,
-                        later,
-                        reservation,
-                    )?;
-                    redundant[later] = redundant[later].max(components);
-                    if earlier_position == 0 && later_position == 1 {
-                        exact[later] = true;
-                    }
-                }
-            }
+        CategoricalTopologyDofPolicy::FirstPair if eligible_indices.len() >= 2 => {
+            vec![(eligible_indices[0], eligible_indices[1], true)]
+        }
+        CategoricalTopologyDofPolicy::FirstPair => Vec::new(),
+        CategoricalTopologyDofPolicy::Pairwise => (1..eligible_indices.len())
+            .flat_map(|later| {
+                (0..later).map(move |earlier| {
+                    (
+                        eligible_indices[earlier],
+                        eligible_indices[later],
+                        earlier == 0 && later == 1,
+                    )
+                })
+            })
+            .collect(),
+    };
+    if pairs.is_empty() {
+        return Ok(());
+    }
+    // Admit every pair's parent bank first, then count the independent pairs
+    // concurrently. Component counts are exact, so the order is immaterial.
+    let mut jobs = Vec::new();
+    reservation.reserve_vec(&mut jobs, pairs.len(), "unable to reserve absorbed-DoF pairs")?;
+    for &(earlier, later, _) in &pairs {
+        let earlier_source = effect_source(topology, earlier)?;
+        let later_source = effect_source(topology, later)?;
+        let earlier_codes = earlier_source.codes(source_views)?;
+        let later_codes = later_source.codes(source_views)?;
+        if earlier_codes.len() != later_codes.len() {
+            return Err(invalid_argument(
+                "categorical absorbed-DoF pair sources are not sample aligned",
+            ));
+        }
+        let vertices = earlier_source
+            .n_levels()
+            .checked_add(later_source.n_levels())
+            .filter(|&v| v < u32::MAX as usize)
+            .ok_or_else(|| allocation("categorical absorbed-DoF pair vertex count overflows"))?;
+        let parent = reserved_filled(
+            reservation,
+            vertices,
+            0_u32,
+            "unable to reserve categorical absorbed-DoF union-find parents",
+        )?;
+        jobs.push((earlier_codes, later_codes, earlier_source.n_levels(), parent));
+    }
+    use rayon::prelude::*;
+    let counts: Vec<Result<usize>> = jobs
+        .par_iter_mut()
+        .map(|(earlier, later, split, parent)| pair_components(earlier, later, *split, parent))
+        .collect();
+    for (&(_, later, first), count) in pairs.iter().zip(counts) {
+        let components = count?;
+        redundant[later] = redundant[later].max(components);
+        if first {
+            exact[later] = true;
         }
     }
     Ok(())
+}
+
+/// Connected components of the bipartite level graph of one effect pair.
+/// Repeated consecutive rows are skipped; path halving keeps finds short.
+fn pair_components(
+    earlier: &[u32],
+    later: &[u32],
+    split: usize,
+    parent: &mut [u32],
+) -> Result<usize> {
+    let vertices = parent.len();
+    if vertices == 0 {
+        return Ok(0);
+    }
+    for (vertex, value) in parent.iter_mut().enumerate() {
+        *value = vertex as u32;
+    }
+    let find = |parent: &mut [u32], mut v: u32| -> u32 {
+        while parent[v as usize] != v {
+            let grand = parent[parent[v as usize] as usize];
+            parent[v as usize] = grand;
+            v = grand;
+        }
+        v
+    };
+    let mut previous = (u32::MAX, u32::MAX);
+    for (&left, &right) in earlier.iter().zip(later) {
+        if (left, right) == previous {
+            continue;
+        }
+        previous = (left, right);
+        let right_vertex = split as u64 + u64::from(right);
+        if left as usize >= split || right_vertex >= vertices as u64 {
+            return Err(invalid_data(
+                "categorical absorbed-DoF pair code exceeds its level range",
+            ));
+        }
+        let a = find(parent, left);
+        let b = find(parent, right_vertex as u32);
+        if a != b {
+            // Link the larger root under the smaller one.
+            if a < b {
+                parent[b as usize] = a;
+            } else {
+                parent[a as usize] = b;
+            }
+        }
+    }
+    Ok(parent
+        .iter()
+        .enumerate()
+        .filter(|&(vertex, &p)| vertex as u32 == p)
+        .count())
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -748,117 +821,6 @@ fn effect_is_nested_within_any_cluster<R: TopologyDofReservation>(
         }
     }
     Ok(false)
-}
-
-fn pair_components_for_effects<R: TopologyDofReservation>(
-    topology: &FinalizedCategoricalTopology,
-    source_views: &[CategoricalCodeView<'_>],
-    earlier_effect: usize,
-    later_effect: usize,
-    reservation: &mut R,
-) -> Result<usize> {
-    let earlier = effect_source(topology, earlier_effect)?;
-    let later = effect_source(topology, later_effect)?;
-    let earlier_codes = earlier.codes(source_views)?;
-    let later_codes = later.codes(source_views)?;
-    if earlier_codes.len() != later_codes.len() {
-        return Err(invalid_argument(
-            "categorical absorbed-DoF pair sources are not sample aligned",
-        ));
-    }
-    let vertex_count = earlier
-        .n_levels()
-        .checked_add(later.n_levels())
-        .ok_or_else(|| allocation("categorical absorbed-DoF pair vertex count overflows"))?;
-    if vertex_count == 0 {
-        return Ok(0);
-    }
-    let mut parent = Vec::new();
-    reservation.reserve_vec(
-        &mut parent,
-        vertex_count,
-        "unable to reserve categorical absorbed-DoF union-find parents",
-    )?;
-    for vertex in 0..vertex_count {
-        push_reserved(
-            &mut parent,
-            vertex,
-            "categorical absorbed-DoF parent capacity exhausted",
-        )?;
-    }
-    let mut rank = reserved_filled(
-        reservation,
-        vertex_count,
-        0_u8,
-        "unable to reserve categorical absorbed-DoF union-find ranks",
-    )?;
-    for (&earlier_code, &later_code) in earlier_codes.iter().zip(later_codes) {
-        let left = earlier_code as usize;
-        let right = earlier
-            .n_levels()
-            .checked_add(later_code as usize)
-            .ok_or_else(|| allocation("categorical absorbed-DoF pair index overflows"))?;
-        if left >= earlier.n_levels() || right >= vertex_count {
-            return Err(invalid_data(
-                "categorical absorbed-DoF pair code exceeds its level range",
-            ));
-        }
-        union(&mut parent, &mut rank, left, right)?;
-    }
-
-    let mut components = 0_usize;
-    for vertex in 0..vertex_count {
-        if find(&mut parent, vertex)? == vertex {
-            components = components
-                .checked_add(1)
-                .ok_or_else(|| allocation("categorical absorbed-DoF component count overflows"))?;
-        }
-    }
-    Ok(components)
-}
-
-fn find(parent: &mut [usize], vertex: usize) -> Result<usize> {
-    let mut root = vertex;
-    while parent
-        .get(root)
-        .copied()
-        .ok_or_else(|| invalid_data("categorical absorbed-DoF union-find index is invalid"))?
-        != root
-    {
-        root = parent[root];
-    }
-    let mut current = vertex;
-    while parent[current] != current {
-        let next = parent[current];
-        parent[current] = root;
-        current = next;
-    }
-    Ok(root)
-}
-
-fn union(parent: &mut [usize], rank: &mut [u8], left: usize, right: usize) -> Result<()> {
-    let left_root = find(parent, left)?;
-    let right_root = find(parent, right)?;
-    if left_root == right_root {
-        return Ok(());
-    }
-    let left_rank = *rank
-        .get(left_root)
-        .ok_or_else(|| invalid_data("categorical absorbed-DoF union rank is invalid"))?;
-    let right_rank = *rank
-        .get(right_root)
-        .ok_or_else(|| invalid_data("categorical absorbed-DoF union rank is invalid"))?;
-    match left_rank.cmp(&right_rank) {
-        Ordering::Less => parent[left_root] = right_root,
-        Ordering::Greater => parent[right_root] = left_root,
-        Ordering::Equal => {
-            parent[right_root] = left_root;
-            rank[left_root] = left_rank
-                .checked_add(1)
-                .ok_or_else(|| allocation("categorical absorbed-DoF union rank overflows"))?;
-        }
-    }
-    Ok(())
 }
 
 fn reserved_filled<T: Clone, R: TopologyDofReservation>(

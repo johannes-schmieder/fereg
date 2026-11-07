@@ -1434,6 +1434,40 @@ pub(super) fn weighted_sum_of_squares(
             "prepared iid sum-of-squares center is invalid",
         ));
     }
+    // Plain sums over fixed row chunks, combined in order, when every value is
+    // finite and the magnitudes cannot over- or underflow; else the scaled sum.
+    {
+        use rayon::prelude::*;
+        const ROWS: usize = 1 << 14;
+        let unit = weights.kind.is_none() && weights.values.is_none();
+        let parts: Vec<Option<(f64, f64)>> = values
+            .par_chunks(ROWS)
+            .enumerate()
+            .map(|(chunk, values)| {
+                let (mut sum, mut big) = (0.0_f64, 0.0_f64);
+                for (offset, &value) in values.iter().enumerate() {
+                    let d = value - center;
+                    let w = if unit {
+                        1.0
+                    } else {
+                        weights.value(chunk * ROWS + offset).ok()?
+                    };
+                    sum += w * d * d;
+                    big = big.max(d.abs());
+                }
+                Some((sum, big))
+            })
+            .collect();
+        let mut total = Some((0.0_f64, 0.0_f64));
+        for part in parts {
+            total = total.zip(part).map(|(t, p)| (t.0 + p.0, t.1.max(p.1)));
+        }
+        if let Some((sum, big)) = total {
+            if sum.is_finite() && (big == 0.0 || (1e-140..=1e140).contains(&big)) {
+                return Ok(sum);
+            }
+        }
+    }
     let mut scale = 0.0_f64;
     let mut scaled_square_sum = 1.0_f64;
     if weights.kind.is_none() && weights.values.is_none() {
