@@ -5981,7 +5981,7 @@ fn qualification_matrix_exercises_direct_tolerances_preconditioners_and_forced_c
                 retain_coefficients: false,
                 stable_projection: false,
                 strict_polish: false,
-                reconstruction_tolerance: None,
+                reconstruction: None,
             },
             &mut reservation,
         )

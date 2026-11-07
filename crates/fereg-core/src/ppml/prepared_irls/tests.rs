@@ -2917,6 +2917,52 @@ fn check_strict_candidate_categorical_projection(rebuild: bool) {
 }
 
 #[test]
+fn rejected_categorical_curve_allows_joint_strict_recovery() {
+    let n = 240;
+    let g: Vec<_> = (0..n).map(|i| (i / 5 % 4) as f64).collect();
+    let h: Vec<_> = (0..n).map(|i| (i / 20 % 3) as f64).collect();
+    let x: Vec<_> = (0..n)
+        .map(|i| ((i % 5) as f64 - 2.).powi(2) + (i as f64 / 17.).sin())
+        .collect();
+    let eta: Vec<_> = (0..n)
+        .map(|i| 0.3 + 0.2 * x[i] + g[i] * 0.1 - h[i] * 0.05)
+        .collect();
+    let y: Vec<_> = eta.iter().map(|v| v.exp()).collect();
+    let prepared = prepared_two_fe_with_codes(&y, &x, &g, &h);
+    let weights: Vec<_> = (0..n).map(|i| 0.2 + (i % 13) as f64 / 7.).collect();
+    for threads in [1, 4] {
+        let mut config = PreparedPpmlIrlsConfig::default();
+        config.ppml.tolerance = 1e-12;
+        config.ppml.score_tolerance = 1e-12;
+        config.linear.execution.threads =
+            crate::options::ThreadConfig::from_requested(threads, true).unwrap();
+        // Keep the categorical curve enabled. Reject both the first and
+        // refined canonical profiles: once refinement reaches its floor,
+        // the independent joint witness must be available.
+        JOINT_FINAL_TEST_COUNTS.set((0, 0));
+        inject_repeated_strict_resume(2);
+        let fit = fit_prepared_ppml_irls(
+            &prepared,
+            &y,
+            &weights,
+            &vec![0.; n],
+            config,
+            plan_ppml_memory(memory_dimensions(&prepared, config), config.memory).unwrap(),
+            None,
+        )
+        .unwrap();
+        assert!(fit.diagnostics().strict_profile_rejections >= 2);
+        assert!(JOINT_FINAL_TEST_COUNTS.get().0 >= 1);
+        assert_eq!(JOINT_FINAL_TEST_COUNTS.get().1, 1);
+        assert!(fit.diagnostics().converged && fit.diagnostics().two_consecutive_convergence);
+        assert!(fit.diagnostics().final_score.passed);
+        assert!(relative_infinity_difference(fit.eta(), &eta) < 1e-10);
+        assert!((fit.coefficients()[0].value.unwrap() - 0.2).abs() < 1e-10);
+        validate_final_hessian_frame(fit.linear().weights(), &weights, fit.mean()).unwrap();
+    }
+}
+
+#[test]
 fn joint_strict_final_preserves_truth_current_hessian_and_canonical_retry() {
     let _curve = ProfileCurveTestGuard::disabled();
     let _canonical = CanonicalFinalTestGuard::disabled();

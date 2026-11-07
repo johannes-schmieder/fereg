@@ -1,5 +1,65 @@
 # Validation status
 
+## Unpublished PPML repair candidate, November 7, 2026
+
+At Johannes's request, outreach array 8481934 and its continuation monitor were
+stopped before investigating the native failures. Original measurements remain
+frozen. This source candidate repairs two separate boundaries:
+
+- A rejected categorical profiling curve now retires, allowing the existing
+  independent joint strict witness to run. Acceptance tolerances are unchanged.
+- Saved categorical effects can use coefficient-backed CG recurrences and one
+  fresh original-target residual restart within the existing iteration budget.
+  Fresh reconstruction and FE certificates, final-Hessian component normalization,
+  memory admission and transactional publication remain required. Ordinary CG,
+  OLS, slopes, successful direct recovery and fits without saved effects retain
+  their established paths.
+
+Independent weak/disconnected three-effect witnesses cover exact repeats,
+worker changes, target/weight scaling, a zero target and rejection outside the FE
+span. Source-only integration passed on Linux (job 8496488, 782 seconds,
+17.353 GB), including 2,305 Rust test executions across 126 groups, Python checks,
+Clippy, portable and actual-interface audits. Six mapped Linux Stata fixtures and
+two focused Mac Stata fixtures pass. The Mac binary passes universal-binary and
+actual-plugin ABI checks. These results do not qualify an installed package for
+release or promotion.
+
+The original million-row two-effect strict failure passes at tolerance 1e-12.
+The million-row three-effect saved-output case passes both default and tighter
+settings at four workers (8496362) and the original sixteen workers (8496732).
+At sixteen workers, maximum per-row reconstruction errors are 1.469e-10 and
+2.845e-13; both profiles repeat exactly. Saving effects preserves coefficients,
+covariance, retained sample, aggregate absorbed prediction and eta exactly
+against the corresponding unsaved candidate fit.
+
+The one fixed performance check used the current base revision and candidate in
+one isolated Linux allocation (8496519, scc-zj4), with six alternating pairs plus
+one warmup per arm/cell. All 42 calls are retained. All science, fixed-worker
+repeatability and cross-worker gates passed. The maintained PPML timing runner
+`bench/time_exact.py` supplied the paired bootstrap and max(5%, 1 ms) bound;
+`bench/qualify.py` is currently OLS-specific.
+
+| Cell, four workers | Incumbent median | Candidate median | Paired median ratio | Bootstrap 95% ratio | Gate |
+| --- | ---: | ---: | ---: | --- | --- |
+| Two FE, 1m, no saved channels | 5.605 s | 5.500 s | 0.9693 | [0.9019, 1.0024] | Pass |
+| Three FE, 1m, no saved channels | 16.267 s | 16.096 s | 0.9866 | [0.9683, 1.0058] | Pass |
+| Three FE, 10k, saved channels | 68.612 ms | 75.006 ms | 1.1020 | [1.0259, 1.1570] | Fail |
+
+The easy saved-effect cell fails the nonregression gate. The timing job exits 1
+for that measured outcome; scheduler failure is zero and host isolation passes.
+Retained phase captures are consistent with extra recovery work (11.698 versus
+16.547 ms in the traced four-worker preflight), but these single calls are not
+additional timing evidence. A bounded existing MAP recovery attempt before CG
+is a proposed refinement, not implemented or accepted here. No adverse timings
+were resampled, no performance exception was accepted, and production stays
+stopped pending discussion.
+
+[The compact record](../bench/results/ppml-recovery-20261107.json) retains source
+and dependency identities, binary/input hashes, complete timing observations,
+science scope, scheduler outcomes and preserved operational failures. The SCC
+run identifier is `20261107-ppml-diagnosis`. This development evidence does not
+replace the historical paper benchmarks.
+
 ## CMG 0.2.0 consolidation, November 6, 2026
 
 The published [0.5.1 release](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.1) uses CMG
