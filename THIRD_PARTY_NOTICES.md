@@ -28,7 +28,7 @@ retains copyright notices for within contributors and the appliedAI Institute
 for Europe gGmbH. Preserve those notices with source distributions.
 
 The MIT-licensed [CMG Rust port](https://github.com/johannes-schmieder/CMG) is
-pinned to `a4c927f49eb7a5391a63963d2c4c651a51cf1af5` and statically linked for
+pinned to `e5613e81fb3b03c78de98658b372646fa802aabb` and statically linked for
 graph-Laplacian/SDDM preconditioning and PCG. It derives from Koutis and Miller's
 [original MATLAB/C implementation](https://github.com/ikoutis/cmg-solver/tree/19752fc102f8cae8e34f66457bfaccb1aaa60375)
 of the method by

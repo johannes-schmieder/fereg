@@ -2,7 +2,7 @@
 
 ## 0.5.1 — 2026-11-06
 
-Use the consolidated upstream CMG 0.2.0 release source at `a4c927f49eb7a5391a63963d2c4c651a51cf1af5`. Retain fereg's existing CMG APIs, 32-level hierarchy default, admission bounds and numerical
+Use the consolidated upstream CMG 0.2.0 release source at `e5613e81fb3b03c78de98658b372646fa802aabb`. Retain fereg's existing CMG APIs, 32-level hierarchy default, admission bounds and numerical
 behavior. Remove the source-package license rewrite: CMG now carries its MIT
 license and metadata upstream. Verify the exact dependency pin and complete
 vendored source inventory before packaging. Refresh matching native plugins
