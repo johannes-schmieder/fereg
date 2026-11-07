@@ -32,4 +32,4 @@ foreach tol in 1e-8 1e-12 {
     assert c==repeat_c
     drop a b c base eta0 repeat_*
 }
-display "FEPPML_SAVED_MAP_PILOT_PASS"
+display as result "END_FIXTURE|feppml_saved_map_pilot|rc=0"
