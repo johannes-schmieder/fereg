@@ -35,10 +35,8 @@ pub(crate) struct FeSession<'a> {
     pub(crate) block_schur_used: bool,
 }
 
-/// Developer switch: `FEREG_BLOCK_SCHUR=0` keeps the established routes.
 fn block_schur_enabled() -> bool {
-    static ENABLED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-    *ENABLED.get_or_init(|| std::env::var("FEREG_BLOCK_SCHUR").map_or(true, |v| v != "0"))
+    super::borrowed_map::block_schur::enabled()
 }
 
 /// Select invocation identity before canonical portfolio construction. Refused
@@ -374,7 +372,7 @@ impl<'a> FeSession<'a> {
                         && design.effects().len() == 3
                         && matches!(weights, BorrowedMapWeights::Unit)
                         && config.absorb.map.symmetric
-                        && !(block_schur_enabled() && !config.absorb.retain_coefficients)
+                        && !block_schur_enabled()
                     {
                         let started = std::time::Instant::now();
                         let (geometry, peak) =
@@ -1024,7 +1022,6 @@ impl<'a> FeSession<'a> {
         let eligible = block_schur_enabled()
             && config.solver == super::FeSolverKind::Auto
             && config.lsmr.preconditioner == super::LsmrPreconditioner::Auto
-            && !config.retain_coefficients
             && config.declined_recheck.is_none()
             && default_routing
             && self.cmg.is_none()
@@ -1046,6 +1043,10 @@ impl<'a> FeSession<'a> {
             matrix,
             config.map,
             config.solver_memory_budget,
+            super::borrowed_map::block_schur::Request {
+                retain_coefficients: config.retain_coefficients,
+                fresh_weights: false,
+            },
         )? {
             Outcome::Done(result) => {
                 self.block_schur_used = true;

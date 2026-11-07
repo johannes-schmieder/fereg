@@ -1106,6 +1106,7 @@ pub(crate) struct ReusableCategoricalMapAbsorber<'a> {
     checkpoint_lsmr_retry_error: Option<ErrorCode>,
     checkpoint_schur_iteration_cap: Option<usize>,
     checkpoint_schur_certificate_failure: bool,
+    block_schur: block_schur::Cache,
 }
 
 #[derive(Clone, Copy)]
@@ -1829,6 +1830,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             checkpoint_lsmr_retry_error: None,
             checkpoint_schur_iteration_cap: None,
             checkpoint_schur_certificate_failure: false,
+            block_schur: block_schur::Cache::default(),
         };
         let admitted = Self::owner_bytes(&owner.design, max_rhs, parallel_threads)?;
         crate::memory::require_admitted_capacity(owner.payload_bytes()?, admitted)?;
@@ -2080,6 +2082,41 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         values: DenseMatrix,
         config: MapConfig,
     ) -> Result<CertifiedBorrowedMap> {
+        // Exact global elimination first; the owner's checkpoint routes keep
+        // every decline. The weight state is rebuilt for every frame.
+        let values = if block_schur::enabled()
+            && self.design.effects().len() >= 2
+            && self.checkpoint_schur_iteration_cap.is_none()
+            && !self.checkpoint_lsmr_certificate_failure
+            && self.checkpoint_lsmr_fatal_failure == 0
+            && !self.checkpoint_schur_certificate_failure
+        {
+            validate_config(config)?;
+            if values.nrows() != self.design.nobs() || !values.all_finite() {
+                return Err(invalid_data("reusable categorical MAP values must be finite"));
+            }
+            match self.block_schur.project(
+                &self.design,
+                weights,
+                values,
+                config,
+                None,
+                block_schur::Request {
+                    retain_coefficients: self.retain_coefficients,
+                    fresh_weights: true,
+                },
+            )? {
+                block_schur::Outcome::Done(mut result) => {
+                    // PPML publishes categorical (non-LSMR) projections under
+                    // the MAP engine identity, as for the two-FE Schur route.
+                    result.report.used_solver = FeSolverKind::Map;
+                    return Ok(result);
+                }
+                block_schur::Outcome::Declined(values) => values,
+            }
+        } else {
+            values
+        };
         let withheld = self.begin_ppml_cmg_projection()?;
         let result = self.absorb(
             weights,
@@ -9941,4 +9978,5 @@ pub(crate) struct LegacyCategoricalOwner<'a> {
     checkpoint_lsmr_retry_error: Option<ErrorCode>,
     checkpoint_schur_iteration_cap: Option<usize>,
     checkpoint_schur_certificate_failure: bool,
+    block_schur: block_schur::Cache,
 }

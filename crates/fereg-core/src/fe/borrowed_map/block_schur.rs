@@ -26,6 +26,12 @@ use super::*;
 use crate::fe::LevelIndex;
 use std::ops::Range;
 
+/// Developer switch: `FEREG_BLOCK_SCHUR=0` keeps the established routes.
+pub(crate) fn enabled() -> bool {
+    static ENABLED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ENABLED.get_or_init(|| std::env::var("FEREG_BLOCK_SCHUR").map_or(true, |v| v != "0"))
+}
+
 /// Retained (non-eliminated) blocks with specialized kernels.
 pub(crate) const MAX_BLOCKS: usize = 4;
 /// Right-hand sides per lockstep batch.
@@ -468,6 +474,16 @@ impl Weights {
     }
 }
 
+/// Caller options of one projection.
+#[derive(Clone, Copy, Debug, Default)]
+pub(crate) struct Request {
+    /// Also return the FE coefficients whose fit forms the residual.
+    pub(crate) retain_coefficients: bool,
+    /// Recompute the weight state even for the same weight slice (callers
+    /// that refill one buffer between frames).
+    pub(crate) fresh_weights: bool,
+}
+
 /// Outcome of one projection request.
 pub(crate) enum Outcome<V> {
     Done(CertifiedBorrowedMap),
@@ -495,6 +511,7 @@ impl Cache {
         values: DenseMatrix,
         map: MapConfig,
         budget: Option<FeSolverMemoryBudget>,
+        request: Request,
     ) -> Result<Outcome<DenseMatrix>> {
         if self.refused || values.nrows() != design.nobs() {
             return Ok(Outcome::Declined(values));
@@ -517,7 +534,7 @@ impl Cache {
         if budget.is_some_and(|b| !b.fits(admission_bytes(st, None, values.ncols()))) {
             return Ok(Outcome::Declined(values));
         }
-        if self.weights.as_ref().is_none_or(|(k, _)| *k != key) {
+        if request.fresh_weights || self.weights.as_ref().is_none_or(|(k, _)| *k != key) {
             self.weights = None;
             match Weights::prepare(st, design, validated)? {
                 Some(w) => self.weights = Some((key, w)),
@@ -526,8 +543,11 @@ impl Cache {
         }
         ledger.lap(1);
         let w = &self.weights.as_ref().expect("weights").1;
-        let bytes = admission_bytes(st, Some(w), values.ncols());
-        project(st, w, design, validated, values, map, bytes)
+        let mut bytes = admission_bytes(st, Some(w), values.ncols());
+        if request.retain_coefficients {
+            bytes += (st.reduced + st.segments) as u128 * values.ncols() as u128 * 8;
+        }
+        project(st, w, design, validated, values, map, bytes, request)
     }
 
     /// Recompute every level's weighted moment of one residual column in one
@@ -1232,6 +1252,7 @@ fn run<const R: usize, const NB: usize, const UNIT: bool, const WEIGHTED: bool>(
     tolerance: f64,
     cap: usize,
     facts: &mut Facts,
+    coefficients: Option<&mut FeCoefficientBatch>,
 ) -> Result<Step> {
     let st = ctx.st;
     let mut work = Work::<R>::new(st)?;
@@ -1261,6 +1282,32 @@ fn run<const R: usize, const NB: usize, const UNIT: bool, const WEIGHTED: bool>(
     facts.iterations = facts.iterations.max(iterations);
     let started = Instant::now();
     recover::<R, NB, UNIT>(st, ctx.w, &mut work);
+    if let Some(batch) = coefficients {
+        // Corrections add their increments to the coefficients of the
+        // preceding solve, so the sum fits the original columns.
+        let per = batch.coefficients_per_rhs;
+        for j in 0..R {
+            let base = (first + j) * per;
+            let start = base + batch.effect_offsets[st.eliminated];
+            for (value, alpha) in batch.values[start..start + st.segments]
+                .iter_mut()
+                .zip(&work.seg)
+            {
+                *value += alpha[j];
+            }
+            for (b, &effect) in st.blocks.iter().enumerate() {
+                let start = base + batch.effect_offsets[effect];
+                let levels = batch.level_counts[effect];
+                let offset = st.offsets[b] as usize;
+                for (value, x) in batch.values[start..start + levels]
+                    .iter_mut()
+                    .zip(&work.x[offset..offset + levels])
+                {
+                    *value += x[j];
+                }
+            }
+        }
+    }
     let sq = residualize::<R, NB, WEIGHTED>(ctx, values, first, &mut work);
     let (fold, norms) = certify_batch::<R>(ctx.w, &work.accs[0], sq, scale, tolerance);
     facts.residual_seconds += started.elapsed().as_secs_f64();
@@ -1325,6 +1372,7 @@ fn dispatch<const NB: usize>(
     tolerance: f64,
     cap: usize,
     facts: &mut Facts,
+    coefficients: Option<&mut FeCoefficientBatch>,
 ) -> Result<Step> {
     let unit = ctx.w.cell.is_empty();
     let weighted = ctx.weights.values.is_some();
@@ -1332,16 +1380,52 @@ fn dispatch<const NB: usize>(
         ($r:literal) => {
             match (unit, weighted) {
                 (true, false) => {
-                    run::<$r, NB, true, false>(ctx, values, first, reference, tolerance, cap, facts)
+                    run::<$r, NB, true, false>(
+                        ctx,
+                        values,
+                        first,
+                        reference,
+                        tolerance,
+                        cap,
+                        facts,
+                        coefficients,
+                    )
                 }
                 (true, true) => {
-                    run::<$r, NB, true, true>(ctx, values, first, reference, tolerance, cap, facts)
+                    run::<$r, NB, true, true>(
+                        ctx,
+                        values,
+                        first,
+                        reference,
+                        tolerance,
+                        cap,
+                        facts,
+                        coefficients,
+                    )
                 }
                 (false, false) => {
-                    run::<$r, NB, false, false>(ctx, values, first, reference, tolerance, cap, facts)
+                    run::<$r, NB, false, false>(
+                        ctx,
+                        values,
+                        first,
+                        reference,
+                        tolerance,
+                        cap,
+                        facts,
+                        coefficients,
+                    )
                 }
                 (false, true) => {
-                    run::<$r, NB, false, true>(ctx, values, first, reference, tolerance, cap, facts)
+                    run::<$r, NB, false, true>(
+                        ctx,
+                        values,
+                        first,
+                        reference,
+                        tolerance,
+                        cap,
+                        facts,
+                        coefficients,
+                    )
                 }
             }
         };
@@ -1362,6 +1446,7 @@ fn dispatch<const NB: usize>(
 /// Project the row-major RHS `values` against the design. A decline returns
 /// the matrix: untouched, unless a later batch or a correction declined after
 /// earlier residuals were formed, whose projection is then still the request.
+#[allow(clippy::too_many_arguments)]
 fn project(
     st: &Structure,
     w: &Weights,
@@ -1370,19 +1455,21 @@ fn project(
     values: DenseMatrix,
     map: MapConfig,
     bytes: u128,
+    request: Request,
 ) -> Result<Outcome<DenseMatrix>> {
     if values.nrows() != st.nobs || values.ncols() == 0 || design.nobs() != st.nobs {
         return Ok(Outcome::Declined(values));
     }
     match st.blocks.len() {
-        1 => project_nb::<1>(st, w, design, weights, values, map, bytes),
-        2 => project_nb::<2>(st, w, design, weights, values, map, bytes),
-        3 => project_nb::<3>(st, w, design, weights, values, map, bytes),
-        4 => project_nb::<4>(st, w, design, weights, values, map, bytes),
+        1 => project_nb::<1>(st, w, design, weights, values, map, bytes, request),
+        2 => project_nb::<2>(st, w, design, weights, values, map, bytes, request),
+        3 => project_nb::<3>(st, w, design, weights, values, map, bytes, request),
+        4 => project_nb::<4>(st, w, design, weights, values, map, bytes, request),
         _ => Ok(Outcome::Declined(values)),
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn project_nb<const NB: usize>(
     st: &Structure,
     w: &Weights,
@@ -1391,6 +1478,7 @@ fn project_nb<const NB: usize>(
     mut values: DenseMatrix,
     map: MapConfig,
     bytes: u128,
+    request: Request,
 ) -> Result<Outcome<DenseMatrix>> {
     let mut ledger = crate::diagnostics::phase_ledger::PhaseLedger::new("block_schur", ["solve"]);
     let ctx = Ctx::<NB> {
@@ -1410,6 +1498,11 @@ fn project_nb<const NB: usize>(
     let mut fold = CertificateFold::default();
     let mut residual_norms = Vec::with_capacity(ncols);
     let mut corrections = 0;
+    let mut coefficients = if request.retain_coefficients {
+        Some(FeCoefficientBatch::intercept_zeros(design, ncols)?)
+    } else {
+        None
+    };
     let mut start = 0;
     while start < ncols {
         let width = (ncols - start).min(BATCH);
@@ -1425,6 +1518,7 @@ fn project_nb<const NB: usize>(
                 tolerance,
                 cap,
                 &mut facts,
+                coefficients.as_mut(),
             )?;
             match step {
                 Step::Declined(reason) => {
@@ -1483,9 +1577,14 @@ fn project_nb<const NB: usize>(
         certification_seconds: facts.residual_seconds,
         ..SolveReport::single_route(FeSolverKind::Cg, SolveStopReason::Certified, certificate)
     };
-    CertifiedBorrowedMap::from_certified_parts(values, report)?
-        .with_residual_norms(residual_norms)
-        .map(Outcome::Done)
+    match coefficients {
+        Some(coefficients) => {
+            CertifiedBorrowedMap::from_certified_parts_with_coefficients(values, report, coefficients)
+        }
+        None => CertifiedBorrowedMap::from_certified_parts(values, report),
+    }?
+    .with_residual_norms(residual_norms)
+    .map(Outcome::Done)
 }
 
 fn trace_decline(reason: &str, facts: Facts) {

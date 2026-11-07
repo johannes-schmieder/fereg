@@ -40,7 +40,10 @@ pub(super) fn projection_solver(
     auto_projection: bool,
     design: &BorrowedInterceptFeDesign<'_>,
 ) -> FeSolverKind {
-    if auto_projection && design.effects().len() == 2 {
+    // Auto with two or more effects first tries the exact block elimination
+    // (which also returns the coefficients the rectifier needs); declines
+    // keep the Auto routes and the retained-CG retry.
+    if auto_projection && design.effects().len() >= 2 {
         FeSolverKind::Auto
     } else {
         FeSolverKind::Cg
