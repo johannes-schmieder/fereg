@@ -1,5 +1,46 @@
 # Validation status
 
+## Combined Windows/PPML candidate, November 7, 2026
+
+**Prepared as 0.5.2; not published or merged.** Johannes requested integrating
+both changes into main. The recorded PPML saved-effects performance gate still
+fails, and owner acceptance of that measured slowdown remains pending. No new
+timings were collected. See the [combined artifact checks](../bench/results/windows-ppml-20261107.json)
+and the original performance table below.
+
+The combined runtime identity is
+`43110fefd9b65be5ffa9ad66e81ef0f8d1833f13246bab0aebf405e3677f682e`.
+Its Windows build passed the complete private profile at `8b84b515` in
+`win-20261107T120349Z-258842f3`: actual installed checks, numeric-input oracles
+at two and eight workers, saved-intercept CG recovery at both worker counts,
+scientific/transaction checks and cleanup. Loading Break retains Johannes's
+waiver; the machine stopped and all transient transfer objects were deleted.
+
+The Mac offline build passed the native audit and 77 independent replay cases
+at one, two and four workers, with exact fixed-worker repeats at two and four.
+Against the current release, 75 cases remain exact. Two saved-PPML cases change
+only the declared saved channels and reconstruction certificate magnitudes;
+coefficients, covariance, sample and all discrete decisions stay exact.
+The disconnected saved-effects witness reaches CG four times, checks independent
+model truth and exact saved/unsaved fits at 1e-8 and 1e-12, and passes from the
+assembled package. Public PPML live Break/rollback also passes on Mac.
+
+The default `./scripts/run_tests.sh` passes with the matching three native
+plugins: 2,291 Rust executions in 126 groups, 349 Python unit tests plus seven
+portable checks, FFI/allocator audits, complexity and installed-package binding.
+A fresh local root installation verifies all 37 installed file hashes, native
+selftest and independent OLS/PPML group-mean examples. Four checks pass from the
+complete native archive. The corresponding-source closure has zero advisories;
+all 2,775 compiler-input files match the successful offline Mac build exactly.
+Native Intel-Mac execution remains unqualified.
+
+Linux native/ABI checks and six mapped PPML fixtures pass, as do the strict
+two-effect million-row fit and the three-effect 1e-8 reconstruction/exact-repeat
+checks at sixteen workers. The final 1e-12 saved-effects continuation is pending
+in job 8498067 after two preserved launcher/resource-limit failures; it uses the
+same binary and inputs. Public promotion remains blocked until that check and
+the owner performance decision are complete.
+
 ## Unpublished PPML repair candidate, November 7, 2026
 
 At Johannes's request, outreach array 8481934 and its continuation monitor were
