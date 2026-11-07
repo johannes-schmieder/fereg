@@ -78,10 +78,10 @@ try {
             Start-Sleep -Milliseconds 50
         }
         $FailureCode = 84020
-        # /e may minimize the batch window; restore only our child for its
+        # /e hides the batch windows; show only our child process for its
         # accessibility provider to expose the toolbar's current geometry.
         [FeregInputGui]::Restore([uint32]$owned.Id)
-        Start-Sleep -Milliseconds 200
+        Start-Sleep -Milliseconds 500
         $delivery = [FeregInputGui]::Break([uint32]$owned.Id)
         if ($delivery -ne 0) { $FailureCode = 85000 + $delivery; throw 'GUI Break unavailable' }
         if (-not $Probe -and $owned.HasExited) { throw 'Stata exited during delivery' }

@@ -27,7 +27,6 @@ public static class FeregInputGui {
         public UIntPtr data;
     }
     [DllImport("user32.dll")] private static extern bool IsWindowVisible(IntPtr window);
-    [DllImport("user32.dll")] private static extern bool IsIconic(IntPtr window);
     [DllImport("user32.dll")] private static extern bool ShowWindowAsync(IntPtr window, int command);
     [DllImport("user32.dll")] private static extern IntPtr WindowFromPoint(Point point);
     [DllImport("user32.dll")] private static extern bool ScreenToClient(IntPtr window, ref Point point);
@@ -115,7 +114,7 @@ public static class FeregInputGui {
         EnumWindows(delegate(IntPtr window, IntPtr ignored) {
             uint owner;
             GetWindowThreadProcessId(window, out owner);
-            if (owner == pid && (IsWindowVisible(window) || IsIconic(window))) ShowWindowAsync(window, 9);
+            if (owner == pid) ShowWindowAsync(window, 9);
             return true;
         }, IntPtr.Zero);
     }

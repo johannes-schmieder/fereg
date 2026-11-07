@@ -9,8 +9,9 @@ local root = subinstr(`"`c(pwd)'"', char(92), "/", .)
 * Check real GUI Break delivery before the cold native build.
 shell powershell.exe -NoLogo -NoProfile -NonInteractive ///
     -ExecutionPolicy Bypass -File "scripts/windows_input_break.ps1" -Probe
-do "scripts/windows_input_result.do" "target/windows-input-break/result.txt" ///
+capture noisily do "scripts/windows_input_result.do" "target/windows-input-break/result.txt" ///
     "WINDOWS_INPUT_GUI=PASS" detailed
+local break_probe_rc = _rc
 capture erase "dist/fereg_windows.plugin.sha256"
 capture erase "target/windows-plugin.verified"
 capture erase "target/windows-installed.verified"
@@ -133,12 +134,6 @@ capture noisily do "scripts/windows_input_result.do" "target/windows-input-oracl
 if _rc exit 9114
 capture noisily do "tests/stata/development/parallel_input_failures.do"
 if _rc exit 9115
-shell powershell.exe -NoLogo -NoProfile -NonInteractive ///
-    -ExecutionPolicy Bypass -File "scripts/windows_input_break.ps1"
-capture noisily do "scripts/windows_input_result.do" "target/windows-input-break/result.txt" ///
-    "WINDOWS_INPUT_BREAK=PASS" detailed
-if _rc >= 10000 exit _rc
-if _rc exit 9121
 * Postcommit marker cleanup must preserve populated/null rollback and the
 * full posted sample on Windows as well as the Unix hosts.
 * Diagnostic r(9117)/r(9118): OLS and PPML transaction fixtures.
@@ -152,5 +147,14 @@ capture noisily do "tests/stata/development/ols_no_fe_direct.do"
 if _rc exit 9119
 capture noisily do "tests/stata/development/ols_no_fe_centered.do"
 if _rc exit 9120
+* Independent native/scientific checks above remain useful if the GUI probe
+* is unavailable. Such a failure still blocks qualification and publication.
+if `break_probe_rc' exit `break_probe_rc'
+shell powershell.exe -NoLogo -NoProfile -NonInteractive ///
+    -ExecutionPolicy Bypass -File "scripts/windows_input_break.ps1"
+capture noisily do "scripts/windows_input_result.do" "target/windows-input-break/result.txt" ///
+    "WINDOWS_INPUT_BREAK=PASS" detailed
+if _rc >= 10000 exit _rc
+if _rc exit 9121
 shell powershell.exe -NoLogo -NoProfile -NonInteractive ///
     -ExecutionPolicy Bypass -File "scripts/windows_ci_report.ps1" -Action pass
