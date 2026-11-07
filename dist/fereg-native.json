@@ -38,5 +38,5 @@
   "corresponding_source_sha256": "7046740e3d662254ae253002f353ef3692d5be234af85509eaba0bea7bdb637e",
   "corresponding_source_commit": "84e8973768cfcd54aaf82e584ae2d1a8bd06ff3e",
   "cmg_sha": "e5613e81fb3b03c78de98658b372646fa802aabb",
-  "performance_acceptance": "Pending owner decision on two inconclusive Mac cells (weak-auto-t4, weak-cmg-t4). All12 Linux cells pass on six independent hosts; all scientific checks pass. No measurements repeated or excluded."
+  "performance_acceptance": "Owner accepted the two inconclusive Mac cells (weak-auto-t4, weak-cmg-t4) as exceptions on 2026-11-06. Their measured status remains INCONCLUSIVE. All 12 Linux cells pass on six independent hosts; all scientific checks pass. No measurements repeated or excluded."
 }

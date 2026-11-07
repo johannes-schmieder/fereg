@@ -1,0 +1,18 @@
+{
+  "date": "2026-11-06",
+  "owner": "Johannes",
+  "decision": "ACCEPTED_EXCEPTIONS",
+  "owner_response": "Accept",
+  "common_revision": "e5613e81fb3b03c78de98658b372646fa802aabb",
+  "scope": [
+    "weak-auto-t4",
+    "weak-cmg-t4"
+  ],
+  "measurement_status": "INCONCLUSIVE, unchanged",
+  "basis": "Mac medians -0.22% and +0.74%; intervals cross the max(5%, 1 ms) allowance. Linux passes all 12 cells across six independent physical hosts. Scientific and required platform qualification pass.",
+  "policy": "Explicit owner acceptance; no resampling, exclusion or relabelling as PASS.",
+  "evidence": {
+    "cmg-kernels-20261106.json": "917e69907e93e12f9f8900447b997d0323b17852b9bc92904a4ca8ea87b1cfa2",
+    "cmg-kernels-20261106-packaging.json": "cb77d9807d4b11626e5f79823f3a0977344529160b214627b17206a5f4600950"
+  }
+}

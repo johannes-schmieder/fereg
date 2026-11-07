@@ -17,8 +17,10 @@ physical hosts. The Mac panel passes 10 cells; weak-auto-t4 and weak-cmg-t4 are
 inconclusive, with median candidate/reference ratios 0.997787 and 1.007402.
 Their allowance-adjusted excess intervals are [-2.175, +1.457] ms and
 [-55.088, +20.342] ms. These are uncertainty intervals on excess time, not
-ratio intervals. Release acceptance awaits Johannes's decision; no samples
-were repeated or excluded. The common library revision retains fereg's
+ratio intervals. Johannes explicitly accepted these two inconclusive results as
+release exceptions on November 6; their measured status remains unchanged.
+The [acceptance record](../bench/results/cmg-kernels-20261106-acceptance.json)
+binds the original evidence. No samples were repeated or excluded. The common library revision retains fereg's
 32-level setting and existing component options.
 
 [Structured evidence](../bench/results/cmg-kernels-20261106.json) and its
