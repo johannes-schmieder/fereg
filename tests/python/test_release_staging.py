@@ -36,7 +36,7 @@ class ReleaseStagingTests(unittest.TestCase):
             stage_release.PRODUCTION_STATA_FILES,
             self.PRODUCTION_STATA_FILES,
         )
-        self.assertEqual(stage_release.VERSION, "0.5.1")
+        self.assertEqual(stage_release.VERSION, "0.5.2")
     def test_ppml_objects_are_bound_to_source_and_oldest_compiler(self):
         stage_release.validate_ppml_mata_objects(ROOT / "stata")
         with tempfile.TemporaryDirectory() as directory:
@@ -144,7 +144,7 @@ class ReleaseStagingTests(unittest.TestCase):
             self.assertIn(prefix + '_fereg_factor_sample.ado', names)
             self.assertNotIn(prefix + 'LEGACY_COMPARATOR.json', names)
             self.assertFalse(any('fereg_legacy_' in name for name in names))
-            self.assertEqual(manifest["version"], "0.5.1")
+            self.assertEqual(manifest["version"], "0.5.2")
             self.assertEqual(manifest["phase"], "stable")
             self.assertEqual(manifest["action_protocol"], "1.7")
             self.assertEqual(manifest["ols_result_wire"], "1.5")
@@ -222,7 +222,7 @@ class ReleaseStagingTests(unittest.TestCase):
                 )
             )
             self.assertFalse(any(name.endswith(".pdf") for name in names))
-            self.assertEqual(source_manifest["version"], "0.5.1")
+            self.assertEqual(source_manifest["version"], "0.5.2")
 
     def test_checksum_mismatch_fails_closed(self):
         with tempfile.TemporaryDirectory() as temporary:

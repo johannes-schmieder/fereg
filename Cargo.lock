@@ -128,7 +128,7 @@ checksum = "edd0f118536f44f5ccd48bcb8b111bdc3de888b58c74639dfb034a357d0f206d"
 
 [[package]]
 name = "fereg-core"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "cmg",
  "rayon",
@@ -138,14 +138,14 @@ dependencies = [
 
 [[package]]
 name = "fereg-oracle"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "fereg-core",
 ]
 
 [[package]]
 name = "fereg-plugin"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "fereg-core",
  "libc",
@@ -155,7 +155,7 @@ dependencies = [
 
 [[package]]
 name = "fereg-testkit"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "fereg-core",
  "fereg-oracle",

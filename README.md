@@ -13,22 +13,25 @@ The source is licensed under MIT; third-party terms are preserved in
 
 ## Install in Stata
 
-Install stable version 0.5.1 in a fresh Stata session:
+Install stable version 0.5.2 in a fresh Stata session:
 
 ```stata
-net install fereg, from("https://raw.githubusercontent.com/johannes-schmieder/fereg/v0.5.1/") replace
+net install fereg, from("https://raw.githubusercontent.com/johannes-schmieder/fereg/v0.5.2/") replace
 fereg, selftest
 ```
 
 This installs both commands, their help files and the native plugin from the
-[0.5.1 release](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.1).
+[0.5.2 release](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.2).
 It requires Stata 15 or newer. Linux x86-64 needs glibc 2.28 or newer;
 Windows x86-64 and universal macOS binaries are also included. Mac Stata
 qualification uses Apple Silicon; native Intel-Mac testing remains outstanding.
-Windows uses serial numeric input. No compiler or extra Stata package is needed.
+Windows x86-64 Stata/MP 19 GUI supports eligible parallel numeric input. Break
+during Windows loading may be delayed or unavailable; other Windows hosts use
+serial loading. No compiler or extra Stata package is needed. See the
+[validation record](docs/VALIDATION.md) for platform qualification.
 
 Exit Stata before updating so that the previous plugin is unloaded. To follow
-the current development package, replace `v0.5.1` in the URL with `main`.
+the current development package, replace `v0.5.2` in the URL with `main`.
 
 The community [`github`](https://github.com/haghish/github) helper installs the
 current package from `main`:

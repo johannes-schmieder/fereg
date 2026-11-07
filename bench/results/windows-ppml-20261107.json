@@ -1,0 +1,496 @@
+{
+  "schema": 1,
+  "scope": "Combined Windows parallel numeric loader and existing PPML strict-curve/saved-effect recovery repair; release preparation",
+  "version": "0.5.2",
+  "runtime_sha256": "43110fefd9b65be5ffa9ad66e81ef0f8d1833f13246bab0aebf405e3677f682e",
+  "publication_status": "qualified_owner_exceptions_accepted",
+  "performance": {
+    "record": "ppml-recovery-20261107.json",
+    "saved_effects_gate": "FAIL",
+    "owner_exception": {
+      "date": "2026-11-07",
+      "accepted": true,
+      "basis": "Johannes directed continue after the measured saved-effects slowdown and pending acceptance decision were disclosed; integration with PPML had already been requested.",
+      "measured_status_retained": "FAIL",
+      "paired_median_ratio": 1.1019628634479774
+    },
+    "new_timings": false
+  },
+  "macos": {
+    "source_commit": "6577206c20e3a7f5d861fa333412f663c9756202",
+    "plugin_sha256": "1604dc4e52ea99dc6e78630f9a3badf669096b019f9d3d1a9f6e065a63f4890e",
+    "plugin_bytes": 21656368,
+    "architecture": "universal arm64/x86_64",
+    "licensed_host": "macOS arm64 Stata/MP 19",
+    "offline_source_archive_sha256": "2f5078c2ce5d6b1ee51750f13bb3fa04b6c1c80935efe7045512bdefbe6b99b8",
+    "binary_audit": "PASS",
+    "actual_abi": "PASS",
+    "mapped_fixtures": [
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/development/feppml_canonical_products_oracle.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_saved_slopes.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_transaction.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/development/parallel_input_failures.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/installation/installation_smoke.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      }
+    ],
+    "saved_recovery": {
+      "fixture_source_commit": "8b84b515781daa9972feaf9cbe17ab3c79545d90",
+      "status": "PASS",
+      "workers": 4,
+      "rows": 1920,
+      "disconnected_components": 2,
+      "cg_recoveries": 4,
+      "tolerances": [
+        1e-08,
+        1e-12
+      ],
+      "checks": [
+        "independent coefficient and linear predictor truth",
+        "exact saved/unsaved coefficients, covariance, sample, aggregate absorbed predictor and eta",
+        "row reconstruction at requested tolerance",
+        "fixed-worker exact saved-channel repeatability"
+      ]
+    },
+    "native_replay": {
+      "status": "PASS",
+      "cases": 77,
+      "thread_counts": [
+        1,
+        2,
+        4
+      ],
+      "additional_worker_science_repeat_discrete_checks": 154,
+      "independent_references": [
+        "dense OLS/PPML",
+        "exact and Philox mean bias",
+        "separation witnesses"
+      ]
+    },
+    "unaffected_ols_exact": {
+      "status": "PASS",
+      "cases": 36,
+      "baseline_sha256": "b5ae3b87ea4daf6b5d1486dd54312af62fed302b5f214b462058b17224185a06",
+      "compatibility_adapter": "Only ado/plugin request headers change from 0.5.2 to 0.5.1 for the incumbent; all scientific inputs and comparisons remain exact."
+    },
+    "live_public_ppml_break": {
+      "status": "PASS",
+      "fixture": "estimate_ppml_eclass_break",
+      "scope": "Native estimation, publication, prediction interruption and rollback; public feppml injection scope"
+    },
+    "native_baseline_comparison": {
+      "status": "PASS",
+      "cases": 77,
+      "exact_cases": 75,
+      "affected_cases": [
+        {
+          "case": "ppml-12",
+          "exact": false,
+          "declared_saved_recovery_difference_count": 452,
+          "affected_paths": [
+            "/columns/14",
+            "/columns/15",
+            "/columns/16",
+            "/matrices/RCERT/bits/8",
+            "/matrices/RCERT/bits/9"
+          ],
+          "input_sha256": "454bb88711dc8ece2a1a6b1a4c368d9aebe1fb1bd10c5be5c98c59683e720e07"
+        },
+        {
+          "case": "ppml-28",
+          "exact": false,
+          "declared_saved_recovery_difference_count": 452,
+          "affected_paths": [
+            "/columns/15",
+            "/columns/16",
+            "/columns/17",
+            "/matrices/RCERT/bits/8",
+            "/matrices/RCERT/bits/9"
+          ],
+          "input_sha256": "d3c2ec5dc2cc2b44f8e156cb14e9f375120654290adda56cf8f33229575392bd"
+        }
+      ],
+      "unaffected_science_and_discrete_fields": "exact",
+      "baseline_science": "PASS",
+      "scope_basis": "Previously declared saved categorical recovery arithmetic and its reconstruction certificates; no new runtime change or tolerance exception."
+    },
+    "review_package_checks": {
+      "status": "PASS",
+      "archive_sha256": "088b5c4da95f039c13f1d10c8540234330b35d8ec707ccfc01f26dad877d85f8",
+      "tests_passed": 3,
+      "fixtures": [
+        "feppml_installation_smoke",
+        "staged_plugin_binary",
+        "feppml_saved_intercept_recovery"
+      ],
+      "release_admission": false
+    }
+  },
+  "linux": {
+    "run_id": "20261107-windows-ppml-release",
+    "source_commit": "6577206c20e3a7f5d861fa333412f663c9756202",
+    "plugin_sha256": "9f19afd5aba08553f17d56e6d5583eb1e75c2c21b26b5f7cd858b7568dae01c4",
+    "build_job": 8497809,
+    "build_host": "scc-ei3",
+    "build_and_native_checks": "PASS",
+    "mapped_fixtures_passed": 6,
+    "strict_two_effect_1m_16workers": "PASS",
+    "time_limit_extension": {
+      "job": 8497867,
+      "initial_minutes": 15,
+      "revised_minutes": 40,
+      "reason": "Slower assigned node; continue the same fixed correctness checks without a restart or resampling; original 16 slots, 3G per slot and no-GPU constraints retained."
+    },
+    "default_three_effect_1m_16workers": {
+      "status": "PASS",
+      "tolerance": 1e-08,
+      "max_row_error": 1.49536806688934e-10,
+      "saved_vs_unsaved_exact": true,
+      "fixed_worker_saved_repeat_exact": true
+    },
+    "status": "PASS",
+    "strict_three_effect_1m_16workers": {
+      "status": "PASS",
+      "tolerance": 1e-12,
+      "max_row_error": 2.84506516015943e-13,
+      "saved_vs_unsaved_exact": true,
+      "fixed_worker_saved_repeat_exact": true,
+      "job": 8498067,
+      "host": "scc-ei3",
+      "failed": 0,
+      "exit_status": 0,
+      "wall_seconds": 186,
+      "maxvmem": "4.364G"
+    }
+  },
+  "independent_review": {
+    "ppml_runtime": "No new material correctness blocker; unchanged tolerance/sample/rank/separation safeguards, bounded workspace and interruption checks. Performance exception still required.",
+    "windows_harness": "Fresh completion marker and four CG trace events required; saved recovery and loader qualification are separate checks. The fixture does not certify the categorical-curve rejection transition."
+  },
+  "harness_failures": [
+    {
+      "boundary": "New integration fixture, first unsaved fit",
+      "result": "r(459), reusable categorical MAP exhausted iteration budget before saved recovery",
+      "repair": "Use 12 levels per disconnected component and ordinary positive join weights instead of a 96-level extremely weak ring. All numerical tolerances and scientific assertions unchanged. Separate weak-geometry unit witnesses retained."
+    },
+    {
+      "boundary": "Mac PPML installation smoke",
+      "result": "r(498), correctly required extracted release binding",
+      "repair": "Run with staged-package runner after archive assembly; five other fixtures passed."
+    },
+    {
+      "boundary": "Native replay pinned bias inputs",
+      "result": "Version headers changed the input hashes",
+      "repair": "Reverting only ado/plugin 0.5.2 headers to 0.5.1 exactly reproduces both prior pinned hashes. Update only the hashes, retaining all numerical inputs and independent target values."
+    },
+    {
+      "boundary": "Linux job 8497809 after native/six fixtures/two-effect science",
+      "result": "failed=0, exit_status=1; launcher expected the wrong Stata log filename",
+      "wall_seconds": 174,
+      "maxvmem": "3.785G",
+      "repair": "Preserve completed checks and original log; job 8497867 runs only the unrun three-effect case with the observed dataset-based log name."
+    },
+    {
+      "boundary": "Default integration suite, Python help contract",
+      "result": "Reviewed help hash still named the 0.5.1 serial-Windows help",
+      "repair": "Reviewed the exact diff: version/date header and the authorized Windows parallel-loading/Break caveat only. Examples and command semantics unchanged; updated the reviewed hash."
+    },
+    {
+      "boundary": "Linux job 8497867",
+      "result": "SGE killed the job at its original 900-second limit, failed=100 and exit_status=137, despite qalter accepting a longer hard-resource value. Default-tolerance reconstruction and exact repeat completed; strict-tolerance completion remains unverified.",
+      "host": "scc-ph8",
+      "maxvmem": "5.804G",
+      "repair": "Job 8498067 runs only the unfinished 1e-12 check against the same binary, with 40 minutes declared before submission. Previous passing log is checksum-bound and retained; no timings are resampled."
+    }
+  ],
+  "corresponding_source": {
+    "source_commit": "67c83df5b1a0f0dca04b07dd03d45427a0c1e83a",
+    "sha256": "468e9173c200bfab0f7707aee731ce93d66ab9de9041aad1127ff962d812a4d4",
+    "offline_build_equivalent_inputs": 2775,
+    "compile_input_hashes_sha256": "253db4f870d8dfeaa0ab62a5d97cc798456af37a99030758f0e8c6ea559d5dfa",
+    "note": "All Rust/crate, C bridge, vendored dependency, Cargo and toolchain inputs exactly match the completed offline Mac build; intervening changes affect only Stata test geometry, profile mapping and version-header reference hashes. The reviewed help hash also changed without changing any build input."
+  },
+  "windows": {
+    "status": "PASS",
+    "run_id": "win-20261107T120349Z-258842f3",
+    "source_commit": "8b84b515781daa9972feaf9cbe17ab3c79545d90",
+    "source_archive_sha256": "de6b0d56e52d48209af01c1b94a8818226fd036167bd5aee339fde6ca5f11824",
+    "receipt_sha256": "359ae71f9db2721b15268fe68119280f8a3e8358222d35d82706c55427dc7173",
+    "plugin_sha256": "859c4ec3eaa2022da96d28159740c3fc50696f8c9a48d07eaef8ab4e0854cc33",
+    "plugin_bytes": 12260864,
+    "process_elapsed_ms": 1054336,
+    "profile": "stata-do",
+    "host": "Windows Server 2022 x86-64, Stata/MP 19 GUI, SYSTEM",
+    "native_stages": [
+      "startup",
+      "toolchain",
+      "source_identity",
+      "cargo_build",
+      "exact_fma",
+      "fused_kernels",
+      "c_bridge",
+      "numeric_guards",
+      "plugin_link",
+      "binary_audit",
+      "native_loader",
+      "build_complete",
+      "checksum",
+      "stata_smoke",
+      "single_runtime"
+    ],
+    "input_oracle_workers": [
+      2,
+      8
+    ],
+    "input_oracle_cases_per_worker": 72,
+    "input_oracle_runs_per_worker": 208,
+    "ppml_saved_recovery_workers": [
+      2,
+      8
+    ],
+    "required_cg_recoveries_per_worker": 4,
+    "loading_break": "waived by Johannes; may be delayed or unavailable",
+    "cleanup": {
+      "instance_stopped": true,
+      "transient_objects_deleted": true,
+      "lock_released": true
+    }
+  },
+  "local_root_installation": {
+    "status": "PASS",
+    "method": "isolated local root net install",
+    "files": [
+      {
+        "file": "fereg.ado",
+        "sha256": "ee67fca5c6a7d2d5d50c40c243882e7a372ea17323dfd8c81442ae40c08aa582"
+      },
+      {
+        "file": "_fereg_display.ado",
+        "sha256": "02f4fee0caf0057c1212401308f1f94ae65e65c43f04566825a7ff5b8c975c6e"
+      },
+      {
+        "file": "fereg_run.ado",
+        "sha256": "91d26d22a24d97272d67eea3c7cc52934008fb22ee70ba1a378ebfa9485a89a9"
+      },
+      {
+        "file": "_fereg_estimate_public.ado",
+        "sha256": "6237fba21f835d89e3e750fce390114d21822d3985b1ea88a06fb0ec74338336"
+      },
+      {
+        "file": "_fereg_estimate_ols.ado",
+        "sha256": "55faadf50a01bf21180e6642932375d5cfc6e79c11afd9e05364be484ec40b41"
+      },
+      {
+        "file": "_fereg_load.ado",
+        "sha256": "d6051255387c5999f224e2ba04f0ae91b80ba5658ca62c57f2035fd868d0aa61"
+      },
+      {
+        "file": "_fereg_factor_sample.ado",
+        "sha256": "b27990efef4bc33e3186c565a18f65859e51b841be48b48b6b5bd679c1ec452f"
+      },
+      {
+        "file": "_fereg_indepvars.ado",
+        "sha256": "26c9492ddfd5adba1b3cfafe8f1e0df1b94fce61b7947a73e9240c067a435f9a"
+      },
+      {
+        "file": "_fereg_memory_baseline.ado",
+        "sha256": "855ad47793135ab45637dc9831a15115d7c4f37979909f3da055a9c6249984d1"
+      },
+      {
+        "file": "_fereg_memory_validate.ado",
+        "sha256": "dbaea75631724243e813acfb72b54088ad6a0aa34461c81090a7a514f2ffb890"
+      },
+      {
+        "file": "_fereg_input_host.ado",
+        "sha256": "3d63bdc194b1df1a5a6b960b2de8bc50e2302045a557c99046c2941f9a709d0a"
+      },
+      {
+        "file": "feppml.ado",
+        "sha256": "97add0f38e306c4084835cdc07ba6905b697a6ce49d767569d450f7b8354eed0"
+      },
+      {
+        "file": "_fereg_ppml.ado",
+        "sha256": "53214b31cfcbf63d7c3251a45030d45cb676d9a38743209b69ed8f31e53d782f"
+      },
+      {
+        "file": "_fereg_estimate_ppml.ado",
+        "sha256": "760afd2551a17a7fd8098ae85472716a0c69c96796177b26829df3d414b9690b"
+      },
+      {
+        "file": "_fereg_ppml_result_mata.ado",
+        "sha256": "d379f5f14429882ab081adadc9c95a0f776c600a77ab23a864ad11be32a89f41"
+      },
+      {
+        "file": "_fereg_ppml_result_mata.json",
+        "sha256": "b22605942e68e0b35e4af8d09e8429ddb43b7c2a6304e4582ffed72d0ee28237"
+      },
+      {
+        "file": "_fereg_ppml_validation_error.mo",
+        "sha256": "9232a5be494ea41b13d0c69016ffa5fd35c6d03062dfbaa6da5c5ea4739aeca7"
+      },
+      {
+        "file": "_fereg_ppml_validate_result.mo",
+        "sha256": "1b34397bb3ce1df178155a5d061307b467686d432726941576c2bd07976beb99"
+      },
+      {
+        "file": "_fereg_ppml_post_scalars.mo",
+        "sha256": "6ac01b45c76dd26c03671c29ffc9897481c031a86ee5fbe8ea5b1cb5f929b9bd"
+      },
+      {
+        "file": "feppml_p.ado",
+        "sha256": "78c3e7ebca52ff9fae562aae44c268387a4f01d437ddd821c9b13634242ddf25"
+      },
+      {
+        "file": "fereg_parse.ado",
+        "sha256": "0d2356bda9aded4fad13e86a229564b54233b3d8bafe8c4d63f88c9020819e06"
+      },
+      {
+        "file": "fereg_p.ado",
+        "sha256": "8ce4ba23e908498b23847e57257ae383908887a4e21993d07486a5cba3259a44"
+      },
+      {
+        "file": "fereg_estat.ado",
+        "sha256": "4e2aa27f82e354acb166795f085a62bdddccab34a783427e7db628abeb2268c7"
+      },
+      {
+        "file": "fereg.sthlp",
+        "sha256": "7557aa6353295ac867214994987cd175b9ca2e705a1ac073126d188e1d6bdfc8"
+      },
+      {
+        "file": "feppml.sthlp",
+        "sha256": "1d6c96e2e61d46266f0fb0883448fd440dcdd829090036ec702fb0d96b1372c4"
+      },
+      {
+        "file": "fereg_parse.sthlp",
+        "sha256": "44e11d52cefc41e07a15b621ca11cdd17caf51f416747d83f12ff4fd2035cf35"
+      },
+      {
+        "file": "fereg_postestimation.sthlp",
+        "sha256": "1539d4285b0a6007c7fa163863098f9caf2d39adee989f7f17409d886c5de8c2"
+      },
+      {
+        "file": "fereg-LICENSE.txt",
+        "sha256": "842faf424865b9550b5609298d68ad5be11a1a295f16fe740d9906bdba5297f1"
+      },
+      {
+        "file": "fereg-THIRD-PARTY-NOTICES.txt",
+        "sha256": "ffae87e4750a9c00c90e44c5bf040357e82bc1971467b2f2835f056cfebf797e"
+      },
+      {
+        "file": "fereg-SOURCE.txt",
+        "sha256": "2dc0433414607d363b1f3b35320d8d7d45d1b32d326dfc4d1a00c95269638b98"
+      },
+      {
+        "file": "fereg-native.json",
+        "sha256": "c64da6ff9d828863ced5ad6c2173d9c9ec0f4ae5de417ec8f8afa7b81fc5db03"
+      },
+      {
+        "file": "fereg_macos.plugin",
+        "sha256": "1604dc4e52ea99dc6e78630f9a3badf669096b019f9d3d1a9f6e065a63f4890e"
+      },
+      {
+        "file": "fereg_macos.plugin.sha256",
+        "sha256": "34ea12d36db187a25390622c75af1a88745065015bc79a41649765e714115728"
+      },
+      {
+        "file": "fereg_linux.plugin",
+        "sha256": "9f19afd5aba08553f17d56e6d5583eb1e75c2c21b26b5f7cd858b7568dae01c4"
+      },
+      {
+        "file": "fereg_linux.plugin.sha256",
+        "sha256": "95bba165055c758c321c4b0e167877d5af5885ec02dfeca6155202c9c69e8975"
+      },
+      {
+        "file": "fereg_windows.plugin",
+        "sha256": "859c4ec3eaa2022da96d28159740c3fc50696f8c9a48d07eaef8ab4e0854cc33"
+      },
+      {
+        "file": "fereg_windows.plugin.sha256",
+        "sha256": "8e9653f435ca1d61ac487c47f28947112ee9d82ec25aac21e8c1ef12dcc6590b"
+      }
+    ],
+    "independent_science": [
+      "binary-regressor group-mean OLS",
+      "binary-regressor group-mean PPML"
+    ],
+    "version": "0.5.2",
+    "selftest": "PASS"
+  },
+  "binary_archive": {
+    "source_commit": "67c83df5b1a0f0dca04b07dd03d45427a0c1e83a",
+    "sha256": "41b0b163de4b2e07a43422c1416bf7bed491500bbf94b368c94c443945771e29",
+    "platforms": [
+      "linux",
+      "windows",
+      "macos"
+    ],
+    "dependency_audit": "PASS; zero advisories, Rust 1.85.1",
+    "publication": "not published",
+    "staged_installation": {
+      "status": "PASS",
+      "tests_passed": 4,
+      "fixtures": [
+        "installation_smoke",
+        "feppml_installation_smoke",
+        "staged_plugin_binary",
+        "feppml_saved_intercept_recovery"
+      ]
+    }
+  },
+  "default_integration_suite": {
+    "status": "PASS",
+    "entrypoint": "./scripts/run_tests.sh",
+    "source_only": false,
+    "python_groups": [
+      349,
+      7
+    ],
+    "rust_test_executions_passed": 2291,
+    "rust_test_groups": 126,
+    "checks": [
+      "installed-package runtime and byte binding",
+      "Rustfmt and fuzz compilation",
+      "Clippy all targets and FFI",
+      "isolated allocator audits",
+      "exact FMA/FE witnesses",
+      "portable static checks",
+      "runtime complexity ratchet",
+      "mock SPI and numeric window guards"
+    ],
+    "host": "macOS arm64",
+    "linux_mock_audit": "Skipped on macOS; actual Linux native ABI/guard checks passed in job 8497809"
+  }
+}

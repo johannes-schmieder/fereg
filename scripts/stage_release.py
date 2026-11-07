@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Stage the deterministic, audited fereg 0.5.1 distribution."""
+"""Stage the deterministic, audited fereg 0.5.2 distribution."""
 from __future__ import annotations
 
 import argparse
@@ -13,11 +13,11 @@ import zipfile
 from pathlib import Path
 from typing import Optional
 
-VERSION = "0.5.1"
-RELEASE_TAG = "v0.5.1"
+VERSION = "0.5.2"
+RELEASE_TAG = "v0.5.2"
 PACKAGE_NAME = f"fereg-{VERSION}"
-FIXED_TIME = (2026, 11, 6, 0, 0, 0)
-FIXED_UTC = "2026-11-06T00:00:00Z"
+FIXED_TIME = (2026, 11, 7, 0, 0, 0)
+FIXED_UTC = "2026-11-07T00:00:00Z"
 PLATFORM_PLUGINS = {
     "linux": "fereg_linux.plugin",
     "windows": "fereg_windows.plugin",
@@ -68,7 +68,7 @@ ROOT_FILES = (
 SUPPORT_CAVEATS = (
     "Only platforms named in included_platforms are supplied by this package.",
     "The Linux binary requires glibc 2.28 or newer.",
-    "Windows retains serial input pending live Break qualification.",
+    "Windows x86-64 Stata/MP 19 GUI supports eligible parallel input; Break during Windows loading may be delayed or unavailable.",
     "Native Intel-host Stata testing is outstanding; the macOS plugin contains both processor slices.",
     "The accepted Linux no-FE 16-regressor, one-worker slowdown of 7.3% versus beta.14 remains; see docs/VALIDATION.md.",
 )

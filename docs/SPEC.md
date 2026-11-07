@@ -1532,6 +1532,13 @@ variable among the bound inputs; unknown combinations keep the serial reader.
 StataCorp documents no thread-safety guarantee for `vdata`; the capability
 rests on the recorded qualification (VALIDATION).
 
+Windows x86-64 Stata/MP 19 GUI is eligible under the same input and resource
+policy. Johannes waived Break-during-loading qualification on November 7,
+2026: cancellation during Windows loading may be delayed or unavailable.
+This exception changes no polling code, scientific criterion, failure rollback
+or cancellation requirement outside Windows loading. Other Windows host
+combinations retain serial input.
+
 Estimation forwards the original `in` qualifier to the native call, where
 Stata's main-thread `SF_in1`/`SF_in2` provide the candidate envelope. The `if`
 expression is evaluated only by the existing frontend marker. Ordinary serial
@@ -1572,7 +1579,7 @@ postestimation path makes an extra substantive estimation call.
 
 Retain independently versioned exact estimation handshakes. Current
 versions are action 1.7, model 2.1, OLS result 1.5, PPML request 1.8, PPML
-result 1.5, ado identity 0.5.0 and SPI 3.0. Diagnostics accept same-major,
+result 1.5, ado identity 0.5.2 and SPI 3.0. Diagnostics accept same-major,
 not-newer-minor action callers. Model 2.0 is readable only for the bounded
 no-absorbed-metadata shape;
 unknown/newer identities and malformed framing fail before observation access.

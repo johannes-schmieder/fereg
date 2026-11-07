@@ -1,6 +1,48 @@
 # Validation status
 
-## Unpublished PPML repair candidate, November 7, 2026
+## Combined Windows/PPML release 0.5.2, November 7, 2026
+
+**Qualified for 0.5.2 publication and main integration.** Johannes requested
+integrating both changes and directed continuation after the saved-effects
+slowdown was disclosed. This accepts that performance exception; the recorded
+gate remains **FAIL** (paired ratio 1.1020). No new timings were collected. See the [combined artifact checks](../bench/results/windows-ppml-20261107.json)
+and the original performance table below.
+
+The combined runtime identity is
+`43110fefd9b65be5ffa9ad66e81ef0f8d1833f13246bab0aebf405e3677f682e`.
+Its Windows build passed the complete private profile at `8b84b515` in
+`win-20261107T120349Z-258842f3`: actual installed checks, numeric-input oracles
+at two and eight workers, saved-intercept CG recovery at both worker counts,
+scientific/transaction checks and cleanup. Loading Break retains Johannes's
+waiver; the machine stopped and all transient transfer objects were deleted.
+
+The Mac offline build passed the native audit and 77 independent replay cases
+at one, two and four workers, with exact fixed-worker repeats at two and four.
+Against the current release, 75 cases remain exact. Two saved-PPML cases change
+only the declared saved channels and reconstruction certificate magnitudes;
+coefficients, covariance, sample and all discrete decisions stay exact.
+The disconnected saved-effects witness reaches CG four times, checks independent
+model truth and exact saved/unsaved fits at 1e-8 and 1e-12, and passes from the
+assembled package. Public PPML live Break/rollback also passes on Mac.
+
+The default `./scripts/run_tests.sh` passes with the matching three native
+plugins: 2,291 Rust executions in 126 groups, 349 Python unit tests plus seven
+portable checks, FFI/allocator audits, complexity and installed-package binding.
+A fresh local root installation verifies all 37 installed file hashes, native
+selftest and independent OLS/PPML group-mean examples. Four checks pass from the
+complete native archive. The corresponding-source closure has zero advisories;
+all 2,775 compiler-input files match the successful offline Mac build exactly.
+Native Intel-Mac execution remains unqualified.
+
+Linux native/ABI checks and six mapped PPML fixtures pass, as do the strict
+two-effect million-row fit and the three-effect 1e-8 reconstruction/exact-repeat
+checks at sixteen workers. The final 1e-12 saved-effects continuation also
+passes, with maximum row error 2.845e-13 and exact saved/unsaved and repeated
+outputs (job 8498067, scc-ei3, 186 seconds, 4.364 GB; scheduler failure and exit
+status both zero). The two earlier launcher/resource-limit failures remain
+recorded; all checks used the same binary and inputs.
+
+## PPML repair development evidence, November 7, 2026
 
 At Johannes's request, outreach array 8481934 and its continuation monitor were
 stopped before investigating the native failures. Original measurements remain
@@ -51,14 +93,67 @@ Retained phase captures are consistent with extra recovery work (11.698 versus
 16.547 ms in the traced four-worker preflight), but these single calls are not
 additional timing evidence. A bounded existing MAP recovery attempt before CG
 is a proposed refinement, not implemented or accepted here. No adverse timings
-were resampled, no performance exception was accepted, and production stays
-stopped pending discussion.
+were resampled. Johannes subsequently directed continuation after disclosure
+of the slowdown, accepting it for the combined 0.5.2 release above. The measured
+performance gate remains Fail; the proposed refinement was not implemented.
 
 [The compact record](../bench/results/ppml-recovery-20261107.json) retains source
 and dependency identities, binary/input hashes, complete timing observations,
 science scope, scheduler outcomes and preserved operational failures. The SCC
 run identifier is `20261107-ppml-diagnosis`. This development evidence does not
 replace the historical paper benchmarks.
+
+## Windows parallel-input candidate, November 7, 2026
+
+**Standalone qualification with the loading-Break waiver.** The Windows
+x86-64 Stata/MP 19 GUI candidate at `ef8fa126` passed the full exact-source
+Windows profile in run `win-20261107T111500Z-ecc7882e`. The guarded collector
+returned the tested binary; its SHA-256 is
+`a9baa4333b31504bf0d0af147e65f4c2838686a2689f205db4096c919676279d`
+(12,247,040 bytes). Collection independently verified that hash. The machine
+stopped, transient transfer objects were deleted and the shared lock released.
+The [qualification record](../bench/results/windows-input-20261107.json)
+retains the exact source/archive/receipt identities and all earlier attempts.
+The combined release above supersedes this standalone binary.
+
+Johannes explicitly waived Break during Windows loading on November 7. The
+waiver permits delayed or unavailable cancellation during loading; it changes
+no polling code, scientific criterion, failure rollback or cancellation
+requirement outside Windows loading. The failed experimental GUI/Break helpers
+were removed from the profile. Live Windows loading Break remains unverified.
+
+The only runtime change is one Windows x86-64 Stata/MP 19 GUI host-policy row;
+the loader algorithm and scientific arithmetic are unchanged. Other Windows
+hosts retain serial input. The actual Rust/MSVC build, embedded source identity,
+exact-FMA/fused-kernel witnesses, C numeric-window guards, PE audit, native
+loader and installed-plugin checksum checks passed. All mapped OLS/PPML
+scientific and transaction fixtures passed, including the 80-cell missing-value
+witness, worker panic/read-failure handling and recovery, and the input oracle
+at two and eight workers. Each oracle required 72 cases and 208 runs, at least
+72 actual parallel-window runs, exact serial/parallel input digests and the
+existing independent scientific tolerances. No Windows performance claim is made.
+
+The full local source-only suite passed (2,289 Rust test executions, 349 Python
+tests and seven portable checks), as did the strengthened Apple Silicon live
+input-Break fixture using the unchanged installed Mac plugin. That fixture
+checks PPML covariance/sample rollback and an injected reader failure before
+same-session exact serial/parallel recovery. The focused Windows diagnostic
+tests, complexity ratchet, documentation checks and independent candidate review
+also passed. Main and the 0.5.1 binaries still use serial Windows input. The
+candidate is ready for integration with the concurrent PPML work; a matching
+native package, corresponding source and strict root-package/HTTP installation
+admission remain required before a combined release.
+
+The ten earlier runs remain failures. COM activation did not complete, and
+GUI probes could not find an owned visible window for Break delivery. At
+`ef1825eb` the native/scientific checks passed before the deferred GUI-probe
+failure; that partial evidence was not an overall pass. At `16ff0ae0` the
+normal-GUI child reached its token-bound readiness marker but again exposed no
+visible top-level window (`r(85010)`). Break was never delivered, so these
+attempts do not establish a loader cancellation defect. Every run stopped the
+machine, deleted transient transfers and released the lock. Existing Stata
+Automation was registered through `/Register`; that registration remains, with
+no identity, DCOM-permission, networking, IAM, Stata executable or license changes.
 
 ## CMG 0.2.0 consolidation, November 6, 2026
 

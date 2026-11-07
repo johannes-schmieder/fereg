@@ -154,7 +154,7 @@ def render_fixture_wrapper(
                 f"using({stata_string(bound_plugin)})",
                 "local provenance_load_rc = _rc",
                 "if `provenance_load_rc' != 0 & `provenance_load_rc' != 110 exit `provenance_load_rc'",
-                'plugin call __fereg_runner_provenance, selftest "ado=0.5.1" '
+                'plugin call __fereg_runner_provenance, selftest "ado=0.5.2" '
                 '"protocol_major=1" "protocol_minor=7" '
                 '"stata=`c(stata_version)\'" "threads=1" "verbose=1"',
             ]

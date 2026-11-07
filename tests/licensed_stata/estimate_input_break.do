@@ -3,8 +3,8 @@ clear all
 set more off
 
 * Live Break during parallel numeric loading. The hidden input_break injection
-* parks a worker inside the first open numeric window. The PTY controller
-* sends a real Control-C before releasing that worker; all workers then join,
+* parks a worker inside the first open numeric window. The controller sends
+* real console or GUI Break before releasing that worker; all workers then join,
 * the window closes and Stata's thread polls Break. The transaction must roll back, and the same
 * session must load and estimate again exactly.
 local workers = min(4, c(processors_mach), c(processors_lic))
@@ -43,6 +43,18 @@ assert _rc == 1
 confirm new variable __failed_mu
 assert `"`e(cmd)'"' == `"`prior_cmd'"'
 assert mreldif(e(b), `prior_b') == 0
+
+assert mreldif(e(V), `prior_V') == 0
+assert e(sample) == __prior_sample
+* Prove that the window reopened after PPML cancellation.
+capture noisily _fereg_estimate_ols_test y x1 x2 x3 x4 x5 if keep, ///
+    absorb(g) threads(`workers') residual(__failed_resid) inject(input_read_failure)
+assert _rc == 3499
+confirm new variable __failed_resid
+assert `"`e(cmd)'"' == `"`prior_cmd'"'
+assert mreldif(e(b), `prior_b') == 0
+assert mreldif(e(V), `prior_V') == 0
+assert e(sample) == __prior_sample
 
 * The same session reads in parallel again; equal worker counts are exact.
 quietly _fereg_estimate_ols_test y x1 x2 x3 x4 x5 if keep, absorb(g) ///

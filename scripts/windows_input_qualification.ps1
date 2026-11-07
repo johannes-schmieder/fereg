@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory = $true)][ValidateSet('witness', 'oracle')][string]$Action,
+    [Parameter(Mandatory = $true)][ValidateSet('witness', 'oracle', 'recovery')][string]$Action,
     [ValidateRange(0, 64)][int]$Workers = 0,
     [switch]$RequireSerial,
     [Parameter(Mandatory = $true)][ValidatePattern('\Atarget/[A-Za-z0-9_.-]+\z')][string]$Result
@@ -11,6 +11,8 @@ param(
 # oracle:  run tests/stata/development/parallel_input_oracle.do in a second
 #          Stata/MP process with the solver trace enabled (the controller starts
 #          the driver's Stata without it), then check every case's input digest.
+# recovery: check strict PPML saved-intercept reconstruction and require the
+#           coefficient-space CG recovery route in the actual plugin trace.
 # Only fixed result lines and numeric failure codes are written; Stata logs
 # stay on the machine.
 #
@@ -97,8 +99,8 @@ function Invoke-Oracle {
         $script:FailureCode = 10000
         throw 'Stata/MP 19 unavailable'
     }
-    $trace = Join-Path $Root "target\windows-input-trace-$Workers.txt"
-    $marker = Join-Path $Root "target\windows-input-oracle-$Workers.done"
+    $trace = Join-Path $Root "target\windows-input-$Action-trace-$Workers.txt"
+    $marker = Join-Path $Root "target\windows-input-$Action-$Workers.done"
     $log = Join-Path $Root 'windows_input_oracle.log'
     Remove-Item -LiteralPath $trace, $marker, $log -Force -ErrorAction SilentlyContinue
     $env:FEREG_SOLVER_TRACE = '1'
@@ -108,7 +110,7 @@ function Invoke-Oracle {
     } else {
         Remove-Item -LiteralPath 'Env:FEREG_ORACLE_WORKERS' -ErrorAction SilentlyContinue
     }
-    $arguments = @('/q', '/e', 'do', '"scripts\windows_input_oracle.do"', ('"{0}"' -f $marker))
+    $arguments = @('/q', '/e', 'do', '"scripts\windows_input_oracle.do"', ('"{0}"' -f $marker), $Action)
     $script:FailureCode = 20000
     $process = Start-Process -FilePath $stata -ArgumentList $arguments -WorkingDirectory $Root -PassThru
     if (-not $process.WaitForExit(900000)) {
@@ -135,6 +137,13 @@ function Invoke-Oracle {
         throw 'nested oracle failed'
     }
     if ($note -cne 'WINDOWS_INPUT_ORACLE=PASS') { throw 'invalid oracle marker' }
+    if ($Action -ceq 'recovery') {
+        $recoveries = @(Get-Content -LiteralPath $trace |
+            Where-Object { $_ -clike 'FEREG_SOLVER_TRACE|phase=saved_intercept_recovery|method=cg|*' }).Count
+        if ($recoveries -lt 4) { throw 'strict saved-intercept recovery route did not execute' }
+        Write-QualificationResult "WINDOWS_PPML_RECOVERY=PASS|workers=$Workers|recoveries=$recoveries"
+        return
+    }
     # A one-item if output is a scalar string; splatting it sends characters.
     [string[]]$traceOptions = if ($RequireSerial) { '--require-serial' } else { '--serial-ok', 'ols_tiny' }
     $summary = @(& python "$Root\scripts\check_input_trace.py" $trace @traceOptions)

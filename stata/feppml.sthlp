@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 0.5.1 06nov2026}{...}
+{* *! version 0.5.2 07nov2026}{...}
 {.-}
 help for {cmd:feppml} {right:(Johannes F. Schmieder)}
 {.-}
@@ -1010,7 +1010,9 @@ package plugin on the ado-path: {cmd:fereg_windows.plugin},
 not need Rust, Python, Julia, a compiler, BLAS, or a separate native runtime.
 Linux x86-64 requires glibc 2.28 or newer. Mac testing uses Apple Silicon;
 the Intel Mac code has not been tested in a licensed Intel Mac Stata session.
-Windows x86-64 loads numeric data serially. See the
+Windows x86-64 Stata/MP 19 GUI can load eligible numeric inputs in parallel;
+other Windows hosts use serial input. Break during Windows loading may be
+delayed or unavailable. See the
 {browse "https://github.com/johannes-schmieder/fereg/blob/main/docs/installation.md":installation guide}
 and {browse "https://github.com/johannes-schmieder/fereg/blob/main/docs/VALIDATION.md":platform validation record}.
 

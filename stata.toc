@@ -1,3 +1,3 @@
 v 3
 d Fixed-effects OLS and PPML for Stata
-p fereg 0.5.1 high-dimensional fixed-effect OLS/WLS and PPML
+p fereg 0.5.2 high-dimensional fixed-effect OLS/WLS and PPML

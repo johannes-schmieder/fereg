@@ -116,7 +116,10 @@ Run broad suites at integration boundaries, not after each prose-only edit.
 SPI runs on the main thread, except the read-only numeric accessor inside the
 qualified parallel numeric window (SPEC §17); extend that window's host table only
 with recorded qualification (oracle, failure and live-Break fixtures, missing
-witness) for the new combination. Rust workers use owned memory. Keep panic containment,
+witness) for the new combination. The Windows x86-64 Stata/MP 19 GUI row has
+Johannes's November 7, 2026 waiver for Break during loading only (SPEC §17);
+its native, oracle, missing-value and failure/transaction checks remain required.
+Rust workers use owned memory. Keep panic containment,
 fallible allocation, Break handling, validation-before-publication and rollback.
 Original factor slots/base flags, independent certificates and both bias modes
 remain mandatory. Different workers need scientific agreement and stable decisions;
