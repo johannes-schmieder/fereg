@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Repair strict PPML convergence after a rejected categorical profiling curve,
+  and certify saved categorical effects against their original accepted target
+  with bounded coefficient-space CG recovery. Scientific tolerances are unchanged.
 - Enable eligible parallel numeric loading on Windows x86-64 Stata/MP 19 GUI.
   The input oracle passed at two and eight workers, alongside the native,
   scientific and transaction checks. The loading algorithm and arithmetic are

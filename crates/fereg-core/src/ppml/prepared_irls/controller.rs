@@ -121,22 +121,16 @@ impl StrictCheckpointControl {
         candidate: &CandidatePhase<'_, '_, P>,
         facts: &StrictFacts,
         assessment: &StrictAssessment,
-        session: &CertifiedLinearSession<'_, P>,
         curve: &mut Option<ProfiledInterceptCurve>,
         previous_inner_tolerance: &mut f64,
         iteration: usize,
         attempt_tolerance: f64,
     ) -> Result<()> {
         if assessment.profile_rejected {
-            // An optional nonlinear slope trial cannot contest a rejected canonical checkpoint.
-            if session
-                .fe_design()
-                .effects()
-                .iter()
-                .any(|e| !e.slopes().is_empty())
-            {
-                *curve = None;
-            }
+            // A rejected canonical profile retires the optional nonlinear
+            // accelerator, including categorical curves. Keeping it would
+            // block the independent joint strict witness on every later cycle.
+            *curve = None;
             let refined = refined_checkpoint_tolerance(self.tolerance);
             self.pending = if refined < self.tolerance {
                 PendingCheckpointWork::Refinement
@@ -761,7 +755,6 @@ impl<P: PreparedOlsFitView + Sync + ?Sized> StrictCycle<'_, '_, P> {
             &self.candidate,
             &facts,
             &assessment,
-            self.session,
             self.curve,
             self.previous_inner_tolerance,
             self.iteration,

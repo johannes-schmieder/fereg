@@ -1487,6 +1487,135 @@ fn retained_coefficient_saved_only_plan_omits_combined_observation_vector() {
 }
 
 #[test]
+fn strict_cg_recovery_certifies_weak_three_effect_targets_and_refuses_outside_span() {
+    const GROUPS: usize = 24;
+    let (mut worker, mut firm, mut time) = (Vec::new(), Vec::new(), Vec::new());
+    let (mut target, mut weights) = (Vec::new(), Vec::new());
+    for component in 0..2 {
+        for w in 0..GROUPS {
+            for t in 0..5 {
+                let f = if t == 4 { (w + 1) % GROUPS } else { w };
+                for _ in 0..2 {
+                    worker.push((component * GROUPS + w) as u32);
+                    firm.push((component * GROUPS + f) as u32);
+                    time.push((component * 5 + t) as u32);
+                    target.push(
+                        2.0 + component as f64
+                            + (w as f64).sin()
+                            + 0.35 * (f as f64).cos()
+                            + 0.1 * t as f64,
+                    );
+                    weights.push(if t == 4 { 1e-4 } else { 0.5 + (w % 7) as f64 });
+                }
+            }
+        }
+    }
+    let sources = [
+        CategoricalCodeView::new(&worker, 2 * GROUPS),
+        CategoricalCodeView::new(&firm, 2 * GROUPS),
+        CategoricalCodeView::new(&time, 10),
+    ];
+    let topology =
+        finalize_categorical_topology(&sources, &[&[0], &[1], &[2]], &vec![true; target.len()])
+            .unwrap();
+    let effects = (0..3)
+        .map(|_| CategoricalAbsorbedEffectView::new(true, Vec::new()).unwrap())
+        .collect::<Vec<_>>();
+    let config = MapConfig {
+        tolerance: 1e-12,
+        max_iterations: 256,
+        check_every: 1,
+        symmetric: true,
+    };
+    let recover = |values: &[f64], weights: &[f64]| {
+        crate::fe::FeSession::recover(crate::fe::session::RecoveryRequest {
+            topology: &topology,
+            effects: &effects,
+            weights: BorrowedMapWeights::Provided(weights),
+            target: values,
+            requested_channels: &[true; 3],
+            retained: None,
+            known_connected: false,
+            materialize_absorbed_sum: true,
+            lsmr: LsmrConfig::default(),
+            map: config,
+            memory_budget: None,
+            reconstruction_tolerance: Some(1e-12),
+        })
+    };
+    let mut cross_worker_sum: Option<Vec<f64>> = None;
+    for threads in [1, 4] {
+        let pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(threads)
+            .build()
+            .unwrap();
+        for scale in [1e-8, 1.0, 1e6] {
+            let values = target.iter().map(|v| scale * v).collect::<Vec<_>>();
+            let recovered = pool.install(|| recover(&values, &weights)).unwrap();
+            assert_eq!(recovered.recovery_method(), CategoricalRecoveryMethod::Cg);
+            assert!(recovered.iterations() < config.max_iterations);
+            assert!(recovered.reconstruction_relative_infinity() <= 1e-12);
+            let repeated = pool.install(|| recover(&values, &weights)).unwrap();
+            assert_eq!(recovered, repeated);
+            for (actual, expected) in recovered.absorbed_sum().iter().zip(&values) {
+                assert!(
+                    (actual - expected).abs() / actual.abs().max(expected.abs()).max(1.0) <= 1e-12
+                );
+            }
+            // The independent gauge witness uses the original observation weights.
+            for component in 0..2 {
+                for channel in [1, 2] {
+                    let channel = recovered.channels()[channel].as_ref().unwrap();
+                    let (mut sum, mut mass) = (0.0, 0.0);
+                    for row in 0..values.len() {
+                        if worker[row] as usize / GROUPS == component {
+                            sum += weights[row] * channel[row];
+                            mass += weights[row];
+                        }
+                    }
+                    assert!((sum / mass).abs() / scale <= 1e-12);
+                }
+            }
+            if scale == 1.0 {
+                if let Some(reference) = &cross_worker_sum {
+                    for (a, b) in recovered.absorbed_sum().iter().zip(reference) {
+                        assert!((a - b).abs() <= 1e-11);
+                    }
+                } else {
+                    cross_worker_sum = Some(recovered.absorbed_sum().to_vec());
+                }
+            }
+        }
+    }
+    // Weight units do not change the recovered model or component gauge.
+    let reference = recover(&target, &weights).unwrap();
+    for scale in [1e-100, 1e100] {
+        let scaled_weights = weights.iter().map(|w| w * scale).collect::<Vec<_>>();
+        let recovered = recover(&target, &scaled_weights).unwrap();
+        assert!(recovered.reconstruction_relative_infinity() <= 1e-12);
+        for (a, b) in recovered
+            .absorbed_sum()
+            .iter()
+            .zip(reference.absorbed_sum())
+        {
+            assert!((a - b).abs() <= 1e-11);
+        }
+    }
+    let zero = recover(&vec![0.0; target.len()], &weights).unwrap();
+    assert_eq!(zero.iterations(), 0);
+    assert!(zero.absorbed_sum().iter().all(|value| *value == 0.0));
+    // Identical design rows receive opposite perturbations. Their difference
+    // cannot be represented by any fixed effects, regardless of solver choice.
+    let mut outside = target.clone();
+    outside[0] += 1e-3;
+    outside[1] -= 1e-3;
+    assert_eq!(
+        recover(&outside, &weights).unwrap_err().code,
+        ErrorCode::NonConvergence
+    );
+}
+
+#[test]
 fn publication_recovery_continues_to_requested_reconstruction_or_refuses() {
     const GROUPS: usize = 24;
     let mut worker_codes = Vec::new();

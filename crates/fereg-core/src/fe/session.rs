@@ -1421,6 +1421,14 @@ impl FeSession<'_> {
                 Err(e) => return Err(e),
             }
         }
+        // Strict PPML categorical output recovery needs the complete target,
+        // not only small FE moments. Keep OLS and successful direct paths exact.
+        if let Some(tolerance) = r.reconstruction_tolerance.filter(|_| {
+            intercepts && r.effects.len() > 1 && memory.is_some_and(|m| fits(m.cg_peak_bytes))
+        }) {
+            include_recovery_peak(&mut peak, memory.map(|m| m.cg_peak_bytes))?;
+            return recover_strict_intercepts(&r, tolerance, peak);
+        }
         // General reconstruction uses repository-owned fallible coefficient
         // banks. Upstream LSMR recovery cannot provide the allocation-failure
         // contract required by the shared OLS/PPML publication transaction.
@@ -1448,6 +1456,33 @@ impl FeSession<'_> {
         )
         .map(|v| v.with_solver_workspace_peak(peak))
     }
+}
+fn recover_strict_intercepts(
+    r: &RecoveryRequest<'_>,
+    tolerance: f64,
+    peak: crate::memory::SolverWorkspacePeak,
+) -> Result<super::RecoveredCategoricalEffects> {
+    if crate::diagnostics::solver_trace_enabled() {
+        crate::diagnostics::emit_solver_trace(&format!(
+            "FEREG_SOLVER_TRACE|phase=saved_intercept_recovery|method=cg|rows={}|effects={}|tolerance={tolerance:.17e}",
+            r.target.len(), r.effects.len()
+        ));
+    }
+    super::topology_slope_map::recover_finalized_intercepts_cg_certified(
+        r.topology,
+        r.effects,
+        r.weights,
+        r.target,
+        r.requested_channels,
+        MapConfig {
+            tolerance: r.map.tolerance.min(1e-12),
+            ..r.map
+        },
+        tolerance,
+        r.known_connected,
+        r.materialize_absorbed_sum,
+    )
+    .map(|v| v.with_solver_workspace_peak(peak))
 }
 fn numerical_recovery_miss(e: &FeregError) -> bool {
     e.code == ErrorCode::NonConvergence

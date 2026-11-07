@@ -732,6 +732,126 @@ pub(crate) fn recover_finalized_categorical_effects_from_coefficients_selected_c
     )
 }
 
+/// Recover a strict PPML categorical target with the owned stable CG recurrence.
+/// The target stays authoritative: neither a projection residual nor a small FE
+/// moment may replace fresh original-target reconstruction after normalization.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn recover_finalized_intercepts_cg_certified(
+    topology: &FinalizedCategoricalTopology,
+    effects: &[CategoricalAbsorbedEffectView<'_>],
+    weights: BorrowedMapWeights<'_>,
+    target: &[f64],
+    requested: &[bool],
+    config: MapConfig,
+    reconstruction_tolerance: f64,
+    known_connected: bool,
+    materialize_absorbed_sum: bool,
+) -> Result<RecoveredCategoricalEffects> {
+    validate_recovery_inputs(topology, effects, target, requested)?;
+    if effects.len() < 2
+        || effects
+            .iter()
+            .any(|e| !e.has_intercept() || !e.slopes().is_empty())
+        || !reconstruction_tolerance.is_finite()
+        || reconstruction_tolerance <= 0.0
+    {
+        return Err(invalid_argument(
+            "invalid strict categorical CG recovery request",
+        ));
+    }
+    let sources = topology_source_table(topology)?;
+    let design = borrow_categorical_topology_design(
+        target.len(),
+        topology.registry(),
+        &sources,
+        topology.effect_to_topology(),
+    )?;
+    let (scale, local_scale) = target.iter().fold((0.0_f64, f64::INFINITY), |(hi, lo), v| {
+        (hi.max(v.abs()), lo.min(v.abs().max(1.0)))
+    });
+    let scale = if scale == 0.0 { 1.0 } else { scale };
+    let mut rhs = fallible_copy(target, "strict recovery normalized RHS")?;
+    for value in &mut rhs {
+        *value /= scale;
+    }
+    // A sufficient per-row target uses the smallest original row scale, not
+    // an absolute floor for every problem. It stays relative for large targets.
+    // Fresh normalized-product certificates below remain authoritative.
+    let reconstruction = recovery_reconstruction_threshold(config.tolerance)
+        .min(reconstruction_tolerance)
+        .min(reconstruction_tolerance * (local_scale / scale).min(1.0));
+    let projection = super::absorb_borrowed_intercept_cg(
+        &design,
+        weights,
+        DenseMatrix::from_row_major(target.len(), 1, rhs)?,
+        config,
+        super::BorrowedCgOptions {
+            retain_coefficients: true,
+            stable_projection: true,
+            reconstruction: Some(super::CgReconstructionTarget {
+                values: target,
+                scale,
+                tolerance: reconstruction,
+            }),
+            ..super::BorrowedCgOptions::default()
+        },
+    )
+    .map_err(|error| {
+        if error.code == ErrorCode::InvalidData
+            && (error.message.starts_with("borrowed CG exhausted ")
+                || error.message == "borrowed CG direction denominator is nonfinite or nonpositive"
+                || error.message == "borrowed CG residual denominator is nonfinite or nonpositive")
+        {
+            FeregError::new(ErrorCode::NonConvergence, error.message)
+        } else {
+            error
+        }
+    })?;
+    let (residual, report, coefficients) = projection.into_full_parts();
+    drop(residual);
+    let coefficients = coefficients
+        .ok_or_else(|| invalid_data("strict recovery CG omitted its coefficient product"))?;
+    let mut normalized = fallible_copy(coefficients.rhs(0)?, "strict recovery coefficients")?;
+    drop(coefficients);
+    for value in &mut normalized {
+        *value *= scale;
+    }
+    let validated = validate_weights(weights, target.len())?;
+    normalize_intercept_components(
+        topology,
+        effects,
+        validated,
+        &mut normalized,
+        known_connected,
+    )?;
+    let offsets = channel_major_effect_offsets(topology, effects)?;
+    if !coefficient_reconstruction_passed(
+        topology,
+        effects,
+        target,
+        &offsets,
+        &normalized,
+        reconstruction_tolerance,
+    ) {
+        return Err(FeregError::new(
+            ErrorCode::NonConvergence,
+            "strict recovery CG coefficient product failed original-target reconstruction",
+        ));
+    }
+    finish_channel_major_recovery(
+        topology,
+        effects,
+        validated,
+        target,
+        requested,
+        &normalized,
+        report.iterations,
+        config.tolerance,
+        CategoricalRecoveryMethod::Cg,
+        materialize_absorbed_sum,
+    )
+}
+
 /// Propagate an already projected two-effect target over a spanning forest.
 /// Every edge is checked by the ordinary reconstruction certificate afterward;
 /// inconsistent targets and accumulated roundoff fall back to iterative recovery.

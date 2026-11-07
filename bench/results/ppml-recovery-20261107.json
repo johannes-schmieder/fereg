@@ -1,0 +1,651 @@
+{
+  "schema": 1,
+  "status": "source_and_reproducers_pass_performance_gate_failed",
+  "scope": "Unpublished PPML strict-curve and saved categorical FE recovery repair; stopped outreach campaign remains frozen",
+  "base_commit": "19c60c08c081032e782285110ba12c449a98a9eb",
+  "source_files": {
+    "crates/fereg-core/src/fe/borrowed_map.rs": "f07412696bc34af1e703f969024b4f20c78de0f6da06f9357a0b5504ff913ea0",
+    "crates/fereg-core/src/fe/borrowed_map/tests.rs": "ee786e67d5778850c81fec2a6b290a31f24401a42aa0b7fdebeb6ec064166f3e",
+    "crates/fereg-core/src/fe/mod.rs": "a57434e60e875da80892d6d0583b487dcb5df8164761fdccd4b2734cfd1391ff",
+    "crates/fereg-core/src/fe/session.rs": "96e08ffbc060d9248624a8913cf1bd540f5501d97a171cf0369abc36b5a70014",
+    "crates/fereg-core/src/fe/topology_slope_map.rs": "65d47a2603dacc0d27b16410f328bce9eea44bcfa5dfb31df04b813634fda4fb",
+    "crates/fereg-core/src/fe/topology_slope_map/tests.rs": "382a02b5c25bb61ce4ddea8301124b3cfb87878d049b161c97ed04790a559c18",
+    "crates/fereg-core/src/ppml/prepared_irls/controller.rs": "6248208e7279086d3742fcf2f5845761f112a91e791a5e7eb491f6e6a9250be6",
+    "crates/fereg-core/src/ppml/prepared_irls/tests.rs": "0a3adde0ec1007431aef4fe57020f0a36468024bf93903e712559ffc6ed2847d",
+    "docs/SPEC.md": "73a0ec98a8173b098c50d87521f9a19cecb7be1d6b4723508dac4bda9a3a9e12",
+    "tests/reference/complexity.json": "75c6856f41a6ed9852a436ad52f3e4641915c5ad59ee6e10135f5517b1a16faa"
+  },
+  "pins": {
+    "cmg": "e5613e81fb3b03c78de98658b372646fa802aabb",
+    "within": "8d401d8278ac783b2f258c459e057f30cd80d595",
+    "cargo_lock_sha256": "99bdb66f29295418643802fc00793979742722a00ce4063b20082c55b11ca991"
+  },
+  "candidate_plugins": {
+    "linux": "973bf50a6a12f4ddaf540e00b7de6f2f50af73ab691c199e8dead991b0b1f1f4",
+    "macos": "3be0d2ad39ad479e5ad3c69cd01c968d758c7b7e5fa79ae16fef5f0ab62e5ec2"
+  },
+  "incumbent_linux": "3e22e0008a01ec06de4dacdf2a3d0f0c41fa4b2b212ca73101a1b07567ff932c",
+  "run_id": "20261107-ppml-diagnosis",
+  "source_validation": {
+    "scc_job": 8496488,
+    "host": "scc-ei3",
+    "failed": 0,
+    "exit_status": 0,
+    "wall_seconds": 782,
+    "maxvmem": "17.353G",
+    "source_only": true,
+    "rust_test_executions_passed": 2305,
+    "rust_test_groups": 126,
+    "python_unittest_groups": [
+      349,
+      7
+    ],
+    "linux_stata_fixtures": 6,
+    "macos_stata_fixtures": 2,
+    "package_release_admission": false
+  },
+  "original_inputs": {
+    "two_sparse_1m_sha256": "8cb82127870859b2562f4677c773321387bd8e70f4aaac19624b516ea1eb7303",
+    "three_sparse_1m_sha256": "a307604c6befb9445804b32b9c481e765746342606f5b0dc9c56c9198274ec59"
+  },
+  "smoke": {
+    "scc_job": 8496362,
+    "host": "scc-tb4",
+    "failed": 0,
+    "exit_status": 0,
+    "wall_seconds": 532,
+    "maxvmem": "3.585G",
+    "workers": 4,
+    "strict_two_effect_tolerance": 1e-12,
+    "saved_three_effect_max_row_error": {
+      "1e-8": 1.5158091806267e-10,
+      "1e-12": 3.30939728324418e-13
+    },
+    "saved_vs_unsaved_exact": [
+      "coefficients",
+      "covariance",
+      "sample",
+      "aggregate_absorbed_predictor",
+      "eta"
+    ],
+    "diagnostic_saved_seconds": [
+      125.204,
+      159.293
+    ],
+    "timing_claim": false,
+    "note": "Final candidate adds guarded trace only; numerical source unchanged."
+  },
+  "operational_failures_preserved": [
+    {
+      "job": 8496413,
+      "kind": "cancelled while unstarted held to rebuild final trace-only candidate"
+    },
+    {
+      "job": 8496579,
+      "kind": "Stata processor license limit r(198) before data load or fits",
+      "wall_seconds": 1,
+      "failed": 0,
+      "exit_status": 1,
+      "repair": "Stata processors 4; native workers stay16",
+      "replacement_job": 8496732
+    },
+    {
+      "platform": "macos",
+      "kind": "Cargo missing on launcher PATH; corrected before compilation"
+    },
+    {
+      "platform": "macos",
+      "kind": "Binary source-path audit rejected unmapped dependency paths; rebuilt with path remapping"
+    }
+  ],
+  "candidate_accepted": false,
+  "performance": {
+    "scc_job": 8496519,
+    "host": "scc-zj4",
+    "failed": 0,
+    "exit_status": 1,
+    "exit_reason": "completed measurements; nonregression gate failed",
+    "wall_seconds": 688,
+    "maxvmem": "2.950G",
+    "plan": {
+      "purpose": "Bounded PPML repair nonregression check, not broad campaign qualification",
+      "incumbent": "19c60c08c081032e782285110ba12c449a98a9eb",
+      "candidate": "same revision plus reviewed strict-curve and certified categorical saved-FE recovery repair",
+      "timing_cells": [
+        "original two-sparse N=1000000, default, no saved channels, workers=4",
+        "original three-sparse N=1000000, default, no saved channels, workers=4",
+        "canonical random-mobility N=10000 levels=30,20,10 controls=4, default, saved channels, workers=4"
+      ],
+      "science_workers": [
+        1,
+        4
+      ],
+      "repetitions": 6,
+      "warmups_per_arm": 1,
+      "order": "maintained bench/time_exact.py alternating A/B, B/A",
+      "acceptance": "upper paired-median bootstrap95 bound <= 1 + max(0.05, 0.001 / incumbent median)",
+      "unaffected_science": "exact between arms at fixed worker count; repeatable within each arm; scientific cross-worker agreement",
+      "affected_scope": "Saved FE output columns and only RCERT zero-based entries 8/9 (saved-total/saved-channel reconstruction norms) for saved cell. Both norms must remain finite, nonnegative and <=1e-8, with independent summed-channel reconstruction; every other scientific metadata leaf, fitted coefficient, covariance, sample, rank/separation and aggregate prediction remains exact.",
+      "repaired_original_failures": "separate science/path evidence; no repeated 3000-second incumbent failure",
+      "isolation": "one omp28/num_proc=28 reservation plus maintained HostMonitor; builds finish before measurements",
+      "failures": "retain every outcome; no resampling of adverse timings, native failures or inconclusive results; interference invalidates the claimed result without an automatic retry",
+      "storage": "all raw replay rows and numeric result columns remain in node scratch and are discarded at job end; retain compact captures, logs, hashes, all timing observations and host receipts",
+      "scope_limit": "one physical Linux host, three successful workloads",
+      "wall_budget": "2700 seconds overall including preparation/science/timing, within 3000-second allocation. Each timing panel additionally capped at 1200 seconds; no additional repetitions if incomplete."
+    },
+    "plan_sha256": "b92fd65835833639e592751e90a572746a62cd6adcefce89e8ecc2b2a8a62270",
+    "script_sha256": "0878edc9a774531dcce1d61856e1e8958c1417a8f739b6e9d0624c2219a9522b",
+    "harness_sha256": "75ab82e20b0037f325fce03b22f58a93a07a62b041107a09c4b89bafc9da0fba",
+    "generator_sha256": "e765ce9fbabd63b8ed92e1323fa975b315ed4cc74541155d886d96e8c30d82f6",
+    "science": [
+      {
+        "case": "ppml-two-default",
+        "threads": 1,
+        "cross_arm": "pass",
+        "saved_scope": false
+      },
+      {
+        "case": "ppml-two-default",
+        "threads": 4,
+        "cross_arm": "pass",
+        "saved_scope": false
+      },
+      {
+        "case": "ppml-three-default",
+        "threads": 1,
+        "cross_arm": "pass",
+        "saved_scope": false
+      },
+      {
+        "case": "ppml-three-default",
+        "threads": 4,
+        "cross_arm": "pass",
+        "saved_scope": false
+      },
+      {
+        "case": "ppml-three-saved",
+        "threads": 1,
+        "cross_arm": "pass",
+        "saved_scope": true
+      },
+      {
+        "case": "ppml-three-saved",
+        "threads": 4,
+        "cross_arm": "pass",
+        "saved_scope": true
+      }
+    ],
+    "preflight": "pass",
+    "isolation_ok": true,
+    "host_receipt_sha256": "468172db986d1b541041035d4bb80e1de55c2567b9d52692bb52904c6cadf1a6",
+    "host_observations_sha256": "a3de2f3a323732103219d0f97a2bfc9f62bbb3915c1ac10e3bb35fbdf1ed090a",
+    "outcome": "inconclusive_or_regression",
+    "panels": {
+      "unchanged": {
+        "status": "complete",
+        "all_exact": true,
+        "exactness": "all plugins",
+        "nonregression_pass": true,
+        "repetitions": 6,
+        "warmups": 1,
+        "summary": [
+          {
+            "case": "ppml-two-default-t4.case",
+            "medians": {
+              "incumbent": 5.605074978,
+              "candidate": 5.4999012369999996
+            },
+            "comparisons": {
+              "candidate": {
+                "median_ratio": 0.9693306800644723,
+                "bootstrap95": [
+                  0.901906960442652,
+                  1.002422017327543
+                ],
+                "upper_allowance": 1.05,
+                "nonregression_pass": true
+              }
+            }
+          },
+          {
+            "case": "ppml-three-default-t4.case",
+            "medians": {
+              "incumbent": 16.267172836500002,
+              "candidate": 16.095694826
+            },
+            "comparisons": {
+              "candidate": {
+                "median_ratio": 0.9865501532787151,
+                "bootstrap95": [
+                  0.9682569498608475,
+                  1.005792403794137
+                ],
+                "upper_allowance": 1.05,
+                "nonregression_pass": true
+              }
+            }
+          }
+        ],
+        "records": [
+          {
+            "case": "ppml-two-default-t4.case",
+            "plugin": "candidate",
+            "repetition": -1,
+            "seconds": 5.69077592,
+            "process_seconds": 10.766318230016623,
+            "science_sha256": "f04dea29e390a12f3215fe43133b686fc856793ed6d66f9928a891bc42d6bc9e"
+          },
+          {
+            "case": "ppml-two-default-t4.case",
+            "plugin": "incumbent",
+            "repetition": -1,
+            "seconds": 5.58721432,
+            "process_seconds": 10.713628628989682,
+            "science_sha256": "f04dea29e390a12f3215fe43133b686fc856793ed6d66f9928a891bc42d6bc9e"
+          },
+          {
+            "case": "ppml-two-default-t4.case",
+            "plugin": "incumbent",
+            "repetition": 0,
+            "seconds": 5.556240928,
+            "process_seconds": 10.636914453993086,
+            "science_sha256": "f04dea29e390a12f3215fe43133b686fc856793ed6d66f9928a891bc42d6bc9e"
+          },
+          {
+            "case": "ppml-two-default-t4.case",
+            "plugin": "candidate",
+            "repetition": 0,
+            "seconds": 5.459091629,
+            "process_seconds": 10.536364933999721,
+            "science_sha256": "f04dea29e390a12f3215fe43133b686fc856793ed6d66f9928a891bc42d6bc9e"
+          },
+          {
+            "case": "ppml-two-default-t4.case",
+            "plugin": "candidate",
+            "repetition": 1,
+            "seconds": 5.540710845,
+            "process_seconds": 10.659580305975396,
+            "science_sha256": "f04dea29e390a12f3215fe43133b686fc856793ed6d66f9928a891bc42d6bc9e"
+          },
+          {
+            "case": "ppml-two-default-t4.case",
+            "plugin": "incumbent",
+            "repetition": 1,
+            "seconds": 5.971984295,
+            "process_seconds": 11.058672346989624,
+            "science_sha256": "f04dea29e390a12f3215fe43133b686fc856793ed6d66f9928a891bc42d6bc9e"
+          },
+          {
+            "case": "ppml-two-default-t4.case",
+            "plugin": "incumbent",
+            "repetition": 2,
+            "seconds": 5.160421476,
+            "process_seconds": 10.2222066349932,
+            "science_sha256": "f04dea29e390a12f3215fe43133b686fc856793ed6d66f9928a891bc42d6bc9e"
+          },
+          {
+            "case": "ppml-two-default-t4.case",
+            "plugin": "candidate",
+            "repetition": 2,
+            "seconds": 5.20432651,
+            "process_seconds": 10.268573640030809,
+            "science_sha256": "f04dea29e390a12f3215fe43133b686fc856793ed6d66f9928a891bc42d6bc9e"
+          },
+          {
+            "case": "ppml-two-default-t4.case",
+            "plugin": "candidate",
+            "repetition": 3,
+            "seconds": 5.566984894,
+            "process_seconds": 10.642637572949752,
+            "science_sha256": "f04dea29e390a12f3215fe43133b686fc856793ed6d66f9928a891bc42d6bc9e"
+          },
+          {
+            "case": "ppml-two-default-t4.case",
+            "plugin": "incumbent",
+            "repetition": 3,
+            "seconds": 5.587457326,
+            "process_seconds": 10.705036564031616,
+            "science_sha256": "f04dea29e390a12f3215fe43133b686fc856793ed6d66f9928a891bc42d6bc9e"
+          },
+          {
+            "case": "ppml-two-default-t4.case",
+            "plugin": "incumbent",
+            "repetition": 4,
+            "seconds": 5.79667925,
+            "process_seconds": 10.906060651002917,
+            "science_sha256": "f04dea29e390a12f3215fe43133b686fc856793ed6d66f9928a891bc42d6bc9e"
+          },
+          {
+            "case": "ppml-two-default-t4.case",
+            "plugin": "candidate",
+            "repetition": 4,
+            "seconds": 5.542472124,
+            "process_seconds": 10.615700179012492,
+            "science_sha256": "f04dea29e390a12f3215fe43133b686fc856793ed6d66f9928a891bc42d6bc9e"
+          },
+          {
+            "case": "ppml-two-default-t4.case",
+            "plugin": "candidate",
+            "repetition": 5,
+            "seconds": 4.925647575,
+            "process_seconds": 9.993359193962533,
+            "science_sha256": "f04dea29e390a12f3215fe43133b686fc856793ed6d66f9928a891bc42d6bc9e"
+          },
+          {
+            "case": "ppml-two-default-t4.case",
+            "plugin": "incumbent",
+            "repetition": 5,
+            "seconds": 5.62269263,
+            "process_seconds": 10.69929440197302,
+            "science_sha256": "f04dea29e390a12f3215fe43133b686fc856793ed6d66f9928a891bc42d6bc9e"
+          },
+          {
+            "case": "ppml-three-default-t4.case",
+            "plugin": "candidate",
+            "repetition": -1,
+            "seconds": 16.072356379,
+            "process_seconds": 21.325434959027916,
+            "science_sha256": "ec6b6860c719f73e7c88aae0e56bbb11007ff193bcd4fdc9ee091eee352f49a0"
+          },
+          {
+            "case": "ppml-three-default-t4.case",
+            "plugin": "incumbent",
+            "repetition": -1,
+            "seconds": 16.571096522,
+            "process_seconds": 21.818206502008252,
+            "science_sha256": "ec6b6860c719f73e7c88aae0e56bbb11007ff193bcd4fdc9ee091eee352f49a0"
+          },
+          {
+            "case": "ppml-three-default-t4.case",
+            "plugin": "incumbent",
+            "repetition": 0,
+            "seconds": 16.586746917,
+            "process_seconds": 21.85046757000964,
+            "science_sha256": "ec6b6860c719f73e7c88aae0e56bbb11007ff193bcd4fdc9ee091eee352f49a0"
+          },
+          {
+            "case": "ppml-three-default-t4.case",
+            "plugin": "candidate",
+            "repetition": 0,
+            "seconds": 15.862366077,
+            "process_seconds": 21.089832106023096,
+            "science_sha256": "ec6b6860c719f73e7c88aae0e56bbb11007ff193bcd4fdc9ee091eee352f49a0"
+          },
+          {
+            "case": "ppml-three-default-t4.case",
+            "plugin": "candidate",
+            "repetition": 1,
+            "seconds": 16.161549283,
+            "process_seconds": 21.408672047953587,
+            "science_sha256": "ec6b6860c719f73e7c88aae0e56bbb11007ff193bcd4fdc9ee091eee352f49a0"
+          },
+          {
+            "case": "ppml-three-default-t4.case",
+            "plugin": "incumbent",
+            "repetition": 1,
+            "seconds": 16.33948199,
+            "process_seconds": 21.57763235201128,
+            "science_sha256": "ec6b6860c719f73e7c88aae0e56bbb11007ff193bcd4fdc9ee091eee352f49a0"
+          },
+          {
+            "case": "ppml-three-default-t4.case",
+            "plugin": "incumbent",
+            "repetition": 2,
+            "seconds": 16.384937678,
+            "process_seconds": 21.65531042800285,
+            "science_sha256": "ec6b6860c719f73e7c88aae0e56bbb11007ff193bcd4fdc9ee091eee352f49a0"
+          },
+          {
+            "case": "ppml-three-default-t4.case",
+            "plugin": "candidate",
+            "repetition": 2,
+            "seconds": 16.122615585,
+            "process_seconds": 21.366940444044303,
+            "science_sha256": "ec6b6860c719f73e7c88aae0e56bbb11007ff193bcd4fdc9ee091eee352f49a0"
+          },
+          {
+            "case": "ppml-three-default-t4.case",
+            "plugin": "candidate",
+            "repetition": 3,
+            "seconds": 16.068774067,
+            "process_seconds": 21.297993282030802,
+            "science_sha256": "ec6b6860c719f73e7c88aae0e56bbb11007ff193bcd4fdc9ee091eee352f49a0"
+          },
+          {
+            "case": "ppml-three-default-t4.case",
+            "plugin": "incumbent",
+            "repetition": 3,
+            "seconds": 15.942066078,
+            "process_seconds": 21.22204716905253,
+            "science_sha256": "ec6b6860c719f73e7c88aae0e56bbb11007ff193bcd4fdc9ee091eee352f49a0"
+          },
+          {
+            "case": "ppml-three-default-t4.case",
+            "plugin": "incumbent",
+            "repetition": 4,
+            "seconds": 16.135136053,
+            "process_seconds": 21.357256421993952,
+            "science_sha256": "ec6b6860c719f73e7c88aae0e56bbb11007ff193bcd4fdc9ee091eee352f49a0"
+          },
+          {
+            "case": "ppml-three-default-t4.case",
+            "plugin": "candidate",
+            "repetition": 4,
+            "seconds": 16.193815985,
+            "process_seconds": 21.43512210197514,
+            "science_sha256": "ec6b6860c719f73e7c88aae0e56bbb11007ff193bcd4fdc9ee091eee352f49a0"
+          },
+          {
+            "case": "ppml-three-default-t4.case",
+            "plugin": "candidate",
+            "repetition": 5,
+            "seconds": 15.873981354,
+            "process_seconds": 21.105285350000486,
+            "science_sha256": "ec6b6860c719f73e7c88aae0e56bbb11007ff193bcd4fdc9ee091eee352f49a0"
+          },
+          {
+            "case": "ppml-three-default-t4.case",
+            "plugin": "incumbent",
+            "repetition": 5,
+            "seconds": 16.194863683,
+            "process_seconds": 21.422880464000627,
+            "science_sha256": "ec6b6860c719f73e7c88aae0e56bbb11007ff193bcd4fdc9ee091eee352f49a0"
+          }
+        ],
+        "elapsed_s": 453.75633826700505,
+        "case_sha256": {
+          "ppml-two-default-t4.case": "f726da8f573fd93fa343cc39a56ae9e8b4ffd297f3008fb56d814e5245635dbb",
+          "ppml-three-default-t4.case": "c3c0086e1cc1d076935f6fd03ddc901fe504fb397d73b4cfda5c5a5d7d9ca85c"
+        }
+      },
+      "saved": {
+        "status": "complete",
+        "all_exact": true,
+        "exactness": "per-plugin repeats",
+        "nonregression_pass": false,
+        "repetitions": 6,
+        "warmups": 1,
+        "summary": [
+          {
+            "case": "ppml-three-saved-t4.case",
+            "medians": {
+              "incumbent": 0.0686119285,
+              "candidate": 0.07500557999999999
+            },
+            "comparisons": {
+              "candidate": {
+                "median_ratio": 1.1019628634479774,
+                "bootstrap95": [
+                  1.0259479974225278,
+                  1.157030589042695
+                ],
+                "upper_allowance": 1.05,
+                "nonregression_pass": false
+              }
+            }
+          }
+        ],
+        "records": [
+          {
+            "case": "ppml-three-saved-t4.case",
+            "plugin": "candidate",
+            "repetition": -1,
+            "seconds": 0.073499217,
+            "process_seconds": 0.13479976099915802,
+            "science_sha256": "3fb2342fbe0418351a4b586b25a5486691ad9391ba0597814ac9f49620b07913"
+          },
+          {
+            "case": "ppml-three-saved-t4.case",
+            "plugin": "incumbent",
+            "repetition": -1,
+            "seconds": 0.069949036,
+            "process_seconds": 0.12856849801028147,
+            "science_sha256": "1515d448ea27fdc86d1521b2720c1158d25a3c99c09b01b210480a924672780a"
+          },
+          {
+            "case": "ppml-three-saved-t4.case",
+            "plugin": "incumbent",
+            "repetition": 0,
+            "seconds": 0.067465377,
+            "process_seconds": 0.12704155105166137,
+            "science_sha256": "1515d448ea27fdc86d1521b2720c1158d25a3c99c09b01b210480a924672780a"
+          },
+          {
+            "case": "ppml-three-saved-t4.case",
+            "plugin": "candidate",
+            "repetition": 0,
+            "seconds": 0.074470396,
+            "process_seconds": 0.1343863700167276,
+            "science_sha256": "3fb2342fbe0418351a4b586b25a5486691ad9391ba0597814ac9f49620b07913"
+          },
+          {
+            "case": "ppml-three-saved-t4.case",
+            "plugin": "candidate",
+            "repetition": 1,
+            "seconds": 0.076920693,
+            "process_seconds": 0.13293911999789998,
+            "science_sha256": "3fb2342fbe0418351a4b586b25a5486691ad9391ba0597814ac9f49620b07913"
+          },
+          {
+            "case": "ppml-three-saved-t4.case",
+            "plugin": "incumbent",
+            "repetition": 1,
+            "seconds": 0.06975848,
+            "process_seconds": 0.13061001000460237,
+            "science_sha256": "1515d448ea27fdc86d1521b2720c1158d25a3c99c09b01b210480a924672780a"
+          },
+          {
+            "case": "ppml-three-saved-t4.case",
+            "plugin": "incumbent",
+            "repetition": 2,
+            "seconds": 0.071056599,
+            "process_seconds": 0.12671008805045858,
+            "science_sha256": "1515d448ea27fdc86d1521b2720c1158d25a3c99c09b01b210480a924672780a"
+          },
+          {
+            "case": "ppml-three-saved-t4.case",
+            "plugin": "candidate",
+            "repetition": 2,
+            "seconds": 0.06922535,
+            "process_seconds": 0.12432940601138398,
+            "science_sha256": "3fb2342fbe0418351a4b586b25a5486691ad9391ba0597814ac9f49620b07913"
+          },
+          {
+            "case": "ppml-three-saved-t4.case",
+            "plugin": "candidate",
+            "repetition": 3,
+            "seconds": 0.075763291,
+            "process_seconds": 0.12923036300344393,
+            "science_sha256": "3fb2342fbe0418351a4b586b25a5486691ad9391ba0597814ac9f49620b07913"
+          },
+          {
+            "case": "ppml-three-saved-t4.case",
+            "plugin": "incumbent",
+            "repetition": 3,
+            "seconds": 0.070303018,
+            "process_seconds": 0.12422714498825371,
+            "science_sha256": "1515d448ea27fdc86d1521b2720c1158d25a3c99c09b01b210480a924672780a"
+          },
+          {
+            "case": "ppml-three-saved-t4.case",
+            "plugin": "incumbent",
+            "repetition": 4,
+            "seconds": 0.067304598,
+            "process_seconds": 0.12368109199451283,
+            "science_sha256": "1515d448ea27fdc86d1521b2720c1158d25a3c99c09b01b210480a924672780a"
+          },
+          {
+            "case": "ppml-three-saved-t4.case",
+            "plugin": "candidate",
+            "repetition": 4,
+            "seconds": 0.074119468,
+            "process_seconds": 0.13215118501102552,
+            "science_sha256": "3fb2342fbe0418351a4b586b25a5486691ad9391ba0597814ac9f49620b07913"
+          },
+          {
+            "case": "ppml-three-saved-t4.case",
+            "plugin": "candidate",
+            "repetition": 5,
+            "seconds": 0.075540764,
+            "process_seconds": 0.13233554305043072,
+            "science_sha256": "3fb2342fbe0418351a4b586b25a5486691ad9391ba0597814ac9f49620b07913"
+          },
+          {
+            "case": "ppml-three-saved-t4.case",
+            "plugin": "incumbent",
+            "repetition": 5,
+            "seconds": 0.062418526,
+            "process_seconds": 0.1262043880415149,
+            "science_sha256": "1515d448ea27fdc86d1521b2720c1158d25a3c99c09b01b210480a924672780a"
+          }
+        ],
+        "elapsed_s": 2.041094697022345,
+        "case_sha256": {
+          "ppml-three-saved-t4.case": "c8428ec2b866f0c614dc9687de7a258cf7483610b842441d39252513c2ffc287"
+        }
+      }
+    }
+  },
+  "workers16": {
+    "scc_job": 8496732,
+    "host": "scc-ei3",
+    "failed": 0,
+    "exit_status": 0,
+    "wall_seconds": 339,
+    "maxvmem": "6.922G",
+    "native_workers": 16,
+    "stata_processors": 4,
+    "saved_three_effect_max_row_error": {
+      "1e-8": 1.46856136966191e-10,
+      "1e-12": 2.84506516015943e-13
+    },
+    "exact_repeat_both_profiles": true,
+    "saved_vs_unsaved_exact": [
+      "coefficients",
+      "covariance",
+      "sample",
+      "aggregate_absorbed_predictor",
+      "eta"
+    ]
+  },
+  "performance_diagnosis": {
+    "kind": "inference from retained traced science calls, not additional timing observations",
+    "saved_cell_workers4_fe_recovery_seconds": {
+      "incumbent": 0.011697775,
+      "candidate": 0.016547486
+    },
+    "recommendation": "Consider a bounded existing MAP recovery attempt with the same original-target certificates before robust CG fallback. No second candidate or new measurements have been run; the tradeoff is under discussion with Johannes."
+  },
+  "earlier_diagnostic_jobs_preserved": [
+    8495927,
+    8495948,
+    8496017,
+    8496046
+  ],
+  "limitations": [
+    "Unpublished development candidate; no installed-package or release admission",
+    "Focused performance evidence: three cells on one isolated Linux host; all observations retained",
+    "Easy saved-effect cell failed nonregression: paired median ratio1.1019628634479774, bootstrap95[1.0259479974225278,1.157030589042695]",
+    "Frozen outreach campaign stays stopped and historical observations are not replaced"
+  ]
+}

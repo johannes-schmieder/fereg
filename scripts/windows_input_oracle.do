@@ -4,7 +4,7 @@ version 18.0
 * It uses the package that windows_ci_runtime.do installed and hash-verified,
 * plus the hidden test adapters in stata/. The marker file records PASS, or the
 * failing stage (1 setup, 2 oracle) and its return code; nothing else leaves.
-args marker
+args marker mode
 clear all
 set more off
 if c(os) != "Windows" exit 9
@@ -21,8 +21,14 @@ capture noisily {
 local rc = _rc
 local stage 1
 if !`rc' {
-    capture noisily do "tests/stata/development/parallel_input_oracle.do"
-    local rc = _rc
+    if `"`mode'"' == "recovery" {
+        capture noisily do "tests/stata/development/feppml_saved_intercept_recovery.do"
+        local rc = _rc
+    }
+    else {
+        capture noisily do "tests/stata/development/parallel_input_oracle.do"
+        local rc = _rc
+    }
     local stage 2
 }
 tempname handle

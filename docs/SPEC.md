@@ -806,6 +806,20 @@ tighter re-solves require declared affected scope before changes. Independent ti
 envelopes. No output request may change the sample, rank, VCE or coefficient
 status. Unsupported explicit backend structures fail before publication.
 
+PPML categorical saved-effect recovery may use owned coefficient-space CG
+when retained coefficients and direct two-effect graph reconstruction do not
+certify. The original accepted absorbed predictor remains the target. Recovery
+uses the existing admitted coefficient banks, reconstructs search directions from
+them, and permits one reliable residual replacement from the original target
+within the same total iteration budget. Reconstruction and independently recomputed
+FE moments govern convergence; the subtractive projection-energy stopping heuristic
+is not used for this complete-reconstruction solve. Final-Hessian weighted
+normalization is followed by fresh original-target global and per-row checks.
+No saved-output request changes the fit's sample, rank, coefficients or covariance.
+OLS, one-effect and slope recovery, successful direct paths and fits without saved
+effects retain their existing behavior. Independent weak three-effect, disconnected,
+rescaling and outside-span witnesses cover the recovery boundary.
+
 Tests: `tests/intercept_slope_oracle.rs`, `tests/fe_certificate_oracle.rs`,
 `parity_reghdfe/estimate_ols_saved_outputs_parity.do`,
 `parity_ppmlhdfe/feppml_saved_slopes.do`, `bias/final_recovery_precision.do`.
@@ -1565,7 +1579,7 @@ postestimation path makes an extra substantive estimation call.
 
 Retain independently versioned exact estimation handshakes. Current
 versions are action 1.7, model 2.1, OLS result 1.5, PPML request 1.8, PPML
-result 1.5, ado identity 0.5.0 and SPI 3.0. Diagnostics accept same-major,
+result 1.5, ado identity 0.5.2 and SPI 3.0. Diagnostics accept same-major,
 not-newer-minor action callers. Model 2.0 is readable only for the bounded
 no-absorbed-metadata shape;
 unknown/newer identities and malformed framing fail before observation access.

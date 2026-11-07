@@ -143,5 +143,16 @@ capture noisily do "tests/stata/development/ols_no_fe_direct.do"
 if _rc exit 9119
 capture noisily do "tests/stata/development/ols_no_fe_centered.do"
 if _rc exit 9120
+* Qualify the combined PPML repair with independent means, exact saved/unsaved
+* fit agreement, reconstruction and repeatability on the traced recovery path.
+foreach workers in 0 8 {
+    shell powershell.exe -NoLogo -NoProfile -NonInteractive ///
+        -ExecutionPolicy Bypass -File "scripts/windows_input_qualification.ps1" ///
+        -Action recovery -Workers `workers' -Result "target/windows-ppml-recovery-`workers'.result"
+    capture noisily do "scripts/windows_input_result.do" "target/windows-ppml-recovery-`workers'.result" ///
+        "WINDOWS_PPML_RECOVERY=PASS|workers=`workers'|" detailed
+    if _rc >= 10000 exit _rc
+    if _rc exit 9122
+}
 shell powershell.exe -NoLogo -NoProfile -NonInteractive ///
     -ExecutionPolicy Bypass -File "scripts/windows_ci_report.ps1" -Action pass

@@ -811,7 +811,7 @@ struct CgContinuation<'a> {
     retain_coefficients: bool,
     stable_projection: bool,
     strict_polish: bool,
-    reconstruction_tolerance: Option<f64>,
+    reconstruction: Option<CgReconstructionTarget<'a>>,
 }
 
 #[derive(Clone, Copy)]
@@ -828,7 +828,7 @@ impl CgContinuation<'_> {
         retain_coefficients: false,
         stable_projection: false,
         strict_polish: false,
-        reconstruction_tolerance: None,
+        reconstruction: None,
     };
 }
 
@@ -4437,6 +4437,14 @@ pub(crate) fn absorb_borrowed_intercept_map(
     )
 }
 
+/// Original target for one bounded, reliably restarted saved-FE solve.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct CgReconstructionTarget<'a> {
+    pub(crate) values: &'a [f64],
+    pub(crate) scale: f64,
+    pub(crate) tolerance: f64,
+}
+
 /// Options for one borrowed CG solve; the default is an ordinary solve.
 #[derive(Debug, Clone, Copy, Default)]
 pub(crate) struct BorrowedCgOptions<'a> {
@@ -4455,6 +4463,9 @@ pub(crate) struct BorrowedCgOptions<'a> {
     /// for CMG's small remaining FE component. Ordinary CG retains its
     /// comparator-compatible absolute decrease floor and stopping rule.
     pub(crate) strict_polish: bool,
+    /// Also require the remaining original RHS to vanish for saved-FE recovery.
+    /// Ordinary projection callers leave this unset.
+    pub(crate) reconstruction: Option<CgReconstructionTarget<'a>>,
 }
 
 impl<'a> BorrowedCgOptions<'a> {
@@ -4494,6 +4505,7 @@ pub(crate) fn absorb_borrowed_intercept_cg(
             retain_coefficients: options.retain_coefficients,
             stable_projection: options.stable_projection,
             strict_polish: options.strict_polish,
+            reconstruction: options.reconstruction,
             ..CgContinuation::ORDINARY
         },
         &mut reservation,
@@ -6520,9 +6532,34 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
         retain_coefficients,
         stable_projection,
         strict_polish,
-        reconstruction_tolerance,
+        reconstruction,
     } = continuation;
-    let projection_mode = if strict_polish {
+    if let Some(target) = reconstruction {
+        if !retain_coefficients
+            || values.ncols() != 1
+            || target.values.len() != values.nrows()
+            || !target.scale.is_finite()
+            || target.scale <= 0.0
+            || !target.tolerance.is_finite()
+            || target.tolerance <= 0.0
+            || target
+                .values
+                .iter()
+                .zip(values.as_slice())
+                .any(|(&original, &normalized)| {
+                    !original.is_finite() || normalized != original / target.scale
+                })
+        {
+            return Err(invalid_argument(
+                "invalid borrowed CG reconstruction target",
+            ));
+        }
+    }
+    let reconstruction_tolerance = reconstruction.map(|target| target.tolerance);
+    // Rebuild FE-valued directions from their retained coefficients so
+    // roundoff cannot accumulate in the operator's uncontrolled nullspace.
+    let coefficient_recurrence = strict_polish || reconstruction_tolerance.is_some();
+    let projection_mode = if coefficient_recurrence {
         CgProjectionMode::StrictPolish
     } else if stable_projection {
         CgProjectionMode::Stable
@@ -6563,6 +6600,7 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
     let reconstruction_scale = reconstruction_tolerance
         .map(|_| matrix_infinity_norm(&values))
         .transpose()?;
+
     let mut improvement_potential = reserved_zeros(
         rhs_count,
         reservation,
@@ -6729,7 +6767,7 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
         values.ncols(),
         "unable to reserve borrowed CG residual matrix",
     )?;
-    let mut residual_coefficients = (retain_coefficients || strict_polish)
+    let mut residual_coefficients = (retain_coefficients || coefficient_recurrence)
         .then(|| FeCoefficientBatch::intercept_zeros(design, values.ncols()))
         .transpose()?;
     cg_projection_action(
@@ -6752,7 +6790,7 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
         values.ncols(),
         "unable to reserve borrowed CG projection matrix",
     )?;
-    let mut projection_coefficients = (retain_coefficients || strict_polish)
+    let mut projection_coefficients = (retain_coefficients || coefficient_recurrence)
         .then(|| FeCoefficientBatch::intercept_zeros(design, values.ncols()))
         .transpose()?;
     // These banks coexist for the recurrence and are never resized. The
@@ -6805,7 +6843,7 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
     }
     let mut recurrence_residual = 1.0_f64;
     let mut hestenes_error = 1.0_f64;
-    let mut reconstruction_check_active = false;
+    let mut reconstruction_restarted = false;
 
     for iteration in 1..=config.max_iterations {
         crate::interrupt::checkpoint()?;
@@ -6873,6 +6911,11 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
                 result.set_solver_workspace_peak(workspace_peak);
                 return attach_optional_coefficients(result, solution_coefficients);
             }
+            // Recovery cannot deactivate a direction on moments alone: a
+            // nonzero original-target component may still be unresolved.
+            if reconstruction_tolerance.is_some() {
+                return Err(error);
+            }
             let mut recovered = false;
             for rhs in 0..residual_square.len() {
                 let numerator = residual_square[rhs];
@@ -6934,15 +6977,24 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
                 return Err(error);
             }
         }
-        hestenes_error = cg_hestenes_error_and_update(
-            &alpha,
-            &residual_square,
-            &mut improvement_potential,
-            &values,
-            &direction,
-            weights,
-            strict_polish,
-        )?;
+        // A reconstruction solve has no irreducible residual energy. The
+        // subtractive Hestenes potential can lose its sign near that boundary;
+        // its decrease is not used by the CG recurrence. This mode stops on
+        // actual target reconstruction and FE certification instead. Ordinary
+        // projection and CMG polishing retain their unchanged energy checks.
+        hestenes_error = if reconstruction_tolerance.is_some() {
+            0.0
+        } else {
+            cg_hestenes_error_and_update(
+                &alpha,
+                &residual_square,
+                &mut improvement_potential,
+                &values,
+                &direction,
+                weights,
+                strict_polish,
+            )?
+        };
         cg_update_solution_and_residual(
             &mut values,
             &mut residual,
@@ -6961,7 +7013,7 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
             projection_coefficients.as_ref(),
         ) {
             residual_coefficients.add_scaled_rhs(projection_coefficients, &alpha, -1.0)?;
-            if strict_polish {
+            if coefficient_recurrence {
                 reconstruct_cg_intercept_product(design, residual_coefficients, &mut residual)?;
             }
         }
@@ -6986,9 +7038,8 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
         let ordinary_ready = hestenes_error <= config.tolerance
             && iteration >= refinement.minimum_iterations
             && (!strict_polish || recurrence_residual <= config.tolerance);
-        reconstruction_check_active |= reconstruction_tolerance.is_some() && ordinary_ready;
-        let reconstruction_relative = if reconstruction_check_active
-            || (reconstruction_tolerance.is_some() && iteration == config.max_iterations)
+        let reconstruction_relative = if reconstruction_tolerance.is_some()
+            && (iteration % config.check_every == 0 || iteration == config.max_iterations)
         {
             Some(relative_reconstruction_infinity_norm(
                 &values,
@@ -7000,11 +7051,93 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
         let reconstruction_passed = reconstruction_tolerance.is_none_or(|tolerance| {
             reconstruction_relative.is_some_and(|relative| relative <= tolerance)
         });
-        let recurrence_ready = if reconstruction_tolerance.is_some() {
-            reconstruction_passed && iteration >= refinement.minimum_iterations
-        } else {
-            ordinary_ready
-        };
+        if let Some(target) = reconstruction {
+            if reconstruction_passed
+                || recurrence_residual <= config.tolerance
+                || iteration == config.max_iterations
+            {
+                // Restore the actual equation from the retained solution before
+                // accepting apparent convergence or restarting lost conjugacy.
+                reconstruct_cg_intercept_product(
+                    design,
+                    solution_coefficients
+                        .as_ref()
+                        .expect("recovery retains coefficients"),
+                    &mut projection,
+                )?;
+                for row in 0..values.nrows() {
+                    values[(row, 0)] = target.values[row] / target.scale - projection[(row, 0)];
+                }
+                let fresh = relative_reconstruction_infinity_norm(
+                    &values,
+                    reconstruction_scale.expect("recovery scale"),
+                )?;
+                let certificate =
+                    certify(design, weights, &values, config.tolerance, &mut workspace)?;
+                if fresh <= target.tolerance
+                    && certificate.passed
+                    && iteration >= refinement.minimum_iterations
+                {
+                    let mut result = certified_solver_result(
+                        values,
+                        FeSolverKind::Cg,
+                        SolveStopReason::Certified,
+                        iteration,
+                        certificate,
+                        recurrence_residual,
+                        setup_seconds,
+                        solve_started.elapsed().as_secs_f64(),
+                    )?;
+                    result.set_solver_workspace_peak(workspace_peak);
+                    return attach_optional_coefficients(result, solution_coefficients);
+                }
+                if !reconstruction_restarted && iteration < config.max_iterations {
+                    reconstruction_restarted = true;
+                    let coefficients = residual_coefficients
+                        .as_mut()
+                        .expect("recovery recurrence coefficients");
+                    coefficients.fill_zero();
+                    cg_projection_action(
+                        design,
+                        weights,
+                        &values,
+                        &mut residual,
+                        &mut workspace,
+                        Some(coefficients),
+                        projection_mode,
+                    )?;
+                    direction
+                        .as_mut_slice()
+                        .copy_from_slice(residual.as_slice());
+                    direction_coefficients
+                        .as_mut()
+                        .expect("recovery direction coefficients")
+                        .assign_sum_scaled_rhs(coefficients, &[0.0])?;
+                    weighted_dot_columns_into(
+                        &residual,
+                        &residual,
+                        weights,
+                        &mut residual_square,
+                        &mut dot_corrections,
+                        &mut workspace.parallel_dot_sums,
+                    )?;
+                    initial_residual_square.copy_from_slice(&residual_square);
+                    next_residual_square.copy_from_slice(&residual_square);
+                    if crate::diagnostics::solver_trace_enabled() {
+                        crate::diagnostics::emit_solver_trace(&format!(
+                            "FEREG_SOLVER_TRACE|phase=recovery_cg_restart|iteration={iteration}|fresh={fresh:.17e}"
+                        ));
+                    }
+                    continue;
+                }
+                return Err(invalid_data(format!(
+                    "borrowed CG exhausted reliable reconstruction at iteration {iteration}: original-target residual {fresh:e}"
+                )));
+            }
+            // Reconstruction mode owns its stopping decision; ordinary
+            // projection stopping below is unchanged.
+        }
+        let recurrence_ready = reconstruction_tolerance.is_none() && ordinary_ready;
         if recurrence_ready || iteration == config.max_iterations {
             let certificate = certify(design, weights, &values, config.tolerance, &mut workspace)?;
             if certificate.passed && recurrence_ready {
@@ -7035,13 +7168,19 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
             residual_coefficients.as_ref(),
         ) {
             direction_coefficients.assign_sum_scaled_rhs(residual_coefficients, &beta)?;
-            if strict_polish {
+            if coefficient_recurrence {
                 reconstruct_cg_intercept_product(design, direction_coefficients, &mut direction)?;
             }
         }
         residual_square.copy_from_slice(&next_residual_square);
     }
 
+    if let Some(tolerance) = reconstruction_tolerance {
+        return Err(invalid_data(format!(
+            "borrowed CG exhausted {} iterations without target reconstruction at {tolerance:e} and a passing FE certificate",
+            config.max_iterations,
+        )));
+    }
     Err(invalid_data(format!(
         "borrowed CG exhausted {} iterations without comparator-equivalent recurrence convergence and a passing final certificate (Hestenes error {hestenes_error:e}, recurrence residual {recurrence_residual:e})",
         config.max_iterations,

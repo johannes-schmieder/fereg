@@ -338,11 +338,11 @@ pub(super) fn configure(
     low: bool,
 ) -> Request {
     for field in [
-        "ado=0.5.1",
+        "ado=0.5.2",
         "protocol_major=1",
         "protocol_minor=7",
         "stata=18.0",
-        "plugin=0.5.1",
+        "plugin=0.5.2",
         "result_major=1",
         "result_minor=5",
         "include_intercept=1",

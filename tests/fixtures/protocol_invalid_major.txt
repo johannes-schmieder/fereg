@@ -1,5 +1,5 @@
 action=selftest
-ado=0.5.1
+ado=0.5.2
 protocol_major=99
 protocol_minor=0
 stata=18.0
