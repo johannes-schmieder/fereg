@@ -1,5 +1,34 @@
 # Validation status
 
+## CMG 0.2.0 consolidation, November 6, 2026
+
+The prepared 0.5.1 distribution uses CMG
+`e5613e81fb3b03c78de98658b372646fa802aabb`; all three native plugins were built
+from fereg `84e8973768cfcd54aaf82e584ae2d1a8bd06ff3e`. The required source suite,
+77-case scientific replay, 74 Mac Stata fixtures, three Break profiles, SCC
+Linux qualification and private Windows qualification pass. Original-system
+certificates, fixed-worker repeatability and cross-worker scientific checks
+retain their registered criteria. Fresh/replacement root installation on Mac
+verifies all 37 files and independent OLS/Poisson results; exact staged ZIP
+installation passes on Mac and Linux. Published installations remain pending.
+
+The primary Linux performance panel passes all 12 cells on six independent
+physical hosts. The Mac panel passes 10 cells; weak-auto-t4 and weak-cmg-t4 are
+inconclusive, with median candidate/reference ratios 0.997787 and 1.007402.
+Their allowance-adjusted excess intervals are [-2.175, +1.457] ms and
+[-55.088, +20.342] ms. These are uncertainty intervals on excess time, not
+ratio intervals. Release acceptance awaits Johannes's decision; no samples
+were repeated or excluded. The common library revision retains fereg's
+32-level setting and existing component options.
+
+[Structured evidence](../bench/results/cmg-kernels-20261106.json) and its
+[Mac measurements](../bench/results/cmg-kernels-20261106-macos-measurements.json)
+and [Linux measurements](../bench/results/cmg-kernels-20261106-linux-measurements.json)
+retain all 1,032 warmup/measured calls. The earlier consolidation candidate's
+inconclusive results remain unchanged in the adjacent November 6 records.
+Native Intel-host Stata is unqualified; Windows retains its documented serial
+input/Break limitation. This bounded panel makes no PPML performance claim.
+
 ## Live SSC installation, November 6, 2026
 
 A fresh Apple Silicon Mac Stata/MP 19 session successfully ran `ssc describe

@@ -1,26 +1,26 @@
 {
   "schema": 1,
   "version": "0.5.1",
-  "source_sha": "3650b7e8726fed7613993c85807a44550f901885",
-  "runtime_sha256": "59c0fcd44d8f142a9148135aa15ad8776e4d88dbdfc964cb48510420e7f412d9",
+  "source_sha": "84e8973768cfcd54aaf82e584ae2d1a8bd06ff3e",
+  "runtime_sha256": "6b61e442497264c35fad4d4b21b948d25f143ab966888caed2b074d31507be28",
   "plugins": [
     {
+      "path": "fereg_macos.plugin",
+      "source_sha": "84e8973768cfcd54aaf82e584ae2d1a8bd06ff3e",
+      "sha256": "b5ae3b87ea4daf6b5d1486dd54312af62fed302b5f214b462058b17224185a06",
+      "bytes": 21623264
+    },
+    {
       "path": "fereg_linux.plugin",
-      "source_sha": "3650b7e8726fed7613993c85807a44550f901885",
-      "sha256": "ca2ecf79dc435c92821ae1d377c1eca9106c04e55108233dc635c3b8c3f2e237",
-      "bytes": 17129160
+      "source_sha": "84e8973768cfcd54aaf82e584ae2d1a8bd06ff3e",
+      "sha256": "03967cda5a62dd454734a1af024736b1a91797385fad635abec1787d0dceca9b",
+      "bytes": 17129024
     },
     {
       "path": "fereg_windows.plugin",
-      "source_sha": "0d0c9e0da3df9da166ab2a8683a4d29b00334d93",
-      "sha256": "bca90f29b645b10d2ec47ad5aaf71531c1ac3fc1ba2bebea813d592f09278500",
-      "bytes": 12244992
-    },
-    {
-      "path": "fereg_macos.plugin",
-      "source_sha": "3650b7e8726fed7613993c85807a44550f901885",
-      "sha256": "f24caeb662babf10e4a742cde770649948e690f66c7c865a5e3fe6267df717bd",
-      "bytes": 21623424
+      "source_sha": "84e8973768cfcd54aaf82e584ae2d1a8bd06ff3e",
+      "sha256": "1927cd5df863afd56442ee1699f43b856f3c153d476f3194e848897a63a74655",
+      "bytes": 12247040
     }
   ],
   "included_platforms": [
@@ -35,8 +35,8 @@
     "Native Intel-host Stata testing is outstanding; the macOS plugin contains both processor slices.",
     "The accepted Linux no-FE 16-regressor, one-worker slowdown of 7.3% versus beta.14 remains; see docs/VALIDATION.md."
   ],
-  "corresponding_source_sha256": "81e345314c8cf405c8b15460d11562e0b12c3417dfea0fdce830575db78658c6",
-  "corresponding_source_commit": "3650b7e8726fed7613993c85807a44550f901885",
-  "cmg_sha": "a4c927f49eb7a5391a63963d2c4c651a51cf1af5",
-  "performance_acceptance": "Pending owner decision for weak-cmg-t4; fixed Linux and Mac studies each pass11/12 cells with one inconclusive interval. All scientific checks pass. See bench/results/cmg-consolidation-20261106.md."
+  "corresponding_source_sha256": "7046740e3d662254ae253002f353ef3692d5be234af85509eaba0bea7bdb637e",
+  "corresponding_source_commit": "84e8973768cfcd54aaf82e584ae2d1a8bd06ff3e",
+  "cmg_sha": "e5613e81fb3b03c78de98658b372646fa802aabb",
+  "performance_acceptance": "Pending owner decision on two inconclusive Mac cells (weak-auto-t4, weak-cmg-t4). All12 Linux cells pass on six independent hosts; all scientific checks pass. No measurements repeated or excluded."
 }
