@@ -4366,6 +4366,18 @@ fn fast_weighted_column_norms(
     weights: NormalizedWeights<'_>,
     output: &mut [f64],
 ) -> Result<()> {
+    fast_weighted_column_norms_maxima(matrix, first, weights, output, None)
+}
+
+/// [`fast_weighted_column_norms`], also raising `maxima[j]` to the largest
+/// absolute value of column `first + j` (exact in any order).
+fn fast_weighted_column_norms_maxima(
+    matrix: &DenseMatrix,
+    first: usize,
+    weights: NormalizedWeights<'_>,
+    output: &mut [f64],
+    maxima: Option<&mut [f64]>,
+) -> Result<()> {
     let ncols = matrix.ncols();
     if first > ncols || output.len() != ncols - first {
         return Err(invalid_argument(
@@ -4406,6 +4418,16 @@ fn fast_weighted_column_norms(
         for j in 0..width {
             sq[j] += s[j];
             big[j] = big[j].max(b[j]);
+        }
+    }
+    if let Some(maxima) = maxima {
+        if maxima.len() != width {
+            return Err(invalid_argument(
+                "prepared OLS fast column maxima have the wrong width",
+            ));
+        }
+        for (maximum, &b) in maxima.iter_mut().zip(&big) {
+            *maximum = maximum.max(b);
         }
     }
     for j in 0..width {
@@ -4829,9 +4851,7 @@ fn certify_scores<P: PreparedOlsFitView + ?Sized>(
         let relative = if denominator == 0.0 || zero_response {
             0.0
         } else {
-            let mut sum = 0.0_f64;
-            let mut correction = 0.0_f64;
-            if weights.values.is_none()
+            let sum = if weights.values.is_none()
                 && matches!(
                     prepared.fit_model().columns[column].kind,
                     PreparedOlsColumnKind::Intercept
@@ -4840,24 +4860,19 @@ fn certify_scores<P: PreparedOlsFitView + ?Sized>(
                 // Preserve the independently scaled compensated score, while
                 // hoisting the unit intercept and weight out of the row loop.
                 let left = 1.0 / denominator;
-                for residual in residuals.iter().copied() {
-                    compensated_add(
-                        left * (residual / response_scale),
-                        &mut sum,
-                        &mut correction,
-                    )?;
-                }
+                chunked_compensated_sum(residuals.len(), |row| {
+                    Ok(left * (residuals[row] / response_scale))
+                })?
             } else {
-                for (row, residual) in residuals.iter().copied().enumerate() {
+                chunked_compensated_sum(residuals.len(), |row| {
                     let root_weight = weights.root(row)?;
                     let regressor = prepared.fit_column_value(column, row)?;
                     let left = (root_weight * regressor) / denominator;
-                    let right = (root_weight * residual) / response_scale;
-                    let term = left * right;
-                    compensated_add(term, &mut sum, &mut correction)?;
-                }
-            }
-            (sum + correction).abs()
+                    let right = (root_weight * residuals[row]) / response_scale;
+                    Ok(left * right)
+                })?
+            };
+            sum.abs()
         };
         if !relative.is_finite() {
             return Err(invalid_data("prepared OLS normalized score is not finite"));
@@ -4915,6 +4930,32 @@ fn score_denominator(
         PreparedOlsFitStatus::SyntaxOmitted if score_norm > 0.0 => Some(score_norm),
         PreparedOlsFitStatus::SyntaxOmitted => Some(reference_norm),
     }
+}
+
+/// Compensated sum of `term(row)` over fixed row chunks, each chunk's sum and
+/// correction merged in chunk order with the same compensation.
+fn chunked_compensated_sum(
+    rows: usize,
+    term: impl Fn(usize) -> Result<f64> + Sync,
+) -> Result<f64> {
+    const ROWS: usize = 1 << 14;
+    let parts: Vec<Result<(f64, f64)>> = (0..rows.div_ceil(ROWS))
+        .into_par_iter()
+        .map(|chunk| {
+            let (mut sum, mut correction) = (0.0_f64, 0.0_f64);
+            for row in chunk * ROWS..((chunk + 1) * ROWS).min(rows) {
+                compensated_add(term(row)?, &mut sum, &mut correction)?;
+            }
+            Ok((sum, correction))
+        })
+        .collect();
+    let (mut sum, mut correction) = (0.0_f64, 0.0_f64);
+    for part in parts {
+        let (s, c) = part?;
+        compensated_add(s, &mut sum, &mut correction)?;
+        compensated_add(c, &mut sum, &mut correction)?;
+    }
+    Ok(sum + correction)
 }
 
 fn compensated_add(value: f64, sum: &mut f64, correction: &mut f64) -> Result<()> {

@@ -529,6 +529,95 @@ impl Cache {
         let bytes = admission_bytes(st, Some(w), values.ncols());
         project(st, w, design, validated, values, map, bytes)
     }
+
+    /// Recompute every level's weighted moment of one residual column in one
+    /// observation pass and certify it at `amplification` times its weighted
+    /// norm (the derived scale of SPEC §16). `None` when this cache did not
+    /// project with these weights.
+    pub(crate) fn certify_derived(
+        &self,
+        design: &BorrowedInterceptFeDesign<'_>,
+        weights: BorrowedMapWeights<'_>,
+        values: &DenseMatrix,
+        tolerance: f64,
+        amplification: f64,
+    ) -> Result<Option<FeCertificate>> {
+        let (Some(st), Some((key, w))) = (self.structure.as_ref(), self.weights.as_ref()) else {
+            return Ok(None);
+        };
+        if values.ncols() != 1 || values.nrows() != st.nobs || design.nobs() != st.nobs {
+            return Ok(None);
+        }
+        let validated = validate_weights(weights, values.nrows())?;
+        if *key != validated.values.map(|v| (v.as_ptr() as usize, v.len())) {
+            return Ok(None);
+        }
+        if !(amplification.is_finite() && amplification >= 1.0) {
+            return Err(invalid_argument("derived residual amplification is invalid"));
+        }
+        let elim_codes = design.effects()[st.eliminated].codes();
+        let block_codes: Vec<&[u32]> = st
+            .blocks
+            .iter()
+            .map(|&b| design.effects()[b].codes())
+            .collect();
+        let data = values.as_slice();
+        let raw = validated.values;
+        let scale = validated.raw_scale;
+        let parts: Vec<(Vec<f64>, Vec<f64>, f64, bool)> = st
+            .rows
+            .par_iter()
+            .map(|rows| {
+                let mut remaining = vec![0.0_f64; st.reduced];
+                let mut eliminated = vec![0.0_f64; st.segments];
+                let mut sq = 0.0_f64;
+                let mut finite = true;
+                for row in rows.clone() {
+                    let r = data[row];
+                    finite &= r.is_finite();
+                    let wr = raw.map_or(r, |v| v[row] / scale * r);
+                    sq += wr * r;
+                    eliminated[elim_codes[row] as usize] += wr;
+                    for (codes, &offset) in block_codes.iter().zip(&st.offsets) {
+                        remaining[(codes[row] + offset) as usize] += wr;
+                    }
+                }
+                (remaining, eliminated, sq, finite)
+            })
+            .collect();
+        let mut parts = parts.into_iter();
+        let (mut remaining, mut eliminated, mut sq, mut finite) =
+            parts.next().expect("one row lane");
+        for (r, e, s, f) in parts {
+            for (a, b) in remaining.iter_mut().zip(&r) {
+                *a += b;
+            }
+            for (a, b) in eliminated.iter_mut().zip(&e) {
+                *a += b;
+            }
+            sq += s;
+            finite &= f;
+        }
+        if !finite || !sq.is_finite() {
+            return Err(invalid_data("derived residual values must be finite"));
+        }
+        let reference = amplification * sq.sqrt();
+        if !reference.is_finite() {
+            return Err(invalid_data("derived residual scale is not finite"));
+        }
+        let scales = [reference];
+        let mut rhs_inf = [0.0];
+        let mut fold = CertificateFold::default();
+        for (s, &moment) in eliminated.iter().enumerate() {
+            let mass = 1.0 / w.seg_inverse[s];
+            fold.level(mass, &[moment / mass], &scales, &mut rhs_inf, w.raw_scale)?;
+        }
+        for (level, &moment) in remaining.iter().enumerate() {
+            let mass = w.mass[level];
+            fold.level(mass, &[moment / mass], &scales, &mut rhs_inf, w.raw_scale)?;
+        }
+        fold.finish(tolerance).map(Some)
+    }
 }
 
 /// Bytes the solve adds to the retained structure and weights.

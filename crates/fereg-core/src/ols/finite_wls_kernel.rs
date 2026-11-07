@@ -1834,6 +1834,13 @@ fn with_private_retained_moments(
     Ok(())
 }
 
+/// Rows per fixed chunk of the narrow dense moment pass; chunk boundaries
+/// depend only on the row count, so results do not depend on the team.
+const MOMENT_ROWS: usize = 1 << 15;
+
+/// Narrow dense moments in one row pass: each fixed row chunk accumulates its
+/// own upper Gram triangle and RHS (each entry one weighted `mul_add` per
+/// observation, rows in order), and chunks are added in chunk order.
 #[allow(clippy::too_many_arguments)]
 fn fill_retained_dense_standardized_rows(
     values: FiniteDenseRows<'_>,
@@ -1842,40 +1849,55 @@ fn fill_retained_dense_standardized_rows(
     weights: BorrowedMapWeights<'_>,
     divisor: f64,
     scales: Option<&[f64]>,
-    layout: FiniteWlsMomentLayout,
+    _layout: FiniteWlsMomentLayout,
     rhs: &mut [f64],
     gram: &mut [f64],
 ) -> Result<()> {
     let dimension = rhs.len();
+    let rows = response.len();
     let hardware = crate::kernels::installed().map(|kernels| kernels.upper_rank_one);
-    crate::parallel::stage_try_for_each(
-        rhs.par_chunks_mut(layout.columns_per_partition)
-            .zip(gram.par_chunks_mut(layout.columns_per_partition * dimension))
-            .enumerate(),
-        moment_lane_work(response.len(), dimension),
-        |(partition, (rhs_rows, gram_rows))| -> Result<()> {
+    let chunks = rows.div_ceil(MOMENT_ROWS).max(1);
+    let parts: Vec<Result<(Vec<f64>, Vec<f64>)>> = (0..chunks)
+        .into_par_iter()
+        .map(|chunk| {
             record_retained_moment_worker();
-            let left_start = partition * layout.columns_per_partition;
-            with_private_retained_moments(rhs_rows, gram_rows, |rhs, gram, standardized| {
-                accumulate_standardized_rows(
-                    DenseRowsPass {
-                        values,
-                        selected_columns,
-                        response,
-                        weights,
-                        divisor,
-                        scales,
-                        hardware,
-                        dimension,
-                    },
-                    left_start,
-                    rhs,
-                    gram,
-                    standardized,
-                )
-            })
-        },
-    )
+            let mut local_rhs = vec![0.0_f64; dimension];
+            let mut local_gram = vec![0.0_f64; dimension * dimension];
+            let mut standardized = [0.0_f64; FIXED_BLOCK_MOMENT_MAX_COLUMNS];
+            for row in chunk * MOMENT_ROWS..((chunk + 1) * MOMENT_ROWS).min(rows) {
+                let source = values.row(row);
+                let weight = normalized_weight(weights, divisor, row)?;
+                for column in 0..dimension {
+                    let source_column = selected_columns.map_or(column, |selected| selected[column]);
+                    standardized[column] = scaled_column(source[source_column], scales, column)?;
+                }
+                crate::kernels::upper_rank_one(
+                    hardware,
+                    weight,
+                    &standardized[..dimension],
+                    response[row],
+                    0,
+                    &mut local_rhs,
+                    &mut local_gram,
+                );
+            }
+            Ok((local_rhs, local_gram))
+        })
+        .collect();
+    rhs.fill(0.0);
+    gram.fill(0.0);
+    for part in parts {
+        let (local_rhs, local_gram) = part?;
+        for (total, value) in rhs.iter_mut().zip(&local_rhs) {
+            *total += value;
+        }
+        for left in 0..dimension {
+            for right in left..dimension {
+                gram[left * dimension + right] += local_gram[left * dimension + right];
+            }
+        }
+    }
+    Ok(())
 }
 
 /// One partition's dense rank-1 pass: rows in order, each standardized once

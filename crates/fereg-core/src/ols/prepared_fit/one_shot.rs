@@ -193,35 +193,15 @@ fn fill_reference_norms(
     reference_norms: &mut [f64],
     reference_mean_scales: &mut [f64],
 ) -> Result<()> {
-    let generated_columns = reference_norms.len();
-    let threads = rayon::current_num_threads();
-    let blocked_raw = threads == 1 || generated_columns.div_ceil(8) >= threads;
-    if blocked_raw {
-        // One row-major pass per eight-column block; per-column order is the
-        // scalar norm's, and the column maxima are exact.
-        fill_weighted_matrix_norms_blocked::<8>(raw, 1, weights, reference_norms)?;
-        if retain_fast_score_cache {
-            fill_column_maxima_blocked::<8>(raw, 1, reference_mean_scales)?;
-        }
-    } else if retain_fast_score_cache {
-        crate::parallel::stage_try_for_each(
-            reference_norms
-                .par_iter_mut()
-                .zip(reference_mean_scales.par_iter_mut())
-                .enumerate(),
-            raw.nrows() as u128 * generated_columns as u128,
-            |(column, (norm, mean_scale))| -> Result<()> {
-                *norm = weighted_matrix_column_norm(raw, column + 1, weights)?;
-                for row in 0..raw.nrows() {
-                    *mean_scale = mean_scale.max(raw[(row, column + 1)].abs());
-                }
-                Ok(())
-            },
-        )?;
-    } else {
-        fast_weighted_column_norms(raw, 1, weights, reference_norms)?;
-    }
-    Ok(())
+    // One parallel row pass for every column's norm and, for the score cache,
+    // its exact maximum; extreme magnitudes use the scaled scalar norm.
+    fast_weighted_column_norms_maxima(
+        raw,
+        1,
+        weights,
+        reference_norms,
+        retain_fast_score_cache.then_some(reference_mean_scales),
+    )
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1274,6 +1254,39 @@ fn derived_scale(
 }
 
 fn weighted_response_norm(response: &[f64], weights: NormalizedWeights<'_>) -> Result<f64> {
+    // Plain sums over fixed row chunks; extreme magnitudes, invalid weights or
+    // non-finite values fall through to the scaled scalar norm and its errors.
+    const ROWS: usize = 1 << 14;
+    let parts: Vec<(f64, f64, bool)> = response
+        .par_chunks(ROWS)
+        .enumerate()
+        .map(|(chunk, values)| {
+            let (mut sum, mut big, mut valid) = (0.0_f64, 0.0_f64, true);
+            for (offset, &value) in values.iter().enumerate() {
+                let w = weights
+                    .values
+                    .map_or(1.0, |v| v[chunk * ROWS + offset] / weights.raw_scale);
+                valid &= w.is_finite() && w > 0.0;
+                sum += w * value * value;
+                big = big.max(value.abs());
+            }
+            (sum, big, valid)
+        })
+        .collect();
+    let (mut sum, mut big, mut valid) = (0.0_f64, 0.0_f64, true);
+    for (s, b, v) in parts {
+        sum += s;
+        big = big.max(b);
+        valid &= v;
+    }
+    if valid && sum.is_finite() {
+        if big == 0.0 && sum == 0.0 {
+            return Ok(0.0);
+        }
+        if (1e-140..=1e140).contains(&big) {
+            return Ok(sum.sqrt());
+        }
+    }
     let mut scale = 0.0_f64;
     let mut scaled_square_sum = 1.0_f64;
     for (row, &value) in response.iter().enumerate() {

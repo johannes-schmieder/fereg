@@ -368,10 +368,13 @@ impl<'a> FeSession<'a> {
                             .filter(|preset| preset.kernel().is_none())
                             .map(super::borrowed_map::routing_lsmr::GeneralRoutingState::new);
                     }
+                    // The elimination route runs first for these designs;
+                    // its declines continue without the MAP pilot geometry.
                     if config.absorb.solver == super::FeSolverKind::Auto
                         && design.effects().len() == 3
                         && matches!(weights, BorrowedMapWeights::Unit)
                         && config.absorb.map.symmetric
+                        && !(block_schur_enabled() && !config.absorb.retain_coefficients)
                     {
                         let started = std::time::Instant::now();
                         let (geometry, peak) =
@@ -862,6 +865,24 @@ impl<'a> FeSession<'a> {
     ) -> Result<Option<super::FeCertificate>> {
         if self.cmg.is_some() || self.lsmr.is_some() {
             return Ok(None);
+        }
+        if self.block_schur_used {
+            let design = match (&self.categorical, &self.binding) {
+                (Some(owner), _) => Some(owner.borrowed_design()),
+                (None, Some(design)) => Some(design),
+                _ => None,
+            };
+            if let Some(design) = design {
+                if let Some(certificate) = self.block_schur.certify_derived(
+                    design,
+                    weights,
+                    values,
+                    tolerance,
+                    amplification,
+                )? {
+                    return Ok(Some(certificate));
+                }
+            }
         }
         if let Some(owner) = self.categorical.as_mut() {
             return owner

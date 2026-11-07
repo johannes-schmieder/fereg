@@ -1369,51 +1369,83 @@ pub(super) fn independent_outcome_sum(
 }
 
 pub(super) fn weighted_mean(values: &[f64], weights: ReferenceWeightView<'_>) -> Result<f64> {
+    use rayon::prelude::*;
+    // Fixed row chunks keep their own compensated sums, merged in chunk order.
+    const ROWS: usize = 1 << 14;
     if values.is_empty() {
         return Err(invalid_argument(
             "prepared iid weighted mean requires a nonempty sample",
         ));
     }
     let mut value_scale = 0.0_f64;
-    for value in values {
-        if !value.is_finite() {
-            return Err(invalid_data(
-                "prepared iid weighted-mean value is not finite",
-            ));
-        }
-        value_scale = value_scale.max(value.abs());
+    let mut finite = true;
+    for (scale, ok) in values
+        .par_chunks(ROWS)
+        .map(|chunk| {
+            chunk.iter().fold((0.0_f64, true), |(scale, ok), value| {
+                (scale.max(value.abs()), ok && value.is_finite())
+            })
+        })
+        .collect::<Vec<_>>()
+    {
+        value_scale = value_scale.max(scale);
+        finite &= ok;
+    }
+    if !finite {
+        return Err(invalid_data(
+            "prepared iid weighted-mean value is not finite",
+        ));
     }
     if value_scale == 0.0 {
         return Ok(0.0);
     }
-    let mut numerator = 0.0_f64;
-    let mut numerator_correction = 0.0_f64;
-    // Unit mass sums exactly to N through 2^53; keep the value reduction's
-    // scale, compensation and observation order unchanged.
-    let denominator = if weights.kind.is_none()
+    // Unit mass sums exactly to N through 2^53.
+    let unit = weights.kind.is_none()
         && weights.values.is_none()
-        && (values.len() as u128) <= (1_u128 << 53)
-    {
-        for value in values {
-            compensated_add(
-                *value / value_scale,
-                &mut numerator,
-                &mut numerator_correction,
-            )?;
-        }
+        && (values.len() as u128) <= (1_u128 << 53);
+    let parts: Vec<Result<(f64, f64, f64, f64)>> = values
+        .par_chunks(ROWS)
+        .enumerate()
+        .map(|(chunk, values)| {
+            let (mut numerator, mut numerator_correction) = (0.0_f64, 0.0_f64);
+            let (mut denominator, mut denominator_correction) = (0.0_f64, 0.0_f64);
+            for (offset, &value) in values.iter().enumerate() {
+                if unit {
+                    compensated_add(
+                        value / value_scale,
+                        &mut numerator,
+                        &mut numerator_correction,
+                    )?;
+                } else {
+                    let weight = weights.value(chunk * ROWS + offset)?;
+                    compensated_add(
+                        weight * (value / value_scale),
+                        &mut numerator,
+                        &mut numerator_correction,
+                    )?;
+                    compensated_add(weight, &mut denominator, &mut denominator_correction)?;
+                }
+            }
+            Ok((
+                numerator,
+                numerator_correction,
+                denominator,
+                denominator_correction,
+            ))
+        })
+        .collect();
+    let (mut numerator, mut numerator_correction) = (0.0_f64, 0.0_f64);
+    let (mut denominator, mut denominator_correction) = (0.0_f64, 0.0_f64);
+    for part in parts {
+        let (n, nc, d, dc) = part?;
+        compensated_add(n, &mut numerator, &mut numerator_correction)?;
+        compensated_add(nc, &mut numerator, &mut numerator_correction)?;
+        compensated_add(d, &mut denominator, &mut denominator_correction)?;
+        compensated_add(dc, &mut denominator, &mut denominator_correction)?;
+    }
+    let denominator = if unit {
         values.len() as f64
     } else {
-        let mut denominator = 0.0_f64;
-        let mut denominator_correction = 0.0_f64;
-        for (row, value) in values.iter().copied().enumerate() {
-            let weight = weights.value(row)?;
-            compensated_add(
-                weight * (value / value_scale),
-                &mut numerator,
-                &mut numerator_correction,
-            )?;
-            compensated_add(weight, &mut denominator, &mut denominator_correction)?;
-        }
         denominator + denominator_correction
     };
     let mean = value_scale * ((numerator + numerator_correction) / denominator);
