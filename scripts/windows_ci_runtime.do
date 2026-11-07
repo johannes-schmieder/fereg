@@ -6,11 +6,11 @@ if c(os) != "Windows" {
     exit 9
 }
 local root = subinstr(`"`c(pwd)'"', char(92), "/", .)
-* Check the existing automation capability before the cold native build.
+* Check real GUI Break delivery before the cold native build.
 shell powershell.exe -NoLogo -NoProfile -NonInteractive ///
     -ExecutionPolicy Bypass -File "scripts/windows_input_break.ps1" -Probe
 do "scripts/windows_input_result.do" "target/windows-input-break/result.txt" ///
-    "WINDOWS_INPUT_AUTOMATION=PASS" detailed
+    "WINDOWS_INPUT_GUI=PASS" detailed
 capture erase "dist/fereg_windows.plugin.sha256"
 capture erase "target/windows-plugin.verified"
 capture erase "target/windows-installed.verified"
