@@ -83,7 +83,7 @@ try {
         [FeregInputGui]::Restore([uint32]$owned.Id)
         Start-Sleep -Milliseconds 200
         $delivery = [FeregInputGui]::Break([uint32]$owned.Id)
-        if ($delivery -ne 0) { $FailureCode += $delivery; throw 'GUI Break unavailable' }
+        if ($delivery -ne 0) { $FailureCode = 85000 + $delivery; throw 'GUI Break unavailable' }
         if (-not $Probe -and $owned.HasExited) { throw 'Stata exited during delivery' }
         Remove-Item -LiteralPath $entry.Path -Force
         $breaks++

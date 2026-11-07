@@ -26,9 +26,10 @@ public static class FeregInputGui {
         public uint contextHelp;
         public UIntPtr data;
     }
+    [DllImport("user32.dll")] private static extern bool IsWindowVisible(IntPtr window);
+    [DllImport("user32.dll")] private static extern bool IsIconic(IntPtr window);
     [DllImport("user32.dll")] private static extern bool ShowWindowAsync(IntPtr window, int command);
-    [DllImport("user32.dll")] private static extern bool EnumChildWindows(IntPtr parent, EnumWindowsProc callback, IntPtr data);
-    [DllImport("user32.dll", CharSet=CharSet.Unicode)] private static extern int GetClassNameW(IntPtr window, StringBuilder name, int capacity);
+    [DllImport("user32.dll")] private static extern IntPtr WindowFromPoint(Point point);
     [DllImport("user32.dll")] private static extern bool ScreenToClient(IntPtr window, ref Point point);
     [DllImport("user32.dll")] private static extern bool GetClientRect(IntPtr window, out Rect rect);
     [StructLayout(LayoutKind.Sequential)] private struct Point { public int X, Y; }
@@ -41,35 +42,32 @@ public static class FeregInputGui {
         int discovery = 0;
         var thread = new Thread(delegate() {
             try {
-                var toolbars = new List<IntPtr>();
+                var windows = new List<IntPtr>();
                 EnumWindows(delegate(IntPtr window, IntPtr ignored) {
                     uint owner;
                     GetWindowThreadProcessId(window, out owner);
-                    if (owner == pid) EnumChildWindows(window, delegate(IntPtr child, IntPtr unused) {
-                        uint childOwner;
-                        GetWindowThreadProcessId(child, out childOwner);
-                        var name = new StringBuilder(128);
-                        GetClassNameW(child, name, name.Capacity);
-                        if (childOwner == pid && name.ToString() == "ToolbarWindow32") toolbars.Add(child);
-                        return true;
-                    }, IntPtr.Zero);
+                    if (owner == pid && IsWindowVisible(window)) windows.Add(window);
                     return true;
                 }, IntPtr.Zero);
-                if (toolbars.Count == 0) { discovery = 10; return; }
-                foreach (IntPtr toolbar in toolbars) {
-                    var root = AutomationElement.FromHandle(toolbar);
+                if (windows.Count == 0) { discovery = 10; return; }
+                foreach (IntPtr window in windows) {
+                    var root = AutomationElement.FromHandle(window);
                     var buttons = root.FindAll(TreeScope.Descendants,
                         new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Button));
                     if (buttons.Count > 128) { discovery = 11; return; }
                     foreach (AutomationElement button in buttons) {
                         var state = button.Current;
                         string name = state.Name.Replace("&", "").Trim();
-                        if (name != "Break" && name != "Break (Ctrl+Break)" && name != "Break (Ctrl+Pause/Break)") continue;
+                        if (name != "Break" && name != "Break (Ctrl+Break)" && name != "Break (Ctrl+Pause)" && name != "Break (Ctrl+Pause/Break)") continue;
                         if (!state.IsEnabled || state.IsOffscreen || state.BoundingRectangle.IsEmpty) {
                             discovery = 12; return;
                         }
                         var bounds = state.BoundingRectangle;
                         var center = new Point { X = (int)(bounds.Left + bounds.Width / 2), Y = (int)(bounds.Top + bounds.Height / 2) };
+                        IntPtr toolbar = WindowFromPoint(center);
+                        uint hitOwner;
+                        GetWindowThreadProcessId(toolbar, out hitOwner);
+                        if (toolbar == IntPtr.Zero || hitOwner != pid) { discovery = 18; return; }
                         Rect client;
                         if (!ScreenToClient(toolbar, ref center) || !GetClientRect(toolbar, out client) ||
                             center.X < 0 || center.Y < 0 || center.X >= client.Right || center.Y >= client.Bottom ||
@@ -117,7 +115,7 @@ public static class FeregInputGui {
         EnumWindows(delegate(IntPtr window, IntPtr ignored) {
             uint owner;
             GetWindowThreadProcessId(window, out owner);
-            if (owner == pid && GetMenu(window) != IntPtr.Zero) ShowWindowAsync(window, 9);
+            if (owner == pid && (IsWindowVisible(window) || IsIconic(window))) ShowWindowAsync(window, 9);
             return true;
         }, IntPtr.Zero);
     }
