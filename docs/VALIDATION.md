@@ -1,5 +1,57 @@
 # Validation status
 
+## Windows parallel-input candidate, November 7, 2026
+
+**Not qualified or published.** Main remains at `19c60c08` with the existing
+serial Windows reader. The private candidate adds only the Windows x86-64
+Stata/MP 19 GUI host row; the loader algorithm and scientific arithmetic are
+unchanged. Its root installation package has not been refreshed and must not
+be promoted. The [bounded qualification evidence](../bench/results/windows-input-20261107.json)
+records the exact sources, archive/receipt hashes and ten attempts.
+
+At `ef1825eb`, the actual Windows Rust/MSVC build, embedded source identity,
+C numeric-window guards, PE audit, native loader and installed-plugin checksum
+checks passed. All mapped scientific and transaction fixtures passed, including
+the 80-cell missing-value witness, worker panic/read-failure handling and the
+input oracle at two and eight workers. Each oracle required exactly 72 cases
+and 208 runs, at least 72 actual parallel-window runs, exact serial/parallel
+input digests and the existing independent scientific tolerances. This is
+source-bound partial evidence: the overall run failed at the deliberately
+deferred GUI probe, and the collector therefore exported no candidate binary.
+No Windows performance claim is made.
+
+The full local source-only suite passed (2,289 Rust test executions, 349 Python
+tests and seven portable checks), as did the strengthened Apple Silicon live
+input-Break fixture using the unchanged installed Mac plugin. The fixture now
+checks PPML covariance/sample rollback and an injected reader failure before
+same-session exact serial/parallel recovery. Installed-package admission for
+the candidate was not performed; these passes do not authorize publication.
+
+Live Windows Break remains untested. COM activation did not complete. The
+batch GUI probes exposed no visible window. The final normal-GUI child at
+`16ff0ae0` executed its fresh token-bound startup profile and readiness marker,
+but the helper again found no visible top-level window (`r(85010)`). All ten
+runs stopped the instance, deleted transient transfer objects and released the
+shared lock. Existing Stata Automation was registered through `/Register`;
+that registration remains, with no identity, DCOM-permission, networking, IAM,
+Stata executable or license changes.
+
+The ten-attempt repair bound has been reached. The next narrow diagnostic is
+to show the normal-GUI child's hidden window before control discovery: the
+current `Restore` method only restores already-visible windows. This may be
+startup ordering; the evidence does not establish that SYSTEM cannot host a
+GUI or that the loader mishandles Break. Further attempts require Johannes's
+direction under AGENTS.md. Retain the existing real-control, owned-process,
+timeout, `r(1)`, rollback and recovery gates.
+
+The maintained reproducer is the exact clean candidate, run through
+`windows_ci.sh run --project fereg --profile stata-do` from the Windows skill.
+The controller remains in `/e do` mode under SYSTEM; only its owned Break-test
+child uses a task-local `profile.do` and normal GUI startup. No global startup
+profile is replaced. Stata documents the distinction between
+[batch and GUI startup](https://www.stata.com/manuals/gswb.pdf), and the status
+cleanup follows its [Break protection pattern](https://www.stata.com/manuals/pbreak.pdf).
+
 ## CMG 0.2.0 consolidation, November 6, 2026
 
 The published [0.5.1 release](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.1) uses CMG
