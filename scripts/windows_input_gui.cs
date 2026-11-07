@@ -4,6 +4,8 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
+using System.Windows.Automation;
 public static class FeregInputGui {
     private delegate bool EnumWindowsProc(IntPtr window, IntPtr data);
     [DllImport("user32.dll")] private static extern bool EnumWindows(EnumWindowsProc callback, IntPtr data);
@@ -24,6 +26,78 @@ public static class FeregInputGui {
         public uint contextHelp;
         public UIntPtr data;
     }
+    [DllImport("user32.dll")] private static extern bool ShowWindowAsync(IntPtr window, int command);
+    [DllImport("user32.dll")] private static extern bool EnumChildWindows(IntPtr parent, EnumWindowsProc callback, IntPtr data);
+    [DllImport("user32.dll", CharSet=CharSet.Unicode)] private static extern int GetClassNameW(IntPtr window, StringBuilder name, int capacity);
+    [DllImport("user32.dll")] private static extern bool ScreenToClient(IntPtr window, ref Point point);
+    [DllImport("user32.dll")] private static extern bool GetClientRect(IntPtr window, out Rect rect);
+    [StructLayout(LayoutKind.Sequential)] private struct Point { public int X, Y; }
+    [StructLayout(LayoutKind.Sequential)] private struct Rect { public int Left, Top, Right, Bottom; }
+    private struct ToolbarButton { public IntPtr Window; public Point Center; }
+    private static int ToolbarBreak(uint pid) {
+        // Provider discovery can block. It runs in a bounded background thread
+        // that never sends input, so a timed-out discovery cannot issue late Break.
+        var matches = new List<ToolbarButton>();
+        int discovery = 0;
+        var thread = new Thread(delegate() {
+            try {
+                var toolbars = new List<IntPtr>();
+                EnumWindows(delegate(IntPtr window, IntPtr ignored) {
+                    uint owner;
+                    GetWindowThreadProcessId(window, out owner);
+                    if (owner == pid) EnumChildWindows(window, delegate(IntPtr child, IntPtr unused) {
+                        uint childOwner;
+                        GetWindowThreadProcessId(child, out childOwner);
+                        var name = new StringBuilder(128);
+                        GetClassNameW(child, name, name.Capacity);
+                        if (childOwner == pid && name.ToString() == "ToolbarWindow32") toolbars.Add(child);
+                        return true;
+                    }, IntPtr.Zero);
+                    return true;
+                }, IntPtr.Zero);
+                if (toolbars.Count == 0) { discovery = 10; return; }
+                foreach (IntPtr toolbar in toolbars) {
+                    var root = AutomationElement.FromHandle(toolbar);
+                    var buttons = root.FindAll(TreeScope.Descendants,
+                        new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Button));
+                    if (buttons.Count > 128) { discovery = 11; return; }
+                    foreach (AutomationElement button in buttons) {
+                        var state = button.Current;
+                        string name = state.Name.Replace("&", "").Trim();
+                        if (name != "Break" && name != "Break (Ctrl+Break)" && name != "Break (Ctrl+Pause/Break)") continue;
+                        if (!state.IsEnabled || state.IsOffscreen || state.BoundingRectangle.IsEmpty) {
+                            discovery = 12; return;
+                        }
+                        var bounds = state.BoundingRectangle;
+                        var center = new Point { X = (int)(bounds.Left + bounds.Width / 2), Y = (int)(bounds.Top + bounds.Height / 2) };
+                        Rect client;
+                        if (!ScreenToClient(toolbar, ref center) || !GetClientRect(toolbar, out client) ||
+                            center.X < 0 || center.Y < 0 || center.X >= client.Right || center.Y >= client.Bottom ||
+                            center.X > 32767 || center.Y > 32767) { discovery = 13; return; }
+                        matches.Add(new ToolbarButton { Window = toolbar, Center = center });
+                    }
+                }
+            } catch { discovery = 14; }
+        });
+        thread.IsBackground = true;
+        thread.SetApartmentState(ApartmentState.MTA);
+        thread.Start();
+        if (!thread.Join(10000)) return 15;
+        if (discovery != 0) return discovery;
+        if (matches.Count == 0) return 16;
+        if (matches.Count != 1) return 17;
+        ToolbarButton target = matches[0];
+        uint currentOwner;
+        GetWindowThreadProcessId(target.Window, out currentOwner);
+        if (currentOwner != pid) return 18;
+        IntPtr position = (IntPtr)((target.Center.Y << 16) | target.Center.X);
+        UIntPtr result;
+        // Send to the real toolbar, which performs its ordinary hit test and
+        // parent notification. Do not infer command IDs from automation IDs.
+        if (SendMessageTimeoutW(target.Window, 0x201, (UIntPtr)1, position, 0x23, 5000, out result) == IntPtr.Zero) return 19;
+        if (SendMessageTimeoutW(target.Window, 0x202, UIntPtr.Zero, position, 0x23, 5000, out result) == IntPtr.Zero) return 19;
+        return 0;
+    }
     private struct Command { public IntPtr Window, Menu; public int Position; }
     private static void Search(IntPtr window, IntPtr menu, int depth, List<Command> found) {
         if (menu == IntPtr.Zero || depth > 8) return;
@@ -39,6 +113,14 @@ public static class FeregInputGui {
             Search(window, child, depth + 1, found);
         }
     }
+    public static void Restore(uint pid) {
+        EnumWindows(delegate(IntPtr window, IntPtr ignored) {
+            uint owner;
+            GetWindowThreadProcessId(window, out owner);
+            if (owner == pid && GetMenu(window) != IntPtr.Zero) ShowWindowAsync(window, 9);
+            return true;
+        }, IntPtr.Zero);
+    }
     public static int Break(uint pid) {
         var found = new List<Command>();
         bool hasWindow = false;
@@ -49,7 +131,7 @@ public static class FeregInputGui {
             return true;
         }, IntPtr.Zero);
         if (!hasWindow) return 1;
-        if (found.Count == 0) return 2;
+        if (found.Count == 0) return ToolbarBreak(pid);
         if (found.Count != 1) return 3;
         Command command = found[0];
         uint state = GetMenuState(command.Menu, (uint)command.Position, 0x400);

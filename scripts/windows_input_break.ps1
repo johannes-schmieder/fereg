@@ -18,7 +18,10 @@ $temporary = $null
 $passed = $false
 Remove-Item -LiteralPath $Result, $Status, $Ready, $Log -Force -ErrorAction SilentlyContinue
 try {
-    Add-Type -Path "$PSScriptRoot/windows_input_gui.cs"
+    Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes, WindowsBase
+    Add-Type -Path "$PSScriptRoot/windows_input_gui.cs" -ReferencedAssemblies @(
+        'System.dll', [System.Windows.Automation.AutomationElement].Assembly.Location,
+        [System.Windows.Automation.ControlType].Assembly.Location, [System.Windows.Rect].Assembly.Location)
     $temporary = [FeregInputGui]::TemporaryPath()
     $env:FEREG_BREAK_MARKER_TOKEN = $Token
     $env:FEREG_PPML_BREAK_MARKER_TOKEN = $Token
@@ -75,6 +78,10 @@ try {
             Start-Sleep -Milliseconds 50
         }
         $FailureCode = 84020
+        # /e may minimize the batch window; restore only our child for its
+        # accessibility provider to expose the toolbar's current geometry.
+        [FeregInputGui]::Restore([uint32]$owned.Id)
+        Start-Sleep -Milliseconds 200
         $delivery = [FeregInputGui]::Break([uint32]$owned.Id)
         if ($delivery -ne 0) { $FailureCode += $delivery; throw 'GUI Break unavailable' }
         if (-not $Probe -and $owned.HasExited) { throw 'Stata exited during delivery' }
