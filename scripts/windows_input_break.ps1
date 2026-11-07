@@ -10,6 +10,7 @@ $Work = Join-Path $Root 'target\windows-input-break'
 $Identity = Join-Path $Work 'identity.json'
 $Result = Join-Path $Work 'result.txt'
 $WorkerResult = Join-Path $Work 'worker-result.txt'
+$Stage = Join-Path $Work 'stage.txt'
 $Status = Join-Path $Work 'status.txt'
 $StataPath = 'C:\Program Files\Stata19\StataMP-64.exe'
 $FailureCode = 81999
@@ -62,7 +63,7 @@ function Get-OwnedStata {
 
 if (-not $Worker) {
     New-Item -ItemType Directory -Force -Path $Work | Out-Null
-    Remove-Item -LiteralPath $Identity, $Result, $WorkerResult, $Status -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $Identity, $Result, $WorkerResult, $Status, $Stage -Force -ErrorAction SilentlyContinue
     $Token = [Guid]::NewGuid().ToString('N')
     $expectedResult = if ($Probe) { 'WINDOWS_INPUT_AUTOMATION=PASS' } else { 'WINDOWS_INPUT_BREAK=PASS' }
     $child = $null
@@ -74,7 +75,8 @@ if (-not $Worker) {
         if ($Probe) { $childArguments += '-Probe' }
         $child = Start-Process powershell.exe -PassThru -WorkingDirectory $Root -ArgumentList $childArguments
         $null = $child.Handle
-        if (-not $child.WaitForExit(300000)) { throw 'automation timeout' }
+        $limit = if ($Probe) { 60000 } else { 300000 }
+        if (-not $child.WaitForExit($limit)) { throw 'automation timeout' }
         $child.Refresh()
         if ($child.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $WorkerResult) -or
             (Get-Content -LiteralPath $WorkerResult -Raw).Trim() -cne $expectedResult) {
@@ -108,7 +110,12 @@ if (-not $Worker) {
         if (-not $passed) {
             $failure = if (Test-Path -LiteralPath $WorkerResult) { (Get-Content -LiteralPath $WorkerResult -Raw).Trim() } else { '' }
             if ($failure -cnotmatch '\AWINDOWS_INPUT_QUALIFICATION=FAIL\|code=81[0-9]{3}\z') {
-                $failure = 'WINDOWS_INPUT_QUALIFICATION=FAIL|code=81999'
+                $timeoutCode = 81999
+                if (Test-Path -LiteralPath $Stage) {
+                    $last = [string](Get-Content -LiteralPath $Stage -Raw)
+                    if ($last -cmatch '\A810[0-9]{2}\z') { $timeoutCode = [int]$last + 1000 }
+                }
+                $failure = "WINDOWS_INPUT_QUALIFICATION=FAIL|code=$timeoutCode"
             }
             [IO.File]::WriteAllText($Result, "$failure`r`n")
         } else { [IO.File]::WriteAllText($Result, "$expectedResult`r`n") }
@@ -137,8 +144,10 @@ try {
             $source.Replace($anchor, ('local break_marker_token "' + $token + '"')))
     }
     $FailureCode = 81001
+    [IO.File]::WriteAllText($Stage, '81001')
     $automation = New-Object -ComObject stata.StataOLEApp
     $FailureCode = 81002
+    [IO.File]::WriteAllText($Stage, '81002')
     $setup = @"
 shell powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$PSScriptRoot\windows_input_com_identity.ps1" -Output "$Identity"
 "@
@@ -146,6 +155,7 @@ shell powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass 
     $owned = Get-OwnedStata
     if ($null -eq $owned) { throw 'automation identity absent' }
     if ($Probe) {
+        [IO.File]::WriteAllText($Stage, '81021')
         if ($automation.DoCommand('assert c(os) == "Windows" & c(MP) & floor(c(stata_version)) == 19') -ne 0) {
             throw 'automation host mismatch'
         }
@@ -153,6 +163,7 @@ shell powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass 
         [IO.File]::WriteAllLines($probeFile, @('tempname result',
             ('file open `result'' using "' + $Status.Replace('\', '/') + '", write replace text'),
             'file write `result'' "rc=0" _n', 'file close `result'''))
+        [IO.File]::WriteAllText($Stage, '81022')
         if ($automation.DoCommandAsync(('do "' + $probeFile.Replace('\', '/') + '"')) -ne 0) { throw 'probe launch failed' }
         $probeDeadline = [DateTime]::UtcNow.AddSeconds(20)
         while ([DateTime]::UtcNow -lt $probeDeadline) {
@@ -249,6 +260,7 @@ shell powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass 
     # Only this fixed code is returned; COM errors can contain local details.
     [IO.File]::WriteAllText($WorkerResult, "WINDOWS_INPUT_QUALIFICATION=FAIL|code=$FailureCode`r`n")
 } finally {
+    [IO.File]::WriteAllText($Stage, '81009')
     if ($null -ne $automation) { [void][Runtime.InteropServices.Marshal]::FinalReleaseComObject($automation) }
 }
 exit $code
