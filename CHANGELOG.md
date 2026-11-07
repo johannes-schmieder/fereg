@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.2 — 2026-11-07
 
 - Repair strict PPML convergence after a rejected categorical profiling curve,
   and certify saved categorical effects against their original accepted target
@@ -11,6 +11,8 @@
   unchanged.
 - Document the accepted Windows loading limitation: Break may be delayed or
   unavailable during loading. Runtime polling remains enabled.
+- Retain the accepted PPML saved-effects performance exception: the measured
+  paired ratio is 1.1020 and the gate remains Fail; no timings were repeated.
 
 ## 0.5.1 — 2026-11-06
 

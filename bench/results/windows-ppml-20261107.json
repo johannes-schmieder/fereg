@@ -3,11 +3,17 @@
   "scope": "Combined Windows parallel numeric loader and existing PPML strict-curve/saved-effect recovery repair; release preparation",
   "version": "0.5.2",
   "runtime_sha256": "43110fefd9b65be5ffa9ad66e81ef0f8d1833f13246bab0aebf405e3677f682e",
-  "publication_status": "blocked_pending_owner_performance_decision",
+  "publication_status": "qualified_owner_exceptions_accepted",
   "performance": {
     "record": "ppml-recovery-20261107.json",
     "saved_effects_gate": "FAIL",
-    "owner_exception": null,
+    "owner_exception": {
+      "date": "2026-11-07",
+      "accepted": true,
+      "basis": "Johannes directed continue after the measured saved-effects slowdown and pending acceptance decision were disclosed; integration with PPML had already been requested.",
+      "measured_status_retained": "FAIL",
+      "paired_median_ratio": 1.1019628634479774
+    },
     "new_timings": false
   },
   "macos": {
@@ -162,7 +168,6 @@
     "build_and_native_checks": "PASS",
     "mapped_fixtures_passed": 6,
     "strict_two_effect_1m_16workers": "PASS",
-    "remaining_recovery_job": 8498067,
     "time_limit_extension": {
       "job": 8497867,
       "initial_minutes": 15,
@@ -175,6 +180,20 @@
       "max_row_error": 1.49536806688934e-10,
       "saved_vs_unsaved_exact": true,
       "fixed_worker_saved_repeat_exact": true
+    },
+    "status": "PASS",
+    "strict_three_effect_1m_16workers": {
+      "status": "PASS",
+      "tolerance": 1e-12,
+      "max_row_error": 2.84506516015943e-13,
+      "saved_vs_unsaved_exact": true,
+      "fixed_worker_saved_repeat_exact": true,
+      "job": 8498067,
+      "host": "scc-ei3",
+      "failed": 0,
+      "exit_status": 0,
+      "wall_seconds": 186,
+      "maxvmem": "4.364G"
     }
   },
   "independent_review": {
@@ -396,7 +415,7 @@
       },
       {
         "file": "fereg-native.json",
-        "sha256": "e3f54a00d93c8810ea5a6eb4750bb391cb608080bb7a540689b7082e77342dcd"
+        "sha256": "c64da6ff9d828863ced5ad6c2173d9c9ec0f4ae5de417ec8f8afa7b81fc5db03"
       },
       {
         "file": "fereg_macos.plugin",

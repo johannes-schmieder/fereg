@@ -1,11 +1,11 @@
 # Validation status
 
-## Combined Windows/PPML candidate, November 7, 2026
+## Combined Windows/PPML release 0.5.2, November 7, 2026
 
-**Prepared as 0.5.2; not published or merged.** Johannes requested integrating
-both changes into main. The recorded PPML saved-effects performance gate still
-fails, and owner acceptance of that measured slowdown remains pending. No new
-timings were collected. See the [combined artifact checks](../bench/results/windows-ppml-20261107.json)
+**Qualified for 0.5.2 publication and main integration.** Johannes requested
+integrating both changes and directed continuation after the saved-effects
+slowdown was disclosed. This accepts that performance exception; the recorded
+gate remains **FAIL** (paired ratio 1.1020). No new timings were collected. See the [combined artifact checks](../bench/results/windows-ppml-20261107.json)
 and the original performance table below.
 
 The combined runtime identity is
@@ -36,12 +36,13 @@ Native Intel-Mac execution remains unqualified.
 
 Linux native/ABI checks and six mapped PPML fixtures pass, as do the strict
 two-effect million-row fit and the three-effect 1e-8 reconstruction/exact-repeat
-checks at sixteen workers. The final 1e-12 saved-effects continuation is pending
-in job 8498067 after two preserved launcher/resource-limit failures; it uses the
-same binary and inputs. Public promotion remains blocked until that check and
-the owner performance decision are complete.
+checks at sixteen workers. The final 1e-12 saved-effects continuation also
+passes, with maximum row error 2.845e-13 and exact saved/unsaved and repeated
+outputs (job 8498067, scc-ei3, 186 seconds, 4.364 GB; scheduler failure and exit
+status both zero). The two earlier launcher/resource-limit failures remain
+recorded; all checks used the same binary and inputs.
 
-## Unpublished PPML repair candidate, November 7, 2026
+## PPML repair development evidence, November 7, 2026
 
 At Johannes's request, outreach array 8481934 and its continuation monitor were
 stopped before investigating the native failures. Original measurements remain
@@ -92,8 +93,9 @@ Retained phase captures are consistent with extra recovery work (11.698 versus
 16.547 ms in the traced four-worker preflight), but these single calls are not
 additional timing evidence. A bounded existing MAP recovery attempt before CG
 is a proposed refinement, not implemented or accepted here. No adverse timings
-were resampled, no performance exception was accepted, and production stays
-stopped pending discussion.
+were resampled. Johannes subsequently directed continuation after disclosure
+of the slowdown, accepting it for the combined 0.5.2 release above. The measured
+performance gate remains Fail; the proposed refinement was not implemented.
 
 [The compact record](../bench/results/ppml-recovery-20261107.json) retains source
 and dependency identities, binary/input hashes, complete timing observations,
@@ -103,7 +105,7 @@ replace the historical paper benchmarks.
 
 ## Windows parallel-input candidate, November 7, 2026
 
-**Qualified with the loading-Break waiver; not released.** The Windows
+**Standalone qualification with the loading-Break waiver.** The Windows
 x86-64 Stata/MP 19 GUI candidate at `ef8fa126` passed the full exact-source
 Windows profile in run `win-20261107T111500Z-ecc7882e`. The guarded collector
 returned the tested binary; its SHA-256 is
@@ -112,6 +114,7 @@ returned the tested binary; its SHA-256 is
 stopped, transient transfer objects were deleted and the shared lock released.
 The [qualification record](../bench/results/windows-input-20261107.json)
 retains the exact source/archive/receipt identities and all earlier attempts.
+The combined release above supersedes this standalone binary.
 
 Johannes explicitly waived Break during Windows loading on November 7. The
 waiver permits delayed or unavailable cancellation during loading; it changes
