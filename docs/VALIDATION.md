@@ -1,5 +1,56 @@
 # Validation status
 
+## Windows parallel-input candidate, November 7, 2026
+
+**Qualified with the loading-Break waiver; not released.** The Windows
+x86-64 Stata/MP 19 GUI candidate at `ef8fa126` passed the full exact-source
+Windows profile in run `win-20261107T111500Z-ecc7882e`. The guarded collector
+returned the tested binary; its SHA-256 is
+`a9baa4333b31504bf0d0af147e65f4c2838686a2689f205db4096c919676279d`
+(12,247,040 bytes). Collection independently verified that hash. The machine
+stopped, transient transfer objects were deleted and the shared lock released.
+The [qualification record](../bench/results/windows-input-20261107.json)
+retains the exact source/archive/receipt identities and all earlier attempts.
+
+Johannes explicitly waived Break during Windows loading on November 7. The
+waiver permits delayed or unavailable cancellation during loading; it changes
+no polling code, scientific criterion, failure rollback or cancellation
+requirement outside Windows loading. The failed experimental GUI/Break helpers
+were removed from the profile. Live Windows loading Break remains unverified.
+
+The only runtime change is one Windows x86-64 Stata/MP 19 GUI host-policy row;
+the loader algorithm and scientific arithmetic are unchanged. Other Windows
+hosts retain serial input. The actual Rust/MSVC build, embedded source identity,
+exact-FMA/fused-kernel witnesses, C numeric-window guards, PE audit, native
+loader and installed-plugin checksum checks passed. All mapped OLS/PPML
+scientific and transaction fixtures passed, including the 80-cell missing-value
+witness, worker panic/read-failure handling and recovery, and the input oracle
+at two and eight workers. Each oracle required 72 cases and 208 runs, at least
+72 actual parallel-window runs, exact serial/parallel input digests and the
+existing independent scientific tolerances. No Windows performance claim is made.
+
+The full local source-only suite passed (2,289 Rust test executions, 349 Python
+tests and seven portable checks), as did the strengthened Apple Silicon live
+input-Break fixture using the unchanged installed Mac plugin. That fixture
+checks PPML covariance/sample rollback and an injected reader failure before
+same-session exact serial/parallel recovery. The focused Windows diagnostic
+tests, complexity ratchet, documentation checks and independent candidate review
+also passed. Main and the 0.5.1 binaries still use serial Windows input. The
+candidate is ready for integration with the concurrent PPML work; a matching
+native package, corresponding source and strict root-package/HTTP installation
+admission remain required before a combined release.
+
+The ten earlier runs remain failures. COM activation did not complete, and
+GUI probes could not find an owned visible window for Break delivery. At
+`ef1825eb` the native/scientific checks passed before the deferred GUI-probe
+failure; that partial evidence was not an overall pass. At `16ff0ae0` the
+normal-GUI child reached its token-bound readiness marker but again exposed no
+visible top-level window (`r(85010)`). Break was never delivered, so these
+attempts do not establish a loader cancellation defect. Every run stopped the
+machine, deleted transient transfers and released the lock. Existing Stata
+Automation was registered through `/Register`; that registration remains, with
+no identity, DCOM-permission, networking, IAM, Stata executable or license changes.
+
 ## CMG 0.2.0 consolidation, November 6, 2026
 
 The published [0.5.1 release](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.1) uses CMG

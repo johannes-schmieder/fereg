@@ -25,7 +25,9 @@ This installs both commands, their help files and the native plugin from the
 It requires Stata 15 or newer. Linux x86-64 needs glibc 2.28 or newer;
 Windows x86-64 and universal macOS binaries are also included. Mac Stata
 qualification uses Apple Silicon; native Intel-Mac testing remains outstanding.
-Windows uses serial numeric input. No compiler or extra Stata package is needed.
+The 0.5.1 Windows release uses serial numeric input. No compiler or extra Stata
+package is needed. The Windows parallel-loading candidate and its loading-Break
+limitation are described in the [validation record](docs/VALIDATION.md).
 
 Exit Stata before updating so that the previous plugin is unloaded. To follow
 the current development package, replace `v0.5.1` in the URL with `main`.

@@ -6,6 +6,8 @@ if c(os) != "Windows" {
     exit 9
 }
 local root = subinstr(`"`c(pwd)'"', char(92), "/", .)
+* Johannes waived Windows Break-during-loading qualification on 2026-11-07.
+* All native, scientific and transaction assertions below remain required.
 capture erase "dist/fereg_windows.plugin.sha256"
 capture erase "target/windows-plugin.verified"
 capture erase "target/windows-installed.verified"
@@ -96,9 +98,7 @@ if _rc exit 9110
 capture noisily do "tests/stata/postestimation/replay_and_prefixes.do"
 if _rc exit 9111
 
-* Windows retains serial input until live Break is qualified. Check the
-* shared reader's values and explicitly prove that the host policy refuses
-* every numeric window, including with several computation workers.
+* Qualify Windows Stata/MP 19 GUI numeric windows; loading Break is waived.
 assert c(MP) & floor(c(stata_version)) == 19
 quietly _fereg_input_host
 assert `"`r(edition)'"' == "MP" & `"`r(interface)'"' == "gui"
@@ -117,17 +117,19 @@ if _rc exit 9112
 * The default-worker step reports the helper's failure code (10000-99999).
 shell powershell.exe -NoLogo -NoProfile -NonInteractive ///
     -ExecutionPolicy Bypass -File "scripts/windows_input_qualification.ps1" ///
-    -Action oracle -Workers 0 -RequireSerial -Result "target/windows-input-oracle-0.result"
+    -Action oracle -Workers 0 -Result "target/windows-input-oracle-0.result"
 capture noisily do "scripts/windows_input_result.do" "target/windows-input-oracle-0.result" ///
     "WINDOWS_INPUT_ORACLE=PASS|workers=0|" detailed
 if _rc >= 10000 exit _rc
 if _rc exit 9113
 shell powershell.exe -NoLogo -NoProfile -NonInteractive ///
     -ExecutionPolicy Bypass -File "scripts/windows_input_qualification.ps1" ///
-    -Action oracle -Workers 8 -RequireSerial -Result "target/windows-input-oracle-8.result"
+    -Action oracle -Workers 8 -Result "target/windows-input-oracle-8.result"
 capture noisily do "scripts/windows_input_result.do" "target/windows-input-oracle-8.result" ///
     "WINDOWS_INPUT_ORACLE=PASS|workers=8|"
 if _rc exit 9114
+capture noisily do "tests/stata/development/parallel_input_failures.do"
+if _rc exit 9115
 * Postcommit marker cleanup must preserve populated/null rollback and the
 * full posted sample on Windows as well as the Unix hosts.
 * Diagnostic r(9117)/r(9118): OLS and PPML transaction fixtures.

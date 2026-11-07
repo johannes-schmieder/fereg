@@ -1,88 +1,10 @@
 {
   "growth": [
     {
-      "after": 115708,
-      "before": 113448,
-      "metric": "fereg-core/production_lines",
-      "reason": "Approved scoped no-FE immutable centered summary, row-partition products and guarded TSQR retry with canonical rank fallback and independent original-source certificates; existing families retain arithmetic. Revised bulk exact centering, bounded no-FE packed loading and shared residual traversal preserve scalar arithmetic and independent scores. Exact wide-descriptor adoption is restricted to the admitted centered family."
-    },
-    {
-      "after": 1480,
-      "before": 1457,
-      "metric": "fereg-core/dispatch_candidates",
-      "reason": "Approved scoped no-FE immutable centered summary, row-partition products and guarded TSQR retry with canonical rank fallback and independent original-source certificates; existing families retain arithmetic. Revised bulk exact centering, bounded no-FE packed loading and shared residual traversal preserve scalar arithmetic and independent scores. Exact wide-descriptor adoption is restricted to the admitted centered family."
-    },
-    {
-      "after": 17260,
-      "before": 17217,
+      "after": 17261,
+      "before": 17260,
       "metric": "fereg-plugin/production_lines",
-      "reason": "Approved scoped no-FE immutable centered summary, row-partition products and guarded TSQR retry with canonical rank fallback and independent original-source certificates; existing families retain arithmetic. Revised bulk exact centering, bounded no-FE packed loading and shared residual traversal preserve scalar arithmetic and independent scores. Exact wide-descriptor adoption is restricted to the admitted centered family."
-    },
-    {
-      "after": 8992,
-      "before": 8937,
-      "metric": "file/crates/fereg-core/src/fe/borrowed_map.rs",
-      "reason": "Approved scoped no-FE immutable centered summary, row-partition products and guarded TSQR retry with canonical rank fallback and independent original-source certificates; existing families retain arithmetic."
-    },
-    {
-      "after": 2158,
-      "before": 2076,
-      "metric": "file/crates/fereg-core/src/ols/finite_wls_kernel.rs",
-      "reason": "Approved scoped no-FE immutable centered summary, row-partition products and guarded TSQR retry with canonical rank fallback and independent original-source certificates; existing families retain arithmetic."
-    },
-    {
-      "after": 224,
-      "before": 218,
-      "metric": "function/crates/fereg-core/src/ols/finite_wls_kernel.rs/factor_rank_revealing_retained_qr#1",
-      "reason": "Approved scoped no-FE immutable centered summary, row-partition products and guarded TSQR retry with canonical rank fallback and independent original-source certificates; existing families retain arithmetic."
-    },
-    {
-      "after": 5593,
-      "before": 5586,
-      "metric": "file/crates/fereg-core/src/ols/linear_session.rs",
-      "reason": "Approved scoped no-FE immutable centered summary, row-partition products and guarded TSQR retry with canonical rank fallback and independent original-source certificates; existing families retain arithmetic."
-    },
-    {
-      "after": 744,
-      "before": 739,
-      "metric": "function/crates/fereg-core/src/ols/linear_session.rs/solve_full_retained_rank#1",
-      "reason": "Approved scoped no-FE immutable centered summary, row-partition products and guarded TSQR retry with canonical rank fallback and independent original-source certificates; existing families retain arithmetic."
-    },
-    {
-      "after": 245,
-      "before": 243,
-      "metric": "function/crates/fereg-core/src/ols/linear_session.rs/stream_frozen_solve#1",
-      "reason": "Approved scoped no-FE immutable centered summary, row-partition products and guarded TSQR retry with canonical rank fallback and independent original-source certificates; existing families retain arithmetic."
-    },
-    {
-      "after": 4386,
-      "before": 4345,
-      "metric": "file/crates/fereg-core/src/ols/prepared_fit.rs",
-      "reason": "Approved scoped no-FE immutable centered summary, row-partition products and guarded TSQR retry with canonical rank fallback and independent original-source certificates; existing families retain arithmetic."
-    },
-    {
-      "after": 171,
-      "before": 170,
-      "metric": "function/crates/fereg-core/src/ols/prepared_fit.rs/fit_projection_only_internal#1",
-      "reason": "Approved scoped no-FE immutable centered summary, row-partition products and guarded TSQR retry with canonical rank fallback and independent original-source certificates; existing families retain arithmetic."
-    },
-    {
-      "after": 3627,
-      "before": 3584,
-      "metric": "file/crates/fereg-plugin/src/estimate.rs",
-      "reason": "Approved scoped no-FE immutable centered summary, row-partition products and guarded TSQR retry with canonical rank fallback and independent original-source certificates; existing families retain arithmetic."
-    },
-    {
-      "after": 281,
-      "before": 275,
-      "metric": "function/crates/fereg-plugin/src/estimate.rs/decode_with_memory_limit#1",
-      "reason": "Explicitly exclude every optional observation output from the approved no-FE arithmetic without changing other FE output policies."
-    },
-    {
-      "after": 458,
-      "before": 456,
-      "metric": "function/crates/fereg-plugin/src/estimate.rs/load_ols_input_with_team#1",
-      "reason": "Approved scoped no-FE immutable centered summary, row-partition products and guarded TSQR retry with canonical rank fallback and independent original-source certificates; existing families retain arithmetic. Revised bulk exact centering, bounded no-FE packed loading and shared residual traversal preserve scalar arithmetic and independent scores."
+      "reason": "One Windows Stata/MP 19 GUI capability row; transport qualification uses the independent input oracle, failure fixtures and missing-value witness. Johannes waived Windows loading Break on 2026-11-07; runtime polling and arithmetic are unchanged."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -24774,160 +24696,160 @@
         "dispatch_candidates": [
           {
             "condition": "rows == 0 || width == 0",
-            "line": 243
+            "line": 244
           },
           {
             "condition": "StagePlan :: new ( rows as u128 * slots as u128 , blocks , team . threads ( ) ) . lanes < 2",
-            "line": 279
+            "line": 280
           },
           {
             "condition": "memory . retain ( descriptor_bytes ) . is_err ( )",
-            "line": 288
+            "line": 289
           },
           {
             "condition": "memory . retain ( actual_bytes - descriptor_bytes ) . is_err ( )",
-            "line": 324
+            "line": 325
           },
           {
             "condition": "rows == 0",
-            "line": 698
+            "line": 699
           },
           {
             "condition": "let Some ( failure ) = read_marker ( source , bank , start , rows , output )",
-            "line": 705
+            "line": 706
           },
           {
             "condition": "let Some ( failure ) = read_payload ( source , bank , start , rows , retained )",
-            "line": 714
+            "line": 715
           },
           {
             "condition": "rows == 0",
-            "line": 738
+            "line": 739
           },
           {
             "condition": "read ( start , rows )",
-            "line": 822
+            "line": 823
           }
         ],
         "functions": {
           "block#1": {
-            "line": 673,
+            "line": 674,
             "lines": 4
           },
           "bytes#1": {
-            "line": 954,
+            "line": 955,
             "lines": 6
           },
           "check_reserved#1": {
-            "line": 497,
+            "line": 498,
             "lines": 35
           },
           "column#1": {
-            "line": 960,
+            "line": 961,
             "lines": 9
           },
           "decline#1": {
-            "line": 764,
+            "line": 765,
             "lines": 8
           },
           "descriptor_bytes#1": {
-            "line": 666,
+            "line": 667,
             "lines": 6
           },
           "enabled#1": {
-            "line": 147,
+            "line": 148,
             "lines": 3
           },
           "error#1": {
-            "line": 559,
+            "line": 560,
             "lines": 7
           },
           "fill_excluded#1": {
-            "line": 737,
+            "line": 738,
             "lines": 26
           },
           "finish#1": {
-            "line": 1023,
+            "line": 1024,
             "lines": 13
           },
           "from_host#1": {
-            "line": 95,
+            "line": 96,
             "lines": 27
           },
           "from_request#1": {
-            "line": 123,
+            "line": 124,
             "lines": 9
           },
           "marker#1": {
-            "line": 650,
+            "line": 651,
             "lines": 3
           },
           "new#1": {
-            "line": 161,
+            "line": 162,
             "lines": 6
           },
           "new#2": {
-            "line": 613,
+            "line": 614,
             "lines": 36
           },
           "new#3": {
-            "line": 1013,
+            "line": 1014,
             "lines": 9
           },
           "payload_failure#1": {
-            "line": 928,
+            "line": 929,
             "lines": 10
           },
           "positions#1": {
-            "line": 655,
+            "line": 656,
             "lines": 10
           },
           "read_block#1": {
-            "line": 685,
+            "line": 686,
             "lines": 49
           },
           "read_marker#1": {
-            "line": 775,
+            "line": 776,
             "lines": 87
           },
           "read_payload#1": {
-            "line": 863,
+            "line": 864,
             "lines": 64
           },
           "record#1": {
-            "line": 575,
+            "line": 576,
             "lines": 9
           },
           "reserved#1": {
-            "line": 679,
+            "line": 680,
             "lines": 5
           },
           "run_phases#1": {
-            "line": 406,
+            "line": 407,
             "lines": 90
           },
           "serial#1": {
-            "line": 135,
+            "line": 136,
             "lines": 3
           },
           "spi_failure#1": {
-            "line": 568,
+            "line": 569,
             "lines": 6
           },
           "trace_loaded_input#1": {
-            "line": 943,
+            "line": 944,
             "lines": 59
           },
           "try_read#1": {
-            "line": 227,
+            "line": 228,
             "lines": 146
           },
           "with_fault#1": {
-            "line": 140,
+            "line": 141,
             "lines": 6
           }
         },
-        "production_lines": 858
+        "production_lines": 859
       },
       "crates/fereg-plugin/src/ppml_bias.rs": {
         "chunk_candidates": [],
@@ -25946,7 +25868,7 @@
         "dispatch_candidates": 165,
         "files_over_1500": 3,
         "functions_over_150": 12,
-        "production_lines": 17260
+        "production_lines": 17261
       }
     },
     "schema": 1
