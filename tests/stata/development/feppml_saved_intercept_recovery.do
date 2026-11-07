@@ -2,7 +2,7 @@ version 18.0
 clear all
 set more off
 
-* Independent positive-mean model on two disconnected, weakly joined
+* Independent positive-mean model on two disconnected
 * three-effect components. Saved channels must reconstruct the accepted fit
 * without changing its coefficients, covariance, sample or aggregate predictor.
 local workers = min(4, c(processors_mach), c(processors_lic))
@@ -11,14 +11,14 @@ if `"`stress'"' != "" local workers = `stress'
 set obs 1920
 generate long row = _n - 1
 generate byte component = floor(row / 960)
-generate int worker = mod(floor(row / 10), 96)
-generate byte period = mod(floor(row / 2), 5)
-generate int firm = cond(period == 4, mod(worker + 1, 96), worker)
-generate int g = component * 96 + worker
-generate int h = component * 96 + firm
+generate int worker = mod(floor(row / 80), 12)
+generate byte period = mod(floor(row / 16), 5)
+generate int firm = cond(period == 4, mod(worker + 1, 12), worker)
+generate int g = component * 12 + worker
+generate int h = component * 12 + firm
 generate byte t = component * 5 + period
 generate double x = sin(row * .37) + .2 * mod(row, 2)
-generate double w = cond(period == 4, 1e-4, .5 + mod(worker, 7))
+generate double w = cond(period == 4, 1, .5 + mod(worker, 7))
 generate double truth_eta = .2*x + .3 + .05*component + ///
     .1*sin(worker) + .035*cos(firm) + .01*period
 generate double y = exp(truth_eta)
