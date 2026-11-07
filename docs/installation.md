@@ -4,9 +4,15 @@
 Linux x86-64, Windows x86-64 and macOS. The macOS plugin contains Apple Silicon
 and Intel code; licensed Mac testing uses Apple Silicon. See
 [validation](VALIDATION.md) for the checks performed on each platform.
-The Linux binary requires glibc 2.28 or newer. Windows uses serial data loading;
+The Linux binary requires glibc 2.28 or newer. The 0.5.1 Windows release uses serial data loading;
 parallel loading is enabled only on qualified Mac and Linux hosts. The Intel
 Mac code is included but has not been tested in a licensed Intel Mac Stata session.
+
+The unpublished candidate also enables eligible parallel numeric loading on
+Windows x86-64 Stata/MP 19 GUI. Break during Windows loading may be delayed or
+unavailable; other Windows hosts retain serial loading. See the
+[candidate qualification](VALIDATION.md#windows-parallel-input-candidate-november-7-2026)
+before building this development source.
 
 ## Install stable version 0.5.1
 

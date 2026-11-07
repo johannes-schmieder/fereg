@@ -6,11 +6,8 @@ if c(os) != "Windows" {
     exit 9
 }
 local root = subinstr(`"`c(pwd)'"', char(92), "/", .)
-* Check real GUI Break delivery before the cold native build.
-shell powershell.exe -NoLogo -NoProfile -NonInteractive ///
-    -ExecutionPolicy Bypass -File "scripts/windows_input_break.ps1" -Probe
-do "scripts/windows_input_result.do" "target/windows-input-break/result.txt" ///
-    "WINDOWS_INPUT_GUI=PASS" detailed
+* Johannes waived Windows Break-during-loading qualification on 2026-11-07.
+* All native, scientific and transaction assertions below remain required.
 capture erase "dist/fereg_windows.plugin.sha256"
 capture erase "target/windows-plugin.verified"
 capture erase "target/windows-installed.verified"
@@ -101,7 +98,7 @@ if _rc exit 9110
 capture noisily do "tests/stata/postestimation/replay_and_prefixes.do"
 if _rc exit 9111
 
-* Qualify Windows Stata/MP 19 GUI numeric windows, including live Break.
+* Qualify Windows Stata/MP 19 GUI numeric windows; loading Break is waived.
 assert c(MP) & floor(c(stata_version)) == 19
 quietly _fereg_input_host
 assert `"`r(edition)'"' == "MP" & `"`r(interface)'"' == "gui"
@@ -146,11 +143,5 @@ capture noisily do "tests/stata/development/ols_no_fe_direct.do"
 if _rc exit 9119
 capture noisily do "tests/stata/development/ols_no_fe_centered.do"
 if _rc exit 9120
-shell powershell.exe -NoLogo -NoProfile -NonInteractive ///
-    -ExecutionPolicy Bypass -File "scripts/windows_input_break.ps1"
-capture noisily do "scripts/windows_input_result.do" "target/windows-input-break/result.txt" ///
-    "WINDOWS_INPUT_BREAK=PASS" detailed
-if _rc >= 10000 exit _rc
-if _rc exit 9121
 shell powershell.exe -NoLogo -NoProfile -NonInteractive ///
     -ExecutionPolicy Bypass -File "scripts/windows_ci_report.ps1" -Action pass

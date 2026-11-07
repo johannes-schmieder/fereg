@@ -863,7 +863,9 @@ platform: {cmd:fereg_macos.plugin}, {cmd:fereg_linux.plugin}, or
 The package provides Linux x86-64, Windows x86-64 and universal macOS
 binaries. Linux requires glibc 2.28 or newer. Mac testing uses Apple Silicon;
 the Intel Mac code has not been tested in a licensed Intel Mac Stata session.
-Windows loads numeric data serially. See the
+Windows x86-64 Stata/MP 19 GUI can load eligible numeric inputs in parallel;
+other Windows hosts use serial input. Break during Windows loading may be
+delayed or unavailable. See the
 {browse "https://github.com/johannes-schmieder/fereg/blob/main/docs/installation.md":installation guide}
 and {browse "https://github.com/johannes-schmieder/fereg/blob/main/docs/VALIDATION.md":platform validation record}.
 

@@ -1,7 +1,7 @@
 {
   "schema": "fereg-windows-input-qualification-v1",
   "date": "2026-11-07",
-  "status": "NOT_QUALIFIED",
+  "status": "PENDING_FINAL_WINDOWS_RUN",
   "publication": "None; main and published binaries retain serial Windows input.",
   "incumbent_source": "19c60c08c081032e782285110ba12c449a98a9eb",
   "candidate_source": "16ff0ae0cadfeb435838d3f7c8ffeac980192e05",
@@ -41,7 +41,7 @@
     "last_code": 85010,
     "finding": "The owned normal-GUI child executed the token-bound startup profile and readiness marker, but no visible top-level window was found for Break-control discovery.",
     "no_inference": "This does not prove that SYSTEM cannot host a GUI or that the parallel loader mishandles Break. Cancellation was never delivered in a Windows numeric window.",
-    "next_bounded_diagnostic": "Show the hidden window belonging to the normal-GUI child before control discovery; current Restore only acts on already-visible windows. Preserve token-bound startup, owned PID, real Break control, bounded delivery, r(1), rollback and recovery requirements."
+    "qualification_requirement": "WAIVED_BY_OWNER; the unverified behavior and failed attempts remain recorded."
   },
   "local_source_suite": {
     "command": "./scripts/run_tests.sh --source-only",
@@ -212,5 +212,12 @@
     }
   ],
   "controller_sha256": "e635d58609f24fa8564ce4c3b6787eccd9df36892edb636069cdc2ebcdfdaf00",
-  "diagnostic_guard_sha256": "14fe3f6515439c55d0732e99fba797280b76dfd9638345794a639a00a44ffd12"
+  "diagnostic_guard_sha256": "14fe3f6515439c55d0732e99fba797280b76dfd9638345794a639a00a44ffd12",
+  "loading_break_waiver": {
+    "date": "2026-11-07",
+    "authority": "Johannes explicitly accepted unavailable Break during Windows loading and directed continued qualification.",
+    "scope": "Windows loading cancellation only; native, scientific, missing-value, failure rollback and transaction checks remain required.",
+    "implementation": "Remove only the failed GUI/Break qualification gates and their unused experimental helpers; retain runtime polling and the strengthened Unix live-Break fixture.",
+    "limitation": "Break during Windows loading may be delayed or unavailable."
+  }
 }
