@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Enable eligible parallel numeric loading on Windows x86-64 Stata/MP 19 GUI.
+  The input oracle passed at two and eight workers, alongside the native,
+  scientific and transaction checks. The loading algorithm and arithmetic are
+  unchanged.
+- Document the accepted Windows loading limitation: Break may be delayed or
+  unavailable during loading. Runtime polling remains enabled.
+
 ## 0.5.1 — 2026-11-06
 
 Use the consolidated upstream CMG 0.2.0 release source at `e5613e81fb3b03c78de98658b372646fa802aabb`. Retain fereg's existing CMG APIs, 32-level hierarchy default, admission bounds and numerical

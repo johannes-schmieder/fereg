@@ -2,50 +2,54 @@
 
 ## Windows parallel-input candidate, November 7, 2026
 
-**Final Windows run pending; not published.** Johannes explicitly waived
-Break during Windows loading on November 7 and directed continued work on the
-candidate. The waiver permits delayed or unavailable cancellation during
-Windows loading; it does not relax native, scientific, missing-value,
-failure rollback or transaction checks. Runtime polling remains unchanged.
-The failed experimental GUI/Break helpers have been removed from the profile.
+**Qualified with the loading-Break waiver; not released.** The Windows
+x86-64 Stata/MP 19 GUI candidate at `ef8fa126` passed the full exact-source
+Windows profile in run `win-20261107T111500Z-ecc7882e`. The guarded collector
+returned the tested binary; its SHA-256 is
+`a9baa4333b31504bf0d0af147e65f4c2838686a2689f205db4096c919676279d`
+(12,247,040 bytes). Collection independently verified that hash. The machine
+stopped, transient transfer objects were deleted and the shared lock released.
+The [qualification record](../bench/results/windows-input-20261107.json)
+retains the exact source/archive/receipt identities and all earlier attempts.
 
-The private candidate adds only the Windows x86-64 Stata/MP 19 GUI host row;
+Johannes explicitly waived Break during Windows loading on November 7. The
+waiver permits delayed or unavailable cancellation during loading; it changes
+no polling code, scientific criterion, failure rollback or cancellation
+requirement outside Windows loading. The failed experimental GUI/Break helpers
+were removed from the profile. Live Windows loading Break remains unverified.
+
+The only runtime change is one Windows x86-64 Stata/MP 19 GUI host-policy row;
 the loader algorithm and scientific arithmetic are unchanged. Other Windows
-hosts retain serial input. Main and the 0.5.1 binaries still use serial Windows
-input; the candidate root package has not been refreshed. The
-[bounded qualification evidence](../bench/results/windows-input-20261107.json)
-records the exact sources, archive/receipt hashes, ten prior failed attempts
-and the explicit waiver. No Windows performance claim is made.
-
-At `ef1825eb`, the actual Windows Rust/MSVC build, embedded source identity,
-C numeric-window guards, PE audit, native loader and installed-plugin checksum
-checks passed. All mapped scientific and transaction fixtures passed, including
-the 80-cell missing-value witness, worker panic/read-failure handling and the
-input oracle at two and eight workers. Each oracle required exactly 72 cases
-and 208 runs, at least 72 actual parallel-window runs, exact serial/parallel
-input digests and the existing independent scientific tolerances. This is
-source-bound partial evidence: the overall run failed at the deliberately
-deferred GUI probe, and the collector therefore exported no candidate binary.
-The full Windows profile must pass under the waived loading-Break requirement
-before collecting and accepting the candidate artifact.
+hosts retain serial input. The actual Rust/MSVC build, embedded source identity,
+exact-FMA/fused-kernel witnesses, C numeric-window guards, PE audit, native
+loader and installed-plugin checksum checks passed. All mapped OLS/PPML
+scientific and transaction fixtures passed, including the 80-cell missing-value
+witness, worker panic/read-failure handling and recovery, and the input oracle
+at two and eight workers. Each oracle required 72 cases and 208 runs, at least
+72 actual parallel-window runs, exact serial/parallel input digests and the
+existing independent scientific tolerances. No Windows performance claim is made.
 
 The full local source-only suite passed (2,289 Rust test executions, 349 Python
 tests and seven portable checks), as did the strengthened Apple Silicon live
-input-Break fixture using the unchanged installed Mac plugin. The fixture now
+input-Break fixture using the unchanged installed Mac plugin. That fixture
 checks PPML covariance/sample rollback and an injected reader failure before
-same-session exact serial/parallel recovery. Installed-package admission for
-the candidate root distribution has not been performed.
+same-session exact serial/parallel recovery. The focused Windows diagnostic
+tests, complexity ratchet, documentation checks and independent candidate review
+also passed. Main and the 0.5.1 binaries still use serial Windows input. The
+candidate is ready for integration with the concurrent PPML work; a matching
+native package, corresponding source and strict root-package/HTTP installation
+admission remain required before a combined release.
 
-Live Windows Break remains untested. COM activation did not complete. The
-batch GUI probes exposed no visible window. The final normal-GUI child at
-`16ff0ae0` executed its fresh token-bound startup profile and readiness marker,
-but the helper again found no visible top-level window (`r(85010)`). This does
-not establish a loader cancellation defect: Break was never delivered. All ten
-runs stopped the instance, deleted transient transfer objects and released the
-shared lock. Existing Stata Automation was registered through `/Register`;
-that registration remains, with no identity, DCOM-permission, networking, IAM,
-Stata executable or license changes. The failed outcomes remain failures; the
-owner's subsequent waiver changes the acceptance requirement only.
+The ten earlier runs remain failures. COM activation did not complete, and
+GUI probes could not find an owned visible window for Break delivery. At
+`ef1825eb` the native/scientific checks passed before the deferred GUI-probe
+failure; that partial evidence was not an overall pass. At `16ff0ae0` the
+normal-GUI child reached its token-bound readiness marker but again exposed no
+visible top-level window (`r(85010)`). Break was never delivered, so these
+attempts do not establish a loader cancellation defect. Every run stopped the
+machine, deleted transient transfers and released the lock. Existing Stata
+Automation was registered through `/Register`; that registration remains, with
+no identity, DCOM-permission, networking, IAM, Stata executable or license changes.
 
 ## CMG 0.2.0 consolidation, November 6, 2026
 

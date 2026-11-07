@@ -1,17 +1,17 @@
 {
   "schema": "fereg-windows-input-qualification-v1",
   "date": "2026-11-07",
-  "status": "PENDING_FINAL_WINDOWS_RUN",
-  "publication": "None; main and published binaries retain serial Windows input.",
+  "status": "QUALIFIED_WITH_LOADING_BREAK_WAIVER",
+  "publication": "Candidate source and qualification only; main and published 0.5.1 binaries retain serial Windows input. Combine with the concurrent PPML work before native release integration.",
   "incumbent_source": "19c60c08c081032e782285110ba12c449a98a9eb",
-  "candidate_source": "16ff0ae0cadfeb435838d3f7c8ffeac980192e05",
+  "candidate_source": "ef8fa1262e83bd003e2b237c9395cec48cae5f95",
   "candidate_runtime_sha256": "bb91ec9cf11d595b6982ceff423379df0c64e18564b03b694c623fc76659548b",
   "scope": "One Windows x86-64 Stata/MP 19 GUI capability row; existing loader and scientific arithmetic unchanged. Other host policies unchanged.",
   "windows_science": {
     "status": "PASS",
-    "source": "ef1825eb747927fd1b7ceba6a500444df43c6dc5",
-    "run": "win-20261107T085212Z-fbd9c67c",
-    "basis": "The exact driver reached its deferred probe-failure exit only after every independent native/scientific assertion passed. The overall run remains FAIL.",
+    "source": "ef8fa1262e83bd003e2b237c9395cec48cae5f95",
+    "run": "win-20261107T111500Z-ecc7882e",
+    "basis": "The exact-source Windows profile passed every required assertion after removal of only the owner-waived loading-Break gates. The guarded collector returned the tested binary and verified its hash.",
     "input_oracle_workers": [
       2,
       8
@@ -32,8 +32,8 @@
       "postcommit transaction rollback",
       "no-FE centered and derived-residual witnesses"
     ],
-    "binary_sha256": null,
-    "binary_hash_limitation": "The guarded collector emits the artifact hash only after an overall PASS; no candidate binary was collected or distributed."
+    "binary_sha256": "a9baa4333b31504bf0d0af147e65f4c2838686a2689f205db4096c919676279d",
+    "binary_bytes": 12247040
   },
   "live_break": {
     "status": "NOT_QUALIFIED",
@@ -209,6 +209,35 @@
       "elapsed_ms": 4667,
       "completed_native_stages": [],
       "cleanup": "instance stopped; transients deleted; shared lock released"
+    },
+    {
+      "run": "win-20261107T111500Z-ecc7882e",
+      "source": "ef8fa1262e83bd003e2b237c9395cec48cae5f95",
+      "source_archive_sha256": "bbaf286e73802c91953521a4b57df491baa5e91112175be8a2c708ceaa979196",
+      "receipt_sha256": "29d2af38e30b0d0fb46fc9a2d14994a4e8fa583115269187d5e3de3583ef6215",
+      "status": "PASS",
+      "stage": "complete",
+      "stata_rc": 0,
+      "elapsed_ms": 1098927,
+      "completed_native_stages": [
+        "startup",
+        "toolchain",
+        "source_identity",
+        "cargo_build",
+        "exact_fma",
+        "fused_kernels",
+        "c_bridge",
+        "numeric_guards",
+        "plugin_link",
+        "binary_audit",
+        "native_loader",
+        "build_complete",
+        "checksum",
+        "stata_smoke",
+        "single_runtime"
+      ],
+      "binary_sha256": "a9baa4333b31504bf0d0af147e65f4c2838686a2689f205db4096c919676279d",
+      "cleanup": "instance stopped; transients deleted; shared lock released"
     }
   ],
   "controller_sha256": "e635d58609f24fa8564ce4c3b6787eccd9df36892edb636069cdc2ebcdfdaf00",
@@ -219,5 +248,23 @@
     "scope": "Windows loading cancellation only; native, scientific, missing-value, failure rollback and transaction checks remain required.",
     "implementation": "Remove only the failed GUI/Break qualification gates and their unused experimental helpers; retain runtime polling and the strengthened Unix live-Break fixture.",
     "limitation": "Break during Windows loading may be delayed or unavailable."
+  },
+  "prior_partial_science": {
+    "status": "PASS",
+    "source": "ef1825eb747927fd1b7ceba6a500444df43c6dc5",
+    "run": "win-20261107T085212Z-fbd9c67c",
+    "basis": "The exact driver reached its deferred probe-failure exit only after every independent native/scientific assertion passed. The overall run remains FAIL."
+  },
+  "independent_review": {
+    "source": "ef8fa1262e83bd003e2b237c9395cec48cae5f95",
+    "status": "PASS",
+    "scope": "Bounded independent review found no material gap in the actual-window, input equality, science, failure/transaction checks or narrow loading-Break waiver."
+  },
+  "focused_checks": {
+    "windows_diagnostics_tests": 14,
+    "local_documentation_link_targets": 229,
+    "complexity_ratchet": "PASS against 19c60c08",
+    "removed_gui_helper_references": "PASS",
+    "diff_check": "PASS"
   }
 }
