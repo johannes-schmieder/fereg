@@ -68,6 +68,8 @@ if (-not $Worker) {
     $expectedResult = if ($Probe) { 'WINDOWS_INPUT_AUTOMATION=PASS' } else { 'WINDOWS_INPUT_BREAK=PASS' }
     $child = $null
     $passed = $false
+    $activationCode = 0
+    $initialStata = @(Get-Process -Name StataMP-64 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Id)
     try {
         $childArguments = @(
             '-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass',
@@ -76,7 +78,13 @@ if (-not $Worker) {
         $child = Start-Process powershell.exe -PassThru -WorkingDirectory $Root -ArgumentList $childArguments
         $null = $child.Handle
         $limit = if ($Probe) { 60000 } else { 300000 }
-        if (-not $child.WaitForExit($limit)) { throw 'automation timeout' }
+        if (-not $child.WaitForExit($limit)) {
+            if ($Probe -and (Test-Path -LiteralPath $Stage) -and
+                ([string](Get-Content -LiteralPath $Stage -Raw)) -ceq '81001') {
+                $activationCode = & "$PSScriptRoot/windows_input_com_state.ps1" -Before $initialStata
+            }
+            throw 'automation timeout'
+        }
         $child.Refresh()
         if ($child.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $WorkerResult) -or
             (Get-Content -LiteralPath $WorkerResult -Raw).Trim() -cne $expectedResult) {
@@ -115,6 +123,7 @@ if (-not $Worker) {
                     $last = [string](Get-Content -LiteralPath $Stage -Raw)
                     if ($last -cmatch '\A810[0-9]{2}\z') { $timeoutCode = [int]$last + 1000 }
                 }
+                if ($activationCode -ge 83000 -and $activationCode -le 83334) { $timeoutCode = $activationCode }
                 $failure = "WINDOWS_INPUT_QUALIFICATION=FAIL|code=$timeoutCode"
             }
             [IO.File]::WriteAllText($Result, "$failure`r`n")
