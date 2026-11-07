@@ -2,7 +2,7 @@
 
 ## Combined Windows/PPML release 0.5.2, November 7, 2026
 
-**Qualified for 0.5.2 publication and main integration.** Johannes requested
+**Published as v0.5.2 and merged into main (PR #36).** Johannes requested
 integrating both changes and directed continuation after the saved-effects
 slowdown was disclosed. This accepts that performance exception; the recorded
 gate remains **FAIL** (paired ratio 1.1020). No new timings were collected. See the [combined artifact checks](../bench/results/windows-ppml-20261107.json)
@@ -32,7 +32,12 @@ A fresh local root installation verifies all 37 installed file hashes, native
 selftest and independent OLS/PPML group-mean examples. Four checks pass from the
 complete native archive. The corresponding-source closure has zero advisories;
 all 2,775 compiler-input files match the successful offline Mac build exactly.
-Native Intel-Mac execution remains unqualified.
+The published source/native archives, checksums and build instructions download
+with exactly the qualified hashes. Fresh HTTP installations from the release
+tag, main and the actual `github install` command each verify all 37 file hashes,
+native selftest and independent OLS/PPML examples. The release-list response is
+246,965 bytes, below the helper's 264,392-character limit. Native Intel-Mac
+execution remains unqualified.
 
 Linux native/ABI checks and six mapped PPML fixtures pass, as do the strict
 two-effect million-row fit and the three-effect 1e-8 reconstruction/exact-repeat

@@ -647,5 +647,12 @@
     "Focused performance evidence: three cells on one isolated Linux host; all observations retained",
     "Easy saved-effect cell failed nonregression: paired median ratio1.1019628634479774, bootstrap95[1.0259479974225278,1.157030589042695]",
     "Frozen outreach campaign stays stopped and historical observations are not replaced"
-  ]
+  ],
+  "subsequent_integration": {
+    "record": "windows-ppml-20261107.json",
+    "version": "0.5.2",
+    "owner_accepted_performance_exception": true,
+    "timing_gate_retained": "FAIL",
+    "basis": "Johannes directed continuation after disclosure of the measured slowdown; no timings were repeated."
+  }
 }

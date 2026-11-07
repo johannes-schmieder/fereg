@@ -2,7 +2,7 @@
   "schema": "fereg-windows-input-qualification-v1",
   "date": "2026-11-07",
   "status": "QUALIFIED_WITH_LOADING_BREAK_WAIVER",
-  "publication": "Candidate source and qualification only; main and published 0.5.1 binaries retain serial Windows input. Combine with the concurrent PPML work before native release integration.",
+  "publication": "Historical standalone candidate evidence. Combined with PPML and published as v0.5.2; see windows-ppml-20261107.json for the final binaries and HTTP installation checks.",
   "incumbent_source": "19c60c08c081032e782285110ba12c449a98a9eb",
   "candidate_source": "ef8fa1262e83bd003e2b237c9395cec48cae5f95",
   "candidate_runtime_sha256": "bb91ec9cf11d595b6982ceff423379df0c64e18564b03b694c623fc76659548b",

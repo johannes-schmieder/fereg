@@ -1,9 +1,9 @@
 {
   "schema": 1,
-  "scope": "Combined Windows parallel numeric loader and existing PPML strict-curve/saved-effect recovery repair; release preparation",
+  "scope": "Combined Windows parallel numeric loader and existing PPML strict-curve/saved-effect recovery repair; published release and main integration",
   "version": "0.5.2",
   "runtime_sha256": "43110fefd9b65be5ffa9ad66e81ef0f8d1833f13246bab0aebf405e3677f682e",
-  "publication_status": "qualified_owner_exceptions_accepted",
+  "publication_status": "published_v0.5.2_and_merged_to_main",
   "performance": {
     "record": "ppml-recovery-20261107.json",
     "saved_effects_gate": "FAIL",
@@ -458,7 +458,7 @@
       "macos"
     ],
     "dependency_audit": "PASS; zero advisories, Rust 1.85.1",
-    "publication": "not published",
+    "publication": "https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.2",
     "staged_installation": {
       "status": "PASS",
       "tests_passed": 4,
@@ -498,5 +498,74 @@
     "runtime_and_package_match_qualified_candidate": true,
     "ratchet_note": "Reset consumed growth exceptions after integration without changing any inventory metric. The first parent already contains the documented PPML growth; the merge retains the separately documented one-line Windows host policy addition.",
     "unrelated_benchmark_edits": "byte-identical working diff preserved"
+  },
+  "publication": {
+    "tag": "v0.5.2",
+    "tag_commit": "8eca3a13746763b97ab47d25a2b3d53295af9449",
+    "pull_request": 36,
+    "merge_commit": "e884f1be841f75567459cd7bb0ef02c4d4965c3a",
+    "published_assets_verified_exact": true,
+    "release_list_bytes": 246965,
+    "assets": [
+      {
+        "name": "fereg-0.5.2-source.zip",
+        "sha256": "468e9173c200bfab0f7707aee731ce93d66ab9de9041aad1127ff962d812a4d4",
+        "bytes": 35579662
+      },
+      {
+        "name": "fereg-0.5.2-source.zip.sha256",
+        "sha256": "d21f7a29a8a34f2d2e0433aca0fbcb3958f4d8a82b67b5be280472ddeedf1312",
+        "bytes": 89
+      },
+      {
+        "name": "fereg-0.5.2.zip",
+        "sha256": "41b0b163de4b2e07a43422c1416bf7bed491500bbf94b368c94c443945771e29",
+        "bytes": 18615698
+      },
+      {
+        "name": "fereg-0.5.2.zip.sha256",
+        "sha256": "f7d010721c23307b1442af98664965c7a36b06f6b9d9a4a1da2a88b5a26f2135",
+        "bytes": 82
+      },
+      {
+        "name": "macos_source_build.md",
+        "sha256": "325e244f6133a137db9c9f7cece08950048da4c8af9b91219ed2f89852a418d3",
+        "bytes": 2826
+      }
+    ],
+    "http_installations": [
+      {
+        "status": "PASS",
+        "method": "tag",
+        "version": "0.5.2",
+        "files_verified": 37,
+        "all_installed_hashes": "exact",
+        "selftest": "PASS",
+        "independent_ols_group_means": "PASS",
+        "independent_ppml_group_means": "PASS"
+      },
+      {
+        "status": "PASS",
+        "method": "main",
+        "version": "0.5.2",
+        "files_verified": 37,
+        "all_installed_hashes": "exact",
+        "selftest": "PASS",
+        "independent_ols_group_means": "PASS",
+        "independent_ppml_group_means": "PASS"
+      },
+      {
+        "status": "PASS",
+        "method": "github",
+        "version": "0.5.2",
+        "files_verified": 37,
+        "all_installed_hashes": "exact",
+        "selftest": "PASS",
+        "independent_ols_group_means": "PASS",
+        "independent_ppml_group_means": "PASS"
+      }
+    ],
+    "http_driver_sha256": "bc0f4a489bee1ec0798188aa8ebca435b5e0906c388695bf3856f1897a0a0779",
+    "http_file_hash_reference": "local_root_installation.files; all three HTTP routes match every byte"
   }
 }
