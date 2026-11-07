@@ -9,6 +9,8 @@ New-Item -ItemType Directory -Force -Path $Work | Out-Null
 $Result = Join-Path $Work 'result.txt'
 $Status = Join-Path $Work 'status.txt'
 $Ready = Join-Path $Work 'ready.txt'
+$Started = Join-Path $Work 'started.txt'
+$Gui = Join-Path $Work 'gui'
 $Log = Join-Path $Work 'fixture.log'
 $StataPath = 'C:\Program Files\Stata19\StataMP-64.exe'
 $Token = [Guid]::NewGuid().ToString('N')
@@ -16,7 +18,7 @@ $FailureCode = 84000
 $owned = $null
 $temporary = $null
 $passed = $false
-Remove-Item -LiteralPath $Result, $Status, $Ready, $Log -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath $Result, $Status, $Ready, $Started, $Log -Force -ErrorAction SilentlyContinue
 try {
     Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes, WindowsBase
     Add-Type -Path "$PSScriptRoot/windows_input_gui.cs" -ReferencedAssemblies @(
@@ -25,17 +27,27 @@ try {
     $temporary = [FeregInputGui]::TemporaryPath()
     $env:FEREG_BREAK_MARKER_TOKEN = $Token
     $env:FEREG_PPML_BREAK_MARKER_TOKEN = $Token
+    $FailureCode = 84002
+    # Stata searches the installation directory before cwd. Preserve any
+    # owner profile rather than replacing it or silently running another one.
+    if (Test-Path -LiteralPath (Join-Path (Split-Path -Parent $StataPath) 'profile.do')) {
+        throw 'higher-priority startup profile exists'
+    }
+    New-Item -ItemType Directory -Force -Path $Gui | Out-Null
     $rootPath = $Root.Replace('\', '/')
     $lines = @('version 18.0', 'clear all', 'set more off',
         ('cd "' + $rootPath + '"'),
+        'tempname started',
+        ('file open `started'' using "' + $Started.Replace('\', '/') + '", write replace text'),
+        ('file write `started'' "STARTED_' + $Token + '" _n'), 'file close `started''',
         ('log using "' + $Log.Replace('\', '/') + '", text replace name(input_break)'),
         'assert c(os) == "Windows" & c(MP) & floor(c(stata_version)) == 19')
     if ($Probe) {
         $lines += @('program define break_probe', 'tempname ready',
             ('file open `ready'' using "' + $Ready.Replace('\', '/') + '", write replace text'),
-            'file write `ready'' "READY" _n', 'file close `ready''',
+            ('file write `ready'' "READY_' + $Token + '" _n'), 'file close `ready''',
             'forvalues i = 1/600 {', 'sleep 100', '}', 'end',
-            'capture noisily break_probe', 'local break_rc = _rc',
+            'nobreak {', 'capture noisily break break_probe', 'local break_rc = _rc',
             'capture assert `break_rc'' == 1', 'local fixture_rc = _rc')
     } else {
         $lines += @(
@@ -47,19 +59,29 @@ try {
             'assert `"`r(interface)''"'' == "gui"',
             'findfile fereg_windows.plugin',
             'assert strpos(subinstr(`"`r(fn)''"'', char(92), "/", .), "/target/windows-plus/") > 0',
-            'capture noisily do "tests/licensed_stata/estimate_input_break.do"',
+            'nobreak {', 'capture noisily break do "tests/licensed_stata/estimate_input_break.do"',
             'local fixture_rc = _rc')
     }
     $lines += @('log close input_break', 'tempname result',
         ('file open `result'' using "' + $Status.Replace('\', '/') + '", write replace text'),
-        'file write `result'' "rc=`fixture_rc''" _n', 'file close `result''', 'exit, clear')
+        'file write `result'' "rc=`fixture_rc''" _n', 'file close `result''', '}', 'exit, clear')
     $wrapper = Join-Path $Work 'fixture.do'
     [IO.File]::WriteAllLines($wrapper, $lines)
+    # The outer fixed controller continues to use /e do. Only this owned GUI
+    # child uses the documented cwd profile mechanism, in the same identity.
+    [IO.File]::WriteAllText((Join-Path $Gui 'profile.do'), ('do "' + $wrapper.Replace('\', '/') + '"' + "`r`n"))
     $FailureCode = 84001
-    $owned = Start-Process -FilePath $StataPath -WorkingDirectory $Root -PassThru -ArgumentList @('/q', '/e', 'do', ('"{0}"' -f $wrapper))
+    $owned = Start-Process -FilePath $StataPath -WorkingDirectory $Gui -PassThru -ArgumentList '/q'
     $null = $owned.Handle
     $deadline = [DateTime]::UtcNow.AddSeconds($(if ($Probe) { 45 } else { 240 }))
-    $markers = if ($Probe) { [pscustomobject]@{ Path = $Ready; Expected = 'READY' } } else {
+    $FailureCode = 84003
+    while ($true) {
+        if ((Test-Path -LiteralPath $Started) -and
+            ([string](Get-Content -LiteralPath $Started -Raw)).Trim() -ceq "STARTED_$Token") { break }
+        if ([DateTime]::UtcNow -ge $deadline -or $owned.HasExited) { throw 'owned startup profile did not run' }
+        Start-Sleep -Milliseconds 50
+    }
+    $markers = if ($Probe) { [pscustomobject]@{ Path = $Ready; Expected = "READY_$Token" } } else {
         [pscustomobject]@{ Path = (Join-Path $temporary ('fereg-native-break-' + $Token + '.marker')); Expected = 'FEREG_NATIVE_BREAK_ARMED' }
         [pscustomobject]@{ Path = (Join-Path $temporary ('feppml-native-break-' + $Token + '.marker')); Expected = 'FEPPML_NATIVE_BREAK_ARMED' }
     }
@@ -78,8 +100,8 @@ try {
             Start-Sleep -Milliseconds 50
         }
         $FailureCode = 84020
-        # /e hides the batch windows; show only our child process for its
-        # accessibility provider to expose the toolbar's current geometry.
+        # Restore the owned GUI so its accessibility provider exposes
+        # the current Break-button geometry.
         [FeregInputGui]::Restore([uint32]$owned.Id)
         Start-Sleep -Milliseconds 500
         $delivery = [FeregInputGui]::Break([uint32]$owned.Id)

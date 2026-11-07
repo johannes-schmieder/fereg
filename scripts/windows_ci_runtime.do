@@ -9,9 +9,8 @@ local root = subinstr(`"`c(pwd)'"', char(92), "/", .)
 * Check real GUI Break delivery before the cold native build.
 shell powershell.exe -NoLogo -NoProfile -NonInteractive ///
     -ExecutionPolicy Bypass -File "scripts/windows_input_break.ps1" -Probe
-capture noisily do "scripts/windows_input_result.do" "target/windows-input-break/result.txt" ///
+do "scripts/windows_input_result.do" "target/windows-input-break/result.txt" ///
     "WINDOWS_INPUT_GUI=PASS" detailed
-local break_probe_rc = _rc
 capture erase "dist/fereg_windows.plugin.sha256"
 capture erase "target/windows-plugin.verified"
 capture erase "target/windows-installed.verified"
@@ -147,9 +146,6 @@ capture noisily do "tests/stata/development/ols_no_fe_direct.do"
 if _rc exit 9119
 capture noisily do "tests/stata/development/ols_no_fe_centered.do"
 if _rc exit 9120
-* Independent native/scientific checks above remain useful if the GUI probe
-* is unavailable. Such a failure still blocks qualification and publication.
-if `break_probe_rc' exit `break_probe_rc'
 shell powershell.exe -NoLogo -NoProfile -NonInteractive ///
     -ExecutionPolicy Bypass -File "scripts/windows_input_break.ps1"
 capture noisily do "scripts/windows_input_result.do" "target/windows-input-break/result.txt" ///

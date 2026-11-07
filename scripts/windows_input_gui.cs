@@ -1,4 +1,4 @@
-// Discover the real Break menu command in the exact child Stata process.
+// Discover the real Break control in the exact child Stata process.
 // SendMessageTimeout proves delivery before the native parked worker is released.
 using System;
 using System.Collections.Generic;
@@ -114,7 +114,7 @@ public static class FeregInputGui {
         EnumWindows(delegate(IntPtr window, IntPtr ignored) {
             uint owner;
             GetWindowThreadProcessId(window, out owner);
-            if (owner == pid) ShowWindowAsync(window, 9);
+            if (owner == pid && IsWindowVisible(window)) ShowWindowAsync(window, 9);
             return true;
         }, IntPtr.Zero);
     }
