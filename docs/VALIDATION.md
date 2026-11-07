@@ -2,7 +2,7 @@
 
 ## CMG 0.2.0 consolidation, November 6, 2026
 
-The prepared 0.5.1 distribution uses CMG
+The published [0.5.1 release](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.1) uses CMG
 `e5613e81fb3b03c78de98658b372646fa802aabb`; all three native plugins were built
 from fereg `84e8973768cfcd54aaf82e584ae2d1a8bd06ff3e`. The required source suite,
 77-case scientific replay, 74 Mac Stata fixtures, three Break profiles, SCC
@@ -10,7 +10,13 @@ Linux qualification and private Windows qualification pass. Original-system
 certificates, fixed-worker repeatability and cross-worker scientific checks
 retain their registered criteria. Fresh/replacement root installation on Mac
 verifies all 37 files and independent OLS/Poisson results; exact staged ZIP
-installation passes on Mac and Linux. Published installations remain pending.
+installation passes on Mac and Linux. Actual published tag/main, `github install`,
+and downloaded native-ZIP fresh/replacement installations pass on Apple Silicon
+Stata/MP 19: all 37 repository-package files (36 in the native ZIP), selftest and
+independent OLS/Poisson results match. A modified help file is replaced correctly.
+The [publication record](../bench/results/cmg-kernels-20261106-publication.json)
+retains installed and downloaded-asset hashes. The release tag remains immutable;
+subsequent commits only record publication evidence.
 
 The primary Linux performance panel passes all 12 cells on six independent
 physical hosts. The Mac panel passes 10 cells; weak-auto-t4 and weak-cmg-t4 are
