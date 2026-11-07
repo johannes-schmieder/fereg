@@ -1,42 +1,5 @@
 {
-  "growth": [
-    {
-      "after": 1482,
-      "before": 1480,
-      "metric": "fereg-core/dispatch_candidates",
-      "reason": "PPML-only certified saved-intercept recovery uses coefficient-space CG, a borrowed original target and one bounded reliable restart; retire rejected categorical curves to permit the existing strict joint witness. Acceptance thresholds and ordinary OLS/CG/CMG routes are unchanged. Optional path tracing is guarded before formatting."
-    },
-    {
-      "after": 115966,
-      "before": 115708,
-      "metric": "fereg-core/production_lines",
-      "reason": "PPML-only certified saved-intercept recovery uses coefficient-space CG, a borrowed original target and one bounded reliable restart; retire rejected categorical curves to permit the existing strict joint witness. Acceptance thresholds and ordinary OLS/CG/CMG routes are unchanged. Optional path tracing is guarded before formatting."
-    },
-    {
-      "after": 9113,
-      "before": 8992,
-      "metric": "file/crates/fereg-core/src/fe/borrowed_map.rs",
-      "reason": "PPML-only certified saved-intercept recovery uses coefficient-space CG, a borrowed original target and one bounded reliable restart; retire rejected categorical curves to permit the existing strict joint witness. Acceptance thresholds and ordinary OLS/CG/CMG routes are unchanged. Optional path tracing is guarded before formatting."
-    },
-    {
-      "after": 3468,
-      "before": 3355,
-      "metric": "file/crates/fereg-core/src/fe/topology_slope_map.rs",
-      "reason": "PPML-only certified saved-intercept recovery uses coefficient-space CG, a borrowed original target and one bounded reliable restart; retire rejected categorical curves to permit the existing strict joint witness. Acceptance thresholds and ordinary OLS/CG/CMG routes are unchanged. Optional path tracing is guarded before formatting."
-    },
-    {
-      "after": 669,
-      "before": 542,
-      "metric": "function/crates/fereg-core/src/fe/borrowed_map.rs/absorb_cg_with_reservation#1",
-      "reason": "PPML-only certified saved-intercept recovery uses coefficient-space CG, a borrowed original target and one bounded reliable restart; retire rejected categorical curves to permit the existing strict joint witness. Acceptance thresholds and ordinary OLS/CG/CMG routes are unchanged. Optional path tracing is guarded before formatting."
-    },
-    {
-      "after": 17261,
-      "before": 17260,
-      "metric": "fereg-plugin/production_lines",
-      "reason": "One Windows Stata/MP 19 GUI capability row; transport qualification uses the independent input oracle, failure fixtures and missing-value witness. Johannes waived Windows loading Break on 2026-11-07; runtime polling and arithmetic are unchanged."
-    }
-  ],
+  "growth": [],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
   "inventory": {
     "files": {

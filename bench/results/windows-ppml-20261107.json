@@ -492,5 +492,11 @@
     ],
     "host": "macOS arm64",
     "linux_mock_audit": "Skipped on macOS; actual Linux native ABI/guard checks passed in job 8497809"
+  },
+  "integration": {
+    "merge_commit": "e884f1be",
+    "runtime_and_package_match_qualified_candidate": true,
+    "ratchet_note": "Reset consumed growth exceptions after integration without changing any inventory metric. The first parent already contains the documented PPML growth; the merge retains the separately documented one-line Windows host policy addition.",
+    "unrelated_benchmark_edits": "byte-identical working diff preserved"
   }
 }
