@@ -63,6 +63,11 @@ const KEPT_WINDOW: usize = 8;
 /// The recurrence stops at this fraction of the requested tolerance on the
 /// column's within norm (see [`run`]).
 const STOP_FRACTION: f64 = 0.1;
+/// An escalated recurrence (a hard graph, restarted from an iterate that
+/// differs across worker counts at rounding level) stops at this fraction of
+/// the ordinary goal, so its results agree across worker counts well inside
+/// the tolerance. The acceptance rule is unchanged.
+const ESCALATED_GOAL_FRACTION: f64 = 0.1;
 /// Columns whose within norm is below this fraction of the certificate scale
 /// lie inside the eliminated span.
 const WITHIN_FLOOR: f64 = 1.0 / (1_u64 << 30) as f64;
@@ -670,9 +675,9 @@ fn solve<const R: usize, const NB: usize, const UNIT: bool, const WEIGHTED: bool
     let started = Instant::now();
     apply::<R, NB, UNIT>(st, w, &work.x, &mut work.lanes);
     subtract(&mut work.r, &work.lanes[0].acc);
-    let solved = pcg::<R, NB, UNIT, Blocks>(
-        st, w, work, targets, remaining, cancel, blocks, false, tally,
-    )?;
+    let tight = targets.tightened(ESCALATED_GOAL_FRACTION);
+    let solved =
+        pcg::<R, NB, UNIT, Blocks>(st, w, work, &tight, remaining, cancel, blocks, false, tally)?;
     facts.pcg_seconds += started.elapsed().as_secs_f64();
     facts.escalations += 1;
     Ok((solved, true))

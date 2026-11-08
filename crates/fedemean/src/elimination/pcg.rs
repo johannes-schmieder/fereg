@@ -86,6 +86,16 @@ pub(super) struct Targets<const R: usize> {
 }
 
 impl<const R: usize> Targets<R> {
+    /// The same acceptance rule with the goals scaled by `factor`.
+    pub(super) fn tightened(&self, factor: f64) -> Self {
+        Self {
+            goal: self.goal.map(|g| g * factor),
+            goal_coefficient: self.goal_coefficient.map(|t| t.map(|g| g * factor)),
+            accept: self.accept,
+            accept_coefficient: self.accept_coefficient,
+        }
+    }
+
     pub(super) fn measure(
         target: &[f64; R],
         coefficient: Option<&[f64; R]>,

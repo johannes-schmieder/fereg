@@ -1,22 +1,10 @@
 {
   "growth": [
     {
-      "after": 57,
-      "before": 56,
-      "metric": "fedemean/dispatch_candidates",
-      "reason": "Auto escalation: CMG local solves on large retained blocks inside block-Jacobi (exact graph counts admitted before and after the build), escalation within the remaining iteration budget, declined facts report spent iterations; fereg Auto requests Fallback::Escalate and records escalations in its solve record and solver trace."
-    },
-    {
-      "after": 4668,
-      "before": 4496,
+      "after": 4677,
+      "before": 4668,
       "metric": "fedemean/production_lines",
-      "reason": "Auto escalation: CMG local solves on large retained blocks inside block-Jacobi (exact graph counts admitted before and after the build), escalation within the remaining iteration budget, declined facts report spent iterations; fereg Auto requests Fallback::Escalate and records escalations in its solve record and solver trace."
-    },
-    {
-      "after": 120568,
-      "before": 120530,
-      "metric": "fereg-core/production_lines",
-      "reason": "Auto escalation: CMG local solves on large retained blocks inside block-Jacobi (exact graph counts admitted before and after the build), escalation within the remaining iteration budget, declined facts report spent iterations; fereg Auto requests Fallback::Escalate and records escalations in its solve record and solver trace."
+      "reason": "Escalated recurrences stop at a tenth of the ordinary goal (cross-worker agreement well inside the tolerance on hard graphs)."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -487,156 +475,156 @@
         "dispatch_candidates": [
           {
             "condition": "self . structure . as_ref ( ) . is_some_and ( | st | st . width == call . width )",
-            "line": 159
+            "line": 164
           },
           {
             "condition": "Structure :: build ( call . design , call . members , call . width , & call . cancel ) ?",
-            "line": 168
+            "line": 173
           },
           {
             "condition": "values . nobs ( ) != call . design . nobs ( )",
-            "line": 197
+            "line": 202
           },
           {
             "condition": "request . memory_limit . is_some_and ( | limit |",
-            "line": 209
+            "line": 214
           },
           {
             "condition": "self . weights . as_ref ( ) . is_none_or ( | ( k , _ ) | * k != key )",
-            "line": 215
+            "line": 220
           },
           {
             "condition": "column . len ( ) != st . nobs || design . nobs ( ) != st . nobs",
-            "line": 274
+            "line": 279
           },
           {
             "condition": "st . blocks . len ( ) == 1",
-            "line": 385
+            "line": 390
           },
           {
             "condition": "plan . memory_limit",
-            "line": 693
+            "line": 698
           },
           {
             "condition": "( unit , weighted )",
-            "line": 816
+            "line": 821
           },
           {
             "condition": "width",
-            "line": 824
+            "line": 829
           },
           {
             "condition": "values . nobs ( ) != st . nobs || values . ncols ( ) == 0 || job . design . nobs ( ) != st . nobs",
-            "line": 852
+            "line": 857
           },
           {
             "condition": "st . blocks . len ( )",
-            "line": 855
+            "line": 860
           },
           {
             "condition": "initial == Mode :: Blocks && ! build ( st , job . w , & plan , ncols . min ( BATCH ) , blocks , & mut facts ) ?",
-            "line": 919
+            "line": 924
           },
           {
             "condition": "dispatch :: < NB > ( & ctx , & plan , width , batch , lent ) ?",
-            "line": 953
+            "line": 958
           }
         ],
         "functions": {
           "add_coefficients#1": {
-            "line": 715,
+            "line": 720,
             "lines": 29
           },
           "admission_bytes#1": {
-            "line": 381,
+            "line": 386,
             "lines": 16
           },
           "build#1": {
-            "line": 685,
+            "line": 690,
             "lines": 26
           },
           "certify_residual#1": {
-            "line": 263,
+            "line": 268,
             "lines": 90
           },
           "check#1": {
-            "line": 95,
+            "line": 100,
             "lines": 7
           },
           "columns#1": {
-            "line": 145,
+            "line": 150,
             "lines": 3
           },
           "dispatch#1": {
-            "line": 805,
+            "line": 810,
             "lines": 33
           },
           "explicit_block_bytes#1": {
-            "line": 374,
+            "line": 379,
             "lines": 6
           },
           "numerical#1": {
-            "line": 1032,
+            "line": 1037,
             "lines": 18
           },
           "plan_of#1": {
-            "line": 865,
+            "line": 870,
             "lines": 22
           },
           "prepare#1": {
-            "line": 155,
+            "line": 160,
             "lines": 24
           },
           "project#1": {
-            "line": 182,
+            "line": 187,
             "lines": 77
           },
           "project#2": {
-            "line": 844,
+            "line": 849,
             "lines": 19
           },
           "project_nb#1": {
-            "line": 888,
+            "line": 893,
             "lines": 142
           },
           "residual_gram#1": {
-            "line": 137,
+            "line": 142,
             "lines": 3
           },
           "residual_norms#1": {
-            "line": 141,
+            "line": 146,
             "lines": 3
           },
           "run#1": {
-            "line": 492,
+            "line": 497,
             "lines": 78
           },
           "same_projection#1": {
-            "line": 1074,
+            "line": 1079,
             "lines": 5
           },
           "solve#1": {
-            "line": 629,
+            "line": 634,
             "lines": 51
           },
           "solve_bytes#1": {
-            "line": 364,
+            "line": 369,
             "lines": 8
           },
           "structure#1": {
-            "line": 149,
+            "line": 154,
             "lines": 3
           },
           "untouched#1": {
-            "line": 355,
+            "line": 360,
             "lines": 7
           },
           "with_structure#1": {
-            "line": 1065,
+            "line": 1070,
             "lines": 8
           }
         },
-        "production_lines": 909
+        "production_lines": 910
       },
       "crates/fedemean/src/elimination/passes.rs": {
         "chunk_candidates": [],
@@ -658,7 +646,7 @@
         "dispatch_candidates": [],
         "functions": {
           "accepted#1": {
-            "line": 103,
+            "line": 113,
             "lines": 3
           },
           "default#1": {
@@ -666,11 +654,11 @@
             "lines": 7
           },
           "goal#1": {
-            "line": 99,
+            "line": 109,
             "lines": 3
           },
           "pcg#1": {
-            "line": 364,
+            "line": 374,
             "lines": 84
           },
           "ratio#1": {
@@ -678,11 +666,15 @@
             "lines": 9
           },
           "start#1": {
-            "line": 149,
+            "line": 159,
             "lines": 72
+          },
+          "tightened#1": {
+            "line": 90,
+            "lines": 8
           }
         },
-        "production_lines": 376
+        "production_lines": 384
       },
       "crates/fedemean/src/elimination/structure.rs": {
         "chunk_candidates": [],
@@ -27689,7 +27681,7 @@
         "dispatch_candidates": 57,
         "files_over_1500": 0,
         "functions_over_150": 0,
-        "production_lines": 4668
+        "production_lines": 4677
       },
       "fereg-core": {
         "chunk_candidates": 13,
