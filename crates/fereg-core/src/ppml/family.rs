@@ -624,6 +624,11 @@ impl<'a> PreparedPoissonInputs<'a> {
         self.outcome
     }
 
+    /// Per row `[log y (0 at y = 0), log Gamma(y + 1)]`.
+    pub(crate) fn row_terms(&self) -> &[[f64; 2]] {
+        &self.terms
+    }
+
     /// The IRLS objective: see `iteration_half_deviance`. Publication replays
     /// the objective with the reference formula.
     pub(crate) fn evaluate(&self, eta: &[f64], mean: &[f64]) -> Result<PoissonObjective> {
@@ -1163,7 +1168,7 @@ impl CompensatedSum {
 /// line searches and convergence; the published objective is replayed with
 /// `poisson_half_deviance_with_logs`.
 #[inline]
-fn iteration_half_deviance(y: f64, mu: f64, log_mean: f64, log_y: f64) -> Result<f64> {
+pub(super) fn iteration_half_deviance(y: f64, mu: f64, log_mean: f64, log_y: f64) -> Result<f64> {
     if y == 0.0 {
         return Ok(mu);
     }

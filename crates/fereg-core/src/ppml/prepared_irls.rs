@@ -989,6 +989,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             prepared,
             &objective_inputs,
             outcome,
+            prior_weights,
             offset,
             config.ppml,
             &mut eta,

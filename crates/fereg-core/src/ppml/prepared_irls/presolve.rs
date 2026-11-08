@@ -13,7 +13,7 @@
 //! decline, rank problem or nonfinite value leaves the seed untouched.
 
 use super::super::family::PreparedPoissonInputs;
-use super::super::{PoissonObjective, PpmlConfig};
+use super::super::PpmlConfig;
 use crate::data::DenseMatrix;
 use crate::error::Result;
 use crate::fe::block_schur;
@@ -24,8 +24,6 @@ use rayon::prelude::*;
 
 /// Largest number of pre-solve steps.
 const MAX_STEPS: usize = 12;
-/// Step halvings before a pre-solve step is abandoned.
-const MAX_HALVINGS: usize = 10;
 /// Smallest within-to-raw weighted square ratio of a pre-solved regressor
 /// (well above the certified collinearity tolerances).
 const COLLINEARITY_RATIO: f64 = 1e-8;
@@ -50,6 +48,7 @@ pub(super) fn presolve<P: PreparedOlsFitView + Sync + ?Sized>(
     prepared: &P,
     inputs: &PreparedPoissonInputs<'_>,
     outcome: &[f64],
+    prior_weights: &[f64],
     offset: &[f64],
     config: PpmlConfig,
     eta: &mut [f64],
@@ -92,6 +91,7 @@ pub(super) fn presolve<P: PreparedOlsFitView + Sync + ?Sized>(
     }
     let width = k + 1;
     let threads = rayon::current_num_threads();
+    let terms = inputs.row_terms();
     let mut partials = vec![0.0; super::super::family::objective_partial_cells(rows, threads)];
     let mut mean =
         crate::memory::fallible_filled(rows, 0.0, "unable to reserve PPML pre-solve means")?;
@@ -101,89 +101,60 @@ pub(super) fn presolve<P: PreparedOlsFitView + Sync + ?Sized>(
         crate::memory::fallible_filled(rows, 0.0, "unable to reserve PPML pre-solve response")?;
     let mut scores =
         crate::memory::fallible_filled(rows, 0.0, "unable to reserve PPML pre-solve scores")?;
-    let mut previous_response =
-        crate::memory::fallible_filled(rows, 0.0, "unable to reserve PPML pre-solve history")?;
-    let mut candidate =
-        crate::memory::fallible_filled(rows, 0.0, "unable to reserve PPML pre-solve candidate")?;
     let mut current =
         crate::memory::fallible_copy(eta, "unable to reserve PPML pre-solve predictor")?;
-    let objective =
-        |eta: &[f64], mean: &mut [f64], partials: &mut [f64]| -> Option<PoissonObjective> {
-            inputs.fill_means(eta, config.bounds, mean).ok()?;
-            inputs.evaluate_tiled(eta, mean, partials).ok()
-        };
-    let Some(mut deviance) = objective(&current, &mut mean, &mut partials) else {
+    if inputs
+        .fill_means(&current, config.bounds, &mut mean)
+        .is_err()
+    {
+        return Ok(None);
+    }
+    let Ok(initial) = inputs.evaluate_tiled(&current, &mean, &mut partials) else {
         return Ok(None);
     };
-    let mut residual: Option<DenseMatrix> = None;
+    let mut deviance = initial.deviance;
+    if inputs
+        .fill_working_state_and_scores(&mean, &current, &mut weights, &mut response, &mut scores)
+        .is_err()
+    {
+        return Ok(None);
+    }
+    drop(scores);
+    // The first projection input: [z, X] from the raw design.
+    let mut data = crate::memory::fallible_filled(
+        rows * width,
+        0.0,
+        "unable to reserve PPML pre-solve design",
+    )?;
+    data.par_chunks_mut(ROWS * width)
+        .enumerate()
+        .for_each(|(chunk, values)| {
+            for (local, row) in values.chunks_exact_mut(width).enumerate() {
+                let i = chunk * ROWS + local;
+                row[0] = response[i];
+                for (target, column) in row[1..].iter_mut().zip(&columns) {
+                    *target = column[i];
+                }
+            }
+        });
+    let mut input = Some(DenseMatrix::from_row_major(rows, width, data)?);
     let mut cache = block_schur::Cache::default();
-    let mut beta = vec![0.0; k];
     let mut change = f64::INFINITY;
     let mut steps = 0;
     let mut projection_iterations = 0_usize;
     let started = std::time::Instant::now();
+    let bounds = config.bounds;
     while steps < MAX_STEPS {
         steps += 1;
-        if inputs
-            .fill_working_state_and_scores(
-                &mean,
-                &current,
-                &mut weights,
-                &mut response,
-                &mut scores,
-            )
-            .is_err()
-        {
-            return Ok(None);
-        }
-        // Input: previous residuals plus the working-response change (same
-        // projection under the new weights), or the raw design at first.
-        let input = match residual.take() {
-            Some(mut matrix) => {
-                matrix
-                    .as_mut_slice()
-                    .par_chunks_mut(ROWS * width)
-                    .zip(response.par_chunks(ROWS))
-                    .zip(previous_response.par_chunks(ROWS))
-                    .for_each(|((values, z), previous)| {
-                        for ((row, z), previous) in
-                            values.chunks_exact_mut(width).zip(z).zip(previous)
-                        {
-                            row[0] += z - previous;
-                        }
-                    });
-                matrix
-            }
-            None => {
-                let mut data = crate::memory::fallible_filled(
-                    rows * width,
-                    0.0,
-                    "unable to reserve PPML pre-solve design",
-                )?;
-                data.par_chunks_mut(ROWS * width)
-                    .enumerate()
-                    .for_each(|(chunk, values)| {
-                        for (offset_row, row) in values.chunks_exact_mut(width).enumerate() {
-                            let i = chunk * ROWS + offset_row;
-                            row[0] = response[i];
-                            for (target, column) in row[1..].iter_mut().zip(&columns) {
-                                *target = column[i];
-                            }
-                        }
-                    });
-                DenseMatrix::from_row_major(rows, width, data)?
-            }
-        };
-        previous_response.copy_from_slice(&response);
         let tolerance = (0.01 * change).clamp(1e-11, 1e-6);
         let map = MapConfig {
             tolerance,
             ..MapConfig::default()
         };
-        let projected = match cache.project(
+        let mut projected = match cache.project(
             &design,
             BorrowedMapWeights::Provided(&weights),
-            input,
+            input.take().expect("pre-solve projection input"),
             map,
             None,
             block_schur::Request {
@@ -198,9 +169,8 @@ pub(super) fn presolve<P: PreparedOlsFitView + Sync + ?Sized>(
             }
             block_schur::Outcome::Declined(_) => return Ok(None),
         };
-        // Normal equations of the projected regressors, scaled to unit
-        // diagonal; a nonpositive pivot declines.
-        // With the raw weighted squares, for the FE-collinearity check.
+        // Normal equations of the projected regressors (with the raw
+        // weighted squares for the FE-collinearity check).
         let parts: Vec<(Vec<f64>, Vec<f64>, Vec<f64>)> = projected
             .as_slice()
             .par_chunks(ROWS * width)
@@ -244,69 +214,104 @@ pub(super) fn presolve<P: PreparedOlsFitView + Sync + ?Sized>(
         if !(0..k).all(separated) {
             return Ok(None);
         }
-        let Some(solution) = scaled_cholesky_solve(&mut gram, &rhs, k) else {
+        let Some(beta) = scaled_cholesky_solve(&mut gram, &rhs, k) else {
             return Ok(None);
         };
-        beta.copy_from_slice(&solution);
-        // Full step: offset + z - z~ + X~ beta.
-        candidate
-            .par_chunks_mut(ROWS)
-            .zip(projected.as_slice().par_chunks(ROWS * width))
+        // One pass for the full step: eta = offset + z - z~ + X~ beta, its
+        // mean and deviance terms, the next Hessian weights and working
+        // response, and the next projection input (residuals plus the
+        // working-response change: the same projection under new weights).
+        let parts: Vec<Option<f64>> = projected
+            .as_mut_slice()
+            .par_chunks_mut(ROWS * width)
+            .zip(current.par_chunks_mut(ROWS))
+            .zip(mean.par_chunks_mut(ROWS))
+            .zip(weights.par_chunks_mut(ROWS))
+            .zip(response.par_chunks_mut(ROWS))
             .enumerate()
-            .for_each(|(chunk, (target, values))| {
-                for (local, (value, row)) in target
-                    .iter_mut()
-                    .zip(values.chunks_exact(width))
+            .map(|(chunk, ((((values, eta), mean), weights), response))| {
+                let mut sum = 0.0_f64;
+                let mut correction = 0.0_f64;
+                let mut run = 0.0_f64;
+                for (local, ((((row, eta), mu), w), z)) in values
+                    .chunks_exact_mut(width)
+                    .zip(eta.iter_mut())
+                    .zip(mean.iter_mut())
+                    .zip(weights.iter_mut())
+                    .zip(response.iter_mut())
                     .enumerate()
                 {
                     let i = chunk * ROWS + local;
-                    let mut fitted = response[i] - row[0];
+                    let mut fitted = *z - row[0];
                     for (b, x) in beta.iter().zip(&row[1..]) {
                         fitted += b * x;
                     }
-                    *value = offset[i] + fitted;
+                    let value = offset[i] + fitted;
+                    if !(value.is_finite() && value >= bounds.eta_min && value <= bounds.eta_max) {
+                        return None;
+                    }
+                    let m = value.exp();
+                    if !(m.is_finite() && m > 0.0 && m >= bounds.mu_min && m <= bounds.mu_max) {
+                        return None;
+                    }
+                    let y = outcome[i];
+                    let q = prior_weights[i];
+                    let half =
+                        super::super::family::iteration_half_deviance(y, m, value, terms[i][0])
+                            .ok()?;
+                    run += 2.0 * q * half;
+                    if local % 512 == 511 {
+                        crate::linalg::neumaier_add(run, &mut sum, &mut correction);
+                        run = 0.0;
+                    }
+                    let adjustment = if y == 0.0 {
+                        -1.0
+                    } else {
+                        let ratio = y / m;
+                        if y.is_normal() && m.is_normal() && ratio.is_normal() {
+                            ratio - 1.0
+                        } else {
+                            (terms[i][0] - value).exp() - 1.0
+                        }
+                    };
+                    let next = value - offset[i] + adjustment;
+                    let weight = q * m;
+                    if !(next.is_finite() && weight.is_finite() && weight > 0.0) {
+                        return None;
+                    }
+                    row[0] += next - *z;
+                    *z = next;
+                    *w = weight;
+                    *mu = m;
+                    *eta = value;
                 }
-            });
-        if candidate.iter().any(|value| !value.is_finite()) {
-            return Ok(None);
-        }
-        residual = Some(projected);
-        // Deviance line search towards the full step.
-        let allowed = deviance.deviance + config.objective_slack * deviance.deviance.abs().max(1.0);
-        let mut accepted = None;
-        let mut step = 1.0_f64;
-        for _ in 0..=MAX_HALVINGS {
-            if step < 1.0 {
-                candidate
-                    .par_iter_mut()
-                    .zip(current.par_iter())
-                    .for_each(|(value, &old)| *value = old + 0.5 * (*value - old));
-            }
-            if let Some(trial) = objective(&candidate, &mut mean, &mut partials) {
-                if trial.deviance <= allowed {
-                    accepted = Some(trial);
-                    break;
-                }
-            }
-            step *= 0.5;
-        }
-        // Only full Newton steps: a damped step means the seed is not in the
-        // region where plain steps contract, and a small damped change is no
-        // evidence of convergence. Leave the seed to the certified iteration.
-        let Some(trial) = accepted.filter(|_| step == 1.0) else {
+                crate::linalg::neumaier_add(run, &mut sum, &mut correction);
+                Some(sum + correction)
+            })
+            .collect();
+        let Some(next_deviance) = parts
+            .into_iter()
+            .try_fold(0.0_f64, |total, part| part.map(|part| total + part))
+            .filter(|value| value.is_finite())
+        else {
             return Ok(None);
         };
-        change = super::relative_deviance_change(deviance, trial);
-        deviance = trial;
-        std::mem::swap(&mut current, &mut candidate);
+        // Only full Newton steps that do not increase the deviance: a step
+        // needing damping means the seed is not where plain steps contract,
+        // and a small damped change is no evidence of convergence.
+        if next_deviance > deviance + config.objective_slack * deviance.abs().max(1.0) {
+            return Ok(None);
+        }
+        change = (deviance - next_deviance).abs() / deviance.min(next_deviance).max(0.1);
+        deviance = next_deviance;
+        input = Some(projected);
         if change <= config.tolerance {
             break;
         }
     }
     if crate::diagnostics::solver_trace_enabled() {
         crate::diagnostics::emit_solver_trace(&format!(
-            "FEREG_SOLVER_TRACE|phase=ppml_presolve|steps={steps}|deviance={:.17e}|change={change:.3e}|seconds={:.6}",
-            deviance.deviance,
+            "FEREG_SOLVER_TRACE|phase=ppml_presolve|steps={steps}|deviance={deviance:.17e}|change={change:.3e}|seconds={:.6}",
             started.elapsed().as_secs_f64()
         ));
     }
