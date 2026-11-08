@@ -36,6 +36,12 @@ of the method by
 Preserve its copyright and license notices, including the MIT grant below. Exact current runtime pins are
 recorded in [Cargo.lock](Cargo.lock) and
 [the core crate manifest](crates/fereg-core/Cargo.toml).
+A local development override is currently active: the `[patch]` section of
+the root [Cargo.toml](Cargo.toml) (and of `fuzz/Cargo.toml`) replaces this
+pin with an unpublished CMG clone holding two further bitwise-neutral
+commits, so `Cargo.lock` records no CMG source. The pin and this notice are
+updated once those commits are published; until then this tree is not a
+release source.
 
 fereg is distributed under MIT. On 2026-10-13 Johannes confirmed
 that the required native-distribution permissions had been obtained; see the

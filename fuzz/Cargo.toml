@@ -49,3 +49,9 @@ bench = false
 
 [workspace]
 members = ["."]
+
+# Local override of the pinned CMG revision by the isolated clone beside the
+# worktree (see the root Cargo.toml); removed with the pin bump once the
+# fedemean-parallel commits are published.
+[patch."https://github.com/johannes-schmieder/CMG"]
+cmg = { path = "../../CMG-fedemean" }

@@ -43,3 +43,12 @@ debug-assertions = true
 
 [patch.crates-io]
 rayon-core = { path = "vendor/rayon-core" }
+
+# Local override of the pinned CMG revision (crates/fedemean and
+# crates/fereg-core pin e5613e81fb3b03c78de98658b372646fa802aabb) by the
+# isolated clone beside this worktree, branch fedemean-parallel: the
+# branch-free canonical edge sort and team applications of every planned
+# level, both bitwise neutral. Remove it, and bump the pins, once those
+# commits are published; release packaging refuses a path-overridden CMG.
+[patch."https://github.com/johannes-schmieder/CMG"]
+cmg = { path = "../CMG-fedemean" }
