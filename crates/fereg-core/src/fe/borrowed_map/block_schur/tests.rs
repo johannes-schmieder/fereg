@@ -312,3 +312,69 @@ fn designs_outside_two_to_five_effects_decline() {
         });
     }
 }
+
+/// A later batch that declines after the first batch's residuals were formed
+/// in place (here: a column beyond the elimination's plain-sum range) hands
+/// the matrix to the owner's established two-FE route, which retains
+/// coefficients. They must still reproduce every residual from the original
+/// columns.
+#[test]
+fn retained_coefficients_survive_a_late_decline() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
+    let rows = 900;
+    let levels = [150_usize, 23];
+    let codes = codes(rows, &levels, 77);
+    let indices: Vec<_> = codes
+        .iter()
+        .zip(&levels)
+        .map(|(c, &l)| LevelIndex::from_codes(c, l).unwrap())
+        .collect();
+    let sources: Vec<_> = codes
+        .iter()
+        .zip(&levels)
+        .zip(&indices)
+        .map(|((c, &l), i)| ValidatedBorrowedInterceptSource::new(c, l, i).unwrap())
+        .collect();
+    let design =
+        BorrowedInterceptFeDesign::new(rows, sources.iter().map(|s| s.effect()).collect()).unwrap();
+    let columns = 10;
+    let mut owner = ReusableCategoricalMapAbsorber::new(design, columns, 1).unwrap();
+    owner.retain_coefficients = true;
+    let mut input = values(rows, columns, 5);
+    let huge = 1e149;
+    for row in 0..rows {
+        input[(row, columns - 1)] *= huge;
+    }
+    let config = MapConfig {
+        tolerance: 1e-10,
+        max_iterations: 100_000,
+        ..MapConfig::default()
+    };
+    let result = owner
+        .absorb_ppml(BorrowedMapWeights::Unit, input.clone(), config)
+        .unwrap();
+    let (residual, _, coefficients) = result.into_full_parts();
+    let coefficients = coefficients.expect("retained coefficients");
+    for column in 0..columns {
+        let scale = if column + 1 == columns { huge } else { 1.0 };
+        let base = column * coefficients.coefficients_per_rhs;
+        let worst = (0..rows)
+            .map(|row| {
+                let fit: f64 = codes
+                    .iter()
+                    .enumerate()
+                    .map(|(effect, effect_codes)| {
+                        coefficients.values[base
+                            + coefficients.effect_offsets[effect]
+                            + effect_codes[row] as usize]
+                    })
+                    .sum();
+                (input[(row, column)] - fit - residual[(row, column)]).abs() / scale
+            })
+            .fold(0.0_f64, f64::max);
+        assert!(
+            worst < 1e-8,
+            "column {column}: v - D a differs from r by {worst:e}"
+        );
+    }
+}

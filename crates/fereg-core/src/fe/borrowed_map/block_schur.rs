@@ -92,6 +92,9 @@ pub(crate) struct Cache<'a> {
     /// Keep the norms in the projector instead of attaching a copy to each
     /// result.
     detach_norms: bool,
+    /// Coefficient increments of the last call's columns when it declined
+    /// after forming some of their residuals in place.
+    partial: Option<FeCoefficientBatch>,
 }
 
 impl<'a> Cache<'a> {
@@ -144,6 +147,7 @@ impl<'a> Cache<'a> {
         request: Request,
     ) -> Result<Outcome<DenseMatrix>> {
         self.current = false;
+        self.partial = None;
         if values.nrows() != design.nobs() || !(map.tolerance.is_finite() && map.tolerance > 0.0) {
             return Ok(Outcome::Declined(values));
         }
@@ -199,10 +203,13 @@ impl<'a> Cache<'a> {
         setup.add_seconds(1, facts.weights_seconds);
         let report = match outcome {
             fedemean::Outcome::Projected(report) => report,
-            fedemean::Outcome::Declined { reason, .. } => {
+            fedemean::Outcome::Declined { reason, input, .. } => {
                 if let fedemean::Decline::Numerical(reason) = reason {
                     solve_record(&facts);
                     trace_decline(reason, &facts);
+                }
+                if matches!(input, fedemean::InputState::SameProjection { .. }) {
+                    self.partial = coefficients;
                 }
                 return Ok(Outcome::Declined(values));
             }
@@ -241,6 +248,20 @@ impl<'a> Cache<'a> {
             .map_err(|_| allocation("unable to reserve block-elimination workspace"))?;
         attached.extend_from_slice(norms);
         Ok(Outcome::Done(result.with_residual_norms(attached)?))
+    }
+
+    /// Add the coefficient increments of a declined call (see
+    /// [`Cache::project`]) to the fallback route's `result` for the same
+    /// columns.
+    pub(crate) fn add_partial_coefficients(
+        &mut self,
+        result: Result<CertifiedBorrowedMap>,
+    ) -> Result<CertifiedBorrowedMap> {
+        let mut result = result?;
+        if let Some(increments) = self.partial.take() {
+            result.add_coefficient_increments(&increments)?;
+        }
+        Ok(result)
     }
 
     /// Recompute every level's weighted moment of one residual column in one

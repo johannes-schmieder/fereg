@@ -1040,7 +1040,7 @@ impl<'a> FeSession<'a> {
             Ok(result) => return Ok(result),
             Err(values) => values,
         };
-        if let Some(p) = self.cmg.as_mut() {
+        let result = if let Some(p) = self.cmg.as_mut() {
             let values = values.into_values();
             if final_residual {
                 let p = self.cmg.take().expect("CMG binding");
@@ -1120,7 +1120,10 @@ impl<'a> FeSession<'a> {
                 .with_retained(self.resident_bytes)?
                 .max(self.peak);
             CertifiedBorrowedMap::from_certified_parts(values, report)
-        }
+        };
+        // A late elimination decline residualized some columns in place; its
+        // coefficient increments complete the fallback's coefficients.
+        self.block_schur.add_partial_coefficients(result)
     }
 
     #[allow(clippy::too_many_arguments)]

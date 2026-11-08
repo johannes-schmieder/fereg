@@ -739,6 +739,32 @@ impl CertifiedBorrowedMap {
         (self.residualized, self.report)
     }
 
+    /// Add coefficient increments of an earlier partial projection of the
+    /// same columns (same layout) to the retained coefficients, so they fit
+    /// the original columns. Without retained coefficients the increments are
+    /// not needed: recovery then works from the residual.
+    pub(crate) fn add_coefficient_increments(
+        &mut self,
+        increments: &FeCoefficientBatch,
+    ) -> Result<()> {
+        let Some(coefficients) = self.coefficients.as_mut() else {
+            return Ok(());
+        };
+        if coefficients.rhs_count != increments.rhs_count
+            || coefficients.coefficients_per_rhs != increments.coefficients_per_rhs
+            || coefficients.level_counts != increments.level_counts
+            || coefficients.effect_channels != increments.effect_channels
+        {
+            return Err(invalid_data(
+                "FE coefficient increments do not match the retained layout",
+            ));
+        }
+        for (value, increment) in coefficients.values.iter_mut().zip(&increments.values) {
+            *value += increment;
+        }
+        Ok(())
+    }
+
     pub(crate) fn into_full_parts(self) -> (DenseMatrix, SolveReport, Option<FeCoefficientBatch>) {
         (self.residualized, self.report, self.coefficients)
     }
@@ -2184,7 +2210,9 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         if !result.as_ref().is_ok_and(|fit| fit.report().certified()) {
             self.reject_ppml_topology();
         }
-        result.map(|result| (result, false))
+        self.block_schur
+            .add_partial_coefficients(result)
+            .map(|result| (result, false))
     }
 
     /// Ordinary OLS certifies a half-request proposal before spending work on
