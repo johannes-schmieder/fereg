@@ -13,8 +13,9 @@
 //! moment.
 //!
 //! Scope: an exact alternative solver for the same projection. The recurrence
-//! stops at half the requested tolerance on the reduced residual, which is the
-//! remaining blocks' moment vector. Acceptance uses the moments recomputed
+//! stops at a tenth of the requested tolerance on the reduced residual, which
+//! is the remaining blocks' moment vector, relative to the column's norm
+//! about its eliminated group means. Acceptance uses the moments recomputed
 //! from the formed residual with the usual certificate scale. Moments of the
 //! eliminated levels vanish by construction up to rounding and are not
 //! recomputed. A stall, an admission refusal or a numerical breakdown before
@@ -84,6 +85,11 @@ const PARALLEL_WORK: usize = 1 << 15;
 const CHUNK: usize = 2048;
 /// Iteration ceiling before the route yields to the caller's solver.
 const MAX_ITERATIONS: usize = 1500;
+/// The recurrence stops at this fraction of the requested tolerance on the
+/// column's within norm (see [`run`]).
+const STOP_FRACTION: f64 = 0.1;
+/// Smallest within norm, as a fraction of the certificate scale.
+const WITHIN_FLOOR: f64 = 1.0 / (1_u64 << 30) as f64;
 
 fn filled<T: Clone>(count: usize, value: T) -> Result<Vec<T>> {
     let mut values = Vec::new();
@@ -1210,14 +1216,24 @@ fn dot<const R: usize>(a: &[[f64; R]], b: &[[f64; R]]) -> [f64; R] {
     total
 }
 
+/// Column statistics of one batch from the RHS pass.
+struct RhsNorms<const R: usize> {
+    /// `Σ w v^2`.
+    sq: [f64; R],
+    /// `max |v|`.
+    big: [f64; R],
+    /// `Σ w (v - m_s)^2` about the eliminated groups' weighted means `m_s`.
+    centered: [f64; R],
+}
+
 /// Reduced RHS: `g = A-part of D'Wv` minus the eliminated groups' means, the
-/// segment sums `Σ w v` (kept for back-substitution) and `Σ w v^2`, `max|v|`.
+/// segment sums `Σ w v` (kept for back-substitution) and the column norms.
 fn rhs<const R: usize, const NB: usize, const WEIGHTED: bool>(
     ctx: &Ctx<'_, '_, NB>,
     values: &DenseMatrix,
     first: usize,
     work: &mut Work<R>,
-) -> ([f64; R], [f64; R]) {
+) -> RhsNorms<R> {
     let st = ctx.st;
     let stride = values.ncols();
     let data = values.as_slice();
@@ -1230,6 +1246,7 @@ fn rhs<const R: usize, const NB: usize, const WEIGHTED: bool>(
         acc.fill([0.0; R]);
         let mut sq = [0.0; R];
         let mut big = [0.0_f64; R];
+        let mut centered = [0.0; R];
         for (s, out) in lane.segments.clone().zip(seg.iter_mut()) {
             let members = ctx.index.members(s);
             let mut sum = [0.0; R];
@@ -1244,11 +1261,9 @@ fn rhs<const R: usize, const NB: usize, const WEIGHTED: bool>(
                 }
             }
             *out = sum;
-            if st.seg_cells[s + 1] - st.seg_cells[s] == 1 {
-                // Every row of a one-cell segment shares its remaining codes,
-                // so their deviations from the segment mean sum to zero.
-                continue;
-            }
+            // Every row of a one-cell segment shares its remaining codes, so
+            // their deviations from the segment mean add nothing to `g`.
+            let single = st.seg_cells[s + 1] - st.seg_cells[s] == 1;
             let inv = ctx.w.seg_inverse[s];
             let mut mean = sum;
             for value in &mut mean {
@@ -1259,7 +1274,12 @@ fn rhs<const R: usize, const NB: usize, const WEIGHTED: bool>(
                 let w = if WEIGHTED { weights[row] / scale } else { 1.0 };
                 let mut z = [0.0; R];
                 for j in 0..R {
-                    z[j] = w * (v[j] - mean[j]);
+                    let d = v[j] - mean[j];
+                    z[j] = w * d;
+                    centered[j] += z[j] * d;
+                }
+                if single {
+                    continue;
                 }
                 for b in 0..NB {
                     let a = &mut acc[(ctx.codes_b[b][row] + ctx.offs[b]) as usize];
@@ -1269,9 +1289,9 @@ fn rhs<const R: usize, const NB: usize, const WEIGHTED: bool>(
                 }
             }
         }
-        (sq, big)
+        (sq, big, centered)
     };
-    let results: Vec<([f64; R], [f64; R])> = if lanes == 1 {
+    let results: Vec<([f64; R], [f64; R], [f64; R])> = if lanes == 1 {
         let mut parts = seg_parts;
         vec![run(
             &st.lanes[0],
@@ -1287,15 +1307,19 @@ fn rhs<const R: usize, const NB: usize, const WEIGHTED: bool>(
             .collect()
     };
     merge(&mut work.accs[..lanes]);
-    let mut sq = [0.0; R];
-    let mut big = [0.0_f64; R];
-    for (s, b) in results {
+    let mut norms = RhsNorms {
+        sq: [0.0; R],
+        big: [0.0; R],
+        centered: [0.0; R],
+    };
+    for (s, b, c) in results {
         for j in 0..R {
-            sq[j] += s[j];
-            big[j] = big[j].max(b[j]);
+            norms.sq[j] += s[j];
+            norms.big[j] = norms.big[j].max(b[j]);
+            norms.centered[j] += c[j];
         }
     }
-    (sq, big)
+    norms
 }
 
 enum Solve {
@@ -1670,20 +1694,30 @@ fn run<const R: usize, const NB: usize, const UNIT: bool, const WEIGHTED: bool>(
     let st = ctx.st;
     let mut work = Work::<R>::new(st)?;
     let started = Instant::now();
-    let (sq, big) = rhs::<R, NB, WEIGHTED>(ctx, values, first, &mut work);
+    let norms = rhs::<R, NB, WEIGHTED>(ctx, values, first, &mut work);
     std::mem::swap(&mut work.r, &mut work.accs[0]);
     facts.rhs_seconds += started.elapsed().as_secs_f64();
     let mut scale = [0.0; R];
+    let mut within = [0.0; R];
     for j in 0..R {
-        let norm = sq[j].sqrt();
-        if !norm.is_finite() || (big[j] > 0.0 && !(1e-150..=1e150).contains(&norm)) {
+        let norm = norms.sq[j].sqrt();
+        if !norm.is_finite() || (norms.big[j] > 0.0 && !(1e-150..=1e150).contains(&norm)) {
             return Ok(Step::Declined("RHS scale outside the plain-sum range"));
         }
         scale[j] = reference.map_or(norm, |r| r[j]);
+        // The reduced problem sees only the column without its eliminated
+        // group means, so its accuracy is set at that norm (a large common
+        // level would otherwise loosen it), floored at a tiny fraction of
+        // the certificate scale for columns inside the eliminated span.
+        within[j] = norms.centered[j]
+            .max(0.0)
+            .sqrt()
+            .min(scale[j])
+            .max(WITHIN_FLOOR * scale[j]);
     }
     let mut target = [0.0; R];
     for j in 0..R {
-        target[j] = 0.5 * tolerance * scale[j];
+        target[j] = STOP_FRACTION * tolerance * within[j];
     }
     // Coefficient accuracy: Jacobi error estimates within the tolerance of
     // the column's root-mean-square magnitude.
@@ -1691,7 +1725,7 @@ fn run<const R: usize, const NB: usize, const UNIT: bool, const WEIGHTED: bool>(
         let root_total = ctx.w.total_mass.sqrt();
         let mut t = [0.0; R];
         for j in 0..R {
-            t[j] = 0.5 * tolerance * scale[j] / root_total;
+            t[j] = STOP_FRACTION * tolerance * within[j] / root_total;
         }
         t
     });
