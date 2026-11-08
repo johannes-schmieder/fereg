@@ -4249,10 +4249,58 @@ where
     let parts: Vec<Result<Partial>> = (0..nrows.div_ceil(MEAN_ROWS))
         .into_par_iter()
         .map(|chunk| {
+            // Unchecked compensated sums first (value and weight errors are
+            // still reported in row order); a nonfinite term or sum replays
+            // the chunk with the checked loop, which reports the same error.
+            let rows = chunk * MEAN_ROWS..((chunk + 1) * MEAN_ROWS).min(nrows);
             let (mut numerator, mut numerator_correction) = (0.0_f64, 0.0_f64);
             let (mut denominator, mut denominator_correction) = (0.0_f64, 0.0_f64);
             let mut flag = false;
-            for row in chunk * MEAN_ROWS..((chunk + 1) * MEAN_ROWS).min(nrows) {
+            let mut finite = true;
+            for row in rows.clone() {
+                let Ok(current) = value(row) else {
+                    finite = false;
+                    break;
+                };
+                if unit {
+                    let scaled = current / value_scale;
+                    flag |= current != 0.0 && scaled.abs() < f64::MIN_POSITIVE;
+                    finite &= scaled.is_finite();
+                    neumaier_add(scaled, &mut numerator, &mut numerator_correction);
+                } else {
+                    let Ok(weight) = weights.value(row) else {
+                        finite = false;
+                        break;
+                    };
+                    let scaled = weight * (current / value_scale);
+                    flag |= current != 0.0 && scaled.abs() < f64::MIN_POSITIVE;
+                    finite &= scaled.is_finite() && weight.is_finite();
+                    neumaier_add(scaled, &mut numerator, &mut numerator_correction);
+                    neumaier_add(weight, &mut denominator, &mut denominator_correction);
+                }
+            }
+            if finite
+                && [
+                    numerator,
+                    numerator_correction,
+                    denominator,
+                    denominator_correction,
+                ]
+                .iter()
+                .all(|value| value.is_finite())
+            {
+                return Ok((
+                    numerator,
+                    numerator_correction,
+                    denominator,
+                    denominator_correction,
+                    flag,
+                ));
+            }
+            let (mut numerator, mut numerator_correction) = (0.0_f64, 0.0_f64);
+            let (mut denominator, mut denominator_correction) = (0.0_f64, 0.0_f64);
+            let mut flag = false;
+            for row in rows {
                 let current = value(row)?;
                 if unit {
                     let scaled = current / value_scale;
@@ -4815,8 +4863,23 @@ fn chunked_compensated_sum(rows: usize, term: impl Fn(usize) -> Result<f64> + Sy
     let parts: Vec<Result<(f64, f64)>> = (0..rows.div_ceil(ROWS))
         .into_par_iter()
         .map(|chunk| {
+            // Unchecked first; a nonfinite term or sum replays the checked loop.
+            let range = chunk * ROWS..((chunk + 1) * ROWS).min(rows);
             let (mut sum, mut correction) = (0.0_f64, 0.0_f64);
-            for row in chunk * ROWS..((chunk + 1) * ROWS).min(rows) {
+            let mut finite = true;
+            for row in range.clone() {
+                let Ok(value) = term(row) else {
+                    finite = false;
+                    break;
+                };
+                finite &= value.is_finite();
+                neumaier_add(value, &mut sum, &mut correction);
+            }
+            if finite && sum.is_finite() && correction.is_finite() {
+                return Ok((sum, correction));
+            }
+            let (mut sum, mut correction) = (0.0_f64, 0.0_f64);
+            for row in range {
                 compensated_add(term(row)?, &mut sum, &mut correction)?;
             }
             Ok((sum, correction))
