@@ -711,6 +711,8 @@ impl Weights {
                     touched,
                     bad,
                 } = acc;
+                let (mass, diag, active) = (&mut mass[..], &mut diag[..], &mut active[..]);
+                let (sums, stamp) = (&mut sums[..], &mut stamp[..]);
                 let mut cursor = member_offsets[lane.segments.start];
                 for (s, inv) in lane.segments.clone().zip(inverse.iter_mut()) {
                     let (c0, c1) = (st.seg_cells[s], st.seg_cells[s + 1]);
