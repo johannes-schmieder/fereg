@@ -63,6 +63,8 @@ const WITHIN_FLOOR: f64 = 1.0 / (1_u64 << 30) as f64;
 /// (where a column may stop when its recurrence reaches its rounding floor).
 const ACCEPT_FRACTION: f64 = 0.5;
 
+#[allow(dead_code)] // Stage 3: block-Jacobi local solves.
+pub(crate) mod block;
 mod kernels;
 mod passes;
 mod pcg;
