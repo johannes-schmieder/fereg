@@ -142,7 +142,6 @@ fn lane_count(work: usize) -> usize {
 struct Lane {
     segments: Range<usize>,
     cells: Range<usize>,
-    max_cells: usize,
 }
 
 /// Immutable cell geometry of one design; independent of weights and RHS.
@@ -159,6 +158,12 @@ pub(crate) struct Structure {
     /// Segment-local cell of each eliminated-effect membership entry.
     member_cell: Vec<u32>,
     lanes: Vec<Lane>,
+    /// Segments with at least two cells. A one-cell segment's deviation from
+    /// its mean is zero, so only these enter the reduced operator.
+    active: Vec<u32>,
+    /// Operator lanes: ranges of `active` balanced by their cells, with the
+    /// largest segment of each.
+    active_lanes: Vec<(Range<usize>, usize)>,
     rows: Vec<Range<usize>>,
     nobs: usize,
     bytes: u128,
@@ -279,19 +284,34 @@ impl Structure {
         }
         let lanes = partition(&seg_cells, lane_count(cells * NB * BATCH))
             .into_iter()
-            .map(|segments| {
-                let max_cells = segments
-                    .clone()
-                    .map(|s| seg_cells[s + 1] - seg_cells[s])
-                    .max()
-                    .unwrap_or(0);
-                Lane {
-                    cells: seg_cells[segments.start]..seg_cells[segments.end],
-                    segments,
-                    max_cells,
-                }
+            .map(|segments| Lane {
+                cells: seg_cells[segments.start]..seg_cells[segments.end],
+                segments,
             })
             .collect::<Vec<_>>();
+        let mut active = Vec::new();
+        let mut active_offsets = Vec::new();
+        active_offsets.push(0_usize);
+        for s in 0..segments {
+            let count = seg_cells[s + 1] - seg_cells[s];
+            if count >= 2 {
+                active.push(s as u32);
+                active_offsets.push(active_offsets[active.len() - 1] + count);
+            }
+        }
+        let active_cells = active_offsets[active.len()];
+        let active_lanes = partition(&active_offsets, lane_count(active_cells * NB * BATCH))
+            .into_iter()
+            .map(|range| {
+                let max_cells = active[range.clone()]
+                    .iter()
+                    .map(|&s| seg_cells[s as usize + 1] - seg_cells[s as usize])
+                    .max()
+                    .unwrap_or(0);
+                (range, max_cells)
+            })
+            .collect::<Vec<_>>();
+        drop(active_offsets);
         let row_lanes = lane_count(n * (NB + 1) * BATCH);
         let per = n.div_ceil(row_lanes);
         let rows = (0..row_lanes)
@@ -301,6 +321,7 @@ impl Structure {
         let bytes = (codes.capacity() as u128) * 4
             + (multiplicity.capacity() as u128) * 8
             + (member_cell.capacity() as u128) * 4
+            + (active.capacity() as u128) * 4
             + (seg_cells.capacity() as u128) * 8;
         Ok(Some(Self {
             eliminated,
@@ -313,6 +334,8 @@ impl Structure {
             multiplicity,
             member_cell,
             lanes,
+            active,
+            active_lanes,
             rows,
             nobs: n,
             bytes,
@@ -416,6 +439,8 @@ pub(crate) struct Weights {
     cell: Vec<f64>,
     seg_inverse: Vec<f64>,
     mass: Vec<f64>,
+    /// One retained block: each level's mass in the active segments.
+    active_mass: Vec<f64>,
     inverse_diagonal: Vec<f64>,
     inverse_root_mass: Vec<f64>,
     raw_scale: f64,
@@ -425,15 +450,22 @@ pub(crate) struct Weights {
 }
 
 impl Weights {
+    /// Prepare the state of `weights`, reusing the buffers of `recycled` (a
+    /// previous state of the same structure) when given.
     fn prepare(
         st: &Structure,
         design: &BorrowedInterceptFeDesign<'_>,
         weights: ValidatedWeights<'_>,
+        recycled: Option<Self>,
     ) -> Result<Option<Self>> {
         let cells = st.cells();
         let index = design.effects()[st.eliminated].level_index();
         let member_offsets = index.membership_offsets();
-        let cell = match weights.values {
+        let (old_cell, old_inverse) =
+            recycled.map_or((Vec::new(), Vec::new()), |old| (old.cell, old.seg_inverse));
+        // Every cell weight is (re)formed by the lane pass below, so a
+        // recycled buffer of the right length needs no clearing.
+        let mut cell = match weights.values {
             None if st.multiplicity.is_empty() => Vec::new(),
             None => {
                 let mut cell = Vec::new();
@@ -442,53 +474,78 @@ impl Weights {
                 cell.extend_from_slice(&st.multiplicity);
                 cell
             }
-            Some(values) => {
-                let mut cell = filled(cells, 0.0_f64)?;
-                let lengths: Vec<usize> = st.lanes.iter().map(|l| l.cells.len()).collect();
-                let scale = weights.raw_scale;
-                split_parts(&mut cell, &lengths)
-                    .into_par_iter()
-                    .zip(st.lanes.par_iter())
-                    .for_each(|(part, lane)| {
-                        let base = member_offsets[lane.segments.start];
-                        let mut cursor = base;
-                        for s in lane.segments.clone() {
-                            let first = st.seg_cells[s] - lane.cells.start;
-                            for &row in index.members(s) {
-                                let local = st.member_cell[cursor] as usize;
-                                part[first + local] += values[row] / scale;
-                                cursor += 1;
-                            }
-                        }
-                    });
-                cell
+            Some(_) if old_cell.len() == cells => old_cell,
+            Some(_) => {
+                drop(old_cell);
+                filled(cells, 0.0_f64)?
             }
         };
         let m = st.reduced;
         let nb = st.blocks.len();
         let unit = cell.is_empty();
-        let mut seg_inverse = filled(st.segments, 0.0_f64)?;
+        let mut seg_inverse = if old_inverse.len() == st.segments {
+            old_inverse
+        } else {
+            drop(old_inverse);
+            filled(st.segments, 0.0_f64)?
+        };
         let lengths: Vec<usize> = st.lanes.iter().map(|l| l.segments.len()).collect();
         let lanes = st.lanes.len();
+        let cell_parts: Vec<&mut [f64]> = if unit {
+            (0..lanes).map(|_| Default::default()).collect()
+        } else {
+            let cell_lengths: Vec<usize> = st.lanes.iter().map(|l| l.cells.len()).collect();
+            split_parts(&mut cell, &cell_lengths)
+        };
+        let values = weights.values;
+        let scale = weights.raw_scale;
         let mut mass_acc: Vec<Vec<f64>> = Vec::with_capacity(lanes);
         let mut diag_acc: Vec<Vec<f64>> = Vec::with_capacity(lanes);
+        let mut active_acc: Vec<Vec<f64>> = Vec::with_capacity(lanes);
         for _ in 0..lanes {
             mass_acc.push(filled(m, 0.0_f64)?);
             diag_acc.push(filled(m, 0.0_f64)?);
+            active_acc.push(if nb == 1 {
+                filled(m, 0.0_f64)?
+            } else {
+                Vec::new()
+            });
         }
         let failures: Vec<bool> = split_parts(&mut seg_inverse, &lengths)
             .into_par_iter()
+            .zip(cell_parts.into_par_iter())
             .zip(st.lanes.par_iter())
-            .zip(mass_acc.par_iter_mut().zip(diag_acc.par_iter_mut()))
-            .map(|((inverse, lane), (mass, diag))| {
-                // Per-segment level sums `a_j` use a stamped lane accumulator;
-                // the Schur diagonal is `mass_j - sum_s a_sj^2 / W_s`.
+            .zip(
+                mass_acc
+                    .par_iter_mut()
+                    .zip(diag_acc.par_iter_mut())
+                    .zip(active_acc.par_iter_mut()),
+            )
+            .map(|(((inverse, part), lane), ((mass, diag), active))| {
+                // One pass per segment: its cell weights (summed from the
+                // member rows), then the per-segment level sums `a_j` in a
+                // stamped lane accumulator; the Schur diagonal is
+                // `mass_j - sum_s a_sj^2 / W_s`.
                 let mut sums = vec![0.0_f64; m];
                 let mut stamp = vec![u32::MAX; m];
                 let mut touched: Vec<u32> = Vec::new();
                 let mut bad = false;
+                let mut cursor = member_offsets[lane.segments.start];
                 for (s, inv) in lane.segments.clone().zip(inverse.iter_mut()) {
                     let (c0, c1) = (st.seg_cells[s], st.seg_cells[s + 1]);
+                    let cw: &[f64] = if unit {
+                        &[]
+                    } else {
+                        let local = &mut part[c0 - lane.cells.start..c1 - lane.cells.start];
+                        if let Some(values) = values {
+                            local.fill(0.0);
+                            for &row in index.members(s) {
+                                local[st.member_cell[cursor] as usize] += values[row] / scale;
+                                cursor += 1;
+                            }
+                        }
+                        local
+                    };
                     if nb == 1 {
                         // One retained block: every cell of a segment has a
                         // distinct code, so `a_sj` is that cell's weight.
@@ -496,7 +553,7 @@ impl Weights {
                         let total: f64 = if unit {
                             (c1 - c0) as f64
                         } else {
-                            cell[c0..c1].iter().sum()
+                            cw.iter().sum()
                         };
                         if !(total.is_finite() && total > 0.0) {
                             bad = true;
@@ -504,10 +561,16 @@ impl Weights {
                         }
                         let inverse_total = 1.0 / total;
                         *inv = inverse_total;
+                        if c1 - c0 == 1 {
+                            // A one-cell segment adds mass but no curvature.
+                            mass[codes[0] as usize] += total;
+                            continue;
+                        }
                         for (k, &code) in codes.iter().enumerate() {
-                            let w = if unit { 1.0 } else { cell[c0 + k] };
+                            let w = if unit { 1.0 } else { cw[k] };
                             let j = code as usize;
                             mass[j] += w;
+                            active[j] += w;
                             diag[j] += w - w * w * inverse_total;
                         }
                         continue;
@@ -515,11 +578,10 @@ impl Weights {
                     let mut total = 0.0;
                     touched.clear();
                     let tag = s as u32;
-                    #[allow(clippy::needless_range_loop)]
-                    for c in c0..c1 {
-                        let w = if unit { 1.0 } else { cell[c] };
+                    for (k, cc) in st.codes[c0 * nb..c1 * nb].chunks_exact(nb).enumerate() {
+                        let w = if unit { 1.0 } else { cw[k] };
                         total += w;
-                        for &code in &st.codes[c * nb..(c + 1) * nb] {
+                        for &code in cc {
                             let j = code as usize;
                             mass[j] += w;
                             if stamp[j] == tag {
@@ -537,6 +599,9 @@ impl Weights {
                     }
                     let inverse_total = 1.0 / total;
                     *inv = inverse_total;
+                    if c1 - c0 == 1 {
+                        continue;
+                    }
                     for &code in &touched {
                         let j = code as usize;
                         let a = sums[j];
@@ -561,10 +626,18 @@ impl Weights {
                 *a += b;
             }
         }
+        let (active_mass, arest) = active_acc.split_first_mut().expect("one lane");
+        for other in arest.iter() {
+            for (a, b) in active_mass.iter_mut().zip(other) {
+                *a += b;
+            }
+        }
         let mass = std::mem::take(mass);
+        let active_mass = std::mem::take(active_mass);
         let mut inverse_diagonal = std::mem::take(diag);
         drop(mass_acc);
         drop(diag_acc);
+        drop(active_acc);
         let mut inverse_root_mass = filled(m, 0.0_f64)?;
         for j in 0..m {
             let total = mass[j];
@@ -579,13 +652,14 @@ impl Weights {
             };
             inverse_root_mass[j] = 1.0 / total.sqrt();
         }
-        let bytes = (cell.capacity() + seg_inverse.capacity() + 3 * m) as u128 * 8
-            + 2 * (lanes * m) as u128 * 8;
+        let bytes = (cell.capacity() + seg_inverse.capacity() + 4 * m) as u128 * 8
+            + 3 * (lanes * m) as u128 * 8;
         let total_mass: f64 = seg_inverse.iter().map(|inverse| 1.0 / inverse).sum();
         Ok(Some(Self {
             cell,
             seg_inverse,
             mass,
+            active_mass,
             inverse_diagonal,
             inverse_root_mass,
             raw_scale: weights.raw_scale,
@@ -605,6 +679,15 @@ pub(crate) struct Request {
     pub(crate) coefficient_accuracy: bool,
 }
 
+/// Raw-weighted Gram `Σ_i w_i r_i r_i'` of a certified residual matrix:
+/// row-major and symmetric, `columns x columns`. Plain sums within each row
+/// lane, combined in lane order (deterministic at a fixed worker count).
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct ResidualGram {
+    pub(crate) columns: usize,
+    pub(crate) values: Vec<f64>,
+}
+
 /// Outcome of one projection request.
 #[allow(clippy::large_enum_variant)]
 pub(crate) enum Outcome<V> {
@@ -618,15 +701,33 @@ pub(crate) enum Outcome<V> {
 type WeightKey = Option<(usize, usize, u64)>;
 
 fn weight_key(values: Option<&[f64]>) -> WeightKey {
+    fn mix(h: u64, bits: u64) -> u64 {
+        let h = (h ^ bits).wrapping_mul(0x9e37_79b9_7f4a_7c15);
+        h ^ (h >> 31)
+    }
     values.map(|values| {
         const CHUNK: usize = 1 << 16;
         let parts: Vec<u64> = values
             .par_chunks(CHUNK)
             .map(|chunk| {
-                chunk.iter().fold(0x243f_6a88_85a3_08d3_u64, |h, v| {
-                    let h = (h ^ v.to_bits()).wrapping_mul(0x9e37_79b9_7f4a_7c15);
-                    h ^ (h >> 31)
-                })
+                // Four interleaved chains keep the multiplications independent.
+                let mut h = [
+                    0x243f_6a88_85a3_08d3_u64,
+                    0x1319_8a2e_0370_7344,
+                    0xa409_3822_299f_31d0,
+                    0x082e_fa98_ec4e_6c89,
+                ];
+                let mut quads = chunk.chunks_exact(4);
+                for quad in &mut quads {
+                    for lane in 0..4 {
+                        h[lane] = mix(h[lane], quad[lane].to_bits());
+                    }
+                }
+                for (lane, v) in quads.remainder().iter().enumerate() {
+                    h[lane] = mix(h[lane], v.to_bits());
+                }
+                h.iter()
+                    .fold(chunk.len() as u64, |acc, &lane| mix(acc, lane))
             })
             .collect();
         let digest = parts.iter().fold(0xcbf2_9ce4_8422_2325_u64, |h, &p| {
@@ -644,9 +745,28 @@ pub(crate) struct Cache {
     /// Weights keyed by the borrowed weight slice (address, length); `None`
     /// key is unit weights.
     weights: Option<(WeightKey, Weights)>,
+    /// Accumulate the residual Gram in later projections' residual pass.
+    gram_requested: bool,
+    /// Residual Gram of the last certified projection that requested it.
+    gram: Option<ResidualGram>,
 }
 
 impl Cache {
+    /// Also accumulate the residual Gram `Σ w r r'` at the caller's raw
+    /// weights (unit weights: 1) in the residual pass of later projections
+    /// with at most [`BATCH`] columns; see [`Cache::take_residual_gram`].
+    #[allow(dead_code)] // For the PPML pre-solve's normal equations.
+    pub(crate) fn request_residual_gram(&mut self, on: bool) {
+        self.gram_requested = on;
+    }
+
+    /// The residual Gram of the last [`Cache::project`] call, when it was
+    /// requested and the projection certified (cleared by every call).
+    #[allow(dead_code)] // For the PPML pre-solve's normal equations.
+    pub(crate) fn take_residual_gram(&mut self) -> Option<ResidualGram> {
+        self.gram.take()
+    }
+
     /// Project with the retained geometry, building it on first use. Any
     /// refusal is remembered so later calls go straight to the caller's route.
     pub(crate) fn project(
@@ -658,6 +778,7 @@ impl Cache {
         budget: Option<FeSolverMemoryBudget>,
         request: Request,
     ) -> Result<Outcome<DenseMatrix>> {
+        self.gram = None;
         if self.refused || values.nrows() != design.nobs() {
             return Ok(Outcome::Declined(values));
         }
@@ -680,8 +801,8 @@ impl Cache {
             return Ok(Outcome::Declined(values));
         }
         if self.weights.as_ref().is_none_or(|(k, _)| *k != key) {
-            self.weights = None;
-            match Weights::prepare(st, design, validated)? {
+            let recycled = self.weights.take().map(|(_, w)| w);
+            match Weights::prepare(st, design, validated, recycled)? {
                 Some(w) => self.weights = Some((key, w)),
                 None => return Ok(Outcome::Declined(values)),
             }
@@ -692,7 +813,12 @@ impl Cache {
         if request.retain_coefficients {
             bytes += (st.reduced + st.segments) as u128 * values.ncols() as u128 * 8;
         }
-        project(st, w, design, validated, values, map, bytes, request)
+        let gram = self.gram_requested;
+        let (outcome, gram) = project(st, w, design, validated, values, map, bytes, request, gram)?;
+        if matches!(outcome, Outcome::Done(_)) {
+            self.gram = gram;
+        }
+        Ok(outcome)
     }
 
     /// Recompute every level's weighted moment of one residual column in one
@@ -791,16 +917,16 @@ impl Cache {
 fn solve_bytes(st: &Structure, nrhs: usize) -> u128 {
     let r = nrhs.min(BATCH) as u128;
     let m = st.reduced as u128;
-    let lanes = st.lanes.len().max(st.rows.len()) as u128;
-    let scratch: u128 = st.lanes.iter().map(|l| l.max_cells as u128).sum();
+    let lanes = st.lanes.len().max(st.rows.len()).max(st.active_lanes.len()) as u128;
+    let scratch: u128 = st.active_lanes.iter().map(|&(_, c)| c as u128).sum();
     8 * r * (5 * m + lanes * m + scratch + st.segments as u128)
 }
 
 pub(crate) fn admission_bytes(st: &Structure, weights: Option<&Weights>, nrhs: usize) -> u128 {
     let weight_bytes = weights.map_or_else(
         || {
-            (st.cells() as u128 + st.segments as u128 + 3 * st.reduced as u128) * 8
-                + 2 * (st.lanes.len() * st.reduced) as u128 * 8
+            (st.cells() as u128 + st.segments as u128 + 4 * st.reduced as u128) * 8
+                + 3 * (st.lanes.len() * st.reduced) as u128 * 8
         },
         |w| w.bytes,
     );
@@ -816,6 +942,8 @@ struct Ctx<'d, 'w, const NB: usize> {
     offs: [u32; NB],
     weights: ValidatedWeights<'w>,
     coefficient_accuracy: bool,
+    /// Accumulate the residual Gram in the residual pass.
+    gram: bool,
 }
 
 #[inline(always)]
@@ -840,17 +968,66 @@ fn scatter<const R: usize>(cc: &[u32], z: &[f64; R], acc: &mut [[f64; R]]) {
     }
 }
 
-/// One lane of `acc = S p` restricted to its segments (before the merge).
+/// One lane of `acc = S p` restricted to its active segments (before the
+/// merge).
 fn apply_lane<const R: usize, const NB: usize, const UNIT: bool>(
     st: &Structure,
     w: &Weights,
     p: &[[f64; R]],
-    lane: &Lane,
+    segments: &[u32],
     acc: &mut [[f64; R]],
     u: &mut [[f64; R]],
 ) {
     acc.fill([0.0; R]);
-    for s in lane.segments.clone() {
+    if NB == 1 {
+        // One retained block: every cell has one code, so
+        // `S p = M_a p - sum_c w_c t_s(c) e_j(c)` with `t_s` the segment's
+        // weighted mean of `p` and `M_a` the diagonal active mass; this lane
+        // accumulates the second term ([`apply`] forms the difference).
+        for &s in segments {
+            let s = s as usize;
+            let (c0, c1) = (st.seg_cells[s], st.seg_cells[s + 1]);
+            let codes = &st.codes[c0..c1];
+            let mut t = [0.0; R];
+            if UNIT {
+                for &c in codes {
+                    let g = &p[c as usize];
+                    for j in 0..R {
+                        t[j] += g[j];
+                    }
+                }
+            } else {
+                for (&c, &wc) in codes.iter().zip(&w.cell[c0..c1]) {
+                    let g = &p[c as usize];
+                    for j in 0..R {
+                        t[j] += wc * g[j];
+                    }
+                }
+            }
+            let inv = w.seg_inverse[s];
+            for v in &mut t {
+                *v *= inv;
+            }
+            if UNIT {
+                for &c in codes {
+                    let a = &mut acc[c as usize];
+                    for j in 0..R {
+                        a[j] += t[j];
+                    }
+                }
+            } else {
+                for (&c, &wc) in codes.iter().zip(&w.cell[c0..c1]) {
+                    let a = &mut acc[c as usize];
+                    for j in 0..R {
+                        a[j] += wc * t[j];
+                    }
+                }
+            }
+        }
+        return;
+    }
+    for &s in segments {
+        let s = s as usize;
         let (c0, c1) = (st.seg_cells[s], st.seg_cells[s + 1]);
         let codes = &st.codes[c0 * NB..c1 * NB];
         let u = &mut u[..c1 - c0];
@@ -938,14 +1115,14 @@ struct Work<const R: usize> {
 impl<const R: usize> Work<R> {
     fn new(st: &Structure) -> Result<Self> {
         let m = st.reduced;
-        let lanes = st.lanes.len().max(st.rows.len());
+        let lanes = st.lanes.len().max(st.rows.len()).max(st.active_lanes.len());
         let mut accs = Vec::with_capacity(lanes);
         for _ in 0..lanes {
             accs.push(filled(m, [0.0; R])?);
         }
-        let mut scratch = Vec::with_capacity(st.lanes.len());
-        for lane in &st.lanes {
-            scratch.push(filled(lane.max_cells, [0.0; R])?);
+        let mut scratch = Vec::with_capacity(st.active_lanes.len());
+        for &(_, max_cells) in &st.active_lanes {
+            scratch.push(filled(max_cells, [0.0; R])?);
         }
         Ok(Self {
             x: filled(m, [0.0; R])?,
@@ -966,17 +1143,27 @@ fn apply<const R: usize, const NB: usize, const UNIT: bool>(
     accs: &mut [Vec<[f64; R]>],
     scratch: &mut [Vec<[f64; R]>],
 ) {
-    let lanes = st.lanes.len();
+    let lanes = st.active_lanes.len();
     if lanes == 1 {
-        apply_lane::<R, NB, UNIT>(st, w, p, &st.lanes[0], &mut accs[0], &mut scratch[0]);
-        return;
+        let segments = &st.active[st.active_lanes[0].0.clone()];
+        apply_lane::<R, NB, UNIT>(st, w, p, segments, &mut accs[0], &mut scratch[0]);
+    } else {
+        accs[..lanes]
+            .par_iter_mut()
+            .zip(scratch.par_iter_mut())
+            .zip(st.active_lanes.par_iter())
+            .for_each(|((acc, u), (range, _))| {
+                apply_lane::<R, NB, UNIT>(st, w, p, &st.active[range.clone()], acc, u);
+            });
+        merge(&mut accs[..lanes]);
     }
-    accs[..lanes]
-        .par_iter_mut()
-        .zip(scratch.par_iter_mut())
-        .zip(st.lanes.par_iter())
-        .for_each(|((acc, u), lane)| apply_lane::<R, NB, UNIT>(st, w, p, lane, acc, u));
-    merge(&mut accs[..lanes]);
+    if NB == 1 {
+        for ((q, p), &mass) in accs[0].iter_mut().zip(p).zip(&w.active_mass) {
+            for j in 0..R {
+                q[j] = mass * p[j] - q[j];
+            }
+        }
+    }
 }
 
 /// Per-RHS sums over fixed chunks, combined in chunk order.
@@ -1057,6 +1244,11 @@ fn rhs<const R: usize, const NB: usize, const WEIGHTED: bool>(
                 }
             }
             *out = sum;
+            if st.seg_cells[s + 1] - st.seg_cells[s] == 1 {
+                // Every row of a one-cell segment shares its remaining codes,
+                // so their deviations from the segment mean sum to zero.
+                continue;
+            }
             let inv = ctx.w.seg_inverse[s];
             let mut mean = sum;
             for value in &mut mean {
@@ -1107,7 +1299,8 @@ fn rhs<const R: usize, const NB: usize, const WEIGHTED: bool>(
 }
 
 enum Solve {
-    Converged(usize),
+    /// Iterations, and the sum over iterations of the active columns.
+    Converged(usize, usize),
     Declined(&'static str),
 }
 
@@ -1174,10 +1367,12 @@ fn pcg<const R: usize, const NB: usize, const UNIT: bool>(
     let mut best = progress;
     let mut checkpoint_best = progress;
     let mut iterations = 0;
+    let mut column_iterations = 0;
     while active.contains(&true) {
         if iterations >= cap {
             return Ok(Solve::Declined("iteration ceiling"));
         }
+        column_iterations += active.iter().filter(|&&on| on).count();
         crate::interrupt::checkpoint()?;
         apply::<R, NB, UNIT>(st, w, &work.p, &mut work.accs, &mut work.scratch);
         let pq = dot::<R>(&work.p, &work.accs[0]);
@@ -1284,7 +1479,7 @@ fn pcg<const R: usize, const NB: usize, const UNIT: bool>(
                 .for_each(|(p, z)| update(p, z));
         }
     }
-    Ok(Solve::Converged(iterations))
+    Ok(Solve::Converged(iterations, column_iterations))
 }
 
 /// `seg[s] = (Σ_s w v - Σ_c w_c (A x)_c) / W_s`, the eliminated coefficients.
@@ -1334,13 +1529,16 @@ fn recover<const R: usize, const NB: usize, const UNIT: bool>(
 }
 
 /// Form the residual in place and accumulate its remaining-level moments into
-/// `accs[0]`; returns `Σ w r^2` per RHS.
+/// `accs[0]`; returns `Σ w r^2` per RHS and, with `gram`, the raw-weighted
+/// residual Gram `Σ w r r'` (row-major `R x R`; plain sums per row lane,
+/// combined in lane order).
 fn residualize<const R: usize, const NB: usize, const WEIGHTED: bool>(
     ctx: &Ctx<'_, '_, NB>,
     values: &mut DenseMatrix,
     first: usize,
     work: &mut Work<R>,
-) -> [f64; R] {
+    gram: bool,
+) -> ([f64; R], Option<Vec<f64>>) {
     let st = ctx.st;
     let stride = values.ncols();
     let weights = ctx.weights.values.unwrap_or(&[]);
@@ -1352,6 +1550,7 @@ fn residualize<const R: usize, const NB: usize, const WEIGHTED: bool>(
     let run = |rows: Range<usize>, data: &mut [f64], acc: &mut [[f64; R]]| {
         acc.fill([0.0; R]);
         let mut sq = [0.0; R];
+        let mut lower = [[0.0; R]; R];
         for (row, values) in rows.zip(data.chunks_exact_mut(stride)) {
             let mut f = alpha[ctx.elim_codes[row] as usize];
             for b in 0..NB {
@@ -1375,11 +1574,20 @@ fn residualize<const R: usize, const NB: usize, const WEIGHTED: bool>(
                     a[j] += wr[j];
                 }
             }
+            if gram {
+                let raw = if WEIGHTED { weights[row] } else { 1.0 };
+                for (a, row) in lower.iter_mut().enumerate() {
+                    let wa = raw * v[a];
+                    for (entry, &vb) in row[..=a].iter_mut().zip(&v[..=a]) {
+                        *entry += wa * vb;
+                    }
+                }
+            }
         }
-        sq
+        (sq, lower)
     };
     let parts = split_parts(values.as_mut_slice(), &lengths);
-    let results: Vec<[f64; R]> = if lanes == 1 {
+    let results: Vec<([f64; R], [[f64; R]; R])> = if lanes == 1 {
         let mut parts = parts;
         vec![run(
             st.rows[0].clone(),
@@ -1396,18 +1604,38 @@ fn residualize<const R: usize, const NB: usize, const WEIGHTED: bool>(
     };
     merge(&mut accs[..lanes]);
     let mut sq = [0.0; R];
-    for s in results {
+    let mut lower = [[0.0; R]; R];
+    for (s, g) in results {
         for j in 0..R {
             sq[j] += s[j];
         }
+        if gram {
+            for a in 0..R {
+                for b in 0..=a {
+                    lower[a][b] += g[a][b];
+                }
+            }
+        }
     }
-    sq
+    let gram = gram.then(|| {
+        let mut full = vec![0.0; R * R];
+        for a in 0..R {
+            for b in 0..=a {
+                full[a * R + b] = lower[a][b];
+                full[b * R + a] = lower[a][b];
+            }
+        }
+        full
+    });
+    (sq, gram)
 }
 
 /// Per-call timing and iteration facts (trace only).
 #[derive(Default, Clone, Copy)]
 struct Facts {
     iterations: usize,
+    /// Sum over batches and iterations of the active columns.
+    column_iterations: usize,
     rhs_seconds: f64,
     pcg_seconds: f64,
     residual_seconds: f64,
@@ -1421,6 +1649,8 @@ enum Step {
         fold: Option<CertificateFold>,
         norms: Vec<f64>,
         reference: Vec<f64>,
+        /// The formed residual's Gram when the context requests it.
+        gram: Option<Vec<f64>>,
     },
 }
 
@@ -1469,7 +1699,10 @@ fn run<const R: usize, const NB: usize, const UNIT: bool, const WEIGHTED: bool>(
     let solved = pcg::<R, NB, UNIT>(st, ctx.w, &mut work, target, coefficient_target, cap)?;
     facts.pcg_seconds += started.elapsed().as_secs_f64();
     let iterations = match solved {
-        Solve::Converged(iterations) => iterations,
+        Solve::Converged(iterations, columns) => {
+            facts.column_iterations += columns;
+            iterations
+        }
         Solve::Declined(reason) => return Ok(Step::Declined(reason)),
     };
     facts.iterations = facts.iterations.max(iterations);
@@ -1501,13 +1734,14 @@ fn run<const R: usize, const NB: usize, const UNIT: bool, const WEIGHTED: bool>(
             }
         }
     }
-    let sq = residualize::<R, NB, WEIGHTED>(ctx, values, first, &mut work);
+    let (sq, gram) = residualize::<R, NB, WEIGHTED>(ctx, values, first, &mut work, ctx.gram);
     let (fold, norms) = certify_batch::<R>(ctx.w, &work.accs[0], sq, scale, tolerance);
     facts.residual_seconds += started.elapsed().as_secs_f64();
     Ok(Step::Formed {
         fold,
         norms,
         reference: scale.to_vec(),
+        gram,
     })
 }
 
@@ -1645,16 +1879,17 @@ fn project(
     map: MapConfig,
     bytes: u128,
     request: Request,
-) -> Result<Outcome<DenseMatrix>> {
+    gram: bool,
+) -> Result<(Outcome<DenseMatrix>, Option<ResidualGram>)> {
     if values.nrows() != st.nobs || values.ncols() == 0 || design.nobs() != st.nobs {
-        return Ok(Outcome::Declined(values));
+        return Ok((Outcome::Declined(values), None));
     }
     match st.blocks.len() {
-        1 => project_nb::<1>(st, w, design, weights, values, map, bytes, request),
-        2 => project_nb::<2>(st, w, design, weights, values, map, bytes, request),
-        3 => project_nb::<3>(st, w, design, weights, values, map, bytes, request),
-        4 => project_nb::<4>(st, w, design, weights, values, map, bytes, request),
-        _ => Ok(Outcome::Declined(values)),
+        1 => project_nb::<1>(st, w, design, weights, values, map, bytes, request, gram),
+        2 => project_nb::<2>(st, w, design, weights, values, map, bytes, request, gram),
+        3 => project_nb::<3>(st, w, design, weights, values, map, bytes, request, gram),
+        4 => project_nb::<4>(st, w, design, weights, values, map, bytes, request, gram),
+        _ => Ok((Outcome::Declined(values), None)),
     }
 }
 
@@ -1668,8 +1903,10 @@ fn project_nb<const NB: usize>(
     map: MapConfig,
     bytes: u128,
     request: Request,
-) -> Result<Outcome<DenseMatrix>> {
+    gram_requested: bool,
+) -> Result<(Outcome<DenseMatrix>, Option<ResidualGram>)> {
     let mut ledger = crate::diagnostics::phase_ledger::PhaseLedger::new("block_schur", ["solve"]);
+    let ncols = values.ncols();
     let ctx = Ctx::<NB> {
         st,
         w,
@@ -1679,10 +1916,11 @@ fn project_nb<const NB: usize>(
         offs: std::array::from_fn(|b| st.offsets[b]),
         weights,
         coefficient_accuracy: request.coefficient_accuracy,
+        gram: gram_requested && ncols <= BATCH,
     };
     let tolerance = map.tolerance;
     let cap = map.max_iterations.clamp(1, MAX_ITERATIONS);
-    let ncols = values.ncols();
+    let mut gram = None;
     let started = Instant::now();
     let mut facts = Facts::default();
     let mut fold = CertificateFold::default();
@@ -1713,15 +1951,20 @@ fn project_nb<const NB: usize>(
             match step {
                 Step::Declined(reason) => {
                     trace_decline(reason, facts);
-                    return Ok(Outcome::Declined(values));
+                    return Ok((Outcome::Declined(values), None));
                 }
                 Step::Formed {
                     fold: Some(part),
                     norms,
+                    gram: formed,
                     ..
                 } => {
                     merge_fold(&mut fold, &part);
                     residual_norms.extend_from_slice(&norms);
+                    gram = formed.map(|values| ResidualGram {
+                        columns: width,
+                        values,
+                    });
                     break;
                 }
                 Step::Formed {
@@ -1733,7 +1976,7 @@ fn project_nb<const NB: usize>(
                     // correct it in place at the original scale.
                     if attempts == 2 {
                         trace_decline("certificate failed after corrections", facts);
-                        return Ok(Outcome::Declined(values));
+                        return Ok((Outcome::Declined(values), None));
                     }
                     attempts += 1;
                     corrections += 1;
@@ -1746,7 +1989,10 @@ fn project_nb<const NB: usize>(
     ledger.lap(0);
     ledger.facts(&[
         ("iterations", facts.iterations as u64),
+        ("column_iterations", facts.column_iterations as u64),
+        ("columns", ncols as u64),
         ("cells", st.cells() as u64),
+        ("active_segments", st.active.len() as u64),
         ("reduced", st.reduced as u64),
         ("lanes", st.lanes.len() as u64),
         ("corrections", corrections as u64),
@@ -1757,7 +2003,7 @@ fn project_nb<const NB: usize>(
     let certificate = fold.finish(tolerance)?;
     if !certificate.passed {
         trace_decline("combined certificate failed", facts);
-        return Ok(Outcome::Declined(values));
+        return Ok((Outcome::Declined(values), None));
     }
     let report = SolveReport {
         requested_solver: FeSolverKind::Auto,
@@ -1778,7 +2024,7 @@ fn project_nb<const NB: usize>(
         None => CertifiedBorrowedMap::from_certified_parts(values, report),
     }?
     .with_residual_norms(residual_norms)
-    .map(Outcome::Done)
+    .map(|result| (Outcome::Done(result), gram))
 }
 
 fn trace_decline(reason: &str, facts: Facts) {

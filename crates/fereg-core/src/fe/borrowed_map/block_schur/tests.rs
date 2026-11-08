@@ -151,6 +151,85 @@ fn elimination_matches_converged_map_and_returns_reproducing_coefficients() {
 }
 
 #[test]
+fn residual_gram_matches_the_formed_residual() {
+    let rows = 700;
+    for levels in [vec![120, 17], vec![140, 23, 6], vec![140, 23, 6, 11, 4]] {
+        with_design(rows, &levels, 41 + levels.len() as u64, |design, _| {
+            let weights: Vec<f64> = (0..rows).map(|r| 0.5 + (r * 5 % 13) as f64).collect();
+            for weighted in [false, true] {
+                let borrowed = if weighted {
+                    BorrowedMapWeights::Provided(&weights)
+                } else {
+                    BorrowedMapWeights::Unit
+                };
+                for columns in [1, 6, 9] {
+                    let input = values(rows, columns, 3 + columns as u64);
+                    let mut cache = Cache::default();
+                    let request = Request {
+                        retain_coefficients: false,
+                        coefficient_accuracy: weighted,
+                    };
+                    // Not requested: no Gram.
+                    let Outcome::Done(_) = cache
+                        .project(
+                            design,
+                            borrowed,
+                            input.clone(),
+                            MapConfig::default(),
+                            None,
+                            request,
+                        )
+                        .unwrap()
+                    else {
+                        panic!("declined");
+                    };
+                    assert!(cache.take_residual_gram().is_none());
+                    cache.request_residual_gram(true);
+                    let Outcome::Done(result) = cache
+                        .project(
+                            design,
+                            borrowed,
+                            input.clone(),
+                            MapConfig::default(),
+                            None,
+                            request,
+                        )
+                        .unwrap()
+                    else {
+                        panic!("declined");
+                    };
+                    let gram = cache.take_residual_gram();
+                    assert!(cache.take_residual_gram().is_none());
+                    if columns > BATCH {
+                        assert!(gram.is_none());
+                        continue;
+                    }
+                    let gram = gram.expect("requested Gram");
+                    assert_eq!(gram.columns, columns);
+                    let residual = result.residualized();
+                    for a in 0..columns {
+                        for b in 0..columns {
+                            let direct: f64 = (0..rows)
+                                .map(|row| {
+                                    let w = if weighted { weights[row] } else { 1.0 };
+                                    w * residual[(row, a)] * residual[(row, b)]
+                                })
+                                .sum();
+                            let value = gram.values[a * columns + b];
+                            assert_eq!(value, gram.values[b * columns + a]);
+                            assert!(
+                                (value - direct).abs() <= 1e-12 * direct.abs().max(1.0),
+                                "levels={levels:?} weighted={weighted} ({a},{b}): {value} vs {direct}"
+                            );
+                        }
+                    }
+                }
+            }
+        });
+    }
+}
+
+#[test]
 fn declines_return_the_untouched_input() {
     with_design(400, &[80, 9, 5], 3, |design, _| {
         let input = values(400, 4, 11);
