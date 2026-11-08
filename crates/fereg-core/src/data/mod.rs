@@ -10,7 +10,7 @@ pub use axis::FinalizedAxis;
 pub use model_matrix::DenseMatrix;
 pub(crate) use sample::{
     classify_numeric_sample_into_mask, classify_numeric_sample_with_source_uses,
-    NumericSampleClassification,
+    fold_classified_numeric_sample, NumericSampleClassification,
 };
 pub use sample::{
     prepare_numeric_sample, prepare_numeric_sample_with_source_uses, AdjustmentInput,

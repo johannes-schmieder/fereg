@@ -1,8 +1,9 @@
 use crate::data::{
-    classify_numeric_sample_with_source_uses, prepare_numeric_sample_with_source_uses,
-    AdjustmentInput, DomainDecision, DropReason, NumericColumnView, NumericDomainPolicy,
-    NumericPreparationInput, NumericSampleClassification, NumericSourceUse, PreparedAdjustment,
-    PreparedNumericSample, PreparedWeights, WeightInput, WeightKind,
+    classify_numeric_sample_with_source_uses, fold_classified_numeric_sample,
+    prepare_numeric_sample_with_source_uses, AdjustmentInput, DomainDecision, DropReason,
+    NumericColumnView, NumericDomainPolicy, NumericPreparationInput, NumericSampleClassification,
+    NumericSourceUse, PreparedAdjustment, PreparedNumericSample, PreparedWeights, WeightInput,
+    WeightKind,
 };
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::linalg::neumaier_add;
@@ -166,11 +167,105 @@ impl PreparedPpmlNumericData {
 pub(crate) fn classify_ppml_numeric_data<'a>(
     input: &'a PpmlNumericPreparationInput<'a>,
 ) -> Result<ClassifiedPpmlNumericInput<'a>> {
-    let classification = classify_ppml_numeric_data_with_visitor(input, |_, _| {})?;
+    let (_, adjustment) = ppml_adjustment(input)?;
+    validate_ppml_weight_kind(input.weights)?;
+    let generic = NumericPreparationInput {
+        candidate: input.candidate,
+        outcome: input.outcome,
+        regressors: input.numeric_sources,
+        weights: input.weights,
+        adjustment,
+    };
+    // The rows' scan state combines exactly over chunks (a flag and the
+    // earliest failing rows), so the fold runs in parallel.
+    let (generic, scan) = fold_classified_numeric_sample(
+        &generic,
+        input.source_uses,
+        &PpmlNumericDomainPolicy,
+        PpmlRowScan::EMPTY,
+        &|scan: &mut PpmlRowScan, row, reason| scan.observe(input, row, reason),
+        &PpmlRowScan::merge,
+    )?;
+    let classification = scan.finish(input, generic)?;
     Ok(ClassifiedPpmlNumericInput {
         input,
         classification,
     })
+}
+
+/// Per-row facts of the PPML classification: any retained positive outcome
+/// and the first unmasked nonfinite domain and weight rows.
+#[derive(Debug, Clone, Copy)]
+struct PpmlRowScan {
+    positive: bool,
+    domain: Option<(usize, DropReason)>,
+    weight: Option<usize>,
+}
+
+impl PpmlRowScan {
+    const EMPTY: Self = Self {
+        positive: false,
+        domain: None,
+        weight: None,
+    };
+
+    #[inline]
+    fn observe(&mut self, input: &PpmlNumericPreparationInput<'_>, row: usize, reason: DropReason) {
+        if self.domain.is_none() && is_unmasked_nonfinite_ppml_domain_row(input, row, reason) {
+            self.domain = Some((row, reason));
+        }
+        if reason == DropReason::Retained && input.outcome.values[row] > 0.0 {
+            self.positive = true;
+        }
+        if self.weight.is_none()
+            && reason == DropReason::InvalidOrMissingWeight
+            && matches!(
+                input.weights,
+                WeightInput::Provided { column, .. }
+                    if !column.missing.is_some_and(|mask| mask[row])
+                        && !column.values[row].is_finite()
+            )
+        {
+            self.weight = Some(row);
+        }
+    }
+
+    /// Combine an earlier range's facts with a later range's.
+    fn merge(earlier: Self, later: Self) -> Self {
+        Self {
+            positive: earlier.positive || later.positive,
+            domain: earlier.domain.or(later.domain),
+            weight: earlier.weight.or(later.weight),
+        }
+    }
+
+    /// Report the first nonfinite domain or weight row, then require a
+    /// retained positive outcome.
+    fn finish(
+        self,
+        input: &PpmlNumericPreparationInput<'_>,
+        classification: NumericSampleClassification,
+    ) -> Result<PpmlNumericClassification> {
+        if let Some((original_row, reason)) = self.domain {
+            validate_unmasked_nonfinite_ppml_domain_row(input, original_row, reason)?;
+            unreachable!("recorded nonfinite PPML domain must fail validation");
+        }
+        if let Some(original_row) = self.weight {
+            validate_unmasked_nonfinite_weight_row(input.weights, original_row)?;
+            unreachable!("recorded nonfinite PPML weight must fail validation");
+        }
+        if classification.n_active == 0 || !self.positive {
+            return Err(FeregError::new(
+                ErrorCode::InsufficientObservations,
+                "PPML final numeric sample has no positive weighted outcome",
+            ));
+        }
+        Ok(PpmlNumericClassification {
+            n_original: classification.n_original,
+            n_candidate: classification.n_candidate,
+            n_active: classification.n_active,
+        })
+    }
 }
 
 fn classify_ppml_numeric_data_with_visitor(

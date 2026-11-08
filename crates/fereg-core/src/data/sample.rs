@@ -530,6 +530,56 @@ pub(crate) fn classify_numeric_sample_with_source_uses<
     })
 }
 
+/// [`classify_numeric_sample_with_source_uses`] for an order-independent
+/// fold: fixed row chunks (in parallel inside a worker pool; allocation free)
+/// fold their rows into `T` starting from `empty`, merged earlier-first over a
+/// fixed tree. The first classification error in row order reports.
+pub(crate) fn fold_classified_numeric_sample<P, T, L, M>(
+    input: &NumericPreparationInput<'_>,
+    source_uses: &[NumericSourceUse],
+    policy: &P,
+    empty: T,
+    leaf: &L,
+    merge: &M,
+) -> Result<(NumericSampleClassification, T)>
+where
+    P: NumericDomainPolicy + Sync,
+    T: Copy + Send + Sync,
+    L: Fn(&mut T, usize, DropReason) + Sync,
+    M: Fn(T, T) -> T + Sync,
+{
+    let n_original = input.candidate.len();
+    validate_input(input, n_original)?;
+    validate_source_uses(input, Some(source_uses))?;
+    let n_candidate = input.candidate.count_true();
+    check_output_dimensions(input, n_original, n_candidate)?;
+    const CHUNK_ROWS: usize = 1 << 15;
+    let (n_active, state) = crate::parallel::fixed_tree_reduce(
+        n_original,
+        CHUNK_ROWS,
+        &|rows: std::ops::Range<usize>| -> Result<(usize, T)> {
+            let (mut active, mut state) = (0_usize, empty);
+            for_each_classified_row(input, Some(source_uses), policy, rows, |row, reason| {
+                active += usize::from(reason == DropReason::Retained);
+                leaf(&mut state, row, reason);
+                Ok(())
+            })?;
+            Ok((active, state))
+        },
+        &|(left, earlier): (usize, T), (right, later): (usize, T)| {
+            (left + right, merge(earlier, later))
+        },
+    )?;
+    Ok((
+        NumericSampleClassification {
+            n_original,
+            n_candidate,
+            n_active,
+        },
+        state,
+    ))
+}
+
 /// Scalar-only result of the allocation-free numeric classification pass.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct NumericSampleClassification {
