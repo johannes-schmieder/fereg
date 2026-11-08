@@ -6640,10 +6640,44 @@ fn resize_zeroed(target: &mut Vec<f64>, length: usize, message: &'static str) ->
     Ok(())
 }
 
-fn stable_weighted_norm<F>(rows: usize, mut value: F) -> Result<f64>
+fn stable_weighted_norm<F>(rows: usize, value: F) -> Result<f64>
 where
-    F: FnMut(usize) -> Result<(f64, f64)>,
+    F: Fn(usize) -> Result<(f64, f64)> + Sync,
 {
+    // Plain sums over fixed row chunks merged in order; the scaled serial sum
+    // below handles extreme magnitudes and reports every invalid input.
+    const ROWS: usize = 1 << 15;
+    let parts: Vec<Option<(f64, f64)>> = (0..rows.div_ceil(ROWS))
+        .into_par_iter()
+        .map(|chunk| {
+            let (mut squares, mut largest) = (0.0_f64, 0.0_f64);
+            for row in chunk * ROWS..((chunk + 1) * ROWS).min(rows) {
+                let (value, weight) = value(row).ok()?;
+                let root = weight.sqrt();
+                if !(root.is_finite() && root > 0.0) {
+                    return None;
+                }
+                let scaled = root * value;
+                squares += scaled * scaled;
+                largest = largest.max(scaled.abs());
+            }
+            Some((squares, largest))
+        })
+        .collect();
+    let mut total = Some((0.0_f64, 0.0_f64));
+    for part in parts {
+        total = total.zip(part).map(|(t, p)| (t.0 + p.0, t.1.max(p.1)));
+    }
+    if let Some((squares, largest)) = total {
+        if squares.is_finite() {
+            if largest == 0.0 && squares == 0.0 {
+                return Ok(0.0);
+            }
+            if (1e-140..=1e140).contains(&largest) {
+                return Ok(squares.sqrt());
+            }
+        }
+    }
     let mut scale = 0.0_f64;
     let mut scaled_square_sum = 1.0_f64;
     for row in 0..rows {

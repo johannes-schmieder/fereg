@@ -845,7 +845,13 @@ impl<'a> LinearSolveFrame<'a> {
         weights: BorrowedMapWeights<'a>,
         bread_weight_scale: PreparedOlsBreadWeightScale,
     ) -> Result<Self> {
-        if response.iter().any(|value| !value.is_finite()) {
+        // Branch-free block scans in parallel; the same predicates.
+        const EXPONENT: u64 = 0x7ff0_0000_0000_0000;
+        if response.par_chunks(1 << 15).any(|block| {
+            block.iter().fold(0_u64, |bad, value| {
+                bad | u64::from(value.to_bits() & EXPONENT == EXPONENT)
+            }) != 0
+        }) {
             return Err(invalid_data(
                 "prepared weighted-linear response must be finite",
             ));
@@ -871,11 +877,15 @@ impl<'a> LinearSolveFrame<'a> {
                 None
             }
             BorrowedMapWeights::Provided(values) => {
+                let divisor = bread_weight_scale.solver_weight_divisor;
                 if values.len() != response.len()
-                    || values.iter().any(|weight| {
-                        !weight.is_finite()
-                            || *weight <= 0.0
-                            || *weight / bread_weight_scale.solver_weight_divisor == 0.0
+                    || values.par_chunks(1 << 15).any(|block| {
+                        !block.iter().fold(true, |valid, weight| {
+                            valid
+                                & (weight.is_finite()
+                                    & (*weight > 0.0)
+                                    & (*weight / divisor != 0.0))
+                        })
                     })
                 {
                     return Err(invalid_data(
