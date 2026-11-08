@@ -817,17 +817,7 @@ fn project_nb<const NB: usize>(
                     if let Some(part) = &formed.certified {
                         fold.merge(part);
                         residual_norms.extend_from_slice(&formed.norms[..width]);
-                        columns.extend((0..width).map(|j| ColumnReport {
-                            relative_moment: formed.relative[j],
-                            scale: formed.scales[j],
-                            residual_norm: formed.norms[j],
-                            iterations: iterations[j],
-                            status: if formed.floor[j] {
-                                ColumnStatus::AcceptedAtFloor
-                            } else {
-                                ColumnStatus::Converged
-                            },
-                        }));
+                        columns.extend((0..width).map(|j| column_report(&formed, &iterations, j)));
                         gram_formed = formed.gram;
                         break;
                     }
@@ -879,6 +869,20 @@ fn project_nb<const NB: usize>(
         workspace_bytes: job.bytes,
     };
     Ok((Outcome::Projected(report), gram_formed))
+}
+
+fn column_report(formed: &Formed, iterations: &[usize; BATCH], j: usize) -> ColumnReport {
+    ColumnReport {
+        relative_moment: formed.relative[j],
+        scale: formed.scales[j],
+        residual_norm: formed.norms[j],
+        iterations: iterations[j],
+        status: if formed.floor[j] {
+            ColumnStatus::AcceptedAtFloor
+        } else {
+            ColumnStatus::Converged
+        },
+    }
 }
 
 fn with_structure(mut facts: Facts, st: &Structure, ncols: usize) -> Facts {

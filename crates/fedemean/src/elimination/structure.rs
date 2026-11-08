@@ -368,38 +368,7 @@ impl Structure {
         let cell_bounds = bounds_of(&lane_ranges, |s| seg_cells[s])?;
         let zero_bounds = filled(lanes.len() + 1, 0_usize)?;
         drop(lane_ranges);
-        let mut active_count = 0;
-        let mut max_seg_cells = 0;
-        for s in 0..segments {
-            let count = seg_cells[s + 1] - seg_cells[s];
-            max_seg_cells = max_seg_cells.max(count);
-            active_count += usize::from(count >= 2);
-        }
-        let mut active = with_capacity(active_count)?;
-        let mut active_offsets = with_capacity(active_count + 1)?;
-        active_offsets.push(0_usize);
-        for s in 0..segments {
-            let count = seg_cells[s + 1] - seg_cells[s];
-            if count >= 2 {
-                active.push(s as u32);
-                active_offsets.push(active_offsets[active.len() - 1] + count);
-            }
-        }
-        let active_cells = active_offsets[active.len()];
-        let active_ranges = partition(
-            &active_offsets,
-            lane_count(active_cells * NB * BATCH, width),
-        )?;
-        drop(active_offsets);
-        let mut active_lanes = with_capacity(active_ranges.len())?;
-        for range in active_ranges {
-            let max_cells = active[range.clone()]
-                .iter()
-                .map(|&s| seg_cells[s as usize + 1] - seg_cells[s as usize])
-                .max()
-                .unwrap_or(0);
-            active_lanes.push((range, max_cells));
-        }
+        let (active, active_lanes, max_seg_cells) = active_segments(&seg_cells, NB, width)?;
         let row_lanes = lane_count(n * (NB + 1) * BATCH, width);
         let per = n.div_ceil(row_lanes);
         let mut rows = with_capacity(row_lanes)?;
@@ -438,6 +407,51 @@ impl Structure {
             width,
         }))
     }
+}
+
+/// The segments with at least two cells, their operator lanes (ranges of
+/// them balanced by their cells, with the largest segment of each) and the
+/// cells of the largest segment.
+#[allow(clippy::type_complexity)]
+fn active_segments(
+    seg_cells: &[usize],
+    nb: usize,
+    width: usize,
+) -> Result<(Vec<u32>, Vec<(Range<usize>, usize)>, usize)> {
+    let segments = seg_cells.len() - 1;
+    let mut active_count = 0;
+    let mut max_seg_cells = 0;
+    for s in 0..segments {
+        let count = seg_cells[s + 1] - seg_cells[s];
+        max_seg_cells = max_seg_cells.max(count);
+        active_count += usize::from(count >= 2);
+    }
+    let mut active = with_capacity(active_count)?;
+    let mut active_offsets = with_capacity(active_count + 1)?;
+    active_offsets.push(0_usize);
+    for s in 0..segments {
+        let count = seg_cells[s + 1] - seg_cells[s];
+        if count >= 2 {
+            active.push(s as u32);
+            active_offsets.push(active_offsets[active.len() - 1] + count);
+        }
+    }
+    let active_cells = active_offsets[active.len()];
+    let active_ranges = partition(
+        &active_offsets,
+        lane_count(active_cells * nb * BATCH, width),
+    )?;
+    drop(active_offsets);
+    let mut active_lanes = with_capacity(active_ranges.len())?;
+    for range in active_ranges {
+        let max_cells = active[range.clone()]
+            .iter()
+            .map(|&s| seg_cells[s as usize + 1] - seg_cells[s as usize])
+            .max()
+            .unwrap_or(0);
+        active_lanes.push((range, max_cells));
+    }
+    Ok((active, active_lanes, max_seg_cells))
 }
 
 struct BuildCtx<'d, 'c> {

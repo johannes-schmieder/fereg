@@ -18,7 +18,7 @@ from rust_source import _production_tokens, _function_spans, _matching, _item_st
 
 ROOT = Path(__file__).resolve().parents[1]
 BASELINE = 'tests/reference/complexity.json'
-CRATES = ('fereg-core', 'fereg-plugin')
+CRATES = ('fedemean', 'fereg-core', 'fereg-plugin')
 SENSITIVE = re.compile(r'(^|_)(n|p|k|nobs|nrows|ncols|rows|cols|columns|width|threads?|workers?|weights?|weighted|memory|budget|capacity|len|size|fast|low)($|_)')
 CHUNK = re.compile(r'(^|_)(chunks?|tiles?|partitions?|grains?)($|_)')
 
@@ -151,7 +151,7 @@ def read_baseline(revision):
 # token streams compared below (C bridge, manifests, lockfile, toolchain,
 # vendored and build-script sources).
 ARTIFACT_INPUTS = ('plugin', 'vendor', 'Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', '.cargo',
-                   'crates/fereg-core/Cargo.toml', 'crates/fereg-core/build.rs',
+                   'crates/fedemean/Cargo.toml', 'crates/fereg-core/Cargo.toml', 'crates/fereg-core/build.rs',
                    'crates/fereg-plugin/Cargo.toml')
 
 
