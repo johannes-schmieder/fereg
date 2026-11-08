@@ -1,5 +1,60 @@
 # Validation status
 
+## Exact elimination route and PPML elimination pre-solve, November 8, 2026
+
+**Integrated locally into main (not pushed; Windows plugin and publication pending).**
+Johannes commissioned a performance workstream for OLS and PPML with two, three
+and more categorical effects (branch `claude-need4speed` on `b5aad4ed`) and, on
+November 8, accepted its decisions: a distinct reported solver identity for the
+elimination (OLS `elimination`, code 9; PPML keeps the MAP engine identity
+because the compiled PPML validator admits only the established engines and
+the oldest supported Stata needed to rebuild it does not start on the Mac),
+crediting a converged elimination pre-solve as the first of the two PPML passes,
+keeping the strict checkpoint unchanged, and the declared rounding-level scope
+of the shared fixed-tree reductions (SPEC §1, §13, §18).
+
+**Scientific agreement.** Against 0.5.3 (`b5aad4ed`) on the 1M-row benchmark
+panel (fourteen designs with two to five effects, low-mobility and hard graphs),
+OLS coefficients agree within 1.2e-14 and SEs within 4.5e-10 relative, PPML
+coefficients within 4.9e-14 and SEs within 6.7e-14; objectives within 9e-14;
+samples and every discrete decision are identical. The frozen external reference
+estimator agrees with 0.5.3 at the same distances (OLS SE 4.3e-10, PPML 7.6e-12),
+and the branch's OLS SEs now sit at the reference's distance from 0.5.3 because
+the elimination's stopping target (0.1×tol of the within norm) is stricter than
+the established routes. Linux (SCC runs f, g, h on scc-yk4, scc-wo4, scc-zj4)
+shows the same agreement. Fixed-worker repeats are exact; one, two, four and
+eight workers agree scientifically.
+
+**Independent witnesses.** The dense-QR and full-dummy oracles check the public
+elimination route and rerun the established geometry-policy assertions unchanged
+in `FEREG_BLOCK_SCHUR=0` child processes. A validation lane compared 72
+specifications (weights, offsets/exposure, clusters, separation, saved outputs,
+low memory, bias correction, four and five effects) against 0.5.3 and the
+switch-off arms; its findings (iterate() accounting, a route change for explicit
+preconditioners, infallible allocations in new parallel passes, the earlier
+elimination stopping scale) were fixed before integration.
+
+**Checks at the integration head.** `scripts/run_tests.sh --source-only`:
+2,300 Rust test executions, 349 Python tests, the ten isolated allocator audits,
+portable static checks, the complexity ratchet (no new size violation) and the
+mock-SPI bridge tests pass. Stata fixtures: the 20 solver-report fixtures and
+35 PPML `e(sample)` fixtures pass on the Mac package (one PPML fixture,
+`parallel_input_oracle`, needs its solver-trace environment and is unchanged).
+Not covered: Windows, native Intel-Mac and Stata 15 execution, the Linux mock
+plugin audit (GNU ld) and an installed `github install` test of this runtime.
+
+**Performance (4 threads, robust, 1M rows; medians).** Mac M2 Ultra (ms; 0.5.3 /
+branch / external reference): ols2 182/58/60, akm 206/60/63, ols3 298/76/68,
+ols4 358/87/91, ols5 425/97/105, ols3hard 447/72/73, ols3akm 487/90/181,
+ppml2 1161/389/346, ppmlakm 1406/385/272, ppml3 3139/463/432, ppml4 2897/539/510,
+ppml5 3478/616/476, ppml3hard 5629/589/456, ppml3akm 5741/636/1096. Linux
+scc-zj4, run h (f8ff19ae; ms): ols2 562/203/176, ols3 886/273/188,
+ols5 1137/369/284, ppml2 3110/1261/826, ppml3 9305/1704/886, ppml5 9488/2053/1109.
+Later commits (`7059ac84`, `93b5bcba`) improve Mac PPML by a further 2-4%.
+The Linux gap to the reference is serial work on single workers, Stata-side
+time and memory footprint (RSS about 1.2 GB against 0.2 GB for ppml2), measured
+with perf on scc-wo4 and scc-yj2.
+
 ## Bounded saved-effect recovery refinement, November 7, 2026
 
 Johannes requested a performance refinement on integrated 0.5.2 (`7f6d87b1`).
