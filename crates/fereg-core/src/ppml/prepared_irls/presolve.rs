@@ -123,6 +123,9 @@ pub(super) fn presolve<P: PreparedOlsFitView + Sync + ?Sized>(
         bounds: config.bounds,
     };
     let mut cache = block_schur::Cache::default();
+    // The elimination accumulates the residual Gram inside its residual pass
+    // (up to eight columns), which supplies the normal equations directly.
+    cache.request_residual_gram(true);
     let mut change = f64::INFINITY;
     let mut steps = 0;
     let mut projection_iterations = 0_usize;
@@ -144,13 +147,11 @@ pub(super) fn presolve<P: PreparedOlsFitView + Sync + ?Sized>(
             return Ok(None);
         };
         projection_iterations += iterations;
-        let (mut gram, rhs, raw) = normal_equations(projected.as_slice(), &weights, columns)?;
-        // A regressor (nearly) collinear with the fixed effects is a rank
-        // decision for the certified solve; leave such designs to it.
-        let separated = |a: usize| gram[a * MAX_COLUMNS + a] > COLLINEARITY_RATIO * raw[a];
-        if !(0..k).all(separated) {
+        let Some((mut gram, rhs)) =
+            step_normal_equations(&cache, projected.as_slice(), &weights, columns, steps == 1)?
+        else {
             return Ok(None);
-        }
+        };
         let Some(beta) = scaled_cholesky_solve(&mut gram, &rhs, k) else {
             return Ok(None);
         };
@@ -324,6 +325,81 @@ fn normal_equations(data: &[f64], weights: &[f64], columns: &[&[f64]]) -> Result
                 *target += value;
             }
             (gram, rhs, raw)
+        },
+    )
+}
+
+/// The step's normal equations: from the elimination's residual Gram when it
+/// covers `[z~, X~]`, otherwise by a row pass. A regressor (nearly) collinear
+/// with the fixed effects is a rank decision for the certified solve, so
+/// `None` leaves such designs to it; the collinearity is structural, so the
+/// first step's weights decide it (every step keeps the Cholesky pivot guard).
+fn step_normal_equations(
+    cache: &block_schur::Cache,
+    projected: &[f64],
+    weights: &[f64],
+    columns: &[&[f64]],
+    first: bool,
+) -> Result<Option<([f64; MAX_COLUMNS * MAX_COLUMNS], [f64; MAX_COLUMNS])>> {
+    let k = columns.len();
+    let (gram, rhs) = match cache.residual_gram() {
+        Some(residual_gram) if residual_gram.columns == k + 1 => {
+            elimination_normal_equations(residual_gram, k)
+        }
+        _ => {
+            let (gram, rhs, _) = normal_equations(projected, weights, columns)?;
+            (gram, rhs)
+        }
+    };
+    if first {
+        let raw = raw_weighted_squares(weights, columns)?;
+        if !(0..k).all(|a| gram[a * MAX_COLUMNS + a] > COLLINEARITY_RATIO * raw[a]) {
+            return Ok(None);
+        }
+    }
+    Ok(Some((gram, rhs)))
+}
+
+/// Normal equations of the regressors from the elimination's residual Gram
+/// of `[z~, X~]` (raw weights): `X~' W X~` (lower triangle, stride
+/// `MAX_COLUMNS`) and `X~' W z~`.
+fn elimination_normal_equations(
+    residual_gram: &block_schur::ResidualGram,
+    k: usize,
+) -> ([f64; MAX_COLUMNS * MAX_COLUMNS], [f64; MAX_COLUMNS]) {
+    let width = residual_gram.columns;
+    let values = &residual_gram.values;
+    let mut gram = [0.0; MAX_COLUMNS * MAX_COLUMNS];
+    let mut rhs = [0.0; MAX_COLUMNS];
+    for a in 0..k {
+        rhs[a] = values[(1 + a) * width];
+        for b in 0..=a {
+            gram[a * MAX_COLUMNS + b] = values[(1 + a) * width + 1 + b];
+        }
+    }
+    (gram, rhs)
+}
+
+/// Raw weighted squares `sum w x_a^2` of the regressors over a fixed tree of
+/// row chunks (allocation free).
+fn raw_weighted_squares(weights: &[f64], columns: &[&[f64]]) -> Result<[f64; MAX_COLUMNS]> {
+    crate::parallel::fixed_tree_reduce(
+        weights.len(),
+        ROWS,
+        &|range: std::ops::Range<usize>| -> Result<[f64; MAX_COLUMNS]> {
+            let mut raw = [0.0; MAX_COLUMNS];
+            for (square, column) in raw.iter_mut().zip(columns) {
+                for i in range.clone() {
+                    *square += weights[i] * column[i] * column[i];
+                }
+            }
+            Ok(raw)
+        },
+        &|mut left: [f64; MAX_COLUMNS], right: [f64; MAX_COLUMNS]| {
+            for (target, value) in left.iter_mut().zip(right) {
+                *target += value;
+            }
+            left
         },
     )
 }

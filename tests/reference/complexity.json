@@ -1,28 +1,16 @@
 {
   "growth": [
     {
-      "after": 122384,
-      "before": 122366,
+      "after": 1579,
+      "before": 1578,
+      "metric": "fereg-core/dispatch_candidates",
+      "reason": "PPML pre-solve normal equations from the elimination residual Gram; first-step FE-collinearity check."
+    },
+    {
+      "after": 122445,
+      "before": 122384,
       "metric": "fereg-core/production_lines",
-      "reason": "Distinct reported solver identity for the exact elimination (FeSolverKind::Elimination, OLS code 9 \"elimination\"; PPML keeps the MAP engine identity) and its low-memory report aggregation."
-    },
-    {
-      "after": 17283,
-      "before": 17281,
-      "metric": "fereg-plugin/production_lines",
-      "reason": "Distinct reported solver identity for the exact elimination (FeSolverKind::Elimination, OLS code 9 \"elimination\"; PPML keeps the MAP engine identity) and its low-memory report aggregation."
-    },
-    {
-      "after": 4728,
-      "before": 4726,
-      "metric": "file/crates/fereg-core/src/ols/prepared_fit.rs",
-      "reason": "Distinct reported solver identity for the exact elimination (FeSolverKind::Elimination, OLS code 9 \"elimination\"; PPML keeps the MAP engine identity) and its low-memory report aggregation."
-    },
-    {
-      "after": 1965,
-      "before": 1964,
-      "metric": "file/crates/fereg-plugin/src/ppml_result.rs",
-      "reason": "Distinct reported solver identity for the exact elimination (FeSolverKind::Elimination, OLS code 9 \"elimination\"; PPML keeps the MAP engine identity) and its low-memory report aggregation."
+      "reason": "PPML pre-solve normal equations from the elimination residual Gram; first-step FE-collinearity check."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -2308,60 +2296,60 @@
         "dispatch_candidates": [
           {
             "condition": "self . refused || values . nrows ( ) != design . nobs ( )",
-            "line": 212
+            "line": 210
           },
           {
             "condition": "budget . is_some_and ( | b | ! b . fits ( admission_bytes ( st , None , values . ncols ( ) ) ) )",
-            "line": 230
+            "line": 228
           },
           {
             "condition": "self . weights . as_ref ( ) . is_none_or ( | ( k , _ ) | * k != key )",
-            "line": 233
+            "line": 231
           },
           {
             "condition": "values . ncols ( ) != 1 || values . nrows ( ) != st . nobs || design . nobs ( ) != st . nobs",
-            "line": 277
+            "line": 275
           },
           {
             "condition": "* key != weight_key ( validated . values ) ?",
-            "line": 281
+            "line": 279
           },
           {
             "condition": "st . blocks . len ( ) == 1",
-            "line": 372
+            "line": 370
           },
           {
             "condition": "( unit , weighted )",
-            "line": 604
+            "line": 602
           },
           {
             "condition": "width",
-            "line": 656
+            "line": 654
           },
           {
             "condition": "values . nrows ( ) != st . nobs || values . ncols ( ) == 0 || design . nobs ( ) != st . nobs",
-            "line": 695
+            "line": 693
           },
           {
             "condition": "st . blocks . len ( )",
-            "line": 698
+            "line": 696
           }
         ],
         "functions": {
           "admission_bytes#1": {
-            "line": 368,
+            "line": 366,
             "lines": 16
           },
           "certify_derived#1": {
-            "line": 266,
+            "line": 264,
             "lines": 90
           },
           "detach_residual_norms#1": {
-            "line": 188,
+            "line": 186,
             "lines": 3
           },
           "dispatch#1": {
-            "line": 587,
+            "line": 585,
             "lines": 81
           },
           "enabled#1": {
@@ -2369,47 +2357,47 @@
             "lines": 8
           },
           "merge_fold#1": {
-            "line": 575,
+            "line": 573,
             "lines": 10
           },
           "project#1": {
-            "line": 201,
+            "line": 199,
             "lines": 60
           },
           "project#2": {
-            "line": 684,
+            "line": 682,
             "lines": 22
           },
           "project_nb#1": {
-            "line": 708,
+            "line": 706,
             "lines": 149
           },
           "request_residual_gram#1": {
-            "line": 173,
+            "line": 172,
             "lines": 3
           },
           "residual_gram#1": {
-            "line": 180,
+            "line": 178,
             "lines": 3
           },
           "residual_norms#1": {
-            "line": 195,
+            "line": 193,
             "lines": 3
           },
           "run#1": {
-            "line": 414,
+            "line": 412,
             "lines": 123
           },
           "solve_bytes#1": {
-            "line": 359,
+            "line": 357,
             "lines": 8
           },
           "trace_decline#1": {
-            "line": 858,
+            "line": 856,
             "lines": 9
           }
         },
-        "production_lines": 698
+        "production_lines": 696
       },
       "crates/fereg-core/src/fe/borrowed_map/block_schur/kernels.rs": {
         "chunk_candidates": [],
@@ -20590,48 +20578,52 @@
           },
           {
             "condition": "cache . project ( design , weights , input , map , None , request ) ?",
-            "line": 222
+            "line": 223
           },
           {
             "condition": "model . columns . get ( generated ) . map ( | column | & column . kind )",
-            "line": 246
+            "line": 247
           },
           {
             "condition": "k == MAX_COLUMNS",
-            "line": 254
+            "line": 255
+          },
+          {
+            "condition": "residual_gram . columns == k + 1 =>",
+            "line": 346
           },
           {
             "condition": "! ( next . is_finite ( ) && weight . is_finite ( ) && weight > 0.0 )",
-            "line": 444
+            "line": 520
           }
         ],
         "functions": {
           "first_projection_input#1": {
-            "line": 267,
+            "line": 268,
             "lines": 21
           },
           "full_step#1": {
-            "line": 364,
+            "line": 440,
             "lines": 46
           },
           "normal_equations#1": {
-            "line": 292,
+            "line": 293,
             "lines": 38
           },
           "presolve#1": {
             "line": 55,
-            "lines": 146
+            "lines": 147
           },
           "project#1": {
-            "line": 205,
+            "line": 206,
             "lines": 26
           },
           "row#1": {
-            "line": 414,
+            "line": 490,
             "lines": 41
           }
         },
-        "production_lines": 446
+        "production_lines": 509
       },
       "crates/fereg-core/src/ppml/prepared_irls/retry.rs": {
         "chunk_candidates": [],
@@ -26899,10 +26891,10 @@
     "metrics": {
       "fereg-core": {
         "chunk_candidates": 13,
-        "dispatch_candidates": 1578,
+        "dispatch_candidates": 1579,
         "files_over_1500": 15,
         "functions_over_150": 58,
-        "production_lines": 122384
+        "production_lines": 122445
       },
       "fereg-plugin": {
         "chunk_candidates": 6,
@@ -26914,5 +26906,5 @@
     },
     "schema": 1
   },
-  "reason": "Distinct reported solver identity for the exact elimination."
+  "reason": "PPML pre-solve normal equations from the elimination residual Gram; first-step FE-collinearity check."
 }

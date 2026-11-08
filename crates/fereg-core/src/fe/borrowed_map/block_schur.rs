@@ -169,14 +169,12 @@ impl Cache {
     /// Also accumulate the residual Gram `Σ w r r'` at the caller's raw
     /// weights (unit weights: 1) in the residual pass of later projections
     /// with at most [`BATCH`] columns; see [`Cache::residual_gram`].
-    #[allow(dead_code)] // For the PPML pre-solve's normal equations.
     pub(crate) fn request_residual_gram(&mut self, on: bool) {
         self.gram_requested = on;
     }
 
     /// The residual Gram of the last [`Cache::project`] call, when it was
     /// requested and the projection certified.
-    #[allow(dead_code)] // For the PPML pre-solve's normal equations.
     pub(crate) fn residual_gram(&self) -> Option<&ResidualGram> {
         self.gram_ready.then_some(&self.gram)
     }
