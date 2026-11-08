@@ -2,8 +2,9 @@
 use super::*;
 
 struct ColumnStatistics<'a, const NORM: bool, const MEAN: bool> {
-    weights: BorrowedMapWeights<'a>,
-    weight_scale: super::super::PreparedOlsBreadWeightScale,
+    /// Validated normalized weights and their roots; `None` is unit weight.
+    normalized: Option<&'a [f64]>,
+    roots: Option<&'a [f64]>,
     /// Exact scaled sum of squares (fallback); otherwise plain sums.
     exact: bool,
     scale: f64,
@@ -14,26 +15,105 @@ struct ColumnStatistics<'a, const NORM: bool, const MEAN: bool> {
 }
 
 impl<const NORM: bool, const MEAN: bool> ColumnStatistics<'_, NORM, MEAN> {
+    /// Plain-path values are not checked per row: a nonfinite value makes the
+    /// chunk's square sum nonfinite (sending the column to the exact pass,
+    /// which reports it) and its compensated mean nonfinite (rejected when the
+    /// chunks merge). The arithmetic and its order are unchanged.
+    #[inline(always)]
     fn add(&mut self, row: usize, value: f64) -> Result<()> {
-        let weight = normalized_solver_weight(self.weights, self.weight_scale, row)?;
         if NORM {
-            let scaled = weight.sqrt() * value;
+            let scaled = match self.roots {
+                Some(roots) => roots[row] * value,
+                None => value,
+            };
             if self.exact {
                 update_scaled_square(scaled, &mut self.scale, &mut self.squares)?;
             } else {
-                if !scaled.is_finite() {
-                    return Err(invalid_data("weighted-linear norm value is not finite"));
-                }
                 self.squares += scaled * scaled;
                 self.largest = self.largest.max(scaled.abs());
             }
         }
         if MEAN {
-            compensated_add(weight * value, &mut self.mean, &mut self.correction)?;
+            let weight = match self.normalized {
+                Some(weights) => weights[row],
+                None => 1.0,
+            };
+            crate::linalg::neumaier_add(weight * value, &mut self.mean, &mut self.correction);
+        }
+        Ok(())
+    }
+
+    /// Rows `first..first + count` with values `value(i)` (local index):
+    /// `LANES` interleaved accumulators (plain squares, maxima, compensated
+    /// means), merged in lane order, then the tail rows. The exact fallback
+    /// keeps the row-by-row path.
+    #[inline(always)]
+    fn add_run(&mut self, first: usize, count: usize, value: impl Fn(usize) -> f64) -> Result<()> {
+        if self.exact {
+            for i in 0..count {
+                self.add(first + i, value(i))?;
+            }
+            return Ok(());
+        }
+        let roots = self.roots.map(|roots| &roots[first..first + count]);
+        let weights = self
+            .normalized
+            .map(|weights| &weights[first..first + count]);
+        let body = count / LANES * LANES;
+        let mut squares = [0.0_f64; LANES];
+        let mut largest = [0.0_f64; LANES];
+        let mut sums = [0.0_f64; LANES];
+        let mut corrections = [0.0_f64; LANES];
+        for block in (0..body).step_by(LANES) {
+            for lane in 0..LANES {
+                let i = block + lane;
+                let v = value(i);
+                if NORM {
+                    let scaled = match roots {
+                        Some(roots) => roots[i] * v,
+                        None => v,
+                    };
+                    squares[lane] += scaled * scaled;
+                    largest[lane] = largest[lane].max(scaled.abs());
+                }
+                if MEAN {
+                    let x = match weights {
+                        Some(weights) => weights[i] * v,
+                        None => v,
+                    };
+                    let t = sums[lane] + x;
+                    corrections[lane] += if sums[lane].abs() >= x.abs() {
+                        (sums[lane] - t) + x
+                    } else {
+                        (x - t) + sums[lane]
+                    };
+                    sums[lane] = t;
+                }
+            }
+        }
+        for lane in 0..LANES {
+            if NORM {
+                self.squares += squares[lane];
+                self.largest = self.largest.max(largest[lane]);
+            }
+            if MEAN {
+                crate::linalg::neumaier_add(sums[lane], &mut self.mean, &mut self.correction);
+                crate::linalg::neumaier_add(
+                    corrections[lane],
+                    &mut self.mean,
+                    &mut self.correction,
+                );
+            }
+        }
+        for i in body..count {
+            self.add(first + i, value(i))?;
         }
         Ok(())
     }
 }
+
+/// Interleaved accumulators of the plain statistics path.
+const LANES: usize = 4;
 
 /// Rows per fixed chunk; chunk boundaries depend only on the row count.
 const STATISTIC_ROWS: usize = 1 << 15;
@@ -59,19 +139,67 @@ fn column_statistics<const NORM: bool, const MEAN: bool>(
     }
     let chunks = rows.div_ceil(STATISTIC_ROWS).max(1);
     let range = |chunk: usize| chunk * STATISTIC_ROWS..((chunk + 1) * STATISTIC_ROWS).min(rows);
+    // Validate and normalize the weights once (and their roots for norms)
+    // instead of once per column and row.
+    let (normalized, roots) = match weights {
+        BorrowedMapWeights::Unit => (None, None),
+        BorrowedMapWeights::Provided(_) => {
+            let mut normalized = crate::memory::fallible_filled(
+                rows,
+                0.0_f64,
+                "unable to reserve weighted-linear normalized weights",
+            )?;
+            normalized
+                .par_chunks_mut(STATISTIC_ROWS)
+                .enumerate()
+                .try_for_each(|(chunk, values)| -> Result<()> {
+                    for (offset, value) in values.iter_mut().enumerate() {
+                        *value = normalized_solver_weight(
+                            weights,
+                            weight_scale,
+                            chunk * STATISTIC_ROWS + offset,
+                        )?;
+                    }
+                    Ok(())
+                })?;
+            let roots = if NORM {
+                let mut roots = crate::memory::fallible_filled(
+                    rows,
+                    0.0_f64,
+                    "unable to reserve weighted-linear weight roots",
+                )?;
+                roots
+                    .par_iter_mut()
+                    .zip(normalized.par_iter())
+                    .for_each(|(root, weight)| *root = weight.sqrt());
+                Some(roots)
+            } else {
+                None
+            };
+            (Some(normalized), roots)
+        }
+    };
+    let (normalized, roots) = (normalized.as_deref(), roots.as_deref());
     let mut weight_sum = 0.0;
     let mut weight_correction = 0.0;
     if MEAN {
         let parts: Vec<Result<(f64, f64)>> = (0..chunks)
             .into_par_iter()
             .map(|chunk| {
+                // Normalized weights are validated finite and positive; the
+                // merge below rejects a nonfinite chunk sum.
                 let (mut sum, mut correction) = (0.0, 0.0);
-                for row in range(chunk) {
-                    compensated_add(
-                        normalized_solver_weight(weights, weight_scale, row)?,
-                        &mut sum,
-                        &mut correction,
-                    )?;
+                match normalized {
+                    Some(weights) => {
+                        for &weight in &weights[range(chunk)] {
+                            crate::linalg::neumaier_add(weight, &mut sum, &mut correction);
+                        }
+                    }
+                    None => {
+                        for _ in range(chunk) {
+                            crate::linalg::neumaier_add(1.0, &mut sum, &mut correction);
+                        }
+                    }
                 }
                 Ok((sum, correction))
             })
@@ -86,8 +214,8 @@ fn column_statistics<const NORM: bool, const MEAN: bool>(
         }
     }
     let state = |exact| ColumnStatistics::<NORM, MEAN> {
-        weights,
-        weight_scale,
+        normalized,
+        roots,
         exact,
         scale: 0.0,
         squares: if exact { 1.0 } else { 0.0 },
@@ -166,10 +294,9 @@ impl<P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'_, P> {
             means,
             |column, rows, state| {
                 let source = position(column);
-                for row in rows {
-                    state.add(row, values[(row, source)])?;
-                }
-                Ok(())
+                let stride = values.ncols();
+                let data = &values.as_slice()[rows.start * stride..rows.end * stride];
+                state.add_run(rows.start, rows.len(), |i| data[i * stride + source])
             },
         )
     }
@@ -203,6 +330,15 @@ impl<P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'_, P> {
                     &mut retained.reference_norms,
                     &mut retained.reference_means,
                     |column, range, state| {
+                        if let Some(values) =
+                            crate::ols::prepared_fit_view::prepared_continuous_range(
+                                self.prepared,
+                                columns[column],
+                                range.clone(),
+                            )
+                        {
+                            return state.add_run(range.start, range.len(), |i| values[i]);
+                        }
                         crate::ols::prepared_fit_view::visit_prepared_column_range(
                             self.prepared,
                             columns[column],

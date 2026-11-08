@@ -119,6 +119,89 @@ pub(crate) fn connected_components_all(
     connected_components_inner(codes_by_effect, level_counts, nobs, None)
 }
 
+/// Number of connected components among observed levels of the stacked
+/// effect-level graph (the count `connected_components_all` reports): compact
+/// parents with path halving, repeated consecutive code tuples skipped.
+pub(crate) fn connected_component_count(
+    codes_by_effect: &[&[u32]],
+    level_counts: &[usize],
+) -> Result<usize> {
+    let nobs = codes_by_effect.first().map_or(0, |codes| codes.len());
+    if codes_by_effect.len() != level_counts.len()
+        || codes_by_effect.iter().any(|codes| codes.len() != nobs)
+    {
+        return Err(FeregError::new(
+            ErrorCode::InvalidArgument,
+            "component code columns have inconsistent lengths",
+        ));
+    }
+    let mut offsets = Vec::with_capacity(level_counts.len() + 1);
+    offsets.push(0_usize);
+    for &levels in level_counts {
+        let next = offsets
+            .last()
+            .copied()
+            .unwrap_or(0)
+            .checked_add(levels)
+            .filter(|&n| n < u32::MAX as usize)
+            .ok_or_else(|| FeregError::new(ErrorCode::Allocation, "level count overflow"))?;
+        offsets.push(next);
+    }
+    let nodes = offsets[level_counts.len()];
+    let mut parent: Vec<u32> = Vec::new();
+    parent.try_reserve_exact(nodes).map_err(|_| {
+        FeregError::new(ErrorCode::Allocation, "unable to reserve component parents")
+    })?;
+    parent.extend(0..nodes as u32);
+    let mut observed = fallible_filled(nodes, false, "unable to reserve component flags")?;
+    let find = |parent: &mut [u32], mut v: u32| -> u32 {
+        while parent[v as usize] != v {
+            let grand = parent[parent[v as usize] as usize];
+            parent[v as usize] = grand;
+            v = grand;
+        }
+        v
+    };
+    let mut previous: Vec<u32> = vec![u32::MAX; codes_by_effect.len()];
+    for observation in 0..nobs {
+        if codes_by_effect
+            .iter()
+            .zip(&previous)
+            .all(|(codes, &last)| codes[observation] == last)
+        {
+            continue;
+        }
+        let mut first = u32::MAX;
+        for (effect, codes) in codes_by_effect.iter().enumerate() {
+            let code = codes[observation];
+            previous[effect] = code;
+            if code as usize >= level_counts[effect] {
+                return Err(FeregError::new(
+                    ErrorCode::InvalidData,
+                    "component code exceeds declared level count",
+                ));
+            }
+            let node = (offsets[effect] + code as usize) as u32;
+            observed[node as usize] = true;
+            if effect == 0 {
+                first = node;
+            } else {
+                let (a, b) = (find(&mut parent, first), find(&mut parent, node));
+                if a != b {
+                    if a < b {
+                        parent[b as usize] = a;
+                    } else {
+                        parent[a as usize] = b;
+                    }
+                }
+            }
+        }
+    }
+    Ok((0..nodes)
+        .filter(|&node| observed[node] && parent[node] as usize == node)
+        .count())
+}
+
 fn connected_components_inner(
     codes_by_effect: &[&[u32]],
     level_counts: &[usize],

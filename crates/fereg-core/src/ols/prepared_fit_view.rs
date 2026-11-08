@@ -25,6 +25,29 @@ pub(crate) type SharedPreparedOlsData = std::sync::Arc<PreparedOlsData>;
 /// Scan an immutable prepared column in observation order. Interaction recipes
 /// resolve source slices once per bounded tile; no expanded observation bank or
 /// current-weight statistic is retained. Callers own all numerical reductions.
+/// The contiguous values of a continuous prepared column over `range`, or
+/// `None` for any other column kind (or an unaligned range).
+pub(crate) fn prepared_continuous_range<P: PreparedOlsFitView + ?Sized>(
+    prepared: &P,
+    column: usize,
+    range: std::ops::Range<usize>,
+) -> Option<&[f64]> {
+    if range.start > range.end || range.end > prepared.fit_sample().n_active() {
+        return None;
+    }
+    match &prepared.fit_model().columns.get(column)?.kind {
+        crate::ols::PreparedOlsColumnKind::Continuous {
+            prepared_source_index,
+            ..
+        } => prepared
+            .fit_sample()
+            .regressors
+            .get(*prepared_source_index)?
+            .get(range),
+        _ => None,
+    }
+}
+
 pub(crate) fn visit_prepared_column_range<P: PreparedOlsFitView + ?Sized>(
     prepared: &P,
     column: usize,

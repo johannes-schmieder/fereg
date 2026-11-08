@@ -2029,7 +2029,32 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                 "reusable categorical MAP norm selection is not aligned",
             ));
         }
-        let absorbed = self.absorb_ppml(weights, values, config)?;
+        let (mut absorbed, eliminated) = self.absorb_ppml_route(weights, values, config)?;
+        if eliminated {
+            // The elimination's residual pass formed sqrt(sum (w/max w) r^2)
+            // per column with the frame's maximum-weight divisor. Hand it over
+            // only inside the range where the plain sum is accurate; otherwise
+            // the linear frame's stable norm pass stays authoritative.
+            let raw_scale = match weights {
+                BorrowedMapWeights::Unit => 1.0,
+                BorrowedMapWeights::Provided(values) => {
+                    values.iter().copied().fold(0.0_f64, f64::max)
+                }
+            };
+            let norms = absorbed.take_residual_norms();
+            let usable = raw_scale == norm_weight_scale
+                && norms.len() == absorbed.residualized().ncols()
+                && rhs_positions
+                    .clone()
+                    .all(|position| (1e-140..=1e140).contains(&norms[position]));
+            if usable {
+                for (destination, position) in output.iter_mut().zip(rhs_positions) {
+                    *destination = norms[position];
+                }
+            }
+            let absorbed = absorbed.with_residual_norms(norms)?;
+            return Ok((absorbed, usable));
+        }
         if self.design.effects().len() != 1 {
             return Ok((absorbed, false));
         }
@@ -2082,6 +2107,18 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         values: DenseMatrix,
         config: MapConfig,
     ) -> Result<CertifiedBorrowedMap> {
+        self.absorb_ppml_route(weights, values, config)
+            .map(|(result, _)| result)
+    }
+
+    /// `absorb_ppml`, also reporting whether the exact elimination formed the
+    /// result.
+    fn absorb_ppml_route(
+        &mut self,
+        weights: BorrowedMapWeights<'_>,
+        values: DenseMatrix,
+        config: MapConfig,
+    ) -> Result<(CertifiedBorrowedMap, bool)> {
         // Exact global elimination first; the owner's checkpoint routes keep
         // every decline. The weight state is rebuilt for every frame.
         let values = if block_schur::enabled()
@@ -2112,7 +2149,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                     // PPML publishes categorical (non-LSMR) projections under
                     // the MAP engine identity, as for the two-FE Schur route.
                     result.report.used_solver = FeSolverKind::Map;
-                    return Ok(result);
+                    return Ok((result, true));
                 }
                 block_schur::Outcome::Declined(values) => values,
             }
@@ -2132,7 +2169,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         if !result.as_ref().is_ok_and(|fit| fit.report().certified()) {
             self.reject_ppml_topology();
         }
-        result
+        result.map(|result| (result, false))
     }
 
     /// Ordinary OLS certifies a half-request proposal before spending work on

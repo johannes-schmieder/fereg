@@ -210,7 +210,16 @@ pub(super) fn replay_final_objectives_with_threads(
             "Poisson objective inputs have inconsistent lengths",
         ));
     }
-    let (null_mean, null_log_mean) = poisson_null_mean(outcome, prior_weights)?;
+    let rows = final_replay_tile_rows(outcome.len(), threads.resolved(), workspace_bytes);
+    let team = if rows == 0 {
+        None
+    } else {
+        Some(ThreadTeam::new(threads).acquire()?)
+    };
+    let (null_mean, null_log_mean) = match &team {
+        Some(team) => team.install(|| parallel_poisson_null_mean(outcome, prior_weights))?,
+        None => poisson_null_mean(outcome, prior_weights)?,
+    };
     let mut deviance = CompensatedSum::default();
     let mut likelihood = CompensatedSum::default();
     let mut null_likelihood = CompensatedSum::default();
@@ -232,45 +241,38 @@ pub(super) fn replay_final_objectives_with_threads(
             )?,
         ])
     };
-    let rows = final_replay_tile_rows(outcome.len(), threads.resolved(), workspace_bytes);
-    if rows == 0 {
+    if let Some(team) = team {
+        // Fixed row chunks evaluate and sum their rows in parallel; chunk
+        // compensated sums are merged in chunk order (both components).
+        let parts: Vec<[CompensatedSum; 3]> = team
+            .install(|| {
+                (0..outcome.len().div_ceil(NULL_MEAN_ROWS))
+                    .into_par_iter()
+                    .map(|chunk| -> Result<[CompensatedSum; 3]> {
+                        let mut sums = [CompensatedSum::default(); 3];
+                        for row in chunk_rows(chunk, outcome.len()) {
+                            let values = row_values(row)?;
+                            for (sum, value) in sums.iter_mut().zip(values) {
+                                sum.add(value);
+                            }
+                        }
+                        Ok(sums)
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .into_iter()
+            .collect::<Result<_>>()?;
+        for [d, l, n] in parts {
+            merge_components(&mut deviance, d);
+            merge_components(&mut likelihood, l);
+            merge_components(&mut null_likelihood, n);
+        }
+    } else {
         for row in 0..outcome.len() {
             let values = row_values(row)?;
             deviance.add(values[0]);
             likelihood.add(values[1]);
             null_likelihood.add(values[2]);
-        }
-    } else {
-        // Separation/PSD/Wald validators have returned and released their
-        // scratch. Reuse that admitted phase allowance, never IRLS terms.
-        let mut tile = fallible_output(rows, "unable to reserve fresh Poisson replay tile")?;
-        if tile.capacity() as u128 * std::mem::size_of::<[f64; 3]>() as u128 > workspace_bytes {
-            return Err(FeregError::new(
-                ErrorCode::Allocation,
-                "fresh Poisson replay capacity exceeds publication allowance",
-            ));
-        }
-        tile.resize(rows, [0.; 3]);
-        let team = ThreadTeam::new(threads).acquire()?;
-        for first in (0..outcome.len()).step_by(rows) {
-            let count = rows.min(outcome.len() - first);
-            let buffer = &mut tile[..count];
-            team.install(|| {
-                crate::parallel::stage_try_for_each(
-                    buffer.par_iter_mut().enumerate(),
-                    outcome.len() as u128 * 4,
-                    |(i, output)| -> Result<()> {
-                        *output = row_values(first + i)?;
-                        Ok(())
-                    },
-                )
-            })?;
-            // All three compensated chains retain their scalar row order.
-            for values in buffer {
-                deviance.add(values[0]);
-                likelihood.add(values[1]);
-                null_likelihood.add(values[2]);
-            }
         }
     }
     Ok((
@@ -319,6 +321,103 @@ fn poisson_null_mean(outcome: &[f64], prior_weights: &[f64]) -> Result<(f64, f64
     }
     if let Some(mean) = scaled_null_mean(outcome, prior_weights, maximum_weight, maximum_outcome) {
         return Ok((mean, mean.ln()));
+    }
+    log_scaled_null_mean(outcome, prior_weights)
+}
+
+/// Rows per fixed chunk of the parallel replay and null-mean passes.
+const NULL_MEAN_ROWS: usize = 1 << 14;
+
+fn chunk_rows(chunk: usize, rows: usize) -> std::ops::Range<usize> {
+    chunk * NULL_MEAN_ROWS..((chunk + 1) * NULL_MEAN_ROWS).min(rows)
+}
+
+fn merge_components(target: &mut CompensatedSum, part: CompensatedSum) {
+    let [sum, correction] = part.components();
+    target.add(sum);
+    target.add(correction);
+}
+
+/// `poisson_null_mean` over fixed row chunks inside an installed team: the
+/// same validation (first invalid row reported) and maxima; the scaled sums
+/// merge chunk compensated sums in chunk order. The rare log-scaled fallback
+/// stays serial.
+fn parallel_poisson_null_mean(outcome: &[f64], prior_weights: &[f64]) -> Result<(f64, f64)> {
+    if outcome.is_empty() || outcome.len() != prior_weights.len() {
+        return Err(FeregError::new(
+            ErrorCode::InvalidArgument,
+            "Poisson null-likelihood inputs are empty or misaligned",
+        ));
+    }
+    let rows = outcome.len();
+    let chunks = rows.div_ceil(NULL_MEAN_ROWS);
+    let maxima: Vec<std::result::Result<(f64, f64), usize>> = (0..chunks)
+        .into_par_iter()
+        .map(|chunk| {
+            let (mut weight_max, mut outcome_max) = (0.0_f64, 0.0_f64);
+            for row in chunk_rows(chunk, rows) {
+                let (y, weight) = (outcome[row], prior_weights[row]);
+                if !y.is_finite() || y < 0.0 || !weight.is_finite() || weight <= 0.0 {
+                    return Err(row);
+                }
+                weight_max = weight_max.max(weight);
+                outcome_max = outcome_max.max(y);
+            }
+            Ok((weight_max, outcome_max))
+        })
+        .collect();
+    let (mut maximum_weight, mut maximum_outcome) = (0.0_f64, 0.0_f64);
+    for part in maxima {
+        let (weight, y) = part.map_err(|row| {
+            FeregError::new(
+                ErrorCode::InvalidData,
+                format!("invalid Poisson null-likelihood input at observation {row}"),
+            )
+        })?;
+        maximum_weight = maximum_weight.max(weight);
+        maximum_outcome = maximum_outcome.max(y);
+    }
+    if maximum_outcome == 0.0 {
+        return Err(FeregError::new(
+            ErrorCode::InsufficientObservations,
+            "Poisson null model has no positive weighted outcome",
+        ));
+    }
+    let sums: Vec<Option<(CompensatedSum, CompensatedSum)>> = (0..chunks)
+        .into_par_iter()
+        .map(|chunk| {
+            let mut weights = CompensatedSum::default();
+            let mut outcomes = CompensatedSum::default();
+            for row in chunk_rows(chunk, rows) {
+                let weight = prior_weights[row] / maximum_weight;
+                if !weight.is_normal() {
+                    return None;
+                }
+                weights.add(weight);
+                if outcome[row] > 0.0 {
+                    let y = outcome[row] / maximum_outcome;
+                    let product = weight * y;
+                    if !y.is_normal() || !product.is_normal() {
+                        return None;
+                    }
+                    outcomes.add(product);
+                }
+            }
+            Some((weights, outcomes))
+        })
+        .collect();
+    if let Some(parts) = sums.into_iter().collect::<Option<Vec<_>>>() {
+        let mut weights = CompensatedSum::default();
+        let mut outcomes = CompensatedSum::default();
+        for (w, o) in parts {
+            merge_components(&mut weights, w);
+            merge_components(&mut outcomes, o);
+        }
+        let ratio = outcomes.total() / weights.total();
+        let mean = maximum_outcome * ratio;
+        if ratio.is_normal() && mean.is_normal() {
+            return Ok((mean, mean.ln()));
+        }
     }
     log_scaled_null_mean(outcome, prior_weights)
 }
@@ -1058,7 +1157,25 @@ fn one_plus_x_log1p_minus_x(value: f64) -> f64 {
     result
 }
 
+/// `log_gamma(x)` with a table for `x = k + 1`, integer `k < 4096` (count
+/// outcomes); the table holds the same function's values, so results are
+/// identical.
 fn log_gamma(x: f64) -> f64 {
+    const TABLE: usize = 4096;
+    static VALUES: std::sync::OnceLock<Vec<f64>> = std::sync::OnceLock::new();
+    let k = x - 1.0;
+    if k >= 0.0 && k < TABLE as f64 && k.fract() == 0.0 {
+        let table = VALUES.get_or_init(|| {
+            (0..TABLE)
+                .map(|k| log_gamma_direct(k as f64 + 1.0))
+                .collect()
+        });
+        return table[k as usize];
+    }
+    log_gamma_direct(x)
+}
+
+fn log_gamma_direct(x: f64) -> f64 {
     const C: [f64; 9] = [
         0.999_999_999_999_809_9,
         676.520_368_121_885_1,

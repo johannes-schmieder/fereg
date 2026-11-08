@@ -2344,6 +2344,20 @@ fn record_retained_moment_worker() {
 
 #[inline]
 #[allow(clippy::too_many_arguments)]
+/// Parallel branch-free finiteness scan of a response view.
+fn response_finite(response: FiniteResponse<'_>) -> bool {
+    const EXPONENT: u64 = 0x7ff0_0000_0000_0000;
+    match response {
+        FiniteResponse::Slice(values) => !values.par_chunks(1 << 15).any(|block| {
+            block.iter().fold(0_u64, |bad, v| {
+                bad | u64::from(v.to_bits() & EXPONENT == EXPONENT)
+            }) != 0
+        }),
+        FiniteResponse::Column(..) => response.iter().all(|value| value.is_finite()),
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
 fn validate_retained_source(
     elements: usize,
     rows: usize,
@@ -2360,7 +2374,7 @@ fn validate_retained_source(
         || dimension == 0
         || elements != rows.saturating_mul(stored_columns)
         || response.len() != rows
-        || response.iter().any(|value| !value.is_finite())
+        || !response_finite(response)
         || !divisor.is_finite()
         || divisor <= 0.0
         || selected_columns.is_some_and(|selected| {
@@ -2378,9 +2392,11 @@ fn validate_retained_source(
             BorrowedMapWeights::Unit => divisor != 1.0,
             BorrowedMapWeights::Provided(values) => {
                 values.len() != rows
-                    || values
-                        .iter()
-                        .any(|value| !value.is_finite() || *value <= 0.0 || *value / divisor == 0.0)
+                    || values.par_chunks(1 << 15).any(|block| {
+                        !block.iter().fold(true, |valid, value| {
+                            valid & (value.is_finite() & (*value > 0.0) & (*value / divisor != 0.0))
+                        })
+                    })
             }
         }
     {

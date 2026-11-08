@@ -160,37 +160,59 @@ impl ProfiledInterceptCurve {
             slope_scales: filled(moments, 0.)?,
             slope_targets: filled(moments, 0.)?,
         };
-        for (target, &weight) in result.log_weights.iter_mut().zip(q) {
-            if !weight.is_finite() || weight <= 0. {
-                return Err(numerical());
-            }
-            *target = weight.ln();
-        }
-        for (g, target) in result.log_outcomes.iter_mut().enumerate() {
-            let rows = design.effects()[effect].level_index().members(g);
-            let mut maximum = f64::NEG_INFINITY;
-            for &r in rows {
-                if !y[r].is_finite() || y[r] < 0. {
-                    return Err(numerical());
-                }
-                if y[r] > 0. {
-                    maximum = maximum.max(result.log_weights[r] + y[r].ln());
-                }
-            }
-            if !maximum.is_finite() {
-                return Err(numerical());
-            }
-            let mut sum = CompensatedSum::default();
-            for &r in rows {
-                if y[r] > 0. {
-                    sum.add((result.log_weights[r] + y[r].ln() - maximum).exp());
-                }
-            }
-            *target = maximum + sum.total().ln();
-            if !target.is_finite() {
-                return Err(numerical());
-            }
-        }
+        // Rows and groups are independent (every failure is the same error),
+        // so both loops run in parallel with unchanged per-element arithmetic.
+        const ROWS: usize = 1 << 15;
+        let Self {
+            team,
+            log_weights,
+            log_outcomes,
+            ..
+        } = &mut result;
+        team.install(|| -> Result<()> {
+            log_weights
+                .par_chunks_mut(ROWS)
+                .zip(q.par_chunks(ROWS))
+                .try_for_each(|(targets, weights)| -> Result<()> {
+                    for (target, &weight) in targets.iter_mut().zip(weights) {
+                        if !weight.is_finite() || weight <= 0. {
+                            return Err(numerical());
+                        }
+                        *target = weight.ln();
+                    }
+                    Ok(())
+                })?;
+            let log_weights = &*log_weights;
+            log_outcomes
+                .par_iter_mut()
+                .enumerate()
+                .try_for_each(|(g, target)| -> Result<()> {
+                    let rows = design.effects()[effect].level_index().members(g);
+                    let mut maximum = f64::NEG_INFINITY;
+                    for &r in rows {
+                        if !y[r].is_finite() || y[r] < 0. {
+                            return Err(numerical());
+                        }
+                        if y[r] > 0. {
+                            maximum = maximum.max(log_weights[r] + y[r].ln());
+                        }
+                    }
+                    if !maximum.is_finite() {
+                        return Err(numerical());
+                    }
+                    let mut sum = CompensatedSum::default();
+                    for &r in rows {
+                        if y[r] > 0. {
+                            sum.add((log_weights[r] + y[r].ln() - maximum).exp());
+                        }
+                    }
+                    *target = maximum + sum.total().ln();
+                    if !target.is_finite() {
+                        return Err(numerical());
+                    }
+                    Ok(())
+                })
+        })?;
         for (channel, slope) in design.effects()[effect].slopes().iter().enumerate() {
             for group in 0..g {
                 let rows = design.effects()[effect].level_index().members(group);

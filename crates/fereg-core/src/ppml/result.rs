@@ -21,9 +21,7 @@ use crate::data::{DropReason, WeightKind};
 use crate::error::{ErrorCode, FeregError, Result};
 #[cfg(test)]
 use crate::fe::FeSolverKind;
-use crate::fe::{
-    connected_components_all, BorrowedMapWeights, FeCoefficientBatch, LsmrConfig, MapConfig,
-};
+use crate::fe::{BorrowedMapWeights, FeCoefficientBatch, LsmrConfig, MapConfig};
 use crate::memory::{fallible_copy, fallible_filled};
 use crate::ols::topology_dof::{
     CategoricalTopologyDofEffectIdentity, CategoricalTopologyDofPolicy,
@@ -33,6 +31,7 @@ use crate::ppml_separation::{
     SeparationCertificate, SeparationConfig, SeparationDropReason, SeparationMethod,
     SeparationMethodReport, SeparationMethods, SeparationNote, SeparationReport,
 };
+use rayon::prelude::*;
 use std::sync::Arc;
 
 fn ppml_fe_recovery_mask_length(length: usize, inject_allocation_failure: bool) -> usize {
@@ -315,6 +314,12 @@ pub struct PpmlFinalSample {
     prior_weights: Vec<f64>,
 }
 
+/// Every row is below `bound` and the rows strictly increase.
+fn strictly_increasing_below(rows: &[usize], bound: usize) -> bool {
+    rows.last().is_none_or(|row| *row < bound)
+        && !rows.par_windows(2).any(|pair| pair[0] >= pair[1])
+}
+
 impl PpmlFinalSample {
     pub fn new(
         original_observations: usize,
@@ -333,17 +338,8 @@ impl PpmlFinalSample {
             || original_rows.is_empty()
             || outcome.len() != original_rows.len()
             || prior_weights.len() != original_rows.len()
-            || original_rows.iter().enumerate().any(|(position, row)| {
-                *row >= original_observations
-                    || (position > 0 && original_rows[position - 1] >= *row)
-            })
-            || prepared_original_rows
-                .iter()
-                .enumerate()
-                .any(|(position, row)| {
-                    *row >= original_observations
-                        || (position > 0 && prepared_original_rows[position - 1] >= *row)
-                })
+            || !strictly_increasing_below(&original_rows, original_observations)
+            || !strictly_increasing_below(&prepared_original_rows, original_observations)
         {
             return Err(FeregError::new(
                 ErrorCode::Internal,
@@ -351,7 +347,7 @@ impl PpmlFinalSample {
             ));
         }
         let observed_candidates = drop_reasons
-            .iter()
+            .par_iter()
             .filter(|reason| **reason != DropReason::ExcludedByIfIn)
             .count();
         if observed_candidates != candidate_observations {
@@ -360,14 +356,17 @@ impl PpmlFinalSample {
                 "PPML candidate count disagrees with the original-axis drop ledger",
             ));
         }
-        // The row map is already strictly ordered and range checked. Equality
-        // of these ordered streams proves both directions of membership
-        // without another original-observation-sized validation mask.
-        if !drop_reasons
-            .iter()
-            .enumerate()
-            .filter_map(|(row, reason)| (*reason == DropReason::Retained).then_some(row))
-            .eq(original_rows.iter().copied())
+        // The row map is already strictly ordered and range checked: it lists
+        // exactly the retained rows (in order) when every listed row is
+        // retained and no other row is.
+        let retained = drop_reasons
+            .par_iter()
+            .filter(|reason| **reason == DropReason::Retained)
+            .count();
+        if retained != original_rows.len()
+            || original_rows
+                .par_iter()
+                .any(|row| drop_reasons[*row] != DropReason::Retained)
         {
             return Err(FeregError::new(
                 ErrorCode::Internal,
@@ -375,10 +374,10 @@ impl PpmlFinalSample {
             ));
         }
         if outcome
-            .iter()
+            .par_iter()
             .any(|value| !value.is_finite() || *value < 0.0)
             || prior_weights
-                .iter()
+                .par_iter()
                 .any(|value| !value.is_finite() || *value <= 0.0)
         {
             return Err(FeregError::new(
@@ -386,7 +385,7 @@ impl PpmlFinalSample {
                 "PPML final outcome/weight experiment is outside the supported domain",
             ));
         }
-        if !outcome.iter().any(|value| *value > 0.0) {
+        if !outcome.par_iter().any(|value| *value > 0.0) {
             return Err(FeregError::new(
                 ErrorCode::InsufficientObservations,
                 "PPML final sample has no positive weighted outcome",
@@ -961,7 +960,7 @@ fn categorical_connected_components(
         codes.push(source.codes(&source_table)?);
         levels.push(source.n_levels());
     }
-    Ok(connected_components_all(&codes, &levels)?.n_components)
+    crate::fe::connected_component_count(&codes, &levels)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -3603,23 +3602,23 @@ pub fn certify_ppml_reconstruction(
         || absorbed_predictor.len() != rows
         || eta.len() != rows
         || mean.len() != rows
-        || original_rows.iter().enumerate().any(|(position, row)| {
-            *row >= original_observations || (position > 0 && original_rows[position - 1] >= *row)
-        })
+        || original_rows
+            .last()
+            .is_some_and(|row| *row >= original_observations)
+        || original_rows.par_windows(2).any(|pair| pair[0] >= pair[1])
     {
         return Err(FeregError::new(
             ErrorCode::InvalidArgument,
             "PPML output products do not share a valid stable row mapping",
         ));
     }
-    if offset
-        .iter()
-        .chain(finite_predictor)
-        .chain(absorbed_predictor)
-        .chain(eta)
-        .chain(mean)
-        .any(|value| !value.is_finite())
-        || mean.iter().any(|value| *value <= 0.0)
+    let nonfinite = |values: &[f64]| values.par_iter().any(|value| !value.is_finite());
+    if nonfinite(offset)
+        || nonfinite(finite_predictor)
+        || nonfinite(absorbed_predictor)
+        || nonfinite(eta)
+        || nonfinite(mean)
+        || mean.par_iter().any(|value| *value <= 0.0)
     {
         return Err(FeregError::new(
             ErrorCode::NonConvergence,
@@ -3678,63 +3677,88 @@ pub fn certify_ppml_reconstruction(
         saved_effects.map_or(0.0, |saved| saved.full_decomposition_relative_infinity_norm);
     let saved_complete_decomposition =
         saved_effects.is_some_and(|saved| saved.channels.len() == saved.declared_channels);
-    for row in 0..rows {
-        let reconstructed = offset[row] + finite_predictor[row] + absorbed_predictor[row];
-        if !reconstructed.is_finite() {
-            return Err(FeregError::new(
-                ErrorCode::NonConvergence,
-                format!("PPML predictor reconstruction overflowed at compact row {row}"),
-            ));
-        }
-        let predictor_error = (eta[row] - reconstructed).abs();
-        let predictor_scale = eta[row]
-            .abs()
-            .max(offset[row].abs())
-            .max(finite_predictor[row].abs())
-            .max(absorbed_predictor[row].abs())
-            .max(1.0);
-        predictor_absolute = predictor_absolute.max(predictor_error);
-        predictor_relative = predictor_relative.max(predictor_error / predictor_scale);
-
-        let reconstructed_mean = eta[row].exp();
-        if !reconstructed_mean.is_finite() || reconstructed_mean <= 0.0 {
-            return Err(FeregError::new(
-                ErrorCode::NonConvergence,
-                format!("PPML final eta has no representable positive mean at compact row {row}"),
-            ));
-        }
-        mean_relative = mean_relative.max(
-            (mean[row] - reconstructed_mean).abs()
-                / mean[row]
-                    .abs()
-                    .max(reconstructed_mean.abs())
-                    .max(f64::MIN_POSITIVE),
-        );
-
-        if let Some(saved) = saved_effects {
-            // A partial public mask deliberately omits unrequested O(N)
-            // channels. Its complete-decomposition evidence comes from the
-            // final-Hessian recovery pass above. Recompute the public sum only
-            // when every declared channel was retained.
-            if saved_complete_decomposition {
-                let sum = saved
-                    .channels
-                    .iter()
-                    .fold(0.0_f64, |total, channel| total + channel[row]);
-                if !sum.is_finite() {
+    // Fixed row chunks in parallel. Every statistic is a maximum (order
+    // independent); the first failing row in row order supplies the error.
+    const ROWS: usize = 1 << 15;
+    let parts: Vec<Result<[f64; 4]>> = (0..rows.div_ceil(ROWS))
+        .into_par_iter()
+        .map(|chunk| -> Result<[f64; 4]> {
+            let mut predictor_absolute = 0.0_f64;
+            let mut predictor_relative = 0.0_f64;
+            let mut mean_relative = 0.0_f64;
+            let mut saved_channels_relative = 0.0_f64;
+            for row in chunk * ROWS..((chunk + 1) * ROWS).min(rows) {
+                let reconstructed = offset[row] + finite_predictor[row] + absorbed_predictor[row];
+                if !reconstructed.is_finite() {
                     return Err(FeregError::new(
                         ErrorCode::NonConvergence,
-                        format!(
-                            "PPML saved fixed-effect channel sum overflowed at compact row {row}"
-                        ),
+                        format!("PPML predictor reconstruction overflowed at compact row {row}"),
                     ));
                 }
-                saved_channels_relative = saved_channels_relative.max(
-                    (sum - absorbed_predictor[row]).abs()
-                        / sum.abs().max(absorbed_predictor[row].abs()).max(1.0),
+                let predictor_error = (eta[row] - reconstructed).abs();
+                let predictor_scale = eta[row]
+                    .abs()
+                    .max(offset[row].abs())
+                    .max(finite_predictor[row].abs())
+                    .max(absorbed_predictor[row].abs())
+                    .max(1.0);
+                predictor_absolute = predictor_absolute.max(predictor_error);
+                predictor_relative = predictor_relative.max(predictor_error / predictor_scale);
+
+                let reconstructed_mean = eta[row].exp();
+                if !reconstructed_mean.is_finite() || reconstructed_mean <= 0.0 {
+                    return Err(FeregError::new(
+                        ErrorCode::NonConvergence,
+                        format!("PPML final eta has no representable positive mean at compact row {row}"),
+                    ));
+                }
+                mean_relative = mean_relative.max(
+                    (mean[row] - reconstructed_mean).abs()
+                        / mean[row]
+                            .abs()
+                            .max(reconstructed_mean.abs())
+                            .max(f64::MIN_POSITIVE),
                 );
+
+                if let Some(saved) = saved_effects {
+                    // A partial public mask deliberately omits unrequested O(N)
+                    // channels. Its complete-decomposition evidence comes from the
+                    // final-Hessian recovery pass above. Recompute the public sum only
+                    // when every declared channel was retained.
+                    if saved_complete_decomposition {
+                        let sum = saved
+                            .channels
+                            .iter()
+                            .fold(0.0_f64, |total, channel| total + channel[row]);
+                        if !sum.is_finite() {
+                            return Err(FeregError::new(
+                                ErrorCode::NonConvergence,
+                                format!(
+                                    "PPML saved fixed-effect channel sum overflowed at compact row {row}"
+                                ),
+                            ));
+                        }
+                        saved_channels_relative = saved_channels_relative.max(
+                            (sum - absorbed_predictor[row]).abs()
+                                / sum.abs().max(absorbed_predictor[row].abs()).max(1.0),
+                        );
+                    }
+                }
             }
-        }
+            Ok([
+                predictor_absolute,
+                predictor_relative,
+                mean_relative,
+                saved_channels_relative,
+            ])
+        })
+        .collect();
+    for part in parts {
+        let [absolute, relative, mean, saved] = part?;
+        predictor_absolute = predictor_absolute.max(absolute);
+        predictor_relative = predictor_relative.max(relative);
+        mean_relative = mean_relative.max(mean);
+        saved_channels_relative = saved_channels_relative.max(saved);
     }
     let saved_channels = saved_effects.map_or(0, |saved| saved.channels.len());
     let saved_declared_channels = saved_effects.map_or(0, |saved| saved.declared_channels);

@@ -447,7 +447,8 @@ impl<'a> NumericOlsColumns<'a> {
         model: &super::PreparedOlsModel,
         sample: &'a crate::data::PreparedNumericSample<impl NumericSourceBank>,
     ) -> Result<Option<Self>> {
-        Self::bind_with_minimum(model, sample, 8, 4096)
+        // Any width: the per-element recipe dispatch it replaces costs more.
+        Self::bind_with_minimum(model, sample, 1, 4096)
     }
 
     pub(crate) fn bind_loaded_rhs(

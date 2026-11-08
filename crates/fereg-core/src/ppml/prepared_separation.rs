@@ -1619,25 +1619,37 @@ fn verify_exact_fe_proposal_with_activity(
         }
         replay_checked = replay_checked.checked_add(1).ok_or_else(replay_failed)?;
         let source = topology.sources[source_index];
-        for level in 0..source.n_levels() {
-            let members = source.checked_members(level)?;
-            let mut any = false;
-            let mut zero_only = true;
-            let mut representative_original_row = usize::MAX;
-            for &row in members {
-                if !is_active(row) {
-                    continue;
-                }
-                any = true;
-                representative_original_row =
-                    representative_original_row.min(generation.original_rows()[row]);
-                if generation.outcome()[row] > 0.0 {
-                    zero_only = false;
-                }
-            }
-            if !any || !zero_only {
+        // Level scans are independent and run in parallel; their outcomes are
+        // then checked in level order exactly as the serial replay did.
+        let scans: Vec<Result<Option<usize>>> = {
+            use rayon::prelude::*;
+            (0..source.n_levels())
+                .into_par_iter()
+                .map(|level| -> Result<Option<usize>> {
+                    let members = source.checked_members(level)?;
+                    let mut any = false;
+                    let mut zero_only = true;
+                    let mut representative_original_row = usize::MAX;
+                    for &row in members {
+                        if !is_active(row) {
+                            continue;
+                        }
+                        any = true;
+                        representative_original_row =
+                            representative_original_row.min(generation.original_rows()[row]);
+                        if generation.outcome()[row] > 0.0 {
+                            zero_only = false;
+                        }
+                    }
+                    Ok((any && zero_only).then_some(representative_original_row))
+                })
+                .collect()
+        };
+        for (level, scan) in scans.into_iter().enumerate() {
+            let Some(representative_original_row) = scan? else {
                 continue;
-            }
+            };
+            let members = source.checked_members(level)?;
 
             replay_level_count = replay_level_count
                 .checked_add(1)
@@ -2220,22 +2232,37 @@ struct IrProjectionAssessment {
 
 fn assess_ir_projection(
     outcome: &[f64],
-    fitted: impl Fn(usize) -> f64,
+    fitted: impl Fn(usize) -> f64 + Sync,
     config: SeparationConfig,
 ) -> IrProjectionAssessment {
+    // Maxima and minima are order independent: fixed chunks fold in parallel.
+    let parts = ir_chunks(outcome.len(), |rows| {
+        let mut scale = 0.0_f64;
+        let mut interior = 0.0_f64;
+        let mut minimum_boundary = f64::INFINITY;
+        let mut maximum_boundary = f64::NEG_INFINITY;
+        for row in rows {
+            let value = outcome[row];
+            let fitted = fitted(row);
+            scale = scale.max(fitted.abs());
+            if value > 0.0 {
+                interior = interior.max(fitted.abs());
+            } else if value == 0.0 {
+                minimum_boundary = minimum_boundary.min(fitted);
+                maximum_boundary = maximum_boundary.max(fitted);
+            }
+        }
+        (scale, interior, minimum_boundary, maximum_boundary)
+    });
     let mut scale = 0.0_f64;
     let mut interior = 0.0_f64;
     let mut minimum_boundary = f64::INFINITY;
     let mut maximum_boundary = f64::NEG_INFINITY;
-    for (row, value) in outcome.iter().enumerate() {
-        let fitted = fitted(row);
-        scale = scale.max(fitted.abs());
-        if *value > 0.0 {
-            interior = interior.max(fitted.abs());
-        } else if *value == 0.0 {
-            minimum_boundary = minimum_boundary.min(fitted);
-            maximum_boundary = maximum_boundary.max(fitted);
-        }
+    for (s, i, lo, hi) in parts {
+        scale = scale.max(s);
+        interior = interior.max(i);
+        minimum_boundary = minimum_boundary.min(lo);
+        maximum_boundary = maximum_boundary.max(hi);
     }
     let recurrence_scale = scale.max(1.0);
     let threshold = config.tolerance * recurrence_scale;
@@ -2397,8 +2424,14 @@ fn prepared_project(
             "prepared separation projection inputs are not compact-axis aligned",
         ));
     }
-    let weight_sum = compensated_sum(weights.iter().copied())?;
-    let divisor = weights.iter().copied().fold(0.0_f64, f64::max);
+    let weight_sum = chunked_positive_sum(weights)?;
+    let divisor = {
+        use rayon::prelude::*;
+        weights
+            .par_chunks(IR_CHUNK_ROWS)
+            .map(|chunk| chunk.iter().copied().fold(0.0_f64, f64::max))
+            .reduce(|| 0.0_f64, f64::max)
+    };
     if crate::diagnostics::solver_trace_enabled() {
         crate::diagnostics::emit_solver_trace(&format!(
             "FEREG_SOLVER_TRACE|phase=separation_projection|generation={}|rows={}|solver={:?}|minimum_weight={:.17e}",
@@ -2454,11 +2487,14 @@ fn prepared_project(
         fit.fitted(),
         "unable to reserve prepared separation projection fitted values",
     )?;
-    if fitted
-        .iter()
-        .chain(&residual)
-        .any(|value| !value.is_finite())
-    {
+    let nonfinite = {
+        use rayon::prelude::*;
+        fitted
+            .par_iter()
+            .chain(residual.par_iter())
+            .any(|value| !value.is_finite())
+    };
+    if nonfinite {
         return Err(FeregError::new(
             ErrorCode::NonConvergence,
             "prepared separation projection produced a nonfinite value",
@@ -2562,8 +2598,8 @@ fn certify_ir_fixed_point_evidence(
             boundary_weight
         }
     };
-    let response_scale = ir_weighted_norm(&weight, &|row| recurrence[row], 0..rows)
-        .max(ir_weighted_norm(&weight, &|row| residual[row], 0..rows));
+    let response_scale = ir_weighted_norm_rows(&weight, &|row| recurrence[row], rows)
+        .max(ir_weighted_norm_rows(&weight, &|row| residual[row], rows));
     if !response_scale.is_finite() || response_scale <= 0.0 {
         return Ok(None);
     }
@@ -2581,33 +2617,97 @@ fn certify_ir_fixed_point_evidence(
     Ok(passed.then_some(certificate))
 }
 
+type IrRowFn<'a> = dyn Fn(usize) -> f64 + Sync + 'a;
+
+/// Rows per fixed chunk of the parallel IR certificate passes.
+const IR_CHUNK_ROWS: usize = 1 << 15;
+
+/// Fold fixed row chunks in parallel (current team), results in chunk order.
+fn ir_chunks<T: Send>(rows: usize, fold: impl Fn(std::ops::Range<usize>) -> T + Sync) -> Vec<T> {
+    use rayon::prelude::*;
+    (0..rows.div_ceil(IR_CHUNK_ROWS))
+        .into_par_iter()
+        .map(|chunk| fold(chunk * IR_CHUNK_ROWS..((chunk + 1) * IR_CHUNK_ROWS).min(rows)))
+        .collect()
+}
+
+/// Scaled sum of squares `scale^2 * sum` (LAPACK `lassq` form).
+#[derive(Clone, Copy)]
+struct ScaledSquares {
+    scale: f64,
+    sum: f64,
+}
+
+impl ScaledSquares {
+    const ZERO: Self = Self {
+        scale: 0.0,
+        sum: 1.0,
+    };
+
+    fn add(&mut self, absolute: f64) {
+        if absolute == 0.0 {
+            return;
+        }
+        if self.scale < absolute {
+            let ratio = self.scale / absolute;
+            self.sum = 1.0 + self.sum * ratio * ratio;
+            self.scale = absolute;
+        } else {
+            let ratio = absolute / self.scale;
+            self.sum += ratio * ratio;
+        }
+    }
+
+    fn merge(&mut self, other: Self) {
+        if other.scale == 0.0 {
+            return;
+        }
+        if self.scale < other.scale {
+            let ratio = self.scale / other.scale;
+            self.sum = other.sum + self.sum * ratio * ratio;
+            self.scale = other.scale;
+        } else {
+            let ratio = other.scale / self.scale;
+            self.sum += other.sum * ratio * ratio;
+        }
+    }
+
+    fn norm(self) -> f64 {
+        if self.scale == 0.0 {
+            0.0
+        } else {
+            self.scale * self.sum.sqrt()
+        }
+    }
+}
+
 /// Overflow-safe `sqrt(sum w * value^2)` over `members`.
 fn ir_weighted_norm(
-    weight: &dyn Fn(usize) -> f64,
-    values: &dyn Fn(usize) -> f64,
+    weight: &IrRowFn<'_>,
+    values: &IrRowFn<'_>,
     members: impl Iterator<Item = usize>,
 ) -> f64 {
-    let mut scale = 0.0_f64;
-    let mut sum = 1.0_f64;
+    let mut squares = ScaledSquares::ZERO;
     for row in members {
-        let absolute = (weight(row).sqrt() * values(row)).abs();
-        if absolute == 0.0 {
-            continue;
-        }
-        if scale < absolute {
-            let ratio = scale / absolute;
-            sum = 1.0 + sum * ratio * ratio;
-            scale = absolute;
-        } else {
-            let ratio = absolute / scale;
-            sum += ratio * ratio;
-        }
+        squares.add((weight(row).sqrt() * values(row)).abs());
     }
-    if scale == 0.0 {
-        0.0
-    } else {
-        scale * sum.sqrt()
+    squares.norm()
+}
+
+/// `ir_weighted_norm` over `0..rows`: fixed chunks in parallel, merged in
+/// chunk order.
+fn ir_weighted_norm_rows(weight: &IrRowFn<'_>, values: &IrRowFn<'_>, rows: usize) -> f64 {
+    let mut squares = ScaledSquares::ZERO;
+    for part in ir_chunks(rows, |range| {
+        let mut squares = ScaledSquares::ZERO;
+        for row in range {
+            squares.add((weight(row).sqrt() * values(row)).abs());
+        }
+        squares
+    }) {
+        squares.merge(part);
     }
+    squares.norm()
 }
 
 /// Largest `|moment| / channel norm`; a nonzero moment on a zero or
@@ -2625,42 +2725,53 @@ fn ir_moment_ratio(largest: f64, moment: f64, norm: f64) -> f64 {
 /// Weighted residual moments of the kept regressors, each over its norm.
 fn ir_regressor_moment_ratio(
     generation: &PreparedPpmlModelGeneration,
-    weight: &dyn Fn(usize) -> f64,
+    weight: &IrRowFn<'_>,
     residual: &[f64],
     kept_columns: &[usize],
 ) -> Result<f64> {
+    use rayon::prelude::*;
     let fit_view = generation.fit_view();
+    let rows = residual.len();
+    let chunks = rows.div_ceil(IR_CHUNK_ROWS).max(1);
+    // (column, fixed chunk) tasks; each column merges its chunk moments
+    // (both compensated components) and scaled squares in chunk order.
+    let parts: Vec<Result<(f64, f64, ScaledSquares)>> = (0..kept_columns.len() * chunks)
+        .into_par_iter()
+        .map(|task| {
+            let (column, chunk) = (kept_columns[task / chunks], task % chunks);
+            let range = chunk * IR_CHUNK_ROWS..((chunk + 1) * IR_CHUNK_ROWS).min(rows);
+            let (mut sum, mut correction) = (0.0_f64, 0.0_f64);
+            let mut squares = ScaledSquares::ZERO;
+            crate::ols::prepared_fit_view::visit_prepared_column_range(
+                fit_view,
+                column,
+                range,
+                |row, value| {
+                    let w = weight(row);
+                    crate::linalg::neumaier_add(
+                        w * value * residual[row],
+                        &mut sum,
+                        &mut correction,
+                    );
+                    squares.add((w.sqrt() * value).abs());
+                    Ok(())
+                },
+            )?;
+            Ok((sum, correction, squares))
+        })
+        .collect();
+    let mut parts = parts.into_iter();
     let mut largest = 0.0_f64;
-    for &column in kept_columns {
+    for _ in kept_columns {
         let (mut sum, mut correction) = (0.0_f64, 0.0_f64);
-        let (mut scale, mut squares) = (0.0_f64, 1.0_f64);
-        crate::ols::prepared_fit_view::visit_prepared_column_range(
-            fit_view,
-            column,
-            0..residual.len(),
-            |row, value| {
-                let w = weight(row);
-                crate::linalg::neumaier_add(w * value * residual[row], &mut sum, &mut correction);
-                let absolute = (w.sqrt() * value).abs();
-                if absolute != 0.0 {
-                    if scale < absolute {
-                        let ratio = scale / absolute;
-                        squares = 1.0 + squares * ratio * ratio;
-                        scale = absolute;
-                    } else {
-                        let ratio = absolute / scale;
-                        squares += ratio * ratio;
-                    }
-                }
-                Ok(())
-            },
-        )?;
-        let norm = if scale == 0.0 {
-            0.0
-        } else {
-            scale * squares.sqrt()
-        };
-        largest = ir_moment_ratio(largest, sum + correction, norm);
+        let mut squares = ScaledSquares::ZERO;
+        for _ in 0..chunks {
+            let (s, c, q) = parts.next().expect("one task per column chunk")?;
+            crate::linalg::neumaier_add(s, &mut sum, &mut correction);
+            crate::linalg::neumaier_add(c, &mut sum, &mut correction);
+            squares.merge(q);
+        }
+        largest = ir_moment_ratio(largest, sum + correction, squares.norm());
     }
     Ok(largest)
 }
@@ -2669,44 +2780,54 @@ fn ir_regressor_moment_ratio(
 /// over its level norm.
 fn ir_fe_moment_ratio(
     generation: &PreparedPpmlModelGeneration,
-    weight: &dyn Fn(usize) -> f64,
+    weight: &IrRowFn<'_>,
     residual: &[f64],
 ) -> Result<f64> {
+    use rayon::prelude::*;
     let categorical = generation.prepared().as_ref();
     let topology = DetectorTopology::new(generation.prepared())?;
     let mut largest = 0.0_f64;
     for (effect, spec) in categorical.effect_specs().iter().enumerate() {
         let source = topology.sources[topology.effect_to_source[effect]];
-        for level in 0..source.n_levels() {
-            let members = source.checked_members(level)?;
-            if spec.intercept {
-                let (mut sum, mut correction) = (0.0_f64, 0.0_f64);
-                let (mut mass, mut mass_correction) = (0.0_f64, 0.0_f64);
-                for &row in members {
-                    crate::linalg::neumaier_add(
-                        weight(row) * residual[row],
-                        &mut sum,
-                        &mut correction,
-                    );
-                    crate::linalg::neumaier_add(weight(row), &mut mass, &mut mass_correction);
+        // Each level keeps its member-order sums; the maximum over levels
+        // does not depend on their order.
+        let level_largest = (0..source.n_levels())
+            .into_par_iter()
+            .map(|level| -> Result<f64> {
+                let mut largest = 0.0_f64;
+                let members = source.checked_members(level)?;
+                if spec.intercept {
+                    let (mut sum, mut correction) = (0.0_f64, 0.0_f64);
+                    let (mut mass, mut mass_correction) = (0.0_f64, 0.0_f64);
+                    for &row in members {
+                        crate::linalg::neumaier_add(
+                            weight(row) * residual[row],
+                            &mut sum,
+                            &mut correction,
+                        );
+                        crate::linalg::neumaier_add(weight(row), &mut mass, &mut mass_correction);
+                    }
+                    largest =
+                        ir_moment_ratio(largest, sum + correction, (mass + mass_correction).sqrt());
                 }
-                largest =
-                    ir_moment_ratio(largest, sum + correction, (mass + mass_correction).sqrt());
-            }
-            for slope in &spec.slopes {
-                let values = categorical.numeric_source_values(slope.source)?;
-                let (mut sum, mut correction) = (0.0_f64, 0.0_f64);
-                for &row in members {
-                    crate::linalg::neumaier_add(
-                        weight(row) * values[row] * residual[row],
-                        &mut sum,
-                        &mut correction,
-                    );
+                for slope in &spec.slopes {
+                    let values = categorical.numeric_source_values(slope.source)?;
+                    let (mut sum, mut correction) = (0.0_f64, 0.0_f64);
+                    for &row in members {
+                        crate::linalg::neumaier_add(
+                            weight(row) * values[row] * residual[row],
+                            &mut sum,
+                            &mut correction,
+                        );
+                    }
+                    let norm =
+                        ir_weighted_norm(weight, &|row| values[row], members.iter().copied());
+                    largest = ir_moment_ratio(largest, sum + correction, norm);
                 }
-                let norm = ir_weighted_norm(weight, &|row| values[row], members.iter().copied());
-                largest = ir_moment_ratio(largest, sum + correction, norm);
-            }
-        }
+                Ok(largest)
+            })
+            .try_reduce(|| 0.0_f64, |left, right| Ok(left.max(right)))?;
+        largest = largest.max(level_largest);
     }
     Ok(largest)
 }
@@ -3441,17 +3562,33 @@ fn euclidean_norm(values: &[f64]) -> f64 {
         .sqrt()
 }
 
-fn compensated_sum(values: impl IntoIterator<Item = f64>) -> Result<f64> {
-    let mut sum = 0.0_f64;
-    let mut correction = 0.0_f64;
-    for value in values {
-        if !value.is_finite() || value <= 0.0 {
-            return Err(FeregError::new(
+/// `compensated_sum` over fixed chunks in parallel: chunk compensated sums
+/// merge (both components) in chunk order; the same domain errors.
+fn chunked_positive_sum(values: &[f64]) -> Result<f64> {
+    use rayon::prelude::*;
+    let parts: Vec<Option<(f64, f64)>> = values
+        .par_chunks(IR_CHUNK_ROWS)
+        .map(|chunk| {
+            let (mut sum, mut correction) = (0.0_f64, 0.0_f64);
+            for &value in chunk {
+                if !value.is_finite() || value <= 0.0 {
+                    return None;
+                }
+                neumaier_add(value, &mut sum, &mut correction);
+            }
+            Some((sum, correction))
+        })
+        .collect();
+    let (mut sum, mut correction) = (0.0_f64, 0.0_f64);
+    for part in parts {
+        let (part_sum, part_correction) = part.ok_or_else(|| {
+            FeregError::new(
                 ErrorCode::InvalidData,
                 "prepared separation projection weights must be finite and positive",
-            ));
-        }
-        neumaier_add(value, &mut sum, &mut correction);
+            )
+        })?;
+        neumaier_add(part_sum, &mut sum, &mut correction);
+        neumaier_add(part_correction, &mut sum, &mut correction);
     }
     let total = sum + correction;
     if !total.is_finite() || total <= 0.0 {
@@ -3510,35 +3647,43 @@ pub(super) fn candidate_ledger_hash_candidate_axis(
     })
 }
 
-fn candidate_ledger_hash_with<F>(candidate_original_rows: &[usize], mut state: F) -> Result<u64>
+fn candidate_ledger_hash_with<F>(candidate_original_rows: &[usize], state: F) -> Result<u64>
 where
-    F: FnMut(usize, usize) -> (bool, Option<SeparationDropReason>),
+    F: Fn(usize, usize) -> (bool, Option<SeparationDropReason>) + Sync,
 {
+    // Word-level FNV-style mixing over fixed 64Ki-row chunks in parallel,
+    // folded in chunk order; the ordinal, original row, activity and reason
+    // of every candidate enter as before.
+    use rayon::prelude::*;
     const OFFSET: u64 = 0xcbf29ce484222325;
     const PRIME: u64 = 0x100000001b3;
-    let mut hash = OFFSET;
-    for (candidate_row, &original_row) in candidate_original_rows.iter().enumerate() {
-        let (is_active, reason) = state(candidate_row, original_row);
-        hash ^= u64::try_from(candidate_row).map_err(|_| {
-            FeregError::new(
-                ErrorCode::Internal,
-                "prepared separation candidate ordinal does not fit the ledger hash",
-            )
-        })?;
-        hash = hash.wrapping_mul(PRIME);
-        // Stable original-row identity is part of the generation ledger.
-        // Omitting it made equal-length subsets with equal active/reason
-        // patterns collide (for example [1, 2] and [3, 4]).
-        hash ^= u64::try_from(original_row).map_err(|_| {
-            FeregError::new(
-                ErrorCode::Internal,
-                "prepared separation original row does not fit the ledger hash",
-            )
-        })?;
-        hash = hash.wrapping_mul(PRIME);
-        hash ^= u64::from(is_active);
-        hash = hash.wrapping_mul(PRIME);
-        hash ^= reason_code(reason);
+    const CHUNK: usize = 1 << 16;
+    let rows = candidate_original_rows.len();
+    let chunks: Vec<u64> = (0..rows.div_ceil(CHUNK))
+        .into_par_iter()
+        .map(|chunk| {
+            let mut hash = OFFSET ^ chunk as u64;
+            let first = chunk * CHUNK;
+            let end = (first + CHUNK).min(rows);
+            for (candidate_row, &original_row) in
+                (first..end).zip(&candidate_original_rows[first..end])
+            {
+                let (is_active, reason) = state(candidate_row, original_row);
+                hash ^= candidate_row as u64;
+                hash = hash.wrapping_mul(PRIME);
+                hash ^= original_row as u64;
+                hash = hash.wrapping_mul(PRIME);
+                hash ^= u64::from(is_active);
+                hash = hash.wrapping_mul(PRIME);
+                hash ^= reason_code(reason);
+                hash = hash.wrapping_mul(PRIME);
+            }
+            hash
+        })
+        .collect();
+    let mut hash = OFFSET ^ rows as u64;
+    for chunk in chunks {
+        hash ^= chunk;
         hash = hash.wrapping_mul(PRIME);
     }
     Ok(hash)

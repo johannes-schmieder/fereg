@@ -328,6 +328,14 @@ impl LinearReconstructionCertificate {
         }
     }
 
+    /// Fold another chunk's certificate (maximum and conjunction).
+    fn merge(&mut self, other: Self) {
+        self.relative_infinity_norm = self
+            .relative_infinity_norm
+            .max(other.relative_infinity_norm);
+        self.passed &= other.passed;
+    }
+
     fn observe(&mut self, response: f64, finite: f64, absorbed: f64, residual: f64) -> Result<()> {
         let reconstructed = (finite + absorbed) + residual;
         let error = (reconstructed - response).abs();
@@ -5966,13 +5974,24 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                         "weighted-linear reusable MAP weights are not aligned",
                     ));
                 }
-                for (target, &value) in self.map_weights.iter_mut().zip(values) {
-                    *target = value / divisor;
-                    if !target.is_finite() || *target <= 0.0 {
-                        return Err(invalid_data(
-                            "weighted-linear reusable MAP weight is invalid",
-                        ));
-                    }
+                use rayon::prelude::*;
+                // Elementwise in fixed chunks; any invalid value is the same error.
+                let valid = self
+                    .map_weights
+                    .par_chunks_mut(RECONSTRUCTION_ROWS)
+                    .zip(values.par_chunks(RECONSTRUCTION_ROWS))
+                    .all(|(targets, values)| {
+                        let mut valid = true;
+                        for (target, &value) in targets.iter_mut().zip(values) {
+                            *target = value / divisor;
+                            valid &= target.is_finite() && *target > 0.0;
+                        }
+                        valid
+                    });
+                if !valid {
+                    return Err(invalid_data(
+                        "weighted-linear reusable MAP weight is invalid",
+                    ));
                 }
             }
         }
@@ -6158,6 +6177,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
     }
 
     fn expand_retained_response(&self, matrix: DenseMatrix) -> Result<(DenseMatrix, bool)> {
+        use rayon::prelude::*;
         let rows = matrix.nrows();
         let columns = matrix.ncols();
         let stride = columns
@@ -6171,24 +6191,57 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             .map_err(|_| allocation("unable to expand fused weighted-linear projection"))?;
         values.resize(elements, 0.0);
         let previous_response = self.previous_response.as_slice();
-        for row in (0..rows).rev() {
-            let source = row
-                .checked_mul(columns)
-                .ok_or_else(|| allocation("fused weighted-linear source offset overflows"))?;
-            let target = row
-                .checked_mul(stride)
-                .ok_or_else(|| allocation("fused weighted-linear target offset overflows"))?;
-            if columns > 0 {
-                values.copy_within(source..source + columns, target + 1);
+        let response_at = |row: usize| {
+            self.frozen_workspace.response[row] + (self.response[row] - previous_response[row])
+        };
+        let nonfinite = || invalid_data("fused weighted-linear response warm start is nonfinite");
+        // In-place widening from the last row down, in waves: the rows
+        // `lower..upper` of a wave write only `lower * stride..`, at or past the
+        // end of every source row below `upper` (`lower * stride >= upper *
+        // columns`), i.e. over sources already consumed by earlier waves. Rows
+        // of one wave are disjoint and copied in parallel; the values written
+        // are those of the serial back-to-front move (`elements` bounds every
+        // offset).
+        let mut upper = rows;
+        while upper > 0 {
+            let lower = (upper * columns).div_ceil(stride);
+            if upper - lower < WAVE_MIN_ROWS {
+                for row in (0..upper).rev() {
+                    let (source, target) = (row * columns, row * stride);
+                    for j in (0..columns).rev() {
+                        values[target + 1 + j] = values[source + j];
+                    }
+                    let response = response_at(row);
+                    if !response.is_finite() {
+                        return Err(nonfinite());
+                    }
+                    values[target] = response;
+                }
+                break;
             }
-            let response =
-                self.frozen_workspace.response[row] + (self.response[row] - previous_response[row]);
-            if !response.is_finite() {
-                return Err(invalid_data(
-                    "fused weighted-linear response warm start is nonfinite",
-                ));
+            let (head, tail) = values.split_at_mut(lower * stride);
+            let sources = &head[lower * columns..upper * columns];
+            let targets = &mut tail[..(upper - lower) * stride];
+            let finite = targets
+                .par_chunks_mut(WAVE_BLOCK_ROWS * stride)
+                .enumerate()
+                .map(|(block, targets)| {
+                    let mut finite = true;
+                    for (offset, target) in targets.chunks_exact_mut(stride).enumerate() {
+                        let local = block * WAVE_BLOCK_ROWS + offset;
+                        target[1..]
+                            .copy_from_slice(&sources[local * columns..(local + 1) * columns]);
+                        let response = response_at(lower + local);
+                        finite &= response.is_finite();
+                        target[0] = response;
+                    }
+                    finite
+                })
+                .reduce(|| true, |left, right| left & right);
+            if !finite {
+                return Err(nonfinite());
             }
-            values[target] = response;
+            upper = lower;
         }
 
         Ok((
@@ -6198,6 +6251,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
     }
 
     fn compact_retained_response(&mut self, matrix: DenseMatrix) -> Result<DenseMatrix> {
+        use rayon::prelude::*;
         let rows = matrix.nrows();
         let stride = matrix.ncols();
         let columns = stride - 1;
@@ -6207,17 +6261,55 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             rows,
             "unable to retain fused weighted-linear response",
         )?;
-        for row in 0..rows {
-            let source = row
-                .checked_mul(stride)
-                .ok_or_else(|| allocation("fused weighted-linear split offset overflows"))?;
-            self.frozen_workspace.response[row] = values[source];
-            if columns > 0 {
-                let target = row
-                    .checked_mul(columns)
-                    .ok_or_else(|| allocation("fused weighted-linear compact offset overflows"))?;
-                values.copy_within(source + 1..source + stride, target);
+        // In-place narrowing from the first row up, in waves: the rows
+        // `lower..upper` of a wave write `lower * columns..upper * columns`,
+        // which ends at or before their first source element (`upper * columns
+        // <= lower * stride`) and covers only sources of rows below `lower`
+        // that earlier waves consumed. Rows of one wave are disjoint and copied
+        // in parallel; the values are those of the serial front-to-back move.
+        let response = &mut self.frozen_workspace.response;
+        let serial = rows.min(WAVE_MIN_ROWS.max(columns));
+        for (row, response) in response.iter_mut().enumerate().take(serial) {
+            let source = row * stride;
+            *response = values[source];
+            let target = row * columns;
+            for j in 0..columns {
+                values[target + j] = values[source + 1 + j];
             }
+        }
+        let mut lower = serial;
+        while lower < rows {
+            let upper = if columns == 0 {
+                rows
+            } else {
+                (lower * stride / columns).min(rows)
+            };
+            let (head, tail) = values.split_at_mut(lower * stride);
+            let targets = &mut head[lower * columns..upper * columns];
+            let sources = &tail[..(upper - lower) * stride];
+            let responses = &mut response[lower..upper];
+            if columns == 0 {
+                responses
+                    .par_chunks_mut(WAVE_BLOCK_ROWS)
+                    .zip(sources.par_chunks(WAVE_BLOCK_ROWS))
+                    .for_each(|(responses, sources)| responses.copy_from_slice(sources));
+            } else {
+                targets
+                    .par_chunks_mut(WAVE_BLOCK_ROWS * columns)
+                    .zip(responses.par_chunks_mut(WAVE_BLOCK_ROWS))
+                    .zip(sources.par_chunks(WAVE_BLOCK_ROWS * stride))
+                    .for_each(|((targets, responses), sources)| {
+                        for ((target, response), source) in targets
+                            .chunks_exact_mut(columns)
+                            .zip(responses.iter_mut())
+                            .zip(sources.chunks_exact(stride))
+                        {
+                            *response = source[0];
+                            target.copy_from_slice(&source[1..]);
+                        }
+                    });
+            }
+            lower = upper;
         }
         values.truncate(checked_elements(rows, columns)?);
         DenseMatrix::from_row_major(rows, columns, values)
@@ -6236,16 +6328,27 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             rows,
             "unable to reserve weighted-linear absorbed predictor",
         )?;
+        // Fixed row chunks; the certificate is a maximum and a conjunction.
+        let (response, finite, residuals) =
+            (&self.response, &self.predictors.finite, fit.residuals());
+        let parts: Vec<Result<LinearReconstructionCertificate>> = self
+            .predictors
+            .absorbed
+            .par_chunks_mut(RECONSTRUCTION_ROWS)
+            .enumerate()
+            .map(|(chunk, absorbed)| {
+                let mut certificate = LinearReconstructionCertificate::new();
+                for (offset, target) in absorbed.iter_mut().enumerate() {
+                    let row = chunk * RECONSTRUCTION_ROWS + offset;
+                    *target = (response[row] - residuals[row]) - finite[row];
+                    certificate.observe(response[row], finite[row], *target, residuals[row])?;
+                }
+                Ok(certificate)
+            })
+            .collect();
         let mut certificate = LinearReconstructionCertificate::new();
-        for row in 0..rows {
-            self.predictors.absorbed[row] =
-                (self.response[row] - fit.residuals()[row]) - self.predictors.finite[row];
-            certificate.observe(
-                self.response[row],
-                self.predictors.finite[row],
-                self.predictors.absorbed[row],
-                fit.residuals()[row],
-            )?;
+        for part in parts {
+            certificate.merge(part?);
         }
         Ok(certificate)
     }
@@ -6462,18 +6565,51 @@ fn stream_frozen_solve(
         .map_err(|_| allocation("unable to reserve frozen weighted-linear residuals"))?;
     workspace.residuals.extend_from_slice(within_response);
     let mut weighted_residual_square = 0.0_f64;
-    let mut retained_reader = storage.reader();
-    for row in 0..rows {
-        crate::interrupt::row_checkpoint(row)?;
-        retained_reader.fill_row(row, &mut workspace.row)?;
-        let mut fitted = 0.0_f64;
-        for (column, &active_position) in active_positions.iter().enumerate().take(rank) {
-            fitted = workspace.coefficients[column].mul_add(workspace.row[active_position], fitted);
+    if let RetainedWithinStorage::Dense(matrix) = storage {
+        // Dense rows are independent: fixed row chunks, partial squares
+        // added in chunk order.
+        let (data, stride) = (matrix.as_slice(), matrix.ncols());
+        let coefficients = &workspace.coefficients[..rank];
+        let positions = &active_positions[..rank];
+        let parts: Vec<Result<f64>> = workspace
+            .residuals
+            .par_chunks_mut(RECONSTRUCTION_ROWS)
+            .enumerate()
+            .map(|(chunk, residuals)| {
+                crate::interrupt::checkpoint()?;
+                let mut square = 0.0_f64;
+                for (offset, residual) in residuals.iter_mut().enumerate() {
+                    let row = chunk * RECONSTRUCTION_ROWS + offset;
+                    let values = &data[row * stride..(row + 1) * stride];
+                    let mut fitted = 0.0_f64;
+                    for (&coefficient, &position) in coefficients.iter().zip(positions) {
+                        fitted = coefficient.mul_add(values[position], fitted);
+                    }
+                    *residual -= fitted;
+                    let weight = normalized_solver_weight(weights, bread_weight_scale, row)?;
+                    square = (weight * *residual).mul_add(*residual, square);
+                }
+                Ok(square)
+            })
+            .collect();
+        for part in parts {
+            weighted_residual_square += part?;
         }
-        workspace.residuals[row] -= fitted;
-        let weight = normalized_solver_weight(weights, bread_weight_scale, row)?;
-        weighted_residual_square = (weight * workspace.residuals[row])
-            .mul_add(workspace.residuals[row], weighted_residual_square);
+    } else {
+        let mut retained_reader = storage.reader();
+        for row in 0..rows {
+            crate::interrupt::row_checkpoint(row)?;
+            retained_reader.fill_row(row, &mut workspace.row)?;
+            let mut fitted = 0.0_f64;
+            for (column, &active_position) in active_positions.iter().enumerate().take(rank) {
+                fitted =
+                    workspace.coefficients[column].mul_add(workspace.row[active_position], fitted);
+            }
+            workspace.residuals[row] -= fitted;
+            let weight = normalized_solver_weight(weights, bread_weight_scale, row)?;
+            weighted_residual_square = (weight * workspace.residuals[row])
+                .mul_add(workspace.residuals[row], weighted_residual_square);
+        }
     }
     let residual_norm = weighted_residual_square.max(0.0).sqrt();
     let score_certificate = certify_normal_equations(
@@ -6600,16 +6736,26 @@ fn certify_frozen_combined_predictor(
             "frozen PPML combined predictor dimensions are inconsistent",
         ));
     }
+    let parts: Vec<Result<LinearReconstructionCertificate>> = response
+        .par_chunks(RECONSTRUCTION_ROWS)
+        .zip(within_residuals.par_chunks(RECONSTRUCTION_ROWS))
+        .map(|(response, residuals)| {
+            let mut certificate = LinearReconstructionCertificate::new();
+            for (&response, &residual) in response.iter().zip(residuals) {
+                certificate.observe(response, 0.0, response - residual, residual)?;
+            }
+            Ok(certificate)
+        })
+        .collect();
     let mut certificate = LinearReconstructionCertificate::new();
-    for (response, residual) in response
-        .iter()
-        .copied()
-        .zip(within_residuals.iter().copied())
-    {
-        certificate.observe(response, 0.0, response - residual, residual)?;
+    for part in parts {
+        certificate.merge(part?);
     }
     Ok(certificate)
 }
+
+/// Rows per fixed chunk of the parallel reconstruction passes.
+const RECONSTRUCTION_ROWS: usize = 1 << 15;
 
 fn require_newer(current: u64, next: u64, label: &'static str) -> Result<()> {
     if next > current {
@@ -6692,6 +6838,11 @@ where
     }
     stable_norm(scale, scaled_square_sum)
 }
+
+/// Below this many rows a widening/narrowing wave runs serially.
+const WAVE_MIN_ROWS: usize = 4096;
+/// Rows per parallel block within one wave.
+const WAVE_BLOCK_ROWS: usize = 2048;
 
 pub(super) fn compensated_add(value: f64, sum: &mut f64, correction: &mut f64) -> Result<()> {
     if !value.is_finite() || !sum.is_finite() || !correction.is_finite() {

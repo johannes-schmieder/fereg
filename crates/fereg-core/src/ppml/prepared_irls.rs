@@ -6,6 +6,7 @@
 
 #[cfg(test)]
 use crate::fe::PARALLEL_PROJECTION_MIN_ROWS;
+use rayon::prelude::*;
 #[cfg(test)]
 use std::cell::Cell;
 use std::time::{Duration, Instant};
@@ -2784,22 +2785,36 @@ fn validate_final_hessian_frame(
         }
         BorrowedMapWeights::Unit => None,
     };
-    for row in 0..mean.len() {
-        let expected = prior_weights[row] * mean[row];
-        let actual = supplied.map_or(1.0, |values| values[row]);
-        if !expected.is_finite() || expected <= 0.0 || !actual.is_finite() || actual <= 0.0 {
-            return Err(numerical_nonconvergence(
-                "prepared PPML final Hessian is not finitely representable",
-            ));
-        }
-        if actual.to_bits() != expected.to_bits() {
-            return Err(FeregError::new(
-                ErrorCode::Internal,
-                "prepared PPML linear products are not on the accepted final Hessian",
-            ));
-        }
+    // Fixed chunks in parallel; the first failing row (in row order) decides
+    // the error, as in a serial scan.
+    let rows = mean.len();
+    let failures: Vec<Option<bool>> = (0..rows.div_ceil(SEED_ROWS))
+        .into_par_iter()
+        .map(|chunk| {
+            for row in chunk * SEED_ROWS..((chunk + 1) * SEED_ROWS).min(rows) {
+                let expected = prior_weights[row] * mean[row];
+                let actual = supplied.map_or(1.0, |values| values[row]);
+                if !expected.is_finite() || expected <= 0.0 || !actual.is_finite() || actual <= 0.0
+                {
+                    return Some(true);
+                }
+                if actual.to_bits() != expected.to_bits() {
+                    return Some(false);
+                }
+            }
+            None
+        })
+        .collect();
+    match failures.into_iter().flatten().next() {
+        Some(true) => Err(numerical_nonconvergence(
+            "prepared PPML final Hessian is not finitely representable",
+        )),
+        Some(false) => Err(FeregError::new(
+            ErrorCode::Internal,
+            "prepared PPML linear products are not on the accepted final Hessian",
+        )),
+        None => Ok(()),
     }
-    Ok(())
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -2947,36 +2962,54 @@ fn seed_multi_effect_predictor(
     // Start with exact conditional intercepts, then one safeguarded Newton
     // update per slope with that intercept profiled out. These model-space
     // initial guesses have no rank, convergence or final-Hessian authority.
+    // Each level's shift reads only its own rows, so the levels of one effect
+    // are computed in parallel and applied in one row pass (same values).
     for effect in &design.effects()[1..] {
-        for level in 0..effect.n_levels() {
-            let members = effect.level_index().members(level);
-            let mut observed = CompensatedSum::default();
-            let mut fitted = CompensatedSum::default();
-            for &row in members {
-                let y = weights[row] * outcome[row];
-                let mu = weights[row] * eta[row].exp();
-                if !y.is_finite()
-                    || !mu.is_finite()
-                    || mu <= 0.0
-                    || (y == 0.0 && outcome[row] > 0.0)
+        let current = &*eta;
+        let shifts: Vec<Option<f64>> = (0..effect.n_levels())
+            .into_par_iter()
+            .map(|level| {
+                let members = effect.level_index().members(level);
+                let mut observed = CompensatedSum::default();
+                let mut fitted = CompensatedSum::default();
+                for &row in members {
+                    let y = weights[row] * outcome[row];
+                    let mu = weights[row] * current[row].exp();
+                    if !y.is_finite()
+                        || !mu.is_finite()
+                        || mu <= 0.0
+                        || (y == 0.0 && outcome[row] > 0.0)
+                    {
+                        return None;
+                    }
+                    observed.add(y);
+                    fitted.add(mu);
+                }
+                let (observed, fitted) = (observed.total(), fitted.total());
+                if !observed.is_finite() || observed <= 0.0 || !fitted.is_finite() || fitted <= 0.0
                 {
-                    return false;
+                    return None;
                 }
-                observed.add(y);
-                fitted.add(mu);
-            }
-            let (observed, fitted) = (observed.total(), fitted.total());
-            if !observed.is_finite() || observed <= 0.0 || !fitted.is_finite() || fitted <= 0.0 {
-                return false;
-            }
-            let shift = observed.ln() - fitted.ln();
-            for &row in members {
-                let value = eta[row] + shift;
-                if !usable_seed_value(value, config) {
-                    return false;
-                }
-                eta[row] = value;
-            }
+                Some(observed.ln() - fitted.ln())
+            })
+            .collect();
+        let Some(shifts) = shifts.into_iter().collect::<Option<Vec<f64>>>() else {
+            return false;
+        };
+        let codes = effect.codes();
+        let applied = eta
+            .par_chunks_mut(SEED_ROWS)
+            .enumerate()
+            .all(|(chunk, values)| {
+                values.iter_mut().enumerate().all(|(offset, value)| {
+                    let row = chunk * SEED_ROWS + offset;
+                    let next = *value + shifts[codes[row] as usize];
+                    *value = next;
+                    usable_seed_value(next, config)
+                })
+            });
+        if !applied {
+            return false;
         }
     }
     // Establish all intercepts before slopes can explain another partition's
@@ -3119,47 +3152,60 @@ fn seed_group_intercept_predictor(
     // Evaluate both sums in log space; this is an initialization only, before
     // canonical rank freezing or any accepted IRLS state exists. A failed
     // numerical seed is overwritten by the original global initialization.
-    for level in 0..effect.n_levels() {
-        let members = effect.level_index().members(level);
-        if let Some(value) = constant_offset_group_log_mean(members, outcome, weights, offset) {
-            if !usable_seed_value(value, config) {
-                return false;
+    // Per-level parameters in parallel (each reads only its rows), then one
+    // row pass writes the same values the level loop wrote.
+    let seeds: Vec<Option<(bool, f64, f64)>> = (0..effect.n_levels())
+        .into_par_iter()
+        .map(|level| {
+            let members = effect.level_index().members(level);
+            if let Some(value) = constant_offset_group_log_mean(members, outcome, weights, offset) {
+                return usable_seed_value(value, config).then_some((true, value, 0.0));
             }
+            let mut maximum_y = f64::NEG_INFINITY;
+            let mut maximum_offset = f64::NEG_INFINITY;
             for &row in members {
-                eta[row] = value;
+                if outcome[row] > 0.0 {
+                    maximum_y = maximum_y.max(outcome[row].ln() + weights[row].ln());
+                }
+                maximum_offset = maximum_offset.max(offset[row] + weights[row].ln());
             }
-            continue;
-        }
-        let mut maximum_y = f64::NEG_INFINITY;
-        let mut maximum_offset = f64::NEG_INFINITY;
-        for &row in members {
-            if outcome[row] > 0.0 {
-                maximum_y = maximum_y.max(outcome[row].ln() + weights[row].ln());
+            if !maximum_y.is_finite() || !maximum_offset.is_finite() {
+                return None;
             }
-            maximum_offset = maximum_offset.max(offset[row] + weights[row].ln());
-        }
-        if !maximum_y.is_finite() || !maximum_offset.is_finite() {
-            return false;
-        }
-        let mut sum_y = CompensatedSum::default();
-        let mut sum_offset = CompensatedSum::default();
-        for &row in members {
-            if outcome[row] > 0.0 {
-                sum_y.add((outcome[row].ln() + weights[row].ln() - maximum_y).exp());
+            let mut sum_y = CompensatedSum::default();
+            let mut sum_offset = CompensatedSum::default();
+            for &row in members {
+                if outcome[row] > 0.0 {
+                    sum_y.add((outcome[row].ln() + weights[row].ln() - maximum_y).exp());
+                }
+                sum_offset.add((offset[row] + weights[row].ln() - maximum_offset).exp());
             }
-            sum_offset.add((offset[row] + weights[row].ln() - maximum_offset).exp());
-        }
-        let shift = maximum_y + sum_y.total().ln() - sum_offset.total().ln();
-        for &row in members {
-            let value = (offset[row] - maximum_offset) + shift;
-            if !usable_seed_value(value, config) {
-                return false;
-            }
-            eta[row] = value;
-        }
-    }
-    true
+            let shift = maximum_y + sum_y.total().ln() - sum_offset.total().ln();
+            Some((false, maximum_offset, shift))
+        })
+        .collect();
+    let Some(seeds) = seeds.into_iter().collect::<Option<Vec<_>>>() else {
+        return false;
+    };
+    let codes = effect.codes();
+    eta.par_chunks_mut(SEED_ROWS)
+        .enumerate()
+        .all(|(chunk, values)| {
+            values.iter_mut().enumerate().all(|(position, value)| {
+                let row = chunk * SEED_ROWS + position;
+                let (constant, first, second) = seeds[codes[row] as usize];
+                *value = if constant {
+                    first
+                } else {
+                    (offset[row] - first) + second
+                };
+                constant || usable_seed_value(*value, config)
+            })
+        })
 }
+
+/// Rows per fixed chunk of the parallel seed passes.
+const SEED_ROWS: usize = 1 << 15;
 
 fn constant_offset_group_log_mean(
     members: &[usize],
@@ -3344,16 +3390,33 @@ fn strict_absorb(mut config: PreparedOlsFitConfig, tolerance: f64) -> PreparedOl
 }
 
 fn ppml_bread_weight_scale(weights: &[f64]) -> Result<PreparedOlsBreadWeightScale> {
+    // Fixed row chunks in parallel: the maximum is order independent; chunk
+    // compensated sums merge (both components) in chunk order.
+    let parts: Vec<Option<(f64, CompensatedSum)>> = weights
+        .par_chunks(SEED_ROWS)
+        .map(|chunk| {
+            let mut maximum = 0.0_f64;
+            let mut sum = CompensatedSum::default();
+            for &weight in chunk {
+                if !weight.is_finite() || weight <= 0.0 {
+                    return None;
+                }
+                maximum = maximum.max(weight);
+                sum.add(weight);
+            }
+            Some((maximum, sum))
+        })
+        .collect();
     let mut maximum = 0.0_f64;
     let mut sum = CompensatedSum::default();
-    for weight in weights {
-        if !weight.is_finite() || *weight <= 0.0 {
-            return Err(numerical_nonconvergence(
-                "prepared PPML Hessian weights must be finite and positive",
-            ));
+    for part in parts {
+        let (chunk_maximum, chunk_sum) = part.ok_or_else(|| {
+            numerical_nonconvergence("prepared PPML Hessian weights must be finite and positive")
+        })?;
+        maximum = maximum.max(chunk_maximum);
+        for component in chunk_sum.components() {
+            sum.add(component);
         }
-        maximum = maximum.max(*weight);
-        sum.add(*weight);
     }
     let reference_weight_sum = sum.total();
     if maximum <= 0.0 || !maximum.is_finite() || !reference_weight_sum.is_finite() {

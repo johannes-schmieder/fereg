@@ -1911,6 +1911,7 @@ fn reusable_one_fe_trailing_norms_follow_current_values_weights_and_width() {
 
 #[test]
 fn reusable_trailing_norms_do_not_publish_on_mismatch_or_failure() {
+    let _route = crate::fe::block_schur::stable_route_for_test();
     let codes = [0_u32, 0, 1, 1, 2, 2, 3, 3];
     let index = LevelIndex::from_codes(&codes, 4).unwrap();
     let source = ValidatedBorrowedInterceptSource::new(&codes, 4, &index).unwrap();
@@ -1937,7 +1938,7 @@ fn reusable_trailing_norms_do_not_publish_on_mismatch_or_failure() {
         let mut norms = [-1.0];
         for scale in [8.0, 4.0] {
             let saved = norms;
-            let (_, reused) = reusable
+            let (absorbed, reused) = reusable
                 .absorb_with_selected_norms(
                     BorrowedMapWeights::Provided(&weights),
                     values(),
@@ -1947,8 +1948,21 @@ fn reusable_trailing_norms_do_not_publish_on_mismatch_or_failure() {
                     &mut norms,
                 )
                 .unwrap();
-            assert_eq!(reused, !multi_fe && scale == 8.0);
-            if !reused {
+            // One effect hands over the MAP norms; several effects hand over
+            // the elimination's residual-pass norms. Either only on the
+            // frame's own maximum-weight divisor.
+            assert_eq!(
+                reused,
+                scale == 8.0 && (!multi_fe || crate::fe::block_schur::enabled())
+            );
+            if reused {
+                let residual = absorbed.residualized();
+                let independent = (0..codes.len())
+                    .map(|row| weights[row] / 8.0 * residual[(row, 1)].powi(2))
+                    .sum::<f64>()
+                    .sqrt();
+                assert!((norms[0] - independent).abs() <= 1e-14 * independent.max(1.0));
+            } else {
                 assert_eq!(norms, saved);
             }
         }
