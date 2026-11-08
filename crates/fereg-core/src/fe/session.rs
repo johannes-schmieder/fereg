@@ -35,9 +35,8 @@ pub(crate) struct FeSession<'a> {
     pub(crate) block_schur_used: bool,
 }
 
-fn block_schur_enabled() -> bool {
-    super::borrowed_map::block_schur::enabled()
-}
+mod elimination;
+use elimination::block_schur_enabled;
 
 /// Select invocation identity before canonical portfolio construction. Refused
 /// hidden families fall back to the accepted default, including the other family.
@@ -1024,59 +1023,6 @@ impl<'a> FeSession<'a> {
             dense_norms,
             remaining,
         )
-    }
-
-    /// Exact global elimination of the largest effect for Auto OLS with at
-    /// least two categorical intercept effects; a decline returns the input
-    /// for the session's established route.
-    fn try_block_schur(
-        &mut self,
-        weights: BorrowedMapWeights<'_>,
-        values: crate::ols::OlsProjectionInput,
-        config: super::AbsorbConfig,
-    ) -> Result<std::result::Result<CertifiedBorrowedMap, crate::ols::OlsProjectionInput>> {
-        use super::borrowed_map::block_schur::Outcome;
-        let default_routing = config.routing.is_none_or(|preset| {
-            preset == super::RoutingPreset::geometry_many()
-                || preset == super::RoutingPreset::gates_two_v2()
-        });
-        let eligible = block_schur_enabled()
-            && config.solver == super::FeSolverKind::Auto
-            && config.lsmr.preconditioner == super::LsmrPreconditioner::Auto
-            && config.declined_recheck.is_none()
-            && default_routing
-            && self.cmg.is_none()
-            && self.lsmr.is_none()
-            && self.general.is_none()
-            && self.owned.is_none();
-        if !eligible {
-            return Ok(Err(values));
-        }
-        let design = match (&self.categorical, &self.binding) {
-            (Some(owner), _) => owner.borrowed_design(),
-            (None, Some(design)) if design.effects().len() >= 2 => design,
-            _ => return Ok(Err(values)),
-        };
-        let matrix = values.into_values();
-        match self.block_schur.project(
-            design,
-            weights,
-            matrix,
-            config.map,
-            config.solver_memory_budget,
-            super::borrowed_map::block_schur::Request {
-                retain_coefficients: config.retain_coefficients,
-                // Weighted projections (PPML separation frames) also bound
-                // coefficient errors; unit-weight OLS keeps the moment rule.
-                coefficient_accuracy: !matches!(weights, BorrowedMapWeights::Unit),
-            },
-        )? {
-            Outcome::Done(result) => {
-                self.block_schur_used = true;
-                Ok(Ok(result))
-            }
-            Outcome::Declined(matrix) => Ok(Err(matrix.into())),
-        }
     }
 
     #[allow(clippy::too_many_arguments)]

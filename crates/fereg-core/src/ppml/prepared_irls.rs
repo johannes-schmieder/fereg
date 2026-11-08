@@ -4085,42 +4085,11 @@ fn prepared_score_certificate<P: PreparedOlsFitView + ?Sized>(
         .filter(|_| !generic && columns < numeric_moments.len());
     if let Some(numeric) = joint {
         let mut entries = [(0.0_f64, 0.0_f64); crate::ols::MAX_BOUND_NUMERIC_COLUMNS];
-        workspace.reduce_columns_fused(
-            rows,
+        joint_scale_and_moments(
+            workspace,
+            [outcome, mean, prior_weights],
+            numeric,
             &mut entries[..columns + 1],
-            |first, range, sums| {
-                let mut plain = [(0.0_f64, 0.0_f64); crate::ols::MAX_BOUND_NUMERIC_COLUMNS];
-                let offset = usize::from(first == 0);
-                let sources = &numeric.raw_columns()[first + offset - 1..];
-                let moments = &mut sums[offset..];
-                for row in range {
-                    if offset == 1 {
-                        let residual = outcome[row] - mean[row];
-                        let inverse_variance_weight = prior_weights[row] / mean[row];
-                        plain[0].0 += inverse_variance_weight * residual * residual;
-                        plain[0].1 += inverse_variance_weight * outcome[row] * outcome[row];
-                    }
-                    let residual = prior_weights[row] * (outcome[row] - mean[row]);
-                    let curvature = prior_weights[row] * mean[row];
-                    for ((moment, square), source) in moments
-                        .iter_mut()
-                        .zip(plain[offset..].iter_mut())
-                        .zip(sources)
-                    {
-                        let basis = source.map_or(1.0, |values| values[row]);
-                        moment.0.add(residual * basis);
-                        square.1 += curvature * basis * basis;
-                    }
-                }
-                if offset == 1 {
-                    sums[0].0.add(plain[0].0);
-                    sums[0].1.add(plain[0].1);
-                }
-                for (entry, square) in sums[offset..].iter_mut().zip(&plain[offset..]) {
-                    entry.1.add(square.1);
-                }
-                Ok(())
-            },
         )?;
         scales[0] = entries[0];
         numeric_moments[..columns].copy_from_slice(&entries[1..columns + 1]);
@@ -4265,29 +4234,13 @@ fn prepared_score_certificate<P: PreparedOlsFitView + ?Sized>(
                 budget,
             );
             if plan.lanes > 1 && scatter_effects.get(effect_index).copied().unwrap_or(false) {
-                // Each lane owns a level range and scans every row in order,
-                // adding only its levels: per-level sums in ascending rows,
-                // the same values as the member gather (unit basis).
-                use rayon::prelude::*;
-                let codes = effect.codes();
-                let per_lane = effect.n_levels().div_ceil(plan.lanes).max(1);
-                moments[effect_offset..effect_offset + directions]
-                    .par_chunks_mut(per_lane)
-                    .zip(
-                        squares[effect_offset..effect_offset + directions].par_chunks_mut(per_lane),
-                    )
-                    .enumerate()
-                    .for_each(|(lane, (moments, squares))| {
-                        let low = lane * per_lane;
-                        let count = moments.len();
-                        for (row, &code) in codes.iter().enumerate().take(rows) {
-                            let local = (code as usize).wrapping_sub(low);
-                            if local < count {
-                                moments[local] += prior_weights[row] * (outcome[row] - mean[row]);
-                                squares[local] += prior_weights[row] * mean[row];
-                            }
-                        }
-                    });
+                scatter_level_scores(
+                    &effect.codes()[..rows],
+                    [outcome, mean, prior_weights],
+                    effect.n_levels().div_ceil(plan.lanes).max(1),
+                    &mut moments[effect_offset..effect_offset + directions],
+                    &mut squares[effect_offset..effect_offset + directions],
+                );
             } else if plan.lanes > 1 {
                 // A direction owns its two accumulators. Membership order is
                 // original observation order, so independent groups/channels
@@ -4377,6 +4330,79 @@ fn prepared_score_certificate<P: PreparedOlsFitView + ?Sized>(
         relative_two_norm: relative_two,
         passed: relative_infinity <= tolerance && relative_two <= tolerance,
     })
+}
+
+/// The joint leaf pass of the score certificate: entry 0 is the score-scale
+/// pair, entry 1 + j the moment pair of bound numeric column j. Every entry
+/// keeps its own leaf sums and leaf-order merge, so the values equal the
+/// separate reductions. `rows` holds the outcome, mean and prior weights.
+fn joint_scale_and_moments(
+    workspace: &mut PpmlScoreWorkspace,
+    [outcome, mean, prior_weights]: [&[f64]; 3],
+    numeric: &crate::ols::NumericOlsColumns<'_>,
+    entries: &mut [(f64, f64)],
+) -> Result<()> {
+    workspace.reduce_columns_fused(outcome.len(), entries, |first, range, sums| {
+        let mut plain = [(0.0_f64, 0.0_f64); crate::ols::MAX_BOUND_NUMERIC_COLUMNS];
+        let offset = usize::from(first == 0);
+        let sources = &numeric.raw_columns()[first + offset - 1..];
+        let moments = &mut sums[offset..];
+        for row in range {
+            if offset == 1 {
+                let residual = outcome[row] - mean[row];
+                let inverse_variance_weight = prior_weights[row] / mean[row];
+                plain[0].0 += inverse_variance_weight * residual * residual;
+                plain[0].1 += inverse_variance_weight * outcome[row] * outcome[row];
+            }
+            let residual = prior_weights[row] * (outcome[row] - mean[row]);
+            let curvature = prior_weights[row] * mean[row];
+            for ((moment, square), source) in moments
+                .iter_mut()
+                .zip(plain[offset..].iter_mut())
+                .zip(sources)
+            {
+                let basis = source.map_or(1.0, |values| values[row]);
+                moment.0.add(residual * basis);
+                square.1 += curvature * basis * basis;
+            }
+        }
+        if offset == 1 {
+            sums[0].0.add(plain[0].0);
+            sums[0].1.add(plain[0].1);
+        }
+        for (entry, square) in sums[offset..].iter_mut().zip(&plain[offset..]) {
+            entry.1.add(square.1);
+        }
+        Ok(())
+    })
+}
+
+/// Unit-basis FE scores by level partition: each lane owns `per_lane` levels
+/// and scans every row in order, adding only its levels, so every level sums
+/// its rows in ascending order (the same values as the member gather).
+fn scatter_level_scores(
+    codes: &[u32],
+    [outcome, mean, prior_weights]: [&[f64]; 3],
+    per_lane: usize,
+    moments: &mut [f64],
+    squares: &mut [f64],
+) {
+    use rayon::prelude::*;
+    moments
+        .par_chunks_mut(per_lane)
+        .zip(squares.par_chunks_mut(per_lane))
+        .enumerate()
+        .for_each(|(lane, (moments, squares))| {
+            let low = lane * per_lane;
+            let count = moments.len();
+            for (row, &code) in codes.iter().enumerate() {
+                let local = (code as usize).wrapping_sub(low);
+                if local < count {
+                    moments[local] += prior_weights[row] * (outcome[row] - mean[row]);
+                    squares[local] += prior_weights[row] * mean[row];
+                }
+            }
+        });
 }
 
 fn add_relative_score(

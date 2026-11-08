@@ -71,40 +71,11 @@ pub(super) fn presolve<P: PreparedOlsFitView + Sync + ?Sized>(
     if design.effects().len() < 2 || design.nobs() != rows || eta.len() != rows {
         return Ok(None);
     }
-    // Continuous regressors only; the structural intercept is absorbed.
-    let model = prepared.fit_model();
-    let mut columns: [&[f64]; MAX_COLUMNS] = [&[]; MAX_COLUMNS];
-    let mut k = 0_usize;
-    for coefficient in &model.coefficients {
-        let Some(generated) = coefficient.generated_column_index else {
-            continue;
-        };
-        match model.columns.get(generated).map(|column| &column.kind) {
-            Some(PreparedOlsColumnKind::Intercept) => {}
-            Some(PreparedOlsColumnKind::Continuous { .. }) => {
-                let Some(values) = crate::ols::prepared_fit_view::prepared_continuous_range(
-                    prepared,
-                    generated,
-                    0..rows,
-                ) else {
-                    return Ok(None);
-                };
-                if k == MAX_COLUMNS {
-                    return Ok(None);
-                }
-                columns[k] = values;
-                k += 1;
-            }
-            _ => return Ok(None),
-        }
-    }
-    if k == 0 {
+    let Some((columns, k)) = continuous_columns(prepared, rows) else {
         return Ok(None);
-    }
+    };
     let columns = &columns[..k];
-    let width = k + 1;
     let threads = rayon::current_num_threads();
-    let terms = inputs.row_terms();
     let mut partials = crate::memory::fallible_filled(
         super::super::family::objective_partial_cells(rows, threads),
         0.0,
@@ -143,30 +114,19 @@ pub(super) fn presolve<P: PreparedOlsFitView + Sync + ?Sized>(
         return Ok(None);
     }
     drop(scores);
-    // The first projection input: [z, X] from the raw design.
-    let mut data = crate::memory::fallible_filled(
-        rows * width,
-        0.0,
-        "unable to reserve PPML pre-solve design",
-    )?;
-    data.par_chunks_mut(ROWS * width)
-        .enumerate()
-        .for_each(|(chunk, values)| {
-            for (local, row) in values.chunks_exact_mut(width).enumerate() {
-                let i = chunk * ROWS + local;
-                row[0] = response[i];
-                for (target, column) in row[1..].iter_mut().zip(columns) {
-                    *target = column[i];
-                }
-            }
-        });
-    let mut input = Some(DenseMatrix::from_row_major(rows, width, data)?);
+    let mut input = Some(first_projection_input(&response, columns)?);
+    let step_rows = StepRows {
+        outcome,
+        prior_weights,
+        offset,
+        terms: inputs.row_terms(),
+        bounds: config.bounds,
+    };
     let mut cache = block_schur::Cache::default();
     let mut change = f64::INFINITY;
     let mut steps = 0;
     let mut projection_iterations = 0_usize;
     let started = std::time::Instant::now();
-    let bounds = config.bounds;
     // Pre-solve steps are outer iterations of the same budget; the certified
     // iteration keeps at least two of them.
     let max_steps = MAX_STEPS.min(config.max_iterations.saturating_sub(2));
@@ -177,67 +137,14 @@ pub(super) fn presolve<P: PreparedOlsFitView + Sync + ?Sized>(
         // Break is honoured before any state is handed over.
         crate::interrupt::checkpoint()?;
         steps += 1;
-        let tolerance = (0.01 * change).clamp(1e-11, 1e-6);
-        let map = MapConfig {
-            tolerance,
-            ..MapConfig::default()
+        let next = input.take().expect("pre-solve projection input");
+        let Some((mut projected, iterations)) =
+            project(&mut cache, &design, &weights, next, change)?
+        else {
+            return Ok(None);
         };
-        let mut projected = match cache.project(
-            &design,
-            BorrowedMapWeights::Provided(&weights),
-            input.take().expect("pre-solve projection input"),
-            map,
-            None,
-            block_schur::Request {
-                retain_coefficients: false,
-                coefficient_accuracy: true,
-            },
-        )? {
-            block_schur::Outcome::Done(result) => {
-                let (matrix, report) = result.into_parts();
-                projection_iterations += report.iterations.max(1);
-                matrix
-            }
-            block_schur::Outcome::Declined(_) => return Ok(None),
-        };
-        // Normal equations of the projected regressors (with the raw
-        // weighted squares for the FE-collinearity check), over a fixed tree
-        // of row chunks without allocation.
-        let data = projected.as_slice();
-        let (mut gram, rhs, raw) = crate::parallel::fixed_tree_reduce(
-            rows,
-            ROWS,
-            &|range: std::ops::Range<usize>| -> Result<Moments> {
-                let mut gram = [0.0; MAX_COLUMNS * MAX_COLUMNS];
-                let mut rhs = [0.0; MAX_COLUMNS];
-                let mut raw = [0.0; MAX_COLUMNS];
-                for i in range {
-                    let row = &data[i * width..(i + 1) * width];
-                    let w = weights[i];
-                    for a in 0..k {
-                        let wa = w * row[1 + a];
-                        rhs[a] += wa * row[0];
-                        raw[a] += w * columns[a][i] * columns[a][i];
-                        for b in 0..=a {
-                            gram[a * MAX_COLUMNS + b] += wa * row[1 + b];
-                        }
-                    }
-                }
-                Ok((gram, rhs, raw))
-            },
-            &|(mut gram, mut rhs, mut raw): Moments, (g, r, q): Moments| {
-                for (target, value) in gram.iter_mut().zip(g) {
-                    *target += value;
-                }
-                for (target, value) in rhs.iter_mut().zip(r) {
-                    *target += value;
-                }
-                for (target, value) in raw.iter_mut().zip(q) {
-                    *target += value;
-                }
-                (gram, rhs, raw)
-            },
-        )?;
+        projection_iterations += iterations;
+        let (mut gram, rhs, raw) = normal_equations(projected.as_slice(), &weights, columns)?;
         // A regressor (nearly) collinear with the fixed effects is a rank
         // decision for the certified solve; leave such designs to it.
         let separated = |a: usize| gram[a * MAX_COLUMNS + a] > COLLINEARITY_RATIO * raw[a];
@@ -247,98 +154,17 @@ pub(super) fn presolve<P: PreparedOlsFitView + Sync + ?Sized>(
         let Some(beta) = scaled_cholesky_solve(&mut gram, &rhs, k) else {
             return Ok(None);
         };
-        // One pass for the full step: eta = offset + z - z~ + X~ beta, its
-        // mean and deviance terms, the next Hessian weights and working
-        // response, and the next projection input (residuals plus the
-        // working-response change: the same projection under new weights).
-        let beta = &beta[..k];
-        projected
-            .as_mut_slice()
-            .par_chunks_mut(ROWS * width)
-            .zip(current.par_chunks_mut(ROWS))
-            .zip(mean.par_chunks_mut(ROWS))
-            .zip(weights.par_chunks_mut(ROWS))
-            .zip(response.par_chunks_mut(ROWS))
-            .zip(chunk_deviance.par_iter_mut())
-            .enumerate()
-            .for_each(
-                |(chunk, (((((values, eta), mean), weights), response), out))| {
-                    *out = f64::NAN;
-                    let mut step = || -> Option<f64> {
-                        let mut sum = 0.0_f64;
-                        let mut correction = 0.0_f64;
-                        let mut run = 0.0_f64;
-                        for (local, ((((row, eta), mu), w), z)) in values
-                            .chunks_exact_mut(width)
-                            .zip(eta.iter_mut())
-                            .zip(mean.iter_mut())
-                            .zip(weights.iter_mut())
-                            .zip(response.iter_mut())
-                            .enumerate()
-                        {
-                            let i = chunk * ROWS + local;
-                            let mut fitted = *z - row[0];
-                            for (b, x) in beta.iter().zip(&row[1..]) {
-                                fitted += b * x;
-                            }
-                            let value = offset[i] + fitted;
-                            if !(value.is_finite()
-                                && value >= bounds.eta_min
-                                && value <= bounds.eta_max)
-                            {
-                                return None;
-                            }
-                            let m = value.exp();
-                            if !(m.is_finite()
-                                && m > 0.0
-                                && m >= bounds.mu_min
-                                && m <= bounds.mu_max)
-                            {
-                                return None;
-                            }
-                            let y = outcome[i];
-                            let q = prior_weights[i];
-                            let half = super::super::family::iteration_half_deviance(
-                                y,
-                                m,
-                                value,
-                                terms[i][0],
-                            )
-                            .ok()?;
-                            run += 2.0 * q * half;
-                            if local % 512 == 511 {
-                                crate::linalg::neumaier_add(run, &mut sum, &mut correction);
-                                run = 0.0;
-                            }
-                            let adjustment = if y == 0.0 {
-                                -1.0
-                            } else {
-                                let ratio = y / m;
-                                if y.is_normal() && m.is_normal() && ratio.is_normal() {
-                                    ratio - 1.0
-                                } else {
-                                    (terms[i][0] - value).exp() - 1.0
-                                }
-                            };
-                            let next = value - offset[i] + adjustment;
-                            let weight = q * m;
-                            if !(next.is_finite() && weight.is_finite() && weight > 0.0) {
-                                return None;
-                            }
-                            row[0] += next - *z;
-                            *z = next;
-                            *w = weight;
-                            *mu = m;
-                            *eta = value;
-                        }
-                        crate::linalg::neumaier_add(run, &mut sum, &mut correction);
-                        Some(sum + correction)
-                    };
-                    if let Some(value) = step() {
-                        *out = value;
-                    }
-                },
-            );
+        step_rows.full_step(
+            &beta[..k],
+            projected.as_mut_slice(),
+            StepState {
+                eta: &mut current,
+                mean: &mut mean,
+                weights: &mut weights,
+                response: &mut response,
+                chunk_deviance: &mut chunk_deviance,
+            },
+        );
         let next_deviance: f64 = chunk_deviance.iter().sum();
         if !next_deviance.is_finite() {
             return Ok(None);
@@ -371,6 +197,261 @@ pub(super) fn presolve<P: PreparedOlsFitView + Sync + ?Sized>(
         converged: change <= config.tolerance,
         change,
     }))
+}
+
+/// Project `[z, X]` under the Hessian `weights` with the exact elimination at
+/// a hundredth of the last deviance change; `None` on a decline. Also returns
+/// the projection's iteration count (at least one).
+fn project(
+    cache: &mut block_schur::Cache,
+    design: &crate::fe::BorrowedInterceptFeDesign<'_>,
+    weights: &[f64],
+    input: DenseMatrix,
+    change: f64,
+) -> Result<Option<(DenseMatrix, usize)>> {
+    let map = MapConfig {
+        tolerance: (0.01 * change).clamp(1e-11, 1e-6),
+        ..MapConfig::default()
+    };
+    let request = block_schur::Request {
+        retain_coefficients: false,
+        coefficient_accuracy: true,
+    };
+    let weights = BorrowedMapWeights::Provided(weights);
+    Ok(
+        match cache.project(design, weights, input, map, None, request)? {
+            block_schur::Outcome::Done(result) => {
+                let (matrix, report) = result.into_parts();
+                Some((matrix, report.iterations.max(1)))
+            }
+            block_schur::Outcome::Declined(_) => None,
+        },
+    )
+}
+
+/// The continuous regressor columns (at most `MAX_COLUMNS`) and their count;
+/// the structural intercept is absorbed. `None` for any other column kind,
+/// a non-contiguous column, more columns or none.
+fn continuous_columns<P: PreparedOlsFitView + Sync + ?Sized>(
+    prepared: &P,
+    rows: usize,
+) -> Option<([&[f64]; MAX_COLUMNS], usize)> {
+    let model = prepared.fit_model();
+    let mut columns: [&[f64]; MAX_COLUMNS] = [&[]; MAX_COLUMNS];
+    let mut k = 0_usize;
+    for coefficient in &model.coefficients {
+        let Some(generated) = coefficient.generated_column_index else {
+            continue;
+        };
+        match model.columns.get(generated).map(|column| &column.kind) {
+            Some(PreparedOlsColumnKind::Intercept) => {}
+            Some(PreparedOlsColumnKind::Continuous { .. }) => {
+                let values = crate::ols::prepared_fit_view::prepared_continuous_range(
+                    prepared,
+                    generated,
+                    0..rows,
+                )?;
+                if k == MAX_COLUMNS {
+                    return None;
+                }
+                columns[k] = values;
+                k += 1;
+            }
+            _ => return None,
+        }
+    }
+    (k > 0).then_some((columns, k))
+}
+
+/// The first projection input: `[z, X]` row-major from the raw design.
+fn first_projection_input(response: &[f64], columns: &[&[f64]]) -> Result<DenseMatrix> {
+    let rows = response.len();
+    let width = columns.len() + 1;
+    let mut data = crate::memory::fallible_filled(
+        rows * width,
+        0.0,
+        "unable to reserve PPML pre-solve design",
+    )?;
+    data.par_chunks_mut(ROWS * width)
+        .enumerate()
+        .for_each(|(chunk, values)| {
+            for (local, row) in values.chunks_exact_mut(width).enumerate() {
+                let i = chunk * ROWS + local;
+                row[0] = response[i];
+                for (target, column) in row[1..].iter_mut().zip(columns) {
+                    *target = column[i];
+                }
+            }
+        });
+    DenseMatrix::from_row_major(rows, width, data)
+}
+
+/// Normal equations of the projected regressors `data = [z~, X~]` (with the
+/// raw weighted squares for the FE-collinearity check), over a fixed tree of
+/// row chunks without allocation.
+fn normal_equations(data: &[f64], weights: &[f64], columns: &[&[f64]]) -> Result<Moments> {
+    let k = columns.len();
+    let width = k + 1;
+    crate::parallel::fixed_tree_reduce(
+        weights.len(),
+        ROWS,
+        &|range: std::ops::Range<usize>| -> Result<Moments> {
+            let mut gram = [0.0; MAX_COLUMNS * MAX_COLUMNS];
+            let mut rhs = [0.0; MAX_COLUMNS];
+            let mut raw = [0.0; MAX_COLUMNS];
+            for i in range {
+                let row = &data[i * width..(i + 1) * width];
+                let w = weights[i];
+                for a in 0..k {
+                    let wa = w * row[1 + a];
+                    rhs[a] += wa * row[0];
+                    raw[a] += w * columns[a][i] * columns[a][i];
+                    for b in 0..=a {
+                        gram[a * MAX_COLUMNS + b] += wa * row[1 + b];
+                    }
+                }
+            }
+            Ok((gram, rhs, raw))
+        },
+        &|(mut gram, mut rhs, mut raw): Moments, (g, r, q): Moments| {
+            for (target, value) in gram.iter_mut().zip(g) {
+                *target += value;
+            }
+            for (target, value) in rhs.iter_mut().zip(r) {
+                *target += value;
+            }
+            for (target, value) in raw.iter_mut().zip(q) {
+                *target += value;
+            }
+            (gram, rhs, raw)
+        },
+    )
+}
+
+/// Fixed per-row inputs of a pre-solve step.
+struct StepRows<'a> {
+    outcome: &'a [f64],
+    prior_weights: &'a [f64],
+    offset: &'a [f64],
+    terms: &'a [[f64; 2]],
+    bounds: super::super::PoissonBounds,
+}
+
+/// Row state a step rewrites, and its per-chunk deviance partials.
+struct StepState<'a> {
+    eta: &'a mut [f64],
+    mean: &'a mut [f64],
+    weights: &'a mut [f64],
+    response: &'a mut [f64],
+    chunk_deviance: &'a mut [f64],
+}
+
+/// One evaluated row of a full step.
+struct StepRow {
+    eta: f64,
+    mean: f64,
+    weight: f64,
+    response: f64,
+    deviance: f64,
+}
+
+impl StepRows<'_> {
+    /// One pass for the full step: eta = offset + z - z~ + X~ beta, its mean
+    /// and deviance terms, the next Hessian weights and working response, and
+    /// the next projection input (residuals plus the working-response change:
+    /// the same projection under new weights). A chunk with an invalid row
+    /// leaves NaN as its deviance partial.
+    fn full_step(&self, beta: &[f64], projected: &mut [f64], state: StepState<'_>) {
+        let width = beta.len() + 1;
+        projected
+            .par_chunks_mut(ROWS * width)
+            .zip(state.eta.par_chunks_mut(ROWS))
+            .zip(state.mean.par_chunks_mut(ROWS))
+            .zip(state.weights.par_chunks_mut(ROWS))
+            .zip(state.response.par_chunks_mut(ROWS))
+            .zip(state.chunk_deviance.par_iter_mut())
+            .enumerate()
+            .for_each(
+                |(chunk, (((((values, eta), mean), weights), response), out))| {
+                    *out = f64::NAN;
+                    let mut step = || -> Option<f64> {
+                        let mut sum = 0.0_f64;
+                        let mut correction = 0.0_f64;
+                        let mut run = 0.0_f64;
+                        for (local, ((((row, eta), mu), w), z)) in values
+                            .chunks_exact_mut(width)
+                            .zip(eta.iter_mut())
+                            .zip(mean.iter_mut())
+                            .zip(weights.iter_mut())
+                            .zip(response.iter_mut())
+                            .enumerate()
+                        {
+                            let next = self.row(chunk * ROWS + local, beta, row, *z)?;
+                            run += next.deviance;
+                            if local % 512 == 511 {
+                                crate::linalg::neumaier_add(run, &mut sum, &mut correction);
+                                run = 0.0;
+                            }
+                            row[0] += next.response - *z;
+                            *z = next.response;
+                            *w = next.weight;
+                            *mu = next.mean;
+                            *eta = next.eta;
+                        }
+                        crate::linalg::neumaier_add(run, &mut sum, &mut correction);
+                        Some(sum + correction)
+                    };
+                    if let Some(value) = step() {
+                        *out = value;
+                    }
+                },
+            );
+    }
+
+    /// Row `i` of the full step from its projected row `[z~, X~]` and current
+    /// working response `z`; `None` when any value is invalid.
+    #[inline(always)]
+    fn row(&self, i: usize, beta: &[f64], projected: &[f64], z: f64) -> Option<StepRow> {
+        let bounds = self.bounds;
+        let mut fitted = z - projected[0];
+        for (b, x) in beta.iter().zip(&projected[1..]) {
+            fitted += b * x;
+        }
+        let value = self.offset[i] + fitted;
+        if !(value.is_finite() && value >= bounds.eta_min && value <= bounds.eta_max) {
+            return None;
+        }
+        let m = value.exp();
+        if !(m.is_finite() && m > 0.0 && m >= bounds.mu_min && m <= bounds.mu_max) {
+            return None;
+        }
+        let y = self.outcome[i];
+        let q = self.prior_weights[i];
+        let log_y = self.terms[i][0];
+        let half = super::super::family::iteration_half_deviance(y, m, value, log_y).ok()?;
+        let adjustment = if y == 0.0 {
+            -1.0
+        } else {
+            let ratio = y / m;
+            if y.is_normal() && m.is_normal() && ratio.is_normal() {
+                ratio - 1.0
+            } else {
+                (log_y - value).exp() - 1.0
+            }
+        };
+        let next = value - self.offset[i] + adjustment;
+        let weight = q * m;
+        if !(next.is_finite() && weight.is_finite() && weight > 0.0) {
+            return None;
+        }
+        Some(StepRow {
+            eta: value,
+            mean: m,
+            weight,
+            response: next,
+            deviance: 2.0 * q * half,
+        })
+    }
 }
 
 /// Solve `A x = b` for the symmetric positive definite `A` whose lower

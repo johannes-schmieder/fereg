@@ -1380,17 +1380,6 @@ impl CertifiedPpmlResult {
                 "PPML result tolerance must be finite and lie in (0, 1)",
             ));
         }
-        let trace = crate::diagnostics::phase_ledger::PhaseLedger::new(
-            "ppml_result_certificate",
-            [
-                "reports",
-                "seal",
-                "generation",
-                "metadata",
-                "separation",
-                "replay",
-            ],
-        );
         if let Some(bias) = &input.bias {
             bias.validate()?;
             if input.separation.separated_count != 0 {
@@ -1421,17 +1410,14 @@ impl CertifiedPpmlResult {
             input.separation_config,
             memory,
         )?;
-        trace.lap(0);
         input.separation_seal.validate(
             input.separation_config,
             &input.separation,
             sample.original_rows(),
             sample.outcome(),
         )?;
-        trace.lap(1);
         let generation_aligned =
             validate_result_generation(sample, &input.output, &input.separation)?;
-        trace.lap(2);
         let metadata_aligned = validate_result_metadata(ResultMetadataValidation {
             coefficients: &input.coefficients,
             inference: &input.inference,
@@ -1443,7 +1429,6 @@ impl CertifiedPpmlResult {
             tolerance,
         })?;
         validate_convergence(&input.convergence, tolerance)?;
-        trace.lap(3);
         let separation_passed = validate_separation_report(
             &input.separation,
             input.separation_config,
@@ -1462,7 +1447,6 @@ impl CertifiedPpmlResult {
             &input.fixed_effects,
             memory.plan.preflight_dimensions.fe_total_levels,
         )?;
-        trace.lap(4);
 
         let (recomputed_objective, null_objective) = replay_final_objectives_with_threads(
             sample.outcome(),
@@ -1475,7 +1459,6 @@ impl CertifiedPpmlResult {
                 .publication_validator_workspace_bytes,
         )
         .map_err(|error| composed_result_error("PPML final objective replay failed", error))?;
-        trace.lap(5);
         let objective_deviance_relative_error =
             relative_scalar_error(input.objective.deviance, recomputed_objective.deviance);
         let objective_log_likelihood_relative_error = relative_scalar_error(

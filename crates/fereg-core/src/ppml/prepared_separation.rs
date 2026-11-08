@@ -2641,78 +2641,21 @@ fn fused_ir_fixed_point_certificate(
     }
     let k = kept_columns.len();
     let values = &values[..k];
-    #[derive(Clone, Copy)]
-    struct Part {
-        valid: bool,
-        boundary: usize,
-        maximum: f64,
-        fold: IrFold,
-        recurrence: [ScaledSquares; 2],
-        residual: [ScaledSquares; 2],
-        moments: [[(f64, f64); 2]; IR_FUSED_COLUMNS],
-        norms: [[ScaledSquares; 2]; IR_FUSED_COLUMNS],
-    }
     let part = ir_fold(
         rows,
         |range| {
-            let mut part = Part {
-                valid: true,
-                boundary: 0,
-                maximum: 0.0,
-                fold: IrFold::EMPTY,
-                recurrence: [ScaledSquares::ZERO; 2],
-                residual: [ScaledSquares::ZERO; 2],
-                moments: [[(0.0, 0.0); 2]; IR_FUSED_COLUMNS],
-                norms: [[ScaledSquares::ZERO; 2]; IR_FUSED_COLUMNS],
-            };
+            let mut part = IrFixedPointPart::EMPTY;
             for row in range {
-                let (y, entry, r) = (outcome[row], recurrence[row], residual[row]);
-                part.valid &= entry.is_finite()
-                    && r.is_finite()
-                    && entry >= 0.0
-                    && !(y > 0.0 && entry != 0.0);
-                part.boundary += usize::from(y == 0.0);
-                part.maximum = part.maximum.max(entry);
-                part.fold.add(y, entry - r);
-                let side = usize::from(y <= 0.0);
-                part.recurrence[side].add(entry.abs());
-                part.residual[side].add(r.abs());
-                for ((moment, norm), column) in
-                    part.moments.iter_mut().zip(&mut part.norms).zip(values)
-                {
-                    let x = column[row];
-                    let (sum, correction) = &mut moment[side];
-                    crate::linalg::neumaier_add(x * r, sum, correction);
-                    norm[side].add(x.abs());
-                }
+                part.add_row(outcome[row], recurrence[row], residual[row], values, row);
             }
             part
         },
-        |mut total: Part, part: Part| {
-            total.valid &= part.valid;
-            total.boundary += part.boundary;
-            total.maximum = total.maximum.max(part.maximum);
-            total.fold.merge(part.fold);
-            for side in 0..2 {
-                total.recurrence[side].merge(part.recurrence[side]);
-                total.residual[side].merge(part.residual[side]);
-            }
-            for ((moment, norm), (part_moment, part_norm)) in total.moments[..k]
-                .iter_mut()
-                .zip(&mut total.norms[..k])
-                .zip(part.moments.iter().zip(&part.norms))
-            {
-                for side in 0..2 {
-                    let (sum, correction) = &mut moment[side];
-                    crate::linalg::neumaier_add(part_moment[side].0, sum, correction);
-                    crate::linalg::neumaier_add(part_moment[side].1, sum, correction);
-                    norm[side].merge(part_norm[side]);
-                }
-            }
+        |mut total: IrFixedPointPart, part: IrFixedPointPart| {
+            total.merge(&part, k);
             total
         },
     );
-    let Part {
+    let IrFixedPointPart {
         valid,
         boundary: boundary_rows,
         maximum,
@@ -2773,6 +2716,78 @@ fn fused_ir_fixed_point_certificate(
         ));
     }
     Ok(Some(passed.then_some(certificate)))
+}
+
+/// Fused fixed-point certificate partials of a row range: validity,
+/// boundary count, recurrence maximum, the projection fold, response norms
+/// and every kept regressor's moment and norm, each split into positive
+/// outcomes (side 0) and boundary rows (side 1).
+#[derive(Clone, Copy)]
+struct IrFixedPointPart {
+    valid: bool,
+    boundary: usize,
+    maximum: f64,
+    fold: IrFold,
+    recurrence: [ScaledSquares; 2],
+    residual: [ScaledSquares; 2],
+    moments: [[(f64, f64); 2]; IR_FUSED_COLUMNS],
+    norms: [[ScaledSquares; 2]; IR_FUSED_COLUMNS],
+}
+
+impl IrFixedPointPart {
+    const EMPTY: Self = Self {
+        valid: true,
+        boundary: 0,
+        maximum: 0.0,
+        fold: IrFold::EMPTY,
+        recurrence: [ScaledSquares::ZERO; 2],
+        residual: [ScaledSquares::ZERO; 2],
+        moments: [[(0.0, 0.0); 2]; IR_FUSED_COLUMNS],
+        norms: [[ScaledSquares::ZERO; 2]; IR_FUSED_COLUMNS],
+    };
+
+    #[inline]
+    fn add_row(&mut self, y: f64, entry: f64, r: f64, values: &[&[f64]], row: usize) {
+        self.valid &=
+            entry.is_finite() && r.is_finite() && entry >= 0.0 && !(y > 0.0 && entry != 0.0);
+        self.boundary += usize::from(y == 0.0);
+        self.maximum = self.maximum.max(entry);
+        self.fold.add(y, entry - r);
+        let side = usize::from(y <= 0.0);
+        self.recurrence[side].add(entry.abs());
+        self.residual[side].add(r.abs());
+        for ((moment, norm), column) in self.moments.iter_mut().zip(&mut self.norms).zip(values) {
+            let x = column[row];
+            let (sum, correction) = &mut moment[side];
+            crate::linalg::neumaier_add(x * r, sum, correction);
+            norm[side].add(x.abs());
+        }
+    }
+
+    /// Merge a later range's partials (both compensated components) into
+    /// these, for the first `k` regressors.
+    fn merge(&mut self, part: &Self, k: usize) {
+        self.valid &= part.valid;
+        self.boundary += part.boundary;
+        self.maximum = self.maximum.max(part.maximum);
+        self.fold.merge(part.fold);
+        for side in 0..2 {
+            self.recurrence[side].merge(part.recurrence[side]);
+            self.residual[side].merge(part.residual[side]);
+        }
+        for ((moment, norm), (part_moment, part_norm)) in self.moments[..k]
+            .iter_mut()
+            .zip(&mut self.norms[..k])
+            .zip(part.moments.iter().zip(&part.norms))
+        {
+            for side in 0..2 {
+                let (sum, correction) = &mut moment[side];
+                crate::linalg::neumaier_add(part_moment[side].0, sum, correction);
+                crate::linalg::neumaier_add(part_moment[side].1, sum, correction);
+                norm[side].merge(part_norm[side]);
+            }
+        }
+    }
 }
 
 fn certify_ir_fixed_point_evidence_sequential(
