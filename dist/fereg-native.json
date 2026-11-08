@@ -1,20 +1,20 @@
 {
   "schema": 1,
   "version": "0.5.3",
-  "source_sha": "c788fac06409c435955bfd489ccd5d0e91ba278c",
-  "runtime_sha256": "f72d536e5f23b4bba5a9c321f53a3dabd2af9647f36e33ace78d40c739a65d19",
+  "source_sha": "87dda4abfa9d5b7c9421ab86349a5f46134aedbb",
+  "runtime_sha256": "d33c87d06adea631099b958644c7d1bdacd43e2e091445c7128e0d7e4b35fea7",
   "plugins": [
     {
       "path": "fereg_macos.plugin",
-      "source_sha": "1974e3833f8b3d2b2cb396e7ffaf41ec7fd64235",
-      "sha256": "69c280252b5aab678584785d0c815275588ed3663815cc012abaebb948e6a2a2",
-      "bytes": 21656576
+      "source_sha": "87dda4abfa9d5b7c9421ab86349a5f46134aedbb",
+      "sha256": "73d13341bfecb844bc9eca66490c51242dbdaf91f2f25a9d82c944cd5d9ddd9d",
+      "bytes": 30478272
     },
     {
       "path": "fereg_linux.plugin",
-      "source_sha": "c788fac06409c435955bfd489ccd5d0e91ba278c",
-      "sha256": "47e0d38b13250f0c9a5d9e645b5cc0b1797caeace6d15644b73ebccc4eeeaf86",
-      "bytes": 17145944
+      "source_sha": "87dda4abfa9d5b7c9421ab86349a5f46134aedbb",
+      "sha256": "3b16e72aced6f908894d9ec312c8aca8f6a0d2d9769fe72467635ebb6da1da7e",
+      "bytes": 22198864
     },
     {
       "path": "fereg_windows.plugin",
@@ -29,6 +29,7 @@
     "macos"
   ],
   "support_caveats": [
+    "The Windows plugin is still the 0.5.3 build (before the exact elimination); rebuild and qualify it, and publish the matching corresponding-source archive, before pushing this runtime.",
     "Only platforms named in included_platforms are supplied by this package.",
     "The Linux binary requires glibc 2.28 or newer.",
     "Eligible Windows x86-64 Stata/MP 19 GUI numeric input is parallel; loading Break may be delayed or unavailable.",
