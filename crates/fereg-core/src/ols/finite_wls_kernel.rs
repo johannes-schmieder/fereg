@@ -1945,7 +1945,8 @@ fn fill_narrow_dense_moments<const D: usize>(
     let source: [usize; D] = std::array::from_fn(|c| selected_columns.map_or(c, |s| s[c]));
     let inverse: [f64; D] = std::array::from_fn(|c| scales.map_or(1.0, |s| 1.0 / s[c]));
     let chunks = rows.div_ceil(MOMENT_ROWS).max(1);
-    let parts: Vec<Result<([f64; D], [[f64; D]; D])>> = (0..chunks)
+    type Partial<const D: usize> = ([f64; D], [[f64; D]; D]);
+    let parts: Vec<Result<Partial<D>>> = (0..chunks)
         .into_par_iter()
         .map(|chunk| {
             record_retained_moment_worker();
@@ -1967,8 +1968,8 @@ fn fill_narrow_dense_moments<const D: usize>(
                 for left in 0..D {
                     let weighted = weight * x[left];
                     local_rhs[left] += weighted * y;
-                    for right in left..D {
-                        local_gram[left][right] += weighted * x[right];
+                    for (entry, &right) in local_gram[left][left..].iter_mut().zip(&x[left..]) {
+                        *entry += weighted * right;
                     }
                 }
             }
