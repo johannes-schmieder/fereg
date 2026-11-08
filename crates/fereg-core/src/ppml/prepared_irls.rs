@@ -1105,7 +1105,9 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         );
     }
 
-    for iteration in 1..=config.ppml.max_iterations {
+    // Pre-solve steps count against the outer iteration limit.
+    let iteration_budget = config.ppml.max_iterations.saturating_sub(presolve_steps);
+    for iteration in 1..=iteration_budget {
         crate::interrupt::checkpoint()?;
         interrupt(PpmlInterruptPoint::IrlsIteration)?;
         // The qualification-only median covers the same complete warmed
@@ -1730,7 +1732,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         let audit_defers_strict = allocation_audit.qualification_pending();
         if strict_control.may_enter(
             audit_defers_strict,
-            iteration.saturating_add(2) < config.ppml.max_iterations,
+            iteration.saturating_add(2) < iteration_budget,
         ) {
             // The strict candidate is a frozen-basis solve; after a credited
             // pre-solve it is the first one (later iterations set this above).
@@ -2950,24 +2952,26 @@ fn validate_final_hessian_frame(
     // Fixed chunks in parallel; the first failing row (in row order) decides
     // the error, as in a serial scan.
     let rows = mean.len();
-    let failures: Vec<Option<bool>> = (0..rows.div_ceil(SEED_ROWS))
-        .into_par_iter()
-        .map(|chunk| {
-            for row in chunk * SEED_ROWS..((chunk + 1) * SEED_ROWS).min(rows) {
+    let failure = crate::parallel::fixed_tree_reduce(
+        rows,
+        SEED_ROWS,
+        &|range: std::ops::Range<usize>| -> Result<Option<bool>> {
+            for row in range {
                 let expected = prior_weights[row] * mean[row];
                 let actual = supplied.map_or(1.0, |values| values[row]);
                 if !expected.is_finite() || expected <= 0.0 || !actual.is_finite() || actual <= 0.0
                 {
-                    return Some(true);
+                    return Ok(Some(true));
                 }
                 if actual.to_bits() != expected.to_bits() {
-                    return Some(false);
+                    return Ok(Some(false));
                 }
             }
-            None
-        })
-        .collect();
-    match failures.into_iter().flatten().next() {
+            Ok(None)
+        },
+        &|left: Option<bool>, right: Option<bool>| left.or(right),
+    )?;
+    match failure {
         Some(true) => Err(numerical_nonconvergence(
             "prepared PPML final Hessian is not finitely representable",
         )),
@@ -3128,9 +3132,15 @@ fn seed_multi_effect_predictor(
     // are computed in parallel and applied in one row pass (same values).
     for effect in &design.effects()[1..] {
         let current = &*eta;
-        let shifts: Vec<Option<f64>> = (0..effect.n_levels())
-            .into_par_iter()
-            .map(|level| {
+        let Ok(mut shifts) = crate::memory::fallible_filled(
+            effect.n_levels(),
+            f64::NAN,
+            "unable to reserve PPML seed shifts",
+        ) else {
+            return false;
+        };
+        let computed = shifts.par_iter_mut().enumerate().all(|(level, target)| {
+            let shift = (|| {
                 let members = effect.level_index().members(level);
                 let mut observed = CompensatedSum::default();
                 let mut fitted = CompensatedSum::default();
@@ -3153,11 +3163,12 @@ fn seed_multi_effect_predictor(
                     return None;
                 }
                 Some(observed.ln() - fitted.ln())
-            })
-            .collect();
-        let Some(shifts) = shifts.into_iter().collect::<Option<Vec<f64>>>() else {
+            })();
+            shift.map(|shift| *target = shift).is_some()
+        });
+        if !computed {
             return false;
-        };
+        }
         let codes = effect.codes();
         let applied = eta
             .par_chunks_mut(SEED_ROWS)
@@ -3316,9 +3327,15 @@ fn seed_group_intercept_predictor(
     // numerical seed is overwritten by the original global initialization.
     // Per-level parameters in parallel (each reads only its rows), then one
     // row pass writes the same values the level loop wrote.
-    let seeds: Vec<Option<(bool, f64, f64)>> = (0..effect.n_levels())
-        .into_par_iter()
-        .map(|level| {
+    let Ok(mut seeds) = crate::memory::fallible_filled(
+        effect.n_levels(),
+        (false, f64::NAN, f64::NAN),
+        "unable to reserve PPML seed parameters",
+    ) else {
+        return false;
+    };
+    let computed = seeds.par_iter_mut().enumerate().all(|(level, target)| {
+        let seed = (|| {
             let members = effect.level_index().members(level);
             if let Some(value) = constant_offset_group_log_mean(members, outcome, weights, offset) {
                 return usable_seed_value(value, config).then_some((true, value, 0.0));
@@ -3344,11 +3361,12 @@ fn seed_group_intercept_predictor(
             }
             let shift = maximum_y + sum_y.total().ln() - sum_offset.total().ln();
             Some((false, maximum_offset, shift))
-        })
-        .collect();
-    let Some(seeds) = seeds.into_iter().collect::<Option<Vec<_>>>() else {
+        })();
+        seed.map(|seed| *target = seed).is_some()
+    });
+    if !computed {
         return false;
-    };
+    }
     let codes = effect.codes();
     eta.par_chunks_mut(SEED_ROWS)
         .enumerate()
@@ -3552,34 +3570,32 @@ fn strict_absorb(mut config: PreparedOlsFitConfig, tolerance: f64) -> PreparedOl
 }
 
 fn ppml_bread_weight_scale(weights: &[f64]) -> Result<PreparedOlsBreadWeightScale> {
-    // Fixed row chunks in parallel: the maximum is order independent; chunk
-    // compensated sums merge (both components) in chunk order.
-    let parts: Vec<Option<(f64, CompensatedSum)>> = weights
-        .par_chunks(SEED_ROWS)
-        .map(|chunk| {
+    // Fixed row chunks over a fixed tree (allocation free): the maximum is
+    // order independent; compensated sums merge both components.
+    let (maximum, sum) = crate::parallel::fixed_tree_reduce(
+        weights.len(),
+        SEED_ROWS,
+        &|rows: std::ops::Range<usize>| -> Result<(f64, CompensatedSum)> {
             let mut maximum = 0.0_f64;
             let mut sum = CompensatedSum::default();
-            for &weight in chunk {
+            for &weight in &weights[rows] {
                 if !weight.is_finite() || weight <= 0.0 {
-                    return None;
+                    return Err(numerical_nonconvergence(
+                        "prepared PPML Hessian weights must be finite and positive",
+                    ));
                 }
                 maximum = maximum.max(weight);
                 sum.add(weight);
             }
-            Some((maximum, sum))
-        })
-        .collect();
-    let mut maximum = 0.0_f64;
-    let mut sum = CompensatedSum::default();
-    for part in parts {
-        let (chunk_maximum, chunk_sum) = part.ok_or_else(|| {
-            numerical_nonconvergence("prepared PPML Hessian weights must be finite and positive")
-        })?;
-        maximum = maximum.max(chunk_maximum);
-        for component in chunk_sum.components() {
-            sum.add(component);
-        }
-    }
+            Ok((maximum, sum))
+        },
+        &|(left_maximum, mut left), (right_maximum, right)| {
+            for component in right.components() {
+                left.add(component);
+            }
+            (left_maximum.max(right_maximum), left)
+        },
+    )?;
     let reference_weight_sum = sum.total();
     if maximum <= 0.0 || !maximum.is_finite() || !reference_weight_sum.is_finite() {
         return Err(numerical_nonconvergence(

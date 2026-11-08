@@ -114,8 +114,9 @@ pub(super) fn direction(
         return Ok(None);
     }
     let invalid_outcome = || {
-        use rayon::prelude::*;
-        outcome.par_iter().any(|v| !v.is_finite() || *v < 0.)
+        crate::parallel::any_index(outcome.len(), |row| {
+            !outcome[row].is_finite() || outcome[row] < 0.
+        })
     };
     if outcome.len() != design.nobs() || invalid_outcome() {
         return Err(invalid_argument(

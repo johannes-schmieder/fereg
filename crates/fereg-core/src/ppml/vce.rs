@@ -983,10 +983,7 @@ pub(crate) fn validate_weight_report(
                 || report.log_raw_weight_sum.is_some()
                 || report.raw_to_prepared_multiplier != Some(1.0)
                 || report.log_raw_to_prepared_multiplier != 0.0
-                || {
-                    use rayon::prelude::*;
-                    weights.par_iter().any(|weight| *weight != 1.0)
-                }
+                || { crate::parallel::any_index(weights.len(), |row| weights[row] != 1.0) }
             {
                 return Err(FeregError::new(
                     ErrorCode::InvalidArgument,
@@ -1065,36 +1062,33 @@ pub(crate) fn validate_weight_report(
 }
 
 fn compensated_positive_sum(values: &[f64]) -> Result<f64> {
-    // Fixed chunks in parallel, merged (both components) in chunk order. An
-    // invalid chunk replays the scalar loop from the start, which reports the
-    // first invalid weight or overflow in row order.
-    use rayon::prelude::*;
+    // Fixed chunks over a fixed tree (allocation free), merged with both
+    // components. An invalid chunk replays the scalar loop from the start,
+    // which reports the first invalid weight or overflow in row order.
     const ROWS: usize = 1 << 15;
-    let parts: Vec<Option<(f64, f64)>> = values
-        .par_chunks(ROWS)
-        .map(|chunk| {
+    let merged = crate::parallel::fixed_tree_reduce(
+        values.len(),
+        ROWS,
+        &|range: std::ops::Range<usize>| -> Result<Option<(f64, f64)>> {
             let (mut sum, mut correction) = (0.0_f64, 0.0_f64);
-            for &value in chunk {
+            for &value in &values[range] {
                 if !value.is_finite() || value <= 0.0 {
-                    return None;
+                    return Ok(None);
                 }
                 neumaier_add(value, &mut sum, &mut correction);
             }
-            (sum.is_finite() && correction.is_finite()).then_some((sum, correction))
-        })
-        .collect();
-    let mut sum = 0.0_f64;
-    let mut correction = 0.0_f64;
-    let mut merged = true;
-    for part in parts {
-        let Some((part_sum, part_correction)) = part else {
-            merged = false;
-            break;
-        };
-        neumaier_add(part_sum, &mut sum, &mut correction);
-        neumaier_add(part_correction, &mut sum, &mut correction);
-    }
-    if !merged || !sum.is_finite() || !correction.is_finite() {
+            Ok((sum.is_finite() && correction.is_finite()).then_some((sum, correction)))
+        },
+        &|left: Option<(f64, f64)>, right: Option<(f64, f64)>| {
+            left.zip(right).map(|((mut sum, mut correction), (s, c))| {
+                neumaier_add(s, &mut sum, &mut correction);
+                neumaier_add(c, &mut sum, &mut correction);
+                (sum, correction)
+            })
+        },
+    )?;
+    let (mut sum, mut correction) = merged.unwrap_or((f64::NAN, 0.0));
+    if merged.is_none() || !sum.is_finite() || !correction.is_finite() {
         (sum, correction) = (0.0, 0.0);
         for &value in values {
             if !value.is_finite() || value <= 0.0 {

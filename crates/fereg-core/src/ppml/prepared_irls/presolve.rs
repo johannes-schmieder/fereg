@@ -22,6 +22,14 @@ use crate::ols::prepared_fit_view::PreparedOlsFitView;
 use crate::ols::PreparedOlsColumnKind;
 use rayon::prelude::*;
 
+/// Largest number of continuous regressors handled by the pre-solve.
+const MAX_COLUMNS: usize = 8;
+/// Normal-equation partials: lower Gram triangle, right side, raw squares.
+type Moments = (
+    [f64; MAX_COLUMNS * MAX_COLUMNS],
+    [f64; MAX_COLUMNS],
+    [f64; MAX_COLUMNS],
+);
 /// Largest number of pre-solve steps.
 const MAX_STEPS: usize = 12;
 /// Smallest within-to-raw weighted square ratio of a pre-solved regressor
@@ -65,7 +73,8 @@ pub(super) fn presolve<P: PreparedOlsFitView + Sync + ?Sized>(
     }
     // Continuous regressors only; the structural intercept is absorbed.
     let model = prepared.fit_model();
-    let mut columns: Vec<&[f64]> = Vec::new();
+    let mut columns: [&[f64]; MAX_COLUMNS] = [&[]; MAX_COLUMNS];
+    let mut k = 0_usize;
     for coefficient in &model.coefficients {
         let Some(generated) = coefficient.generated_column_index else {
             continue;
@@ -80,19 +89,33 @@ pub(super) fn presolve<P: PreparedOlsFitView + Sync + ?Sized>(
                 ) else {
                     return Ok(None);
                 };
-                columns.push(values);
+                if k == MAX_COLUMNS {
+                    return Ok(None);
+                }
+                columns[k] = values;
+                k += 1;
             }
             _ => return Ok(None),
         }
     }
-    let k = columns.len();
-    if k == 0 || k > 32 {
+    if k == 0 {
         return Ok(None);
     }
+    let columns = &columns[..k];
     let width = k + 1;
     let threads = rayon::current_num_threads();
     let terms = inputs.row_terms();
-    let mut partials = vec![0.0; super::super::family::objective_partial_cells(rows, threads)];
+    let mut partials = crate::memory::fallible_filled(
+        super::super::family::objective_partial_cells(rows, threads),
+        0.0,
+        "unable to reserve PPML pre-solve objective partials",
+    )?;
+    // Per-chunk deviance partials of the fused step pass (NaN: invalid).
+    let mut chunk_deviance = crate::memory::fallible_filled(
+        rows.div_ceil(ROWS),
+        0.0,
+        "unable to reserve PPML pre-solve chunk partials",
+    )?;
     let mut mean =
         crate::memory::fallible_filled(rows, 0.0, "unable to reserve PPML pre-solve means")?;
     let mut weights =
@@ -132,7 +155,7 @@ pub(super) fn presolve<P: PreparedOlsFitView + Sync + ?Sized>(
             for (local, row) in values.chunks_exact_mut(width).enumerate() {
                 let i = chunk * ROWS + local;
                 row[0] = response[i];
-                for (target, column) in row[1..].iter_mut().zip(&columns) {
+                for (target, column) in row[1..].iter_mut().zip(columns) {
                     *target = column[i];
                 }
             }
@@ -144,7 +167,13 @@ pub(super) fn presolve<P: PreparedOlsFitView + Sync + ?Sized>(
     let mut projection_iterations = 0_usize;
     let started = std::time::Instant::now();
     let bounds = config.bounds;
-    while steps < MAX_STEPS {
+    // Pre-solve steps are outer iterations of the same budget; the certified
+    // iteration keeps at least two of them.
+    let max_steps = MAX_STEPS.min(config.max_iterations.saturating_sub(2));
+    if max_steps == 0 {
+        return Ok(None);
+    }
+    while steps < max_steps {
         // Break is honoured before any state is handed over.
         crate::interrupt::checkpoint()?;
         steps += 1;
@@ -172,47 +201,46 @@ pub(super) fn presolve<P: PreparedOlsFitView + Sync + ?Sized>(
             block_schur::Outcome::Declined(_) => return Ok(None),
         };
         // Normal equations of the projected regressors (with the raw
-        // weighted squares for the FE-collinearity check).
-        let parts: Vec<(Vec<f64>, Vec<f64>, Vec<f64>)> = projected
-            .as_slice()
-            .par_chunks(ROWS * width)
-            .zip(weights.par_chunks(ROWS))
-            .enumerate()
-            .map(|(chunk, (values, weights))| {
-                let mut gram = vec![0.0; k * k];
-                let mut rhs = vec![0.0; k];
-                let mut raw = vec![0.0; k];
-                for (local, (row, &w)) in values.chunks_exact(width).zip(weights).enumerate() {
-                    let i = chunk * ROWS + local;
+        // weighted squares for the FE-collinearity check), over a fixed tree
+        // of row chunks without allocation.
+        let data = projected.as_slice();
+        let (mut gram, rhs, raw) = crate::parallel::fixed_tree_reduce(
+            rows,
+            ROWS,
+            &|range: std::ops::Range<usize>| -> Result<Moments> {
+                let mut gram = [0.0; MAX_COLUMNS * MAX_COLUMNS];
+                let mut rhs = [0.0; MAX_COLUMNS];
+                let mut raw = [0.0; MAX_COLUMNS];
+                for i in range {
+                    let row = &data[i * width..(i + 1) * width];
+                    let w = weights[i];
                     for a in 0..k {
                         let wa = w * row[1 + a];
                         rhs[a] += wa * row[0];
                         raw[a] += w * columns[a][i] * columns[a][i];
                         for b in 0..=a {
-                            gram[a * k + b] += wa * row[1 + b];
+                            gram[a * MAX_COLUMNS + b] += wa * row[1 + b];
                         }
                     }
                 }
+                Ok((gram, rhs, raw))
+            },
+            &|(mut gram, mut rhs, mut raw): Moments, (g, r, q): Moments| {
+                for (target, value) in gram.iter_mut().zip(g) {
+                    *target += value;
+                }
+                for (target, value) in rhs.iter_mut().zip(r) {
+                    *target += value;
+                }
+                for (target, value) in raw.iter_mut().zip(q) {
+                    *target += value;
+                }
                 (gram, rhs, raw)
-            })
-            .collect();
-        let mut gram = vec![0.0; k * k];
-        let mut rhs = vec![0.0; k];
-        let mut raw = vec![0.0; k];
-        for (g, r, q) in parts {
-            for (target, value) in gram.iter_mut().zip(g) {
-                *target += value;
-            }
-            for (target, value) in rhs.iter_mut().zip(r) {
-                *target += value;
-            }
-            for (target, value) in raw.iter_mut().zip(q) {
-                *target += value;
-            }
-        }
+            },
+        )?;
         // A regressor (nearly) collinear with the fixed effects is a rank
         // decision for the certified solve; leave such designs to it.
-        let separated = |a: usize| gram[a * k + a] > COLLINEARITY_RATIO * raw[a];
+        let separated = |a: usize| gram[a * MAX_COLUMNS + a] > COLLINEARITY_RATIO * raw[a];
         if !(0..k).all(separated) {
             return Ok(None);
         }
@@ -223,81 +251,98 @@ pub(super) fn presolve<P: PreparedOlsFitView + Sync + ?Sized>(
         // mean and deviance terms, the next Hessian weights and working
         // response, and the next projection input (residuals plus the
         // working-response change: the same projection under new weights).
-        let parts: Vec<Option<f64>> = projected
+        let beta = &beta[..k];
+        projected
             .as_mut_slice()
             .par_chunks_mut(ROWS * width)
             .zip(current.par_chunks_mut(ROWS))
             .zip(mean.par_chunks_mut(ROWS))
             .zip(weights.par_chunks_mut(ROWS))
             .zip(response.par_chunks_mut(ROWS))
+            .zip(chunk_deviance.par_iter_mut())
             .enumerate()
-            .map(|(chunk, ((((values, eta), mean), weights), response))| {
-                let mut sum = 0.0_f64;
-                let mut correction = 0.0_f64;
-                let mut run = 0.0_f64;
-                for (local, ((((row, eta), mu), w), z)) in values
-                    .chunks_exact_mut(width)
-                    .zip(eta.iter_mut())
-                    .zip(mean.iter_mut())
-                    .zip(weights.iter_mut())
-                    .zip(response.iter_mut())
-                    .enumerate()
-                {
-                    let i = chunk * ROWS + local;
-                    let mut fitted = *z - row[0];
-                    for (b, x) in beta.iter().zip(&row[1..]) {
-                        fitted += b * x;
-                    }
-                    let value = offset[i] + fitted;
-                    if !(value.is_finite() && value >= bounds.eta_min && value <= bounds.eta_max) {
-                        return None;
-                    }
-                    let m = value.exp();
-                    if !(m.is_finite() && m > 0.0 && m >= bounds.mu_min && m <= bounds.mu_max) {
-                        return None;
-                    }
-                    let y = outcome[i];
-                    let q = prior_weights[i];
-                    let half =
-                        super::super::family::iteration_half_deviance(y, m, value, terms[i][0])
+            .for_each(
+                |(chunk, (((((values, eta), mean), weights), response), out))| {
+                    *out = f64::NAN;
+                    let mut step = || -> Option<f64> {
+                        let mut sum = 0.0_f64;
+                        let mut correction = 0.0_f64;
+                        let mut run = 0.0_f64;
+                        for (local, ((((row, eta), mu), w), z)) in values
+                            .chunks_exact_mut(width)
+                            .zip(eta.iter_mut())
+                            .zip(mean.iter_mut())
+                            .zip(weights.iter_mut())
+                            .zip(response.iter_mut())
+                            .enumerate()
+                        {
+                            let i = chunk * ROWS + local;
+                            let mut fitted = *z - row[0];
+                            for (b, x) in beta.iter().zip(&row[1..]) {
+                                fitted += b * x;
+                            }
+                            let value = offset[i] + fitted;
+                            if !(value.is_finite()
+                                && value >= bounds.eta_min
+                                && value <= bounds.eta_max)
+                            {
+                                return None;
+                            }
+                            let m = value.exp();
+                            if !(m.is_finite()
+                                && m > 0.0
+                                && m >= bounds.mu_min
+                                && m <= bounds.mu_max)
+                            {
+                                return None;
+                            }
+                            let y = outcome[i];
+                            let q = prior_weights[i];
+                            let half = super::super::family::iteration_half_deviance(
+                                y,
+                                m,
+                                value,
+                                terms[i][0],
+                            )
                             .ok()?;
-                    run += 2.0 * q * half;
-                    if local % 512 == 511 {
-                        crate::linalg::neumaier_add(run, &mut sum, &mut correction);
-                        run = 0.0;
-                    }
-                    let adjustment = if y == 0.0 {
-                        -1.0
-                    } else {
-                        let ratio = y / m;
-                        if y.is_normal() && m.is_normal() && ratio.is_normal() {
-                            ratio - 1.0
-                        } else {
-                            (terms[i][0] - value).exp() - 1.0
+                            run += 2.0 * q * half;
+                            if local % 512 == 511 {
+                                crate::linalg::neumaier_add(run, &mut sum, &mut correction);
+                                run = 0.0;
+                            }
+                            let adjustment = if y == 0.0 {
+                                -1.0
+                            } else {
+                                let ratio = y / m;
+                                if y.is_normal() && m.is_normal() && ratio.is_normal() {
+                                    ratio - 1.0
+                                } else {
+                                    (terms[i][0] - value).exp() - 1.0
+                                }
+                            };
+                            let next = value - offset[i] + adjustment;
+                            let weight = q * m;
+                            if !(next.is_finite() && weight.is_finite() && weight > 0.0) {
+                                return None;
+                            }
+                            row[0] += next - *z;
+                            *z = next;
+                            *w = weight;
+                            *mu = m;
+                            *eta = value;
                         }
+                        crate::linalg::neumaier_add(run, &mut sum, &mut correction);
+                        Some(sum + correction)
                     };
-                    let next = value - offset[i] + adjustment;
-                    let weight = q * m;
-                    if !(next.is_finite() && weight.is_finite() && weight > 0.0) {
-                        return None;
+                    if let Some(value) = step() {
+                        *out = value;
                     }
-                    row[0] += next - *z;
-                    *z = next;
-                    *w = weight;
-                    *mu = m;
-                    *eta = value;
-                }
-                crate::linalg::neumaier_add(run, &mut sum, &mut correction);
-                Some(sum + correction)
-            })
-            .collect();
-        let Some(next_deviance) = parts
-            .into_iter()
-            .try_fold(0.0_f64, |total, part| part.map(|part| total + part))
-            .filter(|value| value.is_finite())
-        else {
+                },
+            );
+        let next_deviance: f64 = chunk_deviance.iter().sum();
+        if !next_deviance.is_finite() {
             return Ok(None);
-        };
+        }
         // Only full Newton steps that do not increase the deviance: a step
         // needing damping means the seed is not where plain steps contract,
         // and a small damped change is no evidence of convergence.
@@ -329,49 +374,64 @@ pub(super) fn presolve<P: PreparedOlsFitView + Sync + ?Sized>(
 }
 
 /// Solve `A x = b` for the symmetric positive definite `A` whose lower
-/// triangle is stored row-major, after scaling to unit diagonal. `None` when a
-/// scaled pivot is not clearly positive.
-fn scaled_cholesky_solve(gram: &mut [f64], rhs: &[f64], k: usize) -> Option<Vec<f64>> {
-    let scale: Vec<f64> = (0..k).map(|a| gram[a * k + a].sqrt()).collect();
-    if scale.iter().any(|s| !s.is_finite() || *s <= 0.0) {
-        return None;
-    }
+/// triangle is stored row-major with stride `MAX_COLUMNS`, after scaling to
+/// unit diagonal. `None` when a scaled pivot is not clearly positive.
+fn scaled_cholesky_solve(
+    gram: &mut [f64; MAX_COLUMNS * MAX_COLUMNS],
+    rhs: &[f64; MAX_COLUMNS],
+    k: usize,
+) -> Option<[f64; MAX_COLUMNS]> {
+    const S: usize = MAX_COLUMNS;
+    let mut scale = [0.0_f64; MAX_COLUMNS];
     for a in 0..k {
-        for b in 0..=a {
-            gram[a * k + b] /= scale[a] * scale[b];
+        scale[a] = gram[a * S + a].sqrt();
+        if !scale[a].is_finite() || scale[a] <= 0.0 {
+            return None;
         }
     }
     for a in 0..k {
-        let mut pivot = gram[a * k + a];
+        for b in 0..=a {
+            gram[a * S + b] /= scale[a] * scale[b];
+        }
+    }
+    for a in 0..k {
+        let mut pivot = gram[a * S + a];
         for c in 0..a {
-            pivot -= gram[a * k + c] * gram[a * k + c];
+            pivot -= gram[a * S + c] * gram[a * S + c];
         }
         if pivot.is_nan() || pivot <= 1e-10 {
             return None;
         }
         let pivot = pivot.sqrt();
-        gram[a * k + a] = pivot;
+        gram[a * S + a] = pivot;
         for b in a + 1..k {
-            let mut value = gram[b * k + a];
+            let mut value = gram[b * S + a];
             for c in 0..a {
-                value -= gram[b * k + c] * gram[a * k + c];
+                value -= gram[b * S + c] * gram[a * S + c];
             }
-            gram[b * k + a] = value / pivot;
+            gram[b * S + a] = value / pivot;
         }
     }
-    let mut y: Vec<f64> = (0..k).map(|a| rhs[a] / scale[a]).collect();
+    let mut y = [0.0_f64; MAX_COLUMNS];
     for a in 0..k {
+        y[a] = rhs[a] / scale[a];
         for c in 0..a {
-            y[a] -= gram[a * k + c] * y[c];
+            y[a] -= gram[a * S + c] * y[c];
         }
-        y[a] /= gram[a * k + a];
+        y[a] /= gram[a * S + a];
     }
     for a in (0..k).rev() {
         for c in a + 1..k {
-            y[a] -= gram[c * k + a] * y[c];
+            y[a] -= gram[c * S + a] * y[c];
         }
-        y[a] /= gram[a * k + a];
+        y[a] /= gram[a * S + a];
     }
-    let solution: Vec<f64> = y.iter().zip(&scale).map(|(v, s)| v / s).collect();
-    solution.iter().all(|v| v.is_finite()).then_some(solution)
+    let mut solution = [0.0_f64; MAX_COLUMNS];
+    for a in 0..k {
+        solution[a] = y[a] / scale[a];
+        if !solution[a].is_finite() {
+            return None;
+        }
+    }
+    Some(solution)
 }

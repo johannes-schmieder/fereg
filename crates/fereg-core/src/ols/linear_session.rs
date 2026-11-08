@@ -6342,26 +6342,38 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         // Fixed row chunks; the certificate is a maximum and a conjunction.
         let (response, finite, residuals) =
             (&self.response, &self.predictors.finite, fit.residuals());
-        let parts: Vec<Result<LinearReconstructionCertificate>> = self
-            .predictors
+        // Allocation free: write the predictor, then fold the certificate.
+        self.predictors
             .absorbed
             .par_chunks_mut(RECONSTRUCTION_ROWS)
             .enumerate()
-            .map(|(chunk, absorbed)| {
-                let mut certificate = LinearReconstructionCertificate::new();
+            .for_each(|(chunk, absorbed)| {
                 for (offset, target) in absorbed.iter_mut().enumerate() {
                     let row = chunk * RECONSTRUCTION_ROWS + offset;
                     *target = (response[row] - residuals[row]) - finite[row];
-                    certificate.observe(response[row], finite[row], *target, residuals[row])?;
+                }
+            });
+        let absorbed = &self.predictors.absorbed;
+        crate::parallel::fixed_tree_reduce(
+            rows,
+            RECONSTRUCTION_ROWS,
+            &|range: std::ops::Range<usize>| -> Result<LinearReconstructionCertificate> {
+                let mut certificate = LinearReconstructionCertificate::new();
+                for row in range {
+                    certificate.observe(
+                        response[row],
+                        finite[row],
+                        absorbed[row],
+                        residuals[row],
+                    )?;
                 }
                 Ok(certificate)
-            })
-            .collect();
-        let mut certificate = LinearReconstructionCertificate::new();
-        for part in parts {
-            certificate.merge(part?);
-        }
-        Ok(certificate)
+            },
+            &|mut left: LinearReconstructionCertificate, right| {
+                left.merge(right);
+                left
+            },
+        )
     }
 }
 
@@ -6582,13 +6594,14 @@ fn stream_frozen_solve(
         let (data, stride) = (matrix.as_slice(), matrix.ncols());
         let coefficients = &workspace.coefficients[..rank];
         let positions = &active_positions[..rank];
-        let parts: Vec<Result<f64>> = workspace
+        // Allocation free: update the rows, then fold the weighted square
+        // over a fixed tree (first invalid weight in row order reports).
+        crate::interrupt::checkpoint()?;
+        workspace
             .residuals
             .par_chunks_mut(RECONSTRUCTION_ROWS)
             .enumerate()
-            .map(|(chunk, residuals)| {
-                crate::interrupt::checkpoint()?;
-                let mut square = 0.0_f64;
+            .for_each(|(chunk, residuals)| {
                 for (offset, residual) in residuals.iter_mut().enumerate() {
                     let row = chunk * RECONSTRUCTION_ROWS + offset;
                     let values = &data[row * stride..(row + 1) * stride];
@@ -6597,15 +6610,23 @@ fn stream_frozen_solve(
                         fitted = coefficient.mul_add(values[position], fitted);
                     }
                     *residual -= fitted;
+                }
+            });
+        crate::interrupt::checkpoint()?;
+        let residuals = &workspace.residuals;
+        weighted_residual_square += crate::parallel::fixed_tree_reduce(
+            rows,
+            RECONSTRUCTION_ROWS,
+            &|range: std::ops::Range<usize>| -> Result<f64> {
+                let mut square = 0.0_f64;
+                for row in range {
                     let weight = normalized_solver_weight(weights, bread_weight_scale, row)?;
-                    square = (weight * *residual).mul_add(*residual, square);
+                    square = (weight * residuals[row]).mul_add(residuals[row], square);
                 }
                 Ok(square)
-            })
-            .collect();
-        for part in parts {
-            weighted_residual_square += part?;
-        }
+            },
+            &|left, right| left + right,
+        )?;
     } else {
         let mut retained_reader = storage.reader();
         for row in 0..rows {
@@ -6701,55 +6722,70 @@ fn weighted_mean_slice(
     // it with the checked loop below, which reports the same first error.
     const ROWS: usize = 1 << 14;
     let divisor = bread_weight_scale.solver_weight_divisor;
-    let parts: Vec<Result<[f64; 4]>> = values
-        .par_chunks(ROWS)
-        .enumerate()
-        .map(|(chunk, values)| {
-            let mut sums = [0.0_f64; 4];
-            let mut valid = true;
-            {
-                let [n, nc, d, dc] = &mut sums;
+    let [numerator, numerator_correction, denominator, denominator_correction] =
+        crate::parallel::fixed_tree_reduce(
+            values.len(),
+            ROWS,
+            &|range: std::ops::Range<usize>| -> Result<[f64; 4]> {
+                let chunk = range.start / ROWS;
+                let values = &values[range];
+                let mut sums = [0.0_f64; 4];
+                let mut valid = true;
+                {
+                    let [n, nc, d, dc] = &mut sums;
+                    for (offset, value) in values.iter().copied().enumerate() {
+                        let weight = match weights {
+                            BorrowedMapWeights::Unit => 1.0,
+                            BorrowedMapWeights::Provided(weights) => weights
+                                .get(chunk * ROWS + offset)
+                                .map_or(f64::NAN, |w| w / divisor),
+                        };
+                        valid &= value.is_finite() && weight.is_finite() && weight > 0.0;
+                        crate::linalg::neumaier_add(weight * value, n, nc);
+                        crate::linalg::neumaier_add(weight, d, dc);
+                    }
+                }
+                if valid && sums.iter().all(|value| value.is_finite()) {
+                    return Ok(sums);
+                }
+                let mut sums = [0.0_f64; 4];
                 for (offset, value) in values.iter().copied().enumerate() {
-                    let weight = match weights {
-                        BorrowedMapWeights::Unit => 1.0,
-                        BorrowedMapWeights::Provided(weights) => weights
-                            .get(chunk * ROWS + offset)
-                            .map_or(f64::NAN, |w| w / divisor),
-                    };
-                    valid &= value.is_finite() && weight.is_finite() && weight > 0.0;
-                    crate::linalg::neumaier_add(weight * value, n, nc);
-                    crate::linalg::neumaier_add(weight, d, dc);
+                    if !value.is_finite() {
+                        return Err(invalid_data(
+                            "frozen weighted-linear mean input is not finite",
+                        ));
+                    }
+                    let weight = normalized_solver_weight(
+                        weights,
+                        bread_weight_scale,
+                        chunk * ROWS + offset,
+                    )?;
+                    let [n, nc, d, dc] = &mut sums;
+                    compensated_add(weight * value, n, nc)?;
+                    compensated_add(weight, d, dc)?;
                 }
-            }
-            if valid && sums.iter().all(|value| value.is_finite()) {
-                return Ok(sums);
-            }
-            let mut sums = [0.0_f64; 4];
-            for (offset, value) in values.iter().copied().enumerate() {
-                if !value.is_finite() {
-                    return Err(invalid_data(
-                        "frozen weighted-linear mean input is not finite",
-                    ));
-                }
-                let weight =
-                    normalized_solver_weight(weights, bread_weight_scale, chunk * ROWS + offset)?;
-                let [n, nc, d, dc] = &mut sums;
-                compensated_add(weight * value, n, nc)?;
-                compensated_add(weight, d, dc)?;
-            }
-            Ok(sums)
-        })
-        .collect();
-    let mut numerator = 0.0_f64;
-    let mut numerator_correction = 0.0_f64;
-    let mut denominator = 0.0_f64;
-    let mut denominator_correction = 0.0_f64;
-    for part in parts {
-        let [n, nc, d, dc] = part?;
-        compensated_add(n, &mut numerator, &mut numerator_correction)?;
-        compensated_add(nc, &mut numerator, &mut numerator_correction)?;
-        compensated_add(d, &mut denominator, &mut denominator_correction)?;
-        compensated_add(dc, &mut denominator, &mut denominator_correction)?;
+                Ok(sums)
+            },
+            &|[mut n, mut nc, mut d, mut dc]: [f64; 4], [n2, nc2, d2, dc2]: [f64; 4]| {
+                crate::linalg::neumaier_add(n2, &mut n, &mut nc);
+                crate::linalg::neumaier_add(nc2, &mut n, &mut nc);
+                crate::linalg::neumaier_add(d2, &mut d, &mut dc);
+                crate::linalg::neumaier_add(dc2, &mut d, &mut dc);
+                [n, nc, d, dc]
+            },
+        )?;
+    if ![
+        numerator,
+        numerator_correction,
+        denominator,
+        denominator_correction,
+    ]
+    .iter()
+    .all(|value| value.is_finite())
+    {
+        return Err(invalid_data(
+            "weighted-linear compensated sum is not finite",
+        ));
     }
     let denominator = denominator + denominator_correction;
     let mean = (numerator + numerator_correction) / denominator;
@@ -6769,22 +6805,22 @@ fn certify_frozen_combined_predictor(
             "frozen PPML combined predictor dimensions are inconsistent",
         ));
     }
-    let parts: Vec<Result<LinearReconstructionCertificate>> = response
-        .par_chunks(RECONSTRUCTION_ROWS)
-        .zip(within_residuals.par_chunks(RECONSTRUCTION_ROWS))
-        .map(|(response, residuals)| {
+    crate::parallel::fixed_tree_reduce(
+        response.len(),
+        RECONSTRUCTION_ROWS,
+        &|range: std::ops::Range<usize>| -> Result<LinearReconstructionCertificate> {
             let mut certificate = LinearReconstructionCertificate::new();
-            for (&response, &residual) in response.iter().zip(residuals) {
+            for row in range {
+                let (response, residual) = (response[row], within_residuals[row]);
                 certificate.observe(response, 0.0, response - residual, residual)?;
             }
             Ok(certificate)
-        })
-        .collect();
-    let mut certificate = LinearReconstructionCertificate::new();
-    for part in parts {
-        certificate.merge(part?);
-    }
-    Ok(certificate)
+        },
+        &|mut left: LinearReconstructionCertificate, right| {
+            left.merge(right);
+            left
+        },
+    )
 }
 
 /// Rows per fixed chunk of the parallel reconstruction passes.
@@ -6826,27 +6862,29 @@ where
     // Plain sums over fixed row chunks merged in order; the scaled serial sum
     // below handles extreme magnitudes and reports every invalid input.
     const ROWS: usize = 1 << 15;
-    let parts: Vec<Option<(f64, f64)>> = (0..rows.div_ceil(ROWS))
-        .into_par_iter()
-        .map(|chunk| {
+    let total = crate::parallel::fixed_tree_reduce(
+        rows,
+        ROWS,
+        &|range: std::ops::Range<usize>| -> Result<Option<(f64, f64)>> {
             let (mut squares, mut largest) = (0.0_f64, 0.0_f64);
-            for row in chunk * ROWS..((chunk + 1) * ROWS).min(rows) {
-                let (value, weight) = value(row).ok()?;
+            for row in range {
+                let Ok((value, weight)) = value(row) else {
+                    return Ok(None);
+                };
                 let root = weight.sqrt();
                 if !(root.is_finite() && root > 0.0) {
-                    return None;
+                    return Ok(None);
                 }
                 let scaled = root * value;
                 squares += scaled * scaled;
                 largest = largest.max(scaled.abs());
             }
-            Some((squares, largest))
-        })
-        .collect();
-    let mut total = Some((0.0_f64, 0.0_f64));
-    for part in parts {
-        total = total.zip(part).map(|(t, p)| (t.0 + p.0, t.1.max(p.1)));
-    }
+            Ok(Some((squares, largest)))
+        },
+        &|left: Option<(f64, f64)>, right: Option<(f64, f64)>| {
+            left.zip(right).map(|(t, p)| (t.0 + p.0, t.1.max(p.1)))
+        },
+    )?;
     if let Some((squares, largest)) = total {
         if squares.is_finite() {
             if largest == 0.0 && squares == 0.0 {

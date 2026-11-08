@@ -31,7 +31,6 @@ use crate::ppml_separation::{
     SeparationCertificate, SeparationConfig, SeparationDropReason, SeparationMethod,
     SeparationMethodReport, SeparationMethods, SeparationNote, SeparationReport,
 };
-use rayon::prelude::*;
 use std::sync::Arc;
 
 fn ppml_fe_recovery_mask_length(length: usize, inject_allocation_failure: bool) -> usize {
@@ -317,7 +316,7 @@ pub struct PpmlFinalSample {
 /// Every row is below `bound` and the rows strictly increase.
 fn strictly_increasing_below(rows: &[usize], bound: usize) -> bool {
     rows.last().is_none_or(|row| *row < bound)
-        && !rows.par_windows(2).any(|pair| pair[0] >= pair[1])
+        && !crate::parallel::any_index(rows.len().saturating_sub(1), |i| rows[i] >= rows[i + 1])
 }
 
 impl PpmlFinalSample {
@@ -346,10 +345,9 @@ impl PpmlFinalSample {
                 "PPML final sample ledger is empty, misaligned, or not in stable original order",
             ));
         }
-        let observed_candidates = drop_reasons
-            .par_iter()
-            .filter(|reason| **reason != DropReason::ExcludedByIfIn)
-            .count();
+        let observed_candidates = crate::parallel::count_index(drop_reasons.len(), |row| {
+            drop_reasons[row] != DropReason::ExcludedByIfIn
+        });
         if observed_candidates != candidate_observations {
             return Err(FeregError::new(
                 ErrorCode::Internal,
@@ -359,33 +357,30 @@ impl PpmlFinalSample {
         // The row map is already strictly ordered and range checked: it lists
         // exactly the retained rows (in order) when every listed row is
         // retained and no other row is.
-        let retained = drop_reasons
-            .par_iter()
-            .filter(|reason| **reason == DropReason::Retained)
-            .count();
+        let retained = crate::parallel::count_index(drop_reasons.len(), |row| {
+            drop_reasons[row] == DropReason::Retained
+        });
         if retained != original_rows.len()
-            || original_rows
-                .par_iter()
-                .any(|row| drop_reasons[*row] != DropReason::Retained)
+            || crate::parallel::any_index(original_rows.len(), |i| {
+                drop_reasons[original_rows[i]] != DropReason::Retained
+            })
         {
             return Err(FeregError::new(
                 ErrorCode::Internal,
                 "PPML retained rows disagree with original-axis drop reasons",
             ));
         }
-        if outcome
-            .par_iter()
-            .any(|value| !value.is_finite() || *value < 0.0)
-            || prior_weights
-                .par_iter()
-                .any(|value| !value.is_finite() || *value <= 0.0)
-        {
+        if crate::parallel::any_index(outcome.len(), |row| {
+            !outcome[row].is_finite() || outcome[row] < 0.0
+        }) || crate::parallel::any_index(prior_weights.len(), |row| {
+            !prior_weights[row].is_finite() || prior_weights[row] <= 0.0
+        }) {
             return Err(FeregError::new(
                 ErrorCode::InvalidData,
                 "PPML final outcome/weight experiment is outside the supported domain",
             ));
         }
-        if !outcome.par_iter().any(|value| *value > 0.0) {
+        if !crate::parallel::any_index(outcome.len(), |row| outcome[row] > 0.0) {
             return Err(FeregError::new(
                 ErrorCode::InsufficientObservations,
                 "PPML final sample has no positive weighted outcome",
@@ -2657,33 +2652,24 @@ fn validate_separation_report(
             "PPML separation retained/dropped rows are not unique stable-order ledgers",
         ));
     }
-    let observed_singletons = report
-        .drop_reasons
-        .par_iter()
-        .filter(|reason| {
-            matches!(
-                reason,
-                Some(
-                    SeparationDropReason::InitialSingleton | SeparationDropReason::SingletonCascade
-                )
+    let reasons = &report.drop_reasons;
+    let observed_singletons = crate::parallel::count_index(reasons.len(), |row| {
+        matches!(
+            reasons[row],
+            Some(SeparationDropReason::InitialSingleton | SeparationDropReason::SingletonCascade)
+        )
+    });
+    let observed_separated = crate::parallel::count_index(reasons.len(), |row| {
+        matches!(
+            reasons[row],
+            Some(
+                SeparationDropReason::FixedEffectZeroLevel
+                    | SeparationDropReason::Simplex
+                    | SeparationDropReason::IteratedRectifier
+                    | SeparationDropReason::Mu
             )
-        })
-        .count();
-    let observed_separated = report
-        .drop_reasons
-        .par_iter()
-        .filter(|reason| {
-            matches!(
-                reason,
-                Some(
-                    SeparationDropReason::FixedEffectZeroLevel
-                        | SeparationDropReason::Simplex
-                        | SeparationDropReason::IteratedRectifier
-                        | SeparationDropReason::Mu
-                )
-            )
-        })
-        .count();
+        )
+    });
     if observed_singletons != report.singleton_count || observed_separated != report.separated_count
     {
         return Err(FeregError::new(
@@ -2697,14 +2683,14 @@ fn validate_separation_report(
     // hence a partition matching the mask and the reasons on every row.
     if report.active.len() != report.candidate_observations
         || report.drop_reasons.len() != report.candidate_observations
-        || !report
-            .retained_observations
-            .par_iter()
-            .all(|&row| report.active[row] && report.drop_reasons[row].is_none())
-        || !report
-            .dropped_observations
-            .par_iter()
-            .all(|&row| !report.active[row] && report.drop_reasons[row].is_some())
+        || crate::parallel::any_index(report.retained_observations.len(), |i| {
+            let row = report.retained_observations[i];
+            !(report.active[row] && report.drop_reasons[row].is_none())
+        })
+        || crate::parallel::any_index(report.dropped_observations.len(), |i| {
+            let row = report.dropped_observations[i];
+            report.active[row] || report.drop_reasons[row].is_none()
+        })
     {
         return Err(FeregError::new(
             ErrorCode::Internal,
@@ -3600,20 +3586,23 @@ pub fn certify_ppml_reconstruction(
         || original_rows
             .last()
             .is_some_and(|row| *row >= original_observations)
-        || original_rows.par_windows(2).any(|pair| pair[0] >= pair[1])
+        || crate::parallel::any_index(original_rows.len().saturating_sub(1), |i| {
+            original_rows[i] >= original_rows[i + 1]
+        })
     {
         return Err(FeregError::new(
             ErrorCode::InvalidArgument,
             "PPML output products do not share a valid stable row mapping",
         ));
     }
-    let nonfinite = |values: &[f64]| values.par_iter().any(|value| !value.is_finite());
+    let nonfinite =
+        |values: &[f64]| crate::parallel::any_index(values.len(), |row| !values[row].is_finite());
     if nonfinite(offset)
         || nonfinite(finite_predictor)
         || nonfinite(absorbed_predictor)
         || nonfinite(eta)
         || nonfinite(mean)
-        || mean.par_iter().any(|value| *value <= 0.0)
+        || crate::parallel::any_index(mean.len(), |row| mean[row] <= 0.0)
     {
         return Err(FeregError::new(
             ErrorCode::NonConvergence,
@@ -3672,17 +3661,19 @@ pub fn certify_ppml_reconstruction(
         saved_effects.map_or(0.0, |saved| saved.full_decomposition_relative_infinity_norm);
     let saved_complete_decomposition =
         saved_effects.is_some_and(|saved| saved.channels.len() == saved.declared_channels);
-    // Fixed row chunks in parallel. Every statistic is a maximum (order
-    // independent); the first failing row in row order supplies the error.
+    // Fixed row chunks over a fixed tree (allocation free). Every statistic
+    // is a maximum (order independent); the first failing row in row order
+    // supplies the error.
     const ROWS: usize = 1 << 15;
-    let parts: Vec<Result<[f64; 4]>> = (0..rows.div_ceil(ROWS))
-        .into_par_iter()
-        .map(|chunk| -> Result<[f64; 4]> {
+    let [absolute, relative, mean_part, saved_part] = crate::parallel::fixed_tree_reduce(
+        rows,
+        ROWS,
+        &|range: std::ops::Range<usize>| -> Result<[f64; 4]> {
             let mut predictor_absolute = 0.0_f64;
             let mut predictor_relative = 0.0_f64;
             let mut mean_relative = 0.0_f64;
             let mut saved_channels_relative = 0.0_f64;
-            for row in chunk * ROWS..((chunk + 1) * ROWS).min(rows) {
+            for row in range {
                 let reconstructed = offset[row] + finite_predictor[row] + absorbed_predictor[row];
                 if !reconstructed.is_finite() {
                     return Err(FeregError::new(
@@ -3746,15 +3737,20 @@ pub fn certify_ppml_reconstruction(
                 mean_relative,
                 saved_channels_relative,
             ])
-        })
-        .collect();
-    for part in parts {
-        let [absolute, relative, mean, saved] = part?;
-        predictor_absolute = predictor_absolute.max(absolute);
-        predictor_relative = predictor_relative.max(relative);
-        mean_relative = mean_relative.max(mean);
-        saved_channels_relative = saved_channels_relative.max(saved);
-    }
+        },
+        &|left: [f64; 4], right: [f64; 4]| {
+            [
+                left[0].max(right[0]),
+                left[1].max(right[1]),
+                left[2].max(right[2]),
+                left[3].max(right[3]),
+            ]
+        },
+    )?;
+    predictor_absolute = predictor_absolute.max(absolute);
+    predictor_relative = predictor_relative.max(relative);
+    mean_relative = mean_relative.max(mean_part);
+    saved_channels_relative = saved_channels_relative.max(saved_part);
     let saved_channels = saved_effects.map_or(0, |saved| saved.channels.len());
     let saved_declared_channels = saved_effects.map_or(0, |saved| saved.declared_channels);
     let saved_recovery_certified =

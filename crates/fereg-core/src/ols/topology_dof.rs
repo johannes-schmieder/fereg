@@ -397,11 +397,25 @@ fn apply_mobility_policy<R: TopologyDofReservation>(
             "categorical absorbed-DoF pair capacity exhausted",
         )?;
     }
+    // Pairs run in parallel inside a worker pool (no global-pool injection
+    // outside one); counts are consumed in pair order.
     use rayon::prelude::*;
-    let counts: Vec<Result<usize>> = jobs
-        .par_iter_mut()
-        .map(|(earlier, later, split, parent)| pair_components(earlier, later, *split, parent))
-        .collect();
+    let mut counts = crate::memory::fallible_filled(
+        jobs.len(),
+        Ok(0_usize),
+        "categorical absorbed-DoF pair capacity exhausted",
+    )?;
+    if crate::parallel::in_pool() {
+        jobs.par_iter_mut().zip(counts.par_iter_mut()).for_each(
+            |((earlier, later, split, parent), slot)| {
+                *slot = pair_components(earlier, later, *split, parent);
+            },
+        );
+    } else {
+        for ((earlier, later, split, parent), slot) in jobs.iter_mut().zip(counts.iter_mut()) {
+            *slot = pair_components(earlier, later, *split, parent);
+        }
+    }
     for (&(_, later, first), count) in pairs.iter().zip(counts) {
         let components = count?;
         redundant[later] = redundant[later].max(components);

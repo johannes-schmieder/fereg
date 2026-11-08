@@ -242,31 +242,34 @@ pub(super) fn replay_final_objectives_with_threads(
         ])
     };
     if let Some(team) = team {
-        // Fixed row chunks evaluate and sum their rows in parallel; chunk
-        // compensated sums are merged in chunk order (both components).
-        let parts: Vec<[CompensatedSum; 3]> = team
-            .install(|| {
-                (0..outcome.len().div_ceil(NULL_MEAN_ROWS))
-                    .into_par_iter()
-                    .map(|chunk| -> Result<[CompensatedSum; 3]> {
-                        let mut sums = [CompensatedSum::default(); 3];
-                        for row in chunk_rows(chunk, outcome.len()) {
-                            let values = row_values(row)?;
-                            for (sum, value) in sums.iter_mut().zip(values) {
-                                sum.add(value);
-                            }
+        // Fixed row chunks over a fixed tree (allocation free): each chunk's
+        // compensated sums merge with both components; the first failing
+        // row (in row order) reports.
+        let [d, l, n] = team.install(|| {
+            crate::parallel::fixed_tree_reduce(
+                outcome.len(),
+                NULL_MEAN_ROWS,
+                &|range: std::ops::Range<usize>| -> Result<[CompensatedSum; 3]> {
+                    let mut sums = [CompensatedSum::default(); 3];
+                    for row in range {
+                        let values = row_values(row)?;
+                        for (sum, value) in sums.iter_mut().zip(values) {
+                            sum.add(value);
                         }
-                        Ok(sums)
-                    })
-                    .collect::<Vec<_>>()
-            })
-            .into_iter()
-            .collect::<Result<_>>()?;
-        for [d, l, n] in parts {
-            merge_components(&mut deviance, d);
-            merge_components(&mut likelihood, l);
-            merge_components(&mut null_likelihood, n);
-        }
+                    }
+                    Ok(sums)
+                },
+                &|[mut d, mut l, mut n]: [CompensatedSum; 3], [d2, l2, n2]: [CompensatedSum; 3]| {
+                    merge_components(&mut d, d2);
+                    merge_components(&mut l, l2);
+                    merge_components(&mut n, n2);
+                    [d, l, n]
+                },
+            )
+        })?;
+        merge_components(&mut deviance, d);
+        merge_components(&mut likelihood, l);
+        merge_components(&mut null_likelihood, n);
     } else {
         for row in 0..outcome.len() {
             let values = row_values(row)?;
@@ -328,10 +331,6 @@ fn poisson_null_mean(outcome: &[f64], prior_weights: &[f64]) -> Result<(f64, f64
 /// Rows per fixed chunk of the parallel replay and null-mean passes.
 const NULL_MEAN_ROWS: usize = 1 << 14;
 
-fn chunk_rows(chunk: usize, rows: usize) -> std::ops::Range<usize> {
-    chunk * NULL_MEAN_ROWS..((chunk + 1) * NULL_MEAN_ROWS).min(rows)
-}
-
 fn merge_components(target: &mut CompensatedSum, part: CompensatedSum) {
     let [sum, correction] = part.components();
     target.add(sum);
@@ -350,69 +349,65 @@ fn parallel_poisson_null_mean(outcome: &[f64], prior_weights: &[f64]) -> Result<
         ));
     }
     let rows = outcome.len();
-    let chunks = rows.div_ceil(NULL_MEAN_ROWS);
-    let maxima: Vec<std::result::Result<(f64, f64), usize>> = (0..chunks)
-        .into_par_iter()
-        .map(|chunk| {
+    // Fixed trees of row chunks (allocation free; first invalid row reports).
+    let (maximum_weight, maximum_outcome) = crate::parallel::fixed_tree_reduce(
+        rows,
+        NULL_MEAN_ROWS,
+        &|range: std::ops::Range<usize>| -> Result<(f64, f64)> {
             let (mut weight_max, mut outcome_max) = (0.0_f64, 0.0_f64);
-            for row in chunk_rows(chunk, rows) {
+            for row in range {
                 let (y, weight) = (outcome[row], prior_weights[row]);
                 if !y.is_finite() || y < 0.0 || !weight.is_finite() || weight <= 0.0 {
-                    return Err(row);
+                    return Err(FeregError::new(
+                        ErrorCode::InvalidData,
+                        format!("invalid Poisson null-likelihood input at observation {row}"),
+                    ));
                 }
                 weight_max = weight_max.max(weight);
                 outcome_max = outcome_max.max(y);
             }
             Ok((weight_max, outcome_max))
-        })
-        .collect();
-    let (mut maximum_weight, mut maximum_outcome) = (0.0_f64, 0.0_f64);
-    for part in maxima {
-        let (weight, y) = part.map_err(|row| {
-            FeregError::new(
-                ErrorCode::InvalidData,
-                format!("invalid Poisson null-likelihood input at observation {row}"),
-            )
-        })?;
-        maximum_weight = maximum_weight.max(weight);
-        maximum_outcome = maximum_outcome.max(y);
-    }
+        },
+        &|(w, y), (w2, y2)| (w.max(w2), y.max(y2)),
+    )?;
     if maximum_outcome == 0.0 {
         return Err(FeregError::new(
             ErrorCode::InsufficientObservations,
             "Poisson null model has no positive weighted outcome",
         ));
     }
-    let sums: Vec<Option<(CompensatedSum, CompensatedSum)>> = (0..chunks)
-        .into_par_iter()
-        .map(|chunk| {
+    let sums = crate::parallel::fixed_tree_reduce(
+        rows,
+        NULL_MEAN_ROWS,
+        &|range: std::ops::Range<usize>| -> Result<Option<(CompensatedSum, CompensatedSum)>> {
             let mut weights = CompensatedSum::default();
             let mut outcomes = CompensatedSum::default();
-            for row in chunk_rows(chunk, rows) {
+            for row in range {
                 let weight = prior_weights[row] / maximum_weight;
                 if !weight.is_normal() {
-                    return None;
+                    return Ok(None);
                 }
                 weights.add(weight);
                 if outcome[row] > 0.0 {
                     let y = outcome[row] / maximum_outcome;
                     let product = weight * y;
                     if !y.is_normal() || !product.is_normal() {
-                        return None;
+                        return Ok(None);
                     }
                     outcomes.add(product);
                 }
             }
-            Some((weights, outcomes))
-        })
-        .collect();
-    if let Some(parts) = sums.into_iter().collect::<Option<Vec<_>>>() {
-        let mut weights = CompensatedSum::default();
-        let mut outcomes = CompensatedSum::default();
-        for (w, o) in parts {
-            merge_components(&mut weights, w);
-            merge_components(&mut outcomes, o);
-        }
+            Ok(Some((weights, outcomes)))
+        },
+        &|left: Option<(CompensatedSum, CompensatedSum)>, right| {
+            left.zip(right).map(|((mut w, mut o), (w2, o2))| {
+                merge_components(&mut w, w2);
+                merge_components(&mut o, o2);
+                (w, o)
+            })
+        },
+    )?;
+    if let Some((weights, outcomes)) = sums {
         let ratio = outcomes.total() / weights.total();
         let mean = maximum_outcome * ratio;
         if ratio.is_normal() && mean.is_normal() {

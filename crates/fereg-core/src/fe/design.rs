@@ -766,7 +766,7 @@ impl EffectTerm {
                 "fixed-effect slopes must be finite",
             ));
         }
-        if codes.par_iter().any(|&code| code as usize >= n_levels) {
+        if crate::parallel::any_index(codes.len(), |row| codes[row] as usize >= n_levels) {
             return Err(FeregError::new(
                 ErrorCode::InvalidData,
                 "fixed-effect code exceeds its level count",

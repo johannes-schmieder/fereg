@@ -149,6 +149,34 @@ pub(crate) fn reduction_blocks(
         .min((target_bytes / bytes.max(1)).max(1)))
 }
 
+/// Whether the caller runs on a worker of a Rayon pool, where parallel
+/// iterators and joins schedule without injecting (allocating) jobs.
+pub(crate) fn in_pool() -> bool {
+    rayon::current_thread_index().is_some()
+}
+
+/// Whether any index in `0..items` satisfies `predicate`: parallel inside a
+/// worker pool, serial outside one (no global-pool injection or allocation).
+pub(crate) fn any_index(items: usize, predicate: impl Fn(usize) -> bool + Sync + Send) -> bool {
+    use rayon::prelude::*;
+    if in_pool() {
+        (0..items).into_par_iter().any(predicate)
+    } else {
+        (0..items).any(predicate)
+    }
+}
+
+/// Number of indices in `0..items` that satisfy `predicate` (pool policy of
+/// [`any_index`]).
+pub(crate) fn count_index(items: usize, predicate: impl Fn(usize) -> bool + Sync + Send) -> usize {
+    use rayon::prelude::*;
+    if in_pool() {
+        (0..items).into_par_iter().filter(|&i| predicate(i)).count()
+    } else {
+        (0..items).filter(|&i| predicate(i)).count()
+    }
+}
+
 /// Reduce `0..items` over a binary tree of leaves of at most `leaf` items.
 /// The tree depends only on `items` and `leaf`, so every team width and
 /// schedule merges the same partials in the same order. Allocation-free; the
@@ -175,10 +203,19 @@ where
             return leaf_fn(start..end);
         }
         let middle = start + blocks / 2 * leaf;
-        let (left, right) = rayon::join(
-            || node(start, middle, leaf, leaf_fn, merge),
-            || node(middle, end, leaf, leaf_fn, merge),
-        );
+        // Outside a worker pool a join would inject (and allocate) jobs:
+        // evaluate the same tree in order instead.
+        let (left, right) = if rayon::current_thread_index().is_some() {
+            rayon::join(
+                || node(start, middle, leaf, leaf_fn, merge),
+                || node(middle, end, leaf, leaf_fn, merge),
+            )
+        } else {
+            (
+                node(start, middle, leaf, leaf_fn, merge),
+                node(middle, end, leaf, leaf_fn, merge),
+            )
+        };
         let left = left?;
         Ok(merge(left, right?))
     }

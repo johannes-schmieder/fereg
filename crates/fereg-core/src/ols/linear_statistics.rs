@@ -2,9 +2,10 @@
 use super::*;
 
 struct ColumnStatistics<'a, const NORM: bool, const MEAN: bool> {
-    /// Validated normalized weights and their roots; `None` is unit weight.
-    normalized: Option<&'a [f64]>,
-    roots: Option<&'a [f64]>,
+    /// Validated raw weights and their normalization divisor; `None` is unit
+    /// weight. Rows use `weight / divisor` and its square root.
+    weights: Option<&'a [f64]>,
+    divisor: f64,
     /// Exact scaled sum of squares (fallback); otherwise plain sums.
     exact: bool,
     scale: f64,
@@ -15,15 +16,24 @@ struct ColumnStatistics<'a, const NORM: bool, const MEAN: bool> {
 }
 
 impl<const NORM: bool, const MEAN: bool> ColumnStatistics<'_, NORM, MEAN> {
+    #[inline(always)]
+    fn weight(&self, row: usize) -> f64 {
+        match self.weights {
+            Some(weights) => weights[row] / self.divisor,
+            None => 1.0,
+        }
+    }
+
     /// Plain-path values are not checked per row: a nonfinite value makes the
     /// chunk's square sum nonfinite (sending the column to the exact pass,
     /// which reports it) and its compensated mean nonfinite (rejected when the
-    /// chunks merge). The arithmetic and its order are unchanged.
+    /// chunks merge).
     #[inline(always)]
     fn add(&mut self, row: usize, value: f64) -> Result<()> {
+        let weight = self.weight(row);
         if NORM {
-            let scaled = match self.roots {
-                Some(roots) => roots[row] * value,
+            let scaled = match self.weights {
+                Some(_) => weight.sqrt() * value,
                 None => value,
             };
             if self.exact {
@@ -34,10 +44,6 @@ impl<const NORM: bool, const MEAN: bool> ColumnStatistics<'_, NORM, MEAN> {
             }
         }
         if MEAN {
-            let weight = match self.normalized {
-                Some(weights) => weights[row],
-                None => 1.0,
-            };
             crate::linalg::neumaier_add(weight * value, &mut self.mean, &mut self.correction);
         }
         Ok(())
@@ -55,10 +61,8 @@ impl<const NORM: bool, const MEAN: bool> ColumnStatistics<'_, NORM, MEAN> {
             }
             return Ok(());
         }
-        let roots = self.roots.map(|roots| &roots[first..first + count]);
-        let weights = self
-            .normalized
-            .map(|weights| &weights[first..first + count]);
+        let weights = self.weights.map(|weights| &weights[first..first + count]);
+        let divisor = self.divisor;
         let body = count / LANES * LANES;
         let mut squares = [0.0_f64; LANES];
         let mut largest = [0.0_f64; LANES];
@@ -68,9 +72,10 @@ impl<const NORM: bool, const MEAN: bool> ColumnStatistics<'_, NORM, MEAN> {
             for lane in 0..LANES {
                 let i = block + lane;
                 let v = value(i);
+                let weight = weights.map_or(1.0, |weights| weights[i] / divisor);
                 if NORM {
-                    let scaled = match roots {
-                        Some(roots) => roots[i] * v,
+                    let scaled = match weights {
+                        Some(_) => weight.sqrt() * v,
                         None => v,
                     };
                     squares[lane] += scaled * scaled;
@@ -78,7 +83,7 @@ impl<const NORM: bool, const MEAN: bool> ColumnStatistics<'_, NORM, MEAN> {
                 }
                 if MEAN {
                     let x = match weights {
-                        Some(weights) => weights[i] * v,
+                        Some(_) => weight * v,
                         None => v,
                     };
                     let t = sums[lane] + x;
@@ -118,10 +123,20 @@ const LANES: usize = 4;
 /// Rows per fixed chunk; chunk boundaries depend only on the row count.
 const STATISTIC_ROWS: usize = 1 << 15;
 
-/// Column statistics over (column, fixed row chunk) tasks. Norms use plain
-/// sums of squares merged in chunk order, with the exact scaled sum for a
-/// column whose largest weighted magnitude lies outside `[1e-140, 1e140]`;
-/// means keep compensated chunk sums merged in order.
+/// Merge two compensated (sum, correction) partials, both components.
+fn merge_compensated(left: (f64, f64), right: (f64, f64)) -> (f64, f64) {
+    let (mut sum, mut correction) = left;
+    crate::linalg::neumaier_add(right.0, &mut sum, &mut correction);
+    crate::linalg::neumaier_add(right.1, &mut sum, &mut correction);
+    (sum, correction)
+}
+
+/// Column statistics: per column, fixed row chunks over a fixed tree
+/// (allocation free; the tree depends only on the row count). Norms use plain
+/// sums of squares, with the exact scaled sum for a column whose largest
+/// weighted magnitude lies outside `[1e-140, 1e140]`; means keep compensated
+/// sums. Columns run in parallel inside a worker pool; the first failing
+/// column (in order) reports.
 fn column_statistics<const NORM: bool, const MEAN: bool>(
     rows: usize,
     weights: BorrowedMapWeights<'_>,
@@ -137,85 +152,28 @@ fn column_statistics<const NORM: bool, const MEAN: bool>(
             "weighted-linear statistic columns are not aligned",
         ));
     }
-    let chunks = rows.div_ceil(STATISTIC_ROWS).max(1);
-    let range = |chunk: usize| chunk * STATISTIC_ROWS..((chunk + 1) * STATISTIC_ROWS).min(rows);
-    // Validate and normalize the weights once (and their roots for norms)
-    // instead of once per column and row.
-    let (normalized, roots) = match weights {
-        BorrowedMapWeights::Unit => (None, None),
-        BorrowedMapWeights::Provided(_) => {
-            let mut normalized = crate::memory::fallible_filled(
-                rows,
-                0.0_f64,
-                "unable to reserve weighted-linear normalized weights",
-            )?;
-            normalized
-                .par_chunks_mut(STATISTIC_ROWS)
-                .enumerate()
-                .try_for_each(|(chunk, values)| -> Result<()> {
-                    for (offset, value) in values.iter_mut().enumerate() {
-                        *value = normalized_solver_weight(
-                            weights,
-                            weight_scale,
-                            chunk * STATISTIC_ROWS + offset,
-                        )?;
-                    }
-                    Ok(())
-                })?;
-            let roots = if NORM {
-                let mut roots = crate::memory::fallible_filled(
-                    rows,
-                    0.0_f64,
-                    "unable to reserve weighted-linear weight roots",
-                )?;
-                roots
-                    .par_iter_mut()
-                    .zip(normalized.par_iter())
-                    .for_each(|(root, weight)| *root = weight.sqrt());
-                Some(roots)
-            } else {
-                None
-            };
-            (Some(normalized), roots)
-        }
+    let raw = match weights {
+        BorrowedMapWeights::Unit => None,
+        BorrowedMapWeights::Provided(values) => Some(values),
     };
-    let (normalized, roots) = (normalized.as_deref(), roots.as_deref());
-    let mut weight_sum = 0.0;
-    let mut weight_correction = 0.0;
-    if MEAN {
-        let parts: Vec<Result<(f64, f64)>> = (0..chunks)
-            .into_par_iter()
-            .map(|chunk| {
-                // Normalized weights are validated finite and positive; the
-                // merge below rejects a nonfinite chunk sum.
-                let (mut sum, mut correction) = (0.0, 0.0);
-                match normalized {
-                    Some(weights) => {
-                        for &weight in &weights[range(chunk)] {
-                            crate::linalg::neumaier_add(weight, &mut sum, &mut correction);
-                        }
-                    }
-                    None => {
-                        for _ in range(chunk) {
-                            crate::linalg::neumaier_add(1.0, &mut sum, &mut correction);
-                        }
-                    }
+    // Validate the normalized weights once (first invalid row reports).
+    if raw.is_some() {
+        crate::parallel::fixed_tree_reduce(
+            rows,
+            STATISTIC_ROWS,
+            &|range: std::ops::Range<usize>| -> Result<()> {
+                for row in range {
+                    normalized_solver_weight(weights, weight_scale, row)?;
                 }
-                Ok((sum, correction))
-            })
-            .collect();
-        for part in parts {
-            let (sum, correction) = part?;
-            compensated_add(sum, &mut weight_sum, &mut weight_correction)?;
-            compensated_add(correction, &mut weight_sum, &mut weight_correction)?;
-        }
-        if !(weight_sum + weight_correction).is_finite() || weight_sum + weight_correction <= 0.0 {
-            return Err(invalid_data("weighted-linear mean denominator is invalid"));
-        }
+                Ok(())
+            },
+            &|(), ()| (),
+        )?;
     }
+    let divisor = weight_scale.solver_weight_divisor;
     let state = |exact| ColumnStatistics::<NORM, MEAN> {
-        normalized,
-        roots,
+        weights: raw,
+        divisor,
         exact,
         scale: 0.0,
         squares: if exact { 1.0 } else { 0.0 },
@@ -223,48 +181,106 @@ fn column_statistics<const NORM: bool, const MEAN: bool>(
         mean: 0.0,
         correction: 0.0,
     };
-    let parts: Vec<Result<(f64, f64, f64, f64)>> = (0..columns * chunks)
-        .into_par_iter()
-        .map(|task| {
-            let (column, chunk) = (task / chunks, task % chunks);
-            let mut statistics = state(false);
-            visit(column, range(chunk), &mut statistics)?;
-            Ok((
-                statistics.squares,
-                statistics.largest,
-                statistics.mean,
-                statistics.correction,
-            ))
-        })
-        .collect();
-    let mut parts = parts.into_iter();
-    for column in 0..columns {
-        let (mut squares, mut largest) = (0.0_f64, 0.0_f64);
-        let (mut mean, mut correction) = (0.0, 0.0);
-        for _ in 0..chunks {
-            let (s, l, m, c) = parts.next().expect("one task per column chunk")?;
-            squares += s;
-            largest = largest.max(l);
-            compensated_add(m, &mut mean, &mut correction)?;
-            compensated_add(c, &mut mean, &mut correction)?;
+    let (weight_sum, weight_correction) = if MEAN {
+        let (sum, correction) = crate::parallel::fixed_tree_reduce(
+            rows,
+            STATISTIC_ROWS,
+            &|range: std::ops::Range<usize>| -> Result<(f64, f64)> {
+                let statistics = state(false);
+                let (mut sum, mut correction) = (0.0, 0.0);
+                for row in range {
+                    crate::linalg::neumaier_add(statistics.weight(row), &mut sum, &mut correction);
+                }
+                Ok((sum, correction))
+            },
+            &merge_compensated,
+        )?;
+        if !(sum + correction).is_finite() || sum + correction <= 0.0 {
+            return Err(invalid_data("weighted-linear mean denominator is invalid"));
         }
-        if NORM {
-            norms[column] = if largest == 0.0 && squares == 0.0 {
-                0.0
-            } else if squares.is_finite() && (1e-140..=1e140).contains(&largest) {
-                squares.sqrt()
-            } else {
-                let mut exact = state(true);
-                visit(column, 0..rows, &mut exact)?;
-                stable_norm(exact.scale, exact.squares)?
-            };
-        }
-        if MEAN {
+        (sum, correction)
+    } else {
+        (0.0, 0.0)
+    };
+    let column_result = |column: usize| -> Result<(f64, f64)> {
+        let (squares, largest, (mean, correction)) = crate::parallel::fixed_tree_reduce(
+            rows,
+            STATISTIC_ROWS,
+            &|range: std::ops::Range<usize>| -> Result<(f64, f64, (f64, f64))> {
+                let mut statistics = state(false);
+                visit(column, range, &mut statistics)?;
+                if !(statistics.mean.is_finite() && statistics.correction.is_finite()) {
+                    return Err(invalid_data(
+                        "weighted-linear compensated sum input is not finite",
+                    ));
+                }
+                Ok((
+                    statistics.squares,
+                    statistics.largest,
+                    (statistics.mean, statistics.correction),
+                ))
+            },
+            &|(s, l, m), (s2, l2, m2)| (s + s2, l.max(l2), merge_compensated(m, m2)),
+        )?;
+        let norm = if !NORM || (largest == 0.0 && squares == 0.0) {
+            0.0
+        } else if squares.is_finite() && (1e-140..=1e140).contains(&largest) {
+            squares.sqrt()
+        } else {
+            let mut exact = state(true);
+            visit(column, 0..rows, &mut exact)?;
+            stable_norm(exact.scale, exact.squares)?
+        };
+        let mean = if MEAN {
             let value = (mean + correction) / (weight_sum + weight_correction);
             if !value.is_finite() {
                 return Err(invalid_data("weighted-linear mean is not finite"));
             }
-            means[column] = value;
+            value
+        } else {
+            0.0
+        };
+        Ok((norm, mean))
+    };
+    let parallel = crate::parallel::in_pool()
+        && match (NORM, MEAN) {
+            (true, true) => norms
+                .par_iter_mut()
+                .zip(means.par_iter_mut())
+                .enumerate()
+                .try_for_each(|(column, (norm, mean))| {
+                    (*norm, *mean) = column_result(column)?;
+                    Ok::<(), FeregError>(())
+                })
+                .is_ok(),
+            (true, false) => norms
+                .par_iter_mut()
+                .enumerate()
+                .try_for_each(|(column, norm)| {
+                    *norm = column_result(column)?.0;
+                    Ok::<(), FeregError>(())
+                })
+                .is_ok(),
+            (false, true) => means
+                .par_iter_mut()
+                .enumerate()
+                .try_for_each(|(column, mean)| {
+                    *mean = column_result(column)?.1;
+                    Ok::<(), FeregError>(())
+                })
+                .is_ok(),
+            (false, false) => true,
+        };
+    if !parallel {
+        // Serial order also selects the first failing column's error.
+        for column in 0..columns {
+            let (norm, mean) = column_result(column)?;
+            if NORM {
+                norms[column] = norm;
+            }
+            if MEAN {
+                means[column] = mean;
+            }
         }
     }
     Ok(())

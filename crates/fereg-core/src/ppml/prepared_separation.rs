@@ -1619,37 +1619,60 @@ fn verify_exact_fe_proposal_with_activity(
         }
         replay_checked = replay_checked.checked_add(1).ok_or_else(replay_failed)?;
         let source = topology.sources[source_index];
-        // Level scans are independent and run in parallel; their outcomes are
-        // then checked in level order exactly as the serial replay did.
-        let scans: Vec<Result<Option<usize>>> = {
-            use rayon::prelude::*;
-            (0..source.n_levels())
-                .into_par_iter()
-                .map(|level| -> Result<Option<usize>> {
-                    let members = source.checked_members(level)?;
-                    let mut any = false;
-                    let mut zero_only = true;
-                    let mut representative_original_row = usize::MAX;
-                    for &row in members {
-                        if !is_active(row) {
-                            continue;
-                        }
-                        any = true;
-                        representative_original_row =
-                            representative_original_row.min(generation.original_rows()[row]);
-                        if generation.outcome()[row] > 0.0 {
-                            zero_only = false;
-                        }
+        // Level scans are independent and run in parallel into a fallible
+        // buffer (NOT_ZERO_ONLY, or the representative row; FAILED re-reports
+        // the level's error below); they are then checked in level order
+        // exactly as the serial replay did.
+        const NOT_ZERO_ONLY: usize = usize::MAX;
+        const FAILED: usize = usize::MAX - 1;
+        let mut scans = fallible_filled(
+            source.n_levels(),
+            NOT_ZERO_ONLY,
+            "unable to reserve PPML exact-FE replay level scans",
+        )?;
+        let scan = |(chunk, out): (usize, &mut [usize])| {
+            for (offset, slot) in out.iter_mut().enumerate() {
+                let Ok(members) = source.checked_members(chunk * REPLAY_LEVELS + offset) else {
+                    *slot = FAILED;
+                    continue;
+                };
+                let mut any = false;
+                let mut zero_only = true;
+                let mut representative_original_row = usize::MAX;
+                for &row in members {
+                    if !is_active(row) {
+                        continue;
                     }
-                    Ok((any && zero_only).then_some(representative_original_row))
-                })
-                .collect()
+                    any = true;
+                    representative_original_row =
+                        representative_original_row.min(generation.original_rows()[row]);
+                    if generation.outcome()[row] > 0.0 {
+                        zero_only = false;
+                    }
+                }
+                if any && zero_only {
+                    *slot = representative_original_row;
+                }
+            }
         };
-        for (level, scan) in scans.into_iter().enumerate() {
-            let Some(representative_original_row) = scan? else {
+        if crate::parallel::in_pool() {
+            use rayon::prelude::*;
+            scans
+                .par_chunks_mut(REPLAY_LEVELS)
+                .enumerate()
+                .for_each(scan);
+        } else {
+            scans.chunks_mut(REPLAY_LEVELS).enumerate().for_each(scan);
+        }
+        for (level, &scan) in scans.iter().enumerate() {
+            if scan == NOT_ZERO_ONLY {
                 continue;
-            };
+            }
             let members = source.checked_members(level)?;
+            if scan == FAILED {
+                return Err(replay_failed());
+            }
+            let representative_original_row = scan;
 
             replay_level_count = replay_level_count
                 .checked_add(1)
@@ -2272,17 +2295,20 @@ fn assess_ir_projection(
     config: SeparationConfig,
 ) -> IrProjectionAssessment {
     // Maxima and minima are order independent: fixed chunks fold in parallel.
-    let parts = ir_chunks(outcome.len(), |rows| {
-        let mut fold = IrFold::EMPTY;
-        for row in rows {
-            fold.add(outcome[row], fitted(row));
-        }
-        fold
-    });
-    let mut fold = IrFold::EMPTY;
-    for part in parts {
-        fold.merge(part);
-    }
+    let fold = ir_fold(
+        outcome.len(),
+        |rows| {
+            let mut fold = IrFold::EMPTY;
+            for row in rows {
+                fold.add(outcome[row], fitted(row));
+            }
+            fold
+        },
+        |mut left: IrFold, right| {
+            left.merge(right);
+            left
+        },
+    );
     finish_ir_assessment(fold, config)
 }
 
@@ -2454,13 +2480,14 @@ fn prepared_project(
         ));
     }
     let weight_sum = chunked_positive_sum(weights)?;
-    let divisor = {
-        use rayon::prelude::*;
-        weights
-            .par_chunks(IR_CHUNK_ROWS)
-            .map(|chunk| chunk.iter().copied().fold(0.0_f64, f64::max))
-            .reduce(|| 0.0_f64, f64::max)
-    };
+    let divisor = crate::parallel::fixed_tree_reduce(
+        weights.len(),
+        IR_CHUNK_ROWS,
+        &|range: std::ops::Range<usize>| -> Result<f64> {
+            Ok(weights[range].iter().copied().fold(0.0_f64, f64::max))
+        },
+        &f64::max,
+    )?;
     if crate::diagnostics::solver_trace_enabled() {
         crate::diagnostics::emit_solver_trace(&format!(
             "FEREG_SOLVER_TRACE|phase=separation_projection|generation={}|rows={}|solver={:?}|minimum_weight={:.17e}",
@@ -2516,13 +2543,8 @@ fn prepared_project(
         fit.fitted(),
         "unable to reserve prepared separation projection fitted values",
     )?;
-    let nonfinite = {
-        use rayon::prelude::*;
-        fitted
-            .par_iter()
-            .chain(residual.par_iter())
-            .any(|value| !value.is_finite())
-    };
+    let nonfinite = crate::parallel::any_index(fitted.len(), |row| !fitted[row].is_finite())
+        || crate::parallel::any_index(residual.len(), |row| !residual[row].is_finite());
     if nonfinite {
         return Err(FeregError::new(
             ErrorCode::NonConvergence,
@@ -2601,19 +2623,25 @@ fn fused_ir_fixed_point_certificate(
     {
         return Ok(None);
     }
-    let Some(values) = kept_columns
-        .iter()
-        .map(|&column| {
-            crate::ols::prepared_fit_view::prepared_continuous_range(
-                generation.fit_view(),
-                column,
-                0..rows,
-            )
-        })
-        .collect::<Option<Vec<&[f64]>>>()
-    else {
+    // Fixed-size column state (allocation free); wider designs fall back to
+    // the sequential certificate.
+    if kept_columns.len() > IR_FUSED_COLUMNS {
         return Ok(None);
-    };
+    }
+    let mut values: [&[f64]; IR_FUSED_COLUMNS] = [&[]; IR_FUSED_COLUMNS];
+    for (slot, &column) in values.iter_mut().zip(kept_columns.iter()) {
+        let Some(column) = crate::ols::prepared_fit_view::prepared_continuous_range(
+            generation.fit_view(),
+            column,
+            0..rows,
+        ) else {
+            return Ok(None);
+        };
+        *slot = column;
+    }
+    let k = kept_columns.len();
+    let values = &values[..k];
+    #[derive(Clone, Copy)]
     struct Part {
         valid: bool,
         boundary: usize,
@@ -2621,72 +2649,80 @@ fn fused_ir_fixed_point_certificate(
         fold: IrFold,
         recurrence: [ScaledSquares; 2],
         residual: [ScaledSquares; 2],
-        moments: Vec<[(f64, f64); 2]>,
-        norms: Vec<[ScaledSquares; 2]>,
+        moments: [[(f64, f64); 2]; IR_FUSED_COLUMNS],
+        norms: [[ScaledSquares; 2]; IR_FUSED_COLUMNS],
     }
-    let k = values.len();
-    let parts = ir_chunks(rows, |range| {
-        let mut part = Part {
-            valid: true,
-            boundary: 0,
-            maximum: 0.0,
-            fold: IrFold::EMPTY,
-            recurrence: [ScaledSquares::ZERO; 2],
-            residual: [ScaledSquares::ZERO; 2],
-            moments: vec![[(0.0, 0.0); 2]; k],
-            norms: vec![[ScaledSquares::ZERO; 2]; k],
-        };
-        for row in range {
-            let (y, entry, r) = (outcome[row], recurrence[row], residual[row]);
-            part.valid &=
-                entry.is_finite() && r.is_finite() && entry >= 0.0 && !(y > 0.0 && entry != 0.0);
-            part.boundary += usize::from(y == 0.0);
-            part.maximum = part.maximum.max(entry);
-            part.fold.add(y, entry - r);
-            let side = usize::from(y <= 0.0);
-            part.recurrence[side].add(entry.abs());
-            part.residual[side].add(r.abs());
-            for ((moment, norm), column) in
-                part.moments.iter_mut().zip(&mut part.norms).zip(&values)
-            {
-                let x = column[row];
-                let (sum, correction) = &mut moment[side];
-                crate::linalg::neumaier_add(x * r, sum, correction);
-                norm[side].add(x.abs());
+    let part = ir_fold(
+        rows,
+        |range| {
+            let mut part = Part {
+                valid: true,
+                boundary: 0,
+                maximum: 0.0,
+                fold: IrFold::EMPTY,
+                recurrence: [ScaledSquares::ZERO; 2],
+                residual: [ScaledSquares::ZERO; 2],
+                moments: [[(0.0, 0.0); 2]; IR_FUSED_COLUMNS],
+                norms: [[ScaledSquares::ZERO; 2]; IR_FUSED_COLUMNS],
+            };
+            for row in range {
+                let (y, entry, r) = (outcome[row], recurrence[row], residual[row]);
+                part.valid &= entry.is_finite()
+                    && r.is_finite()
+                    && entry >= 0.0
+                    && !(y > 0.0 && entry != 0.0);
+                part.boundary += usize::from(y == 0.0);
+                part.maximum = part.maximum.max(entry);
+                part.fold.add(y, entry - r);
+                let side = usize::from(y <= 0.0);
+                part.recurrence[side].add(entry.abs());
+                part.residual[side].add(r.abs());
+                for ((moment, norm), column) in
+                    part.moments.iter_mut().zip(&mut part.norms).zip(values)
+                {
+                    let x = column[row];
+                    let (sum, correction) = &mut moment[side];
+                    crate::linalg::neumaier_add(x * r, sum, correction);
+                    norm[side].add(x.abs());
+                }
             }
-        }
-        part
-    });
-    let mut valid = true;
-    let mut boundary_rows = 0_usize;
-    let mut maximum = 0.0_f64;
-    let mut fold = IrFold::EMPTY;
-    let mut recurrence_norm = [ScaledSquares::ZERO; 2];
-    let mut residual_norm = [ScaledSquares::ZERO; 2];
-    let mut moments = vec![[(0.0_f64, 0.0_f64); 2]; k];
-    let mut norms = vec![[ScaledSquares::ZERO; 2]; k];
-    for part in parts {
-        valid &= part.valid;
-        boundary_rows += part.boundary;
-        maximum = maximum.max(part.maximum);
-        fold.merge(part.fold);
-        for side in 0..2 {
-            recurrence_norm[side].merge(part.recurrence[side]);
-            residual_norm[side].merge(part.residual[side]);
-        }
-        for ((moment, norm), (part_moment, part_norm)) in moments
-            .iter_mut()
-            .zip(&mut norms)
-            .zip(part.moments.iter().zip(&part.norms))
-        {
+            part
+        },
+        |mut total: Part, part: Part| {
+            total.valid &= part.valid;
+            total.boundary += part.boundary;
+            total.maximum = total.maximum.max(part.maximum);
+            total.fold.merge(part.fold);
             for side in 0..2 {
-                let (sum, correction) = &mut moment[side];
-                crate::linalg::neumaier_add(part_moment[side].0, sum, correction);
-                crate::linalg::neumaier_add(part_moment[side].1, sum, correction);
-                norm[side].merge(part_norm[side]);
+                total.recurrence[side].merge(part.recurrence[side]);
+                total.residual[side].merge(part.residual[side]);
             }
-        }
-    }
+            for ((moment, norm), (part_moment, part_norm)) in total.moments[..k]
+                .iter_mut()
+                .zip(&mut total.norms[..k])
+                .zip(part.moments.iter().zip(&part.norms))
+            {
+                for side in 0..2 {
+                    let (sum, correction) = &mut moment[side];
+                    crate::linalg::neumaier_add(part_moment[side].0, sum, correction);
+                    crate::linalg::neumaier_add(part_moment[side].1, sum, correction);
+                    norm[side].merge(part_norm[side]);
+                }
+            }
+            total
+        },
+    );
+    let Part {
+        valid,
+        boundary: boundary_rows,
+        maximum,
+        fold,
+        recurrence: recurrence_norm,
+        residual: residual_norm,
+        moments,
+        norms,
+    } = part;
+    let (moments, norms) = (&moments[..k], &norms[..k]);
     if !valid || boundary_rows == 0 {
         return Ok(Some(None));
     }
@@ -2715,7 +2751,7 @@ fn fused_ir_fixed_point_certificate(
         return Ok(Some(None));
     }
     let mut regressors = 0.0_f64;
-    for (moment, norm) in moments.iter().zip(&norms) {
+    for (moment, norm) in moments.iter().zip(norms) {
         let value = (moment[0].0 + moment[0].1) + boundary_weight * (moment[1].0 + moment[1].1);
         regressors = ir_moment_ratio(regressors, value, weighted(*norm));
     }
@@ -2826,13 +2862,28 @@ type IrRowFn<'a> = dyn Fn(usize) -> f64 + Sync + 'a;
 /// Rows per fixed chunk of the parallel IR certificate passes.
 const IR_CHUNK_ROWS: usize = 1 << 15;
 
-/// Fold fixed row chunks in parallel (current team), results in chunk order.
-fn ir_chunks<T: Send>(rows: usize, fold: impl Fn(std::ops::Range<usize>) -> T + Sync) -> Vec<T> {
-    use rayon::prelude::*;
-    (0..rows.div_ceil(IR_CHUNK_ROWS))
-        .into_par_iter()
-        .map(|chunk| fold(chunk * IR_CHUNK_ROWS..((chunk + 1) * IR_CHUNK_ROWS).min(rows)))
-        .collect()
+/// Largest kept-regressor count of the fused fixed-point certificate.
+const IR_FUSED_COLUMNS: usize = 8;
+
+/// Levels per fixed chunk of the exact-FE replay scans.
+const REPLAY_LEVELS: usize = 1 << 12;
+
+/// Fold fixed row chunks over a fixed tree (allocation free; parallel inside
+/// the current team).
+fn ir_fold<T: Send>(
+    rows: usize,
+    fold: impl Fn(std::ops::Range<usize>) -> T + Sync,
+    merge: impl Fn(T, T) -> T + Sync,
+) -> T {
+    match crate::parallel::fixed_tree_reduce(
+        rows,
+        IR_CHUNK_ROWS,
+        &|range: std::ops::Range<usize>| -> Result<T> { Ok(fold(range)) },
+        &merge,
+    ) {
+        Ok(value) => value,
+        Err(_) => unreachable!("infallible fold"),
+    }
 }
 
 /// Scaled sum of squares `scale^2 * sum` (LAPACK `lassq` form).
@@ -2901,17 +2952,21 @@ fn ir_weighted_norm(
 /// `ir_weighted_norm` over `0..rows`: fixed chunks in parallel, merged in
 /// chunk order.
 fn ir_weighted_norm_rows(weight: &IrRowFn<'_>, values: &IrRowFn<'_>, rows: usize) -> f64 {
-    let mut squares = ScaledSquares::ZERO;
-    for part in ir_chunks(rows, |range| {
-        let mut squares = ScaledSquares::ZERO;
-        for row in range {
-            squares.add((weight(row).sqrt() * values(row)).abs());
-        }
-        squares
-    }) {
-        squares.merge(part);
-    }
-    squares.norm()
+    ir_fold(
+        rows,
+        |range| {
+            let mut squares = ScaledSquares::ZERO;
+            for row in range {
+                squares.add((weight(row).sqrt() * values(row)).abs());
+            }
+            squares
+        },
+        |mut left: ScaledSquares, right| {
+            left.merge(right);
+            left
+        },
+    )
+    .norm()
 }
 
 /// Largest `|moment| / channel norm`; a nonzero moment on a zero or
@@ -2933,48 +2988,43 @@ fn ir_regressor_moment_ratio(
     residual: &[f64],
     kept_columns: &[usize],
 ) -> Result<f64> {
-    use rayon::prelude::*;
     let fit_view = generation.fit_view();
     let rows = residual.len();
-    let chunks = rows.div_ceil(IR_CHUNK_ROWS).max(1);
-    // (column, fixed chunk) tasks; each column merges its chunk moments
-    // (both compensated components) and scaled squares in chunk order.
-    let parts: Vec<Result<(f64, f64, ScaledSquares)>> = (0..kept_columns.len() * chunks)
-        .into_par_iter()
-        .map(|task| {
-            let (column, chunk) = (kept_columns[task / chunks], task % chunks);
-            let range = chunk * IR_CHUNK_ROWS..((chunk + 1) * IR_CHUNK_ROWS).min(rows);
-            let (mut sum, mut correction) = (0.0_f64, 0.0_f64);
-            let mut squares = ScaledSquares::ZERO;
-            crate::ols::prepared_fit_view::visit_prepared_column_range(
-                fit_view,
-                column,
-                range,
-                |row, value| {
-                    let w = weight(row);
-                    crate::linalg::neumaier_add(
-                        w * value * residual[row],
-                        &mut sum,
-                        &mut correction,
-                    );
-                    squares.add((w.sqrt() * value).abs());
-                    Ok(())
-                },
-            )?;
-            Ok((sum, correction, squares))
-        })
-        .collect();
-    let mut parts = parts.into_iter();
+    // Per column, fixed chunks over a fixed tree (allocation free): moments
+    // merge both compensated components, norms their scaled squares.
     let mut largest = 0.0_f64;
-    for _ in kept_columns {
-        let (mut sum, mut correction) = (0.0_f64, 0.0_f64);
-        let mut squares = ScaledSquares::ZERO;
-        for _ in 0..chunks {
-            let (s, c, q) = parts.next().expect("one task per column chunk")?;
-            crate::linalg::neumaier_add(s, &mut sum, &mut correction);
-            crate::linalg::neumaier_add(c, &mut sum, &mut correction);
-            squares.merge(q);
-        }
+    for &column in kept_columns {
+        let ((sum, correction), squares) = crate::parallel::fixed_tree_reduce(
+            rows,
+            IR_CHUNK_ROWS,
+            &|range: std::ops::Range<usize>| -> Result<((f64, f64), ScaledSquares)> {
+                let (mut sum, mut correction) = (0.0_f64, 0.0_f64);
+                let mut squares = ScaledSquares::ZERO;
+                crate::ols::prepared_fit_view::visit_prepared_column_range(
+                    fit_view,
+                    column,
+                    range,
+                    |row, value| {
+                        let w = weight(row);
+                        crate::linalg::neumaier_add(
+                            w * value * residual[row],
+                            &mut sum,
+                            &mut correction,
+                        );
+                        squares.add((w.sqrt() * value).abs());
+                        Ok(())
+                    },
+                )?;
+                Ok(((sum, correction), squares))
+            },
+            &|((mut sum, mut correction), mut squares): ((f64, f64), ScaledSquares),
+              ((s, c), q): ((f64, f64), ScaledSquares)| {
+                crate::linalg::neumaier_add(s, &mut sum, &mut correction);
+                crate::linalg::neumaier_add(c, &mut sum, &mut correction);
+                squares.merge(q);
+                ((sum, correction), squares)
+            },
+        )?;
         largest = ir_moment_ratio(largest, sum + correction, squares.norm());
     }
     Ok(largest)
@@ -2987,7 +3037,6 @@ fn ir_fe_moment_ratio(
     weight: &IrRowFn<'_>,
     residual: &[f64],
 ) -> Result<f64> {
-    use rayon::prelude::*;
     let categorical = generation.prepared().as_ref();
     let topology = DetectorTopology::new(generation.prepared())?;
     let mut largest = 0.0_f64;
@@ -2995,42 +3044,53 @@ fn ir_fe_moment_ratio(
         let source = topology.sources[topology.effect_to_source[effect]];
         // Each level keeps its member-order sums; the maximum over levels
         // does not depend on their order.
-        let level_largest = (0..source.n_levels())
-            .into_par_iter()
-            .map(|level| -> Result<f64> {
+        let level_largest = crate::parallel::fixed_tree_reduce(
+            source.n_levels(),
+            REPLAY_LEVELS,
+            &|levels: std::ops::Range<usize>| -> Result<f64> {
                 let mut largest = 0.0_f64;
-                let members = source.checked_members(level)?;
-                if spec.intercept {
-                    let (mut sum, mut correction) = (0.0_f64, 0.0_f64);
-                    let (mut mass, mut mass_correction) = (0.0_f64, 0.0_f64);
-                    for &row in members {
-                        crate::linalg::neumaier_add(
-                            weight(row) * residual[row],
-                            &mut sum,
-                            &mut correction,
-                        );
-                        crate::linalg::neumaier_add(weight(row), &mut mass, &mut mass_correction);
-                    }
-                    largest =
-                        ir_moment_ratio(largest, sum + correction, (mass + mass_correction).sqrt());
-                }
-                for slope in &spec.slopes {
-                    let values = categorical.numeric_source_values(slope.source)?;
-                    let (mut sum, mut correction) = (0.0_f64, 0.0_f64);
-                    for &row in members {
-                        crate::linalg::neumaier_add(
-                            weight(row) * values[row] * residual[row],
-                            &mut sum,
-                            &mut correction,
+                for level in levels {
+                    let members = source.checked_members(level)?;
+                    if spec.intercept {
+                        let (mut sum, mut correction) = (0.0_f64, 0.0_f64);
+                        let (mut mass, mut mass_correction) = (0.0_f64, 0.0_f64);
+                        for &row in members {
+                            crate::linalg::neumaier_add(
+                                weight(row) * residual[row],
+                                &mut sum,
+                                &mut correction,
+                            );
+                            crate::linalg::neumaier_add(
+                                weight(row),
+                                &mut mass,
+                                &mut mass_correction,
+                            );
+                        }
+                        largest = ir_moment_ratio(
+                            largest,
+                            sum + correction,
+                            (mass + mass_correction).sqrt(),
                         );
                     }
-                    let norm =
-                        ir_weighted_norm(weight, &|row| values[row], members.iter().copied());
-                    largest = ir_moment_ratio(largest, sum + correction, norm);
+                    for slope in &spec.slopes {
+                        let values = categorical.numeric_source_values(slope.source)?;
+                        let (mut sum, mut correction) = (0.0_f64, 0.0_f64);
+                        for &row in members {
+                            crate::linalg::neumaier_add(
+                                weight(row) * values[row] * residual[row],
+                                &mut sum,
+                                &mut correction,
+                            );
+                        }
+                        let norm =
+                            ir_weighted_norm(weight, &|row| values[row], members.iter().copied());
+                        largest = ir_moment_ratio(largest, sum + correction, norm);
+                    }
                 }
                 Ok(largest)
-            })
-            .try_reduce(|| 0.0_f64, |left, right| Ok(left.max(right)))?;
+            },
+            &f64::max,
+        )?;
         largest = largest.max(level_largest);
     }
     Ok(largest)
@@ -3769,31 +3829,28 @@ fn euclidean_norm(values: &[f64]) -> f64 {
 /// `compensated_sum` over fixed chunks in parallel: chunk compensated sums
 /// merge (both components) in chunk order; the same domain errors.
 fn chunked_positive_sum(values: &[f64]) -> Result<f64> {
-    use rayon::prelude::*;
-    let parts: Vec<Option<(f64, f64)>> = values
-        .par_chunks(IR_CHUNK_ROWS)
-        .map(|chunk| {
+    let (sum, correction) = crate::parallel::fixed_tree_reduce(
+        values.len(),
+        IR_CHUNK_ROWS,
+        &|range: std::ops::Range<usize>| -> Result<(f64, f64)> {
             let (mut sum, mut correction) = (0.0_f64, 0.0_f64);
-            for &value in chunk {
+            for &value in &values[range] {
                 if !value.is_finite() || value <= 0.0 {
-                    return None;
+                    return Err(FeregError::new(
+                        ErrorCode::InvalidData,
+                        "prepared separation projection weights must be finite and positive",
+                    ));
                 }
                 neumaier_add(value, &mut sum, &mut correction);
             }
-            Some((sum, correction))
-        })
-        .collect();
-    let (mut sum, mut correction) = (0.0_f64, 0.0_f64);
-    for part in parts {
-        let (part_sum, part_correction) = part.ok_or_else(|| {
-            FeregError::new(
-                ErrorCode::InvalidData,
-                "prepared separation projection weights must be finite and positive",
-            )
-        })?;
-        neumaier_add(part_sum, &mut sum, &mut correction);
-        neumaier_add(part_correction, &mut sum, &mut correction);
-    }
+            Ok((sum, correction))
+        },
+        &|(mut sum, mut correction): (f64, f64), (s, c): (f64, f64)| {
+            neumaier_add(s, &mut sum, &mut correction);
+            neumaier_add(c, &mut sum, &mut correction);
+            (sum, correction)
+        },
+    )?;
     let total = sum + correction;
     if !total.is_finite() || total <= 0.0 {
         return Err(FeregError::new(
@@ -3855,20 +3912,19 @@ fn candidate_ledger_hash_with<F>(candidate_original_rows: &[usize], state: F) ->
 where
     F: Fn(usize, usize) -> (bool, Option<SeparationDropReason>) + Sync,
 {
-    // Word-level FNV-style mixing over fixed 64Ki-row chunks in parallel,
-    // folded in chunk order; the ordinal, original row, activity and reason
-    // of every candidate enter as before.
-    use rayon::prelude::*;
+    // Word-level FNV-style mixing over fixed 64Ki-row chunks, combined over a
+    // fixed tree (allocation free, independent of the team); the ordinal,
+    // original row, activity and reason of every candidate enter.
     const OFFSET: u64 = 0xcbf29ce484222325;
     const PRIME: u64 = 0x100000001b3;
     const CHUNK: usize = 1 << 16;
     let rows = candidate_original_rows.len();
-    let chunks: Vec<u64> = (0..rows.div_ceil(CHUNK))
-        .into_par_iter()
-        .map(|chunk| {
-            let mut hash = OFFSET ^ chunk as u64;
-            let first = chunk * CHUNK;
-            let end = (first + CHUNK).min(rows);
+    let combined = crate::parallel::fixed_tree_reduce(
+        rows,
+        CHUNK,
+        &|range: std::ops::Range<usize>| -> Result<u64> {
+            let (first, end) = (range.start, range.end);
+            let mut hash = OFFSET ^ (first / CHUNK) as u64;
             for (candidate_row, &original_row) in
                 (first..end).zip(&candidate_original_rows[first..end])
             {
@@ -3882,15 +3938,11 @@ where
                 hash ^= reason_code(reason);
                 hash = hash.wrapping_mul(PRIME);
             }
-            hash
-        })
-        .collect();
-    let mut hash = OFFSET ^ rows as u64;
-    for chunk in chunks {
-        hash ^= chunk;
-        hash = hash.wrapping_mul(PRIME);
-    }
-    Ok(hash)
+            Ok(hash)
+        },
+        &|left: u64, right: u64| (left.wrapping_mul(PRIME) ^ right).wrapping_mul(PRIME),
+    )?;
+    Ok((OFFSET ^ rows as u64 ^ combined).wrapping_mul(PRIME))
 }
 
 const fn reason_code(reason: Option<SeparationDropReason>) -> u64 {
@@ -3993,7 +4045,6 @@ fn chunked_word_digest(
     len: usize,
     word: impl Fn(usize) -> Option<u64> + Sync,
 ) -> Result<u64> {
-    use rayon::prelude::*;
     const CHUNK: usize = 1 << 16;
     let mut digest = SeparationDigest::new();
     digest.usize(domain.len())?;
@@ -4001,27 +4052,30 @@ fn chunked_word_digest(
         digest.byte(*byte);
     }
     digest.usize(len)?;
-    let chunks: Vec<Option<u64>> = (0..len.div_ceil(CHUNK))
-        .into_par_iter()
-        .map(|chunk| {
-            let mut h = SeparationDigest::OFFSET ^ chunk as u64;
-            for index in chunk * CHUNK..((chunk + 1) * CHUNK).min(len) {
-                let value = word(index)?;
+    // Fixed chunks combined over a fixed tree (allocation free).
+    let combined = crate::parallel::fixed_tree_reduce(
+        len,
+        CHUNK,
+        &|range: std::ops::Range<usize>| -> Result<u64> {
+            let mut h = SeparationDigest::OFFSET ^ (range.start / CHUNK) as u64;
+            for index in range {
+                let value = word(index).ok_or_else(|| {
+                    FeregError::new(
+                        ErrorCode::Internal,
+                        "PPML separation generation binding contains a nonfinite value",
+                    )
+                })?;
                 h = (h ^ value).wrapping_mul(0x9e37_79b9_7f4a_7c15);
                 h ^= h >> 29;
             }
-            Some(h)
-        })
-        .collect();
-    for chunk in chunks {
-        let value = chunk.ok_or_else(|| {
-            FeregError::new(
-                ErrorCode::Internal,
-                "PPML separation generation binding contains a nonfinite value",
-            )
-        })?;
-        digest.u64(value);
-    }
+            Ok(h)
+        },
+        &|left: u64, right: u64| {
+            let h = (left.rotate_left(17) ^ right).wrapping_mul(0x9e37_79b9_7f4a_7c15);
+            h ^ (h >> 29)
+        },
+    )?;
+    digest.u64(combined);
     Ok(digest.0)
 }
 

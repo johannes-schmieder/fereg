@@ -378,13 +378,22 @@ impl<'a> FeSession<'a> {
                             .filter(|preset| preset.kernel().is_none())
                             .map(super::borrowed_map::routing_lsmr::GeneralRoutingState::new);
                     }
-                    // The elimination route runs first for these designs;
+                    // When the elimination route is eligible it runs first;
                     // its declines continue without the MAP pilot geometry.
+                    // Other requests (explicit preconditioners, routing
+                    // presets, rechecks) keep the geometry and their route.
+                    let elimination_first = block_schur_enabled()
+                        && config.absorb.lsmr.preconditioner == super::LsmrPreconditioner::Auto
+                        && config.absorb.declined_recheck.is_none()
+                        && config.absorb.routing.is_none_or(|preset| {
+                            preset == super::RoutingPreset::geometry_many()
+                                || preset == super::RoutingPreset::gates_two_v2()
+                        });
                     if config.absorb.solver == super::FeSolverKind::Auto
                         && design.effects().len() == 3
                         && matches!(weights, BorrowedMapWeights::Unit)
                         && config.absorb.map.symmetric
-                        && !block_schur_enabled()
+                        && !elimination_first
                     {
                         let started = std::time::Instant::now();
                         let (geometry, peak) =
