@@ -311,6 +311,37 @@ fn retained_dense_moments_preserve_scalar_order_across_cache_boundaries() {
                 expected_gram[right * columns + left] = expected_gram[left * columns + right];
             }
         }
+        // Dense widths up to eight use the fixed-width kernel: reciprocal
+        // scales and separately rounded multiply-adds in the same row order.
+        let (dense_rhs, dense_gram) = if columns <= 8 {
+            let mut rhs = vec![0.0_f64; columns];
+            let mut gram = vec![0.0_f64; columns * columns];
+            for row in 0..rows {
+                let weight = if provided {
+                    weights[row] / divisor
+                } else {
+                    1.0
+                };
+                let x: Vec<f64> = (0..columns)
+                    .map(|c| values[row * stored + selected[c]] * (1.0 / scales[c]))
+                    .collect();
+                for left in 0..columns {
+                    let weighted = weight * x[left];
+                    rhs[left] += weighted * response[row];
+                    for right in left..columns {
+                        gram[left * columns + right] += weighted * x[right];
+                    }
+                }
+            }
+            for left in 0..columns {
+                for right in left..columns {
+                    gram[right * columns + left] = gram[left * columns + right];
+                }
+            }
+            (rhs, gram)
+        } else {
+            (expected_rhs.clone(), expected_gram.clone())
+        };
         for threads in [1, 2, 4, 16] {
             rayon::ThreadPoolBuilder::new()
                 .num_threads(threads)
@@ -323,8 +354,8 @@ fn retained_dense_moments_preserve_scalar_order_across_cache_boundaries() {
                     let mut rhs = vec![0.0; columns];
                     let mut gram = vec![0.0; columns * columns];
                     fill_finite_wls_moments(layout_source, &mut [], &mut rhs, &mut gram).unwrap();
-                    assert_eq!(rhs, expected_rhs);
-                    assert_eq!(gram, expected_gram);
+                    assert_eq!(rhs, dense_rhs);
+                    assert_eq!(gram, dense_gram);
                 });
         }
         {

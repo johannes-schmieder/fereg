@@ -1855,6 +1855,31 @@ fn fill_retained_dense_standardized_rows(
 ) -> Result<()> {
     let dimension = rhs.len();
     let rows = response.len();
+    macro_rules! narrow {
+        ($d:literal) => {
+            return fill_narrow_dense_moments::<$d>(
+                values,
+                selected_columns,
+                response,
+                weights,
+                divisor,
+                scales,
+                rhs,
+                gram,
+            )
+        };
+    }
+    match dimension {
+        1 => narrow!(1),
+        2 => narrow!(2),
+        3 => narrow!(3),
+        4 => narrow!(4),
+        5 => narrow!(5),
+        6 => narrow!(6),
+        7 => narrow!(7),
+        8 => narrow!(8),
+        _ => {}
+    }
     let hardware = crate::kernels::installed().map(|kernels| kernels.upper_rank_one);
     let chunks = rows.div_ceil(MOMENT_ROWS).max(1);
     let parts: Vec<Result<(Vec<f64>, Vec<f64>)>> = (0..chunks)
@@ -1895,6 +1920,81 @@ fn fill_retained_dense_standardized_rows(
         for left in 0..dimension {
             for right in left..dimension {
                 gram[left * dimension + right] += local_gram[left * dimension + right];
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Narrow dense moments with the width fixed at compile time: reciprocal
+/// column scales are hoisted, the upper triangle and RHS accumulate in local
+/// arrays over fixed row chunks merged in chunk order, and non-finite inputs
+/// are detected once per chunk (they propagate into the sums).
+#[allow(clippy::too_many_arguments)]
+fn fill_narrow_dense_moments<const D: usize>(
+    values: FiniteDenseRows<'_>,
+    selected_columns: Option<&[usize]>,
+    response: FiniteResponse<'_>,
+    weights: BorrowedMapWeights<'_>,
+    divisor: f64,
+    scales: Option<&[f64]>,
+    rhs: &mut [f64],
+    gram: &mut [f64],
+) -> Result<()> {
+    let rows = response.len();
+    let source: [usize; D] = std::array::from_fn(|c| selected_columns.map_or(c, |s| s[c]));
+    let inverse: [f64; D] = std::array::from_fn(|c| scales.map_or(1.0, |s| 1.0 / s[c]));
+    let chunks = rows.div_ceil(MOMENT_ROWS).max(1);
+    let parts: Vec<Result<([f64; D], [[f64; D]; D])>> = (0..chunks)
+        .into_par_iter()
+        .map(|chunk| {
+            record_retained_moment_worker();
+            let mut local_rhs = [0.0_f64; D];
+            let mut local_gram = [[0.0_f64; D]; D];
+            let mut bad_weight = false;
+            for row in chunk * MOMENT_ROWS..((chunk + 1) * MOMENT_ROWS).min(rows) {
+                let values = values.row(row);
+                let weight = match weights {
+                    BorrowedMapWeights::Unit => 1.0,
+                    BorrowedMapWeights::Provided(w) => {
+                        let value = w[row] / divisor;
+                        bad_weight |= !(value.is_finite() && value > 0.0);
+                        value
+                    }
+                };
+                let x: [f64; D] = std::array::from_fn(|c| values[source[c]] * inverse[c]);
+                let y = response[row];
+                for left in 0..D {
+                    let weighted = weight * x[left];
+                    local_rhs[left] += weighted * y;
+                    for right in left..D {
+                        local_gram[left][right] += weighted * x[right];
+                    }
+                }
+            }
+            if bad_weight {
+                return Err(invalid_data(
+                    "finite-WLS normalized weight is not finite and positive",
+                ));
+            }
+            if local_rhs
+                .iter()
+                .chain(local_gram.iter().flatten())
+                .any(|v| !v.is_finite())
+            {
+                return Err(invalid_data("finite-WLS standardized column is not finite"));
+            }
+            Ok((local_rhs, local_gram))
+        })
+        .collect();
+    rhs.fill(0.0);
+    gram.fill(0.0);
+    for part in parts {
+        let (local_rhs, local_gram) = part?;
+        for left in 0..D {
+            rhs[left] += local_rhs[left];
+            for right in left..D {
+                gram[left * D + right] += local_gram[left][right];
             }
         }
     }
