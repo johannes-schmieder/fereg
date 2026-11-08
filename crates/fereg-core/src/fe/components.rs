@@ -135,7 +135,10 @@ pub(crate) fn connected_component_count(
             "component code columns have inconsistent lengths",
         ));
     }
-    let mut offsets = Vec::with_capacity(level_counts.len() + 1);
+    let mut offsets = crate::memory::fallible_empty(
+        level_counts.len() + 1,
+        "unable to reserve component level offsets",
+    )?;
     offsets.push(0_usize);
     for &levels in level_counts {
         let next = offsets
@@ -162,7 +165,11 @@ pub(crate) fn connected_component_count(
         }
         v
     };
-    let mut previous: Vec<u32> = vec![u32::MAX; codes_by_effect.len()];
+    let mut previous = fallible_filled(
+        codes_by_effect.len(),
+        u32::MAX,
+        "unable to reserve component previous codes",
+    )?;
     for observation in 0..nobs {
         if codes_by_effect
             .iter()
@@ -398,16 +405,18 @@ impl YieldingPairCache {
         Some(total)
     }
 
-    /// Largest transient scratch of [`Self::count`]: one pair's union-find
-    /// and block counters, plus the retained per-pair table.
-    pub(crate) fn scratch_bytes(levels: &[usize]) -> u128 {
+    /// Largest transient scratch of [`Self::count`] (one pair's union-find
+    /// and block counters, plus the retained per-pair table) over `count`
+    /// level counts read by index, without materializing a level table.
+    pub(crate) fn scratch_bytes_by(count: usize, level: impl Fn(usize) -> usize) -> u128 {
         let mut largest = 0;
-        for (index, &left) in levels.iter().enumerate() {
-            for &right in &levels[index + 1..] {
-                largest = largest.max(large_pair_component_scratch_bytes(left, right));
+        for index in 0..count {
+            let left = level(index);
+            for right in index + 1..count {
+                largest = largest.max(large_pair_component_scratch_bytes(left, level(right)));
             }
         }
-        let pairs = levels.len() as u128 * (levels.len() as u128).saturating_sub(1) / 2;
+        let pairs = count as u128 * (count as u128).saturating_sub(1) / 2;
         largest + pairs * std::mem::size_of::<usize>() as u128
     }
 
@@ -647,7 +656,7 @@ mod tests {
         let levels = [10_000, 2, 10_000];
         let cache = YieldingPairCache::default();
         assert_eq!(cache.known(3, None), None);
-        assert!(YieldingPairCache::scratch_bytes(&levels) > 0);
+        assert!(YieldingPairCache::scratch_bytes_by(levels.len(), |index| levels[index]) > 0);
         assert_eq!(cache.count(&codes, &levels).unwrap(), 2);
         for (pair, expected) in [([0, 1], 1), ([1, 2], 1), ([0, 2], 0)] {
             assert_eq!(cache.known(3, Some(&pair)), Some(expected));

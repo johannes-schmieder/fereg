@@ -339,26 +339,36 @@ fn apply_mobility_policy<'a, R: TopologyDofReservation>(
     exact: &mut [bool],
     reservation: &mut R,
 ) -> Result<()> {
-    let pairs: Vec<(usize, usize, bool)> = match policy {
-        CategoricalTopologyDofPolicy::None | CategoricalTopologyDofPolicy::Continuous => Vec::new(),
-        CategoricalTopologyDofPolicy::FirstPair if eligible_indices.len() >= 2 => {
-            vec![(eligible_indices[0], eligible_indices[1], true)]
-        }
-        CategoricalTopologyDofPolicy::FirstPair => Vec::new(),
-        CategoricalTopologyDofPolicy::Pairwise => (1..eligible_indices.len())
-            .flat_map(|later| {
-                (0..later).map(move |earlier| {
-                    (
-                        eligible_indices[earlier],
-                        eligible_indices[later],
-                        earlier == 0 && later == 1,
-                    )
-                })
-            })
-            .collect(),
+    let eligible = eligible_indices.len();
+    let pair_count = match policy {
+        CategoricalTopologyDofPolicy::None | CategoricalTopologyDofPolicy::Continuous => 0,
+        CategoricalTopologyDofPolicy::FirstPair => usize::from(eligible >= 2),
+        CategoricalTopologyDofPolicy::Pairwise => eligible * eligible.saturating_sub(1) / 2,
     };
-    if pairs.is_empty() {
+    if pair_count == 0 {
         return Ok(());
+    }
+    let mut pairs: Vec<(usize, usize, bool)> = Vec::new();
+    reservation.reserve_vec(
+        &mut pairs,
+        pair_count,
+        "unable to reserve absorbed-DoF pair identities",
+    )?;
+    for later in 1..eligible {
+        for earlier in 0..later {
+            if pairs.len() == pair_count {
+                break;
+            }
+            push_reserved(
+                &mut pairs,
+                (
+                    eligible_indices[earlier],
+                    eligible_indices[later],
+                    earlier == 0 && later == 1,
+                ),
+                "absorbed-DoF pair identity capacity exhausted",
+            )?;
+        }
     }
     // Admit every pair's parent banks first, then count the independent pairs
     // concurrently. Component counts are exact, so the order is immaterial.
@@ -418,23 +428,26 @@ fn apply_mobility_policy<'a, R: TopologyDofReservation>(
                 later_codes,
                 earlier_source.n_levels(),
                 parents,
+                Ok(0),
             ),
             "categorical absorbed-DoF pair capacity exhausted",
         )?;
     }
-    use rayon::prelude::*;
-    let counts: Vec<Result<usize>> = jobs
-        .par_iter_mut()
-        .map(|(earlier, later, split, parents)| {
-            if parents.len() == 1 {
-                pair_components(earlier, later, *split, &mut parents[0])
-            } else {
-                lane_pair_components(earlier, later, *split, parents)
-            }
-        })
-        .collect();
-    for (&(_, later, first), count) in pairs.iter().zip(counts) {
-        let components = count?;
+    let count = |(earlier, later, split, parents, count): &mut PairJob<'_>| {
+        *count = if parents.len() == 1 {
+            pair_components(earlier, later, *split, &mut parents[0])
+        } else {
+            lane_pair_components(earlier, later, *split, parents)
+        };
+    };
+    if rayon::current_thread_index().is_some() {
+        use rayon::prelude::*;
+        jobs.par_iter_mut().with_max_len(1).for_each(count);
+    } else {
+        jobs.iter_mut().for_each(count);
+    }
+    for (&(_, later, first), job) in pairs.iter().zip(&mut jobs) {
+        let components = std::mem::replace(&mut job.4, Ok(0))?;
         redundant[later] = redundant[later].max(components);
         if first {
             exact[later] = true;
@@ -467,7 +480,11 @@ fn pair_components(
         v
     };
     let mut previous = (u32::MAX, u32::MAX);
-    for (&left, &right) in earlier.iter().zip(later) {
+    // Every union removes one root. Once a single root remains, no further
+    // edge can change the count; the remaining rows only need the same
+    // level-range check, which a branch-free scan performs.
+    let mut components = vertices;
+    for (row, (&left, &right)) in earlier.iter().zip(later).enumerate() {
         if (left, right) == previous {
             continue;
         }
@@ -487,6 +504,22 @@ fn pair_components(
             } else {
                 parent[a as usize] = b;
             }
+            components -= 1;
+            if components == 1 {
+                let right_levels = (vertices - split) as u64;
+                let in_range = earlier[row + 1..]
+                    .iter()
+                    .fold(true, |valid, &left| valid & ((left as usize) < split))
+                    && later[row + 1..].iter().fold(true, |valid, &right| {
+                        valid & (u64::from(right) < right_levels)
+                    });
+                if !in_range {
+                    return Err(invalid_data(
+                        "categorical absorbed-DoF pair code exceeds its level range",
+                    ));
+                }
+                return Ok(1);
+            }
         }
     }
     Ok(parent
@@ -495,6 +528,9 @@ fn pair_components(
         .filter(|&(vertex, &p)| vertex as u32 == p)
         .count())
 }
+
+/// One effect pair's codes, level split, lane forests and component count.
+type PairJob<'a> = (&'a [u32], &'a [u32], usize, Vec<Vec<u32>>, Result<usize>);
 
 /// Rows per union-find lane below which a pair stays serial.
 const PAIR_LANE_MIN_ROWS: usize = 1 << 16;
@@ -527,14 +563,16 @@ fn lane_pair_components(
         ));
     }
     let chunk = rows.div_ceil(lanes).max(1);
-    parents
-        .par_iter_mut()
-        .enumerate()
-        .try_for_each(|(lane, parent)| -> Result<()> {
-            let start = (lane * chunk).min(rows);
-            let end = (start + chunk).min(rows);
-            pair_components(&earlier[start..end], &later[start..end], split, parent).map(|_| ())
-        })?;
+    let lane = |(lane, parent): (usize, &mut Vec<u32>)| -> Result<()> {
+        let start = (lane * chunk).min(rows);
+        let end = (start + chunk).min(rows);
+        pair_components(&earlier[start..end], &later[start..end], split, parent).map(|_| ())
+    };
+    if rayon::current_thread_index().is_some() {
+        parents.par_iter_mut().enumerate().try_for_each(lane)?;
+    } else {
+        parents.iter_mut().enumerate().try_for_each(lane)?;
+    }
     merge_lane_forests(parents);
     let parent = &parents[0];
     Ok(parent
@@ -553,7 +591,12 @@ fn merge_lane_forests(parents: &mut [Vec<u32>]) {
     }
     let middle = parents.len() / 2;
     let (left, right) = parents.split_at_mut(middle);
-    rayon::join(|| merge_lane_forests(left), || merge_lane_forests(right));
+    if rayon::current_thread_index().is_some() {
+        rayon::join(|| merge_lane_forests(left), || merge_lane_forests(right));
+    } else {
+        merge_lane_forests(left);
+        merge_lane_forests(right);
+    }
     let (target, source) = (&mut left[0], &mut right[0]);
     for vertex in 0..source.len() as u32 {
         let root = find_root(source, vertex);
@@ -1105,6 +1148,99 @@ mod tests {
             .unwrap_err();
             assert_eq!(error.code, ErrorCode::InvalidArgument);
             assert!(error.message.contains("another topology"));
+        }
+    }
+
+    /// Independent component count: breadth-first search over the
+    /// bipartite adjacency of one effect pair.
+    fn reference_pair_components(
+        earlier: &[u32],
+        later: &[u32],
+        split: usize,
+        right: usize,
+    ) -> usize {
+        let vertices = split + right;
+        let mut adjacency = vec![Vec::new(); vertices];
+        for (&left, &right) in earlier.iter().zip(later) {
+            let (a, b) = (left as usize, split + right as usize);
+            adjacency[a].push(b);
+            adjacency[b].push(a);
+        }
+        let mut seen = vec![false; vertices];
+        let mut components = 0;
+        for start in 0..vertices {
+            if seen[start] {
+                continue;
+            }
+            components += 1;
+            seen[start] = true;
+            let mut queue = vec![start];
+            while let Some(vertex) = queue.pop() {
+                for &next in &adjacency[vertex] {
+                    if !seen[next] {
+                        seen[next] = true;
+                        queue.push(next);
+                    }
+                }
+            }
+        }
+        components
+    }
+
+    #[test]
+    fn lane_union_find_and_connected_early_exit_match_reference_components() {
+        let mut state = 0x9e37_79b9_7f4a_7c15_u64;
+        let mut next = move |bound: u32| {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            (state % u64::from(bound)) as u32
+        };
+        // Sparse (many components) through dense (connected early) designs.
+        for (left_levels, right_levels, rows) in [
+            (4000_u32, 300_u32, 3000_usize),
+            (2000, 50, 40_000),
+            (500, 20, 300_000),
+            (30, 4, 200_000),
+        ] {
+            let mut earlier: Vec<u32> = (0..rows).map(|_| next(left_levels)).collect();
+            let mut later: Vec<u32> = (0..rows).map(|_| next(right_levels)).collect();
+            // Every level occurs, as in a final sample.
+            for level in 0..left_levels {
+                earlier[level as usize % rows] = level;
+            }
+            for level in 0..right_levels {
+                later[(level as usize * 7 + 3) % rows] = level;
+            }
+            let split = left_levels as usize;
+            let vertices = split + right_levels as usize;
+            let expected =
+                reference_pair_components(&earlier, &later, split, right_levels as usize);
+            let mut parent = vec![0_u32; vertices];
+            assert_eq!(
+                pair_components(&earlier, &later, split, &mut parent).unwrap(),
+                expected
+            );
+            for lanes in [2, 3, 4, 7] {
+                let mut parents = vec![vec![0_u32; vertices]; lanes];
+                assert_eq!(
+                    lane_pair_components(&earlier, &later, split, &mut parents).unwrap(),
+                    expected,
+                    "lanes {lanes}"
+                );
+            }
+            // A code outside its range after the connecting row still fails.
+            if expected == 1 {
+                let mut bad = later.clone();
+                *bad.last_mut().unwrap() = right_levels;
+                let error = pair_components(&earlier, &bad, split, &mut parent).unwrap_err();
+                assert_eq!(error.code, ErrorCode::InvalidData);
+                let mut bad = earlier.clone();
+                *bad.last_mut().unwrap() = left_levels;
+                let mut parents = vec![vec![0_u32; vertices]; 4];
+                let error = lane_pair_components(&bad, &later, split, &mut parents).unwrap_err();
+                assert_eq!(error.code, ErrorCode::InvalidData);
+            }
         }
     }
 }

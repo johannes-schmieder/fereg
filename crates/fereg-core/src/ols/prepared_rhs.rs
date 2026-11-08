@@ -212,7 +212,11 @@ fn build_prepared_ols_rhs_with_reservation<R: RhsReservation>(
             )?;
         }
     }
-    if !all_finite && data.par_iter().any(|value| !value.is_finite()) {
+    if !all_finite
+        && super::prepared_fit::any_chunk(&data, 1 << 15, |block| {
+            block.iter().any(|value| !value.is_finite())
+        })
+    {
         return Err(invalid_data(
             "prepared OLS RHS construction produced a nonfinite value",
         ));
@@ -338,42 +342,56 @@ fn fill_bound_rhs_checked(
     // collection reuses that capacity and initializes disjoint slices in
     // parallel, without uninitialized memory in the safe core or a second
     // observation-scale allocation.
-    (0..elements)
-        .into_par_iter()
-        .map(|_| 0.0)
-        .collect_into_vec(data);
-    let finite = data
-        .par_chunks_mut(NUMERIC_TILE_ROWS * width)
-        .enumerate()
-        .map(|(tile, output)| {
-            let start = tile * NUMERIC_TILE_ROWS;
-            let rows = output.len() / width;
-            for (destination, &value) in output
-                .chunks_exact_mut(width)
-                .zip(&response[start..start + rows])
-            {
-                destination[0] = value;
-            }
-            for (column, source) in columns.iter().enumerate() {
-                if let Some(source) = source {
-                    for (destination, &value) in output
-                        .chunks_exact_mut(width)
-                        .zip(&source[start..start + rows])
-                    {
-                        destination[column + 1] = value;
-                    }
-                } else {
-                    for destination in output.chunks_exact_mut(width) {
-                        destination[column + 1] = 1.0;
-                    }
+    let parallel = rayon::current_thread_index().is_some();
+    if parallel {
+        (0..elements)
+            .into_par_iter()
+            .map(|_| 0.0)
+            .collect_into_vec(data);
+    } else {
+        data.clear();
+        data.resize(elements, 0.0);
+    }
+    let fill = |(tile, output): (usize, &mut [f64])| {
+        let start = tile * NUMERIC_TILE_ROWS;
+        let rows = output.len() / width;
+        for (destination, &value) in output
+            .chunks_exact_mut(width)
+            .zip(&response[start..start + rows])
+        {
+            destination[0] = value;
+        }
+        for (column, source) in columns.iter().enumerate() {
+            if let Some(source) = source {
+                for (destination, &value) in output
+                    .chunks_exact_mut(width)
+                    .zip(&source[start..start + rows])
+                {
+                    destination[column + 1] = value;
+                }
+            } else {
+                for destination in output.chunks_exact_mut(width) {
+                    destination[column + 1] = 1.0;
                 }
             }
-            const EXPONENT: u64 = 0x7ff0_0000_0000_0000;
-            output.iter().fold(0_u64, |bad, value| {
-                bad | u64::from(value.to_bits() & EXPONENT == EXPONENT)
-            }) == 0
-        })
-        .reduce(|| true, |left, right| left & right);
+        }
+        const EXPONENT: u64 = 0x7ff0_0000_0000_0000;
+        output.iter().fold(0_u64, |bad, value| {
+            bad | u64::from(value.to_bits() & EXPONENT == EXPONENT)
+        }) == 0
+    };
+    // Outside a worker pool the identical tiles fill serially.
+    let finite = if parallel {
+        data.par_chunks_mut(NUMERIC_TILE_ROWS * width)
+            .enumerate()
+            .map(fill)
+            .reduce(|| true, |left, right| left & right)
+    } else {
+        data.chunks_mut(NUMERIC_TILE_ROWS * width)
+            .enumerate()
+            .map(fill)
+            .fold(true, |left, right| left & right)
+    };
     Ok(finite)
 }
 
@@ -797,27 +815,38 @@ fn validate_categorical_sources(prepared: &PreparedOlsData) -> Result<()> {
         // the per-row lookups, with the level table hoisted out of the loop.
         use rayon::prelude::*;
         const CHUNK: usize = 1 << 16;
-        let (range, mismatch) = codes
-            .par_chunks(CHUNK)
-            .enumerate()
-            .map(|(chunk, codes)| {
-                let first = chunk * CHUNK;
-                let mut range = false;
-                let mut mismatch = false;
-                for (offset, &code) in codes.iter().enumerate() {
-                    match levels.get(code as usize) {
-                        None => range = true,
-                        Some(level) => {
-                            if let Some(raw) = raw {
-                                mismatch |= level.to_bits()
-                                    != canonical_factor_value(raw[first + offset]).to_bits();
-                            }
+        let scan = |(chunk, codes): (usize, &[u32])| {
+            let first = chunk * CHUNK;
+            let mut range = false;
+            let mut mismatch = false;
+            for (offset, &code) in codes.iter().enumerate() {
+                match levels.get(code as usize) {
+                    None => range = true,
+                    Some(level) => {
+                        if let Some(raw) = raw {
+                            mismatch |= level.to_bits()
+                                != canonical_factor_value(raw[first + offset]).to_bits();
                         }
                     }
                 }
-                (range, mismatch)
-            })
-            .reduce(|| (false, false), |a, b| (a.0 | b.0, a.1 | b.1));
+            }
+            (range, mismatch)
+        };
+        let combine = |a: (bool, bool), b: (bool, bool)| (a.0 | b.0, a.1 | b.1);
+        // Outside a worker pool the identical scan runs serially.
+        let (range, mismatch) = if rayon::current_thread_index().is_some() {
+            codes
+                .par_chunks(CHUNK)
+                .enumerate()
+                .map(scan)
+                .reduce(|| (false, false), combine)
+        } else {
+            codes
+                .chunks(CHUNK)
+                .enumerate()
+                .map(scan)
+                .fold((false, false), combine)
+        };
         if range {
             return Err(invalid_argument(
                 "prepared categorical code is out of range",

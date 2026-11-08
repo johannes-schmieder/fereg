@@ -29,7 +29,6 @@ use crate::ols::topology_dof::{
     compute_categorical_topology_absorbed_dof_with_slopes, CategoricalTopologyDofEffectSpec,
     CategoricalTopologyDofPolicy, CategoricalTopologyDofReport, CategoricalTopologyDofSlopeSpec,
 };
-use rayon::prelude::*;
 
 use crate::ols::{
     factorize_preparation_sources, prepare_categorical_numeric_sample,
@@ -375,7 +374,11 @@ impl PreparedOlsData {
                 }
             }
         }
-        if !all_finite && values.par_iter().any(|value| !value.is_finite()) {
+        if !all_finite
+            && super::prepared_fit::any_chunk(&values, 1 << 15, |block| {
+                block.iter().any(|value| !value.is_finite())
+            })
+        {
             return Err(invalid_data(
                 "categorical OLS RHS construction produced a nonfinite value",
             ));

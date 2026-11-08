@@ -720,6 +720,65 @@ const PARALLEL_REDUCTION_CHUNK_ROWS: usize = 16_384;
 const FUSED_MOMENT_MAX_COLUMNS: usize = 64;
 const FUSED_MOMENT_MAX_BLOCKS: usize = 64;
 
+/// Whether `predicate` holds for any fixed chunk of `values`: on the installed
+/// team inside a worker pool, serially (the same predicate) outside one, so a
+/// caller outside the estimation pool never injects into a global pool.
+pub(crate) fn any_chunk<T: Sync>(
+    values: &[T],
+    chunk: usize,
+    predicate: impl Fn(&[T]) -> bool + Sync + Send,
+) -> bool {
+    let chunk = chunk.max(1);
+    if rayon::current_thread_index().is_some() {
+        values.par_chunks(chunk).any(predicate)
+    } else {
+        values.chunks(chunk).any(predicate)
+    }
+}
+
+/// Chunk results held on the stack by one round of `ordered_chunk_reduce`.
+const ORDERED_ROUND_CHUNKS: usize = 64;
+
+/// Evaluate `leaf(chunk)` for every chunk in `0..chunks` and hand each result
+/// to `merge` in chunk order: the leaves, their order and the merge sequence
+/// of collecting every result into a vector first, without any heap
+/// allocation. Rounds of up to 64 chunks run on the installed team (serially,
+/// with the identical leaves, outside a worker pool); `merge` stops at its
+/// first error, which is the first error in chunk order.
+pub(crate) fn ordered_chunk_reduce<T, L, M>(chunks: usize, leaf: L, mut merge: M) -> Result<()>
+where
+    T: Send,
+    L: Fn(usize) -> T + Sync,
+    M: FnMut(T) -> Result<()>,
+{
+    let parallel = rayon::current_thread_index().is_some();
+    let mut start = 0;
+    while start < chunks {
+        let count = (chunks - start).min(ORDERED_ROUND_CHUNKS);
+        let mut slots: [Option<T>; ORDERED_ROUND_CHUNKS] = std::array::from_fn(|_| None);
+        if parallel && count > 1 {
+            slots[..count]
+                .par_iter_mut()
+                .with_max_len(1)
+                .enumerate()
+                .for_each(|(offset, slot)| *slot = Some(leaf(start + offset)));
+        } else {
+            for (offset, slot) in slots[..count].iter_mut().enumerate() {
+                *slot = Some(leaf(start + offset));
+            }
+        }
+        for slot in &mut slots[..count] {
+            merge(
+                slot.take().ok_or_else(|| {
+                    invalid_argument("ordered chunk reduction lost a leaf result")
+                })?,
+            )?;
+        }
+        start += count;
+    }
+    Ok(())
+}
+
 struct PhaseTrace {
     enabled: bool,
     started: Instant,
@@ -847,7 +906,7 @@ impl<'a> LinearSolveFrame<'a> {
     ) -> Result<Self> {
         // Branch-free block scans in parallel; the same predicates.
         const EXPONENT: u64 = 0x7ff0_0000_0000_0000;
-        if response.par_chunks(1 << 15).any(|block| {
+        if any_chunk(response, 1 << 15, |block| {
             block.iter().fold(0_u64, |bad, value| {
                 bad | u64::from(value.to_bits() & EXPONENT == EXPONENT)
             }) != 0
@@ -879,7 +938,7 @@ impl<'a> LinearSolveFrame<'a> {
             BorrowedMapWeights::Provided(values) => {
                 let divisor = bread_weight_scale.solver_weight_divisor;
                 if values.len() != response.len()
-                    || values.par_chunks(1 << 15).any(|block| {
+                    || any_chunk(values, 1 << 15, |block| {
                         !block.iter().fold(true, |valid, weight| {
                             valid
                                 & (weight.is_finite()
@@ -1691,33 +1750,41 @@ fn fit_projection_only_internal<P: PreparedOlsFitView + ?Sized, R: FitReservatio
         // infinite ratio fails exactly as the serial scan does.
         const ROWS: usize = 1 << 14;
         let response = frame.response();
-        let parts: Vec<(f64, bool)> = fitted
-            .par_chunks_mut(ROWS)
-            .enumerate()
-            .map(|(chunk, fitted)| {
-                let start = chunk * ROWS;
-                let mut maximum = 0.0_f64;
-                let mut finite = true;
-                for (offset, fitted) in fitted.iter_mut().enumerate() {
-                    let row = start + offset;
-                    *fitted = response[row] - residuals[row];
-                    let reconstructed = *fitted + residuals[row];
-                    let scale = response[row].abs().max(reconstructed.abs()).max(1.0);
-                    maximum = maximum.max((reconstructed - response[row]).abs() / scale);
-                    finite &= fitted.is_finite() && maximum.is_finite();
-                }
-                (maximum, finite)
-            })
-            .collect();
-        for (maximum, finite) in parts {
-            reconstruction_relative_infinity_norm =
-                reconstruction_relative_infinity_norm.max(maximum);
-            if !finite {
-                return Err(invalid_data(
-                    "prepared projection reconstruction is not finite",
-                ));
+        let reconstruct = |(chunk, fitted): (usize, &mut [f64])| {
+            let start = chunk * ROWS;
+            let mut maximum = 0.0_f64;
+            let mut finite = true;
+            for (offset, fitted) in fitted.iter_mut().enumerate() {
+                let row = start + offset;
+                *fitted = response[row] - residuals[row];
+                let reconstructed = *fitted + residuals[row];
+                let scale = response[row].abs().max(reconstructed.abs()).max(1.0);
+                maximum = maximum.max((reconstructed - response[row]).abs() / scale);
+                finite &= fitted.is_finite() && maximum.is_finite();
             }
+            (maximum, finite)
+        };
+        let combine =
+            |left: (f64, bool), right: (f64, bool)| (left.0.max(right.0), left.1 & right.1);
+        let (maximum, finite) = if rayon::current_thread_index().is_some() {
+            fitted
+                .par_chunks_mut(ROWS)
+                .enumerate()
+                .map(reconstruct)
+                .reduce(|| (0.0_f64, true), combine)
+        } else {
+            fitted
+                .chunks_mut(ROWS)
+                .enumerate()
+                .map(reconstruct)
+                .fold((0.0_f64, true), combine)
+        };
+        if !finite {
+            return Err(invalid_data(
+                "prepared projection reconstruction is not finite",
+            ));
         }
+        reconstruction_relative_infinity_norm = maximum;
     }
     for row in (0..fitted.len()).filter(|_| !chunked) {
         fitted[row] = frame.response()[row] - residuals[row];
@@ -3548,13 +3615,18 @@ fn finalize_reported_bread_and_intercept<P: PreparedOlsFitView + ?Sized, R: FitR
             // The outcome mean's own maximum scan (`weighted_mean_by`), which
             // for a finite response is also the residual bound's response term.
             let outcome_scale = bounded.map(|_| {
-                let maxima: Vec<Result<f64>> = (0..response.len().div_ceil(MEAN_ROWS))
-                    .into_par_iter()
-                    .map(|chunk| {
+                let mut maximum = MeanMaximum::default();
+                ordered_chunk_reduce(
+                    response.len().div_ceil(MEAN_ROWS),
+                    |chunk| {
                         mean_chunk_maximum(mean_chunk_rows(chunk, response.len()), &response_value)
-                    })
-                    .collect();
-                merge_mean_maxima(maxima)
+                    },
+                    |part| {
+                        maximum.push(part);
+                        Ok(())
+                    },
+                )
+                .and_then(|()| maximum.finish())
             });
             let bound = bounded
                 .map(|scales| {
@@ -3563,11 +3635,10 @@ fn finalize_reported_bread_and_intercept<P: PreparedOlsFitView + ?Sized, R: FitR
                     let mut scale = match outcome_scale {
                         Some(Ok(maximum)) => maximum,
                         _ => response
-                            .par_chunks(MEAN_ROWS)
-                            .map(|chunk| {
-                                chunk.iter().copied().map(f64::abs).fold(0.0_f64, f64::max)
-                            })
-                            .reduce(|| 0.0_f64, f64::max),
+                            .iter()
+                            .copied()
+                            .map(f64::abs)
+                            .fold(0.0_f64, f64::max),
                     };
                     for (coefficient, &column_scale) in qr.generated_coefficients.iter().zip(scales)
                     {
@@ -4351,11 +4422,16 @@ where
             "prepared OLS weighted mean requires a nonempty sample",
         ));
     }
-    let maxima: Vec<Result<f64>> = (0..nrows.div_ceil(MEAN_ROWS))
-        .into_par_iter()
-        .map(|chunk| mean_chunk_maximum(mean_chunk_rows(chunk, nrows), &value))
-        .collect();
-    let value_scale = merge_mean_maxima(maxima)?;
+    let mut maximum = MeanMaximum::default();
+    ordered_chunk_reduce(
+        nrows.div_ceil(MEAN_ROWS),
+        |chunk| mean_chunk_maximum(mean_chunk_rows(chunk, nrows), &value),
+        |part| {
+            maximum.push(part);
+            Ok(())
+        },
+    )?;
+    let value_scale = maximum.finish()?;
     weighted_mean_with_scale(nrows, weights, &value, value_scale, None)
 }
 
@@ -4381,21 +4457,26 @@ where
         };
         return (error(), error());
     }
-    let maxima: Vec<(Result<f64>, Result<f64>)> = (0..nrows.div_ceil(MEAN_ROWS))
-        .into_par_iter()
-        .map(|chunk| {
+    let (mut first_maximum, mut second_maximum) = (MeanMaximum::default(), MeanMaximum::default());
+    let reduced = ordered_chunk_reduce(
+        nrows.div_ceil(MEAN_ROWS),
+        |chunk| {
             let rows = mean_chunk_rows(chunk, nrows);
             (
                 mean_chunk_maximum(rows.clone(), &first),
                 mean_chunk_maximum(rows, &second),
             )
-        })
-        .collect();
-    let (first_maxima, second_maxima): (Vec<_>, Vec<_>) = maxima.into_iter().unzip();
-    let scales = (
-        merge_mean_maxima(first_maxima),
-        merge_mean_maxima(second_maxima),
+        },
+        |(first_part, second_part)| {
+            first_maximum.push(first_part);
+            second_maximum.push(second_part);
+            Ok(())
+        },
     );
+    if let Err(error) = reduced {
+        return (Err(error.clone()), Err(error));
+    }
+    let scales = (first_maximum.finish(), second_maximum.finish());
     match scales {
         (Ok(first_scale), Ok(second_scale)) => weighted_mean_pair_with_scales(
             nrows,
@@ -4435,12 +4516,30 @@ where
     Ok(scale)
 }
 
-fn merge_mean_maxima(maxima: Vec<Result<f64>>) -> Result<f64> {
-    let mut value_scale = 0.0_f64;
-    for maximum in maxima {
-        value_scale = value_scale.max(maximum?);
+/// The ordered maximum merge of `weighted_mean_by`: the largest chunk
+/// maximum, or the first chunk error in chunk order.
+#[derive(Default)]
+struct MeanMaximum {
+    value_scale: f64,
+    error: Option<FeregError>,
+}
+
+impl MeanMaximum {
+    fn push(&mut self, part: Result<f64>) {
+        if self.error.is_none() {
+            match part {
+                Ok(maximum) => self.value_scale = self.value_scale.max(maximum),
+                Err(error) => self.error = Some(error),
+            }
+        }
     }
-    Ok(value_scale)
+
+    fn finish(self) -> Result<f64> {
+        match self.error {
+            Some(error) => Err(error),
+            None => Ok(self.value_scale),
+        }
+    }
 }
 
 fn weighted_mean_with_bound<F>(
@@ -4485,17 +4584,22 @@ where
     }
     // Unit mass sums exactly to N through 2^53.
     let unit = weights.values.is_none() && (nrows as u128) <= (1_u128 << 53);
-    let parts: Vec<Result<MeanPartial>> = (0..nrows.div_ceil(MEAN_ROWS))
-        .into_par_iter()
-        .map(|chunk| {
+    let mut merged = MeanMerge::default();
+    ordered_chunk_reduce(
+        nrows.div_ceil(MEAN_ROWS),
+        |chunk| {
             let rows = mean_chunk_rows(chunk, nrows);
             unchecked_mean_chunk(rows.clone(), unit, weights, &value, value_scale).map_or_else(
                 || checked_mean_chunk(rows, unit, weights, &value, value_scale),
                 Ok,
             )
-        })
-        .collect();
-    merge_mean_partials(parts, nrows, unit, value_scale, underflow)
+        },
+        |part| {
+            merged.push(part);
+            Ok(())
+        },
+    )?;
+    merged.finish(nrows, unit, value_scale, underflow)
 }
 
 /// Two `weighted_mean_with_scale` results from one traversal of the rows:
@@ -4521,9 +4625,10 @@ where
         );
     }
     let unit = weights.values.is_none() && (nrows as u128) <= (1_u128 << 53);
-    let parts: Vec<(Result<MeanPartial>, Result<MeanPartial>)> = (0..nrows.div_ceil(MEAN_ROWS))
-        .into_par_iter()
-        .map(|chunk| {
+    let (mut first_merged, mut second_merged) = (MeanMerge::default(), MeanMerge::default());
+    let reduced = ordered_chunk_reduce(
+        nrows.div_ceil(MEAN_ROWS),
+        |chunk| {
             let rows = mean_chunk_rows(chunk, nrows);
             let (first_part, second_part) = unchecked_mean_chunk_pair(
                 rows.clone(),
@@ -4542,12 +4647,19 @@ where
                     Ok,
                 ),
             )
-        })
-        .collect();
-    let (first_parts, second_parts): (Vec<_>, Vec<_>) = parts.into_iter().unzip();
+        },
+        |(first_part, second_part)| {
+            first_merged.push(first_part);
+            second_merged.push(second_part);
+            Ok(())
+        },
+    );
+    if let Err(error) = reduced {
+        return (Err(error.clone()), Err(error));
+    }
     (
-        merge_mean_partials(first_parts, nrows, unit, first_scale, underflow),
-        merge_mean_partials(second_parts, nrows, unit, second_scale, None),
+        first_merged.finish(nrows, unit, first_scale, underflow),
+        second_merged.finish(nrows, unit, second_scale, None),
     )
 }
 
@@ -4714,24 +4826,65 @@ where
     ))
 }
 
-fn merge_mean_partials(
-    parts: Vec<Result<MeanPartial>>,
+/// The ordered compensated merge of mean chunk partials; the first error in
+/// chunk order (a chunk's own error or a nonfinite merge) is kept.
+#[derive(Default)]
+struct MeanMerge {
+    numerator: f64,
+    numerator_correction: f64,
+    denominator: f64,
+    denominator_correction: f64,
+    flag: bool,
+    error: Option<FeregError>,
+}
+
+impl MeanMerge {
+    fn push(&mut self, part: Result<MeanPartial>) {
+        if self.error.is_some() {
+            return;
+        }
+        let merged = part.and_then(|(n, nc, d, dc, f)| {
+            compensated_add(n, &mut self.numerator, &mut self.numerator_correction)?;
+            compensated_add(nc, &mut self.numerator, &mut self.numerator_correction)?;
+            compensated_add(d, &mut self.denominator, &mut self.denominator_correction)?;
+            compensated_add(dc, &mut self.denominator, &mut self.denominator_correction)?;
+            self.flag |= f;
+            Ok(())
+        });
+        if let Err(error) = merged {
+            self.error = Some(error);
+        }
+    }
+
+    fn finish(
+        self,
+        nrows: usize,
+        unit: bool,
+        value_scale: f64,
+        underflow: Option<&mut bool>,
+    ) -> Result<f64> {
+        if let Some(error) = self.error {
+            return Err(error);
+        }
+        merge_mean_totals(self, nrows, unit, value_scale, underflow)
+    }
+}
+
+fn merge_mean_totals(
+    merged: MeanMerge,
     nrows: usize,
     unit: bool,
     value_scale: f64,
     underflow: Option<&mut bool>,
 ) -> Result<f64> {
-    let (mut numerator, mut numerator_correction) = (0.0_f64, 0.0_f64);
-    let (mut denominator, mut denominator_correction) = (0.0_f64, 0.0_f64);
-    let mut flag = false;
-    for part in parts {
-        let (n, nc, d, dc, f) = part?;
-        compensated_add(n, &mut numerator, &mut numerator_correction)?;
-        compensated_add(nc, &mut numerator, &mut numerator_correction)?;
-        compensated_add(d, &mut denominator, &mut denominator_correction)?;
-        compensated_add(dc, &mut denominator, &mut denominator_correction)?;
-        flag |= f;
-    }
+    let MeanMerge {
+        numerator,
+        numerator_correction,
+        denominator,
+        denominator_correction,
+        flag,
+        ..
+    } = merged;
     let denominator = if unit {
         nrows as f64
     } else {
@@ -4831,73 +4984,123 @@ fn fast_weighted_column_norms_maxima(
     if width == 0 {
         return Ok(());
     }
-    const ROWS: usize = 8192;
-    let parts: Vec<(Vec<f64>, Vec<f64>, bool)> = matrix
-        .as_slice()
-        .par_chunks(ROWS * ncols)
-        .enumerate()
-        .map(|(chunk, data)| {
-            let mut sq = vec![0.0_f64; width];
-            let mut big = vec![0.0_f64; width];
-            let mut valid = true;
-            let fixed = match width {
-                1 => Some(column_norm_chunk::<1> as ColumnNormChunk),
-                2 => Some(column_norm_chunk::<2> as ColumnNormChunk),
-                3 => Some(column_norm_chunk::<3> as ColumnNormChunk),
-                4 => Some(column_norm_chunk::<4> as ColumnNormChunk),
-                5 => Some(column_norm_chunk::<5> as ColumnNormChunk),
-                6 => Some(column_norm_chunk::<6> as ColumnNormChunk),
-                7 => Some(column_norm_chunk::<7> as ColumnNormChunk),
-                8 => Some(column_norm_chunk::<8> as ColumnNormChunk),
-                _ => None,
-            };
-            if let Some(fixed) = fixed {
-                valid = fixed(data, ncols, first, chunk * ROWS, weights, &mut sq, &mut big);
-                return (sq, big, valid);
-            }
-            for (offset, row) in data.chunks_exact(ncols).enumerate() {
-                let w = weights
-                    .values
-                    .map_or(1.0, |v| v[chunk * ROWS + offset] / weights.raw_scale);
-                valid &= w.is_finite() && w > 0.0;
-                for ((s, b), &x) in sq.iter_mut().zip(big.iter_mut()).zip(&row[first..]) {
-                    *s += w * x * x;
-                    *b = b.max(x.abs());
+    if maxima.as_ref().is_some_and(|maxima| maxima.len() != width) {
+        return Err(invalid_argument(
+            "prepared OLS fast column maxima have the wrong width",
+        ));
+    }
+    let mut maxima = maxima;
+    let rows = matrix.nrows();
+    // Each column's sum and maximum depend only on that column and the
+    // weights, so column groups reduce independently with the identical
+    // per-column arithmetic: plain sums over fixed 8192-row chunks merged in
+    // chunk order, allocation-free on the stack.
+    for group_start in (0..width).step_by(NORM_GROUP_COLUMNS) {
+        let group = (width - group_start).min(NORM_GROUP_COLUMNS);
+        let column = first + group_start;
+        let mut sq = [0.0_f64; NORM_GROUP_COLUMNS];
+        let mut big = [0.0_f64; NORM_GROUP_COLUMNS];
+        let mut valid = true;
+        ordered_chunk_reduce(
+            rows.div_ceil(NORM_CHUNK_ROWS),
+            |chunk| {
+                let end = ((chunk + 1) * NORM_CHUNK_ROWS).min(rows);
+                let data = &matrix.as_slice()[chunk * NORM_CHUNK_ROWS * ncols..end * ncols];
+                column_norm_group_chunk(
+                    data,
+                    ncols,
+                    column,
+                    group,
+                    chunk * NORM_CHUNK_ROWS,
+                    weights,
+                )
+            },
+            |(s, b, v)| {
+                valid &= v;
+                for j in 0..group {
+                    sq[j] += s[j];
+                    big[j] = big[j].max(b[j]);
                 }
+                Ok(())
+            },
+        )?;
+        if let Some(maxima) = maxima.as_deref_mut() {
+            for (maximum, &b) in maxima[group_start..group_start + group]
+                .iter_mut()
+                .zip(&big)
+            {
+                *maximum = maximum.max(b);
             }
-            (sq, big, valid)
-        })
-        .collect();
-    let mut sq = vec![0.0_f64; width];
-    let mut big = vec![0.0_f64; width];
-    let mut valid = true;
-    for (s, b, v) in parts {
-        valid &= v;
-        for j in 0..width {
-            sq[j] += s[j];
-            big[j] = big[j].max(b[j]);
         }
-    }
-    if let Some(maxima) = maxima {
-        if maxima.len() != width {
-            return Err(invalid_argument(
-                "prepared OLS fast column maxima have the wrong width",
-            ));
+        for j in 0..group {
+            output[group_start + j] = if valid && big[j] == 0.0 && sq[j] == 0.0 {
+                0.0
+            } else if valid && sq[j].is_finite() && (1e-140..=1e140).contains(&big[j]) {
+                sq[j].sqrt()
+            } else {
+                weighted_matrix_column_norm(matrix, column + j, weights)?
+            };
         }
-        for (maximum, &b) in maxima.iter_mut().zip(&big) {
-            *maximum = maximum.max(b);
-        }
-    }
-    for j in 0..width {
-        output[j] = if valid && big[j] == 0.0 && sq[j] == 0.0 {
-            0.0
-        } else if valid && sq[j].is_finite() && (1e-140..=1e140).contains(&big[j]) {
-            sq[j].sqrt()
-        } else {
-            weighted_matrix_column_norm(matrix, first + j, weights)?
-        };
     }
     Ok(())
+}
+
+const NORM_CHUNK_ROWS: usize = 8192;
+const NORM_GROUP_COLUMNS: usize = 16;
+
+type NormPartial = ([f64; NORM_GROUP_COLUMNS], [f64; NORM_GROUP_COLUMNS], bool);
+
+/// One chunk's weighted square sums and maxima of `group` columns starting at
+/// `column`, and the chunk's weight validity.
+fn column_norm_group_chunk(
+    data: &[f64],
+    ncols: usize,
+    column: usize,
+    group: usize,
+    first_row: usize,
+    weights: NormalizedWeights<'_>,
+) -> NormPartial {
+    let mut sq = [0.0_f64; NORM_GROUP_COLUMNS];
+    let mut big = [0.0_f64; NORM_GROUP_COLUMNS];
+    let fixed = match group {
+        1 => Some(column_norm_chunk::<1> as ColumnNormChunk),
+        2 => Some(column_norm_chunk::<2> as ColumnNormChunk),
+        3 => Some(column_norm_chunk::<3> as ColumnNormChunk),
+        4 => Some(column_norm_chunk::<4> as ColumnNormChunk),
+        5 => Some(column_norm_chunk::<5> as ColumnNormChunk),
+        6 => Some(column_norm_chunk::<6> as ColumnNormChunk),
+        7 => Some(column_norm_chunk::<7> as ColumnNormChunk),
+        8 => Some(column_norm_chunk::<8> as ColumnNormChunk),
+        _ => None,
+    };
+    if let Some(fixed) = fixed {
+        let valid = fixed(
+            data,
+            ncols,
+            column,
+            first_row,
+            weights,
+            &mut sq[..group],
+            &mut big[..group],
+        );
+        return (sq, big, valid);
+    }
+    let mut valid = true;
+    for (offset, row) in data.chunks_exact(ncols).enumerate() {
+        let w = weights
+            .values
+            .map_or(1.0, |v| v[first_row + offset] / weights.raw_scale);
+        valid &= w.is_finite() && w > 0.0;
+        for ((s, b), &x) in sq[..group]
+            .iter_mut()
+            .zip(big[..group].iter_mut())
+            .zip(&row[column..column + group])
+        {
+            *s += w * x * x;
+            *b = b.max(x.abs());
+        }
+    }
+    (sq, big, valid)
 }
 
 type ColumnNormChunk =
@@ -5167,10 +5370,12 @@ fn fast_weighted_slice_norm(values: &[f64], weights: NormalizedWeights<'_>) -> R
             "prepared OLS weighted norm is not aligned with its weights",
         ));
     }
-    let parts: Vec<(f64, f64, bool)> = values
-        .par_chunks(ROWS)
-        .enumerate()
-        .map(|(chunk, values)| {
+    let (mut sum, mut big, mut valid) = (0.0_f64, 0.0_f64, true);
+    ordered_chunk_reduce(
+        values.len().div_ceil(ROWS),
+        |chunk| {
+            let start = chunk * ROWS;
+            let values = &values[start..(start + ROWS).min(values.len())];
             let (mut sum, mut big, mut valid) = (0.0_f64, 0.0_f64, true);
             match weights.values {
                 None => {
@@ -5180,7 +5385,7 @@ fn fast_weighted_slice_norm(values: &[f64], weights: NormalizedWeights<'_>) -> R
                     }
                 }
                 Some(raw) => {
-                    let raw = &raw[chunk * ROWS..chunk * ROWS + values.len()];
+                    let raw = &raw[start..start + values.len()];
                     for (&x, &weight) in values.iter().zip(raw) {
                         let w = weight / weights.raw_scale;
                         valid &= w.is_finite() && w > 0.0;
@@ -5190,14 +5395,14 @@ fn fast_weighted_slice_norm(values: &[f64], weights: NormalizedWeights<'_>) -> R
                 }
             }
             (sum, big, valid)
-        })
-        .collect();
-    let (mut sum, mut big, mut valid) = (0.0_f64, 0.0_f64, true);
-    for (part_sum, part_big, part_valid) in parts {
-        valid &= part_valid;
-        sum += part_sum;
-        big = big.max(part_big);
-    }
+        },
+        |(part_sum, part_big, part_valid)| {
+            valid &= part_valid;
+            sum += part_sum;
+            big = big.max(part_big);
+            Ok(())
+        },
+    )?;
     if valid && big == 0.0 && sum == 0.0 {
         return Ok(0.0);
     }
@@ -5416,9 +5621,10 @@ fn score_denominator(
 /// correction merged in chunk order with the same compensation.
 fn chunked_compensated_sum(rows: usize, term: impl Fn(usize) -> Result<f64> + Sync) -> Result<f64> {
     const ROWS: usize = 1 << 14;
-    let parts: Vec<Result<(f64, f64)>> = (0..rows.div_ceil(ROWS))
-        .into_par_iter()
-        .map(|chunk| {
+    let (mut sum, mut correction) = (0.0_f64, 0.0_f64);
+    ordered_chunk_reduce(
+        rows.div_ceil(ROWS),
+        |chunk| -> Result<(f64, f64)> {
             // Unchecked first; a nonfinite term or sum replays the checked loop.
             let range = chunk * ROWS..((chunk + 1) * ROWS).min(rows);
             let (mut sum, mut correction) = (0.0_f64, 0.0_f64);
@@ -5439,14 +5645,13 @@ fn chunked_compensated_sum(rows: usize, term: impl Fn(usize) -> Result<f64> + Sy
                 compensated_add(term(row)?, &mut sum, &mut correction)?;
             }
             Ok((sum, correction))
-        })
-        .collect();
-    let (mut sum, mut correction) = (0.0_f64, 0.0_f64);
-    for part in parts {
-        let (s, c) = part?;
-        compensated_add(s, &mut sum, &mut correction)?;
-        compensated_add(c, &mut sum, &mut correction)?;
-    }
+        },
+        |part| {
+            let (s, c) = part?;
+            compensated_add(s, &mut sum, &mut correction)?;
+            compensated_add(c, &mut sum, &mut correction)
+        },
+    )?;
     Ok(sum + correction)
 }
 

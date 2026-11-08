@@ -1245,28 +1245,30 @@ fn weighted_response_norm(response: &[f64], weights: NormalizedWeights<'_>) -> R
     // Plain sums over fixed row chunks; extreme magnitudes, invalid weights or
     // non-finite values fall through to the scaled scalar norm and its errors.
     const ROWS: usize = 1 << 14;
-    let parts: Vec<(f64, f64, bool)> = response
-        .par_chunks(ROWS)
-        .enumerate()
-        .map(|(chunk, values)| {
+    let (mut sum, mut big, mut valid) = (0.0_f64, 0.0_f64, true);
+    super::ordered_chunk_reduce(
+        response.len().div_ceil(ROWS),
+        |chunk| {
+            let start = chunk * ROWS;
+            let values = &response[start..(start + ROWS).min(response.len())];
             let (mut sum, mut big, mut valid) = (0.0_f64, 0.0_f64, true);
             for (offset, &value) in values.iter().enumerate() {
                 let w = weights
                     .values
-                    .map_or(1.0, |v| v[chunk * ROWS + offset] / weights.raw_scale);
+                    .map_or(1.0, |v| v[start + offset] / weights.raw_scale);
                 valid &= w.is_finite() && w > 0.0;
                 sum += w * value * value;
                 big = big.max(value.abs());
             }
             (sum, big, valid)
-        })
-        .collect();
-    let (mut sum, mut big, mut valid) = (0.0_f64, 0.0_f64, true);
-    for (s, b, v) in parts {
-        sum += s;
-        big = big.max(b);
-        valid &= v;
-    }
+        },
+        |(s, b, v)| {
+            sum += s;
+            big = big.max(b);
+            valid &= v;
+            Ok(())
+        },
+    )?;
     if valid && sum.is_finite() {
         if big == 0.0 && sum == 0.0 {
             return Ok(0.0);

@@ -1849,12 +1849,11 @@ fn fill_retained_dense_standardized_rows(
     weights: BorrowedMapWeights<'_>,
     divisor: f64,
     scales: Option<&[f64]>,
-    _layout: FiniteWlsMomentLayout,
+    layout: FiniteWlsMomentLayout,
     rhs: &mut [f64],
     gram: &mut [f64],
 ) -> Result<()> {
     let dimension = rhs.len();
-    let rows = response.len();
     macro_rules! narrow {
         ($d:literal) => {
             return fill_narrow_dense_moments::<$d>(
@@ -1880,50 +1879,37 @@ fn fill_retained_dense_standardized_rows(
         8 => narrow!(8),
         _ => {}
     }
+    // Wider designs keep the established allocation-free column partitions:
+    // each partition's Gram rows accumulate privately over all rows in order.
     let hardware = crate::kernels::installed().map(|kernels| kernels.upper_rank_one);
-    let chunks = rows.div_ceil(MOMENT_ROWS).max(1);
-    let parts: Vec<Result<(Vec<f64>, Vec<f64>)>> = (0..chunks)
-        .into_par_iter()
-        .map(|chunk| {
+    crate::parallel::stage_try_for_each(
+        rhs.par_chunks_mut(layout.columns_per_partition)
+            .zip(gram.par_chunks_mut(layout.columns_per_partition * dimension))
+            .enumerate(),
+        moment_lane_work(response.len(), dimension),
+        |(partition, (rhs_rows, gram_rows))| -> Result<()> {
             record_retained_moment_worker();
-            let mut local_rhs = vec![0.0_f64; dimension];
-            let mut local_gram = vec![0.0_f64; dimension * dimension];
-            let mut standardized = [0.0_f64; FIXED_BLOCK_MOMENT_MAX_COLUMNS];
-            for row in chunk * MOMENT_ROWS..((chunk + 1) * MOMENT_ROWS).min(rows) {
-                let source = values.row(row);
-                let weight = normalized_weight(weights, divisor, row)?;
-                for column in 0..dimension {
-                    let source_column =
-                        selected_columns.map_or(column, |selected| selected[column]);
-                    standardized[column] = scaled_column(source[source_column], scales, column)?;
-                }
-                crate::kernels::upper_rank_one(
-                    hardware,
-                    weight,
-                    &standardized[..dimension],
-                    response[row],
-                    0,
-                    &mut local_rhs,
-                    &mut local_gram,
-                );
-            }
-            Ok((local_rhs, local_gram))
-        })
-        .collect();
-    rhs.fill(0.0);
-    gram.fill(0.0);
-    for part in parts {
-        let (local_rhs, local_gram) = part?;
-        for (total, value) in rhs.iter_mut().zip(&local_rhs) {
-            *total += value;
-        }
-        for left in 0..dimension {
-            for right in left..dimension {
-                gram[left * dimension + right] += local_gram[left * dimension + right];
-            }
-        }
-    }
-    Ok(())
+            let left_start = partition * layout.columns_per_partition;
+            with_private_retained_moments(rhs_rows, gram_rows, |rhs, gram, standardized| {
+                accumulate_standardized_rows(
+                    DenseRowsPass {
+                        values,
+                        selected_columns,
+                        response,
+                        weights,
+                        divisor,
+                        scales,
+                        hardware,
+                        dimension,
+                    },
+                    left_start,
+                    rhs,
+                    gram,
+                    standardized,
+                )
+            })
+        },
+    )
 }
 
 /// Narrow dense moments with the width fixed at compile time: reciprocal
@@ -1945,10 +1931,12 @@ fn fill_narrow_dense_moments<const D: usize>(
     let source: [usize; D] = std::array::from_fn(|c| selected_columns.map_or(c, |s| s[c]));
     let inverse: [f64; D] = std::array::from_fn(|c| scales.map_or(1.0, |s| 1.0 / s[c]));
     let chunks = rows.div_ceil(MOMENT_ROWS).max(1);
-    type Partial<const D: usize> = ([f64; D], [[f64; D]; D]);
-    let parts: Vec<Result<Partial<D>>> = (0..chunks)
-        .into_par_iter()
-        .map(|chunk| {
+    rhs.fill(0.0);
+    gram.fill(0.0);
+    // Chunk partials merge in chunk order without a collected vector.
+    super::prepared_fit::ordered_chunk_reduce(
+        chunks,
+        |chunk| -> Result<([f64; D], [[f64; D]; D])> {
             record_retained_moment_worker();
             let mut local_rhs = [0.0_f64; D];
             let mut local_gram = [[0.0_f64; D]; D];
@@ -1986,20 +1974,18 @@ fn fill_narrow_dense_moments<const D: usize>(
                 return Err(invalid_data("finite-WLS standardized column is not finite"));
             }
             Ok((local_rhs, local_gram))
-        })
-        .collect();
-    rhs.fill(0.0);
-    gram.fill(0.0);
-    for part in parts {
-        let (local_rhs, local_gram) = part?;
-        for left in 0..D {
-            rhs[left] += local_rhs[left];
-            for right in left..D {
-                gram[left * D + right] += local_gram[left][right];
+        },
+        |part| {
+            let (local_rhs, local_gram) = part?;
+            for left in 0..D {
+                rhs[left] += local_rhs[left];
+                for right in left..D {
+                    gram[left * D + right] += local_gram[left][right];
+                }
             }
-        }
-    }
-    Ok(())
+            Ok(())
+        },
+    )
 }
 
 /// One partition's dense rank-1 pass: rows in order, each standardized once
@@ -2348,11 +2334,13 @@ fn record_retained_moment_worker() {
 fn response_finite(response: FiniteResponse<'_>) -> bool {
     const EXPONENT: u64 = 0x7ff0_0000_0000_0000;
     match response {
-        FiniteResponse::Slice(values) => !values.par_chunks(1 << 15).any(|block| {
-            block.iter().fold(0_u64, |bad, v| {
-                bad | u64::from(v.to_bits() & EXPONENT == EXPONENT)
-            }) != 0
-        }),
+        FiniteResponse::Slice(values) => {
+            !super::prepared_fit::any_chunk(values, 1 << 15, |block| {
+                block.iter().fold(0_u64, |bad, v| {
+                    bad | u64::from(v.to_bits() & EXPONENT == EXPONENT)
+                }) != 0
+            })
+        }
         FiniteResponse::Column(values, column) => {
             let stride = values.ncols();
             if column >= stride || values.as_slice().len() != values.nrows() * stride {
@@ -2360,7 +2348,7 @@ fn response_finite(response: FiniteResponse<'_>) -> bool {
             }
             // The same order-independent predicate over fixed row blocks.
             const ROWS: usize = 1 << 13;
-            !values.as_slice().par_chunks(ROWS * stride).any(|block| {
+            !super::prepared_fit::any_chunk(values.as_slice(), ROWS * stride, |block| {
                 block
                     .chunks_exact(stride)
                     .any(|row| !row[column].is_finite())
@@ -2404,7 +2392,7 @@ fn validate_retained_source(
             BorrowedMapWeights::Unit => divisor != 1.0,
             BorrowedMapWeights::Provided(values) => {
                 values.len() != rows
-                    || values.par_chunks(1 << 15).any(|block| {
+                    || super::prepared_fit::any_chunk(values, 1 << 15, |block| {
                         !block.iter().fold(true, |valid, value| {
                             valid & (value.is_finite() & (*value > 0.0) & (*value / divisor != 0.0))
                         })
