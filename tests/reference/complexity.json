@@ -1,124 +1,34 @@
 {
   "growth": [
     {
-      "after": 1575,
-      "before": 1483,
-      "metric": "fereg-core/dispatch_candidates",
-      "reason": "Exact global elimination for Auto OLS/PPML (2-5 categorical effects), PPML elimination pre-solve, fused certificates and allocation-free fixed-tree parallel reductions."
-    },
-    {
-      "after": 122181,
-      "before": 116120,
+      "after": 122211,
+      "before": 122181,
       "metric": "fereg-core/production_lines",
-      "reason": "Exact global elimination for Auto OLS/PPML (2-5 categorical effects), PPML elimination pre-solve, fused certificates and allocation-free fixed-tree parallel reductions."
+      "reason": "Exact parallel PPML preflight FE bounds (tuple-boundary count, extrema, word-partitioned integer bitmap) with atomic checkpoints inside the parallel leaves."
     },
     {
-      "after": 17279,
-      "before": 17261,
+      "after": 17281,
+      "before": 17279,
       "metric": "fereg-plugin/production_lines",
-      "reason": "Exact cached-column count for the OLS moment skip at load."
+      "reason": "PPML sample stores follow the OLS contract: only dropped candidates are written into the ado-initialized candidate marker."
     },
     {
-      "after": 9203,
-      "before": 9113,
-      "metric": "file/crates/fereg-core/src/fe/borrowed_map.rs",
-      "reason": "Exact global elimination of the largest categorical intercept effect (block-Schur PCG over the remaining effects) as the first Auto route for OLS and PPML with two to five effects; every decline continues on the established routes; categorical owner for 4-5 PPML effects and the elimination norm handoff."
-    },
-    {
-      "after": 2281,
-      "before": 2158,
-      "metric": "file/crates/fereg-core/src/ols/finite_wls_kernel.rs",
-      "reason": "Fused parallel finite Gram over fixed row chunks with narrow fixed-width moments."
-    },
-    {
-      "after": 5856,
-      "before": 5593,
-      "metric": "file/crates/fereg-core/src/ols/linear_session.rs",
-      "reason": "Allocation-free fixed-tree reductions and wave-parallel response expand/compact in the PPML linear session; elimination-aware strict solves and frozen dense residuals."
-    },
-    {
-      "after": 4726,
-      "before": 4386,
-      "metric": "file/crates/fereg-core/src/ols/prepared_fit.rs",
-      "reason": "Fewer and cheaper OLS fit-tail passes: fixed-rank register score Gram, fused outcome and residual means, packed score means, ordered allocation-free chunk reductions."
-    },
-    {
-      "after": 1647,
-      "before": 1638,
+      "after": 1677,
+      "before": 1647,
       "metric": "file/crates/fereg-core/src/ppml/prepared_estimator.rs",
-      "reason": "Publication phase record (trace only) and released inputs before certification."
+      "reason": "Exact parallel PPML preflight FE bounds (tuple-boundary count, extrema, word-partitioned integer bitmap) with atomic checkpoints inside the parallel leaves."
     },
     {
-      "after": 3895,
-      "before": 3576,
-      "metric": "file/crates/fereg-core/src/ppml/prepared_irls.rs",
-      "reason": "PPML elimination pre-solve credit and iteration budget; fused score certificate (joint scale/moment leaves, level-partition FE scatter); fallible parallel seeds and Hessian checks."
+      "after": 2778,
+      "before": 2776,
+      "metric": "file/crates/fereg-plugin/src/ppml_estimate.rs",
+      "reason": "PPML sample stores follow the OLS contract: only dropped candidates are written into the ado-initialized candidate marker."
     },
     {
-      "after": 3875,
-      "before": 3499,
-      "metric": "file/crates/fereg-core/src/ppml/prepared_separation.rs",
-      "reason": "Fused one-pass IR fixed-point certificate, parallel exact-FE replay and allocation-free separation digests."
-    },
-    {
-      "after": 3488,
-      "before": 3480,
-      "metric": "file/crates/fereg-core/src/ppml/result.rs",
-      "reason": "Allocation-free parallel output-product reconstruction certificate and pool-aware final-sample checks."
-    },
-    {
-      "after": 3645,
-      "before": 3627,
-      "metric": "file/crates/fereg-plugin/src/estimate.rs",
-      "reason": "Exact cached-column count for the moment skip at load."
-    },
-    {
-      "after": 745,
-      "before": 744,
-      "metric": "function/crates/fereg-core/src/ols/linear_session.rs/solve_full_retained_rank#1",
-      "reason": "Allocation-free fixed-tree reductions and wave-parallel response expand/compact in the PPML linear session; elimination-aware strict solves and frozen dense residuals."
-    },
-    {
-      "after": 287,
-      "before": 245,
-      "metric": "function/crates/fereg-core/src/ols/linear_session.rs/stream_frozen_solve#1",
-      "reason": "Allocation-free fixed-tree reductions and wave-parallel response expand/compact in the PPML linear session; elimination-aware strict solves and frozen dense residuals."
-    },
-    {
-      "after": 207,
-      "before": 202,
-      "metric": "function/crates/fereg-core/src/ols/prepared_robust.rs/compose_view_internal#1",
-      "reason": "Planned row fill for the dense robust covariance."
-    },
-    {
-      "after": 489,
-      "before": 480,
-      "metric": "function/crates/fereg-core/src/ppml/prepared_estimator.rs/fit_prepared_ppml_interruptible#1",
-      "reason": "Publication phase record (trace only) and released inputs before certification."
-    },
-    {
-      "after": 290,
-      "before": 231,
-      "metric": "function/crates/fereg-core/src/ppml/prepared_irls.rs/prepared_score_certificate#1",
-      "reason": "PPML elimination pre-solve credit and iteration budget; fused score certificate (joint scale/moment leaves, level-partition FE scatter); fallible parallel seeds and Hessian checks."
-    },
-    {
-      "after": 1072,
-      "before": 1033,
-      "metric": "function/crates/fereg-core/src/ppml/prepared_irls.rs/run_prepared_ppml_irls#1",
-      "reason": "PPML elimination pre-solve credit and iteration budget; fused score certificate (joint scale/moment leaves, level-partition FE scatter); fallible parallel seeds and Hessian checks."
-    },
-    {
-      "after": 234,
-      "before": 220,
-      "metric": "function/crates/fereg-core/src/ppml/prepared_separation_graph.rs/direction#1",
-      "reason": "Repeated-pair skip in the separation graph direction."
-    },
-    {
-      "after": 214,
-      "before": 179,
-      "metric": "function/crates/fereg-core/src/ppml/result.rs/certify_ppml_reconstruction#1",
-      "reason": "Allocation-free parallel output-product reconstruction certificate and pool-aware final-sample checks."
+      "after": 173,
+      "before": 168,
+      "metric": "function/crates/fereg-plugin/src/ppml_estimate.rs/store_shadow_prefix#1",
+      "reason": "PPML sample stores follow the OLS contract: only dropped candidates are written into the ado-initialized candidate marker."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -19594,57 +19504,53 @@
             "line": 924
           },
           {
-            "condition": "runs >= n",
-            "line": 1155
-          },
-          {
-            "condition": "columns . iter ( ) . any ( | column | column [ row ] != column [ row - 1 ] )",
-            "line": 1162
-          },
-          {
-            "condition": "runs >= n",
-            "line": 1166
-          },
-          {
             "condition": "n >= 4_096 && levels > n / 4",
-            "line": 1173
+            "line": 1168
+          },
+          {
+            "condition": "position >= low && position < high",
+            "line": 1287
+          },
+          {
+            "condition": "crate :: parallel :: in_pool ( ) && values . len ( ) >= 1 < < 17",
+            "line": 1295
           },
           {
             "condition": "specs . len ( ) != topology . effect_to_topology ( ) . len ( )",
-            "line": 1437
+            "line": 1475
           },
           {
             "condition": "rows == 0 || clusters . iter ( ) . any ( | codes | codes . len ( ) != rows )",
-            "line": 1535
+            "line": 1573
           },
           {
             "condition": "product >= rows",
-            "line": 1572
+            "line": 1610
           },
           {
             "condition": "fitted . len ( ) != fitted_dimension",
-            "line": 1593
+            "line": 1631
           },
           {
             "condition": "original_omissions . len ( ) != dimension",
-            "line": 1600
+            "line": 1638
           },
           {
             "condition": "! matches ! ( model . model ( ) . columns . get ( generated ) . ok_or_else ( || invalid_argument ( <string> ) ) ? . kind , PreparedOlsColumnKind :: Intercept )",
-            "line": 1691
+            "line": 1729
           },
           {
             "condition": "report . rows . len ( ) != requested . len ( )",
-            "line": 1720
+            "line": 1758
           },
           {
             "condition": "saves_requested && rayon :: current_num_threads ( ) != effective_threads",
-            "line": 1732
+            "line": 1770
           }
         ],
         "functions": {
           "admit_load_hint#1": {
-            "line": 1363,
+            "line": 1401,
             "lines": 15
           },
           "as_input#1": {
@@ -19656,39 +19562,39 @@
             "lines": 75
           },
           "bounded_integer_level_count#1": {
-            "line": 1215,
-            "lines": 52
+            "line": 1210,
+            "lines": 60
           },
           "cluster_code_views#1": {
             "line": 1090,
             "lines": 11
           },
           "cluster_metadata#1": {
-            "line": 1801,
+            "line": 1839,
             "lines": 27
           },
           "cluster_subset_groups#1": {
-            "line": 1530,
+            "line": 1568,
             "lines": 55
           },
           "conservative_preflight_dimensions_from_classification#1": {
-            "line": 1271,
+            "line": 1309,
             "lines": 91
           },
           "convergence_report#1": {
-            "line": 1771,
+            "line": 1809,
             "lines": 29
           },
           "fallible_string_copy#1": {
-            "line": 1852,
+            "line": 1890,
             "lines": 5
           },
           "fallible_string_with_capacity#1": {
-            "line": 1858,
+            "line": 1896,
             "lines": 7
           },
           "final_memory_dimensions#1": {
-            "line": 1415,
+            "line": 1453,
             "lines": 106
           },
           "fit_prepared_ppml#1": {
@@ -19708,7 +19614,7 @@
             "lines": 3
           },
           "map_coefficients#1": {
-            "line": 1586,
+            "line": 1624,
             "lines": 85
           },
           "non_saved_columns#1": {
@@ -19720,20 +19626,20 @@
             "lines": 31
           },
           "raw_input_owner_bytes#1": {
-            "line": 1381,
+            "line": 1419,
             "lines": 31
           },
           "record_separation_timings#1": {
-            "line": 1829,
+            "line": 1867,
             "lines": 22
           },
           "recover_saved_effects#1": {
-            "line": 1707,
+            "line": 1745,
             "lines": 63
           },
           "refine_preflight_fe_bounds#1": {
             "line": 1128,
-            "lines": 77
+            "lines": 72
           },
           "requested_saved_channel_count#1": {
             "line": 1017,
@@ -19744,7 +19650,7 @@
             "lines": 22
           },
           "separation_can_rebase#1": {
-            "line": 1522,
+            "line": 1560,
             "lines": 7
           },
           "source_uses#1": {
@@ -19764,11 +19670,11 @@
             "lines": 103
           },
           "wald_columns#1": {
-            "line": 1672,
+            "line": 1710,
             "lines": 33
           }
         },
-        "production_lines": 1647
+        "production_lines": 1677
       },
       "crates/fereg-core/src/ppml/prepared_irls.rs": {
         "chunk_candidates": [],
@@ -26057,11 +25963,11 @@
           },
           {
             "condition": "spi . matrix_dimensions ( name ) ? != ( rows , columns )",
-            "line": 2694
+            "line": 2699
           },
           {
             "condition": "outputs . saved_channels . len ( ) != expected",
-            "line": 2789
+            "line": 2794
           }
         ],
         "functions": {
@@ -26074,7 +25980,7 @@
             "lines": 11
           },
           "cluster_subset_rows#1": {
-            "line": 2480,
+            "line": 2485,
             "lines": 12
           },
           "cluster_tables#1": {
@@ -26110,27 +26016,27 @@
             "lines": 11
           },
           "fallible_clone_absorbed_terms#1": {
-            "line": 2881,
+            "line": 2886,
             "lines": 23
           },
           "fallible_clone_clusters#1": {
-            "line": 2915,
+            "line": 2920,
             "lines": 13
           },
           "fallible_clone_component#1": {
-            "line": 2824,
+            "line": 2829,
             "lines": 17
           },
           "fallible_clone_model#1": {
-            "line": 2842,
+            "line": 2847,
             "lines": 38
           },
           "fallible_clone_ols_request#1": {
-            "line": 2905,
+            "line": 2910,
             "lines": 9
           },
           "fallible_copy_values#1": {
-            "line": 2815,
+            "line": 2820,
             "lines": 8
           },
           "finish#1": {
@@ -26142,7 +26048,7 @@
             "lines": 13
           },
           "internal#1": {
-            "line": 2933,
+            "line": 2938,
             "lines": 3
           },
           "kind#1": {
@@ -26174,7 +26080,7 @@
             "lines": 25
           },
           "optional_position#1": {
-            "line": 2810,
+            "line": 2815,
             "lines": 4
           },
           "parse#1": {
@@ -26182,15 +26088,15 @@
             "lines": 175
           },
           "parse_ppml_vce#1": {
-            "line": 2453,
+            "line": 2458,
             "lines": 14
           },
           "parse_residual_request#1": {
-            "line": 2754,
+            "line": 2759,
             "lines": 22
           },
           "parse_separation_methods#1": {
-            "line": 2710,
+            "line": 2715,
             "lines": 36
           },
           "position#1": {
@@ -26222,11 +26128,11 @@
             "lines": 38
           },
           "protocol#1": {
-            "line": 2929,
+            "line": 2934,
             "lines": 3
           },
           "publication_matrix_cells#1": {
-            "line": 2468,
+            "line": 2473,
             "lines": 11
           },
           "publication_memory#1": {
@@ -26242,7 +26148,7 @@
             "lines": 37
           },
           "separation_method_capacity#1": {
-            "line": 2747,
+            "line": 2752,
             "lines": 6
           },
           "shadow_hash#1": {
@@ -26250,15 +26156,15 @@
             "lines": 9
           },
           "store_runtime_and_complete#1": {
-            "line": 2412,
+            "line": 2417,
             "lines": 29
           },
           "store_shadow_prefix#1": {
             "line": 2243,
-            "lines": 168
+            "lines": 173
           },
           "validate_adjustment_binding#1": {
-            "line": 2493,
+            "line": 2498,
             "lines": 15
           },
           "validate_bounded_evidence#1": {
@@ -26278,11 +26184,11 @@
             "lines": 74
           },
           "validate_matrix_layout#1": {
-            "line": 2604,
+            "line": 2609,
             "lines": 105
           },
           "validate_ppml_weights#1": {
-            "line": 2442,
+            "line": 2447,
             "lines": 10
           },
           "validate_result_request_identity#1": {
@@ -26290,7 +26196,7 @@
             "lines": 51
           },
           "validate_saved_output_layout#1": {
-            "line": 2777,
+            "line": 2782,
             "lines": 32
           },
           "validate_shadow#1": {
@@ -26302,11 +26208,11 @@
             "lines": 133
           },
           "validate_variable_layout#1": {
-            "line": 2509,
+            "line": 2514,
             "lines": 94
           }
         },
-        "production_lines": 2776
+        "production_lines": 2778
       },
       "crates/fereg-plugin/src/ppml_execution.rs": {
         "chunk_candidates": [],
@@ -26955,20 +26861,20 @@
     "metrics": {
       "fereg-core": {
         "chunk_candidates": 13,
-        "dispatch_candidates": 1575,
+        "dispatch_candidates": 1574,
         "files_over_1500": 15,
         "functions_over_150": 58,
-        "production_lines": 122181
+        "production_lines": 122211
       },
       "fereg-plugin": {
         "chunk_candidates": 6,
         "dispatch_candidates": 165,
         "files_over_1500": 3,
         "functions_over_150": 12,
-        "production_lines": 17279
+        "production_lines": 17281
       }
     },
     "schema": 1
   },
-  "reason": "Exact global elimination of the largest categorical effect for Auto OLS/PPML, PPML elimination pre-solve, fused certificates and allocation-free fixed-tree parallel reductions (claude-need4speed)."
+  "reason": "Parallel exact PPML preflight bounds and candidate-marker sample stores."
 }

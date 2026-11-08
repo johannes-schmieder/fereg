@@ -492,7 +492,9 @@ fn fixture() -> (Vec<String>, FakeSpi) {
         numeric.insert((1, observation), (1.0, false));
         numeric.insert((2, observation), (outcome, false));
         numeric.insert((3, observation), (x, false));
-        for variable in 4..=10 {
+        // The ado generates the sample shadow (slot 4) as the candidate marker.
+        numeric.insert((4, observation), (1.0, false));
+        for variable in 5..=10 {
             numeric.insert((variable, observation), (-999.0, false));
         }
     }
@@ -735,7 +737,9 @@ fn categorical_absorb_cluster_weight_fixture() -> (Vec<String>, FakeSpi) {
         ] {
             spi.numeric.insert((variable, observation), (value, false));
         }
-        for variable in 7..=14 {
+        // The ado generates the sample shadow (slot 7) as the candidate marker.
+        spi.numeric.insert((7, observation), (1.0, false));
+        for variable in 8..=14 {
             spi.numeric.insert((variable, observation), (-999.0, false));
         }
     }

@@ -2251,7 +2251,12 @@ fn store_shadow_prefix(
             .retained_original_rows
             .get(retained_cursor)
             .is_some_and(|row| *row == zero_based);
-        spi.store_numeric(action.outputs.sample, zero_based + 1, f64::from(retained))?;
+        // The ado generates the sample shadow as the candidate marker (one
+        // for candidates, zero otherwise), as for OLS: only dropped
+        // candidates change.
+        if !retained && reason != fereg_core::DropReason::ExcludedByIfIn {
+            spi.store_numeric(action.outputs.sample, zero_based + 1, 0.0)?;
+        }
         if retained {
             for (position, values) in [
                 (action.outputs.residual, shadow.residuals),

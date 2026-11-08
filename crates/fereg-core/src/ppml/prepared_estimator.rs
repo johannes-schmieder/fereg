@@ -1149,26 +1149,21 @@ fn refine_preflight_fe_bounds(
                 .ok_or_else(|| invalid_argument("PPML FE bound source is missing"))?;
             columns.push(column.1.values.as_slice());
         }
-        let mut runs = usize::from(n != 0);
-        for start in (1..loaded.outcome.values.len()).step_by(65_536) {
-            interrupt(PpmlInterruptPoint::Preparation)?;
-            if runs >= n {
-                break;
-            }
-            let end = start
-                .saturating_add(65_536)
-                .min(loaded.outcome.values.len());
-            for row in start..end {
-                if columns.iter().any(|column| column[row] != column[row - 1]) {
-                    runs = runs
-                        .checked_add(1)
-                        .ok_or_else(|| allocation("PPML FE run count overflows"))?;
-                    if runs >= n {
-                        break;
-                    }
-                }
-            }
-        }
+        // Runs: one plus the rows whose tuple differs from the previous row,
+        // counted exactly over fixed chunks in parallel.
+        interrupt(PpmlInterruptPoint::Preparation)?;
+        let boundaries = crate::parallel::fixed_tree_reduce(
+            loaded.outcome.values.len().saturating_sub(1),
+            65_536,
+            &|range: std::ops::Range<usize>| -> Result<usize> {
+                crate::interrupt::checkpoint()?;
+                Ok(range
+                    .filter(|&row| columns.iter().any(|column| column[row + 1] != column[row]))
+                    .count())
+            },
+            &|left, right| left + right,
+        )?;
+        let runs = usize::from(n != 0).saturating_add(boundaries);
         let mut levels = runs.min(n);
         if n >= 4_096 && levels > n / 4 {
             let mut product = 1_usize;
@@ -1220,18 +1215,34 @@ fn bounded_integer_level_count(
     if values.is_empty() || cap == 0 {
         return Ok(Some(0));
     }
-    let mut minimum = f64::INFINITY;
-    let mut maximum = f64::NEG_INFINITY;
-    for chunk in values.chunks(65_536) {
-        interrupt(PpmlInterruptPoint::Preparation)?;
-        for &value in chunk {
-            if !value.is_finite() || value.abs() > 4_503_599_627_370_496.0 || value.fract() != 0.0 {
-                return Ok(None);
+    // Exact extrema over fixed chunks in parallel; `None` for any value
+    // outside the exactly representable integers.
+    interrupt(PpmlInterruptPoint::Preparation)?;
+    let Some((minimum, maximum)) = crate::parallel::fixed_tree_reduce(
+        values.len(),
+        65_536,
+        &|range: std::ops::Range<usize>| -> Result<Option<(f64, f64)>> {
+            crate::interrupt::checkpoint()?;
+            let (mut minimum, mut maximum) = (f64::INFINITY, f64::NEG_INFINITY);
+            for &value in &values[range] {
+                if !value.is_finite()
+                    || value.abs() > 4_503_599_627_370_496.0
+                    || value.fract() != 0.0
+                {
+                    return Ok(None);
+                }
+                minimum = minimum.min(value);
+                maximum = maximum.max(value);
             }
-            minimum = minimum.min(value);
-            maximum = maximum.max(value);
-        }
-    }
+            Ok(Some((minimum, maximum)))
+        },
+        &|left: Option<(f64, f64)>, right: Option<(f64, f64)>| {
+            left.zip(right).map(|((a, b), (c, d))| (a.min(c), b.max(d)))
+        },
+    )?
+    else {
+        return Ok(None);
+    };
     let span = (maximum - minimum) as u64;
     let passes = span / PREFLIGHT_INTEGER_WINDOW as u64 + 1;
     if passes > PREFLIGHT_INTEGER_MAX_PASSES as u64 {
@@ -1240,18 +1251,10 @@ fn bounded_integer_level_count(
     let mut bitmap = [0_u64; PREFLIGHT_INTEGER_BITMAP_WORDS];
     let mut count = 0_usize;
     for pass in 0..passes {
+        interrupt(PpmlInterruptPoint::Preparation)?;
         bitmap.fill(0);
         let lower = minimum + (pass * PREFLIGHT_INTEGER_WINDOW as u64) as f64;
-        for chunk in values.chunks(65_536) {
-            interrupt(PpmlInterruptPoint::Preparation)?;
-            for &value in chunk {
-                let position = value - lower;
-                if position >= 0.0 && position < PREFLIGHT_INTEGER_WINDOW as f64 {
-                    let position = position as usize;
-                    bitmap[position / 64] |= 1_u64 << (position % 64);
-                }
-            }
-        }
+        mark_integer_window(values, lower, &mut bitmap)?;
         count = count.saturating_add(
             bitmap
                 .iter()
@@ -1263,6 +1266,41 @@ fn bounded_integer_level_count(
         }
     }
     Ok(Some(count))
+}
+
+/// Set bit `value - lower` of `bitmap` for every value in the window. Inside
+/// a worker pool each task owns a range of bitmap words and scans every value
+/// (the bits are exact; the order of setting them does not matter).
+fn mark_integer_window(
+    values: &[f64],
+    lower: f64,
+    bitmap: &mut [u64; PREFLIGHT_INTEGER_BITMAP_WORDS],
+) -> Result<()> {
+    const WORDS_PER_TASK: usize = PREFLIGHT_INTEGER_BITMAP_WORDS / 8;
+    let mark = |first_word: usize, words: &mut [u64]| -> Result<()> {
+        let low = (first_word * 64) as f64;
+        let high = ((first_word + words.len()) * 64) as f64;
+        for chunk in values.chunks(65_536) {
+            crate::interrupt::checkpoint()?;
+            for &value in chunk {
+                let position = value - lower;
+                if position >= low && position < high {
+                    let position = position as usize - first_word * 64;
+                    words[position / 64] |= 1_u64 << (position % 64);
+                }
+            }
+        }
+        Ok(())
+    };
+    if crate::parallel::in_pool() && values.len() >= 1 << 17 {
+        use rayon::prelude::*;
+        bitmap
+            .par_chunks_mut(WORDS_PER_TASK)
+            .enumerate()
+            .try_for_each(|(task, words)| mark(task * WORDS_PER_TASK, words))
+    } else {
+        mark(0, &mut bitmap[..])
+    }
 }
 
 /// Allocation-bounded conservative dimensions available after authoritative
