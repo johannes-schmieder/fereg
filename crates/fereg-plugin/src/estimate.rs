@@ -627,7 +627,11 @@ fn prepare_loaded_ols_with_moments<T: Send>(
 /// core's cached columns). Loaded raw moments exist only for a numeric layout,
 /// whose columns are compiled before data and never expand afterwards.
 fn packed_score_columns(action: &EstimateAction) -> usize {
-    let owned_intercept = action.request.absorbed_terms.iter().any(|term| term.intercept)
+    let owned_intercept = action
+        .request
+        .absorbed_terms
+        .iter()
+        .any(|term| term.intercept)
         && action
             .loaded_rhs_layout
             .is_some_and(|layout| layout.append_intercept);
