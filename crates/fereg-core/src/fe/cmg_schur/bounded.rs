@@ -308,7 +308,7 @@ impl CmgSchurPreconditioner {
     /// includes the caller's live incumbent owners in execution_bytes. No solver
     /// state is changed by a memory refusal. Cancellation and actual allocation
     /// or numerical failures remain fatal. The canonical census cache is used
-    /// whenever its complete peak envelope is admitted. `break_builder` arms
+    /// whenever every stage that holds it is admitted. `break_builder` arms
     /// the developer builder-Break point (see `routing_break`).
     /// A team application installs its row-operator plan and up to
     /// [`MAX_BATCH_COLUMNS`] interleaved lanes of `rhs_capacity` only when
@@ -355,8 +355,9 @@ impl CmgSchurPreconditioner {
     }
 
     /// The one Schur graph adapter and hierarchy pipeline. With `cache_census`
-    /// (the automatic route) canonical census cells are cached whenever their
-    /// complete peak is admitted; otherwise (the explicit route) the census
+    /// (the automatic route) the census caches canonical cells when they fit
+    /// beside its scratch, and emission keeps them when they also fit beside
+    /// the initial graph; otherwise (the explicit route) the census
     /// streams the observations twice like the original explicit builder.
     #[allow(clippy::too_many_arguments)]
     pub(super) fn build_observations_bounded(
@@ -403,13 +404,12 @@ impl CmgSchurPreconditioner {
             &mut work,
             &mut memory,
         )
-        .and_then(|(graph, components, _, cache_bytes, counts)| {
+        .and_then(|(graph, components, _, _, counts)| {
             let graph_seconds = started.elapsed().as_secs_f64();
             let shape = (graph.vertex_count(), graph.edge_count());
             let (preconditioner, hierarchy_seconds) = finish(
                 graph,
                 components,
-                cache_bytes,
                 install,
                 options,
                 &mut work,
@@ -447,7 +447,6 @@ impl CmgSchurPreconditioner {
 fn finish(
     graph: Laplacian,
     mut components: FirmComponents,
-    cache_bytes: u128,
     install: Install,
     options: CmgOptions,
     work: &mut Work,
@@ -468,8 +467,8 @@ fn finish(
         )
         .map_err(cmg_error)
     };
-    // The synchronous cache stays reserved even after graph emission drops it.
-    let mut parents = graph_storage_bound(&graph)? + components.bytes() + cache_bytes;
+    // The census cache was released with the raw edges before this stage.
+    let mut parents = graph_storage_bound(&graph)? + components.bytes();
     // An explicit build always contracts on its host team, as before. The
     // automatic build uses the team when the parallel bound is admitted and
     // otherwise builds serially under the serial bound; both build the same
@@ -654,6 +653,7 @@ impl EdgeEmissionPlan {
         max_rows: usize,
         cutoff: usize,
         sampling: Sampling,
+        parents: u128,
         work: &mut Work,
         memory: &mut Admission,
     ) -> Attempt<Option<Self>> {
@@ -727,30 +727,13 @@ impl EdgeEmissionPlan {
         else {
             return Ok(None);
         };
-        // Select optional scratch against the complete conservative envelope,
-        // before any row is reordered or any edge kernel executes.
-        let Some(envelope) = cache_envelope(
-            cache.cells.capacity(),
-            cache.rows.len(),
-            workers.source.firm_count(),
-            max_rows,
-            cutoff,
-            sampling,
-        ) else {
-            return Ok(None);
-        };
-        let Some(required) = envelope.peak_bytes.checked_add(extra) else {
-            return Ok(None);
-        };
-        if memory.budget.is_some_and(|budget| {
-            budget
-                .usable_bytes
-                .checked_sub(budget.execution_bytes)
-                .is_none_or(|available| available < required as u128)
-        }) {
+        // Select optional scratch before any row is reordered or any edge
+        // kernel executes. It lives only during emission, beside `parents`
+        // (the census scratch, the retained cache and the raw edge bank).
+        if !fits(memory, parents, extra) {
             return Ok(None);
         }
-        admit(memory, work, envelope.peak_bytes as u128, extra)?;
+        admit(memory, work, parents, extra)?;
         #[cfg(test)]
         emission_probes::CHUNK.store(1024 / edge_work, std::sync::atomic::Ordering::SeqCst);
         Ok(Some(Self {
@@ -821,112 +804,44 @@ impl CanonicalCells {
     }
 }
 
-struct CacheEnvelope {
-    cache_bytes: usize,
-    peak_bytes: usize,
+/// The canonical cache's own banks: one merged cell per observation and one
+/// row start and compensated total per worker, plus its owner.
+fn canonical_cache_bytes(observations: usize, workers: usize) -> Option<usize> {
+    bytes::<(u32, f64)>(observations)
+        .ok()?
+        .checked_add(bytes::<(usize, f64)>(workers).ok()?)?
+        .checked_add(std::mem::size_of::<CanonicalCells>())
 }
 
-/// Sum phase envelopes rather than reclaiming any stage. This dimension-only
-/// proof runs before cache allocation; arithmetic/helper refusal selects the
-/// original two-pass builder. It is a peak bound, never a controller allowance.
-fn cache_envelope(
-    observations: usize,
-    workers: usize,
-    firms: usize,
-    max_rows: usize,
-    cutoff: usize,
-    sampling: Sampling,
-) -> Option<CacheEnvelope> {
-    fn bank<T>(count: usize) -> Option<usize> {
-        count.checked_mul(std::mem::size_of::<T>())
-    }
-    // Sampled high-degree rows emit trees on firms; census retains auxiliary
-    // worker vertices only when sampling is disabled.
-    let vertices = if sampling.samples > 0 {
-        firms
-    } else {
-        firms.checked_add(workers)?
-    };
-    if vertices == 0 || vertices as u128 > u32::MAX as u128 + 1 {
-        return None;
-    }
-    let edges = cutoff
-        .checked_sub(1)?
-        .max(sampling.samples as usize)
-        .max(1)
-        .checked_mul(observations)?;
-    let cache_bytes = bank::<(u32, f64)>(observations)?
-        .checked_add(bank::<(usize, f64)>(workers)?)?
-        .checked_add(std::mem::size_of::<CanonicalCells>())?;
-    let sampler = if sampling.samples > 0 {
-        SampledTrees::allocation_bytes(max_rows).ok()?
-    } else {
-        0
-    };
-    let options = CmgOptions::default();
-    let hierarchy = CmgPreconditioner::construction_allocation_bound(
-        vertices,
-        edges,
-        cmg::BuildOptions {
-            hierarchy: options,
-            components: component_options(),
-        },
-        false,
-    )
-    .ok()?;
-    let workspace = CmgPreconditioner::scalar_workspace_allocation_bound(vertices, options).ok()?;
-    let owners = std::mem::size_of::<BoundedCells<'_>>()
-        + std::mem::size_of::<SampledTrees>()
-        + std::mem::size_of::<FirmComponents>()
-        + std::mem::size_of::<Vec<(usize, usize, f64)>>()
-        + std::mem::size_of::<Laplacian>()
-        + std::mem::size_of::<CmgSchurPreconditioner>();
-    let peak_bytes = [
-        cache_bytes,
-        bank::<(u32, f64)>(max_rows)?,
-        sampler,
-        bank::<[usize; 2]>(firms)?,
-        bank::<[f64; 2]>(firms)?,
-        bank::<(usize, usize, f64)>(edges)?,
-        bank::<[u64; 4]>(edges)?
-            .checked_add(bank::<f64>(vertices)?)?
-            .checked_add(128)?,
-        bank::<[u64; 2]>(edges)?
-            .checked_add(bank::<f64>(vertices)?)?
-            .checked_add(128)?,
-        hierarchy,
-        workspace,
-        bank::<[f64; 2]>(vertices)?,
-        owners,
-    ]
-    .into_iter()
-    .try_fold(0usize, usize::checked_add)?;
-    Some(CacheEnvelope {
-        cache_bytes,
-        peak_bytes,
-    })
-}
-
-fn admitted_cache_bytes(
+/// The census cache lives until the Laplacian is built, so its last and
+/// largest stage is the initial graph: `graph_stage` (census scratch, the raw
+/// edge bank and the Laplacian's construction bound, exactly as admitted)
+/// plus the cache. No later stage holds it. Emission keeps the cache when
+/// that stage fits with it and drops it when the stage fits only without it.
+/// Otherwise the build refuses here, before any edge is emitted, as the
+/// uncached builder's own admission of that stage would.
+fn emission_cache(
     source: CellSource<'_>,
-    max_rows: usize,
-    cutoff: usize,
-    sampling: Sampling,
-    budget: Option<FeSolverMemoryBudget>,
-) -> Option<usize> {
-    let membership = source.membership;
-    let envelope = cache_envelope(
-        membership.nobs(),
-        source.worker_count(),
-        source.firm_count(),
-        max_rows,
-        cutoff,
-        sampling,
-    )?;
-    let available = budget.map_or(Some(usize::MAX as u128), |budget| {
-        budget.usable_bytes.checked_sub(budget.execution_bytes)
-    })?;
-    (envelope.peak_bytes as u128 <= available).then_some(envelope.cache_bytes)
+    counts: &GraphCounts,
+    census_cache: usize,
+    graph_stage: u128,
+    memory: &Admission,
+    traced: bool,
+) -> Attempt<usize> {
+    let kept = [census_cache, 0]
+        .into_iter()
+        .find(|&cache| fits(memory, graph_stage, cache));
+    if traced && crate::diagnostics::solver_trace_enabled() {
+        crate::diagnostics::emit_solver_trace(&format!(
+            "FEREG_SOLVER_TRACE|phase=cmgschur_census|observations={}|workers={}|firms={}|input_edges={}|vertices={}|census_cache_bytes={census_cache}|emission_cache_bytes={}|graph_stage_bytes={graph_stage}|available={}|refused={}",
+            source.membership.nobs(), source.worker_count(), source.firm_count(), counts.input_edges,
+            source.firm_count() + counts.retained_workers, kept.unwrap_or(0),
+            memory.budget.map_or("unlimited".into(), |budget| budget
+                .usable_bytes.saturating_sub(budget.execution_bytes).to_string()),
+            u8::from(kept.is_none()),
+        ));
+    }
+    kept.ok_or(AttemptError::Refused(BuildRefusal::MemoryBudget))
 }
 
 struct BoundedCells<'a> {
@@ -1046,9 +961,17 @@ impl BoundedCells<'_> {
         let edge_bytes = bytes::<(usize, usize, f64)>(input_edges)?;
         admit(memory, work, scratch, edge_bytes)?;
         let mut edges = work.capacity(input_edges)?;
-        if let Some(mut emission) =
-            EdgeEmissionPlan::select(self, input_edges, max_rows, cutoff, sampling, work, memory)?
-        {
+        let parents = scratch + vec_capacity_bytes(&edges);
+        if let Some(mut emission) = EdgeEmissionPlan::select(
+            self,
+            input_edges,
+            max_rows,
+            cutoff,
+            sampling,
+            parents,
+            work,
+            memory,
+        )? {
             emission.emit(
                 self.cache.as_mut().expect("admitted canonical rows"),
                 sampler,
@@ -1260,13 +1183,6 @@ fn graph(
         max_rows = max_rows.max(source.row_count(worker));
     }
     work.step(128)?;
-    let cache_bytes = if cache_census {
-        // Dimension-only envelope check before any cache allocation.
-        work.step(1024)?;
-        admitted_cache_bytes(source, max_rows, cutoff, sampling, memory.budget).unwrap_or(0)
-    } else {
-        0
-    };
     let sampler_bytes = if sampling.samples > 0 {
         SampledTrees::allocation_bytes(max_rows)?
     } else {
@@ -1275,9 +1191,14 @@ fn graph(
     let bound = bytes::<(u32, f64)>(max_rows)?
         .checked_add(sampler_bytes)
         .and_then(|total| total.checked_add(bytes::<[usize; 2]>(firms).ok()?))
-        .and_then(|total| total.checked_add(cache_bytes))
         .ok_or_else(|| allocation("bounded CMG topology scratch overflows"))?;
-    admit(memory, work, 0, bound)?;
+    // The census caches canonical rows when they fit beside its scratch.
+    let cache_bytes = canonical_cache_bytes(source.membership.nobs(), source.worker_count())
+        .filter(|&cache| {
+            cache_census && bound.checked_add(cache).is_some() && fits(memory, bound as u128, cache)
+        })
+        .unwrap_or(0);
+    admit(memory, work, 0, bound + cache_bytes)?;
     let mut workers = BoundedCells {
         source,
         weight_scale,
@@ -1304,11 +1225,12 @@ fn graph(
         labels.push(firm);
     }
     let mut sizes = work.filled(firms, usize::MAX)?;
-    let census_parents = vec_capacity_bytes(&workers.cells)
-        + cache_bytes as u128
+    // Census scratch without the cache; no bank grows before the Laplacian.
+    let scratch = vec_capacity_bytes(&workers.cells)
         + sampler.as_ref().map_or(0, SampledTrees::bytes)
         + vec_capacity_bytes(&labels)
         + vec_capacity_bytes(&sizes);
+    let census_parents = scratch + cache_bytes as u128;
     let counts =
         workers.census_bounded(cutoff, sampling, &mut labels, work, memory, census_parents)?;
     let component_count = relabel_components(&mut labels, &mut sizes, work)?;
@@ -1317,11 +1239,22 @@ fn graph(
         .checked_add(counts.retained_workers)
         .filter(|vertices| *vertices > 0 && *vertices as u128 <= u32::MAX as u128 + 1)
         .ok_or_else(|| allocation("CMG Schur graph vertex count is not supported"))?;
-    let scratch = vec_capacity_bytes(&workers.cells)
-        + cache_bytes as u128
-        + sampler.as_ref().map_or(0, SampledTrees::bytes)
-        + vec_capacity_bytes(&labels)
-        + vec_capacity_bytes(&sizes);
+    let graph_bound = bytes::<[u64; 4]>(counts.input_edges)?
+        .checked_add(bytes::<f64>(vertices)?)
+        .and_then(|bytes| bytes.checked_add(128))
+        .ok_or_else(|| allocation("CMG Schur graph construction overflows"))?;
+    let graph_stage =
+        scratch + bytes::<(usize, usize, f64)>(counts.input_edges)? as u128 + graph_bound as u128;
+    let cache_bytes = emission_cache(
+        source,
+        &counts,
+        cache_bytes,
+        graph_stage,
+        memory,
+        cache_census,
+    )?;
+    workers.cache = workers.cache.take().filter(|_| cache_bytes > 0);
+    let scratch = scratch + cache_bytes as u128;
     let edges = workers.collect_edges_bounded(
         &mut sampler,
         counts.input_edges,
@@ -1332,10 +1265,6 @@ fn graph(
         work,
         memory,
     )?;
-    let graph_bound = bytes::<[u64; 4]>(counts.input_edges)?
-        .checked_add(bytes::<f64>(vertices)?)
-        .and_then(|bytes| bytes.checked_add(128))
-        .ok_or_else(|| allocation("CMG Schur graph construction overflows"))?;
     let admitted = admit(
         memory,
         work,
@@ -1347,10 +1276,8 @@ fn graph(
     drop(workers);
     drop(sampler);
     work.step(256)?;
-    let parents = graph_storage_bound(&graph)?
-        + vec_capacity_bytes(&labels)
-        + vec_capacity_bytes(&sizes)
-        + cache_bytes as u128;
+    let parents =
+        graph_storage_bound(&graph)? + vec_capacity_bytes(&labels) + vec_capacity_bytes(&sizes);
     // An automatic installation widens its centering scratch only once its
     // optional interleaved lanes are admitted (see `finish`).
     let lanes = if install.explicit() {
@@ -1479,6 +1406,7 @@ mod control_tests {
                         34,
                         5,
                         sampling,
+                        0,
                         &mut work,
                         &mut memory,
                     )
@@ -1594,34 +1522,31 @@ mod control_tests {
                         )
                         .unwrap();
                     let canonical = cells.cache.as_ref().unwrap().cells.clone();
-                    assert!(EdgeEmissionPlan::select(
-                        &cells,
-                        HOSTED_EDGE_THRESHOLD - 1,
-                        34,
-                        5,
-                        sampling,
-                        &mut work,
-                        &mut memory
-                    )
-                    .unwrap()
-                    .is_none());
-                    let envelope =
-                        cache_envelope(columns.len(), 8192, 38, 34, 5, sampling).unwrap();
-                    memory.budget = Some(FeSolverMemoryBudget {
-                        usable_bytes: envelope.peak_bytes as u128,
-                        execution_bytes: 0,
-                    });
-                    assert!(EdgeEmissionPlan::select(
-                        &cells,
-                        counts.input_edges,
-                        34,
-                        5,
-                        sampling,
-                        &mut work,
-                        &mut memory
-                    )
-                    .unwrap()
-                    .is_none());
+                    let parents = 1 << 20;
+                    let mut select = |edges, memory: &mut Admission| {
+                        EdgeEmissionPlan::select(
+                            &cells, edges, 34, 5, sampling, parents, &mut work, memory,
+                        )
+                        .unwrap()
+                        .is_some()
+                    };
+                    assert!(!select(HOSTED_EDGE_THRESHOLD - 1, &mut memory));
+                    // The plan's scratch is admitted exactly beside its live
+                    // parents: its recorded stage is parents plus the scratch.
+                    assert!(select(counts.input_edges, &mut memory));
+                    let stage = memory.peak.bytes().unwrap() as u128;
+                    assert!(stage > parents);
+                    for (usable, selected) in [(stage, true), (stage - 1, false), (parents, false)]
+                    {
+                        let mut memory = Admission {
+                            budget: Some(FeSolverMemoryBudget {
+                                usable_bytes: usable + 913,
+                                execution_bytes: 913,
+                            }),
+                            peak: SolverWorkspacePeak::ZERO,
+                        };
+                        assert_eq!(select(counts.input_edges, &mut memory), selected);
+                    }
                     assert_eq!(cells.cache.as_ref().unwrap().cells, canonical);
                 })
                 .unwrap();
@@ -2132,17 +2057,38 @@ mod cache_tests {
             .unwrap()
         }
 
-        fn envelope(&self, sampling: Sampling) -> CacheEnvelope {
-            cache_envelope(
-                self.workers.len(),
-                self.membership.n_levels(),
-                self.firm_index.n_levels(),
-                9 * 8,
-                5,
-                sampling,
-            )
-            .unwrap()
+        /// The admitted peak of an unlimited build: the least budget that
+        /// repeats its every decision.
+        fn peak(&self, sampling: Sampling, cached: bool) -> u128 {
+            self.build(sampling, None, cached).peak.bytes().unwrap() as u128
         }
+    }
+
+    fn budget(available: u128) -> Option<FeSolverMemoryBudget> {
+        Some(FeSolverMemoryBudget {
+            usable_bytes: available + 913,
+            execution_bytes: 913,
+        })
+    }
+
+    /// The hierarchy term of the former cache envelope at cutoff five, which
+    /// summed it with every other stage: max(4, samples) edges per
+    /// observation on firms (and every worker without sampling). That rule
+    /// refused the cache whenever the available bytes were below this term.
+    pub(super) fn legacy_hierarchy_term(
+        observations: usize,
+        workers: usize,
+        firms: usize,
+        sampling: Sampling,
+    ) -> u128 {
+        let vertices = firms + if sampling.samples > 0 { 0 } else { workers };
+        let edges = 4.max(sampling.samples as usize) * observations;
+        let options = cmg::BuildOptions {
+            hierarchy: CmgOptions::default(),
+            components: component_options(),
+        };
+        CmgPreconditioner::construction_allocation_bound(vertices, edges, options, false).unwrap()
+            as u128
     }
 
     #[test]
@@ -2152,10 +2098,7 @@ mod cache_tests {
         for cached in [false, true] {
             for samples in [0, 1, 2] {
                 let sampling = Sampling { samples, seed: 0 };
-                let budget = Some(FeSolverMemoryBudget {
-                    usable_bytes: fixture.envelope(sampling).peak_bytes as u128 + 913,
-                    execution_bytes: 913,
-                });
+                let budget = budget(fixture.peak(sampling, cached));
                 let first = fixture.build(sampling, budget, cached);
                 assert!(first.preconditioner.is_some());
                 assert_same_build(first, fixture.build(sampling, budget, cached));
@@ -2202,18 +2145,41 @@ mod cache_tests {
         }
     }
 
+    /// At the exact peak of the cached build the cache is kept, although the
+    /// former envelope refused it there; the hierarchy, components, retained
+    /// charge (the cache is released with the raw edges) and application
+    /// equal the uncached build's.
     #[test]
     fn cache_preserves_full_graph_hierarchy_and_application() {
         let fixture = Fixture::new();
+        let (workers, firms) = (fixture.membership.n_levels(), fixture.firm_index.n_levels());
         for samples in [0, 1, 2] {
             let sampling = Sampling { samples, seed: 0 };
-            let envelope = fixture.envelope(sampling);
-            let budget = Some(FeSolverMemoryBudget {
-                usable_bytes: envelope.peak_bytes as u128 + 913,
-                execution_bytes: 913,
-            });
+            let peak = fixture.peak(sampling, true);
+            assert!(peak < legacy_hierarchy_term(fixture.workers.len(), workers, firms, sampling));
+            let budget = budget(peak);
+            let mut work = Work::new(false);
+            let mut memory = Admission {
+                budget,
+                peak: SolverWorkspacePeak::ZERO,
+            };
+            let source = fixture.source();
+            let (.., cache, _) = completed(graph(
+                source,
+                5,
+                sampling,
+                true,
+                Install::AUTO,
+                &mut work,
+                &mut memory,
+            ));
+            assert_eq!(
+                Some(cache as usize),
+                canonical_cache_bytes(fixture.workers.len(), workers)
+            );
             let old = fixture.build(sampling, budget, false);
             let new = fixture.build(sampling, budget, true);
+            assert_eq!(new.peak.bytes().unwrap() as u128, peak);
             let mut old = old.preconditioner.unwrap();
             let mut new = new.preconditioner.unwrap();
             assert_eq!(
@@ -2222,9 +2188,15 @@ mod cache_tests {
             );
             assert_eq!(old.components.labels, new.components.labels);
             assert_eq!(old.components.sizes, new.components.sizes);
+            assert_eq!(new.retained_bytes().unwrap(), old.retained_bytes().unwrap());
+            assert!(new.retained_bytes().unwrap() <= peak);
+            // Exactly the degree-six and degree-nine rows need auxiliary
+            // vertices without sampling; both become firm-only sampled trees.
             assert_eq!(
-                new.retained_bytes().unwrap(),
-                old.retained_bytes().unwrap() + envelope.cache_bytes as u128
+                new.preconditioner.hierarchy().levels()[0]
+                    .graph()
+                    .vertex_count(),
+                firms + if samples == 0 { 2 } else { 0 }
             );
             let n = fixture.firm_index.n_levels();
             let rhs: Vec<_> = (0..n).map(|i| (i as f64 * 0.31).sin()).collect();
@@ -2238,97 +2210,121 @@ mod cache_tests {
         }
     }
 
+    /// The cache stays for emission exactly when the initial graph stage that
+    /// holds it fits; no later stage holds it. Twenty thousand rows of two
+    /// firms on a ring of ten repeat ten pairs, so the raw edge bank dwarfs
+    /// the merged graph and that stage is the build's peak. At the cached
+    /// peak (far below the former envelope) the cache is kept; one byte less
+    /// drops it after the census and the uncached peak installs; one byte
+    /// below that the census refuses before any edge bank is admitted, as the
+    /// uncached builder does. Every installation has identical bits.
     #[test]
-    fn complete_peak_decline_keeps_the_original_usable_two_pass_path() {
-        let fixture = Fixture::new();
-        let sampling = Sampling {
-            samples: 2,
-            seed: 0,
+    fn retained_cache_follows_the_exact_initial_graph_stage() {
+        let rows = 20_000;
+        let workers: Vec<u32> = (0..rows).flat_map(|worker| [worker as u32; 2]).collect();
+        let firms: Vec<u32> = (0..rows)
+            .flat_map(|worker| [worker % 10, (worker + 1) % 10].map(|firm| firm as u32))
+            .collect();
+        let weights: Vec<f64> = (0..2 * rows).map(|i| 1.0 + (i % 3) as f64).collect();
+        let membership = LevelIndex::from_codes(&workers, rows).unwrap();
+        let source = CellSource {
+            membership: &membership,
+            firms: &firms,
+            retained: 10,
+            weights: BorrowedMapWeights::Provided(&weights),
         };
-        let original = fixture.build(sampling, None, false);
-        let needed = original.peak.bytes().unwrap() as u128;
-        assert!(needed < fixture.envelope(sampling).peak_bytes as u128);
-        let budget = Some(FeSolverMemoryBudget {
-            usable_bytes: needed + 123,
-            execution_bytes: 123,
-        });
-        assert!(admitted_cache_bytes(fixture.source(), 72, 5, sampling, budget).is_none());
-        let declined = fixture.build(sampling, budget, true);
-        assert_eq!(declined.refusal, None);
-        assert_eq!(declined.peak, original.peak);
-        let original = original.preconditioner.unwrap();
-        let declined = declined.preconditioner.unwrap();
-        assert_eq!(
-            declined.retained_bytes().unwrap(),
-            original.retained_bytes().unwrap()
-        );
-        assert_eq!(
-            declined.preconditioner.hierarchy(),
-            original.preconditioner.hierarchy()
-        );
-        let exhausted = Some(FeSolverMemoryBudget {
-            usable_bytes: 1,
-            execution_bytes: 2,
-        });
-        assert!(admitted_cache_bytes(fixture.source(), 72, 5, sampling, exhausted).is_none());
-    }
-
-    #[test]
-    fn sampled_cache_envelope_omits_worker_vertices_and_bounds_complete_build() {
-        let fixture = Fixture::new();
-        let workers = fixture.membership.n_levels();
-        let firms = fixture.firm_index.n_levels();
-        let row_bytes = workers * std::mem::size_of::<(usize, f64)>();
-        for samples in [0, 1, 2] {
-            let sampling = Sampling { samples, seed: 0 };
-            let envelope = fixture.envelope(sampling);
-            let without_workers =
-                cache_envelope(fixture.workers.len(), 0, firms, 72, 5, sampling).unwrap();
-            assert_eq!(
-                envelope.cache_bytes - without_workers.cache_bytes,
-                row_bytes
-            );
-            if samples > 0 {
-                // Workers still need cached row metadata, but cannot enlarge
-                // graph, hierarchy, workspace or RHS/output vertex banks.
-                assert_eq!(envelope.peak_bytes - without_workers.peak_bytes, row_bytes);
-            } else {
-                assert!(envelope.peak_bytes - without_workers.peak_bytes > row_bytes);
-            }
-            let budget = Some(FeSolverMemoryBudget {
-                usable_bytes: envelope.peak_bytes as u128 + 913,
-                execution_bytes: 913,
+        let run = |available: Option<u128>, cached: bool| {
+            let mut work = Work::new(false);
+            let mut memory = Admission {
+                budget: available.and_then(budget),
+                peak: SolverWorkspacePeak::ZERO,
+            };
+            let built = graph(
+                source,
+                5,
+                Sampling::default(),
+                cached,
+                Install::AUTO,
+                &mut work,
+                &mut memory,
+            )
+            .and_then(|(graph, components, _, cache, counts)| {
+                let (built, _) = finish(
+                    graph,
+                    components,
+                    Install::AUTO,
+                    CmgOptions::default(),
+                    &mut work,
+                    &mut memory,
+                )?;
+                Ok((built, cache, counts.input_edges))
             });
+            (built, memory.peak.bytes().unwrap() as u128)
+        };
+        let bits = |built: &mut CmgSchurPreconditioner| {
+            let rhs: Vec<f64> = (0..10).map(|i| i as f64 - 4.5).collect();
+            let mut image = vec![0.0; 10];
+            built
+                .apply_batch(&rhs, &mut image, 1, 1, None, None)
+                .unwrap();
+            image
+                .iter()
+                .map(|value| value.to_bits())
+                .collect::<Vec<_>>()
+        };
+        let (Ok((mut reference, cache, edges)), cached_peak) = run(None, true) else {
+            panic!("the unlimited cached build installs");
+        };
+        let (Ok((mut uncached, 0, _)), uncached_peak) = run(None, false) else {
+            panic!("the unlimited uncached build installs");
+        };
+        let expected = bits(&mut reference);
+        assert_eq!(bits(&mut uncached), expected);
+        let hierarchy = reference.preconditioner.hierarchy();
+        assert_eq!(uncached.preconditioner.hierarchy(), hierarchy);
+        assert_eq!(edges, rows);
+        assert_eq!(
+            reference.preconditioner.hierarchy().levels()[0]
+                .graph()
+                .edge_count(),
+            10
+        );
+        assert_eq!(Some(cache as usize), canonical_cache_bytes(2 * rows, rows));
+        // The initial graph stage is both peaks; the cache adds exactly itself.
+        assert_eq!(cached_peak, uncached_peak + cache);
+        let census = bytes::<(u32, f64)>(2).unwrap() + bytes::<[usize; 2]>(10).unwrap();
+        assert!((census as u128) + cache < uncached_peak);
+        let sampling = Sampling::default();
+        assert!(cached_peak < legacy_hierarchy_term(2 * rows, rows, 10, sampling));
+        for (available, kept) in [(cached_peak, cache), (cached_peak - 1, 0)] {
+            let (built, peak) = run(Some(available), true);
+            let (mut built, retained, _) = built.unwrap();
+            assert_eq!(retained, kept, "available {available}");
+            assert_eq!(peak, if kept > 0 { cached_peak } else { uncached_peak });
+            assert_eq!(built.preconditioner.hierarchy(), hierarchy);
+            assert_eq!(bits(&mut built), expected);
             assert_eq!(
-                admitted_cache_bytes(fixture.source(), 72, 5, sampling, budget),
-                Some(envelope.cache_bytes)
+                built.retained_bytes().unwrap(),
+                reference.retained_bytes().unwrap()
             );
-            let built = fixture.build(sampling, budget, true);
-            assert_eq!(built.refusal, None);
-            assert!(built.peak.bytes().unwrap() as u128 <= envelope.peak_bytes as u128);
-            let preconditioner = built.preconditioner.unwrap();
-            assert!(preconditioner.retained_bytes().unwrap() <= envelope.peak_bytes as u128);
-            let graph = preconditioner.preconditioner.hierarchy().levels()[0].graph();
-            // Exactly the degree-six and degree-nine rows need auxiliary
-            // vertices without sampling; both become firm-only sampled trees.
-            assert_eq!(
-                graph.vertex_count(),
-                firms + if samples == 0 { 2 } else { 0 }
-            );
+        }
+        // Below the cache-free graph stage both builders refuse after the
+        // census; the cached census admitted only its scratch and cache.
+        for (cached, admitted) in [(true, census as u128 + cache), (false, census as u128)] {
+            let (built, peak) = run(Some(uncached_peak - 1), cached);
+            assert!(matches!(
+                built,
+                Err(AttemptError::Refused(BuildRefusal::MemoryBudget))
+            ));
+            assert_eq!(peak, admitted, "cached {cached}");
         }
     }
 
     #[test]
-    fn checked_envelope_overflow_declines_without_allocation() {
-        let sampling = Sampling::default();
-        for (observations, workers, firms, max_rows) in [
-            (usize::MAX, 1, 1, 1),
-            (1, usize::MAX, 1, 1),
-            (1, 1, usize::MAX, 1),
-            (1, 1, 1, usize::MAX),
-        ] {
-            assert!(cache_envelope(observations, workers, firms, max_rows, 5, sampling).is_none());
-        }
+    fn checked_cache_size_overflow_declines_without_allocation() {
+        assert!(canonical_cache_bytes(usize::MAX, 1).is_none());
+        assert!(canonical_cache_bytes(1, usize::MAX).is_none());
+        assert!(canonical_cache_bytes(usize::MAX / 16, usize::MAX / 16).is_none());
     }
 
     #[test]
@@ -2472,8 +2468,10 @@ mod team_stage_tests {
 
     #[derive(Debug)]
     struct GraphBits {
-        /// The team stages taken: a path, not part of the result.
+        /// The team stages taken and the admitted peak: a path, not part of
+        /// the result.
         stages: u8,
+        peak: u128,
         edges: Vec<(usize, usize, u64)>,
         diagonal: Vec<u64>,
         labels: Vec<usize>,
@@ -2523,6 +2521,7 @@ mod team_stage_tests {
         ) {
             Ok((graph, components, _, cache, counts)) => Ok(GraphBits {
                 stages: work.team_stages,
+                peak: memory.peak.bytes().unwrap() as u128,
                 edges: graph
                     .edges()
                     .iter()
@@ -2643,12 +2642,12 @@ mod team_stage_tests {
         assert_eq!(cells, serial);
     }
 
-    /// Optional team scratch is admitted per stage. A budget of exactly the
-    /// cache envelope admits the cache (and with it the small census task
-    /// table, which the complete envelope covers) but not the emission plan's
-    /// extra offsets and suffix banks, so emission runs serially; a budget
-    /// below the envelope admits no cache, so the census runs serially too.
-    /// Every path builds the same graph.
+    /// Optional team scratch is admitted per stage against its exact live
+    /// set. The serial graph's peak is its initial graph stage with the cache;
+    /// that budget admits the cache, the census task table and the emission
+    /// plan (whose banks live only beside the raw edge bank). One byte less
+    /// keeps the team census and its cache, then drops the cache before
+    /// emission, which runs serially. Every path builds the same graph.
     #[test]
     fn refused_optional_scratch_selects_the_serial_stage_with_identical_bits() {
         let _stable_route = crate::fe::block_schur::stable_route_for_test();
@@ -2658,26 +2657,31 @@ mod team_stage_tests {
             seed: 0,
         };
         let serial = on(None, || graph_bits(&fixture, sampling, None)).unwrap();
-        let envelope =
-            cache_envelope(fixture.membership.nobs(), 3000, 500, 60_000, 5, sampling).unwrap();
+        assert!(serial.cache > 0);
         let budget = |bytes: u128| {
             Some(FeSolverMemoryBudget {
                 usable_bytes: bytes + 913,
                 execution_bytes: 913,
             })
         };
-        let exact = budget(envelope.peak_bytes as u128);
-        let tight = on(Some(4), || graph_bits(&fixture, sampling, exact)).unwrap();
-        assert_eq!(tight, serial);
-        assert_eq!(tight.stages, TEAM_CENSUS, "emission scratch is refused");
-        let below = budget(envelope.peak_bytes as u128 - 1);
+        let exact = budget(serial.peak);
+        let kept = on(Some(4), || graph_bits(&fixture, sampling, exact)).unwrap();
+        assert_eq!(kept, serial);
+        assert_eq!(kept.stages, TEAM_CENSUS | TEAM_PREPARE);
+        assert_eq!(kept.peak, serial.peak);
+        let below = budget(serial.peak - 1);
         let uncached_serial = on(None, || graph_bits(&fixture, sampling, below)).unwrap();
-        let uncached = on(Some(4), || graph_bits(&fixture, sampling, below)).unwrap();
-        assert_eq!(uncached.cache, 0, "no cache is admitted");
-        assert_eq!(uncached, uncached_serial);
-        assert_eq!(uncached.stages, 0, "without a cache every stage is serial");
+        let dropped = on(Some(4), || graph_bits(&fixture, sampling, below)).unwrap();
+        assert_eq!(dropped.cache, 0, "the cache is dropped before emission");
+        assert_eq!(dropped, uncached_serial);
+        assert_eq!(uncached_serial.stages, 0);
         assert_eq!(
-            (&uncached.edges, &uncached.diagonal, &uncached.labels),
+            dropped.stages, TEAM_CENSUS,
+            "only the census ran on the team"
+        );
+        assert_eq!(dropped.peak, serial.peak - serial.cache);
+        assert_eq!(
+            (&dropped.edges, &dropped.diagonal, &dropped.labels),
             (&serial.edges, &serial.diagonal, &serial.labels)
         );
     }
@@ -2700,7 +2704,7 @@ mod team_stage_tests {
                     budget: None,
                     peak: SolverWorkspacePeak::ZERO,
                 };
-                let (graph, components, _, cache, _) = graph(
+                let (graph, components, ..) = graph(
                     fixture.source(),
                     5,
                     sampling,
@@ -2714,7 +2718,7 @@ mod team_stage_tests {
                     hierarchy: CmgOptions::default(),
                     components: component_options(),
                 };
-                let parents = graph_storage_bound(&graph).unwrap() + components.bytes() + cache;
+                let parents = graph_storage_bound(&graph).unwrap() + components.bytes();
                 let serial = CmgPreconditioner::construction_allocation_bound(
                     graph.vertex_count(),
                     graph.edge_count(),
@@ -2743,7 +2747,6 @@ mod team_stage_tests {
                 let (built, _) = finish(
                     graph,
                     components,
-                    cache,
                     Install::AUTO,
                     CmgOptions::default(),
                     &mut work,
@@ -2816,7 +2819,7 @@ mod team_stage_tests {
                     budget: None,
                     peak: SolverWorkspacePeak::ZERO,
                 };
-                let (graph, components, _, cache, _) = graph(
+                let (graph, components, ..) = graph(
                     fixture.source(),
                     5,
                     sampling,
@@ -2829,7 +2832,7 @@ mod team_stage_tests {
                     hierarchy: CmgOptions::default(),
                     components: component_options(),
                 };
-                let parents = graph_storage_bound(&graph)? + components.bytes() + cache;
+                let parents = graph_storage_bound(&graph)? + components.bytes();
                 let bound = |parallel| {
                     CmgPreconditioner::construction_allocation_bound(
                         graph.vertex_count(),
@@ -2852,7 +2855,6 @@ mod team_stage_tests {
                 let (built, _) = finish(
                     graph,
                     components,
-                    cache,
                     Install::AUTO,
                     CmgOptions::default(),
                     &mut work,

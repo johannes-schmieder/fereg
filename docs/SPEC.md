@@ -654,7 +654,10 @@ The incumbent-CMG choice considers one synchronous build at iteration 16 (or at
 gate v2's earlier stall decision), using cutoff 5, one
 sampled tree per high-degree worker and seed zero. Sampling changes only the
 preconditioner; the original Schur operator and certificate remain authoritative.
-The canonical cache uses the complete admission envelope above. These are
+The canonical census cache is admitted beside the census scratch and kept for
+edge emission only while the exact initial-graph stage (scratch, raw edge bank,
+Laplacian construction and the cache) fits; it is released with the raw edges,
+so no later stage or retained charge includes it. These are
 prospective engineering constants, not a policy selected by the earlier failed
 Mac panel. There is no sampling ladder, resampling or second optional attempt.
 
