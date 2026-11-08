@@ -245,6 +245,7 @@ impl Request {
 #[derive(Clone, Copy, Default)]
 pub struct Control<'a> {
     cancel: Option<&'a (dyn Fn() -> bool + Sync)>,
+    pool: Option<&'a rayon::ThreadPool>,
 }
 
 impl<'a> Control<'a> {
@@ -254,6 +255,20 @@ impl<'a> Control<'a> {
     pub fn with_cancel(cancel: &'a (dyn Fn() -> bool + Sync)) -> Self {
         Self {
             cancel: Some(cancel),
+            pool: None,
+        }
+    }
+
+    /// Lend `pool`, the pool the projection runs on, to CMG local solves
+    /// (feature `cmg`): CMG then builds and applies large hierarchies on its
+    /// workers as a borrowed team (never a pool of its own). The pool
+    /// changes only where rows run, never results, which repeat bitwise at
+    /// any worker count; without it CMG runs serially.
+    #[must_use]
+    pub fn with_pool(self, pool: &'a rayon::ThreadPool) -> Self {
+        Self {
+            pool: Some(pool),
+            ..self
         }
     }
 }
@@ -488,6 +503,7 @@ impl<'a> Projector<'a> {
             width: lane_width(settings.lanes),
             choice: settings.choice,
             cancel: Cancel(control.cancel),
+            pool: control.pool,
         })
     }
 
@@ -531,6 +547,7 @@ impl<'a> Projector<'a> {
                 width: lane_width(settings.lanes),
                 choice: settings.choice,
                 cancel: Cancel(control.cancel),
+                pool: control.pool,
             },
             weights,
             columns,

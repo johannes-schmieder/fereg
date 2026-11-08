@@ -84,7 +84,7 @@ mod pcg;
 pub(crate) mod structure;
 mod weights;
 
-use blocks::Blocks;
+use blocks::{Blocks, OnPool};
 use kernels::{apply, subtract, Ctx, Slotted, Work, WorkSlots};
 use passes::{recover, residualize, rhs, RhsNorms};
 use pcg::{pcg, Jacobi, Solve, Tally, Targets, CEILING, STALLED};
@@ -140,6 +140,8 @@ pub(crate) struct Call<'c, 'd> {
     pub(crate) width: usize,
     pub(crate) choice: Choice,
     pub(crate) cancel: Cancel<'c>,
+    /// The pool CMG local solves borrow as a team (see `Control::with_pool`).
+    pub(crate) pool: Option<&'c rayon::ThreadPool>,
 }
 
 impl Engine {
@@ -255,6 +257,7 @@ impl Engine {
             generation: self.generation,
             hard: self.hard,
             cancel: call.cancel,
+            pool: call.pool,
         };
         let (outcome, gram) = project(&job, &mut values, coefficients, outputs, facts)?;
         let route_blocks = match &outcome {
@@ -425,6 +428,7 @@ struct Job<'j, 'c> {
     /// See [`Engine::hard`].
     hard: bool,
     cancel: Cancel<'c>,
+    pool: Option<&'c rayon::ThreadPool>,
 }
 
 /// The engine's reusable outputs and workspaces lent to one projection.
@@ -477,6 +481,7 @@ struct Plan<'p> {
     tolerance: f64,
     cap: usize,
     cancel: Cancel<'p>,
+    pool: Option<&'p rayon::ThreadPool>,
     /// The blocks of [`Mode::Blocks`] and of escalations.
     spec: BlockSpec,
     /// The weight state's generation (the blocks' build key).
@@ -659,8 +664,9 @@ fn solve<const R: usize, const NB: usize, const UNIT: bool, const WEIGHTED: bool
         // Explicit blocks are built before the first batch, and the
         // corrections of an escalated batch keep the escalation's blocks.
         let started = Instant::now();
+        let blocks = &mut OnPool::new(blocks, plan.pool);
         let solved =
-            pcg::<R, NB, UNIT, Blocks>(st, w, work, targets, cap, cancel, blocks, true, tally)?;
+            pcg::<R, NB, UNIT, OnPool>(st, w, work, targets, cap, cancel, blocks, true, tally)?;
         facts.pcg_seconds += started.elapsed().as_secs_f64();
         return Ok((solved, true));
     }
@@ -688,8 +694,9 @@ fn solve<const R: usize, const NB: usize, const UNIT: bool, const WEIGHTED: bool
     apply::<R, NB, UNIT>(st, w, &work.x, &mut work.lanes);
     subtract(&mut work.r, &work.lanes[0].acc);
     let tight = targets.tightened(ESCALATED_GOAL_FRACTION);
+    let blocks = &mut OnPool::new(blocks, plan.pool);
     let solved =
-        pcg::<R, NB, UNIT, Blocks>(st, w, work, &tight, remaining, cancel, blocks, false, tally)?;
+        pcg::<R, NB, UNIT, OnPool>(st, w, work, &tight, remaining, cancel, blocks, false, tally)?;
     facts.pcg_seconds += started.elapsed().as_secs_f64();
     facts.escalations += 1;
     Ok((solved, true))
@@ -721,7 +728,7 @@ fn build(
         budget,
     };
     let started = Instant::now();
-    let built = blocks.ensure(st, w, build, &plan.cancel)?;
+    let built = blocks.ensure(st, w, build, &plan.cancel, plan.pool)?;
     facts.block_seconds += started.elapsed().as_secs_f64();
     Ok(built)
 }
@@ -894,6 +901,7 @@ fn plan_of<'p>(job: &Job<'_, 'p>) -> (Plan<'p>, Mode) {
         tolerance: job.request.tolerance,
         cap: job.request.max_iterations.clamp(1, MAX_ITERATIONS),
         cancel: job.cancel,
+        pool: job.pool,
         spec,
         generation: job.generation,
         memory_limit: job.request.memory_limit,

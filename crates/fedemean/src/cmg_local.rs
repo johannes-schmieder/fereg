@@ -18,25 +18,36 @@
 //! Levels in no segment with two or more levels are isolated: their rows of
 //! `S_bb` vanish and their image is zero.
 //!
-//! Application is serial: CMG's parallel cycle needs a borrowed
-//! `rayon::ThreadPool` (a `cmg::Team`) and a row-operator plan built for it,
-//! whereas projections run on the caller's current pool without a handle.
+//! Execution: with the caller's pool ([`crate::Control::with_pool`]) and a
+//! graph of at least CMG's planned-solve threshold
+//! ([`cmg::DEFAULT_MIN_PLANNED_EDGES`] edges), the hierarchy builds on the
+//! pool as a borrowed `cmg::Team`, and a `cmg::ParallelCmgPlan` (row
+//! operators and restriction rows of the hierarchy's large dense levels) is
+//! retained; applications then run those levels' rows on the team. Smaller
+//! graphs, and calls without a pool, build and apply serially. The team never
+//! uses CMG's fixed-chunk centering (its reduction chunk covers any level),
+//! and every team kernel keeps the serial operation order, so hierarchies and
+//! applications are bitwise the same with or without a pool, at any worker
+//! count.
 //!
 //! Memory: every allocation is fallible and admitted ([`CmgLocal::admit`]).
 //! The graph is counted exactly before it is formed; CMG's construction
 //! bounds for those vertex and edge counts are admitted before the build,
-//! and the retained hierarchy with the exact workspace bytes of its
-//! application lanes before the buffers are reserved. The graph's raw edges
-//! are released once the Laplacian is built; the hierarchy, component labels
-//! and the application buffers are retained. The buffers hold a fixed number
-//! of lanes (at most [`MAX_COLUMNS`]); wider applications take several CMG
+//! the plan's construction bound beside the retained hierarchy before the
+//! plan (which is skipped when it does not fit), and the retained hierarchy
+//! and plan with the exact workspace bytes of its application lanes before
+//! the buffers are reserved. The graph's raw edges are released once the
+//! Laplacian is built; the hierarchy, plan, component labels and the
+//! application buffers are retained. The buffers hold a fixed number of
+//! lanes (at most [`MAX_COLUMNS`]); wider applications take several CMG
 //! calls, with the same bits, and repeated applications allocate nothing.
 
 use crate::elimination::block::{Admitted, BlockLaplacian, LocalSolve};
 use crate::error::{Error, Result};
 use cmg::{
     ApplyContext, BuildContext, BuildOptions, CmgBatchWorkspace, CmgError, CmgOptions,
-    CmgPreconditioner, ComponentBuildOptions, Laplacian,
+    CmgPreconditioner, CmgStorageReport, ComponentBuildOptions, Laplacian, ParallelCmgPlan,
+    ParallelOptions, Team,
 };
 
 /// Segments with more distinct levels than this become auxiliary stars.
@@ -60,6 +71,11 @@ pub(crate) struct CmgLocal {
     /// Level vertices followed by auxiliary vertices.
     vertices: usize,
     preconditioner: CmgPreconditioner,
+    /// Row operators and restriction rows of the hierarchy's large levels,
+    /// for applications on the caller's pool (`None`: serial applications).
+    plan: Option<ParallelCmgPlan>,
+    /// Retained bytes of `plan`.
+    plan_bytes: usize,
     /// Lanes per CMG call the buffers and the CMG workspace hold (0 until
     /// they are reserved).
     columns: usize,
@@ -139,12 +155,12 @@ impl Graph {
     /// Peak bytes of building the solve beyond the vertex map: the component
     /// labels, then the edge list with CMG's Laplacian construction bound
     /// while the graph is formed, then the graph with CMG's hierarchy
-    /// construction bound while the hierarchy is built (saturating when a
-    /// bound overflows).
-    fn construction_bound(&self) -> u128 {
+    /// construction bound (on a team: `parallel`) while the hierarchy is
+    /// built (saturating when a bound overflows).
+    fn construction_bound(&self, parallel: bool) -> u128 {
         let (n, m) = (self.vertices, self.edges);
         let graph = Laplacian::construction_allocation_bound(n, m);
-        let hierarchy = CmgPreconditioner::construction_allocation_bound(n, m, options(), false);
+        let hierarchy = CmgPreconditioner::construction_allocation_bound(n, m, options(), parallel);
         let (Ok(graph), Ok(hierarchy)) = (graph, hierarchy) else {
             return u128::MAX;
         };
@@ -174,6 +190,16 @@ fn options() -> BuildOptions {
     }
 }
 
+/// The team on `pool`: every worker, CMG's default thresholds, and a
+/// reduction chunk no level reaches, so no fixed-chunk centering applies.
+fn team(pool: &rayon::ThreadPool) -> Result<Team<'_>> {
+    let options = ParallelOptions {
+        reduction_chunk_size: usize::MAX,
+        ..ParallelOptions::default()
+    };
+    Team::new(pool, pool.current_num_threads().max(1), options).map_err(fatal)
+}
+
 /// Poll `cancel` every [`POLL_SEGMENTS`] segments.
 fn poll(cancel: &(dyn Fn() -> bool + Sync), segment: usize) -> Result<()> {
     if segment % POLL_SEGMENTS == 0 && cancel() {
@@ -194,12 +220,15 @@ impl CmgLocal {
     /// connected levels or its graph cannot be represented with positive
     /// normal weights. `cancel` is polled between bounded graph passes and
     /// inside CMG; without one, CMG builds without polling (its faster
-    /// unpolled edge sort; the same hierarchy).
+    /// unpolled edge sort; the same hierarchy). With `pool`, a graph of at
+    /// least [`cmg::DEFAULT_MIN_PLANNED_EDGES`] edges builds on it and keeps
+    /// a plan when the plan's construction bound fits.
     pub(crate) fn admit(
         block: &BlockLaplacian,
         lanes: usize,
         room: Option<u128>,
         cancel: Option<&(dyn Fn() -> bool + Sync)>,
+        pool: Option<&rayon::ThreadPool>,
     ) -> Result<Admitted<Self>> {
         let never = || false;
         let polled = cancel;
@@ -211,12 +240,20 @@ impl CmgLocal {
         let Some(graph) = Graph::count(block, cancel)? else {
             return Ok(Admitted::Refused);
         };
-        if !fits((block.levels as u128 * 4).saturating_add(graph.construction_bound())) {
+        let team = match pool.filter(|_| graph.edges >= cmg::DEFAULT_MIN_PLANNED_EDGES) {
+            Some(pool) => Some(team(pool)?),
+            None => None,
+        };
+        let construction = graph.construction_bound(team.is_some());
+        if !fits((block.levels as u128 * 4).saturating_add(construction)) {
             return Ok(Admitted::MemoryLimit);
         }
-        let Some(mut solve) = Self::build(block, graph, cancel, polled.is_some())? else {
+        let Some(mut solve) = Self::build(block, graph, cancel, polled.is_some(), team)? else {
             return Ok(Admitted::Refused);
         };
+        if let Some(team) = team {
+            solve.plan(team, polled, fits)?;
+        }
         let lanes = lanes.clamp(1, MAX_COLUMNS);
         if !fits(solve.bytes() + solve.apply_bytes(lanes)?) {
             return Ok(Admitted::MemoryLimit);
@@ -225,13 +262,14 @@ impl CmgLocal {
         Ok(Admitted::Solve(solve))
     }
 
-    /// Build the hierarchy of `block` on its counted `graph`; `None` when
-    /// CMG refuses the graph numerically.
+    /// Build the hierarchy of `block` on its counted `graph` (on `team` when
+    /// given); `None` when CMG refuses the graph numerically.
     fn build(
         block: &BlockLaplacian,
         graph: Graph,
         cancel: &(dyn Fn() -> bool + Sync),
         polled: bool,
+        team: Option<Team<'_>>,
     ) -> Result<Option<Self>> {
         let Graph {
             vertex,
@@ -281,6 +319,7 @@ impl CmgLocal {
             Err(error) => return built(error),
         };
         drop(edges);
+        let context = BuildContext { team, ..context };
         let preconditioner = match CmgPreconditioner::build_with(&graph, options(), context) {
             Ok(preconditioner) => preconditioner,
             Err(error) => return built(error),
@@ -292,6 +331,8 @@ impl CmgLocal {
             sizes,
             vertices,
             preconditioner,
+            plan: None,
+            plan_bytes: 0,
             columns: 0,
             workspace: None,
             workspace_bytes: 0,
@@ -300,6 +341,35 @@ impl CmgLocal {
             sums: Vec::new(),
             corrections: Vec::new(),
         }))
+    }
+
+    /// Keep the plan of the hierarchy's large levels for `team`'s shape when
+    /// the retained solve and the plan's construction bound `fit`; polls
+    /// `cancel` inside the build when `polled`.
+    fn plan(
+        &mut self,
+        team: Team<'_>,
+        polled: Option<&(dyn Fn() -> bool + Sync)>,
+        fit: impl Fn(u128) -> bool,
+    ) -> Result<()> {
+        let pre = &self.preconditioner;
+        let bound = ParallelCmgPlan::construction_allocation_bound(pre, team).map_err(fatal)?;
+        if !fit(self.bytes().saturating_add(bound as u128)) {
+            return Ok(());
+        }
+        let context = BuildContext {
+            team: Some(team),
+            cancel: polled,
+            budget_bytes: Some(bound),
+        };
+        let plan = ParallelCmgPlan::build_with(pre, context).map_err(fatal)?;
+        if plan.operator_count() == 0 && plan.restriction_count() == 0 {
+            return Ok(());
+        }
+        let report = CmgStorageReport::measure(&[&plan]).map_err(fatal)?;
+        self.plan_bytes = report.total_bytes().map_err(fatal)?;
+        self.plan = Some(plan);
+        Ok(())
     }
 
     /// Level-vertex values and component sums of `lanes` lanes.
@@ -333,14 +403,13 @@ impl CmgLocal {
     }
 
     /// Lanes `first..first + cols` of the level-major `r` (row stride
-    /// `width`) into the same lanes of `z`.
+    /// `width`) into the same lanes of `z`, on `team` when given.
     fn batch(
         &mut self,
         r: &[f64],
         z: &mut [f64],
-        width: usize,
-        first: usize,
-        cols: usize,
+        (width, first, cols): (usize, usize, usize),
+        team: Option<Team<'_>>,
     ) -> Result<()> {
         let level_values = self.component.len() * cols;
         let values = self.vertices * cols;
@@ -373,13 +442,18 @@ impl CmgLocal {
         }
         self.rhs[level_values..values].fill(0.0);
         let workspace = self.workspace.as_mut().expect("reserved CMG workspace");
+        let context = ApplyContext {
+            plan: self.plan.as_ref().filter(|_| team.is_some()),
+            team,
+            cancel: None,
+        };
         self.preconditioner
             .apply_compatible_batch_into(
                 &self.rhs[..values],
                 &mut self.solution[..values],
                 cols,
                 workspace,
-                ApplyContext::default(),
+                context,
             )
             .map_err(fatal)?;
         // Restrict to the level vertices and centre the output.
@@ -429,17 +503,28 @@ impl CmgLocal {
 }
 
 impl LocalSolve for CmgLocal {
-    fn apply(&mut self, r: &[f64], z: &mut [f64], width: usize) -> Result<()> {
+    /// On `pool` when the solve kept a plan, else serially.
+    fn apply(
+        &mut self,
+        r: &[f64],
+        z: &mut [f64],
+        width: usize,
+        pool: Option<&rayon::ThreadPool>,
+    ) -> Result<()> {
         let n = self.vertex.len().checked_mul(width);
         if width == 0 || self.columns == 0 || n != Some(r.len()) || n != Some(z.len()) {
             return Err(Error::InvalidInput(
                 "local solve dimensions are inconsistent",
             ));
         }
+        let team = match pool.filter(|_| self.plan.is_some()) {
+            Some(pool) => Some(team(pool)?),
+            None => None,
+        };
         let mut first = 0;
         while first < width {
             let cols = (width - first).min(self.columns);
-            self.batch(r, z, width, first, cols)?;
+            self.batch(r, z, (width, first, cols), team)?;
             first += cols;
         }
         for (row, &v) in z.chunks_exact_mut(width).zip(&self.vertex) {
@@ -462,6 +547,7 @@ impl LocalSolve for CmgLocal {
             + held(&self.sums)
             + held(&self.corrections)
             + self.preconditioner.retained_bytes() as u128
+            + self.plan_bytes as u128
             + self.workspace_bytes as u128
             + std::mem::size_of::<Self>() as u128
     }
@@ -651,7 +737,7 @@ mod tests {
 
     /// The solve of `b` with [`MAX_COLUMNS`] lanes and no byte limit.
     fn admit(b: &BlockLaplacian, cancel: &(dyn Fn() -> bool + Sync)) -> Result<Admitted<CmgLocal>> {
-        CmgLocal::admit(b, MAX_COLUMNS, None, Some(cancel))
+        CmgLocal::admit(b, MAX_COLUMNS, None, Some(cancel), None)
     }
 
     fn solve(b: &BlockLaplacian) -> CmgLocal {
@@ -807,7 +893,7 @@ mod tests {
 
     fn apply(m: &mut CmgLocal, r: &[f64], width: usize) -> Vec<f64> {
         let mut z = vec![f64::NAN; r.len()];
-        m.apply(r, &mut z, width).unwrap();
+        m.apply(r, &mut z, width, None).unwrap();
         z
     }
 
@@ -899,10 +985,10 @@ mod tests {
             (connected, connected + stars, edges)
         );
         let map = b.levels as u128 * 4;
-        let peak = map + graph.construction_bound();
+        let peak = map + graph.construction_bound(false);
         // The retained hierarchy lies within its construction bound, and the
         // reserved buffers add exactly their admitted bytes.
-        let mut m = CmgLocal::build(&b, graph, NEVER, true)
+        let mut m = CmgLocal::build(&b, graph, NEVER, true, None)
             .unwrap()
             .expect("solve");
         assert!(m.preconditioner.retained_bytes() as u128 <= peak - map);
@@ -914,7 +1000,7 @@ mod tests {
         let r: Vec<f64> = (0..b.levels * 6).map(|_| rng.uniform() - 0.5).collect();
         let expected = apply(&mut m, &r, 6);
         for lanes in [1, 3, 4, 8] {
-            let admitted = |room| CmgLocal::admit(&b, lanes, room, Some(NEVER)).unwrap();
+            let admitted = |room| CmgLocal::admit(&b, lanes, room, Some(NEVER), None).unwrap();
             let Admitted::Solve(mut m) = admitted(None) else {
                 panic!("no CMG solve");
             };
@@ -928,7 +1014,7 @@ mod tests {
             ));
             assert!(matches!(admitted(Some(peak - 1)), Admitted::MemoryLimit));
         }
-        let small = CmgLocal::admit(&b, 4, Some(map - 1), Some(NEVER)).unwrap();
+        let small = CmgLocal::admit(&b, 4, Some(map - 1), Some(NEVER), None).unwrap();
         assert!(matches!(small, Admitted::MemoryLimit));
     }
 
@@ -1047,7 +1133,7 @@ mod tests {
         });
         let mut m = solve(&b);
         assert!(m.preconditioner.hierarchy().levels().len() > 1);
-        let cmg = pcg(&b, &rhs, &mut |r, z| m.apply(r, z, 1).unwrap());
+        let cmg = pcg(&b, &rhs, &mut |r, z| m.apply(r, z, 1, None).unwrap());
         eprintln!(
             "chain of {} levels: Jacobi PCG {jacobi} iterations, CMG PCG {cmg}",
             b.levels
@@ -1076,11 +1162,11 @@ mod tests {
         let mut m = solve(&chain(4));
         let mut z = vec![0.0; 24];
         assert!(matches!(
-            m.apply(&[0.0; 24], &mut z, 2),
+            m.apply(&[0.0; 24], &mut z, 2, None),
             Err(Error::InvalidInput(_))
         ));
         assert!(matches!(
-            m.apply(&[0.0; 24], &mut z, 0),
+            m.apply(&[0.0; 24], &mut z, 0, None),
             Err(Error::InvalidInput(_))
         ));
     }

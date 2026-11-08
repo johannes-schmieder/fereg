@@ -196,7 +196,12 @@ impl<'a> Cache<'a> {
         let (detach, gram) = (self.detach_norms, self.gram_requested);
         let hinted = !self.blocks_refused && self.hint.is_some_and(|h| h.load(Ordering::Relaxed));
         let projector = bind(&mut self.projector, design, hinted, &mut self.escalated)?;
-        let control = fedemean::Control::with_cancel(&crate::interrupt::cancellation_requested);
+        // CMG local solves borrow the action's team (serial outside one).
+        let host = crate::parallel::HostPool::current()?;
+        let mut control = fedemean::Control::with_cancel(&crate::interrupt::cancellation_requested);
+        if let Some(host) = &host {
+            control = control.with_pool(host.pool());
+        }
         let setup = crate::diagnostics::phase_ledger::PhaseLedger::new(
             "block_schur_setup",
             ["structure", "weights"],

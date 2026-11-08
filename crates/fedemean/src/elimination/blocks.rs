@@ -37,7 +37,13 @@ enum CmgLocal {}
 
 #[cfg(not(feature = "cmg"))]
 impl LocalSolve for CmgLocal {
-    fn apply(&mut self, _: &[f64], _: &mut [f64], _: usize) -> Result<()> {
+    fn apply(
+        &mut self,
+        _: &[f64],
+        _: &mut [f64],
+        _: usize,
+        _: Option<&rayon::ThreadPool>,
+    ) -> Result<()> {
         match *self {}
     }
 
@@ -156,15 +162,16 @@ pub(super) fn bound(st: &Structure, spec: &BlockSpec) -> u128 {
     dense + st.cells() as u128 * 16 + (st.active.len() as u128 + 1) * 16 + widest * 4
 }
 
-/// The CMG solve of `lap` within `room` bytes.
+/// The CMG solve of `lap` within `room` bytes, built on `pool` when given.
 #[cfg(feature = "cmg")]
 fn cmg(
     lap: &BlockLaplacian,
     lanes: usize,
     room: Option<u128>,
     cancel: &Cancel<'_>,
+    pool: Option<&rayon::ThreadPool>,
 ) -> Result<Admitted<CmgLocal>> {
-    CmgLocal::admit(lap, lanes, room, cancel.0)
+    CmgLocal::admit(lap, lanes, room, cancel.0, pool)
 }
 
 #[cfg(not(feature = "cmg"))]
@@ -173,6 +180,7 @@ fn cmg(
     _: usize,
     _: Option<u128>,
     _: &Cancel<'_>,
+    _: Option<&rayon::ThreadPool>,
 ) -> Result<Admitted<CmgLocal>> {
     Err(crate::error::Error::Unsupported(
         "CMG local solves are not available in this build",
@@ -192,6 +200,7 @@ impl Blocks {
         w: &Weights,
         build: Build,
         cancel: &Cancel<'_>,
+        pool: Option<&rayon::ThreadPool>,
     ) -> Result<bool> {
         let nb = st.blocks.len();
         let fits = |bytes: u128| build.budget.is_none_or(|budget| bytes <= budget);
@@ -229,7 +238,7 @@ impl Blocks {
             } else if wants_cmg(&spec) {
                 self.laplacian.fill(st, w, b, &mut self.slot, cancel)?;
                 let room = build.budget.map(|budget| budget.saturating_sub(admitted));
-                match cmg(&self.laplacian, build.lanes, room, cancel)? {
+                match cmg(&self.laplacian, build.lanes, room, cancel, pool)? {
                     Admitted::Solve(solve) => {
                         admitted += solve.bytes();
                         block.cmg = Some(solve);
@@ -286,17 +295,30 @@ impl Blocks {
     }
 }
 
-impl<const R: usize> Precondition<R> for Blocks {
+/// The blocks as one recurrence's preconditioner, with the pool its CMG
+/// solves borrow as a team.
+pub(super) struct OnPool<'b, 'p> {
+    blocks: &'b mut Blocks,
+    pool: Option<&'p rayon::ThreadPool>,
+}
+
+impl<'b, 'p> OnPool<'b, 'p> {
+    pub(super) fn new(blocks: &'b mut Blocks, pool: Option<&'p rayon::ThreadPool>) -> Self {
+        Self { blocks, pool }
+    }
+}
+
+impl<const R: usize> Precondition<R> for OnPool<'_, '_> {
     const JACOBI: bool = false;
 
     fn correct(&mut self, r: &[[f64; R]], z: &mut [[f64; R]]) -> Result<()> {
-        for block in &mut self.blocks {
+        for block in &mut self.blocks.blocks {
             let range = block.range.clone();
             let (r, z) = (r[range.clone()].as_flattened(), z[range].as_flattened_mut());
             if let Some(cmg) = &mut block.cmg {
-                cmg.apply(r, z, R)?;
+                cmg.apply(r, z, R, self.pool)?;
             } else if block.local == Local::Dense {
-                block.dense.apply(r, z, R)?;
+                block.dense.apply(r, z, R, self.pool)?;
             }
         }
         Ok(())

@@ -324,7 +324,13 @@ fn solve(l: &[f64], y: &mut [f64], n: usize, width: usize) {
 }
 
 impl LocalSolve for DenseLocal {
-    fn apply(&mut self, r: &[f64], z: &mut [f64], width: usize) -> Result<()> {
+    fn apply(
+        &mut self,
+        r: &[f64],
+        z: &mut [f64],
+        width: usize,
+        _: Option<&rayon::ThreadPool>,
+    ) -> Result<()> {
         let n = self.levels.checked_mul(width);
         if width == 0 || width > BATCH || n != Some(r.len()) || n != Some(z.len()) {
             return Err(Error::InvalidInput(
@@ -471,7 +477,7 @@ mod tests {
             let mut r = vec![0.0; k];
             r[j] = 1.0;
             let mut z = vec![f64::NAN; k];
-            solve.apply(&r, &mut z, 1).unwrap();
+            solve.apply(&r, &mut z, 1, None).unwrap();
             for i in 0..k {
                 m[i][j] = z[i];
             }
@@ -530,7 +536,7 @@ mod tests {
         let width = 3;
         let r: Vec<f64> = (0..k * width).map(|i| (i as f64 * 0.37).sin()).collect();
         let mut z = vec![f64::NAN; k * width];
-        solve.apply(&r, &mut z, width).unwrap();
+        solve.apply(&r, &mut z, width, None).unwrap();
         for c in 0..width {
             for i in 0..k {
                 let expected: f64 = (0..k).map(|j| m[i][j] * r[j * width + c]).sum();

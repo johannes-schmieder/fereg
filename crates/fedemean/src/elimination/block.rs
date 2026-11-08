@@ -41,9 +41,16 @@ pub(crate) struct BlockLaplacian {
 /// component's mean from its input and output (the component constants lie
 /// in the null space of the reduced matrix), gives isolated levels a zero
 /// image, and keeps its action unchanged between rebuilds, which happen only
-/// between solves or at an explicit restart.
+/// between solves or at an explicit restart. `pool`, the caller's pool, may
+/// run the solve's rows (CMG); the action never depends on it.
 pub(crate) trait LocalSolve: Send {
-    fn apply(&mut self, r: &[f64], z: &mut [f64], width: usize) -> Result<()>;
+    fn apply(
+        &mut self,
+        r: &[f64],
+        z: &mut [f64],
+        width: usize,
+        pool: Option<&rayon::ThreadPool>,
+    ) -> Result<()>;
     /// Bytes retained by the solve.
     fn bytes(&self) -> u128;
 }

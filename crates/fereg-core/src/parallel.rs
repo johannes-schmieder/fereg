@@ -396,6 +396,36 @@ fn current_worker_context() -> Option<Arc<WorkerContext>> {
     WORKER_CONTEXT.with(|current| current.borrow().clone())
 }
 
+/// The actual admitted registry of the installed team, lent to synchronous
+/// work of the current action (CMG teams, fedemean's `Control::with_pool`):
+/// the borrow lives no longer than this owner handle and never creates a
+/// nested pool.
+pub(crate) struct HostPool(Arc<OwnedThreadPool>);
+
+impl HostPool {
+    /// The current worker's team inside a live action admission; `None`
+    /// outside fereg's team (including a foreign Rayon pool).
+    pub(crate) fn current() -> Result<Option<Self>> {
+        let Some(context) = current_worker_context() else {
+            return Ok(None);
+        };
+        let owner = context.owner.get().and_then(Weak::upgrade).ok_or_else(|| {
+            FeregError::new(ErrorCode::Internal, "CMG host team has no live owner")
+        })?;
+        if context.state().shared == 0 {
+            return Err(FeregError::new(
+                ErrorCode::Unsupported,
+                "CMG host team requires a live action admission",
+            ));
+        }
+        Ok(Some(Self(owner)))
+    }
+
+    pub(crate) fn pool(&self) -> &rayon::ThreadPool {
+        self.0.pool.as_ref().expect("live worker team")
+    }
+}
+
 /// Lend the actual admitted registry to one synchronous CMG operation as a
 /// borrowed CMG team: CMG runs on fereg's workers and never creates a nested
 /// pool. The worker ceiling is the action's thread count and the parallel
@@ -405,20 +435,10 @@ fn current_worker_context() -> Option<Arc<WorkerContext>> {
 pub(crate) fn with_cmg_execution<T>(
     operation: impl FnOnce(Option<cmg::Team<'_>>) -> T,
 ) -> Result<T> {
-    let Some(context) = current_worker_context() else {
+    let Some(host) = HostPool::current()? else {
         return Ok(operation(None));
     };
-    let owner =
-        context.owner.get().and_then(Weak::upgrade).ok_or_else(|| {
-            FeregError::new(ErrorCode::Internal, "CMG host team has no live owner")
-        })?;
-    let pool = owner.pool.as_ref().expect("live worker team");
-    if context.state().shared == 0 {
-        return Err(FeregError::new(
-            ErrorCode::Unsupported,
-            "CMG host team requires a live action admission",
-        ));
-    }
+    let pool = host.pool();
     let ceiling = pool.current_num_threads();
     let team = cmg::Team::new(pool, ceiling, cmg::ParallelOptions::default())
         .map_err(|error| FeregError::new(ErrorCode::Internal, error.to_string()))?;
