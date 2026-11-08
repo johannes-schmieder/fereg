@@ -42,7 +42,7 @@ use cmg::{
 /// Segments with more distinct levels than this become auxiliary stars.
 const STAR_LEVELS: usize = 5;
 /// Lanes per CMG batch application; wider applications are split.
-const MAX_COLUMNS: usize = 4;
+const MAX_COLUMNS: usize = 8;
 /// Graph vertex of an isolated level.
 const ISOLATED: u32 = u32::MAX;
 /// Segments between two cancellation polls of the graph passes.

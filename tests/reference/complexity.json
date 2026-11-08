@@ -1,10 +1,10 @@
 {
   "growth": [
     {
-      "after": 4677,
-      "before": 4668,
+      "after": 4705,
+      "before": 4677,
       "metric": "fedemean/production_lines",
-      "reason": "Escalated recurrences stop at a tenth of the ordinary goal (cross-worker agreement well inside the tolerance on hard graphs)."
+      "reason": "A design that escalated starts later automatic batches and projections on the blocks (sticky escalation); one CMG call covers up to eight columns."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -475,76 +475,72 @@
         "dispatch_candidates": [
           {
             "condition": "self . structure . as_ref ( ) . is_some_and ( | st | st . width == call . width )",
-            "line": 164
+            "line": 168
           },
           {
             "condition": "Structure :: build ( call . design , call . members , call . width , & call . cancel ) ?",
-            "line": 173
+            "line": 177
           },
           {
             "condition": "values . nobs ( ) != call . design . nobs ( )",
-            "line": 202
+            "line": 206
           },
           {
             "condition": "request . memory_limit . is_some_and ( | limit |",
-            "line": 214
+            "line": 218
           },
           {
             "condition": "self . weights . as_ref ( ) . is_none_or ( | ( k , _ ) | * k != key )",
-            "line": 220
+            "line": 224
           },
           {
             "condition": "column . len ( ) != st . nobs || design . nobs ( ) != st . nobs",
-            "line": 279
+            "line": 289
           },
           {
             "condition": "st . blocks . len ( ) == 1",
-            "line": 390
+            "line": 400
           },
           {
             "condition": "plan . memory_limit",
-            "line": 698
+            "line": 710
           },
           {
             "condition": "( unit , weighted )",
-            "line": 821
+            "line": 833
           },
           {
             "condition": "width",
-            "line": 829
+            "line": 841
           },
           {
             "condition": "values . nobs ( ) != st . nobs || values . ncols ( ) == 0 || job . design . nobs ( ) != st . nobs",
-            "line": 857
+            "line": 869
           },
           {
             "condition": "st . blocks . len ( )",
-            "line": 860
-          },
-          {
-            "condition": "initial == Mode :: Blocks && ! build ( st , job . w , & plan , ncols . min ( BATCH ) , blocks , & mut facts ) ?",
-            "line": 924
+            "line": 872
           },
           {
             "condition": "dispatch :: < NB > ( & ctx , & plan , width , batch , lent ) ?",
-            "line": 958
+            "line": 992
           }
         ],
         "functions": {
           "add_coefficients#1": {
-            "line": 720,
+            "line": 732,
             "lines": 29
           },
           "admission_bytes#1": {
-            "line": 386,
+            "line": 396,
             "lines": 16
           },
           "build#1": {
-            "line": 690,
+            "line": 702,
             "lines": 26
           },
           "certify_residual#1": {
-            "line": 268,
+            "line": 278,
             "lines": 90
           },
           "check#1": {
@@ -552,79 +548,83 @@
             "lines": 7
           },
           "columns#1": {
-            "line": 150,
-            "lines": 3
-          },
-          "dispatch#1": {
-            "line": 810,
-            "lines": 33
-          },
-          "explicit_block_bytes#1": {
-            "line": 379,
-            "lines": 6
-          },
-          "numerical#1": {
-            "line": 1037,
-            "lines": 18
-          },
-          "plan_of#1": {
-            "line": 870,
-            "lines": 22
-          },
-          "prepare#1": {
-            "line": 160,
-            "lines": 24
-          },
-          "project#1": {
-            "line": 187,
-            "lines": 77
-          },
-          "project#2": {
-            "line": 849,
-            "lines": 19
-          },
-          "project_nb#1": {
-            "line": 893,
-            "lines": 142
-          },
-          "residual_gram#1": {
-            "line": 142,
-            "lines": 3
-          },
-          "residual_norms#1": {
-            "line": 146,
-            "lines": 3
-          },
-          "run#1": {
-            "line": 497,
-            "lines": 78
-          },
-          "same_projection#1": {
-            "line": 1079,
-            "lines": 5
-          },
-          "solve#1": {
-            "line": 634,
-            "lines": 51
-          },
-          "solve_bytes#1": {
-            "line": 369,
-            "lines": 8
-          },
-          "structure#1": {
             "line": 154,
             "lines": 3
           },
+          "dispatch#1": {
+            "line": 822,
+            "lines": 33
+          },
+          "explicit_block_bytes#1": {
+            "line": 389,
+            "lines": 6
+          },
+          "initial_mode#1": {
+            "line": 909,
+            "lines": 17
+          },
+          "numerical#1": {
+            "line": 1075,
+            "lines": 18
+          },
+          "plan_of#1": {
+            "line": 882,
+            "lines": 22
+          },
+          "prepare#1": {
+            "line": 164,
+            "lines": 24
+          },
+          "project#1": {
+            "line": 191,
+            "lines": 83
+          },
+          "project#2": {
+            "line": 861,
+            "lines": 19
+          },
+          "project_nb#1": {
+            "line": 927,
+            "lines": 146
+          },
+          "residual_gram#1": {
+            "line": 146,
+            "lines": 3
+          },
+          "residual_norms#1": {
+            "line": 150,
+            "lines": 3
+          },
+          "run#1": {
+            "line": 509,
+            "lines": 78
+          },
+          "same_projection#1": {
+            "line": 1117,
+            "lines": 5
+          },
+          "solve#1": {
+            "line": 646,
+            "lines": 51
+          },
+          "solve_bytes#1": {
+            "line": 379,
+            "lines": 8
+          },
+          "structure#1": {
+            "line": 158,
+            "lines": 3
+          },
           "untouched#1": {
-            "line": 360,
+            "line": 370,
             "lines": 7
           },
           "with_structure#1": {
-            "line": 1070,
+            "line": 1108,
             "lines": 8
           }
         },
-        "production_lines": 910
+        "production_lines": 938
       },
       "crates/fedemean/src/elimination/passes.rs": {
         "chunk_candidates": [],
@@ -27678,10 +27678,10 @@
     "metrics": {
       "fedemean": {
         "chunk_candidates": 0,
-        "dispatch_candidates": 57,
+        "dispatch_candidates": 56,
         "files_over_1500": 0,
         "functions_over_150": 0,
-        "production_lines": 4677
+        "production_lines": 4705
       },
       "fereg-core": {
         "chunk_candidates": 13,

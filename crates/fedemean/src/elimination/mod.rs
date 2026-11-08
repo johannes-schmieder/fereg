@@ -117,6 +117,10 @@ pub(crate) struct Engine {
     weights: Option<(WeightKey, Weights)>,
     /// Counts the weight states prepared (the blocks' build key).
     generation: u64,
+    /// A batch of this design escalated: later automatic (Auto + Escalate)
+    /// batches and projections start on the blocks from zero, since the
+    /// design's graph, not its weights, makes the Jacobi recurrence stall.
+    hard: bool,
     blocks: Blocks,
     work: WorkSlots,
     gram: Gram,
@@ -249,9 +253,15 @@ impl Engine {
             request,
             choice: call.choice,
             generation: self.generation,
+            hard: self.hard,
             cancel: call.cancel,
         };
         let (outcome, gram) = project(&job, &mut values, coefficients, outputs, facts)?;
+        let route_blocks = match &outcome {
+            Outcome::Projected(report) => report.facts.escalations > 0,
+            Outcome::Declined { facts, .. } => facts.escalations > 0,
+        };
+        self.hard |= route_blocks;
         match &outcome {
             Outcome::Projected(_) => self.gram_ready = gram,
             Outcome::Declined { .. } => {
@@ -412,6 +422,8 @@ struct Job<'j, 'c> {
     choice: Choice,
     /// The weight state's generation (the blocks' build key).
     generation: u64,
+    /// See [`Engine::hard`].
+    hard: bool,
     cancel: Cancel<'c>,
 }
 
@@ -890,6 +902,28 @@ fn plan_of<'p>(job: &Job<'_, 'p>) -> (Plan<'p>, Mode) {
     (plan, mode)
 }
 
+/// The first batch's mode: explicit blocks are built first (`None` when they
+/// exceed the memory limit); a design that escalated before starts its
+/// automatic batches on the blocks (from zero, at the ordinary goal) when
+/// they fit.
+fn initial_mode(
+    job: &Job<'_, '_>,
+    plan: &Plan<'_>,
+    initial: Mode,
+    ncols: usize,
+    blocks: &mut Blocks,
+    facts: &mut Facts,
+) -> Result<Option<Mode>> {
+    let lanes = ncols.min(BATCH);
+    match initial {
+        Mode::Blocks if !build(job.st, job.w, plan, lanes, blocks, facts)? => Ok(None),
+        Mode::Escalate if job.hard && build(job.st, job.w, plan, lanes, blocks, facts)? => {
+            Ok(Some(Mode::Blocks))
+        }
+        mode => Ok(Some(mode)),
+    }
+}
+
 fn project_nb<const NB: usize>(
     job: &Job<'_, '_>,
     values: &mut ColumnsMut<'_>,
@@ -921,9 +955,9 @@ fn project_nb<const NB: usize>(
     };
     let (plan, initial) = plan_of(job);
     let started = Instant::now();
-    if initial == Mode::Blocks && !build(st, job.w, &plan, ncols.min(BATCH), blocks, &mut facts)? {
+    let Some(mut initial) = initial_mode(job, &plan, initial, ncols, blocks, &mut facts)? else {
         return Ok((untouched(Decline::MemoryLimit, facts), false));
-    }
+    };
     let mut fold = MomentFold::default();
     residual_norms.clear();
     reserve(residual_norms, ncols)?;
@@ -976,6 +1010,10 @@ fn project_nb<const NB: usize>(
                     if formed.blocks {
                         used_blocks = true;
                         mode = Mode::Blocks;
+                        // Later batches of an escalated call start on them.
+                        if initial == Mode::Escalate {
+                            initial = Mode::Blocks;
+                        }
                     }
                     if let Some(part) = &formed.certified {
                         fold.merge(part);
