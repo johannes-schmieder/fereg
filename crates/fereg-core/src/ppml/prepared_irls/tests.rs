@@ -300,6 +300,7 @@ fn score_fixed_leaves_are_exact_across_scratch_waves_and_workers() {
                         team: team.clone(),
                         fe_moments: vec![f64::NAN; capacity],
                         fe_basis_squares: vec![f64::NAN; capacity],
+                        scatter_effects: Vec::new(),
                     };
                     let storage = (
                         workspace.fe_moments.as_ptr(),
@@ -356,6 +357,7 @@ fn score_fixed_leaves_retain_small_components_across_large_cancellation() {
                     team: team.clone(),
                     fe_moments: vec![f64::NAN; capacity],
                     fe_basis_squares: vec![f64::NAN; capacity],
+                    scatter_effects: Vec::new(),
                 };
                 let mut result = [(0., 0.)];
                 workspace

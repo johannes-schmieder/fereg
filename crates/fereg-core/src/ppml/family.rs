@@ -624,8 +624,10 @@ impl<'a> PreparedPoissonInputs<'a> {
         self.outcome
     }
 
+    /// The IRLS objective: see `iteration_half_deviance`. Publication replays
+    /// the objective with the reference formula.
     pub(crate) fn evaluate(&self, eta: &[f64], mean: &[f64]) -> Result<PoissonObjective> {
-        poisson_objective_with_terms(
+        poisson_objective_with_terms::<true>(
             self.outcome,
             Some(eta),
             mean,
@@ -674,7 +676,7 @@ impl<'a> PreparedPoissonInputs<'a> {
                         let mut deviance = CompensatedSum::default();
                         let mut likelihood = CompensatedSum::default();
                         for row in begin..end {
-                            let values = objective_row(
+                            let values = objective_row::<true>(
                                 self.outcome,
                                 Some(eta),
                                 mean,
@@ -814,10 +816,10 @@ fn poisson_objective_impl(
     mean: &[f64],
     prior_weights: &[f64],
 ) -> Result<PoissonObjective> {
-    poisson_objective_with_terms(outcome, eta, mean, prior_weights, None)
+    poisson_objective_with_terms::<false>(outcome, eta, mean, prior_weights, None)
 }
 
-fn poisson_objective_with_terms(
+fn poisson_objective_with_terms<const ITERATION: bool>(
     outcome: &[f64],
     eta: Option<&[f64]>,
     mean: &[f64],
@@ -839,7 +841,7 @@ fn poisson_objective_with_terms(
     let mut deviance_sum = CompensatedSum::default();
     let mut log_likelihood_sum = CompensatedSum::default();
     for row in 0..outcome.len() {
-        let values = objective_row(outcome, eta, mean, prior_weights, terms, row)?;
+        let values = objective_row::<ITERATION>(outcome, eta, mean, prior_weights, terms, row)?;
         deviance_sum.add(values[0]);
         log_likelihood_sum.add(values[1]);
     }
@@ -847,7 +849,7 @@ fn poisson_objective_with_terms(
 }
 
 #[inline]
-fn objective_row(
+fn objective_row<const ITERATION: bool>(
     outcome: &[f64],
     eta: Option<&[f64]>,
     mean: &[f64],
@@ -855,7 +857,7 @@ fn objective_row(
     terms: Option<&[[f64; 2]]>,
     row: usize,
 ) -> Result<[f64; 2]> {
-    objective_row_values(
+    objective_row_values_with::<ITERATION>(
         outcome[row],
         mean[row],
         prior_weights[row],
@@ -867,6 +869,18 @@ fn objective_row(
 
 #[inline]
 fn objective_row_values(
+    y: f64,
+    mu: f64,
+    weight: f64,
+    eta: Option<f64>,
+    terms: Option<[f64; 2]>,
+    row: usize,
+) -> Result<[f64; 2]> {
+    objective_row_values_with::<false>(y, mu, weight, eta, terms, row)
+}
+
+#[inline]
+fn objective_row_values_with<const ITERATION: bool>(
     y: f64,
     mu: f64,
     weight: f64,
@@ -897,8 +911,10 @@ fn objective_row_values(
             "Poisson linear predictor at observation {row} is nonfinite"
         )));
     }
-    let half_deviance =
-        poisson_half_deviance_with_logs(y, mu, log_mean, terms.map(|values| values[0]))?;
+    let half_deviance = match terms {
+        Some([log_y, _]) if ITERATION => iteration_half_deviance(y, mu, log_mean, log_y)?,
+        _ => poisson_half_deviance_with_logs(y, mu, log_mean, terms.map(|values| values[0]))?,
+    };
     let deviance_term = 2.0 * weight * half_deviance;
     let log_likelihood_term =
         weight * (y * log_mean - mu - terms.map_or_else(|| log_gamma(y + 1.0), |values| values[1]));
@@ -1027,9 +1043,16 @@ fn working_row(
     let score_adjustment = if y == 0.0 {
         -1.0
     } else {
-        // Form y/mu in log space so a representable ratio is not lost to
-        // premature division under extreme but otherwise valid offsets.
-        (terms.map_or_else(|| y.ln(), |values| values[row][0]) - linear_predictor).exp() - 1.0
+        // With normal y, mu and quotient the direct division is accurate to
+        // rounding. Otherwise form y/mu in log space so a representable ratio
+        // is not lost to premature division under extreme but otherwise valid
+        // offsets.
+        let ratio = y / mu;
+        if y.is_normal() && mu.is_normal() && ratio.is_normal() {
+            ratio - 1.0
+        } else {
+            (terms.map_or_else(|| y.ln(), |values| values[row][0]) - linear_predictor).exp() - 1.0
+        }
     };
     let response = linear_predictor - row_offset + score_adjustment;
     if !weight.is_finite() || weight <= 0.0 || !response.is_finite() {
@@ -1086,6 +1109,65 @@ impl CompensatedSum {
     pub(crate) fn total(self) -> f64 {
         self.sum + self.correction
     }
+}
+
+/// IRLS half deviance with the outcome's stored logarithm: the logarithmic
+/// form `y (log y - log mu) - (y - mu)` where it is accurate (`|x| >= 0.1`
+/// with `x = y/mu - 1`; relative rounding error below about
+/// `1e-13 max(|log y|, |log mu|)` per row), a division-free series of
+/// `(1+x) log1p(x) - x` below that, and the reference formula whenever the
+/// fast value is not a finite nonnegative number. The iteration uses it for
+/// line searches and convergence; the published objective is replayed with
+/// `poisson_half_deviance_with_logs`.
+#[inline]
+fn iteration_half_deviance(y: f64, mu: f64, log_mean: f64, log_y: f64) -> Result<f64> {
+    if y == 0.0 {
+        return Ok(mu);
+    }
+    if y == mu {
+        return Ok(0.0);
+    }
+    let difference = y - mu;
+    let relative_difference = difference / mu;
+    let value = if relative_difference.abs() < 0.1 {
+        mu * small_one_plus_x_log1p_minus_x(relative_difference)
+    } else {
+        y * (log_y - log_mean) - difference
+    };
+    if value.is_finite() && value >= 0.0 {
+        Ok(value)
+    } else {
+        poisson_half_deviance_with_logs(y, mu, log_mean, Some(log_y))
+    }
+}
+
+/// `(1+x) log1p(x) - x = sum_{k>=2} (-1)^k x^k / (k(k-1))` for `|x| < 0.1`
+/// by Horner's rule with constant coefficients; terms past `k = 16` are below
+/// `1e-17` of the leading term.
+#[inline]
+fn small_one_plus_x_log1p_minus_x(x: f64) -> f64 {
+    const C: [f64; 15] = [
+        1.0 / 2.0,
+        -1.0 / 6.0,
+        1.0 / 12.0,
+        -1.0 / 20.0,
+        1.0 / 30.0,
+        -1.0 / 42.0,
+        1.0 / 56.0,
+        -1.0 / 72.0,
+        1.0 / 90.0,
+        -1.0 / 110.0,
+        1.0 / 132.0,
+        -1.0 / 156.0,
+        1.0 / 182.0,
+        -1.0 / 210.0,
+        1.0 / 240.0,
+    ];
+    let mut p = C[14];
+    for &c in C[..14].iter().rev() {
+        p = p * x + c;
+    }
+    x * x * p
 }
 
 fn poisson_half_deviance_with_logs(
@@ -1401,11 +1483,10 @@ mod tests {
                     assert_eq!(mean, direct_mean);
                     let direct = poisson_objective_from_eta(&y, &eta, &mean, &q).unwrap();
                     let scheduled = inputs.evaluate_tiled(&eta, &mean, &mut tile).unwrap();
-                    assert_eq!(direct.deviance.to_bits(), scheduled.deviance.to_bits());
-                    assert_eq!(
-                        direct.log_likelihood.to_bits(),
-                        scheduled.log_likelihood.to_bits()
-                    );
+                    // Scheduling never changes the iteration objective; it
+                    // agrees with the reference formula to rounding level.
+                    assert_eq!(scheduled, inputs.evaluate(&eta, &mean).unwrap());
+                    assert_iteration_objective(scheduled, direct);
                     let (mut w, mut z, mut pw, mut pz, mut scores) = (
                         vec![0.; n],
                         vec![0.; n],
@@ -1598,6 +1679,54 @@ mod tests {
         assert_eq!(objective_tile_rows(17003, usize::MAX), 17003);
     }
 
+    /// The IRLS objective keeps the reference log likelihood bit for bit and
+    /// its deviance within the iteration formula's rounding bound.
+    fn assert_iteration_objective(iteration: PoissonObjective, reference: PoissonObjective) {
+        assert_eq!(
+            iteration.log_likelihood.to_bits(),
+            reference.log_likelihood.to_bits()
+        );
+        let scale = reference.deviance.abs().max(f64::MIN_POSITIVE);
+        assert!(
+            (iteration.deviance - reference.deviance).abs() <= 1e-11 * scale,
+            "{iteration:?} vs {reference:?}"
+        );
+    }
+
+    #[test]
+    fn iteration_half_deviance_matches_the_reference_formula() {
+        // Across the branch boundaries (|x| = 0.01, 1e-4, 0.5) and scales.
+        for &mu in &[1e-200, 1e-8, 0.3, 1.0, 7.5, 1e6, 1e200] {
+            for &x in &[
+                -0.9, -0.5, -0.3, -0.1000001, -0.1, -0.0999999, -1e-2, -1e-4, -1e-7, 1e-9, 1e-4,
+                0.0999999, 0.1, 0.2, 0.5, 0.75, 3.0, 40.0,
+            ] {
+                let y: f64 = mu * (1.0 + x);
+                if !y.is_normal() {
+                    continue;
+                }
+                let eta = mu.ln();
+                let reference = poisson_half_deviance_with_logs(y, mu, eta, Some(y.ln())).unwrap();
+                let fast = iteration_half_deviance(y, mu, eta, y.ln()).unwrap();
+                // Series: a few ulps. Logarithmic form (|x| >= 0.1): the
+                // rounding of log y - log mu over the curvature x^2.
+                let bound = 1e-14 * y.ln().abs().max(eta.abs()).max(1.0) / x.abs().min(1.0).powi(2);
+                assert!(
+                    (fast - reference).abs() <= bound.max(16.0 * f64::EPSILON) * reference.abs(),
+                    "mu={mu:e} x={x:e}: {fast:e} vs {reference:e}"
+                );
+            }
+        }
+        assert_eq!(
+            iteration_half_deviance(0.0, 2.5, 2.5_f64.ln(), 0.0).unwrap(),
+            2.5
+        );
+        assert_eq!(
+            iteration_half_deviance(3.0, 3.0, 3.0_f64.ln(), 3.0_f64.ln()).unwrap(),
+            0.0
+        );
+    }
+
     #[test]
     fn prepared_inputs_preserve_objective_and_working_bits_across_frames() {
         let _stable_route = crate::fe::block_schur::stable_route_for_test();
@@ -1612,11 +1741,7 @@ mod tests {
             let mean: Vec<_> = eta.iter().map(|&v| v.exp()).collect();
             let direct = poisson_objective_from_eta(&outcome, &eta, &mean, &prior).unwrap();
             let prepared = inputs.evaluate(&eta, &mean).unwrap();
-            assert_eq!(direct.deviance.to_bits(), prepared.deviance.to_bits());
-            assert_eq!(
-                direct.log_likelihood.to_bits(),
-                prepared.log_likelihood.to_bits()
-            );
+            assert_iteration_objective(prepared, direct);
             let (mut w, mut z, mut pw, mut pz) = ([0.; 8], [0.; 8], [0.; 8], [0.; 8]);
             fill_poisson_working_state(&outcome, &mean, &prior, &eta, &offset, &mut w, &mut z)
                 .unwrap();
@@ -1631,9 +1756,9 @@ mod tests {
         let other = PreparedPoissonInputs::new(&outcome, &q, &offset).unwrap();
         let eta = [0.; 8];
         let mean = [1.; 8];
-        assert_eq!(
+        assert_iteration_objective(
             other.evaluate(&eta, &mean).unwrap(),
-            poisson_objective_from_eta(&outcome, &eta, &mean, &q).unwrap()
+            poisson_objective_from_eta(&outcome, &eta, &mean, &q).unwrap(),
         );
         assert_ne!(
             other.evaluate(&eta, &mean).unwrap(),

@@ -1471,9 +1471,10 @@ impl CertifiedPpmlResult {
             recomputed_objective.log_likelihood,
         );
         let likelihood =
-            PpmlLikelihoodStatistics::from_replayed_null(input.objective, null_objective).map_err(
-                |error| composed_result_error("PPML final likelihood publication failed", error),
-            )?;
+            PpmlLikelihoodStatistics::from_replayed_null(recomputed_objective, null_objective)
+                .map_err(|error| {
+                    composed_result_error("PPML final likelihood publication failed", error)
+                })?;
         let score_passed = input.convergence.final_score.passed;
         let inference_passed =
             input.inference.vce.certificate.passed && input.inference.vce.psd.passed;
