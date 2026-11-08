@@ -510,16 +510,76 @@ fn incremental_families_preserve_ineligible_science_and_memory_exactly() {
     }
 }
 
+/// Environment marker of a geometry-policy child process.
+const GEOMETRY_CHILD: &str = "FEREG_ORACLE_GEOMETRY_POLICY_CHILD";
+
+/// The public Auto route for categorical-intercept designs is the exact
+/// elimination of the largest effect (reported as CG); the geometry policy
+/// remains its decline route and the `FEREG_BLOCK_SCHUR=0` route. Outside a
+/// child, check the public elimination against the dense-QR witness and then
+/// rerun `test` in a child process with the elimination switched off (the
+/// switch is read once per process), where the geometry-policy assertions
+/// run unchanged. Returns whether the caller is that child.
+fn geometry_policy_child(test: &str, designs: &[(Design, ExplicitOlsResult)]) -> bool {
+    if std::env::var_os(GEOMETRY_CHILD).is_some() {
+        return true;
+    }
+    for (design, oracle) in designs {
+        let (request, loaded) = support::inputs(design, false);
+        let prepared = prepare_model(&request, &[], &loaded, true).unwrap();
+        for workers in [1, 4] {
+            let mut options = config(PreparedOlsExecutionMode::Fast, workers);
+            options.absorb.routing = None;
+            let run = || {
+                fit_prepared_model_robust_with_loaded_moments(
+                    &prepared,
+                    PreparedOlsRobustConfig {
+                        fit: options,
+                        ..PreparedOlsRobustConfig::default()
+                    },
+                    None,
+                )
+                .unwrap()
+            };
+            let public = run();
+            check_fit(design, oracle, public.fit(), None);
+            let report = public.fit().absorption_report();
+            assert_eq!(
+                report.used_solver,
+                FeSolverKind::Cg,
+                "workers={workers} {report:?}"
+            );
+            assert!(!report.fallback_used, "{report:?}");
+            assert_eq!(public.dof().absorbed_rank, oracle.explicit_dummy_rank);
+            INFERENCE
+                .check(public.statistics().rss, oracle.weighted_rss)
+                .unwrap();
+            let repeat = run();
+            exact_fit(repeat.fit(), public.fit());
+            assert_eq!(repeat.covariance(), public.covariance());
+        }
+    }
+    let status = std::process::Command::new(std::env::current_exe().unwrap())
+        .env(GEOMETRY_CHILD, "1")
+        .env("FEREG_BLOCK_SCHUR", "0")
+        .args([test, "--exact", "--test-threads=1"])
+        .status()
+        .unwrap();
+    assert!(status.success(), "geometry-policy child of {test} failed");
+    false
+}
+
 /// Independent dense-QR witness for the public Jacobi trial: a mixing design
 /// finishes on the diagonal solver, while a weakly connected one escalates to
 /// the additive preconditioner. Both stay within the scientific tolerances,
 /// repeat exactly at a fixed worker count and agree with the hidden token.
 #[test]
 fn public_geometry_trial_matches_dense_qr_with_and_without_escalation() {
-    for (graph, finished) in [
+    let cases = [
         (Graph::RandomMobility, LsmrPreconditioner::Diagonal),
         (Graph::AkmWeak, LsmrPreconditioner::Schwarz),
-    ] {
+    ]
+    .map(|(graph, finished)| {
         let design = generate(
             72031,
             &DesignSpec {
@@ -533,6 +593,19 @@ fn public_geometry_trial_matches_dense_qr_with_and_without_escalation() {
         .unwrap();
         let (problem, _) = design.oracle_problem(false).unwrap();
         let oracle = fit_explicit_ols(&problem).unwrap();
+        (graph, finished, design, oracle)
+    });
+    let designs = cases
+        .iter()
+        .map(|(_, _, design, oracle)| (design.clone(), oracle.clone()))
+        .collect::<Vec<_>>();
+    if !geometry_policy_child(
+        "public_geometry_trial_matches_dense_qr_with_and_without_escalation",
+        &designs,
+    ) {
+        return;
+    }
+    for (graph, finished, design, oracle) in cases {
         let (request, loaded) = support::inputs(&design, false);
         let prepared = prepare_model(&request, &[], &loaded, true).unwrap();
         for workers in [1, 4] {
@@ -585,7 +658,7 @@ fn public_geometry_trial_matches_dense_qr_with_and_without_escalation() {
 /// holds every RHS or no RHS escalates.
 #[test]
 fn bounded_session_windows_match_dense_qr_and_public_discrete_decisions() {
-    for graph in [Graph::RandomMobility, Graph::AkmWeak] {
+    let cases = [Graph::RandomMobility, Graph::AkmWeak].map(|graph| {
         let design = generate(
             72031,
             &DesignSpec {
@@ -599,6 +672,19 @@ fn bounded_session_windows_match_dense_qr_and_public_discrete_decisions() {
         .unwrap();
         let (problem, _) = design.oracle_problem(false).unwrap();
         let oracle = fit_explicit_ols(&problem).unwrap();
+        (graph, design, oracle)
+    });
+    let designs = cases
+        .iter()
+        .map(|(_, design, oracle)| (design.clone(), oracle.clone()))
+        .collect::<Vec<_>>();
+    if !geometry_policy_child(
+        "bounded_session_windows_match_dense_qr_and_public_discrete_decisions",
+        &designs,
+    ) {
+        return;
+    }
+    for (graph, design, oracle) in cases {
         let (request, loaded) = support::inputs(&design, false);
         let prepared = prepare_model(&request, &[], &loaded, true).unwrap();
         let rhs = build_prepared_ols_rhs(&prepared).unwrap().values().ncols();
