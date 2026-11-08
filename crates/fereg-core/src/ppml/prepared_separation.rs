@@ -2230,6 +2230,42 @@ struct IrProjectionAssessment {
     certificate: Option<SeparationCertificate>,
 }
 
+/// Order-independent sign summary of a projection's fitted values.
+#[derive(Clone, Copy)]
+struct IrFold {
+    scale: f64,
+    interior: f64,
+    minimum_boundary: f64,
+    maximum_boundary: f64,
+}
+
+impl IrFold {
+    const EMPTY: Self = Self {
+        scale: 0.0,
+        interior: 0.0,
+        minimum_boundary: f64::INFINITY,
+        maximum_boundary: f64::NEG_INFINITY,
+    };
+
+    #[inline]
+    fn add(&mut self, outcome: f64, fitted: f64) {
+        self.scale = self.scale.max(fitted.abs());
+        if outcome > 0.0 {
+            self.interior = self.interior.max(fitted.abs());
+        } else if outcome == 0.0 {
+            self.minimum_boundary = self.minimum_boundary.min(fitted);
+            self.maximum_boundary = self.maximum_boundary.max(fitted);
+        }
+    }
+
+    fn merge(&mut self, other: Self) {
+        self.scale = self.scale.max(other.scale);
+        self.interior = self.interior.max(other.interior);
+        self.minimum_boundary = self.minimum_boundary.min(other.minimum_boundary);
+        self.maximum_boundary = self.maximum_boundary.max(other.maximum_boundary);
+    }
+}
+
 fn assess_ir_projection(
     outcome: &[f64],
     fitted: impl Fn(usize) -> f64 + Sync,
@@ -2237,33 +2273,26 @@ fn assess_ir_projection(
 ) -> IrProjectionAssessment {
     // Maxima and minima are order independent: fixed chunks fold in parallel.
     let parts = ir_chunks(outcome.len(), |rows| {
-        let mut scale = 0.0_f64;
-        let mut interior = 0.0_f64;
-        let mut minimum_boundary = f64::INFINITY;
-        let mut maximum_boundary = f64::NEG_INFINITY;
+        let mut fold = IrFold::EMPTY;
         for row in rows {
-            let value = outcome[row];
-            let fitted = fitted(row);
-            scale = scale.max(fitted.abs());
-            if value > 0.0 {
-                interior = interior.max(fitted.abs());
-            } else if value == 0.0 {
-                minimum_boundary = minimum_boundary.min(fitted);
-                maximum_boundary = maximum_boundary.max(fitted);
-            }
+            fold.add(outcome[row], fitted(row));
         }
-        (scale, interior, minimum_boundary, maximum_boundary)
+        fold
     });
-    let mut scale = 0.0_f64;
-    let mut interior = 0.0_f64;
-    let mut minimum_boundary = f64::INFINITY;
-    let mut maximum_boundary = f64::NEG_INFINITY;
-    for (s, i, lo, hi) in parts {
-        scale = scale.max(s);
-        interior = interior.max(i);
-        minimum_boundary = minimum_boundary.min(lo);
-        maximum_boundary = maximum_boundary.max(hi);
+    let mut fold = IrFold::EMPTY;
+    for part in parts {
+        fold.merge(part);
     }
+    finish_ir_assessment(fold, config)
+}
+
+fn finish_ir_assessment(fold: IrFold, config: SeparationConfig) -> IrProjectionAssessment {
+    let IrFold {
+        scale,
+        interior,
+        minimum_boundary,
+        maximum_boundary,
+    } = fold;
     let recurrence_scale = scale.max(1.0);
     let threshold = config.tolerance * recurrence_scale;
     let boundary_violation = nonnegative_ir_boundary_violation(minimum_boundary);
@@ -2536,6 +2565,181 @@ fn prepared_project(
 /// method's resolution on zero-outcome rows, which the former deterministic
 /// re-run did not improve either.
 fn certify_ir_fixed_point_evidence(
+    generation: &PreparedPpmlModelGeneration,
+    evidence: &IrFixedPointEvidence,
+    config: SeparationConfig,
+) -> Result<Option<SeparationCertificate>> {
+    if let Some(result) = fused_ir_fixed_point_certificate(generation, evidence, config)? {
+        return Ok(result);
+    }
+    certify_ir_fixed_point_evidence_sequential(generation, evidence, config)
+}
+
+/// One pass for the validation, the projection assessment, both response
+/// norms and every regressor moment and norm (continuous kept columns only):
+/// rows split into positive outcomes (weight one) and boundary rows (whose
+/// weight depends on their count), combined after the pass. The decisions are
+/// those of the sequential certificate; `None` means "use it".
+#[allow(clippy::type_complexity)]
+fn fused_ir_fixed_point_certificate(
+    generation: &PreparedPpmlModelGeneration,
+    evidence: &IrFixedPointEvidence,
+    config: SeparationConfig,
+) -> Result<Option<Option<SeparationCertificate>>> {
+    let outcome = generation.outcome();
+    let rows = outcome.len();
+    let IrFixedPointEvidence {
+        recurrence,
+        residual,
+        kept_columns,
+    } = evidence;
+    let columns = generation.fit_view().model().columns.len();
+    if recurrence.len() != rows
+        || residual.len() != rows
+        || kept_columns.iter().any(|column| *column >= columns)
+        || kept_columns.windows(2).any(|pair| pair[0] >= pair[1])
+    {
+        return Ok(None);
+    }
+    let Some(values) = kept_columns
+        .iter()
+        .map(|&column| {
+            crate::ols::prepared_fit_view::prepared_continuous_range(
+                generation.fit_view(),
+                column,
+                0..rows,
+            )
+        })
+        .collect::<Option<Vec<&[f64]>>>()
+    else {
+        return Ok(None);
+    };
+    struct Part {
+        valid: bool,
+        boundary: usize,
+        maximum: f64,
+        fold: IrFold,
+        recurrence: [ScaledSquares; 2],
+        residual: [ScaledSquares; 2],
+        moments: Vec<[(f64, f64); 2]>,
+        norms: Vec<[ScaledSquares; 2]>,
+    }
+    let k = values.len();
+    let parts = ir_chunks(rows, |range| {
+        let mut part = Part {
+            valid: true,
+            boundary: 0,
+            maximum: 0.0,
+            fold: IrFold::EMPTY,
+            recurrence: [ScaledSquares::ZERO; 2],
+            residual: [ScaledSquares::ZERO; 2],
+            moments: vec![[(0.0, 0.0); 2]; k],
+            norms: vec![[ScaledSquares::ZERO; 2]; k],
+        };
+        for row in range {
+            let (y, entry, r) = (outcome[row], recurrence[row], residual[row]);
+            part.valid &=
+                entry.is_finite() && r.is_finite() && entry >= 0.0 && !(y > 0.0 && entry != 0.0);
+            part.boundary += usize::from(y == 0.0);
+            part.maximum = part.maximum.max(entry);
+            part.fold.add(y, entry - r);
+            let side = usize::from(y <= 0.0);
+            part.recurrence[side].add(entry.abs());
+            part.residual[side].add(r.abs());
+            for ((moment, norm), column) in
+                part.moments.iter_mut().zip(&mut part.norms).zip(&values)
+            {
+                let x = column[row];
+                let (sum, correction) = &mut moment[side];
+                crate::linalg::neumaier_add(x * r, sum, correction);
+                norm[side].add(x.abs());
+            }
+        }
+        part
+    });
+    let mut valid = true;
+    let mut boundary_rows = 0_usize;
+    let mut maximum = 0.0_f64;
+    let mut fold = IrFold::EMPTY;
+    let mut recurrence_norm = [ScaledSquares::ZERO; 2];
+    let mut residual_norm = [ScaledSquares::ZERO; 2];
+    let mut moments = vec![[(0.0_f64, 0.0_f64); 2]; k];
+    let mut norms = vec![[ScaledSquares::ZERO; 2]; k];
+    for part in parts {
+        valid &= part.valid;
+        boundary_rows += part.boundary;
+        maximum = maximum.max(part.maximum);
+        fold.merge(part.fold);
+        for side in 0..2 {
+            recurrence_norm[side].merge(part.recurrence[side]);
+            residual_norm[side].merge(part.residual[side]);
+        }
+        for ((moment, norm), (part_moment, part_norm)) in moments
+            .iter_mut()
+            .zip(&mut norms)
+            .zip(part.moments.iter().zip(&part.norms))
+        {
+            for side in 0..2 {
+                let (sum, correction) = &mut moment[side];
+                crate::linalg::neumaier_add(part_moment[side].0, sum, correction);
+                crate::linalg::neumaier_add(part_moment[side].1, sum, correction);
+                norm[side].merge(part_norm[side]);
+            }
+        }
+    }
+    if !valid || boundary_rows == 0 {
+        return Ok(Some(None));
+    }
+    if maximum == 0.0 {
+        // The sequential certificate decides the vanishing projection.
+        return Ok(None);
+    }
+    if maximum != 1.0 {
+        return Ok(Some(None));
+    }
+    let Some(certificate) = finish_ir_assessment(fold, config).certificate else {
+        return Ok(Some(None));
+    };
+    let boundary_weight = ir_boundary_weight(config, boundary_rows);
+    let root = boundary_weight.sqrt();
+    let weighted = |parts: [ScaledSquares; 2]| {
+        let mut total = parts[0];
+        total.merge(ScaledSquares {
+            scale: parts[1].scale * root,
+            sum: parts[1].sum,
+        });
+        total.norm()
+    };
+    let response_scale = weighted(recurrence_norm).max(weighted(residual_norm));
+    if !response_scale.is_finite() || response_scale <= 0.0 {
+        return Ok(Some(None));
+    }
+    let mut regressors = 0.0_f64;
+    for (moment, norm) in moments.iter().zip(&norms) {
+        let value = (moment[0].0 + moment[0].1) + boundary_weight * (moment[1].0 + moment[1].1);
+        regressors = ir_moment_ratio(regressors, value, weighted(*norm));
+    }
+    let weight = |row: usize| {
+        if outcome[row] > 0.0 {
+            1.0
+        } else {
+            boundary_weight
+        }
+    };
+    let largest =
+        regressors.max(ir_fe_moment_ratio(generation, &weight, residual)?) / response_scale;
+    let passed = largest.is_finite() && largest <= config.certificate_tolerance;
+    if crate::diagnostics::solver_trace_enabled() {
+        crate::diagnostics::emit_solver_trace(&format!(
+            "FEREG_SOLVER_TRACE|phase=ir_fixed_point_check|largest_relative_moment={largest:.17e}|tolerance={:.17e}|passed={}",
+            config.certificate_tolerance,
+            u8::from(passed),
+        ));
+    }
+    Ok(Some(passed.then_some(certificate)))
+}
+
+fn certify_ir_fixed_point_evidence_sequential(
     generation: &PreparedPpmlModelGeneration,
     evidence: &IrFixedPointEvidence,
     config: SeparationConfig,

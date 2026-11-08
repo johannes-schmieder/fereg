@@ -1863,6 +1863,32 @@ fn rectifier_fixed_point_evidence_replaces_the_rerun_and_rejects_corruption() {
     foreign_column.kept_columns.push(usize::MAX);
     let mut zero_recurrence_with_residual = evidence.clone();
     zero_recurrence_with_residual.recurrence.fill(0.0);
+    // The fused pass decides exactly as the sequential certificate.
+    let agree = |evidence: &IrFixedPointEvidence| {
+        let sequential =
+            certify_ir_fixed_point_evidence_sequential(generation, evidence, config).unwrap();
+        if let Some(fused) = fused_ir_fixed_point_certificate(generation, evidence, config).unwrap()
+        {
+            assert_eq!(fused.is_some(), sequential.is_some());
+            if let (Some(fused), Some(sequential)) = (fused, sequential) {
+                assert_eq!(fused.proof, sequential.proof);
+                assert_eq!(fused.passed, sequential.passed);
+            }
+        }
+    };
+    agree(&evidence);
+    for corrupted in [
+        &moment_shift,
+        &sign_shift,
+        &zero_fit,
+        &unnormalized,
+        &positive_support,
+        &nonfinite_residual,
+        &foreign_column,
+        &zero_recurrence_with_residual,
+    ] {
+        agree(corrupted);
+    }
     for corrupted in [
         moment_shift,
         sign_shift,
