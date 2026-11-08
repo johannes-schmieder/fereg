@@ -965,7 +965,12 @@ impl RetainedWithinDesign {
             selected_within_norms.push(within_norms[position]);
         }
         let rows = storage.rows();
+        // Every stored column active: the compaction is the identity.
+        let identity = selected_columns == stored_columns;
         let storage = match storage {
+            RetainedWithinStorage::Dense(values) if identity => {
+                RetainedWithinStorage::Dense(values)
+            }
             RetainedWithinStorage::Dense(values) => {
                 let mut row_major = values.into_row_major();
                 for row in 0..rows {

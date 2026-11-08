@@ -3626,17 +3626,39 @@ fn fill_candidate_eta_from_linear_output(
             "prepared PPML linear output has inconsistent dimensions",
         ));
     }
-    for row in 0..offset.len() {
-        // The canonical response and residual already identify the total
-        // predictor. Splitting and recombining its FE part adds cancellation.
-        eta[row] = offset[row] + (output.response()[row] - output.frame().residuals()[row]);
-        if !eta[row].is_finite() {
-            return Err(numerical_nonconvergence(
-                "prepared PPML candidate predictor is not finite",
-            ));
-        }
+    // The canonical response and residual already identify the total
+    // predictor. Splitting and recombining its FE part adds cancellation.
+    let (response, residuals) = (output.response(), output.frame().residuals());
+    if !fill_finite_rows(eta, |row| offset[row] + (response[row] - residuals[row])) {
+        return Err(numerical_nonconvergence(
+            "prepared PPML candidate predictor is not finite",
+        ));
     }
     Ok(())
+}
+
+/// `target[row] = value(row)` for every row (fixed chunks in parallel inside
+/// a worker pool); whether every value is finite.
+fn fill_finite_rows(target: &mut [f64], value: impl Fn(usize) -> f64 + Sync) -> bool {
+    use rayon::prelude::*;
+    const ROWS: usize = 1 << 15;
+    let fill = |(chunk, values): (usize, &mut [f64])| {
+        let mut finite = true;
+        for (local, slot) in values.iter_mut().enumerate() {
+            *slot = value(chunk * ROWS + local);
+            finite &= slot.is_finite();
+        }
+        finite
+    };
+    if crate::parallel::in_pool() {
+        target
+            .par_chunks_mut(ROWS)
+            .enumerate()
+            .map(fill)
+            .reduce(|| true, |left, right| left && right)
+    } else {
+        target.chunks_mut(ROWS).enumerate().all(fill)
+    }
 }
 
 fn fill_candidate_coefficients_from_linear_output(
@@ -3670,13 +3692,11 @@ fn fill_candidate_eta_from_frozen_output(
             "prepared PPML frozen output has inconsistent dimensions",
         ));
     }
-    for row in 0..offset.len() {
-        eta[row] = offset[row] + output.response()[row] - output.within_residuals()[row];
-        if !eta[row].is_finite() {
-            return Err(numerical_nonconvergence(
-                "prepared PPML frozen candidate predictor is not finite",
-            ));
-        }
+    let (response, residuals) = (output.response(), output.within_residuals());
+    if !fill_finite_rows(eta, |row| offset[row] + response[row] - residuals[row]) {
+        return Err(numerical_nonconvergence(
+            "prepared PPML frozen candidate predictor is not finite",
+        ));
     }
     Ok(())
 }

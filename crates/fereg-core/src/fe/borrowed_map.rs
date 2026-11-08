@@ -1540,6 +1540,23 @@ impl Drop for PcgPilotGroupScratch<'_> {
     }
 }
 
+/// The largest raw weight (one for unit weights): fixed chunks in parallel
+/// inside a worker pool; a maximum is order independent.
+fn maximum_weight(weights: BorrowedMapWeights<'_>) -> f64 {
+    match weights {
+        BorrowedMapWeights::Unit => 1.0,
+        BorrowedMapWeights::Provided(values) => crate::parallel::fixed_tree_reduce(
+            values.len(),
+            1 << 15,
+            &|range: std::ops::Range<usize>| -> Result<f64> {
+                Ok(values[range].iter().copied().fold(0.0_f64, f64::max))
+            },
+            &f64::max,
+        )
+        .unwrap_or(f64::NAN),
+    }
+}
+
 impl<'a> ReusableCategoricalMapAbsorber<'a> {
     pub(crate) fn borrowed_design(&self) -> &BorrowedInterceptFeDesign<'a> {
         &self.design
@@ -2039,12 +2056,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             // per column with the frame's maximum-weight divisor. Hand it over
             // only inside the range where the plain sum is accurate; otherwise
             // the linear frame's stable norm pass stays authoritative.
-            let raw_scale = match weights {
-                BorrowedMapWeights::Unit => 1.0,
-                BorrowedMapWeights::Provided(values) => {
-                    values.iter().copied().fold(0.0_f64, f64::max)
-                }
-            };
+            let raw_scale = maximum_weight(weights);
             let norms = absorbed.take_residual_norms();
             let usable = raw_scale == norm_weight_scale
                 && norms.len() == absorbed.residualized().ncols()
@@ -2064,10 +2076,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         }
         // The linear frame may deliberately use a divisor other than MAP's
         // maximum raw weight. Leave its stable norm calculation authoritative.
-        let raw_scale = match weights {
-            BorrowedMapWeights::Unit => 1.0,
-            BorrowedMapWeights::Provided(values) => values.iter().copied().fold(0.0_f64, f64::max),
-        };
+        let raw_scale = maximum_weight(weights);
         if raw_scale != norm_weight_scale {
             return Ok((absorbed, false));
         }
