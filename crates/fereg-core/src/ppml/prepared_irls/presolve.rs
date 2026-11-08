@@ -145,6 +145,8 @@ pub(super) fn presolve<P: PreparedOlsFitView + Sync + ?Sized>(
     let started = std::time::Instant::now();
     let bounds = config.bounds;
     while steps < MAX_STEPS {
+        // Break is honoured before any state is handed over.
+        crate::interrupt::checkpoint()?;
         steps += 1;
         let tolerance = (0.01 * change).clamp(1e-11, 1e-6);
         let map = MapConfig {
