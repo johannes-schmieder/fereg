@@ -6237,8 +6237,10 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                     let mut finite = true;
                     for (offset, target) in targets.chunks_exact_mut(stride).enumerate() {
                         let local = block * WAVE_BLOCK_ROWS + offset;
-                        target[1..]
-                            .copy_from_slice(&sources[local * columns..(local + 1) * columns]);
+                        copy_short(
+                            &mut target[1..],
+                            &sources[local * columns..(local + 1) * columns],
+                        );
                         let response = response_at(lower + local);
                         finite &= response.is_finite();
                         target[0] = response;
@@ -6313,7 +6315,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                             .zip(sources.chunks_exact(stride))
                         {
                             *response = source[0];
-                            target.copy_from_slice(&source[1..]);
+                            copy_short(target, &source[1..]);
                         }
                     });
             }
@@ -6693,12 +6695,34 @@ fn weighted_mean_slice(
     weights: BorrowedMapWeights<'_>,
     bread_weight_scale: super::PreparedOlsBreadWeightScale,
 ) -> Result<f64> {
-    // Fixed row chunks keep their own compensated sums, merged in order.
+    // Fixed row chunks keep their own compensated sums, merged in order. A
+    // chunk first runs unchecked; any nonfinite input, weight or sum replays
+    // it with the checked loop below, which reports the same first error.
     const ROWS: usize = 1 << 14;
+    let divisor = bread_weight_scale.solver_weight_divisor;
     let parts: Vec<Result<[f64; 4]>> = values
         .par_chunks(ROWS)
         .enumerate()
         .map(|(chunk, values)| {
+            let mut sums = [0.0_f64; 4];
+            let mut valid = true;
+            {
+                let [n, nc, d, dc] = &mut sums;
+                for (offset, value) in values.iter().copied().enumerate() {
+                    let weight = match weights {
+                        BorrowedMapWeights::Unit => 1.0,
+                        BorrowedMapWeights::Provided(weights) => weights
+                            .get(chunk * ROWS + offset)
+                            .map_or(f64::NAN, |w| w / divisor),
+                    };
+                    valid &= value.is_finite() && weight.is_finite() && weight > 0.0;
+                    crate::linalg::neumaier_add(weight * value, n, nc);
+                    crate::linalg::neumaier_add(weight, d, dc);
+                }
+            }
+            if valid && sums.iter().all(|value| value.is_finite()) {
+                return Ok(sums);
+            }
             let mut sums = [0.0_f64; 4];
             for (offset, value) in values.iter().copied().enumerate() {
                 if !value.is_finite() {
@@ -6845,6 +6869,21 @@ where
         update_scaled_square(root * value, &mut scale, &mut scaled_square_sum)?;
     }
     stable_norm(scale, scaled_square_sum)
+}
+
+/// Copy a short row: constant-length copies for up to eight values (inlined
+/// moves, not library calls), a slice copy otherwise.
+#[inline(always)]
+fn copy_short(target: &mut [f64], source: &[f64]) {
+    macro_rules! fixed {
+        ($($n:literal)*) => {
+            match source.len() {
+                $($n => target[..$n].copy_from_slice(&source[..$n]),)*
+                _ => target.copy_from_slice(source),
+            }
+        };
+    }
+    fixed!(1 2 3 4 5 6 7 8)
 }
 
 /// Below this many rows a widening/narrowing wave runs serially.

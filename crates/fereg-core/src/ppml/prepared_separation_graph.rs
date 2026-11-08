@@ -113,7 +113,11 @@ pub(super) fn direction(
     if workspace_bytes(design)?.is_none() {
         return Ok(None);
     }
-    if outcome.len() != design.nobs() || outcome.iter().any(|v| !v.is_finite() || *v < 0.) {
+    let invalid_outcome = || {
+        use rayon::prelude::*;
+        outcome.par_iter().any(|v| !v.is_finite() || *v < 0.)
+    };
+    if outcome.len() != design.nobs() || invalid_outcome() {
         return Err(invalid_argument(
             "separation graph outcomes are not aligned and nonnegative",
         ));
@@ -137,11 +141,20 @@ pub(super) fn direction(
         *p = v;
     }
     let mut rank = fallible_filled(levels, 0_u8, "unable to reserve separation graph ranks")?;
+    // A positive row repeating the previous positive row's code pair is a
+    // no-op union; skipping it leaves the linking sequence and every root
+    // unchanged.
+    let mut previous = (u32::MAX, u32::MAX);
     for (row, &y) in outcome.iter().enumerate() {
         if row % 65_536 == 0 {
             interrupt()?;
         }
         if y > 0. {
+            let pair = (left.codes()[row], right.codes()[row]);
+            if pair == previous {
+                continue;
+            }
+            previous = pair;
             let mut a = root(&mut parent, left.codes()[row] as usize);
             let mut b = root(&mut parent, split + right.codes()[row] as usize);
             if a != b {
