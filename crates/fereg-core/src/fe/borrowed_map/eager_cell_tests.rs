@@ -107,6 +107,7 @@ fn eager_cells_initial_ready_and_direct_selection_do_not_construct() {
 
 #[test]
 fn eager_cells_refusal_preserves_observation_bits_and_does_not_consume_cmg_attempt() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let witness = PairedGraph::new();
     let mut old = ReusableCategoricalMapAbsorber::new(witness.design(), 3, 1).unwrap();
     old.request_auto_routing(
@@ -360,6 +361,7 @@ fn deferred_solve(
 
 #[test]
 fn deferred_cells_require_successful_cmg_commitment_and_preserve_refusal_bits() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     if isolated_routing_witness("FEREG_DEFERRED_REFUSAL_CHILD",
         "fe::borrowed_map::routing_tests::eager_cell_tests::deferred_cells_require_successful_cmg_commitment_and_preserve_refusal_bits") { return; }
     let witness = PairedGraph::new();

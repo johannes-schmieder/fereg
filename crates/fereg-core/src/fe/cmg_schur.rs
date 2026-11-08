@@ -986,6 +986,7 @@ mod tests {
 
     #[test]
     fn sampled_graphs_repeat_under_duplicates_binary_weight_scaling_and_fixed_seed() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         let mut reference = None;
         for (duplicates, scale) in [
             (false, 1.0),
@@ -1209,6 +1210,7 @@ mod tests {
 
     #[test]
     fn fixed_multilevel_cycle_is_linear_symmetric_positive_and_repeatable() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         let width = 20;
         let fixture = Fixture::torus(width);
         let design = fixture.design();
@@ -1872,6 +1874,7 @@ mod tests {
     // policy and every cycle output bit at one and four workers.
     #[test]
     fn explicit_and_automatic_builds_reproduce_frozen_pre_consolidation_bits() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         fn mix(digest: &mut u64, word: u64) {
             for byte in word.to_le_bytes() {
                 *digest ^= u64::from(byte);
@@ -2139,6 +2142,7 @@ mod tests {
     // centering of one coarse component of 131,072 or more entries differs.
     #[test]
     fn automatic_team_installation_reproduces_scalar_cycle_bits() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         let cases: Vec<(&str, Fixture, bool, usize, u32)> = vec![
             ("sampled0", Fixture::sampled_degrees(true, 1.0), true, 5, 0),
             ("sampled1", Fixture::sampled_degrees(true, 1.0), true, 5, 1),

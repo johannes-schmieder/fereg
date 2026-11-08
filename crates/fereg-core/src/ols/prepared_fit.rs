@@ -1572,9 +1572,7 @@ fn fit_projection_only_internal<P: PreparedOlsFitView + ?Sized, R: FitReservatio
         0.0_f64,
         "unable to reserve prepared projection reference norms",
     )?;
-    for (column, norm) in reference_norms.iter_mut().enumerate() {
-        *norm = weighted_matrix_column_norm(&raw, column + 1, weights)?;
-    }
+    fast_weighted_column_norms(&raw, 1, weights, &mut reference_norms)?;
     let mut absorbed = cmg.project_ols(weights.borrowed(), raw, config.absorb, false, false)?;
     if !absorbed.report().certified() {
         return Err(invalid_data(
@@ -1602,18 +1600,7 @@ fn fit_projection_only_internal<P: PreparedOlsFitView + ?Sized, R: FitReservatio
         )?
     };
     if !has_cached_norms {
-        if rayon::current_num_threads() == 1 {
-            fill_weighted_matrix_norms_fused(&within, weights, &mut within_norms, reservation)?;
-        } else {
-            crate::parallel::stage_try_for_each(
-                within_norms.par_iter_mut().enumerate(),
-                within.nrows() as u128 * within.ncols() as u128,
-                |(column, norm)| -> Result<()> {
-                    *norm = weighted_matrix_column_norm(&within, column, weights)?;
-                    Ok(())
-                },
-            )?;
-        }
+        fast_weighted_column_norms(&within, 0, weights, &mut within_norms)?;
     }
     let within_outcome_norm = within_norms[0];
     let score_norms = &within_norms[1..];
@@ -4458,126 +4445,6 @@ fn weighted_matrix_column_norm(
         update_scaled_sum_of_squares(value, &mut scale, &mut scaled_square_sum)?;
     }
     checked_norm(scale, scaled_square_sum)
-}
-
-/// Compute every column norm in one row-major pass.  The update order within
-/// each column is identical to `weighted_matrix_column_norm`; only the loop
-/// nesting changes.  This matters for the single-threaded wide-control path,
-/// where separate column scans repeatedly traverse the row-major matrix with a
-/// large stride and recompute the same normalized weight root.
-fn fill_weighted_matrix_norms_fused<R: FitReservation>(
-    matrix: &DenseMatrix,
-    weights: NormalizedWeights<'_>,
-    output: &mut [f64],
-    reservation: &mut R,
-) -> Result<()> {
-    if output.len() != matrix.ncols() {
-        return Err(invalid_argument(
-            "prepared OLS fused weighted norm output has the wrong width",
-        ));
-    }
-    output.fill(0.0);
-    let mut scaled_square_sums = reserved_filled(
-        reservation,
-        matrix.ncols(),
-        1.0_f64,
-        "unable to reserve prepared OLS fused norm workspace",
-    )?;
-    for (row, values) in matrix.as_slice().chunks_exact(matrix.ncols()).enumerate() {
-        let root = weights.root(row)?;
-        for ((value, scale), scaled_square_sum) in values
-            .iter()
-            .copied()
-            .zip(output.iter_mut())
-            .zip(scaled_square_sums.iter_mut())
-        {
-            update_scaled_sum_of_squares(root * value, scale, scaled_square_sum)?;
-        }
-    }
-    for (scale, scaled_square_sum) in output.iter_mut().zip(scaled_square_sums) {
-        *scale = checked_norm(*scale, scaled_square_sum)?;
-    }
-    Ok(())
-}
-
-/// Each column keeps the scalar norm's row order and arithmetic. Small column
-/// blocks share weight roots and adjacent matrix loads without a row reduction
-/// or an observation-sized transpose; all scratch is fixed-size worker stack.
-/// `output[j]` is the norm of matrix column `first_column + j`.
-fn fill_weighted_matrix_norms_blocked<const BLOCK: usize>(
-    matrix: &DenseMatrix,
-    first_column: usize,
-    weights: NormalizedWeights<'_>,
-    output: &mut [f64],
-) -> Result<()> {
-    if BLOCK == 0 || first_column > matrix.ncols() || output.len() != matrix.ncols() - first_column
-    {
-        return Err(invalid_argument(
-            "prepared OLS blocked weighted norm output has the wrong width",
-        ));
-    }
-    let work = matrix.nrows() as u128 * output.len() as u128;
-    crate::parallel::stage_try_for_each(
-        output.par_chunks_mut(BLOCK).enumerate(),
-        work,
-        |(block, norms)| -> Result<()> {
-            // Output chunks need not be cache-line aligned. Accumulate locally
-            // so adjacent workers do not repeatedly write a shared cache line.
-            let mut scales = [0.0_f64; BLOCK];
-            let mut square_sums = [1.0_f64; BLOCK];
-            let start = first_column + block * BLOCK;
-            for (row, values) in matrix.as_slice().chunks_exact(matrix.ncols()).enumerate() {
-                let root = weights.root(row)?;
-                for (column, scale) in scales.iter_mut().enumerate().take(norms.len()) {
-                    update_scaled_sum_of_squares(
-                        root * values[start + column],
-                        scale,
-                        &mut square_sums[column],
-                    )?;
-                }
-            }
-            for ((norm, scale), square_sum) in norms.iter_mut().zip(scales).zip(square_sums) {
-                *norm = checked_norm(scale, square_sum)?;
-            }
-            Ok(())
-        },
-    )
-}
-
-/// Raise `output[j]` to the largest absolute value of matrix column
-/// `first_column + j`, streaming rows once per block of columns. A maximum is
-/// exact, so the result equals any per-column scan from the same start.
-fn fill_column_maxima_blocked<const BLOCK: usize>(
-    matrix: &DenseMatrix,
-    first_column: usize,
-    output: &mut [f64],
-) -> Result<()> {
-    if BLOCK == 0 || first_column > matrix.ncols() || output.len() != matrix.ncols() - first_column
-    {
-        return Err(invalid_argument(
-            "prepared OLS blocked column maxima have the wrong width",
-        ));
-    }
-    let work = matrix.nrows() as u128 * output.len() as u128;
-    crate::parallel::stage_try_for_each(
-        output.par_chunks_mut(BLOCK).enumerate(),
-        work,
-        |(block, maxima)| -> Result<()> {
-            let mut local = [0.0_f64; BLOCK];
-            local[..maxima.len()].copy_from_slice(maxima);
-            let start = first_column + block * BLOCK;
-            for values in matrix.as_slice().chunks_exact(matrix.ncols()) {
-                for (maximum, value) in local[..maxima.len()]
-                    .iter_mut()
-                    .zip(&values[start..start + maxima.len()])
-                {
-                    *maximum = maximum.max(value.abs());
-                }
-            }
-            maxima.copy_from_slice(&local[..maxima.len()]);
-            Ok(())
-        },
-    )
 }
 
 fn initial_within_sum_of_squares<P: PreparedOlsFitView + ?Sized>(

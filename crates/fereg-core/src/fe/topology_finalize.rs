@@ -1213,6 +1213,7 @@ mod tests {
 
     #[test]
     fn repeated_recipes_share_final_topology_and_sources() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         let firm = [0, 0, 1, 1];
         let year = [0, 1, 0, 1];
         let sources = [

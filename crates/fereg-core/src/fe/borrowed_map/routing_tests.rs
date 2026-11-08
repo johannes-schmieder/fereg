@@ -574,6 +574,7 @@ fn geometry_many_runs_the_certified_pilot_without_preparing_lsmr() {
 
 #[test]
 fn portfolio_direct_numerical_refusal_keeps_incumbent_bits_without_a_cmg_retry() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let codes = [
         vec![0, 0, 0, 1, 1, 1, 2, 2, 2],
         vec![0, 1, 2, 0, 1, 2, 0, 1, 2],
@@ -953,6 +954,7 @@ fn routing_diagonal_and_cells_live_callers_certify_saved_effects_and_reuse_setup
 
 #[test]
 fn routing_kernel_and_direct_live_memory_refusals_preserve_incumbent_bits() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let witness = PairedGraph::new();
     let mut incumbent = ReusableCategoricalMapAbsorber::new(witness.design(), 3, 1).unwrap();
     incumbent.retain_coefficients = true;
@@ -1088,6 +1090,7 @@ fn routing_direct_live_caller_certifies_weighted_disconnected_coefficients() {
 
 #[test]
 fn routing_restart_has_independent_weighted_disconnected_science_and_repeats() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let witness = PairedGraph::new();
     for samples in 0..=2 {
         let mut across_workers = None;
@@ -1520,6 +1523,7 @@ fn auto_route_trace_reports_installed_hierarchy_and_nothing_for_refusals_isolate
 
 #[test]
 fn portfolio_matched_cold_reused_and_wide_rhs_preserve_science_and_repeats() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let witness = PairedGraph::new();
     // The first RHS is the same target in all three cases. Only its batching
     // and whether a different RHS has already paid for setup are changed.
@@ -2439,6 +2443,7 @@ fn geometry_recurrence_stops_a_decade_below_the_request_and_corrects_at_the_hund
 // (no coarse component reaches CMG's 131,072-entry team centering here).
 #[test]
 fn team_application_reproduces_scalar_route_fits_at_every_worker_count() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let witness = PairedGraph::new();
     let positions = [0, 1, 2];
     let run = |workers: usize, team: bool| {
@@ -2948,6 +2953,7 @@ fn refused_level_bound_admits_owned_lsmr_by_exact_yielding_count() {
 
 #[test]
 fn escalation_reuses_the_trial_design_with_the_rebuilt_solvers_bits() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     // The geometry trial prepares the pinned solver's design once and builds
     // its additive escalation from that design. A solver built from the
     // shared design is the solver built from the effects: identical solves,
@@ -3081,6 +3087,7 @@ fn routing_windows_transport_their_own_columns_bit_for_bit() {
 
 #[test]
 fn default_mode_additive_escalation_repeats_bits_at_each_worker_count() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     // Upstream additive-Schwarz uses fixed reduction ownership, so a
     // default-mode (not `deterministic`) fit that escalates from the Jacobi
     // trial repeats bit for bit at a fixed worker count.

@@ -528,6 +528,7 @@ mod tests {
 
     #[test]
     fn selected_transport_preserves_other_columns_and_bits_at_tile_edges() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         for threads in [1, 4] {
             rayon::ThreadPoolBuilder::new()
                 .num_threads(threads)
@@ -578,6 +579,7 @@ mod tests {
 
     #[test]
     fn narrow_transport_uses_row_blocks_with_identical_bits() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         for (rows, width) in [(50_003, 1), (50_003, 3), (65_536, 6), (40_001, 9)] {
             let values = DenseMatrix::from_row_major(
                 rows,
@@ -622,6 +624,7 @@ mod tests {
 
     #[test]
     fn transport_preserves_bits_at_tile_edges_and_across_threads() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         for threads in [1, 4] {
             rayon::ThreadPoolBuilder::new()
                 .num_threads(threads)

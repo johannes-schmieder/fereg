@@ -274,6 +274,7 @@ fn first_pass_predictor_invalidation_is_atomic_and_matches_engine_replacement() 
 
 #[test]
 fn joint_lsmr_frame_trace_is_deterministic_and_complete() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let mut frame = predictor_frame(
         1e-8,
         1e-9,
@@ -730,6 +731,7 @@ fn frame_preparation_preserves_column_order_diagonals() {
 
 #[test]
 fn exact_certificate_is_thread_count_deterministic() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let rows = 2_048;
     let level_counts = [131, 137, 149];
     let effects = level_counts

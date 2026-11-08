@@ -162,6 +162,7 @@ fn centered_rank_boundary_refuses_before_compression_even_on_forced_retry() {
 
 #[test]
 fn centered_production_qr_retry_repeats_across_worker_counts() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let raw = raw_design(32_772, None).unwrap();
     let summary = CenteredSummary::build(&raw, &mut SystemFitReservation).unwrap();
     let mut baseline = None;

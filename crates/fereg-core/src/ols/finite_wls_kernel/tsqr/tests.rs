@@ -143,6 +143,7 @@ fn extreme_response_and_exact_dependency_are_finite() {
 
 #[test]
 fn fixed_leaf_and_tree_order_is_exact_across_workers() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let raw = fixture(32_769, 0.0, 1.0);
     let stats = CenteredSummary::build(&raw, &mut SystemFitReservation).unwrap();
     let source = source(&raw, &stats);

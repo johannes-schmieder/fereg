@@ -1189,6 +1189,7 @@ mod tests {
 
     #[test]
     fn scratch_score_reads_preserve_bits_without_repeated_full_tile_decoding() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         let nrows = 65_537;
         for rank in [1, 6, 50] {
             let values: Vec<_> = (0..nrows * rank)

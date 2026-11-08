@@ -620,6 +620,7 @@ mod tests {
 
     #[test]
     fn each_changed_rhs_repeats_prefix_with_a_retained_backend() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         let rows = 544;
         let levels = [16, 16, 6];
         let codes: [Vec<u32>; 3] = std::array::from_fn(|effect| {

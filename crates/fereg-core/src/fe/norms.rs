@@ -286,6 +286,7 @@ mod tests {
 
     #[test]
     fn fixed_leaf_norms_retain_legacy_bits_for_one_leaf() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         let teams: Vec<_> = [1, 4, 16]
             .into_iter()
             .map(|threads| {
@@ -411,6 +412,7 @@ mod tests {
 
     #[test]
     fn fixed_leaf_norms_are_exact_across_workers_scratch_and_waves() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         let teams: Vec<_> = [1, 4, 16]
             .into_iter()
             .map(|threads| {

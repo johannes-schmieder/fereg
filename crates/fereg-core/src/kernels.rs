@@ -532,6 +532,7 @@ mod tests {
 
     #[test]
     fn normalized_products_match_pairwise_normalized_product_bits() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         for n in [0, 1, 7, 8, 9, 255, 256, 257, 777] {
             for count in [1, 3, 8, 9, 17] {
                 let columns: Vec<f64> = (0..n * count)

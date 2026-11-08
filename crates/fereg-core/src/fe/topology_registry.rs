@@ -195,6 +195,7 @@ mod tests {
 
     #[test]
     fn repeated_and_reordered_interactions_reuse_one_source() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         let firm = [0, 0, 1, 1, 2, 2];
         let year = [0, 1, 0, 1, 0, 1];
         let sources = [
@@ -231,6 +232,7 @@ mod tests {
 
     #[test]
     fn distinct_partitions_keep_deterministic_insertion_order() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         let first = [0, 0, 1, 1];
         let second = [0, 1, 0, 1];
         let third = [0, 1, 2, 0];

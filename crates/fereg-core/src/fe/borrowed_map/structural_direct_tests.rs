@@ -4,6 +4,7 @@ use super::super::structural_constant_tests::reference;
 
 #[test]
 fn direct_structural_projection_retains_raw_and_within_bits() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     for rows in [17, 513, 16_385] {
         for columns in [1, 3, 64, 65, 130] {
             let matrix = DenseMatrix::from_row_major(

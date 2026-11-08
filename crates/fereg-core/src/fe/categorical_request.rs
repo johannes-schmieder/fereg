@@ -434,6 +434,7 @@ mod tests {
 
     #[test]
     fn repeated_source_is_deduplicated_only_for_availability() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         let mut request = request();
         request.absorbed_terms[1].categorical_sources = vec![source(2), source(3), source(2)];
         let plan = plan_categorical_absorbed_request(&request).expect("plan");

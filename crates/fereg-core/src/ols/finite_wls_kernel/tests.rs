@@ -424,6 +424,7 @@ fn retained_dense_moment_cache_rejects_nonfinite_selected_values() {
 
 #[test]
 fn wide_projected_moments_are_bounded_deterministic_and_match_direct_sums() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     for columns in [65_usize, 128] {
         for spaced in [false, true] {
             let candidates = (0..columns)

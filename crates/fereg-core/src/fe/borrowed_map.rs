@@ -7411,16 +7411,34 @@ fn validate_weights(weights: BorrowedMapWeights<'_>, nrows: usize) -> Result<Val
                     "borrowed MAP weight and observation counts differ",
                 ));
             }
-            if values
-                .iter()
-                .any(|weight| !weight.is_finite() || *weight <= 0.0)
-            {
+            // One parallel pass: validity, maximum and minimum. Division by
+            // the positive maximum is monotone, so some normalized weight
+            // underflows to zero exactly when the minimum's does.
+            const CHUNK: usize = 1 << 16;
+            let (valid, raw_scale, minimum) = values
+                .par_chunks(CHUNK)
+                .map(|chunk| {
+                    chunk.iter().fold(
+                        (true, 0.0_f64, f64::INFINITY),
+                        |(valid, maximum, minimum), &weight| {
+                            (
+                                valid && weight.is_finite() && weight > 0.0,
+                                maximum.max(weight),
+                                minimum.min(weight),
+                            )
+                        },
+                    )
+                })
+                .reduce(
+                    || (true, 0.0_f64, f64::INFINITY),
+                    |a, b| (a.0 && b.0, a.1.max(b.1), a.2.min(b.2)),
+                );
+            if !valid {
                 return Err(invalid_data(
                     "borrowed MAP weights must be finite and positive",
                 ));
             }
-            let raw_scale = values.iter().copied().fold(0.0_f64, f64::max);
-            if values.iter().any(|weight| *weight / raw_scale == 0.0) {
+            if minimum / raw_scale == 0.0 {
                 return Err(invalid_data(
                     "borrowed MAP normalized weight underflowed to zero",
                 ));

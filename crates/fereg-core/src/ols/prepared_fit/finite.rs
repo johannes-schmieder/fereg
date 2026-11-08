@@ -638,6 +638,7 @@ mod tests {
 
     #[test]
     fn row_parallel_finite_residuals_match_ordered_scalar_bits() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         for (rows, columns) in [(0, 0), (1, 1), (16_385, 7), (32_771, 20), (8_193, 65)] {
             let within = DenseMatrix::from_row_major(
                 rows,

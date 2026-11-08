@@ -1085,6 +1085,7 @@ mod tests {
 
     #[test]
     fn prepared_terms_and_fresh_replay_keep_scalar_bits_and_budget_boundaries() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         for n in [4095, 4096, 4097, 17003, 65539] {
             let y: Vec<_> = (0..n)
                 .map(|i| [0., 1e-100, 0.25, 1., 5., 100., 1e6, 1e100][i % 8])
@@ -1257,6 +1258,7 @@ mod tests {
 
     #[test]
     fn scheduled_family_rows_preserve_scalar_bits_across_tiles_and_teams() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         for n in [4095, 4096, 4097, 17003] {
             let y: Vec<_> = (0..n)
                 .map(|i| [0., 1e-100, 0.25, 1., 5., 100., 1e6, 1e100][i % 8])
@@ -1313,6 +1315,7 @@ mod tests {
 
     #[test]
     fn block_objectives_match_analytic_poisson_and_are_partition_reproducible() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         for n in [4096, 4097, 17003] {
             for weight_scale in [2_f64.powi(-600), 1., 2_f64.powi(600)] {
                 // y=0, mu=1 has exactly D=2*sum(q), log L=-sum(q).
@@ -1480,6 +1483,7 @@ mod tests {
 
     #[test]
     fn prepared_inputs_preserve_objective_and_working_bits_across_frames() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         let outcome = [0., 1e-100, 0.25, 1., 5., 100., 1e6, 1e100];
         let prior = [2., 0.3, 1., 0.01, 7., 2., 1e-4, 1e-80];
         let offset = [-3., 0., 10., -2., 0.5, 1., 100., -100.];

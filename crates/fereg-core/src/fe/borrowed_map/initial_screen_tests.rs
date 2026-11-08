@@ -69,6 +69,7 @@ fn matrix(rows: usize, columns: usize, codes: &[u32], scale: f64) -> DenseMatrix
 
 #[test]
 fn binding_wrapper_screen_preserves_every_bit_across_workers() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     for workers in [1, 2, 4, 8] {
         crate::ThreadTeam::new(crate::ThreadConfig::from_requested(workers, true).unwrap())
             .install(|| {
@@ -135,6 +136,7 @@ fn binding_wrapper_screen_preserves_every_bit_across_workers() {
 
 #[test]
 fn three_fe_pilot_screen_preserves_every_bit_across_workers() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     for workers in [1, 2, 4, 8] {
         crate::ThreadTeam::new(crate::ThreadConfig::from_requested(workers, true).unwrap())
             .install(|| {
@@ -207,6 +209,7 @@ fn three_fe_pilot_screen_preserves_every_bit_across_workers() {
 
 #[test]
 fn parallel_finite_scan_matches_the_serial_predicate_across_workers() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let rows = 40_000;
     for workers in [1, 2, 4, 8] {
         crate::ThreadTeam::new(crate::ThreadConfig::from_requested(workers, true).unwrap())

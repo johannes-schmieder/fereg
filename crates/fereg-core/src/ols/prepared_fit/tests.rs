@@ -2256,6 +2256,7 @@ fn assert_initial_checkpoint_lsmr_matches_map(
 
 #[test]
 fn bound_score_means_preserve_cache_bits_and_reservations() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     for (rows, regressors, intercept, absorbed) in [
         (4095, 6, false, false),
         (4096, 1, true, false),
@@ -2545,6 +2546,7 @@ fn without_solve_timings(mut fit: CertifiedPreparedOlsFit) -> CertifiedPreparedO
 
 #[test]
 fn loaded_moments_preserve_fit_bits_fallback_and_admission() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     for (n, width) in [
         (16_383, 9),
         (16_384, 9),
@@ -2861,6 +2863,7 @@ fn one_fe_final_target_recovery_preserves_saved_results() {
 
 #[test]
 fn residual_sums_stages_repeat_complete_fits_and_error_order() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     for n in [16_383, 16_384, 32_771] {
         let columns: Vec<Vec<f64>> = (0..9)
             .map(|c| {
@@ -2918,6 +2921,7 @@ fn residual_sums_stages_repeat_complete_fits_and_error_order() {
 
 #[test]
 fn score_stages_repeat_complete_fits_and_error_order() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     for n in [16_383, 16_384, 32_771] {
         let columns: Vec<Vec<f64>> = (0..9)
             .map(|c| {
@@ -3019,6 +3023,7 @@ fn unit_intercept_score_matches_generic_weights_and_errors() {
 
 #[test]
 fn two_fe_schur_final_stages_repeat_results_caches_and_error_order() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let n = 16_385;
     for width in [5, 6, 10, 17] {
         let columns = (0..width)
@@ -3082,6 +3087,7 @@ fn two_fe_schur_final_stages_repeat_results_caches_and_error_order() {
 
 #[test]
 fn narrow_weighted_final_stages_repeat_fits_and_error_order() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let n = 16_385;
     let weights = (0..n).map(|r| (1 + r % 7) as f64).collect::<Vec<_>>();
     for width in [5, 6] {
@@ -3151,6 +3157,7 @@ fn narrow_weighted_final_stages_repeat_fits_and_error_order() {
 
 #[test]
 fn final_residual_stages_repeat_bits_and_rejection_order() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     for n in [16_383, 16_384, 32_771] {
         let columns: Vec<Vec<f64>> = (0..9)
             .map(|c| {
@@ -3221,6 +3228,7 @@ fn final_residual_stages_repeat_bits_and_rejection_order() {
 
 #[test]
 fn wide_residual_stages_repeat_fits_caches_and_error_order() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let n = 16_385;
     for width in [17, 50] {
         let mut columns: Vec<Vec<f64>> = (0..width)
@@ -3285,6 +3293,7 @@ fn wide_residual_stages_repeat_fits_caches_and_error_order() {
 
 #[test]
 fn retained_score_cache_residual_stages_repeat_fits_and_errors() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     for n in [16_383, 16_384, 32_771] {
         let columns: Vec<Vec<f64>> = (0..9)
             .map(|c| {
@@ -3356,6 +3365,7 @@ fn retained_score_cache_residual_stages_repeat_fits_and_errors() {
 
 #[test]
 fn numeric_tiles_preserve_rhs_and_raw_residual_bits_across_threads() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let rows = 4_103;
     for width in [1, 5, 6, 7, 15, 50, 63, 64] {
         let columns = (0..width)
@@ -3689,111 +3699,8 @@ fn fused_standardized_moments_match_compensated_scalar_reference() {
 }
 
 #[test]
-fn fused_weighted_norms_match_columnwise_reference_exactly() {
-    let rows = 40_007_usize;
-    let columns = 7_usize;
-    let mut values = Vec::with_capacity(rows * columns);
-    let mut weights = Vec::with_capacity(rows);
-    for row in 0..rows {
-        let axis = row as f64;
-        for column in 0..columns {
-            let frequency = (column + 3) as f64 * 0.000_017;
-            values.push((axis * frequency).sin() + (column as f64 - 2.0) * 0.125);
-        }
-        weights.push(0.25 + ((row * 37 % 97) as f64 + 1.0) / 101.0);
-    }
-    let matrix = DenseMatrix::from_row_major(rows, columns, values).expect("norm matrix");
-    let raw_scale = weights.iter().copied().fold(0.0_f64, f64::max);
-    let normalized = NormalizedWeights {
-        values: Some(&weights),
-        raw_scale,
-        kind: Some(WeightKind::Analytic),
-    };
-    let expected = (0..columns)
-        .map(|column| {
-            weighted_matrix_column_norm(&matrix, column, normalized)
-                .expect("columnwise weighted norm")
-        })
-        .collect::<Vec<_>>();
-    let mut actual = vec![0.0_f64; columns];
-    let mut reservation = SystemFitReservation;
-    fill_weighted_matrix_norms_fused(&matrix, normalized, &mut actual, &mut reservation)
-        .expect("fused weighted norms");
-    assert_eq!(actual, expected);
-}
-
-#[test]
-fn blocked_weighted_norms_preserve_scalar_bits_at_all_widths() {
-    for threads in [1, 7] {
-        let team = ThreadTeam::new(ThreadConfig::from_requested(threads, true).unwrap());
-        team.install(|| {
-            for columns in [1, 2, 3, 4, 5, 7, 8, 9, 13, 51, 65] {
-                let rows = 1031;
-                let mut matrix = DenseMatrix::zeros(rows, columns).unwrap();
-                let weights = (0..rows)
-                    .map(|row| 0.25 + (row % 17) as f64 / 19.0)
-                    .collect::<Vec<_>>();
-                for row in 0..rows {
-                    for col in 0..columns {
-                        matrix[(row, col)] = match col % 5 {
-                            0 => 0.0,
-                            1 => -0.0,
-                            2 => ((row * 37 % 101) as f64 - 50.0) * 1e150,
-                            3 => ((row * 19 % 97) as f64 - 48.0) * 1e-150,
-                            _ => (row as f64 * 0.173).sin(),
-                        };
-                    }
-                }
-                for values in [None, Some(weights.as_slice())] {
-                    let normalized = NormalizedWeights {
-                        values,
-                        raw_scale: 2.0,
-                        kind: values.map(|_| WeightKind::Analytic),
-                    };
-                    let expected = (0..columns)
-                        .map(|col| {
-                            weighted_matrix_column_norm(&matrix, col, normalized)
-                                .unwrap()
-                                .to_bits()
-                        })
-                        .collect::<Vec<_>>();
-                    let mut actual = vec![0.0; columns];
-                    for block in [2, 4, 8] {
-                        match block {
-                            2 => fill_weighted_matrix_norms_blocked::<2>(
-                                &matrix,
-                                0,
-                                normalized,
-                                &mut actual,
-                            ),
-                            4 => fill_weighted_matrix_norms_blocked::<4>(
-                                &matrix,
-                                0,
-                                normalized,
-                                &mut actual,
-                            ),
-                            _ => fill_weighted_matrix_norms_blocked::<8>(
-                                &matrix,
-                                0,
-                                normalized,
-                                &mut actual,
-                            ),
-                        }
-                        .unwrap();
-                        assert_eq!(
-                            actual.iter().map(|x| x.to_bits()).collect::<Vec<_>>(),
-                            expected
-                        );
-                    }
-                }
-            }
-        })
-        .unwrap();
-    }
-}
-
-#[test]
 fn low_norm_preserves_frozen_large_row_reduction_bits() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     // Independent former Low recurrence and ordered 16,384-row merge.
     fn accumulate(values: &[f64], raw: Option<&[f64]>, divisor: f64) -> (f64, f64) {
         let (mut scale, mut sum) = (0.0_f64, 1.0_f64);
@@ -3875,61 +3782,6 @@ fn low_norm_preserves_frozen_large_row_reduction_bits() {
 }
 
 #[test]
-fn blocked_column_maxima_match_columnwise_scans() {
-    let rows = 37;
-    for columns in [1, 2, 9, 17] {
-        let data = (0..rows * columns)
-            .map(|i| ((i * 7919) % 211) as f64 - 105.5)
-            .collect();
-        let matrix = DenseMatrix::from_row_major(rows, columns, data).unwrap();
-        for first in 0..columns.min(2) {
-            let start = [0.0_f64, 50.0, 3.25, 400.0];
-            let width = columns - first;
-            let initial = (0..width).map(|j| start[j % 4]).collect::<Vec<_>>();
-            let expected = (0..width)
-                .map(|j| (0..rows).fold(initial[j], |m, row| m.max(matrix[(row, first + j)].abs())))
-                .collect::<Vec<_>>();
-            for threads in [1, 3] {
-                let mut actual = initial.clone();
-                rayon::ThreadPoolBuilder::new()
-                    .num_threads(threads)
-                    .build()
-                    .unwrap()
-                    .install(|| {
-                        fill_column_maxima_blocked::<4>(&matrix, first, &mut actual).unwrap();
-                    });
-                assert_eq!(actual, expected);
-            }
-        }
-    }
-    let matrix = DenseMatrix::zeros(2, 2).unwrap();
-    assert!(fill_column_maxima_blocked::<4>(&matrix, 1, &mut [0.0; 2]).is_err());
-    assert!(fill_column_maxima_blocked::<4>(&matrix, 3, &mut []).is_err());
-}
-
-#[test]
-fn blocked_weighted_norms_fail_closed() {
-    let mut matrix = DenseMatrix::zeros(3, 2).unwrap();
-    let weights = NormalizedWeights {
-        values: None,
-        raw_scale: 1.0,
-        kind: None,
-    };
-    assert!(fill_weighted_matrix_norms_blocked::<4>(&matrix, 0, weights, &mut [0.0]).is_err());
-    assert!(fill_weighted_matrix_norms_blocked::<0>(&matrix, 0, weights, &mut [0.0; 2]).is_err());
-    matrix[(1, 1)] = f64::INFINITY;
-    assert!(fill_weighted_matrix_norms_blocked::<4>(&matrix, 0, weights, &mut [0.0; 2]).is_err());
-    matrix[(1, 1)] = 1.0;
-    let bad_weights = [1.0, 0.0, 1.0];
-    let weights = NormalizedWeights {
-        values: Some(&bad_weights),
-        raw_scale: 1.0,
-        kind: Some(WeightKind::Analytic),
-    };
-    assert!(fill_weighted_matrix_norms_blocked::<4>(&matrix, 0, weights, &mut [0.0; 2]).is_err());
-}
-
-#[test]
 fn fused_standardized_moments_preserve_noncontiguous_candidate_fallback() {
     let rows = 40_019_usize;
     let columns = 6_usize;
@@ -3964,6 +3816,7 @@ fn fused_standardized_moments_preserve_noncontiguous_candidate_fallback() {
 
 #[test]
 fn bound_weighted_column_means_preserve_current_weight_bits() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     for (rows, width) in [
         (1, 1),
         (4096, 9),
@@ -4099,6 +3952,7 @@ fn bound_weighted_column_means_reject_bad_axes_and_nonfinite_inputs() {
 
 #[test]
 fn unit_mean_by_shortcut_matches_explicit_unit_weights_bits() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     for n in [0, 1, 127, 16384, 16387] {
         let ones = vec![1.0; n];
         let unit = NormalizedWeights {
@@ -4229,6 +4083,7 @@ fn residual_bound_requires_weighted_underflow_fallback() {
 
 #[test]
 fn blocked_raw_moments_preserve_columnwise_bits_and_dispatch() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     for threads in [1, 2, 4, 7, 8, 16] {
         let team = ThreadTeam::new(ThreadConfig::from_requested(threads, true).unwrap());
         team.install(|| {
@@ -6606,11 +6461,20 @@ fn projection_only_matches_full_fit_without_constructing_reported_bread() {
                 reported.generated_column_index
             );
         } else {
-            assert_eq!(projected, reported);
+            // The two paths take their norms from different fixed-order sums.
+            crate::test_support::assert_debug_close(projected, reported, 1e-12);
         }
     }
-    assert_eq!(projection.rank_certificate(), full.rank_certificate());
-    assert_eq!(projection.score_certificate(), full.score_certificate());
+    crate::test_support::assert_debug_close(
+        &projection.rank_certificate(),
+        &full.rank_certificate(),
+        1e-9,
+    );
+    crate::test_support::assert_debug_close(
+        &projection.score_certificate(),
+        &full.score_certificate(),
+        1e-9,
+    );
     for (actual, expected) in projection.residuals().iter().zip(full.residuals()) {
         assert_close(*actual, *expected, 2e-12);
     }
@@ -9469,6 +9333,7 @@ fn fill_raw_moment_cache_columnwise(
 
 #[test]
 fn norm_handoff_initial_ols_provenance_preserves_complete_fit_bits() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let rows = 513;
     let x = (0..rows)
         .map(|r| (r as f64 * 0.13).sin())
@@ -9537,6 +9402,7 @@ fn norm_handoff_initial_ols_provenance_preserves_complete_fit_bits() {
 
 #[test]
 fn fe_release_fit_bits_and_solver_signatures_are_exact() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     use crate::ols::prepared_sources::tests::{fixture, prepare};
     for weighted in [false, true] {
         let (mut request, mut loaded) = fixture(513);
@@ -10180,6 +10046,7 @@ fn no_fe_derived_residual_has_independent_witness_and_projected_fallbacks() {
 
 #[test]
 fn no_fe_centered_pipeline_preserves_boundary_rank_and_repeats() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let n = 1024;
     let x: Vec<_> = (0..n)
         .map(|r| if r & 1 == 0 { -1.0 } else { 1.0 })

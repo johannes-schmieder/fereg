@@ -1001,6 +1001,7 @@ fn ols_schur_accepts_a_passing_certificate_after_recurrence_budget() {
 
 #[test]
 fn ols_norms_are_scaled_and_bit_stable_across_worker_counts() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let rows = 16_391;
     let design = BorrowedInterceptFeDesign::new(rows, Vec::new()).unwrap();
     let columns = [
@@ -3213,6 +3214,7 @@ fn unit_graph_projection_matches_independent_map() {
 
 #[test]
 fn large_two_fe_schur_operator_is_bit_stable_across_threads() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let rows = 16_384;
     let first_levels = 1_024;
     let second_levels = 997;
@@ -3438,6 +3440,7 @@ fn large_two_fe_pcg_recurrence_is_bit_stable_across_threads() {
 
 #[test]
 fn active_two_fe_pcg_recurrence_is_bit_stable_across_budget_boundaries() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let rows = 65_536;
     let first_levels = 8_192;
     let second_levels = 8_191;
@@ -3852,6 +3855,7 @@ fn structural_constant_empty_design_allocations_are_fallible_and_only_rhs_scale(
 
 #[test]
 fn large_parallel_projection_is_bit_stable_and_its_workspace_fails_closed() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let observations = PARALLEL_PROJECTION_MIN_ROWS;
     let levels = 4_096;
     let codes = (0..observations)
@@ -3950,6 +3954,7 @@ fn large_parallel_projection_is_bit_stable_and_its_workspace_fails_closed() {
 
 #[test]
 fn large_one_rhs_one_fe_projection_is_bit_stable_through_sixteen_threads() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let observations = PARALLEL_PROJECTION_MIN_ROWS;
     let levels = 4_096;
     let codes = (0..observations)
@@ -4265,6 +4270,7 @@ fn fused_symmetric_complement_and_cg_update_match_separate_passes() {
 
 #[test]
 fn large_wide_three_fe_projection_and_certificate_are_bit_stable() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let observations = 50_000;
     assert!(observations >= PARALLEL_PROJECTION_MIN_ROWS);
     let level_counts = [4_096, 2_048, 1_024];
@@ -5201,6 +5207,7 @@ fn hestenes_energy_audit_recomputes_remaining_energy_and_rejects_invalid_steps()
 
 #[test]
 fn borrowed_cg_is_weighted_batched_certified_and_deterministic() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let worker_codes = [0_u32, 0, 1, 1, 2, 2, 3, 3];
     let firm_codes = [0_u32, 1, 1, 2, 2, 0, 0, 2];
     let worker_index = LevelIndex::from_codes(&worker_codes, 4).expect("worker index");

@@ -1425,6 +1425,7 @@ mod tests {
 
     #[test]
     fn candidate_uniform_generation_restores_owner_storage_and_weight_bits() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         use crate::data::UniformValues;
         for implicit in [false, true] {
             let mut fixture = categorical_clustered_fixture();

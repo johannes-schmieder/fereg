@@ -29,6 +29,7 @@ fn retained_a3_assembly_is_bitwise_equal_for_every_row_owner() {
 
 #[test]
 fn interleaved_components_unequal_weights_and_singletons_keep_assembly_bits() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     // Three interleaved components have unequal sizes; the last two levels
     // are singleton components. Lane boundaries fall both inside and between
     // packed blocks, unlike level-code order.

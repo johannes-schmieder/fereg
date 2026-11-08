@@ -68,6 +68,7 @@ fn with_design(
 
 #[test]
 fn elimination_matches_converged_map_and_returns_reproducing_coefficients() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let rows = 900;
     for levels in [
         vec![120, 17],

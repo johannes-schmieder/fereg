@@ -1212,6 +1212,7 @@ mod tests {
 
     #[test]
     fn loaded_rhs_reuse_preserves_bits_and_rejects_stale_rows() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         use crate::{ThreadConfig, ThreadTeam};
         for (width, n) in [
             (2_usize, 257),
@@ -1351,6 +1352,7 @@ mod tests {
 
     #[test]
     fn wide_rhs_binding_matches_generic_cells_across_workers() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         use crate::{ThreadConfig, ThreadTeam};
         for (width, n) in [(66_usize, 4099), (67, 16384), (98, 4099)] {
             let mut request = request(false, true);
@@ -1419,6 +1421,7 @@ mod tests {
 
     #[test]
     fn direct_rhs_preserves_y_generated_column_order_and_bits() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         let prepared = prepared(false, true);
         let rhs = build_prepared_ols_rhs(&prepared).expect("RHS");
         assert_eq!(rhs.values().nrows(), 4);
@@ -1823,6 +1826,7 @@ mod tests {
 
     #[test]
     fn checked_initial_projection_preserves_raw_bits_and_solver_reports() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         use crate::fe::FeSession;
         use crate::ols::PreparedOlsFitConfig;
         use crate::{ThreadConfig, ThreadTeam};

@@ -134,6 +134,7 @@ fn bits(stats: &CenteredSummary) -> Vec<u64> {
 
 #[test]
 fn shape_only_leaves_repeat_exactly_across_worker_counts() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let rows = 32_769;
     let columns = 5;
     let raw = matrix(

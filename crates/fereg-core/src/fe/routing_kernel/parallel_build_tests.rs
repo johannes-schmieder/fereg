@@ -142,6 +142,7 @@ fn assert_same(actual: &CellSchur, expected: &CellSchur, label: &str) {
 // workers, and the serial path stays the one-lane schedule.
 #[test]
 fn parallel_construction_reproduces_serial_bits_at_every_worker_count() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let (workers, firms) = (20_000, 2_500);
     let (left, right, weights) = design_codes(workers, firms, 20261027);
     with_design(&left, &right, workers, firms, |design| {
@@ -182,6 +183,7 @@ fn parallel_construction_reproduces_serial_bits_at_every_worker_count() {
 // reports the first failure in worker order.
 #[test]
 fn parallel_construction_reproduces_serial_failures() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let (workers, firms) = (12_000, 1_500);
     let (left, right, base) = design_codes(workers, firms, 99);
     with_design(&left, &right, workers, firms, |design| {

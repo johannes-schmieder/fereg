@@ -580,6 +580,7 @@ mod tests {
 
     #[test]
     fn anchored_recovery_cycles_repeated_pairs_and_disconnected_anchors() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         let left = [0, 0, 1, 1, 1, 2, 2, 3, 3];
         let right = [0, 1, 0, 1, 1, 2, 3, 2, 3];
         let a = [2., -3., 7., 11.];

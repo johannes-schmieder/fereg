@@ -2871,6 +2871,7 @@ fn prepared_route_polls_reserves_workspace_assembly_seeds_and_final_fills() {
 /// An independent CG oracle and the full-FE certificate check the science.
 #[test]
 fn explicit_cmg_projections_match_across_workers_above_the_reduction_floor() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let (workers, firms, per_worker) = (72_000_usize, 70_000_usize, 5_usize);
     let rows = workers * per_worker;
     let worker_codes: Vec<u32> = (0..rows).map(|row| (row / per_worker) as u32).collect();

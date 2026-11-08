@@ -183,6 +183,7 @@ mod tests {
     // 1, 2, 4 and 8 workers and leaves rows beyond `rhs_count` untouched.
     #[test]
     fn parallel_product_reproduces_serial_bits_at_every_worker_count() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         let (workers, firms) = (6000, 700);
         let (left, right, weights) = design_codes(workers, firms, 20261027);
         with_design(&left, &right, workers, firms, |design| {

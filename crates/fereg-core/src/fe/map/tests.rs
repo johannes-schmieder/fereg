@@ -1284,6 +1284,7 @@ fn slope_coefficients_preserve_analytic_projection_across_weights_rank_and_threa
 
 #[test]
 fn intercept_coupling_stream_repeats_pair_products_exactly() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     // Three single-channel intercepts on two components: the compact
     // coupling streams its two coupling pairs, and its products must equal the
     // per-pair products bit for bit and the observation-space operator.
@@ -1755,6 +1756,7 @@ fn slope_geometry_reuses_only_explicit_generations_and_invalidates_before_errors
 
 #[test]
 fn reusable_certificate_tiles_match_serial_bits_across_threads_widths_and_scales() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let rows = 120;
     let z: Vec<_> = (0..rows).map(|i| (i % 7) as f64 - 3.0).collect();
     let design = FeDesign::new(

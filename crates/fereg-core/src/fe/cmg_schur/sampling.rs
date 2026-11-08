@@ -302,6 +302,7 @@ mod tests {
 
     #[test]
     fn suffixes_are_direct_compensated_sums_and_streams_repeat() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         let mut work = Work::new(false);
         let mut sampler = SampledTrees::new(
             Sampling {

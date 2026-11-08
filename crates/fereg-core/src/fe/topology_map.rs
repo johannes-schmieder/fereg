@@ -169,6 +169,7 @@ mod tests {
 
     #[test]
     fn repeated_interaction_terms_do_not_change_the_projection() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         let firm = [0, 0, 0, 0, 1, 1, 1, 1];
         let year = [0, 0, 1, 1, 0, 0, 1, 1];
         let sources = [

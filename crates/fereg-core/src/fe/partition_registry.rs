@@ -184,6 +184,7 @@ mod tests {
 
     #[test]
     fn reordered_and_repeated_recipes_share_one_partition() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         let firm = [0, 0, 1, 1, 2, 2];
         let year = [0, 1, 0, 1, 0, 1];
         let sources = [

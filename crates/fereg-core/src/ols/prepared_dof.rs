@@ -268,6 +268,7 @@ mod tests {
 
     #[test]
     fn repeated_sources_are_not_counted_twice_under_pairwise_policy() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         let g = [0, 1, 0, 1];
         let h = [0, 0, 0, 0];
         let prepared = prepared_case_ordered(

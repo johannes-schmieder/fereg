@@ -1428,6 +1428,7 @@ mod control_tests {
 
     #[test]
     fn hosted_emission_matches_serial_raw_graph_hierarchy_and_cycle_bits() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         use crate::{options::ThreadConfig, parallel::ThreadTeam};
         let (membership, columns, weights) = emission_fixture(8192);
         for samples in [0, 1, 3] {
@@ -1629,6 +1630,7 @@ mod control_tests {
 
     #[test]
     fn observation_graph_uses_hosted_stages_at_every_worker_count() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         use crate::{options::ThreadConfig, parallel::ThreadTeam};
         for rows in [8, 8192] {
             let (membership, columns, weights) = emission_fixture(rows);
@@ -1699,6 +1701,7 @@ mod control_tests {
 
     #[test]
     fn host_stage_dispatch_is_identical_at_every_worker_count() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         use crate::{options::ThreadConfig, parallel::ThreadTeam};
         for workers in [1, 4] {
             ThreadTeam::new(ThreadConfig::from_requested(workers, true).unwrap())
@@ -1771,6 +1774,7 @@ mod control_tests {
 
     #[test]
     fn terminal_factor_follows_the_hierarchy_options_at_every_worker_count() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         use crate::{options::ThreadConfig, parallel::ThreadTeam};
         let graph = Laplacian::from_edges(2, [(0, 1, 1.0)]).unwrap();
         let run = |workers| {
@@ -2143,6 +2147,7 @@ mod cache_tests {
 
     #[test]
     fn cached_and_uncached_builds_repeat_exactly() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         let fixture = Fixture::new();
         for cached in [false, true] {
             for samples in [0, 1, 2] {
@@ -2328,6 +2333,7 @@ mod cache_tests {
 
     #[test]
     fn empty_observations_and_isolated_firms_keep_identical_graphs() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         let membership = LevelIndex::from_codes(&[], 0).unwrap();
         let source = CellSource {
             membership: &membership,
@@ -2539,6 +2545,7 @@ mod team_stage_tests {
 
     #[test]
     fn team_census_and_emission_match_the_serial_graph_at_every_worker_count() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         let fixture = Fixture::new(&[]);
         assert!(fixture.membership.nobs() >= TEAM_STAGE_ITEMS);
         for samples in [0, 1, 3] {
@@ -2644,6 +2651,7 @@ mod team_stage_tests {
     /// Every path builds the same graph.
     #[test]
     fn refused_optional_scratch_selects_the_serial_stage_with_identical_bits() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         let fixture = Fixture::new(&[]);
         let sampling = Sampling {
             samples: 3,

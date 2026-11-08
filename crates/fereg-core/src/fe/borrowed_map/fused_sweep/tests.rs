@@ -158,6 +158,7 @@ fn run_sweeps(
 
 #[test]
 fn fused_sweeps_are_bitwise_the_unfused_sweeps_at_every_worker_count() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let mut reference = std::collections::BTreeMap::new();
     for workers in [1, 2, 4, 8] {
         crate::ThreadTeam::new(crate::ThreadConfig::from_requested(workers, true).unwrap())
@@ -240,6 +241,7 @@ fn certificate_bits(certificate: &FeCertificate) -> [u64; 4] {
 
 #[test]
 fn fused_pilot_publishes_the_unfused_pilot_bits_at_every_worker_count() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let mut reference = std::collections::BTreeMap::new();
     for workers in [1, 2, 4, 8] {
         crate::ThreadTeam::new(crate::ThreadConfig::from_requested(workers, true).unwrap())

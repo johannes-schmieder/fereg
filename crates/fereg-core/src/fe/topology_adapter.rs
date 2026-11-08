@@ -123,6 +123,7 @@ mod tests {
 
     #[test]
     fn repeated_interaction_terms_reuse_codes_and_membership() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         let firm = [0, 0, 1, 1];
         let year = [0, 1, 0, 1];
         let sources = [

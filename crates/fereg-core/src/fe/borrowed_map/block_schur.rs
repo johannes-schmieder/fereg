@@ -40,14 +40,22 @@ pub(crate) fn enabled() -> bool {
 static TEST_DISABLED: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
 
 /// Tests of the established routes' own machinery disable the elimination
-/// while the guard lives (process-wide; other tests only see a fallback).
+/// while the guard lives. The switch is process-wide, so the guard also holds
+/// an exclusive lock that tests comparing repeated runs share
+/// ([`stable_route_for_test`]); their runs never straddle a switch.
 #[cfg(test)]
-pub(crate) struct DisabledForTest;
+pub(crate) struct DisabledForTest(#[allow(dead_code)] std::sync::RwLockWriteGuard<'static, ()>);
+
+#[cfg(test)]
+static TEST_ROUTE_LOCK: std::sync::RwLock<()> = std::sync::RwLock::new(());
 
 #[cfg(test)]
 pub(crate) fn disable_for_test() -> DisabledForTest {
+    let lock = TEST_ROUTE_LOCK
+        .write()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     TEST_DISABLED.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-    DisabledForTest
+    DisabledForTest(lock)
 }
 
 #[cfg(test)]
@@ -55,6 +63,14 @@ impl Drop for DisabledForTest {
     fn drop(&mut self) {
         TEST_DISABLED.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
     }
+}
+
+/// Shared side of the route lock for tests that compare repeated runs.
+#[cfg(test)]
+pub(crate) fn stable_route_for_test() -> std::sync::RwLockReadGuard<'static, ()> {
+    TEST_ROUTE_LOCK
+        .read()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
 /// Retained (non-eliminated) blocks with specialized kernels.
@@ -426,6 +442,29 @@ impl Weights {
                 let mut bad = false;
                 for (s, inv) in lane.segments.clone().zip(inverse.iter_mut()) {
                     let (c0, c1) = (st.seg_cells[s], st.seg_cells[s + 1]);
+                    if nb == 1 {
+                        // One retained block: every cell of a segment has a
+                        // distinct code, so `a_sj` is that cell's weight.
+                        let codes = &st.codes[c0..c1];
+                        let total: f64 = if unit {
+                            (c1 - c0) as f64
+                        } else {
+                            cell[c0..c1].iter().sum()
+                        };
+                        if !(total.is_finite() && total > 0.0) {
+                            bad = true;
+                            continue;
+                        }
+                        let inverse_total = 1.0 / total;
+                        *inv = inverse_total;
+                        for (k, &code) in codes.iter().enumerate() {
+                            let w = if unit { 1.0 } else { cell[c0 + k] };
+                            let j = code as usize;
+                            mass[j] += w;
+                            diag[j] += w - w * w * inverse_total;
+                        }
+                        continue;
+                    }
                     let mut total = 0.0;
                     touched.clear();
                     let tag = s as u32;
@@ -513,8 +552,8 @@ impl Weights {
 pub(crate) struct Request {
     /// Also return the FE coefficients whose fit forms the residual.
     pub(crate) retain_coefficients: bool,
-    /// Recompute the weight state even for the same weight slice (callers
-    /// that refill one buffer between frames).
+    /// Reserved: the weight state is keyed by a digest of the weight bits,
+    /// so refilled buffers are always detected.
     pub(crate) fresh_weights: bool,
     /// Also bound every level's Jacobi coefficient-error estimate (callers
     /// that check fitted predictors row by row, such as PPML).
@@ -528,6 +567,29 @@ pub(crate) enum Outcome<V> {
     Declined(V),
 }
 
+/// Identity of a weight vector: unit, or its slice address, length and a
+/// digest of its bits (callers may refill one buffer between frames).
+type WeightKey = Option<(usize, usize, u64)>;
+
+fn weight_key(values: Option<&[f64]>) -> WeightKey {
+    values.map(|values| {
+        const CHUNK: usize = 1 << 16;
+        let parts: Vec<u64> = values
+            .par_chunks(CHUNK)
+            .map(|chunk| {
+                chunk.iter().fold(0x243f_6a88_85a3_08d3_u64, |h, v| {
+                    let h = (h ^ v.to_bits()).wrapping_mul(0x9e37_79b9_7f4a_7c15);
+                    h ^ (h >> 31)
+                })
+            })
+            .collect();
+        let digest = parts.iter().fold(0xcbf2_9ce4_8422_2325_u64, |h, &p| {
+            (h ^ p).wrapping_mul(0x0000_0100_0000_01b3)
+        });
+        (values.as_ptr() as usize, values.len(), digest)
+    })
+}
+
 /// A session's retained geometry and its current-weight state.
 #[derive(Default)]
 pub(crate) struct Cache {
@@ -535,7 +597,7 @@ pub(crate) struct Cache {
     structure: Option<Structure>,
     /// Weights keyed by the borrowed weight slice (address, length); `None`
     /// key is unit weights.
-    weights: Option<(Option<(usize, usize)>, Weights)>,
+    weights: Option<(WeightKey, Weights)>,
 }
 
 impl Cache {
@@ -567,11 +629,11 @@ impl Cache {
         ledger.lap(0);
         let st = self.structure.as_ref().expect("structure");
         let validated = validate_weights(weights, values.nrows())?;
-        let key = validated.values.map(|v| (v.as_ptr() as usize, v.len()));
+        let key = weight_key(validated.values);
         if budget.is_some_and(|b| !b.fits(admission_bytes(st, None, values.ncols()))) {
             return Ok(Outcome::Declined(values));
         }
-        if request.fresh_weights || self.weights.as_ref().is_none_or(|(k, _)| *k != key) {
+        if self.weights.as_ref().is_none_or(|(k, _)| *k != key) {
             self.weights = None;
             match Weights::prepare(st, design, validated)? {
                 Some(w) => self.weights = Some((key, w)),
@@ -606,7 +668,7 @@ impl Cache {
             return Ok(None);
         }
         let validated = validate_weights(weights, values.nrows())?;
-        if *key != validated.values.map(|v| (v.as_ptr() as usize, v.len())) {
+        if *key != weight_key(validated.values) {
             return Ok(None);
         }
         if !(amplification.is_finite() && amplification >= 1.0) {

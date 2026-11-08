@@ -780,6 +780,7 @@ fn exact_fe_allocation_free_replay_rejects_a_deleted_level_identity() {
 
 #[test]
 fn repeated_interaction_exact_ids_survive_rebase_code_reuse_and_shared_anchors() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let (mut request, _clusters, mut loaded, mut uses) = fixture();
     let g = SourceId::new(2).expect("g");
     let h = SourceId::new(3).expect("h");
@@ -1512,6 +1513,7 @@ fn prepared_mu_uses_original_axis_start_and_certifies_its_candidate() {
 
 #[test]
 fn default_chain_is_deterministic_and_uses_the_declared_restart_order() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let run = || {
         let (request, clusters, loaded, uses) = fixture();
         let numeric = prepare_numeric(&loaded, &uses);

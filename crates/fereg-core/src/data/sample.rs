@@ -1088,6 +1088,7 @@ mod allocation_tests {
 
     #[test]
     fn available_blocks_repeat_every_row_decision_and_the_first_error() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         // A policy that drops some rows and fails on one, so blocks that skip
         // the availability tests must still apply it row by row in order.
         struct Mixed {

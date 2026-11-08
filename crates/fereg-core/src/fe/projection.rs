@@ -502,6 +502,7 @@ mod tests {
 
     #[test]
     fn rhs_tiles_preserve_scalar_projection_bits() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         let rows = 97;
         let codes: Vec<u32> = (0..rows)
             .map(|row| ((19 * row + row / 7) % 11) as u32)
@@ -671,6 +672,7 @@ mod tests {
 
     #[test]
     fn parallel_groups_preserve_scalar_bits_across_rank_units_and_teams() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         for workers in [2, 4, 8] {
             rayon::ThreadPoolBuilder::new()
                 .num_threads(workers)

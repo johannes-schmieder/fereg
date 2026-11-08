@@ -599,6 +599,7 @@ mod tests {
 
     #[test]
     fn repeated_weighted_cells_match_independent_rectangle_conductance() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         let left = [0, 0, 0, 1, 1, 1, 2, 2];
         let right = [0, 0, 1, 0, 1, 1, 2, 2];
         let weights = [2.0, 1.0, 3.0, 4.0, 5.0, 2.0, 7.0, 1.0];

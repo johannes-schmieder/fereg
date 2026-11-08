@@ -1471,6 +1471,7 @@ fn cmg_warm_seed_requires_complete_certification_and_survives_no_failed_frame() 
 
 #[test]
 fn cmg_nuisance_batches_preserve_weighted_fits_and_deterministic_certificates() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     for zero_control in [false, true] {
         let (prepared, outcome) = prepared_three_fe([2, 0, 1], zero_control, None);
         let prior_weights = (0..outcome.len())
@@ -2087,6 +2088,7 @@ fn stable_initialization_handles_large_offsets() {
 
 #[test]
 fn one_effect_seed_is_group_optimal_weighted_stable_and_deterministic() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let design = FeDesign::new(
         6,
         vec![
@@ -3931,6 +3933,7 @@ fn joint_slope_session_preserves_changing_frames_rollback_and_fresh_rank() {
 
 #[test]
 fn bitwise_identical_weights_skip_final_frame_control_reprojection() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let outcome = vec![1.2, 4.0, 0.5, 6.1, 2.7, 8.3, 5.5, 11.8];
     let x = vec![-2.0, 0.5, -1.0, 2.0, -0.25, 3.0, 1.0, 4.5];
     let response = vec![0.9, 3.8, 0.4, 5.9, 2.5, 8.1, 5.2, 11.4];

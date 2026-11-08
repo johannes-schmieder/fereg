@@ -19,6 +19,7 @@ enum TestWeights<'a> {
 
 #[test]
 fn compensated_scaled_rows_preserve_scalar_bits_and_cancellation() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     for width in [0, 1, 2, 3, 7, 8, 15, 16, 17, 31, 32, 63, 64, 65, 129] {
         let mut sums = vec![0.0; width];
         let mut corrections = vec![-0.0; width];
@@ -117,6 +118,7 @@ fn compensated_scaled_rows_reject_shapes_and_nonfinite_coordinates() {
 
 #[test]
 fn unit_sum_of_squares_preserves_bits_and_errors() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     for n in [0, 1, 127, 16_387] {
         let ones = vec![1.0; n];
         let unit = ReferenceWeightView {
@@ -193,6 +195,7 @@ fn unit_reference_mass_matches_explicit_weights_and_preserves_limits() {
 
 #[test]
 fn outcome_stages_repeat_complete_results_and_fit_errors() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     for n in [16_383, 16_384, 32_769] {
         let groups: Vec<_> = (0..n).map(|r| (r % 71) as f64).collect();
         let x: Vec<_> = (0..n).map(|r| ((r % 131) as f64 - 60.0) / 7.0).collect();
@@ -268,6 +271,7 @@ fn outcome_stages_repeat_complete_results_and_fit_errors() {
 
 #[test]
 fn multi_fe_outcome_stages_repeat_ordinary_and_categorical_inference() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let n = 16_385;
     let groups = [
         (0..n).map(|r| (r % 41) as f64).collect::<Vec<_>>(),
@@ -354,6 +358,7 @@ fn multi_fe_outcome_stages_repeat_ordinary_and_categorical_inference() {
 
 #[test]
 fn wide_outcome_stages_repeat_numeric_and_categorical_inference() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let n = 16_385;
     let groups: Vec<_> = (0..n).map(|r| (r % 71) as f64).collect();
     let mut columns: Vec<Vec<f64>> = (0..50)
@@ -420,6 +425,7 @@ fn wide_outcome_stages_repeat_numeric_and_categorical_inference() {
 
 #[test]
 fn categorical_outcome_stages_repeat_inference_and_fit_errors() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     for n in [16_383, 16_385] {
         let groups: Vec<_> = (0..n).map(|r| (r % 71) as f64).collect();
         let x: Vec<_> = (0..n).map(|r| ((r % 131) as f64 - 60.0) / 7.0).collect();
@@ -476,6 +482,7 @@ fn categorical_outcome_stages_repeat_inference_and_fit_errors() {
 
 #[test]
 fn unit_mean_shortcut_matches_explicit_frequency_unit_mass_bits() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     for n in [0, 1, 127, 16384, 16387] {
         let ones = vec![1.0; n];
         let unit = ReferenceWeightView {
@@ -520,6 +527,7 @@ fn unit_mean_shortcut_matches_explicit_frequency_unit_mass_bits() {
 
 #[test]
 fn independent_parallel_fit_sums_preserve_bits_and_error_precedence() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     for n in [16_383, 16_384, 32_769] {
         let mut outcome: Vec<_> = (0..n).map(|i| ((i % 97) as f64 - 43.0) * 1e90).collect();
         let mut residuals: Vec<_> = (0..n).map(|i| ((i % 41) as f64 - 17.0) * 1e-90).collect();

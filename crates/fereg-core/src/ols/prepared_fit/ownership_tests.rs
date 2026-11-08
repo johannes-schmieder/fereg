@@ -103,6 +103,7 @@ fn exact_fit_and_scores(mut packed: CertifiedPreparedOlsFit, mut owned: Certifie
 
 #[test]
 fn ownership_preserves_packed_bits_and_explicit_solver_reports() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let data = fixture(32_771, TestWeights::Unit);
     for workers in [1, 4] {
         for solver in [crate::fe::FeSolverKind::Auto, crate::fe::FeSolverKind::Lsmr] {

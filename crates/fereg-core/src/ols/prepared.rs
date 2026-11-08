@@ -1792,6 +1792,7 @@ pub(crate) mod tests {
 
     #[test]
     fn exact_row_map_drop_precedence_bits_and_intercept_are_preserved() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         let request = request(2, true);
         let negative_zero = -0.0_f64;
         let tiny = f64::from_bits(1);
@@ -1954,6 +1955,7 @@ pub(crate) mod tests {
 
     #[test]
     fn owned_incomplete_compaction_preserves_value_bits_and_candidate_capacity() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         let request = request(1, true);
         for restricted in [false, true] {
             let loaded = LoadedOlsInput {
@@ -1994,6 +1996,7 @@ pub(crate) mod tests {
 
     #[test]
     fn owned_weights_preserve_samples_errors_bits_and_capacity() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         let n = 32_771;
         for (kind, role) in [
             (WeightKind::Analytic, OlsInputRole::AnalyticWeight),
@@ -2519,6 +2522,7 @@ pub(crate) mod tests {
 
     #[test]
     fn analytic_weights_preserve_positive_bits_and_lock_drop_semantics() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         let mut request = request(1, false);
         request.bindings.push(OlsInputBinding {
             stata_var_position: 4,
@@ -2639,6 +2643,7 @@ pub(crate) mod tests {
 
     #[test]
     fn frequency_weights_preserve_positive_integer_bits_and_candidate_scope() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         let mut request = request(0, false);
         request.bindings.push(OlsInputBinding {
             stata_var_position: 3,
@@ -2776,6 +2781,7 @@ pub(crate) mod tests {
 
     #[test]
     fn probability_weights_preserve_positive_bits_and_candidate_scope() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         let mut request = request(0, false);
         request.bindings.push(OlsInputBinding {
             stata_var_position: 3,
@@ -4528,6 +4534,7 @@ pub(crate) mod tests {
 
     #[test]
     fn repeated_fe_terms_borrow_the_immutable_unique_source() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         const TERM_COUNT: usize = 128;
         let source = SourceId::new(1).expect("source");
         let mut request = request(1, false);

@@ -6,6 +6,7 @@ use crate::sandwich::{
 
 #[test]
 fn immutable_inference_scan_preserves_bits_boundaries_and_new_writes() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     for columns in [1, 6, 1025] {
         let n = 37;
         let mut values: Vec<_> = (0..n * columns)

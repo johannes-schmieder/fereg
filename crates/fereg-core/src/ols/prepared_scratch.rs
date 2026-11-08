@@ -1115,6 +1115,7 @@ mod tests {
 
     #[test]
     fn shared_reader_batches_narrow_and_wide_rows_without_changing_bits() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         for columns in [1, 6, 1023, 1024, 1025, 2051] {
             let rows = 37;
             let input: Vec<_> = (0..rows * columns)
@@ -1281,6 +1282,7 @@ mod tests {
 
     #[test]
     fn repeated_column_block_transport_preserves_bits_and_bounds_io_calls() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         for (columns, pool, rows) in [
             (1_usize, 1_usize, 2051_usize),
             (5, 2, 419),

@@ -25,6 +25,7 @@ fn scalar_panel(
 
 #[test]
 fn bulk_panels_match_scalar_bits_for_offsets_scales_selection_and_tails() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     for columns in [2, 3, 8, 17, 66] {
         let raw = DenseMatrix::from_row_major(
             513,

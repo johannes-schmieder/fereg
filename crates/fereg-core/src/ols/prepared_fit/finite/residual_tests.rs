@@ -80,6 +80,7 @@ fn fused_centered_and_raw_residuals_are_exact_at_offsets_and_extremes() {
 
 #[test]
 fn signed_zero_zero_coefficients_and_empty_basis_preserve_bits() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let raw = DenseMatrix::from_row_major(
         4,
         4,
@@ -95,6 +96,7 @@ fn signed_zero_zero_coefficients_and_empty_basis_preserve_bits() {
 
 #[test]
 fn fused_residuals_repeat_exactly_across_workers() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let rows = 32_769;
     let raw = DenseMatrix::from_row_major(
         rows,

@@ -221,6 +221,7 @@ fn partial_optional_allocation_refusal_drops_candidate_but_fatal_errors_propagat
 
 #[test]
 fn pilot_debits_first_half_work_and_keeps_the_final_reserve() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     fixture(true, |design, values| {
         let estimate =
             estimate_fe_solver_memory(values.nrows(), values.ncols(), &[2; 3], 1, None).unwrap();
@@ -422,6 +423,7 @@ fn missed_prediction_still_accepts_the_fourth_sweep_without_changing_its_result(
 
 #[test]
 fn early_certificate_accepts_one_sweep_before_the_prediction_with_identical_bits() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     fixture(false, |design, values| {
         let map = MapConfig {
             tolerance: 1e-12,

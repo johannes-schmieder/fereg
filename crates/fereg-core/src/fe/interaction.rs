@@ -343,6 +343,7 @@ mod tests {
 
     #[test]
     fn three_way_and_repeated_components_are_exact() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         let a = [0, 0, 1, 1, 1, 0];
         let b = [0, 1, 0, 1, 1, 0];
         let c = [1, 1, 0, 0, 1, 1];

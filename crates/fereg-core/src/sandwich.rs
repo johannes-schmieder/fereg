@@ -2161,6 +2161,7 @@ mod tests {
 
     #[test]
     fn serial_influence_covariance_is_bit_identical_to_qualified_ols_loop() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         let values = [
             1.0, 0.17, -2.1, 1.0, -0.4, 0.33, 1.0, 1.75, 0.09, 1.0, -3.2, 2.4, 1.0, 0.61, -0.81,
             1.0, 4.7, 1.3, 1.0, -0.02, -2.9,
@@ -2180,6 +2181,7 @@ mod tests {
 
     #[test]
     fn serial_influence_rows_preserve_scalar_bits_across_widths_and_scales() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         let rows = 67;
         for dimension in [0, 1, 2, 3, 7, 8, 15, 16, 17, 31, 32, 33, 63, 64, 65, 129] {
             let values: Vec<_> = (0..rows * dimension)
@@ -2316,6 +2318,7 @@ mod tests {
 
     #[test]
     fn dense_meat_is_bit_identical_to_the_qualified_fixed_block_loop() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         let values = [
             1.0, 0.17, -2.1, 1.0, -0.4, 0.33, 1.0, 1.75, 0.09, 1.0, -3.2, 2.4, 1.0, 0.61, -0.81,
             1.0, 4.7, 1.3, 1.0, -0.02, -2.9, 1.0, 2.25, 3.4, 1.0, -1.1, 0.73,

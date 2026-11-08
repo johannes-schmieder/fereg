@@ -766,6 +766,7 @@ mod tests {
 
     #[test]
     fn parallel_groups_match_serial_bits_and_independent_weighted_two_column_projection() {
+        let _stable_route = crate::fe::block_schur::stable_route_for_test();
         let n = 84;
         let z: Vec<_> = (0..n).map(|r| (r / 7) as f64 - 5.5).collect();
         let design = FeDesign::new(
