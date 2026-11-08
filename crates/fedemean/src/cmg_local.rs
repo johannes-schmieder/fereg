@@ -193,13 +193,17 @@ impl CmgLocal {
     /// charge. [`Admitted::Refused`] when the block has fewer than two
     /// connected levels or its graph cannot be represented with positive
     /// normal weights. `cancel` is polled between bounded graph passes and
-    /// inside CMG.
+    /// inside CMG; without one, CMG builds without polling (its faster
+    /// unpolled edge sort; the same hierarchy).
     pub(crate) fn admit(
         block: &BlockLaplacian,
         lanes: usize,
         room: Option<u128>,
-        cancel: &(dyn Fn() -> bool + Sync),
+        cancel: Option<&(dyn Fn() -> bool + Sync)>,
     ) -> Result<Admitted<Self>> {
+        let never = || false;
+        let polled = cancel;
+        let cancel: &(dyn Fn() -> bool + Sync) = cancel.unwrap_or(&never);
         let fits = |bytes: u128| room.is_none_or(|room| bytes <= room);
         if !fits(block.levels as u128 * 4) {
             return Ok(Admitted::MemoryLimit);
@@ -210,7 +214,7 @@ impl CmgLocal {
         if !fits((block.levels as u128 * 4).saturating_add(graph.construction_bound())) {
             return Ok(Admitted::MemoryLimit);
         }
-        let Some(mut solve) = Self::build(block, graph, cancel)? else {
+        let Some(mut solve) = Self::build(block, graph, cancel, polled.is_some())? else {
             return Ok(Admitted::Refused);
         };
         let lanes = lanes.clamp(1, MAX_COLUMNS);
@@ -227,6 +231,7 @@ impl CmgLocal {
         block: &BlockLaplacian,
         graph: Graph,
         cancel: &(dyn Fn() -> bool + Sync),
+        polled: bool,
     ) -> Result<Option<Self>> {
         let Graph {
             vertex,
@@ -268,7 +273,7 @@ impl CmgLocal {
             }
         }
         let context = BuildContext {
-            cancel: Some(cancel),
+            cancel: polled.then_some(cancel),
             ..BuildContext::default()
         };
         let graph = match Laplacian::build(vertices, &edges, context) {
@@ -646,7 +651,7 @@ mod tests {
 
     /// The solve of `b` with [`MAX_COLUMNS`] lanes and no byte limit.
     fn admit(b: &BlockLaplacian, cancel: &(dyn Fn() -> bool + Sync)) -> Result<Admitted<CmgLocal>> {
-        CmgLocal::admit(b, MAX_COLUMNS, None, cancel)
+        CmgLocal::admit(b, MAX_COLUMNS, None, Some(cancel))
     }
 
     fn solve(b: &BlockLaplacian) -> CmgLocal {
@@ -897,7 +902,9 @@ mod tests {
         let peak = map + graph.construction_bound();
         // The retained hierarchy lies within its construction bound, and the
         // reserved buffers add exactly their admitted bytes.
-        let mut m = CmgLocal::build(&b, graph, NEVER).unwrap().expect("solve");
+        let mut m = CmgLocal::build(&b, graph, NEVER, true)
+            .unwrap()
+            .expect("solve");
         assert!(m.preconditioner.retained_bytes() as u128 <= peak - map);
         let core = m.bytes();
         let extra = m.apply_bytes(3).unwrap();
@@ -907,7 +914,7 @@ mod tests {
         let r: Vec<f64> = (0..b.levels * 6).map(|_| rng.uniform() - 0.5).collect();
         let expected = apply(&mut m, &r, 6);
         for lanes in [1, 3, 4, 8] {
-            let admitted = |room| CmgLocal::admit(&b, lanes, room, NEVER).unwrap();
+            let admitted = |room| CmgLocal::admit(&b, lanes, room, Some(NEVER)).unwrap();
             let Admitted::Solve(mut m) = admitted(None) else {
                 panic!("no CMG solve");
             };
@@ -921,7 +928,7 @@ mod tests {
             ));
             assert!(matches!(admitted(Some(peak - 1)), Admitted::MemoryLimit));
         }
-        let small = CmgLocal::admit(&b, 4, Some(map - 1), NEVER).unwrap();
+        let small = CmgLocal::admit(&b, 4, Some(map - 1), Some(NEVER)).unwrap();
         assert!(matches!(small, Admitted::MemoryLimit));
     }
 

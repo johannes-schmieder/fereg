@@ -1,10 +1,10 @@
 {
   "growth": [
     {
-      "after": 4705,
-      "before": 4677,
+      "after": 4708,
+      "before": 4705,
       "metric": "fedemean/production_lines",
-      "reason": "A design that escalated starts later automatic batches and projections on the blocks (sticky escalation); one CMG call covers up to eight columns."
+      "reason": "CMG local solves build without CMG-side polling when the caller gives no cancellation callback (faster unpolled edge sort; identical hierarchy)."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -43,60 +43,60 @@
           },
           {
             "condition": "width == 0 || self . columns == 0 || n != Some ( r . len ( ) ) || n != Some ( z . len ( ) )",
-            "line": 429
+            "line": 434
           },
           {
             "condition": "cells . len ( )",
-            "line": 474
+            "line": 479
           },
           {
             "condition": "n > STAR_LEVELS => Shape :: Star , _ =>",
-            "line": 476
+            "line": 481
           },
           {
             "condition": "offsets . len ( ) != segments + 1 || offsets [ 0 ] != 0 || offsets [ segments ] != block . entries . len ( ) || offsets . windows ( 2 ) . any ( | w | w [ 0 ] > w [ 1 ] ) || block . levels >= ISOLATED as usize",
-            "line": 504
+            "line": 509
           },
           {
             "condition": "p == v",
-            "line": 563
+            "line": 568
           }
         ],
         "functions": {
           "admit#1": {
-            "line": 197,
-            "lines": 26
+            "line": 198,
+            "lines": 29
           },
           "apply#1": {
-            "line": 427,
+            "line": 432,
             "lines": 20
           },
           "apply_bytes#1": {
-            "line": 309,
+            "line": 314,
             "lines": 5
           },
           "batch#1": {
-            "line": 332,
+            "line": 337,
             "lines": 76
           },
           "build#1": {
-            "line": 226,
-            "lines": 73
+            "line": 230,
+            "lines": 74
           },
           "built#1": {
-            "line": 602,
+            "line": 607,
             "lines": 12
           },
           "bytes#1": {
-            "line": 448,
+            "line": 453,
             "lines": 15
           },
           "clear_sums#1": {
-            "line": 409,
+            "line": 414,
             "lines": 5
           },
           "components#1": {
-            "line": 531,
+            "line": 536,
             "lines": 45
           },
           "construction_bound#1": {
@@ -108,27 +108,27 @@
             "lines": 49
           },
           "fatal#1": {
-            "line": 588,
+            "line": 593,
             "lines": 11
           },
           "filled#1": {
-            "line": 627,
+            "line": 632,
             "lines": 5
           },
           "held#1": {
-            "line": 449,
+            "line": 454,
             "lines": 3
           },
           "lane_values#1": {
-            "line": 301,
+            "line": 306,
             "lines": 6
           },
           "means#1": {
-            "line": 416,
+            "line": 421,
             "lines": 8
           },
           "neumaier#1": {
-            "line": 578,
+            "line": 583,
             "lines": 9
           },
           "options#1": {
@@ -140,39 +140,39 @@
             "lines": 7
           },
           "refill#1": {
-            "line": 634,
+            "line": 639,
             "lines": 6
           },
           "reserve#1": {
-            "line": 316,
+            "line": 321,
             "lines": 13
           },
           "reserve#2": {
-            "line": 615,
+            "line": 620,
             "lines": 5
           },
           "root#1": {
-            "line": 539,
+            "line": 544,
             "lines": 8
           },
           "segment#1": {
-            "line": 497,
+            "line": 502,
             "lines": 3
           },
           "shape#1": {
-            "line": 473,
+            "line": 478,
             "lines": 23
           },
           "validate#1": {
-            "line": 501,
+            "line": 506,
             "lines": 27
           },
           "with_capacity#1": {
-            "line": 621,
+            "line": 626,
             "lines": 5
           }
         },
-        "production_lines": 513
+        "production_lines": 517
       },
       "crates/fedemean/src/design.rs": {
         "chunk_candidates": [],
@@ -295,15 +295,15 @@
           },
           {
             "condition": "same && ( built . build . budget == build . budget || ! built . limited && fits ( built . admitted ) )",
-            "line": 203
+            "line": 202
           },
           {
             "condition": "self . blocks . len ( ) != nb",
-            "line": 215
+            "line": 214
           },
           {
             "condition": "is_dense ( & spec , block . range . len ( ) , st )",
-            "line": 225
+            "line": 224
           }
         ],
         "functions": {
@@ -324,19 +324,19 @@
             "lines": 3
           },
           "bytes#2": {
-            "line": 280,
+            "line": 279,
             "lines": 8
           },
           "cmg#1": {
             "line": 161,
-            "lines": 9
+            "lines": 8
           },
           "cmg#2": {
-            "line": 172,
+            "line": 171,
             "lines": 10
           },
           "ensure#1": {
-            "line": 190,
+            "line": 189,
             "lines": 64
           },
           "is_dense#1": {
@@ -348,7 +348,7 @@
             "lines": 4
           },
           "release#1": {
-            "line": 257,
+            "line": 256,
             "lines": 6
           },
           "wants_cmg#1": {
@@ -356,7 +356,7 @@
             "lines": 7
           }
         },
-        "production_lines": 225
+        "production_lines": 224
       },
       "crates/fedemean/src/elimination/dense.rs": {
         "chunk_candidates": [],
@@ -27681,7 +27681,7 @@
         "dispatch_candidates": 56,
         "files_over_1500": 0,
         "functions_over_150": 0,
-        "production_lines": 4705
+        "production_lines": 4708
       },
       "fereg-core": {
         "chunk_candidates": 13,

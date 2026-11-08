@@ -164,8 +164,7 @@ fn cmg(
     room: Option<u128>,
     cancel: &Cancel<'_>,
 ) -> Result<Admitted<CmgLocal>> {
-    let never = || false;
-    CmgLocal::admit(lap, lanes, room, cancel.0.unwrap_or(&never))
+    CmgLocal::admit(lap, lanes, room, cancel.0)
 }
 
 #[cfg(not(feature = "cmg"))]
