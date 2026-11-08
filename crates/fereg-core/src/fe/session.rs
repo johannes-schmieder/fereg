@@ -1329,6 +1329,7 @@ pub(crate) fn project_intercepts<'a>(
             ErrorCode::Unsupported,
             "explicit FE backend requires its prepared adapter",
         )),
+        S::Elimination => Err(super::auto::elimination_request()),
         S::Lsmr | S::IronsTuck | S::Map => {
             // A structural constant on an empty design has no coefficients to retain.
             let retain =

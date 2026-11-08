@@ -50,6 +50,7 @@ pub(crate) use topology_slope_map::CategoricalRecoveryMethod;
 mod topology_source;
 
 pub use accelerated_map::absorb_accelerated_map;
+pub(crate) use auto::elimination_request;
 pub use auto::{absorb_fixed_effects, AbsorbConfig};
 #[cfg(test)]
 pub(crate) use borrowed_map::derived_residual::inject_derived_certificate_failure_once;

@@ -1113,6 +1113,7 @@ fn solver_code(value: FeSolverKind) -> f64 {
         FeSolverKind::Squarem => 6.0,
         FeSolverKind::Cmg => 7.0,
         FeSolverKind::CmgSchur => 8.0,
+        FeSolverKind::Elimination => 9.0,
     }
 }
 

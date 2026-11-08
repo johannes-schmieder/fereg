@@ -2672,11 +2672,18 @@ fn saved_publication_validates_solver_codes_and_capacities_before_any_store() {
         .unwrap();
         // Requested and used codes in both diagnostic rows admit the new
         // route, while unknown and fractional codes still fail before stores.
+        // The exact elimination (9) is a used code only.
         for cell in [0, 1, SOLVER_COLUMNS, SOLVER_COLUMNS + 1] {
+            let used = cell % SOLVER_COLUMNS == 1;
             let original = shadow.solver[cell];
             shadow.solver[cell] = 8.0;
             validate_shadow_diagnostics(&action, &shadow).unwrap();
-            for invalid_code in [0.0, 7.5, 9.0] {
+            if used {
+                shadow.solver[cell] = 9.0;
+                validate_shadow_diagnostics(&action, &shadow).unwrap();
+            }
+            let unknown = if used { 10.0 } else { 9.0 };
+            for invalid_code in [0.0, 7.5, unknown] {
                 shadow.solver[cell] = invalid_code;
                 assert!(validate_shadow_diagnostics(&action, &shadow).is_err());
             }

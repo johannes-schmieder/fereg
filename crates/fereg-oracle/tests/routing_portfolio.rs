@@ -514,7 +514,7 @@ fn incremental_families_preserve_ineligible_science_and_memory_exactly() {
 const GEOMETRY_CHILD: &str = "FEREG_ORACLE_GEOMETRY_POLICY_CHILD";
 
 /// The public Auto route for categorical-intercept designs is the exact
-/// elimination of the largest effect (reported as CG); the geometry policy
+/// elimination of the largest effect; the geometry policy
 /// remains its decline route and the `FEREG_BLOCK_SCHUR=0` route. Outside a
 /// child, check the public elimination against the dense-QR witness and then
 /// rerun `test` in a child process with the elimination switched off (the
@@ -546,7 +546,7 @@ fn geometry_policy_child(test: &str, designs: &[(Design, ExplicitOlsResult)]) ->
             let report = public.fit().absorption_report();
             assert_eq!(
                 report.used_solver,
-                FeSolverKind::Cg,
+                FeSolverKind::Elimination,
                 "workers={workers} {report:?}"
             );
             assert!(!report.fallback_used, "{report:?}");

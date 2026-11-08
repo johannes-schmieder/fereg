@@ -50,8 +50,9 @@ projection. The output line above the coefficient table states that the
 accuracy check passed and at which tolerance.
 {cmd:e(fereg_solver_fallback)} records whether either phase used a fallback.
 Use {cmd:matrix list e(fereg_solver)} for the two named rows, iteration counts,
-fallback indicators and certificates. On the automatic two-effect path,
-{cmd:cg} is Schur PCG and {cmd:cmgschur} is CMG-preconditioned Schur PCG.
+fallback indicators and certificates. On the automatic path,
+{cmd:elimination} is the exact elimination of the largest effect, {cmd:cg} is
+two-effect Schur PCG and {cmd:cmgschur} is CMG-preconditioned Schur PCG.
 See {help fereg##stored:Stored results} for the numeric codes and aggregation across low-memory blocks. These diagnostics do not require saving residuals.
 
 {title:Example}

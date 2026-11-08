@@ -321,15 +321,19 @@ absorption, and {cmd:e(fereg_solver_residual)} names the final residual method.
 fallback. No developer trace is required.
 
 {pstd}
-For automatic two-effect fits, {cmd:cg} means the guarded Schur-PCG recurrence
-without multigrid and {cmd:cmgschur} means a CMG preconditioner was actually
-applied. An allocated but unused hierarchy is not reported as CMG use.
-A MAP continuation reports {cmd:map} and sets fallback.
+Automatic fits with two to five categorical intercept effects first try the
+exact elimination of the largest effect with a Schur-complement PCG over the
+remaining effects; {cmd:elimination} reports that route. When it declines, the
+established automatic routes run: for two effects, {cmd:cg} means the guarded
+Schur-PCG recurrence without multigrid and {cmd:cmgschur} means a CMG
+preconditioner was actually applied. An allocated but unused hierarchy is not
+reported as CMG use. A MAP continuation reports {cmd:map} and sets fallback.
 
 {pstd}
 {cmd:e(fereg_solver)} is a 2-by-16 matrix with rows {cmd:absorption} and
 {cmd:residual}. Columns {cmd:requested} and {cmd:used} use these numeric codes:
-1 auto, 2 map, 3 lsmr, 4 cg, 5 it, 6 squarem, 7 cmg, 8 cmgschur.
+1 auto, 2 map, 3 lsmr, 4 cg, 5 it, 6 squarem, 7 cmg, 8 cmgschur,
+9 elimination (automatic only).
 Column 3 is {cmd:iterations}; column 4 is the stop code: 1 no fixed effects,
 2 certified, 5 derived certificate; column 11 is {cmd:fallback}.
 Without {cmd:residuals()}, {cmd:xbd()}, {cmd:d()} or saved fixed effects, the

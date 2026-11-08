@@ -19,6 +19,10 @@ pub enum FeSolverKind {
     IronsTuck,
     /// Squared extrapolation acceleration of symmetric MAP.
     Squarem,
+    /// Exact global elimination of the largest categorical intercept effect
+    /// with block-Schur PCG over the remaining effects (Auto only; reported,
+    /// never requested).
+    Elimination,
 }
 
 /// Preconditioner requested or used by modified LSMR.

@@ -145,6 +145,7 @@ pub(crate) fn generic_fe_solver_bytes(
         FeSolverKind::Lsmr => {
             return generic_lsmr_bytes(design, rhs, config, certificate, yielding)
         }
+        FeSolverKind::Elimination => return Err(crate::fe::elimination_request()),
         FeSolverKind::Cmg | FeSolverKind::CmgSchur => {
             return Err(FeregError::new(
                 ErrorCode::Unsupported,

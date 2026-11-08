@@ -11,12 +11,13 @@ foreach graph in dense ring {
         set obs 3200
         generate long worker = floor((_n-1)/32)
         generate long firm = mod(worker + mod(floor((_n-1)/4),8),10)
-        local expected cg
-        local code 4
+        local expected elimination
+        local code 9
     }
     else {
-        * The exact elimination of the larger effect serves two-FE Auto
-        * first (reported as CG); FEREG_BLOCK_SCHUR=0 restores cmgschur.
+        * The exact elimination declines this ring's absorption, which then
+        * runs the guarded two-FE Schur PCG; FEREG_BLOCK_SCHUR=0 restores
+        * cmgschur.
         set obs 4096
         generate long worker = floor((_n-1)/8)
         generate long firm = mod(worker + mod(floor((_n-1)/4),2),512)
@@ -36,7 +37,7 @@ foreach graph in dense ring {
             assert colsof(e(fereg_solver)) == 16
             assert e(fereg_solver)[1,2] == `code'
             assert "`e(fereg_solver_used)'" == "`expected'"
-            local names auto map lsmr cg it squarem cmg cmgschur
+            local names auto map lsmr cg it squarem cmg cmgschur elimination
             local residual_code = e(fereg_solver)[2,2]
             local residual_name : word `residual_code' of `names'
             assert "`e(fereg_solver_residual)'" == "`residual_name'"

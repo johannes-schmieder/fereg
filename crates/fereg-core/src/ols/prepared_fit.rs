@@ -2649,7 +2649,8 @@ pub(super) fn merge_solve_report(target: &mut SolveReport, source: SolveReport) 
                     FeSolverKind::Map
                     | FeSolverKind::Cg
                     | FeSolverKind::CmgSchur
-                    | FeSolverKind::IronsTuck,
+                    | FeSolverKind::IronsTuck
+                    | FeSolverKind::Elimination,
                     None,
                     None,
                 ) => true,
@@ -2690,15 +2691,18 @@ pub(super) fn merge_solve_report(target: &mut SolveReport, source: SolveReport) 
     if auto_mix {
         // A certified continuation remains authoritative over its LSMR
         // attempt. Otherwise retain CMG use across RHS blocks, then LSMR,
-        // direct CG, coefficient IT and MAP prefixes. Preconditioner metadata
-        // still describes only the LSMR blocks that supplied it.
+        // direct CG, coefficient IT, the exact elimination (a block that it
+        // declined reports the established route) and MAP prefixes.
+        // Preconditioner metadata still describes only the LSMR blocks that
+        // supplied it.
         let priority = |report: &SolveReport| match report.used_solver {
-            FeSolverKind::Map if report.fallback_used => 6,
-            FeSolverKind::Cg if report.fallback_used => 5,
-            FeSolverKind::CmgSchur => 4,
-            FeSolverKind::Lsmr => 3,
-            FeSolverKind::Cg => 2,
-            FeSolverKind::IronsTuck => 1,
+            FeSolverKind::Map if report.fallback_used => 7,
+            FeSolverKind::Cg if report.fallback_used => 6,
+            FeSolverKind::CmgSchur => 5,
+            FeSolverKind::Lsmr => 4,
+            FeSolverKind::Cg => 3,
+            FeSolverKind::IronsTuck => 2,
+            FeSolverKind::Elimination => 1,
             _ => 0,
         };
         if priority(&source) > priority(target) {

@@ -769,7 +769,7 @@ program define _fereg_estimate_ols, eclass
         absolute_infinity relative_infinity relative_two normal_equation ///
         setup_seconds solve_seconds fallback warnings ///
         requested_preconditioner used_preconditioner pilot_iterations pilot_contraction
-    local solver_names auto map lsmr cg it squarem cmg cmgschur
+    local solver_names auto map lsmr cg it squarem cmg cmgschur elimination
     local absorption_code = `solver_shadow'[1,2]
     local residual_code = `solver_shadow'[2,2]
     local absorption_solver : word `absorption_code' of `solver_names'
@@ -987,7 +987,7 @@ program define _fereg_eols_validate, rclass
     forvalues row = 1/2 {
         if !inrange(`solver'[`row',1], 1, 8) | ///
            `solver'[`row',1] != int(`solver'[`row',1]) | ///
-           !inrange(`solver'[`row',2], 1, 8) | ///
+           !inrange(`solver'[`row',2], 1, 9) | ///
            `solver'[`row',2] != int(`solver'[`row',2]) | ///
            `solver'[`row',3] < 0 | `solver'[`row',3] >= . | ///
            `solver'[`row',3] != int(`solver'[`row',3]) | ///

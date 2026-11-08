@@ -2214,9 +2214,9 @@ fn map_solver_observation(
 
 fn checkpoint_solver_observation(report: &SolveReport) -> Result<PpmlSolverObservation> {
     let engine = match report.used_solver {
-        // The exact categorical block elimination reports CG; it belongs to
-        // the categorical (MAP-family) engine identity.
-        FeSolverKind::Map | FeSolverKind::Cg => PpmlSolverEngine::Map,
+        // The exact categorical block elimination and the two-FE Schur PCG
+        // belong to the categorical (MAP-family) engine identity.
+        FeSolverKind::Map | FeSolverKind::Cg | FeSolverKind::Elimination => PpmlSolverEngine::Map,
         FeSolverKind::Lsmr => PpmlSolverEngine::LsmrFused,
         _ => {
             return Err(internal(

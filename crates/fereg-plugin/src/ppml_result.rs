@@ -2017,6 +2017,9 @@ const fn linear_route_code(route: FeSolverKind) -> f64 {
         FeSolverKind::Squarem => 6.0,
         FeSolverKind::Cmg => 7.0,
         FeSolverKind::CmgSchur => 8.0,
+        // PPML publishes the exact elimination under the categorical MAP
+        // identity: the compiled PPML validator admits only these engines.
+        FeSolverKind::Elimination => 2.0,
     }
 }
 

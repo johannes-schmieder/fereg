@@ -831,7 +831,11 @@ fn project_nb<const NB: usize>(
         // part of the solve.
         solve_seconds: started.elapsed().as_secs_f64(),
         certification_seconds: 0.0,
-        ..SolveReport::single_route(FeSolverKind::Cg, SolveStopReason::Certified, certificate)
+        ..SolveReport::single_route(
+            FeSolverKind::Elimination,
+            SolveStopReason::Certified,
+            certificate,
+        )
     };
     let result = match coefficients {
         Some(coefficients) => CertifiedBorrowedMap::from_certified_parts_with_coefficients(

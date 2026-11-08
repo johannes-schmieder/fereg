@@ -185,14 +185,13 @@ fn many_fe_derived_residual_matches_the_full_dummy_solution() {
             solvers.push(fit.absorption_report().used_solver);
         }
     }
-    // The public Auto route is the exact elimination of the largest effect
-    // (reported as CG). With it switched off (read once per process, so in a
+    // The public Auto route is the exact elimination of the largest effect. With it switched off (read once per process, so in a
     // child process) the MAP pilot needs unit weights and certifies the
     // balanced graph; the other designs run the LSMR session.
     const CHILD: &str = "FEREG_ORACLE_GEOMETRY_POLICY_CHILD";
     if std::env::var_os(CHILD).is_none() {
         assert!(
-            solvers.iter().all(|&s| s == FeSolverKind::Cg),
+            solvers.iter().all(|&s| s == FeSolverKind::Elimination),
             "{solvers:?}"
         );
         let status = std::process::Command::new(std::env::current_exe().unwrap())

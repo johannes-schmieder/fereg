@@ -202,8 +202,17 @@ pub fn absorb_fixed_effects(
             ErrorCode::Unsupported,
             "CMG solvers require a prepared intercept-only categorical topology",
         )),
+        FeSolverKind::Elimination => Err(elimination_request()),
         FeSolverKind::Auto => absorb_auto(design, weights, values, config),
     }
+}
+
+/// The exact elimination is an Auto route only; it cannot be requested.
+pub(crate) fn elimination_request() -> FeregError {
+    FeregError::new(
+        ErrorCode::Unsupported,
+        "the exact elimination is selected by Auto and cannot be requested",
+    )
 }
 
 fn absorb_auto(

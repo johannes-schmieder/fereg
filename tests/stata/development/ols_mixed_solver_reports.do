@@ -25,22 +25,22 @@ foreach pool in 1 5 10 {
     assert e(rank) == 10
     assert e(df_r) == reference_df_r
     * Row 1 aggregates the initial RHS batches. Many-FE Auto first runs the
-    * exact elimination of the largest effect (reported as CG) and accepts it
+    * exact elimination of the largest effect and accepts it
     * without fallback; FEREG_BLOCK_SCHUR=0 restores the LSMR session.
     * Native fault-plan tests cover fallback aggregation, and
     * ols_near_within_cmg_oracle.do covers the published fallback report.
     assert e(fereg_solver)[1,1] == 1
-    assert e(fereg_solver)[1,2] == 4
+    assert e(fereg_solver)[1,2] == 9
     assert e(fereg_solver)[1,4] == 2
     assert e(fereg_solver)[1,11] == 0
     assert e(fereg_solver)[1,12] == 0
-    assert "`e(fereg_solver_used)'" == "cg"
-    assert "`e(fereg_solver_residual)'" == "cg"
+    assert "`e(fereg_solver_used)'" == "elimination"
+    assert "`e(fereg_solver_residual)'" == "elimination"
     assert e(fereg_solver_fallback) == 0
     assert e(fereg_solver)[1,15] == 0
     assert e(fereg_solver)[2,1] == 1
     * Row 2 is this fixture's final-residual projection.
-    assert e(fereg_solver)[2,2] == 4
+    assert e(fereg_solver)[2,2] == 9
     assert e(fereg_solver)[2,4] == 2
     assert e(fereg_solver)[2,11] == 0
     assert e(fereg_solver)[2,15] == 0
