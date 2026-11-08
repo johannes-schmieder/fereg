@@ -5383,3 +5383,126 @@ fn refused_level_bound_admits_ppml_lsmr_by_exact_yielding_count() {
     }
     assert!(relative_infinity_difference(&references[0], &references[1]) <= 2e-9);
 }
+
+/// A prepared Poisson fixture with one control and one absorbed intercept
+/// per one-based categorical column.
+fn prepared_many_fe(outcome: &[f64], regressor: &[f64], factors: &[Vec<f64>]) -> PreparedOlsData {
+    let x = source(1, "x");
+    let factor_sources: Vec<_> = (0..factors.len())
+        .map(|f| source(2 + f as u32, &format!("f{f}")))
+        .collect();
+    let mut sources = vec![x.clone()];
+    sources.extend(factor_sources.iter().cloned());
+    let absorbed_terms = factor_sources
+        .iter()
+        .enumerate()
+        .map(|(f, s)| AbsorbedTerm {
+            id: AbsorbTermId::new(1 + f as u32).expect("absorb id"),
+            intercept: true,
+            categorical_sources: vec![s.id],
+            slope_sources: Vec::new(),
+            label: format!("f{f}"),
+            saved_name: String::new(),
+        })
+        .collect();
+    let mut bindings = vec![
+        OlsInputBinding {
+            stata_var_position: 1,
+            role: OlsInputRole::Candidate,
+        },
+        OlsInputBinding {
+            stata_var_position: 2,
+            role: OlsInputRole::Outcome,
+        },
+        OlsInputBinding {
+            stata_var_position: 3,
+            role: OlsInputRole::NumericSource(x.id),
+        },
+    ];
+    let mut numeric_sources = vec![(x.id, loaded(regressor))];
+    for (f, s) in factor_sources.iter().enumerate() {
+        bindings.push(OlsInputBinding {
+            stata_var_position: 4 + f as u32,
+            role: OlsInputRole::NumericSource(s.id),
+        });
+        numeric_sources.push((s.id, loaded(&factors[f])));
+    }
+    prepare_model(
+        &OlsRequestV1 {
+            model: CompiledTermGraph {
+                sources,
+                terms: vec![continuous_term(1, x.id)],
+            },
+            absorbed_terms,
+            bindings,
+            include_intercept: true,
+            keep_singletons: true,
+        },
+        &[],
+        &LoadedOlsInput {
+            candidate: vec![true; outcome.len()].into(),
+            outcome: loaded(outcome),
+            numeric_sources,
+            analytic_weight: None,
+            frequency_weight: None,
+            probability_weight: None,
+        },
+        false,
+    )
+    .expect("prepared many-FE fixture")
+}
+
+#[test]
+fn four_and_five_effect_elimination_matches_the_established_route() {
+    let n = 600;
+    let factor = |levels: usize, stride: usize| -> Vec<f64> {
+        (0..n)
+            .map(|i| ((i * stride + i / 7) % levels + 1) as f64)
+            .collect()
+    };
+    let x: Vec<_> = (0..n)
+        .map(|i| (i as f64 * 0.37).sin() + 0.1 * (i % 9) as f64)
+        .collect();
+    let weights: Vec<_> = (0..n).map(|i| 0.5 + (i % 7) as f64 / 5.).collect();
+    for effects in [4_usize, 5] {
+        let factors: Vec<_> = [(40, 1), (13, 5), (7, 3), (5, 11), (3, 2)][..effects]
+            .iter()
+            .map(|&(levels, stride)| factor(levels, stride))
+            .collect();
+        let y: Vec<_> = (0..n)
+            .map(|i| {
+                let fe: f64 = factors.iter().map(|f| 0.05 * f[i]).sum();
+                ((0.2 + 0.3 * x[i] + fe).exp() * (1.0 + 0.3 * ((i * 13) % 5) as f64)).round()
+            })
+            .collect();
+        let prepared = prepared_many_fe(&y, &x, &factors);
+        let fit = |established: bool| {
+            let _route = established.then(crate::fe::block_schur::disable_for_test);
+            let mut config = PreparedPpmlIrlsConfig::default();
+            config.ppml.tolerance = 1e-12;
+            config.ppml.score_tolerance = 1e-12;
+            config.linear.execution.threads =
+                crate::options::ThreadConfig::from_requested(4, true).unwrap();
+            fit_prepared_ppml_irls(
+                &prepared,
+                &y,
+                &weights,
+                &vec![0.; n],
+                config,
+                plan_ppml_memory(memory_dimensions(&prepared, config), config.memory).unwrap(),
+                None,
+            )
+            .unwrap()
+        };
+        let eliminated = fit(false);
+        let established = fit(true);
+        assert!(eliminated.diagnostics().converged && eliminated.diagnostics().final_score.passed);
+        assert!(relative_infinity_difference(eliminated.eta(), established.eta()) <= 1e-9);
+        let coefficient = |fit: &PreparedPpmlIrlsFit| fit.coefficients()[0].value.unwrap();
+        assert!((coefficient(&eliminated) - coefficient(&established)).abs() <= 1e-9);
+        assert!(
+            (eliminated.objective().deviance - established.objective().deviance).abs()
+                <= 1e-10 * established.objective().deviance
+        );
+    }
+}

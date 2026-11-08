@@ -1738,7 +1738,11 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                 "reusable categorical MAP dimensions must be positive",
             ));
         }
-        if !matches!(design.effects().len(), 1..=3) {
+        // Four or five effects are owned only for the exact elimination;
+        // their declines use the generic sweeps.
+        if !(matches!(design.effects().len(), 1..=3)
+            || matches!(design.effects().len(), 4..=5) && block_schur::enabled())
+        {
             return Err(invalid_argument(
                 "reusable categorical MAP requires one to three effects",
             ));

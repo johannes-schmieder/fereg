@@ -1752,9 +1752,17 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         }
         let (fe_design, fe_projector, map_weights) = if config.absorb.solver == FeSolverKind::Map {
             let categorical = prepared.fit_borrowed_intercept_map_design()?;
-            if let Some(categorical) = categorical.filter(|design| {
-                matches!(design.effects().len(), 1..=3) && design.nobs() == response.len()
-            }) {
+            // Four or five effects use the categorical owner only for its
+            // exact elimination route (Fast mode); otherwise the generic one.
+            let owned = |effects: usize| {
+                matches!(effects, 1..=3)
+                    || matches!(effects, 4..=5)
+                        && crate::fe::block_schur::enabled()
+                        && config.execution.mode == PreparedOlsExecutionMode::Fast
+            };
+            if let Some(categorical) = categorical
+                .filter(|design| owned(design.effects().len()) && design.nobs() == response.len())
+            {
                 (
                     None,
                     Some(FeSession::categorical(
