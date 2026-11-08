@@ -226,6 +226,8 @@ impl Structure {
         let codes_b: [&[u32]; NB] = std::array::from_fn(|b| design.effects()[blocks[b]].codes());
         let offs: [u32; NB] = std::array::from_fn(|b| offsets[b]);
         let ranges = partition(member_offsets, lane_count(n * NB));
+        // Merging repeated combinations pays only when they are common.
+        let merge = sampled_repeat_rate::<NB>(index, segments, &codes_b) >= 0.02;
         let mut member_cell = filled(n, 0_u32)?;
         let lengths: Vec<usize> = ranges
             .iter()
@@ -235,7 +237,7 @@ impl Structure {
         let built: Vec<Result<LaneBuild>> = parts
             .into_par_iter()
             .zip(ranges.par_iter())
-            .map(|(part, segs)| build_lane::<NB>(index, segs.clone(), &codes_b, &offs, part))
+            .map(|(part, segs)| build_lane::<NB>(index, segs.clone(), &codes_b, &offs, part, merge))
             .collect();
         let mut lanes_built = Vec::with_capacity(built.len());
         for lane in built {
@@ -318,12 +320,45 @@ impl Structure {
     }
 }
 
+/// Fraction of rows that repeat a remaining-code combination within their
+/// eliminated group, estimated on evenly spaced segments.
+fn sampled_repeat_rate<const NB: usize>(
+    index: &LevelIndex,
+    segments: usize,
+    codes_b: &[&[u32]; NB],
+) -> f64 {
+    let step = (segments / 512).max(1);
+    let (mut rows, mut repeats) = (0_usize, 0_usize);
+    let mut local: Vec<[u32; NB]> = Vec::new();
+    for s in (0..segments).step_by(step) {
+        let members = index.members(s);
+        local.clear();
+        local.extend(
+            members
+                .iter()
+                .map(|&row| std::array::from_fn(|b| codes_b[b][row])),
+        );
+        local.sort_unstable();
+        rows += local.len();
+        repeats += local.windows(2).filter(|pair| pair[0] == pair[1]).count();
+    }
+    if rows == 0 {
+        0.0
+    } else {
+        repeats as f64 / rows as f64
+    }
+}
+
+/// One lane's cells. With `merge`, rows sharing a remaining-code combination
+/// within a segment form one cell with their total weight; without it every
+/// row is its own cell, which defines the same Schur operator.
 fn build_lane<const NB: usize>(
     index: &LevelIndex,
     segs: Range<usize>,
     codes_b: &[&[u32]; NB],
     offs: &[u32; NB],
     member_cell: &mut [u32],
+    merge: bool,
 ) -> Result<LaneBuild> {
     let mut out = LaneBuild {
         codes: Vec::with_capacity(member_cell.len() * NB),
@@ -337,6 +372,18 @@ fn build_lane<const NB: usize>(
             crate::interrupt::checkpoint()?;
         }
         let members = index.members(s);
+        if !merge {
+            for (k, &row) in members.iter().enumerate() {
+                for b in 0..NB {
+                    out.codes.push(codes_b[b][row] + offs[b]);
+                }
+                out.counts.push(1);
+                member_cell[cursor + k] = k as u32;
+            }
+            cursor += members.len();
+            out.seg_cells.push(members.len() as u32);
+            continue;
+        }
         local.clear();
         for (k, &row) in members.iter().enumerate() {
             let key: [u32; NB] = std::array::from_fn(|b| codes_b[b][row] + offs[b]);

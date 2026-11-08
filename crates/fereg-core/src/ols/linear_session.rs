@@ -2234,6 +2234,10 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         prepared_coupling: Option<u128>,
     ) -> Result<()> {
         let rhs = self.fe_projector.as_ref().expect("MAP owner").max_rhs();
+        // Ordinary frames reproject through the categorical owner's block
+        // elimination, so the optional joint-slope coupling is not installed.
+        let elimination = crate::fe::block_schur::enabled()
+            && matches!(self.fe_projector.as_ref(), Some(FeSession { categorical: Some(owner), .. }) if owner.borrowed_design().effects().len() >= 2);
         let required = ppml_coefficient_lifetime_bytes(self.fe_design(), rhs, threads)?;
         crate::memory::require_admitted_capacity(required, allowance)?;
         // History must be available before enabling a numerical operation.
@@ -2280,7 +2284,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 Err(error) => return Err(error),
             }
         }
-        if let Some(allowance) = prepared_coupling {
+        if let Some(allowance) = prepared_coupling.filter(|_| !elimination) {
             crate::memory::require_admitted_capacity(
                 ReusableMapAbsorber::coefficient_coupling_bytes(projector.design(), rhs)?
                     .unwrap_or(0),
