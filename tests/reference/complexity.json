@@ -1,16 +1,28 @@
 {
   "growth": [
     {
-      "after": 1579,
-      "before": 1578,
+      "after": 1580,
+      "before": 1579,
       "metric": "fereg-core/dispatch_candidates",
-      "reason": "PPML pre-solve normal equations from the elimination residual Gram; first-step FE-collinearity check."
+      "reason": "PPML FE-score certificate: unsorted unit-basis effects with at most 64 levels sum over fixed row chunks (stack accumulators, fixed tree) instead of a level-partition scan."
     },
     {
-      "after": 122445,
-      "before": 122384,
+      "after": 122491,
+      "before": 122445,
       "metric": "fereg-core/production_lines",
-      "reason": "PPML pre-solve normal equations from the elimination residual Gram; first-step FE-collinearity check."
+      "reason": "PPML FE-score certificate: unsorted unit-basis effects with at most 64 levels sum over fixed row chunks (stack accumulators, fixed tree) instead of a level-partition scan."
+    },
+    {
+      "after": 3958,
+      "before": 3912,
+      "metric": "file/crates/fereg-core/src/ppml/prepared_irls.rs",
+      "reason": "PPML FE-score certificate: unsorted unit-basis effects with at most 64 levels sum over fixed row chunks (stack accumulators, fixed tree) instead of a level-partition scan."
+    },
+    {
+      "after": 298,
+      "before": 290,
+      "metric": "function/crates/fereg-core/src/ppml/prepared_irls.rs/prepared_score_certificate#1",
+      "reason": "PPML FE-score certificate: unsorted unit-basis effects with at most 64 levels sum over fixed row chunks (stack accumulators, fixed tree) instead of a level-partition scan."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -19864,6 +19876,10 @@
           {
             "condition": "! joint && column % numeric_moments . len ( ) == 0",
             "line": 4147
+          },
+          {
+            "condition": "plan . lanes > 1 && scatter && effect . n_levels ( ) <= SMALL_SCORE_LEVELS",
+            "line": 4257
           }
         ],
         "functions": {
@@ -19876,7 +19892,7 @@
             "lines": 9
           },
           "add_relative_score#1": {
-            "line": 4428,
+            "line": 4481,
             "lines": 13
           },
           "canonical_final_enabled#1": {
@@ -19948,7 +19964,7 @@
             "lines": 32
           },
           "finite_unit#1": {
-            "line": 4495,
+            "line": 4548,
             "lines": 3
           },
           "fit_generation_ppml_irls_interruptible#1": {
@@ -19972,7 +19988,7 @@
             "lines": 11
           },
           "internal#1": {
-            "line": 4499,
+            "line": 4552,
             "lines": 3
           },
           "joint_solver_observation#1": {
@@ -19984,11 +20000,11 @@
             "lines": 3
           },
           "log_weighted_offset_sum#1": {
-            "line": 4471,
+            "line": 4524,
             "lines": 23
           },
           "log_weighted_outcome_sum#1": {
-            "line": 4442,
+            "line": 4495,
             "lines": 28
           },
           "map_solver_observation#1": {
@@ -20012,7 +20028,7 @@
             "lines": 8
           },
           "numerical_nonconvergence#1": {
-            "line": 4503,
+            "line": 4556,
             "lines": 3
           },
           "objective#1": {
@@ -20028,7 +20044,7 @@
             "lines": 40
           },
           "ppml_fallback_kind#1": {
-            "line": 4507,
+            "line": 4560,
             "lines": 8
           },
           "ppml_linear_config#1": {
@@ -20037,7 +20053,7 @@
           },
           "prepared_score_certificate#1": {
             "line": 4064,
-            "lines": 290
+            "lines": 298
           },
           "presolve_enabled#1": {
             "line": 248,
@@ -20212,7 +20228,7 @@
             "lines": 92
           }
         },
-        "production_lines": 3912
+        "production_lines": 3958
       },
       "crates/fereg-core/src/ppml/prepared_irls/admission.rs": {
         "chunk_candidates": [],
@@ -26891,10 +26907,10 @@
     "metrics": {
       "fereg-core": {
         "chunk_candidates": 13,
-        "dispatch_candidates": 1579,
+        "dispatch_candidates": 1580,
         "files_over_1500": 15,
         "functions_over_150": 58,
-        "production_lines": 122445
+        "production_lines": 122491
       },
       "fereg-plugin": {
         "chunk_candidates": 6,
@@ -26906,5 +26922,5 @@
     },
     "schema": 1
   },
-  "reason": "PPML pre-solve normal equations from the elimination residual Gram; first-step FE-collinearity check."
+  "reason": "PPML FE-score certificate: unsorted unit-basis effects with at most 64 levels sum over fixed row chunks (stack accumulators, fixed tree) instead of a level-partition scan."
 }

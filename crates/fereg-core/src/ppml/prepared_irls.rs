@@ -4253,7 +4253,15 @@ fn prepared_score_certificate<P: PreparedOlsFitView + ?Sized>(
                 effect.n_levels(),
                 budget,
             );
-            if plan.lanes > 1 && scatter_effects.get(effect_index).copied().unwrap_or(false) {
+            let scatter = scatter_effects.get(effect_index).copied().unwrap_or(false);
+            if plan.lanes > 1 && scatter && effect.n_levels() <= SMALL_SCORE_LEVELS {
+                small_level_scores(
+                    &effect.codes()[..rows],
+                    [outcome, mean, prior_weights],
+                    &mut moments[effect_offset..effect_offset + directions],
+                    &mut squares[effect_offset..effect_offset + directions],
+                )?;
+            } else if plan.lanes > 1 && scatter {
                 scatter_level_scores(
                     &effect.codes()[..rows],
                     [outcome, mean, prior_weights],
@@ -4395,6 +4403,51 @@ fn joint_scale_and_moments(
         }
         Ok(())
     })
+}
+
+/// Levels up to which an unsorted unit-basis effect sums its FE scores over
+/// fixed row chunks (stack accumulators) instead of a level partition.
+const SMALL_SCORE_LEVELS: usize = 64;
+
+/// Unit-basis FE scores of an effect with at most [`SMALL_SCORE_LEVELS`]
+/// levels: fixed row chunks accumulate per-level sums, merged over a fixed
+/// tree (allocation free; the same values at every worker count).
+fn small_level_scores(
+    codes: &[u32],
+    [outcome, mean, prior_weights]: [&[f64]; 3],
+    moments: &mut [f64],
+    squares: &mut [f64],
+) -> Result<()> {
+    type Sums = ([f64; SMALL_SCORE_LEVELS], [f64; SMALL_SCORE_LEVELS]);
+    let levels = moments.len();
+    let (moment, square) = crate::parallel::fixed_tree_reduce(
+        codes.len(),
+        1 << 15,
+        &|range: std::ops::Range<usize>| -> Result<Sums> {
+            let mut sums: Sums = ([0.0; SMALL_SCORE_LEVELS], [0.0; SMALL_SCORE_LEVELS]);
+            for row in range {
+                let level = codes[row] as usize;
+                if level >= levels {
+                    return Err(invalid_argument(
+                        "prepared PPML FE-score code exceeds its levels",
+                    ));
+                }
+                sums.0[level] += prior_weights[row] * (outcome[row] - mean[row]);
+                sums.1[level] += prior_weights[row] * mean[row];
+            }
+            Ok(sums)
+        },
+        &|(mut moment, mut square): Sums, (m, q): Sums| {
+            for level in 0..levels {
+                moment[level] += m[level];
+                square[level] += q[level];
+            }
+            (moment, square)
+        },
+    )?;
+    moments.copy_from_slice(&moment[..levels]);
+    squares.copy_from_slice(&square[..levels]);
+    Ok(())
 }
 
 /// Unit-basis FE scores by level partition: each lane owns `per_lane` levels
