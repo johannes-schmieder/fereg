@@ -1,26 +1,26 @@
 {
   "schema": 1,
-  "version": "0.5.2",
-  "source_sha": "67c83df5b1a0f0dca04b07dd03d45427a0c1e83a",
-  "runtime_sha256": "43110fefd9b65be5ffa9ad66e81ef0f8d1833f13246bab0aebf405e3677f682e",
+  "version": "0.5.3",
+  "source_sha": "c788fac06409c435955bfd489ccd5d0e91ba278c",
+  "runtime_sha256": "f72d536e5f23b4bba5a9c321f53a3dabd2af9647f36e33ace78d40c739a65d19",
   "plugins": [
     {
       "path": "fereg_macos.plugin",
-      "source_sha": "6577206c20e3a7f5d861fa333412f663c9756202",
-      "sha256": "1604dc4e52ea99dc6e78630f9a3badf669096b019f9d3d1a9f6e065a63f4890e",
-      "bytes": 21656368
+      "source_sha": "1974e3833f8b3d2b2cb396e7ffaf41ec7fd64235",
+      "sha256": "69c280252b5aab678584785d0c815275588ed3663815cc012abaebb948e6a2a2",
+      "bytes": 21656576
     },
     {
       "path": "fereg_linux.plugin",
-      "source_sha": "6577206c20e3a7f5d861fa333412f663c9756202",
-      "sha256": "9f19afd5aba08553f17d56e6d5583eb1e75c2c21b26b5f7cd858b7568dae01c4",
-      "bytes": 17133440
+      "source_sha": "c788fac06409c435955bfd489ccd5d0e91ba278c",
+      "sha256": "47e0d38b13250f0c9a5d9e645b5cc0b1797caeace6d15644b73ebccc4eeeaf86",
+      "bytes": 17145944
     },
     {
       "path": "fereg_windows.plugin",
-      "source_sha": "8b84b515781daa9972feaf9cbe17ab3c79545d90",
-      "sha256": "859c4ec3eaa2022da96d28159740c3fc50696f8c9a48d07eaef8ab4e0854cc33",
-      "bytes": 12260864
+      "source_sha": "1974e3833f8b3d2b2cb396e7ffaf41ec7fd64235",
+      "sha256": "ca4fab92770ca2278f552ffd6d08e6743f49d5af42ae9d81644c9e1b07802058",
+      "bytes": 12264448
     }
   ],
   "included_platforms": [
@@ -34,10 +34,10 @@
     "Eligible Windows x86-64 Stata/MP 19 GUI numeric input is parallel; loading Break may be delayed or unavailable.",
     "Native Intel-host Stata testing is outstanding; the macOS plugin contains both processor slices.",
     "The accepted Linux no-FE 16-regressor, one-worker slowdown of 7.3% versus beta.14 remains; see docs/VALIDATION.md.",
-    "The saved-PPML-effects timing cell failed its performance gate (paired ratio 1.1020); Johannes accepted the slowdown on 2026-11-07. See docs/VALIDATION.md."
+    "The accepted saved-effect refinement is 5.7% faster than 0.5.2 on the easy cell, 1.5% slower than its historical arm and 2.1% slower on the difficult cell, measured on one physical Linux host; see docs/VALIDATION.md."
   ],
-  "corresponding_source_sha256": "468e9173c200bfab0f7707aee731ce93d66ab9de9041aad1127ff962d812a4d4",
-  "corresponding_source_commit": "67c83df5b1a0f0dca04b07dd03d45427a0c1e83a",
+  "corresponding_source_sha256": "1e2da13ece55c3122ceac8fbfe0c5b696c6cc9734e4c469b0859136920357c35",
+  "corresponding_source_commit": "c788fac06409c435955bfd489ccd5d0e91ba278c",
   "cmg_sha": "e5613e81fb3b03c78de98658b372646fa802aabb",
-  "performance_acceptance": "Owner accepted the two inconclusive Mac cells (weak-auto-t4, weak-cmg-t4) as exceptions on 2026-11-06. Their measured status remains INCONCLUSIVE. All 12 Linux cells pass on six independent hosts; all scientific checks pass. No measurements repeated or excluded. The PPML saved-effects cell remains FAIL (paired ratio 1.1020); Johannes accepted this slowdown on 2026-11-07 by directing continuation after disclosure. The measured status remains FAIL; no new timings were collected."
+  "performance_acceptance": "Historical Mac weak-auto-t4 and weak-cmg-t4 cells remain INCONCLUSIVE with the owner acceptance dated 2026-11-06. The historical 0.5.2 saved-effects gate remains FAIL (paired ratio 1.1020), accepted on 2026-11-07. The fixed 63-call refinement comparison passes every current gate; Johannes accepted its remaining 1.5% historical easy-case gap and 2.1% difficult-case cost and authorized main integration. All measurements and failures remain preserved; no adverse results were resampled."
 }

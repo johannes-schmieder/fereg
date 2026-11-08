@@ -69,6 +69,12 @@ fn matrix(rows: usize, columns: usize, codes: &[u32], scale: f64) -> DenseMatrix
 
 #[test]
 fn binding_wrapper_screen_preserves_every_bit_across_workers() {
+    if super::routing_tests::isolated_routing_witness(
+        "FEREG_BINDING_SCREEN_CHILD",
+        "fe::borrowed_map::initial_screen_tests::binding_wrapper_screen_preserves_every_bit_across_workers",
+    ) {
+        return;
+    }
     let _stable_route = crate::fe::block_schur::stable_route_for_test();
     for workers in [1, 2, 4, 8] {
         crate::ThreadTeam::new(crate::ThreadConfig::from_requested(workers, true).unwrap())
@@ -136,6 +142,12 @@ fn binding_wrapper_screen_preserves_every_bit_across_workers() {
 
 #[test]
 fn three_fe_pilot_screen_preserves_every_bit_across_workers() {
+    if super::routing_tests::isolated_routing_witness(
+        "FEREG_THREE_FE_SCREEN_CHILD",
+        "fe::borrowed_map::initial_screen_tests::three_fe_pilot_screen_preserves_every_bit_across_workers",
+    ) {
+        return;
+    }
     let _stable_route = crate::fe::block_schur::stable_route_for_test();
     for workers in [1, 2, 4, 8] {
         crate::ThreadTeam::new(crate::ThreadConfig::from_requested(workers, true).unwrap())

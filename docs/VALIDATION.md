@@ -65,8 +65,40 @@ raw row arrays are intentionally not retained.
 
 This is one physical Linux host, so intervals describe within-host variation.
 Johannes accepted the refinement and all reported trade-offs and authorized
-commit and push to main. The 0.5.3 package refresh and Windows qualification
-are pending; the outreach campaign stays stopped.
+commit and push to main. **Published as [v0.5.3](https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.3)
+and pushed to main.** The outreach campaign stays stopped.
+The release-version universal Mac offline build and four mapped Stata fixtures
+pass. Windows build, binary audit and the licensed Stata driver pass from
+`1974e383`; the instance stopped, transfer objects were deleted and the lock
+released. Both release binaries retain the measured numerical code.
+
+Release integration 8506576 stopped on an existing three-effect screen test
+(1,585 passes, one failure); its original log and accounting remain retained.
+An isolated diagnostic passes (8506725). A deterministic one-worker witness
+(8506789) reproduces contamination of the test-only `UNSCREENED` switch when
+a cached Rayon worker executes another installed action. The original assertion
+detail was not captured. Commit `c788fac0` isolates both exactness comparisons
+using the existing subprocess helper, preserving all fixtures, worker counts
+and assertions and the production runtime identity. The repaired integration
+passes (8506863, scc-gd4, eight slots, 599 seconds, 16.839 GB maximum virtual
+memory; scheduler failure and exit zero): 2,310 Rust executions across 129
+result groups, 349 Python tests and seven portable checks. Both exactness
+witnesses, the native ABI and all five mapped Stata fixtures pass.
+
+Root package admission passes for all 37 files, runtime identity, hashes and
+Mata bindings. A fresh isolated local install checks every installed byte,
+native selftest, independent OLS coefficients/SEs and PPML group means. Five
+Stata fixtures also pass from the exact three-platform native archive. The
+source closure has zero advisories and matches the successful offline Mac
+build except for test isolation, the fixture terminal marker and source metadata.
+The five published assets download with the qualified hashes. Fresh HTTP
+installs from the release tag, main and the actual `github install` command each
+verify all 37 installed files, native selftest and independent OLS/PPML checks.
+The GitHub helper initially stopped before installation because the isolated
+PLUS lacked its `g` database directory; creating that directory fixes the test
+setup without changing the package. The failed log is retained. The release
+list is 258,135 bytes, below the 264,392-character helper limit. Native Intel-Mac
+execution remains unqualified.
 The completed monitor was deleted before collection. Full compact evidence is
 retained in the existing external `ppml-repair-20261107/refinement` archive;
 all observations, hashes and checks are indexed in the

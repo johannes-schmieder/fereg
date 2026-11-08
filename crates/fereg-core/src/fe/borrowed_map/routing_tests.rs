@@ -8,7 +8,7 @@ pub(super) mod remaining_tests;
 /// Cached Rayon workers can execute another test's installed action while
 /// joining work. Isolate worker-local observations, keeping complete witnesses
 /// and child panic output; the deadline bounds a broken join, not solver work.
-fn isolated_routing_witness(marker: &str, test: &str) -> bool {
+pub(super) fn isolated_routing_witness(marker: &str, test: &str) -> bool {
     if std::env::var_os(marker).is_some() {
         return false;
     }

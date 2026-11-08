@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "accepted_focused_validation_package_pending",
+  "status": "accepted_published_v0.5.3",
   "date": "2026-11-07",
   "baseline": "7f6d87b1",
   "release_baseline": "0.5.2",
@@ -906,5 +906,432 @@
     "decision": "Johannes accepted the refinement and all reported trade-offs; commit and push to main authorized.",
     "production_restart": false,
     "paper_performance_integration": false
+  },
+  "release_053": {
+    "status": "published_and_http_verified",
+    "packaging_source_commit": "c788fac06409c435955bfd489ccd5d0e91ba278c",
+    "runtime_sha256": "f72d536e5f23b4bba5a9c321f53a3dabd2af9647f36e33ace78d40c739a65d19",
+    "source_archive_sha256": "1e2da13ece55c3122ceac8fbfe0c5b696c6cc9734e4c469b0859136920357c35",
+    "source_archive_equivalence": {
+      "status": "pass",
+      "offline_build_source_commit": "1974e3833f8b3d2b2cb396e7ffaf41ec7fd64235",
+      "packaging_source_commit": "c788fac06409c435955bfd489ccd5d0e91ba278c",
+      "runtime_sha256": "f72d536e5f23b4bba5a9c321f53a3dabd2af9647f36e33ace78d40c739a65d19",
+      "source_archive_sha256": "1e2da13ece55c3122ceac8fbfe0c5b696c6cc9734e4c469b0859136920357c35",
+      "changed_paths": [
+        "DEPENDENCY_AUDIT.json",
+        "MANIFEST.sha256",
+        "SBOM.spdx.json",
+        "SOURCE_MANIFEST.json",
+        "crates/fereg-core/src/fe/borrowed_map/initial_screen_tests.rs",
+        "crates/fereg-core/src/fe/borrowed_map/routing_tests.rs",
+        "tests/stata/development/feppml_saved_map_pilot.do"
+      ],
+      "unchanged_archive_files": 3639,
+      "interpretation": "Only test-process isolation, the test completion marker and source-identity metadata differ; all production code, dependencies and build inputs remain unchanged."
+    },
+    "windows": {
+      "run_id": "win-20261107T202538Z-3ce4dc9a",
+      "source_revision": "commit-1974e3833f8b3d2b2cb396e7ffaf41ec7fd64235",
+      "source_sha256": "e5c3f81809ee28c032f5750bbe7a8a5d028b087c5496f096f49ed452fbff76e9",
+      "receipt_sha256": "f38c86bc396797a40c1e62dae01d6d39c7f16682771b6eebee834f80cdaf4e4b",
+      "plugin_sha256": "ca4fab92770ca2278f552ffd6d08e6743f49d5af42ae9d81644c9e1b07802058",
+      "status": "PASS",
+      "checks": {
+        "execution_identity": true,
+        "source_hash": true,
+        "archive_paths": true,
+        "source_manifest": true,
+        "shutdown_backstop": true,
+        "stata": true,
+        "project_test": true
+      },
+      "completed": [
+        "startup",
+        "toolchain",
+        "source_identity",
+        "cargo_build",
+        "exact_fma",
+        "fused_kernels",
+        "c_bridge",
+        "numeric_guards",
+        "plugin_link",
+        "binary_audit",
+        "native_loader",
+        "build_complete",
+        "checksum",
+        "stata_smoke",
+        "single_runtime"
+      ],
+      "elapsed_ms": 1154300,
+      "cleanup": {
+        "instance_stopped": true,
+        "transient_objects_deleted": true,
+        "lock_released": true,
+        "wrapper_exit": 0
+      }
+    },
+    "test_isolation_repair": {
+      "failed_job": 8506576,
+      "original_assertion_detail": "Unavailable in cached worker test output; sole named failure was the three-effect pilot-screen comparison.",
+      "isolated_diagnostic_job": 8506725,
+      "deterministic_overlap_witness_job": 8506789,
+      "repaired_integration_job": 8506863,
+      "diagnosis": "Cached Rayon workers may execute another installed action while the first test has its worker-local UNSCREENED switch set. The deterministic witness observed rejection true, false in a separate injected action, then true after restoration.",
+      "repair": "Reuse the existing isolated subprocess helper for both exactness comparisons; preserve every fixture, worker count and assertion. Production runtime identity is unchanged.",
+      "accounting": [
+        {
+          "jobnumber": "8506576",
+          "qname": "econ",
+          "hostname": "scc-tb4.scc.bu.edu",
+          "start_time": "Sat Nov  7 15:30:52 2026",
+          "end_time": "Sat Nov  7 15:38:27 2026",
+          "slots": "8",
+          "failed": "0",
+          "exit_status": "101",
+          "ru_wallclock": "455",
+          "maxvmem": "11.043G"
+        },
+        {
+          "jobnumber": "8506725",
+          "qname": "econ",
+          "hostname": "scc-tb4.scc.bu.edu",
+          "start_time": "Sat Nov  7 15:42:18 2026",
+          "end_time": "Sat Nov  7 15:44:41 2026",
+          "slots": "8",
+          "failed": "0",
+          "exit_status": "0",
+          "ru_wallclock": "143",
+          "maxvmem": "6.001G"
+        },
+        {
+          "jobnumber": "8506789",
+          "qname": "econ",
+          "hostname": "scc-ei3.scc.bu.edu",
+          "start_time": "Sat Nov  7 15:49:15 2026",
+          "end_time": "Sat Nov  7 15:50:59 2026",
+          "slots": "8",
+          "failed": "0",
+          "exit_status": "0",
+          "ru_wallclock": "104",
+          "maxvmem": "6.043G"
+        }
+      ],
+      "result": "Repaired complete integration passed; both original exactness witnesses passed in isolated subprocesses."
+    },
+    "linux": {
+      "source_commit": "c788fac06409c435955bfd489ccd5d0e91ba278c",
+      "job": 8506863,
+      "accounting": {
+        "qname": "econ",
+        "hostname": "scc-gd4.scc.bu.edu",
+        "start_time": "Sat Nov  7 15:54:07 2026",
+        "end_time": "Sat Nov  7 16:04:06 2026",
+        "slots": "8",
+        "failed": "0",
+        "exit_status": "0",
+        "ru_wallclock": "599",
+        "maxvmem": "16.839G"
+      },
+      "source_integration": "pass",
+      "rust_test_executions": 2310,
+      "rust_result_groups": 129,
+      "python_tests": 349,
+      "portable_checks": 7,
+      "actual_plugin_abi": "pass",
+      "mapped_stata": {
+        "completed": true,
+        "failure_detail": null,
+        "failure_kind": null,
+        "results": [
+          {
+            "failure_detail": null,
+            "failure_kind": null,
+            "fixture": "tests/stata/development/feppml_saved_intercept_recovery.do",
+            "process_rc": 0,
+            "stata_rc": 0,
+            "status": "success"
+          },
+          {
+            "failure_detail": null,
+            "failure_kind": null,
+            "fixture": "tests/stata/development/feppml_saved_map_pilot.do",
+            "process_rc": 0,
+            "stata_rc": 0,
+            "status": "success"
+          },
+          {
+            "failure_detail": null,
+            "failure_kind": null,
+            "fixture": "tests/stata/development/feppml_categorical_final_oracle.do",
+            "process_rc": 0,
+            "stata_rc": 0,
+            "status": "success"
+          },
+          {
+            "failure_detail": null,
+            "failure_kind": null,
+            "fixture": "tests/stata/parity_ppmlhdfe/feppml_saved_slopes.do",
+            "process_rc": 0,
+            "stata_rc": 0,
+            "status": "success"
+          },
+          {
+            "failure_detail": null,
+            "failure_kind": null,
+            "fixture": "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_transaction.do",
+            "process_rc": 0,
+            "stata_rc": 0,
+            "status": "success"
+          }
+        ],
+        "schema_version": 1,
+        "stata_edition": "MP",
+        "stata_machine_type": "PC (64-bit x86-64)",
+        "stata_os": "Unix",
+        "stata_processors": 4,
+        "stata_rc": 0,
+        "stata_version": "19",
+        "status": "success",
+        "tests_failed": 0,
+        "tests_passed": 5
+      }
+    },
+    "mac": {
+      "source_commit": "1974e3833f8b3d2b2cb396e7ffaf41ec7fd64235",
+      "version": "0.5.3",
+      "sha256": "69c280252b5aab678584785d0c815275588ed3663815cc012abaebb948e6a2a2",
+      "bytes": 21656576,
+      "offline_build": "pass",
+      "binary_and_actual_abi": "pass",
+      "mapped_stata": {
+        "completed": true,
+        "failure_detail": null,
+        "failure_kind": null,
+        "results": [
+          {
+            "failure_detail": null,
+            "failure_kind": null,
+            "fixture": "tests/stata/development/feppml_saved_map_pilot.do",
+            "process_rc": 0,
+            "stata_rc": 0,
+            "status": "success"
+          },
+          {
+            "failure_detail": null,
+            "failure_kind": null,
+            "fixture": "tests/stata/development/feppml_saved_intercept_recovery.do",
+            "process_rc": 0,
+            "stata_rc": 0,
+            "status": "success"
+          },
+          {
+            "failure_detail": null,
+            "failure_kind": null,
+            "fixture": "tests/stata/parity_ppmlhdfe/feppml_saved_slopes.do",
+            "process_rc": 0,
+            "stata_rc": 0,
+            "status": "success"
+          },
+          {
+            "failure_detail": null,
+            "failure_kind": null,
+            "fixture": "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_transaction.do",
+            "process_rc": 0,
+            "stata_rc": 0,
+            "status": "success"
+          }
+        ],
+        "schema_version": 1,
+        "stata_edition": "MP",
+        "stata_machine_type": "Mac (Apple Silicon)",
+        "stata_os": "Unix",
+        "stata_processors": 8,
+        "stata_rc": 0,
+        "stata_version": "19",
+        "status": "success",
+        "tests_failed": 0,
+        "tests_passed": 4
+      }
+    },
+    "plugins": [
+      {
+        "path": "fereg_macos.plugin",
+        "source_sha": "1974e3833f8b3d2b2cb396e7ffaf41ec7fd64235",
+        "sha256": "69c280252b5aab678584785d0c815275588ed3663815cc012abaebb948e6a2a2",
+        "bytes": 21656576
+      },
+      {
+        "path": "fereg_linux.plugin",
+        "source_sha": "c788fac06409c435955bfd489ccd5d0e91ba278c",
+        "sha256": "47e0d38b13250f0c9a5d9e645b5cc0b1797caeace6d15644b73ebccc4eeeaf86",
+        "bytes": 17145944
+      },
+      {
+        "path": "fereg_windows.plugin",
+        "source_sha": "1974e3833f8b3d2b2cb396e7ffaf41ec7fd64235",
+        "sha256": "ca4fab92770ca2278f552ffd6d08e6743f49d5af42ae9d81644c9e1b07802058",
+        "bytes": 12264448
+      }
+    ],
+    "native_archive_sha256": "91ffaad67ba727f92b5e2595dad67a01f7b101f1f7010d8b88e0c1648ee1ed99",
+    "dependency_audit": {
+      "advisory_count": 0,
+      "cargo_lock_sha256": "75ae01a9b603f26a339d1636e7c0e6c121432871c92ddcf5ccfce7c634aa042e",
+      "schema": 1,
+      "source_sha": "c788fac06409c435955bfd489ccd5d0e91ba278c",
+      "status": "pass",
+      "toolchain": "1.85.1"
+    },
+    "installed_package_binding": "pass: 37 root files, runtime, hashes, architecture audits and Mata bindings",
+    "local_install": {
+      "status": "pass",
+      "mode": "local",
+      "version": "0.5.3",
+      "native_selftest": "pass",
+      "ols_independent_regress": "pass",
+      "ppml_independent_group_means": "pass",
+      "isolated_plus": true,
+      "installed_file_count": 37
+    },
+    "staged_archive": {
+      "archive_bytes": 18641674,
+      "archive_sha256": "91ffaad67ba727f92b5e2595dad67a01f7b101f1f7010d8b88e0c1648ee1ed99",
+      "completed": true,
+      "manifest_sha256": "b18f15f8d900f4b0819ea665de863a8289ac9ef6601819b8391ea981fed8a659",
+      "plugin": "fereg_macos.plugin",
+      "plugin_bytes": 21656576,
+      "plugin_sha256": "69c280252b5aab678584785d0c815275588ed3663815cc012abaebb948e6a2a2",
+      "results": [
+        {
+          "failure_detail": null,
+          "failure_kind": null,
+          "fixture": "tests/stata/installation/staged_plugin_binary.do",
+          "process_rc": 0,
+          "stata_rc": 0,
+          "status": "success"
+        },
+        {
+          "failure_detail": null,
+          "failure_kind": null,
+          "fixture": "tests/stata/development/feppml_saved_map_pilot.do",
+          "process_rc": 0,
+          "stata_rc": 0,
+          "status": "success"
+        },
+        {
+          "failure_detail": null,
+          "failure_kind": null,
+          "fixture": "tests/stata/development/feppml_saved_intercept_recovery.do",
+          "process_rc": 0,
+          "stata_rc": 0,
+          "status": "success"
+        },
+        {
+          "failure_detail": null,
+          "failure_kind": null,
+          "fixture": "tests/stata/parity_ppmlhdfe/feppml_saved_slopes.do",
+          "process_rc": 0,
+          "stata_rc": 0,
+          "status": "success"
+        },
+        {
+          "failure_detail": null,
+          "failure_kind": null,
+          "fixture": "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_transaction.do",
+          "process_rc": 0,
+          "stata_rc": 0,
+          "status": "success"
+        }
+      ],
+      "schema_version": 1,
+      "source_sha": "c788fac06409c435955bfd489ccd5d0e91ba278c",
+      "stata_edition": "MP",
+      "stata_executable_sha256": "178db3b78a3768ebfe88c36e845df292611b4b8ef0342c47a58e4641d0e6a16b",
+      "stata_executable_size_bytes": 119946864,
+      "stata_machine_type": "Mac (Apple Silicon)",
+      "stata_os": "Unix",
+      "stata_processors": 8,
+      "stata_version": "19",
+      "status": "success",
+      "tests_failed": 0,
+      "tests_passed": 5
+    },
+    "license_texts": "Unchanged bodies; headings and ordering follow cargo vendor --versioned-dirs.",
+    "publication": {
+      "status": "pass",
+      "url": "https://github.com/johannes-schmieder/fereg/releases/tag/v0.5.3",
+      "tag": "v0.5.3",
+      "tag_commit": "969c9d1d589147ddcf049b9e409de85c3e9ffd06",
+      "release_list_bytes": 258135,
+      "limit": 264392,
+      "assets": [
+        {
+          "name": "fereg-0.5.3.zip",
+          "sha256": "91ffaad67ba727f92b5e2595dad67a01f7b101f1f7010d8b88e0c1648ee1ed99",
+          "bytes": 18641674
+        },
+        {
+          "name": "fereg-0.5.3.zip.sha256",
+          "sha256": "1e78ed5cd93875d3afe4b4a5f4dfb9848e4292d3d70174b37f4ed22e5f6eb258",
+          "bytes": 82
+        },
+        {
+          "name": "fereg-0.5.3-source.zip",
+          "sha256": "1e2da13ece55c3122ceac8fbfe0c5b696c6cc9734e4c469b0859136920357c35",
+          "bytes": 35600890
+        },
+        {
+          "name": "fereg-0.5.3-source.zip.sha256",
+          "sha256": "775e61a80d8719886d8476b542f0727177f4df5664bcb7e0bac52d733ad795f4",
+          "bytes": 89
+        },
+        {
+          "name": "macos_source_build.md",
+          "sha256": "39fb1f6cfe55a016e2b2798c4b06c2bf88a844a8d81e6c634a884a197aa5f651",
+          "bytes": 2826
+        }
+      ]
+    },
+    "http_installations": [
+      {
+        "status": "pass",
+        "mode": "tag",
+        "version": "0.5.3",
+        "native_selftest": "pass",
+        "ols_independent_regress": "pass",
+        "ppml_independent_group_means": "pass",
+        "isolated_plus": true,
+        "installed_file_count": 37
+      },
+      {
+        "status": "pass",
+        "mode": "main",
+        "version": "0.5.3",
+        "native_selftest": "pass",
+        "ols_independent_regress": "pass",
+        "ppml_independent_group_means": "pass",
+        "isolated_plus": true,
+        "installed_file_count": 37
+      },
+      {
+        "status": "pass",
+        "mode": "github",
+        "version": "0.5.3",
+        "native_selftest": "pass",
+        "ols_independent_regress": "pass",
+        "ppml_independent_group_means": "pass",
+        "isolated_plus": true,
+        "installed_file_count": 37
+      }
+    ],
+    "installation_harness_repair": {
+      "initial_github_check": "r(603) before any package installation: isolated PLUS directory lacked the g subdirectory required by the existing githubdb helper.",
+      "repair": "Create the empty helper directory, then run the unchanged actual github install command in a fresh isolated PLUS. All 37 hashes and science checks pass.",
+      "failed_log_preserved": true,
+      "package_changed": false
+    },
+    "staged_runner_preflight": "Wrong development path for the installation fixture rejected before any Stata call; corrected to the maintained tests/stata/installation/staged_plugin_binary.do path. Five fixtures then passed.",
+    "evidence": "Retained with the existing external ppml-repair-20261107/refinement evidence under release-053; source/native release assets are public."
   }
 }
