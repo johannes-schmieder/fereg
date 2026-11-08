@@ -597,6 +597,10 @@ pub fn fit_prepared_ppml_interruptible(
 
     begin_phase_allocation(request.phase_allocation_probe, PpmlPhase::Publication);
     let publication_clock = PpmlPhaseClock::start();
+    let trace = crate::diagnostics::phase_ledger::PhaseLedger::new(
+        "ppml_publication",
+        ["sample", "output", "metadata", "release", "result"],
+    );
     interrupt(PpmlInterruptPoint::Publication)?;
     let final_rows = std::sync::Arc::new(fallible_copy(
         prepared.original_rows(),
@@ -617,6 +621,7 @@ pub fn fit_prepared_ppml_interruptible(
             "unable to copy PPML final-sample weights",
         )?,
     )?;
+    trace.lap(0);
     let output = PpmlOutputState::new_requested(
         prepared.original_observations(),
         final_rows,
@@ -631,6 +636,7 @@ pub fn fit_prepared_ppml_interruptible(
         request.ppml.tolerance,
     )?;
     interrupt(PpmlInterruptPoint::Publication)?;
+    trace.lap(1);
     let convergence = convergence_report(&fit)?;
     let clusters = cluster_metadata(prepared)?;
     let mut memory = fit.diagnostics().memory.clone();
@@ -683,6 +689,7 @@ pub fn fit_prepared_ppml_interruptible(
         solver: fit.diagnostics().solver,
         certificate_tolerance: request.ppml.tolerance,
     };
+    trace.lap(2);
     // Every certification input now owns its data. Release the final Hessian
     // products and prepared/raw generation before independent PSD, Wald and
     // separation replay allocate their scratch; no solver state is needed.
@@ -696,7 +703,9 @@ pub fn fit_prepared_ppml_interruptible(
     drop(omission_statuses);
     drop(requested_saved_channels);
     drop(loaded.bias_units);
+    trace.lap(3);
     let result = CertifiedPpmlResult::new(result_input)?.retain_requested_outputs();
+    trace.lap(4);
     interrupt(PpmlInterruptPoint::Publication)?;
     result.with_publication_observations(
         publication_clock,

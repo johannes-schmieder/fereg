@@ -351,6 +351,8 @@ pub fn estimate_ppml(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
     specification.transport_parent_bytes = crate::metadata_memory::argument_parent_bytes(args)?;
     drop(local_bundle);
     let action = specification.decode_and_validate(spi)?;
+    let trace_enabled = fereg_core::diagnostics::phase_timing_enabled();
+    let decoded = started.elapsed().as_secs_f64();
     if action.injection == PpmlDeveloperInjection::Panic {
         panic!("injected hidden PPML transaction panic");
     }
@@ -386,6 +388,7 @@ pub fn estimate_ppml(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
     };
     let (adjustment, bias_units) = load_ppml_extras(&action, &loaded, spi, &mut input_memory)?;
     spi.check_interrupted()?;
+    let load_done = started.elapsed().as_secs_f64();
     input_memory.release(hint_bytes)?;
     let phase_probe = ppml_phase_allocator_probe(action.allocation_audit);
     let mut prepared_request = prepared_ppml_request(&action, phase_probe)?;
@@ -406,6 +409,7 @@ pub fn estimate_ppml(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         drop(rayon::broadcast(|_| ()));
     })?;
     let transport_parent_bytes = action.transport_parent_bytes;
+    let team_done = started.elapsed().as_secs_f64();
     let lsmr_break = claim_ppml_lsmr_break(action.injection)?;
     let result = crate::ppml_execution::run(
         fereg_core::ThreadTeam::new(action.linear.execution.threads),
@@ -441,6 +445,7 @@ pub fn estimate_ppml(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         &mut relay_ppml_interrupts(spi, action.injection, &action.break_marker_token),
     );
     let result = finish_ppml_lsmr_break(lsmr_break, result)?;
+    let core_done = started.elapsed().as_secs_f64();
     let publication_extension_started = Instant::now();
     let mut publication_phase = PublicationPhaseScope::begin(phase_probe);
     let publication_memory = action.publication_memory(&result)?;
@@ -464,8 +469,20 @@ pub fn estimate_ppml(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         &publication_memory,
         resources_start,
     )?;
+    let shadow_done = started.elapsed().as_secs_f64();
     precommit(&action, &shadow, spi)?;
     store_shadow_prefix(&action, &shadow, spi)?;
+    if trace_enabled {
+        let stored = started.elapsed().as_secs_f64();
+        eprintln!(
+            "FEREG_PHASE|ppml_plugin|decode={decoded:.9}|load={:.9}|team={:.9}|core={:.9}|shadow={:.9}|store={:.9}|total={stored:.9}",
+            load_done - decoded,
+            team_done - load_done,
+            core_done - team_done,
+            shadow_done - core_done,
+            stored - shadow_done,
+        );
+    }
     let action_end = action_probe.map(|probe| probe());
     let publication_peak_bytes = publication_phase.finish();
     finalize_ppml_runtime_shadow(
