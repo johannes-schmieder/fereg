@@ -1,22 +1,10 @@
 {
   "growth": [
     {
-      "after": 77,
-      "before": 56,
-      "metric": "fedemean/dispatch_candidates",
-      "reason": "Milestone 2 core in fedemean: the full formulation (Reduction::Full) for any number of effects, with the weighted design operator D and its adjoint over fixed row and level blocks, lockstep PCG on the singular consistent normal equations, modified LSMR through schwarz-precond's mlsmr (feature schwarz), Jacobi and identity preconditioners, the moment certificate over all levels, warm starts (Projector::project_from) and the choice resolution (Auto, explicit combinations, Unsupported)."
-    },
-    {
-      "after": 7082,
-      "before": 4819,
+      "after": 7152,
+      "before": 7082,
       "metric": "fedemean/production_lines",
-      "reason": "Milestone 2 core in fedemean: the full formulation (Reduction::Full) for any number of effects, with the weighted design operator D and its adjoint over fixed row and level blocks, lockstep PCG on the singular consistent normal equations, modified LSMR through schwarz-precond's mlsmr (feature schwarz), Jacobi and identity preconditioners, the moment certificate over all levels, warm starts (Projector::project_from) and the choice resolution (Auto, explicit combinations, Unsupported)."
-    },
-    {
-      "after": 120567,
-      "before": 120566,
-      "metric": "fereg-core/production_lines",
-      "reason": "fereg's block-elimination adapter requests Reduction::EliminateLargest explicitly, so its routes are unchanged now that fedemean's Auto takes other effect counts to the full system."
+      "reason": "fedemean CMG local solves below CMG's planned threshold split their lanes into concurrent groups on the caller's pool (up to one group per worker, graphs of at least 5,000 edges), each group with its own admitted buffers and CMG workspace; the shared hierarchy and level map move into a core record read by every group."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -51,148 +39,156 @@
         "dispatch_candidates": [
           {
             "condition": "cells . len ( ) >= 2",
-            "line": 113
+            "line": 139
           },
           {
-            "condition": "width == 0 || self . columns == 0 || n != Some ( r . len ( ) ) || n != Some ( z . len ( ) )",
-            "line": 515
+            "condition": "width == 0 || self . groups . is_empty ( ) || n != Some ( r . len ( ) ) || n != Some ( z . len ( ) )",
+            "line": 592
           },
           {
             "condition": "cells . len ( )",
-            "line": 565
+            "line": 673
           },
           {
             "condition": "n > STAR_LEVELS => Shape :: Star , _ =>",
-            "line": 567
+            "line": 675
           },
           {
             "condition": "offsets . len ( ) != segments + 1 || offsets [ 0 ] != 0 || offsets [ segments ] != block . entries . len ( ) || offsets . windows ( 2 ) . any ( | w | w [ 0 ] > w [ 1 ] ) || block . levels >= ISOLATED as usize",
-            "line": 595
+            "line": 703
           },
           {
             "condition": "p == v",
-            "line": 654
+            "line": 762
           }
         ],
         "functions": {
           "admit#1": {
-            "line": 226,
-            "lines": 38
+            "line": 255,
+            "lines": 50
           },
           "apply#1": {
-            "line": 507,
-            "lines": 30
+            "line": 584,
+            "lines": 52
           },
           "apply_bytes#1": {
-            "line": 384,
-            "lines": 5
+            "line": 415,
+            "lines": 10
           },
           "batch#1": {
-            "line": 407,
-            "lines": 80
+            "line": 469,
+            "lines": 66
           },
           "build#1": {
-            "line": 267,
-            "lines": 78
+            "line": 308,
+            "lines": 75
           },
           "built#1": {
-            "line": 693,
+            "line": 801,
             "lines": 12
           },
           "bytes#1": {
-            "line": 538,
-            "lines": 16
+            "line": 637,
+            "lines": 25
           },
           "clear_sums#1": {
-            "line": 488,
+            "line": 557,
             "lines": 5
           },
           "components#1": {
-            "line": 622,
+            "line": 730,
             "lines": 45
           },
           "construction_bound#1": {
-            "line": 160,
+            "line": 186,
             "lines": 13
           },
           "count#1": {
-            "line": 105,
+            "line": 131,
             "lines": 49
           },
           "fatal#1": {
-            "line": 679,
+            "line": 787,
             "lines": 11
           },
           "filled#1": {
-            "line": 718,
+            "line": 826,
             "lines": 5
           },
           "held#1": {
-            "line": 539,
+            "line": 638,
             "lines": 3
           },
           "lane_values#1": {
-            "line": 376,
+            "line": 439,
             "lines": 6
           },
           "means#1": {
-            "line": 495,
+            "line": 564,
             "lines": 8
           },
           "neumaier#1": {
-            "line": 669,
+            "line": 777,
             "lines": 9
           },
-          "options#1": {
-            "line": 176,
+          "new#1": {
+            "line": 449,
             "lines": 16
           },
+          "options#1": {
+            "line": 202,
+            "lines": 16
+          },
+          "part#1": {
+            "line": 576,
+            "lines": 4
+          },
           "plan#1": {
-            "line": 349,
+            "line": 387,
             "lines": 25
           },
           "poll#1": {
-            "line": 204,
+            "line": 230,
             "lines": 7
           },
-          "refill#1": {
-            "line": 725,
-            "lines": 6
-          },
           "reserve#1": {
-            "line": 391,
-            "lines": 13
+            "line": 427,
+            "lines": 8
           },
           "reserve#2": {
-            "line": 706,
+            "line": 814,
             "lines": 5
           },
           "root#1": {
-            "line": 630,
+            "line": 738,
             "lines": 8
           },
           "segment#1": {
-            "line": 588,
+            "line": 696,
             "lines": 3
           },
           "shape#1": {
-            "line": 564,
+            "line": 672,
             "lines": 23
           },
           "team#1": {
-            "line": 195,
+            "line": 221,
             "lines": 7
           },
           "validate#1": {
-            "line": 592,
+            "line": 700,
             "lines": 27
           },
           "with_capacity#1": {
-            "line": 712,
+            "line": 820,
             "lines": 5
+          },
+          "write#1": {
+            "line": 538,
+            "lines": 18
           }
         },
-        "production_lines": 580
+        "production_lines": 650
       },
       "crates/fedemean/src/design.rs": {
         "chunk_candidates": [],
@@ -28113,7 +28109,7 @@
         "dispatch_candidates": 77,
         "files_over_1500": 0,
         "functions_over_150": 0,
-        "production_lines": 7082
+        "production_lines": 7152
       },
       "fereg-core": {
         "chunk_candidates": 13,

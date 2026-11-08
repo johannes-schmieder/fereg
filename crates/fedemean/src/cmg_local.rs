@@ -24,11 +24,18 @@
 //! pool as a borrowed `cmg::Team`, and a `cmg::ParallelCmgPlan` (row
 //! operators and restriction rows of the hierarchy's large dense levels) is
 //! retained; applications then run those levels' rows on the team. Smaller
-//! graphs, and calls without a pool, build and apply serially. The team never
-//! uses CMG's fixed-chunk centering (its reduction chunk covers any level),
-//! and every team kernel keeps the serial operation order, so hierarchies and
+//! graphs, and calls without a pool, build serially. The team never uses
+//! CMG's fixed-chunk centering (its reduction chunk covers any level), and
+//! every team kernel keeps the serial operation order, so hierarchies and
 //! applications are bitwise the same with or without a pool, at any worker
-//! count.
+//! count. A solve without a plan whose graph has at least [`GROUP_EDGES`]
+//! edges, admitted with a pool of several workers, instead splits its lanes
+//! into up to one group per worker, each with its own buffers and CMG
+//! workspace; an application of two or more columns on a pool runs the
+//! groups' team-free CMG calls concurrently, one contiguous run of columns
+//! per group. CMG's interleaved batches of every width give each column the
+//! team-free serial cycle's bits, so the groups give the bits of one serial
+//! call.
 //!
 //! Memory: every allocation is fallible and admitted ([`CmgLocal::admit`]).
 //! The graph is counted exactly before it is formed; CMG's construction
@@ -36,11 +43,12 @@
 //! the plan's construction bound beside the retained hierarchy before the
 //! plan (which is skipped when it does not fit), and the retained hierarchy
 //! and plan with the exact workspace bytes of its application lanes before
-//! the buffers are reserved. The graph's raw edges are released once the
-//! Laplacian is built; the hierarchy, plan, component labels and the
-//! application buffers are retained. The buffers hold a fixed number of
-//! lanes (at most [`MAX_COLUMNS`]); wider applications take several CMG
-//! calls, with the same bits, and repeated applications allocate nothing.
+//! the buffers are reserved (the concurrent groups only when they fit, else
+//! one group). The graph's raw edges are released once the Laplacian is
+//! built; the hierarchy, plan, component labels and the application buffers
+//! are retained. The buffers hold a fixed number of lanes (at most
+//! [`MAX_COLUMNS`]); wider applications take several CMG calls, with the
+//! same bits, and repeated applications allocate nothing.
 
 use crate::elimination::block::{Admitted, BlockLaplacian, LocalSolve};
 use crate::error::{Error, Result};
@@ -49,6 +57,7 @@ use cmg::{
     CmgPreconditioner, CmgStorageReport, ComponentBuildOptions, Laplacian, ParallelCmgPlan,
     ParallelOptions, Team,
 };
+use rayon::prelude::*;
 
 /// Segments with more distinct levels than this become auxiliary stars.
 const STAR_LEVELS: usize = 5;
@@ -58,9 +67,23 @@ const MAX_COLUMNS: usize = 8;
 const ISOLATED: u32 = u32::MAX;
 /// Segments between two cancellation polls of the graph passes.
 const POLL_SEGMENTS: usize = 1 << 12;
+/// Graph edges from which concurrent lane groups pay for their dispatch (on
+/// long chains they gain from about 3,000 edges on four workers and 5,000
+/// on eight).
+const GROUP_EDGES: usize = 5_000;
 
 /// One fixed CMG approximation of a block Laplacian's pseudo-inverse.
 pub(crate) struct CmgLocal {
+    core: Core,
+    /// Retained bytes of `core.plan`.
+    plan_bytes: usize,
+    /// Application lanes (empty until reserved): serial applications use
+    /// the first group, concurrent ones every group.
+    groups: Vec<Group>,
+}
+
+/// The hierarchy and level map every lane group reads.
+struct Core {
     /// Graph vertex of each level ([`ISOLATED`] when isolated); connected
     /// levels take the vertices `0..connected` in ascending level order.
     vertex: Vec<u32>,
@@ -74,18 +97,21 @@ pub(crate) struct CmgLocal {
     /// Row operators and restriction rows of the hierarchy's large levels,
     /// for applications on the caller's pool (`None`: serial applications).
     plan: Option<ParallelCmgPlan>,
-    /// Retained bytes of `plan`.
-    plan_bytes: usize,
-    /// Lanes per CMG call the buffers and the CMG workspace hold (0 until
-    /// they are reserved).
+}
+
+/// The buffers and CMG workspace of one group of lanes.
+struct Group {
+    /// Lanes per CMG call.
     columns: usize,
-    workspace: Option<CmgBatchWorkspace>,
+    workspace: CmgBatchWorkspace,
     workspace_bytes: usize,
     rhs: Vec<f64>,
     solution: Vec<f64>,
     /// Compensated per-component sums of one batch.
     sums: Vec<f64>,
     corrections: Vec<f64>,
+    /// The first column and the column count of the current batch.
+    span: (usize, usize),
 }
 
 /// The CMG graph of one block, counted before it is formed.
@@ -222,7 +248,10 @@ impl CmgLocal {
     /// inside CMG; without one, CMG builds without polling (its faster
     /// unpolled edge sort; the same hierarchy). With `pool`, a graph of at
     /// least [`cmg::DEFAULT_MIN_PLANNED_EDGES`] edges builds on it and keeps
-    /// a plan when the plan's construction bound fits.
+    /// a plan when the plan's construction bound fits; a solve without a
+    /// plan whose graph has at least [`GROUP_EDGES`] edges splits its lanes
+    /// into up to one group per worker when those groups fit (the solve is
+    /// admitted whenever one group fits).
     pub(crate) fn admit(
         block: &BlockLaplacian,
         lanes: usize,
@@ -240,7 +269,8 @@ impl CmgLocal {
         let Some(graph) = Graph::count(block, cancel)? else {
             return Ok(Admitted::Refused);
         };
-        let team = match pool.filter(|_| graph.edges >= cmg::DEFAULT_MIN_PLANNED_EDGES) {
+        let edges = graph.edges;
+        let team = match pool.filter(|_| edges >= cmg::DEFAULT_MIN_PLANNED_EDGES) {
             Some(pool) => Some(team(pool)?),
             None => None,
         };
@@ -255,10 +285,21 @@ impl CmgLocal {
             solve.plan(team, polled, fits)?;
         }
         let lanes = lanes.clamp(1, MAX_COLUMNS);
-        if !fits(solve.bytes() + solve.apply_bytes(lanes)?) {
+        if !fits(solve.bytes() + solve.apply_bytes(lanes, 1)?) {
             return Ok(Admitted::MemoryLimit);
         }
-        solve.reserve(lanes)?;
+        let groups = match pool {
+            Some(pool) if solve.core.plan.is_none() && edges >= GROUP_EDGES => {
+                pool.current_num_threads().clamp(1, lanes)
+            }
+            _ => 1,
+        };
+        let groups = if groups > 1 && fits(solve.bytes() + solve.apply_bytes(lanes, groups)?) {
+            groups
+        } else {
+            1
+        };
+        solve.reserve(lanes, groups)?;
         Ok(Admitted::Solve(solve))
     }
 
@@ -325,21 +366,18 @@ impl CmgLocal {
             Err(error) => return built(error),
         };
         drop(graph);
-        Ok(Some(Self {
+        let core = Core {
             vertex,
             component,
             sizes,
             vertices,
             preconditioner,
             plan: None,
+        };
+        Ok(Some(Self {
+            core,
             plan_bytes: 0,
-            columns: 0,
-            workspace: None,
-            workspace_bytes: 0,
-            rhs: Vec::new(),
-            solution: Vec::new(),
-            sums: Vec::new(),
-            corrections: Vec::new(),
+            groups: Vec::new(),
         }))
     }
 
@@ -352,7 +390,7 @@ impl CmgLocal {
         polled: Option<&(dyn Fn() -> bool + Sync)>,
         fit: impl Fn(u128) -> bool,
     ) -> Result<()> {
-        let pre = &self.preconditioner;
+        let pre = &self.core.preconditioner;
         let bound = ParallelCmgPlan::construction_allocation_bound(pre, team).map_err(fatal)?;
         if !fit(self.bytes().saturating_add(bound as u128)) {
             return Ok(());
@@ -368,10 +406,35 @@ impl CmgLocal {
         }
         let report = CmgStorageReport::measure(&[&plan]).map_err(fatal)?;
         self.plan_bytes = report.total_bytes().map_err(fatal)?;
-        self.plan = Some(plan);
+        self.core.plan = Some(plan);
         Ok(())
     }
 
+    /// Exact bytes of `lanes` lanes in `groups` groups: each group's buffers
+    /// and CMG workspace, and the group records.
+    fn apply_bytes(&self, lanes: usize, groups: usize) -> Result<u128> {
+        let mut bytes = (groups * std::mem::size_of::<Group>()) as u128;
+        for g in 0..groups {
+            let columns = part(lanes, groups, g).1;
+            let (values, sums) = self.core.lane_values(columns)?;
+            let workspace = CmgBatchWorkspace::allocation_bytes(&self.core.preconditioner, columns);
+            bytes += 16 * (values as u128 + sums as u128) + workspace.map_err(fatal)? as u128;
+        }
+        Ok(bytes)
+    }
+
+    /// Hold `lanes` lanes in `groups` groups of near-equal width.
+    fn reserve(&mut self, lanes: usize, groups: usize) -> Result<()> {
+        let mut held = with_capacity(groups)?;
+        for g in 0..groups {
+            held.push(Group::new(&self.core, part(lanes, groups, g).1)?);
+        }
+        self.groups = held;
+        Ok(())
+    }
+}
+
+impl Core {
     /// Level-vertex values and component sums of `lanes` lanes.
     fn lane_values(&self, lanes: usize) -> Result<(usize, usize)> {
         let message = "CMG local solve buffers overflow";
@@ -379,48 +442,48 @@ impl CmgLocal {
         let sums = self.sizes.len().checked_mul(lanes);
         values.zip(sums).ok_or(Error::OutOfMemory(message))
     }
+}
 
-    /// Exact bytes of the buffers and CMG workspace of `lanes` lanes.
-    fn apply_bytes(&self, lanes: usize) -> Result<u128> {
-        let (values, sums) = self.lane_values(lanes)?;
-        let workspace = CmgBatchWorkspace::allocation_bytes(&self.preconditioner, lanes);
-        Ok(16 * (values as u128 + sums as u128) + workspace.map_err(fatal)? as u128)
+impl Group {
+    /// The buffers and CMG workspace of `columns` lanes.
+    fn new(core: &Core, columns: usize) -> Result<Self> {
+        let (values, sums) = core.lane_values(columns)?;
+        let pre = &core.preconditioner;
+        let workspace_bytes = CmgBatchWorkspace::allocation_bytes(pre, columns).map_err(fatal)?;
+        let workspace = CmgBatchWorkspace::try_new(pre, columns, workspace_bytes);
+        Ok(Self {
+            columns,
+            workspace: workspace.map_err(fatal)?,
+            workspace_bytes,
+            rhs: filled(values, 0.0)?,
+            solution: filled(values, 0.0)?,
+            sums: filled(sums, 0.0)?,
+            corrections: filled(sums, 0.0)?,
+            span: (0, 0),
+        })
     }
 
-    /// Hold the buffers and CMG workspace of `lanes` lanes per CMG call.
-    fn reserve(&mut self, lanes: usize) -> Result<()> {
-        let (values, sums) = self.lane_values(lanes)?;
-        refill(&mut self.rhs, values)?;
-        refill(&mut self.solution, values)?;
-        refill(&mut self.sums, sums)?;
-        refill(&mut self.corrections, sums)?;
-        let pre = &self.preconditioner;
-        self.workspace_bytes = CmgBatchWorkspace::allocation_bytes(pre, lanes).map_err(fatal)?;
-        let workspace = CmgBatchWorkspace::try_new(pre, lanes, self.workspace_bytes);
-        self.workspace = Some(workspace.map_err(fatal)?);
-        self.columns = lanes;
-        Ok(())
-    }
-
-    /// Lanes `first..first + cols` of the level-major `r` (row stride
-    /// `width`) into the same lanes of `z`, on `team` when given.
+    /// The span's columns of the level-major `r` (row stride `width`)
+    /// through the cycle (on `team` when given), leaving the output and its
+    /// component means for [`Self::write`].
     fn batch(
         &mut self,
+        core: &Core,
         r: &[f64],
-        z: &mut [f64],
-        (width, first, cols): (usize, usize, usize),
+        width: usize,
         team: Option<Team<'_>>,
     ) -> Result<()> {
-        let level_values = self.component.len() * cols;
-        let values = self.vertices * cols;
+        let (first, cols) = self.span;
+        let level_values = core.component.len() * cols;
+        let values = core.vertices * cols;
         // Gather and centre the input on the level vertices.
-        self.clear_sums(cols);
-        for (level, &v) in self.vertex.iter().enumerate() {
+        self.clear_sums(core, cols);
+        for (level, &v) in core.vertex.iter().enumerate() {
             if v == ISOLATED {
                 continue;
             }
             let v = v as usize;
-            let c = self.component[v] as usize * cols;
+            let c = core.component[v] as usize * cols;
             for k in 0..cols {
                 let x = r[level * width + first + k];
                 if !x.is_finite() {
@@ -430,10 +493,10 @@ impl CmgLocal {
                 neumaier(&mut self.sums[c + k], &mut self.corrections[c + k], x);
             }
         }
-        self.means(cols);
+        self.means(core, cols);
         for (row, &c) in self.rhs[..level_values]
             .chunks_exact_mut(cols)
-            .zip(&self.component)
+            .zip(&core.component)
         {
             let mean = &self.sums[c as usize * cols..][..cols];
             for (x, m) in row.iter_mut().zip(mean) {
@@ -441,39 +504,45 @@ impl CmgLocal {
             }
         }
         self.rhs[level_values..values].fill(0.0);
-        let workspace = self.workspace.as_mut().expect("reserved CMG workspace");
         let context = ApplyContext {
-            plan: self.plan.as_ref().filter(|_| team.is_some()),
+            plan: core.plan.as_ref().filter(|_| team.is_some()),
             team,
             cancel: None,
         };
-        self.preconditioner
+        core.preconditioner
             .apply_compatible_batch_into(
                 &self.rhs[..values],
                 &mut self.solution[..values],
                 cols,
-                workspace,
+                &mut self.workspace,
                 context,
             )
             .map_err(fatal)?;
         // Restrict to the level vertices and centre the output.
-        self.clear_sums(cols);
+        self.clear_sums(core, cols);
         for (row, &c) in self.solution[..level_values]
             .chunks_exact(cols)
-            .zip(&self.component)
+            .zip(&core.component)
         {
             let c = c as usize * cols;
             for (k, &x) in row.iter().enumerate() {
                 neumaier(&mut self.sums[c + k], &mut self.corrections[c + k], x);
             }
         }
-        self.means(cols);
-        for (level, &v) in self.vertex.iter().enumerate() {
+        self.means(core, cols);
+        Ok(())
+    }
+
+    /// The centred output of [`Self::batch`] into the span's columns of `z`
+    /// (row stride `width`).
+    fn write(&self, core: &Core, z: &mut [f64], width: usize) -> Result<()> {
+        let (first, cols) = self.span;
+        for (level, &v) in core.vertex.iter().enumerate() {
             if v == ISOLATED {
                 continue;
             }
             let v = v as usize;
-            let c = self.component[v] as usize * cols;
+            let c = core.component[v] as usize * cols;
             for k in 0..cols {
                 let x = self.solution[v * cols + k] - self.sums[c + k];
                 if !x.is_finite() {
@@ -485,15 +554,15 @@ impl CmgLocal {
         Ok(())
     }
 
-    fn clear_sums(&mut self, cols: usize) {
-        let n = self.sizes.len() * cols;
+    fn clear_sums(&mut self, core: &Core, cols: usize) {
+        let n = core.sizes.len() * cols;
         self.sums[..n].fill(0.0);
         self.corrections[..n].fill(0.0);
     }
 
     /// Turn the compensated sums into component means.
-    fn means(&mut self, cols: usize) {
-        for (c, &size) in self.sizes.iter().enumerate() {
+    fn means(&mut self, core: &Core, cols: usize) {
+        for (c, &size) in core.sizes.iter().enumerate() {
             let size = f64::from(size);
             for k in c * cols..(c + 1) * cols {
                 self.sums[k] = (self.sums[k] + self.corrections[k]) / size;
@@ -502,8 +571,16 @@ impl CmgLocal {
     }
 }
 
+/// Part `g` of `0..total` cut into `count` contiguous near-equal parts,
+/// longer parts first: its start and length.
+fn part(total: usize, count: usize, g: usize) -> (usize, usize) {
+    let (base, extra) = (total / count, total % count);
+    (g * base + g.min(extra), base + usize::from(g < extra))
+}
+
 impl LocalSolve for CmgLocal {
-    /// On `pool` when the solve kept a plan, else serially.
+    /// On `pool` when the solve kept a plan or several groups (two or more
+    /// columns), else serially.
     fn apply(
         &mut self,
         r: &[f64],
@@ -511,23 +588,45 @@ impl LocalSolve for CmgLocal {
         width: usize,
         pool: Option<&rayon::ThreadPool>,
     ) -> Result<()> {
-        let n = self.vertex.len().checked_mul(width);
-        if width == 0 || self.columns == 0 || n != Some(r.len()) || n != Some(z.len()) {
+        let n = self.core.vertex.len().checked_mul(width);
+        if width == 0 || self.groups.is_empty() || n != Some(r.len()) || n != Some(z.len()) {
             return Err(Error::InvalidInput(
                 "local solve dimensions are inconsistent",
             ));
         }
-        let team = match pool.filter(|_| self.plan.is_some()) {
+        let team = match pool.filter(|_| self.core.plan.is_some()) {
             Some(pool) => Some(team(pool)?),
             None => None,
         };
+        let groups = if pool.is_some() { self.groups.len() } else { 1 };
+        let lanes: usize = self.groups[..groups].iter().map(|g| g.columns).sum();
+        let core = &self.core;
         let mut first = 0;
         while first < width {
-            let cols = (width - first).min(self.columns);
-            self.batch(r, z, (width, first, cols), team)?;
+            // Each active group takes at most its own lanes.
+            let cols = (width - first).min(lanes);
+            let active = &mut self.groups[..groups.min(cols)];
+            let count = active.len();
+            for (g, group) in active.iter_mut().enumerate() {
+                let (start, len) = part(cols, count, g);
+                group.span = (first + start, len);
+            }
+            match pool.filter(|_| count > 1) {
+                Some(pool) => pool.install(|| {
+                    active
+                        .par_iter_mut()
+                        .with_max_len(1)
+                        .map(|group| group.batch(core, r, width, None))
+                        .reduce(|| Ok(()), Result::and)
+                })?,
+                None => active[0].batch(core, r, width, team)?,
+            }
+            for group in active.iter() {
+                group.write(core, z, width)?;
+            }
             first += cols;
         }
-        for (row, &v) in z.chunks_exact_mut(width).zip(&self.vertex) {
+        for (row, &v) in z.chunks_exact_mut(width).zip(&core.vertex) {
             if v == ISOLATED {
                 row.fill(0.0);
             }
@@ -539,16 +638,25 @@ impl LocalSolve for CmgLocal {
         fn held<T>(values: &Vec<T>) -> u128 {
             (values.capacity() * std::mem::size_of::<T>()) as u128
         }
-        held(&self.vertex)
-            + held(&self.component)
-            + held(&self.sizes)
-            + held(&self.rhs)
-            + held(&self.solution)
-            + held(&self.sums)
-            + held(&self.corrections)
-            + self.preconditioner.retained_bytes() as u128
+        let core = &self.core;
+        let groups: u128 = self
+            .groups
+            .iter()
+            .map(|g| {
+                held(&g.rhs)
+                    + held(&g.solution)
+                    + held(&g.sums)
+                    + held(&g.corrections)
+                    + g.workspace_bytes as u128
+            })
+            .sum();
+        held(&core.vertex)
+            + held(&core.component)
+            + held(&core.sizes)
+            + core.preconditioner.retained_bytes() as u128
             + self.plan_bytes as u128
-            + self.workspace_bytes as u128
+            + held(&self.groups)
+            + groups
             + std::mem::size_of::<Self>() as u128
     }
 }
@@ -719,14 +827,6 @@ fn filled<T: Clone>(count: usize, value: T) -> Result<Vec<T>> {
     let mut values = with_capacity(count)?;
     values.resize(count, value);
     Ok(values)
-}
-
-/// `values` becomes `count` zeros, keeping a sufficient allocation.
-fn refill(values: &mut Vec<f64>, count: usize) -> Result<()> {
-    values.clear();
-    reserve(values, count)?;
-    values.resize(count, 0.0);
-    Ok(())
 }
 
 #[cfg(test)]
@@ -901,6 +1001,77 @@ mod tests {
         x.iter().skip(c).step_by(width).copied().collect()
     }
 
+    fn lanes_of(m: &CmgLocal) -> usize {
+        m.groups.iter().map(|g| g.columns).sum()
+    }
+
+    fn bits(values: &[f64]) -> Vec<u64> {
+        values.iter().map(|v| v.to_bits()).collect()
+    }
+
+    #[test]
+    fn pooled_lane_groups_give_the_serial_bits_at_every_worker_count() {
+        // Components, isolated levels and stars; and a long chain.
+        for b in [random_block(7, 600), chain(400)] {
+            let graph = Graph::count(&b, NEVER).unwrap().expect("graph");
+            assert!((GROUP_EDGES..cmg::DEFAULT_MIN_PLANNED_EDGES).contains(&graph.edges));
+            let mut serial = solve(&b);
+            let mut rng = Rng(21);
+            let inputs: Vec<Vec<f64>> = (1..=11)
+                .map(|width| (0..b.levels * width).map(|_| rng.uniform() - 0.5).collect())
+                .collect();
+            let expected: Vec<Vec<u64>> = (1..=11)
+                .map(|width| bits(&apply(&mut serial, &inputs[width - 1], width)))
+                .collect();
+            for threads in [1, 2, 4, 8] {
+                let pool = rayon::ThreadPoolBuilder::new()
+                    .num_threads(threads)
+                    .build()
+                    .unwrap();
+                // Five lanes on four workers give groups of 2, 1, 1 and 1.
+                for lanes in [5, MAX_COLUMNS] {
+                    let admitted = CmgLocal::admit(&b, lanes, None, Some(NEVER), Some(&pool));
+                    let Admitted::Solve(mut m) = admitted.unwrap() else {
+                        panic!("no CMG solve");
+                    };
+                    assert!(m.core.plan.is_none());
+                    assert_eq!(m.groups.len(), threads.min(lanes));
+                    assert_eq!(lanes_of(&m), lanes);
+                    let bytes = m.bytes();
+                    // Widths beyond the lanes take several rounds of groups.
+                    for width in 1..=11 {
+                        let r = &inputs[width - 1];
+                        let mut z = vec![f64::NAN; r.len()];
+                        for _ in 0..2 {
+                            m.apply(r, &mut z, width, Some(&pool)).unwrap();
+                            let message =
+                                format!("{threads} workers, {lanes} lanes, width {width}");
+                            assert_eq!(bits(&z), expected[width - 1], "{message}");
+                        }
+                        // Inside the pool, and without one (the first group).
+                        z.fill(f64::NAN);
+                        pool.install(|| m.apply(r, &mut z, width, Some(&pool)).unwrap());
+                        assert_eq!(bits(&z), expected[width - 1]);
+                        assert_eq!(bits(&apply(&mut m, r, width)), expected[width - 1]);
+                    }
+                    assert_eq!(m.bytes(), bytes);
+                }
+            }
+        }
+        // A graph below the group threshold keeps one group.
+        let small = chain(20);
+        assert!(Graph::count(&small, NEVER).unwrap().unwrap().edges < GROUP_EDGES);
+        let pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(4)
+            .build()
+            .unwrap();
+        let admitted = CmgLocal::admit(&small, MAX_COLUMNS, None, Some(NEVER), Some(&pool));
+        let Admitted::Solve(m) = admitted.unwrap() else {
+            panic!("no CMG solve");
+        };
+        assert_eq!(m.groups.len(), 1);
+    }
+
     #[test]
     fn random_blocks_give_fixed_symmetric_semidefinite_actions() {
         for seed in [7, 11] {
@@ -908,7 +1079,7 @@ mod tests {
             let n = b.levels;
             let labels = labels(&b);
             let mut m = solve(&b);
-            assert!(m.preconditioner.hierarchy().levels().len() > 1);
+            assert!(m.core.preconditioner.hierarchy().levels().len() > 1);
             let mut rng = Rng(seed + 100);
             let width = 6;
             let r: Vec<f64> = (0..n * width).map(|_| rng.uniform() - 0.3).collect();
@@ -991,20 +1162,24 @@ mod tests {
         let mut m = CmgLocal::build(&b, graph, NEVER, true, None)
             .unwrap()
             .expect("solve");
-        assert!(m.preconditioner.retained_bytes() as u128 <= peak - map);
+        assert!(m.core.preconditioner.retained_bytes() as u128 <= peak - map);
         let core = m.bytes();
-        let extra = m.apply_bytes(3).unwrap();
-        m.reserve(3).unwrap();
+        let extra = m.apply_bytes(3, 1).unwrap();
+        m.reserve(3, 1).unwrap();
         assert_eq!(m.bytes(), core + extra);
         let mut rng = Rng(1);
         let r: Vec<f64> = (0..b.levels * 6).map(|_| rng.uniform() - 0.5).collect();
         let expected = apply(&mut m, &r, 6);
+        // Lane groups add exactly their admitted bytes.
+        m.reserve(8, 3).unwrap();
+        assert_eq!(m.bytes(), core + m.apply_bytes(8, 3).unwrap());
+        assert_eq!(apply(&mut m, &r, 6), expected);
         for lanes in [1, 3, 4, 8] {
             let admitted = |room| CmgLocal::admit(&b, lanes, room, Some(NEVER), None).unwrap();
             let Admitted::Solve(mut m) = admitted(None) else {
                 panic!("no CMG solve");
             };
-            assert_eq!(m.columns, lanes.min(MAX_COLUMNS));
+            assert_eq!(lanes_of(&m), lanes.min(MAX_COLUMNS));
             // Lanes per CMG call do not change the bits.
             assert_eq!(apply(&mut m, &r, 6), expected);
             let charge = m.bytes();
@@ -1046,8 +1221,8 @@ mod tests {
         let b = block(n + 5, &segments);
         let labels = labels(&b);
         let mut m = solve(&b);
-        assert_eq!(m.vertices, n + 3);
-        assert!(m.preconditioner.terminal_factor().is_some());
+        assert_eq!(m.core.vertices, n + 3);
+        assert!(m.core.preconditioner.terminal_factor().is_some());
         for _ in 0..3 {
             let r: Vec<f64> = (0..n + 5).map(|_| rng.uniform() - 0.5).collect();
             let z = apply(&mut m, &r, 1);
@@ -1132,7 +1307,7 @@ mod tests {
             }
         });
         let mut m = solve(&b);
-        assert!(m.preconditioner.hierarchy().levels().len() > 1);
+        assert!(m.core.preconditioner.hierarchy().levels().len() > 1);
         let cmg = pcg(&b, &rhs, &mut |r, z| m.apply(r, z, 1, None).unwrap());
         eprintln!(
             "chain of {} levels: Jacobi PCG {jacobi} iterations, CMG PCG {cmg}",
