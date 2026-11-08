@@ -1,6 +1,15 @@
 mod finite;
 mod one_shot;
 mod raw_moment_bands;
+mod reductions;
+
+#[cfg(test)]
+use reductions::weighted_mean_with_scale;
+pub(crate) use reductions::{any_chunk, ordered_chunk_reduce};
+use reductions::{
+    mean_chunk_maximum, mean_chunk_rows, weighted_mean_by, weighted_mean_by_pair,
+    weighted_mean_pair_with_scales, weighted_mean_with_bound, MeanMaximum, MEAN_ROWS,
+};
 
 use crate::data::{DenseMatrix, PreparedWeights, WeightKind};
 use crate::error::{allocation, invalid_argument, invalid_data, ErrorCode, FeregError, Result};
@@ -719,65 +728,6 @@ pub(super) struct SystemFitReservation;
 const PARALLEL_REDUCTION_CHUNK_ROWS: usize = 16_384;
 const FUSED_MOMENT_MAX_COLUMNS: usize = 64;
 const FUSED_MOMENT_MAX_BLOCKS: usize = 64;
-
-/// Whether `predicate` holds for any fixed chunk of `values`: on the installed
-/// team inside a worker pool, serially (the same predicate) outside one, so a
-/// caller outside the estimation pool never injects into a global pool.
-pub(crate) fn any_chunk<T: Sync>(
-    values: &[T],
-    chunk: usize,
-    predicate: impl Fn(&[T]) -> bool + Sync + Send,
-) -> bool {
-    let chunk = chunk.max(1);
-    if rayon::current_thread_index().is_some() {
-        values.par_chunks(chunk).any(predicate)
-    } else {
-        values.chunks(chunk).any(predicate)
-    }
-}
-
-/// Chunk results held on the stack by one round of `ordered_chunk_reduce`.
-const ORDERED_ROUND_CHUNKS: usize = 64;
-
-/// Evaluate `leaf(chunk)` for every chunk in `0..chunks` and hand each result
-/// to `merge` in chunk order: the leaves, their order and the merge sequence
-/// of collecting every result into a vector first, without any heap
-/// allocation. Rounds of up to 64 chunks run on the installed team (serially,
-/// with the identical leaves, outside a worker pool); `merge` stops at its
-/// first error, which is the first error in chunk order.
-pub(crate) fn ordered_chunk_reduce<T, L, M>(chunks: usize, leaf: L, mut merge: M) -> Result<()>
-where
-    T: Send,
-    L: Fn(usize) -> T + Sync,
-    M: FnMut(T) -> Result<()>,
-{
-    let parallel = rayon::current_thread_index().is_some();
-    let mut start = 0;
-    while start < chunks {
-        let count = (chunks - start).min(ORDERED_ROUND_CHUNKS);
-        let mut slots: [Option<T>; ORDERED_ROUND_CHUNKS] = std::array::from_fn(|_| None);
-        if parallel && count > 1 {
-            slots[..count]
-                .par_iter_mut()
-                .with_max_len(1)
-                .enumerate()
-                .for_each(|(offset, slot)| *slot = Some(leaf(start + offset)));
-        } else {
-            for (offset, slot) in slots[..count].iter_mut().enumerate() {
-                *slot = Some(leaf(start + offset));
-            }
-        }
-        for slot in &mut slots[..count] {
-            merge(
-                slot.take().ok_or_else(|| {
-                    invalid_argument("ordered chunk reduction lost a leaf result")
-                })?,
-            )?;
-        }
-        start += count;
-    }
-    Ok(())
-}
 
 struct PhaseTrace {
     enabled: bool,
@@ -1742,6 +1692,38 @@ fn fit_projection_only_internal<P: PreparedOlsFitView + ?Sized, R: FitReservatio
         0.0_f64,
         "unable to reserve prepared projection fitted values",
     )?;
+    let reconstruction_relative_infinity_norm =
+        reconstruct_projection(frame.response(), &residuals, &mut fitted)?;
+    let reconstruction_certificate = PreparedLinearProjectionReconstructionCertificate {
+        relative_infinity_norm: reconstruction_relative_infinity_norm,
+        passed: reconstruction_relative_infinity_norm <= 64.0 * f64::EPSILON,
+    };
+    let projection = CertifiedPreparedLinearProjection {
+        coefficients,
+        kept_generated_columns: qr.kept,
+        dropped_generated_columns: qr.dropped,
+        finite_rank: qr.rank,
+        rank_certificate: qr.certificate,
+        score_certificate,
+        absorption_report,
+        residual_absorption_report,
+        fitted,
+        residuals,
+        reconstruction_certificate,
+    };
+    if projection.certified() {
+        Ok(projection)
+    } else {
+        Err(invalid_data(
+            "prepared projection-only solve did not certify",
+        ))
+    }
+}
+
+/// Fitted values `response - residual` of a projection and the relative
+/// infinity norm of their reconstruction error, failing on any nonfinite
+/// fitted value or ratio.
+fn reconstruct_projection(response: &[f64], residuals: &[f64], fitted: &mut [f64]) -> Result<f64> {
     let mut reconstruction_relative_infinity_norm = 0.0_f64;
     let chunked = residuals.len() == fitted.len();
     if chunked {
@@ -1749,7 +1731,6 @@ fn fit_projection_only_internal<P: PreparedOlsFitView + ?Sized, R: FitReservatio
         // ratio is ignored in every order), and any nonfinite fitted value or
         // infinite ratio fails exactly as the serial scan does.
         const ROWS: usize = 1 << 14;
-        let response = frame.response();
         let reconstruct = |(chunk, fitted): (usize, &mut [f64])| {
             let start = chunk * ROWS;
             let mut maximum = 0.0_f64;
@@ -1787,44 +1768,18 @@ fn fit_projection_only_internal<P: PreparedOlsFitView + ?Sized, R: FitReservatio
         reconstruction_relative_infinity_norm = maximum;
     }
     for row in (0..fitted.len()).filter(|_| !chunked) {
-        fitted[row] = frame.response()[row] - residuals[row];
+        fitted[row] = response[row] - residuals[row];
         let reconstructed = fitted[row] + residuals[row];
-        let scale = frame.response()[row]
-            .abs()
-            .max(reconstructed.abs())
-            .max(1.0);
+        let scale = response[row].abs().max(reconstructed.abs()).max(1.0);
         reconstruction_relative_infinity_norm = reconstruction_relative_infinity_norm
-            .max((reconstructed - frame.response()[row]).abs() / scale);
+            .max((reconstructed - response[row]).abs() / scale);
         if !fitted[row].is_finite() || !reconstruction_relative_infinity_norm.is_finite() {
             return Err(invalid_data(
                 "prepared projection reconstruction is not finite",
             ));
         }
     }
-    let reconstruction_certificate = PreparedLinearProjectionReconstructionCertificate {
-        relative_infinity_norm: reconstruction_relative_infinity_norm,
-        passed: reconstruction_relative_infinity_norm <= 64.0 * f64::EPSILON,
-    };
-    let projection = CertifiedPreparedLinearProjection {
-        coefficients,
-        kept_generated_columns: qr.kept,
-        dropped_generated_columns: qr.dropped,
-        finite_rank: qr.rank,
-        rank_certificate: qr.certificate,
-        score_certificate,
-        absorption_report,
-        residual_absorption_report,
-        fitted,
-        residuals,
-        reconstruction_certificate,
-    };
-    if projection.certified() {
-        Ok(projection)
-    } else {
-        Err(invalid_data(
-            "prepared projection-only solve did not certify",
-        ))
-    }
+    Ok(reconstruction_relative_infinity_norm)
 }
 
 #[cfg(test)]
@@ -2299,22 +2254,12 @@ fn build_packed_score_means<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         }
         None => rayon::iter::Either::Right((0..chunks).into_par_iter().map(|_| None)),
     };
-    // Bound numeric sources with a small width resolve each column's offset,
-    // scale and raw slice once; every partial receives the same terms in the
-    // same row order as the general loop below (unit weights are exactly one).
-    const PLANNED_COLUMNS: usize = 16;
-    let width = generated_columns.len();
-    let planned = numeric_columns.filter(|columns| {
-        width <= PLANNED_COLUMNS
-            && within.ncols() > 0
-            && generated_columns.iter().all(|&generated| {
-                generated + 1 < within.ncols()
-                    && generated < reference_mean_scales.len()
-                    && columns
-                        .get(generated)
-                        .is_some_and(|source| source.is_none_or(|values| values.len() == nrows))
-            })
-    });
+    let planned = planned_score_mean_columns(
+        numeric_columns,
+        within,
+        reference_mean_scales,
+        generated_columns,
+    );
     value_chunks
         .zip(partials.par_chunks_mut(partial_stride))
         .enumerate()
@@ -2322,48 +2267,18 @@ fn build_packed_score_means<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
             let start = chunk * rows_per_chunk;
             let chunk_rows = rows_per_chunk.min(nrows - start);
             if let Some(columns) = planned {
-                let mut offsets = [0_usize; PLANNED_COLUMNS];
-                let mut scales = [0.0_f64; PLANNED_COLUMNS];
-                let mut sources: [Option<&[f64]>; PLANNED_COLUMNS] = [None; PLANNED_COLUMNS];
-                for (cached, &generated) in generated_columns.iter().enumerate() {
-                    offsets[cached] = generated + 1;
-                    scales[cached] = reference_mean_scales[generated];
-                    sources[cached] = columns[generated];
-                }
-                let mut sums = [0.0_f64; PLANNED_COLUMNS + 1];
-                sums[..=width].copy_from_slice(&partial[..=width]);
-                let unit = weights.values.is_none();
-                let stride = within.ncols();
-                let stored_rows = &within.as_slice()[start * stride..(start + chunk_rows) * stride];
-                for (local_row, stored) in stored_rows.chunks_exact(stride).enumerate() {
-                    let row = start + local_row;
-                    let weight = if unit { 1.0 } else { weights.value(row)? };
-                    sums[0] += weight;
-                    for cached in 0..width {
-                        let value = stored[offsets[cached]];
-                        if !value.is_finite() {
-                            return Err(invalid_data(
-                                "prepared OLS fast score cache contains a nonfinite value",
-                            ));
-                        }
-                        if let Some(values) = value_chunk.as_deref_mut() {
-                            values[local_row * width + cached] = value;
-                        }
-                        let scale = scales[cached];
-                        if scale > 0.0 {
-                            let raw_value = sources[cached].map_or(1.0, |source| source[row]);
-                            sums[cached + 1] += weight * (raw_value / scale);
-                        }
-                    }
-                }
-                partial[..=width].copy_from_slice(&sums[..=width]);
-                return if partial.iter().all(|value| value.is_finite()) {
-                    Ok(())
-                } else {
-                    Err(invalid_data(
-                        "prepared OLS fast score cache partial is not finite",
-                    ))
-                };
+                return planned_score_mean_chunk(
+                    PlannedScoreMeanInputs {
+                        within,
+                        reference_mean_scales,
+                        generated_columns,
+                        columns,
+                        weights,
+                    },
+                    start..start + chunk_rows,
+                    value_chunk,
+                    partial,
+                );
             }
             for local_row in 0..chunk_rows {
                 let row = start + local_row;
@@ -2399,6 +2314,25 @@ fn build_packed_score_means<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
             }
         })?;
 
+    merge_packed_score_means(
+        &partials,
+        partial_stride,
+        generated_columns,
+        reference_mean_scales,
+        &mut means,
+    )?;
+    Ok(means)
+}
+
+/// The compensated chunk-order merge of packed score-mean partials: the
+/// weight denominator, then each column's normalized sum rescaled.
+fn merge_packed_score_means(
+    partials: &[f64],
+    partial_stride: usize,
+    generated_columns: &[usize],
+    reference_mean_scales: &[f64],
+    means: &mut [f64],
+) -> Result<()> {
     let mut denominator = 0.0_f64;
     let mut denominator_correction = 0.0_f64;
     for partial in partials.chunks_exact(partial_stride) {
@@ -2428,7 +2362,105 @@ fn build_packed_score_means<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         }
         means[cached] = mean;
     }
-    Ok(means)
+    Ok(())
+}
+
+/// Widest bound numeric design whose packed score means use the planned chunk.
+const PLANNED_SCORE_MEAN_COLUMNS: usize = 16;
+
+/// Bound numeric sources with a small width, every column aligned with the
+/// projected rows: the planned chunk resolves each column once per chunk.
+fn planned_score_mean_columns<'a>(
+    numeric_columns: Option<&'a [Option<&'a [f64]>]>,
+    within: &DenseMatrix,
+    reference_mean_scales: &[f64],
+    generated_columns: &[usize],
+) -> Option<&'a [Option<&'a [f64]>]> {
+    let nrows = within.nrows();
+    numeric_columns.filter(|columns| {
+        generated_columns.len() <= PLANNED_SCORE_MEAN_COLUMNS
+            && within.ncols() > 0
+            && generated_columns.iter().all(|&generated| {
+                generated + 1 < within.ncols()
+                    && generated < reference_mean_scales.len()
+                    && columns
+                        .get(generated)
+                        .is_some_and(|source| source.is_none_or(|values| values.len() == nrows))
+            })
+    })
+}
+
+#[derive(Clone, Copy)]
+struct PlannedScoreMeanInputs<'a> {
+    within: &'a DenseMatrix,
+    reference_mean_scales: &'a [f64],
+    generated_columns: &'a [usize],
+    columns: &'a [Option<&'a [f64]>],
+    weights: NormalizedWeights<'a>,
+}
+
+/// One chunk of `build_packed_score_means` for planned columns: each column's
+/// offset, scale and raw slice are resolved once, and every partial receives
+/// the same terms in the same row order as the general loop (unit weights are
+/// exactly one), with the same errors.
+fn planned_score_mean_chunk(
+    inputs: PlannedScoreMeanInputs<'_>,
+    rows: std::ops::Range<usize>,
+    mut value_chunk: Option<&mut [f64]>,
+    partial: &mut [f64],
+) -> Result<()> {
+    let PlannedScoreMeanInputs {
+        within,
+        reference_mean_scales,
+        generated_columns,
+        columns,
+        weights,
+    } = inputs;
+    let width = generated_columns.len();
+    let mut offsets = [0_usize; PLANNED_SCORE_MEAN_COLUMNS];
+    let mut scales = [0.0_f64; PLANNED_SCORE_MEAN_COLUMNS];
+    let mut sources: [Option<&[f64]>; PLANNED_SCORE_MEAN_COLUMNS] =
+        [None; PLANNED_SCORE_MEAN_COLUMNS];
+    for (cached, &generated) in generated_columns.iter().enumerate() {
+        offsets[cached] = generated + 1;
+        scales[cached] = reference_mean_scales[generated];
+        sources[cached] = columns[generated];
+    }
+    let mut sums = [0.0_f64; PLANNED_SCORE_MEAN_COLUMNS + 1];
+    sums[..=width].copy_from_slice(&partial[..=width]);
+    let unit = weights.values.is_none();
+    let stride = within.ncols();
+    let start = rows.start;
+    let stored_rows = &within.as_slice()[rows.start * stride..rows.end * stride];
+    for (local_row, stored) in stored_rows.chunks_exact(stride).enumerate() {
+        let row = start + local_row;
+        let weight = if unit { 1.0 } else { weights.value(row)? };
+        sums[0] += weight;
+        for cached in 0..width {
+            let value = stored[offsets[cached]];
+            if !value.is_finite() {
+                return Err(invalid_data(
+                    "prepared OLS fast score cache contains a nonfinite value",
+                ));
+            }
+            if let Some(values) = value_chunk.as_deref_mut() {
+                values[local_row * width + cached] = value;
+            }
+            let scale = scales[cached];
+            if scale > 0.0 {
+                let raw_value = sources[cached].map_or(1.0, |source| source[row]);
+                sums[cached + 1] += weight * (raw_value / scale);
+            }
+        }
+    }
+    partial[..=width].copy_from_slice(&sums[..=width]);
+    if partial.iter().all(|value| value.is_finite()) {
+        Ok(())
+    } else {
+        Err(invalid_data(
+            "prepared OLS fast score cache partial is not finite",
+        ))
+    }
 }
 
 enum SelectedScoreMeans<'a> {
@@ -3556,143 +3588,16 @@ fn finalize_reported_bread_and_intercept<P: PreparedOlsFitView + ?Sized, R: FitR
             }
         }
 
-        // Fast mode already owns the reconstructed within residual from the QR
-        // state. A caller-built raw residual (the low-memory seed, or the
-        // dense route's independent vector) supplies the mean directly;
-        // otherwise the mean is derived rowwise without retaining a vector.
-        // Without cached moments the outcome mean below is a second weighted
-        // mean on the same rows: each route computes it in the same traversals
-        // as the residual mean (identical values and errors, reported in the
-        // original order).
-        let response_value = |row: usize| {
-            response
-                .get(row)
-                .copied()
-                .ok_or_else(|| invalid_argument("prepared OLS weighted-mean row is out of range"))
-        };
-        let mut paired_outcome_mean = None;
-        let raw_residual_mean = if let Some(residuals) = raw_residuals.as_ref() {
-            if raw_moments.is_none() {
-                let values = residuals.values();
-                let (residual_mean, outcome_mean) = weighted_mean_by_pair(
-                    values.len(),
-                    weights,
-                    |row| {
-                        values.get(row).copied().ok_or_else(|| {
-                            invalid_argument("prepared OLS weighted-mean row is out of range")
-                        })
-                    },
-                    response_value,
-                );
-                paired_outcome_mean = Some(outcome_mean);
-                residual_mean?
-            } else {
-                weighted_mean_slice(residuals.values(), weights)?
-            }
-        } else if let Some(predictor) = current_frame_predictor {
-            let residual = |row: usize| Ok(response[row] - predictor[row]);
-            if raw_moments.is_none() {
-                let (residual_mean, outcome_mean) =
-                    weighted_mean_by_pair(response.len(), weights, residual, response_value);
-                paired_outcome_mean = Some(outcome_mean);
-                residual_mean?
-            } else {
-                weighted_mean_by(response.len(), weights, residual)?
-            }
-        } else if let Some(cache) = raw_moments {
-            cached_raw_residual_mean(prepared, qr, weights, cache)?
-        } else {
-            let numeric = super::prepared_rhs::NumericOlsColumns::bind_residual_mean(
-                prepared.fit_model(),
-                prepared.fit_sample(),
-            )?;
-            // The already scanned raw column maxima bound the residual. As in
-            // the raw-moment cache route, this removes a residual maximum pass
-            // while retaining fresh rowwise residuals and compensated sums.
-            let bounded = raw_column_scales.filter(|scales| {
-                numeric.is_some() && scales.len() == qr.generated_coefficients.len()
-            });
-            // The outcome mean's own maximum scan (`weighted_mean_by`), which
-            // for a finite response is also the residual bound's response term.
-            let outcome_scale = bounded.map(|_| {
-                let mut maximum = MeanMaximum::default();
-                ordered_chunk_reduce(
-                    response.len().div_ceil(MEAN_ROWS),
-                    |chunk| {
-                        mean_chunk_maximum(mean_chunk_rows(chunk, response.len()), &response_value)
-                    },
-                    |part| {
-                        maximum.push(part);
-                        Ok(())
-                    },
-                )
-                .and_then(|()| maximum.finish())
-            });
-            let bound = bounded
-                .map(|scales| {
-                    // The largest absolute response (an order-independent
-                    // maximum; NaN-free responses equal the outcome scan).
-                    let mut scale = match outcome_scale {
-                        Some(Ok(maximum)) => maximum,
-                        _ => response
-                            .iter()
-                            .copied()
-                            .map(f64::abs)
-                            .fold(0.0_f64, f64::max),
-                    };
-                    for (coefficient, &column_scale) in qr.generated_coefficients.iter().zip(scales)
-                    {
-                        if let Some(coefficient) = coefficient {
-                            scale += coefficient.abs() * column_scale;
-                        }
-                    }
-                    scale
-                })
-                .filter(|scale| scale.is_finite());
-            let residual = |row| {
-                if let Some(columns) = numeric.as_ref() {
-                    return columns.residual_at(&qr.generated_coefficients, row, response[row]);
-                }
-                let mut value = response[row];
-                for (column, coefficient) in qr.generated_coefficients.iter().enumerate() {
-                    if let Some(coefficient) = coefficient {
-                        value =
-                            (-*coefficient).mul_add(prepared.fit_column_value(column, row)?, value);
-                    }
-                }
-                if value.is_finite() {
-                    Ok(value)
-                } else {
-                    Err(invalid_data(
-                        "prepared OLS raw regression residual is not finite",
-                    ))
-                }
-            };
-            let nrows = prepared.fit_sample().n_active();
-            match (bound, outcome_scale) {
-                (Some(scale), Some(Ok(outcome_scale))) if nrows == response.len() => {
-                    // `weighted_mean_with_bound` and the outcome mean's sum
-                    // traversal together; an underflowing bound recovers the
-                    // residual's own maximum scan exactly as before.
-                    let mut needs_rescale = false;
-                    let (residual_mean, outcome_mean) = weighted_mean_pair_with_scales(
-                        nrows,
-                        weights,
-                        (&residual, scale, Some(&mut needs_rescale)),
-                        (&response_value, outcome_scale),
-                    );
-                    paired_outcome_mean = Some(outcome_mean);
-                    let residual_mean = residual_mean?;
-                    if needs_rescale {
-                        weighted_mean_by(nrows, weights, residual)?
-                    } else {
-                        residual_mean
-                    }
-                }
-                (Some(scale), _) => weighted_mean_with_bound(nrows, weights, residual, scale)?,
-                (None, _) => weighted_mean_by(nrows, weights, residual)?,
-            }
-        };
+        let (raw_residual_mean, paired_outcome_mean) = raw_residual_and_outcome_means(
+            prepared,
+            response,
+            qr,
+            raw_residuals.as_ref(),
+            weights,
+            raw_moments,
+            raw_column_scales,
+            current_frame_predictor,
+        )?;
         let mut reported_intercept = raw_residual_mean;
         if perturbations.reported_intercept {
             reported_intercept += 0.25;
@@ -3889,6 +3794,156 @@ fn finalize_reported_bread_and_intercept<P: PreparedOlsFitView + ?Sized, R: FitR
             passed,
         },
     })
+}
+
+/// The raw (pre-intercept) residual mean of the reported-intercept
+/// finalizer and, when no moment cache supplies the outcome mean, that mean
+/// from the same traversals. The caller inspects the second result only
+/// where it previously computed the outcome mean, keeping the error order.
+#[allow(clippy::too_many_arguments)]
+fn raw_residual_and_outcome_means<P: PreparedOlsFitView + ?Sized>(
+    prepared: &P,
+    response: &[f64],
+    qr: &FiniteFit,
+    raw_residuals: Option<&RawResiduals<'_>>,
+    weights: NormalizedWeights<'_>,
+    raw_moments: Option<&RawMomentCache>,
+    raw_column_scales: Option<&[f64]>,
+    current_frame_predictor: Option<&[f64]>,
+) -> Result<(f64, Option<Result<f64>>)> {
+    // Fast mode already owns the reconstructed within residual from the QR
+    // state. A caller-built raw residual (the low-memory seed, or the
+    // dense route's independent vector) supplies the mean directly;
+    // otherwise the mean is derived rowwise without retaining a vector.
+    // Without cached moments the outcome mean below is a second weighted
+    // mean on the same rows: each route computes it in the same traversals
+    // as the residual mean (identical values and errors, reported in the
+    // original order).
+    let response_value = |row: usize| {
+        response
+            .get(row)
+            .copied()
+            .ok_or_else(|| invalid_argument("prepared OLS weighted-mean row is out of range"))
+    };
+    let mut paired_outcome_mean = None;
+    let raw_residual_mean = if let Some(residuals) = raw_residuals.as_ref() {
+        if raw_moments.is_none() {
+            let values = residuals.values();
+            let (residual_mean, outcome_mean) = weighted_mean_by_pair(
+                values.len(),
+                weights,
+                |row| {
+                    values.get(row).copied().ok_or_else(|| {
+                        invalid_argument("prepared OLS weighted-mean row is out of range")
+                    })
+                },
+                response_value,
+            );
+            paired_outcome_mean = Some(outcome_mean);
+            residual_mean?
+        } else {
+            weighted_mean_slice(residuals.values(), weights)?
+        }
+    } else if let Some(predictor) = current_frame_predictor {
+        let residual = |row: usize| Ok(response[row] - predictor[row]);
+        if raw_moments.is_none() {
+            let (residual_mean, outcome_mean) =
+                weighted_mean_by_pair(response.len(), weights, residual, response_value);
+            paired_outcome_mean = Some(outcome_mean);
+            residual_mean?
+        } else {
+            weighted_mean_by(response.len(), weights, residual)?
+        }
+    } else if let Some(cache) = raw_moments {
+        cached_raw_residual_mean(prepared, qr, weights, cache)?
+    } else {
+        let numeric = super::prepared_rhs::NumericOlsColumns::bind_residual_mean(
+            prepared.fit_model(),
+            prepared.fit_sample(),
+        )?;
+        // The already scanned raw column maxima bound the residual. As in
+        // the raw-moment cache route, this removes a residual maximum pass
+        // while retaining fresh rowwise residuals and compensated sums.
+        let bounded = raw_column_scales
+            .filter(|scales| numeric.is_some() && scales.len() == qr.generated_coefficients.len());
+        // The outcome mean's own maximum scan (`weighted_mean_by`), which
+        // for a finite response is also the residual bound's response term.
+        let outcome_scale = bounded.map(|_| {
+            let mut maximum = MeanMaximum::default();
+            ordered_chunk_reduce(
+                response.len().div_ceil(MEAN_ROWS),
+                |chunk| mean_chunk_maximum(mean_chunk_rows(chunk, response.len()), &response_value),
+                |part| {
+                    maximum.push(part);
+                    Ok(())
+                },
+            )
+            .and_then(|()| maximum.finish())
+        });
+        let bound = bounded
+            .map(|scales| {
+                // The largest absolute response (an order-independent
+                // maximum; NaN-free responses equal the outcome scan).
+                let mut scale = match outcome_scale {
+                    Some(Ok(maximum)) => maximum,
+                    _ => response
+                        .iter()
+                        .copied()
+                        .map(f64::abs)
+                        .fold(0.0_f64, f64::max),
+                };
+                for (coefficient, &column_scale) in qr.generated_coefficients.iter().zip(scales) {
+                    if let Some(coefficient) = coefficient {
+                        scale += coefficient.abs() * column_scale;
+                    }
+                }
+                scale
+            })
+            .filter(|scale| scale.is_finite());
+        let residual = |row| {
+            if let Some(columns) = numeric.as_ref() {
+                return columns.residual_at(&qr.generated_coefficients, row, response[row]);
+            }
+            let mut value = response[row];
+            for (column, coefficient) in qr.generated_coefficients.iter().enumerate() {
+                if let Some(coefficient) = coefficient {
+                    value = (-*coefficient).mul_add(prepared.fit_column_value(column, row)?, value);
+                }
+            }
+            if value.is_finite() {
+                Ok(value)
+            } else {
+                Err(invalid_data(
+                    "prepared OLS raw regression residual is not finite",
+                ))
+            }
+        };
+        let nrows = prepared.fit_sample().n_active();
+        match (bound, outcome_scale) {
+            (Some(scale), Some(Ok(outcome_scale))) if nrows == response.len() => {
+                // `weighted_mean_with_bound` and the outcome mean's sum
+                // traversal together; an underflowing bound recovers the
+                // residual's own maximum scan exactly as before.
+                let mut needs_rescale = false;
+                let (residual_mean, outcome_mean) = weighted_mean_pair_with_scales(
+                    nrows,
+                    weights,
+                    (&residual, scale, Some(&mut needs_rescale)),
+                    (&response_value, outcome_scale),
+                );
+                paired_outcome_mean = Some(outcome_mean);
+                let residual_mean = residual_mean?;
+                if needs_rescale {
+                    weighted_mean_by(nrows, weights, residual)?
+                } else {
+                    residual_mean
+                }
+            }
+            (Some(scale), _) => weighted_mean_with_bound(nrows, weights, residual, scale)?,
+            (None, _) => weighted_mean_by(nrows, weights, residual)?,
+        }
+    };
+    Ok((raw_residual_mean, paired_outcome_mean))
 }
 
 fn reported_inverse_relative_infinity_norm(
@@ -4406,500 +4461,6 @@ fn raw_residual_at<P: PreparedOlsFitView + ?Sized>(
         Err(invalid_data(
             "prepared OLS raw regression residual is not finite",
         ))
-    }
-}
-
-/// Rows per fixed chunk of the parallel weighted means; chunk boundaries
-/// depend only on the row count.
-const MEAN_ROWS: usize = 1 << 14;
-
-fn weighted_mean_by<F>(nrows: usize, weights: NormalizedWeights<'_>, value: F) -> Result<f64>
-where
-    F: Fn(usize) -> Result<f64> + Sync,
-{
-    if nrows == 0 {
-        return Err(invalid_argument(
-            "prepared OLS weighted mean requires a nonempty sample",
-        ));
-    }
-    let mut maximum = MeanMaximum::default();
-    ordered_chunk_reduce(
-        nrows.div_ceil(MEAN_ROWS),
-        |chunk| mean_chunk_maximum(mean_chunk_rows(chunk, nrows), &value),
-        |part| {
-            maximum.push(part);
-            Ok(())
-        },
-    )?;
-    let value_scale = maximum.finish()?;
-    weighted_mean_with_scale(nrows, weights, &value, value_scale, None)
-}
-
-/// `weighted_mean_by` for two value sequences on the same rows and weights,
-/// in one maximum traversal and one sum traversal. Each result is the
-/// identical value or error its own `weighted_mean_by` returns; callers keep
-/// their original error order by inspecting the results in that order.
-fn weighted_mean_by_pair<F, G>(
-    nrows: usize,
-    weights: NormalizedWeights<'_>,
-    first: F,
-    second: G,
-) -> (Result<f64>, Result<f64>)
-where
-    F: Fn(usize) -> Result<f64> + Sync,
-    G: Fn(usize) -> Result<f64> + Sync,
-{
-    if nrows == 0 {
-        let error = || {
-            Err(invalid_argument(
-                "prepared OLS weighted mean requires a nonempty sample",
-            ))
-        };
-        return (error(), error());
-    }
-    let (mut first_maximum, mut second_maximum) = (MeanMaximum::default(), MeanMaximum::default());
-    let reduced = ordered_chunk_reduce(
-        nrows.div_ceil(MEAN_ROWS),
-        |chunk| {
-            let rows = mean_chunk_rows(chunk, nrows);
-            (
-                mean_chunk_maximum(rows.clone(), &first),
-                mean_chunk_maximum(rows, &second),
-            )
-        },
-        |(first_part, second_part)| {
-            first_maximum.push(first_part);
-            second_maximum.push(second_part);
-            Ok(())
-        },
-    );
-    if let Err(error) = reduced {
-        return (Err(error.clone()), Err(error));
-    }
-    let scales = (first_maximum.finish(), second_maximum.finish());
-    match scales {
-        (Ok(first_scale), Ok(second_scale)) => weighted_mean_pair_with_scales(
-            nrows,
-            weights,
-            (&first, first_scale, None),
-            (&second, second_scale),
-        ),
-        (first_scale, second_scale) => (
-            first_scale
-                .and_then(|scale| weighted_mean_with_scale(nrows, weights, &first, scale, None)),
-            second_scale
-                .and_then(|scale| weighted_mean_with_scale(nrows, weights, &second, scale, None)),
-        ),
-    }
-}
-
-const fn mean_chunk_rows(chunk: usize, nrows: usize) -> std::ops::Range<usize> {
-    let start = chunk * MEAN_ROWS;
-    let end = start + MEAN_ROWS;
-    start..if end < nrows { end } else { nrows }
-}
-
-fn mean_chunk_maximum<F>(rows: std::ops::Range<usize>, value: &F) -> Result<f64>
-where
-    F: Fn(usize) -> Result<f64>,
-{
-    let mut scale = 0.0_f64;
-    for row in rows {
-        let current = value(row)?;
-        if !current.is_finite() {
-            return Err(invalid_data(
-                "prepared OLS weighted-mean value is not finite",
-            ));
-        }
-        scale = scale.max(current.abs());
-    }
-    Ok(scale)
-}
-
-/// The ordered maximum merge of `weighted_mean_by`: the largest chunk
-/// maximum, or the first chunk error in chunk order.
-#[derive(Default)]
-struct MeanMaximum {
-    value_scale: f64,
-    error: Option<FeregError>,
-}
-
-impl MeanMaximum {
-    fn push(&mut self, part: Result<f64>) {
-        if self.error.is_none() {
-            match part {
-                Ok(maximum) => self.value_scale = self.value_scale.max(maximum),
-                Err(error) => self.error = Some(error),
-            }
-        }
-    }
-
-    fn finish(self) -> Result<f64> {
-        match self.error {
-            Some(error) => Err(error),
-            None => Ok(self.value_scale),
-        }
-    }
-}
-
-fn weighted_mean_with_bound<F>(
-    nrows: usize,
-    weights: NormalizedWeights<'_>,
-    value: F,
-    bound: f64,
-) -> Result<f64>
-where
-    F: Fn(usize) -> Result<f64> + Sync,
-{
-    let mut needs_rescale = false;
-    let mean = weighted_mean_with_scale(nrows, weights, &value, bound, Some(&mut needs_rescale))?;
-    // Cancellation can make a valid upper bound much larger than the actual
-    // residual. Recover the original maximum scan if scaling loses precision
-    // to subnormal arithmetic; the optimization never just discards that tail.
-    if needs_rescale {
-        weighted_mean_by(nrows, weights, value)
-    } else {
-        Ok(mean)
-    }
-}
-
-/// One chunk's numerator, numerator correction, denominator, denominator
-/// correction and underflow flag.
-type MeanPartial = (f64, f64, f64, f64, bool);
-
-/// Compensated scaled weighted mean: each fixed row chunk keeps its own
-/// Neumaier sums, merged in chunk order with the same compensation.
-fn weighted_mean_with_scale<F>(
-    nrows: usize,
-    weights: NormalizedWeights<'_>,
-    value: F,
-    value_scale: f64,
-    underflow: Option<&mut bool>,
-) -> Result<f64>
-where
-    F: Fn(usize) -> Result<f64> + Sync,
-{
-    if value_scale == 0.0 {
-        return Ok(0.0);
-    }
-    // Unit mass sums exactly to N through 2^53.
-    let unit = weights.values.is_none() && (nrows as u128) <= (1_u128 << 53);
-    let mut merged = MeanMerge::default();
-    ordered_chunk_reduce(
-        nrows.div_ceil(MEAN_ROWS),
-        |chunk| {
-            let rows = mean_chunk_rows(chunk, nrows);
-            unchecked_mean_chunk(rows.clone(), unit, weights, &value, value_scale).map_or_else(
-                || checked_mean_chunk(rows, unit, weights, &value, value_scale),
-                Ok,
-            )
-        },
-        |part| {
-            merged.push(part);
-            Ok(())
-        },
-    )?;
-    merged.finish(nrows, unit, value_scale, underflow)
-}
-
-/// Two `weighted_mean_with_scale` results from one traversal of the rows:
-/// the values, terms and Neumaier updates of each are those of its own call,
-/// and the weight denominator (identical in both) is accumulated once. A chunk
-/// that would replay in its own call replays the same checked loop here.
-fn weighted_mean_pair_with_scales<F, G>(
-    nrows: usize,
-    weights: NormalizedWeights<'_>,
-    first: (&F, f64, Option<&mut bool>),
-    second: (&G, f64),
-) -> (Result<f64>, Result<f64>)
-where
-    F: Fn(usize) -> Result<f64> + Sync,
-    G: Fn(usize) -> Result<f64> + Sync,
-{
-    let (first, first_scale, underflow) = first;
-    let (second, second_scale) = second;
-    if first_scale == 0.0 || second_scale == 0.0 {
-        return (
-            weighted_mean_with_scale(nrows, weights, first, first_scale, underflow),
-            weighted_mean_with_scale(nrows, weights, second, second_scale, None),
-        );
-    }
-    let unit = weights.values.is_none() && (nrows as u128) <= (1_u128 << 53);
-    let (mut first_merged, mut second_merged) = (MeanMerge::default(), MeanMerge::default());
-    let reduced = ordered_chunk_reduce(
-        nrows.div_ceil(MEAN_ROWS),
-        |chunk| {
-            let rows = mean_chunk_rows(chunk, nrows);
-            let (first_part, second_part) = unchecked_mean_chunk_pair(
-                rows.clone(),
-                unit,
-                weights,
-                (first, first_scale),
-                (second, second_scale),
-            );
-            (
-                first_part.map_or_else(
-                    || checked_mean_chunk(rows.clone(), unit, weights, first, first_scale),
-                    Ok,
-                ),
-                second_part.map_or_else(
-                    || checked_mean_chunk(rows, unit, weights, second, second_scale),
-                    Ok,
-                ),
-            )
-        },
-        |(first_part, second_part)| {
-            first_merged.push(first_part);
-            second_merged.push(second_part);
-            Ok(())
-        },
-    );
-    if let Err(error) = reduced {
-        return (Err(error.clone()), Err(error));
-    }
-    (
-        first_merged.finish(nrows, unit, first_scale, underflow),
-        second_merged.finish(nrows, unit, second_scale, None),
-    )
-}
-
-/// Unchecked compensated sums first (value and weight errors are still
-/// reported in row order by the checked replay); `None` when a term, weight
-/// or sum is not finite, in which case the caller replays the checked loop.
-fn unchecked_mean_chunk<F>(
-    rows: std::ops::Range<usize>,
-    unit: bool,
-    weights: NormalizedWeights<'_>,
-    value: &F,
-    value_scale: f64,
-) -> Option<MeanPartial>
-where
-    F: Fn(usize) -> Result<f64>,
-{
-    let (mut numerator, mut numerator_correction) = (0.0_f64, 0.0_f64);
-    let (mut denominator, mut denominator_correction) = (0.0_f64, 0.0_f64);
-    let mut flag = false;
-    let mut finite = true;
-    for row in rows {
-        let Ok(current) = value(row) else {
-            return None;
-        };
-        if unit {
-            let scaled = current / value_scale;
-            flag |= current != 0.0 && scaled.abs() < f64::MIN_POSITIVE;
-            finite &= scaled.is_finite();
-            neumaier_add(scaled, &mut numerator, &mut numerator_correction);
-        } else {
-            let Ok(weight) = weights.value(row) else {
-                return None;
-            };
-            let scaled = weight * (current / value_scale);
-            flag |= current != 0.0 && scaled.abs() < f64::MIN_POSITIVE;
-            finite &= scaled.is_finite() && weight.is_finite();
-            neumaier_add(scaled, &mut numerator, &mut numerator_correction);
-            neumaier_add(weight, &mut denominator, &mut denominator_correction);
-        }
-    }
-    (finite
-        && [
-            numerator,
-            numerator_correction,
-            denominator,
-            denominator_correction,
-        ]
-        .iter()
-        .all(|value| value.is_finite()))
-    .then_some((
-        numerator,
-        numerator_correction,
-        denominator,
-        denominator_correction,
-        flag,
-    ))
-}
-
-/// `unchecked_mean_chunk` for two sequences sharing one weight lookup and one
-/// denominator accumulation per row; each side is `None` exactly when its own
-/// unchecked chunk would be.
-fn unchecked_mean_chunk_pair<F, G>(
-    rows: std::ops::Range<usize>,
-    unit: bool,
-    weights: NormalizedWeights<'_>,
-    first: (&F, f64),
-    second: (&G, f64),
-) -> (Option<MeanPartial>, Option<MeanPartial>)
-where
-    F: Fn(usize) -> Result<f64>,
-    G: Fn(usize) -> Result<f64>,
-{
-    let ((first, first_scale), (second, second_scale)) = (first, second);
-    let mut sums = [(0.0_f64, 0.0_f64); 2];
-    let (mut denominator, mut denominator_correction) = (0.0_f64, 0.0_f64);
-    let mut flags = [false; 2];
-    let mut finite = [true; 2];
-    for row in rows {
-        let values = [first(row), second(row)];
-        let weight = if unit {
-            1.0
-        } else {
-            match weights.value(row) {
-                Ok(weight) => weight,
-                Err(_) => return (None, None),
-            }
-        };
-        for (side, (current, scale)) in values
-            .into_iter()
-            .zip([first_scale, second_scale])
-            .enumerate()
-        {
-            let Ok(current) = current else {
-                finite[side] = false;
-                continue;
-            };
-            if !finite[side] {
-                continue;
-            }
-            let scaled = if unit {
-                current / scale
-            } else {
-                weight * (current / scale)
-            };
-            flags[side] |= current != 0.0 && scaled.abs() < f64::MIN_POSITIVE;
-            finite[side] &= scaled.is_finite() && weight.is_finite();
-            let (numerator, correction) = &mut sums[side];
-            neumaier_add(scaled, numerator, correction);
-        }
-        if !unit {
-            neumaier_add(weight, &mut denominator, &mut denominator_correction);
-        }
-    }
-    let side = |index: usize| {
-        let (numerator, correction) = sums[index];
-        (finite[index]
-            && [numerator, correction, denominator, denominator_correction]
-                .iter()
-                .all(|value| value.is_finite()))
-        .then_some((
-            numerator,
-            correction,
-            denominator,
-            denominator_correction,
-            flags[index],
-        ))
-    };
-    (side(0), side(1))
-}
-
-fn checked_mean_chunk<F>(
-    rows: std::ops::Range<usize>,
-    unit: bool,
-    weights: NormalizedWeights<'_>,
-    value: &F,
-    value_scale: f64,
-) -> Result<MeanPartial>
-where
-    F: Fn(usize) -> Result<f64>,
-{
-    let (mut numerator, mut numerator_correction) = (0.0_f64, 0.0_f64);
-    let (mut denominator, mut denominator_correction) = (0.0_f64, 0.0_f64);
-    let mut flag = false;
-    for row in rows {
-        let current = value(row)?;
-        if unit {
-            let scaled = current / value_scale;
-            flag |= current != 0.0 && scaled.abs() < f64::MIN_POSITIVE;
-            compensated_add(scaled, &mut numerator, &mut numerator_correction)?;
-        } else {
-            let weight = weights.value(row)?;
-            let scaled = weight * (current / value_scale);
-            flag |= current != 0.0 && scaled.abs() < f64::MIN_POSITIVE;
-            compensated_add(scaled, &mut numerator, &mut numerator_correction)?;
-            compensated_add(weight, &mut denominator, &mut denominator_correction)?;
-        }
-    }
-    Ok((
-        numerator,
-        numerator_correction,
-        denominator,
-        denominator_correction,
-        flag,
-    ))
-}
-
-/// The ordered compensated merge of mean chunk partials; the first error in
-/// chunk order (a chunk's own error or a nonfinite merge) is kept.
-#[derive(Default)]
-struct MeanMerge {
-    numerator: f64,
-    numerator_correction: f64,
-    denominator: f64,
-    denominator_correction: f64,
-    flag: bool,
-    error: Option<FeregError>,
-}
-
-impl MeanMerge {
-    fn push(&mut self, part: Result<MeanPartial>) {
-        if self.error.is_some() {
-            return;
-        }
-        let merged = part.and_then(|(n, nc, d, dc, f)| {
-            compensated_add(n, &mut self.numerator, &mut self.numerator_correction)?;
-            compensated_add(nc, &mut self.numerator, &mut self.numerator_correction)?;
-            compensated_add(d, &mut self.denominator, &mut self.denominator_correction)?;
-            compensated_add(dc, &mut self.denominator, &mut self.denominator_correction)?;
-            self.flag |= f;
-            Ok(())
-        });
-        if let Err(error) = merged {
-            self.error = Some(error);
-        }
-    }
-
-    fn finish(
-        self,
-        nrows: usize,
-        unit: bool,
-        value_scale: f64,
-        underflow: Option<&mut bool>,
-    ) -> Result<f64> {
-        if let Some(error) = self.error {
-            return Err(error);
-        }
-        merge_mean_totals(self, nrows, unit, value_scale, underflow)
-    }
-}
-
-fn merge_mean_totals(
-    merged: MeanMerge,
-    nrows: usize,
-    unit: bool,
-    value_scale: f64,
-    underflow: Option<&mut bool>,
-) -> Result<f64> {
-    let MeanMerge {
-        numerator,
-        numerator_correction,
-        denominator,
-        denominator_correction,
-        flag,
-        ..
-    } = merged;
-    let denominator = if unit {
-        nrows as f64
-    } else {
-        denominator + denominator_correction
-    };
-    let numerator = numerator + numerator_correction;
-    let scaled_mean = numerator / denominator;
-    if let Some(underflow) = underflow {
-        *underflow |= flag || (numerator != 0.0 && scaled_mean.abs() < f64::MIN_POSITIVE);
-    }
-    let mean = value_scale * scaled_mean;
-    if mean.is_finite() && denominator.is_finite() && denominator > 0.0 {
-        Ok(mean)
-    } else {
-        Err(invalid_data("prepared OLS weighted mean is not finite"))
     }
 }
 
