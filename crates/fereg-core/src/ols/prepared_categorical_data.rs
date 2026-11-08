@@ -104,6 +104,19 @@ pub struct PreparedOlsData {
     pub(crate) singleton_policy: crate::ols::PreparedOlsFeSingletonPolicy,
     pub(crate) clusters: Option<crate::ols::PreparedOlsClusterDesign>,
     pub(super) execution_admission_bytes: Option<u128>,
+    pub(crate) elimination_hint: EliminationHint,
+}
+
+/// Set once an exact elimination of this design escalated to block-Jacobi,
+/// so the design's later elimination projectors start on the blocks. A cache
+/// shared by the design's projections, not part of its identity.
+#[derive(Debug, Default)]
+pub(crate) struct EliminationHint(pub(crate) std::sync::atomic::AtomicBool);
+
+impl PartialEq for EliminationHint {
+    fn eq(&self, _: &Self) -> bool {
+        true
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -144,6 +157,7 @@ impl PreparedOlsData {
             },
             clusters: None,
             execution_admission_bytes: None,
+            elimination_hint: EliminationHint::default(),
         };
         if prepared.uses_categorical_preparation() {
             prepared.validate_after_topology()?;

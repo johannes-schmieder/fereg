@@ -286,6 +286,7 @@ impl<'a> FeSession<'a> {
             absorb_config: Some(config.absorb),
             ..Self::default()
         };
+        owner.block_schur.set_hint(prepared.fit_elimination_hint());
         if config.absorb.solver == super::FeSolverKind::Squarem {
             owner.prepare_owned(prepared, weights, rhs, config)?;
             return Ok(owner);

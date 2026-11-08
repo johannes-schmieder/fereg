@@ -1775,7 +1775,8 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                             categorical,
                             maximum_fe_rhs,
                             config.execution.threads.resolved(),
-                        )?,
+                        )?
+                        .with_elimination_hint(prepared.fit_elimination_hint()),
                         ReusableMapAbsorber::new(fe_design, maximum_fe_rhs)?,
                     )),
                     Vec::new(),

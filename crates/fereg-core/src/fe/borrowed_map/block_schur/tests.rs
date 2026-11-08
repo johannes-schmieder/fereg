@@ -52,7 +52,15 @@ fn with_design(
     seed: u64,
     action: impl FnOnce(&BorrowedInterceptFeDesign<'_>, &[Vec<u32>]),
 ) {
-    let codes = codes(rows, levels, seed);
+    with_codes(rows, levels, codes(rows, levels, seed), action);
+}
+
+fn with_codes(
+    rows: usize,
+    levels: &[usize],
+    codes: Vec<Vec<u32>>,
+    action: impl FnOnce(&BorrowedInterceptFeDesign<'_>, &[Vec<u32>]),
+) {
     let indices: Vec<_> = codes
         .iter()
         .zip(levels)
@@ -377,4 +385,170 @@ fn retained_coefficients_survive_a_late_decline() {
             "column {column}: v - D a differs from r by {worst:e}"
         );
     }
+}
+
+/// Movers on a chain of `firms` firms, two rows at each of two neighbouring
+/// firms: the firms are eliminated and the Jacobi recurrence on the movers'
+/// block stalls; block-Jacobi with the exact movers' block solves it.
+fn chain(firms: usize) -> Vec<Vec<u32>> {
+    let mut codes = vec![Vec::new(), Vec::new()];
+    for mover in 0..firms - 1 {
+        for t in 0..4 {
+            codes[0].push(mover as u32);
+            codes[1].push((mover + t / 2) as u32);
+        }
+    }
+    codes
+}
+
+fn certified<'a>(
+    cache: &mut Cache<'a>,
+    design: &BorrowedInterceptFeDesign<'a>,
+    input: &DenseMatrix,
+    budget: Option<FeSolverMemoryBudget>,
+) -> CertifiedBorrowedMap {
+    let map = MapConfig {
+        tolerance: 1e-10,
+        ..MapConfig::default()
+    };
+    match cache
+        .project(
+            design,
+            BorrowedMapWeights::Unit,
+            input.clone(),
+            map,
+            budget,
+            Request::default(),
+        )
+        .unwrap()
+    {
+        Outcome::Done(result) => {
+            assert!(result.report().certified());
+            result
+        }
+        Outcome::Declined(_) => panic!("elimination declined"),
+    }
+}
+
+fn bits(m: &DenseMatrix) -> Vec<u64> {
+    m.as_slice().iter().map(|v| v.to_bits()).collect()
+}
+
+fn preconditioner(cache: &Cache<'_>) -> fedemean::Preconditioner {
+    cache
+        .projector
+        .as_ref()
+        .expect("bound projector")
+        .settings()
+        .choice
+        .preconditioner
+}
+
+/// The first cache of a hard design escalates and sets the shared hint; a
+/// later cache of the design starts on the blocks: its route reports the
+/// blocks without an escalation, in fewer iterations, and agrees.
+#[test]
+fn a_set_hint_starts_later_caches_on_the_blocks() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
+    let firms = 256;
+    let codes = chain(firms);
+    let rows = codes[0].len();
+    with_codes(rows, &[firms - 1, firms], codes, |design, _| {
+        let input = values(rows, 3, 17);
+        let hint = AtomicBool::new(false);
+        let mut first = Cache::default();
+        first.set_hint(Some(&hint));
+        let escalated = certified(&mut first, design, &input, None);
+        assert!(first.escalated && hint.load(Ordering::Relaxed));
+        assert_eq!(preconditioner(&first), fedemean::Preconditioner::Auto);
+        // The escalated projector is kept: fedemean starts it on the blocks.
+        certified(&mut first, design, &input, None);
+        assert_eq!(preconditioner(&first), fedemean::Preconditioner::Auto);
+
+        let mut second = Cache::default();
+        second.set_hint(Some(&hint));
+        let hinted = certified(&mut second, design, &input, None);
+        assert!(!second.escalated);
+        assert!(matches!(
+            preconditioner(&second),
+            fedemean::Preconditioner::BlockJacobi(_)
+        ));
+        assert!(
+            hinted.report().iterations < escalated.report().iterations,
+            "{} vs {}",
+            hinted.report().iterations,
+            escalated.report().iterations
+        );
+        for (a, b) in hinted
+            .residualized()
+            .as_slice()
+            .iter()
+            .zip(escalated.residualized().as_slice())
+        {
+            assert!((a - b).abs() < 1e-7, "{a} vs {b}");
+        }
+        // The same projector's route: blocks, no escalation, same bits.
+        let projector = second.projector.as_mut().expect("bound projector");
+        let mut data = input.clone();
+        let columns = fedemean::ColumnsMut::new(data.as_mut_slice(), rows, 3).unwrap();
+        let request = fedemean::Request::new(1e-10, MapConfig::default().max_iterations);
+        let fedemean::Outcome::Projected(report) = projector
+            .project(
+                fedemean::Weights::Unit,
+                columns,
+                None,
+                &request,
+                &fedemean::Control::default(),
+            )
+            .unwrap()
+        else {
+            panic!("hinted projection declined");
+        };
+        assert!(matches!(
+            report.route.preconditioner,
+            fedemean::PreconditionerUsed::Block(_)
+        ));
+        assert_eq!((report.route.escalations, report.facts.escalations), (0, 0));
+        assert_eq!(bits(&data), bits(hinted.residualized()));
+    });
+}
+
+/// Ordinary designs never escalate: a hint stays unset and the projection is
+/// bit for bit the unhinted one. A set hint whose blocks exceed the memory
+/// limit reruns the call on the automatic route, with the same bits.
+#[test]
+fn ordinary_designs_keep_their_bits_with_a_hint() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
+    let rows = 900;
+    with_design(rows, &[150, 23, 6], 11, |design, _| {
+        let input = values(rows, 3, 5);
+        let mut plain = Cache::default();
+        let reference = certified(&mut plain, design, &input, None);
+        let hint = AtomicBool::new(false);
+        let mut hinted = Cache::default();
+        hinted.set_hint(Some(&hint));
+        let result = certified(&mut hinted, design, &input, None);
+        assert_eq!(bits(result.residualized()), bits(reference.residualized()));
+        assert!(!hint.load(Ordering::Relaxed) && !hinted.escalated);
+        assert_eq!(preconditioner(&hinted), fedemean::Preconditioner::Auto);
+
+        // The automatic route's own admission bound admits it, but not the
+        // explicit blocks on top.
+        let automatic = plain
+            .projector
+            .as_ref()
+            .and_then(|p| p.admission_bytes(3))
+            .expect("built structure");
+        let budget = FeSolverMemoryBudget {
+            execution_bytes: 0,
+            usable_bytes: automatic,
+        };
+        let hint = AtomicBool::new(true);
+        let mut refused = Cache::default();
+        refused.set_hint(Some(&hint));
+        let result = certified(&mut refused, design, &input, Some(budget));
+        assert!(refused.blocks_refused);
+        assert_eq!(preconditioner(&refused), fedemean::Preconditioner::Auto);
+        assert_eq!(bits(result.residualized()), bits(reference.residualized()));
+    });
 }

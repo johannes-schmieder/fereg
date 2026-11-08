@@ -123,6 +123,7 @@ pub(super) fn presolve<P: PreparedOlsFitView + Sync + ?Sized>(
         bounds: config.bounds,
     };
     let mut cache = block_schur::Cache::default();
+    cache.set_hint(prepared.fit_elimination_hint());
     // The elimination accumulates the residual Gram inside its residual pass
     // (up to eight columns), which supplies the normal equations directly.
     cache.request_residual_gram(true);

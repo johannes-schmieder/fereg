@@ -1,3 +1,4 @@
+use std::sync::atomic::AtomicBool;
 use std::time::{Duration, Instant};
 
 use crate::data::DenseMatrix;
@@ -1882,6 +1883,13 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         let admitted = Self::owner_bytes(&owner.design, max_rhs, parallel_threads)?;
         crate::memory::require_admitted_capacity(owner.payload_bytes()?, admitted)?;
         Ok(owner)
+    }
+
+    /// Share the prepared design's elimination hint with the owner's exact
+    /// elimination ([`block_schur::Cache::set_hint`]).
+    pub(crate) fn with_elimination_hint(mut self, hint: Option<&'a AtomicBool>) -> Self {
+        self.block_schur.set_hint(hint);
+        self
     }
 
     pub(crate) fn enable_checkpoint_lsmr(&mut self, deterministic: bool) {

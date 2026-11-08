@@ -11,6 +11,7 @@
 
 use super::*;
 use crate::fe::LevelIndex;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 /// Developer switch: `FEREG_BLOCK_SCHUR=0` keeps the established routes.
 pub(crate) fn enabled() -> bool {
@@ -86,6 +87,15 @@ pub(crate) enum Outcome<V> {
 #[derive(Default)]
 pub(crate) struct Cache<'a> {
     projector: Option<fedemean::Projector<'a>>,
+    /// The prepared design's elimination hint, shared with its other caches
+    /// (see [`Cache::set_hint`]).
+    hint: Option<&'a AtomicBool>,
+    /// The bound projector escalated: fedemean starts its later automatic
+    /// batches on the blocks, so a hint needs no rebuild.
+    escalated: bool,
+    /// Hinted blocks exceeded the memory limit: this cache keeps the
+    /// automatic route.
+    blocks_refused: bool,
     /// The projector's outputs belong to the last [`Cache::project`] call.
     current: bool,
     /// Accumulate the residual Gram in later projections' residual pass.
@@ -135,12 +145,40 @@ impl<'a> Cache<'a> {
         }
     }
 
+    /// Share the prepared design's elimination hint: once any of its caches
+    /// escalated, projectors bound later start on the blocks
+    /// (`BlockJacobi` at the default spec, which escalation also uses). A
+    /// certified projection of an escalated projector sets it.
+    pub(crate) fn set_hint(&mut self, hint: Option<&'a AtomicBool>) {
+        self.hint = hint;
+    }
+
     /// Project with the retained geometry, building it on first use. A
     /// decline returns the matrix: untouched, unless a later batch or a
     /// correction declined after earlier residuals were formed, whose
     /// projection is then still the request. A refusal of the design is
     /// remembered so later calls go straight to the caller's route.
     pub(crate) fn project(
+        &mut self,
+        design: &BorrowedInterceptFeDesign<'a>,
+        weights: BorrowedMapWeights<'_>,
+        values: DenseMatrix,
+        map: MapConfig,
+        budget: Option<FeSolverMemoryBudget>,
+        request: Request,
+    ) -> Result<Outcome<DenseMatrix>> {
+        let refused = self.blocks_refused;
+        match self.attempt(design, weights, values, map, budget, request)? {
+            // Hinted blocks beyond the memory limit decline untouched; the
+            // same call then runs once on the automatic route.
+            Outcome::Declined(values) if self.blocks_refused != refused => {
+                self.attempt(design, weights, values, map, budget, request)
+            }
+            outcome => Ok(outcome),
+        }
+    }
+
+    fn attempt(
         &mut self,
         design: &BorrowedInterceptFeDesign<'a>,
         weights: BorrowedMapWeights<'_>,
@@ -156,7 +194,8 @@ impl<'a> Cache<'a> {
             return Ok(Outcome::Declined(values));
         }
         let (detach, gram) = (self.detach_norms, self.gram_requested);
-        let projector = bind(&mut self.projector, design)?;
+        let hinted = !self.blocks_refused && self.hint.is_some_and(|h| h.load(Ordering::Relaxed));
+        let projector = bind(&mut self.projector, design, hinted, &mut self.escalated)?;
         let control = fedemean::Control::with_cancel(&crate::interrupt::cancellation_requested);
         let setup = crate::diagnostics::phase_ledger::PhaseLedger::new(
             "block_schur_setup",
@@ -203,11 +242,13 @@ impl<'a> Cache<'a> {
             fedemean::Outcome::Declined { facts, .. } => *facts,
             _ => fedemean::Facts::default(),
         };
+        self.escalated |= facts.escalations > 0;
         setup.add_seconds(0, structure_seconds + facts.structure_seconds);
         setup.add_seconds(1, facts.weights_seconds);
         let report = match outcome {
             fedemean::Outcome::Projected(report) => report,
             fedemean::Outcome::Declined { reason, input, .. } => {
+                self.blocks_refused |= hinted && reason == fedemean::Decline::MemoryLimit;
                 if let fedemean::Decline::Numerical(reason) = reason {
                     solve_record(&facts);
                     trace_escalation(None, &facts);
@@ -222,6 +263,9 @@ impl<'a> Cache<'a> {
         };
         solve_record(&facts);
         trace_escalation(Some(&report), &facts);
+        if let Some(hint) = self.hint.filter(|_| self.escalated) {
+            hint.store(true, Ordering::Relaxed);
+        }
         self.weight_scale = Some(report.weight_scale);
         let solve_report = SolveReport {
             requested_solver: FeSolverKind::Auto,
@@ -306,17 +350,21 @@ impl<'a> Cache<'a> {
     }
 }
 
-/// The projector of `design`, (re)built when the cache held none or another
-/// design.
+/// The projector of `design`, (re)built when the cache held none, another
+/// design, or other settings than `hinted` asks for (unless it escalated
+/// itself, and so already starts on the blocks).
 fn bind<'c, 'a>(
     slot: &'c mut Option<fedemean::Projector<'a>>,
     design: &BorrowedInterceptFeDesign<'a>,
+    hinted: bool,
+    escalated: &mut bool,
 ) -> Result<&'c mut fedemean::Projector<'a>> {
-    if !slot
-        .as_ref()
-        .is_some_and(|projector| same_design(projector.design(), design))
-    {
-        *slot = Some(fedemean::Projector::new(design_view(design)?, settings()));
+    let settings = settings(hinted);
+    if !slot.as_ref().is_some_and(|projector| {
+        same_design(projector.design(), design) && (*projector.settings() == settings || *escalated)
+    }) {
+        *slot = Some(fedemean::Projector::new(design_view(design)?, settings));
+        *escalated = false;
     }
     Ok(slot.as_mut().expect("bound projector"))
 }
@@ -324,10 +372,17 @@ fn bind<'c, 'a>(
 /// The projector's route: Jacobi PCG on the reduced system; a batch whose
 /// recurrence stalls or reaches the ceiling continues from its iterate with
 /// block-Jacobi (exact small blocks, CMG on large ones) before the route
-/// declines. Recurrences that finish under Jacobi are unchanged.
-fn settings() -> fedemean::Settings {
+/// declines. Recurrences that finish under Jacobi are unchanged. A `hinted`
+/// projector (a design that escalated before) starts on those blocks.
+fn settings(hinted: bool) -> fedemean::Settings {
+    let preconditioner = if hinted {
+        fedemean::Preconditioner::BlockJacobi(fedemean::BlockSpec::default())
+    } else {
+        fedemean::Preconditioner::Auto
+    };
     fedemean::Settings {
         choice: fedemean::Choice {
+            preconditioner,
             fallback: fedemean::Fallback::Escalate,
             ..fedemean::Choice::default()
         },

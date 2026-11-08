@@ -360,6 +360,13 @@ pub(crate) trait PreparedOlsFitView: Sync {
 
     fn fit_borrowed_cmg_design(&self) -> Result<BorrowedInterceptFeDesign<'_>>;
 
+    /// The design's shared elimination hint: set once an exact elimination
+    /// escalated, so the design's later elimination projectors start on the
+    /// blocks. `None`: every projector starts on Jacobi.
+    fn fit_elimination_hint(&self) -> Option<&std::sync::atomic::AtomicBool> {
+        None
+    }
+
     fn fit_absorb_matrix(
         &self,
         weights: BorrowedMapWeights<'_>,
@@ -643,6 +650,10 @@ impl PreparedOlsFitView for PreparedOlsData {
 
     fn fit_report_intercept(&self) -> bool {
         self.report_intercept()
+    }
+
+    fn fit_elimination_hint(&self) -> Option<&std::sync::atomic::AtomicBool> {
+        Some(&self.elimination_hint.0)
     }
 
     fn fit_column_value(&self, column: usize, row: usize) -> Result<f64> {
