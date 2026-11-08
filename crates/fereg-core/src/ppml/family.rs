@@ -675,17 +675,17 @@ impl<'a> PreparedPoissonInputs<'a> {
                             .min(self.outcome.len());
                         let mut deviance = CompensatedSum::default();
                         let mut likelihood = CompensatedSum::default();
-                        for row in begin..end {
-                            let values = objective_row::<true>(
+                        for first in (begin..end).step_by(ITERATION_RUN_ROWS) {
+                            let [run_deviance, run_likelihood] = iteration_run_sums(
                                 self.outcome,
                                 Some(eta),
                                 mean,
                                 self.prior_weights,
                                 Some(&self.terms),
-                                row,
+                                first..(first + ITERATION_RUN_ROWS).min(end),
                             )?;
-                            deviance.add(values[0]);
-                            likelihood.add(values[1]);
+                            deviance.add(run_deviance);
+                            likelihood.add(run_likelihood);
                         }
                         output.copy_from_slice(&[
                             deviance.sum,
@@ -840,12 +840,55 @@ fn poisson_objective_with_terms<const ITERATION: bool>(
     }
     let mut deviance_sum = CompensatedSum::default();
     let mut log_likelihood_sum = CompensatedSum::default();
+    if ITERATION {
+        // The iteration objective sums fixed 512-row runs plainly and adds
+        // each run total compensated (the tiled evaluation uses the same runs).
+        for first in (0..outcome.len()).step_by(ITERATION_RUN_ROWS) {
+            let [deviance, likelihood] = iteration_run_sums(
+                outcome,
+                eta,
+                mean,
+                prior_weights,
+                terms,
+                first..(first + ITERATION_RUN_ROWS).min(outcome.len()),
+            )?;
+            deviance_sum.add(deviance);
+            log_likelihood_sum.add(likelihood);
+        }
+        return finish_objective(deviance_sum, log_likelihood_sum);
+    }
     for row in 0..outcome.len() {
         let values = objective_row::<ITERATION>(outcome, eta, mean, prior_weights, terms, row)?;
         deviance_sum.add(values[0]);
         log_likelihood_sum.add(values[1]);
     }
     finish_objective(deviance_sum, log_likelihood_sum)
+}
+
+/// Rows per plainly summed run of the iteration objective; a divisor of the
+/// tiled block size so both evaluations share every run.
+const ITERATION_RUN_ROWS: usize = 512;
+const _: () = assert!(FAMILY_ROWS_PER_WORKER % ITERATION_RUN_ROWS == 0);
+
+/// Plain sums of the iteration objective rows of one run (errors in row
+/// order). With nonnegative deviance terms the run's rounding stays below
+/// `512 eps` of its total, far inside the line-search slack.
+#[inline]
+fn iteration_run_sums(
+    outcome: &[f64],
+    eta: Option<&[f64]>,
+    mean: &[f64],
+    prior_weights: &[f64],
+    terms: Option<&[[f64; 2]]>,
+    rows: std::ops::Range<usize>,
+) -> Result<[f64; 2]> {
+    let (mut deviance, mut likelihood) = (0.0_f64, 0.0_f64);
+    for row in rows {
+        let values = objective_row::<true>(outcome, eta, mean, prior_weights, terms, row)?;
+        deviance += values[0];
+        likelihood += values[1];
+    }
+    Ok([deviance, likelihood])
 }
 
 #[inline]
@@ -1649,9 +1692,9 @@ mod tests {
             inputs
                 .fill_means(&eta, PoissonBounds::default(), &mut mean)
                 .unwrap();
-            assert_eq!(
+            assert_iteration_objective(
                 inputs.evaluate_tiled(&eta, &mean, &mut tile).unwrap(),
-                poisson_objective_from_eta(&y, &eta, &mean, &q).unwrap()
+                poisson_objective_from_eta(&y, &eta, &mean, &q).unwrap(),
             );
         }
         assert_eq!(
@@ -1679,12 +1722,13 @@ mod tests {
         assert_eq!(objective_tile_rows(17003, usize::MAX), 17003);
     }
 
-    /// The IRLS objective keeps the reference log likelihood bit for bit and
-    /// its deviance within the iteration formula's rounding bound.
+    /// The IRLS objective agrees with the reference formula within the
+    /// iteration formula's and its 512-row run sums' rounding bounds.
     fn assert_iteration_objective(iteration: PoissonObjective, reference: PoissonObjective) {
-        assert_eq!(
-            iteration.log_likelihood.to_bits(),
-            reference.log_likelihood.to_bits()
+        assert!(
+            (iteration.log_likelihood - reference.log_likelihood).abs()
+                <= 1e-12 * reference.log_likelihood.abs().max(f64::MIN_POSITIVE),
+            "{iteration:?} vs {reference:?}"
         );
         let scale = reference.deviance.abs().max(f64::MIN_POSITIVE);
         assert!(

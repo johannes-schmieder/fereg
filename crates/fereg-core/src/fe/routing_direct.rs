@@ -623,7 +623,7 @@ pub(crate) fn attempt(
     Ok(result)
 }
 
-fn reserved<T: Clone>(n: usize, value: T) -> Result<Vec<T>> {
+fn reserved<T: Clone + Send + Sync>(n: usize, value: T) -> Result<Vec<T>> {
     let values = fallible_filled(n, value, "unable to reserve admitted direct proposal")?;
     if values.capacity() != n {
         return Err(allocation(

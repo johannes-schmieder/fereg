@@ -94,13 +94,21 @@ impl VecReservation for SystemVecReservation {
 }
 
 /// Exactly reserved vector holding `length` copies of `value`.
-pub(crate) fn fallible_filled<T: Clone>(
+pub(crate) fn fallible_filled<T: Clone + Send + Sync>(
     length: usize,
     value: T,
     message: &'static str,
 ) -> Result<Vec<T>> {
     let mut values = fallible_empty(length, message)?;
-    values.resize(length, value);
+    // Inside a worker pool a large fill is written in parallel, spreading its
+    // first-touch page faults; the exact reservation is never reallocated.
+    const PARALLEL_FILL: usize = 1 << 17;
+    if length >= PARALLEL_FILL && rayon::current_thread_index().is_some() {
+        use rayon::prelude::*;
+        values.par_extend(rayon::iter::repeat_n(value, length));
+    } else {
+        values.resize(length, value);
+    }
     Ok(values)
 }
 

@@ -204,6 +204,20 @@ impl LevelIndex {
         &self.offsets
     }
 
+    /// A fallible owned copy of this (already validated) index.
+    pub(crate) fn try_clone(&self) -> Result<Self> {
+        Ok(Self {
+            offsets: crate::memory::fallible_copy(
+                &self.offsets,
+                "unable to copy fixed-effect level offsets",
+            )?,
+            observations: crate::memory::fallible_copy(
+                &self.observations,
+                "unable to copy fixed-effect level members",
+            )?,
+        })
+    }
+
     fn storage_capacities(&self) -> (usize, usize) {
         (self.offsets.capacity(), self.observations.capacity())
     }
@@ -697,6 +711,76 @@ impl EffectTerm {
             intercept,
             slopes,
             level_index,
+        })
+    }
+
+    /// `new` with the level index of a validated borrowed source over the
+    /// same codes (its dimensions are checked; members are not rebuilt).
+    pub(crate) fn with_validated_index(
+        codes: Vec<u32>,
+        n_levels: usize,
+        intercept: bool,
+        slopes: Vec<Vec<f64>>,
+        level_index: &LevelIndex,
+    ) -> Result<Self> {
+        if level_index.n_levels() != n_levels || level_index.observations.len() != codes.len() {
+            return Self::new(codes, n_levels, intercept, slopes);
+        }
+        let mut term = Self::new_unindexed(codes, n_levels, intercept, slopes)?;
+        term.level_index = level_index.try_clone()?;
+        Ok(term)
+    }
+
+    /// The validation of `new` without building the level index.
+    fn new_unindexed(
+        codes: Vec<u32>,
+        n_levels: usize,
+        intercept: bool,
+        slopes: Vec<Vec<f64>>,
+    ) -> Result<Self> {
+        if n_levels == 0 {
+            return Err(FeregError::new(
+                ErrorCode::InvalidArgument,
+                "fixed-effect term must contain at least one level",
+            ));
+        }
+        if !intercept && slopes.is_empty() {
+            return Err(FeregError::new(
+                ErrorCode::InvalidArgument,
+                "fixed-effect term must contain an intercept or slope",
+            ));
+        }
+        if slopes.iter().any(|slope| slope.len() != codes.len()) {
+            return Err(FeregError::new(
+                ErrorCode::InvalidArgument,
+                "fixed-effect slope length does not match codes",
+            ));
+        }
+        if slopes
+            .iter()
+            .flat_map(|slope| slope.iter())
+            .any(|value| !value.is_finite())
+        {
+            return Err(FeregError::new(
+                ErrorCode::InvalidData,
+                "fixed-effect slopes must be finite",
+            ));
+        }
+        if codes.par_iter().any(|&code| code as usize >= n_levels) {
+            return Err(FeregError::new(
+                ErrorCode::InvalidData,
+                "fixed-effect code exceeds its level count",
+            ));
+        }
+        Ok(Self {
+            codes,
+            n_levels,
+            intercept,
+            slopes,
+            level_index: LevelIndex {
+                offsets: Vec::new(),
+                observations: Vec::new(),
+            },
         })
     }
 

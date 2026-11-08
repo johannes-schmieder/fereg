@@ -760,7 +760,8 @@ impl PreparedOlsFitView for PreparedOlsData {
                     "unable to reserve categorical owned FE slope values",
                 )?);
             }
-            effects.push(EffectTerm::new(
+            // The borrowed source's index is validated over these codes.
+            effects.push(EffectTerm::with_validated_index(
                 fallible_copy(
                     effect.codes(),
                     "unable to reserve categorical owned FE codes",
@@ -768,6 +769,7 @@ impl PreparedOlsFitView for PreparedOlsData {
                 effect.n_levels(),
                 view.has_intercept(),
                 slopes,
+                effect.level_index(),
             )?);
         }
         FeDesign::new(self.fit_sample().n_active(), effects)
