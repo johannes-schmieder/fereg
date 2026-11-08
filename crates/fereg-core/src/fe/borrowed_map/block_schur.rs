@@ -1,6 +1,7 @@
 //! The exact global elimination of the largest categorical effect, provided
 //! by the fedemean library (largest-effect Schur complement, lockstep Jacobi
-//! PCG, fused residual and moment certificate).
+//! PCG escalating to block-Jacobi with CMG local solves, fused residual and
+//! moment certificate).
 //!
 //! This adapter keeps fereg's side: the developer switch and test guards,
 //! the borrowed design view, result construction (`CertifiedBorrowedMap`,
@@ -209,6 +210,7 @@ impl<'a> Cache<'a> {
             fedemean::Outcome::Declined { reason, input, .. } => {
                 if let fedemean::Decline::Numerical(reason) = reason {
                     solve_record(&facts);
+                    trace_escalation(None, &facts);
                     trace_decline(reason, &facts);
                 }
                 if matches!(input, fedemean::InputState::SameProjection { .. }) {
@@ -219,6 +221,7 @@ impl<'a> Cache<'a> {
             _ => return Ok(Outcome::Declined(values)),
         };
         solve_record(&facts);
+        trace_escalation(Some(&report), &facts);
         self.weight_scale = Some(report.weight_scale);
         let solve_report = SolveReport {
             requested_solver: FeSolverKind::Auto,
@@ -313,12 +316,23 @@ fn bind<'c, 'a>(
         .as_ref()
         .is_some_and(|projector| same_design(projector.design(), design))
     {
-        *slot = Some(fedemean::Projector::new(
-            design_view(design)?,
-            fedemean::Settings::default(),
-        ));
+        *slot = Some(fedemean::Projector::new(design_view(design)?, settings()));
     }
     Ok(slot.as_mut().expect("bound projector"))
+}
+
+/// The projector's route: Jacobi PCG on the reduced system; a batch whose
+/// recurrence stalls or reaches the ceiling continues from its iterate with
+/// block-Jacobi (exact small blocks, CMG on large ones) before the route
+/// declines. Recurrences that finish under Jacobi are unchanged.
+fn settings() -> fedemean::Settings {
+    fedemean::Settings {
+        choice: fedemean::Choice {
+            fallback: fedemean::Fallback::Escalate,
+            ..fedemean::Choice::default()
+        },
+        ..fedemean::Settings::default()
+    }
 }
 
 /// fedemean's view of the borrowed design: codes and level counts of every
@@ -393,7 +407,41 @@ fn solve_record(facts: &fedemean::Facts) {
         ("rhs_us", (facts.rhs_seconds * 1e6) as u64),
         ("pcg_us", (facts.pcg_seconds * 1e6) as u64),
         ("residual_us", (facts.residual_seconds * 1e6) as u64),
+        ("escalations", facts.escalations as u64),
+        ("block_us", (facts.block_seconds * 1e6) as u64),
     ]);
+}
+
+/// One trace line per call whose batches escalated to block-Jacobi, naming
+/// each retained block's local solve (`effect:levels:solve`; unknown after a
+/// decline).
+fn trace_escalation(report: Option<&fedemean::Report>, facts: &fedemean::Facts) {
+    if facts.escalations == 0 || !crate::diagnostics::solver_trace_enabled() {
+        return;
+    }
+    let mut blocks = String::new();
+    if let Some(fedemean::PreconditionerUsed::Block(used)) = report.map(|r| r.route.preconditioner)
+    {
+        for block in used.iter().flatten() {
+            let local = match block.local {
+                fedemean::LocalUsed::Cmg => "cmg",
+                fedemean::LocalUsed::Dense => "dense",
+                fedemean::LocalUsed::Jacobi => "jacobi",
+                _ => "other",
+            };
+            let separator = if blocks.is_empty() { "" } else { "," };
+            blocks += &format!("{separator}{}:{}:{local}", block.effect, block.levels);
+        }
+    }
+    eprintln!(
+        "FEREG_SOLVER_TRACE|phase=elimination_escalation|outcome={}|escalations={}|iterations={}|block_us={}|pcg_us={}|blocks={}",
+        if report.is_some() { "certified" } else { "declined" },
+        facts.escalations,
+        facts.iterations,
+        (facts.block_seconds * 1e6) as u64,
+        (facts.pcg_seconds * 1e6) as u64,
+        if blocks.is_empty() { "unknown" } else { &blocks },
+    );
 }
 
 fn trace_decline(reason: &str, facts: &fedemean::Facts) {

@@ -3,9 +3,11 @@
 //! with reorthogonalization on `sqrt(W) D`, the explicit dummy matrix, as in
 //! `tests/oracle.rs`), and the Jacobi routes' bitwise agreement.
 
+#[cfg(not(feature = "cmg"))]
+use fedemean::Error;
 use fedemean::{
     BlockSpec, BlockUsed, Choice, CoefficientLayout, CoefficientsMut, ColumnsMut, Control, Decline,
-    Design, Effect, Error, Fallback, InputState, LocalSolver, LocalUsed, Outcome, Preconditioner,
+    Design, Effect, Facts, Fallback, InputState, LocalSolver, LocalUsed, Outcome, Preconditioner,
     PreconditionerUsed, Projector, Report, Request, Settings, Weights,
 };
 
@@ -78,7 +80,9 @@ impl Case {
     /// `stayers` workers with three years at each firm and one mover with
     /// two years at each of two neighbouring firms. With `years`, a year
     /// effect of four levels. Jacobi needs about `firms` iterations on the
-    /// chain; an exact firm block solves it at once.
+    /// chain and stalls on long ones; an exact firm block solves it at once.
+    /// Without stayers the firms outnumber the workers and are eliminated
+    /// instead, and the movers' block is the chain.
     fn chain(firms: usize, stayers: usize, years: bool) -> Self {
         let mut codes = vec![Vec::new(); if years { 3 } else { 2 }];
         let mut worker = 0_u32;
@@ -485,77 +489,166 @@ fn jacobi_routes_are_bitwise_identical() {
     });
 }
 
+/// Firms of a chain of movers (no stayers) on which the Jacobi recurrence
+/// stalls in every batch of these tests' columns. The firms are eliminated,
+/// and the retained block of `STALLING_CHAIN - 1` movers (effect 0) is
+/// within the levels the automatic rule always solves densely.
+const STALLING_CHAIN: usize = 256;
+
+/// The reason, input state and facts of a declined projection.
+fn declined(outcome: Outcome) -> (Decline, InputState, Facts) {
+    match outcome {
+        Outcome::Declined {
+            reason,
+            input,
+            facts,
+        } => (reason, input, facts),
+        other => panic!("unexpected outcome: {other:?}"),
+    }
+}
+
+/// The iterations the Jacobi recurrence (of the first batch) spends until it
+/// stalls and declines untouched, also with an escalation fallback (Jacobi
+/// never escalates).
+fn jacobi_stall(
+    case: &Case,
+    weights: Option<&[f64]>,
+    original: &[f64],
+    ncols: usize,
+    request: &Request,
+) -> usize {
+    let mut spent = Vec::new();
+    for (preconditioner, fallback) in [
+        (Preconditioner::Auto, Fallback::Decline),
+        (Preconditioner::Jacobi, Fallback::Escalate),
+    ] {
+        let mut data = original.to_vec();
+        let mut projector = Projector::new(case.design(), settings(preconditioner, fallback));
+        let (outcome, coefficients) =
+            project(&mut projector, case, weights, &mut data, ncols, request);
+        let (reason, input, facts) = declined(outcome);
+        assert_eq!(reason, Decline::Numerical("stalled reduced recurrence"));
+        assert_eq!(input, InputState::Untouched);
+        assert_eq!(facts.escalations, 0);
+        assert_eq!(bits(&data), bits(original));
+        assert!(coefficients.iter().all(|&c| c == 0.0));
+        spent.push(facts.iterations);
+    }
+    assert_eq!(spent[0], spent[1]);
+    assert!(0 < spent[0] && spent[0] < request.max_iterations);
+    spent[0]
+}
+
+/// Run `check(years, weighted)` for the four variants of a chain test, each
+/// on its own thread: their dense references dominate the time.
+fn each_variant(check: impl Fn(bool, bool) + Sync) {
+    let check = &check;
+    std::thread::scope(|scope| {
+        for years in [false, true] {
+            for weighted in [false, true] {
+                scope.spawn(move || check(years, weighted));
+            }
+        }
+    });
+}
+
 #[test]
-fn escalation_recovers_the_iteration_ceiling() {
-    for (years, cap) in [(false, 10), (true, 20)] {
-        let case = Case::chain(60, 4, years);
-        assert_eq!(case.largest(), 0);
+fn escalation_recovers_a_stalled_recurrence() {
+    let cap = 1500;
+    each_variant(|years, weighted| {
+        let case = Case::chain(STALLING_CHAIN, 0, years);
+        assert_eq!(case.largest(), 1);
         let weights = case.weights(5);
-        for weights in [None, Some(weights.as_slice())] {
-            let oracle = Oracle::new(&case, weights);
-            let request = Request::new(TOLERANCE, cap);
-            for ncols in [3, 11] {
-                let original = case.columns(6, ncols);
-                // Jacobi declines untouched, also with an escalation fallback.
+        let weights = weighted.then_some(weights.as_slice());
+        let oracle = Oracle::new(&case, weights);
+        let request = Request::new(TOLERANCE, cap);
+        for ncols in [3, 11] {
+            let original = case.columns(6, ncols);
+            let stalled = jacobi_stall(&case, weights, &original, ncols, &request);
+            // Every batch escalates from its stalled Jacobi iterate to an
+            // exact movers' block (and an exact year block).
+            let escalate = settings(Preconditioner::Auto, Fallback::Escalate);
+            let mut projector = Projector::new(case.design(), escalate);
+            let report =
+                check_against_oracle(&case, weights, &oracle, &mut projector, ncols, 6, &request);
+            let batches = ncols.div_ceil(8);
+            assert_eq!(usize::from(report.route.escalations), batches);
+            assert_eq!(report.facts.escalations, batches);
+            let total = report.facts.iterations;
+            assert!(stalled < total && total <= cap, "{:?}", report.facts);
+            let used = used_blocks(&report);
+            assert_eq!(used.len(), case.levels.len() - 1);
+            assert_eq!((used[0].effect, used[0].levels), (0, STALLING_CHAIN - 1));
+            assert!(used.iter().all(|block| block.local == LocalUsed::Dense));
+            if !years && ncols <= 8 {
+                // One exact block is the reduced system's pseudo-inverse.
+                assert!(total <= stalled + 2, "{:?}", report.facts);
+            }
+            // The reported iterations are the batches' whole work: a budget
+            // of exactly that many gives the same projection.
+            let mut runs = Vec::new();
+            for cap in [cap, total] {
+                let mut projector = Projector::new(case.design(), escalate);
+                let mut data = original.clone();
+                let request = Request::new(TOLERANCE, cap);
+                let (outcome, coefficients) =
+                    project(&mut projector, &case, weights, &mut data, ncols, &request);
+                let report = projected(outcome);
+                runs.push((bits(&data), bits(&coefficients), report.facts.iterations));
+            }
+            assert_eq!(runs[0], runs[1]);
+            assert_eq!(runs[0].2, total);
+            // Explicit blocks from the first iteration agree and finish
+            // before the Jacobi recurrence stalls.
+            let mut projector = Projector::new(case.design(), blocks(None));
+            let report =
+                check_against_oracle(&case, weights, &oracle, &mut projector, ncols, 6, &request);
+            assert_eq!(report.route.escalations, 0);
+            assert!(report.facts.iterations < stalled, "{:?}", report.facts);
+        }
+    });
+}
+
+#[test]
+fn escalation_needs_budget_left() {
+    // A Jacobi recurrence that spends the whole iteration budget declines
+    // untouched also with the escalation fallback: at the ceiling (before
+    // the first stall window) and when it stalls at its last iteration.
+    let case = Case::chain(STALLING_CHAIN, 0, true);
+    let weights = case.weights(5);
+    for weights in [None, Some(weights.as_slice())] {
+        for ncols in [3, 11] {
+            let original = case.columns(6, ncols);
+            let stalled = jacobi_stall(
+                &case,
+                weights,
+                &original,
+                ncols,
+                &Request::new(TOLERANCE, 1500),
+            );
+            for (cap, reason) in [
+                (30, "iteration ceiling"),
+                (stalled, "stalled reduced recurrence"),
+            ] {
                 for (preconditioner, fallback) in [
                     (Preconditioner::Auto, Fallback::Decline),
                     (Preconditioner::Jacobi, Fallback::Escalate),
+                    (Preconditioner::Auto, Fallback::Escalate),
                 ] {
                     let mut data = original.clone();
                     let mut projector =
                         Projector::new(case.design(), settings(preconditioner, fallback));
+                    let request = Request::new(TOLERANCE, cap);
                     let (outcome, coefficients) =
                         project(&mut projector, &case, weights, &mut data, ncols, &request);
-                    match outcome {
-                        Outcome::Declined { reason, input, .. } => {
-                            assert_eq!(reason, Decline::Numerical("iteration ceiling"));
-                            assert_eq!(input, InputState::Untouched);
-                        }
-                        other => panic!("{preconditioner:?}: {other:?}"),
-                    }
+                    let (got, input, facts) = declined(outcome);
+                    let run = format!("{preconditioner:?}, {fallback:?}, cap {cap}");
+                    assert_eq!(got, Decline::Numerical(reason), "{run}");
+                    assert_eq!(input, InputState::Untouched, "{run}");
+                    assert_eq!((facts.iterations, facts.escalations), (cap, 0), "{run}");
                     assert_eq!(bits(&data), bits(&original));
                     assert!(coefficients.iter().all(|&c| c == 0.0));
                 }
-                // Escalation continues from the Jacobi iterate with an exact
-                // firm block (and an exact year block).
-                let mut projector = Projector::new(
-                    case.design(),
-                    settings(Preconditioner::Auto, Fallback::Escalate),
-                );
-                let report = check_against_oracle(
-                    &case,
-                    weights,
-                    &oracle,
-                    &mut projector,
-                    ncols,
-                    6,
-                    &request,
-                );
-                let batches = ncols.div_ceil(8);
-                assert_eq!(usize::from(report.route.escalations), batches);
-                assert_eq!(report.facts.escalations, batches);
-                assert!(report.facts.iterations > cap, "{:?}", report.facts);
-                let used = used_blocks(&report);
-                assert_eq!(used.len(), case.levels.len() - 1);
-                assert_eq!((used[0].effect, used[0].levels), (1, 60));
-                assert!(used.iter().all(|block| block.local == LocalUsed::Dense));
-                if !years {
-                    // One exact block is the reduced system's pseudo-inverse.
-                    assert!(report.facts.iterations <= cap + 2, "{:?}", report.facts);
-                }
-                // Explicit blocks from the first iteration agree.
-                let mut projector = Projector::new(case.design(), blocks(None));
-                let report = check_against_oracle(
-                    &case,
-                    weights,
-                    &oracle,
-                    &mut projector,
-                    ncols,
-                    6,
-                    &request,
-                );
-                assert_eq!(report.route.escalations, 0);
-                assert!(report.facts.iterations <= cap, "{:?}", report.facts);
             }
         }
     }
@@ -563,9 +656,9 @@ fn escalation_recovers_the_iteration_ceiling() {
 
 #[test]
 fn escalation_respects_the_memory_limit() {
-    let case = Case::chain(60, 4, false);
-    let request = Request::new(TOLERANCE, 10);
-    let original = case.columns(7, 3);
+    let case = Case::chain(STALLING_CHAIN, 0, false);
+    let request = Request::new(TOLERANCE, 1500);
+    let original = case.columns(6, 3);
     let escalate = settings(Preconditioner::Auto, Fallback::Escalate);
     // The workspace of the Jacobi route admits the projection but leaves no
     // room for the blocks.
@@ -582,20 +675,17 @@ fn escalation_respects_the_memory_limit() {
     let mut projector = Projector::new(case.design(), escalate);
     let mut data = original.clone();
     let (outcome, _) = project(&mut projector, &case, None, &mut data, 3, &limited);
-    match outcome {
-        Outcome::Declined { reason, facts, .. } => {
-            assert_eq!(reason, Decline::Numerical("iteration ceiling"));
-            assert_eq!(facts.escalations, 0);
-        }
-        other => panic!("{other:?}"),
-    }
+    // The stalled Jacobi recurrence declines untouched.
+    let (reason, input, facts) = declined(outcome);
+    assert_eq!(reason, Decline::Numerical("stalled reduced recurrence"));
+    assert_eq!(input, InputState::Untouched);
+    assert_eq!(facts.escalations, 0);
+    assert_eq!(bits(&data), bits(&original));
     // Explicit blocks count their bound at admission.
     let mut projector = Projector::new(case.design(), blocks(None));
     assert!(projector.prepare(&Control::default()).unwrap());
     let explicit = projector.admission_bytes(3).unwrap();
     assert!(explicit > admission);
-    let mut limited = Request::new(TOLERANCE, 10);
-    limited.memory_limit = Some(admission);
     let (outcome, _) = project(&mut projector, &case, None, &mut data, 3, &limited);
     assert!(matches!(
         outcome,
@@ -634,6 +724,7 @@ fn escalation_fails_declined_when_blocks_cannot_finish() {
     assert_eq!(bits(&data), bits(&original));
 }
 
+#[cfg(not(feature = "cmg"))]
 #[test]
 fn explicit_cmg_local_solves_are_unsupported() {
     let case = Case::random(21, 300, &[60, 7]);
@@ -695,4 +786,262 @@ fn block_projections_are_repeatable_and_follow_new_weights() {
         &request,
     );
     assert_eq!(report.workspace_bytes, first.2);
+}
+
+/// Block-Jacobi with CMG on the blocks above the dense limit.
+#[cfg(feature = "cmg")]
+fn cmg_blocks(dense_max_levels: Option<usize>) -> Settings {
+    let spec = BlockSpec {
+        large: LocalSolver::Cmg,
+        dense_max_levels,
+    };
+    settings(Preconditioner::BlockJacobi(spec), Fallback::Decline)
+}
+
+/// The chain's block (effect and levels) uses CMG and a year block the
+/// exact solve.
+#[cfg(feature = "cmg")]
+fn assert_cmg_chain(report: &Report, (effect, levels): (usize, usize)) {
+    let used = used_blocks(report);
+    assert_eq!(
+        (used[0].effect, used[0].levels, used[0].local),
+        (effect, levels, LocalUsed::Cmg)
+    );
+    assert!(used[1..]
+        .iter()
+        .all(|block| block.local == LocalUsed::Dense));
+}
+
+#[cfg(feature = "cmg")]
+#[test]
+fn cmg_escalation_matches_the_dense_oracle() {
+    // A chain of 260 firms and 259 movers: the movers' block is above the
+    // automatic dense limit, so the escalated block takes CMG (one exact
+    // terminal factor at this size), and the year block the dense solve.
+    // The Jacobi recurrence stalls in every batch.
+    let (cap, firms) = (1500, 260);
+    each_variant(|years, weighted| {
+        let case = Case::chain(firms, 0, years);
+        assert_eq!(case.largest(), 1);
+        let weights = case.weights(41);
+        let weights = weighted.then_some(weights.as_slice());
+        let oracle = Oracle::new(&case, weights);
+        let request = Request::new(TOLERANCE, cap);
+        for ncols in [3, 11] {
+            let original = case.columns(42, ncols);
+            let stalled = jacobi_stall(&case, weights, &original, ncols, &request);
+            let mut projector = Projector::new(
+                case.design(),
+                settings(Preconditioner::Auto, Fallback::Escalate),
+            );
+            let report =
+                check_against_oracle(&case, weights, &oracle, &mut projector, ncols, 42, &request);
+            let batches = ncols.div_ceil(8);
+            assert_eq!(usize::from(report.route.escalations), batches);
+            assert_eq!(report.facts.escalations, batches);
+            assert_cmg_chain(&report, (0, firms - 1));
+            assert!(report.facts.iterations <= cap, "{:?}", report.facts);
+            if ncols <= 8 {
+                // Few iterations follow the stall of the one batch.
+                let after = report.facts.iterations - stalled;
+                eprintln!(
+                    "chain of {firms} firms (years {years}, weighted {weighted}): \
+                     {stalled} Jacobi and {after} CMG iterations"
+                );
+                assert!(after <= if years { 12 } else { 2 }, "{:?}", report.facts);
+            }
+            assert!(report.facts.block_seconds > 0.0);
+        }
+    });
+}
+
+#[cfg(feature = "cmg")]
+#[test]
+fn cmg_escalation_solves_a_long_chain() {
+    // 3000 firms in a chain: a multilevel CMG hierarchy. The Jacobi
+    // recurrence stalls; the escalated projection agrees with explicit
+    // exact (dense) firm blocks.
+    let (cap, firms, ncols) = (1500, 3000, 3);
+    each_variant(|years, weighted| {
+        let case = Case::chain(firms, 4, years);
+        let weights = case.weights(43);
+        let weights = weighted.then_some(weights.as_slice());
+        let original = case.columns(44, ncols);
+        let request = Request::new(TOLERANCE, cap);
+        let stalled = jacobi_stall(&case, weights, &original, ncols, &request);
+        let mut projector = Projector::new(
+            case.design(),
+            settings(Preconditioner::Auto, Fallback::Escalate),
+        );
+        let mut escalated = original.clone();
+        let (outcome, coefficients) = project(
+            &mut projector,
+            &case,
+            weights,
+            &mut escalated,
+            ncols,
+            &request,
+        );
+        let report = projected(outcome);
+        assert_eq!((report.route.escalations, report.facts.escalations), (1, 1));
+        assert_cmg_chain(&report, (1, firms));
+        let after = report.facts.iterations - stalled;
+        // Explicit CMG blocks from the first iteration.
+        let mut explicit = Projector::new(case.design(), cmg_blocks(None));
+        let mut from_zero = original.clone();
+        let (outcome, _) = project(
+            &mut explicit,
+            &case,
+            weights,
+            &mut from_zero,
+            ncols,
+            &request,
+        );
+        let explicit_report = projected(outcome);
+        assert_cmg_chain(&explicit_report, (1, firms));
+        eprintln!(
+            "chain of {firms} firms (years {years}, weighted {weighted}): escalated {} = \
+             {stalled} Jacobi + {after} CMG; explicit CMG {}",
+            report.facts.iterations, explicit_report.facts.iterations
+        );
+        // Fewer than one stall window of iterations follow the stall.
+        assert!(after < 40, "{:?}", report.facts);
+        // Exact firm blocks agree (weighted runs; the unweighted ones with
+        // the explicit CMG run). The dense factor of 3000 levels dominates
+        // the test's time.
+        let exact = if weighted {
+            let mut dense = Projector::new(case.design(), blocks(Some(firms)));
+            let mut exact = original.clone();
+            let (outcome, _) = project(&mut dense, &case, weights, &mut exact, ncols, &request);
+            let dense_report = projected(outcome);
+            assert!(used_blocks(&dense_report)
+                .iter()
+                .all(|block| block.local == LocalUsed::Dense));
+            exact
+        } else {
+            from_zero.clone()
+        };
+        let offsets = case.offsets();
+        for j in 0..ncols {
+            let y = column(&original, ncols, j);
+            let magnitude = inf_norm(&y).max(1.0);
+            let reference = column(&exact, ncols, j);
+            for (k, residual) in [&escalated, &from_zero].into_iter().enumerate() {
+                let r = column(residual, ncols, j);
+                for (i, (a, b)) in r.iter().zip(&reference).enumerate() {
+                    assert!(
+                        (a - b).abs() <= 1e-7 * magnitude,
+                        "run {k}, column {j}, row {i}: {a} vs {b}"
+                    );
+                }
+            }
+            let r = column(&escalated, ncols, j);
+            for (i, (&yi, &ri)) in y.iter().zip(&r).enumerate() {
+                let fit = case.fitted(&coefficients, &offsets, j, i);
+                assert!(
+                    (yi - fit - ri).abs() <= 1e-9 * magnitude,
+                    "column {j}, row {i}"
+                );
+            }
+        }
+    });
+}
+
+#[cfg(feature = "cmg")]
+#[test]
+fn explicit_cmg_blocks_are_repeatable_and_follow_new_weights() {
+    let firms = 3000;
+    let case = Case::chain(firms, 4, true);
+    let request = Request::new(TOLERANCE, 1500);
+    let mut projector = Projector::new(case.design(), cmg_blocks(None));
+    let run = |projector: &mut Projector<'_>, weights: &[f64]| {
+        let mut data = case.columns(51, 5);
+        let (outcome, coefficients) =
+            project(projector, &case, Some(weights), &mut data, 5, &request);
+        let report = projected(outcome);
+        assert_cmg_chain(&report, (1, firms));
+        (bits(&data), bits(&coefficients), report.workspace_bytes)
+    };
+    let mut weights = case.weights(52);
+    let first = run(&mut projector, &weights);
+    // The retained hierarchy and a fresh one give the same bits.
+    assert_eq!(run(&mut projector, &weights), first);
+    let mut fresh = Projector::new(case.design(), cmg_blocks(None));
+    assert_eq!(run(&mut fresh, &weights), first);
+    // New values in the same buffer rebuild the hierarchy: the projection
+    // follows them and agrees with exact firm blocks.
+    for w in weights.iter_mut().step_by(3) {
+        *w *= 1.7;
+    }
+    let mut cmg = case.columns(53, 5);
+    let (outcome, _) = project(&mut projector, &case, Some(&weights), &mut cmg, 5, &request);
+    assert_cmg_chain(&projected(outcome), (1, firms));
+    let mut dense = Projector::new(case.design(), blocks(Some(firms)));
+    let mut exact = case.columns(53, 5);
+    let (outcome, _) = project(&mut dense, &case, Some(&weights), &mut exact, 5, &request);
+    projected(outcome);
+    let original = case.columns(53, 5);
+    for j in 0..5 {
+        let bound = 1e-7 * inf_norm(&column(&original, 5, j)).max(1.0);
+        for (a, b) in column(&cmg, 5, j).iter().zip(&column(&exact, 5, j)) {
+            assert!((a - b).abs() <= bound, "column {j}: {a} vs {b}");
+        }
+    }
+}
+
+#[cfg(feature = "cmg")]
+#[test]
+fn cmg_blocks_are_admitted_within_the_memory_limit() {
+    let case = Case::chain(3000, 4, false);
+    let original = case.columns(61, 3);
+    let run = |settings: Settings, limit: Option<u128>| {
+        let mut projector = Projector::new(case.design(), settings);
+        let mut data = original.clone();
+        let mut request = Request::new(TOLERANCE, 1500);
+        request.memory_limit = limit;
+        let outcome = projector
+            .project(
+                Weights::Unit,
+                ColumnsMut::new(&mut data, case.n, 3).unwrap(),
+                None,
+                &request,
+                &Control::default(),
+            )
+            .unwrap();
+        (outcome, data)
+    };
+    let escalate = settings(Preconditioner::Auto, Fallback::Escalate);
+    let mut explicit = Projector::new(case.design(), cmg_blocks(None));
+    assert!(explicit.prepare(&Control::default()).unwrap());
+    // The projection's workspace and the shared Laplacian, without room for
+    // a hierarchy.
+    let tight = Some(explicit.admission_bytes(3).unwrap() + (64 << 10));
+    for limit in [None, Some(1 << 30)] {
+        let (outcome, _) = run(escalate, limit);
+        let report = projected(outcome);
+        assert_eq!(report.facts.escalations, 1);
+        assert_cmg_chain(&report, (1, 3000));
+        let (outcome, _) = run(cmg_blocks(None), limit);
+        assert_cmg_chain(&projected(outcome), (1, 3000));
+    }
+    // An explicit request declines untouched ...
+    let (outcome, data) = run(cmg_blocks(None), tight);
+    assert!(matches!(
+        outcome,
+        Outcome::Declined {
+            reason: Decline::MemoryLimit,
+            input: InputState::Untouched,
+            ..
+        }
+    ));
+    assert_eq!(bits(&data), bits(&original));
+    // ... while the escalation keeps Jacobi on the firm block, which stalls
+    // again within the budget.
+    let (outcome, data) = run(escalate, tight);
+    let (reason, input, facts) = declined(outcome);
+    assert_eq!(reason, Decline::Numerical("stalled reduced recurrence"));
+    assert_eq!(input, InputState::Untouched);
+    assert_eq!(facts.escalations, 1);
+    assert!(facts.iterations < 1500, "{facts:?}");
+    assert_eq!(bits(&data), bits(&original));
 }

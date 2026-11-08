@@ -464,8 +464,9 @@ struct Plan<'p> {
     spec: BlockSpec,
     /// The weight state's generation (the blocks' build key).
     generation: u64,
-    /// Escalations start only within this workspace size.
+    /// The blocks are built only within this workspace size ...
     memory_limit: Option<u128>,
+    /// ... beyond the projection's own workspace.
     bytes: u128,
 }
 
@@ -528,6 +529,8 @@ where
         &mut tally,
         facts,
     )?;
+    // Also a declined recurrence reports the iterations it spent.
+    facts.iterations = facts.iterations.max(tally.iterations);
     let floor = match solved {
         Solve::Converged { accepted, floor } => {
             facts.column_iterations += tally.column_iterations;
@@ -536,7 +539,6 @@ where
         }
         Solve::Declined(reason) => return Ok(Step::Declined(reason)),
     };
-    facts.iterations = facts.iterations.max(tally.iterations);
     let started = Instant::now();
     recover::<R, NB, UNIT>(st, ctx.w, work);
     if let Some(coefficients) = batch.coefficients {
@@ -621,8 +623,8 @@ fn targets<const R: usize, const NB: usize>(
 
 /// The recurrence of one batch in its mode. An escalating batch whose Jacobi
 /// recurrence stalls or reaches the ceiling (never one that breaks down)
-/// continues with the blocks from its current iterate, within the memory
-/// limit. Also reports whether the blocks were used.
+/// continues with the blocks from its current iterate, when they are built
+/// within the memory limit. Also reports whether the blocks were used.
 #[allow(clippy::too_many_arguments)]
 fn solve<const R: usize, const NB: usize, const UNIT: bool, const WEIGHTED: bool>(
     ctx: &Ctx<'_, '_, NB>,
@@ -637,7 +639,8 @@ fn solve<const R: usize, const NB: usize, const UNIT: bool, const WEIGHTED: bool
     let (st, w) = (ctx.st, ctx.w);
     let (cap, cancel) = (plan.cap, &plan.cancel);
     if mode == Mode::Blocks {
-        build(st, w, plan, blocks, facts)?;
+        // Explicit blocks are built before the first batch, and the
+        // corrections of an escalated batch keep the escalation's blocks.
         let started = Instant::now();
         let solved =
             pcg::<R, NB, UNIT, Blocks>(st, w, work, targets, cap, cancel, blocks, true, tally)?;
@@ -645,18 +648,19 @@ fn solve<const R: usize, const NB: usize, const UNIT: bool, const WEIGHTED: bool
         return Ok((solved, true));
     }
     let started = Instant::now();
+    let before = tally.iterations;
     let solved =
         pcg::<R, NB, UNIT, Jacobi>(st, w, work, targets, cap, cancel, &mut Jacobi, true, tally)?;
     facts.pcg_seconds += started.elapsed().as_secs_f64();
+    // The escalated recurrence spends only what the Jacobi recurrence left
+    // of the caller's iteration budget.
+    let remaining = cap.saturating_sub(tally.iterations - before);
     let escalate = mode == Mode::Escalate
-        && matches!(solved, Solve::Declined(STALLED | CEILING))
-        && plan
-            .memory_limit
-            .is_none_or(|limit| plan.bytes + blocks::bound(st, &plan.spec) <= limit);
-    if !escalate {
+        && remaining > 0
+        && matches!(solved, Solve::Declined(STALLED | CEILING));
+    if !escalate || !build(st, w, plan, R, blocks, facts)? {
         return Ok((solved, false));
     }
-    build(st, w, plan, blocks, facts)?;
     // A fresh recurrence from the current iterate on the true residual
     // `g - S x`, with `g` formed again from the untouched columns.
     let started = Instant::now();
@@ -666,25 +670,43 @@ fn solve<const R: usize, const NB: usize, const UNIT: bool, const WEIGHTED: bool
     let started = Instant::now();
     apply::<R, NB, UNIT>(st, w, &work.x, &mut work.lanes);
     subtract(&mut work.r, &work.lanes[0].acc);
-    let solved =
-        pcg::<R, NB, UNIT, Blocks>(st, w, work, targets, cap, cancel, blocks, false, tally)?;
+    let solved = pcg::<R, NB, UNIT, Blocks>(
+        st, w, work, targets, remaining, cancel, blocks, false, tally,
+    )?;
     facts.pcg_seconds += started.elapsed().as_secs_f64();
     facts.escalations += 1;
     Ok((solved, true))
 }
 
-/// Build the blocks for the current weight state unless they are current.
+/// Build the blocks for the current weight state unless they are current,
+/// with CMG applications of up to `lanes` lanes per call, within the bytes
+/// the memory limit leaves beyond the projection's workspace; `false` when
+/// they do not fit.
 fn build(
     st: &Structure,
     w: &Weights,
     plan: &Plan<'_>,
+    lanes: usize,
     blocks: &mut Blocks,
     facts: &mut Facts,
-) -> Result<()> {
+) -> Result<bool> {
+    let budget = match plan.memory_limit {
+        Some(limit) => match limit.checked_sub(plan.bytes) {
+            Some(budget) => Some(budget),
+            None => return Ok(false),
+        },
+        None => None,
+    };
+    let build = blocks::Build {
+        spec: plan.spec,
+        generation: plan.generation,
+        lanes,
+        budget,
+    };
     let started = Instant::now();
-    blocks.ensure(st, w, plan.spec, plan.generation, &plan.cancel)?;
+    let built = blocks.ensure(st, w, build, &plan.cancel)?;
     facts.block_seconds += started.elapsed().as_secs_f64();
-    Ok(())
+    Ok(built)
 }
 
 /// Add the batch's coefficient increments. Corrections add their increments
@@ -894,6 +916,9 @@ fn project_nb<const NB: usize>(
     };
     let (plan, initial) = plan_of(job);
     let started = Instant::now();
+    if initial == Mode::Blocks && !build(st, job.w, &plan, ncols.min(BATCH), blocks, &mut facts)? {
+        return Ok((untouched(Decline::MemoryLimit, facts), false));
+    }
     let mut fold = MomentFold::default();
     residual_norms.clear();
     reserve(residual_norms, ncols)?;

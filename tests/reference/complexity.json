@@ -1,16 +1,22 @@
 {
   "growth": [
     {
-      "after": 56,
-      "before": 36,
+      "after": 57,
+      "before": 56,
       "metric": "fedemean/dispatch_candidates",
-      "reason": "Stage 3 composition in fedemean: PCG generic over the preconditioner (Jacobi keeps its fused kernels), block-Jacobi over the retained effects with exact grounded dense block solves and Jacobi on large blocks, escalation from a stalled Jacobi recurrence, and the CMG local solve (feature cmg) on a retained block's Laplacian."
+      "reason": "Auto escalation: CMG local solves on large retained blocks inside block-Jacobi (exact graph counts admitted before and after the build), escalation within the remaining iteration budget, declined facts report spent iterations; fereg Auto requests Fallback::Escalate and records escalations in its solve record and solver trace."
     },
     {
-      "after": 4496,
-      "before": 3311,
+      "after": 4668,
+      "before": 4496,
       "metric": "fedemean/production_lines",
-      "reason": "Stage 3 composition in fedemean: PCG generic over the preconditioner (Jacobi keeps its fused kernels), block-Jacobi over the retained effects with exact grounded dense block solves and Jacobi on large blocks, escalation from a stalled Jacobi recurrence, and the CMG local solve (feature cmg) on a retained block's Laplacian."
+      "reason": "Auto escalation: CMG local solves on large retained blocks inside block-Jacobi (exact graph counts admitted before and after the build), escalation within the remaining iteration budget, declined facts report spent iterations; fereg Auto requests Fallback::Escalate and records escalations in its solve record and solver trace."
+    },
+    {
+      "after": 120568,
+      "before": 120530,
+      "metric": "fereg-core/production_lines",
+      "reason": "Auto escalation: CMG local solves on large retained blocks inside block-Jacobi (exact graph counts admitted before and after the build), escalation within the remaining iteration budget, declined facts report spent iterations; fereg Auto requests Fallback::Escalate and records escalations in its solve record and solver trace."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -45,116 +51,140 @@
         "dispatch_candidates": [
           {
             "condition": "cells . len ( ) >= 2",
-            "line": 98
+            "line": 97
           },
           {
-            "condition": "columns <= self . columns",
-            "line": 212
-          },
-          {
-            "condition": "width == 0 || n != Some ( r . len ( ) ) || n != Some ( z . len ( ) )",
-            "line": 337
+            "condition": "width == 0 || self . columns == 0 || n != Some ( r . len ( ) ) || n != Some ( z . len ( ) )",
+            "line": 429
           },
           {
             "condition": "cells . len ( )",
-            "line": 383
+            "line": 474
           },
           {
             "condition": "n > STAR_LEVELS => Shape :: Star , _ =>",
-            "line": 385
+            "line": 476
           },
           {
             "condition": "offsets . len ( ) != segments + 1 || offsets [ 0 ] != 0 || offsets [ segments ] != block . entries . len ( ) || offsets . windows ( 2 ) . any ( | w | w [ 0 ] > w [ 1 ] ) || block . levels >= ISOLATED as usize",
-            "line": 413
+            "line": 504
           },
           {
             "condition": "p == v",
-            "line": 472
+            "line": 563
           }
         ],
         "functions": {
+          "admit#1": {
+            "line": 197,
+            "lines": 26
+          },
           "apply#1": {
-            "line": 335,
-            "lines": 21
+            "line": 427,
+            "lines": 20
+          },
+          "apply_bytes#1": {
+            "line": 309,
+            "lines": 5
           },
           "batch#1": {
-            "line": 240,
+            "line": 332,
             "lines": 76
           },
           "build#1": {
-            "line": 79,
-            "lines": 128
+            "line": 226,
+            "lines": 73
           },
           "built#1": {
-            "line": 511,
+            "line": 602,
             "lines": 12
           },
           "bytes#1": {
-            "line": 357,
+            "line": 448,
             "lines": 15
           },
           "clear_sums#1": {
-            "line": 317,
+            "line": 409,
             "lines": 5
           },
           "components#1": {
-            "line": 440,
+            "line": 531,
             "lines": 45
           },
+          "construction_bound#1": {
+            "line": 144,
+            "lines": 13
+          },
+          "count#1": {
+            "line": 89,
+            "lines": 49
+          },
           "fatal#1": {
-            "line": 497,
+            "line": 588,
             "lines": 11
           },
           "filled#1": {
-            "line": 536,
+            "line": 627,
             "lines": 5
           },
           "held#1": {
-            "line": 358,
+            "line": 449,
             "lines": 3
           },
+          "lane_values#1": {
+            "line": 301,
+            "lines": 6
+          },
           "means#1": {
-            "line": 324,
+            "line": 416,
             "lines": 8
           },
           "neumaier#1": {
-            "line": 487,
+            "line": 578,
             "lines": 9
           },
+          "options#1": {
+            "line": 160,
+            "lines": 16
+          },
+          "poll#1": {
+            "line": 178,
+            "lines": 7
+          },
           "refill#1": {
-            "line": 543,
+            "line": 634,
             "lines": 6
           },
           "reserve#1": {
-            "line": 210,
-            "lines": 27
+            "line": 316,
+            "lines": 13
           },
           "reserve#2": {
-            "line": 524,
+            "line": 615,
             "lines": 5
           },
           "root#1": {
-            "line": 448,
+            "line": 539,
             "lines": 8
           },
           "segment#1": {
-            "line": 406,
+            "line": 497,
             "lines": 3
           },
           "shape#1": {
-            "line": 382,
+            "line": 473,
             "lines": 23
           },
           "validate#1": {
-            "line": 410,
+            "line": 501,
             "lines": 27
           },
           "with_capacity#1": {
-            "line": 530,
+            "line": 621,
             "lines": 5
           }
         },
-        "production_lines": 455
+        "production_lines": 513
       },
       "crates/fedemean/src/design.rs": {
         "chunk_candidates": [],
@@ -241,80 +271,104 @@
         "dispatch_candidates": [
           {
             "condition": "values . len ( ) == values . capacity ( )",
-            "line": 56
+            "line": 68
           },
           {
             "condition": "self . entries . len ( ) - start < 2",
-            "line": 111
+            "line": 123
           }
         ],
         "functions": {
           "bytes#1": {
-            "line": 127,
+            "line": 139,
             "lines": 4
           },
           "fill#1": {
-            "line": 73,
+            "line": 85,
             "lines": 47
           },
           "push#1": {
-            "line": 55,
+            "line": 67,
             "lines": 9
           },
           "segment#1": {
-            "line": 122,
+            "line": 134,
             "lines": 3
           }
         },
-        "production_lines": 81
+        "production_lines": 87
       },
       "crates/fedemean/src/elimination/blocks.rs": {
         "chunk_candidates": [],
         "dispatch_candidates": [
           {
             "condition": "is_dense ( spec , k as usize , st )",
-            "line": 84
+            "line": 144
           },
           {
-            "condition": "self . built == Some ( ( generation , spec ) ) && self . blocks . len ( ) == nb",
-            "line": 109
+            "condition": "same && ( built . build . budget == build . budget || ! built . limited && fits ( built . admitted ) )",
+            "line": 203
           },
           {
             "condition": "self . blocks . len ( ) != nb",
-            "line": 113
+            "line": 215
           },
           {
             "condition": "is_dense ( & spec , block . range . len ( ) , st )",
-            "line": 122
+            "line": 225
           }
         ],
         "functions": {
+          "apply#1": {
+            "line": 40,
+            "lines": 3
+          },
           "auto_dense#1": {
-            "line": 34,
+            "line": 59,
             "lines": 4
           },
           "bound#1": {
-            "line": 79,
-            "lines": 17
+            "line": 139,
+            "lines": 19
           },
           "bytes#1": {
-            "line": 152,
+            "line": 44,
+            "lines": 3
+          },
+          "bytes#2": {
+            "line": 280,
             "lines": 8
           },
+          "cmg#1": {
+            "line": 161,
+            "lines": 9
+          },
+          "cmg#2": {
+            "line": 172,
+            "lines": 10
+          },
           "ensure#1": {
-            "line": 100,
-            "lines": 36
+            "line": 190,
+            "lines": 64
           },
           "is_dense#1": {
-            "line": 71,
+            "line": 120,
             "lines": 6
           },
           "range#1": {
-            "line": 66,
+            "line": 115,
             "lines": 4
+          },
+          "release#1": {
+            "line": 257,
+            "lines": 6
+          },
+          "wants_cmg#1": {
+            "line": 129,
+            "lines": 7
           }
         },
-        "production_lines": 134
+        "production_lines": 225
       },
       "crates/fedemean/src/elimination/dense.rs": {
         "chunk_candidates": [],
@@ -460,29 +514,37 @@
             "line": 385
           },
           {
+            "condition": "plan . memory_limit",
+            "line": 693
+          },
+          {
             "condition": "( unit , weighted )",
-            "line": 794
+            "line": 816
           },
           {
             "condition": "width",
-            "line": 802
+            "line": 824
           },
           {
             "condition": "values . nobs ( ) != st . nobs || values . ncols ( ) == 0 || job . design . nobs ( ) != st . nobs",
-            "line": 830
+            "line": 852
           },
           {
             "condition": "st . blocks . len ( )",
-            "line": 833
+            "line": 855
+          },
+          {
+            "condition": "initial == Mode :: Blocks && ! build ( st , job . w , & plan , ncols . min ( BATCH ) , blocks , & mut facts ) ?",
+            "line": 919
           },
           {
             "condition": "dispatch :: < NB > ( & ctx , & plan , width , batch , lent ) ?",
-            "line": 928
+            "line": 953
           }
         ],
         "functions": {
           "add_coefficients#1": {
-            "line": 693,
+            "line": 715,
             "lines": 29
           },
           "admission_bytes#1": {
@@ -490,8 +552,8 @@
             "lines": 16
           },
           "build#1": {
-            "line": 677,
-            "lines": 12
+            "line": 685,
+            "lines": 26
           },
           "certify_residual#1": {
             "line": 263,
@@ -506,7 +568,7 @@
             "lines": 3
           },
           "dispatch#1": {
-            "line": 783,
+            "line": 805,
             "lines": 33
           },
           "explicit_block_bytes#1": {
@@ -514,11 +576,11 @@
             "lines": 6
           },
           "numerical#1": {
-            "line": 1007,
+            "line": 1032,
             "lines": 18
           },
           "plan_of#1": {
-            "line": 843,
+            "line": 865,
             "lines": 22
           },
           "prepare#1": {
@@ -530,12 +592,12 @@
             "lines": 77
           },
           "project#2": {
-            "line": 822,
+            "line": 844,
             "lines": 19
           },
           "project_nb#1": {
-            "line": 866,
-            "lines": 139
+            "line": 888,
+            "lines": 142
           },
           "residual_gram#1": {
             "line": 137,
@@ -546,16 +608,16 @@
             "lines": 3
           },
           "run#1": {
-            "line": 491,
-            "lines": 77
+            "line": 492,
+            "lines": 78
           },
           "same_projection#1": {
-            "line": 1049,
+            "line": 1074,
             "lines": 5
           },
           "solve#1": {
-            "line": 627,
-            "lines": 48
+            "line": 629,
+            "lines": 51
           },
           "solve_bytes#1": {
             "line": 364,
@@ -570,11 +632,11 @@
             "lines": 7
           },
           "with_structure#1": {
-            "line": 1040,
+            "line": 1065,
             "lines": 8
           }
         },
-        "production_lines": 893
+        "production_lines": 909
       },
       "crates/fedemean/src/elimination/passes.rs": {
         "chunk_candidates": [],
@@ -824,12 +886,12 @@
           },
           {
             "condition": "! ( 2.. = MAX_BLOCKS + 1 ) . contains ( & design . effects ( ) . len ( ) )",
-            "line": 587
+            "line": 595
           }
         ],
         "functions": {
           "admission_bytes#1": {
-            "line": 573,
+            "line": 581,
             "lines": 6
           },
           "as_mut_slice#1": {
@@ -841,7 +903,7 @@
             "lines": 3
           },
           "certify_residual#1": {
-            "line": 539,
+            "line": 546,
             "lines": 10
           },
           "check#1": {
@@ -849,19 +911,19 @@
             "lines": 20
           },
           "columns#1": {
-            "line": 426,
+            "line": 432,
             "lines": 3
           },
           "columns#2": {
-            "line": 565,
+            "line": 572,
             "lines": 3
           },
           "design#1": {
-            "line": 458,
+            "line": 464,
             "lines": 3
           },
           "eliminated_members#1": {
-            "line": 583,
+            "line": 591,
             "lines": 19
           },
           "ncols#1": {
@@ -881,11 +943,11 @@
             "lines": 3
           },
           "new#4": {
-            "line": 227,
+            "line": 233,
             "lines": 9
           },
           "new#5": {
-            "line": 448,
+            "line": 454,
             "lines": 8
           },
           "nobs#1": {
@@ -893,35 +955,35 @@
             "lines": 3
           },
           "prepare#1": {
-            "line": 469,
+            "line": 475,
             "lines": 18
           },
           "project#1": {
-            "line": 490,
-            "lines": 44
+            "line": 496,
+            "lines": 45
           },
           "residual_gram#1": {
-            "line": 552,
-            "lines": 3
-          },
-          "residual_norms#1": {
             "line": 559,
             "lines": 3
           },
+          "residual_norms#1": {
+            "line": 566,
+            "lines": 3
+          },
           "settings#1": {
-            "line": 463,
+            "line": 469,
             "lines": 3
           },
           "values#1": {
-            "line": 431,
+            "line": 437,
             "lines": 3
           },
           "with_cancel#1": {
-            "line": 248,
+            "line": 254,
             "lines": 5
           }
         },
-        "production_lines": 430
+        "production_lines": 431
       },
       "crates/fedemean/src/reduce.rs": {
         "chunk_candidates": [],
@@ -3251,96 +3313,104 @@
         "dispatch_candidates": [
           {
             "condition": "self . current => projector . residual_norms ( ) , _ => & [ ] , } } pub ( crate ) fn project ( & mut self , design : & BorrowedInterceptFeDesign < 'a > , weights : BorrowedMapWeights < '_ > , mut values : DenseMatrix , map : MapConfig , budget : Option < FeSolverMemoryBudget > , request : Request , ) -> Result < Outcome < DenseMatrix > >",
-            "line": 132
+            "line": 133
           },
           {
             "condition": "values . nrows ( ) != design . nobs ( ) || ! ( map . tolerance . is_finite ( ) && map . tolerance > 0.0 )",
-            "line": 154
+            "line": 155
           },
           {
             "condition": "weights",
-            "line": 178
+            "line": 179
           },
           {
             "condition": "values . ncols ( ) != 1 || ! same_design ( projector . design ( ) , design )",
-            "line": 292
+            "line": 295
           },
           {
             "condition": "weights",
-            "line": 295
+            "line": 298
           }
         ],
         "functions": {
           "add_partial_coefficients#1": {
-            "line": 266,
+            "line": 269,
             "lines": 10
           },
           "bind#1": {
-            "line": 308,
-            "lines": 15
+            "line": 311,
+            "lines": 12
           },
           "certify_derived#1": {
-            "line": 281,
+            "line": 284,
             "lines": 23
           },
           "design_view#1": {
-            "line": 326,
+            "line": 340,
             "lines": 18
           },
           "detach_residual_norms#1": {
-            "line": 123,
+            "line": 124,
             "lines": 3
           },
           "enabled#1": {
-            "line": 15,
+            "line": 16,
             "lines": 8
           },
           "fe_certificate#1": {
-            "line": 359,
+            "line": 373,
             "lines": 8
           },
           "fedemean_error#1": {
-            "line": 368,
+            "line": 382,
             "lines": 10
           },
           "members#1": {
-            "line": 345,
+            "line": 359,
             "lines": 3
           },
           "project#1": {
-            "line": 142,
-            "lines": 114
+            "line": 143,
+            "lines": 116
           },
           "request_residual_gram#1": {
-            "line": 106,
+            "line": 107,
             "lines": 3
           },
           "residual_gram#1": {
-            "line": 112,
+            "line": 113,
             "lines": 6
           },
           "residual_norms#1": {
-            "line": 130,
+            "line": 131,
             "lines": 6
           },
           "same_design#1": {
-            "line": 349,
+            "line": 363,
+            "lines": 9
+          },
+          "settings#1": {
+            "line": 328,
             "lines": 9
           },
           "solve_record#1": {
-            "line": 380,
-            "lines": 18
+            "line": 394,
+            "lines": 20
           },
           "trace_decline#1": {
-            "line": 399,
+            "line": 447,
             "lines": 9
           },
+          "trace_escalation#1": {
+            "line": 418,
+            "lines": 28
+          },
           "weight_scale#1": {
-            "line": 259,
+            "line": 262,
             "lines": 3
           }
         },
-        "production_lines": 290
+        "production_lines": 328
       },
       "crates/fereg-core/src/fe/borrowed_map/categorical_prefix.rs": {
         "chunk_candidates": [],
@@ -27616,17 +27686,17 @@
     "metrics": {
       "fedemean": {
         "chunk_candidates": 0,
-        "dispatch_candidates": 56,
+        "dispatch_candidates": 57,
         "files_over_1500": 0,
         "functions_over_150": 0,
-        "production_lines": 4496
+        "production_lines": 4668
       },
       "fereg-core": {
         "chunk_candidates": 13,
         "dispatch_candidates": 1560,
         "files_over_1500": 15,
         "functions_over_150": 58,
-        "production_lines": 120530
+        "production_lines": 120568
       },
       "fereg-plugin": {
         "chunk_candidates": 6,

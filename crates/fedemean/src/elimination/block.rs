@@ -48,6 +48,18 @@ pub(crate) trait LocalSolve: Send {
     fn bytes(&self) -> u128;
 }
 
+/// A local solve built within a byte budget (only CMG solves are, so a
+/// build without feature `cmg` constructs none).
+#[cfg_attr(not(feature = "cmg"), allow(dead_code))]
+pub(crate) enum Admitted<S> {
+    Solve(S),
+    /// The block has no such solve (too few connected levels, or a numerical
+    /// refusal of its graph); it keeps another local solve.
+    Refused,
+    /// The solve would exceed the budget.
+    MemoryLimit,
+}
+
 /// Unused level slot of [`BlockLaplacian::fill`].
 const FREE: u32 = u32::MAX;
 

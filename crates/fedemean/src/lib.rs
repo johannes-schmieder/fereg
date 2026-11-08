@@ -21,14 +21,14 @@
 //!   PCG over up to eight columns on the reduced (Schur) system with the
 //!   Jacobi preconditioner (the default) or block-Jacobi over the retained
 //!   effects ([`Preconditioner::BlockJacobi`]): exact grounded Cholesky
-//!   solves of small blocks and Jacobi on large ones.
+//!   solves of small blocks; one fixed CMG cycle on large ones (feature
+//!   `cmg`, [`LocalSolver::Cmg`]), or Jacobi.
 //! - [`Fallback::Escalate`]: a batch whose Jacobi recurrence stalls or
 //!   reaches the iteration ceiling continues with block-Jacobi from its
 //!   current iterate ([`Route::escalations`]).
-//! - Not yet: CMG local solves ([`LocalSolver::Cmg`]), the full formulation
-//!   without elimination, LSMR, Schwarz, varying slopes, more than five
-//!   effects. Designs outside the route are declined ([`Outcome::Declined`])
-//!   for the caller's own solvers.
+//! - Not yet: the full formulation without elimination, LSMR, Schwarz,
+//!   varying slopes, more than five effects. Designs outside the route are
+//!   declined ([`Outcome::Declined`]) for the caller's own solvers.
 //!
 //! Projections run on the caller's current rayon pool.
 

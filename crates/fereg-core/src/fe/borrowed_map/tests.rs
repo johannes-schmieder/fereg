@@ -3452,12 +3452,14 @@ fn large_two_fe_pcg_recurrence_is_bit_stable_across_threads() {
     }
 }
 
-#[test]
-fn active_two_fe_pcg_recurrence_is_bit_stable_across_budget_boundaries() {
-    let _stable_route = crate::fe::block_schur::stable_route_for_test();
+/// Three PPML columns of a two-FE design whose active stage plans cross lane
+/// budgets between 1, 7, 9 and 15 threads, each projected on a fresh pool of
+/// the given width; also whether the elimination formed the result.
+fn budget_boundary_runs(threads: &[usize]) -> Vec<(CertifiedBorrowedMap, bool)> {
     let rows = 65_536;
     let first_levels = 8_192;
     let second_levels = 8_191;
+    assert!(crate::parallel::StagePlan::new(second_levels as u128 * 3, second_levels, 7).lanes > 1);
     let first_codes = (0..rows)
         .map(|row| (row % first_levels) as u32)
         .collect::<Vec<_>>();
@@ -3497,23 +3499,70 @@ fn active_two_fe_pcg_recurrence_is_bit_stable_across_budget_boundaries() {
                         .expect("reusable map");
                 assert!(reusable.two_fe_pcg.is_some());
                 reusable
-                    .absorb_ppml(
+                    .absorb_ppml_route(
                         BorrowedMapWeights::Provided(&weights),
                         DenseMatrix::from_columns(&columns).expect("matrix"),
                         config(),
                     )
-                    .expect("certified PCG")
+                    .expect("certified projection")
             })
     };
-    let serial = run(1);
+    threads.iter().map(|&threads| run(threads)).collect()
+}
+
+#[test]
+fn active_two_fe_pcg_recurrence_is_bit_stable_across_budget_boundaries() {
+    let _established_routes = crate::fe::block_schur::disable_for_test();
+    let runs = budget_boundary_runs(&[1, 7, 9, 15]);
+    assert!(runs.iter().all(|(_, eliminated)| !eliminated));
+    let serial = &runs[0].0;
     assert!(serial.report().iterations > 0);
-    assert!(crate::parallel::StagePlan::new(second_levels as u128 * 3, second_levels, 7).lanes > 1);
-    for threads in [7, 9, 15] {
-        let parallel = run(threads);
+    for (parallel, _) in &runs[1..] {
         assert_eq!(serial.residualized(), parallel.residualized());
         assert_eq!(serial.report().iterations, parallel.report().iterations);
         assert_eq!(serial.report().stop_reason, parallel.report().stop_reason);
         assert_eq!(serial.report().certificate, parallel.report().certificate);
+    }
+}
+
+#[test]
+fn eliminated_two_fe_projection_is_repeatable_and_agrees_across_threads() {
+    // The elimination of the same design: its lanes follow the pool width,
+    // so it repeats bitwise at a fixed worker count and agrees
+    // scientifically across worker counts.
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
+    let runs = budget_boundary_runs(&[1, 1, 7, 7]);
+    assert!(runs.iter().all(|(_, eliminated)| *eliminated));
+    let bits = |result: &CertifiedBorrowedMap| {
+        result
+            .residualized()
+            .as_slice()
+            .iter()
+            .map(|value| value.to_bits())
+            .collect::<Vec<_>>()
+    };
+    for pair in runs.chunks(2) {
+        let (first, second) = (&pair[0].0, &pair[1].0);
+        assert!(first.report().certified());
+        assert_eq!(bits(first), bits(second));
+        assert_eq!(first.report().iterations, second.report().iterations);
+        assert_eq!(first.report().certificate, second.report().certificate);
+    }
+    let (serial, parallel) = (&runs[0].0, &runs[2].0);
+    for column in 0..serial.residualized().ncols() {
+        let serial = serial.residualized().column(column).expect("column");
+        let parallel = parallel.residualized().column(column).expect("column");
+        let norm = serial.iter().map(|value| value * value).sum::<f64>().sqrt();
+        let difference = serial
+            .iter()
+            .zip(&parallel)
+            .map(|(a, b)| (a - b) * (a - b))
+            .sum::<f64>()
+            .sqrt();
+        assert!(
+            difference <= 1e-12 * norm,
+            "column {column}: {difference:e} against norm {norm:e}"
+        );
     }
 }
 

@@ -11,7 +11,7 @@ build = "build.rs"
 path = "src/lib.rs"
 
 [dependencies]
-fedemean = { path = "../fedemean" }
+fedemean = { path = "../fedemean", features = ["cmg"] }
 cmg = { git = "https://github.com/johannes-schmieder/CMG", rev = "e5613e81fb3b03c78de98658b372646fa802aabb", features = ["parallel", "experimental-components"] }
 rayon = { version = "=1.12.0" }
 schwarz-precond = { git = "https://github.com/johannes-schmieder/within", rev = "8d401d8278ac783b2f258c459e057f30cd80d595", package = "schwarz-precond" }

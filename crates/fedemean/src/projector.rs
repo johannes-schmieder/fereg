@@ -164,11 +164,17 @@ pub struct BlockSpec {
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum LocalSolver {
-    /// The best local solve this build has (currently [`LocalSolver::Jacobi`]).
+    /// The best local solve this build has: with feature `cmg`, a CMG cycle
+    /// where CMG builds a hierarchy of the block's graph within the memory
+    /// limit, else [`LocalSolver::Jacobi`]; without it, Jacobi.
     #[default]
     Auto,
-    /// Combinatorial multigrid (not available in this build:
-    /// [`Error::Unsupported`]).
+    /// One fixed combinatorial multigrid cycle on the block's graph
+    /// (feature `cmg`; otherwise [`Error::Unsupported`]). A block whose graph
+    /// CMG refuses numerically (fewer than two connected levels, or weights
+    /// it cannot represent) keeps Jacobi and reports [`LocalUsed::Jacobi`];
+    /// a hierarchy beyond [`Request::memory_limit`] declines the projection
+    /// ([`Decline::MemoryLimit`]).
     Cmg,
     /// The block's inverse diagonal (Jacobi on that block).
     Jacobi,
@@ -498,6 +504,7 @@ impl<'a> Projector<'a> {
         if !(request.tolerance.is_finite() && request.tolerance > 0.0) {
             return Err(Error::InvalidInput("projection tolerance is invalid"));
         }
+        #[cfg(not(feature = "cmg"))]
         if let Preconditioner::BlockJacobi(BlockSpec {
             large: LocalSolver::Cmg,
             ..
@@ -568,7 +575,8 @@ impl<'a> Projector<'a> {
 
     /// Bytes a projection of `ncols` columns needs beyond the caller's data,
     /// once the structure exists (escalations excluded: they only start
-    /// within [`Request::memory_limit`]).
+    /// within [`Request::memory_limit`]). CMG local solves are excluded too:
+    /// they are admitted as they are built, from their graphs' sizes.
     #[must_use]
     pub fn admission_bytes(&self, ncols: usize) -> Option<u128> {
         self.engine.structure().map(|st| {
