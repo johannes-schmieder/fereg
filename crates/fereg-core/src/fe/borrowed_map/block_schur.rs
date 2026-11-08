@@ -95,6 +95,8 @@ pub(crate) struct Cache<'a> {
     /// Coefficient increments of the last call's columns when it declined
     /// after forming some of their residuals in place.
     partial: Option<FeCoefficientBatch>,
+    /// The maximum weight that normalized the last certified projection.
+    weight_scale: Option<f64>,
 }
 
 impl<'a> Cache<'a> {
@@ -148,6 +150,7 @@ impl<'a> Cache<'a> {
     ) -> Result<Outcome<DenseMatrix>> {
         self.current = false;
         self.partial = None;
+        self.weight_scale = None;
         if values.nrows() != design.nobs() || !(map.tolerance.is_finite() && map.tolerance > 0.0) {
             return Ok(Outcome::Declined(values));
         }
@@ -216,6 +219,7 @@ impl<'a> Cache<'a> {
             _ => return Ok(Outcome::Declined(values)),
         };
         solve_record(&facts);
+        self.weight_scale = Some(report.weight_scale);
         let solve_report = SolveReport {
             requested_solver: FeSolverKind::Auto,
             iterations: facts.iterations,
@@ -248,6 +252,12 @@ impl<'a> Cache<'a> {
             .map_err(|_| allocation("unable to reserve block-elimination workspace"))?;
         attached.extend_from_slice(norms);
         Ok(Outcome::Done(result.with_residual_norms(attached)?))
+    }
+
+    /// The maximum weight (1 for unit weights) that normalized the norms and
+    /// certificate of the last certified projection.
+    pub(crate) fn weight_scale(&self) -> Option<f64> {
+        self.weight_scale
     }
 
     /// Add the coefficient increments of a declined call (see

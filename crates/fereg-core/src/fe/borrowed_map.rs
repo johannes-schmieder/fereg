@@ -2081,8 +2081,12 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             // The elimination's residual pass formed sqrt(sum (w/max w) r^2)
             // per column with the frame's maximum-weight divisor. Hand it over
             // only inside the range where the plain sum is accurate; otherwise
-            // the linear frame's stable norm pass stays authoritative.
-            let raw_scale = maximum_weight(weights);
+            // the linear frame's stable norm pass stays authoritative. The
+            // elimination reports the divisor it used (no second weight pass).
+            let raw_scale = self
+                .block_schur
+                .weight_scale()
+                .unwrap_or_else(|| maximum_weight(weights));
             let norms = absorbed.take_residual_norms();
             let usable = raw_scale == norm_weight_scale
                 && norms.len() == absorbed.residualized().ncols()

@@ -104,8 +104,11 @@ pub struct Effect<'a> {
 }
 
 impl<'a> Effect<'a> {
-    /// Codes are checked against `levels` inside the elimination's structure
-    /// pass, which reads every code anyway.
+    /// The retained effects' codes are checked against `levels` inside the
+    /// elimination's structure pass, which reads every code anyway. The
+    /// eliminated effect's codes are checked when the projector builds its
+    /// members; caller-supplied [`Members`] must match the codes (see there),
+    /// otherwise a projection may panic or return wrong residuals.
     #[must_use]
     pub const fn new(codes: &'a [u32], levels: usize) -> Self {
         Self {

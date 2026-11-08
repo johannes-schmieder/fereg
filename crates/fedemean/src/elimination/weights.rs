@@ -2,8 +2,8 @@
 
 use super::structure::{each_lane2, refill, refill_from, reserve, Structure};
 use crate::design::Members;
-use crate::error::Result;
-use crate::weights::Validated as ValidatedWeights;
+use crate::error::{Error, Result};
+use crate::weights::{Validated as ValidatedWeights, Weights as InputWeights};
 use std::ops::Range;
 
 /// Current-weight cell masses, segment inverses and the Schur diagonal.
@@ -310,40 +310,94 @@ fn fill_lane(
 /// digest of its bits (callers may refill one buffer between frames).
 pub(super) type WeightKey = Option<(usize, usize, u64)>;
 
-pub(super) fn weight_key(values: Option<&[f64]>) -> Result<WeightKey> {
-    fn mix(h: u64, bits: u64) -> u64 {
-        let h = (h ^ bits).wrapping_mul(0x9e37_79b9_7f4a_7c15);
-        h ^ (h >> 31)
+fn mix(h: u64, bits: u64) -> u64 {
+    let h = (h ^ bits).wrapping_mul(0x9e37_79b9_7f4a_7c15);
+    h ^ (h >> 31)
+}
+
+/// The digest of one leaf of weights.
+fn leaf_digest(chunk: &[f64]) -> u64 {
+    // Four interleaved chains keep the multiplications independent.
+    let mut h = [
+        0x243f_6a88_85a3_08d3_u64,
+        0x1319_8a2e_0370_7344,
+        0xa409_3822_299f_31d0,
+        0x082e_fa98_ec4e_6c89,
+    ];
+    let mut quads = chunk.chunks_exact(4);
+    for quad in &mut quads {
+        for lane in 0..4 {
+            h[lane] = mix(h[lane], quad[lane].to_bits());
+        }
     }
-    let Some(values) = values else {
-        return Ok(None);
+    for (lane, v) in quads.remainder().iter().enumerate() {
+        h[lane] = mix(h[lane], v.to_bits());
+    }
+    h.iter()
+        .fold(chunk.len() as u64, |acc, &lane| mix(acc, lane))
+}
+
+/// Rows per digest leaf.
+const DIGEST_LEAF: usize = 1 << 16;
+
+/// Validate the weights and key them in one pass over fixed leaves: the same
+/// validity, maximum and minimum as [`crate::weights::validate`] and the same
+/// digest as a separate keying pass (fixed leaves and tree: the digest
+/// depends only on the bits).
+pub(super) fn validate_keyed(
+    weights: InputWeights<'_>,
+    nrows: usize,
+) -> Result<(ValidatedWeights<'_>, WeightKey)> {
+    let InputWeights::Values(values) = weights else {
+        return Ok((crate::weights::validate(weights, nrows)?, None));
     };
-    // Fixed leaves and tree: the digest depends only on the bits.
-    let digest = crate::reduce::fixed_tree_reduce(
+    if values.len() != nrows {
+        return Err(Error::InvalidInput(
+            "borrowed MAP weight and observation counts differ",
+        ));
+    }
+    let (digest, valid, raw_scale, minimum) = crate::reduce::fixed_tree_reduce(
         values.len(),
-        1 << 16,
+        DIGEST_LEAF,
         &|range: Range<usize>| {
             let chunk = &values[range];
-            // Four interleaved chains keep the multiplications independent.
-            let mut h = [
-                0x243f_6a88_85a3_08d3_u64,
-                0x1319_8a2e_0370_7344,
-                0xa409_3822_299f_31d0,
-                0x082e_fa98_ec4e_6c89,
-            ];
-            let mut quads = chunk.chunks_exact(4);
-            for quad in &mut quads {
-                for lane in 0..4 {
-                    h[lane] = mix(h[lane], quad[lane].to_bits());
-                }
-            }
-            for (lane, v) in quads.remainder().iter().enumerate() {
-                h[lane] = mix(h[lane], v.to_bits());
-            }
-            Ok(h.iter()
-                .fold(chunk.len() as u64, |acc, &lane| mix(acc, lane)))
+            let (valid, maximum, minimum) = chunk.iter().fold(
+                (true, 0.0_f64, f64::INFINITY),
+                |(valid, maximum, minimum), &weight| {
+                    (
+                        valid && weight.is_finite() && weight > 0.0,
+                        maximum.max(weight),
+                        minimum.min(weight),
+                    )
+                },
+            );
+            Ok((leaf_digest(chunk), valid, maximum, minimum))
         },
-        &|left, right| mix(mix(0xcbf2_9ce4_8422_2325, left), right),
+        &|left, right| {
+            (
+                mix(mix(0xcbf2_9ce4_8422_2325, left.0), right.0),
+                left.1 && right.1,
+                left.2.max(right.2),
+                left.3.min(right.3),
+            )
+        },
     )?;
-    Ok(Some((values.as_ptr() as usize, values.len(), digest)))
+    if !valid {
+        return Err(Error::InvalidData(
+            "borrowed MAP weights must be finite and positive",
+        ));
+    }
+    if minimum / raw_scale == 0.0 {
+        return Err(Error::InvalidData(
+            "borrowed MAP normalized weight underflowed to zero",
+        ));
+    }
+    let validated = ValidatedWeights {
+        values: Some(values),
+        raw_scale,
+    };
+    Ok((
+        validated,
+        Some((values.as_ptr() as usize, values.len(), digest)),
+    ))
 }

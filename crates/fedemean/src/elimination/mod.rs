@@ -34,7 +34,7 @@ use crate::projector::{
     CoefficientsMut, ColumnReport, ColumnStatus, ColumnsMut, Decline, Facts, Gram, InputState,
     MethodUsed, Outcome, PreconditionerUsed, ReductionUsed, Report, Request, Route,
 };
-use crate::weights::{validate, Validated as ValidatedWeights, Weights as InputWeights};
+use crate::weights::{Validated as ValidatedWeights, Weights as InputWeights};
 use rayon::prelude::*;
 use std::time::Instant;
 
@@ -73,7 +73,7 @@ use kernels::{Ctx, Slotted, Work, WorkSlots};
 use passes::{recover, residualize, rhs};
 use pcg::{pcg, Solve, Targets};
 use structure::{filled, reserve, with_capacity, Structure};
-use weights::{weight_key, WeightKey, Weights};
+use weights::{validate_keyed, WeightKey, Weights};
 
 /// The caller's cancellation poll.
 #[derive(Clone, Copy)]
@@ -190,8 +190,7 @@ impl Engine {
         let started = Instant::now();
         let st = self.structure.as_ref().expect("structure");
         let members = call.members.expect("structure has members");
-        let validated = validate(weights, values.nobs())?;
-        let key = weight_key(validated.values)?;
+        let (validated, key) = validate_keyed(weights, values.nobs())?;
         if request
             .memory_limit
             .is_some_and(|limit| admission_bytes(st, None, values.ncols()) > limit)
@@ -256,8 +255,8 @@ impl Engine {
         if column.len() != st.nobs || design.nobs() != st.nobs {
             return Ok(None);
         }
-        let validated = validate(weights, column.len())?;
-        if *key != weight_key(validated.values)? {
+        let (validated, current) = validate_keyed(weights, column.len())?;
+        if *key != current {
             return Ok(None);
         }
         if !(amplification.is_finite() && amplification >= 1.0) {
