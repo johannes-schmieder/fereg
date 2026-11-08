@@ -250,7 +250,30 @@ unsupported explicit requests must not silently become auto.
 
 ### Qualified Auto routing and developer comparisons
 
-Public OLS Auto/Auto uses the many-FE geometry policy
+**Exact elimination first (accepted by Johannes, 2026-11-08).** OLS Auto with
+two to five categorical intercept effects (Auto preconditioner, no declined
+recheck, default routing; Fast and Low memory) and PPML categorical frames
+(MAP family, two to five effects; four or five effects through the categorical
+owner in Fast mode only) first eliminate the largest effect exactly and solve
+the Schur complement of the remaining effects by lockstep PCG with Jacobi on
+the true Schur diagonal (up to eight right-hand sides; single-cell segments
+contribute nothing and are skipped). A column stops when its reduced residual,
+which equals its remaining-level moments, is at most 0.1×tol times the column
+norm after removing the eliminated-effect group means; weighted and PPML
+callers also bound the Jacobi coefficient-error estimate by tol×RMS(column).
+A column whose recurrence reaches its rounding floor returns to its best
+iterate meeting the earlier rule (0.5×tol of the raw norm) or declines.
+Acceptance recomputes the remaining-level moments from the formed residual
+with the ordinary certificate fold; eliminated-level moments are zero by
+construction, and the derived final-residual certificate recomputes every
+level. Any stall, refusal, rank or nonfinite case declines with the input
+untouched to the established routes below. OLS reports the route as solver
+`elimination` (code 9, a used code only; it cannot be requested); PPML
+publishes it under the categorical MAP engine identity, which its compiled
+validator admits. `FEREG_BLOCK_SCHUR=0` (environment, read once per process)
+restores the established routes for comparisons.
+
+Public OLS Auto/Auto otherwise uses the many-FE geometry policy
 (`routing_many_geometry_v1`) for eligible designs with at least three
 categorical-intercept FEs. Eligible two-FE designs use
 [structural CMG gate v2](two_fe_auto_gates.md) (`routing_two_gates_v2`),
@@ -1153,6 +1176,24 @@ Require two consecutive accepted passes satisfying this and independently
 recomputed normalized finite and FE scores. A small objective change alone
 is insufficient, particularly near small coefficients.
 
+**Elimination pre-solve (accepted by Johannes, 2026-11-08).** A fresh MAP-family
+publication fit in Fast mode with categorical intercept effects and continuous
+regressors first takes plain IRLS steps whose weighted projections of
+`[z, X]` use the exact elimination (each step reprojects the previous
+residuals plus the working-response change under the new weights, which has
+the same projection), solving the small normal equations of the regressors.
+Only full Newton steps that do not increase the deviance are accepted; any
+damping, FE-collinear regressor, rank, bound or nonfinite problem discards the
+pre-solve and restores the seed. Only the predictor is handed over. The
+pre-solve stops once a step changes the deviance by at most 0.01×tol. If its
+last step meets the deviance criterion and the start passes the independent
+score certificate, the pre-solve counts as the first of the two consecutive
+passes; the certified iteration and the strict checkpoint then decide exactly
+as above. Pre-solve steps count toward `iterate()` (the pre-solve takes at most
+`iterate()-2` steps) and toward the reported outer iterations; their projection
+iterations count as inner iterations. `FEREG_PPML_PRESOLVE=0` (environment)
+restores the plain seed.
+
 Apparent convergence triggers fresh strict WLS at
 `min(1e-12,0.1×outer_tolerance)`. A publication fit first waits while its
 contracting predictor is predicted to keep moving: with the strict profile
@@ -1630,6 +1671,16 @@ general work/resource rules, with transparent requested, resolved-budget and
 effective concurrency. No-numerical-change commits preserve scientific bits and
 available solver/route signatures against the parent under equal build settings.
 Numerical fixes declare affected cases/fields; unaffected science remains exact.
+Declared scope (accepted by Johannes, 2026-11-08): the elimination workstream
+changed the fixed reduction orders of passes shared by every route (column
+statistics, score and reconstruction certificates, the IRLS objective, weight
+and VCE weight sums, separation certificates and digests), which now use fixed
+chunks merged over fixed binary trees. Every OLS and PPML route, including no-FE,
+slopes, explicit `solver(map)`/`solver(lsmr)` and PPML low memory, may therefore
+differ from 0.5.3 in the last bits (about 1e-15 relative); samples, ranks,
+omissions, separation and every other discrete decision are unchanged, results
+repeat exactly at a fixed worker count and agree scientifically across worker
+counts.
 Exclude timing, build identity and environmental resource observations only.
 A tolerance pass cannot silently waive an unexplained exact-change failure.
 Preserve Stata processor restoration on success, error and Break. `feppml`
