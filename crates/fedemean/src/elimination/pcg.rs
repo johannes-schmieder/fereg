@@ -9,11 +9,11 @@ use rayon::prelude::*;
 use std::ops::Range;
 
 /// Decline of a recurrence that stopped progressing ...
-pub(super) const STALLED: &str = "stalled reduced recurrence";
+pub(crate) const STALLED: &str = "stalled reduced recurrence";
 /// ... and of one that reached the iteration ceiling (both may escalate).
-pub(super) const CEILING: &str = "iteration ceiling";
+pub(crate) const CEILING: &str = "iteration ceiling";
 
-pub(super) enum Solve<const R: usize> {
+pub(crate) enum Solve<const R: usize> {
     Converged {
         /// Columns stopped at the acceptance rule after a breakdown.
         accepted: usize,
@@ -24,12 +24,12 @@ pub(super) enum Solve<const R: usize> {
 }
 
 /// Iteration counts of the recurrences of one batch.
-pub(super) struct Tally<const R: usize> {
-    pub(super) iterations: usize,
+pub(crate) struct Tally<const R: usize> {
+    pub(crate) iterations: usize,
     /// The sum over iterations of the active columns.
-    pub(super) column_iterations: usize,
+    pub(crate) column_iterations: usize,
     /// Iterations each column was active.
-    pub(super) per_column: [usize; R],
+    pub(crate) per_column: [usize; R],
 }
 
 impl<const R: usize> Default for Tally<R> {
@@ -65,7 +65,7 @@ impl<const R: usize> Precondition<R> for Jacobi {
 }
 
 /// `value / target` with an exact zero target accepting only exact zeros.
-pub(super) fn ratio(value: f64, target: f64) -> f64 {
+pub(crate) fn ratio(value: f64, target: f64) -> f64 {
     if target > 0.0 {
         value / target
     } else if value == 0.0 {
@@ -78,11 +78,11 @@ pub(super) fn ratio(value: f64, target: f64) -> f64 {
 /// Stopping thresholds of one batch: `goal` is where a column stops;
 /// `accept` (the certificate-scale rule) is where a column may stop when its
 /// recurrence breaks down near the rounding floor.
-pub(super) struct Targets<const R: usize> {
-    pub(super) goal: [f64; R],
-    pub(super) goal_coefficient: Option<[f64; R]>,
-    pub(super) accept: [f64; R],
-    pub(super) accept_coefficient: Option<[f64; R]>,
+pub(crate) struct Targets<const R: usize> {
+    pub(crate) goal: [f64; R],
+    pub(crate) goal_coefficient: Option<[f64; R]>,
+    pub(crate) accept: [f64; R],
+    pub(crate) accept_coefficient: Option<[f64; R]>,
 }
 
 impl<const R: usize> Targets<R> {
@@ -106,11 +106,11 @@ impl<const R: usize> Targets<R> {
         ratio(inf, target[c]).max(coefficient.map_or(0.0, |t| ratio(zinf, t[c])))
     }
 
-    pub(super) fn goal(&self, inf: f64, zinf: f64, c: usize) -> f64 {
+    pub(crate) fn goal(&self, inf: f64, zinf: f64, c: usize) -> f64 {
         Self::measure(&self.goal, self.goal_coefficient.as_ref(), inf, zinf, c)
     }
 
-    pub(super) fn accepted(&self, inf: f64, zinf: f64, c: usize) -> bool {
+    pub(crate) fn accepted(&self, inf: f64, zinf: f64, c: usize) -> bool {
         Self::measure(&self.accept, self.accept_coefficient.as_ref(), inf, zinf, c) <= 1.0
     }
 }

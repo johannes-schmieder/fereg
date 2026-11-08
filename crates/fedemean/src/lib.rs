@@ -15,19 +15,25 @@
 //! expressible; the enums grow as routes are added.
 //!
 //! # Capability of this release
-//! - Categorical intercept designs with two to five effects and positive
+//! - Categorical intercept designs with any number of effects and positive
 //!   weights.
-//! - Exact global elimination of the effect with the most levels, lockstep
-//!   PCG over up to eight columns on the reduced (Schur) system with the
-//!   Jacobi preconditioner (the default) or block-Jacobi over the retained
-//!   effects ([`Preconditioner::BlockJacobi`]): exact grounded Cholesky
-//!   solves of small blocks; one fixed CMG cycle on large ones (feature
-//!   `cmg`, [`LocalSolver::Cmg`]), or Jacobi.
-//! - [`Fallback::Escalate`]: a batch whose Jacobi recurrence stalls or
-//!   reaches the iteration ceiling continues with block-Jacobi from its
-//!   current iterate ([`Route::escalations`]).
-//! - Not yet: the full formulation without elimination, LSMR, Schwarz,
-//!   varying slopes, more than five effects. Designs outside the route are
+//! - Exact global elimination of the effect with the most levels (two to
+//!   five effects), lockstep PCG over up to eight columns on the reduced
+//!   (Schur) system with the Jacobi preconditioner (the default) or
+//!   block-Jacobi over the retained effects
+//!   ([`Preconditioner::BlockJacobi`]): exact grounded Cholesky solves of
+//!   small blocks; one fixed CMG cycle on large ones (feature `cmg`,
+//!   [`LocalSolver::Cmg`]), or Jacobi.
+//! - [`Fallback::Escalate`]: an eliminated batch whose Jacobi recurrence
+//!   stalls or reaches the iteration ceiling continues with block-Jacobi
+//!   from its current iterate ([`Route::escalations`]).
+//! - The full formulation ([`Reduction::Full`]; [`Reduction::Auto`] for one
+//!   or six or more effects): lockstep PCG on the singular consistent normal
+//!   equations, or modified LSMR (feature `schwarz`, [`Method::Lsmr`]), with
+//!   Jacobi or no preconditioner; warm starts
+//!   ([`Projector::project_from`]).
+//! - Not yet: Schwarz preconditioning, varying slopes. Unsupported explicit
+//!   combinations are [`Error::Unsupported`]; designs outside a route are
 //!   declined ([`Outcome::Declined`]) for the caller's own solvers.
 //!
 //! Projections run on the caller's current rayon pool.
@@ -40,6 +46,7 @@ pub(crate) mod cmg_local;
 mod design;
 mod elimination;
 mod error;
+mod full;
 mod projector;
 mod reduce;
 mod weights;
@@ -51,6 +58,6 @@ pub use projector::{
     BlockSpec, BlockUsed, Choice, CoefficientLayout, CoefficientsMut, ColumnReport, ColumnStatus,
     ColumnsMut, Control, Decline, Facts, Fallback, Gram, InputState, LocalSolver, LocalUsed,
     Method, MethodUsed, Outcome, Preconditioner, PreconditionerUsed, Projector, Reduction,
-    ReductionUsed, Report, Request, Route, Settings,
+    ReductionUsed, Report, Request, Route, SchwarzLocal, SchwarzSpec, Settings, Subdomains,
 };
 pub use weights::Weights;

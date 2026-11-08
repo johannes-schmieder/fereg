@@ -55,14 +55,14 @@ const PARALLEL_WORK: usize = 1 << 15;
 /// the worker count.
 const CHUNK: usize = 2048;
 /// Iteration ceiling before the route yields to the caller's solver.
-const MAX_ITERATIONS: usize = 1500;
+pub(crate) const MAX_ITERATIONS: usize = 1500;
 /// A column must halve its stopping measure every this many iterations ...
-const STALL_WINDOW: usize = 40;
+pub(crate) const STALL_WINDOW: usize = 40;
 /// ... and every this many once it meets the acceptance rule.
-const KEPT_WINDOW: usize = 8;
+pub(crate) const KEPT_WINDOW: usize = 8;
 /// The recurrence stops at this fraction of the requested tolerance on the
 /// column's within norm (see [`run`]).
-const STOP_FRACTION: f64 = 0.1;
+pub(crate) const STOP_FRACTION: f64 = 0.1;
 /// An escalated recurrence (a hard graph, restarted from an iterate that
 /// differs across worker counts at rounding level) stops at this fraction of
 /// the ordinary goal, so its results agree across worker counts well inside
@@ -70,19 +70,19 @@ const STOP_FRACTION: f64 = 0.1;
 const ESCALATED_GOAL_FRACTION: f64 = 0.1;
 /// Columns whose within norm is below this fraction of the certificate scale
 /// lie inside the eliminated span.
-const WITHIN_FLOOR: f64 = 1.0 / (1_u64 << 30) as f64;
+pub(crate) const WITHIN_FLOOR: f64 = 1.0 / (1_u64 << 30) as f64;
 /// Acceptance rule: this fraction of the tolerance at the certificate scale
 /// (where a column may stop when its recurrence reaches its rounding floor).
-const ACCEPT_FRACTION: f64 = 0.5;
+pub(crate) const ACCEPT_FRACTION: f64 = 0.5;
 
 pub(crate) mod block;
 mod blocks;
 mod dense;
 mod kernels;
 mod passes;
-mod pcg;
+pub(crate) mod pcg;
 pub(crate) mod structure;
-mod weights;
+pub(crate) mod weights;
 
 use blocks::{Blocks, OnPool};
 use kernels::{apply, subtract, Ctx, Slotted, Work, WorkSlots};

@@ -308,7 +308,7 @@ fn fill_lane(
 
 /// Identity of a weight vector: unit, or its slice address, length and a
 /// digest of its bits (callers may refill one buffer between frames).
-pub(super) type WeightKey = Option<(usize, usize, u64)>;
+pub(crate) type WeightKey = Option<(usize, usize, u64)>;
 
 fn mix(h: u64, bits: u64) -> u64 {
     let h = (h ^ bits).wrapping_mul(0x9e37_79b9_7f4a_7c15);
@@ -344,7 +344,7 @@ const DIGEST_LEAF: usize = 1 << 16;
 /// validity, maximum and minimum as [`crate::weights::validate`] and the same
 /// digest as a separate keying pass (fixed leaves and tree: the digest
 /// depends only on the bits).
-pub(super) fn validate_keyed(
+pub(crate) fn validate_keyed(
     weights: InputWeights<'_>,
     nrows: usize,
 ) -> Result<(ValidatedWeights<'_>, WeightKey)> {

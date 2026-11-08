@@ -15,10 +15,14 @@ path = "src/lib.rs"
 # CMG local solves on retained diagonal blocks (same pinned revision and
 # features as fereg-core, so the lock file gains no package).
 cmg = ["dep:cmg"]
+# Modified LSMR on the full formulation (schwarz-precond at fereg-core's
+# pinned revision, so the lock file gains no package).
+schwarz = ["dep:schwarz-precond"]
 
 [dependencies]
 rayon = "1.12"
 cmg = { git = "https://github.com/johannes-schmieder/CMG", rev = "e5613e81fb3b03c78de98658b372646fa802aabb", features = ["parallel", "experimental-components"], optional = true }
+schwarz-precond = { git = "https://github.com/johannes-schmieder/within", rev = "8d401d8278ac783b2f258c459e057f30cd80d595", package = "schwarz-precond", optional = true }
 
 [lints]
 workspace = true

@@ -5,6 +5,7 @@ use crate::design::{Design, Members, OwnedMembers};
 use crate::elimination::structure::{eliminated_effect, lane_width};
 use crate::elimination::{self, Call, Cancel, Engine, MAX_BLOCKS};
 use crate::error::{Error, Result};
+use crate::full;
 use crate::weights::Weights;
 
 /// Observation-major columns, residualized in place: observation `i` holds
@@ -71,10 +72,13 @@ impl<'a> CoefficientLayout<'a> {
 
 /// Caller-owned FE coefficients. A projection *adds* the coefficients whose
 /// fitted contribution it removed, so increments survive a decline (see
-/// [`InputState`]). Coefficients are unnormalized: eliminated-effect levels
-/// follow by exact back-substitution and the retained blocks are the PCG
-/// iterate from zero, so the fitted contribution is unique while individual
-/// coefficients are determined only up to the design's null space.
+/// [`InputState`]); after a warm start ([`Projector::project_from`]) these
+/// are the start plus the solve's increments. Coefficients are
+/// unnormalized: eliminated-effect levels follow by exact back-substitution
+/// and the retained blocks are the PCG iterate from zero (the full
+/// formulation: the method's iterate from its start), so the fitted
+/// contribution is unique while individual coefficients are determined only
+/// up to the design's null space.
 pub struct CoefficientsMut<'a> {
     pub(crate) values: &'a mut [f64],
     pub(crate) layout: CoefficientLayout<'a>,
@@ -108,44 +112,98 @@ impl<'a> CoefficientsMut<'a> {
     }
 }
 
-/// Outer problem. Explicit choices constrain [`Reduction::Auto`].
+/// Outer problem. Explicit choices are honored; [`Reduction::Auto`] picks a
+/// formulation that supports the other choices.
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum Reduction {
+    /// [`Reduction::EliminateLargest`] for two to five effects (the
+    /// elimination's current, provisional range) with [`Method::Auto`] or
+    /// [`Method::Pcg`] and an elimination preconditioner (`Auto`, `Jacobi`,
+    /// `BlockJacobi`); [`Reduction::Full`] for any other effect count, for
+    /// [`Method::Lsmr`] and for [`Preconditioner::Identity`] or
+    /// [`Preconditioner::Schwarz`]. `BlockJacobi` always eliminates.
     #[default]
     Auto,
     /// Eliminate the effect with the most levels exactly (global Schur
-    /// complement) and iterate on the remaining effects.
+    /// complement) and iterate on the remaining effects. Designs with fewer
+    /// than two or more than five effects decline
+    /// ([`Decline::OutsideRoute`]).
     EliminateLargest,
+    /// The full system of every effect's coefficients, without elimination,
+    /// for any number of effects (at least one).
+    Full,
 }
 
 /// Iterative method on the outer problem.
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum Method {
+    /// [`Method::Pcg`] (provisional for the full formulation).
     #[default]
     Auto,
-    /// Conjugate gradients on the reduced normal equations, in lockstep over
-    /// up to eight columns.
+    /// Conjugate gradients on the normal equations (reduced, or the full
+    /// system's singular consistent `D'WD x = D'W y`), in lockstep over up
+    /// to eight columns.
     Pcg,
+    /// Modified LSMR on `W^1/2 D` with `M ~ D'WD`, one column at a time
+    /// (the full formulation only; feature `schwarz`, otherwise
+    /// [`Error::Unsupported`]).
+    Lsmr,
 }
 
 /// Preconditioner of the iterative method.
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum Preconditioner {
-    /// Jacobi. With [`Fallback::Escalate`], a column batch whose Jacobi
-    /// recurrence stalls or reaches the iteration ceiling continues from its
-    /// current iterate with [`Preconditioner::BlockJacobi`] at the default
-    /// [`BlockSpec`].
+    /// Jacobi. With [`Fallback::Escalate`], an eliminated column batch whose
+    /// Jacobi recurrence stalls or reaches the iteration ceiling continues
+    /// from its current iterate with [`Preconditioner::BlockJacobi`] at the
+    /// default [`BlockSpec`] (the full formulation has no stronger
+    /// preconditioner yet, so it declines).
     #[default]
     Auto,
-    /// Inverse diagonal of the reduced matrix.
+    /// Inverse diagonal of the reduced matrix, or of `D'WD` (the level
+    /// masses) for the full formulation.
     Jacobi,
     /// Block-Jacobi over the retained effects: a local solve of each
     /// retained effect's diagonal block of the reduced matrix (a weighted
-    /// graph Laplacian), from the first iteration.
+    /// graph Laplacian), from the first iteration. Elimination only.
     BlockJacobi(BlockSpec),
+    /// No preconditioner (`M = I`; the full formulation only).
+    Identity,
+    /// Additive Schwarz over FE subdomains (the full formulation; not yet
+    /// implemented: [`Error::Unsupported`]).
+    Schwarz(SchwarzSpec),
+}
+
+/// Additive Schwarz preconditioning of the full system.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct SchwarzSpec {
+    pub subdomains: Subdomains,
+    pub local: SchwarzLocal,
+}
+
+/// The subdomains of [`Preconditioner::Schwarz`].
+#[non_exhaustive]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum Subdomains {
+    /// One subdomain per connected component of each pair of effects.
+    #[default]
+    FactorPairs,
+}
+
+/// The local solve of a Schwarz subdomain.
+#[non_exhaustive]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum SchwarzLocal {
+    /// Chosen by subdomain size.
+    #[default]
+    Auto,
+    /// A grounded dense factorization.
+    Exact,
+    /// One fixed CMG cycle (feature `cmg`).
+    Cmg,
 }
 
 /// Local solves of [`Preconditioner::BlockJacobi`].
@@ -189,7 +247,8 @@ pub enum Fallback {
     Decline,
     /// With [`Preconditioner::Auto`], escalate a batch whose recurrence
     /// stalls or reaches the iteration ceiling (see [`Preconditioner::Auto`]);
-    /// decline when the escalated recurrence cannot finish either.
+    /// decline when the escalated recurrence cannot finish either. The full
+    /// formulation has no stronger preconditioner yet and declines.
     Escalate,
 }
 
@@ -215,11 +274,13 @@ pub struct Settings {
 pub struct Request {
     /// Certified tolerance of the relative FE moments (see [`Certificate`]).
     pub tolerance: f64,
-    /// Iteration ceiling (clamped to 1..=1500).
+    /// Iteration ceiling (clamped to 1..=1500): per column batch for PCG,
+    /// per column over all passes for modified LSMR.
     pub max_iterations: usize,
     /// Also stop each column on the Jacobi-scaled residual `D^-1 r` within
-    /// `tolerance` of the column's root-mean-square. A stopping heuristic
-    /// for callers that refit predictors row by row, not a bound on the
+    /// `tolerance` of the column's root-mean-square (modified LSMR: checked
+    /// with the certificate after each pass). A stopping heuristic for
+    /// callers that refit predictors row by row, not a bound on the
     /// coefficient error.
     pub coefficient_stopping: bool,
     /// Form the raw-weighted residual Gram `sum w r r'` (at most 8 columns).
@@ -306,13 +367,19 @@ pub enum InputState {
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReductionUsed {
-    Eliminated { effect: usize },
+    Eliminated {
+        effect: usize,
+    },
+    /// The full system of every effect's coefficients.
+    Full,
 }
 
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MethodUsed {
     Pcg,
+    /// Modified LSMR.
+    Lsmr,
 }
 
 #[non_exhaustive]
@@ -321,6 +388,8 @@ pub enum PreconditionerUsed {
     Jacobi,
     /// Block-Jacobi, one entry per retained effect in effect order.
     Block([Option<BlockUsed>; MAX_BLOCKS]),
+    /// None (`M = I`).
+    Identity,
 }
 
 /// One retained effect's block of a block-Jacobi preconditioner.
@@ -368,13 +437,18 @@ pub struct Facts {
     pub accepted: usize,
     pub corrections: usize,
     pub columns: usize,
+    /// Elimination cells (0 for the full formulation).
     pub cells: usize,
     pub active_segments: usize,
+    /// Unknowns of the iterated system (the full formulation: every level).
     pub reduced: usize,
+    /// Elimination lanes (0 for the full formulation, whose results do not
+    /// depend on the worker count).
     pub lanes: usize,
     pub structure_seconds: f64,
     pub weights_seconds: f64,
     pub rhs_seconds: f64,
+    /// Iterations (PCG or modified LSMR).
     pub pcg_seconds: f64,
     pub residual_seconds: f64,
     pub solve_seconds: f64,
@@ -454,24 +528,90 @@ impl Gram {
     }
 }
 
+/// The formulation a projector's choices resolve to.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Formulation {
+    Eliminate,
+    Full(full::Method, full::Action),
+}
+
+/// Resolve the choices for a design with `effects` effects (see
+/// [`Reduction::Auto`]); unsupported explicit combinations are errors.
+fn formulation(effects: usize, choice: Choice) -> Result<Formulation> {
+    let eliminable = (2..=MAX_BLOCKS + 1).contains(&effects);
+    let reduction = match choice.reduction {
+        Reduction::Auto => match (choice.method, choice.preconditioner) {
+            (Method::Lsmr, _) | (_, Preconditioner::Identity | Preconditioner::Schwarz(_)) => {
+                Reduction::Full
+            }
+            (_, Preconditioner::BlockJacobi(_)) => Reduction::EliminateLargest,
+            _ if eliminable => Reduction::EliminateLargest,
+            _ => Reduction::Full,
+        },
+        explicit => explicit,
+    };
+    if reduction == Reduction::EliminateLargest {
+        return match (choice.method, choice.preconditioner) {
+            (Method::Lsmr, _) => Err(Error::Unsupported(
+                "modified LSMR is not implemented on the eliminated system (use Reduction::Full)",
+            )),
+            (_, Preconditioner::Identity) => Err(Error::Unsupported(
+                "the eliminated system has no unpreconditioned route",
+            )),
+            (_, Preconditioner::Schwarz(_)) => Err(Error::Unsupported(
+                "additive Schwarz preconditions the full formulation (Reduction::Full)",
+            )),
+            _ => Ok(Formulation::Eliminate),
+        };
+    }
+    let action =
+        match choice.preconditioner {
+            Preconditioner::Auto | Preconditioner::Jacobi => full::Action::Jacobi,
+            Preconditioner::Identity => full::Action::Identity,
+            Preconditioner::BlockJacobi(_) => return Err(Error::Unsupported(
+                "block-Jacobi preconditions the eliminated system (Reduction::EliminateLargest)",
+            )),
+            Preconditioner::Schwarz(_) => {
+                return Err(Error::Unsupported(
+                    "additive Schwarz is not implemented yet",
+                ))
+            }
+        };
+    let method = match choice.method {
+        Method::Auto | Method::Pcg => full::Method::Pcg,
+        #[cfg(feature = "schwarz")]
+        Method::Lsmr => full::Method::Lsmr,
+        #[cfg(not(feature = "schwarz"))]
+        Method::Lsmr => return Err(Error::Unsupported("modified LSMR needs feature schwarz")),
+    };
+    Ok(Formulation::Full(method, action))
+}
+
 /// One prepared projection problem: a fixed design generation, its retained
 /// structure, current-weight state and workspaces. Weight changes refresh the
-/// exact weighted state; repeated projections of one width allocate nothing.
+/// exact weighted state; repeated PCG projections of one width allocate
+/// nothing.
 pub struct Projector<'a> {
     design: Design<'a>,
     settings: Settings,
+    /// The resolved formulation; an unsupported combination is the error of
+    /// every projection.
+    formulation: Result<Formulation>,
     owned: Option<OwnedMembers>,
     engine: Engine,
+    full: full::Engine,
 }
 
 impl<'a> Projector<'a> {
     #[must_use]
     pub fn new(design: Design<'a>, settings: Settings) -> Self {
         Self {
+            formulation: formulation(design.effects().len(), settings.choice),
             design,
             settings,
             owned: None,
             engine: Engine::default(),
+            full: full::Engine::default(),
         }
     }
 
@@ -485,14 +625,29 @@ impl<'a> Projector<'a> {
         &self.settings
     }
 
+    /// Whether the choices resolve to the full formulation.
+    fn is_full(&self) -> bool {
+        matches!(self.formulation, Ok(Formulation::Full(..)))
+    }
+
     /// Build the retained structure now; `false` when the design is outside
     /// the route (remembered: later projections decline at once).
     pub fn prepare(&mut self, control: &Control<'_>) -> Result<bool> {
+        if let Formulation::Full(method, action) = self.formulation? {
+            let call = full::Call {
+                design: &self.design,
+                method,
+                action,
+                cancel: Cancel(control.cancel),
+            };
+            return self.full.prepare(&call);
+        }
         let Self {
             design,
             settings,
             owned,
             engine,
+            ..
         } = self;
         let Some(members) = eliminated_members(design, owned)? else {
             return Ok(false);
@@ -517,27 +672,24 @@ impl<'a> Projector<'a> {
         request: &Request,
         control: &Control<'_>,
     ) -> Result<Outcome> {
-        if !(request.tolerance.is_finite() && request.tolerance > 0.0) {
-            return Err(Error::InvalidInput("projection tolerance is invalid"));
-        }
-        #[cfg(not(feature = "cmg"))]
-        if let Preconditioner::BlockJacobi(BlockSpec {
-            large: LocalSolver::Cmg,
-            ..
-        }) = self.settings.choice.preconditioner
-        {
-            return Err(Error::Unsupported(
-                "CMG local solves are not available in this build",
-            ));
-        }
-        if let Some(coefficients) = &coefficients {
-            coefficients.check(&self.design, columns.ncols())?;
+        let formulation = self.check(&columns, coefficients.as_ref(), request)?;
+        if let Formulation::Full(method, action) = formulation {
+            let call = full::Call {
+                design: &self.design,
+                method,
+                action,
+                cancel: Cancel(control.cancel),
+            };
+            return self
+                .full
+                .project(&call, weights, columns, None, coefficients, request);
         }
         let Self {
             design,
             settings,
             owned,
             engine,
+            ..
         } = self;
         let members = eliminated_members(design, owned)?;
         engine.project(
@@ -556,6 +708,87 @@ impl<'a> Projector<'a> {
         )
     }
 
+    /// [`Projector::project`] from the warm start `start`: FE coefficients
+    /// in the design's canonical layout (per column, every effect's levels
+    /// in effect order, `L = sum of level counts` values per column, so
+    /// `start.len() == L * ncols`). The solve begins at the true residual
+    /// `y - D start`, formed from the columns. The returned residual is
+    /// `y - D (start + increments)`, and `coefficients` (add semantics)
+    /// receive `start + increments` for every residualized column, so the
+    /// buffer holds the full solution when it starts at zero; after a decline
+    /// with [`InputState::SameProjection`] the residualized columns' entries
+    /// hold theirs and the others are unchanged.
+    ///
+    /// Warm starts need the full formulation ([`Reduction::Full`], or
+    /// [`Reduction::Auto`] resolving to it); otherwise
+    /// [`Error::Unsupported`].
+    pub fn project_from(
+        &mut self,
+        weights: Weights<'_>,
+        columns: ColumnsMut<'_>,
+        start: &[f64],
+        coefficients: Option<CoefficientsMut<'_>>,
+        request: &Request,
+        control: &Control<'_>,
+    ) -> Result<Outcome> {
+        let Formulation::Full(method, action) =
+            self.check(&columns, coefficients.as_ref(), request)?
+        else {
+            return Err(Error::Unsupported(
+                "warm starts need the full formulation (Reduction::Full)",
+            ));
+        };
+        let per_column = self
+            .design
+            .effects()
+            .iter()
+            .try_fold(0_usize, |total, effect| total.checked_add(effect.levels()));
+        if per_column.and_then(|l| l.checked_mul(columns.ncols())) != Some(start.len()) {
+            return Err(Error::InvalidInput(
+                "warm-start coefficients do not match the design and columns",
+            ));
+        }
+        if !start.iter().all(|value| value.is_finite()) {
+            return Err(Error::InvalidData("warm-start coefficients must be finite"));
+        }
+        let call = full::Call {
+            design: &self.design,
+            method,
+            action,
+            cancel: Cancel(control.cancel),
+        };
+        self.full
+            .project(&call, weights, columns, Some(start), coefficients, request)
+    }
+
+    /// The checks every projection makes before it reads data: the
+    /// tolerance, supported choices and the coefficient layout.
+    fn check(
+        &self,
+        columns: &ColumnsMut<'_>,
+        coefficients: Option<&CoefficientsMut<'_>>,
+        request: &Request,
+    ) -> Result<Formulation> {
+        if !(request.tolerance.is_finite() && request.tolerance > 0.0) {
+            return Err(Error::InvalidInput("projection tolerance is invalid"));
+        }
+        let formulation = self.formulation?;
+        #[cfg(not(feature = "cmg"))]
+        if let Preconditioner::BlockJacobi(BlockSpec {
+            large: LocalSolver::Cmg,
+            ..
+        }) = self.settings.choice.preconditioner
+        {
+            return Err(Error::Unsupported(
+                "CMG local solves are not available in this build",
+            ));
+        }
+        if let Some(coefficients) = coefficients {
+            coefficients.check(&self.design, columns.ncols())?;
+        }
+        Ok(formulation)
+    }
+
     /// Recompute every level's weighted moment of one residual column (the
     /// eliminated levels included) and certify it at `amplification` times
     /// its weighted norm. `None` when this projector did not project with
@@ -567,6 +800,15 @@ impl<'a> Projector<'a> {
         tolerance: f64,
         amplification: f64,
     ) -> Result<Option<Certificate>> {
+        if self.is_full() {
+            return self.full.certify_residual(
+                &self.design,
+                weights,
+                column,
+                tolerance,
+                amplification,
+            );
+        }
         self.engine
             .certify_residual(&self.design, weights, column, tolerance, amplification)
     }
@@ -574,6 +816,9 @@ impl<'a> Projector<'a> {
     /// The residual Gram of the last projection, when requested and certified.
     #[must_use]
     pub fn residual_gram(&self) -> Option<&Gram> {
+        if self.is_full() {
+            return self.full.residual_gram();
+        }
         self.engine.residual_gram()
     }
 
@@ -581,21 +826,34 @@ impl<'a> Projector<'a> {
     /// projection (empty after a decline).
     #[must_use]
     pub fn residual_norms(&self) -> &[f64] {
+        if self.is_full() {
+            return self.full.residual_norms();
+        }
         self.engine.residual_norms()
     }
 
     /// Per-column achieved accuracy of the last certified projection.
     #[must_use]
     pub fn columns(&self) -> &[ColumnReport] {
+        if self.is_full() {
+            return self.full.columns();
+        }
         self.engine.columns()
     }
 
     /// Bytes a projection of `ncols` columns needs beyond the caller's data,
     /// once the structure exists (escalations excluded: they only start
     /// within [`Request::memory_limit`]). CMG local solves are excluded too:
-    /// they are admitted as they are built, from their graphs' sizes.
+    /// they are admitted as they are built, from their graphs' sizes. The
+    /// full formulation counts weighted state.
     #[must_use]
     pub fn admission_bytes(&self, ncols: usize) -> Option<u128> {
+        if let Ok(Formulation::Full(method, _)) = self.formulation {
+            return self
+                .full
+                .structure()
+                .map(|st| full::admission_bytes(st, method, ncols, true));
+        }
         self.engine.structure().map(|st| {
             elimination::admission_bytes(st, None, ncols)
                 + elimination::explicit_block_bytes(st, self.settings.choice)

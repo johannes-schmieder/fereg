@@ -387,6 +387,9 @@ fn settings(hinted: bool) -> fedemean::Settings {
     };
     fedemean::Settings {
         choice: fedemean::Choice {
+            // The elimination explicitly: other effect counts decline to the
+            // established routes (fedemean's Auto would use its full system).
+            reduction: fedemean::Reduction::EliminateLargest,
             preconditioner,
             fallback: fedemean::Fallback::Escalate,
             ..fedemean::Choice::default()

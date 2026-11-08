@@ -5,8 +5,9 @@
 //! documented declines, errors and determinism guarantees.
 
 use fedemean::{
-    CoefficientLayout, CoefficientsMut, ColumnsMut, Control, Decline, Design, Effect, Error,
-    InputState, Members, Outcome, Projector, ReductionUsed, Report, Request, Settings, Weights,
+    Choice, CoefficientLayout, CoefficientsMut, ColumnsMut, Control, Decline, Design, Effect,
+    Error, InputState, Members, Outcome, Projector, Reduction, ReductionUsed, Report, Request,
+    Settings, Weights,
 };
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -744,11 +745,20 @@ fn assert_untouched(outcome: Outcome, reason: Decline, data: &[f64], original: &
 
 #[test]
 fn designs_outside_the_route_decline_untouched() {
+    // The explicit elimination keeps its two-to-five-effect range (Auto
+    // projects these designs with the full formulation).
+    let eliminate = Settings {
+        choice: Choice {
+            reduction: Reduction::EliminateLargest,
+            ..Choice::default()
+        },
+        ..Settings::default()
+    };
     for levels in [vec![40], vec![30, 5, 4, 3, 3, 2]] {
         let case = Case::random(61, 300, &levels);
         let original = case.columns(62, 3);
         let mut data = original.clone();
-        let mut projector = Projector::new(case.design(), Settings::default());
+        let mut projector = Projector::new(case.design(), eliminate);
         assert!(!projector.prepare(&Control::default()).unwrap());
         let (outcome, coefficients) =
             project(&mut projector, &case, None, &mut data, 3, true, &request());

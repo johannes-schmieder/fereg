@@ -3,30 +3,32 @@
 //!
 //! ```text
 //! cargo run --release -p fedemean --example demean -- \
-//!     [--n 1000000] [--effects 2..5] [--cols 5] [--reps 5] [--threads 4] \
-//!     [--tolerance 1e-8] [--weights] [--precond auto|jacobi|block] \
+//!     [--n 1000000] [--effects 1..6] [--cols 5] [--reps 5] [--threads 4] \
+//!     [--tolerance 1e-8] [--weights] [--reduction auto|eliminate|full] \
+//!     [--method auto|pcg|lsmr] [--precond auto|jacobi|block|identity] \
 //!     [--fallback decline|escalate]
 //! ```
 //!
 //! `--precond block` is block-Jacobi with the default local solves (exact
-//! dense solves of small blocks, Jacobi on large ones).
+//! dense solves of small blocks, Jacobi on large ones). `--method lsmr`
+//! needs `--features schwarz`.
 //!
 //! Effects, in order: worker, firm (with worker mobility), year, occupation,
-//! region. The first projection (`Projector::new` plus the first call, which
-//! builds the structure) is timed separately from the repeated projections,
-//! which start from a fresh copy of the columns; with `--weights` every
-//! repetition writes slightly different weights into the same buffer, so each
-//! one refreshes the weight state.
+//! region, industry (one per firm). The first projection (`Projector::new`
+//! plus the first call, which builds the structure) is timed separately from
+//! the repeated projections, which start from a fresh copy of the columns;
+//! with `--weights` every repetition writes slightly different weights into
+//! the same buffer, so each one refreshes the weight state.
 
 use fedemean::{
-    BlockSpec, Choice, ColumnsMut, Control, Design, Effect, Fallback, Outcome, Preconditioner,
-    Projector, Request, Settings, Weights,
+    BlockSpec, Choice, ColumnsMut, Control, Design, Effect, Fallback, Method, Outcome,
+    Preconditioner, Projector, Reduction, Request, Settings, Weights,
 };
 use std::time::{Duration, Instant};
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
 
-const NAMES: [&str; 5] = ["worker", "firm", "year", "occupation", "region"];
+const NAMES: [&str; 6] = ["worker", "firm", "year", "occupation", "region", "industry"];
 
 struct Args {
     n: usize,
@@ -36,13 +38,16 @@ struct Args {
     threads: usize,
     tolerance: f64,
     weights: bool,
+    reduction: Reduction,
+    method: Method,
     preconditioner: Preconditioner,
     fallback: Fallback,
 }
 
 fn usage() -> &'static str {
-    "usage: demean [--n N] [--effects 2..5] [--cols C] [--reps R] [--threads T] \
-     [--tolerance TOL] [--weights] [--precond auto|jacobi|block] [--fallback decline|escalate]"
+    "usage: demean [--n N] [--effects 1..6] [--cols C] [--reps R] [--threads T] \
+     [--tolerance TOL] [--weights] [--reduction auto|eliminate|full] [--method auto|pcg|lsmr] \
+     [--precond auto|jacobi|block|identity] [--fallback decline|escalate]"
 }
 
 fn parse_args() -> Result<Args, String> {
@@ -63,6 +68,8 @@ fn parse_args() -> Result<Args, String> {
         threads: 4,
         tolerance: 1e-8,
         weights: false,
+        reduction: Reduction::Auto,
+        method: Method::Auto,
         preconditioner: Preconditioner::Auto,
         fallback: Fallback::Decline,
     };
@@ -76,12 +83,32 @@ fn parse_args() -> Result<Args, String> {
             "--threads" => args.threads = value(&mut iter, "--threads")?,
             "--tolerance" => args.tolerance = value(&mut iter, "--tolerance")?,
             "--weights" => args.weights = true,
+            "--reduction" => {
+                args.reduction = match iter.next().as_deref() {
+                    Some("auto") => Reduction::Auto,
+                    Some("eliminate") => Reduction::EliminateLargest,
+                    Some("full") => Reduction::Full,
+                    _ => return Err(format!("--reduction: auto, eliminate or full\n{}", usage())),
+                }
+            }
+            "--method" => {
+                args.method = match iter.next().as_deref() {
+                    Some("auto") => Method::Auto,
+                    Some("pcg") => Method::Pcg,
+                    Some("lsmr") => Method::Lsmr,
+                    _ => return Err(format!("--method: auto, pcg or lsmr\n{}", usage())),
+                }
+            }
             "--precond" => {
                 args.preconditioner = match iter.next().as_deref() {
                     Some("auto") => Preconditioner::Auto,
                     Some("jacobi") => Preconditioner::Jacobi,
                     Some("block") => Preconditioner::BlockJacobi(BlockSpec::default()),
-                    _ => return Err(format!("--precond: auto, jacobi or block\n{}", usage())),
+                    Some("identity") => Preconditioner::Identity,
+                    _ => {
+                        let options = "auto, jacobi, block or identity";
+                        return Err(format!("--precond: {options}\n{}", usage()));
+                    }
                 }
             }
             "--fallback" => {
@@ -98,8 +125,8 @@ fn parse_args() -> Result<Args, String> {
             other => return Err(format!("unknown argument {other:?}\n{}", usage())),
         }
     }
-    if !(2..=5).contains(&args.effects) {
-        return Err("--effects must be between 2 and 5".into());
+    if !(1..=NAMES.len()).contains(&args.effects) {
+        return Err(format!("--effects must be between 1 and {}", NAMES.len()));
     }
     if args.n < 100 || args.cols == 0 || args.reps == 0 || args.threads == 0 {
         return Err("--n must be at least 100; --cols, --reps and --threads positive".into());
@@ -146,12 +173,12 @@ fn raw_id(i: usize, salt: u64) -> u64 {
 
 /// Raw identifiers of one panel: workers with several consecutive years,
 /// moving between firms (larger firms more likely), changing occupation and
-/// region now and then.
-fn raw_panel(n: usize, seed: u64) -> [Vec<u64>; 5] {
+/// region now and then; each firm belongs to one of 60 industries.
+fn raw_panel(n: usize, seed: u64) -> [Vec<u64>; 6] {
     let mut rng = Rng(seed);
     let firms = (n / 40).max(10);
     let (years, occupations, regions) = (30, 300, 50);
-    let mut raw: [Vec<u64>; 5] = std::array::from_fn(|_| Vec::with_capacity(n));
+    let mut raw: [Vec<u64>; 6] = std::array::from_fn(|_| Vec::with_capacity(n));
     let mut worker = 0;
     let skewed_firm = |rng: &mut Rng| {
         let u = rng.uniform();
@@ -180,6 +207,7 @@ fn raw_panel(n: usize, seed: u64) -> [Vec<u64>; 5] {
             raw[2].push(1990 + (entry + t) as u64);
             raw[3].push(10_000 + 7 * occupation as u64);
             raw[4].push(raw_id(region, 0x5eed_0005));
+            raw[5].push(raw_id(firm % 60, 0x5eed_0006));
         }
         worker += 1;
     }
@@ -302,7 +330,7 @@ fn run(args: &Args) -> Result<(), Error> {
         .collect();
     println!(
         "panel: n {}  effects {} ({})  cols {}  weights {}  threads {}  tolerance {:e}  \
-         precond {:?}  fallback {:?}  generated in {:.2} s",
+         reduction {:?}  method {:?}  precond {:?}  fallback {:?}  generated in {:.2} s",
         args.n,
         args.effects,
         levels.join(", "),
@@ -310,6 +338,8 @@ fn run(args: &Args) -> Result<(), Error> {
         if args.weights { "varying" } else { "unit" },
         args.threads,
         args.tolerance,
+        args.reduction,
+        args.method,
         args.preconditioner,
         args.fallback,
         started.elapsed().as_secs_f64()
@@ -331,9 +361,10 @@ fn run(args: &Args) -> Result<(), Error> {
         let started = Instant::now();
         let settings = Settings {
             choice: Choice {
+                reduction: args.reduction,
+                method: args.method,
                 preconditioner: args.preconditioner,
                 fallback: args.fallback,
-                ..Choice::default()
             },
             ..Settings::default()
         };
