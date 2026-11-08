@@ -29,7 +29,6 @@ use crate::ols::topology_dof::{
     compute_categorical_topology_absorbed_dof_with_slopes, CategoricalTopologyDofEffectSpec,
     CategoricalTopologyDofPolicy, CategoricalTopologyDofReport, CategoricalTopologyDofSlopeSpec,
 };
-use rayon::prelude::*;
 
 use crate::ols::{
     factorize_preparation_sources, prepare_categorical_numeric_sample,
@@ -359,8 +358,11 @@ impl PreparedOlsData {
                 "categorical OLS RHS reservation returned insufficient capacity",
             ));
         }
+        // A bound numeric fill reports finiteness from its cached tiles; any
+        // nonfinite value still reaches the full scan and its error below.
+        let mut all_finite = false;
         if let Some(columns) = crate::ols::NumericOlsColumns::bind(&self.model, &self.sample)? {
-            columns.fill_reserved_rhs(response, &mut values)?;
+            all_finite = columns.fill_reserved_rhs(response, &mut values)?;
         } else if let Some(columns) = crate::ols::WideRhsColumns::bind(&self.model, &self.sample) {
             columns.fill_reserved_rhs(response, &mut values)?;
         } else {
@@ -372,7 +374,11 @@ impl PreparedOlsData {
                 }
             }
         }
-        if values.par_iter().any(|value| !value.is_finite()) {
+        if !all_finite
+            && super::prepared_fit::any_chunk(&values, 1 << 15, |block| {
+                block.iter().any(|value| !value.is_finite())
+            })
+        {
             return Err(invalid_data(
                 "categorical OLS RHS construction produced a nonfinite value",
             ));

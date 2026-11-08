@@ -79,6 +79,11 @@ impl LevelIndex {
     /// Ordered codes already have the final membership order. Reject the
     /// optional route before allocation when that identity does not hold.
     pub(crate) fn try_from_ordered_codes(codes: &[u32], n_levels: usize) -> Result<Option<Self>> {
+        let workers = rayon::current_thread_index().map_or(1, |_| rayon::current_num_threads());
+        let plan = crate::parallel::StagePlan::new(codes.len() as u128, codes.len(), workers);
+        if plan.lanes > 1 {
+            return Self::try_from_ordered_codes_parallel(codes, n_levels, plan);
+        }
         if codes.last().is_some_and(|code| *code as usize >= n_levels)
             || codes.windows(2).any(|pair| pair[0] > pair[1])
         {
@@ -103,6 +108,63 @@ impl LevelIndex {
             .try_reserve_exact(codes.len())
             .map_err(|_| allocation("unable to reserve fixed-effect level observations"))?;
         observations.extend(0..codes.len());
+        Ok(Some(Self {
+            offsets,
+            observations,
+        }))
+    }
+
+    /// The same integer index on an installed team: an ordered-code check over
+    /// fixed chunks (each chunk also compares its first code with the previous
+    /// chunk's last), offsets `offsets[k] = #{codes < k}` filled per level
+    /// range from that range's first position, and identity membership.
+    fn try_from_ordered_codes_parallel(
+        codes: &[u32],
+        n_levels: usize,
+        plan: crate::parallel::StagePlan,
+    ) -> Result<Option<Self>> {
+        let chunk = plan.chunk(codes.len());
+        let ordered = codes.last().is_none_or(|code| (*code as usize) < n_levels)
+            && (0..codes.len().div_ceil(chunk))
+                .into_par_iter()
+                .all(|block| {
+                    let start = block * chunk;
+                    let end = (start + chunk).min(codes.len());
+                    let first = start.saturating_sub(1);
+                    codes[first..end].windows(2).all(|pair| pair[0] <= pair[1])
+                });
+        if !ordered {
+            return Ok(None);
+        }
+        let offset_count = n_levels
+            .checked_add(1)
+            .ok_or_else(|| allocation("fixed-effect level-index offset count overflows"))?;
+        let mut offsets = Vec::new();
+        offsets
+            .try_reserve_exact(offset_count)
+            .map_err(|_| allocation("unable to reserve fixed-effect level offsets"))?;
+        // Fill reserved storage in place (no collected intermediate): each
+        // level range starts at its first position and walks forward.
+        let level_chunk = offset_count.div_ceil(plan.lanes).max(1);
+        offsets.resize(offset_count, 0);
+        offsets
+            .par_chunks_mut(level_chunk)
+            .enumerate()
+            .for_each(|(block, offsets)| {
+                let first = block * level_chunk;
+                let mut position = codes.partition_point(|&code| (code as usize) < first);
+                for (level, offset) in (first..).zip(offsets.iter_mut()) {
+                    while position < codes.len() && (codes[position] as usize) < level {
+                        position += 1;
+                    }
+                    *offset = position;
+                }
+            });
+        let mut observations = Vec::new();
+        observations
+            .try_reserve_exact(codes.len())
+            .map_err(|_| allocation("unable to reserve fixed-effect level observations"))?;
+        observations.par_extend((0..codes.len()).into_par_iter());
         Ok(Some(Self {
             offsets,
             observations,
@@ -579,8 +641,9 @@ impl<'a> BorrowedInterceptFeDesign<'a> {
 
     /// Largest transient scratch of [`Self::yielding_pair_components`].
     pub(crate) fn yielding_pair_component_scratch_bytes(&self) -> u128 {
-        let levels: Vec<_> = self.effects.iter().map(|e| e.n_levels()).collect();
-        super::components::YieldingPairCache::scratch_bytes(&levels)
+        super::components::YieldingPairCache::scratch_bytes_by(self.effects.len(), |index| {
+            self.effects[index].n_levels()
+        })
     }
 
     /// Factor-pair components, over every pair of effects, with at least
@@ -591,8 +654,16 @@ impl<'a> BorrowedInterceptFeDesign<'a> {
         if let Some(count) = self.known_yielding_pair_components() {
             return Ok(count);
         }
-        let codes: Vec<_> = self.effects.iter().map(|e| e.codes()).collect();
-        let levels: Vec<_> = self.effects.iter().map(|e| e.n_levels()).collect();
+        let mut codes = crate::memory::fallible_empty(
+            self.effects.len(),
+            "unable to reserve yielding pair code views",
+        )?;
+        codes.extend(self.effects.iter().map(|e| e.codes()));
+        let mut levels = crate::memory::fallible_empty(
+            self.effects.len(),
+            "unable to reserve yielding pair level counts",
+        )?;
+        levels.extend(self.effects.iter().map(|e| e.n_levels()));
         self.yielding_pairs.count(&codes, &levels)
     }
 
@@ -766,7 +837,7 @@ impl EffectTerm {
                 "fixed-effect slopes must be finite",
             ));
         }
-        if crate::parallel::any_index(codes.len(), |row| codes[row] as usize >= n_levels) {
+        if !codes_in_range(&codes, n_levels) {
             return Err(FeregError::new(
                 ErrorCode::InvalidData,
                 "fixed-effect code exceeds its level count",
@@ -875,9 +946,11 @@ impl FeDesign {
     /// Transient scratch of [`Self::yielding_pair_components`], or `None`
     /// for a design with slopes, whose subdomains are not the code components.
     pub(crate) fn yielding_pair_component_scratch_bytes(&self) -> Option<u128> {
-        let levels: Vec<_> = self.effects.iter().map(EffectTerm::n_levels).collect();
-        self.intercept_only()
-            .then(|| super::components::YieldingPairCache::scratch_bytes(&levels))
+        self.intercept_only().then(|| {
+            super::components::YieldingPairCache::scratch_bytes_by(self.effects.len(), |index| {
+                self.effects[index].n_levels()
+            })
+        })
     }
 
     /// As `BorrowedInterceptFeDesign::yielding_pair_components`, for an
@@ -886,8 +959,16 @@ impl FeDesign {
         if !self.intercept_only() {
             return Ok(None);
         }
-        let codes: Vec<_> = self.effects.iter().map(EffectTerm::codes).collect();
-        let levels: Vec<_> = self.effects.iter().map(EffectTerm::n_levels).collect();
+        let mut codes = crate::memory::fallible_empty(
+            self.effects.len(),
+            "unable to reserve yielding pair code views",
+        )?;
+        codes.extend(self.effects.iter().map(EffectTerm::codes));
+        let mut levels = crate::memory::fallible_empty(
+            self.effects.len(),
+            "unable to reserve yielding pair level counts",
+        )?;
+        levels.extend(self.effects.iter().map(EffectTerm::n_levels));
         self.yielding_pairs.count(&codes, &levels).map(Some)
     }
 

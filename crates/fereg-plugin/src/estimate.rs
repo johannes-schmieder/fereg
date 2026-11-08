@@ -575,7 +575,12 @@ fn prepare_loaded_ols_with_moments<T: Send>(
     // and weighted paths keep their raw moments. Keep the original reservation
     // in both branches: this optimization cannot buy different FE admission.
     let skip_moments = action.fit.ownership.skip_unused_moments
-        && unused_packed_moments(action.memory_plan.selected, action.vce, nrows, columns);
+        && unused_packed_moments(
+            action.memory_plan.selected,
+            action.vce,
+            nrows,
+            packed_score_columns(action),
+        );
     let result = if let Some(bytes) = moment_bytes.filter(|_| !skip_moments) {
         action.loaded_fit_workspace_bytes += bytes as u128;
         let request = &action.request;
@@ -617,6 +622,23 @@ fn prepare_loaded_ols_with_moments<T: Send>(
     result
 }
 
+/// Upper bound on the inference fit's packed score-cache width: every
+/// generated column except an intercept that an absorbed intercept owns (the
+/// core's cached columns). Loaded raw moments exist only for a numeric layout,
+/// whose columns are compiled before data and never expand afterwards.
+fn packed_score_columns(action: &EstimateAction) -> usize {
+    let owned_intercept = action.request.absorbed_terms.iter().any(|term| term.intercept)
+        && action
+            .loaded_rhs_layout
+            .is_some_and(|layout| layout.append_intercept);
+    action
+        .generated_columns
+        .saturating_sub(usize::from(owned_intercept))
+}
+
+/// The inference fit retains a packed score cache, and so never reads loaded
+/// raw moments, when `rows` candidate rows of `columns` cached columns fit its
+/// bound; candidate rows bound the final sample.
 fn unused_packed_moments(mode: MemoryMode, vce: OlsVceKind, rows: usize, columns: usize) -> bool {
     mode == MemoryMode::Fast
         && vce != OlsVceKind::Iid

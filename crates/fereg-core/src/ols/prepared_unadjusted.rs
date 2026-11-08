@@ -1,3 +1,4 @@
+use super::prepared_fit::ordered_chunk_reduce;
 use super::prepared_wald::{calculate_wald, WaldCalculation, WaldPolicy};
 use crate::data::{PreparedWeights, WeightKind};
 use crate::error::{
@@ -212,6 +213,11 @@ impl<'a> ReferenceWeightView<'a> {
 }
 
 impl ReferenceWeightView<'_> {
+    /// Unit mass: `value` is exactly 1.0 for every row and cannot fail.
+    pub(super) const fn is_unit(self) -> bool {
+        self.kind.is_none() && self.values.is_none()
+    }
+
     pub(super) fn value(self, row: usize) -> Result<f64> {
         let value = match (self.kind, self.values) {
             (None, None) => 1.0,
@@ -1338,7 +1344,7 @@ pub(super) fn validate_sum_of_squares(rss: f64, tss: f64, within_tss: f64) -> Re
     Ok(())
 }
 
-fn independent_fit_sums(
+pub(super) fn independent_fit_sums(
     outcome: &[f64],
     residuals: &[f64],
     weight_view: ReferenceWeightView<'_>,
@@ -1369,7 +1375,6 @@ pub(super) fn independent_outcome_sum(
 }
 
 pub(super) fn weighted_mean(values: &[f64], weights: ReferenceWeightView<'_>) -> Result<f64> {
-    use rayon::prelude::*;
     // Fixed row chunks keep their own compensated sums, merged in chunk order.
     const ROWS: usize = 1 << 14;
     if values.is_empty() {
@@ -1379,18 +1384,22 @@ pub(super) fn weighted_mean(values: &[f64], weights: ReferenceWeightView<'_>) ->
     }
     let mut value_scale = 0.0_f64;
     let mut finite = true;
-    for (scale, ok) in values
-        .par_chunks(ROWS)
-        .map(|chunk| {
-            chunk.iter().fold((0.0_f64, true), |(scale, ok), value| {
-                (scale.max(value.abs()), ok && value.is_finite())
-            })
-        })
-        .collect::<Vec<_>>()
-    {
-        value_scale = value_scale.max(scale);
-        finite &= ok;
-    }
+    let chunk_values = |chunk: usize| &values[chunk * ROWS..((chunk + 1) * ROWS).min(values.len())];
+    ordered_chunk_reduce(
+        values.len().div_ceil(ROWS),
+        |chunk| {
+            chunk_values(chunk)
+                .iter()
+                .fold((0.0_f64, true), |(scale, ok), value| {
+                    (scale.max(value.abs()), ok && value.is_finite())
+                })
+        },
+        |(scale, ok)| {
+            value_scale = value_scale.max(scale);
+            finite &= ok;
+            Ok(())
+        },
+    )?;
     if !finite {
         return Err(invalid_data(
             "prepared iid weighted-mean value is not finite",
@@ -1403,28 +1412,40 @@ pub(super) fn weighted_mean(values: &[f64], weights: ReferenceWeightView<'_>) ->
     let unit = weights.kind.is_none()
         && weights.values.is_none()
         && (values.len() as u128) <= (1_u128 << 53);
-    let parts: Vec<Result<(f64, f64, f64, f64)>> = values
-        .par_chunks(ROWS)
-        .enumerate()
-        .map(|(chunk, values)| {
+    let (mut numerator, mut numerator_correction) = (0.0_f64, 0.0_f64);
+    let (mut denominator, mut denominator_correction) = (0.0_f64, 0.0_f64);
+    ordered_chunk_reduce(
+        values.len().div_ceil(ROWS),
+        |chunk| -> Result<(f64, f64, f64, f64)> {
+            let values = chunk_values(chunk);
             let (mut numerator, mut numerator_correction) = (0.0_f64, 0.0_f64);
             let (mut denominator, mut denominator_correction) = (0.0_f64, 0.0_f64);
-            for (offset, &value) in values.iter().enumerate() {
-                if unit {
-                    compensated_add(
+            if unit {
+                // Every value is finite (checked above) and the scaled terms lie
+                // in [-1, 1], so no term or partial can fail the checked add:
+                // the identical Neumaier updates without per-term checks.
+                for &value in values {
+                    neumaier_add(
                         value / value_scale,
                         &mut numerator,
                         &mut numerator_correction,
-                    )?;
-                } else {
-                    let weight = weights.value(chunk * ROWS + offset)?;
-                    compensated_add(
-                        weight * (value / value_scale),
-                        &mut numerator,
-                        &mut numerator_correction,
-                    )?;
-                    compensated_add(weight, &mut denominator, &mut denominator_correction)?;
+                    );
                 }
+                return Ok((
+                    numerator,
+                    numerator_correction,
+                    denominator,
+                    denominator_correction,
+                ));
+            }
+            for (offset, &value) in values.iter().enumerate() {
+                let weight = weights.value(chunk * ROWS + offset)?;
+                compensated_add(
+                    weight * (value / value_scale),
+                    &mut numerator,
+                    &mut numerator_correction,
+                )?;
+                compensated_add(weight, &mut denominator, &mut denominator_correction)?;
             }
             Ok((
                 numerator,
@@ -1432,17 +1453,15 @@ pub(super) fn weighted_mean(values: &[f64], weights: ReferenceWeightView<'_>) ->
                 denominator,
                 denominator_correction,
             ))
-        })
-        .collect();
-    let (mut numerator, mut numerator_correction) = (0.0_f64, 0.0_f64);
-    let (mut denominator, mut denominator_correction) = (0.0_f64, 0.0_f64);
-    for part in parts {
-        let (n, nc, d, dc) = part?;
-        compensated_add(n, &mut numerator, &mut numerator_correction)?;
-        compensated_add(nc, &mut numerator, &mut numerator_correction)?;
-        compensated_add(d, &mut denominator, &mut denominator_correction)?;
-        compensated_add(dc, &mut denominator, &mut denominator_correction)?;
-    }
+        },
+        |part| {
+            let (n, nc, d, dc) = part?;
+            compensated_add(n, &mut numerator, &mut numerator_correction)?;
+            compensated_add(nc, &mut numerator, &mut numerator_correction)?;
+            compensated_add(d, &mut denominator, &mut denominator_correction)?;
+            compensated_add(dc, &mut denominator, &mut denominator_correction)
+        },
+    )?;
     let denominator = if unit {
         values.len() as f64
     } else {
@@ -1469,13 +1488,13 @@ pub(super) fn weighted_sum_of_squares(
     // Plain sums over fixed row chunks, combined in order, when every value is
     // finite and the magnitudes cannot over- or underflow; else the scaled sum.
     {
-        use rayon::prelude::*;
         const ROWS: usize = 1 << 14;
         let unit = weights.kind.is_none() && weights.values.is_none();
-        let parts: Vec<Option<(f64, f64)>> = values
-            .par_chunks(ROWS)
-            .enumerate()
-            .map(|(chunk, values)| {
+        let mut total = Some((0.0_f64, 0.0_f64));
+        ordered_chunk_reduce(
+            values.len().div_ceil(ROWS),
+            |chunk| {
+                let values = &values[chunk * ROWS..((chunk + 1) * ROWS).min(values.len())];
                 let (mut sum, mut big) = (0.0_f64, 0.0_f64);
                 for (offset, &value) in values.iter().enumerate() {
                     let d = value - center;
@@ -1488,12 +1507,12 @@ pub(super) fn weighted_sum_of_squares(
                     big = big.max(d.abs());
                 }
                 Some((sum, big))
-            })
-            .collect();
-        let mut total = Some((0.0_f64, 0.0_f64));
-        for part in parts {
-            total = total.zip(part).map(|(t, p)| (t.0 + p.0, t.1.max(p.1)));
-        }
+            },
+            |part| {
+                total = total.zip(part).map(|(t, p)| (t.0 + p.0, t.1.max(p.1)));
+                Ok(())
+            },
+        )?;
         if let Some((sum, big)) = total {
             if sum.is_finite() && (big == 0.0 || (1e-140..=1e140).contains(&big)) {
                 return Ok(sum);

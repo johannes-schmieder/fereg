@@ -232,7 +232,7 @@ pub(crate) fn compute_with_reservation<R: TopologyDofReservation>(
         }
         let source = effect_source(topology, effect_index)?;
         if effect_is_nested_within_any_cluster(
-            source.codes(&source_views)?,
+            effect_codes(topology, effect_index, &source_views, validated_owner)?,
             source.n_levels(),
             nobs,
             cluster_dimensions,
@@ -264,6 +264,7 @@ pub(crate) fn compute_with_reservation<R: TopologyDofReservation>(
     apply_mobility_policy(
         topology,
         &source_views,
+        validated_owner,
         &eligible_indices,
         policy,
         &mut redundant,
@@ -327,38 +328,54 @@ fn eligible_indices<R: TopologyDofReservation>(
     Ok(indices)
 }
 
-fn apply_mobility_policy<R: TopologyDofReservation>(
-    topology: &FinalizedCategoricalTopology,
-    source_views: &[CategoricalCodeView<'_>],
+#[allow(clippy::too_many_arguments)]
+fn apply_mobility_policy<'a, R: TopologyDofReservation>(
+    topology: &'a FinalizedCategoricalTopology,
+    source_views: &[CategoricalCodeView<'a>],
+    validated_owner: Option<&'a crate::fe::ValidatedFinalizedTopology>,
     eligible_indices: &[usize],
     policy: CategoricalTopologyDofPolicy,
     redundant: &mut [usize],
     exact: &mut [bool],
     reservation: &mut R,
 ) -> Result<()> {
-    let pairs: Vec<(usize, usize, bool)> = match policy {
-        CategoricalTopologyDofPolicy::None | CategoricalTopologyDofPolicy::Continuous => Vec::new(),
-        CategoricalTopologyDofPolicy::FirstPair if eligible_indices.len() >= 2 => {
-            vec![(eligible_indices[0], eligible_indices[1], true)]
-        }
-        CategoricalTopologyDofPolicy::FirstPair => Vec::new(),
-        CategoricalTopologyDofPolicy::Pairwise => (1..eligible_indices.len())
-            .flat_map(|later| {
-                (0..later).map(move |earlier| {
-                    (
-                        eligible_indices[earlier],
-                        eligible_indices[later],
-                        earlier == 0 && later == 1,
-                    )
-                })
-            })
-            .collect(),
+    let eligible = eligible_indices.len();
+    let pair_count = match policy {
+        CategoricalTopologyDofPolicy::None | CategoricalTopologyDofPolicy::Continuous => 0,
+        CategoricalTopologyDofPolicy::FirstPair => usize::from(eligible >= 2),
+        CategoricalTopologyDofPolicy::Pairwise => eligible * eligible.saturating_sub(1) / 2,
     };
-    if pairs.is_empty() {
+    if pair_count == 0 {
         return Ok(());
     }
-    // Admit every pair's parent bank first, then count the independent pairs
+    let mut pairs: Vec<(usize, usize, bool)> = Vec::new();
+    reservation.reserve_vec(
+        &mut pairs,
+        pair_count,
+        "unable to reserve absorbed-DoF pair identities",
+    )?;
+    for later in 1..eligible {
+        for earlier in 0..later {
+            if pairs.len() == pair_count {
+                break;
+            }
+            push_reserved(
+                &mut pairs,
+                (
+                    eligible_indices[earlier],
+                    eligible_indices[later],
+                    earlier == 0 && later == 1,
+                ),
+                "absorbed-DoF pair identity capacity exhausted",
+            )?;
+        }
+    }
+    // Admit every pair's parent banks first, then count the independent pairs
     // concurrently. Component counts are exact, so the order is immaterial.
+    // Spare workers split one pair's rows into lanes with private forests
+    // that are merged afterwards (see `pair_components`).
+    let workers = rayon::current_thread_index().map_or(1, |_| rayon::current_num_threads());
+    let lanes_per_pair = (workers / pairs.len()).max(1);
     let mut jobs = Vec::new();
     reservation.reserve_vec(
         &mut jobs,
@@ -368,8 +385,8 @@ fn apply_mobility_policy<R: TopologyDofReservation>(
     for &(earlier, later, _) in &pairs {
         let earlier_source = effect_source(topology, earlier)?;
         let later_source = effect_source(topology, later)?;
-        let earlier_codes = earlier_source.codes(source_views)?;
-        let later_codes = later_source.codes(source_views)?;
+        let earlier_codes = effect_codes(topology, earlier, source_views, validated_owner)?;
+        let later_codes = effect_codes(topology, later, source_views, validated_owner)?;
         if earlier_codes.len() != later_codes.len() {
             return Err(invalid_argument(
                 "categorical absorbed-DoF pair sources are not sample aligned",
@@ -380,44 +397,57 @@ fn apply_mobility_policy<R: TopologyDofReservation>(
             .checked_add(later_source.n_levels())
             .filter(|&v| v < u32::MAX as usize)
             .ok_or_else(|| allocation("categorical absorbed-DoF pair vertex count overflows"))?;
-        let parent = reserved_filled(
-            reservation,
-            vertices,
-            0_u32,
-            "unable to reserve categorical absorbed-DoF union-find parents",
+        // A lane needs enough rows to amortize its forest and merge pass.
+        let lanes = lanes_per_pair
+            .min(earlier_codes.len() / PAIR_LANE_MIN_ROWS)
+            .min(earlier_codes.len() / vertices.max(1))
+            .max(1);
+        let mut parents = Vec::new();
+        reservation.reserve_vec(
+            &mut parents,
+            lanes,
+            "unable to reserve categorical absorbed-DoF union-find lanes",
         )?;
+        for _ in 0..lanes {
+            let parent = reserved_filled(
+                reservation,
+                vertices,
+                0_u32,
+                "unable to reserve categorical absorbed-DoF union-find parents",
+            )?;
+            push_reserved(
+                &mut parents,
+                parent,
+                "categorical absorbed-DoF union-find lane capacity exhausted",
+            )?;
+        }
         push_reserved(
             &mut jobs,
             (
                 earlier_codes,
                 later_codes,
                 earlier_source.n_levels(),
-                parent,
+                parents,
+                Ok(0),
             ),
             "categorical absorbed-DoF pair capacity exhausted",
         )?;
     }
-    // Pairs run in parallel inside a worker pool (no global-pool injection
-    // outside one); counts are consumed in pair order.
-    use rayon::prelude::*;
-    let mut counts = crate::memory::fallible_filled(
-        jobs.len(),
-        Ok(0_usize),
-        "categorical absorbed-DoF pair capacity exhausted",
-    )?;
-    if crate::parallel::in_pool() {
-        jobs.par_iter_mut().zip(counts.par_iter_mut()).for_each(
-            |((earlier, later, split, parent), slot)| {
-                *slot = pair_components(earlier, later, *split, parent);
-            },
-        );
+    let count = |(earlier, later, split, parents, count): &mut PairJob<'_>| {
+        *count = if parents.len() == 1 {
+            pair_components(earlier, later, *split, &mut parents[0])
+        } else {
+            lane_pair_components(earlier, later, *split, parents)
+        };
+    };
+    if rayon::current_thread_index().is_some() {
+        use rayon::prelude::*;
+        jobs.par_iter_mut().with_max_len(1).for_each(count);
     } else {
-        for ((earlier, later, split, parent), slot) in jobs.iter_mut().zip(counts.iter_mut()) {
-            *slot = pair_components(earlier, later, *split, parent);
-        }
+        jobs.iter_mut().for_each(count);
     }
-    for (&(_, later, first), count) in pairs.iter().zip(counts) {
-        let components = count?;
+    for (&(_, later, first), job) in pairs.iter().zip(&mut jobs) {
+        let components = std::mem::replace(&mut job.4, Ok(0))?;
         redundant[later] = redundant[later].max(components);
         if first {
             exact[later] = true;
@@ -450,7 +480,11 @@ fn pair_components(
         v
     };
     let mut previous = (u32::MAX, u32::MAX);
-    for (&left, &right) in earlier.iter().zip(later) {
+    // Every union removes one root. Once a single root remains, no further
+    // edge can change the count; the remaining rows only need the same
+    // level-range check, which a branch-free scan performs.
+    let mut components = vertices;
+    for (row, (&left, &right)) in earlier.iter().zip(later).enumerate() {
         if (left, right) == previous {
             continue;
         }
@@ -470,6 +504,22 @@ fn pair_components(
             } else {
                 parent[a as usize] = b;
             }
+            components -= 1;
+            if components == 1 {
+                let right_levels = (vertices - split) as u64;
+                let in_range = earlier[row + 1..]
+                    .iter()
+                    .fold(true, |valid, &left| valid & ((left as usize) < split))
+                    && later[row + 1..].iter().fold(true, |valid, &right| {
+                        valid & (u64::from(right) < right_levels)
+                    });
+                if !in_range {
+                    return Err(invalid_data(
+                        "categorical absorbed-DoF pair code exceeds its level range",
+                    ));
+                }
+                return Ok(1);
+            }
         }
     }
     Ok(parent
@@ -477,6 +527,90 @@ fn pair_components(
         .enumerate()
         .filter(|&(vertex, &p)| vertex as u32 == p)
         .count())
+}
+
+/// One effect pair's codes, level split, lane forests and component count.
+type PairJob<'a> = (&'a [u32], &'a [u32], usize, Vec<Vec<u32>>, Result<usize>);
+
+/// Rows per union-find lane below which a pair stays serial.
+const PAIR_LANE_MIN_ROWS: usize = 1 << 16;
+
+fn find_root(parent: &mut [u32], mut vertex: u32) -> u32 {
+    while parent[vertex as usize] != vertex {
+        let grand = parent[parent[vertex as usize] as usize];
+        parent[vertex as usize] = grand;
+        vertex = grand;
+    }
+    vertex
+}
+
+/// `pair_components` over contiguous row lanes: each lane builds a private
+/// forest of its rows' edges, and the forests are merged pairwise by uniting
+/// every vertex with its lane root. The union of the lanes' edge sets is the
+/// pair's edge set, so the component count is exactly the serial count.
+fn lane_pair_components(
+    earlier: &[u32],
+    later: &[u32],
+    split: usize,
+    parents: &mut [Vec<u32>],
+) -> Result<usize> {
+    use rayon::prelude::*;
+    let lanes = parents.len();
+    let rows = earlier.len();
+    if later.len() != rows || lanes == 0 {
+        return Err(invalid_argument(
+            "categorical absorbed-DoF pair lanes are not sample aligned",
+        ));
+    }
+    let chunk = rows.div_ceil(lanes).max(1);
+    let lane = |(lane, parent): (usize, &mut Vec<u32>)| -> Result<()> {
+        let start = (lane * chunk).min(rows);
+        let end = (start + chunk).min(rows);
+        pair_components(&earlier[start..end], &later[start..end], split, parent).map(|_| ())
+    };
+    if rayon::current_thread_index().is_some() {
+        parents.par_iter_mut().enumerate().try_for_each(lane)?;
+    } else {
+        parents.iter_mut().enumerate().try_for_each(lane)?;
+    }
+    merge_lane_forests(parents);
+    let parent = &parents[0];
+    Ok(parent
+        .iter()
+        .enumerate()
+        .filter(|&(vertex, &p)| vertex as u32 == p)
+        .count())
+}
+
+/// Merge every forest into the first: a vertex and its root in a later
+/// forest are connected, so uniting them preserves exactly the connectivity
+/// of the combined edge sets. Halves merge concurrently.
+fn merge_lane_forests(parents: &mut [Vec<u32>]) {
+    if parents.len() < 2 {
+        return;
+    }
+    let middle = parents.len() / 2;
+    let (left, right) = parents.split_at_mut(middle);
+    if rayon::current_thread_index().is_some() {
+        rayon::join(|| merge_lane_forests(left), || merge_lane_forests(right));
+    } else {
+        merge_lane_forests(left);
+        merge_lane_forests(right);
+    }
+    let (target, source) = (&mut left[0], &mut right[0]);
+    for vertex in 0..source.len() as u32 {
+        let root = find_root(source, vertex);
+        if root == vertex {
+            continue;
+        }
+        let a = find_root(target, vertex);
+        let b = find_root(target, root);
+        match a.cmp(&b) {
+            std::cmp::Ordering::Less => target[b as usize] = a,
+            std::cmp::Ordering::Greater => target[a as usize] = b,
+            std::cmp::Ordering::Equal => {}
+        }
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -794,6 +928,30 @@ fn validate_inputs(
     Ok(())
 }
 
+/// One effect's codes. A validation receipt for this topology lends them
+/// directly (its owner checked every code when it was built and exposes no
+/// mutation); without one, the partition view revalidates them.
+fn effect_codes<'a>(
+    topology: &'a FinalizedCategoricalTopology,
+    effect_index: usize,
+    source_views: &[CategoricalCodeView<'a>],
+    validated_owner: Option<&'a crate::fe::ValidatedFinalizedTopology>,
+) -> Result<&'a [u32]> {
+    let source = effect_source(topology, effect_index)?;
+    if let Some(owner) = validated_owner.filter(|owner| std::ptr::eq(owner.get(), topology)) {
+        let validated = crate::fe::ValidatedBorrowedInterceptSource::from_finalized_source(
+            owner,
+            topology.effect_to_topology()[effect_index],
+        );
+        if let Some(effect) = validated.map(|validated| validated.effect()) {
+            if effect.n_levels() == source.n_levels() && effect.codes().len() == topology.nobs() {
+                return Ok(effect.codes());
+            }
+        }
+    }
+    source.codes(source_views)
+}
+
 fn effect_source(
     topology: &FinalizedCategoricalTopology,
     effect_index: usize,
@@ -990,6 +1148,99 @@ mod tests {
             .unwrap_err();
             assert_eq!(error.code, ErrorCode::InvalidArgument);
             assert!(error.message.contains("another topology"));
+        }
+    }
+
+    /// Independent component count: breadth-first search over the
+    /// bipartite adjacency of one effect pair.
+    fn reference_pair_components(
+        earlier: &[u32],
+        later: &[u32],
+        split: usize,
+        right: usize,
+    ) -> usize {
+        let vertices = split + right;
+        let mut adjacency = vec![Vec::new(); vertices];
+        for (&left, &right) in earlier.iter().zip(later) {
+            let (a, b) = (left as usize, split + right as usize);
+            adjacency[a].push(b);
+            adjacency[b].push(a);
+        }
+        let mut seen = vec![false; vertices];
+        let mut components = 0;
+        for start in 0..vertices {
+            if seen[start] {
+                continue;
+            }
+            components += 1;
+            seen[start] = true;
+            let mut queue = vec![start];
+            while let Some(vertex) = queue.pop() {
+                for &next in &adjacency[vertex] {
+                    if !seen[next] {
+                        seen[next] = true;
+                        queue.push(next);
+                    }
+                }
+            }
+        }
+        components
+    }
+
+    #[test]
+    fn lane_union_find_and_connected_early_exit_match_reference_components() {
+        let mut state = 0x9e37_79b9_7f4a_7c15_u64;
+        let mut next = move |bound: u32| {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            (state % u64::from(bound)) as u32
+        };
+        // Sparse (many components) through dense (connected early) designs.
+        for (left_levels, right_levels, rows) in [
+            (4000_u32, 300_u32, 3000_usize),
+            (2000, 50, 40_000),
+            (500, 20, 300_000),
+            (30, 4, 200_000),
+        ] {
+            let mut earlier: Vec<u32> = (0..rows).map(|_| next(left_levels)).collect();
+            let mut later: Vec<u32> = (0..rows).map(|_| next(right_levels)).collect();
+            // Every level occurs, as in a final sample.
+            for level in 0..left_levels {
+                earlier[level as usize % rows] = level;
+            }
+            for level in 0..right_levels {
+                later[(level as usize * 7 + 3) % rows] = level;
+            }
+            let split = left_levels as usize;
+            let vertices = split + right_levels as usize;
+            let expected =
+                reference_pair_components(&earlier, &later, split, right_levels as usize);
+            let mut parent = vec![0_u32; vertices];
+            assert_eq!(
+                pair_components(&earlier, &later, split, &mut parent).unwrap(),
+                expected
+            );
+            for lanes in [2, 3, 4, 7] {
+                let mut parents = vec![vec![0_u32; vertices]; lanes];
+                assert_eq!(
+                    lane_pair_components(&earlier, &later, split, &mut parents).unwrap(),
+                    expected,
+                    "lanes {lanes}"
+                );
+            }
+            // A code outside its range after the connecting row still fails.
+            if expected == 1 {
+                let mut bad = later.clone();
+                *bad.last_mut().unwrap() = right_levels;
+                let error = pair_components(&earlier, &bad, split, &mut parent).unwrap_err();
+                assert_eq!(error.code, ErrorCode::InvalidData);
+                let mut bad = earlier.clone();
+                *bad.last_mut().unwrap() = left_levels;
+                let mut parents = vec![vec![0_u32; vertices]; 4];
+                let error = lane_pair_components(&bad, &later, split, &mut parents).unwrap_err();
+                assert_eq!(error.code, ErrorCode::InvalidData);
+            }
         }
     }
 }
