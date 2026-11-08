@@ -163,8 +163,9 @@ fn structural_auto_graph_and_explicit_solvers_match_dummies_in_both_storage_mode
             config.absorb.solver = solver;
             let fit = fit_prepared_model_coefficients(&prepared, config)
                 .expect("supported solver oracle fit");
+            // Auto serves the categorical design by the exact elimination.
             let expected = if solver == FeSolverKind::Auto {
-                FeSolverKind::Cg
+                FeSolverKind::Elimination
             } else {
                 solver
             };
