@@ -305,7 +305,9 @@ pub(super) fn presolve<P: PreparedOlsFitView + Sync + ?Sized>(
         change = (deviance - next_deviance).abs() / deviance.min(next_deviance).max(0.1);
         deviance = next_deviance;
         input = Some(projected);
-        if change <= config.tolerance {
+        // Stop well inside the criterion: the start's score certificate must
+        // also pass for the first pass to be credited.
+        if change <= 0.01 * config.tolerance {
             break;
         }
     }
