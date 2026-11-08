@@ -65,6 +65,11 @@ impl StrictCheckpointControl {
     }
     /// `movement` is the accepted iteration's strict-profile movement: the
     /// relative predictor and coefficient change the strict check would see.
+    /// A converged elimination pre-solve supplies the first of the two
+    /// consecutive converged iterations; the strict checkpoint still decides.
+    pub(super) fn credit_converged_start(&mut self) {
+        self.consecutive_passes = 1;
+    }
     pub(super) fn observe_accepted_iteration(&mut self, passed: bool, movement: f64) {
         self.consecutive_passes = if passed {
             self.consecutive_passes.saturating_add(1)

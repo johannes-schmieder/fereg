@@ -2151,7 +2151,9 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             )? {
                 block_schur::Outcome::Done(mut result) => {
                     // PPML publishes categorical (non-LSMR) projections under
-                    // the MAP engine identity, as for the two-FE Schur route.
+                    // the MAP engine identity, as for the two-FE Schur route;
+                    // the owner is driven by MAP-family requests.
+                    result.report.requested_solver = FeSolverKind::Map;
                     result.report.used_solver = FeSolverKind::Map;
                     return Ok((result, true));
                 }

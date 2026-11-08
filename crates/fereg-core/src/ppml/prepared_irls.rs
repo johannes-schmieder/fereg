@@ -62,6 +62,7 @@ use super::{
 };
 
 mod controller;
+mod presolve;
 
 mod retry;
 
@@ -240,6 +241,13 @@ fn inject_candidate_profile_movement(workspace: &mut PpmlIterationWorkspace) {
     if let Some(value) = workspace.candidate_coefficients_mut().last_mut() {
         *value += DELTA;
     }
+}
+
+/// Developer switch: `FEREG_PPML_PRESOLVE=0` starts the certified iteration
+/// from the plain seed (A/B comparison).
+fn presolve_enabled() -> bool {
+    static ENABLED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ENABLED.get_or_init(|| std::env::var("FEREG_PPML_PRESOLVE").map_or(true, |v| v != "0"))
 }
 
 fn profile_curve_enabled() -> bool {
@@ -951,7 +959,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     config.linear.execution.threads.requested = std::num::NonZeroUsize::new(effective_threads);
     let installation_admission_seconds = preparation_trace.lap();
 
-    let (coefficient_values, eta) = initialize(
+    let (coefficient_values, mut eta) = initialize(
         prepared,
         outcome,
         prior_weights,
@@ -968,6 +976,26 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         offset,
         config.linear.execution.threads,
     )?;
+    // A fresh MAP-family publication seed in fast mode is first improved by
+    // elimination IRLS steps; the certified iteration below still decides
+    // everything. Explicit LSMR/CMG families keep their path.
+    let presolved = if start.is_none()
+        && matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
+        && config.linear.execution.mode == PreparedOlsExecutionMode::Fast
+        && config.solver_plan.selected == super::PpmlSolverFamily::Map
+        && presolve_enabled()
+    {
+        presolve::presolve(
+            prepared,
+            &objective_inputs,
+            outcome,
+            offset,
+            config.ppml,
+            &mut eta,
+        )?
+    } else {
+        None
+    };
     let mut workspace =
         PpmlIterationWorkspace::from_initial_state(memory_plan, eta, coefficient_values)?;
     workspace.refresh_prepared_working_state(&objective_inputs, config.ppml.bounds)?;
@@ -1032,10 +1060,23 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     // Set with every accepted-iteration score below, before any strict cycle.
     let mut final_score_generation: u64;
     let mut previous_inner_tolerance = initial_tolerance;
-    let mut previous_outer_progress = None;
+    // A converged pre-solve start is scheduled from its own progress (last
+    // deviance change and the start's score certificate), so the first
+    // certified solve does not loosen the start.
+    // Credit the first converged pass only when the start also passes the
+    // independent score certificate (deviance and score, as for any pass).
+    let credited = presolved.filter(|report| report.converged && final_score.passed);
+    let mut previous_outer_progress = credited.map(|report| {
+        PpmlInnerToleranceProgress::new(report.change, final_score.relative_infinity_norm)
+    });
     let mut rank_frozen = false;
     let mut completed_iterations = 0_usize;
-    let mut total_inner_iterations = 0_usize;
+    // Pre-solve steps are outer iterations; their projections are inner work.
+    let presolve_steps = presolved.map_or(0, |report| report.steps);
+    let mut total_inner_iterations = presolved.map_or(0, |report| report.projection_iterations);
+    if credited.is_some() {
+        strict_control.credit_converged_start();
+    }
     let mut frame_generation = 1_u64;
     let mut accepted_iterations = 0_usize;
     let mut certified_linear_subproblems = 0_usize;
@@ -1690,6 +1731,9 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             audit_defers_strict,
             iteration.saturating_add(2) < config.ppml.max_iterations,
         ) {
+            // The strict candidate is a frozen-basis solve; after a credited
+            // pre-solve it is the first one (later iterations set this above).
+            rank_frozen = true;
             let outcome = controller::StrictCycle {
                 candidate: controller::CandidatePhase {
                     prepared,
@@ -1884,7 +1928,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 converged: true,
                 two_consecutive_convergence: true,
                 rank_frozen,
-                iterations: completed_iterations,
+                iterations: completed_iterations + presolve_steps,
                 total_inner_iterations,
                 retained_iterations,
                 total_step_halvings,
