@@ -22,6 +22,11 @@
 //! the residual pass returns the untouched input to the caller's route; a
 //! failed certificate after it retries in place, since projecting a partially
 //! residualized column yields the same residual.
+//!
+//! Memory: every allocation is fallible. The cache keeps the geometry, the
+//! weight state and one workspace per batch width, so repeated projections of
+//! one width with changing weights allocate nothing (unless the caller asks
+//! for the residual norms attached to each result).
 
 use super::*;
 use crate::fe::LevelIndex;
@@ -85,38 +90,136 @@ const PARALLEL_WORK: usize = 1 << 15;
 const CHUNK: usize = 2048;
 /// Iteration ceiling before the route yields to the caller's solver.
 const MAX_ITERATIONS: usize = 1500;
+/// A column must halve its stopping measure every this many iterations ...
+const STALL_WINDOW: usize = 40;
+/// ... and every this many once it meets the acceptance rule.
+const KEPT_WINDOW: usize = 8;
 /// The recurrence stops at this fraction of the requested tolerance on the
 /// column's within norm (see [`run`]).
 const STOP_FRACTION: f64 = 0.1;
-/// Smallest within norm, as a fraction of the certificate scale.
+/// Columns whose within norm is below this fraction of the certificate scale
+/// lie inside the eliminated span.
 const WITHIN_FLOOR: f64 = 1.0 / (1_u64 << 30) as f64;
+/// Acceptance rule: this fraction of the tolerance at the certificate scale
+/// (where a column may stop when its recurrence reaches its rounding floor).
+const ACCEPT_FRACTION: f64 = 0.5;
+
+fn reserve<T>(values: &mut Vec<T>, additional: usize) -> Result<()> {
+    values
+        .try_reserve_exact(additional)
+        .map_err(|_| allocation("unable to reserve block-elimination workspace"))
+}
+
+fn with_capacity<T>(count: usize) -> Result<Vec<T>> {
+    let mut values = Vec::new();
+    reserve(&mut values, count)?;
+    Ok(values)
+}
 
 fn filled<T: Clone>(count: usize, value: T) -> Result<Vec<T>> {
-    let mut values = Vec::new();
-    values
-        .try_reserve_exact(count)
-        .map_err(|_| allocation("unable to reserve block-elimination workspace"))?;
+    let mut values = with_capacity(count)?;
     values.resize(count, value);
     Ok(values)
 }
 
-/// Split `values` into consecutive parts of the given lengths.
-fn split_parts<'s, T>(mut values: &'s mut [T], lengths: &[usize]) -> Vec<&'s mut [T]> {
-    let mut parts = Vec::with_capacity(lengths.len());
-    for &length in lengths {
-        let (head, tail) = std::mem::take(&mut values).split_at_mut(length);
-        parts.push(head);
-        values = tail;
+/// `values` becomes `count` copies of `value`, keeping its allocation.
+fn refill<T: Clone>(values: &mut Vec<T>, count: usize, value: T) -> Result<()> {
+    values.clear();
+    reserve(values, count)?;
+    values.resize(count, value);
+    Ok(())
+}
+
+/// `values` becomes a copy of `source`, keeping its allocation.
+fn refill_from<T: Clone>(values: &mut Vec<T>, source: &[T]) -> Result<()> {
+    values.clear();
+    reserve(values, source.len())?;
+    values.extend_from_slice(source);
+    Ok(())
+}
+
+/// Run `body(lane, part, item)` for every lane, in parallel by recursive
+/// halving and without allocation: lane `l` owns the elements
+/// `(bounds[l] - bounds[0]) * stride..(bounds[l + 1] - bounds[0]) * stride`
+/// of `data` and its own state `items[l]`.
+fn each_lane<T, S, F>(
+    first: usize,
+    bounds: &[usize],
+    stride: usize,
+    data: &mut [T],
+    items: &mut [S],
+    body: &F,
+) where
+    T: Send,
+    S: Send,
+    F: Fn(usize, &mut [T], &mut S) + Sync,
+{
+    if items.len() <= 1 {
+        if let Some(item) = items.first_mut() {
+            body(first, data, item);
+        }
+        return;
     }
-    parts
+    let mid = items.len() / 2;
+    let (left, right) = data.split_at_mut((bounds[mid] - bounds[0]) * stride);
+    let (head, tail) = items.split_at_mut(mid);
+    rayon::join(
+        || each_lane(first, &bounds[..=mid], stride, left, head, body),
+        || each_lane(first + mid, &bounds[mid..], stride, right, tail, body),
+    );
+}
+
+/// [`each_lane`] over two arrays with their own bounds.
+fn each_lane2<A, B, S, F>(
+    first: usize,
+    (a_bounds, a): (&[usize], &mut [A]),
+    (b_bounds, b): (&[usize], &mut [B]),
+    items: &mut [S],
+    body: &F,
+) where
+    A: Send,
+    B: Send,
+    S: Send,
+    F: Fn(usize, &mut [A], &mut [B], &mut S) + Sync,
+{
+    if items.len() <= 1 {
+        if let Some(item) = items.first_mut() {
+            body(first, a, b, item);
+        }
+        return;
+    }
+    let mid = items.len() / 2;
+    let (a_left, a_right) = a.split_at_mut(a_bounds[mid] - a_bounds[0]);
+    let (b_left, b_right) = b.split_at_mut(b_bounds[mid] - b_bounds[0]);
+    let (head, tail) = items.split_at_mut(mid);
+    rayon::join(
+        || {
+            each_lane2(
+                first,
+                (&a_bounds[..=mid], a_left),
+                (&b_bounds[..=mid], b_left),
+                head,
+                body,
+            )
+        },
+        || {
+            each_lane2(
+                first + mid,
+                (&a_bounds[mid..], a_right),
+                (&b_bounds[mid..], b_right),
+                tail,
+                body,
+            )
+        },
+    );
 }
 
 /// `parts` consecutive ranges of `0..offsets.len()-1` with balanced totals.
-fn partition(offsets: &[usize], parts: usize) -> Vec<Range<usize>> {
+fn partition(offsets: &[usize], parts: usize) -> Result<Vec<Range<usize>>> {
     let items = offsets.len() - 1;
     let total = offsets[items] - offsets[0];
     let parts = parts.clamp(1, items.max(1));
-    let mut ranges = Vec::with_capacity(parts);
+    let mut ranges = with_capacity(parts)?;
     let mut start = 0;
     for part in 1..=parts {
         let goal = offsets[0] + (total as u128 * part as u128 / parts as u128) as usize;
@@ -133,7 +236,17 @@ fn partition(offsets: &[usize], parts: usize) -> Vec<Range<usize>> {
     if ranges.is_empty() {
         ranges.push(0..items);
     }
-    ranges
+    Ok(ranges)
+}
+
+/// Lane boundaries `map(start_0), .., map(start_last), map(end_last)`.
+fn bounds_of(ranges: &[Range<usize>], map: impl Fn(usize) -> usize) -> Result<Vec<usize>> {
+    let mut bounds = with_capacity(ranges.len() + 1)?;
+    for range in ranges {
+        bounds.push(map(range.start));
+    }
+    bounds.push(map(ranges.last().map_or(0, |range| range.end)));
+    Ok(bounds)
 }
 
 fn lane_count(work: usize) -> usize {
@@ -164,6 +277,12 @@ pub(crate) struct Structure {
     /// Segment-local cell of each eliminated-effect membership entry.
     member_cell: Vec<u32>,
     lanes: Vec<Lane>,
+    /// Segment and cell boundaries of `lanes`, and zeros of the same length.
+    seg_bounds: Vec<usize>,
+    cell_bounds: Vec<usize>,
+    zero_bounds: Vec<usize>,
+    /// Cells of the largest segment.
+    max_seg_cells: usize,
     /// Segments with at least two cells. A one-cell segment's deviation from
     /// its mean is zero, so only these enter the reduced operator.
     active: Vec<u32>,
@@ -171,6 +290,7 @@ pub(crate) struct Structure {
     /// largest segment of each.
     active_lanes: Vec<(Range<usize>, usize)>,
     rows: Vec<Range<usize>>,
+    row_bounds: Vec<usize>,
     nobs: usize,
     bytes: u128,
 }
@@ -193,19 +313,20 @@ impl Structure {
         if !(2..=MAX_BLOCKS + 1).contains(&k) || n == 0 || n >= u32::MAX as usize {
             return Ok(None);
         }
-        let levels: Vec<usize> = design.effects().iter().map(|e| e.n_levels()).collect();
+        let levels = |e: usize| design.effects()[e].n_levels();
         let eliminated = (0..k)
-            .max_by_key(|&e| (levels[e], std::cmp::Reverse(e)))
+            .max_by_key(|&e| (levels(e), std::cmp::Reverse(e)))
             .expect("nonempty design");
-        let blocks: Vec<usize> = (0..k).filter(|&e| e != eliminated).collect();
-        let mut offsets = Vec::with_capacity(blocks.len());
+        let mut blocks = with_capacity(k - 1)?;
+        blocks.extend((0..k).filter(|&e| e != eliminated));
+        let mut offsets = with_capacity(blocks.len())?;
         let mut reduced = 0_usize;
         for &b in &blocks {
             let Ok(offset) = u32::try_from(reduced) else {
                 return Ok(None);
             };
             offsets.push(offset);
-            reduced = reduced.saturating_add(levels[b]);
+            reduced = reduced.saturating_add(levels(b));
         }
         if reduced == 0 || reduced >= u32::MAX as usize {
             return Ok(None);
@@ -236,40 +357,42 @@ impl Structure {
         }
         let codes_b: [&[u32]; NB] = std::array::from_fn(|b| design.effects()[blocks[b]].codes());
         let offs: [u32; NB] = std::array::from_fn(|b| offsets[b]);
-        let ranges = partition(member_offsets, lane_count(n * NB));
+        let ranges = partition(member_offsets, lane_count(n * NB))?;
         // Merging repeated combinations pays only when they are common.
-        let merge = sampled_repeat_rate::<NB>(index, segments, &codes_b) >= 0.02;
+        let merge = sampled_repeat_rate::<NB>(index, segments, &codes_b)? >= 0.02;
         let mut member_cell = filled(n, 0_u32)?;
-        let lengths: Vec<usize> = ranges
-            .iter()
-            .map(|r| member_offsets[r.end] - member_offsets[r.start])
-            .collect();
-        let parts = split_parts(&mut member_cell, &lengths);
-        let built: Vec<Result<LaneBuild>> = parts
-            .into_par_iter()
-            .zip(ranges.par_iter())
-            .map(|(part, segs)| build_lane::<NB>(index, segs.clone(), &codes_b, &offs, part, merge))
-            .collect();
-        let mut lanes_built = Vec::with_capacity(built.len());
+        let member_bounds = bounds_of(&ranges, |s| member_offsets[s])?;
+        let mut built: Vec<Option<Result<LaneBuild>>> = with_capacity(ranges.len())?;
+        built.resize_with(ranges.len(), || None);
+        each_lane(
+            0,
+            &member_bounds,
+            1,
+            &mut member_cell,
+            &mut built,
+            &|lane, part, slot| {
+                *slot = Some(build_lane::<NB>(
+                    index,
+                    ranges[lane].clone(),
+                    &codes_b,
+                    &offs,
+                    part,
+                    merge,
+                ));
+            },
+        );
+        let mut lanes_built = with_capacity(built.len())?;
         for lane in built {
-            lanes_built.push(lane?);
+            lanes_built.push(lane.expect("every lane ran")?);
         }
         crate::interrupt::checkpoint()?;
         let cells: usize = lanes_built.iter().map(|l| l.counts.len()).sum();
         let mut seg_cells = filled(segments + 1, 0_usize)?;
-        let mut codes = Vec::new();
-        codes
-            .try_reserve_exact(cells * NB)
-            .map_err(|_| allocation("unable to reserve block-elimination cells"))?;
+        let mut codes = with_capacity(cells * NB)?;
         let repeated = lanes_built
             .iter()
             .any(|l| l.counts.iter().any(|&count| count > 1));
-        let mut multiplicity = Vec::new();
-        if repeated {
-            multiplicity
-                .try_reserve_exact(cells)
-                .map_err(|_| allocation("unable to reserve block-elimination cells"))?;
-        }
+        let mut multiplicity = with_capacity(if repeated { cells } else { 0 })?;
         let mut s = 0;
         for lane in &lanes_built {
             for &count in &lane.seg_cells {
@@ -288,15 +411,25 @@ impl Structure {
         if s != segments {
             return Err(invalid_argument("block-elimination segment count differs"));
         }
-        let lanes = partition(&seg_cells, lane_count(cells * NB * BATCH))
-            .into_iter()
-            .map(|segments| Lane {
-                cells: seg_cells[segments.start]..seg_cells[segments.end],
-                segments,
-            })
-            .collect::<Vec<_>>();
-        let mut active = Vec::new();
-        let mut active_offsets = Vec::new();
+        let lane_ranges = partition(&seg_cells, lane_count(cells * NB * BATCH))?;
+        let mut lanes = with_capacity(lane_ranges.len())?;
+        lanes.extend(lane_ranges.iter().map(|segments| Lane {
+            cells: seg_cells[segments.start]..seg_cells[segments.end],
+            segments: segments.clone(),
+        }));
+        let seg_bounds = bounds_of(&lane_ranges, |s| s)?;
+        let cell_bounds = bounds_of(&lane_ranges, |s| seg_cells[s])?;
+        let zero_bounds = filled(lanes.len() + 1, 0_usize)?;
+        drop(lane_ranges);
+        let mut active_count = 0;
+        let mut max_seg_cells = 0;
+        for s in 0..segments {
+            let count = seg_cells[s + 1] - seg_cells[s];
+            max_seg_cells = max_seg_cells.max(count);
+            active_count += usize::from(count >= 2);
+        }
+        let mut active = with_capacity(active_count)?;
+        let mut active_offsets = with_capacity(active_count + 1)?;
         active_offsets.push(0_usize);
         for s in 0..segments {
             let count = seg_cells[s + 1] - seg_cells[s];
@@ -306,24 +439,26 @@ impl Structure {
             }
         }
         let active_cells = active_offsets[active.len()];
-        let active_lanes = partition(&active_offsets, lane_count(active_cells * NB * BATCH))
-            .into_iter()
-            .map(|range| {
-                let max_cells = active[range.clone()]
-                    .iter()
-                    .map(|&s| seg_cells[s as usize + 1] - seg_cells[s as usize])
-                    .max()
-                    .unwrap_or(0);
-                (range, max_cells)
-            })
-            .collect::<Vec<_>>();
+        let active_ranges = partition(&active_offsets, lane_count(active_cells * NB * BATCH))?;
         drop(active_offsets);
+        let mut active_lanes = with_capacity(active_ranges.len())?;
+        for range in active_ranges {
+            let max_cells = active[range.clone()]
+                .iter()
+                .map(|&s| seg_cells[s as usize + 1] - seg_cells[s as usize])
+                .max()
+                .unwrap_or(0);
+            active_lanes.push((range, max_cells));
+        }
         let row_lanes = lane_count(n * (NB + 1) * BATCH);
         let per = n.div_ceil(row_lanes);
-        let rows = (0..row_lanes)
-            .map(|l| (l * per).min(n)..((l + 1) * per).min(n))
-            .filter(|r| !r.is_empty())
-            .collect::<Vec<_>>();
+        let mut rows = with_capacity(row_lanes)?;
+        rows.extend(
+            (0..row_lanes)
+                .map(|l| (l * per).min(n)..((l + 1) * per).min(n))
+                .filter(|r| !r.is_empty()),
+        );
+        let row_bounds = bounds_of(&rows, |row| row)?;
         let bytes = (codes.capacity() as u128) * 4
             + (multiplicity.capacity() as u128) * 8
             + (member_cell.capacity() as u128) * 4
@@ -340,9 +475,14 @@ impl Structure {
             multiplicity,
             member_cell,
             lanes,
+            seg_bounds,
+            cell_bounds,
+            zero_bounds,
+            max_seg_cells,
             active,
             active_lanes,
             rows,
+            row_bounds,
             nobs: n,
             bytes,
         }))
@@ -355,13 +495,14 @@ fn sampled_repeat_rate<const NB: usize>(
     index: &LevelIndex,
     segments: usize,
     codes_b: &[&[u32]; NB],
-) -> f64 {
+) -> Result<f64> {
     let step = (segments / 512).max(1);
     let (mut rows, mut repeats) = (0_usize, 0_usize);
     let mut local: Vec<[u32; NB]> = Vec::new();
     for s in (0..segments).step_by(step) {
         let members = index.members(s);
         local.clear();
+        reserve(&mut local, members.len())?;
         local.extend(
             members
                 .iter()
@@ -371,11 +512,11 @@ fn sampled_repeat_rate<const NB: usize>(
         rows += local.len();
         repeats += local.windows(2).filter(|pair| pair[0] == pair[1]).count();
     }
-    if rows == 0 {
+    Ok(if rows == 0 {
         0.0
     } else {
         repeats as f64 / rows as f64
-    }
+    })
 }
 
 /// One lane's cells. With `merge`, rows sharing a remaining-code combination
@@ -390,9 +531,9 @@ fn build_lane<const NB: usize>(
     merge: bool,
 ) -> Result<LaneBuild> {
     let mut out = LaneBuild {
-        codes: Vec::with_capacity(member_cell.len() * NB),
-        counts: Vec::with_capacity(member_cell.len()),
-        seg_cells: Vec::with_capacity(segs.len()),
+        codes: with_capacity(member_cell.len() * NB)?,
+        counts: with_capacity(member_cell.len())?,
+        seg_cells: with_capacity(segs.len())?,
     };
     let mut local: Vec<([u32; NB], u32)> = Vec::new();
     let mut cursor = 0_usize;
@@ -414,6 +555,7 @@ fn build_lane<const NB: usize>(
             continue;
         }
         local.clear();
+        reserve(&mut local, members.len())?;
         for (k, &row) in members.iter().enumerate() {
             let key: [u32; NB] = std::array::from_fn(|b| codes_b[b][row] + offs[b]);
             local.push((key, k as u32));
@@ -452,90 +594,123 @@ pub(crate) struct Weights {
     raw_scale: f64,
     /// Total normalized weight of the sample.
     total_mass: f64,
+    /// Per-lane accumulators of the preparation pass.
+    lanes: Vec<WeightLane>,
     bytes: u128,
 }
 
+#[derive(Default)]
+struct WeightLane {
+    mass: Vec<f64>,
+    diag: Vec<f64>,
+    active: Vec<f64>,
+    /// Stamped per-segment level sums (two or more retained blocks).
+    sums: Vec<f64>,
+    stamp: Vec<u32>,
+    touched: Vec<u32>,
+    bad: bool,
+}
+
 impl Weights {
+    fn empty() -> Self {
+        Self {
+            cell: Vec::new(),
+            seg_inverse: Vec::new(),
+            mass: Vec::new(),
+            active_mass: Vec::new(),
+            inverse_diagonal: Vec::new(),
+            inverse_root_mass: Vec::new(),
+            raw_scale: 1.0,
+            total_mass: 0.0,
+            lanes: Vec::new(),
+            bytes: 0,
+        }
+    }
+
     /// Prepare the state of `weights`, reusing the buffers of `recycled` (a
-    /// previous state of the same structure) when given.
+    /// previous state of the same structure) when given; then repeated
+    /// preparations allocate nothing.
     fn prepare(
         st: &Structure,
         design: &BorrowedInterceptFeDesign<'_>,
         weights: ValidatedWeights<'_>,
         recycled: Option<Self>,
     ) -> Result<Option<Self>> {
+        let mut state = recycled.unwrap_or_else(Self::empty);
+        Ok(state.fill(st, design, weights)?.then_some(state))
+    }
+
+    /// Form the state in place; `false` when a mass is not positive.
+    fn fill(
+        &mut self,
+        st: &Structure,
+        design: &BorrowedInterceptFeDesign<'_>,
+        weights: ValidatedWeights<'_>,
+    ) -> Result<bool> {
         let cells = st.cells();
         let index = design.effects()[st.eliminated].level_index();
         let member_offsets = index.membership_offsets();
-        let (old_cell, old_inverse) =
-            recycled.map_or((Vec::new(), Vec::new()), |old| (old.cell, old.seg_inverse));
-        // Every cell weight is (re)formed by the lane pass below, so a
-        // recycled buffer of the right length needs no clearing.
-        let mut cell = match weights.values {
-            None if st.multiplicity.is_empty() => Vec::new(),
-            None => {
-                let mut cell = Vec::new();
-                cell.try_reserve_exact(cells)
-                    .map_err(|_| allocation("unable to reserve block-elimination weights"))?;
-                cell.extend_from_slice(&st.multiplicity);
-                cell
-            }
-            Some(_) if old_cell.len() == cells => old_cell,
-            Some(_) => {
-                drop(old_cell);
-                filled(cells, 0.0_f64)?
-            }
-        };
         let m = st.reduced;
         let nb = st.blocks.len();
-        let unit = cell.is_empty();
-        let mut seg_inverse = if old_inverse.len() == st.segments {
-            old_inverse
-        } else {
-            drop(old_inverse);
-            filled(st.segments, 0.0_f64)?
-        };
-        let lengths: Vec<usize> = st.lanes.iter().map(|l| l.segments.len()).collect();
         let lanes = st.lanes.len();
-        let cell_parts: Vec<&mut [f64]> = if unit {
-            (0..lanes).map(|_| Default::default()).collect()
-        } else {
-            let cell_lengths: Vec<usize> = st.lanes.iter().map(|l| l.cells.len()).collect();
-            split_parts(&mut cell, &cell_lengths)
-        };
+        // Every weighted cell is re-formed by the lane pass below.
+        match weights.values {
+            None if st.multiplicity.is_empty() => self.cell.clear(),
+            None => refill_from(&mut self.cell, &st.multiplicity)?,
+            Some(_) if self.cell.len() == cells => {}
+            Some(_) => refill(&mut self.cell, cells, 0.0)?,
+        }
+        let unit = self.cell.is_empty();
+        if self.seg_inverse.len() != st.segments {
+            refill(&mut self.seg_inverse, st.segments, 0.0)?;
+        }
+        if self.lanes.len() != lanes {
+            self.lanes.clear();
+            reserve(&mut self.lanes, lanes)?;
+            self.lanes.resize_with(lanes, WeightLane::default);
+        }
+        for lane in &mut self.lanes {
+            refill(&mut lane.mass, m, 0.0)?;
+            refill(&mut lane.diag, m, 0.0)?;
+            if nb == 1 {
+                refill(&mut lane.active, m, 0.0)?;
+            } else {
+                if lane.sums.len() != m {
+                    refill(&mut lane.sums, m, 0.0)?;
+                }
+                refill(&mut lane.stamp, m, u32::MAX)?;
+                lane.touched.clear();
+                reserve(&mut lane.touched, st.max_seg_cells * nb)?;
+            }
+            lane.bad = false;
+        }
         let values = weights.values;
         let scale = weights.raw_scale;
-        let mut mass_acc: Vec<Vec<f64>> = Vec::with_capacity(lanes);
-        let mut diag_acc: Vec<Vec<f64>> = Vec::with_capacity(lanes);
-        let mut active_acc: Vec<Vec<f64>> = Vec::with_capacity(lanes);
-        for _ in 0..lanes {
-            mass_acc.push(filled(m, 0.0_f64)?);
-            diag_acc.push(filled(m, 0.0_f64)?);
-            active_acc.push(if nb == 1 {
-                filled(m, 0.0_f64)?
-            } else {
-                Vec::new()
-            });
-        }
-        let failures: Vec<bool> = split_parts(&mut seg_inverse, &lengths)
-            .into_par_iter()
-            .zip(cell_parts.into_par_iter())
-            .zip(st.lanes.par_iter())
-            .zip(
-                mass_acc
-                    .par_iter_mut()
-                    .zip(diag_acc.par_iter_mut())
-                    .zip(active_acc.par_iter_mut()),
-            )
-            .map(|(((inverse, part), lane), ((mass, diag), active))| {
+        let cell_bounds = if unit {
+            &st.zero_bounds
+        } else {
+            &st.cell_bounds
+        };
+        each_lane2(
+            0,
+            (&st.seg_bounds, &mut self.seg_inverse),
+            (cell_bounds, &mut self.cell),
+            &mut self.lanes,
+            &|l, inverse: &mut [f64], part: &mut [f64], acc: &mut WeightLane| {
                 // One pass per segment: its cell weights (summed from the
                 // member rows), then the per-segment level sums `a_j` in a
                 // stamped lane accumulator; the Schur diagonal is
                 // `mass_j - sum_s a_sj^2 / W_s`.
-                let mut sums = vec![0.0_f64; m];
-                let mut stamp = vec![u32::MAX; m];
-                let mut touched: Vec<u32> = Vec::new();
-                let mut bad = false;
+                let lane = &st.lanes[l];
+                let WeightLane {
+                    mass,
+                    diag,
+                    active,
+                    sums,
+                    stamp,
+                    touched,
+                    bad,
+                } = acc;
                 let mut cursor = member_offsets[lane.segments.start];
                 for (s, inv) in lane.segments.clone().zip(inverse.iter_mut()) {
                     let (c0, c1) = (st.seg_cells[s], st.seg_cells[s + 1]);
@@ -562,7 +737,7 @@ impl Weights {
                             cw.iter().sum()
                         };
                         if !(total.is_finite() && total > 0.0) {
-                            bad = true;
+                            *bad = true;
                             continue;
                         }
                         let inverse_total = 1.0 / total;
@@ -600,7 +775,7 @@ impl Weights {
                         }
                     }
                     if !(total.is_finite() && total > 0.0) {
-                        bad = true;
+                        *bad = true;
                         continue;
                     }
                     let inverse_total = 1.0 / total;
@@ -608,70 +783,70 @@ impl Weights {
                     if c1 - c0 == 1 {
                         continue;
                     }
-                    for &code in &touched {
+                    for &code in touched.iter() {
                         let j = code as usize;
                         let a = sums[j];
                         diag[j] += a - a * a * inverse_total;
                     }
                 }
-                bad
-            })
-            .collect();
-        if failures.into_iter().any(|bad| bad) {
-            return Ok(None);
+            },
+        );
+        if self.lanes.iter().any(|lane| lane.bad) {
+            return Ok(false);
         }
-        let (mass, rest) = mass_acc.split_first_mut().expect("one lane");
-        let (diag, drest) = diag_acc.split_first_mut().expect("one lane");
-        for other in rest.iter() {
-            for (a, b) in mass.iter_mut().zip(other) {
+        // Lane sums in lane order.
+        let (first, rest) = self.lanes.split_first().expect("one lane");
+        refill_from(&mut self.mass, &first.mass)?;
+        refill_from(&mut self.inverse_diagonal, &first.diag)?;
+        refill_from(&mut self.active_mass, &first.active)?;
+        for other in rest {
+            for (a, b) in self.mass.iter_mut().zip(&other.mass) {
+                *a += b;
+            }
+            for (a, b) in self.inverse_diagonal.iter_mut().zip(&other.diag) {
+                *a += b;
+            }
+            for (a, b) in self.active_mass.iter_mut().zip(&other.active) {
                 *a += b;
             }
         }
-        for other in drest.iter() {
-            for (a, b) in diag.iter_mut().zip(other) {
-                *a += b;
-            }
-        }
-        let (active_mass, arest) = active_acc.split_first_mut().expect("one lane");
-        for other in arest.iter() {
-            for (a, b) in active_mass.iter_mut().zip(other) {
-                *a += b;
-            }
-        }
-        let mass = std::mem::take(mass);
-        let active_mass = std::mem::take(active_mass);
-        let mut inverse_diagonal = std::mem::take(diag);
-        drop(mass_acc);
-        drop(diag_acc);
-        drop(active_acc);
-        let mut inverse_root_mass = filled(m, 0.0_f64)?;
+        refill(&mut self.inverse_root_mass, m, 0.0)?;
         for j in 0..m {
-            let total = mass[j];
+            let total = self.mass[j];
             if !(total.is_finite() && total > 0.0) {
-                return Ok(None);
+                return Ok(false);
             }
-            let d = inverse_diagonal[j];
-            inverse_diagonal[j] = if d.is_finite() && d > 1e-13 * total {
+            let d = self.inverse_diagonal[j];
+            self.inverse_diagonal[j] = if d.is_finite() && d > 1e-13 * total {
                 1.0 / d
             } else {
                 0.0
             };
-            inverse_root_mass[j] = 1.0 / total.sqrt();
+            self.inverse_root_mass[j] = 1.0 / total.sqrt();
         }
-        let bytes = (cell.capacity() + seg_inverse.capacity() + 4 * m) as u128 * 8
-            + 3 * (lanes * m) as u128 * 8;
-        let total_mass: f64 = seg_inverse.iter().map(|inverse| 1.0 / inverse).sum();
-        Ok(Some(Self {
-            cell,
-            seg_inverse,
-            mass,
-            active_mass,
-            inverse_diagonal,
-            inverse_root_mass,
-            raw_scale: weights.raw_scale,
-            total_mass,
-            bytes,
-        }))
+        let lane_bytes: u128 = self
+            .lanes
+            .iter()
+            .map(|lane| {
+                (lane.mass.capacity()
+                    + lane.diag.capacity()
+                    + lane.active.capacity()
+                    + lane.sums.capacity()) as u128
+                    * 8
+                    + (lane.stamp.capacity() + lane.touched.capacity()) as u128 * 4
+            })
+            .sum();
+        self.bytes = (self.cell.capacity()
+            + self.seg_inverse.capacity()
+            + self.mass.capacity()
+            + self.active_mass.capacity()
+            + self.inverse_diagonal.capacity()
+            + self.inverse_root_mass.capacity()) as u128
+            * 8
+            + lane_bytes;
+        self.total_mass = self.seg_inverse.iter().map(|inverse| 1.0 / inverse).sum();
+        self.raw_scale = weights.raw_scale;
+        Ok(true)
     }
 }
 
@@ -688,7 +863,7 @@ pub(crate) struct Request {
 /// Raw-weighted Gram `Σ_i w_i r_i r_i'` of a certified residual matrix:
 /// row-major and symmetric, `columns x columns`. Plain sums within each row
 /// lane, combined in lane order (deterministic at a fixed worker count).
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub(crate) struct ResidualGram {
     pub(crate) columns: usize,
     pub(crate) values: Vec<f64>,
@@ -706,44 +881,46 @@ pub(crate) enum Outcome<V> {
 /// digest of its bits (callers may refill one buffer between frames).
 type WeightKey = Option<(usize, usize, u64)>;
 
-fn weight_key(values: Option<&[f64]>) -> WeightKey {
+fn weight_key(values: Option<&[f64]>) -> Result<WeightKey> {
     fn mix(h: u64, bits: u64) -> u64 {
         let h = (h ^ bits).wrapping_mul(0x9e37_79b9_7f4a_7c15);
         h ^ (h >> 31)
     }
-    values.map(|values| {
-        const CHUNK: usize = 1 << 16;
-        let parts: Vec<u64> = values
-            .par_chunks(CHUNK)
-            .map(|chunk| {
-                // Four interleaved chains keep the multiplications independent.
-                let mut h = [
-                    0x243f_6a88_85a3_08d3_u64,
-                    0x1319_8a2e_0370_7344,
-                    0xa409_3822_299f_31d0,
-                    0x082e_fa98_ec4e_6c89,
-                ];
-                let mut quads = chunk.chunks_exact(4);
-                for quad in &mut quads {
-                    for lane in 0..4 {
-                        h[lane] = mix(h[lane], quad[lane].to_bits());
-                    }
+    let Some(values) = values else {
+        return Ok(None);
+    };
+    // Fixed leaves and tree: the digest depends only on the bits.
+    let digest = crate::parallel::fixed_tree_reduce(
+        values.len(),
+        1 << 16,
+        &|range: Range<usize>| {
+            let chunk = &values[range];
+            // Four interleaved chains keep the multiplications independent.
+            let mut h = [
+                0x243f_6a88_85a3_08d3_u64,
+                0x1319_8a2e_0370_7344,
+                0xa409_3822_299f_31d0,
+                0x082e_fa98_ec4e_6c89,
+            ];
+            let mut quads = chunk.chunks_exact(4);
+            for quad in &mut quads {
+                for lane in 0..4 {
+                    h[lane] = mix(h[lane], quad[lane].to_bits());
                 }
-                for (lane, v) in quads.remainder().iter().enumerate() {
-                    h[lane] = mix(h[lane], v.to_bits());
-                }
-                h.iter()
-                    .fold(chunk.len() as u64, |acc, &lane| mix(acc, lane))
-            })
-            .collect();
-        let digest = parts.iter().fold(0xcbf2_9ce4_8422_2325_u64, |h, &p| {
-            (h ^ p).wrapping_mul(0x0000_0100_0000_01b3)
-        });
-        (values.as_ptr() as usize, values.len(), digest)
-    })
+            }
+            for (lane, v) in quads.remainder().iter().enumerate() {
+                h[lane] = mix(h[lane], v.to_bits());
+            }
+            Ok(h.iter()
+                .fold(chunk.len() as u64, |acc, &lane| mix(acc, lane)))
+        },
+        &|left, right| mix(mix(0xcbf2_9ce4_8422_2325, left), right),
+    )?;
+    Ok(Some((values.as_ptr() as usize, values.len(), digest)))
 }
 
-/// A session's retained geometry and its current-weight state.
+/// A session's retained geometry, its current-weight state and the reusable
+/// workspaces of its projections.
 #[derive(Default)]
 pub(crate) struct Cache {
     refused: bool,
@@ -751,26 +928,46 @@ pub(crate) struct Cache {
     /// Weights keyed by the borrowed weight slice (address, length); `None`
     /// key is unit weights.
     weights: Option<(WeightKey, Weights)>,
+    work: WorkSlots,
     /// Accumulate the residual Gram in later projections' residual pass.
     gram_requested: bool,
-    /// Residual Gram of the last certified projection that requested it.
-    gram: Option<ResidualGram>,
+    gram: ResidualGram,
+    gram_ready: bool,
+    /// Residual norms of the last certified projection.
+    norms: Vec<f64>,
+    /// Keep the norms here instead of attaching a copy to each result.
+    detach_norms: bool,
 }
 
 impl Cache {
     /// Also accumulate the residual Gram `Σ w r r'` at the caller's raw
     /// weights (unit weights: 1) in the residual pass of later projections
-    /// with at most [`BATCH`] columns; see [`Cache::take_residual_gram`].
+    /// with at most [`BATCH`] columns; see [`Cache::residual_gram`].
     #[allow(dead_code)] // For the PPML pre-solve's normal equations.
     pub(crate) fn request_residual_gram(&mut self, on: bool) {
         self.gram_requested = on;
     }
 
     /// The residual Gram of the last [`Cache::project`] call, when it was
-    /// requested and the projection certified (cleared by every call).
+    /// requested and the projection certified.
     #[allow(dead_code)] // For the PPML pre-solve's normal equations.
-    pub(crate) fn take_residual_gram(&mut self) -> Option<ResidualGram> {
-        self.gram.take()
+    pub(crate) fn residual_gram(&self) -> Option<&ResidualGram> {
+        self.gram_ready.then_some(&self.gram)
+    }
+
+    /// Keep the residual norms of later certified projections only in the
+    /// cache ([`Cache::residual_norms`]) instead of attaching a copy to each
+    /// result, so repeated projections allocate nothing.
+    #[allow(dead_code)] // For allocation-free PPML iterations.
+    pub(crate) fn detach_residual_norms(&mut self, on: bool) {
+        self.detach_norms = on;
+    }
+
+    /// `sqrt(Σ (w / max w) r^2)` per column of the last certified projection
+    /// (empty after a decline).
+    #[allow(dead_code)] // For allocation-free PPML iterations.
+    pub(crate) fn residual_norms(&self) -> &[f64] {
+        &self.norms
     }
 
     /// Project with the retained geometry, building it on first use. Any
@@ -784,7 +981,8 @@ impl Cache {
         budget: Option<FeSolverMemoryBudget>,
         request: Request,
     ) -> Result<Outcome<DenseMatrix>> {
-        self.gram = None;
+        self.gram_ready = false;
+        self.norms.clear();
         if self.refused || values.nrows() != design.nobs() {
             return Ok(Outcome::Declined(values));
         }
@@ -802,7 +1000,7 @@ impl Cache {
         ledger.lap(0);
         let st = self.structure.as_ref().expect("structure");
         let validated = validate_weights(weights, values.nrows())?;
-        let key = weight_key(validated.values);
+        let key = weight_key(validated.values)?;
         if budget.is_some_and(|b| !b.fits(admission_bytes(st, None, values.ncols()))) {
             return Ok(Outcome::Declined(values));
         }
@@ -819,10 +1017,18 @@ impl Cache {
         if request.retain_coefficients {
             bytes += (st.reduced + st.segments) as u128 * values.ncols() as u128 * 8;
         }
-        let gram = self.gram_requested;
-        let (outcome, gram) = project(st, w, design, validated, values, map, bytes, request, gram)?;
-        if matches!(outcome, Outcome::Done(_)) {
-            self.gram = gram;
+        let outputs = Outputs {
+            slots: &mut self.work,
+            gram: self.gram_requested.then_some(&mut self.gram),
+            norms: &mut self.norms,
+            detach_norms: self.detach_norms,
+        };
+        let (outcome, gram) = project(
+            st, w, design, validated, values, map, bytes, request, outputs,
+        )?;
+        match outcome {
+            Outcome::Done(_) => self.gram_ready = gram,
+            Outcome::Declined(_) => self.norms.clear(),
         }
         Ok(outcome)
     }
@@ -846,7 +1052,7 @@ impl Cache {
             return Ok(None);
         }
         let validated = validate_weights(weights, values.nrows())?;
-        if *key != weight_key(validated.values) {
+        if *key != weight_key(validated.values)? {
             return Ok(None);
         }
         if !(amplification.is_finite() && amplification >= 1.0) {
@@ -855,63 +1061,67 @@ impl Cache {
             ));
         }
         let elim_codes = design.effects()[st.eliminated].codes();
-        let block_codes: Vec<&[u32]> = st
-            .blocks
-            .iter()
-            .map(|&b| design.effects()[b].codes())
-            .collect();
+        let mut block_codes: Vec<&[u32]> = with_capacity(st.blocks.len())?;
+        block_codes.extend(st.blocks.iter().map(|&b| design.effects()[b].codes()));
         let data = values.as_slice();
         let raw = validated.values;
         let scale = validated.raw_scale;
-        let parts: Vec<(Vec<f64>, Vec<f64>, f64, bool)> = st
-            .rows
-            .par_iter()
-            .map(|rows| {
-                let mut remaining = vec![0.0_f64; st.reduced];
-                let mut eliminated = vec![0.0_f64; st.segments];
-                let mut sq = 0.0_f64;
-                let mut finite = true;
+        struct Part {
+            remaining: Vec<f64>,
+            eliminated: Vec<f64>,
+            sq: f64,
+            finite: bool,
+        }
+        let mut parts: Vec<Part> = with_capacity(st.rows.len())?;
+        for _ in &st.rows {
+            parts.push(Part {
+                remaining: filled(st.reduced, 0.0)?,
+                eliminated: filled(st.segments, 0.0)?,
+                sq: 0.0,
+                finite: true,
+            });
+        }
+        parts
+            .par_iter_mut()
+            .zip(st.rows.par_iter())
+            .for_each(|(part, rows)| {
                 for row in rows.clone() {
                     let r = data[row];
-                    finite &= r.is_finite();
+                    part.finite &= r.is_finite();
                     let wr = raw.map_or(r, |v| v[row] / scale * r);
-                    sq += wr * r;
-                    eliminated[elim_codes[row] as usize] += wr;
+                    part.sq += wr * r;
+                    part.eliminated[elim_codes[row] as usize] += wr;
                     for (codes, &offset) in block_codes.iter().zip(&st.offsets) {
-                        remaining[(codes[row] + offset) as usize] += wr;
+                        part.remaining[(codes[row] + offset) as usize] += wr;
                     }
                 }
-                (remaining, eliminated, sq, finite)
-            })
-            .collect();
-        let mut parts = parts.into_iter();
-        let (mut remaining, mut eliminated, mut sq, mut finite) =
-            parts.next().expect("one row lane");
-        for (r, e, s, f) in parts {
-            for (a, b) in remaining.iter_mut().zip(&r) {
+            });
+        let (total, rest) = parts.split_first_mut().expect("one row lane");
+        for part in rest.iter() {
+            for (a, b) in total.remaining.iter_mut().zip(&part.remaining) {
                 *a += b;
             }
-            for (a, b) in eliminated.iter_mut().zip(&e) {
+            for (a, b) in total.eliminated.iter_mut().zip(&part.eliminated) {
                 *a += b;
             }
-            sq += s;
-            finite &= f;
+            total.sq += part.sq;
+            total.finite &= part.finite;
         }
-        if !finite || !sq.is_finite() {
+        if !total.finite || !total.sq.is_finite() {
             return Err(invalid_data("derived residual values must be finite"));
         }
-        let reference = amplification * sq.sqrt();
+        let reference = amplification * total.sq.sqrt();
         if !reference.is_finite() {
             return Err(invalid_data("derived residual scale is not finite"));
         }
         let scales = [reference];
         let mut rhs_inf = [0.0];
         let mut fold = CertificateFold::default();
-        for (s, &moment) in eliminated.iter().enumerate() {
+        for (s, &moment) in total.eliminated.iter().enumerate() {
             let mass = 1.0 / w.seg_inverse[s];
             fold.level(mass, &[moment / mass], &scales, &mut rhs_inf, w.raw_scale)?;
         }
-        for (level, &moment) in remaining.iter().enumerate() {
+        for (level, &moment) in total.remaining.iter().enumerate() {
             let mass = w.mass[level];
             fold.level(mass, &[moment / mass], &scales, &mut rhs_inf, w.raw_scale)?;
         }
@@ -925,14 +1135,21 @@ fn solve_bytes(st: &Structure, nrhs: usize) -> u128 {
     let m = st.reduced as u128;
     let lanes = st.lanes.len().max(st.rows.len()).max(st.active_lanes.len()) as u128;
     let scratch: u128 = st.active_lanes.iter().map(|&(_, c)| c as u128).sum();
-    8 * r * (5 * m + lanes * m + scratch + st.segments as u128)
+    let partials = 3 * m.div_ceil(CHUNK as u128).max(1);
+    8 * r * (6 * m + lanes * m + scratch + st.segments as u128 + partials)
 }
 
 pub(crate) fn admission_bytes(st: &Structure, weights: Option<&Weights>, nrhs: usize) -> u128 {
     let weight_bytes = weights.map_or_else(
         || {
-            (st.cells() as u128 + st.segments as u128 + 4 * st.reduced as u128) * 8
-                + 3 * (st.lanes.len() * st.reduced) as u128 * 8
+            let m = st.reduced as u128;
+            let per_lane = if st.blocks.len() == 1 {
+                3 * m * 8
+            } else {
+                3 * m * 8 + m * 4 + (st.max_seg_cells * st.blocks.len()) as u128 * 4
+            };
+            (st.cells() as u128 + st.segments as u128 + 5 * m) * 8
+                + st.lanes.len() as u128 * per_lane
         },
         |w| w.bytes,
     );
@@ -948,8 +1165,6 @@ struct Ctx<'d, 'w, const NB: usize> {
     offs: [u32; NB],
     weights: ValidatedWeights<'w>,
     coefficient_accuracy: bool,
-    /// Accumulate the residual Gram in the residual pass.
-    gram: bool,
 }
 
 #[inline(always)]
@@ -1081,90 +1296,150 @@ fn apply_lane<const R: usize, const NB: usize, const UNIT: bool>(
     }
 }
 
-/// `accs[0] += accs[1] + ... + accs[L-1]`, in lane order.
-fn merge<const R: usize>(accs: &mut [Vec<[f64; R]>]) {
-    let (first, rest) = accs.split_first_mut().expect("one lane");
+/// One lane's accumulator, cell scratch and pass results.
+struct LaneWork<const R: usize> {
+    acc: Vec<[f64; R]>,
+    u: Vec<[f64; R]>,
+    /// RHS pass: `Σ w v^2`, `max |v|`, centered `Σ w v^2`; residual pass:
+    /// `Σ w r^2` in the first row.
+    stats: [[f64; R]; 3],
+    /// Lower triangle of the residual Gram.
+    lower: [[f64; R]; R],
+}
+
+/// `lanes[0].acc += lanes[1].acc + ... + lanes[L-1].acc`, in lane order.
+fn merge<const R: usize>(lanes: &mut [LaneWork<R>]) {
+    let Some((first, rest)) = lanes.split_first_mut() else {
+        return;
+    };
     if rest.is_empty() {
         return;
     }
-    let rest: &[Vec<[f64; R]>] = rest;
+    let rest: &[LaneWork<R>] = rest;
     let add = |base: usize, chunk: &mut [[f64; R]]| {
         for other in rest {
             let len = chunk.len();
-            for (v, o) in chunk.iter_mut().zip(&other[base..base + len]) {
+            for (v, o) in chunk.iter_mut().zip(&other.acc[base..base + len]) {
                 for j in 0..R {
                     v[j] += o[j];
                 }
             }
         }
     };
-    if first.len() * R * rest.len() < PARALLEL_WORK {
-        add(0, first);
+    if first.acc.len() * R * rest.len() < PARALLEL_WORK {
+        add(0, &mut first.acc);
     } else {
         first
+            .acc
             .par_chunks_mut(CHUNK)
             .enumerate()
             .for_each(|(i, chunk)| add(i * CHUNK, chunk));
     }
 }
 
+/// The solve workspace of one batch width; every buffer is overwritten
+/// before it is read, so a retained workspace serves later solves as is.
 struct Work<const R: usize> {
     x: Vec<[f64; R]>,
+    /// Per column, the best iterate that met the acceptance rule.
+    xs: Vec<[f64; R]>,
     r: Vec<[f64; R]>,
     z: Vec<[f64; R]>,
     p: Vec<[f64; R]>,
-    accs: Vec<Vec<[f64; R]>>,
-    scratch: Vec<Vec<[f64; R]>>,
+    lanes: Vec<LaneWork<R>>,
     seg: Vec<[f64; R]>,
+    /// Partial sums of the reduced-space reductions, one per `CHUNK`.
+    partials: Vec<[[f64; R]; 3]>,
 }
 
 impl<const R: usize> Work<R> {
+    fn lane_count(st: &Structure) -> usize {
+        st.lanes.len().max(st.rows.len()).max(st.active_lanes.len())
+    }
+
     fn new(st: &Structure) -> Result<Self> {
         let m = st.reduced;
-        let lanes = st.lanes.len().max(st.rows.len()).max(st.active_lanes.len());
-        let mut accs = Vec::with_capacity(lanes);
-        for _ in 0..lanes {
-            accs.push(filled(m, [0.0; R])?);
-        }
-        let mut scratch = Vec::with_capacity(st.active_lanes.len());
-        for &(_, max_cells) in &st.active_lanes {
-            scratch.push(filled(max_cells, [0.0; R])?);
+        let count = Self::lane_count(st);
+        let mut lanes = with_capacity(count)?;
+        for l in 0..count {
+            let cells = st.active_lanes.get(l).map_or(0, |&(_, cells)| cells);
+            lanes.push(LaneWork {
+                acc: filled(m, [0.0; R])?,
+                u: filled(cells, [0.0; R])?,
+                stats: [[0.0; R]; 3],
+                lower: [[0.0; R]; R],
+            });
         }
         Ok(Self {
             x: filled(m, [0.0; R])?,
+            xs: filled(m, [0.0; R])?,
             r: filled(m, [0.0; R])?,
             z: filled(m, [0.0; R])?,
             p: filled(m, [0.0; R])?,
-            accs,
-            scratch,
+            lanes,
             seg: filled(st.segments, [0.0; R])?,
+            partials: filled(m.div_ceil(CHUNK).max(1), [[0.0; R]; 3])?,
         })
     }
+
+    fn fits(&self, st: &Structure) -> bool {
+        self.x.len() == st.reduced
+            && self.seg.len() == st.segments
+            && self.lanes.len() == Self::lane_count(st)
+    }
 }
+
+/// One retained workspace per batch width.
+#[derive(Default)]
+struct WorkSlots {
+    w1: Option<Work<1>>,
+    w2: Option<Work<2>>,
+    w3: Option<Work<3>>,
+    w4: Option<Work<4>>,
+    w5: Option<Work<5>>,
+    w6: Option<Work<6>>,
+    w7: Option<Work<7>>,
+    w8: Option<Work<8>>,
+}
+
+trait Slotted: Sized {
+    fn slot(slots: &mut WorkSlots) -> &mut Option<Self>;
+}
+
+macro_rules! slotted {
+    ($($r:literal => $field:ident),*) => {
+        $(impl Slotted for Work<$r> {
+            fn slot(slots: &mut WorkSlots) -> &mut Option<Self> {
+                &mut slots.$field
+            }
+        })*
+    };
+}
+slotted!(1 => w1, 2 => w2, 3 => w3, 4 => w4, 5 => w5, 6 => w6, 7 => w7, 8 => w8);
 
 fn apply<const R: usize, const NB: usize, const UNIT: bool>(
     st: &Structure,
     w: &Weights,
     p: &[[f64; R]],
-    accs: &mut [Vec<[f64; R]>],
-    scratch: &mut [Vec<[f64; R]>],
+    lanes: &mut [LaneWork<R>],
 ) {
-    let lanes = st.active_lanes.len();
-    if lanes == 1 {
+    let count = st.active_lanes.len();
+    if count == 1 {
         let segments = &st.active[st.active_lanes[0].0.clone()];
-        apply_lane::<R, NB, UNIT>(st, w, p, segments, &mut accs[0], &mut scratch[0]);
+        let lane = &mut lanes[0];
+        apply_lane::<R, NB, UNIT>(st, w, p, segments, &mut lane.acc, &mut lane.u);
     } else {
-        accs[..lanes]
+        lanes[..count]
             .par_iter_mut()
-            .zip(scratch.par_iter_mut())
             .zip(st.active_lanes.par_iter())
-            .for_each(|((acc, u), (range, _))| {
-                apply_lane::<R, NB, UNIT>(st, w, p, &st.active[range.clone()], acc, u);
+            .for_each(|(lane, (range, _))| {
+                let segments = &st.active[range.clone()];
+                apply_lane::<R, NB, UNIT>(st, w, p, segments, &mut lane.acc, &mut lane.u);
             });
-        merge(&mut accs[..lanes]);
+        merge(&mut lanes[..count]);
     }
     if NB == 1 {
-        for ((q, p), &mass) in accs[0].iter_mut().zip(p).zip(&w.active_mass) {
+        for ((q, p), &mass) in lanes[0].acc.iter_mut().zip(p).zip(&w.active_mass) {
             for j in 0..R {
                 q[j] = mass * p[j] - q[j];
             }
@@ -1172,47 +1447,35 @@ fn apply<const R: usize, const NB: usize, const UNIT: bool>(
     }
 }
 
-/// Per-RHS sums over fixed chunks, combined in chunk order.
-fn chunked<const R: usize, T: Send>(
-    m: usize,
-    serial: bool,
-    body: impl Fn(Range<usize>) -> T + Sync,
-    mut fold: impl FnMut(T),
-) {
-    if serial {
-        fold(body(0..m));
-    } else {
-        let parts: Vec<T> = (0..m.div_ceil(CHUNK))
-            .into_par_iter()
-            .map(|i| body(i * CHUNK..((i + 1) * CHUNK).min(m)))
-            .collect();
-        for part in parts {
-            fold(part);
+/// Per-RHS `a . b`, as plain sums over fixed chunks combined in chunk order.
+fn dot<const R: usize>(a: &[[f64; R]], b: &[[f64; R]], partials: &mut [[[f64; R]; 3]]) -> [f64; R] {
+    let body = |a: &[[f64; R]], b: &[[f64; R]]| {
+        let mut s = [0.0; R];
+        for (x, y) in a.iter().zip(b) {
+            for j in 0..R {
+                s[j] += x[j] * y[j];
+            }
         }
-    }
-}
-
-fn dot<const R: usize>(a: &[[f64; R]], b: &[[f64; R]]) -> [f64; R] {
+        s
+    };
     let m = a.len();
     let mut total = [0.0; R];
-    chunked::<R, [f64; R]>(
-        m,
-        m * R < PARALLEL_WORK,
-        |range| {
-            let mut s = [0.0; R];
-            for (x, y) in a[range.clone()].iter().zip(&b[range]) {
-                for j in 0..R {
-                    s[j] += x[j] * y[j];
-                }
+    if m * R < PARALLEL_WORK {
+        let s = body(a, b);
+        for j in 0..R {
+            total[j] += s[j];
+        }
+    } else {
+        a.par_chunks(CHUNK)
+            .zip(b.par_chunks(CHUNK))
+            .zip(partials.par_iter_mut())
+            .for_each(|((a, b), slot)| slot[0] = body(a, b));
+        for slot in &partials[..m.div_ceil(CHUNK)] {
+            for (t, s) in total.iter_mut().zip(&slot[0]) {
+                *t += s;
             }
-            s
-        },
-        |s| {
-            for j in 0..R {
-                total[j] += s[j];
-            }
-        },
-    );
+        }
+    }
     total
 }
 
@@ -1237,82 +1500,76 @@ fn rhs<const R: usize, const NB: usize, const WEIGHTED: bool>(
     let st = ctx.st;
     let stride = values.ncols();
     let data = values.as_slice();
-    let lengths: Vec<usize> = st.lanes.iter().map(|l| l.segments.len()).collect();
-    let lanes = st.lanes.len();
-    let seg_parts = split_parts(&mut work.seg, &lengths);
+    let count = st.lanes.len();
     let weights = ctx.weights.values.unwrap_or(&[]);
     let scale = ctx.weights.raw_scale;
-    let run = |lane: &Lane, acc: &mut [[f64; R]], seg: &mut [[f64; R]]| {
-        acc.fill([0.0; R]);
-        let mut sq = [0.0; R];
-        let mut big = [0.0_f64; R];
-        let mut centered = [0.0; R];
-        for (s, out) in lane.segments.clone().zip(seg.iter_mut()) {
-            let members = ctx.index.members(s);
-            let mut sum = [0.0; R];
-            for &row in members {
-                let v = &data[row * stride + first..row * stride + first + R];
-                let w = if WEIGHTED { weights[row] / scale } else { 1.0 };
-                for j in 0..R {
-                    let wv = w * v[j];
-                    sum[j] += wv;
-                    sq[j] += wv * v[j];
-                    big[j] = big[j].max(v[j].abs());
-                }
-            }
-            *out = sum;
-            // Every row of a one-cell segment shares its remaining codes, so
-            // their deviations from the segment mean add nothing to `g`.
-            let single = st.seg_cells[s + 1] - st.seg_cells[s] == 1;
-            let inv = ctx.w.seg_inverse[s];
-            let mut mean = sum;
-            for value in &mut mean {
-                *value *= inv;
-            }
-            for &row in members {
-                let v = &data[row * stride + first..row * stride + first + R];
-                let w = if WEIGHTED { weights[row] / scale } else { 1.0 };
-                let mut z = [0.0; R];
-                for j in 0..R {
-                    let d = v[j] - mean[j];
-                    z[j] = w * d;
-                    centered[j] += z[j] * d;
-                }
-                if single {
-                    continue;
-                }
-                for b in 0..NB {
-                    let a = &mut acc[(ctx.codes_b[b][row] + ctx.offs[b]) as usize];
+    let Work { seg, lanes, .. } = work;
+    each_lane(
+        0,
+        &st.seg_bounds,
+        1,
+        seg,
+        &mut lanes[..count],
+        &|l, seg: &mut [[f64; R]], lane: &mut LaneWork<R>| {
+            let acc = &mut lane.acc;
+            acc.fill([0.0; R]);
+            let mut sq = [0.0; R];
+            let mut big = [0.0_f64; R];
+            let mut centered = [0.0; R];
+            for (s, out) in st.lanes[l].segments.clone().zip(seg.iter_mut()) {
+                let members = ctx.index.members(s);
+                let mut sum = [0.0; R];
+                for &row in members {
+                    let v = &data[row * stride + first..row * stride + first + R];
+                    let w = if WEIGHTED { weights[row] / scale } else { 1.0 };
                     for j in 0..R {
-                        a[j] += z[j];
+                        let wv = w * v[j];
+                        sum[j] += wv;
+                        sq[j] += wv * v[j];
+                        big[j] = big[j].max(v[j].abs());
+                    }
+                }
+                *out = sum;
+                // Every row of a one-cell segment shares its remaining codes,
+                // so their deviations from the segment mean add nothing to
+                // `g`.
+                let single = st.seg_cells[s + 1] - st.seg_cells[s] == 1;
+                let inv = ctx.w.seg_inverse[s];
+                let mut mean = sum;
+                for value in &mut mean {
+                    *value *= inv;
+                }
+                for &row in members {
+                    let v = &data[row * stride + first..row * stride + first + R];
+                    let w = if WEIGHTED { weights[row] / scale } else { 1.0 };
+                    let mut z = [0.0; R];
+                    for j in 0..R {
+                        let d = v[j] - mean[j];
+                        z[j] = w * d;
+                        centered[j] += z[j] * d;
+                    }
+                    if single {
+                        continue;
+                    }
+                    for b in 0..NB {
+                        let a = &mut acc[(ctx.codes_b[b][row] + ctx.offs[b]) as usize];
+                        for j in 0..R {
+                            a[j] += z[j];
+                        }
                     }
                 }
             }
-        }
-        (sq, big, centered)
-    };
-    let results: Vec<([f64; R], [f64; R], [f64; R])> = if lanes == 1 {
-        let mut parts = seg_parts;
-        vec![run(
-            &st.lanes[0],
-            &mut work.accs[0],
-            parts.pop().expect("lane"),
-        )]
-    } else {
-        work.accs[..lanes]
-            .par_iter_mut()
-            .zip(seg_parts.into_par_iter())
-            .zip(st.lanes.par_iter())
-            .map(|((acc, seg), lane)| run(lane, acc, seg))
-            .collect()
-    };
-    merge(&mut work.accs[..lanes]);
+            lane.stats = [sq, big, centered];
+        },
+    );
+    merge(&mut lanes[..count]);
     let mut norms = RhsNorms {
         sq: [0.0; R],
         big: [0.0; R],
         centered: [0.0; R],
     };
-    for (s, b, c) in results {
+    for lane in &lanes[..count] {
+        let [s, b, c] = lane.stats;
         for j in 0..R {
             norms.sq[j] += s[j];
             norms.big[j] = norms.big[j].max(b[j]);
@@ -1323,8 +1580,9 @@ fn rhs<const R: usize, const NB: usize, const WEIGHTED: bool>(
 }
 
 enum Solve {
-    /// Iterations, and the sum over iterations of the active columns.
-    Converged(usize, usize),
+    /// Iterations, the sum over iterations of the active columns, and the
+    /// columns stopped at the acceptance rule after a breakdown.
+    Converged(usize, usize, usize),
     Declined(&'static str),
 }
 
@@ -1339,21 +1597,50 @@ fn ratio(value: f64, target: f64) -> f64 {
     }
 }
 
+/// Stopping thresholds of one batch: `goal` is where a column stops;
+/// `accept` (the certificate-scale rule) is where a column may stop when its
+/// recurrence breaks down near the rounding floor.
+struct Targets<const R: usize> {
+    goal: [f64; R],
+    goal_coefficient: Option<[f64; R]>,
+    accept: [f64; R],
+    accept_coefficient: Option<[f64; R]>,
+}
+
+impl<const R: usize> Targets<R> {
+    fn measure(
+        target: &[f64; R],
+        coefficient: Option<&[f64; R]>,
+        inf: f64,
+        zinf: f64,
+        c: usize,
+    ) -> f64 {
+        ratio(inf, target[c]).max(coefficient.map_or(0.0, |t| ratio(zinf, t[c])))
+    }
+
+    fn goal(&self, inf: f64, zinf: f64, c: usize) -> f64 {
+        Self::measure(&self.goal, self.goal_coefficient.as_ref(), inf, zinf, c)
+    }
+
+    fn accepted(&self, inf: f64, zinf: f64, c: usize) -> bool {
+        Self::measure(&self.accept, self.accept_coefficient.as_ref(), inf, zinf, c) <= 1.0
+    }
+}
+
 /// Lockstep Jacobi-preconditioned CG on `S x = r0` (r0 already in `work.r`).
 /// A column stops when its largest scaled moment `|r_j| / sqrt(m_j)` is at
-/// most `target` and, when `coefficient_target` is given, its largest
-/// Jacobi coefficient-error estimate `|r_j| / d_j` is at most that target.
+/// most its goal and, when a coefficient goal is given, its largest Jacobi
+/// coefficient-error estimate `|r_j| / d_j` is at most that goal. A column
+/// whose curvature vanishes, whose progress stalls or that reaches the
+/// iteration ceiling returns to its best iterate that met the acceptance
+/// rule; without one the route declines.
 fn pcg<const R: usize, const NB: usize, const UNIT: bool>(
     st: &Structure,
     w: &Weights,
     work: &mut Work<R>,
-    target: [f64; R],
-    coefficient_target: Option<[f64; R]>,
+    targets: &Targets<R>,
     cap: usize,
 ) -> Result<Solve> {
-    let measure = |moment: f64, coefficient: f64, c: usize| {
-        ratio(moment, target[c]).max(coefficient_target.map_or(0.0, |t| ratio(coefficient, t[c])))
-    };
     let m = st.reduced;
     let serial = m * R < PARALLEL_WORK;
     let inv_diag = &w.inverse_diagonal;
@@ -1380,7 +1667,7 @@ fn pcg<const R: usize, const NB: usize, const UNIT: bool>(
         if !inf[c].is_finite() || !rz[c].is_finite() || !zinf[c].is_finite() {
             return Ok(Solve::Declined("nonfinite initial reduced residual"));
         }
-        progress[c] = measure(inf[c], zinf[c], c);
+        progress[c] = targets.goal(inf[c], zinf[c], c);
         active[c] = progress[c] > 1.0;
     }
     for (p, z) in work.p.iter_mut().zip(&work.z) {
@@ -1388,35 +1675,82 @@ fn pcg<const R: usize, const NB: usize, const UNIT: bool>(
             p[c] = if active[c] { z[c] } else { 0.0 };
         }
     }
+    // The best iterate meeting the acceptance rule, per column (`xs`).
+    let mut kept = [false; R];
+    let mut kept_measure = [f64::INFINITY; R];
+    work.xs.fill([0.0; R]);
+    for c in 0..R {
+        if active[c] && targets.accepted(inf[c], zinf[c], c) {
+            kept[c] = true;
+            kept_measure[c] = progress[c];
+        }
+    }
     let mut best = progress;
     let mut checkpoint_best = progress;
+    let mut kept_checkpoint = progress;
     let mut iterations = 0;
     let mut column_iterations = 0;
+    let mut accepted = 0;
+    // Return the active columns of `mask` to their kept iterates, or decline.
+    macro_rules! fall_back {
+        ($mask:expr, $reason:literal) => {{
+            let mask: [bool; R] = $mask;
+            for c in 0..R {
+                if mask[c] && !kept[c] {
+                    return Ok(Solve::Declined($reason));
+                }
+            }
+            if mask.contains(&true) {
+                copy_columns(&mut work.x, &work.xs, mask);
+                for c in 0..R {
+                    if mask[c] {
+                        active[c] = false;
+                        accepted += 1;
+                    }
+                }
+            }
+        }};
+    }
     while active.contains(&true) {
         if iterations >= cap {
-            return Ok(Solve::Declined("iteration ceiling"));
+            fall_back!(active, "iteration ceiling");
+            break;
         }
         column_iterations += active.iter().filter(|&&on| on).count();
         crate::interrupt::checkpoint()?;
-        apply::<R, NB, UNIT>(st, w, &work.p, &mut work.accs, &mut work.scratch);
-        let pq = dot::<R>(&work.p, &work.accs[0]);
+        apply::<R, NB, UNIT>(st, w, &work.p, &mut work.lanes);
+        let pq = dot::<R>(&work.p, &work.lanes[0].acc, &mut work.partials);
         let mut alpha = [0.0; R];
+        let mut flat = [false; R];
         for c in 0..R {
             if active[c] {
-                if !(pq[c].is_finite() && pq[c] > 0.0) {
-                    return Ok(Solve::Declined("nonpositive reduced curvature"));
+                if pq[c].is_finite() && pq[c] > 0.0 {
+                    alpha[c] = rz[c] / pq[c];
+                } else {
+                    // No curvature left along the direction: the recurrence
+                    // has reached its rounding floor.
+                    flat[c] = true;
                 }
-                alpha[c] = rz[c] / pq[c];
             }
+        }
+        fall_back!(flat, "nonpositive reduced curvature");
+        if !active.contains(&true) {
+            break;
         }
         let mut next = [0.0; R];
         let mut inf = [0.0_f64; R];
         let mut zinf = [0.0_f64; R];
         {
             let Work {
-                x, r, z, p, accs, ..
+                x,
+                r,
+                z,
+                p,
+                lanes,
+                partials,
+                ..
             } = &mut *work;
-            let q = &accs[0];
+            let q = &lanes[0].acc;
             let body = |range: Range<usize>,
                         x: &mut [[f64; R]],
                         r: &mut [[f64; R]],
@@ -1434,31 +1768,35 @@ fn pcg<const R: usize, const NB: usize, const UNIT: bool>(
                         hz[c] = hz[c].max(z[k][c].abs());
                     }
                 }
-                (s, h, hz)
+                [s, h, hz]
             };
-            let parts: Vec<([f64; R], [f64; R], [f64; R])> = if serial {
-                vec![body(0..m, x, r, z)]
-            } else {
-                x.par_chunks_mut(CHUNK)
-                    .zip(r.par_chunks_mut(CHUNK))
-                    .zip(z.par_chunks_mut(CHUNK))
-                    .enumerate()
-                    .map(|(i, ((x, r), z))| {
-                        let start = i * CHUNK;
-                        body(start..start + x.len(), x, r, z)
-                    })
-                    .collect()
-            };
-            for (s, h, hz) in parts {
+            let mut fold = |[s, h, hz]: [[f64; R]; 3]| {
                 for c in 0..R {
                     next[c] += s[c];
                     inf[c] = inf[c].max(h[c]);
                     zinf[c] = zinf[c].max(hz[c]);
                 }
+            };
+            if serial {
+                fold(body(0..m, x, r, z));
+            } else {
+                x.par_chunks_mut(CHUNK)
+                    .zip(r.par_chunks_mut(CHUNK))
+                    .zip(z.par_chunks_mut(CHUNK))
+                    .zip(partials.par_iter_mut())
+                    .enumerate()
+                    .for_each(|(i, (((x, r), z), slot))| {
+                        let start = i * CHUNK;
+                        *slot = body(start..start + x.len(), x, r, z);
+                    });
+                for &slot in &partials[..m.div_ceil(CHUNK)] {
+                    fold(slot);
+                }
             }
         }
         iterations += 1;
         let mut beta = [0.0; R];
+        let mut save = [false; R];
         for c in 0..R {
             if !active[c] {
                 continue;
@@ -1466,24 +1804,42 @@ fn pcg<const R: usize, const NB: usize, const UNIT: bool>(
             if !(inf[c].is_finite() && next[c].is_finite() && zinf[c].is_finite()) {
                 return Ok(Solve::Declined("nonfinite reduced residual"));
             }
-            let current = measure(inf[c], zinf[c], c);
+            let current = targets.goal(inf[c], zinf[c], c);
             best[c] = best[c].min(current);
             if current <= 1.0 {
                 active[c] = false;
             } else {
                 beta[c] = next[c] / rz[c];
+                if current < kept_measure[c] && targets.accepted(inf[c], zinf[c], c) {
+                    save[c] = true;
+                    kept[c] = true;
+                    kept_measure[c] = current;
+                }
             }
             rz[c] = next[c];
         }
-        if iterations % 40 == 0 {
+        if save.contains(&true) {
+            copy_columns(&mut work.xs, &work.x, save);
+        }
+        if iterations % KEPT_WINDOW == 0 {
+            // Little progress over the last window: fall back to the kept
+            // iterate (short window), or leave hard graphs to the caller's
+            // preconditioned solvers (long window).
+            let long = iterations % STALL_WINDOW == 0;
+            let mut stalled = [false; R];
             for c in 0..R {
-                // Little progress over the last window: leave hard graphs to
-                // the caller's preconditioned solvers.
-                if active[c] && best[c] > 0.5 * checkpoint_best[c] {
-                    return Ok(Solve::Declined("stalled reduced recurrence"));
-                }
+                let reference = if kept[c] {
+                    kept_checkpoint[c]
+                } else {
+                    checkpoint_best[c]
+                };
+                stalled[c] = active[c] && (kept[c] || long) && best[c] > 0.5 * reference;
             }
-            checkpoint_best = best;
+            fall_back!(stalled, "stalled reduced recurrence");
+            kept_checkpoint = best;
+            if long {
+                checkpoint_best = best;
+            }
         }
         let mask = active;
         let z = &work.z;
@@ -1503,7 +1859,27 @@ fn pcg<const R: usize, const NB: usize, const UNIT: bool>(
                 .for_each(|(p, z)| update(p, z));
         }
     }
-    Ok(Solve::Converged(iterations, column_iterations))
+    Ok(Solve::Converged(iterations, column_iterations, accepted))
+}
+
+/// `to[.][c] = from[.][c]` for the columns of `mask`.
+fn copy_columns<const R: usize>(to: &mut [[f64; R]], from: &[[f64; R]], mask: [bool; R]) {
+    let body = |to: &mut [[f64; R]], from: &[[f64; R]]| {
+        for (t, f) in to.iter_mut().zip(from) {
+            for c in 0..R {
+                if mask[c] {
+                    t[c] = f[c];
+                }
+            }
+        }
+    };
+    if to.len() * R < PARALLEL_WORK {
+        body(to, from);
+    } else {
+        to.par_chunks_mut(CHUNK)
+            .zip(from.par_chunks(CHUNK))
+            .for_each(|(to, from)| body(to, from));
+    }
 }
 
 /// `seg[s] = (Σ_s w v - Σ_c w_c (A x)_c) / W_s`, the eliminated coefficients.
@@ -1512,146 +1888,137 @@ fn recover<const R: usize, const NB: usize, const UNIT: bool>(
     w: &Weights,
     work: &mut Work<R>,
 ) {
-    let lengths: Vec<usize> = st.lanes.iter().map(|l| l.segments.len()).collect();
-    let x = &work.x;
-    let parts = split_parts(&mut work.seg, &lengths);
-    let run = |lane: &Lane, seg: &mut [[f64; R]]| {
-        for (s, out) in lane.segments.clone().zip(seg.iter_mut()) {
-            let (c0, c1) = (st.seg_cells[s], st.seg_cells[s + 1]);
-            let codes = &st.codes[c0 * NB..c1 * NB];
-            let mut t = [0.0; R];
-            if UNIT {
-                for cc in codes.chunks_exact(NB) {
-                    let g = gather::<R>(cc, x);
-                    for j in 0..R {
-                        t[j] += g[j];
+    let count = st.lanes.len();
+    let Work { x, seg, lanes, .. } = work;
+    let x = &*x;
+    each_lane(
+        0,
+        &st.seg_bounds,
+        1,
+        seg,
+        &mut lanes[..count],
+        &|l, seg: &mut [[f64; R]], _: &mut LaneWork<R>| {
+            for (s, out) in st.lanes[l].segments.clone().zip(seg.iter_mut()) {
+                let (c0, c1) = (st.seg_cells[s], st.seg_cells[s + 1]);
+                let codes = &st.codes[c0 * NB..c1 * NB];
+                let mut t = [0.0; R];
+                if UNIT {
+                    for cc in codes.chunks_exact(NB) {
+                        let g = gather::<R>(cc, x);
+                        for j in 0..R {
+                            t[j] += g[j];
+                        }
+                    }
+                } else {
+                    for (cc, &wc) in codes.chunks_exact(NB).zip(&w.cell[c0..c1]) {
+                        let g = gather::<R>(cc, x);
+                        for j in 0..R {
+                            t[j] += wc * g[j];
+                        }
                     }
                 }
-            } else {
-                for (cc, &wc) in codes.chunks_exact(NB).zip(&w.cell[c0..c1]) {
-                    let g = gather::<R>(cc, x);
-                    for j in 0..R {
-                        t[j] += wc * g[j];
-                    }
+                let inv = w.seg_inverse[s];
+                for j in 0..R {
+                    out[j] = (out[j] - t[j]) * inv;
                 }
             }
-            let inv = w.seg_inverse[s];
-            for j in 0..R {
-                out[j] = (out[j] - t[j]) * inv;
-            }
-        }
-    };
-    if st.lanes.len() == 1 {
-        let mut parts = parts;
-        run(&st.lanes[0], parts.pop().expect("lane"));
-    } else {
-        parts
-            .into_par_iter()
-            .zip(st.lanes.par_iter())
-            .for_each(|(seg, lane)| run(lane, seg));
-    }
+        },
+    );
 }
 
 /// Form the residual in place and accumulate its remaining-level moments into
-/// `accs[0]`; returns `Σ w r^2` per RHS and, with `gram`, the raw-weighted
-/// residual Gram `Σ w r r'` (row-major `R x R`; plain sums per row lane,
+/// the first lane's accumulator; returns `Σ w r^2` per RHS. With `gram`, also
+/// forms the raw-weighted residual Gram `Σ w r r'` (plain sums per row lane,
 /// combined in lane order).
 fn residualize<const R: usize, const NB: usize, const WEIGHTED: bool>(
     ctx: &Ctx<'_, '_, NB>,
     values: &mut DenseMatrix,
     first: usize,
     work: &mut Work<R>,
-    gram: bool,
-) -> ([f64; R], Option<Vec<f64>>) {
+    gram: Option<&mut ResidualGram>,
+) -> Result<[f64; R]> {
     let st = ctx.st;
     let stride = values.ncols();
     let weights = ctx.weights.values.unwrap_or(&[]);
     let scale = ctx.weights.raw_scale;
-    let Work { x, seg, accs, .. } = work;
+    let count = st.rows.len();
+    let with_gram = gram.is_some();
+    let Work { x, seg, lanes, .. } = work;
     let (x, alpha) = (&*x, &*seg);
-    let lengths: Vec<usize> = st.rows.iter().map(|r| r.len() * stride).collect();
-    let lanes = st.rows.len();
-    let run = |rows: Range<usize>, data: &mut [f64], acc: &mut [[f64; R]]| {
-        acc.fill([0.0; R]);
-        let mut sq = [0.0; R];
-        let mut lower = [[0.0; R]; R];
-        for (row, values) in rows.zip(data.chunks_exact_mut(stride)) {
-            let mut f = alpha[ctx.elim_codes[row] as usize];
-            for b in 0..NB {
-                let q = &x[(ctx.codes_b[b][row] + ctx.offs[b]) as usize];
-                for j in 0..R {
-                    f[j] += q[j];
+    each_lane(
+        0,
+        &st.row_bounds,
+        stride,
+        values.as_mut_slice(),
+        &mut lanes[..count],
+        &|l, data: &mut [f64], lane: &mut LaneWork<R>| {
+            let acc = &mut lane.acc;
+            acc.fill([0.0; R]);
+            let mut sq = [0.0; R];
+            let mut lower = [[0.0; R]; R];
+            for (row, values) in st.rows[l].clone().zip(data.chunks_exact_mut(stride)) {
+                let mut f = alpha[ctx.elim_codes[row] as usize];
+                for b in 0..NB {
+                    let q = &x[(ctx.codes_b[b][row] + ctx.offs[b]) as usize];
+                    for j in 0..R {
+                        f[j] += q[j];
+                    }
                 }
-            }
-            let w = if WEIGHTED { weights[row] / scale } else { 1.0 };
-            let v = &mut values[first..first + R];
-            let mut wr = [0.0; R];
-            for j in 0..R {
-                let r = v[j] - f[j];
-                v[j] = r;
-                wr[j] = w * r;
-                sq[j] += wr[j] * r;
-            }
-            for b in 0..NB {
-                let a = &mut acc[(ctx.codes_b[b][row] + ctx.offs[b]) as usize];
+                let w = if WEIGHTED { weights[row] / scale } else { 1.0 };
+                let v = &mut values[first..first + R];
+                let mut wr = [0.0; R];
                 for j in 0..R {
-                    a[j] += wr[j];
+                    let r = v[j] - f[j];
+                    v[j] = r;
+                    wr[j] = w * r;
+                    sq[j] += wr[j] * r;
                 }
-            }
-            if gram {
-                let raw = if WEIGHTED { weights[row] } else { 1.0 };
-                for (a, row) in lower.iter_mut().enumerate() {
-                    let wa = raw * v[a];
-                    for (entry, &vb) in row[..=a].iter_mut().zip(&v[..=a]) {
-                        *entry += wa * vb;
+                for b in 0..NB {
+                    let a = &mut acc[(ctx.codes_b[b][row] + ctx.offs[b]) as usize];
+                    for j in 0..R {
+                        a[j] += wr[j];
+                    }
+                }
+                if with_gram {
+                    let raw = if WEIGHTED { weights[row] } else { 1.0 };
+                    for (a, lower_row) in lower.iter_mut().enumerate() {
+                        let wa = raw * v[a];
+                        for (entry, &vb) in lower_row[..=a].iter_mut().zip(&v[..=a]) {
+                            *entry += wa * vb;
+                        }
                     }
                 }
             }
-        }
-        (sq, lower)
-    };
-    let parts = split_parts(values.as_mut_slice(), &lengths);
-    let results: Vec<([f64; R], [[f64; R]; R])> = if lanes == 1 {
-        let mut parts = parts;
-        vec![run(
-            st.rows[0].clone(),
-            parts.pop().expect("lane"),
-            &mut accs[0],
-        )]
-    } else {
-        parts
-            .into_par_iter()
-            .zip(st.rows.par_iter())
-            .zip(accs[..lanes].par_iter_mut())
-            .map(|((data, rows), acc)| run(rows.clone(), data, acc))
-            .collect()
-    };
-    merge(&mut accs[..lanes]);
+            lane.stats[0] = sq;
+            lane.lower = lower;
+        },
+    );
+    merge(&mut lanes[..count]);
     let mut sq = [0.0; R];
-    let mut lower = [[0.0; R]; R];
-    for (s, g) in results {
-        for j in 0..R {
-            sq[j] += s[j];
+    for lane in &lanes[..count] {
+        for (total, part) in sq.iter_mut().zip(&lane.stats[0]) {
+            *total += part;
         }
-        if gram {
-            for a in 0..R {
-                for b in 0..=a {
-                    lower[a][b] += g[a][b];
+    }
+    if let Some(gram) = gram {
+        let mut lower = [[0.0; R]; R];
+        for lane in &lanes[..count] {
+            for (total, part) in lower.iter_mut().zip(&lane.lower) {
+                for (a, b) in total.iter_mut().zip(part) {
+                    *a += b;
                 }
             }
         }
-    }
-    let gram = gram.then(|| {
-        let mut full = vec![0.0; R * R];
-        for a in 0..R {
-            for b in 0..=a {
-                full[a * R + b] = lower[a][b];
-                full[b * R + a] = lower[a][b];
+        refill(&mut gram.values, R * R, 0.0)?;
+        gram.columns = R;
+        for (a, lower_row) in lower.iter().enumerate() {
+            for (b, &value) in lower_row[..=a].iter().enumerate() {
+                gram.values[a * R + b] = value;
+                gram.values[b * R + a] = value;
             }
         }
-        full
-    });
-    (sq, gram)
+    }
+    Ok(sq)
 }
 
 /// Per-call timing and iteration facts (trace only).
@@ -1660,6 +2027,8 @@ struct Facts {
     iterations: usize,
     /// Sum over batches and iterations of the active columns.
     column_iterations: usize,
+    /// Columns stopped at the acceptance rule after a breakdown.
+    accepted: usize,
     rhs_seconds: f64,
     pcg_seconds: f64,
     residual_seconds: f64,
@@ -1671,10 +2040,10 @@ enum Step {
     /// The residual of this batch was formed in place.
     Formed {
         fold: Option<CertificateFold>,
-        norms: Vec<f64>,
-        reference: Vec<f64>,
-        /// The formed residual's Gram when the context requests it.
-        gram: Option<Vec<f64>>,
+        norms: [f64; BATCH],
+        reference: [f64; BATCH],
+        /// Whether the residual Gram was formed.
+        gram: bool,
     },
 }
 
@@ -1690,12 +2059,22 @@ fn run<const R: usize, const NB: usize, const UNIT: bool, const WEIGHTED: bool>(
     cap: usize,
     facts: &mut Facts,
     coefficients: Option<&mut FeCoefficientBatch>,
-) -> Result<Step> {
+    slots: &mut WorkSlots,
+    gram: Option<&mut ResidualGram>,
+) -> Result<Step>
+where
+    Work<R>: Slotted,
+{
     let st = ctx.st;
-    let mut work = Work::<R>::new(st)?;
+    let slot = <Work<R> as Slotted>::slot(slots);
+    if slot.as_ref().is_none_or(|work| !work.fits(st)) {
+        *slot = None;
+        *slot = Some(Work::<R>::new(st)?);
+    }
+    let work = slot.as_mut().expect("workspace");
     let started = Instant::now();
-    let norms = rhs::<R, NB, WEIGHTED>(ctx, values, first, &mut work);
-    std::mem::swap(&mut work.r, &mut work.accs[0]);
+    let norms = rhs::<R, NB, WEIGHTED>(ctx, values, first, work);
+    std::mem::swap(&mut work.r, &mut work.lanes[0].acc);
     facts.rhs_seconds += started.elapsed().as_secs_f64();
     let mut scale = [0.0; R];
     let mut within = [0.0; R];
@@ -1707,41 +2086,52 @@ fn run<const R: usize, const NB: usize, const UNIT: bool, const WEIGHTED: bool>(
         scale[j] = reference.map_or(norm, |r| r[j]);
         // The reduced problem sees only the column without its eliminated
         // group means, so its accuracy is set at that norm (a large common
-        // level would otherwise loosen it), floored at a tiny fraction of
-        // the certificate scale for columns inside the eliminated span.
-        within[j] = norms.centered[j]
-            .max(0.0)
-            .sqrt()
-            .min(scale[j])
-            .max(WITHIN_FLOOR * scale[j]);
-    }
-    let mut target = [0.0; R];
-    for j in 0..R {
-        target[j] = STOP_FRACTION * tolerance * within[j];
+        // level would otherwise loosen it). A column inside the eliminated
+        // span has only rounding left there and keeps the acceptance rule.
+        let centered = norms.centered[j].max(0.0).sqrt().min(scale[j]);
+        within[j] = if centered >= WITHIN_FLOOR * scale[j] {
+            centered
+        } else {
+            f64::NAN
+        };
     }
     // Coefficient accuracy: Jacobi error estimates within the tolerance of
     // the column's root-mean-square magnitude.
-    let coefficient_target = ctx.coefficient_accuracy.then(|| {
-        let root_total = ctx.w.total_mass.sqrt();
-        let mut t = [0.0; R];
-        for j in 0..R {
-            t[j] = STOP_FRACTION * tolerance * within[j] / root_total;
+    let root_total = ctx.w.total_mass.sqrt();
+    let mut targets = Targets {
+        goal: [0.0; R],
+        goal_coefficient: ctx.coefficient_accuracy.then_some([0.0; R]),
+        accept: [0.0; R],
+        accept_coefficient: ctx.coefficient_accuracy.then_some([0.0; R]),
+    };
+    for j in 0..R {
+        targets.accept[j] = ACCEPT_FRACTION * tolerance * scale[j];
+        targets.goal[j] = if within[j].is_nan() {
+            targets.accept[j]
+        } else {
+            STOP_FRACTION * tolerance * within[j]
+        };
+        if let Some(t) = targets.accept_coefficient.as_mut() {
+            t[j] = targets.accept[j] / root_total;
         }
-        t
-    });
+        if let Some(t) = targets.goal_coefficient.as_mut() {
+            t[j] = targets.goal[j] / root_total;
+        }
+    }
     let started = Instant::now();
-    let solved = pcg::<R, NB, UNIT>(st, ctx.w, &mut work, target, coefficient_target, cap)?;
+    let solved = pcg::<R, NB, UNIT>(st, ctx.w, work, &targets, cap)?;
     facts.pcg_seconds += started.elapsed().as_secs_f64();
     let iterations = match solved {
-        Solve::Converged(iterations, columns) => {
+        Solve::Converged(iterations, columns, accepted) => {
             facts.column_iterations += columns;
+            facts.accepted += accepted;
             iterations
         }
         Solve::Declined(reason) => return Ok(Step::Declined(reason)),
     };
     facts.iterations = facts.iterations.max(iterations);
     let started = Instant::now();
-    recover::<R, NB, UNIT>(st, ctx.w, &mut work);
+    recover::<R, NB, UNIT>(st, ctx.w, work);
     if let Some(batch) = coefficients {
         // Corrections add their increments to the coefficients of the
         // preceding solve, so the sum fits the original columns.
@@ -1768,14 +2158,19 @@ fn run<const R: usize, const NB: usize, const UNIT: bool, const WEIGHTED: bool>(
             }
         }
     }
-    let (sq, gram) = residualize::<R, NB, WEIGHTED>(ctx, values, first, &mut work, ctx.gram);
-    let (fold, norms) = certify_batch::<R>(ctx.w, &work.accs[0], sq, scale, tolerance);
+    let formed = gram.is_some();
+    let sq = residualize::<R, NB, WEIGHTED>(ctx, values, first, work, gram)?;
+    let (fold, norms) = certify_batch::<R>(ctx.w, &work.lanes[0].acc, sq, scale, tolerance);
     facts.residual_seconds += started.elapsed().as_secs_f64();
+    let mut padded_norms = [0.0; BATCH];
+    padded_norms[..R].copy_from_slice(&norms);
+    let mut padded_scale = [0.0; BATCH];
+    padded_scale[..R].copy_from_slice(&scale);
     Ok(Step::Formed {
         fold,
-        norms,
-        reference: scale.to_vec(),
-        gram,
+        norms: padded_norms,
+        reference: padded_scale,
+        gram: formed,
     })
 }
 
@@ -1786,10 +2181,10 @@ fn certify_batch<const R: usize>(
     sq: [f64; R],
     reference: [f64; R],
     tolerance: f64,
-) -> (Option<CertificateFold>, Vec<f64>) {
+) -> (Option<CertificateFold>, [f64; R]) {
     let mut fold = CertificateFold::default();
     let mut scales = [0.0; R];
-    let mut norms = vec![0.0; R];
+    let mut norms = [0.0; R];
     for j in 0..R {
         norms[j] = sq[j].sqrt();
         scales[j] = reference[j].max(norms[j]);
@@ -1838,6 +2233,8 @@ fn dispatch<const NB: usize>(
     cap: usize,
     facts: &mut Facts,
     coefficients: Option<&mut FeCoefficientBatch>,
+    slots: &mut WorkSlots,
+    gram: Option<&mut ResidualGram>,
 ) -> Result<Step> {
     let unit = ctx.w.cell.is_empty();
     let weighted = ctx.weights.values.is_some();
@@ -1853,6 +2250,8 @@ fn dispatch<const NB: usize>(
                     cap,
                     facts,
                     coefficients,
+                    slots,
+                    gram,
                 ),
                 (true, true) => run::<$r, NB, true, true>(
                     ctx,
@@ -1863,6 +2262,8 @@ fn dispatch<const NB: usize>(
                     cap,
                     facts,
                     coefficients,
+                    slots,
+                    gram,
                 ),
                 (false, false) => run::<$r, NB, false, false>(
                     ctx,
@@ -1873,6 +2274,8 @@ fn dispatch<const NB: usize>(
                     cap,
                     facts,
                     coefficients,
+                    slots,
+                    gram,
                 ),
                 (false, true) => run::<$r, NB, false, true>(
                     ctx,
@@ -1883,6 +2286,8 @@ fn dispatch<const NB: usize>(
                     cap,
                     facts,
                     coefficients,
+                    slots,
+                    gram,
                 ),
             }
         };
@@ -1900,9 +2305,20 @@ fn dispatch<const NB: usize>(
     }
 }
 
+/// The cache's reusable outputs and workspaces lent to one projection.
+struct Outputs<'c> {
+    slots: &'c mut WorkSlots,
+    /// Requested residual Gram (formed only for at most [`BATCH`] columns).
+    gram: Option<&'c mut ResidualGram>,
+    /// Residual norms, one per column.
+    norms: &'c mut Vec<f64>,
+    detach_norms: bool,
+}
+
 /// Project the row-major RHS `values` against the design. A decline returns
 /// the matrix: untouched, unless a later batch or a correction declined after
 /// earlier residuals were formed, whose projection is then still the request.
+/// Also reports whether the residual Gram was formed.
 #[allow(clippy::too_many_arguments)]
 fn project(
     st: &Structure,
@@ -1913,17 +2329,17 @@ fn project(
     map: MapConfig,
     bytes: u128,
     request: Request,
-    gram: bool,
-) -> Result<(Outcome<DenseMatrix>, Option<ResidualGram>)> {
+    outputs: Outputs<'_>,
+) -> Result<(Outcome<DenseMatrix>, bool)> {
     if values.nrows() != st.nobs || values.ncols() == 0 || design.nobs() != st.nobs {
-        return Ok((Outcome::Declined(values), None));
+        return Ok((Outcome::Declined(values), false));
     }
     match st.blocks.len() {
-        1 => project_nb::<1>(st, w, design, weights, values, map, bytes, request, gram),
-        2 => project_nb::<2>(st, w, design, weights, values, map, bytes, request, gram),
-        3 => project_nb::<3>(st, w, design, weights, values, map, bytes, request, gram),
-        4 => project_nb::<4>(st, w, design, weights, values, map, bytes, request, gram),
-        _ => Ok((Outcome::Declined(values), None)),
+        1 => project_nb::<1>(st, w, design, weights, values, map, bytes, request, outputs),
+        2 => project_nb::<2>(st, w, design, weights, values, map, bytes, request, outputs),
+        3 => project_nb::<3>(st, w, design, weights, values, map, bytes, request, outputs),
+        4 => project_nb::<4>(st, w, design, weights, values, map, bytes, request, outputs),
+        _ => Ok((Outcome::Declined(values), false)),
     }
 }
 
@@ -1937,10 +2353,17 @@ fn project_nb<const NB: usize>(
     map: MapConfig,
     bytes: u128,
     request: Request,
-    gram_requested: bool,
-) -> Result<(Outcome<DenseMatrix>, Option<ResidualGram>)> {
+    outputs: Outputs<'_>,
+) -> Result<(Outcome<DenseMatrix>, bool)> {
     let mut ledger = crate::diagnostics::phase_ledger::PhaseLedger::new("block_schur", ["solve"]);
     let ncols = values.ncols();
+    let Outputs {
+        slots,
+        gram,
+        norms: residual_norms,
+        detach_norms,
+    } = outputs;
+    let mut gram = gram.filter(|_| ncols <= BATCH);
     let ctx = Ctx::<NB> {
         st,
         w,
@@ -1950,16 +2373,16 @@ fn project_nb<const NB: usize>(
         offs: std::array::from_fn(|b| st.offsets[b]),
         weights,
         coefficient_accuracy: request.coefficient_accuracy,
-        gram: gram_requested && ncols <= BATCH,
     };
     let tolerance = map.tolerance;
     let cap = map.max_iterations.clamp(1, MAX_ITERATIONS);
-    let mut gram = None;
     let started = Instant::now();
     let mut facts = Facts::default();
     let mut fold = CertificateFold::default();
-    let mut residual_norms = Vec::with_capacity(ncols);
+    residual_norms.clear();
+    reserve(residual_norms, ncols)?;
     let mut corrections = 0;
+    let mut gram_formed = false;
     let mut coefficients = if request.retain_coefficients {
         Some(FeCoefficientBatch::intercept_zeros(design, ncols)?)
     } else {
@@ -1968,7 +2391,7 @@ fn project_nb<const NB: usize>(
     let mut start = 0;
     while start < ncols {
         let width = (ncols - start).min(BATCH);
-        let mut reference: Option<Vec<f64>> = None;
+        let mut reference: Option<[f64; BATCH]> = None;
         let mut attempts = 0;
         loop {
             let step = dispatch::<NB>(
@@ -1976,16 +2399,18 @@ fn project_nb<const NB: usize>(
                 &mut values,
                 start,
                 width,
-                reference.as_deref(),
+                reference.as_ref().map(|r| &r[..width]),
                 tolerance,
                 cap,
                 &mut facts,
                 coefficients.as_mut(),
+                slots,
+                gram.as_deref_mut(),
             )?;
             match step {
                 Step::Declined(reason) => {
                     trace_decline(reason, facts);
-                    return Ok((Outcome::Declined(values), None));
+                    return Ok((Outcome::Declined(values), false));
                 }
                 Step::Formed {
                     fold: Some(part),
@@ -1994,11 +2419,8 @@ fn project_nb<const NB: usize>(
                     ..
                 } => {
                     merge_fold(&mut fold, &part);
-                    residual_norms.extend_from_slice(&norms);
-                    gram = formed.map(|values| ResidualGram {
-                        columns: width,
-                        values,
-                    });
+                    residual_norms.extend_from_slice(&norms[..width]);
+                    gram_formed = formed;
                     break;
                 }
                 Step::Formed {
@@ -2010,7 +2432,7 @@ fn project_nb<const NB: usize>(
                     // correct it in place at the original scale.
                     if attempts == 2 {
                         trace_decline("certificate failed after corrections", facts);
-                        return Ok((Outcome::Declined(values), None));
+                        return Ok((Outcome::Declined(values), false));
                     }
                     attempts += 1;
                     corrections += 1;
@@ -2024,6 +2446,7 @@ fn project_nb<const NB: usize>(
     ledger.facts(&[
         ("iterations", facts.iterations as u64),
         ("column_iterations", facts.column_iterations as u64),
+        ("accepted_columns", facts.accepted as u64),
         ("columns", ncols as u64),
         ("cells", st.cells() as u64),
         ("active_segments", st.active.len() as u64),
@@ -2037,7 +2460,7 @@ fn project_nb<const NB: usize>(
     let certificate = fold.finish(tolerance)?;
     if !certificate.passed {
         trace_decline("combined certificate failed", facts);
-        return Ok((Outcome::Declined(values), None));
+        return Ok((Outcome::Declined(values), false));
     }
     let report = SolveReport {
         requested_solver: FeSolverKind::Auto,
@@ -2049,16 +2472,22 @@ fn project_nb<const NB: usize>(
         certification_seconds: 0.0,
         ..SolveReport::single_route(FeSolverKind::Cg, SolveStopReason::Certified, certificate)
     };
-    match coefficients {
+    let result = match coefficients {
         Some(coefficients) => CertifiedBorrowedMap::from_certified_parts_with_coefficients(
             values,
             report,
             coefficients,
         ),
         None => CertifiedBorrowedMap::from_certified_parts(values, report),
-    }?
-    .with_residual_norms(residual_norms)
-    .map(|result| (Outcome::Done(result), gram))
+    }?;
+    let result = if detach_norms {
+        result
+    } else {
+        let mut attached = with_capacity(ncols)?;
+        attached.extend_from_slice(residual_norms);
+        result.with_residual_norms(attached)?
+    };
+    Ok((Outcome::Done(result), gram_formed))
 }
 
 fn trace_decline(reason: &str, facts: Facts) {

@@ -169,8 +169,8 @@ fn residual_gram_matches_the_formed_residual() {
                         retain_coefficients: false,
                         coefficient_accuracy: weighted,
                     };
-                    // Not requested: no Gram.
-                    let Outcome::Done(_) = cache
+                    // Not requested: no Gram; the norms are attached.
+                    let Outcome::Done(mut first) = cache
                         .project(
                             design,
                             borrowed,
@@ -183,9 +183,15 @@ fn residual_gram_matches_the_formed_residual() {
                     else {
                         panic!("declined");
                     };
-                    assert!(cache.take_residual_gram().is_none());
+                    assert!(cache.residual_gram().is_none());
+                    let attached = first.take_residual_norms();
+                    assert_eq!(attached.len(), columns);
+                    assert_eq!(attached, cache.residual_norms());
+                    // The retained workspaces repeat the projection bit for
+                    // bit; detached norms stay in the cache.
                     cache.request_residual_gram(true);
-                    let Outcome::Done(result) = cache
+                    cache.detach_residual_norms(true);
+                    let Outcome::Done(mut result) = cache
                         .project(
                             design,
                             borrowed,
@@ -198,8 +204,13 @@ fn residual_gram_matches_the_formed_residual() {
                     else {
                         panic!("declined");
                     };
-                    let gram = cache.take_residual_gram();
-                    assert!(cache.take_residual_gram().is_none());
+                    assert!(result.take_residual_norms().is_empty());
+                    assert_eq!(attached, cache.residual_norms());
+                    let bits = |m: &DenseMatrix| -> Vec<u64> {
+                        m.as_slice().iter().map(|v| v.to_bits()).collect()
+                    };
+                    assert_eq!(bits(first.residualized()), bits(result.residualized()));
+                    let gram = cache.residual_gram();
                     if columns > BATCH {
                         assert!(gram.is_none());
                         continue;
