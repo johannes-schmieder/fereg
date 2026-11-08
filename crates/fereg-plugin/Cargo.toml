@@ -31,5 +31,9 @@ windows-sys = { version = "0.61.2", features = [
     "Win32_System_Threading",
 ] }
 
+[dev-dependencies]
+# Allocator audit of the projection library's reuse contract.
+fedemean = { path = "../fedemean" }
+
 [lints.rust]
 unsafe_code = "allow"

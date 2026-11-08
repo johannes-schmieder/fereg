@@ -30,6 +30,9 @@ mod transport;
 #[cfg(feature = "ffi")]
 mod ffi;
 
+#[cfg(all(test, feature = "ffi"))]
+mod fedemean_audit;
+
 pub use dispatch::{dispatch_args, ACTION_SELFTEST};
 pub use estimate::{estimate_ols, ACTION_ESTIMATE_OLS};
 pub use input::{prepare_ols_test, SpiApi, ACTION_PREPARE_OLS_TEST};

@@ -155,6 +155,7 @@ dependencies = [
 name = "fereg-plugin"
 version = "0.5.3"
 dependencies = [
+ "fedemean",
  "fereg-core",
  "libc",
  "rayon",
