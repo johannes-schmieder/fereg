@@ -188,8 +188,11 @@ fn build_prepared_ols_rhs_with_reservation<R: RhsReservation>(
             "prepared OLS RHS reservation returned insufficient capacity",
         ));
     }
+    // A bound numeric fill reports finiteness from its cached tiles; any
+    // nonfinite value still reaches the full scan and its error below.
+    let mut all_finite = false;
     if let Some(columns) = NumericOlsColumns::bind(&prepared.model, &prepared.sample)? {
-        columns.fill_reserved_rhs(response, &mut data)?;
+        all_finite = columns.fill_reserved_rhs(response, &mut data)?;
     } else if let Some(columns) = WideRhsColumns::bind(&prepared.model, &prepared.sample) {
         columns.fill_reserved_rhs(response, &mut data)?;
     } else {
@@ -209,7 +212,7 @@ fn build_prepared_ols_rhs_with_reservation<R: RhsReservation>(
             )?;
         }
     }
-    if data.par_iter().any(|value| !value.is_finite()) {
+    if !all_finite && data.par_iter().any(|value| !value.is_finite()) {
         return Err(invalid_data(
             "prepared OLS RHS construction produced a nonfinite value",
         ));
@@ -309,6 +312,18 @@ fn fill_bound_rhs(
     response: &[f64],
     data: &mut Vec<f64>,
 ) -> Result<()> {
+    fill_bound_rhs_checked(columns, rows, response, data).map(|_| ())
+}
+
+/// `fill_bound_rhs`, also returning whether every copied value is finite,
+/// checked per tile while the tile is cached; callers keep their full scan
+/// (and its error) otherwise.
+fn fill_bound_rhs_checked(
+    columns: &[Option<&[f64]>],
+    rows: usize,
+    response: &[f64],
+    data: &mut Vec<f64>,
+) -> Result<bool> {
     let width = columns.len() + 1;
     if response.len() != rows {
         return Err(invalid_argument("numeric OLS RHS response is not aligned"));
@@ -327,9 +342,10 @@ fn fill_bound_rhs(
         .into_par_iter()
         .map(|_| 0.0)
         .collect_into_vec(data);
-    data.par_chunks_mut(NUMERIC_TILE_ROWS * width)
+    let finite = data
+        .par_chunks_mut(NUMERIC_TILE_ROWS * width)
         .enumerate()
-        .for_each(|(tile, output)| {
+        .map(|(tile, output)| {
             let start = tile * NUMERIC_TILE_ROWS;
             let rows = output.len() / width;
             for (destination, &value) in output
@@ -352,8 +368,13 @@ fn fill_bound_rhs(
                     }
                 }
             }
-        });
-    Ok(())
+            const EXPONENT: u64 = 0x7ff0_0000_0000_0000;
+            output.iter().fold(0_u64, |bad, value| {
+                bad | u64::from(value.to_bits() & EXPONENT == EXPONENT)
+            }) == 0
+        })
+        .reduce(|| true, |left, right| left & right);
+    Ok(finite)
 }
 
 fn matches_bound_rhs(
@@ -527,8 +548,9 @@ impl<'a> NumericOlsColumns<'a> {
         matches_bound_rhs(self.raw_columns(), self.rows, response, data)
     }
 
-    pub(crate) fn fill_reserved_rhs(&self, response: &[f64], data: &mut Vec<f64>) -> Result<()> {
-        fill_bound_rhs(self.raw_columns(), self.rows, response, data)
+    /// Fill the reserved RHS; returns whether every filled value is finite.
+    pub(crate) fn fill_reserved_rhs(&self, response: &[f64], data: &mut Vec<f64>) -> Result<bool> {
+        fill_bound_rhs_checked(self.raw_columns(), self.rows, response, data)
     }
 
     /// Add selected raw columns in the caller's coefficient order. Keeping

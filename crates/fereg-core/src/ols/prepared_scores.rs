@@ -310,6 +310,108 @@ impl SandwichDesign for PreparedOlsDenseScoreView<'_> {
     fn fill_row(&self, row: usize, output: &mut [f64]) -> Result<()> {
         (*self).fill_reported_row(row, output)
     }
+
+    /// The same reported rows as `fill_reported_row`, with each coordinate's
+    /// storage offset and mean addend resolved once per range instead of once
+    /// per cell. Every value is the identical `stored + addend` sum and every
+    /// row still fails, before its visit, with the original error.
+    fn visit_range(
+        &self,
+        rows: std::ops::Range<usize>,
+        output: &mut [f64],
+        mut visit: impl FnMut(usize, &mut [f64]) -> Result<()>,
+    ) -> Result<()> {
+        const MAX_PLANNED: usize = 64;
+        let dimension = self.reported_dimension();
+        // Per reported position: a stored column offset (or the constant
+        // intercept coordinate) and the addend of the original expression.
+        let mut offsets = [usize::MAX; MAX_PLANNED];
+        let mut addends = [0.0_f64; MAX_PLANNED];
+        let (values, stride) = match self.storage {
+            PreparedOlsDenseScoreStorageView::Packed {
+                values,
+                finite_rank,
+            } => (values, finite_rank),
+            PreparedOlsDenseScoreStorageView::Selected {
+                values,
+                matrix_columns,
+                ..
+            } => (values, matrix_columns),
+        };
+        let mut planned = rows.end <= self.nrows
+            && output.len() == dimension
+            && dimension <= MAX_PLANNED
+            && values.len() >= self.nrows * stride;
+        for position in 0..dimension.min(MAX_PLANNED) {
+            if !planned {
+                break;
+            }
+            if self.normalized_intercept_position == Some(position) {
+                continue;
+            }
+            let finite_position = self
+                .reported_to_finite
+                .get(position)
+                .copied()
+                .filter(|finite| *finite != usize::MAX);
+            let offset = finite_position.and_then(|finite| match self.storage {
+                PreparedOlsDenseScoreStorageView::Packed { finite_rank, .. } => {
+                    (finite < finite_rank).then_some(finite)
+                }
+                PreparedOlsDenseScoreStorageView::Selected {
+                    generated_columns,
+                    matrix_columns,
+                    ..
+                } => generated_columns
+                    .get(finite)
+                    .map(|generated| generated + 1)
+                    .filter(|&offset| offset < matrix_columns),
+            });
+            match (finite_position, offset) {
+                (Some(finite), Some(offset))
+                    if self.normalized_intercept_position.is_none()
+                        || finite < self.means.len() =>
+                {
+                    offsets[position] = offset;
+                    addends[position] = if self.normalized_intercept_position.is_some() {
+                        self.means[finite]
+                    } else {
+                        0.0
+                    };
+                }
+                // Structural inconsistencies keep the original per-row path.
+                _ => planned = false,
+            }
+        }
+        if !planned {
+            for row in rows {
+                self.fill_reported_row(row, output)?;
+                visit(row, output)?;
+            }
+            return Ok(());
+        }
+        let offsets = &offsets[..dimension];
+        let addends = &addends[..dimension];
+        for row in rows {
+            let stored = &values[row * stride..(row + 1) * stride];
+            let mut finite = true;
+            for ((value, &offset), &addend) in output.iter_mut().zip(offsets).zip(addends) {
+                *value = if offset == usize::MAX {
+                    1.0
+                } else {
+                    stored[offset] + addend
+                };
+                finite &= value.is_finite();
+            }
+            if !finite {
+                return Err(invalid_data(
+                    "prepared robust dense reported score coordinate is not finite",
+                ));
+            }
+            visit(row, output)?;
+        }
+        Ok(())
+    }
 }
 
 impl SandwichDesign for CertifiedPreparedOlsScoreDesign<'_> {
@@ -901,6 +1003,81 @@ fn certify_selected_score_gram<R: PreparedInferenceReservation>(
     Ok(gram)
 }
 
+/// Upper-triangle score Gram rows for a small fixed rank: the entries stay in
+/// registers across the rows of one partial and unit weights skip the weight
+/// lookup (its value is exactly one). Each entry receives the same
+/// `(weight * left) * right` products in the same row order, starting from
+/// its current partial value, so results are bit-identical to the loops below.
+fn accumulate_fixed_score_gram<const RANK: usize>(
+    rows: &[f64],
+    stride: usize,
+    offsets: &[usize],
+    weights: ReferenceWeightView<'_>,
+    first_row: usize,
+    partial: &mut [f64],
+) -> Result<()> {
+    let offsets: [usize; RANK] = std::array::from_fn(|k| offsets[k]);
+    let mut entries = [[0.0_f64; RANK]; RANK];
+    for left in 0..RANK {
+        for right in left..RANK {
+            entries[left][right] = partial[left * RANK + right];
+        }
+    }
+    let unit = weights.is_unit();
+    for (row, values) in rows.chunks_exact(stride).enumerate() {
+        let weight = if unit {
+            1.0
+        } else {
+            weights.value(first_row + row)?
+        };
+        let scores: [f64; RANK] = std::array::from_fn(|k| values[offsets[k]]);
+        for (left, row_entries) in entries.iter_mut().enumerate() {
+            let weighted_left = weight * scores[left];
+            for (entry, &right_value) in row_entries[left..].iter_mut().zip(&scores[left..]) {
+                *entry += weighted_left * right_value;
+            }
+        }
+    }
+    for left in 0..RANK {
+        for right in left..RANK {
+            partial[left * RANK + right] = entries[left][right];
+        }
+    }
+    Ok(())
+}
+
+/// Fixed-rank dispatch for `accumulate_fixed_score_gram`; `None` keeps the
+/// general loop for wider designs.
+fn accumulate_small_score_gram(
+    rows: &[f64],
+    stride: usize,
+    offsets: &[usize],
+    weights: ReferenceWeightView<'_>,
+    first_row: usize,
+    partial: &mut [f64],
+) -> Option<Result<()>> {
+    let rank = offsets.len();
+    if stride == 0
+        || partial.len() != rank * rank
+        || offsets.iter().any(|&offset| offset >= stride)
+        || rows.len() % stride != 0
+    {
+        return None;
+    }
+    let run = match rank {
+        1 => accumulate_fixed_score_gram::<1>,
+        2 => accumulate_fixed_score_gram::<2>,
+        3 => accumulate_fixed_score_gram::<3>,
+        4 => accumulate_fixed_score_gram::<4>,
+        5 => accumulate_fixed_score_gram::<5>,
+        6 => accumulate_fixed_score_gram::<6>,
+        7 => accumulate_fixed_score_gram::<7>,
+        8 => accumulate_fixed_score_gram::<8>,
+        _ => return None,
+    };
+    Some(run(rows, stride, offsets, weights, first_row, partial))
+}
+
 fn accumulate_selected_score_gram_rows(
     rows: &[f64],
     matrix_columns: usize,
@@ -909,6 +1086,23 @@ fn accumulate_selected_score_gram_rows(
     first_row: usize,
     partial: &mut [f64],
 ) -> Result<()> {
+    const SMALL_RANK: usize = 8;
+    if generated_columns.len() <= SMALL_RANK {
+        let mut offsets = [0_usize; SMALL_RANK];
+        for (offset, &generated) in offsets.iter_mut().zip(generated_columns) {
+            *offset = generated + 1;
+        }
+        if let Some(result) = accumulate_small_score_gram(
+            rows,
+            matrix_columns,
+            &offsets[..generated_columns.len()],
+            weights,
+            first_row,
+            partial,
+        ) {
+            return result;
+        }
+    }
     // Gathering each row's selected values into a contiguous tile lets the
     // inner update vectorize; every product and its row order are unchanged.
     const GATHER_COLUMNS: usize = 256;
@@ -986,7 +1180,24 @@ fn certify_dense_score_gram<R: PreparedInferenceReservation>(
             let remainder = nrows % chunks;
             let start = chunk * rows_per_chunk + chunk.min(remainder);
             let end = start + rows_per_chunk + usize::from(chunk < remainder);
-            for row in start..end {
+            const IDENTITY: [usize; 8] = [0, 1, 2, 3, 4, 5, 6, 7];
+            let small = if rank <= IDENTITY.len() {
+                accumulate_small_score_gram(
+                    &values[start * rank..end * rank],
+                    rank,
+                    &IDENTITY[..rank],
+                    weights,
+                    start,
+                    partial,
+                )
+            } else {
+                None
+            };
+            let handled = small.is_some();
+            if let Some(result) = small {
+                result?;
+            }
+            for row in (start..end).filter(|_| !handled) {
                 let weight = weights.value(row)?;
                 let score = &values[row * rank..(row + 1) * rank];
                 for left in 0..rank {

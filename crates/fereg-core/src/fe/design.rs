@@ -79,6 +79,11 @@ impl LevelIndex {
     /// Ordered codes already have the final membership order. Reject the
     /// optional route before allocation when that identity does not hold.
     pub(crate) fn try_from_ordered_codes(codes: &[u32], n_levels: usize) -> Result<Option<Self>> {
+        let workers = rayon::current_thread_index().map_or(1, |_| rayon::current_num_threads());
+        let plan = crate::parallel::StagePlan::new(codes.len() as u128, codes.len(), workers);
+        if plan.lanes > 1 {
+            return Self::try_from_ordered_codes_parallel(codes, n_levels, plan);
+        }
         if codes.last().is_some_and(|code| *code as usize >= n_levels)
             || codes.windows(2).any(|pair| pair[0] > pair[1])
         {
@@ -103,6 +108,68 @@ impl LevelIndex {
             .try_reserve_exact(codes.len())
             .map_err(|_| allocation("unable to reserve fixed-effect level observations"))?;
         observations.extend(0..codes.len());
+        Ok(Some(Self {
+            offsets,
+            observations,
+        }))
+    }
+
+    /// The same integer index on an installed team: an ordered-code check over
+    /// fixed chunks (each chunk also compares its first code with the previous
+    /// chunk's last), offsets `offsets[k] = #{codes < k}` filled per level
+    /// range from that range's first position, and identity membership.
+    fn try_from_ordered_codes_parallel(
+        codes: &[u32],
+        n_levels: usize,
+        plan: crate::parallel::StagePlan,
+    ) -> Result<Option<Self>> {
+        let chunk = plan.chunk(codes.len());
+        let ordered = codes.last().is_none_or(|code| (*code as usize) < n_levels)
+            && (0..codes.len().div_ceil(chunk))
+                .into_par_iter()
+                .all(|block| {
+                    let start = block * chunk;
+                    let end = (start + chunk).min(codes.len());
+                    let first = start.saturating_sub(1);
+                    codes[first..end].windows(2).all(|pair| pair[0] <= pair[1])
+                });
+        if !ordered {
+            return Ok(None);
+        }
+        let offset_count = n_levels
+            .checked_add(1)
+            .ok_or_else(|| allocation("fixed-effect level-index offset count overflows"))?;
+        let mut offsets = Vec::new();
+        offsets
+            .try_reserve_exact(offset_count)
+            .map_err(|_| allocation("unable to reserve fixed-effect level offsets"))?;
+        let level_chunk = offset_count.div_ceil(plan.lanes).max(1);
+        offsets.par_extend(
+            (0..offset_count.div_ceil(level_chunk))
+                .into_par_iter()
+                .flat_map_iter(|block| {
+                    let first = block * level_chunk;
+                    let last = (first + level_chunk).min(offset_count);
+                    let mut position = codes.partition_point(|&code| (code as usize) < first);
+                    (first..last).map(move |level| {
+                        while position < codes.len() && (codes[position] as usize) < level {
+                            position += 1;
+                        }
+                        position
+                    })
+                }),
+        );
+        if offsets.len() != offset_count {
+            return Err(FeregError::new(
+                ErrorCode::Internal,
+                "fixed-effect ordered level offsets are incomplete",
+            ));
+        }
+        let mut observations = Vec::new();
+        observations
+            .try_reserve_exact(codes.len())
+            .map_err(|_| allocation("unable to reserve fixed-effect level observations"))?;
+        observations.par_extend((0..codes.len()).into_par_iter());
         Ok(Some(Self {
             offsets,
             observations,

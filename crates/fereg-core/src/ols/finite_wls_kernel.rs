@@ -2353,7 +2353,19 @@ fn response_finite(response: FiniteResponse<'_>) -> bool {
                 bad | u64::from(v.to_bits() & EXPONENT == EXPONENT)
             }) != 0
         }),
-        FiniteResponse::Column(..) => response.iter().all(|value| value.is_finite()),
+        FiniteResponse::Column(values, column) => {
+            let stride = values.ncols();
+            if column >= stride || values.as_slice().len() != values.nrows() * stride {
+                return response.iter().all(|value| value.is_finite());
+            }
+            // The same order-independent predicate over fixed row blocks.
+            const ROWS: usize = 1 << 13;
+            !values.as_slice().par_chunks(ROWS * stride).any(|block| {
+                block
+                    .chunks_exact(stride)
+                    .any(|row| !row[column].is_finite())
+            })
+        }
     }
 }
 

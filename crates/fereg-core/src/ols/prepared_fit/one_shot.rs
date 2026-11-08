@@ -1132,17 +1132,18 @@ pub(super) fn fit<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     );
     crate::interrupt::checkpoint()?;
     let derived_scale = derived_scale(dense, requested, frame.response(), weights, &inputs, &qr)?;
-    let (residuals, residual_absorption_report, residual_fe_coefficients) = project_residual(
-        &mut cmg,
-        prepared.fit_sample().n_active(),
-        seed,
-        weights,
-        config,
-        retained_fe_parent,
-        perturbations.final_residual_constant,
-        remaining.as_mut().map(ObserverRef::reborrow),
-        derived_scale.map(|scale| (scale, &inputs.absorption_report)),
-    )?;
+    let (residuals, residual_absorption_report, residual_fe_coefficients, residual_norm) =
+        project_residual(
+            &mut cmg,
+            prepared.fit_sample().n_active(),
+            seed,
+            weights,
+            config,
+            retained_fe_parent,
+            perturbations.final_residual_constant,
+            remaining.as_mut().map(ObserverRef::reborrow),
+            derived_scale.map(|scale| (scale, &inputs.absorption_report)),
+        )?;
     if !dense {
         drop(cmg);
     }
@@ -1162,6 +1163,7 @@ pub(super) fn fit<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         weights,
         reservation,
         retained_scratch,
+        residual_norm,
     )?;
     if trace.enabled {
         eprintln!("FEREG_PHASE|fit|projection={projection_seconds:.9}|finite_solve={finite_seconds:.9}|bread_raw_residual={bread_seconds:.9}|residual_absorb={residual_seconds:.9}|finalize={:.9}|total={:.9}",
@@ -1312,8 +1314,9 @@ fn derived_residual_scale(
     }
 }
 
-/// The derived certificate of a fast within residual, or `None` when this
-/// session cannot recompute it or it does not pass.
+/// The derived certificate of a fast within residual and that residual's
+/// weighted norm, or `None` when this session cannot recompute it or it does
+/// not pass.
 fn derived_residual(
     cmg: &mut crate::fe::FeSession<'_>,
     matrix: &DenseMatrix,
@@ -1321,7 +1324,7 @@ fn derived_residual(
     config: PreparedOlsFitConfig,
     scale: f64,
     absorption: &SolveReport,
-) -> Result<Option<SolveReport>> {
+) -> Result<Option<(SolveReport, f64)>> {
     let started = std::time::Instant::now();
     let mut norm = [0.0];
     fast_weighted_column_norms(matrix, 0, weights, &mut norm)?;
@@ -1341,7 +1344,7 @@ fn derived_residual(
     if !certificate.passed {
         return Ok(None);
     }
-    Ok(Some(SolveReport {
+    let report = SolveReport {
         iterations: 0,
         checkpoint_retries: 0,
         stop_reason: SolveStopReason::DerivedCertificate,
@@ -1355,8 +1358,19 @@ fn derived_residual(
         pilot_contraction: 0.0,
         warnings: Vec::new(),
         ..absorption.clone()
-    }))
+    };
+    Ok(Some((report, norm)))
 }
+
+/// The certified residual, its report and coefficient products, and, when the
+/// derived certificate accepted the unchanged within residual, that
+/// residual's `fast_weighted_column_norms` norm for the score certificate.
+type ProjectedResidual = (
+    DenseMatrix,
+    SolveReport,
+    Option<FeCoefficientBatch>,
+    Option<f64>,
+);
 
 #[allow(clippy::too_many_arguments)]
 fn project_residual(
@@ -1369,18 +1383,21 @@ fn project_residual(
     perturb_constant: bool,
     remaining: Option<ObserverRef<'_>>,
     derived: Option<(f64, &SolveReport)>,
-) -> Result<(DenseMatrix, SolveReport, Option<FeCoefficientBatch>)> {
+) -> Result<ProjectedResidual> {
     let dense = config.execution.mode == PreparedOlsExecutionMode::Fast;
     let matrix = DenseMatrix::from_row_major(rows, 1, seed)?;
     if let Some((scale, absorption)) = derived {
-        if let Some(report) = derived_residual(cmg, &matrix, weights, config, scale, absorption)? {
+        if let Some((report, norm)) =
+            derived_residual(cmg, &matrix, weights, config, scale, absorption)?
+        {
             let mut residuals = matrix;
             if perturb_constant {
                 for row in 0..residuals.nrows() {
                     residuals[(row, 0)] += 0.25;
                 }
+                return Ok((residuals, report, None, None));
             }
-            return Ok((residuals, report, None));
+            return Ok((residuals, report, None, Some(norm)));
         }
     }
     // Original-source seeds contain the full FE contribution. They require the
@@ -1416,6 +1433,7 @@ fn project_residual(
         residuals,
         residual_absorption_report,
         residual_fe_coefficients,
+        None,
     ))
 }
 
@@ -1434,13 +1452,14 @@ fn finish_one_shot<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     weights: NormalizedWeights<'_>,
     reservation: &mut R,
     retained_scratch: Option<&mut Option<PreparedOlsScratch>>,
+    residual_norm: Option<f64>,
 ) -> Result<CertifiedPreparedOlsFit> {
     // Trace-only lap (FEREG_PHASE_TIMING): no arithmetic or decision effect.
     let trace = crate::diagnostics::phase_ledger::PhaseLedger::new(
         "fit_finalize",
         ["certify_scores", "publication"],
     );
-    let score_certificate = certify_scores(
+    let score_certificate = certify_scores_with_residual_norm(
         prepared,
         residuals.as_slice(),
         weights,
@@ -1450,6 +1469,7 @@ fn finish_one_shot<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         &qr.generated_statuses,
         inputs.within_outcome_norm,
         config.score_tolerance,
+        residual_norm,
     )?;
     trace.lap(0);
     if !score_certificate.passed {

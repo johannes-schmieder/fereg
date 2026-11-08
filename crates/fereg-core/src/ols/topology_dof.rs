@@ -232,7 +232,7 @@ pub(crate) fn compute_with_reservation<R: TopologyDofReservation>(
         }
         let source = effect_source(topology, effect_index)?;
         if effect_is_nested_within_any_cluster(
-            source.codes(&source_views)?,
+            effect_codes(topology, effect_index, &source_views, validated_owner)?,
             source.n_levels(),
             nobs,
             cluster_dimensions,
@@ -264,6 +264,7 @@ pub(crate) fn compute_with_reservation<R: TopologyDofReservation>(
     apply_mobility_policy(
         topology,
         &source_views,
+        validated_owner,
         &eligible_indices,
         policy,
         &mut redundant,
@@ -327,9 +328,11 @@ fn eligible_indices<R: TopologyDofReservation>(
     Ok(indices)
 }
 
-fn apply_mobility_policy<R: TopologyDofReservation>(
-    topology: &FinalizedCategoricalTopology,
-    source_views: &[CategoricalCodeView<'_>],
+#[allow(clippy::too_many_arguments)]
+fn apply_mobility_policy<'a, R: TopologyDofReservation>(
+    topology: &'a FinalizedCategoricalTopology,
+    source_views: &[CategoricalCodeView<'a>],
+    validated_owner: Option<&'a crate::fe::ValidatedFinalizedTopology>,
     eligible_indices: &[usize],
     policy: CategoricalTopologyDofPolicy,
     redundant: &mut [usize],
@@ -357,8 +360,12 @@ fn apply_mobility_policy<R: TopologyDofReservation>(
     if pairs.is_empty() {
         return Ok(());
     }
-    // Admit every pair's parent bank first, then count the independent pairs
+    // Admit every pair's parent banks first, then count the independent pairs
     // concurrently. Component counts are exact, so the order is immaterial.
+    // Spare workers split one pair's rows into lanes with private forests
+    // that are merged afterwards (see `pair_components`).
+    let workers = rayon::current_thread_index().map_or(1, |_| rayon::current_num_threads());
+    let lanes_per_pair = (workers / pairs.len()).max(1);
     let mut jobs = Vec::new();
     reservation.reserve_vec(
         &mut jobs,
@@ -368,8 +375,8 @@ fn apply_mobility_policy<R: TopologyDofReservation>(
     for &(earlier, later, _) in &pairs {
         let earlier_source = effect_source(topology, earlier)?;
         let later_source = effect_source(topology, later)?;
-        let earlier_codes = earlier_source.codes(source_views)?;
-        let later_codes = later_source.codes(source_views)?;
+        let earlier_codes = effect_codes(topology, earlier, source_views, validated_owner)?;
+        let later_codes = effect_codes(topology, later, source_views, validated_owner)?;
         if earlier_codes.len() != later_codes.len() {
             return Err(invalid_argument(
                 "categorical absorbed-DoF pair sources are not sample aligned",
@@ -380,19 +387,37 @@ fn apply_mobility_policy<R: TopologyDofReservation>(
             .checked_add(later_source.n_levels())
             .filter(|&v| v < u32::MAX as usize)
             .ok_or_else(|| allocation("categorical absorbed-DoF pair vertex count overflows"))?;
-        let parent = reserved_filled(
-            reservation,
-            vertices,
-            0_u32,
-            "unable to reserve categorical absorbed-DoF union-find parents",
+        // A lane needs enough rows to amortize its forest and merge pass.
+        let lanes = lanes_per_pair
+            .min(earlier_codes.len() / PAIR_LANE_MIN_ROWS)
+            .min(earlier_codes.len() / vertices.max(1))
+            .max(1);
+        let mut parents = Vec::new();
+        reservation.reserve_vec(
+            &mut parents,
+            lanes,
+            "unable to reserve categorical absorbed-DoF union-find lanes",
         )?;
+        for _ in 0..lanes {
+            let parent = reserved_filled(
+                reservation,
+                vertices,
+                0_u32,
+                "unable to reserve categorical absorbed-DoF union-find parents",
+            )?;
+            push_reserved(
+                &mut parents,
+                parent,
+                "categorical absorbed-DoF union-find lane capacity exhausted",
+            )?;
+        }
         push_reserved(
             &mut jobs,
             (
                 earlier_codes,
                 later_codes,
                 earlier_source.n_levels(),
-                parent,
+                parents,
             ),
             "categorical absorbed-DoF pair capacity exhausted",
         )?;
@@ -400,7 +425,13 @@ fn apply_mobility_policy<R: TopologyDofReservation>(
     use rayon::prelude::*;
     let counts: Vec<Result<usize>> = jobs
         .par_iter_mut()
-        .map(|(earlier, later, split, parent)| pair_components(earlier, later, *split, parent))
+        .map(|(earlier, later, split, parents)| {
+            if parents.len() == 1 {
+                pair_components(earlier, later, *split, &mut parents[0])
+            } else {
+                lane_pair_components(earlier, later, *split, parents)
+            }
+        })
         .collect();
     for (&(_, later, first), count) in pairs.iter().zip(counts) {
         let components = count?;
@@ -463,6 +494,80 @@ fn pair_components(
         .enumerate()
         .filter(|&(vertex, &p)| vertex as u32 == p)
         .count())
+}
+
+/// Rows per union-find lane below which a pair stays serial.
+const PAIR_LANE_MIN_ROWS: usize = 1 << 16;
+
+fn find_root(parent: &mut [u32], mut vertex: u32) -> u32 {
+    while parent[vertex as usize] != vertex {
+        let grand = parent[parent[vertex as usize] as usize];
+        parent[vertex as usize] = grand;
+        vertex = grand;
+    }
+    vertex
+}
+
+/// `pair_components` over contiguous row lanes: each lane builds a private
+/// forest of its rows' edges, and the forests are merged pairwise by uniting
+/// every vertex with its lane root. The union of the lanes' edge sets is the
+/// pair's edge set, so the component count is exactly the serial count.
+fn lane_pair_components(
+    earlier: &[u32],
+    later: &[u32],
+    split: usize,
+    parents: &mut [Vec<u32>],
+) -> Result<usize> {
+    use rayon::prelude::*;
+    let lanes = parents.len();
+    let rows = earlier.len();
+    if later.len() != rows || lanes == 0 {
+        return Err(invalid_argument(
+            "categorical absorbed-DoF pair lanes are not sample aligned",
+        ));
+    }
+    let chunk = rows.div_ceil(lanes).max(1);
+    parents
+        .par_iter_mut()
+        .enumerate()
+        .try_for_each(|(lane, parent)| -> Result<()> {
+            let start = (lane * chunk).min(rows);
+            let end = (start + chunk).min(rows);
+            pair_components(&earlier[start..end], &later[start..end], split, parent).map(|_| ())
+        })?;
+    merge_lane_forests(parents);
+    let parent = &parents[0];
+    Ok(parent
+        .iter()
+        .enumerate()
+        .filter(|&(vertex, &p)| vertex as u32 == p)
+        .count())
+}
+
+/// Merge every forest into the first: a vertex and its root in a later
+/// forest are connected, so uniting them preserves exactly the connectivity
+/// of the combined edge sets. Halves merge concurrently.
+fn merge_lane_forests(parents: &mut [Vec<u32>]) {
+    if parents.len() < 2 {
+        return;
+    }
+    let middle = parents.len() / 2;
+    let (left, right) = parents.split_at_mut(middle);
+    rayon::join(|| merge_lane_forests(left), || merge_lane_forests(right));
+    let (target, source) = (&mut left[0], &mut right[0]);
+    for vertex in 0..source.len() as u32 {
+        let root = find_root(source, vertex);
+        if root == vertex {
+            continue;
+        }
+        let a = find_root(target, vertex);
+        let b = find_root(target, root);
+        match a.cmp(&b) {
+            std::cmp::Ordering::Less => target[b as usize] = a,
+            std::cmp::Ordering::Greater => target[a as usize] = b,
+            std::cmp::Ordering::Equal => {}
+        }
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -778,6 +883,30 @@ fn validate_inputs(
         }
     }
     Ok(())
+}
+
+/// One effect's codes. A validation receipt for this topology lends them
+/// directly (its owner checked every code when it was built and exposes no
+/// mutation); without one, the partition view revalidates them.
+fn effect_codes<'a>(
+    topology: &'a FinalizedCategoricalTopology,
+    effect_index: usize,
+    source_views: &[CategoricalCodeView<'a>],
+    validated_owner: Option<&'a crate::fe::ValidatedFinalizedTopology>,
+) -> Result<&'a [u32]> {
+    let source = effect_source(topology, effect_index)?;
+    if let Some(owner) = validated_owner.filter(|owner| std::ptr::eq(owner.get(), topology)) {
+        let validated = crate::fe::ValidatedBorrowedInterceptSource::from_finalized_source(
+            owner,
+            topology.effect_to_topology()[effect_index],
+        );
+        if let Some(effect) = validated.map(|validated| validated.effect()) {
+            if effect.n_levels() == source.n_levels() && effect.codes().len() == topology.nobs() {
+                return Ok(effect.codes());
+            }
+        }
+    }
+    source.codes(source_views)
 }
 
 fn effect_source(

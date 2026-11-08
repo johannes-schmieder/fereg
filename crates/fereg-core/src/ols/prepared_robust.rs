@@ -27,9 +27,9 @@ use super::prepared_scores::{
 };
 use super::prepared_unadjusted::{
     build_reference_weight_report_view, build_residual_dof_view, build_statistics, checked_square,
-    compensated_add, compensated_add_scaled_row, exact_integer_as_f64, independent_outcome_sum,
-    independent_residual_sum, relative_difference, validate_fit_and_absorbed_dof_view,
-    validate_sum_of_squares, ReferenceWeightView,
+    compensated_add, compensated_add_scaled_row, exact_integer_as_f64, independent_fit_sums,
+    relative_difference, validate_fit_and_absorbed_dof_view, validate_sum_of_squares,
+    ReferenceWeightView,
 };
 use super::{
     CertifiedPreparedOlsFit, PreparedOlsAbsorbedDofPolicy, PreparedOlsColumnKind, PreparedOlsData,
@@ -148,6 +148,24 @@ impl SandwichScoreMultiplier for OlsRobustScoreMultiplier<'_> {
     }
 
     fn score_pair(&self, row: usize) -> Result<SandwichScorePair> {
+        if self.weight_kind.is_none() && self.weights.is_unit() {
+            // Unit mass: both roots are exactly one, so each scaled score is
+            // the residual itself (`1.0 * residual`), with the same checks.
+            let residual = *self
+                .residuals
+                .get(row)
+                .ok_or_else(|| invalid_argument("prepared robust residual row is out of range"))?;
+            return if residual.is_finite() {
+                Ok(SandwichScorePair {
+                    production: residual,
+                    certificate: residual,
+                })
+            } else {
+                Err(invalid_data(
+                    "prepared robust dense influence scale is not finite",
+                ))
+            };
+        }
         let reference_weight = self.weights.value(row)?;
         let certificate_root = meat_root_multiplier(self.weight_kind, reference_weight)?;
         let production_root = if self.perturb_production {
@@ -354,8 +372,11 @@ fn compose_view_internal<P: PreparedOlsInferenceView + ?Sized, R: PreparedInfere
     }
     certify_dof_identity(prepared, &fit, weights, dof)?;
 
-    let tss = independent_outcome_sum(
+    // The same two independent reductions, overlapped (the outcome error
+    // still takes precedence).
+    let (tss, rss) = independent_fit_sums(
         &prepared.fit_sample().outcome,
+        fit.residuals(),
         weight_view,
         dof.has_structural_intercept,
     )?;
@@ -364,7 +385,6 @@ fn compose_view_internal<P: PreparedOlsInferenceView + ?Sized, R: PreparedInfere
     } else {
         fit.initial_absorbed_outcome_sum_of_squares()
     };
-    let rss = independent_residual_sum(&fit, weight_view)?;
     validate_sum_of_squares(rss, tss, within_tss)?;
     let mut statistics = build_statistics(rss, tss, within_tss, weights, dof)?;
     if perturbations.rss {

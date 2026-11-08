@@ -212,6 +212,11 @@ impl<'a> ReferenceWeightView<'a> {
 }
 
 impl ReferenceWeightView<'_> {
+    /// Unit mass: `value` is exactly 1.0 for every row and cannot fail.
+    pub(super) const fn is_unit(self) -> bool {
+        self.kind.is_none() && self.values.is_none()
+    }
+
     pub(super) fn value(self, row: usize) -> Result<f64> {
         let value = match (self.kind, self.values) {
             (None, None) => 1.0,
@@ -1338,7 +1343,7 @@ pub(super) fn validate_sum_of_squares(rss: f64, tss: f64, within_tss: f64) -> Re
     Ok(())
 }
 
-fn independent_fit_sums(
+pub(super) fn independent_fit_sums(
     outcome: &[f64],
     residuals: &[f64],
     weight_view: ReferenceWeightView<'_>,
@@ -1409,22 +1414,32 @@ pub(super) fn weighted_mean(values: &[f64], weights: ReferenceWeightView<'_>) ->
         .map(|(chunk, values)| {
             let (mut numerator, mut numerator_correction) = (0.0_f64, 0.0_f64);
             let (mut denominator, mut denominator_correction) = (0.0_f64, 0.0_f64);
-            for (offset, &value) in values.iter().enumerate() {
-                if unit {
-                    compensated_add(
+            if unit {
+                // Every value is finite (checked above) and the scaled terms lie
+                // in [-1, 1], so no term or partial can fail the checked add:
+                // the identical Neumaier updates without per-term checks.
+                for &value in values {
+                    neumaier_add(
                         value / value_scale,
                         &mut numerator,
                         &mut numerator_correction,
-                    )?;
-                } else {
-                    let weight = weights.value(chunk * ROWS + offset)?;
-                    compensated_add(
-                        weight * (value / value_scale),
-                        &mut numerator,
-                        &mut numerator_correction,
-                    )?;
-                    compensated_add(weight, &mut denominator, &mut denominator_correction)?;
+                    );
                 }
+                return Ok((
+                    numerator,
+                    numerator_correction,
+                    denominator,
+                    denominator_correction,
+                ));
+            }
+            for (offset, &value) in values.iter().enumerate() {
+                let weight = weights.value(chunk * ROWS + offset)?;
+                compensated_add(
+                    weight * (value / value_scale),
+                    &mut numerator,
+                    &mut numerator_correction,
+                )?;
+                compensated_add(weight, &mut denominator, &mut denominator_correction)?;
             }
             Ok((
                 numerator,
