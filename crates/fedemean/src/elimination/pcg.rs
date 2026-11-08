@@ -1,4 +1,4 @@
-//! Lockstep Jacobi-preconditioned CG on the reduced system.
+//! Lockstep preconditioned CG on the reduced system.
 
 use super::kernels::{apply, copy_columns, dot, Work};
 use super::structure::Structure;
@@ -8,19 +8,60 @@ use crate::error::Result;
 use rayon::prelude::*;
 use std::ops::Range;
 
+/// Decline of a recurrence that stopped progressing ...
+pub(super) const STALLED: &str = "stalled reduced recurrence";
+/// ... and of one that reached the iteration ceiling (both may escalate).
+pub(super) const CEILING: &str = "iteration ceiling";
+
 pub(super) enum Solve<const R: usize> {
     Converged {
-        iterations: usize,
-        /// The sum over iterations of the active columns.
-        column_iterations: usize,
         /// Columns stopped at the acceptance rule after a breakdown.
         accepted: usize,
-        /// Iterations each column was active.
-        per_column: [usize; R],
         /// Columns returned to an iterate meeting the acceptance rule.
         floor: [bool; R],
     },
     Declined(&'static str),
+}
+
+/// Iteration counts of the recurrences of one batch.
+pub(super) struct Tally<const R: usize> {
+    pub(super) iterations: usize,
+    /// The sum over iterations of the active columns.
+    pub(super) column_iterations: usize,
+    /// Iterations each column was active.
+    pub(super) per_column: [usize; R],
+}
+
+impl<const R: usize> Default for Tally<R> {
+    fn default() -> Self {
+        Self {
+            iterations: 0,
+            column_iterations: 0,
+            per_column: [0; R],
+        }
+    }
+}
+
+/// The preconditioner `M^-1` of the recurrence. The fused vector passes form
+/// `z = D^-1 r` with the stopping measures; any other preconditioner then
+/// overwrites `z` where its action differs, and `r'z` is a separate
+/// fixed-chunk dot.
+pub(super) trait Precondition<const R: usize> {
+    /// `M^-1 = D^-1`: the fused passes also sum `r'z`.
+    const JACOBI: bool;
+    /// `z = M^-1 r`, given `z = D^-1 r`.
+    fn correct(&mut self, r: &[[f64; R]], z: &mut [[f64; R]]) -> Result<()>;
+}
+
+/// The inverse diagonal of the reduced matrix.
+pub(super) struct Jacobi;
+
+impl<const R: usize> Precondition<R> for Jacobi {
+    const JACOBI: bool = true;
+
+    fn correct(&mut self, _: &[[f64; R]], _: &mut [[f64; R]]) -> Result<()> {
+        Ok(())
+    }
 }
 
 /// `value / target` with an exact zero target accepting only exact zeros.
@@ -102,13 +143,16 @@ impl<const R: usize> Columns<R> {
 }
 
 /// `z = M^-1 r`, `rz` and the stopping measures of the initial residual;
-/// `x = 0`, `p = z` on the active columns and the zero iterate kept where it
-/// meets the acceptance rule. `None` when the residual is not finite.
-fn start<const R: usize>(
+/// `x = 0` (`from_zero`, else the current iterate), `p = z` on the active
+/// columns and the initial iterate kept where it meets the acceptance rule.
+/// `None` when the residual is not finite.
+fn start<const R: usize, M: Precondition<R>>(
     w: &Weights,
     work: &mut Work<R>,
     targets: &Targets<R>,
-) -> Option<Columns<R>> {
+    precond: &mut M,
+    from_zero: bool,
+) -> Result<Option<Columns<R>>> {
     let inv_diag = &w.inverse_diagonal;
     let inv_root = &w.inverse_root_mass;
     let mut rz = [0.0; R];
@@ -119,18 +163,26 @@ fn start<const R: usize>(
         for j in 0..r.len() {
             for c in 0..R {
                 z[j][c] = inv_diag[j] * r[j][c];
-                rz[c] += r[j][c] * z[j][c];
+                if M::JACOBI {
+                    rz[c] += r[j][c] * z[j][c];
+                }
                 inf[c] = inf[c].max(r[j][c].abs() * inv_root[j]);
                 zinf[c] = zinf[c].max(z[j][c].abs());
             }
         }
     }
-    work.x.fill([0.0; R]);
+    if !M::JACOBI {
+        precond.correct(&work.r, &mut work.z)?;
+        rz = dot::<R>(&work.r, &work.z, &mut work.partials);
+    }
+    if from_zero {
+        work.x.fill([0.0; R]);
+    }
     let mut active = [false; R];
     let mut progress = [0.0_f64; R];
     for c in 0..R {
         if !inf[c].is_finite() || !rz[c].is_finite() || !zinf[c].is_finite() {
-            return None;
+            return Ok(None);
         }
         progress[c] = targets.goal(inf[c], zinf[c], c);
         active[c] = progress[c] > 1.0;
@@ -143,14 +195,18 @@ fn start<const R: usize>(
     // The best iterate meeting the acceptance rule, per column (`xs`).
     let mut kept = [false; R];
     let mut kept_measure = [f64::INFINITY; R];
-    work.xs.fill([0.0; R]);
+    if from_zero {
+        work.xs.fill([0.0; R]);
+    } else {
+        work.xs.copy_from_slice(&work.x);
+    }
     for c in 0..R {
         if active[c] && targets.accepted(inf[c], zinf[c], c) {
             kept[c] = true;
             kept_measure[c] = progress[c];
         }
     }
-    Some(Columns {
+    Ok(Some(Columns {
         active,
         rz,
         best: progress,
@@ -160,13 +216,18 @@ fn start<const R: usize>(
         kept_checkpoint: progress,
         accepted: 0,
         floor: [false; R],
-    })
+    }))
 }
 
 /// `x += alpha p`, `r -= alpha q`, `z = M^-1 r` with `q = S p` in the first
-/// lane; returns `r'z`, `max |r_j| / sqrt(m_j)` and `max |z_j|` per RHS, as
-/// plain sums and maxima over fixed chunks combined in chunk order.
-fn step<const R: usize>(w: &Weights, work: &mut Work<R>, alpha: [f64; R]) -> [[f64; R]; 3] {
+/// lane; returns `r'z`, `max |r_j| / sqrt(m_j)` and `max |D^-1 r|_j` per RHS,
+/// as plain sums and maxima over fixed chunks combined in chunk order.
+fn step<const R: usize, M: Precondition<R>>(
+    w: &Weights,
+    work: &mut Work<R>,
+    alpha: [f64; R],
+    precond: &mut M,
+) -> Result<[[f64; R]; 3]> {
     let m = work.x.len();
     let serial = m * R < PARALLEL_WORK;
     let inv_diag = &w.inverse_diagonal;
@@ -193,7 +254,9 @@ fn step<const R: usize>(w: &Weights, work: &mut Work<R>, alpha: [f64; R]) -> [[f
                 x[k][c] += alpha[c] * p[j][c];
                 r[k][c] -= alpha[c] * q[j][c];
                 z[k][c] = inv_diag[j] * r[k][c];
-                s[c] += r[k][c] * z[k][c];
+                if M::JACOBI {
+                    s[c] += r[k][c] * z[k][c];
+                }
                 h[c] = h[c].max(r[k][c].abs() * inv_root[j]);
                 hz[c] = hz[c].max(z[k][c].abs());
             }
@@ -223,7 +286,11 @@ fn step<const R: usize>(w: &Weights, work: &mut Work<R>, alpha: [f64; R]) -> [[f
             fold(slot);
         }
     }
-    [next, inf, zinf]
+    if !M::JACOBI {
+        precond.correct(&work.r, &mut work.z)?;
+        next = dot::<R>(&work.r, &work.z, &mut work.partials);
+    }
+    Ok([next, inf, zinf])
 }
 
 /// `p = z + beta p` on the columns of `mask`, zero elsewhere.
@@ -285,36 +352,39 @@ fn advance<const R: usize>(
     Some(beta)
 }
 
-/// Lockstep Jacobi-preconditioned CG on `S x = r0` (r0 already in `work.r`).
-/// A column stops when its largest scaled moment `|r_j| / sqrt(m_j)` is at
-/// most its goal and, when a coefficient goal is given, its largest Jacobi
-/// estimate `|r_j| / d_j` is at most that goal. A column whose curvature
-/// vanishes, whose progress stalls or that reaches the iteration ceiling
-/// returns to its best iterate that met the acceptance rule; without one the
-/// route declines.
-pub(super) fn pcg<const R: usize, const NB: usize, const UNIT: bool>(
+/// Lockstep preconditioned CG on `S x = r0` from `x = 0` (`from_zero`) or
+/// from the current iterate, with `r0 = g - S x` already in `work.r`; counts
+/// add to `tally`. A column stops when its largest scaled moment
+/// `|r_j| / sqrt(m_j)` is at most its goal and, when a coefficient goal is
+/// given, its largest Jacobi estimate `|r_j| / d_j` is at most that goal
+/// (whatever the preconditioner). A column whose curvature vanishes, whose
+/// progress stalls or that reaches the iteration ceiling returns to its best
+/// iterate that met the acceptance rule; without one the route declines.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn pcg<const R: usize, const NB: usize, const UNIT: bool, M: Precondition<R>>(
     st: &Structure,
     w: &Weights,
     work: &mut Work<R>,
     targets: &Targets<R>,
     cap: usize,
     cancel: &Cancel<'_>,
+    precond: &mut M,
+    from_zero: bool,
+    tally: &mut Tally<R>,
 ) -> Result<Solve<R>> {
-    let Some(mut state) = start(w, work, targets) else {
+    let Some(mut state) = start(w, work, targets, precond, from_zero)? else {
         return Ok(Solve::Declined("nonfinite initial reduced residual"));
     };
     let mut iterations = 0;
-    let mut column_iterations = 0;
-    let mut per_column = [0_usize; R];
     while state.active.contains(&true) {
         if iterations >= cap {
             if !state.fall_back(state.active, &mut work.x, &work.xs) {
-                return Ok(Solve::Declined("iteration ceiling"));
+                return Ok(Solve::Declined(CEILING));
             }
             break;
         }
-        column_iterations += state.active.iter().filter(|&&on| on).count();
-        for (count, &on) in per_column.iter_mut().zip(&state.active) {
+        tally.column_iterations += state.active.iter().filter(|&&on| on).count();
+        for (count, &on) in tally.per_column.iter_mut().zip(&state.active) {
             *count += usize::from(on);
         }
         cancel.check()?;
@@ -339,8 +409,9 @@ pub(super) fn pcg<const R: usize, const NB: usize, const UNIT: bool>(
         if !state.active.contains(&true) {
             break;
         }
-        let measures = step(w, work, alpha);
+        let measures = step(w, work, alpha, precond)?;
         iterations += 1;
+        tally.iterations += 1;
         let Some(beta) = advance(&mut state, targets, work, measures) else {
             return Ok(Solve::Declined("nonfinite reduced residual"));
         };
@@ -360,7 +431,7 @@ pub(super) fn pcg<const R: usize, const NB: usize, const UNIT: bool>(
                     state.active[c] && (state.kept[c] || long) && state.best[c] > 0.5 * reference;
             }
             if !state.fall_back(stalled, &mut work.x, &work.xs) {
-                return Ok(Solve::Declined("stalled reduced recurrence"));
+                return Ok(Solve::Declined(STALLED));
             }
             state.kept_checkpoint = state.best;
             if long {
@@ -370,10 +441,7 @@ pub(super) fn pcg<const R: usize, const NB: usize, const UNIT: bool>(
         update_directions(work, state.active, beta);
     }
     Ok(Solve::Converged {
-        iterations,
-        column_iterations,
         accepted: state.accepted,
-        per_column,
         floor: state.floor,
     })
 }

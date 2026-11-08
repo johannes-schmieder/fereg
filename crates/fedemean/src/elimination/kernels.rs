@@ -335,6 +335,24 @@ pub(super) fn dot<const R: usize>(
     total
 }
 
+/// `to -= from`.
+pub(super) fn subtract<const R: usize>(to: &mut [[f64; R]], from: &[[f64; R]]) {
+    let body = |to: &mut [[f64; R]], from: &[[f64; R]]| {
+        for (t, f) in to.iter_mut().zip(from) {
+            for c in 0..R {
+                t[c] -= f[c];
+            }
+        }
+    };
+    if to.len() * R < PARALLEL_WORK {
+        body(to, from);
+    } else {
+        to.par_chunks_mut(CHUNK)
+            .zip(from.par_chunks(CHUNK))
+            .for_each(|(to, from)| body(to, from));
+    }
+}
+
 /// `to[.][c] = from[.][c]` for the columns of `mask`.
 pub(super) fn copy_columns<const R: usize>(
     to: &mut [[f64; R]],

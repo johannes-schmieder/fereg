@@ -11,8 +11,14 @@ publish = false
 [lib]
 path = "src/lib.rs"
 
+[features]
+# CMG local solves on retained diagonal blocks (same pinned revision and
+# features as fereg-core, so the lock file gains no package).
+cmg = ["dep:cmg"]
+
 [dependencies]
 rayon = "1.12"
+cmg = { git = "https://github.com/johannes-schmieder/CMG", rev = "e5613e81fb3b03c78de98658b372646fa802aabb", features = ["parallel", "experimental-components"], optional = true }
 
 [lints]
 workspace = true

@@ -7,7 +7,9 @@
 //! is applied implicitly. Each eliminated group gathers the remaining
 //! coefficients of its distinct remaining-code cells, subtracts their weighted
 //! group mean and scatters the weighted deviations back. Up to eight
-//! right-hand sides advance in lockstep through one traversal. The eliminated
+//! right-hand sides advance in lockstep through one traversal, preconditioned
+//! by the inverse diagonal of `S` or by block-Jacobi over the retained
+//! effects ([`blocks`]). The eliminated
 //! coefficients follow by back-substitution, and one observation pass forms
 //! the residual while it recomputes every remaining level's true weighted
 //! moment.
@@ -21,7 +23,11 @@
 //! recomputed. A stall, an admission refusal or a numerical breakdown before
 //! the residual pass returns the untouched input to the caller's route; a
 //! failed certificate after it retries in place, since projecting a partially
-//! residualized column yields the same residual.
+//! residualized column yields the same residual. With the escalation
+//! fallback, a Jacobi recurrence that stalls or reaches the iteration
+//! ceiling first restarts with block-Jacobi from its current iterate on the
+//! true residual `g - S x` (the columns are still untouched, so `g` is
+//! formed again).
 //!
 //! Memory: every allocation is fallible. The engine keeps the geometry, the
 //! weight state and one workspace per batch width, so repeated projections of
@@ -31,8 +37,9 @@ use crate::certificate::{Certificate, MomentFold};
 use crate::design::{Design, Members};
 use crate::error::{Error, Result};
 use crate::projector::{
-    CoefficientsMut, ColumnReport, ColumnStatus, ColumnsMut, Decline, Facts, Gram, InputState,
-    MethodUsed, Outcome, PreconditionerUsed, ReductionUsed, Report, Request, Route,
+    BlockSpec, Choice, CoefficientsMut, ColumnReport, ColumnStatus, ColumnsMut, Decline, Facts,
+    Fallback, Gram, InputState, MethodUsed, Outcome, Preconditioner, PreconditionerUsed,
+    ReductionUsed, Report, Request, Route,
 };
 use crate::weights::{Validated as ValidatedWeights, Weights as InputWeights};
 use rayon::prelude::*;
@@ -63,17 +70,19 @@ const WITHIN_FLOOR: f64 = 1.0 / (1_u64 << 30) as f64;
 /// (where a column may stop when its recurrence reaches its rounding floor).
 const ACCEPT_FRACTION: f64 = 0.5;
 
-#[allow(dead_code)] // Stage 3: block-Jacobi local solves.
 pub(crate) mod block;
+mod blocks;
+mod dense;
 mod kernels;
 mod passes;
 mod pcg;
 pub(crate) mod structure;
 mod weights;
 
-use kernels::{Ctx, Slotted, Work, WorkSlots};
-use passes::{recover, residualize, rhs};
-use pcg::{pcg, Solve, Targets};
+use blocks::Blocks;
+use kernels::{apply, subtract, Ctx, Slotted, Work, WorkSlots};
+use passes::{recover, residualize, rhs, RhsNorms};
+use pcg::{pcg, Jacobi, Solve, Tally, Targets, CEILING, STALLED};
 use structure::{filled, reserve, with_capacity, Structure};
 use weights::{validate_keyed, WeightKey, Weights};
 
@@ -101,6 +110,9 @@ pub(crate) struct Engine {
     /// Weights keyed by the borrowed weight slice (address, length, digest);
     /// `None` key is unit weights.
     weights: Option<(WeightKey, Weights)>,
+    /// Counts the weight states prepared (the blocks' build key).
+    generation: u64,
+    blocks: Blocks,
     work: WorkSlots,
     gram: Gram,
     gram_ready: bool,
@@ -117,6 +129,7 @@ pub(crate) struct Call<'c, 'd> {
     pub(crate) design: &'d Design<'d>,
     pub(crate) members: Option<Members<'d>>,
     pub(crate) width: usize,
+    pub(crate) choice: Choice,
     pub(crate) cancel: Cancel<'c>,
 }
 
@@ -193,14 +206,15 @@ impl Engine {
         let st = self.structure.as_ref().expect("structure");
         let members = call.members.expect("structure has members");
         let (validated, key) = validate_keyed(weights, values.nobs())?;
-        if request
-            .memory_limit
-            .is_some_and(|limit| admission_bytes(st, None, values.ncols()) > limit)
-        {
+        if request.memory_limit.is_some_and(|limit| {
+            admission_bytes(st, None, values.ncols()) + explicit_block_bytes(st, call.choice)
+                > limit
+        }) {
             return Ok(untouched(Decline::MemoryLimit, facts));
         }
         if self.weights.as_ref().is_none_or(|(k, _)| *k != key) {
             let recycled = self.weights.take().map(|(_, w)| w);
+            self.generation += 1;
             match Weights::prepare(st, members, validated, recycled)? {
                 Some(w) => self.weights = Some((key, w)),
                 None => return Ok(untouched(Decline::Weights, facts)),
@@ -214,6 +228,7 @@ impl Engine {
         }
         let outputs = Outputs {
             slots: &mut self.work,
+            blocks: &mut self.blocks,
             gram: request.residual_gram.then_some(&mut self.gram),
             norms: &mut self.norms,
             columns: &mut self.columns,
@@ -227,6 +242,8 @@ impl Engine {
             weights: validated,
             bytes,
             request,
+            choice: call.choice,
+            generation: self.generation,
             cancel: call.cancel,
         };
         let (outcome, gram) = project(&job, &mut values, coefficients, outputs, facts)?;
@@ -353,6 +370,14 @@ fn solve_bytes(st: &Structure, nrhs: usize) -> u128 {
     8 * r * (6 * m + lanes * m + scratch + st.segments as u128 + partials)
 }
 
+/// Bytes of the blocks of an explicit [`Preconditioner::BlockJacobi`].
+pub(crate) fn explicit_block_bytes(st: &Structure, choice: Choice) -> u128 {
+    match choice.preconditioner {
+        Preconditioner::BlockJacobi(spec) => blocks::bound(st, &spec),
+        _ => 0,
+    }
+}
+
 pub(crate) fn admission_bytes(st: &Structure, weights: Option<&Weights>, nrhs: usize) -> u128 {
     let weight_bytes = weights.map_or_else(
         || {
@@ -379,12 +404,16 @@ struct Job<'j, 'c> {
     weights: ValidatedWeights<'j>,
     bytes: u128,
     request: &'j Request,
+    choice: Choice,
+    /// The weight state's generation (the blocks' build key).
+    generation: u64,
     cancel: Cancel<'c>,
 }
 
 /// The engine's reusable outputs and workspaces lent to one projection.
 struct Outputs<'c> {
     slots: &'c mut WorkSlots,
+    blocks: &'c mut Blocks,
     /// Requested residual Gram (formed only for at most [`BATCH`] columns).
     gram: Option<&'c mut Gram>,
     /// Residual norms, one per column.
@@ -412,28 +441,68 @@ struct Formed {
     floor: [bool; BATCH],
     /// Whether the residual Gram was formed.
     gram: bool,
+    /// Whether the recurrence used the blocks (explicitly or escalated).
+    blocks: bool,
 }
 
-/// One batch `first..first+R`: RHS and recurrence read `values`; only a
-/// converged recurrence forms the residual in place.
-#[allow(clippy::too_many_arguments)]
-fn run<const R: usize, const NB: usize, const UNIT: bool, const WEIGHTED: bool>(
-    ctx: &Ctx<'_, '_, NB>,
-    values: &mut ColumnsMut<'_>,
-    first: usize,
-    reference: Option<&[f64]>,
+/// How one batch preconditions its recurrence.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Mode {
+    Jacobi,
+    /// Jacobi, escalating to the blocks when the recurrence stalls or
+    /// reaches the iteration ceiling.
+    Escalate,
+    Blocks,
+}
+
+/// The fixed choices of one projection's batches.
+struct Plan<'p> {
     tolerance: f64,
     cap: usize,
-    facts: &mut Facts,
-    coefficients: Option<&mut CoefficientsMut<'_>>,
-    slots: &mut WorkSlots,
-    gram: Option<&mut Gram>,
-    cancel: &Cancel<'_>,
+    cancel: Cancel<'p>,
+    /// The blocks of [`Mode::Blocks`] and of escalations.
+    spec: BlockSpec,
+    /// The weight state's generation (the blocks' build key).
+    generation: u64,
+    /// Escalations start only within this workspace size.
+    memory_limit: Option<u128>,
+    bytes: u128,
+}
+
+/// One batch `first..first+R` of the columns and its outputs.
+struct Batch<'b, 'v, 'c> {
+    values: &'b mut ColumnsMut<'v>,
+    first: usize,
+    reference: Option<&'b [f64]>,
+    coefficients: Option<&'b mut CoefficientsMut<'c>>,
+    gram: Option<&'b mut Gram>,
+    mode: Mode,
+}
+
+/// The engine's solve state lent to one batch.
+struct Lent<'l> {
+    slots: &'l mut WorkSlots,
+    blocks: &'l mut Blocks,
+    facts: &'l mut Facts,
+}
+
+/// One batch: RHS and recurrence read the columns; only a converged
+/// recurrence forms the residual in place.
+fn run<const R: usize, const NB: usize, const UNIT: bool, const WEIGHTED: bool>(
+    ctx: &Ctx<'_, '_, NB>,
+    plan: &Plan<'_>,
+    batch: Batch<'_, '_, '_>,
+    lent: Lent<'_>,
 ) -> Result<Step>
 where
     Work<R>: Slotted,
 {
     let st = ctx.st;
+    let Lent {
+        slots,
+        blocks,
+        facts,
+    } = lent;
     let slot = <Work<R> as Slotted>::slot(slots);
     if slot.as_ref().is_none_or(|work| !work.fits(st)) {
         *slot = None;
@@ -441,15 +510,76 @@ where
     }
     let work = slot.as_mut().expect("workspace");
     let started = Instant::now();
-    let norms = rhs::<R, NB, WEIGHTED>(ctx, values, first, work);
+    let norms = rhs::<R, NB, WEIGHTED>(ctx, batch.values, batch.first, work);
     std::mem::swap(&mut work.r, &mut work.lanes[0].acc);
     facts.rhs_seconds += started.elapsed().as_secs_f64();
+    let Some((scale, targets)) = targets::<R, NB>(ctx, &norms, batch.reference, plan.tolerance)
+    else {
+        return Ok(Step::Declined("RHS scale outside the plain-sum range"));
+    };
+    let mut tally = Tally::default();
+    let (solved, used) = solve::<R, NB, UNIT, WEIGHTED>(
+        ctx,
+        plan,
+        (batch.values, batch.first, batch.mode),
+        work,
+        blocks,
+        &targets,
+        &mut tally,
+        facts,
+    )?;
+    let floor = match solved {
+        Solve::Converged { accepted, floor } => {
+            facts.column_iterations += tally.column_iterations;
+            facts.accepted += accepted;
+            floor
+        }
+        Solve::Declined(reason) => return Ok(Step::Declined(reason)),
+    };
+    facts.iterations = facts.iterations.max(tally.iterations);
+    let started = Instant::now();
+    recover::<R, NB, UNIT>(st, ctx.w, work);
+    if let Some(coefficients) = batch.coefficients {
+        add_coefficients::<R>(st, work, coefficients, batch.first);
+    }
+    let formed = batch.gram.is_some();
+    let sq = residualize::<R, NB, WEIGHTED>(ctx, batch.values, batch.first, work, batch.gram)?;
+    let certified = certify_batch::<R>(ctx.w, &work.lanes[0].acc, sq, scale, plan.tolerance);
+    facts.residual_seconds += started.elapsed().as_secs_f64();
+    let mut out = Formed {
+        certified: certified.fold,
+        norms: [0.0; BATCH],
+        reference: [0.0; BATCH],
+        relative: [0.0; BATCH],
+        scales: [0.0; BATCH],
+        iterations: [0; BATCH],
+        floor: [false; BATCH],
+        gram: formed,
+        blocks: used,
+    };
+    out.norms[..R].copy_from_slice(&certified.norms);
+    out.reference[..R].copy_from_slice(&scale);
+    out.relative[..R].copy_from_slice(&certified.relative);
+    out.scales[..R].copy_from_slice(&certified.scales);
+    out.iterations[..R].copy_from_slice(&tally.per_column);
+    out.floor[..R].copy_from_slice(&floor);
+    Ok(Step::Formed(out))
+}
+
+/// Certificate scales and stopping targets of one batch; `None` when a
+/// column's scale is outside the plain-sum range.
+fn targets<const R: usize, const NB: usize>(
+    ctx: &Ctx<'_, '_, NB>,
+    norms: &RhsNorms<R>,
+    reference: Option<&[f64]>,
+    tolerance: f64,
+) -> Option<([f64; R], Targets<R>)> {
     let mut scale = [0.0; R];
     let mut within = [0.0; R];
     for j in 0..R {
         let norm = norms.sq[j].sqrt();
         if !norm.is_finite() || (norms.big[j] > 0.0 && !(1e-150..=1e150).contains(&norm)) {
-            return Ok(Step::Declined("RHS scale outside the plain-sum range"));
+            return None;
         }
         scale[j] = reference.map_or(norm, |r| r[j]);
         // The reduced problem sees only the column without its eliminated
@@ -486,73 +616,108 @@ where
             t[j] = targets.goal[j] / root_total;
         }
     }
+    Some((scale, targets))
+}
+
+/// The recurrence of one batch in its mode. An escalating batch whose Jacobi
+/// recurrence stalls or reaches the ceiling (never one that breaks down)
+/// continues with the blocks from its current iterate, within the memory
+/// limit. Also reports whether the blocks were used.
+#[allow(clippy::too_many_arguments)]
+fn solve<const R: usize, const NB: usize, const UNIT: bool, const WEIGHTED: bool>(
+    ctx: &Ctx<'_, '_, NB>,
+    plan: &Plan<'_>,
+    (values, first, mode): (&ColumnsMut<'_>, usize, Mode),
+    work: &mut Work<R>,
+    blocks: &mut Blocks,
+    targets: &Targets<R>,
+    tally: &mut Tally<R>,
+    facts: &mut Facts,
+) -> Result<(Solve<R>, bool)> {
+    let (st, w) = (ctx.st, ctx.w);
+    let (cap, cancel) = (plan.cap, &plan.cancel);
+    if mode == Mode::Blocks {
+        build(st, w, plan, blocks, facts)?;
+        let started = Instant::now();
+        let solved =
+            pcg::<R, NB, UNIT, Blocks>(st, w, work, targets, cap, cancel, blocks, true, tally)?;
+        facts.pcg_seconds += started.elapsed().as_secs_f64();
+        return Ok((solved, true));
+    }
     let started = Instant::now();
-    let solved = pcg::<R, NB, UNIT>(st, ctx.w, work, &targets, cap, cancel)?;
+    let solved =
+        pcg::<R, NB, UNIT, Jacobi>(st, w, work, targets, cap, cancel, &mut Jacobi, true, tally)?;
     facts.pcg_seconds += started.elapsed().as_secs_f64();
-    let (iterations, per_column, floor) = match solved {
-        Solve::Converged {
-            iterations,
-            column_iterations,
-            accepted,
-            per_column,
-            floor,
-        } => {
-            facts.column_iterations += column_iterations;
-            facts.accepted += accepted;
-            (iterations, per_column, floor)
-        }
-        Solve::Declined(reason) => return Ok(Step::Declined(reason)),
-    };
-    facts.iterations = facts.iterations.max(iterations);
+    let escalate = mode == Mode::Escalate
+        && matches!(solved, Solve::Declined(STALLED | CEILING))
+        && plan
+            .memory_limit
+            .is_none_or(|limit| plan.bytes + blocks::bound(st, &plan.spec) <= limit);
+    if !escalate {
+        return Ok((solved, false));
+    }
+    build(st, w, plan, blocks, facts)?;
+    // A fresh recurrence from the current iterate on the true residual
+    // `g - S x`, with `g` formed again from the untouched columns.
     let started = Instant::now();
-    recover::<R, NB, UNIT>(st, ctx.w, work);
-    if let Some(batch) = coefficients {
-        // Corrections add their increments to the coefficients of the
-        // preceding solve, so the sum fits the original columns.
-        let per = batch.layout.per_rhs;
-        for j in 0..R {
-            let base = (first + j) * per;
-            let start = base + batch.layout.effect_offsets[st.eliminated];
-            for (value, alpha) in batch.values[start..start + st.segments]
+    rhs::<R, NB, WEIGHTED>(ctx, values, first, work);
+    std::mem::swap(&mut work.r, &mut work.lanes[0].acc);
+    facts.rhs_seconds += started.elapsed().as_secs_f64();
+    let started = Instant::now();
+    apply::<R, NB, UNIT>(st, w, &work.x, &mut work.lanes);
+    subtract(&mut work.r, &work.lanes[0].acc);
+    let solved =
+        pcg::<R, NB, UNIT, Blocks>(st, w, work, targets, cap, cancel, blocks, false, tally)?;
+    facts.pcg_seconds += started.elapsed().as_secs_f64();
+    facts.escalations += 1;
+    Ok((solved, true))
+}
+
+/// Build the blocks for the current weight state unless they are current.
+fn build(
+    st: &Structure,
+    w: &Weights,
+    plan: &Plan<'_>,
+    blocks: &mut Blocks,
+    facts: &mut Facts,
+) -> Result<()> {
+    let started = Instant::now();
+    blocks.ensure(st, w, plan.spec, plan.generation, &plan.cancel)?;
+    facts.block_seconds += started.elapsed().as_secs_f64();
+    Ok(())
+}
+
+/// Add the batch's coefficient increments. Corrections add their increments
+/// to the coefficients of the preceding solve, so the sum fits the original
+/// columns.
+fn add_coefficients<const R: usize>(
+    st: &Structure,
+    work: &Work<R>,
+    batch: &mut CoefficientsMut<'_>,
+    first: usize,
+) {
+    let per = batch.layout.per_rhs;
+    for j in 0..R {
+        let base = (first + j) * per;
+        let start = base + batch.layout.effect_offsets[st.eliminated];
+        for (value, alpha) in batch.values[start..start + st.segments]
+            .iter_mut()
+            .zip(&work.seg)
+        {
+            *value += alpha[j];
+        }
+        for (b, &effect) in st.blocks.iter().enumerate() {
+            let start = base + batch.layout.effect_offsets[effect];
+            let levels = batch.layout.level_counts[effect];
+            let offset = st.offsets[b] as usize;
+            for (value, x) in batch.values[start..start + levels]
                 .iter_mut()
-                .zip(&work.seg)
+                .zip(&work.x[offset..offset + levels])
             {
-                *value += alpha[j];
-            }
-            for (b, &effect) in st.blocks.iter().enumerate() {
-                let start = base + batch.layout.effect_offsets[effect];
-                let levels = batch.layout.level_counts[effect];
-                let offset = st.offsets[b] as usize;
-                for (value, x) in batch.values[start..start + levels]
-                    .iter_mut()
-                    .zip(&work.x[offset..offset + levels])
-                {
-                    *value += x[j];
-                }
+                *value += x[j];
             }
         }
     }
-    let formed = gram.is_some();
-    let sq = residualize::<R, NB, WEIGHTED>(ctx, values, first, work, gram)?;
-    let certified = certify_batch::<R>(ctx.w, &work.lanes[0].acc, sq, scale, tolerance);
-    facts.residual_seconds += started.elapsed().as_secs_f64();
-    let mut out = Formed {
-        certified: certified.fold,
-        norms: [0.0; BATCH],
-        reference: [0.0; BATCH],
-        relative: [0.0; BATCH],
-        scales: [0.0; BATCH],
-        iterations: [0; BATCH],
-        floor: [false; BATCH],
-        gram: formed,
-    };
-    out.norms[..R].copy_from_slice(&certified.norms);
-    out.reference[..R].copy_from_slice(&scale);
-    out.relative[..R].copy_from_slice(&certified.relative);
-    out.scales[..R].copy_from_slice(&certified.scales);
-    out.iterations[..R].copy_from_slice(&per_column);
-    out.floor[..R].copy_from_slice(&floor);
-    Ok(Step::Formed(out))
 }
 
 struct Certified<const R: usize> {
@@ -615,78 +780,22 @@ fn certify_batch<const R: usize>(
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 fn dispatch<const NB: usize>(
     ctx: &Ctx<'_, '_, NB>,
-    values: &mut ColumnsMut<'_>,
-    first: usize,
+    plan: &Plan<'_>,
     width: usize,
-    reference: Option<&[f64]>,
-    tolerance: f64,
-    cap: usize,
-    facts: &mut Facts,
-    coefficients: Option<&mut CoefficientsMut<'_>>,
-    slots: &mut WorkSlots,
-    gram: Option<&mut Gram>,
-    cancel: &Cancel<'_>,
+    batch: Batch<'_, '_, '_>,
+    lent: Lent<'_>,
 ) -> Result<Step> {
     let unit = ctx.w.cell.is_empty();
     let weighted = ctx.weights.values.is_some();
     macro_rules! go {
         ($r:literal) => {
             match (unit, weighted) {
-                (true, false) => run::<$r, NB, true, false>(
-                    ctx,
-                    values,
-                    first,
-                    reference,
-                    tolerance,
-                    cap,
-                    facts,
-                    coefficients,
-                    slots,
-                    gram,
-                    cancel,
-                ),
-                (true, true) => run::<$r, NB, true, true>(
-                    ctx,
-                    values,
-                    first,
-                    reference,
-                    tolerance,
-                    cap,
-                    facts,
-                    coefficients,
-                    slots,
-                    gram,
-                    cancel,
-                ),
-                (false, false) => run::<$r, NB, false, false>(
-                    ctx,
-                    values,
-                    first,
-                    reference,
-                    tolerance,
-                    cap,
-                    facts,
-                    coefficients,
-                    slots,
-                    gram,
-                    cancel,
-                ),
-                (false, true) => run::<$r, NB, false, true>(
-                    ctx,
-                    values,
-                    first,
-                    reference,
-                    tolerance,
-                    cap,
-                    facts,
-                    coefficients,
-                    slots,
-                    gram,
-                    cancel,
-                ),
+                (true, false) => run::<$r, NB, true, false>(ctx, plan, batch, lent),
+                (true, true) => run::<$r, NB, true, true>(ctx, plan, batch, lent),
+                (false, false) => run::<$r, NB, false, false>(ctx, plan, batch, lent),
+                (false, true) => run::<$r, NB, false, true>(ctx, plan, batch, lent),
             }
         };
     }
@@ -730,6 +839,30 @@ fn project(
     }
 }
 
+/// The batches' fixed choices and the initial mode of every batch.
+fn plan_of<'p>(job: &Job<'_, 'p>) -> (Plan<'p>, Mode) {
+    let choice = job.choice;
+    let mode = match (choice.preconditioner, choice.fallback) {
+        (Preconditioner::BlockJacobi(_), _) => Mode::Blocks,
+        (Preconditioner::Auto, Fallback::Escalate) => Mode::Escalate,
+        _ => Mode::Jacobi,
+    };
+    let spec = match choice.preconditioner {
+        Preconditioner::BlockJacobi(spec) => spec,
+        _ => BlockSpec::default(),
+    };
+    let plan = Plan {
+        tolerance: job.request.tolerance,
+        cap: job.request.max_iterations.clamp(1, MAX_ITERATIONS),
+        cancel: job.cancel,
+        spec,
+        generation: job.generation,
+        memory_limit: job.request.memory_limit,
+        bytes: job.bytes,
+    };
+    (plan, mode)
+}
+
 fn project_nb<const NB: usize>(
     job: &Job<'_, '_>,
     values: &mut ColumnsMut<'_>,
@@ -742,6 +875,7 @@ fn project_nb<const NB: usize>(
     let ncols = values.ncols();
     let Outputs {
         slots,
+        blocks,
         gram,
         norms: residual_norms,
         columns,
@@ -758,8 +892,7 @@ fn project_nb<const NB: usize>(
         weights: job.weights,
         coefficient_accuracy: job.request.coefficient_stopping,
     };
-    let tolerance = job.request.tolerance;
-    let cap = job.request.max_iterations.clamp(1, MAX_ITERATIONS);
+    let (plan, initial) = plan_of(job);
     let started = Instant::now();
     let mut fold = MomentFold::default();
     residual_norms.clear();
@@ -770,42 +903,36 @@ fn project_nb<const NB: usize>(
     reserve(formed_scales, ncols)?;
     formed_scales.resize(ncols, f64::NAN);
     let mut gram_formed = false;
+    let mut used_blocks = false;
     let mut start = 0;
     while start < ncols {
         let width = (ncols - start).min(BATCH);
         let mut reference: Option<[f64; BATCH]> = None;
         let mut attempts = 0;
         let mut iterations = [0_usize; BATCH];
+        let mut mode = initial;
         loop {
-            let step = dispatch::<NB>(
-                &ctx,
-                values,
-                start,
-                width,
-                reference.as_ref().map(|r| &r[..width]),
-                tolerance,
-                cap,
-                &mut facts,
-                coefficients.as_mut(),
-                slots,
-                gram.as_deref_mut(),
-                &job.cancel,
-            )?;
-            match step {
+            let batch = Batch {
+                values: &mut *values,
+                first: start,
+                reference: reference.as_ref().map(|r| &r[..width]),
+                coefficients: coefficients.as_mut(),
+                gram: gram.as_deref_mut(),
+                mode,
+            };
+            let lent = Lent {
+                slots: &mut *slots,
+                blocks: &mut *blocks,
+                facts: &mut facts,
+            };
+            match dispatch::<NB>(&ctx, &plan, width, batch, lent)? {
                 Step::Declined(reason) => {
                     let input = if start > 0 || attempts > 0 {
                         same_projection(formed_scales)?
                     } else {
                         InputState::Untouched
                     };
-                    return Ok((
-                        Outcome::Declined {
-                            reason: Decline::Numerical(reason),
-                            input,
-                            facts: with_structure(facts, st, ncols),
-                        },
-                        false,
-                    ));
+                    return Ok(numerical(reason, input, facts, st, ncols));
                 }
                 Step::Formed(formed) => {
                     if attempts == 0 {
@@ -814,6 +941,11 @@ fn project_nb<const NB: usize>(
                     }
                     for (total, &count) in iterations.iter_mut().zip(&formed.iterations) {
                         *total += count;
+                    }
+                    // Corrections of an escalated batch keep the blocks.
+                    if formed.blocks {
+                        used_blocks = true;
+                        mode = Mode::Blocks;
                     }
                     if let Some(part) = &formed.certified {
                         fold.merge(part);
@@ -825,14 +957,9 @@ fn project_nb<const NB: usize>(
                     // The residual is a valid input with the same projection;
                     // correct it in place at the original scale.
                     if attempts == 2 {
-                        return Ok((
-                            Outcome::Declined {
-                                reason: Decline::Numerical("certificate failed after corrections"),
-                                input: same_projection(formed_scales)?,
-                                facts: with_structure(facts, st, ncols),
-                            },
-                            false,
-                        ));
+                        let input = same_projection(formed_scales)?;
+                        let reason = "certificate failed after corrections";
+                        return Ok(numerical(reason, input, facts, st, ncols));
                     }
                     attempts += 1;
                     facts.corrections += 1;
@@ -842,16 +969,16 @@ fn project_nb<const NB: usize>(
         }
         start += width;
     }
-    let certificate = fold.finish(tolerance)?;
+    let certificate = fold.finish(plan.tolerance)?;
     facts = with_structure(facts, st, ncols);
     if !certificate.passed {
-        return Ok((
-            Outcome::Declined {
-                reason: Decline::Numerical("combined certificate failed"),
-                input: same_projection(formed_scales)?,
-                facts,
-            },
-            false,
+        let input = same_projection(formed_scales)?;
+        return Ok(numerical(
+            "combined certificate failed",
+            input,
+            facts,
+            st,
+            ncols,
         ));
     }
     facts.solve_seconds = started.elapsed().as_secs_f64();
@@ -861,15 +988,39 @@ fn project_nb<const NB: usize>(
                 effect: st.eliminated,
             },
             method: MethodUsed::Pcg,
-            preconditioner: PreconditionerUsed::Jacobi,
-            escalations: 0,
+            preconditioner: if used_blocks {
+                PreconditionerUsed::Block(blocks.used())
+            } else {
+                PreconditionerUsed::Jacobi
+            },
+            escalations: u8::try_from(facts.escalations).unwrap_or(u8::MAX),
         },
         facts,
         certificate,
         weight_scale: job.w.raw_scale,
-        workspace_bytes: job.bytes,
+        workspace_bytes: job.bytes + if used_blocks { blocks.bytes() } else { 0 },
     };
     Ok((Outcome::Projected(report), gram_formed))
+}
+
+/// A numerical decline of the projection.
+fn numerical(
+    reason: &'static str,
+    input: InputState,
+    facts: Facts,
+    st: &Structure,
+    ncols: usize,
+) -> (Outcome, bool) {
+    let facts = with_structure(facts, st, ncols);
+    let reason = Decline::Numerical(reason);
+    (
+        Outcome::Declined {
+            reason,
+            input,
+            facts,
+        },
+        false,
+    )
 }
 
 fn column_report(formed: &Formed, iterations: &[usize; BATCH], j: usize) -> ColumnReport {

@@ -14,7 +14,10 @@
 //! cross blocks `S_bc` have mixed signs, so `S` itself is not a Laplacian for
 //! two or more retained effects; local solves only ever see `S_bb`.
 
-use crate::error::Result;
+use super::structure::{refill, Structure};
+use super::weights::Weights;
+use super::Cancel;
+use crate::error::{Error, Result};
 
 /// One retained block's Laplacian `S_bb`, as per-segment level sums.
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -43,4 +46,86 @@ pub(crate) trait LocalSolve: Send {
     fn apply(&mut self, r: &[f64], z: &mut [f64], width: usize) -> Result<()>;
     /// Bytes retained by the solve.
     fn bytes(&self) -> u128;
+}
+
+/// Unused level slot of [`BlockLaplacian::fill`].
+const FREE: u32 = u32::MAX;
+
+/// `values.push(value)`, growing the allocation fallibly (amortized).
+fn push<T>(values: &mut Vec<T>, value: T) -> Result<()> {
+    if values.len() == values.capacity() {
+        values
+            .try_reserve(1)
+            .map_err(|_| Error::OutOfMemory("unable to reserve a block Laplacian"))?;
+    }
+    values.push(value);
+    Ok(())
+}
+
+impl BlockLaplacian {
+    /// Form retained block `b`'s Laplacian for the current weight state in
+    /// place: per active segment, the cell weights summed by the block's
+    /// level, and `W_s` from the segment inverse. Segments with a single
+    /// level of the block add no edge and are left out. `slot` is level
+    /// scratch kept by the caller. Allocations are kept, and the entry
+    /// count depends on the structure only, so rebuilds for new weights
+    /// allocate nothing.
+    pub(crate) fn fill(
+        &mut self,
+        st: &Structure,
+        w: &Weights,
+        b: usize,
+        slot: &mut Vec<u32>,
+        cancel: &Cancel<'_>,
+    ) -> Result<()> {
+        let nb = st.blocks.len();
+        let offset = st.offsets[b] as usize;
+        let end = st.offsets.get(b + 1).map_or(st.reduced, |&o| o as usize);
+        self.levels = end - offset;
+        refill(slot, self.levels, FREE)?;
+        self.offsets.clear();
+        self.entries.clear();
+        self.totals.clear();
+        push(&mut self.offsets, 0)?;
+        let unit = w.cell.is_empty();
+        for (step, &s) in st.active.iter().enumerate() {
+            if step % 4096 == 0 {
+                cancel.check()?;
+            }
+            let s = s as usize;
+            let start = self.entries.len();
+            for c in st.seg_cells[s]..st.seg_cells[s + 1] {
+                let level = st.codes[c * nb + b] as usize - offset;
+                let a = if unit { 1.0 } else { w.cell[c] };
+                match slot[level] {
+                    FREE => {
+                        slot[level] = (self.entries.len() - start) as u32;
+                        push(&mut self.entries, (level as u32, a))?;
+                    }
+                    k => self.entries[start + k as usize].1 += a,
+                }
+            }
+            for &(level, _) in &self.entries[start..] {
+                slot[level as usize] = FREE;
+            }
+            if self.entries.len() - start < 2 {
+                self.entries.truncate(start);
+                continue;
+            }
+            push(&mut self.offsets, self.entries.len())?;
+            push(&mut self.totals, 1.0 / w.seg_inverse[s])?;
+        }
+        Ok(())
+    }
+
+    /// The `(level, a_sj)` entries of segment `s`.
+    pub(crate) fn segment(&self, s: usize) -> &[(u32, f64)] {
+        &self.entries[self.offsets[s]..self.offsets[s + 1]]
+    }
+
+    /// Bytes retained.
+    pub(crate) fn bytes(&self) -> u128 {
+        (self.offsets.capacity() * 8 + self.entries.capacity() * 16 + self.totals.capacity() * 8)
+            as u128
+    }
 }

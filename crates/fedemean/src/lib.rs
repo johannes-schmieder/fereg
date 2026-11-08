@@ -18,17 +18,25 @@
 //! - Categorical intercept designs with two to five effects and positive
 //!   weights.
 //! - Exact global elimination of the effect with the most levels, lockstep
-//!   PCG over up to eight columns with the Jacobi preconditioner of the
-//!   reduced (Schur) system.
-//! - Not yet: the full formulation without elimination, LSMR, Schwarz,
-//!   varying slopes, more than five effects. Designs outside the route are
-//!   declined ([`Outcome::Declined`]) for the caller's own solvers.
+//!   PCG over up to eight columns on the reduced (Schur) system with the
+//!   Jacobi preconditioner (the default) or block-Jacobi over the retained
+//!   effects ([`Preconditioner::BlockJacobi`]): exact grounded Cholesky
+//!   solves of small blocks and Jacobi on large ones.
+//! - [`Fallback::Escalate`]: a batch whose Jacobi recurrence stalls or
+//!   reaches the iteration ceiling continues with block-Jacobi from its
+//!   current iterate ([`Route::escalations`]).
+//! - Not yet: CMG local solves ([`LocalSolver::Cmg`]), the full formulation
+//!   without elimination, LSMR, Schwarz, varying slopes, more than five
+//!   effects. Designs outside the route are declined ([`Outcome::Declined`])
+//!   for the caller's own solvers.
 //!
 //! Projections run on the caller's current rayon pool.
 
 #![forbid(unsafe_code)]
 
 mod certificate;
+#[cfg(feature = "cmg")]
+pub(crate) mod cmg_local;
 mod design;
 mod elimination;
 mod error;
@@ -40,8 +48,9 @@ pub use certificate::Certificate;
 pub use design::{Design, Effect, Members};
 pub use error::Error;
 pub use projector::{
-    Choice, CoefficientLayout, CoefficientsMut, ColumnReport, ColumnStatus, ColumnsMut, Control,
-    Decline, Facts, Fallback, Gram, InputState, Method, MethodUsed, Outcome, Preconditioner,
-    PreconditionerUsed, Projector, Reduction, ReductionUsed, Report, Request, Route, Settings,
+    BlockSpec, BlockUsed, Choice, CoefficientLayout, CoefficientsMut, ColumnReport, ColumnStatus,
+    ColumnsMut, Control, Decline, Facts, Fallback, Gram, InputState, LocalSolver, LocalUsed,
+    Method, MethodUsed, Outcome, Preconditioner, PreconditionerUsed, Projector, Reduction,
+    ReductionUsed, Report, Request, Route, Settings,
 };
 pub use weights::Weights;

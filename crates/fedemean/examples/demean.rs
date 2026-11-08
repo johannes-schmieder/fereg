@@ -4,8 +4,12 @@
 //! ```text
 //! cargo run --release -p fedemean --example demean -- \
 //!     [--n 1000000] [--effects 2..5] [--cols 5] [--reps 5] [--threads 4] \
-//!     [--tolerance 1e-8] [--weights]
+//!     [--tolerance 1e-8] [--weights] [--precond auto|jacobi|block] \
+//!     [--fallback decline|escalate]
 //! ```
+//!
+//! `--precond block` is block-Jacobi with the default local solves (exact
+//! dense solves of small blocks, Jacobi on large ones).
 //!
 //! Effects, in order: worker, firm (with worker mobility), year, occupation,
 //! region. The first projection (`Projector::new` plus the first call, which
@@ -15,7 +19,8 @@
 //! one refreshes the weight state.
 
 use fedemean::{
-    ColumnsMut, Control, Design, Effect, Outcome, Projector, Request, Settings, Weights,
+    BlockSpec, Choice, ColumnsMut, Control, Design, Effect, Fallback, Outcome, Preconditioner,
+    Projector, Request, Settings, Weights,
 };
 use std::time::{Duration, Instant};
 
@@ -31,11 +36,13 @@ struct Args {
     threads: usize,
     tolerance: f64,
     weights: bool,
+    preconditioner: Preconditioner,
+    fallback: Fallback,
 }
 
 fn usage() -> &'static str {
     "usage: demean [--n N] [--effects 2..5] [--cols C] [--reps R] [--threads T] \
-     [--tolerance TOL] [--weights]"
+     [--tolerance TOL] [--weights] [--precond auto|jacobi|block] [--fallback decline|escalate]"
 }
 
 fn parse_args() -> Result<Args, String> {
@@ -56,6 +63,8 @@ fn parse_args() -> Result<Args, String> {
         threads: 4,
         tolerance: 1e-8,
         weights: false,
+        preconditioner: Preconditioner::Auto,
+        fallback: Fallback::Decline,
     };
     let mut iter = std::env::args().skip(1);
     while let Some(flag) = iter.next() {
@@ -67,6 +76,21 @@ fn parse_args() -> Result<Args, String> {
             "--threads" => args.threads = value(&mut iter, "--threads")?,
             "--tolerance" => args.tolerance = value(&mut iter, "--tolerance")?,
             "--weights" => args.weights = true,
+            "--precond" => {
+                args.preconditioner = match iter.next().as_deref() {
+                    Some("auto") => Preconditioner::Auto,
+                    Some("jacobi") => Preconditioner::Jacobi,
+                    Some("block") => Preconditioner::BlockJacobi(BlockSpec::default()),
+                    _ => return Err(format!("--precond: auto, jacobi or block\n{}", usage())),
+                }
+            }
+            "--fallback" => {
+                args.fallback = match iter.next().as_deref() {
+                    Some("decline") => Fallback::Decline,
+                    Some("escalate") => Fallback::Escalate,
+                    _ => return Err(format!("--fallback: decline or escalate\n{}", usage())),
+                }
+            }
             "--help" | "-h" => {
                 println!("{}", usage());
                 std::process::exit(0);
@@ -225,20 +249,27 @@ fn describe(label: &str, outcome: &Outcome, projector: &Projector<'_>, elapsed: 
         .fold(0.0_f64, |m, c| m.max(c.relative_moment));
     let facts = &report.facts;
     println!(
-        "{label}: {:.4} s  route {:?}/{:?}/{:?}  iterations {}  max relative moment {:.2e}  certificate {}",
+        "{label}: {:.4} s  route {:?}/{:?}/{:?}  escalations {}  iterations {}  \
+         max relative moment {:.2e}  certificate {}",
         elapsed.as_secs_f64(),
         report.route.reduction,
         report.route.method,
         report.route.preconditioner,
+        report.route.escalations,
         facts.iterations,
         moment,
-        if report.certificate.passed { "passed" } else { "failed" },
+        if report.certificate.passed {
+            "passed"
+        } else {
+            "failed"
+        },
     );
     println!(
-        "    structure {:.4} s  weights {:.4} s  rhs {:.4} s  pcg {:.4} s  residual {:.4} s  \
-         (cells {}, reduced {}, lanes {}, corrections {})",
+        "    structure {:.4} s  weights {:.4} s  blocks {:.4} s  rhs {:.4} s  pcg {:.4} s  \
+         residual {:.4} s  (cells {}, reduced {}, lanes {}, corrections {}, workspace {} MB)",
         facts.structure_seconds,
         facts.weights_seconds,
+        facts.block_seconds,
         facts.rhs_seconds,
         facts.pcg_seconds,
         facts.residual_seconds,
@@ -246,6 +277,7 @@ fn describe(label: &str, outcome: &Outcome, projector: &Projector<'_>, elapsed: 
         facts.reduced,
         facts.lanes,
         facts.corrections,
+        report.workspace_bytes / (1 << 20),
     );
     true
 }
@@ -270,7 +302,7 @@ fn run(args: &Args) -> Result<(), Error> {
         .collect();
     println!(
         "panel: n {}  effects {} ({})  cols {}  weights {}  threads {}  tolerance {:e}  \
-         generated in {:.2} s",
+         precond {:?}  fallback {:?}  generated in {:.2} s",
         args.n,
         args.effects,
         levels.join(", "),
@@ -278,6 +310,8 @@ fn run(args: &Args) -> Result<(), Error> {
         if args.weights { "varying" } else { "unit" },
         args.threads,
         args.tolerance,
+        args.preconditioner,
+        args.fallback,
         started.elapsed().as_secs_f64()
     );
 
@@ -295,7 +329,15 @@ fn run(args: &Args) -> Result<(), Error> {
         let mut data = original.clone();
 
         let started = Instant::now();
-        let mut projector = Projector::new(design, Settings::default());
+        let settings = Settings {
+            choice: Choice {
+                preconditioner: args.preconditioner,
+                fallback: args.fallback,
+                ..Choice::default()
+            },
+            ..Settings::default()
+        };
+        let mut projector = Projector::new(design, settings);
         let outcome = projector.project(
             if args.weights {
                 Weights::Values(&weights)

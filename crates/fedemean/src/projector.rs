@@ -134,9 +134,43 @@ pub enum Method {
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum Preconditioner {
+    /// Jacobi. With [`Fallback::Escalate`], a column batch whose Jacobi
+    /// recurrence stalls or reaches the iteration ceiling continues from its
+    /// current iterate with [`Preconditioner::BlockJacobi`] at the default
+    /// [`BlockSpec`].
     #[default]
     Auto,
     /// Inverse diagonal of the reduced matrix.
+    Jacobi,
+    /// Block-Jacobi over the retained effects: a local solve of each
+    /// retained effect's diagonal block of the reduced matrix (a weighted
+    /// graph Laplacian), from the first iteration.
+    BlockJacobi(BlockSpec),
+}
+
+/// Local solves of [`Preconditioner::BlockJacobi`].
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct BlockSpec {
+    /// The local solve of blocks above the dense limit.
+    pub large: LocalSolver,
+    /// Blocks with at most this many levels are solved exactly (a grounded
+    /// Cholesky factorization per connected component). `None`: automatic,
+    /// blocks of at most 256 levels, and of at most 1024 levels when the
+    /// dense solve costs no more than the reduced operator.
+    pub dense_max_levels: Option<usize>,
+}
+
+/// Local solve of a block above the dense limit.
+#[non_exhaustive]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum LocalSolver {
+    /// The best local solve this build has (currently [`LocalSolver::Jacobi`]).
+    #[default]
+    Auto,
+    /// Combinatorial multigrid (not available in this build:
+    /// [`Error::Unsupported`]).
+    Cmg,
+    /// The block's inverse diagonal (Jacobi on that block).
     Jacobi,
 }
 
@@ -147,6 +181,10 @@ pub enum Fallback {
     /// Hand the columns back to the caller ([`Outcome::Declined`]).
     #[default]
     Decline,
+    /// With [`Preconditioner::Auto`], escalate a batch whose recurrence
+    /// stalls or reaches the iteration ceiling (see [`Preconditioner::Auto`]);
+    /// decline when the escalated recurrence cannot finish either.
+    Escalate,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -260,6 +298,29 @@ pub enum MethodUsed {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PreconditionerUsed {
     Jacobi,
+    /// Block-Jacobi, one entry per retained effect in effect order.
+    Block([Option<BlockUsed>; MAX_BLOCKS]),
+}
+
+/// One retained effect's block of a block-Jacobi preconditioner.
+#[non_exhaustive]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BlockUsed {
+    /// The design effect.
+    pub effect: usize,
+    pub levels: usize,
+    pub local: LocalUsed,
+}
+
+/// The local solve of one block.
+#[non_exhaustive]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LocalUsed {
+    Cmg,
+    /// Exact: grounded Cholesky factorization per connected component.
+    Dense,
+    /// The block's inverse diagonal.
+    Jacobi,
 }
 
 /// The route actually used.
@@ -268,7 +329,9 @@ pub enum PreconditionerUsed {
 pub struct Route {
     pub reduction: ReductionUsed,
     pub method: MethodUsed,
+    /// Block-Jacobi when any batch used it (explicitly or escalated).
     pub preconditioner: PreconditionerUsed,
+    /// Column batches that escalated (saturating).
     pub escalations: u8,
 }
 
@@ -276,7 +339,8 @@ pub struct Route {
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct Facts {
-    /// Largest iteration count over the column batches.
+    /// Largest iteration count over the column batches (an escalated batch
+    /// counts both of its recurrences).
     pub iterations: usize,
     pub column_iterations: usize,
     /// Columns accepted at their rounding floor.
@@ -293,6 +357,10 @@ pub struct Facts {
     pub pcg_seconds: f64,
     pub residual_seconds: f64,
     pub solve_seconds: f64,
+    /// Column batches that escalated to block-Jacobi.
+    pub escalations: usize,
+    /// Building block-Jacobi local solves.
+    pub block_seconds: f64,
 }
 
 #[non_exhaustive]
@@ -412,6 +480,7 @@ impl<'a> Projector<'a> {
             design,
             members: Some(members),
             width: lane_width(settings.lanes),
+            choice: settings.choice,
             cancel: Cancel(control.cancel),
         })
     }
@@ -429,6 +498,15 @@ impl<'a> Projector<'a> {
         if !(request.tolerance.is_finite() && request.tolerance > 0.0) {
             return Err(Error::InvalidInput("projection tolerance is invalid"));
         }
+        if let Preconditioner::BlockJacobi(BlockSpec {
+            large: LocalSolver::Cmg,
+            ..
+        }) = self.settings.choice.preconditioner
+        {
+            return Err(Error::Unsupported(
+                "CMG local solves are not available in this build",
+            ));
+        }
         if let Some(coefficients) = &coefficients {
             coefficients.check(&self.design, columns.ncols())?;
         }
@@ -444,6 +522,7 @@ impl<'a> Projector<'a> {
                 design,
                 members,
                 width: lane_width(settings.lanes),
+                choice: settings.choice,
                 cancel: Cancel(control.cancel),
             },
             weights,
@@ -488,12 +567,14 @@ impl<'a> Projector<'a> {
     }
 
     /// Bytes a projection of `ncols` columns needs beyond the caller's data,
-    /// once the structure exists.
+    /// once the structure exists (escalations excluded: they only start
+    /// within [`Request::memory_limit`]).
     #[must_use]
     pub fn admission_bytes(&self, ncols: usize) -> Option<u128> {
-        self.engine
-            .structure()
-            .map(|st| elimination::admission_bytes(st, None, ncols))
+        self.engine.structure().map(|st| {
+            elimination::admission_bytes(st, None, ncols)
+                + elimination::explicit_block_bytes(st, self.settings.choice)
+        })
     }
 }
 
