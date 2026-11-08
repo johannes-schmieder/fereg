@@ -4235,7 +4235,8 @@ where
     }
     // Unit mass sums exactly to N through 2^53.
     let unit = weights.values.is_none() && (nrows as u128) <= (1_u128 << 53);
-    let parts: Vec<Result<(f64, f64, f64, f64, bool)>> = (0..nrows.div_ceil(MEAN_ROWS))
+    type Partial = (f64, f64, f64, f64, bool);
+    let parts: Vec<Result<Partial>> = (0..nrows.div_ceil(MEAN_ROWS))
         .into_par_iter()
         .map(|chunk| {
             let (mut numerator, mut numerator_correction) = (0.0_f64, 0.0_f64);

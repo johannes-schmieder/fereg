@@ -515,6 +515,7 @@ impl Weights {
                     let mut total = 0.0;
                     touched.clear();
                     let tag = s as u32;
+                    #[allow(clippy::needless_range_loop)]
                     for c in c0..c1 {
                         let w = if unit { 1.0 } else { cell[c] };
                         total += w;
@@ -599,15 +600,13 @@ impl Weights {
 pub(crate) struct Request {
     /// Also return the FE coefficients whose fit forms the residual.
     pub(crate) retain_coefficients: bool,
-    /// Reserved: the weight state is keyed by a digest of the weight bits,
-    /// so refilled buffers are always detected.
-    pub(crate) fresh_weights: bool,
     /// Also bound every level's Jacobi coefficient-error estimate (callers
     /// that check fitted predictors row by row, such as PPML).
     pub(crate) coefficient_accuracy: bool,
 }
 
 /// Outcome of one projection request.
+#[allow(clippy::large_enum_variant)]
 pub(crate) enum Outcome<V> {
     Done(CertifiedBorrowedMap),
     /// The route declined; see [`project`] for the state of the input.

@@ -1057,7 +1057,6 @@ impl<'a> FeSession<'a> {
             config.solver_memory_budget,
             super::borrowed_map::block_schur::Request {
                 retain_coefficients: config.retain_coefficients,
-                fresh_weights: false,
                 // Weighted projections (PPML separation frames) also bound
                 // coefficient errors; unit-weight OLS keeps the moment rule.
                 coefficient_accuracy: !matches!(weights, BorrowedMapWeights::Unit),

@@ -2105,7 +2105,6 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                 None,
                 block_schur::Request {
                     retain_coefficients: self.retain_coefficients,
-                    fresh_weights: true,
                     coefficient_accuracy: true,
                 },
             )? {

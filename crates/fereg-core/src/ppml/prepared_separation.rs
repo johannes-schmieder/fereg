@@ -3711,7 +3711,7 @@ fn separation_report_digest(report: &SeparationReport) -> Result<u64> {
     digest.u64(chunked_word_digest(
         b"reasons",
         report.drop_reasons.len(),
-        |i| Some(reason_code(report.drop_reasons[i]) as u64),
+        |i| Some(reason_code(report.drop_reasons[i])),
     )?);
     digest.usize(report.generation_hashes.len())?;
     for hash in &report.generation_hashes {

@@ -103,7 +103,6 @@ fn elimination_matches_converged_map_and_returns_reproducing_coefficients() {
                                 None,
                                 Request {
                                     retain_coefficients: true,
-                                    fresh_weights: false,
                                     coefficient_accuracy: weighted,
                                 },
                             )
