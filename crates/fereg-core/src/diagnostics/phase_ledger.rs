@@ -67,6 +67,16 @@ impl<const N: usize> PhaseLedger<N> {
         }
     }
 
+    /// Charge `seconds` measured by library code to `slot`.
+    pub(crate) fn add_seconds(&self, slot: usize, seconds: f64) {
+        if self.enabled {
+            // Saturating float-to-integer conversion.
+            let nanos = (seconds * 1e9) as u64;
+            self.nanos[slot].fetch_add(nanos, Ordering::Relaxed);
+            self.counts[slot].fetch_add(1, Ordering::Relaxed);
+        }
+    }
+
     pub(crate) fn fact(&mut self, name: &'static str, value: u64) {
         if self.enabled {
             if let Some(entry) = self.facts.iter_mut().find(|(key, _)| *key == name) {

@@ -1106,7 +1106,7 @@ pub(crate) struct ReusableCategoricalMapAbsorber<'a> {
     checkpoint_lsmr_retry_error: Option<ErrorCode>,
     checkpoint_schur_iteration_cap: Option<usize>,
     checkpoint_schur_certificate_failure: bool,
-    block_schur: block_schur::Cache,
+    block_schur: block_schur::Cache<'a>,
 }
 
 #[derive(Clone, Copy)]
@@ -10050,5 +10050,5 @@ pub(crate) struct LegacyCategoricalOwner<'a> {
     checkpoint_lsmr_retry_error: Option<ErrorCode>,
     checkpoint_schur_iteration_cap: Option<usize>,
     checkpoint_schur_certificate_failure: bool,
-    block_schur: block_schur::Cache,
+    block_schur: block_schur::Cache<'a>,
 }

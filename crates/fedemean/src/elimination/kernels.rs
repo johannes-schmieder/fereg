@@ -1,12 +1,17 @@
 //! The reduced operator and its reduced-space vector kernels.
 
-use super::structure::{filled, with_capacity};
-use super::*;
+use super::structure::{filled, with_capacity, Structure};
+use super::weights::Weights;
+use super::{CHUNK, PARALLEL_WORK};
+use crate::design::Members;
+use crate::error::Result;
+use crate::weights::Validated as ValidatedWeights;
+use rayon::prelude::*;
 
 pub(super) struct Ctx<'d, 'w, const NB: usize> {
     pub(super) st: &'d Structure,
     pub(super) w: &'d Weights,
-    pub(super) index: &'d LevelIndex,
+    pub(super) index: Members<'d>,
     pub(super) elim_codes: &'d [u32],
     pub(super) codes_b: [&'d [u32]; NB],
     pub(super) offs: [u32; NB],

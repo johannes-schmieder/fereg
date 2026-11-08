@@ -1,12 +1,25 @@
 //! Lockstep Jacobi-preconditioned CG on the reduced system.
 
 use super::kernels::{apply, copy_columns, dot, Work};
-use super::*;
+use super::structure::Structure;
+use super::weights::Weights;
+use super::{Cancel, CHUNK, KEPT_WINDOW, PARALLEL_WORK, STALL_WINDOW};
+use crate::error::Result;
+use rayon::prelude::*;
+use std::ops::Range;
 
-pub(super) enum Solve {
-    /// Iterations, the sum over iterations of the active columns, and the
-    /// columns stopped at the acceptance rule after a breakdown.
-    Converged(usize, usize, usize),
+pub(super) enum Solve<const R: usize> {
+    Converged {
+        iterations: usize,
+        /// The sum over iterations of the active columns.
+        column_iterations: usize,
+        /// Columns stopped at the acceptance rule after a breakdown.
+        accepted: usize,
+        /// Iterations each column was active.
+        per_column: [usize; R],
+        /// Columns returned to an iterate meeting the acceptance rule.
+        floor: [bool; R],
+    },
     Declined(&'static str),
 }
 
@@ -64,6 +77,7 @@ struct Columns<const R: usize> {
     kept_checkpoint: [f64; R],
     /// Columns stopped at their kept iterate.
     accepted: usize,
+    floor: [bool; R],
 }
 
 impl<const R: usize> Columns<R> {
@@ -75,9 +89,10 @@ impl<const R: usize> Columns<R> {
         }
         if mask.contains(&true) {
             copy_columns(x, xs, mask);
-            for (active, &on) in self.active.iter_mut().zip(&mask) {
+            for ((active, floor), &on) in self.active.iter_mut().zip(&mut self.floor).zip(&mask) {
                 if on {
                     *active = false;
+                    *floor = true;
                     self.accepted += 1;
                 }
             }
@@ -144,6 +159,7 @@ fn start<const R: usize>(
         kept_measure,
         kept_checkpoint: progress,
         accepted: 0,
+        floor: [false; R],
     })
 }
 
@@ -272,22 +288,24 @@ fn advance<const R: usize>(
 /// Lockstep Jacobi-preconditioned CG on `S x = r0` (r0 already in `work.r`).
 /// A column stops when its largest scaled moment `|r_j| / sqrt(m_j)` is at
 /// most its goal and, when a coefficient goal is given, its largest Jacobi
-/// coefficient-error estimate `|r_j| / d_j` is at most that goal. A column
-/// whose curvature vanishes, whose progress stalls or that reaches the
-/// iteration ceiling returns to its best iterate that met the acceptance
-/// rule; without one the route declines.
+/// estimate `|r_j| / d_j` is at most that goal. A column whose curvature
+/// vanishes, whose progress stalls or that reaches the iteration ceiling
+/// returns to its best iterate that met the acceptance rule; without one the
+/// route declines.
 pub(super) fn pcg<const R: usize, const NB: usize, const UNIT: bool>(
     st: &Structure,
     w: &Weights,
     work: &mut Work<R>,
     targets: &Targets<R>,
     cap: usize,
-) -> Result<Solve> {
+    cancel: &Cancel<'_>,
+) -> Result<Solve<R>> {
     let Some(mut state) = start(w, work, targets) else {
         return Ok(Solve::Declined("nonfinite initial reduced residual"));
     };
     let mut iterations = 0;
     let mut column_iterations = 0;
+    let mut per_column = [0_usize; R];
     while state.active.contains(&true) {
         if iterations >= cap {
             if !state.fall_back(state.active, &mut work.x, &work.xs) {
@@ -296,7 +314,10 @@ pub(super) fn pcg<const R: usize, const NB: usize, const UNIT: bool>(
             break;
         }
         column_iterations += state.active.iter().filter(|&&on| on).count();
-        crate::interrupt::checkpoint()?;
+        for (count, &on) in per_column.iter_mut().zip(&state.active) {
+            *count += usize::from(on);
+        }
+        cancel.check()?;
         apply::<R, NB, UNIT>(st, w, &work.p, &mut work.lanes);
         let pq = dot::<R>(&work.p, &work.lanes[0].acc, &mut work.partials);
         let mut alpha = [0.0; R];
@@ -348,9 +369,11 @@ pub(super) fn pcg<const R: usize, const NB: usize, const UNIT: bool>(
         }
         update_directions(work, state.active, beta);
     }
-    Ok(Solve::Converged(
+    Ok(Solve::Converged {
         iterations,
         column_iterations,
-        state.accepted,
-    ))
+        accepted: state.accepted,
+        per_column,
+        floor: state.floor,
+    })
 }

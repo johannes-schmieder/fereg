@@ -1,0 +1,18 @@
+[package]
+name = "fedemean"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+authors = ["fereg contributors"]
+license = "MIT"
+description = "Weighted fixed-effect projection (residualization) for high-dimensional categorical designs"
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+rayon = "1.12"
+
+[lints]
+workspace = true

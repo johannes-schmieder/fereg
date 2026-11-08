@@ -266,6 +266,11 @@ impl LevelIndex {
         &self.offsets
     }
 
+    /// Observations grouped by level (see [`Self::membership_offsets`]).
+    pub(crate) fn observations(&self) -> &[usize] {
+        &self.observations
+    }
+
     /// A fallible owned copy of this (already validated) index.
     pub(crate) fn try_clone(&self) -> Result<Self> {
         Ok(Self {

@@ -1,6 +1,9 @@
 use super::*;
 use crate::fe::ValidatedBorrowedInterceptSource;
 
+/// Right-hand sides per lockstep batch (the Gram covers at most this many).
+const BATCH: usize = 8;
+
 /// Seeded codes with every level present and repeated row combinations.
 fn codes(rows: usize, levels: &[usize], seed: u64) -> Vec<Vec<u32>> {
     let mut state = seed;
@@ -216,7 +219,7 @@ fn residual_gram_matches_the_formed_residual() {
                         continue;
                     }
                     let gram = gram.expect("requested Gram");
-                    assert_eq!(gram.columns, columns);
+                    assert_eq!(gram.columns(), columns);
                     let residual = result.residualized();
                     for a in 0..columns {
                         for b in 0..columns {
@@ -226,8 +229,8 @@ fn residual_gram_matches_the_formed_residual() {
                                     w * residual[(row, a)] * residual[(row, b)]
                                 })
                                 .sum();
-                            let value = gram.values[a * columns + b];
-                            assert_eq!(value, gram.values[b * columns + a]);
+                            let value = gram.values()[a * columns + b];
+                            assert_eq!(value, gram.values()[b * columns + a]);
                             assert!(
                                 (value - direct).abs() <= 1e-12 * direct.abs().max(1.0),
                                 "levels={levels:?} weighted={weighted} ({a},{b}): {value} vs {direct}"
@@ -287,11 +290,25 @@ fn declines_return_the_untouched_input() {
 }
 
 #[test]
-fn structure_covers_two_to_five_effects_only() {
+fn designs_outside_two_to_five_effects_decline() {
     for count in [1_usize, 6] {
         let levels: Vec<usize> = (0..count).map(|e| 3 + e).collect();
         with_design(60, &levels, 5, |design, _| {
-            assert!(Structure::build(design).unwrap().is_none());
+            let input = values(60, 2, 9);
+            match Cache::default()
+                .project(
+                    design,
+                    BorrowedMapWeights::Unit,
+                    input.clone(),
+                    MapConfig::default(),
+                    None,
+                    Request::default(),
+                )
+                .unwrap()
+            {
+                Outcome::Declined(values) => assert_eq!(values, input),
+                Outcome::Done(_) => panic!("{count} effects unexpectedly projected"),
+            }
         });
     }
 }

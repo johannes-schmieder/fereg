@@ -1,11 +1,14 @@
 //! Allocation helpers, lane runners and the immutable cell geometry.
 
-use super::*;
+use super::{Cancel, BATCH, MAX_BLOCKS, PARALLEL_WORK};
+use crate::design::{Design, Members};
+use crate::error::{Error, Result};
+use std::ops::Range;
 
 pub(super) fn reserve<T>(values: &mut Vec<T>, additional: usize) -> Result<()> {
     values
         .try_reserve_exact(additional)
-        .map_err(|_| allocation("unable to reserve block-elimination workspace"))
+        .map_err(|_| Error::OutOfMemory("unable to reserve block-elimination workspace"))
 }
 
 pub(super) fn with_capacity<T>(count: usize) -> Result<Vec<T>> {
@@ -150,12 +153,28 @@ pub(super) fn bounds_of(
     Ok(bounds)
 }
 
-pub(super) fn lane_count(work: usize) -> usize {
+/// Lanes of a stage with `work` scalar updates: one below the parallel
+/// threshold, otherwise the structure's lane width.
+pub(super) fn lane_count(work: usize, width: usize) -> usize {
     if work < PARALLEL_WORK {
         1
     } else {
-        rayon::current_num_threads().clamp(1, 64)
+        width
     }
+}
+
+/// The lane width of a new structure: the setting, or the current pool's
+/// width (both clamped to 1..=64).
+pub(crate) fn lane_width(setting: Option<usize>) -> usize {
+    setting
+        .unwrap_or_else(rayon::current_num_threads)
+        .clamp(1, 64)
+}
+
+/// The effect with the most levels (the first of equals) is eliminated.
+pub(crate) fn eliminated_effect(design: &Design<'_>) -> Option<usize> {
+    let levels = |e: usize| design.effects()[e].levels();
+    (0..design.effects().len()).max_by_key(|&e| (levels(e), std::cmp::Reverse(e)))
 }
 
 #[derive(Clone, Debug)]
@@ -194,6 +213,8 @@ pub(crate) struct Structure {
     pub(super) row_bounds: Vec<usize>,
     pub(super) nobs: usize,
     pub(super) bytes: u128,
+    /// The lane width every partition of this structure was built with.
+    pub(crate) width: usize,
 }
 
 pub(super) struct LaneBuild {
@@ -208,16 +229,25 @@ impl Structure {
     }
 
     /// Build the geometry, or `None` when the design is outside the route.
-    pub(crate) fn build(design: &BorrowedInterceptFeDesign<'_>) -> Result<Option<Self>> {
+    /// The eliminated effect's members must be available (`members`).
+    pub(crate) fn build(
+        design: &Design<'_>,
+        members: Option<Members<'_>>,
+        width: usize,
+        cancel: &Cancel<'_>,
+    ) -> Result<Option<Self>> {
         let k = design.effects().len();
         let n = design.nobs();
         if !(2..=MAX_BLOCKS + 1).contains(&k) || n == 0 || n >= u32::MAX as usize {
             return Ok(None);
         }
-        let levels = |e: usize| design.effects()[e].n_levels();
-        let eliminated = (0..k)
-            .max_by_key(|&e| (levels(e), std::cmp::Reverse(e)))
-            .expect("nonempty design");
+        let levels = |e: usize| design.effects()[e].levels();
+        let eliminated = eliminated_effect(design).expect("nonempty design");
+        let Some(members) = members else {
+            return Err(Error::InvalidInput(
+                "the eliminated effect has no level members",
+            ));
+        };
         let mut blocks = with_capacity(k - 1)?;
         blocks.extend((0..k).filter(|&e| e != eliminated));
         let mut offsets = with_capacity(blocks.len())?;
@@ -232,39 +262,51 @@ impl Structure {
         if reduced == 0 || reduced >= u32::MAX as usize {
             return Ok(None);
         }
+        let ctx = BuildCtx {
+            design,
+            members,
+            width,
+            cancel,
+        };
         match blocks.len() {
-            1 => Self::build_nb::<1>(design, eliminated, blocks, offsets, reduced),
-            2 => Self::build_nb::<2>(design, eliminated, blocks, offsets, reduced),
-            3 => Self::build_nb::<3>(design, eliminated, blocks, offsets, reduced),
-            4 => Self::build_nb::<4>(design, eliminated, blocks, offsets, reduced),
+            1 => Self::build_nb::<1>(&ctx, eliminated, blocks, offsets, reduced),
+            2 => Self::build_nb::<2>(&ctx, eliminated, blocks, offsets, reduced),
+            3 => Self::build_nb::<3>(&ctx, eliminated, blocks, offsets, reduced),
+            4 => Self::build_nb::<4>(&ctx, eliminated, blocks, offsets, reduced),
             _ => Ok(None),
         }
     }
 
-    pub(super) fn build_nb<const NB: usize>(
-        design: &BorrowedInterceptFeDesign<'_>,
+    fn build_nb<const NB: usize>(
+        ctx: &BuildCtx<'_, '_>,
         eliminated: usize,
         blocks: Vec<usize>,
         offsets: Vec<u32>,
         reduced: usize,
     ) -> Result<Option<Self>> {
+        let design = ctx.design;
+        let width = ctx.width;
         let n = design.nobs();
         let effect = &design.effects()[eliminated];
-        let index = effect.level_index();
-        let member_offsets = index.membership_offsets();
-        let segments = effect.n_levels();
+        let index = ctx.members;
+        let member_offsets = index.offsets();
+        let segments = effect.levels();
         if member_offsets.len() != segments + 1 || member_offsets[segments] != n {
             return Ok(None);
         }
         let codes_b: [&[u32]; NB] = std::array::from_fn(|b| design.effects()[blocks[b]].codes());
         let offs: [u32; NB] = std::array::from_fn(|b| offsets[b]);
-        let ranges = partition(member_offsets, lane_count(n * NB))?;
+        let limits: [u32; NB] = std::array::from_fn(|b| {
+            u32::try_from(design.effects()[blocks[b]].levels()).unwrap_or(u32::MAX)
+        });
+        let ranges = partition(member_offsets, lane_count(n * NB, width))?;
         // Merging repeated combinations pays only when they are common.
-        let merge = sampled_repeat_rate::<NB>(index, segments, &codes_b)? >= 0.02;
+        let merge = sampled_repeat_rate::<NB>(index, segments, &codes_b, &limits)? >= 0.02;
         let mut member_cell = filled(n, 0_u32)?;
         let member_bounds = bounds_of(&ranges, |s| member_offsets[s])?;
         let mut built: Vec<Option<Result<LaneBuild>>> = with_capacity(ranges.len())?;
         built.resize_with(ranges.len(), || None);
+        let cancel = ctx.cancel;
         each_lane(
             0,
             &member_bounds,
@@ -277,8 +319,10 @@ impl Structure {
                     ranges[lane].clone(),
                     &codes_b,
                     &offs,
+                    &limits,
                     part,
                     merge,
+                    cancel,
                 ));
             },
         );
@@ -286,7 +330,7 @@ impl Structure {
         for lane in built {
             lanes_built.push(lane.expect("every lane ran")?);
         }
-        crate::interrupt::checkpoint()?;
+        cancel.check()?;
         let cells: usize = lanes_built.iter().map(|l| l.counts.len()).sum();
         let mut seg_cells = filled(segments + 1, 0_usize)?;
         let mut codes = with_capacity(cells * NB)?;
@@ -310,9 +354,11 @@ impl Structure {
         }
         drop(lanes_built);
         if s != segments {
-            return Err(invalid_argument("block-elimination segment count differs"));
+            return Err(Error::InvalidInput(
+                "block-elimination segment count differs",
+            ));
         }
-        let lane_ranges = partition(&seg_cells, lane_count(cells * NB * BATCH))?;
+        let lane_ranges = partition(&seg_cells, lane_count(cells * NB * BATCH, width))?;
         let mut lanes = with_capacity(lane_ranges.len())?;
         lanes.extend(lane_ranges.iter().map(|segments| Lane {
             cells: seg_cells[segments.start]..seg_cells[segments.end],
@@ -340,7 +386,10 @@ impl Structure {
             }
         }
         let active_cells = active_offsets[active.len()];
-        let active_ranges = partition(&active_offsets, lane_count(active_cells * NB * BATCH))?;
+        let active_ranges = partition(
+            &active_offsets,
+            lane_count(active_cells * NB * BATCH, width),
+        )?;
         drop(active_offsets);
         let mut active_lanes = with_capacity(active_ranges.len())?;
         for range in active_ranges {
@@ -351,7 +400,7 @@ impl Structure {
                 .unwrap_or(0);
             active_lanes.push((range, max_cells));
         }
-        let row_lanes = lane_count(n * (NB + 1) * BATCH);
+        let row_lanes = lane_count(n * (NB + 1) * BATCH, width);
         let per = n.div_ceil(row_lanes);
         let mut rows = with_capacity(row_lanes)?;
         rows.extend(
@@ -386,22 +435,31 @@ impl Structure {
             row_bounds,
             nobs: n,
             bytes,
+            width,
         }))
     }
+}
+
+struct BuildCtx<'d, 'c> {
+    design: &'d Design<'d>,
+    members: Members<'d>,
+    width: usize,
+    cancel: &'c Cancel<'c>,
 }
 
 /// Fraction of rows that repeat a remaining-code combination within their
 /// eliminated group, estimated on evenly spaced segments.
 pub(super) fn sampled_repeat_rate<const NB: usize>(
-    index: &LevelIndex,
+    index: Members<'_>,
     segments: usize,
     codes_b: &[&[u32]; NB],
+    limits: &[u32; NB],
 ) -> Result<f64> {
     let step = (segments / 512).max(1);
     let (mut rows, mut repeats) = (0_usize, 0_usize);
     let mut local: Vec<[u32; NB]> = Vec::new();
     for s in (0..segments).step_by(step) {
-        let members = index.members(s);
+        let members = index.level(s);
         local.clear();
         reserve(&mut local, members.len())?;
         local.extend(
@@ -409,6 +467,9 @@ pub(super) fn sampled_repeat_rate<const NB: usize>(
                 .iter()
                 .map(|&row| std::array::from_fn(|b| codes_b[b][row])),
         );
+        if local.iter().any(|key| (0..NB).any(|b| key[b] >= limits[b])) {
+            return Err(Error::InvalidInput("FE code exceeds its level count"));
+        }
         local.sort_unstable();
         rows += local.len();
         repeats += local.windows(2).filter(|pair| pair[0] == pair[1]).count();
@@ -422,14 +483,18 @@ pub(super) fn sampled_repeat_rate<const NB: usize>(
 
 /// One lane's cells. With `merge`, rows sharing a remaining-code combination
 /// within a segment form one cell with their total weight; without it every
-/// row is its own cell, which defines the same Schur operator.
+/// row is its own cell, which defines the same Schur operator. Every code is
+/// checked against its effect's level count.
+#[allow(clippy::too_many_arguments)]
 pub(super) fn build_lane<const NB: usize>(
-    index: &LevelIndex,
+    index: Members<'_>,
     segs: Range<usize>,
     codes_b: &[&[u32]; NB],
     offs: &[u32; NB],
+    limits: &[u32; NB],
     member_cell: &mut [u32],
     merge: bool,
+    cancel: &Cancel<'_>,
 ) -> Result<LaneBuild> {
     let mut out = LaneBuild {
         codes: with_capacity(member_cell.len() * NB)?,
@@ -438,15 +503,18 @@ pub(super) fn build_lane<const NB: usize>(
     };
     let mut local: Vec<([u32; NB], u32)> = Vec::new();
     let mut cursor = 0_usize;
+    let mut valid = true;
     for (step, s) in segs.enumerate() {
         if step % 4096 == 0 {
-            crate::interrupt::checkpoint()?;
+            cancel.check()?;
         }
-        let members = index.members(s);
+        let members = index.level(s);
         if !merge {
             for (k, &row) in members.iter().enumerate() {
                 for b in 0..NB {
-                    out.codes.push(codes_b[b][row] + offs[b]);
+                    let code = codes_b[b][row];
+                    valid &= code < limits[b];
+                    out.codes.push(code.wrapping_add(offs[b]));
                 }
                 out.counts.push(1);
                 member_cell[cursor + k] = k as u32;
@@ -458,7 +526,11 @@ pub(super) fn build_lane<const NB: usize>(
         local.clear();
         reserve(&mut local, members.len())?;
         for (k, &row) in members.iter().enumerate() {
-            let key: [u32; NB] = std::array::from_fn(|b| codes_b[b][row] + offs[b]);
+            let key: [u32; NB] = std::array::from_fn(|b| {
+                let code = codes_b[b][row];
+                valid &= code < limits[b];
+                code.wrapping_add(offs[b])
+            });
             local.push((key, k as u32));
         }
         if local.len() > 1 {
@@ -478,6 +550,9 @@ pub(super) fn build_lane<const NB: usize>(
         }
         cursor += members.len();
         out.seg_cells.push(cells);
+    }
+    if !valid {
+        return Err(Error::InvalidInput("FE code exceeds its level count"));
     }
     Ok(out)
 }

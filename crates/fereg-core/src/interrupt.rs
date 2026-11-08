@@ -93,13 +93,21 @@ pub(crate) mod test_polls {
 #[inline]
 pub fn checkpoint() -> Result<()> {
     if cancellation_requested() {
-        Err(FeregError::new(
-            ErrorCode::Interrupted,
-            "native estimation was interrupted at a cancellation checkpoint",
-        ))
+        Err(interrupted())
     } else {
         Ok(())
     }
+}
+
+/// The error of a checkpoint after a cancellation request (also reported for
+/// cancellations observed by library code through
+/// [`cancellation_requested`]).
+#[must_use]
+pub(crate) fn interrupted() -> FeregError {
+    FeregError::new(
+        ErrorCode::Interrupted,
+        "native estimation was interrupted at a cancellation checkpoint",
+    )
 }
 
 /// Rows between checkpoints in long serial row passes. A power of two keeps

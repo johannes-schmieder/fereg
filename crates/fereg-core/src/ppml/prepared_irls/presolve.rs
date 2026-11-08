@@ -203,9 +203,9 @@ pub(super) fn presolve<P: PreparedOlsFitView + Sync + ?Sized>(
 /// Project `[z, X]` under the Hessian `weights` with the exact elimination at
 /// a hundredth of the last deviance change; `None` on a decline. Also returns
 /// the projection's iteration count (at least one).
-fn project(
-    cache: &mut block_schur::Cache,
-    design: &crate::fe::BorrowedInterceptFeDesign<'_>,
+fn project<'a>(
+    cache: &mut block_schur::Cache<'a>,
+    design: &crate::fe::BorrowedInterceptFeDesign<'a>,
     weights: &[f64],
     input: DenseMatrix,
     change: f64,
@@ -335,7 +335,7 @@ fn normal_equations(data: &[f64], weights: &[f64], columns: &[&[f64]]) -> Result
 /// `None` leaves such designs to it; the collinearity is structural, so the
 /// first step's weights decide it (every step keeps the Cholesky pivot guard).
 fn step_normal_equations(
-    cache: &block_schur::Cache,
+    cache: &block_schur::Cache<'_>,
     projected: &[f64],
     weights: &[f64],
     columns: &[&[f64]],
@@ -343,7 +343,7 @@ fn step_normal_equations(
 ) -> Result<Option<([f64; MAX_COLUMNS * MAX_COLUMNS], [f64; MAX_COLUMNS])>> {
     let k = columns.len();
     let (gram, rhs) = match cache.residual_gram() {
-        Some(residual_gram) if residual_gram.columns == k + 1 => {
+        Some(residual_gram) if residual_gram.columns() == k + 1 => {
             elimination_normal_equations(residual_gram, k)
         }
         _ => {
@@ -367,8 +367,8 @@ fn elimination_normal_equations(
     residual_gram: &block_schur::ResidualGram,
     k: usize,
 ) -> ([f64; MAX_COLUMNS * MAX_COLUMNS], [f64; MAX_COLUMNS]) {
-    let width = residual_gram.columns;
-    let values = &residual_gram.values;
+    let width = residual_gram.columns();
+    let values = residual_gram.values();
     let mut gram = [0.0; MAX_COLUMNS * MAX_COLUMNS];
     let mut rhs = [0.0; MAX_COLUMNS];
     for a in 0..k {

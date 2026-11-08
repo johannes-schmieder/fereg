@@ -1,8 +1,10 @@
 //! Observation passes: reduced RHS, back-substitution and the residual.
 
 use super::kernels::{gather, merge, Ctx, LaneWork, Work};
-use super::structure::{each_lane, refill};
-use super::*;
+use super::structure::{each_lane, refill, Structure};
+use super::weights::Weights;
+use crate::error::Result;
+use crate::projector::{ColumnsMut, Gram};
 
 /// Column statistics of one batch from the RHS pass.
 pub(super) struct RhsNorms<const R: usize> {
@@ -18,7 +20,7 @@ pub(super) struct RhsNorms<const R: usize> {
 /// segment sums `Σ w v` (kept for back-substitution) and the column norms.
 pub(super) fn rhs<const R: usize, const NB: usize, const WEIGHTED: bool>(
     ctx: &Ctx<'_, '_, NB>,
-    values: &DenseMatrix,
+    values: &ColumnsMut<'_>,
     first: usize,
     work: &mut Work<R>,
 ) -> RhsNorms<R> {
@@ -42,7 +44,7 @@ pub(super) fn rhs<const R: usize, const NB: usize, const WEIGHTED: bool>(
             let mut big = [0.0_f64; R];
             let mut centered = [0.0; R];
             for (s, out) in st.lanes[l].segments.clone().zip(seg.iter_mut()) {
-                let members = ctx.index.members(s);
+                let members = ctx.index.level(s);
                 let mut sum = [0.0; R];
                 for &row in members {
                     let v = &data[row * stride + first..row * stride + first + R];
@@ -154,10 +156,10 @@ pub(super) fn recover<const R: usize, const NB: usize, const UNIT: bool>(
 /// combined in lane order).
 pub(super) fn residualize<const R: usize, const NB: usize, const WEIGHTED: bool>(
     ctx: &Ctx<'_, '_, NB>,
-    values: &mut DenseMatrix,
+    values: &mut ColumnsMut<'_>,
     first: usize,
     work: &mut Work<R>,
-    gram: Option<&mut ResidualGram>,
+    gram: Option<&mut Gram>,
 ) -> Result<[f64; R]> {
     let st = ctx.st;
     let stride = values.ncols();

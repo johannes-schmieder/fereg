@@ -1,7 +1,10 @@
 //! Current-weight state: cell masses, segment inverses, the Schur diagonal.
 
-use super::structure::{each_lane2, refill, refill_from, reserve};
-use super::*;
+use super::structure::{each_lane2, refill, refill_from, reserve, Structure};
+use crate::design::Members;
+use crate::error::Result;
+use crate::weights::Validated as ValidatedWeights;
+use std::ops::Range;
 
 /// Current-weight cell masses, segment inverses and the Schur diagonal.
 pub(crate) struct Weights {
@@ -54,23 +57,22 @@ impl Weights {
     /// preparations allocate nothing.
     pub(super) fn prepare(
         st: &Structure,
-        design: &BorrowedInterceptFeDesign<'_>,
+        index: Members<'_>,
         weights: ValidatedWeights<'_>,
         recycled: Option<Self>,
     ) -> Result<Option<Self>> {
         let mut state = recycled.unwrap_or_else(Self::empty);
-        Ok(state.fill(st, design, weights)?.then_some(state))
+        Ok(state.fill(st, index, weights)?.then_some(state))
     }
 
     /// Form the state in place; `false` when a mass is not positive.
     pub(super) fn fill(
         &mut self,
         st: &Structure,
-        design: &BorrowedInterceptFeDesign<'_>,
+        index: Members<'_>,
         weights: ValidatedWeights<'_>,
     ) -> Result<bool> {
         self.reset(st, weights)?;
-        let index = design.effects()[st.eliminated].level_index();
         let unit = self.cell.is_empty();
         let cell_bounds = if unit {
             &st.zero_bounds
@@ -200,7 +202,7 @@ impl Weights {
 #[allow(clippy::too_many_arguments)]
 fn fill_lane(
     st: &Structure,
-    index: &LevelIndex,
+    index: Members<'_>,
     weights: ValidatedWeights<'_>,
     unit: bool,
     l: usize,
@@ -208,7 +210,7 @@ fn fill_lane(
     part: &mut [f64],
     acc: &mut WeightLane,
 ) {
-    let member_offsets = index.membership_offsets();
+    let member_offsets = index.offsets();
     let nb = st.blocks.len();
     let values = weights.values;
     let scale = weights.raw_scale;
@@ -233,7 +235,7 @@ fn fill_lane(
             let local = &mut part[c0 - lane.cells.start..c1 - lane.cells.start];
             if let Some(values) = values {
                 local.fill(0.0);
-                for &row in index.members(s) {
+                for &row in index.level(s) {
                     local[st.member_cell[cursor] as usize] += values[row] / scale;
                     cursor += 1;
                 }
@@ -317,7 +319,7 @@ pub(super) fn weight_key(values: Option<&[f64]>) -> Result<WeightKey> {
         return Ok(None);
     };
     // Fixed leaves and tree: the digest depends only on the bits.
-    let digest = crate::parallel::fixed_tree_reduce(
+    let digest = crate::reduce::fixed_tree_reduce(
         values.len(),
         1 << 16,
         &|range: Range<usize>| {

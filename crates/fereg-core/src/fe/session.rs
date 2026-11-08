@@ -31,7 +31,7 @@ pub(crate) struct FeSession<'a> {
     general_routing: Option<super::borrowed_map::routing_lsmr::GeneralRoutingState<'a>>,
     pub(crate) structural_constant: bool,
     pub(crate) absorb_config: Option<super::AbsorbConfig>,
-    block_schur: super::borrowed_map::block_schur::Cache,
+    block_schur: super::borrowed_map::block_schur::Cache<'a>,
     pub(crate) block_schur_used: bool,
 }
 
@@ -1907,7 +1907,7 @@ pub(crate) struct LegacyFeSession<'a> {
     general_routing: Option<super::borrowed_map::routing_lsmr::GeneralRoutingState<'a>>,
     pub(crate) structural_constant: bool,
     pub(crate) absorb_config: Option<super::AbsorbConfig>,
-    block_schur: super::borrowed_map::block_schur::Cache,
+    block_schur: super::borrowed_map::block_schur::Cache<'a>,
     pub(crate) block_schur_used: bool,
 }
 #[cfg(test)]
