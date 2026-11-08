@@ -15,11 +15,13 @@ foreach graph in dense ring {
         local code 4
     }
     else {
+        * The exact elimination of the larger effect serves two-FE Auto
+        * first (reported as CG); FEREG_BLOCK_SCHUR=0 restores cmgschur.
         set obs 4096
         generate long worker = floor((_n-1)/8)
         generate long firm = mod(worker + mod(floor((_n-1)/4),2),512)
-        local expected cmgschur
-        local code 8
+        local expected cg
+        local code 4
     }
     generate double x = 2*mod(_n-1,2)-1 + .3*sin(worker*.173) + .1*cos(firm*.113)
     generate double noise = .01*(2*(mod(_n-1,4)>=2)-1)
