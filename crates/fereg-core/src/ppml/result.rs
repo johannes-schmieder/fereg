@@ -2647,11 +2647,8 @@ fn validate_separation_report(
             "PPML separation report has an inconsistent final ledger",
         ));
     }
-    let valid_stable_rows = |rows: &[usize]| {
-        rows.iter().enumerate().all(|(position, row)| {
-            *row < report.candidate_observations && (position == 0 || rows[position - 1] < *row)
-        })
-    };
+    let valid_stable_rows =
+        |rows: &[usize]| strictly_increasing_below(rows, report.candidate_observations);
     if !valid_stable_rows(&report.retained_observations)
         || !valid_stable_rows(&report.dropped_observations)
     {
@@ -2662,7 +2659,7 @@ fn validate_separation_report(
     }
     let observed_singletons = report
         .drop_reasons
-        .iter()
+        .par_iter()
         .filter(|reason| {
             matches!(
                 reason,
@@ -2674,7 +2671,7 @@ fn validate_separation_report(
         .count();
     let observed_separated = report
         .drop_reasons
-        .iter()
+        .par_iter()
         .filter(|reason| {
             matches!(
                 reason,
@@ -2694,28 +2691,25 @@ fn validate_separation_report(
             "PPML separation reason counts do not equal singleton/separated totals",
         ));
     }
-    // Both lists were independently checked for strict order and range above.
-    // Advancing them together checks the complete partition without N searches.
-    let mut retained_rows = report.retained_observations.iter().peekable();
-    let mut dropped_rows = report.dropped_observations.iter().peekable();
-    for row in 0..report.candidate_observations {
-        let retained = retained_rows.peek().is_some_and(|value| **value == row);
-        let dropped = dropped_rows.peek().is_some_and(|value| **value == row);
-        if retained {
-            retained_rows.next();
-        }
-        if dropped {
-            dropped_rows.next();
-        }
-        if retained == dropped
-            || report.active[row] != retained
-            || report.drop_reasons[row].is_some() != dropped
-        {
-            return Err(FeregError::new(
-                ErrorCode::Internal,
-                "PPML separation active mask, row lists, and reasons disagree",
-            ));
-        }
+    // Both lists were checked for strict order and range above and their
+    // lengths sum to the candidate count. Every retained row active without a
+    // reason and every dropped row inactive with one then makes them disjoint,
+    // hence a partition matching the mask and the reasons on every row.
+    if report.active.len() != report.candidate_observations
+        || report.drop_reasons.len() != report.candidate_observations
+        || !report
+            .retained_observations
+            .par_iter()
+            .all(|&row| report.active[row] && report.drop_reasons[row].is_none())
+        || !report
+            .dropped_observations
+            .par_iter()
+            .all(|&row| !report.active[row] && report.drop_reasons[row].is_some())
+    {
+        return Err(FeregError::new(
+            ErrorCode::Internal,
+            "PPML separation active mask, row lists, and reasons disagree",
+        ));
     }
     let mut globally_reported = fallible_filled(
         report.candidate_observations,

@@ -5156,9 +5156,10 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             if matches!(column.kind, PreparedOlsColumnKind::Intercept)
                 && reference_norms[generated] == 0.0
             {
+                // The intercept's value is exactly one on every row.
                 reference_norms[generated] = stable_weighted_norm(rows, |row| {
                     Ok((
-                        self.prepared.fit_column_value(generated, row)?,
+                        1.0,
                         normalized_solver_weight(
                             self.weights.borrowed(),
                             self.bread_weight_scale,

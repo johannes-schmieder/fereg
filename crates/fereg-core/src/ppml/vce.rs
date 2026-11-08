@@ -983,7 +983,10 @@ pub(crate) fn validate_weight_report(
                 || report.log_raw_weight_sum.is_some()
                 || report.raw_to_prepared_multiplier != Some(1.0)
                 || report.log_raw_to_prepared_multiplier != 0.0
-                || weights.iter().any(|weight| *weight != 1.0)
+                || {
+                    use rayon::prelude::*;
+                    weights.par_iter().any(|weight| *weight != 1.0)
+                }
             {
                 return Err(FeregError::new(
                     ErrorCode::InvalidArgument,
@@ -1062,21 +1065,51 @@ pub(crate) fn validate_weight_report(
 }
 
 fn compensated_positive_sum(values: &[f64]) -> Result<f64> {
+    // Fixed chunks in parallel, merged (both components) in chunk order. An
+    // invalid chunk replays the scalar loop from the start, which reports the
+    // first invalid weight or overflow in row order.
+    use rayon::prelude::*;
+    const ROWS: usize = 1 << 15;
+    let parts: Vec<Option<(f64, f64)>> = values
+        .par_chunks(ROWS)
+        .map(|chunk| {
+            let (mut sum, mut correction) = (0.0_f64, 0.0_f64);
+            for &value in chunk {
+                if !value.is_finite() || value <= 0.0 {
+                    return None;
+                }
+                neumaier_add(value, &mut sum, &mut correction);
+            }
+            (sum.is_finite() && correction.is_finite()).then_some((sum, correction))
+        })
+        .collect();
     let mut sum = 0.0_f64;
     let mut correction = 0.0_f64;
-    for &value in values {
-        if !value.is_finite() || value <= 0.0 {
-            return Err(FeregError::new(
-                ErrorCode::InvalidData,
-                "PPML prepared weight is not finite and positive",
-            ));
-        }
-        neumaier_add(value, &mut sum, &mut correction);
-        if !sum.is_finite() || !correction.is_finite() {
-            return Err(FeregError::new(
-                ErrorCode::InvalidData,
-                "PPML prepared weight sum overflowed",
-            ));
+    let mut merged = true;
+    for part in parts {
+        let Some((part_sum, part_correction)) = part else {
+            merged = false;
+            break;
+        };
+        neumaier_add(part_sum, &mut sum, &mut correction);
+        neumaier_add(part_correction, &mut sum, &mut correction);
+    }
+    if !merged || !sum.is_finite() || !correction.is_finite() {
+        (sum, correction) = (0.0, 0.0);
+        for &value in values {
+            if !value.is_finite() || value <= 0.0 {
+                return Err(FeregError::new(
+                    ErrorCode::InvalidData,
+                    "PPML prepared weight is not finite and positive",
+                ));
+            }
+            neumaier_add(value, &mut sum, &mut correction);
+            if !sum.is_finite() || !correction.is_finite() {
+                return Err(FeregError::new(
+                    ErrorCode::InvalidData,
+                    "PPML prepared weight sum overflowed",
+                ));
+            }
         }
     }
     let total = sum + correction;
