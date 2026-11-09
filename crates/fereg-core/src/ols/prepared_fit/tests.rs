@@ -9554,6 +9554,9 @@ fn assert_incremental_fit_exact(
 
 #[test]
 fn incremental_family_fits_match_their_references_or_fail_clearly_with_analytic_witnesses() {
+    // Reference and preset fits are compared bitwise; neither may straddle
+    // the process-wide elimination switch.
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     use crate::fe::{LsmrPreconditioner, RoutingPreset};
     // Within each identical FE cell, x and the error are orthogonal sign
     // patterns. This gives beta=2 and the stated residual without a solver.
