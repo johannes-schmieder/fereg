@@ -1576,13 +1576,15 @@ mod explicit_slope_lsmr {
             )
             .map(|report| (report, values))
         };
-        // An ample budget repeats the unbudgeted bits. (The Schwarz build
-        // admits its transient storage too, beyond the retained workspace
-        // fedemean publishes.)
-        let (ample, values) = run(4 * peak).unwrap();
-        assert!(ample.certified() && !ample.fallback_used);
-        assert_eq!(values, unlimited);
-        assert_eq!(ample.solver_workspace_peak, base.solver_workspace_peak);
+        // The published peak (fedemean's workspace, its Schwarz build's
+        // peak included, beside the held buffers) repeats the unbudgeted
+        // bits; so does an ample budget.
+        for usable in [peak, 4 * peak] {
+            let (ample, values) = run(usable).unwrap();
+            assert!(ample.certified() && !ample.fallback_used);
+            assert_eq!(values, unlimited);
+            assert_eq!(ample.solver_workspace_peak, base.solver_workspace_peak);
+        }
         let mut map = original.clone();
         absorb_map(&design, &weights, &mut map, config.map).unwrap();
         for usable in [peak - 1, admitted] {

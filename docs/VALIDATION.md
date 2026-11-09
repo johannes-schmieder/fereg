@@ -4562,11 +4562,22 @@ All 50 GitHub release assets matched their local SHA-256 checksums and sizes.
   real Veneto panels, and explicit `solver(lsmr)` returned `r(909)` on the long
   panel in a 64 GB allocation where Auto completed. Auto does not use either
   route there.
-- A fedemean fit publishes its retained workspace as its solver workspace
-  peak. A Schwarz build also admits transient storage within the memory limit
-  (in the explicit-Schwarz capped-memory test, a budget of about 1.85 times the
-  published peak was needed for the same bits), which the published peak does
-  not count.
+- fedemean charges a Schwarz build's stages, transients included, against its
+  memory limit before they allocate (fedemean `a59598f6`), and a fedemean
+  fit's published solver workspace includes that build's peak: the
+  explicit-Schwarz capped-memory test repeats its bits at exactly the
+  published peak and declines one byte below it. PPML LSMR projections, the
+  strict-checkpoint accelerator and the separation re-execution still limit
+  fedemean to fereg's estimate of its base workspace plus a fixed Schwarz
+  grant (SPEC §19), because fedemean cannot yet estimate a Schwarz build
+  before building it. The limit binds fedemean, so the admission is an upper
+  bound on its use, but the grant is small: on the one-million-row bench
+  panel (worker and firm, and with year) it is 76 and 152 MB against
+  fedemean's measured Schwarz build of 389 and 415 MB beside a base of
+  87 MB, the same with unit and varying weights. There `feppml,
+  solver(lsmr, precondition(schwarz))` fails with r(909) (already so at
+  `e80da565`, before the build was charged), and an automatic escalation of
+  those projections would keep Jacobi.
 - Package comparisons are descriptive: one seed, three repetitions, and
   same-model SCC nodes that differed by up to 2.4 times in absolute speed.
 - GitHub Actions remain disabled; checks run locally or on the authorized SCC

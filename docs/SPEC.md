@@ -1915,10 +1915,12 @@ star pairs (the effect with the most levels paired with each other effect),
 24 bytes per cross-tabulation entry (`min(N, L_a·L_e)` entries) and 20 per
 level, plus 48 bytes per entry and smaller-side level for the components'
 Schur complements and local factors, plus 16 bytes per level for apply
-columns; identity and Jacobi re-executions charge no grant. fedemean admits
-each Schwarz part from its exact size within that limit: Auto keeps Jacobi
-beyond it, explicit Schwarz declines. These estimates no longer depend on the
-worker count. Declared scope: admission outcomes change only under memory
+columns; identity and Jacobi re-executions charge no grant. fedemean charges
+each stage of a Schwarz build, its transients included, within that limit
+before it allocates: Auto keeps Jacobi beyond it, explicit Schwarz declines.
+The grant is a policy, not fedemean's estimate (fedemean estimates a build
+only by building it); VALIDATION records it against measured builds. These
+estimates no longer depend on the worker count. Declared scope: admission outcomes change only under memory
 limits between the former and the new estimates. Owned explicit LSMR that
 the larger within-shaped estimate refused now runs fedemean when its own
 workspace fits, otherwise MAP as the fallback; owned Auto may now try
