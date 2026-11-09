@@ -1,5 +1,10 @@
 //! The full formulation's fixed geometry: each effect's coefficient offset
 //! and how the adjoint `D' t` sums observations into each effect's levels.
+//!
+//! Internally an effect's coefficients are level-major: channel `c` of
+//! level `l` is coefficient `offset + l * channels + c`, so a level's
+//! channels are adjacent (one effect with one channel: `offset + l`). The
+//! public layouts are channel-major and are converted on input and output.
 
 use super::{filled, with_capacity};
 use crate::design::Design;
@@ -31,8 +36,11 @@ pub(super) struct Gathered {
 pub(crate) struct Structure {
     pub(super) nobs: usize,
     /// Each effect's first coefficient; the last entry is the coefficient
-    /// count `L`.
+    /// count `L` (levels times channels, summed over the effects).
     pub(super) offsets: Vec<usize>,
+    /// Whether an effect has slopes or no intercept (the observation passes
+    /// then read each effect's channels).
+    pub(super) sloped: bool,
     /// The scattered effects and their levels' first slots in one scatter
     /// accumulator (with a trailing total).
     pub(super) scattered: Vec<usize>,
@@ -44,6 +52,9 @@ pub(crate) struct Structure {
     /// means sets the recurrence goal, as for the elimination.
     pub(super) largest: usize,
     pub(super) bytes: u128,
+    /// Bytes of the channel blocks of the weight state (designs with
+    /// slopes; see [`super::blocks`]).
+    pub(super) block_bytes: u128,
 }
 
 impl Structure {
@@ -78,8 +89,10 @@ impl Structure {
         let mut total = 0_usize;
         for effect in effects {
             offsets.push(total);
-            total = total
-                .checked_add(effect.levels())
+            total = effect
+                .levels()
+                .checked_mul(effect.channels())
+                .and_then(|count| total.checked_add(count))
                 .ok_or(Error::InvalidInput("the coefficient count overflows"))?;
         }
         offsets.push(total);
@@ -93,7 +106,7 @@ impl Structure {
         let mut slots = 0;
         for &e in &scattered {
             scatter_offsets.push(slots);
-            slots += effects[e].levels();
+            slots += effects[e].levels() * effects[e].channels();
         }
         scatter_offsets.push(slots);
         // The scattered effects' codes are checked here, the gathered ones'
@@ -127,16 +140,20 @@ impl Structure {
             .map(|g| g.starts.capacity() as u128 * 8 + g.rows.capacity() as u128 * 4)
             .sum::<u128>()
             + (offsets.capacity() + scattered.capacity() + scatter_offsets.capacity()) as u128 * 8;
-        Ok(Some(Self {
+        let mut st = Self {
             nobs: n,
             offsets,
+            sloped: design.sloped(),
             scattered,
             scatter_offsets,
             scatter_rows: n.div_ceil(MAX_SCATTER_BLOCKS).max(MIN_SCATTER_ROWS),
             gathered,
             largest: eliminated_effect(design).expect("nonempty design"),
             bytes,
-        }))
+            block_bytes: 0,
+        };
+        st.block_bytes = super::blocks::block_bytes(&st, effects);
+        Ok(Some(st))
     }
 }
 

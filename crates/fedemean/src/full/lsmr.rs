@@ -16,13 +16,15 @@
 //! recomputed, within the rest of its budget; later columns start on
 //! Schwarz.
 
+use super::blocks::Blocks;
 use super::kernels::{adjoint, forward, load, residualize, Rows};
 use super::pcg::{predicted_slow, PILOT};
 use super::schwarz::{Schwarz, Scratch};
 use super::structure::Structure;
 use super::{
-    add_coefficients, certify, ensure, filled, form_gram, initial_mode, numerical, refill, report,
-    reserve, same_projection, targets, untouched, with_structure, Job, Mode, Outputs,
+    add_coefficients, certify, cold_start, ensure, filled, form_gram, initial_mode, load_start,
+    numerical, refill, report, reserve, same_projection, targets, untouched, with_structure, Job,
+    Mode, Outputs,
 };
 use crate::certificate::MomentFold;
 use crate::design::Effect;
@@ -132,14 +134,18 @@ impl Operator for Design<'_, '_> {
     }
 }
 
-/// `M^-1`: Jacobi `diag(D'WD)^-1` (the inverse level masses), the
-/// identity or additive Schwarz; each symmetric positive definite on all of
-/// coefficient space.
+/// `M^-1`: Jacobi `diag(D'WD)^-1` (the inverse level masses, and the
+/// channel blocks of the effects with slopes), the identity or additive
+/// Schwarz; each symmetric positive definite on all of coefficient space.
 struct Inverse<'a> {
     inverse_mass: &'a [f64],
     jacobi: bool,
     /// Schwarz with its apply workspace (applies run one at a time).
     schwarz: Option<(&'a Schwarz, Mutex<Scratch>)>,
+    /// The channel blocks with their partials (applies run one at a time).
+    blocks: Option<(&'a Blocks, &'a Structure, Mutex<Vec<f64>>)>,
+    /// The channel blocks Schwarz adds (a design with slopes).
+    slopes: Option<&'a Blocks>,
 }
 
 impl Operator for Inverse<'_> {
@@ -155,11 +161,15 @@ impl Operator for Inverse<'_> {
         match (&self.schwarz, self.jacobi) {
             (Some((schwarz, scratch)), _) => {
                 let mut scratch = scratch.lock().unwrap_or_else(PoisonError::into_inner);
-                schwarz.apply::<1>(x, y, &mut scratch, self.inverse_mass);
+                schwarz.apply::<1>(x, y, &mut scratch, (self.inverse_mass, self.slopes));
             }
             (None, true) => {
                 for ((y, x), d) in y.iter_mut().zip(x).zip(self.inverse_mass) {
                     *y = x * d;
+                }
+                if let Some((blocks, st, partials)) = &self.blocks {
+                    let mut partials = partials.lock().unwrap_or_else(PoisonError::into_inner);
+                    blocks.measure::<1>(st, x, Some(y), &mut partials);
                 }
             }
             (None, false) => y.copy_from_slice(x),
@@ -223,6 +233,11 @@ pub(super) fn project(
         Err(reason) => return Ok((untouched(reason, with_structure(facts, job)), false)),
     };
     work.size(st, 1)?;
+    work.size_blocks(job.state, 1)?;
+    let tasks = job.state.blocks().map_or(0, |blocks| blocks.tasks() * 3);
+    if work.inverse_measures.len() != tasks {
+        refill(&mut work.inverse_measures, tasks, 0.0)?;
+    }
     if work.b.len() != st.nobs {
         refill(&mut work.b, st.nobs, 0.0)?;
     }
@@ -264,7 +279,13 @@ pub(super) fn project(
             &mut work.rows,
         );
         if let Some(coefficients) = coefficients.as_mut() {
-            add_coefficients(st, &solved.x, (1, 0), coefficients, j);
+            add_coefficients(
+                (st, job.design.effects()),
+                &solved.x,
+                (1, 0),
+                coefficients,
+                j,
+            );
         }
         facts.residual_seconds += began.elapsed().as_secs_f64();
         formed[j] = solved.reference;
@@ -322,7 +343,13 @@ fn check(
     adjoint::<1>(st, effects, t, None, &mut work.q, &mut scatter);
     drop(scatter);
     let tolerance = job.request.tolerance;
-    let certified = certify::<1>(state, &work.q, [stats[2][0]], [scale], tolerance);
+    let certified = certify::<1>(
+        (st, effects, state),
+        &work.q,
+        [stats[2][0]],
+        [scale],
+        tolerance,
+    );
     let (mut inf, mut zinf) = (0.0_f64, 0.0_f64);
     for ((m, ir), im) in work
         .q
@@ -332,6 +359,11 @@ fn check(
     {
         inf = inf.max(m.abs() * ir);
         zinf = zinf.max(m.abs() * im);
+    }
+    if let Some(blocks) = state.blocks() {
+        let [_, block_inf, block_zinf] = blocks.measure::<1>(st, &work.q, None, &mut work.measures);
+        inf = inf.max(block_inf[0]);
+        zinf = zinf.max(block_zinf[0]);
     }
     (certified, inf, zinf)
 }
@@ -359,7 +391,7 @@ fn solve_column(
     load::<1>(st, effects, src, None, weights, &mut work.t, &mut work.rows);
     let mut start = filled(st.coefficients(), 0.0).map_err(Short::Failed)?;
     match warm {
-        Some(warm) => start.copy_from_slice(warm),
+        Some(warm) => load_start::<1>((st, effects), warm, 0, &mut start),
         None => {
             let t = Rows {
                 data: &work.t,
@@ -367,15 +399,7 @@ fn solve_column(
                 first: 0,
             };
             adjoint::<1>(st, effects, t, None, &mut work.q, &mut work.scatter);
-            let levels = st.offsets[st.largest]..st.offsets[st.largest + 1];
-            let inverse = &state.inverse_mass[levels.clone()];
-            for ((x, q), d) in start[levels.clone()]
-                .iter_mut()
-                .zip(&work.q[levels])
-                .zip(inverse)
-            {
-                *x = q * d;
-            }
+            cold_start::<1>(job, &work.q, &mut start);
         }
     }
     let stats = load::<1>(
@@ -449,10 +473,17 @@ fn preconditioned(
         roots: state.roots(),
         scatter: Mutex::new(std::mem::take(&mut work.scatter)),
     };
+    let jacobi = mode != Mode::Identity;
+    let partials = std::mem::take(&mut work.inverse_measures);
     let inverse = Inverse {
         inverse_mass: &state.inverse_mass,
-        jacobi: mode != Mode::Identity,
+        jacobi,
         schwarz: schwarz.map(|s| (s, Mutex::new(scratch))),
+        blocks: state
+            .blocks()
+            .filter(|_| jacobi && schwarz.is_none())
+            .map(|blocks| (blocks, st, Mutex::new(partials))),
+        slopes: state.blocks(),
     };
     let escalate = mode == Mode::Escalate;
     let outcome = passes(
@@ -469,6 +500,11 @@ fn preconditioned(
         .unwrap_or_else(PoisonError::into_inner);
     if let Some((_, scratch)) = inverse.schwarz {
         work.schwarz = scratch.into_inner().unwrap_or_else(PoisonError::into_inner);
+    }
+    if let Some((_, _, partials)) = inverse.blocks {
+        work.inverse_measures = partials
+            .into_inner()
+            .unwrap_or_else(PoisonError::into_inner);
     }
     outcome
 }

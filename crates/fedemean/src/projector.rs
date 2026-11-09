@@ -46,13 +46,17 @@ impl<'a> ColumnsMut<'a> {
     }
 }
 
-/// Coefficient storage: per column `per_rhs` values; effect `e`'s levels at
-/// `effect_offsets[e]..effect_offsets[e] + level_counts[e]` within a column.
+/// Coefficient storage: per column `per_rhs` values; within a column,
+/// effect `e` occupies `channels[e] * level_counts[e]` values from
+/// `effect_offsets[e]`, channel-major: channel `c` of level `l` at
+/// `effect_offsets[e] + c * level_counts[e] + l` (one channel per effect
+/// unless [`CoefficientLayout::with_channels`]).
 #[derive(Debug, Clone, Copy)]
 pub struct CoefficientLayout<'a> {
     pub(crate) per_rhs: usize,
     pub(crate) effect_offsets: &'a [usize],
     pub(crate) level_counts: &'a [usize],
+    pub(crate) channels: Option<&'a [usize]>,
 }
 
 impl<'a> CoefficientLayout<'a> {
@@ -66,6 +70,17 @@ impl<'a> CoefficientLayout<'a> {
             per_rhs,
             effect_offsets,
             level_counts,
+            channels: None,
+        }
+    }
+
+    /// The effects' channel counts ([`crate::Effect::channels`]), required
+    /// for a design whose effects have more than one channel.
+    #[must_use]
+    pub const fn with_channels(self, channels: &'a [usize]) -> Self {
+        Self {
+            channels: Some(channels),
+            ..self
         }
     }
 }
@@ -78,7 +93,8 @@ impl<'a> CoefficientLayout<'a> {
 /// and the retained blocks are the PCG iterate from zero (the full
 /// formulation: the method's iterate from its start), so the fitted
 /// contribution is unique while individual coefficients are determined only
-/// up to the design's null space.
+/// up to the design's null space (with slopes, also within a level whose
+/// channels are dependent on its rows; see [`Preconditioner::Jacobi`]).
 pub struct CoefficientsMut<'a> {
     pub(crate) values: &'a mut [f64],
     pub(crate) layout: CoefficientLayout<'a>,
@@ -93,12 +109,17 @@ impl<'a> CoefficientsMut<'a> {
     fn check(&self, design: &Design<'_>, ncols: usize) -> Result<()> {
         let layout = &self.layout;
         let effects = design.effects();
+        let channels = |e: usize| layout.channels.map_or(1, |channels| channels[e]);
         let fits = layout.effect_offsets.len() == effects.len()
             && layout.level_counts.len() == effects.len()
+            && layout.channels.is_none_or(|c| c.len() == effects.len())
             && effects.iter().enumerate().all(|(e, effect)| {
                 layout.level_counts[e] == effect.levels()
-                    && layout.effect_offsets[e]
-                        .checked_add(effect.levels())
+                    && channels(e) == effect.channels()
+                    && effect
+                        .levels()
+                        .checked_mul(channels(e))
+                        .and_then(|span| layout.effect_offsets[e].checked_add(span))
                         .is_some_and(|end| end <= layout.per_rhs)
             })
             && layout.per_rhs.checked_mul(ncols) == Some(self.values.len());
@@ -117,21 +138,23 @@ impl<'a> CoefficientsMut<'a> {
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum Reduction {
-    /// [`Reduction::EliminateLargest`] for two to five effects (the
+    /// [`Reduction::EliminateLargest`] for two to five intercept effects (the
     /// elimination's current, provisional range) with [`Method::Auto`] or
     /// [`Method::Pcg`] and an elimination preconditioner (`Auto`, `Jacobi`,
     /// `BlockJacobi`); [`Reduction::Full`] for any other effect count, for
-    /// [`Method::Lsmr`] and for [`Preconditioner::Identity`] or
-    /// [`Preconditioner::Schwarz`]. `BlockJacobi` always eliminates.
+    /// effects with slopes, for [`Method::Lsmr`] and for
+    /// [`Preconditioner::Identity`] or [`Preconditioner::Schwarz`].
+    /// `BlockJacobi` always eliminates.
     #[default]
     Auto,
     /// Eliminate the effect with the most levels exactly (global Schur
     /// complement) and iterate on the remaining effects. Designs with fewer
     /// than two or more than five effects decline
-    /// ([`Decline::OutsideRoute`]).
+    /// ([`Decline::OutsideRoute`]); effects with slopes are
+    /// [`Error::Unsupported`].
     EliminateLargest,
     /// The full system of every effect's coefficients, without elimination,
-    /// for any number of effects (at least one).
+    /// for any number of effects (at least one), with or without slopes.
     Full,
 }
 
@@ -166,7 +189,10 @@ pub enum Preconditioner {
     /// [`Preconditioner::Schwarz`] at the default [`SchwarzSpec`] as for
     /// [`Preconditioner::Jacobi`]; otherwise Schwarz when it builds within
     /// [`Request::memory_limit`], else Jacobi. One effect: Jacobi, which is
-    /// exact. Without the feature: Jacobi.
+    /// exact. Without the feature: Jacobi. A design with slopes counts its
+    /// effects with intercepts: with two or more, as above with the hybrid
+    /// Schwarz of [`Preconditioner::Schwarz`]; otherwise Jacobi (with the
+    /// levels' channel blocks) without escalation.
     #[default]
     Auto,
     /// Inverse diagonal of the reduced matrix, or of `D'WD` (the level
@@ -176,6 +202,18 @@ pub enum Preconditioner {
     /// predicts many iterations continues from its current iterate with
     /// [`Preconditioner::Schwarz`] at the default [`SchwarzSpec`] (a slow one
     /// whose Schwarz exceeds the memory limit continues with Jacobi).
+    ///
+    /// With slopes, the diagonal of an effect with several channels (or a
+    /// slope without intercept) is its levels' `channels x channels` blocks
+    /// of `D'WD`, each inverted exactly ([`PreconditionerUsed::ChannelBlocks`]):
+    /// a block that is singular (a slope constant or zero on the level, or
+    /// fewer distinct rows than channels: null directions of `D`) acts as its
+    /// pseudo-inverse on its range and gives its numerically null
+    /// directions (scaled eigenvalues at most `1e-10` of the largest) the
+    /// block's largest scaled curvature, so the action stays symmetric
+    /// positive definite. Consistent residuals have no component along those
+    /// directions, so they shape neither iterates nor results. Escalation
+    /// needs two effects with intercepts (see [`Preconditioner::Schwarz`]).
     Jacobi,
     /// Block-Jacobi over the retained effects: a local solve of each
     /// retained effect's diagonal block of the reduced matrix (a weighted
@@ -185,6 +223,11 @@ pub enum Preconditioner {
     Identity,
     /// One-level additive Schwarz over factor-pair subdomains (the full
     /// formulation; feature `schwarz`, otherwise [`Error::Unsupported`]).
+    /// With slopes, the pairs are those of the effects with intercepts, on
+    /// their intercept channels, and every effect with several channels (or
+    /// a slope without intercept) adds its level channel blocks
+    /// ([`Preconditioner::Jacobi`]) as further subdomains; it needs two
+    /// effects with intercepts ([`Error::Unsupported`] otherwise).
     /// A subdomain is one connected component of the bipartite level graph
     /// of two effects, and its local operator is that component's block of
     /// `D'WD` (a signed graph Laplacian). The local actions are summed
@@ -430,10 +473,18 @@ pub enum PreconditionerUsed {
     /// None (`M = I`).
     Identity,
     /// Additive Schwarz over `subdomains` factor-pair subdomains, with the
-    /// local Schur solves counted by kind.
+    /// local Schur solves counted by kind (with slopes, also the level
+    /// channel blocks of the effects with slopes, not counted here).
     Schwarz {
         subdomains: u32,
         local: SchwarzSolves,
+    },
+    /// Jacobi on a design with slopes ([`Preconditioner::Jacobi`]): inverse
+    /// level masses of the intercept effects and the exact inverses of the
+    /// other effects' level channel blocks, `singular` of which (saturating)
+    /// had a null direction.
+    ChannelBlocks {
+        singular: u32,
     },
 }
 
@@ -597,10 +648,19 @@ enum Formulation {
     Full(full::Method, full::Action),
 }
 
-/// Resolve the choices for a design with `effects` effects (see
-/// [`Reduction::Auto`]); unsupported explicit combinations are errors.
-fn formulation(effects: usize, choice: Choice) -> Result<Formulation> {
-    let eliminable = (2..=MAX_BLOCKS + 1).contains(&effects);
+/// Resolve the choices for `design` (see [`Reduction::Auto`]); unsupported
+/// explicit combinations are errors.
+fn formulation(design: &Design<'_>, choice: Choice) -> Result<Formulation> {
+    let effects = design.effects().len();
+    let sloped = design.sloped();
+    if design
+        .effects()
+        .iter()
+        .any(|effect| effect.channels() > full::MAX_CHANNELS)
+    {
+        return Err(Error::Unsupported("an effect has more than 16 channels"));
+    }
+    let eliminable = !sloped && (2..=MAX_BLOCKS + 1).contains(&effects);
     let reduction = match choice.reduction {
         Reduction::Auto => match (choice.method, choice.preconditioner) {
             (Method::Lsmr, _) | (_, Preconditioner::Identity | Preconditioner::Schwarz(_)) => {
@@ -613,6 +673,11 @@ fn formulation(effects: usize, choice: Choice) -> Result<Formulation> {
         explicit => explicit,
     };
     if reduction == Reduction::EliminateLargest {
+        if sloped {
+            return Err(Error::Unsupported(
+                "the elimination supports intercept effects only (use Reduction::Full for slopes)",
+            ));
+        }
         return match (choice.method, choice.preconditioner) {
             (Method::Lsmr, _) => Err(Error::Unsupported(
                 "modified LSMR is not implemented on the eliminated system (use Reduction::Full)",
@@ -626,26 +691,35 @@ fn formulation(effects: usize, choice: Choice) -> Result<Formulation> {
             _ => Ok(Formulation::Eliminate),
         };
     }
+    // Schwarz's pair subdomains need two effects with intercepts (with
+    // slopes, the level blocks cover the rest).
+    let intercepts = design.effects().iter().filter(|e| e.intercept()).count();
+    if sloped && intercepts < 2 && matches!(choice.preconditioner, Preconditioner::Schwarz(_)) {
+        return Err(Error::Unsupported(
+            "additive Schwarz with slopes needs two effects with intercepts",
+        ));
+    }
     let schwarz = cfg!(feature = "schwarz");
     let escalate = choice.fallback == Fallback::Escalate;
-    let action =
-        match choice.preconditioner {
-            // Jacobi first, Schwarz when Jacobi is slow or stalls.
-            Preconditioner::Auto if schwarz && effects >= 2 && escalate => full::Action::Escalate,
-            Preconditioner::Auto if schwarz && effects >= 2 => full::Action::Auto,
-            Preconditioner::Jacobi if schwarz && choice.fallback == Fallback::Escalate => {
-                full::Action::Escalate
-            }
-            Preconditioner::Auto | Preconditioner::Jacobi => full::Action::Jacobi,
-            Preconditioner::Identity => full::Action::Identity,
-            Preconditioner::BlockJacobi(_) => return Err(Error::Unsupported(
+    let action = match choice.preconditioner {
+        // Jacobi first, Schwarz when Jacobi is slow or stalls.
+        Preconditioner::Auto if schwarz && intercepts >= 2 && escalate => full::Action::Escalate,
+        Preconditioner::Auto if schwarz && intercepts >= 2 => full::Action::Auto,
+        Preconditioner::Jacobi if schwarz && (!sloped || intercepts >= 2) && escalate => {
+            full::Action::Escalate
+        }
+        Preconditioner::Auto | Preconditioner::Jacobi => full::Action::Jacobi,
+        Preconditioner::Identity => full::Action::Identity,
+        Preconditioner::BlockJacobi(_) => {
+            return Err(Error::Unsupported(
                 "block-Jacobi preconditions the eliminated system (Reduction::EliminateLargest)",
-            )),
-            Preconditioner::Schwarz(spec) if schwarz => full::Action::Schwarz(spec),
-            Preconditioner::Schwarz(_) => {
-                return Err(Error::Unsupported("additive Schwarz needs feature schwarz"))
-            }
-        };
+            ))
+        }
+        Preconditioner::Schwarz(spec) if schwarz => full::Action::Schwarz(spec),
+        Preconditioner::Schwarz(_) => {
+            return Err(Error::Unsupported("additive Schwarz needs feature schwarz"))
+        }
+    };
     let method = match choice.method {
         Method::Auto | Method::Pcg => full::Method::Pcg,
         #[cfg(feature = "schwarz")]
@@ -675,7 +749,7 @@ impl<'a> Projector<'a> {
     #[must_use]
     pub fn new(design: Design<'a>, settings: Settings) -> Self {
         Self {
-            formulation: formulation(design.effects().len(), settings.choice),
+            formulation: formulation(&design, settings.choice),
             design,
             settings,
             owned: None,
@@ -778,8 +852,9 @@ impl<'a> Projector<'a> {
     }
 
     /// [`Projector::project`] from the warm start `start`: FE coefficients
-    /// in the design's canonical layout (per column, every effect's levels
-    /// in effect order, `L = sum of level counts` values per column, so
+    /// in the design's canonical layout (per column, every effect in effect
+    /// order, channel-major within it as in [`CoefficientLayout`]:
+    /// `L = sum of levels times channels` values per column, so
     /// `start.len() == L * ncols`). The solve begins at the true residual
     /// `y - D start`, formed from the columns. The returned residual is
     /// `y - D (start + increments)`, and `coefficients` (add semantics)
@@ -811,7 +886,9 @@ impl<'a> Projector<'a> {
             .design
             .effects()
             .iter()
-            .try_fold(0_usize, |total, effect| total.checked_add(effect.levels()));
+            .try_fold(0_usize, |total, effect| {
+                total.checked_add(effect.levels().checked_mul(effect.channels())?)
+            });
         if per_column.and_then(|l| l.checked_mul(columns.ncols())) != Some(start.len()) {
             return Err(Error::InvalidInput(
                 "warm-start coefficients do not match the design and columns",

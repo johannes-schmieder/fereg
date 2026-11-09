@@ -1,6 +1,8 @@
 //! Current-weight state of the full formulation: normalized observation
-//! weights and every level's mass.
+//! weights, every coefficient's mass (the diagonal of `D'WD`) and, for the
+//! effects with slopes, their levels' channel blocks ([`Blocks`]).
 
+use super::blocks::Blocks;
 use super::kernels::{adjoint, Rows, PARALLEL_WORK};
 use super::refill;
 use super::structure::Structure;
@@ -16,9 +18,15 @@ pub(crate) struct State {
     pub(super) normalized: Vec<f64>,
     /// `sqrt(w_i / max w)` for modified LSMR (empty otherwise).
     pub(super) root: Vec<f64>,
+    /// The diagonal of `D'WD`: level masses, and a slope channel's
+    /// `sum w x^2`.
     pub(super) mass: Vec<f64>,
+    /// Inverse masses and their roots: zero on the effects with blocks,
+    /// whose preconditioner and measures are their blocks'.
     pub(super) inverse_mass: Vec<f64>,
     pub(super) inverse_root_mass: Vec<f64>,
+    /// The channel blocks (empty for an intercept-only design).
+    pub(super) blocks: Blocks,
     /// The maximum weight (1 for unit weights).
     pub(super) raw_scale: f64,
     /// Total normalized weight of the sample.
@@ -30,6 +38,11 @@ impl State {
     /// Normalized weights, `None` for unit weights.
     pub(super) fn weights(&self) -> Option<&[f64]> {
         (!self.normalized.is_empty()).then_some(&self.normalized[..])
+    }
+
+    /// The channel blocks of a design with slopes.
+    pub(super) fn blocks(&self) -> Option<&Blocks> {
+        (self.blocks.tasks() > 0).then_some(&self.blocks)
     }
 
     /// `sqrt` of the normalized weights, `None` for unit weights.
@@ -102,25 +115,51 @@ impl State {
             },
         };
         adjoint::<1>(st, effects, src, None, &mut self.mass, scatter);
+        if st.sloped {
+            let normalized = (!self.normalized.is_empty()).then_some(&self.normalized[..]);
+            self.blocks.fill(st, effects, normalized, &mut self.mass)?;
+        } else {
+            self.blocks = Blocks::default();
+        }
         refill(&mut self.inverse_mass, m, 0.0)?;
         refill(&mut self.inverse_root_mass, m, 0.0)?;
-        for g in 0..m {
-            let mass = self.mass[g];
-            if !(mass.is_finite() && mass > 0.0) {
-                return Ok(false);
+        for (e, effect) in effects.iter().enumerate() {
+            let (lo, hi) = (st.offsets[e], st.offsets[e + 1]);
+            if effect.sloped() {
+                // Every observed level of an intercept channel has weight.
+                let channels = effect.channels();
+                let observed = !effect.intercept()
+                    || self.mass[lo..hi].iter().step_by(channels).all(|&m| m > 0.0);
+                if !observed {
+                    return Ok(false);
+                }
+                continue;
             }
-            self.inverse_mass[g] = 1.0 / mass;
-            self.inverse_root_mass[g] = 1.0 / mass.sqrt();
+            for g in lo..hi {
+                let mass = self.mass[g];
+                if !(mass.is_finite() && mass > 0.0) {
+                    return Ok(false);
+                }
+                self.inverse_mass[g] = 1.0 / mass;
+                self.inverse_root_mass[g] = 1.0 / mass.sqrt();
+            }
         }
         self.raw_scale = scale;
-        let first = &self.mass[st.offsets[0]..st.offsets[1]];
-        self.total_mass = first.iter().sum();
+        self.total_mass = if effects[0].sloped() {
+            self.weights().map_or(n as f64, |w| {
+                w.chunks(1 << 16).map(|c| c.iter().sum::<f64>()).sum()
+            })
+        } else {
+            let first = &self.mass[st.offsets[0]..st.offsets[1]];
+            first.iter().sum()
+        };
         self.bytes = (self.normalized.capacity()
             + self.root.capacity()
             + self.mass.capacity()
             + self.inverse_mass.capacity()
             + self.inverse_root_mass.capacity()) as u128
-            * 8;
+            * 8
+            + self.blocks.bytes();
         Ok(true)
     }
 }

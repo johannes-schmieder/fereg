@@ -1,9 +1,11 @@
 //! The full formulation: the weighted least-squares problem
 //! `min_x sum_i w_i (y_i - (D x)_i)^2` over every effect's coefficients at
-//! once, for categorical intercept designs with any number of effects.
+//! once, for categorical designs with any number of effects, with or
+//! without varying slopes.
 //!
 //! `D` maps coefficients to observations (each row sums its levels'
-//! coefficients) and `D'` sums observations into levels. Both run over
+//! channels: the intercept coefficient and each slope coefficient times the
+//! row's slope value) and `D'` sums observations into level channels. Both run over
 //! blocks fixed by the design (rows; small effects' scatter blocks; large
 //! effects' levels, each summed over its rows in ascending order), so the
 //! results do not depend on the worker count or the lane setting.
@@ -39,7 +41,13 @@
 //! its subdomain, so the sum is SPD on all of coefficient space. The added
 //! direction is the subdomain's `(1, -1)` vector, a null direction of `D`,
 //! which every consistent residual is orthogonal to: it leaves PCG and
-//! modified LSMR iterates unchanged.
+//! modified LSMR iterates unchanged. With slopes, Jacobi's diagonal of an
+//! effect with several channels is its levels' channel blocks ([`blocks`]:
+//! exact inverses, singular ones augmented on their null directions, which
+//! are null directions of `D`), and Schwarz adds those blocks to its pair
+//! subdomains on the intercept channels; both stay SPD on all of
+//! coefficient space. A blocked level is measured and certified by the norm
+//! of its moments in its channel span, `sqrt(m' M_l^-1 m)`.
 //!
 //! **Escalation.** With [`crate::Fallback::Escalate`], a Jacobi recurrence
 //! that stalls (PCG; modified LSMR: its normal-equation estimate fails to
@@ -59,6 +67,7 @@
 //! its own vectors per column. A Schwarz preconditioner is built for the
 //! current weights within the memory limit (or declines) and retained.
 
+mod blocks;
 mod kernels;
 #[cfg(feature = "schwarz")]
 mod lsmr;
@@ -73,6 +82,7 @@ mod weights;
 /// routes' code shared.
 #[cfg(not(feature = "schwarz"))]
 mod schwarz {
+    use super::blocks::Blocks;
     use super::structure::Structure;
     use super::weights::State;
     use crate::design::Effect;
@@ -129,15 +139,17 @@ mod schwarz {
             _: &[f64],
             _: &mut [f64],
             _: &mut Scratch,
-            _: &[f64],
+            _: (&[f64], Option<&Blocks>),
         ) {
             match *self {}
         }
     }
 }
 
+pub(crate) use blocks::MAX_CHANNELS;
+
 use crate::certificate::{Certificate, MomentFold};
-use crate::design::Design;
+use crate::design::{Design, Effect};
 use crate::elimination::pcg::{Solve, Tally, Targets, CEILING, STALLED};
 use crate::elimination::weights::{validate_keyed, WeightKey};
 use crate::elimination::{Cancel, ACCEPT_FRACTION, BATCH, STOP_FRACTION, WITHIN_FLOOR};
@@ -277,7 +289,7 @@ pub(super) struct Outputs<'o> {
 /// Bytes of the weight state.
 fn state_bytes(st: &Structure, method: Method, weighted: bool) -> u128 {
     let roots = u128::from(weighted) * (1 + u128::from(method == Method::Lsmr));
-    8 * (3 * st.coefficients() as u128 + roots * st.nobs as u128)
+    8 * (3 * st.coefficients() as u128 + roots * st.nobs as u128) + st.block_bytes
 }
 
 /// Bytes a projection of `ncols` columns adds to the caller's data: the
@@ -487,15 +499,24 @@ impl Engine {
         }
         let mut fold = MomentFold::default();
         let mut rhs_inf = [0.0];
-        for (g, &moment) in moments.iter().enumerate() {
-            let mass = state.mass[g];
-            fold.level(
-                mass,
-                &[moment / mass],
-                &[reference],
-                &mut rhs_inf,
-                state.raw_scale,
-            )?;
+        for (e, effect) in effects.iter().enumerate() {
+            if let Some(blocks) = state.blocks().filter(|_| effect.sloped()) {
+                let scales = (&[reference][..], state.raw_scale);
+                blocks.fold::<1>(st, e, &moments, scales, (&mut fold, &mut rhs_inf))?;
+                continue;
+            }
+            for (moment, &mass) in moments[st.offsets[e]..st.offsets[e + 1]]
+                .iter()
+                .zip(&state.mass[st.offsets[e]..])
+            {
+                fold.level(
+                    mass,
+                    &[moment / mass],
+                    &[reference],
+                    &mut rhs_inf,
+                    state.raw_scale,
+                )?;
+            }
         }
         fold.finish(tolerance).map(Some)
     }
@@ -537,10 +558,13 @@ fn route(job: &Job<'_, '_>, schwarz: Option<&Schwarz>, escalations: usize) -> Ro
             Method::Pcg => MethodUsed::Pcg,
             Method::Lsmr => MethodUsed::Lsmr,
         },
-        preconditioner: match (schwarz, job.action) {
-            (Some(schwarz), _) => schwarz.used(),
-            (None, Action::Identity) => PreconditionerUsed::Identity,
-            (None, _) => PreconditionerUsed::Jacobi,
+        preconditioner: match (schwarz, job.action, job.state.blocks()) {
+            (Some(schwarz), _, _) => schwarz.used(),
+            (None, Action::Identity, _) => PreconditionerUsed::Identity,
+            (None, _, Some(blocks)) => PreconditionerUsed::ChannelBlocks {
+                singular: u32::try_from(blocks.singular()).unwrap_or(u32::MAX),
+            },
+            (None, _, None) => PreconditionerUsed::Jacobi,
         },
         escalations: u8::try_from(escalations).unwrap_or(u8::MAX),
     }
@@ -728,9 +752,10 @@ pub(super) struct Certified<const R: usize> {
     scales: [f64; R],
 }
 
-/// Fold every level's recomputed moment at `max(reference, ||r||)`.
+/// Fold every level's recomputed moment at `max(reference, ||r||)` (a
+/// blocked level: its channel-span norm).
 fn certify<const R: usize>(
-    state: &State,
+    (st, effects, state): (&Structure, &[Effect<'_>], &State),
     moments: &[f64],
     sq: [f64; R],
     reference: [f64; R],
@@ -750,17 +775,42 @@ fn certify<const R: usize>(
         return out;
     }
     let mut means = [0.0; R];
-    for (g, moment) in moments.chunks_exact(R).enumerate() {
-        let mass = state.mass[g];
-        let inverse = state.inverse_mass[g];
-        for j in 0..R {
-            means[j] = moment[j] * inverse;
+    let mut levels =
+        |range: std::ops::Range<usize>, fold: &mut MomentFold, out: &mut Certified<R>| {
+            for g in range {
+                let mass = state.mass[g];
+                let inverse = state.inverse_mass[g];
+                for j in 0..R {
+                    means[j] = moments[g * R + j] * inverse;
+                }
+                let scales = &out.scales;
+                if fold
+                    .level(mass, &means, scales, &mut out.relative, state.raw_scale)
+                    .is_err()
+                {
+                    return false;
+                }
+            }
+            true
+        };
+    let Some(blocks) = state.blocks() else {
+        if !levels(0..moments.len() / R, &mut fold, &mut out) {
+            return out;
         }
-        let scales = &out.scales;
-        if fold
-            .level(mass, &means, scales, &mut out.relative, state.raw_scale)
-            .is_err()
-        {
+        if fold.relative_infinity_norm <= tolerance {
+            out.fold = Some(fold);
+        }
+        return out;
+    };
+    for (e, effect) in effects.iter().enumerate() {
+        let folded = if effect.sloped() {
+            let scales = (&out.scales[..], state.raw_scale);
+            let target = (&mut fold, &mut out.relative[..]);
+            blocks.fold::<R>(st, e, moments, scales, target).is_ok()
+        } else {
+            levels(st.offsets[e]..st.offsets[e + 1], &mut fold, &mut out)
+        };
+        if !folded {
             return out;
         }
     }
@@ -770,10 +820,28 @@ fn certify<const R: usize>(
     out
 }
 
-/// Add column `j`'s coefficients `x[g * stride + offset]` (canonical order)
-/// to the caller's buffer at its layout.
-fn add_coefficients(
+/// `f(e, internal, within)` for every coefficient in effect and level
+/// order: `internal` its index in the level-major internal layout, `within`
+/// its channel-major position in its effect (`channel * levels + level`).
+fn each_coefficient(
     st: &Structure,
+    effects: &[Effect<'_>],
+    mut f: impl FnMut(usize, usize, usize),
+) {
+    for (e, effect) in effects.iter().enumerate() {
+        let (levels, channels) = (effect.levels(), effect.channels());
+        for l in 0..levels {
+            for c in 0..channels {
+                f(e, st.offsets[e] + l * channels + c, c * levels + l);
+            }
+        }
+    }
+}
+
+/// Add column `j`'s coefficients `x[g * stride + offset]` (internal
+/// layout) to the caller's buffer at its (channel-major) layout.
+fn add_coefficients(
+    (st, effects): (&Structure, &[Effect<'_>]),
     x: &[f64],
     (stride, offset): (usize, usize),
     out: &mut CoefficientsMut<'_>,
@@ -781,11 +849,44 @@ fn add_coefficients(
 ) {
     let layout = out.layout;
     let base = column * layout.per_rhs;
-    for (e, &first) in st.offsets[..st.offsets.len() - 1].iter().enumerate() {
-        let start = base + layout.effect_offsets[e];
-        let levels = layout.level_counts[e];
-        for (l, value) in out.values[start..start + levels].iter_mut().enumerate() {
-            *value += x[(first + l) * stride + offset];
+    let values = &mut *out.values;
+    each_coefficient(st, effects, |e, g, within| {
+        values[base + layout.effect_offsets[e] + within] += x[g * stride + offset];
+    });
+}
+
+/// The warm start of columns `first..first + R` (canonical layout, `m`
+/// values per column) into `x` (internal layout, `R` per coefficient).
+fn load_start<const R: usize>(
+    (st, effects): (&Structure, &[Effect<'_>]),
+    start: &[f64],
+    first: usize,
+    x: &mut [f64],
+) {
+    let m = st.coefficients();
+    each_coefficient(st, effects, |e, g, within| {
+        for (j, x) in x[g * R..(g + 1) * R].iter_mut().enumerate() {
+            *x = start[(first + j) * m + st.offsets[e] + within];
+        }
+    });
+}
+
+/// The cold start in `x` (zero elsewhere): the largest effect's per-level
+/// least-squares fit of `q = D'W y`, its level means `q_l / m_l` (an effect
+/// with blocks: `M_l^-1 q_l`).
+fn cold_start<const R: usize>(job: &Job<'_, '_>, q: &[f64], x: &mut [f64]) {
+    let (st, state) = (job.st, job.state);
+    let first = st.offsets[st.largest];
+    if state
+        .blocks()
+        .is_some_and(|blocks| blocks.solve_effect::<R>(st.largest, first, q, x))
+    {
+        return;
+    }
+    for g in st.offsets[st.largest]..st.offsets[st.largest + 1] {
+        let inverse = state.inverse_mass[g];
+        for j in 0..R {
+            x[g * R + j] = q[g * R + j] * inverse;
         }
     }
 }
@@ -821,20 +922,15 @@ struct Batch<'b, 'v, 'c> {
 }
 
 /// The starting iterate: the caller's (canonical layout) or, cold, the
-/// largest effect's weighted level means `g_l / m_l` from `t = W y`, with
-/// every other effect at zero.
+/// largest effect's per-level fit of `t = W y` ([`cold_start`]), with every
+/// other effect at zero.
 fn starting_iterate<const R: usize>(job: &Job<'_, '_>, batch: &Batch<'_, '_, '_>, work: &mut Work) {
     let st = job.st;
-    let m = st.coefficients();
+    let effects = job.design.effects();
     if let Some(start) = batch.start {
-        for (g, x) in work.x.chunks_exact_mut(R).enumerate() {
-            for (j, x) in x.iter_mut().enumerate() {
-                *x = start[(batch.first + j) * m + g];
-            }
-        }
+        load_start::<R>((st, effects), start, batch.first, &mut work.x);
         return;
     }
-    let effects = job.design.effects();
     let t = Rows {
         data: &work.t,
         stride: R,
@@ -842,13 +938,7 @@ fn starting_iterate<const R: usize>(job: &Job<'_, '_>, batch: &Batch<'_, '_, '_>
     };
     adjoint::<R>(st, effects, t, None, &mut work.q, &mut work.scatter);
     work.x.fill(0.0);
-    let (lo, hi) = (st.offsets[st.largest], st.offsets[st.largest + 1]);
-    for g in lo..hi {
-        let inverse = job.state.inverse_mass[g];
-        for j in 0..R {
-            work.x[g * R + j] = work.q[g * R + j] * inverse;
-        }
-    }
+    cold_start::<R>(job, &work.q, &mut work.x);
 }
 
 /// The batch's recurrence in its mode. An escalating Jacobi recurrence that
@@ -951,6 +1041,7 @@ fn run<const R: usize>(
     let effects = job.design.effects();
     let ncols = batch.values.ncols();
     work.size(st, R)?;
+    work.size_blocks(state, R)?;
     let started = Instant::now();
     let src = Rows {
         data: batch.values.as_slice(),
@@ -1005,7 +1096,13 @@ fn run<const R: usize>(
     let started = Instant::now();
     if let Some(coefficients) = batch.coefficients {
         for j in 0..R {
-            add_coefficients(st, &work.x, (R, j), coefficients, batch.first + j);
+            add_coefficients(
+                (st, effects),
+                &work.x,
+                (R, j),
+                coefficients,
+                batch.first + j,
+            );
         }
     }
     let target = (batch.values.as_mut_slice(), ncols, batch.first);
@@ -1024,7 +1121,8 @@ fn run<const R: usize>(
         first: 0,
     };
     adjoint::<R>(st, effects, t, None, &mut work.q, &mut work.scatter);
-    let certified = certify::<R>(state, &work.q, sq, scale, job.request.tolerance);
+    let tolerance = job.request.tolerance;
+    let certified = certify::<R>((st, effects, state), &work.q, sq, scale, tolerance);
     facts.residual_seconds += started.elapsed().as_secs_f64();
     let mut out = Formed {
         certified: certified.fold,

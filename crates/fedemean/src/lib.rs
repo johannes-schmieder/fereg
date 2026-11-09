@@ -36,9 +36,17 @@
 //!   to Schwarz when it stalls or a pilot predicts it slow
 //!   ([`Fallback::Escalate`]); warm starts
 //!   ([`Projector::project_from`]).
-//! - Not yet: varying slopes. Unsupported explicit combinations are
-//!   [`Error::Unsupported`]; designs outside a route are declined
-//!   ([`Outcome::Declined`]) for the caller's own solvers.
+//! - Varying slopes ([`Effect::with_slopes`]: an optional intercept and
+//!   slope variables per effect, up to 16 channels) on the full formulation
+//!   with PCG or modified LSMR and Jacobi over each level's channel block
+//!   (exact inverses; singular blocks act as pseudo-inverses on their range,
+//!   [`PreconditionerUsed::ChannelBlocks`]), or additive Schwarz whose
+//!   factor-pair subdomains cover the intercept channels and whose level
+//!   blocks cover the slopes; certified per level on the span of its
+//!   channels. Not yet with slopes: the elimination.
+//! - Unsupported explicit combinations are [`Error::Unsupported`]; designs
+//!   outside a route are declined ([`Outcome::Declined`]) for the caller's
+//!   own solvers.
 //!
 //! Projections run on the caller's current rayon pool.
 

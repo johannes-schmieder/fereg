@@ -1,11 +1,13 @@
 //! One-level additive Schwarz preconditioning of the full system over
 //! factor-pair subdomains (feature `schwarz`).
 //!
-//! **Subdomains.** For each chosen pair of effects ([`Subdomains`]: the
-//! star of the largest effect with every other, or all pairs), every
-//! connected component of the pair's bipartite level graph is one
-//! subdomain ([`pairs`]); a pair's components partition its two effects'
-//! levels.
+//! **Subdomains.** For each chosen pair of effects with intercepts
+//! ([`Subdomains`]: the star of the largest with every other, or all
+//! pairs), every connected component of the pair's bipartite level graph is
+//! one subdomain on the two effects' intercept channels ([`pairs`]); a
+//! pair's components partition its two effects' levels. A design with
+//! slopes adds one subdomain per level of every effect with blocks (its
+//! channels, [`super::blocks`]): additive Schwarz over both families.
 //!
 //! **Action.** `z = sum_i R_i' A_i R_i r` over the subdomains, `A_i` the
 //! local action of [`local`] (block elimination of the larger side, an
@@ -16,7 +18,11 @@
 //! component's levels, and the components of one pair cover its effects'
 //! levels, so the sum is symmetric positive definite on all of coefficient
 //! space whenever every effect is in a pair: the full formulation's
-//! preconditioner contract for PCG and modified LSMR.
+//! preconditioner contract for PCG and modified LSMR. With slopes, the
+//! level blocks (positive definite) cover every channel of their effects,
+//! and the intercept effects without blocks are in pairs, so the sum stays
+//! positive definite; the `(1, -1)` augmentation direction of a component
+//! lies on two intercept channels, still a null direction of `D`.
 //!
 //! **Determinism.** The pairs, components and slots are a fixed function of
 //! the design; the cross-tabulation, Schur complements and factorizations
@@ -38,6 +44,7 @@ mod local;
 mod pairs;
 mod skyline;
 
+use super::blocks::Blocks;
 use super::kernels::PARALLEL_WORK;
 use super::structure::Structure;
 use super::weights::State;
@@ -115,8 +122,10 @@ pub(crate) struct Schwarz {
     spec: SchwarzSpec,
     /// The weight state it was built for.
     generation: u64,
-    /// Coefficient offsets of the effects (with the total).
+    /// Coefficient offsets of the effects (with the total) and their
+    /// channels.
     offsets: Vec<usize>,
+    channels: Vec<usize>,
     pairs: Vec<Pair>,
     /// Every pair's components in pair order, contiguous in the slots.
     pieces: Vec<Piece>,
@@ -129,8 +138,8 @@ pub(crate) struct Schwarz {
     bytes: u128,
 }
 
-/// The pairs of `subdomains`, side 0 the effect with more levels (the
-/// first of equals).
+/// The pairs of `subdomains` among the effects with intercepts, side 0 the
+/// effect with more levels (the first of equals).
 fn pair_list(
     st: &Structure,
     effects: &[Effect<'_>],
@@ -144,15 +153,26 @@ fn pair_list(
             [x, y]
         }
     };
+    let paired = |e: &usize| effects[*e].intercept();
     let mut list = with_capacity(k * k.saturating_sub(1) / 2)?;
     match subdomains {
         Subdomains::Star => {
-            let hub = st.largest;
-            list.extend((0..k).filter(|&e| e != hub).map(|e| orient(hub, e)));
+            // The largest effect, or (slopes) the largest with an intercept.
+            let hub = if effects[st.largest].intercept() {
+                Some(st.largest)
+            } else {
+                (0..k)
+                    .filter(paired)
+                    .max_by_key(|&e| (effects[e].levels(), std::cmp::Reverse(e)))
+            };
+            if let Some(hub) = hub {
+                let others = (0..k).filter(paired).filter(|&e| e != hub);
+                list.extend(others.map(|e| orient(hub, e)));
+            }
         }
         Subdomains::AllPairs => {
-            for a in 0..k {
-                list.extend((a + 1..k).map(|b| orient(a, b)));
+            for a in (0..k).filter(paired) {
+                list.extend((a + 1..k).filter(paired).map(|b| orient(a, b)));
             }
         }
     }
@@ -205,6 +225,10 @@ impl Schwarz {
                     start: first + part.start,
                     sizes: [part.sizes[big], part.sizes[1 - big]],
                     offsets: [st.offsets[sides[big]], st.offsets[sides[1 - big]]],
+                    strides: [
+                        effects[sides[big]].channels(),
+                        effects[sides[1 - big]].channels(),
+                    ],
                     inner: Inner::Trivial,
                     inner_first: 0,
                     partial_first: 0,
@@ -223,6 +247,7 @@ impl Schwarz {
             spec,
             generation,
             offsets: with_capacity(st.offsets.len())?,
+            channels: with_capacity(effects.len())?,
             pairs,
             pieces,
             slots: first,
@@ -233,6 +258,9 @@ impl Schwarz {
             bytes: 0,
         };
         schwarz.offsets.extend_from_slice(&st.offsets);
+        schwarz
+            .channels
+            .extend(effects.iter().map(Effect::channels));
         schwarz.layout()?;
         if !admit.take(schwarz.bytes + schwarz.scratch_bytes(width)) {
             return Ok(Err(Refusal::MemoryLimit));
@@ -315,7 +343,7 @@ impl Schwarz {
             + self.pieces.iter().map(|p| p.inner.bytes()).sum::<u128>()
             + (self.pieces.capacity() * std::mem::size_of::<Piece>()) as u128
             + 16 * (self.pairs.len() * self.covers.len()) as u128
-            + 8 * self.offsets.capacity() as u128;
+            + 8 * (self.offsets.capacity() + self.channels.capacity()) as u128;
         Ok(())
     }
 
@@ -361,13 +389,15 @@ impl Schwarz {
     }
 
     /// `z = M^-1 r` for `R` interleaved columns (`scratch` sized for `R`);
-    /// `inverse_mass` gives Jacobi on levels in no subdomain.
+    /// `inverse_mass` gives Jacobi on levels in no subdomain, and `blocks`
+    /// (a design with slopes) the level blocks of their effects, to which
+    /// the pair subdomains add on the intercept channels.
     pub(super) fn apply<const R: usize>(
         &self,
         r: &[f64],
         z: &mut [f64],
         scratch: &mut Scratch,
-        inverse_mass: &[f64],
+        (inverse_mass, blocks): (&[f64], Option<&Blocks>),
     ) {
         let Scratch {
             local,
@@ -381,6 +411,35 @@ impl Schwarz {
         let local = &local[..];
         for (e, covers) in self.covers.iter().enumerate() {
             let (lo, hi) = (self.offsets[e], self.offsets[e + 1]);
+            if let Some(blocks) = blocks.filter(|b| b.covers(e)) {
+                // The level blocks, plus the pairs on the intercept channel.
+                blocks.solve_effect::<R>(e, lo, r, z);
+                let add = |l: usize, out: &mut [f64]| {
+                    for &(p, side) in covers {
+                        let pair = &self.pairs[p];
+                        let at = (pair.first + pair.slot[side][l] as usize) * R;
+                        for j in 0..R {
+                            out[j] += local[at + j];
+                        }
+                    }
+                };
+                let span = self.channels[e] * R;
+                let out = &mut z[lo * R..hi * R];
+                if covers.is_empty() {
+                    continue;
+                }
+                if out.len() < PARALLEL_WORK {
+                    for (l, level) in out.chunks_exact_mut(span).enumerate() {
+                        add(l, level);
+                    }
+                } else {
+                    use rayon::prelude::*;
+                    out.par_chunks_mut(span)
+                        .enumerate()
+                        .for_each(|(l, level)| add(l, level));
+                }
+                continue;
+            }
             let body = |l: usize, out: &mut [f64]| {
                 if covers.is_empty() {
                     let d = inverse_mass[lo + l];
@@ -529,7 +588,7 @@ mod tests {
         let mut scratch = Scratch::default();
         schwarz.size(&mut scratch, 1).unwrap();
         let mut z = vec![f64::NAN; r.len()];
-        schwarz.apply::<1>(r, &mut z, &mut scratch, &state.inverse_mass);
+        schwarz.apply::<1>(r, &mut z, &mut scratch, (&state.inverse_mass, None));
         z
     }
 
@@ -663,7 +722,7 @@ mod tests {
             let mut scratch = Scratch::default();
             schwarz.size(&mut scratch, R).unwrap();
             let mut z = vec![f64::NAN; p * R];
-            schwarz.apply::<R>(&r, &mut z, &mut scratch, &state.inverse_mass);
+            schwarz.apply::<R>(&r, &mut z, &mut scratch, (&state.inverse_mass, None));
             for (j, image) in images[..R].iter().enumerate() {
                 for (g, &x) in image.iter().enumerate() {
                     let y = z[g * R + j];
@@ -717,7 +776,7 @@ mod tests {
         let mut scratch = Scratch::default();
         schwarz.size(&mut scratch, R).unwrap();
         let mut z = vec![f64::NAN; p * R];
-        schwarz.apply::<R>(&r, &mut z, &mut scratch, &state.inverse_mass);
+        schwarz.apply::<R>(&r, &mut z, &mut scratch, (&state.inverse_mass, None));
         for (j, image) in images[..R].iter().enumerate() {
             for (g, &x) in image.iter().enumerate() {
                 assert!((x - z[g * R + j]).abs() <= 1e-12 * x.abs().max(1e-300));

@@ -89,6 +89,55 @@ impl MomentFold {
         Ok(())
     }
 
+    /// Fold one level of an effect with several channels (or a slope): per
+    /// RHS the norm of its moments in the level's channel span
+    /// (`sqrt(m' G^-1 m)`, the counterpart of `|mean| sqrt(weight)`) and its
+    /// largest normalized-weight channel moment.
+    pub(crate) fn span(
+        &mut self,
+        norms: &[f64],
+        largest: &[f64],
+        rhs_scales: &[f64],
+        rhs_relative_infinity_norms: &mut [f64],
+        raw_scale: f64,
+    ) -> Result<()> {
+        for (rhs, (&norm, &largest)) in norms.iter().zip(largest).enumerate() {
+            let denominator = rhs_scales[rhs];
+            let relative = if denominator == 0.0 {
+                if norm == 0.0 {
+                    0.0
+                } else {
+                    return Err(Error::InvalidData(
+                        "zero-scale certificate has a nonzero slope moment",
+                    ));
+                }
+            } else {
+                norm / denominator
+            };
+            if !relative.is_finite() {
+                return Err(Error::InvalidData("slope certificate ratio is not finite"));
+            }
+            self.relative_infinity_norm = self.relative_infinity_norm.max(relative);
+            rhs_relative_infinity_norms[rhs] = rhs_relative_infinity_norms[rhs].max(relative);
+            self.relative_square_sum = relative.mul_add(relative, self.relative_square_sum);
+            if !self.relative_square_sum.is_finite() {
+                return Err(Error::InvalidData(
+                    "slope certificate two-norm accumulation is not finite",
+                ));
+            }
+            self.relative_count += 1;
+            let raw = largest * raw_scale;
+            self.absolute_infinity_norm = self.absolute_infinity_norm.max(if raw.is_finite() {
+                raw
+            } else if largest == 0.0 {
+                0.0
+            } else {
+                f64::INFINITY
+            });
+        }
+        Ok(())
+    }
+
     pub(crate) fn merge(&mut self, part: &Self) {
         self.absolute_infinity_norm = self.absolute_infinity_norm.max(part.absolute_infinity_norm);
         self.relative_infinity_norm = self.relative_infinity_norm.max(part.relative_infinity_norm);

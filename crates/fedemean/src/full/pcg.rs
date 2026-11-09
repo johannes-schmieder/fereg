@@ -74,6 +74,11 @@ pub(super) struct Work {
     pub(super) b: Vec<f64>,
     /// The Schwarz apply workspace (sized by the preconditioner).
     pub(super) schwarz: Scratch,
+    /// Partials of the channel-block pass (designs with slopes) ...
+    pub(super) measures: Vec<f64>,
+    /// ... and of modified LSMR's preconditioner, which runs beside it.
+    #[cfg_attr(not(feature = "schwarz"), allow(dead_code))]
+    pub(super) inverse_measures: Vec<f64>,
 }
 
 /// Bytes of a [`Work`] for `r` columns.
@@ -123,10 +128,20 @@ impl Work {
         }
         Ok(())
     }
+
+    /// Size the channel-block partials of `state` for `r` columns.
+    pub(super) fn size_blocks(&mut self, state: &State, r: usize) -> Result<()> {
+        let len = state.blocks().map_or(0, |b| b.tasks() * 3 * r);
+        if self.measures.len() != len {
+            refill(&mut self.measures, len, 0.0)?;
+        }
+        Ok(())
+    }
 }
 
 /// The normal-equation operator `D'WD` and its preconditioner: additive
-/// Schwarz when given, else Jacobi or the identity.
+/// Schwarz when given, else Jacobi (with the channel blocks of the effects
+/// with slopes) or the identity.
 pub(super) struct Normal<'a, 'd> {
     pub(super) st: &'a Structure,
     pub(super) effects: &'a [Effect<'d>],
@@ -160,7 +175,8 @@ fn chunks(m: usize) -> impl Iterator<Item = Range<usize>> {
 }
 
 /// With `alpha`, `x += alpha p` and `r -= alpha q` first; then `z = M^-1 r`.
-/// Returns `r'z`, `max |r_g| / sqrt(m_g)` and `max |r_g| / m_g` per column,
+/// Returns `r'z`, `max |r_g| / sqrt(m_g)` and `max |r_g| / m_g` per column
+/// (a blocked level: `sqrt(r_l' M_l^-1 r_l)` and `max |M_l^-1 r_l|`),
 /// as plain sums and maxima over fixed chunks combined in chunk order (the
 /// Schwarz action's `r'z` by a separate fixed-chunk dot).
 fn update<const R: usize>(
@@ -169,10 +185,25 @@ fn update<const R: usize>(
     alpha: Option<[f64; R]>,
 ) -> [[f64; R]; 3] {
     let mut out = fused::<R>(op, work, alpha);
+    let blocks = op.state.blocks();
     if let Some(schwarz) = op.schwarz {
-        let inverse = &op.state.inverse_mass;
+        let inverse = (&op.state.inverse_mass[..], blocks);
         schwarz.apply::<R>(&work.r, &mut work.z, &mut work.schwarz, inverse);
         out[0] = dot::<R>(&work.r, &work.z, &mut work.partials);
+    }
+    if let Some(blocks) = blocks {
+        // The blocked effects' measures, and with Jacobi their action (the
+        // fused pass left them zero: their inverse masses are zero).
+        let jacobi = op.jacobi && op.schwarz.is_none();
+        let z = jacobi.then_some(&mut work.z[..]);
+        let [rz, inf, zinf] = blocks.measure::<R>(op.st, &work.r, z, &mut work.measures);
+        for j in 0..R {
+            if jacobi {
+                out[0][j] += rz[j];
+            }
+            out[1][j] = out[1][j].max(inf[j]);
+            out[2][j] = out[2][j].max(zinf[j]);
+        }
     }
     out
 }
