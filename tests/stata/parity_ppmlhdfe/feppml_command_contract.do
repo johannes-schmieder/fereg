@@ -172,7 +172,7 @@ local allowed_macros cmd cmdline model depvar indepvars vce vcetype absvars ///
     mu_var drop_reason_var predict feppml_action_protocol feppml_model_wire ///
     feppml_request_wire feppml_result_wire feppml_plugin feppml_gate ///
     feppml_memory_requested feppml_memory_method fe_solver fe_reduction ///
-    fe_method fe_preconditioner fe_block_solvers fe_acceleration fe_route ///
+    fe_method fe_preconditioner fe_local_solvers fe_acceleration fe_route ///
     fe_fallback_reason properties fereg_version
 local actual_macros : e(macros)
 foreach field of local actual_macros {

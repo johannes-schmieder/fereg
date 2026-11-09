@@ -34,7 +34,9 @@ foreach kind in unit aw fw pw {
     foreach mode in fast low {
         foreach t in 1 4 {
             foreach solver in auto cg {
-                quietly fereg y x1 x2 `weight', absorb(g h) solver(`solver') ///
+                local request "`solver'"
+                if "`solver'" == "cg" local request "cg, precondition(cmg)"
+                quietly fereg y x1 x2 `weight', absorb(g h) solver(`request') ///
                     memory(`mode') poolsize(1) threads(`t') tolerance(1e-12) ///
                     vce(robust) residuals(native_residual)
                 assert e(converged)==1
@@ -44,7 +46,7 @@ foreach kind in unit aw fw pw {
                 assert e(df_r)==oracle_df
                 if "`solver'"=="cg" {
                     * CMG, or its certified CG-accelerated MAP fallback.
-                    assert "`e(fe_solver)'"=="cg"
+                    assert "`e(fe_solver)'"=="cg, precondition(cmg)"
                     assert inlist("`e(fe_route)'", ///
                         "cg, reduce(full) precondition(cmg)", "map, accelerate(cg)")
                     if "`e(fe_route)'"=="map, accelerate(cg)" {
@@ -64,7 +66,7 @@ foreach kind in unit aw fw pw {
     * Recovery must retain a nonzero FE contribution at its original scale.
     foreach mode in fast low {
         foreach t in 1 4 {
-            quietly fereg y x1 x2 `weight', absorb(left=g right=h) solver(cg) ///
+            quietly fereg y x1 x2 `weight', absorb(left=g right=h) solver(cg, precondition(cmg)) ///
                 memory(`mode') poolsize(1) threads(`t') tolerance(1e-12) ///
                 vce(robust) residuals(saved_residual)
             matrix finite_b = e(b)[1,1..2]

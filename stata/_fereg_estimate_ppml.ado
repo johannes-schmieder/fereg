@@ -888,7 +888,7 @@ program define _fereg_estimate_ppml, eclass
     // The final linear solve's route, decoded and checked before publication.
     _fereg_solver, command(feppml) route(`route_shadow') row(1) ///
         labels(`"`absorb_labels'"')
-    foreach item in reduction method preconditioner acceleration block_solvers text {
+    foreach item in reduction method preconditioner acceleration local_solvers text {
         local route_`item' `"`r(`item')'"'
     }
     local route_iterations = r(iterations)
@@ -1388,7 +1388,7 @@ program define _fereg_estimate_ppml, eclass
     ereturn local fe_reduction "`route_reduction'"
     ereturn local fe_method "`route_method'"
     ereturn local fe_preconditioner "`route_preconditioner'"
-    if `"`route_block_solvers'"' != "" ereturn local fe_block_solvers `"`route_block_solvers'"'
+    if `"`route_local_solvers'"' != "" ereturn local fe_local_solvers `"`route_local_solvers'"'
     ereturn local fe_acceleration "`route_acceleration'"
     ereturn local fe_route `"`route_text'"'
     ereturn scalar fe_iterations = `route_iterations'

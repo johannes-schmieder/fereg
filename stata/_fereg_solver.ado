@@ -1,9 +1,10 @@
-*! fereg solver() grammar 0.5.3 07nov2026
+*! fereg solver() grammar 0.5.3 08nov2026
 *! One vocabulary in and out. With spec(), parse solver(method [, reduce()
 *! precondition() accelerate() cmg*()]) for fereg or feppml, validate the
 *! combination and map it to the native route tokens of the request wire
-*! (auto map lsmr cmg cmgschur it squarem). With route(), describe one native
-*! route row (see crates/fereg-plugin/src/route_report.rs) in the same words.
+*! (auto map lsmr pcg cmg cmgschur it squarem, with the CG reduction). With
+*! route(), describe one native route row (see
+*! crates/fereg-plugin/src/route_report.rs) in the same words.
 program define _fereg_solver, rclass
     version 15.0
     syntax , COMMAND(name) [SPEC(string) ROUTE(name) ROW(integer 1) ///
@@ -34,8 +35,9 @@ program define _fereg_solver, rclass
     local methods "auto, map, lsmr, or cg"
     if "`command'" == "feppml" local methods "auto, lsmr, or cg"
     if inlist(`"`method'"', "cmg", "cmgschur", "it", "squarem", "irons-tuck") {
-        local hint "solver(cg)"
-        if `"`method'"' == "cmgschur" local hint "solver(cg, reduce(eliminate))"
+        local hint "solver(cg, precondition(cmg))"
+        if "`command'" == "feppml" local hint "solver(cg)"
+        if `"`method'"' == "cmgschur" local hint "solver(cg, reduce(eliminate) precondition(cmg))"
         if inlist(`"`method'"', "it", "irons-tuck") local hint "solver(map, accelerate(irons-tuck))"
         if `"`method'"' == "squarem" local hint "solver(map, accelerate(squarem))"
         if "`command'" == "feppml" & `"`method'"' != "cmg" local hint ""
@@ -87,21 +89,21 @@ program define _fereg_solver, rclass
     }
     local route
     local wire_preconditioner "off"
+    local wire_reduction
     if `"`method'"' == "auto" {
         if `"`r'"' != "auto" {
             di as error "solver(auto) chooses the reduction; request solver(cg, reduce(`r')) or solver(lsmr) to fix it"
             exit 198
         }
-        if "`command'" == "feppml" & `"`p'"' != "auto" {
-            di as error "feppml's solver(auto) chooses its preconditioners; request solver(lsmr) or solver(cg) to fix one"
-            exit 198
-        }
-        if !inlist(`"`p'"', "auto", "jacobi") {
-            di as error "solver(auto) accepts precondition(jacobi), which keeps every Krylov solve Jacobi-preconditioned; it chooses block, Schwarz, and CMG preconditioners itself, and another fixed preconditioner needs an explicit method, for example solver(lsmr, precondition(none))"
+        if `"`p'"' != "auto" {
+            local hint "solver(cg, precondition(`p'))"
+            if inlist(`"`p'"', "none", "schwarz") local hint "solver(lsmr, precondition(`p')) or solver(cg, precondition(`p'))"
+            if "`command'" == "feppml" local hint "solver(lsmr) or solver(cg)"
+            di as error "solver(auto) chooses the preconditioners itself; to fix one, name the method, for example `hint'"
             exit 198
         }
         local route "auto"
-        local wire_preconditioner = cond(`"`p'"' == "jacobi", "diagonal", "auto")
+        local wire_preconditioner "auto"
     }
     else if `"`method'"' == "map" {
         if `"`r'"' == "eliminate" {
@@ -139,25 +141,45 @@ program define _fereg_solver, rclass
             cond(`"`p'"' == "jacobi", "diagonal", `"`p'"'))
         if "`command'" == "feppml" local wire_preconditioner "auto"
     }
-    else {
-        // Conjugate gradients: CMG on the full graph (the established
-        // route) or, explicitly, on the eliminated two-FE Schur system.
-        if "`command'" == "feppml" & `"`r'"' == "eliminate" {
+    else if "`command'" == "feppml" {
+        // feppml's conjugate gradients are CMG-preconditioned on the full
+        // system.
+        if `"`r'"' == "eliminate" {
             di as error "feppml's solver(cg) runs on the full system; reduce() must be auto or full"
             exit 198
         }
-        if (inlist(`"`p'"', "jacobi", "block") & `"`r'"' != "full") | `"`p'"' == "block" {
-            di as error "solver(cg, reduce(eliminate) precondition(`p')) is not available as an explicit request yet; solver(auto) runs the eliminated Jacobi and block-Jacobi CG automatically"
-            exit 198
-        }
         if !inlist(`"`p'"', "auto", "cmg") {
-            di as error "solver(cg) accepts precondition(cmg); for precondition(`p') request solver(lsmr, precondition(`p'))"
+            di as error "feppml's solver(cg) is CMG-preconditioned; precondition() must be auto or cmg, and solver(lsmr) runs Schwarz-preconditioned LSMR"
             exit 198
         }
-        local route = cond(`"`r'"' == "eliminate", "cmgschur", "cmg")
+        local route "cmg"
+    }
+    else {
+        // Conjugate gradients: precondition(cmg) is CMG graph PCG on the
+        // full design or, with reduce(eliminate), on the two-FE Schur
+        // system; every other preconditioner runs fedemean's PCG on the full
+        // or eliminated system (auto: the elimination for two to five
+        // effects, the full system otherwise).
+        if `"`p'"' == "cmg" {
+            local route = cond(`"`r'"' == "eliminate", "cmgschur", "cmg")
+        }
+        else {
+            if `"`p'"' == "block" & `"`r'"' == "full" {
+                di as error "precondition(block) preconditions the eliminated system; request solver(cg, reduce(eliminate) precondition(block)), or precondition(jacobi) or precondition(schwarz) with reduce(full)"
+                exit 198
+            }
+            if inlist(`"`p'"', "none", "schwarz") & `"`r'"' == "eliminate" {
+                di as error "solver(cg, reduce(eliminate)) accepts precondition(auto), precondition(jacobi), precondition(block), or precondition(cmg); precondition(`p') needs reduce(full)"
+                exit 198
+            }
+            local route "pcg"
+            local wire_reduction "`r'"
+            local wire_preconditioner = cond(`"`p'"' == "none", "off", ///
+                cond(`"`p'"' == "jacobi", "diagonal", `"`p'"'))
+        }
     }
     if `cmg_given' & "`route'" != "cmgschur" {
-        di as error "cmgdegree(), cmgsamples(), and cmgseed() apply only to solver(cg, reduce(eliminate))"
+        di as error "cmgdegree(), cmgsamples(), and cmgseed() apply only to solver(cg, reduce(eliminate) precondition(cmg))"
         exit 198
     }
 
@@ -173,6 +195,7 @@ program define _fereg_solver, rclass
 
     return local spec `"`normalized'"'
     return local route "`route'"
+    return local reduction "`wire_reduction'"
     return local preconditioner "`wire_preconditioner'"
     return local cmgdegree = strtrim(`"`cmgdegree'"')
     return local cmgsamples = strtrim(`"`cmgsamples'"')
@@ -180,7 +203,8 @@ program define _fereg_solver, rclass
 end
 
 // Decode one route row: reduction, method, MAP acceleration, preconditioner,
-// five per-effect local solves, escalations, iterations and fallback.
+// five local-solve cells (block: per effect; schwarz: subdomains by local
+// solve), escalations, iterations and fallback.
 program define Describe, rclass
     args matrix row labels
     tempname R
@@ -207,8 +231,22 @@ program define Describe, rclass
         exit 3499
     }
     local blocks
+    local subdomains 0
     forvalues effect = 1/5 {
         local local_code = `R'[`row',`effect'+4]
+        if `"`preconditioner'"' == "schwarz" {
+            // Subdomains counted by local solve; the fifth cell is unused.
+            if `effect' == 5 & `local_code' > 0 {
+                di as error "fixed-effect route report failed semantic validation"
+                exit 3499
+            }
+            if `local_code' > 0 {
+                local solve : word `effect' of trivial dense skyline approximate
+                local blocks `"`blocks' `solve'=`=strofreal(`local_code', "%12.0f")'"'
+                local subdomains = `subdomains' + `local_code'
+            }
+            continue
+        }
         if `local_code' > 3 | (`local_code' > 0 & `"`preconditioner'"' != "block") {
             di as error "fixed-effect route report failed semantic validation"
             exit 3499
@@ -236,7 +274,8 @@ program define Describe, rclass
     return local method "`method'"
     return local acceleration "`acceleration'"
     return local preconditioner "`preconditioner'"
-    return local block_solvers `"`blocks'"'
+    return local local_solvers `"`blocks'"'
+    return scalar subdomains = `subdomains'
     return scalar escalations = `R'[`row',10]
     return scalar iterations = `R'[`row',11]
     return scalar fallback = `R'[`row',12]

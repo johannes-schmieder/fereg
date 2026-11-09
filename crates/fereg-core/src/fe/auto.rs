@@ -73,6 +73,9 @@ pub struct AbsorbConfig {
     pub cmg_schur_seed: u64,
     pub map: MapConfig,
     pub lsmr: LsmrConfig,
+    /// Reduction and preconditioner of an explicit [`FeSolverKind::Pcg`]
+    /// request (the default otherwise).
+    pub pcg: super::PcgRequest,
     /// Whether `Auto` may retry the other certified solver after a failed certificate.
     pub certified_fallback: bool,
     /// Internal joint execution-plus-solver workspace budget. This is populated
@@ -99,6 +102,7 @@ impl Default for AbsorbConfig {
             cmg_schur_seed: 0,
             map: MapConfig::default(),
             lsmr: LsmrConfig::default(),
+            pcg: super::PcgRequest::default(),
             certified_fallback: true,
             solver_memory_budget: None,
             retain_coefficients: false,
@@ -113,6 +117,12 @@ impl AbsorbConfig {
             return Err(FeregError::new(
                 ErrorCode::InvalidArgument,
                 "routing qualification requires automatic solver selection",
+            ));
+        }
+        if self.solver != FeSolverKind::Pcg && self.pcg != super::PcgRequest::default() {
+            return Err(FeregError::new(
+                ErrorCode::InvalidArgument,
+                "a CG reduction or preconditioner requires the explicit CG request",
             ));
         }
         if self.solver != FeSolverKind::CmgSchur
@@ -203,8 +213,18 @@ pub fn absorb_fixed_effects(
             "CMG solvers require a prepared intercept-only categorical topology",
         )),
         FeSolverKind::Elimination => Err(elimination_request()),
+        FeSolverKind::Pcg => Err(pcg_intercepts_only()),
         FeSolverKind::Auto => absorb_auto(design, weights, values, config),
     }
+}
+
+/// Explicit `solver(cg, reduce() precondition())` other than CMG runs on
+/// categorical intercept designs only.
+pub(crate) fn pcg_intercepts_only() -> FeregError {
+    FeregError::new(
+        ErrorCode::Unsupported,
+        "solver(cg) with reduce() or a jacobi, block, schwarz or none preconditioner needs categorical intercept fixed effects only (no slopes); use solver(lsmr) or solver(map)",
+    )
 }
 
 /// The exact elimination is an Auto route only; it cannot be requested.

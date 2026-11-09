@@ -1,17 +1,24 @@
 use super::*;
 use crate::data::DenseMatrix;
 use crate::error::ErrorCode;
-use crate::fe::{absorb_lsmr, EffectTerm, FeDesign, LsmrConfig, LsmrPreconditioner};
-use crate::options::ThreadConfig;
+use crate::fe::borrowed_map::block_schur::{Cache, Outcome, Plan, Request};
+use crate::fe::{
+    BorrowedInterceptFeDesign, BorrowedMapWeights, LevelIndex, LsmrPreconditioner, MapConfig,
+    ValidatedBorrowedInterceptSource,
+};
 
+/// The witness parks fedemean's explicit modified LSMR after a completed
+/// iteration; the host's cancellation then stops the solve with the
+/// upstream Cancelled result, the input is untouched, and a later unarmed
+/// solve reproduces the reference bit for bit.
 #[test]
-fn iteration_break_observes_upstream_cancellation_and_resets() {
+fn iteration_break_observes_fedemean_cancellation_and_resets() {
     const CHILD: &str = "FEREG_LSMR_ITERATION_BREAK_CHILD";
     if std::env::var_os(CHILD).is_none() {
         let status = std::process::Command::new(std::env::current_exe().unwrap())
             .env(CHILD, "1")
             .args([
-                "fe::lsmr_break::tests::iteration_break_observes_upstream_cancellation_and_resets",
+                "fe::lsmr_break::tests::iteration_break_observes_fedemean_cancellation_and_resets",
                 "--exact",
                 "--test-threads=1",
             ])
@@ -21,19 +28,24 @@ fn iteration_break_observes_upstream_cancellation_and_resets() {
         return;
     }
     let rows = 360;
-    let effects = [12, 9, 7]
-        .into_iter()
-        .map(|levels| {
-            EffectTerm::new(
-                (0..rows).map(|row| (row % levels) as u32).collect(),
-                levels,
-                true,
-                vec![],
-            )
-            .unwrap()
-        })
+    let levels = [12_usize, 9, 7];
+    let codes: Vec<Vec<u32>> = levels
+        .iter()
+        .map(|&count| (0..rows).map(|row| (row % count) as u32).collect())
         .collect();
-    let design = FeDesign::new(rows, effects).unwrap();
+    let indices: Vec<_> = codes
+        .iter()
+        .zip(levels)
+        .map(|(c, l)| LevelIndex::from_codes(c, l).unwrap())
+        .collect();
+    let sources: Vec<_> = codes
+        .iter()
+        .zip(levels)
+        .zip(&indices)
+        .map(|((c, l), i)| ValidatedBorrowedInterceptSource::new(c, l, i).unwrap())
+        .collect();
+    let design =
+        BorrowedInterceptFeDesign::new(rows, sources.iter().map(|s| s.effect()).collect()).unwrap();
     let weights: Vec<_> = (0..rows).map(|row| 1.0 + (row % 11) as f64 / 7.0).collect();
     let columns: Vec<Vec<f64>> = (0..4)
         .map(|column| {
@@ -43,27 +55,36 @@ fn iteration_break_observes_upstream_cancellation_and_resets() {
         })
         .collect();
     let input = DenseMatrix::from_columns(&columns).unwrap();
+    let map = MapConfig {
+        tolerance: 1e-12,
+        ..MapConfig::default()
+    };
+    let plan = Plan::lsmr(LsmrPreconditioner::Diagonal);
+    let project = |values: DenseMatrix| {
+        Cache::with_plan(plan).project(
+            &design,
+            BorrowedMapWeights::Provided(&weights),
+            values,
+            map,
+            None,
+            Request::default(),
+        )
+    };
     for threads in [1, 4] {
         let pool = rayon::ThreadPoolBuilder::new()
             .num_threads(threads)
             .build()
             .unwrap();
-        let config = LsmrConfig {
-            tolerance: 1e-12,
-            preconditioner: LsmrPreconditioner::Diagonal,
-            threads: ThreadConfig::from_requested(threads, true).unwrap(),
-            ..LsmrConfig::default()
+        let Outcome::Done(reference) = pool.install(|| project(input.clone())).unwrap() else {
+            panic!("reference declined");
         };
-        let mut reference = input.clone();
-        pool.install(|| absorb_lsmr(&design, &weights, &mut reference, config))
-            .unwrap();
-        let guard = DeveloperLsmrBreak::claim(DeveloperLsmrBackend::Within).unwrap();
+        let guard = DeveloperLsmrBreak::claim(DeveloperLsmrBackend::Fedemean).unwrap();
         assert!(DeveloperLsmrBreak::claim(DeveloperLsmrBackend::PpmlJoint).is_err());
         assert!(policy(DeveloperLsmrBackend::PpmlJoint).is_none());
-        record_cancelled(DeveloperLsmrBackend::Within);
+        record_cancelled(DeveloperLsmrBackend::Fedemean);
         assert_eq!(
             STATE.load(Ordering::Acquire),
-            1,
+            3,
             "no cancellation witness before progress"
         );
         let controller = std::thread::spawn(|| {
@@ -75,27 +96,23 @@ fn iteration_break_observes_upstream_cancellation_and_resets() {
             crate::interrupt::request_cancellation();
             ready
         });
-        let mut interrupted = input.clone();
-        let error = pool
-            .install(|| absorb_lsmr(&design, &weights, &mut interrupted, config))
-            .unwrap_err();
+        let error = match pool.install(|| project(input.clone())) {
+            Err(error) => error,
+            Ok(_) => panic!("an armed solve must not publish a result"),
+        };
         assert!(
             controller.join().unwrap(),
-            "an upstream iteration must complete"
+            "an iteration must complete before the witness"
         );
         assert_eq!(error.code, ErrorCode::Interrupted);
-        assert_eq!(STATE.load(Ordering::Acquire), 1 | READY | CANCELLED);
-        assert_eq!(
-            interrupted, input,
-            "failed absorption must not copy partial results"
-        );
+        assert_eq!(STATE.load(Ordering::Acquire), 3 | READY | CANCELLED);
         drop(guard);
         crate::interrupt::reset_cancellation();
         assert!(!lsmr_break_ready());
-        assert!(policy(DeveloperLsmrBackend::Within).is_none());
-        let mut reset = input.clone();
-        pool.install(|| absorb_lsmr(&design, &weights, &mut reset, config))
-            .unwrap();
-        assert_eq!(reset, reference);
+        assert!(!armed(DeveloperLsmrBackend::Fedemean));
+        let Outcome::Done(reset) = pool.install(|| project(input.clone())).unwrap() else {
+            panic!("reset declined");
+        };
+        assert_eq!(reset.residualized(), reference.residualized());
     }
 }

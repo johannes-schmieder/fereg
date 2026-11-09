@@ -1,13 +1,14 @@
-//! The exact global elimination of the largest categorical effect, provided
-//! by the fedemean library (largest-effect Schur complement, lockstep Jacobi
-//! PCG escalating to block-Jacobi with CMG local solves, fused residual and
-//! moment certificate).
+//! fedemean's categorical intercept projections: the exact global
+//! elimination of the largest effect (largest-effect Schur complement,
+//! lockstep Jacobi PCG escalating to block-Jacobi with CMG local solves) and
+//! the full system (PCG or modified LSMR with Jacobi, no or additive Schwarz
+//! preconditioning), each with a fused residual and moment certificate.
 //!
 //! This adapter keeps fereg's side: the developer switch and test guards,
 //! the borrowed design view, result construction (`CertifiedBorrowedMap`,
-//! `SolveReport`; OLS reports the route as `elimination`), error mapping and
-//! the phase and decline records. A decline returns the matrix to the
-//! caller's route.
+//! `SolveReport` labels and the route actually used), error mapping and the
+//! phase and decline records. A decline returns the matrix to the caller's
+//! route, and the cache remembers why ([`Cache::decline`]).
 
 use super::*;
 use crate::fe::LevelIndex;
@@ -60,6 +61,153 @@ pub(crate) fn stable_route_for_test() -> std::sync::RwLockReadGuard<'static, ()>
         .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
+/// What a cache's projector solves.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) enum Plan {
+    /// Auto's exact elimination: Jacobi escalating to block-Jacobi, started
+    /// on the blocks once the prepared design escalated (the hint). Other
+    /// effect counts decline.
+    #[default]
+    Elimination,
+    /// A fixed fedemean choice, labelled as `requested` (with the requested
+    /// LSMR preconditioner for modified LSMR).
+    Fixed {
+        choice: fedemean::Choice,
+        requested: FeSolverKind,
+        preconditioner: Option<LsmrPreconditioner>,
+    },
+}
+
+impl Plan {
+    /// Auto's full system: PCG with fedemean's automatic preconditioner
+    /// (additive Schwarz within the memory limit, else Jacobi).
+    pub(crate) const fn auto_full() -> Self {
+        Self::Fixed {
+            choice: fedemean::Choice {
+                reduction: fedemean::Reduction::Full,
+                method: fedemean::Method::Pcg,
+                preconditioner: fedemean::Preconditioner::Auto,
+                fallback: fedemean::Fallback::Escalate,
+            },
+            requested: FeSolverKind::Auto,
+            preconditioner: None,
+        }
+    }
+
+    /// Explicit modified LSMR on the full system with `preconditioner`.
+    pub(crate) const fn lsmr(preconditioner: LsmrPreconditioner) -> Self {
+        Self::Fixed {
+            choice: fedemean::Choice {
+                reduction: fedemean::Reduction::Full,
+                method: fedemean::Method::Lsmr,
+                preconditioner: match preconditioner {
+                    LsmrPreconditioner::Auto => fedemean::Preconditioner::Auto,
+                    LsmrPreconditioner::Off => fedemean::Preconditioner::Identity,
+                    LsmrPreconditioner::Diagonal => fedemean::Preconditioner::Jacobi,
+                    LsmrPreconditioner::Schwarz => {
+                        fedemean::Preconditioner::Schwarz(fedemean::SchwarzSpec {
+                            subdomains: fedemean::Subdomains::Star,
+                            local: fedemean::SchwarzLocal::Auto,
+                        })
+                    }
+                },
+                fallback: fedemean::Fallback::Decline,
+            },
+            requested: FeSolverKind::Lsmr,
+            preconditioner: Some(preconditioner),
+        }
+    }
+
+    /// Explicit PCG with the requested reduction and preconditioner; the
+    /// automatic preconditioner of the elimination escalates (Jacobi to
+    /// block-Jacobi), explicit ones never do.
+    pub(crate) fn pcg(request: crate::fe::PcgRequest) -> Result<Self> {
+        use crate::fe::{PcgPreconditioner as P, PcgReduction as R};
+        let reduction = match request.reduction {
+            R::Auto => fedemean::Reduction::Auto,
+            R::Full => fedemean::Reduction::Full,
+            R::Eliminate => fedemean::Reduction::EliminateLargest,
+        };
+        let full = request.reduction == R::Full;
+        let eliminate = request.reduction == R::Eliminate;
+        let preconditioner = match request.preconditioner {
+            P::Auto => fedemean::Preconditioner::Auto,
+            P::Jacobi => fedemean::Preconditioner::Jacobi,
+            P::None if !eliminate => fedemean::Preconditioner::Identity,
+            P::Schwarz if !eliminate => fedemean::Preconditioner::Schwarz(fedemean::SchwarzSpec {
+                subdomains: fedemean::Subdomains::Star,
+                local: fedemean::SchwarzLocal::Auto,
+            }),
+            P::Block if !full => fedemean::Preconditioner::BlockJacobi(fedemean::BlockSpec::default()),
+            P::Block => {
+                return Err(crate::error::unsupported(
+                    "solver(cg, reduce(full)) cannot use precondition(block): block-Jacobi preconditions the eliminated system; request reduce(eliminate)",
+                ))
+            }
+            P::None | P::Schwarz => {
+                return Err(crate::error::unsupported(
+                    "solver(cg, reduce(eliminate)) accepts precondition(auto), precondition(jacobi) or precondition(block)",
+                ))
+            }
+        };
+        // Only the automatic choice escalates; on the full system it is the
+        // Schwarz-or-Jacobi choice, which needs no escalation.
+        let fallback = if request.preconditioner == P::Auto {
+            fedemean::Fallback::Escalate
+        } else {
+            fedemean::Fallback::Decline
+        };
+        Ok(Self::Fixed {
+            choice: fedemean::Choice {
+                reduction,
+                method: fedemean::Method::Pcg,
+                preconditioner,
+                fallback,
+            },
+            requested: FeSolverKind::Pcg,
+            preconditioner: None,
+        })
+    }
+
+    /// A trace or ledger name: the elimination's or the fixed plan's.
+    fn ledger(self, elimination: &'static str, fixed: &'static str) -> &'static str {
+        if self == Self::Elimination {
+            elimination
+        } else {
+            fixed
+        }
+    }
+
+    const fn requested(self) -> FeSolverKind {
+        match self {
+            Self::Elimination => FeSolverKind::Auto,
+            Self::Fixed { requested, .. } => requested,
+        }
+    }
+}
+
+/// Why the last projection of a cache declined.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct Decline {
+    pub(crate) reason: fedemean::Decline,
+    /// Iterations spent before the decline.
+    pub(crate) iterations: usize,
+}
+
+impl Decline {
+    /// The reason in words.
+    pub(crate) fn describe(self) -> &'static str {
+        match self.reason {
+            fedemean::Decline::OutsideRoute => "the design is outside the route",
+            fedemean::Decline::Shape => "the columns do not match the design",
+            fedemean::Decline::MemoryLimit => "the solver workspace exceeds the memory limit",
+            fedemean::Decline::Weights => "a fixed-effect level has no positive weight",
+            fedemean::Decline::Numerical(reason) => reason,
+            _ => "the route declined",
+        }
+    }
+}
+
 /// Caller options of one projection.
 #[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct Request {
@@ -86,6 +234,7 @@ pub(crate) enum Outcome<V> {
 /// state and workspaces) and its output switches.
 #[derive(Default)]
 pub(crate) struct Cache<'a> {
+    plan: Plan,
     projector: Option<fedemean::Projector<'a>>,
     /// The prepared design's elimination hint, shared with its other caches
     /// (see [`Cache::set_hint`]).
@@ -108,9 +257,33 @@ pub(crate) struct Cache<'a> {
     partial: Option<FeCoefficientBatch>,
     /// The maximum weight that normalized the last certified projection.
     weight_scale: Option<f64>,
+    /// Why the last call declined.
+    decline: Option<Decline>,
 }
 
 impl<'a> Cache<'a> {
+    /// A cache whose projector solves `plan`.
+    pub(crate) fn with_plan(plan: Plan) -> Self {
+        Self {
+            plan,
+            ..Self::default()
+        }
+    }
+
+    /// Why the last [`Cache::project`] call declined (`None` after a
+    /// certified projection).
+    pub(crate) const fn decline(&self) -> Option<Decline> {
+        self.decline
+    }
+
+    /// Drop the retained projector (its geometry, weight state and
+    /// preconditioner); the next projection rebuilds it.
+    pub(crate) fn release(&mut self) {
+        self.projector = None;
+        self.current = false;
+        self.escalated = false;
+    }
+
     /// Also accumulate the residual Gram `Σ w r r'` at the caller's raw
     /// weights (unit weights: 1) in the residual pass of later projections
     /// with at most eight columns; see [`Cache::residual_gram`].
@@ -190,20 +363,48 @@ impl<'a> Cache<'a> {
         self.current = false;
         self.partial = None;
         self.weight_scale = None;
+        self.decline = Some(Decline {
+            reason: fedemean::Decline::Shape,
+            iterations: 0,
+        });
         if values.nrows() != design.nobs() || !(map.tolerance.is_finite() && map.tolerance > 0.0) {
             return Ok(Outcome::Declined(values));
         }
         let (detach, gram) = (self.detach_norms, self.gram_requested);
-        let hinted = !self.blocks_refused && self.hint.is_some_and(|h| h.load(Ordering::Relaxed));
-        let projector = bind(&mut self.projector, design, hinted, &mut self.escalated)?;
+        let plan = self.plan;
+        let hinted = plan == Plan::Elimination
+            && !self.blocks_refused
+            && self.hint.is_some_and(|h| h.load(Ordering::Relaxed));
+        let projector = bind(
+            &mut self.projector,
+            design,
+            settings(plan, hinted),
+            &mut self.escalated,
+        )?;
         // CMG local solves borrow the action's team (serial outside one).
         let host = crate::parallel::HostPool::current()?;
-        let mut control = fedemean::Control::with_cancel(&crate::interrupt::cancellation_requested);
+        // A developer LSMR Break witness observes the solve's polls only:
+        // the structure is built first under the ordinary poll.
+        let armed = plan.requested() == FeSolverKind::Lsmr
+            && crate::fe::lsmr_break::armed(crate::fe::DeveloperLsmrBackend::Fedemean);
+        let polls = std::sync::atomic::AtomicUsize::new(0);
+        let witness = || crate::fe::lsmr_break::fedemean_poll(&polls);
+        let poll: &(dyn Fn() -> bool + Sync) = if armed {
+            projector
+                .prepare(&fedemean::Control::with_cancel(
+                    &crate::interrupt::cancellation_requested,
+                ))
+                .map_err(fedemean_error)?;
+            &witness
+        } else {
+            &crate::interrupt::cancellation_requested
+        };
+        let mut control = fedemean::Control::with_cancel(poll);
         if let Some(host) = &host {
             control = control.with_pool(host.pool());
         }
         let setup = crate::diagnostics::phase_ledger::PhaseLedger::new(
-            "block_schur_setup",
+            plan.ledger("block_schur_setup", "fedemean_setup"),
             ["structure", "weights"],
         );
         let mut coefficients = None;
@@ -211,15 +412,16 @@ impl<'a> Cache<'a> {
         if request.retain_coefficients {
             let started = std::time::Instant::now();
             if !projector.prepare(&control).map_err(fedemean_error)? {
+                self.decline = Some(Decline {
+                    reason: fedemean::Decline::OutsideRoute,
+                    iterations: 0,
+                });
                 return Ok(Outcome::Declined(values));
             }
             structure_seconds = started.elapsed().as_secs_f64();
             coefficients = Some(FeCoefficientBatch::intercept_zeros(design, values.ncols())?);
         }
-        let mut fe_request = fedemean::Request::new(map.tolerance, map.max_iterations);
-        fe_request.coefficient_stopping = request.coefficient_accuracy;
-        fe_request.residual_gram = gram;
-        fe_request.memory_limit = budget.map(|b| b.usable_bytes.saturating_sub(b.execution_bytes));
+        let fe_request = fedemean_request(map, request, gram, budget);
         let fe_weights = match weights {
             BorrowedMapWeights::Unit => fedemean::Weights::Unit,
             BorrowedMapWeights::Provided(values) => fedemean::Weights::Values(values),
@@ -240,7 +442,14 @@ impl<'a> Cache<'a> {
         });
         let outcome = projector
             .project(fe_weights, columns, fe_coefficients, &fe_request, &control)
-            .map_err(fedemean_error)?;
+            .map_err(|error| {
+                if armed && error == fedemean::Error::Cancelled {
+                    crate::fe::lsmr_break::record_cancelled(
+                        crate::fe::DeveloperLsmrBackend::Fedemean,
+                    );
+                }
+                fedemean_error(error)
+            })?;
         self.current = true;
         let facts = match &outcome {
             fedemean::Outcome::Projected(report) => report.facts,
@@ -253,40 +462,19 @@ impl<'a> Cache<'a> {
         let report = match outcome {
             fedemean::Outcome::Projected(report) => report,
             fedemean::Outcome::Declined { reason, input, .. } => {
-                self.blocks_refused |= hinted && reason == fedemean::Decline::MemoryLimit;
-                if let fedemean::Decline::Numerical(reason) = reason {
-                    solve_record(&facts);
-                    trace_escalation(None, &facts);
-                    trace_decline(reason, &facts);
-                }
-                if matches!(input, fedemean::InputState::SameProjection { .. }) {
-                    self.partial = coefficients;
-                }
+                self.declined(hinted, (reason, &input), &facts, coefficients);
                 return Ok(Outcome::Declined(values));
             }
             _ => return Ok(Outcome::Declined(values)),
         };
-        solve_record(&facts);
-        trace_escalation(Some(&report), &facts);
+        self.decline = None;
+        solve_record(plan, &facts);
+        trace_escalation(plan, Some(&report), &facts);
         if let Some(hint) = self.hint.filter(|_| self.escalated) {
             hint.store(true, Ordering::Relaxed);
         }
         self.weight_scale = Some(report.weight_scale);
-        let mut solve_report = SolveReport {
-            requested_solver: FeSolverKind::Auto,
-            iterations: facts.iterations,
-            solver_workspace_peak: SolverWorkspacePeak::from_bytes(report.workspace_bytes)?,
-            // The certificate is fused into the residual pass, so its time is
-            // part of the solve.
-            solve_seconds: facts.solve_seconds,
-            certification_seconds: 0.0,
-            ..SolveReport::single_route(
-                FeSolverKind::Elimination,
-                SolveStopReason::Certified,
-                fe_certificate(report.certificate),
-            )
-        };
-        solve_report.set_route(route(&report.route));
+        let solve_report = solve_report(plan, &report, &facts)?;
         let result = match coefficients {
             Some(coefficients) => CertifiedBorrowedMap::from_certified_parts_with_coefficients(
                 values,
@@ -305,6 +493,31 @@ impl<'a> Cache<'a> {
             .map_err(|_| allocation("unable to reserve block-elimination workspace"))?;
         attached.extend_from_slice(norms);
         Ok(Outcome::Done(result.with_residual_norms(attached)?))
+    }
+
+    /// Record a decline: its reason, a refused hinted block build, the trace
+    /// of a numerical decline, and the coefficient increments of columns
+    /// already residualized in place.
+    fn declined(
+        &mut self,
+        hinted: bool,
+        (reason, input): (fedemean::Decline, &fedemean::InputState),
+        facts: &fedemean::Facts,
+        coefficients: Option<FeCoefficientBatch>,
+    ) {
+        self.decline = Some(Decline {
+            reason,
+            iterations: facts.iterations,
+        });
+        self.blocks_refused |= hinted && reason == fedemean::Decline::MemoryLimit;
+        if let fedemean::Decline::Numerical(reason) = reason {
+            solve_record(self.plan, facts);
+            trace_escalation(self.plan, None, facts);
+            trace_decline(self.plan, reason, facts);
+        }
+        if matches!(input, fedemean::InputState::SameProjection { .. }) {
+            self.partial = coefficients;
+        }
     }
 
     /// The maximum weight (1 for unit weights) that normalized the norms and
@@ -356,16 +569,65 @@ impl<'a> Cache<'a> {
     }
 }
 
+/// fedemean's request of one projection: tolerance, iteration budget, the
+/// coefficient stopping rule, the residual Gram and the memory limit beyond
+/// the caller's execution bytes.
+fn fedemean_request(
+    map: MapConfig,
+    request: Request,
+    gram: bool,
+    budget: Option<FeSolverMemoryBudget>,
+) -> fedemean::Request {
+    let mut fe_request = fedemean::Request::new(map.tolerance, map.max_iterations);
+    fe_request.coefficient_stopping = request.coefficient_accuracy;
+    fe_request.residual_gram = gram;
+    fe_request.memory_limit = budget.map(|b| b.usable_bytes.saturating_sub(b.execution_bytes));
+    fe_request
+}
+
+/// The certified projection's report: the plan's request, the route's
+/// labels and tagged route, its work, workspace and certificate.
+fn solve_report(
+    plan: Plan,
+    report: &fedemean::Report,
+    facts: &fedemean::Facts,
+) -> Result<SolveReport> {
+    let (used, used_preconditioner) = labels(&report.route);
+    let mut solve_report = SolveReport {
+        requested_solver: plan.requested(),
+        iterations: facts.iterations,
+        solver_workspace_peak: SolverWorkspacePeak::from_bytes(report.workspace_bytes)?,
+        // The certificate is fused into the residual pass, so its time is
+        // part of the solve.
+        solve_seconds: facts.solve_seconds,
+        certification_seconds: 0.0,
+        requested_preconditioner: match plan {
+            Plan::Fixed {
+                preconditioner: Some(requested),
+                ..
+            } if used == FeSolverKind::Lsmr => Some(requested),
+            _ => used_preconditioner,
+        },
+        used_preconditioner,
+        ..SolveReport::single_route(
+            used,
+            SolveStopReason::Certified,
+            fe_certificate(report.certificate),
+        )
+    };
+    solve_report.set_route(route(&report.route));
+    Ok(solve_report)
+}
+
 /// The projector of `design`, (re)built when the cache held none, another
-/// design, or other settings than `hinted` asks for (unless it escalated
-/// itself, and so already starts on the blocks).
+/// design, or other settings (unless it escalated itself, and so already
+/// starts on the blocks).
 fn bind<'c, 'a>(
     slot: &'c mut Option<fedemean::Projector<'a>>,
     design: &BorrowedInterceptFeDesign<'a>,
-    hinted: bool,
+    settings: fedemean::Settings,
     escalated: &mut bool,
 ) -> Result<&'c mut fedemean::Projector<'a>> {
-    let settings = settings(hinted);
     if !slot.as_ref().is_some_and(|projector| {
         same_design(projector.design(), design) && (*projector.settings() == settings || *escalated)
     }) {
@@ -375,12 +637,19 @@ fn bind<'c, 'a>(
     Ok(slot.as_mut().expect("bound projector"))
 }
 
-/// The projector's route: Jacobi PCG on the reduced system; a batch whose
-/// recurrence stalls or reaches the ceiling continues from its iterate with
-/// block-Jacobi (exact small blocks, CMG on large ones) before the route
-/// declines. Recurrences that finish under Jacobi are unchanged. A `hinted`
-/// projector (a design that escalated before) starts on those blocks.
-fn settings(hinted: bool) -> fedemean::Settings {
+/// The projector's settings. The elimination: Jacobi PCG on the reduced
+/// system; a batch whose recurrence stalls or reaches the ceiling continues
+/// from its iterate with block-Jacobi (exact small blocks, CMG on large ones)
+/// before the route declines. Recurrences that finish under Jacobi are
+/// unchanged. A `hinted` projector (a design that escalated before) starts
+/// on those blocks. A fixed plan uses its choice.
+fn settings(plan: Plan, hinted: bool) -> fedemean::Settings {
+    if let Plan::Fixed { choice, .. } = plan {
+        return fedemean::Settings {
+            choice,
+            ..fedemean::Settings::default()
+        };
+    }
     let preconditioner = if hinted {
         fedemean::Preconditioner::BlockJacobi(fedemean::BlockSpec::default())
     } else {
@@ -454,7 +723,14 @@ fn route(route: &fedemean::Route) -> crate::fe::FeRoute {
             FePreconditioner::Block(locals)
         }
         fedemean::PreconditionerUsed::Identity => FePreconditioner::None,
-        fedemean::PreconditionerUsed::Schwarz { .. } => FePreconditioner::Schwarz,
+        fedemean::PreconditionerUsed::Schwarz { local, .. } => {
+            FePreconditioner::Schwarz(crate::fe::FeSchwarzSolves {
+                trivial: local.trivial,
+                dense: local.dense,
+                skyline: local.skyline,
+                approximate: local.approximate,
+            })
+        }
         _ => FePreconditioner::Jacobi,
     };
     crate::fe::FeRoute {
@@ -468,6 +744,23 @@ fn route(route: &fedemean::Route) -> crate::fe::FeRoute {
         },
         escalations: u32::from(route.escalations),
         ..crate::fe::FeRoute::new(FeReduction::Eliminate, FeMethod::Cg, preconditioner)
+    }
+}
+
+/// The report labels of a route: the elimination, CG on the full system
+/// (`Cg`, its route tagged) or modified LSMR with its preconditioner.
+fn labels(route: &fedemean::Route) -> (FeSolverKind, Option<LsmrPreconditioner>) {
+    match (route.reduction, route.method) {
+        (fedemean::ReductionUsed::Full, fedemean::MethodUsed::Lsmr) => (
+            FeSolverKind::Lsmr,
+            Some(match route.preconditioner {
+                fedemean::PreconditionerUsed::Identity => LsmrPreconditioner::Off,
+                fedemean::PreconditionerUsed::Schwarz { .. } => LsmrPreconditioner::Schwarz,
+                _ => LsmrPreconditioner::Diagonal,
+            }),
+        ),
+        (fedemean::ReductionUsed::Full, _) => (FeSolverKind::Cg, None),
+        _ => (FeSolverKind::Elimination, None),
     }
 }
 
@@ -492,8 +785,9 @@ fn fedemean_error(error: fedemean::Error) -> FeregError {
 }
 
 /// The solve's phase record (trace only).
-fn solve_record(facts: &fedemean::Facts) {
-    let mut ledger = crate::diagnostics::phase_ledger::PhaseLedger::new("block_schur", ["solve"]);
+fn solve_record(plan: Plan, facts: &fedemean::Facts) {
+    let name = plan.ledger("block_schur", "fedemean");
+    let mut ledger = crate::diagnostics::phase_ledger::PhaseLedger::new(name, ["solve"]);
     ledger.add_seconds(0, facts.solve_seconds);
     ledger.facts(&[
         ("iterations", facts.iterations as u64),
@@ -513,29 +807,38 @@ fn solve_record(facts: &fedemean::Facts) {
     ]);
 }
 
-/// One trace line per call whose batches escalated to block-Jacobi, naming
-/// each retained block's local solve (`effect:levels:solve`; unknown after a
-/// decline).
-fn trace_escalation(report: Option<&fedemean::Report>, facts: &fedemean::Facts) {
+/// One trace line per call whose batches escalated, naming each retained
+/// block's local solve (`effect:levels:solve`) or the Schwarz subdomains'
+/// local solves (unknown after a decline).
+fn trace_escalation(plan: Plan, report: Option<&fedemean::Report>, facts: &fedemean::Facts) {
     if facts.escalations == 0 || !crate::diagnostics::solver_trace_enabled() {
         return;
     }
     let mut blocks = String::new();
-    if let Some(fedemean::PreconditionerUsed::Block(used)) = report.map(|r| r.route.preconditioner)
-    {
-        for block in used.iter().flatten() {
-            let local = match block.local {
-                fedemean::LocalUsed::Cmg => "cmg",
-                fedemean::LocalUsed::Dense => "dense",
-                fedemean::LocalUsed::Jacobi => "jacobi",
-                _ => "other",
-            };
-            let separator = if blocks.is_empty() { "" } else { "," };
-            blocks += &format!("{separator}{}:{}:{local}", block.effect, block.levels);
+    match report.map(|r| r.route.preconditioner) {
+        Some(fedemean::PreconditionerUsed::Block(used)) => {
+            for block in used.iter().flatten() {
+                let local = match block.local {
+                    fedemean::LocalUsed::Cmg => "cmg",
+                    fedemean::LocalUsed::Dense => "dense",
+                    fedemean::LocalUsed::Jacobi => "jacobi",
+                    _ => "other",
+                };
+                let separator = if blocks.is_empty() { "" } else { "," };
+                blocks += &format!("{separator}{}:{}:{local}", block.effect, block.levels);
+            }
         }
+        Some(fedemean::PreconditionerUsed::Schwarz { subdomains, local }) => {
+            blocks = format!(
+                "schwarz:{subdomains}:trivial={},dense={},skyline={},approximate={}",
+                local.trivial, local.dense, local.skyline, local.approximate
+            );
+        }
+        _ => {}
     }
     eprintln!(
-        "FEREG_SOLVER_TRACE|phase=elimination_escalation|outcome={}|escalations={}|iterations={}|block_us={}|pcg_us={}|blocks={}",
+        "FEREG_SOLVER_TRACE|phase={}|outcome={}|escalations={}|iterations={}|block_us={}|pcg_us={}|blocks={}",
+        plan.ledger("elimination_escalation", "fedemean_escalation"),
         if report.is_some() { "certified" } else { "declined" },
         facts.escalations,
         facts.iterations,
@@ -545,10 +848,11 @@ fn trace_escalation(report: Option<&fedemean::Report>, facts: &fedemean::Facts) 
     );
 }
 
-fn trace_decline(reason: &str, facts: &fedemean::Facts) {
+fn trace_decline(plan: Plan, reason: &str, facts: &fedemean::Facts) {
     if crate::diagnostics::solver_trace_enabled() || crate::diagnostics::phase_timing_enabled() {
         eprintln!(
-            "FEREG_PHASE|block_schur_decline|reason={reason}|iterations={}|pcg_us={}",
+            "FEREG_PHASE|{}|reason={reason}|iterations={}|pcg_us={}",
+            plan.ledger("block_schur_decline", "fedemean_decline"),
             facts.iterations,
             (facts.pcg_seconds * 1e6) as u64
         );

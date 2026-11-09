@@ -2,6 +2,57 @@ use super::*;
 use crate::fe::auto::direct_lsmr_tolerance;
 use crate::fe::{LevelIndex, ValidatedBorrowedInterceptSource};
 
+/// The within modified-LSMR run of the many-FE geometry policy's fallback
+/// (and its continuations), without retained preparation or routing state.
+#[allow(clippy::too_many_arguments)]
+fn run_borrowed_lsmr(
+    design: &BorrowedInterceptFeDesign<'_>,
+    weights: ValidatedWeights<'_>,
+    values: &DenseMatrix,
+    certificate_tolerance: f64,
+    max_iterations: usize,
+    lsmr_config: LsmrConfig,
+    certificate_reference_norms: Option<&[f64]>,
+    retain_coefficients: bool,
+) -> Result<(DenseMatrix, SolveReport, f64, Option<FeCoefficientBatch>)> {
+    let levels = design
+        .effects()
+        .iter()
+        .map(|effect| effect.n_levels())
+        .collect::<Vec<_>>();
+    let estimate = estimate_fe_solver_memory(
+        values.nrows(),
+        values.ncols(),
+        &levels,
+        lsmr_config
+            .threads
+            .resolved()
+            .max(rayon::current_num_threads()),
+        lsmr_config.local_size,
+    )?;
+    let preconditioner = resolve_borrowed_lsmr_preconditioner(
+        levels.len(),
+        design.total_term_slots(),
+        lsmr_config.preconditioner,
+    );
+    let mut memory = BorrowedLsmrCallMemory::new(estimate, preconditioner, None, 0)?;
+    run_borrowed_lsmr_with_prepared(
+        design,
+        weights,
+        values,
+        certificate_tolerance,
+        max_iterations,
+        lsmr_config,
+        certificate_reference_norms,
+        retain_coefficients,
+        None,
+        &mut memory,
+        None,
+        None,
+        None,
+    )
+}
+
 fn assert_initial_screen_matches_first_certificate_group(
     design: &BorrowedInterceptFeDesign<'_>,
     weights: ValidatedWeights<'_>,
@@ -1092,11 +1143,6 @@ fn explicit_lsmr_recurrence_is_direct_and_certificate_stays_requested() {
         tolerance: 1e-8,
         ..LsmrConfig::default()
     };
-    let config = super::super::AbsorbConfig {
-        solver: FeSolverKind::Lsmr,
-        lsmr,
-        ..super::super::AbsorbConfig::default()
-    };
     let validated = validate_weights(BorrowedMapWeights::Provided(&raw), rows).unwrap();
     let recurrence = super::super::auto::explicit_lsmr_recurrence(lsmr);
     assert_eq!(recurrence.tolerance, direct_lsmr_tolerance(1e-8));
@@ -1118,7 +1164,7 @@ fn explicit_lsmr_recurrence_is_direct_and_certificate_stays_requested() {
         assert_eq!(tolerance, expected, "{requested:e}");
         assert!(tolerance <= requested);
     }
-    let (rule, rule_report, _, _) = run_borrowed_lsmr(
+    let (_, rule_report, _, _) = run_borrowed_lsmr(
         &design(),
         validated,
         &input,
@@ -1148,34 +1194,6 @@ fn explicit_lsmr_recurrence_is_direct_and_certificate_stays_requested() {
         rule_report.certificate.passed,
         rule_report.certificate.relative_infinity_norm <= lsmr.tolerance
     );
-    let one_shot = absorb_borrowed_intercept_lsmr(
-        &design(),
-        BorrowedMapWeights::Provided(&raw),
-        input.clone(),
-        lsmr,
-        false,
-    )
-    .unwrap();
-    let mut session =
-        BorrowedLsmrAbsorber::new(design(), BorrowedMapWeights::Provided(&raw), config).unwrap();
-    let retained = session
-        .absorb(
-            BorrowedMapWeights::Provided(&raw),
-            input.clone(),
-            super::super::MapGeometryGeneration {
-                sample: 1,
-                topology: 1,
-                weights: 1,
-            },
-            config,
-            false,
-        )
-        .unwrap();
-    for (residualized, report) in [one_shot.into_parts(), retained.into_parts()] {
-        assert_eq!(residualized, rule);
-        assert_eq!(report.certificate, rule_report.certificate);
-        assert_eq!(report.iterations, rule_report.iterations);
-    }
     let error = run_borrowed_lsmr(
         &design(),
         validated,
@@ -1191,263 +1209,6 @@ fn explicit_lsmr_recurrence_is_direct_and_certificate_stays_requested() {
     )
     .expect_err("nonfinite recurrence tolerance");
     assert_eq!(error.code, ErrorCode::InvalidArgument);
-}
-
-#[test]
-fn retained_lsmr_weight_generation_revokes_failed_and_changed_frames() {
-    let rows = 128;
-    let codes = [
-        (0..rows).map(|r| (r % 8) as u32).collect::<Vec<_>>(),
-        (0..rows).map(|r| ((r / 8) % 7) as u32).collect::<Vec<_>>(),
-    ];
-    let indexes = [
-        LevelIndex::from_codes(&codes[0], 8).unwrap(),
-        LevelIndex::from_codes(&codes[1], 7).unwrap(),
-    ];
-    let sources = [
-        ValidatedBorrowedInterceptSource::new(&codes[0], 8, &indexes[0]).unwrap(),
-        ValidatedBorrowedInterceptSource::new(&codes[1], 7, &indexes[1]).unwrap(),
-    ];
-    let design = || {
-        BorrowedInterceptFeDesign::new(rows, sources.iter().map(|s| s.effect()).collect()).unwrap()
-    };
-    let input = DenseMatrix::from_columns(&[(0..rows)
-        .map(|r| (r as f64 * 0.13).sin())
-        .collect::<Vec<_>>()])
-    .unwrap();
-    let config = super::super::AbsorbConfig {
-        solver: FeSolverKind::Lsmr,
-        lsmr: LsmrConfig {
-            tolerance: 1e-12,
-            ..LsmrConfig::default()
-        },
-        ..super::super::AbsorbConfig::default()
-    };
-    let mut raw = (0..rows).map(|r| 1. + (r % 5) as f64).collect::<Vec<_>>();
-    let mut session =
-        BorrowedLsmrAbsorber::new(design(), BorrowedMapWeights::Provided(&raw), config).unwrap();
-    let generation = |weights| super::super::MapGeometryGeneration {
-        sample: 1,
-        topology: 1,
-        weights,
-    };
-    let old = session
-        .absorb(
-            BorrowedMapWeights::Provided(&raw),
-            input.clone(),
-            generation(1),
-            config,
-            false,
-        )
-        .unwrap();
-    let warm = session
-        .absorb(
-            BorrowedMapWeights::Provided(&raw),
-            input.clone(),
-            generation(1),
-            config,
-            false,
-        )
-        .unwrap();
-    assert_eq!(old.residualized(), warm.residualized());
-    assert_eq!(session.prepared.builds, 1);
-    // The storage address is unchanged; only the enclosing generation
-    // grants authority to the rebuilt current-weight operator.
-    for (row, w) in raw.iter_mut().enumerate() {
-        *w = 0.5 + (row * 17 % 11) as f64;
-    }
-    let expected = absorb_borrowed_intercept_lsmr(
-        &design(),
-        BorrowedMapWeights::Provided(&raw),
-        input.clone(),
-        config.lsmr,
-        false,
-    )
-    .unwrap();
-    let changed = session
-        .absorb(
-            BorrowedMapWeights::Provided(&raw),
-            input.clone(),
-            generation(2),
-            config,
-            false,
-        )
-        .unwrap();
-    assert_eq!(changed.residualized(), expected.residualized());
-    assert_eq!(changed.report().certificate, expected.report().certificate);
-    assert_ne!(changed.residualized(), old.residualized());
-    raw[0] = f64::NAN;
-    assert_eq!(
-        session
-            .absorb(
-                BorrowedMapWeights::Provided(&raw),
-                input.clone(),
-                generation(3),
-                config,
-                false,
-            )
-            .unwrap_err()
-            .code,
-        ErrorCode::InvalidData
-    );
-    assert!(session.generation.is_none());
-    raw[0] = 0.5;
-    let restored = session
-        .absorb(
-            BorrowedMapWeights::Provided(&raw),
-            input.clone(),
-            generation(3),
-            config,
-            false,
-        )
-        .unwrap();
-    assert_eq!(restored.residualized(), expected.residualized());
-    let mut refused = config;
-    refused.solver_memory_budget = Some(FeSolverMemoryBudget {
-        execution_bytes: 0,
-        usable_bytes: 0,
-    });
-    assert_eq!(
-        session
-            .absorb(
-                BorrowedMapWeights::Provided(&raw),
-                input.clone(),
-                generation(3),
-                refused,
-                false,
-            )
-            .unwrap_err()
-            .code,
-        ErrorCode::Allocation
-    );
-    assert!(session.generation.is_none());
-    let retry = session
-        .absorb(
-            BorrowedMapWeights::Provided(&raw),
-            input,
-            generation(3),
-            config,
-            false,
-        )
-        .unwrap();
-    assert_eq!(retry.residualized(), expected.residualized());
-}
-
-#[test]
-fn retained_lsmr_reports_reused_operator_overlap_and_preserves_results() {
-    let rows = 256;
-    let first = (0..rows).map(|row| (row % 8) as u32).collect::<Vec<_>>();
-    let second = (0..rows)
-        .map(|row| ((row / 8) % 7) as u32)
-        .collect::<Vec<_>>();
-    let first_index = LevelIndex::from_codes(&first, 8).unwrap();
-    let second_index = LevelIndex::from_codes(&second, 7).unwrap();
-    let first_source = ValidatedBorrowedInterceptSource::new(&first, 8, &first_index).unwrap();
-    let second_source = ValidatedBorrowedInterceptSource::new(&second, 7, &second_index).unwrap();
-    {
-        let solver = FeSolverKind::Lsmr;
-        let design = BorrowedInterceptFeDesign::new(
-            rows,
-            vec![first_source.effect(), second_source.effect()],
-        )
-        .unwrap();
-        let mut config = crate::fe::AbsorbConfig {
-            solver,
-            solver_memory_budget: Some(FeSolverMemoryBudget {
-                execution_bytes: 137,
-                usable_bytes: 1 << 30,
-            }),
-            ..crate::fe::AbsorbConfig::default()
-        };
-        let input = DenseMatrix::from_columns(&[(0..rows)
-            .map(|row| (row as f64 * 0.17).sin())
-            .collect::<Vec<_>>()])
-        .unwrap();
-        let mut session =
-            BorrowedLsmrAbsorber::new(design, BorrowedMapWeights::Unit, config).unwrap();
-        if solver == FeSolverKind::Lsmr {
-            let estimate = estimate_fe_solver_memory(
-                rows,
-                1,
-                &[8, 7],
-                config
-                    .lsmr
-                    .threads
-                    .resolved()
-                    .max(rayon::current_num_threads()),
-                config.lsmr.local_size,
-            )
-            .unwrap();
-            let required = estimate.lsmr_bytes(LsmrPreconditioner::Diagonal);
-            config.solver_memory_budget = Some(FeSolverMemoryBudget {
-                execution_bytes: 137,
-                usable_bytes: 136 + required,
-            });
-            assert_eq!(
-                session
-                    .absorb(
-                        BorrowedMapWeights::Unit,
-                        input.clone(),
-                        super::super::MapGeometryGeneration {
-                            sample: 0,
-                            topology: 0,
-                            weights: 0
-                        },
-                        config,
-                        false,
-                    )
-                    .unwrap_err()
-                    .code,
-                ErrorCode::Allocation
-            );
-            assert_eq!(session.prepared.builds, 0);
-            config.solver_memory_budget.as_mut().unwrap().usable_bytes += 1;
-        }
-        let cold = session
-            .absorb(
-                BorrowedMapWeights::Unit,
-                input.clone(),
-                super::super::MapGeometryGeneration {
-                    sample: 0,
-                    topology: 0,
-                    weights: 0,
-                },
-                config,
-                false,
-            )
-            .unwrap();
-        assert_eq!(session.prepared.builds, 1);
-        assert!(cold.report().solver_workspace_peak.bytes().is_some());
-        let warm = session
-            .absorb(
-                BorrowedMapWeights::Unit,
-                input,
-                super::super::MapGeometryGeneration {
-                    sample: 0,
-                    topology: 0,
-                    weights: 0,
-                },
-                config,
-                false,
-            )
-            .unwrap();
-        assert_eq!(session.prepared.builds, 1);
-        assert!(warm.report().solver_workspace_peak.bytes().is_some());
-        assert!(session.prepared.retained_bytes > 0);
-        let pilot = BorrowedMapWorkspace::planned_payload_bytes(
-            &session.design,
-            rows,
-            1,
-            rayon::current_num_threads(),
-        )
-        .unwrap();
-        assert!(
-            warm.report().solver_workspace_peak.bytes().unwrap() as u128
-                >= pilot + session.prepared.retained_bytes
-        );
-        assert_eq!(cold.residualized(), warm.residualized());
-        assert_eq!(cold.report().certificate, warm.report().certificate);
-    }
 }
 
 #[test]
@@ -1540,155 +1301,6 @@ fn memory_plan_includes_coefficient_layouts_and_all_map_banks() {
                 );
             }
         }
-    }
-}
-
-#[test]
-fn retained_lsmr_reuses_preparation_and_preserves_each_batch() {
-    let rows = 2048;
-    let codes = [97_usize, 89, 9].map(|levels| {
-        (0..rows)
-            .map(|r| ((r * 37 + r / 11) % levels) as u32)
-            .collect::<Vec<_>>()
-    });
-    let indexes = codes
-        .iter()
-        .zip([97, 89, 9])
-        .map(|(c, levels)| LevelIndex::from_codes(c, levels).unwrap())
-        .collect::<Vec<_>>();
-    let sources = codes
-        .iter()
-        .zip(&indexes)
-        .zip([97, 89, 9])
-        .map(|((c, index), levels)| {
-            ValidatedBorrowedInterceptSource::new(c, levels, index).unwrap()
-        })
-        .collect::<Vec<_>>();
-    let make_design = || {
-        BorrowedInterceptFeDesign::new(rows, sources.iter().map(|s| s.effect()).collect()).unwrap()
-    };
-    let raw_weights = (0..rows).map(|r| 0.5 + (r % 7) as f64).collect::<Vec<_>>();
-    for threads in [1, 7] {
-        let team = crate::parallel::ThreadTeam::new(
-            crate::options::ThreadConfig::from_requested(threads, true).unwrap(),
-        );
-        team.install(|| {
-            for weights in [
-                BorrowedMapWeights::Unit,
-                BorrowedMapWeights::Provided(&raw_weights),
-            ] {
-                for solver in [FeSolverKind::Lsmr] {
-                    let config = super::super::AbsorbConfig {
-                        solver,
-                        map: config(),
-                        lsmr: LsmrConfig {
-                            tolerance: 1e-12,
-                            preconditioner: LsmrPreconditioner::Schwarz,
-                            ..LsmrConfig::default()
-                        },
-                        retain_coefficients: true,
-                        ..super::super::AbsorbConfig::default()
-                    };
-                    let mut session =
-                        BorrowedLsmrAbsorber::new(make_design(), weights, config).unwrap();
-                    let mut retained_high_water = 0;
-                    // Crossing 64/65 changes the active RHS window: cached
-                    // scratch from the wider call must survive admission of
-                    // a later narrower call without changing its science.
-                    for (batch, columns) in [1, 3, 2, 64, 65, 1].into_iter().enumerate() {
-                        let rhs = DenseMatrix::from_columns(
-                            &(0..columns)
-                                .map(|j| {
-                                    (0..rows)
-                                        .map(|r| {
-                                            (r as f64 * (j + batch + 3) as f64 * 0.137).sin()
-                                                + codes[0][r] as f64 * 0.01
-                                        })
-                                        .collect::<Vec<_>>()
-                                })
-                                .collect::<Vec<_>>(),
-                        )
-                        .unwrap();
-                        let expected = if solver == FeSolverKind::Auto {
-                            project_borrowed_intercept_structural(
-                                &make_design(),
-                                weights,
-                                rhs.clone().into(),
-                                config.map,
-                                config.lsmr,
-                                None,
-                                false,
-                                true,
-                                false,
-                                false,
-                                None,
-                                None,
-                            )
-                        } else {
-                            absorb_borrowed_intercept_lsmr(
-                                &make_design(),
-                                weights,
-                                rhs.clone(),
-                                config.lsmr,
-                                true,
-                            )
-                        }
-                        .unwrap();
-                        let actual = session
-                            .absorb(
-                                weights,
-                                rhs,
-                                super::super::MapGeometryGeneration {
-                                    sample: 0,
-                                    topology: 0,
-                                    weights: 0,
-                                },
-                                config,
-                                false,
-                            )
-                            .unwrap();
-                        assert_eq!(actual.residualized(), expected.residualized());
-                        assert_eq!(actual.report().certificate, expected.report().certificate);
-                        assert_eq!(actual.report().iterations, expected.report().iterations);
-                        assert_eq!(actual.into_full_parts().2, expected.into_full_parts().2);
-                        assert_eq!(session.prepared.builds, 1);
-                        assert_eq!(session.prepared.batches, batch + 1);
-                        assert!(session.prepared.retained_bytes >= retained_high_water);
-                        retained_high_water = session.prepared.retained_bytes;
-                    }
-                    let mut constrained = config;
-                    constrained.solver_memory_budget = Some(FeSolverMemoryBudget {
-                        execution_bytes: 0,
-                        usable_bytes: 0,
-                    });
-                    let mut rejected =
-                        BorrowedLsmrAbsorber::new(make_design(), weights, constrained).unwrap();
-                    let rhs = DenseMatrix::from_columns(&[(0..rows)
-                        .map(|r| (r as f64 * 0.137).sin())
-                        .collect::<Vec<_>>()])
-                    .unwrap();
-                    assert_eq!(
-                        rejected
-                            .absorb(
-                                weights,
-                                rhs,
-                                super::super::MapGeometryGeneration {
-                                    sample: 0,
-                                    topology: 0,
-                                    weights: 0
-                                },
-                                constrained,
-                                false,
-                            )
-                            .unwrap_err()
-                            .code,
-                        ErrorCode::Allocation
-                    );
-                    assert_eq!(rejected.prepared.builds, 0);
-                }
-            }
-        })
-        .unwrap();
     }
 }
 
@@ -6210,9 +5822,11 @@ fn norm_handoff_lsmr_routes_preserve_certificates_coefficients_and_memory() {
             crate::ThreadConfig::from_requested(workers, true).unwrap(),
         );
         team.install(|| {
+            // The explicit request runs on fedemean (its norms are tested
+            // with its adapter); the Auto geometry policy's within LSMR
+            // remains its fallback.
             let mut saw_auto_lsmr = false;
-            let mut saw_retained_lsmr = false;
-            for automatic in [false, true] {
+            for automatic in [true] {
                 for retain in [false, true] {
                     for weights in [
                         BorrowedMapWeights::Unit,
@@ -6232,33 +5846,20 @@ fn norm_handoff_lsmr_routes_preserve_certificates_coefficients_and_memory() {
                                 solver_memory_budget: budget,
                                 ..config
                             };
-                            if automatic {
-                                return project_borrowed_intercept_structural(
-                                    &design(),
-                                    weights,
-                                    input.clone().into(),
-                                    config.map,
-                                    config.lsmr,
-                                    budget,
-                                    false,
-                                    retain,
-                                    false,
-                                    cache,
-                                    None,
-                                    None,
-                                );
-                            }
-                            let mut session = BorrowedLsmrAbsorber::new(design(), weights, config)?;
-                            session.absorb(
+                            assert!(automatic);
+                            project_borrowed_intercept_structural(
+                                &design(),
                                 weights,
-                                input.clone(),
-                                super::super::MapGeometryGeneration {
-                                    sample: 0,
-                                    topology: 0,
-                                    weights: 0,
-                                },
-                                config,
+                                input.clone().into(),
+                                config.map,
+                                config.lsmr,
+                                budget,
+                                false,
+                                retain,
+                                false,
                                 cache,
+                                None,
+                                None,
                             )
                         };
                         let normalize = |mut r: SolveReport| {
@@ -6290,11 +5891,7 @@ fn norm_handoff_lsmr_routes_preserve_certificates_coefficients_and_memory() {
                                     let norms = actual.take_residual_norms();
                                     assert_eq!(norms.len(), input.ncols());
                                     if actual.report().used_solver == FeSolverKind::Lsmr {
-                                        if automatic {
-                                            saw_auto_lsmr = true;
-                                        } else {
-                                            saw_retained_lsmr = true;
-                                        }
+                                        saw_auto_lsmr = true;
                                         let w = validate_weights(weights, rows).unwrap();
                                         for (c, norm) in norms.iter().enumerate() {
                                             let expected_norm =
@@ -6325,7 +5922,7 @@ fn norm_handoff_lsmr_routes_preserve_certificates_coefficients_and_memory() {
                     }
                 }
             }
-            assert!(saw_auto_lsmr && saw_retained_lsmr);
+            assert!(saw_auto_lsmr);
         })
         .unwrap();
     }
@@ -6368,36 +5965,6 @@ fn norm_handoff_failed_lsmr_certificate_and_auto_continuation_discard_cache() {
         },
         ..super::super::AbsorbConfig::default()
     };
-    let generation = super::super::MapGeometryGeneration {
-        sample: 0,
-        topology: 0,
-        weights: 0,
-    };
-    let mut session =
-        BorrowedLsmrAbsorber::new(design(), BorrowedMapWeights::Unit, config).unwrap();
-    let error = session
-        .absorb(
-            BorrowedMapWeights::Unit,
-            input.clone(),
-            generation,
-            config,
-            true,
-        )
-        .unwrap_err();
-    let mut ordinary =
-        BorrowedLsmrAbsorber::new(design(), BorrowedMapWeights::Unit, config).unwrap();
-    assert_eq!(
-        error,
-        ordinary
-            .absorb(
-                BorrowedMapWeights::Unit,
-                input.clone(),
-                generation,
-                config,
-                false
-            )
-            .unwrap_err()
-    );
     let estimate = estimate_fe_solver_memory(
         rows,
         input.ncols(),

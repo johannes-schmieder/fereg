@@ -564,16 +564,26 @@ mod tests {
             1e-9,
             &mut 0.,
             |remainder| {
-                crate::fe::absorb_borrowed_intercept_lsmr(
+                use crate::fe::block_schur::{Cache, Outcome, Plan, Request};
+                match Cache::with_plan(Plan::lsmr(crate::fe::LsmrPreconditioner::Auto)).project(
                     &borrowed,
                     weights,
                     remainder,
-                    crate::fe::LsmrConfig {
+                    crate::fe::MapConfig {
                         tolerance: 1e-12,
-                        ..crate::fe::LsmrConfig::default()
+                        ..crate::fe::MapConfig::default()
                     },
-                    true,
-                )
+                    None,
+                    Request {
+                        retain_coefficients: true,
+                        coefficient_accuracy: false,
+                    },
+                )? {
+                    Outcome::Done(result) => Ok(result),
+                    Outcome::Declined(_) => Err(crate::error::invalid_data(
+                        "fedemean declined the recovery projection",
+                    )),
+                }
             },
         )
     }

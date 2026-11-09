@@ -111,7 +111,7 @@ program define __frg_check_cmg_agreement
     scalar `auto_df_r' = e(df_r)
     scalar `auto_df_a' = e(df_a)
     generate byte `auto_sample' = e(sample)
-    quietly fereg y x, absorb(worker firm) solver(cg) threads(2) ///
+    quietly fereg y x, absorb(worker firm) solver(cg, precondition(cmg)) threads(2) ///
         residuals(`cmg_residual')
     assert "`e(fe_route)'" == "cg, reduce(full) precondition(cmg)"
     assert e(converged) == 1
@@ -163,7 +163,7 @@ generate double exp2 = experience^2
 generate double y = 2 + worker_fe + firm_fe + .03*experience - ///
     .0005*exp2 + rnormal(0,.2)
 quietly fereg y experience exp2, ///
-    absorb(worker_saved=worker firm_saved=firm) solver(cg)
+    absorb(worker_saved=worker firm_saved=firm) solver(cg, precondition(cmg))
 assert "`e(fe_route)'" == "cg, reduce(full) precondition(cmg)"
 assert e(fe_fallback) == 0
 assert !missing(worker_saved, firm_saved)

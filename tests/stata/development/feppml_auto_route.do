@@ -32,14 +32,14 @@ foreach effects in 1 2 3 {
             scalar explicit_rank = e(rank)
             scalar explicit_df = e(df_a)
             local route `"`e(fe_route)'"'
-            local blocks `"`e(fe_block_solvers)'"'
+            local blocks `"`e(fe_local_solvers)'"'
             matrix explicit_solve = e(fe_solve)
             generate byte explicit_sample = e(sample)
             quietly feppml y `controls' [fw=w], absorb(`absorb') offset(off) ///
                 vce(robust) separation(none) solver(auto) threads(`t') mu(auto_mu)
             assert `"`e(fe_solver)'"' == "auto"
             assert `"`e(fe_route)'"' == `"`route'"'
-            assert `"`e(fe_block_solvers)'"' == `"`blocks'"'
+            assert `"`e(fe_local_solvers)'"' == `"`blocks'"'
             assert e(fe_fallback) == 0
             * The same sessions served the same frames.
             forvalues row = 1/4 {

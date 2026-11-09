@@ -2061,7 +2061,7 @@ fn prepared_multiway_categorical_weights(
     effects: &[Vec<f64>],
     weights: TestWeights<'_>,
 ) -> crate::PreparedOlsData {
-    assert!((1..=3).contains(&effects.len()));
+    assert!(!effects.is_empty());
     assert!(regressors
         .iter()
         .chain(effects)
@@ -9871,6 +9871,178 @@ fn derived_final_residual_covers_the_one_fe_and_many_fe_auto_routes() {
             (3, FeSolverKind::Lsmr),
         ]
     );
+}
+
+/// Six or seven categorical intercept effects (outside the elimination's
+/// range): Auto runs fedemean's full system (CG with additive Schwarz) and
+/// accepts the final residual by the derived certificate; explicit modified
+/// LSMR and CG run on fedemean's full system as requested. Every route
+/// agrees with a tightly converged MAP fit, repeats bit for bit at a fixed
+/// worker count and agrees across worker counts. A full-system decline is
+/// reported: the established route finishes the fit as a fallback.
+#[test]
+fn many_fe_auto_and_explicit_requests_run_fedemean_full_system() {
+    use crate::fe::{
+        FeMethod, FePreconditioner, FeReduction, LsmrPreconditioner, PcgPreconditioner,
+        PcgReduction, PcgRequest,
+    };
+    let n = 3_000;
+    let levels = [600_usize, 41, 23, 11, 7, 5, 13];
+    let codes: Vec<Vec<f64>> = levels
+        .iter()
+        .enumerate()
+        .map(|(effect, &count)| {
+            (0..n)
+                .map(|row| ((row * (2 * effect + 3) + row / (effect + 2)) % count) as f64)
+                .collect()
+        })
+        .collect();
+    let x = [
+        (0..n)
+            .map(|row| (row as f64 * 0.37).sin() + 0.01 * codes[0][row])
+            .collect::<Vec<_>>(),
+        (0..n)
+            .map(|row| (row as f64 * 0.11).cos() + 0.02 * codes[1][row])
+            .collect(),
+    ];
+    let y = (0..n)
+        .map(|row| {
+            1.5 * x[0][row] - 0.7 * x[1][row]
+                + codes.iter().map(|c| (0.3 * c[row]).sin()).sum::<f64>()
+                + 0.05 * (row as f64 * 1.7).cos()
+        })
+        .collect::<Vec<_>>();
+    let analytic = (0..n)
+        .map(|row| 0.5 + f64::from(row as u32 % 7) / 3.0)
+        .collect::<Vec<_>>();
+    let schwarz =
+        |route: crate::fe::FeRoute| matches!(route.preconditioner, FePreconditioner::Schwarz(_));
+    for effects in [6, 7] {
+        for weights in [None, Some(analytic.as_slice())] {
+            let prepared = prepared_multiway_categorical_weights(
+                &y,
+                &x,
+                &codes[..effects],
+                weights.map_or(TestWeights::Unit, TestWeights::Analytic),
+            );
+            let fit = |threads: usize, adjust: &dyn Fn(&mut PreparedOlsFitConfig)| {
+                let mut config = PreparedOlsFitConfig::default();
+                config.execution.threads = ThreadConfig::from_requested(threads, true).unwrap();
+                adjust(&mut config);
+                crate::parallel::ThreadTeam::new(config.execution.threads)
+                    .install(|| fit_prepared_model_coefficients(&prepared, config))
+                    .unwrap()
+                    .unwrap()
+            };
+            let reference = fit(4, &|config| {
+                config.absorb.solver = FeSolverKind::Map;
+                config.absorb.map.tolerance = 1e-13;
+                config.absorb.map.max_iterations = 1_000_000;
+            });
+            let agree = |fit: &crate::ols::CertifiedPreparedOlsFit, bound: f64| {
+                for (a, b) in fit.coefficients().iter().zip(reference.coefficients()) {
+                    assert_eq!(a.status, b.status);
+                    if let (Some(a), Some(b)) = (a.value, b.value) {
+                        assert_close(a, b, bound);
+                    }
+                }
+                for (a, b) in fit.residuals().iter().zip(reference.residuals()) {
+                    assert_close(*a, *b, bound);
+                }
+            };
+            let auto = fit(4, &|_| {});
+            let report = auto.absorption_report();
+            let route = report.route();
+            assert_eq!(
+                (route.reduction, route.method),
+                (FeReduction::Full, FeMethod::Cg)
+            );
+            assert!(schwarz(route), "{route:?}");
+            assert!(!report.fallback_used && report.certified());
+            assert_eq!(
+                auto.residual_absorption_report().stop_reason,
+                SolveStopReason::DerivedCertificate
+            );
+            agree(&auto, 1e-7);
+            let again = fit(4, &|_| {});
+            for (a, b) in auto.coefficients().iter().zip(again.coefficients()) {
+                assert_eq!(a.value.map(f64::to_bits), b.value.map(f64::to_bits));
+            }
+            let serial = fit(1, &|_| {});
+            for (a, b) in auto.coefficients().iter().zip(serial.coefficients()) {
+                if let (Some(a), Some(b)) = (a.value, b.value) {
+                    assert_close(a, b, 1e-10);
+                }
+            }
+            let lsmr_schwarz = |config: &mut PreparedOlsFitConfig| {
+                config.absorb.solver = FeSolverKind::Lsmr;
+                config.absorb.lsmr.preconditioner = LsmrPreconditioner::Schwarz;
+            };
+            let lsmr_jacobi = |config: &mut PreparedOlsFitConfig| {
+                config.absorb.solver = FeSolverKind::Lsmr;
+                config.absorb.lsmr.preconditioner = LsmrPreconditioner::Diagonal;
+            };
+            let cg_jacobi = |config: &mut PreparedOlsFitConfig| {
+                config.absorb.solver = FeSolverKind::Pcg;
+                config.absorb.pcg = PcgRequest {
+                    reduction: PcgReduction::Full,
+                    preconditioner: PcgPreconditioner::Jacobi,
+                };
+            };
+            type Adjust<'f> = &'f dyn Fn(&mut PreparedOlsFitConfig);
+            let requests: [(Adjust<'_>, FeMethod, Option<FePreconditioner>); 3] = [
+                (&lsmr_schwarz, FeMethod::Lsmr, None),
+                (&lsmr_jacobi, FeMethod::Lsmr, Some(FePreconditioner::Jacobi)),
+                (&cg_jacobi, FeMethod::Cg, Some(FePreconditioner::Jacobi)),
+            ];
+            for (adjust, method, expected) in requests {
+                let explicit = fit(4, adjust);
+                for report in [
+                    explicit.absorption_report(),
+                    explicit.residual_absorption_report(),
+                ] {
+                    let route = report.route();
+                    assert_eq!((route.reduction, route.method), (FeReduction::Full, method));
+                    match expected {
+                        Some(preconditioner) => assert_eq!(route.preconditioner, preconditioner),
+                        None => assert!(schwarz(route), "{route:?}"),
+                    }
+                    // Explicit requests keep the certified final projection.
+                    assert_eq!(report.stop_reason, SolveStopReason::Certified);
+                }
+                agree(&explicit, 1e-7);
+            }
+            // The fault plan is thread-local: arm it where the fit runs.
+            let config = PreparedOlsFitConfig {
+                execution: PreparedOlsExecutionConfig {
+                    threads: ThreadConfig::from_requested(4, true).unwrap(),
+                    ..PreparedOlsFitConfig::default().execution
+                },
+                ..PreparedOlsFitConfig::default()
+            };
+            let fallback = crate::parallel::ThreadTeam::new(config.execution.threads)
+                .install(|| {
+                    crate::fe::session::starve_full_system_for_test(true);
+                    let fit = fit_prepared_model_coefficients(&prepared, config);
+                    crate::fe::session::starve_full_system_for_test(false);
+                    fit
+                })
+                .unwrap()
+                .unwrap();
+            let report = fallback.absorption_report();
+            assert!(report.fallback_used && report.certified());
+            assert!(
+                report
+                    .warnings
+                    .iter()
+                    .any(|w| w.contains("full-system CG declined")),
+                "{:?}",
+                report.warnings
+            );
+            assert_ne!(report.route().method, FeMethod::Cg);
+            agree(&fallback, 1e-7);
+        }
+    }
 }
 
 // Explicit solvers on the binding route keep the certified final projection.

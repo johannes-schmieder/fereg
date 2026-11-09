@@ -152,6 +152,7 @@ pub(crate) fn generic_fe_solver_bytes(
                 "generic owned FE memory planning does not support CMG",
             ))
         }
+        FeSolverKind::Pcg => return Err(crate::fe::pcg_intercepts_only()),
     };
     checked_sum(&[
         certificate,

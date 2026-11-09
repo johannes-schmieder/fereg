@@ -48,7 +48,7 @@ results, which also serves {cmd:estimates replay}, {cmd:bootstrap:} and
 route of the final residual projection, both in {cmd:solver()} syntax, for
 example {cmd:cg, reduce(eliminate) precondition(jacobi)}. Their parts are
 {cmd:e(fe_reduction)}, {cmd:e(fe_method)}, {cmd:e(fe_preconditioner)},
-{cmd:e(fe_block_solvers)} and {cmd:e(fe_acceleration)} (and the
+{cmd:e(fe_local_solvers)} and {cmd:e(fe_acceleration)} (and the
 {cmd:e(fe_residual_}{it:*}{cmd:)} counterparts); {cmd:e(fe_solver)} keeps the
 request. The output line above the coefficient table states that the accuracy
 check passed and at which tolerance. {cmd:e(fe_escalations)} counts solves that

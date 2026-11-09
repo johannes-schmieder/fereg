@@ -61,11 +61,27 @@ foreach acceleration in none irons-tuck squarem {
     assert e(fe_fallback) == 0
 }
 quietly fereg y c.x1 c.x2, absorb(worker firm) ///
-    memory(fast) threads(2) solver(cg)
-assert `"`e(fe_solver)'"' == "cg"
+    memory(fast) threads(2) solver(cg, precondition(cmg))
+assert `"`e(fe_solver)'"' == "cg, precondition(cmg)"
 assert `"`e(fe_route)'"' == "cg, reduce(full) precondition(cmg)"
 assert mreldif(e(b), __frg_b_auto) <= 1e-7
 assert mreldif(e(V), __frg_V_auto) <= 1e-6
+* fedemean's preconditioned CG, on the elimination or the full system.
+foreach spec in "cg" "cg, reduce(full)" "cg, reduce(full) precondition(jacobi)" ///
+    "cg, reduce(full) precondition(none)" "cg, reduce(full) precondition(schwarz)" ///
+    "cg, reduce(eliminate)" "cg, reduce(eliminate) precondition(jacobi)" ///
+    "cg, reduce(eliminate) precondition(block)" "cg, precondition(schwarz)" {
+    quietly fereg y c.x1 c.x2, absorb(worker firm) ///
+        memory(fast) threads(2) solver(`spec')
+    assert `"`e(fe_solver)'"' == `"`spec'"'
+    assert "`e(fe_method)'" == "cg"
+    if strpos(`"`spec'"', "reduce(full)") | strpos(`"`spec'"', "schwarz") ///
+        assert "`e(fe_reduction)'" == "full"
+    else assert "`e(fe_reduction)'" == "eliminate"
+    assert e(fe_fallback) == 0
+    assert mreldif(e(b), __frg_b_auto) <= 1e-7
+    assert mreldif(e(V), __frg_V_auto) <= 1e-6
+}
 foreach preconditioner in none jacobi schwarz auto {
     quietly fereg y c.x1 c.x2, absorb(worker firm) ///
         memory(fast) threads(2) solver(lsmr, precondition(`preconditioner'))
@@ -76,7 +92,10 @@ foreach preconditioner in none jacobi schwarz auto {
     assert mreldif(e(V), __frg_V_auto) <= 1e-6
 }
 foreach request in "solver(map, precondition(jacobi))" "preconditioner(diagonal)" ///
-    "solver(lsmr) preconditioner(schwarz)" "solver(cmg)" {
+    "solver(lsmr) preconditioner(schwarz)" "solver(cmg)" ///
+    "solver(auto, precondition(jacobi))" "solver(cg, reduce(full) precondition(block))" ///
+    "solver(cg, reduce(eliminate) precondition(schwarz))" ///
+    "solver(cg, reduce(eliminate) precondition(none))" "solver(cg, cmgdegree(5))" {
     capture noisily fereg y c.x1 c.x2, absorb(worker firm) `request'
     assert _rc == 198
 }

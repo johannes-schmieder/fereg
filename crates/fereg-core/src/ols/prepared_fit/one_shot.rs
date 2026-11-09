@@ -478,9 +478,7 @@ fn project_scratch<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         &mut scratch,
         remaining,
     )?;
-    if let Some(lsmr) = cmg.lsmr.take() {
-        cmg.binding = Some(lsmr.into_design());
-    }
+    cmg.release_explicit();
     let initial_sum_of_squares =
         initial_within_sum_of_squares_low(prepared, within_outcome_norm, intercept_cross)?;
     Ok(OneShotInputs {

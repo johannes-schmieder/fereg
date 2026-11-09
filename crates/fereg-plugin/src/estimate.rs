@@ -28,7 +28,10 @@ use fereg_core::error::{
     allocation, invalid_argument as invalid, invalid_data, unsupported, ErrorCode, FeregError,
     Result,
 };
-use fereg_core::fe::{AbsorbConfig, FeSolverKind, LsmrConfig, LsmrPreconditioner, RoutingPreset};
+use fereg_core::fe::{
+    AbsorbConfig, FeSolverKind, LsmrConfig, LsmrPreconditioner, PcgPreconditioner, PcgReduction,
+    PcgRequest, RoutingPreset,
+};
 use fereg_core::metadata::{ComponentKind, SourceId};
 #[cfg(test)]
 use fereg_core::ols::{
@@ -57,6 +60,7 @@ const OLS_FIELDS: &[&str] = &[
     "dof",
     "account_cluster_nesting",
     "preconditioner",
+    "reduction",
     "cmgdegree",
     "cmgsamples",
     "cmgseed",
@@ -206,6 +210,7 @@ struct EstimateActionSpec {
     cmg_schur_samples: u32,
     cmg_schur_seed: u64,
     preconditioner: LsmrPreconditioner,
+    pcg: PcgRequest,
     poolsize: usize,
     threads: usize,
     deterministic: bool,
@@ -424,7 +429,7 @@ impl OlsNativeBreak {
         let guard = lsmr_iteration
             .then(|| {
                 fereg_core::fe::DeveloperLsmrBreak::claim(
-                    fereg_core::fe::DeveloperLsmrBackend::Within,
+                    fereg_core::fe::DeveloperLsmrBackend::Fedemean,
                 )
             })
             .transpose()?;
@@ -1126,6 +1131,7 @@ impl EstimateActionSpec {
         let input_policy = crate::parallel_input::Policy::from_request(&values);
         let (cmg_schur_degree, cmg_schur_samples, cmg_schur_seed) =
             parse_cmg_schur_options(&values, solver)?;
+        let (preconditioner, pcg) = parse_preconditioners(&values, solver)?;
         let specification = Self {
             memory_baseline: Baseline::parse(&values)?,
             transport_parent_bytes: crate::metadata_memory::argument_parent_bytes(args)?,
@@ -1163,7 +1169,8 @@ impl EstimateActionSpec {
             cmg_schur_degree,
             cmg_schur_samples,
             cmg_schur_seed,
-            preconditioner: parse_preconditioner(required(&values, "preconditioner")?)?,
+            preconditioner,
+            pcg,
             poolsize: parse_positive_usize(&values, "poolsize")?,
             threads,
             deterministic: parse_bool(&values, "deterministic")?,
@@ -1395,6 +1402,7 @@ impl EstimateActionSpec {
                     threads: thread_config,
                     ..default_fit.absorb.lsmr
                 },
+                pcg: self.pcg,
                 solver_memory_budget: memory_plan.usable_bytes.map(|usable_bytes| {
                     FeSolverMemoryBudget {
                         execution_bytes: memory_plan.selected_bytes(),
@@ -3846,8 +3854,54 @@ fn parse_solver(value: &str) -> Result<FeSolverKind> {
         "cg" => Ok(FeSolverKind::Cg),
         "it" | "irons-tuck" => Ok(FeSolverKind::IronsTuck),
         "squarem" => Ok(FeSolverKind::Squarem),
+        "pcg" => Ok(FeSolverKind::Pcg),
         _ => Err(syntax(
-            "solver must be auto, map, lsmr, cmg, cmgschur, cg, it, or squarem",
+            "solver must be auto, map, lsmr, cmg, cmgschur, pcg, cg, it, or squarem",
+        )),
+    }
+}
+
+/// The LSMR preconditioner, or for `solver=pcg` the CG reduction and
+/// preconditioner (the LSMR one is then `off`).
+fn parse_preconditioners(
+    values: &std::collections::BTreeMap<String, String>,
+    solver: FeSolverKind,
+) -> Result<(LsmrPreconditioner, PcgRequest)> {
+    let token = required(values, "preconditioner")?;
+    if solver == FeSolverKind::Pcg {
+        let reduction = values.get("reduction").map_or("auto", String::as_str);
+        return Ok((
+            LsmrPreconditioner::Off,
+            PcgRequest {
+                reduction: parse_reduction(reduction)?,
+                preconditioner: parse_pcg_preconditioner(token)?,
+            },
+        ));
+    }
+    if values.contains_key("reduction") {
+        return Err(syntax("reduction= is valid only with solver=pcg"));
+    }
+    Ok((parse_preconditioner(token)?, PcgRequest::default()))
+}
+
+fn parse_reduction(value: &str) -> Result<PcgReduction> {
+    match value.to_ascii_lowercase().as_str() {
+        "auto" => Ok(PcgReduction::Auto),
+        "full" => Ok(PcgReduction::Full),
+        "eliminate" => Ok(PcgReduction::Eliminate),
+        _ => Err(syntax("reduction must be auto, full, or eliminate")),
+    }
+}
+
+fn parse_pcg_preconditioner(value: &str) -> Result<PcgPreconditioner> {
+    match value.to_ascii_lowercase().as_str() {
+        "auto" => Ok(PcgPreconditioner::Auto),
+        "off" | "none" => Ok(PcgPreconditioner::None),
+        "diagonal" | "jacobi" => Ok(PcgPreconditioner::Jacobi),
+        "block" => Ok(PcgPreconditioner::Block),
+        "schwarz" => Ok(PcgPreconditioner::Schwarz),
+        _ => Err(syntax(
+            "the CG preconditioner must be auto, off, diagonal, block, or schwarz",
         )),
     }
 }

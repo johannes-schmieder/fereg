@@ -671,7 +671,7 @@ allocation, timing, thread, and certificate evidence.
 {pstd}
 {cmd:e(fe_solver)} keeps the normalized {cmd:solver()} request. The macros
 {cmd:e(fe_route)}, {cmd:e(fe_reduction)}, {cmd:e(fe_method)},
-{cmd:e(fe_preconditioner)}, {cmd:e(fe_block_solvers)} (with block-Jacobi), and
+{cmd:e(fe_preconditioner)}, {cmd:e(fe_local_solvers)} (with block-Jacobi), and
 {cmd:e(fe_acceleration)} and the scalars {cmd:e(fe_iterations)} and
 {cmd:e(fe_escalations)} describe the final weighted least-squares solve, which
 always runs in the certified canonical session, in the vocabulary of

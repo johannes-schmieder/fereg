@@ -396,9 +396,7 @@ pub(super) fn solve_prepared_batch_seeded(
                         options,
                         within::SolveControl {
                             initial_coefficients: seed,
-                            escalation: super::lsmr_break::policy(
-                                super::DeveloperLsmrBackend::Within,
-                            ),
+                            escalation: None,
                             cancellation: within::Cancellation::new(
                                 &crate::interrupt::cancellation_requested,
                             ),
@@ -406,16 +404,9 @@ pub(super) fn solve_prepared_batch_seeded(
                         },
                     )
                     .map(|result| result.solution)
-                    .map_err(|failure| {
-                        if matches!(failure.source, within::SolveError::Cancelled) {
-                            super::lsmr_break::record_cancelled(
-                                super::DeveloperLsmrBackend::Within,
-                            );
-                        }
-                        BatchError::Attempt {
-                            source: failure.source,
-                            iterations: failure.iterations,
-                        }
+                    .map_err(|failure| BatchError::Attempt {
+                        source: failure.source,
+                        iterations: failure.iterations,
                     })
             })
             .collect_into_vec(&mut results);

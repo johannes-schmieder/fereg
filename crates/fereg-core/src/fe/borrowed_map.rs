@@ -735,6 +735,13 @@ impl CertifiedBorrowedMap {
         self.report.solver_workspace_peak = peak;
     }
 
+    /// Record that this certified result is the fallback after an earlier
+    /// route declined (`note` says why).
+    pub(crate) fn note_fallback(&mut self, note: String) {
+        self.report.fallback_used = true;
+        self.report.warnings.push(note);
+    }
+
     #[must_use]
     pub fn into_parts(self) -> (DenseMatrix, SolveReport) {
         (self.residualized, self.report)
@@ -4655,37 +4662,6 @@ pub(crate) fn absorb_borrowed_intercept_cg(
     )
 }
 
-/// Residualize through modified LSMR and optionally retain the coefficient
-/// solutions that produced the certified observation-space residuals.
-pub(crate) fn absorb_borrowed_intercept_lsmr(
-    design: &BorrowedInterceptFeDesign<'_>,
-    weights: BorrowedMapWeights<'_>,
-    values: DenseMatrix,
-    config: LsmrConfig,
-    retain_coefficients: bool,
-) -> Result<CertifiedBorrowedMap> {
-    let validated = validate_weights(weights, values.nrows())?;
-    let (residualized, report, _, coefficients) = run_borrowed_lsmr(
-        design,
-        validated,
-        &values,
-        config.tolerance,
-        config.max_iterations,
-        super::auto::explicit_lsmr_recurrence(config),
-        None,
-        retain_coefficients,
-    )?;
-    if let Some(coefficients) = coefficients {
-        CertifiedBorrowedMap::from_certified_parts_with_coefficients(
-            residualized,
-            report,
-            coefficients,
-        )
-    } else {
-        CertifiedBorrowedMap::from_certified_parts(residualized, report)
-    }
-}
-
 fn matrix_infinity_norm(values: &DenseMatrix) -> Result<f64> {
     let maximum = if values.as_slice().len() >= PARALLEL_PROJECTION_MIN_ROWS
         && rayon::current_num_threads() > 1
@@ -5713,119 +5689,6 @@ impl<'s, 'a> CheckpointLsmrBatch<'s, 'a> {
     }
 }
 
-/// Own one fixed operator during low-memory OLS projection. The estimator drops
-/// it before QR/VCE; a CG continuation releases it before allocating CG state.
-pub(crate) struct BorrowedLsmrAbsorber<'a> {
-    design: BorrowedInterceptFeDesign<'a>,
-    generation: Option<super::MapGeometryGeneration>,
-    prepared: BorrowedLsmrPrepared<'a>,
-}
-
-impl<'a> BorrowedLsmrAbsorber<'a> {
-    pub(crate) fn new(
-        design: BorrowedInterceptFeDesign<'a>,
-        weights: BorrowedMapWeights<'_>,
-        config: super::AbsorbConfig,
-    ) -> Result<Self> {
-        config.validate_cmg_schur_options()?;
-        if design.effects().is_empty()
-            || !matches!(config.solver, FeSolverKind::Auto | FeSolverKind::Lsmr)
-        {
-            return Err(invalid_argument(
-                "retained LSMR requires a fixed nonempty LSMR operator",
-            ));
-        }
-        validate_weights(weights, design.nobs())?;
-        Ok(Self {
-            design,
-            generation: None,
-            prepared: BorrowedLsmrPrepared::default(),
-        })
-    }
-
-    pub(crate) fn into_design(self) -> BorrowedInterceptFeDesign<'a> {
-        self.design
-    }
-
-    pub(crate) fn absorb(
-        &mut self,
-        raw_weights: BorrowedMapWeights<'_>,
-        values: DenseMatrix,
-        generation: super::MapGeometryGeneration,
-        config: super::AbsorbConfig,
-        dense_norms: bool,
-    ) -> Result<CertifiedBorrowedMap> {
-        // Invalidate numerical geometry before a fallible current-frame check.
-        // Only the enclosing immutable binding issues a generation identity.
-        if self.generation.take() != Some(generation) {
-            self.prepared = BorrowedLsmrPrepared::default();
-            self.generation = None;
-        }
-        let weights = validate_weights(raw_weights, values.nrows())?;
-        let levels = self
-            .design
-            .effects()
-            .iter()
-            .map(|effect| effect.n_levels())
-            .collect::<Vec<_>>();
-        let threads = config
-            .lsmr
-            .threads
-            .resolved()
-            .max(rayon::current_num_threads());
-        let estimate = estimate_fe_solver_memory(
-            values.nrows(),
-            values.ncols(),
-            &levels,
-            threads,
-            config.lsmr.local_size,
-        )?;
-        // Explicit LSMR has no fallback: a refused level-count bound earns the
-        // same exact yielding-component refinement as the Auto route.
-        let (preconditioner, estimate) = general_lsmr_admission(
-            &self.design,
-            values.ncols(),
-            threads,
-            config.lsmr,
-            config.solver_memory_budget,
-            estimate,
-        )?;
-        let mut memory =
-            BorrowedLsmrCallMemory::new(estimate, preconditioner, config.solver_memory_budget, 0)?;
-        let mut norms = Vec::new();
-        let (residualized, report, _, coefficients) = run_borrowed_lsmr_with_prepared(
-            &self.design,
-            weights,
-            &values,
-            config.lsmr.tolerance,
-            config.lsmr.max_iterations,
-            super::auto::explicit_lsmr_recurrence(config.lsmr),
-            None,
-            config.retain_coefficients,
-            Some(&mut self.prepared),
-            &mut memory,
-            dense_norms.then_some(&mut norms),
-            None,
-            None,
-        )?;
-        let result = if let Some(coefficients) = coefficients {
-            CertifiedBorrowedMap::from_certified_parts_with_coefficients(
-                residualized,
-                report,
-                coefficients,
-            )
-        } else {
-            CertifiedBorrowedMap::from_certified_parts(residualized, report)
-        }?;
-        self.generation = Some(generation);
-        if norms.is_empty() {
-            Ok(result)
-        } else {
-            result.with_residual_norms(norms)
-        }
-    }
-}
-
 // Keep the maximum even if postprocessing fails and auto continues to CG.
 struct BorrowedLsmrCallMemory {
     peak: SolverWorkspacePeak,
@@ -6097,55 +5960,6 @@ fn build_retained_lsmr_from<'a>(
         within::Cancellation::new(&crate::interrupt::cancellation_requested),
     )
     .map_err(retained_lsmr_build_error)
-}
-
-#[allow(clippy::too_many_arguments)]
-fn run_borrowed_lsmr(
-    design: &BorrowedInterceptFeDesign<'_>,
-    weights: ValidatedWeights<'_>,
-    values: &DenseMatrix,
-    certificate_tolerance: f64,
-    max_iterations: usize,
-    lsmr_config: LsmrConfig,
-    certificate_reference_norms: Option<&[f64]>,
-    retain_coefficients: bool,
-) -> Result<(DenseMatrix, SolveReport, f64, Option<FeCoefficientBatch>)> {
-    let levels = design
-        .effects()
-        .iter()
-        .map(|effect| effect.n_levels())
-        .collect::<Vec<_>>();
-    let estimate = estimate_fe_solver_memory(
-        values.nrows(),
-        values.ncols(),
-        &levels,
-        lsmr_config
-            .threads
-            .resolved()
-            .max(rayon::current_num_threads()),
-        lsmr_config.local_size,
-    )?;
-    let preconditioner = resolve_borrowed_lsmr_preconditioner(
-        levels.len(),
-        design.total_term_slots(),
-        lsmr_config.preconditioner,
-    );
-    let mut memory = BorrowedLsmrCallMemory::new(estimate, preconditioner, None, 0)?;
-    run_borrowed_lsmr_with_prepared(
-        design,
-        weights,
-        values,
-        certificate_tolerance,
-        max_iterations,
-        lsmr_config,
-        certificate_reference_norms,
-        retain_coefficients,
-        None,
-        &mut memory,
-        None,
-        None,
-        None,
-    )
 }
 
 // The recurrence stops at `lsmr_config.tolerance`; the independent FE

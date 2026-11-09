@@ -50,16 +50,16 @@ pub(crate) use topology_slope_map::CategoricalRecoveryMethod;
 mod topology_source;
 
 pub use accelerated_map::absorb_accelerated_map;
-pub(crate) use auto::elimination_request;
 pub use auto::{absorb_fixed_effects, AbsorbConfig};
+pub(crate) use auto::{elimination_request, pcg_intercepts_only};
 #[cfg(test)]
 pub(crate) use borrowed_map::derived_residual::inject_derived_certificate_failure_once;
 pub(crate) use borrowed_map::{
     absorb_borrowed_intercept_cg, absorb_borrowed_intercept_irons_tuck_certified,
-    absorb_borrowed_intercept_lsmr, absorb_borrowed_intercept_map,
-    borrowed_cg_recovery_workspace_bytes, project_borrowed_intercept_structural, BorrowedCgOptions,
-    BorrowedLsmrAbsorber, CgReconstructionTarget, JointCmgBlock, PpmlCmg, PpmlCmgScratch,
-    PpmlCmgView, ReusableCategoricalMapAbsorber, PARALLEL_DOT_CHUNK_ROWS,
+    absorb_borrowed_intercept_map, borrowed_cg_recovery_workspace_bytes,
+    project_borrowed_intercept_structural, BorrowedCgOptions, CgReconstructionTarget,
+    JointCmgBlock, PpmlCmg, PpmlCmgScratch, PpmlCmgView, ReusableCategoricalMapAbsorber,
+    PARALLEL_DOT_CHUNK_ROWS,
 };
 pub use borrowed_map::{
     absorb_borrowed_intercept_map_certified, BorrowedMapWeights, CertifiedBorrowedMap,
@@ -100,7 +100,8 @@ pub(crate) use projection::ParallelProjectionPlan;
 pub use projection::ProjectionWorkspace;
 pub use report::{
     FeAcceleration, FeLocalSolve, FeMethod, FePreconditioner, FeReduction, FeRoute, FeRouteTag,
-    FeSolverKind, LsmrPreconditioner, SolveReport, SolveStopReason, FE_ROUTE_MAX_EFFECTS,
+    FeSchwarzSolves, FeSolverKind, LsmrPreconditioner, PcgPreconditioner, PcgReduction, PcgRequest,
+    SolveReport, SolveStopReason, FE_ROUTE_MAX_EFFECTS,
 };
 pub use routing::{CategoricalPrefix, RoutingPreset};
 #[doc(hidden)]

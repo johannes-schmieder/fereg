@@ -24,9 +24,9 @@ predict double reference_residual, residuals
 foreach mode in fast low {
     foreach degree in 4 5 6 {
         quietly fereg y x1 x2 [aw=weight], absorb(sw=worker sf=firm) ///
-            solver(cg, reduce(eliminate) cmgdegree(`degree')) memory(`mode') ///
+            solver(cg, reduce(eliminate) precondition(cmg) cmgdegree(`degree')) memory(`mode') ///
             poolsize(1) residuals(resid) threads(2) tolerance(1e-10)
-        assert "`e(fe_solver)'" == "cg, reduce(eliminate) cmgdegree(`degree')"
+        assert "`e(fe_solver)'" == "cg, reduce(eliminate) precondition(cmg) cmgdegree(`degree')"
         assert "`e(fe_route)'" == "cg, reduce(eliminate) precondition(cmg)"
         assert e(fe_cmgdegree) == `degree'
         assert e(fe_cmgsamples) == 0
@@ -48,7 +48,7 @@ foreach mode in fast low {
 }
 
 quietly fereg y x1 x2 [aw=weight], absorb(worker firm) ///
-    solver(cg, reduce(eliminate)) threads(1) tolerance(1e-10)
+    solver(cg, reduce(eliminate) precondition(cmg)) threads(1) tolerance(1e-10)
 assert e(fe_cmgdegree) == 5
 assert e(fe_cmgsamples) == 0
 assert e(fe_cmgseed) == 0
@@ -59,7 +59,7 @@ scalar saved_n = e(N)
 * Every unsupported option/topology leaves prior results and outputs untouched.
 foreach cutoff in 3 7 {
     capture noisily fereg y x1, absorb(sw=worker sf=firm) ///
-        solver(cg, reduce(eliminate) cmgdegree(`cutoff')) residuals(rejected)
+        solver(cg, reduce(eliminate) precondition(cmg) cmgdegree(`cutoff')) residuals(rejected)
     assert _rc == 198
     assert mreldif(e(b), saved_b) == 0
     assert e(N) == saved_n
@@ -72,12 +72,12 @@ foreach solver in "auto" "cg" "cg, reduce(full)" {
 }
 * The former top-level option is not an option any more.
 capture noisily fereg y x1, absorb(sw=worker sf=firm) ///
-    solver(cg, reduce(eliminate)) cmgdegree(5) residuals(rejected)
+    solver(cg, reduce(eliminate) precondition(cmg)) cmgdegree(5) residuals(rejected)
 assert _rc == 198
 assert mreldif(e(b), saved_b) == 0
 foreach effects in "worker" "worker firm period" "worker##c.x2 firm" {
     capture noisily fereg y x1, absorb(`effects') ///
-        solver(cg, reduce(eliminate)) residuals(rejected)
+        solver(cg, reduce(eliminate) precondition(cmg)) residuals(rejected)
     assert _rc == 498
     assert mreldif(e(b), saved_b) == 0
 }

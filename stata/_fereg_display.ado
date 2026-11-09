@@ -1,4 +1,4 @@
-*! Shared OLS/PPML result display 0.5.3 07nov2026
+*! Shared OLS/PPML result display 0.5.3 08nov2026
 program define _fereg_display
     version 15.0
     syntax [, *]
@@ -21,8 +21,8 @@ program define _fereg_display
         if e(fe_escalations) > 0 & e(fe_escalations) < . ///
             di as txt " (escalated)" _continue
         di
-        if `"`e(fe_block_solvers)'"' != "" ///
-            di as txt "Block solves: " as result `"`e(fe_block_solvers)'"'
+        if `"`e(fe_local_solvers)'"' != "" ///
+            di as txt "Local solves: " as result `"`e(fe_local_solvers)'"'
         if `"`e(fe_residual_method)'"' != "none" & e(fereg_tolerance) < . {
             local tolerance : display %9.1e e(fereg_tolerance)
             local tolerance = subinstr(strtrim(`"`tolerance'"'), ".0e", "e", 1)

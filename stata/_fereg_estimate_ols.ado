@@ -14,7 +14,7 @@ program define _fereg_estimate_ols, eclass
          PWEIGHT(varname numeric) ABSorb(string asis) CLUster(string asis) ///
          VCE(string) DOF(string) KEEPsingletons RESIDual(name) ///
          XB(name) XBD(name) D(name) ///
-         SOLVer(string) CMGDEGree(numlist integer min=1 max=1) ///
+         SOLVer(string) REDuction(string) CMGDEGree(numlist integer min=1 max=1) ///
          CMGSAMples(string) CMGSEed(string) PREConditioner(string) ///
          MEMory(string) POOLSize(integer 10) TOLerance(real 1e-8) ///
          ITERate(integer 16000) THREADS(integer 0) DETERMINISTIC ///
@@ -35,8 +35,19 @@ program define _fereg_estimate_ols, eclass
         di as error "solver(cg) is disabled because its residual certificate does not ensure projection accuracy; use solver(lsmr) or solver(cmg)"
         exit 198
     }
-    if !inlist(`"`solver_mode'"', "auto", "map", "lsmr", "cmg", "cmgschur", "it", "squarem") {
-        di as error "solver() must be auto, map, lsmr, cmg, cmgschur, it, or squarem"
+    if !inlist(`"`solver_mode'"', "auto", "map", "lsmr", "pcg", "cmg", "cmgschur", "it", "squarem") {
+        di as error "solver() must be auto, map, lsmr, pcg, cmg, cmgschur, it, or squarem"
+        exit 198
+    }
+    // The reduction of fedemean's PCG (solver(pcg) only).
+    local reduction_mode = lower(strtrim(`"`reduction'"'))
+    if `"`reduction_mode'"' != "" & `"`solver_mode'"' != "pcg" {
+        di as error "reduction() is valid only with solver(pcg)"
+        exit 198
+    }
+    if `"`reduction_mode'"' == "" local reduction_mode "auto"
+    if !inlist(`"`reduction_mode'"', "auto", "full", "eliminate") {
+        di as error "reduction() must be auto, full, or eliminate"
         exit 198
     }
     if `"`cmgdegree'"' != "" & `"`solver_mode'"' != "cmgschur" {
@@ -79,17 +90,18 @@ program define _fereg_estimate_ols, eclass
     }
     local preconditioner_mode = lower(strtrim(`"`preconditioner'"'))
     if `"`preconditioner_mode'"' == "" {
-        if !inlist(`"`solver_mode'"', "auto", "lsmr") local preconditioner_mode "off"
+        if !inlist(`"`solver_mode'"', "auto", "lsmr", "pcg") local preconditioner_mode "off"
         else local preconditioner_mode "auto"
     }
     if `"`preconditioner_mode'"' == "none" local preconditioner_mode "off"
     if `"`preconditioner_mode'"' == "additive" local preconditioner_mode "schwarz"
-    if !inlist(`"`preconditioner_mode'"', "auto", "off", "diagonal", "schwarz") {
-        di as error "preconditioner() must be auto, off, diagonal, or schwarz"
+    if !inlist(`"`preconditioner_mode'"', "auto", "off", "diagonal", "schwarz", "block") | ///
+        (`"`preconditioner_mode'"' == "block" & `"`solver_mode'"' != "pcg") {
+        di as error "preconditioner() must be auto, off, diagonal, or schwarz (block with solver(pcg))"
         exit 198
     }
-    if !inlist(`"`solver_mode'"', "auto", "lsmr") & `"`preconditioner_mode'"' != "off" {
-        di as error "preconditioner() is valid only with solver(auto) or solver(lsmr)"
+    if !inlist(`"`solver_mode'"', "auto", "lsmr", "pcg") & `"`preconditioner_mode'"' != "off" {
+        di as error "preconditioner() is valid only with solver(auto), solver(lsmr), or solver(pcg)"
         exit 198
     }
 
@@ -569,6 +581,9 @@ program define _fereg_estimate_ols, eclass
     local stata_alloc_before = strtrim(string(r(allocated), "%21.0f"))
     quietly _fereg_input_host `candidate_variable' `depvar' `source_vars' `weight_variable'
     local request_arguments `"ado=0.5.3;protocol_major=1;protocol_minor=7;stata=`c(stata_version)';host_edition=`r(edition)';host_interface=`r(interface)';host_aliases=`r(aliases)';confirm=fereg-estimation;plugin=0.5.3;result_major=1;result_minor=6;model_major=`model_major';model_minor=`model_minor';source_matrix=`model_sources';source_count=`n_sources';term_matrix=`model_terms';term_count=`n_terms';component_matrix=`model_components';component_count=`n_components';source_names=`source_registry';canonical_tokens=`token_registry';raw_component_operators=`raw_registry';raw_time_series_operators=`ts_registry';absorb_term_matrix=`absorb_terms';absorb_term_count=`n_absorb_terms';absorb_component_matrix=`absorb_components';absorb_component_count=`n_absorb_components';absorb_labels=`absorb_label_registry';absorb_saved_names=`absorb_saved_registry';cluster_term_matrix=`cluster_terms';cluster_term_count=`n_cluster_terms';cluster_component_matrix=`cluster_components';cluster_component_count=`n_cluster_components';cluster_labels=`cluster_label_registry';binding_matrix=`input_bindings';binding_count=`n_bindings';include_intercept=`include_intercept';candidate_all=`candidate_all';input_complete=`input_complete';keep_singletons=`keep_singletons';vce=`vce_wire';dof=`dof_wire';account_cluster_nesting=`account_cluster_nesting';memory=`memory_mode';solver=`solver_mode';preconditioner=`preconditioner_mode';poolsize=`poolsize';threads=`threads';deterministic=`deterministic_wire';tolerance=`tolerance';iterate=`iterate';output_sample=`output_sample';output_residual=`output_residual';output_drop_reason=0;output_xb=`output_xb';output_xbd=`output_xbd';output_absorbed=`output_absorbed';output_saved_count=`output_saved_count';output_saved_channels=`output_saved_registry';output_b_matrix=`b_shadow';output_v_matrix=`v_shadow';output_status_matrix=`status_shadow';output_marker_b_matrix=`marker_b_shadow';output_marker_v_matrix=`marker_v_shadow';output_fit_matrix=`fit_shadow';output_dof_matrix=`dof_shadow';output_solver_matrix=`solver_shadow';output_fe_matrix=`fe_shadow';output_cluster_matrix=`cluster_shadow';output_subset_matrix=`subset_shadow';output_certificate_matrix=`certificate_shadow';output_runtime_matrix=`runtime_shadow';output_memory_matrix=`memory_shadow';stata_used_entry=`stata_used_entry';stata_alloc_entry=`stata_alloc_entry';stata_used_before=`stata_used_before';stata_alloc_before=`stata_alloc_before';output_receipt_matrix=`receipt_shadow';"'
+    if `"`solver_mode'"' == "pcg" {
+        local request_arguments `"`request_arguments'reduction=`reduction_mode';"'
+    }
     if `"`solver_mode'"' == "cmgschur" {
         local request_arguments `"`request_arguments'cmgdegree=`cmgdegree';"'
         if `cmgsamples_explicit' local request_arguments ///
@@ -774,7 +789,9 @@ program define _fereg_estimate_ols, eclass
         ereturn local `prefix'reduction "`r(reduction)'"
         ereturn local `prefix'method "`r(method)'"
         ereturn local `prefix'preconditioner "`r(preconditioner)'"
-        if `"`r(block_solvers)'"' != "" ereturn local `prefix'block_solvers `"`r(block_solvers)'"'
+        if `"`r(local_solvers)'"' != "" ereturn local `prefix'local_solvers `"`r(local_solvers)'"'
+        if "`r(preconditioner)'" == "schwarz" & r(subdomains) > 0 ///
+            ereturn scalar `prefix'subdomains = r(subdomains)
         ereturn local `prefix'acceleration "`r(acceleration)'"
         ereturn local `prefix'route `"`r(text)'"'
         ereturn scalar `prefix'iterations = r(iterations)
@@ -790,8 +807,16 @@ program define _fereg_estimate_ols, eclass
         local fe_solver_spec "`solver_mode', precondition(`fe_precondition')"
     if "`solver_mode'" == "it" local fe_solver_spec "map, accelerate(irons-tuck)"
     if "`solver_mode'" == "squarem" local fe_solver_spec "map, accelerate(squarem)"
-    if "`solver_mode'" == "cmg" local fe_solver_spec "cg"
-    if "`solver_mode'" == "cmgschur" local fe_solver_spec "cg, reduce(eliminate)"
+    if "`solver_mode'" == "cmg" local fe_solver_spec "cg, precondition(cmg)"
+    if "`solver_mode'" == "cmgschur" local fe_solver_spec "cg, reduce(eliminate) precondition(cmg)"
+    if "`solver_mode'" == "pcg" {
+        local fe_solver_spec "cg"
+        local pieces
+        if "`reduction_mode'" != "auto" local pieces "reduce(`reduction_mode')"
+        if "`fe_precondition'" != "auto" local pieces "`pieces' precondition(`fe_precondition')"
+        local pieces = strtrim("`pieces'")
+        if "`pieces'" != "" local fe_solver_spec "cg, `pieces'"
+    }
     ereturn local fe_solver "`fe_solver_spec'"
     tempname fe_solve
     matrix `fe_solve' = (`solver_shadow'[1..2,11], `solver_shadow'[1..2,10], ///

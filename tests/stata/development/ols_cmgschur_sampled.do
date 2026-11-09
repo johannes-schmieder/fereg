@@ -25,14 +25,14 @@ predict double reference_residual, residuals
 
 * Omitted and explicit zero sampling retain the same unsampled science.
 quietly fereg y x1 x2 [aw=weight], absorb(worker firm) ///
-    solver(cg, reduce(eliminate)) ///
+    solver(cg, reduce(eliminate) precondition(cmg)) ///
     vce(robust) threads(1) tolerance(1e-10) residuals(unsampled)
 matrix unsampled_b = e(b)
 matrix unsampled_v = e(V)
 matrix unsampled_solver = e(fe_solve)
 local unsampled_route `"`e(fe_route)' | `e(fe_residual_route)'"'
 quietly fereg y x1 x2 [aw=weight], absorb(worker firm) ///
-    solver(cg, reduce(eliminate) cmgsamples(0)) ///
+    solver(cg, reduce(eliminate) precondition(cmg) cmgsamples(0)) ///
     vce(robust) threads(1) tolerance(1e-10) residuals(zero)
 assert mreldif(e(b), unsampled_b) == 0
 assert mreldif(e(V), unsampled_v) == 0
@@ -55,7 +55,7 @@ foreach mode in fast low {
                 local seed_option "cmgseed(`seed')"
                 if `seed' == 0 & `repetition' == 1 local seed_option
                 quietly fereg y x1 x2 [aw=weight], absorb(sw=worker sf=firm) ///
-                    solver(cg, reduce(eliminate) cmgsamples(2) `seed_option') ///
+                    solver(cg, reduce(eliminate) precondition(cmg) cmgsamples(2) `seed_option') ///
                     memory(`mode') poolsize(1) threads(`threads') ///
                     vce(robust) tolerance(1e-10) residuals(resid)
                 assert "`e(fe_route)'" == "cg, reduce(eliminate) precondition(cmg)"
@@ -115,7 +115,7 @@ foreach command in fereg _fereg_estimate_ols {
     * The unsupported one-FE model prevents allocating billions of trees.
     local request "solver(cmgschur) cmgsamples(4294967295) cmgseed(9007199254740991)"
     if "`command'" == "fereg" local request ///
-        "solver(cg, reduce(eliminate) cmgsamples(4294967295) cmgseed(9007199254740991))"
+        "solver(cg, reduce(eliminate) precondition(cmg) cmgsamples(4294967295) cmgseed(9007199254740991))"
     capture noisily `command' y x1, absorb(worker) `request' resid(rejected)
     assert _rc == 498
     assert mreldif(e(b), prior_b) == 0
@@ -125,7 +125,7 @@ foreach command in fereg _fereg_estimate_ols {
         "cmgsamples(2) cmgseed(9007199254740992)" ///
         "cmgsamples(2) cmgseed(9007199254740990.5)" {
         local request "solver(cmgschur) `options'"
-        if "`command'" == "fereg" local request "solver(cg, reduce(eliminate) `options')"
+        if "`command'" == "fereg" local request "solver(cg, reduce(eliminate) precondition(cmg) `options')"
         capture noisily `command' y x1, absorb(sw=worker sf=firm) ///
             `request' resid(rejected)
         assert _rc == 198
@@ -163,7 +163,7 @@ foreach options in "cmgsamples(0)" "cmgsamples(1)" "cmgseed(0)" {
 assert e(fe_iterations) > 1
 foreach mode in fast low {
     capture noisily fereg y x1 x2 [aw=weight], absorb(sw=worker sf=firm) ///
-        solver(cg, reduce(eliminate) cmgsamples(2) cmgseed(9007199254740991)) ///
+        solver(cg, reduce(eliminate) precondition(cmg) cmgsamples(2) cmgseed(9007199254740991)) ///
         memory(`mode') poolsize(1) threads(4) vce(robust) ///
         tolerance(1e-10) iterate(1) residuals(rejected)
     assert _rc == 430

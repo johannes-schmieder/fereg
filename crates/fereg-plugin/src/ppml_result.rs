@@ -2050,7 +2050,8 @@ const fn linear_route_code(route: FeSolverKind) -> f64 {
         FeSolverKind::CmgSchur => 8.0,
         // PPML publishes the exact elimination under the categorical MAP
         // identity: the compiled PPML validator admits only these engines.
-        FeSolverKind::Elimination => 2.0,
+        // A request label only (OLS); never a PPML route.
+        FeSolverKind::Elimination | FeSolverKind::Pcg => 2.0,
     }
 }
 

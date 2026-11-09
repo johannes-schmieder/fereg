@@ -23,6 +23,48 @@ pub enum FeSolverKind {
     /// with block-Schur PCG over the remaining effects (Auto only; reported,
     /// never requested).
     Elimination,
+    /// Preconditioned conjugate gradients on the full or eliminated
+    /// categorical intercept system (fedemean), with the reduction and
+    /// preconditioner of [`crate::fe::AbsorbConfig::pcg`] (public
+    /// `solver(cg, reduce() precondition())` other than CMG). Requested only;
+    /// a projection reports `Cg` (full) or `Elimination` with its route.
+    Pcg,
+}
+
+/// The reduction of an explicit [`FeSolverKind::Pcg`] request.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum PcgReduction {
+    /// Eliminate the largest effect for two to five effects, else the full
+    /// system (fedemean's automatic reduction).
+    #[default]
+    Auto,
+    Full,
+    Eliminate,
+}
+
+/// The preconditioner of an explicit [`FeSolverKind::Pcg`] request.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum PcgPreconditioner {
+    /// The reduction's automatic choice: Jacobi escalating to block-Jacobi
+    /// (elimination); additive Schwarz within the memory limit, else Jacobi
+    /// (full system).
+    #[default]
+    Auto,
+    /// No preconditioner (full system only).
+    None,
+    /// Jacobi throughout (no escalation).
+    Jacobi,
+    /// Block-Jacobi over the retained effects (elimination only).
+    Block,
+    /// Additive Schwarz over factor-pair subdomains (full system only).
+    Schwarz,
+}
+
+/// An explicit [`FeSolverKind::Pcg`] request.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct PcgRequest {
+    pub reduction: PcgReduction,
+    pub preconditioner: PcgPreconditioner,
 }
 
 /// Preconditioner requested or used by modified LSMR.
@@ -109,6 +151,42 @@ pub enum FeLocalSolve {
 /// range: the eliminated effect plus four retained blocks).
 pub const FE_ROUTE_MAX_EFFECTS: usize = 5;
 
+/// The subdomain local solves of an additive Schwarz preconditioner,
+/// counted by kind (all zero when the producer does not report them).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct FeSchwarzSolves {
+    /// One level on a subdomain's smaller side: nothing to solve.
+    pub trivial: u32,
+    /// Dense grounded Cholesky factorization.
+    pub dense: u32,
+    /// Exact envelope (skyline) Cholesky factorization.
+    pub skyline: u32,
+    /// Approximate Cholesky factorization.
+    pub approximate: u32,
+}
+
+impl FeSchwarzSolves {
+    /// Every subdomain counted (saturating).
+    #[must_use]
+    pub const fn subdomains(self) -> u32 {
+        self.trivial
+            .saturating_add(self.dense)
+            .saturating_add(self.skyline)
+            .saturating_add(self.approximate)
+    }
+
+    /// The larger count of each kind.
+    #[must_use]
+    pub fn max(self, other: Self) -> Self {
+        Self {
+            trivial: self.trivial.max(other.trivial),
+            dense: self.dense.max(other.dense),
+            skyline: self.skyline.max(other.skyline),
+            approximate: self.approximate.max(other.approximate),
+        }
+    }
+}
+
 /// Preconditioner of a projection's iterative method.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FePreconditioner {
@@ -117,8 +195,9 @@ pub enum FePreconditioner {
     /// Block-Jacobi over the retained effects; one entry per design effect
     /// (`None` for the eliminated effect).
     Block([Option<FeLocalSolve>; FE_ROUTE_MAX_EFFECTS]),
-    /// Additive Schwarz over factor-pair subdomains.
-    Schwarz,
+    /// Additive Schwarz over factor-pair subdomains, with their local solves
+    /// where the producer reports them.
+    Schwarz(FeSchwarzSolves),
     /// Combinatorial multigrid.
     Cmg,
 }
@@ -193,19 +272,21 @@ impl FeRoute {
                 M::Lsmr,
                 match preconditioner {
                     Some(LsmrPreconditioner::Diagonal) => P::Jacobi,
-                    Some(LsmrPreconditioner::Schwarz) => P::Schwarz,
+                    Some(LsmrPreconditioner::Schwarz) => P::Schwarz(FeSchwarzSolves::default()),
                     _ => P::None,
                 },
             ),
             (_, FeSolverKind::Cmg) => Self::new(R::Full, M::Cg, P::Cmg),
             (_, FeSolverKind::CmgSchur) => Self::eliminated_cg(true),
             (_, FeSolverKind::Elimination) => Self::eliminated_cg(false),
+            // A request label only; its producers tag their route.
+            (_, FeSolverKind::Pcg) => Self::new(R::Full, M::Cg, P::Jacobi),
         }
     }
 
     /// Combine the routes of two parts of one projection (Low-memory RHS
-    /// blocks) that share a solver label: block-Jacobi wins over Jacobi,
-    /// local solves combine and escalations add.
+    /// blocks) that share a solver label: block-Jacobi or Schwarz wins over
+    /// Jacobi, local solves combine and escalations add.
     #[must_use]
     pub fn merged(self, other: Self) -> Self {
         let preconditioner = match (self.preconditioner, other.preconditioner) {
@@ -218,6 +299,12 @@ impl FeRoute {
             }
             (FePreconditioner::Block(a), _) | (_, FePreconditioner::Block(a)) => {
                 FePreconditioner::Block(a)
+            }
+            (FePreconditioner::Schwarz(a), FePreconditioner::Schwarz(b)) => {
+                FePreconditioner::Schwarz(a.max(b))
+            }
+            (FePreconditioner::Schwarz(a), _) | (_, FePreconditioner::Schwarz(a)) => {
+                FePreconditioner::Schwarz(a)
             }
             (FePreconditioner::Cmg, _) | (_, FePreconditioner::Cmg) => FePreconditioner::Cmg,
             (a, _) => a,
@@ -417,7 +504,12 @@ mod tests {
             (
                 FeSolverKind::Lsmr,
                 Some(LsmrPreconditioner::Schwarz),
-                (R::Full, M::Lsmr, P::Schwarz, FeAcceleration::None),
+                (
+                    R::Full,
+                    M::Lsmr,
+                    P::Schwarz(FeSchwarzSolves::default()),
+                    FeAcceleration::None,
+                ),
             ),
             (
                 FeSolverKind::Lsmr,

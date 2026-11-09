@@ -19,7 +19,9 @@ pub(crate) struct FeSession<'a> {
     pub(crate) coefficients: bool,
     pub(crate) binding: Option<super::BorrowedInterceptFeDesign<'a>>,
     pub(crate) cmg: Option<super::CmgAbsorber<'a>>,
-    pub(crate) lsmr: Option<super::BorrowedLsmrAbsorber<'a>>,
+    /// An explicit fedemean request (`solver(lsmr)`, `solver(cg)` other than
+    /// CMG) on the binding.
+    pub(crate) explicit: Option<super::borrowed_map::block_schur::Cache<'a>>,
     pub(crate) owned: Option<FeDesign>,
     pub(crate) normalized: Vec<f64>,
     pub(crate) peak: crate::memory::SolverWorkspacePeak,
@@ -33,10 +35,16 @@ pub(crate) struct FeSession<'a> {
     pub(crate) absorb_config: Option<super::AbsorbConfig>,
     block_schur: super::borrowed_map::block_schur::Cache<'a>,
     pub(crate) block_schur_used: bool,
+    /// Auto's full system: designs outside the elimination's range and its
+    /// declines.
+    full_system: super::borrowed_map::block_schur::Cache<'a>,
+    pub(crate) full_system_used: bool,
 }
 
 mod elimination;
 use elimination::block_schur_enabled;
+#[cfg(test)]
+pub(crate) use elimination::starve_full_system_for_test;
 
 /// Select invocation identity before canonical portfolio construction. Refused
 /// hidden families fall back to the accepted default, including the other family.
@@ -233,7 +241,7 @@ impl Default for FeSession<'_> {
             coefficients: false,
             binding: None,
             cmg: None,
-            lsmr: None,
+            explicit: None,
             owned: None,
             normalized: Vec::new(),
             peak: crate::memory::SolverWorkspacePeak::ZERO,
@@ -247,6 +255,10 @@ impl Default for FeSession<'_> {
             absorb_config: None,
             block_schur: Default::default(),
             block_schur_used: false,
+            full_system: super::borrowed_map::block_schur::Cache::with_plan(
+                super::borrowed_map::block_schur::Plan::auto_full(),
+            ),
+            full_system_used: false,
         }
     }
 }
@@ -344,12 +356,13 @@ impl<'a> FeSession<'a> {
                         prepared.fit_structural_intercept(),
                     )?);
                 }
-                super::FeSolverKind::Lsmr if !design.effects().is_empty() => {
-                    owner.lsmr = Some(super::BorrowedLsmrAbsorber::new(
-                        design,
-                        weights,
-                        config.absorb,
-                    )?);
+                // Explicit modified LSMR and CG run on fedemean's
+                // formulations of the categorical intercept design.
+                super::FeSolverKind::Lsmr | super::FeSolverKind::Pcg
+                    if !design.effects().is_empty() =>
+                {
+                    owner.explicit = Some(elimination::explicit_cache(config.absorb)?);
+                    owner.binding = Some(design);
                 }
                 // The block elimination serves the binding first; a decline
                 // builds the two-FE owner on demand in the binding route.
@@ -882,23 +895,22 @@ impl<'a> FeSession<'a> {
         tolerance: f64,
         amplification: f64,
     ) -> Result<Option<super::FeCertificate>> {
-        if self.cmg.is_some() || self.lsmr.is_some() {
+        if self.cmg.is_some() || self.explicit.is_some() {
             return Ok(None);
         }
-        if self.block_schur_used {
-            let design = match (&self.categorical, &self.binding) {
-                (Some(owner), _) => Some(owner.borrowed_design()),
-                (None, Some(design)) => Some(design),
-                _ => None,
-            };
-            if let Some(design) = design {
-                if let Some(certificate) = self.block_schur.certify_derived(
-                    design,
-                    weights,
-                    values,
-                    tolerance,
-                    amplification,
-                )? {
+        let design = match (&self.categorical, &self.binding) {
+            (Some(owner), _) => Some(owner.borrowed_design()),
+            (None, Some(design)) => Some(design),
+            _ => None,
+        };
+        for (used, cache) in [
+            (self.block_schur_used, &self.block_schur),
+            (self.full_system_used, &self.full_system),
+        ] {
+            if let Some(design) = design.filter(|_| used) {
+                if let Some(certificate) =
+                    cache.certify_derived(design, weights, values, tolerance, amplification)?
+                {
                     return Ok(Some(certificate));
                 }
             }
@@ -1037,9 +1049,12 @@ impl<'a> FeSession<'a> {
         dense_norms: bool,
         remaining: Option<ObserverRef<'_>>,
     ) -> Result<CertifiedBorrowedMap> {
-        let values = match self.try_block_schur(weights, values, config)? {
+        if self.explicit.is_some() {
+            return self.project_explicit(weights, values, config);
+        }
+        let (values, fallback) = match self.try_block_schur(weights, values, config)? {
             Ok(result) => return Ok(result),
-            Err(values) => values,
+            Err(declined) => declined,
         };
         let result = if let Some(p) = self.cmg.as_mut() {
             let values = values.into_values();
@@ -1053,18 +1068,6 @@ impl<'a> FeSession<'a> {
             } else {
                 p.absorb(values)
             }
-        } else if let Some(p) = self.lsmr.as_mut() {
-            p.absorb(
-                weights,
-                values.into_values(),
-                MapGeometryGeneration {
-                    sample: 0,
-                    topology: 0,
-                    weights: 0,
-                },
-                config,
-                dense_norms,
-            )
         } else if let Some(p) = self.categorical.as_mut() {
             if config.certified_fallback {
                 p.absorb_ols_with_remaining(weights, values, config.map, final_residual, remaining)
@@ -1122,9 +1125,15 @@ impl<'a> FeSession<'a> {
                 .max(self.peak);
             CertifiedBorrowedMap::from_certified_parts(values, report)
         };
-        // A late elimination decline residualized some columns in place; its
-        // coefficient increments complete the fallback's coefficients.
-        self.block_schur.add_partial_coefficients(result)
+        // A late elimination or full-system decline residualized some
+        // columns in place; their coefficient increments complete the
+        // fallback's coefficients.
+        let result = self.block_schur.add_partial_coefficients(result);
+        let mut result = self.full_system.add_partial_coefficients(result)?;
+        if let Some(note) = fallback {
+            result.note_fallback(note);
+        }
+        Ok(result)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -1287,13 +1296,6 @@ pub(crate) fn project_intercepts<'a>(
             three_fe_geometry,
             general_routing,
         ),
-        S::Lsmr if !design.effects().is_empty() => super::absorb_borrowed_intercept_lsmr(
-            design,
-            weights,
-            values.into_values(),
-            config.lsmr,
-            config.retain_coefficients,
-        ),
         S::Cg => {
             let peak = crate::ols::prepared_fit_view::admit_prepared_intercept_cg(
                 design,
@@ -1333,8 +1335,13 @@ pub(crate) fn project_intercepts<'a>(
             ErrorCode::Unsupported,
             "explicit FE backend requires its prepared adapter",
         )),
+        S::Lsmr | S::Pcg if !design.effects().is_empty() => Err(FeregError::new(
+            ErrorCode::Unsupported,
+            "explicit modified LSMR and CG require their prepared session",
+        )),
         S::Elimination => Err(super::auto::elimination_request()),
-        S::Lsmr | S::IronsTuck | S::Map => {
+        // A structural constant alone is one exact projection.
+        S::Lsmr | S::Pcg | S::IronsTuck | S::Map => {
             // A structural constant on an empty design has no coefficients to retain.
             let retain =
                 config.retain_coefficients && !(structural_constant && design.effects().is_empty());
@@ -1899,7 +1906,7 @@ pub(crate) struct LegacyFeSession<'a> {
     pub(crate) coefficients: bool,
     pub(crate) binding: Option<super::BorrowedInterceptFeDesign<'a>>,
     pub(crate) cmg: Option<super::CmgAbsorber<'a>>,
-    pub(crate) lsmr: Option<super::BorrowedLsmrAbsorber<'a>>,
+    pub(crate) explicit: Option<super::borrowed_map::block_schur::Cache<'a>>,
     pub(crate) owned: Option<FeDesign>,
     pub(crate) normalized: Vec<f64>,
     pub(crate) peak: crate::memory::SolverWorkspacePeak,
@@ -1913,6 +1920,8 @@ pub(crate) struct LegacyFeSession<'a> {
     pub(crate) absorb_config: Option<super::AbsorbConfig>,
     block_schur: super::borrowed_map::block_schur::Cache<'a>,
     pub(crate) block_schur_used: bool,
+    full_system: super::borrowed_map::block_schur::Cache<'a>,
+    pub(crate) full_system_used: bool,
 }
 #[cfg(test)]
 #[test]

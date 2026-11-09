@@ -582,3 +582,364 @@ fn ordinary_designs_keep_their_bits_with_a_hint() {
         assert_eq!(bits(result.residualized()), bits(reference.residualized()));
     });
 }
+
+/// The plans on fedemean's full system and the explicit elimination, with
+/// the route each should report: reduction, method and preconditioner kind
+/// (`schwarz` matches any local-solve summary).
+fn full_plans(effects: usize) -> Vec<(Plan, crate::fe::FeRoute)> {
+    use crate::fe::{
+        FeMethod as M, FePreconditioner as P, FeReduction as R, FeRoute, LsmrPreconditioner as L,
+        PcgPreconditioner as C, PcgReduction as D, PcgRequest,
+    };
+    let schwarz = P::Schwarz(crate::fe::FeSchwarzSolves::default());
+    // Fedemean's automatic full-system choice: Schwarz for two or more
+    // effects, Jacobi (exact) for one.
+    let automatic = if effects >= 2 { schwarz } else { P::Jacobi };
+    let pcg = |reduction, preconditioner| {
+        Plan::pcg(PcgRequest {
+            reduction,
+            preconditioner,
+        })
+        .unwrap()
+    };
+    let mut plans = vec![
+        (Plan::auto_full(), FeRoute::new(R::Full, M::Cg, automatic)),
+        (
+            Plan::lsmr(L::Auto),
+            FeRoute::new(R::Full, M::Lsmr, automatic),
+        ),
+        (Plan::lsmr(L::Off), FeRoute::new(R::Full, M::Lsmr, P::None)),
+        (
+            Plan::lsmr(L::Diagonal),
+            FeRoute::new(R::Full, M::Lsmr, P::Jacobi),
+        ),
+        (
+            pcg(D::Full, C::Jacobi),
+            FeRoute::new(R::Full, M::Cg, P::Jacobi),
+        ),
+        (pcg(D::Full, C::None), FeRoute::new(R::Full, M::Cg, P::None)),
+    ];
+    if effects >= 2 {
+        plans.push((
+            Plan::lsmr(L::Schwarz),
+            FeRoute::new(R::Full, M::Lsmr, schwarz),
+        ));
+        plans.push((
+            pcg(D::Full, C::Schwarz),
+            FeRoute::new(R::Full, M::Cg, schwarz),
+        ));
+    }
+    if (2..=5).contains(&effects) {
+        plans.push((pcg(D::Eliminate, C::Jacobi), FeRoute::eliminated_cg(false)));
+        plans.push((pcg(D::Auto, C::Auto), FeRoute::eliminated_cg(false)));
+    } else {
+        plans.push((
+            pcg(D::Auto, C::Auto),
+            FeRoute::new(R::Full, M::Cg, automatic),
+        ));
+    }
+    plans
+}
+
+/// Every full-system plan (and the explicit elimination) certifies, agrees
+/// with converged MAP, returns coefficients that reproduce its residual from
+/// the original columns, and reports the route it was asked for, for one to
+/// seven effects with and without weights.
+#[test]
+fn full_system_plans_match_converged_map_and_report_their_routes() {
+    let rows = 700;
+    for levels in [
+        vec![90],
+        vec![120, 17, 6],
+        vec![110, 23, 6, 11, 4, 9],
+        vec![110, 23, 6, 11, 4, 9, 13],
+    ] {
+        with_design(rows, &levels, 501 + levels.len() as u64, |design, codes| {
+            let weights: Vec<f64> = (0..rows).map(|r| 0.25 + (r * 7 % 11) as f64).collect();
+            for weighted in [false, true] {
+                let borrowed = if weighted {
+                    BorrowedMapWeights::Provided(&weights)
+                } else {
+                    BorrowedMapWeights::Unit
+                };
+                let input = values(rows, 3, 13 + levels.len() as u64);
+                let oracle = absorb_borrowed_intercept_map(
+                    design,
+                    borrowed,
+                    input.clone(),
+                    MapConfig {
+                        tolerance: 1e-13,
+                        max_iterations: 200_000,
+                        ..MapConfig::default()
+                    },
+                    false,
+                    false,
+                )
+                .unwrap();
+                for (plan, expected) in full_plans(levels.len()) {
+                    let map = MapConfig {
+                        tolerance: 1e-10,
+                        ..MapConfig::default()
+                    };
+                    let mut cache = Cache::with_plan(plan);
+                    let Outcome::Done(result) = cache
+                        .project(
+                            design,
+                            borrowed,
+                            input.clone(),
+                            map,
+                            None,
+                            Request {
+                                retain_coefficients: true,
+                                coefficient_accuracy: false,
+                            },
+                        )
+                        .unwrap()
+                    else {
+                        panic!(
+                            "{plan:?} declined ({:?}): levels={levels:?} weighted={weighted}",
+                            cache.decline()
+                        );
+                    };
+                    let report = result.report().clone();
+                    assert!(report.certified(), "{plan:?}");
+                    let route = report.route();
+                    let kind = |p: crate::fe::FePreconditioner| match p {
+                        crate::fe::FePreconditioner::Schwarz(_) => {
+                            crate::fe::FePreconditioner::Schwarz(Default::default())
+                        }
+                        other => other,
+                    };
+                    assert_eq!(
+                        (route.reduction, route.method, kind(route.preconditioner)),
+                        (expected.reduction, expected.method, expected.preconditioner),
+                        "{plan:?} levels={levels:?}"
+                    );
+                    if let crate::fe::FePreconditioner::Schwarz(solves) = route.preconditioner {
+                        // The summary counts every star subdomain: at least
+                        // one per pair of the largest effect with another.
+                        assert!(solves.subdomains() >= levels.len() as u32 - 1, "{solves:?}");
+                    }
+                    let (residual, _, coefficients) = result.into_full_parts();
+                    let coefficients = coefficients.expect("retained coefficients");
+                    for column in 0..3 {
+                        let scale = (0..rows)
+                            .map(|row| input[(row, column)].abs())
+                            .fold(0.0_f64, f64::max);
+                        for row in 0..rows {
+                            let r = residual[(row, column)];
+                            assert!(
+                                (r - oracle.residualized()[(row, column)]).abs() < 1e-7 * scale,
+                                "{plan:?} levels={levels:?} weighted={weighted} row={row}"
+                            );
+                            let fit: f64 = codes
+                                .iter()
+                                .enumerate()
+                                .map(|(effect, effect_codes)| {
+                                    coefficients.values[column * coefficients.coefficients_per_rhs
+                                        + coefficients.effect_offsets[effect]
+                                        + effect_codes[row] as usize]
+                                })
+                                .sum();
+                            assert!((input[(row, column)] - fit - r).abs() < 1e-9 * scale);
+                        }
+                    }
+                }
+            }
+        });
+    }
+}
+
+/// The full system does not depend on the worker count: Auto's full system
+/// and explicit Schwarz LSMR repeat bit for bit at 1, 3 and 8 workers, with
+/// the retained projector and after a weight change (whose state is
+/// rebuilt, as a fresh cache's).
+#[test]
+fn full_system_repeats_bitwise_across_workers_calls_and_weight_changes() {
+    let rows = 900;
+    with_design(rows, &[150, 23, 6, 11, 4, 9], 77, |design, _| {
+        let input = values(rows, 5, 3);
+        let first: Vec<f64> = (0..rows).map(|r| 0.5 + (r * 5 % 13) as f64).collect();
+        let second: Vec<f64> = (0..rows).map(|r| 1.0 + (r * 3 % 7) as f64).collect();
+        for plan in [
+            Plan::auto_full(),
+            Plan::lsmr(crate::fe::LsmrPreconditioner::Schwarz),
+        ] {
+            let mut reference: Option<Vec<Vec<u64>>> = None;
+            for threads in [1, 3, 8] {
+                let pool = rayon::ThreadPoolBuilder::new()
+                    .num_threads(threads)
+                    .build()
+                    .unwrap();
+                let runs = pool.install(|| {
+                    let mut cache = Cache::with_plan(plan);
+                    let mut runs = Vec::new();
+                    for weights in [&first, &first, &second] {
+                        let Outcome::Done(result) = cache
+                            .project(
+                                design,
+                                BorrowedMapWeights::Provided(weights),
+                                input.clone(),
+                                MapConfig::default(),
+                                None,
+                                Request::default(),
+                            )
+                            .unwrap()
+                        else {
+                            panic!("{plan:?} declined");
+                        };
+                        runs.push(bits(result.residualized()));
+                    }
+                    let Outcome::Done(fresh) = Cache::with_plan(plan)
+                        .project(
+                            design,
+                            BorrowedMapWeights::Provided(&second),
+                            input.clone(),
+                            MapConfig::default(),
+                            None,
+                            Request::default(),
+                        )
+                        .unwrap()
+                    else {
+                        panic!("{plan:?} declined");
+                    };
+                    assert_eq!(runs[2], bits(fresh.residualized()), "{plan:?}");
+                    runs
+                });
+                assert_eq!(runs[0], runs[1], "{plan:?} retained projector");
+                assert_ne!(runs[0], runs[2], "{plan:?} weight change");
+                match &reference {
+                    None => reference = Some(runs),
+                    Some(reference) => assert_eq!(&runs, reference, "{plan:?} {threads} workers"),
+                }
+            }
+        }
+    });
+}
+
+/// Declines name their reason and leave the input untouched: an admission
+/// bound one byte short (fedemean's own bound admits exactly), the
+/// elimination outside its range and a one-iteration budget. Unsupported
+/// explicit combinations are errors.
+#[test]
+fn full_system_declines_name_their_reasons() {
+    let rows = 600;
+    with_design(rows, &[100, 17, 6, 9, 5, 7], 21, |design, _| {
+        let input = values(rows, 2, 9);
+        // Weighted, so fedemean's admission bound (which counts the weight
+        // roots) is the projection's own.
+        let weights: Vec<f64> = (0..rows).map(|r| 1.0 + (r % 3) as f64).collect();
+        let input = (input, weights);
+        fn attempt<'a>(
+            cache: &mut Cache<'a>,
+            design: &BorrowedInterceptFeDesign<'a>,
+            (input, weights): &(DenseMatrix, Vec<f64>),
+            map: MapConfig,
+            budget: Option<FeSolverMemoryBudget>,
+        ) -> Option<CertifiedBorrowedMap> {
+            match cache
+                .project(
+                    design,
+                    BorrowedMapWeights::Provided(weights),
+                    input.clone(),
+                    map,
+                    budget,
+                    Request::default(),
+                )
+                .unwrap()
+            {
+                Outcome::Declined(values) => {
+                    assert_eq!(&values, input);
+                    None
+                }
+                Outcome::Done(result) => Some(result),
+            }
+        }
+        let jacobi = Plan::pcg(crate::fe::PcgRequest {
+            reduction: crate::fe::PcgReduction::Full,
+            preconditioner: crate::fe::PcgPreconditioner::Jacobi,
+        })
+        .unwrap();
+        // fedemean's admission bound for this width admits the projection
+        // exactly; a byte less declines before any work.
+        let mut admitted = Cache::with_plan(jacobi);
+        assert!(attempt(&mut admitted, design, &input, MapConfig::default(), None).is_some());
+        let bytes = admitted
+            .projector
+            .as_ref()
+            .and_then(|p| p.admission_bytes(2))
+            .expect("built structure");
+        let budget = |usable_bytes| {
+            Some(FeSolverMemoryBudget {
+                execution_bytes: 0,
+                usable_bytes,
+            })
+        };
+        let mut exact = Cache::with_plan(jacobi);
+        assert!(attempt(
+            &mut exact,
+            design,
+            &input,
+            MapConfig::default(),
+            budget(bytes)
+        )
+        .is_some());
+        let mut short = Cache::with_plan(jacobi);
+        assert!(attempt(
+            &mut short,
+            design,
+            &input,
+            MapConfig::default(),
+            budget(bytes - 1)
+        )
+        .is_none());
+        assert_eq!(
+            short.decline().map(|d| d.reason),
+            Some(fedemean::Decline::MemoryLimit)
+        );
+        let mut outside = Cache::with_plan(
+            Plan::pcg(crate::fe::PcgRequest {
+                reduction: crate::fe::PcgReduction::Eliminate,
+                preconditioner: crate::fe::PcgPreconditioner::Jacobi,
+            })
+            .unwrap(),
+        );
+        assert!(attempt(&mut outside, design, &input, MapConfig::default(), None).is_none());
+        assert_eq!(
+            outside.decline().map(|d| d.reason),
+            Some(fedemean::Decline::OutsideRoute)
+        );
+        let short_budget = MapConfig {
+            tolerance: 1e-12,
+            max_iterations: 1,
+            ..MapConfig::default()
+        };
+        let mut stalled = Cache::with_plan(Plan::lsmr(crate::fe::LsmrPreconditioner::Off));
+        assert!(attempt(&mut stalled, design, &input, short_budget, None).is_none());
+        assert!(matches!(
+            stalled.decline().map(|d| d.reason),
+            Some(fedemean::Decline::Numerical(_))
+        ));
+    });
+    for (reduction, preconditioner) in [
+        (
+            crate::fe::PcgReduction::Full,
+            crate::fe::PcgPreconditioner::Block,
+        ),
+        (
+            crate::fe::PcgReduction::Eliminate,
+            crate::fe::PcgPreconditioner::Schwarz,
+        ),
+        (
+            crate::fe::PcgReduction::Eliminate,
+            crate::fe::PcgPreconditioner::None,
+        ),
+    ] {
+        let error = Plan::pcg(crate::fe::PcgRequest {
+            reduction,
+            preconditioner,
+        })
+        .unwrap_err();
+        assert_eq!(error.code, crate::error::ErrorCode::Unsupported);
+    }
+}

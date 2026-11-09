@@ -5,14 +5,16 @@
 //! Columns (zero-based): 0 reduction (0 none, 1 full, 2 eliminate); 1 method
 //! (0 none, 1 direct, 2 map, 3 cg, 4 lsmr, 5 derived); 2 MAP acceleration
 //! (0 none, 1 cg, 2 irons-tuck, 3 squarem); 3 preconditioner (0 none,
-//! 1 jacobi, 2 block, 3 schwarz, 4 cmg); 4..9 the block-Jacobi local solve of
-//! each design effect (0 none or eliminated, 1 dense, 2 cmg, 3 jacobi); 9
-//! escalations; 10 iterations; 11 certified fallback (0 or 1).
+//! 1 jacobi, 2 block, 3 schwarz, 4 cmg); 4..9 the local solves: with block,
+//! the block-Jacobi local solve of each design effect (0 none or eliminated,
+//! 1 dense, 2 cmg, 3 jacobi); with schwarz, the subdomains counted by local
+//! solve (trivial, dense, skyline, approximate; all zero when unreported);
+//! 9 escalations; 10 iterations; 11 certified fallback (0 or 1).
 
 use fereg_core::error::{invalid_argument as invalid, Result};
 use fereg_core::fe::{
     FeAcceleration, FeLocalSolve, FeMethod, FePreconditioner, FeReduction, FeRoute,
-    FE_ROUTE_MAX_EFFECTS,
+    FeSchwarzSolves, FE_ROUTE_MAX_EFFECTS,
 };
 
 pub(crate) const ROUTE_COLUMNS: usize = 12;
@@ -76,7 +78,22 @@ pub(crate) fn write_route(output: &mut [f64], row: RouteRow) -> Result<()> {
             }
             2.0
         }
-        FePreconditioner::Schwarz => 3.0,
+        FePreconditioner::Schwarz(solves) => {
+            let FeSchwarzSolves {
+                trivial,
+                dense,
+                skyline,
+                approximate,
+            } = solves;
+            for (cell, count) in
+                output[LOCALS..ESCALATIONS]
+                    .iter_mut()
+                    .zip([trivial, dense, skyline, approximate])
+            {
+                *cell = f64::from(count);
+            }
+            3.0
+        }
         FePreconditioner::Cmg => 4.0,
     };
     output[ESCALATIONS] = f64::from(route.escalations);
@@ -91,14 +108,21 @@ pub(crate) fn validate_route(row: &[f64]) -> Result<()> {
         value.is_finite() && value.fract() == 0.0 && (0.0..=max).contains(&value)
     };
     let block = row.get(3) == Some(&2.0);
+    let schwarz = row.get(3) == Some(&3.0);
+    let local = |value: f64| {
+        if schwarz {
+            code(value, f64::from(u32::MAX))
+        } else {
+            code(value, 3.0) && (block || value == 0.0)
+        }
+    };
     if row.len() < ROUTE_COLUMNS
         || !code(row[0], 2.0)
         || !code(row[1], 5.0)
         || !code(row[2], 3.0)
         || !code(row[3], 4.0)
-        || row[LOCALS..ESCALATIONS]
-            .iter()
-            .any(|&local| !code(local, 3.0) || (!block && local != 0.0))
+        || row[LOCALS..ESCALATIONS].iter().any(|&value| !local(value))
+        || (schwarz && row[ESCALATIONS - 1] != 0.0)
         || (block && row[LOCALS..ESCALATIONS].iter().all(|&local| local == 0.0))
         || (row[2] != 0.0 && row[1] != 2.0)
         || !code(row[ESCALATIONS], f64::from(u32::MAX))
@@ -159,8 +183,30 @@ mod tests {
         let mut map = FeRoute::new(FeReduction::Full, FeMethod::Map, FePreconditioner::None);
         map.acceleration = FeAcceleration::Squarem;
         assert_eq!(&row(map)[..4], &[1.0, 2.0, 3.0, 0.0]);
-        let lsmr = FeRoute::new(FeReduction::Full, FeMethod::Lsmr, FePreconditioner::Schwarz);
-        assert_eq!(&row(lsmr)[..4], &[1.0, 4.0, 0.0, 3.0]);
+        let lsmr = FeRoute::new(
+            FeReduction::Full,
+            FeMethod::Lsmr,
+            FePreconditioner::Schwarz(FeSchwarzSolves::default()),
+        );
+        assert_eq!(
+            &row(lsmr)[..9],
+            &[1.0, 4.0, 0.0, 3.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        );
+        let mut schwarz = FeRoute::new(
+            FeReduction::Full,
+            FeMethod::Cg,
+            FePreconditioner::Schwarz(FeSchwarzSolves {
+                trivial: 1,
+                dense: 4,
+                skyline: 2,
+                approximate: 3,
+            }),
+        );
+        schwarz.escalations = 1;
+        assert_eq!(
+            row(schwarz),
+            [1.0, 3.0, 0.0, 3.0, 1.0, 4.0, 2.0, 3.0, 0.0, 1.0, 7.0, 0.0]
+        );
     }
 
     #[test]

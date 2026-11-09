@@ -27,6 +27,8 @@ program define _fereg_estimate_public, eclass
     local solver_spec `"`r(spec)'"'
     local solver_mode "`r(route)'"
     local preconditioner_mode "`r(preconditioner)'"
+    local reduction_option
+    if "`solver_mode'" == "pcg" local reduction_option "reduction(`r(reduction)')"
     local cmgdegree `"`r(cmgdegree)'"'
     local cmgsamples `"`r(cmgsamples)'"'
     local cmgseed `"`r(cmgseed)'"'
@@ -135,7 +137,7 @@ program define _fereg_estimate_public, eclass
         `absorb_option' `vce_option' `cluster_option' `dof_option' `singleton_option' ///
         `residual_option' `constant_option' `memory_option' ///
         `weight_option' `public_wexp_option' ///
-        solver(`solver_mode') `cmgdegree_option' `cmgsampling_options' ///
+        solver(`solver_mode') `reduction_option' `cmgdegree_option' `cmgsampling_options' ///
         preconditioner(`preconditioner_mode') ///
         poolsize(`poolsize') threads(`threads') tolerance(`tolerance') ///
         iterate(`iterate') `deterministic'

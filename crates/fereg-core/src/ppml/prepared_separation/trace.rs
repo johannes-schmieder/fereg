@@ -93,6 +93,7 @@ const fn solver_code(solver: crate::fe::FeSolverKind) -> u64 {
         S::IronsTuck => 6,
         S::Squarem => 7,
         S::Elimination => 8,
+        S::Pcg => 9,
     }
 }
 

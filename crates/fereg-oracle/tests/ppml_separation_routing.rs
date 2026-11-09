@@ -12,9 +12,8 @@
 //! sparse AKM graphs and induced finite-regressor separation at the public
 //! `septolerance(1e-8)`) the arms agree in sample, drops and fit wherever
 //! both complete; the census below pins the cells whose terminal rectifier
-//! certifies at a different iteration, and the two seed-3 cells only the Auto
-//! arm completes, so any change to either arm is seen (VALIDATION, PPML
-//! separation routing).
+//! certifies at a different iteration, so any change to either arm is seen
+//! (VALIDATION, PPML separation routing).
 //!
 //! Every arm that completes also agrees with an independent witness: the
 //! retained sample of a HiGHS linear program (maximal recession-cone
@@ -224,13 +223,14 @@ fn classify(
 /// Since an Auto detector whose every attempt fails re-checks its two-FE PCG
 /// miss about each level's largest-weight member (2026-10-28), (3, 1) and
 /// (3, 2) complete in the Auto arm with the LP-witness sample, while the
-/// retained-CG arm keeps its error: "cg-fails".
+/// retained-CG arm kept its error ("cg-fails") until its LSMR re-execution
+/// moved onto fedemean's modified LSMR (2026-11-08): it now completes too,
+/// with the Auto arm's published bits and the LP-witness sample, so both
+/// cells are "same".
 const DIVERGENCES: &[(usize, usize, &str)] = &[
     (2, 0, "ir-iterations"),
     (2, 1, "ir-iterations"),
     (2, 2, "ir-iterations"),
-    (3, 1, "cg-fails"),
-    (3, 2, "cg-fails"),
     (5, 0, "ir-iterations"),
     (5, 1, "ir-iterations"),
     (5, 2, "ir-iterations"),
