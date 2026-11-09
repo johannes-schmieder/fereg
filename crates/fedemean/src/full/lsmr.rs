@@ -9,30 +9,69 @@
 //! residual is recomputed from the columns) at a tolerance tightened by the
 //! certificate's shortfall, within the column's iteration budget. A column
 //! is written only once it certifies.
+//!
+//! With escalation, a Jacobi pass whose normal-equation estimate fails to
+//! halve over a stall window hands off (schwarz-precond's escalation hook):
+//! the column continues with Schwarz from that iterate, the true residual
+//! recomputed, within the rest of its budget; later columns start on
+//! Schwarz.
 
 use super::kernels::{adjoint, forward, load, residualize, Rows};
+use super::schwarz::{Schwarz, Scratch};
 use super::structure::Structure;
 use super::{
-    add_coefficients, certify, filled, form_gram, numerical, refill, report, reserve,
-    same_projection, targets, Action, Job, Outputs,
+    add_coefficients, certify, ensure, filled, form_gram, initial_mode, numerical, refill, report,
+    reserve, same_projection, targets, untouched, with_structure, Job, Mode, Outputs,
 };
 use crate::certificate::MomentFold;
 use crate::design::Effect;
 use crate::elimination::pcg::Targets;
-use crate::elimination::STOP_FRACTION;
+use crate::elimination::{STALL_WINDOW, STOP_FRACTION};
 use crate::error::{Error, Result};
 use crate::projector::{
     CoefficientsMut, ColumnReport, ColumnStatus, ColumnsMut, Facts, InputState, Outcome,
+    SchwarzSpec,
 };
 use rayon::prelude::*;
 use schwarz_precond::{
-    mlsmr_counted_cancellable, Cancellation, MlsmrOptions, Operator, SolveError,
+    mlsmr_counted_cancellable, Cancellation, EscalationHandler, EscalationPolicy, LsmrStopReason,
+    MlsmrOptions, Operator, Progress, SolveError,
 };
 use std::sync::{Mutex, PoisonError};
 use std::time::Instant;
 
 /// Passes per column: the first and its certified restarts.
 const MAX_PASSES: usize = 4;
+
+/// Hand off when the best normal-equation estimate of a pass fails to halve
+/// over a stall window (the PCG rule).
+struct Stall;
+
+struct StallRun {
+    best: f64,
+    checkpoint: f64,
+}
+
+impl EscalationPolicy for Stall {
+    fn handler(&self) -> Box<dyn EscalationHandler> {
+        Box::new(StallRun {
+            best: 1.0,
+            checkpoint: 1.0,
+        })
+    }
+}
+
+impl EscalationHandler for StallRun {
+    fn should_escalate(&mut self, progress: Progress) -> bool {
+        self.best = self.best.min(progress.normal_eq_residual);
+        if progress.iteration % STALL_WINDOW != 0 {
+            return false;
+        }
+        let stalled = self.best.is_nan() || self.best > 0.5 * self.checkpoint;
+        self.checkpoint = self.best;
+        stalled
+    }
+}
 
 /// `W^1/2 D` and its adjoint `D' W^1/2`.
 struct Design<'a, 'd> {
@@ -69,30 +108,37 @@ impl Operator for Design<'_, '_> {
     }
 }
 
-/// `M^-1`: Jacobi `diag(D'WD)^-1` (the inverse level masses) or the
-/// identity; both symmetric positive definite on all of coefficient space.
+/// `M^-1`: Jacobi `diag(D'WD)^-1` (the inverse level masses), the
+/// identity or additive Schwarz; each symmetric positive definite on all of
+/// coefficient space.
 struct Inverse<'a> {
-    inverse_mass: Option<&'a [f64]>,
-    size: usize,
+    inverse_mass: &'a [f64],
+    jacobi: bool,
+    /// Schwarz with its apply workspace (applies run one at a time).
+    schwarz: Option<(&'a Schwarz, Mutex<Scratch>)>,
 }
 
 impl Operator for Inverse<'_> {
     fn nrows(&self) -> usize {
-        self.size
+        self.inverse_mass.len()
     }
 
     fn ncols(&self) -> usize {
-        self.size
+        self.inverse_mass.len()
     }
 
     fn apply(&self, x: &[f64], y: &mut [f64]) -> std::result::Result<(), SolveError> {
-        match self.inverse_mass {
-            Some(inverse) => {
-                for ((y, x), d) in y.iter_mut().zip(x).zip(inverse) {
+        match (&self.schwarz, self.jacobi) {
+            (Some((schwarz, scratch)), _) => {
+                let mut scratch = scratch.lock().unwrap_or_else(PoisonError::into_inner);
+                schwarz.apply::<1>(x, y, &mut scratch, self.inverse_mass);
+            }
+            (None, true) => {
+                for ((y, x), d) in y.iter_mut().zip(x).zip(self.inverse_mass) {
                     *y = x * d;
                 }
             }
-            None => y.copy_from_slice(x),
+            (None, false) => y.copy_from_slice(x),
         }
         Ok(())
     }
@@ -117,6 +163,16 @@ enum Short {
     Failed(Error),
 }
 
+/// How a column's passes ended.
+enum Passes {
+    Solved(Solved),
+    /// A Jacobi pass stalled at `x` after `spent` iterations in all.
+    Stalled {
+        x: Vec<f64>,
+        spent: usize,
+    },
+}
+
 /// Modified LSMR over the columns one at a time; see the module docs. Also
 /// reports whether the residual Gram was formed.
 pub(super) fn project(
@@ -131,12 +187,17 @@ pub(super) fn project(
     let ncols = values.ncols();
     let Outputs {
         work,
+        schwarz: slot,
         gram,
         norms,
         columns,
         reference: formed,
     } = outputs;
     let started = Instant::now();
+    let mut mode = match initial_mode(job, slot, 1, &mut facts)? {
+        Ok(mode) => mode,
+        Err(reason) => return Ok((untouched(reason, with_structure(facts, job)), false)),
+    };
     work.size(st, 1)?;
     if work.b.len() != st.nobs {
         refill(&mut work.b, st.nobs, 0.0)?;
@@ -153,7 +214,8 @@ pub(super) fn project(
     let mut fold = MomentFold::default();
     for j in 0..ncols {
         let warm = start.map(|start| &start[j * m..(j + 1) * m]);
-        let solved = match solve_column(job, values, j, warm, work, &mut facts) {
+        let lent = (&mut *work, &mut *slot);
+        let solved = match solve_column(job, (values, j, warm), lent, &mut mode, &mut facts) {
             Ok(solved) => solved,
             Err(Short::Failed(error)) => return Err(error),
             Err(Short::Declined(reason)) => {
@@ -195,8 +257,9 @@ pub(super) fn project(
         ));
     }
     let gram_formed = form_gram(job, values, gram, work)?;
+    let schwarz = slot.as_ref().filter(|_| mode == Mode::Schwarz);
     Ok((
-        Outcome::Projected(report(job, certificate, facts, started)),
+        Outcome::Projected(report(job, (certificate, facts), started, (schwarz, 1))),
         gram_formed,
     ))
 }
@@ -251,13 +314,13 @@ fn check(
 
 /// Solve and certify column `j` from `warm` or cold, as PCG does: from the
 /// largest effect's level means, with the goal at a tenth of the tolerance
-/// on the starting residual's norm.
+/// on the starting residual's norm. A stalled escalating column continues
+/// on Schwarz (and `mode` becomes Schwarz for the later columns).
 fn solve_column(
     job: &Job<'_, '_>,
-    values: &ColumnsMut<'_>,
-    j: usize,
-    warm: Option<&[f64]>,
-    work: &mut super::Work,
+    (values, j, warm): (&ColumnsMut<'_>, usize, Option<&[f64]>),
+    (work, slot): (&mut super::Work, &mut Option<Schwarz>),
+    mode: &mut Mode,
     facts: &mut Facts,
 ) -> std::result::Result<Solved, Short> {
     let (st, state) = (job.st, job.state);
@@ -309,51 +372,101 @@ fn solve_column(
         *b = roots.map_or(y, |roots| roots[i] * y);
     });
     facts.rhs_seconds += started.elapsed().as_secs_f64();
-    let scatter = std::mem::take(&mut work.scatter);
+    let column = (src, scale[0], &targets);
+    let mut spent = 0;
+    loop {
+        let x = match preconditioned(job, column, (start, spent), (work, slot), *mode, facts)? {
+            Passes::Solved(solved) => return Ok(solved),
+            Passes::Stalled { x, spent: total } => {
+                spent = total;
+                x
+            }
+        };
+        let default = SchwarzSpec::default();
+        if ensure(job, default, slot, 1, facts)
+            .map_err(Short::Failed)?
+            .is_err()
+        {
+            return Err(Short::Declined("stalled modified LSMR recurrence"));
+        }
+        facts.escalations += 1;
+        *mode = Mode::Schwarz;
+        start = x;
+    }
+}
+
+/// The passes of one column in `mode` from `start` after `spent`
+/// iterations, with the operator and preconditioner of that mode (the
+/// Schwarz workspace lent from `work` for their duration).
+fn preconditioned(
+    job: &Job<'_, '_>,
+    column: (Rows<'_>, f64, &Targets<1>),
+    (start, spent): (Vec<f64>, usize),
+    (work, slot): (&mut super::Work, &Option<Schwarz>),
+    mode: Mode,
+    facts: &mut Facts,
+) -> std::result::Result<Passes, Short> {
+    let (st, state) = (job.st, job.state);
+    let schwarz = slot.as_ref().filter(|_| mode == Mode::Schwarz);
+    let mut scratch = std::mem::take(&mut work.schwarz);
+    if let Some(schwarz) = schwarz {
+        schwarz.size(&mut scratch, 1).map_err(Short::Failed)?;
+    }
     let operator = Design {
         st,
-        effects,
-        roots,
-        scatter: Mutex::new(scatter),
+        effects: job.design.effects(),
+        roots: state.roots(),
+        scatter: Mutex::new(std::mem::take(&mut work.scatter)),
     };
     let inverse = Inverse {
-        inverse_mass: (job.action == Action::Jacobi).then_some(&state.inverse_mass[..]),
-        size: st.coefficients(),
+        inverse_mass: &state.inverse_mass,
+        jacobi: mode != Mode::Identity,
+        schwarz: schwarz.map(|s| (s, Mutex::new(scratch))),
     };
-    let column = (src, scale[0], &targets);
-    let solved = passes(job, (&operator, &inverse), column, start, work, facts);
+    let escalate = mode == Mode::Escalate;
+    let outcome = passes(
+        job,
+        (&operator, &inverse),
+        column,
+        (start, spent, escalate),
+        work,
+        facts,
+    );
     work.scatter = operator
         .scatter
         .into_inner()
         .unwrap_or_else(PoisonError::into_inner);
-    solved
+    if let Some((_, scratch)) = inverse.schwarz {
+        work.schwarz = scratch.into_inner().unwrap_or_else(PoisonError::into_inner);
+    }
+    outcome
 }
 
 /// The passes of one column (see the module docs): a pass that meets the
 /// goal and the certificate succeeds; one that misses the goal restarts
 /// from its iterate at a tolerance tightened by the shortfall; the last
-/// pass (or an exhausted budget) also succeeds at the acceptance rule.
+/// pass (or an exhausted budget) also succeeds at the acceptance rule. With
+/// `escalate`, a pass that stalls hands its iterate back.
 fn passes(
     job: &Job<'_, '_>,
     (operator, inverse): (&Design<'_, '_>, &Inverse<'_>),
     (src, scale, targets): (Rows<'_>, f64, &Targets<1>),
-    mut start: Vec<f64>,
+    (mut start, mut iterations, escalate): (Vec<f64>, usize, bool),
     work: &mut super::Work,
     facts: &mut Facts,
-) -> std::result::Result<Solved, Short> {
+) -> std::result::Result<Passes, Short> {
     let poll = || job.cancel.0.is_some_and(|cancel| cancel());
     let cancellation = match job.cancel.0 {
         Some(_) => Cancellation::new(&poll),
         None => Cancellation::default(),
     };
     let mut tolerance = STOP_FRACTION * job.request.tolerance;
-    let mut budget = job.cap;
-    let mut iterations = 0;
+    let mut budget = job.cap.saturating_sub(iterations);
     for pass in 0..MAX_PASSES {
         let started = Instant::now();
         let options = MlsmrOptions {
             warm_start: Some(&start),
-            escalation: None,
+            escalation: escalate.then_some(&Stall as &dyn EscalationPolicy),
             local_size: None,
         };
         let b = &work.b[..];
@@ -383,6 +496,12 @@ fn passes(
         iterations += result.iterations;
         budget = budget.saturating_sub(result.iterations);
         facts.iterations = facts.iterations.max(iterations);
+        if result.stop_reason == LsmrStopReason::Escalated && budget > 0 {
+            return Ok(Passes::Stalled {
+                x: result.x,
+                spent: iterations,
+            });
+        }
         let started = Instant::now();
         let (certified, inf, zinf) = check(job, operator, (src, &result.x, scale), work);
         facts.residual_seconds += started.elapsed().as_secs_f64();
@@ -398,7 +517,7 @@ fn passes(
         if let (Some(fold), Some(status)) = (certified.fold, status) {
             facts.column_iterations += iterations;
             facts.accepted += usize::from(status == ColumnStatus::AcceptedAtFloor);
-            return Ok(Solved {
+            return Ok(Passes::Solved(Solved {
                 x: result.x,
                 reference: scale,
                 report: ColumnReport {
@@ -409,7 +528,7 @@ fn passes(
                     status,
                 },
                 fold,
-            });
+            }));
         }
         if last {
             break;

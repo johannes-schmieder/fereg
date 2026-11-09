@@ -1,7 +1,8 @@
 //! The full formulation ([`Reduction::Full`]): PCG and modified LSMR with
-//! Jacobi or no preconditioner against an independent dense weighted
-//! least-squares reference (modified Gram-Schmidt on `sqrt(W) D`, copied
-//! from `tests/oracle.rs`), independent normal-equation checks on larger
+//! Jacobi or no preconditioner (Schwarz: `tests/schwarz.rs`) against an
+//! independent dense weighted least-squares reference (modified
+//! Gram-Schmidt on `sqrt(W) D`, copied from `tests/oracle.rs`), independent
+//! normal-equation checks on larger
 //! designs, warm starts, the Auto routing, unsupported combinations,
 //! cancellation, memory admission and determinism.
 
@@ -789,7 +790,21 @@ fn auto_eliminates_two_to_five_effects_and_uses_the_full_system_otherwise() {
         let report = projected(route_of(&case, auto).unwrap());
         assert_eq!(report.route.reduction, ReductionUsed::Full);
         assert_eq!(report.route.method, MethodUsed::Pcg);
-        assert_eq!(report.route.preconditioner, PreconditionerUsed::Jacobi);
+        // The full formulation's Auto: Schwarz (feature schwarz) for two or
+        // more effects, Jacobi for one (where it is exact).
+        let schwarz = cfg!(feature = "schwarz") && levels.len() > 1;
+        assert_eq!(
+            matches!(
+                report.route.preconditioner,
+                PreconditionerUsed::Schwarz { .. }
+            ),
+            schwarz,
+            "{levels:?}: {:?}",
+            report.route.preconditioner
+        );
+        if !schwarz {
+            assert_eq!(report.route.preconditioner, PreconditionerUsed::Jacobi);
+        }
         // Block-Jacobi always means the elimination, which declines.
         let blocks = settings(
             Reduction::Auto,
@@ -836,11 +851,11 @@ fn unsupported_combinations_are_errors_before_any_change() {
         ),
         settings(Reduction::EliminateLargest, Method::Auto, schwarz),
         settings(Reduction::Full, Method::Pcg, blocks),
-        settings(Reduction::Full, Method::Auto, schwarz),
-        settings(Reduction::Auto, Method::Pcg, schwarz),
     ];
     if !cfg!(feature = "schwarz") {
         combinations.push(full(Method::Lsmr, Preconditioner::Jacobi));
+        combinations.push(settings(Reduction::Full, Method::Auto, schwarz));
+        combinations.push(settings(Reduction::Auto, Method::Pcg, schwarz));
     }
     for settings in combinations {
         let mut data = case.columns(162, 3);

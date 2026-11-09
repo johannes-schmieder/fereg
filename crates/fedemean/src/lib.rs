@@ -30,11 +30,14 @@
 //! - The full formulation ([`Reduction::Full`]; [`Reduction::Auto`] for one
 //!   or six or more effects): lockstep PCG on the singular consistent normal
 //!   equations, or modified LSMR (feature `schwarz`, [`Method::Lsmr`]), with
-//!   Jacobi or no preconditioner; warm starts
+//!   Jacobi, no preconditioner or (feature `schwarz`, the full
+//!   formulation's automatic choice) one-level additive Schwarz over
+//!   factor-pair subdomains ([`Preconditioner::Schwarz`]); Jacobi escalating
+//!   to Schwarz ([`Fallback::Escalate`]); warm starts
 //!   ([`Projector::project_from`]).
-//! - Not yet: Schwarz preconditioning, varying slopes. Unsupported explicit
-//!   combinations are [`Error::Unsupported`]; designs outside a route are
-//!   declined ([`Outcome::Declined`]) for the caller's own solvers.
+//! - Not yet: varying slopes. Unsupported explicit combinations are
+//!   [`Error::Unsupported`]; designs outside a route are declined
+//!   ([`Outcome::Declined`]) for the caller's own solvers.
 //!
 //! Projections run on the caller's current rayon pool.
 
@@ -58,6 +61,7 @@ pub use projector::{
     BlockSpec, BlockUsed, Choice, CoefficientLayout, CoefficientsMut, ColumnReport, ColumnStatus,
     ColumnsMut, Control, Decline, Facts, Fallback, Gram, InputState, LocalSolver, LocalUsed,
     Method, MethodUsed, Outcome, Preconditioner, PreconditionerUsed, Projector, Reduction,
-    ReductionUsed, Report, Request, Route, SchwarzLocal, SchwarzSpec, Settings, Subdomains,
+    ReductionUsed, Report, Request, Route, SchwarzLocal, SchwarzSolves, SchwarzSpec, Settings,
+    Subdomains,
 };
 pub use weights::Weights;

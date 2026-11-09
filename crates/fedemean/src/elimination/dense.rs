@@ -64,7 +64,7 @@ fn root(parent: &mut [u32], mut v: u32) -> u32 {
 
 /// Index of `(row, col)`, `col <= row`, in a packed row-major lower triangle.
 #[inline]
-fn packed(row: usize, col: usize) -> usize {
+pub(crate) fn packed(row: usize, col: usize) -> usize {
     row * (row + 1) / 2 + col
 }
 
@@ -252,7 +252,7 @@ impl DenseLocal {
 
 /// In-place packed row-major Cholesky factorization of an `n x n` matrix;
 /// `false` when a pivot reaches the rounding floor of its diagonal.
-fn cholesky(a: &mut [f64], n: usize) -> bool {
+pub(crate) fn cholesky(a: &mut [f64], n: usize) -> bool {
     let floor = (4 * n).max(16) as f64 * f64::EPSILON;
     for i in 0..n {
         let (done, row) = a.split_at_mut(packed(i, 0));
@@ -294,7 +294,7 @@ fn center(y: &mut [f64], k: usize, width: usize) {
 }
 
 /// `y = (L L')^-1 y` for the first `n` rows with the packed factor `l`.
-fn solve(l: &[f64], y: &mut [f64], n: usize, width: usize) {
+pub(crate) fn solve(l: &[f64], y: &mut [f64], n: usize, width: usize) {
     for i in 0..n {
         let row = &l[packed(i, 0)..=packed(i, i)];
         let (done, rest) = y.split_at_mut(i * width);

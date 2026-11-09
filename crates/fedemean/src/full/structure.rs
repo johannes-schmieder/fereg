@@ -141,7 +141,7 @@ impl Structure {
 }
 
 /// Stable counting sort of one effect's codes into its level index.
-fn sort_levels(codes: &[u32], index: &mut Gathered) -> Result<()> {
+pub(super) fn sort_levels(codes: &[u32], index: &mut Gathered) -> Result<()> {
     let levels = index.starts.len() - 1;
     let starts = &mut index.starts;
     for &code in codes {

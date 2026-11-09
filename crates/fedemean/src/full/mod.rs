@@ -31,27 +31,111 @@
 //! coefficient space with `M ~ A'A = D'WD`, although `D'WD` is singular
 //! along per-component constant shifts across effects. Jacobi
 //! (`M = diag(D'WD)`, the level masses, all positive) and the identity
-//! satisfy both. A subdomain (Schwarz) preconditioner whose local solves
-//! are pseudo-inverses of singular local Laplacians must make its action
-//! nonsingular before it is used here: ground one coordinate per local
-//! component (a grounded factorization) or add a positive multiple of the
-//! local null-space projector.
+//! satisfy both. Additive Schwarz ([`schwarz`], feature `schwarz`) sums
+//! local actions `S (P G P + tau 11'/n) S` over factor-pair subdomains:
+//! `P G P` is the (exact or approximate) pseudo-inverse of the subdomain's
+//! sign-flipped Laplacian with its component mean removed on both sides,
+//! and the added `tau 11'/n` makes each local action positive definite on
+//! its subdomain, so the sum is SPD on all of coefficient space. The added
+//! direction is the subdomain's `(1, -1)` vector, a null direction of `D`,
+//! which every consistent residual is orthogonal to: it leaves PCG and
+//! modified LSMR iterates unchanged.
+//!
+//! **Escalation.** With [`crate::Fallback::Escalate`], a Jacobi recurrence
+//! that stalls (PCG; modified LSMR: its normal-equation estimate fails to
+//! halve over a stall window) continues with Schwarz at the default
+//! specification from its current iterate on the true residual, within the
+//! remaining iteration budget. Later batches of the projection, and later
+//! projections of the projector, start on Schwarz. The full formulation's
+//! results do not depend on the worker count, so an escalated recurrence
+//! keeps the ordinary goal.
 //!
 //! Memory: every allocation is fallible; the structure, weight state and
 //! one flat workspace (resized per batch width, allocations kept) are
 //! retained, so repeated PCG projections allocate nothing. `mlsmr` allocates
-//! its own vectors per column.
+//! its own vectors per column. A Schwarz preconditioner is built for the
+//! current weights within the memory limit (or declines) and retained.
 
 mod kernels;
 #[cfg(feature = "schwarz")]
 mod lsmr;
 mod pcg;
+#[cfg(feature = "schwarz")]
+mod schwarz;
 pub(crate) mod structure;
 mod weights;
 
+/// Without feature `schwarz` there is no Schwarz preconditioner: the
+/// choices never resolve to one, and this uninhabited stand-in keeps the
+/// routes' code shared.
+#[cfg(not(feature = "schwarz"))]
+mod schwarz {
+    use super::structure::Structure;
+    use super::weights::State;
+    use crate::design::Effect;
+    use crate::elimination::Cancel;
+    use crate::error::{Error, Result};
+    use crate::projector::{PreconditionerUsed, SchwarzSpec};
+
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    pub(super) enum Refusal {
+        MemoryLimit,
+        #[allow(dead_code)]
+        Numerical(&'static str),
+    }
+
+    pub(crate) enum Schwarz {}
+
+    #[derive(Default)]
+    pub(crate) struct Scratch;
+
+    impl Schwarz {
+        pub(super) fn build(
+            _: &Structure,
+            _: &[Effect<'_>],
+            _: &State,
+            _: (SchwarzSpec, u64),
+            _: (Option<u128>, usize),
+            _: &Cancel<'_>,
+        ) -> Result<std::result::Result<Self, Refusal>> {
+            Err(Error::Unsupported("additive Schwarz needs feature schwarz"))
+        }
+
+        pub(super) fn current(&self, _: SchwarzSpec, _: u64) -> bool {
+            match *self {}
+        }
+
+        pub(super) fn bytes(&self) -> u128 {
+            match *self {}
+        }
+
+        pub(super) fn scratch_bytes(&self, _: usize) -> u128 {
+            match *self {}
+        }
+
+        pub(super) fn used(&self) -> PreconditionerUsed {
+            match *self {}
+        }
+
+        pub(super) fn size(&self, _: &mut Scratch, _: usize) -> Result<()> {
+            match *self {}
+        }
+
+        pub(super) fn apply<const R: usize>(
+            &self,
+            _: &[f64],
+            _: &mut [f64],
+            _: &mut Scratch,
+            _: &[f64],
+        ) {
+            match *self {}
+        }
+    }
+}
+
 use crate::certificate::{Certificate, MomentFold};
 use crate::design::Design;
-use crate::elimination::pcg::{Solve, Tally, Targets};
+use crate::elimination::pcg::{Solve, Tally, Targets, CEILING, STALLED};
 use crate::elimination::weights::{validate_keyed, WeightKey};
 use crate::elimination::{
     Cancel, ACCEPT_FRACTION, BATCH, MAX_ITERATIONS, STOP_FRACTION, WITHIN_FLOOR,
@@ -59,11 +143,12 @@ use crate::elimination::{
 use crate::error::{Error, Result};
 use crate::projector::{
     CoefficientsMut, ColumnReport, ColumnStatus, ColumnsMut, Decline, Facts, Gram, InputState,
-    MethodUsed, Outcome, PreconditionerUsed, ReductionUsed, Report, Request, Route,
+    MethodUsed, Outcome, PreconditionerUsed, ReductionUsed, Report, Request, Route, SchwarzSpec,
 };
 use crate::weights::{Validated, Weights as InputWeights};
 use kernels::{adjoint, load, residualize, Rows, ROW_BLOCK};
 use pcg::{pcg, Normal, Work};
+use schwarz::{Refusal, Schwarz};
 use std::time::Instant;
 use structure::Structure;
 use weights::State;
@@ -76,12 +161,30 @@ pub(crate) enum Method {
     Lsmr,
 }
 
-/// The fixed preconditioner action `z = M^-1 r` (see the module contract).
+/// The preconditioner choice (see the module contract).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Action {
     /// `M = diag(D'WD)`: the level masses.
     Jacobi,
     Identity,
+    /// Additive Schwarz as specified; declines when it does not fit.
+    Schwarz(SchwarzSpec),
+    /// Schwarz at the default specification when it fits, else Jacobi.
+    #[cfg_attr(not(feature = "schwarz"), allow(dead_code))]
+    Auto,
+    /// Jacobi, escalating to Schwarz at the default specification.
+    #[cfg_attr(not(feature = "schwarz"), allow(dead_code))]
+    Escalate,
+}
+
+/// How one batch (or column) preconditions its recurrence.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum Mode {
+    Jacobi,
+    Identity,
+    Schwarz,
+    /// Jacobi, escalating to Schwarz on a stall.
+    Escalate,
 }
 
 pub(super) fn reserve<T>(values: &mut Vec<T>, additional: usize) -> Result<()> {
@@ -125,6 +228,12 @@ pub(crate) struct Engine {
     refused: bool,
     structure: Option<Structure>,
     weights: Option<(WeightKey, State)>,
+    /// Counts the weight states prepared (the Schwarz build key).
+    generation: u64,
+    /// A recurrence of this design escalated: later escalating projections
+    /// start on Schwarz, since the design's graph makes Jacobi stall.
+    hard: bool,
+    schwarz: Option<Schwarz>,
     work: Work,
     gram: Gram,
     gram_ready: bool,
@@ -142,6 +251,9 @@ pub(super) struct Job<'j, 'c> {
     request: &'j Request,
     method: Method,
     action: Action,
+    /// The weight state's generation and [`Engine::hard`].
+    generation: u64,
+    hard: bool,
     cap: usize,
     bytes: u128,
     cancel: Cancel<'c>,
@@ -150,6 +262,7 @@ pub(super) struct Job<'j, 'c> {
 /// The engine's reusable outputs lent to one projection.
 pub(super) struct Outputs<'o> {
     work: &'o mut Work,
+    schwarz: &'o mut Option<Schwarz>,
     gram: Option<&'o mut Gram>,
     norms: &'o mut Vec<f64>,
     columns: &'o mut Vec<ColumnReport>,
@@ -196,6 +309,14 @@ impl Engine {
 
     pub(crate) fn structure(&self) -> Option<&Structure> {
         self.structure.as_ref()
+    }
+
+    /// Bytes of the retained Schwarz preconditioner and its workspace for
+    /// `ncols` columns (0 when none is built).
+    pub(crate) fn schwarz_bytes(&self, ncols: usize) -> u128 {
+        self.schwarz
+            .as_ref()
+            .map_or(0, |s| s.bytes() + s.scratch_bytes(ncols.clamp(1, BATCH)))
     }
 
     /// Build the geometry; `false` when the design is outside the route,
@@ -257,6 +378,7 @@ impl Engine {
         if self.weights.as_ref().is_none_or(|(k, _)| *k != key) {
             let mut state = self.weights.take().map(|(_, s)| s).unwrap_or_default();
             let roots = call.method == Method::Lsmr;
+            self.generation += 1;
             if !state.fill(st, effects, validated, roots, &mut self.work.scatter)? {
                 return Ok(untouched(Decline::Weights, facts));
             }
@@ -271,12 +393,15 @@ impl Engine {
             request,
             method: call.method,
             action: call.action,
+            generation: self.generation,
+            hard: self.hard,
             cap: request.max_iterations.clamp(1, MAX_ITERATIONS),
             bytes,
             cancel: call.cancel,
         };
         let outputs = Outputs {
             work: &mut self.work,
+            schwarz: &mut self.schwarz,
             gram: request.residual_gram.then_some(&mut self.gram),
             norms: &mut self.norms,
             columns: &mut self.columns,
@@ -289,6 +414,11 @@ impl Engine {
             #[cfg(not(feature = "schwarz"))]
             Method::Lsmr => return Err(Error::Unsupported("modified LSMR needs feature schwarz")),
         };
+        let facts = match &outcome {
+            Outcome::Projected(report) => report.facts,
+            Outcome::Declined { facts, .. } => *facts,
+        };
+        self.hard |= facts.escalations > 0;
         match &outcome {
             Outcome::Projected(_) => self.gram_ready = gram,
             Outcome::Declined { .. } => {
@@ -394,20 +524,94 @@ fn same_projection(scales: &[f64]) -> Result<InputState> {
     Ok(InputState::SameProjection { reference_scales })
 }
 
-/// The route actually used.
-fn route(job: &Job<'_, '_>) -> Route {
+/// The route actually used: Schwarz when any recurrence used it.
+fn route(job: &Job<'_, '_>, schwarz: Option<&Schwarz>, escalations: usize) -> Route {
     Route {
         reduction: ReductionUsed::Full,
         method: match job.method {
             Method::Pcg => MethodUsed::Pcg,
             Method::Lsmr => MethodUsed::Lsmr,
         },
-        preconditioner: match job.action {
-            Action::Jacobi => PreconditionerUsed::Jacobi,
-            Action::Identity => PreconditionerUsed::Identity,
+        preconditioner: match (schwarz, job.action) {
+            (Some(schwarz), _) => schwarz.used(),
+            (None, Action::Identity) => PreconditionerUsed::Identity,
+            (None, _) => PreconditionerUsed::Jacobi,
         },
-        escalations: 0,
+        escalations: u8::try_from(escalations).unwrap_or(u8::MAX),
     }
+}
+
+/// Build the Schwarz preconditioner `spec` for the current weights unless
+/// it is current, with the apply workspace of `width` columns, within the
+/// memory limit beyond the projection's workspace. A stale one is dropped
+/// first.
+fn ensure(
+    job: &Job<'_, '_>,
+    spec: SchwarzSpec,
+    slot: &mut Option<Schwarz>,
+    width: usize,
+    facts: &mut Facts,
+) -> Result<std::result::Result<(), Refusal>> {
+    let budget = match job.request.memory_limit {
+        Some(limit) => match limit.checked_sub(job.bytes) {
+            Some(budget) => Some(budget),
+            None => return Ok(Err(Refusal::MemoryLimit)),
+        },
+        None => None,
+    };
+    if let Some(schwarz) = slot.as_ref().filter(|s| s.current(spec, job.generation)) {
+        let bytes = schwarz.bytes() + schwarz.scratch_bytes(width);
+        return Ok(if budget.is_none_or(|budget| bytes <= budget) {
+            Ok(())
+        } else {
+            Err(Refusal::MemoryLimit)
+        });
+    }
+    *slot = None;
+    let started = Instant::now();
+    let built = Schwarz::build(
+        job.st,
+        job.design.effects(),
+        job.state,
+        (spec, job.generation),
+        (budget, width),
+        &job.cancel,
+    );
+    facts.block_seconds += started.elapsed().as_secs_f64();
+    Ok(built?.map(|schwarz| *slot = Some(schwarz)))
+}
+
+/// The first recurrence's mode; a decline when an explicit Schwarz
+/// preconditioner does not build. Automatic Schwarz that does not build is
+/// Jacobi; an escalating projection of a design that escalated before
+/// starts on Schwarz when it builds.
+fn initial_mode(
+    job: &Job<'_, '_>,
+    slot: &mut Option<Schwarz>,
+    width: usize,
+    facts: &mut Facts,
+) -> Result<std::result::Result<Mode, Decline>> {
+    let default = SchwarzSpec::default();
+    Ok(Ok(match job.action {
+        Action::Jacobi => Mode::Jacobi,
+        Action::Identity => Mode::Identity,
+        Action::Schwarz(spec) => match ensure(job, spec, slot, width, facts)? {
+            Ok(()) => Mode::Schwarz,
+            Err(Refusal::MemoryLimit) => return Ok(Err(Decline::MemoryLimit)),
+            Err(Refusal::Numerical(reason)) => return Ok(Err(Decline::Numerical(reason))),
+        },
+        Action::Auto => match ensure(job, default, slot, width, facts)? {
+            Ok(()) => Mode::Schwarz,
+            Err(_) => Mode::Jacobi,
+        },
+        Action::Escalate => {
+            if job.hard && ensure(job, default, slot, width, facts)?.is_ok() {
+                Mode::Schwarz
+            } else {
+                Mode::Escalate
+            }
+        }
+    }))
 }
 
 /// Form the raw-weighted residual Gram of all columns when requested (at
@@ -439,16 +643,22 @@ fn form_gram(
     Ok(true)
 }
 
-/// A successful projection's report.
-fn report(job: &Job<'_, '_>, certificate: Certificate, facts: Facts, started: Instant) -> Report {
+/// A successful projection's report; `schwarz` when a recurrence used it
+/// (with its workspace for `width` columns).
+fn report(
+    job: &Job<'_, '_>,
+    (certificate, facts): (Certificate, Facts),
+    started: Instant,
+    (schwarz, width): (Option<&Schwarz>, usize),
+) -> Report {
     let mut facts = with_structure(facts, job);
     facts.solve_seconds = started.elapsed().as_secs_f64();
     Report {
-        route: route(job),
+        route: route(job, schwarz, facts.escalations),
         facts,
         certificate,
         weight_scale: job.state.raw_scale,
-        workspace_bytes: job.bytes,
+        workspace_bytes: job.bytes + schwarz.map_or(0, |s| s.bytes() + s.scratch_bytes(width)),
     }
 }
 
@@ -591,6 +801,8 @@ struct Formed {
     scales: [f64; BATCH],
     iterations: [usize; BATCH],
     floor: [bool; BATCH],
+    /// Whether a recurrence used Schwarz (explicitly or escalated).
+    schwarz: bool,
 }
 
 /// One PCG batch `first..first + R` and its outputs.
@@ -600,6 +812,7 @@ struct Batch<'b, 'v, 'c> {
     reference: Option<&'b [f64]>,
     start: Option<&'b [f64]>,
     coefficients: Option<&'b mut CoefficientsMut<'c>>,
+    mode: Mode,
 }
 
 /// The starting iterate: the caller's (canonical layout) or, cold, the
@@ -633,12 +846,92 @@ fn starting_iterate<const R: usize>(job: &Job<'_, '_>, batch: &Batch<'_, '_, '_>
     }
 }
 
+/// The batch's recurrence in its mode. An escalating Jacobi recurrence that
+/// stalls or reaches the iteration ceiling (never one that breaks down)
+/// continues with Schwarz from its current iterate on the true residual
+/// `D'W (y - D x)`, within the remaining budget, when Schwarz builds within
+/// the memory limit. Also reports whether Schwarz was used.
+fn recurrence<const R: usize>(
+    job: &Job<'_, '_>,
+    batch: &Batch<'_, '_, '_>,
+    (work, slot): (&mut Work, &mut Option<Schwarz>),
+    (targets, tally): (&Targets<R>, &mut Tally<R>),
+    facts: &mut Facts,
+) -> Result<Solve<R>> {
+    let (st, state) = (job.st, job.state);
+    let effects = job.design.effects();
+    let mode = batch.mode;
+    let started = Instant::now();
+    let solved = {
+        let schwarz = match mode {
+            Mode::Schwarz => slot.as_ref(),
+            _ => None,
+        };
+        if let Some(schwarz) = schwarz {
+            schwarz.size(&mut work.schwarz, R)?;
+        }
+        let op = Normal {
+            st,
+            effects,
+            state,
+            jacobi: mode != Mode::Identity,
+            schwarz,
+        };
+        pcg::<R>(&op, work, targets, job.cap, &job.cancel, tally)?
+    };
+    facts.pcg_seconds += started.elapsed().as_secs_f64();
+    let remaining = job.cap.saturating_sub(tally.iterations);
+    let escalate = mode == Mode::Escalate
+        && remaining > 0
+        && matches!(solved, Solve::Declined(STALLED | CEILING));
+    if !escalate || ensure(job, SchwarzSpec::default(), slot, R, facts)?.is_err() {
+        return Ok(solved);
+    }
+    let started = Instant::now();
+    let src = Rows {
+        data: batch.values.as_slice(),
+        stride: batch.values.ncols(),
+        first: batch.first,
+    };
+    let weights = state.weights();
+    load::<R>(
+        st,
+        effects,
+        src,
+        Some(&work.x),
+        weights,
+        &mut work.t,
+        &mut work.rows,
+    );
+    let t = Rows {
+        data: &work.t,
+        stride: R,
+        first: 0,
+    };
+    adjoint::<R>(st, effects, t, None, &mut work.r, &mut work.scatter);
+    facts.rhs_seconds += started.elapsed().as_secs_f64();
+    let started = Instant::now();
+    let schwarz = slot.as_ref().expect("built Schwarz");
+    schwarz.size(&mut work.schwarz, R)?;
+    let op = Normal {
+        st,
+        effects,
+        state,
+        jacobi: true,
+        schwarz: Some(schwarz),
+    };
+    let solved = pcg::<R>(&op, work, targets, remaining, &job.cancel, tally)?;
+    facts.pcg_seconds += started.elapsed().as_secs_f64();
+    facts.escalations += 1;
+    Ok(solved)
+}
+
 /// One batch: the starting residual and the recurrence read the columns;
 /// only a converged recurrence forms the residual in place.
 fn run<const R: usize>(
     job: &Job<'_, '_>,
     batch: Batch<'_, '_, '_>,
-    work: &mut Work,
+    (work, slot): (&mut Work, &mut Option<Schwarz>),
     facts: &mut Facts,
 ) -> Result<Step> {
     let (st, state) = (job.st, job.state);
@@ -683,16 +976,10 @@ fn run<const R: usize>(
     let Some((scale, targets)) = targets::<R>(job, &stats, batch.reference) else {
         return Ok(Step::Declined("RHS scale outside the plain-sum range"));
     };
-    let started = Instant::now();
     let mut tally = Tally::default();
-    let op = Normal {
-        st,
-        effects,
-        state,
-        action: job.action,
-    };
-    let solved = pcg::<R>(&op, work, &targets, job.cap, &job.cancel, &mut tally)?;
-    facts.pcg_seconds += started.elapsed().as_secs_f64();
+    let escalations = facts.escalations;
+    let solved = recurrence::<R>(job, &batch, (work, slot), (&targets, &mut tally), facts)?;
+    let schwarz = batch.mode == Mode::Schwarz || facts.escalations > escalations;
     facts.iterations = facts.iterations.max(tally.iterations);
     let floor = match solved {
         Solve::Converged { accepted, floor } => {
@@ -734,6 +1021,7 @@ fn run<const R: usize>(
         scales: [0.0; BATCH],
         iterations: [0; BATCH],
         floor: [false; BATCH],
+        schwarz,
     };
     out.norms[..R].copy_from_slice(&certified.norms);
     out.reference[..R].copy_from_slice(&scale);
@@ -748,18 +1036,18 @@ fn dispatch(
     job: &Job<'_, '_>,
     width: usize,
     batch: Batch<'_, '_, '_>,
-    work: &mut Work,
+    lent: (&mut Work, &mut Option<Schwarz>),
     facts: &mut Facts,
 ) -> Result<Step> {
     match width {
-        1 => run::<1>(job, batch, work, facts),
-        2 => run::<2>(job, batch, work, facts),
-        3 => run::<3>(job, batch, work, facts),
-        4 => run::<4>(job, batch, work, facts),
-        5 => run::<5>(job, batch, work, facts),
-        6 => run::<6>(job, batch, work, facts),
-        7 => run::<7>(job, batch, work, facts),
-        8 => run::<8>(job, batch, work, facts),
+        1 => run::<1>(job, batch, lent, facts),
+        2 => run::<2>(job, batch, lent, facts),
+        3 => run::<3>(job, batch, lent, facts),
+        4 => run::<4>(job, batch, lent, facts),
+        5 => run::<5>(job, batch, lent, facts),
+        6 => run::<6>(job, batch, lent, facts),
+        7 => run::<7>(job, batch, lent, facts),
+        8 => run::<8>(job, batch, lent, facts),
         _ => Err(Error::InvalidInput("full-system batch width is invalid")),
     }
 }
@@ -782,7 +1070,8 @@ fn column_report(formed: &Formed, iterations: &[usize; BATCH], j: usize) -> Colu
 /// untouched unless a later batch or a correction declined after earlier
 /// residuals were formed ([`InputState::SameProjection`]); a failed
 /// certificate corrects the formed residual in place from zero (at most
-/// twice). Also reports whether the residual Gram was formed.
+/// twice). A batch that escalated keeps Schwarz for its corrections and the
+/// later batches. Also reports whether the residual Gram was formed.
 fn project_pcg(
     job: &Job<'_, '_>,
     values: &mut ColumnsMut<'_>,
@@ -794,12 +1083,17 @@ fn project_pcg(
     let ncols = values.ncols();
     let Outputs {
         work,
+        schwarz: slot,
         gram,
         norms,
         columns,
         reference: formed_scales,
     } = outputs;
     let started = Instant::now();
+    let mut initial = match initial_mode(job, slot, ncols.min(BATCH), &mut facts)? {
+        Ok(mode) => mode,
+        Err(reason) => return Ok((untouched(reason, with_structure(facts, job)), false)),
+    };
     let mut fold = MomentFold::default();
     for buffer in [&mut *norms, &mut *formed_scales] {
         buffer.clear();
@@ -809,12 +1103,14 @@ fn project_pcg(
     reserve(columns, ncols)?;
     formed_scales.resize(ncols, f64::NAN);
     facts.columns = ncols;
+    let mut used = false;
     let mut first = 0;
     while first < ncols {
         let width = (ncols - first).min(BATCH);
         let mut reference: Option<[f64; BATCH]> = None;
         let mut attempts = 0;
         let mut iterations = [0_usize; BATCH];
+        let mut mode = initial;
         loop {
             let batch = Batch {
                 values: &mut *values,
@@ -822,8 +1118,9 @@ fn project_pcg(
                 reference: reference.as_ref().map(|r| &r[..width]),
                 start: start.filter(|_| attempts == 0),
                 coefficients: coefficients.as_mut(),
+                mode,
             };
-            let formed = match dispatch(job, width, batch, work, &mut facts)? {
+            let formed = match dispatch(job, width, batch, (&mut *work, &mut *slot), &mut facts)? {
                 Step::Declined(reason) => {
                     let input = if first > 0 || attempts > 0 {
                         same_projection(formed_scales)?
@@ -839,6 +1136,11 @@ fn project_pcg(
             }
             for (total, &count) in iterations.iter_mut().zip(&formed.iterations) {
                 *total += count;
+            }
+            if formed.schwarz {
+                used = true;
+                mode = Mode::Schwarz;
+                initial = Mode::Schwarz;
             }
             if let Some(part) = &formed.certified {
                 fold.merge(part);
@@ -866,8 +1168,10 @@ fn project_pcg(
         ));
     }
     let gram_formed = form_gram(job, values, gram, work)?;
+    let schwarz = (used, ncols.min(BATCH));
+    let schwarz = (slot.as_ref().filter(|_| schwarz.0), schwarz.1);
     Ok((
-        Outcome::Projected(report(job, certificate, facts, started)),
+        Outcome::Projected(report(job, (certificate, facts), started, schwarz)),
         gram_formed,
     ))
 }

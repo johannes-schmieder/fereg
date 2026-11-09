@@ -5,16 +5,21 @@
 //! cargo run --release -p fedemean --example demean -- \
 //!     [--n 1000000] [--effects 1..6] [--cols 5] [--reps 5] [--threads 4] \
 //!     [--tolerance 1e-8] [--weights] [--reduction auto|eliminate|full] \
-//!     [--method auto|pcg|lsmr] [--precond auto|jacobi|block|identity] \
-//!     [--fallback decline|escalate]
+//!     [--method auto|pcg|lsmr] [--precond auto|jacobi|block|identity|schwarz] \
+//!     [--subdomains star|all] [--local auto|exact|approximate] \
+//!     [--fallback decline|escalate] [--variant base|lowmob|chain]
 //! ```
 //!
 //! `--precond block` is block-Jacobi with the default local solves (exact
-//! dense solves of small blocks, Jacobi on large ones). `--method lsmr`
-//! needs `--features schwarz`.
+//! dense solves of small blocks, Jacobi on large ones); `--precond schwarz`
+//! is additive Schwarz with `--subdomains` and `--local`. `--method lsmr`
+//! and Schwarz need `--features schwarz`.
 //!
 //! Effects, in order: worker, firm (with worker mobility), year, occupation,
-//! region, industry (one per firm). The first projection (`Projector::new`
+//! region, industry (one per firm). Variants: `base` (mobility 0.12, larger
+//! firms more likely), `lowmob` (mobility 0.02: many small worker-firm
+//! components) and `chain` (firms on a line, uniform entry, mobility 0.3,
+//! each move one or two firms along the line). The first projection (`Projector::new`
 //! plus the first call, which builds the structure) is timed separately from
 //! the repeated projections, which start from a fresh copy of the columns;
 //! with `--weights` every repetition writes slightly different weights into
@@ -22,7 +27,8 @@
 
 use fedemean::{
     BlockSpec, Choice, ColumnsMut, Control, Design, Effect, Fallback, Method, Outcome,
-    Preconditioner, Projector, Reduction, Request, Settings, Weights,
+    Preconditioner, Projector, Reduction, Request, SchwarzLocal, SchwarzSpec, Settings, Subdomains,
+    Weights,
 };
 use std::time::{Duration, Instant};
 
@@ -41,13 +47,25 @@ struct Args {
     reduction: Reduction,
     method: Method,
     preconditioner: Preconditioner,
+    schwarz: SchwarzSpec,
     fallback: Fallback,
+    variant: Variant,
+}
+
+/// The mobility pattern of the synthetic panel.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Variant {
+    Base,
+    LowMobility,
+    Chain,
 }
 
 fn usage() -> &'static str {
     "usage: demean [--n N] [--effects 1..6] [--cols C] [--reps R] [--threads T] \
      [--tolerance TOL] [--weights] [--reduction auto|eliminate|full] [--method auto|pcg|lsmr] \
-     [--precond auto|jacobi|block|identity] [--fallback decline|escalate]"
+     [--precond auto|jacobi|block|identity|schwarz] [--subdomains star|all] \
+     [--local auto|exact|approximate] [--fallback decline|escalate] \
+     [--variant base|lowmob|chain]"
 }
 
 fn parse_args() -> Result<Args, String> {
@@ -71,7 +89,9 @@ fn parse_args() -> Result<Args, String> {
         reduction: Reduction::Auto,
         method: Method::Auto,
         preconditioner: Preconditioner::Auto,
+        schwarz: SchwarzSpec::default(),
         fallback: Fallback::Decline,
+        variant: Variant::Base,
     };
     let mut iter = std::env::args().skip(1);
     while let Some(flag) = iter.next() {
@@ -105,10 +125,37 @@ fn parse_args() -> Result<Args, String> {
                     Some("jacobi") => Preconditioner::Jacobi,
                     Some("block") => Preconditioner::BlockJacobi(BlockSpec::default()),
                     Some("identity") => Preconditioner::Identity,
+                    Some("schwarz") => Preconditioner::Schwarz(SchwarzSpec::default()),
                     _ => {
-                        let options = "auto, jacobi, block or identity";
+                        let options = "auto, jacobi, block, identity or schwarz";
                         return Err(format!("--precond: {options}\n{}", usage()));
                     }
+                }
+            }
+            "--subdomains" => {
+                args.schwarz.subdomains = match iter.next().as_deref() {
+                    Some("star") => Subdomains::Star,
+                    Some("all") => Subdomains::AllPairs,
+                    _ => return Err(format!("--subdomains: star or all\n{}", usage())),
+                }
+            }
+            "--local" => {
+                args.schwarz.local = match iter.next().as_deref() {
+                    Some("auto") => SchwarzLocal::Auto,
+                    Some("exact") => SchwarzLocal::Exact,
+                    Some("approximate") => SchwarzLocal::Approximate,
+                    _ => {
+                        let options = "auto, exact or approximate";
+                        return Err(format!("--local: {options}\n{}", usage()));
+                    }
+                }
+            }
+            "--variant" => {
+                args.variant = match iter.next().as_deref() {
+                    Some("base") => Variant::Base,
+                    Some("lowmob") => Variant::LowMobility,
+                    Some("chain") => Variant::Chain,
+                    _ => return Err(format!("--variant: base, lowmob or chain\n{}", usage())),
                 }
             }
             "--fallback" => {
@@ -124,6 +171,9 @@ fn parse_args() -> Result<Args, String> {
             }
             other => return Err(format!("unknown argument {other:?}\n{}", usage())),
         }
+    }
+    if let Preconditioner::Schwarz(spec) = &mut args.preconditioner {
+        *spec = args.schwarz;
     }
     if !(1..=NAMES.len()).contains(&args.effects) {
         return Err(format!("--effects must be between 1 and {}", NAMES.len()));
@@ -172,28 +222,47 @@ fn raw_id(i: usize, salt: u64) -> u64 {
 }
 
 /// Raw identifiers of one panel: workers with several consecutive years,
-/// moving between firms (larger firms more likely), changing occupation and
-/// region now and then; each firm belongs to one of 60 industries.
-fn raw_panel(n: usize, seed: u64) -> [Vec<u64>; 6] {
+/// moving between firms (by `variant`), changing occupation and region now
+/// and then; each firm belongs to one of 60 industries.
+fn raw_panel(n: usize, seed: u64, variant: Variant) -> [Vec<u64>; 6] {
     let mut rng = Rng(seed);
     let firms = (n / 40).max(10);
     let (years, occupations, regions) = (30, 300, 50);
     let mut raw: [Vec<u64>; 6] = std::array::from_fn(|_| Vec::with_capacity(n));
     let mut worker = 0;
-    let skewed_firm = |rng: &mut Rng| {
-        let u = rng.uniform();
-        ((firms as f64) * u * u) as usize
+    let mobility = match variant {
+        Variant::Base => 0.12,
+        Variant::LowMobility => 0.02,
+        Variant::Chain => 0.3,
+    };
+    let entry_firm = |rng: &mut Rng| match variant {
+        Variant::Chain => rng.below(firms),
+        _ => {
+            let u = rng.uniform();
+            ((firms as f64) * u * u) as usize
+        }
+    };
+    let next_firm = |rng: &mut Rng, firm: usize| match variant {
+        Variant::Chain => {
+            let step = 1 + rng.below(2);
+            if rng.chance(0.5) {
+                (firm + step).min(firms - 1)
+            } else {
+                firm.saturating_sub(step)
+            }
+        }
+        _ => entry_firm(rng),
     };
     while raw[0].len() < n {
         let spell = 2 + rng.below(11);
         let entry = rng.below(years - spell + 1);
-        let mut firm = skewed_firm(&mut rng);
+        let mut firm = entry_firm(&mut rng);
         let mut occupation = rng.below(occupations);
         let mut region = rng.below(regions);
         for t in 0..spell.min(n - raw[0].len()) {
             if t > 0 {
-                if rng.chance(0.12) {
-                    firm = skewed_firm(&mut rng);
+                if rng.chance(mobility) {
+                    firm = next_firm(&mut rng, firm);
                 }
                 if rng.chance(0.05) {
                     occupation = rng.below(occupations);
@@ -312,7 +381,7 @@ fn describe(label: &str, outcome: &Outcome, projector: &Projector<'_>, elapsed: 
 
 fn run(args: &Args) -> Result<(), Error> {
     let started = Instant::now();
-    let raw = raw_panel(args.n, 0x00de_3ea0);
+    let raw = raw_panel(args.n, 0x00de_3ea0, args.variant);
     let codes: Vec<(Vec<u32>, usize)> = raw[..args.effects]
         .iter()
         .map(|ids| dense_codes(ids))
@@ -329,8 +398,9 @@ fn run(args: &Args) -> Result<(), Error> {
         .map(|((_, levels), name)| format!("{name} {levels}"))
         .collect();
     println!(
-        "panel: n {}  effects {} ({})  cols {}  weights {}  threads {}  tolerance {:e}  \
+        "panel: {:?} n {}  effects {} ({})  cols {}  weights {}  threads {}  tolerance {:e}  \
          reduction {:?}  method {:?}  precond {:?}  fallback {:?}  generated in {:.2} s",
+        args.variant,
         args.n,
         args.effects,
         levels.join(", "),

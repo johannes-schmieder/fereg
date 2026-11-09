@@ -156,15 +156,22 @@ pub enum Method {
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum Preconditioner {
-    /// Jacobi. With [`Fallback::Escalate`], an eliminated column batch whose
-    /// Jacobi recurrence stalls or reaches the iteration ceiling continues
-    /// from its current iterate with [`Preconditioner::BlockJacobi`] at the
-    /// default [`BlockSpec`] (the full formulation has no stronger
-    /// preconditioner yet, so it declines).
+    /// The elimination: Jacobi. With [`Fallback::Escalate`], an eliminated
+    /// column batch whose Jacobi recurrence stalls or reaches the iteration
+    /// ceiling continues from its current iterate with
+    /// [`Preconditioner::BlockJacobi`] at the default [`BlockSpec`].
+    ///
+    /// The full formulation (feature `schwarz`): [`Preconditioner::Schwarz`]
+    /// at the default [`SchwarzSpec`] for two or more effects when it builds
+    /// within [`Request::memory_limit`], else Jacobi (one effect: Jacobi,
+    /// which is exact). Without the feature: Jacobi.
     #[default]
     Auto,
     /// Inverse diagonal of the reduced matrix, or of `D'WD` (the level
-    /// masses) for the full formulation.
+    /// masses) for the full formulation. On the full formulation with
+    /// [`Fallback::Escalate`] (feature `schwarz`), a recurrence that stalls
+    /// continues from its current iterate with [`Preconditioner::Schwarz`]
+    /// at the default [`SchwarzSpec`].
     Jacobi,
     /// Block-Jacobi over the retained effects: a local solve of each
     /// retained effect's diagonal block of the reduced matrix (a weighted
@@ -172,8 +179,16 @@ pub enum Preconditioner {
     BlockJacobi(BlockSpec),
     /// No preconditioner (`M = I`; the full formulation only).
     Identity,
-    /// Additive Schwarz over FE subdomains (the full formulation; not yet
-    /// implemented: [`Error::Unsupported`]).
+    /// One-level additive Schwarz over factor-pair subdomains (the full
+    /// formulation; feature `schwarz`, otherwise [`Error::Unsupported`]).
+    /// A subdomain is one connected component of the bipartite level graph
+    /// of two effects, and its local operator is that component's block of
+    /// `D'WD` (a signed graph Laplacian). The local actions are summed
+    /// without partition of unity or coarse correction; levels in no
+    /// subdomain (one effect) get Jacobi. The action is symmetric positive
+    /// definite on all of coefficient space (see the full formulation's
+    /// contract), so both methods accept it. A Schwarz preconditioner that
+    /// exceeds [`Request::memory_limit`] declines ([`Decline::MemoryLimit`]).
     Schwarz(SchwarzSpec),
 }
 
@@ -184,26 +199,40 @@ pub struct SchwarzSpec {
     pub local: SchwarzLocal,
 }
 
-/// The subdomains of [`Preconditioner::Schwarz`].
+/// The subdomains of [`Preconditioner::Schwarz`]: the connected components
+/// of chosen pairs of effects.
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum Subdomains {
-    /// One subdomain per connected component of each pair of effects.
+    /// The pairs of the effect with the most levels (first of equals) with
+    /// every other effect: a star over the largest effect, `k - 1` pairs
+    /// for `k` effects. The default.
     #[default]
-    FactorPairs,
+    Star,
+    /// Every pair of effects, `k (k - 1) / 2` pairs (more overlap, usually
+    /// more iterations than the star).
+    AllPairs,
 }
 
-/// The local solve of a Schwarz subdomain.
+/// The local solve of a Schwarz subdomain. Each eliminates the diagonal of
+/// the subdomain's larger side exactly and solves the Schur complement on
+/// its smaller side (a weighted graph Laplacian, formed exactly); they
+/// differ in that solve.
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum SchwarzLocal {
-    /// Chosen by subdomain size.
+    /// Exact where cheap, approximate elsewhere: a dense grounded Cholesky
+    /// factorization of a small or dense Schur complement, an exact
+    /// envelope (skyline) factorization in reverse Cuthill-McKee order of a
+    /// banded one, and [`SchwarzLocal::Approximate`] otherwise.
     #[default]
     Auto,
-    /// A grounded dense factorization.
+    /// Exact: dense or envelope Cholesky factorizations of every Schur
+    /// complement, whatever their size (bounded by the memory limit).
     Exact,
-    /// One fixed CMG cycle (feature `cmg`).
-    Cmg,
+    /// Approximate Cholesky (approx-chol's AC(2) with a fixed seed) of every
+    /// Schur complement with two or more levels.
+    Approximate,
 }
 
 /// Local solves of [`Preconditioner::BlockJacobi`].
@@ -245,10 +274,13 @@ pub enum Fallback {
     /// Hand the columns back to the caller ([`Outcome::Declined`]).
     #[default]
     Decline,
-    /// With [`Preconditioner::Auto`], escalate a batch whose recurrence
-    /// stalls or reaches the iteration ceiling (see [`Preconditioner::Auto`]);
-    /// decline when the escalated recurrence cannot finish either. The full
-    /// formulation has no stronger preconditioner yet and declines.
+    /// Escalate a Jacobi recurrence that stalls or reaches the iteration
+    /// ceiling to a stronger preconditioner from its current iterate, within
+    /// the remaining iteration budget: the elimination's
+    /// [`Preconditioner::Auto`] to block-Jacobi, the full formulation's
+    /// [`Preconditioner::Jacobi`] to Schwarz (feature `schwarz`). Decline
+    /// when the escalated recurrence cannot finish either, or when the
+    /// stronger preconditioner exceeds [`Request::memory_limit`].
     Escalate,
 }
 
@@ -390,6 +422,27 @@ pub enum PreconditionerUsed {
     Block([Option<BlockUsed>; MAX_BLOCKS]),
     /// None (`M = I`).
     Identity,
+    /// Additive Schwarz over `subdomains` factor-pair subdomains, with the
+    /// local Schur solves counted by kind.
+    Schwarz {
+        subdomains: u32,
+        local: SchwarzSolves,
+    },
+}
+
+/// The local Schur-complement solves of a Schwarz preconditioner, counted
+/// by kind (saturating).
+#[non_exhaustive]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct SchwarzSolves {
+    /// One level on the smaller side: nothing to solve.
+    pub trivial: u32,
+    /// Dense grounded Cholesky factorization.
+    pub dense: u32,
+    /// Exact envelope (skyline) Cholesky factorization.
+    pub skyline: u32,
+    /// Approximate Cholesky factorization.
+    pub approximate: u32,
 }
 
 /// One retained effect's block of a block-Jacobi preconditioner.
@@ -419,9 +472,10 @@ pub enum LocalUsed {
 pub struct Route {
     pub reduction: ReductionUsed,
     pub method: MethodUsed,
-    /// Block-Jacobi when any batch used it (explicitly or escalated).
+    /// Block-Jacobi or Schwarz when any batch used it (explicitly or
+    /// escalated).
     pub preconditioner: PreconditionerUsed,
-    /// Column batches that escalated (saturating).
+    /// Column batches (modified LSMR: columns) that escalated (saturating).
     pub escalations: u8,
 }
 
@@ -452,9 +506,10 @@ pub struct Facts {
     pub pcg_seconds: f64,
     pub residual_seconds: f64,
     pub solve_seconds: f64,
-    /// Column batches that escalated to block-Jacobi.
+    /// Column batches (modified LSMR: columns) that escalated to
+    /// block-Jacobi or Schwarz.
     pub escalations: usize,
-    /// Building block-Jacobi local solves.
+    /// Building local solves: block-Jacobi blocks or Schwarz subdomains.
     pub block_seconds: f64,
 }
 
@@ -564,17 +619,21 @@ fn formulation(effects: usize, choice: Choice) -> Result<Formulation> {
             _ => Ok(Formulation::Eliminate),
         };
     }
+    let schwarz = cfg!(feature = "schwarz");
     let action =
         match choice.preconditioner {
+            Preconditioner::Auto if schwarz && effects >= 2 => full::Action::Auto,
+            Preconditioner::Jacobi if schwarz && choice.fallback == Fallback::Escalate => {
+                full::Action::Escalate
+            }
             Preconditioner::Auto | Preconditioner::Jacobi => full::Action::Jacobi,
             Preconditioner::Identity => full::Action::Identity,
             Preconditioner::BlockJacobi(_) => return Err(Error::Unsupported(
                 "block-Jacobi preconditions the eliminated system (Reduction::EliminateLargest)",
             )),
+            Preconditioner::Schwarz(spec) if schwarz => full::Action::Schwarz(spec),
             Preconditioner::Schwarz(_) => {
-                return Err(Error::Unsupported(
-                    "additive Schwarz is not implemented yet",
-                ))
+                return Err(Error::Unsupported("additive Schwarz needs feature schwarz"))
             }
         };
     let method = match choice.method {
@@ -844,15 +903,15 @@ impl<'a> Projector<'a> {
     /// Bytes a projection of `ncols` columns needs beyond the caller's data,
     /// once the structure exists (escalations excluded: they only start
     /// within [`Request::memory_limit`]). CMG local solves are excluded too:
-    /// they are admitted as they are built, from their graphs' sizes. The
-    /// full formulation counts weighted state.
+    /// they are admitted as they are built, from their graphs' sizes, and so
+    /// are Schwarz subdomains, which count here once built. The full
+    /// formulation counts weighted state.
     #[must_use]
     pub fn admission_bytes(&self, ncols: usize) -> Option<u128> {
         if let Ok(Formulation::Full(method, _)) = self.formulation {
-            return self
-                .full
-                .structure()
-                .map(|st| full::admission_bytes(st, method, ncols, true));
+            return self.full.structure().map(|st| {
+                full::admission_bytes(st, method, ncols, true) + self.full.schwarz_bytes(ncols)
+            });
         }
         self.engine.structure().map(|st| {
             elimination::admission_bytes(st, None, ncols)

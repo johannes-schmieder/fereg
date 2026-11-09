@@ -4,13 +4,15 @@
 //! The system is singular and consistent: per-component constant shifts
 //! across effects are null directions of `D'WD`, and its right-hand side
 //! lies in the range. CG with a fixed symmetric positive definite `M^-1`
-//! (Jacobi or identity) stays in that range, so the fitted contribution
-//! `D x` converges while `x` itself is determined only up to the null space.
+//! (Jacobi, identity or additive Schwarz) stays in that range, so the
+//! fitted contribution `D x` converges while `x` itself is determined only
+//! up to the null space.
 
 use super::kernels::{adjoint, forward, Rows, PARALLEL_WORK};
+use super::refill;
+use super::schwarz::{Schwarz, Scratch};
 use super::structure::Structure;
 use super::weights::State;
-use super::{refill, Action};
 use crate::design::Effect;
 use crate::elimination::pcg::{Solve, Tally, Targets, CEILING, STALLED};
 use crate::elimination::{Cancel, KEPT_WINDOW, STALL_WINDOW};
@@ -44,6 +46,8 @@ pub(super) struct Work {
     /// Modified LSMR: the weighted column `W^1/2 y`.
     #[cfg_attr(not(feature = "schwarz"), allow(dead_code))]
     pub(super) b: Vec<f64>,
+    /// The Schwarz apply workspace (sized by the preconditioner).
+    pub(super) schwarz: Scratch,
 }
 
 /// Bytes of a [`Work`] for `r` columns.
@@ -95,12 +99,14 @@ impl Work {
     }
 }
 
-/// The normal-equation operator `D'WD` and its preconditioner.
+/// The normal-equation operator `D'WD` and its preconditioner: additive
+/// Schwarz when given, else Jacobi or the identity.
 pub(super) struct Normal<'a, 'd> {
     pub(super) st: &'a Structure,
     pub(super) effects: &'a [Effect<'d>],
     pub(super) state: &'a State,
-    pub(super) action: Action,
+    pub(super) jacobi: bool,
+    pub(super) schwarz: Option<&'a Schwarz>,
 }
 
 impl Normal<'_, '_> {
@@ -129,14 +135,31 @@ fn chunks(m: usize) -> impl Iterator<Item = Range<usize>> {
 
 /// With `alpha`, `x += alpha p` and `r -= alpha q` first; then `z = M^-1 r`.
 /// Returns `r'z`, `max |r_g| / sqrt(m_g)` and `max |r_g| / m_g` per column,
-/// as plain sums and maxima over fixed chunks combined in chunk order.
+/// as plain sums and maxima over fixed chunks combined in chunk order (the
+/// Schwarz action's `r'z` by a separate fixed-chunk dot).
 fn update<const R: usize>(
     op: &Normal<'_, '_>,
     work: &mut Work,
     alpha: Option<[f64; R]>,
 ) -> [[f64; R]; 3] {
+    let mut out = fused::<R>(op, work, alpha);
+    if let Some(schwarz) = op.schwarz {
+        let inverse = &op.state.inverse_mass;
+        schwarz.apply::<R>(&work.r, &mut work.z, &mut work.schwarz, inverse);
+        out[0] = dot::<R>(&work.r, &work.z, &mut work.partials);
+    }
+    out
+}
+
+/// The fused vector pass of [`update`]; `z` (and `r'z`) only for Jacobi or
+/// the identity.
+fn fused<const R: usize>(
+    op: &Normal<'_, '_>,
+    work: &mut Work,
+    alpha: Option<[f64; R]>,
+) -> [[f64; R]; 3] {
     let (inv_mass, inv_root) = (&op.state.inverse_mass, &op.state.inverse_root_mass);
-    let jacobi = op.action == Action::Jacobi;
+    let (jacobi, diagonal) = (op.jacobi, op.schwarz.is_none());
     let Work {
         x,
         r,
@@ -161,8 +184,10 @@ fn update<const R: usize>(
                     x[a] += alpha[j] * p[g * R + j];
                     r[a] -= alpha[j] * q[g * R + j];
                 }
-                z[a] = if jacobi { im * r[a] } else { r[a] };
-                s[j] += r[a] * z[a];
+                if diagonal {
+                    z[a] = if jacobi { im * r[a] } else { r[a] };
+                    s[j] += r[a] * z[a];
+                }
                 h[j] = h[j].max(r[a].abs() * ir);
                 hz[j] = hz[j].max(r[a].abs() * im);
             }

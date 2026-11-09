@@ -77,7 +77,7 @@ pub(crate) const ACCEPT_FRACTION: f64 = 0.5;
 
 pub(crate) mod block;
 mod blocks;
-mod dense;
+pub(crate) mod dense;
 mod kernels;
 mod passes;
 pub(crate) mod pcg;
