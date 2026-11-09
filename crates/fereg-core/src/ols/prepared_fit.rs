@@ -2688,6 +2688,7 @@ pub(super) fn merge_solve_report(target: &mut SolveReport, source: SolveReport) 
             source.requested_solver, source.used_solver, source.requested_preconditioner, source.used_preconditioner,
         )));
     }
+    let target_label = target.used_solver;
     if auto_mix {
         // A certified continuation remains authoritative over its LSMR
         // attempt. Otherwise retain CMG use across RHS blocks, then LSMR,
@@ -2718,6 +2719,8 @@ pub(super) fn merge_solve_report(target: &mut SolveReport, source: SolveReport) 
         target.used_solver = FeSolverKind::Cg;
         target.fallback_used = true;
     }
+    let source_won = target.used_solver != target_label && target.used_solver == source.used_solver;
+    target.merge_route(&source, source_won);
     target.iterations = target.iterations.max(source.iterations);
     target.checkpoint_retries = target
         .checkpoint_retries

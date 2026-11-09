@@ -2166,6 +2166,7 @@ fn baseline_absorb_map(
             pilot_iterations: 0,
             pilot_contraction: 0.0,
             warnings: Vec::new(),
+            route_tag: None,
         });
     }
     let mut workspace = ProjectionWorkspace::new(design.max_channels(), values.ncols())?;
@@ -2213,6 +2214,7 @@ fn baseline_absorb_map(
                     pilot_iterations: 0,
                     pilot_contraction: 0.0,
                     warnings: Vec::new(),
+                    route_tag: None,
                 });
             }
         }
@@ -2236,6 +2238,7 @@ fn baseline_absorb_map(
         pilot_iterations: 0,
         pilot_contraction: 0.0,
         warnings: Vec::new(),
+        route_tag: None,
     })
 }
 

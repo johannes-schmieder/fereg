@@ -416,6 +416,11 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
         pilot_iterations: 0,
         pilot_contraction: 0.,
         warnings: Vec::new(),
+        // One effect eliminated; Jacobi-scaled CG on the reduced system.
+        route_tag: Some(crate::fe::FeRouteTag {
+            used_solver: FeSolverKind::Map,
+            route: crate::fe::FeRoute::eliminated_cg(false),
+        }),
     };
     let moments = CanonicalMoments {
         width,

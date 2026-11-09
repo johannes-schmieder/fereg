@@ -460,6 +460,25 @@ fn a_set_hint_starts_later_caches_on_the_blocks() {
         first.set_hint(Some(&hint));
         let escalated = certified(&mut first, design, &input, None);
         assert!(first.escalated && hint.load(Ordering::Relaxed));
+        // The reported route names the escalation and the movers' exact
+        // block; the eliminated firms have none.
+        let block = crate::fe::FePreconditioner::Block([
+            Some(crate::fe::FeLocalSolve::Dense),
+            None,
+            None,
+            None,
+            None,
+        ]);
+        let route = escalated.report().route();
+        assert_eq!(
+            (route.reduction, route.method, route.preconditioner),
+            (
+                crate::fe::FeReduction::Eliminate,
+                crate::fe::FeMethod::Cg,
+                block
+            )
+        );
+        assert!(route.escalations >= 1);
         assert_eq!(preconditioner(&first), fedemean::Preconditioner::Auto);
         // The escalated projector is kept: fedemean starts it on the blocks.
         certified(&mut first, design, &input, None);
@@ -469,6 +488,8 @@ fn a_set_hint_starts_later_caches_on_the_blocks() {
         second.set_hint(Some(&hint));
         let hinted = certified(&mut second, design, &input, None);
         assert!(!second.escalated);
+        let route = hinted.report().route();
+        assert_eq!((route.preconditioner, route.escalations), (block, 0));
         assert!(matches!(
             preconditioner(&second),
             fedemean::Preconditioner::BlockJacobi(_)
@@ -530,6 +551,15 @@ fn ordinary_designs_keep_their_bits_with_a_hint() {
         let result = certified(&mut hinted, design, &input, None);
         assert_eq!(bits(result.residualized()), bits(reference.residualized()));
         assert!(!hint.load(Ordering::Relaxed) && !hinted.escalated);
+        let route = result.report().route();
+        assert_eq!(
+            route,
+            crate::fe::FeRoute::new(
+                crate::fe::FeReduction::Eliminate,
+                crate::fe::FeMethod::Cg,
+                crate::fe::FePreconditioner::Jacobi,
+            )
+        );
         assert_eq!(preconditioner(&hinted), fedemean::Preconditioner::Auto);
 
         // The automatic route's own admission bound admits it, but not the

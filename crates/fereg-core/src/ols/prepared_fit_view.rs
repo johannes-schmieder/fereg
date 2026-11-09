@@ -808,7 +808,7 @@ impl PreparedOlsFitView for PreparedOlsData {
         {
             return Err(FeregError::new(
                 ErrorCode::Unsupported,
-                "solver(cmg) supports only categorical intercept-only absorbed effects; absorbed slopes are unsupported",
+                "solver(cg) supports only categorical intercept-only absorbed effects; absorbed slopes are unsupported",
             ));
         }
         if let Some(validated) = self.validated_single_topology()? {

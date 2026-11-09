@@ -120,7 +120,7 @@ impl AbsorbConfig {
         {
             return Err(FeregError::new(
                 ErrorCode::InvalidArgument,
-                "CMG sampling options require explicit solver(cmgschur)",
+                "CMG sampling options require explicit solver(cg, reduce(eliminate))",
             ));
         }
         super::cmg_schur::Sampling {

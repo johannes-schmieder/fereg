@@ -720,7 +720,7 @@ fn validate_request(request: &PreparedPpmlRequestV1, loaded: &LoadedPpmlInput) -
     for absorb in [request.ppml.absorb, request.linear.absorb] {
         if absorb.cmg_schur_samples != 0 || absorb.cmg_schur_seed != 0 {
             return Err(invalid_argument(
-                "CMG sampling options require OLS solver(cmgschur)",
+                "CMG sampling options require fereg solver(cg, reduce(eliminate))",
             ));
         }
     }
@@ -847,7 +847,7 @@ fn validate_public_solver_request(request: &PreparedPpmlRequestV1) -> Result<()>
                     "solver(lsmr) requires at least two categorical fixed-effect dimensions"
                 }
                 PpmlSolverFamily::Cmg => {
-                    "solver(cmg) requires exactly two or three categorical fixed-effect dimensions"
+                    "solver(cg) requires exactly two or three categorical fixed-effect dimensions"
                 }
                 PpmlSolverFamily::Auto | PpmlSolverFamily::Map => unreachable!(),
             },

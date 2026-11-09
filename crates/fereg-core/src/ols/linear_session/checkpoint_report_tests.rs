@@ -24,6 +24,7 @@ fn report(solver: FeSolverKind) -> SolveReport {
         pilot_iterations: 0,
         pilot_contraction: 0.,
         warnings: Vec::new(),
+        route_tag: None,
     }
 }
 

@@ -98,7 +98,10 @@ pub use partition_singleton::{
 pub use partition_validation::validate_categorical_partition;
 pub(crate) use projection::ParallelProjectionPlan;
 pub use projection::ProjectionWorkspace;
-pub use report::{FeSolverKind, LsmrPreconditioner, SolveReport, SolveStopReason};
+pub use report::{
+    FeAcceleration, FeLocalSolve, FeMethod, FePreconditioner, FeReduction, FeRoute, FeRouteTag,
+    FeSolverKind, LsmrPreconditioner, SolveReport, SolveStopReason, FE_ROUTE_MAX_EFFECTS,
+};
 pub use routing::{CategoricalPrefix, RoutingPreset};
 #[doc(hidden)]
 pub use routing_break::routing_builder_break_ready;

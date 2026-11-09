@@ -4585,6 +4585,7 @@ fn automatic_lsmr_report_for_merge() -> SolveReport {
         pilot_iterations: 0,
         pilot_contraction: 0.0,
         warnings: Vec::new(),
+        route_tag: None,
     }
 }
 

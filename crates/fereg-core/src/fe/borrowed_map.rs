@@ -2199,9 +2199,12 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                 block_schur::Outcome::Done(mut result) => {
                     // PPML publishes categorical (non-LSMR) projections under
                     // the MAP engine identity, as for the two-FE Schur route;
-                    // the owner is driven by MAP-family requests.
+                    // the owner is driven by MAP-family requests. The route
+                    // report keeps the elimination.
+                    let route = result.report.route();
                     result.report.requested_solver = FeSolverKind::Map;
                     result.report.used_solver = FeSolverKind::Map;
+                    result.report.set_route(route);
                     return Ok((result, true));
                 }
                 block_schur::Outcome::Declined(values) => values,
@@ -3774,7 +3777,7 @@ fn absorb_two_fe_pcg_reusing(
                     iterations,
                     certificate,
                     (setup_seconds, solve_started),
-                    report_ols_method.then_some(cmg_applied),
+                    (report_ols_method, cmg_applied),
                     (
                         completed_pilot_iterations,
                         progress_contraction.unwrap_or(pilot_contraction),
@@ -3893,7 +3896,7 @@ fn absorb_two_fe_pcg_reusing(
                 iterations,
                 certificate,
                 (setup_seconds, solve_started),
-                report_ols_method.then_some(cmg_applied),
+                (report_ols_method, cmg_applied),
                 (
                     completed_pilot_iterations,
                     progress_contraction.unwrap_or(pilot_contraction),
@@ -5705,6 +5708,7 @@ impl<'s, 'a> CheckpointLsmrBatch<'s, 'a> {
             pilot_iterations: 0,
             pilot_contraction: 0.,
             warnings,
+            route_tag: None,
         })
     }
 }
@@ -6296,6 +6300,7 @@ fn run_borrowed_lsmr_with_prepared<'a>(
         prepared = Some(&mut owned_prepared);
     }
     let mut jacobi_trial = false;
+    let mut escalations = 0;
     let (mut solved, preconditioner_fallback) = if let Some(routing) =
         general_routing.as_deref_mut()
     {
@@ -6311,6 +6316,7 @@ fn run_borrowed_lsmr_with_prepared<'a>(
             initial_coefficients,
         )?;
         jacobi_trial = routing.jacobi_trial_active();
+        escalations = routing.take_escalations();
         solved
     } else if let Some(prepared) = prepared.as_deref_mut() {
         prepared.solve(
@@ -6533,6 +6539,12 @@ fn run_borrowed_lsmr_with_prepared<'a>(
             warnings,
             ..SolveReport::single_route(FeSolverKind::Lsmr, stop_reason, certificate)
         };
+        if escalations > 0 {
+            report.set_route(super::FeRoute {
+                escalations,
+                ..report.route()
+            });
+        }
         // Only a rejected solve hands its coefficients on as a correction seed.
         let seed = keep_seed && !report.certified();
         if keep_seed && !seed {
@@ -9939,15 +9951,16 @@ enum SchurWorkLimit {
 }
 
 /// Publish a certified two-FE PCG iterate. PPML keeps its checkpoint-engine
-/// contract (`ols_cmg` None). OLS reports the actual recurrence, including a
-/// CMG inverse reused from an earlier RHS block; an allocated but unused
-/// inverse is not CMG.
+/// solver label (`ols_method` false). OLS labels the actual recurrence,
+/// including a CMG inverse reused from an earlier RHS block; an allocated but
+/// unused inverse is not CMG. Both report the route: the larger effect
+/// eliminated, CG preconditioned by the retained diagonal or CMG.
 fn publish_two_fe_pcg(
     values: DenseMatrix,
     iterations: usize,
     certificate: FeCertificate,
     (setup_seconds, solve_started): (f64, Instant),
-    ols_cmg: Option<bool>,
+    (ols_method, cmg_applied): (bool, bool),
     (pilot_iterations, pilot_contraction): (usize, f64),
     coefficients: Option<MapCoefficientAccumulator>,
 ) -> Result<SchurAttempt> {
@@ -9959,13 +9972,16 @@ fn publish_two_fe_pcg(
         setup_seconds,
         solve_started.elapsed().as_secs_f64(),
     )?;
-    if let Some(cmg_applied) = ols_cmg {
+    if ols_method {
         result.report.used_solver = if cmg_applied {
             FeSolverKind::CmgSchur
         } else {
             FeSolverKind::Cg
         };
     }
+    result
+        .report
+        .set_route(super::FeRoute::eliminated_cg(cmg_applied));
     result.report.pilot_iterations = pilot_iterations;
     result.report.pilot_contraction = pilot_contraction;
     Ok(SchurAttempt::Certified(attach_optional_map_coefficients(

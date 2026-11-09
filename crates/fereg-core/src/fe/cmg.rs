@@ -2341,7 +2341,7 @@ fn build_nuisance_columns(
         return Err(FeregError::new(
             ErrorCode::Unsupported,
             format!(
-                "solver(cmg) supports at most {MAX_NUISANCE_COLUMNS} non-base levels across additional absorbed effects; found {count}"
+                "solver(cg) supports at most {MAX_NUISANCE_COLUMNS} non-base levels across additional absorbed effects; found {count}"
             ),
         ));
     }
@@ -2391,7 +2391,7 @@ fn validate_nuisance_limit(profile: &CmgTopologyProfile) -> Result<()> {
         Err(FeregError::new(
             ErrorCode::Unsupported,
             format!(
-                "solver(cmg) supports at most {MAX_NUISANCE_COLUMNS} non-base levels across additional absorbed effects; found {}",
+                "solver(cg) supports at most {MAX_NUISANCE_COLUMNS} non-base levels across additional absorbed effects; found {}",
                 profile.nuisance_columns
             ),
         ))

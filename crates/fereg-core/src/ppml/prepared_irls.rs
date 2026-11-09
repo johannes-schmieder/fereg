@@ -1879,7 +1879,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     let coefficients = final_coefficients(&final_output, workspace.coefficients())?;
     let retained_memory = final_output.retained_within_memory();
     memory.observe_scratch(retained_memory.scratch_bytes);
-    memory.observe_linear_route(final_output.frame().absorption_report().used_solver);
+    memory.observe_final_linear_solve(final_output.frame().absorption_report());
     memory.observe_diagnostic_records(retained_iterations.len())?;
     memory.certify_workspace(&workspace)?;
     workspace.refresh_score_residuals(outcome)?;
@@ -2087,7 +2087,7 @@ fn public_solver_memory_admission<P: PreparedOlsFitView + ?Sized>(
                 return Err(FeregError::new(
                     ErrorCode::Unsupported,
                     format!(
-                        "solver(cmg) supports at most {CMG_MAX_NUISANCE_COLUMNS} non-base nuisance columns; found {}",
+                        "solver(cg) supports at most {CMG_MAX_NUISANCE_COLUMNS} non-base nuisance columns; found {}",
                         profile.nuisance_columns()
                     ),
                 ));

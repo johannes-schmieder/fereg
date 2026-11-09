@@ -1656,6 +1656,8 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
     if numerical_refusal.load(Ordering::Relaxed) {
         return Err(declined());
     }
+    // The reported route's preconditioner: CMG when a shared hierarchy served.
+    let cmg_applied = shared_cmg.is_some();
     if let Some(shared) = shared_cmg {
         shared.release(&mut budget)?;
     }
@@ -1934,6 +1936,10 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
         pilot_iterations: 0,
         pilot_contraction: 0.,
         warnings: Vec::new(),
+        route_tag: Some(crate::fe::FeRouteTag {
+            used_solver: FeSolverKind::Map,
+            route: crate::fe::FeRoute::eliminated_cg(cmg_applied),
+        }),
     };
     let moments = CanonicalMoments {
         width,

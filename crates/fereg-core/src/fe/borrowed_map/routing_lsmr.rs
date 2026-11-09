@@ -39,6 +39,8 @@ pub(crate) struct GeneralRoutingState<'a> {
     /// borrowed columns is shallow; a sorted copy stays within the additive
     /// solver frame that admission charges while the trial is retained.
     trial_design: Option<within::Design<'a>>,
+    /// Jacobi-to-additive escalations not yet reported (reporting only).
+    escalations: u32,
 }
 
 impl<'a> GeneralRoutingState<'a> {
@@ -48,7 +50,13 @@ impl<'a> GeneralRoutingState<'a> {
             prepared: BorrowedLsmrPrepared::default(),
             trial: None,
             trial_design: None,
+            escalations: 0,
         }
+    }
+
+    /// Escalations since the last call, for the solve's route report.
+    pub(super) fn take_escalations(&mut self) -> u32 {
+        std::mem::take(&mut self.escalations)
     }
 
     pub(crate) fn has_prepared(&self) -> bool {
@@ -322,6 +330,7 @@ impl<'a> GeneralRoutingState<'a> {
         };
         let started = Instant::now();
         let config = self.trial.take().expect("escalating Jacobi trial");
+        self.escalations = self.escalations.saturating_add(1);
         self.prepared.solver = None;
         let built = match self.trial_design.take() {
             Some(shared) => build_retained_lsmr_from(shared, weights, config, deterministic),

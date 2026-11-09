@@ -272,7 +272,7 @@ impl<'a> Cache<'a> {
             hint.store(true, Ordering::Relaxed);
         }
         self.weight_scale = Some(report.weight_scale);
-        let solve_report = SolveReport {
+        let mut solve_report = SolveReport {
             requested_solver: FeSolverKind::Auto,
             iterations: facts.iterations,
             solver_workspace_peak: SolverWorkspacePeak::from_bytes(report.workspace_bytes)?,
@@ -286,6 +286,7 @@ impl<'a> Cache<'a> {
                 fe_certificate(report.certificate),
             )
         };
+        solve_report.set_route(route(&report.route));
         let result = match coefficients {
             Some(coefficients) => CertifiedBorrowedMap::from_certified_parts_with_coefficients(
                 values,
@@ -431,6 +432,43 @@ fn same_design(view: &fedemean::Design<'_>, design: &BorrowedInterceptFeDesign<'
             .iter()
             .zip(design.effects())
             .all(|(v, d)| std::ptr::eq(v.codes(), d.codes()) && v.levels() == d.n_levels())
+}
+
+/// fedemean's route in fereg's reporting terms: the reduction, the method,
+/// the preconditioner with each retained block's local solve (by design
+/// effect), and the escalated batches.
+fn route(route: &fedemean::Route) -> crate::fe::FeRoute {
+    use crate::fe::{FeLocalSolve, FeMethod, FePreconditioner, FeReduction};
+    let preconditioner = match route.preconditioner {
+        fedemean::PreconditionerUsed::Block(blocks) => {
+            let mut locals = [None; crate::fe::FE_ROUTE_MAX_EFFECTS];
+            for block in blocks.iter().flatten() {
+                if let Some(local) = locals.get_mut(block.effect) {
+                    *local = Some(match block.local {
+                        fedemean::LocalUsed::Cmg => FeLocalSolve::Cmg,
+                        fedemean::LocalUsed::Dense => FeLocalSolve::Dense,
+                        _ => FeLocalSolve::Jacobi,
+                    });
+                }
+            }
+            FePreconditioner::Block(locals)
+        }
+        fedemean::PreconditionerUsed::Identity => FePreconditioner::None,
+        fedemean::PreconditionerUsed::Schwarz { .. } => FePreconditioner::Schwarz,
+        _ => FePreconditioner::Jacobi,
+    };
+    crate::fe::FeRoute {
+        reduction: match route.reduction {
+            fedemean::ReductionUsed::Full => FeReduction::Full,
+            _ => FeReduction::Eliminate,
+        },
+        method: match route.method {
+            fedemean::MethodUsed::Lsmr => FeMethod::Lsmr,
+            _ => FeMethod::Cg,
+        },
+        escalations: u32::from(route.escalations),
+        ..crate::fe::FeRoute::new(FeReduction::Eliminate, FeMethod::Cg, preconditioner)
+    }
 }
 
 fn fe_certificate(certificate: fedemean::Certificate) -> FeCertificate {

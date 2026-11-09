@@ -3747,6 +3747,9 @@ pub struct PpmlMemoryTelemetry {
     /// state. `None` means the route has not been observed; it must never be
     /// serialized as a guessed memory/execution mode.
     pub linear_route: Option<FeSolverKind>,
+    /// Route and iterations of the final certified linear solve, in public
+    /// reporting terms (reporting only; `None` until observed).
+    pub final_linear_solve: Option<(crate::fe::FeRoute, usize)>,
     /// `None` means scratch instrumentation was unavailable; `Some(0)` is an
     /// observed zero.
     pub scratch_peak_bytes: Option<u64>,
@@ -3783,6 +3786,7 @@ impl PpmlMemoryTelemetry {
             observed_phase_peak_bytes: [None; PPML_PHASE_COUNT],
             allocations: PpmlAllocationTelemetry::default(),
             linear_route: None,
+            final_linear_solve: None,
             scratch_peak_bytes: None,
             fallback_mask: 0,
             fallback_count: 0,
@@ -3819,6 +3823,13 @@ impl PpmlMemoryTelemetry {
 
     pub fn observe_linear_route(&mut self, route: FeSolverKind) {
         self.linear_route = Some(route);
+    }
+
+    /// Observe the final certified linear solve: its solver label, route and
+    /// iterations.
+    pub fn observe_final_linear_solve(&mut self, report: &crate::fe::SolveReport) {
+        self.observe_linear_route(report.used_solver);
+        self.final_linear_solve = Some((report.route(), report.iterations));
     }
 
     pub fn observe_scratch(&mut self, bytes: u64) {
