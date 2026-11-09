@@ -2652,52 +2652,15 @@ fn finish_recovery<R: SlopeWorkspaceReservation>(
     reservation: &mut R,
 ) -> Result<RecoveredCategoricalEffects> {
     if let Some(mode) = strict {
-        normalize_intercept_components(topology, effects, weights, alphas, mode.known_connected)?;
-        if !coefficient_reconstruction_passed(
+        return finish_strict_recovery(
             topology,
             effects,
-            target,
-            effect_offsets,
-            alphas,
-            reconstruction_threshold,
-        ) {
-            return Err(FeregError::new(
-                ErrorCode::NonConvergence,
-                "strict MAP coefficient product failed original-target reconstruction",
-            ));
-        }
-        let recovered = finish_channel_major_recovery(
-            topology,
-            effects,
+            (target, requested_channels),
+            (effect_offsets, alphas),
+            (iterations, tolerance, reconstruction_threshold),
             weights,
-            target,
-            requested_channels,
-            alphas,
-            iterations,
-            tolerance,
-            CategoricalRecoveryMethod::Map,
-            mode.materialize_absorbed_sum,
-        )
-        .map_err(|error| {
-            if error.code == ErrorCode::InvalidData
-                && (error.message
-                    == "categorical recovery coefficient product failed its FE certificate"
-                    || error.message.starts_with(
-                        "categorical recovery coefficient product failed reconstruction:",
-                    ))
-            {
-                FeregError::new(ErrorCode::NonConvergence, error.message)
-            } else {
-                error
-            }
-        })?;
-        if recovered.reconstruction_relative_infinity > reconstruction_threshold {
-            return Err(FeregError::new(
-                ErrorCode::NonConvergence,
-                "strict MAP coefficient product failed global reconstruction",
-            ));
-        }
-        return Ok(recovered);
+            mode,
+        );
     }
     let reconstruction_relative_infinity =
         recovery_reconstruction_relative_infinity(target, residual)?;
@@ -2705,6 +2668,27 @@ fn finish_recovery<R: SlopeWorkspaceReservation>(
         return Err(invalid_data(format!(
             "categorical recovery target is not certified to lie in the absorbed span: relative infinity residual {reconstruction_relative_infinity:.6e}",
         )));
+    }
+    // Slope designs take SPEC §5's gauge like every other slope recovery
+    // path: fereg's representative on rank-deficient levels, then the
+    // intercept effects after the first centered per component. The
+    // channel-major finish reconstructs and certifies the FE sum again.
+    if effects
+        .iter()
+        .any(|effect| !effect.has_intercept() || !effect.slopes().is_empty())
+    {
+        let channel_major = transpose_to_channel_major(topology, effects, effect_offsets, alphas)?;
+        return normalized_slope_recovery(
+            topology,
+            effects,
+            weights,
+            target,
+            requested_channels,
+            channel_major,
+            iterations,
+            tolerance,
+            reconstruction_threshold,
+        );
     }
 
     let mut absorbed_sum = reserved_zeros(
@@ -2774,6 +2758,141 @@ fn finish_recovery<R: SlopeWorkspaceReservation>(
         reconstruction_relative_infinity,
         recovery_method: CategoricalRecoveryMethod::Map,
     })
+}
+
+/// The strict MAP recovery's finish: SPEC §5's gauge on the coefficients,
+/// the original-target reconstruction, then the channel-major finish and
+/// its global reconstruction check (misses are numerical, for the caller's
+/// next tier).
+fn finish_strict_recovery(
+    topology: &FinalizedCategoricalTopology,
+    effects: &[CategoricalAbsorbedEffectView<'_>],
+    (target, requested_channels): (&[f64], &[bool]),
+    (effect_offsets, alphas): (&[usize], &mut [f64]),
+    (iterations, tolerance, reconstruction_threshold): (usize, f64, f64),
+    weights: ValidatedWeights<'_>,
+    mode: &StrictMapRecovery,
+) -> Result<RecoveredCategoricalEffects> {
+    normalize_intercept_components(topology, effects, weights, alphas, mode.known_connected)?;
+    if !coefficient_reconstruction_passed(
+        topology,
+        effects,
+        target,
+        effect_offsets,
+        alphas,
+        reconstruction_threshold,
+    ) {
+        return Err(FeregError::new(
+            ErrorCode::NonConvergence,
+            "strict MAP coefficient product failed original-target reconstruction",
+        ));
+    }
+    let recovered = finish_channel_major_recovery(
+        topology,
+        effects,
+        weights,
+        target,
+        requested_channels,
+        alphas,
+        iterations,
+        tolerance,
+        CategoricalRecoveryMethod::Map,
+        mode.materialize_absorbed_sum,
+    )
+    .map_err(|error| {
+        if error.code == ErrorCode::InvalidData
+            && (error.message
+                == "categorical recovery coefficient product failed its FE certificate"
+                || error
+                    .message
+                    .starts_with("categorical recovery coefficient product failed reconstruction:"))
+        {
+            FeregError::new(ErrorCode::NonConvergence, error.message)
+        } else {
+            error
+        }
+    })?;
+    if recovered.reconstruction_relative_infinity > reconstruction_threshold {
+        return Err(FeregError::new(
+            ErrorCode::NonConvergence,
+            "strict MAP coefficient product failed global reconstruction",
+        ));
+    }
+    Ok(recovered)
+}
+
+/// MAP's coefficients (level-major within each effect:
+/// `offset + level * channels + channel`) in the channel-major layout
+/// (`offset + channel * levels + level`) of the other recovery tiers.
+fn transpose_to_channel_major(
+    topology: &FinalizedCategoricalTopology,
+    effects: &[CategoricalAbsorbedEffectView<'_>],
+    effect_offsets: &[usize],
+    alphas: &[f64],
+) -> Result<Vec<f64>> {
+    let mut channel_major = fallible_filled(
+        alphas.len(),
+        0.0_f64,
+        "unable to reserve channel-major recovery coefficients",
+    )?;
+    for (index, effect) in effects.iter().enumerate() {
+        let levels = topology
+            .registry()
+            .source(topology.effect_to_topology()[index])?
+            .n_levels();
+        let channels = effect.channels();
+        let offset = effect_offsets[index];
+        for level in 0..levels {
+            for channel in 0..channels {
+                channel_major[offset + channel * levels + level] =
+                    alphas[offset + level * channels + channel];
+            }
+        }
+    }
+    Ok(channel_major)
+}
+
+/// The §5 gauge on a slope design's MAP coefficients (channel-major), then
+/// the channel-major finish, which reconstructs the FE sum from the
+/// normalized coefficients and certifies it against the target.
+#[allow(clippy::too_many_arguments)]
+fn normalized_slope_recovery(
+    topology: &FinalizedCategoricalTopology,
+    effects: &[CategoricalAbsorbedEffectView<'_>],
+    weights: ValidatedWeights<'_>,
+    target: &[f64],
+    requested_channels: &[bool],
+    mut coefficients: Vec<f64>,
+    iterations: usize,
+    tolerance: f64,
+    reconstruction_threshold: f64,
+) -> Result<RecoveredCategoricalEffects> {
+    full_recovery::canonicalize_singular_slope_levels(
+        topology,
+        effects,
+        weights,
+        &mut coefficients,
+    )?;
+    normalize_intercept_components(topology, effects, weights, &mut coefficients, false)?;
+    let recovered = finish_channel_major_recovery(
+        topology,
+        effects,
+        weights,
+        target,
+        requested_channels,
+        &coefficients,
+        iterations,
+        tolerance,
+        CategoricalRecoveryMethod::Map,
+        true,
+    )?;
+    if recovered.reconstruction_relative_infinity > reconstruction_threshold {
+        return Err(invalid_data(format!(
+            "normalized slope recovery failed reconstruction: relative infinity residual {:.6e}",
+            recovered.reconstruction_relative_infinity
+        )));
+    }
+    Ok(recovered)
 }
 
 fn recovery_reconstruction_passed(

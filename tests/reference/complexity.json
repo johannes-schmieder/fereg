@@ -1,130 +1,16 @@
 {
   "growth": [
     {
-      "after": 1552,
-      "before": 1543,
-      "metric": "fereg-core/dispatch_candidates",
-      "reason": "Certified fallbacks after explicit requests (SPEC \u00a71): the fallback reason's mapping from fedemean declines and errors, the explicit fedemean chain's skip of the declined formulation, the CMG substitution's eligibility, PPML's substituted plan and the explicit slope CG choice."
-    },
-    {
-      "after": 118859,
-      "before": 118260,
+      "after": 118961,
+      "before": 118859,
       "metric": "fereg-core/production_lines",
-      "reason": "Certified fallbacks after explicit requests and requested/actual reporting (SPEC \u00a71, \u00a711): FeFallbackReason on SolveReport and every fallback site; the OLS explicit fedemean fallback chain (binding and owned designs, the latter also serving explicit solver(cg) on slopes); the Auto substitution of unsupported CMG requests; PPML's Auto plan substitution, canonical retry of uncertified LSMR frames and the IRLS-step route telemetry (PpmlStepRoute); the slope coefficient solver's route tag; the SPEC \u00a75 gauge on the MAP slope recovery tier."
+      "reason": "SPEC \u00a75's gauge on the MAP slope recovery tier in topology_slope_map.rs (channel-major transpose, representative, intercept centering, certified finish)."
     },
     {
-      "after": 17556,
-      "before": 17504,
-      "metric": "fereg-plugin/production_lines",
-      "reason": "Route row column 13 (the fallback reason) and the fifth Schwarz count; the PPML route matrix's two rows (IRLS steps with the fit's fallback and LSMR formulation counts, final solve)."
-    },
-    {
-      "after": 7981,
-      "before": 7970,
-      "metric": "file/crates/fereg-core/src/fe/borrowed_map.rs",
-      "reason": "Fallback reasons at the checkpoint-LSMR and two-FE PCG MAP continuations, and explicit CMG-Schur's MAP continuation after a breakdown that leaves budget (SPEC \u00a71)."
-    },
-    {
-      "after": 3239,
-      "before": 3232,
-      "metric": "file/crates/fereg-core/src/fe/cmg.rs",
-      "reason": "The CMG failure's fallback reason carried to its CG fallback (memory or nonconvergence; uncertified for the final CG verification)."
-    },
-    {
-      "after": 1804,
-      "before": 1802,
-      "metric": "file/crates/fereg-core/src/fe/map.rs",
-      "reason": "The slope coefficient solver's route tag: eliminate x cg x jacobi instead of map."
-    },
-    {
-      "after": 1919,
-      "before": 1918,
-      "metric": "file/crates/fereg-core/src/ols/canonical_products.rs",
-      "reason": "The fallback reason field of its tagged report."
-    },
-    {
-      "after": 4740,
-      "before": 4731,
-      "metric": "file/crates/fereg-core/src/ols/prepared_fit.rs",
-      "reason": "Low-memory merges of an explicit request's blocks where some fell back: the fallback's route and first reason describe the projection."
-    },
-    {
-      "after": 1775,
-      "before": 1772,
-      "metric": "file/crates/fereg-core/src/ppml/categorical_lsmr.rs",
-      "reason": "A reporting accessor: whether the next frame starts on the projections (joint-to-FWL hand-offs)."
-    },
-    {
-      "after": 3394,
-      "before": 3354,
-      "metric": "file/crates/fereg-core/src/ppml/memory.rs",
-      "reason": "PpmlStepRoute: the explicit engine's merged route and iterations over the IRLS steps, LSMR's joint/FWL frame and hand-off counts and the fit's fallback reason; the final solve's fallback reason."
-    },
-    {
-      "after": 1708,
-      "before": 1685,
-      "metric": "file/crates/fereg-core/src/ppml/prepared_estimator.rs",
-      "reason": "An unsupported explicit PPML request (topology, slopes, memory(low)) or a fast memory route that does not fit runs the Auto plan as the certified fallback instead of r(498)/r(909)."
-    },
-    {
-      "after": 3972,
-      "before": 3928,
-      "metric": "file/crates/fereg-core/src/ppml/prepared_irls.rs",
-      "reason": "Explicit LSMR frames the engine does not certify continue on the canonical session (the certified fallback), and the IRLS-step route telemetry of LSMR and CMG frames."
-    },
-    {
-      "after": 2836,
-      "before": 2826,
-      "metric": "file/crates/fereg-plugin/src/ppml_estimate.rs",
-      "reason": "The 2x16 route matrix's dimensions."
-    },
-    {
-      "after": 2031,
-      "before": 1992,
-      "metric": "file/crates/fereg-plugin/src/ppml_result.rs",
-      "reason": "The PPML route shadow's two rows: the IRLS steps' route with the fit's fallback and LSMR formulation counts, and the final solve's route."
-    },
-    {
-      "after": 428,
-      "before": 424,
-      "metric": "function/crates/fereg-core/src/fe/borrowed_map.rs/absorb#1",
-      "reason": "The checkpoint-LSMR MAP fallback records its reason (uncertified or nonconvergence)."
-    },
-    {
-      "after": 960,
-      "before": 953,
-      "metric": "function/crates/fereg-core/src/fe/borrowed_map.rs/absorb_two_fe_pcg_reusing#1",
-      "reason": "Explicit CMG-Schur continues with MAP after a breakdown that leaves budget; the MAP continuation records its reason."
-    },
-    {
-      "after": 1102,
-      "before": 1101,
-      "metric": "function/crates/fereg-core/src/ols/canonical_products.rs/build#1",
-      "reason": "The fallback reason field of its tagged report."
-    },
-    {
-      "after": 302,
-      "before": 301,
-      "metric": "function/crates/fereg-core/src/ols/canonical_products/three.rs/build#1",
-      "reason": "The fallback reason field of its tagged report."
-    },
-    {
-      "after": 513,
-      "before": 490,
-      "metric": "function/crates/fereg-core/src/ppml/prepared_estimator.rs/fit_prepared_ppml_interruptible#1",
-      "reason": "The Auto plan substitution of an unsupported explicit request and of an explicit request whose fast memory route does not fit (the plan recomputed once without the fast-route requirement)."
-    },
-    {
-      "after": 1117,
-      "before": 1069,
-      "metric": "function/crates/fereg-core/src/ppml/prepared_irls.rs/run_prepared_ppml_irls#1",
-      "reason": "An explicit LSMR frame that does not certify continues on the canonical retry; LSMR and CMG frames record the IRLS-step route; a substituted plan's reason enters the telemetry."
-    },
-    {
-      "after": 225,
-      "before": 224,
-      "metric": "function/crates/fereg-plugin/src/ppml_estimate.rs/validate_shadow#1",
-      "reason": "The 2x16 route matrix's length."
+      "after": 3695,
+      "before": 3593,
+      "metric": "file/crates/fereg-core/src/fe/topology_slope_map.rs",
+      "reason": "SPEC \u00a75's gauge on the MAP slope recovery tier: the level-major coefficients transposed to channel-major, fereg's representative on rank-deficient levels and the intercept centering, then the channel-major finish's reconstruction and certificate; the strict finish split out of finish_recovery."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -10624,79 +10510,79 @@
           },
           {
             "condition": "residual . ncols ( ) != 1 || residual . nrows ( ) != target . len ( )",
-            "line": 2834
+            "line": 2953
           },
           {
             "condition": "budget . is_some_and ( | budget | ! budget . fits ( planned_peak ) )",
-            "line": 2883
+            "line": 3002
           },
           {
             "condition": "values . nrows ( ) != nobs || effects . len ( ) != topology . effect_to_topology ( ) . len ( )",
-            "line": 2890
+            "line": 3009
           },
           {
             "condition": "nobs == 0 || values . ncols ( ) == 0",
-            "line": 2895
+            "line": 3014
           },
           {
             "condition": "slope . len ( ) != nobs || slope . iter ( ) . any ( | value | ! value . is_finite ( ) )",
-            "line": 2912
+            "line": 3031
           },
           {
             "condition": "effect . channels ( ) > nobs",
-            "line": 2925
+            "line": 3044
           },
           {
             "condition": "budget . is_some_and ( | budget | ! budget . fits ( payload_peak ) )",
-            "line": 2936
+            "line": 3055
           },
           {
             "condition": "config . symmetric && effects . len ( ) > 1",
-            "line": 2983
+            "line": 3102
           },
           {
             "condition": "row >= values . nrows ( )",
-            "line": 3118
+            "line": 3237
           },
           {
             "condition": "members . is_empty ( ) || values . ncols ( ) != 1 || geometry . len ( ) != square + channels",
-            "line": 3224
+            "line": 3343
           },
           {
             "condition": "row >= values . nrows ( )",
-            "line": 3242
+            "line": 3361
           },
           {
             "condition": "actual > single_slope_recovery_extra_bytes ( residual . nrows ( ) , levels , channels , rayon :: current_num_threads ( ) , ) ?",
-            "line": 3435
+            "line": 3554
           },
           {
             "condition": "effects . len ( ) != 1 || residuals . ncols ( ) != 1",
-            "line": 3507
+            "line": 3626
           },
           {
             "condition": "geometry . len ( ) as u128 * 8 != single_slope_recovery_geometry_bytes ( levels , effects [ 0 ] . channels ( ) ) ?",
-            "line": 3516
+            "line": 3635
           },
           {
             "condition": "output . len ( ) != values . ncols ( ) || scales . len ( ) != values . ncols ( ) || sums . len ( ) != values . ncols ( )",
-            "line": 3646
+            "line": 3765
           },
           {
             "condition": "weights",
-            "line": 3684
+            "line": 3803
           },
           {
             "condition": "values . len ( ) != nobs || values . iter ( ) . any ( | value | ! value . is_finite ( ) || * value <= 0.0 )",
-            "line": 3690
+            "line": 3809
           },
           {
             "condition": "output . capacity ( ) < elements",
-            "line": 3780
+            "line": 3899
           },
           {
             "condition": "output . capacity ( ) < elements",
-            "line": 3796
+            "line": 3915
           }
         ],
         "functions": {
@@ -10709,7 +10595,7 @@
             "lines": 19
           },
           "absorb_with_reservation#1": {
-            "line": 2865,
+            "line": 2984,
             "lines": 155
           },
           "absorbed_sum#1": {
@@ -10721,7 +10607,7 @@
             "lines": 11
           },
           "certify#1": {
-            "line": 3481,
+            "line": 3600,
             "lines": 12
           },
           "certify_intercept_only_recovery#1": {
@@ -10729,11 +10615,11 @@
             "lines": 106
           },
           "certify_single_slope_parallel#1": {
-            "line": 3393,
+            "line": 3512,
             "lines": 87
           },
           "certify_with_geometry#1": {
-            "line": 3497,
+            "line": 3616,
             "lines": 97
           },
           "channel_major_effect_offsets#1": {
@@ -10749,15 +10635,15 @@
             "lines": 3
           },
           "coefficient_reconstruction_passed#1": {
-            "line": 2790,
+            "line": 2909,
             "lines": 39
           },
           "compensated_add#1": {
-            "line": 3748,
+            "line": 3867,
             "lines": 9
           },
           "finish#1": {
-            "line": 3727,
+            "line": 3846,
             "lines": 20
           },
           "finish_channel_major_recovery#1": {
@@ -10778,26 +10664,30 @@
           },
           "finish_recovery#1": {
             "line": 2639,
-            "lines": 139
+            "lines": 123
+          },
+          "finish_strict_recovery#1": {
+            "line": 2767,
+            "lines": 56
           },
           "fold_level_certificate#1": {
             "line": 2125,
             "lines": 65
           },
           "group_moments#1": {
-            "line": 3065,
+            "line": 3184,
             "lines": 9
           },
           "group_moments_with_row_cache#1": {
-            "line": 3075,
+            "line": 3194,
             "lines": 138
           },
           "group_residual_moments_with_geometry#1": {
-            "line": 3214,
+            "line": 3333,
             "lines": 54
           },
           "group_rhs_certificate#1": {
-            "line": 3595,
+            "line": 3714,
             "lines": 43
           },
           "has_intercept#1": {
@@ -10840,12 +10730,16 @@
             "line": 1105,
             "lines": 127
           },
+          "normalized_slope_recovery#1": {
+            "line": 2859,
+            "lines": 38
+          },
           "payload_bytes#1": {
             "line": 267,
             "lines": 25
           },
           "project_effect#1": {
-            "line": 3021,
+            "line": 3140,
             "lines": 43
           },
           "project_effect_and_accumulate#1": {
@@ -10885,15 +10779,15 @@
             "lines": 246
           },
           "recovery_reconstruction_passed#1": {
-            "line": 2779,
+            "line": 2898,
             "lines": 7
           },
           "recovery_reconstruction_relative_infinity#1": {
-            "line": 2830,
+            "line": 2949,
             "lines": 30
           },
           "recovery_reconstruction_threshold#1": {
-            "line": 2861,
+            "line": 2980,
             "lines": 3
           },
           "reserve_f64#1": {
@@ -10905,11 +10799,11 @@
             "lines": 10
           },
           "reserved_indices#1": {
-            "line": 3789,
+            "line": 3908,
             "lines": 15
           },
           "reserved_zeros#1": {
-            "line": 3773,
+            "line": 3892,
             "lines": 15
           },
           "single_slope_recovery_extra_bytes#1": {
@@ -10929,7 +10823,7 @@
             "lines": 3
           },
           "solve_group#1": {
-            "line": 3269,
+            "line": 3388,
             "lines": 106
           },
           "solver_workspace_peak#1": {
@@ -10937,23 +10831,27 @@
             "lines": 3
           },
           "swap_rhs_rows#1": {
-            "line": 3385,
+            "line": 3504,
             "lines": 5
           },
           "swap_symmetric#1": {
-            "line": 3376,
+            "line": 3495,
             "lines": 8
           },
           "topology_source_table#1": {
             "line": 1092,
             "lines": 12
           },
+          "transpose_to_channel_major#1": {
+            "line": 2827,
+            "lines": 27
+          },
           "try_strict_intercept_map#1": {
             "line": 486,
             "lines": 46
           },
           "update_scaled_sum#1": {
-            "line": 3758,
+            "line": 3877,
             "lines": 14
           },
           "validate_coefficient_layout#1": {
@@ -10961,7 +10859,7 @@
             "lines": 27
           },
           "validate_config#1": {
-            "line": 3713,
+            "line": 3832,
             "lines": 13
           },
           "validate_recovery_arguments#1": {
@@ -10973,7 +10871,7 @@
             "lines": 9
           },
           "validate_weights#1": {
-            "line": 3683,
+            "line": 3802,
             "lines": 29
           },
           "value#1": {
@@ -10981,7 +10879,7 @@
             "lines": 4
           },
           "weighted_norms#1": {
-            "line": 3639,
+            "line": 3758,
             "lines": 43
           },
           "with_solver_workspace_peak#1": {
@@ -10989,7 +10887,7 @@
             "lines": 4
           }
         },
-        "production_lines": 3593
+        "production_lines": 3695
       },
       "crates/fereg-core/src/fe/topology_slope_map/full_recovery.rs": {
         "chunk_candidates": [],
@@ -28941,7 +28839,7 @@
         "dispatch_candidates": 1552,
         "files_over_1500": 15,
         "functions_over_150": 56,
-        "production_lines": 118859
+        "production_lines": 118961
       },
       "fereg-plugin": {
         "chunk_candidates": 6,

@@ -10451,15 +10451,10 @@ fn loaded_centered_summary_requires_exact_owner_binding_and_budget() {
 /// slope recovery falls through to MAP. The session takes fedemean only
 /// while the process-wide elimination switch is on, so the test holds the
 /// shared side of the route lock that the switch's test guard excludes.
-#[test]
-fn ineligible_slope_designs_keep_auto_map_and_map_recovery() {
-    let _stable_route = crate::fe::block_schur::stable_route_for_test();
-    let sources = [
-        source(1, "worker"),
-        source(2, "firm"),
-        source(3, "year"),
-        source(4, "t"),
-    ];
+/// A 240-row worker-firm-year panel with an identified firm slope `t`, its
+/// outcome, and the absorbed terms `terms`: (categorical source 0 worker,
+/// 1 firm or 2 year, intercept, slope `t`).
+fn slope_panel(terms: &[(usize, bool, bool)]) -> (crate::ols::PreparedOlsData, Vec<f64>) {
     let n = 240;
     let worker: Vec<f64> = (0..n).map(|r| (r / 6) as f64).collect();
     let firm: Vec<f64> = (0..n).map(|r| ((r / 6 + (r % 6) / 2) % 7) as f64).collect();
@@ -10475,14 +10470,32 @@ fn ineligible_slope_designs_keep_auto_map_and_map_recovery() {
                 + ((r * 31 % 17) as f64 - 8.0) / 20.0
         })
         .collect();
-    let term = |id: u32, intercept: bool, categorical: usize, slopes: Vec<SourceId>| AbsorbedTerm {
-        id: AbsorbTermId::new(id).unwrap(),
-        intercept,
-        categorical_sources: vec![sources[categorical].id],
-        slope_sources: slopes,
-        label: format!("term{id}"),
-        saved_name: String::new(),
-    };
+    // Only the sources the terms use (and the slope `t`) are declared, with
+    // contiguous ids.
+    let names = ["worker", "firm", "year", "t"];
+    let columns = [&worker, &firm, &year, &t];
+    let used: Vec<usize> = (0..3)
+        .filter(|&categorical| terms.iter().any(|t| t.0 == categorical))
+        .chain(std::iter::once(3))
+        .collect();
+    let sources: Vec<SourceEntry> = used
+        .iter()
+        .enumerate()
+        .map(|(position, &index)| source(position as u32 + 1, names[index]))
+        .collect();
+    let id = |index: usize| sources[used.iter().position(|&u| u == index).unwrap()].id;
+    let absorbed_terms = terms
+        .iter()
+        .enumerate()
+        .map(|(index, &(categorical, intercept, slope))| AbsorbedTerm {
+            id: AbsorbTermId::new(index as u32 + 1).unwrap(),
+            intercept,
+            categorical_sources: vec![id(categorical)],
+            slope_sources: if slope { vec![id(3)] } else { vec![] },
+            label: format!("term{index}"),
+            saved_name: String::new(),
+        })
+        .collect();
     let mut bindings = vec![
         OlsInputBinding {
             stata_var_position: 1,
@@ -10501,14 +10514,10 @@ fn ineligible_slope_designs_keep_auto_map_and_map_recovery() {
     }
     let request = OlsRequestV1 {
         model: CompiledTermGraph {
-            sources: sources.to_vec(),
+            sources: sources.clone(),
             terms: Vec::new(),
         },
-        absorbed_terms: vec![
-            term(1, true, 0, vec![]),
-            term(2, true, 1, vec![sources[3].id]),
-            term(3, true, 2, vec![]),
-        ],
+        absorbed_terms,
         bindings,
         include_intercept: false,
         keep_singletons: true,
@@ -10516,17 +10525,141 @@ fn ineligible_slope_designs_keep_auto_map_and_map_recovery() {
     let input = LoadedOlsInput {
         candidate: vec![true; n].into(),
         outcome: loaded(&y),
-        numeric_sources: vec![
-            (sources[0].id, loaded(&worker)),
-            (sources[1].id, loaded(&firm)),
-            (sources[2].id, loaded(&year)),
-            (sources[3].id, loaded(&t)),
-        ],
+        numeric_sources: used
+            .iter()
+            .zip(&sources)
+            .map(|(&index, entry)| (entry.id, loaded(columns[index])))
+            .collect(),
         analytic_weight: None,
         frequency_weight: None,
         probability_weight: None,
     };
-    let prepared = crate::ols::prepare_model(&request, &[], &input, true).unwrap();
+    (
+        crate::ols::prepare_model(&request, &[], &input, true).unwrap(),
+        y,
+    )
+}
+
+/// Saved slope effects (SPEC §5) on every recovery tier: retained fedemean
+/// coefficients, the direct single-effect level solves, fedemean's full
+/// system and MAP after fedemean refuses. Each certifies the fitted FE sum
+/// against the target, its channels add up to that sum, every intercept
+/// effect after the first has weighted mean zero (the §5 gauge on this
+/// connected panel), and the tiers agree channel by channel.
+#[test]
+fn saved_slope_sums_certify_with_the_spec_gauge_on_every_recovery_tier() {
+    use crate::fe::CategoricalRecoveryMethod as M;
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
+    let map = crate::fe::MapConfig {
+        tolerance: 1e-12,
+        max_iterations: 20_000,
+        check_every: 1,
+        symmetric: true,
+    };
+    let three = [(0, true, false), (1, true, true), (2, true, false)];
+    let single = [(1, true, true)];
+    for (terms, tiers) in [
+        (&three[..], &[M::RetainedCoefficients, M::Full, M::Map][..]),
+        (&single[..], &[M::Direct][..]),
+    ] {
+        let (prepared, y) = slope_panel(terms);
+        let fit = prepared
+            .fit_absorb_matrix(
+                BorrowedMapWeights::Unit,
+                DenseMatrix::from_columns(&[y.clone()]).unwrap(),
+                AbsorbConfig {
+                    retain_coefficients: true,
+                    ..AbsorbConfig::default()
+                },
+            )
+            .unwrap();
+        let (residuals, report, retained) = fit.into_full_parts();
+        assert!(report.certified());
+        let target: Vec<f64> = y
+            .iter()
+            .zip(residuals.as_slice())
+            .map(|(value, residual)| value - residual)
+            .collect();
+        let scale = target.iter().fold(1.0_f64, |m, v| m.max(v.abs()));
+        let channels = terms
+            .iter()
+            .map(|t| usize::from(t.1) + usize::from(t.2))
+            .sum::<usize>();
+        let mut reference: Option<Vec<Option<Vec<f64>>>> = None;
+        for &tier in tiers {
+            crate::fe::fedemean_slope::force_ineligible_for_test(tier == M::Map);
+            let recovered = prepared
+                .recover_absorbed_effects_fast(
+                    &target,
+                    &vec![true; channels],
+                    retained
+                        .as_ref()
+                        .filter(|_| tier == M::RetainedCoefficients),
+                    false,
+                    true,
+                    map,
+                    None,
+                )
+                .unwrap();
+            crate::fe::fedemean_slope::force_ineligible_for_test(false);
+            assert_eq!(recovered.recovery_method(), tier);
+            let sum = recovered.absorbed_sum();
+            for row in 0..target.len() {
+                assert!(
+                    (sum[row] - target[row]).abs() <= 1e-9 * scale,
+                    "{tier:?} row {row}"
+                );
+                let total: f64 = recovered
+                    .channels()
+                    .iter()
+                    .map(|channel| channel.as_ref().unwrap()[row])
+                    .sum();
+                assert!(
+                    (total - sum[row]).abs() <= 1e-12 * scale,
+                    "{tier:?} row {row}"
+                );
+            }
+            let mut flat = 0;
+            for (index, &(_, intercept, slope)) in terms.iter().enumerate() {
+                if intercept && index > 0 {
+                    let mean = recovered.channels()[flat]
+                        .as_ref()
+                        .unwrap()
+                        .iter()
+                        .sum::<f64>()
+                        / target.len() as f64;
+                    assert!(
+                        mean.abs() <= 1e-9 * scale,
+                        "{tier:?} effect {index}: {mean:e}"
+                    );
+                }
+                flat += usize::from(intercept) + usize::from(slope);
+            }
+            match &reference {
+                None => reference = Some(recovered.channels().to_vec()),
+                Some(expected) => {
+                    for (channel, (actual, expected)) in
+                        recovered.channels().iter().zip(expected).enumerate()
+                    {
+                        for (a, b) in actual
+                            .as_ref()
+                            .unwrap()
+                            .iter()
+                            .zip(expected.as_ref().unwrap())
+                        {
+                            assert!((a - b).abs() <= 1e-7 * scale, "{tier:?} channel {channel}");
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn ineligible_slope_designs_keep_auto_map_and_map_recovery() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
+    let (prepared, y) = slope_panel(&[(0, true, false), (1, true, true), (2, true, false)]);
     let mut residuals = Vec::new();
     for ineligible in [false, true] {
         crate::fe::fedemean_slope::force_ineligible_for_test(ineligible);
