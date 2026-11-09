@@ -1461,21 +1461,24 @@ ordinary frame and strict witness solves the weighted least-squares Newton
 correction `z=(y−mu)/mu` (zero outcome: −1) on the frozen kept controls `X`
 and the categorical intercepts `D` at the current Hessian weights, in one of
 two formulations with the same solution. *Joint:* modified LSMR on
-`W^1/2 [X D]` with a block preconditioner (the controls' current-weight Gram
-factor, or their diagonal when it is not positive definite; the FE block's
-inverse level masses, or the identity for `precondition(none)`), warm-started
-at the previous frame's solution scaled by the accepted step. *Projections*
-(weighted Frisch–Waugh–Lovell): `[X, z]` projected onto `D` by fedemean's
-full-system modified LSMR (`precondition(auto)`: Jacobi escalating to additive
-Schwarz; `precondition(schwarz)`: Schwarz), the projected controls' normal
-equations, and the residual `z̃−X̃b`; controls start from their previous
-frame's FE coefficients, the correction from zero. `precondition(auto)` runs
-the joint recurrence with Jacobi; a stall (staleness window 4, factor 0.75) or
-a recurrence or certificate miss after one continuation at 0.01×tol (floor
-1e-14) hands the frame to the projections, and later frames of the fit start
-there. `precondition(jacobi)` and `precondition(none)` keep the joint
-recurrence, whose double miss is the frame's numerical refusal;
-`precondition(schwarz)` runs the projections. A frame the engine does not
+`W^1/2 [X D]` with a block-diagonal preconditioner (the controls'
+current-weight Gram factor, or their diagonal when it is not positive
+definite; the FE block's inverse level masses, the identity for
+`precondition(none)`, or fedemean's additive Schwarz FE preconditioner handle,
+below), warm-started at the previous frame's solution scaled by the accepted
+step. *Projections* (weighted Frisch–Waugh–Lovell): `[X, z]` projected onto
+`D` by fedemean's full-system modified LSMR (Jacobi escalating to additive
+Schwarz), the projected controls' normal equations, and the residual
+`z̃−X̃b`; controls start from their previous frame's FE coefficients, the
+correction from zero. `precondition(auto)` runs the joint recurrence with
+Jacobi; a stall (staleness window 4, factor 0.75) or a recurrence or
+certificate miss after one continuation at 0.01×tol (floor 1e-14) continues
+the joint recurrence from its iterate with the Schwarz block, and later frames
+start there; a Schwarz recurrence that does not certify, or a Schwarz block
+that does not build, hands the frame to the projections, and later frames
+start there. `precondition(jacobi)`, `precondition(none)` and
+`precondition(schwarz)` keep the joint recurrence with that block, whose
+double miss is the frame's numerical refusal. A frame the engine does not
 certify (that refusal, a projection miss after its retry, a refused
 workspace) is solved by the canonical session, as are the later frames
 (the certified fallback of §1, reason `nonconvergence` or `memory`); the
@@ -1503,6 +1506,42 @@ worker count with agreement across counts (the projections bitwise), memory
 refusal and cancellation, the two- and three-effect strict-final fixtures,
 and the matched one-million-row comparison (two effects bitwise; three
 effects |Δb| 2e-13, identical deviance).
+
+**Schwarz FE block (2026-11-09).** The joint recurrence's Schwarz block is
+fedemean's FE preconditioner handle (`Projector::fe_preconditioner`):
+additive Schwarz over the star of factor pairs with automatic local solves,
+built for each frame's Hessian weights and fixed within its recurrences,
+scaled to the raw weights and symmetric positive definite on all of the FE
+coefficient space, so the block-diagonal `M^-1` stays nonsingular. It is
+admitted within the projections' workspace limit. A block that does not
+build is a certified fallback: the joint recurrence continues on its Jacobi
+block, reported on the frame (memory refusals do not depend on the weights,
+so later frames start on Jacobi); memory limits still bind, and cancellation
+and input errors are never retried. With the Schwarz block a tolerance stop
+that mlsmr's exit audit refutes (the plain gradient against the estimate in
+`M`'s metric, which differ by the preconditioner's condition number on poorly
+connected FE graphs) counts as terminated, and the exact certificate decides
+it, as for the projections; Jacobi and the identity keep requiring mlsmr's
+convergence. Declared scope: explicit `lsmr` fits under
+`precondition(schwarz)`, and under `precondition(auto)` fits whose Jacobi
+recurrence stalls or misses (formerly the projections): inner iteration
+counts, solver signatures and low bits within §20; Jacobi/none, `auto` fits
+whose Jacobi recurrence certifies and default routes keep their bits.
+Witnesses: dense-oracle frame tests under every preconditioner, a chain design
+whose automatic Jacobi recurrence stalls by itself and certifies jointly to
+1e-12, the refuted-stop rule, the escalation and hand-off, repeatability at
+fixed workers and agreement across counts, memory fallback and refusal,
+cancellation, fedemean's handle oracle tests, and the one-million-row Mac
+comparison against e80da565: on the low-mobility chain panels the joint
+Schwarz block replaces the projections (two effects `auto` 1159 → 895 ms,
+`schwarz` 1060 → 843 ms; three effects 2007 → 1655 and 1884 → 1517 ms), within
+|Δb| 7e-13, relative |ΔSE| 1.3e-13 and identical deviance of the
+tolerance(1e-12) references; `auto` and `jacobi` fits whose Jacobi recurrence
+certifies are bitwise unchanged; explicit `schwarz` on the two-, three- and
+six-effect panels, formerly r(909) under the PPML Schwarz grant, certifies on
+its Jacobi fallback. A Schwarz block on those well-connected panels would cost
+about 0.6 s per frame to build for a handful of saved iterations, which is why
+the automatic choice keeps Jacobi until it stalls.
 
 **Checkpoint accelerator (2026-11-09).** Explicit LSMR and CMG fits with two or
 three categorical effects whose canonical elimination declines project the

@@ -484,13 +484,15 @@ symmetric MAP sweeps. Insufficient optional workspace retains generic MAP.
 {cmd:solver(lsmr)} solves each IRLS step's weighted least-squares correction
 by modified LSMR. With {cmd:precondition(auto)} (the default) it runs one joint
 recurrence on the finite controls and fixed effects with a Jacobi-preconditioned
-fixed-effect block; a recurrence that stalls or misses its certificate hands the
-step to projections of the controls and the working response onto the fixed
-effects (modified LSMR starting on Jacobi and escalating to additive Schwarz),
-and later steps start there. {cmd:precondition(jacobi)} and
-{cmd:precondition(none)} keep the joint recurrence;
-{cmd:precondition(schwarz)} runs the projections with additive Schwarz. Every
-step is accepted only after an exact normal-equation certificate. The engine
+fixed-effect block; a recurrence that stalls or misses its certificate continues
+with an additive Schwarz fixed-effect block (local solves on pairs of effects),
+and later steps start there; if that also fails, or Schwarz does not fit in
+memory, the step goes to projections of the controls and the working response
+onto the fixed effects. {cmd:precondition(jacobi)}, {cmd:precondition(none)}
+and {cmd:precondition(schwarz)} keep the joint recurrence with that
+fixed-effect block; a Schwarz block that does not fit in memory falls back to
+Jacobi. Every step is accepted only after an exact normal-equation
+certificate. The engine
 appears as row {cmd:lsmr} of {cmd:e(fe_solve)} with no active finite controls
 and as {cmd:lsmr_joint} otherwise. {cmd:solver(cg)}
 selects only prepared fused-FWL CMG on the full graph (row {cmd:cmg}). The
