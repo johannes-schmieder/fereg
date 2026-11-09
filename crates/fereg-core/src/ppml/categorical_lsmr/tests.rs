@@ -497,12 +497,13 @@ fn a_stalled_automatic_jacobi_recurrence_continues_on_the_schwarz_block() {
     }
 }
 
-/// A Schwarz FE block beyond its memory limit: an explicit request is an
-/// allocation refusal; the automatic preconditioner hands the frame to the
-/// projections, certified. The projections' own workspace limit refuses
-/// as an allocation.
+/// A Schwarz FE block beyond its memory limit: an explicit request falls
+/// back to its Jacobi block, certified and reported, and later frames start
+/// there without another build; the automatic preconditioner hands the
+/// frame to the projections, certified. The projections' own workspace
+/// limit refuses as an allocation.
 #[test]
-fn a_workspace_beyond_the_admitted_limit_is_an_allocation_refusal() {
+fn a_workspace_beyond_the_admitted_limit_falls_back_or_refuses() {
     let fixture = fixture(120, [9, 6, 4], 1);
     let weights = frame_weights(120, 0.1);
     let mut explicit = engine(
@@ -512,17 +513,17 @@ fn a_workspace_beyond_the_admitted_limit_is_an_allocation_refusal() {
         LsmrPreconditioner::Schwarz,
     );
     FORCE_SCHWARZ_LIMIT.set(64);
-    let error = explicit
-        .solve(
-            &fixture.design,
-            &fixture.outcome,
-            &weights,
-            &weights,
-            1e-9,
-            10_000,
-        )
-        .expect_err("refused Schwarz block");
-    assert_eq!(error.code, ErrorCode::Allocation);
+    let first = oracle_frame(&mut explicit, &fixture, 0.1, 0);
+    let later = oracle_frame(&mut explicit, &fixture, 0.2, 0);
+    for report in [first, later] {
+        assert_eq!(report.formulation, Formulation::Joint);
+        assert_eq!(
+            report.route.preconditioner,
+            crate::fe::FePreconditioner::Jacobi
+        );
+        assert_eq!(report.fallback, Some(JointFallback::SchwarzMemoryLimit));
+    }
+    assert!(explicit.schwarz_refused && explicit.joint.fe_schwarz.is_none());
     let mut automatic = engine(
         &fixture.design,
         fixture.active.clone(),

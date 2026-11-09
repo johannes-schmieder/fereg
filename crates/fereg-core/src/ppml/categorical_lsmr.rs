@@ -31,7 +31,12 @@
 //! memory limit, hands the frame (and later frames) to the projections,
 //! whose fedemean preconditioner escalates to Schwarz.
 //! `precondition(jacobi)`, `precondition(none)` and `precondition(schwarz)`
-//! keep the joint recurrence with that FE block.
+//! keep the joint recurrence with that FE block. A Schwarz block that does
+//! not build within its memory limit (or refuses numerically) is a certified
+//! fallback to the Jacobi block, reported on the frame
+//! ([`JointLsmrReport::fallback`]); a memory refusal does not depend on the
+//! weights, so later frames start on Jacobi. Memory limits still bind, and
+//! cancellation and input errors are never retried.
 //!
 //! Either way the exact normal-equation moments of the formed residual on
 //! the raw controls and on every FE level are recomputed after each solve,
@@ -107,6 +112,17 @@ pub(crate) struct JointLsmrCertificate {
     pub(crate) passed: bool,
 }
 
+/// Why a frame's explicit Schwarz FE block fell back to Jacobi (a certified
+/// fallback: the joint recurrence continued on its Jacobi block).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum JointFallback {
+    /// The Schwarz handle exceeds the memory limit (it does not depend on
+    /// the weights, so later frames start on Jacobi).
+    SchwarzMemoryLimit,
+    /// A Schwarz factorization refused numerically.
+    SchwarzNumerical,
+}
+
 /// The formulation that solved a frame.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Formulation {
@@ -135,6 +151,8 @@ pub(crate) struct JointLsmrReport {
     pub(crate) route: FeRoute,
     /// The joint recurrence's last normal-equation estimate (joint frames).
     pub(crate) recurrence_residual: Option<f64>,
+    /// An explicit Schwarz FE block's certified fallback to Jacobi.
+    pub(crate) fallback: Option<JointFallback>,
     pub(crate) certificate: JointLsmrCertificate,
     #[cfg(test)]
     pub(crate) executing_threads: usize,
@@ -189,6 +207,9 @@ pub(crate) struct ReusableCategoricalJointLsmr<'p> {
     /// A frame of this fit escalated the joint recurrence to the Schwarz FE
     /// block (automatic preconditioner): later frames start there.
     schwarz_first: bool,
+    /// The Schwarz handle exceeded its memory limit: later frames of an
+    /// explicit Schwarz fit start on their Jacobi fallback.
+    schwarz_refused: bool,
     /// A frame of this fit needed the projections: later frames start there.
     projections_first: bool,
     active_design: DenseMatrix,
@@ -415,6 +436,7 @@ impl<'p> ReusableCategoricalJointLsmr<'p> {
             team,
             preconditioner,
             schwarz_first: false,
+            schwarz_refused: false,
             projections_first: false,
             topology: FeTopologyIdentity::capture(fe_design),
             effect_offsets,
@@ -514,9 +536,13 @@ impl<'p> ReusableCategoricalJointLsmr<'p> {
                 &mut self.joint.finite_factor,
             );
             setup_seconds += started.elapsed().as_secs_f64();
+            let explicit_schwarz = self.preconditioner == LsmrPreconditioner::Schwarz;
+            let mut fallback = (explicit_schwarz && self.schwarz_refused)
+                .then_some(JointFallback::SchwarzMemoryLimit);
             let mut block = match self.preconditioner {
                 LsmrPreconditioner::Off => FeBlock::Identity,
                 LsmrPreconditioner::Diagonal => FeBlock::Jacobi,
+                LsmrPreconditioner::Schwarz if self.schwarz_refused => FeBlock::Jacobi,
                 LsmrPreconditioner::Schwarz => FeBlock::Schwarz,
                 LsmrPreconditioner::Auto if self.schwarz_first => FeBlock::Schwarz,
                 LsmrPreconditioner::Auto => FeBlock::Jacobi,
@@ -528,15 +554,18 @@ impl<'p> ReusableCategoricalJointLsmr<'p> {
                 let built = self.prepare_block(fe_design, weights, block, faults.schwarz_limit)?;
                 setup_seconds += started.elapsed().as_secs_f64();
                 if let Some(decline) = built {
-                    if self.preconditioner == LsmrPreconditioner::Schwarz {
-                        return Err(match decline {
-                            fedemean::Decline::MemoryLimit => allocation(
-                                "explicit PPML LSMR Schwarz preconditioner exceeds its admitted workspace",
-                            ),
-                            _ => nonconvergence(
-                                "explicit PPML LSMR Schwarz preconditioner did not build",
-                            ),
+                    let memory = decline == fedemean::Decline::MemoryLimit;
+                    self.schwarz_refused |= memory;
+                    if explicit_schwarz {
+                        // A certified fallback: the joint recurrence
+                        // continues on its Jacobi FE block.
+                        fallback = Some(if memory {
+                            JointFallback::SchwarzMemoryLimit
+                        } else {
+                            JointFallback::SchwarzNumerical
                         });
+                        block = FeBlock::Jacobi;
+                        continue;
                     }
                     break;
                 }
@@ -557,6 +586,7 @@ impl<'p> ReusableCategoricalJointLsmr<'p> {
                             setup_seconds,
                             warm_start_attempted,
                             route,
+                            fallback,
                             ..report
                         };
                         emit_frame_trace(tolerance, &report);
@@ -790,6 +820,7 @@ impl<'p> ReusableCategoricalJointLsmr<'p> {
             formulation: Formulation::Joint,
             route: FeRoute::new(FeReduction::Full, FeMethod::Lsmr, preconditioner),
             recurrence_residual: Some(result.normal_eq_residual),
+            fallback: None,
             certificate,
             #[cfg(test)]
             executing_threads,
@@ -863,6 +894,7 @@ impl<'p> ReusableCategoricalJointLsmr<'p> {
                     formulation: Formulation::Projections,
                     route,
                     recurrence_residual: None,
+                    fallback: None,
                     certificate,
                     #[cfg(test)]
                     executing_threads,
@@ -1298,7 +1330,7 @@ fn emit_frame_trace(scheduled: f64, report: &JointLsmrReport) {
         return;
     }
     crate::diagnostics::emit_solver_trace(&format!(
-        "FEREG_SOLVER_TRACE|phase=ppml_lsmr_frame|formulation={:?}|scheduled={scheduled:.17e}|effective={:.17e}|iterations={}|retries={}|warm={}|preconditioner={:?}|escalations={}|certificate={:.17e}|solve_seconds={:.17e}|certification_seconds={:.17e}",
+        "FEREG_SOLVER_TRACE|phase=ppml_lsmr_frame|formulation={:?}|scheduled={scheduled:.17e}|effective={:.17e}|iterations={}|retries={}|warm={}|preconditioner={:?}|escalations={}|fallback={:?}|certificate={:.17e}|solve_seconds={:.17e}|certification_seconds={:.17e}",
         report.formulation,
         report.effective_tolerance,
         report.iterations,
@@ -1306,6 +1338,7 @@ fn emit_frame_trace(scheduled: f64, report: &JointLsmrReport) {
         u8::from(report.warm_start_attempted),
         report.route.preconditioner,
         report.route.escalations,
+        report.fallback,
         report.certificate.relative_infinity_norm,
         report.solve_seconds,
         report.certification_seconds,
