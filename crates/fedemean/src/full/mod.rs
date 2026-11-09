@@ -5,7 +5,10 @@
 //!
 //! `D` maps coefficients to observations (each row sums its levels'
 //! channels: the intercept coefficient and each slope coefficient times the
-//! row's slope value) and `D'` sums observations into level channels. Both run over
+//! row's slope value) and `D'` sums observations into level channels. A
+//! slope at a large offset from zero is taken less its level centers in
+//! both, with coefficients in that centered basis inside the projection and
+//! raw at its boundary ([`kernels::Basis`], [`blocks`]). Both run over
 //! blocks fixed by the design (rows; small effects' scatter blocks; large
 //! effects' levels, each summed over its rows in ascending order), so the
 //! results do not depend on the worker count or the lane setting.
@@ -165,7 +168,7 @@ use crate::projector::{
 };
 use crate::weights::{Validated, Weights as InputWeights};
 use cells::Cells;
-use kernels::{adjoint, load, residualize, Rows, ROW_BLOCK};
+use kernels::{adjoint, load, residualize, Basis, Rows, ROW_BLOCK};
 use pcg::{pcg, Normal, Work};
 use schwarz::{Refusal, Schwarz};
 use std::time::Instant;
@@ -525,7 +528,15 @@ impl Engine {
             stride: 1,
             first: 0,
         };
-        let [sq, big, _] = load::<1>(st, effects, src, None, state.weights(), &mut t, &mut rows);
+        let [sq, big, _] = load::<1>(
+            st,
+            (effects, state.basis()),
+            src,
+            None,
+            state.weights(),
+            &mut t,
+            &mut rows,
+        );
         if !(sq[0].is_finite() && big[0].is_finite()) {
             return Err(Error::InvalidData("derived residual values must be finite"));
         }
@@ -534,7 +545,14 @@ impl Engine {
             stride: 1,
             first: 0,
         };
-        adjoint::<1>(st, effects, t, None, &mut moments, &mut scatter);
+        adjoint::<1>(
+            st,
+            (effects, state.basis()),
+            t,
+            None,
+            &mut moments,
+            &mut scatter,
+        );
         let reference = amplification * sq[0].sqrt();
         if !reference.is_finite() {
             return Err(Error::InvalidData("derived residual scale is not finite"));
@@ -899,9 +917,11 @@ fn each_coefficient(
 }
 
 /// Add column `j`'s coefficients `x[g * stride + offset]` (internal
-/// layout) to the caller's buffer at its (channel-major) layout.
+/// layout and basis) to the caller's buffer at its (channel-major) layout
+/// in the raw basis: an intercept less its offset slopes' origins times
+/// their coefficients.
 fn add_coefficients(
-    (st, effects): (&Structure, &[Effect<'_>]),
+    (st, (effects, basis)): (&Structure, (&[Effect<'_>], Basis<'_>)),
     x: &[f64],
     (stride, offset): (usize, usize),
     out: &mut CoefficientsMut<'_>,
@@ -910,15 +930,26 @@ fn add_coefficients(
     let layout = out.layout;
     let base = column * layout.per_rhs;
     let values = &mut *out.values;
+    let offsets = basis.offsets();
     each_coefficient(st, effects, |e, g, within| {
-        values[base + layout.effect_offsets[e] + within] += x[g * stride + offset];
+        let mut value = x[g * stride + offset];
+        if offsets && within < effects[e].levels() {
+            for (s, &origin) in basis.level(e, within).iter().enumerate() {
+                if origin != 0.0 {
+                    value -= origin * x[(g + 1 + s) * stride + offset];
+                }
+            }
+        }
+        values[base + layout.effect_offsets[e] + within] += value;
     });
 }
 
-/// The warm start of columns `first..first + R` (canonical layout, `m`
-/// values per column) into `x` (internal layout, `R` per coefficient).
+/// The warm start of columns `first..first + R` (canonical layout and raw
+/// basis, `m` values per column) into `x` (internal layout and basis, `R`
+/// per coefficient): an intercept plus its offset slopes' origins times
+/// their coefficients.
 fn load_start<const R: usize>(
-    (st, effects): (&Structure, &[Effect<'_>]),
+    (st, (effects, basis)): (&Structure, (&[Effect<'_>], Basis<'_>)),
     start: &[f64],
     first: usize,
     x: &mut [f64],
@@ -929,6 +960,18 @@ fn load_start<const R: usize>(
             *x = start[(first + j) * m + st.offsets[e] + within];
         }
     });
+    for (e, effect) in effects.iter().enumerate().filter(|_| basis.offsets()) {
+        for l in 0..effect.levels() {
+            let g = (st.offsets[e] + l * effect.channels()) * R;
+            for (s, &origin) in basis.level(e, l).iter().enumerate() {
+                if origin != 0.0 {
+                    for j in 0..R {
+                        x[g + j] += origin * x[g + (1 + s) * R + j];
+                    }
+                }
+            }
+        }
+    }
 }
 
 /// The cold start in `x` (zero elsewhere): the largest effect's per-level
@@ -990,7 +1033,8 @@ fn starting_iterate<const R: usize>(job: &Job<'_, '_>, batch: &Batch<'_, '_, '_>
     let st = job.st;
     let effects = job.design.effects();
     if let Some(start) = batch.start {
-        load_start::<R>((st, effects), start, batch.first, &mut work.x);
+        let design = (effects, job.state.basis());
+        load_start::<R>((st, design), start, batch.first, &mut work.x);
         return;
     }
     let t = Rows {
@@ -998,7 +1042,8 @@ fn starting_iterate<const R: usize>(job: &Job<'_, '_>, batch: &Batch<'_, '_, '_>
         stride: R,
         first: 0,
     };
-    adjoint::<R>(st, effects, t, None, &mut work.q, &mut work.scatter);
+    let design = (effects, job.state.basis());
+    adjoint::<R>(st, design, t, None, &mut work.q, &mut work.scatter);
     work.x.fill(0.0);
     cold_start::<R>(job, &work.q, &mut work.x);
 }
@@ -1060,7 +1105,7 @@ fn recurrence<const R: usize>(
     let weights = state.weights();
     load::<R>(
         st,
-        effects,
+        (effects, state.basis()),
         src,
         Some(&work.x),
         weights,
@@ -1072,7 +1117,14 @@ fn recurrence<const R: usize>(
         stride: R,
         first: 0,
     };
-    adjoint::<R>(st, effects, t, None, &mut work.r, &mut work.scatter);
+    adjoint::<R>(
+        st,
+        (effects, state.basis()),
+        t,
+        None,
+        &mut work.r,
+        &mut work.scatter,
+    );
     facts.rhs_seconds += started.elapsed().as_secs_f64();
     let started = Instant::now();
     let schwarz = slot.as_ref().filter(|_| built);
@@ -1170,7 +1222,7 @@ fn run<const R: usize>(
     if batch.start.is_none() {
         load::<R>(
             st,
-            effects,
+            (effects, state.basis()),
             src,
             None,
             state.weights(),
@@ -1182,7 +1234,7 @@ fn run<const R: usize>(
     let x = Some(&work.x[..]);
     let stats = load::<R>(
         st,
-        effects,
+        (effects, state.basis()),
         src,
         x,
         state.weights(),
@@ -1194,7 +1246,14 @@ fn run<const R: usize>(
         stride: R,
         first: 0,
     };
-    adjoint::<R>(st, effects, t, None, &mut work.r, &mut work.scatter);
+    adjoint::<R>(
+        st,
+        (effects, state.basis()),
+        t,
+        None,
+        &mut work.r,
+        &mut work.scatter,
+    );
     facts.rhs_seconds += started.elapsed().as_secs_f64();
     let Some((scale, targets)) = targets::<R>(job, &stats, batch.reference) else {
         return Ok(Step::Declined("RHS scale outside the plain-sum range"));
@@ -1222,7 +1281,7 @@ fn run<const R: usize>(
     if let Some(coefficients) = batch.coefficients {
         for j in 0..R {
             add_coefficients(
-                (st, effects),
+                (st, (effects, state.basis())),
                 &work.x,
                 (R, j),
                 coefficients,
@@ -1233,7 +1292,7 @@ fn run<const R: usize>(
     let target = (batch.values.as_mut_slice(), ncols, batch.first);
     let sq = residualize::<R>(
         st,
-        effects,
+        (effects, state.basis()),
         &work.x,
         target,
         state.weights(),
@@ -1245,7 +1304,14 @@ fn run<const R: usize>(
         stride: R,
         first: 0,
     };
-    adjoint::<R>(st, effects, t, None, &mut work.q, &mut work.scatter);
+    adjoint::<R>(
+        st,
+        (effects, state.basis()),
+        t,
+        None,
+        &mut work.q,
+        &mut work.scatter,
+    );
     let tolerance = job.request.tolerance;
     let certified = certify::<R>((st, effects, state), &work.q, sq, scale, tolerance);
     facts.residual_seconds += started.elapsed().as_secs_f64();

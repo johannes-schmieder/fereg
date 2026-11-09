@@ -69,8 +69,10 @@ struct Case {
     /// Per effect, per slope, one value per observation.
     slopes: Vec<Vec<Vec<f64>>>,
     /// A common offset of the slopes that the generated columns do not
-    /// carry (absorbed by the intercepts).
+    /// carry (absorbed by the intercepts), and one of a single effect's
+    /// slopes on every `every`-th level (effect, every, offset).
     offset: f64,
+    levels_offset: Option<(usize, u32, f64)>,
 }
 
 impl Case {
@@ -116,6 +118,7 @@ impl Case {
             codes,
             slopes,
             offset: 0.0,
+            levels_offset: None,
         }
     }
 
@@ -126,6 +129,31 @@ impl Case {
         }
         self.offset = offset;
         self
+    }
+
+    /// Add `offset` to effect `e`'s slopes on every `every`-th level only
+    /// (the columns stay as they were).
+    fn shifted_levels(mut self, e: usize, every: u32, offset: f64) -> Self {
+        for (i, &code) in self.codes[e].iter().enumerate() {
+            if code % every == 0 {
+                for slope in &mut self.slopes[e] {
+                    slope[i] += offset;
+                }
+            }
+        }
+        self.levels_offset = Some((e, every, offset));
+        self
+    }
+
+    /// The offset of effect `e`'s slopes at row `i` (absent from the
+    /// columns).
+    fn offset_at(&self, e: usize, i: usize) -> f64 {
+        match self.levels_offset {
+            Some((effect, every, offset)) if effect == e && self.codes[e][i] % every == 0 => {
+                self.offset + offset
+            }
+            _ => self.offset,
+        }
     }
 
     fn design(&self) -> Design<'_> {
@@ -205,22 +233,21 @@ impl Case {
             let noise = [1.0, 0.0, 2.0][j % 3];
             let constant = 4.0 * j as f64 - 3.0;
             for i in 0..self.n {
-                data[i * ncols + j] =
-                    constant + noise * rng.normal() + self.fitted_less(&alpha, i, self.offset);
+                data[i * ncols + j] = constant + noise * rng.normal() + self.fitted_less(&alpha, i);
             }
         }
         data
     }
 
-    /// `D b` at row `i` with every slope less `offset`.
-    fn fitted_less(&self, coefficients: &[f64], i: usize, offset: f64) -> f64 {
+    /// `D b` at row `i` with every slope less its offset.
+    fn fitted_less(&self, coefficients: &[f64], i: usize) -> f64 {
         let offsets = self.offsets();
         let mut fit = 0.0;
         for e in 0..self.specs.len() {
             let (levels, lead) = (self.specs[e].levels, usize::from(self.specs[e].intercept));
             let code = self.codes[e][i] as usize;
             for c in 0..self.channels(e) {
-                let shift = if c < lead { 0.0 } else { offset };
+                let shift = if c < lead { 0.0 } else { self.offset_at(e, i) };
                 let v = self.value(e, c, i) - shift;
                 fit += v * coefficients[offsets[e] + c * levels + code];
             }
@@ -1271,12 +1298,11 @@ fn slope_elimination_is_pool_independent() {
 }
 
 /// Slopes sharing a large common offset (near `+-2^24`, `3 * 2^20` and
-/// `1e5`, varying by units on each level): each level's blocks are formed in
-/// its centered basis, so the preconditioners, the Schur blocks and the
-/// elimination stay accurate and every route matches the oracle in the raw
-/// basis. The operator and the certificate stay in the raw basis, whose
-/// rounding floor at an offset of `2^24` is about `1e-10` of the column, so
-/// every route is certified at `1e-9`.
+/// `1e5`, varying by units on each level): the operator, the moments, the
+/// blocks and the certificate work in each level's centered basis, so no
+/// offset cancels the slopes' variation, and every route (no
+/// preconditioner, Jacobi, Schwarz and the elimination; unit and varying
+/// weights) certifies at `1e-10` and matches the oracle in the raw basis.
 #[test]
 fn slopes_with_large_offsets_match_dense_oracle() {
     let two = [spec(30, true, 0), spec(8, true, 1)];
@@ -1290,7 +1316,6 @@ fn slopes_with_large_offsets_match_dense_oracle() {
                 let oracle = Oracle::new(&case, weights);
                 let mut routes: Vec<_> = routes(&case)
                     .into_iter()
-                    .filter(|&(_, p)| p != Preconditioner::Identity)
                     .map(|(m, p)| (Reduction::Full, m, p))
                     .collect();
                 if specs.len() == 2 {
@@ -1301,7 +1326,85 @@ fn slopes_with_large_offsets_match_dense_oracle() {
                     ));
                 }
                 for route in routes {
-                    check_at(&case, weights, &oracle, route, ((3, 103), 1e-9));
+                    check_at(&case, weights, &oracle, route, ((3, 103), TOLERANCE));
+                }
+            }
+        }
+    }
+}
+
+/// Offset slopes on some levels only (the rest raw), one effect with two
+/// slopes: every route certifies at `1e-10` and matches the oracle, and a
+/// warm start in the raw basis from the solution needs no more iterations
+/// than the cold start (the raw coefficients of an offset slope carry
+/// their offset's rounding, about `1e-9` of the column here), from a
+/// perturbed start the same projection.
+#[test]
+fn offset_slopes_mix_with_raw_levels_and_warm_starts() {
+    let specs = [spec(28, true, 0), spec(9, true, 2)];
+    let case = Case::random(111, 400, &specs).shifted_levels(1, 2, 16_777_216.0);
+    let weights = case.weights(112);
+    let ncols = 3;
+    let original = case.columns(113, ncols);
+    for weights in [None, Some(weights.as_slice())] {
+        let oracle = Oracle::new(&case, weights);
+        let mut routes: Vec<_> = routes(&case)
+            .into_iter()
+            .map(|(m, p)| (Reduction::Full, m, p))
+            .collect();
+        routes.push((
+            Reduction::EliminateLargest,
+            Method::Pcg,
+            Preconditioner::Jacobi,
+        ));
+        for route in routes {
+            check_at(&case, weights, &oracle, route, ((ncols, 113), TOLERANCE));
+            let (reduction, method, preconditioner) = route;
+            if reduction == Reduction::EliminateLargest {
+                continue;
+            }
+            let mut projector = Projector::new(case.design(), full(method, preconditioner));
+            let request = Request::new(TOLERANCE, MAX_ITERATIONS);
+            let mut solved = original.clone();
+            let (outcome, solution) = project(
+                &mut projector,
+                &case,
+                weights,
+                (&mut solved, ncols),
+                None,
+                &request,
+            );
+            let cold = projected(outcome);
+            assert!(cold.certificate.passed);
+            let mut rng = Rng(114);
+            let perturbed: Vec<f64> = solution.iter().map(|x| x + 0.1 * rng.normal()).collect();
+            for (start, few) in [(&solution, true), (&perturbed, false)] {
+                let mut data = original.clone();
+                let (outcome, coefficients) = project(
+                    &mut projector,
+                    &case,
+                    weights,
+                    (&mut data, ncols),
+                    Some(start),
+                    &request,
+                );
+                let report = projected(outcome);
+                assert!(report.certificate.passed, "{route:?}");
+                if few {
+                    let (warm, cold) = (report.facts.iterations, cold.facts.iterations);
+                    assert!(warm <= cold, "{route:?}: {:?}", report.facts);
+                }
+                for j in 0..ncols {
+                    let y = column(&original, ncols, j);
+                    let r = column(&data, ncols, j);
+                    let expected = oracle.residual(&y);
+                    let bound = 1e-7 * inf_norm(&y).max(1.0);
+                    assert!(r.iter().zip(&expected).all(|(a, b)| (a - b).abs() <= bound));
+                    let bound = 1e-8 * inf_norm(&y).max(1.0) * 16_777_216.0;
+                    for (i, (&yi, &ri)) in y.iter().zip(&r).enumerate() {
+                        let fit = case.fitted(&coefficients, Some(j), i);
+                        assert!((yi - fit - ri).abs() <= bound, "{route:?} {j} {i}");
+                    }
                 }
             }
         }

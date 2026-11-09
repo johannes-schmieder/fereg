@@ -45,6 +45,12 @@ impl State {
         (self.blocks.tasks() > 0).then_some(&self.blocks)
     }
 
+    /// The coordinates of the operator, the moments and the coefficients
+    /// ([`Blocks::basis`]: offset slopes centered, everything else raw).
+    pub(super) fn basis(&self) -> super::kernels::Basis<'_> {
+        self.blocks.basis()
+    }
+
     /// `sqrt` of the normalized weights, `None` for unit weights.
     #[cfg_attr(not(feature = "schwarz"), allow(dead_code))]
     pub(super) fn roots(&self) -> Option<&[f64]> {
@@ -114,7 +120,9 @@ impl State {
                 first: 0,
             },
         };
-        adjoint::<1>(st, effects, src, None, &mut self.mass, scatter);
+        // Raw: the blocks below replace the masses of the effects with slopes.
+        let design = (effects, super::kernels::Basis::default());
+        adjoint::<1>(st, design, src, None, &mut self.mass, scatter);
         if st.sloped {
             let normalized = (!self.normalized.is_empty()).then_some(&self.normalized[..]);
             self.blocks.fill(st, effects, normalized, &mut self.mass)?;

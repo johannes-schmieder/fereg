@@ -210,13 +210,14 @@ impl Normal<'_, '_> {
             cells.apply::<R>(actions, (p, q), t, scatter);
             return;
         }
-        forward::<R>(self.st, self.effects, p, self.state.weights(), t);
+        let design = (self.effects, self.state.basis());
+        forward::<R>(self.st, design, p, self.state.weights(), t);
         let rows = Rows {
             data: t,
             stride: R,
             first: 0,
         };
-        adjoint::<R>(self.st, self.effects, rows, None, q, scatter);
+        adjoint::<R>(self.st, design, rows, None, q, scatter);
     }
 }
 

@@ -4,6 +4,11 @@
 //! stored flat (`R` values per row or level). Every reduction runs over
 //! blocks fixed by the design and is combined in block order, so results do
 //! not depend on the worker count.
+//!
+//! With a [`Basis`], a level whose slope sits at a large offset from zero
+//! is applied in its centered basis: the slope channel's value on a row is
+//! the slope less its level's center, so `D x` and `D' r` see the slope's
+//! variation on the level instead of the offset.
 
 use super::structure::{Gathered, Structure};
 use crate::design::Effect;
@@ -71,18 +76,64 @@ where
     }
 }
 
+/// The coordinates of the operator, its moments and the coefficients: per
+/// level of an effect with an intercept, each slope's origin, its center
+/// (its weighted level mean, [`super::blocks`]) where that is an offset of
+/// the slope, else zero (the raw basis). A slope's values are taken less of
+/// their origin, and the coefficients are `(a + sum_s b_s o_s, b)` for the
+/// raw `(a, b)`. The default is the raw basis everywhere.
+#[derive(Clone, Copy, Default)]
+pub(super) struct Basis<'a> {
+    origins: &'a [f64],
+    /// Per effect, its first origin and origins per level (0: an effect
+    /// with every level raw).
+    table: &'a [(usize, usize)],
+}
+
+impl<'a> Basis<'a> {
+    pub(super) fn new(origins: &'a [f64], table: &'a [(usize, usize)]) -> Self {
+        Self { origins, table }
+    }
+
+    /// Whether a slope has an origin (else every value is raw).
+    #[inline(always)]
+    pub(super) fn offsets(&self) -> bool {
+        !self.table.is_empty()
+    }
+
+    /// The origins of level `l` of effect `e` (empty: raw).
+    #[inline(always)]
+    pub(super) fn level(&self, e: usize, l: usize) -> &'a [f64] {
+        match self.table.get(e) {
+            Some(&(first, k)) if k > 0 => &self.origins[first + l * k..first + (l + 1) * k],
+            _ => &[],
+        }
+    }
+}
+
+/// Slope `s`'s value on `row` less its level's origin (`origins`, empty:
+/// none).
+#[inline(always)]
+fn value(slope: &[f64], row: usize, origins: &[f64], s: usize) -> f64 {
+    match origins.get(s) {
+        Some(origin) => slope[row] - origin,
+        None => slope[row],
+    }
+}
+
 /// `(D x)_row`: the row's coefficient of every effect, summed in effect
 /// order (with slopes, `S`: each effect's channels in order, a slope
-/// channel's coefficient times the row's slope value).
+/// channel's coefficient times the row's slope value, with offsets, `O`,
+/// less its origin in `basis`).
 #[inline(always)]
-fn fitted<const R: usize, const S: bool>(
+fn fitted<const R: usize, const S: bool, const O: bool>(
     st: &Structure,
-    effects: &[Effect<'_>],
+    (effects, basis): (&[Effect<'_>], Basis<'_>),
     x: &[f64],
     row: usize,
 ) -> [f64; R] {
     let mut f = [0.0; R];
-    for (effect, &offset) in effects.iter().zip(&st.offsets) {
+    for (e, (effect, &offset)) in effects.iter().zip(&st.offsets).enumerate() {
         let code = effect.codes()[row] as usize;
         if !S {
             let g = (offset + code) * R;
@@ -98,8 +149,19 @@ fn fitted<const R: usize, const S: bool>(
             }
             g += R;
         }
-        for slope in effect.slopes() {
-            let v = slope[row];
+        if !O {
+            for slope in effect.slopes() {
+                let v = slope[row];
+                for j in 0..R {
+                    f[j] += v * x[g + j];
+                }
+                g += R;
+            }
+            continue;
+        }
+        let origins = basis.level(e, code);
+        for (s, slope) in effect.slopes().iter().enumerate() {
+            let v = value(slope, row, origins, s);
             for j in 0..R {
                 f[j] += v * x[g + j];
             }
@@ -111,27 +173,33 @@ fn fitted<const R: usize, const S: bool>(
 
 /// [`fitted`] for the design's kind (the intercept-only loop unchanged).
 #[inline(always)]
-fn fit<const R: usize>(st: &Structure, effects: &[Effect<'_>], x: &[f64], row: usize) -> [f64; R] {
-    if st.sloped {
-        fitted::<R, true>(st, effects, x, row)
-    } else {
-        fitted::<R, false>(st, effects, x, row)
+fn fit<const R: usize>(
+    st: &Structure,
+    design: (&[Effect<'_>], Basis<'_>),
+    x: &[f64],
+    row: usize,
+) -> [f64; R] {
+    match (st.sloped, design.1.offsets()) {
+        (false, _) => fitted::<R, false, false>(st, design, x, row),
+        (true, false) => fitted::<R, true, false>(st, design, x, row),
+        (true, true) => fitted::<R, true, true>(st, design, x, row),
     }
 }
 
 /// `out = scale * D x` (`scale` per row; `None` is one).
 pub(super) fn forward<const R: usize>(
     st: &Structure,
-    effects: &[Effect<'_>],
+    design: (&[Effect<'_>], Basis<'_>),
     x: &[f64],
     scale: Option<&[f64]>,
     out: &mut [f64],
 ) {
+    let effects = design.0;
     let body = |block: usize, out: &mut [f64]| {
         let first = block * ROW_BLOCK;
         for (k, o) in out.chunks_exact_mut(R).enumerate() {
             let row = first + k;
-            let f = fit::<R>(st, effects, x, row);
+            let f = fit::<R>(st, design, x, row);
             let s = scale.map_or(1.0, |s| s[row]);
             for j in 0..R {
                 o[j] = s * f[j];
@@ -145,21 +213,22 @@ pub(super) fn forward<const R: usize>(
 /// holds one accumulator per scatter block.
 pub(super) fn adjoint<const R: usize>(
     st: &Structure,
-    effects: &[Effect<'_>],
+    design: (&[Effect<'_>], Basis<'_>),
     src: Rows<'_>,
     scale: Option<&[f64]>,
     out: &mut [f64],
     scatter: &mut [f64],
 ) {
+    let (effects, basis) = design;
     if !st.scattered.is_empty() {
-        scatter_pass::<R>(st, effects, src, scale, out, scatter);
+        scatter_pass::<R>(st, design, src, scale, out, scatter);
     }
     for index in &st.gathered {
         let offset = st.offsets[index.effect];
         let effect = &effects[index.effect];
         let levels = effect.levels();
         if effect.sloped() {
-            gather_channels::<R>(st, effect, index, (src, scale), out);
+            gather_channels::<R>(st, (effect, basis), index, (src, scale), out);
             continue;
         }
         let body = |block: usize, out: &mut [f64]| {
@@ -187,7 +256,7 @@ pub(super) fn adjoint<const R: usize>(
 /// summed over its rows in ascending order into the level's adjacent slots.
 fn gather_channels<const R: usize>(
     st: &Structure,
-    effect: &Effect<'_>,
+    (effect, basis): (&Effect<'_>, Basis<'_>),
     index: &Gathered,
     (src, scale): (Rows<'_>, Option<&[f64]>),
     out: &mut [f64],
@@ -197,6 +266,7 @@ fn gather_channels<const R: usize>(
         let first = block * LEVEL_BLOCK;
         for (k, o) in out.chunks_exact_mut(channels * R).enumerate() {
             let level = first + k;
+            let origins = basis.level(index.effect, level);
             o.fill(0.0);
             for &row in &index.rows[index.starts[level]..index.starts[level + 1]] {
                 let row = row as usize;
@@ -205,7 +275,11 @@ fn gather_channels<const R: usize>(
                 for value in &mut v {
                     *value *= w;
                 }
-                add_channels::<R>(effect, row, &v, o);
+                if origins.is_empty() {
+                    add_channels::<R, false>((effect, origins), row, &v, o);
+                } else {
+                    add_channels::<R, true>((effect, origins), row, &v, o);
+                }
             }
         }
     };
@@ -220,9 +294,15 @@ fn gather_channels<const R: usize>(
     );
 }
 
-/// `acc[c] += value_c(row) v` over the effect's channels (slots of `R`).
+/// `acc[c] += value_c(row) v` over the effect's channels (slots of `R`;
+/// with offsets, `O`, the slopes less the row's level `origins`).
 #[inline(always)]
-fn add_channels<const R: usize>(effect: &Effect<'_>, row: usize, v: &[f64; R], acc: &mut [f64]) {
+fn add_channels<const R: usize, const O: bool>(
+    (effect, origins): (&Effect<'_>, &[f64]),
+    row: usize,
+    v: &[f64; R],
+    acc: &mut [f64],
+) {
     let mut a = 0;
     if effect.intercept() {
         for j in 0..R {
@@ -230,8 +310,12 @@ fn add_channels<const R: usize>(effect: &Effect<'_>, row: usize, v: &[f64; R], a
         }
         a = R;
     }
-    for slope in effect.slopes() {
-        let x = slope[row];
+    for (s, slope) in effect.slopes().iter().enumerate() {
+        let x = if O {
+            value(slope, row, origins, s)
+        } else {
+            slope[row]
+        };
         for j in 0..R {
             acc[a + j] += x * v[j];
         }
@@ -240,11 +324,12 @@ fn add_channels<const R: usize>(effect: &Effect<'_>, row: usize, v: &[f64; R], a
 }
 
 /// One scatter block's rows into its accumulator `acc` (with slopes, `S`:
-/// every channel of each scattered effect).
+/// every channel of each scattered effect; with offsets, `O`, the slopes
+/// less their origins).
 #[inline(always)]
-fn scatter_rows<const R: usize, const S: bool>(
+fn scatter_rows<const R: usize, const S: bool, const O: bool>(
     st: &Structure,
-    effects: &[Effect<'_>],
+    (effects, basis): (&[Effect<'_>], Basis<'_>),
     (src, scale): (Rows<'_>, Option<&[f64]>),
     span: std::ops::Range<usize>,
     acc: &mut [f64],
@@ -258,8 +343,10 @@ fn scatter_rows<const R: usize, const S: bool>(
         for (&e, &base) in st.scattered.iter().zip(&st.scatter_offsets) {
             if S {
                 let effect = &effects[e];
-                let a = (base + effect.codes()[row] as usize * effect.channels()) * R;
-                add_channels::<R>(effect, row, &v, &mut acc[a..]);
+                let code = effect.codes()[row] as usize;
+                let a = (base + code * effect.channels()) * R;
+                let origins = if O { basis.level(e, code) } else { &[] };
+                add_channels::<R, O>((effect, origins), row, &v, &mut acc[a..]);
                 continue;
             }
             let a = (base + effects[e].codes()[row] as usize) * R;
@@ -274,7 +361,7 @@ fn scatter_rows<const R: usize, const S: bool>(
 /// into its own accumulator; the accumulators are added in block order.
 fn scatter_pass<const R: usize>(
     st: &Structure,
-    effects: &[Effect<'_>],
+    design: (&[Effect<'_>], Basis<'_>),
     src: Rows<'_>,
     scale: Option<&[f64]>,
     out: &mut [f64],
@@ -287,10 +374,11 @@ fn scatter_pass<const R: usize>(
         acc.fill(0.0);
         let start = block * rows;
         let span = start..(start + rows).min(st.nobs);
-        if st.sloped {
-            scatter_rows::<R, true>(st, effects, (src, scale), span, acc);
-        } else {
-            scatter_rows::<R, false>(st, effects, (src, scale), span, acc);
+        let lent = (src, scale);
+        match (st.sloped, design.1.offsets()) {
+            (false, _) => scatter_rows::<R, false, false>(st, design, lent, span, acc),
+            (true, false) => scatter_rows::<R, true, false>(st, design, lent, span, acc),
+            (true, true) => scatter_rows::<R, true, true>(st, design, lent, span, acc),
         }
     };
     let scatter = &mut scatter[..blocks * width];
@@ -301,6 +389,7 @@ fn scatter_pass<const R: usize>(
             *a += b;
         }
     }
+    let effects = design.0;
     for (&e, &base) in st.scattered.iter().zip(&st.scatter_offsets) {
         let (offset, span) = (st.offsets[e], effects[e].levels() * effects[e].channels());
         out[offset * R..(offset + span) * R].copy_from_slice(&total[base * R..(base + span) * R]);
@@ -312,7 +401,7 @@ fn scatter_pass<const R: usize>(
 /// column, from per-block partials combined in block order.
 pub(super) fn load<const R: usize>(
     st: &Structure,
-    effects: &[Effect<'_>],
+    design: (&[Effect<'_>], Basis<'_>),
     src: Rows<'_>,
     x: Option<&[f64]>,
     scale: Option<&[f64]>,
@@ -326,7 +415,7 @@ pub(super) fn load<const R: usize>(
             let row = first + k;
             let y = src.get::<R>(row);
             let w = scale.map_or(1.0, |s| s[row]);
-            let f = x.map_or([0.0; R], |x| fit::<R>(st, effects, x, row));
+            let f = x.map_or([0.0; R], |x| fit::<R>(st, design, x, row));
             for j in 0..R {
                 let d = y[j] - f[j];
                 stats[0][j] += w * y[j] * y[j];
@@ -341,7 +430,7 @@ pub(super) fn load<const R: usize>(
     };
     let blocks = st.nobs.div_ceil(ROW_BLOCK);
     let partials = &mut partials[..blocks * 3 * R];
-    let work = st.nobs * R * (1 + x.map_or(0, |_| effects.len()));
+    let work = st.nobs * R * (1 + x.map_or(0, |_| design.0.len()));
     each_block2((out, ROW_BLOCK * R), (partials, 3 * R), work, &body);
     let mut stats = [[0.0; R], [0.0_f64; R], [0.0; R]];
     for part in partials.chunks_exact(3 * R) {
@@ -360,7 +449,7 @@ pub(super) fn load<const R: usize>(
 #[allow(clippy::too_many_arguments)]
 pub(super) fn residualize<const R: usize>(
     st: &Structure,
-    effects: &[Effect<'_>],
+    design: (&[Effect<'_>], Basis<'_>),
     x: &[f64],
     (values, stride, first): (&mut [f64], usize, usize),
     scale: Option<&[f64]>,
@@ -376,7 +465,7 @@ pub(super) fn residualize<const R: usize>(
             .enumerate()
         {
             let row = start + k;
-            let f = fit::<R>(st, effects, x, row);
+            let f = fit::<R>(st, design, x, row);
             let w = scale.map_or(1.0, |s| s[row]);
             let v = &mut row_values[first..first + R];
             for j in 0..R {
@@ -390,7 +479,7 @@ pub(super) fn residualize<const R: usize>(
     };
     let blocks = st.nobs.div_ceil(ROW_BLOCK);
     let partials = &mut partials[..blocks * R];
-    if st.nobs * R * effects.len() < PARALLEL_WORK {
+    if st.nobs * R * design.0.len() < PARALLEL_WORK {
         for (k, ((values, out), part)) in values
             .chunks_mut(ROW_BLOCK * stride)
             .zip(out.chunks_mut(ROW_BLOCK * R))

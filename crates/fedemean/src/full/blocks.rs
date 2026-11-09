@@ -34,12 +34,23 @@
 //! every channel's own `|m_c| / sqrt((G_l)_cc)`, and does not depend on how
 //! the channels are parametrized (centering a slope changes nothing).
 //!
+//! **Offsets.** A slope whose level centers are more than [`OFFSET`] times
+//! its spread about them (root-mean-square centers against the pooled
+//! weighted standard deviation within levels) is an offset slope: the full
+//! formulation's operator, moments, coefficients and certificate take it in
+//! each level's centered basis too ([`Basis`]), since in the raw basis the
+//! offset would cancel its variation (the raw rounding floor is about
+//! `epsilon * center / spread`). Every other slope stays raw there, moved
+//! into the blocks' basis by its centers as the blocks are applied; so does
+//! an offset slope on a level where it is constant (an exact null direction
+//! in the raw basis).
+//!
 //! **Determinism.** Grams are summed per level over its rows in ascending
 //! order (gathered effects) or by fixed row blocks merged in block order
 //! (scattered effects); the inverses and the measure passes run over fixed
 //! level tasks combined in task order.
 
-use super::kernels::{each_block, PARALLEL_WORK};
+use super::kernels::{each_block, Basis, PARALLEL_WORK};
 use super::refill;
 use super::structure::Structure;
 use crate::certificate::MomentFold;
@@ -60,6 +71,11 @@ const LEVEL_TASK: usize = 512;
 const CONSTANT: f64 = 1e-20;
 /// Rotation sweeps of the eigendecomposition (it converges in a few).
 const SWEEPS: usize = 32;
+/// A slope whose centers exceed this many pooled weighted standard
+/// deviations within levels is an offset slope (module docs): below it the
+/// raw basis loses at most about `log2(OFFSET)` bits to the offset, so its
+/// floor stays near `1e-13`.
+const OFFSET: f64 = 1024.0;
 
 /// One effect with slopes: where its levels' blocks are.
 #[derive(Clone, Copy)]
@@ -89,6 +105,13 @@ pub(crate) struct Blocks {
     /// (the centers of its basis), and whether the slope is constant there.
     centers: Vec<f64>,
     constant: Vec<bool>,
+    /// Each slope's origin in the operator's basis (its center for an
+    /// offset slope, else zero) and the shift from there to the center.
+    origins: Vec<f64>,
+    shifts: Vec<f64>,
+    /// Per effect, its first origin and origins per level when a level of
+    /// it has an offset slope (the operator's [`Basis`]).
+    table: Vec<(usize, usize)>,
     /// Scatter accumulators of a Gram, and the level sums of the means.
     scratch: Vec<f64>,
     sums: Vec<f64>,
@@ -111,11 +134,14 @@ pub(super) fn block_bytes(st: &Structure, effects: &[Effect<'_>]) -> u128 {
         }
     }
     8 * (values + scratch + 3 * crate::elimination::BATCH as u128 * tasks)
+        + 16 * effects.len() as u128
 }
 
 impl Blocks {
     pub(super) fn bytes(&self) -> u128 {
         (self.values.capacity() + self.centers.capacity() + self.scratch.capacity()) as u128 * 8
+            + (self.origins.capacity() + self.shifts.capacity()) as u128 * 8
+            + self.table.capacity() as u128 * 16
             + self.sums.capacity() as u128 * 8
             + self.parts.capacity() as u128 * std::mem::size_of::<Part>() as u128
     }
@@ -124,11 +150,17 @@ impl Blocks {
         self.singular
     }
 
-    /// The centers of level `l` of `part`.
+    /// The shifts of level `l` of `part` from the operator's basis to the
+    /// blocks' (a raw slope's center, an offset slope's zero).
     #[inline]
     fn means(&self, part: &Part, l: usize) -> &[f64] {
         let at = part.center + l * part.centered;
-        &self.centers[at..at + part.centered]
+        &self.shifts[at..at + part.centered]
+    }
+
+    /// The coordinates the operator applies the effects in.
+    pub(super) fn basis(&self) -> Basis<'_> {
+        Basis::new(&self.origins, &self.table)
     }
 
     /// Measure tasks (partials of [`Blocks::measure`]: `3 R` each).
@@ -168,6 +200,11 @@ impl Blocks {
         refill(&mut self.values, first, 0.0)?;
         refill(&mut self.centers, center, 0.0)?;
         refill(&mut self.constant, center, false)?;
+        refill(&mut self.origins, center, 0.0)?;
+        refill(&mut self.shifts, center, 0.0)?;
+        // Empty without an offset slope (the operator's raw path).
+        self.table.clear();
+        super::reserve(&mut self.table, effects.len())?;
         let singular = AtomicUsize::new(0);
         for k in 0..self.parts.len() {
             let part = self.parts[k];
@@ -184,6 +221,10 @@ impl Blocks {
                 (span.clone(), part),
                 self,
             )?;
+            if self.origins(part) {
+                self.table.resize(effects.len(), (0, 0));
+                self.table[part.effect] = (part.center, part.centered);
+            }
             let centers = &self.centers[part.center..part.center + part.levels * part.centered];
             let constant = &self.constant[part.center..part.center + part.levels * part.centered];
             let blocks = &mut self.values[span];
@@ -240,6 +281,36 @@ impl Blocks {
         Some(&self.values[part.first..part.first + part.levels * part.channels.pow(2)])
     }
 
+    /// Each slope's origin and shift on every level of `part` from its
+    /// centers and centered Grams (before inversion), summed in level order;
+    /// whether a slope is an offset slope.
+    fn origins(&mut self, part: Part) -> bool {
+        let (c, k) = (part.channels, part.centered);
+        let span = part.center..part.center + part.levels * k;
+        let grams = &self.values[part.first..part.first + part.levels * c * c];
+        let mut any = false;
+        for s in 0..k {
+            let (mut squares, mut spread) = (0.0, 0.0);
+            for (l, g) in grams.chunks_exact(c * c).enumerate() {
+                let at = span.start + l * k + s;
+                if !self.constant[at] {
+                    squares += g[0] * self.centers[at] * self.centers[at];
+                    spread += g[(s + 1) * c + s + 1];
+                }
+            }
+            let offset = squares > OFFSET * OFFSET * spread;
+            for l in 0..part.levels {
+                let at = span.start + l * k + s;
+                // A constant slope stays raw: there it is exactly null.
+                let origin = offset && !self.constant[at];
+                self.origins[at] = if origin { self.centers[at] } else { 0.0 };
+                self.shifts[at] = if origin { 0.0 } else { self.centers[at] };
+            }
+            any |= offset;
+        }
+        any
+    }
+
     /// The centers of every level of effect `e` (its slopes' weighted
     /// level means, `centered` per level; empty without an intercept),
     /// whether each slope is constant on its level (its centered values are
@@ -259,18 +330,23 @@ impl Blocks {
     }
 
     /// Effect `e`'s coefficients `values` (`R` columns, its levels only)
-    /// between the raw and the centered basis: moments to the centered
-    /// basis (`m_s -= c_s m_0`), or with `raw` coefficients back to the raw
-    /// one (`x_0 -= sum_s c_s x_s`). Nothing for an effect without centers.
+    /// between the operator's basis and the centered one: moments to the
+    /// centered basis (`m_s -= d_s m_0`, `d` the shifts), or with `raw`
+    /// coefficients back (`x_0 -= sum_s d_s x_s`). Nothing for an effect
+    /// without centers.
     pub(super) fn convert<const R: usize>(&self, e: usize, values: &mut [f64], raw: bool) {
-        let (centers, _, centered) = self.centers(e);
+        let Some(part) = self.parts.iter().find(|p| p.effect == e) else {
+            return;
+        };
+        let centered = part.centered;
         if centered == 0 {
             return;
         }
+        let shifts = &self.shifts[part.center..part.center + part.levels * centered];
         let c = centered + 1;
         let body = |task: usize, chunk: &mut [f64]| {
             for (k, level) in chunk.chunks_exact_mut(c * R).enumerate() {
-                let means = &centers[(task * LEVEL_TASK + k) * centered..][..centered];
+                let means = &shifts[(task * LEVEL_TASK + k) * centered..][..centered];
                 shift::<R>(means, level, raw);
             }
         };
@@ -427,9 +503,18 @@ impl Blocks {
         {
             let mut acc = [[0.0; R]; 3];
             centered::<R>((block, c, self.means(part, l)), m, None, &mut acc);
+            let origins = match self.table.get(e) {
+                Some(&(_, k)) if k > 0 => &self.origins[part.center + l * k..][..k],
+                _ => &[],
+            };
             let mut largest = [0.0_f64; R];
             for (k, value) in m.iter().enumerate() {
-                largest[k % R] = largest[k % R].max(value.abs());
+                // An offset slope's raw moment adds its origin's share.
+                let raw = match origins.get((k / R).wrapping_sub(1)) {
+                    Some(&origin) if origin != 0.0 => value + origin * m[k % R],
+                    _ => *value,
+                };
+                largest[k % R] = largest[k % R].max(raw.abs());
             }
             fold.span(&acc[1], &largest, scales, relative, raw_scale)?;
         }

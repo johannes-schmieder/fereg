@@ -24,7 +24,8 @@
 //!
 //! Every block is formed from row values in the levels' centered bases (each
 //! slope less its level mean, [`super::blocks`]), so the cells work in those
-//! coordinates: callers move moments into them and coefficients back.
+//! coordinates: callers move moments into them and coefficients back
+//! (from and to the operator's basis, [`super::kernels::Basis`]).
 //!
 //! Determinism: the cells are a fixed function of the design. Their sums run
 //! over each larger level's rows in ascending order, and each smaller

@@ -17,7 +17,7 @@
 //! Schwarz.
 
 use super::blocks::Blocks;
-use super::kernels::{adjoint, forward, load, residualize, Rows};
+use super::kernels::{adjoint, forward, load, residualize, Basis, Rows};
 use super::pcg::{predicted_slow, PILOT};
 use super::schwarz::{Schwarz, Scratch};
 use super::structure::Structure;
@@ -99,10 +99,11 @@ impl EscalationHandler for StallRun {
     }
 }
 
-/// `W^1/2 D` and its adjoint `D' W^1/2`.
+/// `W^1/2 D` and its adjoint `D' W^1/2` (in the internal basis).
 struct Design<'a, 'd> {
     st: &'a Structure,
     effects: &'a [Effect<'d>],
+    basis: Basis<'a>,
     roots: Option<&'a [f64]>,
     /// The scatter accumulators of the adjoint (applies run one at a time).
     scatter: Mutex<Vec<f64>>,
@@ -118,7 +119,7 @@ impl Operator for Design<'_, '_> {
     }
 
     fn apply(&self, x: &[f64], y: &mut [f64]) -> std::result::Result<(), SolveError> {
-        forward::<1>(self.st, self.effects, x, self.roots, y);
+        forward::<1>(self.st, (self.effects, self.basis), x, self.roots, y);
         Ok(())
     }
 
@@ -129,7 +130,8 @@ impl Operator for Design<'_, '_> {
             stride: 1,
             first: 0,
         };
-        adjoint::<1>(self.st, self.effects, rows, self.roots, v, &mut scatter);
+        let design = (self.effects, self.basis);
+        adjoint::<1>(self.st, design, rows, self.roots, v, &mut scatter);
         Ok(())
     }
 }
@@ -272,7 +274,7 @@ pub(super) fn project(
         let weights = job.state.weights();
         residualize::<1>(
             st,
-            job.design.effects(),
+            (job.design.effects(), job.state.basis()),
             &solved.x,
             target,
             weights,
@@ -281,7 +283,7 @@ pub(super) fn project(
         );
         if let Some(coefficients) = coefficients.as_mut() {
             add_coefficients(
-                (st, job.design.effects()),
+                (st, (job.design.effects(), job.state.basis())),
                 &solved.x,
                 (1, 0),
                 coefficients,
@@ -325,7 +327,7 @@ fn check(
     let weights = state.weights();
     let stats = load::<1>(
         st,
-        effects,
+        (effects, state.basis()),
         src,
         Some(x),
         weights,
@@ -341,7 +343,14 @@ fn check(
         .scatter
         .lock()
         .unwrap_or_else(PoisonError::into_inner);
-    adjoint::<1>(st, effects, t, None, &mut work.q, &mut scatter);
+    adjoint::<1>(
+        st,
+        (effects, state.basis()),
+        t,
+        None,
+        &mut work.q,
+        &mut scatter,
+    );
     drop(scatter);
     let tolerance = job.request.tolerance;
     let certified = certify::<1>(
@@ -389,23 +398,38 @@ fn solve_column(
         first: j,
     };
     let weights = state.weights();
-    load::<1>(st, effects, src, None, weights, &mut work.t, &mut work.rows);
+    load::<1>(
+        st,
+        (effects, state.basis()),
+        src,
+        None,
+        weights,
+        &mut work.t,
+        &mut work.rows,
+    );
     let mut start = filled(st.coefficients(), 0.0).map_err(Short::Failed)?;
     match warm {
-        Some(warm) => load_start::<1>((st, effects), warm, 0, &mut start),
+        Some(warm) => load_start::<1>((st, (effects, state.basis())), warm, 0, &mut start),
         None => {
             let t = Rows {
                 data: &work.t,
                 stride: 1,
                 first: 0,
             };
-            adjoint::<1>(st, effects, t, None, &mut work.q, &mut work.scatter);
+            adjoint::<1>(
+                st,
+                (effects, state.basis()),
+                t,
+                None,
+                &mut work.q,
+                &mut work.scatter,
+            );
             cold_start::<1>(job, &work.q, &mut start);
         }
     }
     let stats = load::<1>(
         st,
-        effects,
+        (effects, state.basis()),
         src,
         Some(&start),
         weights,
@@ -471,6 +495,7 @@ fn preconditioned(
     let operator = Design {
         st,
         effects: job.design.effects(),
+        basis: state.basis(),
         roots: state.roots(),
         scatter: Mutex::new(std::mem::take(&mut work.scatter)),
     };
