@@ -321,7 +321,10 @@ incomplete receipt before reading observations.
 Request wire 1.9 has one closed `solver` field with values `auto`, `map`,
 `lsmr`, and `cmg` (public `solver(auto|lsmr|cg)`; `map` is the canonical family
 token used by the hidden adapter) and adds the required `output_route_matrix`
-destination. Private solver, preconditioner, mode, policy, trace and
+destination. The optional `preconditioner` field (`auto`, `off`, `diagonal`,
+`schwarz`; default `auto`) is valid only with `solver=lsmr` and carries
+`solver(lsmr, precondition())`; the ado sends it only when it is not `auto`,
+so the largest request has 101 fields. Private solver, mode, policy, trace and
 experiment keys are unsupported. An older exact
 request version is a protocol mismatch; an unknown key on 1.9 is syntax error.
 Recognized solver/topology combinations outside the staged public envelope

@@ -1,13 +1,13 @@
 //! Sanctioned developer Break witness after an executed upstream LSMR iteration.
 //!
-//! The host owns the guard and polls SPI. Only the selected backend installs
-//! the marker policy; ordinary calls retain their existing escalation policy.
+//! The host owns the guard and polls SPI. Only an armed fedemean modified
+//! LSMR solve (OLS `solver(lsmr)`, feppml `solver(lsmr)`) observes the
+//! witness, through its cancellation polls; ordinary calls poll as usual.
 //! An armed call parks after completed recurrence work and cannot publish a fit.
 
 use std::sync::atomic::{AtomicU8, AtomicUsize, Ordering};
 
 use crate::error::{invalid_argument, Result};
-use schwarz_precond::{EscalationHandler, EscalationPolicy, Progress};
 
 const BACKEND: u8 = 3;
 const READY: u8 = 4;
@@ -20,8 +20,7 @@ static STATE: AtomicU8 = AtomicU8::new(0);
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
 pub enum DeveloperLsmrBackend {
-    PpmlJoint = 2,
-    /// fedemean's modified LSMR (OLS `solver(lsmr)` on categorical
+    /// fedemean's modified LSMR (OLS and PPML `solver(lsmr)` on categorical
     /// intercepts), observed through its cancellation polls.
     Fedemean = 3,
 }
@@ -50,21 +49,6 @@ impl Drop for DeveloperLsmrBreak {
 #[doc(hidden)]
 pub fn lsmr_break_ready() -> bool {
     STATE.load(Ordering::Acquire) & READY != 0
-}
-
-// Zero-sized handlers use the existing upstream callback without allocating a
-// new heap payload. Only developer-injected calls request this handler.
-struct BreakPolicy<const KIND: u8>;
-static PPML_POLICY: BreakPolicy<2> = BreakPolicy;
-
-pub(crate) fn policy(backend: DeveloperLsmrBackend) -> Option<&'static dyn EscalationPolicy> {
-    if STATE.load(Ordering::Acquire) & BACKEND != backend as u8 {
-        return None;
-    }
-    match backend {
-        DeveloperLsmrBackend::PpmlJoint => Some(&PPML_POLICY),
-        DeveloperLsmrBackend::Fedemean => None,
-    }
 }
 
 /// Whether the Break is armed for `backend`.
@@ -101,24 +85,6 @@ fn park(kind: u8, iteration: usize) {
     }
 }
 
-impl<const KIND: u8> EscalationPolicy for BreakPolicy<KIND> {
-    fn handler(&self) -> Box<dyn EscalationHandler> {
-        Box::new(Self)
-    }
-}
-
-impl<const KIND: u8> EscalationHandler for BreakPolicy<KIND> {
-    fn should_escalate(&mut self, progress: Progress) -> bool {
-        if progress.iteration == 0 {
-            return false;
-        }
-        park(KIND, progress.iteration);
-        // The next upstream cancellation checkpoint supplies the stop reason;
-        // this observer never requests an artificial escalation.
-        false
-    }
-}
-
 /// Record an actual upstream Cancelled result, rather than host-error precedence.
 pub(crate) fn record_cancelled(backend: DeveloperLsmrBackend) {
     let kind = backend as u8;
@@ -137,10 +103,10 @@ pub(crate) fn record_cancelled(backend: DeveloperLsmrBackend) {
 
 fn trace(kind: u8, event: &str, iteration: Option<usize>) {
     if crate::diagnostics::solver_trace_enabled() {
-        let backend = if kind == 2 { "ppml_joint" } else { "fedemean" };
+        debug_assert_eq!(kind, DeveloperLsmrBackend::Fedemean as u8);
         let iteration = iteration.map_or(String::new(), |value| format!("|iteration={value}"));
         crate::diagnostics::emit_solver_trace(&format!(
-            "FEREG_SOLVER_TRACE|phase=lsmr_break|event={event}|backend={backend}{iteration}"
+            "FEREG_SOLVER_TRACE|phase=lsmr_break|event={event}|backend=fedemean{iteration}"
         ));
     }
 }

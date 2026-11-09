@@ -1,731 +1,544 @@
 use super::*;
-
-#[test]
-fn ordered_scratch_allocation_keeps_the_allocation_failure_contract() {
-    let error = lsmr_error(SolveError::Allocation {
-        context: "ordered scratch",
-    });
-    assert_eq!(error.code, ErrorCode::Allocation);
-    assert_eq!(
-        lsmr_error(solve_shape_error("fixture")).code,
-        ErrorCode::NonConvergence
-    );
-}
-#[test]
-fn cancellation_is_never_classified_as_ppml_numerical_nonconvergence() {
-    assert_eq!(
-        lsmr_error(SolveError::Cancelled).code,
-        ErrorCode::Interrupted
-    );
-}
-
 use crate::fe::EffectTerm;
+use crate::memory::categorical_dense_cross_tab_bytes;
 
-fn predictor_frame(
-    scheduled_tolerance: f64,
-    effective_tolerance: f64,
-    first_certificate: f64,
-    iterations: usize,
-    continuation: JointLsmrContinuationCause,
-) -> JointLsmrFrameDiagnostic {
-    JointLsmrFrameDiagnostic {
-        scheduled_tolerance,
-        first_pass_tolerance: scheduled_tolerance,
-        effective_tolerance,
-        first_pass_iterations: iterations,
-        continuation_iterations: 0,
-        first_pass_recurrence_residual: 1e-6,
-        recurrence_residual: 1e-7,
-        first_certificate_relative_infinity_norm: first_certificate,
-        finite_certificate_max: 1e-8,
-        fixed_effect_certificate_max: 2e-8,
-        max_abs_log_hessian_weight_change: 0.1,
-        weight_change_valid: true,
-        predictor_used: false,
-        predictor_refreshed_preconditioner: false,
-        factor_log_weight_drift: f64::INFINITY,
-        predictor_bounded_reuse: false,
-        continuation,
-    }
+fn test_team(threads: usize) -> InstalledThreadTeam {
+    ThreadTeam::new(ThreadConfig::from_requested(threads, true).expect("thread config"))
+        .acquire()
+        .expect("installed thread team")
 }
 
-#[test]
-fn first_pass_predictor_initializes_to_the_scheduled_tolerance() {
-    let predictor = JointLsmrFirstPassPredictor::default();
-    let policy = predictor.policy(
-        1e-8,
-        true,
-        0.1,
-        f64::INFINITY,
-        CategoricalLsmrPolicy::CorePair,
-    );
-    assert_eq!(policy.tolerance.to_bits(), 1e-8_f64.to_bits());
-    assert!(!policy.used_predictor);
-    assert!(!policy.refresh_preconditioner);
-}
-
-#[test]
-fn first_pass_predictor_clamps_prior_certificate_misses() {
-    let mut predictor = JointLsmrFirstPassPredictor::default();
-    predictor.record_certified(predictor_frame(
-        1e-8,
-        1e-10,
-        2e-8,
-        200,
-        JointLsmrContinuationCause {
-            recurrence: false,
-            certificate: true,
-            staleness: false,
-        },
-    ));
-    let predicted = predictor.policy(
-        1e-9,
-        true,
-        0.1,
-        f64::INFINITY,
-        CategoricalLsmrPolicy::CorePair,
-    );
-    assert!((predicted.tolerance - 1e-11).abs() <= 1e-26);
-    assert!(predicted.used_predictor);
-    assert!(predicted.refresh_preconditioner);
-
-    let mut floor_predictor = JointLsmrFirstPassPredictor::default();
-    floor_predictor.record_certified(predictor_frame(
-        5e-12,
-        5e-14,
-        1e-11,
-        10,
-        JointLsmrContinuationCause {
-            recurrence: true,
-            certificate: false,
-            staleness: false,
-        },
-    ));
-    let floor = floor_predictor.policy(
-        5e-14,
-        true,
-        0.1,
-        f64::INFINITY,
-        CategoricalLsmrPolicy::CorePair,
-    );
-    assert_eq!(
-        floor.tolerance.to_bits(),
-        JOINT_LSMR_NUMERICAL_FLOOR.to_bits()
-    );
-    assert!(floor.tolerance <= 5e-14);
-
-    let mut passing = JointLsmrFirstPassPredictor::default();
-    passing.record_certified(predictor_frame(
-        1e-8,
-        1e-8,
-        5e-9,
-        10,
-        JointLsmrContinuationCause::default(),
-    ));
-    let scheduled = passing.policy(
-        1e-9,
-        true,
-        0.1,
-        f64::INFINITY,
-        CategoricalLsmrPolicy::CorePair,
-    );
-    assert_eq!(scheduled.tolerance.to_bits(), 1e-9_f64.to_bits());
-    assert!(!scheduled.refresh_preconditioner);
-
-    let two_effect = predictor.policy(1e-9, true, 0.1, f64::INFINITY, CategoricalLsmrPolicy::Reuse);
-    assert_eq!(two_effect.tolerance.to_bits(), 1e-9_f64.to_bits());
-    assert!(!two_effect.used_predictor);
-    assert!(!two_effect.refresh_preconditioner);
-}
-
-#[test]
-fn first_pass_predictor_rejects_weight_and_schedule_jumps() {
-    let mut predictor = JointLsmrFirstPassPredictor::default();
-    predictor.record_certified(predictor_frame(
-        1e-8,
-        1e-10,
-        2e-8,
-        200,
-        JointLsmrContinuationCause::default(),
-    ));
-    for policy in [
-        predictor.policy(
-            1e-9,
-            false,
-            0.1,
-            f64::INFINITY,
-            CategoricalLsmrPolicy::CorePair,
-        ),
-        predictor.policy(
-            1e-9,
-            true,
-            JOINT_LSMR_PREDICTOR_MAX_LOG_WEIGHT_CHANGE + f64::EPSILON,
-            f64::INFINITY,
-            CategoricalLsmrPolicy::CorePair,
-        ),
-        predictor.policy(
-            1e-11,
-            true,
-            0.1,
-            f64::INFINITY,
-            CategoricalLsmrPolicy::CorePair,
-        ),
-        predictor.policy(
-            2e-8,
-            true,
-            0.1,
-            f64::INFINITY,
-            CategoricalLsmrPolicy::CorePair,
-        ),
-    ] {
-        assert!(!policy.used_predictor);
-        assert!(!policy.refresh_preconditioner);
-    }
-}
-
-#[test]
-fn first_pass_predictor_reuses_a_long_frame_factor_within_the_drift_bound() {
-    let mut long = JointLsmrFirstPassPredictor::default();
-    long.record_certified(predictor_frame(
-        1e-9,
-        1e-9,
-        5e-10,
-        200,
-        JointLsmrContinuationCause::default(),
-    ));
-    let policy = |drift| long.policy(1e-9, true, 0.01, drift, CategoricalLsmrPolicy::CorePair);
-    for drift in [0.0, 0.01, JOINT_LSMR_FACTOR_REUSE_MAX_LOG_WEIGHT_DRIFT] {
-        let reused = policy(drift);
-        assert!(reused.used_predictor);
-        assert!(reused.bounded_reuse);
-        assert!(!reused.refresh_preconditioner);
-        assert_eq!(reused.tolerance.to_bits(), 1e-9_f64.to_bits());
-    }
-    for drift in [0.051, 1.0, f64::INFINITY, f64::NAN] {
-        let refreshed = policy(drift);
-        assert!(refreshed.refresh_preconditioner);
-        assert!(!refreshed.bounded_reuse);
-    }
-    // A short frame keeps the retained factor with its staleness escalation.
-    let mut short = JointLsmrFirstPassPredictor::default();
-    short.record_certified(predictor_frame(
-        1e-9,
-        1e-9,
-        5e-10,
-        20,
-        JointLsmrContinuationCause::default(),
-    ));
-    for drift in [0.0, f64::INFINITY] {
-        let kept = short.policy(1e-9, true, 0.01, drift, CategoricalLsmrPolicy::CorePair);
-        assert!(!kept.refresh_preconditioner);
-        assert!(!kept.bounded_reuse);
-    }
-    // A prior staleness continuation is a long frame too.
-    let mut stalled = JointLsmrFirstPassPredictor::default();
-    stalled.record_certified(predictor_frame(
-        1e-9,
-        1e-9,
-        5e-10,
-        20,
-        JointLsmrContinuationCause {
-            recurrence: false,
-            certificate: false,
-            staleness: true,
-        },
-    ));
-    assert!(
-        stalled
-            .policy(1e-9, true, 0.01, 0.01, CategoricalLsmrPolicy::CorePair)
-            .bounded_reuse
-    );
-    // Two effects and invalid predictor inputs never take the bounded rule.
-    for (valid, change, policy) in [
-        (true, 0.01, CategoricalLsmrPolicy::Reuse),
-        (false, 0.01, CategoricalLsmrPolicy::CorePair),
-        (true, 0.6, CategoricalLsmrPolicy::CorePair),
-    ] {
-        let declined = long.policy(1e-9, valid, change, 0.0, policy);
-        assert!(!declined.used_predictor);
-        assert!(!declined.bounded_reuse);
-        assert!(!declined.refresh_preconditioner);
-    }
-}
-
-#[test]
-fn first_pass_predictor_invalidation_is_atomic_and_matches_engine_replacement() {
-    let frame = predictor_frame(1e-8, 1e-8, 5e-9, 200, JointLsmrContinuationCause::default());
-    let mut predictor = JointLsmrFirstPassPredictor::default();
-    predictor.record_certified(frame);
-    let snapshot = predictor;
-    let _speculative = predictor.policy(
-        1e-9,
-        true,
-        0.1,
-        f64::INFINITY,
-        CategoricalLsmrPolicy::CorePair,
-    );
-    assert_eq!(predictor, snapshot);
-
-    predictor.invalidate();
-    assert_eq!(predictor, JointLsmrFirstPassPredictor::default());
-    let replacement_for_changed_basis = JointLsmrFirstPassPredictor::default();
-    assert_eq!(predictor, replacement_for_changed_basis);
-}
-
-#[test]
-fn joint_lsmr_frame_trace_is_deterministic_and_complete() {
-    let _stable_route = crate::fe::block_schur::stable_route_for_test();
-    let mut frame = predictor_frame(
-        1e-8,
-        1e-9,
-        2e-8,
-        200,
-        JointLsmrContinuationCause {
-            recurrence: true,
-            certificate: true,
-            staleness: true,
-        },
-    );
-    frame.predictor_used = true;
-    frame.predictor_refreshed_preconditioner = true;
-    let first = joint_lsmr_frame_trace_line(frame);
-    let second = joint_lsmr_frame_trace_line(frame);
-    assert_eq!(first, second);
-    for field in [
-        "scheduled=",
-        "first_tolerance=",
-        "effective=",
-        "first_iterations=",
-        "continuation_iterations=",
-        "first_normal=",
-        "final_normal=",
-        "first_certificate=",
-        "finite_max=",
-        "fe_max=",
-        "weight_change=",
-        "predictor_used=1",
-        "predictor_refresh=1",
-        "factor_drift=",
-        "bounded_reuse=",
-        "recurrence_continuation=1",
-        "certificate_continuation=1",
-        "staleness_continuation=1",
-    ] {
-        assert!(first.contains(field), "trace omitted {field}");
-    }
-}
-
-#[test]
-fn augmented_operator_obeys_adjoint_identity() {
-    let left = vec![0, 0, 1, 1];
-    let right = vec![0, 1, 0, 1];
-    let design = FeDesign::new(
-        4,
-        vec![
-            EffectTerm::new(left, 2, true, Vec::new()).expect("left"),
-            EffectTerm::new(right, 2, true, Vec::new()).expect("right"),
-        ],
+/// The engine on `design` (its codes) with `active` controls, as
+/// `new_with_threads` builds it from a prepared fit.
+fn engine(
+    design: &FeDesign,
+    active: DenseMatrix,
+    threads: usize,
+    preconditioner: LsmrPreconditioner,
+) -> ReusableCategoricalJointLsmr<'_> {
+    let effects: Vec<_> = design
+        .effects()
+        .iter()
+        .map(|effect| fedemean::Effect::new(effect.codes(), effect.n_levels()))
+        .collect();
+    let view = fedemean::Design::new(design.nobs(), effects).expect("fedemean design");
+    let slots = (0..active.ncols()).collect();
+    ReusableCategoricalJointLsmr::assemble(
+        test_team(threads),
+        design,
+        active,
+        slots,
+        view,
+        preconditioner,
     )
-    .expect("design");
-    let active = DenseMatrix::from_row_major(4, 1, vec![1.0, 2.0, -1.0, 0.5]).expect("active");
-    let offsets = vec![0, 2, 4];
-    let weights = vec![1.0, 2.0_f64.sqrt(), 0.5_f64.sqrt(), 1.5_f64.sqrt()];
-    let operator =
-        AugmentedCategoricalOperator::new(&design, &active, &offsets, &weights).expect("operator");
-    let x = vec![0.25, 1.0, -0.5, 0.75, -1.25];
-    let y = vec![0.3, -0.2, 0.8, 1.1];
-    let mut ax = vec![0.0; operator.nrows()];
-    let mut aty = vec![0.0; operator.ncols()];
-    operator.apply(&x, &mut ax).expect("apply");
-    operator.apply_adjoint(&y, &mut aty).expect("adjoint");
-    let left_product = ax.iter().zip(&y).map(|(a, b)| a * b).sum::<f64>();
-    let right_product = x.iter().zip(&aty).map(|(a, b)| a * b).sum::<f64>();
-    assert!((left_product - right_product).abs() <= 1e-13);
+    .expect("engine")
 }
 
-#[test]
-fn augmented_products_match_explicit_design_across_widths_and_teams() {
-    for rows in [17, 131] {
-        let design = FeDesign::new(
-            rows,
-            vec![
-                EffectTerm::new(
-                    (0..rows).map(|r| (r % 3) as u32).collect(),
-                    3,
-                    true,
-                    Vec::new(),
-                )
-                .unwrap(),
-                EffectTerm::new(
-                    (0..rows).map(|r| ((r / 3) % 5) as u32).collect(),
-                    5,
-                    true,
-                    Vec::new(),
-                )
-                .unwrap(),
-            ],
-        )
-        .unwrap();
-        for columns in [0, 1, 6, 17] {
-            let active = DenseMatrix::from_row_major(
-                rows,
-                columns,
-                (0..rows * columns)
-                    .map(|i| ((i * 17 + 3) as f64).sin())
-                    .collect(),
-            )
-            .unwrap();
-            let coefficients: Vec<_> = (0..columns + 8)
-                .map(|i| ((i * 7 + 2) as f64).cos())
-                .collect();
-            let input: Vec<_> = (0..rows).map(|r| ((r * 11 + 1) as f64).sin()).collect();
-            for generation in 0..2 {
-                let roots: Vec<_> = (0..rows)
-                    .map(|r| 10.0_f64.powi(((r * 7 + generation * 3) % 13) as i32 - 6))
-                    .collect();
-                // Independently materialize the mathematical weighted design.
-                let mut explicit = vec![vec![0.0; columns + 8]; rows];
-                for row in 0..rows {
-                    for col in 0..columns {
-                        explicit[row][col] = roots[row] * active[(row, col)];
-                    }
-                    explicit[row][columns + row % 3] = roots[row];
-                    explicit[row][columns + 3 + (row / 3) % 5] = roots[row];
-                }
-                let expected_forward: Vec<f64> = explicit
-                    .iter()
-                    .map(|row| row.iter().zip(&coefficients).map(|(a, b)| a * b).sum())
-                    .collect();
-                let expected_adjoint: Vec<f64> = (0..columns + 8)
-                    .map(|col| (0..rows).map(|r| explicit[r][col] * input[r]).sum())
-                    .collect();
-                for threads in [1, 4] {
-                    let pool = rayon::ThreadPoolBuilder::new()
-                        .num_threads(threads)
-                        .build()
-                        .unwrap();
-                    pool.install(|| {
-                        let operator =
-                            AugmentedCategoricalOperator::new(&design, &active, &[0, 3, 8], &roots)
-                                .unwrap();
-                        let mut forward = vec![0.0; rows];
-                        let mut adjoint = vec![0.0; columns + 8];
-                        operator.apply(&coefficients, &mut forward).unwrap();
-                        operator.apply_adjoint(&input, &mut adjoint).unwrap();
-                        for row in 0..rows {
-                            let scale: f64 = explicit[row]
-                                .iter()
-                                .zip(&coefficients)
-                                .map(|(a, b)| (a * b).abs())
-                                .sum();
-                            assert!(
-                                (forward[row] - expected_forward[row]).abs()
-                                    <= 1e-12 * scale.max(1.0)
-                            );
-                        }
-                        for col in 0..columns + 8 {
-                            let scale: f64 =
-                                (0..rows).map(|r| (explicit[r][col] * input[r]).abs()).sum();
-                            assert!(
-                                (adjoint[col] - expected_adjoint[col]).abs()
-                                    <= 1e-12 * scale.max(1.0)
-                            );
-                        }
-                        let prior = adjoint.clone();
-                        operator.apply_adjoint(&input, &mut adjoint).unwrap();
-                        assert_eq!(prior, adjoint);
-                    });
-                }
+/// An independent dense weighted least-squares fit of `target` on the
+/// controls and every level dummy (Gaussian elimination with complete
+/// pivoting on the normal equations, dropping null pivots): the fitted
+/// values and the controls' coefficients, both unique for an identified
+/// design.
+fn dense_oracle(
+    design: &FeDesign,
+    active: &DenseMatrix,
+    weights: &[f64],
+    target: &[f64],
+) -> (Vec<f64>, Vec<f64>) {
+    let rows = design.nobs();
+    let k = active.ncols();
+    let width = k + design.total_coefficients();
+    let row = |i: usize| {
+        let mut values = vec![0.0; width];
+        values[..k].copy_from_slice(&active.as_slice()[i * k..(i + 1) * k]);
+        let mut offset = k;
+        for effect in design.effects() {
+            values[offset + effect.codes()[i] as usize] = 1.0;
+            offset += effect.n_levels();
+        }
+        values
+    };
+    let mut normal = vec![vec![0.0; width + 1]; width];
+    for i in 0..rows {
+        let values = row(i);
+        for a in 0..width {
+            for b in 0..width {
+                normal[a][b] += weights[i] * values[a] * values[b];
+            }
+            normal[a][width] += weights[i] * values[a] * target[i];
+        }
+    }
+    let scale = normal
+        .iter()
+        .enumerate()
+        .map(|(a, r)| r[a].abs())
+        .fold(0.0, f64::max);
+    let mut order: Vec<usize> = (0..width).collect();
+    let mut rank = 0;
+    for pivot in 0..width {
+        let (mut best, mut value) = (pivot, 0.0);
+        for c in pivot..width {
+            let v = normal[order[c]][order[c]].abs();
+            if v > value {
+                (best, value) = (c, v);
             }
         }
+        if value <= 1e-11 * scale {
+            break;
+        }
+        order.swap(pivot, best);
+        let p = order[pivot];
+        for &r in &order[pivot + 1..] {
+            let factor = normal[r][p] / normal[p][p];
+            for c in 0..=width {
+                normal[r][c] -= factor * normal[p][c];
+            }
+        }
+        rank += 1;
     }
+    let mut theta = vec![0.0; width];
+    for pivot in (0..rank).rev() {
+        let p = order[pivot];
+        let mut value = normal[p][width];
+        for &c in &order[pivot + 1..rank] {
+            value -= normal[p][c] * theta[c];
+        }
+        theta[p] = value / normal[p][p];
+    }
+    let fitted = (0..rows)
+        .map(|i| row(i).iter().zip(&theta).map(|(x, t)| x * t).sum())
+        .collect();
+    (fitted, theta[..k].to_vec())
 }
 
-#[test]
-fn core_pair_bridge_matches_its_dense_symmetric_block_factor() {
-    let first = vec![0, 0, 1, 1, 2, 2, 0, 1, 2, 0, 1, 2];
-    let second = vec![0, 1, 0, 1, 0, 1, 1, 1, 0, 0, 1, 0];
-    let third = vec![0, 1, 2, 0, 1, 2, 2, 0, 1, 1, 2, 0];
+/// A connected three-effect design with two controls and a Poisson frame
+/// whose correction is not in the design's span.
+struct Fixture {
+    design: FeDesign,
+    active: DenseMatrix,
+    outcome: Vec<f64>,
+}
+
+fn fixture(rows: usize, levels: [usize; 3], controls: usize) -> Fixture {
+    let codes: Vec<Vec<u32>> = levels
+        .iter()
+        .enumerate()
+        .map(|(e, &count)| {
+            (0..rows)
+                .map(|i| ((i * (7 + 4 * e) + i / (3 + e)) % count) as u32)
+                .collect()
+        })
+        .collect();
     let design = FeDesign::new(
-        first.len(),
-        vec![
-            EffectTerm::new(first, 3, true, Vec::new()).expect("first"),
-            EffectTerm::new(second, 2, true, Vec::new()).expect("second"),
-            EffectTerm::new(third, 3, true, Vec::new()).expect("third"),
-        ],
-    )
-    .expect("design");
-    let weights = vec![
-        0.75, 1.25, 0.9, 1.4, 0.65, 1.1, 1.6, 0.8, 1.35, 0.95, 1.2, 0.7,
-    ];
-    let offsets = vec![0, 3, 5, 8];
-    let core_effects = [0, 2];
-    let core_width = 6;
-    let effects = within_effects_selected(&design, &core_effects).expect("within effects");
-    let solver = Solver::new(
-        effects,
-        Some(weights.as_slice()),
-        crate::fe::additive_schwarz(),
-    )
-    .expect("core solver");
-    let core = solver
-        .preconditioner()
-        .cloned()
-        .expect("core preconditioner");
-    assert_eq!(core.nrows(), core_width);
-
-    let mut diagonal = vec![0.0; design.total_coefficients()];
-    fill_fe_diagonal_inverse(&design, &weights, &mut diagonal).expect("diagonal");
-    let scratch = Mutex::new(CorePairBridgeScratch::new(core_width).expect("scratch"));
-    let preconditioner = BlockPreconditioner {
-        finite_inverse: &[],
-        finite_factor: None,
-        fe: FePreconditioner::CorePair {
-            core: &core,
-            core_effects,
-            diagonal: &diagonal,
-            design: &design,
-            effect_offsets: &offsets,
-            weights: &weights,
-            scratch: &scratch,
-        },
-    };
-    let input = vec![0.4, -0.7, 0.2, 0.9, -0.3, 0.6, -0.8, 0.5];
-    let mut actual = vec![0.0; input.len()];
-    preconditioner
-        .apply(&input, &mut actual)
-        .expect("bridge apply");
-
-    let mut dense_core = vec![vec![0.0; core_width]; core_width];
-    for column in 0..core_width {
-        let mut basis = vec![0.0; core_width];
-        let mut image = vec![0.0; core_width];
-        basis[column] = 1.0;
-        core.apply(&basis, &mut image).expect("core basis apply");
-        for row in 0..core_width {
-            dense_core[row][column] = image[row];
-        }
-    }
-    let extra_effects = [1];
-    let extra_width = design.effects()[extra_effects[0]].n_levels();
-    let mut dense_cross = vec![vec![0.0; extra_width]; core_width];
-    for (row, weight) in weights.iter().copied().enumerate() {
-        let mut packed_core_start = 0_usize;
-        for core_effect in core_effects {
-            let core_index =
-                packed_core_start + design.effects()[core_effect].codes()[row] as usize;
-            let extra_effect = extra_effects[0];
-            let extra_index = design.effects()[extra_effect].codes()[row] as usize;
-            dense_cross[core_index][extra_index] += weight;
-            packed_core_start += design.effects()[core_effect].n_levels();
-        }
-    }
-    let dense_apply = |matrix: &[Vec<f64>], vector: &[f64]| {
-        matrix
+        rows,
+        codes
             .iter()
-            .map(|row| {
-                row.iter()
-                    .zip(vector)
-                    .map(|(left, right)| left * right)
-                    .sum()
-            })
-            .collect::<Vec<f64>>()
-    };
-    let mut core_input = Vec::with_capacity(core_width);
-    for core_effect in core_effects {
-        core_input.extend_from_slice(&input[offsets[core_effect]..offsets[core_effect + 1]]);
+            .zip(levels)
+            .map(|(c, l)| EffectTerm::new(c.clone(), l, true, Vec::new()).expect("effect"))
+            .collect(),
+    )
+    .expect("design");
+    let values = (0..rows)
+        .flat_map(|i| (0..controls).map(move |c| ((i * (c + 2) + 3 * c) as f64 * 0.37).sin()))
+        .collect();
+    let active = DenseMatrix::from_row_major(rows, controls, values).expect("controls");
+    let outcome = (0..rows)
+        .map(|i| {
+            if i % 9 == 4 {
+                0.0
+            } else {
+                1.0 + ((i * 13) % 7) as f64 / 3.0
+            }
+        })
+        .collect();
+    Fixture {
+        design,
+        active,
+        outcome,
     }
-    let extra_effect = extra_effects[0];
-    let extra_input = &input[offsets[extra_effect]..offsets[extra_effect + 1]];
-    let core_image = dense_apply(&dense_core, &core_input);
-    let mut extra_image = vec![0.0; extra_width];
-    for extra in 0..extra_width {
-        let cross = (0..core_width)
-            .map(|core_index| dense_cross[core_index][extra] * core_image[core_index])
-            .sum::<f64>();
-        extra_image[extra] = diagonal[offsets[extra_effect] + extra] * (extra_input[extra] - cross);
-    }
-    let cross_image = dense_apply(&dense_cross, &extra_image);
-    let core_correction = dense_apply(&dense_core, &cross_image);
-    let mut expected = vec![0.0; input.len()];
-    let mut packed_core_start = 0_usize;
-    for core_effect in core_effects {
-        let width = design.effects()[core_effect].n_levels();
-        for level in 0..width {
-            expected[offsets[core_effect] + level] =
-                core_image[packed_core_start + level] - core_correction[packed_core_start + level];
-        }
-        packed_core_start += width;
-    }
-    expected[offsets[extra_effect]..offsets[extra_effect + 1]].copy_from_slice(&extra_image);
-    for (observed, reference) in actual.iter().zip(&expected) {
-        assert!((observed - reference).abs() <= 2e-13);
-    }
+}
 
-    let other = vec![-0.2, 0.3, 0.8, -0.4, 0.6, 0.1, -0.5, 0.7];
-    let mut other_image = vec![0.0; other.len()];
-    let mut adjoint_image = vec![0.0; input.len()];
-    preconditioner
-        .apply(&other, &mut other_image)
-        .expect("second bridge apply");
-    preconditioner
-        .apply_adjoint(&input, &mut adjoint_image)
-        .expect("bridge adjoint");
-    let left = actual.iter().zip(&other).map(|(a, b)| a * b).sum::<f64>();
-    let right = input
-        .iter()
-        .zip(&other_image)
-        .map(|(a, b)| a * b)
-        .sum::<f64>();
-    assert!((left - right).abs() <= 2e-12);
-    assert!(adjoint_image
-        .iter()
-        .zip(&actual)
-        .all(|(adjoint, forward)| (adjoint - forward).abs() <= 2e-13));
-    let quadratic = input.iter().zip(&actual).map(|(a, b)| a * b).sum::<f64>();
-    assert!(quadratic >= -2e-12);
+fn frame_weights(rows: usize, phase: f64) -> Vec<f64> {
+    (0..rows)
+        .map(|i| 0.6 + 0.5 * ((i as f64) * 0.11 + phase).cos().abs())
+        .collect()
+}
+
+fn max_abs_difference(left: &[f64], right: &[f64]) -> f64 {
+    left.iter()
+        .zip(right)
+        .map(|(a, b)| (a - b).abs())
+        .fold(0.0, f64::max)
 }
 
 #[test]
-fn full_finite_preconditioner_inverts_current_weight_gram_independently() {
-    let active = DenseMatrix::from_row_major(
-        5,
-        3,
-        vec![
-            1., -2., 0.5, 0.25, 3., -1.5, -0.75, 1.25, 2., 4., -0.5, 0.125, 1.5, 2.5, -3.,
-        ],
-    )
-    .unwrap();
-    let mut factor = vec![0.; 9];
-    let truth = [0.7, -1.2, 0.4];
-    let mut prior = Vec::new();
-    for weights in [vec![1.; 5], vec![0.01, 4., 2., 0.7, 9.]] {
-        let mut gram = [0.; 9];
-        for i in 0..3 {
-            for j in 0..3 {
-                gram[3 * i + j] = (0..5)
-                    .map(|r| weights[r] * active[(r, i)] * active[(r, j)])
-                    .sum();
+fn frames_match_the_dense_joint_oracle_under_every_preconditioner() {
+    let fixture = fixture(240, [17, 11, 5], 2);
+    for preconditioner in [
+        LsmrPreconditioner::Auto,
+        LsmrPreconditioner::Off,
+        LsmrPreconditioner::Diagonal,
+        LsmrPreconditioner::Schwarz,
+    ] {
+        let mut solver = engine(&fixture.design, fixture.active.clone(), 2, preconditioner);
+        for (frame, phase) in [0.0, 0.4, 0.9].into_iter().enumerate() {
+            let weights = frame_weights(240, phase);
+            let mean = weights.clone();
+            let report = solver
+                .solve(
+                    &fixture.design,
+                    &fixture.outcome,
+                    &mean,
+                    &weights,
+                    1e-11,
+                    10_000,
+                )
+                .expect("certified frame");
+            assert!(report.certificate.passed);
+            assert!(report.certificate.relative_infinity_norm <= 1e-11);
+            assert_eq!(report.warm_start_attempted, frame > 0);
+            assert_eq!(
+                report.formulation,
+                if preconditioner == LsmrPreconditioner::Schwarz {
+                    Formulation::Projections
+                } else {
+                    Formulation::Joint
+                }
+            );
+            assert_eq!(report.route.reduction, crate::fe::FeReduction::Full);
+            assert_eq!(report.route.method, crate::fe::FeMethod::Lsmr);
+            assert!(report.iterations > 0);
+            let target: Vec<f64> = fixture
+                .outcome
+                .iter()
+                .zip(&mean)
+                .map(|(&y, &mu)| if y == 0.0 { -1.0 } else { y / mu - 1.0 })
+                .collect();
+            let (fitted, coefficients) =
+                dense_oracle(&fixture.design, &fixture.active, &weights, &target);
+            assert!(max_abs_difference(&solver.delta_eta, &fitted) <= 1e-9);
+            assert!(max_abs_difference(&solver.step, &coefficients) <= 1e-9);
+            // The next frame starts from this one (the joint state at the
+            // accepted step).
+            solver.accept_step(1.0);
+        }
+        solver.reset_warm_start();
+        assert!(!solver.joint.warm_start_valid);
+        assert!(solver
+            .projections
+            .as_ref()
+            .is_none_or(|p| !p.warm_start_valid));
+    }
+}
+
+#[test]
+fn frames_repeat_at_fixed_workers_and_agree_across_worker_counts() {
+    let fixture = fixture(300, [23, 13, 7], 3);
+    let run = |threads: usize, preconditioner| {
+        let ambient = rayon::ThreadPoolBuilder::new()
+            .num_threads(2)
+            .build()
+            .expect("ambient pool");
+        let mut solver = engine(
+            &fixture.design,
+            fixture.active.clone(),
+            threads,
+            preconditioner,
+        );
+        let mut frames = Vec::new();
+        for phase in [0.0, 0.3] {
+            let weights = frame_weights(300, phase);
+            let report = ambient
+                .install(|| {
+                    solver.solve(
+                        &fixture.design,
+                        &fixture.outcome,
+                        &weights,
+                        &weights,
+                        1e-10,
+                        10_000,
+                    )
+                })
+                .expect("certified frame");
+            assert_eq!(report.executing_threads, threads);
+            frames.push((
+                solver.delta_eta.clone(),
+                solver.step.clone(),
+                report.certificate,
+            ));
+            solver.accept_step(1.0);
+        }
+        frames
+    };
+    for preconditioner in [LsmrPreconditioner::Auto, LsmrPreconditioner::Schwarz] {
+        let reference = run(1, preconditioner);
+        assert_eq!(
+            run(1, preconditioner),
+            reference,
+            "repeatable at one worker"
+        );
+        for threads in [4, 1] {
+            let frames = run(threads, preconditioner);
+            if preconditioner == LsmrPreconditioner::Schwarz {
+                // fedemean's projections do not depend on the worker count.
+                assert_eq!(frames, reference);
+            }
+            for (frame, expected) in frames.iter().zip(&reference) {
+                assert!(max_abs_difference(&frame.0, &expected.0) <= 1e-11);
+                assert!(max_abs_difference(&frame.1, &expected.1) <= 1e-11);
             }
         }
-        let diagonal: Vec<_> = (0..3).map(|i| 1. / gram[3 * i + i]).collect();
-        assert!(prepare_finite_factor(
-            &active,
+    }
+}
+
+#[test]
+fn projections_support_zero_finite_columns_with_three_effects() {
+    let fixture = fixture(120, [9, 6, 4], 0);
+    let mut solver = engine(
+        &fixture.design,
+        fixture.active.clone(),
+        4,
+        LsmrPreconditioner::Schwarz,
+    );
+    let weights = frame_weights(120, 0.2);
+    let report = solver
+        .solve(
+            &fixture.design,
+            &fixture.outcome,
             &weights,
-            &diagonal,
-            &mut factor
-        ));
-        assert_ne!(factor, prior);
-        prior = factor.clone();
-        let rhs: Vec<_> = (0..3)
-            .map(|i| (0..3).map(|j| gram[3 * i + j] * truth[j]).sum())
-            .collect();
-        let preconditioner = BlockPreconditioner {
-            finite_inverse: &diagonal,
-            finite_factor: Some(&factor),
-            fe: FePreconditioner::Diagonal(&[]),
-        };
-        let mut solved = vec![0.; 3];
-        preconditioner.apply(&rhs, &mut solved).unwrap();
-        for j in 0..3 {
-            assert!((solved[j] - truth[j]).abs() < 2e-12);
-        }
-        let mut adjoint = vec![0.; 3];
-        preconditioner.apply_adjoint(&rhs, &mut adjoint).unwrap();
-        assert_eq!(solved, adjoint);
-        assert!(rhs.iter().zip(&solved).map(|(x, y)| x * y).sum::<f64>() > 0.);
-    }
-}
-
-#[test]
-fn full_finite_preconditioner_declines_singular_or_nonfinite_frames() {
-    let active = DenseMatrix::from_row_major(3, 2, vec![1., 2., -1., -2., 2., 4.]).unwrap();
-    let diagonal = [1. / 6., 1. / 24.];
-    let mut factor = vec![0.; 4];
-    assert!(!prepare_finite_factor(
-        &active,
-        &[1.; 3],
-        &diagonal,
-        &mut factor
+            &weights,
+            1e-10,
+            10_000,
+        )
+        .expect("FE-only correction");
+    assert!(report.certificate.passed);
+    assert!(matches!(
+        report.route.preconditioner,
+        crate::fe::FePreconditioner::Schwarz(_)
     ));
-    assert!(!prepare_finite_factor(
-        &active,
-        &[f64::INFINITY; 3],
-        &diagonal,
-        &mut factor
-    ));
-    assert!(!prepare_finite_factor(
-        &active,
-        &[1.; 3],
-        &[0., 1.],
-        &mut factor
-    ));
-    assert!(!prepare_finite_factor(
-        &active,
-        &[1.; 3],
-        &diagonal,
-        &mut []
-    ));
-    let preconditioner = BlockPreconditioner {
-        finite_inverse: &diagonal,
-        finite_factor: None,
-        fe: FePreconditioner::Diagonal(&[]),
-    };
-    let mut result = [0.; 2];
-    preconditioner.apply(&[6., 24.], &mut result).unwrap();
-    assert_eq!(result, [1., 1.]);
-}
-
-#[test]
-fn frame_preparation_preserves_column_order_diagonals() {
-    let active = DenseMatrix::from_row_major(
-        5,
-        3,
-        vec![
-            1.0, -2.0, 0.5, 0.25, 3.0, -1.5, -0.75, 1.25, 2.0, 4.0, -0.5, 0.125, 1.5, 2.5, -3.0,
-        ],
-    )
-    .expect("active design");
-    let outcome = [0.0, 2.0, 1.0, 4.0, 0.5];
-    let mean = [1.25, 1.5, 0.75, 2.0, 0.625];
-    let weights = [0.75, 1.25, 2.0, 0.5, 3.0];
-    let mut sqrt_weights = vec![0.0; 5];
-    let mut target = vec![0.0; 5];
-    let mut rhs = vec![0.0; 5];
-    let mut finite_inverse = vec![0.0; 3];
-
-    let weight_change = prepare_frame_and_finite_diagonal(
-        &active,
-        &outcome,
-        &mean,
-        &weights,
-        &mut sqrt_weights,
-        &mut target,
-        &mut rhs,
-        &mut finite_inverse,
-        false,
-    )
-    .expect("prepared frame");
-    assert_eq!(weight_change, 0.0);
-
-    let mut expected_diagonal = vec![0.0_f64; active.ncols()];
-    for (column, diagonal) in expected_diagonal.iter_mut().enumerate() {
-        for (row, &weight) in weights.iter().enumerate() {
-            let value = active[(row, column)];
-            *diagonal = (weight * value).mul_add(value, *diagonal);
-        }
-        *diagonal = 1.0 / *diagonal;
-    }
-    let expected_target = outcome
+    assert_eq!(solver.active_rank(), 0);
+    let target: Vec<f64> = fixture
+        .outcome
         .iter()
-        .zip(&mean)
-        .map(|(&value, &mu)| if value == 0.0 { -1.0 } else { value / mu - 1.0 })
-        .collect::<Vec<_>>();
-    assert_eq!(finite_inverse, expected_diagonal);
-    assert_eq!(target, expected_target);
-    for row in 0..weights.len() {
-        assert_eq!(sqrt_weights[row], weights[row].sqrt());
-        assert_eq!(rhs[row], sqrt_weights[row] * target[row]);
+        .zip(&weights)
+        .map(|(&y, &mu)| if y == 0.0 { -1.0 } else { y / mu - 1.0 })
+        .collect();
+    let (fitted, _) = dense_oracle(&fixture.design, &fixture.active, &weights, &target);
+    assert!(max_abs_difference(&solver.delta_eta, &fitted) <= 1e-9);
+}
+
+#[test]
+fn a_missed_joint_certificate_reprojects_once_from_the_solved_coefficients() {
+    let fixture = fixture(200, [15, 8, 5], 2);
+    let weights = frame_weights(200, 0.5);
+    let mut solver = engine(
+        &fixture.design,
+        fixture.active.clone(),
+        2,
+        LsmrPreconditioner::Schwarz,
+    );
+    FORCE_CERTIFICATE_MISSES.set(1);
+    let report = solver
+        .solve(
+            &fixture.design,
+            &fixture.outcome,
+            &weights,
+            &weights,
+            1e-9,
+            10_000,
+        )
+        .expect("retried frame");
+    assert_eq!(report.retries, 1);
+    assert!(report.certificate.passed);
+    assert_eq!(report.effective_tolerance, 1e-9 * RETRY_FACTOR);
+    // Later frames target the tighter scale the miss demonstrated.
+    assert_eq!(
+        solver.projections.as_ref().unwrap().tolerance_scale,
+        SCALE_STEP
+    );
+    let target: Vec<f64> = fixture
+        .outcome
+        .iter()
+        .zip(&weights)
+        .map(|(&y, &mu)| if y == 0.0 { -1.0 } else { y / mu - 1.0 })
+        .collect();
+    let (fitted, coefficients) = dense_oracle(&fixture.design, &fixture.active, &weights, &target);
+    assert!(max_abs_difference(&solver.delta_eta, &fitted) <= 1e-9);
+    assert!(max_abs_difference(&solver.step, &coefficients) <= 1e-9);
+
+    // Two misses exhaust the frame: a numerical refusal that forgets the
+    // warm starts.
+    FORCE_CERTIFICATE_MISSES.set(2);
+    let error = solver
+        .solve(
+            &fixture.design,
+            &fixture.outcome,
+            &weights,
+            &weights,
+            1e-9,
+            10_000,
+        )
+        .expect_err("exhausted frame");
+    assert_eq!(error.code, ErrorCode::NonConvergence);
+    assert!(!solver.projections.as_ref().unwrap().warm_start_valid);
+    assert_eq!(FORCE_CERTIFICATE_MISSES.get(), 0);
+}
+
+#[test]
+fn a_stalled_automatic_joint_recurrence_hands_the_fit_to_the_projections() {
+    let fixture = fixture(200, [15, 8, 5], 2);
+    let mut solver = engine(
+        &fixture.design,
+        fixture.active.clone(),
+        2,
+        LsmrPreconditioner::Auto,
+    );
+    let weights = frame_weights(200, 0.5);
+    let joint = solver
+        .solve(
+            &fixture.design,
+            &fixture.outcome,
+            &weights,
+            &weights,
+            1e-10,
+            10_000,
+        )
+        .expect("joint frame");
+    assert_eq!(joint.formulation, Formulation::Joint);
+    assert_eq!(joint.retries, 0);
+    assert!(joint.recurrence_residual.is_some());
+    solver.accept_step(1.0);
+    FORCE_JOINT_STALL.set(true);
+    let weights = frame_weights(200, 0.8);
+    let handed = solver
+        .solve(
+            &fixture.design,
+            &fixture.outcome,
+            &weights,
+            &weights,
+            1e-10,
+            10_000,
+        )
+        .expect("projected frame");
+    assert_eq!(handed.formulation, Formulation::Projections);
+    assert_eq!(handed.retries, 1);
+    assert!(handed.certificate.passed);
+    assert!(handed.recurrence_residual.is_none());
+    let target: Vec<f64> = fixture
+        .outcome
+        .iter()
+        .zip(&weights)
+        .map(|(&y, &mu)| if y == 0.0 { -1.0 } else { y / mu - 1.0 })
+        .collect();
+    let (fitted, coefficients) = dense_oracle(&fixture.design, &fixture.active, &weights, &target);
+    assert!(max_abs_difference(&solver.delta_eta, &fitted) <= 1e-9);
+    assert!(max_abs_difference(&solver.step, &coefficients) <= 1e-9);
+    // Later frames of the fit start on the projections, warm.
+    let weights = frame_weights(200, 0.9);
+    let later = solver
+        .solve(
+            &fixture.design,
+            &fixture.outcome,
+            &weights,
+            &weights,
+            1e-10,
+            10_000,
+        )
+        .expect("later frame");
+    assert_eq!(later.formulation, Formulation::Projections);
+    assert_eq!(later.retries, 0);
+    assert!(later.warm_start_attempted);
+    // Explicit Jacobi keeps the joint recurrence: a stall that its
+    // continuation cannot repair is the frame's numerical refusal.
+    let mut explicit = engine(
+        &fixture.design,
+        fixture.active.clone(),
+        2,
+        LsmrPreconditioner::Diagonal,
+    );
+    FORCE_JOINT_STALL.set(true);
+    let error = explicit
+        .solve(
+            &fixture.design,
+            &fixture.outcome,
+            &weights,
+            &weights,
+            1e-10,
+            10_000,
+        )
+        .expect_err("explicit Jacobi does not hand off");
+    assert_eq!(error.code, ErrorCode::NonConvergence);
+    assert!(explicit.projections.is_none());
+}
+
+#[test]
+fn a_workspace_beyond_the_admitted_limit_is_an_allocation_refusal() {
+    let fixture = fixture(120, [9, 6, 4], 1);
+    let weights = frame_weights(120, 0.1);
+    let mut solver = engine(
+        &fixture.design,
+        fixture.active.clone(),
+        1,
+        LsmrPreconditioner::Schwarz,
+    );
+    solver.ensure_projections().expect("projections");
+    solver.projections.as_mut().unwrap().memory_limit = 64;
+    let error = solver
+        .solve(
+            &fixture.design,
+            &fixture.outcome,
+            &weights,
+            &weights,
+            1e-9,
+            10_000,
+        )
+        .expect_err("refused workspace");
+    assert_eq!(error.code, ErrorCode::Allocation);
+}
+
+#[test]
+fn cancellation_stops_a_frame_as_an_interruption() {
+    const CHILD: &str = "FEREG_PPML_FWL_LSMR_CANCEL_CHILD";
+    if std::env::var_os(CHILD).is_none() {
+        let status = std::process::Command::new(std::env::current_exe().unwrap())
+            .env(CHILD, "1")
+            .args([
+                "ppml::categorical_lsmr::tests::cancellation_stops_a_frame_as_an_interruption",
+                "--exact",
+                "--test-threads=1",
+            ])
+            .status()
+            .unwrap();
+        assert!(status.success());
+        return;
+    }
+    let fixture = fixture(120, [9, 6, 4], 1);
+    let weights = frame_weights(120, 0.1);
+    for preconditioner in [LsmrPreconditioner::Diagonal, LsmrPreconditioner::Schwarz] {
+        let mut solver = engine(&fixture.design, fixture.active.clone(), 1, preconditioner);
+        crate::interrupt::request_cancellation();
+        let error = solver
+            .solve(
+                &fixture.design,
+                &fixture.outcome,
+                &weights,
+                &weights,
+                1e-9,
+                10_000,
+            )
+            .expect_err("cancelled frame");
+        assert_eq!(error.code, ErrorCode::Interrupted);
+        crate::interrupt::reset_cancellation();
+        solver
+            .solve(
+                &fixture.design,
+                &fixture.outcome,
+                &weights,
+                &weights,
+                1e-9,
+                10_000,
+            )
+            .expect("a later frame runs normally");
     }
 }
 
@@ -872,48 +685,12 @@ fn topology_identity_rejects_an_equal_shaped_replacement() {
     assert!(identity.matches(&first));
     assert!(!identity.matches(&replacement));
 
-    let mut solver = ReusableCategoricalJointLsmr {
-        team: test_team(1),
-        active_design: DenseMatrix::from_row_major(4, 0, Vec::new()).expect("active"),
-        active_slots: Vec::new(),
-        topology: identity,
-        effect_offsets: vec![0, 2],
-        core_effects: None,
-        sqrt_weights: vec![0.0; 4],
-        rhs: vec![0.0; 4],
-        target: vec![0.0; 4],
-        delta_eta: vec![0.0; 4],
-        residual: vec![0.0; 4],
-        warm_start: vec![0.0; 2],
-        finite_inverse: Vec::new(),
-        finite_factor: Vec::new(),
-        finite_factor_ready: false,
-        fe_inverse: vec![0.0; 2],
-        finite_certificate: Vec::new(),
-        fe_certificate: vec![DirectionCertificate::default(); 2],
-        warm_start_valid: false,
-        first_pass_predictor: JointLsmrFirstPassPredictor::default(),
-        preconditioner: None,
-        factor_log_weight_drift: f64::INFINITY,
-        core_pair_bridge_scratch: Mutex::new(CorePairBridgeScratch::default()),
-        policy: CategoricalLsmrPolicy::Diagonal,
-        instrumentation: JointLsmrInstrumentation::default(),
-    };
-    solver
-        .first_pass_predictor
-        .record_certified(predictor_frame(
-            1e-8,
-            1e-8,
-            5e-9,
-            10,
-            JointLsmrContinuationCause::default(),
-        ));
-    let predictor_before_failure = solver.first_pass_predictor;
+    let empty = DenseMatrix::from_row_major(4, 0, Vec::new()).expect("active");
+    let mut solver = engine(&first, empty, 1, LsmrPreconditioner::Auto);
     let error = solver
         .solve(&replacement, &[1.0; 4], &[1.0; 4], &[1.0; 4], 1e-8, 100)
-        .expect_err("replacement topology must fail before operator use");
+        .expect_err("replacement topology must fail before projection");
     assert_eq!(error.code, ErrorCode::InvalidArgument);
-    assert_eq!(solver.first_pass_predictor, predictor_before_failure);
 }
 
 #[test]
@@ -940,474 +717,74 @@ fn topology_identity_rejects_a_different_effect_partition_with_the_same_total_le
 }
 
 #[test]
-fn joint_solver_reuses_a_certified_incremental_state_across_weight_frames() {
-    for eager_factor in [false, true] {
-        let first_codes = vec![0, 0, 1, 1, 2, 2, 3, 3, 0, 1, 2, 3];
-        let second_codes = vec![0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 0];
-        let design = FeDesign::new(
-            12,
-            vec![
-                EffectTerm::new(first_codes.clone(), 4, true, Vec::new()).expect("first"),
-                EffectTerm::new(second_codes.clone(), 2, true, Vec::new()).expect("second"),
-            ],
-        )
-        .expect("design");
-        let x = vec![0.0, 1.0, 1.5, 0.5, 2.0, 3.0, 2.5, 4.0, 1.2, 2.2, 3.2, 4.2];
-        let active_design = DenseMatrix::from_row_major(12, 1, x.clone()).expect("active design");
-        let first_effect = [0.12, -0.08, 0.05, -0.03];
-        let second_effect = [0.07, -0.06];
-        let target = x
-            .iter()
-            .enumerate()
-            .map(|(row, value)| {
-                0.08 * value
-                    + first_effect[first_codes[row] as usize]
-                    + second_effect[second_codes[row] as usize]
-            })
-            .collect::<Vec<_>>();
-        let outcome = target.iter().map(|value| 1.0 + value).collect::<Vec<_>>();
-        let mut solver = ReusableCategoricalJointLsmr {
-            team: test_team(2),
-            active_design,
-            active_slots: vec![0],
-            topology: FeTopologyIdentity::capture(&design),
-            effect_offsets: vec![0, 4, 6],
-            core_effects: None,
-            sqrt_weights: vec![0.0; 12],
-            rhs: vec![0.0; 12],
-            target: vec![0.0; 12],
-            delta_eta: vec![0.0; 12],
-            residual: vec![0.0; 12],
-            warm_start: vec![0.0; 7],
-            finite_inverse: vec![0.0; 1],
-            finite_factor: Vec::new(),
-            finite_factor_ready: false,
-            // A Schwarz frame must never inspect or overwrite the unused FE
-            // diagonal. NaNs make an accidental read fail the solve, while an
-            // accidental refresh is visible below.
-            fe_inverse: vec![f64::NAN; 6],
-            finite_certificate: vec![DirectionCertificate::default(); 1],
-            fe_certificate: vec![DirectionCertificate::default(); 6],
-            warm_start_valid: false,
-            first_pass_predictor: JointLsmrFirstPassPredictor::default(),
-            preconditioner: None,
-            factor_log_weight_drift: f64::INFINITY,
-            core_pair_bridge_scratch: Mutex::new(CorePairBridgeScratch::default()),
-            policy: CategoricalLsmrPolicy::Reuse,
-            instrumentation: JointLsmrInstrumentation::default(),
-        };
-        if eager_factor {
-            assert!(solver
-                .rebuild_schwarz(&design, &[1.0; 12])
-                .expect("initial factor"));
-        }
-        let unrelated_pool = rayon::ThreadPoolBuilder::new()
-            .num_threads(1)
-            .build()
-            .expect("unrelated pool");
-        let first = unrelated_pool
-            .install(|| solver.solve(&design, &outcome, &[1.0; 12], &[1.0; 12], 1e-10, 1_000))
-            .expect("first correction");
-        assert_eq!(first.executing_threads, 2);
-        assert_eq!(first.retries, 0);
-        assert!(first.certificate.passed);
-        assert!(first.certification_seconds > 0.0);
-        assert!(first.requested_schwarz);
-        assert_eq!(first.used_schwarz, eager_factor);
-        assert!(!first.rebuilt_preconditioner);
-        assert_eq!(
-            solver.instrumentation.schwarz_rebuilds,
-            usize::from(eager_factor)
-        );
-        assert_eq!(solver.instrumentation.escalation_armed, 1);
-        let bridge_scratch = solver
-            .core_pair_bridge_scratch
-            .lock()
-            .expect("bridge scratch");
-        assert!(bridge_scratch.core_rhs.is_empty());
-        assert!(bridge_scratch.core_correction.is_empty());
-        drop(bridge_scratch);
-        let expected_finite_inverse = 1.0 / x.iter().map(|value| value * value).sum::<f64>();
-        assert!((solver.finite_inverse[0] - expected_finite_inverse).abs() <= 1e-15);
-        if eager_factor {
-            assert!(solver.fe_inverse.iter().all(|value| value.is_nan()));
-        } else {
-            assert!(solver
-                .fe_inverse
-                .iter()
-                .all(|value| value.is_finite() && *value > 0.0));
-            assert!(solver.preconditioner.is_none());
-        }
-        for (actual, expected) in solver.delta_eta.iter().zip(&target) {
-            assert!((actual - expected).abs() <= 1e-9);
-        }
-
-        solver.accept_step(0.5);
-        let mean = target
-            .iter()
-            .map(|value| 1.0 + 0.5 * value)
-            .collect::<Vec<_>>();
-        let weights = mean.clone();
-        let second = solver
-            .solve(&design, &outcome, &mean, &weights, 1e-10, 1_000)
-            .expect("second correction");
-        assert_eq!(second.retries, 0);
-        assert!(second.certificate.passed);
-        assert!(second.certification_seconds > 0.0);
-        assert_eq!(second.used_schwarz, eager_factor);
-        assert!(!second.rebuilt_preconditioner);
-        assert!(!second.frame.predictor_used);
-        assert!(!second.frame.predictor_refreshed_preconditioner);
-        assert_eq!(
-            solver.instrumentation.schwarz_rebuilds,
-            usize::from(eager_factor)
-        );
-        assert_eq!(solver.instrumentation.escalation_armed, 2);
-        let expected_finite_inverse = 1.0
-            / x.iter()
-                .zip(&weights)
-                .map(|(value, weight)| weight * value * value)
-                .sum::<f64>();
-        assert!((solver.finite_inverse[0] - expected_finite_inverse).abs() <= 1e-15);
-        if eager_factor {
-            assert!(solver.fe_inverse.iter().all(|value| value.is_nan()));
-        } else {
-            assert!(solver
-                .fe_inverse
-                .iter()
-                .all(|value| value.is_finite() && *value > 0.0));
-            assert!(solver.preconditioner.is_none());
-        }
-        assert!(solver.warm_start_valid);
-        assert!(solver.delta_eta.iter().all(|value| value.is_finite()));
-
-        solver.reset_warm_start();
-        assert!(!solver.warm_start_valid);
-        assert_eq!(
-            solver.first_pass_predictor,
-            JointLsmrFirstPassPredictor::default()
-        );
-    }
-}
-
-#[test]
-fn joint_solver_tracks_retained_team_across_one_four_one() {
-    let first_codes = vec![0, 0, 1, 1, 2, 2, 3, 3, 0, 1, 2, 3];
-    let second_codes = vec![0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 0];
-    let design = FeDesign::new(
-        12,
-        vec![
-            EffectTerm::new(first_codes.clone(), 4, true, Vec::new()).expect("first"),
-            EffectTerm::new(second_codes.clone(), 2, true, Vec::new()).expect("second"),
-        ],
-    )
-    .expect("design");
-    let active_values = vec![0.0, 1.0, 1.5, 0.5, 2.0, 3.0, 2.5, 4.0, 1.2, 2.2, 3.2, 4.2];
-    let first_effect = [0.12, -0.08, 0.05, -0.03];
-    let second_effect = [0.07, -0.06];
-    let target = active_values
-        .iter()
-        .enumerate()
-        .map(|(row, value)| {
-            0.08 * value
-                + first_effect[first_codes[row] as usize]
-                + second_effect[second_codes[row] as usize]
-        })
-        .collect::<Vec<_>>();
-    let outcome = target.iter().map(|value| 1.0 + value).collect::<Vec<_>>();
-    let ambient = rayon::ThreadPoolBuilder::new()
-        .num_threads(2)
-        .build()
-        .expect("ambient pool");
-
-    for requested in [1, 4, 1] {
-        let mut solver = ReusableCategoricalJointLsmr {
-            team: test_team(requested),
-            active_design: DenseMatrix::from_row_major(12, 1, active_values.clone())
-                .expect("active design"),
-            active_slots: vec![0],
-            topology: FeTopologyIdentity::capture(&design),
-            effect_offsets: vec![0, 4, 6],
-            core_effects: None,
-            sqrt_weights: vec![0.0; 12],
-            rhs: vec![0.0; 12],
-            target: vec![0.0; 12],
-            delta_eta: vec![0.0; 12],
-            residual: vec![0.0; 12],
-            warm_start: vec![0.0; 7],
-            finite_inverse: vec![0.0; 1],
-            finite_factor: Vec::new(),
-            finite_factor_ready: false,
-            fe_inverse: vec![0.0; 6],
-            finite_certificate: vec![DirectionCertificate::default(); 1],
-            fe_certificate: vec![DirectionCertificate::default(); 6],
-            warm_start_valid: false,
-            first_pass_predictor: JointLsmrFirstPassPredictor::default(),
-            preconditioner: None,
-            factor_log_weight_drift: f64::INFINITY,
-            core_pair_bridge_scratch: Mutex::new(CorePairBridgeScratch::default()),
-            policy: CategoricalLsmrPolicy::Diagonal,
-            instrumentation: JointLsmrInstrumentation::default(),
-        };
-        let report = ambient
-            .install(|| solver.solve(&design, &outcome, &[1.0; 12], &[1.0; 12], 1e-10, 1_000))
-            .expect("joint correction");
-        assert_eq!(report.executing_threads, requested);
-        assert!(report.certificate.passed);
-    }
-}
-
-#[test]
-fn joint_solver_supports_zero_finite_columns_with_three_effects() {
-    let rows = 60;
-    let first_codes = (0..rows).map(|row| (row % 5) as u32).collect::<Vec<_>>();
-    let second_codes = (0..rows)
-        .map(|row| ((row / 2) % 4) as u32)
-        .collect::<Vec<_>>();
-    let third_codes = (0..rows)
-        .map(|row| ((row / 3) % 3) as u32)
-        .collect::<Vec<_>>();
-    let design = FeDesign::new(
-        rows,
-        vec![
-            EffectTerm::new(first_codes.clone(), 5, true, Vec::new()).expect("first"),
-            EffectTerm::new(second_codes.clone(), 4, true, Vec::new()).expect("second"),
-            EffectTerm::new(third_codes.clone(), 3, true, Vec::new()).expect("third"),
-        ],
-    )
-    .expect("design");
-    let first_effect = [-0.04, -0.02, 0.0, 0.02, 0.04];
-    let second_effect = [-0.03, -0.01, 0.01, 0.03];
-    let third_effect = [-0.02, 0.0, 0.02];
-    let target = (0..rows)
-        .map(|row| {
-            first_effect[first_codes[row] as usize]
-                + second_effect[second_codes[row] as usize]
-                + third_effect[third_codes[row] as usize]
-        })
-        .collect::<Vec<_>>();
-    let outcome = target.iter().map(|value| 1.0 + value).collect::<Vec<_>>();
-    let mut solver = ReusableCategoricalJointLsmr {
-        team: test_team(4),
-        active_design: DenseMatrix::from_row_major(rows, 0, Vec::new())
-            .expect("empty active design"),
-        active_slots: Vec::new(),
-        topology: FeTopologyIdentity::capture(&design),
-        effect_offsets: vec![0, 5, 9, 12],
-        core_effects: Some([0, 1]),
-        sqrt_weights: vec![0.0; rows],
-        rhs: vec![0.0; rows],
-        target: vec![0.0; rows],
-        delta_eta: vec![0.0; rows],
-        residual: vec![0.0; rows],
-        warm_start: vec![0.0; 12],
-        finite_inverse: Vec::new(),
-        finite_factor: Vec::new(),
-        finite_factor_ready: false,
-        fe_inverse: vec![0.0; 12],
-        finite_certificate: Vec::new(),
-        fe_certificate: vec![DirectionCertificate::default(); 12],
-        warm_start_valid: false,
-        first_pass_predictor: JointLsmrFirstPassPredictor::default(),
-        preconditioner: None,
-        factor_log_weight_drift: f64::INFINITY,
-        core_pair_bridge_scratch: Mutex::new(
-            CorePairBridgeScratch::new(9).expect("bridge scratch"),
-        ),
-        policy: CategoricalLsmrPolicy::CorePair,
-        instrumentation: JointLsmrInstrumentation::default(),
-    };
-
-    let report = solver
-        .solve(&design, &outcome, &[1.0; 60], &[1.0; 60], 1e-10, 1_000)
-        .expect("FE-only correction");
-    assert!(report.certificate.passed);
-    assert!(report.requested_schwarz);
-    assert!(report.used_schwarz);
-    assert_eq!(solver.active_rank(), 0);
-    assert!(solver.finite_inverse.is_empty());
-    for (actual, expected) in solver.delta_eta.iter().zip(&target) {
-        assert!((actual - expected).abs() <= 1e-9);
-    }
-}
-
-#[test]
-fn core_pair_factor_is_reused_within_the_drift_bound_and_refreshed_beyond_it() {
-    let rows = 60;
-    let first_codes = (0..rows).map(|row| (row % 5) as u32).collect::<Vec<_>>();
-    let second_codes = (0..rows)
-        .map(|row| ((row / 2) % 4) as u32)
-        .collect::<Vec<_>>();
-    let third_codes = (0..rows)
-        .map(|row| ((row / 3) % 3) as u32)
-        .collect::<Vec<_>>();
-    let design = FeDesign::new(
-        rows,
-        vec![
-            EffectTerm::new(first_codes.clone(), 5, true, Vec::new()).expect("first"),
-            EffectTerm::new(second_codes.clone(), 4, true, Vec::new()).expect("second"),
-            EffectTerm::new(third_codes.clone(), 3, true, Vec::new()).expect("third"),
-        ],
-    )
-    .expect("design");
-    let first_effect = [-0.04, -0.02, 0.0, 0.02, 0.04];
-    let second_effect = [-0.03, -0.01, 0.01, 0.03];
-    let third_effect = [-0.02, 0.0, 0.02];
-    let outcome = (0..rows)
-        .map(|row| {
-            1.0 + first_effect[first_codes[row] as usize]
-                + second_effect[second_codes[row] as usize]
-                + third_effect[third_codes[row] as usize]
-        })
-        .collect::<Vec<_>>();
-    let mut solver = ReusableCategoricalJointLsmr {
-        team: test_team(2),
-        active_design: DenseMatrix::from_row_major(rows, 0, Vec::new())
-            .expect("empty active design"),
-        active_slots: Vec::new(),
-        topology: FeTopologyIdentity::capture(&design),
-        effect_offsets: vec![0, 5, 9, 12],
-        core_effects: Some([0, 1]),
-        sqrt_weights: vec![0.0; rows],
-        rhs: vec![0.0; rows],
-        target: vec![0.0; rows],
-        delta_eta: vec![0.0; rows],
-        residual: vec![0.0; rows],
-        warm_start: vec![0.0; 12],
-        finite_inverse: Vec::new(),
-        finite_factor: Vec::new(),
-        finite_factor_ready: false,
-        fe_inverse: vec![0.0; 12],
-        finite_certificate: Vec::new(),
-        fe_certificate: vec![DirectionCertificate::default(); 12],
-        warm_start_valid: false,
-        first_pass_predictor: JointLsmrFirstPassPredictor::default(),
-        preconditioner: None,
-        factor_log_weight_drift: f64::INFINITY,
-        core_pair_bridge_scratch: Mutex::new(
-            CorePairBridgeScratch::new(9).expect("bridge scratch"),
-        ),
-        policy: CategoricalLsmrPolicy::CorePair,
-        instrumentation: JointLsmrInstrumentation::default(),
-    };
-    // Every frame solves and certifies its own current-weight system; the
-    // uniform weights keep the exact Newton target in the FE span.
-    let frame = |solver: &mut ReusableCategoricalJointLsmr, level: f64| {
-        let mean = vec![level; rows];
-        let report = solver
-            .solve(&design, &outcome, &mean, &mean, 1e-10, 1_000)
-            .expect("core-pair correction");
-        assert!(report.certificate.passed);
-        assert!(report.used_schwarz);
-        for (actual, y) in solver.delta_eta.iter().zip(&outcome) {
-            assert!((actual - (y / level - 1.0)).abs() <= 1e-9);
-        }
-        report
-    };
-    let long_prior = |solver: &mut ReusableCategoricalJointLsmr, report: JointLsmrReport| {
-        let mut prior = report.frame;
-        prior.first_pass_iterations = JOINT_LSMR_CORE_PAIR_REFRESH_ITERATIONS;
-        solver.first_pass_predictor.record_certified(prior);
-    };
-
-    let built = frame(&mut solver, 1.0);
-    assert!(built.rebuilt_preconditioner);
-    assert_eq!(solver.instrumentation.schwarz_rebuilds, 1);
-    assert_eq!(solver.factor_log_weight_drift, 0.0);
-    assert_eq!(solver.instrumentation.escalation_armed, 0);
-
-    // A long frame with a small weight change keeps the factor, unarmed.
-    long_prior(&mut solver, built);
-    let reused = frame(&mut solver, 1.02);
-    let drift = 1.02_f64.ln();
-    assert!(reused.frame.predictor_bounded_reuse);
-    assert!(!reused.frame.predictor_refreshed_preconditioner);
-    assert!(!reused.rebuilt_preconditioner);
-    assert!((reused.frame.factor_log_weight_drift - drift).abs() <= 1e-12);
-    assert_eq!(solver.instrumentation.schwarz_rebuilds, 1);
-    assert_eq!(solver.instrumentation.escalation_armed, 0);
-
-    // Accumulated drift beyond the bound refreshes the factor on current weights.
-    long_prior(&mut solver, reused);
-    let refreshed = frame(&mut solver, 1.02 * 1.35);
-    assert!(refreshed.frame.predictor_refreshed_preconditioner);
-    assert!(!refreshed.frame.predictor_bounded_reuse);
-    assert!(refreshed.rebuilt_preconditioner);
-    assert!((refreshed.frame.factor_log_weight_drift - (drift + 1.35_f64.ln())).abs() <= 1e-12);
-    assert_eq!(solver.instrumentation.schwarz_rebuilds, 2);
-    assert_eq!(solver.factor_log_weight_drift, 0.0);
-
-    // A short frame keeps the retained factor with the staleness escalation.
-    let short = frame(&mut solver, 1.02 * 1.35);
-    assert!(!short.frame.predictor_bounded_reuse);
-    assert!(!short.rebuilt_preconditioner);
-    assert_eq!(solver.instrumentation.escalation_armed, 1);
-
-    // An invalidated trajectory loses the drift bound.
-    solver.reset_warm_start();
-    long_prior(&mut solver, short);
-    let unknown = frame(&mut solver, 1.02 * 1.35);
-    assert!(unknown.frame.factor_log_weight_drift.is_infinite());
-    assert!(!unknown.frame.predictor_bounded_reuse);
-}
-
-#[test]
 fn joint_memory_estimate_scales_with_retained_design_and_thread_team() {
-    let base = estimate_joint_lsmr_workspace_bytes(
-        10_000,
-        2,
-        &[2_000, 1_000],
-        1,
-        CategoricalLsmrPolicy::Reuse,
-        None,
-    )
-    .expect("base estimate");
-    let wider = estimate_joint_lsmr_workspace_bytes(
-        10_000,
-        8,
-        &[2_000, 1_000],
-        1,
-        CategoricalLsmrPolicy::Reuse,
-        None,
-    )
-    .expect("wide estimate");
-    let parallel = estimate_joint_lsmr_workspace_bytes(
-        10_000,
-        8,
-        &[2_000, 1_000],
-        8,
-        CategoricalLsmrPolicy::Reuse,
-        None,
-    )
-    .expect("parallel estimate");
-    let more_levels = estimate_joint_lsmr_workspace_bytes(
-        10_000,
-        8,
-        &[2_001, 1_001],
-        8,
-        CategoricalLsmrPolicy::Reuse,
-        None,
-    )
-    .expect("larger topology estimate");
+    let estimate = |columns, levels: &[usize], threads| {
+        estimate_joint_lsmr_workspace_bytes(
+            10_000,
+            columns,
+            levels,
+            threads,
+            LsmrPreconditioner::Auto,
+            None,
+        )
+        .expect("estimate")
+    };
+    let base = estimate(2, &[2_000, 1_000], 1);
+    let wider = estimate(8, &[2_000, 1_000], 1);
+    let parallel = estimate(8, &[2_000, 1_000], 8);
+    let more_levels = estimate(8, &[2_001, 1_001], 8);
     assert!(wider > base);
     assert!(parallel > wider);
     assert!(more_levels > parallel);
+    // At least the retained controls, the projected matrix and the
+    // coefficients of every column.
+    let floor = 8 * (10_000 * 8 + 10_000 * 9 + 2 * 9 * 3_000);
+    assert!(wider > floor);
+    // A preconditioner that keeps the joint recurrence never projects.
+    let joint = estimate_joint_lsmr_workspace_bytes(
+        10_000,
+        8,
+        &[2_000, 1_000],
+        1,
+        LsmrPreconditioner::Diagonal,
+        None,
+    )
+    .unwrap();
+    assert!(joint < wider);
 }
 
 #[test]
-fn checkpoint_memory_charges_batch_outputs_and_concurrent_recurrences() {
-    let one_thread =
-        estimate_checkpoint_lsmr_workspace_bytes(50_000, 11, &[8_000, 7_000, 6_000], 1)
-            .expect("one-thread checkpoint estimate");
-    let seven_threads =
-        estimate_checkpoint_lsmr_workspace_bytes(50_000, 11, &[8_000, 7_000, 6_000], 7)
-            .expect("seven-thread checkpoint estimate");
-    let wider = estimate_checkpoint_lsmr_workspace_bytes(50_000, 17, &[8_000, 7_000, 6_000], 7)
-        .expect("wide checkpoint estimate");
+fn checkpoint_memory_charges_the_projected_and_candidate_matrices() {
+    let estimate = |rhs, threads| {
+        estimate_checkpoint_lsmr_workspace_bytes(50_000, rhs, &[8_000, 7_000, 6_000], threads)
+            .expect("checkpoint estimate")
+    };
+    let one_thread = estimate(11, 1);
+    let seven_threads = estimate(11, 7);
+    let wider = estimate(17, 7);
     assert!(seven_threads > one_thread);
     assert!(wider > seven_threads);
-    let three_dense_batches = 3_u128 * 50_000 * 11 * std::mem::size_of::<f64>() as u128;
-    assert!(one_thread > three_dense_batches);
+    let two_dense_batches = 2_u128 * 50_000 * 11 * std::mem::size_of::<f64>() as u128;
+    assert!(one_thread > two_dense_batches);
+    assert!(estimate_checkpoint_lsmr_workspace_bytes(50_000, 0, &[8_000, 7_000], 1).is_err());
+}
+
+#[test]
+fn joint_memory_estimate_rejects_invalid_and_overflowing_shapes() {
+    let invalid =
+        estimate_joint_lsmr_workspace_bytes(100, 2, &[20, 0], 4, LsmrPreconditioner::Auto, None)
+            .expect_err("zero levels must fail");
+    assert_eq!(invalid.code, ErrorCode::InvalidArgument);
+    let overflow = estimate_joint_lsmr_workspace_bytes(
+        usize::MAX,
+        usize::MAX,
+        &[usize::MAX, usize::MAX],
+        usize::MAX,
+        LsmrPreconditioner::Auto,
+        None,
+    )
+    .expect_err("adversarial dimensions must fail closed");
+    assert_eq!(overflow.code, ErrorCode::Allocation);
 }
 
 #[test]
@@ -1430,194 +807,4 @@ fn schwarz_memory_charges_dense_cross_tabs_at_both_dispatch_boundaries() {
         0
     );
     assert!(categorical_dense_cross_tab_bytes(u128::MAX, &[2, 3]).is_err());
-}
-
-#[test]
-fn sparse_checkpoint_memory_includes_concurrent_dense_nuisance_pairs() {
-    let levels = [2_666, 2_000, 1_600];
-    let dense = (2_666_u128 * 1_600 + 2_000 * 1_600) * 8;
-    assert_eq!(
-        categorical_dense_cross_tab_bytes(8_000, &levels).unwrap(),
-        dense
-    );
-    let checkpoint =
-        CategoricalLsmrMemoryShape::new(8_000, 0, &levels, 7, CategoricalLsmrPolicy::Reuse, None)
-            .unwrap();
-    let ordinary = CategoricalLsmrMemoryShape::new(
-        8_000,
-        10,
-        &levels,
-        7,
-        CategoricalLsmrPolicy::CorePair,
-        None,
-    )
-    .unwrap();
-    assert!(checkpoint.schwarz.build_peak_bytes > dense);
-    assert!(ordinary.schwarz.build_peak_bytes < dense);
-    assert!(estimate_checkpoint_lsmr_workspace_bytes(8_000, 11, &levels, 7).unwrap() > dense);
-    let permuted = CategoricalLsmrMemoryShape::new(
-        8_000,
-        0,
-        &[1_600, 2_666, 2_000],
-        7,
-        CategoricalLsmrPolicy::Reuse,
-        None,
-    )
-    .unwrap();
-    assert_eq!(checkpoint.schwarz, permuted.schwarz);
-}
-
-#[test]
-fn joint_policy_keeps_two_effect_schwarz_and_uses_one_core_pair_for_multiway() {
-    assert_eq!(joint_lsmr_policy(1), CategoricalLsmrPolicy::Reuse);
-    assert_eq!(joint_lsmr_policy(2), CategoricalLsmrPolicy::Reuse);
-    assert_eq!(joint_lsmr_policy(3), CategoricalLsmrPolicy::CorePair);
-    assert_eq!(joint_lsmr_policy(4), CategoricalLsmrPolicy::CorePair);
-}
-
-#[test]
-fn joint_core_pair_uses_the_same_two_largest_effects_under_every_permutation() {
-    let rows = 120;
-    let sources = [
-        (
-            (0..rows).map(|row| (row % 20) as u32).collect::<Vec<_>>(),
-            20,
-        ),
-        ((0..rows).map(|row| (row % 9) as u32).collect::<Vec<_>>(), 9),
-        ((0..rows).map(|row| (row % 4) as u32).collect::<Vec<_>>(), 4),
-    ];
-    for order in [
-        [0, 1, 2],
-        [0, 2, 1],
-        [1, 0, 2],
-        [1, 2, 0],
-        [2, 0, 1],
-        [2, 1, 0],
-    ] {
-        let effects = order
-            .iter()
-            .map(|&effect| {
-                EffectTerm::new(
-                    sources[effect].0.clone(),
-                    sources[effect].1,
-                    true,
-                    Vec::new(),
-                )
-                .expect("effect")
-            })
-            .collect();
-        let design = FeDesign::new(rows, effects).expect("permuted design");
-        let selected = largest_retained_core_pair(&design).expect("core pair");
-        assert_eq!([order[selected[0]], order[selected[1]]], [0, 1]);
-    }
-}
-
-#[test]
-fn joint_memory_charges_only_the_selected_schwarz_topology() {
-    let levels = [500, 2_000, 1_000];
-    let diagonal_one = estimate_joint_lsmr_workspace_bytes(
-        10_000,
-        8,
-        &levels,
-        1,
-        CategoricalLsmrPolicy::Diagonal,
-        None,
-    )
-    .expect("serial diagonal estimate");
-    let diagonal_eight = estimate_joint_lsmr_workspace_bytes(
-        10_000,
-        8,
-        &levels,
-        8,
-        CategoricalLsmrPolicy::Diagonal,
-        None,
-    )
-    .expect("parallel diagonal estimate");
-    let schwarz = estimate_joint_lsmr_workspace_bytes(
-        10_000,
-        8,
-        &levels,
-        8,
-        CategoricalLsmrPolicy::Reuse,
-        None,
-    )
-    .expect("Schwarz estimate");
-    let core_pair = estimate_joint_lsmr_workspace_bytes(
-        10_000,
-        8,
-        &levels,
-        8,
-        CategoricalLsmrPolicy::CorePair,
-        None,
-    )
-    .expect("core-pair estimate");
-    assert_eq!(diagonal_one, diagonal_eight);
-    assert!(diagonal_eight < core_pair);
-    assert!(core_pair < schwarz);
-    let permuted = estimate_joint_lsmr_workspace_bytes(
-        10_000,
-        8,
-        &[1_000, 500, 2_000],
-        8,
-        CategoricalLsmrPolicy::CorePair,
-        None,
-    )
-    .expect("permuted core-pair estimate");
-    assert_eq!(core_pair, permuted);
-}
-
-#[test]
-fn core_pair_memory_charges_exactly_two_core_width_bridge_buffers() {
-    let levels = [500, 2_000, 1_000];
-    let expected = 2_u128 * (levels[1] + levels[2]) as u128 * std::mem::size_of::<f64>() as u128;
-    assert_eq!(
-        core_pair_bridge_scratch_bytes(&levels, CategoricalLsmrPolicy::CorePair)
-            .expect("core-pair bridge bytes"),
-        expected
-    );
-    assert_eq!(
-        core_pair_bridge_scratch_bytes(&[1_000, 500, 2_000], CategoricalLsmrPolicy::CorePair)
-            .expect("permuted core-pair bridge bytes"),
-        expected
-    );
-    assert_eq!(
-        core_pair_bridge_scratch_bytes(&levels, CategoricalLsmrPolicy::Reuse)
-            .expect("reuse bridge bytes"),
-        0
-    );
-    assert_eq!(
-        core_pair_bridge_scratch_bytes(&levels, CategoricalLsmrPolicy::Diagonal)
-            .expect("diagonal bridge bytes"),
-        0
-    );
-}
-
-#[test]
-fn joint_memory_estimate_rejects_invalid_and_overflowing_shapes() {
-    let invalid = estimate_joint_lsmr_workspace_bytes(
-        100,
-        2,
-        &[20, 0],
-        4,
-        CategoricalLsmrPolicy::Diagonal,
-        None,
-    )
-    .expect_err("zero levels must fail");
-    assert_eq!(invalid.code, ErrorCode::InvalidArgument);
-
-    let overflow = estimate_joint_lsmr_workspace_bytes(
-        usize::MAX,
-        usize::MAX,
-        &[usize::MAX, usize::MAX],
-        usize::MAX,
-        CategoricalLsmrPolicy::Reuse,
-        None,
-    )
-    .expect_err("adversarial dimensions must fail closed");
-    assert_eq!(overflow.code, ErrorCode::Allocation);
-}
-fn test_team(threads: usize) -> InstalledThreadTeam {
-    ThreadTeam::new(ThreadConfig::from_requested(threads, true).expect("thread config"))
-        .acquire()
-        .expect("installed thread team")
 }

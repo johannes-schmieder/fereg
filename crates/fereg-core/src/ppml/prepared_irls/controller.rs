@@ -288,7 +288,7 @@ impl<P: PreparedOlsFitView + Sync + ?Sized> CandidatePhase<'_, '_, P> {
         &mut self,
         transaction: &StrictLinearCandidateTransaction<'_, '_, P>,
         facts: &StrictFacts,
-        direction: &OrdinaryDirection,
+        direction: &OrdinaryDirection<'_>,
         curve: &Option<ProfiledInterceptCurve>,
         control: &mut StrictCheckpointControl,
         iteration: usize,
@@ -543,7 +543,7 @@ impl<P: PreparedOlsFitView + Sync + ?Sized> CandidatePhase<'_, '_, P> {
 pub(super) struct StrictCycle<'a, 'prepared, P: PreparedOlsFitView + Sync + ?Sized> {
     pub(super) candidate: CandidatePhase<'a, 'prepared, P>,
     pub(super) session: &'a mut CertifiedLinearSession<'prepared, P>,
-    pub(super) direction: &'a mut OrdinaryDirection,
+    pub(super) direction: &'a mut OrdinaryDirection<'prepared>,
     pub(super) curve: &'a mut Option<ProfiledInterceptCurve>,
     pub(super) control: &'a mut StrictCheckpointControl,
     pub(super) memory: &'a mut PpmlMemoryTelemetry,

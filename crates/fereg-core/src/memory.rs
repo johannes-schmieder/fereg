@@ -13,7 +13,7 @@ mod slope_recovery;
 mod workspace_peak;
 pub(crate) use categorical_schwarz::{
     categorical_dense_cross_tab_bytes, estimate_categorical_schwarz_memory,
-    CategoricalSchwarzMemoryEstimate, SCHWARZ_YIELDING_BLOCK_LEVELS,
+    SCHWARZ_YIELDING_BLOCK_LEVELS,
 };
 pub(crate) use owned_fe::{
     generic_fe_solver_bytes, owned_fe_matrix_bytes, OwnedFeDesignMemoryEstimate,

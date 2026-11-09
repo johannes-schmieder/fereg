@@ -5304,8 +5304,8 @@ fn prepared_sparse_three_fe(rows: usize) -> (PreparedOlsData, Vec<f64>) {
 
 #[test]
 fn refused_level_bound_admits_ppml_lsmr_by_exact_yielding_count() {
-    // The joint PPML LSMR and checkpoint Schwarz estimates charge the
-    // level-count yielding bound. A plan one byte below it refused the fit
+    // The explicit PPML LSMR projections' and the checkpoint's Schwarz
+    // allowances charge the level-count yielding bound. A plan one byte below it refused the fit
     // before any work; the exact count admits it with the same science.
     let (prepared, outcome) = prepared_sparse_three_fe(150_000);
     let weights = vec![1.0; outcome.len()];
@@ -5336,8 +5336,8 @@ fn refused_level_bound_admits_ppml_lsmr_by_exact_yielding_count() {
         };
         let level = admission([None; 2]);
         let counts = refused_yielding_counts(&prepared, plan).unwrap().unwrap();
-        // The core worker-firm pair and every pair of this topology.
-        assert_eq!(counts, [Some(1), Some(2)]);
+        // Both estimates charge every pair of this topology.
+        assert_eq!(counts, [Some(2), Some(2)]);
         let refined = admission(counts);
         assert!(refined.incremental_bytes < level.incremental_bytes);
         let fit = |plan| {
@@ -5504,5 +5504,78 @@ fn four_and_five_effect_elimination_matches_the_established_route() {
             (eliminated.objective().deviance - established.objective().deviance).abs()
                 <= 1e-10 * established.objective().deviance
         );
+    }
+}
+
+#[test]
+fn six_and_seven_effect_fits_run_the_full_system_and_match_the_established_route() {
+    let n = 900;
+    let factor = |levels: usize, stride: usize| -> Vec<f64> {
+        (0..n)
+            .map(|i| ((i * stride + i / 7) % levels + 1) as f64)
+            .collect()
+    };
+    let x: Vec<_> = (0..n)
+        .map(|i| (i as f64 * 0.37).sin() + 0.1 * (i % 9) as f64)
+        .collect();
+    let weights: Vec<_> = (0..n).map(|i| 0.5 + (i % 7) as f64 / 5.).collect();
+    for effects in [6_usize, 7] {
+        let factors: Vec<_> = [(60, 1), (19, 5), (11, 3), (7, 11), (5, 2), (4, 13), (3, 17)]
+            [..effects]
+            .iter()
+            .map(|&(levels, stride)| factor(levels, stride))
+            .collect();
+        let y: Vec<_> = (0..n)
+            .map(|i| {
+                let fe: f64 = factors.iter().map(|f| 0.04 * f[i]).sum();
+                ((0.2 + 0.3 * x[i] + fe).exp() * (1.0 + 0.3 * ((i * 13) % 5) as f64)).round()
+            })
+            .collect();
+        let prepared = prepared_many_fe(&y, &x, &factors);
+        let fit = |established: bool, threads: usize| {
+            let _route = established.then(crate::fe::block_schur::disable_for_test);
+            let mut config = PreparedPpmlIrlsConfig::default();
+            config.ppml.tolerance = 1e-12;
+            config.ppml.score_tolerance = 1e-12;
+            config.linear.execution.threads =
+                crate::options::ThreadConfig::from_requested(threads, true).unwrap();
+            fit_prepared_ppml_irls(
+                &prepared,
+                &y,
+                &weights,
+                &vec![0.; n],
+                config,
+                plan_ppml_memory(memory_dimensions(&prepared, config), config.memory).unwrap(),
+                None,
+            )
+            .unwrap()
+        };
+        // The fedemean fits hold the shared route lock; the established fit
+        // takes it exclusively to disable fedemean.
+        let full = {
+            let _stable_route = crate::fe::block_schur::stable_route_for_test();
+            fit(false, 4)
+        };
+        let established = fit(true, 4);
+        let route =
+            |fit: &PreparedPpmlIrlsFit| fit.diagnostics().memory.final_linear_solve.unwrap().0;
+        assert_eq!(route(&full).reduction, crate::fe::FeReduction::Full);
+        assert_eq!(route(&full).method, crate::fe::FeMethod::Cg);
+        assert_eq!(route(&established).method, crate::fe::FeMethod::Map);
+        assert!(full.diagnostics().converged && full.diagnostics().final_score.passed);
+        assert!(relative_infinity_difference(full.eta(), established.eta()) <= 1e-9);
+        let coefficient = |fit: &PreparedPpmlIrlsFit| fit.coefficients()[0].value.unwrap();
+        assert!((coefficient(&full) - coefficient(&established)).abs() <= 1e-9);
+        assert!(
+            (full.objective().deviance - established.objective().deviance).abs()
+                <= 1e-10 * established.objective().deviance
+        );
+        // Repeatable at a fixed worker count; in agreement across counts.
+        let (again, serial) = {
+            let _stable_route = crate::fe::block_schur::stable_route_for_test();
+            (fit(false, 4), fit(false, 1))
+        };
+        assert_eq!(again.eta(), full.eta());
+        assert!(relative_infinity_difference(serial.eta(), full.eta()) <= 1e-12);
     }
 }

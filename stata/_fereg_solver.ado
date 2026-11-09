@@ -1,4 +1,4 @@
-*! fereg solver() grammar 0.5.3 08nov2026
+*! fereg solver() grammar 0.5.3 09nov2026
 *! One vocabulary in and out. With spec(), parse solver(method [, reduce()
 *! precondition() accelerate() cmg*()]) for fereg or feppml, validate the
 *! combination and map it to the native route tokens of the request wire
@@ -126,20 +126,13 @@ program define _fereg_solver, rclass
             di as error "solver(lsmr) runs on the full system; reduce(eliminate) is available with solver(cg)"
             exit 198
         }
-        if "`command'" == "feppml" {
-            if !inlist(`"`p'"', "auto", "schwarz") {
-                di as error "feppml's solver(lsmr) uses the Schwarz preconditioner; precondition() must be auto or schwarz"
-                exit 198
-            }
-        }
-        else if !inlist(`"`p'"', "auto", "none", "jacobi", "schwarz") {
+        if !inlist(`"`p'"', "auto", "none", "jacobi", "schwarz") {
             di as error "solver(lsmr) accepts precondition(none), precondition(jacobi), or precondition(schwarz)"
             exit 198
         }
         local route "lsmr"
         local wire_preconditioner = cond(`"`p'"' == "none", "off", ///
             cond(`"`p'"' == "jacobi", "diagonal", `"`p'"'))
-        if "`command'" == "feppml" local wire_preconditioner "auto"
     }
     else if "`command'" == "feppml" {
         // feppml's conjugate gradients are CMG-preconditioned on the full
@@ -149,7 +142,7 @@ program define _fereg_solver, rclass
             exit 198
         }
         if !inlist(`"`p'"', "auto", "cmg") {
-            di as error "feppml's solver(cg) is CMG-preconditioned; precondition() must be auto or cmg, and solver(lsmr) runs Schwarz-preconditioned LSMR"
+            di as error "feppml's solver(cg) is CMG-preconditioned; precondition() must be auto or cmg, and solver(lsmr) accepts precondition(none), precondition(jacobi), or precondition(schwarz)"
             exit 198
         }
         local route "cmg"

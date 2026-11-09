@@ -388,19 +388,13 @@ impl PartialEq for YieldingPairCache {
 impl Eq for YieldingPairCache {}
 
 impl YieldingPairCache {
-    /// The cached count over the pairs of `among` (every pair with `None`).
-    pub(crate) fn known(&self, effects: usize, among: Option<&[usize]>) -> Option<usize> {
+    /// The cached count over every pair of `effects` effects.
+    pub(crate) fn known(&self, effects: usize) -> Option<usize> {
         let counts = self.0.get()?;
-        let mut pair = 0;
+        let pairs = effects * effects.saturating_sub(1) / 2;
         let mut total = 0_usize;
-        for left in 0..effects {
-            for right in left + 1..effects {
-                let selected = among.is_none_or(|set| set.contains(&left) && set.contains(&right));
-                if selected {
-                    total = total.saturating_add(*counts.0.get(pair)?);
-                }
-                pair += 1;
-            }
+        for pair in 0..pairs {
+            total = total.saturating_add(*counts.0.get(pair)?);
         }
         Some(total)
     }
@@ -451,7 +445,7 @@ impl YieldingPairCache {
             }
             let _ = self.0.set(Box::new(PairCounts(counts)));
         }
-        self.known(levels.len(), None).ok_or_else(|| {
+        self.known(levels.len()).ok_or_else(|| {
             FeregError::new(
                 ErrorCode::Internal,
                 "yielding pair component table is inconsistent",
@@ -655,11 +649,12 @@ mod tests {
         let codes = [first.as_slice(), &second, &third];
         let levels = [10_000, 2, 10_000];
         let cache = YieldingPairCache::default();
-        assert_eq!(cache.known(3, None), None);
+        assert_eq!(cache.known(3), None);
         assert!(YieldingPairCache::scratch_bytes_by(levels.len(), |index| levels[index]) > 0);
         assert_eq!(cache.count(&codes, &levels).unwrap(), 2);
-        for (pair, expected) in [([0, 1], 1), ([1, 2], 1), ([0, 2], 0)] {
-            assert_eq!(cache.known(3, Some(&pair)), Some(expected));
+        // Pairs are cached in (0, 1), (0, 2), (1, 2) order.
+        for (slot, pair, expected) in [(0, [0, 1], 1), (2, [1, 2], 1), (1, [0, 2], 0)] {
+            assert_eq!(cache.0.get().unwrap().0[slot], expected);
             let threshold = crate::memory::SCHWARZ_YIELDING_BLOCK_LEVELS;
             assert_eq!(
                 reference_large_pair_components(
@@ -672,8 +667,7 @@ mod tests {
                 expected
             );
         }
-        assert_eq!(cache.known(3, Some(&[0, 1, 2])), Some(2));
-        assert_eq!(cache.known(3, None), Some(2));
+        assert_eq!(cache.known(3), Some(2));
         // The cache is not part of a design's identity.
         assert_eq!(cache, YieldingPairCache::default());
         assert_eq!(

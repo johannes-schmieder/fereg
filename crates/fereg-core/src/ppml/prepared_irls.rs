@@ -35,8 +35,7 @@ use super::categorical_fwl_cmg::{
 };
 use super::categorical_lsmr::{
     estimate_checkpoint_lsmr_workspace_bytes_with_yielding, estimate_joint_lsmr_workspace_bytes,
-    joint_lsmr_policy, schwarz_effects, JointLsmrFrameDiagnostic, JointLsmrReport,
-    ReusableCategoricalJointLsmr,
+    JointLsmrReport, ReusableCategoricalJointLsmr,
 };
 #[cfg(test)]
 use super::family::poisson_objective_from_eta;
@@ -456,7 +455,6 @@ pub(crate) struct PreparedPpmlIterationReport {
     pub(crate) finite_rank: usize,
     pub(crate) score: PpmlCertificate,
     pub(crate) linear_reuse: LinearSessionReuseReport,
-    pub(crate) joint_lsmr: Option<JointLsmrFrameDiagnostic>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -1208,7 +1206,6 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 }
             }
         }
-        let mut joint_lsmr_frame = None;
         let (finite_rank, reuse, linear_route) = if iteration == 1 {
             let output = session.solve_fresh()?;
             if !output.certified() {
@@ -1327,7 +1324,6 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 inner_tolerance,
                 config.linear.absorb.lsmr.max_iterations,
             )?;
-            joint_lsmr_frame = Some(report.frame);
             joint.fill_candidate(&mut workspace)?;
             certified_linear_subproblems = certified_linear_subproblems.saturating_add(1);
             total_inner_iterations = total_inner_iterations
@@ -1720,7 +1716,6 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 finite_rank,
                 score: final_score.clone(),
                 linear_reuse: reuse,
-                joint_lsmr: joint_lsmr_frame,
             });
         }
         let audit_can_start = allocation_audit.can_start_after(
@@ -1972,8 +1967,7 @@ fn record_cmg_heap_forecast(
 }
 
 /// Exact yielding pair-component counts for a plan whose level-count Schwarz
-/// bound refused the fit: `[joint, checkpoint]`, over the joint policy's
-/// Schwarz effects and over every effect pair. The count's scratch is first
+/// bound refused the fit: `[joint, checkpoint]`, both over every effect pair. The count's scratch is first
 /// admitted in that plan; `None` when the scratch or count is not admitted.
 /// PPML working weights are strictly positive, so within's subdomains are the
 /// structural factor-pair components counted here.
@@ -1993,12 +1987,10 @@ fn refused_yielding_counts<P: PreparedOlsFitView + ?Sized>(
         Err(error) if error.code == ErrorCode::Allocation => return Ok(None),
         Err(error) => return Err(error),
     }
-    let levels: Vec<_> = design.effects().iter().map(|e| e.n_levels()).collect();
-    let joint = schwarz_effects(&levels, joint_lsmr_policy(levels.len()))?;
-    Ok(Some([
-        design.known_yielding_components_among(&joint),
-        design.known_yielding_pair_components(),
-    ]))
+    // fedemean's Schwarz allowance of explicit LSMR frames and of the
+    // checkpoint both cover every effect pair.
+    let count = design.known_yielding_pair_components();
+    Ok(Some([count, count]))
 }
 
 /// `yielding` holds exact `[joint, checkpoint]` counts only after the
@@ -2066,7 +2058,7 @@ fn public_solver_memory_admission<P: PreparedOlsFitView + ?Sized>(
                 active_columns,
                 &levels,
                 config.linear.execution.threads.resolved(),
-                joint_lsmr_policy(levels.len()),
+                config.solver_plan.lsmr_preconditioner,
                 yielding[0],
             )?
         }
@@ -2285,8 +2277,11 @@ fn joint_solver_observation(
         ),
         relative_infinity_norm: Some(report.certificate.relative_infinity_norm),
         relative_two_norm: Some(report.certificate.relative_two_norm),
+        // Joint frames report their recurrence's normal-equation estimate;
+        // projected frames have none (the certificate holds the moments).
         normal_equation: (engine == PpmlSolverEngine::LsmrJoint)
-            .then_some(report.recurrence_residual),
+            .then_some(report.recurrence_residual)
+            .flatten(),
         projection_absolute_infinity_norm: None,
         backward_error: None,
     }
@@ -2491,7 +2486,7 @@ fn try_joint_strict_final_frame<P: PreparedOlsFitView + Sync + ?Sized>(
     expected_rank: usize,
     accepted_objective: PoissonObjective,
     solver_report: &mut PpmlSolverReport,
-    mut categorical: Option<(&mut ReusableCategoricalJointLsmr, PpmlSolverEngine)>,
+    mut categorical: Option<(&mut ReusableCategoricalJointLsmr<'_>, PpmlSolverEngine)>,
 ) -> Result<bool> {
     if JOINT_FINAL_TEST_MODE.get() == 1
         || categorical.is_some()

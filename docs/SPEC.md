@@ -140,8 +140,8 @@ than `auto`. The supported explicit OLS requests are:
 
 Sub-choices left at `auto` resolve to a supported formulation of the explicit
 method; only the automatic preconditioners escalate. feppml accepts `auto`,
-`lsmr` (`precondition(auto|schwarz)`) and `cg` (`precondition(auto|cmg)`) on the
-full system. CG-accelerated MAP (`accelerate(cg)`) remains rejected with r(198)
+`lsmr` (`precondition(auto|none|jacobi|schwarz)`, §13) and `cg`
+(`precondition(auto|cmg)`) on the full system. CG-accelerated MAP (`accelerate(cg)`) remains rejected with r(198)
 under the existing safety repair. Every other combination returns r(198) naming
 an alternative and is never substituted. Explicit fedemean requests fail
 closed: non-convergence within `iterate()` is r(430)-class non-convergence, a
@@ -177,7 +177,8 @@ unsupported requests fail clearly.
 
 The native request wire carries route tokens (`auto map lsmr pcg cmg cmgschur it
 squarem` with `preconditioner=auto|off|diagonal|schwarz`, plus `block` and the
-OLS-only `reduction=auto|full|eliminate` with `pcg`); one ado table maps the
+OLS-only `reduction=auto|full|eliminate` with `pcg`; PPML sends
+`preconditioner=` only for explicit `lsmr` other than `auto`); one ado table maps the
 public grammar onto them and the plugin re-validates the tokens. The hidden
 developer adapters take the tokens directly, including the PPML `map` family,
 which is not a public request.
@@ -516,8 +517,8 @@ runs on fedemean, which admits against its own bound). Owned designs refine the 
 explicit `solver(lsmr)` and of the automatic owned route when every term is one
 intercept channel and every weight is strictly positive; designs with slopes
 keep the level-count bound, because their subdomains are not the code
-components. The PPML preflight (explicit LSMR's joint Schwarz factor over the
-core pair or both effects, and the checkpoint accelerator over every pair)
+components. The PPML preflight (the Schwarz allowance of explicit LSMR's
+fedemean projections and of the checkpoint accelerator, over every pair)
 recounts once when its plan refused, with the strictly positive PPML working
 weights; a plan that still does not fit reports the original refusal. Each
 count is taken once per design, after its O(levels) scratch is admitted, and a
@@ -797,7 +798,7 @@ slopes, explicit `solver(lsmr)` keeps the general LSMR solver: it stops its
 recurrence at a hundredth of `tolerance()`, floored at 1e-15 and never looser
 than `tolerance()`, and certifies the FE moments at `tolerance()` (Johannes,
 2026-10-10). Explicit PPML LSMR keeps its scheduled certificate and one tighter
-continuation.
+continuation (§13).
 
 Ordinary automatic two-FE OLS first targets half of `tolerance()` in its
 recurrence and certifies at `tolerance()`. Only a failed certificate permits
@@ -1343,23 +1344,77 @@ acceleration, with its build identity retained and compatibility, memory and
 work limits checked. It carries no current-weight, certificate, canonical-rank
 or Hessian authority; the operator, RHS, stopping target and independent
 certification still use the current problem. The two-FE Auto CMG hierarchy
-(§1) is such state. So is the core-pair Schwarz factor of explicit
-`solver(lsmr)` with three or more effects. After a long certified frame (at
-least 128 recurrence steps, or a staleness continuation) that factor is rebuilt
-from current weights before the next recurrence unless a bound on the largest
-Hessian log-weight change since its build, the sum of consecutive certified
-frames' maxima, is at most 0.05. Within that bound the core Gram lies between
-`exp(-0.05)` and `exp(0.05)` times the build Gram, so the preconditioned
-condition number grows by at most `exp(0.1)`; the factor is reused without the
-staleness escalation, which on such frames reflects the problem's slow
-contraction rather than a stale factor. An unknown bound rebuilds, and a
-recurrence or certificate miss still rebuilds on current weights and continues
-(reuse approved by Johannes, 2026-10-31). Declared scope: explicit PPML LSMR fits with
-three or more effects that reach a long frame may change inner iteration
-counts, solver signatures and low bits within §20; discrete decisions remain
-unchanged. Witnesses: the drift-bound policy unit test and a three-effect
-core-pair solve that reuses within the bound, refreshes beyond it, loses the
-bound after invalidation and certifies every frame against current weights.
+(§1) is such state.
+
+**Explicit `solver(lsmr)` frames (fedemean migration, 2026-11-09).** Each
+ordinary frame and strict witness solves the weighted least-squares Newton
+correction `z=(y−mu)/mu` (zero outcome: −1) on the frozen kept controls `X`
+and the categorical intercepts `D` at the current Hessian weights, in one of
+two formulations with the same solution. *Joint:* modified LSMR on
+`W^1/2 [X D]` with a block preconditioner (the controls' current-weight Gram
+factor, or their diagonal when it is not positive definite; the FE block's
+inverse level masses, or the identity for `precondition(none)`), warm-started
+at the previous frame's solution scaled by the accepted step. *Projections*
+(weighted Frisch–Waugh–Lovell): `[X, z]` projected onto `D` by fedemean's
+full-system modified LSMR (`precondition(auto)`: Jacobi escalating to additive
+Schwarz; `precondition(schwarz)`: Schwarz), the projected controls' normal
+equations, and the residual `z̃−X̃b`; controls start from their previous
+frame's FE coefficients, the correction from zero. `precondition(auto)` runs
+the joint recurrence with Jacobi; a stall (staleness window 4, factor 0.75) or
+a recurrence or certificate miss after one continuation at 0.01×tol (floor
+1e-14) hands the frame to the projections, and later frames of the fit start
+there. `precondition(jacobi)` and `precondition(none)` keep the joint
+recurrence, whose double miss is the frame's numerical refusal;
+`precondition(schwarz)` runs the projections. Every frame is accepted only by
+the exact normal-equation certificate of its formed residual on the raw
+controls and every FE level at the frame tolerance relative to
+`max(||z||_w, ||r||_w)`; a projection miss reprojects once from its solved
+coefficients at 0.01× its tolerance and lowers later frames' projection
+tolerance tenfold (at most to 1e-4× the frame's). No preconditioner state
+survives a weight change: the core-pair Schwarz factor and its drift-bounded
+reuse (approved 2026-10-31) are retired with the pinned within solver. The
+joint operator is kept because one Krylov recurrence on `[X D]` converges in
+about as many steps as one projected column, so the projections cost about
+`k+1` times as much where Jacobi preconditions the FE block well. Declared
+scope: explicit PPML LSMR fits. Fits with two effects whose Jacobi recurrence
+certifies run the former route's arithmetic and keep its bits; fits with three
+or more effects (formerly core-pair Schwarz from the first frame), and fits
+that reach the projections, change inner iteration counts, solver signatures
+and low bits within §20; sample, rank, separation, IRLS iteration counts and
+every other discrete decision are unchanged on the witnesses. Witnesses:
+dense-oracle frame tests for every preconditioner (joint and projections),
+the stall hand-off and projection-retry tests, repeatability at a fixed
+worker count with agreement across counts (the projections bitwise), memory
+refusal and cancellation, the two- and three-effect strict-final fixtures,
+and the matched one-million-row comparison (two effects bitwise; three
+effects |Δb| 2e-13, identical deviance).
+
+**Checkpoint accelerator (2026-11-09).** Explicit LSMR and CMG fits with two or
+three categorical effects whose canonical elimination declines project the
+strict checkpoint's untouched columns with fedemean's full-system modified
+LSMR (Jacobi escalating to Schwarz) at the checkpoint tolerance, within a
+third of the remaining budget, in place of the pinned within LSMR batch. The
+comparison and decisions are unchanged: only the original-weight
+certificate accepts the candidate; one retry, of the failed columns when
+their copy fits beside the retained candidate, runs from untouched inputs at
+`max(0.01×tol, 1e-14)`; a numerical miss falls back to MAP on the untouched
+inputs, reported as `checkpoint_lsmr_numerical_nonconvergence`; a workspace
+beyond the admitted allowance is an allocation refusal. Declared scope:
+checkpoints the elimination declined (none of the bench designs).
+
+**Six or more effects (2026-11-09).** PPML's canonical generic owner of a
+categorical intercept design outside the elimination's range (Fast mode)
+projects first with fedemean's full system (Jacobi PCG escalating to additive
+Schwarz when slow or stalled, within half the iteration budget and the solver
+memory budget, with the coefficient stopping rule), reported under the
+MAP-family engine with the route it used; a decline returns the input to the
+generic MAP owner. The ordinary joint frames of Auto keep their coefficient
+recurrence. Declared scope: Auto PPML fits with six or more categorical
+intercept effects; their strict checkpoints and final solves change iteration
+counts, the reported route and low bits within §20; discrete decisions
+unchanged on the witnesses (six and seven effects against the MAP route,
+repeatable at a fixed worker count and agreeing across counts; the
+one-million-row six-effect bench, |Δb| 6e-17, identical deviance).
 An ordinary joint frame of PPML Auto (§1's recurrence over the retained FE and
 finite coordinates) may start from the last certified joint frame with the same
 sample, topology and kept generated columns. That frame's fitted values `f`
@@ -1822,7 +1877,8 @@ performance target, 2026-11-01).
 
 Every additive-Schwarz preconditioner fereg builds in the pinned solver (OLS
 borrowed and owned LSMR, the many-FE Jacobi trial's escalation, explicit
-`solver(lsmr, precondition(schwarz))` and the PPML joint Schwarz factor) uses the Ordered
+`solver(lsmr, precondition(schwarz))` and, until 2026-11-09, the PPML joint
+Schwarz factor) uses the Ordered
 reduction, which commits subdomain contributions in subdomain order, in every
 mode; the pinned Auto reduction may resolve to an atomic scatter whose
 summation order follows thread timing. Before beta.10 only `deterministic`

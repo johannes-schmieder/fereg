@@ -39,6 +39,9 @@ pub(crate) struct FeSession<'a> {
     /// declines.
     full_system: super::borrowed_map::block_schur::Cache<'a>,
     pub(crate) full_system_used: bool,
+    /// PPML's generic owner bound to its categorical design: the memory
+    /// budget of its full-system projections.
+    ppml_full_system: Option<Option<crate::memory::FeSolverMemoryBudget>>,
 }
 
 mod elimination;
@@ -208,6 +211,12 @@ impl<'a> FeSession<'a> {
             }
             return result;
         }
+        // PPML's generic owner of a categorical design outside the
+        // elimination's range: fedemean's full system first.
+        let values = match self.try_ppml_full_system(raw_weights, values, config)? {
+            Ok(result) => return Ok(result),
+            Err(values) => values,
+        };
         let p = self.general.as_mut().ok_or_else(|| {
             FeregError::new(
                 ErrorCode::Internal,
@@ -259,6 +268,7 @@ impl Default for FeSession<'_> {
                 super::borrowed_map::block_schur::Plan::auto_full(),
             ),
             full_system_used: false,
+            ppml_full_system: None,
         }
     }
 }
@@ -1922,6 +1932,9 @@ pub(crate) struct LegacyFeSession<'a> {
     pub(crate) block_schur_used: bool,
     full_system: super::borrowed_map::block_schur::Cache<'a>,
     pub(crate) full_system_used: bool,
+    /// PPML's generic owner bound to its categorical design: the memory
+    /// budget of its full-system projections.
+    ppml_full_system: Option<Option<crate::memory::FeSolverMemoryBudget>>,
 }
 #[cfg(test)]
 #[test]

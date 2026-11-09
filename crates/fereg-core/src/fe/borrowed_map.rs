@@ -700,6 +700,17 @@ fn coefficient_count(effect_channels: &[usize], level_counts: &[usize]) -> Resul
 }
 
 impl CertifiedBorrowedMap {
+    /// Publish a categorical (non-LSMR) projection under the MAP engine
+    /// identity that PPML's canonical session reports, keeping the route it
+    /// used.
+    pub(crate) fn into_map_family(mut self) -> Self {
+        let route = self.report.route();
+        self.report.requested_solver = FeSolverKind::Map;
+        self.report.used_solver = FeSolverKind::Map;
+        self.report.set_route(route);
+        self
+    }
+
     // These norms belong to this exact residualized matrix and normalized weights.
     // Moving them to OLS avoids a second O(NK) pass after fresh certification.
     pub(crate) fn take_residual_norms(&mut self) -> Vec<f64> {
@@ -2203,16 +2214,12 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                     coefficient_accuracy: true,
                 },
             )? {
-                block_schur::Outcome::Done(mut result) => {
+                block_schur::Outcome::Done(result) => {
                     // PPML publishes categorical (non-LSMR) projections under
                     // the MAP engine identity, as for the two-FE Schur route;
                     // the owner is driven by MAP-family requests. The route
                     // report keeps the elimination.
-                    let route = result.report.route();
-                    result.report.requested_solver = FeSolverKind::Map;
-                    result.report.used_solver = FeSolverKind::Map;
-                    result.report.set_route(route);
-                    return Ok((result, true));
+                    return Ok((result.into_map_family(), true));
                 }
                 block_schur::Outcome::Declined(values) => values,
             }
@@ -5396,17 +5403,25 @@ fn borrowed_weights(weights: ValidatedWeights<'_>) -> BorrowedMapWeights<'_> {
 }
 
 /// A checkpoint's original RHSs, topology and solver weights are immutable for
-/// this entire scope. Numerical setup is released before another weight frame
-/// or MAP fallback; only fresh original-weight certification can accept output.
+/// this entire scope. Each attempt projects a copy of the original columns
+/// with fedemean's full-system modified LSMR (Jacobi escalating to additive
+/// Schwarz) at the attempt's tolerance; numerical state is released before
+/// another weight frame or MAP fallback, and only fresh original-weight
+/// certification can accept the candidate.
 struct CheckpointLsmrBatch<'s, 'a> {
     design: &'s BorrowedInterceptFeDesign<'a>,
     values: &'s DenseMatrix,
     weights: ValidatedWeights<'s>,
     config: LsmrConfig,
-    prepared: BorrowedLsmrPrepared<'a>,
+    /// fedemean's projector, retained across this checkpoint's attempts (one
+    /// weight state and preconditioner).
+    cache: block_schur::Cache<'a>,
     candidate: Option<DenseMatrix>,
-    memory: BorrowedLsmrCallMemory,
+    /// fedemean's workspace limit, and that plus the input copy and the
+    /// candidate.
+    solver_bytes: u128,
     allowance: u128,
+    peak: SolverWorkspacePeak,
     // Developer fault plan and a fixed attempt record; shipped code runs the
     // same checks with no override and never allocates for the record.
     selective_allowance: Option<u128>,
@@ -5426,42 +5441,35 @@ impl<'s, 'a> CheckpointLsmrBatch<'s, 'a> {
             .iter()
             .map(|effect| effect.n_levels())
             .collect();
-        let estimate = estimate_fe_solver_memory(
+        let solver_bytes = block_schur::lsmr_workspace_bytes(
             values.nrows(),
-            values.ncols(),
             &levels,
             rayon::current_num_threads(),
-            config.local_size,
+            design.known_yielding_pair_components(),
         )?;
-        let preconditioner = resolve_borrowed_lsmr_preconditioner(
-            levels.len(),
-            design.total_term_slots(),
-            config.preconditioner,
-        );
-        let allowance = estimate.lsmr_bytes(preconditioner);
+        let matrix = values.nrows() as u128 * values.ncols() as u128 * 8;
+        let allowance = solver_bytes
+            .checked_add(2 * matrix)
+            .ok_or_else(|| allocation("checkpoint LSMR allowance overflows"))?;
         Ok(Self {
             design,
             values,
             weights,
             config,
-            prepared: BorrowedLsmrPrepared::default(),
+            cache: block_schur::Cache::with_plan(block_schur::Plan::lsmr(LsmrPreconditioner::Auto)),
             candidate: None,
-            memory: BorrowedLsmrCallMemory::new(
-                estimate,
-                preconditioner,
-                Some(FeSolverMemoryBudget {
-                    execution_bytes: 0,
-                    usable_bytes: allowance,
-                }),
-                0,
-            )?,
+            solver_bytes,
             allowance,
+            peak: SolverWorkspacePeak::ZERO,
             selective_allowance: None,
             attempted_rhs: [0; 4],
             attempt_count: 0,
         })
     }
 
+    /// The columns a retry reprojects: those whose original-weight
+    /// certificate failed, when not all of them and the retained candidate
+    /// plus their copy fit the admitted allowance; `None` for a full retry.
     fn selected_retry(&self, norms: &[f64], tolerance: f64) -> Result<Option<Vec<usize>>> {
         if norms.len() != self.values.ncols() || norms.iter().any(|v| !v.is_finite() || *v < 0.) {
             return Err(invalid_argument(
@@ -5478,45 +5486,10 @@ impl<'s, 'a> CheckpointLsmrBatch<'s, 'a> {
             .ok_or_else(|| invalid_argument("selective checkpoint retry has no candidate"))?
             .storage_capacity() as u128
             * 8;
-        let levels: Vec<_> = self
-            .design
-            .effects()
-            .iter()
-            .map(|effect| effect.n_levels())
-            .collect();
-        let estimate = estimate_fe_solver_memory(
-            self.values.nrows(),
-            count,
-            &levels,
-            rayon::current_num_threads(),
-            self.config.local_size,
-        )?;
-        let preconditioner = resolve_borrowed_lsmr_preconditioner(
-            levels.len(),
-            self.design.total_term_slots(),
-            self.config.preconditioner,
-        );
-        // The narrow model already charges one current-weight solver. Keep the
-        // full result metadata allowance and explicitly add retained columns
-        // plus the selection axis. If that cannot fit, release the candidate
-        // before the established full retry instead of raising its memory peak.
-        let without_positions = estimate
-            .lsmr_bytes(preconditioner)
+        let without_positions = self
+            .solver_bytes
             .checked_add(retained)
-            .and_then(|bytes| {
-                bytes.checked_add(
-                    self.prepared
-                        .retained_bytes
-                        .saturating_sub(estimate.lsmr_retained_bytes(preconditioner)),
-                )
-            })
-            .and_then(|v| {
-                v.checked_add(
-                    self.memory
-                        .metadata_bytes
-                        .saturating_sub(estimate.lsmr_result_metadata_bytes),
-                )
-            })
+            .and_then(|bytes| bytes.checked_add(self.values.nrows() as u128 * count as u128 * 8))
             .ok_or_else(|| allocation("selective checkpoint overlap overflows"))?;
         let fits = |capacity: usize| {
             without_positions
@@ -5526,17 +5499,12 @@ impl<'s, 'a> CheckpointLsmrBatch<'s, 'a> {
         if self
             .selective_allowance
             .is_some_and(|limit| without_positions > limit)
+            || !fits(count)
         {
             return Ok(None);
         }
-        if !fits(count) {
-            return Ok(None);
-        }
         let mut positions = Vec::new();
-        if positions.try_reserve_exact(count).is_err() {
-            return Ok(None);
-        }
-        if !fits(positions.capacity()) {
+        if positions.try_reserve_exact(count).is_err() || !fits(positions.capacity()) {
             return Ok(None);
         }
         positions.extend(
@@ -5563,66 +5531,68 @@ impl<'s, 'a> CheckpointLsmrBatch<'s, 'a> {
             // Full retries never overlap the rejected output bank.
             self.candidate = None;
         }
-        let rhs = match &selected {
-            Some(positions) => super::lsmr_batch::selected_rhs_columns(self.values, positions)?,
-            None => super::lsmr_batch::rhs_columns(self.values)?,
+        // Every attempt starts from untouched original inputs.
+        let input = match &selected {
+            Some(positions) => {
+                let columns = positions
+                    .iter()
+                    .map(|&column| self.values.column(column))
+                    .collect::<Result<Vec<_>>>()?;
+                DenseMatrix::from_columns(&columns)?
+            }
+            None => self.values.clone(),
         };
-        let views: Vec<_> = rhs.iter().map(Vec::as_slice).collect();
-        let resolved = resolve_borrowed_lsmr_preconditioner(
-            self.design.effects().len(),
-            self.design.total_term_slots(),
-            self.config.preconditioner,
-        );
-        let (mut solved, preconditioner_fallback) = self.prepared.solve(
-            self.design,
-            self.weights,
-            &views,
-            &LsmrOptions {
-                tol: recurrence_tolerance,
-                maxiter: self.config.max_iterations,
-                local_size: self.config.local_size,
-            },
-            self.config.preconditioner,
-            borrowed_within_preconditioner(resolved),
-            self.config.threads.deterministic,
-            None,
-        )?;
+        let width = input.ncols();
         if let Some(slot) = self.attempted_rhs.get_mut(self.attempt_count) {
-            *slot = rhs.len();
+            *slot = width;
         }
         self.attempt_count = self.attempt_count.saturating_add(1);
-        if crate::diagnostics::solver_trace_enabled() {
-            crate::diagnostics::emit_solver_trace(&format!(
-                "FEREG_SOLVER_TRACE|phase=checkpoint_batch|rhs={}|full_rhs={}|selective={}|builds={}|batches={}",
-                rhs.len(),
-                self.values.ncols(),
-                u8::from(selected.is_some()),
-                self.prepared.builds,
-                self.prepared.batches,
-            ));
-            for rhs in 0..solved.iterations.len() {
-                let position = selected.as_ref().map_or(rhs, |positions| positions[rhs]);
-                crate::diagnostics::emit_solver_trace(&format!(
-                    "FEREG_SOLVER_TRACE|phase=checkpoint_batch_rhs|rhs={position}|converged={}|iterations={}|within_normal={:.17e}",
-                    solved.converged[rhs], solved.iterations[rhs], solved.residual[rhs],
-                ));
-            }
-        }
-        drop(views);
-        drop(rhs);
-        let position_bytes = selected.as_ref().map_or(0, |v| {
-            v.capacity() as u128 * std::mem::size_of::<usize>() as u128
-        });
-        let candidate_cells = self.candidate.as_ref().map_or(
-            self.values.nrows() as u128 * self.values.ncols() as u128,
-            |values| values.storage_capacity() as u128,
-        );
-        self.memory.include_payload(
-            self.prepared.retained_bytes,
-            (candidate_cells + solved.demeaned.capacity() as u128 + solved.x.capacity() as u128)
-                * 8
-                + position_bytes,
+        let map = MapConfig {
+            tolerance: recurrence_tolerance,
+            max_iterations: self.config.max_iterations,
+            ..MapConfig::default()
+        };
+        let budget = FeSolverMemoryBudget {
+            execution_bytes: 0,
+            usable_bytes: self.solver_bytes,
+        };
+        let outcome = self.cache.project(
+            self.design,
+            borrowed_weights(self.weights),
+            input,
+            map,
+            Some(budget),
+            block_schur::Request::default(),
         )?;
+        let (projected, mut report) = match outcome {
+            block_schur::Outcome::Done(result) => {
+                let (projected, report) = result.into_parts();
+                (projected, report)
+            }
+            block_schur::Outcome::Declined(projected) => {
+                let decline = self.cache.decline();
+                if decline.is_some_and(|d| d.reason == fedemean::Decline::MemoryLimit) {
+                    return Err(allocation(
+                        "checkpoint LSMR workspace exceeds the joint execution plan",
+                    ));
+                }
+                // A numerical decline leaves a copy (possibly partly
+                // residualized); the original-weight certificate decides it.
+                let mut report = SolveReport::single_route(
+                    FeSolverKind::Lsmr,
+                    SolveStopReason::Uncertified,
+                    zero_certificate(),
+                );
+                report.iterations = decline.map_or(0, |d| d.iterations);
+                report.requested_preconditioner = Some(LsmrPreconditioner::Auto);
+                report.used_preconditioner = Some(LsmrPreconditioner::Diagonal);
+                report.warnings.push(format!(
+                    "fedemean modified LSMR declined: {}",
+                    decline.map_or("the route declined", |d| d.describe())
+                ));
+                (projected, report)
+            }
+        };
         if self.candidate.is_none() {
             self.candidate = Some(DenseMatrix::zeros(
                 self.values.nrows(),
@@ -5633,59 +5603,44 @@ impl<'s, 'a> CheckpointLsmrBatch<'s, 'a> {
             .candidate
             .as_mut()
             .expect("checkpoint result was allocated");
-        self.memory.include_payload(
-            self.prepared.retained_bytes,
-            (candidate.storage_capacity() as u128
-                + solved.demeaned.capacity() as u128
-                + solved.x.capacity() as u128)
-                * 8
-                + position_bytes,
-        )?;
-        if let Some(positions) = &selected {
-            super::lsmr_batch::copy_selected_demeaned(&solved.demeaned, candidate, positions);
-        } else {
-            super::lsmr_batch::copy_demeaned(&solved.demeaned, candidate);
+        match &selected {
+            Some(positions) => {
+                for (local, &column) in positions.iter().enumerate() {
+                    for row in 0..projected.nrows() {
+                        candidate[(row, column)] = projected[(row, local)];
+                    }
+                }
+            }
+            None => candidate
+                .as_mut_slice()
+                .copy_from_slice(projected.as_slice()),
         }
-        drop(std::mem::take(&mut solved.demeaned));
-        drop(std::mem::take(&mut solved.x));
-        let mut warnings: Vec<_> = solved
-            .warnings
-            .iter()
-            .map(|warning| format!("within preconditioner: {warning:?}"))
-            .collect();
-        if preconditioner_fallback {
-            warnings.insert(0, "automatic checkpoint LSMR preconditioner failed its positive-definiteness guard; retried unpreconditioned".to_owned());
-        }
-        Ok(SolveReport {
-            checkpoint_retries: 0,
-            solver_workspace_peak: self.memory.peak,
-            requested_solver: FeSolverKind::Lsmr,
-            used_solver: FeSolverKind::Lsmr,
-            iterations: solved.iterations.iter().copied().max().unwrap_or(0),
-            stop_reason: SolveStopReason::Uncertified,
-            // The caller replaces this only with its fresh original-weight
-            // certificate. A recurrence stop never authorizes this checkpoint.
-            certificate: FeCertificate {
-                passed: false,
-                ..zero_certificate()
-            },
-            normal_equation_residual: solved.residual.iter().copied().fold(0., f64::max),
-            setup_seconds: solved.time_setup
-                + (started.elapsed().as_secs_f64() - solved.time_total).max(0.),
-            solve_seconds: (solved.time_total - solved.time_setup).max(0.),
-            certification_seconds: 0.,
-            fallback_used: preconditioner_fallback,
-            requested_preconditioner: Some(self.config.preconditioner),
-            used_preconditioner: Some(if preconditioner_fallback {
-                LsmrPreconditioner::Off
-            } else {
-                resolved
-            }),
-            pilot_iterations: 0,
-            pilot_contraction: 0.,
-            warnings,
-            route_tag: None,
-        })
+        let payload = (candidate.storage_capacity() as u128 + projected.storage_capacity() as u128)
+            * 8
+            + selected.as_ref().map_or(0, |v| v.capacity() as u128 * 8);
+        self.peak = self.peak.max(SolverWorkspacePeak::from_bytes(
+            report
+                .solver_workspace_peak
+                .bytes()
+                .map_or(self.solver_bytes, u128::from)
+                .saturating_add(payload),
+        )?);
+        drop(projected);
+        report.solver_workspace_peak = self.peak;
+        report.requested_solver = FeSolverKind::Lsmr;
+        report.checkpoint_retries = 0;
+        // The caller replaces this only with its fresh original-weight
+        // certificate. fedemean's certificate (at the solver weights) never
+        // authorizes this checkpoint.
+        report.stop_reason = SolveStopReason::Uncertified;
+        report.certificate = FeCertificate {
+            passed: false,
+            ..zero_certificate()
+        };
+        let elapsed = started.elapsed().as_secs_f64();
+        report.setup_seconds = (elapsed - report.solve_seconds).max(0.0);
+        report.certification_seconds = 0.0;
+        Ok(report)
     }
 }
 

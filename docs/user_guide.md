@@ -443,8 +443,8 @@ the native team. At one million observations or more it keeps the caller's
 setting. The original setting is restored on success, error and Break.
 
 `feppml` does not expose a model-based IID covariance, a preconditioner other
-than its solver's own, DoF-policy controls, analytic/importance weights, or
-developer injection.
+than its solver's own (`solver(lsmr)` takes `precondition(auto|none|jacobi|schwarz)`),
+DoF-policy controls, analytic/importance weights, or developer injection.
 Fixed-width string categorical sources are supported, but
 `strL` sources are not. When `absorb()` contains an interaction or absorbed
 slope, explicit RHS base operators such as `ib2.region` and `fvset` base

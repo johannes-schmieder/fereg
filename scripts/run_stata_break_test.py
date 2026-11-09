@@ -506,7 +506,8 @@ def main() -> None:
                 raise RuntimeError("solver trace I/O failed during LSMR Break fixture")
             if "FEREG_LSMR_BREAK_RESET_VERIFIED" not in transcript:
                 raise RuntimeError("LSMR Break fixture did not verify rollback/reset")
-            backend = "fedemean" if args.fixture_kind == "ols-lsmr" else "ppml_joint"
+            # Both estimators run fedemean's modified LSMR.
+            backend = "fedemean"
             events = lsmr_trace_events(trace_path.read_text() if trace_path.exists() else "", backend)
             metadata["lsmr_events"] = events
             for event in events:

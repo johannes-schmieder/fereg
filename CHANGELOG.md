@@ -32,6 +32,17 @@
   no `precondition()`.
 - `e(fe_local_solvers)` replaces `e(fe_block_solvers)` and also counts the
   Schwarz subdomains by local solve (with `e(fe_subdomains)`).
+- feppml `solver(lsmr)` no longer uses the pinned within solver. Each IRLS step
+  runs one joint modified-LSMR recurrence on the controls and fixed effects
+  with a Jacobi fixed-effect block; a stalled or uncertified step hands over to
+  fedemean projections of the controls and working response (Jacobi escalating
+  to additive Schwarz). It accepts `precondition(auto|none|jacobi|schwarz)`
+  (PPML request field `preconditioner=`). Two-effect fits whose Jacobi
+  recurrence certifies are unchanged bit for bit; three effects take about 60%
+  less time on the one-million-row benchmark panel.
+- feppml's strict checkpoint after an elimination decline (explicit `lsmr` and
+  `cg`) and Auto's canonical projections with six or more categorical effects
+  run on fedemean's full system (modified LSMR and CG respectively).
 
 ## 0.5.3 — 2026-11-07
 

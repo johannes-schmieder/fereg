@@ -103,11 +103,11 @@ pub(crate) const OLS_PROTOCOL: GuardedProtocol = GuardedProtocol {
     max_fields: 85,
 };
 
-/// Request wire 1.9's route matrix makes the largest (bias-corrected)
-/// request 100 fields.
+/// Request wire 1.9's route matrix and explicit LSMR's optional
+/// preconditioner make the largest (bias-corrected) request 101 fields.
 pub(crate) const PPML_PROTOCOL: GuardedProtocol = GuardedProtocol {
     label: "PPML",
-    max_fields: 100,
+    max_fields: 101,
 };
 
 impl GuardedProtocol {
@@ -326,7 +326,7 @@ mod tests {
     use fereg_core::error::ErrorCode;
 
     #[test]
-    fn ppml_bundle_decoder_accepts_the_closed_100_field_protocol_only() {
+    fn ppml_bundle_decoder_accepts_the_closed_101_field_protocol_only() {
         fn encode(fields: &[String]) -> String {
             let mut bundle = format!("{}:", fields.len());
             for field in fields {
@@ -341,7 +341,7 @@ mod tests {
         assert_eq!(
             PPML_PROTOCOL
                 .decode_bundle(&encode(&fields))
-                .expect("100-field PPML bundle"),
+                .expect("101-field PPML bundle"),
             fields,
         );
 
@@ -350,8 +350,9 @@ mod tests {
             .collect::<Vec<_>>();
         let error = PPML_PROTOCOL
             .decode_bundle(&encode(&oversized))
-            .expect_err("101-field PPML bundle must fail closed");
+            .expect_err("102-field PPML bundle must fail closed");
         assert_eq!(error.code, ErrorCode::Syntax);
-        assert!(error.message.contains("between one and 100"));
+        assert_eq!(PPML_PROTOCOL.max_fields, 101);
+        assert!(error.message.contains("between one and 101"));
     }
 }

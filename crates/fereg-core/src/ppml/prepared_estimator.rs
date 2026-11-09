@@ -134,6 +134,10 @@ pub struct PreparedPpmlRequestV1 {
     /// Public PPML fixed-effect solver family. `Auto` remains a distinct
     /// request identity even while its selected family is conservatively MAP.
     pub solver: PpmlSolverFamily,
+    /// The preconditioner of explicit `solver(lsmr)` (`precondition()`):
+    /// `Auto` (Jacobi escalating to additive Schwarz), `Off`, `Diagonal` or
+    /// `Schwarz`. Other families require `Auto`.
+    pub lsmr_preconditioner: crate::fe::LsmrPreconditioner,
     /// Hidden, action-local qualification hook.  It reaches the ordinary
     /// fallible FE-recovery reservation; it never alters process-global
     /// allocator state and therefore cannot leak into a later action.
@@ -236,7 +240,8 @@ pub fn fit_prepared_ppml_interruptible(
         mut load_hint,
     } = input.into();
     validate_request(&request, &loaded)?;
-    let solver_plan = PpmlSolverPlan::new(request.solver);
+    let solver_plan =
+        PpmlSolverPlan::new(request.solver).with_lsmr_preconditioner(request.lsmr_preconditioner);
     request.memory.require_fast_route = matches!(
         solver_plan.selected,
         PpmlSolverFamily::Lsmr | PpmlSolverFamily::Cmg
@@ -717,6 +722,13 @@ pub fn fit_prepared_ppml_interruptible(
 }
 
 fn validate_request(request: &PreparedPpmlRequestV1, loaded: &LoadedPpmlInput) -> Result<()> {
+    if request.lsmr_preconditioner != crate::fe::LsmrPreconditioner::Auto
+        && request.solver != PpmlSolverFamily::Lsmr
+    {
+        return Err(invalid_argument(
+            "an explicit fixed-effect preconditioner requires feppml solver(lsmr)",
+        ));
+    }
     for absorb in [request.ppml.absorb, request.linear.absorb] {
         if absorb.cmg_schur_samples != 0 || absorb.cmg_schur_seed != 0 {
             return Err(invalid_argument(

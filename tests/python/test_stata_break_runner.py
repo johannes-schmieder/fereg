@@ -139,7 +139,7 @@ class StataBreakOptionsTests(unittest.TestCase):
 
     def test_lsmr_fixture_requires_completed_work_and_actual_upstream_cancellation(self):
         fixture = Path("tests/licensed_stata/estimate_lsmr_iteration_break.do")
-        for estimator, backend in (("ols", "fedemean"), ("ppml", "ppml_joint")):
+        for estimator, backend in (("ols", "fedemean"), ("ppml", "fedemean")):
             for workers in (1, 4):
                 args = self.arguments("--fixture-kind", estimator + "-lsmr", "--lsmr-workers", str(workers))
                 self.assertEqual(fixture_command(fixture, args), f"do {stata_quote(fixture)} {estimator} {workers}")

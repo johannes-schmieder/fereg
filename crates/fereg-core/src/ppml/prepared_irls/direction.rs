@@ -4,15 +4,15 @@ use super::*;
 
 // Inline storage preserves the existing allocation and lifetime envelope.
 #[allow(clippy::large_enum_variant)]
-pub(super) enum OrdinaryDirection {
+pub(super) enum OrdinaryDirection<'p> {
     Canonical,
     Profile(ProfiledOneFe),
-    LsmrJoint(ReusableCategoricalJointLsmr),
-    LsmrFused(ReusableCategoricalJointLsmr),
+    LsmrJoint(ReusableCategoricalJointLsmr<'p>),
+    LsmrFused(ReusableCategoricalJointLsmr<'p>),
     Cmg(ReusableCategoricalFwlCmg),
 }
 
-impl OrdinaryDirection {
+impl<'p> OrdinaryDirection<'p> {
     pub(super) fn is_canonical(&self) -> bool {
         matches!(self, Self::Canonical)
     }
@@ -30,7 +30,7 @@ impl OrdinaryDirection {
             None
         }
     }
-    pub(super) fn lsmr(&self) -> Option<&ReusableCategoricalJointLsmr> {
+    pub(super) fn lsmr(&self) -> Option<&ReusableCategoricalJointLsmr<'p>> {
         if let Self::LsmrJoint(workspace) | Self::LsmrFused(workspace) = self {
             Some(workspace)
         } else {
@@ -39,7 +39,7 @@ impl OrdinaryDirection {
     }
     pub(super) fn lsmr_mut(
         &mut self,
-    ) -> Option<(&mut ReusableCategoricalJointLsmr, PpmlSolverEngine)> {
+    ) -> Option<(&mut ReusableCategoricalJointLsmr<'p>, PpmlSolverEngine)> {
         match self {
             Self::LsmrJoint(workspace) => Some((workspace, PpmlSolverEngine::LsmrJoint)),
             Self::LsmrFused(workspace) => Some((workspace, PpmlSolverEngine::LsmrFused)),
@@ -100,7 +100,7 @@ impl OrdinaryDirection {
     #[allow(clippy::too_many_arguments)]
     pub(super) fn initialize<P: PreparedOlsFitView + Sync + ?Sized>(
         &mut self,
-        prepared: &P,
+        prepared: &'p P,
         design: &FeDesign,
         columns: Option<&[usize]>,
         profiles: &AdmittedProfiles,
@@ -156,7 +156,7 @@ impl OrdinaryDirection {
             let message = if engine == PpmlSolverEngine::CmgPrepared {
                 "fused PPML CMG requires the frozen active basis"
             } else {
-                "joint PPML LSMR requires the frozen active basis"
+                "explicit PPML LSMR requires the frozen active basis"
             };
             *self = Self::specialized(
                 engine,
@@ -173,7 +173,7 @@ impl OrdinaryDirection {
 
     fn specialized<P: PreparedOlsFitView + Sync + ?Sized>(
         engine: PpmlSolverEngine,
-        prepared: &P,
+        prepared: &'p P,
         columns: &[usize],
         design: &FeDesign,
         config: PreparedPpmlIrlsConfig,
@@ -187,7 +187,7 @@ impl OrdinaryDirection {
                     columns,
                     design,
                     config.linear.execution.threads,
-                    joint_lsmr_policy(design.effects().len()),
+                    config.solver_plan.lsmr_preconditioner,
                 )?;
                 Ok(if engine == PpmlSolverEngine::LsmrJoint {
                     Self::LsmrJoint(workspace)
@@ -216,7 +216,7 @@ impl OrdinaryDirection {
     pub(super) fn replace_basis<P: PreparedOlsFitView + Sync + ?Sized>(
         &mut self,
         engine: Option<PpmlSolverEngine>,
-        prepared: &P,
+        prepared: &'p P,
         columns: &[usize],
         design: &FeDesign,
         config: PreparedPpmlIrlsConfig,

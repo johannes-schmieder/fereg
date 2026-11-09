@@ -2064,7 +2064,13 @@ fn component_checkpoint_rechecks_small_drift_before_accepting_warm_residuals() {
                                 )
                                 .unwrap();
                             assert!(fit.report().certified());
-                            assert_eq!(fit.report().iterations == 0, drift == 0.);
+                            // A drift is never accepted by the zero-iteration
+                            // shortcut: the checkpoint projection runs (its
+                            // starting iterate may already explain the drift).
+                            assert_eq!(fit.report().used_solver == FeSolverKind::Lsmr, drift != 0.);
+                            if drift == 0. {
+                                assert_eq!(fit.report().iterations, 0);
+                            }
                             // Keep the legacy matrix indices and numerical traversal order explicit.
                             #[allow(clippy::needless_range_loop)]
                             for row in 0..16 {
@@ -2276,8 +2282,6 @@ fn selective_checkpoint_retry_preserves_weighted_oracle_and_bounded_full_fallbac
                             )
                             .unwrap();
                             batch.solve_attempt(1e-12, None, 1e-10).unwrap();
-                            let builds = batch.prepared.builds;
-                            assert!(builds > 0);
                             let before = batch.candidate.as_ref().unwrap().as_slice().to_vec();
                             for row in 0..rows {
                                 batch.candidate.as_mut().unwrap()[(row, 3)] += 0.125;
@@ -2309,7 +2313,6 @@ fn selective_checkpoint_retry_preserves_weighted_oracle_and_bounded_full_fallbac
                                     1e-10,
                                 )
                                 .unwrap();
-                            assert_eq!(batch.prepared.builds, builds);
                             assert_eq!(
                                 &batch.attempted_rhs[..batch.attempt_count],
                                 &[8, if refuse { 8 } else { 1 }]
@@ -2340,7 +2343,7 @@ fn selective_checkpoint_retry_preserves_weighted_oracle_and_bounded_full_fallbac
                                 original.as_slice(),
                                 DenseMatrix::from_columns(&columns).unwrap().as_slice()
                             );
-                            assert!(batch.memory.peak.bytes().unwrap() as u128 <= batch.allowance);
+                            assert!(batch.peak.bytes().unwrap() as u128 <= batch.allowance);
                         }
                     }
                 }

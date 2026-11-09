@@ -35,6 +35,7 @@ use crate::ppml_result::{
 use fereg_core::error::{
     allocation, invalid_argument as invalid, unsupported, ErrorCode, FeregError, Result,
 };
+use fereg_core::fe::LsmrPreconditioner;
 use fereg_core::metadata::{
     AbsorbedTerm, CompiledTermGraph, ExpandedTerm, MetadataFlag, SourceEntry, SourceId,
     TermComponent,
@@ -92,6 +93,7 @@ const PPML_FIELDS: &[&str] = &[
     "output_drop_counts_matrix",
     "output_separation_sequence_matrix",
     "output_route_matrix",
+    "preconditioner",
 ];
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -282,6 +284,7 @@ struct EstimatePpmlAction {
     memory: PpmlMemoryConfig,
     metadata_peak_bytes: u128,
     solver: PpmlSolverFamily,
+    lsmr_preconditioner: LsmrPreconditioner,
     separation: SeparationConfig,
     requested_observation_columns: usize,
     publication_matrix_cells: usize,
@@ -322,6 +325,8 @@ struct EstimatePpmlSpec {
     deterministic: bool,
     allocation_audit: bool,
     solver: String,
+    /// Explicit LSMR's preconditioner token (optional; `auto`).
+    preconditioner: String,
     tolerance: f64,
     iterate: usize,
     separation: String,
@@ -492,7 +497,7 @@ fn claim_ppml_lsmr_break(
     (injection == PpmlDeveloperInjection::BreakLsmrIteration)
         .then(|| {
             fereg_core::fe::DeveloperLsmrBreak::claim(
-                fereg_core::fe::DeveloperLsmrBackend::PpmlJoint,
+                fereg_core::fe::DeveloperLsmrBackend::Fedemean,
             )
         })
         .transpose()
@@ -615,6 +620,7 @@ fn prepared_ppml_request(
             publication_matrix_cells: action.publication_matrix_cells,
         },
         solver: action.solver,
+        lsmr_preconditioner: action.lsmr_preconditioner,
         inject_fe_recovery_allocation_failure: action.injection
             == PpmlDeveloperInjection::Allocation,
         inject_topology_sharing: action.injection == PpmlDeveloperInjection::Topology,
@@ -888,6 +894,7 @@ impl EstimatePpmlSpec {
                 .transpose()?
                 .unwrap_or(false),
             solver: required(&values, "solver")?.to_ascii_lowercase(),
+            preconditioner: optional_token(&values, "preconditioner"),
             tolerance: parse_positive_f64(&values, "tolerance")?,
             iterate: parse_positive_usize(&values, "iterate")?,
             separation: required(&values, "separation")?.to_ascii_lowercase(),
@@ -1109,6 +1116,7 @@ impl EstimatePpmlSpec {
         };
         let config = PpmlConfig::with_outer_controls(self.tolerance, self.iterate)?;
         let solver = self.decode_solver()?;
+        let lsmr_preconditioner = self.decode_preconditioner(solver)?;
         if self.injection == PpmlDeveloperInjection::BreakLsmrIteration
             && (solver != PpmlSolverFamily::Lsmr
                 || request.absorbed_terms.len() < 2
@@ -1185,6 +1193,7 @@ impl EstimatePpmlSpec {
             memory,
             metadata_peak_bytes,
             solver,
+            lsmr_preconditioner,
             separation,
             requested_observation_columns,
             publication_matrix_cells,
@@ -1195,6 +1204,25 @@ impl EstimatePpmlSpec {
             break_marker_token: self.break_marker_token,
             input_policy: self.input_policy,
         })
+    }
+
+    /// Explicit LSMR's `preconditioner=` (optional, `auto`).
+    fn decode_preconditioner(&self, solver: PpmlSolverFamily) -> Result<LsmrPreconditioner> {
+        let preconditioner = match self.preconditioner.as_str() {
+            "auto" => LsmrPreconditioner::Auto,
+            "off" => LsmrPreconditioner::Off,
+            "diagonal" => LsmrPreconditioner::Diagonal,
+            "schwarz" => LsmrPreconditioner::Schwarz,
+            other => {
+                return Err(syntax(format!(
+                    "preconditioner must be auto, off, diagonal, or schwarz; received {other:?}"
+                )))
+            }
+        };
+        if preconditioner != LsmrPreconditioner::Auto && solver != PpmlSolverFamily::Lsmr {
+            return Err(syntax("preconditioner= requires solver=lsmr"));
+        }
+        Ok(preconditioner)
     }
 
     fn decode_solver(&self) -> Result<PpmlSolverFamily> {
@@ -1208,6 +1236,12 @@ impl EstimatePpmlSpec {
             ))),
         }
     }
+}
+
+fn optional_token(values: &std::collections::BTreeMap<String, String>, key: &str) -> String {
+    values
+        .get(key)
+        .map_or_else(|| "auto".to_owned(), |value| value.to_ascii_lowercase())
 }
 
 /// Offset/exposure and bias-unit columns share the action's input transport;

@@ -72,6 +72,7 @@ pub fn request(
             publication_matrix_cells: 4_096,
         },
         solver: PpmlSolverFamily::Auto,
+        lsmr_preconditioner: fereg_core::fe::LsmrPreconditioner::Auto,
         inject_fe_recovery_allocation_failure: false,
         inject_topology_sharing: false,
         inject_separation_cg: false,

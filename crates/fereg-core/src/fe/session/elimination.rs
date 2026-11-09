@@ -28,7 +28,7 @@ pub(crate) fn starve_full_system_for_test(on: bool) {
 /// fallback's report carries when fedemean's full system declined.
 type Declined = (crate::ols::OlsProjectionInput, Option<String>);
 
-impl FeSession<'_> {
+impl<'a> FeSession<'a> {
     /// Auto OLS with at least two categorical intercept effects: the exact
     /// elimination of the largest effect (two to five effects), then, for
     /// other effect counts and the elimination's declines, fedemean's full
@@ -113,6 +113,108 @@ impl FeSession<'_> {
                 Ok(Err((declined.into(), note)))
             }
         }
+    }
+
+    /// PPML's canonical projections of a categorical intercept design that
+    /// the generic owner serves (outside the elimination's range): fedemean's
+    /// full system first (Jacobi PCG escalating to additive Schwarz when slow
+    /// or stalled), within half the iteration budget and `budget`. The
+    /// certified result keeps the MAP-family engine identity with the route
+    /// it used; a decline returns the input for the generic owner.
+    pub(crate) fn try_ppml_full_system(
+        &mut self,
+        weights: BorrowedMapWeights<'_>,
+        values: crate::data::DenseMatrix,
+        map: MapConfig,
+    ) -> Result<std::result::Result<CertifiedBorrowedMap, crate::data::DenseMatrix>> {
+        let (Some(budget), Some(design)) = (self.ppml_full_system, self.binding.as_ref()) else {
+            return Ok(Err(values));
+        };
+        if !block_schur_enabled() || self.categorical.is_some() || self.general.is_none() {
+            return Ok(Err(values));
+        }
+        let request = Request {
+            retain_coefficients: false,
+            // PPML frames also bound the coefficient error (their fitted
+            // predictors are checked row by row).
+            coefficient_accuracy: true,
+        };
+        let map = MapConfig {
+            max_iterations: if STARVE_FULL_SYSTEM.get() {
+                1
+            } else {
+                (map.max_iterations / 2).max(1)
+            },
+            ..map
+        };
+        match self
+            .full_system
+            .project(design, weights, values, map, budget, request)?
+        {
+            Outcome::Done(result) => {
+                self.full_system_used = true;
+                Ok(Ok(result.into_map_family()))
+            }
+            Outcome::Declined(values) => Ok(Err(values)),
+        }
+    }
+
+    /// PPML's coefficient-owner projection with a norm handoff: fedemean's
+    /// full system first (its result leaves the norms to the caller, `false`),
+    /// else the generic owner's (`true`).
+    pub(crate) fn absorb_ppml_coefficients(
+        &mut self,
+        weights: BorrowedMapWeights<'_>,
+        (normalized, values): (&[f64], crate::data::DenseMatrix),
+        map: MapConfig,
+        generation: crate::fe::MapGeometryGeneration,
+        (positions, norms): (std::ops::Range<usize>, &mut [f64]),
+    ) -> Result<(CertifiedBorrowedMap, bool)> {
+        let values = match self.try_ppml_full_system(weights, values, map)? {
+            Ok(result) => return Ok((result, false)),
+            Err(values) => values,
+        };
+        let result = self
+            .general_owner()?
+            .absorb_coefficient_with_selected_norms(
+                normalized, values, map, generation, positions, None, norms,
+            )?;
+        Ok((result, true))
+    }
+
+    /// PPML's certification (and, when it misses, correction) of an assembled
+    /// residual column: fedemean's full system first, else the generic owner.
+    pub(crate) fn absorb_ppml_coefficient_residual(
+        &mut self,
+        weights: BorrowedMapWeights<'_>,
+        (normalized, values): (&[f64], crate::data::DenseMatrix),
+        map: MapConfig,
+        generation: crate::fe::MapGeometryGeneration,
+    ) -> Result<CertifiedBorrowedMap> {
+        let values = match self.try_ppml_full_system(weights, values, map)? {
+            Ok(result) => return Ok(result),
+            Err(values) => values,
+        };
+        self.general_owner()?
+            .absorb_coefficient_residual(normalized, values, map, generation)
+    }
+
+    fn general_owner(&mut self) -> Result<&mut crate::fe::ReusableMapAbsorber> {
+        self.general
+            .as_mut()
+            .ok_or_else(|| FeregError::new(ErrorCode::Internal, "coefficient owner is absent"))
+    }
+
+    /// Bind PPML's canonical generic owner to its categorical intercept
+    /// design, so that fedemean's full system serves it first within
+    /// `budget` ([`FeSession::try_ppml_full_system`]).
+    pub(crate) fn bind_ppml_full_system(
+        &mut self,
+        design: crate::fe::BorrowedInterceptFeDesign<'a>,
+        budget: Option<crate::memory::FeSolverMemoryBudget>,
+    ) {
+        self.binding = Some(design);
+        self.ppml_full_system = Some(budget);
     }
 
     /// An explicit fedemean request on the binding. It has no fallback: a

@@ -79,8 +79,7 @@ fn iteration_break_observes_fedemean_cancellation_and_resets() {
             panic!("reference declined");
         };
         let guard = DeveloperLsmrBreak::claim(DeveloperLsmrBackend::Fedemean).unwrap();
-        assert!(DeveloperLsmrBreak::claim(DeveloperLsmrBackend::PpmlJoint).is_err());
-        assert!(policy(DeveloperLsmrBackend::PpmlJoint).is_none());
+        assert!(DeveloperLsmrBreak::claim(DeveloperLsmrBackend::Fedemean).is_err());
         record_cancelled(DeveloperLsmrBackend::Fedemean);
         assert_eq!(
             STATE.load(Ordering::Acquire),

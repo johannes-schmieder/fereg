@@ -1765,6 +1765,19 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                         && crate::fe::block_schur::enabled()
                         && config.execution.mode == PreparedOlsExecutionMode::Fast
             };
+            // Six or more effects keep the generic owner and run fedemean's
+            // full system first (Fast mode).
+            let (categorical, full_system) = match categorical {
+                Some(design)
+                    if design.effects().len() > 5
+                        && design.nobs() == response.len()
+                        && crate::fe::block_schur::enabled()
+                        && config.execution.mode == PreparedOlsExecutionMode::Fast =>
+                {
+                    (None, Some(design))
+                }
+                other => (other, None),
+            };
             if let Some(categorical) = categorical
                 .filter(|design| owned(design.effects().len()) && design.nobs() == response.len())
             {
@@ -1782,12 +1795,14 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                     Vec::new(),
                 )
             } else {
+                let mut session =
+                    FeSession::general(ReusableMapAbsorber::new(fe_design, maximum_fe_rhs)?);
+                if let Some(design) = full_system {
+                    session.bind_ppml_full_system(design, config.absorb.solver_memory_budget);
+                }
                 (
                     None,
-                    Some(FeSession::general(ReusableMapAbsorber::new(
-                        fe_design,
-                        maximum_fe_rhs,
-                    )?)),
+                    Some(session),
                     fallible_filled(
                         response.len(),
                         0.0,
@@ -4039,23 +4054,19 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 positions,
                 norms,
             ),
-            Some(FeSession {
-                coefficients: true,
-                general: Some(projector),
-                categorical: None,
-                ..
-            }) => Ok((
-                projector.absorb_coefficient_with_selected_norms(
-                    &self.map_weights,
-                    values,
-                    self.config.absorb.map,
-                    self.generations.map_geometry(),
-                    positions,
-                    None,
-                    norms,
-                )?,
-                true,
-            )),
+            Some(
+                session @ FeSession {
+                    coefficients: true,
+                    categorical: None,
+                    ..
+                },
+            ) => session.absorb_ppml_coefficients(
+                self.weights.borrowed(),
+                (&self.map_weights, values),
+                self.config.absorb.map,
+                self.generations.map_geometry(),
+                (positions, norms),
+            ),
             _ => Ok((self.absorb_reusable_map(values)?, false)),
         }
     }
@@ -5331,16 +5342,17 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             DenseMatrix::from_row_major(rows, 1, std::mem::take(&mut workspace.residuals))?;
         let residual_absorbed = if self.config.absorb.solver == FeSolverKind::Map {
             self.fill_reusable_map_weights()?;
-            if let Some(FeSession {
-                coefficients: true,
-                general: Some(projector),
-                categorical: None,
-                ..
-            }) = self.fe_projector.as_mut()
+            if let Some(
+                session @ FeSession {
+                    coefficients: true,
+                    categorical: None,
+                    ..
+                },
+            ) = self.fe_projector.as_mut()
             {
-                projector.absorb_coefficient_residual(
-                    &self.map_weights,
-                    residual_matrix,
+                session.absorb_ppml_coefficient_residual(
+                    self.weights.borrowed(),
+                    (&self.map_weights, residual_matrix),
                     self.config.absorb.map,
                     self.generations.map_geometry(),
                 )?

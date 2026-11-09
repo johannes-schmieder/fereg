@@ -358,7 +358,7 @@ capture noisily `feppml_test_command' y c.x, solver(bogus)
 assert _rc == 198
 foreach request in "map" "cmg" "cmgschur" "it" "squarem" "map, accelerate(squarem)" ///
     "cg, reduce(eliminate)" "cg, precondition(jacobi)" "cg, cmgdegree(5)" ///
-    "lsmr, precondition(none)" "lsmr, reduce(eliminate)" ///
+    "lsmr, precondition(block)" "lsmr, reduce(eliminate)" ///
     "auto, precondition(jacobi)" "auto, reduce(full)" "lsmr precondition(schwarz)" {
     capture noisily `feppml_test_command' y c.x, solver(`request')
     assert _rc == 198
@@ -381,8 +381,10 @@ capture noisily `feppml_test_command' y c.x, solver(lsmr)
 assert _rc == 498
 capture noisily `feppml_test_command' y c.x, solver(cg)
 assert _rc == 498
-capture noisily `feppml_test_command' y c.x, solver(lsmr, precondition(schwarz))
-assert _rc == 498
+foreach precondition in schwarz jacobi none {
+    capture noisily `feppml_test_command' y c.x, solver(lsmr, precondition(`precondition'))
+    assert _rc == 498
+}
 generate int __solver_wide1 = _n
 generate int __solver_wide2 = mod(5 * _n, 97)
 generate int __solver_wide3 = mod(7 * _n, 101)

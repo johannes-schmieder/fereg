@@ -454,7 +454,7 @@ setting. The original setting is restored on success, error, and Break.
 partitions and merge order for the same platform, route, and thread count.
 {cmd:solver()} uses the grammar of {help fereg##solver:fereg}:
 {cmd:solver(auto)} (the default),
-{cmd:solver(lsmr}[{cmd:, reduce(auto|full) precondition(auto|schwarz)}]{cmd:)},
+{cmd:solver(lsmr}[{cmd:, reduce(auto|full) precondition(auto|none|jacobi|schwarz)}]{cmd:)},
 and {cmd:solver(cg}[{cmd:, reduce(auto|full) precondition(auto|cmg)}]{cmd:)}.
 {cmd:feppml} has no {cmd:solver(map)}, no {cmd:accelerate()}, no
 {cmd:reduce(eliminate)} request, and no CMG-Schur controls; an unsupported
@@ -464,6 +464,10 @@ Its numerical route and workspace depend on the fixed-effect design and
 admitted storage: categorical frames with two to five effects (four or five
 only in the fast memory route) first eliminate the largest effect exactly and solve the remaining effects by
 Jacobi-preconditioned CG, escalating to block-Jacobi when a recurrence stalls.
+With six or more categorical intercept effects (fast memory route), the
+certified projections run CG on the full system of every effect, starting on
+Jacobi and escalating to additive Schwarz when a recurrence is slow or stalls,
+before the generic alternating projections.
 LSMR and CMG remain explicit solver requests. With exactly
 two categorical intercept effects and no slopes, automatic fits
 reuse one CMG preconditioner across IRLS iterations to accelerate their joint
@@ -477,14 +481,24 @@ prepares weighted group bases once per absorption call, stops columns
 independently, and accepts only freshly reconstructed and certified residuals.
 Its reported iterations count Krylov steps; they are not directly comparable to
 symmetric MAP sweeps. Insufficient optional workspace retains generic MAP.
-{cmd:solver(lsmr)} selects one native joint-incremental LSMR engine with the
-Schwarz preconditioner; it appears as row {cmd:lsmr} of {cmd:e(fe_solve)} with
-no active finite controls and as {cmd:lsmr_joint} otherwise. {cmd:solver(cg)}
+{cmd:solver(lsmr)} solves each IRLS step's weighted least-squares correction
+by modified LSMR. With {cmd:precondition(auto)} (the default) it runs one joint
+recurrence on the finite controls and fixed effects with a Jacobi-preconditioned
+fixed-effect block; a recurrence that stalls or misses its certificate hands the
+step to projections of the controls and the working response onto the fixed
+effects (modified LSMR starting on Jacobi and escalating to additive Schwarz),
+and later steps start there. {cmd:precondition(jacobi)} and
+{cmd:precondition(none)} keep the joint recurrence;
+{cmd:precondition(schwarz)} runs the projections with additive Schwarz. Every
+step is accepted only after an exact normal-equation certificate. The engine
+appears as row {cmd:lsmr} of {cmd:e(fe_solve)} with no active finite controls
+and as {cmd:lsmr_joint} otherwise. {cmd:solver(cg)}
 selects only prepared fused-FWL CMG on the full graph (row {cmd:cmg}). The
 work, retries and fallbacks of each session are reported separately.
 Explicit LSMR and CMG fits
 with two or three categorical effects use independently re-certified
-current-weight LSMR checkpoint projection at every retained sample size.
+current-weight LSMR checkpoint projection (modified LSMR on the full system,
+Jacobi escalating to Schwarz) when the exact elimination declines.
 The canonical session owns the first full-width rank decision, strict
 convergence checkpoint, and exact final-Hessian synchronization, so the final
 weighted least-squares solve always runs there.
@@ -767,7 +781,8 @@ rebasing path.
 
 {pstd}
 The public surface does not include a model-based IID VCE, a preconditioner
-other than its solver's own (Schwarz for {cmd:lsmr}, CMG for {cmd:cg}), a DoF
+other than its solver's own (none, Jacobi or Schwarz for {cmd:lsmr}, CMG for
+{cmd:cg}), a DoF
 policy, IV/GMM, group outcomes with individual fixed effects,
 HAC or Driscoll--Kraay covariance, other GLMs, GPU execution, or undocumented
 developer controls. Unsupported requests fail explicitly.

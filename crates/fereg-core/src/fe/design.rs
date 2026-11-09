@@ -636,12 +636,7 @@ impl<'a> BorrowedInterceptFeDesign<'a> {
 
     /// The exact yielding factor-pair component count, if already computed.
     pub(crate) fn known_yielding_pair_components(&self) -> Option<usize> {
-        self.yielding_pairs.known(self.effects.len(), None)
-    }
-
-    /// The exact count over the pairs of the selected effects, if computed.
-    pub(crate) fn known_yielding_components_among(&self, effects: &[usize]) -> Option<usize> {
-        self.yielding_pairs.known(self.effects.len(), Some(effects))
+        self.yielding_pairs.known(self.effects.len())
     }
 
     /// Largest transient scratch of [`Self::yielding_pair_components`].

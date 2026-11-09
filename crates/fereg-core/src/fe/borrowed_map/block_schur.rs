@@ -100,25 +100,7 @@ impl Plan {
     /// explicit ones never escalate.
     pub(crate) const fn lsmr(preconditioner: LsmrPreconditioner) -> Self {
         Self::Fixed {
-            choice: fedemean::Choice {
-                reduction: fedemean::Reduction::Full,
-                method: fedemean::Method::Lsmr,
-                preconditioner: match preconditioner {
-                    LsmrPreconditioner::Auto => fedemean::Preconditioner::Auto,
-                    LsmrPreconditioner::Off => fedemean::Preconditioner::Identity,
-                    LsmrPreconditioner::Diagonal => fedemean::Preconditioner::Jacobi,
-                    LsmrPreconditioner::Schwarz => {
-                        fedemean::Preconditioner::Schwarz(fedemean::SchwarzSpec {
-                            subdomains: fedemean::Subdomains::Star,
-                            local: fedemean::SchwarzLocal::Auto,
-                        })
-                    }
-                },
-                fallback: match preconditioner {
-                    LsmrPreconditioner::Auto => fedemean::Fallback::Escalate,
-                    _ => fedemean::Fallback::Decline,
-                },
-            },
+            choice: lsmr_choice(preconditioner),
             requested: FeSolverKind::Lsmr,
             preconditioner: Some(preconditioner),
         }
@@ -189,6 +171,32 @@ impl Plan {
             Self::Elimination => FeSolverKind::Auto,
             Self::Fixed { requested, .. } => requested,
         }
+    }
+}
+
+/// fedemean's modified LSMR on the full system with `preconditioner`: the
+/// automatic one is Jacobi escalating to additive Schwarz (star subdomains,
+/// automatic local solves) when slow or stalled; explicit ones never
+/// escalate.
+pub(crate) const fn lsmr_choice(preconditioner: LsmrPreconditioner) -> fedemean::Choice {
+    fedemean::Choice {
+        reduction: fedemean::Reduction::Full,
+        method: fedemean::Method::Lsmr,
+        preconditioner: match preconditioner {
+            LsmrPreconditioner::Auto => fedemean::Preconditioner::Auto,
+            LsmrPreconditioner::Off => fedemean::Preconditioner::Identity,
+            LsmrPreconditioner::Diagonal => fedemean::Preconditioner::Jacobi,
+            LsmrPreconditioner::Schwarz => {
+                fedemean::Preconditioner::Schwarz(fedemean::SchwarzSpec {
+                    subdomains: fedemean::Subdomains::Star,
+                    local: fedemean::SchwarzLocal::Auto,
+                })
+            }
+        },
+        fallback: match preconditioner {
+            LsmrPreconditioner::Auto => fedemean::Fallback::Escalate,
+            _ => fedemean::Fallback::Decline,
+        },
     }
 }
 
@@ -575,6 +583,96 @@ impl<'a> Cache<'a> {
     }
 }
 
+/// fedemean's workspace for modified-LSMR projections of a categorical
+/// intercept design with `level_counts` on `rows` observations:
+/// its structure (the level indexes of effects above its scatter limit),
+/// weight state and LSMR vectors, plus an additive-Schwarz allowance (the
+/// categorical Schwarz bound over every effect, or over `yielding` exact
+/// pair components). It is the memory limit of such projections: fedemean
+/// declines a larger workspace, and its automatic preconditioner then keeps
+/// Jacobi.
+pub(crate) fn lsmr_workspace_bytes(
+    rows: usize,
+    level_counts: &[usize],
+    threads: usize,
+    yielding: Option<usize>,
+) -> Result<u128> {
+    /// fedemean's largest scattered effect and its scatter block count.
+    const SCATTER_LEVELS: usize = 1024;
+    const SCATTER_BLOCKS: u128 = 64;
+    if rows == 0 || threads == 0 || level_counts.is_empty() || level_counts.contains(&0) {
+        return Err(invalid_argument(
+            "PPML LSMR memory estimate requires positive rows, threads and effect level counts",
+        ));
+    }
+    let n = rows as u128;
+    let levels = level_counts.iter().try_fold(0_u128, |total, &levels| {
+        checked_add_memory(total, levels as u128, "PPML LSMR total levels")
+    })?;
+    let mut structure = 0_u128;
+    let mut scatter = 0_u128;
+    for &count in level_counts {
+        if count <= SCATTER_LEVELS {
+            scatter = checked_add_memory(scatter, count as u128, "PPML LSMR scatter slots")?;
+        } else {
+            structure = checked_sum_memory(&[
+                structure,
+                bytes_for_memory::<usize>(count as u128 + 1, "PPML LSMR level starts")?,
+                bytes_for_memory::<u32>(n, "PPML LSMR level rows")?,
+            ])?;
+        }
+    }
+    // Weight state (masses, inverses, square roots), the LSMR vectors
+    // (observation- and coefficient-sized) and the scatter accumulators.
+    let values = checked_sum_memory(&[
+        checked_mul_memory(levels, 18, "PPML LSMR coefficient vectors")?,
+        checked_mul_memory(n, 9, "PPML LSMR observation vectors")?,
+        checked_mul_memory(scatter, SCATTER_BLOCKS, "PPML LSMR scatter blocks")?,
+    ])?;
+    let maximum_levels = level_counts.iter().copied().max().unwrap_or(0) as u128;
+    let schwarz = crate::memory::estimate_categorical_schwarz_memory(
+        n,
+        level_counts.len() as u128,
+        levels,
+        maximum_levels,
+        threads as u128,
+        checked_add_memory(
+            crate::memory::categorical_dense_cross_tab_bytes(n, level_counts)?,
+            crate::memory::schwarz_weighted_correction_bytes(n, level_counts)?,
+            "PPML LSMR cross-tab and compensation scratch",
+        )?,
+        yielding.map(|count| count as u128),
+    )?;
+    let schwarz = schwarz.build_peak_bytes.max(checked_add_memory(
+        schwarz.retained_bytes,
+        schwarz.apply_peak_bytes,
+        "PPML LSMR Schwarz apply peak",
+    )?);
+    checked_sum_memory(&[
+        structure,
+        bytes_for_memory::<f64>(values, "PPML LSMR fedemean workspace")?,
+        schwarz,
+    ])
+}
+
+fn checked_add_memory(left: u128, right: u128, context: &'static str) -> Result<u128> {
+    left.checked_add(right).ok_or_else(|| allocation(context))
+}
+
+fn checked_mul_memory(left: u128, right: u128, context: &'static str) -> Result<u128> {
+    left.checked_mul(right).ok_or_else(|| allocation(context))
+}
+
+fn checked_sum_memory(values: &[u128]) -> Result<u128> {
+    values.iter().try_fold(0_u128, |total, &value| {
+        checked_add_memory(total, value, "fedemean LSMR workspace sum overflowed")
+    })
+}
+
+fn bytes_for_memory<T>(elements: u128, context: &'static str) -> Result<u128> {
+    checked_mul_memory(elements, std::mem::size_of::<T>() as u128, context)
+}
+
 /// fedemean's request of one projection: tolerance, iteration budget, the
 /// coefficient stopping rule, the residual Gram and the memory limit beyond
 /// the caller's execution bytes.
@@ -676,7 +774,9 @@ fn settings(plan: Plan, hinted: bool) -> fedemean::Settings {
 
 /// fedemean's view of the borrowed design: codes and level counts of every
 /// effect, and the eliminated effect's level members.
-fn design_view<'a>(design: &BorrowedInterceptFeDesign<'a>) -> Result<fedemean::Design<'a>> {
+pub(crate) fn design_view<'a>(
+    design: &BorrowedInterceptFeDesign<'a>,
+) -> Result<fedemean::Design<'a>> {
     let effects = design.effects();
     let eliminated =
         (0..effects.len()).max_by_key(|&e| (effects[e].n_levels(), std::cmp::Reverse(e)));
@@ -712,7 +812,7 @@ fn same_design(view: &fedemean::Design<'_>, design: &BorrowedInterceptFeDesign<'
 /// fedemean's route in fereg's reporting terms: the reduction, the method,
 /// the preconditioner with each retained block's local solve (by design
 /// effect), and the escalated batches.
-fn route(route: &fedemean::Route) -> crate::fe::FeRoute {
+pub(crate) fn route(route: &fedemean::Route) -> crate::fe::FeRoute {
     use crate::fe::{FeLocalSolve, FeMethod, FePreconditioner, FeReduction};
     let preconditioner = match route.preconditioner {
         fedemean::PreconditionerUsed::Block(blocks) => {
@@ -779,7 +879,7 @@ fn fe_certificate(certificate: fedemean::Certificate) -> FeCertificate {
     }
 }
 
-fn fedemean_error(error: fedemean::Error) -> FeregError {
+pub(crate) fn fedemean_error(error: fedemean::Error) -> FeregError {
     match error {
         fedemean::Error::Cancelled => crate::interrupt::interrupted(),
         fedemean::Error::OutOfMemory(message) => allocation(message),

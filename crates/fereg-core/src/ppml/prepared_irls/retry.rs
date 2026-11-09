@@ -9,7 +9,7 @@ pub(super) enum CanonicalRetryReason {
 #[allow(clippy::too_many_arguments)]
 pub(super) fn canonical_retry<P: PreparedOlsFitView + Sync + ?Sized>(
     reason: CanonicalRetryReason,
-    direction: &mut OrdinaryDirection,
+    direction: &mut OrdinaryDirection<'_>,
     session: &mut CertifiedLinearSession<'_, P>,
     workspace: &mut PpmlIterationWorkspace,
     offset: &[f64],
