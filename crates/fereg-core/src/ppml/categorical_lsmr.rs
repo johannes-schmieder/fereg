@@ -207,6 +207,21 @@ struct FiniteBuffers {
 }
 
 impl FiniteBuffers {
+    /// The `f64` values [`FiniteBuffers::new`] allocates for `columns`
+    /// controls: two `k x k` matrices and five `k`-vectors (the permutation's
+    /// `k` indices besides).
+    fn values(columns: u128) -> Result<u128> {
+        checked_add_memory(
+            checked_mul_memory(
+                checked_mul_memory(columns, columns, "PPML LSMR finite Gram")?,
+                2,
+                "PPML LSMR finite matrices",
+            )?,
+            checked_mul_memory(columns, 5, "PPML LSMR finite vectors")?,
+            "PPML LSMR finite buffers",
+        )
+    }
+
     fn new(columns: usize) -> Result<Self> {
         let square = columns
             .checked_mul(columns)
@@ -1922,18 +1937,14 @@ pub(crate) fn estimate_joint_lsmr_workspace_bytes(
                 2,
                 "PPML LSMR warm starts",
             )?,
-            checked_mul_memory(
-                k,
-                checked_add_memory(k, 3, "PPML LSMR finite")?,
-                "PPML LSMR projected Gram",
-            )?,
-            checked_mul_memory(k, 4, "PPML LSMR projected finite vectors")?,
+            FiniteBuffers::values(k)?,
         ])?
     } else {
         0
     };
     let indices = checked_sum_memory(&[
         checked_mul_memory(k, 2, "PPML LSMR slots")?,
+        if projections { k } else { 0 },
         checked_mul_memory(
             effect_level_counts.len() as u128 + 1,
             2,

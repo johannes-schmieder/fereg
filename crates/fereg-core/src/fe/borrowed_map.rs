@@ -5176,16 +5176,33 @@ impl<'s, 'a> CheckpointLsmrBatch<'s, 'a> {
             // Full retries never overlap the rejected output bank.
             self.candidate = None;
         }
-        // Every attempt starts from untouched original inputs.
+        // Every attempt starts from untouched original inputs, copied once
+        // into fallible storage (the selected columns alone on a selective
+        // retry, as `selected_retry` charges).
         let input = match &selected {
             Some(positions) => {
-                let columns = positions
-                    .iter()
-                    .map(|&column| self.values.column(column))
-                    .collect::<Result<Vec<_>>>()?;
-                DenseMatrix::from_columns(&columns)?
+                let mut input = DenseMatrix::zeros(self.values.nrows(), positions.len())?;
+                let source = self.values.as_slice();
+                let width = self.values.ncols();
+                for (row, output) in input
+                    .as_mut_slice()
+                    .chunks_exact_mut(positions.len())
+                    .enumerate()
+                {
+                    for (value, &column) in output.iter_mut().zip(positions) {
+                        *value = source[row * width + column];
+                    }
+                }
+                input
             }
-            None => self.values.clone(),
+            None => DenseMatrix::from_row_major(
+                self.values.nrows(),
+                self.values.ncols(),
+                crate::memory::fallible_copy(
+                    self.values.as_slice(),
+                    "unable to reserve the checkpoint LSMR input copy",
+                )?,
+            )?,
         };
         let width = input.ncols();
         if let Some(slot) = self.attempted_rhs.get_mut(self.attempt_count) {

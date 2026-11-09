@@ -808,3 +808,24 @@ fn schwarz_memory_charges_dense_cross_tabs_at_both_dispatch_boundaries() {
     );
     assert!(categorical_dense_cross_tab_bytes(u128::MAX, &[2, 3]).is_err());
 }
+
+#[test]
+fn finite_buffer_estimate_matches_their_allocation() {
+    for k in [0_usize, 1, 4, 9] {
+        let buffers = FiniteBuffers::new(k).expect("finite buffers");
+        let values = [
+            &buffers.gram,
+            &buffers.rhs,
+            &buffers.factor,
+            &buffers.forward,
+            &buffers.solution,
+            &buffers.scales,
+            &buffers.step,
+        ]
+        .iter()
+        .map(|v| v.capacity() as u128)
+        .sum::<u128>();
+        assert_eq!(values, FiniteBuffers::values(k as u128).unwrap());
+        assert_eq!(buffers.permutation.capacity(), k);
+    }
+}
