@@ -72,11 +72,13 @@ const MINIMUM_SCALE: f64 = 1e-4;
 const RETRY_FACTOR: f64 = 0.01;
 
 // Tests: count down projection attempts whose joint certificate is treated
-// as missed and joint recurrences treated as stalled; a positive Schwarz
-// handle memory limit replaces the projections' workspace limit.
+// as missed, joint recurrences treated as stalled, and first joint passes
+// whose tolerance stop is treated as refuted by mlsmr's exit audit; a
+// positive Schwarz handle memory limit replaces the projections' limit.
 crate::fault::fault_plan! {
     static FORCE_CERTIFICATE_MISSES: usize = 0;
     static FORCE_JOINT_STALLS: usize = 0;
+    static FORCE_FALSE_CONVERGENCE: usize = 0;
     static FORCE_SCHWARZ_LIMIT: u128 = 0;
 }
 
@@ -85,6 +87,7 @@ crate::fault::fault_plan! {
 struct Faults {
     misses: usize,
     stalls: usize,
+    refuted: usize,
     schwarz_limit: u128,
 }
 
@@ -460,6 +463,7 @@ impl<'p> ReusableCategoricalJointLsmr<'p> {
         let faults = Faults {
             misses: FORCE_CERTIFICATE_MISSES.replace(0),
             stalls: FORCE_JOINT_STALLS.replace(0),
+            refuted: FORCE_FALSE_CONVERGENCE.replace(0),
             schwarz_limit: FORCE_SCHWARZ_LIMIT.replace(0),
         };
         let team = self.team.clone();
@@ -540,10 +544,11 @@ impl<'p> ReusableCategoricalJointLsmr<'p> {
                     fe_design,
                     (weights, tolerance),
                     max_iterations,
-                    (faults.stalls > 0, start.take()),
+                    (faults.stalls > 0, faults.refuted > 0, start.take()),
                     &mut tally,
                 )?;
                 faults.stalls = faults.stalls.saturating_sub(1);
+                faults.refuted = faults.refuted.saturating_sub(1);
                 match solved {
                     Joint::Certified(report) => {
                         let mut route = report.route;
@@ -682,7 +687,7 @@ impl<'p> ReusableCategoricalJointLsmr<'p> {
         fe_design: &FeDesign,
         (weights, tolerance): (&[f64], f64),
         max_iterations: usize,
-        (stall, start): (bool, Option<Vec<f64>>),
+        (stall, refuted, start): (bool, bool, Option<Vec<f64>>),
         tally: &mut Tally,
     ) -> Result<Joint> {
         #[cfg(test)]
@@ -703,7 +708,7 @@ impl<'p> ReusableCategoricalJointLsmr<'p> {
                 .warm_start_valid
                 .then_some(self.joint.warm_start.as_slice()),
         };
-        let first = self.run_once(
+        let mut first = self.run_once(
             fe_design,
             tolerance,
             max_iterations,
@@ -711,6 +716,10 @@ impl<'p> ReusableCategoricalJointLsmr<'p> {
             escalate.then_some(&staleness as _),
             None,
         )?;
+        if refuted && first.converged {
+            first.converged = false;
+            first.stop_reason = LsmrStopReason::FalseConvergence;
+        }
         tally.solve_seconds += started.elapsed().as_secs_f64();
         tally.iterations = tally.iterations.saturating_add(first.iterations);
         if stall || first.stop_reason == LsmrStopReason::Escalated {
@@ -718,13 +727,23 @@ impl<'p> ReusableCategoricalJointLsmr<'p> {
         }
         let started = Instant::now();
         let mut certificate = self.finish_joint(fe_design, weights, &first.x, tolerance)?;
+        trace_pass(self.joint.block, tolerance, &first, &certificate);
         tally.certification_seconds += started.elapsed().as_secs_f64();
         let mut effective_tolerance = tolerance;
         let mut result = first;
-        if !result.converged || !certificate.passed {
-            // Recurrence termination and the independent certificate are
-            // separate obligations; continue from the iterate when either
-            // is missing.
+        // Recurrence termination and the independent certificate are
+        // separate obligations. With the Schwarz block, mlsmr's exit audit
+        // compares the plain gradient with its estimate in M's metric, which
+        // differ by the preconditioner's condition number on poorly
+        // connected designs: a tolerance stop it refutes
+        // (`FalseConvergence`) is terminated, and the exact certificate
+        // decides it, as for the projections.
+        let schwarz = self.joint.block == FeBlock::Schwarz;
+        let terminated = |result: &schwarz_precond::LsmrResult| {
+            result.converged || (schwarz && result.stop_reason == LsmrStopReason::FalseConvergence)
+        };
+        if !terminated(&result) || !certificate.passed {
+            // Continue from the iterate when either is missing.
             effective_tolerance =
                 tolerance.min((tolerance * 0.01).max(NUMERICAL_FLOOR.min(tolerance)));
             tally.retries += 1;
@@ -742,9 +761,10 @@ impl<'p> ReusableCategoricalJointLsmr<'p> {
             result = continued;
             let started = Instant::now();
             certificate = self.finish_joint(fe_design, weights, &result.x, tolerance)?;
+            trace_pass(self.joint.block, effective_tolerance, &result, &certificate);
             tally.certification_seconds += started.elapsed().as_secs_f64();
         }
-        if !result.converged || !certificate.passed {
+        if !terminated(&result) || !certificate.passed {
             self.joint.warm_start_valid = false;
             return Ok(Joint::Uncertified(result.x));
         }
@@ -1248,6 +1268,29 @@ enum Warm {
     Controls,
     /// Every column at this frame's last solved coefficients (the retry).
     Solved,
+}
+
+fn trace_pass(
+    block: FeBlock,
+    tolerance: f64,
+    result: &schwarz_precond::LsmrResult,
+    certificate: &JointLsmrCertificate,
+) {
+    if !crate::diagnostics::solver_trace_enabled() {
+        return;
+    }
+    crate::diagnostics::emit_solver_trace(&format!(
+        "FEREG_SOLVER_TRACE|phase=ppml_lsmr_joint_pass|block={block:?}|tolerance={tolerance:.3e}|iterations={}|stop={:?}|converged={}|normal_eq={:.3e}|residual={:.3e}|relinf={:.3e}|rel2={:.3e}|finite_abs={:.3e}|fe_abs={:.3e}",
+        result.iterations,
+        result.stop_reason,
+        result.converged,
+        result.normal_eq_residual,
+        result.residual_norm,
+        certificate.relative_infinity_norm,
+        certificate.relative_two_norm,
+        certificate.finite_absolute_infinity_norm,
+        certificate.fixed_effect_absolute_infinity_norm,
+    ));
 }
 
 fn emit_frame_trace(scheduled: f64, report: &JointLsmrReport) {

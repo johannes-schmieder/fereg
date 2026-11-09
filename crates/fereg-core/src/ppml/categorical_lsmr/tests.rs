@@ -893,3 +893,122 @@ fn finite_buffer_estimate_matches_their_allocation() {
         assert_eq!(buffers.permutation.capacity(), k);
     }
 }
+
+/// A worker-firm panel whose firms form a path (only `firms - 1` workers
+/// move, each to the next firm): Jacobi preconditions its FE block poorly.
+fn chain_fixture(workers: usize, firms: usize, controls: usize) -> Fixture {
+    let periods = 10;
+    let rows = workers * periods;
+    let mut worker_codes = Vec::with_capacity(rows);
+    let mut firm_codes = Vec::with_capacity(rows);
+    for w in 0..workers {
+        for t in 0..periods {
+            let home = w % firms;
+            let firm = if w + 1 < firms && t >= periods / 2 {
+                home + 1
+            } else {
+                home
+            };
+            worker_codes.push(w as u32);
+            firm_codes.push(firm as u32);
+        }
+    }
+    let design = FeDesign::new(
+        rows,
+        vec![
+            EffectTerm::new(worker_codes, workers, true, Vec::new()).expect("workers"),
+            EffectTerm::new(firm_codes.clone(), firms, true, Vec::new()).expect("firms"),
+        ],
+    )
+    .expect("design");
+    let values = (0..rows)
+        .flat_map(|i| (0..controls).map(move |c| ((i * (c + 3) + 5 * c) as f64 * 0.29).sin()))
+        .collect();
+    let active = DenseMatrix::from_row_major(rows, controls, values).expect("controls");
+    let outcome = (0..rows)
+        .map(|i| {
+            if i % 11 == 3 {
+                0.0
+            } else {
+                (1.0 + ((i * 7) % 5) as f64 / 4.0) * (firm_codes[i] as f64 / firms as f64).exp()
+            }
+        })
+        .collect();
+    Fixture {
+        design,
+        active,
+        outcome,
+    }
+}
+
+/// On a chain the Schwarz block certifies every frame jointly down to
+/// tight frame tolerances (explicitly, and after the automatic
+/// escalation), matching the dense oracle; mlsmr's audit of a certified
+/// tolerance stop does not refuse it.
+#[test]
+fn the_schwarz_block_certifies_chain_frames_jointly() {
+    let fixture = chain_fixture(240, 30, 2);
+    for preconditioner in [LsmrPreconditioner::Schwarz, LsmrPreconditioner::Auto] {
+        let mut solver = engine(&fixture.design, fixture.active.clone(), 2, preconditioner);
+        for (frame, (phase, tolerance)) in [(0.1, 1e-8), (0.4, 1e-10), (0.7, 1e-12)]
+            .into_iter()
+            .enumerate()
+        {
+            let rows = fixture.design.nobs();
+            let weights = frame_weights(rows, phase);
+            let report = solver
+                .solve(
+                    &fixture.design,
+                    &fixture.outcome,
+                    &weights,
+                    &weights,
+                    tolerance,
+                    10_000,
+                )
+                .expect("certified chain frame");
+            assert_eq!(report.formulation, Formulation::Joint, "{preconditioner:?}");
+            assert!(report.certificate.relative_infinity_norm <= tolerance);
+            if preconditioner == LsmrPreconditioner::Schwarz || frame > 0 {
+                assert!(is_schwarz(&report), "{preconditioner:?} frame {frame}");
+            }
+            let target = correction(&fixture.outcome, &weights);
+            let (fitted, coefficients) =
+                dense_oracle(&fixture.design, &fixture.active, &weights, &target);
+            assert!(max_abs_difference(&solver.delta_eta, &fitted) <= 1e-8);
+            assert!(max_abs_difference(&solver.step, &coefficients) <= 1e-8);
+            solver.accept_step(1.0);
+        }
+    }
+}
+
+/// A certified tolerance stop that mlsmr's exit audit refutes is accepted
+/// with the Schwarz block (the certificate decides, no continuation); with
+/// Jacobi it is continued once, as before.
+#[test]
+fn a_refuted_certified_stop_is_accepted_only_with_the_schwarz_block() {
+    let fixture = fixture(200, [15, 8, 5], 2);
+    let weights = frame_weights(200, 0.5);
+    for (preconditioner, retries) in [
+        (LsmrPreconditioner::Schwarz, 0),
+        (LsmrPreconditioner::Diagonal, 1),
+    ] {
+        let mut solver = engine(&fixture.design, fixture.active.clone(), 2, preconditioner);
+        FORCE_FALSE_CONVERGENCE.set(1);
+        let report = solver
+            .solve(
+                &fixture.design,
+                &fixture.outcome,
+                &weights,
+                &weights,
+                1e-10,
+                10_000,
+            )
+            .expect("certified frame");
+        assert_eq!(report.formulation, Formulation::Joint);
+        assert_eq!(report.retries, retries, "{preconditioner:?}");
+        assert!(report.certificate.passed);
+        let target = correction(&fixture.outcome, &weights);
+        let (fitted, _) = dense_oracle(&fixture.design, &fixture.active, &weights, &target);
+        assert!(max_abs_difference(&solver.delta_eta, &fitted) <= 1e-9);
+    }
+}
