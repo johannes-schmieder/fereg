@@ -3958,6 +3958,73 @@ operator and core-pair factor reuse), PPML's strict checkpoint LSMR, slope
 designs and the Auto fallbacks keep the pinned LSMR library; PPML with six or
 more effects keeps MAP; no Linux or SCC timing.
 
+## fedemean with absorbed slopes and saved slope recovery (Milestone 3, development, Mac)
+
+Absorbed slopes run on fedemean's full system (SPEC §1, §5): explicit
+`solver(lsmr)` (level channel blocks as `jacobi`, the hybrid Schwarz as
+`schwarz`; within keeps explicit `schwarz` with fewer than two intercept
+effects and every fit fedemean does not certify, then MAP, reported as the
+fallback), OLS Auto on owned slope designs with two or more effects outside
+the exact two-effect slope solver (PCG with channel blocks escalating to the
+hybrid Schwarz, the generic owner's independent certificate, MAP continuation
+as the reported fallback), and saved slope recovery (retained fedemean
+coefficients, then fedemean from them or zero, then MAP; fereg's pivoted
+representative on rank-deficient levels and the §5 gauge on every path).
+Witnesses: `fereg-oracle/tests/slopes.rs` (four slope shapes, intercept and
+slope-only, with a constant-slope, a zero-slope and a single-row level, unit
+and analytic weights, Auto in both memory modes, explicit LSMR with each
+preconditioner and MAP, at 1 and 4 workers against the explicit-design QR;
+saved channels from fedemean and from retained coefficients against the MAP
+recovery in the §5 gauge, with exact zeros on the singular levels); the
+adapter's units (zero-copy view, coefficients reproduce the removed fit,
+bitwise repeats at 1/3/4 workers, declines); the within continuation on the
+boundary fixture's offset-slope case; Stata slope, saved-output and PPML
+saved-slope fixtures.
+
+Matched Mac comparison against `8bcb3022` (the preceding head's package; 1M
+rows, `x1-x4`, `vce(robust)`, 4 threads, 2 interleaved processes x 3 fits,
+medians; `t = year + mod(_n,5)/5`, a function of year in this panel, and
+`u = year + mod(worker*year,7)/7`, identified next to year FE):
+
+| case | 8bcb3022 (ms) | 2441732f (ms) | route (2441732f) | max abs db | max rel dse |
+|---|---:|---:|---|---:|---:|
+| `worker firm##c.t year` | 641 | 358 | full x cg x jacobi (channel blocks) | 1.4e-16 | 6.2e-11 |
+| the same, aweights | 700.5 | 424.5 | full x cg x jacobi | 9.2e-16 | 2.4e-10 |
+| `worker firm##c.t`, `solver(lsmr)` | 1413.5 | 635 | full x lsmr x jacobi (8bcb3022: within, schwarz) | 2.4e-16 | 5.7e-12 |
+| `fe_w=worker fe_f=firm##c.u fe_y=year` | timeout (> 900 s per process) | 589 | full x cg x jacobi, retained coefficients | – | – |
+| `fe_w=worker fe_f=firm##c.u` | 1508 | 500 | two-effect slope solver, fedemean recovery | bitwise | bitwise |
+| `worker firm##c.t`, `worker##c.t firm` | 289.5, 246.5 | 291.5, 239 | two-effect slope solver | bitwise | bitwise |
+| ols2, ols3, ols5, ppml2 (quiet rerun) | 63, 80, 99, 380 | 61, 79, 98, 381.5 | unchanged | bitwise | bitwise |
+
+Against `tolerance(1e-12)` fits, `worker firm##c.t year` defaults differ by
+rel dse 5.9e-11 (2441732f) and 6.3e-11 (8bcb3022); the two arms' 1e-12 fits
+agree to 4.4e-14. Saved effects at 100k rows (where 8bcb3022's MAP recovery
+finishes: 52.9 s against 57 ms for `fe_w=worker fe_f=firm##c.u fe_y=year`,
+169 against 55 ms for the two-effect case): every saved channel's standard
+deviation agrees to 1e-11 and the means differ only by the §5 transfer (the
+firm intercept's weighted mean moves to the worker channel). The two-effect
+slope solver stays Auto's route: with it disabled (measurement build),
+fedemean's full system was 3.4% and 4.5% faster on `worker firm##c.t` and
+`worker##c.t firm` and 14% faster with saved effects (450 against 524.5 ms),
+but its default fits sit 1.5e-10 from the 1e-12 reference in rel dse,
+against 3.4e-12 for the incumbent. The first slope run (kept in the run
+records) overlapped another lane's compiles; the comparison above is its
+quiet rerun, whose only logged interference (one compiler process during the
+bitwise intercept cases) prompted the separate quiet rerun of those cases.
+Stata fixtures: no new failures (the nine known failures: `mata_correction`,
+`native_splitbranch_block`, two PPML allocation audits,
+`parallel_input_oracle` without its trace environment, and four installation
+fixtures); the slope, saved-output, PPML saved-slope and within slope
+boundary fixtures pass. The Rust core, oracle and testkit suites, plugin FFI
+(242) and the 11 allocator audits, clippy in both configurations and the
+ratchet pass.
+
+Limitations: two-effect slope designs keep the exact two-effect slope solver
+(measured faster); slopes whose raw level Gram loses their within-level
+variation keep within; the borrowed many-FE within LSMR, PPML slope routes and
+the within-shaped LSMR memory estimates are outside this change; no Linux or
+SCC timing.
+
 ## Package checks
 
 ### Beta.13 parallel input and parity packaging

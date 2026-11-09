@@ -738,9 +738,10 @@ include slope channels). Declared scope: explicit slope `solver(lsmr)` fits
 change at tolerance level; discrete decisions do not change. Explicit PPML
 LSMR keeps its scheduled certificate and one tighter continuation (§13).
 
-OLS Auto on an owned slope design without the exact two-effect slope solver
-(three or more effects, or two effects whose coefficient solver is not
-admitted) runs fedemean's full system first: PCG with the level channel
+OLS Auto on an owned slope design with at least two effects and without the
+exact two-effect slope solver (three or more effects, or two effects whose
+coefficient solver is not admitted; one effect keeps MAP's exact single
+sweep) runs fedemean's full system first: PCG with the level channel
 blocks, escalating to the hybrid Schwarz when a 24-iteration pilot predicts a
 slow recurrence or it stalls, within half of `iterate()`, certified by the
 generic owner's independent §16 certificate (one correction at a tenth of
