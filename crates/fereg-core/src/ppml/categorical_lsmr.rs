@@ -103,6 +103,20 @@ pub(crate) fn force_joint_stall_for_test() {
     FORCE_JOINT_STALLS.set(1);
 }
 
+// Tests: fedemean's largest workspace in the explicit engine after its last
+// frame on this thread.
+#[cfg(test)]
+thread_local! {
+    static FEDEMEAN_PEAK: std::cell::Cell<u128> = const { std::cell::Cell::new(0) };
+}
+
+/// Tests: fedemean's largest workspace in the last explicit LSMR engine
+/// that ran a frame on this thread.
+#[cfg(test)]
+pub(crate) fn take_fedemean_peak_for_test() -> u128 {
+    FEDEMEAN_PEAK.replace(0)
+}
+
 /// Tests: the next frame's Schwarz FE block on this thread is built within
 /// `bytes` instead of its admitted limit.
 #[cfg(test)]
@@ -167,12 +181,15 @@ impl JointLsmrLimits {
         headroom: u128::MAX,
     };
 
-    /// fedemean's limit: its admitted share (`base`, the projections' base
-    /// LSMR workspace, and the admitted Schwarz bound) plus the fit's
-    /// remaining budget.
-    fn fedemean(self, base: u128) -> u128 {
+    /// fedemean's admitted share: `base`, the projections' base LSMR
+    /// workspace, and the admitted Schwarz bound.
+    fn share(self, base: u128) -> u128 {
         base.saturating_add(self.schwarz.unwrap_or(0))
-            .saturating_add(self.headroom)
+    }
+
+    /// fedemean's limit: its admitted share plus the fit's remaining budget.
+    fn fedemean(self, base: u128) -> u128 {
+        self.share(base).saturating_add(self.headroom)
     }
 }
 
@@ -266,6 +283,9 @@ pub(crate) struct ReusableCategoricalJointLsmr<'p> {
     /// preconditioner does not escalate to it.
     schwarz_refused: Option<JointFallback>,
     limits: JointLsmrLimits,
+    /// fedemean's largest workspace over the fit: a built Schwarz handle's
+    /// peak or a projection's reported workspace (they never coexist).
+    fedemean_peak: u128,
     /// A frame of this fit needed the projections: later frames start there.
     projections_first: bool,
     active_design: DenseMatrix,
@@ -497,6 +517,7 @@ impl<'p> ReusableCategoricalJointLsmr<'p> {
             schwarz_first: false,
             schwarz_refused: limits.schwarz.err(),
             limits,
+            fedemean_peak: 0,
             projections_first: false,
             topology: FeTopologyIdentity::capture(fe_design),
             effect_offsets,
@@ -549,7 +570,7 @@ impl<'p> ReusableCategoricalJointLsmr<'p> {
             schwarz_limit: FORCE_SCHWARZ_LIMIT.replace(0),
         };
         let team = self.team.clone();
-        team.install(|| {
+        let report = team.install(|| {
             self.solve_installed(
                 fe_design,
                 (outcome, mean),
@@ -557,7 +578,21 @@ impl<'p> ReusableCategoricalJointLsmr<'p> {
                 max_iterations,
                 faults,
             )
-        })
+        });
+        #[cfg(test)]
+        FEDEMEAN_PEAK.set(self.fedemean_peak);
+        report
+    }
+
+    /// How far fedemean's largest workspace over the fit exceeded its
+    /// admitted share: the automatic preconditioner's optional Schwarz
+    /// block (or the projections' own Schwarz) built within the fit's
+    /// remaining budget, which the published expected peak must cover.
+    /// Explicit Schwarz's handle stays within its admitted bound.
+    pub(crate) fn fedemean_excess_bytes(&self) -> Result<u128> {
+        Ok(self
+            .fedemean_peak
+            .saturating_sub(self.limits.share(self.projections_base()?)))
     }
 
     fn solve_installed(
@@ -761,7 +796,10 @@ impl<'p> ReusableCategoricalJointLsmr<'p> {
                     )
                     .map_err(fedemean_error)?;
                 match built {
-                    Ok(handle) => self.joint.fe_schwarz = Some(handle),
+                    Ok(handle) => {
+                        self.fedemean_peak = self.fedemean_peak.max(handle.workspace_bytes());
+                        self.joint.fe_schwarz = Some(handle);
+                    }
                     Err(decline) => {
                         if crate::diagnostics::solver_trace_enabled() {
                             crate::diagnostics::emit_solver_trace(&format!(
@@ -1088,6 +1126,9 @@ impl<'p> ReusableCategoricalJointLsmr<'p> {
             }
             fedemean_error(error)
         })?;
+        if let fedemean::Outcome::Projected(report) = &outcome {
+            self.fedemean_peak = self.fedemean_peak.max(report.workspace_bytes);
+        }
         Ok(match outcome {
             fedemean::Outcome::Projected(report) => Projection::Certified {
                 route: route(&report.route),

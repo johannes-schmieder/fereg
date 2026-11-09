@@ -1334,14 +1334,16 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             (rank, reuse, FeSolverKind::Map)
         } else if let Some((joint, engine)) = direction.lsmr_mut() {
             let on_projections = joint.starts_on_projections();
-            match joint.solve(
+            let solved = joint.solve(
                 session.fe_design(),
                 outcome,
                 workspace.mean(),
                 workspace.hessian_weights(),
                 inner_tolerance,
                 config.linear.absorb.lsmr.max_iterations,
-            ) {
+            );
+            memory.observe_lsmr_excess(joint.fedemean_excess_bytes()?)?;
+            match solved {
                 Ok(report) => {
                     memory.observe_lsmr_step(
                         report.route,

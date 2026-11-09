@@ -565,6 +565,40 @@ fn a_block_the_preflight_refused_is_never_built() {
     assert_eq!(report.fallback, None);
 }
 
+/// fedemean's workspace beyond the engine's admitted share is the excess the
+/// published peak adds: a handle built with nothing admitted counts whole,
+/// one within its admitted bound counts nothing, and the automatic
+/// preconditioner's handle counts what exceeds the projections' base.
+#[test]
+fn a_handle_beyond_the_admitted_share_is_the_published_excess() {
+    let fixture = fixture(200, [15, 8, 5], 2);
+    let build = |preconditioner, schwarz, stalls| {
+        let mut solver = engine_with(
+            &fixture.design,
+            fixture.active.clone(),
+            1,
+            preconditioner,
+            JointLsmrLimits {
+                schwarz: Ok(schwarz),
+                headroom: u128::MAX,
+            },
+        );
+        assert_eq!(solver.fedemean_excess_bytes().unwrap(), 0);
+        let report = oracle_frame(&mut solver, &fixture, 0.5, stalls);
+        assert!(is_schwarz(&report));
+        let peak = take_fedemean_peak_for_test();
+        assert_eq!(peak, solver.fedemean_peak);
+        (solver.fedemean_excess_bytes().unwrap(), peak)
+    };
+    let (unadmitted, peak) = build(LsmrPreconditioner::Schwarz, 0, 0);
+    assert!(peak > 0);
+    assert_eq!(unadmitted, peak);
+    assert_eq!(build(LsmrPreconditioner::Schwarz, peak, 0).0, 0);
+    let (automatic, peak) = build(LsmrPreconditioner::Auto, 0, 1);
+    let base = crate::fe::block_schur::lsmr_base_workspace_bytes(200, &[15, 8, 5], 1).unwrap();
+    assert_eq!(automatic, peak.saturating_sub(base));
+}
+
 /// A Schwarz FE block beyond its memory limit: an explicit request falls
 /// back to its Jacobi block, certified and reported, and later frames start
 /// there without another build; the automatic preconditioner hands the

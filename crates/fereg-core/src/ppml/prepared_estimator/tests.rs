@@ -888,6 +888,75 @@ fn public_cmg_non_numerical_failures_remain_fatal() {
     }
 }
 
+/// The automatic preconditioner's optional Schwarz FE block is built within
+/// the fit's remaining budget, beyond the preflight's charge: a fit that
+/// escalates to it publishes an expected peak of at least the handle's
+/// workspace plus the joint engine's, within the memory limit, also under a
+/// cap (where a block that does not fit hands the frame to the projections).
+/// Explicit Schwarz's handle stays within its admitted bound and a fit that
+/// never builds a block keeps the preflight's peak.
+#[test]
+fn an_escalated_schwarz_block_enters_the_published_peak() {
+    use crate::fe::LsmrPreconditioner::{Auto, Diagonal, Schwarz};
+    let fit = |preconditioner, stall, available| {
+        let (mut request, loaded) = fixture(2, false, false, false, false, false);
+        request.solver = PpmlSolverFamily::Lsmr;
+        request.lsmr_preconditioner = preconditioner;
+        request.memory.requested = MemoryMode::Fast;
+        request.memory.available_bytes = available;
+        super::super::categorical_lsmr::take_fedemean_peak_for_test();
+        if stall {
+            super::super::categorical_lsmr::force_joint_stall_for_test();
+        }
+        let result = fit_prepared_ppml(request, loaded).expect("explicit LSMR");
+        let fedemean = super::super::categorical_lsmr::take_fedemean_peak_for_test();
+        (result, fedemean)
+    };
+    let published = |result: &CertifiedPpmlResult| {
+        let memory = result.memory();
+        memory
+            .expected_solver_workspace_peak
+            .map_or(memory.plan.solver_workspace_bytes, |peak| {
+                u128::from(peak.expected_heap_bytes().expect("modeled peak"))
+            })
+    };
+    let (jacobi, _) = fit(Diagonal, false, None);
+    let (escalated, handle) = fit(Auto, true, None);
+    let (route, _) = escalated.memory().steps.route.expect("explicit LSMR steps");
+    assert!(matches!(
+        route.preconditioner,
+        crate::fe::FePreconditioner::Schwarz(_)
+    ));
+    assert!(route.escalations >= 1 && handle > 0);
+    let peak = published(&escalated);
+    assert!(peak >= handle + jacobi.memory().plan.solver_workspace_bytes);
+    assert_ppml_results_close(&escalated, &jacobi);
+    for (preconditioner, stall) in [(Schwarz, false), (Auto, false)] {
+        let (result, _) = fit(preconditioner, stall, None);
+        assert_eq!(result.memory().expected_solver_workspace_peak, None);
+    }
+    let plan = escalated.memory().plan;
+    let static_peak = plan.selected_inventory().peak_bytes;
+    let headroom = 512_u128 * 1024 * 1024;
+    for usable in [
+        static_peak + 2 * peak,
+        static_peak + plan.solver_workspace_bytes,
+    ] {
+        assert!((usable + headroom) / 5 <= headroom);
+        let (capped, _) = fit(Auto, true, Some(usable + headroom));
+        assert_eq!(capped.solver().requested, PpmlSolverFamily::Lsmr);
+        assert!(static_peak + published(&capped) <= usable);
+        assert_ppml_results_close(&capped, &jacobi);
+    }
+    let (built, _) = fit(Auto, true, Some(static_peak + 2 * peak + headroom));
+    let (route, _) = built.memory().steps.route.expect("explicit LSMR steps");
+    assert!(matches!(
+        route.preconditioner,
+        crate::fe::FePreconditioner::Schwarz(_)
+    ));
+    assert!(published(&built) >= handle + jacobi.memory().plan.solver_workspace_bytes);
+}
+
 /// Explicit LSMR's route workspace beyond the limit runs the Auto plan. The
 /// automatic preconditioner's optional Schwarz FE block is charged nothing
 /// by the preflight: it is built only within the fit's remaining budget.

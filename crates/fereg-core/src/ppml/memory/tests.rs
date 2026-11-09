@@ -2567,6 +2567,29 @@ fn line_search_propagates_raw_domain_errors_instead_of_halving_them() {
     assert_eq!(error.return_code(), 459);
 }
 
+/// fedemean's workspace beyond the explicit LSMR engine's admitted share
+/// raises the published expected peak above the admitted solver workspace
+/// (the larger excess over the fit); none leaves the preflight's peak.
+#[test]
+fn lsmr_excess_raises_the_published_expected_peak() {
+    let plan = plan_with_diagnostic_capacity(2);
+    let mut telemetry = PpmlMemoryTelemetry::new(plan, 4, 4).expect("telemetry");
+    telemetry.observe_lsmr_excess(0).expect("no excess");
+    assert_eq!(telemetry.expected_solver_workspace_peak, None);
+    let expected = |bytes: u128| {
+        Some(
+            crate::memory::SolverWorkspacePeak::from_bytes(plan.solver_workspace_bytes + bytes)
+                .unwrap(),
+        )
+    };
+    telemetry.observe_lsmr_excess(4096).expect("excess");
+    assert_eq!(telemetry.expected_solver_workspace_peak, expected(4096));
+    telemetry.observe_lsmr_excess(1024).expect("smaller excess");
+    assert_eq!(telemetry.expected_solver_workspace_peak, expected(4096));
+    telemetry.observe_lsmr_excess(8192).expect("larger excess");
+    assert_eq!(telemetry.expected_solver_workspace_peak, expected(8192));
+}
+
 #[test]
 fn telemetry_never_infers_unobserved_allocator_or_timer_values() {
     let plan = plan_with_diagnostic_capacity(2);

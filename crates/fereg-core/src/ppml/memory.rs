@@ -3891,6 +3891,28 @@ impl PpmlMemoryTelemetry {
         ));
     }
 
+    /// fedemean's workspace in the explicit LSMR engine `excess` bytes
+    /// beyond its admitted share (an optional Schwarz block built within the
+    /// fit's remaining budget): the published expected peak becomes the
+    /// larger of the preflight's and the admitted solver workspace plus that
+    /// excess.
+    pub(crate) fn observe_lsmr_excess(&mut self, excess: u128) -> Result<()> {
+        if excess == 0 {
+            return Ok(());
+        }
+        let peak = crate::memory::SolverWorkspacePeak::from_bytes(
+            self.plan
+                .solver_workspace_bytes
+                .checked_add(excess)
+                .ok_or_else(|| allocation("PPML LSMR expected peak overflows"))?,
+        )?;
+        self.expected_solver_workspace_peak = Some(
+            self.expected_solver_workspace_peak
+                .map_or(peak, |expected| expected.max(peak)),
+        );
+        Ok(())
+    }
+
     /// Observe one certified explicit LSMR frame: its route, iterations,
     /// whether the projections (FWL) solved it, whether it started there,
     /// and the certified fallback within the frame (for example a requested
