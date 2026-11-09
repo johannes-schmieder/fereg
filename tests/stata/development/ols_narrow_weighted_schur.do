@@ -39,7 +39,7 @@ foreach k in 1 3 6 13 {
         assert e(df_r)==oracle_df
         assert abs(e(rss)-oracle_rss)<1e-8*oracle_rss
         assert abs(native_residual-oracle_residual)<1e-7
-        assert "`e(fe_solver)'"=="auto"
+        assert "`e(fe_requested)'"=="auto"
         * Auto serves this design by the exact elimination with Jacobi CG.
         assert "`e(fe_route)'"=="cg, reduce(eliminate) precondition(jacobi)"
         assert e(fe_fallback)==0

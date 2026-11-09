@@ -34,8 +34,8 @@ pub use factorize::factorize_f64;
 pub use fe::{
     absorb_borrowed_intercept_map_certified, absorb_lsmr, absorb_map, certify_residuals,
     connected_components, factorize_code_interaction, AbsorbConfig, BorrowedMapWeights,
-    CategoricalCodeView, EffectTerm, FeAcceleration, FeDesign, FeLocalSolve, FeMethod,
-    FePreconditioner, FeReduction, FeRoute, FeSchwarzSolves, FeSolverKind, LsmrConfig,
+    CategoricalCodeView, EffectTerm, FeAcceleration, FeDesign, FeFallbackReason, FeLocalSolve,
+    FeMethod, FePreconditioner, FeReduction, FeRoute, FeSchwarzSolves, FeSolverKind, LsmrConfig,
     LsmrPreconditioner, MapConfig, PcgPreconditioner, PcgReduction, PcgRequest, SolveReport,
     SolveStopReason, FE_ROUTE_MAX_EFFECTS,
 };

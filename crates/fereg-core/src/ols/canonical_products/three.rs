@@ -411,6 +411,7 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
         solve_seconds,
         certification_seconds: started.elapsed().as_secs_f64(),
         fallback_used: false,
+        fallback_reason: crate::fe::FeFallbackReason::None,
         requested_preconditioner: None,
         used_preconditioner: None,
         pilot_iterations: 0,

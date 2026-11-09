@@ -16,7 +16,7 @@ import delimited using `"`root'/tests/fixtures/ols/ols_core.csv"', clear
 fereg y c.x1 c.x2, absorb(worker firm) memory(auto) threads(2)
 assert `"`e(cmd)'"' == "fereg"
 assert `"`e(fereg_memory_mode)'"' == "auto"
-assert `"`e(fe_solver)'"' == "auto"
+assert `"`e(fe_requested)'"' == "auto"
 confirm matrix e(fe_solve)
 assert rowsof(e(fe_solve)) == 2
 assert colsof(e(fe_solve)) == 12
@@ -54,7 +54,7 @@ matrix __frg_V_auto = e(V)
 foreach acceleration in none irons-tuck squarem {
     quietly fereg y c.x1 c.x2, absorb(worker firm) ///
         memory(fast) threads(2) solver(map, accelerate(`acceleration'))
-    assert `"`e(fe_solver)'"' == "map, accelerate(`acceleration')"
+    assert `"`e(fe_requested)'"' == "map, accelerate(`acceleration')"
     assert "`e(fe_method)'" == "map" & "`e(fe_acceleration)'" == "`acceleration'"
     assert mreldif(e(b), __frg_b_auto) <= 1e-7
     assert mreldif(e(V), __frg_V_auto) <= 1e-6
@@ -62,7 +62,7 @@ foreach acceleration in none irons-tuck squarem {
 }
 quietly fereg y c.x1 c.x2, absorb(worker firm) ///
     memory(fast) threads(2) solver(cg, precondition(cmg))
-assert `"`e(fe_solver)'"' == "cg, precondition(cmg)"
+assert `"`e(fe_requested)'"' == "cg, precondition(cmg)"
 assert `"`e(fe_route)'"' == "cg, reduce(full) precondition(cmg)"
 assert mreldif(e(b), __frg_b_auto) <= 1e-7
 assert mreldif(e(V), __frg_V_auto) <= 1e-6
@@ -73,7 +73,7 @@ foreach spec in "cg" "cg, reduce(full)" "cg, reduce(full) precondition(jacobi)" 
     "cg, reduce(eliminate) precondition(block)" "cg, precondition(schwarz)" {
     quietly fereg y c.x1 c.x2, absorb(worker firm) ///
         memory(fast) threads(2) solver(`spec')
-    assert `"`e(fe_solver)'"' == `"`spec'"'
+    assert `"`e(fe_requested)'"' == `"`spec'"'
     assert "`e(fe_method)'" == "cg"
     if strpos(`"`spec'"', "reduce(full)") | strpos(`"`spec'"', "schwarz") ///
         assert "`e(fe_reduction)'" == "full"
@@ -85,7 +85,7 @@ foreach spec in "cg" "cg, reduce(full)" "cg, reduce(full) precondition(jacobi)" 
 foreach preconditioner in none jacobi schwarz auto {
     quietly fereg y c.x1 c.x2, absorb(worker firm) ///
         memory(fast) threads(2) solver(lsmr, precondition(`preconditioner'))
-    assert `"`e(fe_solver)'"' == "lsmr, precondition(`preconditioner')"
+    assert `"`e(fe_requested)'"' == "lsmr, precondition(`preconditioner')"
     assert "`e(fe_method)'" == "lsmr" & "`e(fe_reduction)'" == "full"
     if "`preconditioner'" != "auto" assert "`e(fe_preconditioner)'" == "`preconditioner'"
     assert mreldif(e(b), __frg_b_auto) <= 1e-7

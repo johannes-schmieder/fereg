@@ -4570,6 +4570,7 @@ fn automatic_lsmr_report_for_merge() -> SolveReport {
         solve_seconds: 2.0,
         certification_seconds: 0.25,
         fallback_used: false,
+        fallback_reason: crate::fe::FeFallbackReason::None,
         requested_preconditioner: Some(crate::fe::LsmrPreconditioner::Auto),
         used_preconditioner: Some(crate::fe::LsmrPreconditioner::Schwarz),
         pilot_iterations: 0,

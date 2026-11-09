@@ -106,18 +106,23 @@ matrix prior_b = e(b)
 matrix prior_v = e(V)
 scalar prior_seed = e(fe_cmgseed)
 generate byte prior_sample = e(sample)
+estimates store prior_fit
 
 * Invalid public and hidden requests cannot publish output or replace e().
 * fereg takes the CMG options inside solver(); the hidden adapter keeps the
 * native route token and separate options.
 foreach command in fereg _fereg_estimate_ols {
     * Both integer maxima reach native topology validation without rounding.
-    * The unsupported one-FE model prevents allocating billions of trees.
+    * CMG-Schur does not serve the one-FE model, so no trees are allocated:
+    * the automatic routes run as the certified fallback (unsupported).
     local request "solver(cmgschur) cmgsamples(4294967295) cmgseed(9007199254740991)"
     if "`command'" == "fereg" local request ///
         "solver(cg, reduce(eliminate) precondition(cmg) cmgsamples(4294967295) cmgseed(9007199254740991))"
     capture noisily `command' y x1, absorb(worker) `request' resid(rejected)
-    assert _rc == 498
+    assert _rc == 0
+    assert e(fe_fallback) == 1 & `"`e(fe_fallback_reason)'"' == "unsupported"
+    drop rejected
+    estimates restore prior_fit
     assert mreldif(e(b), prior_b) == 0
     foreach options in "cmgsamples(-1)" "cmgsamples(1.5)" ///
         "cmgsamples(4294967296)" "cmgsamples(NaN)" "cmgseed(0)" ///

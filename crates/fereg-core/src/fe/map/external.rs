@@ -13,6 +13,7 @@ pub(crate) enum ExternalProjection {
     Declined {
         iterations: usize,
         reason: &'static str,
+        fallback: crate::fe::FeFallbackReason,
     },
     /// The route does not support the design; the values are untouched.
     Ineligible,
@@ -105,6 +106,7 @@ impl ReusableMapAbsorber {
         let solve_started = Instant::now();
         let mut spent = 0_usize;
         let mut note = None;
+        let mut fallback = crate::fe::FeFallbackReason::Uncertified;
         let mut current = None;
         for tolerance in [config.tolerance, config.tolerance / 10.0] {
             match solve(&self.design, &mut values, tolerance, spent)? {
@@ -140,8 +142,13 @@ impl ReusableMapAbsorber {
                     ));
                     current = Some(report);
                 }
-                ExternalProjection::Declined { iterations, reason } => {
+                ExternalProjection::Declined {
+                    iterations,
+                    reason,
+                    fallback: why,
+                } => {
                     spent += iterations;
+                    fallback = why;
                     note = Some(format!(
                         "the full system declined after {spent} iterations ({reason}); MAP continued"
                     ));
@@ -177,7 +184,7 @@ impl ReusableMapAbsorber {
         }
         let (values, mut report) = result.into_parts();
         report.iterations += spent;
-        report.fallback_used = true;
+        report.note_fallback(fallback);
         if let Some(note) = note {
             report.warnings.push(note);
         }

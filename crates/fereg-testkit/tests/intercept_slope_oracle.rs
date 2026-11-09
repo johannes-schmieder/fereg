@@ -2,10 +2,10 @@ use fereg_core::CategoricalTopologyDofPolicy;
 use fereg_core::{
     fit_prepared_model_unadjusted_with_loaded_moments, prepare_model, AbsorbTermId, AbsorbedTerm,
     CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder, ErrorCode, ExpandedTerm,
-    FeSolverKind, LevelState, LoadedNumericColumn, LoadedOlsInput, MetadataFlag, OlsInputBinding,
-    OlsInputRole, OlsRequestV1, PreparedOlsAbsorbedDofPolicy, PreparedOlsFitStatus,
-    PreparedOlsUnadjustedConfig, RawTermKind, SourceEntry, SourceId, TermComponent, TermId,
-    TermOrder, TimeSeriesState,
+    FeFallbackReason, FeSolverKind, LevelState, LoadedNumericColumn, LoadedOlsInput, MetadataFlag,
+    OlsInputBinding, OlsInputRole, OlsRequestV1, PreparedOlsAbsorbedDofPolicy,
+    PreparedOlsFitStatus, PreparedOlsUnadjustedConfig, RawTermKind, SourceEntry, SourceId,
+    TermComponent, TermId, TermOrder, TimeSeriesState,
 };
 use fereg_testkit::explicit_ols::{
     fit_explicit_ols, DummyEffect, ExplicitOlsProblem, OracleWeights,
@@ -13,8 +13,11 @@ use fereg_testkit::explicit_ols::{
 
 const TOLERANCE: f64 = 2e-8;
 
+/// CMG does not take absorbed slopes, so explicit `solver(cg)` with CMG
+/// runs the automatic routes as its certified fallback (SPEC §1): the same
+/// fit as `solver(auto)`, reported as an `unsupported` fallback.
 #[test]
-fn cmg_rejects_absorbed_slopes_before_estimation() {
+fn cmg_on_absorbed_slopes_falls_back_to_the_automatic_routes() {
     let (base_y, base_x1, base_firm, base_time, base_worker) = overabsorbed_case();
     let mut y = base_y.clone();
     let mut x1 = base_x1.clone();
@@ -29,10 +32,28 @@ fn cmg_rejects_absorbed_slopes_before_estimation() {
     let prepared = prepare_case(&y, &x1, &firm, &time, &worker, true);
     let mut config = PreparedOlsUnadjustedConfig::default();
     config.fit.absorb.solver = FeSolverKind::Cmg;
-    let error = fit_prepared_model_unadjusted_with_loaded_moments(&prepared, config, None)
-        .expect_err("CMG slope eligibility");
-    assert_eq!(error.code, ErrorCode::Unsupported);
-    assert!(error.message.contains("absorbed slopes are unsupported"));
+    let fallback = fit_prepared_model_unadjusted_with_loaded_moments(&prepared, config, None)
+        .expect("certified fallback from CMG on slopes");
+    let automatic = fit_prepared_model_unadjusted_with_loaded_moments(
+        &prepared,
+        PreparedOlsUnadjustedConfig::default(),
+        None,
+    )
+    .expect("certified automatic slope fit");
+    let report = fallback.fit().absorption_report();
+    assert!(report.certified() && report.fallback_used);
+    assert_eq!(report.requested_solver, FeSolverKind::Cmg);
+    assert_ne!(report.used_solver, FeSolverKind::Cmg);
+    assert_eq!(report.fallback_reason, FeFallbackReason::Unsupported);
+    assert!(report
+        .warnings
+        .iter()
+        .any(|warning| warning.contains("absorbed slopes are unsupported")));
+    assert_eq!(
+        fallback.fit().coefficients(),
+        automatic.fit().coefficients()
+    );
+    assert_eq!(fallback.fit().residuals(), automatic.fit().residuals());
 }
 
 #[test]

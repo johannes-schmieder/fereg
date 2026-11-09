@@ -50,7 +50,7 @@ foreach graph in dense ring {
             local rows : rownames report
             assert "`rows'" == "absorption residual"
             assert report[1,1] == e(fe_iterations) & report[2,1] == e(fe_residual_iterations)
-            assert "`e(fe_solver)'" == "auto"
+            assert "`e(fe_requested)'" == "auto"
             drop resid
         }
     }
@@ -87,7 +87,7 @@ foreach memory in fast low {
             assert `"`e(fe_local_solvers)'"' == "" & e(fe_escalations) == 0
         }
         assert e(fe_fallback) == 0
-        assert "`e(fe_solver)'" == "auto"
+        assert "`e(fe_requested)'" == "auto"
         drop resid
     }
 }
@@ -97,7 +97,7 @@ foreach spec in "lsmr" "lsmr, precondition(jacobi)" "lsmr, precondition(none)" /
     fereg y x, absorb(worker firm g3 g4 g5 g6) solver(`spec') residuals(resid)
     assert abs(_b[x]-.7) <= 1e-9
     assert abs(resid-noise) <= 1e-8
-    assert `"`e(fe_solver)'"' == `"`spec'"'
+    assert `"`e(fe_requested)'"' == `"`spec'"'
     assert "`e(fe_reduction)'" == "full"
     local method = cond(substr(`"`spec'"', 1, 4) == "lsmr", "lsmr", "cg")
     assert "`e(fe_method)'" == "`method'"
@@ -117,11 +117,14 @@ foreach spec in "lsmr" "lsmr, precondition(jacobi)" "lsmr, precondition(none)" /
     assert "`e(fe_residual_method)'" == "`method'"
     drop resid
 }
-* The elimination needs two to five effects; an explicit request outside its
-* range fails without substitution.
-capture noisily fereg y x, absorb(worker firm g3 g4 g5 g6) ///
-    solver(cg, reduce(eliminate))
-assert _rc == 498
+* The elimination needs two to five effects: outside its range the request
+* continues on the full system as the certified fallback (unsupported).
+fereg y x, absorb(worker firm g3 g4 g5 g6) solver(cg, reduce(eliminate))
+assert `"`e(fe_requested)'"' == "cg, reduce(eliminate)"
+assert `"`e(fe_requested_reduction)'"' == "eliminate"
+assert e(fe_fallback) == 1 & `"`e(fe_fallback_reason)'"' == "unsupported"
+assert "`e(fe_reduction)'" == "full" & "`e(fe_method)'" == "cg"
+assert abs(_b[x]-.7) <= 1e-10
 quietly fereg y x, absorb(worker firm) solver(cg, reduce(eliminate) precondition(block))
 assert `"`e(fe_route)'"' == "cg, reduce(eliminate) precondition(block)"
 assert `"`e(fe_local_solvers)'"' != "" & e(fe_escalations) == 0
@@ -136,5 +139,5 @@ quietly fereg y x, absorb(worker)
 assert "`e(fe_route)'" == "direct" & "`e(fe_reduction)'" == "full"
 assert e(fe_fallback) == 0
 quietly fereg y x, absorb(worker) solver(map)
-assert "`e(fe_route)'" == "map" & "`e(fe_solver)'" == "map"
+assert "`e(fe_route)'" == "map" & "`e(fe_requested)'" == "map"
 display as result "END_FIXTURE|ols_solver_reporting|rc=0"

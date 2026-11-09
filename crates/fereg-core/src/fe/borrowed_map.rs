@@ -743,9 +743,14 @@ impl CertifiedBorrowedMap {
     }
 
     /// Record that this certified result is the fallback after an earlier
-    /// route declined (`note` says why).
-    pub(crate) fn note_fallback(&mut self, note: String) {
-        self.report.fallback_used = true;
+    /// route declined for `reason` (`note` says how).
+    pub(crate) fn note_fallback(&mut self, note: String, reason: super::FeFallbackReason) {
+        self.report.note_fallback(reason);
+        self.report.warnings.push(note);
+    }
+
+    /// Add a diagnostic warning to the report.
+    pub(crate) fn add_warning(&mut self, note: String) {
         self.report.warnings.push(note);
     }
 
@@ -2751,7 +2756,11 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             fallback_report.solve_seconds += report.solve_seconds;
             fallback_report.certification_seconds += report.certification_seconds;
             fallback_report.checkpoint_retries = report.checkpoint_retries;
-            fallback_report.fallback_used = true;
+            fallback_report.note_fallback(if report.stop_reason == SolveStopReason::Uncertified {
+                super::FeFallbackReason::Uncertified
+            } else {
+                super::FeFallbackReason::Nonconvergence
+            });
             fallback_report.requested_preconditioner = report.requested_preconditioner;
             fallback_report.used_preconditioner = report.used_preconditioner;
             fallback_report.warnings.insert(
@@ -3862,7 +3871,10 @@ fn absorb_two_fe_pcg_reusing(
         break;
     }
 
-    if explicit_cmg_schur {
+    // Explicit CMG-Schur that exhausted its budget fails; a breakdown or a
+    // missed correction that leaves budget continues with MAP below, as the
+    // reported certified fallback (SPEC §1).
+    if explicit_cmg_schur && iterations >= config.max_iterations {
         return Err(FeregError::new(
             ErrorCode::NonConvergence,
             "cmgschur did not certify within its iteration budget",
@@ -3946,7 +3958,11 @@ fn absorb_two_fe_pcg_reusing(
                 result.report.pilot_iterations = completed_pilot_iterations;
                 result.report.pilot_contraction = progress_contraction.unwrap_or(pilot_contraction);
                 if report_ols_method {
-                    result.report.fallback_used = true;
+                    result.report.note_fallback(if breakdown {
+                        super::FeFallbackReason::Nonconvergence
+                    } else {
+                        super::FeFallbackReason::Uncertified
+                    });
                 }
                 return Ok(SchurAttempt::Certified(attach_optional_map_coefficients(
                     result,

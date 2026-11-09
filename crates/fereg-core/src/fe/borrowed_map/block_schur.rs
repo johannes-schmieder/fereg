@@ -106,55 +106,42 @@ impl Plan {
         }
     }
 
-    /// Explicit PCG with the requested reduction and preconditioner; the
-    /// automatic preconditioner of the elimination escalates (Jacobi to
-    /// block-Jacobi), explicit ones never do.
+    /// Explicit PCG with the requested reduction and preconditioner (see
+    /// [`pcg_choice`]).
     pub(crate) fn pcg(request: crate::fe::PcgRequest) -> Result<Self> {
-        use crate::fe::{PcgPreconditioner as P, PcgReduction as R};
-        let reduction = match request.reduction {
-            R::Auto => fedemean::Reduction::Auto,
-            R::Full => fedemean::Reduction::Full,
-            R::Eliminate => fedemean::Reduction::EliminateLargest,
-        };
-        let full = request.reduction == R::Full;
-        let eliminate = request.reduction == R::Eliminate;
-        let preconditioner = match request.preconditioner {
-            P::Auto => fedemean::Preconditioner::Auto,
-            P::Jacobi => fedemean::Preconditioner::Jacobi,
-            P::None if !eliminate => fedemean::Preconditioner::Identity,
-            P::Schwarz if !eliminate => fedemean::Preconditioner::Schwarz(fedemean::SchwarzSpec {
-                subdomains: fedemean::Subdomains::Star,
-                local: fedemean::SchwarzLocal::Auto,
-            }),
-            P::Block if !full => fedemean::Preconditioner::BlockJacobi(fedemean::BlockSpec::default()),
-            P::Block => {
-                return Err(crate::error::unsupported(
-                    "solver(cg, reduce(full)) cannot use precondition(block): block-Jacobi preconditions the eliminated system; request reduce(eliminate)",
-                ))
-            }
-            P::None | P::Schwarz => {
-                return Err(crate::error::unsupported(
-                    "solver(cg, reduce(eliminate)) accepts precondition(auto), precondition(jacobi) or precondition(block)",
-                ))
-            }
-        };
-        // Only the automatic choice escalates: Jacobi to block-Jacobi on the
-        // elimination, Jacobi to Schwarz on the full system.
-        let fallback = if request.preconditioner == P::Auto {
-            fedemean::Fallback::Escalate
-        } else {
-            fedemean::Fallback::Decline
-        };
         Ok(Self::Fixed {
-            choice: fedemean::Choice {
-                reduction,
-                method: fedemean::Method::Pcg,
-                preconditioner,
-                fallback,
-            },
+            choice: pcg_choice(request)?,
             requested: FeSolverKind::Pcg,
             preconditioner: None,
         })
+    }
+
+    /// What the plan resolves to on `effects` effects: whether it eliminates
+    /// the largest effect, and whether it is Auto's full system (PCG with
+    /// Jacobi escalating to Schwarz), so that a fallback after its decline
+    /// skips the same formulation.
+    pub(crate) fn resolved(self, effects: usize) -> (bool, bool) {
+        let Self::Fixed { choice, .. } = self else {
+            return (true, false);
+        };
+        let range = (2..=5).contains(&effects);
+        let eliminates = match choice.reduction {
+            fedemean::Reduction::EliminateLargest => true,
+            fedemean::Reduction::Full => false,
+            _ => {
+                range
+                    && choice.method != fedemean::Method::Lsmr
+                    && !matches!(
+                        choice.preconditioner,
+                        fedemean::Preconditioner::Identity | fedemean::Preconditioner::Schwarz(_)
+                    )
+            }
+        };
+        let full_auto = !eliminates
+            && choice.method != fedemean::Method::Lsmr
+            && choice.preconditioner == fedemean::Preconditioner::Auto
+            && choice.fallback == fedemean::Fallback::Escalate;
+        (eliminates, full_auto)
     }
 
     /// A trace or ledger name: the elimination's or the fixed plan's.
@@ -172,6 +159,51 @@ impl Plan {
             Self::Fixed { requested, .. } => requested,
         }
     }
+}
+
+/// fedemean's PCG with the requested reduction and preconditioner: the
+/// automatic preconditioner escalates (Jacobi to block-Jacobi on the
+/// elimination, Jacobi to Schwarz on the full system), explicit ones never
+/// do. Combinations the grammar refuses are `Unsupported` here too.
+pub(crate) fn pcg_choice(request: crate::fe::PcgRequest) -> Result<fedemean::Choice> {
+    use crate::fe::{PcgPreconditioner as P, PcgReduction as R};
+    let reduction = match request.reduction {
+        R::Auto => fedemean::Reduction::Auto,
+        R::Full => fedemean::Reduction::Full,
+        R::Eliminate => fedemean::Reduction::EliminateLargest,
+    };
+    let full = request.reduction == R::Full;
+    let eliminate = request.reduction == R::Eliminate;
+    let preconditioner = match request.preconditioner {
+        P::Auto => fedemean::Preconditioner::Auto,
+        P::Jacobi => fedemean::Preconditioner::Jacobi,
+        P::None if !eliminate => fedemean::Preconditioner::Identity,
+        P::Schwarz if !eliminate => fedemean::Preconditioner::Schwarz(fedemean::SchwarzSpec {
+            subdomains: fedemean::Subdomains::Star,
+            local: fedemean::SchwarzLocal::Auto,
+        }),
+        P::Block if !full => fedemean::Preconditioner::BlockJacobi(fedemean::BlockSpec::default()),
+        P::Block => {
+            return Err(crate::error::unsupported(
+                "solver(cg, reduce(full)) cannot use precondition(block): block-Jacobi preconditions the eliminated system; request reduce(eliminate)",
+            ))
+        }
+        P::None | P::Schwarz => {
+            return Err(crate::error::unsupported(
+                "solver(cg, reduce(eliminate)) accepts precondition(auto), precondition(jacobi) or precondition(block)",
+            ))
+        }
+    };
+    Ok(fedemean::Choice {
+        reduction,
+        method: fedemean::Method::Pcg,
+        preconditioner,
+        fallback: if request.preconditioner == P::Auto {
+            fedemean::Fallback::Escalate
+        } else {
+            fedemean::Fallback::Decline
+        },
+    })
 }
 
 /// fedemean's modified LSMR on the full system with `preconditioner`: the
@@ -288,6 +320,11 @@ impl<'a> Cache<'a> {
     /// certified projection).
     pub(crate) const fn decline(&self) -> Option<Decline> {
         self.decline
+    }
+
+    /// What this cache's projector solves.
+    pub(crate) const fn plan(&self) -> Plan {
+        self.plan
     }
 
     /// Drop the retained projector (its geometry, weight state and
@@ -870,6 +907,7 @@ pub(crate) fn route(route: &fedemean::Route) -> crate::fe::FeRoute {
                 dense: local.dense,
                 skyline: local.skyline,
                 approximate: local.approximate,
+                jacobi: local.eliminated,
             })
         }
         _ => FePreconditioner::Jacobi,

@@ -137,10 +137,6 @@ program define _fereg_estimate_ppml, eclass
         di as error "memory() must be auto, fast, or low"
         exit 198
     }
-    if inlist(`"`solver_mode'"', "lsmr", "cmg") & `"`memory_mode'"' == "low" {
-        di as error "solver(`public_solver') does not support memory(low) in this release"
-        exit 498
-    }
     if inlist(`"`solver_mode'"', "lsmr", "cmg") & `"`allocationaudit'"' != "" {
         di as error "solver(`public_solver') does not support allocation auditing in this release"
         exit 498
@@ -585,16 +581,6 @@ program define _fereg_estimate_ppml, eclass
         confirm new variable `output'
     }
     local requested_saved_count : word count `saved_target_variables'
-    if `"`solver_mode'"' == "lsmr" & ///
-       (`n_absorb_intercepts' < 2 | `n_absorb_slopes' != 0) {
-        di as error "solver(lsmr) currently requires at least two categorical intercept fixed effects"
-        exit 498
-    }
-    if `"`solver_mode'"' == "cmg" & ///
-       (!inlist(`n_absorb_intercepts', 2, 3) | `n_absorb_slopes' != 0) {
-        di as error "solver(cg) currently requires two or three categorical intercept fixed effects"
-        exit 498
-    }
     local coefficient_capacity = `n_terms' + 1
     local matrix_dimension = max(`coefficient_capacity', 1)
     local fe_rows = max(`n_absorb_intercepts' + `n_absorb_slopes', 1)
@@ -736,7 +722,7 @@ program define _fereg_estimate_ppml, eclass
     matrix `separation_sequence_shadow' = J(5, 13, 0)
     matrix `certificate_shadow' = J(16, 1, .)
     matrix `solver_shadow' = J(4, 22, .)
-    matrix `route_shadow' = J(1, 12, .)
+    matrix `route_shadow' = J(2, 16, .)
     matrix `runtime_shadow' = J(108, 1, .)
     matrix `receipt_shadow' = J(1, 33, 0)
 
@@ -773,7 +759,7 @@ program define _fereg_estimate_ppml, eclass
     local stata_used_before = strtrim(string(r(used), "%21.0f"))
     local stata_alloc_before = strtrim(string(r(allocated), "%21.0f"))
     quietly _fereg_input_host `touse' `depvar' `source_vars' `weight_variable' `adjustment_variable' `biasunit'
-    local request_arguments `"ado=0.5.3;protocol_major=1;protocol_minor=7;stata=`c(stata_version)';host_edition=`r(edition)';host_interface=`r(interface)';host_aliases=`r(aliases)';confirm=feppml-estimation;plugin=0.5.3;result_major=1;result_minor=5;request_major=1;request_minor=9;model_major=`model_major';model_minor=`model_minor';source_matrix=`model_sources';source_count=`n_sources';term_matrix=`model_terms';term_count=`n_terms';component_matrix=`model_components';component_count=`n_components';source_names=`source_registry';canonical_tokens=`token_registry';raw_component_operators=`raw_registry';raw_time_series_operators=`ts_registry';absorb_term_matrix=`absorb_terms';absorb_term_count=`n_absorb_terms';absorb_component_matrix=`absorb_components';absorb_component_count=`n_absorb_components';absorb_labels=`absorb_label_registry';absorb_saved_names=`absorb_saved_registry';cluster_term_matrix=`cluster_terms';cluster_term_count=`n_cluster_terms';cluster_component_matrix=`cluster_components';cluster_component_count=`n_cluster_components';cluster_labels=`cluster_label_registry';binding_matrix=`input_bindings';binding_count=`n_bindings';include_intercept=1;candidate_all=`candidate_all';input_complete=`input_complete';keep_singletons=`keep_singletons';adjustment=`adjustment_kind';adjustment_position=`adjustment_position';residual=`residual_wire';vce=`vce_request_wire';memory=`memory_mode';poolsize=`poolsize';threads=`threads';deterministic=`deterministic_wire';allocation_audit=`allocation_audit_wire';solver=`solver_mode';`preconditioner_argument'tolerance=`tolerance';iterate=`iterate';separation=`separation_wire';separation_tolerance=`septolerance';separation_max_iterations=`sepiterate';simplex_max_iterations=`simplexiterate';simplex_max_tableau_cells=`simplexcells';output_sample=`output_sample';output_residual=`output_residual';output_xb=`output_xb';output_absorbed=`output_absorbed';output_eta=`output_eta';output_mean=`output_mu';output_drop_reason=`output_dropreason';output_saved_count=`output_saved_count';output_saved_channels=`output_saved_registry';output_b_matrix=`b_shadow';output_v_matrix=`v_shadow';output_status_matrix=`status_shadow';output_fit_matrix=`fit_shadow';output_dof_matrix=`dof_shadow';output_fe_matrix=`fe_shadow';output_cluster_matrix=`cluster_shadow';output_subset_matrix=`subset_shadow';output_separation_matrix=`separation_shadow';output_inference_matrix=`inference_shadow';output_drop_counts_matrix=`drop_counts_shadow';output_separation_sequence_matrix=`separation_sequence_shadow';output_certificate_matrix=`certificate_shadow';output_solver_matrix=`solver_shadow';output_route_matrix=`route_shadow';output_runtime_matrix=`runtime_shadow';output_memory_matrix=`memory_shadow';stata_used_entry=`stata_used_entry';stata_alloc_entry=`stata_alloc_entry';stata_used_before=`stata_used_before';stata_alloc_before=`stata_alloc_before';output_receipt_matrix=`receipt_shadow';"'
+    local request_arguments `"ado=0.5.3;protocol_major=1;protocol_minor=7;stata=`c(stata_version)';host_edition=`r(edition)';host_interface=`r(interface)';host_aliases=`r(aliases)';confirm=feppml-estimation;plugin=0.5.3;result_major=1;result_minor=5;request_major=1;request_minor=10;model_major=`model_major';model_minor=`model_minor';source_matrix=`model_sources';source_count=`n_sources';term_matrix=`model_terms';term_count=`n_terms';component_matrix=`model_components';component_count=`n_components';source_names=`source_registry';canonical_tokens=`token_registry';raw_component_operators=`raw_registry';raw_time_series_operators=`ts_registry';absorb_term_matrix=`absorb_terms';absorb_term_count=`n_absorb_terms';absorb_component_matrix=`absorb_components';absorb_component_count=`n_absorb_components';absorb_labels=`absorb_label_registry';absorb_saved_names=`absorb_saved_registry';cluster_term_matrix=`cluster_terms';cluster_term_count=`n_cluster_terms';cluster_component_matrix=`cluster_components';cluster_component_count=`n_cluster_components';cluster_labels=`cluster_label_registry';binding_matrix=`input_bindings';binding_count=`n_bindings';include_intercept=1;candidate_all=`candidate_all';input_complete=`input_complete';keep_singletons=`keep_singletons';adjustment=`adjustment_kind';adjustment_position=`adjustment_position';residual=`residual_wire';vce=`vce_request_wire';memory=`memory_mode';poolsize=`poolsize';threads=`threads';deterministic=`deterministic_wire';allocation_audit=`allocation_audit_wire';solver=`solver_mode';`preconditioner_argument'tolerance=`tolerance';iterate=`iterate';separation=`separation_wire';separation_tolerance=`septolerance';separation_max_iterations=`sepiterate';simplex_max_iterations=`simplexiterate';simplex_max_tableau_cells=`simplexcells';output_sample=`output_sample';output_residual=`output_residual';output_xb=`output_xb';output_absorbed=`output_absorbed';output_eta=`output_eta';output_mean=`output_mu';output_drop_reason=`output_dropreason';output_saved_count=`output_saved_count';output_saved_channels=`output_saved_registry';output_b_matrix=`b_shadow';output_v_matrix=`v_shadow';output_status_matrix=`status_shadow';output_fit_matrix=`fit_shadow';output_dof_matrix=`dof_shadow';output_fe_matrix=`fe_shadow';output_cluster_matrix=`cluster_shadow';output_subset_matrix=`subset_shadow';output_separation_matrix=`separation_shadow';output_inference_matrix=`inference_shadow';output_drop_counts_matrix=`drop_counts_shadow';output_separation_sequence_matrix=`separation_sequence_shadow';output_certificate_matrix=`certificate_shadow';output_solver_matrix=`solver_shadow';output_route_matrix=`route_shadow';output_runtime_matrix=`runtime_shadow';output_memory_matrix=`memory_shadow';stata_used_entry=`stata_used_entry';stata_alloc_entry=`stata_alloc_entry';stata_used_before=`stata_used_before';stata_alloc_before=`stata_alloc_before';output_receipt_matrix=`receipt_shadow';"'
     if `has_bias' {
         local request_arguments `"`request_arguments'bias_method=`bias_method';bias_unit=`bias_unit_position';bias_probes=`biasprobes';bias_seed=`biasseed';bias_stream=`biasstream';output_bias_count=`output_bias_count';output_bias_channels=`output_bias_registry';output_bias_matrix=`bias_shadow';output_bias_diagnostics=`bias_diagnostics_shadow';output_bias_support=`bias_support_shadow';"'
     }
@@ -833,6 +819,40 @@ program define _fereg_estimate_ppml, eclass
     }
     if `"`inject'"' == "postplugin" exit 3498
 
+    // The route of the IRLS steps (row 1) and of the final linear solve
+    // (row 2), decoded and checked before publication. An explicit request
+    // whose route could not serve the fit before any work (its design,
+    // memory mode or workspace) ran the Auto plan: the compiled solver
+    // report then names Auto, and row 1 must report that fallback.
+    if rowsof(`route_shadow') != 2 | colsof(`route_shadow') != 16 exit 3499
+    _fereg_solver, command(feppml) route(`route_shadow') row(2) ///
+        labels(`"`absorb_labels'"')
+    local final_route_text `"`r(text)'"'
+    _fereg_solver, command(feppml) route(`route_shadow') row(1) ///
+        labels(`"`absorb_labels'"')
+    foreach item in reduction method preconditioner acceleration local_solvers text ///
+        fallback_reason {
+        local route_`item' `"`r(`item')'"'
+    }
+    local route_iterations = r(iterations)
+    local route_escalations = r(escalations)
+    local route_fallback = r(fallback)
+    local route_subdomains = r(subdomains)
+    forvalues column = 14/16 {
+        local count = `route_shadow'[1,`column']
+        if missing(`count') | `count' < 0 | `count' != int(`count') | ///
+            `route_shadow'[2,`column'] != 0 exit 3499
+    }
+    local lsmr_joint_frames = `route_shadow'[1,14]
+    local lsmr_fwl_frames = `route_shadow'[1,15]
+    local lsmr_handoffs = `route_shadow'[1,16]
+    if `lsmr_handoffs' > `lsmr_fwl_frames' | ///
+       (`requested_solver_code' != 3 & `lsmr_joint_frames' + `lsmr_fwl_frames' > 0) exit 3499
+    local validated_solver_code `requested_solver_code'
+    if `solver_shadow'[1,1] == 1 & `requested_solver_code' != 1 {
+        if !inlist(`"`route_fallback_reason'"', "unsupported", "memory") exit 3499
+        local validated_solver_code 1
+    }
     capture noisily _fereg_eppml_validate `b_shadow' `v_shadow' `status_shadow' ///
         `fit_shadow' `dof_shadow' `fe_shadow' `cluster_shadow' ///
         `subset_shadow' `separation_shadow' `inference_shadow' ///
@@ -850,7 +870,7 @@ program define _fereg_estimate_ppml, eclass
         memorycode(`=cond(`"`memory_mode'"' == "auto", 0, cond(`"`memory_mode'"' == "fast", 1, 2))') ///
         requestedthreads(`threads') feterms(`n_absorb_terms') sources(`n_sources') ///
         methodcodes(`"`separation_codes'"') dropsingletons(`=1 - `keep_singletons'') ///
-        requestedsolvercode(`requested_solver_code')
+        requestedsolvercode(`validated_solver_code')
     local validation_rc = _rc
     if `validation_rc' {
         // Break (r(1)) and the layout code 499 keep their identity.
@@ -899,21 +919,8 @@ program define _fereg_estimate_ppml, eclass
                 min(`bias_shadow'[6,`slot'], `bias_shadow'[7,`slot'], `bias_shadow'[9,`slot']) < 0 exit 3499
         }
     }
-    // The final linear solve's route, decoded and checked before publication.
-    _fereg_solver, command(feppml) route(`route_shadow') row(1) ///
-        labels(`"`absorb_labels'"')
-    foreach item in reduction method preconditioner acceleration local_solvers text {
-        local route_`item' `"`r(`item')'"'
-    }
-    local route_iterations = r(iterations)
-    local route_escalations = r(escalations)
-    local solver_fallback_reason "none"
-    if `solver_shadow'[4,12] == 1 ///
-        local solver_fallback_reason "cmg_numerical_nonconvergence"
-    if `solver_shadow'[1,12] == 2 ///
-        local solver_fallback_reason "checkpoint_lsmr_numerical_nonconvergence"
-    if `solver_shadow'[1,12] == 3 | `solver_shadow'[4,12] == 3 ///
-        local solver_fallback_reason "cmg_and_checkpoint_numerical_nonconvergence"
+    // The compiled report's CMG and checkpoint fallbacks are part of row 1.
+    if (`solver_shadow'[1,11] + `solver_shadow'[4,11] > 0) & `route_fallback' == 0 exit 3499
 
     // The native result tables carry enough identity to prove that the
     // rebased FE/cluster topology is still the parser-owned declaration.  Do
@@ -1398,20 +1405,48 @@ program define _fereg_estimate_ppml, eclass
     if `"`mu'"' != "" ereturn local mu_var "`mu'"
     if `"`dropreason'"' != "" ereturn local drop_reason_var "`dropreason'"
     ereturn local predict "feppml_p"
-    ereturn local fe_solver `"`solver_spec'"'
+    // Requested against actual: the request, the route that solved the
+    // IRLS steps (with any certified fallback) and the final linear solve.
+    ereturn local fe_requested `"`solver_spec'"'
+    if `"`solver_mode'"' == "map" {
+        // The developer-only canonical family.
+        ereturn local fe_requested_method "map"
+        ereturn local fe_requested_reduction "full"
+        ereturn local fe_requested_preconditioner "none"
+        ereturn local fe_requested_acceleration "none"
+    }
+    else {
+        _fereg_solver, command(feppml) spec(`"`solver_spec'"')
+        foreach item in method reduction preconditioner acceleration {
+            ereturn local fe_requested_`item' "`r(requested_`item')'"
+        }
+    }
     ereturn local fe_reduction "`route_reduction'"
     ereturn local fe_method "`route_method'"
     ereturn local fe_preconditioner "`route_preconditioner'"
     if `"`route_local_solvers'"' != "" ereturn local fe_local_solvers `"`route_local_solvers'"'
+    if "`route_preconditioner'" == "schwarz" & `route_subdomains' > 0 ///
+        ereturn scalar fe_subdomains = `route_subdomains'
     ereturn local fe_acceleration "`route_acceleration'"
     ereturn local fe_route `"`route_text'"'
+    ereturn local fe_final_route `"`final_route_text'"'
     ereturn scalar fe_iterations = `route_iterations'
     ereturn scalar fe_escalations = `route_escalations'
-    ereturn scalar fe_fallback = e(feppml_solver_fallback_count)
-    ereturn local fe_fallback_reason "`solver_fallback_reason'"
+    ereturn scalar fe_fallback = `route_fallback'
+    ereturn local fe_fallback_reason "`route_fallback_reason'"
+    if `lsmr_joint_frames' + `lsmr_fwl_frames' > 0 {
+        // Explicit LSMR's formulation over its certified IRLS frames.
+        local formulation "joint+fwl"
+        if `lsmr_fwl_frames' == 0 local formulation "joint"
+        if `lsmr_joint_frames' == 0 & `lsmr_handoffs' == 0 local formulation "fwl"
+        ereturn local fe_formulation "`formulation'"
+        ereturn scalar fe_joint_frames = `lsmr_joint_frames'
+        ereturn scalar fe_fwl_frames = `lsmr_fwl_frames'
+        ereturn scalar fe_handoffs = `lsmr_handoffs'
+    }
     ereturn local feppml_action_protocol "1.7"
     ereturn local feppml_model_wire "2.1"
-    ereturn local feppml_request_wire "1.9"
+    ereturn local feppml_request_wire "1.10"
     ereturn local feppml_result_wire "1.5"
     ereturn local feppml_plugin "0.5.3"
 

@@ -155,7 +155,7 @@ fn public_two_activation_matches_hidden_science_and_public_repeat() {
                 {
                     for column in 0..SOLVER_COLUMNS {
                         // Setup and solve seconds are timing, not science.
-                        if !matches!(column, 15 | 16) {
+                        if !matches!(column, 16 | 17) {
                             assert_eq!(a[column].to_bits(), b[column].to_bits());
                         }
                     }
@@ -381,7 +381,7 @@ fn ownership_preserves_publication_across_inference_factors_and_saved_effects() 
                     {
                         for column in 0..SOLVER_COLUMNS {
                             // Setup and solve seconds are timing, not science.
-                            if !matches!(column, 15 | 16) {
+                            if !matches!(column, 16 | 17) {
                                 assert_eq!(before[column].to_bits(), after[column].to_bits());
                             }
                         }
@@ -1679,7 +1679,7 @@ fn saved_slope_recovery_workspace_bounds_observed_allocator_peak() {
                 };
                 // Worker construction belongs to its separately declared
                 // runtime scope. The recovery envelope covers each live
-                // numerical attempt, including pinned within setup.
+                // numerical attempt, including fedemean's setup.
                 drop(run());
                 for _ in 0..3 {
                     let (start, _) = crate::ffi::begin_ols_allocation_observation();
@@ -4377,7 +4377,7 @@ fn licensed_stata_bundle_matches_ordinary_argv_and_rejects_malformed_pre_read() 
     for row in 0..SOLVER_ROWS {
         for column in 0..SOLVER_COLUMNS {
             // Setup and solve seconds are timing, not science.
-            if !matches!(column, 15 | 16) {
+            if !matches!(column, 16 | 17) {
                 assert_eq!(
                     packed.matrices["RSOLVER"][row][column],
                     ordinary.matrices["RSOLVER"][row][column]
@@ -4511,7 +4511,7 @@ fn every_output_store_failure_leaves_receipt_incomplete() {
     let (args, mut successful) = fixture(OlsVceKind::Iid);
     estimate_ols(&args, &mut successful).expect("baseline estimate succeeds");
     let total_stores = successful.store_calls;
-    assert_eq!(total_stores, 294 + crate::memory_report::CELLS);
+    assert_eq!(total_stores, 296 + crate::memory_report::CELLS);
     assert_eq!(successful.stores.capacity(), 512);
 
     for failing_ordinal in 1..=total_stores {
@@ -5018,7 +5018,7 @@ fn invalid_sampling_options_fail_before_reads_or_publication() {
 }
 
 #[test]
-fn invalid_cmgschur_requests_fail_before_observation_reads_and_stores() {
+fn invalid_cmgschur_requests_fail_before_reads_and_unsupported_designs_fall_back() {
     for (solver, degree) in [
         ("auto", "5"),
         ("cmg", "5"),
@@ -5035,15 +5035,16 @@ fn invalid_cmgschur_requests_fail_before_observation_reads_and_stores() {
         assert_eq!((spi.numeric_reads, spi.store_calls), (0, 0));
         assert_eq!(spi.receipt_complete(), 0.0);
     }
-    // The no-FE and one-FE models are rejected before reading any observations.
+    // CMG-Schur serves exactly two categorical intercept effects: the no-FE
+    // and one-FE models run the automatic routes as the certified fallback
+    // (SPEC §1), reported in the route row (fallback 1, reason 1 unsupported).
     for (mut args, mut spi) in [fixture(OlsVceKind::Iid), saved_output_fixture()] {
         replace_argument(&mut args, "solver", "solver=cmgschur".to_owned());
         replace_argument(&mut args, "preconditioner", "preconditioner=off".to_owned());
-        let error = estimate_ols(&args, &mut spi).unwrap_err();
-        assert_eq!(error.code, ErrorCode::Unsupported);
-        assert!(error.message.contains("exactly two categorical intercept"));
-        assert_eq!((spi.numeric_reads, spi.store_calls), (0, 0));
-        assert_eq!(spi.receipt_complete(), 0.0);
+        estimate_ols(&args, &mut spi).expect("certified automatic fallback");
+        assert_eq!(spi.receipt_complete(), 1.0);
+        let absorption = &spi.matrices["RSOLVER"][0];
+        assert_eq!((absorption[11], absorption[12]), (1.0, 1.0));
     }
 }
 

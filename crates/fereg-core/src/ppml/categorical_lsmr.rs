@@ -72,6 +72,13 @@ crate::fault::fault_plan! {
     static FORCE_JOINT_STALL: bool = false;
 }
 
+/// Tests: the next frame's joint recurrence on this thread is treated as
+/// stalled.
+#[cfg(test)]
+pub(crate) fn force_joint_stall_for_test() {
+    FORCE_JOINT_STALL.set(true);
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct JointLsmrCertificate {
     pub(crate) finite_absolute_infinity_norm: f64,
@@ -904,6 +911,13 @@ impl<'p> ReusableCategoricalJointLsmr<'p> {
         self.team.install(|| {
             workspace.fill_incremental_candidate(&self.delta_eta, &self.active_slots, &self.step)
         })
+    }
+
+    /// Whether the next frame starts on the projections (FWL) rather than
+    /// the joint recurrence (reporting: a joint frame that certifies on the
+    /// projections is a hand-off).
+    pub(crate) fn starts_on_projections(&self) -> bool {
+        self.projections_first
     }
 
     pub(crate) fn active_rank(&self) -> usize {

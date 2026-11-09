@@ -26,7 +26,7 @@ foreach mode in fast low {
         quietly fereg y x1 x2 [aw=weight], absorb(sw=worker sf=firm) ///
             solver(cg, reduce(eliminate) precondition(cmg) cmgdegree(`degree')) memory(`mode') ///
             poolsize(1) residuals(resid) threads(2) tolerance(1e-10)
-        assert "`e(fe_solver)'" == "cg, reduce(eliminate) precondition(cmg) cmgdegree(`degree')"
+        assert "`e(fe_requested)'" == "cg, reduce(eliminate) precondition(cmg) cmgdegree(`degree')"
         assert "`e(fe_route)'" == "cg, reduce(eliminate) precondition(cmg)"
         assert e(fe_cmgdegree) == `degree'
         assert e(fe_cmgsamples) == 0
@@ -75,12 +75,6 @@ capture noisily fereg y x1, absorb(sw=worker sf=firm) ///
     solver(cg, reduce(eliminate) precondition(cmg)) cmgdegree(5) residuals(rejected)
 assert _rc == 198
 assert mreldif(e(b), saved_b) == 0
-foreach effects in "worker" "worker firm period" "worker##c.x2 firm" {
-    capture noisily fereg y x1, absorb(`effects') ///
-        solver(cg, reduce(eliminate) precondition(cmg)) residuals(rejected)
-    assert _rc == 498
-    assert mreldif(e(b), saved_b) == 0
-}
 capture noisily feppml y x1, absorb(worker firm) solver(cg, reduce(eliminate))
 assert _rc == 198
 assert mreldif(e(b), saved_b) == 0
@@ -90,6 +84,23 @@ assert mreldif(e(b), saved_b) == 0
 foreach output in sw sf rejected {
     capture confirm variable `output'
     assert _rc == 111
+}
+
+* CMG-Schur serves exactly two categorical intercept effects. Other designs
+* run the automatic routes as the certified fallback (reason unsupported),
+* with the request kept and the automatic fit's estimates.
+foreach effects in "worker" "worker firm period" "worker##c.x2 firm" {
+    fereg y x1, absorb(`effects') solver(cg, reduce(eliminate) precondition(cmg))
+    assert `"`e(fe_requested)'"' == "cg, reduce(eliminate) precondition(cmg)"
+    assert `"`e(fe_requested_method)'"' == "cg"
+    assert `"`e(fe_requested_preconditioner)'"' == "cmg"
+    assert e(fe_fallback) == 1 & `"`e(fe_fallback_reason)'"' == "unsupported"
+    assert `"`e(fe_preconditioner)'"' != "cmg"
+    tempname fallback_b
+    matrix `fallback_b' = e(b)
+    fereg y x1, absorb(`effects')
+    assert mreldif(e(b), `fallback_b') <= 1e-10
+    assert e(fe_fallback) == 0
 }
 
 display as result "END_FIXTURE|ols_cmgschur|rc=0"

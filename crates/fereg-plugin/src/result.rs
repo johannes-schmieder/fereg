@@ -656,7 +656,7 @@ fn write_solver_row(
         crate::route_report::RouteRow {
             route: report.route(),
             iterations: report.iterations,
-            fallback: report.fallback_used,
+            fallback: report.reported_fallback_reason(),
             single_intercept,
             map_requested: report.requested_solver == FeSolverKind::Map,
         },

@@ -137,9 +137,9 @@ pub(crate) struct Attempt {
 }
 
 impl Attempt {
-    /// Auto: PCG with fedemean's automatic preconditioner (with slopes, the
-    /// levels' channel blocks escalating to the hybrid Schwarz when slow or
-    /// stalled and two effects have intercepts).
+    /// Auto: PCG on the full system with fedemean's automatic
+    /// preconditioner (with slopes, the levels' channel blocks, escalating
+    /// to the pair-subdomain Schwarz when slow or stalled).
     pub(crate) fn auto(tolerance: f64, max_iterations: usize, memory_limit: Option<u128>) -> Self {
         Self {
             choice: fedemean::Choice {
@@ -154,6 +154,29 @@ impl Attempt {
             max_iterations,
             memory_limit,
         }
+    }
+
+    /// Explicit PCG with the requested reduction and preconditioner (see
+    /// [`crate::fe::block_schur::pcg_choice`]).
+    pub(crate) fn pcg(
+        request: crate::fe::PcgRequest,
+        tolerance: f64,
+        max_iterations: usize,
+        memory_limit: Option<u128>,
+    ) -> Result<Self> {
+        if !tolerance.is_finite() || tolerance <= 0.0 || max_iterations == 0 {
+            return Err(invalid_argument(
+                "CG tolerance and iteration budget must be positive",
+            ));
+        }
+        Ok(Self {
+            choice: crate::fe::block_schur::pcg_choice(request)?,
+            requested: FeSolverKind::Pcg,
+            requested_preconditioner: None,
+            tolerance,
+            max_iterations,
+            memory_limit,
+        })
     }
 
     /// Modified LSMR with `preconditioner` (its automatic choice escalates

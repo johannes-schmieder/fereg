@@ -330,7 +330,8 @@ impl CmgWorkspacePlan {
 enum CmgRoute {
     Direct,
     Graph(GraphCmg),
-    Failed(String),
+    /// The setup or bulk failure and the reason it gives the CG fallback.
+    Failed(String, super::FeFallbackReason),
 }
 
 struct GraphCmg {
@@ -1068,7 +1069,7 @@ impl<'a> CmgAbsorber<'a> {
                 {
                     return Err(error);
                 }
-                Err(error) => CmgRoute::Failed(error.to_string()),
+                Err(error) => CmgRoute::Failed(error.to_string(), cmg_fallback_reason(&error)),
             }
         };
         let pending_setup_metrics = match &route {
@@ -1079,7 +1080,7 @@ impl<'a> CmgAbsorber<'a> {
                 batches: graph.setup_batches,
                 nuisance_reused_right_hand_sides: 0,
             },
-            CmgRoute::Direct | CmgRoute::Failed(_) => CmgSolveMetrics::default(),
+            CmgRoute::Direct | CmgRoute::Failed(..) => CmgSolveMetrics::default(),
         };
         Ok(Self {
             design,
@@ -1143,14 +1144,14 @@ impl<'a> CmgAbsorber<'a> {
                     "CMG unpolished projection requires at least two absorbed effects",
                 ));
             }
-            CmgRoute::Failed(message) => {
+            CmgRoute::Failed(message, _) => {
                 return Err(nonconvergence(format!("CMG setup failed: {message}")));
             }
         };
         #[cfg(test)]
         let executor_threads = match &self.route {
             CmgRoute::Graph(graph) => graph.solver.execution_shape().threads,
-            CmgRoute::Direct | CmgRoute::Failed(_) => unreachable!("CMG route checked above"),
+            CmgRoute::Direct | CmgRoute::Failed(..) => unreachable!("CMG route checked above"),
         };
         let solve_started = Instant::now();
         let (projected, _) = match &mut self.route {
@@ -1163,7 +1164,7 @@ impl<'a> CmgAbsorber<'a> {
                 self.config.pcg_options_at(relative_tolerance),
                 seed.map(|seed| (seed, use_seed)),
             ),
-            CmgRoute::Direct | CmgRoute::Failed(_) => unreachable!("CMG route checked above"),
+            CmgRoute::Direct | CmgRoute::Failed(..) => unreachable!("CMG route checked above"),
         }?;
         metrics.include_from(projected);
         Ok(CmgUnpolishedProjectionReport {
@@ -1203,7 +1204,7 @@ impl<'a> CmgAbsorber<'a> {
                     admitted - admission::runtime_extra(graph.runtime_estimate),
                 ))
             }
-            CmgRoute::Direct | CmgRoute::Failed(_) => Ok(SolverWorkspacePeak::ZERO),
+            CmgRoute::Direct | CmgRoute::Failed(..) => Ok(SolverWorkspacePeak::ZERO),
             // Prepared PPML topology and caller buffers require their parent
             // action carrier; they do not enter owned OLS absorption.
             _ => Ok(SolverWorkspacePeak::UNMODELED),
@@ -1259,7 +1260,7 @@ impl<'a> CmgAbsorber<'a> {
             };
         }
 
-        if let CmgRoute::Failed(message) = &self.route {
+        if let CmgRoute::Failed(message, reason) = &self.route {
             ensure_cg_fallback_fits(&self.design, values.ncols(), self.config)?;
             let fallback = absorb_borrowed_intercept_cg(
                 &self.design,
@@ -1276,7 +1277,7 @@ impl<'a> CmgAbsorber<'a> {
                 .max(norm_peak);
             report.requested_solver = self.config.requested_solver;
             report.used_solver = FeSolverKind::Cg;
-            report.fallback_used = true;
+            report.note_fallback(*reason);
             report.setup_seconds += setup_seconds;
             report.warnings.insert(
                 0,
@@ -1299,7 +1300,7 @@ impl<'a> CmgAbsorber<'a> {
                 None,
             ),
             CmgRoute::Direct => unreachable!("direct CMG route returned above"),
-            CmgRoute::Failed(_) => unreachable!("failed CMG route returned above"),
+            CmgRoute::Failed(..) => unreachable!("failed CMG route returned above"),
         };
         let bulk_seconds = solve_started.elapsed().as_secs_f64();
 
@@ -1424,7 +1425,8 @@ impl<'a> CmgAbsorber<'a> {
                     self.memory.projection
                 };
                 let failure = error.to_string();
-                self.route = CmgRoute::Failed(failure.clone());
+                let reason = cmg_fallback_reason(&error);
+                self.route = CmgRoute::Failed(failure.clone(), reason);
                 let fallback = absorb_borrowed_intercept_cg(
                     &self.design,
                     self.weights,
@@ -1444,7 +1446,7 @@ impl<'a> CmgAbsorber<'a> {
                     .max(norm_peak);
                 report.requested_solver = self.config.requested_solver;
                 report.used_solver = FeSolverKind::Cg;
-                report.fallback_used = true;
+                report.note_fallback(reason);
                 report.setup_seconds += setup_seconds;
                 report.solve_seconds += bulk_seconds;
                 report
@@ -1534,7 +1536,9 @@ impl<'a> CmgAbsorber<'a> {
                 .max(norm_peak);
             report.requested_solver = config.requested_solver;
             report.used_solver = FeSolverKind::Cg;
-            report.fallback_used = true;
+            // CMG's final residual is not itself certified: CG verifies (and,
+            // when needed, corrects) it.
+            report.note_fallback(super::FeFallbackReason::Uncertified);
             report.setup_seconds += self.pending_setup_seconds;
             report
                 .warnings
@@ -3496,6 +3500,14 @@ pub(crate) fn inject_projection_failure_once(code: ErrorCode) {
 /// numerical data (`InvalidData`). Cancellation, internal failures (including
 /// CMG's runtime and hierarchy-invariant errors), caller-contract violations
 /// and unsupported requests fail the estimation atomically.
+/// The fallback reason of a CMG failure that continues with CG.
+fn cmg_fallback_reason(error: &FeregError) -> super::FeFallbackReason {
+    match error.code {
+        ErrorCode::Allocation => super::FeFallbackReason::Memory,
+        _ => super::FeFallbackReason::Nonconvergence,
+    }
+}
+
 fn falls_back_to_cg(error: &FeregError) -> bool {
     matches!(
         error.code,

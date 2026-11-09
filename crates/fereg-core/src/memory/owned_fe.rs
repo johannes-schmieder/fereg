@@ -139,7 +139,8 @@ pub(crate) fn generic_fe_solver_bytes(
     ])?)?;
     let matrix = owned_fe_matrix_bytes(design.nobs(), rhs)?;
     let matrices = match solver {
-        FeSolverKind::Map | FeSolverKind::Auto | FeSolverKind::Lsmr => 0,
+        // fedemean's modified LSMR and PCG admit their own workspace.
+        FeSolverKind::Map | FeSolverKind::Auto | FeSolverKind::Lsmr | FeSolverKind::Pcg => 0,
         FeSolverKind::Cg => 3,
         FeSolverKind::IronsTuck | FeSolverKind::Squarem => 4,
         FeSolverKind::Elimination => return Err(crate::fe::elimination_request()),
@@ -149,7 +150,6 @@ pub(crate) fn generic_fe_solver_bytes(
                 "generic owned FE memory planning does not support CMG",
             ))
         }
-        FeSolverKind::Pcg => return Err(crate::fe::pcg_intercepts_only()),
     };
     checked_sum(&[
         certificate,

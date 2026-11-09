@@ -479,7 +479,10 @@ fn fixture() -> (Vec<String>, FakeSpi) {
         ),
         (
             "RROUTE".to_owned(),
-            zero_matrix(1, crate::route_report::ROUTE_COLUMNS),
+            zero_matrix(
+                crate::ppml_result::ROUTE_ROWS,
+                crate::ppml_result::ROUTE_SHADOW_COLUMNS,
+            ),
         ),
         ("RMEMORY".to_owned(), zero_matrix(MEMORY_ROWS, 2)),
         ("RRUNTIME".to_owned(), zero_matrix(RUNTIME_ROWS, 1)),

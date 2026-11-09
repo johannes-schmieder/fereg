@@ -80,7 +80,7 @@ foreach kind in unit fw pw {
         if "`covariance'" == "cluster" local vce "cluster cl"
         feppml y x1 x2 x3 x4 x5 x6 x7 x8 `weight', absorb(`effects') offset(off) ///
             vce(`vce') separation(none) keepsingletons threads(`threads') memory(fast) solver(`solver') mu(mu_native) eta(eta_native) xb(xb_native) d(d_native) residuals(res_native)
-        assert "`e(fe_solver)'" == "`solver'"
+        assert "`e(fe_requested)'" == "`solver'"
         * LSMR engines serve explicit lsmr's IRLS frames, the canonical
         * session auto's.
         if "`solver'" == "lsmr" assert e(fe_solve)[2,1] + e(fe_solve)[3,1] > 0

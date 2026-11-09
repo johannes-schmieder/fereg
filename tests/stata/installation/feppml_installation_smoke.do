@@ -44,9 +44,9 @@ assert `"`e(predict)'"' == "feppml_p"
 assert `"`e(feppml_gate)'"' == "public_ppml_v1"
 assert `"`e(feppml_action_protocol)'"' == "1.7"
 assert `"`e(feppml_model_wire)'"' == "2.1"
-assert `"`e(feppml_request_wire)'"' == "1.9"
+assert `"`e(feppml_request_wire)'"' == "1.10"
 assert `"`e(feppml_result_wire)'"' == "1.5"
-assert `"`e(fe_solver)'"' == "auto"
+assert `"`e(fe_requested)'"' == "auto"
 assert `"`e(fe_route)'"' == "none"
 assert `"`e(fe_fallback_reason)'"' == "none" & e(fe_fallback) == 0
 assert e(feppml_solver_fallback_count) == 0

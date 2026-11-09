@@ -163,7 +163,12 @@ program define _fereg_estimate_public, eclass
     ereturn local fereg_memory_mode "`memory_mode'"
     ereturn local fereg_memory_requested "`memory_mode'"
     ereturn local fereg_memory_selected "`selected_memory'"
-    ereturn local fe_solver `"`solver_spec'"'
+    // The request in the caller's normalized solver() spelling.
+    _fereg_solver, command(fereg) spec(`"`solver_spec'"')
+    ereturn local fe_requested `"`solver_spec'"'
+    foreach item in method reduction preconditioner acceleration {
+        ereturn local fe_requested_`item' "`r(requested_`item')'"
+    }
     if `"`solver_mode'"' == "cmgschur" {
         ereturn scalar fe_cmgdegree = `cmgdegree'
         ereturn scalar fe_cmgsamples = `cmgsamples'

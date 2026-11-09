@@ -116,6 +116,10 @@ pub(crate) struct PpmlSolverPlan {
     /// The preconditioner of explicit LSMR's fedemean projections
     /// (`precondition()`); `Auto` is Jacobi escalating to Schwarz.
     pub(crate) lsmr_preconditioner: crate::fe::LsmrPreconditioner,
+    /// An explicit request whose route cannot serve this fit before any work
+    /// (design, memory mode or workspace), served by the Auto plan as the
+    /// certified fallback (SPEC §1): the request and the reason.
+    pub(crate) substituted: Option<(PpmlSolverFamily, crate::fe::FeFallbackReason)>,
 }
 
 impl PpmlSolverPlan {
@@ -128,6 +132,19 @@ impl PpmlSolverPlan {
             requested,
             selected,
             lsmr_preconditioner: crate::fe::LsmrPreconditioner::Auto,
+            substituted: None,
+        }
+    }
+
+    /// The Auto plan that serves this explicit plan's request for `reason`
+    /// (an Auto plan stays as it is).
+    pub(crate) const fn substitute(self, reason: crate::fe::FeFallbackReason) -> Self {
+        if matches!(self.requested, PpmlSolverFamily::Auto) {
+            return self;
+        }
+        Self {
+            substituted: Some((self.requested, reason)),
+            ..Self::new(PpmlSolverFamily::Auto)
         }
     }
 
@@ -563,6 +580,7 @@ mod tests {
                 requested: PpmlSolverFamily::Auto,
                 selected: PpmlSolverFamily::Lsmr,
                 lsmr_preconditioner: crate::fe::LsmrPreconditioner::Auto,
+                substituted: None,
             };
             let mut report = PpmlSolverReport::new(plan, engine);
             report.enable_lsmr_checkpoint();
@@ -572,6 +590,7 @@ mod tests {
             requested: PpmlSolverFamily::Auto,
             selected: PpmlSolverFamily::Cmg,
             lsmr_preconditioner: crate::fe::LsmrPreconditioner::Auto,
+            substituted: None,
         };
         PpmlSolverReport::new(plan, PpmlSolverEngine::CmgPrepared)
             .validate()

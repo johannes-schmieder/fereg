@@ -2,9 +2,11 @@
 *! One vocabulary in and out. With spec(), parse solver(method [, reduce()
 *! precondition() accelerate() cmg*()]) for fereg or feppml, validate the
 *! combination and map it to the native route tokens of the request wire
-*! (auto map lsmr pcg cmg cmgschur it squarem, with the CG reduction). With
-*! route(), describe one native route row (see
-*! crates/fereg-plugin/src/route_report.rs) in the same words.
+*! (auto map lsmr pcg cmg cmgschur it squarem, with the CG reduction), and
+*! return the requested method, reduction, preconditioner and acceleration.
+*! With route(), describe one native route row (see
+*! crates/fereg-plugin/src/route_report.rs) in the same words, including a
+*! certified fallback's reason.
 program define _fereg_solver, rclass
     version 15.0
     syntax , COMMAND(name) [SPEC(string) ROUTE(name) ROW(integer 1) ///
@@ -186,6 +188,18 @@ program define _fereg_solver, rclass
     local pieces = strtrim(`"`pieces'"')
     if `"`pieces'"' != "" local normalized `"`normalized', `pieces'"'
 
+    // The requested choices in the result vocabulary (unstated: auto; MAP
+    // has no reduction choice or preconditioner).
+    local requested_reduction "`r'"
+    local requested_preconditioner "`p'"
+    if `"`method'"' == "map" {
+        local requested_reduction "full"
+        local requested_preconditioner "none"
+    }
+    return local requested_method `"`method'"'
+    return local requested_reduction "`requested_reduction'"
+    return local requested_preconditioner "`requested_preconditioner'"
+    return local requested_acceleration "`a'"
     return local spec `"`normalized'"'
     return local route "`route'"
     return local reduction "`wire_reduction'"
@@ -197,16 +211,16 @@ end
 
 // Decode one route row: reduction, method, MAP acceleration, preconditioner,
 // five local-solve cells (block: per effect; schwarz: subdomains by local
-// solve), escalations, iterations and fallback.
+// solve), escalations, iterations, fallback and the fallback's reason.
 program define Describe, rclass
     args matrix row labels
     tempname R
     matrix `R' = `matrix'
-    if colsof(`R') < 12 | `row' < 1 | `row' > rowsof(`R') {
+    if colsof(`R') < 13 | `row' < 1 | `row' > rowsof(`R') {
         di as error "fixed-effect route report has an invalid layout"
         exit 3499
     }
-    forvalues column = 1/12 {
+    forvalues column = 1/13 {
         local value = `R'[`row',`column']
         if missing(`value') | `value' != int(`value') | `value' < 0 {
             di as error "fixed-effect route report failed semantic validation"
@@ -217,8 +231,11 @@ program define Describe, rclass
     local method : word `=`R'[`row',2]+1' of none direct map cg lsmr derived
     local acceleration : word `=`R'[`row',3]+1' of none cg irons-tuck squarem
     local preconditioner : word `=`R'[`row',4]+1' of none jacobi block schwarz cmg
+    local fallback_reason : word `=`R'[`row',13]+1' of none unsupported memory ///
+        nonconvergence uncertified
     if `"`reduction'"' == "" | `"`method'"' == "" | `"`acceleration'"' == "" | ///
-       `"`preconditioner'"' == "" | `R'[`row',12] > 1 | ///
+       `"`preconditioner'"' == "" | `R'[`row',12] > 1 | `"`fallback_reason'"' == "" | ///
+       (`R'[`row',12] == 0) != (`R'[`row',13] == 0) | ///
        (`"`acceleration'"' != "none" & `"`method'"' != "map") {
         di as error "fixed-effect route report failed semantic validation"
         exit 3499
@@ -228,13 +245,10 @@ program define Describe, rclass
     forvalues effect = 1/5 {
         local local_code = `R'[`row',`effect'+4]
         if `"`preconditioner'"' == "schwarz" {
-            // Subdomains counted by local solve; the fifth cell is unused.
-            if `effect' == 5 & `local_code' > 0 {
-                di as error "fixed-effect route report failed semantic validation"
-                exit 3499
-            }
+            // Subdomains counted by local solve (jacobi: a slope pair whose
+            // Schur complement is solved by its level blocks).
             if `local_code' > 0 {
-                local solve : word `effect' of trivial dense skyline approximate
+                local solve : word `effect' of trivial dense skyline approximate jacobi
                 local blocks `"`blocks' `solve'=`=strofreal(`local_code', "%12.0f")'"'
                 local subdomains = `subdomains' + `local_code'
             }
@@ -272,4 +286,5 @@ program define Describe, rclass
     return scalar escalations = `R'[`row',10]
     return scalar iterations = `R'[`row',11]
     return scalar fallback = `R'[`row',12]
+    return local fallback_reason "`fallback_reason'"
 end

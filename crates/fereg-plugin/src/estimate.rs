@@ -1278,18 +1278,6 @@ impl EstimateActionSpec {
                 "hidden LSMR iteration Break requires at least two categorical intercept fixed effects",
             ));
         }
-        if self.solver == FeSolverKind::CmgSchur
-            && (request.absorbed_terms.len() != 2
-                || request.absorbed_terms.iter().any(|term| {
-                    !term.intercept
-                        || term.categorical_sources.is_empty()
-                        || !term.slope_sources.is_empty()
-                }))
-        {
-            return Err(unsupported(
-                "solver(cg, reduce(eliminate)) requires exactly two categorical intercept fixed effects",
-            ));
-        }
         let clusters = read_cluster_terms(spi, self.cluster_tables(), &request, None)?;
         validate_vce(self.vce, &clusters, self.account_cluster_nesting)?;
         let categorical = request.absorbed_terms.iter().any(|term| {

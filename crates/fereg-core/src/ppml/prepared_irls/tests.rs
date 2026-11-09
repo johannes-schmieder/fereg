@@ -1657,13 +1657,17 @@ fn cmg_nuisance_batch_memory_is_admitted_before_any_canonical_work() {
         plan,
         None,
     );
-    let error = match result {
-        Ok(_) => panic!("enlarged nuisance pool escaped preflight"),
-        Err(error) => error,
-    };
-    assert_eq!(error.code, ErrorCode::Allocation);
-    assert!(error.message.contains("public PPML FE solver workspace"));
-    assert_eq!(take_canonical_frame_refresh_count(), 0);
+    // The enlarged CMG pool does not fit: the Auto plan serves the fit as the
+    // certified fallback (reason `memory`), and CMG never prepares.
+    let fit = result.expect("the Auto plan serves an explicit CMG fit that does not fit");
+    assert_eq!(
+        fit.diagnostics().solver.requested,
+        super::super::PpmlSolverFamily::Auto
+    );
+    assert_eq!(
+        fit.diagnostics().memory.steps.fallback,
+        crate::fe::FeFallbackReason::Memory
+    );
     assert_eq!(
         super::super::categorical_fwl_cmg::take_route_observation_preparations(),
         0
@@ -5358,16 +5362,23 @@ fn ppml_lsmr_admission_admits_its_exact_estimate_and_refuses_one_byte_less() {
                 repeated = Some(fitted.eta().to_vec());
             }
         }
+        // One byte below the estimate the explicit LSMR workspace is refused:
+        // the Auto plan serves the fit as the certified fallback (`memory`).
         budget.usable_bytes =
             Some(plan.selected_inventory().peak_bytes + admission.incremental_bytes - 1);
-        let error = match fit(budget) {
-            Ok(_) => panic!("plan below the estimate was admitted"),
-            Err(error) => error,
-        };
-        assert_eq!(error.code, ErrorCode::Allocation);
-        assert!(error
-            .message
-            .contains(&format!("solver_workspace={}", admission.incremental_bytes)));
+        assert!(budget
+            .with_solver_workspace(admission.incremental_bytes)
+            .is_err());
+        let fallback = fit(budget).expect("the Auto plan below the LSMR estimate");
+        assert_eq!(
+            fallback.diagnostics().solver.requested,
+            super::super::PpmlSolverFamily::Auto
+        );
+        assert_eq!(
+            fallback.diagnostics().memory.steps.fallback,
+            crate::fe::FeFallbackReason::Memory
+        );
+        assert!(relative_infinity_difference(fallback.eta(), reference.eta()) <= 2e-9);
         references.push(reference.eta().to_vec());
     }
     assert!(relative_infinity_difference(&references[0], &references[1]) <= 2e-9);
@@ -5550,7 +5561,13 @@ fn six_and_seven_effect_fits_run_the_full_system_and_match_the_established_route
             |fit: &PreparedPpmlIrlsFit| fit.diagnostics().memory.final_linear_solve.unwrap().0;
         assert_eq!(route(&full).reduction, crate::fe::FeReduction::Full);
         assert_eq!(route(&full).method, crate::fe::FeMethod::Cg);
-        assert_eq!(route(&established).method, crate::fe::FeMethod::Map);
+        // The established route's coefficient-space kernel eliminates the
+        // largest effect and runs CG on the Schur system.
+        assert_eq!(
+            route(&established).reduction,
+            crate::fe::FeReduction::Eliminate
+        );
+        assert_eq!(route(&established).method, crate::fe::FeMethod::Cg);
         assert!(full.diagnostics().converged && full.diagnostics().final_score.passed);
         assert!(relative_infinity_difference(full.eta(), established.eta()) <= 1e-9);
         let coefficient = |fit: &PreparedPpmlIrlsFit| fit.coefficients()[0].value.unwrap();

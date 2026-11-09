@@ -38,7 +38,7 @@ foreach case in iid_aw iid_fw robust_aw robust_fw robust_pw cluster_aw cluster_f
         assert e(df_r)==oracle_df
         assert abs(e(rss)-oracle_rss)<1e-8*oracle_rss
         assert abs(native_residual-oracle_residual)<1e-7
-        assert "`e(fe_solver)'"=="auto"
+        assert "`e(fe_requested)'"=="auto"
         * Auto serves this design by the exact elimination with Jacobi CG.
         assert "`e(fe_route)'"=="cg, reduce(eliminate) precondition(jacobi)"
         assert e(fe_fallback)==0

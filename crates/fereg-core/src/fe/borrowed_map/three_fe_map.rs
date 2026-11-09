@@ -39,7 +39,10 @@ impl Attempt {
         report.pilot_iterations = self.iterations;
         report.setup_seconds += self.setup_seconds;
         report.solve_seconds += self.solve_seconds;
-        report.fallback_used |= self.iterations > 0;
+        // A pilot that ran and did not certify within its bound.
+        if self.iterations > 0 {
+            report.note_fallback(crate::fe::FeFallbackReason::Nonconvergence);
+        }
         report.solver_workspace_peak = report.solver_workspace_peak.max(self.peak);
     }
 }

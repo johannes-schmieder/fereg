@@ -46,10 +46,15 @@ pub(crate) struct FeSession<'a> {
     /// solver: fedemean's full system first, the generic MAP owner after a
     /// decline.
     pub(crate) full_general: bool,
+    /// An explicit CMG request this design does not support, served by the
+    /// Auto routes as the certified fallback (SPEC §1): the request and why.
+    pub(super) substituted: Option<(super::FeSolverKind, String)>,
 }
 
 mod elimination;
+mod fallback;
 use elimination::block_schur_enabled;
+use fallback::auto_fallback_config;
 mod full_general;
 #[cfg(test)]
 pub(crate) use elimination::starve_full_system_for_test;
@@ -275,6 +280,7 @@ impl Default for FeSession<'_> {
             full_system_used: false,
             ppml_full_system: None,
             full_general: false,
+            substituted: None,
         }
     }
 }
@@ -301,7 +307,7 @@ impl<'a> FeSession<'a> {
         Self::for_ols_rhs(prepared, weights, config, rhs)
     }
 
-    pub(crate) fn for_ols_rhs<P: crate::ols::prepared_fit_view::PreparedOlsFitView + ?Sized>(
+    pub(super) fn for_ols_request<P: crate::ols::prepared_fit_view::PreparedOlsFitView + ?Sized>(
         prepared: &'a P,
         weights: BorrowedMapWeights<'a>,
         mut config: crate::ols::PreparedOlsFitConfig,
@@ -1073,7 +1079,7 @@ impl<'a> FeSession<'a> {
         remaining: Option<ObserverRef<'_>>,
     ) -> Result<CertifiedBorrowedMap> {
         if self.explicit.is_some() {
-            return self.project_explicit(weights, values, config);
+            return self.project_explicit(weights, values, config, (final_residual, dense_norms));
         }
         let (values, fallback) = match self.try_block_schur(weights, values, config)? {
             Ok(result) => return Ok(result),
@@ -1144,8 +1150,8 @@ impl<'a> FeSession<'a> {
         // fallback's coefficients.
         let result = self.block_schur.add_partial_coefficients(result);
         let mut result = self.full_system.add_partial_coefficients(result)?;
-        if let Some(note) = fallback {
-            result.note_fallback(note);
+        if let Some((note, reason)) = fallback {
+            result.note_fallback(note, reason);
         }
         Ok(result)
     }
@@ -1161,6 +1167,10 @@ impl<'a> FeSession<'a> {
         dense_norms: bool,
         remaining: Option<(ObserverRef<'_>, Demand)>,
     ) -> Result<CertifiedBorrowedMap> {
+        let substituted = self.substituted.clone();
+        if substituted.is_some() {
+            config = auto_fallback_config(config);
+        }
         config.validate_cmg_schur_options()?;
         let admission = config;
         if let Some(stored) = self.absorb_config {
@@ -1219,8 +1229,15 @@ impl<'a> FeSession<'a> {
         let norms = result.take_residual_norms();
         let (values, mut report, coefficients) = result.into_full_parts();
         report.requested_solver = config.solver;
-        if config.solver == super::FeSolverKind::CmgSchur {
+        if config.solver == super::FeSolverKind::CmgSchur && !report.fallback_used {
             report.used_solver = super::FeSolverKind::CmgSchur;
+        }
+        if let Some((requested, why)) = substituted {
+            report.requested_solver = requested;
+            report.note_fallback(super::FeFallbackReason::Unsupported);
+            report
+                .warnings
+                .insert(0, format!("the requested route does not serve this design ({why}); the automatic routes ran"));
         }
         // Reusable operations allocate their banks at construction; the session
         // owns the complete bank admission, unlike the standalone MAP API.
@@ -1913,7 +1930,11 @@ pub(crate) struct LegacyFeSession<'a> {
     /// solver: fedemean's full system first, the generic MAP owner after a
     /// decline.
     pub(crate) full_general: bool,
+    /// An explicit CMG request this design does not support, served by the
+    /// Auto routes as the certified fallback (SPEC §1): the request and why.
+    substituted: Option<(super::FeSolverKind, String)>,
 }
+
 #[cfg(test)]
 #[test]
 fn eager_cells_preserve_legacy_owner_and_session_layout() {

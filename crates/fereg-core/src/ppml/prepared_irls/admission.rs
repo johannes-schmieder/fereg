@@ -64,9 +64,47 @@ impl LinearAdmission {
             .finite_columns
             .checked_add(1)
             .ok_or_else(|| allocation("PPML FE solver RHS width overflows"))?;
-        let solver_admission =
-            public_solver_memory_admission(prepared, memory_plan, config, solver_rhs, purpose)?;
-        memory_plan = memory_plan.with_solver_workspace(solver_admission.incremental_bytes)?;
+        // An explicit route whose workspace or design the fit cannot take
+        // runs the Auto plan, reported as the certified fallback (SPEC §1).
+        let explicit = matches!(
+            config.solver_plan.selected,
+            crate::ppml::PpmlSolverFamily::Lsmr | crate::ppml::PpmlSolverFamily::Cmg
+        );
+        let mut solver_admission = match public_solver_memory_admission(
+            prepared,
+            memory_plan,
+            config,
+            solver_rhs,
+            purpose,
+        ) {
+            Err(error) if explicit && error.code == ErrorCode::Unsupported => {
+                config.solver_plan = config
+                    .solver_plan
+                    .substitute(crate::fe::FeFallbackReason::Unsupported);
+                public_solver_memory_admission(prepared, memory_plan, config, solver_rhs, purpose)?
+            }
+            admission => admission?,
+        };
+        memory_plan = match memory_plan.with_solver_workspace(solver_admission.incremental_bytes) {
+            Err(error)
+                if error.code == ErrorCode::Allocation
+                    && config.solver_plan.substituted.is_none()
+                    && explicit =>
+            {
+                config.solver_plan = config
+                    .solver_plan
+                    .substitute(crate::fe::FeFallbackReason::Memory);
+                solver_admission = public_solver_memory_admission(
+                    prepared,
+                    memory_plan,
+                    config,
+                    solver_rhs,
+                    purpose,
+                )?;
+                memory_plan.with_solver_workspace(solver_admission.incremental_bytes)?
+            }
+            plan => plan?,
+        };
         let solver_execution_bytes = memory_plan
             .selected_inventory()
             .peak_bytes

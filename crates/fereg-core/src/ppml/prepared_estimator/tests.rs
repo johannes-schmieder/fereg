@@ -401,34 +401,46 @@ fn count_fit_phase_begins(_phase: PpmlPhase, event: super::super::PpmlPhaseAlloc
     0
 }
 
+/// Explicit LSMR needs two or more effects: a one-effect request runs the
+/// Auto plan from preparation on, as the certified fallback (`unsupported`),
+/// and never constructs the explicit engine.
 #[test]
-fn unsupported_public_solver_topology_fails_before_fit_lifetime_allocation() {
+fn unsupported_public_solver_topology_runs_the_auto_plan() {
     let (mut request, loaded) = fixture(1, true, false, false, false, false);
     request.solver = PpmlSolverFamily::Lsmr;
-    request.phase_allocation_probe = Some(count_fit_phase_begins);
-    FIT_PHASE_BEGINS.store(0, Ordering::SeqCst);
-
-    let error = fit_prepared_ppml(request, loaded).expect_err("one-FE PPML LSMR must fail closed");
-    assert_eq!(error.code, ErrorCode::Unsupported);
-    assert_eq!(error.return_code(), 498);
-    assert!(error.message.contains("at least two"));
+    let fit = fit_prepared_ppml(request, loaded).expect("one-FE PPML LSMR falls back to Auto");
+    assert_eq!(fit.solver().requested, PpmlSolverFamily::Auto);
     assert_eq!(
-        FIT_PHASE_BEGINS.load(Ordering::SeqCst),
-        0,
-        "PPML solver rejection must precede preparation and every publication phase",
+        fit.memory().steps.fallback,
+        crate::fe::FeFallbackReason::Unsupported
     );
+    assert_eq!(fit.solver().engines()[1].ordinary_frames, 0);
+    assert_eq!(fit.solver().engines()[2].ordinary_frames, 0);
 }
 
 #[test]
-fn public_specialized_solvers_reject_memory_low() {
+fn public_specialized_solvers_in_memory_low_fall_back_to_auto() {
+    // Bitwise comparisons hold the shared side of the route switch's lock.
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
+    let (mut auto_request, auto_loaded) = fixture(2, false, false, false, false, false);
+    auto_request.memory.requested = MemoryMode::Low;
+    let auto = fit_prepared_ppml(auto_request, auto_loaded).expect("Auto PPML in low memory");
     for solver in [PpmlSolverFamily::Lsmr, PpmlSolverFamily::Cmg] {
-        let (mut request, _loaded) = fixture(2, false, false, false, false, false);
+        let (mut request, loaded) = fixture(2, false, false, false, false, false);
         request.solver = solver;
         request.memory.requested = MemoryMode::Low;
-        let error = validate_public_solver_request(&request)
-            .expect_err("specialized PPML solvers must reject memory(low)");
-        assert_eq!(error.code, ErrorCode::Unsupported);
-        assert_eq!(error.return_code(), 498);
+        assert!(unsupported_public_solver_request(&request).is_some());
+        let fit = fit_prepared_ppml(request, loaded).expect("certified Auto fallback");
+        assert_eq!(fit.solver().requested, PpmlSolverFamily::Auto);
+        assert_eq!(
+            fit.memory().steps.fallback,
+            crate::fe::FeFallbackReason::Unsupported
+        );
+        assert_eq!(
+            fit.coefficients().values(),
+            auto.coefficients().values(),
+            "{solver:?}"
+        );
     }
 }
 
@@ -561,6 +573,38 @@ fn explicit_lsmr_matches_map_and_reports_its_concrete_engine() {
     }
 }
 
+/// An IRLS step explicit LSMR does not certify (its fixed Jacobi joint
+/// recurrence stalls, and a fixed preconditioner does not hand the step to
+/// the projections) is solved by the canonical session, as are the later
+/// steps: the certified fallback (reason `nonconvergence`, SPEC §1), with
+/// the compiled solver identity still explicit LSMR and the canonical steps
+/// as MAP-engine ordinary frames. The fit matches the MAP oracle.
+#[test]
+fn an_explicit_lsmr_step_that_does_not_certify_falls_back_to_the_canonical_session() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
+    let (baseline_request, baseline_loaded) = fixture(2, false, false, false, false, false);
+    let baseline =
+        fit_prepared_ppml(baseline_request, baseline_loaded).expect("production MAP PPML oracle");
+    let (mut request, loaded) = fixture(2, false, false, false, false, false);
+    request.solver = PpmlSolverFamily::Lsmr;
+    request.lsmr_preconditioner = crate::fe::LsmrPreconditioner::Diagonal;
+    request.memory.requested = MemoryMode::Fast;
+    super::super::categorical_lsmr::force_joint_stall_for_test();
+    let candidate = fit_prepared_ppml(request, loaded).expect("canonical fallback PPML");
+    assert_eq!(candidate.solver().requested, PpmlSolverFamily::Lsmr);
+    assert_eq!(candidate.solver().effective, PpmlSolverFamily::Lsmr);
+    assert_eq!(
+        candidate.memory().steps.fallback,
+        crate::fe::FeFallbackReason::Nonconvergence
+    );
+    assert_ne!(
+        candidate.memory().fallback_mask & (1_u32 << PpmlFallbackKind::Route as u8),
+        0
+    );
+    assert!(candidate.solver().engines()[0].ordinary_frames > 0);
+    assert_ppml_results_close(&candidate, &baseline);
+}
+
 #[test]
 fn zero_active_control_lsmr_uses_joint_state_but_reports_fused_identity() {
     for effects in [2, 3] {
@@ -627,14 +671,24 @@ fn zero_active_control_lsmr_rebuilds_joint_state_after_a_strict_basis_refresh() 
     assert_eq!(candidate.solver().engines()[2].ordinary_frames, 0);
 }
 
+/// Explicit CMG serves two or three effects: four run the Auto plan as the
+/// certified fallback (reason `unsupported`), matching the Auto fit.
 #[test]
-fn public_cmg_rejects_four_fixed_effect_dimensions() {
-    let (mut request, _loaded) = fixture(4, false, false, false, false, false);
+fn public_cmg_on_four_fixed_effect_dimensions_falls_back_to_auto() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
+    let (mut request, loaded) = fixture(4, false, false, false, false, false);
     request.solver = PpmlSolverFamily::Cmg;
-    let error = validate_public_solver_request(&request)
-        .expect_err("public CMG must be limited to two or three FE dimensions");
-    assert_eq!(error.code, ErrorCode::Unsupported);
-    assert!(error.message.contains("exactly two or three"));
+    assert!(unsupported_public_solver_request(&request)
+        .is_some_and(|reason| reason.contains("exactly two or three")));
+    let fit = fit_prepared_ppml(request, loaded).expect("certified Auto fallback");
+    let (auto_request, auto_loaded) = fixture(4, false, false, false, false, false);
+    let auto = fit_prepared_ppml(auto_request, auto_loaded).expect("Auto PPML");
+    assert_eq!(fit.solver().requested, PpmlSolverFamily::Auto);
+    assert_eq!(
+        fit.memory().steps.fallback,
+        crate::fe::FeFallbackReason::Unsupported
+    );
+    assert_eq!(fit.coefficients().values(), auto.coefficients().values());
 }
 
 #[test]
@@ -742,7 +796,7 @@ fn public_cmg_non_numerical_failures_remain_fatal() {
 }
 
 #[test]
-fn public_lsmr_checkpoint_workspace_is_required_before_canonical_work() {
+fn public_lsmr_workspace_beyond_the_limit_runs_the_auto_plan() {
     let (mut request, loaded) = fixture(3, false, false, false, false, false);
     request.solver = PpmlSolverFamily::Lsmr;
     request.memory.requested = MemoryMode::Fast;
@@ -755,11 +809,15 @@ fn public_lsmr_checkpoint_workspace_is_required_before_canonical_work() {
     request.solver = PpmlSolverFamily::Lsmr;
     request.memory.requested = MemoryMode::Fast;
     request.memory.available_bytes = Some(usable + headroom);
-    reset_canonical_frame_refresh_count();
-    let error = fit_prepared_ppml(request, loaded).expect_err("full solver peak must fit");
-    assert_eq!(error.code, ErrorCode::Allocation);
-    assert!(error.message.contains("public PPML FE solver workspace"));
-    assert_eq!(take_canonical_frame_refresh_count(), 0);
+    // The explicit engine's workspace does not fit beside the checkpoint:
+    // the Auto plan serves the fit as the certified fallback (`memory`).
+    let fallback = fit_prepared_ppml(request, loaded).expect("the Auto plan below the LSMR peak");
+    assert_eq!(fallback.solver().requested, PpmlSolverFamily::Auto);
+    assert_eq!(
+        fallback.memory().steps.fallback,
+        crate::fe::FeFallbackReason::Memory
+    );
+    assert_eq!(fallback.solver().engines()[2].ordinary_frames, 0);
 }
 
 #[test]
@@ -824,7 +882,7 @@ fn public_ppml_rejects_cmg_sampling_before_preparation_or_policy_replacement() {
 }
 
 #[test]
-fn public_cmg_intermediate_budget_rejection_precedes_route_observation_preparation() {
+fn public_cmg_intermediate_budget_falls_back_before_route_observation_preparation() {
     let (mut admitted_request, admitted_loaded) = fixture(2, false, false, false, false, false);
     admitted_request.solver = PpmlSolverFamily::Cmg;
     admitted_request.memory.requested = MemoryMode::Fast;
@@ -854,10 +912,15 @@ fn public_cmg_intermediate_budget_rejection_precedes_route_observation_preparati
     request.memory.requested = MemoryMode::Fast;
     request.memory.available_bytes = Some(available);
     super::super::categorical_fwl_cmg::take_route_observation_preparations();
-    let error = fit_prepared_ppml(request, loaded)
-        .expect_err("a topology-only CMG budget must fail before route preparation");
-    assert_eq!(error.code, ErrorCode::Allocation);
-    assert!(error.message.contains("public PPML FE solver workspace"));
+    // CMG's workspace does not fit: the Auto plan serves the fit as the
+    // certified fallback (reason `memory`), and CMG never prepares.
+    let fallback = fit_prepared_ppml(request, loaded)
+        .expect("a topology-only CMG budget falls back to the Auto plan");
+    assert_eq!(fallback.solver().requested, PpmlSolverFamily::Auto);
+    assert_eq!(
+        fallback.memory().steps.fallback,
+        crate::fe::FeFallbackReason::Memory
+    );
     assert_eq!(
         super::super::categorical_fwl_cmg::take_route_observation_preparations(),
         0,

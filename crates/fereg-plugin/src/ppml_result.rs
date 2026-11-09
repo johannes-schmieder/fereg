@@ -1,10 +1,12 @@
 use crate::model_metadata::{checked_product, reserved_filled};
 use fereg_core::error::{allocation, ErrorCode, FeregError, Result};
+use fereg_core::fe::FeFallbackReason;
 use fereg_core::ppml::{
     CertifiedPpmlResult, PpmlAllocatorSnapshot, PpmlClusterDimensionResult, PpmlCoefficientStatus,
     PpmlDofReport, PpmlFixedEffectChannelKind, PpmlFixedEffectResult, PpmlMemoryRoute,
-    PpmlPredictionKind, PpmlPsdState, PpmlResidualKind, PpmlTestDistribution, PpmlVceKind,
-    PpmlVceRequest, PpmlVceResult, PreparedPpmlAdjustmentKind, PPML_PHASES,
+    PpmlPredictionKind, PpmlPsdState, PpmlResidualKind, PpmlSolverFallbackReason,
+    PpmlTestDistribution, PpmlVceKind, PpmlVceRequest, PpmlVceResult, PreparedPpmlAdjustmentKind,
+    PPML_PHASES,
 };
 use fereg_core::ppml_separation::{
     MethodStatus, SeparationCertificateProof, SeparationMethod, SeparationMethods, SeparationReport,
@@ -793,29 +795,77 @@ fn build_solver_shadow(result: &CertifiedPpmlResult) -> Result<Vec<f64>> {
     Ok(output)
 }
 
-/// The final certified linear solve's route. A plain MAP solve of a single
-/// intercept channel is reported as the direct projection it is.
+/// Rows of the PPML route shadow: the requested route's IRLS steps, then the
+/// final certified linear solve.
+pub(crate) const ROUTE_ROWS: usize = 2;
+/// The route row ([`crate::route_report`]) and, on the steps row, explicit
+/// LSMR's joint frames, FWL frames and joint-to-FWL hand-offs.
+pub(crate) const ROUTE_SHADOW_COLUMNS: usize = crate::route_report::ROUTE_COLUMNS + 3;
+
+/// The PPML route shadow (2 x 16, row-major). Row 1: the route that solved
+/// the IRLS steps (explicit LSMR or CMG: that engine over its certified
+/// frames; otherwise, or when the request fell back before its first frame,
+/// the final solve's route), with the certified fallback of the fit (an
+/// explicit request served by Auto or the canonical frames, a CMG or strict
+/// checkpoint accelerator fallback) and LSMR's formulation counts. Row 2:
+/// the final certified linear solve with its own fallback. A plain MAP solve
+/// of a single intercept channel is reported as the direct projection it is.
 fn build_route_shadow(result: &CertifiedPpmlResult) -> Result<Vec<f64>> {
-    let (route, iterations) = result
-        .memory()
+    let memory = result.memory();
+    let (final_route, final_iterations, final_fallback) = memory
         .final_linear_solve
         .ok_or_else(|| invalid("certified PPML result lacks its final linear route"))?;
-    let mut output = reserved_filled(crate::route_report::ROUTE_COLUMNS, 0.0, "PPML route shadow")?;
+    let mut output = reserved_filled(
+        checked_product(ROUTE_ROWS, ROUTE_SHADOW_COLUMNS, "PPML route shadow")?,
+        0.0,
+        "PPML route shadow",
+    )?;
     let single_intercept = matches!(
         result.fixed_effects(),
         [effect] if effect.kind == PpmlFixedEffectChannelKind::Intercept
     ) || result.fixed_effects().is_empty();
-    crate::route_report::write_route(
-        &mut output,
-        crate::route_report::RouteRow {
-            route,
-            iterations,
-            fallback: false,
-            single_intercept,
-            map_requested: false,
-        },
-    )?;
-    crate::route_report::validate_route(&output)?;
+    let checkpoint = match result.solver().fallback_reason {
+        PpmlSolverFallbackReason::CheckpointLsmrNumericalNonconvergence
+        | PpmlSolverFallbackReason::CmgAndCheckpointNumericalNonconvergence => {
+            FeFallbackReason::Nonconvergence
+        }
+        _ => FeFallbackReason::None,
+    };
+    let steps = memory.steps;
+    let (route, iterations) = steps.route.unwrap_or((final_route, final_iterations));
+    let fallback = steps.fallback.or(checkpoint).or(if steps.route.is_none() {
+        final_fallback
+    } else {
+        FeFallbackReason::None
+    });
+    for (row, (route, iterations, fallback)) in [
+        (route, iterations, fallback),
+        (final_route, final_iterations, final_fallback),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let start = row * ROUTE_SHADOW_COLUMNS;
+        let end = start + crate::route_report::ROUTE_COLUMNS;
+        crate::route_report::write_route(
+            &mut output[start..end],
+            crate::route_report::RouteRow {
+                route,
+                iterations,
+                fallback,
+                single_intercept,
+                map_requested: false,
+            },
+        )?;
+        crate::route_report::validate_route(&output[start..end])?;
+    }
+    let formulation = crate::route_report::ROUTE_COLUMNS;
+    for (offset, count) in [steps.joint_frames, steps.fwl_frames, steps.handoffs]
+        .into_iter()
+        .enumerate()
+    {
+        output[formulation + offset] = exact_count(count, "PPML LSMR frame count")?;
+    }
     Ok(output)
 }
 

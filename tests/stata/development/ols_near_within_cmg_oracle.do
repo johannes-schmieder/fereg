@@ -46,7 +46,7 @@ foreach kind in unit aw fw pw {
                 assert e(df_r)==oracle_df
                 if "`solver'"=="cg" {
                     * CMG, or its certified CG-accelerated MAP fallback.
-                    assert "`e(fe_solver)'"=="cg, precondition(cmg)"
+                    assert "`e(fe_requested)'"=="cg, precondition(cmg)"
                     assert inlist("`e(fe_route)'", ///
                         "cg, reduce(full) precondition(cmg)", "map, accelerate(cg)")
                     if "`e(fe_route)'"=="map, accelerate(cg)" {

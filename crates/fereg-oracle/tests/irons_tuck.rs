@@ -3,8 +3,8 @@
 mod support;
 
 use fereg_core::{
-    fit_prepared_model_coefficients, prepare_model, CertifiedPreparedOlsFit, ErrorCode,
-    FeSolverKind, PreparedOlsExecutionMode, PreparedOlsFitConfig, ThreadConfig,
+    fit_prepared_model_coefficients, prepare_model, CertifiedPreparedOlsFit, FeSolverKind,
+    PreparedOlsExecutionMode, PreparedOlsFitConfig, ThreadConfig,
 };
 use fereg_oracle::compare::{COEFFICIENT, INFERENCE, PREDICTION};
 use fereg_oracle::designs::{Design, WeightKind};
@@ -237,8 +237,11 @@ fn categorical_it_multiple_rhs_disconnected_weights_match_dense_qr_and_repeat() 
     }
 }
 
+/// Slope IT stays certified with saved effects; explicit CMG and CMG-Schur
+/// do not serve absorbed slopes, so the Auto routes certify the fit as the
+/// fallback with the reason `unsupported` (SPEC §1).
 #[test]
-fn generic_slope_it_remains_certified_and_explicit_cmg_stays_unsupported() {
+fn generic_slope_it_remains_certified_and_explicit_cmg_falls_back() {
     let design = disconnected_design(2, true);
     let (problem, _) = design.oracle_problem(false).unwrap();
     let oracle = fit_explicit_ols(&problem).unwrap();
@@ -251,7 +254,19 @@ fn generic_slope_it_remains_certified_and_explicit_cmg_stays_unsupported() {
     for solver in [FeSolverKind::Cmg, FeSolverKind::CmgSchur] {
         let mut config = config(PreparedOlsExecutionMode::Fast, 1);
         config.absorb.solver = solver;
-        let error = support::native_fit(&design, config, false).unwrap_err();
-        assert_eq!(error.code, ErrorCode::Unsupported);
+        let (fit, _) = support::native_fit(&design, config, false).unwrap();
+        let report = fit.absorption_report();
+        assert!(report.certified() && report.fallback_used, "{solver:?}");
+        assert_eq!(report.requested_solver, solver);
+        assert_eq!(
+            report.fallback_reason,
+            fereg_core::FeFallbackReason::Unsupported
+        );
+        COEFFICIENT
+            .check(
+                fit.coefficients()[0].value.unwrap(),
+                oracle.coefficients[0].unwrap(),
+            )
+            .unwrap_or_else(|e| panic!("{solver:?}: {e}"));
     }
 }

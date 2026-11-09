@@ -1139,17 +1139,22 @@ impl ReusableMapAbsorber {
                 "slope coefficient residual failed independent certification",
             ));
         }
-        let result = CertifiedBorrowedMap::from_certified_parts(
-            values,
-            reusable_map_report(
-                SolveStopReason::Certified,
-                iterations,
-                certificate,
-                setup_seconds,
-                solve_started.elapsed().as_secs_f64(),
-            ),
-        )?;
-        Ok(result)
+        let mut report = reusable_map_report(
+            SolveStopReason::Certified,
+            iterations,
+            certificate,
+            setup_seconds,
+            solve_started.elapsed().as_secs_f64(),
+        );
+        // The largest partition is eliminated exactly and CG solves the
+        // Schur system in each level's orthonormal channel basis: the
+        // levels' channel blocks precondition it (`jacobi` with slopes).
+        report.set_route(super::FeRoute::new(
+            super::FeReduction::Eliminate,
+            super::FeMethod::Cg,
+            super::FePreconditioner::Jacobi,
+        ));
+        CertifiedBorrowedMap::from_certified_parts(values, report)
     }
 
     fn project_structural_constant(

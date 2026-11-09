@@ -42,7 +42,7 @@ pub use memory::{
     PpmlMemoryPlan, PpmlMemoryPreflightEvent, PpmlMemoryPreflightObservation,
     PpmlMemoryPreflightProbe, PpmlMemoryRoute, PpmlMemoryTelemetry, PpmlPhase,
     PpmlPhaseAllocatorEvent, PpmlPhaseAllocatorProbe, PpmlPhaseClock, PpmlPhaseTimings,
-    PpmlSteadyStateAllocationCertificate, PpmlSteadyStateAllocationObservation,
+    PpmlSteadyStateAllocationCertificate, PpmlSteadyStateAllocationObservation, PpmlStepRoute,
     PpmlWorkspaceCapacityReport, PPML_PHASES, PPML_PHASE_COUNT, PPML_STEADY_STATE_AUDIT_ITERATIONS,
 };
 pub use metadata_memory::PpmlMetadataMemory;

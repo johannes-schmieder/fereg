@@ -1461,7 +1461,8 @@ fn validate_shadow(
             != SEPARATION_SEQUENCE_ROWS.saturating_mul(SEPARATION_SEQUENCE_COLUMNS)
         || shadow.certificates.len() != CERTIFICATE_ROWS
         || shadow.solver.len() != SOLVER_ROWS.saturating_mul(SOLVER_COLUMNS)
-        || shadow.route.len() != crate::route_report::ROUTE_COLUMNS
+        || shadow.route.len()
+            != crate::ppml_result::ROUTE_ROWS * crate::ppml_result::ROUTE_SHADOW_COLUMNS
         || shadow.runtime.len() != RUNTIME_ROWS
         || shadow.drop_reasons.len() != shadow.receipt[6] as usize
         || shadow.retained_original_rows.len() != shadow.receipt[8] as usize
@@ -1520,8 +1521,8 @@ fn validate_shadow(
         || action.matrices.certificates.columns() != 1
         || action.matrices.solver.rows() != SOLVER_ROWS
         || action.matrices.solver.columns() != SOLVER_COLUMNS
-        || action.matrices.route.rows() != 1
-        || action.matrices.route.columns() != crate::route_report::ROUTE_COLUMNS
+        || action.matrices.route.rows() != crate::ppml_result::ROUTE_ROWS
+        || action.matrices.route.columns() != crate::ppml_result::ROUTE_SHADOW_COLUMNS
         || action.matrices.runtime.rows() != RUNTIME_ROWS
         || action.matrices.runtime.columns() != 1
         || action.matrices.receipt.rows() != 1
@@ -1664,8 +1665,20 @@ fn validate_solver_evidence(
     action: &EstimatePpmlAction,
     shadow: &PpmlShadowResult<'_>,
 ) -> Result<()> {
-    let expected_requested = f64::from(action.solver.code());
-    let expected_selected = if action.solver == PpmlSolverFamily::Auto {
+    // An explicit request its route could not serve ran the Auto plan from
+    // preparation on (SPEC §1): the route shadow's steps row reports that
+    // certified fallback with the reason unsupported or memory.
+    let substituted = action.solver != PpmlSolverFamily::Auto
+        && shadow.solver[0] == f64::from(PpmlSolverFamily::Auto.code())
+        && shadow.route.get(11) == Some(&1.0)
+        && matches!(shadow.route.get(12), Some(&1.0 | &2.0));
+    let requested = if substituted {
+        PpmlSolverFamily::Auto
+    } else {
+        action.solver
+    };
+    let expected_requested = f64::from(requested.code());
+    let expected_selected = if requested == PpmlSolverFamily::Auto {
         let selected = shadow.solver[1];
         // Automatic estimation uses the common structural projection family.
         // A canonical checkpoint records its independent numerical operation;
@@ -1677,7 +1690,7 @@ fn validate_solver_evidence(
         }
         selected
     } else {
-        f64::from(action.solver.code())
+        f64::from(requested.code())
     };
     let selected_engine = shadow.solver[2];
     let cmg_start = 3 * SOLVER_COLUMNS;
@@ -2443,8 +2456,8 @@ fn store_shadow_prefix(
         ),
         (
             &action.matrices.route,
-            1,
-            crate::route_report::ROUTE_COLUMNS,
+            crate::ppml_result::ROUTE_ROWS,
+            crate::ppml_result::ROUTE_SHADOW_COLUMNS,
             &shadow.route[..],
         ),
     ] {
@@ -2724,8 +2737,8 @@ fn validate_matrix_layout(
         solver: PreparedMatrixStoreName::try_new(&matrices.solver, SOLVER_ROWS, SOLVER_COLUMNS)?,
         route: PreparedMatrixStoreName::try_new(
             &matrices.route,
-            1,
-            crate::route_report::ROUTE_COLUMNS,
+            crate::ppml_result::ROUTE_ROWS,
+            crate::ppml_result::ROUTE_SHADOW_COLUMNS,
         )?,
         memory_report: PreparedMatrixStoreName::try_new(&matrices.memory_report, MEMORY_ROWS, 2)?,
         runtime: PreparedMatrixStoreName::try_new(&matrices.runtime, RUNTIME_ROWS, 1)?,

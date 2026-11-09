@@ -29,7 +29,7 @@ foreach pool in 1 5 10 {
     * without fallback; FEREG_BLOCK_SCHUR=0 restores the LSMR session.
     * Native fault-plan tests cover fallback aggregation, and
     * ols_near_within_cmg_oracle.do covers the published fallback report.
-    assert "`e(fe_solver)'" == "auto"
+    assert "`e(fe_requested)'" == "auto"
     foreach phase in fe_ fe_residual_ {
         assert "`e(`phase'route)'" == "cg, reduce(eliminate) precondition(jacobi)"
         assert e(`phase'fallback) == 0 & e(`phase'escalations) == 0

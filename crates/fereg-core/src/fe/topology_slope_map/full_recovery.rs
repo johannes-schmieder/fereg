@@ -103,7 +103,7 @@ pub(crate) struct FullRecovery<'a> {
 }
 
 /// Recover saved effects with fedemean's full system (PCG with the levels'
-/// channel blocks, escalating to the hybrid Schwarz), from the retained
+/// channel blocks, escalating to the pair-subdomain Schwarz), from the retained
 /// coefficients or zero, at `config.tolerance` within `config.max_iterations`
 /// and requesting the coefficients. They are re-expressed in fereg's
 /// representative on singular slope levels, normalized per SPEC §5, and the
@@ -203,7 +203,7 @@ pub(crate) fn recover_finalized_full_certified(
 }
 
 /// Project `target` with fedemean's full system (PCG with the levels'
-/// channel blocks, escalating to the hybrid Schwarz) from `start` or zero,
+/// channel blocks, escalating to the pair-subdomain Schwarz) from `start` or zero,
 /// adding the fitted coefficients; a decline is a nonconvergence. Returns the
 /// iterations and fedemean's workspace bytes.
 fn project_target(

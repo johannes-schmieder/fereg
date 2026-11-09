@@ -80,6 +80,76 @@ pub enum LsmrPreconditioner {
     Schwarz,
 }
 
+/// Why a certified fallback route finished a projection (SPEC §1): the
+/// selected route could not serve the request.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum FeFallbackReason {
+    /// No fallback: the selected route produced the result.
+    #[default]
+    None,
+    /// The route does not serve this design or request (for example
+    /// `reduce(eliminate)` outside two to five effects).
+    Unsupported,
+    /// The route's workspace exceeds the memory limit.
+    Memory,
+    /// The route stalled, broke down or exhausted its share of the budget.
+    Nonconvergence,
+    /// The route finished but missed the independent certificate.
+    Uncertified,
+}
+
+impl FeFallbackReason {
+    /// The reason of a fedemean decline. Weight and shape declines are input
+    /// errors, never retried; callers map them to errors before this.
+    #[must_use]
+    pub(crate) fn from_decline(decline: fedemean::Decline) -> Self {
+        match decline {
+            fedemean::Decline::MemoryLimit => Self::Memory,
+            fedemean::Decline::OutsideRoute => Self::Unsupported,
+            fedemean::Decline::Numerical(reason) if reason.contains("certificate") => {
+                Self::Uncertified
+            }
+            _ => Self::Nonconvergence,
+        }
+    }
+
+    /// The reason of an error that ends a route the caller may replace: an
+    /// unsupported design or choice, a memory refusal or a numerical miss.
+    /// `None`: an input error, an interruption or a failure that no other
+    /// route may hide.
+    #[must_use]
+    pub(crate) fn from_error(error: &crate::error::FeregError) -> Option<Self> {
+        use crate::error::ErrorCode as C;
+        match error.code {
+            C::Unsupported => Some(Self::Unsupported),
+            C::Allocation => Some(Self::Memory),
+            C::NonConvergence => Some(Self::Nonconvergence),
+            _ => None,
+        }
+    }
+
+    /// The public word (`e(fe_fallback_reason)`).
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::None => "none",
+            Self::Unsupported => "unsupported",
+            Self::Memory => "memory",
+            Self::Nonconvergence => "nonconvergence",
+            Self::Uncertified => "uncertified",
+        }
+    }
+
+    /// The first reason that is not `None`.
+    #[must_use]
+    pub const fn or(self, other: Self) -> Self {
+        match self {
+            Self::None => other,
+            reason => reason,
+        }
+    }
+}
+
 /// Why a fixed-effect absorption run stopped.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SolveStopReason {
@@ -163,6 +233,10 @@ pub struct FeSchwarzSolves {
     pub skyline: u32,
     /// Approximate Cholesky factorization.
     pub approximate: u32,
+    /// A pair with slope channels whose smaller side is too large for the
+    /// exact dense Schur solve: the Schur complement's level blocks inverted
+    /// (block Jacobi on the smaller side).
+    pub jacobi: u32,
 }
 
 impl FeSchwarzSolves {
@@ -173,6 +247,7 @@ impl FeSchwarzSolves {
             .saturating_add(self.dense)
             .saturating_add(self.skyline)
             .saturating_add(self.approximate)
+            .saturating_add(self.jacobi)
     }
 
     /// The larger count of each kind.
@@ -183,6 +258,7 @@ impl FeSchwarzSolves {
             dense: self.dense.max(other.dense),
             skyline: self.skyline.max(other.skyline),
             approximate: self.approximate.max(other.approximate),
+            jacobi: self.jacobi.max(other.jacobi),
         }
     }
 }
@@ -350,8 +426,11 @@ pub struct SolveReport {
     pub solve_seconds: f64,
     /// Independently recomputed certificate wall time in seconds.
     pub certification_seconds: f64,
-    /// Whether `Auto` abandoned its first choice and certified the other path.
+    /// Whether a certified fallback route finished the projection after the
+    /// selected route could not serve it.
     pub fallback_used: bool,
+    /// Why, when `fallback_used` (see [`SolveReport::note_fallback`]).
+    pub fallback_reason: FeFallbackReason,
     /// Requested LSMR preconditioner, or `None` for non-LSMR routes.
     pub requested_preconditioner: Option<LsmrPreconditioner>,
     /// Effective LSMR preconditioner, or `None` for non-LSMR routes.
@@ -438,12 +517,32 @@ impl SolveReport {
             solve_seconds: 0.0,
             certification_seconds: 0.0,
             fallback_used: false,
+            fallback_reason: FeFallbackReason::None,
             requested_preconditioner: None,
             used_preconditioner: None,
             pilot_iterations: 0,
             pilot_contraction: 0.0,
             warnings: Vec::new(),
             route_tag: None,
+        }
+    }
+
+    /// Record that a certified fallback finished this projection, keeping
+    /// the first reason recorded.
+    pub(crate) fn note_fallback(&mut self, reason: FeFallbackReason) {
+        self.fallback_used = true;
+        self.fallback_reason = self.fallback_reason.or(reason);
+    }
+
+    /// The fallback reason the report shows: the recorded one, or, for a
+    /// fallback recorded without one, `Nonconvergence` (every such producer
+    /// continues after its route did not certify).
+    #[must_use]
+    pub fn reported_fallback_reason(&self) -> FeFallbackReason {
+        if self.fallback_used {
+            self.fallback_reason.or(FeFallbackReason::Nonconvergence)
+        } else {
+            FeFallbackReason::None
         }
     }
 

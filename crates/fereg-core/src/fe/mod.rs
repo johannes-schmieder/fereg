@@ -50,8 +50,8 @@ pub(crate) use topology_slope_map::CategoricalRecoveryMethod;
 mod topology_source;
 
 pub use accelerated_map::absorb_accelerated_map;
+pub(crate) use auto::elimination_request;
 pub use auto::{absorb_fixed_effects, AbsorbConfig};
-pub(crate) use auto::{elimination_request, pcg_intercepts_only};
 #[cfg(test)]
 pub(crate) use borrowed_map::derived_residual::inject_derived_certificate_failure_once;
 pub(crate) use borrowed_map::{
@@ -98,9 +98,9 @@ pub use partition_validation::validate_categorical_partition;
 pub(crate) use projection::ParallelProjectionPlan;
 pub use projection::ProjectionWorkspace;
 pub use report::{
-    FeAcceleration, FeLocalSolve, FeMethod, FePreconditioner, FeReduction, FeRoute, FeRouteTag,
-    FeSchwarzSolves, FeSolverKind, LsmrPreconditioner, PcgPreconditioner, PcgReduction, PcgRequest,
-    SolveReport, SolveStopReason, FE_ROUTE_MAX_EFFECTS,
+    FeAcceleration, FeFallbackReason, FeLocalSolve, FeMethod, FePreconditioner, FeReduction,
+    FeRoute, FeRouteTag, FeSchwarzSolves, FeSolverKind, LsmrPreconditioner, PcgPreconditioner,
+    PcgReduction, PcgRequest, SolveReport, SolveStopReason, FE_ROUTE_MAX_EFFECTS,
 };
 pub use routing::{CategoricalPrefix, RoutingPreset};
 #[doc(hidden)]

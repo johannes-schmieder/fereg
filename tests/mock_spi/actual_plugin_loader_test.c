@@ -30,7 +30,7 @@ static ST_double result_marker_b[1][2];
 static ST_double result_marker_v[2][2];
 static ST_double result_fit[12][2];
 static ST_double result_dof[20][2];
-static ST_double result_solver[2][21];
+static ST_double result_solver[2][22];
 static ST_double result_fe[1][8];
 static ST_double result_cluster[1][4];
 static ST_double result_subset[1][4];
@@ -104,7 +104,7 @@ static ST_double *mock_result_matrix(char *name, ST_int *rows, ST_int *columns)
         *rows = 20; *columns = 2; return &result_dof[0][0];
     }
     if (strcmp(name, "RSOLVER") == 0) {
-        *rows = 2; *columns = 21; return &result_solver[0][0];
+        *rows = 2; *columns = 22; return &result_solver[0][0];
     }
     if (strcmp(name, "RFE") == 0) {
         *rows = 1; *columns = 8; return &result_fe[0][0];
@@ -396,8 +396,8 @@ static int check_selftest_verbose(stata_call_function call, int threads)
     if (strstr(display_buffer, "fereg.plugin_version=0.5.3") == NULL ||
         strstr(display_buffer, "fereg.action_protocol=1.7") == NULL ||
         strstr(display_buffer, "fereg.model_wire=2.1") == NULL ||
-        strstr(display_buffer, "fereg.ols_result_wire=1.6") == NULL ||
-        strstr(display_buffer, "fereg.ppml_request_wire=1.9") == NULL ||
+        strstr(display_buffer, "fereg.ols_result_wire=1.7") == NULL ||
+        strstr(display_buffer, "fereg.ppml_request_wire=1.10") == NULL ||
         strstr(display_buffer, "fereg.ppml_result_wire=1.5") == NULL ||
         error_buffer[0] != '\0') {
         return 2;
@@ -1034,7 +1034,7 @@ static ST_int call_estimate_ols_test(stata_call_function call, ST_int candidate_
         "confirm=fereg-estimation",
         "plugin=0.5.3",
         "result_major=1",
-        "result_minor=6",
+        "result_minor=7",
         "model_major=2",
         "model_minor=1",
         "source_matrix=S",
@@ -1117,7 +1117,7 @@ static int check_estimate_ols_atomic_store(stata_call_function call)
         result_receipt[0][15] != 1.0 || !last_store_was_complete) {
         return 2;
     }
-    if (output_store_calls != 314) return 3;
+    if (output_store_calls != 316) return 3;
     for (name_index = 0; name_index < 15; ++name_index) {
         if (prepared_store_name_pointers[name_index] == NULL) return 8;
     }
@@ -1126,7 +1126,7 @@ static int check_estimate_ols_atomic_store(stata_call_function call)
         return 4;
     }
 
-    for (ordinal = 1; ordinal <= 314; ++ordinal) {
+    for (ordinal = 1; ordinal <= 316; ++ordinal) {
         reset_estimate_outputs();
         fail_output_store_at = ordinal;
         clear_output();

@@ -444,3 +444,92 @@ fn seventeen_channels_run_on_fedemean_against_the_explicit_design() {
         }
     }
 }
+
+/// Explicit `solver(cg, reduce() precondition())` on slope designs runs
+/// fedemean's PCG with the requested reduction and preconditioner against
+/// the explicit-design QR: the full system with none, Jacobi (each level's
+/// channel blocks) or Schwarz (pair subdomains), and the elimination for two
+/// effects. A choice fedemean does not take on the design (the elimination
+/// of three effects, block-Jacobi with slopes) continues on Auto's certified
+/// full-system PCG, reported as the fallback with the reason `unsupported`.
+#[test]
+fn explicit_cg_on_slope_designs_matches_the_explicit_design() {
+    use fereg_core::{
+        FeFallbackReason, FeMethod, FePreconditioner as Used, FeReduction, PcgPreconditioner as P,
+        PcgReduction as R, PcgRequest,
+    };
+    let requests = [
+        (R::Auto, P::Auto),
+        (R::Auto, P::Jacobi),
+        (R::Auto, P::None),
+        (R::Auto, P::Schwarz),
+        (R::Auto, P::Block),
+        (R::Full, P::Auto),
+        (R::Full, P::None),
+        (R::Full, P::Jacobi),
+        (R::Full, P::Schwarz),
+        (R::Eliminate, P::Auto),
+        (R::Eliminate, P::Jacobi),
+        (R::Eliminate, P::Block),
+    ];
+    for shape in [
+        Shape::FirmSlope,
+        Shape::WorkerSlope,
+        Shape::ThreeWay,
+        Shape::SlopeOnly,
+    ] {
+        for weighted in [false, true] {
+            let design = panel(shape, weighted);
+            let prepared = prepared(&design);
+            let effects = design.effects.len();
+            for (reduction, preconditioner) in requests {
+                let context =
+                    format!("{shape:?} weighted={weighted} {reduction:?} {preconditioner:?}");
+                let mut config = config(FeSolverKind::Pcg, LsmrPreconditioner::Auto, 4);
+                config.absorb.pcg = PcgRequest {
+                    reduction,
+                    preconditioner,
+                };
+                let fit = fit_prepared_model_coefficients(&prepared, config)
+                    .unwrap_or_else(|e| panic!("{context}: {e}"));
+                let report = fit.absorption_report();
+                assert!(report.certified(), "{context}");
+                assert_eq!(report.requested_solver, FeSolverKind::Pcg, "{context}");
+                check_against_oracle(&design, &fit, &context);
+                let route = report.route();
+                assert_eq!(route.method, FeMethod::Cg, "{context}");
+                let unsupported =
+                    preconditioner == P::Block || (reduction == R::Eliminate && effects != 2);
+                assert_eq!(report.fallback_used, unsupported, "{context}");
+                if unsupported {
+                    assert_eq!(
+                        report.fallback_reason,
+                        FeFallbackReason::Unsupported,
+                        "{context}"
+                    );
+                    assert_eq!(route.reduction, FeReduction::Full, "{context}");
+                    continue;
+                }
+                let eliminated = reduction == R::Eliminate
+                    || (reduction == R::Auto
+                        && effects == 2
+                        && matches!(preconditioner, P::Auto | P::Jacobi));
+                let expected = if eliminated {
+                    FeReduction::Eliminate
+                } else {
+                    FeReduction::Full
+                };
+                assert_eq!(route.reduction, expected, "{context}");
+                match preconditioner {
+                    P::None => assert_eq!(route.preconditioner, Used::None, "{context}"),
+                    P::Jacobi => assert_eq!(route.preconditioner, Used::Jacobi, "{context}"),
+                    P::Schwarz => assert!(
+                        matches!(route.preconditioner, Used::Schwarz(_)),
+                        "{context}"
+                    ),
+                    _ => {}
+                }
+            }
+        }
+    }
+}

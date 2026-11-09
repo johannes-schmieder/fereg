@@ -10,17 +10,26 @@ use crate::fe::{BorrowedMapWeights, CertifiedBorrowedMap, MapConfig, MapGeometry
 
 impl FeSession<'_> {
     /// An explicit request on the session's owned design. Explicit modified
-    /// LSMR runs fedemean's full system (and returns its coefficients when
-    /// retained), with the established within and MAP routes for a fit it
-    /// does not certify; the other explicit requests keep their routes.
+    /// LSMR and CG (other than CMG) run fedemean (and return its coefficients
+    /// when retained), with the certified fallbacks of
+    /// [`crate::fe::auto::absorb_explicit_fedemean`] for a request it cannot
+    /// serve; the other explicit requests keep their routes.
     pub(super) fn project_owned(
         &mut self,
         mut values: DenseMatrix,
         config: crate::fe::AbsorbConfig,
     ) -> Result<CertifiedBorrowedMap> {
         let design = self.owned.as_ref().expect("owned FE binding");
-        let (mut report, coefficients) = if config.solver == crate::fe::FeSolverKind::Lsmr {
-            crate::fe::auto::absorb_explicit_lsmr(design, &self.normalized, &mut values, config)?
+        let (mut report, coefficients) = if matches!(
+            config.solver,
+            crate::fe::FeSolverKind::Lsmr | crate::fe::FeSolverKind::Pcg
+        ) {
+            crate::fe::auto::absorb_explicit_fedemean(
+                design,
+                &self.normalized,
+                &mut values,
+                config,
+            )?
         } else {
             (
                 crate::fe::absorb_fixed_effects(design, &self.normalized, &mut values, config)?,
@@ -42,8 +51,8 @@ impl FeSession<'_> {
     }
 
     /// OLS Auto on an owned slope design: fedemean's full system (PCG with
-    /// the levels' channel blocks, escalating to the hybrid Schwarz when slow
-    /// or stalled) within half the iteration budget, certified by the
+    /// the levels' channel blocks, escalating to the pair-subdomain Schwarz
+    /// when slow or stalled) within half the iteration budget, certified by the
     /// generic owner's independent certificate; a decline (or a residual
     /// that misses after one correction) continues with the owner's MAP,
     /// reported as the fallback. Retained coefficients come from fedemean's
@@ -113,6 +122,7 @@ impl FeSession<'_> {
                     } => crate::fe::map::ExternalProjection::Declined {
                         iterations,
                         reason: crate::fe::fedemean_slope::describe(reason),
+                        fallback: crate::fe::FeFallbackReason::from_decline(reason),
                     },
                     crate::fe::fedemean_slope::Outcome::Ineligible(_) => {
                         crate::fe::map::ExternalProjection::Ineligible

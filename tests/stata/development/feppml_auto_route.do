@@ -37,7 +37,7 @@ foreach effects in 1 2 3 {
             generate byte explicit_sample = e(sample)
             quietly feppml y `controls' [fw=w], absorb(`absorb') offset(off) ///
                 vce(robust) separation(none) solver(auto) threads(`t') mu(auto_mu)
-            assert `"`e(fe_solver)'"' == "auto"
+            assert `"`e(fe_requested)'"' == "auto"
             assert `"`e(fe_route)'"' == `"`route'"'
             assert `"`e(fe_local_solvers)'"' == `"`blocks'"'
             assert e(fe_fallback) == 0
@@ -70,7 +70,7 @@ matrix before_b = e(b)
 capture noisily feppml y x1 x2, absorb(g1 g2) separation(none) solver(auto) iterate(1)
 assert _rc == 430
 assert mreldif(e(b),before_b) == 0
-assert `"`e(fe_solver)'"' == "auto"
+assert `"`e(fe_requested)'"' == "auto"
 estimates drop before_failed_auto
 
 quietly _fereg_estimate_ppml y x1 x2, fweight(w) ///

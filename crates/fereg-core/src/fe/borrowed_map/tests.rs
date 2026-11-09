@@ -5786,6 +5786,8 @@ fn adaptive_ols_schur_retry_is_bounded_and_preserves_other_callers() {
         DenseMatrix::from_columns(&[vec![11., -9., 10., -10., 10., -10., 10., -10., 10., -10.]])
             .unwrap();
     // caller: 0 ordinary OLS, 1 final residual, 2 PPML, 3/4 CMG ordinary/final.
+    // Explicit CMG-Schur that misses with budget left continues with MAP as
+    // the certified fallback (SPEC §1); an exhausted budget still fails.
     for (caller, tolerance, cap, failures, breakdown, corrections, succeeds) in [
         (0, 1e-2, 4, 0, false, 0, true),
         (0, 1e-2, 4, 2, false, 1, true),
@@ -5797,12 +5799,12 @@ fn adaptive_ols_schur_retry_is_bounded_and_preserves_other_callers() {
         (2, 1e-2, 4, 1, false, 0, true),
         (3, 1e-2, 4, 0, false, 0, true),
         (3, 1e-2, 4, 1, false, 1, true),
-        (3, 1e-2, 4, 2, false, 1, false),
+        (3, 1e-2, 4, 2, false, 1, true),
         (3, 1e-2, 1, 1, false, 0, false),
-        (3, 1e-2, 4, 0, true, 0, false),
-        (3, 1e-15, 20, 1, false, 0, false),
+        (3, 1e-2, 4, 0, true, 0, true),
+        (3, 1e-15, 20, 1, false, 0, true),
         (4, 1e-2, 4, 1, false, 1, true),
-        (4, 1e-2, 4, 2, false, 1, false),
+        (4, 1e-2, 4, 2, false, 1, true),
     ] {
         let design =
             BorrowedInterceptFeDesign::new(10, sources.iter().map(|s| s.effect()).collect())
@@ -5841,8 +5843,18 @@ fn adaptive_ols_schur_retry_is_bounded_and_preserves_other_callers() {
         assert_eq!(TWO_FE_CORRECTIONS.get(), corrections);
         if let Ok(result) = result {
             assert!(result.report().iterations <= cap);
-            let map_fallback = caller <= 1 && (breakdown || failures > corrections);
+            let map_fallback = caller != 2 && (breakdown || failures > corrections);
             assert_eq!(result.report().fallback_used, map_fallback);
+            if map_fallback {
+                assert_eq!(
+                    result.report().fallback_reason,
+                    if breakdown {
+                        crate::fe::FeFallbackReason::Nonconvergence
+                    } else {
+                        crate::fe::FeFallbackReason::Uncertified
+                    }
+                );
+            }
             assert_eq!(
                 result.report().used_solver,
                 if caller == 2 || map_fallback {

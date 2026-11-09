@@ -172,8 +172,11 @@ fn explicit_lsmr_final_residual_projection_keeps_a_margin() {
     assert!(fit.residual_absorption_report().certified());
 }
 
+/// Explicit CMG does not serve absorbed slopes: the Auto routes certify the
+/// fit, reported as the fallback with the reason `unsupported` and the
+/// request kept; explicit LSMR and CG serve the design themselves.
 #[test]
-fn cmg_rejects_unsupported_slopes_while_lsmr_remains_available() {
+fn cmg_falls_back_on_slopes_while_lsmr_and_cg_serve_them() {
     let design = generate(
         92,
         &DesignSpec {
@@ -183,10 +186,86 @@ fn cmg_rejects_unsupported_slopes_while_lsmr_remains_available() {
     )
     .unwrap();
     let mut config = PreparedOlsFitConfig::default();
-    config.absorb.solver = FeSolverKind::Cmg;
-    assert!(native_fit(&design, config, false).is_err());
-    config.absorb.solver = FeSolverKind::Lsmr;
-    compare_native(&design, config, "explicit LSMR slopes");
+    for solver in [FeSolverKind::Cmg, FeSolverKind::CmgSchur] {
+        config.absorb.solver = solver;
+        compare_native(&design, config, &format!("explicit {solver:?} slopes"));
+        let (fit, _) = native_fit(&design, config, false).unwrap();
+        let report = fit.absorption_report();
+        assert_eq!(report.requested_solver, solver);
+        assert!(report.fallback_used);
+        assert_eq!(
+            report.fallback_reason,
+            fereg_core::FeFallbackReason::Unsupported
+        );
+    }
+    for solver in [FeSolverKind::Lsmr, FeSolverKind::Pcg] {
+        config.absorb.solver = solver;
+        compare_native(&design, config, &format!("explicit {solver:?} slopes"));
+        let (fit, _) = native_fit(&design, config, false).unwrap();
+        assert!(!fit.absorption_report().fallback_used, "{solver:?}");
+    }
+}
+
+/// Explicit requests the design cannot serve continue on the next certified
+/// route under the remaining budget (SPEC §1), against the dense oracle:
+/// `reduce(eliminate)` outside two to five effects (the full system) and
+/// CMG-Schur outside two effects (Auto). A request that exhausts `iterate()`
+/// leaves no budget for a fallback and fails as non-convergence.
+#[test]
+fn explicit_requests_fall_back_to_certified_routes() {
+    use fereg_core::{FeFallbackReason, PcgPreconditioner, PcgReduction, PcgRequest};
+    let design = generate(
+        7,
+        &DesignSpec {
+            rows: 240,
+            levels: vec![7, 5, 4, 3, 3, 2],
+            regressors: 2,
+            ..DesignSpec::default()
+        },
+    )
+    .unwrap();
+    let mut config = PreparedOlsFitConfig::default();
+    config.absorb.solver = FeSolverKind::Pcg;
+    config.absorb.pcg = PcgRequest {
+        reduction: PcgReduction::Eliminate,
+        preconditioner: PcgPreconditioner::Jacobi,
+    };
+    compare_native(&design, config, "eliminate six effects");
+    let (fit, _) = native_fit(&design, config, false).unwrap();
+    let report = fit.absorption_report();
+    assert!(report.fallback_used);
+    assert_eq!(report.fallback_reason, FeFallbackReason::Unsupported);
+    assert_eq!(report.requested_solver, FeSolverKind::Pcg);
+    assert_eq!(report.route().reduction, fereg_core::FeReduction::Full);
+
+    let two = generate(
+        11,
+        &DesignSpec {
+            rows: 240,
+            levels: vec![12, 9],
+            graph: Graph::Chain,
+            ..DesignSpec::default()
+        },
+    )
+    .unwrap();
+    config.absorb.pcg = PcgRequest {
+        reduction: PcgReduction::Full,
+        preconditioner: PcgPreconditioner::None,
+    };
+    // Unpreconditioned CG reaches its ceiling within iterate(): no budget
+    // remains for a fallback, so the request fails as non-convergence.
+    config.absorb.map.tolerance = 1e-12;
+    config.absorb.map.max_iterations = 2;
+    let error = native_fit(&two, config, false).unwrap_err();
+    assert_eq!(error.code, fereg_core::ErrorCode::NonConvergence, "{error}");
+    let mut cmgschur = PreparedOlsFitConfig::default();
+    cmgschur.absorb.solver = FeSolverKind::CmgSchur;
+    compare_native(&design, cmgschur, "CMG-Schur on six effects");
+    let (fit, _) = native_fit(&design, cmgschur, false).unwrap();
+    assert_eq!(
+        fit.absorption_report().fallback_reason,
+        FeFallbackReason::Unsupported
+    );
 }
 
 #[test]

@@ -2674,10 +2674,16 @@ pub(super) fn merge_solve_report(target: &mut SolveReport, source: SolveReport) 
         && source.requested_solver == FeSolverKind::Cmg
         && matches!(target.used_solver, FeSolverKind::Cmg | FeSolverKind::Cg)
         && matches!(source.used_solver, FeSolverKind::Cmg | FeSolverKind::Cg);
+    // An explicit request that some blocks finished on a certified fallback
+    // route (SPEC §1): the fallback's route describes the projection.
+    let fallback_mix = target.requested_solver == source.requested_solver
+        && target.requested_solver != FeSolverKind::Auto
+        && (target.fallback_used || source.fallback_used);
     if !target.certified()
         || !source.certified()
         || target.requested_solver != source.requested_solver
         || (!auto_mix
+            && !fallback_mix
             && ((target.used_solver != source.used_solver && !cmg_fallback_mix)
                 || target.requested_preconditioner != source.requested_preconditioner
                 || target.used_preconditioner != source.used_preconditioner))
@@ -2717,7 +2723,11 @@ pub(super) fn merge_solve_report(target: &mut SolveReport, source: SolveReport) 
         && (target.used_solver == FeSolverKind::Cg || source.used_solver == FeSolverKind::Cg)
     {
         target.used_solver = FeSolverKind::Cg;
-        target.fallback_used = true;
+        target.note_fallback(source.fallback_reason);
+    } else if fallback_mix && source.fallback_used && !target.fallback_used {
+        target.used_solver = source.used_solver;
+        target.requested_preconditioner = source.requested_preconditioner;
+        target.used_preconditioner = source.used_preconditioner;
     }
     let source_won = target.used_solver != target_label && target.used_solver == source.used_solver;
     target.merge_route(&source, source_won);
@@ -2756,6 +2766,7 @@ pub(super) fn merge_solve_report(target: &mut SolveReport, source: SolveReport) 
     target.solve_seconds += source.solve_seconds;
     target.certification_seconds += source.certification_seconds;
     target.fallback_used |= source.fallback_used;
+    target.fallback_reason = target.fallback_reason.or(source.fallback_reason);
     target.pilot_iterations = target.pilot_iterations.max(source.pilot_iterations);
     target.pilot_contraction = target.pilot_contraction.max(source.pilot_contraction);
     target.warnings.extend(source.warnings);

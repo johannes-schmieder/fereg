@@ -24,9 +24,12 @@ pub(crate) fn starve_full_system_for_test(on: bool) {
     STARVE_FULL_SYSTEM.set(on);
 }
 
-/// The established route's input after fedemean declined, with the note the
-/// fallback's report carries when fedemean's full system declined.
-type Declined = (crate::ols::OlsProjectionInput, Option<String>);
+/// The established route's input after fedemean declined, with the note and
+/// reason the fallback's report carries when fedemean's full system declined.
+type Declined = (
+    crate::ols::OlsProjectionInput,
+    Option<(String, crate::fe::FeFallbackReason)>,
+);
 
 impl<'a> FeSession<'a> {
     /// Auto OLS with at least two categorical intercept effects: the exact
@@ -58,6 +61,22 @@ impl<'a> FeSession<'a> {
         if !eligible {
             return Ok(Err((values, None)));
         }
+        self.fedemean_chain(weights, values, config, (false, false))
+    }
+
+    /// fedemean's certified routes on the binding, in Auto's order: the exact
+    /// elimination of the largest effect (two to five effects; not with
+    /// `skip_elimination`), then the full system (Jacobi PCG escalating to
+    /// additive Schwarz when slow or stalled; not with `skip_full`) within
+    /// half the iteration budget. A decline of both returns the input for
+    /// the session's established route, with the full system's decline.
+    fn fedemean_chain(
+        &mut self,
+        weights: BorrowedMapWeights<'_>,
+        values: crate::ols::OlsProjectionInput,
+        config: crate::fe::AbsorbConfig,
+        (skip_elimination, skip_full): (bool, bool),
+    ) -> Result<std::result::Result<CertifiedBorrowedMap, Declined>> {
         let design = match (&self.categorical, &self.binding) {
             (Some(owner), _) => owner.borrowed_design(),
             (None, Some(design)) if design.effects().len() >= 2 => design,
@@ -71,7 +90,7 @@ impl<'a> FeSession<'a> {
         };
         let budget = config.solver_memory_budget;
         let mut matrix = values.into_values();
-        if ELIMINATED_EFFECTS.contains(&design.effects().len()) {
+        if !skip_elimination && ELIMINATED_EFFECTS.contains(&design.effects().len()) {
             match self
                 .block_schur
                 .project(design, weights, matrix, config.map, budget, request)?
@@ -82,6 +101,9 @@ impl<'a> FeSession<'a> {
                 }
                 Outcome::Declined(declined) => matrix = declined,
             }
+        }
+        if skip_full {
+            return Ok(Err((matrix.into(), None)));
         }
         // Half the budget, so a decline leaves the established route the rest.
         let map = MapConfig {
@@ -104,10 +126,13 @@ impl<'a> FeSession<'a> {
             }
             Outcome::Declined(declined) => {
                 let note = self.full_system.decline().map(|decline| {
-                    format!(
-                        "the full-system CG declined after {} iterations ({}); the established route used the remaining budget",
-                        decline.iterations,
-                        decline.describe()
+                    (
+                        format!(
+                            "the full-system CG declined after {} iterations ({}); the established route used the remaining budget",
+                            decline.iterations,
+                            decline.describe()
+                        ),
+                        crate::fe::FeFallbackReason::from_decline(decline.reason),
                     )
                 });
                 Ok(Err((declined.into(), note)))
@@ -217,13 +242,22 @@ impl<'a> FeSession<'a> {
         self.ppml_full_system = Some(budget);
     }
 
-    /// An explicit fedemean request on the binding. It has no fallback: a
-    /// decline is the request's error.
+    /// An explicit fedemean request on the binding. A request it cannot
+    /// serve (a reduction outside the design's range, a memory or numerical
+    /// decline) continues, with `certified_fallback`, on the next certified
+    /// route within the remaining iteration budget and the same memory limit
+    /// (SPEC §1): Auto's fedemean routes without the formulation that
+    /// declined (the elimination for two to five effects, then the full
+    /// system with Jacobi escalating to Schwarz), then the established
+    /// route, reported as the fallback with the reason. Input errors, an
+    /// exhausted budget and requests without the certified fallback keep the
+    /// request's error.
     pub(super) fn project_explicit(
         &mut self,
         weights: BorrowedMapWeights<'_>,
         values: crate::ols::OlsProjectionInput,
         config: crate::fe::AbsorbConfig,
+        (final_residual, dense_norms): (bool, bool),
     ) -> Result<CertifiedBorrowedMap> {
         let explicit = self.explicit.as_mut().expect("explicit fedemean request");
         let design = self
@@ -247,7 +281,7 @@ impl<'a> FeSession<'a> {
             coefficient_accuracy: false,
         };
         let matrix = values.into_values();
-        match explicit.project(
+        let declined = match explicit.project(
             design,
             weights,
             matrix,
@@ -255,13 +289,73 @@ impl<'a> FeSession<'a> {
             config.solver_memory_budget,
             request,
         )? {
-            Outcome::Done(result) => Ok(result),
-            Outcome::Declined(_) => Err(explicit_decline(
-                explicit.decline(),
-                if lsmr { "solver(lsmr)" } else { "solver(cg)" },
-                design.effects().len(),
-            )),
+            Outcome::Done(result) => return Ok(result),
+            Outcome::Declined(declined) => declined,
+        };
+        let name = if lsmr { "solver(lsmr)" } else { "solver(cg)" };
+        let effects = design.effects().len();
+        let decline = explicit.decline();
+        let error = explicit_decline(decline, name, effects);
+        let (Some(decline), true) = (decline, config.certified_fallback) else {
+            return Err(error);
+        };
+        let remaining = map.max_iterations.saturating_sub(decline.iterations);
+        // Weight and shape declines are input errors, never retried.
+        if error.code == ErrorCode::InvalidData || remaining == 0 {
+            return Err(error);
         }
+        let skip = explicit.plan().resolved(effects);
+        // The declined route's retained projector is not needed any more.
+        explicit.release();
+        let fallback = crate::fe::AbsorbConfig {
+            solver: FeSolverKind::Auto,
+            lsmr: crate::fe::LsmrConfig {
+                preconditioner: crate::fe::LsmrPreconditioner::Auto,
+                ..config.lsmr
+            },
+            pcg: crate::fe::PcgRequest::default(),
+            map: MapConfig {
+                max_iterations: remaining,
+                ..map
+            },
+            ..config
+        };
+        let result = match self.fedemean_chain(weights, declined.into(), fallback, skip)? {
+            Ok(result) => result,
+            Err((values, note)) => {
+                let design = self.binding.as_ref().ok_or_else(|| {
+                    crate::error::invalid_argument("explicit FE binding is absent")
+                })?;
+                let result = super::project_intercepts(
+                    design,
+                    weights,
+                    values,
+                    fallback,
+                    self.structural_constant,
+                    final_residual,
+                    dense_norms,
+                    None,
+                    None,
+                );
+                let result = self.block_schur.add_partial_coefficients(result);
+                let mut result = self.full_system.add_partial_coefficients(result)?;
+                if let Some((note, _)) = note {
+                    result.add_warning(note);
+                }
+                result
+            }
+        };
+        let explicit = self.explicit.as_mut().expect("explicit fedemean request");
+        let mut result = explicit.add_partial_coefficients(Ok(result))?;
+        result.note_fallback(
+            format!(
+                "{name} declined after {} iterations ({}); the next certified route used the remaining budget",
+                decline.iterations,
+                decline.describe()
+            ),
+            crate::fe::FeFallbackReason::from_decline(decline.reason),
+        );
+        Ok(result)
     }
 
     /// Drop an explicit request's retained projector (before the fit's QR

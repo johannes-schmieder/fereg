@@ -1,4 +1,4 @@
-*! Shared OLS/PPML result display 0.5.3 08nov2026
+*! Shared OLS/PPML result display 0.5.3 09nov2026
 program define _fereg_display
     version 15.0
     syntax [, *]
@@ -29,8 +29,14 @@ program define _fereg_display
             di as txt "Accuracy check: " as result "passed" ///
                 as txt " (tolerance " as result "`tolerance'" as txt ")"
         }
-        if e(fe_fallback) == 1 | e(fe_residual_fallback) == 1 ///
-            di as txt "A certified fallback was used; see e(fe_solve)."
+        // A route other than the requested one finished a projection.
+        if e(fe_fallback) == 1 | e(fe_residual_fallback) == 1 {
+            local reason `"`e(fe_fallback_reason)'"'
+            if `"`reason'"' == "none" | `"`reason'"' == "" ///
+                local reason `"`e(fe_residual_fallback_reason)'"'
+            di as txt "Certified fallback (" as result `"`reason'"' as txt ///
+                ") after solver(" as result `"`e(fe_requested)'"' as txt "); see e(fe_solve)"
+        }
     }
     DisplayHeader
     di

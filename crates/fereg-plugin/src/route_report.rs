@@ -8,18 +8,21 @@
 //! 1 jacobi, 2 block, 3 schwarz, 4 cmg); 4..9 the local solves: with block,
 //! the block-Jacobi local solve of each design effect (0 none or eliminated,
 //! 1 dense, 2 cmg, 3 jacobi); with schwarz, the subdomains counted by local
-//! solve (trivial, dense, skyline, approximate; all zero when unreported);
-//! 9 escalations; 10 iterations; 11 certified fallback (0 or 1).
+//! solve (trivial, dense, skyline, approximate, jacobi; all zero when
+//! unreported); 9 escalations; 10 iterations; 11 certified fallback (0 or
+//! 1); 12 the fallback's reason (0 none, 1 unsupported, 2 memory,
+//! 3 nonconvergence, 4 uncertified).
 
 use fereg_core::error::{invalid_argument as invalid, Result};
 use fereg_core::fe::{
-    FeAcceleration, FeLocalSolve, FeMethod, FePreconditioner, FeReduction, FeRoute,
-    FeSchwarzSolves, FE_ROUTE_MAX_EFFECTS,
+    FeAcceleration, FeFallbackReason, FeLocalSolve, FeMethod, FePreconditioner, FeReduction,
+    FeRoute, FeSchwarzSolves, FE_ROUTE_MAX_EFFECTS,
 };
 
-pub(crate) const ROUTE_COLUMNS: usize = 12;
+pub(crate) const ROUTE_COLUMNS: usize = 13;
 const LOCALS: usize = 4;
 const ESCALATIONS: usize = LOCALS + FE_ROUTE_MAX_EFFECTS;
+const REASON: usize = ESCALATIONS + 3;
 
 /// One projection's route as reported. `single_intercept` refines a plain
 /// MAP projection of a one-channel intercept design (or the constant alone)
@@ -27,9 +30,21 @@ const ESCALATIONS: usize = LOCALS + FE_ROUTE_MAX_EFFECTS;
 pub(crate) struct RouteRow {
     pub(crate) route: FeRoute,
     pub(crate) iterations: usize,
-    pub(crate) fallback: bool,
+    /// Why a certified fallback finished the projection (`None`: no fallback).
+    pub(crate) fallback: FeFallbackReason,
     pub(crate) single_intercept: bool,
     pub(crate) map_requested: bool,
+}
+
+/// The reason's code in the route row.
+const fn reason_code(reason: FeFallbackReason) -> f64 {
+    match reason {
+        FeFallbackReason::None => 0.0,
+        FeFallbackReason::Unsupported => 1.0,
+        FeFallbackReason::Memory => 2.0,
+        FeFallbackReason::Nonconvergence => 3.0,
+        FeFallbackReason::Uncertified => 4.0,
+    }
 }
 
 pub(crate) fn write_route(output: &mut [f64], row: RouteRow) -> Result<()> {
@@ -84,12 +99,15 @@ pub(crate) fn write_route(output: &mut [f64], row: RouteRow) -> Result<()> {
                 dense,
                 skyline,
                 approximate,
+                jacobi,
             } = solves;
-            for (cell, count) in
-                output[LOCALS..ESCALATIONS]
-                    .iter_mut()
-                    .zip([trivial, dense, skyline, approximate])
-            {
+            for (cell, count) in output[LOCALS..ESCALATIONS].iter_mut().zip([
+                trivial,
+                dense,
+                skyline,
+                approximate,
+                jacobi,
+            ]) {
                 *cell = f64::from(count);
             }
             3.0
@@ -98,7 +116,8 @@ pub(crate) fn write_route(output: &mut [f64], row: RouteRow) -> Result<()> {
     };
     output[ESCALATIONS] = f64::from(route.escalations);
     output[ESCALATIONS + 1] = exact(row.iterations)?;
-    output[ESCALATIONS + 2] = f64::from(row.fallback);
+    output[ESCALATIONS + 2] = f64::from(row.fallback != FeFallbackReason::None);
+    output[REASON] = reason_code(row.fallback);
     Ok(())
 }
 
@@ -122,12 +141,13 @@ pub(crate) fn validate_route(row: &[f64]) -> Result<()> {
         || !code(row[2], 3.0)
         || !code(row[3], 4.0)
         || row[LOCALS..ESCALATIONS].iter().any(|&value| !local(value))
-        || (schwarz && row[ESCALATIONS - 1] != 0.0)
         || (block && row[LOCALS..ESCALATIONS].iter().all(|&local| local == 0.0))
         || (row[2] != 0.0 && row[1] != 2.0)
         || !code(row[ESCALATIONS], f64::from(u32::MAX))
         || !code(row[ESCALATIONS + 1], 9_007_199_254_740_992.0)
         || !code(row[ESCALATIONS + 2], 1.0)
+        || !code(row[REASON], 4.0)
+        || (row[ESCALATIONS + 2] == 0.0) != (row[REASON] == 0.0)
     {
         return Err(invalid("fixed-effect route row is invalid"));
     }
@@ -155,7 +175,7 @@ mod tests {
             RouteRow {
                 route,
                 iterations: 7,
-                fallback: false,
+                fallback: FeFallbackReason::None,
                 single_intercept: false,
                 map_requested: false,
             },
@@ -178,7 +198,7 @@ mod tests {
         route.escalations = 2;
         assert_eq!(
             row(route),
-            [2.0, 3.0, 0.0, 2.0, 0.0, 2.0, 1.0, 0.0, 0.0, 2.0, 7.0, 0.0]
+            [2.0, 3.0, 0.0, 2.0, 0.0, 2.0, 1.0, 0.0, 0.0, 2.0, 7.0, 0.0, 0.0]
         );
         let mut map = FeRoute::new(FeReduction::Full, FeMethod::Map, FePreconditioner::None);
         map.acceleration = FeAcceleration::Squarem;
@@ -200,13 +220,42 @@ mod tests {
                 dense: 4,
                 skyline: 2,
                 approximate: 3,
+                jacobi: 5,
             }),
         );
         schwarz.escalations = 1;
         assert_eq!(
             row(schwarz),
-            [1.0, 3.0, 0.0, 3.0, 1.0, 4.0, 2.0, 3.0, 0.0, 1.0, 7.0, 0.0]
+            [1.0, 3.0, 0.0, 3.0, 1.0, 4.0, 2.0, 3.0, 5.0, 1.0, 7.0, 0.0, 0.0]
         );
+    }
+
+    #[test]
+    fn a_fallback_row_carries_its_reason() {
+        for (reason, code) in [
+            (FeFallbackReason::Unsupported, 1.0),
+            (FeFallbackReason::Memory, 2.0),
+            (FeFallbackReason::Nonconvergence, 3.0),
+            (FeFallbackReason::Uncertified, 4.0),
+        ] {
+            let mut output = vec![0.0; ROUTE_COLUMNS];
+            write_route(
+                &mut output,
+                RouteRow {
+                    route: FeRoute::new(FeReduction::Full, FeMethod::Map, FePreconditioner::None),
+                    iterations: 3,
+                    fallback: reason,
+                    single_intercept: false,
+                    map_requested: false,
+                },
+            )
+            .expect("route row");
+            validate_route(&output).expect("valid row");
+            assert_eq!(&output[11..], &[1.0, code]);
+            let mut flagless = output.clone();
+            flagless[11] = 0.0;
+            assert!(validate_route(&flagless).is_err());
+        }
     }
 
     #[test]
@@ -219,7 +268,7 @@ mod tests {
                 RouteRow {
                     route: map,
                     iterations: 1,
-                    fallback: false,
+                    fallback: FeFallbackReason::None,
                     single_intercept: true,
                     map_requested: requested,
                 },
@@ -244,6 +293,8 @@ mod tests {
             (5, 1.0),
             (10, -1.0),
             (11, 2.0),
+            (12, 1.0),
+            (12, 5.0),
         ] {
             let mut bad = good.clone();
             bad[cell] = value;

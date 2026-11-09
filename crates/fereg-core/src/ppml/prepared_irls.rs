@@ -34,8 +34,8 @@ use super::categorical_fwl_cmg::{
     ReusableCategoricalFwlCmg,
 };
 use super::categorical_lsmr::{
-    estimate_checkpoint_lsmr_workspace_bytes, estimate_joint_lsmr_workspace_bytes, JointLsmrReport,
-    ReusableCategoricalJointLsmr,
+    estimate_checkpoint_lsmr_workspace_bytes, estimate_joint_lsmr_workspace_bytes,
+    Formulation as JointLsmrFormulation, JointLsmrReport, ReusableCategoricalJointLsmr,
 };
 #[cfg(test)]
 use super::family::poisson_objective_from_eta;
@@ -942,6 +942,9 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             shared_prepared.is_some(),
         )?;
     let mut memory = PpmlMemoryTelemetry::new(memory_plan, requested_threads, effective_threads)?;
+    if let Some((_, reason)) = config.solver_plan.substituted {
+        memory.steps.fallback = reason;
+    }
     if config.solver_plan.selected == super::PpmlSolverFamily::Cmg {
         memory.expected_solver_workspace_peak =
             Some(crate::memory::SolverWorkspacePeak::from_bytes(
@@ -1316,37 +1319,74 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 .is_some_and(ProfiledOneFe::capacities_unchanged);
             (rank, reuse, FeSolverKind::Map)
         } else if let Some((joint, engine)) = direction.lsmr_mut() {
-            let report = joint.solve(
+            let on_projections = joint.starts_on_projections();
+            match joint.solve(
                 session.fe_design(),
                 outcome,
                 workspace.mean(),
                 workspace.hessian_weights(),
                 inner_tolerance,
                 config.linear.absorb.lsmr.max_iterations,
-            )?;
-            joint.fill_candidate(&mut workspace)?;
-            certified_linear_subproblems = certified_linear_subproblems.saturating_add(1);
-            total_inner_iterations = total_inner_iterations
-                .checked_add(report.iterations.max(1))
-                .ok_or_else(|| {
-                    FeregError::new(
-                        ErrorCode::Internal,
-                        "prepared PPML total inner iteration count overflowed",
+            ) {
+                Ok(report) => {
+                    memory.observe_lsmr_step(
+                        report.route,
+                        report.iterations,
+                        (
+                            report.formulation == JointLsmrFormulation::Projections,
+                            on_projections,
+                        ),
+                        crate::fe::FeFallbackReason::None,
+                    );
+                    joint.fill_candidate(&mut workspace)?;
+                    certified_linear_subproblems = certified_linear_subproblems.saturating_add(1);
+                    total_inner_iterations = total_inner_iterations
+                        .checked_add(report.iterations.max(1))
+                        .ok_or_else(|| {
+                            FeregError::new(
+                                ErrorCode::Internal,
+                                "prepared PPML total inner iteration count overflowed",
+                            )
+                        })?;
+                    solver_report
+                        .as_mut()
+                        .ok_or_else(|| internal("PPML LSMR solve lacks solver diagnostics"))?
+                        .observe(joint_solver_observation(report, engine))?;
+                    rank_frozen = true;
+                    (
+                        joint.active_rank(),
+                        LinearSessionReuseReport::ppml_specialized(
+                            report.setup_seconds + report.solve_seconds,
+                            report.certification_seconds,
+                        ),
+                        FeSolverKind::Lsmr,
                     )
-                })?;
-            solver_report
-                .as_mut()
-                .ok_or_else(|| internal("PPML LSMR solve lacks solver diagnostics"))?
-                .observe(joint_solver_observation(report, engine))?;
-            rank_frozen = true;
-            (
-                joint.active_rank(),
-                LinearSessionReuseReport::ppml_specialized(
-                    report.setup_seconds + report.solve_seconds,
-                    report.certification_seconds,
-                ),
-                FeSolverKind::Lsmr,
-            )
+                }
+                // A frame explicit LSMR cannot serve (neither the joint
+                // recurrence nor the projections certify, or its workspace
+                // is refused): the canonical route certifies it and the
+                // later frames (SPEC §1). Input errors and Break propagate.
+                Err(error) => {
+                    let Some(reason) = crate::fe::FeFallbackReason::from_error(&error) else {
+                        return Err(error);
+                    };
+                    let result = retry::canonical_retry(
+                        retry::CanonicalRetryReason::Lsmr(reason),
+                        &mut direction,
+                        &mut session,
+                        &mut workspace,
+                        offset,
+                        frame_generation,
+                        &mut memory,
+                        &mut solver_report,
+                        &mut certified_linear_subproblems,
+                        &mut total_inner_iterations,
+                        &mut allocation_audit,
+                    )?;
+                    rank_frozen = true;
+                    result
+                }
+            }
         } else if direction.cmg().is_some() {
             let attempt = direction
                 .cmg_mut()
@@ -1380,6 +1420,14 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                         .as_mut()
                         .ok_or_else(|| internal("PPML CMG solve lacks solver diagnostics"))?
                         .observe(cmg_solver_observation(report))?;
+                    memory.steps.observe(
+                        crate::fe::FeRoute::new(
+                            crate::fe::FeReduction::Full,
+                            crate::fe::FeMethod::Cg,
+                            crate::fe::FePreconditioner::Cmg,
+                        ),
+                        report.iterations,
+                    );
                     rank_frozen = true;
                     (
                         cmg.active_rank(),

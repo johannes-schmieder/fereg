@@ -1,8 +1,8 @@
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::{
-    certify_residuals_with_reference_norms, weighted_column_norms, FeDesign, FeSolverKind,
-    LsmrPreconditioner, SolveReport, SolveStopReason,
+    certify_residuals_with_reference_norms, weighted_column_norms, FeDesign, FeFallbackReason,
+    FeSolverKind, LsmrPreconditioner, SolveReport, SolveStopReason,
 };
 use crate::options::ThreadConfig;
 
@@ -63,7 +63,7 @@ pub(crate) fn absorb_lsmr_certified_at(
         (certificate_tolerance, None),
         None,
     )? {
-        Some((report, _)) => Ok(report),
+        Some((report, ..)) => Ok(report),
         None => Err(ineligible()),
     }
 }
@@ -89,7 +89,8 @@ pub(crate) enum LsmrRoute {
 /// `coefficients` (the design's layout, `values.ncols()` columns), the fitted
 /// FE coefficients added in place when fedemean ran. `None`: fedemean does
 /// not take the design (it refuses before reading data); the values are
-/// untouched for the caller's fallback.
+/// untouched for the caller's fallback. An uncertified report comes with the
+/// reason a fallback reports.
 pub(crate) fn absorb_lsmr_with(
     design: &FeDesign,
     weights: &[f64],
@@ -97,9 +98,33 @@ pub(crate) fn absorb_lsmr_with(
     config: LsmrConfig,
     (certificate_tolerance, memory_limit): (f64, Option<u128>),
     coefficients: Option<(&super::fedemean_slope::Layout, &mut [f64])>,
-) -> Result<Option<(SolveReport, LsmrRoute)>> {
-    crate::interrupt::checkpoint()?;
+) -> Result<Option<(SolveReport, LsmrRoute, FeFallbackReason)>> {
     validate_config(config)?;
+    let attempt = super::fedemean_slope::Attempt::lsmr(
+        config.preconditioner,
+        FeSolverKind::Lsmr,
+        certificate_tolerance,
+        config.max_iterations,
+        memory_limit,
+    );
+    absorb_attempt(design, weights, values, &attempt, coefficients)
+}
+
+/// One fedemean full-system `attempt` (modified LSMR or PCG), certified
+/// independently at its tolerance after at most one correction (see
+/// [`super::fedemean_slope::absorb_certified`]). `None`: fedemean does not
+/// take the design or choice (refused before any data is read; the values
+/// are untouched). An uncertified report comes with the reason a fallback
+/// reports: fedemean's decline, or a missed certificate.
+pub(crate) fn absorb_attempt(
+    design: &FeDesign,
+    weights: &[f64],
+    values: &mut DenseMatrix,
+    attempt: &super::fedemean_slope::Attempt,
+    coefficients: Option<(&super::fedemean_slope::Layout, &mut [f64])>,
+) -> Result<Option<(SolveReport, LsmrRoute, FeFallbackReason)>> {
+    crate::interrupt::checkpoint()?;
+    let certificate_tolerance = attempt.tolerance;
     if !certificate_tolerance.is_finite() || certificate_tolerance <= 0.0 {
         return Err(FeregError::new(
             ErrorCode::InvalidArgument,
@@ -121,6 +146,7 @@ pub(crate) fn absorb_lsmr_with(
             "LSMR weights must be finite and positive",
         ));
     }
+    let lsmr = attempt.choice.method == fedemean::Method::Lsmr;
     if design.effects().is_empty() || values.ncols() == 0 {
         let reference_norms = weighted_column_norms(values, weights)?;
         let certificate = certify_residuals_with_reference_norms(
@@ -131,45 +157,54 @@ pub(crate) fn absorb_lsmr_with(
             certificate_tolerance,
         )?;
         let report = SolveReport {
-            requested_preconditioner: Some(config.preconditioner),
-            used_preconditioner: Some(match config.preconditioner {
+            requested_preconditioner: attempt.requested_preconditioner,
+            used_preconditioner: attempt.requested_preconditioner.map(|p| match p {
                 LsmrPreconditioner::Auto => LsmrPreconditioner::Diagonal,
                 other => other,
             }),
             ..SolveReport::single_route(
-                FeSolverKind::Lsmr,
+                if lsmr {
+                    FeSolverKind::Lsmr
+                } else {
+                    FeSolverKind::Cg
+                },
                 SolveStopReason::NoFixedEffects,
                 certificate,
             )
         };
-        return Ok(Some((report, LsmrRoute::NoFixedEffects)));
+        return Ok(Some((
+            SolveReport {
+                requested_solver: attempt.requested,
+                ..report
+            },
+            LsmrRoute::NoFixedEffects,
+            FeFallbackReason::None,
+        )));
     }
     let unit = weights.iter().all(|&weight| weight == 1.0);
-    let attempt = super::fedemean_slope::Attempt::lsmr(
-        config.preconditioner,
-        FeSolverKind::Lsmr,
-        certificate_tolerance,
-        config.max_iterations,
-        memory_limit,
-    );
     let Some(solved) = super::fedemean_slope::absorb_certified(
         design,
         (weights, unit),
         values,
-        &attempt,
+        attempt,
         coefficients,
     )?
     else {
         return Ok(None);
     };
     let mut report = solved.report;
-    if solved.declined.is_none() && !report.certified() {
-        report.warnings.push(
-            "LSMR recurrence claimed convergence but the recomputed FE certificate failed"
-                .to_owned(),
-        );
-    }
-    Ok(Some((report, LsmrRoute::Fedemean)))
+    let reason = match solved.declined {
+        Some((decline, _)) => FeFallbackReason::from_decline(decline),
+        None if report.certified() => FeFallbackReason::None,
+        None => {
+            report.warnings.push(
+                "the recurrence claimed convergence but the recomputed FE certificate failed"
+                    .to_owned(),
+            );
+            FeFallbackReason::Uncertified
+        }
+    };
+    Ok(Some((report, LsmrRoute::Fedemean, reason)))
 }
 
 fn validate_config(config: LsmrConfig) -> Result<()> {

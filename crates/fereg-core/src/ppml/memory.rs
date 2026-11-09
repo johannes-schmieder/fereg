@@ -3725,6 +3725,33 @@ pub enum PpmlFallbackKind {
     Route = 4,
 }
 
+/// The requested explicit route's work over the IRLS steps (reporting only):
+/// its route merged over the certified frames (the strongest preconditioner,
+/// summed escalations) with their iterations, explicit LSMR's formulations,
+/// and the certified fallback that served part or all of the request.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct PpmlStepRoute {
+    pub route: Option<(crate::fe::FeRoute, usize)>,
+    /// Explicit LSMR frames solved by the joint `[X D]` recurrence.
+    pub joint_frames: usize,
+    /// Explicit LSMR frames solved by FWL projections of `[X, z]`.
+    pub fwl_frames: usize,
+    /// FWL frames that started on the joint recurrence (hand-offs).
+    pub handoffs: usize,
+    /// Why a certified fallback served (part of) the request.
+    pub fallback: crate::fe::FeFallbackReason,
+}
+
+impl PpmlStepRoute {
+    /// Fold one certified frame's route and iterations.
+    pub fn observe(&mut self, route: crate::fe::FeRoute, iterations: usize) {
+        self.route = Some(match self.route {
+            Some((merged, total)) => (merged.merged(route), total.saturating_add(iterations)),
+            None => (route, iterations),
+        });
+    }
+}
+
 /// PPML-owned fit-lifetime observational report.  Scientific certification
 /// remains independent of these values.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -3747,9 +3774,12 @@ pub struct PpmlMemoryTelemetry {
     /// state. `None` means the route has not been observed; it must never be
     /// serialized as a guessed memory/execution mode.
     pub linear_route: Option<FeSolverKind>,
-    /// Route and iterations of the final certified linear solve, in public
-    /// reporting terms (reporting only; `None` until observed).
-    pub final_linear_solve: Option<(crate::fe::FeRoute, usize)>,
+    /// Route, iterations and certified fallback of the final certified
+    /// linear solve, in public reporting terms (reporting only; `None` until
+    /// observed).
+    pub final_linear_solve: Option<(crate::fe::FeRoute, usize, crate::fe::FeFallbackReason)>,
+    /// The requested explicit route's IRLS steps (reporting only).
+    pub steps: PpmlStepRoute,
     /// `None` means scratch instrumentation was unavailable; `Some(0)` is an
     /// observed zero.
     pub scratch_peak_bytes: Option<u64>,
@@ -3787,6 +3817,7 @@ impl PpmlMemoryTelemetry {
             allocations: PpmlAllocationTelemetry::default(),
             linear_route: None,
             final_linear_solve: None,
+            steps: PpmlStepRoute::default(),
             scratch_peak_bytes: None,
             fallback_mask: 0,
             fallback_count: 0,
@@ -3829,7 +3860,35 @@ impl PpmlMemoryTelemetry {
     /// iterations.
     pub fn observe_final_linear_solve(&mut self, report: &crate::fe::SolveReport) {
         self.observe_linear_route(report.used_solver);
-        self.final_linear_solve = Some((report.route(), report.iterations));
+        self.final_linear_solve = Some((
+            report.route(),
+            report.iterations,
+            report.reported_fallback_reason(),
+        ));
+    }
+
+    /// Observe one certified explicit LSMR frame: its route, iterations,
+    /// whether the projections (FWL) solved it, whether it started there,
+    /// and the certified fallback within the frame (for example a requested
+    /// preconditioner that did not fit; `None` when it ran as requested),
+    /// which the fit reports with its first reason.
+    pub(crate) fn observe_lsmr_step(
+        &mut self,
+        route: crate::fe::FeRoute,
+        iterations: usize,
+        (projections, started_on_projections): (bool, bool),
+        fallback: crate::fe::FeFallbackReason,
+    ) {
+        self.steps.observe(route, iterations);
+        self.steps.fallback = self.steps.fallback.or(fallback);
+        if projections {
+            self.steps.fwl_frames = self.steps.fwl_frames.saturating_add(1);
+            if !started_on_projections {
+                self.steps.handoffs = self.steps.handoffs.saturating_add(1);
+            }
+        } else {
+            self.steps.joint_frames = self.steps.joint_frames.saturating_add(1);
+        }
     }
 
     pub fn observe_scratch(&mut self, bytes: u64) {

@@ -240,8 +240,14 @@ pub fn fit_prepared_ppml_interruptible(
         mut load_hint,
     } = input.into();
     validate_request(&request, &loaded)?;
-    let solver_plan =
+    let mut solver_plan =
         PpmlSolverPlan::new(request.solver).with_lsmr_preconditioner(request.lsmr_preconditioner);
+    // An explicit request its route does not serve (the design, the memory
+    // mode) runs the Auto plan, reported as the certified fallback.
+    if let Some(reason) = unsupported_public_solver_request(&request) {
+        trace_substitution(request.solver, reason);
+        solver_plan = solver_plan.substitute(crate::fe::FeFallbackReason::Unsupported);
+    }
     request.memory.require_fast_route = matches!(
         solver_plan.selected,
         PpmlSolverFamily::Lsmr | PpmlSolverFamily::Cmg
@@ -339,11 +345,28 @@ pub fn fit_prepared_ppml_interruptible(
             bias.save_effects,
         )?;
     }
-    let preliminary_plan = plan_ppml_memory_with_probe(
+    let preliminary_plan = match plan_ppml_memory_with_probe(
         preflight_dimensions,
         request.memory,
         request.memory_preflight_probe,
-    )?;
+    ) {
+        // The explicit route needs the fast memory route, which does not
+        // fit: the Auto plan may use the low route.
+        Err(error) if error.code == ErrorCode::Allocation && request.memory.require_fast_route => {
+            trace_substitution(
+                request.solver,
+                "the fast memory route exceeds the memory limit",
+            );
+            solver_plan = solver_plan.substitute(crate::fe::FeFallbackReason::Memory);
+            request.memory.require_fast_route = false;
+            plan_ppml_memory_with_probe(
+                preflight_dimensions,
+                request.memory,
+                request.memory_preflight_probe,
+            )?
+        }
+        plan => plan?,
+    };
     let admission_seconds = preparation_trace.lap();
 
     begin_phase_allocation(request.phase_allocation_probe, PpmlPhase::Preparation);
@@ -782,7 +805,17 @@ fn validate_request(request: &PreparedPpmlRequestV1, loaded: &LoadedPpmlInput) -
             ));
         }
     }
-    validate_public_solver_request(request)?;
+    if request.allocation_snapshot_probe.is_some()
+        && !matches!(
+            request.solver,
+            PpmlSolverFamily::Auto | PpmlSolverFamily::Map
+        )
+    {
+        return Err(FeregError::new(
+            ErrorCode::Unsupported,
+            "the warmed PPML allocation audit is currently MAP-only",
+        ));
+    }
     request.ols.model.validate_executable_metadata()?;
     if !request.ols.include_intercept {
         return Err(FeregError::new(
@@ -832,18 +865,21 @@ fn validate_request(request: &PreparedPpmlRequestV1, loaded: &LoadedPpmlInput) -
     Ok(())
 }
 
-fn validate_public_solver_request(request: &PreparedPpmlRequestV1) -> Result<()> {
+/// Why an explicit PPML request's route does not serve this fit (`None`:
+/// it does): explicit LSMR needs two or more categorical intercept effects
+/// and CMG two or three, both without slopes and in the fast memory route.
+/// The fit then runs the Auto plan as the certified fallback.
+fn unsupported_public_solver_request(request: &PreparedPpmlRequestV1) -> Option<&'static str> {
     if matches!(
         request.solver,
         PpmlSolverFamily::Auto | PpmlSolverFamily::Map
     ) {
-        return Ok(());
+        return None;
     }
     if request.memory.requested == MemoryMode::Low {
-        return Err(FeregError::new(
-            ErrorCode::Unsupported,
-            "explicit PPML LSMR and CMG currently require memory(auto) or memory(fast)",
-        ));
+        return Some(
+            "explicit PPML LSMR and CMG run in the fast memory route; memory(low) was requested",
+        );
     }
     let fe_dimensions = request.ols.absorbed_terms.len();
     let topology_supported = match request.solver {
@@ -852,34 +888,30 @@ fn validate_public_solver_request(request: &PreparedPpmlRequestV1) -> Result<()>
         PpmlSolverFamily::Auto | PpmlSolverFamily::Map => true,
     };
     if !topology_supported {
-        return Err(FeregError::new(
-            ErrorCode::Unsupported,
-            match request.solver {
-                PpmlSolverFamily::Lsmr => {
-                    "solver(lsmr) requires at least two categorical fixed-effect dimensions"
-                }
-                PpmlSolverFamily::Cmg => {
-                    "solver(cg) requires exactly two or three categorical fixed-effect dimensions"
-                }
-                PpmlSolverFamily::Auto | PpmlSolverFamily::Map => unreachable!(),
-            },
+        return Some(match request.solver {
+            PpmlSolverFamily::Lsmr => {
+                "solver(lsmr) requires at least two categorical fixed-effect dimensions"
+            }
+            _ => "solver(cg) requires exactly two or three categorical fixed-effect dimensions",
+        });
+    }
+    request
+        .ols
+        .absorbed_terms
+        .iter()
+        .any(|term| {
+            !term.intercept || !term.slope_sources.is_empty() || term.categorical_sources.is_empty()
+        })
+        .then_some("explicit PPML LSMR and CMG require categorical intercept-only fixed effects")
+}
+
+fn trace_substitution(requested: PpmlSolverFamily, reason: &str) {
+    if crate::diagnostics::solver_trace_enabled() {
+        crate::diagnostics::emit_solver_trace(&format!(
+            "FEREG_SOLVER_TRACE|phase=ppml_solver_fallback|requested={}|selected=auto|reason={reason}",
+            requested.name()
         ));
     }
-    if request.ols.absorbed_terms.iter().any(|term| {
-        !term.intercept || !term.slope_sources.is_empty() || term.categorical_sources.is_empty()
-    }) {
-        return Err(FeregError::new(
-            ErrorCode::Unsupported,
-            "explicit PPML LSMR and CMG require categorical intercept-only fixed effects",
-        ));
-    }
-    if request.allocation_snapshot_probe.is_some() {
-        return Err(FeregError::new(
-            ErrorCode::Unsupported,
-            "the warmed PPML allocation audit is currently MAP-only",
-        ));
-    }
-    Ok(())
 }
 
 struct BorrowedPpmlNumericInput<'a> {

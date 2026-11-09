@@ -28,6 +28,10 @@ forvalues case = 1/4 {
         * candidate failed their unchanged independent FE check in these cases.
         * The exact retained-span oracle remains in the CSV; it is not a
         * published estimate when fereg's independent certificate rejects.
+        * In case 3 explicit LSMR spends all of iterate(100) without
+        * certifying, so no budget remains for the certified fallback and the
+        * fit fails with r(430) (SPEC section 1); case 2's MAP fallback runs
+        * within the remaining budget and fails its check with r(459).
         quietly regress y q v i.g [aw=w]
         generate byte prior_sample = e(sample)
         local prior_scalars : e(scalars)
@@ -53,7 +57,7 @@ forvalues case = 1/4 {
         foreach attempt in w1a w1b w4a w4b base {
             local workers = cond(substr("`attempt'",2,1) == "4",4,1)
             local rhs i.g
-            local expected_rc 459
+            local expected_rc = cond(`case' == 3, 430, 459)
             if "`attempt'" == "base" {
                 local rhs ib3.g
                 local expected_rc 498
@@ -120,7 +124,7 @@ forvalues case = 1/4 {
             assert e(N) == 128 & e(N_full) == 128 & e(num_singletons) == 0
             assert e(sample) == 1 & e(rank) == ref_rank & e(converged) == 1
             assert "`e(fe_route)'" == "lsmr, precondition(none)"
-            assert "`e(fe_solver)'" == "lsmr, precondition(none)"
+            assert "`e(fe_requested)'" == "lsmr, precondition(none)"
             assert e(fe_iterations) > 0 & e(fe_fallback) == 0
             assert e(fereg_certificate)[32,2] == 1
             local names : colfullnames e(b)

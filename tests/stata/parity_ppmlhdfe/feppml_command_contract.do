@@ -33,12 +33,13 @@ assert `"`e(feppml_gate)'"' == "public_ppml_v1"
 assert `"`e(feppml_memory_requested)'"' == "auto"
 assert `"`e(feppml_action_protocol)'"' == "1.7"
 assert `"`e(feppml_model_wire)'"' == "2.1"
-assert `"`e(feppml_request_wire)'"' == "1.9"
+assert `"`e(feppml_request_wire)'"' == "1.10"
 assert `"`e(feppml_result_wire)'"' == "1.5"
 assert `"`e(feppml_plugin)'"' == "0.5.3"
-assert `"`e(fe_solver)'"' == "auto"
+assert `"`e(fe_requested)'"' == "auto"
+assert `"`e(fe_requested_method)'"' == "auto"
 * Without absorbed effects there is no fixed-effect projection to solve.
-assert `"`e(fe_route)'"' == "none"
+assert `"`e(fe_route)'"' == "none" & `"`e(fe_final_route)'"' == "none"
 assert `"`e(fe_reduction)'"' == "none" & `"`e(fe_method)'"' == "none"
 assert `"`e(fe_preconditioner)'"' == "none" & `"`e(fe_acceleration)'"' == "none"
 assert e(fe_escalations) == 0 & e(fe_iterations) < .
@@ -146,7 +147,8 @@ local allowed_feppml_scalars feppml_action_events_delta ///
     feppml_vce_correction_policy feppml_vce_effective ///
     feppml_vce_requested feppml_weight_code ///
     feppml_workspace_allocation_free
-local fe_scalars fe_iterations fe_escalations fe_fallback
+local fe_scalars fe_iterations fe_escalations fe_fallback fe_subdomains ///
+    fe_joint_frames fe_fwl_frames fe_handoffs
 local actual_scalars : e(scalars)
 foreach field of local actual_scalars {
     local standard : list field in standard_scalars
@@ -171,8 +173,10 @@ local allowed_macros cmd cmdline model depvar indepvars vce vcetype absvars ///
     clustvar3 clustvar4 clustvar5 resid residual_type xb_var d_var eta_var ///
     mu_var drop_reason_var predict feppml_action_protocol feppml_model_wire ///
     feppml_request_wire feppml_result_wire feppml_plugin feppml_gate ///
-    feppml_memory_requested feppml_memory_method fe_solver fe_reduction ///
-    fe_method fe_preconditioner fe_local_solvers fe_acceleration fe_route ///
+    feppml_memory_requested feppml_memory_method fe_requested ///
+    fe_requested_method fe_requested_reduction fe_requested_preconditioner ///
+    fe_requested_acceleration fe_reduction fe_method fe_preconditioner ///
+    fe_local_solvers fe_acceleration fe_route fe_final_route fe_formulation ///
     fe_fallback_reason properties fereg_version
 local actual_macros : e(macros)
 foreach field of local actual_macros {
@@ -221,22 +225,27 @@ generate byte __accepted_sample = e(sample)
 `feppml_test_command' y, absorb(cl1 cl2) separation(none) ///
     memory(fast) threads(1) deterministic solver(lsmr)
 * Without finite regressors the fused LSMR engine serves the IRLS frames.
-assert `"`e(fe_solver)'"' == "lsmr"
+assert `"`e(fe_requested)'"' == "lsmr" & `"`e(fe_method)'"' == "lsmr"
 assert e(fe_fallback) == 0
 assert e(fe_solve)[2,1] > 0
 assert e(fe_solve)[3,1] == 0
 
 `feppml_test_command' y c.x, absorb(cl1 cl2) separation(none) ///
     memory(fast) threads(1) deterministic solver(lsmr)
-assert `"`e(fe_solver)'"' == "lsmr"
+assert `"`e(fe_requested)'"' == "lsmr"
+assert `"`e(fe_requested_method)'"' == "lsmr" & `"`e(fe_requested_preconditioner)'"' == "auto"
 assert `"`e(fe_fallback_reason)'"' == "none"
 assert e(fe_fallback) == 0
-* The joint LSMR engine serves the IRLS frames; the final weighted solve is
-* the certified canonical session's, reported in e(fe_route).
+* The joint LSMR engine serves the IRLS frames (e(fe_route)); the final
+* weighted solve is the certified canonical session's (e(fe_final_route)).
 assert e(fe_solve)[2,1] == 0
 assert e(fe_solve)[3,1] > 0
 assert !missing(e(fe_solve)[2,2]) & e(fe_solve)[2,2] >= 0
-assert inlist(`"`e(fe_method)'"', "cg", "map", "lsmr")
+assert `"`e(fe_method)'"' == "lsmr" & `"`e(fe_reduction)'"' == "full"
+assert inlist(`"`e(fe_preconditioner)'"', "jacobi", "schwarz")
+assert inlist(`"`e(fe_formulation)'"', "joint", "joint+fwl")
+assert e(fe_joint_frames) + e(fe_fwl_frames) == e(fe_solve)[3,1]
+assert `"`e(fe_final_route)'"' != ""
 assert e(feppml_linear_route) == 2
 
 `feppml_test_command' y c.x, absorb(cl1 cl2 cl3) separation(none) ///
@@ -247,21 +256,22 @@ assert e(fe_solve)[3,1] > 0
 
 `feppml_test_command' y c.x, absorb(cl1 cl2) separation(none) ///
     memory(fast) threads(1) deterministic solver(cg)
-assert `"`e(fe_solver)'"' == "cg"
+assert `"`e(fe_requested)'"' == "cg"
 assert e(fe_solve)[4,1] > 0
+assert `"`e(fe_route)'"' == "cg, reduce(full) precondition(cmg)"
 if e(fe_fallback) == 0 {
     assert `"`e(fe_fallback_reason)'"' == "none"
 }
 else {
-    assert `"`e(fe_fallback_reason)'"' == "cmg_numerical_nonconvergence"
+    assert `"`e(fe_fallback_reason)'"' == "nonconvergence"
     assert e(fe_fallback) == 1
 }
-assert e(fe_solve)[1,4] + e(fe_solve)[4,4] == e(fe_fallback)
-assert e(fe_fallback) == e(feppml_solver_fallback_count)
+assert (e(fe_solve)[1,4] + e(fe_solve)[4,4] > 0) == e(fe_fallback)
+assert (e(feppml_solver_fallback_count) > 0) == e(fe_fallback)
 assert inlist(e(feppml_linear_route), 2, 3)
 
 `feppml_test_command' y c.x, solver(auto)
-assert `"`e(fe_solver)'"' == "auto"
+assert `"`e(fe_requested)'"' == "auto"
 assert e(fe_fallback) == 0
 assert e(feppml_linear_route) == 2
 assert mreldif(e(b), `accepted_b') == 0
@@ -281,15 +291,24 @@ capture noisily `feppml_test_command' y c.x, ///
     absorb(__solver_core1 __solver_core2 __solver_nuisance) ///
     separation(none) solver(cg) memory(fast) threads(1) deterministic
 assert _rc == 0
-assert `"`e(fe_solver)'"' == "cg"
-tempname nuisance_cap_b nuisance_cap_V
-matrix `nuisance_cap_b' = e(b)
-matrix `nuisance_cap_V' = e(V)
+assert `"`e(fe_requested)'"' == "cg" & e(fe_fallback) == 0
+assert `"`e(fe_route)'"' == "cg, reduce(full) precondition(cmg)"
+* One more nuisance level is beyond CMG's adapter: the Auto routes serve the
+* request as the certified fallback, the same fit as solver(auto).
 replace __solver_nuisance = mod(_n - 1, 66)
 capture noisily `feppml_test_command' y c.x, ///
     absorb(__solver_core1 __solver_core2 __solver_nuisance) ///
     separation(none) solver(cg) memory(fast) threads(1) deterministic
-assert _rc == 498
+assert _rc == 0
+assert `"`e(fe_requested)'"' == "cg" & e(fe_fallback) == 1
+assert `"`e(fe_fallback_reason)'"' == "unsupported"
+assert `"`e(fe_method)'"' != "" & `"`e(fe_preconditioner)'"' != "cmg"
+tempname nuisance_cap_b nuisance_cap_V
+matrix `nuisance_cap_b' = e(b)
+matrix `nuisance_cap_V' = e(V)
+`feppml_test_command' y c.x, ///
+    absorb(__solver_core1 __solver_core2 __solver_nuisance) ///
+    separation(none) memory(fast) threads(1) deterministic
 assert mreldif(e(b), `nuisance_cap_b') == 0
 assert mreldif(e(V), `nuisance_cap_V') == 0
 restore
@@ -377,13 +396,16 @@ capture noisily `feppml_test_command' y c.x, fecmgmode(prepared)
 assert _rc == 198
 capture noisily `feppml_test_command' y c.x, solvertrace
 assert _rc == 198
-capture noisily `feppml_test_command' y c.x, solver(lsmr)
-assert _rc == 498
-capture noisily `feppml_test_command' y c.x, solver(cg)
-assert _rc == 498
-foreach precondition in schwarz jacobi none {
-    capture noisily `feppml_test_command' y c.x, solver(lsmr, precondition(`precondition'))
-    assert _rc == 498
+* Explicit LSMR and CMG need two or more effects: without absorbed effects
+* the Auto routes serve the request as the certified fallback.
+foreach request in "lsmr" "cg" "lsmr, precondition(schwarz)" ///
+    "lsmr, precondition(jacobi)" "lsmr, precondition(none)" {
+    capture noisily `feppml_test_command' y c.x, solver(`request')
+    assert _rc == 0
+    assert `"`e(fe_requested)'"' == `"`request'"'
+    assert e(fe_fallback) == 1 & `"`e(fe_fallback_reason)'"' == "unsupported"
+    assert `"`e(fe_route)'"' == "none"
+    assert mreldif(e(b), `accepted_b') == 0
 }
 generate int __solver_wide1 = _n
 generate int __solver_wide2 = mod(5 * _n, 97)
@@ -391,14 +413,21 @@ generate int __solver_wide3 = mod(7 * _n, 101)
 capture noisily `feppml_test_command' y c.x, ///
     absorb(__solver_wide1 __solver_wide2 __solver_wide3) ///
     keepsingletons separation(none) solver(cg) memory(fast)
-assert _rc == 498
+* The nuisance is too wide for CMG, so the Auto routes serve the request; this
+* saturated design then fails as an insufficient-observations error, with the
+* accepted result preserved.
+assert _rc == 2001
+assert mreldif(e(b), `accepted_b') == 0
 drop __solver_wide1 __solver_wide2 __solver_wide3
+* memory(low) and absorbed slopes are outside explicit LSMR: Auto serves them.
 capture noisily `feppml_test_command' y c.x, ///
     absorb(cl1 cl2) separation(none) solver(lsmr) memory(low)
-assert _rc == 498
+assert _rc == 0
+assert e(fe_fallback) == 1 & `"`e(fe_fallback_reason)'"' == "unsupported"
 capture noisily `feppml_test_command' y c.x, ///
     absorb(cl1##c.x cl2) separation(none) solver(lsmr) memory(fast)
-assert _rc == 498
+assert _rc == 0
+assert e(fe_fallback) == 1 & `"`e(fe_fallback_reason)'"' == "unsupported"
 capture noisily `feppml_test_command' y c.x, ///
     absorb(__solver_lsmr_fe=cl1 cl2) separation(none) ///
     solver(lsmr) memory(fast)

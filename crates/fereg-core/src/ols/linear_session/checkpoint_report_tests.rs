@@ -19,6 +19,7 @@ fn report(solver: FeSolverKind) -> SolveReport {
         solve_seconds: 2.,
         certification_seconds: 3.,
         fallback_used: false,
+        fallback_reason: crate::fe::FeFallbackReason::None,
         requested_preconditioner: None,
         used_preconditioner: None,
         pilot_iterations: 0,

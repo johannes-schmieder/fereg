@@ -3,6 +3,9 @@ use super::*;
 
 pub(super) enum CanonicalRetryReason {
     Cmg(FusedFwlCmgFailureReport),
+    /// An explicit LSMR frame that did not certify (or whose workspace was
+    /// refused), with the reason the result reports.
+    Lsmr(crate::fe::FeFallbackReason),
     Frozen(FrozenLinearFallbackKind),
 }
 
@@ -27,11 +30,25 @@ pub(super) fn canonical_retry<P: PreparedOlsFitView + Sync + ?Sized>(
                 .as_mut()
                 .ok_or_else(|| internal("PPML CMG fallback lacks solver diagnostics"))?
                 .record_cmg_numerical_fallback(cmg_failure_observation(report))?;
+            memory.steps.fallback = memory
+                .steps
+                .fallback
+                .or(crate::fe::FeFallbackReason::Nonconvergence);
             direction.retire();
             memory.record_fallback(PpmlFallbackKind::Route);
             // Specialized ordinary solves leave this session stale between checkpoints.
             refresh_linear_frame(session, workspace, frame_generation)?;
             "prepared PPML MAP fallback after fused CMG did not certify"
+        }
+        CanonicalRetryReason::Lsmr(reason) => {
+            // The compiled solver identity keeps explicit LSMR; the canonical
+            // frames are observed on the MAP engine and the fallback is
+            // reported with the route (`PpmlStepRoute`).
+            direction.retire();
+            memory.record_fallback(PpmlFallbackKind::Route);
+            memory.steps.fallback = memory.steps.fallback.or(reason);
+            refresh_linear_frame(session, workspace, frame_generation)?;
+            "prepared PPML canonical fallback after explicit LSMR did not certify"
         }
         CanonicalRetryReason::Frozen(kind) => {
             session.discard_invalid_frozen_state();
