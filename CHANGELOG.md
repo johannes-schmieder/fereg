@@ -10,15 +10,52 @@
   `solver(cg)` and `solver(cg, reduce(eliminate) cmgdegree(6))`.
   `feppml` accepts `auto`, `lsmr` and `cg`. Unsupported combinations return
   `r(198)`.
-- Report what ran in the same words. `e(fe_route)` and `e(fe_reduction)`,
-  `e(fe_method)`, `e(fe_preconditioner)` (including block-Jacobi local solves),
-  `e(fe_acceleration)`, `e(fe_iterations)`, `e(fe_escalations)` and
-  `e(fe_fallback)` cover the absorption and, as `fe_residual_*`, the final OLS
-  residual; for feppml they cover the final weighted least-squares solve. The
-  code-free matrix `e(fe_solve)` replaces `e(fereg_solver)` and
-  `e(feppml_solver)`, and `e(fe_solver)` records the request.
-- OLS result wire 1.6 and PPML request wire 1.9; arithmetic, routes and
-  scientific results are unchanged.
+- Report what ran in the same words, against the request. `e(fe_route)` and
+  `e(fe_reduction)`, `e(fe_method)`, `e(fe_preconditioner)` (including
+  block-Jacobi and Schwarz local solves), `e(fe_acceleration)`,
+  `e(fe_iterations)`, `e(fe_escalations)`, `e(fe_fallback)` and
+  `e(fe_fallback_reason)` cover the absorption and, as `fe_residual_*`, the
+  final OLS residual; for feppml they cover the route that solved the IRLS
+  steps (explicit `lsmr`: modified LSMR, with `e(fe_formulation)` `joint`,
+  `fwl` or `joint+fwl` and the frame and hand-off counts), and
+  `e(fe_final_route)` the final certification solve. `e(fe_requested)` (formerly
+  `e(fe_solver)`) records the request and `e(fe_requested_method)`,
+  `e(fe_requested_reduction)`, `e(fe_requested_preconditioner)` and
+  `e(fe_requested_acceleration)` its parts. The code-free matrix `e(fe_solve)`
+  replaces `e(fereg_solver)` and `e(feppml_solver)`. The exact two-effect slope
+  solver reports `cg, reduce(eliminate) precondition(jacobi)` instead of `map`.
+- Certified fallbacks after explicitly selected methods: a valid request that
+  its route cannot serve (a design or choice it does not support, a workspace
+  beyond the memory limit, non-convergence within its share of `iterate()`, a
+  missed certificate) continues on the next certified route within the
+  remaining budget and the same memory limit, reported with
+  `e(fe_fallback) = 1` and the reason. Explicit `solver(lsmr)`/`solver(cg)` on
+  intercept effects continue with Auto's fedemean routes without the declined
+  formulation, then the established route; with slopes with fedemean's
+  automatic full-system CG, then MAP (formerly MAP alone, with its own budget);
+  explicit CMG and CMG-Schur outside their support, feppml `lsmr`/`cg` outside
+  theirs (one effect, slopes, `memory(low)`, a workspace that does not fit)
+  run the Auto routes, and an IRLS step explicit LSMR does not certify runs on
+  the canonical session with the later steps. These requests formerly failed
+  with r(430), r(498) or r(909). Syntax errors still fail with r(198), Break
+  and data errors are never retried, uncertified output is never accepted,
+  and the strict PPML checkpoint is unchanged.
+- Explicit `solver(cg[, reduce() precondition()])` (other than CMG) now takes
+  absorbed slopes: fedemean's PCG on the full system (no preconditioner, the
+  levels' channel blocks or the pair-subdomain Schwarz) or, for two effects,
+  the elimination of the larger effect's level blocks. It formerly returned
+  r(498).
+- Saved slope fixed effects: the MAP recovery tier (after fedemean's full
+  system declines or does not take the design) now applies the SPEC §5 gauge
+  like the other slope recovery paths: fereg's representative on rank-deficient
+  levels, then every intercept effect after the first centered to weighted mean
+  zero per connected component, its mean moved to the first intercept effect.
+  Saved intercept channels on that tier, and on the former general slope MAP
+  recovery, therefore change by per-component constants (and singular levels
+  by their representative); fitted FE sums, slope channels on identified
+  levels, estimates, sample, rank and covariance are unchanged.
+- OLS result wire 1.7 (route row with the fallback reason) and PPML request
+  wire 1.10 (2x16 route matrix); default fits are unchanged bit for bit.
 - OLS Auto with six or more categorical intercept effects, and every design
   whose exact elimination declines, runs CG on the full system with additive
   Schwarz preconditioning (fedemean); the former many-FE and two-FE routes

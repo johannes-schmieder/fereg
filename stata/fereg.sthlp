@@ -240,9 +240,8 @@ results report what ran in the same words (see {help fereg##stored:Stored result
 
 {pstd}
 The method is the first word. Sub-choices left at {cmd:auto} resolve to a
-supported formulation of that method, and an explicit sub-choice is never
-replaced: an unsupported combination returns {cmd:r(198)} and names an
-alternative. {cmd:solver(auto)} chooses the reduction, method, and
+supported formulation of that method. A combination the grammar does not
+allow returns {cmd:r(198)} and names an alternative. {cmd:solver(auto)} chooses the reduction, method, and
 preconditioners itself; to fix one, name the method, for example
 {cmd:solver(cg, precondition(jacobi))} or {cmd:solver(lsmr, precondition(none))}.
 {cmd:accelerate(cg)} is rejected because its residual certificate does not
@@ -252,33 +251,58 @@ Option names are lowercase; values are case-insensitive.
 
 {pstd}
 {cmd:solver(lsmr)} and {cmd:solver(cg)} with a preconditioner other than
-{cmd:cmg} run on categorical intercept effects: {cmd:reduce(full)} solves for
-every effect's coefficients at once, {cmd:reduce(eliminate)} eliminates the
-effect with the most levels exactly (two to five effects) and iterates on the
-others. Additive Schwarz uses one subdomain per connected component of each
-pair of the largest effect with another effect; each subdomain's local solve
-is exact (dense or envelope Cholesky) where that is cheap and approximate
-Cholesky otherwise. {cmd:precondition(auto)} starts with Jacobi: on the full
+{cmd:cmg} run on categorical effects with or without absorbed slopes:
+{cmd:reduce(full)} solves for every effect's coefficients at once,
+{cmd:reduce(eliminate)} eliminates the effect with the most levels exactly
+(two to five intercept effects, or two effects with slopes) and iterates on
+the others. Additive Schwarz uses one subdomain per connected component of
+each pair of the largest effect with another effect; each subdomain's local
+solve is exact (dense or envelope Cholesky) where that is cheap and
+approximate Cholesky otherwise. {cmd:precondition(auto)} starts with Jacobi: on the full
 system, a recurrence whose rate after 24 iterations predicts more than 100, or
 that stalls, continues with Schwarz when it fits the memory limit; on the
 elimination, a recurrence that stalls continues with block-Jacobi (exact
 dense solves of small effects, CMG on large ones). Easy designs therefore
 never pay for building the stronger preconditioner. An explicit {cmd:jacobi}, {cmd:block},
-{cmd:none}, or {cmd:schwarz} never escalates. Explicit requests fail closed:
-non-convergence within {cmd:iterate()} or a solver workspace beyond the memory
-limit is an error, not a substituted route. With absorbed slopes,
-{cmd:solver(lsmr)} also runs on the full system: {cmd:precondition(jacobi)}
-then inverts each level's block of its intercept and slope channels exactly
-(a level whose channels are dependent on its rows, such as a slope that is
-constant or zero within the level, acts on the span of its rows), and
-{cmd:precondition(schwarz)} uses factor-pair subdomains over all channels of
-both effects of each pair (a design with one effect keeps its level blocks).
-A slope fit that the full system does not certify reruns with MAP from the
-original data and sets {cmd:e(fe_fallback)}; if MAP does not certify either
-(for example, slopes whose values differ only far beyond their common offset,
-at a {cmd:tolerance()} below about 1e-9), the command fails with r(459).
-The {cmd:solver(cg)} choices other than {cmd:cmg} are unavailable with
-absorbed slopes.
+{cmd:none}, or {cmd:schwarz} never escalates.
+
+{pstd}
+With absorbed slopes the preconditioner names keep their meaning level by
+level. {cmd:precondition(jacobi)} inverts each level's block of its intercept
+and slope channels exactly (a level whose channels are dependent on its rows,
+such as a slope that is constant or zero within the level, acts on the span
+of its rows). {cmd:precondition(schwarz)} uses larger subdomains: one per
+pair of the largest effect with another effect, over all channels of both
+effects, exact on the larger effect's level blocks, with the smaller side's
+Schur complement solved exactly when it has at most 128 coefficients and by
+its level blocks otherwise. A design with one effect keeps its level blocks.
+{cmd:solver(cg, reduce(eliminate))} with slopes eliminates the larger
+effect's level blocks exactly and iterates on the other effect (two effects);
+{cmd:precondition(block)} is for intercept effects only.
+
+{marker fallback}{...}
+{pstd}
+{bf:Certified fallbacks.} A valid request that its route cannot serve
+continues on the next certified route, for explicit methods as well as for
+{cmd:solver(auto)}: when the route does not support the design or choice (for
+example {cmd:reduce(eliminate)} outside two to five effects, or
+{cmd:precondition(cmg)} with absorbed slopes), when its workspace exceeds the
+memory limit, when it does not converge within its share of {cmd:iterate()},
+or when its result misses the independent accuracy check. The next route is
+another preconditioner or formulation and then MAP: for {cmd:lsmr} and
+{cmd:cg} on intercept effects, the automatic elimination (two to five effects)
+and full-system CG without the formulation that failed, then the automatic
+established route; with absorbed slopes, full-system CG with the automatic
+preconditioner, then MAP; for CMG requests outside their support, the
+automatic routes. The fallback runs within the remaining iteration budget and
+the same memory limit and must pass the same accuracy check. The results
+report the request ({cmd:e(fe_requested)}), the route that ran
+({cmd:e(fe_route)}), {cmd:e(fe_fallback)} = 1 and {cmd:e(fe_fallback_reason)}
+({cmd:unsupported}, {cmd:memory}, {cmd:nonconvergence}, or {cmd:uncertified}),
+and the display names them. Syntax errors still fail with {cmd:r(198)};
+Break and data errors are never retried. When no budget remains or no route
+passes the check, the command fails ({cmd:r(430)}, {cmd:r(459)}, or
+{cmd:r(909)} for memory) and leaves the data and previous results unchanged.
 
 {pstd}
 {cmd:solver(auto)} is the default. One categorical effect uses direct
@@ -305,18 +329,20 @@ Irons--Tuck or SQUAREM extrapolation. {cmd:solver(cg, precondition(cmg))}
 constructs one worker--firm graph for the two largest categorical intercept
 effects and uses CMG-preconditioned PCG for all right-hand sides. Additional
 absorbed intercept effects are supported when their combined non-base
-dimension is at most 64. Absorbed slopes are not supported. A failed CMG
+dimension is at most 64; other designs, including absorbed slopes, use the
+certified fallback above. A failed CMG
 construction or solve falls back visibly to certified CG over the MAP operator
 (reported as {cmd:map, accelerate(cg)}); a successful bulk solve is polished
-by it when needed. All explicit methods fail closed on a failed independent
+by it when needed. No route publishes a result that fails the independent
 fixed-effect certificate.
 
 {pstd}
 {cmd:solver(cg, reduce(eliminate) precondition(cmg))} is an experimental
 CMG-preconditioned Schur solver for exactly two categorical intercept effects:
 the larger effect is eliminated implicitly. It supports weights, finite
-regressors, saved effects, and both memory modes; absorbed slopes are
-unsupported. Its advanced controls are {cmd:cmgdegree(4|5|6)} (default 5),
+regressors, saved effects, and both memory modes; other designs use the
+certified fallback. A breakdown that leaves iterations continues with MAP as
+a reported fallback. Its advanced controls are {cmd:cmgdegree(4|5|6)} (default 5),
 {cmd:cmgsamples(}{it:k}{cmd:)} (default 0), and {cmd:cmgseed(}{it:s}{cmd:)}
 (default 0), given inside {cmd:solver()}, for example
 {cmd:solver(cg, reduce(eliminate) precondition(cmg) cmgsamples(2) cmgseed(7))}.
@@ -389,8 +415,8 @@ The lines above the coefficient table name the route used for absorption in
 solve switched to a stronger preconditioner, list the local solves of a block
 or Schwarz preconditioner, and
 state that the accuracy check passed at the effective tolerance; estimates that
-fail the check are never posted. The use of a certified fallback is shown below
-them.
+fail the check are never posted. After a certified fallback, a further line
+names its reason and the requested {cmd:solver()}.
 {cmd:e(fereg_version)} records the release that produced the results. No
 developer trace is required.
 
@@ -412,13 +438,16 @@ projections without a new solve. {cmd:none} means there was nothing to absorb.
 {cmd:jacobi} with absorbed slopes inverts each level's block of channels
 exactly. {cmd:block} is block-Jacobi over the retained effects of the eliminated system.
 {cmd:schwarz} is additive Schwarz over factor-pair subdomains of the full
-system. Acceleration {cmd:cg} is conjugate gradients over the symmetric MAP
+system (with slopes, one subdomain per pair over both effects' channels).
+Acceleration {cmd:cg} is conjugate gradients over the symmetric MAP
 operator, which verifies or completes a {cmd:solver(cg, precondition(cmg))}
 projection.
 
   {it:result}{col 30}contents
   {hline 76}
-    {cmd:e(fe_solver)}{col 30}the normalized request, e.g. {cmd:cg, reduce(full)}
+    {cmd:e(fe_requested)}{col 30}the normalized request, e.g. {cmd:cg, reduce(full)}
+    {cmd:e(fe_requested_method)}{col 30}requested method; also {cmd:_reduction},
+    {col 30}{cmd:_preconditioner}, {cmd:_acceleration} ({cmd:auto} if unstated)
     {cmd:e(fe_route)}{col 30}absorption route in {cmd:solver()} syntax, e.g.
     {col 30}{cmd:cg, reduce(eliminate) precondition(block)}
     {cmd:e(fe_reduction)}{col 30}reduction used for absorption
@@ -428,12 +457,15 @@ projection.
     {col 30}effect, e.g. {cmd:firm=cmg year=dense}; with {cmd:schwarz}:
     {col 30}subdomains by local solve, e.g. {cmd:dense=4 approximate=2}
     {col 30}({cmd:trivial}, {cmd:dense}, {cmd:skyline} (envelope Cholesky),
-    {col 30}{cmd:approximate} (approximate Cholesky))
+    {col 30}{cmd:approximate} (approximate Cholesky), {cmd:jacobi} (a slope
+    {col 30}pair's Schur complement solved by its level blocks))
     {cmd:e(fe_subdomains)}{col 30}Schwarz subdomains (scalar), with {cmd:schwarz}
     {cmd:e(fe_acceleration)}{col 30}MAP acceleration used
     {cmd:e(fe_iterations)}{col 30}iterations (scalar; also {cmd:e(ic)})
     {cmd:e(fe_escalations)}{col 30}solves that escalated to a stronger preconditioner
     {cmd:e(fe_fallback)}{col 30}1 if a certified fallback finished the projection
+    {cmd:e(fe_fallback_reason)}{col 30}{cmd:none}, {cmd:unsupported}, {cmd:memory},
+    {col 30}{cmd:nonconvergence}, or {cmd:uncertified}
     {cmd:e(fe_residual_}{it:*}{cmd:)}{col 30}the same items for the final residual projection
     {cmd:e(fe_cmgdegree)}{col 30}cutoff, with {cmd:cg, reduce(eliminate) precondition(cmg)}
     {cmd:e(fe_cmgsamples)}{col 30}sampled trees, with the same request
@@ -461,8 +493,12 @@ reported as CMG use. A MAP continuation reports {cmd:map} and sets
 effects (or two effects outside the two-effect slope solver) read
 {cmd:cg, reduce(full) precondition(jacobi)}, or {cmd:precondition(schwarz)}
 after an escalation; a decline continues with MAP and sets
-{cmd:e(fe_fallback)}. Two-effect slope designs report {cmd:map} for their
-exact two-effect slope solver.
+{cmd:e(fe_fallback)}. Two-effect slope designs use an exact two-effect slope
+solver that eliminates the larger effect and runs CG in each level's
+orthonormal channel basis: {cmd:cg, reduce(eliminate) precondition(jacobi)}.
+An explicit request served by a fallback reports the fallback's route,
+{cmd:e(fe_fallback)} = 1 and its reason; compare {cmd:e(fe_route)} with
+{cmd:e(fe_requested)}.
 
 {pstd}
 {cmd:e(fe_solve)} is a 2-by-12 matrix with rows {cmd:absorption} and

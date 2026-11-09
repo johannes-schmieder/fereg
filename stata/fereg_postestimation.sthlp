@@ -49,11 +49,13 @@ route of the final residual projection, both in {cmd:solver()} syntax, for
 example {cmd:cg, reduce(eliminate) precondition(jacobi)}. Their parts are
 {cmd:e(fe_reduction)}, {cmd:e(fe_method)}, {cmd:e(fe_preconditioner)},
 {cmd:e(fe_local_solvers)} and {cmd:e(fe_acceleration)} (and the
-{cmd:e(fe_residual_}{it:*}{cmd:)} counterparts); {cmd:e(fe_solver)} keeps the
-request. The output line above the coefficient table states that the accuracy
-check passed and at which tolerance. {cmd:e(fe_escalations)} counts solves that
-escalated to a stronger preconditioner and {cmd:e(fe_fallback)} records a
-certified fallback. Use {cmd:matrix list e(fe_solve)} for the two named rows,
+{cmd:e(fe_residual_}{it:*}{cmd:)} counterparts); {cmd:e(fe_requested)} keeps the
+request and {cmd:e(fe_requested_method)}, {cmd:e(fe_requested_reduction)}, and
+{cmd:e(fe_requested_preconditioner)} its parts. The output line above the
+coefficient table states that the accuracy check passed and at which tolerance.
+{cmd:e(fe_escalations)} counts solves that escalated to a stronger
+preconditioner; {cmd:e(fe_fallback)} records a certified fallback and
+{cmd:e(fe_fallback_reason)} its reason ({help fereg##fallback:certified fallbacks}). Use {cmd:matrix list e(fe_solve)} for the two named rows,
 iteration counts, fallback indicators, timings and certificates. See
 {help fereg##stored:Stored results} for the vocabulary and aggregation across
 low-memory blocks. These diagnostics do not require saving residuals.

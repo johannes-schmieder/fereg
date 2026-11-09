@@ -17,9 +17,9 @@ Native test names below are relative to `crates/fereg-core` or
 ### Ownership and cell scope
 
 The accepted ownership/cell implementation was qualified with CMG `fd77d98d`; the runtime pins
-CMG `5c5b5b2b`, which adds arithmetic-preserving team dispatch of row-operator
-matvecs (gated on entries times lanes, `f6a044c9`) and the 32-level hierarchy cap
-(§19). The cap keeps every hierarchy of at most 32 levels bit-identical and lowers
+the published CMG v0.3.0 (`368eceba`), which includes arithmetic-preserving team
+dispatch of row-operator matvecs (gated on entries times lanes, `f6a044c9`) and
+the 32-level hierarchy cap (§19). The cap keeps every hierarchy of at most 32 levels bit-identical and lowers
 the CMG bytes this scope admits and charges as retained. Qualified OLS `solver(auto)`
 without `precondition()` (Auto/Auto below), a global intercept and exactly two categorical-intercept
 FE terms selects both ownership mechanisms and eager cell construction.
@@ -95,7 +95,7 @@ The former `version` and `doctor` options are removed and return r(198).
 | `dof()` | pairwise (default), firstpair, continuous, none | No public DoF-policy override |
 | `noconstant` | Suppress reported constant | Unsupported; structural constant required |
 | `residuals(newvar)` | Response residual | Formula selected by `residualtype()` |
-| `solver(method[, sub])` | auto (default), map, lsmr, cg; sub-options `reduce()`, `precondition()`, `accelerate()` and the CMG-Schur controls below | auto (default), lsmr, cg; `reduce(auto\|full)`, lsmr `precondition(auto\|schwarz)`, cg `precondition(auto\|cmg)` |
+| `solver(method[, sub])` | auto (default), map, lsmr, cg; sub-options `reduce()`, `precondition()`, `accelerate()` and the CMG-Schur controls below | auto (default), lsmr, cg; `reduce(auto\|full)`, lsmr `precondition(auto\|none\|jacobi\|schwarz)`, cg `precondition(auto\|cmg)` |
 | `solver(cg, reduce(eliminate) precondition(cmg) cmgdegree(#))` | Experimental CMG-Schur only; 4, 5 (default), or 6 | Unsupported |
 | `solver(cg, reduce(eliminate) precondition(cmg) cmgsamples(#))` | Experimental CMG-Schur only; integer 0 (default) through 4294967295 | Unsupported |
 | `solver(cg, reduce(eliminate) precondition(cmg) cmgseed(#))` | With positive cmgsamples only; integer 0 (default) through 9007199254740991 | Unsupported |
@@ -120,12 +120,10 @@ than `auto`. The supported explicit OLS requests are:
 
 - `map`, with or without Irons–Tuck or SQUAREM acceleration;
 - `lsmr` with `precondition(auto|none|jacobi|schwarz)`, modified LSMR on
-  fedemean's full system, with or without absorbed slopes (with slopes,
-  `jacobi` inverts each level's channel block and `schwarz` runs the pair
-  subdomains over all channels described below);
+  fedemean's full system, with or without absorbed slopes;
 - `cg` with `reduce()` and `precondition()` as in the table below; every
-  preconditioner other than `cmg` runs fedemean's PCG on categorical intercept
-  designs (no slopes);
+  preconditioner other than `cmg` runs fedemean's PCG, with or without
+  absorbed slopes;
 - `cg, precondition(cmg)` on the full graph (the explicit CMG route) and
   `cg, reduce(eliminate) precondition(cmg)` (the experimental CMG-Schur route,
   the only one that takes the CMG-Schur controls).
@@ -143,12 +141,64 @@ Sub-choices left at `auto` resolve to a supported formulation of the explicit
 method; only the automatic preconditioners escalate. feppml accepts `auto`,
 `lsmr` (`precondition(auto|none|jacobi|schwarz)`, §13) and `cg`
 (`precondition(auto|cmg)`) on the full system. CG-accelerated MAP (`accelerate(cg)`) remains rejected with r(198)
-under the existing safety repair. Every other combination returns r(198) naming
-an alternative and is never substituted. Explicit fedemean requests fail
-closed: non-convergence within `iterate()` is r(430)-class non-convergence, a
-workspace beyond the memory limit an allocation refusal, and `reduce(eliminate)`
-outside two to five effects is unsupported. Explicit LSMR/CMG and both PPML
-mean-bias modes are required.
+under the existing safety repair. Every other combination is an option-grammar
+error, r(198) naming an alternative, and is never substituted. Explicit
+LSMR/CMG and both PPML mean-bias modes are required.
+
+With absorbed slopes the preconditioner names keep their meaning per level:
+`jacobi` inverts each level's `channels x channels` block of `D'WD` (its
+intercept and slope channels; a block whose channels are dependent on the
+level acts as its pseudo-inverse on the range), and `schwarz` is additive
+Schwarz over larger subdomains, one per pair of factors: a pair of intercept
+effects keeps its Laplacian subdomains, and a pair in which either effect has
+slopes is one subdomain over both effects' channels, exact on the larger
+effect's level blocks, with its smaller side's Schur complement solved
+exactly (densely) when it has at most 128 coefficients and by its level
+blocks otherwise (`jacobi` in the local-solve counts).
+
+**Certified fallbacks (Johannes, 2026-11-09).** A valid request that its
+selected route cannot serve continues on the next certified route; this
+applies to explicitly selected methods as well as to Auto. A route cannot
+serve a request when it does not support the design or choice (for example
+`reduce(eliminate)` outside two to five effects, explicit CMG with absorbed
+slopes, feppml `lsmr` with one effect or `memory(low)`), when its workspace
+exceeds the memory limit, when it does not converge within its share of the
+iteration budget (a stall, a breakdown, a ceiling) or when its result misses
+the independent certificate. The fallback runs from the original input or
+from the declined route's partial result of the same projection, within the
+remaining `iterate()` budget and the same memory limit, and is accepted only
+by the same independent certificate at the requested tolerance. The order is
+the next-best certified route: for an explicit fedemean request on
+categorical intercept effects, Auto's fedemean routes without the
+formulation that declined (the elimination for two to five effects, then the
+full system with Jacobi escalating to Schwarz within the memory limit), then
+the established Auto route (for three or more effects the MAP pilot and MAP);
+for explicit `lsmr` or `cg` on absorbed slopes, fedemean's automatic
+full-system PCG (unless that was the request), then MAP; for explicit CMG or
+CMG-Schur on a design they do not support, the Auto routes; for feppml's
+explicit `lsmr` and `cg`, the Auto plan when the request cannot run at all,
+or the canonical route for a frame (and the later frames) that the explicit
+engine does not certify. Option-grammar errors still fail with r(198);
+cancellation (Break) and input or data errors (invalid weights, a level
+without positive weight, malformed columns) are never retried; memory limits
+still bind; uncertified output is never accepted. When no budget remains (an
+explicit route that exhausted `iterate()`) or no route certifies, the fit
+fails clearly with rollback (r(430) or r(459), r(909) for memory). The strict
+PPML checkpoint, its recertification, selective retry and MAP fallback, and
+every discrete decision are unchanged. Every fallback is reported (§11): the
+request, the route that actually ran, `e(fe_fallback) = 1` and
+`e(fe_fallback_reason)` (`unsupported`, `memory`, `nonconvergence` or
+`uncertified`). Declared scope: fits whose explicit request falls back,
+which formerly failed with r(430), r(498) or r(909), now publish a certified
+result from the fallback route (coefficients, covariance, fit statistics,
+residuals, FE coordinates and iteration signatures within §20 tolerances of
+any other certified route); every other fit is unchanged bit for bit;
+sample, rank, omission and other discrete decisions do not change.
+Witnesses: `fereg-oracle` `seeded_dense_ols_differential.rs`
+(`explicit_requests_fall_back_to_certified_routes`,
+`cmg_falls_back_on_slopes_while_lsmr_and_cg_serve_them`) and `slopes.rs`
+against the dense explicit-design QR, `fe::auto`'s explicit slope tests, and
+the Stata fixture `development/ols_solver_fallback.do`.
 
 Both commands load one platform-native fereg plugin. The former engine() option,
 developer engine selector and engine-identity results are removed. Unsupported
@@ -176,9 +226,12 @@ unsupported requests fail clearly.
 |---|---|---|
 | `auto` | No FE, one/multiple intercept or slope-bearing FEs, disconnected designs | Same model grammar with changing positive IRLS weights |
 | `lsmr` | General supported FE grammar, including slopes and multiple RHSs (fedemean's full system) | At least two categorical intercept FEs, including more than three; no absorbed slopes |
-| `cg` (fedemean PCG, full or eliminated) | Categorical intercept effects, any count for the full system, two to five for the elimination; weights, finite controls, disconnected designs, saved effects, both memory modes; no slopes | Unsupported (PPML `cg` is CMG) |
-| `cg, precondition(cmg)` (full graph) | Categorical intercept graph: two largest effects as bipartite core, additional effects with at most 64 non-base nuisance columns; no slopes | Exactly two or three categorical intercept effects; third-effect nuisance width at most 64; no slopes |
-| `cg, reduce(eliminate) precondition(cmg)` (CMG-Schur, experimental) | Exactly two categorical intercept effects; positive observation weights, finite controls, disconnected components and saved effects | Unsupported |
+| `cg` (fedemean PCG, full or eliminated) | Categorical effects with or without slopes: the full system for any count; the elimination for two to five intercept effects or two effects with slopes; weights, finite controls, disconnected designs, saved effects, both memory modes; block-Jacobi on intercept designs only | Unsupported (PPML `cg` is CMG) |
+| `cg, precondition(cmg)` (full graph) | Categorical intercept graph: two largest effects as bipartite core, additional effects with at most 64 non-base nuisance columns; slopes and wider nuisance fall back to Auto | Exactly two or three categorical intercept effects; third-effect nuisance width at most 64; others fall back to Auto |
+| `cg, reduce(eliminate) precondition(cmg)` (CMG-Schur, experimental) | Exactly two categorical intercept effects; positive observation weights, finite controls, disconnected components and saved effects; other designs fall back to Auto | Unsupported |
+
+Outside these envelopes a valid request falls back to a certified route
+(§1, "Certified fallbacks").
 
 The native request wire carries route tokens (`auto map lsmr pcg cmg cmgschur it
 squarem` with `preconditioner=auto|off|diagonal|schwarz`, plus `block` and the
@@ -200,8 +253,11 @@ and independently certifies observation residuals at the requested tolerance.
 Only a certificate miss can trigger one residual correction, targeting a
 hundredth of the request, floored at 1e-15 and never looser than the request;
 the correction runs only if that target is stricter than the first target.
-Both attempts share the original iteration budget. Failure is explicit;
-it does not silently switch solvers. The existing auto, CMG and other routes
+Both attempts share the original iteration budget. A breakdown or a missed
+correction that leaves budget continues with symmetric MAP from the
+reconstructed residual within the rest of it, reported as the certified
+fallback (`map`, reason `nonconvergence` or `uncertified`); an exhausted
+budget fails with r(430). The existing auto, CMG and other routes
 retain their algorithms and exact scientific results.
 
 Declared prototype scope: new-route coefficients, covariance, fit statistics,
@@ -249,7 +305,7 @@ Unbiasedness in exact arithmetic is not a spectral-quality guarantee.
 The OLS CMG adapter also handles zero/one categorical effects by exact
 no-work/direct projection; preserve this degenerate support and identify that
 no graph iteration occurred (method `direct`). PPML explicit requests outside its supported
-envelope return r(498), including zero/one FE. A valid graph formulation,
+envelope, including zero/one FE, run the Auto plan as the certified fallback. A valid graph formulation,
 component anchoring and certified nuisance elimination are required for CMG;
 the 64-column bound is an explicit adapter support limit, not an auto-routing
 threshold. Retain all saved-output and bias-correction capabilities on supported
@@ -296,7 +352,7 @@ promoted default or new public syntax. Future default changes need comparative
 evidence; no new N/width/thread/weight/memory fences may be introduced to rescue
 individual performance cells.
 Preserve requested/used solver, work accounting and existing reason diagnostics;
-unsupported explicit requests must not silently become auto.
+an explicit request becomes Auto only as a reported certified fallback (§1).
 
 ### Qualified Auto routing and developer comparisons
 
@@ -679,7 +735,10 @@ by the moment certificate on the formed residual over every level and a pass
 that misses restarts from its iterate at a tighter tolerance (at most four
 passes within `iterate()`). Both methods stop at 0.1×tol of the starting
 residual's norm and certify at `tolerance()` (the 1e-14 final residual
-projection of saved outputs included); neither falls back.
+projection of saved outputs included). A request either cannot serve
+continues on the certified fallback of §1 (Auto's fedemean routes without
+the declined formulation, then the established route) within the rest of
+`iterate()`; a request that exhausted `iterate()` fails with r(430).
 
 Absorbed slopes (Milestone 3, 2026-11-09; covered by the M2 decision for
 explicit LSMR). fedemean's full system takes each effect's channels (its
@@ -700,18 +759,42 @@ with two or more effects) is additive Schwarz over factor-pair subdomains: a
 pair of two intercept-only effects keeps its Laplacian subdomains, and a pair
 in which either effect has slopes is one subdomain over both effects'
 channels, exact on the larger effect's level channel blocks and solving the
-smaller side's Schur complement densely when it is small, otherwise by its
-diagonal blocks. A design with one effect has no pair and keeps its channel
-blocks. Results report `jacobi` and `schwarz`.
+smaller side's Schur complement exactly (densely) when it has at most 128
+coefficients, otherwise by its level blocks. A design with one effect has no
+pair and keeps its channel blocks. Results report `jacobi` and `schwarz`; the
+Schwarz local-solve counts list such pairs as `dense` or `jacobi`.
+
+Explicit `solver(cg, reduce() precondition())` on a slope design runs
+fedemean's PCG with the requested reduction and preconditioner (Milestone 3
+slope PCG, 2026-11-09): `reduce(full)` (and `reduce(auto)` with `none` or
+`schwarz`, or with more than two effects) is the full system with no
+preconditioner, the level channel blocks (`jacobi`), Schwarz over the pair
+subdomains above, or `auto` (the channel blocks escalating to Schwarz when
+slow or stalled, within the memory limit); `reduce(eliminate)` (and
+`reduce(auto)` with `auto` or `jacobi` on two effects) eliminates the larger
+effect's level channel blocks exactly and runs PCG on the other effect's
+Schur complement with its level blocks. It is certified like explicit
+`lsmr` below. A choice fedemean does not take on slopes (`precondition(block)`,
+the elimination of other than two effects) continues on the certified
+fallback (§1, reason `unsupported`). Declared scope: these explicit fits,
+formerly refused with r(498), are new; witnesses: `fereg-oracle`
+`slopes.rs` (`explicit_cg_on_slope_designs_matches_the_explicit_design`,
+every reduction x preconditioner on four slope shapes, weighted and
+unweighted, against the explicit-design QR) and the Stata fixture
+`development/ols_slope_cg.do`.
 
 Explicit `solver(lsmr)` on a slope design stops on fedemean's per-level
 certificate at `tolerance()`, which equals §16's on nonsingular blocks;
 fereg's independent §16 certificate then decides, after at most one
 correction of the residual at a tenth of `tolerance()` within the remaining
 `iterate()`. A fit fedemean does not certify (a numerical decline, a memory
-decline or a missed certificate) continues with MAP from the original input,
-reported as the fallback (`e(fe_fallback)=1`) with the reason in the
-warnings. There is no within leg any more: until the within retirement
+decline or a missed certificate) continues on the certified fallback of §1
+from the original input within the rest of `iterate()`: fedemean's automatic
+full-system PCG (the channel blocks escalating to Schwarz within the memory
+limit), then MAP, reported as the fallback (`e(fe_fallback)=1`) with its
+reason in `e(fe_fallback_reason)` and the warnings. Until the general
+fallback rule (2026-11-09) MAP alone followed, with its own full budget.
+There is no within leg any more: until the within retirement
 (Milestone 3, 2026-11-09) such a fit first ran within's modified LSMR with
 the same preconditioner (its recurrence at a hundredth of `tolerance()`
 floored at 1e-15), then MAP, and explicit `precondition(schwarz)` with fewer
@@ -719,14 +802,15 @@ than two intercept effects ran within's additive Schwarz directly; it now
 runs fedemean's pair subdomains over all channels. A design or choice
 fedemean refuses as unsupported (before it reads any data; since fedemean
 lifted its channel cap in 95f22670, only a test fault plan reaches this)
-continues with MAP, reported as the fallback (formerly within, then MAP, with
-no fallback flag); the public Rust entry `absorb_lsmr` refuses such a design
-as Unsupported. Auto, `absorb_auto` and saved-effect recovery are unchanged:
+continues on the same fallback (fedemean's automatic PCG is then refused too,
+so MAP), reported with the reason `unsupported` (formerly within, then MAP,
+with no fallback flag); the public Rust entry `absorb_lsmr` refuses such a
+design as Unsupported. Auto, `absorb_auto` and saved-effect recovery are unchanged:
 for such a design they run MAP, as before fedemean served slopes, with no
 fallback flag. fedemean's memory limit is the budget left beside the buffers
 the route holds (input copy, candidate, coefficient bank; §19); a workspace
-beyond it is a decline that continues with MAP, and a fedemean fit publishes
-its own workspace.
+beyond it is a decline that continues on the fallback (reason `memory`), and
+a fedemean fit publishes its own workspace.
 
 Declared scope: explicit slope `solver(lsmr)` fits change at tolerance level,
 including, since the within retirement, those with `precondition(schwarz)`
@@ -745,9 +829,10 @@ floors the certificate. Its b, SE, rss and residuals are bitwise those at
 relative Δrss 2.2e-16 and |Δresidual| ≤ 2.1e-15. Witnesses: that fixture
 (case 1 against its `tolerance(1e-12)` fit, at one and four workers and
 repeated), `fe::auto`'s explicit slope LSMR tests (case 1 against the
-independent centered projection at 1e-8, 1e-10 and 1e-12; the MAP
-continuation after fedemean's iteration ceiling, bitwise as called
-directly; the eligibility fault plan and the capped-memory declines) and
+independent centered projection at 1e-8, 1e-10 and 1e-12; the certified
+fallback after LSMR's iteration ceiling, repeatable and against MAP; the
+eligibility fault plan, MAP bitwise as called directly, and the capped-memory
+declines) and
 `fereg-testkit/tests/fe_certificate_oracle.rs` (explicit Schwarz with fewer
 than two intercept effects against the explicit-design QR). Explicit PPML
 LSMR keeps its scheduled certificate and one tighter continuation (§13).
@@ -912,23 +997,32 @@ OLS, one-effect and slope recovery, successful direct paths and fits without sav
 effects retain their existing behavior, except for slope designs as follows.
 
 Slope-design recovery (Milestone 3): retained fedemean coefficients (Auto's
-full system, explicit `solver(lsmr)`) are the first tier; a single slope
-effect keeps its direct level solves; otherwise fedemean's full system
-projects the target from the retained coefficients (a warm start) or zero at
-`min(tol, 1e-12)` with coefficients requested; MAP stays the fallback after a
-decline or a failed check. On every slope path a level whose channels the
-scaled pivoted group solve finds rank deficient is re-expressed in that
-solve's representative (the intercept kept on ties, dropped channels exactly
-zero; nonsingular levels keep their coefficients), then the intercept
-effects are normalized as above, the FE sum is reconstructed from the
-coefficients and checked against the target (`max(100 tol, 1e-10)`; strict
-PPML recovery also every row at its reconstruction tolerance), and the
-independent certificate decides. This applies the §5 gauge to slope designs
-with two or more intercept effects, which the general MAP recovery
-previously left unnormalized (a named gauge correction: saved intercept
-channels move by per-component constants; fitted sums, slope channels on
-identified levels, sample, rank and covariance are unchanged). Independent weak three-effect, disconnected,
-rescaling and outside-span witnesses cover the recovery boundary.
+full system, explicit `solver(lsmr)` and `solver(cg)`) are the first tier; a
+single slope effect keeps its direct level solves; otherwise fedemean's full
+system projects the target from the retained coefficients (a warm start) or
+zero at `min(tol, 1e-12)` with coefficients requested; MAP stays the fallback
+after a decline, a refusal or a failed check. On every slope path, the MAP
+tier included (2026-11-09), a level whose channels the scaled pivoted group
+solve finds rank deficient is re-expressed in that solve's representative
+(the intercept kept on ties, dropped channels exactly zero; nonsingular
+levels keep their coefficients), then the intercept effects are normalized as
+above, the FE sum is reconstructed from the normalized coefficients and
+checked against the target (`max(100 tol, 1e-10)`; strict PPML recovery also
+every row at its reconstruction tolerance), and the independent certificate
+decides. This applies the §5 gauge to slope designs with two or more
+intercept effects, which the general MAP recovery previously left
+unnormalized. Changed saved levels (a named gauge correction): relative to
+that former general slope MAP recovery, and to the MAP tier before
+2026-11-09, the saved intercept channels of every intercept effect move by
+one constant per connected component (the intercept effects after the first
+to weighted mean zero, the first taking the sum), and a rank-deficient level's
+channels take fereg's representative; fitted FE sums, slope channels on
+identified levels, estimates, sample, rank and covariance are unchanged.
+Independent weak three-effect, disconnected, rescaling and outside-span
+witnesses cover the recovery boundary; `ols::prepared_fit`'s
+`saved_slope_sums_certify_with_the_spec_gauge_on_every_recovery_tier`
+certifies the fitted FE sum, the channel sum and the gauge on the retained,
+direct, full-system and MAP tiers and their channel-by-channel agreement.
 
 Tests: `tests/intercept_slope_oracle.rs`, `tests/fe_certificate_oracle.rs`,
 `parity_reghdfe/estimate_ols_saved_outputs_parity.do`,
@@ -1158,12 +1252,20 @@ solve (zero iterations); `none` means nothing was absorbed. For the absorption
 (the used route in `solver()` syntax), `e(fe_reduction)`, `e(fe_method)`,
 `e(fe_preconditioner)`, `e(fe_local_solvers)` (with `block`: `name=dense|cmg|jacobi`
 per retained effect; with `schwarz`: the subdomains counted by local solve,
-`trivial|dense|skyline|approximate=count`, nonzero kinds only, and the scalar
-`e(fe_subdomains)`), `e(fe_acceleration)` and the scalars
+`trivial|dense|skyline|approximate|jacobi=count`, nonzero kinds only, where
+`jacobi` is a slope pair whose Schur complement is solved by its level
+blocks, and the scalar `e(fe_subdomains)`), `e(fe_acceleration)`, the scalars
 `e(fe_iterations)` (also `e(ic)`), `e(fe_escalations)` (solves that switched
-from Jacobi to block-Jacobi or additive Schwarz) and `e(fe_fallback)`; the
-final residual projection posts the same items with the `fe_residual_` prefix.
-`e(fe_solver)` is the normalized request; with `cg, reduce(eliminate) precondition(cmg)`,
+from Jacobi to block-Jacobi or additive Schwarz) and `e(fe_fallback)` (1 when
+a certified fallback route finished the projection, §1), and
+`e(fe_fallback_reason)` (`none`, `unsupported`, `memory`, `nonconvergence` or
+`uncertified`); the final residual projection posts the same items with the
+`fe_residual_` prefix. The request is posted against these:
+`e(fe_requested)` is the normalized `solver()` text and
+`e(fe_requested_method)`, `e(fe_requested_reduction)`,
+`e(fe_requested_preconditioner)` and `e(fe_requested_acceleration)` its
+choices (`auto` where unstated; `map` has reduction `full` and preconditioner
+`none`). With `cg, reduce(eliminate) precondition(cmg)`,
 `e(fe_cmgdegree)`, `e(fe_cmgsamples)` and `e(fe_cmgseed)` record the effective
 CMG-Schur controls. Matrix `e(fe_solve)` (rows `absorption residual`; columns
 `iterations escalations fallback warnings pilot_iterations pilot_contraction
@@ -1171,16 +1273,23 @@ setup_seconds solve_seconds certificate_absinf certificate_relinf
 certificate_rel2 normal_equation`) holds the numeric diagnostics and no codes.
 The route reports the actual certifying method: automatic two-FE Schur PCG is
 `cg, reduce(eliminate) precondition(jacobi)`, and actual CMG application on that
-path is `precondition(cmg)`; an allocated but unused hierarchy is not CMG. A MAP
+path is `precondition(cmg)`; an allocated but unused hierarchy is not CMG. The
+coefficient-space Schur kernel (the exact two-effect slope solver of OLS
+Auto, and PPML's coefficient owner) eliminates the largest partition and
+runs CG in each level's orthonormal channel basis:
+`cg, reduce(eliminate) precondition(jacobi)` (formerly reported as `map`). A MAP
 continuation reports `map` with fallback set; already-certified zero-work
 inputs report `map` with zero iterations. Low aggregation preserves CMG, block-Jacobi
 and Schwarz use and sums escalations across blocks unless a certified fallback
-takes precedence. The display names the absorption route (marking an
-escalation), any local solves (`Local solves:`) and the passed accuracy check
-with the effective tolerance, each on its own line.
-The former 2x16 code matrix `e(fereg_solver)` and the `fereg_solver_*`,
-`fereg_preconditioner` and `fereg_cmg_*` results are removed. The route row
-is the native transport (OLS result wire 1.6, see the
+takes precedence (a fallback's route and first reason describe the
+projection). The display names the absorption route (marking an
+escalation), any local solves (`Local solves:`), the passed accuracy check
+with the effective tolerance and, after a fallback, its reason and the
+request, each on its own line.
+The former 2x16 code matrix `e(fereg_solver)`, the `fereg_solver_*`,
+`fereg_preconditioner` and `fereg_cmg_*` results and `e(fe_solver)` (now
+`e(fe_requested)`) are removed. The route row is the native transport (OLS
+result wire 1.7, 2x22 with the fallback reason in column 13, see the
 [plugin protocol](plugin_protocol.md)); the ado decodes and validates it before
 posting. This reporting changes only telemetry, not arithmetic, route
 decisions, iteration budgets, science or the PPML solver contract.
@@ -1197,19 +1306,35 @@ Required PPML information includes:
 - feppml_status, fit, dof, fe, cluster, subset, separation, inference,
   drop_counts, separation_sequence, certificate, runtime and receipt
   matrices (all names after the first have the `feppml_` prefix);
-- `dof_table` when applicable; `fe_solver` (the normalized request); the route
-  of the final weighted least-squares solve, which always runs in the certified
-  canonical session, as `fe_route`, `fe_reduction`, `fe_method`,
-  `fe_preconditioner`, `fe_local_solvers`, `fe_acceleration`, `fe_iterations`
-  and `fe_escalations` (the requested `lsmr`/`cg` serves the ordinary IRLS
-  frames); `fe_fallback` (visible solver fallbacks over the fit) and
-  `fe_fallback_reason`; matrix `fe_solve` with rows `canonical lsmr lsmr_joint
+- `dof_table` when applicable; the request as for OLS (`fe_requested` and
+  `fe_requested_method|reduction|preconditioner|acceleration`); the route that
+  solved the IRLS steps as `fe_route`, `fe_reduction`, `fe_method`,
+  `fe_preconditioner`, `fe_local_solvers`, `fe_subdomains`, `fe_acceleration`,
+  `fe_iterations` and `fe_escalations` (explicit `lsmr` or `cg`: that engine
+  over its certified frames, with the strongest preconditioner any frame
+  used; `auto`, or a request that fell back before its first frame: the final
+  solve's route); `fe_final_route`, the final weighted least-squares solve,
+  which always runs in the certified canonical session; `fe_fallback` (1 when
+  a certified fallback served part or all of the request: the Auto plan for a
+  request its route cannot run, the canonical route for explicit frames it
+  did not certify, CMG's MAP continuation or the strict checkpoint
+  accelerator's MAP fallback) and `fe_fallback_reason`; for explicit `lsmr`,
+  `fe_formulation` (`joint`: every frame certified on the joint `[X D]`
+  recurrence; `fwl`: every frame ran FWL projections of `[X, z]` from its
+  start, as with `precondition(schwarz)`; `joint+fwl`: the joint recurrence
+  handed frames to the projections) with the scalars `fe_joint_frames`,
+  `fe_fwl_frames` and `fe_handoffs`, so that preconditioner comparisons
+  name the formulation they measured; matrix `fe_solve` with rows `canonical lsmr lsmr_joint
   cmg` and columns `ordinary_frames checkpoint_frames retries fallbacks
   iterations setup_seconds solve_seconds certification_seconds
   certificate_absinf certificate_relinf certificate_rel2 normal_equation
   projection_absinf backward_error` (the native 4x22 solver shadow and its
-  identity codes are checked by the compiled validator and not posted). The
-  compiled scalar poster still posts `feppml_linear_route` (a route code) and
+  identity codes are checked by the compiled validator and not posted; an
+  explicit request served by the Auto plan is validated as Auto there, and
+  the canonical frames after an explicit LSMR fallback count as MAP-engine
+  ordinary frames without its fallback count). The route matrix (2x16,
+  request wire 1.10) carries both routes and the formulation counts in plain
+  ado validation. The compiled scalar poster still posts `feppml_linear_route` (a route code) and
   `feppml_solver_fallback_count` until the next Stata 15 Mata rebuild;
 - `cmd=feppml`, `model=poisson`, command line, depvar, indepvars, vce, absvars,
   separation, adjustment, predict=feppml_p, requested output bindings and
@@ -1350,7 +1475,12 @@ a recurrence or certificate miss after one continuation at 0.01×tol (floor
 1e-14) hands the frame to the projections, and later frames of the fit start
 there. `precondition(jacobi)` and `precondition(none)` keep the joint
 recurrence, whose double miss is the frame's numerical refusal;
-`precondition(schwarz)` runs the projections. Every frame is accepted only by
+`precondition(schwarz)` runs the projections. A frame the engine does not
+certify (that refusal, a projection miss after its retry, a refused
+workspace) is solved by the canonical session, as are the later frames
+(the certified fallback of §1, reason `nonconvergence` or `memory`); the
+compiled solver identity stays explicit LSMR and the canonical frames count
+as MAP-engine ordinary frames. Every frame is accepted only by
 the exact normal-equation certificate of its formed residual on the raw
 controls and every FE level at the frame tolerance relative to
 `max(||z||_w, ||r||_w)`; a projection miss reprojects once from its solved
@@ -1383,9 +1513,11 @@ comparison and decisions are unchanged: only the original-weight
 certificate accepts the candidate; one retry, of the failed columns when
 their copy fits beside the retained candidate, runs from untouched inputs at
 `max(0.01×tol, 1e-14)`; a numerical miss falls back to MAP on the untouched
-inputs, reported as `checkpoint_lsmr_numerical_nonconvergence`; a workspace
-beyond the admitted allowance is an allocation refusal. Declared scope:
-checkpoints the elimination declined (none of the bench designs).
+inputs, reported in the compiled solver table as
+`checkpoint_lsmr_numerical_nonconvergence` and publicly as
+`e(fe_fallback_reason) = nonconvergence`; a workspace beyond the admitted
+allowance is an allocation refusal. Declared scope: checkpoints the
+elimination declined (none of the bench designs).
 
 **Six or more effects (2026-11-09).** PPML's canonical generic owner of a
 categorical intercept design outside the elimination's range (Fast mode)

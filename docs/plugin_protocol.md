@@ -13,8 +13,8 @@ request/result layouts are independently versioned:
 |---|---:|
 | Action protocol | 1.7 |
 | Model wire | 2.1 |
-| OLS result wire | 1.6 |
-| PPML request wire | 1.9 |
+| OLS result wire | 1.7 |
+| PPML request wire | 1.10 |
 | PPML result wire | 1.5 |
 
 Estimation requires the exact action and estimator-specific request/result
@@ -262,8 +262,8 @@ values as `e(fe_cmgdegree)`, `e(fe_cmgsamples)` and `e(fe_cmgseed)`.
 
 ### Route rows
 
-Result wire 1.6 reports each projection's route in the vocabulary of
-`solver()` (`crates/fereg-plugin/src/route_report.rs`). A route row has 12
+Result wire 1.7 reports each projection's route in the vocabulary of
+`solver()` (`crates/fereg-plugin/src/route_report.rs`). A route row has 13
 columns:
 
 | Column | Content | Codes |
@@ -272,20 +272,22 @@ columns:
 | 2 | method | 0 none, 1 direct, 2 map, 3 cg, 4 lsmr, 5 derived |
 | 3 | MAP acceleration | 0 none, 1 cg, 2 irons-tuck, 3 squarem; nonzero only with method map |
 | 4 | preconditioner | 0 none, 1 jacobi, 2 block, 3 schwarz, 4 cmg |
-| 5–9 | local solves: with block, the local solve of design effects 1–5 (absorb order); with schwarz, the subdomains counted by local solve | block: 0 none or eliminated, 1 dense, 2 cmg, 3 jacobi, at least one nonzero; schwarz: counts of trivial, dense, skyline and approximate subdomains in columns 5–8 (all zero when unreported), column 9 zero; otherwise all zero |
+| 5–9 | local solves: with block, the local solve of design effects 1–5 (absorb order); with schwarz, the subdomains counted by local solve | block: 0 none or eliminated, 1 dense, 2 cmg, 3 jacobi, at least one nonzero; schwarz: counts of trivial, dense, skyline, approximate and jacobi (a slope pair's Schur complement by its level blocks) subdomains in columns 5–9 (all zero when unreported); otherwise all zero |
 | 10 | escalations | solves that switched to a stronger preconditioner |
 | 11 | iterations | exact integer |
 | 12 | certified fallback | 0 or 1 |
+| 13 | fallback reason | 0 none, 1 unsupported, 2 memory, 3 nonconvergence, 4 uncertified; nonzero exactly when column 12 is 1 |
 
-The OLS solver table is 2x21 with rows absorption and final residual: columns
-1–12 are the route row and 13–21 the warning count, pilot iterations, pilot
+The OLS solver table is 2x22 with rows absorption and final residual: columns
+1–13 are the route row and 14–22 the warning count, pilot iterations, pilot
 contraction, setup and solve seconds, the certificate's absolute and relative
 infinity and relative two norms, and the normal-equation residual. Rust
 validates every code and count before stores; the ado decodes the rows into
 `e(fe_*)` strings, validates them again and posts the diagnostics as
 `e(fe_solve)` without codes. A plain MAP projection of one intercept channel
 (or the constant alone) is reported as direct unless MAP was requested by name.
-The table replaces result wire 1.5's 2x16 code table; an ado and plugin of
+Result wire 1.7 adds column 13 and the fifth Schwarz count to wire 1.6's
+2x21 table, which replaced wire 1.5's 2x16 code table; an ado and plugin of
 different result minors fail the exact version check.
 
 Before any observation read, Rust validates the complete request, exact
@@ -318,18 +320,23 @@ request, PPML request/result wire identities, source and output bindings,
 dimensions, nonaliasing destinations, memory/thread controls, and initially
 incomplete receipt before reading observations.
 
-Request wire 1.9 has one closed `solver` field with values `auto`, `map`,
+Request wire 1.10 has one closed `solver` field with values `auto`, `map`,
 `lsmr`, and `cmg` (public `solver(auto|lsmr|cg)`; `map` is the canonical family
-token used by the hidden adapter) and adds the required `output_route_matrix`
-destination. The optional `preconditioner` field (`auto`, `off`, `diagonal`,
+token used by the hidden adapter) and the required `output_route_matrix`
+destination (2x16 since 1.10; 1x12 in 1.9). The optional `preconditioner` field (`auto`, `off`, `diagonal`,
 `schwarz`; default `auto`) is valid only with `solver=lsmr` and carries
 `solver(lsmr, precondition())`; the ado sends it only when it is not `auto`,
 so the largest request has 101 fields. Private solver, mode, policy, trace and
 experiment keys are unsupported. An older exact
-request version is a protocol mismatch; an unknown key on 1.9 is syntax error.
-Recognized solver/topology combinations outside the staged public envelope
-return `r(498)`. A supported route that fails its checked workspace preflight
-returns `r(909)`; neither condition is converted to an implicit solver choice.
+request version is a protocol mismatch; an unknown key on 1.10 is syntax error.
+A recognized solver request outside its route's envelope (topology, slopes,
+`memory(low)`) or whose checked workspace preflight fails runs the Auto plan
+as the certified fallback (SPEC §1): the 4x22 solver table then reports the
+Auto plan, and the ado admits that identity only when row 1 of the route
+matrix reports the fallback with reason `unsupported` or `memory`. An IRLS
+frame explicit LSMR does not certify continues on the canonical session; its
+canonical frames are MAP-engine ordinary frames of the solver table and the
+fallback is carried by the route matrix.
 
 The live action owns sample construction, singleton and separation processing,
 topology rebasing, IRLS, inference, certificates, saved-output preparation,
@@ -341,9 +348,14 @@ MAP, fused LSMR, joint LSMR, and prepared CMG. The table binds the requested,
 selected, concrete, effective, and checkpoint routes and per-engine frame,
 retry, fallback, timing, and certificate evidence; the compiled validator
 checks it and the ado posts its counts and evidence as `e(fe_solve)` without the
-identity codes. The separate 1x12 route matrix (request wire 1.9, outside the
-compiled validator) holds the route row of the final certified linear solve,
-validated by Rust before stores and by the ado before posting. Its independent 33-column receipt binds the other
+identity codes. The separate 2x16 route matrix (request wire 1.10, outside the
+compiled validator) holds two route rows: row 1 the route that solved the
+IRLS steps (explicit LSMR or CMG over their certified frames; otherwise the
+final solve's route), with the fit's certified fallback and its reason, and
+in columns 14–16 explicit LSMR's joint frames, FWL frames and joint-to-FWL
+hand-offs; row 2 the final certified linear solve with its own fallback and
+zeros in columns 14–16. Rust validates both rows before stores and the ado
+before posting. Its independent 33-column receipt binds the other
 tables, execution/generation counts, and uint32 limbs for the initial/final
 generation hashes plus deterministic digests of the complete ordered
 separation trace and generation-hash sequence. Timing and process-local values

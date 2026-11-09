@@ -57,25 +57,36 @@ design and available memory. For eligible two-effect categorical designs it
 can reuse a CMG preconditioner across IRLS iterations. That internal
 acceleration does not mean the command selected explicit `solver(cg)`.
 `feppml` uses the `solver()` grammar of `fereg` (below) restricted to `auto`,
-`lsmr` (Schwarz-preconditioned) and `cg` (CMG on the full graph); it has no
-`solver(map)` and no `accelerate()`.
+`lsmr` (`precondition(auto|none|jacobi|schwarz)`) and `cg` (CMG on the full
+graph); it has no `solver(map)` and no `accelerate()`.
 
-Explicit `solver(lsmr)` requires at least two categorical intercept effects;
-`solver(cg)` supports exactly two or three. Both require the fast-memory
-route and support the full PPML output interface. In the three-effect CMG
-case, the two largest retained dimensions form the graph core; the remaining
-dimension may have at most 64 non-base indicators. Absorbed slopes and explicit
-`memory(low)` are outside these two solvers' supported scope. Unsupported
-requests return `r(498)`; a supported workspace that cannot fit returns `r(909)`.
+Explicit `solver(lsmr)` serves at least two categorical intercept effects;
+`solver(cg)` exactly two or three. Both run in the fast-memory route and
+support the full PPML output interface. In the three-effect CMG case, the two
+largest retained dimensions form the graph core; the remaining dimension may
+have at most 64 non-base indicators. A request outside this scope (one effect,
+absorbed slopes, `memory(low)`) or whose workspace does not fit runs
+`solver(auto)` as a reported certified fallback (below), and an IRLS step that
+explicit LSMR does not certify is solved, with the later steps, by the
+canonical session.
 
 All routes retain the rank, convergence, final-Hessian and covariance checks.
-A permitted numerical fallback is reported explicitly. `e(fe_route)` and its
-parts (`e(fe_reduction)`, `e(fe_method)`, `e(fe_preconditioner)`, ...) describe
-the final weighted least-squares solve, which always runs in the certified
-canonical session; the requested `lsmr` or `cg` serves the ordinary IRLS
-iterations. The rows of `e(fe_solve)` give each session's frames, retries,
-fallbacks, iterations, timings and certificate maxima, and `e(fe_fallback)` and
-`e(fe_fallback_reason)` the fallbacks. The
+`e(fe_requested)` is the request and `e(fe_requested_method)`,
+`e(fe_requested_reduction)` and `e(fe_requested_preconditioner)` its parts.
+`e(fe_route)` and its parts (`e(fe_reduction)`, `e(fe_method)`,
+`e(fe_preconditioner)`, ...) describe the route that solved the IRLS steps:
+explicit `lsmr` with the strongest preconditioner any step used, explicit `cg`
+as `cg, reduce(full) precondition(cmg)`, `auto` as the canonical route.
+`e(fe_final_route)` is the final weighted least-squares solve, the
+certification step that always runs in the canonical session. With
+`solver(lsmr)`, `e(fe_formulation)` says whether the steps ran the joint
+recurrence (`joint`), FWL projections (`fwl`, as with
+`precondition(schwarz)`) or the joint recurrence with hand-offs to the
+projections (`joint+fwl`), with counts in `e(fe_joint_frames)`,
+`e(fe_fwl_frames)` and `e(fe_handoffs)`; compare preconditioners only between
+fits with the same formulation. `e(fe_fallback)` and `e(fe_fallback_reason)`
+report a certified fallback. The rows of `e(fe_solve)` give each session's
+frames, retries, fallbacks, iterations, timings and certificate maxima. The
 [installed help](../stata/feppml.sthlp) gives the complete contract.
 
 ### Optional PPML coefficient mean correction
@@ -199,16 +210,35 @@ rejected.
 | `precondition(schwarz)` | full | additive Schwarz | error 198 |
 | `precondition(cmg)` | CMG graph CG | CMG graph CG | CMG Schur CG (two effects) |
 
-Explicit CG (other than CMG) needs categorical intercept effects. Explicit
-LSMR also takes absorbed slopes: it runs on the full system over each level's
-intercept and slope channels (`jacobi` inverts each level's channel block;
-`schwarz` uses pair subdomains over all channels). Both fail closed:
-non-convergence within `iterate()` or a workspace beyond the memory limit is
-an error, never a substituted route. The one exception is explicit LSMR with
-absorbed slopes: a fit the full system does not certify, or whose workspace
-exceeds the memory limit, continues with MAP from the original input and sets
-`e(fe_fallback)`; when MAP cannot certify it either, the fit fails with
-error 459. Only the automatic preconditioners escalate.
+Explicit LSMR and CG (other than CMG) also take absorbed slopes, over each
+level's intercept and slope channels. The preconditioner names keep their
+meaning level by level: `jacobi` inverts each level's block of channels
+exactly, and `schwarz` uses larger subdomains, one per pair of the largest
+effect with another effect, over both effects' channels, exact on the larger
+effect's level blocks, with the smaller side's Schur complement solved exactly
+when it has at most 128 coefficients and by its level blocks otherwise.
+`reduce(eliminate)` with slopes needs two effects; `precondition(block)` is for
+intercept effects. Only the automatic preconditioners escalate.
+
+**Certified fallbacks.** A valid request that its route cannot serve continues
+on the next certified route, for explicit methods as for `solver(auto)`: when
+the route does not support the design or choice (for example
+`reduce(eliminate)` outside two to five effects, or `precondition(cmg)` with
+absorbed slopes), when its workspace exceeds the memory limit, when it does not
+converge within its share of `iterate()`, or when its result misses the
+independent accuracy check. The next route is another preconditioner or
+formulation, then MAP: on intercept effects the automatic elimination (two to
+five effects) and full-system CG without the formulation that failed, then the
+automatic established route; with slopes full-system CG with the automatic
+preconditioner, then MAP; for CMG outside its support the automatic routes. It
+runs within the remaining iteration budget and the same memory limit and must
+pass the same accuracy check. `e(fe_requested)` keeps the request,
+`e(fe_route)` names the route that ran, `e(fe_fallback)` is 1 and
+`e(fe_fallback_reason)` is `unsupported`, `memory`, `nonconvergence` or
+`uncertified`; the display prints the reason and the request. Syntax errors
+still return error 198, Break and data errors are never retried, and when no
+budget remains or no route certifies the fit fails (error 430, 459 or 909)
+without changing the data or previous results.
 
 Automatic two-FE OLS checks an initial solution at the requested tolerance
 and spends additional iterations on a tighter correction only if that check
@@ -233,8 +263,9 @@ Three or more categorical-intercept effects continue with MAP on the original
 inputs with the remaining budget; with three unit-weight effects, a short MAP
 pilot or certified structural shortcut may finish first. Every route must
 pass the requested FE-moment certificate. One categorical effect uses direct
-demeaning. Slopes and explicit
-requests retain their own supported routes. Ownership and
+demeaning. Slope designs keep their own automatic routes (two slope effects:
+an exact two-effect slope solver, reported as
+`cg, reduce(eliminate) precondition(jacobi)`). Ownership and
 repeated-cell optimizations are automatic only for `solver(auto)` with a global
 intercept and exactly two categorical-intercept effects. They do not change
 the fitted model or require new options.
@@ -250,7 +281,7 @@ its residual certificate does not establish projection accuracy. Use
 bipartite graph core, reuses one CMG hierarchy across the fit, and handles
 additional absorbed intercept effects through a dense Schur layer capped at 64
 non-base columns. Zero- and one-effect models retain exact direct projection.
-CMG does not support absorbed slopes. Every result is independently certified;
+Absorbed slopes and wider nuisance layers use the certified fallback. Every result is independently certified;
 the existing CG solver polishes a small remaining projection error or is used
 as a visible fallback if CMG setup or PCG fails (reported as
 `map, accelerate(cg)`). Explicit CMG and automatic Schur-PCG upgrades are
@@ -328,14 +359,17 @@ residual and absorbed degrees of freedom, fit statistics, weight metadata,
 cluster counts, singleton counts, and absorbed-effect metadata. The following
 diagnostics are specific to `fereg`:
 
-- `e(fe_solver)` is the normalized request, for example `cg, reduce(full)`;
+- `e(fe_requested)` is the normalized request, for example `cg, reduce(full)`,
+  with its parts `e(fe_requested_method)`, `e(fe_requested_reduction)`,
+  `e(fe_requested_preconditioner)` and `e(fe_requested_acceleration)` (`auto`
+  where unstated);
 - `e(fe_route)` names the route used for outcome/regressor absorption in
   `solver()` syntax, with its parts `e(fe_reduction)`, `e(fe_method)`,
   `e(fe_preconditioner)`, `e(fe_local_solvers)` (block-Jacobi: each retained
   effect's local solve; Schwarz: the subdomains counted by local solve, with
   `e(fe_subdomains)`) and
-  `e(fe_acceleration)`, and the scalars `e(fe_iterations)`,
-  `e(fe_escalations)` and `e(fe_fallback)`;
+  `e(fe_acceleration)`, the scalars `e(fe_iterations)`,
+  `e(fe_escalations)` and `e(fe_fallback)`, and `e(fe_fallback_reason)`;
 - `e(fe_residual_route)` and the other `e(fe_residual_*)` results describe the
   final residual projection;
 - `e(fe_solve)` records both phases' iterations, escalations, fallback,
@@ -348,8 +382,9 @@ diagnostics are specific to `fereg`:
 
 The lines above the coefficient table name the absorption route
 (`Fixed-effect solver:`), mark an escalation, list any local solves and
-state that the accuracy check passed at the effective tolerance; results that
-fail the check are never posted. `e(fereg_version)`
+state that the accuracy check passed at the effective tolerance and, after a
+certified fallback, its reason and the request; results that fail the check
+are never posted. `e(fereg_version)`
 records the release that produced the results.
 
 Solver results use the words of `solver()`: reduction `full`, `eliminate` or
@@ -360,7 +395,8 @@ acceleration `none`, `cg`, `irons-tuck` or `squarem`. The exact elimination
 reports `cg, reduce(eliminate) precondition(jacobi)`, or `precondition(block)`
 with `e(fe_local_solvers)` such as `firm=cmg year=dense` after an escalation;
 the full system reports `cg, reduce(full) precondition(schwarz)` with
-`e(fe_local_solvers)` such as `dense=3 approximate=2`;
+`e(fe_local_solvers)` such as `dense=3 approximate=2` (with slopes, `jacobi`
+counts pairs whose Schur complement is solved by its level blocks);
 the guarded two-FE Schur-PCG recurrence reports the same Jacobi route and
 `precondition(cmg)` when it actually applied a CMG preconditioner. A MAP
 fallback is reported as `map` with fallback set.

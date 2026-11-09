@@ -457,7 +457,7 @@ partitions and merge order for the same platform, route, and thread count.
 {cmd:solver(lsmr}[{cmd:, reduce(auto|full) precondition(auto|none|jacobi|schwarz)}]{cmd:)},
 and {cmd:solver(cg}[{cmd:, reduce(auto|full) precondition(auto|cmg)}]{cmd:)}.
 {cmd:feppml} has no {cmd:solver(map)}, no {cmd:accelerate()}, no
-{cmd:reduce(eliminate)} request, and no CMG-Schur controls; an unsupported
+{cmd:reduce(eliminate)} request, and no CMG-Schur controls; such a
 combination returns {cmd:r(198)}.
 {cmd:solver(auto)} selects the canonical certified projection family.
 Its numerical route and workspace depend on the fixed-effect design and
@@ -510,11 +510,15 @@ retained dimensions form the graph core; the remaining dimension may have at
 most 64 non-base indicators. This limit does not count finite regressors.
 Both retain the full PPML output
 surface, including saved fixed effects recovered from the accepted canonical
-final-Hessian state, and require the fast memory route.
-{cmd:memory(auto)} may select that route; explicit {cmd:memory(low)} is not yet
-supported for these two solvers. Recognized requests outside this envelope
-return {cmd:r(498)}. A viable selected route that cannot fit its modeled
-workspace returns {cmd:r(909)}. Numerical CMG nonconvergence triggers a visible,
+final-Hessian state, and run in the fast memory route.
+As for {help fereg##fallback:fereg}, a valid request that its route cannot
+serve continues on a certified fallback: a request outside this envelope
+(one effect, absorbed slopes, {cmd:memory(low)}, more than 64 nuisance
+indicators) or whose workspace does not fit runs {cmd:solver(auto)}
+(reason {cmd:unsupported} or {cmd:memory}), and an IRLS step that explicit LSMR
+does not certify (neither the joint recurrence nor the projections) is solved
+by the canonical session, as are the later steps (reason {cmd:nonconvergence}
+or {cmd:memory}). Numerical CMG nonconvergence triggers a visible,
 permanent fallback of the ordinary frames to the canonical session. A failed
 independent checkpoint certificate permits one tighter LSMR batch on untouched
 authoritative inputs; a second numerical rejection falls back visibly to the
@@ -683,20 +687,33 @@ versioned identity and final COMPLETE marker. Scalars beginning
 allocation, timing, thread, and certificate evidence.
 
 {pstd}
-{cmd:e(fe_solver)} keeps the normalized {cmd:solver()} request. The macros
+{cmd:e(fe_requested)} keeps the normalized {cmd:solver()} request, and
+{cmd:e(fe_requested_method)}, {cmd:e(fe_requested_reduction)},
+{cmd:e(fe_requested_preconditioner)}, and {cmd:e(fe_requested_acceleration)}
+its choices ({cmd:auto} where unstated). The macros
 {cmd:e(fe_route)}, {cmd:e(fe_reduction)}, {cmd:e(fe_method)},
-{cmd:e(fe_preconditioner)}, {cmd:e(fe_local_solvers)} (with block-Jacobi), and
-{cmd:e(fe_acceleration)} and the scalars {cmd:e(fe_iterations)} and
-{cmd:e(fe_escalations)} describe the final weighted least-squares solve, which
-always runs in the certified canonical session, in the vocabulary of
-{help fereg##stored:fereg}; for example
-{cmd:cg, reduce(eliminate) precondition(jacobi)}. The requested {cmd:lsmr} or
-{cmd:cg} serves the ordinary IRLS iterations; see the rows of
-{cmd:e(fe_solve)}. {cmd:e(fe_fallback)} counts visible solver fallbacks over
-the fit and {cmd:e(fe_fallback_reason)} names them: {cmd:none},
-{cmd:cmg_numerical_nonconvergence},
-{cmd:checkpoint_lsmr_numerical_nonconvergence}, or
-{cmd:cmg_and_checkpoint_numerical_nonconvergence}.
+{cmd:e(fe_preconditioner)}, {cmd:e(fe_local_solvers)}, and
+{cmd:e(fe_acceleration)} and the scalars {cmd:e(fe_iterations)},
+{cmd:e(fe_escalations)}, and (with Schwarz) {cmd:e(fe_subdomains)} describe the
+route that solved the IRLS steps, in the vocabulary of
+{help fereg##stored:fereg}: for {cmd:solver(lsmr)}, modified LSMR with the
+strongest fixed-effect preconditioner any step used; for {cmd:solver(cg)},
+{cmd:cg, reduce(full) precondition(cmg)}; for {cmd:solver(auto)}, the
+certified canonical route. {cmd:e(fe_final_route)} is the final weighted
+least-squares solve, the certification step that always runs in the
+canonical session, for example {cmd:cg, reduce(eliminate) precondition(jacobi)}.
+With {cmd:solver(lsmr)}, {cmd:e(fe_formulation)} names the formulation of its
+certified steps: {cmd:joint} (every step certified on the joint recurrence of
+the controls and fixed effects), {cmd:fwl} (every step ran the projections of
+the controls and working response from its start, as with
+{cmd:precondition(schwarz)}), or {cmd:joint+fwl} (the joint recurrence handed
+steps to the projections), with the counts {cmd:e(fe_joint_frames)},
+{cmd:e(fe_fwl_frames)}, and {cmd:e(fe_handoffs)}; a preconditioner comparison
+compares like formulations only when these agree. {cmd:e(fe_fallback)} is 1
+when a certified fallback served part or all of the request (including the
+CMG and checkpoint-accelerator fallbacks below) and
+{cmd:e(fe_fallback_reason)} names the first reason: {cmd:none},
+{cmd:unsupported}, {cmd:memory}, {cmd:nonconvergence}, or {cmd:uncertified}.
 
 {pstd}
 {cmd:e(fe_solve)} has rows {cmd:canonical} (the certified canonical session),
@@ -707,8 +724,9 @@ the fit and {cmd:e(fe_fallback_reason)} names them: {cmd:none},
 {cmd:certificate_relinf}, {cmd:certificate_rel2}, {cmd:normal_equation},
 {cmd:projection_absinf}, and {cmd:backward_error}. Sessions that did not run
 have zero work and missing certificate maxima. The compiled result validator
-still posts {cmd:e(feppml_solver_fallback_count)}, equal to
-{cmd:e(fe_fallback)}, and the internal route code {cmd:e(feppml_linear_route)}.
+still posts {cmd:e(feppml_solver_fallback_count)} (the CMG and
+checkpoint-accelerator fallbacks only) and the internal route code
+{cmd:e(feppml_linear_route)}.
 
 {pstd}
 Standard macros include {cmd:e(cmd)} = {cmd:feppml}, {cmd:e(cmdline)},
@@ -757,7 +775,7 @@ namespace. No partial requested variable or public {cmd:e()} result remains.
     {cmd:r(430)}{col 18}nonconvergence, failed numerical certificate, or unrepresentable prediction type
     {cmd:r(459)}{col 18}invalid outcome, pweight, offset, exposure, or data domain
     {cmd:r(2001)}{col 18}empty/zero-outcome sample, nonpositive DoF, or too few clusters
-    {cmd:r(498)}{col 18}recognized but unsupported solver, feature, or FE-dependent prediction
+    {cmd:r(498)}{col 18}recognized but unsupported feature or FE-dependent prediction
     {cmd:r(499)}{col 18}native protocol mismatch
     {cmd:r(909)}{col 18}allocation or memory preflight failure
     {cmd:r(3499)}{col 18}caught panic or internal invariant failure
