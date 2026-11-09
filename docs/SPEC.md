@@ -121,9 +121,8 @@ than `auto`. The supported explicit OLS requests are:
 - `map`, with or without Irons–Tuck or SQUAREM acceleration;
 - `lsmr` with `precondition(auto|none|jacobi|schwarz)`, modified LSMR on
   fedemean's full system, with or without absorbed slopes (with slopes,
-  `jacobi` inverts each level's channel block and `schwarz` is the hybrid
-  below; `schwarz` with fewer than two intercept effects keeps the general
-  within LSMR solver);
+  `jacobi` inverts each level's channel block and `schwarz` runs the pair
+  subdomains over all channels described below);
 - `cg` with `reduce()` and `precondition()` as in the table below; every
   preconditioner other than `cmg` runs fedemean's PCG on categorical intercept
   designs (no slopes);
@@ -164,15 +163,19 @@ interfaces, not additions to the public options above.
 
 ### Solver support and dispatch
 
-`within` names the pinned modified-LSMR library, not a fourth public solver.
-All supported backends must honor the same scientific model and accuracy
-contract. Shared internal operations preserve explicit solver and storage support;
+`within`, formerly the pinned modified-LSMR library, was never a public solver
+and is no longer a dependency (retired in Milestone 3, 2026-11-09). Every
+modified LSMR is `mlsmr` from the pinned `schwarz-precond` crate (the same
+revision as before), run by fedemean's full system and, for PPML's explicit
+joint `[X D]` recurrence (§13) and the developer LSMR Break hooks, by
+fereg-core directly. All supported backends must honor the same scientific
+model and accuracy contract. Shared internal operations preserve explicit solver and storage support;
 unsupported requests fail clearly.
 
 | Request | OLS support to preserve | PPML support to preserve |
 |---|---|---|
 | `auto` | No FE, one/multiple intercept or slope-bearing FEs, disconnected designs | Same model grammar with changing positive IRLS weights |
-| `lsmr` | General supported FE grammar, including slopes and multiple RHSs (fedemean's full system; `schwarz` with slopes and fewer than two intercept effects: within) | At least two categorical intercept FEs, including more than three; no absorbed slopes |
+| `lsmr` | General supported FE grammar, including slopes and multiple RHSs (fedemean's full system) | At least two categorical intercept FEs, including more than three; no absorbed slopes |
 | `cg` (fedemean PCG, full or eliminated) | Categorical intercept effects, any count for the full system, two to five for the elimination; weights, finite controls, disconnected designs, saved effects, both memory modes; no slopes | Unsupported (PPML `cg` is CMG) |
 | `cg, precondition(cmg)` (full graph) | Categorical intercept graph: two largest effects as bipartite core, additional effects with at most 64 non-base nuisance columns; no slopes | Exactly two or three categorical intercept effects; third-effect nuisance width at most 64; no slopes |
 | `cg, reduce(eliminate) precondition(cmg)` (CMG-Schur, experimental) | Exactly two categorical intercept effects; positive observation weights, finite controls, disconnected components and saved effects | Unsupported |
@@ -459,46 +462,16 @@ escalation bit-identical at one to eight workers, the pilot's debit and
 skipped-pilot identity, the analytic incremental-family witness, and the
 prepared 6/7-FE starvation fallback against tightly converged MAP.
 
-Additive-Schwarz admission charges `T + R` level-sized worker banks per
-concurrent RHS apply, where `R` bounds the factor-pair components whose local
-solve may yield into nested work (a block of more than 10,000 levels). The
-level-count bound `R = levels * (effects - 1) / 10,002` grows with the levels,
-so the charge is quadratic in them. When it refuses, fereg counts the
-structural pair components with a block of at least 10,000 levels exactly from
-the codes, once per design, after admitting that count's O(levels) scratch,
-and admits against the same bound with the smaller `R`. The pair cross-tab
-components are, with strictly positive weights, the structural pair
-components. An estimate that fits, an unbudgeted call, an explicit
-non-additive preconditioner or an unadmitted count scratch keeps the
-level-count estimate and computes nothing new.
-
-The refinement, under that rule (only after the level-count bound refused; the
-exact `R` is never larger), covers the additive-Schwarz LSMR admissions (explicit OLS `solver(lsmr)` on categorical intercept designs
-runs on fedemean, which admits against its own bound). Owned designs refine the generic LSMR admission of
-explicit `solver(lsmr)` and of the automatic owned route when every term is one
-intercept channel and every weight is strictly positive; designs with slopes
-keep the level-count bound, because their subdomains are not the code
-components. The PPML preflight (the Schwarz allowance of explicit LSMR's
-fedemean projections and of the checkpoint accelerator, over every pair)
-recounts once when its plan refused, with the strictly positive PPML working
-weights; a plan that still does not fit reports the original refusal. Each
-count is taken once per design, after its O(levels) scratch is admitted, and a
-count whose scratch or allocation is refused keeps the refusal. Declared scope:
-only fits the level-count bound refused change. Explicit LSMR fits move from
-an `r(909)` allocation refusal to their unchanged LSMR solve; the automatic
-owned route moves from its MAP fallback to its unchanged LSMR attempt; refused
-PPML plans move from the preflight refusal to their unchanged fit. They may
-change coefficients, covariance, fit statistics, residuals, FE coordinates,
-iteration signatures, reported solver, workspace peaks and fallback
-diagnostics within §20 tolerances; discrete decisions are unchanged.
-Witnesses: the per-pair cache against the independent search on every pair
-subset; explicit borrowed LSMR, explicit and automatic owned LSMR under a
-budget one byte below the level bound with the unbudgeted solve's bits,
-repeated at one and four workers and agreeing across them, with a budget below
-the exact bound still refused and a sloped design still refused; and PPML
-explicit LSMR on the sparse three-FE topology, whose refused plan is admitted,
-repeats bit for bit, agrees with the unbudgeted fit and refuses below the exact
-bound with the original message.
+The categorical additive-Schwarz admission model of the formerly pinned
+within solver is retired with it (Milestone 3, 2026-11-09). It charged
+`T + R` level-sized worker banks per concurrent RHS apply, where `R` bounded
+the factor-pair components whose local solve may yield into nested work (a
+block of more than 10,000 levels), first by the level-count bound
+`R = levels * (effects - 1) / 10,002` and, after that bound refused, by an
+exact count of those yielding pair components (the borrowed many-FE route,
+explicit and automatic owned LSMR on intercept-only designs and the PPML
+preflight). fedemean's routes admit their own workspace, and §19 gives the
+current LSMR admission of owned designs and PPML.
 
 Hidden `routing_many_windows_v1` (bounded within LSMR session windows) and
 `routing_incremental_many` (strict unseeded within LSMR) qualified many-FE
@@ -595,7 +568,6 @@ Zero/one-FE and slope routes retain their existing behavior. Separate prefix
 and PPML topology experiments are described below. Exact hidden tokens
 and validation are specified in [the plugin protocol](plugin_protocol.md#developer-injections-hidden-adapters-only);
 implementation boundaries are [routing presets and the attempt record](../crates/fereg-core/src/fe/routing.rs),
-[many-FE controlled LSMR](../crates/fereg-core/src/fe/borrowed_map/routing_lsmr.rs),
 [two-FE kernels](../crates/fereg-core/src/fe/routing_kernel.rs) and
 [direct proposals](../crates/fereg-core/src/fe/routing_direct.rs).
 
@@ -717,40 +689,77 @@ coefficients `effect_offset + channel*levels + level`, fereg's layout.
 inverts each level's `channels x channels` block of `D'WD` exactly; a block
 whose channels are dependent on the level's rows (a slope constant or zero on
 the level, fewer distinct rows than channels) is a null direction of `D` and
-acts as its pseudo-inverse on the range. `precondition(schwarz)` (and the
-automatic escalation, when two effects have intercepts) is the hybrid
-additive Schwarz: factor-pair subdomains on the intercept channels plus one
-subdomain per level channel block. Results report `jacobi` and `schwarz`.
+acts as its pseudo-inverse on the range. fedemean forms each level's blocks
+in its centered basis (the intercept, then each slope less its weighted level
+mean), an exact reparametrization; the operator, coefficients and certificate
+stay in the raw basis. `precondition(schwarz)` (and the automatic escalation,
+with two or more effects) is additive Schwarz over factor-pair subdomains: a
+pair of two intercept-only effects keeps its Laplacian subdomains, and a pair
+in which either effect has slopes is one subdomain over both effects'
+channels, exact on the larger effect's level channel blocks and solving the
+smaller side's Schur complement densely when it is small, otherwise by its
+diagonal blocks. A design with one effect has no pair and keeps its channel
+blocks. Results report `jacobi` and `schwarz`.
+
 Explicit `solver(lsmr)` on a slope design stops on fedemean's per-level
 certificate at `tolerance()`, which equals §16's on nonsingular blocks;
 fereg's independent §16 certificate then decides, after at most one
 correction of the residual at a tenth of `tolerance()` within the remaining
-`iterate()`. A fit fedemean does not certify keeps the established route
-from the original input (the M2 rule: within only for a case that fails):
-within's modified LSMR with the same preconditioner, its recurrence at a
-hundredth of `tolerance()` floored at 1e-15, then the former MAP fallback,
-reported as the fallback (`e(fe_fallback)=1`). Such cases are slopes whose
-raw level Gram loses their within-level variation (e.g. values near ±2^24
-differing by units: within's per-level centering keeps it, fedemean's
-channel blocks do not). Explicit `precondition(schwarz)` with fewer than two
-intercept effects runs within's additive Schwarz directly (its subdomains
-include slope channels). A design or choice fedemean refuses as unsupported
-(before it reads any data; since 95f22670 it takes any number of channels)
-keeps the routes from before fedemean served slopes, with no fallback flag: explicit `solver(lsmr)` runs within (then the
-former MAP fallback), Auto and `absorb_auto` run MAP, and saved-effect
-recovery runs MAP. fedemean's memory limit is the budget left beside the
-buffers the route holds (input copy, candidate, coefficient bank); a
-workspace beyond it is a decline that continues with the route's admitted
-fallback, and a fedemean fit publishes its own workspace. Declared scope: explicit slope `solver(lsmr)` fits
-change at tolerance level; discrete decisions do not change. Explicit PPML
+`iterate()`. A fit fedemean does not certify (a numerical decline, a memory
+decline or a missed certificate) continues with MAP from the original input,
+reported as the fallback (`e(fe_fallback)=1`) with the reason in the
+warnings. There is no within leg any more: until the within retirement
+(Milestone 3, 2026-11-09) such a fit first ran within's modified LSMR with
+the same preconditioner (its recurrence at a hundredth of `tolerance()`
+floored at 1e-15), then MAP, and explicit `precondition(schwarz)` with fewer
+than two intercept effects ran within's additive Schwarz directly; it now
+runs fedemean's pair subdomains over all channels. A design or choice
+fedemean refuses as unsupported (before it reads any data; since fedemean
+lifted its channel cap in 95f22670, only a test fault plan reaches this)
+continues with MAP, reported as the fallback (formerly within, then MAP, with
+no fallback flag); the public Rust entry `absorb_lsmr` refuses such a design
+as Unsupported. Auto, `absorb_auto` and saved-effect recovery are unchanged:
+for such a design they run MAP, as before fedemean served slopes, with no
+fallback flag. fedemean's memory limit is the budget left beside the buffers
+the route holds (input copy, candidate, coefficient bank; §19); a workspace
+beyond it is a decline that continues with MAP, and a fedemean fit publishes
+its own workspace.
+
+Declared scope: explicit slope `solver(lsmr)` fits change at tolerance level,
+including, since the within retirement, those with `precondition(schwarz)`
+and fewer than two intercept effects and those fedemean does not certify,
+which now continue with MAP; sample, rank, omission and other discrete
+decisions do not change, apart from one declared rare-case outcome. Case 1
+of the slope-boundary fixture
+(`tests/stata/development/within_plugin_slope_boundary.do`: `g##c.(z1 z2)`
+with slopes near ±2^24 that differ by units,
+`solver(lsmr, precondition(none))`, `tolerance(1e-10)`) now fails with
+r(459) and full rollback, like the fixture's cases 2–3: fedemean's
+raw-basis certificate has a rounding floor of about 1e-10 of the column at
+offsets of 2^24, so it declines, and MAP's raw level Gram drops the slopes'
+pivots (independent certificate 0.164). Formerly within's per-level
+centering certified it, reported as the fallback. At `tolerance(1e-9)` or
+looser, without residual-derived outputs (`residuals()`, `predict, xbd`,
+saved effects certify the final residual at 1e-14), fedemean certifies it
+directly with no fallback (independent certificate 2.3e-10). At
+`tolerance(1e-8)` its b, SE and rss are bitwise those of the former route
+at `tolerance(1e-8)`; against the former route at `tolerance(1e-12)`,
+|Δb| ≤ 8e-17, relative ΔSE ≤ 1.9e-16 and relative Δrss 3.4e-16, and
+against the fixture's exact oracle |Δb| ≤ 1.7e-15. Witnesses: that fixture
+(case 1 rejected at 1e-10 and certified at 1e-8, at one and four workers
+and repeated), `fe::auto`'s explicit slope LSMR tests (the MAP continuation
+bitwise as called directly, the independent centered projection, the
+eligibility fault plan and the capped-memory declines) and
+`fereg-testkit/tests/fe_certificate_oracle.rs` (explicit Schwarz with fewer
+than two intercept effects against the explicit-design QR). Explicit PPML
 LSMR keeps its scheduled certificate and one tighter continuation (§13).
 
 OLS Auto on an owned slope design with at least two effects and without the
 exact two-effect slope solver (three or more effects, or two effects whose
 coefficient solver is not admitted; one effect keeps MAP's exact single
 sweep) runs fedemean's full system first: PCG with the level channel
-blocks, escalating to the hybrid Schwarz when a 24-iteration pilot predicts a
-slow recurrence or it stalls, within half of `iterate()`, certified by the
+blocks, escalating to the pair-subdomain Schwarz above when a 24-iteration
+pilot predicts a slow recurrence or it stalls, within half of `iterate()`, certified by the
 generic owner's independent §16 certificate (one correction at a tenth of
 `tolerance()` after a miss). A decline, or a correction that still misses,
 continues with symmetric MAP from the current residuals under the original
@@ -1504,9 +1513,10 @@ weights, tolerances, iteration limit, decision rules and certificates
 (Johannes, 2026-10-27: fix the public detector failures). CG squares the
 rectifier's zero-row weight ratio (`tolerance^2 / zeros`), so on weakly
 connected or heavily zero designs its zero-row fitted values can leave the
-model span; LSMR works on the weighted operator itself. Its workspace is
-bounded on generation zero and charged to the memory plan only when the step
-is re-executed; a step that certifies on its first attempt is never
+model span; LSMR works on the weighted operator itself. Its workspace
+(fereg's estimate of fedemean's modified-LSMR workspace, §19) is bounded on
+generation zero and charged to the memory plan only when the step is
+re-executed; a step that certifies on its first attempt is never
 re-executed. If the LSMR workspace does not fit the plan or the re-execution
 also fails a numerical certificate, the first error is reported; Break,
 allocation and internal errors of the re-execution propagate. A terminal
@@ -1853,20 +1863,16 @@ the caller's count from one million observations, where the frontend's per-row
 passes on one processor cost more than that competition (Johannes's 1M+
 performance target, 2026-11-01).
 
-Every additive-Schwarz preconditioner fereg builds in the pinned solver (OLS
-borrowed and owned LSMR, the many-FE Jacobi trial's escalation, explicit
-`solver(lsmr, precondition(schwarz))` and, until 2026-11-09, the PPML joint
-Schwarz factor) uses the Ordered
-reduction, which commits subdomain contributions in subdomain order, in every
-mode; the pinned Auto reduction may resolve to an atomic scatter whose
-summation order follows thread timing. Before beta.10 only `deterministic`
-selected it. Declared scope: default-mode fits whose LSMR runs on the additive
-preconditioner (many-FE OLS Auto fits whose Jacobi trial escalates, explicit
-Schwarz LSMR and PPML LSMR) may change coefficients, covariance, fit
-statistics, residuals, FE coordinates and iteration signatures in low bits
-within §20; `deterministic` fits and discrete decisions are unchanged.
-Witness: an escalating default-mode many-FE fit repeats bit for bit at one,
-two, four and eight workers.
+Every additive-Schwarz preconditioner is fedemean's: it sums each level's
+subdomain contributions in pair order, so its action does not depend on the
+worker count in any mode. fereg no longer builds one in the formerly pinned
+within solver (retired in Milestone 3, 2026-11-09). From beta.10 until then, those
+builds (OLS borrowed and owned LSMR, the many-FE Jacobi trial's escalation,
+explicit `solver(lsmr, precondition(schwarz))` and the PPML joint Schwarz
+factor) used within's Ordered reduction, which commits subdomain
+contributions in subdomain order, in every mode instead of its Auto
+reduction, which may resolve to an atomic scatter whose summation order
+follows thread timing; before beta.10 only `deterministic` selected it.
 
 The two-FE OLS Auto team installation, the parallel cell construction and the parallel cell product
 follow this rule: their results do not depend on the worker count, apart from
@@ -1883,16 +1889,43 @@ refactors retain exact route/bit checks. No post-hoc parity exception is implied
 Preserve supported memory modes, admission policy and public controls.
 Preserve checked sizing, fallible allocation, r(909), ownership cleanup and
 transaction atomicity. Reuse existing allocation/failure tests; no new exhaustive
-memory-audit framework is required. The many-FE LSMR route transports each RHS window
-from the row-major projection input only while its sessions start, releases
-the column-major copy once each session owns its response, and transports the
-columns again, bitwise, for an escalation or a preconditioner retry; OLS Fast
-releases its projected matrix after the finite solve, which no later stage
-reads. Both are arithmetic-preserving storage-lifetime changes. Admission
-totals are unchanged (they still charge the released storage), so
-`memory(auto)` chooses Fast or Low exactly as before. Estimates remain estimates, not process RSS
+memory-audit framework is required. OLS Fast releases its projected matrix
+after the finite solve, which no later stage reads (the many-FE LSMR route,
+retired in Milestone 3, likewise released its RHS windows once its sessions
+owned their responses). These arithmetic-preserving storage-lifetime changes
+left admission totals unchanged (they still charge the released storage), so
+`memory(auto)` chose Fast or Low exactly as before. Estimates remain estimates, not process RSS
 or strict OS bounds. No new route-specific admission fences may be added to
 hide a performance regression. Future removal of a mode needs mapped coverage.
+
+**LSMR admission (Milestone 3, 2026-11-09).** The within-shaped
+modified-LSMR estimate (recurrence windows, per-RHS result metadata, slope
+reparametrisation storage) and the categorical Schwarz model with its exact
+yielding-pair-component refinement (owned designs and PPML; §1) are removed
+with the `within` dependency. Owned explicit `solver(lsmr)` and owned Auto's LSMR
+attempt (`absorb_auto`) charge fereg's held buffers (the input copy, and the
+coefficient bank when coefficients are retained) and fereg's own certificate
+and projection scratch (the generic MAP-family estimate); fedemean admits its
+own workspace (structure, weight state, recurrence and any Schwarz
+preconditioner) within the budget left beside the held buffers, and a
+fedemean memory decline continues with MAP, reported as the fallback. PPML
+explicit LSMR projections, the strict-checkpoint accelerator and the
+separation detector's LSMR re-execution (§13, §14) charge fereg's estimate of
+fedemean's modified-LSMR workspace on categorical intercept designs
+(structure, weight state, LSMR vectors) plus a Schwarz grant: for fedemean's
+star pairs (the effect with the most levels paired with each other effect),
+24 bytes per cross-tabulation entry (`min(N, L_a·L_e)` entries) and 20 per
+level, plus 48 bytes per entry and smaller-side level for the components'
+Schur complements and local factors, plus 16 bytes per level for apply
+columns; identity and Jacobi re-executions charge no grant. fedemean admits
+each Schwarz part from its exact size within that limit: Auto keeps Jacobi
+beyond it, explicit Schwarz declines. These estimates no longer depend on the
+worker count. Declared scope: admission outcomes change only under memory
+limits between the former and the new estimates. Owned explicit LSMR that
+the larger within-shaped estimate refused now runs fedemean when its own
+workspace fits, otherwise MAP as the fallback; owned Auto may now try
+fedemean where it went straight to MAP, and reports the fallback when MAP
+then continues; PPML LSMR admits smaller grants. On the 161 Stata fixtures the pass set is unchanged (152 pass; the same 9 staging and installation failures as `9fe647ab`), and 13 matched one-million-row Mac cases (the defaults and every explicit route the change does not touch) are bitwise identical to `9fe647ab` on the same routes, so no admission outcome changed there.
 
 CMG admission assumes CMG's default hierarchy cap of 32 levels (CMG `5c5b5b2b`;
 previously 128). Every CMG construction, workspace and plan bound fereg admits,

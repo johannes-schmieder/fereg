@@ -133,15 +133,20 @@ behind test configuration. Keep independent reference implementations and their
 consumers in fereg-oracle or fereg-testkit; preserve unique scientific witnesses
 when removing an obsolete production pipeline.
 
-The many-FE LSMR hot path is in the pinned `within`/`schwarz-precond` dependency.
-Its changes follow the same scientific and
-evidence requirements and enter this repository through a reviewed pinned
-revision bump. The [upstream migration candidate](within_migration.md) preserves
-fereg's public solver policy. Johannes approved retiring only the general
-more-than-two-FE pair-upgrade experiment; keep the two-FE h/k and builder-Break
-selectors, other supported comparison policies and independent scientific
-witnesses. Retirement is not a waiver of integration, cancellation, memory or
-the declared performance qualification.
+The modified-LSMR recurrence is in the pinned `schwarz-precond` dependency
+(fedemean's full-system LSMR, PPML's explicit joint LSMR and the developer LSMR
+Break hooks); fedemean's Schwarz local solves use `approx-chol`. fereg no
+longer depends on `within` (retired in Milestone 3). Dependency changes follow
+the same scientific and evidence requirements and enter this repository
+through a reviewed pinned revision bump. The historical
+[within migration record](within_migration.md) documents the former
+dependency's qualification. Johannes approved retiring the general
+more-than-two-FE pair-upgrade experiment, and the many-FE LSMR comparison
+arms were retired with `within`
+([SPEC](SPEC.md#qualified-auto-routing-and-developer-comparisons)); keep the
+two-FE h/k and builder-Break selectors, other supported comparison policies
+and independent scientific witnesses. Retirement is not a waiver of
+integration, cancellation, memory or the declared performance qualification.
 
 After editing `_fereg_ppml_result_mata.ado`, rebuild its three `.mo` files and
 receipt using the actual Stata 15 compiler with `scripts/build_ppml_mata.py`.

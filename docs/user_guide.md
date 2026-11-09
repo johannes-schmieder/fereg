@@ -164,7 +164,7 @@ dimension. Cluster interactions use `#`, not `##`.
 
 | Option | Default | Meaning |
 |---|---|---|
-| `solver(auto)` | `auto` | Select a certified projection for the design. Two to five categorical effects first eliminate the largest effect exactly (Jacobi CG, escalating to block-Jacobi); six or more, and designs the elimination declines, use CG on the full system with Jacobi, escalating to additive Schwarz when Jacobi is slow; if that declines too, the established routes (two-FE Schur PCG with CMG upgrades, many-FE LSMR) finish as a reported fallback. |
+| `solver(auto)` | `auto` | Select a certified projection for the design. Two to five categorical effects first eliminate the largest effect exactly (Jacobi CG, escalating to block-Jacobi); six or more, and designs the elimination declines, use CG on the full system with Jacobi, escalating to additive Schwarz when Jacobi is slow; if that declines too, the established routes (two-FE Schur PCG with CMG upgrades, many-FE MAP) finish as a reported fallback. |
 | `solver(map` [`, accelerate(irons-tuck\|squarem)`]`)` | — | Alternating projections, unaccelerated or with Irons–Tuck or SQUAREM extrapolation. |
 | `solver(lsmr` [`, precondition(auto\|none\|jacobi\|schwarz)`]`)` | — | Modified LSMR on the full system; `auto` is Jacobi, escalating to additive Schwarz when its pilot predicts a slow recurrence or it stalls (within the memory limit). It certifies at `tolerance()`. |
 | `solver(cg` [`, reduce(auto\|full\|eliminate) precondition(auto\|none\|jacobi\|block\|schwarz)`]`)` | — | Preconditioned CG on the full system or on the elimination of the largest effect (two to five effects); see the table below. |
@@ -199,11 +199,17 @@ rejected.
 | `precondition(schwarz)` | full | additive Schwarz | error 198 |
 | `precondition(cmg)` | CMG graph CG | CMG graph CG | CMG Schur CG (two effects) |
 
-Explicit LSMR and CG (other than CMG) need categorical intercept effects (with
-absorbed slopes, `solver(lsmr)` uses the general LSMR solver). They fail
-closed: non-convergence within `iterate()` or a workspace beyond the memory
-limit is an error, never a substituted route. Only the automatic
-preconditioners escalate.
+Explicit CG (other than CMG) needs categorical intercept effects. Explicit
+LSMR also takes absorbed slopes: it runs on the full system over each level's
+intercept and slope channels (`jacobi` inverts each level's channel block;
+`schwarz` uses pair subdomains over all channels). Both fail closed:
+non-convergence within `iterate()` or a workspace beyond the memory limit is
+an error, never a substituted route. The one exception is explicit LSMR with
+absorbed slopes: a fit the full system does not certify, or whose workspace
+exceeds the memory limit, continues with MAP from the original input and sets
+`e(fe_fallback)`; when MAP cannot certify it either (for example, slopes that
+differ only far beyond a large common offset at a very tight `tolerance()`),
+the fit fails with error 459. Only the automatic preconditioners escalate.
 
 Automatic two-FE OLS checks an initial solution at the requested tolerance
 and spends additional iterations on a tighter correction only if that check
@@ -224,12 +230,11 @@ on the worker team. The hierarchy is reused across subsequent blocks. Small or e
 optional construction leaves the existing recurrence in place; a numerical
 failure can continue with certified MAP within the original budget.
 
-Three or more categorical-intercept effects continue with LSMR
-with reusable preparation. It starts with a diagonal preconditioner and builds
-the additive Schwarz preconditioner only when the projected work is large.
-With three unit-weight effects, a short MAP pilot or certified structural
-shortcut may finish first. Every route must pass the requested FE-moment
-certificate. One categorical effect uses direct demeaning. Slopes and explicit
+Three or more categorical-intercept effects continue with MAP on the original
+inputs with the remaining budget; with three unit-weight effects, a short MAP
+pilot or certified structural shortcut may finish first. Every route must
+pass the requested FE-moment certificate. One categorical effect uses direct
+demeaning. Slopes and explicit
 requests retain their own supported routes. Ownership and
 repeated-cell optimizations are automatic only for `solver(auto)` with a global
 intercept and exactly two categorical-intercept effects. They do not change

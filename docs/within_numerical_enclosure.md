@@ -1,5 +1,11 @@
 # Large-panel optimum enclosures
 
+> **Historical and superseded.** This record belongs to the beta.11 `within`
+> migration. fereg no longer depends on `within` (retired in Milestone 3,
+> November 2026); the enclosures remain evidence for the beta.10/beta.11
+> comparison. See the [migration record](within_migration.md) and the
+> [validation record](VALIDATION.md#within-retirement-milestone-3-development-mac).
+
 This development-only witness addresses the two retained beta.10/reference
 fitted-value disagreements. It does not change an estimator, reference, rank
 rule or tolerance. The [record](../bench/results/within-companion-optimum-enclosure-20261030.json)

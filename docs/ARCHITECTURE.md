@@ -242,10 +242,15 @@ results match wherever the platform `fma` is exactly rounded.
 Processor features may select different arithmetic under SPEC's independent
 scientific checks; both the portable and accelerated paths remain tested.
 
-The modified-LSMR recurrence and escalation hooks live in the pinned
-`schwarz-precond` dependency (and, for the owned explicit LSMR, `within`).
-Changes there obey the same scientific and performance evidence rules and
-enter through a pinned revision bump.
+The modified-LSMR recurrence (`mlsmr`) and its escalation hooks live in the
+pinned `schwarz-precond` dependency. fedemean uses it (feature `schwarz`) for
+every full-system LSMR route, including the owned explicit LSMR on slope
+designs; fereg-core calls it directly only for PPML's explicit joint `[X D]`
+modified LSMR (`ppml/categorical_lsmr.rs`) and the developer LSMR Break hooks
+(`fe/lsmr_break.rs`). fedemean's Schwarz local solves use `approx-chol` for
+approximate Cholesky. fereg no longer depends on `within` (retired in
+Milestone 3). Changes to these dependencies obey the same scientific and
+performance evidence rules and enter through a pinned revision bump.
 
 Automatic unit-weight, symmetric three-FE OLS may first attempt at most four
 MAP sweeps when complete, outward-rounded pair-incidence geometry predicts

@@ -9,23 +9,28 @@ They are not relicensed by fereg.
 
 ## Pinned numerical dependencies
 
-The MIT-licensed `within` and `schwarz-precond` runtime dependencies come from
+The MIT-licensed `schwarz-precond` runtime dependency comes from
 [within](https://github.com/py-econometrics/within), developed by Alexander
 Fischer, Kristof Schröder, and contributors at the appliedAI Institute for
-Europe and in the PyFixest community. fereg uses version 0.5.0 from its
-[adapted fork at `8d401d82`](https://github.com/johannes-schmieder/within/tree/8d401d8278ac783b2f258c459e057f30cd80d595).
-The upstream library supplies LSMR, pairwise Schwarz preconditioning, local
-approximate factorizations, and an adaptive preconditioner strategy. The fork
-adapts borrowed data access, resumable iterations, bounded allocation,
-reproducible reductions, fused modified-LSMR steps with fixed-order adjoints,
-in-place preconditioner replacement, and cancellation. fereg's adapters supply the model
-data and independently check the returned weighted fixed-effect residuals
-before accepting an estimate. The numerical methods and their sources are
-acknowledged in the [README](README.md#selected-references).
+Europe and in the PyFixest community. fereg uses its version 0.5.0 from the
+[adapted fork at `8d401d82`](https://github.com/johannes-schmieder/within/tree/8d401d8278ac783b2f258c459e057f30cd80d595)
+(package `schwarz-precond` of that repository). It supplies the modified LSMR
+iteration that fereg's `fedemean` crate and fereg-core's PPML joint LSMR
+run. The fork adapts resumable iterations, bounded allocation, reproducible
+reductions and cancellation. fereg's adapters supply the model data and
+independently check the returned weighted fixed-effect residuals before
+accepting an estimate. The numerical methods and their sources are
+acknowledged in the [README](README.md#selected-references). The repository's
+`within` crate is no longer a fereg dependency.
 
 The upstream [MIT license](https://github.com/johannes-schmieder/within/blob/8d401d8278ac783b2f258c459e057f30cd80d595/LICENSE)
 retains copyright notices for within contributors and the appliedAI Institute
 for Europe gGmbH. Preserve those notices with source distributions.
+
+The MIT-licensed `approx-chol` crate, version 0.6.0 from crates.io, supplies
+the approximate Cholesky factorizations of fedemean's Schwarz local solves.
+Its license and copyright notices travel with the vendored dependency sources
+of source distributions.
 
 The MIT-licensed [CMG Rust port](https://github.com/johannes-schmieder/CMG) is
 pinned to `e5613e81fb3b03c78de98658b372646fa802aabb` and statically linked for

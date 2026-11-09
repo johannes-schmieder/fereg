@@ -271,12 +271,12 @@ limit is an error, not a substituted route. With absorbed slopes,
 then inverts each level's block of its intercept and slope channels exactly
 (a level whose channels are dependent on its rows, such as a slope that is
 constant or zero within the level, acts on the span of its rows), and
-{cmd:precondition(schwarz)} adds those level blocks to the factor-pair
-subdomains of the effects with intercepts; with fewer than two such effects,
-{cmd:precondition(schwarz)} uses the earlier general modified-LSMR solver.
-A slope fit that the full system does not certify (for example, slopes whose
-values differ only far beyond their common offset) reruns with that general
-solver and then MAP, and sets {cmd:e(fe_fallback)}.
+{cmd:precondition(schwarz)} uses factor-pair subdomains over all channels of
+both effects of each pair (a design with one effect keeps its level blocks).
+A slope fit that the full system does not certify reruns with MAP from the
+original data and sets {cmd:e(fe_fallback)}; if MAP does not certify either
+(for example, slopes whose values differ only far beyond their common offset,
+at a {cmd:tolerance()} below about 1e-9), the command fails with r(459).
 The {cmd:solver(cg)} choices other than {cmd:cmg} are unavailable with
 absorbed slopes.
 
@@ -293,7 +293,7 @@ for {cmd:precondition(auto)} above, within half the iteration budget. If that de
 too, the established route finishes the fit and the result reports a
 certified fallback: two effects continue with diagonal-preconditioned Schur
 PCG (a structural rule may build a CMG preconditioner when eligible work
-stalls), three or more effects with LSMR or a short MAP pilot. Every route must
+stalls), three or more effects with a short MAP pilot, then MAP. Every route must
 pass the requested certificate. Ownership and repeated-cell optimizations are
 automatic for {cmd:solver(auto)} with a global intercept and exactly two
 categorical-intercept terms; they need no additional option and do not change

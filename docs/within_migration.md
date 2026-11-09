@@ -1,5 +1,14 @@
 # Upstream within compatibility
 
+> **Historical and superseded.** fereg no longer depends on `within`: its last
+> uses were removed in Milestone 3 (November 2026), and only `schwarz-precond`
+> stays at the pinned revision `8d401d82`. The entry-point, slope-boundary and
+> allocation tooling this record cites was removed with it; Git history keeps
+> it at revision `9fe647ab`. Code references below describe the code of that
+> time; removed files are named in plain text. For current behavior, see the
+> [specification](SPEC.md#solver-support-and-dispatch) and the
+> [validation record](VALIDATION.md#within-retirement-milestone-3-development-mac).
+
 This is the historical beta.11 migration record from October 2026. Its dated
 candidate decisions and benchmark observations are retained as evidence.
 For the current release and supported behavior, see the [changelog](../CHANGELOG.md),
@@ -83,7 +92,7 @@ fereg acceptance separately compares the actual beta.11 plugin with beta.10.
 
 | Consumer | Required behavior and source |
 |---|---|
-| Public many-FE categorical OLS Auto | [FE session selection](../crates/fereg-core/src/fe/session.rs), `select_ols_routing`, selects GeometryMany. The bounded MAP pilot, private recurrence target, requested independent certificate and original-input MAP fallback remain fereg policy. [General routing](../crates/fereg-core/src/fe/borrowed_map/routing_lsmr.rs), `JacobiTrialRun`, predicts remaining Jacobi work from two recent contractions and escalates at its existing threshold. |
+| Public many-FE categorical OLS Auto | [FE session selection](../crates/fereg-core/src/fe/session.rs), `select_ols_routing`, selects GeometryMany. The bounded MAP pilot, private recurrence target, requested independent certificate and original-input MAP fallback remain fereg policy. General routing (`fe/borrowed_map/routing_lsmr.rs`, removed in Milestone 3; Git history keeps it at revision `2441732f`), `JacobiTrialRun`, predicts remaining Jacobi work from two recent contractions and escalates at its existing threshold. |
 | Explicit OLS LSMR and general owned designs | [LSMR adapter](../crates/fereg-core/src/fe/lsmr.rs), `absorb_lsmr_certified_at`, accepts weights, slope-bearing terms and multiple RHSs. [Owned Auto](../crates/fereg-core/src/fe/auto.rs), `absorb_auto`, can also attempt this backend before certified MAP fallback. |
 | PPML explicit LSMR | [Validation](../crates/fereg-core/src/ppml/prepared_estimator.rs), `validate_public_solver_request`, supports at least two categorical-intercept FEs, including more than three, in the supported memory modes; absorbed slopes remain unsupported for this explicit request. [Joint solver](../crates/fereg-core/src/ppml/categorical_lsmr.rs), `ReusableCategoricalJointLsmr`, solves the augmented finite-plus-FE operator, including zero finite regressors. |
 | PPML canonical checkpoints | [Borrowed projection](../crates/fereg-core/src/fe/borrowed_map.rs), `CheckpointLsmrBatch`, independently certifies, optionally tightens, and falls back from untouched inputs with remaining work. Explicit LSMR and CMG frames reach this acceleration through [prepared IRLS](../crates/fereg-core/src/ppml/prepared_irls.rs). |
@@ -108,7 +117,8 @@ fereg acceptance separately compares the actual beta.11 plugin with beta.10.
 
 ### Controlled starts suffice
 
-In [general routing](../crates/fereg-core/src/fe/borrowed_map/routing_lsmr.rs),
+In general routing (`fe/borrowed_map/routing_lsmr.rs`, removed in Milestone 3;
+Git history keeps it at revision `2441732f`),
 the baseline finished Jacobi sessions before releasing the trial solver,
 constructing additive Schwarz and starting from each returned `x` with its
 remaining allowance. No Krylov recurrence crossed that replacement. The
@@ -159,8 +169,10 @@ decisions survive. The [weighted slope-boundary witness](../bench/results/within
 finds a concrete dependency rank difference. Johannes accepted upstream's
 whitening correction for continued migration qualification; the original
 fork/candidate parity failure remains recorded.
-Its [independent rational oracle](../bench/compare_within_slope_boundary.py) compares
-the actual IEEE inputs with the [public API results](../bench/within_slope_boundary.rs),
+Its independent rational oracle (`bench/compare_within_slope_boundary.py`,
+removed in Milestone 3; Git history keeps it at revision `9fe647ab`) compares
+the actual IEEE inputs with the public API results
+(`bench/within_slope_boundary.rs`, removed likewise),
 including original coefficient coordinates. The fixed Mac matrix contains 60
 fixtures: five perturbations around the `1e-10` Gram rule, four shifts/scales,
 three row orders, unequal nonsquare weights, one/four workers and two repeats
@@ -211,7 +223,7 @@ not require generic pair factories and remain supported. This approval does
 not change public Auto, explicit LSMR or PPML policy.
 
 In the audited baseline, the pair factory, component CSR view and replacement owner occur only in
-[general routing](../crates/fereg-core/src/fe/borrowed_map/routing_lsmr.rs).
+general routing (`fe/borrowed_map/routing_lsmr.rs`, removed likewise).
 There is no public PPML `PairReplacement` consumer. The historical
 `refused_pair_build_resumes_exact_incumbent_recurrence` test required exact
 continuation of a live recurrence after optional setup was refused; accepted
@@ -244,7 +256,8 @@ staleness and certificate continuations each receive the configured per-run
 maximum and their counts are summed. OLS/checkpoint adapters instead debit a
 shared allowance. Migration must not silently change PPML's existing convention.
 
-The candidate [categorical Schwarz estimate](../crates/fereg-core/src/memory/categorical_schwarz.rs)
+The candidate categorical Schwarz estimate (`memory/categorical_schwarz.rs`,
+removed in Milestone 3; Git history keeps it at revision `9fe647ab`)
 replaces fork pool and scatter assumptions with upstream ownership/prolongation,
 shared workspace and per-subdomain output-cache bounds. The shared workspace
 bound accounts for concurrent RHSs and nested yielding components rather than
@@ -258,8 +271,9 @@ A pinned-toolchain allocation/science witness compared frozen main and the
 reproducibility stack at one and four workers: 120 records covering 72
 recurrences and 48 weighted, sloped and categorical batch cases passed, with
 maximum planted-residual error `4.222e-10` and exact repeats on those cases.
-The maintained [allocation witness](../bench/within_allocation.rs) and
-[runner](../bench/measure_within_allocations.py) also passed 60 records against
+The allocation witness (`bench/within_allocation.rs`) and its runner
+(`bench/measure_within_allocations.py`), both removed in Milestone 3 (Git
+history keeps them at revision `9fe647ab`), also passed 60 records against
 the fallible-scratch patch `7b4fa1e4e88fa1d8b3d90b5ed08706fb924bcd86` on
 draft #478. Numerical summaries and iteration counts matched the unpatched
 stack exactly; six four-worker heap peaks differed with bookkeeping/pool

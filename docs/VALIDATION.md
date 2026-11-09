@@ -1779,7 +1779,9 @@ and PPML reporting are unchanged.
 
 ## Upstream migration candidate
 
-Beta.11 is the published current migration from beta.10. The
+(Historical: fereg no longer depends on `within`, retired in Milestone 3; see
+[the within retirement](#within-retirement-milestone-3-development-mac).)
+Beta.11 was the published migration from beta.10. The
 [compatibility report](within_migration.md) records the frozen dependency bases,
 patch evidence, qualification results and accepted performance tradeoffs.
 The final source pin is `8d401d82`: the essential migration stack plus counts,
@@ -3310,6 +3312,10 @@ and 21% longer at 28, so it was not adopted
 
 ## Many-FE Schwarz admission at scale
 
+(Historical: the many-FE LSMR route and this additive-Schwarz admission model
+were retired with `within` in Milestone 3; see
+[the within retirement](#within-retirement-milestone-3-development-mac).)
+
 The beta.8 campaign's sparse three-FE OLS fit did not finish at ten million
 rows. Traced SCC reruns of main (`a023073e`) showed why: at 1M and 3M the
 geometry policy's Jacobi trial certified in 23 LSMR iterations, but at 10M the
@@ -3351,6 +3357,9 @@ MAP fallback past 600 seconds. Record:
 
 ## Many-FE memory, shared trial design and candidate session windows
 
+(Historical: the many-FE LSMR route, its session windows and the exact
+yielding-component admission were retired with `within` in Milestone 3; see
+[the within retirement](#within-retirement-milestone-3-development-mac).)
 Branch `codex/many-fe-windows` (from the sparse three-FE scale fix) adds four
 changes for beta.10; the record is
 [many-fe-windows-2026-10-28](../bench/results/many-fe-windows-2026-10-28.json).
@@ -3437,6 +3446,8 @@ Public activation of the windows policy needs the bounded qualification and
 Johannes's decision.
 ## Pinned within fused LSMR step
 
+(Historical: fereg no longer depends on `within`, retired in Milestone 3; see
+[the within retirement](#within-retirement-milestone-3-development-mac).)
 Branch `codex/within-fused-lsmr` pins `within` `3b5b9b9a` of
 `codex/fused-lsmr-pass` in three reviewed steps
 ([record](../bench/results/within-fused-lsmr-2026-10-28.json)).
@@ -3955,7 +3966,8 @@ fixtures that need a staged release, launch arguments or Windows excepted);
 the Rust, plugin FFI and allocator-audit suites and clippy in both
 configurations pass. Limitations: PPML explicit LSMR (its joint augmented
 operator and core-pair factor reuse), PPML's strict checkpoint LSMR, slope
-designs and the Auto fallbacks keep the pinned LSMR library; PPML with six or
+designs and the Auto fallbacks keep the pinned LSMR library (all moved off
+`within` later in Milestone 3; see below); PPML with six or
 more effects keeps MAP; no Linux or SCC timing.
 
 ## fedemean with absorbed slopes and saved slope recovery (Milestone 3, development, Mac)
@@ -3964,7 +3976,9 @@ Absorbed slopes run on fedemean's full system (SPEC §1, §5): explicit
 `solver(lsmr)` (level channel blocks as `jacobi`, the hybrid Schwarz as
 `schwarz`; within keeps explicit `schwarz` with fewer than two intercept
 effects and every fit fedemean does not certify, then MAP, reported as the
-fallback), OLS Auto on owned slope designs with two or more effects outside
+fallback; the within leg and the hybrid were retired later in Milestone 3, see
+[the within retirement](#within-retirement-milestone-3-development-mac)), OLS
+Auto on owned slope designs with two or more effects outside
 the exact two-effect slope solver (PCG with channel blocks escalating to the
 hybrid Schwarz, the generic owner's independent certificate, MAP continuation
 as the reported fallback), and saved slope recovery (retained fedemean
@@ -4023,7 +4037,8 @@ Limitations: two-effect slope designs keep the exact two-effect slope solver
 (measured faster); slopes whose raw level Gram loses their within-level
 variation keep within; the borrowed many-FE within LSMR, PPML slope routes and
 the within-shaped LSMR memory estimates are outside this change; no Linux or
-SCC timing.
+SCC timing. (The within leg, the many-FE within LSMR and the within-shaped
+estimates were retired later in Milestone 3; see below.)
 
 ## Many-FE fallback without within (Milestone 3, development, Mac)
 
@@ -4069,8 +4084,65 @@ with a plugin-only staging, the nine failures identical with `b664fa61`
 `parallel_input_oracle`, and four installation fixtures that need a staged
 release, launch arguments or Windows). Limitations: the owned explicit and
 Auto LSMR (`fe/lsmr.rs`, `lsmr_batch.rs`), the within-modelled LSMR
-admission and the developer tooling still use the pinned library; no Linux
-or SCC timing.
+admission and the developer tooling still use the pinned library (all retired
+in the next section); no Linux or SCC timing.
+
+## within retirement (Milestone 3, development, Mac)
+
+fereg-core no longer depends on the pinned `within` crate. `schwarz-precond`
+stays at revision `8d401d82` of the adapted fork (fedemean's modified LSMR,
+PPML's explicit joint `[X D]` LSMR and the developer LSMR Break hooks), and
+`approx-chol` 0.6.0 stays for fedemean's Schwarz local solves; the CMG pin is
+unchanged (SPEC §1).
+
+- Explicit `solver(lsmr)` on owned (slope) designs runs fedemean's full
+  system, accepted only by fereg's independent §16 certificate after at most
+  one correction at a tenth of the tolerance. A fit fedemean does not certify
+  (numerical decline, memory decline, missed certificate) continues with MAP
+  from the original input, reported as `e(fe_fallback)=1` with the reason in
+  the warnings; there is no within leg. Explicit `precondition(schwarz)` on
+  slope designs with fewer than two intercept effects runs fedemean's pair
+  subdomains over all channels instead of within's additive Schwarz. A design
+  fedemean refuses as unsupported (reachable only through a test fault plan)
+  continues with MAP, reported as the fallback; Auto, `absorb_auto` and
+  saved-effect recovery are unchanged.
+- Declared rare-case outcome change: case 1 of the slope-boundary fixture
+  (`tests/stata/development/within_plugin_slope_boundary.do`; slopes near
+  ±2^24 that differ by units, `solver(lsmr, precondition(none))`,
+  `tolerance(1e-10)`) now fails with r(459) and full rollback, like cases
+  2–3: fedemean's raw-basis certificate floor (about 1e-10 of the column at
+  that offset) declines it, and MAP's raw level Gram drops the slopes' pivots
+  (independent certificate 0.164). Formerly within's per-level centering
+  certified it as the fallback. At `tolerance(1e-9)` or looser, without
+  residual-derived outputs (which certify the final residual at 1e-14),
+  fedemean certifies it directly with no fallback (independent certificate
+  2.3e-10). At `tolerance(1e-8)` b, SE and rss are bitwise those of the
+  former route at `tolerance(1e-8)`; against the former route at
+  `tolerance(1e-12)`, |Δb| ≤ 8e-17, relative ΔSE ≤ 1.9e-16 and relative
+  Δrss 3.4e-16; against the exact oracle |Δb| ≤ 1.7e-15.
+- Memory admission (SPEC §19): the within-shaped modified-LSMR estimate and
+  the categorical Schwarz model with its exact yielding-pair-component
+  refinement are removed. Owned LSMR charges fereg's held buffers and
+  certificate scratch, and fedemean admits its own workspace beside them;
+  PPML LSMR charges an estimate of fedemean's workspace plus a Schwarz grant
+  over its star pairs. Outcomes change only under memory limits between the
+  former and the new estimates. On the 161 Stata fixtures the pass set is unchanged (152 pass; the same 9 staging and installation failures as `9fe647ab`), and 13 matched one-million-row Mac cases (the defaults and every explicit route the change does not touch) are bitwise identical to `9fe647ab` on the same routes, so no admission outcome changed there.
+- Tooling: the within entry-point, slope-boundary comparison and allocation
+  witnesses under `bench/` are removed (Git history keeps them at revision
+  `9fe647ab`); [the migration record](within_migration.md) and
+  [the optimum enclosures](within_numerical_enclosure.md) are historical.
+- Evidence (runtime `d748f6f3`, dependency `e80da565`, Mac, development):
+  the source-only integration suite passes (Rust 2,353 tests, including
+  fereg-core's 1,542 and the plugin's 242 FFI tests with its 11 allocator
+  audits; both Clippy configurations; rustfmt; the locked fuzz check; Python
+  279, with the three numpy-dependent modules not run), as do the
+  actual-plugin harness and the ratchet (fereg-core 119,999 to 118,260
+  production lines). Stata fixtures: 152 of 161 with the same nine failures
+  as `9fe647ab`. Against a `9fe647ab` package, ols2, ols3, ols5, ols6, ols7,
+  ppml2, ppml3, ppml2lsmr, ppml3lsmr, ols2lsmr, ols2slopelsmr, ols3slope and
+  ols2slope at one million rows (four threads, two interleaved pairs of
+  three fits) are bitwise identical in b, SE and objective on the same
+  routes, with median time ratios 0.96 to 1.01.
 
 ## Package checks
 
@@ -4493,6 +4565,22 @@ All 50 GitHub release assets matched their local SHA-256 checksums and sizes.
   real Veneto panels, and explicit `solver(lsmr)` returned `r(909)` on the long
   panel in a 64 GB allocation where Auto completed. Auto does not use either
   route there.
+- Explicit `solver(lsmr)` on slopes that share a large common offset is
+  limited by fedemean's raw-basis certificate floor (about 1e-10 of the column
+  at offsets of 2^24). A tolerance requested at that floor or below can fail
+  with r(459) and full rollback when MAP's raw level Gram also loses the
+  slopes: case 1 of the slope-boundary fixture does so at `tolerance(1e-10)`
+  since the within retirement, while `tolerance(1e-9)` and looser certify it
+  without residual-derived outputs (b within 8e-17 of the former
+  `tolerance(1e-12)` reference; see
+  [the within retirement](#within-retirement-milestone-3-development-mac)).
+  Residual-derived outputs certify the final residual at 1e-14 and fail there
+  at any tolerance.
+- A fedemean fit publishes its retained workspace as its solver workspace
+  peak. A Schwarz build also admits transient storage within the memory limit
+  (in the explicit-Schwarz capped-memory test, a budget of about 1.85 times the
+  published peak was needed for the same bits), which the published peak does
+  not count.
 - Package comparisons are descriptive: one seed, three repetitions, and
   same-model SCC nodes that differed by up to 2.4 times in absolute speed.
 - GitHub Actions remain disabled; checks run locally or on the authorized SCC

@@ -328,6 +328,9 @@ derived-residual route exception. The report rereads retained traces and checks
 the original geometry policy's iteration, memory and certificate limits.
 Explicit/sloped and PPML integration still require their separately mapped
 scientific and performance checks; this scope does not broaden their support.
+The scope qualified the historical `within` migration of the many-FE LSMR
+route, which was retired with the `within` dependency in Milestone 3; no
+current route emits `phase=lsmr_rhs`, so no call is eligible under it.
 
 The fixed run budget includes input verification, oracle and cross-worker checks,
 output writes and observer shutdown. A main-thread deadline interrupts overdue

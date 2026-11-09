@@ -227,16 +227,17 @@ qualification harness and cluster comparison results are in [bench](bench/README
 
 ## Upstream software and acknowledgments
 
-fereg builds on established open-source numerical software. Its LSMR solver
-and pairwise Schwarz preconditioner use a pinned, adapted
+fereg builds on established open-source numerical software. Its modified
+LSMR iteration uses the `schwarz-precond` crate of a pinned, adapted
 [fork](https://github.com/johannes-schmieder/within) of
 [within](https://github.com/py-econometrics/within), developed by Alexander
 Fischer, Kristof Schröder, and contributors at the appliedAI Institute for
 Europe and in the PyFixest community. Their
 [graph-preconditioning paper](https://github.com/py-econometrics/within-paper)
-describes the approach. The fork adapts data access, resumable iterations,
-allocation, reproducible reductions, and cancellation for fereg; the upstream
-LSMR and preconditioning algorithms are shared numerical building blocks.
+describes the pairwise Schwarz approach, which fereg's own `fedemean` crate
+implements for its additive Schwarz preconditioner, with approximate Cholesky
+local solves from the `approx-chol` crate. The fork adapts resumable
+iterations, allocation, reproducible reductions, and cancellation for fereg.
 
 The CMG backend uses a [Rust port](https://github.com/johannes-schmieder/CMG)
 of Koutis and Miller's
@@ -267,7 +268,7 @@ and its dependencies, along with prior work on parallel data transfer.
 
 - **Fischer, Alexander, and Kristof Schröder (2026).**
   [*Graph Preconditioning for High-Dimensional Fixed Effects Regression*](https://github.com/py-econometrics/within-paper).
-  Working paper. The pairwise graph preconditioner implemented in `within`.
+  Working paper. The pairwise graph preconditioner behind fedemean's additive Schwarz.
 - **Koutis, Ioannis, Gary L. Miller, and David Tolliver (2011).**
   [*Combinatorial Preconditioners and Multilevel Solvers for Problems in Computer Vision and Image Processing*](https://doi.org/10.1016/j.cviu.2011.05.013).
   *Computer Vision and Image Understanding* 115(12): 1638–1646.
@@ -278,7 +279,7 @@ and its dependencies, along with prior work on parallel data transfer.
 - **Fong, David Chin-Lung, and Michael A. Saunders (2011).**
   [*LSMR: An Iterative Algorithm for Sparse Least-Squares Problems*](https://doi.org/10.1137/10079687X).
   *SIAM Journal on Scientific Computing* 33(5): 2950–2971.
-  The LSMR iteration used for fixed-effect absorption through `within`.
+  The LSMR iteration used for fixed-effect absorption through `schwarz-precond`.
 - **Gao, Yuan, Rasmus Kyng, and Daniel A. Spielman (2026).**
   [*AC(k): Robust Solution of Laplacian Equations by Randomized Approximate Cholesky Factorization*](https://doi.org/10.1137/24M1673577).
   *SIAM Journal on Scientific Computing* 48(3): A1643–A1684.
