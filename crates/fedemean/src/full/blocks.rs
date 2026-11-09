@@ -121,20 +121,30 @@ pub(crate) struct Blocks {
 }
 
 /// Bytes of the blocks of every effect, the scatter accumulators of the
-/// largest scattered one (see [`Blocks::fill`]) and the measure partials
-/// of a full batch.
+/// largest scattered one (see [`Blocks::fill`]), the measure partials of a
+/// full batch, every level's sums, centers, origins and shifts, and the
+/// inversions' scratch.
 pub(super) fn block_bytes(st: &Structure, effects: &[Effect<'_>]) -> u128 {
     let (mut values, mut scratch, mut tasks) = (0_u128, 0_u128, 0_u128);
+    let (mut levels, mut inversion) = (0_u128, 0_u128);
     for (e, effect) in effects.iter().enumerate().filter(|(_, e)| e.sloped()) {
-        let span = (effect.levels() * effect.channels() * effect.channels()) as u128;
+        let c = effect.channels();
+        let span = (effect.levels() * c * c) as u128;
         values += span;
-        tasks += effect.levels().div_ceil(LEVEL_TASK) as u128;
+        let parts = effect.levels().div_ceil(LEVEL_TASK) as u128;
+        tasks += parts;
+        // Sums per channel; centers, constant flags, origins and shifts per
+        // centered slope.
+        levels += effect.levels() as u128 * (8 * c as u128 + 25 * c.saturating_sub(1) as u128);
+        inversion = inversion.max(parts * invert_scratch(c) as u128);
         if !st.gathered.iter().any(|g| g.effect == e) {
             scratch = scratch.max(span * st.scatter_blocks() as u128);
         }
     }
-    8 * (values + scratch + 3 * crate::elimination::BATCH as u128 * tasks)
-        + 16 * effects.len() as u128
+    let table = 16 * effects.len() as u128;
+    8 * (values + scratch + 3 * crate::elimination::BATCH as u128 * tasks + inversion)
+        + levels
+        + table
 }
 
 impl Blocks {

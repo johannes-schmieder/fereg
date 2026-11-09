@@ -1486,3 +1486,49 @@ fn wide_effects_are_admitted_by_memory() {
         );
     }
 }
+
+/// Schwarz pairs with slopes are admitted at the reported workspace: a
+/// cold projection at a limit of exactly its reported bytes runs, one byte
+/// below it declines (the cells' build charged before it allocates).
+#[cfg(feature = "schwarz")]
+#[test]
+fn schwarz_pairs_with_slopes_are_admitted_at_their_reported_workspace() {
+    let case = Case::random(
+        117,
+        600,
+        &[spec(80, true, 0), spec(12, true, 1), spec(5, true, 0)],
+    );
+    let weights = case.weights(118);
+    let original = case.columns(119, 2);
+    let run = |limit: Option<u128>| {
+        let mut projector = Projector::new(case.design(), full(Method::Pcg, SCHWARZ));
+        let mut request = Request::new(TOLERANCE, MAX_ITERATIONS);
+        request.memory_limit = limit;
+        let mut data = original.clone();
+        let (outcome, _) = project(
+            &mut projector,
+            &case,
+            Some(&weights),
+            (&mut data, 2),
+            None,
+            &request,
+        );
+        (outcome, projector.admission_bytes(2))
+    };
+    let (outcome, admitted) = run(None);
+    let reported = projected(outcome).workspace_bytes;
+    assert_eq!(admitted, Some(reported));
+    let (outcome, _) = run(Some(reported));
+    assert!(projected(outcome).certificate.passed);
+    let (outcome, _) = run(Some(reported - 1));
+    assert!(
+        matches!(
+            outcome,
+            Outcome::Declined {
+                reason: fedemean::Decline::MemoryLimit,
+                ..
+            }
+        ),
+        "{outcome:?}"
+    );
+}

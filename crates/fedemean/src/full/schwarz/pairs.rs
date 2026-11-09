@@ -13,10 +13,15 @@
 //! Everything is a fixed function of the design and the weights: per-level
 //! sums run over the level's rows in ascending order, so results do not
 //! depend on the worker count.
+//!
+//! Memory: each stage is charged to the build's [`Admit`] before it
+//! allocates (its retained arrays and its transients, the latter released
+//! when freed); the passes with per-task scratch run in at most
+//! [`super::GROUPS`] groups of level tasks, one scratch per group.
 
 use super::super::structure::{sort_levels, Gathered, Structure};
 use super::super::{filled, with_capacity};
-use super::Admit;
+use super::{Admit, GROUPS};
 use crate::design::Effect;
 use crate::elimination::Cancel;
 use crate::error::Result;
@@ -96,6 +101,21 @@ fn pair_bytes(levels: [usize; 2], nnz: usize) -> u128 {
     2 * nnz * 12 + 4 * (a + b + 2) + 16 * (a + b)
 }
 
+/// A bound on the bytes of a pair's components (at most one per level).
+pub(super) fn components_bytes(levels: [usize; 2]) -> u128 {
+    (levels[0] + levels[1]) as u128 * std::mem::size_of::<Component>() as u128
+}
+
+/// Level tasks per group of `tasks` (at most [`GROUPS`] groups).
+fn per_group(tasks: usize) -> usize {
+    tasks.div_ceil(GROUPS).max(1)
+}
+
+/// Groups of `tasks` level tasks.
+fn groups(tasks: usize) -> u128 {
+    tasks.div_ceil(per_group(tasks)) as u128
+}
+
 /// The rows of each level of `effect`: the structure's index when it has
 /// one, else a new one.
 fn level_index<'s>(
@@ -124,14 +144,15 @@ fn count(
     cancel: &Cancel<'_>,
 ) -> Result<Vec<u32>> {
     let mut ptr = filled(levels[0] + 1, 0_u32)?;
+    let group = LEVEL_TASK * per_group(levels[0].div_ceil(LEVEL_TASK));
     ptr[1..]
-        .par_chunks_mut(LEVEL_TASK)
+        .par_chunks_mut(group)
         .enumerate()
-        .try_for_each(|(task, out)| -> Result<()> {
+        .try_for_each(|(g, out)| -> Result<()> {
             cancel.check()?;
             let mut stamp = filled(levels[1], u32::MAX)?;
             for (k, count) in out.iter_mut().enumerate() {
-                let level = task * LEVEL_TASK + k;
+                let level = g * group + k;
                 let rows = &index.rows[index.starts[level]..index.starts[level + 1]];
                 let mut distinct = 0;
                 for &row in rows {
@@ -163,11 +184,12 @@ fn fill(
     let nnz = ptr[levels[0]] as usize;
     let mut idx = filled(nnz, 0_u32)?;
     let mut val = filled(nnz, 0.0)?;
-    let tasks = levels[0].div_ceil(LEVEL_TASK);
+    let group = LEVEL_TASK * per_group(levels[0].div_ceil(LEVEL_TASK));
+    let tasks = levels[0].div_ceil(group);
     let mut parts: Vec<(Range<usize>, &mut [u32], &mut [f64])> = with_capacity(tasks)?;
     let (mut rest_idx, mut rest_val) = (&mut idx[..], &mut val[..]);
     for task in 0..tasks {
-        let range = task * LEVEL_TASK..((task + 1) * LEVEL_TASK).min(levels[0]);
+        let range = task * group..((task + 1) * group).min(levels[0]);
         let len = (ptr[range.end] - ptr[range.start]) as usize;
         let (head_idx, tail_idx) = std::mem::take(&mut rest_idx).split_at_mut(len);
         let (head_val, tail_val) = std::mem::take(&mut rest_val).split_at_mut(len);
@@ -344,15 +366,36 @@ pub(super) fn build(
     cancel: &Cancel<'_>,
 ) -> Result<Option<(Pair, Vec<Component>)>> {
     let levels = [effects[sides[0]].levels(), effects[sides[1]].levels()];
+    let (a, b, n) = (levels[0] as u128, levels[1] as u128, st.nobs as u128);
+    let tasks = groups(levels[0].div_ceil(LEVEL_TASK));
+    // A level index of side 0 (with its sort cursor) unless the structure
+    // has one, the cross-tab row pointers and the counting stamps.
+    let gathered = st.gathered.iter().any(|g| g.effect == sides[0]);
+    let index_bytes = if gathered { 0 } else { 16 * a + 4 * n + 8 };
+    let counting = index_bytes + 4 * (a + 1) + 4 * b * tasks;
+    if !admit.take(counting) {
+        return Ok(None);
+    }
     let mut owned = None;
     let index = level_index(st, effects, sides[0], &mut owned)?;
     let codes = effects[sides[1]].codes();
     let ptr = count(index, codes, levels, cancel)?;
-    if !admit.take(pair_bytes(levels, ptr[levels[0]] as usize)) {
+    let nnz = ptr[levels[0]] as u128;
+    // The pair's storage, then the fill's scratch, the transpose cursor, or
+    // the component labels, the layout's local indices and sizes and the
+    // components (released by the caller once they are pieces).
+    admit.give(4 * b * tasks);
+    let retained = pair_bytes(levels, nnz as usize);
+    let task = std::mem::size_of::<(Range<usize>, &mut [u32], &mut [f64])>() as u128;
+    let scratch = (16 * b * tasks + task * tasks)
+        .max(4 * b)
+        .max(24 * (a + b) + components_bytes(levels));
+    if !admit.take(retained + scratch) {
         return Ok(None);
     }
     let by_a = fill(index, codes, weights, (levels, ptr), cancel)?;
     drop(owned);
+    admit.give(index_bytes);
     cancel.check()?;
     let by_b = transpose(&by_a, levels)?;
     let (label, count) = components(&by_a, levels, cancel)?;
@@ -360,6 +403,7 @@ pub(super) fn build(
     let (parts, codes, slot) = layout(&label, count, levels, &mut rows)?;
     drop(label);
     let inverse = [inverse(&rows[0], levels[0])?, inverse(&rows[1], levels[1])?];
+    admit.give(scratch - components_bytes(levels));
     let pair = Pair {
         effects: sides,
         first,

@@ -33,13 +33,22 @@
 //! does not depend on the worker count.
 //!
 //! **Memory.** Every allocation of this module is fallible; approximate
-//! Cholesky allocates inside approx-chol. The build admits the pair storage
-//! from its exact sizes and each local factor from its size (approximate
-//! factors by an estimate) before allocating them, within the budget the
-//! memory limit leaves beyond the projection's workspace. The apply
-//! workspace ([`Scratch`]) is retained by the caller; repeated applies of
-//! one width allocate nothing. A preconditioner is rebuilt only for new
-//! weights (or another specification), between solves.
+//! Cholesky allocates inside approx-chol. Each stage of the build is
+//! charged to its [`Admit`] before it allocates, within the budget the
+//! memory limit leaves beyond the projection's workspace: its retained
+//! storage and its transients (released when freed), from exact sizes where
+//! they are known beforehand and from bounds where they are not (a Schur
+//! complement from the paths through its larger side; approximate factors
+//! and their build by an estimate per entry). The passes with per-task
+//! scratch run in at most [`GROUPS`] groups, and the parallel
+//! factorizations release nothing until all are done, so the charge is an
+//! upper bound on the build's peak over overlapping allocations whatever
+//! the worker count, and a refusal comes before the stage it refuses. The
+//! build's peak, and the retained storage with the apply workspace
+//! ([`Scratch`]) after it, are the preconditioner's share of the reported
+//! workspace. The apply workspace is retained by the caller; repeated
+//! applies of one width allocate nothing. A preconditioner is rebuilt only
+//! for new weights (or another specification), between solves.
 
 mod local;
 mod pairs;
@@ -69,12 +78,19 @@ pub(super) enum Refusal {
     Numerical(&'static str),
 }
 
-/// The memory budget of one build, shared by its parallel parts. Retained
-/// and transient storage are both charged and never released, so whether a
-/// build fits does not depend on the order of its parts.
+/// Per-task scratch of the build's level passes is allocated per group of
+/// tasks, at most this many groups (the bound of their concurrent scratch).
+pub(super) const GROUPS: usize = 32;
+
+/// The memory budget of one build, shared by its parallel parts, and the
+/// build's peak charge. Stages charge before they allocate and release
+/// their transients once freed; the parallel factorizations only charge,
+/// and are released together afterwards, so whether a build fits and its
+/// peak do not depend on the order of its parts.
 pub(super) struct Admit {
     limit: Option<u64>,
     used: AtomicU64,
+    peak: AtomicU64,
     failed: AtomicBool,
 }
 
@@ -83,15 +99,13 @@ impl Admit {
         Self {
             limit: budget.map(|b| u64::try_from(b).unwrap_or(u64::MAX)),
             used: AtomicU64::new(0),
+            peak: AtomicU64::new(0),
             failed: AtomicBool::new(false),
         }
     }
 
     /// Charge `bytes`; `false` (remembered) once the total exceeds the limit.
     pub(super) fn take(&self, bytes: u128) -> bool {
-        let Some(limit) = self.limit else {
-            return true;
-        };
         let bytes = u64::try_from(bytes).unwrap_or(u64::MAX);
         let before = self
             .used
@@ -99,15 +113,35 @@ impl Admit {
                 Some(used.saturating_add(bytes))
             })
             .unwrap_or(u64::MAX);
-        let fits = before.saturating_add(bytes) <= limit;
+        let after = before.saturating_add(bytes);
+        self.peak.fetch_max(after, Ordering::Relaxed);
+        let fits = self.limit.is_none_or(|limit| after <= limit);
         if !fits {
             self.failed.store(true, Ordering::Relaxed);
         }
         fits
     }
 
+    /// Release `bytes` of freed transients.
+    pub(super) fn give(&self, bytes: u128) {
+        let bytes = u64::try_from(bytes).unwrap_or(u64::MAX);
+        let _ = self
+            .used
+            .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |used| {
+                Some(used.saturating_sub(bytes))
+            });
+    }
+
     fn failed(&self) -> bool {
         self.failed.load(Ordering::Relaxed)
+    }
+
+    fn used(&self) -> u128 {
+        u128::from(self.used.load(Ordering::Relaxed))
+    }
+
+    fn peak(&self) -> u128 {
+        u128::from(self.peak.load(Ordering::Relaxed))
     }
 }
 
@@ -145,6 +179,8 @@ pub(crate) struct Schwarz {
     covers: Vec<Vec<(usize, usize)>>,
     used: SchwarzSolves,
     bytes: u128,
+    /// The build's peak charge (its retained storage included).
+    peak: u128,
 }
 
 /// The pairs of `subdomains`, side 0 the effect with more levels (the first
@@ -177,11 +213,11 @@ fn pair_list(
     Ok(list)
 }
 
-/// What became of one piece's factorization.
+/// What became of one piece's factorization (with its charge).
 #[derive(Clone, Copy)]
 enum Built {
     Pending,
-    Done,
+    Done(u128),
     Refused(Refusal),
     Failed(Error),
 }
@@ -198,6 +234,15 @@ fn count(value: &mut u32) {
     *value = value.saturating_add(1);
 }
 
+/// The number of pairs of `spec` (a bound on each effect's covers).
+fn list_len(effects: &[Effect<'_>], spec: SchwarzSpec) -> u128 {
+    let k = effects.len() as u128;
+    match spec.subdomains {
+        Subdomains::Star => k.saturating_sub(1),
+        Subdomains::AllPairs => k * k.saturating_sub(1) / 2,
+    }
+}
+
 impl Schwarz {
     /// Build for the current weights within `budget` bytes, including the
     /// apply workspace of `width` columns.
@@ -210,6 +255,13 @@ impl Schwarz {
         cancel: &Cancel<'_>,
     ) -> Result<std::result::Result<Self, Refusal>> {
         let admit = Admit::new(budget);
+        let k = effects.len() as u128;
+        let lists =
+            (k * k * (4 + std::mem::size_of::<Pair>() + std::mem::size_of::<Cells>()) as u128)
+                .max(1);
+        if !admit.take(lists) {
+            return Ok(Err(Refusal::MemoryLimit));
+        }
         let list = pair_list(st, effects, spec.subdomains)?;
         let mut pairs = with_capacity::<Pair>(list.len())?;
         let mut pieces = Vec::new();
@@ -218,11 +270,19 @@ impl Schwarz {
         for sides in list {
             cancel.check()?;
             if effects[sides[0]].sloped() || effects[sides[1]].sloped() {
+                // The cells' build (bounded beforehand), then their blocks.
+                let bound = Cells::build_bytes(st, effects, sides);
+                if !admit.take(bound) {
+                    return Ok(Err(Refusal::MemoryLimit));
+                }
                 let mut cells = Cells::build(st, effects, sides, cancel)?.with_exact_schur();
-                if !admit.take(cells.bytes()) {
+                admit.give(bound);
+                let scratch = cells.fill_scratch_bytes();
+                if !admit.take(cells.bytes() + scratch) {
                     return Ok(Err(Refusal::MemoryLimit));
                 }
                 cells.fill(st, effects, state)?;
+                admit.give(scratch);
                 channel.push(cells);
                 continue;
             }
@@ -231,7 +291,15 @@ impl Schwarz {
             else {
                 return Ok(Err(Refusal::MemoryLimit));
             };
+            // Growing the pieces holds the old and the new storage at once.
+            let piece = std::mem::size_of::<Piece>() as u128;
+            let (old, new) = (pieces.capacity(), pieces.len() + parts.len());
+            if !admit.take(new as u128 * piece) {
+                return Ok(Err(Refusal::MemoryLimit));
+            }
             super::reserve(&mut pieces, parts.len())?;
+            admit.give(old as u128 * piece);
+            let levels = [effects[sides[0]].levels(), effects[sides[1]].levels()];
             for part in parts {
                 let big = part.big;
                 pieces.push(Piece {
@@ -246,11 +314,9 @@ impl Schwarz {
                     partial_first: 0,
                 });
             }
+            admit.give(pairs::components_bytes(levels));
             first += pair.slots();
             pairs.push(pair);
-        }
-        if !admit.take((pieces.capacity() * std::mem::size_of::<Piece>()) as u128) {
-            return Ok(Err(Refusal::MemoryLimit));
         }
         if let Some(refusal) = Self::factor(&pairs, &mut pieces, spec, &admit, cancel)? {
             return Ok(Err(refusal));
@@ -270,12 +336,23 @@ impl Schwarz {
             covers: with_capacity(effects.len())?,
             used: SchwarzSolves::default(),
             bytes: 0,
+            peak: 0,
         };
-        schwarz.offsets.extend_from_slice(&st.offsets);
-        schwarz.layout()?;
-        if !admit.take(schwarz.bytes + schwarz.scratch_bytes(width)) {
+        // The layout's covers and offsets, then the apply workspace beside
+        // the retained storage (as charged, or as measured when larger).
+        let layout =
+            16 * k * (k + list_len(effects, spec)) + 8 * (st.offsets.len() as u128) + 8 * k;
+        if !admit.take(layout) {
             return Ok(Err(Refusal::MemoryLimit));
         }
+        schwarz.offsets.extend_from_slice(&st.offsets);
+        schwarz.layout()?;
+        let retained = admit.used().max(schwarz.bytes);
+        let after = retained + schwarz.scratch_bytes(width);
+        if budget.is_some_and(|budget| after > budget) {
+            return Ok(Err(Refusal::MemoryLimit));
+        }
+        schwarz.peak = admit.peak().max(after);
         Ok(Ok(schwarz))
     }
 
@@ -289,6 +366,10 @@ impl Schwarz {
         cancel: &Cancel<'_>,
     ) -> Result<Option<Refusal>> {
         use rayon::prelude::*;
+        let outcome = std::mem::size_of::<Built>() as u128;
+        if !admit.take(pieces.len() as u128 * outcome) {
+            return Ok(Some(Refusal::MemoryLimit));
+        }
         let mut outcomes = with_capacity::<Built>(pieces.len())?;
         outcomes.resize(pieces.len(), Built::Pending);
         pieces
@@ -300,9 +381,9 @@ impl Schwarz {
                 }
                 *outcome = match local::inner(&pairs[piece.pair], piece, spec.local, admit, cancel)
                 {
-                    Ok(Ok(inner)) => {
+                    Ok(Ok((inner, charged))) => {
                         piece.inner = inner;
-                        Built::Done
+                        Built::Done(charged)
                     }
                     Ok(Err(refusal)) => Built::Refused(refusal),
                     Err(error) => Built::Failed(error),
@@ -317,6 +398,16 @@ impl Schwarz {
         if admit.failed() {
             return Ok(Some(Refusal::MemoryLimit));
         }
+        // The factorizations' transients, released together.
+        let charged: u128 = outcomes
+            .iter()
+            .map(|o| match o {
+                Built::Done(charged) => *charged,
+                _ => 0,
+            })
+            .sum();
+        let retained: u128 = pieces.iter().map(|p| p.inner.bytes()).sum();
+        admit.give(charged.saturating_sub(retained) + pieces.len() as u128 * outcome);
         Ok(outcomes.iter().find_map(|o| match o {
             Built::Refused(refusal) => Some(*refusal),
             _ => None,
@@ -378,6 +469,13 @@ impl Schwarz {
     /// Retained bytes (without the apply workspace).
     pub(super) fn bytes(&self) -> u128 {
         self.bytes
+    }
+
+    /// The build's peak and, after it, the retained storage with the apply
+    /// workspace of `width` columns: this preconditioner's share of a
+    /// projection's workspace.
+    pub(super) fn peak_bytes(&self, width: usize) -> u128 {
+        self.peak.max(self.bytes + self.scratch_bytes(width))
     }
 
     /// Bytes of the apply workspace of `width` columns.

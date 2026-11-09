@@ -136,6 +136,10 @@ mod schwarz {
             match *self {}
         }
 
+        pub(super) fn peak_bytes(&self, _: usize) -> u128 {
+            match *self {}
+        }
+
         pub(super) fn used(&self) -> PreconditionerUsed {
             match *self {}
         }
@@ -357,14 +361,12 @@ impl Engine {
         self.structure.as_ref()
     }
 
-    /// Bytes of the retained Schwarz preconditioner or the elimination's
-    /// cells, and their workspaces for `ncols` columns (0 when none is
-    /// built).
+    /// Bytes of the retained Schwarz preconditioner (at least its build's
+    /// peak) or the elimination's cells, and their workspaces for `ncols`
+    /// columns (0 when none is built).
     pub(crate) fn schwarz_bytes(&self, ncols: usize) -> u128 {
         let width = ncols.clamp(1, BATCH);
-        self.schwarz
-            .as_ref()
-            .map_or(0, |s| s.bytes() + s.scratch_bytes(width))
+        self.schwarz.as_ref().map_or(0, |s| s.peak_bytes(width))
             + self.cells.as_ref().map_or(0, |c| cells_bytes(c, width))
     }
 
@@ -765,7 +767,7 @@ fn report(
         facts,
         certificate,
         weight_scale: job.state.raw_scale,
-        workspace_bytes: job.bytes + schwarz.map_or(0, |s| s.bytes() + s.scratch_bytes(width)),
+        workspace_bytes: job.bytes + schwarz.map_or(0, |s| s.peak_bytes(width)),
     }
 }
 

@@ -142,6 +142,15 @@ fn values(effect: &Effect<'_>, row: usize, out: &mut [f64]) {
     }
 }
 
+/// Groups of the level lists (one stamp each) at most.
+const LIST_GROUPS: usize = 32;
+
+/// Levels per group of the level lists over `levels` larger levels (a
+/// multiple of [`LEVEL_TASK`]).
+fn group_levels(levels: usize) -> usize {
+    LEVEL_TASK * levels.div_ceil(LEVEL_TASK).div_ceil(LIST_GROUPS).max(1)
+}
+
 /// Run `body(levels, cell part, level part)` over the larger-level tasks
 /// `bounds`, halving recursively without allocation: the parts are the
 /// tasks' slices of `cells` (`wc` values per cell) and `levels` (`wl` per
@@ -219,14 +228,15 @@ impl Cells {
         let codes = effects[b].codes();
         cancel.check()?;
         // Each larger level's distinct smaller levels, ascending, each level
-        // closed by a marker; a task holds at most its rows plus its levels.
-        let count = levels[0].div_ceil(LEVEL_TASK);
+        // closed by a marker; a group holds at most its rows plus its levels.
+        let group = group_levels(levels[0]);
+        let count = levels[0].div_ceil(group);
         let mut lists: Vec<Result<Vec<u32>>> = with_capacity(count)?;
         (0..count)
             .into_par_iter()
             .map(|t| -> Result<Vec<u32>> {
                 cancel.check()?;
-                let range = t * LEVEL_TASK..((t + 1) * LEVEL_TASK).min(levels[0]);
+                let range = t * group..((t + 1) * group).min(levels[0]);
                 let bound = rows.starts[range.end] - rows.starts[range.start] + range.len();
                 let mut stamp = filled(levels[1], u32::MAX)?;
                 let mut out = with_capacity(bound)?;
@@ -314,6 +324,50 @@ impl Cells {
 
     pub(super) fn cells(&self) -> usize {
         self.idx.len()
+    }
+
+    /// A bound on the bytes [`Cells::build`] allocates for `pair`: its
+    /// level index when the structure has none, its level lists and stamps,
+    /// and its arrays with every row its own cell.
+    #[cfg_attr(not(feature = "schwarz"), allow(dead_code))]
+    pub(super) fn build_bytes(st: &Structure, effects: &[Effect<'_>], pair: [usize; 2]) -> u128 {
+        let [a, b] = pair;
+        let (la, lb, n) = (
+            effects[a].levels() as u128,
+            effects[b].levels() as u128,
+            st.nobs as u128,
+        );
+        let groups = effects[a]
+            .levels()
+            .div_ceil(group_levels(effects[a].levels())) as u128;
+        let index = if st.gathered.iter().any(|g| g.effect == a) {
+            0
+        } else {
+            16 * la + 4 * n + 8
+        };
+        let lists = 4 * (n + la) + 32 * groups + 4 * lb * groups;
+        let arrays = 8 * (la + 1) + 12 * n + 16 * (lb + 1) + 8 * (la / 2 + 2);
+        index + lists + arrays
+    }
+
+    /// Bytes of [`Cells::fill`]'s scratch beyond [`Cells::bytes`].
+    #[cfg_attr(not(feature = "schwarz"), allow(dead_code))]
+    pub(super) fn fill_scratch_bytes(&self) -> u128 {
+        let [ca, cb] = self.channels;
+        let (wx, wq) = (ca * cb, cb * cb);
+        let rows = self.large_tasks() * (ca + cb);
+        let schur = self.small_tasks() * (wx + wq + invert_scratch(cb));
+        let mb = self.levels[1] * cb;
+        let dense = if self.exact && mb <= DENSE {
+            let degree = (0..self.levels[0])
+                .map(|l| self.ptr[l + 1] - self.ptr[l])
+                .max()
+                .unwrap_or(0);
+            DENSE_GROUPS * degree * wx + invert_scratch(mb)
+        } else {
+            0
+        };
+        8 * (rows + schur + dense) as u128
     }
 
     /// The coefficients of the larger and the smaller effect.

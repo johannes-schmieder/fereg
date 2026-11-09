@@ -621,7 +621,9 @@ pub struct Report {
     /// The maximum weight that normalizes weights for norms and
     /// certificates (1 for unit weights).
     pub weight_scale: f64,
-    /// Bytes of retained structure, weight state and solve workspaces.
+    /// Bytes of retained structure, weight state and solve workspaces; on
+    /// the full formulation with additive Schwarz, at least its build's
+    /// peak (its transients included).
     pub workspace_bytes: u128,
 }
 
@@ -1011,8 +1013,8 @@ impl<'a> Projector<'a> {
     /// once the structure exists (escalations excluded: they only start
     /// within [`Request::memory_limit`]). CMG local solves are excluded too:
     /// they are admitted as they are built, from their graphs' sizes, and so
-    /// are Schwarz subdomains, which count here once built. The full
-    /// formulation counts weighted state.
+    /// are Schwarz subdomains, which count here once built (with their
+    /// build's peak). The full formulation counts weighted state.
     #[must_use]
     pub fn admission_bytes(&self, ncols: usize) -> Option<u128> {
         if let Ok(Formulation::Full(method, _)) = self.formulation {

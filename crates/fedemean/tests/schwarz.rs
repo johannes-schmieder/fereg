@@ -825,6 +825,64 @@ fn memory_limits_decline_explicit_schwarz_and_keep_automatic_jacobi() {
     }
 }
 
+/// A cold projection's reported workspace is what Schwarz is admitted at:
+/// its build's peak with the transients charged before each stage. At a
+/// limit of exactly those bytes the projection runs; one byte below, it
+/// declines with the columns untouched (every local solve kind, the star
+/// and all pairs, weighted).
+#[test]
+fn schwarz_is_admitted_at_its_reported_workspace() {
+    let cases = [
+        Case::random(391, 4000, &[900, 120, 7]),
+        Case::random(392, 3000, &[400, 300]),
+        Case::random(393, 2500, &[60, 40, 6]),
+    ];
+    let ncols = 2;
+    for (c, case) in cases.iter().enumerate() {
+        let weights: Vec<f64> = (0..case.n).map(|i| 0.5 + (i % 7) as f64 * 0.25).collect();
+        let original = case.columns(394 + c as u64, ncols);
+        for (subdomains, local) in [
+            (Subdomains::Star, SchwarzLocal::Auto),
+            (Subdomains::Star, SchwarzLocal::Approximate),
+            (Subdomains::Star, SchwarzLocal::Exact),
+            (Subdomains::AllPairs, SchwarzLocal::Auto),
+        ] {
+            let pre = schwarz(subdomains, local);
+            let run = |limit: Option<u128>| {
+                let mut projector =
+                    Projector::new(case.design(), settings(Method::Pcg, pre, Fallback::Decline));
+                let mut request = Request::new(TOLERANCE, MAX_ITERATIONS);
+                request.memory_limit = limit;
+                let mut data = original.clone();
+                let (outcome, _) = project(
+                    &mut projector,
+                    case,
+                    Some(&weights),
+                    (&mut data, ncols),
+                    &request,
+                    &Control::default(),
+                )
+                .unwrap();
+                (outcome, data, projector.admission_bytes(ncols))
+            };
+            let label = format!("case {c} {subdomains:?} {local:?}");
+            let (outcome, _, admitted) = run(None);
+            let reported = projected(outcome).workspace_bytes;
+            assert_eq!(admitted, Some(reported), "{label}");
+            let (outcome, _, _) = run(Some(reported));
+            assert!(projected(outcome).certificate.passed, "{label}");
+            let (outcome, data, _) = run(Some(reported - 1));
+            let (reason, input) = declined(outcome);
+            assert_eq!(
+                (reason, input),
+                (Decline::MemoryLimit, InputState::Untouched),
+                "{label}"
+            );
+            assert_eq!(bits(&data), bits(&original), "{label}");
+        }
+    }
+}
+
 /// Cancellation stops the Schwarz build and its recurrences.
 #[test]
 fn cancellation_stops_schwarz_builds_and_recurrences() {
