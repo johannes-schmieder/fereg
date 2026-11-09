@@ -10444,9 +10444,12 @@ fn loaded_centered_summary_requires_exact_owner_binding_and_budget() {
 /// OLS Auto on a three-effect slope design runs fedemean's full system; when
 /// fedemean refuses the design (as one it does not take), the session's MAP
 /// runs as before fedemean served slopes, with no fallback flag, and saved
-/// slope recovery falls through to MAP.
+/// slope recovery falls through to MAP. The session takes fedemean only
+/// while the process-wide elimination switch is on, so the test holds the
+/// shared side of the route lock that the switch's test guard excludes.
 #[test]
 fn ineligible_slope_designs_keep_auto_map_and_map_recovery() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let sources = [
         source(1, "worker"),
         source(2, "firm"),
