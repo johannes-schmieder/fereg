@@ -85,6 +85,11 @@ impl Layout {
         })
     }
 
+    /// Bytes of the coefficients of `rhs` columns.
+    pub(crate) fn bytes(&self, rhs: usize) -> u128 {
+        8 * self.per_rhs as u128 * rhs as u128
+    }
+
     /// Zero coefficients for `rhs` columns.
     pub(crate) fn zeros(&self, rhs: usize) -> Result<Vec<f64>> {
         let elements = self
@@ -171,6 +176,23 @@ impl Attempt {
     }
 }
 
+// Tests: fedemean refuses every design on this thread, as it would one it
+// does not take (the eligibility safety net's only trigger since fedemean
+// lifted its channel cap).
+crate::fault::fault_plan! {
+    static INELIGIBLE: bool = false;
+}
+
+#[cfg(test)]
+pub(crate) fn force_ineligible_for_test(on: bool) {
+    INELIGIBLE.set(on);
+}
+
+/// Whether a test made fedemean refuse every design on this thread.
+pub(crate) fn forced_ineligible() -> bool {
+    INELIGIBLE.get()
+}
+
 /// The result of one projection.
 pub(crate) enum Outcome {
     /// The values hold the residuals; the report carries fedemean's route,
@@ -183,6 +205,11 @@ pub(crate) enum Outcome {
         reason: fedemean::Decline,
         iterations: usize,
     },
+    /// fedemean does not support this design or choice (for example an
+    /// effect with more channels than it takes); the values are untouched
+    /// and the caller's established route runs as if fedemean had not been
+    /// eligible.
+    Ineligible(&'static str),
 }
 
 /// Project `values` in place with fedemean's full system of `design` under
@@ -202,6 +229,9 @@ pub(crate) fn project(
             "fedemean full-system inputs have inconsistent observation counts",
         ));
     }
+    if forced_ineligible() {
+        return Ok(Outcome::Ineligible("refused for a test"));
+    }
     let mut projector = fedemean::Projector::new(
         design_view(design)?,
         fedemean::Settings {
@@ -216,11 +246,12 @@ pub(crate) fn project(
     let polls = std::sync::atomic::AtomicUsize::new(0);
     let witness = || crate::fe::lsmr_break::fedemean_poll(&polls);
     let poll: &(dyn Fn() -> bool + Sync) = if armed {
-        projector
-            .prepare(&fedemean::Control::with_cancel(
-                &crate::interrupt::cancellation_requested,
-            ))
-            .map_err(fedemean_error)?;
+        match projector.prepare(&fedemean::Control::with_cancel(
+            &crate::interrupt::cancellation_requested,
+        )) {
+            Err(fedemean::Error::Unsupported(reason)) => return Ok(Outcome::Ineligible(reason)),
+            other => other.map_err(fedemean_error)?,
+        };
         &witness
     } else {
         &crate::interrupt::cancellation_requested
@@ -238,14 +269,20 @@ pub(crate) fn project(
         fedemean::ColumnsMut::new(values.as_mut_slice(), nrows, ncols).map_err(fedemean_error)?;
     let fe_coefficients =
         coefficients.map(|(layout, values)| fedemean::CoefficientsMut::new(values, layout.view()));
-    let outcome = projector
-        .project(fe_weights, columns, fe_coefficients, &request, &control)
-        .map_err(|error| {
+    // An unsupported design or choice is refused before any data is read.
+    let outcome = match projector.project(fe_weights, columns, fe_coefficients, &request, &control)
+    {
+        Err(fedemean::Error::Unsupported(reason)) => {
+            trace_ineligible(attempt, reason);
+            return Ok(Outcome::Ineligible(reason));
+        }
+        result => result.map_err(|error| {
             if armed && error == fedemean::Error::Cancelled {
                 crate::fe::lsmr_break::record_cancelled(crate::fe::DeveloperLsmrBackend::Fedemean);
             }
             fedemean_error(error)
-        })?;
+        })?,
+    };
     match outcome {
         fedemean::Outcome::Projected(report) => {
             trace(attempt, "certified", &report.facts, Some(&report.route));
@@ -278,16 +315,17 @@ pub(crate) struct Certified {
 /// independently (SPEC §16: fereg's local-span certificate against the
 /// input's reference norms) at the attempt's tolerance. A miss earns one
 /// correction of the residual at a tenth of that tolerance within the
-/// remaining budget; the independent certificate then decides. A memory
-/// decline is an allocation error; other declines return the uncertified
-/// state with the reason.
+/// remaining budget; the independent certificate then decides. A decline
+/// (including a workspace beyond the memory limit) returns the uncertified
+/// state with the reason; `None`: fedemean is not eligible, the values are
+/// untouched.
 pub(crate) fn absorb_certified(
     design: &FeDesign,
     weights: (&[f64], bool),
     values: &mut DenseMatrix,
     attempt: &Attempt,
     mut coefficients: Option<(&Layout, &mut [f64])>,
-) -> Result<Certified> {
+) -> Result<Option<Certified>> {
     let reference = crate::fe::weighted_column_norms(values, weights.0)?;
     let first = project(
         design,
@@ -304,7 +342,9 @@ pub(crate) fn absorb_certified(
             return declined(
                 design, weights.0, values, &reference, attempt, reason, iterations,
             )
+            .map(Some)
         }
+        Outcome::Ineligible(_) => return Ok(None),
     };
     let mut certification_seconds = 0.0;
     let mut independent = |values: &DenseMatrix| {
@@ -349,6 +389,14 @@ pub(crate) fn absorb_certified(
                     reason,
                     report.iterations + iterations,
                 )
+                .map(Some)
+            }
+            // The correction of an eligible projection cannot be ineligible.
+            Outcome::Ineligible(reason) => {
+                return Err(crate::error::FeregError::new(
+                    crate::error::ErrorCode::Internal,
+                    format!("fedemean refused its own correction: {reason}"),
+                ))
             }
         }
         report.warnings.push(
@@ -363,10 +411,10 @@ pub(crate) fn absorb_certified(
     };
     report.certificate = certificate;
     report.certification_seconds = certification_seconds;
-    Ok(Certified {
+    Ok(Some(Certified {
         report,
         declined: None,
-    })
+    }))
 }
 
 fn declined(
@@ -378,11 +426,6 @@ fn declined(
     reason: fedemean::Decline,
     iterations: usize,
 ) -> Result<Certified> {
-    if reason == fedemean::Decline::MemoryLimit {
-        return Err(allocation(
-            "the fedemean full-system workspace exceeds the memory limit",
-        ));
-    }
     let certificate = certify_residuals_with_reference_norms(
         design,
         weights,
@@ -398,6 +441,8 @@ fn declined(
     let mut report = SolveReport {
         requested_solver: attempt.requested,
         iterations,
+        // Nothing of the declined attempt is retained.
+        solver_workspace_peak: crate::memory::SolverWorkspacePeak::ZERO,
         requested_preconditioner: attempt.requested_preconditioner,
         used_preconditioner: attempt.requested_preconditioner.map(|p| match p {
             LsmrPreconditioner::Auto => LsmrPreconditioner::Diagonal,
@@ -480,6 +525,15 @@ fn solve_report(attempt: &Attempt, report: &fedemean::Report) -> Result<SolveRep
     Ok(solve_report)
 }
 
+fn trace_ineligible(attempt: &Attempt, reason: &str) {
+    if crate::diagnostics::solver_trace_enabled() {
+        crate::diagnostics::emit_solver_trace(&format!(
+            "FEREG_SOLVER_TRACE|phase=fedemean_general|outcome=ineligible|method={:?}|reason={reason}",
+            attempt.choice.method
+        ));
+    }
+}
+
 /// One trace line per projection (solver trace only): the outcome, work and
 /// preconditioner, including the levels' channel blocks found singular.
 fn trace(
@@ -514,4 +568,4 @@ fn trace(
 }
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;

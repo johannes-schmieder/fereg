@@ -14,6 +14,19 @@ pub(crate) enum ExternalProjection {
         iterations: usize,
         reason: &'static str,
     },
+    /// The route does not support the design; the values are untouched.
+    Ineligible,
+}
+
+/// The result of [`ReusableMapAbsorber::absorb_external`] (moved once per
+/// projection; boxing it would allocate on every call).
+#[allow(clippy::large_enum_variant)]
+pub(crate) enum External {
+    /// Certified residuals, and whether MAP finished them (the fallback).
+    Done(CertifiedBorrowedMap, bool),
+    /// The external route was not eligible; the untouched values are
+    /// returned for the owner's own route.
+    Ineligible(DenseMatrix),
 }
 
 /// Fold a correction's work and route into the first projection's report.
@@ -48,7 +61,7 @@ impl ReusableMapAbsorber {
             f64,
             usize,
         ) -> Result<ExternalProjection>,
-    ) -> Result<(CertifiedBorrowedMap, bool)> {
+    ) -> Result<External> {
         let previous = self
             .certificate_geometry
             .as_mut()
@@ -119,7 +132,7 @@ impl ReusableMapAbsorber {
                         if let Some(geometry) = self.certificate_geometry.as_mut() {
                             geometry.generation = generation;
                         }
-                        return Ok((result, false));
+                        return Ok(External::Done(result, false));
                     }
                     note = Some(format!(
                         "the full system's residuals missed the independent certificate ({:.3e}) after {spent} iterations; MAP continued",
@@ -133,6 +146,20 @@ impl ReusableMapAbsorber {
                         "the full system declined after {spent} iterations ({reason}); MAP continued"
                     ));
                     break;
+                }
+                // Refused before any data was read: the owner's own route
+                // runs on the untouched values, under its own authority.
+                ExternalProjection::Ineligible if current.is_none() => {
+                    if let Some(geometry) = self.certificate_geometry.as_mut() {
+                        geometry.generation = previous;
+                    }
+                    return Ok(External::Ineligible(values));
+                }
+                ExternalProjection::Ineligible => {
+                    return Err(FeregError::new(
+                        ErrorCode::Internal,
+                        "the external route refused its own correction",
+                    ))
                 }
             }
         }
@@ -154,7 +181,7 @@ impl ReusableMapAbsorber {
         if let Some(note) = note {
             report.warnings.push(note);
         }
-        Ok((
+        Ok(External::Done(
             CertifiedBorrowedMap::from_certified_parts(values, report)?,
             true,
         ))

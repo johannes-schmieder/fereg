@@ -76,10 +76,13 @@ impl FeSession<'_> {
         let normalized = &self.normalized;
         let unit = matches!(weights, BorrowedMapWeights::Unit);
         let budget = (config.map.max_iterations / 2).max(1);
+        // The coefficient bank coexists with fedemean's workspace.
+        let held = layout.as_ref().map_or(0, |layout| layout.bytes(rhs));
         let memory_limit = config.solver_memory_budget.map(|b| {
             b.usable_bytes
                 .saturating_sub(b.execution_bytes)
                 .saturating_sub(peak.bytes().map_or(0, u128::from))
+                .saturating_sub(held)
         });
         let mut workspace = crate::memory::SolverWorkspacePeak::ZERO;
         let mut solve = |design: &crate::fe::FeDesign,
@@ -111,13 +114,36 @@ impl FeSession<'_> {
                         iterations,
                         reason: crate::fe::fedemean_slope::describe(reason),
                     },
+                    crate::fe::fedemean_slope::Outcome::Ineligible(_) => {
+                        crate::fe::map::ExternalProjection::Ineligible
+                    }
                 },
             )
         };
-        let (result, fallback) =
-            p.absorb_external(normalized, values, config.map, Some(generation), &mut solve)?;
+        let (result, fallback) = match p.absorb_external(
+            normalized,
+            values,
+            config.map,
+            Some(generation),
+            &mut solve,
+        )? {
+            crate::fe::map::External::Done(result, fallback) => (result, fallback),
+            // fedemean does not take this design (for example an effect
+            // with more channels than it supports): the owner's MAP, as
+            // before fedemean served slopes, for this and later calls.
+            crate::fe::map::External::Ineligible(values) => {
+                self.full_general = false;
+                return p.absorb_in_generation(
+                    normalized,
+                    values,
+                    config.map,
+                    false,
+                    Some(generation),
+                );
+            }
+        };
         let (values, mut report) = result.into_parts();
-        report.solver_workspace_peak = workspace.with_retained_peak(peak)?;
+        report.solver_workspace_peak = workspace.with_retained(held)?.with_retained_peak(peak)?;
         match (fallback, coefficients, layout) {
             (false, Some(coefficients), Some(layout)) => {
                 CertifiedBorrowedMap::from_certified_parts_with_coefficients(

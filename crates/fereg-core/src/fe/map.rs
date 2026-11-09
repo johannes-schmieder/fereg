@@ -1955,6 +1955,6 @@ fn validate_config(config: MapConfig) -> Result<()> {
 }
 
 mod external;
-pub(crate) use external::ExternalProjection;
+pub(crate) use external::{External, ExternalProjection};
 #[cfg(test)]
 mod tests;

@@ -161,35 +161,70 @@ pub(crate) fn absorb_explicit_lsmr(
     let attempted_peak =
         admit_generic_solver(design, weights, values, config, FeSolverKind::Lsmr, true)?;
     let original = fallible_matrix_copy(values, "unable to reserve explicit LSMR fallback matrix")?;
-    let fedemean = super::lsmr::fills_coefficients(design, config.lsmr.preconditioner);
-    let layout = (config.retain_coefficients && fedemean)
+    let layout = config
+        .retain_coefficients
         .then(|| super::fedemean_slope::Layout::new(design))
         .transpose()?;
     let mut coefficients = layout
         .as_ref()
         .map(|layout| layout.zeros(values.ncols()))
         .transpose()?;
-    let mut report = super::lsmr::absorb_lsmr_with(
+    // The input copy and the coefficient bank coexist with fedemean's
+    // workspace within the budget.
+    let held = owned_fe_matrix_bytes(values.nrows(), values.ncols())?
+        + layout
+            .as_ref()
+            .map_or(0, |layout| layout.bytes(values.ncols()));
+    let attempt = super::lsmr::absorb_lsmr_with(
         design,
         weights,
         values,
         config.lsmr,
         (
             config.lsmr.tolerance,
-            fedemean_memory_limit(config.solver_memory_budget),
+            fedemean_memory_limit(config.solver_memory_budget)
+                .map(|limit| limit.saturating_sub(held)),
         ),
         layout.as_ref().zip(coefficients.as_deref_mut()),
     )?;
-    report.solver_workspace_peak = attempted_peak;
+    let (mut report, route) = match attempt {
+        Some((mut report, super::lsmr::LsmrRoute::Fedemean)) => {
+            // fedemean's own workspace beside the held buffers.
+            report.solver_workspace_peak = report.solver_workspace_peak.with_retained(held)?;
+            (report, super::lsmr::LsmrRoute::Fedemean)
+        }
+        Some((mut report, route)) => {
+            report.solver_workspace_peak = attempted_peak;
+            (report, route)
+        }
+        // fedemean is not eligible: the established route, within's modified
+        // LSMR (then MAP), as if fedemean had not been tried.
+        None => {
+            let mut within = super::lsmr::absorb_within(
+                design,
+                weights,
+                values,
+                config.lsmr,
+                config.lsmr.tolerance,
+            )?;
+            within.solver_workspace_peak = attempted_peak;
+            (within, super::lsmr::LsmrRoute::Within)
+        }
+    };
+    let fedemean = route == super::lsmr::LsmrRoute::Fedemean;
     if report.certified() {
         let batch = match (layout, coefficients) {
-            (Some(layout), Some(retained)) => Some(layout.batch(retained, values.ncols())?),
+            (Some(layout), Some(retained)) if fedemean => {
+                Some(layout.batch(retained, values.ncols())?)
+            }
             _ => None,
         };
         return Ok((report, batch));
     }
     if fedemean {
-        // A case fedemean does not certify keeps within's implementation.
+        // A case fedemean does not certify (including a workspace beyond the
+        // memory limit) keeps within's implementation, which admission
+        // already allowed.
         values.as_mut_slice().copy_from_slice(original.as_slice());
         let mut within = super::lsmr::absorb_within(
             design,
@@ -198,7 +233,7 @@ pub(crate) fn absorb_explicit_lsmr(
             config.lsmr,
             config.lsmr.tolerance,
         )?;
-        within.solver_workspace_peak = attempted_peak;
+        within.solver_workspace_peak = attempted_peak.max(report.solver_workspace_peak);
         within.fallback_used = true;
         within.warnings.insert(
             0,
@@ -219,7 +254,9 @@ pub(crate) fn absorb_explicit_lsmr(
     let fallback_peak =
         admit_generic_solver(design, weights, values, config, FeSolverKind::Map, false)?;
     let mut fallback = absorb_map(design, weights, values, config.map)?;
-    fallback.solver_workspace_peak = attempted_peak.max(fallback_peak);
+    fallback.solver_workspace_peak = attempted_peak
+        .max(report.solver_workspace_peak)
+        .max(fallback_peak);
     fallback.requested_solver = FeSolverKind::Lsmr;
     fallback.fallback_used = true;
     fallback.warnings.insert(
@@ -275,9 +312,11 @@ fn absorb_auto(
     if design.effects().len() > 1 && config.map.max_iterations > 1 {
         match admit_generic_solver(design, weights, values, config, FeSolverKind::Lsmr, true) {
             Ok(admitted) => {
-                peak = admitted;
                 let mut candidate =
                     fallible_matrix_copy(values, "unable to reserve general FE candidate")?;
+                // The candidate coexists with fedemean's workspace.
+                let held = owned_fe_matrix_bytes(values.nrows(), values.ncols())?;
+                peak = SolverWorkspacePeak::from_bytes(held)?;
                 // fedemean's modified LSMR on the full system, certified
                 // independently at the request (see `absorb_lsmr_with`).
                 let policy = LsmrConfig {
@@ -288,31 +327,33 @@ fn absorb_auto(
                         .min(config.map.max_iterations / 2),
                     ..config.lsmr
                 };
-                match super::lsmr::absorb_lsmr_with(
+                let attempt = super::lsmr::absorb_lsmr_with(
                     design,
                     weights,
                     &mut candidate,
                     policy,
                     (
                         config.map.tolerance,
-                        fedemean_memory_limit(config.solver_memory_budget),
+                        fedemean_memory_limit(config.solver_memory_budget)
+                            .map(|limit| limit.saturating_sub(held)),
                     ),
                     None,
-                ) {
-                    Ok(mut report) => {
-                        report.requested_solver = FeSolverKind::Auto;
-                        report.solver_workspace_peak = peak;
-                        if report.certificate.passed {
-                            report.stop_reason = SolveStopReason::Certified;
-                            *values = candidate;
-                            return Ok(report);
-                        }
-                        prior = Some(report);
+                )?;
+                // `None`: fedemean is not eligible; MAP alone, as before.
+                if let Some((mut report, route)) = attempt {
+                    report.requested_solver = FeSolverKind::Auto;
+                    report.solver_workspace_peak = if route == super::lsmr::LsmrRoute::Fedemean {
+                        report.solver_workspace_peak.with_retained(held)?
+                    } else {
+                        admitted
+                    };
+                    peak = report.solver_workspace_peak;
+                    if report.certificate.passed {
+                        report.stop_reason = SolveStopReason::Certified;
+                        *values = candidate;
+                        return Ok(report);
                     }
-                    // A full-system workspace beyond the memory limit leaves
-                    // the MAP continuation.
-                    Err(e) if e.code == ErrorCode::Allocation => {}
-                    Err(e) => return Err(e),
+                    prior = Some(report);
                 }
             }
             Err(e) if e.code == ErrorCode::Allocation => {}
@@ -1151,10 +1192,15 @@ mod generic_budget_regression {
                                 } else {
                                     let report = result.unwrap();
                                     assert!(report.certified());
-                                    assert_eq!(
-                                        report.solver_workspace_peak.bytes(),
-                                        Some(reserve as u64)
-                                    );
+                                    // Explicit LSMR on fedemean publishes its own
+                                    // workspace beside the held input copy, within
+                                    // the admitted envelope; the others publish it.
+                                    let peak = report.solver_workspace_peak.bytes().unwrap();
+                                    if solver == FeSolverKind::Lsmr {
+                                        assert!(u128::from(peak) <= reserve);
+                                    } else {
+                                        assert_eq!(peak, reserve as u64);
+                                    }
                                     assert!(values
                                         .as_slice()
                                         .iter()
@@ -1337,8 +1383,9 @@ mod explicit_slope_lsmr {
             (lsmr.tolerance, None),
             None,
         )
-        .unwrap();
-        assert!(!attempt.certified());
+        .unwrap()
+        .expect("eligible");
+        let fedemean_certified = attempt.0.certified();
         let mut values = original.clone();
         let config = AbsorbConfig {
             solver: FeSolverKind::Lsmr,
@@ -1346,13 +1393,205 @@ mod explicit_slope_lsmr {
             ..AbsorbConfig::default()
         };
         let report = absorb_fixed_effects(&design, &weights, &mut values, config).unwrap();
-        assert!(report.certified() && report.fallback_used);
+        assert!(report.certified());
         assert_eq!(report.used_solver, FeSolverKind::Lsmr);
-        let mut within = original.clone();
-        let direct =
-            super::super::lsmr::absorb_within(&design, &weights, &mut within, lsmr, lsmr.tolerance)
+        // Within runs only when fedemean does not certify.
+        assert_eq!(report.fallback_used, !fedemean_certified);
+        if !fedemean_certified {
+            let mut within = original.clone();
+            let direct = super::super::lsmr::absorb_within(
+                &design,
+                &weights,
+                &mut within,
+                lsmr,
+                lsmr.tolerance,
+            )
+            .unwrap();
+            assert_eq!(values, within);
+            assert_eq!(report.certificate, direct.certificate);
+        }
+    }
+
+    /// Seventeen channels on one effect: fedemean takes them (explicit LSMR
+    /// and Auto's LSMR attempt certify on fedemean); a design it does not
+    /// take keeps the routes from before it served slopes, with no fallback
+    /// flag: explicit LSMR within, Auto MAP.
+    #[test]
+    fn seventeen_channels_and_ineligible_designs_keep_certified_routes() {
+        let (design, weights, original) = super::super::fedemean_slope::tests::seventeen_channels();
+        let lsmr = LsmrConfig {
+            tolerance: 1e-8,
+            ..LsmrConfig::default()
+        };
+        let explicit = AbsorbConfig {
+            solver: FeSolverKind::Lsmr,
+            lsmr,
+            ..AbsorbConfig::default()
+        };
+        for ineligible in [false, true] {
+            super::super::fedemean_slope::force_ineligible_for_test(ineligible);
+            let mut values = original.clone();
+            let report = absorb_fixed_effects(&design, &weights, &mut values, explicit).unwrap();
+            assert!(report.certified() && !report.fallback_used, "{ineligible}");
+            assert_eq!(report.used_solver, FeSolverKind::Lsmr);
+            let mut within = original.clone();
+            let direct = super::super::lsmr::absorb_within(
+                &design,
+                &weights,
+                &mut within,
+                lsmr,
+                lsmr.tolerance,
+            )
+            .unwrap();
+            // Ineligible: within, bitwise as called directly, also through
+            // the public entry.
+            assert_eq!(values == within, ineligible);
+            if ineligible {
+                assert_eq!(report.certificate, direct.certificate);
+                let mut public = original.clone();
+                assert!(
+                    super::super::lsmr::absorb_lsmr(&design, &weights, &mut public, lsmr)
+                        .unwrap()
+                        .certified()
+                );
+                assert_eq!(public, within);
+            }
+            let mut values = original.clone();
+            let auto =
+                absorb_fixed_effects(&design, &weights, &mut values, AbsorbConfig::default())
+                    .unwrap();
+            assert!(auto.certified() && !auto.fallback_used, "{ineligible}");
+            let expected = if ineligible {
+                FeSolverKind::Map
+            } else {
+                FeSolverKind::Lsmr
+            };
+            assert_eq!(auto.used_solver, expected);
+            assert!(values
+                .as_slice()
+                .iter()
+                .zip(within.as_slice())
+                .all(|(a, b)| (a - b).abs() < 1e-6));
+        }
+        super::super::fedemean_slope::force_ineligible_for_test(false);
+    }
+
+    /// Capped memory: at the exact admitted budget the published peak is
+    /// fedemean's own workspace beside the held input copy and stays inside
+    /// the budget; a fedemean memory decline is an uncertified decline (not an
+    /// allocation error), which the explicit route continues with within.
+    #[test]
+    fn capped_memory_keeps_the_published_peak_in_the_budget_and_memory_declines_continue() {
+        let (design, weights, original) = boundary_free_design();
+        let lsmr = LsmrConfig {
+            tolerance: 1e-10,
+            preconditioner: LsmrPreconditioner::Schwarz,
+            ..LsmrConfig::default()
+        };
+        let admitted = generic_fe_solver_bytes(&design, 1, FeSolverKind::Lsmr, lsmr, None).unwrap()
+            + owned_fe_matrix_bytes(design.nobs(), 1).unwrap();
+        let mut unlimited = original.clone();
+        let base = absorb_fixed_effects(
+            &design,
+            &weights,
+            &mut unlimited,
+            AbsorbConfig {
+                solver: FeSolverKind::Lsmr,
+                lsmr,
+                ..AbsorbConfig::default()
+            },
+        )
+        .unwrap();
+        assert!(base.certified() && !base.fallback_used);
+        let fedemean = base.solver_workspace_peak.bytes().unwrap() as u128;
+        let mut saw_decline = false;
+        for usable in [
+            admitted,
+            fedemean.max(admitted),
+            fedemean.saturating_sub(1).max(admitted),
+        ] {
+            let mut values = original.clone();
+            let report = absorb_fixed_effects(
+                &design,
+                &weights,
+                &mut values,
+                AbsorbConfig {
+                    solver: FeSolverKind::Lsmr,
+                    lsmr,
+                    solver_memory_budget: Some(FeSolverMemoryBudget {
+                        execution_bytes: 137,
+                        usable_bytes: 137 + usable,
+                    }),
+                    ..AbsorbConfig::default()
+                },
+            )
+            .unwrap();
+            assert!(report.certified());
+            assert!(u128::from(report.solver_workspace_peak.bytes().unwrap()) <= usable);
+            if report.fallback_used {
+                saw_decline = true;
+                let mut within = original.clone();
+                super::super::lsmr::absorb_within(
+                    &design,
+                    &weights,
+                    &mut within,
+                    lsmr,
+                    lsmr.tolerance,
+                )
                 .unwrap();
-        assert_eq!(values, within);
-        assert_eq!(report.certificate, direct.certificate);
+                assert_eq!(values, within);
+            }
+        }
+        // Here fedemean needs far less than the within-shaped admission.
+        assert!(!saw_decline && fedemean < admitted);
+        let mut values = original.clone();
+        let (declined, route) = super::super::lsmr::absorb_lsmr_with(
+            &design,
+            &weights,
+            &mut values,
+            lsmr,
+            (lsmr.tolerance, Some(1)),
+            None,
+        )
+        .unwrap()
+        .expect("eligible");
+        assert_eq!(route, super::super::lsmr::LsmrRoute::Fedemean);
+        assert!(!declined.certified());
+        assert!(declined
+            .warnings
+            .iter()
+            .any(|w| w.contains("exceeds the memory limit")));
+        assert_eq!(values, original);
+    }
+
+    /// Two intercept effects and a slope effect, well scaled.
+    fn boundary_free_design() -> (FeDesign, Vec<f64>, DenseMatrix) {
+        let n = 600;
+        let t: Vec<f64> = (0..n)
+            .map(|r| (r % 10) as f64 + ((r * 7) % 3) as f64 / 3.0)
+            .collect();
+        let y: Vec<f64> = (0..n)
+            .map(|r| (r as f64 * 0.21).sin() + 0.1 * t[r] * ((r / 20) % 5) as f64)
+            .collect();
+        let design = FeDesign::new(
+            n,
+            vec![
+                EffectTerm::new((0..n).map(|r| (r / 6) as u32).collect(), 100, true, vec![])
+                    .unwrap(),
+                EffectTerm::new(
+                    (0..n).map(|r| ((r / 6 + r % 6) % 12) as u32).collect(),
+                    12,
+                    true,
+                    vec![t],
+                )
+                .unwrap(),
+            ],
+        )
+        .unwrap();
+        (
+            design,
+            vec![1.0; n],
+            DenseMatrix::from_columns(&[y]).unwrap(),
+        )
     }
 }

@@ -217,6 +217,12 @@ fn project_target(
     (start, coefficients): (Option<&FeCoefficientBatch>, &mut [f64]),
     (config, memory_limit): (MapConfig, Option<u128>),
 ) -> Result<(usize, u128)> {
+    if crate::fe::fedemean_slope::forced_ineligible() {
+        return Err(FeregError::new(
+            ErrorCode::NonConvergence,
+            "saved-FE full-system recovery is not eligible (refused for a test)",
+        ));
+    }
     let fedemean_error = crate::fe::block_schur::fedemean_error;
     let mut view =
         fallible_with_capacity(effects.len(), "unable to reserve recovery effect views")?;
@@ -270,7 +276,15 @@ fn project_target(
         ),
         None => projector.project(fe_weights, columns, output, &request, &control),
     }
-    .map_err(fedemean_error)?;
+    .map_err(|error| match error {
+        // fedemean does not take this design (for example an effect with
+        // more channels than it supports): a miss, so MAP recovers.
+        fedemean::Error::Unsupported(reason) => FeregError::new(
+            ErrorCode::NonConvergence,
+            format!("saved-FE full-system recovery is not eligible ({reason})"),
+        ),
+        error => fedemean_error(error),
+    })?;
     match outcome {
         fedemean::Outcome::Projected(report) => {
             Ok((report.facts.iterations, report.workspace_bytes))

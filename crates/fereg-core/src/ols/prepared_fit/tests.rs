@@ -1546,10 +1546,14 @@ fn generic_prepared_slope_admits_owned_design_unit_weights_and_solver_together()
                 } else {
                     let output = result.unwrap();
                     assert!(output.report().certified());
-                    assert_eq!(
-                        output.report().solver_workspace_peak.bytes(),
-                        Some(required as u64)
-                    );
+                    // Explicit LSMR publishes fedemean's own workspace, within
+                    // the admitted envelope.
+                    let peak = output.report().solver_workspace_peak.bytes().unwrap();
+                    if solver == FeSolverKind::Lsmr {
+                        assert!(u128::from(peak) <= required);
+                    } else {
+                        assert_eq!(peak, required as u64);
+                    }
                     assert!(output
                         .residualized()
                         .as_slice()
@@ -10458,4 +10462,145 @@ fn loaded_centered_summary_requires_exact_owner_binding_and_budget() {
             }
         }
     }
+}
+
+/// OLS Auto on a three-effect slope design runs fedemean's full system; when
+/// fedemean refuses the design (as one it does not take), the session's MAP
+/// runs as before fedemean served slopes, with no fallback flag, and saved
+/// slope recovery falls through to MAP.
+#[test]
+fn ineligible_slope_designs_keep_auto_map_and_map_recovery() {
+    let sources = [
+        source(1, "worker"),
+        source(2, "firm"),
+        source(3, "year"),
+        source(4, "t"),
+    ];
+    let n = 240;
+    let worker: Vec<f64> = (0..n).map(|r| (r / 6) as f64).collect();
+    let firm: Vec<f64> = (0..n).map(|r| ((r / 6 + (r % 6) / 2) % 7) as f64).collect();
+    let year: Vec<f64> = (0..n).map(|r| (r % 6) as f64).collect();
+    let t: Vec<f64> = (0..n)
+        .map(|r| 1.0 + (r % 6) as f64 + ((r * 7) % 5) as f64 / 4.0)
+        .collect();
+    let y: Vec<f64> = (0..n)
+        .map(|r| {
+            worker[r] / 10.0
+                + 0.2 * firm[r] * t[r]
+                + 0.1 * year[r]
+                + ((r * 31 % 17) as f64 - 8.0) / 20.0
+        })
+        .collect();
+    let term = |id: u32, intercept: bool, categorical: usize, slopes: Vec<SourceId>| AbsorbedTerm {
+        id: AbsorbTermId::new(id).unwrap(),
+        intercept,
+        categorical_sources: vec![sources[categorical].id],
+        slope_sources: slopes,
+        label: format!("term{id}"),
+        saved_name: String::new(),
+    };
+    let mut bindings = vec![
+        OlsInputBinding {
+            stata_var_position: 1,
+            role: OlsInputRole::Candidate,
+        },
+        OlsInputBinding {
+            stata_var_position: 2,
+            role: OlsInputRole::Outcome,
+        },
+    ];
+    for (position, entry) in sources.iter().enumerate() {
+        bindings.push(OlsInputBinding {
+            stata_var_position: position as u32 + 3,
+            role: OlsInputRole::NumericSource(entry.id),
+        });
+    }
+    let request = OlsRequestV1 {
+        model: CompiledTermGraph {
+            sources: sources.to_vec(),
+            terms: Vec::new(),
+        },
+        absorbed_terms: vec![
+            term(1, true, 0, vec![]),
+            term(2, true, 1, vec![sources[3].id]),
+            term(3, true, 2, vec![]),
+        ],
+        bindings,
+        include_intercept: false,
+        keep_singletons: true,
+    };
+    let input = LoadedOlsInput {
+        candidate: vec![true; n].into(),
+        outcome: loaded(&y),
+        numeric_sources: vec![
+            (sources[0].id, loaded(&worker)),
+            (sources[1].id, loaded(&firm)),
+            (sources[2].id, loaded(&year)),
+            (sources[3].id, loaded(&t)),
+        ],
+        analytic_weight: None,
+        frequency_weight: None,
+        probability_weight: None,
+    };
+    let prepared = crate::ols::prepare_model(&request, &[], &input, true).unwrap();
+    let mut residuals = Vec::new();
+    for ineligible in [false, true] {
+        crate::fe::fedemean_slope::force_ineligible_for_test(ineligible);
+        let result = prepared
+            .fit_absorb_matrix(
+                BorrowedMapWeights::Unit,
+                DenseMatrix::from_columns(&[y.clone()]).unwrap(),
+                AbsorbConfig::default(),
+            )
+            .unwrap();
+        let report = result.report();
+        assert!(report.certified() && !report.fallback_used, "{ineligible}");
+        let expected = if ineligible {
+            FeSolverKind::Map
+        } else {
+            FeSolverKind::Cg
+        };
+        assert_eq!(report.used_solver, expected);
+        residuals.push(result.residualized().as_slice().to_vec());
+        // Saved effects of the fitted contribution: fedemean's full system,
+        // or MAP when fedemean refuses.
+        let target: Vec<f64> = y
+            .iter()
+            .zip(result.residualized().as_slice())
+            .map(|(value, residual)| value - residual)
+            .collect();
+        let recovered = prepared
+            .recover_absorbed_effects_fast(
+                &target,
+                &[true, true, true, true],
+                None,
+                false,
+                true,
+                crate::fe::LsmrConfig::default(),
+                crate::fe::MapConfig {
+                    tolerance: 1e-12,
+                    max_iterations: 20_000,
+                    check_every: 1,
+                    symmetric: true,
+                },
+                None,
+            )
+            .unwrap();
+        let method = if ineligible {
+            crate::fe::CategoricalRecoveryMethod::Map
+        } else {
+            crate::fe::CategoricalRecoveryMethod::Full
+        };
+        assert_eq!(recovered.recovery_method(), method);
+        assert!(recovered
+            .absorbed_sum()
+            .iter()
+            .zip(&target)
+            .all(|(a, b)| (a - b).abs() < 1e-8));
+    }
+    crate::fe::fedemean_slope::force_ineligible_for_test(false);
+    assert!(residuals[0]
+        .iter()
+        .zip(&residuals[1])
+        .all(|(a, b)| (a - b).abs() < 1e-6));
 }

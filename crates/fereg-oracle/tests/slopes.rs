@@ -392,3 +392,65 @@ fn singular_rule(design: &Design, channels: &[Option<Vec<f64>>]) {
         flat += usize::from(effect.has_intercept()) + effect.slopes().len();
     }
 }
+
+/// `worker firm##c.(s1-s16) year`: 17 channels on one effect (beyond the
+/// former 16-channel limit) certify on fedemean's routes against the explicit
+/// design (Auto: full x cg, explicit LSMR), and saved effects recover.
+#[test]
+fn seventeen_channels_run_on_fedemean_against_the_explicit_design() {
+    let base = panel(Shape::ThreeWay, false);
+    let n = base.outcome.len();
+    let slopes: Vec<Vec<f64>> = (0..16)
+        .map(|s| {
+            (0..n)
+                .map(|i| {
+                    ((i * (2 * s + 3) + s) % 29) as f64 / 7.0 + (i as f64 * 0.3 + s as f64).sin()
+                })
+                .collect()
+        })
+        .collect();
+    let mut design = base.clone();
+    let firm = design.effects[1].codes().to_vec();
+    // Every firm level needs more distinct rows than channels: firm 7's
+    // single row joins firm 6 here.
+    let firm: Vec<u32> = firm.iter().map(|&f| f.min(6)).collect();
+    design.effects[1] = DummyEffect::new(firm, 7, true, slopes).unwrap();
+    let prepared = prepared(&design);
+    for (solver, used) in [
+        (FeSolverKind::Auto, FeSolverKind::Cg),
+        (FeSolverKind::Lsmr, FeSolverKind::Lsmr),
+    ] {
+        let fit =
+            fit_prepared_model_coefficients(&prepared, config(solver, LsmrPreconditioner::Auto, 4))
+                .unwrap_or_else(|e| panic!("{solver:?}: {e}"));
+        let report = fit.absorption_report();
+        assert!(report.certified(), "{solver:?}");
+        assert!(!report.fallback_used, "{solver:?}");
+        assert_eq!(report.used_solver, used, "{solver:?}");
+        check_against_oracle(&design, &fit, &format!("17 channels {solver:?}"));
+        if solver == FeSolverKind::Auto {
+            let target = target(&prepared, &design, &fit);
+            let channels = 1 + 17 + 1;
+            let saved = prepared
+                .recover_absorbed_effects_fast(
+                    &target,
+                    &vec![true; channels],
+                    fit.recovered_fe_coefficients(),
+                    true,
+                    true,
+                    fereg_core::LsmrConfig::default(),
+                    MapConfig {
+                        tolerance: 1e-12,
+                        max_iterations: 20_000,
+                        check_every: 1,
+                        symmetric: true,
+                    },
+                    None,
+                )
+                .unwrap();
+            PREDICTION
+                .check_slice(saved.absorbed_sum(), &target)
+                .unwrap();
+        }
+    }
+}

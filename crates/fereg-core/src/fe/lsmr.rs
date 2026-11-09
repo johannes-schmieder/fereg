@@ -69,19 +69,33 @@ pub(crate) fn absorb_lsmr_certified_at(
     config: LsmrConfig,
     certificate_tolerance: f64,
 ) -> Result<SolveReport> {
-    absorb_lsmr_with(
+    match absorb_lsmr_with(
         design,
         weights,
         values,
         config,
         (certificate_tolerance, None),
         None,
-    )
+    )? {
+        Some((report, _)) => Ok(report),
+        None => absorb_within(design, weights, values, config, certificate_tolerance),
+    }
+}
+
+/// Which implementation produced [`absorb_lsmr_with`]'s report.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum LsmrRoute {
+    /// fedemean's full system (its coefficients, when requested, are filled).
+    Fedemean,
+    /// within's modified LSMR (no coefficients), or no fixed effects.
+    Within,
 }
 
 /// [`absorb_lsmr_certified_at`] with fedemean's `memory_limit` and, with
 /// `coefficients` (the design's layout, `values.ncols()` columns), the fitted
-/// FE coefficients added in place.
+/// FE coefficients added in place when fedemean ran. `None`: fedemean is not
+/// eligible for the design (for example an effect with more channels than it
+/// takes); the values are untouched for the caller's established route.
 pub(crate) fn absorb_lsmr_with(
     design: &FeDesign,
     weights: &[f64],
@@ -89,7 +103,7 @@ pub(crate) fn absorb_lsmr_with(
     config: LsmrConfig,
     (certificate_tolerance, memory_limit): (f64, Option<u128>),
     coefficients: Option<(&super::fedemean_slope::Layout, &mut [f64])>,
-) -> Result<SolveReport> {
+) -> Result<Option<(SolveReport, LsmrRoute)>> {
     crate::interrupt::checkpoint()?;
     validate_config(config)?;
     if !certificate_tolerance.is_finite() || certificate_tolerance <= 0.0 {
@@ -122,7 +136,7 @@ pub(crate) fn absorb_lsmr_with(
             &reference_norms,
             certificate_tolerance,
         )?;
-        return Ok(SolveReport {
+        let report = SolveReport {
             requested_preconditioner: Some(config.preconditioner),
             used_preconditioner: Some(resolve_preconditioner_kind(design, config.preconditioner)),
             ..SolveReport::single_route(
@@ -130,10 +144,12 @@ pub(crate) fn absorb_lsmr_with(
                 SolveStopReason::NoFixedEffects,
                 certificate,
             )
-        });
+        };
+        return Ok(Some((report, LsmrRoute::Within)));
     }
     if within_schwarz(design, config.preconditioner) {
-        return absorb_within(design, weights, values, config, certificate_tolerance);
+        return absorb_within(design, weights, values, config, certificate_tolerance)
+            .map(|report| Some((report, LsmrRoute::Within)));
     }
     let unit = weights.iter().all(|&weight| weight == 1.0);
     let attempt = super::fedemean_slope::Attempt::lsmr(
@@ -143,23 +159,16 @@ pub(crate) fn absorb_lsmr_with(
         config.max_iterations,
         memory_limit,
     );
-    let solved = super::fedemean_slope::absorb_certified(
+    let Some(solved) = super::fedemean_slope::absorb_certified(
         design,
         (weights, unit),
         values,
         &attempt,
         coefficients,
-    )
-    .map_err(|error| {
-        if error.code == ErrorCode::Unsupported {
-            FeregError::new(
-                ErrorCode::Unsupported,
-                format!("solver(lsmr): {}", error.message),
-            )
-        } else {
-            error
-        }
-    })?;
+    )?
+    else {
+        return Ok(None);
+    };
     let mut report = solved.report;
     if solved.declined.is_none() && !report.certified() {
         report.warnings.push(
@@ -167,13 +176,7 @@ pub(crate) fn absorb_lsmr_with(
                 .to_owned(),
         );
     }
-    Ok(report)
-}
-
-/// Whether [`absorb_lsmr_with`] fills requested coefficients (fedemean's
-/// routes; within's additive Schwarz exception does not).
-pub(crate) fn fills_coefficients(design: &FeDesign, preconditioner: LsmrPreconditioner) -> bool {
-    !within_schwarz(design, preconditioner)
+    Ok(Some((report, LsmrRoute::Fedemean)))
 }
 
 /// Explicit additive Schwarz on a slope design with fewer than two effects

@@ -122,7 +122,8 @@ fn certified_projection_returns_its_coefficients_and_repeats_at_any_worker_count
                         &attempt,
                         Some((&layout, &mut coefficients)),
                     )
-                    .unwrap();
+                    .unwrap()
+                    .expect("eligible");
                     assert!(certified.declined.is_none());
                     assert!(certified.report.certified());
                     for rhs in 0..2 {
@@ -153,7 +154,7 @@ fn certified_projection_returns_its_coefficients_and_repeats_at_any_worker_count
 }
 
 #[test]
-fn declines_report_uncertified_or_refuse_memory() {
+fn declines_report_uncertified_and_ineligible_designs_are_untouched() {
     let (design, weights, original) = design();
     let mut values = original.clone();
     let declined = absorb_certified(
@@ -163,10 +164,12 @@ fn declines_report_uncertified_or_refuse_memory() {
         &Attempt::lsmr(LsmrPreconditioner::Off, FeSolverKind::Lsmr, 1e-12, 2, None),
         None,
     )
-    .unwrap();
+    .unwrap()
+    .expect("eligible");
     assert!(declined.declined.is_some());
     assert!(!declined.report.certified());
     assert_eq!(declined.report.used_solver, FeSolverKind::Lsmr);
+    // A workspace beyond the memory limit is a decline, not an error.
     let mut values = original.clone();
     let refused = absorb_certified(
         &design,
@@ -180,9 +183,80 @@ fn declines_report_uncertified_or_refuse_memory() {
             Some(1),
         ),
         None,
-    );
+    )
+    .unwrap()
+    .expect("eligible");
     assert_eq!(
-        refused.err().map(|e| e.code),
-        Some(crate::error::ErrorCode::Allocation)
+        refused.declined.map(|(reason, _)| reason),
+        Some(fedemean::Decline::MemoryLimit)
     );
+    assert!(!refused.report.certified());
+    // A design fedemean refuses is not eligible; the values are untouched.
+    let (wide, wide_weights, wide_values) = seventeen_channels();
+    let mut values = wide_values.clone();
+    force_ineligible_for_test(true);
+    for attempt in [
+        Attempt::auto(1e-8, 100, None),
+        Attempt::lsmr(
+            LsmrPreconditioner::Auto,
+            FeSolverKind::Lsmr,
+            1e-8,
+            100,
+            None,
+        ),
+    ] {
+        assert!(
+            absorb_certified(&wide, (&wide_weights, false), &mut values, &attempt, None)
+                .unwrap()
+                .is_none()
+        );
+        assert_eq!(values, wide_values);
+    }
+    force_ineligible_for_test(false);
+    // Seventeen channels on one effect: fedemean takes them.
+    let certified = absorb_certified(
+        &wide,
+        (&wide_weights, false),
+        &mut values,
+        &Attempt::auto(1e-8, 2000, None),
+        None,
+    )
+    .unwrap()
+    .expect("seventeen channels are eligible");
+    assert!(certified.report.certified());
+}
+
+/// One effect of 20 levels with an intercept and 16 slopes (17 channels)
+/// beside a second intercept effect.
+pub(crate) fn seventeen_channels() -> (FeDesign, Vec<f64>, DenseMatrix) {
+    let n = 4000;
+    let slopes: Vec<Vec<f64>> = (0..16)
+        .map(|s| {
+            (0..n)
+                .map(|r| {
+                    (((r * (s + 3) + s) % 23) as f64 - 11.0) / 7.0
+                        + (r as f64 * 0.37 + s as f64).sin()
+                })
+                .collect()
+        })
+        .collect();
+    let y: Vec<f64> = (0..n)
+        .map(|r| (r as f64 * 0.11).cos() + ((r * 13) % 17) as f64 / 5.0 + slopes[0][r] * 0.3)
+        .collect();
+    let design = FeDesign::new(
+        n,
+        vec![
+            EffectTerm::new((0..n).map(|r| (r % 20) as u32).collect(), 20, true, slopes).unwrap(),
+            EffectTerm::new(
+                (0..n).map(|r| ((r / 7) % 31) as u32).collect(),
+                31,
+                true,
+                vec![],
+            )
+            .unwrap(),
+        ],
+    )
+    .unwrap();
+    let weights = (0..n).map(|r| 1.0 + (r % 3) as f64 / 2.0).collect();
+    (design, weights, DenseMatrix::from_columns(&[y]).unwrap())
 }

@@ -734,7 +734,14 @@ raw level Gram loses their within-level variation (e.g. values near ±2^24
 differing by units: within's per-level centering keeps it, fedemean's
 channel blocks do not). Explicit `precondition(schwarz)` with fewer than two
 intercept effects runs within's additive Schwarz directly (its subdomains
-include slope channels). Declared scope: explicit slope `solver(lsmr)` fits
+include slope channels). A design or choice fedemean refuses as unsupported
+(before it reads any data; since 95f22670 it takes any number of channels)
+keeps the routes from before fedemean served slopes, with no fallback flag: explicit `solver(lsmr)` runs within (then the
+former MAP fallback), Auto and `absorb_auto` run MAP, and saved-effect
+recovery runs MAP. fedemean's memory limit is the budget left beside the
+buffers the route holds (input copy, candidate, coefficient bank); a
+workspace beyond it is a decline that continues with the route's admitted
+fallback, and a fedemean fit publishes its own workspace. Declared scope: explicit slope `solver(lsmr)` fits
 change at tolerance level; discrete decisions do not change. Explicit PPML
 LSMR keeps its scheduled certificate and one tighter continuation (§13).
 
