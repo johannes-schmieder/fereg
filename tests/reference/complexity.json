@@ -1,60 +1,5 @@
 {
-  "growth": [
-    {
-      "after": 167,
-      "before": 165,
-      "metric": "fereg-plugin/dispatch_candidates",
-      "reason": "The shared route row encoder/validator matches on the route vocabulary (reduction, method, acceleration, preconditioner, local solve)."
-    },
-    {
-      "after": 17409,
-      "before": 17283,
-      "metric": "fereg-plugin/production_lines",
-      "reason": "The route row shared by the OLS solver shadow (result wire 1.6) and the new PPML final-solve route matrix (request wire 1.9), with structural validation."
-    },
-    {
-      "after": 2796,
-      "before": 2778,
-      "metric": "file/crates/fereg-plugin/src/ppml_estimate.rs",
-      "reason": "The PPML request carries output_route_matrix (wire 1.9): parse, dimension checks and the publication store."
-    },
-    {
-      "after": 1992,
-      "before": 1965,
-      "metric": "file/crates/fereg-plugin/src/ppml_result.rs",
-      "reason": "PPML builds the final linear solve's route row (single intercept channels report direct)."
-    },
-    {
-      "after": 176,
-      "before": 175,
-      "metric": "function/crates/fereg-plugin/src/ppml_estimate.rs/parse#1",
-      "reason": "Parse the output_route_matrix request field."
-    },
-    {
-      "after": 179,
-      "before": 173,
-      "metric": "function/crates/fereg-plugin/src/ppml_estimate.rs/store_shadow_prefix#1",
-      "reason": "Store the route matrix with the other PPML result matrices before the receipt."
-    },
-    {
-      "after": 224,
-      "before": 221,
-      "metric": "function/crates/fereg-plugin/src/ppml_estimate.rs/validate_shadow#1",
-      "reason": "Check the route shadow and matrix dimensions with the other PPML shadows."
-    },
-    {
-      "after": 364,
-      "before": 362,
-      "metric": "function/crates/fereg-plugin/src/ppml_result.rs/build_certified_ppml_shadow#1",
-      "reason": "Build and carry the route shadow with the other PPML shadows."
-    },
-    {
-      "after": 213,
-      "before": 209,
-      "metric": "function/crates/fereg-plugin/src/result.rs/build_shadow_result#1",
-      "reason": "Pass whether the design is a single intercept channel to the route encoder (direct projections)."
-    }
-  ],
+  "growth": [],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
   "inventory": {
     "files": {
@@ -1048,68 +993,68 @@
         "dispatch_candidates": [
           {
             "condition": "values . nobs ( ) != call . design . nobs ( )",
-            "line": 358
+            "line": 360
           },
           {
             "condition": "values . ncols ( ) == 0",
-            "line": 366
+            "line": 368
           },
           {
             "condition": "request . memory_limit . is_some_and ( | limit | bytes > limit )",
-            "line": 375
+            "line": 377
           },
           {
             "condition": "self . weights . as_ref ( ) . is_none_or ( | ( k , _ ) | * k != key )",
-            "line": 378
+            "line": 380
           },
           {
             "condition": "column . len ( ) != st . nobs || design . nobs ( ) != st . nobs",
-            "line": 447
+            "line": 449
           },
           {
             "condition": "job . request . memory_limit",
-            "line": 555
+            "line": 557
           },
           {
             "condition": "budget . is_none_or ( | budget | bytes <= budget )",
-            "line": 564
+            "line": 566
           },
           {
             "condition": "ensure ( job , spec , slot , width , facts ) ?",
-            "line": 598
+            "line": 600
           },
           {
             "condition": "ensure ( job , default , slot , width , facts ) ?",
-            "line": 603
+            "line": 605
           },
           {
             "condition": "job . hard && ensure ( job , default , slot , width , facts ) ? . is_ok ( )",
-            "line": 608
+            "line": 610
           },
           {
             "condition": "work . rows . len ( ) < blocks * ncols * ncols",
-            "line": 630
+            "line": 632
           },
           {
             "condition": "width",
-            "line": 1042
+            "line": 1044
           },
           {
             "condition": "initial_mode ( job , slot , ncols . min ( BATCH ) , & mut facts ) ?",
-            "line": 1093
+            "line": 1095
           },
           {
             "condition": "dispatch ( job , width , batch , ( & mut * work , & mut * slot ) , & mut facts ) ?",
-            "line": 1123
+            "line": 1125
           }
         ],
         "functions": {
           "add_coefficients#1": {
-            "line": 770,
+            "line": 772,
             "lines": 17
           },
           "admission_bytes#1": {
-            "line": 281,
+            "line": 283,
             "lines": 15
           },
           "apply#1": {
@@ -1125,11 +1070,11 @@
             "lines": 3
           },
           "certify_residual#1": {
-            "line": 435,
+            "line": 437,
             "lines": 62
           },
           "columns#1": {
-            "line": 306,
+            "line": 308,
             "lines": 3
           },
           "current#1": {
@@ -1137,79 +1082,79 @@
             "lines": 3
           },
           "dispatch#1": {
-            "line": 1035,
+            "line": 1037,
             "lines": 19
           },
           "ensure#1": {
-            "line": 548,
+            "line": 550,
             "lines": 35
           },
           "filled#1": {
-            "line": 202,
+            "line": 204,
             "lines": 5
           },
           "form_gram#1": {
-            "line": 619,
+            "line": 621,
             "lines": 26
           },
           "initial_mode#1": {
-            "line": 588,
+            "line": 590,
             "lines": 28
           },
           "numerical#1": {
-            "line": 508,
+            "line": 510,
             "lines": 7
           },
           "prepare#1": {
-            "line": 324,
+            "line": 326,
             "lines": 18
           },
           "project#1": {
-            "line": 345,
+            "line": 347,
             "lines": 86
           },
           "project_pcg#1": {
-            "line": 1075,
+            "line": 1077,
             "lines": 103
           },
           "recurrence#1": {
-            "line": 854,
+            "line": 856,
             "lines": 74
           },
           "refill#1": {
-            "line": 209,
+            "line": 211,
             "lines": 6
           },
           "report#1": {
-            "line": 648,
+            "line": 650,
             "lines": 16
           },
           "reserve#1": {
-            "line": 190,
+            "line": 192,
             "lines": 5
           },
           "residual_gram#1": {
-            "line": 298,
+            "line": 300,
             "lines": 3
           },
           "residual_norms#1": {
-            "line": 302,
+            "line": 304,
             "lines": 3
           },
           "route#1": {
-            "line": 528,
+            "line": 530,
             "lines": 15
           },
           "run#1": {
-            "line": 931,
+            "line": 933,
             "lines": 103
           },
           "same_projection#1": {
-            "line": 521,
+            "line": 523,
             "lines": 5
           },
           "schwarz_bytes#1": {
-            "line": 316,
+            "line": 318,
             "lines": 5
           },
           "scratch_bytes#1": {
@@ -1221,19 +1166,19 @@
             "lines": 3
           },
           "starting_iterate#1": {
-            "line": 821,
+            "line": 823,
             "lines": 27
           },
           "state_bytes#1": {
-            "line": 273,
+            "line": 275,
             "lines": 4
           },
           "structure#1": {
-            "line": 310,
+            "line": 312,
             "lines": 3
           },
           "untouched#1": {
-            "line": 499,
+            "line": 501,
             "lines": 7
           },
           "used#1": {
@@ -1241,15 +1186,15 @@
             "lines": 3
           },
           "with_capacity#1": {
-            "line": 196,
+            "line": 198,
             "lines": 5
           },
           "with_structure#1": {
-            "line": 516,
+            "line": 518,
             "lines": 4
           }
         },
-        "production_lines": 985
+        "production_lines": 984
       },
       "crates/fedemean/src/full/pcg.rs": {
         "chunk_candidates": [],
@@ -1662,16 +1607,16 @@
           },
           {
             "condition": "per_column . and_then ( | l | l . checked_mul ( columns . ncols ( ) ) ) != Some ( start . len ( ) )",
-            "line": 805
+            "line": 807
           },
           {
             "condition": "! ( 2.. = MAX_BLOCKS + 1 ) . contains ( & design . effects ( ) . len ( ) )",
-            "line": 929
+            "line": 931
           }
         ],
         "functions": {
           "admission_bytes#1": {
-            "line": 910,
+            "line": 912,
             "lines": 11
           },
           "as_mut_slice#1": {
@@ -1683,7 +1628,7 @@
             "lines": 3
           },
           "certify_residual#1": {
-            "line": 855,
+            "line": 857,
             "lines": 19
           },
           "check#1": {
@@ -1691,31 +1636,31 @@
             "lines": 20
           },
           "check#2": {
-            "line": 825,
+            "line": 827,
             "lines": 25
           },
           "columns#1": {
-            "line": 576,
+            "line": 578,
             "lines": 3
           },
           "columns#2": {
-            "line": 896,
+            "line": 898,
             "lines": 6
           },
           "design#1": {
-            "line": 678,
+            "line": 680,
             "lines": 3
           },
           "eliminated_members#1": {
-            "line": 925,
+            "line": 927,
             "lines": 19
           },
           "formulation#1": {
-            "line": 595,
+            "line": 597,
             "lines": 53
           },
           "is_full#1": {
-            "line": 688,
+            "line": 690,
             "lines": 3
           },
           "ncols#1": {
@@ -1735,11 +1680,11 @@
             "lines": 3
           },
           "new#4": {
-            "line": 326,
+            "line": 328,
             "lines": 9
           },
           "new#5": {
-            "line": 666,
+            "line": 668,
             "lines": 10
           },
           "nobs#1": {
@@ -1747,39 +1692,39 @@
             "lines": 3
           },
           "prepare#1": {
-            "line": 694,
+            "line": 696,
             "lines": 29
           },
           "project#1": {
-            "line": 726,
+            "line": 728,
             "lines": 43
           },
           "project_from#1": {
-            "line": 784,
+            "line": 786,
             "lines": 38
           },
           "residual_gram#1": {
-            "line": 877,
+            "line": 879,
             "lines": 6
           },
           "residual_norms#1": {
-            "line": 887,
+            "line": 889,
             "lines": 6
           },
           "settings#1": {
-            "line": 683,
+            "line": 685,
             "lines": 3
           },
           "values#1": {
-            "line": 581,
+            "line": 583,
             "lines": 3
           },
           "with_cancel#1": {
-            "line": 348,
+            "line": 350,
             "lines": 6
           },
           "with_pool#1": {
-            "line": 361,
+            "line": 363,
             "lines": 6
           }
         },
@@ -28577,7 +28522,7 @@
         "dispatch_candidates": 100,
         "files_over_1500": 0,
         "functions_over_150": 0,
-        "production_lines": 8944
+        "production_lines": 8943
       },
       "fereg-core": {
         "chunk_candidates": 13,
@@ -28596,5 +28541,5 @@
     },
     "schema": 1
   },
-  "reason": "Lane U: the native results carry the FE route in the public solver() vocabulary (OLS result wire 1.6 route rows; PPML request wire 1.9 route matrix); reporting only."
+  "reason": "fedemean's full formulation honors iteration budgets up to 1,000,000 (the elimination keeps its 1,500 ceiling); one production line fewer."
 }

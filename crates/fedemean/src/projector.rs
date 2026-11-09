@@ -306,8 +306,10 @@ pub struct Settings {
 pub struct Request {
     /// Certified tolerance of the relative FE moments (see [`Certificate`]).
     pub tolerance: f64,
-    /// Iteration ceiling (clamped to 1..=1500): per column batch for PCG,
-    /// per column over all passes for modified LSMR.
+    /// Iteration ceiling: per column batch for PCG, per column over all
+    /// passes for modified LSMR. The elimination clamps it to 1..=1500 (its
+    /// recurrences yield to escalation or the caller beyond that); the full
+    /// formulation honors it up to 1,000,000.
     pub max_iterations: usize,
     /// Also stop each column on the Jacobi-scaled residual `D^-1 r` within
     /// `tolerance` of the column's root-mean-square (modified LSMR: checked

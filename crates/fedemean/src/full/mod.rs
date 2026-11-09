@@ -137,9 +137,7 @@ use crate::certificate::{Certificate, MomentFold};
 use crate::design::Design;
 use crate::elimination::pcg::{Solve, Tally, Targets, CEILING, STALLED};
 use crate::elimination::weights::{validate_keyed, WeightKey};
-use crate::elimination::{
-    Cancel, ACCEPT_FRACTION, BATCH, MAX_ITERATIONS, STOP_FRACTION, WITHIN_FLOOR,
-};
+use crate::elimination::{Cancel, ACCEPT_FRACTION, BATCH, STOP_FRACTION, WITHIN_FLOOR};
 use crate::error::{Error, Result};
 use crate::projector::{
     CoefficientsMut, ColumnReport, ColumnStatus, ColumnsMut, Decline, Facts, Gram, InputState,
@@ -152,6 +150,10 @@ use schwarz::{Refusal, Schwarz};
 use std::time::Instant;
 use structure::Structure;
 use weights::State;
+
+/// Iteration ceiling of the full formulation's methods (see
+/// [`Request::max_iterations`]).
+const MAX_ITERATIONS: usize = 1_000_000;
 
 /// The method on the full system.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
