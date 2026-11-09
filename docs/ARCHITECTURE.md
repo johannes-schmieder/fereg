@@ -242,10 +242,10 @@ results match wherever the platform `fma` is exactly rounded.
 Processor features may select different arithmetic under SPEC's independent
 scientific checks; both the portable and accelerated paths remain tested.
 
-The general three-FE LSMR gather, elimination, sparse products and Schwarz setup
-live in the pinned `within`/`schwarz-precond` dependency. Changes there obey the
-same scientific and performance evidence rules and enter through a pinned
-revision bump.
+The modified-LSMR recurrence and escalation hooks live in the pinned
+`schwarz-precond` dependency (and, for the owned explicit LSMR, `within`).
+Changes there obey the same scientific and performance evidence rules and
+enter through a pinned revision bump.
 
 Automatic unit-weight, symmetric three-FE OLS may first attempt at most four
 MAP sweeps when complete, outward-rounded pair-incidence geometry predicts
@@ -257,11 +257,10 @@ in lane order. Geometry chooses only additional certificate checkpoints: the
 predicted sweep and the one before it, because the bound is conservative. The
 unchanged requested certificate alone accepts; initial, configured-cadence and
 fourth-sweep checks remain. A pilot that certifies after sweeping hands the
-finite solve its column norms, computed by the dense LSMR norm kernel. Failed
-attempts drop their candidate/norm/coefficient storage before LSMR starts on
-untouched inputs, debiting actual work and preserving memory admission. The
-pilot is skipped once a binding holds a prepared LSMR solver. Explicit solvers,
-weighted requests and PPML retain their routes.
+finite solve its column norms, computed by the dense norm kernel. Failed
+attempts drop their candidate/norm/coefficient storage before MAP restarts on
+untouched inputs, debiting actual work and preserving memory admission.
+Explicit solvers, weighted requests and PPML retain their routes.
 
 Each pilot sweep fuses consecutive effect projections exactly. A scaled
 projection needs each level's column scales (largest member magnitude), its
@@ -277,15 +276,10 @@ optional admitted pilot scratch, used only for at most 64 columns and at most
 budget does not fit them, the unfused sweep runs. See
 [validation](VALIDATION.md) for the policy status and performance limits.
 
-The public many-FE preset retains a Jacobi LSMR solver first. Each RHS runs
-under an `EscalationPolicy` that projects its remaining iterations from recent
-contraction; escalated sessions finish, the trial solver is released, the
-additive solver is built once and seeded sessions continue each escalated RHS.
-Window sessions start and finish in parallel; results keep RHS order. A
-certificate miss on this preset reuses the retained solver for one seeded
-correction before the MAP fallback.
-[General routing](../crates/fereg-core/src/fe/borrowed_map/routing_lsmr.rs)
-owns the trial and its escalation.
+The public many-FE preset runs fedemean's routes first; after their decline
+(or with them off) the pilot above and MAP on the original inputs follow. Its
+former within LSMR leg (Jacobi trial, additive escalation, seeded correction)
+was retired in Milestone 3; see [SPEC](SPEC.md) and [validation](VALIDATION.md).
 
 Thread counts are worker budgets. Shared planned lanes retain deterministic
 arithmetic leaves and ordered merges. One-FE, two-FE and general-FE algorithms

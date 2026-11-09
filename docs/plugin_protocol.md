@@ -72,10 +72,10 @@ the routing injections below select experimental algorithms for qualification.
 | `inject=ownership_{moments\|scores\|both}` | OLS | Independently omits provably unused speculative moments and/or retains eligible projected score storage; preserves solver choice and exact science, including explicit solvers |
 | `inject=cells_eager[_moments\|_scores\|_both]` | OLS | First-occurrence cells constructed before the diagonal pilot for eligible two-FE Auto/Auto, the public cell order; optional ownership controls, unchanged CMG policy. |
 | `inject=cells_deferred[_moments\|_scores\|_both]` | OLS | The former public cell order: construction only after successful CMG commitment at an existing restart, with joint memory admission; optional ownership controls, unchanged routing policy. |
-| `inject=routing_prefix_{none\|map4\|it4}` | OLS | Replaces the existing categorical shortcut with no prefix, up to four MAP sweeps, or up to four compact IT cycles (eight native sweeps); unfinished prefixes seed original-RHS LSMR |
-| `inject=routing_incremental_many` | OLS (replay wire) | Qualifies strict unseeded LSMR with retained preparation for at least three categorical intercept FEs, using the existing unseeded portfolio |
-| `inject=routing_many_geometry_v1` | OLS (replay wire) | Selects the public many-FE geometry policy for at least three categorical intercept FEs: geometry-qualified MAP pilot, Jacobi LSMR trial with projected escalation to the additive preconditioner, recurrence a decade below the request with one seeded correction on a certificate miss, requested-tolerance certificate. Unlike other injections it keeps public two-FE ownership/cell activation, so it equals uninjected Auto on every design |
-| `inject=routing_many_windows_v1` | OLS (replay wire, hidden Stata adapter) | Candidate many-FE policy: `routing_many_geometry_v1` with at most one live LSMR session per worker; the Jacobi trial escalates at the end of each window and later windows start on the additive solver. Keeps public two-FE ownership/cell activation, so two-FE and ineligible designs equal uninjected Auto; not a public default |
+| `inject=routing_prefix_{none\|map4\|it4}` | OLS | With two categorical intercept FEs, the incumbent recurrence without an optional upgrade. Its many-FE prefix-plus-within-LSMR arm is retired: three or more FEs fail with InvalidArgument |
+| `inject=routing_incremental_many` | OLS (replay wire) | Retired with the pinned within LSMR it qualified: on at least three categorical intercept FEs it fails with InvalidArgument |
+| `inject=routing_many_geometry_v1` | OLS (replay wire) | Selects the public many-FE geometry policy for at least three categorical intercept FEs: fedemean's routes first, then the geometry-qualified MAP pilot and MAP, each at the requested-tolerance certificate. Unlike other injections it keeps public two-FE ownership/cell activation, so it equals uninjected Auto on every design |
+| `inject=routing_many_windows_v1` | OLS (replay wire, hidden Stata adapter) | Retired with the pinned within LSMR (its bounded session windows): on at least three categorical intercept FEs it fails with InvalidArgument; it keeps public two-FE ownership/cell activation, so two-FE and ineligible designs equal uninjected Auto |
 | `inject=routing_two_gates_v2` | OLS (replay wire) | Selects the public two-FE policy, gate v2: the structural gate plus an early CMG build at local step 4, 8 or 12 when the diagonal recurrence has stalled; keeps public two-FE ownership/cell activation, so it equals uninjected Auto on every design |
 | `inject=routing_incremental_two` | OLS (replay wire) | Qualifies the existing direct-or-h16/k1 synchronous portfolio for exactly two categorical intercept FEs |
 | `inject=routing_builder_break` + `break_marker_token=<32 lowercase hex>` | OLS | Uses the synchronous two-FE h4/k1 builder and waits for Break at its first cancellation poll after executed construction work; any worker count. More-than-two-FE categorical requests fail clearly |
@@ -85,7 +85,7 @@ the routing injections below select experimental algorithms for qualification.
 The LSMR iteration witness leaves ordinary solver policies unchanged. Its
 `lsmr_break` trace must contain `iteration_break_ready` with a positive completed
 iteration and `iteration_break_cancelled` from the actual upstream cancellation
-error. OLS observes `within::Solver::solve_controlled`; PPML observes its joint
+error. OLS observes fedemean's modified-LSMR polls; PPML observes its joint
 `mlsmr_cancellable` solve. A fit that finishes without reaching this checkpoint
 fails before publication. `scripts/run_stata_break_test.py` selects these real
 PTY fixtures with `--fixture-kind ols-lsmr` or `ppml-lsmr` and
@@ -114,11 +114,11 @@ The incremental selectors require Auto preconditioning to change computation.
 Outside the selected categorical intercept family, including slopes and explicit
 preconditioners, they retain the incumbent without optional routing preparation.
 Finite controls do not count as FEs. Both selectors resolve to the existing
-`routing_portfolio_unseeded` machinery on eligible topology; its certificates,
-limits, memory admission and cancellation remain unchanged. Uninjected Auto
-uses the many-FE geometry policy for at least three categorical intercept FEs
-and the structural gates for two; `routing_incremental_many` keeps the
-previously accepted many-FE policy as the protected comparison.
+`routing_portfolio_unseeded` machinery on eligible topology; its two-FE
+certificates, limits, memory admission and cancellation remain unchanged, and
+its many-FE arm, like `routing_portfolio_v1`'s, ran the retired within LSMR
+and fails clearly. Uninjected Auto uses the many-FE geometry policy for at
+least three categorical intercept FEs and the structural gates for two.
 
 The separate coefficient-IT injection requires explicit `solver=it` and rejects
 `break_marker_token`. Ordinary explicit IT keeps its incumbent observation-space

@@ -347,8 +347,9 @@ Schwarz. The recurrence stops at 0.1×tol of the starting
 residual's norm and is accepted only by the recomputed moment certificate over
 every level; it runs within half of `iterate()`. Results do not depend on the
 worker count. A decline (memory, stall, budget, certificate) hands the columns
-to the established routes below with the rest of the budget, and the certified
-result reports `e(fe_fallback) = 1` with the decline in its warnings. The route
+to the established routes below (for three or more FEs, MAP) with the rest of
+the budget, and the certified result reports `e(fe_fallback) = 1` with the
+decline in its warnings. The route
 reads `cg, reduce(full) precondition(jacobi)`, or `precondition(schwarz)` with
 `e(fe_escalations)` after an escalation, with the
 subdomains counted by local solve in `e(fe_local_solvers)` and
@@ -361,15 +362,15 @@ effects with and without weights, worker-count bit identity, exact admission
 at fedemean's bound, and prepared 6/7-FE fits against tightly converged MAP.
 
 The established routes (and the developer arms) are as follows. Public OLS
-Auto/Auto uses the many-FE geometry policy (`routing_many_geometry_v1`) for
-eligible designs with at least three categorical-intercept FEs whose fedemean
-routes declined, or that a developer preset routes there. Eligible two-FE designs use
+Auto/Auto uses the many-FE geometry policy (`routing_many_geometry_v1`, below)
+for eligible designs with at least three categorical-intercept FEs whose
+fedemean routes declined, or that `FEREG_BLOCK_SCHUR=0` or a hidden Auto
+request with an explicit LSMR preconditioner keeps off fedemean. Eligible two-FE designs use
 [structural CMG gate v2](two_fe_auto_gates.md) (`routing_two_gates_v2`),
 with ownership and eager cells in the narrower global-intercept scope above. Zero/one FE,
 slopes and explicit choices retain their specified behavior; PPML Auto adds only
 the two-FE CMG reuse below. Activation and performance evidence for both OLS
-families are complete; the many-FE policy carries one documented
-near-confounded timing exception, see [VALIDATION](VALIDATION.md).
+families are complete, see [VALIDATION](VALIDATION.md).
 
 PPML Auto with exactly two categorical intercept FEs, no slopes and a
 publication fit reuses one bounded CMG Schur hierarchy across IRLS frames as
@@ -427,94 +428,52 @@ refusal, the scaled block against the hierarchy, set-aside and attempt rules,
 admission refusal, Break during construction, fixed-worker repeatability and
 cross-worker agreement.
 
-The many-FE geometry policy keeps retained unseeded LSMR preparation and adds
-three parts. First, with exactly three unit-weight symmetric FEs, every
-projection action without a prepared LSMR solver, including the final-residual
-action, may run the bounded geometry-qualified MAP pilot described in
-[ARCHITECTURE](ARCHITECTURE.md). Second, the retained LSMR solver starts as a
-Jacobi (diagonal) trial. From its third iteration each RHS projects the
-iterations it still needs from the geometric mean of its last two
-normal-equation residual contractions toward the recurrence target. Once the
-projected total exceeds 40 iterations, about the cost of building the additive
-Schwarz preconditioner and running its usual iterations, the trial solver is
-released, the additive configuration that the slot rule selects is built once,
-and each escalated RHS continues from its iterate with its remaining budget.
-The trial solver and its escalation share one prepared pinned-solver design
-(observation frame, locality sort and layout), so escalation builds only the
-additive solver state; this is arithmetic-preserving, and the kept design stays
-within the additive solver frame that admission charges.
-Later calls on the binding reuse the solver it holds; reports name the
-preconditioner that finished. Admission charges the additive bound throughout.
-Third, every successful exit (pilot, LSMR or MAP fallback) is accepted only by
-the independent original-design certificate at the requested tolerance, as
-with the pilot and the hidden prefix arms. The LSMR recurrence stops one
-decimal order below the request, floored at 1e-14 and never looser than the
-request, as two-FE Auto stops at half of it. A certificate miss permits one
-tighter correction at Auto's private hundredth when that target is strictly
-tighter: a categorical seeded LSMR session continues from the rejected
-coefficients with the original response, weights and RHS normalization, and
-only the remaining LSMR budget. The rejected solve keeps its coefficients
-through certification only when the joint memory plan admits them, and the
-correction starts only when its seed and warm-session banks fit; otherwise, or
-after a second miss, the existing original-input MAP fallback runs on the
-shared budget. A corrected exit reports the combined work without a fallback
-warning. Native iteration caps, memory admission and cancellation are
-unchanged.
-
-Declared scope of the geometry policy: eligible public OLS Auto/Auto may change
-coefficients, covariance, fit statistics, residuals, FE coordinates and solver
-iteration signatures and diagnostics within §20 tolerances. Unit-weight
-three-FE `solver(auto, precondition(jacobi))` reaches the same pilot and may
-change through its earlier certificate checkpoint. Sample, rank, omission,
-original factor slots/base flags and other discrete decisions remain unchanged.
-Hidden `routing_incremental_many` keeps the previous public policy exactly. The
-parallel copies, RHS transport, pair moments and session starts, the pilot's
-norm handoff and its fused sweep passes (beta.10; optional admitted scale
-tables, see [ARCHITECTURE](ARCHITECTURE.md)) are arithmetic-preserving. Independent witnesses cover pilot
-acceptance one sweep early with identical bits, forced certificate misses
-answered by one seeded correction (with and without retained coefficients,
-repeated bit-for-bit) or by the MAP fallback after a second miss, the norm handoff against the
-LSMR kernel and an independent sum, exact split pair moments for every lane
-count, Jacobi completion on mixing panels, escalation near confounding with
-agreement against the strict reference and FE-moment reconstruction, and
-fixed-worker repeatability.
+The many-FE geometry policy is the general categorical route of OLS Auto
+(three or more effects, and two-effect designs whose graph and compact routes
+the memory budget refused). With exactly three unit-weight symmetric FEs, every
+projection action may first run the bounded geometry-qualified MAP pilot
+described in [ARCHITECTURE](ARCHITECTURE.md) within half of `iterate()`;
+otherwise, or when the pilot does not certify, MAP restarts from the original
+inputs with the remaining budget. Every exit is accepted only by the
+independent original-design certificate at the requested tolerance. A MAP
+workspace beyond the memory budget fails as an allocation error (r(909)) and
+an exhausted budget as the MAP budget error (r(459)). The policy no longer has an LSMR
+leg: its Jacobi-trial modified LSMR on the pinned within solver (additive
+escalation, seeded correction) was retired on 2026-11-09 (Milestone 3) after a
+decline census found that it never produced a certified result: the 37 bench
+designs, the Stata fixtures and tight tolerances never reach it (a Break is an
+interruption, never a decline); under memory caps the fedemean declines left its additive admission refused
+(MAP ran unchanged); and with `iterate(20)` or `iterate(30)` on six-, seven-FE
+and chain designs it ran uncertified before a MAP fallback that also failed.
+Declared scope: fits that reach this route after a fedemean decline or with
+fedemean off may change coefficients, covariance, fit statistics, residuals,
+FE coordinates, iteration signatures, the reported solver and fallback
+diagnostics within §20 tolerances, or move between a certified result and the
+MAP budget error: a weak graph that only the retired LSMR certified within
+the budget now fails clearly, and budget the LSMR no longer spends can let MAP
+certify. The census fits are unchanged. Sample, rank, omission, original factor slots/base flags
+and other discrete decisions remain unchanged. Witnesses: fedemean's full
+system against the MAP route on mixing and near-confounded panels (row
+agreement, FE-coefficient reconstruction, bit repeats), the full system's
+escalation bit-identical at one to eight workers, the pilot's debit and
+skipped-pilot identity, the analytic incremental-family witness, and the
+prepared 6/7-FE starvation fallback against tightly converged MAP.
 
 Additive-Schwarz admission charges `T + R` level-sized worker banks per
 concurrent RHS apply, where `R` bounds the factor-pair components whose local
 solve may yield into nested work (a block of more than 10,000 levels). The
 level-count bound `R = levels * (effects - 1) / 10,002` grows with the levels,
-so the charge is quadratic in them. When it refuses the additive LSMR attempt
-of the general categorical OLS Auto route (many-FE designs, and two-FE designs
-whose graph and compact routes were refused), fereg counts the structural pair
-components with a block of at least 10,000 levels exactly from the codes,
-once per design, after admitting that count's O(levels) scratch, and admits
-the attempt against the same bound with the smaller `R`. Within's subdomains
-are the bipartite components of each pair's cross-tab, and with the route's
-strictly positive weights those are the structural pair components. An estimate that fits, an unbudgeted call,
-an explicit non-additive preconditioner or an unadmitted count scratch keeps
-the level-count estimate and computes nothing new.
+so the charge is quadratic in them. When it refuses, fereg counts the
+structural pair components with a block of at least 10,000 levels exactly from
+the codes, once per design, after admitting that count's O(levels) scratch,
+and admits against the same bound with the smaller `R`. The pair cross-tab
+components are, with strictly positive weights, the structural pair
+components. An estimate that fits, an unbudgeted call, an explicit
+non-additive preconditioner or an unadmitted count scratch keeps the
+level-count estimate and computes nothing new.
 
-Declared scope of the exact count: only fits whose additive attempt the
-level-count bound refused change, from the original-input MAP fallback to the
-unchanged LSMR attempt of their route (for many-FE Auto the geometry policy:
-Jacobi trial, additive escalation, requested certificate, correction and MAP
-fallback). They may change coefficients, covariance, fit statistics, residuals,
-FE coordinates, solver iteration signatures, reported solver, workspace peak
-and fallback diagnostics within §20 tolerances. Sample, rank, omission,
-original factor slots/base flags and other discrete decisions remain
-unchanged. Every fit the level-count bound admits keeps its bits, route and
-memory accounting. Witnesses: the count against an
-independent breadth-first search; the beta.8 campaign's sparse three-FE
-parameters (level bound about 1 TB at ten million rows, exact count 3, linear
-growth); and a one-million-row campaign topology under a budget one byte
-below the level bound, which admits the additive route with the unbudgeted
-fit's bits at one and four workers, repeated, agreeing across workers and
-reconstructing the input from its FE coefficients, where the level bound ran
-the MAP fallback.
-
-The same refinement, under the same rule (only after the level-count bound
-refused; the exact `R` is never larger), covers the other additive-Schwarz
-LSMR admissions (explicit OLS `solver(lsmr)` on categorical intercept designs
+The refinement, under that rule (only after the level-count bound refused; the
+exact `R` is never larger), covers the additive-Schwarz LSMR admissions (explicit OLS `solver(lsmr)` on categorical intercept designs
 runs on fedemean, which admits against its own bound). Owned designs refine the generic LSMR admission of
 explicit `solver(lsmr)` and of the automatic owned route when every term is one
 intercept channel and every weight is strictly positive; designs with slopes
@@ -541,34 +500,12 @@ explicit LSMR on the sparse three-FE topology, whose refused plan is admitted,
 repeats bit for bit, agrees with the unbudgeted fit and refuses below the exact
 bound with the original message.
 
-Candidate bounded LSMR session windows (hidden `routing_many_windows_v1`, not
-public): the many-FE geometry policy unchanged except that its unseeded and
-seeded LSMR solves keep at most one live session per worker instead of every
-RHS of a call (at most 64, or four per worker). RHSs run in fixed windows of
-consecutive columns; each window starts its sessions, runs them to completion,
-finishes and releases them before the next window starts. The Jacobi trial's
-escalation barrier falls at the end of each window: if a window's trial
-projects beyond its budget, that window's escalated RHSs continue from their
-iterates on the additive solver built once from the shared design, and every
-later window of the call, and later calls on the binding, start on the
-additive solver without a trial. A window whose RHSs all finish on the trial
-leaves the trial retained for the next window. Without any escalation every
-RHS runs the same independent recurrence as in one window, so results are
-bit-identical to the public policy; with an escalation, RHSs after the
-escalating window may finish in fewer iterations with different low bits.
-Admission still charges the established window bound, so the arm admits at
-least what the public policy admits; only the reported workspace peak's
-warm-session term follows the smaller window. Two-FE and ineligible designs
-fall back to exactly the public policy, including ownership/cell activation.
-Declared scope of the arm: injected many-FE OLS Auto fits with an escalating
-Jacobi trial may change coefficients, covariance, fit statistics, residuals,
-FE coordinates and solver iteration signatures within §20 tolerances;
-discrete decisions are unchanged. Public activation is a separate decision
-after qualification. Witnesses: dense explicit-dummy QR at one, two, four and
-eight workers on a finishing and an escalating panel, fixed-worker repeats,
-exact public agreement where one window holds every RHS or no RHS escalates,
-and the four-, eight-, sixteen-FE, small-third and near-confounded routing
-families against the public arm.
+Hidden `routing_many_windows_v1` (bounded within LSMR session windows) and
+`routing_incremental_many` (strict unseeded within LSMR) qualified many-FE
+LSMR arms of the retired solver; on three or more categorical FEs they, and
+the many-FE arms of `routing_portfolio_v1`, `routing_portfolio_unseeded` and
+the isolated `routing_prefix_*` arms, fail with InvalidArgument (r(498))
+before any work. Their two-FE meanings are unchanged.
 
 The CMG builder borrows the host team, polls cancellation at fixed logical chunks
 and admits construction against real memory, without a construction-work cap or
@@ -600,9 +537,8 @@ more-than-two-FE pair-upgrade interpretation of these selectors and
 `routing_builder_break` is retired with Johannes's approval. Those explicit
 requests return InvalidArgument on more-than-two-FE categorical designs; the
 two-FE selectors and their builder-Break witness remain supported. Zero/one-FE
-and slope routes retain their existing behavior. This retirement does not change
-public many-FE Auto's Jacobi-to-additive escalation or its supported prefix,
-portfolio, geometry and bounded-window comparison policies.
+and slope routes retain their existing behavior. The many-FE LSMR comparison
+arms are retired with the pinned within solver (above).
 
 Construction runs serially at the numerical checkpoint, without elapsed-time or
 background-completion decisions. Refusal leaves the live recurrence unchanged;
@@ -706,24 +642,11 @@ boundaries, exhaustion, and coefficient reconstruction in
 across two, three and five FEs, Fast/Low modes and worker counts, with saved effects
 and an unaffected slope-IT check.
 
-The isolated categorical prefix arms replace the existing three-FE shortcut;
-they never stack with it. `routing_prefix_none` omits that shortcut,
-`routing_prefix_map4` permits four native MAP sweeps, and
-`routing_prefix_it4` permits four compact IT cycles, priced as at most eight
-native sweeps including confirmation. A prefix starts only when its complete
-memory plan fits and its nominal sweep allowance leaves a native LSMR step.
-Every executed sweep consumes the existing action cap. An unfinished prefix
-passes original-slot coefficients to a categorical seeded LSMR session with the
-original response, weights and normalization; its result already includes the
-seed. All three hidden prefix arms certify the original problem at the requested
-MAP tolerance, both before and after LSMR correction; the stricter private LSMR
-recurrence tolerance and native iteration caps remain unchanged. The seed and enlarged warm-session banks are admitted on every solver and
-preconditioner-fallback path. Each Low chunk and final-residual action retains
-its own cap. The backend's presence does not suppress an explicitly requested
-prefix. An early certificate reports the concrete MAP or IT family. Low reports
-combine those prefixes with actual LSMR metadata when a chunk needs LSMR, while
-preserving any real fallback; an intentional prefix alone is not a fallback.
-Uninjected Auto uses the geometry pilot instead.
+The isolated categorical prefix arms (`routing_prefix_{none,map4,it4}`)
+qualified a bounded MAP or compact-IT prefix before a seeded within LSMR
+session on three or more categorical FEs; with that solver they are retired
+there and fail clearly. With two FEs they keep the incumbent recurrence
+without an optional upgrade, a no-upgrade baseline for the routing witnesses.
 
 The separate `routing_portfolio_v1` qualification arm uses one fixed structural
 portfolio. With exactly two categorical FEs it retains the incumbent recurrence
@@ -754,21 +677,10 @@ threshold and stopping rules) and memory admission only; no construction-work
 screen redirects a direct terminal to coarsening. Compatible Laplacian action
 witnesses and exact disabled-path replay precede qualification.
 
-With three or more categorical FEs, this arm tries at most four categorical MAP
-sweeps before seeded LSMR. It replaces the three-FE shortcut,
-including when prefix admission declines it. Both prefix acceptance and the
-original-design certificate after correction or MAP fallback use Auto's private
-`direct_lsmr_tolerance`, rather than the requested MAP tolerance used by the
-isolated prefix arms. The original response, weights, normalization and factor
-slots remain authoritative: an unfinished prefix passes coefficients only, and
-the seeded LSMR result includes that seed. Actual prefix sweeps consume the
-existing action cap; the correction receives only its remainder. This first
-portfolio has no general-FE CMG checkpoint and does not stack direct or diagonal
-attempts before CMG. Zero/one-FE and sloped paths, explicit solvers and PPML
-retain their behavior. This new injected arm may change eligible OLS numerical
-results and solver diagnostics within the existing scientific tolerances;
-model and discrete decisions remain unchanged. It is
-experimental and does not change public Auto or establish performance evidence.
+With three or more categorical FEs this arm tried four MAP sweeps before a
+seeded within LSMR session; that arm is retired and fails clearly. Its two-FE
+portfolio is experimental and does not change public Auto or establish
+performance evidence.
 
 Break during optional construction is exercised on the synchronous builder through the
 hidden `routing_builder_break` arm: the h4/k1 two-FE build parks at its first
@@ -1055,8 +967,8 @@ certificate of §16 passes; its residual solver row reports the absorption's
 method, zero iterations, zero pilot work and stop code 5. The derived residual
 serves the two-FE categorical owner (decided by Johannes, 2026-10-27) and, for
 beta.10, the direct one-FE Auto route and the many-FE Auto geometry policy,
-whose MAP pilot, LSMR session and MAP fallback all certify at the requested
-tolerance (decided by Johannes, 2026-10-28). It also serves no-FE Fast,
+whose routes all certify at the requested tolerance (decided by Johannes,
+2026-10-28). It also serves no-FE Fast,
 unweighted IID fits with a global intercept and Auto solver/preconditioner,
 without developer routing overrides (decided by Johannes, 2026-11-02). Their
 certificate independently recomputes the structural-constant moment. Requested
