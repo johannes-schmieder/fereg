@@ -33,7 +33,7 @@ Its license and copyright notices travel with the vendored dependency sources
 of source distributions.
 
 The MIT-licensed [CMG Rust port](https://github.com/johannes-schmieder/CMG) is
-pinned to `e5613e81fb3b03c78de98658b372646fa802aabb` and statically linked for
+pinned to version 0.3.0 at `368eceba765db91ff818815698da35889ce42ed0` and statically linked for
 graph-Laplacian/SDDM preconditioning and PCG. It derives from Koutis and Miller's
 [original MATLAB/C implementation](https://github.com/ikoutis/cmg-solver/tree/19752fc102f8cae8e34f66457bfaccb1aaa60375)
 of the method by
@@ -41,12 +41,6 @@ of the method by
 Preserve its copyright and license notices, including the MIT grant below. Exact current runtime pins are
 recorded in [Cargo.lock](Cargo.lock) and
 [the core crate manifest](crates/fereg-core/Cargo.toml).
-A local development override is currently active: the `[patch]` section of
-the root [Cargo.toml](Cargo.toml) (and of `fuzz/Cargo.toml`) replaces this
-pin with an unpublished CMG clone holding two further bitwise-neutral
-commits, so `Cargo.lock` records no CMG source. The pin and this notice are
-updated once those commits are published; until then this tree is not a
-release source.
 
 fereg is distributed under MIT. On 2026-10-13 Johannes confirmed
 that the required native-distribution permissions had been obtained; see the

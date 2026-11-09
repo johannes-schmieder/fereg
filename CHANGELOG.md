@@ -43,6 +43,10 @@
 - feppml's strict checkpoint after an elimination decline (explicit `lsmr` and
   `cg`) and Auto's canonical projections with six or more categorical effects
   run on fedemean's full system (modified LSMR and CG respectively).
+- Pin upstream CMG 0.3.0 at `368eceba765db91ff818815698da35889ce42ed0` in
+  place of `e5613e81fb3b03c78de98658b372646fa802aabb`: a branch-free
+  canonical edge sort and team applications of every planned hierarchy level.
+  Both are arithmetic-preserving; results are unchanged bit for bit.
 
 ## 0.5.3 — 2026-11-07
 

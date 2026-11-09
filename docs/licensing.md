@@ -8,7 +8,7 @@ Johannes selected MIT for CMG, fevc, and fereg.
 
 The MIT grant for the pinned CMG Rust dependency is reproduced in
 [`licenses/CMG-MIT.txt`](../licenses/CMG-MIT.txt) and the package's combined
-third-party notices. CMG 0.2.0 carries that license and MIT Cargo metadata upstream.
+third-party notices. CMG 0.3.0 carries that license and MIT Cargo metadata upstream.
 Source packaging preserves the dependency unchanged and verifies its pinned
 source inventory in `licenses/CMG-SOURCE.json`.
 

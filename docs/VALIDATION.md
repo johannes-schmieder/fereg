@@ -4141,6 +4141,34 @@ unchanged (SPEC §1).
   three fits) are bitwise identical in b, SE and objective on the same
   routes, with median time ratios 0.96 to 1.01.
 
+## CMG 0.3.0 pin (development, Mac)
+
+fereg-core and fedemean pin CMG 0.3.0 at
+`368eceba765db91ff818815698da35889ce42ed0` on CMG's main branch, in place of
+`e5613e81` and the local `[patch]` override that had replaced it in the root
+and fuzz manifests since `d3152d88`. The CMG tag and release follow its
+exact-commit CI. The pinned production sources (`src/` outside
+`#[cfg(test)]` modules, and the manifest's features and dependencies) equal
+the override's `d029341`: the branch-free two-way partitions of the canonical
+edge introsort (`b6e75e4`) and team applications of every planned hierarchy
+level (`d029341`), both arithmetic-preserving. The other upstream changes are
+the R package, documentation, version metadata and two test-only cancellation
+witnesses (`856cf74`, `368eceba`). Each lock file changes only in its cmg
+entry, which now records version 0.3.0 and the git source.
+`licenses/CMG-SOURCE.json` is refreshed from a clean
+`cargo vendor --locked --versioned-dirs` under Cargo 1.85.1. The license text
+and MIT metadata are unchanged.
+
+- Evidence (Mac, development): the locked dev and release builds, fedemean
+  with all features (91 tests), the plugin's 242 FFI tests and its 12
+  allocator audits, both Clippy configurations, rustfmt, the locked fuzz
+  check and Python 282 (the three numpy-dependent modules cannot be imported
+  here) pass. fereg-core's library passes 1,541 of 1,542 tests. The one
+  failure, `a_slope_fit_fedemean_does_not_certify_continues_with_map`, is
+  already stale at the base `a59598f6` and is replaced by `5340cbfe`.
+  Dependencies compile without `cfg(test)`, so its CMG code equals the
+  base's.
+
 ## Package checks
 
 ### Beta.13 parallel input and parity packaging
