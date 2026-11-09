@@ -103,6 +103,13 @@ pub(crate) fn force_joint_stall_for_test() {
     FORCE_JOINT_STALLS.set(1);
 }
 
+/// Tests: the next frame's Schwarz FE block on this thread is built within
+/// `bytes` instead of its admitted limit.
+#[cfg(test)]
+pub(crate) fn force_schwarz_limit_for_test(bytes: u128) {
+    FORCE_SCHWARZ_LIMIT.set(bytes);
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct JointLsmrCertificate {
     pub(crate) finite_absolute_infinity_norm: f64,
@@ -121,6 +128,17 @@ pub(crate) enum JointFallback {
     SchwarzMemoryLimit,
     /// A Schwarz factorization refused numerically.
     SchwarzNumerical,
+}
+
+impl JointFallback {
+    /// The fit-level reason (SPEC §1): a block beyond the memory limit is
+    /// `memory`, a numerical refusal `nonconvergence`.
+    pub(crate) const fn reason(self) -> crate::fe::FeFallbackReason {
+        match self {
+            Self::SchwarzMemoryLimit => crate::fe::FeFallbackReason::Memory,
+            Self::SchwarzNumerical => crate::fe::FeFallbackReason::Nonconvergence,
+        }
+    }
 }
 
 /// The formulation that solved a frame.

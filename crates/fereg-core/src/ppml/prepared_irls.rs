@@ -1336,7 +1336,13 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                             report.formulation == JointLsmrFormulation::Projections,
                             on_projections,
                         ),
-                        crate::fe::FeFallbackReason::None,
+                        // An explicit Schwarz FE block that fell back to
+                        // Jacobi is the request's certified fallback.
+                        report
+                            .fallback
+                            .map_or(crate::fe::FeFallbackReason::None, |fallback| {
+                                fallback.reason()
+                            }),
                     );
                     joint.fill_candidate(&mut workspace)?;
                     certified_linear_subproblems = certified_linear_subproblems.saturating_add(1);

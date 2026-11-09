@@ -605,6 +605,55 @@ fn an_explicit_lsmr_step_that_does_not_certify_falls_back_to_the_canonical_sessi
     assert_ppml_results_close(&candidate, &baseline);
 }
 
+/// Explicit `precondition(schwarz)` runs the joint recurrence with the
+/// Schwarz FE block. A block that does not build within its limit falls
+/// back to the joint recurrence's Jacobi block on every step: the request
+/// stays explicit LSMR with Schwarz, the steps' route reports Jacobi, and
+/// the fit reports the certified fallback (reason `memory`). The fit
+/// matches the MAP oracle.
+#[test]
+fn an_explicit_schwarz_block_that_does_not_build_reports_its_jacobi_fallback() {
+    let (baseline_request, baseline_loaded) = fixture(2, false, false, false, false, false);
+    let baseline =
+        fit_prepared_ppml(baseline_request, baseline_loaded).expect("production MAP PPML oracle");
+    let explicit = || {
+        let (mut request, loaded) = fixture(2, false, false, false, false, false);
+        request.solver = PpmlSolverFamily::Lsmr;
+        request.lsmr_preconditioner = crate::fe::LsmrPreconditioner::Schwarz;
+        request.memory.requested = MemoryMode::Fast;
+        (request, loaded)
+    };
+    let (request, loaded) = explicit();
+    let schwarz = fit_prepared_ppml(request, loaded).expect("explicit Schwarz block");
+    let (route, _) = schwarz.memory().steps.route.expect("explicit LSMR steps");
+    assert!(matches!(
+        route.preconditioner,
+        crate::fe::FePreconditioner::Schwarz(_)
+    ));
+    assert_eq!(
+        schwarz.memory().steps.fallback,
+        crate::fe::FeFallbackReason::None
+    );
+    assert_ppml_results_close(&schwarz, &baseline);
+
+    let (request, loaded) = explicit();
+    super::super::categorical_lsmr::force_schwarz_limit_for_test(64);
+    let fallback = fit_prepared_ppml(request, loaded).expect("Jacobi block fallback");
+    assert_eq!(fallback.solver().requested, PpmlSolverFamily::Lsmr);
+    assert_eq!(fallback.solver().effective, PpmlSolverFamily::Lsmr);
+    let steps = fallback.memory().steps;
+    let (route, _) = steps.route.expect("explicit LSMR steps");
+    assert_eq!(route.preconditioner, crate::fe::FePreconditioner::Jacobi);
+    assert_eq!(steps.fallback, crate::fe::FeFallbackReason::Memory);
+    assert!(steps.joint_frames > 0);
+    assert_eq!((steps.fwl_frames, steps.handoffs), (0, 0));
+    assert_eq!(
+        fallback.memory().fallback_mask & (1_u32 << PpmlFallbackKind::Route as u8),
+        0
+    );
+    assert_ppml_results_close(&fallback, &baseline);
+}
+
 #[test]
 fn zero_active_control_lsmr_uses_joint_state_but_reports_fused_identity() {
     for effects in [2, 3] {
