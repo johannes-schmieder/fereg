@@ -396,8 +396,8 @@ static int check_selftest_verbose(stata_call_function call, int threads)
     if (strstr(display_buffer, "fereg.plugin_version=0.5.3") == NULL ||
         strstr(display_buffer, "fereg.action_protocol=1.7") == NULL ||
         strstr(display_buffer, "fereg.model_wire=2.1") == NULL ||
-        strstr(display_buffer, "fereg.ols_result_wire=1.5") == NULL ||
-        strstr(display_buffer, "fereg.ppml_request_wire=1.8") == NULL ||
+        strstr(display_buffer, "fereg.ols_result_wire=1.6") == NULL ||
+        strstr(display_buffer, "fereg.ppml_request_wire=1.9") == NULL ||
         strstr(display_buffer, "fereg.ppml_result_wire=1.5") == NULL ||
         error_buffer[0] != '\0') {
         return 2;
@@ -1117,7 +1117,7 @@ static int check_estimate_ols_atomic_store(stata_call_function call)
         result_receipt[0][15] != 1.0 || !last_store_was_complete) {
         return 2;
     }
-    if (output_store_calls != 304) return 3;
+    if (output_store_calls != 314) return 3;
     for (name_index = 0; name_index < 15; ++name_index) {
         if (prepared_store_name_pointers[name_index] == NULL) return 8;
     }
@@ -1126,7 +1126,7 @@ static int check_estimate_ols_atomic_store(stata_call_function call)
         return 4;
     }
 
-    for (ordinal = 1; ordinal <= 304; ++ordinal) {
+    for (ordinal = 1; ordinal <= 314; ++ordinal) {
         reset_estimate_outputs();
         fail_output_store_at = ordinal;
         clear_output();

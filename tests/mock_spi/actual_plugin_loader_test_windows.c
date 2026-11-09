@@ -57,8 +57,8 @@ static int check_selftest_verbose(stata_call_function call)
     if (strstr(display_buffer, "fereg.plugin_version=0.5.3") == NULL ||
         strstr(display_buffer, "fereg.action_protocol=1.7") == NULL ||
         strstr(display_buffer, "fereg.model_wire=2.1") == NULL ||
-        strstr(display_buffer, "fereg.ols_result_wire=1.5") == NULL ||
-        strstr(display_buffer, "fereg.ppml_request_wire=1.8") == NULL ||
+        strstr(display_buffer, "fereg.ols_result_wire=1.6") == NULL ||
+        strstr(display_buffer, "fereg.ppml_request_wire=1.9") == NULL ||
         strstr(display_buffer, "fereg.ppml_result_wire=1.5") == NULL ||
         error_buffer[0] != '\0') return 2;
     return 0;
