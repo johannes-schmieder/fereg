@@ -1114,6 +1114,10 @@ fn eliminated<const R: usize>(
     reduced.size_reduced(cells, st.offsets[b + 1] - st.offsets[b], R)?;
     reduced.x.copy_from_slice(&work.x[small.clone()]);
     reduced.r.copy_from_slice(&work.r[small.clone()]);
+    // The cells work in the levels' centered bases.
+    if let Some(blocks) = state.blocks() {
+        blocks.convert::<R>(b, &mut reduced.r, false);
+    }
     let started = Instant::now();
     let op = Normal {
         st,
@@ -1125,10 +1129,14 @@ fn eliminated<const R: usize>(
     };
     let solved = pcg::<R>(&op, reduced, targets, (job.cap, false), &job.cancel, tally)?;
     facts.pcg_seconds += started.elapsed().as_secs_f64();
-    work.x[small].copy_from_slice(&reduced.x);
+    work.x[small.clone()].copy_from_slice(&reduced.x);
     let actions = cells::Actions::of(st, state, a, cells.channels[0]);
     let beta = &mut work.q[large.clone()];
     cells.larger::<R>(actions, (None, Some(&reduced.x)), &mut [], beta);
+    if let Some(blocks) = state.blocks() {
+        blocks.convert::<R>(b, &mut work.x[small], true);
+        blocks.convert::<R>(a, &mut work.q[large.clone()], true);
+    }
     let Work { x, q, .. } = work;
     for (x, beta) in x[large.clone()].iter_mut().zip(&q[large]) {
         *x -= beta;

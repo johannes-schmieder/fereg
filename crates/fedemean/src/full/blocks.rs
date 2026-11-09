@@ -57,6 +57,10 @@ pub(crate) const MAX_CHANNELS: usize = 16;
 const NULL: f64 = 1e-10;
 /// Levels per task of the inversion and measure passes.
 const LEVEL_TASK: usize = 512;
+/// A centered slope whose sum of squares on a level is at most this
+/// fraction of its raw one (a variation of at most `1e-10` of its
+/// magnitude) is constant there: its centered values are rounding.
+const CONSTANT: f64 = 1e-20;
 /// Rotation sweeps of the eigendecomposition (it converges in a few).
 const SWEEPS: usize = 32;
 
@@ -70,6 +74,10 @@ struct Part {
     first: usize,
     /// Its first measure task.
     task: usize,
+    /// Its slopes centered at their level means (with an intercept; else
+    /// none) and their first center.
+    centered: usize,
+    center: usize,
 }
 
 /// The block inverses of the current weights (empty for an intercept-only
@@ -77,10 +85,16 @@ struct Part {
 #[derive(Default)]
 pub(crate) struct Blocks {
     parts: Vec<Part>,
-    /// Row-major `C x C` inverses, level by level.
+    /// Row-major `C x C` inverses, level by level, in each level's centered
+    /// basis.
     values: Vec<f64>,
-    /// Scatter accumulators of a Gram.
+    /// Per level of an effect with an intercept, each slope's weighted mean
+    /// (the centers of its basis), and whether the slope is constant there.
+    centers: Vec<f64>,
+    constant: Vec<bool>,
+    /// Scatter accumulators of a Gram, and the level sums of the means.
     scratch: Vec<f64>,
+    sums: Vec<f64>,
     tasks: usize,
     /// Levels whose block has a null direction.
     singular: usize,
@@ -104,12 +118,20 @@ pub(super) fn block_bytes(st: &Structure, effects: &[Effect<'_>]) -> u128 {
 
 impl Blocks {
     pub(super) fn bytes(&self) -> u128 {
-        (self.values.capacity() + self.scratch.capacity()) as u128 * 8
+        (self.values.capacity() + self.centers.capacity() + self.scratch.capacity()) as u128 * 8
+            + self.sums.capacity() as u128 * 8
             + self.parts.capacity() as u128 * std::mem::size_of::<Part>() as u128
     }
 
     pub(crate) fn singular(&self) -> usize {
         self.singular
+    }
+
+    /// The centers of level `l` of `part`.
+    #[inline]
+    fn means(&self, part: &Part, l: usize) -> &[f64] {
+        let at = part.center + l * part.centered;
+        &self.centers[at..at + part.centered]
     }
 
     /// Measure tasks (partials of [`Blocks::measure`]: `3 R` each).
@@ -127,9 +149,10 @@ impl Blocks {
         mass: &mut [f64],
     ) -> Result<()> {
         self.parts.clear();
-        let (mut first, mut tasks) = (0, 0);
+        let (mut first, mut tasks, mut center) = (0, 0, 0);
         for (e, effect) in effects.iter().enumerate().filter(|(_, e)| e.sloped()) {
             let (channels, levels) = (effect.channels(), effect.levels());
+            let centered = if effect.intercept() { channels - 1 } else { 0 };
             super::reserve(&mut self.parts, 1)?;
             self.parts.push(Part {
                 effect: e,
@@ -137,34 +160,59 @@ impl Blocks {
                 levels,
                 first,
                 task: tasks,
+                centered,
+                center,
             });
             first += levels * channels * channels;
             tasks += levels.div_ceil(LEVEL_TASK);
+            center += levels * centered;
         }
         self.tasks = tasks;
         refill(&mut self.values, first, 0.0)?;
+        refill(&mut self.centers, center, 0.0)?;
+        refill(&mut self.constant, center, false)?;
         let singular = AtomicUsize::new(0);
         for k in 0..self.parts.len() {
             let part = self.parts[k];
             let effect = &effects[part.effect];
             let width = part.channels * part.channels;
             let span = part.first..part.first + part.levels * width;
-            gram(st, (part.effect, effect), weights, span.clone(), self)?;
+            if part.centered > 0 {
+                means(st, (part.effect, effect), weights, part, self)?;
+            }
+            gram(
+                st,
+                (part.effect, effect),
+                weights,
+                (span.clone(), part),
+                self,
+            )?;
+            let centers = &self.centers[part.center..part.center + part.levels * part.centered];
+            let constant = &self.constant[part.center..part.center + part.levels * part.centered];
             let blocks = &mut self.values[span];
             if !blocks.iter().all(|v| v.is_finite()) {
                 return Err(Error::InvalidData("slope values overflow their level Gram"));
             }
+            // The raw diagonal of D'WD: a centered slope's sum of squares
+            // plus its center's share of the level's weight.
             let offset = st.offsets[part.effect];
             for (l, block) in blocks.chunks_exact(width).enumerate() {
                 for c in 0..part.channels {
-                    mass[offset + l * part.channels + c] = block[c * part.channels + c];
+                    let mut value = block[c * part.channels + c];
+                    if c > 0 && part.centered > 0 && !constant[l * part.centered + c - 1] {
+                        let mean = centers[l * part.centered + c - 1];
+                        value += mean * mean * block[0];
+                    }
+                    mass[offset + l * part.channels + c] = value;
                 }
             }
             let c = part.channels;
-            let body = |_: usize, chunk: &mut [f64]| {
+            let body = |task: usize, chunk: &mut [f64]| {
                 let mut count = 0;
-                for block in chunk.chunks_exact_mut(width) {
-                    count += usize::from(invert(block, c, None));
+                for (k, block) in chunk.chunks_exact_mut(width).enumerate() {
+                    let at = (task * LEVEL_TASK + k) * part.centered;
+                    let flat = constant[at..at + part.centered].contains(&true);
+                    count += usize::from(invert(block, c, None) || flat);
                 }
                 singular.fetch_add(count, Ordering::Relaxed);
             };
@@ -180,6 +228,43 @@ impl Blocks {
     pub(super) fn effect(&self, e: usize) -> Option<&[f64]> {
         let part = self.parts.iter().find(|p| p.effect == e)?;
         Some(&self.values[part.first..part.first + part.levels * part.channels.pow(2)])
+    }
+
+    /// The centers of every level of effect `e` (its slopes' weighted
+    /// level means, `centered` per level; empty without an intercept),
+    /// whether each slope is constant on its level (its centered values are
+    /// then zero), and their count per level.
+    pub(super) fn centers(&self, e: usize) -> (&[f64], &[bool], usize) {
+        match self.parts.iter().find(|p| p.effect == e) {
+            Some(part) => {
+                let span = part.center..part.center + part.levels * part.centered;
+                (
+                    &self.centers[span.clone()],
+                    &self.constant[span],
+                    part.centered,
+                )
+            }
+            None => (&[], &[], 0),
+        }
+    }
+
+    /// Effect `e`'s coefficients `values` (`R` columns, its levels only)
+    /// between the raw and the centered basis: moments to the centered
+    /// basis (`m_s -= c_s m_0`), or with `raw` coefficients back to the raw
+    /// one (`x_0 -= sum_s c_s x_s`). Nothing for an effect without centers.
+    pub(super) fn convert<const R: usize>(&self, e: usize, values: &mut [f64], raw: bool) {
+        let (centers, _, centered) = self.centers(e);
+        if centered == 0 {
+            return;
+        }
+        let c = centered + 1;
+        let body = |task: usize, chunk: &mut [f64]| {
+            for (k, level) in chunk.chunks_exact_mut(c * R).enumerate() {
+                let means = &centers[(task * LEVEL_TASK + k) * centered..][..centered];
+                shift::<R>(means, level, raw);
+            }
+        };
+        each_block(values, LEVEL_TASK * c * R, values.len() * centered, &body);
     }
 
     /// Whether effect `e` has blocks.
@@ -211,7 +296,13 @@ impl Blocks {
             for (k, out) in out.chunks_exact_mut(c * R).enumerate() {
                 let (l, at) = (start + k, (start + k) * c * R);
                 let block = &blocks[l * width..(l + 1) * width];
-                level::<R>(block, c, &input[at..at + c * R], Some(out), &mut sink);
+                let means = self.means(part, l);
+                centered::<R>(
+                    (block, c, means),
+                    &input[at..at + c * R],
+                    Some(out),
+                    &mut sink,
+                );
             }
         };
         each_block(
@@ -252,7 +343,8 @@ impl Blocks {
                     .enumerate()
                 {
                     let out = z.as_deref_mut().map(|z| &mut z[k * c * R..(k + 1) * c * R]);
-                    level::<R>(block, c, r, out, &mut acc);
+                    let means = self.means(part, t * LEVEL_TASK + k);
+                    centered::<R>((block, c, means), r, out, &mut acc);
                 }
                 for (k, values) in acc.iter().enumerate() {
                     slot[k * R..(k + 1) * R].copy_from_slice(values);
@@ -318,9 +410,13 @@ impl Blocks {
         let width = c * c;
         let span = (st.offsets[e] * R)..(st.offsets[e + 1] * R);
         let blocks = &self.values[part.first..part.first + part.levels * width];
-        for (m, block) in m[span].chunks_exact(c * R).zip(blocks.chunks_exact(width)) {
+        for (l, (m, block)) in m[span]
+            .chunks_exact(c * R)
+            .zip(blocks.chunks_exact(width))
+            .enumerate()
+        {
             let mut acc = [[0.0; R]; 3];
-            level::<R>(block, c, m, None, &mut acc);
+            centered::<R>((block, c, self.means(part, l)), m, None, &mut acc);
             let mut largest = [0.0_f64; R];
             for (k, value) in m.iter().enumerate() {
                 largest[k % R] = largest[k % R].max(value.abs());
@@ -328,6 +424,60 @@ impl Blocks {
             fold.span(&acc[1], &largest, scales, relative, raw_scale)?;
         }
         Ok(())
+    }
+}
+
+/// `level` in raw coordinates for a block in its level's centered basis:
+/// `v = U M~^-1 U' r` with `U` the shift of the slopes by `means` (none:
+/// `level` itself). `r'v` and its root come from the centered moments,
+/// `max |v|` from the raw coefficients.
+#[inline]
+pub(super) fn centered<const R: usize>(
+    (block, c, means): (&[f64], usize, &[f64]),
+    r: &[f64],
+    out: Option<&mut [f64]>,
+    acc: &mut [[f64; R]; 3],
+) {
+    if means.is_empty() {
+        level::<R>(block, c, r, out, acc);
+        return;
+    }
+    let mut moments = [0.0; MAX_CHANNELS * 8];
+    let moments = &mut moments[..c * R];
+    moments.copy_from_slice(r);
+    shift::<R>(means, moments, false);
+    let mut v = [0.0; MAX_CHANNELS * 8];
+    let v = &mut v[..c * R];
+    let mut quad = [[0.0; R]; 3];
+    level::<R>(block, c, moments, Some(v), &mut quad);
+    shift::<R>(means, v, true);
+    for j in 0..R {
+        acc[0][j] += quad[0][j];
+        acc[1][j] = acc[1][j].max(quad[1][j]);
+        for ch in 0..c {
+            acc[2][j] = acc[2][j].max(v[ch * R + j].abs());
+        }
+    }
+    if let Some(out) = out {
+        out.copy_from_slice(v);
+    }
+}
+
+/// One level's values (`R` columns, intercept first) between the raw and
+/// the centered basis of `means`: moments to centered (`m_s -= c_s m_0`),
+/// or with `raw` coefficients to raw (`x_0 -= sum_s c_s x_s`).
+#[inline]
+pub(super) fn shift<const R: usize>(means: &[f64], values: &mut [f64], raw: bool) {
+    let (lead, slopes) = values.split_at_mut(R);
+    for (s, &mean) in means.iter().enumerate() {
+        let slope = &mut slopes[s * R..(s + 1) * R];
+        for j in 0..R {
+            if raw {
+                lead[j] -= mean * slope[j];
+            } else {
+                slope[j] -= mean * lead[j];
+            }
+        }
     }
 }
 
@@ -365,25 +515,111 @@ pub(super) fn level<const R: usize>(
     }
 }
 
+/// Per level of effect `e`, `add(row, level, sums)` over its rows into
+/// `out` (`width` sums per level): each level's rows in ascending order for
+/// a gathered effect, fixed row blocks (accumulators in `scratch`) merged in
+/// block order for a scattered one.
+fn level_sums<F>(
+    st: &Structure,
+    (e, effect): (usize, &Effect<'_>),
+    width: usize,
+    (out, scratch): (&mut [f64], &mut Vec<f64>),
+    add: &F,
+) -> Result<()>
+where
+    F: Fn(usize, usize, &mut [f64]) + Sync,
+{
+    if let Some(index) = st.gathered.iter().find(|g| g.effect == e) {
+        let body = |task: usize, out: &mut [f64]| {
+            for (k, g) in out.chunks_exact_mut(width).enumerate() {
+                g.fill(0.0);
+                let level = task * LEVEL_TASK + k;
+                for &row in &index.rows[index.starts[level]..index.starts[level + 1]] {
+                    add(row as usize, level, g);
+                }
+            }
+        };
+        each_block(out, LEVEL_TASK * width, st.nobs * width, &body);
+        return Ok(());
+    }
+    let span = effect.levels() * width;
+    let rows = st.scatter_rows;
+    refill(scratch, st.scatter_blocks() * span, 0.0)?;
+    let codes = effect.codes();
+    let body = |block: usize, acc: &mut [f64]| {
+        let start = block * rows;
+        let end = (start + rows).min(st.nobs);
+        for (k, &code) in codes[start..end].iter().enumerate() {
+            let code = code as usize;
+            add(start + k, code, &mut acc[code * width..(code + 1) * width]);
+        }
+    };
+    each_block(scratch, span, st.nobs * width, &body);
+    out.fill(0.0);
+    for part in scratch.chunks_exact(span) {
+        for (o, p) in out.iter_mut().zip(part) {
+            *o += p;
+        }
+    }
+    Ok(())
+}
+
+/// The centers of `part` (an effect with an intercept): each slope's
+/// weighted mean on each level (zero on a level without weight).
+fn means(
+    st: &Structure,
+    (e, effect): (usize, &Effect<'_>),
+    weights: Option<&[f64]>,
+    part: Part,
+    blocks: &mut Blocks,
+) -> Result<()> {
+    let width = part.channels;
+    let slopes = effect.slopes();
+    let add = |row: usize, _: usize, g: &mut [f64]| {
+        let w = weights.map_or(1.0, |w| w[row]);
+        g[0] += w;
+        for (g, slope) in g[1..].iter_mut().zip(slopes) {
+            *g += w * slope[row];
+        }
+    };
+    refill(&mut blocks.sums, part.levels * width, 0.0)?;
+    let out = (&mut blocks.sums[..], &mut blocks.scratch);
+    level_sums(st, (e, effect), width, out, &add)?;
+    let centers = &mut blocks.centers[part.center..part.center + part.levels * part.centered];
+    for (centers, sums) in centers
+        .chunks_exact_mut(part.centered)
+        .zip(blocks.sums.chunks_exact(width))
+    {
+        for (center, &sum) in centers.iter_mut().zip(&sums[1..]) {
+            *center = if sums[0] > 0.0 { sum / sums[0] } else { 0.0 };
+        }
+    }
+    Ok(())
+}
+
 /// The blocks of one effect into `blocks.values[span]` (row-major, both
-/// triangles): each level's rows in ascending order for a gathered effect,
-/// fixed row blocks merged in block order for a scattered one.
+/// triangles), in each level's centered basis (the slopes less their level
+/// means, for an effect with an intercept), from the centered row values so
+/// that a large common offset does not cancel the slopes' variation.
 fn gram(
     st: &Structure,
     (e, effect): (usize, &Effect<'_>),
     weights: Option<&[f64]>,
-    span: std::ops::Range<usize>,
+    (span, part): (std::ops::Range<usize>, Part),
     blocks: &mut Blocks,
 ) -> Result<()> {
     let c = effect.channels();
     let width = c * c;
     let lead = usize::from(effect.intercept());
     let slopes = effect.slopes();
-    let add = |row: usize, g: &mut [f64]| {
+    let centers = &blocks.centers[part.center..part.center + part.levels * part.centered];
+    let add = |row: usize, level: usize, g: &mut [f64]| {
         let w = weights.map_or(1.0, |w| w[row]);
         let value = |ch: usize| {
             if ch < lead {
                 1.0
+            } else if part.centered > 0 {
+                slopes[ch - lead][row] - centers[level * part.centered + ch - lead]
             } else {
                 slopes[ch - lead][row]
             }
@@ -395,43 +631,28 @@ fn gram(
             }
         }
     };
-    let out = &mut blocks.values[span];
-    if let Some(index) = st.gathered.iter().find(|g| g.effect == e) {
-        let body = |task: usize, out: &mut [f64]| {
-            for (k, g) in out.chunks_exact_mut(width).enumerate() {
-                g.fill(0.0);
-                let level = task * LEVEL_TASK + k;
-                for &row in &index.rows[index.starts[level]..index.starts[level + 1]] {
-                    add(row as usize, g);
-                }
-            }
-        };
-        each_block(out, LEVEL_TASK * width, st.nobs * width, &body);
-    } else {
-        let span = effect.levels() * width;
-        let rows = st.scatter_rows;
-        refill(&mut blocks.scratch, st.scatter_blocks() * span, 0.0)?;
-        let codes = effect.codes();
-        let body = |block: usize, acc: &mut [f64]| {
-            let start = block * rows;
-            let end = (start + rows).min(st.nobs);
-            for (k, &code) in codes[start..end].iter().enumerate() {
-                let code = code as usize;
-                add(start + k, &mut acc[code * width..(code + 1) * width]);
-            }
-        };
-        each_block(&mut blocks.scratch, span, st.nobs * width, &body);
-        out.fill(0.0);
-        for part in blocks.scratch.chunks_exact(span) {
-            for (o, p) in out.iter_mut().zip(part) {
-                *o += p;
-            }
-        }
-    }
-    for g in out.chunks_exact_mut(width) {
+    let out = (&mut blocks.values[span], &mut blocks.scratch);
+    level_sums(st, (e, effect), width, (&mut *out.0, &mut *out.1), &add)?;
+    let constant = &mut blocks.constant[part.center..part.center + part.levels * part.centered];
+    for (l, g) in out.0.chunks_exact_mut(width).enumerate() {
         for a in 0..c {
             for b in 0..a {
                 g[b * c + a] = g[a * c + b];
+            }
+        }
+        // A constant slope's centered column is rounding: it is decoupled,
+        // with its raw sum of squares as its curvature (a null direction
+        // whose rounding the center would otherwise amplify).
+        for s in 0..part.centered {
+            let (ch, mean) = (s + 1, centers[l * part.centered + s]);
+            let centered = g[ch * c + ch];
+            if centered <= CONSTANT * (centered + mean * mean * g[0]) {
+                constant[l * part.centered + s] = true;
+                for k in 0..c {
+                    g[ch * c + k] = 0.0;
+                    g[k * c + ch] = 0.0;
+                }
+                g[ch * c + ch] = mean * mean * g[0];
             }
         }
     }

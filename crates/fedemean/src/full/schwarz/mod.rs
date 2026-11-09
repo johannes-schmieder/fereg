@@ -187,10 +187,11 @@ enum Built {
 }
 
 /// Apply workspace values per column of a pair with slopes: its cells'
-/// products, the larger effect's coefficients twice and the smaller's.
+/// products, the larger effect's coefficients three times and the
+/// smaller's twice.
 fn channel_units(cells: &Cells) -> usize {
     let [ma, mb] = cells.coefficients();
-    cells.cells() * cells.channels[1] + 2 * ma + mb
+    cells.cells() * cells.channels[1] + 3 * ma + 2 * mb
 }
 
 fn count(value: &mut u32) {
@@ -496,13 +497,29 @@ impl Schwarz {
         );
         let (part, rest) = scratch.split_at_mut(cells.cells() * cells.channels[1] * R);
         let (xa, rest) = rest.split_at_mut(ma * R);
-        let (xb, beta) = rest.split_at_mut(mb * R);
-        // x_a = M_a^-1 r_a, x_b = S_d^-1 (r_b - X' x_a), x_a -= M_a^-1 X x_b.
-        cells.larger::<R>(actions, (Some(&r[span(a)]), None), part, xa);
-        cells.smaller::<R>(part, &r[span(b)], xb, true);
+        let (xb, rest) = rest.split_at_mut(mb * R);
+        let (ra, rest) = rest.split_at_mut(ma * R);
+        let (rb, beta) = rest.split_at_mut(mb * R);
+        // In the levels' centered bases: x_a = M_a^-1 r_a,
+        // x_b = S_d^-1 (r_b - X' x_a), x_a -= M_a^-1 X x_b.
+        ra.copy_from_slice(&r[span(a)]);
+        rb.copy_from_slice(&r[span(b)]);
+        if let Some(blocks) = blocks {
+            blocks.convert::<R>(a, ra, false);
+            blocks.convert::<R>(b, rb, false);
+        }
+        cells.larger::<R>(actions, (Some(&*ra), None), part, xa);
+        cells.smaller::<R>(part, rb, xb, true);
         cells.larger::<R>(actions, (None, Some(&*xb)), &mut [], beta);
-        for ((z, x), beta) in z[span(a)].iter_mut().zip(&*xa).zip(&*beta) {
-            *z += x - beta;
+        for (x, beta) in xa.iter_mut().zip(&*beta) {
+            *x -= beta;
+        }
+        if let Some(blocks) = blocks {
+            blocks.convert::<R>(a, xa, true);
+            blocks.convert::<R>(b, xb, true);
+        }
+        for (z, x) in z[span(a)].iter_mut().zip(&*xa) {
+            *z += x;
         }
         for (z, x) in z[span(b)].iter_mut().zip(&*xb) {
             *z += x;

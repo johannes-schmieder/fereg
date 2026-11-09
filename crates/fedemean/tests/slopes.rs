@@ -68,6 +68,9 @@ struct Case {
     codes: Vec<Vec<u32>>,
     /// Per effect, per slope, one value per observation.
     slopes: Vec<Vec<Vec<f64>>>,
+    /// A common offset of the slopes that the generated columns do not
+    /// carry (absorbed by the intercepts).
+    offset: f64,
 }
 
 impl Case {
@@ -112,7 +115,17 @@ impl Case {
             specs: specs.to_vec(),
             codes,
             slopes,
+            offset: 0.0,
         }
+    }
+
+    /// Add `offset` to every slope value (the columns stay as they were).
+    fn shifted(mut self, offset: f64) -> Self {
+        for value in self.slopes.iter_mut().flatten().flatten() {
+            *value += offset;
+        }
+        self.offset = offset;
+        self
     }
 
     fn design(&self) -> Design<'_> {
@@ -193,10 +206,26 @@ impl Case {
             let constant = 4.0 * j as f64 - 3.0;
             for i in 0..self.n {
                 data[i * ncols + j] =
-                    constant + noise * rng.normal() + self.fitted(&alpha, None, i);
+                    constant + noise * rng.normal() + self.fitted_less(&alpha, i, self.offset);
             }
         }
         data
+    }
+
+    /// `D b` at row `i` with every slope less `offset`.
+    fn fitted_less(&self, coefficients: &[f64], i: usize, offset: f64) -> f64 {
+        let offsets = self.offsets();
+        let mut fit = 0.0;
+        for e in 0..self.specs.len() {
+            let (levels, lead) = (self.specs[e].levels, usize::from(self.specs[e].intercept));
+            let code = self.codes[e][i] as usize;
+            for c in 0..self.channels(e) {
+                let shift = if c < lead { 0.0 } else { offset };
+                let v = self.value(e, c, i) - shift;
+                fit += v * coefficients[offsets[e] + c * levels + code];
+            }
+        }
+        fit
     }
 
     /// `D b` at row `i` of channel-major coefficients (column `j` of a
@@ -417,15 +446,26 @@ fn check_route(
     case: &Case,
     weights: Option<&[f64]>,
     oracle: &Oracle,
+    route: (Reduction, Method, Preconditioner),
+    columns: (usize, u64),
+) -> PreconditionerUsed {
+    check_at(case, weights, oracle, route, (columns, TOLERANCE))
+}
+
+/// [`check_route`] at `tolerance`.
+fn check_at(
+    case: &Case,
+    weights: Option<&[f64]>,
+    oracle: &Oracle,
     (reduction, method, preconditioner): (Reduction, Method, Preconditioner),
-    (ncols, seed): (usize, u64),
+    ((ncols, seed), tolerance): ((usize, u64), f64),
 ) -> PreconditionerUsed {
     let original = case.columns(seed, ncols);
     let mut data = original.clone();
     let mut settings = full(method, preconditioner);
     settings.choice.reduction = reduction;
     let mut projector = Projector::new(case.design(), settings);
-    let request = Request::new(TOLERANCE, MAX_ITERATIONS);
+    let request = Request::new(tolerance, MAX_ITERATIONS);
     let (outcome, coefficients) = project(
         &mut projector,
         case,
@@ -496,12 +536,12 @@ fn check_route(
             );
         }
         let report = projector.columns()[j];
-        assert!(report.relative_moment <= TOLERANCE, "{label}");
+        assert!(report.relative_moment <= tolerance, "{label}");
         // Recomputed at the projection's own scale.
         if report.residual_norm > 0.0 {
             let amplification = (report.scale / report.residual_norm).max(1.0);
             let certificate = projector
-                .certify_residual(as_weights(weights), &r, TOLERANCE, amplification)
+                .certify_residual(as_weights(weights), &r, tolerance, amplification)
                 .unwrap()
                 .expect("certificate");
             assert!(certificate.passed, "{label}, column {j}: {certificate:?}");
@@ -1221,6 +1261,60 @@ fn slope_elimination_is_pool_independent() {
                     assert!((yi - fit - ri).abs() <= bound, "column {j}, row {i}");
                 }
             }
+        }
+    }
+}
+
+/// Slopes sharing a large common offset (near `+-2^24`, `3 * 2^20` and
+/// `1e5`, varying by units on each level): each level's blocks are formed in
+/// its centered basis, so the preconditioners, the Schur blocks and the
+/// elimination stay accurate and every route matches the oracle in the raw
+/// basis. The operator and the certificate stay in the raw basis, whose
+/// rounding floor at an offset of `2^24` is about `1e-10` of the column, so
+/// every route is certified at `1e-9`.
+#[test]
+fn slopes_with_large_offsets_match_dense_oracle() {
+    let two = [spec(30, true, 0), spec(8, true, 1)];
+    let other = [spec(30, true, 1), spec(8, true, 0)];
+    let three = [spec(25, true, 1), spec(9, true, 2), spec(4, true, 0)];
+    for offset in [16_777_216.0, -16_777_216.0, 3_145_728.0, 1e5] {
+        for specs in [&two[..], &other[..], &three[..]] {
+            let case = Case::random(101, 360, specs).shifted(offset);
+            let weights = case.weights(102);
+            for weights in [None, Some(weights.as_slice())] {
+                let oracle = Oracle::new(&case, weights);
+                let mut routes: Vec<_> = routes(&case)
+                    .into_iter()
+                    .filter(|&(_, p)| p != Preconditioner::Identity)
+                    .map(|(m, p)| (Reduction::Full, m, p))
+                    .collect();
+                if specs.len() == 2 {
+                    routes.push((
+                        Reduction::EliminateLargest,
+                        Method::Pcg,
+                        Preconditioner::Jacobi,
+                    ));
+                }
+                for route in routes {
+                    check_at(&case, weights, &oracle, route, ((3, 103), 1e-9));
+                }
+            }
+        }
+    }
+}
+
+/// Schwarz pairs with slopes need no intercept: two slope-only effects.
+#[test]
+fn schwarz_pairs_need_no_intercept() {
+    let case = Case::random(105, 300, &[spec(20, false, 1), spec(7, false, 2)]);
+    let weights = case.weights(106);
+    for weights in [None, Some(weights.as_slice())] {
+        let oracle = Oracle::new(&case, weights);
+        for route in routes(&case)
+            .into_iter()
+            .filter(|&(_, p)| p != Preconditioner::Identity)
+        {
+            check(&case, weights, &oracle, route, (3, 107));
         }
     }
 }

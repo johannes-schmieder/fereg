@@ -22,6 +22,10 @@
 //!   with `S_d` the diagonal blocks of `S`. It is symmetric positive
 //!   definite on the pair's coefficients and exact on the larger side.
 //!
+//! Every block is formed from row values in the levels' centered bases (each
+//! slope less its level mean, [`super::blocks`]), so the cells work in those
+//! coordinates: callers move moments into them and coefficients back.
+//!
 //! Determinism: the cells are a fixed function of the design. Their sums run
 //! over each larger level's rows in ascending order, and each smaller
 //! level's sums over its cells in ascending order, on tasks fixed by the
@@ -338,6 +342,13 @@ impl Cells {
         let weights = state.weights();
         let (ea, eb) = (&effects[a], &effects[b]);
         let (ptr, idx) = (&self.ptr, &self.idx);
+        // Both effects' channels in their levels' centered bases.
+        let centers = |e: usize| {
+            state
+                .blocks()
+                .map_or((&[][..], &[][..], 0), |blocks| blocks.centers(e))
+        };
+        let ((centers_a, flat_a, na), (centers_b, flat_b, nb)) = (centers(a), centers(b));
         let body = |range: Range<usize>, xq: &mut [f64], _: &mut [f64]| {
             let base = ptr[range.start];
             let (mut va, mut vb) = ([0.0; MAX_CHANNELS], [0.0; MAX_CHANNELS]);
@@ -350,6 +361,22 @@ impl Cells {
                     let w = weights.map_or(1.0, |w| w[row]);
                     values(ea, row, &mut va);
                     values(eb, row, &mut vb);
+                    let at = l * na;
+                    for (s, v) in va[1..=na].iter_mut().enumerate() {
+                        *v = if flat_a[at + s] {
+                            0.0
+                        } else {
+                            *v - centers_a[at + s]
+                        };
+                    }
+                    let at = k as usize * nb;
+                    for (s, v) in vb[1..=nb].iter_mut().enumerate() {
+                        *v = if flat_b[at + s] {
+                            0.0
+                        } else {
+                            *v - centers_b[at + s]
+                        };
+                    }
                     let block = &mut xq[c * stride..(c + 1) * stride];
                     for i in 0..ca {
                         let wa = w * va[i];
@@ -376,12 +403,30 @@ impl Cells {
             return Err(Error::InvalidData("slope values overflow their cell Grams"));
         }
         refill(&mut self.x, count * wx, 0.0)?;
-        for (x, xq) in self.x.chunks_exact_mut(wx).zip(self.xq.chunks_exact(stride)) {
+        for (x, xq) in self
+            .x
+            .chunks_exact_mut(wx)
+            .zip(self.xq.chunks_exact(stride))
+        {
             x.copy_from_slice(&xq[..wx]);
         }
+        self.schur_blocks(st, state)
+    }
+
+    /// The smaller levels' Grams `G_k` (sums of the cells' `Q_c`) and the
+    /// actions on their Schur blocks `S_k = G_k - sum X_c' M_l^-1 X_c`, each
+    /// judged null against `G_k` (a constant slope's at its raw scale).
+    fn schur_blocks(&mut self, st: &Structure, state: &State) -> Result<()> {
+        let [a, b] = self.effects;
+        let [ca, cb] = self.channels;
+        let (wx, wq) = (ca * cb, cb * cb);
+        let stride = wx + wq;
         refill(&mut self.gram, self.levels[1] * wq, 0.0)?;
         refill(&mut self.schur, self.levels[1] * wq, 0.0)?;
         let actions = Actions::of(st, state, a, ca);
+        let (centers_b, flat_b, nb) = state
+            .blocks()
+            .map_or((&[][..], &[][..], 0), |blocks| blocks.centers(b));
         let singular = AtomicUsize::new(0);
         let (xq, by_ptr, by, owner) = (&self.xq, &self.by_ptr, &self.by, &self.owner);
         let schur = |task: usize, (gram, out): (&mut [f64], &mut [f64])| {
@@ -416,7 +461,16 @@ impl Cells {
                 for (s, g) in s.iter_mut().zip(g.iter()) {
                     *s += g;
                 }
-                count += usize::from(invert(s, cb, Some(&g[..])));
+                // The reference scale of a constant slope is its raw one.
+                let mut reference = [0.0; MAX_CHANNELS * MAX_CHANNELS];
+                reference[..wq].copy_from_slice(g);
+                for (sl, &flat) in flat_b[k * nb..(k + 1) * nb].iter().enumerate() {
+                    if flat {
+                        let mean = centers_b[k * nb + sl];
+                        reference[(sl + 1) * cb + sl + 1] = mean * mean * g[0];
+                    }
+                }
+                count += usize::from(invert(s, cb, Some(&reference[..wq])));
             }
             singular.fetch_add(count, Ordering::Relaxed);
         };

@@ -1,16 +1,16 @@
 {
   "growth": [
     {
-      "after": 117,
-      "before": 107,
+      "after": 118,
+      "before": 117,
       "metric": "fedemean/dispatch_candidates",
-      "reason": "Slopes, Milestone 3b: the cells' task recursion base cases and serial/parallel thresholds, the distinct-cell stamp, the optional inputs of the larger-side pass, the reduced workspace sizing and the warm-start refusal of the elimination."
+      "reason": "Centered level bases for slopes: the constant-slope test of each level's centered slope."
     },
     {
-      "after": 10740,
-      "before": 9984,
+      "after": 10984,
+      "before": 10740,
       "metric": "fedemean/production_lines",
-      "reason": "Slopes, Milestone 3b: the channel cells of a pair of effects (cross blocks, exact Schur diagonal blocks with the reference-scaled null rule), the elimination with slopes for two effects (Schur PCG through the cells, back-substitution) and Schwarz pairs with slopes acted on by their block elimination (replacing the hybrid intercept-channel pairs)."
+      "reason": "Centered level bases for slopes: each level's channel blocks, the cells' cross blocks and the Schur blocks are formed from slope values less their level means (the means pass and the constant-slope rule) and applied factored, with moments and coefficients converted between the raw and the centered basis."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -933,153 +933,185 @@
         "chunk_candidates": [],
         "dispatch_candidates": [
           {
+            "condition": "self . parts . iter ( ) . find ( | p | p . effect == e )",
+            "line": 238
+          },
+          {
             "condition": "d [ k ] > 0.0",
-            "line": 475
+            "line": 696
           },
           {
             "condition": "apr . abs ( ) <= f64 :: EPSILON * ( a [ p * c + p ] * a [ r * c + r ] ) . abs ( ) . sqrt ( )",
-            "line": 525
+            "line": 746
           }
         ],
         "functions": {
           "block_bytes#1": {
-            "line": 92,
+            "line": 106,
             "lines": 12
           },
           "bytes#1": {
-            "line": 106,
-            "lines": 4
+            "line": 120,
+            "lines": 5
+          },
+          "centers#1": {
+            "line": 237,
+            "lines": 13
+          },
+          "convert#1": {
+            "line": 255,
+            "lines": 14
           },
           "covers#1": {
-            "line": 187,
+            "line": 272,
             "lines": 3
           },
           "effect#1": {
-            "line": 180,
+            "line": 228,
             "lines": 4
           },
           "eigen#1": {
-            "line": 514,
+            "line": 735,
             "lines": 44
           },
           "fill#1": {
-            "line": 122,
-            "lines": 55
+            "line": 144,
+            "lines": 81
           },
           "fold#1": {
-            "line": 304,
-            "lines": 28
+            "line": 396,
+            "lines": 32
           },
           "gram#1": {
-            "line": 371,
-            "lines": 69
+            "line": 604,
+            "lines": 57
           },
           "invert#1": {
-            "line": 446,
+            "line": 667,
             "lines": 64
           },
+          "level_sums#1": {
+            "line": 522,
+            "lines": 44
+          },
+          "means#1": {
+            "line": 132,
+            "lines": 4
+          },
+          "means#2": {
+            "line": 569,
+            "lines": 30
+          },
+          "shift#1": {
+            "line": 470,
+            "lines": 13
+          },
           "singular#1": {
-            "line": 111,
+            "line": 126,
             "lines": 3
           },
           "solve_effect#1": {
-            "line": 194,
-            "lines": 31
+            "line": 279,
+            "lines": 37
           },
           "tasks#1": {
-            "line": 116,
+            "line": 138,
             "lines": 3
           }
         },
-        "production_lines": 446
+        "production_lines": 624
       },
       "crates/fedemean/src/full/cells.rs": {
         "chunk_candidates": [],
         "dispatch_candidates": [
           {
             "condition": "bounds . len ( ) <= 2",
-            "line": 142
+            "line": 146
           },
           {
             "condition": "bounds . len ( ) == 2",
-            "line": 143
+            "line": 147
           },
           {
             "condition": "( ptr [ bounds [ bounds . len ( ) - 1 ] ] - ptr [ bounds [ 0 ] ] ) * ( wc + wl ) . max ( 1 ) < PARALLEL_WORK",
-            "line": 152
+            "line": 156
           },
           {
             "condition": "stamp [ k as usize ] != l as u32",
-            "line": 206
+            "line": 210
           },
           {
             "condition": "k == u32 :: MAX",
-            "line": 228
+            "line": 232
           },
           {
             "condition": "let Some ( p ) = p",
-            "line": 474
+            "line": 528
           },
           {
             "condition": "out . len ( ) * cb < PARALLEL_WORK",
-            "line": 564
+            "line": 618
           },
           {
             "condition": "r . len ( ) * cb < PARALLEL_WORK",
-            "line": 626
+            "line": 680
           }
         ],
         "functions": {
           "apply#1": {
-            "line": 577,
+            "line": 631,
             "lines": 10
           },
           "bytes#1": {
-            "line": 306,
+            "line": 310,
             "lines": 12
           },
           "cells#1": {
-            "line": 282,
+            "line": 286,
             "lines": 3
           },
           "fill#1": {
-            "line": 321,
-            "lines": 125
+            "line": 325,
+            "lines": 90
           },
           "from#1": {
-            "line": 63,
+            "line": 67,
             "lines": 16
           },
           "larger#1": {
-            "line": 452,
+            "line": 506,
             "lines": 69
           },
           "level#1": {
-            "line": 81,
+            "line": 85,
             "lines": 3
           },
           "of#1": {
-            "line": 56,
+            "line": 60,
             "lines": 4
           },
+          "schur_blocks#1": {
+            "line": 419,
+            "lines": 81
+          },
           "singular#1": {
-            "line": 295,
+            "line": 299,
             "lines": 3
           },
           "small_tasks#1": {
-            "line": 300,
+            "line": 304,
             "lines": 3
           },
           "smaller#1": {
-            "line": 525,
+            "line": 579,
             "lines": 49
           },
           "tasks#1": {
-            "line": 134,
+            "line": 138,
             "lines": 28
           }
         },
-        "production_lines": 556
+        "production_lines": 600
       },
       "crates/fedemean/src/full/kernels.rs": {
         "chunk_candidates": [],
@@ -1254,15 +1286,15 @@
           },
           {
             "condition": "width",
-            "line": 1266
+            "line": 1274
           },
           {
             "condition": "initial_mode ( job , slot , ncols . min ( BATCH ) , & mut facts ) ?",
-            "line": 1318
+            "line": 1326
           },
           {
             "condition": "dispatch ( job , width , batch , ( & mut * work , & mut * slot ) , & mut facts ) ?",
-            "line": 1349
+            "line": 1357
           }
         ],
         "functions": {
@@ -1307,7 +1339,7 @@
             "lines": 3
           },
           "dispatch#1": {
-            "line": 1259,
+            "line": 1267,
             "lines": 19
           },
           "each_coefficient#1": {
@@ -1316,7 +1348,7 @@
           },
           "eliminated#1": {
             "line": 1103,
-            "lines": 35
+            "lines": 43
           },
           "ensure#1": {
             "line": 638,
@@ -1351,7 +1383,7 @@
             "lines": 93
           },
           "project_pcg#1": {
-            "line": 1299,
+            "line": 1307,
             "lines": 105
           },
           "recurrence#1": {
@@ -1383,7 +1415,7 @@
             "lines": 30
           },
           "run#1": {
-            "line": 1141,
+            "line": 1149,
             "lines": 117
           },
           "same_projection#1": {
@@ -1431,7 +1463,7 @@
             "lines": 9
           }
         },
-        "production_lines": 1160
+        "production_lines": 1167
       },
       "crates/fedemean/src/full/pcg.rs": {
         "chunk_candidates": [],
@@ -1622,56 +1654,56 @@
         "dispatch_candidates": [
           {
             "condition": "! admit . take ( ( pieces . capacity ( ) * std :: mem :: size_of :: < Piece > ( ) ) as u128 )",
-            "line": 251
+            "line": 252
           },
           {
             "condition": "! admit . take ( schwarz . bytes + schwarz . scratch_bytes ( width ) )",
-            "line": 275
+            "line": 276
           },
           {
             "condition": "values . len ( ) != len",
-            "line": 401
+            "line": 402
           },
           {
             "condition": "out . len ( ) < PARALLEL_WORK",
-            "line": 460
+            "line": 461
           },
           {
             "condition": "pieces . len ( ) == 1 || span * R < PARALLEL_WORK",
-            "line": 524
+            "line": 541
           }
         ],
         "functions": {
           "apply#1": {
-            "line": 412,
+            "line": 413,
             "lines": 67
           },
           "build#1": {
-            "line": 203,
+            "line": 204,
             "lines": 77
           },
           "bytes#1": {
-            "line": 372,
+            "line": 373,
             "lines": 3
           },
           "channel_action#1": {
-            "line": 482,
-            "lines": 29
+            "line": 483,
+            "lines": 45
           },
           "channel_units#1": {
-            "line": 191,
+            "line": 192,
             "lines": 4
           },
           "count#1": {
-            "line": 196,
+            "line": 197,
             "lines": 3
           },
           "current#1": {
-            "line": 367,
+            "line": 368,
             "lines": 3
           },
           "factor#1": {
-            "line": 283,
+            "line": 284,
             "lines": 41
           },
           "failed#1": {
@@ -1679,7 +1711,7 @@
             "lines": 3
           },
           "layout#1": {
-            "line": 326,
+            "line": 327,
             "lines": 38
           },
           "new#1": {
@@ -1687,15 +1719,15 @@
             "lines": 7
           },
           "scratch_bytes#1": {
-            "line": 377,
+            "line": 378,
             "lines": 7
           },
           "size#1": {
-            "line": 393,
+            "line": 394,
             "lines": 14
           },
           "solve#1": {
-            "line": 514,
+            "line": 531,
             "lines": 39
           },
           "take#1": {
@@ -1703,11 +1735,11 @@
             "lines": 17
           },
           "used#1": {
-            "line": 385,
+            "line": 386,
             "lines": 6
           }
         },
-        "production_lines": 442
+        "production_lines": 457
       },
       "crates/fedemean/src/full/schwarz/pairs.rs": {
         "chunk_candidates": [],
@@ -28789,10 +28821,10 @@
     "metrics": {
       "fedemean": {
         "chunk_candidates": 0,
-        "dispatch_candidates": 117,
+        "dispatch_candidates": 118,
         "files_over_1500": 0,
         "functions_over_150": 0,
-        "production_lines": 10740
+        "production_lines": 10984
       },
       "fereg-core": {
         "chunk_candidates": 13,
