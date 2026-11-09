@@ -3913,6 +3913,51 @@ the merged plugin against `686ab424` passes with the seeded-frame scope at 1,
 PPML public-scope fixture and the candidate-input oracle pass with the merged
 Mac plugin.
 
+## fedemean full system and explicit routes (Milestone 2, development, Mac)
+
+OLS Auto with six or more categorical intercept effects, and the
+elimination's declines, run fedemean's full system (Jacobi PCG escalating to
+additive Schwarz); explicit `solver(lsmr)` and the new explicit
+`solver(cg, reduce() precondition())` requests run on fedemean's full system or
+elimination (SPEC §1). Witnesses: dense MAP oracles (tolerance 1e-13) for every
+full-system plan at one, three, six and seven effects with and without
+weights, including coefficient reconstruction; worker-count bit identity (1, 3
+and 8 workers), repeated projections and weight changes; admission exactly at
+fedemean's bound with one byte less refused; prepared 6/7-FE fits against MAP
+at tolerance 1e-13 (Auto, explicit LSMR Schwarz/Jacobi, explicit full CG
+Jacobi), fixed-worker bit repeats, cross-worker agreement and a forced
+full-system decline reported as a certified fallback; fedemean's escalation
+policy (an easy design keeps Jacobi, a slow one escalates and later
+projections start on Schwarz) and the whole-component approximate local solve
+(symmetric positive definite action). The OLS LSMR iteration Break witness now
+observes fedemean (1 and 4 workers, populated and null `e()` restored). The PPML
+separation census changes only where the retained-CG arm's LSMR re-execution
+moved to fedemean: (3,1) and (3,2) now complete with the Auto arm's bits and
+the LP-witness sample.
+
+Matched Mac comparison against the pre-migration head `81f583ad` (1M rows,
+`x1-x4`, `vce(robust)`, 4 threads, 2 interleaved processes x 3 fits, medians):
+
+| case | 81f583ad (ms) | d87fe9d4 (ms) | route (d87fe9d4) | max abs db | max rel dse |
+|---|---:|---:|---|---:|---:|
+| ols6 | 1342 | 332 | full x cg x jacobi | 6.1e-16 | 1.6e-11 |
+| ols7 (+hardfirm) | 2210 | 1383 | full x cg x schwarz, 1 escalation | 5.6e-16 | 9.8e-12 |
+| ols6, aweights | 1566 | 510 | full x cg x jacobi | 4.2e-16 | 8.8e-12 |
+| ols2, solver(lsmr) | 614 | 209 | full x lsmr x jacobi | 2.5e-16 | 2.4e-12 |
+| ppml2, solver(lsmr) | 573 | 575 | unchanged | bitwise | bitwise |
+| ols2, ols3, ols5, ppml2, ppml3 | 58, 79, 102, 386, 450 | 59, 79, 101, 383, 461 | unchanged | bitwise | bitwise |
+
+Against `tolerance(1e-12)` fits of `81f583ad`, the default (1e-8) fits differ
+by rel dse 8.3e-12 (ols6) and 1.4e-11 (ols7), against 9.6e-12 and 1.5e-11
+for `81f583ad`'s own defaults; the two arms' 1e-12 fits agree to 7.6e-15 and
+2.4e-15. Stata fixtures: no new failures (the four known failures and the
+fixtures that need a staged release, launch arguments or Windows excepted);
+the Rust, plugin FFI and allocator-audit suites and clippy in both
+configurations pass. Limitations: PPML explicit LSMR (its joint augmented
+operator and core-pair factor reuse), PPML's strict checkpoint LSMR, slope
+designs and the Auto fallbacks keep the pinned LSMR library; PPML with six or
+more effects keeps MAP; no Linux or SCC timing.
+
 ## Package checks
 
 ### Beta.13 parallel input and parity packaging
