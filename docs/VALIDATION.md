@@ -4143,11 +4143,11 @@ unchanged (SPEC §1).
 
 ## CMG 0.3.0 pin (development, Mac)
 
-fereg-core and fedemean pin CMG 0.3.0 at
-`368eceba765db91ff818815698da35889ce42ed0` on CMG's main branch, in place of
-`e5613e81` and the local `[patch]` override that had replaced it in the root
-and fuzz manifests since `d3152d88`. The CMG tag and release follow its
-exact-commit CI. The pinned production sources (`src/` outside
+fereg-core and fedemean pin the published CMG
+[v0.3.0 release](https://github.com/johannes-schmieder/CMG/releases/tag/v0.3.0),
+whose annotated tag resolves to `368eceba765db91ff818815698da35889ce42ed0`, in
+place of `e5613e81` and the local `[patch]` override that had replaced it in
+the root and fuzz manifests since `d3152d88`. The pinned production sources (`src/` outside
 `#[cfg(test)]` modules, and the manifest's features and dependencies) equal
 the override's `d029341`: the branch-free two-way partitions of the canonical
 edge introsort (`b6e75e4`) and team applications of every planned hierarchy

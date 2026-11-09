@@ -33,7 +33,8 @@ Its license and copyright notices travel with the vendored dependency sources
 of source distributions.
 
 The MIT-licensed [CMG Rust port](https://github.com/johannes-schmieder/CMG) is
-pinned to version 0.3.0 at `368eceba765db91ff818815698da35889ce42ed0` and statically linked for
+pinned to its published [v0.3.0 release](https://github.com/johannes-schmieder/CMG/releases/tag/v0.3.0)
+(`368eceba765db91ff818815698da35889ce42ed0`) and statically linked for
 graph-Laplacian/SDDM preconditioning and PCG. It derives from Koutis and Miller's
 [original MATLAB/C implementation](https://github.com/ikoutis/cmg-solver/tree/19752fc102f8cae8e34f66457bfaccb1aaa60375)
 of the method by
