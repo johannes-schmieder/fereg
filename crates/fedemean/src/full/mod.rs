@@ -153,8 +153,6 @@ mod schwarz {
     }
 }
 
-pub(crate) use blocks::MAX_CHANNELS;
-
 use crate::certificate::{Certificate, MomentFold};
 use crate::design::{Design, Effect};
 use crate::elimination::pcg::{Solve, Tally, Targets, CEILING, STALLED};
@@ -1132,7 +1130,13 @@ fn eliminated<const R: usize>(
     work.x[small.clone()].copy_from_slice(&reduced.x);
     let actions = cells::Actions::of(st, state, a, cells.channels[0]);
     let beta = &mut work.q[large.clone()];
-    cells.larger::<R>(actions, (None, Some(&reduced.x)), &mut [], beta);
+    let lent = (&mut [][..], beta);
+    cells.larger::<R>(
+        actions,
+        (None, Some(&reduced.x)),
+        lent,
+        &mut reduced.scatter,
+    );
     if let Some(blocks) = state.blocks() {
         blocks.convert::<R>(b, &mut work.x[small], true);
         blocks.convert::<R>(a, &mut work.q[large.clone()], true);

@@ -665,13 +665,6 @@ enum Formulation {
 fn formulation(design: &Design<'_>, choice: Choice) -> Result<Formulation> {
     let effects = design.effects().len();
     let sloped = design.sloped();
-    if design
-        .effects()
-        .iter()
-        .any(|effect| effect.channels() > full::MAX_CHANNELS)
-    {
-        return Err(Error::Unsupported("an effect has more than 16 channels"));
-    }
     let eliminable = !sloped && (2..=MAX_BLOCKS + 1).contains(&effects);
     let reduction = match choice.reduction {
         Reduction::Auto => match (choice.method, choice.preconditioner) {

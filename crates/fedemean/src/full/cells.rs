@@ -31,7 +31,7 @@
 //! level's sums over its cells in ascending order, on tasks fixed by the
 //! design.
 
-use super::blocks::{invert, level, Blocks, MAX_CHANNELS};
+use super::blocks::{invert, invert_scratch, level, Blocks};
 use super::kernels::PARALLEL_WORK;
 use super::structure::{sort_levels, Gathered, Structure};
 use super::weights::State;
@@ -119,7 +119,7 @@ pub(crate) struct Cells {
 
 /// The channel values of `effect` at `row` into `out`.
 #[inline(always)]
-fn values(effect: &Effect<'_>, row: usize, out: &mut [f64; MAX_CHANNELS]) {
+fn values(effect: &Effect<'_>, row: usize, out: &mut [f64]) {
     let mut c = 0;
     if effect.intercept() {
         out[0] = 1.0;
@@ -139,27 +139,43 @@ fn tasks<F>(
     (bounds, ptr): (&[usize], &[usize]),
     (cells, wc): (&mut [f64], usize),
     (levels, wl): (&mut [f64], usize),
+    (scratch, ws): (&mut [f64], usize),
     body: &F,
 ) where
-    F: Fn(Range<usize>, &mut [f64], &mut [f64]) + Sync,
+    F: Fn(Range<usize>, (&mut [f64], &mut [f64]), &mut [f64]) + Sync,
 {
     if bounds.len() <= 2 {
         if bounds.len() == 2 {
-            body(bounds[0]..bounds[1], cells, levels);
+            body(bounds[0]..bounds[1], (cells, levels), &mut scratch[..ws]);
         }
         return;
     }
     let mid = bounds.len() / 2;
     let (c_left, c_right) = cells.split_at_mut((ptr[bounds[mid]] - ptr[bounds[0]]) * wc);
     let (l_left, l_right) = levels.split_at_mut((bounds[mid] - bounds[0]) * wl);
+    let (s_left, s_right) = scratch.split_at_mut(mid * ws);
     let (left, right) = (&bounds[..=mid], &bounds[mid..]);
     if (ptr[bounds[bounds.len() - 1]] - ptr[bounds[0]]) * (wc + wl).max(1) < PARALLEL_WORK {
-        tasks((left, ptr), (c_left, wc), (l_left, wl), body);
-        tasks((right, ptr), (c_right, wc), (l_right, wl), body);
+        tasks((left, ptr), (c_left, wc), (l_left, wl), (s_left, ws), body);
+        tasks(
+            (right, ptr),
+            (c_right, wc),
+            (l_right, wl),
+            (s_right, ws),
+            body,
+        );
     } else {
         rayon::join(
-            || tasks((left, ptr), (c_left, wc), (l_left, wl), body),
-            || tasks((right, ptr), (c_right, wc), (l_right, wl), body),
+            || tasks((left, ptr), (c_left, wc), (l_left, wl), (s_left, ws), body),
+            || {
+                tasks(
+                    (right, ptr),
+                    (c_right, wc),
+                    (l_right, wl),
+                    (s_right, ws),
+                    body,
+                )
+            },
         );
     }
 }
@@ -349,9 +365,9 @@ impl Cells {
                 .map_or((&[][..], &[][..], 0), |blocks| blocks.centers(e))
         };
         let ((centers_a, flat_a, na), (centers_b, flat_b, nb)) = (centers(a), centers(b));
-        let body = |range: Range<usize>, xq: &mut [f64], _: &mut [f64]| {
+        let body = |range: Range<usize>, (xq, _): (&mut [f64], &mut [f64]), scratch: &mut [f64]| {
             let base = ptr[range.start];
-            let (mut va, mut vb) = ([0.0; MAX_CHANNELS], [0.0; MAX_CHANNELS]);
+            let (va, vb) = scratch.split_at_mut(ca);
             for l in range {
                 let cells = &idx[ptr[l]..ptr[l + 1]];
                 for &row in &rows.rows[rows.starts[l]..rows.starts[l + 1]] {
@@ -359,8 +375,8 @@ impl Cells {
                     let k = eb.codes()[row];
                     let c = ptr[l] + cells.binary_search(&k).expect("cell") - base;
                     let w = weights.map_or(1.0, |w| w[row]);
-                    values(ea, row, &mut va);
-                    values(eb, row, &mut vb);
+                    values(ea, row, va);
+                    values(eb, row, vb);
                     let at = l * na;
                     for (s, v) in va[1..=na].iter_mut().enumerate() {
                         *v = if flat_a[at + s] {
@@ -393,10 +409,12 @@ impl Cells {
                 }
             }
         };
+        let mut scratch = filled(self.large_tasks() * (ca + cb), 0.0)?;
         tasks(
             (&self.bounds, &self.ptr),
             (&mut self.xq, stride),
             (&mut [], 0),
+            (&mut scratch, ca + cb),
             &body,
         );
         if !self.xq.iter().all(|v| v.is_finite()) {
@@ -429,57 +447,62 @@ impl Cells {
             .map_or((&[][..], &[][..], 0), |blocks| blocks.centers(b));
         let singular = AtomicUsize::new(0);
         let (xq, by_ptr, by, owner) = (&self.xq, &self.by_ptr, &self.by, &self.owner);
-        let schur = |task: usize, (gram, out): (&mut [f64], &mut [f64])| {
-            let mut count = 0;
-            let mut t = [0.0; MAX_CHANNELS * MAX_CHANNELS];
-            for (j, (g, s)) in gram
-                .chunks_exact_mut(wq)
-                .zip(out.chunks_exact_mut(wq))
-                .enumerate()
-            {
-                let k = task * LEVEL_TASK + j;
-                for &c in &by[by_ptr[k]..by_ptr[k + 1]] {
-                    let block = &xq[c as usize * stride..(c as usize + 1) * stride];
-                    let (x, q) = block.split_at(wx);
-                    let m = actions.level(owner[c as usize] as usize);
-                    for (g, q) in g.iter_mut().zip(q) {
-                        *g += q;
-                    }
-                    // s -= X' M X, through t = M X (ca x cb).
-                    for i in 0..ca {
-                        for jj in 0..cb {
-                            t[i * cb + jj] = (0..ca).map(|p| m[i * ca + p] * x[p * cb + jj]).sum();
+        let ws = wx + wq + invert_scratch(cb);
+        let mut scratch = filled(self.small_tasks() * ws, 0.0)?;
+        let schur =
+            |task: usize, ((gram, out), scratch): ((&mut [f64], &mut [f64]), &mut [f64])| {
+                let mut count = 0;
+                let (t, rest) = scratch.split_at_mut(wx);
+                let (reference, rest) = rest.split_at_mut(wq);
+                for (j, (g, s)) in gram
+                    .chunks_exact_mut(wq)
+                    .zip(out.chunks_exact_mut(wq))
+                    .enumerate()
+                {
+                    let k = task * LEVEL_TASK + j;
+                    for &c in &by[by_ptr[k]..by_ptr[k + 1]] {
+                        let block = &xq[c as usize * stride..(c as usize + 1) * stride];
+                        let (x, q) = block.split_at(wx);
+                        let m = actions.level(owner[c as usize] as usize);
+                        for (g, q) in g.iter_mut().zip(q) {
+                            *g += q;
+                        }
+                        // s -= X' M X, through t = M X (ca x cb).
+                        for i in 0..ca {
+                            for jj in 0..cb {
+                                t[i * cb + jj] =
+                                    (0..ca).map(|p| m[i * ca + p] * x[p * cb + jj]).sum();
+                            }
+                        }
+                        for i in 0..cb {
+                            for jj in 0..cb {
+                                let d: f64 = (0..ca).map(|p| x[p * cb + i] * t[p * cb + jj]).sum();
+                                s[i * cb + jj] -= d;
+                            }
                         }
                     }
-                    for i in 0..cb {
-                        for jj in 0..cb {
-                            let d: f64 = (0..ca).map(|p| x[p * cb + i] * t[p * cb + jj]).sum();
-                            s[i * cb + jj] -= d;
+                    for (s, g) in s.iter_mut().zip(g.iter()) {
+                        *s += g;
+                    }
+                    // The reference scale of a constant slope is its raw one.
+                    reference.copy_from_slice(g);
+                    for (sl, &flat) in flat_b[k * nb..(k + 1) * nb].iter().enumerate() {
+                        if flat {
+                            let mean = centers_b[k * nb + sl];
+                            reference[(sl + 1) * cb + sl + 1] = mean * mean * g[0];
                         }
                     }
+                    count += usize::from(invert(s, cb, Some(&*reference), rest));
                 }
-                for (s, g) in s.iter_mut().zip(g.iter()) {
-                    *s += g;
-                }
-                // The reference scale of a constant slope is its raw one.
-                let mut reference = [0.0; MAX_CHANNELS * MAX_CHANNELS];
-                reference[..wq].copy_from_slice(g);
-                for (sl, &flat) in flat_b[k * nb..(k + 1) * nb].iter().enumerate() {
-                    if flat {
-                        let mean = centers_b[k * nb + sl];
-                        reference[(sl + 1) * cb + sl + 1] = mean * mean * g[0];
-                    }
-                }
-                count += usize::from(invert(s, cb, Some(&reference[..wq])));
-            }
-            singular.fetch_add(count, Ordering::Relaxed);
-        };
+                singular.fetch_add(count, Ordering::Relaxed);
+            };
         let span = LEVEL_TASK * wq;
         if self.levels[1] * wq * ca < PARALLEL_WORK {
             for (t, parts) in self
                 .gram
                 .chunks_mut(span)
                 .zip(self.schur.chunks_mut(span))
+                .zip(scratch.chunks_mut(ws))
                 .enumerate()
             {
                 schur(t, parts);
@@ -488,6 +511,7 @@ impl Cells {
             self.gram
                 .par_chunks_mut(span)
                 .zip(self.schur.par_chunks_mut(span))
+                .zip(scratch.par_chunks_mut(ws))
                 .enumerate()
                 .for_each(|(t, parts)| schur(t, parts));
         }
@@ -502,141 +526,162 @@ impl Cells {
     /// terms present), `beta_l = M_l^-1 b_l` into `beta` and
     /// `X_c' beta_l` into `cells` (each when nonempty). `seed` and `beta`
     /// are the larger effect's coefficients (`ca R` per level), `p` the
-    /// smaller's (`cb R`), `cells` `cb R` per cell.
+    /// smaller's (`cb R`), `cells` `cb R` per cell; `scratch` holds
+    /// [`Cells::scratch_len`] values.
     pub(super) fn larger<const R: usize>(
         &self,
         actions: Actions<'_>,
         (seed, p): (Option<&[f64]>, Option<&[f64]>),
-        cells: &mut [f64],
-        beta: &mut [f64],
+        (cells, beta): (&mut [f64], &mut [f64]),
+        scratch: &mut [f64],
     ) {
         let [ca, cb] = self.channels;
         let wx = ca * cb;
         let (ptr, idx, xs) = (&self.ptr, &self.idx, &self.x);
         let (write_cells, write_beta) = (!cells.is_empty(), !beta.is_empty());
-        let body = |range: Range<usize>, cells: &mut [f64], beta: &mut [f64]| {
-            let (first, base) = (range.start, ptr[range.start]);
-            let mut sink = [[0.0; R]; 3];
-            let (mut rhs, mut solved) = ([0.0; MAX_CHANNELS * 8], [0.0; MAX_CHANNELS * 8]);
-            for l in range {
-                match seed {
-                    Some(seed) => {
-                        rhs[..ca * R].copy_from_slice(&seed[l * ca * R..(l + 1) * ca * R]);
+        let body =
+            |range: Range<usize>, (cells, beta): (&mut [f64], &mut [f64]), scratch: &mut [f64]| {
+                let (first, base) = (range.start, ptr[range.start]);
+                let mut sink = [[0.0; R]; 3];
+                let (rhs, solved) = scratch.split_at_mut(ca * R);
+                for l in range {
+                    match seed {
+                        Some(seed) => {
+                            rhs[..ca * R].copy_from_slice(&seed[l * ca * R..(l + 1) * ca * R]);
+                        }
+                        None => rhs[..ca * R].fill(0.0),
                     }
-                    None => rhs[..ca * R].fill(0.0),
-                }
-                if let Some(p) = p {
-                    for (&k, c) in idx[ptr[l]..ptr[l + 1]].iter().zip(ptr[l]..) {
-                        let x = &xs[c * wx..(c + 1) * wx];
-                        let pk = &p[k as usize * cb * R..(k as usize + 1) * cb * R];
-                        for i in 0..ca {
-                            for jj in 0..cb {
-                                let v = x[i * cb + jj];
-                                for j in 0..R {
-                                    rhs[i * R + j] += v * pk[jj * R + j];
+                    if let Some(p) = p {
+                        for (&k, c) in idx[ptr[l]..ptr[l + 1]].iter().zip(ptr[l]..) {
+                            let x = &xs[c * wx..(c + 1) * wx];
+                            let pk = &p[k as usize * cb * R..(k as usize + 1) * cb * R];
+                            for i in 0..ca {
+                                for jj in 0..cb {
+                                    let v = x[i * cb + jj];
+                                    for j in 0..R {
+                                        rhs[i * R + j] += v * pk[jj * R + j];
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    let m = actions.level(l);
+                    level::<R>(m, ca, rhs, Some(&mut *solved), &mut sink);
+                    if write_beta {
+                        let at = (l - first) * ca * R;
+                        beta[at..at + ca * R].copy_from_slice(solved);
+                    }
+                    if write_cells {
+                        for c in ptr[l]..ptr[l + 1] {
+                            let x = &xs[c * wx..(c + 1) * wx];
+                            let out = &mut cells[(c - base) * cb * R..(c - base + 1) * cb * R];
+                            out.fill(0.0);
+                            for i in 0..ca {
+                                for jj in 0..cb {
+                                    let v = x[i * cb + jj];
+                                    for j in 0..R {
+                                        out[jj * R + j] += v * solved[i * R + j];
+                                    }
                                 }
                             }
                         }
                     }
                 }
-                let m = actions.level(l);
-                level::<R>(
-                    m,
-                    ca,
-                    &rhs[..ca * R],
-                    Some(&mut solved[..ca * R]),
-                    &mut sink,
-                );
-                if write_beta {
-                    let at = (l - first) * ca * R;
-                    beta[at..at + ca * R].copy_from_slice(&solved[..ca * R]);
-                }
-                if write_cells {
-                    for c in ptr[l]..ptr[l + 1] {
-                        let x = &xs[c * wx..(c + 1) * wx];
-                        let out = &mut cells[(c - base) * cb * R..(c - base + 1) * cb * R];
-                        out.fill(0.0);
-                        for i in 0..ca {
-                            for jj in 0..cb {
-                                let v = x[i * cb + jj];
-                                for j in 0..R {
-                                    out[jj * R + j] += v * solved[i * R + j];
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        };
+            };
         let wc = if write_cells { cb * R } else { 0 };
         let wl = if write_beta { ca * R } else { 0 };
-        tasks((&self.bounds, &self.ptr), (cells, wc), (beta, wl), &body);
+        let bounds = (&self.bounds[..], &self.ptr[..]);
+        tasks(
+            bounds,
+            (cells, wc),
+            (beta, wl),
+            (scratch, 2 * ca * R),
+            &body,
+        );
+    }
+
+    /// Larger-level tasks.
+    fn large_tasks(&self) -> usize {
+        self.bounds.len().saturating_sub(1)
+    }
+
+    /// The scratch values [`Cells::larger`] and [`Cells::smaller`] need for
+    /// `r` columns (per task: two larger levels' coefficients, or one
+    /// smaller level's).
+    pub(super) fn scratch_len(&self, r: usize) -> usize {
+        let [ca, cb] = self.channels;
+        (self.large_tasks() * 2 * ca * r).max(self.small_tasks() * cb * r)
     }
 
     /// Over the smaller levels, with `s_k = sum_{c in k} cells_c`:
     /// `out_k = G_k input_k - s_k` (the Schur product), or with `solve`
-    /// `out_k = S_k^-1 (input_k - s_k)`.
+    /// `out_k = S_k^-1 (input_k - s_k)` (`scratch`: [`Cells::scratch_len`]).
     pub(super) fn smaller<const R: usize>(
         &self,
-        cells: &[f64],
-        input: &[f64],
+        (cells, input): (&[f64], &[f64]),
         out: &mut [f64],
-        solve: bool,
+        (solve, scratch): (bool, &mut [f64]),
     ) {
         let cb = self.channels[1];
         let width = cb * cb;
         let (by_ptr, by) = (&self.by_ptr, &self.by);
         let (gram, schur) = (&self.gram, &self.schur);
-        let body = |task: usize, out: &mut [f64]| {
+        let body = |task: usize, (out, s): (&mut [f64], &mut [f64])| {
             let mut sink = [[0.0; R]; 3];
-            let mut s = [0.0; MAX_CHANNELS * 8];
             for (j, out) in out.chunks_exact_mut(cb * R).enumerate() {
                 let k = task * LEVEL_TASK + j;
-                s[..cb * R].fill(0.0);
-                for &c in &by[by_ptr[k]..by_ptr[k + 1]] {
-                    let part = &cells[c as usize * cb * R..(c as usize + 1) * cb * R];
-                    for (s, v) in s.iter_mut().zip(part) {
-                        *s += v;
-                    }
-                }
                 let input = &input[k * cb * R..(k + 1) * cb * R];
                 let block = k * width..(k + 1) * width;
+                let parts = by[by_ptr[k]..by_ptr[k + 1]]
+                    .iter()
+                    .map(|&c| &cells[c as usize * cb * R..(c as usize + 1) * cb * R]);
                 if solve {
-                    for (s, v) in s[..cb * R].iter_mut().zip(input) {
-                        *s = v - *s;
+                    s.copy_from_slice(input);
+                    for part in parts {
+                        for (s, v) in s.iter_mut().zip(part) {
+                            *s -= v;
+                        }
                     }
-                    level::<R>(&schur[block], cb, &s[..cb * R], Some(out), &mut sink);
+                    level::<R>(&schur[block], cb, s, Some(out), &mut sink);
                 } else {
                     level::<R>(&gram[block], cb, input, Some(out), &mut sink);
-                    for (o, s) in out.iter_mut().zip(&s[..cb * R]) {
-                        *o -= s;
+                    for part in parts {
+                        for (o, v) in out.iter_mut().zip(part) {
+                            *o -= v;
+                        }
                     }
                 }
             }
         };
         let span = LEVEL_TASK * cb * R;
+        let scratch = &mut scratch[..self.small_tasks() * cb * R];
         if out.len() * cb < PARALLEL_WORK {
-            for (t, out) in out.chunks_mut(span).enumerate() {
-                body(t, out);
+            for (t, parts) in out
+                .chunks_mut(span)
+                .zip(scratch.chunks_mut(cb * R))
+                .enumerate()
+            {
+                body(t, parts);
             }
         } else {
             out.par_chunks_mut(span)
+                .zip(scratch.par_chunks_mut(cb * R))
                 .enumerate()
-                .for_each(|(t, out)| body(t, out));
+                .for_each(|(t, parts)| body(t, parts));
         }
     }
 
     /// `q = S p` on the smaller effect's coefficients (`cells`: `cb R` per
-    /// cell of workspace).
+    /// cell of workspace; `scratch`: [`Cells::scratch_len`]).
     pub(super) fn apply<const R: usize>(
         &self,
         actions: Actions<'_>,
-        p: &[f64],
-        q: &mut [f64],
+        (p, q): (&[f64], &mut [f64]),
         cells: &mut [f64],
+        scratch: &mut [f64],
     ) {
-        self.larger::<R>(actions, (None, Some(p)), cells, &mut []);
-        self.smaller::<R>(cells, p, q, false);
+        self.larger::<R>(actions, (None, Some(p)), (&mut *cells, &mut []), scratch);
+        self.smaller::<R>((cells, p), q, (false, scratch));
     }
 
     /// Jacobi on `S`: `z_k = S_k^-1 r_k`, with the measures of the smaller

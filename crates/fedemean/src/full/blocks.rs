@@ -48,9 +48,6 @@ use crate::error::{Error, Result};
 use rayon::prelude::*;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-/// The most channels of one effect (the block solves use fixed stack
-/// storage).
-pub(crate) const MAX_CHANNELS: usize = 16;
 /// Scaled eigenvalues at most this fraction of the block's largest are
 /// null: above the rounding of a summed Gram, below any direction whose
 /// exact inversion is numerically meaningful.
@@ -207,17 +204,30 @@ impl Blocks {
                 }
             }
             let c = part.channels;
-            let body = |task: usize, chunk: &mut [f64]| {
+            let tasks = part.levels.div_ceil(LEVEL_TASK);
+            let mut scratch = super::filled(tasks * invert_scratch(c), 0.0)?;
+            let body = |task: usize, (chunk, scratch): (&mut [f64], &mut [f64])| {
                 let mut count = 0;
                 for (k, block) in chunk.chunks_exact_mut(width).enumerate() {
                     let at = (task * LEVEL_TASK + k) * part.centered;
                     let flat = constant[at..at + part.centered].contains(&true);
-                    count += usize::from(invert(block, c, None) || flat);
+                    count += usize::from(invert(block, c, None, scratch) || flat);
                 }
                 singular.fetch_add(count, Ordering::Relaxed);
             };
-            let work = part.levels * width * c;
-            each_block(blocks, LEVEL_TASK * width, work, &body);
+            if part.levels * width * c < PARALLEL_WORK {
+                blocks
+                    .chunks_mut(LEVEL_TASK * width)
+                    .zip(scratch.chunks_mut(invert_scratch(c)))
+                    .enumerate()
+                    .for_each(|(t, parts)| body(t, parts));
+            } else {
+                blocks
+                    .par_chunks_mut(LEVEL_TASK * width)
+                    .zip(scratch.par_chunks_mut(invert_scratch(c)))
+                    .enumerate()
+                    .for_each(|(t, parts)| body(t, parts));
+            }
         }
         self.singular = singular.into_inner();
         Ok(())
@@ -435,31 +445,55 @@ impl Blocks {
 pub(super) fn centered<const R: usize>(
     (block, c, means): (&[f64], usize, &[f64]),
     r: &[f64],
-    out: Option<&mut [f64]>,
+    mut out: Option<&mut [f64]>,
     acc: &mut [[f64; R]; 3],
 ) {
     if means.is_empty() {
         level::<R>(block, c, r, out, acc);
         return;
     }
-    let mut moments = [0.0; MAX_CHANNELS * 8];
-    let moments = &mut moments[..c * R];
-    moments.copy_from_slice(r);
-    shift::<R>(means, moments, false);
-    let mut v = [0.0; MAX_CHANNELS * 8];
-    let v = &mut v[..c * R];
-    let mut quad = [[0.0; R]; 3];
-    level::<R>(block, c, moments, Some(v), &mut quad);
-    shift::<R>(means, v, true);
-    for j in 0..R {
-        acc[0][j] += quad[0][j];
-        acc[1][j] = acc[1][j].max(quad[1][j]);
-        for ch in 0..c {
-            acc[2][j] = acc[2][j].max(v[ch * R + j].abs());
+    // The centered moment of channel `b`, column `j`.
+    let moment = |b: usize, j: usize| {
+        if b == 0 {
+            r[j]
+        } else {
+            r[b * R + j] - means[b - 1] * r[j]
+        }
+    };
+    let (mut quad, mut lead, mut shift) = ([0.0; R], [0.0; R], [0.0; R]);
+    for a in 0..c {
+        let row = &block[a * c..(a + 1) * c];
+        let mut v = [0.0; R];
+        for (b, &m) in row.iter().enumerate() {
+            for (j, v) in v.iter_mut().enumerate() {
+                *v += m * moment(b, j);
+            }
+        }
+        for (j, (quad, v)) in quad.iter_mut().zip(&v).enumerate() {
+            *quad += moment(a, j) * v;
+        }
+        if a == 0 {
+            lead = v;
+            continue;
+        }
+        // Raw coefficients: the slopes as they are, the intercept less
+        // the slopes' centers.
+        for j in 0..R {
+            shift[j] += means[a - 1] * v[j];
+            acc[2][j] = acc[2][j].max(v[j].abs());
+        }
+        if let Some(out) = out.as_deref_mut() {
+            out[a * R..(a + 1) * R].copy_from_slice(&v);
         }
     }
-    if let Some(out) = out {
-        out.copy_from_slice(v);
+    for j in 0..R {
+        let intercept = lead[j] - shift[j];
+        acc[0][j] += quad[j];
+        acc[1][j] = acc[1][j].max(quad[j].max(0.0).sqrt());
+        acc[2][j] = acc[2][j].max(intercept.abs());
+        if let Some(out) = out.as_deref_mut() {
+            out[j] = intercept;
+        }
     }
 }
 
@@ -664,9 +698,14 @@ fn gram(
 /// Schur block's un-eliminated Gram, the scaling and the null threshold and
 /// curvature come from the reference's diagonal (its unit scale), so a
 /// block that cancels to rounding is null; otherwise from the block's own.
-pub(super) fn invert(block: &mut [f64], c: usize, reference: Option<&[f64]>) -> bool {
-    let mut d = [0.0; MAX_CHANNELS];
-    for (k, d) in d[..c].iter_mut().enumerate() {
+pub(super) fn invert(
+    block: &mut [f64],
+    c: usize,
+    reference: Option<&[f64]>,
+    scratch: &mut [f64],
+) -> bool {
+    let (d, rest) = scratch[..invert_scratch(c)].split_at_mut(c);
+    for (k, d) in d.iter_mut().enumerate() {
         *d = reference.map_or(block[k * c + k], |r| r[k * c + k]);
     }
     if c == 1 {
@@ -683,7 +722,7 @@ pub(super) fn invert(block: &mut [f64], c: usize, reference: Option<&[f64]>) -> 
         };
         return !kept;
     }
-    let top = d[..c].iter().copied().fold(0.0_f64, f64::max);
+    let top = d.iter().copied().fold(0.0_f64, f64::max);
     if top <= 0.0 {
         block.fill(0.0);
         for k in 0..c {
@@ -691,24 +730,23 @@ pub(super) fn invert(block: &mut [f64], c: usize, reference: Option<&[f64]>) -> 
         }
         return true;
     }
-    let mut s = [0.0; MAX_CHANNELS];
-    for (k, s) in s[..c].iter_mut().enumerate() {
+    let (s, rest) = rest.split_at_mut(c);
+    let (phi, rest) = rest.split_at_mut(c);
+    let (a, q) = rest.split_at_mut(c * c);
+    for (k, s) in s.iter_mut().enumerate() {
         *s = 1.0 / if d[k] > 0.0 { d[k] } else { top }.sqrt();
     }
-    let mut a = [0.0; MAX_CHANNELS * MAX_CHANNELS];
     for i in 0..c {
         for k in 0..c {
             a[i * c + k] = s[i] * block[i * c + k] * s[k];
         }
     }
-    let mut q = [0.0; MAX_CHANNELS * MAX_CHANNELS];
-    eigen(&mut a[..c * c], &mut q[..c * c], c);
+    eigen(a, q, c);
     let largest = (0..c).map(|k| a[k * c + k]).fold(f64::MIN, f64::max);
     // The reference scaling has a unit diagonal: its unit is the scale.
     let largest = if reference.is_some() { 1.0 } else { largest };
-    let mut phi = [0.0; MAX_CHANNELS];
     let mut singular = false;
-    for (k, phi) in phi[..c].iter_mut().enumerate() {
+    for (k, phi) in phi.iter_mut().enumerate() {
         let lambda = a[k * c + k];
         *phi = if lambda > NULL * largest {
             1.0 / lambda
@@ -720,13 +758,18 @@ pub(super) fn invert(block: &mut [f64], c: usize, reference: Option<&[f64]>) -> 
     for i in 0..c {
         for k in 0..c {
             let mut sum = 0.0;
-            for (m, phi) in phi[..c].iter().enumerate() {
+            for (m, phi) in phi.iter().enumerate() {
                 sum += q[i * c + m] * phi * q[k * c + m];
             }
             block[i * c + k] = s[i] * sum * s[k];
         }
     }
     singular
+}
+
+/// The scratch values [`invert`] needs for `c` channels.
+pub(super) const fn invert_scratch(c: usize) -> usize {
+    2 * c * c + 3 * c
 }
 
 /// Cyclic Jacobi eigendecomposition of the symmetric `c x c` matrix `a`
@@ -796,7 +839,7 @@ mod tests {
     fn nonsingular_blocks_are_inverted() {
         let gram = [4.0, 2.0e3, 1.0, 2.0e3, 1.5e6, 30.0, 1.0, 30.0, 9.0];
         let mut block = gram;
-        assert!(!invert(&mut block, 3, None));
+        assert!(!invert(&mut block, 3, None, &mut [0.0; 32]));
         let product = multiply(&gram, &block, 3);
         for i in 0..3 {
             for k in 0..3 {
@@ -814,7 +857,7 @@ mod tests {
         // Three rows of weight 1 and slope 5 (constant).
         let gram = [3.0, 15.0, 15.0, 75.0];
         let mut block = gram;
-        assert!(invert(&mut block, 2, None));
+        assert!(invert(&mut block, 2, None, &mut [0.0; 32]));
         let gmg = multiply(&gram, &multiply(&block, &gram, 2), 2);
         for (x, y) in gmg.iter().zip(&gram) {
             assert!((x - y).abs() < 1e-9 * y.abs().max(1.0), "{gmg:?}");
@@ -823,11 +866,11 @@ mod tests {
         assert!(block[0] > 0.0 && det > 0.0 && (block[1] - block[2]).abs() < 1e-15);
         // Intercept with a zero slope.
         let mut zero = [2.0, 0.0, 0.0, 0.0];
-        assert!(invert(&mut zero, 2, None));
+        assert!(invert(&mut zero, 2, None, &mut [0.0; 32]));
         assert_eq!(zero[0], 0.5);
         assert!(zero[3] > 0.0 && zero[1] == 0.0);
         let mut empty = [0.0];
-        assert!(invert(&mut empty, 1, None));
+        assert!(invert(&mut empty, 1, None, &mut [0.0; 32]));
         assert_eq!(empty[0], 1.0);
     }
 }

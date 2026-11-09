@@ -141,6 +141,7 @@ impl Work {
             (&mut self.p, m * r),
             (&mut self.q, m * r),
             (&mut self.t, cells.cells() * cells.channels[1] * r),
+            (&mut self.scatter, cells.scratch_len(r)),
             (&mut self.partials, m.div_ceil(CHUNK) * 3 * r),
             (&mut self.measures, cells.small_tasks() * 3 * r),
         ];
@@ -206,7 +207,7 @@ impl Normal<'_, '_> {
         if let Some(cells) = self.cells {
             let [a, _] = cells.effects;
             let actions = Actions::of(self.st, self.state, a, cells.channels[0]);
-            cells.apply::<R>(actions, p, q, t);
+            cells.apply::<R>(actions, (p, q), t, scatter);
             return;
         }
         forward::<R>(self.st, self.effects, p, self.state.weights(), t);

@@ -37,7 +37,8 @@
 //!   ([`Fallback::Escalate`]); warm starts
 //!   ([`Projector::project_from`]).
 //! - Varying slopes ([`Effect::with_slopes`]: an optional intercept and
-//!   slope variables per effect, up to 16 channels), certified per level
+//!   slope variables per effect, any number of channels: each level's
+//!   `C x C` blocks are admitted by memory), certified per level
 //!   on the span of its channels:
 //!   - two effects: the elimination of the larger effect's level channel
 //!     blocks with PCG on the Schur complement, Jacobi on its diagonal

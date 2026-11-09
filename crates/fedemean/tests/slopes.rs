@@ -903,7 +903,8 @@ fn slope_routes_and_validation() {
         preconditioner: Preconditioner::BlockJacobi(fedemean::BlockSpec::default()),
         ..Choice::default()
     });
-    // Seventeen channels.
+    // Seventeen constant channels: no cap; every slope is constant, so each
+    // level's block is singular in every slope.
     let many: Vec<Vec<f64>> = (0..16).map(|s| vec![s as f64; case.n]).collect();
     let wide = Effect::new(&case.codes[1], 6)
         .with_slopes(true, many.iter().map(Vec::as_slice))
@@ -918,7 +919,11 @@ fn slope_routes_and_validation() {
         &request,
         &Control::default(),
     );
-    assert!(matches!(result, Err(Error::Unsupported(_))));
+    let report = projected(result.unwrap());
+    assert_eq!(
+        report.route.preconditioner,
+        PreconditionerUsed::ChannelBlocks { singular: 6 }
+    );
     // Exact Schwarz local solves with slopes; the elimination beyond two
     // effects or with another method or preconditioner.
     unsupported(Choice {
@@ -1316,5 +1321,65 @@ fn schwarz_pairs_need_no_intercept() {
         {
             check(&case, weights, &oracle, route, (3, 107));
         }
+    }
+}
+
+/// No channel cap: an effect with 17 or 33 channels (intercept and 16 or
+/// 32 slopes) under Jacobi, Schwarz and the elimination, with the wide
+/// effect on either side of the pair.
+#[test]
+fn wide_effects_match_dense_oracle() {
+    for slopes in [16, 32] {
+        for specs in [
+            [spec(30, true, 0), spec(4, true, slopes)],
+            [spec(12, true, slopes), spec(5, true, 0)],
+        ] {
+            let case = Case::random(111 + slopes as u64, 900, &specs);
+            let weights = case.weights(112);
+            for weights in [None, Some(weights.as_slice())] {
+                let oracle = Oracle::new(&case, weights);
+                let mut routes: Vec<_> = routes(&case)
+                    .into_iter()
+                    .filter(|&(_, p)| p != Preconditioner::Identity)
+                    .map(|(m, p)| (Reduction::Full, m, p))
+                    .collect();
+                routes.push((
+                    Reduction::EliminateLargest,
+                    Method::Pcg,
+                    Preconditioner::Jacobi,
+                ));
+                for route in routes {
+                    check_route(&case, weights, &oracle, route, (3, 113));
+                }
+            }
+        }
+    }
+}
+
+/// A wide effect's blocks are admitted by memory: a limit below them is a
+/// memory decline, not an unsupported request.
+#[test]
+fn wide_effects_are_admitted_by_memory() {
+    let case = Case::random(115, 400, &[spec(30, true, 0), spec(4, true, 32)]);
+    let mut data = case.columns(116, 2);
+    let mut request = Request::new(TOLERANCE, MAX_ITERATIONS);
+    request.memory_limit = Some(4096);
+    for reduction in [Reduction::Full, Reduction::EliminateLargest] {
+        let mut settings = full(Method::Pcg, Preconditioner::Jacobi);
+        settings.choice.reduction = reduction;
+        let columns = ColumnsMut::new(&mut data, case.n, 2).unwrap();
+        let outcome = Projector::new(case.design(), settings)
+            .project(Weights::Unit, columns, None, &request, &Control::default())
+            .unwrap();
+        assert!(
+            matches!(
+                outcome,
+                Outcome::Declined {
+                    reason: fedemean::Decline::MemoryLimit,
+                    ..
+                }
+            ),
+            "{reduction:?}: {outcome:?}"
+        );
     }
 }

@@ -191,7 +191,7 @@ enum Built {
 /// smaller's twice.
 fn channel_units(cells: &Cells) -> usize {
     let [ma, mb] = cells.coefficients();
-    cells.cells() * cells.channels[1] + 3 * ma + 2 * mb
+    cells.cells() * cells.channels[1] + 3 * ma + 2 * mb + cells.scratch_len(1)
 }
 
 fn count(value: &mut u32) {
@@ -499,7 +499,8 @@ impl Schwarz {
         let (xa, rest) = rest.split_at_mut(ma * R);
         let (xb, rest) = rest.split_at_mut(mb * R);
         let (ra, rest) = rest.split_at_mut(ma * R);
-        let (rb, beta) = rest.split_at_mut(mb * R);
+        let (rb, rest) = rest.split_at_mut(mb * R);
+        let (beta, temp) = rest.split_at_mut(ma * R);
         // In the levels' centered bases: x_a = M_a^-1 r_a,
         // x_b = S_d^-1 (r_b - X' x_a), x_a -= M_a^-1 X x_b.
         ra.copy_from_slice(&r[span(a)]);
@@ -508,9 +509,9 @@ impl Schwarz {
             blocks.convert::<R>(a, ra, false);
             blocks.convert::<R>(b, rb, false);
         }
-        cells.larger::<R>(actions, (Some(&*ra), None), part, xa);
-        cells.smaller::<R>(part, rb, xb, true);
-        cells.larger::<R>(actions, (None, Some(&*xb)), &mut [], beta);
+        cells.larger::<R>(actions, (Some(&*ra), None), (&mut *part, &mut *xa), temp);
+        cells.smaller::<R>((part, rb), xb, (true, &mut *temp));
+        cells.larger::<R>(actions, (None, Some(&*xb)), (&mut [], &mut *beta), temp);
         for (x, beta) in xa.iter_mut().zip(&*beta) {
             *x -= beta;
         }
