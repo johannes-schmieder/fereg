@@ -7,12 +7,15 @@
 //! with the same solution:
 //!
 //! - **Joint.** Modified LSMR on `W^1/2 [X D]` (schwarz-precond's `mlsmr`)
-//!   with a block preconditioner: the controls' current-weight Gram factor
-//!   and, on the FE block, the inverse level masses (Jacobi) or the identity.
-//!   One Krylov recurrence solves the whole system, as fast as a single
-//!   column's projection on designs the FE block preconditions well. The
-//!   recurrence starts from the previous frame's solution scaled by the
-//!   accepted step.
+//!   with a block-diagonal preconditioner: the controls' current-weight Gram
+//!   factor and, on the FE block, the inverse level masses (Jacobi), the
+//!   identity, or fedemean's additive Schwarz preconditioner of `D'WD`
+//!   (star subdomains, automatic local solves) as an FE preconditioner
+//!   handle built for the frame's weights. Each block is symmetric positive
+//!   definite, so the whole is modified LSMR's nonsingular `M^-1`. One Krylov
+//!   recurrence solves the whole system, as fast as a single column's
+//!   projection on designs the FE block preconditions well. The recurrence
+//!   starts from the previous frame's solution scaled by the accepted step.
 //! - **Projections** (the weighted Frisch-Waugh-Lovell route). `[X, z]` is
 //!   projected onto `D` with fedemean's full-system modified LSMR
 //!   (`Reduction::Full`, `Method::Lsmr`; Jacobi escalating to additive
@@ -22,10 +25,13 @@
 //!
 //! `precondition(auto)` runs the joint recurrence with Jacobi; a recurrence
 //! that stalls or misses its certificate after one tighter continuation
-//! hands the frame to the projections, whose fedemean preconditioner
-//! escalates to Schwarz, and later frames of the fit start there.
-//! `precondition(jacobi)` and `precondition(none)` keep the joint recurrence;
-//! `precondition(schwarz)` runs the projections with Schwarz.
+//! continues the joint recurrence from its iterate with the Schwarz FE
+//! block, and later frames of the fit start there. A Schwarz recurrence
+//! that does not certify, or a Schwarz block that does not build within the
+//! memory limit, hands the frame (and later frames) to the projections,
+//! whose fedemean preconditioner escalates to Schwarz.
+//! `precondition(jacobi)`, `precondition(none)` and `precondition(schwarz)`
+//! keep the joint recurrence with that FE block.
 //!
 //! Either way the exact normal-equation moments of the formed residual on
 //! the raw controls and on every FE level are recomputed after each solve,
@@ -66,17 +72,27 @@ const MINIMUM_SCALE: f64 = 1e-4;
 const RETRY_FACTOR: f64 = 0.01;
 
 // Tests: count down projection attempts whose joint certificate is treated
-// as missed, and joint recurrences treated as stalled.
+// as missed and joint recurrences treated as stalled; a positive Schwarz
+// handle memory limit replaces the projections' workspace limit.
 crate::fault::fault_plan! {
     static FORCE_CERTIFICATE_MISSES: usize = 0;
-    static FORCE_JOINT_STALL: bool = false;
+    static FORCE_JOINT_STALLS: usize = 0;
+    static FORCE_SCHWARZ_LIMIT: u128 = 0;
 }
 
-/// Tests: the next frame's joint recurrence on this thread is treated as
+/// A frame's armed test faults (see the fault plan).
+#[derive(Clone, Copy)]
+struct Faults {
+    misses: usize,
+    stalls: usize,
+    schwarz_limit: u128,
+}
+
+/// Tests: the next frame's first joint pass on this thread is treated as
 /// stalled.
 #[cfg(test)]
 pub(crate) fn force_joint_stall_for_test() {
-    FORCE_JOINT_STALL.set(true);
+    FORCE_JOINT_STALLS.set(1);
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -121,6 +137,25 @@ pub(crate) struct JointLsmrReport {
     pub(crate) executing_threads: usize,
 }
 
+/// The joint recurrence's FE block preconditioner.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum FeBlock {
+    Identity,
+    /// The inverse level masses.
+    Jacobi,
+    /// fedemean's additive Schwarz handle for the frame's weights.
+    Schwarz,
+}
+
+/// How a joint recurrence ended.
+enum Joint {
+    Certified(JointLsmrReport),
+    /// The recurrence stalled (the automatic preconditioner's staleness
+    /// hand-off) or missed its certificate after one continuation, at this
+    /// iterate.
+    Uncertified(Vec<f64>),
+}
+
 /// One projection attempt's outcome.
 enum Projection {
     Certified {
@@ -148,6 +183,9 @@ struct Tally {
 pub(crate) struct ReusableCategoricalJointLsmr<'p> {
     team: InstalledThreadTeam,
     preconditioner: LsmrPreconditioner,
+    /// A frame of this fit escalated the joint recurrence to the Schwarz FE
+    /// block (automatic preconditioner): later frames start there.
+    schwarz_first: bool,
     /// A frame of this fit needed the projections: later frames start there.
     projections_first: bool,
     active_design: DenseMatrix,
@@ -164,10 +202,12 @@ pub(crate) struct ReusableCategoricalJointLsmr<'p> {
     finite_certificate: Vec<DirectionCertificate>,
     fe_certificate: Vec<DirectionCertificate>,
     joint: JointState,
-    /// fedemean's view of the design, and the projections' state once a
-    /// frame needs them.
+    /// fedemean's view of the design; its projector (the Schwarz handles'
+    /// structure and the projections' solver) and the projections' state,
+    /// once a frame needs them.
     design: fedemean::Design<'p>,
-    projections: Option<Projections<'p>>,
+    projector: Option<fedemean::Projector<'p>>,
+    projections: Option<Projections>,
 }
 
 /// The joint recurrence's frame vectors, block preconditioner and warm
@@ -180,13 +220,16 @@ struct JointState {
     finite_inverse: Vec<f64>,
     finite_factor: Vec<f64>,
     finite_factor_ready: bool,
+    /// The FE block: the inverse masses (or ones for the identity), or the
+    /// Schwarz handle of the frame's weights.
+    block: FeBlock,
     fe_inverse: Vec<f64>,
+    fe_schwarz: Option<fedemean::FePreconditioner>,
 }
 
-/// The projections' fedemean projector, projected matrix, FE coefficients
-/// and finite normal-equation workspace.
-struct Projections<'p> {
-    projector: fedemean::Projector<'p>,
+/// The projections' projected matrix, FE coefficients and finite
+/// normal-equation workspace (fedemean's projector is the engine's).
+struct Projections {
     /// fedemean's workspace limit.
     memory_limit: u128,
     /// Observation-major `[X, z]`: the projection's input and, after it,
@@ -270,7 +313,9 @@ impl JointState {
                 "explicit PPML LSMR finite factor",
             )?,
             finite_factor_ready: false,
+            block: FeBlock::Jacobi,
             fe_inverse: fallible_filled(levels, 0.0, "explicit PPML LSMR FE preconditioner")?,
+            fe_schwarz: None,
         })
     }
 }
@@ -366,7 +411,8 @@ impl<'p> ReusableCategoricalJointLsmr<'p> {
         Ok(Self {
             team,
             preconditioner,
-            projections_first: preconditioner == LsmrPreconditioner::Schwarz,
+            schwarz_first: false,
+            projections_first: false,
             topology: FeTopologyIdentity::capture(fe_design),
             effect_offsets,
             level_counts,
@@ -388,6 +434,7 @@ impl<'p> ReusableCategoricalJointLsmr<'p> {
             active_design,
             active_slots,
             design,
+            projector: None,
             projections: None,
         })
     }
@@ -410,10 +457,11 @@ impl<'p> ReusableCategoricalJointLsmr<'p> {
             max_iterations,
         )?;
         // The fault plans live on the caller's thread.
-        let faults = (
-            FORCE_CERTIFICATE_MISSES.replace(0),
-            FORCE_JOINT_STALL.replace(false),
-        );
+        let faults = Faults {
+            misses: FORCE_CERTIFICATE_MISSES.replace(0),
+            stalls: FORCE_JOINT_STALLS.replace(0),
+            schwarz_limit: FORCE_SCHWARZ_LIMIT.replace(0),
+        };
         let team = self.team.clone();
         team.install(|| {
             self.solve_installed(
@@ -432,7 +480,7 @@ impl<'p> ReusableCategoricalJointLsmr<'p> {
         (outcome, mean): (&[f64], &[f64]),
         (weights, tolerance): (&[f64], f64),
         max_iterations: usize,
-        (misses, stall): (usize, bool),
+        mut faults: Faults,
     ) -> Result<JointLsmrReport> {
         let setup_started = Instant::now();
         let warm_start_attempted = self.joint.warm_start_valid
@@ -461,43 +509,87 @@ impl<'p> ReusableCategoricalJointLsmr<'p> {
                 &self.joint.finite_inverse,
                 &mut self.joint.finite_factor,
             );
-            match self.preconditioner {
-                LsmrPreconditioner::Off => self.joint.fe_inverse.fill(1.0),
-                _ => fill_fe_diagonal_inverse(fe_design, weights, &mut self.joint.fe_inverse)?,
-            }
             setup_seconds += started.elapsed().as_secs_f64();
-            if let Some(report) = self.solve_joint(
-                fe_design,
-                (weights, tolerance),
-                max_iterations,
-                stall,
-                &mut tally,
-            )? {
-                let report = JointLsmrReport {
-                    setup_seconds,
-                    warm_start_attempted,
-                    ..report
-                };
-                emit_frame_trace(tolerance, &report);
-                return Ok(report);
+            let mut block = match self.preconditioner {
+                LsmrPreconditioner::Off => FeBlock::Identity,
+                LsmrPreconditioner::Diagonal => FeBlock::Jacobi,
+                LsmrPreconditioner::Schwarz => FeBlock::Schwarz,
+                LsmrPreconditioner::Auto if self.schwarz_first => FeBlock::Schwarz,
+                LsmrPreconditioner::Auto => FeBlock::Jacobi,
+            };
+            let mut start = None;
+            let mut escalations = 0;
+            loop {
+                let started = Instant::now();
+                let built = self.prepare_block(fe_design, weights, block, faults.schwarz_limit)?;
+                setup_seconds += started.elapsed().as_secs_f64();
+                if let Some(decline) = built {
+                    if self.preconditioner == LsmrPreconditioner::Schwarz {
+                        return Err(match decline {
+                            fedemean::Decline::MemoryLimit => allocation(
+                                "explicit PPML LSMR Schwarz preconditioner exceeds its admitted workspace",
+                            ),
+                            _ => nonconvergence(
+                                "explicit PPML LSMR Schwarz preconditioner did not build",
+                            ),
+                        });
+                    }
+                    break;
+                }
+                let solved = self.solve_joint(
+                    fe_design,
+                    (weights, tolerance),
+                    max_iterations,
+                    (faults.stalls > 0, start.take()),
+                    &mut tally,
+                )?;
+                faults.stalls = faults.stalls.saturating_sub(1);
+                match solved {
+                    Joint::Certified(report) => {
+                        let mut route = report.route;
+                        route.escalations = escalations;
+                        let report = JointLsmrReport {
+                            setup_seconds,
+                            warm_start_attempted,
+                            route,
+                            ..report
+                        };
+                        emit_frame_trace(tolerance, &report);
+                        return Ok(report);
+                    }
+                    Joint::Uncertified(iterate)
+                        if self.preconditioner == LsmrPreconditioner::Auto
+                            && block == FeBlock::Jacobi =>
+                    {
+                        // The Jacobi FE block is too weak for this design:
+                        // the recurrence continues from its iterate with
+                        // Schwarz, here and on every later frame.
+                        block = FeBlock::Schwarz;
+                        start = Some(iterate);
+                        self.schwarz_first = true;
+                        escalations += 1;
+                        tally.retries += 1;
+                    }
+                    Joint::Uncertified(_) => break,
+                }
             }
             if self.preconditioner != LsmrPreconditioner::Auto {
                 return Err(nonconvergence(
                     "explicit PPML LSMR correction did not pass its exact normal-equation certificate",
                 ));
             }
-            // The joint recurrence's FE preconditioner is too weak for this
-            // design; the projections escalate to Schwarz, here and on every
-            // later frame of the fit.
+            // Neither FE block certified (or Schwarz did not build): the
+            // projections, here and on every later frame of the fit.
             self.projections_first = true;
             self.joint.warm_start_valid = false;
+            self.joint.fe_schwarz = None;
             tally.retries += 1;
         }
         let report = self.solve_projections(
             fe_design,
             (weights, tolerance),
             max_iterations,
-            misses,
+            faults.misses,
             &mut tally,
         )?;
         let report = JointLsmrReport {
@@ -509,18 +601,90 @@ impl<'p> ReusableCategoricalJointLsmr<'p> {
         Ok(report)
     }
 
-    /// The joint recurrence: one pass (with the automatic preconditioner, a
-    /// staleness hand-off), and on a recurrence or certificate miss one
-    /// tighter continuation from its iterate. `None` when the frame must
-    /// move to the projections or fail.
+    /// fedemean's projector of the design, built on first use.
+    fn projector(&mut self) -> &mut fedemean::Projector<'p> {
+        let settings = fedemean::Settings {
+            choice: lsmr_choice(self.preconditioner),
+            ..fedemean::Settings::default()
+        };
+        self.projector
+            .get_or_insert_with(|| fedemean::Projector::new(self.design.clone(), settings))
+    }
+
+    /// Prepare the joint recurrence's FE block for the frame's weights: the
+    /// identity, the inverse masses, or a Schwarz handle built within the
+    /// projections' workspace limit (a stale handle is dropped first). The
+    /// decline when Schwarz does not build.
+    fn prepare_block(
+        &mut self,
+        fe_design: &FeDesign,
+        weights: &[f64],
+        block: FeBlock,
+        limit_override: u128,
+    ) -> Result<Option<fedemean::Decline>> {
+        self.joint.block = block;
+        self.joint.fe_schwarz = None;
+        match block {
+            FeBlock::Identity => self.joint.fe_inverse.fill(1.0),
+            FeBlock::Jacobi => {
+                fill_fe_diagonal_inverse(fe_design, weights, &mut self.joint.fe_inverse)?
+            }
+            FeBlock::Schwarz => {
+                let limit = match limit_override {
+                    0 => crate::fe::block_schur::lsmr_workspace_bytes(
+                        self.target.len(),
+                        &self.level_counts,
+                        rayon::current_num_threads(),
+                    )?,
+                    limit => limit,
+                };
+                let host = crate::parallel::HostPool::current()?;
+                let mut control =
+                    fedemean::Control::with_cancel(&crate::interrupt::cancellation_requested);
+                if let Some(host) = &host {
+                    control = control.with_pool(host.pool());
+                }
+                let schwarz = fedemean::Preconditioner::Schwarz(fedemean::SchwarzSpec {
+                    subdomains: fedemean::Subdomains::Star,
+                    local: fedemean::SchwarzLocal::Auto,
+                });
+                let built = self
+                    .projector()
+                    .fe_preconditioner(
+                        fedemean::Weights::Values(weights),
+                        schwarz,
+                        Some(limit),
+                        &control,
+                    )
+                    .map_err(fedemean_error)?;
+                match built {
+                    Ok(handle) => self.joint.fe_schwarz = Some(handle),
+                    Err(decline) => {
+                        if crate::diagnostics::solver_trace_enabled() {
+                            crate::diagnostics::emit_solver_trace(&format!(
+                                "FEREG_SOLVER_TRACE|phase=ppml_lsmr_schwarz_block_decline|reason={decline:?}"
+                            ));
+                        }
+                        return Ok(Some(decline));
+                    }
+                }
+            }
+        }
+        Ok(None)
+    }
+
+    /// The joint recurrence with the prepared FE block: one pass from
+    /// `start` (else the warm state; with the automatic preconditioner's
+    /// Jacobi block, a staleness hand-off), and on a recurrence or
+    /// certificate miss one tighter continuation from its iterate.
     fn solve_joint(
         &mut self,
         fe_design: &FeDesign,
         (weights, tolerance): (&[f64], f64),
         max_iterations: usize,
-        stall: bool,
+        (stall, start): (bool, Option<Vec<f64>>),
         tally: &mut Tally,
-    ) -> Result<Option<JointLsmrReport>> {
+    ) -> Result<Joint> {
         #[cfg(test)]
         let executing_threads = rayon::current_num_threads();
         let staleness = Staleness::try_new(4, 0.75).map_err(|error| {
@@ -529,22 +693,28 @@ impl<'p> ReusableCategoricalJointLsmr<'p> {
                 format!("invalid explicit PPML LSMR staleness policy: {error}"),
             )
         })?;
-        let escalate = self.preconditioner == LsmrPreconditioner::Auto;
+        let escalate =
+            self.preconditioner == LsmrPreconditioner::Auto && self.joint.block == FeBlock::Jacobi;
         let started = Instant::now();
+        let warm = match &start {
+            Some(start) => Some(start.as_slice()),
+            None => self
+                .joint
+                .warm_start_valid
+                .then_some(self.joint.warm_start.as_slice()),
+        };
         let first = self.run_once(
             fe_design,
             tolerance,
             max_iterations,
-            self.joint
-                .warm_start_valid
-                .then_some(self.joint.warm_start.as_slice()),
+            warm,
             escalate.then_some(&staleness as _),
             None,
         )?;
         tally.solve_seconds += started.elapsed().as_secs_f64();
         tally.iterations = tally.iterations.saturating_add(first.iterations);
         if stall || first.stop_reason == LsmrStopReason::Escalated {
-            return Ok(None);
+            return Ok(Joint::Uncertified(first.x));
         }
         let started = Instant::now();
         let mut certificate = self.finish_joint(fe_design, weights, &first.x, tolerance)?;
@@ -576,18 +746,20 @@ impl<'p> ReusableCategoricalJointLsmr<'p> {
         }
         if !result.converged || !certificate.passed {
             self.joint.warm_start_valid = false;
-            return Ok(None);
+            return Ok(Joint::Uncertified(result.x));
         }
         let columns = self.active_design.ncols();
         self.step.copy_from_slice(&result.x[..columns]);
         self.joint.warm_start.copy_from_slice(&result.x);
         self.joint.warm_start_valid = true;
-        let preconditioner = if self.preconditioner == LsmrPreconditioner::Off {
-            FePreconditioner::None
-        } else {
-            FePreconditioner::Jacobi
+        let preconditioner = match (self.joint.block, &self.joint.fe_schwarz) {
+            (FeBlock::Identity, _) => FePreconditioner::None,
+            (FeBlock::Schwarz, Some(handle)) => {
+                crate::fe::block_schur::preconditioner(handle.used())
+            }
+            _ => FePreconditioner::Jacobi,
         };
-        Ok(Some(JointLsmrReport {
+        Ok(Joint::Certified(JointLsmrReport {
             iterations: tally.iterations,
             effective_tolerance,
             retries: tally.retries,
@@ -694,7 +866,8 @@ impl<'p> ReusableCategoricalJointLsmr<'p> {
         }
     }
 
-    /// Build the projections' fedemean projector and buffers on first use.
+    /// Build the projections' buffers (and fedemean's projector) on first
+    /// use.
     fn ensure_projections(&mut self) -> Result<()> {
         if self.projections.is_some() {
             return Ok(());
@@ -706,12 +879,8 @@ impl<'p> ReusableCategoricalJointLsmr<'p> {
         let values = total
             .checked_mul(width)
             .ok_or_else(|| allocation("explicit PPML LSMR coefficient storage overflows"))?;
-        let settings = fedemean::Settings {
-            choice: lsmr_choice(self.preconditioner),
-            ..fedemean::Settings::default()
-        };
+        self.projector();
         self.projections = Some(Projections {
-            projector: fedemean::Projector::new(self.design.clone(), settings),
             memory_limit: crate::fe::block_schur::lsmr_workspace_bytes(
                 rows,
                 &self.level_counts,
@@ -742,6 +911,7 @@ impl<'p> ReusableCategoricalJointLsmr<'p> {
         let total = self.fe_certificate.len();
         let effects = self.level_counts.len();
         let projections = self.projections.as_mut().expect("projections");
+        let projector = self.projector.as_mut().expect("projector");
         fill_projection_input(
             &self.active_design,
             &self.target,
@@ -762,8 +932,7 @@ impl<'p> ReusableCategoricalJointLsmr<'p> {
         let polls = std::sync::atomic::AtomicUsize::new(0);
         let witness = || crate::fe::lsmr_break::fedemean_poll(&polls);
         let poll: &(dyn Fn() -> bool + Sync) = if armed {
-            projections
-                .projector
+            projector
                 .prepare(&fedemean::Control::with_cancel(
                     &crate::interrupt::cancellation_requested,
                 ))
@@ -787,7 +956,7 @@ impl<'p> ReusableCategoricalJointLsmr<'p> {
         let coefficients = fedemean::CoefficientsMut::new(&mut projections.coefficients, layout);
         let fe_weights = fedemean::Weights::Values(weights);
         let outcome = match warm {
-            Some(_) => projections.projector.project_from(
+            Some(_) => projector.project_from(
                 fe_weights,
                 values,
                 &projections.start,
@@ -795,13 +964,7 @@ impl<'p> ReusableCategoricalJointLsmr<'p> {
                 &request,
                 &control,
             ),
-            None => projections.projector.project(
-                fe_weights,
-                values,
-                Some(coefficients),
-                &request,
-                &control,
-            ),
+            None => projector.project(fe_weights, values, Some(coefficients), &request, &control),
         }
         .map_err(|error| {
             if armed && error == fedemean::Error::Cancelled {
@@ -969,7 +1132,10 @@ impl<'p> ReusableCategoricalJointLsmr<'p> {
                 .joint
                 .finite_factor_ready
                 .then_some(self.joint.finite_factor.as_slice()),
-            fe_inverse: &self.joint.fe_inverse,
+            fe: match (self.joint.block, &self.joint.fe_schwarz) {
+                (FeBlock::Schwarz, Some(handle)) => FeAction::Schwarz(handle),
+                _ => FeAction::Diagonal(&self.joint.fe_inverse),
+            },
         };
         // A developer LSMR Break witness parks in the polls of the first
         // iterations, as fedemean's do.
@@ -1476,18 +1642,29 @@ impl Operator for AugmentedCategoricalOperator<'_> {
     }
 }
 
-/// The joint recurrence's preconditioner: the controls' current-weight
-/// Gram factor (or diagonal) and the FE block's inverse level masses (or
-/// the identity).
+/// The joint recurrence's block-diagonal preconditioner: the controls'
+/// current-weight Gram factor (or diagonal) and the FE block's action.
 struct BlockPreconditioner<'a> {
     finite_inverse: &'a [f64],
     finite_factor: Option<&'a [f64]>,
-    fe_inverse: &'a [f64],
+    fe: FeAction<'a>,
+}
+
+/// The FE block's action: a diagonal (inverse level masses or ones), or
+/// fedemean's Schwarz handle, symmetric positive definite on all of the FE
+/// coefficient space.
+enum FeAction<'a> {
+    Diagonal(&'a [f64]),
+    Schwarz(&'a fedemean::FePreconditioner),
 }
 
 impl Operator for BlockPreconditioner<'_> {
     fn nrows(&self) -> usize {
-        self.finite_inverse.len() + self.fe_inverse.len()
+        self.finite_inverse.len()
+            + match self.fe {
+                FeAction::Diagonal(inverse) => inverse.len(),
+                FeAction::Schwarz(handle) => handle.coefficients(),
+            }
     }
 
     fn ncols(&self) -> usize {
@@ -1527,12 +1704,22 @@ impl Operator for BlockPreconditioner<'_> {
                 y[column] = self.finite_inverse[column] * x[column];
             }
         }
-        for ((output, input), scale) in y[finite..]
-            .iter_mut()
-            .zip(&x[finite..])
-            .zip(self.fe_inverse)
-        {
-            *output = *scale * *input;
+        match self.fe {
+            FeAction::Diagonal(inverse) => {
+                for ((output, input), scale) in
+                    y[finite..].iter_mut().zip(&x[finite..]).zip(inverse)
+                {
+                    *output = *scale * *input;
+                }
+            }
+            FeAction::Schwarz(handle) => {
+                handle
+                    .apply(&x[finite..], &mut y[finite..])
+                    .map_err(|error| SolveError::InvalidInput {
+                        context: "preconditioner apply",
+                        message: error.to_string(),
+                    })?
+            }
         }
         Ok(())
     }
@@ -1896,10 +2083,12 @@ impl ScaledSquareSum {
 /// Conservative heap peak added by the explicit PPML LSMR engine: the
 /// retained controls and frame vectors, the joint recurrence's warm state,
 /// block preconditioner and `mlsmr` vectors (with its four-vector local
-/// reorthogonalization window and a retained continuation iterate), and,
-/// unless `preconditioner` keeps the joint recurrence (`Diagonal`, `Off`),
-/// the projections' projected matrix, FE coefficients and fedemean
-/// workspace (with its Schwarz grant).
+/// reorthogonalization window and a retained continuation iterate); with a
+/// Schwarz FE block (`Schwarz`, `Auto`), fedemean's workspace with its
+/// Schwarz grant, the limit its FE preconditioner handle is built within;
+/// and with the projections (`Auto`), their projected matrix and FE
+/// coefficients, beside the same fedemean workspace (the handle is dropped
+/// before the projections run).
 pub(crate) fn estimate_joint_lsmr_workspace_bytes(
     rows: usize,
     active_columns: usize,
@@ -1907,9 +2096,10 @@ pub(crate) fn estimate_joint_lsmr_workspace_bytes(
     threads: usize,
     preconditioner: LsmrPreconditioner,
 ) -> Result<u128> {
-    let projections = !matches!(
+    let projections = preconditioner == LsmrPreconditioner::Auto;
+    let schwarz = matches!(
         preconditioner,
-        LsmrPreconditioner::Diagonal | LsmrPreconditioner::Off
+        LsmrPreconditioner::Auto | LsmrPreconditioner::Schwarz
     );
     let fedemean =
         crate::fe::block_schur::lsmr_workspace_bytes(rows, effect_level_counts, threads)?;
@@ -1971,7 +2161,7 @@ pub(crate) fn estimate_joint_lsmr_workspace_bytes(
             checked_add_memory(k, levels, "PPML LSMR certificate directions")?,
             "PPML LSMR certificate scratch",
         )?,
-        if projections { fedemean } else { 0 },
+        if schwarz { fedemean } else { 0 },
     ])
 }
 

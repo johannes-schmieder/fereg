@@ -196,14 +196,15 @@ fn frames_match_the_dense_joint_oracle_under_every_preconditioner() {
             assert!(report.certificate.passed);
             assert!(report.certificate.relative_infinity_norm <= 1e-11);
             assert_eq!(report.warm_start_attempted, frame > 0);
+            assert_eq!(report.formulation, Formulation::Joint);
             assert_eq!(
-                report.formulation,
-                if preconditioner == LsmrPreconditioner::Schwarz {
-                    Formulation::Projections
-                } else {
-                    Formulation::Joint
-                }
+                matches!(
+                    report.route.preconditioner,
+                    crate::fe::FePreconditioner::Schwarz(_)
+                ),
+                preconditioner == LsmrPreconditioner::Schwarz
             );
+            assert_eq!(report.route.escalations, 0);
             assert_eq!(report.route.reduction, crate::fe::FeReduction::Full);
             assert_eq!(report.route.method, crate::fe::FeMethod::Lsmr);
             assert!(report.iterations > 0);
@@ -278,9 +279,8 @@ fn frames_repeat_at_fixed_workers_and_agree_across_worker_counts() {
         );
         for threads in [4, 1] {
             let frames = run(threads, preconditioner);
-            if preconditioner == LsmrPreconditioner::Schwarz {
-                // fedemean's projections do not depend on the worker count.
-                assert_eq!(frames, reference);
+            if threads == 4 {
+                assert_eq!(run(4, preconditioner), frames, "repeatable at four workers");
             }
             for (frame, expected) in frames.iter().zip(&reference) {
                 assert!(max_abs_difference(&frame.0, &expected.0) <= 1e-11);
@@ -291,31 +291,9 @@ fn frames_repeat_at_fixed_workers_and_agree_across_worker_counts() {
 }
 
 #[test]
-fn projections_support_zero_finite_columns_with_three_effects() {
+fn zero_finite_columns_with_three_effects_solve_jointly_and_by_projections() {
     let fixture = fixture(120, [9, 6, 4], 0);
-    let mut solver = engine(
-        &fixture.design,
-        fixture.active.clone(),
-        4,
-        LsmrPreconditioner::Schwarz,
-    );
     let weights = frame_weights(120, 0.2);
-    let report = solver
-        .solve(
-            &fixture.design,
-            &fixture.outcome,
-            &weights,
-            &weights,
-            1e-10,
-            10_000,
-        )
-        .expect("FE-only correction");
-    assert!(report.certificate.passed);
-    assert!(matches!(
-        report.route.preconditioner,
-        crate::fe::FePreconditioner::Schwarz(_)
-    ));
-    assert_eq!(solver.active_rank(), 0);
     let target: Vec<f64> = fixture
         .outcome
         .iter()
@@ -323,7 +301,32 @@ fn projections_support_zero_finite_columns_with_three_effects() {
         .map(|(&y, &mu)| if y == 0.0 { -1.0 } else { y / mu - 1.0 })
         .collect();
     let (fitted, _) = dense_oracle(&fixture.design, &fixture.active, &weights, &target);
-    assert!(max_abs_difference(&solver.delta_eta, &fitted) <= 1e-9);
+    // Explicit Schwarz in the joint recurrence; the automatic preconditioner
+    // with both joint recurrences stalled reaches the projections.
+    for (preconditioner, stalls, formulation) in [
+        (LsmrPreconditioner::Schwarz, 0, Formulation::Joint),
+        (LsmrPreconditioner::Auto, 2, Formulation::Projections),
+    ] {
+        let mut solver = engine(&fixture.design, fixture.active.clone(), 4, preconditioner);
+        FORCE_JOINT_STALLS.set(stalls);
+        let report = solver
+            .solve(
+                &fixture.design,
+                &fixture.outcome,
+                &weights,
+                &weights,
+                1e-10,
+                10_000,
+            )
+            .expect("FE-only correction");
+        assert!(report.certificate.passed);
+        assert_eq!(report.formulation, formulation);
+        if formulation == Formulation::Joint {
+            assert!(is_schwarz(&report));
+        }
+        assert_eq!(solver.active_rank(), 0);
+        assert!(max_abs_difference(&solver.delta_eta, &fitted) <= 1e-9);
+    }
 }
 
 #[test]
@@ -334,8 +337,10 @@ fn a_missed_joint_certificate_reprojects_once_from_the_solved_coefficients() {
         &fixture.design,
         fixture.active.clone(),
         2,
-        LsmrPreconditioner::Schwarz,
+        LsmrPreconditioner::Auto,
     );
+    // Both joint recurrences stall: the frame reaches the projections.
+    FORCE_JOINT_STALLS.set(2);
     FORCE_CERTIFICATE_MISSES.set(1);
     let report = solver
         .solve(
@@ -347,7 +352,9 @@ fn a_missed_joint_certificate_reprojects_once_from_the_solved_coefficients() {
             10_000,
         )
         .expect("retried frame");
-    assert_eq!(report.retries, 1);
+    // The escalation, the hand-off and the reprojection.
+    assert_eq!(report.retries, 3);
+    assert_eq!(report.formulation, Formulation::Projections);
     assert!(report.certificate.passed);
     assert_eq!(report.effective_tolerance, 1e-9 * RETRY_FACTOR);
     // Later frames target the tighter scale the miss demonstrated.
@@ -383,8 +390,54 @@ fn a_missed_joint_certificate_reprojects_once_from_the_solved_coefficients() {
     assert_eq!(FORCE_CERTIFICATE_MISSES.get(), 0);
 }
 
+/// The frame's correction target `z = (y - mu) / mu` (zero outcomes -1).
+fn correction(outcome: &[f64], mean: &[f64]) -> Vec<f64> {
+    outcome
+        .iter()
+        .zip(mean)
+        .map(|(&y, &mu)| if y == 0.0 { -1.0 } else { y / mu - 1.0 })
+        .collect()
+}
+
+/// Solve one frame with `stalls` joint recurrences treated as stalled and
+/// check it against the dense joint oracle.
+fn oracle_frame(
+    solver: &mut ReusableCategoricalJointLsmr<'_>,
+    fixture: &Fixture,
+    phase: f64,
+    stalls: usize,
+) -> JointLsmrReport {
+    let rows = fixture.design.nobs();
+    let weights = frame_weights(rows, phase);
+    FORCE_JOINT_STALLS.set(stalls);
+    let report = solver
+        .solve(
+            &fixture.design,
+            &fixture.outcome,
+            &weights,
+            &weights,
+            1e-10,
+            10_000,
+        )
+        .expect("certified frame");
+    assert!(report.certificate.passed);
+    let target = correction(&fixture.outcome, &weights);
+    let (fitted, coefficients) = dense_oracle(&fixture.design, &fixture.active, &weights, &target);
+    assert!(max_abs_difference(&solver.delta_eta, &fitted) <= 1e-9);
+    assert!(max_abs_difference(&solver.step, &coefficients) <= 1e-9);
+    solver.accept_step(1.0);
+    report
+}
+
+fn is_schwarz(report: &JointLsmrReport) -> bool {
+    matches!(
+        report.route.preconditioner,
+        crate::fe::FePreconditioner::Schwarz(_)
+    )
+}
+
 #[test]
-fn a_stalled_automatic_joint_recurrence_hands_the_fit_to_the_projections() {
+fn a_stalled_automatic_jacobi_recurrence_continues_on_the_schwarz_block() {
     let fixture = fixture(200, [15, 8, 5], 2);
     let mut solver = engine(
         &fixture.design,
@@ -392,97 +445,104 @@ fn a_stalled_automatic_joint_recurrence_hands_the_fit_to_the_projections() {
         2,
         LsmrPreconditioner::Auto,
     );
-    let weights = frame_weights(200, 0.5);
-    let joint = solver
-        .solve(
-            &fixture.design,
-            &fixture.outcome,
-            &weights,
-            &weights,
-            1e-10,
-            10_000,
-        )
-        .expect("joint frame");
-    assert_eq!(joint.formulation, Formulation::Joint);
-    assert_eq!(joint.retries, 0);
-    assert!(joint.recurrence_residual.is_some());
-    solver.accept_step(1.0);
-    FORCE_JOINT_STALL.set(true);
-    let weights = frame_weights(200, 0.8);
-    let handed = solver
-        .solve(
-            &fixture.design,
-            &fixture.outcome,
-            &weights,
-            &weights,
-            1e-10,
-            10_000,
-        )
-        .expect("projected frame");
+    let jacobi = oracle_frame(&mut solver, &fixture, 0.5, 0);
+    assert_eq!(jacobi.formulation, Formulation::Joint);
+    assert_eq!(
+        jacobi.route.preconditioner,
+        crate::fe::FePreconditioner::Jacobi
+    );
+    assert_eq!(jacobi.retries, 0);
+    assert!(jacobi.recurrence_residual.is_some());
+    // A stalled Jacobi recurrence continues from its iterate on Schwarz.
+    let escalated = oracle_frame(&mut solver, &fixture, 0.8, 1);
+    assert_eq!(escalated.formulation, Formulation::Joint);
+    assert!(is_schwarz(&escalated));
+    assert_eq!(escalated.route.escalations, 1);
+    assert_eq!(escalated.retries, 1);
+    assert!(solver.projections.is_none());
+    // Later frames start on Schwarz, warm.
+    let later = oracle_frame(&mut solver, &fixture, 0.9, 0);
+    assert!(is_schwarz(&later));
+    assert_eq!((later.route.escalations, later.retries), (0, 0));
+    assert!(later.warm_start_attempted);
+    // A Schwarz recurrence that stalls hands the frame, and later frames,
+    // to the projections.
+    let handed = oracle_frame(&mut solver, &fixture, 0.3, 1);
     assert_eq!(handed.formulation, Formulation::Projections);
     assert_eq!(handed.retries, 1);
-    assert!(handed.certificate.passed);
     assert!(handed.recurrence_residual.is_none());
-    let target: Vec<f64> = fixture
-        .outcome
-        .iter()
-        .zip(&weights)
-        .map(|(&y, &mu)| if y == 0.0 { -1.0 } else { y / mu - 1.0 })
-        .collect();
-    let (fitted, coefficients) = dense_oracle(&fixture.design, &fixture.active, &weights, &target);
-    assert!(max_abs_difference(&solver.delta_eta, &fitted) <= 1e-9);
-    assert!(max_abs_difference(&solver.step, &coefficients) <= 1e-9);
-    // Later frames of the fit start on the projections, warm.
-    let weights = frame_weights(200, 0.9);
-    let later = solver
-        .solve(
-            &fixture.design,
-            &fixture.outcome,
-            &weights,
-            &weights,
-            1e-10,
-            10_000,
-        )
-        .expect("later frame");
-    assert_eq!(later.formulation, Formulation::Projections);
-    assert_eq!(later.retries, 0);
-    assert!(later.warm_start_attempted);
-    // Explicit Jacobi keeps the joint recurrence: a stall that its
+    assert!(solver.joint.fe_schwarz.is_none());
+    let projected = oracle_frame(&mut solver, &fixture, 0.6, 0);
+    assert_eq!(projected.formulation, Formulation::Projections);
+    assert_eq!(projected.retries, 0);
+    assert!(projected.warm_start_attempted);
+    // Explicit preconditioners keep the joint recurrence: a stall that its
     // continuation cannot repair is the frame's numerical refusal.
+    let weights = frame_weights(200, 0.4);
+    for preconditioner in [LsmrPreconditioner::Diagonal, LsmrPreconditioner::Schwarz] {
+        let mut explicit = engine(&fixture.design, fixture.active.clone(), 2, preconditioner);
+        FORCE_JOINT_STALLS.set(1);
+        let error = explicit
+            .solve(
+                &fixture.design,
+                &fixture.outcome,
+                &weights,
+                &weights,
+                1e-10,
+                10_000,
+            )
+            .expect_err("explicit preconditioners do not hand off");
+        assert_eq!(error.code, ErrorCode::NonConvergence);
+        assert!(explicit.projections.is_none());
+    }
+}
+
+/// A Schwarz FE block beyond its memory limit: an explicit request is an
+/// allocation refusal; the automatic preconditioner hands the frame to the
+/// projections, certified. The projections' own workspace limit refuses
+/// as an allocation.
+#[test]
+fn a_workspace_beyond_the_admitted_limit_is_an_allocation_refusal() {
+    let fixture = fixture(120, [9, 6, 4], 1);
+    let weights = frame_weights(120, 0.1);
     let mut explicit = engine(
         &fixture.design,
         fixture.active.clone(),
-        2,
-        LsmrPreconditioner::Diagonal,
+        1,
+        LsmrPreconditioner::Schwarz,
     );
-    FORCE_JOINT_STALL.set(true);
+    FORCE_SCHWARZ_LIMIT.set(64);
     let error = explicit
         .solve(
             &fixture.design,
             &fixture.outcome,
             &weights,
             &weights,
-            1e-10,
+            1e-9,
             10_000,
         )
-        .expect_err("explicit Jacobi does not hand off");
-    assert_eq!(error.code, ErrorCode::NonConvergence);
-    assert!(explicit.projections.is_none());
-}
-
-#[test]
-fn a_workspace_beyond_the_admitted_limit_is_an_allocation_refusal() {
-    let fixture = fixture(120, [9, 6, 4], 1);
-    let weights = frame_weights(120, 0.1);
-    let mut solver = engine(
+        .expect_err("refused Schwarz block");
+    assert_eq!(error.code, ErrorCode::Allocation);
+    let mut automatic = engine(
         &fixture.design,
         fixture.active.clone(),
         1,
-        LsmrPreconditioner::Schwarz,
+        LsmrPreconditioner::Auto,
     );
-    solver.ensure_projections().expect("projections");
-    solver.projections.as_mut().unwrap().memory_limit = 64;
-    let error = solver
+    FORCE_SCHWARZ_LIMIT.set(64);
+    let report = oracle_frame(&mut automatic, &fixture, 0.1, 1);
+    assert_eq!(report.formulation, Formulation::Projections);
+    assert_eq!(report.retries, 2);
+    let mut projecting = engine(
+        &fixture.design,
+        fixture.active.clone(),
+        1,
+        LsmrPreconditioner::Auto,
+    );
+    projecting.ensure_projections().expect("projections");
+    projecting.projections.as_mut().unwrap().memory_limit = 64;
+    FORCE_JOINT_STALLS.set(2);
+    let error = projecting
         .solve(
             &fixture.design,
             &fixture.outcome,
@@ -739,16 +799,19 @@ fn joint_memory_estimate_scales_with_retained_design_and_thread_team() {
     // coefficients of every column.
     let floor = 8 * (10_000 * 8 + 10_000 * 9 + 2 * 9 * 3_000);
     assert!(wider > floor);
-    // A preconditioner that keeps the joint recurrence never projects.
-    let joint = estimate_joint_lsmr_workspace_bytes(
-        10_000,
-        8,
-        &[2_000, 1_000],
-        1,
-        LsmrPreconditioner::Diagonal,
-    )
-    .unwrap();
-    assert!(joint < wider);
+    // Explicit preconditioners keep the joint recurrence and never project;
+    // a Schwarz FE block adds fedemean's workspace with its grant.
+    let joint = |preconditioner| {
+        estimate_joint_lsmr_workspace_bytes(10_000, 8, &[2_000, 1_000], 1, preconditioner).unwrap()
+    };
+    let diagonal = joint(LsmrPreconditioner::Diagonal);
+    let schwarz = joint(LsmrPreconditioner::Schwarz);
+    assert_eq!(joint(LsmrPreconditioner::Off), diagonal);
+    assert_eq!(
+        schwarz - diagonal,
+        crate::fe::block_schur::lsmr_workspace_bytes(10_000, &[2_000, 1_000], 1).unwrap()
+    );
+    assert!(diagonal < schwarz && schwarz < wider);
 }
 
 #[test]

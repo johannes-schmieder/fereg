@@ -885,8 +885,30 @@ fn same_design(view: &fedemean::Design<'_>, design: &BorrowedInterceptFeDesign<'
 /// the preconditioner with each retained block's local solve (by design
 /// effect), and the escalated batches.
 pub(crate) fn route(route: &fedemean::Route) -> crate::fe::FeRoute {
-    use crate::fe::{FeLocalSolve, FeMethod, FePreconditioner, FeReduction};
-    let preconditioner = match route.preconditioner {
+    use crate::fe::{FeMethod, FeReduction};
+    crate::fe::FeRoute {
+        reduction: match route.reduction {
+            fedemean::ReductionUsed::Full => FeReduction::Full,
+            _ => FeReduction::Eliminate,
+        },
+        method: match route.method {
+            fedemean::MethodUsed::Lsmr => FeMethod::Lsmr,
+            _ => FeMethod::Cg,
+        },
+        escalations: u32::from(route.escalations),
+        ..crate::fe::FeRoute::new(
+            FeReduction::Eliminate,
+            FeMethod::Cg,
+            preconditioner(route.preconditioner),
+        )
+    }
+}
+
+/// fedemean's preconditioner in fereg's reporting terms: each retained
+/// block's local solve (by design effect), or the Schwarz subdomains'.
+pub(crate) fn preconditioner(used: fedemean::PreconditionerUsed) -> crate::fe::FePreconditioner {
+    use crate::fe::{FeLocalSolve, FePreconditioner};
+    match used {
         fedemean::PreconditionerUsed::Block(blocks) => {
             let mut locals = [None; crate::fe::FE_ROUTE_MAX_EFFECTS];
             for block in blocks.iter().flatten() {
@@ -911,18 +933,6 @@ pub(crate) fn route(route: &fedemean::Route) -> crate::fe::FeRoute {
             })
         }
         _ => FePreconditioner::Jacobi,
-    };
-    crate::fe::FeRoute {
-        reduction: match route.reduction {
-            fedemean::ReductionUsed::Full => FeReduction::Full,
-            _ => FeReduction::Eliminate,
-        },
-        method: match route.method {
-            fedemean::MethodUsed::Lsmr => FeMethod::Lsmr,
-            _ => FeMethod::Cg,
-        },
-        escalations: u32::from(route.escalations),
-        ..crate::fe::FeRoute::new(FeReduction::Eliminate, FeMethod::Cg, preconditioner)
     }
 }
 
