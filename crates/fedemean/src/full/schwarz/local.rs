@@ -25,7 +25,11 @@
 //! grounded dense or envelope factorization, or nothing when `T` has one
 //! level) `P G P = L^+`; approximate Cholesky gives a symmetric positive
 //! definite approximation on the complement of the constants, so `P G P` is
-//! positive semidefinite with exactly the constants as null space. The
+//! positive semidefinite with exactly the constants as null space. When the
+//! Schur complement is denser than the component's own bipartite graph
+//! (larger-side levels in many smaller-side levels make it nearly dense),
+//! approximate Cholesky factors `L` itself instead, which keeps its fill
+//! sampled, and `G` is that factor's solve: the same contract. The
 //! `tau` term makes every local action positive definite on its component.
 //! In `K`'s coordinates it acts along the component's `(1, -1)` vector,
 //! which `D` maps to zero, so it is orthogonal to every consistent residual
@@ -53,8 +57,13 @@ const DENSE_LEVELS: usize = 128;
 /// entries are present.
 const DENSE_FILLED_LEVELS: usize = 1024;
 /// The automatic rule factors an envelope of at most this many entries per
-/// level and off-diagonal entry exactly.
+/// level and off-diagonal entry exactly ...
 const ENVELOPE_FACTOR: usize = 16;
+/// ... when its factorization work `sum w^2` over the rows' envelope widths
+/// is at most this many operations per level and off-diagonal entry (a
+/// banded Schur complement of half-bandwidth up to about this; wide or
+/// expander-like ones, whose exact factor costs up to `n^3`, are approximate).
+const ENVELOPE_WORK_FACTOR: u128 = 128;
 /// The fixed seed of approximate Cholesky.
 const SEED: u64 = 0x5eed_5c4a_7200_0001;
 /// AC(2): every edge split into two samples.
@@ -128,6 +137,12 @@ pub(super) enum Inner {
         factor: Factor<f64>,
         bytes: u128,
     },
+    /// Approximate Cholesky of the whole component's Laplacian `L` (no
+    /// elimination stage).
+    Component {
+        factor: Factor<f64>,
+        bytes: u128,
+    },
 }
 
 impl Inner {
@@ -138,7 +153,7 @@ impl Inner {
                 4 * order.capacity() as u128 + 8 * factor.capacity() as u128
             }
             Self::Skyline(sky) => sky.bytes(),
-            Self::Approximate { bytes, .. } => *bytes,
+            Self::Approximate { bytes, .. } | Self::Component { bytes, .. } => *bytes,
         }
     }
 
@@ -163,22 +178,33 @@ impl Inner {
                 t[ground * R..(ground + 1) * R].fill(0.0);
             }
             Self::Skyline(sky) => sky.solve::<R>(t, scratch),
-            Self::Approximate { factor, .. } => {
-                let n = t.len() / R;
-                let (b, work) = scratch.split_at_mut(n);
-                for j in 0..R {
-                    for (i, b) in b.iter_mut().enumerate() {
-                        *b = t[i * R + j];
-                    }
-                    if factor.solve_into(b, &mut work[..factor.n()]).is_err() {
-                        t.fill(f64::NAN);
-                        return;
-                    }
-                    for (i, &x) in work[..n].iter().enumerate() {
-                        t[i * R + j] = x;
-                    }
-                }
+            Self::Approximate { factor, .. } | Self::Component { factor, .. } => {
+                approximate_solve::<R>(factor, t, scratch, [0.0; R]);
             }
+        }
+    }
+}
+
+/// `t` (`n` levels, `R` interleaved columns) minus `shift` becomes the
+/// approximate factor's solve; `scratch` holds `2 n + 2` values.
+fn approximate_solve<const R: usize>(
+    factor: &Factor<f64>,
+    t: &mut [f64],
+    scratch: &mut [f64],
+    shift: [f64; R],
+) {
+    let n = t.len() / R;
+    let (b, work) = scratch.split_at_mut(n);
+    for j in 0..R {
+        for (i, b) in b.iter_mut().enumerate() {
+            *b = t[i * R + j] - shift[j];
+        }
+        if factor.solve_into(b, &mut work[..factor.n()]).is_err() {
+            t.fill(f64::NAN);
+            return;
+        }
+        for (i, &x) in work[..n].iter().enumerate() {
+            t[i * R + j] = x;
         }
     }
 }
@@ -255,10 +281,10 @@ impl Piece {
     }
 
     pub(super) fn inner_units(&self) -> usize {
-        if matches!(self.inner, Inner::Trivial) {
-            0
-        } else {
-            self.sizes[1] + 1
+        match self.inner {
+            Inner::Trivial => 0,
+            Inner::Component { .. } => self.n() + 1,
+            _ => self.sizes[1] + 1,
         }
     }
 
@@ -296,18 +322,22 @@ impl Piece {
             }
         });
         let mean = means::<R>(x, partials);
-        let inverse = &pair.inverse[self.big];
-        let (xb, xs) = x.split_at_mut(nb * R);
-        rows::<R, _>(xb, parallel, |k, out| {
-            let d = inverse[codes[k] as usize];
-            for j in 0..R {
-                out[j] = (out[j] - mean[j]) * d;
-            }
-        });
-        if matches!(self.inner, Inner::Trivial) {
-            xs.fill(0.0);
+        if let Inner::Component { factor, .. } = &self.inner {
+            approximate_solve::<R>(factor, x, scratch, mean);
         } else {
-            self.eliminated::<R>((xb, xs), codes, pair, (scratch, partials), mean);
+            let inverse = &pair.inverse[self.big];
+            let (xb, xs) = x.split_at_mut(nb * R);
+            rows::<R, _>(xb, parallel, |k, out| {
+                let d = inverse[codes[k] as usize];
+                for j in 0..R {
+                    out[j] = (out[j] - mean[j]) * d;
+                }
+            });
+            if matches!(self.inner, Inner::Trivial) {
+                xs.fill(0.0);
+            } else {
+                self.eliminated::<R>((xb, xs), codes, pair, (scratch, partials), mean);
+            }
         }
         let out_mean = means::<R>(x, partials);
         rows::<R, _>(x, parallel, |s, out| {
@@ -480,6 +510,73 @@ fn schur(pair: &Pair, piece: &Piece, cancel: &Cancel<'_>) -> Result<Schur> {
     Ok(Schur { ptr, idx, val })
 }
 
+/// The component's bipartite level graph (larger side first, then the
+/// smaller side, both ascending) by its off-diagonal weights: the
+/// cross-tabulation `C` and its transpose.
+fn component(pair: &Pair, piece: &Piece) -> Result<Schur> {
+    let [nb, ns] = piece.sizes;
+    let codes = &pair.codes[piece.relative..piece.relative + nb + ns];
+    let (by_big, by_small) = (&pair.rows[piece.big], &pair.rows[1 - piece.big]);
+    let edges: usize = codes[..nb]
+        .iter()
+        .map(|&code| by_big.row(code as usize).0.len())
+        .sum();
+    let mut ptr = with_capacity(nb + ns + 1)?;
+    let (mut idx, mut val) = (with_capacity(2 * edges)?, with_capacity(2 * edges)?);
+    ptr.push(0);
+    for &code in &codes[..nb] {
+        let (js, vs) = by_big.row(code as usize);
+        idx.extend(js.iter().map(|&j| nb as u32 + j));
+        val.extend_from_slice(vs);
+        ptr.push(idx.len());
+    }
+    for &code in &codes[nb..] {
+        let (ks, vs) = by_small.row(code as usize);
+        idx.extend_from_slice(ks);
+        val.extend_from_slice(vs);
+        ptr.push(idx.len());
+    }
+    Ok(Schur { ptr, idx, val })
+}
+
+/// Approximate Cholesky of the Schur complement `graph`, or of the whole
+/// component when its bipartite graph has fewer entries, each admitted
+/// first.
+fn approximately(
+    (pair, piece): (&Pair, &Piece),
+    graph: &Graph<'_>,
+    admit: &Admit,
+) -> Result<std::result::Result<Inner, Refusal>> {
+    let edges: usize = {
+        let [nb, _] = piece.sizes;
+        let codes = &pair.codes[piece.relative..piece.relative + nb];
+        let by_big = &pair.rows[piece.big];
+        codes.iter().map(|&c| by_big.row(c as usize).0.len()).sum()
+    };
+    let (ns, nnz) = (graph.n(), graph.idx.len());
+    if 2 * edges < nnz {
+        let n = piece.n();
+        let bytes =
+            APPROXIMATE_ENTRY_BYTES * (n + 2 * edges) as u128 + 12 * (n + 2 * edges) as u128;
+        if !admit.take(bytes) {
+            return Ok(Err(Refusal::MemoryLimit));
+        }
+        let whole = component(pair, piece)?;
+        return Ok(
+            approximate(&whole.graph(), bytes)?.map(|inner| match inner {
+                Inner::Approximate { factor, bytes } => Inner::Component { factor, bytes },
+                other => other,
+            }),
+        );
+    }
+    let bytes = APPROXIMATE_ENTRY_BYTES * (ns + nnz) as u128;
+    if admit.take(bytes) {
+        approximate(graph, bytes)
+    } else {
+        Ok(Err(Refusal::MemoryLimit))
+    }
+}
+
 /// Grounded dense Cholesky factor of `graph`; `None` at the rounding floor.
 fn dense(graph: &Graph<'_>) -> Result<Option<Inner>> {
     let n = graph.n();
@@ -574,17 +671,10 @@ pub(super) fn inner(
     }
     let graph = schur.graph();
     let nnz = graph.idx.len();
-    let approximate_bytes = APPROXIMATE_ENTRY_BYTES * (ns + nnz) as u128;
     let exact = matches!(local, SchwarzLocal::Exact);
     let filled = ns <= DENSE_LEVELS || (ns <= DENSE_FILLED_LEVELS && 2 * nnz >= ns * (ns - 1));
     let floor = Refusal::Numerical("an exact Schur factorization reached the rounding floor");
-    let approximately = |admit: &Admit| {
-        if admit.take(approximate_bytes) {
-            approximate(&graph, approximate_bytes)
-        } else {
-            Ok(Err(Refusal::MemoryLimit))
-        }
-    };
+    let approximately = |admit: &Admit| approximately((pair, piece), &graph, admit);
     if matches!(local, SchwarzLocal::Approximate) {
         return approximately(admit);
     }
@@ -599,7 +689,10 @@ pub(super) fn inner(
             None => approximately(admit),
         };
     }
-    let budget = (!exact).then_some(ENVELOPE_FACTOR * (ns + nnz));
+    let budget = (!exact).then_some((
+        ENVELOPE_FACTOR * (ns + nnz),
+        ENVELOPE_WORK_FACTOR * (ns + nnz) as u128,
+    ));
     let Some(envelope) = Envelope::new(&graph, budget)? else {
         return approximately(admit);
     };

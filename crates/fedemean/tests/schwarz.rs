@@ -863,3 +863,63 @@ fn cancellation_stops_schwarz_builds_and_recurrences() {
         assert!(projected(outcome).certificate.passed);
     }
 }
+
+/// The automatic preconditioner with escalation starts on Jacobi: a design
+/// whose Jacobi recurrence is fast (uniform codes) keeps it, one whose
+/// Jacobi recurrence is slow (rare moves between size-skewed firms) hands
+/// over to Schwarz after its pilot, and later projections start on Schwarz.
+/// Both certify and reproduce their columns from their coefficients.
+#[test]
+fn automatic_escalation_keeps_fast_jacobi_and_hands_slow_recurrences_to_schwarz() {
+    let easy = Case::random(381, 20_000, &[500, 40, 7]);
+    let hard = Case::panel(382, 20_000, 400, Mobility::Low, &[9]);
+    let ncols = 2;
+    let request = Request::new(TOLERANCE, MAX_ITERATIONS);
+    let control = Control::default();
+    for method in [Method::Pcg, Method::Lsmr] {
+        let automatic = settings(method, Preconditioner::Auto, Fallback::Escalate);
+        for (case, hard_design) in [(&easy, false), (&hard, true)] {
+            let original = case.columns(383, ncols);
+            let mut projector = Projector::new(case.design(), automatic);
+            for round in 0..2 {
+                let mut data = original.clone();
+                let (outcome, coefficients) = project(
+                    &mut projector,
+                    case,
+                    None,
+                    (&mut data, ncols),
+                    &request,
+                    &control,
+                )
+                .unwrap();
+                let report = projected(outcome);
+                let label = format!("{method:?} hard={hard_design} round {round}");
+                if hard_design {
+                    schwarz_used(&report);
+                    assert_eq!(report.facts.escalations > 0, round == 0, "{label}");
+                } else {
+                    assert_eq!(
+                        report.route.preconditioner,
+                        PreconditionerUsed::Jacobi,
+                        "{label}"
+                    );
+                    assert_eq!(report.facts.escalations, 0, "{label}");
+                }
+                for j in 0..ncols {
+                    let y = column(&original, ncols, j);
+                    let r = column(&data, ncols, j);
+                    let moment = largest_relative_moment(case, None, &y, &r);
+                    assert!(moment <= TOLERANCE, "{label} column {j}: {moment}");
+                    let bound = 1e-9 * inf_norm(&y).max(1.0);
+                    for (i, (&yi, &ri)) in y.iter().zip(&r).enumerate() {
+                        let fit = case.fitted(&coefficients, j, i);
+                        assert!(
+                            (yi - fit - ri).abs() <= bound,
+                            "{label}, column {j}, row {i}"
+                        );
+                    }
+                }
+            }
+        }
+    }
+}

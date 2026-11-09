@@ -24,6 +24,32 @@ use std::ops::Range;
 /// sums do not depend on the worker count).
 const CHUNK: usize = 2048;
 
+/// An escalating Jacobi recurrence is measured after this many iterations
+/// ...
+pub(super) const PILOT: usize = 24;
+/// ... and hands over as slow when its observed rate predicts more than this
+/// many iterations in all for a column (a stronger preconditioner's build
+/// then pays for itself).
+pub(super) const SLOW_ITERATIONS: f64 = 100.0;
+/// The decline of a recurrence predicted slow (escalation only).
+pub(crate) const SLOW: &str = "slow recurrence";
+
+/// Whether a column whose stopping measure went from `earlier` to `best`
+/// over the last `window` of its `done` iterations is predicted to need
+/// more than [`SLOW_ITERATIONS`] iterations in all to reach its goal
+/// (measure 1) at that geometric rate (the late rate, since CG's early
+/// iterations are faster than its tail).
+pub(super) fn predicted_slow(earlier: f64, best: f64, (window, done): (usize, usize)) -> bool {
+    if best <= 1.0 {
+        return false;
+    }
+    if !(best < earlier && earlier.is_finite()) {
+        return true;
+    }
+    let rate = (earlier / best).ln() / window as f64;
+    done as f64 + best.ln() / rate > SLOW_ITERATIONS
+}
+
 /// Flat solve workspace (`R` values per level or row) resized per batch
 /// width; repeated widths allocate nothing.
 #[derive(Default)]
@@ -311,6 +337,8 @@ fn directions<const R: usize>(p: &mut [f64], z: &[f64], mask: [bool; R], beta: O
 struct Columns<const R: usize> {
     active: [bool; R],
     rz: [f64; R],
+    /// The best stopping measure at half the pilot.
+    initial: [f64; R],
     best: [f64; R],
     checkpoint_best: [f64; R],
     kept: [bool; R],
@@ -372,6 +400,7 @@ fn start<const R: usize>(
     Some(Columns {
         active,
         rz,
+        initial: progress,
         best: progress,
         checkpoint_best: progress,
         kept,
@@ -424,11 +453,14 @@ fn advance<const R: usize>(
 /// iterates and stall windows are those of the eliminated system. A column
 /// stops when its largest scaled moment `|r_g| / sqrt(m_g)` (and, with a
 /// coefficient goal, its Jacobi estimate `|r_g| / m_g`) meets its goal.
+/// With `pilot`, a recurrence that a column's rate after [`PILOT`]
+/// iterations predicts slow ([`predicted_slow`]) declines as [`SLOW`] (for
+/// escalation).
 pub(super) fn pcg<const R: usize>(
     op: &Normal<'_, '_>,
     work: &mut Work,
     targets: &Targets<R>,
-    cap: usize,
+    (cap, pilot): (usize, bool),
     cancel: &Cancel<'_>,
     tally: &mut Tally<R>,
 ) -> Result<Solve<R>> {
@@ -473,6 +505,17 @@ pub(super) fn pcg<const R: usize>(
         let Some(beta) = advance(&mut state, targets, work, measures) else {
             return Ok(Solve::Declined("nonfinite moments"));
         };
+        if pilot && iterations == PILOT / 2 {
+            state.initial = state.best;
+        }
+        let window = (PILOT - PILOT / 2, PILOT);
+        if pilot
+            && iterations == PILOT
+            && (0..R)
+                .any(|j| state.active[j] && predicted_slow(state.initial[j], state.best[j], window))
+        {
+            return Ok(Solve::Declined(SLOW));
+        }
         if iterations % KEPT_WINDOW == 0 {
             let long = iterations % STALL_WINDOW == 0;
             let mut stalled = [false; R];
@@ -499,4 +542,25 @@ pub(super) fn pcg<const R: usize>(
         accepted: state.accepted,
         floor: state.floor,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The late geometric rate predicts the total: a column reaching its
+    /// goal is never slow; one whose measure did not fall, or falls too
+    /// slowly for the limit, is.
+    #[test]
+    fn the_pilot_predicts_slow_recurrences_from_their_late_rate() {
+        let window = (PILOT - PILOT / 2, PILOT);
+        assert!(!predicted_slow(10.0, 1.0, window));
+        assert!(predicted_slow(5.0, 5.0, window));
+        assert!(predicted_slow(f64::INFINITY, 5.0, window));
+        // A tenfold drop over 12 iterations from 1e4: 4 more decades, 48
+        // more iterations, 72 in all.
+        assert!(!predicted_slow(1e5, 1e4, window));
+        // A twofold drop from 1e4: about 160 more iterations.
+        assert!(predicted_slow(2e4, 1e4, window));
+    }
 }

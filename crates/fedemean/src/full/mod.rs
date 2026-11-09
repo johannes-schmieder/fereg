@@ -43,7 +43,10 @@
 //!
 //! **Escalation.** With [`crate::Fallback::Escalate`], a Jacobi recurrence
 //! that stalls (PCG; modified LSMR: its normal-equation estimate fails to
-//! halve over a stall window) continues with Schwarz at the default
+//! halve over a stall window) or whose rate after a pilot of
+//! [`pcg::PILOT`] iterations predicts more than [`pcg::SLOW_ITERATIONS`]
+//! (an easy design keeps Jacobi; a hard one pays for Schwarz's build)
+//! continues with Schwarz at the default
 //! specification from its current iterate on the true residual, within the
 //! remaining iteration budget. Later batches of the projection, and later
 //! projections of the projector, start on Schwarz. The full formulation's
@@ -849,10 +852,11 @@ fn starting_iterate<const R: usize>(job: &Job<'_, '_>, batch: &Batch<'_, '_, '_>
 }
 
 /// The batch's recurrence in its mode. An escalating Jacobi recurrence that
-/// stalls or reaches the iteration ceiling (never one that breaks down)
-/// continues with Schwarz from its current iterate on the true residual
-/// `D'W (y - D x)`, within the remaining budget, when Schwarz builds within
-/// the memory limit. Also reports whether Schwarz was used.
+/// stalls, reaches the iteration ceiling or is predicted slow after its
+/// pilot iterations (never one that breaks down) continues with Schwarz from
+/// its current iterate on the true residual `D'W (y - D x)`, within the
+/// remaining budget, when Schwarz builds within the memory limit; a slow one
+/// whose Schwarz does not build continues with Jacobi.
 fn recurrence<const R: usize>(
     job: &Job<'_, '_>,
     batch: &Batch<'_, '_, '_>,
@@ -879,14 +883,19 @@ fn recurrence<const R: usize>(
             jacobi: mode != Mode::Identity,
             schwarz,
         };
-        pcg::<R>(&op, work, targets, job.cap, &job.cancel, tally)?
+        let pilot = mode == Mode::Escalate;
+        pcg::<R>(&op, work, targets, (job.cap, pilot), &job.cancel, tally)?
     };
     facts.pcg_seconds += started.elapsed().as_secs_f64();
     let remaining = job.cap.saturating_sub(tally.iterations);
     let escalate = mode == Mode::Escalate
         && remaining > 0
-        && matches!(solved, Solve::Declined(STALLED | CEILING));
-    if !escalate || ensure(job, SchwarzSpec::default(), slot, R, facts)?.is_err() {
+        && matches!(solved, Solve::Declined(STALLED | CEILING | pcg::SLOW));
+    if !escalate {
+        return Ok(solved);
+    }
+    let built = ensure(job, SchwarzSpec::default(), slot, R, facts)?.is_ok();
+    if !built && !matches!(solved, Solve::Declined(pcg::SLOW)) {
         return Ok(solved);
     }
     let started = Instant::now();
@@ -913,18 +922,20 @@ fn recurrence<const R: usize>(
     adjoint::<R>(st, effects, t, None, &mut work.r, &mut work.scatter);
     facts.rhs_seconds += started.elapsed().as_secs_f64();
     let started = Instant::now();
-    let schwarz = slot.as_ref().expect("built Schwarz");
-    schwarz.size(&mut work.schwarz, R)?;
+    let schwarz = slot.as_ref().filter(|_| built);
+    if let Some(schwarz) = schwarz {
+        schwarz.size(&mut work.schwarz, R)?;
+    }
     let op = Normal {
         st,
         effects,
         state,
         jacobi: true,
-        schwarz: Some(schwarz),
+        schwarz,
     };
-    let solved = pcg::<R>(&op, work, targets, remaining, &job.cancel, tally)?;
+    let solved = pcg::<R>(&op, work, targets, (remaining, false), &job.cancel, tally)?;
     facts.pcg_seconds += started.elapsed().as_secs_f64();
-    facts.escalations += 1;
+    facts.escalations += usize::from(built);
     Ok(solved)
 }
 

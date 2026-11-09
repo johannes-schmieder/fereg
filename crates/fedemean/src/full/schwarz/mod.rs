@@ -296,7 +296,9 @@ impl Schwarz {
                 Inner::Trivial => count(&mut self.used.trivial),
                 Inner::Dense { .. } => count(&mut self.used.dense),
                 Inner::Skyline(_) => count(&mut self.used.skyline),
-                Inner::Approximate { .. } => count(&mut self.used.approximate),
+                Inner::Approximate { .. } | Inner::Component { .. } => {
+                    count(&mut self.used.approximate)
+                }
             }
         }
         (self.inner_units, self.partial_units) = (inner, partial);
@@ -667,6 +669,58 @@ mod tests {
                     let y = z[g * R + j];
                     assert!((x - y).abs() <= 1e-12 * x.abs().max(1e-300), "{spec:?} {g}");
                 }
+            }
+        }
+    }
+
+    /// A Schur complement denser than its component's bipartite graph (each
+    /// of 2000 larger-side levels in about eight of 300 smaller-side ones)
+    /// is approximated on the whole component: the local action stays
+    /// symmetric positive definite and its multi-column form agrees.
+    #[test]
+    fn dense_schur_complements_factor_the_whole_component() {
+        let levels = [2000, 300];
+        let (codes, weights) = codes(41, 16_000, &levels);
+        let p: usize = levels.iter().sum();
+        let spec = SchwarzSpec {
+            subdomains: Subdomains::Star,
+            local: SchwarzLocal::Approximate,
+        };
+        let (schwarz, state) = build(&codes, &levels, Some(&weights), spec);
+        assert!(schwarz
+            .pieces
+            .iter()
+            .any(|piece| matches!(piece.inner, Inner::Component { .. })));
+        let PreconditionerUsed::Schwarz { local, .. } = schwarz.used() else {
+            panic!("a Schwarz preconditioner reports Schwarz");
+        };
+        assert!(local.approximate >= 1);
+        let mut rng = Rng(42);
+        let vectors: Vec<Vec<f64>> = (0..4)
+            .map(|_| (0..p).map(|_| rng.uniform()).collect())
+            .collect();
+        let images: Vec<Vec<f64>> = vectors.iter().map(|v| apply(&schwarz, &state, v)).collect();
+        for a in 0..vectors.len() {
+            assert!(dot(&vectors[a], &images[a]) > 0.0);
+            for b in 0..a {
+                let (x, y) = (dot(&vectors[a], &images[b]), dot(&vectors[b], &images[a]));
+                assert!((x - y).abs() <= 1e-12 * (x.abs() + y.abs()));
+            }
+        }
+        const R: usize = 2;
+        let mut r = vec![0.0; p * R];
+        for (j, v) in vectors[..R].iter().enumerate() {
+            for (g, &x) in v.iter().enumerate() {
+                r[g * R + j] = x;
+            }
+        }
+        let mut scratch = Scratch::default();
+        schwarz.size(&mut scratch, R).unwrap();
+        let mut z = vec![f64::NAN; p * R];
+        schwarz.apply::<R>(&r, &mut z, &mut scratch, &state.inverse_mass);
+        for (j, image) in images[..R].iter().enumerate() {
+            for (g, &x) in image.iter().enumerate() {
+                assert!((x - z[g * R + j]).abs() <= 1e-12 * x.abs().max(1e-300));
             }
         }
     }

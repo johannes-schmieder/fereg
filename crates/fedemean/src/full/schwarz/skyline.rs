@@ -1,7 +1,8 @@
 //! Exact envelope (skyline) Cholesky factorization of a connected weighted
 //! graph Laplacian in reverse Cuthill-McKee order, the last vertex
 //! grounded. Cheap and exact on banded (chain-like) Schur complements;
-//! expander-like graphs exceed the envelope budget of the automatic rule.
+//! expander-like graphs exceed the envelope or factorization-work budget of
+//! the automatic rule.
 
 use super::super::{filled, with_capacity};
 use super::local::Graph;
@@ -71,8 +72,9 @@ impl Envelope {
     /// Reverse Cuthill-McKee from a pseudo-peripheral vertex of each
     /// component (two sweeps from the vertex of least degree), neighbours
     /// in ascending (degree, index) order; `None` when the envelope exceeds
-    /// `budget` entries.
-    pub(super) fn new(graph: &Graph<'_>, budget: Option<usize>) -> Result<Option<Self>> {
+    /// `budget`: its entries, or the factorization's work `sum w^2` over the
+    /// rows' envelope widths `w`.
+    pub(super) fn new(graph: &Graph<'_>, budget: Option<(usize, u128)>) -> Result<Option<Self>> {
         let n = graph.n();
         let degree = |v: u32| graph.neighbours(v as usize).len();
         let mut by_degree = with_capacity::<u32>(n)?;
@@ -120,6 +122,7 @@ impl Envelope {
         let m = n - 1;
         let mut first = with_capacity::<u32>(m)?;
         let mut entries = 0_usize;
+        let mut work = 0_u128;
         for (p, &v) in order[..m].iter().enumerate() {
             let lowest = graph
                 .neighbours(v as usize)
@@ -129,8 +132,10 @@ impl Envelope {
                 .min()
                 .unwrap_or(p as u32);
             first.push(lowest);
-            entries += p - lowest as usize + 1;
-            if budget.is_some_and(|budget| entries > budget) {
+            let width = p - lowest as usize + 1;
+            entries += width;
+            work += (width as u128) * (width as u128);
+            if budget.is_some_and(|(most, most_work)| entries > most || work > most_work) {
                 return Ok(None);
             }
         }

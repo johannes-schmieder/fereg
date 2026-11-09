@@ -33,7 +33,8 @@
 //!   Jacobi, no preconditioner or (feature `schwarz`, the full
 //!   formulation's automatic choice) one-level additive Schwarz over
 //!   factor-pair subdomains ([`Preconditioner::Schwarz`]); Jacobi escalating
-//!   to Schwarz ([`Fallback::Escalate`]); warm starts
+//!   to Schwarz when it stalls or a pilot predicts it slow
+//!   ([`Fallback::Escalate`]); warm starts
 //!   ([`Projector::project_from`]).
 //! - Not yet: varying slopes. Unsupported explicit combinations are
 //!   [`Error::Unsupported`]; designs outside a route are declined

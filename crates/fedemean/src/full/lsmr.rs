@@ -17,6 +17,7 @@
 //! Schwarz.
 
 use super::kernels::{adjoint, forward, load, residualize, Rows};
+use super::pcg::{predicted_slow, PILOT};
 use super::schwarz::{Schwarz, Scratch};
 use super::structure::Structure;
 use super::{
@@ -37,19 +38,29 @@ use schwarz_precond::{
     mlsmr_counted_cancellable, Cancellation, EscalationHandler, EscalationPolicy, LsmrStopReason,
     MlsmrOptions, Operator, Progress, SolveError,
 };
-use std::sync::{Mutex, PoisonError};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Instant;
 
 /// Passes per column: the first and its certified restarts.
 const MAX_PASSES: usize = 4;
 
 /// Hand off when the best normal-equation estimate of a pass fails to halve
-/// over a stall window (the PCG rule).
-struct Stall;
+/// over a stall window (the PCG rule), or when its rate after the pilot
+/// iterations predicts a slow pass toward `goal` (the pass tolerance on that
+/// estimate, which starts at 1); `slow` records the latter.
+struct Stall {
+    goal: f64,
+    slow: Arc<AtomicBool>,
+}
 
 struct StallRun {
     best: f64,
     checkpoint: f64,
+    /// The best estimate at half the pilot.
+    half: f64,
+    goal: f64,
+    slow: Arc<AtomicBool>,
 }
 
 impl EscalationPolicy for Stall {
@@ -57,6 +68,9 @@ impl EscalationPolicy for Stall {
         Box::new(StallRun {
             best: 1.0,
             checkpoint: 1.0,
+            half: 1.0,
+            goal: self.goal,
+            slow: Arc::clone(&self.slow),
         })
     }
 }
@@ -64,6 +78,16 @@ impl EscalationPolicy for Stall {
 impl EscalationHandler for StallRun {
     fn should_escalate(&mut self, progress: Progress) -> bool {
         self.best = self.best.min(progress.normal_eq_residual);
+        if progress.iteration == PILOT / 2 {
+            self.half = self.best;
+        }
+        let window = (PILOT - PILOT / 2, PILOT);
+        if progress.iteration == PILOT
+            && predicted_slow(self.half / self.goal, self.best / self.goal, window)
+        {
+            self.slow.store(true, Ordering::Relaxed);
+            return true;
+        }
         if progress.iteration % STALL_WINDOW != 0 {
             return false;
         }
@@ -374,8 +398,10 @@ fn solve_column(
     facts.rhs_seconds += started.elapsed().as_secs_f64();
     let column = (src, scale[0], &targets);
     let mut spent = 0;
+    let slow = Arc::new(AtomicBool::new(false));
     loop {
-        let x = match preconditioned(job, column, (start, spent), (work, slot), *mode, facts)? {
+        let lent = (&mut *work, &*slot);
+        let x = match preconditioned(job, column, (start, spent), lent, (*mode, &slow), facts)? {
             Passes::Solved(solved) => return Ok(solved),
             Passes::Stalled { x, spent: total } => {
                 spent = total;
@@ -385,12 +411,17 @@ fn solve_column(
         let default = SchwarzSpec::default();
         if ensure(job, default, slot, 1, facts)
             .map_err(Short::Failed)?
-            .is_err()
+            .is_ok()
         {
+            facts.escalations += 1;
+            *mode = Mode::Schwarz;
+        } else if slow.load(Ordering::Relaxed) {
+            // A slow (not stalled) recurrence whose Schwarz does not fit
+            // continues with Jacobi.
+            *mode = Mode::Jacobi;
+        } else {
             return Err(Short::Declined("stalled modified LSMR recurrence"));
         }
-        facts.escalations += 1;
-        *mode = Mode::Schwarz;
         start = x;
     }
 }
@@ -403,7 +434,7 @@ fn preconditioned(
     column: (Rows<'_>, f64, &Targets<1>),
     (start, spent): (Vec<f64>, usize),
     (work, slot): (&mut super::Work, &Option<Schwarz>),
-    mode: Mode,
+    (mode, slow): (Mode, &Arc<AtomicBool>),
     facts: &mut Facts,
 ) -> std::result::Result<Passes, Short> {
     let (st, state) = (job.st, job.state);
@@ -428,7 +459,7 @@ fn preconditioned(
         job,
         (&operator, &inverse),
         column,
-        (start, spent, escalate),
+        (start, spent, escalate.then_some(slow)),
         work,
         facts,
     );
@@ -446,12 +477,13 @@ fn preconditioned(
 /// goal and the certificate succeeds; one that misses the goal restarts
 /// from its iterate at a tolerance tightened by the shortfall; the last
 /// pass (or an exhausted budget) also succeeds at the acceptance rule. With
-/// `escalate`, a pass that stalls hands its iterate back.
+/// `escalate` (its flag set for a slow pass), a pass that stalls or is
+/// predicted slow hands its iterate back.
 fn passes(
     job: &Job<'_, '_>,
     (operator, inverse): (&Design<'_, '_>, &Inverse<'_>),
     (src, scale, targets): (Rows<'_>, f64, &Targets<1>),
-    (mut start, mut iterations, escalate): (Vec<f64>, usize, bool),
+    (mut start, mut iterations, escalate): (Vec<f64>, usize, Option<&Arc<AtomicBool>>),
     work: &mut super::Work,
     facts: &mut Facts,
 ) -> std::result::Result<Passes, Short> {
@@ -464,9 +496,13 @@ fn passes(
     let mut budget = job.cap.saturating_sub(iterations);
     for pass in 0..MAX_PASSES {
         let started = Instant::now();
+        let stall = escalate.map(|slow| Stall {
+            goal: tolerance,
+            slow: Arc::clone(slow),
+        });
         let options = MlsmrOptions {
             warm_start: Some(&start),
-            escalation: escalate.then_some(&Stall as &dyn EscalationPolicy),
+            escalation: stall.as_ref().map(|stall| stall as &dyn EscalationPolicy),
             local_size: None,
         };
         let b = &work.b[..];

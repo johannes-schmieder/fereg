@@ -161,17 +161,21 @@ pub enum Preconditioner {
     /// ceiling continues from its current iterate with
     /// [`Preconditioner::BlockJacobi`] at the default [`BlockSpec`].
     ///
-    /// The full formulation (feature `schwarz`): [`Preconditioner::Schwarz`]
-    /// at the default [`SchwarzSpec`] for two or more effects when it builds
-    /// within [`Request::memory_limit`], else Jacobi (one effect: Jacobi,
-    /// which is exact). Without the feature: Jacobi.
+    /// The full formulation (feature `schwarz`), two or more effects: with
+    /// [`Fallback::Escalate`], Jacobi escalating to
+    /// [`Preconditioner::Schwarz`] at the default [`SchwarzSpec`] as for
+    /// [`Preconditioner::Jacobi`]; otherwise Schwarz when it builds within
+    /// [`Request::memory_limit`], else Jacobi. One effect: Jacobi, which is
+    /// exact. Without the feature: Jacobi.
     #[default]
     Auto,
     /// Inverse diagonal of the reduced matrix, or of `D'WD` (the level
     /// masses) for the full formulation. On the full formulation with
-    /// [`Fallback::Escalate`] (feature `schwarz`), a recurrence that stalls
-    /// continues from its current iterate with [`Preconditioner::Schwarz`]
-    /// at the default [`SchwarzSpec`].
+    /// [`Fallback::Escalate`] (feature `schwarz`), a recurrence that stalls,
+    /// reaches the iteration ceiling or whose rate after a short pilot
+    /// predicts many iterations continues from its current iterate with
+    /// [`Preconditioner::Schwarz`] at the default [`SchwarzSpec`] (a slow one
+    /// whose Schwarz exceeds the memory limit continues with Jacobi).
     Jacobi,
     /// Block-Jacobi over the retained effects: a local solve of each
     /// retained effect's diagonal block of the reduced matrix (a weighted
@@ -278,9 +282,10 @@ pub enum Fallback {
     /// ceiling to a stronger preconditioner from its current iterate, within
     /// the remaining iteration budget: the elimination's
     /// [`Preconditioner::Auto`] to block-Jacobi, the full formulation's
-    /// [`Preconditioner::Jacobi`] to Schwarz (feature `schwarz`). Decline
-    /// when the escalated recurrence cannot finish either, or when the
-    /// stronger preconditioner exceeds [`Request::memory_limit`].
+    /// [`Preconditioner::Auto`] and [`Preconditioner::Jacobi`] to Schwarz
+    /// (feature `schwarz`; also when a pilot predicts a slow recurrence).
+    /// Decline when the escalated recurrence cannot finish either, or when
+    /// the stronger preconditioner exceeds [`Request::memory_limit`].
     Escalate,
 }
 
@@ -622,8 +627,11 @@ fn formulation(effects: usize, choice: Choice) -> Result<Formulation> {
         };
     }
     let schwarz = cfg!(feature = "schwarz");
+    let escalate = choice.fallback == Fallback::Escalate;
     let action =
         match choice.preconditioner {
+            // Jacobi first, Schwarz when Jacobi is slow or stalls.
+            Preconditioner::Auto if schwarz && effects >= 2 && escalate => full::Action::Escalate,
             Preconditioner::Auto if schwarz && effects >= 2 => full::Action::Auto,
             Preconditioner::Jacobi if schwarz && choice.fallback == Fallback::Escalate => {
                 full::Action::Escalate
