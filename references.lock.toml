@@ -24,7 +24,7 @@ version = "commit-pinned development tree"
 license = "MIT"
 relevant_source_paths = ["crates/within/src/", "crates/schwarz-precond/src/"]
 relevant_test_paths = ["crates/within/tests/", "crates/schwarz-precond/src/lsmr/tests/", "bench/history/"]
-use = "Runtime LSMR and oracle dependency (both within and schwarz-precond): fixed pair inverses, resumable sessions with shared response storage, fused modified-LSMR steps with fixed-order adjoints, in-place preconditioner replacement, owned pair-build gates, raw-coordinate construction that leaves rank authority with fereg, and optional cooperative iteration polls. Deterministic execution is propagated to numerical consumers."
+use = "Runtime dependency through its schwarz-precond crate only (modified LSMR for fedemean and for PPML's joint LSMR, at the Cargo pin); the within crate was a runtime dependency until milestone 3 and is no longer linked. Kept as a development reference."
 
 [[reference]]
 name = "cmg"
