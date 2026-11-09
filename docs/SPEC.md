@@ -1514,13 +1514,15 @@ fedemean's FE preconditioner handle (`Projector::fe_preconditioner`):
 additive Schwarz over the star of factor pairs with automatic local solves,
 built for each frame's Hessian weights and fixed within its recurrences,
 scaled to the raw weights and symmetric positive definite on all of the FE
-coefficient space, so the block-diagonal `M^-1` stays nonsingular. The
-preflight admits it from fedemean's weight-independent upper bound of the
-handle (`Projector::fe_preconditioner_bytes`, §19) beside the route's
-workspace, and each frame builds it within the fit's remaining budget (the
-admitted bound plus what nothing else admitted). A block that cannot be
-admitted, does not build within that budget or whose factorization refuses
-is a certified fallback: with `precondition(schwarz)` the joint recurrence
+coefficient space, so the block-diagonal `M^-1` stays nonsingular. With
+`precondition(schwarz)` the preflight admits it from fedemean's
+weight-independent upper bound of the handle
+(`Projector::fe_preconditioner_bytes`, §19) beside the route's workspace;
+with `precondition(auto)` it is optional and charged nothing beforehand.
+Each frame builds it within the fit's remaining budget (its admitted share
+plus what nothing else admitted), fedemean admitting each build stage within
+it before it allocates. A block that cannot be admitted, does not build
+within that budget or whose factorization refuses is a certified fallback: with `precondition(schwarz)` the joint recurrence
 continues on its Jacobi block (memory refusals do not depend on the weights,
 so later frames start on Jacobi; a refused admission is never built), and
 the fit reports `e(fe_requested_preconditioner)` `schwarz`,
@@ -1558,8 +1560,10 @@ Schwarz grant that refused those builds: declared scope, explicit `schwarz`
 fits whose block the grant refused now build it within the remaining budget
 (the joint Schwarz recurrence instead of the Jacobi fallback: inner
 iteration counts, solver signatures and low bits within §20, reported
-without a fallback), explicit `auto`/`schwarz` fits compute the bound's
-count-only build stages once in the preflight, and below a memory limit
+without a fallback), explicit `schwarz` fits compute the bound's count-only
+build stages once in the preflight, explicit `auto` fits whose Jacobi
+recurrence stalls build the block (and the projections their Schwarz)
+within the remaining budget instead of the grant, and below a memory limit
 that the block does not fit, explicit `lsmr` keeps its route without the
 block where the Auto plan formerly served it; every other fit, the default
 routes and explicit `jacobi`/`none` keep their bits and admission.
@@ -2102,21 +2106,22 @@ fedemean memory decline continues with MAP, reported as the fallback. PPML
 explicit LSMR (its projections and the joint recurrence's Schwarz FE block)
 and the separation detector's LSMR re-execution (§13, §14) charge fereg's
 estimate of fedemean's base modified-LSMR workspace on categorical intercept
-designs (structure, weight state, LSMR vectors) and, for a preconditioner
-that can build Schwarz (`auto`, `schwarz`), fedemean's weight-independent
-upper bound of its star Schwarz preconditioner
+designs (structure, weight state, LSMR vectors) and fedemean's
+weight-independent upper bound of its star Schwarz preconditioner
 (`Projector::fe_preconditioner_bytes`: the build's stages run count-only on
 the design and are charged exactly as a build charges them, automatic local
 solves with their approximate-Cholesky fallback, so the bound holds for any
-positive weights). The bound is computed within the remaining budget, by the
-explicit engine's preflight and, for the re-execution, on the generation
-that re-executes; a bound that does not fit is not admitted (the explicit
-Schwarz block is then refused before any work and the joint recurrence keeps
-Jacobi, the certified fallback of §13; an automatic re-execution keeps
-Jacobi; an explicit Schwarz re-execution does not run). The handle is built
-within the fit's remaining budget (its admitted bound plus what nothing else
-admitted), the projections and the re-execution within their admitted
-bytes. The strict-checkpoint accelerator keeps the base estimate plus a
+positive weights) where the Schwarz build is requested: explicit LSMR's
+`precondition(schwarz)` block, in the preflight, and the re-execution's
+`auto` or `schwarz` preconditioner, on the generation that re-executes. The
+bound is computed within the remaining budget; a bound that does not fit is
+not admitted (the explicit Schwarz block is then refused before any work and
+the joint recurrence keeps Jacobi, the certified fallback of §13; an
+automatic re-execution keeps Jacobi; an explicit Schwarz re-execution does
+not run). The explicit engine's handle and projections run within their
+admitted share plus the fit's remaining budget (what nothing else admitted;
+explicit LSMR's automatic preconditioner charges its optional block nothing
+beforehand), the re-execution within its admitted bytes. The strict-checkpoint accelerator keeps the base estimate plus a
 Schwarz grant: for fedemean's star pairs (the effect with the most levels
 paired with each other effect), 24 bytes per cross-tabulation entry
 (`min(N, L_a·L_e)` entries) and 20 per level, plus 48 bytes per entry and

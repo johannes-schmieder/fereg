@@ -2015,7 +2015,7 @@ struct PublicSolverMemoryAdmission {
     owned_fe_design_shortfall_bytes: u128,
     cmg_batch_capacity: usize,
     checkpoint_workspace_bytes: u128,
-    /// Explicit LSMR with a Schwarz-capable preconditioner: fedemean's
+    /// Explicit LSMR with `precondition(schwarz)`: fedemean's
     /// weight-independent bound of the joint recurrence's Schwarz FE block,
     /// admitted inside `incremental_bytes`, or why the preflight refused it.
     schwarz_block: Option<std::result::Result<u128, JointFallback>>,

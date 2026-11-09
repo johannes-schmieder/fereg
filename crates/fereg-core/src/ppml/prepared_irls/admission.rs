@@ -47,13 +47,14 @@ pub(super) struct LinearInstallation {
     projection: ProjectionInstallation,
 }
 
-/// The explicit LSMR engine's Schwarz FE block (SPEC §19): fedemean's
+/// Explicit `precondition(schwarz)`'s FE block (SPEC §19): fedemean's
 /// weight-independent bound of the handle, computed within the fit's
 /// remaining budget beside the route's admitted workspace and admitted with
 /// it. A block that does not fit is refused before any work; the joint
-/// recurrence then keeps its Jacobi block (explicit `schwarz`: the certified
-/// fallback, `memory`) and the automatic preconditioner does not escalate to
-/// it.
+/// recurrence then keeps its Jacobi block (the certified fallback,
+/// `memory`). The automatic preconditioner's block is optional and charged
+/// nothing here: it is built, on escalation, within the fit's remaining
+/// budget.
 fn admit_schwarz_block<P: PreparedOlsFitView + Sync + ?Sized>(
     prepared: &P,
     plan: PpmlMemoryPlan,
@@ -145,10 +146,7 @@ impl LinearAdmission {
             plan => plan?,
         };
         if config.solver_plan.selected == crate::ppml::PpmlSolverFamily::Lsmr
-            && matches!(
-                config.solver_plan.lsmr_preconditioner,
-                crate::fe::LsmrPreconditioner::Auto | crate::fe::LsmrPreconditioner::Schwarz
-            )
+            && config.solver_plan.lsmr_preconditioner == crate::fe::LsmrPreconditioner::Schwarz
             && matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
         {
             memory_plan = admit_schwarz_block(prepared, memory_plan, &mut solver_admission)?;

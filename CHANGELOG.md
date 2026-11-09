@@ -82,7 +82,8 @@
   `precondition(auto)` continues a stalled Jacobi recurrence on the Schwarz
   block before handing the step to the projections, and
   `precondition(schwarz)` runs the joint recurrence with that block instead
-  of the projections. The block is admitted from fedemean's
+  of the projections. The block is built within the fit's remaining memory
+  budget, explicit `schwarz` admitting it first from fedemean's
   weight-independent bound of its build (replacing the fixed PPML Schwarz
   grant, also for the separation detector's LSMR re-execution); one that does
   not fit in memory or whose factorization refuses falls back to the Jacobi

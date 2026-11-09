@@ -142,15 +142,18 @@ impl JointFallback {
 }
 
 /// The explicit LSMR engine's memory admission from the fit's preflight
-/// (SPEC §19). fedemean's workspace is its base LSMR workspace (the
-/// automatic preconditioner's projections) and the admitted Schwarz bound,
-/// which the handle and the projections share (the handle is dropped before
-/// the projections run): the projections are limited to it, and the
-/// handle is built within it plus `headroom`, the fit's remaining budget.
+/// (SPEC §19). fedemean's admitted share is its base LSMR workspace (the
+/// automatic preconditioner's projections) and, for explicit Schwarz, the
+/// block's admitted bound; the handle and the projections (which never
+/// coexist: the handle is dropped first) run within that share plus
+/// `headroom`, the fit's remaining budget, and fedemean admits each stage
+/// within it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct JointLsmrLimits {
-    /// fedemean's weight-independent bound of the Schwarz FE block, admitted
-    /// by the preflight, or why it was refused (the block is never built).
+    /// fedemean's weight-independent bound of explicit Schwarz's FE block,
+    /// admitted by the preflight, or why it was refused (the block is never
+    /// built); zero when nothing was reserved (the automatic
+    /// preconditioner's optional block, identity and Jacobi).
     pub(crate) schwarz: std::result::Result<u128, JointFallback>,
     /// What nothing else in the fit admitted.
     pub(crate) headroom: u128,
@@ -164,11 +167,12 @@ impl JointLsmrLimits {
         headroom: u128::MAX,
     };
 
-    /// fedemean's admitted workspace beside the engine's own buffers: the
-    /// base LSMR workspace with the automatic preconditioner's projections,
-    /// and the admitted Schwarz bound.
+    /// fedemean's limit: its admitted share (`base`, the projections' base
+    /// LSMR workspace, and the admitted Schwarz bound) plus the fit's
+    /// remaining budget.
     fn fedemean(self, base: u128) -> u128 {
         base.saturating_add(self.schwarz.unwrap_or(0))
+            .saturating_add(self.headroom)
     }
 }
 
@@ -736,10 +740,7 @@ impl<'p> ReusableCategoricalJointLsmr<'p> {
             }
             FeBlock::Schwarz => {
                 let limit = match (limit_override, self.limits.schwarz) {
-                    (0, Ok(_)) => self
-                        .limits
-                        .fedemean(self.projections_base()?)
-                        .saturating_add(self.limits.headroom),
+                    (0, Ok(_)) => self.limits.fedemean(self.projections_base()?),
                     // A refused block is never built.
                     (0, Err(_)) => return Ok(Some(fedemean::Decline::MemoryLimit)),
                     (limit, _) => limit,
@@ -2226,9 +2227,10 @@ impl ScaledSquareSum {
 /// continuation iterate); and with the projections (`Auto`), their projected
 /// matrix and FE coefficients beside fedemean's base LSMR workspace
 /// ([`crate::fe::block_schur::lsmr_base_workspace_bytes`]). The preflight
-/// admits the Schwarz block (`Schwarz`, `Auto`) beside this from fedemean's
-/// weight-independent bound ([`schwarz_block_bytes`]); the projections share
-/// that bound, since the handle is dropped before they run.
+/// admits explicit Schwarz's FE block beside this from fedemean's
+/// weight-independent bound ([`schwarz_block_bytes`]); the automatic
+/// preconditioner's optional block, like its projections' own Schwarz, is
+/// built within the fit's remaining budget.
 pub(crate) fn estimate_joint_lsmr_workspace_bytes(
     rows: usize,
     active_columns: usize,
