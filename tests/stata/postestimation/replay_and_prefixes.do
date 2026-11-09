@@ -95,18 +95,21 @@ feppml count x z, absorb(worker firm) d(dd) mu(mm)
 quietly log close fereg_display
 tempname handle
 local header 0
+local accuracy 0
 local missing 0
 file open `handle' using `"`output'"', read text
 file read `handle' line
 while r(eof) == 0 {
-    if strpos(`"`macval(line)'"', "Fixed-effect solver:") == 1 & ///
-       strpos(`"`macval(line)'"', "Accuracy check: passed (tolerance 1e-08)") ///
+    if `"`macval(line)'"' == ///
+        "Fixed-effect solver: cg, reduce(eliminate) precondition(jacobi)" ///
         local header 1
+    if `"`macval(line)'"' == "Accuracy check: passed (tolerance 1e-08)" ///
+        local accuracy 1
     if strpos(`"`macval(line)'"', "missing values generated") local missing 1
     file read `handle' line
 }
 file close `handle'
-assert `header' == 1
+assert `header' == 1 & `accuracy' == 1
 assert `missing' == 0
 confirm variable res fe_w fe_f dd mm
 

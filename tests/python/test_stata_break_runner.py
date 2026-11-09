@@ -74,7 +74,7 @@ class StataBreakOptionsTests(unittest.TestCase):
                 runner.public_ols_adapter(bad, Path(directory) / "bad.do")
         text = fixture.read_text()
         self.assertIn("capture noisily fereg y c.x1", text)
-        self.assertIn("solver(auto) preconditioner(auto)", text)
+        self.assertIn("solver(auto, precondition(auto))", text)
         self.assertNotIn("inject(", text)
         self.assertNotIn("clear all", text)
         for extra in (["--public-scope", "--ols-solver", "cmgschur"],

@@ -80,7 +80,7 @@ returns {cmd:r(601)}.
     {cmd:biasstream(}{it:#}{cmd:)}{col 42}independent stream; default 0
 
   {ul:Execution}
-    {cmd:solver(auto|map|lsmr|cmg)}{col 42}fixed-effect solver; default {cmd:auto}
+    {cmd:solver(auto|lsmr|cg} [{cmd:,} {it:sub}]{cmd:)}{col 42}fixed-effect solver; default {cmd:auto}
     {cmd:memory(auto|fast|low)}{col 42}memory plan; default {cmd:auto}
     {cmd:poolsize(}{it:#}{cmd:)}{col 42}low-memory block width; default 10
     {cmd:threads(}{it:#}{cmd:)}{col 42}native threads; default 0 (automatic)
@@ -94,8 +94,7 @@ returns {cmd:r(601)}.
 The public weight forms are {cmd:[fw=}{it:exp}{cmd:]} and
 {cmd:[pw=}{it:exp}{cmd:]}. {cmd:aweight} and {cmd:iweight} are recognized only
 to return {cmd:r(101)}. The structural constant is always included; there is
-no public {cmd:noconstant}, preconditioner, DoF-policy, or developer-injection
-option.
+no public {cmd:noconstant}, DoF-policy, or developer-injection option.
 
 {marker description}
 {title:Description}
@@ -453,31 +452,42 @@ with the native team. At one million observations or more, it keeps the caller's
 setting. The original setting is restored on success, error, and Break.
 {cmd:deterministic} fixes reduction
 partitions and merge order for the same platform, route, and thread count.
-{cmd:solver(auto)} is the default. It selects the MAP-owned projection family.
-Its numerical engine and workspace depend on the fixed-effect design and
-admitted storage. LSMR and CMG remain explicit solver requests. With exactly
+{cmd:solver()} uses the grammar of {help fereg##solver:fereg}:
+{cmd:solver(auto)} (the default),
+{cmd:solver(lsmr}[{cmd:, reduce(auto|full) precondition(auto|schwarz)}]{cmd:)},
+and {cmd:solver(cg}[{cmd:, reduce(auto|full) precondition(auto|cmg)}]{cmd:)}.
+{cmd:feppml} has no {cmd:solver(map)}, no {cmd:accelerate()}, no
+{cmd:reduce(eliminate)} request, and no CMG-Schur controls; an unsupported
+combination returns {cmd:r(198)}.
+{cmd:solver(auto)} selects the canonical certified projection family.
+Its numerical route and workspace depend on the fixed-effect design and
+admitted storage: categorical frames with two to five effects (four or five
+only in the fast memory route) first eliminate the largest effect exactly and solve the remaining effects by
+Jacobi-preconditioned CG, escalating to block-Jacobi when a recurrence stalls.
+LSMR and CMG remain explicit solver requests. With exactly
 two categorical intercept effects and no slopes, automatic fits
 reuse one CMG preconditioner across IRLS iterations to accelerate their joint
-fixed-effect solves and canonical products; this is not {cmd:solver(cmg)}, and
+fixed-effect solves and canonical products; this is not {cmd:solver(cg)}, and
 every result is still certified. Every fit enters the strict
 convergence checkpoint only once the accepted predictor is predicted to settle
 within the strict convergence envelope.
-{cmd:solver(map)} requests the canonical MAP-owned projection family explicitly.
-For multiple effects with absorbed slopes, this family uses a current-weight
-coefficient-space Schur/CG kernel when its workspace fits. It prepares weighted
-group bases once per absorption call, stops columns independently, and accepts
-only freshly reconstructed and certified residuals. Its reported iterations
-count Krylov steps; they are not directly comparable to symmetric MAP sweeps.
-Insufficient optional workspace retains generic MAP.
-{cmd:solver(lsmr)} selects one native joint-incremental LSMR engine. Its
-concrete identity is {cmd:lsmr_fused} with no active finite controls and
-{cmd:lsmr_joint} otherwise. {cmd:solver(cmg)} selects only prepared fused-FWL
-CMG. The requested family, selected engine, final effective route, checkpoint,
-retry, and fallback work are reported separately. Explicit LSMR and CMG fits
+For multiple effects with absorbed slopes, the canonical family uses a
+current-weight coefficient-space Schur/CG kernel when its workspace fits. It
+prepares weighted group bases once per absorption call, stops columns
+independently, and accepts only freshly reconstructed and certified residuals.
+Its reported iterations count Krylov steps; they are not directly comparable to
+symmetric MAP sweeps. Insufficient optional workspace retains generic MAP.
+{cmd:solver(lsmr)} selects one native joint-incremental LSMR engine with the
+Schwarz preconditioner; it appears as row {cmd:lsmr} of {cmd:e(fe_solve)} with
+no active finite controls and as {cmd:lsmr_joint} otherwise. {cmd:solver(cg)}
+selects only prepared fused-FWL CMG on the full graph (row {cmd:cmg}). The
+work, retries and fallbacks of each session are reported separately.
+Explicit LSMR and CMG fits
 with two or three categorical effects use independently re-certified
 current-weight LSMR checkpoint projection at every retained sample size.
 The canonical session owns the first full-width rank decision, strict
-convergence checkpoint, and exact final-Hessian synchronization.
+convergence checkpoint, and exact final-Hessian synchronization, so the final
+weighted least-squares solve always runs there.
 
 {pstd}
 Explicit LSMR supports at least two categorical intercept fixed
@@ -491,9 +501,10 @@ final-Hessian state, and require the fast memory route.
 supported for these two solvers. Recognized requests outside this envelope
 return {cmd:r(498)}. A viable selected route that cannot fit its modeled
 workspace returns {cmd:r(909)}. Numerical CMG nonconvergence triggers a visible,
-permanent ordinary-frame MAP fallback. A failed independent checkpoint
-certificate permits one tighter LSMR batch on untouched authoritative inputs;
-a second numerical rejection falls back visibly to MAP. Certification
+permanent fallback of the ordinary frames to the canonical session. A failed
+independent checkpoint certificate permits one tighter LSMR batch on untouched
+authoritative inputs; a second numerical rejection falls back visibly to the
+canonical session. Certification
 tolerances do not change. Unsupported topology, memory failure, invalid input, interruption, and
 internal errors remain fatal.
 
@@ -644,7 +655,7 @@ The closed diagnostic matrix set is
 {cmd:e(feppml_fe)}, {cmd:e(feppml_cluster)}, {cmd:e(feppml_subset)},
 {cmd:e(feppml_separation)}, {cmd:e(feppml_inference)},
 {cmd:e(feppml_drop_counts)}, {cmd:e(feppml_separation_sequence)},
-{cmd:e(feppml_certificate)}, {cmd:e(feppml_solver)},
+{cmd:e(feppml_certificate)}, {cmd:e(fe_solve)},
 {cmd:e(feppml_runtime)}, and
 {cmd:e(feppml_receipt)}.
 
@@ -658,19 +669,32 @@ versioned identity and final COMPLETE marker. Scalars beginning
 allocation, timing, thread, and certificate evidence.
 
 {pstd}
-{cmd:e(feppml_solver)} has rows {cmd:map}, {cmd:lsmr_fused},
-{cmd:lsmr_joint}, and {cmd:cmg_prepared}. Its fixed 22-column
-layout records repeated request/selection/effective/checkpoint identities and
-per-engine frame, retry, fallback, iteration, timing, and certificate maxima.
-The macros {cmd:e(solver)}, {cmd:e(feppml_solver_requested)},
-{cmd:e(feppml_solver_selected)}, {cmd:e(feppml_solver_engine)},
-{cmd:e(feppml_solver_effective)}, {cmd:e(feppml_solver_engine_effective)},
-{cmd:e(feppml_solver_checkpoint)}, and
-{cmd:e(feppml_solver_fallback_reason)} provide named identities;
-{cmd:e(feppml_solver_fallback_count)} is the total visible solver fallback
-count. {cmd:e(feppml_linear_route)} remains a compatibility alias for the
-engine that produced the accepted final canonical linear frame, not the
-ordinary-frame effective route.
+{cmd:e(fe_solver)} keeps the normalized {cmd:solver()} request. The macros
+{cmd:e(fe_route)}, {cmd:e(fe_reduction)}, {cmd:e(fe_method)},
+{cmd:e(fe_preconditioner)}, {cmd:e(fe_block_solvers)} (with block-Jacobi), and
+{cmd:e(fe_acceleration)} and the scalars {cmd:e(fe_iterations)} and
+{cmd:e(fe_escalations)} describe the final weighted least-squares solve, which
+always runs in the certified canonical session, in the vocabulary of
+{help fereg##stored:fereg}; for example
+{cmd:cg, reduce(eliminate) precondition(jacobi)}. The requested {cmd:lsmr} or
+{cmd:cg} serves the ordinary IRLS iterations; see the rows of
+{cmd:e(fe_solve)}. {cmd:e(fe_fallback)} counts visible solver fallbacks over
+the fit and {cmd:e(fe_fallback_reason)} names them: {cmd:none},
+{cmd:cmg_numerical_nonconvergence},
+{cmd:checkpoint_lsmr_numerical_nonconvergence}, or
+{cmd:cmg_and_checkpoint_numerical_nonconvergence}.
+
+{pstd}
+{cmd:e(fe_solve)} has rows {cmd:canonical} (the certified canonical session),
+{cmd:lsmr}, {cmd:lsmr_joint}, and {cmd:cmg}, and columns
+{cmd:ordinary_frames}, {cmd:checkpoint_frames}, {cmd:retries},
+{cmd:fallbacks}, {cmd:iterations}, {cmd:setup_seconds}, {cmd:solve_seconds},
+{cmd:certification_seconds}, {cmd:certificate_absinf},
+{cmd:certificate_relinf}, {cmd:certificate_rel2}, {cmd:normal_equation},
+{cmd:projection_absinf}, and {cmd:backward_error}. Sessions that did not run
+have zero work and missing certificate maxima. The compiled result validator
+still posts {cmd:e(feppml_solver_fallback_count)}, equal to
+{cmd:e(fe_fallback)}, and the internal route code {cmd:e(feppml_linear_route)}.
 
 {pstd}
 Standard macros include {cmd:e(cmd)} = {cmd:feppml}, {cmd:e(cmdline)},
@@ -742,8 +766,9 @@ absorbed slope, explicit RHS base operators such as {cmd:ib2.region} and
 rebasing path.
 
 {pstd}
-The public surface does not include a model-based IID VCE, user-selectable
-preconditioner or DoF policy, IV/GMM, group outcomes with individual fixed effects,
+The public surface does not include a model-based IID VCE, a preconditioner
+other than its solver's own (Schwarz for {cmd:lsmr}, CMG for {cmd:cg}), a DoF
+policy, IV/GMM, group outcomes with individual fixed effects,
 HAC or Driscoll--Kraay covariance, other GLMs, GPU execution, or undocumented
 developer controls. Unsupported requests fail explicitly.
 

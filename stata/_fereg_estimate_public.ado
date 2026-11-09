@@ -4,9 +4,7 @@ program define _fereg_estimate_public, eclass
     syntax varlist(fv ts numeric min=1) [if] [in] [fw aw pw iw], ///
         [ABSorb(string asis) VCE(string asis) DOF(string asis) ///
          KEEPsingletons RESIDuals(name) SAVEFEs(string asis) ///
-         SOLVer(string) CMGDEGree(numlist integer min=1 max=1) ///
-         CMGSAMples(string) CMGSEed(string) ///
-         PREConditioner(string) THREADS(integer 0) ///
+         SOLVer(string asis) THREADS(integer 0) ///
          MEMory(string) POOLSize(integer 10) TOLerance(real 1e-8) ///
          ITERate(integer 16000) DETERMINISTIC TIMEIT VERBose(integer 0) ///
          NOCONStant]
@@ -23,24 +21,19 @@ program define _fereg_estimate_public, eclass
         di as error "memory() must be auto, fast, or low"
         exit 198
     }
-    local solver_mode = lower(strtrim(`"`solver'"'))
-    if `"`solver_mode'"' == "" local solver_mode "auto"
-    if `"`solver_mode'"' == "cg" {
-        di as error "solver(cg) is disabled because its residual certificate does not ensure projection accuracy; use solver(lsmr) or solver(cmg)"
-        exit 198
-    }
-    if !inlist(`"`solver_mode'"', "auto", "map", "lsmr", "cmg", "cmgschur", "it", "squarem") {
-        di as error "solver() must be auto, map, lsmr, cmg, cmgschur, it, or squarem"
-        exit 198
-    }
+    // solver() holds the method, reduction, preconditioner and MAP
+    // acceleration; _fereg_solver maps it to the native route tokens.
+    _fereg_solver, command(fereg) spec(`"`solver'"')
+    local solver_spec `"`r(spec)'"'
+    local solver_mode "`r(route)'"
+    local preconditioner_mode "`r(preconditioner)'"
+    local cmgdegree `"`r(cmgdegree)'"'
+    local cmgsamples `"`r(cmgsamples)'"'
+    local cmgseed `"`r(cmgseed)'"'
     local cmgdegree_option
-    if `"`cmgdegree'"' != "" & `"`solver_mode'"' != "cmgschur" {
-        di as error "cmgdegree() is valid only with solver(cmgschur)"
-        exit 198
-    }
     if `"`solver_mode'"' == "cmgschur" {
         if `"`cmgdegree'"' == "" local cmgdegree 5
-        if !inlist(`cmgdegree', 4, 5, 6) {
+        if !inlist(`"`cmgdegree'"', "4", "5", "6") {
             di as error "cmgdegree() must be 4, 5, or 6"
             exit 198
         }
@@ -50,10 +43,6 @@ program define _fereg_estimate_public, eclass
     local cmgseed_explicit = (`"`cmgseed'"' != "")
     foreach option in cmgsamples cmgseed {
         if `"``option''"' != "" {
-            if `"`solver_mode'"' != "cmgschur" {
-                di as error "`option'() is valid only with solver(cmgschur)"
-                exit 198
-            }
             local maximum "4294967295"
             if "`option'" == "cmgseed" local maximum "9007199254740991"
             if !regexm(strtrim(`"``option''"'), "^[0-9]+$") {
@@ -71,21 +60,6 @@ program define _fereg_estimate_public, eclass
     }
     if `cmgseed_explicit' & `cmgsamples' == 0 {
         di as error "cmgseed() requires positive cmgsamples()"
-        exit 198
-    }
-    local preconditioner_mode = lower(strtrim(`"`preconditioner'"'))
-    if `"`preconditioner_mode'"' == "" {
-        if !inlist(`"`solver_mode'"', "auto", "lsmr") local preconditioner_mode "off"
-        else local preconditioner_mode "auto"
-    }
-    if `"`preconditioner_mode'"' == "none" local preconditioner_mode "off"
-    if `"`preconditioner_mode'"' == "additive" local preconditioner_mode "schwarz"
-    if !inlist(`"`preconditioner_mode'"', "auto", "off", "diagonal", "schwarz") {
-        di as error "preconditioner() must be auto, off, diagonal, or schwarz"
-        exit 198
-    }
-    if !inlist(`"`solver_mode'"', "auto", "lsmr") & `"`preconditioner_mode'"' != "off" {
-        di as error "preconditioner() is valid only with solver(auto) or solver(lsmr)"
         exit 198
     }
     if strtrim(`"`savefes'"') != "" {
@@ -187,13 +161,12 @@ program define _fereg_estimate_public, eclass
     ereturn local fereg_memory_mode "`memory_mode'"
     ereturn local fereg_memory_requested "`memory_mode'"
     ereturn local fereg_memory_selected "`selected_memory'"
-    ereturn local fereg_solver_requested "`solver_mode'"
+    ereturn local fe_solver `"`solver_spec'"'
     if `"`solver_mode'"' == "cmgschur" {
-        ereturn scalar fereg_cmg_degree = `cmgdegree'
-        ereturn scalar fereg_cmg_samples = `cmgsamples'
-        ereturn scalar fereg_cmg_seed = `cmgseed'
+        ereturn scalar fe_cmgdegree = `cmgdegree'
+        ereturn scalar fe_cmgsamples = `cmgsamples'
+        ereturn scalar fe_cmgseed = `cmgseed'
     }
-    ereturn local fereg_preconditioner "`preconditioner_mode'"
     ereturn scalar fereg_requested_threads = el(e(fereg_runtime), 28, 2)
     ereturn scalar fereg_threads = el(e(fereg_runtime), 29, 2)
     ereturn scalar fereg_poolsize = `poolsize'

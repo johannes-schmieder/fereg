@@ -218,7 +218,7 @@ def check_trace(config, path):
                          'residual_norms_count':'1', 'certificate_count':'1'} if direct else
                         {'norms_count':'1', 'initial_certificate_count':'1', 'sweep_count':'0'})
             if (projection['rows'] != '1000000' or any(projection.get(k) != v for k,v in expected.items()) or
-                result['iterations'] != '1' or result['n_hdfe'] != '0' or result['solver'] != 'map' or
+                result['iterations'] != '1' or result['n_hdfe'] != '0' or result['solver'] != 'direct' or
                 (direct or centered) and (result.get('residual_stop') != '5' or result.get('residual_iterations') != '0')):
                 raise ValueError(f'{cell}: structural-constant path did not execute')
     return {f'k{k}-t{t}':group for (k,t),group in groups.items()}

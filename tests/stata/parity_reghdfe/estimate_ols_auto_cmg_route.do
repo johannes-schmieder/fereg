@@ -111,9 +111,9 @@ program define __frg_check_cmg_agreement
     scalar `auto_df_r' = e(df_r)
     scalar `auto_df_a' = e(df_a)
     generate byte `auto_sample' = e(sample)
-    quietly fereg y x, absorb(worker firm) solver(cmg) threads(2) ///
+    quietly fereg y x, absorb(worker firm) solver(cg) threads(2) ///
         residuals(`cmg_residual')
-    assert e(fereg_solver)[1,2] == 7
+    assert "`e(fe_route)'" == "cg, reduce(full) precondition(cmg)"
     assert e(converged) == 1
     assert e(fereg_certificate)[24,2] == 1
     assert e(sample) == `auto_sample'
@@ -163,9 +163,9 @@ generate double exp2 = experience^2
 generate double y = 2 + worker_fe + firm_fe + .03*experience - ///
     .0005*exp2 + rnormal(0,.2)
 quietly fereg y experience exp2, ///
-    absorb(worker_saved=worker firm_saved=firm) solver(cmg)
-assert e(fereg_solver)[1,2] == 7
-assert e(fereg_solver)[1,11] == 0
+    absorb(worker_saved=worker firm_saved=firm) solver(cg)
+assert "`e(fe_route)'" == "cg, reduce(full) precondition(cmg)"
+assert e(fe_fallback) == 0
 assert !missing(worker_saved, firm_saved)
 
 di as result "END_FIXTURE|estimate_ols_auto_cmg_route|rc=0"

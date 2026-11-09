@@ -30,7 +30,7 @@ program define _centered_check
         assert mreldif(e(b),wanted_b)<1e-8
         assert mreldif(e(V),wanted_v)<1e-8
         assert abs(e(rss)-`wanted_rss')<1e-8*max(1,`wanted_rss')
-        assert e(fereg_solver)[2,4]==5
+        assert "`e(fe_residual_method)'"=="derived"
         matrix repeat_b=e(b)
         matrix repeat_v=e(V)
         scalar repeat_rss=e(rss)
@@ -58,7 +58,7 @@ foreach workers in 1 4 16 {
     assert abs(scaled_v[1,1]*1e-200/wanted_variance-1)<1e-10
     assert abs(scaled_v[2,2]*1e200/wanted_variance-1)<1e-10
     assert abs(scaled_v[3,3]/wanted_variance-1)<1e-10
-    assert e(fereg_solver)[2,4]==5
+    assert "`e(fe_residual_method)'"=="derived"
     matrix repeat_b=e(b)
     matrix repeat_v=e(V)
     scalar repeat_rss=e(rss)
@@ -105,7 +105,7 @@ foreach workers in 1 4 16 {
     assert mreldif(e(b),canonical_b)==0 & mreldif(e(V),canonical_v)==0
     assert e(rss)==scalar(canonical_rss)
     assert actual_xb==canonical_xb
-    assert e(fereg_solver)[2,4]!=5
+    assert "`e(fe_residual_method)'"!="derived"
     drop actual_xb
 
 }

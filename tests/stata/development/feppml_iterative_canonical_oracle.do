@@ -39,7 +39,7 @@ foreach kind in unit pw {
     }
     replace y=truth_mu+cond(mod(_n,2)==1,err/q,-err/q)
     feppml y x1 x2 x3 x4 `weight', absorb(g h) keepsingletons separation(none) ///
-        solver(map) memory(low) poolsize(4) threads(4) vce(robust) mu(mu_native)
+        solver(auto) memory(low) poolsize(4) threads(4) vce(robust) mu(mu_native)
     assert e(converged)==1
     assert e(feppml_certificate)[16,1]==1
     assert e(sample)==1

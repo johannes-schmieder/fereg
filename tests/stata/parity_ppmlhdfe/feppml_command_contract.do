@@ -33,21 +33,24 @@ assert `"`e(feppml_gate)'"' == "public_ppml_v1"
 assert `"`e(feppml_memory_requested)'"' == "auto"
 assert `"`e(feppml_action_protocol)'"' == "1.7"
 assert `"`e(feppml_model_wire)'"' == "2.1"
-assert `"`e(feppml_request_wire)'"' == "1.8"
+assert `"`e(feppml_request_wire)'"' == "1.9"
 assert `"`e(feppml_result_wire)'"' == "1.5"
 assert `"`e(feppml_plugin)'"' == "0.5.3"
-assert `"`e(solver)'"' == "auto"
-assert `"`e(feppml_solver_requested)'"' == "auto"
-assert `"`e(feppml_solver_selected)'"' == "map"
-assert `"`e(feppml_solver_engine)'"' == "map"
-assert `"`e(feppml_solver_effective)'"' == "map"
-assert `"`e(feppml_solver_engine_effective)'"' == "map"
-assert `"`e(feppml_solver_checkpoint)'"' == "map"
-assert `"`e(feppml_solver_fallback_reason)'"' == "none"
-assert e(feppml_solver_fallback_count) == 0
+assert `"`e(fe_solver)'"' == "auto"
+* Without absorbed effects there is no fixed-effect projection to solve.
+assert `"`e(fe_route)'"' == "none"
+assert `"`e(fe_reduction)'"' == "none" & `"`e(fe_method)'"' == "none"
+assert `"`e(fe_preconditioner)'"' == "none" & `"`e(fe_acceleration)'"' == "none"
+assert e(fe_escalations) == 0 & e(fe_iterations) < .
+assert `"`e(fe_fallback_reason)'"' == "none"
+assert e(fe_fallback) == 0 & e(feppml_solver_fallback_count) == 0
 assert e(feppml_linear_route) == 2
-assert rowsof(e(feppml_solver)) == 4
-assert colsof(e(feppml_solver)) == 22
+assert rowsof(e(fe_solve)) == 4
+assert colsof(e(fe_solve)) == 14
+tempname fe_solve
+matrix `fe_solve' = e(fe_solve)
+local fe_solve_rows : rownames `fe_solve'
+assert "`fe_solve_rows'" == "canonical lsmr lsmr_joint cmg"
 assert e(feppml_poolsize) == 10
 assert e(feppml_requested_tolerance) == 1e-8
 assert e(feppml_iterate) == 10000
@@ -143,11 +146,13 @@ local allowed_feppml_scalars feppml_action_events_delta ///
     feppml_vce_correction_policy feppml_vce_effective ///
     feppml_vce_requested feppml_weight_code ///
     feppml_workspace_allocation_free
+local fe_scalars fe_iterations fe_escalations fe_fallback
 local actual_scalars : e(scalars)
 foreach field of local actual_scalars {
     local standard : list field in standard_scalars
     local feppml : list field in allowed_feppml_scalars
-    assert `standard' | `feppml'
+    local fe : list field in fe_scalars
+    assert `standard' | `feppml' | `fe'
 }
 foreach field in N rank df_m df_resid df_structural df_a N_physical ///
     N_effective N_candidate N_full deviance ll ll_0 r2_p mu_0 sum_y ic ///
@@ -166,10 +171,9 @@ local allowed_macros cmd cmdline model depvar indepvars vce vcetype absvars ///
     clustvar3 clustvar4 clustvar5 resid residual_type xb_var d_var eta_var ///
     mu_var drop_reason_var predict feppml_action_protocol feppml_model_wire ///
     feppml_request_wire feppml_result_wire feppml_plugin feppml_gate ///
-    feppml_memory_requested feppml_memory_method solver feppml_solver_requested ///
-    feppml_solver_selected feppml_solver_engine feppml_solver_effective ///
-    feppml_solver_engine_effective feppml_solver_checkpoint ///
-    feppml_solver_fallback_reason properties fereg_version
+    feppml_memory_requested feppml_memory_method fe_solver fe_reduction ///
+    fe_method fe_preconditioner fe_block_solvers fe_acceleration fe_route ///
+    fe_fallback_reason properties fereg_version
 local actual_macros : e(macros)
 foreach field of local actual_macros {
     local allowed : list field in allowed_macros
@@ -180,7 +184,7 @@ if `"`e(cmd)'"' == "feppml" assert `"`e(fereg_version)'"' == "0.5.3"
 local allowed_matrices b V feppml_status feppml_fit feppml_dof feppml_fe ///
     feppml_cluster feppml_subset feppml_separation feppml_inference ///
     feppml_drop_counts feppml_separation_sequence feppml_certificate ///
-    feppml_solver feppml_runtime feppml_memory feppml_receipt dof_table
+    fe_solve feppml_runtime feppml_memory feppml_receipt dof_table
 local actual_matrices : e(matrices)
 foreach field of local actual_matrices {
     local allowed : list field in allowed_matrices
@@ -189,7 +193,7 @@ foreach field of local actual_matrices {
 foreach field in b V feppml_status feppml_fit feppml_dof feppml_fe ///
     feppml_cluster feppml_subset feppml_separation feppml_inference ///
     feppml_drop_counts feppml_separation_sequence feppml_certificate ///
-    feppml_solver feppml_runtime feppml_receipt {
+    fe_solve feppml_runtime feppml_receipt {
     confirm matrix e(`field')
 }
 local actual_functions : e(functions)
@@ -216,87 +220,49 @@ generate byte __accepted_sample = e(sample)
 
 `feppml_test_command' y, absorb(cl1 cl2) separation(none) ///
     memory(fast) threads(1) deterministic solver(lsmr)
-assert `"`e(feppml_solver_engine)'"' == "lsmr_fused"
-assert `"`e(feppml_solver_engine_effective)'"' == "lsmr_fused"
-assert e(feppml_solver_fallback_count) == 0
-forvalues row = 1/4 {
-    assert e(feppml_solver)[`row',3] == 2
-    assert e(feppml_solver)[`row',5] == 2
-}
-assert e(feppml_solver)[2,8] > 0
-assert e(feppml_solver)[3,8] == 0
+* Without finite regressors the fused LSMR engine serves the IRLS frames.
+assert `"`e(fe_solver)'"' == "lsmr"
+assert e(fe_fallback) == 0
+assert e(fe_solve)[2,1] > 0
+assert e(fe_solve)[3,1] == 0
 
 `feppml_test_command' y c.x, absorb(cl1 cl2) separation(none) ///
     memory(fast) threads(1) deterministic solver(lsmr)
-assert `"`e(solver)'"' == "lsmr"
-assert `"`e(feppml_solver_selected)'"' == "lsmr"
-assert `"`e(feppml_solver_engine)'"' == "lsmr_joint"
-assert `"`e(feppml_solver_effective)'"' == "lsmr"
-assert `"`e(feppml_solver_engine_effective)'"' == "lsmr_joint"
-assert `"`e(feppml_solver_checkpoint)'"' == "lsmr"
-assert `"`e(feppml_solver_fallback_reason)'"' == "none"
-assert e(feppml_solver_fallback_count) == 0
-forvalues row = 1/4 {
-    assert e(feppml_solver)[`row',1] == 3
-    assert e(feppml_solver)[`row',2] == 3
-    assert e(feppml_solver)[`row',3] == 3
-    assert e(feppml_solver)[`row',4] == 3
-    assert e(feppml_solver)[`row',5] == e(feppml_solver)[`row',3]
-    assert e(feppml_solver)[`row',6] == 3
-    assert e(feppml_solver)[`row',7] == `row'
-}
-assert e(feppml_solver)[2,8] == 0
-assert e(feppml_solver)[3,8] > 0
-* Shared geometry may already be prepared; setup time can be zero.
-assert !missing(e(feppml_solver)[2,9]) & e(feppml_solver)[2,9] >= 0
-* The compatibility alias identifies the independently certified canonical
-* categorical checkpoint; the requested joint LSMR solve remains above.
+assert `"`e(fe_solver)'"' == "lsmr"
+assert `"`e(fe_fallback_reason)'"' == "none"
+assert e(fe_fallback) == 0
+* The joint LSMR engine serves the IRLS frames; the final weighted solve is
+* the certified canonical session's, reported in e(fe_route).
+assert e(fe_solve)[2,1] == 0
+assert e(fe_solve)[3,1] > 0
+assert !missing(e(fe_solve)[2,2]) & e(fe_solve)[2,2] >= 0
+assert inlist(`"`e(fe_method)'"', "cg", "map", "lsmr")
 assert e(feppml_linear_route) == 2
 
 `feppml_test_command' y c.x, absorb(cl1 cl2 cl3) separation(none) ///
     memory(fast) threads(1) deterministic solver(lsmr)
-assert `"`e(feppml_solver_engine)'"' == "lsmr_joint"
-assert `"`e(feppml_solver_engine_effective)'"' == "lsmr_joint"
-assert e(feppml_solver_fallback_count) == 0
-assert e(feppml_solver)[2,8] == 0
-assert e(feppml_solver)[3,8] > 0
+assert e(fe_fallback) == 0
+assert e(fe_solve)[2,1] == 0
+assert e(fe_solve)[3,1] > 0
 
 `feppml_test_command' y c.x, absorb(cl1 cl2) separation(none) ///
-    memory(fast) threads(1) deterministic solver(cmg)
-assert `"`e(solver)'"' == "cmg"
-assert `"`e(feppml_solver_selected)'"' == "cmg"
-assert `"`e(feppml_solver_engine)'"' == "cmg_prepared"
-assert inlist(`"`e(feppml_solver_effective)'"', "cmg", "map")
-if `"`e(feppml_solver_effective)'"' == "cmg" {
-    assert `"`e(feppml_solver_engine_effective)'"' == "cmg_prepared"
-    assert `"`e(feppml_solver_fallback_reason)'"' == "none"
-    assert e(feppml_solver_fallback_count) == 0
+    memory(fast) threads(1) deterministic solver(cg)
+assert `"`e(fe_solver)'"' == "cg"
+assert e(fe_solve)[4,1] > 0
+if e(fe_fallback) == 0 {
+    assert `"`e(fe_fallback_reason)'"' == "none"
 }
 else {
-    assert `"`e(feppml_solver_engine_effective)'"' == "map"
-    assert `"`e(feppml_solver_fallback_reason)'"' == "cmg_numerical_nonconvergence"
-    assert e(feppml_solver_fallback_count) == 1
+    assert `"`e(fe_fallback_reason)'"' == "cmg_numerical_nonconvergence"
+    assert e(fe_fallback) == 1
 }
-forvalues row = 1/4 {
-    assert e(feppml_solver)[`row',1] == 7
-    assert e(feppml_solver)[`row',2] == 7
-    assert e(feppml_solver)[`row',3] == 4
-    assert inlist(e(feppml_solver)[`row',4], 2, 7)
-    assert e(feppml_solver)[`row',6] == 3
-    assert e(feppml_solver)[`row',7] == `row'
-}
-assert e(feppml_solver)[1,11] + e(feppml_solver)[4,11] == ///
-    e(feppml_solver_fallback_count)
+assert e(fe_solve)[1,4] + e(fe_solve)[4,4] == e(fe_fallback)
+assert e(fe_fallback) == e(feppml_solver_fallback_count)
 assert inlist(e(feppml_linear_route), 2, 3)
 
-`feppml_test_command' y c.x, solver(map)
-assert `"`e(solver)'"' == "map"
-assert `"`e(feppml_solver_requested)'"' == "map"
-assert `"`e(feppml_solver_selected)'"' == "map"
-assert `"`e(feppml_solver_engine)'"' == "map"
-assert `"`e(feppml_solver_effective)'"' == "map"
-assert `"`e(feppml_solver_checkpoint)'"' == "map"
-assert e(feppml_solver_fallback_count) == 0
+`feppml_test_command' y c.x, solver(auto)
+assert `"`e(fe_solver)'"' == "auto"
+assert e(fe_fallback) == 0
 assert e(feppml_linear_route) == 2
 assert mreldif(e(b), `accepted_b') == 0
 assert mreldif(e(V), `accepted_V') == 0
@@ -313,16 +279,16 @@ generate int __solver_core2 = mod(5 * (_n - 1) + floor((_n - 1) / 67), 67)
 generate int __solver_nuisance = mod(_n - 1, 65)
 capture noisily `feppml_test_command' y c.x, ///
     absorb(__solver_core1 __solver_core2 __solver_nuisance) ///
-    separation(none) solver(cmg) memory(fast) threads(1) deterministic
+    separation(none) solver(cg) memory(fast) threads(1) deterministic
 assert _rc == 0
-assert `"`e(feppml_solver_selected)'"' == "cmg"
+assert `"`e(fe_solver)'"' == "cg"
 tempname nuisance_cap_b nuisance_cap_V
 matrix `nuisance_cap_b' = e(b)
 matrix `nuisance_cap_V' = e(V)
 replace __solver_nuisance = mod(_n - 1, 66)
 capture noisily `feppml_test_command' y c.x, ///
     absorb(__solver_core1 __solver_core2 __solver_nuisance) ///
-    separation(none) solver(cmg) memory(fast) threads(1) deterministic
+    separation(none) solver(cg) memory(fast) threads(1) deterministic
 assert _rc == 498
 assert mreldif(e(b), `nuisance_cap_b') == 0
 assert mreldif(e(V), `nuisance_cap_V') == 0
@@ -344,7 +310,7 @@ forvalues k = 0/1 {
     local controls
     if `k' local controls c.x
     `feppml_test_command' y `controls' [fw=wt], absorb(__na __nb __nc) ///
-        offset(off) solver(map) separation(none) threads(1) deterministic ///
+        offset(off) solver(auto) separation(none) threads(1) deterministic ///
         eta(__reference_eta) mu(__reference_mu)
     tempname nested_b nested_V nested_ll nested_dev nested_rank nested_dfa
     matrix `nested_b' = e(b)
@@ -359,11 +325,11 @@ forvalues k = 0/1 {
             local absorption `absorption' __saved_`role'=__n`role'
         }
         `feppml_test_command' y `controls' [fw=wt], absorb(`absorption') ///
-            offset(off) solver(cmg) separation(none) memory(fast) ///
+            offset(off) solver(cg) separation(none) memory(fast) ///
             threads(2) deterministic eta(__nested_eta) mu(__nested_mu) d(__nested_d)
         assert e(converged) == 1
-        assert e(feppml_solver_fallback_count) == 0
-        assert `"`e(feppml_solver_engine_effective)'"' == "cmg_prepared"
+        assert e(fe_fallback) == 0
+        assert e(fe_solve)[4,1] > 0
         assert e(N_hdfe) == 3
         assert e(rank) == `nested_rank'
         assert e(df_a) == `nested_dfa'
@@ -379,7 +345,7 @@ forvalues k = 0/1 {
     drop __reference_eta __reference_mu
 }
 restore
-`feppml_test_command' y c.x, solver(map)
+`feppml_test_command' y c.x, solver(auto)
 assert mreldif(e(b), `accepted_b') == 0
 assert mreldif(e(V), `accepted_V') == 0
 
@@ -390,8 +356,13 @@ capture noisily `feppml_test_command' y c.x, memory(bogus)
 assert _rc == 198
 capture noisily `feppml_test_command' y c.x, solver(bogus)
 assert _rc == 198
-capture noisily `feppml_test_command' y c.x, solver(cg)
-assert _rc == 198
+foreach request in "map" "cmg" "cmgschur" "it" "squarem" "map, accelerate(squarem)" ///
+    "cg, reduce(eliminate)" "cg, precondition(jacobi)" "cg, cmgdegree(5)" ///
+    "lsmr, precondition(none)" "lsmr, reduce(eliminate)" ///
+    "auto, precondition(jacobi)" "auto, reduce(full)" "lsmr precondition(schwarz)" {
+    capture noisily `feppml_test_command' y c.x, solver(`request')
+    assert _rc == 198
+}
 capture noisily `feppml_test_command' y c.x, fesolver(map)
 assert _rc == 198
 capture noisily `feppml_test_command' y c.x, finitesolver(auto)
@@ -408,14 +379,16 @@ capture noisily `feppml_test_command' y c.x, solvertrace
 assert _rc == 198
 capture noisily `feppml_test_command' y c.x, solver(lsmr)
 assert _rc == 498
-capture noisily `feppml_test_command' y c.x, solver(cmg)
+capture noisily `feppml_test_command' y c.x, solver(cg)
+assert _rc == 498
+capture noisily `feppml_test_command' y c.x, solver(lsmr, precondition(schwarz))
 assert _rc == 498
 generate int __solver_wide1 = _n
 generate int __solver_wide2 = mod(5 * _n, 97)
 generate int __solver_wide3 = mod(7 * _n, 101)
 capture noisily `feppml_test_command' y c.x, ///
     absorb(__solver_wide1 __solver_wide2 __solver_wide3) ///
-    keepsingletons separation(none) solver(cmg) memory(fast)
+    keepsingletons separation(none) solver(cg) memory(fast)
 assert _rc == 498
 drop __solver_wide1 __solver_wide2 __solver_wide3
 capture noisily `feppml_test_command' y c.x, ///
@@ -433,14 +406,14 @@ assert __solver_lsmr_fe < . if e(sample)
 drop __solver_lsmr_fe
 capture noisily `feppml_test_command' y c.x, ///
     absorb(__solver_fe=cl1 cl2) separation(none) ///
-    solver(cmg) memory(fast)
+    solver(cg) memory(fast)
 assert _rc == 0
 confirm variable __solver_fe
 assert __solver_fe < . if e(sample)
 drop __solver_fe
 * Successful saved-FE fits replace e(); restore the accepted model before
 * testing that the following rejected requests leave it unchanged.
-`feppml_test_command' y c.x, solver(map)
+`feppml_test_command' y c.x, solver(auto)
 assert mreldif(e(b), `accepted_b') == 0
 assert mreldif(e(V), `accepted_V') == 0
 assert e(sample) == __accepted_sample

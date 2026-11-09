@@ -91,6 +91,7 @@ const PPML_FIELDS: &[&str] = &[
     "output_inference_matrix",
     "output_drop_counts_matrix",
     "output_separation_sequence_matrix",
+    "output_route_matrix",
 ];
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -163,6 +164,7 @@ struct ResultMatrices<T = String> {
     separation_sequence: T,
     certificates: T,
     solver: T,
+    route: T,
     runtime: T,
     memory_report: T,
     receipt: T,
@@ -185,6 +187,7 @@ impl<T> ResultMatrices<T> {
             &self.separation_sequence,
             &self.certificates,
             &self.solver,
+            &self.route,
             &self.runtime,
             &self.memory_report,
             &self.receipt,
@@ -936,6 +939,7 @@ impl EstimatePpmlSpec {
                     .to_owned(),
                 certificates: required(&values, "output_certificate_matrix")?.to_owned(),
                 solver: required(&values, "output_solver_matrix")?.to_owned(),
+                route: required(&values, "output_route_matrix")?.to_owned(),
                 runtime: required(&values, "output_runtime_matrix")?.to_owned(),
                 memory_report: required(&values, "output_memory_matrix")?.to_owned(),
                 receipt: required(&values, "output_receipt_matrix")?.to_owned(),
@@ -1423,6 +1427,7 @@ fn validate_shadow(
             != SEPARATION_SEQUENCE_ROWS.saturating_mul(SEPARATION_SEQUENCE_COLUMNS)
         || shadow.certificates.len() != CERTIFICATE_ROWS
         || shadow.solver.len() != SOLVER_ROWS.saturating_mul(SOLVER_COLUMNS)
+        || shadow.route.len() != crate::route_report::ROUTE_COLUMNS
         || shadow.runtime.len() != RUNTIME_ROWS
         || shadow.drop_reasons.len() != shadow.receipt[6] as usize
         || shadow.retained_original_rows.len() != shadow.receipt[8] as usize
@@ -1481,6 +1486,8 @@ fn validate_shadow(
         || action.matrices.certificates.columns() != 1
         || action.matrices.solver.rows() != SOLVER_ROWS
         || action.matrices.solver.columns() != SOLVER_COLUMNS
+        || action.matrices.route.rows() != 1
+        || action.matrices.route.columns() != crate::route_report::ROUTE_COLUMNS
         || action.matrices.runtime.rows() != RUNTIME_ROWS
         || action.matrices.runtime.columns() != 1
         || action.matrices.receipt.rows() != 1
@@ -2400,6 +2407,12 @@ fn store_shadow_prefix(
             SOLVER_COLUMNS,
             &shadow.solver[..],
         ),
+        (
+            &action.matrices.route,
+            1,
+            crate::route_report::ROUTE_COLUMNS,
+            &shadow.route[..],
+        ),
     ] {
         store_matrix(spi, name, rows, columns, values)?;
     }
@@ -2675,6 +2688,11 @@ fn validate_matrix_layout(
             1,
         )?,
         solver: PreparedMatrixStoreName::try_new(&matrices.solver, SOLVER_ROWS, SOLVER_COLUMNS)?,
+        route: PreparedMatrixStoreName::try_new(
+            &matrices.route,
+            1,
+            crate::route_report::ROUTE_COLUMNS,
+        )?,
         memory_report: PreparedMatrixStoreName::try_new(&matrices.memory_report, MEMORY_ROWS, 2)?,
         runtime: PreparedMatrixStoreName::try_new(&matrices.runtime, RUNTIME_ROWS, 1)?,
         receipt: PreparedMatrixStoreName::try_new(

@@ -29,15 +29,18 @@ pub const ACTION_PROTOCOL_VERSION: ProtocolVersion = ProtocolVersion::new(1, 7);
 /// Version of the data-independent expanded-model metadata wire.
 pub const MODEL_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(2, 1);
 /// Version of the public prepared-OLS shadow-result layout.
-pub const OLS_RESULT_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 5);
+/// Minor 6 replaces the solver report's codes with the route row of the
+/// public `solver()` vocabulary (reduction, method, preconditioner).
+pub const OLS_RESULT_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 6);
 /// Version of the PPML-specific request layout, independent of the action,
 /// model, OLS-result, and PPML-result wires.
+/// Minor 9 adds the route matrix of the final linear solve.
 /// Minor 8 requires the per-FE bias-unit support destination for corrections.
 /// Minor 7 adds the optional coefficient bias request and separate output bindings.
 /// Minor 6 adds the shared Stata memory baseline/result contract.
 /// Minor 5 replaced the private solver-development cross-product with the
 /// single public `solver(auto|map|lsmr|cmg)` family field.
-pub const PPML_REQUEST_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 8);
+pub const PPML_REQUEST_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 9);
 /// Version of the separately versioned PPML shadow-result layout.
 /// Minor 5 adds the separate per-FE independent-unit support matrix.
 /// Minor 4 adds optional bias coefficient, numerical-variation and diagnostic matrices.
@@ -570,8 +573,8 @@ mod tests {
     fn action_handshake_and_model_wire_are_distinct_versions() {
         assert_eq!(ACTION_PROTOCOL_VERSION, ProtocolVersion::new(1, 7));
         assert_eq!(MODEL_WIRE_VERSION, ProtocolVersion::new(2, 1));
-        assert_eq!(OLS_RESULT_WIRE_VERSION, ProtocolVersion::new(1, 5));
-        assert_eq!(PPML_REQUEST_WIRE_VERSION, ProtocolVersion::new(1, 8));
+        assert_eq!(OLS_RESULT_WIRE_VERSION, ProtocolVersion::new(1, 6));
+        assert_eq!(PPML_REQUEST_WIRE_VERSION, ProtocolVersion::new(1, 9));
         assert_eq!(PPML_RESULT_WIRE_VERSION, ProtocolVersion::new(1, 5));
         assert_ne!(ACTION_PROTOCOL_VERSION, MODEL_WIRE_VERSION);
     }

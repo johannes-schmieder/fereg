@@ -971,7 +971,9 @@ fn parse_cmg_schur_options(
 ) -> Result<(usize, u32, u64)> {
     let cmg_schur_degree = match values.get("cmgdegree") {
         Some(_) if solver != FeSolverKind::CmgSchur => {
-            return Err(syntax("cmgdegree() is valid only with solver(cmgschur)"));
+            return Err(syntax(
+                "cmgdegree() is valid only with solver(cg, reduce(eliminate))",
+            ));
         }
         Some(_) => {
             let degree = parse_usize(values, "cmgdegree")?;
@@ -985,7 +987,7 @@ fn parse_cmg_schur_options(
     for option in ["cmgsamples", "cmgseed"] {
         if values.contains_key(option) && solver != FeSolverKind::CmgSchur {
             return Err(syntax(format!(
-                "{option}() is valid only with solver(cmgschur)"
+                "{option}() is valid only with solver(cg, reduce(eliminate))"
             )));
         }
     }
@@ -1278,7 +1280,7 @@ impl EstimateActionSpec {
                 }))
         {
             return Err(unsupported(
-                "solver(cmgschur) requires exactly two categorical intercept fixed effects",
+                "solver(cg, reduce(eliminate)) requires exactly two categorical intercept fixed effects",
             ));
         }
         let clusters = read_cluster_terms(spi, self.cluster_tables(), &request, None)?;
@@ -3228,18 +3230,12 @@ fn validate_shadow_diagnostics(
         return Err(invalid("OLS covariance determinant certificate is invalid"));
     }
     for row in shadow.solver.chunks_exact(SOLVER_COLUMNS) {
+        let (route, diagnostics) = row.split_at(crate::route_report::ROUTE_COLUMNS);
         if row.iter().any(|value| !value.is_finite())
-            || !matches!(row[0], 1.0 | 2.0 | 3.0 | 4.0 | 5.0 | 6.0 | 7.0 | 8.0)
-            // The exact elimination (9) is reported but never requested.
-            || !matches!(row[1], 1.0 | 2.0 | 3.0 | 4.0 | 5.0 | 6.0 | 7.0 | 8.0 | 9.0)
-            || exact_usize(row[2], "OLS solver iteration count").is_err()
-            || !matches!(row[3], 1.0 | 2.0 | 3.0 | 4.0 | 5.0)
-            || !matches!(row[10], 0.0 | 1.0)
-            || exact_usize(row[11], "OLS solver warning count").is_err()
-            || !matches!(row[12], 0.0 | 1.0 | 2.0 | 3.0 | 4.0)
-            || !matches!(row[13], 0.0 | 1.0 | 2.0 | 3.0 | 4.0)
-            || exact_usize(row[14], "OLS solver pilot iteration count").is_err()
-            || row[15] < 0.0
+            || crate::route_report::validate_route(route).is_err()
+            || exact_usize(diagnostics[0], "OLS solver warning count").is_err()
+            || exact_usize(diagnostics[1], "OLS solver pilot iteration count").is_err()
+            || diagnostics[2] < 0.0
         {
             return Err(invalid("OLS solver shadow metadata is invalid"));
         }

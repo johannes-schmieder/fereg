@@ -27,7 +27,7 @@ generate double y = .75*x + aw + af + truth
 
 quietly _fereg_estimate_ols_test y x, absorb(worker firm) aweight(weight) ///
     vce(robust) solver(auto) memory(fast) tolerance(1e-12) threads(`workers') residual(reference)
-assert e(fereg_solver)[1,3] > 4
+assert e(fe_iterations) > 4
 assert abs(_b[x]-.75) < 1e-9
 assert abs(reference-truth) < 1e-8
 generate byte prior_sample = e(sample)

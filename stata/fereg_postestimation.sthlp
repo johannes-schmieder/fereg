@@ -44,16 +44,19 @@ results, which also serves {cmd:estimates replay}, {cmd:bootstrap:} and
 {title:Solver diagnostics}
 
 {pstd}
-{cmd:e(fereg_solver_used)} names the absorption method and
-{cmd:e(fereg_solver_residual)} names the method of the final residual
-projection. The output line above the coefficient table states that the
-accuracy check passed and at which tolerance.
-{cmd:e(fereg_solver_fallback)} records whether either phase used a fallback.
-Use {cmd:matrix list e(fereg_solver)} for the two named rows, iteration counts,
-fallback indicators and certificates. On the automatic path,
-{cmd:elimination} is the exact elimination of the largest effect, {cmd:cg} is
-two-effect Schur PCG and {cmd:cmgschur} is CMG-preconditioned Schur PCG.
-See {help fereg##stored:Stored results} for the numeric codes and aggregation across low-memory blocks. These diagnostics do not require saving residuals.
+{cmd:e(fe_route)} names the absorption route and {cmd:e(fe_residual_route)} the
+route of the final residual projection, both in {cmd:solver()} syntax, for
+example {cmd:cg, reduce(eliminate) precondition(jacobi)}. Their parts are
+{cmd:e(fe_reduction)}, {cmd:e(fe_method)}, {cmd:e(fe_preconditioner)},
+{cmd:e(fe_block_solvers)} and {cmd:e(fe_acceleration)} (and the
+{cmd:e(fe_residual_}{it:*}{cmd:)} counterparts); {cmd:e(fe_solver)} keeps the
+request. The output line above the coefficient table states that the accuracy
+check passed and at which tolerance. {cmd:e(fe_escalations)} counts solves that
+escalated to a stronger preconditioner and {cmd:e(fe_fallback)} records a
+certified fallback. Use {cmd:matrix list e(fe_solve)} for the two named rows,
+iteration counts, fallback indicators, timings and certificates. See
+{help fereg##stored:Stored results} for the vocabulary and aggregation across
+low-memory blocks. These diagnostics do not require saving residuals.
 
 {title:Example}
 

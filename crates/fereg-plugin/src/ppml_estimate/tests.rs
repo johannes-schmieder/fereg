@@ -477,6 +477,10 @@ fn fixture() -> (Vec<String>, FakeSpi) {
             "RSOLVER".to_owned(),
             zero_matrix(SOLVER_ROWS, SOLVER_COLUMNS),
         ),
+        (
+            "RROUTE".to_owned(),
+            zero_matrix(1, crate::route_report::ROUTE_COLUMNS),
+        ),
         ("RMEMORY".to_owned(), zero_matrix(MEMORY_ROWS, 2)),
         ("RRUNTIME".to_owned(), zero_matrix(RUNTIME_ROWS, 1)),
         (
@@ -583,6 +587,7 @@ fn fixture() -> (Vec<String>, FakeSpi) {
         "output_separation_sequence_matrix=RSEQ".to_owned(),
         "output_certificate_matrix=RCERT".to_owned(),
         "output_solver_matrix=RSOLVER".to_owned(),
+        "output_route_matrix=RROUTE".to_owned(),
         "output_runtime_matrix=RRUNTIME".to_owned(),
         "output_memory_matrix=RMEMORY".to_owned(),
         "stata_used_entry=.".to_owned(),

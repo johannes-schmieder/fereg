@@ -17,11 +17,11 @@ from scipy import sparse
 from scipy.sparse.csgraph import connected_components
 from scipy.sparse.linalg import lsmr
 
-SOLVER_COLUMNS = ('requested_family selected_family selected_engine effective_family '
-                  'effective_engine checkpoint_family row_engine ordinary_frames checkpoint_frames '
-                  'retries fallback_count fallback_reason iterations setup_seconds solve_seconds '
-                  'certification_seconds absinf_max relinf_max rel2_max normal_equation_max '
-                  'projection_absinf_max backward_error_max').split()
+# e(fe_solve): one row per linear-solve session (canonical lsmr lsmr_joint cmg).
+SOLVER_COLUMNS = ('ordinary_frames checkpoint_frames retries fallbacks iterations '
+                  'setup_seconds solve_seconds certification_seconds certificate_absinf '
+                  'certificate_relinf certificate_rel2 normal_equation projection_absinf '
+                  'backward_error').split()
 
 
 def compare_optimum_intervals(candidate, reference_tokens, optimum_intervals, *, rtol, atol):
@@ -120,7 +120,7 @@ def read_capture(prefix, *, controls):
     scalar_names = {'N', 'll', 'deviance', 'rank', 'df_a', 'df_resid', 'converged',
                     'feppml_threads', 'feppml_solver_fallback_count', 'outer_tolerance'}
     shapes = {'b': (1, controls + 1), 'V': (controls + 1, controls + 1),
-              'feppml_certificate': (16, 1), 'feppml_solver': (4, 22)}
+              'feppml_certificate': (16, 1), 'fe_solve': (4, 14)}
     scalars, matrices, columns, cells = {}, {}, {}, set()
     for name, shape in shapes.items():
         matrices[name] = np.full(shape, np.nan)
@@ -156,7 +156,7 @@ def read_capture(prefix, *, controls):
     expected = [f'x{j+1}' for j in range(controls)] + ['o._cons']
     if columns['b'] != expected or columns['V'] != expected:
         raise ValueError('coefficient status/order mismatch')
-    if columns['feppml_certificate'] != ['value'] or columns['feppml_solver'] != SOLVER_COLUMNS:
+    if columns['feppml_certificate'] != ['value'] or columns['fe_solve'] != SOLVER_COLUMNS:
         raise ValueError('certificate or solver schema mismatch')
     for name in ('b', 'V', 'feppml_certificate'):
         if not np.isfinite(matrices[name]).all():
@@ -230,17 +230,15 @@ def audit_capture(prefix, *, y, x, groups, threads, ring_multiplier=None):
             or scalars['feppml_solver_fallback_count'] != 0
             or matrices['feppml_certificate'][-1, 0] != 1):
         raise ValueError('sample/rank/DoF/runtime certificate mismatch')
-    solver = matrices['feppml_solver']
-    family = 2 if groups.shape[1] == 1 else 3
-    engine = 1 if family == 2 else (2 if k == 0 else 3)
-    if (not np.all(solver[:, 0] == 1) or not np.all(solver[:, 1] == family)
-            or not np.all(solver[:, 3] == family)
-            or not np.all(solver[:, 2] == engine) or not np.all(solver[:, 4] == engine)
-            or not np.all(solver[:, 5] == family)
-            or not np.array_equal(solver[:, 6], np.arange(1, 5))
-            or not np.isfinite(solver[:, :16]).all() or np.any(solver[:, :16] < 0)
-            or np.any(solver[:, :13] != np.floor(solver[:, :13]))
-            or not np.all(solver[:, 10:12] == 0)):
+    # Rows: canonical session, fused LSMR, joint LSMR, CMG. The automatic route
+    # serves its ordinary frames from one engine; CMG and other engines idle.
+    solver = matrices['fe_solve']
+    engine = 0 if groups.shape[1] == 1 else (1 if k == 0 else 2)
+    idle = [row for row in range(1, 4) if row != engine]
+    if (not np.isfinite(solver[:, :8]).all() or np.any(solver[:, :8] < 0)
+            or np.any(solver[:, :5] != np.floor(solver[:, :5]))
+            or solver[engine, 0] <= 0 or np.any(solver[idle, :2] != 0)
+            or not np.all(solver[:, 3] == 0)):
         raise ValueError('unexpected automatic route or fallback')
     beta = matrices['b'][0, :k]
     if (matrices['b'][0, k] != 0 or np.any(matrices['V'][k, :] != 0)

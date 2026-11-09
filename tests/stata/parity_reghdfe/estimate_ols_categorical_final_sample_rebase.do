@@ -46,7 +46,7 @@ foreach model in factor interaction {
         assert e(N_full) == 10
         assert e(num_singletons) == 2
         assert e(fereg_receipt)[1,5] == `original_count'
-        assert `"`e(fereg_result_wire)'"' == "1.5"
+        assert `"`e(fereg_result_wire)'"' == "1.6"
         assert e(fereg_status)[2,2] == 2
         local names : colfullnames e(b)
         assert strpos(`"`names'"', "1b.f") > 0

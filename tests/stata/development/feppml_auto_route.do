@@ -16,31 +16,37 @@ foreach effects in 1 2 3 {
     local absorb g1
     if `effects' >= 2 local absorb `absorb' g2
     if `effects' == 3 local absorb `absorb' g3
-    local explicit map
+    * The canonical MAP family is a developer route (the hidden adapter's
+    * family token); public auto must reproduce it outside two-FE CMG reuse.
     foreach k in 0 2 {
         local controls
         if `k' == 2 local controls x1 x2
         foreach t in 1 7 {
-            quietly feppml y `controls' [fw=w], absorb(`absorb') offset(off) ///
-                vce(robust) separation(none) solver(`explicit') threads(`t') mu(explicit_mu)
+            quietly _fereg_estimate_ppml y `controls', fweight(w) absorb(`absorb') ///
+                offset(off) vce(robust) separation(none) solver(map) threads(`t') ///
+                mu(explicit_mu)
             matrix explicit_b = e(b)
             matrix explicit_v = e(V)
             scalar explicit_ll = e(ll)
             scalar explicit_dev = e(deviance)
             scalar explicit_rank = e(rank)
             scalar explicit_df = e(df_a)
-            local engine `e(feppml_solver_engine)'
-            local checkpoint `e(feppml_solver_checkpoint)'
+            local route `"`e(fe_route)'"'
+            local blocks `"`e(fe_block_solvers)'"'
+            matrix explicit_solve = e(fe_solve)
             generate byte explicit_sample = e(sample)
             quietly feppml y `controls' [fw=w], absorb(`absorb') offset(off) ///
                 vce(robust) separation(none) solver(auto) threads(`t') mu(auto_mu)
-            assert `"`e(feppml_solver_requested)'"' == "auto"
-            assert `"`e(feppml_solver_selected)'"' == "`explicit'"
-            assert `"`e(feppml_solver_effective)'"' == "`explicit'"
-            assert `"`e(feppml_solver_engine)'"' == "`engine'"
-            assert `"`e(feppml_solver_checkpoint)'"' == "`checkpoint'"
-            assert e(feppml_solver_fallback_count) == 0
-            assert e(feppml_solver)[1,1] == 1
+            assert `"`e(fe_solver)'"' == "auto"
+            assert `"`e(fe_route)'"' == `"`route'"'
+            assert `"`e(fe_block_solvers)'"' == `"`blocks'"'
+            assert e(fe_fallback) == 0
+            * The same sessions served the same frames.
+            forvalues row = 1/4 {
+                foreach column in 1 2 3 4 5 {
+                    assert e(fe_solve)[`row',`column'] == explicit_solve[`row',`column']
+                }
+            }
             assert mreldif(e(b),explicit_b) == 0
             assert mreldif(e(V),explicit_v) == 0
             assert e(ll) == explicit_ll
@@ -53,20 +59,22 @@ foreach effects in 1 2 3 {
         }
     }
 }
+* Auto serves its frames from the canonical session in both memory modes.
 quietly feppml y x1 x2, absorb(g1 g2) separation(none) memory(low) solver(auto)
-assert `"`e(feppml_solver_selected)'"' == "map"
-assert e(feppml_solver_fallback_count) == 0
+assert e(fe_solve)[1,1] + e(fe_solve)[1,2] > 0 & e(fe_solve)[3,1] + e(fe_solve)[4,1] == 0
+assert e(fe_fallback) == 0
 quietly feppml y x1 x2, absorb(g1 g2) separation(none) memory(fast) solver(auto)
-assert `"`e(feppml_solver_selected)'"' == "map"
+assert e(fe_solve)[1,1] + e(fe_solve)[1,2] > 0 & e(fe_solve)[3,1] + e(fe_solve)[4,1] == 0
 estimates store before_failed_auto
 matrix before_b = e(b)
 capture noisily feppml y x1 x2, absorb(g1 g2) separation(none) solver(auto) iterate(1)
 assert _rc == 430
 assert mreldif(e(b),before_b) == 0
-assert `"`e(feppml_solver_selected)'"' == "map"
+assert `"`e(fe_solver)'"' == "auto"
 estimates drop before_failed_auto
 
-quietly feppml y x1 x2 [fw=w], absorb(exp_fe1=g1 exp_fe2=g2 exp_fe3=g3) ///
+quietly _fereg_estimate_ppml y x1 x2, fweight(w) ///
+    absorb(exp_fe1=g1 exp_fe2=g2 exp_fe3=g3) ///
     offset(off) vce(robust) separation(none) solver(map) threads(7) d(exp_saved_d)
 predict double exp_eta, eta
 predict double exp_d, d

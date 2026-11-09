@@ -25,7 +25,7 @@ quietly datasignature set, reset
 
 global FEREG_PUBLIC_BREAK_ARMED 1
 capture noisily fereg y c.x1, absorb(__frg_public_fe=worker firm) ///
-    solver(auto) preconditioner(auto) memory(fast) vce(robust) ///
+    solver(auto, precondition(auto)) memory(fast) vce(robust) ///
     threads(`host_processors') residuals(__frg_public_resid)
 local break_rc = _rc
 global FEREG_PUBLIC_BREAK_ARMED 0
@@ -45,7 +45,7 @@ capture confirm matrix e(fereg_receipt)
 assert _rc == 111
 
 * A subsequent ordinary public fit must not inherit cancellation or the marker.
-quietly fereg y c.x1, absorb(worker firm) solver(auto) preconditioner(auto) ///
+quietly fereg y c.x1, absorb(worker firm) solver(auto, precondition(auto)) ///
     memory(fast) vce(robust) threads(`host_processors') residuals(__frg_after_resid)
 assert `"`e(cmd)'"' == "fereg"
 assert `"`e(fereg_gate)'"' == "public_ols_v1"

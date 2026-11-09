@@ -125,7 +125,7 @@ if !`rc' {
         tempname telemetry
         file open `telemetry' using `"`output'/telemetry.tsv"', write text replace
         local matrices : e(matrices)
-        foreach name in fereg_runtime fereg_solver fereg_memory feppml_runtime feppml_solver feppml_memory bias_diagnostics {
+        foreach name in fereg_runtime fe_solve fereg_memory feppml_runtime feppml_memory bias_diagnostics {
             if strpos(" `matrices' ", " `name' ") > 0 {
                 local rows : rownames e(`name')
                 forvalues i = 1/`=rowsof(e(`name'))' {

@@ -198,7 +198,7 @@ mod tests {
     #[test]
     fn reported_axis_squares_and_validator_lifetimes_are_explicit() {
         let estimate = OlsPublicationMemory::estimate(shape()).unwrap();
-        let cells = 5 + 25 + 20 + 5 + 25 + 24 + 40 + 32 + 16 + 8 + 12 + 64 + 16;
+        let cells = 5 + 25 + 20 + 5 + 25 + 24 + 40 + 42 + 16 + 8 + 12 + 64 + 16;
         assert_eq!(estimate.shadow_bytes, cells * 8);
         assert_eq!(
             estimate.shadow_workspace_bytes,

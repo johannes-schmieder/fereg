@@ -46,10 +46,11 @@ foreach k of local widths {
                 assert `workers'==`t' & e(df_a)==1 & e(rank)==`k'
                 assert e(N_hdfe)==0 & e(ic)==1
                 if `"`trace'"'!="" {
-                    local residual_stop=el(e(fereg_solver),2,4)
-                    local residual_iterations=el(e(fereg_solver),2,3)
+                    * Stop code 5 is the derived residual (no residual solve).
+                    local residual_stop=cond("`e(fe_residual_method)'"=="derived",5,2)
+                    local residual_iterations=e(fe_residual_iterations)
                     file open traceout using `"`trace'"', write append text
-                    file write traceout "FEREG_SOLVER_TRACE|phase=no_fe_result|iterations=`e(ic)'|n_hdfe=`e(N_hdfe)'|solver=`e(fereg_solver_used)'|residual_stop=`residual_stop'|residual_iterations=`residual_iterations'" _n
+                    file write traceout "FEREG_SOLVER_TRACE|phase=no_fe_result|iterations=`e(ic)'|n_hdfe=`e(N_hdfe)'|solver=`e(fe_method)'|residual_stop=`residual_stop'|residual_iterations=`residual_iterations'" _n
                     file close traceout
                 }
             }

@@ -533,7 +533,7 @@ program define _fereg_estimate_ols, eclass
     matrix `marker_v_shadow' = J(`matrix_dimension', `matrix_dimension', .)
     matrix `fit_shadow' = J(12, 2, .)
     matrix `dof_shadow' = J(20, 2, .)
-    matrix `solver_shadow' = J(2, 16, .)
+    matrix `solver_shadow' = J(2, 21, .)
     matrix `fe_shadow' = J(`fe_rows', 8, .)
     matrix `cluster_shadow' = J(`cluster_rows', 4, .)
     matrix `subset_shadow' = J(`subset_rows', 4, .)
@@ -568,7 +568,7 @@ program define _fereg_estimate_ols, eclass
     local stata_used_before = strtrim(string(r(used), "%21.0f"))
     local stata_alloc_before = strtrim(string(r(allocated), "%21.0f"))
     quietly _fereg_input_host `candidate_variable' `depvar' `source_vars' `weight_variable'
-    local request_arguments `"ado=0.5.3;protocol_major=1;protocol_minor=7;stata=`c(stata_version)';host_edition=`r(edition)';host_interface=`r(interface)';host_aliases=`r(aliases)';confirm=fereg-estimation;plugin=0.5.3;result_major=1;result_minor=5;model_major=`model_major';model_minor=`model_minor';source_matrix=`model_sources';source_count=`n_sources';term_matrix=`model_terms';term_count=`n_terms';component_matrix=`model_components';component_count=`n_components';source_names=`source_registry';canonical_tokens=`token_registry';raw_component_operators=`raw_registry';raw_time_series_operators=`ts_registry';absorb_term_matrix=`absorb_terms';absorb_term_count=`n_absorb_terms';absorb_component_matrix=`absorb_components';absorb_component_count=`n_absorb_components';absorb_labels=`absorb_label_registry';absorb_saved_names=`absorb_saved_registry';cluster_term_matrix=`cluster_terms';cluster_term_count=`n_cluster_terms';cluster_component_matrix=`cluster_components';cluster_component_count=`n_cluster_components';cluster_labels=`cluster_label_registry';binding_matrix=`input_bindings';binding_count=`n_bindings';include_intercept=`include_intercept';candidate_all=`candidate_all';input_complete=`input_complete';keep_singletons=`keep_singletons';vce=`vce_wire';dof=`dof_wire';account_cluster_nesting=`account_cluster_nesting';memory=`memory_mode';solver=`solver_mode';preconditioner=`preconditioner_mode';poolsize=`poolsize';threads=`threads';deterministic=`deterministic_wire';tolerance=`tolerance';iterate=`iterate';output_sample=`output_sample';output_residual=`output_residual';output_drop_reason=0;output_xb=`output_xb';output_xbd=`output_xbd';output_absorbed=`output_absorbed';output_saved_count=`output_saved_count';output_saved_channels=`output_saved_registry';output_b_matrix=`b_shadow';output_v_matrix=`v_shadow';output_status_matrix=`status_shadow';output_marker_b_matrix=`marker_b_shadow';output_marker_v_matrix=`marker_v_shadow';output_fit_matrix=`fit_shadow';output_dof_matrix=`dof_shadow';output_solver_matrix=`solver_shadow';output_fe_matrix=`fe_shadow';output_cluster_matrix=`cluster_shadow';output_subset_matrix=`subset_shadow';output_certificate_matrix=`certificate_shadow';output_runtime_matrix=`runtime_shadow';output_memory_matrix=`memory_shadow';stata_used_entry=`stata_used_entry';stata_alloc_entry=`stata_alloc_entry';stata_used_before=`stata_used_before';stata_alloc_before=`stata_alloc_before';output_receipt_matrix=`receipt_shadow';"'
+    local request_arguments `"ado=0.5.3;protocol_major=1;protocol_minor=7;stata=`c(stata_version)';host_edition=`r(edition)';host_interface=`r(interface)';host_aliases=`r(aliases)';confirm=fereg-estimation;plugin=0.5.3;result_major=1;result_minor=6;model_major=`model_major';model_minor=`model_minor';source_matrix=`model_sources';source_count=`n_sources';term_matrix=`model_terms';term_count=`n_terms';component_matrix=`model_components';component_count=`n_components';source_names=`source_registry';canonical_tokens=`token_registry';raw_component_operators=`raw_registry';raw_time_series_operators=`ts_registry';absorb_term_matrix=`absorb_terms';absorb_term_count=`n_absorb_terms';absorb_component_matrix=`absorb_components';absorb_component_count=`n_absorb_components';absorb_labels=`absorb_label_registry';absorb_saved_names=`absorb_saved_registry';cluster_term_matrix=`cluster_terms';cluster_term_count=`n_cluster_terms';cluster_component_matrix=`cluster_components';cluster_component_count=`n_cluster_components';cluster_labels=`cluster_label_registry';binding_matrix=`input_bindings';binding_count=`n_bindings';include_intercept=`include_intercept';candidate_all=`candidate_all';input_complete=`input_complete';keep_singletons=`keep_singletons';vce=`vce_wire';dof=`dof_wire';account_cluster_nesting=`account_cluster_nesting';memory=`memory_mode';solver=`solver_mode';preconditioner=`preconditioner_mode';poolsize=`poolsize';threads=`threads';deterministic=`deterministic_wire';tolerance=`tolerance';iterate=`iterate';output_sample=`output_sample';output_residual=`output_residual';output_drop_reason=0;output_xb=`output_xb';output_xbd=`output_xbd';output_absorbed=`output_absorbed';output_saved_count=`output_saved_count';output_saved_channels=`output_saved_registry';output_b_matrix=`b_shadow';output_v_matrix=`v_shadow';output_status_matrix=`status_shadow';output_marker_b_matrix=`marker_b_shadow';output_marker_v_matrix=`marker_v_shadow';output_fit_matrix=`fit_shadow';output_dof_matrix=`dof_shadow';output_solver_matrix=`solver_shadow';output_fe_matrix=`fe_shadow';output_cluster_matrix=`cluster_shadow';output_subset_matrix=`subset_shadow';output_certificate_matrix=`certificate_shadow';output_runtime_matrix=`runtime_shadow';output_memory_matrix=`memory_shadow';stata_used_entry=`stata_used_entry';stata_alloc_entry=`stata_alloc_entry';stata_used_before=`stata_used_before';stata_alloc_before=`stata_alloc_before';output_receipt_matrix=`receipt_shadow';"'
     if `"`solver_mode'"' == "cmgschur" {
         local request_arguments `"`request_arguments'cmgdegree=`cmgdegree';"'
         if `cmgsamples_explicit' local request_arguments ///
@@ -719,7 +719,7 @@ program define _fereg_estimate_ols, eclass
     ereturn scalar N_full = `N_effective' + `dof_shadow'[16,2]
     if `dof_shadow'[5,1] == 1 ereturn scalar sumweights = `dof_shadow'[5,2]
     else ereturn scalar sumweights = `N_effective'
-    ereturn scalar ic = `solver_shadow'[1,3]
+    ereturn scalar ic = `solver_shadow'[1,11]
     ereturn scalar converged = 1
     ereturn scalar report_constant = `include_intercept'
     ereturn scalar N_hdfe = `n_absorb_terms'
@@ -764,21 +764,43 @@ program define _fereg_estimate_ols, eclass
     ereturn matrix fereg_status = `status_shadow', copy
     ereturn matrix fereg_fit = `fit_shadow', copy
     ereturn matrix fereg_dof = `dof_shadow', copy
-    matrix rownames `solver_shadow' = absorption residual
-    matrix colnames `solver_shadow' = requested used iterations stop ///
-        absolute_infinity relative_infinity relative_two normal_equation ///
-        setup_seconds solve_seconds fallback warnings ///
-        requested_preconditioner used_preconditioner pilot_iterations pilot_contraction
-    local solver_names auto map lsmr cg it squarem cmg cmgschur elimination
-    local absorption_code = `solver_shadow'[1,2]
-    local residual_code = `solver_shadow'[2,2]
-    local absorption_solver : word `absorption_code' of `solver_names'
-    local residual_solver : word `residual_code' of `solver_names'
-    ereturn local fereg_solver_used "`absorption_solver'"
-    ereturn local fereg_solver_residual "`residual_solver'"
-    ereturn scalar fereg_solver_fallback = ///
-        max(`solver_shadow'[1,11], `solver_shadow'[2,11])
-    ereturn matrix fereg_solver = `solver_shadow', copy
+    // The route actually used, in solver() vocabulary, for the absorption
+    // and final-residual projections; numeric diagnostics stay in e(fe_solve).
+    foreach phase in absorption residual {
+        local row = cond("`phase'" == "absorption", 1, 2)
+        local prefix = cond("`phase'" == "absorption", "fe_", "fe_residual_")
+        _fereg_solver, command(fereg) route(`solver_shadow') row(`row') ///
+            labels(`"`absorb_labels'"')
+        ereturn local `prefix'reduction "`r(reduction)'"
+        ereturn local `prefix'method "`r(method)'"
+        ereturn local `prefix'preconditioner "`r(preconditioner)'"
+        if `"`r(block_solvers)'"' != "" ereturn local `prefix'block_solvers `"`r(block_solvers)'"'
+        ereturn local `prefix'acceleration "`r(acceleration)'"
+        ereturn local `prefix'route `"`r(text)'"'
+        ereturn scalar `prefix'iterations = r(iterations)
+        ereturn scalar `prefix'escalations = r(escalations)
+        ereturn scalar `prefix'fallback = r(fallback)
+    }
+    // The request in solver() syntax (fereg replaces it with the caller's
+    // normalized spelling).
+    local fe_precondition = cond("`preconditioner_mode'" == "off", "none", ///
+        cond("`preconditioner_mode'" == "diagonal", "jacobi", "`preconditioner_mode'"))
+    local fe_solver_spec "`solver_mode'"
+    if inlist("`solver_mode'", "auto", "lsmr") & "`fe_precondition'" != "auto" ///
+        local fe_solver_spec "`solver_mode', precondition(`fe_precondition')"
+    if "`solver_mode'" == "it" local fe_solver_spec "map, accelerate(irons-tuck)"
+    if "`solver_mode'" == "squarem" local fe_solver_spec "map, accelerate(squarem)"
+    if "`solver_mode'" == "cmg" local fe_solver_spec "cg"
+    if "`solver_mode'" == "cmgschur" local fe_solver_spec "cg, reduce(eliminate)"
+    ereturn local fe_solver "`fe_solver_spec'"
+    tempname fe_solve
+    matrix `fe_solve' = (`solver_shadow'[1..2,11], `solver_shadow'[1..2,10], ///
+        `solver_shadow'[1..2,12..21])
+    matrix rownames `fe_solve' = absorption residual
+    matrix colnames `fe_solve' = iterations escalations fallback warnings ///
+        pilot_iterations pilot_contraction setup_seconds solve_seconds ///
+        certificate_absinf certificate_relinf certificate_rel2 normal_equation
+    ereturn matrix fe_solve = `fe_solve'
     ereturn matrix fereg_fe = `fe_shadow', copy
     ereturn matrix fereg_cluster = `cluster_shadow', copy
     ereturn matrix fereg_subset = `subset_shadow', copy
@@ -852,7 +874,7 @@ program define _fereg_estimate_ols, eclass
     if `"`residual'"' != "" ereturn local resid "`residual'"
     ereturn local fereg_action_protocol "1.7"
     ereturn local fereg_model_wire "2.1"
-    ereturn local fereg_result_wire "1.5"
+    ereturn local fereg_result_wire "1.6"
     ereturn local fereg_plugin "0.5.3"
 
     if `"`inject'"' == "postdiagnostics" exit 3498
@@ -915,7 +937,7 @@ program define _fereg_eols_validate, rclass
        rowsof(`marker_V') != `physical' | colsof(`marker_V') != `physical' | ///
        rowsof(`fit') != 12 | colsof(`fit') != 2 | ///
        rowsof(`dof') != 20 | colsof(`dof') != 2 | ///
-       rowsof(`solver') != 2 | colsof(`solver') != 16 | ///
+       rowsof(`solver') != 2 | colsof(`solver') != 21 | ///
        rowsof(`fe') != `absorbrows' | colsof(`fe') != 8 | ///
        rowsof(`clusters_table') != max(`clusters', 1) | colsof(`clusters_table') != 4 | ///
        rowsof(`subsets_table') != `subsets' | colsof(`subsets_table') != 4 | ///
@@ -927,7 +949,7 @@ program define _fereg_eols_validate, rclass
     }
     local coefficients = `receipt'[1,5]
     if `receipt'[1,1] != 5354601 | `receipt'[1,2] != 1 | ///
-       `receipt'[1,3] != 5 | `receipt'[1,4] != `vcecode' | ///
+       `receipt'[1,3] != 6 | `receipt'[1,4] != `vcecode' | ///
        `coefficients' != int(`coefficients') | `coefficients' < 0 | ///
        `coefficients' > `capacity' | ///
        `receipt'[1,7] != _N | `receipt'[1,10] != `clusters' | ///
@@ -985,14 +1007,18 @@ program define _fereg_eols_validate, rclass
         exit 3499
     }
     forvalues row = 1/2 {
-        if !inrange(`solver'[`row',1], 1, 8) | ///
-           `solver'[`row',1] != int(`solver'[`row',1]) | ///
-           !inrange(`solver'[`row',2], 1, 9) | ///
-           `solver'[`row',2] != int(`solver'[`row',2]) | ///
-           `solver'[`row',3] < 0 | `solver'[`row',3] >= . | ///
-           `solver'[`row',3] != int(`solver'[`row',3]) | ///
-           !inlist(`solver'[`row',4], 1, 2, 5) | ///
-           !inlist(`solver'[`row',11], 0, 1) {
+        // Route codes are decoded and checked when posted; here the counts,
+        // flags and diagnostics must be defined and in range.
+        forvalues column = 1/21 {
+            if `solver'[`row',`column'] >= . | ///
+               (`column' <= 14 & `solver'[`row',`column'] < 0) {
+                di as error "hidden OLS solver report failed semantic validation"
+                exit 3499
+            }
+        }
+        if `solver'[`row',11] != int(`solver'[`row',11]) | ///
+           !inlist(`solver'[`row',12], 0, 1) | ///
+           `solver'[`row',13] != int(`solver'[`row',13]) {
             di as error "hidden OLS solver report failed semantic validation"
             exit 3499
         }

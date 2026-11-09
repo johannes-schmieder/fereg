@@ -30,7 +30,7 @@ static ST_double result_marker_b[1][2];
 static ST_double result_marker_v[2][2];
 static ST_double result_fit[12][2];
 static ST_double result_dof[20][2];
-static ST_double result_solver[2][16];
+static ST_double result_solver[2][21];
 static ST_double result_fe[1][8];
 static ST_double result_cluster[1][4];
 static ST_double result_subset[1][4];
@@ -104,7 +104,7 @@ static ST_double *mock_result_matrix(char *name, ST_int *rows, ST_int *columns)
         *rows = 20; *columns = 2; return &result_dof[0][0];
     }
     if (strcmp(name, "RSOLVER") == 0) {
-        *rows = 2; *columns = 16; return &result_solver[0][0];
+        *rows = 2; *columns = 21; return &result_solver[0][0];
     }
     if (strcmp(name, "RFE") == 0) {
         *rows = 1; *columns = 8; return &result_fe[0][0];
@@ -1034,7 +1034,7 @@ static ST_int call_estimate_ols_test(stata_call_function call, ST_int candidate_
         "confirm=fereg-estimation",
         "plugin=0.5.3",
         "result_major=1",
-        "result_minor=5",
+        "result_minor=6",
         "model_major=2",
         "model_minor=1",
         "source_matrix=S",

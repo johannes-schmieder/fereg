@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased
+
+- Redesign the solver options and results; there is no compatibility with the
+  former names. `solver(method[, reduce() precondition() accelerate()])` replaces
+  `solver(map|it|squarem|lsmr|cmg|cmgschur)`, `preconditioner()` and the
+  top-level `cmgdegree()`/`cmgsamples()`/`cmgseed()`. Examples are
+  `solver(map, accelerate(irons-tuck))`, `solver(lsmr, precondition(schwarz))`,
+  `solver(cg)` and `solver(cg, reduce(eliminate) cmgdegree(6))`.
+  `feppml` accepts `auto`, `lsmr` and `cg`. Unsupported combinations return
+  `r(198)`.
+- Report what ran in the same words. `e(fe_route)` and `e(fe_reduction)`,
+  `e(fe_method)`, `e(fe_preconditioner)` (including block-Jacobi local solves),
+  `e(fe_acceleration)`, `e(fe_iterations)`, `e(fe_escalations)` and
+  `e(fe_fallback)` cover the absorption and, as `fe_residual_*`, the final OLS
+  residual; for feppml they cover the final weighted least-squares solve. The
+  code-free matrix `e(fe_solve)` replaces `e(fereg_solver)` and
+  `e(feppml_solver)`, and `e(fe_solver)` records the request.
+- OLS result wire 1.6 and PPML request wire 1.9; arithmetic, routes and
+  scientific results are unchanged.
+
 ## 0.5.3 — 2026-11-07
 
 - Try a bounded, independently certified MAP recovery before the existing CG

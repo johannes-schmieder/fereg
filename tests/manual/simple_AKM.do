@@ -64,7 +64,7 @@ estadd scalar runtime = `runtime', replace : fereg_auto
 
 timer on 3
 quietly fereg lnwage experience exp2, ///
-    absorb(workerid firmid) solver(CMG)
+    absorb(workerid firmid) solver(cg)
 timer off 3
 quietly timer list
 local runtime = r(t3)
@@ -140,5 +140,6 @@ timer list
 fereg lnwage experience exp2, absorb(workerid firmid) ///
     threads(8) solver(auto) timeit
 
-matrix list e(fereg_solver)
+display "`e(fe_route)'"
+matrix list e(fe_solve)
 matrix list e(fereg_runtime)

@@ -56,11 +56,7 @@ observations are removed to a fixed point.
     {cmd:dof(continuous|none)}{col 38}slope-only or no redundancy adjustment
 
   {ul:Solver and execution}
-    {cmd:solver(auto|map|it|squarem|lsmr|cmg|cmgschur)}{col 53}fixed-effect solver
-    {cmd:cmgdegree(4|5|6)}{col 38}experimental CMG-Schur cutoff; default 5
-    {cmd:cmgsamples(}{it:#}{cmd:)}{col 38}sampled CMG-Schur trees; default 0
-    {cmd:cmgseed(}{it:#}{cmd:)}{col 38}sampled CMG-Schur seed; default 0
-    {cmd:preconditioner(auto|off|diagonal|schwarz)}{col 38}LSMR preconditioner
+    {cmd:solver(}{it:method}[{cmd:,} {it:suboptions}]{cmd:)}{col 38}{help fereg##solver:fixed-effect solver}; default {cmd:auto}
     {cmd:threads(}{it:#}{cmd:)}{col 38}native threads; default 0 (automatic)
     {cmd:memory(auto|fast|low)}{col 38}memory plan; default auto
     {cmd:poolsize(}{it:#}{cmd:)}{col 38}low-memory block width; default 10
@@ -198,9 +194,62 @@ residual degrees of freedom.
 {title:Solver, memory, and threads}
 
 {pstd}
+{cmd:solver()} holds every fixed-effect solver choice. Its first word is the
+iterative method; sub-options after a comma name the reduction of the problem,
+the preconditioner, and the acceleration of alternating projections. The
+results report what ran in the same words (see {help fereg##stored:Stored results}).
+
+  {it:request}{col 44}route
+  {hline 76}
+    {cmd:solver(auto)}{col 44}automatic route; the default
+    {cmd:solver(auto, precondition(jacobi))}{col 44}automatic, Jacobi-only Krylov stages
+    {cmd:solver(map)}{col 44}alternating projections (MAP)
+    {cmd:solver(map, accelerate(irons-tuck))}{col 44}Irons--Tuck accelerated MAP
+    {cmd:solver(map, accelerate(squarem))}{col 44}SQUAREM accelerated MAP
+    {cmd:solver(lsmr} [{cmd:, precondition(}{it:p}{cmd:)}]{cmd:)}{col 44}modified LSMR on the full system
+    {cmd:solver(cg)}{col 44}CMG-preconditioned CG, full graph
+    {cmd:solver(cg, reduce(eliminate))}{col 44}experimental CMG Schur CG
+  {hline 76}
+
+  {it:suboption}{col 44}meaning
+  {hline 76}
+    {cmd:reduce(auto|full|eliminate)}{col 44}keep every effect, or eliminate the
+    {col 44}effect with the most levels exactly
+    {cmd:precondition(auto|none|jacobi|block|}{col 44}preconditioner of the Krylov method
+    {space 4}{cmd:schwarz|cmg)}
+    {cmd:accelerate(none|irons-tuck|squarem)}{col 44}MAP acceleration; {cmd:map} only
+    {cmd:cmgdegree(4|5|6)}{col 44}CMG-Schur cutoff; default 5
+    {cmd:cmgsamples(}{it:#}{cmd:)}, {cmd:cmgseed(}{it:#}{cmd:)}{col 44}sampled trees, seed; default 0
+  {hline 76}
+
+{pstd}
+Sub-choices left at {cmd:auto} resolve to a supported formulation of the
+requested method: {cmd:solver(cg)} means {cmd:reduce(full) precondition(cmg)},
+and {cmd:solver(cg, reduce(eliminate))} means {cmd:precondition(cmg)}.
+{cmd:solver(lsmr)} accepts
+{cmd:precondition(none)}, {cmd:precondition(jacobi)}, or
+{cmd:precondition(schwarz)}; its {cmd:auto} choice is Jacobi for small or
+simple designs and additive Schwarz otherwise. {cmd:solver(auto)} accepts only
+{cmd:precondition(jacobi)}, which keeps every Krylov stage Jacobi-preconditioned
+and skips the exact elimination, CMG, and Schwarz; MAP and direct routes need no
+preconditioner. {cmd:accelerate(cg)} is rejected because its residual
+certificate does not ensure projection accuracy. {cmd:cmgdegree()},
+{cmd:cmgsamples()}, and {cmd:cmgseed()} require
+{cmd:solver(cg, reduce(eliminate))}. {cmd:reduce(eliminate)} with {cmd:jacobi}
+or {cmd:block} is the automatic route but is not yet available as an explicit
+request. An unsupported or unavailable combination returns {cmd:r(198)} and
+names an alternative; no request is silently replaced by another route.
+Option names are lowercase; values are case-insensitive.
+
+{pstd}
 {cmd:solver(auto)} is the default. One categorical effect uses direct
-demeaning. With {cmd:preconditioner(auto)}, two categorical-intercept effects
-start with diagonal-preconditioned Schur PCG. If eligible outcome or packed
+demeaning. Without {cmd:precondition(jacobi)}, two to five categorical-intercept
+effects first eliminate the effect with the most levels exactly and solve the
+remaining effects by Jacobi-preconditioned CG; a recurrence that stalls
+escalates to block-Jacobi preconditioning, with exact dense solves of small
+effects and CMG on large ones, and later solves of the same design start on
+the blocks. If the elimination declines, two categorical-intercept effects
+continue with diagonal-preconditioned Schur PCG. If eligible outcome or packed
 regressor/outcome work has stalled at iteration 4, 8 or 12, or remains at
 iteration 16, a structural rule builds a combinatorial multigrid (CMG)
 preconditioner, applies it on the worker team and reuses it across later
@@ -209,52 +258,51 @@ existing recurrence; numerical failure can continue with certified MAP inside
 the original iteration budget.
 
 {pstd}
-Eligible designs with three or more categorical-intercept effects use LSMR
+Eligible designs with three or more categorical-intercept effects that the
+elimination does not serve use LSMR
 with reusable preparation. It starts with a diagonal preconditioner and builds
 the additive Schwarz preconditioner only when the projected work is large.
 With three unit-weight effects, a short MAP pilot or certified structural
 shortcut may finish first. Every route must pass the requested certificate.
-Slopes and explicit solver/preconditioner requests retain their supported
-routes. Ownership and repeated-cell optimizations are automatic for Auto/Auto
-with a global intercept and exactly two categorical-intercept terms; they need
-no additional option and do not change the fitted model.
+Slopes and explicit requests retain their supported
+routes. Ownership and repeated-cell optimizations are automatic for
+{cmd:solver(auto)} with a global intercept and exactly two categorical-intercept
+terms; they need no additional option and do not change the fitted model.
 
 {pstd}
-Explicit methods are unaccelerated symmetric {cmd:map},
-Irons--Tuck {cmd:it}, {cmd:squarem}, and modified
-{cmd:lsmr}. {cmd:cmg} constructs one worker--firm graph for the two
-largest categorical intercept effects and uses CMG-preconditioned PCG for all
-right-hand sides. Additional absorbed intercept effects are supported when
-their combined non-base dimension is at most 64. Absorbed slopes are not
-supported by {cmd:cmg}. A failed CMG construction or solve falls back visibly
-to certified CG; a successful bulk solve is polished by CG when needed.
+{cmd:solver(map)} is unaccelerated symmetric MAP; {cmd:accelerate()} selects
+Irons--Tuck or SQUAREM extrapolation. {cmd:solver(cg)} constructs one
+worker--firm graph for the two largest categorical intercept effects and uses
+CMG-preconditioned PCG for all right-hand sides. Additional absorbed intercept
+effects are supported when their combined non-base dimension is at most 64.
+Absorbed slopes are not supported by {cmd:solver(cg)}. A failed CMG
+construction or solve falls back visibly to certified CG over the MAP operator
+(reported as {cmd:map, accelerate(cg)}); a successful bulk solve is polished
+by it when needed.
 Explicit {cmd:lsmr} iterates to one hundredth of {cmd:tolerance()} (at least
 1e-15, and never less strictly than {cmd:tolerance()}) and certifies at
 {cmd:tolerance()}. All
 explicit methods fail closed on a failed independent fixed-effect certificate.
 
 {pstd}
-{cmd:solver(cmgschur)} is an experimental CMG-preconditioned Schur solver
-for exactly two categorical intercept effects. It supports weights, finite
-regressors, saved effects, and both memory modes; absorbed slopes are unsupported.
+{cmd:solver(cg, reduce(eliminate))} is an experimental CMG-preconditioned
+Schur solver for exactly two categorical intercept effects: the larger effect
+is eliminated implicitly. It supports weights, finite regressors, saved
+effects, and both memory modes; absorbed slopes are unsupported.
 Its advanced controls are {cmd:cmgdegree(4|5|6)} (default 5),
 {cmd:cmgsamples(}{it:k}{cmd:)} (default 0), and {cmd:cmgseed(}{it:s}{cmd:)}
-(default 0). An explicit seed requires a positive sample count. See the
+(default 0), given inside {cmd:solver()}, for example
+{cmd:solver(cg, reduce(eliminate) cmgsamples(2) cmgseed(7))}. An explicit
+seed requires a positive sample count. See the
 {browse "https://github.com/johannes-schmieder/fereg/blob/main/docs/SPEC.md":numerical specification}
 for construction details and parameter ranges.
 
 {pstd}
-Automatic upgrades are available in both memory modes and include hierarchy
-setup in timing and memory admission. Their used-solver name is {cmd:cmgschur}
-(code 8). The explicit full-graph {cmd:solver(cmg)} route reports {cmd:cmg}
-(code 7). These are distinct methods.
-
-{pstd}
-{cmd:preconditioner()} is valid only with {cmd:solver(auto)} or
-{cmd:solver(lsmr)}. Its choices are {cmd:auto}, {cmd:off}, {cmd:diagonal}, and
-{cmd:schwarz}; {cmd:none} aliases {cmd:off}, and {cmd:additive} aliases
-{cmd:schwarz}. Use {cmd:preconditioner(off)} with {cmd:solver(cmg)} or
-{cmd:solver(cmgschur)}.
+Automatic CMG upgrades are available in both memory modes and include hierarchy
+setup in timing and memory admission. They report
+{cmd:cg, reduce(eliminate) precondition(cmg)}; the explicit full-graph
+{cmd:solver(cg)} route reports {cmd:cg, reduce(full) precondition(cmg)}.
+These are distinct methods.
 
 {pstd}
 {cmd:memory(auto)} preflights fast and low-memory plans. {cmd:memory(fast)}
@@ -310,49 +358,95 @@ counts, singleton counts, and absorbed-effect metadata. {cmd:ereturn list}
 shows the complete result set.
 
 {pstd}
-The line above the coefficient table names the fixed-effect solver used for
-absorption and states that the accuracy check passed at the effective
-tolerance; estimates that fail the check are never posted.
-{cmd:e(fereg_version)} records the release that produced the results.
-{cmd:e(fereg_solver_requested)} preserves the request, including {cmd:auto};
-{cmd:e(fereg_solver_used)} names the method used for outcome/regressor
-absorption, and {cmd:e(fereg_solver_residual)} names the final residual method.
-{cmd:e(fereg_solver_fallback)} equals one if either phase used a certified
-fallback. No developer trace is required.
+The lines above the coefficient table name the route used for absorption in
+{cmd:solver()} syntax ({cmd:Fixed-effect solver:}), add {cmd:(escalated)} when a
+solve switched to a stronger preconditioner, list any block local solves, and
+state that the accuracy check passed at the effective tolerance; estimates that
+fail the check are never posted. The use of a certified fallback is shown below
+them.
+{cmd:e(fereg_version)} records the release that produced the results. No
+developer trace is required.
 
 {pstd}
-Automatic fits with two to five categorical intercept effects first try the
-exact elimination of the largest effect with a Schur-complement PCG over the
-remaining effects; {cmd:elimination} reports that route. When it declines, the
-established automatic routes run: for two effects, {cmd:cg} means the guarded
-Schur-PCG recurrence without multigrid and {cmd:cmgschur} means a CMG
+Fixed-effect solver results use the vocabulary of {cmd:solver()}:
+
+  {it:part}{col 26}values
+  {hline 76}
+    reduction{col 26}{cmd:full}, {cmd:eliminate}, {cmd:none}
+    method{col 26}{cmd:map}, {cmd:cg}, {cmd:lsmr}, {cmd:direct}, {cmd:derived}, {cmd:none}
+    preconditioner{col 26}{cmd:none}, {cmd:jacobi}, {cmd:block}, {cmd:schwarz}, {cmd:cmg}
+    acceleration{col 26}{cmd:none}, {cmd:cg}, {cmd:irons-tuck}, {cmd:squarem}
+  {hline 76}
+
+{pstd}
+{cmd:direct} is the exact projection onto a single intercept effect (or the
+constant alone). {cmd:derived} is a final residual formed from certified
+projections without a new solve. {cmd:none} means there was nothing to absorb.
+{cmd:block} is block-Jacobi over the retained effects of the eliminated system.
+Acceleration {cmd:cg} is conjugate gradients over the symmetric MAP operator,
+which verifies or completes a {cmd:solver(cg)} projection.
+
+  {it:result}{col 30}contents
+  {hline 76}
+    {cmd:e(fe_solver)}{col 30}the normalized request, e.g. {cmd:cg, reduce(eliminate)}
+    {cmd:e(fe_route)}{col 30}absorption route in {cmd:solver()} syntax, e.g.
+    {col 30}{cmd:cg, reduce(eliminate) precondition(block)}
+    {cmd:e(fe_reduction)}{col 30}reduction used for absorption
+    {cmd:e(fe_method)}{col 30}method used
+    {cmd:e(fe_preconditioner)}{col 30}preconditioner used
+    {cmd:e(fe_block_solvers)}{col 30}local solve of each retained effect, e.g.
+    {col 30}{cmd:firm=cmg year=dense}; only with {cmd:block}
+    {cmd:e(fe_acceleration)}{col 30}MAP acceleration used
+    {cmd:e(fe_iterations)}{col 30}iterations (scalar; also {cmd:e(ic)})
+    {cmd:e(fe_escalations)}{col 30}solves that escalated to a stronger preconditioner
+    {cmd:e(fe_fallback)}{col 30}1 if a certified fallback finished the projection
+    {cmd:e(fe_residual_}{it:*}{cmd:)}{col 30}the same items for the final residual projection
+    {cmd:e(fe_cmgdegree)}{col 30}cutoff, with {cmd:solver(cg, reduce(eliminate))}
+    {cmd:e(fe_cmgsamples)}{col 30}sampled trees, with the same request
+    {cmd:e(fe_cmgseed)}{col 30}sampling seed, with the same request
+    {cmd:e(fe_solve)}{col 30}numeric diagnostics; see below
+  {hline 76}
+
+{pstd}
+An escalation is a Jacobi recurrence of the eliminated system that continues
+from its iterate with block-Jacobi preconditioning, or a Jacobi LSMR trial of
+the many-effect policy that continues with additive Schwarz. Automatic fits
+with two to five categorical intercept effects first try the exact elimination
+of the largest effect: their route reads
+{cmd:cg, reduce(eliminate) precondition(jacobi)}, or
+{cmd:precondition(block)} with {cmd:e(fe_block_solvers)} after an
+escalation. When it declines, the established automatic routes run: for two
+effects, {cmd:cg, reduce(eliminate) precondition(jacobi)} is the guarded
+Schur-PCG recurrence without multigrid and {cmd:precondition(cmg)} means a CMG
 preconditioner was actually applied. An allocated but unused hierarchy is not
-reported as CMG use. A MAP continuation reports {cmd:map} and sets fallback.
+reported as CMG use. A MAP continuation reports {cmd:map} and sets
+{cmd:e(fe_fallback)}.
 
 {pstd}
-{cmd:e(fereg_solver)} is a 2-by-16 matrix with rows {cmd:absorption} and
-{cmd:residual}. Columns {cmd:requested} and {cmd:used} use these numeric codes:
-1 auto, 2 map, 3 lsmr, 4 cg, 5 it, 6 squarem, 7 cmg, 8 cmgschur,
-9 elimination (automatic only).
-Column 3 is {cmd:iterations}; column 4 is the stop code: 1 no fixed effects,
-2 certified, 5 derived certificate; column 11 is {cmd:fallback}.
+{cmd:e(fe_solve)} is a 2-by-12 matrix with rows {cmd:absorption} and
+{cmd:residual} and columns {cmd:iterations}, {cmd:escalations},
+{cmd:fallback}, {cmd:warnings}, {cmd:pilot_iterations},
+{cmd:pilot_contraction}, {cmd:setup_seconds}, {cmd:solve_seconds},
+{cmd:certificate_absinf}, {cmd:certificate_relinf}, {cmd:certificate_rel2},
+and {cmd:normal_equation}. It contains no codes.
 Without {cmd:residuals()}, {cmd:xbd()}, {cmd:d()} or saved fixed effects, the
 default memory mode certifies the within residual of the absorbed outcome and
-regressors directly (stop code 5, zero iterations) instead of absorbing it again.
-This applies to automatic absorption of one, two or more categorical effects;
-the residual row then repeats the absorption method. Explicit solvers, low
-memory and a failed check absorb the residual again.
+regressors directly (method {cmd:derived}, zero iterations) instead of
+absorbing it again. This applies to automatic absorption of one, two or more
+categorical effects. Explicit solvers, low memory and a failed check absorb the
+residual again.
 Low-memory absorption combines all blocks: a fallback takes precedence;
-otherwise CMG use remains visible even when another block did not need it.
-A zero-iteration {cmd:map} row may be an already-orthogonal input check.
-The method identifies the certified result, not every attempted construction.
+otherwise CMG use remains visible even when another block did not need it, and
+block-Jacobi use and escalations of any block are kept.
+A zero-iteration {cmd:map} route may be an already-orthogonal input check.
+The route identifies the certified result, not every attempted construction.
 
-{phang2}{cmd:. display "Absorption: `e(fereg_solver_used)'"}{p_end}
-{phang2}{cmd:. display "Final residual method: `e(fereg_solver_residual)'"}{p_end}
-{phang2}{cmd:. matrix list e(fereg_solver)}{p_end}
+{phang2}{cmd:. display "Absorption: `e(fe_route)'"}{p_end}
+{phang2}{cmd:. display "Final residual: `e(fe_residual_route)'"}{p_end}
+{phang2}{cmd:. matrix list e(fe_solve)}{p_end}
 
 {pstd}
-Package-specific matrices include {cmd:e(fereg_solver)} for routing and
+Package-specific matrices include {cmd:e(fe_solve)} for solver work and
 convergence, {cmd:e(fereg_runtime)} for memory/timing/thread diagnostics,
 {cmd:e(fereg_certificate)} for independent checks, and
 {cmd:e(fereg_status)}, {cmd:e(fereg_dof)}, {cmd:e(fereg_fe)},
@@ -847,7 +941,7 @@ two {cmd:GTOOLS} globals.
               worker_fe + rnormal()
           fereg y x1-x4, absorb(worker) memory(low) poolsize(2) ///
               solver(auto) threads(2) deterministic timeit
-          matrix list e(fereg_solver)
+          matrix list e(fe_solve)
           matrix list e(fereg_runtime)
 {* example_end}{...}
           restore

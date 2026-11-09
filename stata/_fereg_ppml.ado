@@ -13,16 +13,14 @@ program define _fereg_ppml, eclass
          XB(name) D(name) ETA(name) XBD(name) MU(name) DROPreason(name) ///
          MEMory(string) POOLSize(integer 10) THREADS(integer 0) ///
          DETERMINISTIC ///
-         SOLVer(string) ///
+         SOLVer(string asis) ///
          TOLerance(real 1e-8) ITERate(integer 10000) ///
          TIMEIT]
 
-    local solver_mode = lower(strtrim(`"`solver'"'))
-    if `"`solver_mode'"' == "" local solver_mode "auto"
-    if !inlist(`"`solver_mode'"', "auto", "map", "lsmr", "cmg") {
-        di as error "solver() must be auto, map, lsmr, or cmg"
-        exit 198
-    }
+    // solver() in the shared grammar; the route token selects the family.
+    _fereg_solver, command(feppml) spec(`"`solver'"')
+    local solver_spec `"`r(spec)'"'
+    local solver_mode "`r(route)'"
 
     if inlist(`"`weight'"', "aweight", "iweight") {
         di as error "feppml supports only fweights and pweights"
@@ -97,7 +95,8 @@ program define _fereg_ppml, eclass
         `offset_option' `exposure_option' `separation_option' ///
         `residual_option' `residual_type_option' `xb_option' `d_option' ///
         `eta_option' `xbd_option' `mu_option' `drop_option' ///
-        `memory_option' solver(`solver_mode') poolsize(`poolsize') threads(`threads') ///
+        `memory_option' solver(`solver_mode') publicsolver(`"`solver_spec'"') ///
+        poolsize(`poolsize') threads(`threads') ///
         tolerance(`tolerance') iterate(`iterate') ///
         septolerance(1e-8) sepiterate(10000) ///
         simplexiterate(100000) simplexcells(1000000) ///

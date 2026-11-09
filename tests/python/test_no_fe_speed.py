@@ -63,7 +63,7 @@ class NoFeScienceTests(unittest.TestCase):
             for _ in (0,1):
                 lines += ['FEREG_PHASE|map_wrapper|rhs=3|rows=1000000|norms_count=1|initial_certificate_count=1|sweep_count=0',
                           'FEREG_SOLVER_TRACE|phase=input_digest|digest=1234',
-                          'FEREG_SOLVER_TRACE|phase=no_fe_result|iterations=1|n_hdfe=0|solver=map']
+                          'FEREG_SOLVER_TRACE|phase=no_fe_result|iterations=1|n_hdfe=0|solver=direct']
         p.write_text('\n'.join(lines)+'\n')
         self.assertEqual(len(target.check_trace(self.config,p)),2)
         p.write_text(p.read_text().replace('iterations=1','iterations=0'))
@@ -95,7 +95,7 @@ class NoFeScienceTests(unittest.TestCase):
             for _ in (0,1):
                 lines += ['FEREG_PHASE|structural_direct|rhs=3|rows=1000000|raw_statistics_count=1|center_count=1|residual_norms_count=1|certificate_count=1',
                           'FEREG_SOLVER_TRACE|phase=input_digest|digest=1234',
-                          'FEREG_SOLVER_TRACE|phase=no_fe_result|iterations=1|n_hdfe=0|solver=map|residual_stop=5|residual_iterations=0']
+                          'FEREG_SOLVER_TRACE|phase=no_fe_result|iterations=1|n_hdfe=0|solver=direct|residual_stop=5|residual_iterations=0']
         p.write_text('\n'.join(lines)+'\n')
         self.assertEqual(len(target.check_trace(self.config,p)),2)
         p.write_text(p.read_text().replace('residual_stop=5','residual_stop=2'))
@@ -129,7 +129,7 @@ class NoFeScienceTests(unittest.TestCase):
                           'FEREG_PHASE|centered_moments|columns=1|rows=1000000',
                           'FEREG_SOLVER_TRACE|phase=finite_factor|method=cholesky',
                           'FEREG_SOLVER_TRACE|phase=input_digest|digest=1234',
-                          'FEREG_SOLVER_TRACE|phase=no_fe_result|iterations=1|n_hdfe=0|solver=map|residual_stop=5|residual_iterations=0']
+                          'FEREG_SOLVER_TRACE|phase=no_fe_result|iterations=1|n_hdfe=0|solver=direct|residual_stop=5|residual_iterations=0']
         p.write_text('\n'.join(lines)+'\n')
         self.assertEqual(len(target.check_trace(self.config,p)),2)
         p.write_text(p.read_text().replace('centered_moments','unused_route'))
@@ -150,7 +150,7 @@ class NoFeScienceTests(unittest.TestCase):
                           f'FEREG_SOLVER_TRACE|phase=input_layout|packed_rhs={str(t>1).lower()}',
                           'FEREG_SOLVER_TRACE|phase=finite_factor|method=cholesky',
                           'FEREG_SOLVER_TRACE|phase=input_digest|digest=1234',
-                          'FEREG_SOLVER_TRACE|phase=no_fe_result|iterations=1|n_hdfe=0|solver=map|residual_stop=5|residual_iterations=0']
+                          'FEREG_SOLVER_TRACE|phase=no_fe_result|iterations=1|n_hdfe=0|solver=direct|residual_stop=5|residual_iterations=0']
         p.write_text('\n'.join(lines)+'\n')
         self.assertEqual(len(target.check_trace(self.config,p)),2)
         p.write_text(p.read_text().replace('reused_centered_summary=1','reused_centered_summary=0'))

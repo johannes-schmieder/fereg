@@ -1127,7 +1127,7 @@ foreach case of local cases {
         else if "`case'" == "solver_lsmr" {
             global FRM_CAT "execution"
             global FRM_FCMD                                  ///
-                "fereg y c.x1 c.x2, absorb(worker firm) solver(lsmr) preconditioner(schwarz) dof(pairwise) threads(`threads') tolerance(1e-10) iterate(16000)"
+                "fereg y c.x1 c.x2, absorb(worker firm) solver(lsmr, precondition(schwarz)) dof(pairwise) threads(`threads') tolerance(1e-10) iterate(16000)"
             global FRM_ACMD                                  ///
                 "reghdfe y c.x1 c.x2, absorb(worker firm) dof(pairwise) tolerance(1e-10) iterate(16000)"
         }

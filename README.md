@@ -132,9 +132,12 @@ Common options are:
   `dof(pairwise|firstpair|continuous|none)` for inference;
 - `residuals(newvar)` and names inside `absorb()`, such as
   `absorb(fe_worker=worker fe_firm=firm)`, for saved outputs;
-- `solver(auto|map|it|squarem|lsmr|cmg)` and
-  `preconditioner(auto|off|diagonal|schwarz)` for the fixed-effect solver, plus
-  the experimental two-FE `solver(cmgschur)`; and
+- `solver(method[, sub-options])` for the fixed-effect solver: the method
+  `auto`, `map`, `lsmr` or `cg`, then `reduce(auto|full|eliminate)`,
+  `precondition(auto|none|jacobi|block|schwarz|cmg)` and
+  `accelerate(none|irons-tuck|squarem)`, for example
+  `solver(lsmr, precondition(schwarz))` or the experimental two-FE
+  `solver(cg, reduce(eliminate))`; and
 - `memory(auto|fast|low)`, `poolsize(#)`, `threads(#)`, `deterministic`, and
   `timeit` for execution control and diagnostics.
 
@@ -165,12 +168,17 @@ fixed effects require retained fitted-state information.
 
 ## Diagnostics and development
 
-Normal OLS output names the fixed-effect solver and final residual-check method.
-After a fit, `e(fereg_solver_used)` and `e(fereg_solver_residual)` contain these
-names; `matrix list e(fereg_solver)` shows iterations, fallback and certificates.
-For two-effect Auto fits, `cg` identifies Schur PCG without multigrid and
-`cmgschur` identifies CMG-preconditioned Schur PCG. Auto builds multigrid only
-when its structural rule admits an upgrade; easy fits may finish without it.
+Normal OLS output names the fixed-effect route in `solver()` syntax and the
+passed accuracy check. After a fit, `e(fe_route)` and `e(fe_residual_route)`
+contain the absorption and final-residual routes, with their parts in
+`e(fe_reduction)`, `e(fe_method)`, `e(fe_preconditioner)` and
+`e(fe_acceleration)`; `e(fe_escalations)` counts solves that switched to a
+stronger preconditioner, and `matrix list e(fe_solve)` shows iterations,
+fallback, timings and certificates. Automatic fits with two to five effects
+report `cg, reduce(eliminate) precondition(jacobi)` for the exact elimination,
+or `precondition(block)` after an escalation; on the two-effect Schur path,
+`precondition(cmg)` identifies an applied CMG preconditioner. Auto builds
+multigrid only when its rules admit it; easy fits may finish without it.
 See [solver options and results](docs/user_guide.md#ols-numerical-and-execution-options).
 
 `fereg, selftest` reports versions, checks ado/plugin compatibility and runs
@@ -297,8 +305,8 @@ and its dependencies, along with prior work on parallel data transfer.
 - **Irons, Bruce M., and Robert C. Tuck (1969).**
   [*A Version of the Aitken Accelerator for Computer Iteration*](https://doi.org/10.1002/nme.1620010306).
   *International Journal for Numerical Methods in Engineering* 1(3): 275–277.
-  The Irons–Tuck acceleration available through `solver(it)`.
+  The Irons–Tuck acceleration available through `solver(map, accelerate(irons-tuck))`.
 - **Varadhan, Ravi, and Christophe Roland (2008).**
   [*Simple and Globally Convergent Methods for Accelerating the Convergence of Any EM Algorithm*](https://doi.org/10.1111/j.1467-9469.2007.00585.x).
   *Scandinavian Journal of Statistics* 35(2): 335–353.
-  The SQUAREM acceleration available through `solver(squarem)`.
+  The SQUAREM acceleration available through `solver(map, accelerate(squarem))`.

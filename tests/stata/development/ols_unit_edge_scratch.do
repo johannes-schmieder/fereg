@@ -40,10 +40,10 @@ foreach k in 1 3 5 6 12 {
         assert e(df_r)==oracle_df
         assert abs(e(rss)-oracle_rss)<1e-8*oracle_rss
         assert abs(native_residual-oracle_residual)<1e-7
-        assert e(fereg_solver)[1,1]==1
-        * Auto serves this design by the exact elimination (code 9).
-        assert e(fereg_solver)[1,2]==9
-        assert e(fereg_solver)[1,11]==0
+        assert "`e(fe_solver)'"=="auto"
+        * Auto serves this design by the exact elimination with Jacobi CG.
+        assert "`e(fe_route)'"=="cg, reduce(eliminate) precondition(jacobi)"
+        assert e(fe_fallback)==0
         forvalues j=1/`k' {
             assert abs(e(b)[1,`j']-oracle_b[1,`j'])<1e-8
             forvalues l=1/`k' {

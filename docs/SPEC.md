@@ -20,8 +20,8 @@ The accepted ownership/cell implementation was qualified with CMG `fd77d98d`; th
 CMG `5c5b5b2b`, which adds arithmetic-preserving team dispatch of row-operator
 matvecs (gated on entries times lanes, `f6a044c9`) and the 32-level hierarchy cap
 (§19). The cap keeps every hierarchy of at most 32 levels bit-identical and lowers
-the CMG bytes this scope admits and charges as retained. Qualified OLS `solver(auto)` with
-`preconditioner(auto)`, a global intercept and exactly two categorical-intercept
+the CMG bytes this scope admits and charges as retained. Qualified OLS `solver(auto)`
+without `precondition()` (Auto/Auto below), a global intercept and exactly two categorical-intercept
 FE terms selects both ownership mechanisms and eager cell construction.
 Explicit developer injections retain their specified selection. Core defaults
 and requests outside this scope remain unchanged. The
@@ -95,10 +95,10 @@ The former `version` and `doctor` options are removed and return r(198).
 | `dof()` | pairwise (default), firstpair, continuous, none | No public DoF-policy override |
 | `noconstant` | Suppress reported constant | Unsupported; structural constant required |
 | `residuals(newvar)` | Response residual | Formula selected by `residualtype()` |
-| `solver()` | auto (default), map, lsmr, cmg, cmgschur (experimental), it, squarem | auto (default), map, lsmr, cmg |
-| `cmgdegree(#)` | Experimental cmgschur only; 4, 5 (default), or 6 | Unsupported |
-| `cmgsamples(#)` | Experimental cmgschur only; integer 0 (default) through 4294967295 | Unsupported |
-| `cmgseed(#)` | With positive cmgsamples only; integer 0 (default) through 9007199254740991 | Unsupported |
+| `solver(method[, sub])` | auto (default), map, lsmr, cg; sub-options `reduce()`, `precondition()`, `accelerate()` and the CMG-Schur controls below | auto (default), lsmr, cg; `reduce(auto\|full)`, lsmr `precondition(auto\|schwarz)`, cg `precondition(auto\|cmg)` |
+| `solver(cg, reduce(eliminate) cmgdegree(#))` | Experimental CMG-Schur only; 4, 5 (default), or 6 | Unsupported |
+| `solver(cg, reduce(eliminate) cmgsamples(#))` | Experimental CMG-Schur only; integer 0 (default) through 4294967295 | Unsupported |
+| `solver(cg, reduce(eliminate) cmgseed(#))` | With positive cmgsamples only; integer 0 (default) through 9007199254740991 | Unsupported |
 | `threads(#)` | Nonnegative integer; 0 resolves native default | Same |
 | `tolerance(#)` | Finite 0 < t < 1; default 1e-8 | Same, outer convergence tolerance |
 | `iterate(#)` | Positive integer; default 16,000 | Positive integer; default 10,000 outer iterations |
@@ -110,9 +110,24 @@ The former `version` and `doctor` options are removed and return r(198).
 | `biascorrection(exact|randomized)` | Unsupported | Optional mean correction (§15) |
 | `biasunit()`, `biasfe()`, `biasprobes()`, `biasseed()`, `biasstream()` | Unsupported | Correction controls (§15) |
 
-Preserve supported solver/map/iteration options, preconditioner(), poolsize(),
-memory() and deterministic. solver(cg) remains rejected with r(198) under the
-existing safety repair. Explicit LSMR/CMG and both PPML mean-bias modes are required.
+Preserve the supported solver routes, iteration options, poolsize(), memory()
+and deterministic. `solver()` names the method first (`auto`, `map`, `lsmr`,
+`cg`) and then, after a comma, the reduction (`reduce(auto|full|eliminate)`),
+preconditioner (`precondition(auto|none|jacobi|block|schwarz|cmg)`) and MAP
+acceleration (`accelerate(none|irons-tuck|squarem)`). The supported explicit
+OLS requests are `map` with or without Irons–Tuck or SQUAREM acceleration;
+`lsmr` with `precondition(auto|none|jacobi|schwarz)` on the full system; `cg`
+on the full graph with CMG (the explicit CMG route) and `cg, reduce(eliminate)`
+with CMG (the experimental CMG-Schur route, the only one that takes the
+CMG-Schur controls); and `auto, precondition(jacobi)`, Auto restricted to
+Jacobi-preconditioned Krylov stages without the exact elimination, CMG or
+Schwarz. Sub-choices left at `auto` resolve to a supported formulation of the
+explicit method. feppml accepts `auto`, `lsmr` and `cg` on the full system.
+CG-accelerated MAP (`accelerate(cg)`) remains rejected with r(198) under the
+existing safety repair. Every other combination, including the not yet
+requestable `cg, reduce(eliminate) precondition(jacobi|block)` that Auto runs,
+returns r(198) naming an alternative and is never substituted. Explicit LSMR/CMG
+and both PPML mean-bias modes are required.
 
 Both commands load one platform-native fereg plugin. The former engine() option,
 developer engine selector and engine-identity results are removed. Unsupported
@@ -134,12 +149,18 @@ unsupported requests fail clearly.
 
 | Request | OLS support to preserve | PPML support to preserve |
 |---|---|---|
-| auto | No FE, one/multiple intercept or slope-bearing FEs, disconnected designs | Same model grammar with changing positive IRLS weights |
-| lsmr | General supported FE grammar, including slopes and multiple RHSs | At least two categorical intercept FEs, including more than three; no absorbed slopes |
-| cmg | Categorical intercept graph: two largest effects as bipartite core, additional effects with at most 64 non-base nuisance columns; no slopes | Exactly two or three categorical intercept effects; third-effect nuisance width at most 64; no slopes |
-| cmgschur (experimental) | Exactly two categorical intercept effects; positive observation weights, finite controls, disconnected components and saved effects | Unsupported |
+| `auto` | No FE, one/multiple intercept or slope-bearing FEs, disconnected designs | Same model grammar with changing positive IRLS weights |
+| `lsmr` | General supported FE grammar, including slopes and multiple RHSs | At least two categorical intercept FEs, including more than three; no absorbed slopes |
+| `cg` (full graph, CMG) | Categorical intercept graph: two largest effects as bipartite core, additional effects with at most 64 non-base nuisance columns; no slopes | Exactly two or three categorical intercept effects; third-effect nuisance width at most 64; no slopes |
+| `cg, reduce(eliminate)` (CMG-Schur, experimental) | Exactly two categorical intercept effects; positive observation weights, finite controls, disconnected components and saved effects | Unsupported |
 
-The experimental `cmgschur` route eliminates the larger FE implicitly in the
+The native request wire keeps its route tokens (`auto map lsmr cmg cmgschur it
+squarem` with `preconditioner=auto|off|diagonal|schwarz`); one ado table maps the
+public grammar onto them and the plugin re-validates the tokens. The hidden
+developer adapters take the tokens directly, including the PPML `map` family,
+which is not a public request.
+
+The experimental CMG-Schur route eliminates the larger FE implicitly in the
 outer Schur operator. By default, its CMG preconditioner eliminates levels with
 at most `cmgdegree()` distinct neighbors and retains the others as auxiliary
 vertices. Repeated observations form weighted cells before degree counting.
@@ -177,7 +198,7 @@ Positive counts replace each above-cutoff worker with the average of `k`
 independently seeded weighted clique trees; low-degree cliques remain exact.
 `cmgseed(s)` selects an integer seed in 0..2^53-1 (default zero) and may be
 explicitly supplied only when sampling is enabled. Both options require
-`solver(cmgschur)` and retain its OLS-only support envelope. Repeated observations
+`solver(cg, reduce(eliminate))` and retain its OLS-only support envelope. Repeated observations
 are aggregated before sampling. A connected, positive tree spans each worker's
 distinct firms, preserving the firm-component kernel. The graph is sampled once
 at construction and remains fixed throughout PCG and residual correction.
@@ -199,7 +220,7 @@ Unbiasedness in exact arithmetic is not a spectral-quality guarantee.
 
 The OLS CMG adapter also handles zero/one categorical effects by exact
 no-work/direct projection; preserve this degenerate support and identify that
-no graph iteration occurred. PPML explicit requests outside its supported
+no graph iteration occurred (method `direct`). PPML explicit requests outside its supported
 envelope return r(498), including zero/one FE. A valid graph formulation,
 component anchoring and certified nuisance elimination are required for CMG;
 the 64-column bound is an explicit adapter support limit, not an auto-routing
@@ -235,7 +256,8 @@ Successful bulk projections that retain FE coefficients also retain
 and add the polishing coefficients. Joint admission includes the live graph,
 norms, bulk coefficients and all CG correction banks at the actual RHS width;
 final correction releases the graph before admitting its workspace. Requested
-CMG remains explicit: a Fast final CG verification reports used CG and its
+CMG remains explicit: a Fast final CG verification reports the route
+`map, accelerate(cg)` (CG over the MAP operator) with fallback set and its
 verification/correction warning, including when the verified action needs zero
 CG updates. Sample, rank, omission and separation semantics are unchanged.
 
@@ -267,10 +289,14 @@ Acceptance recomputes the remaining-level moments from the formed residual
 with the ordinary certificate fold; eliminated-level moments are zero by
 construction, and the derived final-residual certificate recomputes every
 level. Any stall, refusal, rank or nonfinite case declines with the input
-untouched to the established routes below. OLS reports the route as solver
-`elimination` (code 9, a used code only; it cannot be requested); PPML
-publishes it under the categorical MAP engine identity, which its compiled
-validator admits. `FEREG_BLOCK_SCHUR=0` (environment, read once per process)
+untouched to the established routes below. Both commands report the route as
+`cg, reduce(eliminate) precondition(jacobi)`; a batch that escalated to
+block-Jacobi reports `precondition(block)` with each retained effect's local
+solve in `e(fe_block_solvers)` and counts in `e(fe_escalations)`. The route is
+reported, never requested: an explicit `cg, reduce(eliminate)
+precondition(jacobi|block)` is not yet available. PPML keeps the categorical
+MAP family identity internally, which its compiled validator admits; only the
+reported route changes. `FEREG_BLOCK_SCHUR=0` (environment, read once per process)
 restores the established routes for comparisons.
 
 Public OLS Auto/Auto otherwise uses the many-FE geometry policy
@@ -376,7 +402,7 @@ unchanged.
 Declared scope of the geometry policy: eligible public OLS Auto/Auto may change
 coefficients, covariance, fit statistics, residuals, FE coordinates and solver
 iteration signatures and diagnostics within §20 tolerances. Unit-weight
-three-FE Auto with an explicit preconditioner reaches the same pilot and may
+three-FE `solver(auto, precondition(jacobi))` reaches the same pilot and may
 change through its earlier certificate checkpoint. Sample, rank, omission,
 original factor slots/base flags and other discrete decisions remain unchanged.
 Hidden `routing_incremental_many` keeps the previous public policy exactly. The
@@ -586,7 +612,7 @@ refusal, and original FE-moment and coefficient
 reconstruction checks. No performance or default-promotion claim follows from
 these contracts.
 
-Explicit OLS `solver(it)` retains its support envelope and incumbent
+Explicit OLS `solver(map, accelerate(irons-tuck))` (IT) retains its support envelope and incumbent
 observation-space behavior. Hidden `inject=it_coefficients` independently tests
 a categorical intercept challenger; it compares complete simultaneous memory
 plans before allocation: compact
@@ -1068,20 +1094,41 @@ model/command/weight/cluster metadata, effective and physical N, candidate/full
 counts, ranks, absorbed metadata, singleton accounting, prediction binding
 and requested output names. Sample/status/count/DoF fields are exact.
 Required OLS families include `fereg_status`, `fereg_dof`, `fereg_fe`,
-`fereg_cluster`, `fereg_subset`, `fereg_solver`, `fereg_certificate` and
-`fereg_runtime`. The OLS solver matrix retains its 2x16 layout and numeric codes.
-Rows `absorption` and `residual` describe outcome/regressor absorption (aggregated
-across Low blocks) and final residual projection. The `used` column reports the
-actual certifying method: automatic two-FE Schur PCG is code 4, and actual CMG
-application on that path is code 8. A MAP continuation is code 2 with fallback
-set; already-certified zero-work inputs retain code 2 with zero iterations.
-Low aggregation preserves CMG use across blocks unless a certified fallback
-takes precedence. Requested solver remains unchanged. The public macros
-`fereg_solver_used` and `fereg_solver_residual` expose the method names; the
-displayed line names the absorption method and the passed accuracy check with
-the effective tolerance;
-`fereg_solver_fallback` is the OR of the two fallback fields. This reporting
-correction changes only method/fallback telemetry, not arithmetic, route
+`fereg_cluster`, `fereg_subset`, `fereg_certificate`, `fereg_runtime` and the
+solver results below. Solver results use the vocabulary of `solver()`:
+reduction `full|eliminate|none`, method `map|cg|lsmr|direct|derived|none`,
+preconditioner `none|jacobi|block|schwarz|cmg` and MAP acceleration
+`none|cg|irons-tuck|squarem`. `direct` is the exact projection onto a single
+intercept channel (or the constant alone) when MAP was not requested by name;
+`derived` is a final residual certified from the absorption without a new
+solve (zero iterations); `none` means nothing was absorbed. For the absorption
+(outcome/regressors, aggregated across Low blocks) fereg posts `e(fe_route)`
+(the used route in `solver()` syntax), `e(fe_reduction)`, `e(fe_method)`,
+`e(fe_preconditioner)`, `e(fe_block_solvers)` (`name=dense|cmg|jacobi` per
+retained effect, only with `block`), `e(fe_acceleration)` and the scalars
+`e(fe_iterations)` (also `e(ic)`), `e(fe_escalations)` (solves that switched
+from Jacobi to block-Jacobi or additive Schwarz) and `e(fe_fallback)`; the
+final residual projection posts the same items with the `fe_residual_` prefix.
+`e(fe_solver)` is the normalized request; with `cg, reduce(eliminate)`,
+`e(fe_cmgdegree)`, `e(fe_cmgsamples)` and `e(fe_cmgseed)` record the effective
+CMG-Schur controls. Matrix `e(fe_solve)` (rows `absorption residual`; columns
+`iterations escalations fallback warnings pilot_iterations pilot_contraction
+setup_seconds solve_seconds certificate_absinf certificate_relinf
+certificate_rel2 normal_equation`) holds the numeric diagnostics and no codes.
+The route reports the actual certifying method: automatic two-FE Schur PCG is
+`cg, reduce(eliminate) precondition(jacobi)`, and actual CMG application on that
+path is `precondition(cmg)`; an allocated but unused hierarchy is not CMG. A MAP
+continuation reports `map` with fallback set; already-certified zero-work
+inputs report `map` with zero iterations. Low aggregation preserves CMG and
+block-Jacobi use and sums escalations across blocks unless a certified fallback
+takes precedence. The display names the absorption route (marking an
+escalation), any block solves and the passed accuracy check with the
+effective tolerance, each on its own line.
+The former 2x16 code matrix `e(fereg_solver)` and the `fereg_solver_*`,
+`fereg_preconditioner` and `fereg_cmg_*` results are removed. The route row
+is the native transport (OLS result wire 1.6, see the
+[plugin protocol](plugin_protocol.md)); the ado decodes and validates it before
+posting. This reporting changes only telemetry, not arithmetic, route
 decisions, iteration budgets, science or the PPML solver contract.
 
 Required PPML information includes:
@@ -1094,10 +1141,22 @@ Required PPML information includes:
   raw_sumweights/weight_multiplier and logarithms; N_clustervars,
   N_clust1 through N_clust5, N_clust and G_min when clustered;
 - feppml_status, fit, dof, fe, cluster, subset, separation, inference,
-  drop_counts, separation_sequence, certificate, solver, runtime and receipt
+  drop_counts, separation_sequence, certificate, runtime and receipt
   matrices (all names after the first have the `feppml_` prefix);
-- `dof_table` when applicable; requested/selected/effective/checkpoint solver
-  macros, concrete engine identity, fallback count and reason;
+- `dof_table` when applicable; `fe_solver` (the normalized request); the route
+  of the final weighted least-squares solve, which always runs in the certified
+  canonical session, as `fe_route`, `fe_reduction`, `fe_method`,
+  `fe_preconditioner`, `fe_block_solvers`, `fe_acceleration`, `fe_iterations`
+  and `fe_escalations` (the requested `lsmr`/`cg` serves the ordinary IRLS
+  frames); `fe_fallback` (visible solver fallbacks over the fit) and
+  `fe_fallback_reason`; matrix `fe_solve` with rows `canonical lsmr lsmr_joint
+  cmg` and columns `ordinary_frames checkpoint_frames retries fallbacks
+  iterations setup_seconds solve_seconds certification_seconds
+  certificate_absinf certificate_relinf certificate_rel2 normal_equation
+  projection_absinf backward_error` (the native 4x22 solver shadow and its
+  identity codes are checked by the compiled validator and not posted). The
+  compiled scalar poster still posts `feppml_linear_route` (a route code) and
+  `feppml_solver_fallback_count` until the next Stata 15 Mata rebuild;
 - `cmd=feppml`, `model=poisson`, command line, depvar, indepvars, vce, absvars,
   separation, adjustment, predict=feppml_p, requested output bindings and
   bias-correction results when requested (§15).
@@ -1695,7 +1754,7 @@ performance target, 2026-11-01).
 
 Every additive-Schwarz preconditioner fereg builds in the pinned solver (OLS
 borrowed and owned LSMR, the many-FE Jacobi trial's escalation, explicit
-`preconditioner(schwarz)` and the PPML joint Schwarz factor) uses the Ordered
+`solver(lsmr, precondition(schwarz))` and the PPML joint Schwarz factor) uses the Ordered
 reduction, which commits subdomain contributions in subdomain order, in every
 mode; the pinned Auto reduction may resolve to an atomic scatter whose
 summation order follows thread timing. Before beta.10 only `deterministic`

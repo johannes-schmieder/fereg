@@ -14,23 +14,23 @@ program define _fereg_display
         DisplayAbsorbed
         exit
     }
-    if `"`e(fereg_solver_used)'"' != "" {
-        di as txt "Fixed-effect solver: " as result "`e(fereg_solver_used)'" _continue
-        // Posted results passed the accuracy check; stop codes 2 and 5 record
-        // a certified absorption (1 means there was nothing to absorb).
-        tempname solver
-        capture matrix `solver' = e(fereg_solver)
-        if !_rc & e(fereg_tolerance) < . {
-            if inlist(`solver'[2,4], 2, 5) {
-                local tolerance : display %9.1e e(fereg_tolerance)
-                local tolerance = subinstr(strtrim(`"`tolerance'"'), ".0e", "e", 1)
-                di as txt "   Accuracy check: " as result "passed" ///
-                    as txt " (tolerance " as result "`tolerance'" as txt ")" _continue
-            }
-        }
+    if `"`e(fe_route)'"' != "" {
+        // The absorption route in solver() syntax. Posted results passed the
+        // accuracy check; a design without fixed effects has none to report.
+        di as txt "Fixed-effect solver: " as result `"`e(fe_route)'"' _continue
+        if e(fe_escalations) > 0 & e(fe_escalations) < . ///
+            di as txt " (escalated)" _continue
         di
-        if e(fereg_solver_fallback) == 1 ///
-            di as txt "A certified fallback was used; see e(fereg_solver)."
+        if `"`e(fe_block_solvers)'"' != "" ///
+            di as txt "Block solves: " as result `"`e(fe_block_solvers)'"'
+        if `"`e(fe_residual_method)'"' != "none" & e(fereg_tolerance) < . {
+            local tolerance : display %9.1e e(fereg_tolerance)
+            local tolerance = subinstr(strtrim(`"`tolerance'"'), ".0e", "e", 1)
+            di as txt "Accuracy check: " as result "passed" ///
+                as txt " (tolerance " as result "`tolerance'" as txt ")"
+        }
+        if e(fe_fallback) == 1 | e(fe_residual_fallback) == 1 ///
+            di as txt "A certified fallback was used; see e(fe_solve)."
     }
     DisplayHeader
     di

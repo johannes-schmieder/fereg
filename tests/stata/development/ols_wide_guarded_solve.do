@@ -50,7 +50,7 @@ generate double count_y = 1 + rpoisson(exp(.2*x1-.1*x2+g/20))
 quietly poisson count_y x1-x65 i.g
 matrix poisson_b = e(b)
 predict double poisson_mu, n
-quietly feppml count_y x1-x65, absorb(g) solver(map) separation(none) memory(fast) threads(7) mu(fast_mu)
+quietly feppml count_y x1-x65, absorb(g) solver(auto) separation(none) memory(fast) threads(7) mu(fast_mu)
 assert e(converged) == 1
 forvalues j = 1/65 {
     assert abs(e(b)[1,`j'] - poisson_b[1,`j']) <= 1e-8
@@ -58,7 +58,7 @@ forvalues j = 1/65 {
 assert abs(fast_mu-poisson_mu) <= 1e-8
 matrix ppml_b = e(b)
 matrix ppml_v = e(V)
-quietly feppml count_y x1-x65, absorb(g) solver(map) separation(none) memory(low) threads(1) mu(low_mu)
+quietly feppml count_y x1-x65, absorb(g) solver(auto) separation(none) memory(low) threads(1) mu(low_mu)
 assert e(converged) == 1
 assert mreldif(e(b),ppml_b) <= 1e-8
 assert mreldif(e(V),ppml_v) <= 1e-8

@@ -16,7 +16,7 @@ scalar oracle_rss = e(rss)
 scalar oracle_df = e(df_r)
 predict double oracle_residual, residuals
 foreach t in 1 7 {
-    fereg y x1 x2 [aw=w], absorb(g1 g2) solver(lsmr) preconditioner(schwarz) threads(`t') vce(robust) residuals(native_residual)
+    fereg y x1 x2 [aw=w], absorb(g1 g2) solver(lsmr, precondition(schwarz)) threads(`t') vce(robust) residuals(native_residual)
     assert e(fereg_certificate)[32,2] == 1
     assert e(df_r) == oracle_df
     forvalues j=1/2 {

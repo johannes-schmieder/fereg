@@ -13,10 +13,10 @@ generate double y = .7*x + sin(worker*.11) + cos(firm*.3) + ///
     (mod(_n*37, 101) - 50)*.001
 
 * Establish that the same valid model succeeds and consumes more than one step.
-quietly fereg y x, absorb(worker firm) solver(cmgschur) ///
-    cmgdegree(5) tolerance(1e-10) iterate(1000) threads(2)
-assert e(fereg_solver)[1,2] == 8
-assert e(fereg_solver)[1,3] > 1
+quietly fereg y x, absorb(worker firm) solver(cg, reduce(eliminate) cmgdegree(5)) ///
+    tolerance(1e-10) iterate(1000) threads(2)
+assert "`e(fe_route)'" == "cg, reduce(eliminate) precondition(cmg)"
+assert e(fe_iterations) > 1
 
 quietly regress y x if worker <= 500
 generate byte prior_sample = e(sample)
@@ -40,7 +40,7 @@ foreach item of local prior_matrices {
 
 foreach mode in fast low {
     capture noisily fereg y x, absorb(failed_worker=worker failed_firm=firm) ///
-        solver(cmgschur) cmgdegree(5) tolerance(1e-10) iterate(1) ///
+        solver(cg, reduce(eliminate) cmgdegree(5)) tolerance(1e-10) iterate(1) ///
         memory(`mode') poolsize(1) threads(2) residuals(failed_residual)
     assert _rc == 430
     foreach output in failed_worker failed_firm failed_residual {

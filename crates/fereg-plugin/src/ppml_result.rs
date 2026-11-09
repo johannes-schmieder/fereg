@@ -76,6 +76,8 @@ pub(crate) struct PpmlShadowResult<'a> {
     pub(crate) separation_sequence: Vec<f64>,
     pub(crate) certificates: Vec<f64>,
     pub(crate) solver: Vec<f64>,
+    /// The final linear solve's route row ([`crate::route_report`]).
+    pub(crate) route: Vec<f64>,
     pub(crate) runtime: Vec<f64>,
     pub(crate) receipt: [f64; PPML_RESULT_RECEIPT_COLUMNS],
     pub(crate) retained_original_rows: &'a [usize],
@@ -129,6 +131,7 @@ impl PpmlShadowResult<'_> {
             &self.separation_sequence,
             &self.certificates,
             &self.solver,
+            &self.route,
             &self.runtime,
         ]
         .iter()
@@ -558,6 +561,7 @@ pub(crate) fn build_certified_ppml_shadow(
     }
     let certificates = fallible_copy(&certificate_values, "PPML certificate shadow")?;
     let solver = build_solver_shadow(result)?;
+    let route = build_route_shadow(result)?;
 
     let runtime = build_runtime_shadow(result, context.elapsed_seconds)?;
     let residuals = context
@@ -708,6 +712,7 @@ pub(crate) fn build_certified_ppml_shadow(
         separation_sequence,
         certificates,
         solver,
+        route,
         runtime,
         receipt,
         retained_original_rows: sample.original_rows(),
@@ -785,6 +790,32 @@ fn build_solver_shadow(result: &CertifiedPpmlResult) -> Result<Vec<f64>> {
             }
         }
     }
+    Ok(output)
+}
+
+/// The final certified linear solve's route. A plain MAP solve of a single
+/// intercept channel is reported as the direct projection it is.
+fn build_route_shadow(result: &CertifiedPpmlResult) -> Result<Vec<f64>> {
+    let (route, iterations) = result
+        .memory()
+        .final_linear_solve
+        .ok_or_else(|| invalid("certified PPML result lacks its final linear route"))?;
+    let mut output = reserved_filled(crate::route_report::ROUTE_COLUMNS, 0.0, "PPML route shadow")?;
+    let single_intercept = matches!(
+        result.fixed_effects(),
+        [effect] if effect.kind == PpmlFixedEffectChannelKind::Intercept
+    ) || result.fixed_effects().is_empty();
+    crate::route_report::write_route(
+        &mut output,
+        crate::route_report::RouteRow {
+            route,
+            iterations,
+            fallback: false,
+            single_intercept,
+            map_requested: false,
+        },
+    )?;
+    crate::route_report::validate_route(&output)?;
     Ok(output)
 }
 

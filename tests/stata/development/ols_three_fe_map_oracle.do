@@ -23,15 +23,13 @@ predict double oracle_residual, residuals
 foreach mode in fast low {
     foreach t in 1 4 {
         quietly fereg y x1-x3, absorb(s1=g1 s2=g2 s3=g3) ///
-            preconditioner(diagonal) memory(`mode') poolsize(1) threads(`t') ///
+            solver(auto, precondition(jacobi)) memory(`mode') poolsize(1) threads(`t') ///
             vce(robust) residuals(resid)
         assert e(N) == 4000
         assert e(rank) == 3
         assert e(df_r) == oracle_df
-        assert e(fereg_solver)[1,2] == 2
-        assert e(fereg_solver)[1,11] == 0
-        assert e(fereg_solver)[2,2] == 2
-        assert e(fereg_solver)[2,11] == 0
+        assert "`e(fe_route)'" == "map" & e(fe_fallback) == 0
+        assert "`e(fe_residual_route)'" == "map" & e(fe_residual_fallback) == 0
         forvalues j=1/3 {
             assert abs(e(b)[1,`j']-oracle_b[1,`j']) < 1e-9
             forvalues k=1/3 {

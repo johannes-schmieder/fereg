@@ -29,21 +29,14 @@ foreach pool in 1 5 10 {
     * without fallback; FEREG_BLOCK_SCHUR=0 restores the LSMR session.
     * Native fault-plan tests cover fallback aggregation, and
     * ols_near_within_cmg_oracle.do covers the published fallback report.
-    assert e(fereg_solver)[1,1] == 1
-    assert e(fereg_solver)[1,2] == 9
-    assert e(fereg_solver)[1,4] == 2
-    assert e(fereg_solver)[1,11] == 0
-    assert e(fereg_solver)[1,12] == 0
-    assert "`e(fereg_solver_used)'" == "elimination"
-    assert "`e(fereg_solver_residual)'" == "elimination"
-    assert e(fereg_solver_fallback) == 0
-    assert e(fereg_solver)[1,15] == 0
-    assert e(fereg_solver)[2,1] == 1
-    * Row 2 is this fixture's final-residual projection.
-    assert e(fereg_solver)[2,2] == 9
-    assert e(fereg_solver)[2,4] == 2
-    assert e(fereg_solver)[2,11] == 0
-    assert e(fereg_solver)[2,15] == 0
+    assert "`e(fe_solver)'" == "auto"
+    foreach phase in fe_ fe_residual_ {
+        assert "`e(`phase'route)'" == "cg, reduce(eliminate) precondition(jacobi)"
+        assert e(`phase'fallback) == 0 & e(`phase'escalations) == 0
+    }
+    * Row 2 of e(fe_solve) is this fixture's final-residual projection.
+    matrix report = e(fe_solve)
+    assert report[1,4] == 0 & report[1,5] == 0 & report[2,5] == 0
     forvalues j = 1/10 {
         assert abs(e(b)[1,`j'] - reference_b[1,`j']) <= 1e-10
         forvalues k = 1/10 {

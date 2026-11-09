@@ -21,7 +21,7 @@ foreach terms in g "g h" "g h j" {
     scalar oracle_x=_b[x]
     scalar oracle_z=_b[z]
     predict double oracle_mu, n
-    quietly feppml y x z [pw=w], absorb(`terms') memory(fast) solver(map) threads(4) mu(fast_mu)
+    quietly feppml y x z [pw=w], absorb(`terms') memory(fast) solver(auto) threads(4) mu(fast_mu)
     matrix fast_b=e(b)
     matrix fast_v=e(V)
     matrix fast_status=e(feppml_status)

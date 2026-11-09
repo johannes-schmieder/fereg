@@ -1,6 +1,6 @@
 use crate::model_metadata::{checked_product, reserved_filled};
 use fereg_core::error::{allocation, invalid_argument as invalid, Result};
-use fereg_core::fe::{FeSolverKind, LsmrPreconditioner, SolveReport, SolveStopReason};
+use fereg_core::fe::{FeSolverKind, SolveReport};
 use fereg_core::ols::{
     CertifiedPreparedOlsClustered, CertifiedPreparedOlsFit, CertifiedPreparedOlsRobust,
     CertifiedPreparedOlsUnadjusted, PreparedOlsBreadCoordinate,
@@ -18,7 +18,11 @@ use fereg_core::ols::PreparedOlsData;
 pub(crate) const FIT_ROWS: usize = 12;
 pub(crate) const DOF_ROWS: usize = 20;
 pub(crate) const SOLVER_ROWS: usize = 2;
-pub(crate) const SOLVER_COLUMNS: usize = 16;
+/// Route columns ([`crate::route_report`]) and then warnings, pilot
+/// iterations and contraction, setup and solve seconds, the certificate's
+/// absolute and relative infinity and relative two norms, and the
+/// normal-equation residual.
+pub(crate) const SOLVER_COLUMNS: usize = crate::route_report::ROUTE_COLUMNS + 9;
 pub(crate) const FE_COLUMNS: usize = 8;
 pub(crate) const CLUSTER_COLUMNS: usize = 4;
 pub(crate) const SUBSET_COLUMNS: usize = 4;
@@ -399,7 +403,11 @@ pub(crate) fn build_shadow_result<'a>(
 
     let fit_values = build_fit_statistics(inference.statistics())?;
     let dof = build_dof(prepared, &inference)?;
-    let solver = build_solver(fit)?;
+    let single_intercept = matches!(
+        inference.absorbed_dof().effects.as_slice(),
+        [effect] if effect.slope_source.is_none()
+    );
+    let solver = build_solver(fit, single_intercept)?;
     let (fixed_effects, fixed_effect_rows) = build_fixed_effects(inference.absorbed_dof())?;
     let (clusters, cluster_rows, subsets, subset_rows) =
         build_clusters(clustered_prepared, &inference)?;
@@ -621,45 +629,54 @@ fn build_dof(
     Ok(output)
 }
 
-fn build_solver(fit: &CertifiedPreparedOlsFit) -> Result<Vec<f64>> {
+fn build_solver(fit: &CertifiedPreparedOlsFit, single_intercept: bool) -> Result<Vec<f64>> {
     let mut output = reserved_filled(SOLVER_ROWS * SOLVER_COLUMNS, 0.0, "OLS solver diagnostics")?;
     for (row, report) in [fit.absorption_report(), fit.residual_absorption_report()]
         .into_iter()
         .enumerate()
     {
-        write_solver_row(&mut output, row, report)?;
+        write_solver_row(&mut output, row, report, single_intercept)?;
     }
     Ok(output)
 }
 
-fn write_solver_row(output: &mut [f64], row: usize, report: &SolveReport) -> Result<()> {
+fn write_solver_row(
+    output: &mut [f64],
+    row: usize,
+    report: &SolveReport,
+    single_intercept: bool,
+) -> Result<()> {
     if !report.certified() {
         return Err(invalid("prepared OLS solver report is not certified"));
     }
+    let start = row * SOLVER_COLUMNS;
+    let route_end = start + crate::route_report::ROUTE_COLUMNS;
+    crate::route_report::write_route(
+        &mut output[start..route_end],
+        crate::route_report::RouteRow {
+            route: report.route(),
+            iterations: report.iterations,
+            fallback: report.fallback_used,
+            single_intercept,
+            map_requested: report.requested_solver == FeSolverKind::Map,
+        },
+    )?;
     let values = [
-        solver_code(report.requested_solver),
-        solver_code(report.used_solver),
-        report.iterations as f64,
-        stop_code(report.stop_reason),
+        report.warnings.len() as f64,
+        report.pilot_iterations as f64,
+        report.pilot_contraction,
+        report.setup_seconds,
+        report.solve_seconds,
         report.certificate.absolute_infinity_norm,
         report.certificate.relative_infinity_norm,
         report.certificate.relative_two_norm,
         report.normal_equation_residual,
-        report.setup_seconds,
-        report.solve_seconds,
-        f64::from(report.fallback_used),
-        report.warnings.len() as f64,
-        preconditioner_code(report.requested_preconditioner),
-        preconditioner_code(report.used_preconditioner),
-        report.pilot_iterations as f64,
-        report.pilot_contraction,
     ];
-    let start = row * SOLVER_COLUMNS;
     for (index, value) in values.into_iter().enumerate() {
         if !value.is_finite() {
             return Err(invalid("prepared OLS solver diagnostic is nonfinite"));
         }
-        output[start + index] = value;
+        output[route_end + index] = value;
     }
     Ok(())
 }
@@ -1100,40 +1117,6 @@ fn require_absent(value: Option<f64>, label: &str) -> Result<()> {
         Err(invalid(format!("{label} unexpectedly has a value")))
     } else {
         Ok(())
-    }
-}
-
-fn solver_code(value: FeSolverKind) -> f64 {
-    match value {
-        FeSolverKind::Auto => 1.0,
-        FeSolverKind::Map => 2.0,
-        FeSolverKind::Lsmr => 3.0,
-        FeSolverKind::Cg => 4.0,
-        FeSolverKind::IronsTuck => 5.0,
-        FeSolverKind::Squarem => 6.0,
-        FeSolverKind::Cmg => 7.0,
-        FeSolverKind::CmgSchur => 8.0,
-        FeSolverKind::Elimination => 9.0,
-    }
-}
-
-fn preconditioner_code(value: Option<LsmrPreconditioner>) -> f64 {
-    match value {
-        None => 0.0,
-        Some(LsmrPreconditioner::Auto) => 1.0,
-        Some(LsmrPreconditioner::Off) => 2.0,
-        Some(LsmrPreconditioner::Diagonal) => 3.0,
-        Some(LsmrPreconditioner::Schwarz) => 4.0,
-    }
-}
-
-fn stop_code(value: SolveStopReason) -> f64 {
-    match value {
-        SolveStopReason::NoFixedEffects => 1.0,
-        SolveStopReason::Certified => 2.0,
-        SolveStopReason::MaximumIterations => 3.0,
-        SolveStopReason::Uncertified => 4.0,
-        SolveStopReason::DerivedCertificate => 5.0,
     }
 }
 

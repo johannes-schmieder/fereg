@@ -13,8 +13,8 @@ request/result layouts are independently versioned:
 |---|---:|
 | Action protocol | 1.7 |
 | Model wire | 2.1 |
-| OLS result wire | 1.5 |
-| PPML request wire | 1.8 |
+| OLS result wire | 1.6 |
+| PPML request wire | 1.9 |
 | PPML result wire | 1.5 |
 
 Estimation requires the exact action and estimator-specific request/result
@@ -233,19 +233,16 @@ outside its supported topology. Public `solver(auto)` retains the current
 qualified routing policy unless a hidden qualification adapter supplies one of
 the routing injections above.
 
-The experimental OLS `solver=cmgschur` request accepts an optional
+The request wire carries native route tokens, not the public grammar. One ado
+table (`_fereg_solver.ado`) maps `solver(method[, reduce() precondition()
+accelerate() cmg*()])` onto `solver=auto|map|lsmr|cmg|cmgschur|it|squarem` and
+`preconditioner=auto|off|diagonal|schwarz`; the plugin re-validates the tokens
+(`preconditioner` other than `off` only with `auto` or `lsmr`). The hidden
+adapters take the tokens directly. The experimental OLS CMG-Schur request
+(`solver=cmgschur`, public `solver(cg, reduce(eliminate))`) accepts an optional
 `cmgdegree=4|5|6` field (default 5). That field is rejected for every other
-solver and by PPML. The public adapter emits it only for the new route;
-existing requests retain their original fields and bytes. The existing OLS
-transport cap admits the new field and hidden Break keys. Solver diagnostic code 8
-identifies CMG-Schur; existing codes and result dimensions are unchanged.
-The same used-solver code 8 identifies actual CMG-preconditioned Schur PCG under
-OLS Auto. Automatic Schur PCG without CMG uses code 4. A certified MAP fallback
-uses code 2 and sets the existing fallback field. This corrects earlier Auto
-reports that labeled every two-FE recurrence as MAP; it does not change the
-2x16 solver matrix, action/result versions or PPML checkpoint-engine codes.
-This additive prototype does not change action or result versions. Older
-plugins reject the unknown solver or field before reading observations.
+solver and by PPML. The public adapter emits it only for that route. The
+existing OLS transport cap admits the field and hidden Break keys.
 CMG-Schur requires exactly two categorical intercept fixed effects; unsupported
 topology is rejected before observation reads in the plugin adapter.
 
@@ -257,7 +254,35 @@ positive `cmgsamples`. Both fields are rejected for other solvers and PPML befor
 observation reads or publication. Omitted fields preserve existing request bytes.
 Sampling changes only the fixed preconditioner; the outer operator and original
 problem certificate remain exact. The public adapter publishes the effective
-values as `e(fereg_cmg_samples)` and `e(fereg_cmg_seed)`.
+values as `e(fe_cmgdegree)`, `e(fe_cmgsamples)` and `e(fe_cmgseed)`.
+
+### Route rows
+
+Result wire 1.6 reports each projection's route in the vocabulary of
+`solver()` (`crates/fereg-plugin/src/route_report.rs`). A route row has 12
+columns:
+
+| Column | Content | Codes |
+|---:|---|---|
+| 1 | reduction | 0 none, 1 full, 2 eliminate |
+| 2 | method | 0 none, 1 direct, 2 map, 3 cg, 4 lsmr, 5 derived |
+| 3 | MAP acceleration | 0 none, 1 cg, 2 irons-tuck, 3 squarem; nonzero only with method map |
+| 4 | preconditioner | 0 none, 1 jacobi, 2 block, 3 schwarz, 4 cmg |
+| 5–9 | block-Jacobi local solve of design effects 1–5 (absorb order) | 0 none or eliminated, 1 dense, 2 cmg, 3 jacobi; nonzero only with block, and at least one with block |
+| 10 | escalations | solves that switched to a stronger preconditioner |
+| 11 | iterations | exact integer |
+| 12 | certified fallback | 0 or 1 |
+
+The OLS solver table is 2x21 with rows absorption and final residual: columns
+1–12 are the route row and 13–21 the warning count, pilot iterations, pilot
+contraction, setup and solve seconds, the certificate's absolute and relative
+infinity and relative two norms, and the normal-equation residual. Rust
+validates every code and count before stores; the ado decodes the rows into
+`e(fe_*)` strings, validates them again and posts the diagnostics as
+`e(fe_solve)` without codes. A plain MAP projection of one intercept channel
+(or the constant alone) is reported as direct unless MAP was requested by name.
+The table replaces result wire 1.5's 2x16 code table; an ado and plugin of
+different result minors fail the exact version check.
 
 Before any observation read, Rust validates the complete request, exact
 action/model/result versions, source and output bindings, dimensions,
@@ -289,10 +314,12 @@ request, PPML request/result wire identities, source and output bindings,
 dimensions, nonaliasing destinations, memory/thread controls, and initially
 incomplete receipt before reading observations.
 
-Request wire 1.8 has one closed `solver` field with values `auto`, `map`,
-`lsmr`, and `cmg`. Private solver, preconditioner, mode, policy, trace and
+Request wire 1.9 has one closed `solver` field with values `auto`, `map`,
+`lsmr`, and `cmg` (public `solver(auto|lsmr|cg)`; `map` is the canonical family
+token used by the hidden adapter) and adds the required `output_route_matrix`
+destination. Private solver, preconditioner, mode, policy, trace and
 experiment keys are unsupported. An older exact
-request version is a protocol mismatch; an unknown key on 1.8 is syntax error.
+request version is a protocol mismatch; an unknown key on 1.9 is syntax error.
 Recognized solver/topology combinations outside the staged public envelope
 return `r(498)`. A supported route that fails its checked workspace preflight
 returns `r(909)`; neither condition is converted to an implicit solver choice.
@@ -305,7 +332,11 @@ inference/PSD evidence, a 14x2 drop-reason count table, and a 5x13
 separation-sequence table. It also contains a fixed 4x22 solver table whose rows are
 MAP, fused LSMR, joint LSMR, and prepared CMG. The table binds the requested,
 selected, concrete, effective, and checkpoint routes and per-engine frame,
-retry, fallback, timing, and certificate evidence. Its independent 33-column receipt binds the other
+retry, fallback, timing, and certificate evidence; the compiled validator
+checks it and the ado posts its counts and evidence as `e(fe_solve)` without the
+identity codes. The separate 1x12 route matrix (request wire 1.9, outside the
+compiled validator) holds the route row of the final certified linear solve,
+validated by Rust before stores and by the ado before posting. Its independent 33-column receipt binds the other
 tables, execution/generation counts, and uint32 limbs for the initial/final
 generation hashes plus deterministic digests of the complete ordered
 separation trace and generation-hash sequence. Timing and process-local values
@@ -386,7 +417,7 @@ matrices retain their layout and observation boundaries.
 
 ## Optional PPML coefficient mean correction
 
-PPML request 1.8/result 1.5 adds an optional correction inside the same
+PPML request 1.9/result 1.5 carries an optional correction inside the same
 transaction. `bias_method`, `bias_unit`, `bias_probes`, `bias_seed`, and
 `bias_stream` identify its calculation. `output_bias_count`,
 `output_bias_channels`, `output_bias_matrix`, `output_bias_diagnostics`, and

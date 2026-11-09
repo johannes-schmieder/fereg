@@ -78,7 +78,7 @@ foreach kind in unit fw pw {
         local vce "robust"
         if "`covariance'" == "cluster" local vce "cluster cl"
         feppml y x1 x2 x3 x4 x5 x6 x7 x8 `weight', absorb(`effects') offset(off) ///
-            vce(`vce') separation(none) keepsingletons threads(`threads') memory(low) poolsize(8) solver(map) mu(mu_native) eta(eta_native) xb(xb_native) d(d_native) residuals(res_native)
+            vce(`vce') separation(none) keepsingletons threads(`threads') memory(low) poolsize(8) solver(auto) mu(mu_native) eta(eta_native) xb(xb_native) d(d_native) residuals(res_native)
         assert abs(eta_native - ln(mu_native)) <= 1e-10
         assert abs(res_native - (y - mu_native)) <= 1e-10
         assert abs(eta_native - xb_native - d_native) <= 1e-9

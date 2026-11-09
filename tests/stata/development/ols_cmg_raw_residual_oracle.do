@@ -13,7 +13,7 @@ scalar oracle_b = _b[x]
 predict double oracle_residual, residuals
 
 foreach memory in fast low {
-    foreach solver in auto lsmr cmg {
+    foreach solver in auto lsmr cg {
         quietly fereg y x, absorb(worker firm) solver(`solver') memory(`memory') poolsize(1) residuals(resid)
         assert abs(_b[x] - oracle_b) <= 2e-8
         assert abs(resid - oracle_residual) <= 2e-8
@@ -21,12 +21,15 @@ foreach memory in fast low {
     }
 }
 
-* Public CG rejection must precede both variable and estimation publication.
+* Public rejection of CG-accelerated MAP (fereg) and of MAP (feppml) must
+* precede both variable and estimation publication.
 matrix before_b = e(b)
 matrix before_v = e(V)
 local before_cmd `"`e(cmd)'"'
 foreach estimator in fereg feppml {
-    capture noisily `estimator' y x, absorb(worker firm) solver(cg) residuals(rejected_residual)
+    local request "map, accelerate(cg)"
+    if "`estimator'" == "feppml" local request "map"
+    capture noisily `estimator' y x, absorb(worker firm) solver(`request') residuals(rejected_residual)
     assert _rc == 198
     assert `"`e(cmd)'"' == `"`before_cmd'"'
     assert mreldif(e(b),before_b) == 0

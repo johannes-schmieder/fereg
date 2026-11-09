@@ -59,7 +59,7 @@ void joint_column_sandwich(string scalar covariance, string scalar kind, real sc
 }
 end
 
-foreach solver in lsmr map auto {
+foreach solver in lsmr auto {
 foreach dimensions in 2 3 {
 local effects "g h"
 local dummies "ibn.g i.h"
@@ -80,9 +80,11 @@ foreach kind in unit fw pw {
         if "`covariance'" == "cluster" local vce "cluster cl"
         feppml y x1 x2 x3 x4 x5 x6 x7 x8 `weight', absorb(`effects') offset(off) ///
             vce(`vce') separation(none) keepsingletons threads(`threads') memory(fast) solver(`solver') mu(mu_native) eta(eta_native) xb(xb_native) d(d_native) residuals(res_native)
-        local selected "`solver'"
-        if "`solver'" == "auto" local selected "map"
-        assert "`e(feppml_solver_selected)'" == "`selected'"
+        assert "`e(fe_solver)'" == "`solver'"
+        * LSMR engines serve explicit lsmr's IRLS frames, the canonical
+        * session auto's.
+        if "`solver'" == "lsmr" assert e(fe_solve)[2,1] + e(fe_solve)[3,1] > 0
+        else assert e(fe_solve)[2,1] + e(fe_solve)[3,1] == 0
         assert abs(eta_native - ln(mu_native)) <= 1e-10
         assert abs(res_native - (y - mu_native)) <= 1e-10
         assert abs(eta_native - xb_native - d_native) <= 1e-9

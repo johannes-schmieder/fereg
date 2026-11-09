@@ -6,6 +6,7 @@ f stata/fereg.ado
 f stata/_fereg_display.ado
 f stata/fereg_run.ado
 f stata/_fereg_estimate_public.ado
+f stata/_fereg_solver.ado
 f stata/_fereg_estimate_ols.ado
 f stata/_fereg_load.ado
 f stata/_fereg_factor_sample.ado

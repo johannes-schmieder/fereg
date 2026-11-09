@@ -4,6 +4,7 @@ f fereg.ado
 f _fereg_display.ado
 f fereg_run.ado
 f _fereg_estimate_public.ado
+f _fereg_solver.ado
 f _fereg_estimate_ols.ado
 f _fereg_load.ado
 f _fereg_factor_sample.ado

@@ -11,18 +11,15 @@ foreach graph in dense ring {
         set obs 3200
         generate long worker = floor((_n-1)/32)
         generate long firm = mod(worker + mod(floor((_n-1)/4),8),10)
-        local expected elimination
-        local code 9
+        local preconditioner jacobi
     }
     else {
-        * The exact elimination declines this ring's absorption, which then
-        * runs the guarded two-FE Schur PCG; FEREG_BLOCK_SCHUR=0 restores
-        * cmgschur.
+        * The ring's Jacobi recurrence stalls; the exact elimination escalates
+        * to block-Jacobi with a CMG solve of the retained firm block.
         set obs 4096
         generate long worker = floor((_n-1)/8)
         generate long firm = mod(worker + mod(floor((_n-1)/4),2),512)
-        local expected cg
-        local code 4
+        local preconditioner block
     }
     generate double x = 2*mod(_n-1,2)-1 + .3*sin(worker*.173) + .1*cos(firm*.113)
     generate double noise = .01*(2*(mod(_n-1,4)>=2)-1)
@@ -33,27 +30,35 @@ foreach graph in dense ring {
                 threads(`workers') residuals(resid)
             assert abs(_b[x]-.7) <= 1e-10
             assert abs(resid-noise) <= 1e-8
-            assert rowsof(e(fereg_solver)) == 2
-            assert colsof(e(fereg_solver)) == 16
-            assert e(fereg_solver)[1,2] == `code'
-            assert "`e(fereg_solver_used)'" == "`expected'"
-            local names auto map lsmr cg it squarem cmg cmgschur elimination
-            local residual_code = e(fereg_solver)[2,2]
-            local residual_name : word `residual_code' of `names'
-            assert "`e(fereg_solver_residual)'" == "`residual_name'"
-            assert e(fereg_solver_fallback) == ///
-                max(e(fereg_solver)[1,11],e(fereg_solver)[2,11])
-            assert e(fereg_solver_fallback) == 0
-            matrix report = e(fereg_solver)
+            assert `"`e(fe_route)'"' == ///
+                "cg, reduce(eliminate) precondition(`preconditioner')"
+            assert "`e(fe_reduction)'" == "eliminate" & "`e(fe_method)'" == "cg"
+            assert "`e(fe_preconditioner)'" == "`preconditioner'"
+            assert "`e(fe_acceleration)'" == "none"
+            assert e(fe_iterations) == e(ic) & e(fe_iterations) > 0
+            if "`preconditioner'" == "block" {
+                assert `"`e(fe_block_solvers)'"' == "firm=cmg"
+                assert e(fe_escalations) >= 1
+            }
+            else {
+                assert `"`e(fe_block_solvers)'"' == ""
+                assert e(fe_escalations) == 0
+            }
+            assert e(fe_fallback) == 0 & e(fe_residual_fallback) == 0
+            assert inlist("`e(fe_residual_method)'", "cg", "derived")
+            matrix report = e(fe_solve)
             local rows : rownames report
             assert "`rows'" == "absorption residual"
+            assert report[1,1] == e(fe_iterations) & report[2,1] == e(fe_residual_iterations)
+            assert "`e(fe_solver)'" == "auto"
             drop resid
         }
     }
 }
-* A direct one-effect certificate retains MAP and needs no CG recurrence.
+* A one-effect projection is exact (direct); explicit MAP is reported as MAP.
 quietly fereg y x, absorb(worker)
-assert "`e(fereg_solver_used)'" == "map"
-assert e(fereg_solver)[1,2] == 2
-assert e(fereg_solver_fallback) == 0
+assert "`e(fe_route)'" == "direct" & "`e(fe_reduction)'" == "full"
+assert e(fe_fallback) == 0
+quietly fereg y x, absorb(worker) solver(map)
+assert "`e(fe_route)'" == "map" & "`e(fe_solver)'" == "map"
 display as result "END_FIXTURE|ols_solver_reporting|rc=0"

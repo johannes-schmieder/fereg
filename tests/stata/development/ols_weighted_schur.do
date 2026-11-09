@@ -38,11 +38,10 @@ foreach case in iid_aw iid_fw robust_aw robust_fw robust_pw cluster_aw cluster_f
         assert e(df_r)==oracle_df
         assert abs(e(rss)-oracle_rss)<1e-8*oracle_rss
         assert abs(native_residual-oracle_residual)<1e-7
-        matrix route=e(fereg_solver)
-        assert route[1,1]==1
-        * Auto serves this design by the exact elimination (code 9).
-        assert route[1,2]==9
-        assert route[1,11]==0
+        assert "`e(fe_solver)'"=="auto"
+        * Auto serves this design by the exact elimination with Jacobi CG.
+        assert "`e(fe_route)'"=="cg, reduce(eliminate) precondition(jacobi)"
+        assert e(fe_fallback)==0
         forvalues j=1/16 {
             assert abs(e(b)[1,`j']-oracle_b[1,`j'])<1e-8
             forvalues k=1/16 {
@@ -100,7 +99,7 @@ foreach t in 1 16 {
     assert e(b)[1,17]==0
     assert e(b)[1,18]==0
     assert e(fereg_status)[18,2]==3
-    assert e(fereg_solver)[1,2]==9
+    assert "`e(fe_route)'"=="cg, reduce(eliminate) precondition(jacobi)"
     forvalues j=1/16 {
         assert abs(e(b)[1,`j']-rank_b[1,`j'])<1e-8
         forvalues k=1/16 {

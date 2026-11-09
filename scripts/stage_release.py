@@ -31,6 +31,7 @@ PRODUCTION_STATA_FILES = (
     "_fereg_display.ado",
     "fereg_run.ado",
     "_fereg_estimate_public.ado",
+    "_fereg_solver.ado",
     "_fereg_estimate_ols.ado",
     "_fereg_load.ado",
     "_fereg_factor_sample.ado",

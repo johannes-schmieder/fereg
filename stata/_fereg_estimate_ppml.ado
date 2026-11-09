@@ -22,7 +22,7 @@ program define _fereg_estimate_ppml, eclass
          SIMPLEXITERate(integer 100000) SIMPLEXCELLS(integer 1000000) ///
          ALLOCATIONAUDIT INJECT(string) PUBLICMode ///
          PUBLICCMDLINE(string) PUBLICTIMEIT PUBLICDISPlay ///
-         PUBLICWEXP(string)]
+         PUBLICWEXP(string) PUBLICSOLVER(string)]
 
     local bias_method = lower(strtrim(`"`biascorrection'"'))
     local has_bias = (`"`bias_method'"' != "")
@@ -89,6 +89,12 @@ program define _fereg_estimate_ppml, eclass
     }
     local requested_solver_code = cond(`"`solver_mode'"' == "auto", 1, ///
         cond(`"`solver_mode'"' == "map", 2, cond(`"`solver_mode'"' == "lsmr", 3, 7)))
+    // The request in solver() syntax: the public spelling, or the developer
+    // family token's equivalent (map is a developer-only canonical family).
+    local solver_spec = strtrim(`"`publicsolver'"')
+    if `"`solver_spec'"' == "" ///
+        local solver_spec = cond(`"`solver_mode'"' == "cmg", "cg", `"`solver_mode'"')
+    local public_solver = cond(`"`solver_mode'"' == "cmg", "cg", `"`solver_mode'"')
 
     local requested_weights = (`"`fweight'"' != "") + (`"`pweight'"' != "")
     if `requested_weights' > 1 {
@@ -118,11 +124,11 @@ program define _fereg_estimate_ppml, eclass
         exit 198
     }
     if inlist(`"`solver_mode'"', "lsmr", "cmg") & `"`memory_mode'"' == "low" {
-        di as error "solver(`solver_mode') does not support memory(low) in this release"
+        di as error "solver(`public_solver') does not support memory(low) in this release"
         exit 498
     }
     if inlist(`"`solver_mode'"', "lsmr", "cmg") & `"`allocationaudit'"' != "" {
-        di as error "solver(`solver_mode') does not support allocation auditing in this release"
+        di as error "solver(`public_solver') does not support allocation auditing in this release"
         exit 498
     }
 
@@ -572,7 +578,7 @@ program define _fereg_estimate_ppml, eclass
     }
     if `"`solver_mode'"' == "cmg" & ///
        (!inlist(`n_absorb_intercepts', 2, 3) | `n_absorb_slopes' != 0) {
-        di as error "solver(cmg) currently requires two or three categorical intercept fixed effects"
+        di as error "solver(cg) currently requires two or three categorical intercept fixed effects"
         exit 498
     }
     local coefficient_capacity = `n_terms' + 1
@@ -701,7 +707,7 @@ program define _fereg_estimate_ppml, eclass
     tempname inference_shadow drop_counts_shadow separation_sequence_shadow
     tempname memory_shadow
     matrix `memory_shadow' = J(11, 2, .)
-    tempname certificate_shadow solver_shadow runtime_shadow receipt_shadow
+    tempname certificate_shadow solver_shadow route_shadow runtime_shadow receipt_shadow
     matrix `b_shadow' = J(1, `matrix_dimension', .)
     matrix `v_shadow' = J(`matrix_dimension', `matrix_dimension', .)
     matrix `status_shadow' = J(`matrix_dimension', 4, .)
@@ -716,6 +722,7 @@ program define _fereg_estimate_ppml, eclass
     matrix `separation_sequence_shadow' = J(5, 13, 0)
     matrix `certificate_shadow' = J(16, 1, .)
     matrix `solver_shadow' = J(4, 22, .)
+    matrix `route_shadow' = J(1, 12, .)
     matrix `runtime_shadow' = J(108, 1, .)
     matrix `receipt_shadow' = J(1, 33, 0)
 
@@ -752,7 +759,7 @@ program define _fereg_estimate_ppml, eclass
     local stata_used_before = strtrim(string(r(used), "%21.0f"))
     local stata_alloc_before = strtrim(string(r(allocated), "%21.0f"))
     quietly _fereg_input_host `touse' `depvar' `source_vars' `weight_variable' `adjustment_variable' `biasunit'
-    local request_arguments `"ado=0.5.3;protocol_major=1;protocol_minor=7;stata=`c(stata_version)';host_edition=`r(edition)';host_interface=`r(interface)';host_aliases=`r(aliases)';confirm=feppml-estimation;plugin=0.5.3;result_major=1;result_minor=5;request_major=1;request_minor=8;model_major=`model_major';model_minor=`model_minor';source_matrix=`model_sources';source_count=`n_sources';term_matrix=`model_terms';term_count=`n_terms';component_matrix=`model_components';component_count=`n_components';source_names=`source_registry';canonical_tokens=`token_registry';raw_component_operators=`raw_registry';raw_time_series_operators=`ts_registry';absorb_term_matrix=`absorb_terms';absorb_term_count=`n_absorb_terms';absorb_component_matrix=`absorb_components';absorb_component_count=`n_absorb_components';absorb_labels=`absorb_label_registry';absorb_saved_names=`absorb_saved_registry';cluster_term_matrix=`cluster_terms';cluster_term_count=`n_cluster_terms';cluster_component_matrix=`cluster_components';cluster_component_count=`n_cluster_components';cluster_labels=`cluster_label_registry';binding_matrix=`input_bindings';binding_count=`n_bindings';include_intercept=1;candidate_all=`candidate_all';input_complete=`input_complete';keep_singletons=`keep_singletons';adjustment=`adjustment_kind';adjustment_position=`adjustment_position';residual=`residual_wire';vce=`vce_request_wire';memory=`memory_mode';poolsize=`poolsize';threads=`threads';deterministic=`deterministic_wire';allocation_audit=`allocation_audit_wire';solver=`solver_mode';tolerance=`tolerance';iterate=`iterate';separation=`separation_wire';separation_tolerance=`septolerance';separation_max_iterations=`sepiterate';simplex_max_iterations=`simplexiterate';simplex_max_tableau_cells=`simplexcells';output_sample=`output_sample';output_residual=`output_residual';output_xb=`output_xb';output_absorbed=`output_absorbed';output_eta=`output_eta';output_mean=`output_mu';output_drop_reason=`output_dropreason';output_saved_count=`output_saved_count';output_saved_channels=`output_saved_registry';output_b_matrix=`b_shadow';output_v_matrix=`v_shadow';output_status_matrix=`status_shadow';output_fit_matrix=`fit_shadow';output_dof_matrix=`dof_shadow';output_fe_matrix=`fe_shadow';output_cluster_matrix=`cluster_shadow';output_subset_matrix=`subset_shadow';output_separation_matrix=`separation_shadow';output_inference_matrix=`inference_shadow';output_drop_counts_matrix=`drop_counts_shadow';output_separation_sequence_matrix=`separation_sequence_shadow';output_certificate_matrix=`certificate_shadow';output_solver_matrix=`solver_shadow';output_runtime_matrix=`runtime_shadow';output_memory_matrix=`memory_shadow';stata_used_entry=`stata_used_entry';stata_alloc_entry=`stata_alloc_entry';stata_used_before=`stata_used_before';stata_alloc_before=`stata_alloc_before';output_receipt_matrix=`receipt_shadow';"'
+    local request_arguments `"ado=0.5.3;protocol_major=1;protocol_minor=7;stata=`c(stata_version)';host_edition=`r(edition)';host_interface=`r(interface)';host_aliases=`r(aliases)';confirm=feppml-estimation;plugin=0.5.3;result_major=1;result_minor=5;request_major=1;request_minor=9;model_major=`model_major';model_minor=`model_minor';source_matrix=`model_sources';source_count=`n_sources';term_matrix=`model_terms';term_count=`n_terms';component_matrix=`model_components';component_count=`n_components';source_names=`source_registry';canonical_tokens=`token_registry';raw_component_operators=`raw_registry';raw_time_series_operators=`ts_registry';absorb_term_matrix=`absorb_terms';absorb_term_count=`n_absorb_terms';absorb_component_matrix=`absorb_components';absorb_component_count=`n_absorb_components';absorb_labels=`absorb_label_registry';absorb_saved_names=`absorb_saved_registry';cluster_term_matrix=`cluster_terms';cluster_term_count=`n_cluster_terms';cluster_component_matrix=`cluster_components';cluster_component_count=`n_cluster_components';cluster_labels=`cluster_label_registry';binding_matrix=`input_bindings';binding_count=`n_bindings';include_intercept=1;candidate_all=`candidate_all';input_complete=`input_complete';keep_singletons=`keep_singletons';adjustment=`adjustment_kind';adjustment_position=`adjustment_position';residual=`residual_wire';vce=`vce_request_wire';memory=`memory_mode';poolsize=`poolsize';threads=`threads';deterministic=`deterministic_wire';allocation_audit=`allocation_audit_wire';solver=`solver_mode';tolerance=`tolerance';iterate=`iterate';separation=`separation_wire';separation_tolerance=`septolerance';separation_max_iterations=`sepiterate';simplex_max_iterations=`simplexiterate';simplex_max_tableau_cells=`simplexcells';output_sample=`output_sample';output_residual=`output_residual';output_xb=`output_xb';output_absorbed=`output_absorbed';output_eta=`output_eta';output_mean=`output_mu';output_drop_reason=`output_dropreason';output_saved_count=`output_saved_count';output_saved_channels=`output_saved_registry';output_b_matrix=`b_shadow';output_v_matrix=`v_shadow';output_status_matrix=`status_shadow';output_fit_matrix=`fit_shadow';output_dof_matrix=`dof_shadow';output_fe_matrix=`fe_shadow';output_cluster_matrix=`cluster_shadow';output_subset_matrix=`subset_shadow';output_separation_matrix=`separation_shadow';output_inference_matrix=`inference_shadow';output_drop_counts_matrix=`drop_counts_shadow';output_separation_sequence_matrix=`separation_sequence_shadow';output_certificate_matrix=`certificate_shadow';output_solver_matrix=`solver_shadow';output_route_matrix=`route_shadow';output_runtime_matrix=`runtime_shadow';output_memory_matrix=`memory_shadow';stata_used_entry=`stata_used_entry';stata_alloc_entry=`stata_alloc_entry';stata_used_before=`stata_used_before';stata_alloc_before=`stata_alloc_before';output_receipt_matrix=`receipt_shadow';"'
     if `has_bias' {
         local request_arguments `"`request_arguments'bias_method=`bias_method';bias_unit=`bias_unit_position';bias_probes=`biasprobes';bias_seed=`biasseed';bias_stream=`biasstream';output_bias_count=`output_bias_count';output_bias_channels=`output_bias_registry';output_bias_matrix=`bias_shadow';output_bias_diagnostics=`bias_diagnostics_shadow';output_bias_support=`bias_support_shadow';"'
     }
@@ -878,22 +885,14 @@ program define _fereg_estimate_ppml, eclass
                 min(`bias_shadow'[6,`slot'], `bias_shadow'[7,`slot'], `bias_shadow'[9,`slot']) < 0 exit 3499
         }
     }
-    local solver_selected "map"
-    if `solver_shadow'[1,2] == 3 local solver_selected "lsmr"
-    if `solver_shadow'[1,2] == 7 local solver_selected "cmg"
-    local solver_engine "map"
-    if `solver_shadow'[1,3] == 2 local solver_engine "lsmr_fused"
-    if `solver_shadow'[1,3] == 3 local solver_engine "lsmr_joint"
-    if `solver_shadow'[1,3] == 4 local solver_engine "cmg_prepared"
-    local solver_effective "map"
-    if `solver_shadow'[1,4] == 3 local solver_effective "lsmr"
-    if `solver_shadow'[1,4] == 7 local solver_effective "cmg"
-    local solver_engine_effective "map"
-    if `solver_shadow'[1,5] == 2 local solver_engine_effective "lsmr_fused"
-    if `solver_shadow'[1,5] == 3 local solver_engine_effective "lsmr_joint"
-    if `solver_shadow'[1,5] == 4 local solver_engine_effective "cmg_prepared"
-    local solver_checkpoint "map"
-    if `solver_shadow'[1,6] == 3 local solver_checkpoint "lsmr"
+    // The final linear solve's route, decoded and checked before publication.
+    _fereg_solver, command(feppml) route(`route_shadow') row(1) ///
+        labels(`"`absorb_labels'"')
+    foreach item in reduction method preconditioner acceleration block_solvers text {
+        local route_`item' `"`r(`item')'"'
+    }
+    local route_iterations = r(iterations)
+    local route_escalations = r(escalations)
     local solver_fallback_reason "none"
     if `solver_shadow'[4,12] == 1 ///
         local solver_fallback_reason "cmg_numerical_nonconvergence"
@@ -1252,7 +1251,17 @@ program define _fereg_estimate_ppml, eclass
     ereturn matrix feppml_drop_counts = `drop_counts_shadow', copy
     ereturn matrix feppml_separation_sequence = `separation_sequence_shadow', copy
     ereturn matrix feppml_certificate = `certificate_shadow', copy
-    ereturn matrix feppml_solver = `solver_shadow', copy
+    // Per-session linear-solve work without the identity codes, which the
+    // validator checked: canonical (the certified session), the LSMR
+    // engines and CMG.
+    tempname fe_solve
+    matrix `fe_solve' = (`solver_shadow'[1..4, 8..11], `solver_shadow'[1..4, 13..22])
+    matrix rownames `fe_solve' = canonical lsmr lsmr_joint cmg
+    matrix colnames `fe_solve' = ordinary_frames checkpoint_frames retries ///
+        fallbacks iterations setup_seconds solve_seconds ///
+        certification_seconds certificate_absinf certificate_relinf ///
+        certificate_rel2 normal_equation projection_absinf backward_error
+    ereturn matrix fe_solve = `fe_solve'
     ereturn matrix feppml_runtime = `runtime_shadow', copy
     matrix rownames `memory_shadow' = schema_version estimate_status ///
         stata_used_before stata_alloc_before native_live_before native_peak_est ///
@@ -1375,17 +1384,20 @@ program define _fereg_estimate_ppml, eclass
     if `"`mu'"' != "" ereturn local mu_var "`mu'"
     if `"`dropreason'"' != "" ereturn local drop_reason_var "`dropreason'"
     ereturn local predict "feppml_p"
-    ereturn local solver "`solver_mode'"
-    ereturn local feppml_solver_requested "`solver_mode'"
-    ereturn local feppml_solver_selected "`solver_selected'"
-    ereturn local feppml_solver_engine "`solver_engine'"
-    ereturn local feppml_solver_effective "`solver_effective'"
-    ereturn local feppml_solver_engine_effective "`solver_engine_effective'"
-    ereturn local feppml_solver_checkpoint "`solver_checkpoint'"
-    ereturn local feppml_solver_fallback_reason "`solver_fallback_reason'"
+    ereturn local fe_solver `"`solver_spec'"'
+    ereturn local fe_reduction "`route_reduction'"
+    ereturn local fe_method "`route_method'"
+    ereturn local fe_preconditioner "`route_preconditioner'"
+    if `"`route_block_solvers'"' != "" ereturn local fe_block_solvers `"`route_block_solvers'"'
+    ereturn local fe_acceleration "`route_acceleration'"
+    ereturn local fe_route `"`route_text'"'
+    ereturn scalar fe_iterations = `route_iterations'
+    ereturn scalar fe_escalations = `route_escalations'
+    ereturn scalar fe_fallback = e(feppml_solver_fallback_count)
+    ereturn local fe_fallback_reason "`solver_fallback_reason'"
     ereturn local feppml_action_protocol "1.7"
     ereturn local feppml_model_wire "2.1"
-    ereturn local feppml_request_wire "1.8"
+    ereturn local feppml_request_wire "1.9"
     ereturn local feppml_result_wire "1.5"
     ereturn local feppml_plugin "0.5.3"
 

@@ -38,8 +38,8 @@ foreach effects in one two {
             assert abs(e(rss)-oracle_rss) <= 1e-9*oracle_rss
             if "`effects'" == "two" & `weighted' == 0 {
                 * Auto serves this design by the exact elimination (code 9).
-                assert e(fereg_solver)[1,2] == 9
-                assert e(fereg_solver)[1,11] == 0
+                assert "`e(fe_route)'" == "cg, reduce(eliminate) precondition(jacobi)"
+                assert e(fe_fallback) == 0
             }
         }
     }

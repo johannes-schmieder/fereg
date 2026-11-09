@@ -154,7 +154,8 @@ fn public_two_activation_matches_hidden_science_and_public_repeat() {
                     .zip(&hidden.matrices["RSOLVER"])
                 {
                     for column in 0..SOLVER_COLUMNS {
-                        if !matches!(column, 8 | 9) {
+                        // Setup and solve seconds are timing, not science.
+                        if !matches!(column, 15 | 16) {
                             assert_eq!(a[column].to_bits(), b[column].to_bits());
                         }
                     }
@@ -379,7 +380,8 @@ fn ownership_preserves_publication_across_inference_factors_and_saved_effects() 
                         .zip(&candidate.matrices["RSOLVER"])
                     {
                         for column in 0..SOLVER_COLUMNS {
-                            if !matches!(column, 8 | 9) {
+                            // Setup and solve seconds are timing, not science.
+                            if !matches!(column, 15 | 16) {
                                 assert_eq!(before[column].to_bits(), after[column].to_bits());
                             }
                         }
@@ -2670,24 +2672,21 @@ fn saved_publication_validates_solver_codes_and_capacities_before_any_store() {
             action.outputs.residual.is_some(),
         )
         .unwrap();
-        // Requested and used codes in both diagnostic rows admit the new
-        // route, while unknown and fractional codes still fail before stores.
-        // The exact elimination (9) is a used code only.
-        for cell in [0, 1, SOLVER_COLUMNS, SOLVER_COLUMNS + 1] {
-            let used = cell % SOLVER_COLUMNS == 1;
-            let original = shadow.solver[cell];
-            shadow.solver[cell] = 8.0;
-            validate_shadow_diagnostics(&action, &shadow).unwrap();
-            if used {
-                shadow.solver[cell] = 9.0;
+        // Every route code of both diagnostic rows admits its vocabulary
+        // (reduction 0..=2, method 0..=5), while unknown and fractional codes
+        // still fail before stores.
+        for (column, largest) in [(0, 2.0), (1, 5.0)] {
+            for row in 0..SOLVER_ROWS {
+                let cell = row * SOLVER_COLUMNS + column;
+                let original = shadow.solver[cell];
+                shadow.solver[cell] = largest;
                 validate_shadow_diagnostics(&action, &shadow).unwrap();
+                for invalid_code in [-1.0, 1.5, largest + 1.0] {
+                    shadow.solver[cell] = invalid_code;
+                    assert!(validate_shadow_diagnostics(&action, &shadow).is_err());
+                }
+                shadow.solver[cell] = original;
             }
-            let unknown = if used { 10.0 } else { 9.0 };
-            for invalid_code in [0.0, 7.5, unknown] {
-                shadow.solver[cell] = invalid_code;
-                assert!(validate_shadow_diagnostics(&action, &shadow).is_err());
-            }
-            shadow.solver[cell] = original;
         }
         assert_eq!((spi.store_calls, spi.receipt_complete()), (0, 0.0));
         let runtime = build_runtime_shadow(&action, &shadow, &observation).unwrap();
@@ -4378,7 +4377,8 @@ fn licensed_stata_bundle_matches_ordinary_argv_and_rejects_malformed_pre_read() 
     }
     for row in 0..SOLVER_ROWS {
         for column in 0..SOLVER_COLUMNS {
-            if !matches!(column, 8 | 9) {
+            // Setup and solve seconds are timing, not science.
+            if !matches!(column, 15 | 16) {
                 assert_eq!(
                     packed.matrices["RSOLVER"][row][column],
                     ordinary.matrices["RSOLVER"][row][column]
@@ -4512,7 +4512,7 @@ fn every_output_store_failure_leaves_receipt_incomplete() {
     let (args, mut successful) = fixture(OlsVceKind::Iid);
     estimate_ols(&args, &mut successful).expect("baseline estimate succeeds");
     let total_stores = successful.store_calls;
-    assert_eq!(total_stores, 284 + crate::memory_report::CELLS);
+    assert_eq!(total_stores, 294 + crate::memory_report::CELLS);
     assert_eq!(successful.stores.capacity(), 512);
 
     for failing_ordinal in 1..=total_stores {

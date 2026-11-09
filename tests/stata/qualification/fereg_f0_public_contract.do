@@ -45,7 +45,9 @@ assert _rc == 198
 capture noisily fereg y c.x1, absorb(worker firm) memory(unknown)
 assert _rc == 198
 capture noisily fereg y c.x1, absorb(worker firm) ///
-    solver(map) preconditioner(diagonal)
+    solver(map, precondition(jacobi))
+assert _rc == 198
+capture noisily fereg y c.x1, absorb(worker firm) preconditioner(diagonal)
 assert _rc == 198
 capture noisily fereg y c.x1 [iw=x1], absorb(worker firm)
 assert _rc == 101
@@ -75,11 +77,10 @@ quietly fereg y c.x1 c.x2, absorb(worker firm) deterministic
 assert `"`e(cmd)'"' == "fereg"
 assert `"`e(vce)'"' == "ols"
 assert `"`e(fereg_memory_mode)'"' == "auto"
-assert `"`e(fereg_solver_requested)'"' == "auto"
-assert `"`e(fereg_preconditioner)'"' == "auto"
+assert `"`e(fe_solver)'"' == "auto"
 assert `"`e(fereg_action_protocol)'"' == "1.7"
 assert `"`e(fereg_model_wire)'"' == "2.1"
-assert `"`e(fereg_result_wire)'"' == "1.5"
+assert `"`e(fereg_result_wire)'"' == "1.6"
 assert `"`e(predict)'"' == "fereg_p"
 assert e(fereg_requested_threads) == 0
 assert e(fereg_receipt)[1,16] == 1

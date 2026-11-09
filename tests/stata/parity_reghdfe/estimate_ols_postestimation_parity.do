@@ -16,10 +16,12 @@ import delimited using `"`root'/tests/fixtures/ols/ols_core.csv"', clear
 fereg y c.x1 c.x2, absorb(worker firm) memory(auto) threads(2)
 assert `"`e(cmd)'"' == "fereg"
 assert `"`e(fereg_memory_mode)'"' == "auto"
-assert `"`e(fereg_solver_requested)'"' == "auto"
-confirm matrix e(fereg_solver)
-assert rowsof(e(fereg_solver)) == 2
-assert colsof(e(fereg_solver)) == 16
+assert `"`e(fe_solver)'"' == "auto"
+confirm matrix e(fe_solve)
+assert rowsof(e(fe_solve)) == 2
+assert colsof(e(fe_solve)) == 12
+capture confirm matrix e(fereg_solver)
+assert _rc == 111
 assert e(fereg_requested_threads) == 2
 assert e(N) == 24
 assert e(df_m) == 2
@@ -49,34 +51,34 @@ assert _rc == 321
 * reduction-order identity is not required for accelerated/LSMR paths.
 matrix __frg_b_auto = e(b)
 matrix __frg_V_auto = e(V)
-foreach method in map it squarem {
+foreach acceleration in none irons-tuck squarem {
     quietly fereg y c.x1 c.x2, absorb(worker firm) ///
-        memory(fast) threads(2) solver(`method')
-    assert `"`e(fereg_solver_requested)'"' == "`method'"
+        memory(fast) threads(2) solver(map, accelerate(`acceleration'))
+    assert `"`e(fe_solver)'"' == "map, accelerate(`acceleration')"
+    assert "`e(fe_method)'" == "map" & "`e(fe_acceleration)'" == "`acceleration'"
     assert mreldif(e(b), __frg_b_auto) <= 1e-7
     assert mreldif(e(V), __frg_V_auto) <= 1e-6
-    assert e(fereg_solver)[1,4] == 2
+    assert e(fe_fallback) == 0
 }
 quietly fereg y c.x1 c.x2, absorb(worker firm) ///
-    memory(fast) threads(2) solver(cmg)
-assert `"`e(fereg_solver_requested)'"' == "cmg"
-assert e(fereg_solver)[1,1] == 7
-assert e(fereg_solver)[1,2] == 7
+    memory(fast) threads(2) solver(cg)
+assert `"`e(fe_solver)'"' == "cg"
+assert `"`e(fe_route)'"' == "cg, reduce(full) precondition(cmg)"
 assert mreldif(e(b), __frg_b_auto) <= 1e-7
 assert mreldif(e(V), __frg_V_auto) <= 1e-6
-assert e(fereg_solver)[1,4] == 2
-foreach preconditioner in off diagonal schwarz auto {
+foreach preconditioner in none jacobi schwarz auto {
     quietly fereg y c.x1 c.x2, absorb(worker firm) ///
-        memory(fast) threads(2) solver(lsmr) ///
-        preconditioner(`preconditioner')
-    assert `"`e(fereg_solver_requested)'"' == "lsmr"
-    assert `"`e(fereg_preconditioner)'"' == "`preconditioner'"
+        memory(fast) threads(2) solver(lsmr, precondition(`preconditioner'))
+    assert `"`e(fe_solver)'"' == "lsmr, precondition(`preconditioner')"
+    assert "`e(fe_method)'" == "lsmr" & "`e(fe_reduction)'" == "full"
+    if "`preconditioner'" != "auto" assert "`e(fe_preconditioner)'" == "`preconditioner'"
     assert mreldif(e(b), __frg_b_auto) <= 1e-7
     assert mreldif(e(V), __frg_V_auto) <= 1e-6
-    assert e(fereg_solver)[1,4] == 2
 }
-capture noisily fereg y c.x1 c.x2, absorb(worker firm) ///
-    solver(map) preconditioner(diagonal)
-assert _rc == 198
+foreach request in "solver(map, precondition(jacobi))" "preconditioner(diagonal)" ///
+    "solver(lsmr) preconditioner(schwarz)" "solver(cmg)" {
+    capture noisily fereg y c.x1 c.x2, absorb(worker firm) `request'
+    assert _rc == 198
+}
 
 di as result "END_FIXTURE|estimate_ols_postestimation_parity|rc=0"

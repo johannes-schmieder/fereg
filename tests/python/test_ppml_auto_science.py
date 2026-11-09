@@ -234,15 +234,14 @@ class CaptureTests(unittest.TestCase):
                    'outer_tolerance': 1e-8,
                    'rank': 1, 'df_a': 2, 'df_resid': 9, 'converged': 1, 'feppml_threads': 1,
                    'feppml_solver_fallback_count': 0}
-        solver = np.zeros((4, 22))
-        solver[:, :6] = [1, 2, 1, 2, 1, 2]
-        solver[:, 6] = np.arange(1, 5)
+        solver = np.zeros((4, 14))
+        solver[0, 0] = 3
         certificate = np.zeros((16, 1))
         certificate[-1, 0] = 1
         matrices = {'b': np.zeros((1, 1)), 'V': np.zeros((1, 1)),
-                    'feppml_certificate': certificate, 'feppml_solver': solver}
+                    'feppml_certificate': certificate, 'fe_solve': solver}
         columns = {'b': ['o._cons'], 'V': ['o._cons'],
-                   'feppml_certificate': ['value'], 'feppml_solver': AUDIT.SOLVER_COLUMNS}
+                   'feppml_certificate': ['value'], 'fe_solve': AUDIT.SOLVER_COLUMNS}
         lines = [f'scalar\t{name}\t{value}' for name, value in scalars.items()]
         for name, matrix in matrices.items():
             lines.append(f'columns\t{name}\t' + ' '.join(columns[name]))
@@ -307,7 +306,7 @@ class CaptureTests(unittest.TestCase):
         original = self.tsv.read_text()
         for old, new in [('scalar\trank\t1', 'scalar\trank\t2'),
                          ('scalar\tdf_resid\t9', 'scalar\tdf_resid\t8'),
-                         ('matrix\tfeppml_solver\t1\t2\t2.0', 'matrix\tfeppml_solver\t1\t2\t4.0'),
+                         ('matrix\tfe_solve\t2\t1\t0.0', 'matrix\tfe_solve\t2\t1\t4.0'),
                          ('matrix\tfeppml_certificate\t16\t1\t1.0', 'matrix\tfeppml_certificate\t16\t1\t0.0')]:
             self.tsv.write_text(original.replace(old, new))
             with self.assertRaises(ValueError):
