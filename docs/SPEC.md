@@ -96,9 +96,9 @@ The former `version` and `doctor` options are removed and return r(198).
 | `noconstant` | Suppress reported constant | Unsupported; structural constant required |
 | `residuals(newvar)` | Response residual | Formula selected by `residualtype()` |
 | `solver(method[, sub])` | auto (default), map, lsmr, cg; sub-options `reduce()`, `precondition()`, `accelerate()` and the CMG-Schur controls below | auto (default), lsmr, cg; `reduce(auto\|full)`, lsmr `precondition(auto\|schwarz)`, cg `precondition(auto\|cmg)` |
-| `solver(cg, reduce(eliminate) cmgdegree(#))` | Experimental CMG-Schur only; 4, 5 (default), or 6 | Unsupported |
-| `solver(cg, reduce(eliminate) cmgsamples(#))` | Experimental CMG-Schur only; integer 0 (default) through 4294967295 | Unsupported |
-| `solver(cg, reduce(eliminate) cmgseed(#))` | With positive cmgsamples only; integer 0 (default) through 9007199254740991 | Unsupported |
+| `solver(cg, reduce(eliminate) precondition(cmg) cmgdegree(#))` | Experimental CMG-Schur only; 4, 5 (default), or 6 | Unsupported |
+| `solver(cg, reduce(eliminate) precondition(cmg) cmgsamples(#))` | Experimental CMG-Schur only; integer 0 (default) through 4294967295 | Unsupported |
+| `solver(cg, reduce(eliminate) precondition(cmg) cmgseed(#))` | With positive cmgsamples only; integer 0 (default) through 9007199254740991 | Unsupported |
 | `threads(#)` | Nonnegative integer; 0 resolves native default | Same |
 | `tolerance(#)` | Finite 0 < t < 1; default 1e-8 | Same, outer convergence tolerance |
 | `iterate(#)` | Positive integer; default 16,000 | Positive integer; default 10,000 outer iterations |
@@ -114,20 +114,40 @@ Preserve the supported solver routes, iteration options, poolsize(), memory()
 and deterministic. `solver()` names the method first (`auto`, `map`, `lsmr`,
 `cg`) and then, after a comma, the reduction (`reduce(auto|full|eliminate)`),
 preconditioner (`precondition(auto|none|jacobi|block|schwarz|cmg)`) and MAP
-acceleration (`accelerate(none|irons-tuck|squarem)`). The supported explicit
-OLS requests are `map` with or without Irons–Tuck or SQUAREM acceleration;
-`lsmr` with `precondition(auto|none|jacobi|schwarz)` on the full system; `cg`
-on the full graph with CMG (the explicit CMG route) and `cg, reduce(eliminate)`
-with CMG (the experimental CMG-Schur route, the only one that takes the
-CMG-Schur controls); and `auto, precondition(jacobi)`, Auto restricted to
-Jacobi-preconditioned Krylov stages without the exact elimination, CMG or
-Schwarz. Sub-choices left at `auto` resolve to a supported formulation of the
-explicit method. feppml accepts `auto`, `lsmr` and `cg` on the full system.
-CG-accelerated MAP (`accelerate(cg)`) remains rejected with r(198) under the
-existing safety repair. Every other combination, including the not yet
-requestable `cg, reduce(eliminate) precondition(jacobi|block)` that Auto runs,
-returns r(198) naming an alternative and is never substituted. Explicit LSMR/CMG
-and both PPML mean-bias modes are required.
+acceleration (`accelerate(none|irons-tuck|squarem)`); the three choices are
+independent. `solver(auto)` chooses all of them and takes no sub-option other
+than `auto`. The supported explicit OLS requests are:
+
+- `map`, with or without Irons–Tuck or SQUAREM acceleration;
+- `lsmr` with `precondition(auto|none|jacobi|schwarz)`, modified LSMR on the
+  full system (fedemean for categorical intercept designs; with absorbed slopes
+  the general LSMR solver);
+- `cg` with `reduce()` and `precondition()` as in the table below; every
+  preconditioner other than `cmg` runs fedemean's PCG on categorical intercept
+  designs (no slopes);
+- `cg, precondition(cmg)` on the full graph (the explicit CMG route) and
+  `cg, reduce(eliminate) precondition(cmg)` (the experimental CMG-Schur route,
+  the only one that takes the CMG-Schur controls).
+
+| `solver(cg, ...)` | `reduce(auto)` | `reduce(full)` | `reduce(eliminate)` |
+|---|---|---|---|
+| `precondition(auto)` | elimination (2–5 effects), else full | Schwarz within the memory limit, else Jacobi | Jacobi escalating to block-Jacobi |
+| `precondition(none)` | full | no preconditioner | r(198) |
+| `precondition(jacobi)` | elimination (2–5 effects), else full | Jacobi | Jacobi |
+| `precondition(block)` | elimination | r(198) | block-Jacobi from the first iteration |
+| `precondition(schwarz)` | full | additive Schwarz | r(198) |
+| `precondition(cmg)` | CMG graph PCG | CMG graph PCG | CMG-Schur (two effects) |
+
+Sub-choices left at `auto` resolve to a supported formulation of the explicit
+method; only the automatic preconditioners escalate. feppml accepts `auto`,
+`lsmr` (`precondition(auto|schwarz)`) and `cg` (`precondition(auto|cmg)`) on the
+full system. CG-accelerated MAP (`accelerate(cg)`) remains rejected with r(198)
+under the existing safety repair. Every other combination returns r(198) naming
+an alternative and is never substituted. Explicit fedemean requests fail
+closed: non-convergence within `iterate()` is r(430)-class non-convergence, a
+workspace beyond the memory limit an allocation refusal, and `reduce(eliminate)`
+outside two to five effects is unsupported. Explicit LSMR/CMG and both PPML
+mean-bias modes are required.
 
 Both commands load one platform-native fereg plugin. The former engine() option,
 developer engine selector and engine-identity results are removed. Unsupported
@@ -150,12 +170,14 @@ unsupported requests fail clearly.
 | Request | OLS support to preserve | PPML support to preserve |
 |---|---|---|
 | `auto` | No FE, one/multiple intercept or slope-bearing FEs, disconnected designs | Same model grammar with changing positive IRLS weights |
-| `lsmr` | General supported FE grammar, including slopes and multiple RHSs | At least two categorical intercept FEs, including more than three; no absorbed slopes |
-| `cg` (full graph, CMG) | Categorical intercept graph: two largest effects as bipartite core, additional effects with at most 64 non-base nuisance columns; no slopes | Exactly two or three categorical intercept effects; third-effect nuisance width at most 64; no slopes |
-| `cg, reduce(eliminate)` (CMG-Schur, experimental) | Exactly two categorical intercept effects; positive observation weights, finite controls, disconnected components and saved effects | Unsupported |
+| `lsmr` | General supported FE grammar, including slopes and multiple RHSs (categorical intercept designs: fedemean's full system) | At least two categorical intercept FEs, including more than three; no absorbed slopes |
+| `cg` (fedemean PCG, full or eliminated) | Categorical intercept effects, any count for the full system, two to five for the elimination; weights, finite controls, disconnected designs, saved effects, both memory modes; no slopes | Unsupported (PPML `cg` is CMG) |
+| `cg, precondition(cmg)` (full graph) | Categorical intercept graph: two largest effects as bipartite core, additional effects with at most 64 non-base nuisance columns; no slopes | Exactly two or three categorical intercept effects; third-effect nuisance width at most 64; no slopes |
+| `cg, reduce(eliminate) precondition(cmg)` (CMG-Schur, experimental) | Exactly two categorical intercept effects; positive observation weights, finite controls, disconnected components and saved effects | Unsupported |
 
-The native request wire keeps its route tokens (`auto map lsmr cmg cmgschur it
-squarem` with `preconditioner=auto|off|diagonal|schwarz`); one ado table maps the
+The native request wire carries route tokens (`auto map lsmr pcg cmg cmgschur it
+squarem` with `preconditioner=auto|off|diagonal|schwarz`, plus `block` and the
+OLS-only `reduction=auto|full|eliminate` with `pcg`); one ado table maps the
 public grammar onto them and the plugin re-validates the tokens. The hidden
 developer adapters take the tokens directly, including the PPML `map` family,
 which is not a public request.
@@ -289,19 +311,48 @@ Acceptance recomputes the remaining-level moments from the formed residual
 with the ordinary certificate fold; eliminated-level moments are zero by
 construction, and the derived final-residual certificate recomputes every
 level. Any stall, refusal, rank or nonfinite case declines with the input
-untouched to the established routes below. Both commands report the route as
+untouched (or, after a late decline, with the same projection) to the full
+system below. Both commands report the route as
 `cg, reduce(eliminate) precondition(jacobi)`; a batch that escalated to
 block-Jacobi reports `precondition(block)` with each retained effect's local
-solve in `e(fe_block_solvers)` and counts in `e(fe_escalations)`. The route is
-reported, never requested: an explicit `cg, reduce(eliminate)
-precondition(jacobi|block)` is not yet available. PPML keeps the categorical
+solve in `e(fe_local_solvers)` and counts in `e(fe_escalations)`. The same
+elimination is explicitly requestable as `cg, reduce(eliminate)` (escalating)
+or with a fixed `precondition(jacobi|block)` (never escalating). PPML keeps the categorical
 MAP family identity internally, which its compiled validator admits; only the
 reported route changes. `FEREG_BLOCK_SCHUR=0` (environment, read once per process)
 restores the established routes for comparisons.
 
-Public OLS Auto/Auto otherwise uses the many-FE geometry policy
-(`routing_many_geometry_v1`) for eligible designs with at least three
-categorical-intercept FEs. Eligible two-FE designs use
+**Full system next (Milestone 2, 2026-11-08).** OLS Auto designs with at
+least two categorical intercept effects outside the elimination's range (six
+or more), and every design whose elimination declines, next run fedemean's
+full system: lockstep PCG on the singular consistent normal equations
+`D'WD x = D'W y` (up to eight right-hand sides, cold start at the largest
+effect's level means), preconditioned by one-level additive Schwarz over the
+star of factor-pair subdomains (the largest effect paired with each other
+effect, one subdomain per connected component; each local operator's larger
+side eliminated exactly and its Schur complement factored by a dense grounded
+or envelope Cholesky where cheap, approximate Cholesky AC(2) with a fixed seed
+otherwise; a `tau 11'/n` term per component keeps the action SPD) when it fits
+the memory limit, else Jacobi. The recurrence stops at 0.1×tol of the starting
+residual's norm and is accepted only by the recomputed moment certificate over
+every level; it runs within half of `iterate()`. Results do not depend on the
+worker count. A decline (memory, stall, budget, certificate) hands the columns
+to the established routes below with the rest of the budget, and the certified
+result reports `e(fe_fallback) = 1` with the decline in its warnings. The route
+reads `cg, reduce(full) precondition(schwarz)` (or `jacobi`), with the
+subdomains counted by local solve in `e(fe_local_solvers)` and
+`e(fe_subdomains)`. Declared scope: 6+ FE Auto fits and fits whose elimination
+declines change at tolerance level (coefficients, covariance, fit statistics,
+residuals, FE coordinates, iteration signatures); 2–5 FE fits that the
+elimination certifies are unchanged bit for bit; sample, rank, omission and
+other discrete decisions do not change. Witnesses: dense MAP oracles at 1–7
+effects with and without weights, worker-count bit identity, exact admission
+at fedemean's bound, and prepared 6/7-FE fits against tightly converged MAP.
+
+The established routes (and the developer arms) are as follows. Public OLS
+Auto/Auto uses the many-FE geometry policy (`routing_many_geometry_v1`) for
+eligible designs with at least three categorical-intercept FEs whose fedemean
+routes declined, or that a developer preset routes there. Eligible two-FE designs use
 [structural CMG gate v2](two_fe_auto_gates.md) (`routing_two_gates_v2`),
 with ownership and eager cells in the narrower global-intercept scope above. Zero/one FE,
 slopes and explicit choices retain their specified behavior; PPML Auto adds only
@@ -452,8 +503,8 @@ the MAP fallback.
 
 The same refinement, under the same rule (only after the level-count bound
 refused; the exact `R` is never larger), covers the other additive-Schwarz
-LSMR admissions. Explicit OLS `solver(lsmr)` on a borrowed categorical design
-refines its call admission. Owned designs refine the generic LSMR admission of
+LSMR admissions (explicit OLS `solver(lsmr)` on categorical intercept designs
+runs on fedemean, which admits against its own bound). Owned designs refine the generic LSMR admission of
 explicit `solver(lsmr)` and of the automatic owned route when every term is one
 intercept channel and every weight is strictly positive; designs with slopes
 keep the level-count bound, because their subdomains are not the code
@@ -723,15 +774,22 @@ generation changes invalidate reuse. Weighted data is rebuilt for each current
 frame. The default cache is disabled, and this experiment does not change outer
 engines, strict checkpoints, separation, sample/rank decisions or bias modes.
 
-Explicit OLS `solver(lsmr)` stops its recurrence at a hundredth of
-`tolerance()`, floored at 1e-15 and never looser than `tolerance()`, and
-certifies the FE moments at `tolerance()`. Johannes chose these scoped changes
-on 2026-10-10: an equal-tolerance stop could leave a certificate just above the
-request, both in the main projection
-(`development/ols_three_fe_batch_oracle.do`) and in the 1e-14 final residual
-projection used for saved outputs. Unlike automatic LSMR (floor 1e-14, with a
-MAP fallback), explicit LSMR has no fallback, so it keeps that margin. Explicit
-PPML LSMR keeps its scheduled certificate and one tighter continuation.
+Explicit OLS `solver(lsmr)` and `solver(cg)` (other than CMG) on categorical
+intercept designs run fedemean's full system or elimination (Milestone 2,
+2026-11-08; declared scope: these explicit fits change at tolerance level,
+discrete decisions do not). Modified LSMR runs one column at a time on
+`W^1/2 D` with `M ~ D'WD` (Jacobi, identity or additive Schwarz, each SPD on all
+of coefficient space); its stopping tests are proxies, so each pass is followed
+by the moment certificate on the formed residual over every level and a pass
+that misses restarts from its iterate at a tighter tolerance (at most four
+passes within `iterate()`). Both methods stop at 0.1×tol of the starting
+residual's norm and certify at `tolerance()` (the 1e-14 final residual
+projection of saved outputs included); neither falls back. With absorbed
+slopes, explicit `solver(lsmr)` keeps the general LSMR solver: it stops its
+recurrence at a hundredth of `tolerance()`, floored at 1e-15 and never looser
+than `tolerance()`, and certifies the FE moments at `tolerance()` (Johannes,
+2026-10-10). Explicit PPML LSMR keeps its scheduled certificate and one tighter
+continuation.
 
 Ordinary automatic two-FE OLS first targets half of `tolerance()` in its
 recurrence and certifies at `tolerance()`. Only a failed certificate permits
@@ -1104,12 +1162,14 @@ intercept channel (or the constant alone) when MAP was not requested by name;
 solve (zero iterations); `none` means nothing was absorbed. For the absorption
 (outcome/regressors, aggregated across Low blocks) fereg posts `e(fe_route)`
 (the used route in `solver()` syntax), `e(fe_reduction)`, `e(fe_method)`,
-`e(fe_preconditioner)`, `e(fe_block_solvers)` (`name=dense|cmg|jacobi` per
-retained effect, only with `block`), `e(fe_acceleration)` and the scalars
+`e(fe_preconditioner)`, `e(fe_local_solvers)` (with `block`: `name=dense|cmg|jacobi`
+per retained effect; with `schwarz`: the subdomains counted by local solve,
+`trivial|dense|skyline|approximate=count`, nonzero kinds only, and the scalar
+`e(fe_subdomains)`), `e(fe_acceleration)` and the scalars
 `e(fe_iterations)` (also `e(ic)`), `e(fe_escalations)` (solves that switched
 from Jacobi to block-Jacobi or additive Schwarz) and `e(fe_fallback)`; the
 final residual projection posts the same items with the `fe_residual_` prefix.
-`e(fe_solver)` is the normalized request; with `cg, reduce(eliminate)`,
+`e(fe_solver)` is the normalized request; with `cg, reduce(eliminate) precondition(cmg)`,
 `e(fe_cmgdegree)`, `e(fe_cmgsamples)` and `e(fe_cmgseed)` record the effective
 CMG-Schur controls. Matrix `e(fe_solve)` (rows `absorption residual`; columns
 `iterations escalations fallback warnings pilot_iterations pilot_contraction
@@ -1119,11 +1179,11 @@ The route reports the actual certifying method: automatic two-FE Schur PCG is
 `cg, reduce(eliminate) precondition(jacobi)`, and actual CMG application on that
 path is `precondition(cmg)`; an allocated but unused hierarchy is not CMG. A MAP
 continuation reports `map` with fallback set; already-certified zero-work
-inputs report `map` with zero iterations. Low aggregation preserves CMG and
-block-Jacobi use and sums escalations across blocks unless a certified fallback
+inputs report `map` with zero iterations. Low aggregation preserves CMG, block-Jacobi
+and Schwarz use and sums escalations across blocks unless a certified fallback
 takes precedence. The display names the absorption route (marking an
-escalation), any block solves and the passed accuracy check with the
-effective tolerance, each on its own line.
+escalation), any local solves (`Local solves:`) and the passed accuracy check
+with the effective tolerance, each on its own line.
 The former 2x16 code matrix `e(fereg_solver)` and the `fereg_solver_*`,
 `fereg_preconditioner` and `fereg_cmg_*` results are removed. The route row
 is the native transport (OLS result wire 1.6, see the
@@ -1146,7 +1206,7 @@ Required PPML information includes:
 - `dof_table` when applicable; `fe_solver` (the normalized request); the route
   of the final weighted least-squares solve, which always runs in the certified
   canonical session, as `fe_route`, `fe_reduction`, `fe_method`,
-  `fe_preconditioner`, `fe_block_solvers`, `fe_acceleration`, `fe_iterations`
+  `fe_preconditioner`, `fe_local_solvers`, `fe_acceleration`, `fe_iterations`
   and `fe_escalations` (the requested `lsmr`/`cg` serves the ordinary IRLS
   frames); `fe_fallback` (visible solver fallbacks over the fit) and
   `fe_fallback_reason`; matrix `fe_solve` with rows `canonical lsmr lsmr_joint

@@ -136,8 +136,9 @@ Common options are:
   `auto`, `map`, `lsmr` or `cg`, then `reduce(auto|full|eliminate)`,
   `precondition(auto|none|jacobi|block|schwarz|cmg)` and
   `accelerate(none|irons-tuck|squarem)`, for example
-  `solver(lsmr, precondition(schwarz))` or the experimental two-FE
-  `solver(cg, reduce(eliminate))`; and
+  `solver(lsmr, precondition(schwarz))`,
+  `solver(cg, reduce(full) precondition(jacobi))` or the experimental two-FE
+  `solver(cg, reduce(eliminate) precondition(cmg))`; and
 - `memory(auto|fast|low)`, `poolsize(#)`, `threads(#)`, `deterministic`, and
   `timeit` for execution control and diagnostics.
 
@@ -176,7 +177,8 @@ contain the absorption and final-residual routes, with their parts in
 stronger preconditioner, and `matrix list e(fe_solve)` shows iterations,
 fallback, timings and certificates. Automatic fits with two to five effects
 report `cg, reduce(eliminate) precondition(jacobi)` for the exact elimination,
-or `precondition(block)` after an escalation; on the two-effect Schur path,
+or `precondition(block)` after an escalation; six or more effects report
+`cg, reduce(full) precondition(schwarz)`; on the two-effect Schur path,
 `precondition(cmg)` identifies an applied CMG preconditioner. Auto builds
 multigrid only when its rules admit it; easy fits may finish without it.
 See [solver options and results](docs/user_guide.md#ols-numerical-and-execution-options).

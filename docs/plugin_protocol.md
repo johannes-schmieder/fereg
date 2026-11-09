@@ -57,7 +57,7 @@ the routing injections below select experimental algorithms for qualification.
 | Key | Estimator | Effect |
 |---|---|---|
 | `inject=breaknative` + `break_marker_token=<32 lowercase hex>` | OLS, PPML | Arms native Break: displays `FEREG_NATIVE_BREAK_ARMED` (OLS) or `FEPPML_NATIVE_BREAK_ARMED` (PPML), creates `<tmp>/<fereg\|feppml>-native-break-<token>.marker`, and waits for Stata Break inside the native call |
-| `inject=lsmr_iteration_break` + `break_marker_token=<32 lowercase hex>` | OLS, PPML | Requires explicit `solver=lsmr` and at least two categorical intercept FEs. Parks after a completed, continuing upstream iteration; the main-thread poller emits the native marker, real Break sets the cancellation signal, and all work joins before rollback |
+| `inject=lsmr_iteration_break` + `break_marker_token=<32 lowercase hex>` | OLS, PPML | Requires explicit `solver=lsmr` and at least two categorical intercept FEs. Parks after a completed, continuing iteration (OLS: fedemean's modified LSMR, observed through its cancellation polls; PPML: the joint LSMR); the main-thread poller emits the native marker, real Break sets the cancellation signal, and all work joins before rollback |
 | `inject=serial_input` | OLS, PPML | Keeps the serial readers on a qualified host; public policy and arithmetic unchanged, so equal worker counts compare loading paths exactly |
 | `inject=input_break` + `break_marker_token=<32 lowercase hex>` | OLS, PPML | After the first parallel input phase has joined and closed its window, creates the native marker and polls until a real Break; the transaction rolls back |
 | `inject=input_worker_panic` | OLS, PPML | Panics in one worker block of the first parallel input phase; the window closes during unwind and the FFI boundary returns r(3499) |
@@ -235,11 +235,15 @@ the routing injections above.
 
 The request wire carries native route tokens, not the public grammar. One ado
 table (`_fereg_solver.ado`) maps `solver(method[, reduce() precondition()
-accelerate() cmg*()])` onto `solver=auto|map|lsmr|cmg|cmgschur|it|squarem` and
+accelerate() cmg*()])` onto `solver=auto|map|lsmr|pcg|cmg|cmgschur|it|squarem` and
 `preconditioner=auto|off|diagonal|schwarz`; the plugin re-validates the tokens
-(`preconditioner` other than `off` only with `auto` or `lsmr`). The hidden
+(`preconditioner` other than `off` only with `auto`, `lsmr` or `pcg`). OLS
+`solver=pcg` is fedemean's PCG (public `solver(cg)` with a preconditioner other
+than `cmg`): its `preconditioner` also accepts `block`, and an optional
+`reduction=auto|full|eliminate` field (default `auto`, rejected with every other
+solver and by PPML) names the reduction. The hidden
 adapters take the tokens directly. The experimental OLS CMG-Schur request
-(`solver=cmgschur`, public `solver(cg, reduce(eliminate))`) accepts an optional
+(`solver=cmgschur`, public `solver(cg, reduce(eliminate) precondition(cmg))`) accepts an optional
 `cmgdegree=4|5|6` field (default 5). That field is rejected for every other
 solver and by PPML. The public adapter emits it only for that route. The
 existing OLS transport cap admits the field and hidden Break keys.
@@ -268,7 +272,7 @@ columns:
 | 2 | method | 0 none, 1 direct, 2 map, 3 cg, 4 lsmr, 5 derived |
 | 3 | MAP acceleration | 0 none, 1 cg, 2 irons-tuck, 3 squarem; nonzero only with method map |
 | 4 | preconditioner | 0 none, 1 jacobi, 2 block, 3 schwarz, 4 cmg |
-| 5–9 | block-Jacobi local solve of design effects 1–5 (absorb order) | 0 none or eliminated, 1 dense, 2 cmg, 3 jacobi; nonzero only with block, and at least one with block |
+| 5–9 | local solves: with block, the local solve of design effects 1–5 (absorb order); with schwarz, the subdomains counted by local solve | block: 0 none or eliminated, 1 dense, 2 cmg, 3 jacobi, at least one nonzero; schwarz: counts of trivial, dense, skyline and approximate subdomains in columns 5–8 (all zero when unreported), column 9 zero; otherwise all zero |
 | 10 | escalations | solves that switched to a stronger preconditioner |
 | 11 | iterations | exact integer |
 | 12 | certified fallback | 0 or 1 |

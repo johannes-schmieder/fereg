@@ -19,6 +19,19 @@
   `e(feppml_solver)`, and `e(fe_solver)` records the request.
 - OLS result wire 1.6 and PPML request wire 1.9; arithmetic, routes and
   scientific results are unchanged.
+- OLS Auto with six or more categorical intercept effects, and every design
+  whose exact elimination declines, runs CG on the full system with additive
+  Schwarz preconditioning (fedemean); the former many-FE and two-FE routes
+  remain as a reported fallback (`e(fe_fallback)`). Fits with two to five
+  effects that the elimination certifies are unchanged bit for bit.
+- Explicit `solver(lsmr)` on categorical intercept designs and the new explicit
+  CG requests `solver(cg[, reduce(auto|full|eliminate)
+  precondition(auto|none|jacobi|block|schwarz)])` run on fedemean's full system
+  or elimination. CMG is now named explicitly: `solver(cg, precondition(cmg))`
+  and `solver(cg, reduce(eliminate) precondition(cmg))`. `solver(auto)` takes
+  no `precondition()`.
+- `e(fe_local_solvers)` replaces `e(fe_block_solvers)` and also counts the
+  Schwarz subdomains by local solve (with `e(fe_subdomains)`).
 
 ## 0.5.3 — 2026-11-07
 

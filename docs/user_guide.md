@@ -164,12 +164,12 @@ dimension. Cluster interactions use `#`, not `##`.
 
 | Option | Default | Meaning |
 |---|---|---|
-| `solver(auto)` | `auto` | Select a certified projection for the design. Two to five categorical effects first eliminate the largest effect exactly (Jacobi CG, escalating to block-Jacobi); two effects otherwise use Schur PCG and may upgrade to CMG; eligible larger categorical designs use LSMR. |
-| `solver(auto, precondition(jacobi))` | — | Automatic, but every Krylov stage stays Jacobi-preconditioned (no exact elimination, CMG or Schwarz). |
+| `solver(auto)` | `auto` | Select a certified projection for the design. Two to five categorical effects first eliminate the largest effect exactly (Jacobi CG, escalating to block-Jacobi); six or more, and designs the elimination declines, use CG on the full system with additive Schwarz; if that declines too, the established routes (two-FE Schur PCG with CMG upgrades, many-FE LSMR) finish as a reported fallback. |
 | `solver(map` [`, accelerate(irons-tuck\|squarem)`]`)` | — | Alternating projections, unaccelerated or with Irons–Tuck or SQUAREM extrapolation. |
-| `solver(lsmr` [`, precondition(auto\|none\|jacobi\|schwarz)`]`)` | — | Modified LSMR on the full system; `auto` is Jacobi for small or simple designs and additive Schwarz otherwise. Explicit `lsmr` iterates to one hundredth of `tolerance()` (at least 1e-15, never less strictly than `tolerance()`) and certifies at `tolerance()`. |
-| `solver(cg)` | — | CMG-preconditioned CG on the sparse AKM graph of the categorical intercept effects. |
-| `solver(cg, reduce(eliminate)` [`cmgdegree() cmgsamples() cmgseed()`]`)` | — | Experimental CMG-preconditioned two-effect Schur CG. |
+| `solver(lsmr` [`, precondition(auto\|none\|jacobi\|schwarz)`]`)` | — | Modified LSMR on the full system; `auto` is additive Schwarz when it fits the memory limit and Jacobi otherwise (one effect: Jacobi). It certifies at `tolerance()`. |
+| `solver(cg` [`, reduce(auto\|full\|eliminate) precondition(auto\|none\|jacobi\|block\|schwarz)`]`)` | — | Preconditioned CG on the full system or on the elimination of the largest effect (two to five effects); see the table below. |
+| `solver(cg, precondition(cmg))` | — | CMG-preconditioned CG on the sparse AKM graph of the categorical intercept effects. |
+| `solver(cg, reduce(eliminate) precondition(cmg)` [`cmgdegree() cmgsamples() cmgseed()`]`)` | — | Experimental CMG-preconditioned two-effect Schur CG. |
 | `threads(#)` | `0` | Request a native thread team. Zero uses the native default. |
 | `memory(auto|fast|low)` | `auto` | Choose automatically, retain dense workspaces, or use blockwise work and bounded scratch storage. |
 | `poolsize(#)` | `10` | Set the regressor block width used by low-memory execution. |
@@ -182,27 +182,47 @@ dimension. Cluster interactions use `#`, not `##`.
 `solver()` takes the method first and, after a comma, the reduction
 (`reduce(auto|full|eliminate)`), the preconditioner
 (`precondition(auto|none|jacobi|block|schwarz|cmg)`) and the MAP acceleration
-(`accelerate(none|irons-tuck|squarem)`). Sub-choices left at `auto` resolve to
-a supported formulation of the requested method. Any other combination returns
-error 198 and names an alternative; nothing is silently replaced. For example,
-`solver(cg, reduce(eliminate) precondition(jacobi))` is the route Auto runs
-internally but is not yet available as an explicit request, and
-`precondition()` with `map` or `accelerate()` with another method is rejected.
+(`accelerate(none|irons-tuck|squarem)`). The three choices are independent.
+Sub-choices left at `auto` resolve to a supported formulation of the requested
+method. `solver(auto)` chooses everything itself; to fix a preconditioner, name
+the method, for example `solver(cg, precondition(jacobi))`. Any other
+combination returns error 198 and names an alternative; nothing is silently
+replaced. `precondition()` with `map` or `accelerate()` with another method is
+rejected.
+
+| `solver(cg, ...)` | `reduce(auto)` | `reduce(full)` | `reduce(eliminate)` |
+|---|---|---|---|
+| `precondition(auto)` | elimination (2–5 effects), else full | Schwarz within the memory limit, else Jacobi | Jacobi, escalating to block-Jacobi |
+| `precondition(none)` | full | no preconditioner | error 198 |
+| `precondition(jacobi)` | elimination (2–5 effects), else full | Jacobi | Jacobi |
+| `precondition(block)` | elimination | error 198 | block-Jacobi |
+| `precondition(schwarz)` | full | additive Schwarz | error 198 |
+| `precondition(cmg)` | CMG graph CG | CMG graph CG | CMG Schur CG (two effects) |
+
+Explicit LSMR and CG (other than CMG) need categorical intercept effects (with
+absorbed slopes, `solver(lsmr)` uses the general LSMR solver). They fail
+closed: non-convergence within `iterate()` or a workspace beyond the memory
+limit is an error, never a substituted route. Only the automatic
+preconditioners escalate.
 
 Automatic two-FE OLS checks an initial solution at the requested tolerance
 and spends additional iterations on a tighter correction only if that check
 fails. The correction shares the original iteration budget.
 
 With `solver(auto)`, two to five categorical-intercept effects first try the
-exact elimination of the largest effect. When it declines, two
-categorical-intercept effects continue with diagonal-preconditioned Schur PCG. If eligible outcome or packed
+exact elimination of the largest effect. Six or more effects, and designs the
+elimination declines, run CG on the full system preconditioned by additive
+Schwarz over the pairs of the largest effect with each other effect (Jacobi
+when Schwarz does not fit the memory limit), within half of `iterate()`. When
+that declines too, the established routes finish the fit and `e(fe_fallback)`
+is 1: two categorical-intercept effects continue with diagonal-preconditioned Schur PCG. If eligible outcome or packed
 regressor/outcome work has stalled at iteration 4, 8 or 12, or remains at
 iteration 16, the structural rule builds a CMG preconditioner and applies it
 on the worker team. The hierarchy is reused across subsequent blocks. Small or easy problems can finish without building it. A failed
 optional construction leaves the existing recurrence in place; a numerical
 failure can continue with certified MAP within the original budget.
 
-Eligible designs with three or more categorical-intercept effects use LSMR
+Three or more categorical-intercept effects continue with LSMR
 with reusable preparation. It starts with a diagonal preconditioner and builds
 the additive Schwarz preconditioner only when the projected work is large.
 With three unit-weight effects, a short MAP pilot or certified structural
@@ -220,7 +240,7 @@ CG-accelerated MAP, `solver(map, accelerate(cg))`, is disabled with error 198:
 its residual certificate does not establish projection accuracy. Use
 `solver(cg)` or `solver(lsmr)`.
 
-`solver(cg)` selects the two absorbed effects with the most levels as a
+`solver(cg, precondition(cmg))` selects the two absorbed effects with the most levels as a
 bipartite graph core, reuses one CMG hierarchy across the fit, and handles
 additional absorbed intercept effects through a dense Schur layer capped at 64
 non-base columns. Zero- and one-effect models retain exact direct projection.
@@ -302,10 +322,12 @@ residual and absorbed degrees of freedom, fit statistics, weight metadata,
 cluster counts, singleton counts, and absorbed-effect metadata. The following
 diagnostics are specific to `fereg`:
 
-- `e(fe_solver)` is the normalized request, for example `cg, reduce(eliminate)`;
+- `e(fe_solver)` is the normalized request, for example `cg, reduce(full)`;
 - `e(fe_route)` names the route used for outcome/regressor absorption in
   `solver()` syntax, with its parts `e(fe_reduction)`, `e(fe_method)`,
-  `e(fe_preconditioner)`, `e(fe_block_solvers)` (block-Jacobi only) and
+  `e(fe_preconditioner)`, `e(fe_local_solvers)` (block-Jacobi: each retained
+  effect's local solve; Schwarz: the subdomains counted by local solve, with
+  `e(fe_subdomains)`) and
   `e(fe_acceleration)`, and the scalars `e(fe_iterations)`,
   `e(fe_escalations)` and `e(fe_fallback)`;
 - `e(fe_residual_route)` and the other `e(fe_residual_*)` results describe the
@@ -319,7 +341,7 @@ diagnostics are specific to `fereg`:
   related matrices expose the detailed result contract.
 
 The lines above the coefficient table name the absorption route
-(`Fixed-effect solver:`), mark an escalation, list any block local solves and
+(`Fixed-effect solver:`), mark an escalation, list any local solves and
 state that the accuracy check passed at the effective tolerance; results that
 fail the check are never posted. `e(fereg_version)`
 records the release that produced the results.
@@ -330,7 +352,9 @@ Solver results use the words of `solver()`: reduction `full`, `eliminate` or
 or `none`; preconditioner `none`, `jacobi`, `block`, `schwarz` or `cmg`; MAP
 acceleration `none`, `cg`, `irons-tuck` or `squarem`. The exact elimination
 reports `cg, reduce(eliminate) precondition(jacobi)`, or `precondition(block)`
-with `e(fe_block_solvers)` such as `firm=cmg year=dense` after an escalation;
+with `e(fe_local_solvers)` such as `firm=cmg year=dense` after an escalation;
+the full system reports `cg, reduce(full) precondition(schwarz)` with
+`e(fe_local_solvers)` such as `dense=3 approximate=2`;
 the guarded two-FE Schur-PCG recurrence reports the same Jacobi route and
 `precondition(cmg)` when it actually applied a CMG preconditioner. A MAP
 fallback is reported as `map` with fallback set.
