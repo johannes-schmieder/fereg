@@ -46,8 +46,8 @@ pub enum PcgReduction {
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum PcgPreconditioner {
     /// The reduction's automatic choice: Jacobi escalating to block-Jacobi
-    /// (elimination); additive Schwarz within the memory limit, else Jacobi
-    /// (full system).
+    /// (elimination); Jacobi escalating to additive Schwarz when slow or
+    /// stalled, within the memory limit (full system).
     #[default]
     Auto,
     /// No preconditioner (full system only).

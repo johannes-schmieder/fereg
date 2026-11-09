@@ -164,9 +164,9 @@ dimension. Cluster interactions use `#`, not `##`.
 
 | Option | Default | Meaning |
 |---|---|---|
-| `solver(auto)` | `auto` | Select a certified projection for the design. Two to five categorical effects first eliminate the largest effect exactly (Jacobi CG, escalating to block-Jacobi); six or more, and designs the elimination declines, use CG on the full system with additive Schwarz; if that declines too, the established routes (two-FE Schur PCG with CMG upgrades, many-FE LSMR) finish as a reported fallback. |
+| `solver(auto)` | `auto` | Select a certified projection for the design. Two to five categorical effects first eliminate the largest effect exactly (Jacobi CG, escalating to block-Jacobi); six or more, and designs the elimination declines, use CG on the full system with Jacobi, escalating to additive Schwarz when Jacobi is slow; if that declines too, the established routes (two-FE Schur PCG with CMG upgrades, many-FE LSMR) finish as a reported fallback. |
 | `solver(map` [`, accelerate(irons-tuck\|squarem)`]`)` | — | Alternating projections, unaccelerated or with Irons–Tuck or SQUAREM extrapolation. |
-| `solver(lsmr` [`, precondition(auto\|none\|jacobi\|schwarz)`]`)` | — | Modified LSMR on the full system; `auto` is additive Schwarz when it fits the memory limit and Jacobi otherwise (one effect: Jacobi). It certifies at `tolerance()`. |
+| `solver(lsmr` [`, precondition(auto\|none\|jacobi\|schwarz)`]`)` | — | Modified LSMR on the full system; `auto` is Jacobi, escalating to additive Schwarz when its pilot predicts a slow recurrence or it stalls (within the memory limit). It certifies at `tolerance()`. |
 | `solver(cg` [`, reduce(auto\|full\|eliminate) precondition(auto\|none\|jacobi\|block\|schwarz)`]`)` | — | Preconditioned CG on the full system or on the elimination of the largest effect (two to five effects); see the table below. |
 | `solver(cg, precondition(cmg))` | — | CMG-preconditioned CG on the sparse AKM graph of the categorical intercept effects. |
 | `solver(cg, reduce(eliminate) precondition(cmg)` [`cmgdegree() cmgsamples() cmgseed()`]`)` | — | Experimental CMG-preconditioned two-effect Schur CG. |
@@ -192,7 +192,7 @@ rejected.
 
 | `solver(cg, ...)` | `reduce(auto)` | `reduce(full)` | `reduce(eliminate)` |
 |---|---|---|---|
-| `precondition(auto)` | elimination (2–5 effects), else full | Schwarz within the memory limit, else Jacobi | Jacobi, escalating to block-Jacobi |
+| `precondition(auto)` | elimination (2–5 effects), else full | Jacobi, escalating to Schwarz | Jacobi, escalating to block-Jacobi |
 | `precondition(none)` | full | no preconditioner | error 198 |
 | `precondition(jacobi)` | elimination (2–5 effects), else full | Jacobi | Jacobi |
 | `precondition(block)` | elimination | error 198 | block-Jacobi |
@@ -211,9 +211,11 @@ fails. The correction shares the original iteration budget.
 
 With `solver(auto)`, two to five categorical-intercept effects first try the
 exact elimination of the largest effect. Six or more effects, and designs the
-elimination declines, run CG on the full system preconditioned by additive
-Schwarz over the pairs of the largest effect with each other effect (Jacobi
-when Schwarz does not fit the memory limit), within half of `iterate()`. When
+elimination declines, run Jacobi-preconditioned CG on the full system within
+half of `iterate()`. A recurrence whose rate after 24 iterations predicts
+more than 100, or that stalls, continues with additive Schwarz over the pairs
+of the largest effect with each other effect when it fits the memory limit;
+easy designs never build it. When
 that declines too, the established routes finish the fit and `e(fe_fallback)`
 is 1: two categorical-intercept effects continue with diagonal-preconditioned Schur PCG. If eligible outcome or packed
 regressor/outcome work has stalled at iteration 4, 8 or 12, or remains at

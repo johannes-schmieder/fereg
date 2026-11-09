@@ -32,8 +32,8 @@ impl FeSession<'_> {
     /// Auto OLS with at least two categorical intercept effects: the exact
     /// elimination of the largest effect (two to five effects), then, for
     /// other effect counts and the elimination's declines, fedemean's full
-    /// system (PCG, additive Schwarz within the memory limit, else Jacobi)
-    /// within half the iteration budget. A decline of both returns the input
+    /// system (Jacobi PCG escalating to additive Schwarz when slow or
+    /// stalled) within half the iteration budget. A decline of both returns the input
     /// for the session's established route; a full-system decline is
     /// reported as its fallback.
     pub(super) fn try_block_schur(

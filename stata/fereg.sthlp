@@ -225,8 +225,8 @@ results report what ran in the same words (see {help fereg##stored:Stored result
 
   {it:solver(cg, ...)}{col 30}{cmd:reduce(auto)}{col 46}{cmd:reduce(full)}{col 62}{cmd:reduce(eliminate)}
   {hline 76}
-    {cmd:precondition(auto)}{col 30}elimination{col 46}Schwarz, else{col 62}Jacobi, escalating
-    {col 30}(2-5 effects){col 46}Jacobi{col 62}to block
+    {cmd:precondition(auto)}{col 30}elimination{col 46}Jacobi, escalating{col 62}Jacobi, escalating
+    {col 30}(2-5 effects){col 46}to Schwarz{col 62}to block
     {cmd:precondition(none)}{col 30}full{col 46}no preconditioner{col 62}r(198)
     {cmd:precondition(jacobi)}{col 30}elimination{col 46}Jacobi{col 62}Jacobi
     {cmd:precondition(block)}{col 30}elimination{col 46}r(198){col 62}block-Jacobi
@@ -254,10 +254,12 @@ effect with the most levels exactly (two to five effects) and iterates on the
 others. Additive Schwarz uses one subdomain per connected component of each
 pair of the largest effect with another effect; each subdomain's local solve
 is exact (dense or envelope Cholesky) where that is cheap and approximate
-Cholesky otherwise. {cmd:precondition(auto)} on the full system uses Schwarz
-when it fits the memory limit and Jacobi otherwise; on the elimination, a
-Jacobi recurrence that stalls escalates to block-Jacobi (exact dense solves of
-small effects, CMG on large ones). An explicit {cmd:jacobi}, {cmd:block},
+Cholesky otherwise. {cmd:precondition(auto)} starts with Jacobi: on the full
+system, a recurrence whose rate after 24 iterations predicts more than 100, or
+that stalls, continues with Schwarz when it fits the memory limit; on the
+elimination, a recurrence that stalls continues with block-Jacobi (exact
+dense solves of small effects, CMG on large ones). Easy designs therefore
+never pay for building the stronger preconditioner. An explicit {cmd:jacobi}, {cmd:block},
 {cmd:none}, or {cmd:schwarz} never escalates. Explicit requests fail closed:
 non-convergence within {cmd:iterate()} or a solver workspace beyond the memory
 limit is an error, not a substituted route. With absorbed slopes,
@@ -272,8 +274,8 @@ Jacobi-preconditioned CG; a recurrence that stalls escalates to block-Jacobi
 preconditioning, with exact dense solves of small effects and CMG on large
 ones, and later solves of the same design start on the blocks. Six or more
 categorical-intercept effects, and designs the elimination declines, use CG on
-the full system with additive Schwarz preconditioning (Jacobi when Schwarz does
-not fit the memory limit) within half the iteration budget. If that declines
+the full system with Jacobi preconditioning, escalating to additive Schwarz as
+for {cmd:precondition(auto)} above, within half the iteration budget. If that declines
 too, the established route finishes the fit and the result reports a
 certified fallback: two effects continue with diagonal-preconditioned Schur
 PCG (a structural rule may build a CMG preconditioner when eligible work
@@ -433,8 +435,8 @@ of the largest effect: their route reads
 {cmd:cg, reduce(eliminate) precondition(jacobi)}, or
 {cmd:precondition(block)} with {cmd:e(fe_local_solvers)} after an
 escalation. Six or more effects, and the elimination's declines, read
-{cmd:cg, reduce(full) precondition(schwarz)} (or {cmd:precondition(jacobi)}
-when Schwarz did not fit the memory limit). When that declines, the established
+{cmd:cg, reduce(full) precondition(jacobi)}, or {cmd:precondition(schwarz)}
+with {cmd:e(fe_local_solvers)} after an escalation. When that declines, the established
 automatic routes run and {cmd:e(fe_fallback)} is 1: for two
 effects, {cmd:cg, reduce(eliminate) precondition(jacobi)} is the guarded
 Schur-PCG recurrence without multigrid and {cmd:precondition(cmg)} means a CMG

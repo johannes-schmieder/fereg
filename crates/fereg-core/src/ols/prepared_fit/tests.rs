@@ -9882,6 +9882,7 @@ fn derived_final_residual_covers_the_one_fe_and_many_fe_auto_routes() {
 /// reported: the established route finishes the fit as a fallback.
 #[test]
 fn many_fe_auto_and_explicit_requests_run_fedemean_full_system() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     use crate::fe::{
         FeMethod, FePreconditioner, FeReduction, LsmrPreconditioner, PcgPreconditioner,
         PcgReduction, PcgRequest,
@@ -9955,9 +9956,16 @@ fn many_fe_auto_and_explicit_requests_run_fedemean_full_system() {
             let route = report.route();
             assert_eq!(
                 (route.reduction, route.method),
-                (FeReduction::Full, FeMethod::Cg)
+                (FeReduction::Full, FeMethod::Cg),
+                "{:?}",
+                report.warnings
             );
-            assert!(schwarz(route), "{route:?}");
+            // Jacobi, or Schwarz after an escalation.
+            assert!(
+                route.preconditioner == FePreconditioner::Jacobi
+                    || schwarz(route) && route.escalations > 0,
+                "{route:?}"
+            );
             assert!(!report.fallback_used && report.certified());
             assert_eq!(
                 auto.residual_absorption_report().stop_reason,

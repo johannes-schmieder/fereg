@@ -56,8 +56,9 @@ foreach graph in dense ring {
     }
 }
 * Six effects (four nested in the worker) are outside the elimination's
-* range: Auto runs CG on the full system with additive Schwarz, the same
-* projection as worker-firm, so the answer is still b=.7, u=noise.
+* range: Auto runs CG on the full system (Jacobi, escalating to additive
+* Schwarz when slow), the same projection as worker-firm, so the answer is
+* still b=.7, u=noise.
 clear
 set obs 3200
 generate long worker = floor((_n-1)/32)
@@ -75,11 +76,17 @@ foreach memory in fast low {
             threads(`workers') residuals(resid)
         assert abs(_b[x]-.7) <= 1e-10
         assert abs(resid-noise) <= 1e-8
-        assert `"`e(fe_route)'"' == "cg, reduce(full) precondition(schwarz)"
         assert "`e(fe_reduction)'" == "full" & "`e(fe_method)'" == "cg"
-        assert "`e(fe_preconditioner)'" == "schwarz"
-        assert `"`e(fe_local_solvers)'"' != "" & e(fe_subdomains) >= 5
-        assert e(fe_fallback) == 0 & e(fe_escalations) == 0
+        if "`e(fe_preconditioner)'" == "schwarz" {
+            assert `"`e(fe_route)'"' == "cg, reduce(full) precondition(schwarz)"
+            assert `"`e(fe_local_solvers)'"' != "" & e(fe_subdomains) >= 5
+            assert e(fe_escalations) >= 1
+        }
+        else {
+            assert `"`e(fe_route)'"' == "cg, reduce(full) precondition(jacobi)"
+            assert `"`e(fe_local_solvers)'"' == "" & e(fe_escalations) == 0
+        }
+        assert e(fe_fallback) == 0
         assert "`e(fe_solver)'" == "auto"
         drop resid
     }
@@ -96,8 +103,15 @@ foreach spec in "lsmr" "lsmr, precondition(jacobi)" "lsmr, precondition(none)" /
     assert "`e(fe_method)'" == "`method'"
     if strpos(`"`spec'"', "jacobi") assert "`e(fe_preconditioner)'" == "jacobi"
     if strpos(`"`spec'"', "none") assert "`e(fe_preconditioner)'" == "none"
-    if inlist(`"`spec'"', "lsmr", "cg", "cg, precondition(schwarz)") ///
+    if `"`spec'"' == "cg, precondition(schwarz)" {
         assert "`e(fe_preconditioner)'" == "schwarz"
+        assert `"`e(fe_local_solvers)'"' != "" & e(fe_subdomains) >= 5
+        assert e(fe_escalations) == 0
+    }
+    if inlist(`"`spec'"', "lsmr", "cg") {
+        assert inlist("`e(fe_preconditioner)'", "jacobi", "schwarz")
+        assert ("`e(fe_preconditioner)'" == "schwarz") == (e(fe_escalations) >= 1)
+    }
     assert e(fe_fallback) == 0 & e(fe_residual_fallback) == 0
     * Explicit requests keep the certified final projection.
     assert "`e(fe_residual_method)'" == "`method'"

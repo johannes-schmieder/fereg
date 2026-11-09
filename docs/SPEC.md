@@ -131,7 +131,7 @@ than `auto`. The supported explicit OLS requests are:
 
 | `solver(cg, ...)` | `reduce(auto)` | `reduce(full)` | `reduce(eliminate)` |
 |---|---|---|---|
-| `precondition(auto)` | elimination (2–5 effects), else full | Schwarz within the memory limit, else Jacobi | Jacobi escalating to block-Jacobi |
+| `precondition(auto)` | elimination (2–5 effects), else full | Jacobi escalating to Schwarz | Jacobi escalating to block-Jacobi |
 | `precondition(none)` | full | no preconditioner | r(198) |
 | `precondition(jacobi)` | elimination (2–5 effects), else full | Jacobi | Jacobi |
 | `precondition(block)` | elimination | r(198) | block-Jacobi from the first iteration |
@@ -327,19 +327,27 @@ least two categorical intercept effects outside the elimination's range (six
 or more), and every design whose elimination declines, next run fedemean's
 full system: lockstep PCG on the singular consistent normal equations
 `D'WD x = D'W y` (up to eight right-hand sides, cold start at the largest
-effect's level means), preconditioned by one-level additive Schwarz over the
-star of factor-pair subdomains (the largest effect paired with each other
-effect, one subdomain per connected component; each local operator's larger
-side eliminated exactly and its Schur complement factored by a dense grounded
-or envelope Cholesky where cheap, approximate Cholesky AC(2) with a fixed seed
-otherwise; a `tau 11'/n` term per component keeps the action SPD) when it fits
-the memory limit, else Jacobi. The recurrence stops at 0.1×tol of the starting
+effect's level means), preconditioned by Jacobi. A batch whose late rate
+after a 24-iteration pilot predicts more than 100 iterations for a column,
+that stalls or that reaches the budget continues from its iterate on the true
+residual with one-level additive Schwarz over the star of factor-pair
+subdomains (the largest effect paired with each other effect, one subdomain
+per connected component; each local operator's larger side eliminated
+exactly and its Schur complement factored by a dense grounded Cholesky when
+small or dense, an envelope Cholesky when its factorization work is at most
+128 operations per Schur entry, otherwise approximate Cholesky AC(2) with a
+fixed seed, of the whole component's Laplacian when that is sparser than the
+Schur complement; a `tau 11'/n` term per component keeps the action SPD) when
+it fits the memory limit; a slow batch whose Schwarz does not fit continues
+with Jacobi. Later batches and projections of an escalated design start on
+Schwarz. The recurrence stops at 0.1×tol of the starting
 residual's norm and is accepted only by the recomputed moment certificate over
 every level; it runs within half of `iterate()`. Results do not depend on the
 worker count. A decline (memory, stall, budget, certificate) hands the columns
 to the established routes below with the rest of the budget, and the certified
 result reports `e(fe_fallback) = 1` with the decline in its warnings. The route
-reads `cg, reduce(full) precondition(schwarz)` (or `jacobi`), with the
+reads `cg, reduce(full) precondition(jacobi)`, or `precondition(schwarz)` with
+`e(fe_escalations)` after an escalation, with the
 subdomains counted by local solve in `e(fe_local_solvers)` and
 `e(fe_subdomains)`. Declared scope: 6+ FE Auto fits and fits whose elimination
 declines change at tolerance level (coefficients, covariance, fit statistics,

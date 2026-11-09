@@ -585,16 +585,14 @@ fn ordinary_designs_keep_their_bits_with_a_hint() {
 
 /// The plans on fedemean's full system and the explicit elimination, with
 /// the route each should report: reduction, method and preconditioner kind
-/// (`schwarz` matches any local-solve summary).
-fn full_plans(effects: usize) -> Vec<(Plan, crate::fe::FeRoute)> {
+/// (`schwarz` matches any local-solve summary), and whether the
+/// preconditioner is automatic: Jacobi, or Schwarz after an escalation.
+fn full_plans(effects: usize) -> Vec<(Plan, crate::fe::FeRoute, bool)> {
     use crate::fe::{
         FeMethod as M, FePreconditioner as P, FeReduction as R, FeRoute, LsmrPreconditioner as L,
         PcgPreconditioner as C, PcgReduction as D, PcgRequest,
     };
     let schwarz = P::Schwarz(crate::fe::FeSchwarzSolves::default());
-    // Fedemean's automatic full-system choice: Schwarz for two or more
-    // effects, Jacobi (exact) for one.
-    let automatic = if effects >= 2 { schwarz } else { P::Jacobi };
     let pcg = |reduction, preconditioner| {
         Plan::pcg(PcgRequest {
             reduction,
@@ -602,41 +600,26 @@ fn full_plans(effects: usize) -> Vec<(Plan, crate::fe::FeRoute)> {
         })
         .unwrap()
     };
+    let route = |method, preconditioner| FeRoute::new(R::Full, method, preconditioner);
     let mut plans = vec![
-        (Plan::auto_full(), FeRoute::new(R::Full, M::Cg, automatic)),
-        (
-            Plan::lsmr(L::Auto),
-            FeRoute::new(R::Full, M::Lsmr, automatic),
-        ),
-        (Plan::lsmr(L::Off), FeRoute::new(R::Full, M::Lsmr, P::None)),
-        (
-            Plan::lsmr(L::Diagonal),
-            FeRoute::new(R::Full, M::Lsmr, P::Jacobi),
-        ),
-        (
-            pcg(D::Full, C::Jacobi),
-            FeRoute::new(R::Full, M::Cg, P::Jacobi),
-        ),
-        (pcg(D::Full, C::None), FeRoute::new(R::Full, M::Cg, P::None)),
+        (Plan::auto_full(), route(M::Cg, P::Jacobi), true),
+        (Plan::lsmr(L::Auto), route(M::Lsmr, P::Jacobi), true),
+        (Plan::lsmr(L::Off), route(M::Lsmr, P::None), false),
+        (Plan::lsmr(L::Diagonal), route(M::Lsmr, P::Jacobi), false),
+        (pcg(D::Full, C::Auto), route(M::Cg, P::Jacobi), true),
+        (pcg(D::Full, C::Jacobi), route(M::Cg, P::Jacobi), false),
+        (pcg(D::Full, C::None), route(M::Cg, P::None), false),
     ];
     if effects >= 2 {
-        plans.push((
-            Plan::lsmr(L::Schwarz),
-            FeRoute::new(R::Full, M::Lsmr, schwarz),
-        ));
-        plans.push((
-            pcg(D::Full, C::Schwarz),
-            FeRoute::new(R::Full, M::Cg, schwarz),
-        ));
+        plans.push((Plan::lsmr(L::Schwarz), route(M::Lsmr, schwarz), false));
+        plans.push((pcg(D::Full, C::Schwarz), route(M::Cg, schwarz), false));
     }
     if (2..=5).contains(&effects) {
-        plans.push((pcg(D::Eliminate, C::Jacobi), FeRoute::eliminated_cg(false)));
-        plans.push((pcg(D::Auto, C::Auto), FeRoute::eliminated_cg(false)));
+        let eliminated = FeRoute::eliminated_cg(false);
+        plans.push((pcg(D::Eliminate, C::Jacobi), eliminated, false));
+        plans.push((pcg(D::Auto, C::Auto), eliminated, false));
     } else {
-        plans.push((
-            pcg(D::Auto, C::Auto),
-            FeRoute::new(R::Full, M::Cg, automatic),
-        ));
+        plans.push((pcg(D::Auto, C::Auto), route(M::Cg, P::Jacobi), true));
     }
     plans
 }
@@ -676,7 +659,7 @@ fn full_system_plans_match_converged_map_and_report_their_routes() {
                     false,
                 )
                 .unwrap();
-                for (plan, expected) in full_plans(levels.len()) {
+                for (plan, expected, escalating) in full_plans(levels.len()) {
                     let map = MapConfig {
                         tolerance: 1e-10,
                         ..MapConfig::default()
@@ -710,11 +693,21 @@ fn full_system_plans_match_converged_map_and_report_their_routes() {
                         }
                         other => other,
                     };
-                    assert_eq!(
-                        (route.reduction, route.method, kind(route.preconditioner)),
-                        (expected.reduction, expected.method, expected.preconditioner),
-                        "{plan:?} levels={levels:?}"
-                    );
+                    // An escalated automatic choice reports Schwarz with its
+                    // escalations; otherwise the route is the expected one.
+                    let escalated = escalating
+                        && route.escalations > 0
+                        && matches!(
+                            route.preconditioner,
+                            crate::fe::FePreconditioner::Schwarz(_)
+                        );
+                    if !escalated {
+                        assert_eq!(
+                            (route.reduction, route.method, kind(route.preconditioner)),
+                            (expected.reduction, expected.method, expected.preconditioner),
+                            "{plan:?} levels={levels:?}"
+                        );
+                    }
                     if let crate::fe::FePreconditioner::Schwarz(solves) = route.preconditioner {
                         // The summary counts every star subdomain: at least
                         // one per pair of the largest effect with another.

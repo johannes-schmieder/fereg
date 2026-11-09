@@ -79,8 +79,9 @@ pub(crate) enum Plan {
 }
 
 impl Plan {
-    /// Auto's full system: PCG with fedemean's automatic preconditioner
-    /// (additive Schwarz within the memory limit, else Jacobi).
+    /// Auto's full system: PCG with fedemean's automatic preconditioner,
+    /// Jacobi escalating to additive Schwarz when the Jacobi recurrence is
+    /// slow or stalls (and Schwarz fits the memory limit).
     pub(crate) const fn auto_full() -> Self {
         Self::Fixed {
             choice: fedemean::Choice {
@@ -94,7 +95,9 @@ impl Plan {
         }
     }
 
-    /// Explicit modified LSMR on the full system with `preconditioner`.
+    /// Explicit modified LSMR on the full system with `preconditioner`; the
+    /// automatic one escalates from Jacobi to Schwarz as Auto's does,
+    /// explicit ones never escalate.
     pub(crate) const fn lsmr(preconditioner: LsmrPreconditioner) -> Self {
         Self::Fixed {
             choice: fedemean::Choice {
@@ -111,7 +114,10 @@ impl Plan {
                         })
                     }
                 },
-                fallback: fedemean::Fallback::Decline,
+                fallback: match preconditioner {
+                    LsmrPreconditioner::Auto => fedemean::Fallback::Escalate,
+                    _ => fedemean::Fallback::Decline,
+                },
             },
             requested: FeSolverKind::Lsmr,
             preconditioner: Some(preconditioner),
@@ -150,8 +156,8 @@ impl Plan {
                 ))
             }
         };
-        // Only the automatic choice escalates; on the full system it is the
-        // Schwarz-or-Jacobi choice, which needs no escalation.
+        // Only the automatic choice escalates: Jacobi to block-Jacobi on the
+        // elimination, Jacobi to Schwarz on the full system.
         let fallback = if request.preconditioner == P::Auto {
             fedemean::Fallback::Escalate
         } else {

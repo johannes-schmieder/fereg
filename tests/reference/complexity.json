@@ -1,10 +1,10 @@
 {
   "growth": [
     {
-      "after": 9085,
-      "before": 8943,
-      "metric": "fedemean/production_lines",
-      "reason": "The pilot's slow-recurrence prediction and its escalation (PCG and the LSMR escalation policy, with a Jacobi continuation when Schwarz does not fit), the envelope work bound, and the whole-component approximate local solve with its graph."
+      "after": 121085,
+      "before": 121082,
+      "metric": "fereg-core/production_lines",
+      "reason": "Explicit LSMR's automatic preconditioner escalates (Fallback::Escalate) while explicit ones decline."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -4069,64 +4069,64 @@
         "dispatch_candidates": [
           {
             "condition": "self . attempt ( design , weights , values , map , budget , request ) ?",
-            "line": 344
+            "line": 350
           },
           {
             "condition": "values . nrows ( ) != design . nobs ( ) || ! ( map . tolerance . is_finite ( ) && map . tolerance > 0.0 )",
-            "line": 370
+            "line": 376
           },
           {
             "condition": "weights",
-            "line": 425
+            "line": 431
           },
           {
             "condition": "values . ncols ( ) != 1 || ! same_design ( projector . design ( ) , design )",
-            "line": 558
+            "line": 564
           },
           {
             "condition": "weights",
-            "line": 561
+            "line": 567
           }
         ],
         "functions": {
           "add_partial_coefficients#1": {
-            "line": 532,
+            "line": 538,
             "lines": 10
           },
           "attempt#1": {
-            "line": 354,
+            "line": 360,
             "lines": 143
           },
           "auto_full#1": {
-            "line": 84,
+            "line": 85,
             "lines": 12
           },
           "bind#1": {
-            "line": 625,
+            "line": 631,
             "lines": 14
           },
           "certify_derived#1": {
-            "line": 547,
+            "line": 553,
             "lines": 23
           },
           "decline#1": {
-            "line": 275,
+            "line": 281,
             "lines": 3
           },
           "declined#1": {
-            "line": 501,
+            "line": 507,
             "lines": 21
           },
           "describe#1": {
-            "line": 199,
+            "line": 205,
             "lines": 10
           },
           "design_view#1": {
-            "line": 673,
+            "line": 679,
             "lines": 18
           },
           "detach_residual_norms#1": {
-            "line": 307,
+            "line": 313,
             "lines": 3
           },
           "enabled#1": {
@@ -4134,103 +4134,103 @@
             "lines": 8
           },
           "fe_certificate#1": {
-            "line": 767,
+            "line": 773,
             "lines": 8
           },
           "fedemean_error#1": {
-            "line": 776,
+            "line": 782,
             "lines": 10
           },
           "fedemean_request#1": {
-            "line": 575,
+            "line": 581,
             "lines": 12
           },
           "labels#1": {
-            "line": 752,
+            "line": 758,
             "lines": 14
           },
           "ledger#1": {
-            "line": 173,
+            "line": 179,
             "lines": 7
           },
           "lsmr#1": {
-            "line": 98,
-            "lines": 22
+            "line": 101,
+            "lines": 25
           },
           "members#1": {
-            "line": 692,
+            "line": 698,
             "lines": 3
           },
           "pcg#1": {
-            "line": 124,
+            "line": 130,
             "lines": 47
           },
           "project#1": {
-            "line": 334,
+            "line": 340,
             "lines": 19
           },
           "release#1": {
-            "line": 281,
+            "line": 287,
             "lines": 5
           },
           "request_residual_gram#1": {
-            "line": 290,
+            "line": 296,
             "lines": 3
           },
           "requested#1": {
-            "line": 181,
+            "line": 187,
             "lines": 6
           },
           "residual_gram#1": {
-            "line": 296,
+            "line": 302,
             "lines": 6
           },
           "residual_norms#1": {
-            "line": 314,
+            "line": 320,
             "lines": 6
           },
           "route#1": {
-            "line": 709,
+            "line": 715,
             "lines": 40
           },
           "same_design#1": {
-            "line": 696,
+            "line": 702,
             "lines": 9
           },
           "set_hint#1": {
-            "line": 325,
+            "line": 331,
             "lines": 3
           },
           "settings#1": {
-            "line": 646,
+            "line": 652,
             "lines": 24
           },
           "solve_record#1": {
-            "line": 788,
+            "line": 794,
             "lines": 21
           },
           "solve_report#1": {
-            "line": 590,
+            "line": 596,
             "lines": 31
           },
           "trace_decline#1": {
-            "line": 851,
+            "line": 857,
             "lines": 10
           },
           "trace_escalation#1": {
-            "line": 813,
+            "line": 819,
             "lines": 37
           },
           "weight_scale#1": {
-            "line": 525,
+            "line": 531,
             "lines": 3
           },
           "with_plan#1": {
-            "line": 266,
+            "line": 272,
             "lines": 6
           }
         },
-        "production_lines": 657
+        "production_lines": 660
       },
       "crates/fereg-core/src/fe/borrowed_map/categorical_prefix.rs": {
         "chunk_candidates": [],
@@ -28640,7 +28640,7 @@
         "dispatch_candidates": 1561,
         "files_over_1500": 15,
         "functions_over_150": 58,
-        "production_lines": 121082
+        "production_lines": 121085
       },
       "fereg-plugin": {
         "chunk_candidates": 6,
@@ -28652,5 +28652,5 @@
     },
     "schema": 1
   },
-  "reason": "fedemean's full system: the automatic preconditioner with escalation starts on Jacobi and hands a pilot-predicted slow, stalled or ceiling-bound recurrence to Schwarz (PCG and modified LSMR); the automatic Schwarz local rule bounds the envelope factorization by its work and approximates a Schur complement denser than its component on the whole component's Laplacian."
+  "reason": "Explicit solver(lsmr)'s automatic preconditioner escalates from Jacobi to Schwarz like Auto's full system."
 }
