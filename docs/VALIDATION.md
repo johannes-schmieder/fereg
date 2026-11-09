@@ -4025,6 +4025,53 @@ variation keep within; the borrowed many-FE within LSMR, PPML slope routes and
 the within-shaped LSMR memory estimates are outside this change; no Linux or
 SCC timing.
 
+## Many-FE fallback without within (Milestone 3, development, Mac)
+
+OLS Auto's general categorical route, which three or more categorical FEs
+reach after fedemean declines or with fedemean off, no longer runs the pinned
+within LSMR: the geometry-qualified MAP pilot where admitted, then MAP with
+the requested certificate (SPEC §1). A decline census at `b664fa61` with
+temporary counters found no certified within result outside test
+constructions. None of the 37 bench designs (1M rows), the 161 Stata
+fixtures or `tolerance(1e-14)` reach the route. `iterate(20)` and
+`iterate(30)` on ols6, ols7, ols3chain and ols6w decline on fedemean's
+iteration ceiling and fail with r(459) before and after, and those and nine
+further variant fits repeat bit for bit. In a 680-fit Rust budget sweep
+(three to seven FEs, a chain, weights, retained coefficients) the 169
+memory-limit declines never admitted the LSMR and run the same MAP bit for
+bit. Only the developer fault that starves the full system (6/7 FE, with
+and without weights) moves, from within LSMR to MAP: |db| at most 2.4e-14,
+relative dSE at most 3.7e-10 and relative RSS at most 2.4e-10 against
+`tolerance(1e-12)` MAP fits. With fedemean off, a weak AKM design that MAP
+cannot certify at 1e-12 within 512 sweeps now fails clearly where the LSMR
+had certified.
+
+Matched Mac comparison against the head package `2441732f` (1M rows, `x1-x4`,
+`vce(robust)`, 4 threads, 2 interleaved processes x 3 fits, medians):
+
+| case | 2441732f (ms) | bde79318 (ms) | science |
+|---|---:|---:|---|
+| ols2, ols3, ols5 | 59.0, 80.5, 101.0 | 59.0, 80.0, 101.5 | bitwise |
+| ols6, ols7, ols6 aweights | 368.0, 1382.0, 502.5 | 369.5, 1364.0, 497.5 | bitwise |
+| ols2chain, ols3chain | 107.5, 233.0 | 109.0, 236.0 | bitwise |
+| ppml2, ppml3 | 382.5, 463.5 | 391.5, 462.5 | bitwise |
+
+Every arm repeated exactly. One unidentified Stata process was sampled during
+that run; the one quiet rerun (another lane's build started during its last
+cases) was again bitwise, with ratios 0.97 to 1.02.
+
+Tests: fereg-core lib, the workspace without default features (fereg-oracle
+included), plugin FFI with the 11 isolated allocator audits, clippy in both
+configurations, rustfmt and the ratchet pass; Python 282 (the three
+numpy-dependent modules cannot import here). Stata fixtures: 152 of 161 pass
+with a plugin-only staging, the nine failures identical with `b664fa61`
+(`mata_correction`, `native_splitbranch_block`, the two PPML audits,
+`parallel_input_oracle`, and four installation fixtures that need a staged
+release, launch arguments or Windows). Limitations: the owned explicit and
+Auto LSMR (`fe/lsmr.rs`, `lsmr_batch.rs`), the within-modelled LSMR
+admission and the developer tooling still use the pinned library; no Linux
+or SCC timing.
+
 ## Package checks
 
 ### Beta.13 parallel input and parity packaging
