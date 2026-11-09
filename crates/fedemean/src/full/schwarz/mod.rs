@@ -218,7 +218,7 @@ impl Schwarz {
         for sides in list {
             cancel.check()?;
             if effects[sides[0]].sloped() || effects[sides[1]].sloped() {
-                let mut cells = Cells::build(st, effects, sides, cancel)?;
+                let mut cells = Cells::build(st, effects, sides, cancel)?.with_exact_schur();
                 if !admit.take(cells.bytes()) {
                     return Ok(Err(Refusal::MemoryLimit));
                 }
@@ -341,7 +341,13 @@ impl Schwarz {
             }
         }
         (self.inner_units, self.partial_units) = (inner, partial);
-        self.used.eliminated = u32::try_from(self.channel.len()).unwrap_or(u32::MAX);
+        for cells in &self.channel {
+            if cells.dense() {
+                count(&mut self.used.dense);
+            } else {
+                count(&mut self.used.eliminated);
+            }
+        }
         self.channel_units = self.channel.iter().map(channel_units).sum();
         for e in 0..self.offsets.len() - 1 {
             let covered = self.channel.iter().any(|c| c.effects.contains(&e));

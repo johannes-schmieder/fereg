@@ -43,6 +43,12 @@ use rayon::prelude::*;
 use std::ops::Range;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+/// A Schwarz pair's smaller side with at most this many coefficients has its
+/// Schur complement formed and acted on exactly (dense), as the intercept
+/// pairs' local solves do.
+const DENSE: usize = 128;
+/// Larger-level groups of the dense Schur formation (fixed).
+const DENSE_GROUPS: usize = 64;
 /// Cells per task of the passes over the larger side's levels ...
 const TASK_CELLS: usize = 4096;
 /// ... and levels per task over the smaller side's (both fixed).
@@ -115,6 +121,10 @@ pub(crate) struct Cells {
     gram: Vec<f64>,
     schur: Vec<f64>,
     singular: usize,
+    /// Whether to form the dense Schur complement of a small smaller side
+    /// (Schwarz pairs), and its action (`mb x mb`, empty otherwise).
+    exact: bool,
+    dense: Vec<f64>,
 }
 
 /// The channel values of `effect` at `row` into `out`.
@@ -296,6 +306,8 @@ impl Cells {
             gram: Vec::new(),
             schur: Vec::new(),
             singular: 0,
+            exact: false,
+            dense: Vec::new(),
         })
     }
 
@@ -333,6 +345,13 @@ impl Cells {
             * (self.ptr.capacity() + self.by_ptr.capacity() + self.bounds.capacity()) as u128
             + 4 * (self.idx.capacity() + self.owner.capacity() + self.by.capacity()) as u128;
         let state = 8 * (cells * (2 * ca * cb + cb * cb) as u128 + 2 * small * (cb * cb) as u128);
+        let mb = small * cb as u128;
+        let dense = if self.exact && mb <= DENSE as u128 {
+            8 * (mb * mb * (DENSE_GROUPS as u128 + 2) + 2 * mb * mb)
+        } else {
+            0
+        };
+        let state = state + dense;
         index + structure + state
     }
 
@@ -428,7 +447,114 @@ impl Cells {
         {
             x.copy_from_slice(&xq[..wx]);
         }
-        self.schur_blocks(st, state)
+        self.schur_blocks(st, state)?;
+        self.dense_schur(st, state)
+    }
+
+    /// Form the dense Schur complement when the smaller side is small (see
+    /// [`DENSE`]); the elimination keeps its diagonal blocks.
+    #[cfg_attr(not(feature = "schwarz"), allow(dead_code))]
+    pub(super) fn with_exact_schur(mut self) -> Self {
+        self.exact = true;
+        self
+    }
+
+    /// Whether the smaller side's Schur complement is acted on exactly.
+    pub(super) fn dense(&self) -> bool {
+        !self.dense.is_empty()
+    }
+
+    /// The smaller side's whole Schur complement
+    /// `S = blockdiag(G_k) - sum_l Y_l' M_l^-1 Y_l` (`Y_l` the cells of larger
+    /// level `l` as one block row), summed per fixed group of larger levels
+    /// and merged in group order, then its action by the blocks' rule against
+    /// the diagonal of `blockdiag(G_k)` (a constant slope at its raw scale).
+    fn dense_schur(&mut self, st: &Structure, state: &State) -> Result<()> {
+        let [a, b] = self.effects;
+        let [ca, cb] = self.channels;
+        let mb = self.levels[1] * cb;
+        if !self.exact || mb > DENSE {
+            self.dense.clear();
+            return Ok(());
+        }
+        let (wx, wq) = (ca * cb, cb * cb);
+        let actions = Actions::of(st, state, a, ca);
+        let degree = (0..self.levels[0])
+            .map(|l| self.ptr[l + 1] - self.ptr[l])
+            .max()
+            .unwrap_or(0);
+        let tasks = self.large_tasks();
+        let groups = tasks.clamp(1, DENSE_GROUPS);
+        let per = tasks.div_ceil(groups).max(1);
+        let mut sums = filled(groups * mb * mb, 0.0)?;
+        let mut scratch = filled(groups * degree * wx, 0.0)?;
+        let (bounds, ptr, idx, xs) = (&self.bounds, &self.ptr, &self.idx, &self.x);
+        let body = |g: usize, (sum, t): (&mut [f64], &mut [f64])| {
+            for task in g * per..((g + 1) * per).min(tasks) {
+                for l in bounds[task]..bounds[task + 1] {
+                    let (first, last) = (ptr[l], ptr[l + 1]);
+                    let m = actions.level(l);
+                    // t_c = M_l X_c for the cells of l.
+                    for c in first..last {
+                        let x = &xs[c * wx..(c + 1) * wx];
+                        let t = &mut t[(c - first) * wx..(c - first + 1) * wx];
+                        for i in 0..ca {
+                            for j in 0..cb {
+                                t[i * cb + j] =
+                                    (0..ca).map(|p| m[i * ca + p] * x[p * cb + j]).sum();
+                            }
+                        }
+                    }
+                    for c in first..last {
+                        let (x, k) = (&xs[c * wx..(c + 1) * wx], idx[c] as usize);
+                        for d in first..last {
+                            let (t, kd) =
+                                (&t[(d - first) * wx..(d - first + 1) * wx], idx[d] as usize);
+                            for i in 0..cb {
+                                for j in 0..cb {
+                                    let v: f64 =
+                                        (0..ca).map(|p| x[p * cb + i] * t[p * cb + j]).sum();
+                                    sum[(k * cb + i) * mb + kd * cb + j] -= v;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+        sums.par_chunks_mut(mb * mb)
+            .zip(scratch.par_chunks_mut((degree * wx).max(1)))
+            .enumerate()
+            .for_each(|(g, parts)| body(g, parts));
+        refill(&mut self.dense, mb * mb, 0.0)?;
+        for part in sums.chunks_exact(mb * mb) {
+            for (d, v) in self.dense.iter_mut().zip(part) {
+                *d += v;
+            }
+        }
+        let (centers, flat, nb) = state
+            .blocks()
+            .map_or((&[][..], &[][..], 0), |blocks| blocks.centers(b));
+        let mut reference = filled(mb * mb, 0.0)?;
+        for k in 0..self.levels[1] {
+            let g = &self.gram[k * wq..(k + 1) * wq];
+            for i in 0..cb {
+                for j in 0..cb {
+                    self.dense[(k * cb + i) * mb + k * cb + j] += g[i * cb + j];
+                }
+                let mut diagonal = g[i * cb + i];
+                if i > 0 && nb > 0 && flat[k * nb + i - 1] {
+                    diagonal = centers[k * nb + i - 1].powi(2) * g[0];
+                }
+                reference[(k * cb + i) * mb + k * cb + i] = diagonal;
+            }
+        }
+        let mut work = filled(invert_scratch(mb), 0.0)?;
+        invert(&mut self.dense, mb, Some(&reference), &mut work);
+        if !self.dense.iter().all(|v| v.is_finite()) {
+            return Err(Error::InvalidData("a dense Schur complement is not finite"));
+        }
+        Ok(())
     }
 
     /// The smaller levels' Grams `G_k` (sums of the cells' `Q_c`) and the
@@ -610,7 +736,8 @@ impl Cells {
     /// smaller level's).
     pub(super) fn scratch_len(&self, r: usize) -> usize {
         let [ca, cb] = self.channels;
-        (self.large_tasks() * 2 * ca * r).max(self.small_tasks() * cb * r)
+        let small = (self.small_tasks() * cb).max(if self.exact { self.levels[1] * cb } else { 0 });
+        (self.large_tasks() * 2 * ca * r).max(small * r)
     }
 
     /// Over the smaller levels, with `s_k = sum_{c in k} cells_c`:
@@ -626,6 +753,7 @@ impl Cells {
         let width = cb * cb;
         let (by_ptr, by) = (&self.by_ptr, &self.by);
         let (gram, schur) = (&self.gram, &self.schur);
+        let dense = solve && self.dense();
         let body = |task: usize, (out, s): (&mut [f64], &mut [f64])| {
             let mut sink = [[0.0; R]; 3];
             for (j, out) in out.chunks_exact_mut(cb * R).enumerate() {
@@ -636,13 +764,17 @@ impl Cells {
                     .iter()
                     .map(|&c| &cells[c as usize * cb * R..(c as usize + 1) * cb * R]);
                 if solve {
-                    s.copy_from_slice(input);
+                    // The residual, then (without a dense Schur) its blocks.
+                    let target = if dense { &mut *out } else { &mut *s };
+                    target.copy_from_slice(input);
                     for part in parts {
-                        for (s, v) in s.iter_mut().zip(part) {
-                            *s -= v;
+                        for (t, v) in target.iter_mut().zip(part) {
+                            *t -= v;
                         }
                     }
-                    level::<R>(&schur[block], cb, s, Some(out), &mut sink);
+                    if !dense {
+                        level::<R>(&schur[block], cb, s, Some(out), &mut sink);
+                    }
                 } else {
                     level::<R>(&gram[block], cb, input, Some(out), &mut sink);
                     for part in parts {
@@ -654,20 +786,28 @@ impl Cells {
             }
         };
         let span = LEVEL_TASK * cb * R;
-        let scratch = &mut scratch[..self.small_tasks() * cb * R];
+        let lent = &mut scratch[..self.small_tasks() * cb * R];
         if out.len() * cb < PARALLEL_WORK {
             for (t, parts) in out
                 .chunks_mut(span)
-                .zip(scratch.chunks_mut(cb * R))
+                .zip(lent.chunks_mut(cb * R))
                 .enumerate()
             {
                 body(t, parts);
             }
         } else {
             out.par_chunks_mut(span)
-                .zip(scratch.par_chunks_mut(cb * R))
+                .zip(lent.par_chunks_mut(cb * R))
                 .enumerate()
                 .for_each(|(t, parts)| body(t, parts));
+        }
+        if dense {
+            // The exact action on the whole smaller side.
+            let mb = out.len() / R;
+            let residual = &mut scratch[..mb * R];
+            residual.copy_from_slice(out);
+            let mut sink = [[0.0; R]; 3];
+            level::<R>(&self.dense, mb, residual, Some(out), &mut sink);
         }
     }
 

@@ -511,7 +511,9 @@ pub struct SchwarzSolves {
     pub approximate: u32,
     /// Pairs with slopes: one subdomain on both effects' channels, exact on
     /// the larger effect's level blocks and Jacobi on the Schur
-    /// complement's diagonal blocks.
+    /// complement's diagonal blocks (a pair whose smaller side has at most
+    /// 128 coefficients solves its Schur complement exactly and counts as
+    /// [`SchwarzSolves::dense`]).
     pub eliminated: u32,
 }
 
