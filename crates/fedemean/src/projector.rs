@@ -197,10 +197,10 @@ pub enum Preconditioner {
     /// [`Preconditioner::Schwarz`] at the default [`SchwarzSpec`] as for
     /// [`Preconditioner::Jacobi`]; otherwise Schwarz when it builds within
     /// [`Request::memory_limit`], else Jacobi. One effect: Jacobi, which is
-    /// exact. Without the feature: Jacobi. A design with slopes counts its
-    /// effects with intercepts: with two or more, as above with the hybrid
-    /// Schwarz of [`Preconditioner::Schwarz`]; otherwise Jacobi (with the
-    /// levels' channel blocks) without escalation.
+    /// exact. Without the feature: Jacobi. With slopes the same rule counts
+    /// every effect, with or without an intercept: Jacobi is the levels'
+    /// channel blocks, and [`Preconditioner::Schwarz`]'s pairs with slopes
+    /// are subdomains on both effects' channels.
     #[default]
     Auto,
     /// Inverse diagonal of the reduced matrix, or of `D'WD` (the level
