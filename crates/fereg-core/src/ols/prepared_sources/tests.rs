@@ -266,7 +266,6 @@ fn fe_release_saved_effect_recovery_retains_exact_coefficients() {
             None,
             false,
             true,
-            crate::fe::LsmrConfig::default(),
             crate::fe::MapConfig::default(),
             None,
         )

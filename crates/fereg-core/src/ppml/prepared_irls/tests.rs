@@ -1629,7 +1629,6 @@ fn cmg_nuisance_batch_memory_is_admitted_before_any_canonical_work() {
         &config,
         rhs,
         PreparedPpmlIrlsPurpose::Publication,
-        [None; 2],
     )
     .unwrap();
     config.memory.poolsize = 7;
@@ -1640,7 +1639,6 @@ fn cmg_nuisance_batch_memory_is_admitted_before_any_canonical_work() {
         &config,
         rhs,
         PreparedPpmlIrlsPurpose::Publication,
-        [None; 2],
     )
     .unwrap();
     assert!(wide.incremental_bytes > small.incremental_bytes);
@@ -5303,10 +5301,11 @@ fn prepared_sparse_three_fe(rows: usize) -> (PreparedOlsData, Vec<f64>) {
 }
 
 #[test]
-fn refused_level_bound_admits_ppml_lsmr_by_exact_yielding_count() {
-    // The explicit PPML LSMR projections' and the checkpoint's Schwarz
-    // allowances charge the level-count yielding bound. A plan one byte below it refused the fit
-    // before any work; the exact count admits it with the same science.
+fn ppml_lsmr_admission_admits_its_exact_estimate_and_refuses_one_byte_less() {
+    // The explicit PPML LSMR projections and the checkpoint charge fedemean's
+    // modified-LSMR workspace with its Schwarz grant. A plan at that estimate
+    // fits with the unbudgeted science, repeatably and across worker counts;
+    // one byte less refuses the fit before any work.
     let (prepared, outcome) = prepared_sparse_three_fe(150_000);
     let weights = vec![1.0; outcome.len()];
     let offset = vec![0.0; outcome.len()];
@@ -5323,36 +5322,27 @@ fn refused_level_bound_admits_ppml_lsmr_by_exact_yielding_count() {
         let dimensions = memory_dimensions(&prepared, config);
         let rhs = dimensions.finite_columns + 1;
         let plan = plan_ppml_memory(dimensions, config.memory).unwrap();
-        let admission = |yielding| {
-            public_solver_memory_admission(
-                &prepared,
-                plan,
-                &config,
-                rhs,
-                PreparedPpmlIrlsPurpose::Publication,
-                yielding,
-            )
-            .unwrap()
-        };
-        let level = admission([None; 2]);
-        let counts = refused_yielding_counts(&prepared, plan).unwrap().unwrap();
-        // Both estimates charge every pair of this topology.
-        assert_eq!(counts, [Some(2), Some(2)]);
-        let refined = admission(counts);
-        assert!(refined.incremental_bytes < level.incremental_bytes);
+        let admission = public_solver_memory_admission(
+            &prepared,
+            plan,
+            &config,
+            rhs,
+            PreparedPpmlIrlsPurpose::Publication,
+        )
+        .unwrap();
         let fit = |plan| {
             fit_prepared_ppml_irls(&prepared, &outcome, &weights, &offset, config, plan, None)
         };
         let reference = fit(plan).expect("unbudgeted PPML LSMR fit");
         let mut budget = plan;
         budget.usable_bytes =
-            Some(plan.selected_inventory().peak_bytes + level.incremental_bytes - 1);
+            Some(plan.selected_inventory().peak_bytes + admission.incremental_bytes);
         assert!(budget
-            .with_solver_workspace(level.incremental_bytes)
-            .is_err());
+            .with_solver_workspace(admission.incremental_bytes)
+            .is_ok());
         let mut repeated: Option<Vec<f64>> = None;
         for _ in 0..2 {
-            let fitted = fit(budget).expect("refined PPML LSMR admission");
+            let fitted = fit(budget).expect("PPML LSMR at its admitted estimate");
             assert!(fitted.diagnostics().converged);
             assert!(fitted.diagnostics().final_score.passed);
             assert_eq!(fitted.diagnostics().solver.fallback_count, 0);
@@ -5368,17 +5358,16 @@ fn refused_level_bound_admits_ppml_lsmr_by_exact_yielding_count() {
                 repeated = Some(fitted.eta().to_vec());
             }
         }
-        // Below the exact bound the original refusal is reported.
         budget.usable_bytes =
-            Some(plan.selected_inventory().peak_bytes + refined.incremental_bytes - 1);
+            Some(plan.selected_inventory().peak_bytes + admission.incremental_bytes - 1);
         let error = match fit(budget) {
-            Ok(_) => panic!("plan below the exact bound was admitted"),
+            Ok(_) => panic!("plan below the estimate was admitted"),
             Err(error) => error,
         };
         assert_eq!(error.code, ErrorCode::Allocation);
         assert!(error
             .message
-            .contains(&format!("solver_workspace={}", level.incremental_bytes)));
+            .contains(&format!("solver_workspace={}", admission.incremental_bytes)));
         references.push(reference.eta().to_vec());
     }
     assert!(relative_infinity_difference(&references[0], &references[1]) <= 2e-9);

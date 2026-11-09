@@ -421,7 +421,6 @@ pub(crate) fn admit_prepared_intercept_cg(
         rhs_columns,
         &levels,
         rayon::current_num_threads(),
-        None,
     )?;
     let coefficients = if retain_coefficients {
         estimate.coefficient_batch_bytes.checked_mul(5)

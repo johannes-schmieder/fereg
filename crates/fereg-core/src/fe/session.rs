@@ -30,7 +30,7 @@ pub(crate) struct FeSession<'a> {
     norm_handoff_peak: Option<u128>,
     ols_chunked_norms: bool,
     three_fe_geometry: Option<super::borrowed_map::three_fe_map::Geometry>,
-    general_routing: Option<super::borrowed_map::routing_lsmr::GeneralRoutingState<'a>>,
+    general_routing: Option<super::RoutingPreset>,
     pub(crate) structural_constant: bool,
     pub(crate) absorb_config: Option<super::AbsorbConfig>,
     block_schur: super::borrowed_map::block_schur::Cache<'a>,
@@ -404,8 +404,7 @@ impl<'a> FeSession<'a> {
                         owner.general_routing = config
                             .absorb
                             .routing
-                            .filter(|preset| preset.kernel().is_none())
-                            .map(super::borrowed_map::routing_lsmr::GeneralRoutingState::new);
+                            .filter(|preset| preset.kernel().is_none());
                     }
                     // When the elimination route is eligible it runs first;
                     // its declines continue without the MAP pilot geometry.
@@ -491,7 +490,6 @@ impl<'a> FeSession<'a> {
                 rhs,
                 &levels,
                 config.execution.threads.resolved(),
-                config.absorb.lsmr.local_size,
             )?
             .coefficient_batch_bytes;
             bytes = bytes
@@ -1136,7 +1134,7 @@ impl<'a> FeSession<'a> {
                 final_residual,
                 dense_norms,
                 self.three_fe_geometry,
-                self.general_routing.as_mut(),
+                self.general_routing,
             )
         } else {
             self.project_owned(values.into_values(), config)
@@ -1285,8 +1283,8 @@ impl<'a> FeSession<'a> {
 }
 
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn project_intercepts<'a>(
-    design: &super::BorrowedInterceptFeDesign<'a>,
+pub(crate) fn project_intercepts(
+    design: &super::BorrowedInterceptFeDesign<'_>,
     weights: BorrowedMapWeights<'_>,
     values: crate::ols::OlsProjectionInput,
     config: super::AbsorbConfig,
@@ -1294,7 +1292,7 @@ pub(crate) fn project_intercepts<'a>(
     final_residual: bool,
     dense_norms: bool,
     three_fe_geometry: Option<super::borrowed_map::three_fe_map::Geometry>,
-    general_routing: Option<&mut super::borrowed_map::routing_lsmr::GeneralRoutingState<'a>>,
+    general_routing: Option<super::RoutingPreset>,
 ) -> Result<CertifiedBorrowedMap> {
     use super::FeSolverKind as S;
     match config.solver {
@@ -1303,7 +1301,6 @@ pub(crate) fn project_intercepts<'a>(
             weights,
             values,
             config.map,
-            config.lsmr,
             config.solver_memory_budget,
             structural_constant,
             config.retain_coefficients,
@@ -1383,7 +1380,6 @@ pub(crate) struct RecoveryRequest<'a> {
     pub(crate) retained: Option<&'a super::FeCoefficientBatch>,
     pub(crate) known_connected: bool,
     pub(crate) materialize_absorbed_sum: bool,
-    pub(crate) lsmr: super::LsmrConfig,
     pub(crate) map: MapConfig,
     pub(crate) memory_budget: Option<crate::memory::FeSolverMemoryBudget>,
     pub(crate) reconstruction_tolerance: Option<f64>,
@@ -1426,7 +1422,6 @@ impl FeSession<'_> {
                 &levels,
                 channels,
                 rayon::current_num_threads(),
-                r.lsmr.local_size,
             )?)
         } else {
             Some(crate::memory::estimate_slope_recovery_memory(
@@ -1435,8 +1430,6 @@ impl FeSession<'_> {
                 channels,
                 r.topology.compacted_sources().len(),
                 validation,
-                rayon::current_num_threads(),
-                r.lsmr.local_size,
             )?)
         };
         let mut peak = crate::memory::SolverWorkspacePeak::ZERO;
@@ -1906,7 +1899,7 @@ pub(crate) struct LegacyFeSession<'a> {
     norm_handoff_peak: Option<u128>,
     ols_chunked_norms: bool,
     three_fe_geometry: Option<super::borrowed_map::three_fe_map::Geometry>,
-    general_routing: Option<super::borrowed_map::routing_lsmr::GeneralRoutingState<'a>>,
+    general_routing: Option<super::RoutingPreset>,
     pub(crate) structural_constant: bool,
     pub(crate) absorb_config: Option<super::AbsorbConfig>,
     block_schur: super::borrowed_map::block_schur::Cache<'a>,

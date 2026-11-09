@@ -415,7 +415,7 @@ fn retired_many_fe_lsmr_arms_fail_clearly_and_the_default_route_projects_exactly
         RoutingPreset::prefix(CategoricalPrefix::Map4),
         RoutingPreset::prefix(CategoricalPrefix::CompactIt4),
     ] {
-        let route = routing_lsmr::GeneralRoutingState::new(retired);
+        let route = retired;
         let error = project_general_categorical(
             &design,
             BorrowedMapWeights::Unit,
@@ -423,26 +423,21 @@ fn retired_many_fe_lsmr_arms_fail_clearly_and_the_default_route_projects_exactly
             config(),
             None,
             false,
-            estimate_fe_solver_memory(design.nobs(), 1, &[2, 2, 2], 1, None).unwrap(),
+            estimate_fe_solver_memory(design.nobs(), 1, &[2, 2, 2], 1).unwrap(),
             false,
             Some(4),
-            Some(&route),
+            Some(route),
         )
         .unwrap_err();
         assert_eq!(error.code, ErrorCode::InvalidArgument);
         assert!(error.message.contains(&retired.to_string()), "{error:?}");
     }
-    let route = routing_lsmr::GeneralRoutingState::new(RoutingPreset::geometry_many());
+    let route = RoutingPreset::geometry_many();
     for rhs in [1, 2] {
         let original = DenseMatrix::from_columns(&columns[..rhs]).unwrap();
-        let estimate = estimate_fe_solver_memory(
-            design.nobs(),
-            rhs,
-            &[2, 2, 2],
-            rayon::current_num_threads(),
-            LsmrConfig::default().local_size,
-        )
-        .unwrap();
+        let estimate =
+            estimate_fe_solver_memory(design.nobs(), rhs, &[2, 2, 2], rayon::current_num_threads())
+                .unwrap();
         // Without the pilot the route is MAP at the requested tolerance.
         let result = project_general_categorical(
             &design,
@@ -458,7 +453,7 @@ fn retired_many_fe_lsmr_arms_fail_clearly_and_the_default_route_projects_exactly
             estimate,
             false,
             None,
-            Some(&route),
+            Some(route),
         )
         .unwrap();
         assert_eq!(result.report().used_solver, FeSolverKind::Map);
@@ -528,17 +523,12 @@ fn geometry_many_runs_the_certified_pilot() {
         sources.iter().map(|s| s.effect()).collect(),
     )
     .unwrap();
-    let route = routing_lsmr::GeneralRoutingState::new(RoutingPreset::geometry_many());
+    let route = RoutingPreset::geometry_many();
     for rhs in [1, 2] {
         let original = DenseMatrix::from_columns(&columns[..rhs]).unwrap();
-        let estimate = estimate_fe_solver_memory(
-            design.nobs(),
-            rhs,
-            &[2, 2, 2],
-            rayon::current_num_threads(),
-            LsmrConfig::default().local_size,
-        )
-        .unwrap();
+        let estimate =
+            estimate_fe_solver_memory(design.nobs(), rhs, &[2, 2, 2], rayon::current_num_threads())
+                .unwrap();
         let result = project_general_categorical(
             &design,
             BorrowedMapWeights::Unit,
@@ -553,7 +543,7 @@ fn geometry_many_runs_the_certified_pilot() {
             estimate,
             false,
             Some(4),
-            Some(&route),
+            Some(route),
         )
         .unwrap();
         // The orthogonal design certifies in the pilot at the requested
@@ -2229,7 +2219,7 @@ impl TrialPanel {
 
     /// The general route a decline leaves: MAP on the original inputs.
     fn project_fallback(&self, design: &BorrowedInterceptFeDesign<'_>) -> CertifiedBorrowedMap {
-        let estimate = estimate_fe_solver_memory(design.nobs(), 2, &self.levels, 1, None).unwrap();
+        let estimate = estimate_fe_solver_memory(design.nobs(), 2, &self.levels, 1).unwrap();
         project_general_categorical(
             design,
             BorrowedMapWeights::Unit,
@@ -2244,9 +2234,7 @@ impl TrialPanel {
             estimate,
             false,
             None,
-            Some(&routing_lsmr::GeneralRoutingState::new(
-                RoutingPreset::geometry_many(),
-            )),
+            Some(RoutingPreset::geometry_many()),
         )
         .unwrap()
     }
@@ -2456,136 +2444,118 @@ fn assert_banks_agree(left: &DenseMatrix, right: &DenseMatrix, input: &DenseMatr
 }
 
 #[test]
-fn refused_level_bound_admits_owned_lsmr_by_exact_yielding_count() {
-    // Owned intercept-only designs: explicit LSMR errors and Auto falls back to
-    // MAP when the level-count bound refuses. With the exact count both run
-    // the unchanged LSMR solve with the unbudgeted solve's bits. A design with
-    // slopes keeps the level-count bound.
+fn owned_lsmr_admits_held_buffers_and_fedemean_admits_its_own_workspace() {
+    // Owned intercept-only and slope designs: explicit LSMR and Auto charge
+    // fereg's held buffers and certificate scratch; fedemean admits its own
+    // workspace within the budget left beside the held buffers. With room
+    // both repeat the unbudgeted bits, and agree across worker counts; below
+    // fereg's admission explicit LSMR is refused.
     let panel = SparseThreePanel::new(200_000);
-    let design = crate::fe::FeDesign::new(
-        panel.values.nrows(),
-        panel
-            .codes
-            .iter()
-            .zip(panel.levels)
-            .map(|(codes, levels)| {
-                crate::fe::EffectTerm::new(codes.clone(), levels, true, Vec::new()).unwrap()
-            })
-            .collect(),
-    )
-    .unwrap();
-    let weights = vec![1.0; panel.values.nrows()];
-    let mut fits = Vec::new();
-    for workers in [1, 4] {
-        let fit =
-            crate::ThreadTeam::new(crate::ThreadConfig::from_requested(workers, true).unwrap())
-                .install(|| {
-                    let mut explicit = Vec::new();
-                    for solver in [FeSolverKind::Lsmr, FeSolverKind::Auto] {
-                        let mut config = crate::fe::AbsorbConfig {
-                            solver,
-                            lsmr: SparseThreePanel::lsmr(),
-                            map: MapConfig {
-                                tolerance: 1e-8,
-                                max_iterations: 8_000,
-                                ..config()
-                            },
-                            ..crate::fe::AbsorbConfig::default()
-                        };
-                        let preserved = if solver == FeSolverKind::Lsmr
-                            && !config.certified_fallback
-                        {
-                            0
-                        } else {
-                            crate::memory::owned_fe_matrix_bytes(panel.values.nrows(), 2).unwrap()
-                        };
-                        let coarse = crate::memory::generic_fe_solver_bytes(
-                            &design,
-                            2,
-                            FeSolverKind::Lsmr,
-                            config.lsmr,
-                            None,
-                        )
-                        .unwrap()
-                            + preserved;
-                        let mut reference = panel.values.clone();
-                        let reference_report = crate::fe::absorb_fixed_effects(
-                            &design,
-                            &weights,
-                            &mut reference,
-                            config,
-                        )
-                        .unwrap();
-                        assert_eq!(reference_report.used_solver, FeSolverKind::Lsmr);
-                        config.solver_memory_budget = Some(FeSolverMemoryBudget {
-                            execution_bytes: 0,
-                            usable_bytes: coarse - 1,
-                        });
-                        for _ in 0..2 {
-                            let mut values = panel.values.clone();
-                            let report = crate::fe::absorb_fixed_effects(
-                                &design,
-                                &weights,
-                                &mut values,
-                                config,
-                            )
-                            .unwrap();
-                            assert_eq!(report.used_solver, FeSolverKind::Lsmr);
-                            assert!(!report.fallback_used);
-                            assert!(report.certified());
-                            assert_eq!(report.iterations, reference_report.iterations);
-                            assert_eq!(values, reference);
-                        }
-                        if solver == FeSolverKind::Lsmr {
-                            explicit.push(reference);
-                        }
-                    }
-                    explicit.swap_remove(0)
-                })
-                .unwrap();
-        fits.push(fit);
-    }
-    assert_banks_agree(&fits[0], &fits[1], &panel.values, 1e-6);
-    // A slope channel keeps the level-count bound: still refused.
     let slope: Vec<f64> = (0..panel.values.nrows())
         .map(|row| 1.0 + (row % 7) as f64)
         .collect();
-    let sloped = crate::fe::FeDesign::new(
-        panel.values.nrows(),
-        panel
-            .codes
-            .iter()
-            .zip(panel.levels)
-            .enumerate()
-            .map(|(effect, (codes, levels))| {
-                let slopes = if effect == 2 {
-                    vec![slope.clone()]
-                } else {
-                    Vec::new()
-                };
-                crate::fe::EffectTerm::new(codes.clone(), levels, true, slopes).unwrap()
-            })
-            .collect(),
-    )
-    .unwrap();
-    let mut config = crate::fe::AbsorbConfig {
-        solver: FeSolverKind::Lsmr,
-        lsmr: SparseThreePanel::lsmr(),
-        ..crate::fe::AbsorbConfig::default()
-    };
-    let coarse =
-        crate::memory::generic_fe_solver_bytes(&sloped, 2, FeSolverKind::Lsmr, config.lsmr, None)
-            .unwrap()
-            + crate::memory::owned_fe_matrix_bytes(panel.values.nrows(), 2).unwrap();
-    config.solver_memory_budget = Some(FeSolverMemoryBudget {
-        execution_bytes: 0,
-        usable_bytes: coarse - 1,
-    });
-    let mut values = panel.values.clone();
-    let error =
-        crate::fe::absorb_fixed_effects(&sloped, &weights, &mut values, config).unwrap_err();
-    assert_eq!(error.code, ErrorCode::Allocation);
-    assert_eq!(sloped.yielding_pair_component_scratch_bytes(), None);
+    let weights = vec![1.0; panel.values.nrows()];
+    for sloped in [false, true] {
+        let design = crate::fe::FeDesign::new(
+            panel.values.nrows(),
+            panel
+                .codes
+                .iter()
+                .zip(panel.levels)
+                .enumerate()
+                .map(|(effect, (codes, levels))| {
+                    let slopes = if sloped && effect == 2 {
+                        vec![slope.clone()]
+                    } else {
+                        Vec::new()
+                    };
+                    crate::fe::EffectTerm::new(codes.clone(), levels, true, slopes).unwrap()
+                })
+                .collect(),
+        )
+        .unwrap();
+        let mut fits = Vec::new();
+        for workers in [1, 4] {
+            let fit =
+                crate::ThreadTeam::new(crate::ThreadConfig::from_requested(workers, true).unwrap())
+                    .install(|| {
+                        let mut explicit = None;
+                        for solver in [FeSolverKind::Lsmr, FeSolverKind::Auto] {
+                            let config = crate::fe::AbsorbConfig {
+                                solver,
+                                lsmr: SparseThreePanel::lsmr(),
+                                map: MapConfig {
+                                    tolerance: 1e-8,
+                                    max_iterations: 8_000,
+                                    ..config()
+                                },
+                                ..crate::fe::AbsorbConfig::default()
+                            };
+                            let admitted = crate::memory::generic_fe_solver_bytes(
+                                &design,
+                                2,
+                                FeSolverKind::Lsmr,
+                            )
+                            .unwrap()
+                                + crate::memory::owned_fe_matrix_bytes(panel.values.nrows(), 2)
+                                    .unwrap();
+                            let mut reference = panel.values.clone();
+                            let reference_report = crate::fe::absorb_fixed_effects(
+                                &design,
+                                &weights,
+                                &mut reference,
+                                config,
+                            )
+                            .unwrap();
+                            assert_eq!(reference_report.used_solver, FeSolverKind::Lsmr);
+                            assert!(!reference_report.fallback_used);
+                            let peak =
+                                u128::from(reference_report.solver_workspace_peak.bytes().unwrap());
+                            assert!(peak >= admitted);
+                            let run = |usable| {
+                                let mut values = panel.values.clone();
+                                let mut config = config;
+                                config.solver_memory_budget = Some(FeSolverMemoryBudget {
+                                    execution_bytes: 0,
+                                    usable_bytes: usable,
+                                });
+                                crate::fe::absorb_fixed_effects(
+                                    &design,
+                                    &weights,
+                                    &mut values,
+                                    config,
+                                )
+                                .map(|report| (report, values))
+                            };
+                            // An ample budget repeats the unbudgeted bits (a
+                            // Schwarz escalation also admits its build's
+                            // transient storage, beyond the published peak).
+                            for _ in 0..2 {
+                                let (report, values) = run(4 * peak).unwrap();
+                                assert_eq!(report.used_solver, FeSolverKind::Lsmr);
+                                assert!(!report.fallback_used && report.certified());
+                                assert_eq!(report.iterations, reference_report.iterations);
+                                assert_eq!(values, reference);
+                            }
+                            // Below fereg's own admission the explicit request
+                            // is refused before any work. (The memory decline
+                            // and its MAP continuation are witnessed on small
+                            // designs in `fe::auto`; MAP is slow on this panel.)
+                            if solver == FeSolverKind::Lsmr {
+                                assert_eq!(
+                                    run(admitted - 1).unwrap_err().code,
+                                    ErrorCode::Allocation
+                                );
+                                explicit = Some(reference);
+                            }
+                        }
+                        explicit.unwrap()
+                    })
+                    .unwrap();
+            fits.push(fit);
+        }
+        assert_banks_agree(&fits[0], &fits[1], &panel.values, 1e-6);
+    }
 }
 
 #[test]

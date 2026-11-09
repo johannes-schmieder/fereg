@@ -301,16 +301,7 @@ fn saved_slope_effects_match_map_recovery_with_the_spec_gauge_and_singular_rule(
         };
         let recover = |retained| {
             prepared
-                .recover_absorbed_effects_fast(
-                    &target,
-                    &requested,
-                    retained,
-                    true,
-                    true,
-                    fereg_core::LsmrConfig::default(),
-                    map,
-                    None,
-                )
+                .recover_absorbed_effects_fast(&target, &requested, retained, true, true, map, None)
                 .unwrap()
         };
         let solved = recover(None);
@@ -438,7 +429,6 @@ fn seventeen_channels_run_on_fedemean_against_the_explicit_design() {
                     fit.recovered_fe_coefficients(),
                     true,
                     true,
-                    fereg_core::LsmrConfig::default(),
                     MapConfig {
                         tolerance: 1e-12,
                         max_iterations: 20_000,

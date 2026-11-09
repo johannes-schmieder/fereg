@@ -751,8 +751,7 @@ fn direct_prepared_cg_checks_joint_budget_with_retained_coefficients() {
                     ),
                 ] {
                     let model =
-                        crate::memory::estimate_fe_solver_memory(n, 1, &levels, threads, None)
-                            .unwrap();
+                        crate::memory::estimate_fe_solver_memory(n, 1, &levels, threads).unwrap();
                     let incremental = model.cg_bytes
                         + if retain {
                             5 * model.coefficient_batch_bytes
@@ -1519,14 +1518,12 @@ fn generic_prepared_slope_admits_owned_design_unit_weights_and_solver_together()
                 solver,
                 ..AbsorbConfig::default()
             };
-            let solver_bytes =
-                crate::memory::generic_fe_solver_bytes(&design, 1, solver, config.lsmr, None)
-                    .unwrap()
-                    + if solver == FeSolverKind::Lsmr {
-                        (8 * n) as u128
-                    } else {
-                        0
-                    };
+            let solver_bytes = crate::memory::generic_fe_solver_bytes(&design, 1, solver).unwrap()
+                + if solver == FeSolverKind::Lsmr {
+                    (8 * n) as u128
+                } else {
+                    0
+                };
             let required = memory
                 .construction_bytes
                 .max(memory.resident_bytes + solver_bytes)
@@ -1731,7 +1728,6 @@ fn saved_slope_recovery_admits_each_attempt_and_keeps_map_fallback() {
                         BorrowedMapWeights::Unit,
                         BorrowedMapWeights::Provided(&weights),
                     ] {
-                        let lsmr = crate::fe::LsmrConfig::default();
                         let map = crate::fe::MapConfig {
                             tolerance: 1e-12,
                             ..Default::default()
@@ -1742,8 +1738,6 @@ fn saved_slope_recovery_admits_each_attempt_and_keeps_map_fallback() {
                             2,
                             prepared.fe_topology().compacted_sources().len(),
                             prepared.fe_topology().validation_workspace_bytes().unwrap(),
-                            workers,
-                            lsmr.local_size,
                         )
                         .unwrap();
                         let run = |workspace| {
@@ -1754,7 +1748,6 @@ fn saved_slope_recovery_admits_each_attempt_and_keeps_map_fallback() {
                                 None,
                                 false,
                                 true,
-                                lsmr,
                                 map,
                                 Some(crate::memory::FeSolverMemoryBudget {
                                     execution_bytes: 137,
@@ -1779,8 +1772,8 @@ fn saved_slope_recovery_admits_each_attempt_and_keeps_map_fallback() {
                         let direct_bytes = memory.retained_peak_bytes
                             + crate::fe::single_slope_recovery_extra_bytes(n, 2, 2, workers)
                                 .unwrap();
-                        let ample = run(memory.lsmr_peak_bytes.max(direct_bytes)).unwrap();
-                        if true {
+                        let ample = run(direct_bytes).unwrap();
+                        {
                             assert_eq!(
                                 ample.recovery_method(),
                                 crate::fe::CategoricalRecoveryMethod::Direct
@@ -1829,11 +1822,6 @@ fn saved_slope_recovery_admits_each_attempt_and_keeps_map_fallback() {
                                 .bytes()
                                 .is_some_and(|bytes| u128::from(bytes) < direct_bytes));
                             assert_eq!(short.channels().len(), 2);
-                        } else {
-                            assert_eq!(
-                                ample.solver_workspace_peak().bytes(),
-                                Some(memory.lsmr_peak_bytes as u64)
-                            );
                         }
                         let coefficients = crate::fe::FeCoefficientBatch::from_values(
                             vec![2],
@@ -1850,7 +1838,6 @@ fn saved_slope_recovery_admits_each_attempt_and_keeps_map_fallback() {
                                 Some(&coefficients),
                                 false,
                                 true,
-                                lsmr,
                                 map,
                                 Some(crate::memory::FeSolverMemoryBudget {
                                     execution_bytes: 137,
@@ -1901,19 +1888,13 @@ fn saved_intercept_recovery_enforces_joint_budget_before_materialization() {
             .build()
             .unwrap()
             .install(|| {
-                let lsmr = crate::fe::LsmrConfig::default();
                 let map = crate::fe::MapConfig {
                     tolerance: 1e-12,
                     ..crate::fe::MapConfig::default()
                 };
-                let memory = crate::memory::estimate_intercept_recovery_memory(
-                    n,
-                    &[4, 3],
-                    2,
-                    workers,
-                    lsmr.local_size,
-                )
-                .unwrap();
+                let memory =
+                    crate::memory::estimate_intercept_recovery_memory(n, &[4, 3], 2, workers)
+                        .unwrap();
                 let workspace = memory.cg_peak_bytes;
                 let execution = 137;
                 let run = |usable_bytes| {
@@ -1923,7 +1904,6 @@ fn saved_intercept_recovery_enforces_joint_budget_before_materialization() {
                         None,
                         false,
                         true,
-                        lsmr,
                         map,
                         Some(crate::memory::FeSolverMemoryBudget {
                             execution_bytes: execution,
@@ -1996,7 +1976,6 @@ fn saved_intercept_recovery_enforces_joint_budget_before_materialization() {
                         Some(coefficients),
                         false,
                         true,
-                        lsmr,
                         map,
                         Some(crate::memory::FeSolverMemoryBudget {
                             execution_bytes: execution,
@@ -2846,7 +2825,6 @@ fn one_fe_final_target_recovery_preserves_saved_results() {
                             fit.recovered_fe_coefficients(),
                             false,
                             false,
-                            config.absorb.lsmr,
                             crate::fe::MapConfig {
                                 tolerance: 1e-12,
                                 ..config.absorb.map
@@ -3614,7 +3592,7 @@ fn two_effect_graph_recovery_admits_exact_finishing_budget() {
         .collect::<Vec<_>>();
     let x = vec![(0..n).map(|r| (r as f64).sin()).collect::<Vec<_>>()];
     let prepared = prepared_multiway_categorical(&target, &x, &effects);
-    let planned = crate::memory::estimate_intercept_recovery_memory(n, &[17, 13], 2, 8, Some(4))
+    let planned = crate::memory::estimate_intercept_recovery_memory(n, &[17, 13], 2, 8)
         .unwrap()
         .retained_peak_bytes;
     let threads = ThreadConfig::from_requested(8, false).unwrap();
@@ -3633,7 +3611,6 @@ fn two_effect_graph_recovery_admits_exact_finishing_budget() {
                         None,
                         true,
                         false,
-                        crate::fe::LsmrConfig::default(),
                         crate::fe::MapConfig {
                             tolerance: 1e-12,
                             ..crate::fe::MapConfig::default()
@@ -10576,7 +10553,6 @@ fn ineligible_slope_designs_keep_auto_map_and_map_recovery() {
                 None,
                 false,
                 true,
-                crate::fe::LsmrConfig::default(),
                 crate::fe::MapConfig {
                     tolerance: 1e-12,
                     max_iterations: 20_000,

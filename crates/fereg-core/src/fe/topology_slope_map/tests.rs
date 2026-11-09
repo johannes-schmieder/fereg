@@ -15,7 +15,6 @@ fn shared_recovery_with_map_controls(
         retained: None,
         known_connected: false,
         materialize_absorbed_sum: true,
-        lsmr: crate::fe::LsmrConfig::default(),
         map,
         memory_budget: None,
         reconstruction_tolerance: None,
@@ -41,7 +40,6 @@ fn shared_recovery_with_solve_controls(
         retained: None,
         known_connected: false,
         materialize_absorbed_sum: true,
-        lsmr,
         map: MapConfig {
             tolerance,
             max_iterations: lsmr.max_iterations,
@@ -57,7 +55,6 @@ fn shared_recovery_with_controls(
     weights: BorrowedMapWeights<'_>,
     target: &[f64],
     requested: &[bool],
-    lsmr: LsmrConfig,
     map: MapConfig,
 ) -> Result<RecoveredCategoricalEffects> {
     crate::fe::FeSession::recover(crate::fe::session::RecoveryRequest {
@@ -69,7 +66,6 @@ fn shared_recovery_with_controls(
         retained: None,
         known_connected: false,
         materialize_absorbed_sum: true,
-        lsmr,
         map,
         memory_budget: None,
         reconstruction_tolerance: None,
@@ -1152,7 +1148,6 @@ fn four_sweep_sd_pilot_then_lsmr_matches_strict_lsmr() {
         BorrowedMapWeights::Unit,
         &target,
         &[true, true],
-        lsmr_config,
         MapConfig {
             tolerance: 1e-12,
             ..config()
@@ -1276,7 +1271,6 @@ fn sd_lsmr_recovery_preserves_raw_and_owned_topology_results() {
                     weights,
                     &target,
                     &[true],
-                    LsmrConfig::default(),
                     config(),
                 )
             };
@@ -1300,11 +1294,6 @@ fn shared_recovery_removes_one_weighted_effect_in_one_pass() {
         BorrowedMapWeights::Provided(&weights),
         &target,
         &[true],
-        LsmrConfig {
-            tolerance: 1e-12,
-            max_iterations: 20_000,
-            ..LsmrConfig::default()
-        },
         MapConfig {
             tolerance: 1e-12,
             ..config()
@@ -1537,7 +1526,6 @@ fn strict_map_pilot_certifies_independent_components_and_partial_channels() {
                     retained: None,
                     known_connected: false,
                     materialize_absorbed_sum: true,
-                    lsmr: LsmrConfig::default(),
                     map: config,
                     memory_budget: None,
                     reconstruction_tolerance: Some(1e-12),
@@ -1651,7 +1639,6 @@ fn strict_map_pilot_interrupts_without_fallback() {
         retained: None,
         known_connected: true,
         materialize_absorbed_sum: true,
-        lsmr: LsmrConfig::default(),
         map: config(),
         memory_budget: None,
         reconstruction_tolerance: Some(1e-12),
@@ -1713,7 +1700,6 @@ fn strict_cg_recovery_certifies_weak_three_effect_targets_and_refuses_outside_sp
             retained: None,
             known_connected: false,
             materialize_absorbed_sum: true,
-            lsmr: LsmrConfig::default(),
             map: config,
             memory_budget: None,
             reconstruction_tolerance: Some(1e-12),
@@ -1810,7 +1796,6 @@ fn strict_cg_recovery_certifies_weak_three_effect_targets_and_refuses_outside_sp
             retained: None,
             known_connected: false,
             materialize_absorbed_sum: true,
-            lsmr: LsmrConfig::default(),
             map: MapConfig {
                 max_iterations,
                 check_every: 100,
@@ -1843,7 +1828,6 @@ fn strict_cg_recovery_certifies_weak_three_effect_targets_and_refuses_outside_sp
             retained: None,
             known_connected: false,
             materialize_absorbed_sum: true,
-            lsmr: LsmrConfig::default(),
             map: invalid,
             memory_budget: None,
             reconstruction_tolerance: Some(1e-12),
@@ -2043,11 +2027,6 @@ fn weak_cycle_uses_the_hybrid_remainder_solve_and_certifies() {
         BorrowedMapWeights::Unit,
         &target,
         &[true, true],
-        LsmrConfig {
-            tolerance: 1e-12,
-            max_iterations: 20_000,
-            ..LsmrConfig::default()
-        },
         MapConfig {
             tolerance: 1e-12,
             max_iterations: 20_000,

@@ -22,10 +22,6 @@ pub(crate) mod exact_sections;
 pub(crate) mod fedemean_slope;
 mod interaction;
 mod lsmr;
-// Its windowed RHS transport lost its last caller with the many-FE within
-// LSMR route; the module leaves with the owned explicit LSMR (lane M3b).
-#[allow(dead_code)]
-mod lsmr_batch;
 pub(crate) mod lsmr_break;
 mod map;
 mod norms;
@@ -88,11 +84,7 @@ pub use design::{
 };
 pub use interaction::{factorize_code_interaction, CategoricalCodeView, EncodedInteraction};
 pub(crate) use interaction::{try_factorize_dense_code_interaction, InteractionReservation};
-pub(crate) use lsmr::resolve_preconditioner_kind;
 pub use lsmr::{absorb_lsmr, LsmrConfig};
-// Used by lsmr_batch's tests only; it leaves with that module.
-#[cfg(test)]
-pub(crate) use lsmr::additive_schwarz;
 #[doc(hidden)]
 pub use lsmr_break::{lsmr_break_ready, DeveloperLsmrBackend, DeveloperLsmrBreak};
 pub use map::{absorb_map, MapConfig};

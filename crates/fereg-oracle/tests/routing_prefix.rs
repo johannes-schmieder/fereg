@@ -244,7 +244,6 @@ fn check_case(
             fit.recovered_fe_coefficients(),
             false,
             true,
-            config.absorb.lsmr,
             recovery,
             None,
         )

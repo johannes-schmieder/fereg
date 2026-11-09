@@ -1,6 +1,5 @@
 use super::*;
 use crate::fe::EffectTerm;
-use crate::memory::categorical_dense_cross_tab_bytes;
 
 fn test_team(threads: usize) -> InstalledThreadTeam {
     ThreadTeam::new(ThreadConfig::from_requested(threads, true).expect("thread config"))
@@ -725,16 +724,16 @@ fn joint_memory_estimate_scales_with_retained_design_and_thread_team() {
             levels,
             threads,
             LsmrPreconditioner::Auto,
-            None,
         )
         .expect("estimate")
     };
     let base = estimate(2, &[2_000, 1_000], 1);
     let wider = estimate(8, &[2_000, 1_000], 1);
+    // fedemean's workspace does not depend on the worker count.
     let parallel = estimate(8, &[2_000, 1_000], 8);
     let more_levels = estimate(8, &[2_001, 1_001], 8);
     assert!(wider > base);
-    assert!(parallel > wider);
+    assert_eq!(parallel, wider);
     assert!(more_levels > parallel);
     // At least the retained controls, the projected matrix and the
     // coefficients of every column.
@@ -747,7 +746,6 @@ fn joint_memory_estimate_scales_with_retained_design_and_thread_team() {
         &[2_000, 1_000],
         1,
         LsmrPreconditioner::Diagonal,
-        None,
     )
     .unwrap();
     assert!(joint < wider);
@@ -762,7 +760,7 @@ fn checkpoint_memory_charges_the_projected_and_candidate_matrices() {
     let one_thread = estimate(11, 1);
     let seven_threads = estimate(11, 7);
     let wider = estimate(17, 7);
-    assert!(seven_threads > one_thread);
+    assert_eq!(seven_threads, one_thread);
     assert!(wider > seven_threads);
     let two_dense_batches = 2_u128 * 50_000 * 11 * std::mem::size_of::<f64>() as u128;
     assert!(one_thread > two_dense_batches);
@@ -772,7 +770,7 @@ fn checkpoint_memory_charges_the_projected_and_candidate_matrices() {
 #[test]
 fn joint_memory_estimate_rejects_invalid_and_overflowing_shapes() {
     let invalid =
-        estimate_joint_lsmr_workspace_bytes(100, 2, &[20, 0], 4, LsmrPreconditioner::Auto, None)
+        estimate_joint_lsmr_workspace_bytes(100, 2, &[20, 0], 4, LsmrPreconditioner::Auto)
             .expect_err("zero levels must fail");
     assert_eq!(invalid.code, ErrorCode::InvalidArgument);
     let overflow = estimate_joint_lsmr_workspace_bytes(
@@ -781,32 +779,35 @@ fn joint_memory_estimate_rejects_invalid_and_overflowing_shapes() {
         &[usize::MAX, usize::MAX],
         usize::MAX,
         LsmrPreconditioner::Auto,
-        None,
     )
     .expect_err("adversarial dimensions must fail closed");
     assert_eq!(overflow.code, ErrorCode::Allocation);
 }
 
 #[test]
-fn schwarz_memory_charges_dense_cross_tabs_at_both_dispatch_boundaries() {
+fn schwarz_grant_covers_the_star_pairs_at_their_largest_cross_tabulation() {
+    use crate::fe::block_schur::schwarz_grant_bytes;
+    // One star pair (the largest effect, 2,000 levels, with 1,000 levels):
+    // E = min(10,000, 2,000 x 1,000) entries.
+    let pair = |entries: u128, big: u128, other: u128| {
+        24 * entries + 20 * (big + other) + 48 * (entries + other) + 16 * (big + other)
+    };
     assert_eq!(
-        categorical_dense_cross_tab_bytes(8_000, &[2_500, 2_000]).unwrap(),
-        40_000_000
+        schwarz_grant_bytes(10_000, &[1_000, 2_000]).unwrap(),
+        pair(10_000, 2_000, 1_000)
     );
+    // The star of three effects pairs the largest with each other one; a
+    // small cross-tabulation is bounded by its cells.
     assert_eq!(
-        categorical_dense_cross_tab_bytes(8_000, &[2_501, 2_000]).unwrap(),
-        0
+        schwarz_grant_bytes(10_000, &[2_000, 3, 1_000]).unwrap(),
+        pair(6_000, 2_000, 3) + pair(10_000, 2_000, 1_000)
     );
-    // Above the cap, dense is still used when no larger than sparse scratch.
-    assert_eq!(
-        categorical_dense_cross_tab_bytes(4_000_000, &[3_000, 2_000]).unwrap(),
-        48_000_000
-    );
-    assert_eq!(
-        categorical_dense_cross_tab_bytes(3_999_999, &[3_000, 2_000]).unwrap(),
-        0
-    );
-    assert!(categorical_dense_cross_tab_bytes(u128::MAX, &[2, 3]).is_err());
+    assert_eq!(schwarz_grant_bytes(10_000, &[2_000]).unwrap(), 0);
+    assert!(schwarz_grant_bytes(u128::MAX, &[usize::MAX, usize::MAX]).is_err());
+    // The LSMR workspace charges the grant beside fedemean's base workspace.
+    let base = crate::fe::block_schur::lsmr_workspace_bytes(10_000, &[2_000], 1).unwrap();
+    let with = crate::fe::block_schur::lsmr_workspace_bytes(10_000, &[2_000, 1_000], 1).unwrap();
+    assert!(with > base + pair(10_000, 2_000, 1_000));
 }
 
 #[test]

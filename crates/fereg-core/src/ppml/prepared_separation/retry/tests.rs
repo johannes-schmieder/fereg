@@ -1,4 +1,6 @@
 use super::*;
+use crate::fe::block_schur::lsmr_workspace_bytes_for;
+use crate::fe::LsmrPreconditioner;
 use crate::memory::estimate_fe_solver_memory;
 use crate::ppml::{plan_ppml_memory, PpmlMemoryConfig, PpmlMemoryDimensions, PpmlMemoryPlan};
 use crate::MemoryMode;
@@ -56,7 +58,7 @@ fn plan(available_bytes: Option<u128>) -> PpmlMemoryPlan {
 
 /// An admitted retained-CG detector policy on `plan`, with its LSMR charge.
 fn retained_cg(plan: &Cell<PpmlMemoryPlan>) -> (DetectorPolicy<'_>, LsmrAdmission) {
-    let estimate = estimate_fe_solver_memory(10_000, 4, &[2_000, 1_000], 1, Some(4)).unwrap();
+    let estimate = estimate_fe_solver_memory(10_000, 4, &[2_000, 1_000], 1).unwrap();
     let mut linear = PreparedOlsFitConfig::default();
     linear.absorb.solver = FeSolverKind::Cg;
     linear.absorb.retain_coefficients = true;
@@ -68,7 +70,13 @@ fn retained_cg(plan: &Cell<PpmlMemoryPlan>) -> (DetectorPolicy<'_>, LsmrAdmissio
     let admission = lsmr_admission(
         FeSolverKind::Cg,
         &estimate,
-        linear.absorb.lsmr.preconditioner,
+        lsmr_workspace_bytes_for(
+            10_000,
+            &[2_000, 1_000],
+            1,
+            linear.absorb.lsmr.preconditioner,
+        )
+        .unwrap(),
         10_000,
         0,
         base,
@@ -198,30 +206,24 @@ fn only_numerical_failures_of_admitted_retained_cg_are_reexecuted() {
     }
     // Other admitted detector solvers resolve none; Auto re-executes as
     // retained CG and so resolves the same charge.
-    let estimate = estimate_fe_solver_memory(100, 2, &[10, 10], 1, Some(4)).unwrap();
+    let estimate = estimate_fe_solver_memory(100, 2, &[10, 10], 1).unwrap();
+    let lsmr = lsmr_workspace_bytes_for(100, &[10, 10], 1, LsmrPreconditioner::Auto).unwrap();
     assert_eq!(
-        lsmr_admission(
-            FeSolverKind::Auto,
-            &estimate,
-            LsmrPreconditioner::Auto,
-            100,
-            0,
-            0
-        ),
-        lsmr_admission(
-            FeSolverKind::Cg,
-            &estimate,
-            LsmrPreconditioner::Auto,
-            100,
-            0,
-            0
-        ),
+        lsmr_admission(FeSolverKind::Auto, &estimate, lsmr, 100, 0, 0),
+        lsmr_admission(FeSolverKind::Cg, &estimate, lsmr, 100, 0, 0),
     );
     for solver in [FeSolverKind::Map, FeSolverKind::Lsmr] {
-        let admission =
-            lsmr_admission(solver, &estimate, LsmrPreconditioner::Auto, 100, 0, 0).unwrap();
+        let admission = lsmr_admission(solver, &estimate, lsmr, 100, 0, 0).unwrap();
         assert_eq!(admission, None);
     }
+    // Jacobi and the identity never build Schwarz, so they need no grant.
+    for preconditioner in [LsmrPreconditioner::Off, LsmrPreconditioner::Diagonal] {
+        assert!(lsmr_workspace_bytes_for(100, &[10, 10], 1, preconditioner).unwrap() < lsmr);
+    }
+    assert_eq!(
+        lsmr_workspace_bytes_for(100, &[10, 10], 1, LsmrPreconditioner::Schwarz).unwrap(),
+        lsmr
+    );
     let unadmitted = DetectorPolicy::new(
         PpmlConfig::default(),
         PreparedOlsFitConfig::default(),
@@ -241,11 +243,13 @@ fn only_numerical_failures_of_admitted_retained_cg_are_reexecuted() {
 #[test]
 fn reexecution_that_does_not_fit_the_plan_reports_the_first_error() {
     let unlimited = plan(None);
-    let estimate = estimate_fe_solver_memory(10_000, 4, &[2_000, 1_000], 1, Some(4)).unwrap();
+    let estimate = estimate_fe_solver_memory(10_000, 4, &[2_000, 1_000], 1).unwrap();
+    let lsmr =
+        lsmr_workspace_bytes_for(10_000, &[2_000, 1_000], 1, LsmrPreconditioner::Auto).unwrap();
     let admission = lsmr_admission(
         FeSolverKind::Cg,
         &estimate,
-        LsmrPreconditioner::Auto,
+        lsmr,
         10_000,
         0,
         unlimited.selected_bytes(),
@@ -253,7 +257,7 @@ fn reexecution_that_does_not_fit_the_plan_reports_the_first_error() {
     .unwrap()
     .unwrap();
     // The LSMR charge includes the CG term's coefficient and RHS banks.
-    assert!(admission.bytes >= estimate.lsmr_bytes(LsmrPreconditioner::Auto));
+    assert!(admission.bytes >= lsmr + 5 * estimate.coefficient_batch_bytes);
     // A usable limit just below the re-execution's peak.
     let usable = unlimited.required_peak_bytes + admission.bytes - 1;
     let tight = plan(Some(usable + HEADROOM.max((usable - 1) / 4)));

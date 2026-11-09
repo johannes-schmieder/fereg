@@ -336,7 +336,6 @@ fn solver_reports_cannot_claim_certified_when_final_projection_fails() {
         LsmrConfig {
             tolerance: 1e-16,
             max_iterations: 1,
-            local_size: None,
             preconditioner: LsmrPreconditioner::Off,
             threads: ThreadConfig::from_requested(1, true).expect("thread config"),
         },
@@ -368,5 +367,93 @@ impl Generator {
     fn f64(&mut self, lower: f64, upper: f64) -> f64 {
         let unit = (self.next() >> 11) as f64 / (1_u64 << 53) as f64;
         (upper - lower).mul_add(unit, lower)
+    }
+}
+
+/// Explicit additive Schwarz on slope designs with fewer than two intercept
+/// effects runs fedemean's pair subdomains over all channels (a single
+/// effect has no pair and keeps its channel blocks). The returned residuals
+/// carry no remaining projection onto the explicit dummy-and-slope design
+/// and agree with the channel-block (Jacobi) route.
+#[test]
+fn explicit_schwarz_with_fewer_than_two_intercept_effects_matches_the_explicit_design() {
+    let n = 360_usize;
+    let g = (0..n).map(|row| (row % 9) as u32).collect::<Vec<_>>();
+    let h = (0..n)
+        .map(|row| ((row / 9 + row % 4) % 7) as u32)
+        .collect::<Vec<_>>();
+    let z = (0..n)
+        .map(|row| 1.0 + (row % 5) as f64 + ((row * 7) % 11) as f64 / 13.0)
+        .collect::<Vec<_>>();
+    let u = (0..n)
+        .map(|row| ((row * 13) % 17) as f64 / 4.0 - 2.0)
+        .collect::<Vec<_>>();
+    let v = (0..n)
+        .map(|row| ((row * 3) % 7) as f64 - 3.0 + (row as f64 * 0.37).sin())
+        .collect::<Vec<_>>();
+    let weights = (0..n)
+        .map(|row| 0.5 + (row % 6) as f64 / 3.0)
+        .collect::<Vec<_>>();
+    let reference = DenseMatrix::from_columns(&[
+        (0..n)
+            .map(|row| (row as f64 * 0.11).sin() + 0.3 * z[row] * f64::from(g[row]))
+            .collect(),
+        (0..n)
+            .map(|row| ((row * 31) % 23) as f64 / 7.0 - u[row] * f64::from(h[row]) / 5.0)
+            .collect(),
+    ])
+    .expect("reference");
+    let term = |codes: &[u32], levels, intercept, slopes: Vec<Vec<f64>>| {
+        EffectTerm::new(codes.to_vec(), levels, intercept, slopes).expect("effect")
+    };
+    let designs = [
+        // g##c.(z v): one effect with an intercept and two slopes.
+        vec![term(&g, 9, true, vec![z.clone(), v.clone()])],
+        // g##c.z h#c.u: one intercept effect and a slope-only effect.
+        vec![
+            term(&g, 9, true, vec![z.clone()]),
+            term(&h, 7, false, vec![u.clone()]),
+        ],
+        // g#c.z h#c.(u v): no intercept effect.
+        vec![
+            term(&g, 9, false, vec![z.clone()]),
+            term(&h, 7, false, vec![u.clone(), v.clone()]),
+        ],
+    ];
+    for effects in designs {
+        let design = FeDesign::new(n, effects).expect("design");
+        let mut residuals = Vec::new();
+        for preconditioner in [LsmrPreconditioner::Schwarz, LsmrPreconditioner::Diagonal] {
+            let mut values = reference.clone();
+            let report = absorb_lsmr(
+                &design,
+                &weights,
+                &mut values,
+                LsmrConfig {
+                    tolerance: 1e-12,
+                    preconditioner,
+                    ..LsmrConfig::default()
+                },
+            )
+            .expect("fedemean modified LSMR");
+            assert!(report.certified(), "{preconditioner:?}");
+            assert_eq!(report.requested_preconditioner, Some(preconditioner));
+            if design.effects().len() == 2 {
+                // Formerly within's additive Schwarz; now fedemean's pairs.
+                assert_eq!(report.used_preconditioner, Some(preconditioner));
+            }
+            let audit =
+                fe_remaining_projection_with_reference(&design, &weights, &values, &reference)
+                    .expect("observation-space audit");
+            assert!(audit.maximum_relative_two_norm <= 1e-10, "{audit:?}");
+            residuals.push(values);
+        }
+        let scale = reference
+            .as_slice()
+            .iter()
+            .fold(0.0_f64, |m, value| m.max(value.abs()));
+        for (schwarz, jacobi) in residuals[0].as_slice().iter().zip(residuals[1].as_slice()) {
+            assert!((schwarz - jacobi).abs() <= 1e-9 * scale);
+        }
     }
 }

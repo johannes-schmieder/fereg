@@ -611,9 +611,6 @@ pub struct BorrowedInterceptFeDesign<'a> {
     nobs: usize,
     effects: Vec<BorrowedInterceptEffect<'a>>,
     total_term_slots: usize,
-    /// Structural counts of yielding factor-pair components, computed only
-    /// when an admission needs them. A cache, not part of the design identity.
-    yielding_pairs: super::components::YieldingPairCache,
 }
 
 impl<'a> BorrowedInterceptFeDesign<'a> {
@@ -630,41 +627,7 @@ impl<'a> BorrowedInterceptFeDesign<'a> {
             nobs,
             effects,
             total_term_slots,
-            yielding_pairs: super::components::YieldingPairCache::default(),
         })
-    }
-
-    /// The exact yielding factor-pair component count, if already computed.
-    pub(crate) fn known_yielding_pair_components(&self) -> Option<usize> {
-        self.yielding_pairs.known(self.effects.len())
-    }
-
-    /// Largest transient scratch of [`Self::yielding_pair_components`].
-    pub(crate) fn yielding_pair_component_scratch_bytes(&self) -> u128 {
-        super::components::YieldingPairCache::scratch_bytes_by(self.effects.len(), |index| {
-            self.effects[index].n_levels()
-        })
-    }
-
-    /// Factor-pair components, over every pair of effects, with at least
-    /// `SCHWARZ_YIELDING_BLOCK_LEVELS` levels in one block: the components
-    /// whose additive-Schwarz local solves may yield into nested work.
-    /// Computed once from the codes and cached per pair.
-    pub(crate) fn yielding_pair_components(&self) -> Result<usize> {
-        if let Some(count) = self.known_yielding_pair_components() {
-            return Ok(count);
-        }
-        let mut codes = crate::memory::fallible_empty(
-            self.effects.len(),
-            "unable to reserve yielding pair code views",
-        )?;
-        codes.extend(self.effects.iter().map(|e| e.codes()));
-        let mut levels = crate::memory::fallible_empty(
-            self.effects.len(),
-            "unable to reserve yielding pair level counts",
-        )?;
-        levels.extend(self.effects.iter().map(|e| e.n_levels()));
-        self.yielding_pairs.count(&codes, &levels)
     }
 
     #[must_use]
@@ -904,9 +867,6 @@ impl EffectTerm {
 pub struct FeDesign {
     nobs: usize,
     effects: Vec<EffectTerm>,
-    /// Structural yielding pair-component counts of an intercept-only design,
-    /// computed only when an admission needs them. Not part of its identity.
-    yielding_pairs: super::components::YieldingPairCache,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -928,48 +888,7 @@ impl FeDesign {
                 "fixed-effect terms do not share the declared observation count",
             ));
         }
-        Ok(Self {
-            nobs,
-            effects,
-            yielding_pairs: super::components::YieldingPairCache::default(),
-        })
-    }
-
-    /// Whether every term is one categorical intercept channel, so within's
-    /// additive subdomains are the factor-pair components of its codes.
-    fn intercept_only(&self) -> bool {
-        self.effects
-            .iter()
-            .all(|effect| effect.intercept && effect.slopes.is_empty())
-    }
-
-    /// Transient scratch of [`Self::yielding_pair_components`], or `None`
-    /// for a design with slopes, whose subdomains are not the code components.
-    pub(crate) fn yielding_pair_component_scratch_bytes(&self) -> Option<u128> {
-        self.intercept_only().then(|| {
-            super::components::YieldingPairCache::scratch_bytes_by(self.effects.len(), |index| {
-                self.effects[index].n_levels()
-            })
-        })
-    }
-
-    /// As `BorrowedInterceptFeDesign::yielding_pair_components`, for an
-    /// intercept-only owned design; `None` for a design with slopes.
-    pub(crate) fn yielding_pair_components(&self) -> Result<Option<usize>> {
-        if !self.intercept_only() {
-            return Ok(None);
-        }
-        let mut codes = crate::memory::fallible_empty(
-            self.effects.len(),
-            "unable to reserve yielding pair code views",
-        )?;
-        codes.extend(self.effects.iter().map(EffectTerm::codes));
-        let mut levels = crate::memory::fallible_empty(
-            self.effects.len(),
-            "unable to reserve yielding pair level counts",
-        )?;
-        levels.extend(self.effects.iter().map(EffectTerm::n_levels));
-        self.yielding_pairs.count(&codes, &levels).map(Some)
+        Ok(Self { nobs, effects })
     }
 
     #[must_use]

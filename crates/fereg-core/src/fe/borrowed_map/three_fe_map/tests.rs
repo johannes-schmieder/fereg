@@ -122,7 +122,7 @@ fn refused_or_failed_attempt_preserves_original_and_records_work() {
 fn successful_candidate_preserves_coefficients_and_admission() {
     fixture(false, |design, values| {
         let estimate =
-            estimate_fe_solver_memory(values.nrows(), values.ncols(), &[2; 3], 1, None).unwrap();
+            estimate_fe_solver_memory(values.nrows(), values.ncols(), &[2; 3], 1).unwrap();
         let map = MapConfig {
             tolerance: 1e-12,
             ..MapConfig::default()
@@ -224,7 +224,7 @@ fn pilot_debits_its_work_from_the_map_budget_and_keeps_the_final_reserve() {
     let _stable_route = crate::fe::block_schur::stable_route_for_test();
     fixture(true, |design, values| {
         let estimate =
-            estimate_fe_solver_memory(values.nrows(), values.ncols(), &[2; 3], 1, None).unwrap();
+            estimate_fe_solver_memory(values.nrows(), values.ncols(), &[2; 3], 1).unwrap();
         let map = MapConfig {
             tolerance: 1e-10,
             max_iterations: 16_000,
@@ -276,7 +276,7 @@ fn pilot_debits_its_work_from_the_map_budget_and_keeps_the_final_reserve() {
 fn consumed_pilot_keeps_the_map_fallback_norms_and_retained_coefficients() {
     fixture(true, |design, values| {
         let estimate =
-            estimate_fe_solver_memory(values.nrows(), values.ncols(), &[2; 3], 1, None).unwrap();
+            estimate_fe_solver_memory(values.nrows(), values.ncols(), &[2; 3], 1).unwrap();
         let map = MapConfig {
             tolerance: 1e-10,
             max_iterations: 16_000,
@@ -377,7 +377,7 @@ fn missed_prediction_still_accepts_the_fourth_sweep_without_changing_its_result(
             ..MapConfig::default()
         };
         let estimate =
-            estimate_fe_solver_memory(values.nrows(), values.ncols(), &[2; 3], 1, None).unwrap();
+            estimate_fe_solver_memory(values.nrows(), values.ncols(), &[2; 3], 1).unwrap();
         let earlier = attempt(
             design,
             &values,

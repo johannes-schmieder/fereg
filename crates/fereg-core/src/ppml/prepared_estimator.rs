@@ -1794,7 +1794,6 @@ fn recover_saved_effects(
             fit.mean(),
             fit.linear().absorbed_predictor(),
             None,
-            lsmr,
             map,
             inject_allocation_failure,
         )

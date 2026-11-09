@@ -128,7 +128,6 @@ fn direct_full_rhs_admission_and_low_chunks_match_dense_qr_with_saved_gauge() {
                         fit.recovered_fe_coefficients(),
                         false,
                         true,
-                        config.absorb.lsmr,
                         config.absorb.map,
                         None,
                     )

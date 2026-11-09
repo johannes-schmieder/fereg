@@ -1669,7 +1669,6 @@ fn saved_slope_recovery_workspace_bounds_observed_allocator_peak() {
                             None,
                             false,
                             true,
-                            LsmrConfig::default(),
                             MapConfig {
                                 tolerance: 1e-12,
                                 ..Default::default()

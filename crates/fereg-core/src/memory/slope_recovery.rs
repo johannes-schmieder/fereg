@@ -1,8 +1,5 @@
-//! Saved slope recovery uses the same pinned LSMR storage model as absorption.
-use super::{
-    checked_mul, checked_sum, estimate_fe_solver_memory_for_channels,
-    owned_fe::lsmr_slope_effect_bytes, InterceptRecoveryMemoryEstimate,
-};
+//! Saved slope recovery: the retained-coefficient and MAP finishing peaks.
+use super::{checked_mul, checked_sum, InterceptRecoveryMemoryEstimate};
 use crate::error::{ErrorCode, FeregError, Result};
 
 /// Each shape is (levels, intercept present, slope channels). The caller owns
@@ -14,8 +11,6 @@ pub(crate) fn estimate_slope_recovery_memory(
     requested_channels: usize,
     source_count: usize,
     validation_bytes: u128,
-    threads: usize,
-    local_size: Option<usize>,
 ) -> Result<InterceptRecoveryMemoryEstimate> {
     let invalid = || {
         FeregError::new(
@@ -23,13 +18,12 @@ pub(crate) fn estimate_slope_recovery_memory(
             "slope recovery memory dimensions are inconsistent",
         )
     };
-    if observations == 0 || shapes.is_empty() || threads == 0 {
+    if observations == 0 || shapes.is_empty() {
         return Err(invalid());
     }
     let mut channels = 0_usize;
     let mut max_channels = 0;
     let mut directions = 0_u128;
-    let mut slope_bytes = 0;
     for &(levels, intercept, slopes) in shapes {
         let width = slopes
             .checked_add(usize::from(intercept))
@@ -47,34 +41,10 @@ pub(crate) fn estimate_slope_recovery_memory(
                 "recovery coefficient directions",
             )?,
         ])?;
-        if slopes > 0 {
-            slope_bytes = checked_sum(&[
-                slope_bytes,
-                lsmr_slope_effect_bytes(observations, 1, levels, slopes, width)?,
-            ])?;
-        }
     }
     if requested_channels > channels {
         return Err(invalid());
     }
-    let mut counts = Vec::new();
-    counts.try_reserve_exact(channels).map_err(|_| {
-        FeregError::new(
-            ErrorCode::Allocation,
-            "unable to reserve slope recovery channel counts",
-        )
-    })?;
-    for &(levels, intercept, slopes) in shapes {
-        counts.extend(std::iter::repeat_n(levels, slopes + usize::from(intercept)));
-    }
-    let solver = estimate_fe_solver_memory_for_channels(
-        observations,
-        1,
-        &counts,
-        threads,
-        local_size,
-        true,
-    )?;
     let metadata = checked_sum(&[
         checked_mul(
             channels as u128,
@@ -86,8 +56,7 @@ pub(crate) fn estimate_slope_recovery_memory(
     ])?;
     // Finishing retains coefficients, normalized coefficients, component
     // labels/means, residual, combined output and requested channel vectors.
-    // MAP and retained-product normalization are sequential attempts; neither
-    // needs to reserve an unused LSMR hierarchy.
+    // MAP and retained-product normalization are sequential attempts.
     let finishing = checked_sum(&[
         checked_mul(
             observations as u128,
@@ -107,24 +76,11 @@ pub(crate) fn estimate_slope_recovery_memory(
         metadata,
     ])?;
     let owned = finishing.max(checked_sum(&[validation_bytes, metadata])?);
-    let lsmr = checked_sum(&[
-        solver
-            .lsmr_schwarz_bytes
-            .max(solver.lsmr_diagonal_bytes)
-            .max(solver.lsmr_off_bytes),
-        slope_bytes,
-        owned,
-        // The LSMR residual certificate workspace remains in its caller frame
-        // while finishing creates its own slope certificate workspace.
-        crate::fe::slope_map_workspace_bytes(max_channels, 1)?,
-    ])?;
     Ok(InterceptRecoveryMemoryEstimate {
         retained_peak_bytes: owned,
         map_peak_bytes: owned,
-        lsmr_peak_bytes: lsmr,
-        // Intercept CG/SD are inapplicable when any slope is present.
+        // Intercept CG is inapplicable when any slope is present.
         cg_peak_bytes: 0,
-        sd_lsmr_peak_bytes: 0,
     })
 }
 
@@ -133,32 +89,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn slope_recovery_includes_outputs_whitening_and_sequential_fallback() {
-        let a = estimate_slope_recovery_memory(
-            96,
-            &[(4, true, 2), (3, false, 1)],
-            1,
-            4,
-            100,
-            4,
-            Some(4),
-        )
-        .unwrap();
-        let b = estimate_slope_recovery_memory(
-            96,
-            &[(4, true, 2), (3, false, 1)],
-            4,
-            4,
-            100,
-            4,
-            Some(4),
-        )
-        .unwrap();
+    fn slope_recovery_includes_outputs_and_sequential_fallback() {
+        let a =
+            estimate_slope_recovery_memory(96, &[(4, true, 2), (3, false, 1)], 1, 4, 100).unwrap();
+        let b =
+            estimate_slope_recovery_memory(96, &[(4, true, 2), (3, false, 1)], 4, 4, 100).unwrap();
         assert_eq!(b.map_peak_bytes - a.map_peak_bytes, 96 * 3 * 8);
-        assert_eq!(b.lsmr_peak_bytes - a.lsmr_peak_bytes, 96 * 3 * 8);
         assert_eq!(a.map_peak_bytes, a.retained_peak_bytes);
-        assert!(a.lsmr_peak_bytes > a.map_peak_bytes);
-        assert_eq!((a.cg_peak_bytes, a.sd_lsmr_peak_bytes), (0, 0));
+        assert_eq!(a.cg_peak_bytes, 0);
         let exact = super::super::FeSolverMemoryBudget {
             execution_bytes: 37,
             usable_bytes: 37 + a.map_peak_bytes,
@@ -169,10 +107,7 @@ mod tests {
             ..exact
         }
         .fits(a.map_peak_bytes));
-        assert!(!exact.fits(a.lsmr_peak_bytes));
-        assert!(estimate_slope_recovery_memory(96, &[(97, true, 1)], 1, 2, 0, 4, None).is_err());
-        assert!(
-            estimate_slope_recovery_memory(96, &[(4, true, usize::MAX)], 1, 2, 0, 4, None).is_err()
-        );
+        assert!(estimate_slope_recovery_memory(96, &[(97, true, 1)], 1, 2, 0).is_err());
+        assert!(estimate_slope_recovery_memory(96, &[(4, true, usize::MAX)], 1, 2, 0).is_err());
     }
 }

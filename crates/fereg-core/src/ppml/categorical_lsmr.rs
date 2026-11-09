@@ -709,7 +709,6 @@ impl<'p> ReusableCategoricalJointLsmr<'p> {
                 rows,
                 &self.level_counts,
                 rayon::current_num_threads(),
-                None,
             )?,
             projected: DenseMatrix::zeros(rows, width)?,
             start: fallible_filled(values, 0.0, "explicit PPML LSMR warm starts")?,
@@ -1886,23 +1885,20 @@ impl ScaledSquareSum {
 /// reorthogonalization window and a retained continuation iterate), and,
 /// unless `preconditioner` keeps the joint recurrence (`Diagonal`, `Off`),
 /// the projections' projected matrix, FE coefficients and fedemean
-/// workspace. `yielding` is an optional exact count of the yielding pair
-/// components over every effect pair; `None` keeps the level-count
-/// Schwarz bound.
+/// workspace (with its Schwarz grant).
 pub(crate) fn estimate_joint_lsmr_workspace_bytes(
     rows: usize,
     active_columns: usize,
     effect_level_counts: &[usize],
     threads: usize,
     preconditioner: LsmrPreconditioner,
-    yielding: Option<usize>,
 ) -> Result<u128> {
     let projections = !matches!(
         preconditioner,
         LsmrPreconditioner::Diagonal | LsmrPreconditioner::Off
     );
     let fedemean =
-        crate::fe::block_schur::lsmr_workspace_bytes(rows, effect_level_counts, threads, yielding)?;
+        crate::fe::block_schur::lsmr_workspace_bytes(rows, effect_level_counts, threads)?;
     let n = rows as u128;
     let k = active_columns as u128;
     let levels = effect_level_counts
@@ -1979,24 +1975,6 @@ pub(crate) fn estimate_checkpoint_lsmr_workspace_bytes(
     effect_level_counts: &[usize],
     threads: usize,
 ) -> Result<u128> {
-    estimate_checkpoint_lsmr_workspace_bytes_with_yielding(
-        rows,
-        rhs,
-        effect_level_counts,
-        threads,
-        None,
-    )
-}
-
-/// As [`estimate_checkpoint_lsmr_workspace_bytes`], with an optional exact
-/// yielding pair-component count over every effect pair.
-pub(crate) fn estimate_checkpoint_lsmr_workspace_bytes_with_yielding(
-    rows: usize,
-    rhs: usize,
-    effect_level_counts: &[usize],
-    threads: usize,
-    yielding: Option<usize>,
-) -> Result<u128> {
     if rhs == 0 {
         return Err(invalid_argument(
             "PPML checkpoint LSMR memory estimate requires a positive RHS width",
@@ -2005,8 +1983,7 @@ pub(crate) fn estimate_checkpoint_lsmr_workspace_bytes_with_yielding(
     // fedemean's projection workspace, the projected copy of the
     // checkpoint's columns, the candidate it certifies and the certificate
     // workspace, on top of the retained session.
-    let solver =
-        crate::fe::block_schur::lsmr_workspace_bytes(rows, effect_level_counts, threads, yielding)?;
+    let solver = crate::fe::block_schur::lsmr_workspace_bytes(rows, effect_level_counts, threads)?;
     let matrix = checked_mul_memory(rows as u128, rhs as u128, "checkpoint LSMR input matrix")?;
     checked_sum_memory(&[
         solver,

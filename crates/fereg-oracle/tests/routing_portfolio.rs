@@ -176,7 +176,6 @@ fn check_saved_effects(
             fit.recovered_fe_coefficients(),
             false,
             true,
-            config.absorb.lsmr,
             config.absorb.map,
             None,
         )

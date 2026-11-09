@@ -39,7 +39,7 @@
 use std::cell::Cell;
 
 use crate::error::{allocation, ErrorCode, FeregError, Result};
-use crate::fe::{FeSolverKind, LsmrPreconditioner};
+use crate::fe::FeSolverKind;
 use crate::memory::{FeSolverMemoryBudget, FeSolverMemoryEstimate};
 use crate::ols::PreparedOlsFitConfig;
 use crate::ppml::{PpmlConfig, PpmlMemoryPlan};
@@ -67,12 +67,13 @@ pub(super) struct LsmrAdmission {
 
 /// The re-execution charge for an admitted retained-CG detector (or an Auto
 /// detector, whose re-execution is retained CG): the CG charge with its CG
-/// workspace replaced by LSMR's, and at least the graph proposal workspace
-/// the CG budget admitted.
+/// workspace replaced by `lsmr_bytes`, fedemean's modified-LSMR workspace
+/// (see `block_schur::lsmr_workspace_bytes_for`), and at least the graph
+/// proposal workspace the CG budget admitted.
 pub(super) fn lsmr_admission(
     solver: FeSolverKind,
     estimate: &FeSolverMemoryEstimate,
-    preconditioner: LsmrPreconditioner,
+    lsmr_bytes: u128,
     rows: usize,
     graph_bytes: u128,
     base: u128,
@@ -83,7 +84,7 @@ pub(super) fn lsmr_admission(
     let bytes = estimate
         .coefficient_batch_bytes
         .checked_mul(5)
-        .and_then(|n| n.checked_add(estimate.lsmr_bytes(preconditioner)))
+        .and_then(|n| n.checked_add(lsmr_bytes))
         .and_then(|n| {
             estimate
                 .rhs_copy_bytes

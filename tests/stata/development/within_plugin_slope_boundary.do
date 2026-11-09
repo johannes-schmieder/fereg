@@ -23,9 +23,15 @@ forvalues case = 1/4 {
     use `source', clear
     keep if case == `case'
     assert _N == 128 & row == _n
-    if inlist(`case',2,3) {
+    if inlist(`case',1,2,3) {
         * Preserve the approved existing rejection: both beta.10 and the
-        * candidate failed their unchanged independent FE check in these cases.
+        * candidate failed their unchanged independent FE check in cases 2-3.
+        * Case 1 (slopes near +-2^24 differing by units) joins them at
+        * tolerance(1e-10) since milestone 3: fedemean's raw-basis certificate
+        * floor (about 1e-10 there) declines it and the MAP fallback's raw
+        * level Gram loses the slopes, so no route certifies it (formerly the
+        * retired within route did). It is estimated at tolerance(1e-8) after
+        * the rejections.
         * The exact retained-span oracle remains in the CSV; it is not a
         * published estimate when fereg's independent certificate rejects.
         quietly regress y q v i.g [aw=w]
@@ -91,6 +97,34 @@ forvalues case = 1/4 {
             assert e(sample) == prior_sample
             display "BOUNDARY_REJECTION|case=`case'|attempt=`attempt'|workers=`workers'|rc=`observed_rc'|rollback=1"
         }
+        if `case' != 1 continue
+        * Case 1 at tolerance(1e-8), above fedemean's floor, without
+        * residual-derived outputs (those certify the final residual at
+        * 1e-14): fedemean certifies it directly, repeatably and across
+        * worker counts, at the exact oracle's coefficients and rss.
+        foreach workers in 1 4 {
+            forvalues repeat = 1/2 {
+                quietly fereg y q v i.g [aw=w], absorb(g##c.(z1 z2)) ///
+                    solver(lsmr, precondition(none)) memory(fast) ///
+                    tolerance(1e-8) iterate(100) threads(`workers') deterministic
+                assert e(N) == 128 & e(rank) == ref_rank & e(converged) == 1
+                assert "`e(fe_route)'" == "lsmr, precondition(none)"
+                assert e(fe_iterations) > 0 & e(fe_fallback) == 0
+                assert abs(e(b)[1,1]-ref_bq) <= 1e-8
+                assert abs(e(b)[1,2]-ref_bv) <= 1e-8
+                assert abs(e(b)[1,7]-ref_cons) <= 1e-8
+                assert abs(e(rss)-ref_rss) <= 1e-8*ref_rss
+                if `repeat' == 1 & `workers' == 1 {
+                    matrix offset_b = e(b)
+                    matrix offset_v = e(V)
+                }
+                else {
+                    assert mreldif(e(b),offset_b) <= 1e-8
+                    assert mreldif(e(V),offset_v) <= 1e-8
+                }
+                display "BOUNDARY_OFFSET|case=1|workers=`workers'|repeat=`repeat'|bq=" %21x e(b)[1,1] "|bv=" %21x e(b)[1,2] "|se_q=" %21x sqrt(e(V)[1,1]) "|se_v=" %21x sqrt(e(V)[2,2]) "|rss=" %21x e(rss)
+            }
+        }
         continue
     }
     local expected_names "q v 3b.g 11o.g 29o.g 97o.g _cons"
@@ -106,9 +140,7 @@ forvalues case = 1/4 {
             assert e(sample) == 1 & e(rank) == ref_rank & e(converged) == 1
             assert "`e(fe_route)'" == "lsmr, precondition(none)"
             assert "`e(fe_solver)'" == "lsmr, precondition(none)"
-            * Case 1: fedemean's channel blocks do not resolve its ±2^24-offset
-            * slopes; the established within route runs and is the fallback.
-            assert e(fe_iterations) > 0 & e(fe_fallback) == (`case' == 1)
+            assert e(fe_iterations) > 0 & e(fe_fallback) == 0
             assert e(fereg_certificate)[32,2] == 1
             local names : colfullnames e(b)
             assert `"`names'"' == `"`expected_names'"'

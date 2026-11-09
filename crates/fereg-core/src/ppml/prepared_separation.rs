@@ -450,7 +450,6 @@ fn admit_detector_projection(
         rhs,
         &levels,
         linear.execution.threads.resolved(),
-        linear.absorb.lsmr.local_size,
     )?;
     // CG's retained products preserve its FE coefficient representation. Charge
     // return/conversion overlap and full raw/within banks even for Low's otherwise
@@ -483,7 +482,12 @@ fn admit_detector_projection(
     let lsmr = retry::lsmr_admission(
         linear.absorb.solver,
         &estimate,
-        linear.absorb.lsmr.preconditioner,
+        crate::fe::block_schur::lsmr_workspace_bytes_for(
+            generation.original_rows().len(),
+            &levels,
+            linear.execution.threads.resolved(),
+            linear.absorb.lsmr.preconditioner,
+        )?,
         generation.original_rows().len(),
         graph_bytes,
         base,

@@ -27,33 +27,6 @@ mod map_wrapper_trace;
 pub(crate) use irons_tuck::absorb_borrowed_intercept_irons_tuck_certified;
 pub(crate) mod block_schur;
 mod ppml_cmg;
-/// The many-FE routing selection an OLS session binds to its categorical
-/// intercept design (three or more effects). The pinned within LSMR solver
-/// this state once retained is retired; the module keeps its name for the
-/// session's wiring.
-pub(crate) mod routing_lsmr {
-    use crate::fe::RoutingPreset;
-
-    pub(crate) struct GeneralRoutingState<'a> {
-        preset: RoutingPreset,
-        _binding: std::marker::PhantomData<&'a ()>,
-    }
-
-    impl GeneralRoutingState<'_> {
-        pub(crate) fn new(preset: RoutingPreset) -> Self {
-            Self {
-                preset,
-                _binding: std::marker::PhantomData,
-            }
-        }
-
-        /// A developer selector whose many-FE meaning was a within LSMR arm
-        /// (every selector but the default geometry policy).
-        pub(super) fn retired_arm(&self) -> Option<RoutingPreset> {
-            (self.preset != RoutingPreset::geometry_many()).then_some(self.preset)
-        }
-    }
-}
 pub(crate) mod three_fe_map;
 pub(crate) mod three_fe_schur;
 pub(crate) use ppml_cmg::{JointCmgBlock, PpmlCmg, PpmlCmgScratch, PpmlCmgView};
@@ -2691,7 +2664,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                 report.certification_seconds += certification_started.elapsed().as_secs_f64();
                 if crate::diagnostics::solver_trace_enabled() {
                     crate::diagnostics::emit_solver_trace(&format!(
-                        "FEREG_SOLVER_TRACE|phase=checkpoint_lsmr_attempt|retry={}|recurrence_tolerance={:.17e}|canonical_tolerance={:.17e}|iterations={}|setup_seconds={:.17e}|solve_seconds={:.17e}|certificate_seconds={:.17e}|canonical_relinf={:.17e}|canonical_passed={}|rhs={}|batch_window={}|threads={}|rows={}",
+                        "FEREG_SOLVER_TRACE|phase=checkpoint_lsmr_attempt|retry={}|recurrence_tolerance={:.17e}|canonical_tolerance={:.17e}|iterations={}|setup_seconds={:.17e}|solve_seconds={:.17e}|certificate_seconds={:.17e}|canonical_relinf={:.17e}|canonical_passed={}|rhs={}|threads={}|rows={}",
                         u8::from(accumulated.is_some()),
                         recurrence_tolerance,
                         config.tolerance,
@@ -2702,10 +2675,6 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                         canonical_certificate.relative_infinity_norm,
                         u8::from(canonical_certificate.passed),
                         values.ncols(),
-                        crate::memory::lsmr_rhs_window(
-                            values.ncols(),
-                            rayon::current_num_threads()
-                        ),
                         rayon::current_num_threads(),
                         self.design.nobs(),
                     ));
@@ -2888,14 +2857,12 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             self.design.effects()[0].n_levels(),
             self.design.effects()[1].n_levels(),
         ];
-        let transient = estimate_fe_solver_memory(
+        let transient = crate::ppml::estimate_checkpoint_lsmr_workspace_bytes(
             values.nrows(),
             values.ncols(),
             &level_counts,
             rayon::current_num_threads(),
-            Some(4),
-        )?
-        .lsmr_schwarz_bytes;
+        )?;
         let candidate = checkpoint_schur_copy(values, transient)?;
         cost.setup_seconds = started.elapsed().as_secs_f64();
         let cap = GRAPH_ATTEMPT_MAX_ITERATIONS.min(config.max_iterations);
@@ -4780,19 +4747,18 @@ pub(crate) fn certify_borrowed_intercept_candidate_with_workspace(
 /// Shared structural automatic policy. Descriptor copies contain only borrowed
 /// memberships/codes; every current-weight certificate remains independent.
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn project_borrowed_intercept_structural<'a>(
-    design: &BorrowedInterceptFeDesign<'a>,
+pub(crate) fn project_borrowed_intercept_structural(
+    design: &BorrowedInterceptFeDesign<'_>,
     weights: BorrowedMapWeights<'_>,
     values: crate::ols::OlsProjectionInput,
     map: MapConfig,
-    lsmr: LsmrConfig,
     budget: Option<FeSolverMemoryBudget>,
     structural_constant: bool,
     retain: bool,
     final_residual: bool,
     dense_norms: bool,
     three_fe_geometry: Option<three_fe_map::Geometry>,
-    general_routing: Option<&mut routing_lsmr::GeneralRoutingState<'a>>,
+    general_routing: Option<crate::fe::RoutingPreset>,
 ) -> Result<CertifiedBorrowedMap> {
     validate_config(map)?;
     if values.nrows() != design.nobs() || values.nrows() == 0 || values.ncols() == 0 {
@@ -4823,7 +4789,6 @@ pub(crate) fn project_borrowed_intercept_structural<'a>(
         values.ncols(),
         &levels,
         rayon::current_num_threads(),
-        lsmr.local_size,
     )?;
     if design.effects().len() == 2 {
         let graph_bytes = ReusableCategoricalMapAbsorber::owner_bytes(
@@ -4907,7 +4872,7 @@ pub(crate) fn project_borrowed_intercept_structural<'a>(
         estimate,
         dense_norms,
         map_first,
-        general_routing.as_deref(),
+        general_routing,
     )
 }
 
@@ -4959,9 +4924,13 @@ fn project_general_categorical(
     estimate: crate::memory::FeSolverMemoryEstimate,
     dense_norms: bool,
     map_first: Option<usize>,
-    routing: Option<&routing_lsmr::GeneralRoutingState<'_>>,
+    routing: Option<crate::fe::RoutingPreset>,
 ) -> Result<CertifiedBorrowedMap> {
-    if let Some(preset) = routing.and_then(routing_lsmr::GeneralRoutingState::retired_arm) {
+    // A developer selector whose many-FE meaning was a within LSMR arm
+    // (every selector but the default geometry policy).
+    if let Some(preset) =
+        routing.filter(|preset| *preset != crate::fe::RoutingPreset::geometry_many())
+    {
         return Err(invalid_argument(format!(
             "developer many-FE routing arm {preset} ran the pinned within LSMR and was retired with it; the default many-FE route runs fedemean's routes, then MAP"
         )));
@@ -5090,7 +5059,6 @@ impl<'s, 'a> CheckpointLsmrBatch<'s, 'a> {
             values.nrows(),
             &levels,
             rayon::current_num_threads(),
-            design.known_yielding_pair_components(),
         )?;
         let matrix = values.nrows() as u128 * values.ncols() as u128 * 8;
         let allowance = solver_bytes

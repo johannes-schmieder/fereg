@@ -584,18 +584,16 @@ impl<'a> Cache<'a> {
 }
 
 /// fedemean's workspace for modified-LSMR projections of a categorical
-/// intercept design with `level_counts` on `rows` observations:
-/// its structure (the level indexes of effects above its scatter limit),
-/// weight state and LSMR vectors, plus an additive-Schwarz allowance (the
-/// categorical Schwarz bound over every effect, or over `yielding` exact
-/// pair components). It is the memory limit of such projections: fedemean
-/// declines a larger workspace, and its automatic preconditioner then keeps
-/// Jacobi.
+/// intercept design with `level_counts` on `rows` observations: its
+/// structure (the level indexes of effects above its scatter limit), weight
+/// state and LSMR vectors, plus its additive-Schwarz grant
+/// ([`schwarz_grant_bytes`]). It is the memory limit of such projections:
+/// fedemean declines a larger workspace, and its automatic preconditioner
+/// keeps Jacobi when the Schwarz preconditioner does not fit beside it.
 pub(crate) fn lsmr_workspace_bytes(
     rows: usize,
     level_counts: &[usize],
     threads: usize,
-    yielding: Option<usize>,
 ) -> Result<u128> {
     /// fedemean's largest scattered effect and its scatter block count.
     const SCATTER_LEVELS: usize = 1024;
@@ -629,30 +627,67 @@ pub(crate) fn lsmr_workspace_bytes(
         checked_mul_memory(n, 9, "PPML LSMR observation vectors")?,
         checked_mul_memory(scatter, SCATTER_BLOCKS, "PPML LSMR scatter blocks")?,
     ])?;
-    let maximum_levels = level_counts.iter().copied().max().unwrap_or(0) as u128;
-    let schwarz = crate::memory::estimate_categorical_schwarz_memory(
-        n,
-        level_counts.len() as u128,
-        levels,
-        maximum_levels,
-        threads as u128,
-        checked_add_memory(
-            crate::memory::categorical_dense_cross_tab_bytes(n, level_counts)?,
-            crate::memory::schwarz_weighted_correction_bytes(n, level_counts)?,
-            "PPML LSMR cross-tab and compensation scratch",
-        )?,
-        yielding.map(|count| count as u128),
-    )?;
-    let schwarz = schwarz.build_peak_bytes.max(checked_add_memory(
-        schwarz.retained_bytes,
-        schwarz.apply_peak_bytes,
-        "PPML LSMR Schwarz apply peak",
-    )?);
     checked_sum_memory(&[
         structure,
         bytes_for_memory::<f64>(values, "PPML LSMR fedemean workspace")?,
-        schwarz,
+        schwarz_grant_bytes(n, level_counts)?,
     ])
+}
+
+/// [`lsmr_workspace_bytes`] for an explicit `preconditioner`: without the
+/// Schwarz grant when it never builds Schwarz (identity or Jacobi).
+pub(crate) fn lsmr_workspace_bytes_for(
+    rows: usize,
+    level_counts: &[usize],
+    threads: usize,
+    preconditioner: LsmrPreconditioner,
+) -> Result<u128> {
+    let bytes = lsmr_workspace_bytes(rows, level_counts, threads)?;
+    Ok(match preconditioner {
+        LsmrPreconditioner::Off | LsmrPreconditioner::Diagonal => {
+            bytes - schwarz_grant_bytes(rows as u128, level_counts)?
+        }
+        LsmrPreconditioner::Auto | LsmrPreconditioner::Schwarz => bytes,
+    })
+}
+
+/// The memory fereg grants fedemean's additive Schwarz preconditioner on a
+/// categorical intercept design: fedemean's star of factor pairs (the effect
+/// with the most levels paired with each other effect), each with its
+/// cross-tabulation at its largest, `E = min(rows, L_a L_e)` entries, kept in
+/// both orientations with its level maps (24 bytes per entry and 20 per
+/// level), the same entries and the smaller side's levels again at
+/// approximate-Cholesky size (48 bytes each) for its components' Schur
+/// complements and local factors, and its apply columns (16 bytes per
+/// level). fedemean admits each part from its exact size within the memory
+/// limit as it builds; this is a grant, not a prediction of those sizes.
+pub(crate) fn schwarz_grant_bytes(rows: u128, level_counts: &[usize]) -> Result<u128> {
+    let Some(largest) = (0..level_counts.len()).max_by_key(|&e| (level_counts[e], usize::MAX - e))
+    else {
+        return Ok(0);
+    };
+    let big = level_counts[largest] as u128;
+    let mut total = 0_u128;
+    for (e, &other) in level_counts.iter().enumerate() {
+        if e == largest {
+            continue;
+        }
+        let other = other as u128;
+        let entries = checked_mul_memory(big, other, "Schwarz grant cross-tab cells")?.min(rows);
+        let pair_levels = checked_add_memory(big, other, "Schwarz grant pair levels")?;
+        total = checked_sum_memory(&[
+            total,
+            checked_mul_memory(entries, 24, "Schwarz grant cross-tabulation")?,
+            checked_mul_memory(pair_levels, 20, "Schwarz grant level maps")?,
+            checked_mul_memory(
+                checked_add_memory(entries, other, "Schwarz grant local entries")?,
+                48,
+                "Schwarz grant local solves",
+            )?,
+            checked_mul_memory(pair_levels, 16, "Schwarz grant apply columns")?,
+        ])?;
+    }
+    Ok(total)
 }
 
 fn checked_add_memory(left: u128, right: u128, context: &'static str) -> Result<u128> {

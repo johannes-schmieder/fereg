@@ -148,7 +148,6 @@ fn check_saved_fe(
             fit.recovered_fe_coefficients(),
             false,
             true,
-            config.absorb.lsmr,
             config.absorb.map,
             None,
         )
@@ -419,7 +418,6 @@ fn check_tiled_saved_fe(
             fit.recovered_fe_coefficients(),
             false,
             true,
-            config.absorb.lsmr,
             config.absorb.map,
             None,
         )

@@ -16,8 +16,8 @@ use crate::factorize::{factorize_f64, EncodedFactor};
 use crate::fe::{
     plan_categorical_absorbed_request, prune_categorical_partition_singletons, BorrowedMapWeights,
     CategoricalAbsorbedEffectView, CategoricalCodeView, FeCoefficientBatch,
-    FinalizedCategoricalTopology, LsmrConfig, MapConfig, RecoveredCategoricalEffects,
-    SingletonMultiplicity, SingletonResult,
+    FinalizedCategoricalTopology, MapConfig, RecoveredCategoricalEffects, SingletonMultiplicity,
+    SingletonResult,
 };
 use crate::memory::push_reserved;
 use crate::memory::{estimate_intercept_recovery_memory, FeSolverMemoryBudget};
@@ -417,7 +417,6 @@ impl PreparedOlsData {
         retained: Option<&FeCoefficientBatch>,
         known_connected: bool,
         materialize_absorbed_sum: bool,
-        lsmr: LsmrConfig,
         map: MapConfig,
         memory_budget: Option<FeSolverMemoryBudget>,
     ) -> Result<RecoveredCategoricalEffects> {
@@ -432,7 +431,6 @@ impl PreparedOlsData {
             retained,
             known_connected,
             materialize_absorbed_sum,
-            lsmr,
             map,
             memory_budget,
         )
@@ -476,7 +474,6 @@ impl PreparedOlsData {
             &levels,
             requested.iter().filter(|&&value| value).count(),
             rayon::current_num_threads(),
-            None,
         )?;
         if memory_budget.is_some_and(|budget| !budget.fits(memory.cg_peak_bytes)) {
             return Err(allocation(
@@ -517,7 +514,6 @@ impl PreparedOlsData {
         retained: Option<&FeCoefficientBatch>,
         known_connected: bool,
         materialize_absorbed_sum: bool,
-        lsmr: LsmrConfig,
         map: MapConfig,
         memory_budget: Option<FeSolverMemoryBudget>,
     ) -> Result<RecoveredCategoricalEffects> {
@@ -528,7 +524,6 @@ impl PreparedOlsData {
             retained,
             known_connected,
             materialize_absorbed_sum,
-            lsmr,
             map,
             memory_budget,
             None,
@@ -546,7 +541,6 @@ impl PreparedOlsData {
         retained: Option<&FeCoefficientBatch>,
         known_connected: bool,
         materialize_absorbed_sum: bool,
-        lsmr: LsmrConfig,
         map: MapConfig,
     ) -> Result<RecoveredCategoricalEffects> {
         self.recover_absorbed_effects_fast_with_weights_inner(
@@ -556,7 +550,6 @@ impl PreparedOlsData {
             retained,
             known_connected,
             materialize_absorbed_sum,
-            lsmr,
             map,
             None,
             Some(map.tolerance),
@@ -572,7 +565,6 @@ impl PreparedOlsData {
         retained: Option<&FeCoefficientBatch>,
         known_connected: bool,
         materialize_absorbed_sum: bool,
-        lsmr: LsmrConfig,
         map: MapConfig,
         memory_budget: Option<FeSolverMemoryBudget>,
         reconstruction_tolerance: Option<f64>,
@@ -588,7 +580,6 @@ impl PreparedOlsData {
             retained,
             known_connected,
             materialize_absorbed_sum,
-            lsmr,
             map,
             memory_budget,
             reconstruction_tolerance,

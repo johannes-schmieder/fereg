@@ -21,7 +21,7 @@ use crate::data::{DropReason, WeightKind};
 use crate::error::{ErrorCode, FeregError, Result};
 #[cfg(test)]
 use crate::fe::FeSolverKind;
-use crate::fe::{BorrowedMapWeights, FeCoefficientBatch, LsmrConfig, MapConfig};
+use crate::fe::{BorrowedMapWeights, FeCoefficientBatch, MapConfig};
 use crate::memory::{fallible_copy, fallible_filled};
 use crate::ols::topology_dof::{
     CategoricalTopologyDofEffectIdentity, CategoricalTopologyDofPolicy,
@@ -686,7 +686,6 @@ pub(crate) fn recover_ppml_fixed_effects(
     mean: &[f64],
     absorbed_predictor: &[f64],
     retained: Option<&FeCoefficientBatch>,
-    lsmr: LsmrConfig,
     map: MapConfig,
     inject_allocation_failure: bool,
 ) -> Result<PreparedPpmlRecoveredFixedEffects> {
@@ -735,7 +734,6 @@ pub(crate) fn recover_ppml_fixed_effects(
         retained,
         report.connected_components == 1,
         true,
-        lsmr,
         map,
     )?;
     let recovery_iterations = recovered.iterations();

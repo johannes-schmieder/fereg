@@ -1,7 +1,7 @@
 //! Incremental storage for generic owned intercept/slope absorption.
-use super::{checked_mul, checked_sum, estimate_fe_solver_memory_for_channels};
-use crate::error::{allocation, ErrorCode, FeregError, Result};
-use crate::fe::{EffectTerm, FeDesign, FeSolverKind, LsmrConfig};
+use super::{checked_mul, checked_sum};
+use crate::error::{ErrorCode, FeregError, Result};
+use crate::fe::{EffectTerm, FeDesign, FeSolverKind};
 
 #[derive(Debug, Default, Clone, Copy)]
 pub(crate) struct OwnedFeDesignMemoryEstimate {
@@ -101,18 +101,18 @@ pub(crate) fn owned_fe_matrix_bytes(rows: usize, rhs: usize) -> Result<u128> {
     )?)
 }
 
-/// The input matrix and caller-owned FeDesign are charged by the caller.
-/// Generic certificate QR moves each level column into its basis without
-/// copying the numeric bank; both descriptor banks can coexist. `yielding` is
-/// an optional exact count of yielding factor-pair components for an
-/// intercept-only design (see `FeDesign::yielding_pair_components`); `None`
-/// keeps the level-count bound.
+/// fereg's own workspace of a generic owned route. The input matrix and
+/// caller-owned FeDesign are charged by the caller. Generic certificate QR
+/// moves each level column into its basis without copying the numeric bank;
+/// both descriptor banks can coexist. For modified LSMR this is fereg's
+/// certificate and projection scratch: fedemean admits its own workspace
+/// (structure, weight state, recurrence and any Schwarz preconditioner)
+/// within the memory limit the caller passes, and releases it before
+/// fereg's certificate runs.
 pub(crate) fn generic_fe_solver_bytes(
     design: &FeDesign,
     rhs: usize,
     solver: FeSolverKind,
-    config: LsmrConfig,
-    yielding: Option<usize>,
 ) -> Result<u128> {
     let r = rhs as u128;
     let c = design.max_channels() as u128;
@@ -139,12 +139,9 @@ pub(crate) fn generic_fe_solver_bytes(
     ])?)?;
     let matrix = owned_fe_matrix_bytes(design.nobs(), rhs)?;
     let matrices = match solver {
-        FeSolverKind::Map | FeSolverKind::Auto => 0,
+        FeSolverKind::Map | FeSolverKind::Auto | FeSolverKind::Lsmr => 0,
         FeSolverKind::Cg => 3,
         FeSolverKind::IronsTuck | FeSolverKind::Squarem => 4,
-        FeSolverKind::Lsmr => {
-            return generic_lsmr_bytes(design, rhs, config, certificate, yielding)
-        }
         FeSolverKind::Elimination => return Err(crate::fe::elimination_request()),
         FeSolverKind::Cmg | FeSolverKind::CmgSchur => {
             return Err(FeregError::new(
@@ -159,133 +156,6 @@ pub(crate) fn generic_fe_solver_bytes(
         projection,
         checked_mul(matrix, matrices, "generic accelerator matrices")?,
         bytes::<f64>(checked_mul(r, 16, "generic accelerator scalar RHS state")?)?,
-    ])
-}
-
-fn generic_lsmr_bytes(
-    design: &FeDesign,
-    rhs: usize,
-    config: LsmrConfig,
-    certificate: u128,
-    yielding: Option<usize>,
-) -> Result<u128> {
-    if design.effects().is_empty() || rhs == 0 {
-        return Ok(certificate);
-    }
-    let mut counts = Vec::new();
-    let channels = design.effects().iter().try_fold(0_usize, |total, effect| {
-        total
-            .checked_add(effect.channels())
-            .ok_or_else(|| allocation("generic FE channel count overflows"))
-    })?;
-    counts
-        .try_reserve_exact(channels)
-        .map_err(|_| allocation("unable to reserve generic FE channel counts"))?;
-    let mut slope_bytes = 0;
-    let mut has_slopes = false;
-    for effect in design.effects() {
-        counts.extend(std::iter::repeat(effect.n_levels()).take(effect.channels()));
-        let s = effect.slopes().len() as u128;
-        if s == 0 {
-            continue;
-        }
-        has_slopes = true;
-        slope_bytes = checked_sum(&[
-            slope_bytes,
-            lsmr_slope_effect_bytes(
-                design.nobs(),
-                rhs,
-                effect.n_levels(),
-                effect.slopes().len(),
-                effect.channels(),
-            )?,
-        ])?;
-    }
-    // Each channel contributes its own coefficient block and cross-tab pairs.
-    // Repeated term levels conservatively charge sorted codes once per channel.
-    // The shared recurrence/window/scatter model and categorical routes remain
-    // unchanged; signed channels additionally admit the doubled Schur cover.
-    // An intercept-only design whose level-count bound was refused may pass
-    // its exact yielding pair-component count (see `admit_generic_solver`).
-    let estimate = match yielding {
-        Some(yielding) if !has_slopes => super::estimate_fe_solver_memory_with_yielding(
-            design.nobs(),
-            rhs,
-            &counts,
-            rayon::current_num_threads(),
-            config.local_size,
-            Some(yielding),
-        )?,
-        _ => estimate_fe_solver_memory_for_channels(
-            design.nobs(),
-            rhs,
-            &counts,
-            rayon::current_num_threads(),
-            config.local_size,
-            has_slopes,
-        )?,
-    };
-    let preconditioner = crate::fe::resolve_preconditioner_kind(design, config.preconditioner);
-    let solver_bytes = estimate
-        .lsmr_bytes(preconditioner)
-        .max(estimate.lsmr_off_bytes);
-    checked_sum(&[
-        solver_bytes,
-        slope_bytes,
-        certificate,
-        bytes::<usize>(channels as u128)?,
-    ])
-}
-
-/// Pinned within slope reparameterization: retained transforms/loadings and
-/// construction scratch. Shared by owned absorption and saved-effect recovery.
-pub(super) fn lsmr_slope_effect_bytes(
-    observations: usize,
-    rhs: usize,
-    levels: usize,
-    slopes: usize,
-    channels: usize,
-) -> Result<u128> {
-    let s = slopes as u128;
-    let l = levels as u128;
-    let square = checked_mul(s, s, "LSMR slope transform square")?;
-    // Pinned within's SlopeReparam keeps sorted old and whitened loadings
-    // together during construction. Per-level means/comoments coexist
-    // with retained centers/transforms. Full squares bound the triangle.
-    // Vec growth for unidentified directions and transform descriptors is
-    // charged separately; the state remains through coefficient recovery.
-    checked_sum(&[
-        bytes::<f64>(checked_mul(
-            checked_mul(observations as u128, s, "LSMR slope loading cells")?,
-            2,
-            "LSMR loading copies",
-        )?)?,
-        bytes::<f64>(checked_mul(
-            l,
-            checked_sum(&[
-                checked_mul(square, 2, "LSMR slope moments and transforms")?,
-                checked_mul(s, 2, "LSMR slope means and centers")?,
-                1,
-            ])?,
-            "LSMR slope level state",
-        )?)?,
-        checked_mul(l, 32, "LSMR level transform descriptors")?,
-        checked_mul(
-            checked_mul(l, channels as u128, "LSMR unidentified directions")?,
-            96,
-            "LSMR unidentified direction banks",
-        )?,
-        // Pivoted Gram-Schmidt's growing basis, Gram, working vectors,
-        // slope views and back-transform scratch (one per active RHS).
-        bytes::<f64>(checked_sum(&[
-            checked_mul(square, 4, "LSMR slope Gram scratch")?,
-            checked_mul(
-                s,
-                checked_sum(&[16, rhs as u128])?,
-                "LSMR slope linear scratch",
-            )?,
-        ])?)?,
-        256,
     ])
 }
 
@@ -385,20 +255,5 @@ mod tests {
                 .code,
             ErrorCode::Allocation
         );
-    }
-
-    #[test]
-    fn signed_schwarz_reserves_cover_without_changing_categorical_estimates() {
-        use crate::memory::categorical_schwarz::{
-            estimate_categorical_schwarz_memory, estimate_schwarz_memory,
-        };
-        let plain = estimate_categorical_schwarz_memory(48, 3, 15, 6, 4, 100, None).unwrap();
-        let unsigned = estimate_schwarz_memory(48, 3, 15, 6, 4, 1, 100, false, None).unwrap();
-        let signed = estimate_schwarz_memory(48, 3, 15, 6, 4, 1, 100, true, None).unwrap();
-        assert_eq!(plain, unsigned);
-        assert_eq!(signed.solver_frame_bytes, plain.solver_frame_bytes);
-        assert!(signed.build_peak_bytes > plain.build_peak_bytes);
-        assert!(signed.retained_bytes > plain.retained_bytes);
-        assert!(signed.apply_peak_bytes > plain.apply_peak_bytes);
     }
 }

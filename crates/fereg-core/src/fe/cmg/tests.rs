@@ -1966,7 +1966,7 @@ fn retained_cmg_polish_admits_actual_rhs_width_at_the_exact_joint_boundary() {
         let (_, _, coefficients) = warm.into_full_parts();
         let bulk_bytes = coefficients.unwrap().retained_bytes();
         let graph_bytes = u128::from(session.retained_workspace_peak().unwrap().bytes().unwrap());
-        let estimate = estimate_fe_solver_memory(n, 5, &[4, 3], 1, None).unwrap();
+        let estimate = estimate_fe_solver_memory(n, 5, &[4, 3], 1).unwrap();
         let required = graph_bytes
             + 5 * 8
             + bulk_bytes
@@ -2020,7 +2020,7 @@ fn terminal_residual_correction_checks_its_cg_budget() {
             .collect()])
         .unwrap()
     };
-    let estimate = estimate_fe_solver_memory(n, 1, &[4, 3], 1, None).unwrap();
+    let estimate = estimate_fe_solver_memory(n, 1, &[4, 3], 1).unwrap();
     let incremental = estimate.cg_bytes + 3 * estimate.coefficient_batch_bytes + 8;
     for short in [true, false] {
         let design =

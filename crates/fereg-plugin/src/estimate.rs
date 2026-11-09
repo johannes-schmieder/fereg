@@ -1400,7 +1400,6 @@ impl EstimateActionSpec {
                     max_iterations: self.iterate,
                     preconditioner: self.preconditioner,
                     threads: thread_config,
-                    ..default_fit.absorb.lsmr
                 },
                 pcg: self.pcg,
                 solver_memory_budget: memory_plan.usable_bytes.map(|usable_bytes| {
@@ -2645,11 +2644,6 @@ fn build_derived_observation_outputs_in_team(
             fit.recovered_fe_coefficients(),
             known_connected,
             requested.absorbed.is_some(),
-            LsmrConfig {
-                tolerance: 1e-12,
-                max_iterations: 20_000,
-                ..fit_config.absorb.lsmr
-            },
             MapConfig {
                 tolerance: 1e-12,
                 max_iterations: 20_000,

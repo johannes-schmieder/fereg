@@ -571,10 +571,16 @@ fn checkpoint_schur_copy_respects_exact_transient_admission() {
     for rows in [16384, 122880, 983040] {
         for rhs in [1, 2, 3, 8, 15, 16, 17, 51, 64] {
             for threads in [1, 4, 16] {
-                let estimate =
-                    estimate_fe_solver_memory(rows, rhs, &[rows / 4, 128], threads, Some(4))
-                        .unwrap();
-                assert!(estimate.lsmr_schwarz_bytes >= rows as u128 * rhs as u128 * 8);
+                // The checkpoint's admitted LSMR allowance always covers
+                // the candidate copy that replaces its serial banks.
+                let allowance = crate::ppml::estimate_checkpoint_lsmr_workspace_bytes(
+                    rows,
+                    rhs,
+                    &[rows / 4, 128],
+                    threads,
+                )
+                .unwrap();
+                assert!(allowance >= rows as u128 * rhs as u128 * 8);
             }
         }
     }
@@ -1066,8 +1072,7 @@ fn memory_plan_includes_coefficient_layouts_and_all_map_banks() {
                 .unwrap();
         for rhs in [1, 19] {
             let batch = FeCoefficientBatch::intercept_zeros(&design, rhs).unwrap();
-            let estimate =
-                estimate_fe_solver_memory(4, rhs, &vec![2; effects], 1, Some(4)).unwrap();
+            let estimate = estimate_fe_solver_memory(4, rhs, &vec![2; effects], 1).unwrap();
             assert_eq!(estimate.coefficient_batch_bytes, batch.retained_bytes());
             assert!(estimate.coefficient_batch_bytes > (effects * 2 * rhs * 8) as u128);
         }
@@ -2343,7 +2348,6 @@ fn sparse_two_fe_pcg_acceleration_matches_certified_map() {
             BorrowedMapWeights::Provided(&weights),
             DenseMatrix::from_columns(&columns).unwrap().into(),
             map,
-            LsmrConfig::default(),
             None,
             false,
             false,
@@ -4984,7 +4988,6 @@ fn structural_auto_uses_direct_groups_and_one_two_fe_graph() {
             .expect("one matrix")
             .into(),
         config(),
-        LsmrConfig::default(),
         None,
         false,
         false,
@@ -5014,7 +5017,6 @@ fn structural_auto_uses_direct_groups_and_one_two_fe_graph() {
             .expect("early matrix")
             .into(),
         config(),
-        LsmrConfig::default(),
         None,
         false,
         false,
@@ -5047,7 +5049,6 @@ fn structural_auto_uses_direct_groups_and_one_two_fe_graph() {
             tolerance: 1e-14,
             ..config()
         },
-        LsmrConfig::default(),
         None,
         false,
         false,
@@ -5090,7 +5091,6 @@ fn structural_graph_preserves_slow_chain_and_retained_coefficients() {
         BorrowedMapWeights::Unit,
         input.clone().into(),
         config(),
-        LsmrConfig::default(),
         None,
         false,
         true,
@@ -5110,7 +5110,6 @@ fn structural_graph_preserves_slow_chain_and_retained_coefficients() {
         BorrowedMapWeights::Unit,
         input.clone().into(),
         config(),
-        LsmrConfig::default(),
         None,
         false,
         false,
@@ -5163,12 +5162,6 @@ fn uncertified_lsmr_candidate_is_polished_and_fully_accounted() {
         BorrowedMapWeights::Unit,
         input.clone().into(),
         strict,
-        LsmrConfig {
-            tolerance: 1e-14,
-            max_iterations: 1,
-            preconditioner: LsmrPreconditioner::Off,
-            ..LsmrConfig::default()
-        },
         None,
         false,
         true,
@@ -5211,19 +5204,22 @@ fn constrained_joint_memory_routes_lsmr_to_cg_and_fails_cleanly_when_neither_fit
         ValidatedBorrowedInterceptSource::new(&firm_codes, workers + 1, &firm_index).expect("firm");
     let design = BorrowedInterceptFeDesign::new(observations, vec![worker.effect(), firm.effect()])
         .expect("design");
-    let lsmr = LsmrConfig {
-        threads: crate::options::ThreadConfig::from_requested(1, true).expect("threads"),
-        ..LsmrConfig::default()
-    };
     let memory = estimate_fe_solver_memory(
         observations,
         1,
         &[workers, workers + 1],
         rayon::current_num_threads(),
-        lsmr.local_size,
     )
     .expect("solver memory");
-    assert!(memory.cg_bytes < memory.lsmr_schwarz_bytes);
+    assert!(
+        memory.cg_bytes
+            < crate::fe::block_schur::lsmr_workspace_bytes(
+                observations,
+                &[workers, workers + 1],
+                1
+            )
+            .unwrap()
+    );
     let weights: Vec<f64> = (0..observations)
         .map(|row| 0.5 + (row % 19) as f64 / 19.0)
         .collect();
@@ -5235,7 +5231,6 @@ fn constrained_joint_memory_routes_lsmr_to_cg_and_fails_cleanly_when_neither_fit
                 .expect("matrix")
                 .into(),
             config(),
-            lsmr,
             Some(FeSolverMemoryBudget {
                 execution_bytes: 0,
                 usable_bytes,
@@ -5587,7 +5582,6 @@ fn norm_handoff_on_the_auto_general_route_preserves_certificates_coefficients_an
                                 weights,
                                 input.clone().into(),
                                 config.map,
-                                config.lsmr,
                                 budget,
                                 false,
                                 retain,
