@@ -691,8 +691,11 @@ whose channels are dependent on the level's rows (a slope constant or zero on
 the level, fewer distinct rows than channels) is a null direction of `D` and
 acts as its pseudo-inverse on the range. fedemean forms each level's blocks
 in its centered basis (the intercept, then each slope less its weighted level
-mean), an exact reparametrization; the operator, coefficients and certificate
-stay in the raw basis. `precondition(schwarz)` (and the automatic escalation,
+mean), an exact reparametrization. A slope whose level centers exceed 1024
+pooled within-level standard deviations (a large common offset) is also
+applied and certified in that basis by the operator, iterates and moments;
+coefficients are reported in the raw basis, and other slopes keep the raw
+operator and certificate. `precondition(schwarz)` (and the automatic escalation,
 with two or more effects) is additive Schwarz over factor-pair subdomains: a
 pair of two intercept-only effects keeps its Laplacian subdomains, and a pair
 in which either effect has slopes is one subdomain over both effects'
@@ -729,27 +732,22 @@ Declared scope: explicit slope `solver(lsmr)` fits change at tolerance level,
 including, since the within retirement, those with `precondition(schwarz)`
 and fewer than two intercept effects and those fedemean does not certify,
 which now continue with MAP; sample, rank, omission and other discrete
-decisions do not change, apart from one declared rare-case outcome. Case 1
-of the slope-boundary fixture
-(`tests/stata/development/within_plugin_slope_boundary.do`: `g##c.(z1 z2)`
-with slopes near ±2^24 that differ by units,
-`solver(lsmr, precondition(none))`, `tolerance(1e-10)`) now fails with
-r(459) and full rollback, like the fixture's cases 2–3: fedemean's
-raw-basis certificate has a rounding floor of about 1e-10 of the column at
-offsets of 2^24, so it declines, and MAP's raw level Gram drops the slopes'
-pivots (independent certificate 0.164). Formerly within's per-level
-centering certified it, reported as the fallback. At `tolerance(1e-9)` or
-looser, without residual-derived outputs (`residuals()`, `predict, xbd`,
-saved effects certify the final residual at 1e-14), fedemean certifies it
-directly with no fallback (independent certificate 2.3e-10). At
-`tolerance(1e-8)` its b, SE and rss are bitwise those of the former route
-at `tolerance(1e-8)`; against the former route at `tolerance(1e-12)`,
-|Δb| ≤ 8e-17, relative ΔSE ≤ 1.9e-16 and relative Δrss 3.4e-16, and
-against the fixture's exact oracle |Δb| ≤ 1.7e-15. Witnesses: that fixture
-(case 1 rejected at 1e-10 and certified at 1e-8, at one and four workers
-and repeated), `fe::auto`'s explicit slope LSMR tests (the MAP continuation
-bitwise as called directly, the independent centered projection, the
-eligibility fault plan and the capped-memory declines) and
+decisions do not change. The slope-boundary fixture's offset case
+(`tests/stata/development/within_plugin_slope_boundary.do`, case 1:
+`g##c.(z1 z2)` with slopes near ±2^24 that differ by units,
+`solver(lsmr, precondition(none))`, `tolerance(1e-10)`) certifies on
+fedemean with residual-derived outputs and no fallback (the retired within
+route certified it as the fallback): its slopes are taken in each level's
+centered basis,
+so the raw level Gram's loss of their within-level variation no longer
+floors the certificate. Its b, SE, rss and residuals are bitwise those at
+`tolerance(1e-12)`, and against the fixture's exact oracle |Δb| ≤ 1.5e-15,
+relative Δrss 2.2e-16 and |Δresidual| ≤ 2.1e-15. Witnesses: that fixture
+(case 1 against its `tolerance(1e-12)` fit, at one and four workers and
+repeated), `fe::auto`'s explicit slope LSMR tests (case 1 against the
+independent centered projection at 1e-8, 1e-10 and 1e-12; the MAP
+continuation after fedemean's iteration ceiling, bitwise as called
+directly; the eligibility fault plan and the capped-memory declines) and
 `fereg-testkit/tests/fe_certificate_oracle.rs` (explicit Schwarz with fewer
 than two intercept effects against the explicit-design QR). Explicit PPML
 LSMR keeps its scheduled certificate and one tighter continuation (§13).

@@ -4106,20 +4106,17 @@ unchanged (SPEC §1).
   fedemean refuses as unsupported (reachable only through a test fault plan)
   continues with MAP, reported as the fallback; Auto, `absorb_auto` and
   saved-effect recovery are unchanged.
-- Declared rare-case outcome change: case 1 of the slope-boundary fixture
-  (`tests/stata/development/within_plugin_slope_boundary.do`; slopes near
+- The slope-boundary fixture's offset case (case 1 of
+  `tests/stata/development/within_plugin_slope_boundary.do`; slopes near
   ±2^24 that differ by units, `solver(lsmr, precondition(none))`,
-  `tolerance(1e-10)`) now fails with r(459) and full rollback, like cases
-  2–3: fedemean's raw-basis certificate floor (about 1e-10 of the column at
-  that offset) declines it, and MAP's raw level Gram drops the slopes' pivots
-  (independent certificate 0.164). Formerly within's per-level centering
-  certified it as the fallback. At `tolerance(1e-9)` or looser, without
-  residual-derived outputs (which certify the final residual at 1e-14),
-  fedemean certifies it directly with no fallback (independent certificate
-  2.3e-10). At `tolerance(1e-8)` b, SE and rss are bitwise those of the
-  former route at `tolerance(1e-8)`; against the former route at
-  `tolerance(1e-12)`, |Δb| ≤ 8e-17, relative ΔSE ≤ 1.9e-16 and relative
-  Δrss 3.4e-16; against the exact oracle |Δb| ≤ 1.7e-15.
+  `tolerance(1e-10)`) failed with r(459) and full rollback between the within
+  retirement (`d748f6f3`) and fedemean `f67ea713`, which applies and
+  certifies such offset slopes in each level's centered basis. It now
+  certifies on fedemean with residual-derived outputs and no fallback, in one
+  iteration (Mac fixture run, 2026-11-09): b, SE, rss and
+  residuals are bitwise those of the `tolerance(1e-12)` fit at one and four
+  workers, and against the fixture's exact oracle |Δb| ≤ 1.5e-15, relative
+  Δrss 2.2e-16 and |Δresidual| ≤ 2.1e-15.
 - Memory admission (SPEC §19): the within-shaped modified-LSMR estimate and
   the categorical Schwarz model with its exact yielding-pair-component
   refinement are removed. Owned LSMR charges fereg's held buffers and
@@ -4565,17 +4562,6 @@ All 50 GitHub release assets matched their local SHA-256 checksums and sizes.
   real Veneto panels, and explicit `solver(lsmr)` returned `r(909)` on the long
   panel in a 64 GB allocation where Auto completed. Auto does not use either
   route there.
-- Explicit `solver(lsmr)` on slopes that share a large common offset is
-  limited by fedemean's raw-basis certificate floor (about 1e-10 of the column
-  at offsets of 2^24). A tolerance requested at that floor or below can fail
-  with r(459) and full rollback when MAP's raw level Gram also loses the
-  slopes: case 1 of the slope-boundary fixture does so at `tolerance(1e-10)`
-  since the within retirement, while `tolerance(1e-9)` and looser certify it
-  without residual-derived outputs (b within 8e-17 of the former
-  `tolerance(1e-12)` reference; see
-  [the within retirement](#within-retirement-milestone-3-development-mac)).
-  Residual-derived outputs certify the final residual at 1e-14 and fail there
-  at any tolerance.
 - A fedemean fit publishes its retained workspace as its solver workspace
   peak. A Schwarz build also admits transient storage within the memory limit
   (in the explicit-Schwarz capped-memory test, a budget of about 1.85 times the

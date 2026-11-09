@@ -1341,26 +1341,22 @@ mod explicit_slope_lsmr {
         residual
     }
 
-    /// A slope fit fedemean does not certify (its correction included)
-    /// continues with MAP from the original input, reported as the fallback
-    /// with fedemean's reason; no other LSMR leg runs. Case 1 of the slope
-    /// boundary fixture at tolerance 1e-10 is such a fit: fedemean's
-    /// raw-basis certificate floor at offsets of 2^24 (about 1e-10) declines
-    /// it, and MAP's raw level Gram loses the slopes' within-level variation,
-    /// so the fit stays uncertified (the caller's non-convergence). At 1e-8
-    /// fedemean certifies the design directly, matching the independent
-    /// centered projection.
+    /// Case 1 of the slope boundary fixture (slopes near ±2^24 that differ
+    /// by units) certifies on fedemean at the fixture's tolerance and
+    /// tighter, with no fallback: its operator and certificate take these
+    /// slopes in each level's centered basis, so the raw level Gram's loss of
+    /// their within-level variation no longer floors the certificate. The
+    /// residuals match the independent centered projection, repeat bitwise,
+    /// and are the same without the certified fallback.
     #[test]
-    fn a_slope_fit_fedemean_does_not_certify_continues_with_map() {
+    fn the_offset_slope_boundary_case_certifies_on_fedemean() {
         let (design, weights, original) = boundary();
         let reference = centered_level_projection(&design, &weights, &original);
         let scale = original
             .as_slice()
             .iter()
             .fold(0.0_f64, |m, v| m.max(v.abs()));
-        let mut map = original.clone();
-        let direct = absorb_map(&design, &weights, &mut map, MapConfig::default()).unwrap();
-        for (tolerance, certified) in [(1e-10, false), (1e-8, true)] {
+        for tolerance in [1e-8, 1e-10, 1e-12] {
             let config = AbsorbConfig {
                 solver: FeSolverKind::Lsmr,
                 lsmr: LsmrConfig {
@@ -1372,52 +1368,95 @@ mod explicit_slope_lsmr {
                 ..AbsorbConfig::default()
             };
             let mut repeated = None;
-            for _ in 0..2 {
+            for certified_fallback in [true, true, false] {
                 let mut values = original.clone();
-                let report = absorb_fixed_effects(&design, &weights, &mut values, config).unwrap();
-                assert_eq!(report.certified(), certified, "{tolerance:e}");
+                let report = absorb_fixed_effects(
+                    &design,
+                    &weights,
+                    &mut values,
+                    AbsorbConfig {
+                        certified_fallback,
+                        ..config
+                    },
+                )
+                .unwrap();
+                assert!(report.certified(), "{tolerance:e}");
                 assert_eq!(report.requested_solver, FeSolverKind::Lsmr);
-                assert_eq!(report.fallback_used, !certified);
-                if certified {
-                    assert_eq!(report.used_solver, FeSolverKind::Lsmr);
-                    for (actual, expected) in values.as_slice().iter().zip(reference.as_slice()) {
-                        assert!(
-                            (actual - expected).abs() <= 1e-9 * scale,
-                            "{actual} {expected}"
-                        );
-                    }
-                } else {
-                    assert_eq!(report.used_solver, FeSolverKind::Map);
+                assert_eq!(report.used_solver, FeSolverKind::Lsmr);
+                assert!(!report.fallback_used && report.warnings.is_empty());
+                for (actual, expected) in values.as_slice().iter().zip(reference.as_slice()) {
                     assert!(
-                        report.warnings[0].contains("retried MAP")
-                            && report.warnings[0].contains("did not certify"),
-                        "{:?}",
-                        report.warnings
+                        (actual - expected).abs() <= 1e-12 * scale,
+                        "{tolerance:e}: {actual} {expected}"
                     );
-                    assert_eq!(values, map);
-                    assert_eq!(report.certificate, direct.certificate);
                 }
                 match &repeated {
                     None => repeated = Some(values),
                     Some(previous) => assert_eq!(&values, previous),
                 }
             }
-            // Without the certified fallback the fedemean report returns.
-            let mut values = original.clone();
-            let alone = absorb_fixed_effects(
-                &design,
-                &weights,
-                &mut values,
-                AbsorbConfig {
-                    certified_fallback: false,
-                    ..config
-                },
-            )
-            .unwrap();
-            assert_eq!(alone.certified(), certified);
-            assert_eq!(alone.used_solver, FeSolverKind::Lsmr);
-            assert!(!alone.fallback_used);
         }
+    }
+
+    /// A slope fit fedemean does not certify (its correction included)
+    /// continues with MAP from the original input, reported as the fallback
+    /// with fedemean's reason; no other LSMR leg runs. Two LSMR iterations
+    /// without preconditioning do not reach 1e-10 on this two-effect slope
+    /// design, so fedemean declines at its iteration ceiling, and MAP (its
+    /// own budget) certifies the fit bitwise as called directly. Without the
+    /// certified fallback fedemean's uncertified report returns.
+    #[test]
+    fn a_slope_fit_fedemean_does_not_certify_continues_with_map() {
+        let (design, weights, original) = boundary_free_design();
+        let config = AbsorbConfig {
+            solver: FeSolverKind::Lsmr,
+            lsmr: LsmrConfig {
+                tolerance: 1e-10,
+                max_iterations: 2,
+                preconditioner: LsmrPreconditioner::Off,
+                ..LsmrConfig::default()
+            },
+            ..AbsorbConfig::default()
+        };
+        let mut map = original.clone();
+        let direct = absorb_map(&design, &weights, &mut map, config.map).unwrap();
+        assert!(direct.certified());
+        let mut repeated = None;
+        for _ in 0..2 {
+            let mut values = original.clone();
+            let report = absorb_fixed_effects(&design, &weights, &mut values, config).unwrap();
+            assert!(report.certified() && report.fallback_used);
+            assert_eq!(report.requested_solver, FeSolverKind::Lsmr);
+            assert_eq!(report.used_solver, FeSolverKind::Map);
+            assert!(
+                report.warnings[0].contains("retried MAP")
+                    && report.warnings[0].contains("did not certify")
+                    && report.warnings[0].contains("within its budget"),
+                "{:?}",
+                report.warnings
+            );
+            assert_eq!(values, map);
+            assert_eq!(report.certificate, direct.certificate);
+            assert_eq!(report.iterations, direct.iterations);
+            match &repeated {
+                None => repeated = Some(values),
+                Some(previous) => assert_eq!(&values, previous),
+            }
+        }
+        let mut values = original.clone();
+        let alone = absorb_fixed_effects(
+            &design,
+            &weights,
+            &mut values,
+            AbsorbConfig {
+                certified_fallback: false,
+                ..config
+            },
+        )
+        .unwrap();
+        assert!(!alone.certified());
+        assert_eq!(alone.used_solver, FeSolverKind::Lsmr);
+        assert!(!alone.fallback_used);
     }
 
     /// Seventeen channels on one effect: fedemean takes them (explicit LSMR
