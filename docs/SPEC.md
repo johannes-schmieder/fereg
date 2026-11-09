@@ -1566,7 +1566,19 @@ recurrence stalls build the block (and the projections their Schwarz)
 within the remaining budget instead of the grant, and below a memory limit
 that the block does not fit, explicit `lsmr` keeps its route without the
 block where the Auto plan formerly served it; every other fit, the default
-routes and explicit `jacobi`/`none` keep their bits and admission.
+routes and explicit `jacobi`/`none` keep their bits and admission. Evidence
+(gated one-million-row Mac comparison of `e87532c9` against `de9963eb`, 2
+pairs × 3 fits, no interference): ols2, ols3, ppml2, ppml3, ppml6,
+ppml2chain and explicit `lsmr` on ppml2/ppml3 are bitwise identical
+(62.5/80.5/389/461.5/2823.5/602/576/859 → 61/80/391/467/2835/607.5/576/862.5
+ms); on the chain panels the joint Schwarz block replaces the projections
+(two effects `auto` 1117 → 881.5 ms, `schwarz` 1038 → 844.5 ms; three
+effects 2021.5 → 1632 and 1902.5 → 1528.5 ms) within |Δb| 6.5e-13, relative
+|ΔSE| 1.2e-13 and identical deviance of the tolerance(1e-12) references;
+explicit `schwarz` on the two-, three- and six-effect panels, which the
+Auto plan served at `de9963eb` (and the Jacobi block before this
+admission), now builds the block (511.5/659.5/2996 → 2535.5/3491.5/5226.5
+ms) within |Δb| 7.8e-14 and relative |ΔSE| 1.3e-14 of the references.
 
 **Checkpoint accelerator (2026-11-09).** Explicit LSMR and CMG fits with two or
 three categorical effects whose canonical elimination declines project the
