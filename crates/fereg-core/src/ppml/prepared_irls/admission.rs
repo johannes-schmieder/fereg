@@ -47,6 +47,45 @@ pub(super) struct LinearInstallation {
     projection: ProjectionInstallation,
 }
 
+/// The explicit LSMR engine's Schwarz FE block (SPEC §19): fedemean's
+/// weight-independent bound of the handle, computed within the fit's
+/// remaining budget beside the route's admitted workspace and admitted with
+/// it. A block that does not fit is refused before any work; the joint
+/// recurrence then keeps its Jacobi block (explicit `schwarz`: the certified
+/// fallback, `memory`) and the automatic preconditioner does not escalate to
+/// it.
+fn admit_schwarz_block<P: PreparedOlsFitView + Sync + ?Sized>(
+    prepared: &P,
+    plan: PpmlMemoryPlan,
+    admission: &mut PublicSolverMemoryAdmission,
+) -> Result<PpmlMemoryPlan> {
+    let remaining = plan.solver_workspace_headroom();
+    let (plan, block) =
+        match crate::ppml::categorical_lsmr::schwarz_block_bytes(prepared, remaining)? {
+            Ok(bound) => {
+                #[cfg(test)]
+                super::record_schwarz_block_admission(plan.solver_workspace_peak(), bound);
+                let total = admission
+                    .incremental_bytes
+                    .checked_add(bound)
+                    .ok_or_else(|| allocation("PPML Schwarz block admission overflows"))?;
+                match plan.with_solver_workspace(total) {
+                    Ok(admitted) => {
+                        admission.incremental_bytes = total;
+                        (admitted, Ok(bound))
+                    }
+                    Err(error) if error.code == ErrorCode::Allocation => {
+                        (plan, Err(JointFallback::SchwarzMemoryLimit))
+                    }
+                    Err(error) => return Err(error),
+                }
+            }
+            Err(reason) => (plan, Err(reason)),
+        };
+    admission.schwarz_block = Some(block);
+    Ok(plan)
+}
+
 impl LinearAdmission {
     pub(super) fn new_public<P: PreparedOlsFitView + Sync + ?Sized>(
         prepared: &P,
@@ -105,6 +144,15 @@ impl LinearAdmission {
             }
             plan => plan?,
         };
+        if config.solver_plan.selected == crate::ppml::PpmlSolverFamily::Lsmr
+            && matches!(
+                config.solver_plan.lsmr_preconditioner,
+                crate::fe::LsmrPreconditioner::Auto | crate::fe::LsmrPreconditioner::Schwarz
+            )
+            && matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
+        {
+            memory_plan = admit_schwarz_block(prepared, memory_plan, &mut solver_admission)?;
+        }
         let solver_execution_bytes = memory_plan
             .selected_inventory()
             .peak_bytes

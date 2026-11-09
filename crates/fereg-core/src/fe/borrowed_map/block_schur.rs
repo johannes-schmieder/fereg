@@ -218,18 +218,54 @@ pub(crate) const fn lsmr_choice(preconditioner: LsmrPreconditioner) -> fedemean:
             LsmrPreconditioner::Auto => fedemean::Preconditioner::Auto,
             LsmrPreconditioner::Off => fedemean::Preconditioner::Identity,
             LsmrPreconditioner::Diagonal => fedemean::Preconditioner::Jacobi,
-            LsmrPreconditioner::Schwarz => {
-                fedemean::Preconditioner::Schwarz(fedemean::SchwarzSpec {
-                    subdomains: fedemean::Subdomains::Star,
-                    local: fedemean::SchwarzLocal::Auto,
-                })
-            }
+            LsmrPreconditioner::Schwarz => schwarz_star(),
         },
         fallback: match preconditioner {
             LsmrPreconditioner::Auto => fedemean::Fallback::Escalate,
             _ => fedemean::Fallback::Decline,
         },
     }
+}
+
+/// fedemean's additive Schwarz over the star of factor pairs (the effect
+/// with the most levels paired with each other effect) with automatic local
+/// solves: explicit `precondition(schwarz)` on the full system, and the
+/// PPML joint recurrence's Schwarz FE block.
+pub(crate) const fn schwarz_star() -> fedemean::Preconditioner {
+    fedemean::Preconditioner::Schwarz(fedemean::SchwarzSpec {
+        subdomains: fedemean::Subdomains::Star,
+        local: fedemean::SchwarzLocal::Auto,
+    })
+}
+
+/// fedemean's weight-independent upper bound of the [`schwarz_star`] FE
+/// preconditioner handle on `design`
+/// ([`fedemean::Projector::fe_preconditioner_bytes`]: the build's peak for
+/// any positive weights, structure and weight state included), run within
+/// `memory_limit` (its count-only stages are charged as a build charges
+/// them). The decline when the block cannot be admitted: beyond the limit
+/// ([`fedemean::Decline::MemoryLimit`]) or not buildable on the design.
+pub(crate) fn schwarz_star_bytes(
+    design: &BorrowedInterceptFeDesign<'_>,
+    memory_limit: Option<u128>,
+) -> Result<std::result::Result<u128, fedemean::Decline>> {
+    let mut projector =
+        fedemean::Projector::new(design_view(design)?, fedemean::Settings::default());
+    let host = crate::parallel::HostPool::current()?;
+    let mut control = fedemean::Control::with_cancel(&crate::interrupt::cancellation_requested);
+    if let Some(host) = &host {
+        control = control.with_pool(host.pool());
+    }
+    let bytes = projector
+        .fe_preconditioner_bytes(schwarz_star(), memory_limit, &control)
+        .map_err(fedemean_error)?;
+    if crate::diagnostics::solver_trace_enabled() {
+        crate::diagnostics::emit_solver_trace(&format!(
+            "FEREG_SOLVER_TRACE|phase=schwarz_star_bound|limit={}|result={bytes:?}",
+            memory_limit.map_or_else(|| "none".to_owned(), |limit| limit.to_string()),
+        ));
+    }
+    Ok(bytes)
 }
 
 /// Why the last projection of a cache declined.
@@ -624,10 +660,28 @@ impl<'a> Cache<'a> {
 /// intercept design with `level_counts` on `rows` observations: its
 /// structure (the level indexes of effects above its scatter limit), weight
 /// state and LSMR vectors, plus its additive-Schwarz grant
-/// ([`schwarz_grant_bytes`]). It is the memory limit of such projections:
-/// fedemean declines a larger workspace, and its automatic preconditioner
-/// keeps Jacobi when the Schwarz preconditioner does not fit beside it.
+/// ([`schwarz_grant_bytes`]). It is the memory limit of the strict
+/// checkpoint's projections: fedemean declines a larger workspace, and its
+/// automatic preconditioner keeps Jacobi when the Schwarz preconditioner
+/// does not fit beside it.
 pub(crate) fn lsmr_workspace_bytes(
+    rows: usize,
+    level_counts: &[usize],
+    threads: usize,
+) -> Result<u128> {
+    checked_add_memory(
+        lsmr_base_workspace_bytes(rows, level_counts, threads)?,
+        schwarz_grant_bytes(rows as u128, level_counts)?,
+        "fedemean LSMR workspace with its Schwarz grant",
+    )
+}
+
+/// fedemean's modified-LSMR workspace without a Schwarz preconditioner
+/// ([`lsmr_workspace_bytes`] without the grant): the structure, weight state,
+/// LSMR vectors and scatter accumulators. The PPML explicit LSMR engine and
+/// the separation detector's LSMR re-execution add fedemean's own bound of
+/// the Schwarz preconditioner ([`schwarz_star_bytes`]) beside it.
+pub(crate) fn lsmr_base_workspace_bytes(
     rows: usize,
     level_counts: &[usize],
     threads: usize,
@@ -667,25 +721,7 @@ pub(crate) fn lsmr_workspace_bytes(
     checked_sum_memory(&[
         structure,
         bytes_for_memory::<f64>(values, "PPML LSMR fedemean workspace")?,
-        schwarz_grant_bytes(n, level_counts)?,
     ])
-}
-
-/// [`lsmr_workspace_bytes`] for an explicit `preconditioner`: without the
-/// Schwarz grant when it never builds Schwarz (identity or Jacobi).
-pub(crate) fn lsmr_workspace_bytes_for(
-    rows: usize,
-    level_counts: &[usize],
-    threads: usize,
-    preconditioner: LsmrPreconditioner,
-) -> Result<u128> {
-    let bytes = lsmr_workspace_bytes(rows, level_counts, threads)?;
-    Ok(match preconditioner {
-        LsmrPreconditioner::Off | LsmrPreconditioner::Diagonal => {
-            bytes - schwarz_grant_bytes(rows as u128, level_counts)?
-        }
-        LsmrPreconditioner::Auto | LsmrPreconditioner::Schwarz => bytes,
-    })
 }
 
 /// The memory fereg grants fedemean's additive Schwarz preconditioner on a

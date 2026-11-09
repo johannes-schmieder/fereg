@@ -188,6 +188,7 @@ impl<'p> OrdinaryDirection<'p> {
                     design,
                     config.linear.execution.threads,
                     config.solver_plan.lsmr_preconditioner,
+                    admission.joint_lsmr_limits(budget),
                 )?;
                 Ok(if engine == PpmlSolverEngine::LsmrJoint {
                     Self::LsmrJoint(workspace)

@@ -39,8 +39,9 @@
 use std::cell::Cell;
 
 use crate::error::{allocation, ErrorCode, FeregError, Result};
-use crate::fe::FeSolverKind;
+use crate::fe::{FeSolverKind, LsmrPreconditioner};
 use crate::memory::{FeSolverMemoryBudget, FeSolverMemoryEstimate};
+use crate::ols::prepared_fit_view::PreparedOlsFitView;
 use crate::ols::PreparedOlsFitConfig;
 use crate::ppml::{PpmlConfig, PpmlMemoryPlan};
 use crate::ppml_separation::{MethodStatus, SeparationConfig};
@@ -56,19 +57,53 @@ use super::{
 
 /// LSMR projection workspace resolved on generation zero beside the
 /// retained-CG charge; later generations only shrink. It is charged to the
-/// memory plan only when a re-execution is admitted.
+/// memory plan only when a re-execution is admitted, with fedemean's bound
+/// of its Schwarz preconditioner on the generation that re-executes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct LsmrAdmission {
     /// Execution bytes below the detector projection (the plan before its
     /// separation projection charge).
     base: u128,
+    /// The charge without a Schwarz preconditioner.
     bytes: u128,
+    /// `bytes` before the graph proposal's floor.
+    projection: u128,
+}
+
+impl LsmrAdmission {
+    /// The charge with `schwarz` bytes of Schwarz preconditioner beside
+    /// fedemean's base workspace.
+    fn with_schwarz(self, schwarz: u128) -> Result<u128> {
+        self.projection
+            .checked_add(schwarz)
+            .map(|bytes| bytes.max(self.bytes))
+            .ok_or_else(|| allocation("separation LSMR Schwarz charge overflows"))
+    }
+}
+
+/// fedemean's bound of the LSMR re-execution's Schwarz preconditioner on a
+/// generation's design within a limit (`None`: it does not fit or cannot be
+/// built).
+pub(super) type SchwarzBound<'a> = &'a dyn Fn(Option<u128>) -> Result<Option<u128>>;
+
+/// [`SchwarzBound`] on `generation`'s categorical intercept design:
+/// fedemean's weight-independent upper bound of its star Schwarz
+/// preconditioner ([`crate::fe::block_schur::schwarz_star_bytes`]).
+pub(super) fn schwarz_bound(
+    generation: &PreparedPpmlModelGeneration,
+    limit: Option<u128>,
+) -> Result<Option<u128>> {
+    let Some(design) = generation.fit_view().fit_borrowed_intercept_map_design()? else {
+        return Ok(None);
+    };
+    Ok(crate::fe::block_schur::schwarz_star_bytes(&design, limit)?.ok())
 }
 
 /// The re-execution charge for an admitted retained-CG detector (or an Auto
 /// detector, whose re-execution is retained CG): the CG charge with its CG
 /// workspace replaced by `lsmr_bytes`, fedemean's modified-LSMR workspace
-/// (see `block_schur::lsmr_workspace_bytes_for`), and at least the graph
+/// without a Schwarz preconditioner (see
+/// `block_schur::lsmr_base_workspace_bytes`), and at least the graph
 /// proposal workspace the CG budget admitted.
 pub(super) fn lsmr_admission(
     solver: FeSolverKind,
@@ -81,7 +116,7 @@ pub(super) fn lsmr_admission(
     if !matches!(solver, FeSolverKind::Cg | FeSolverKind::Auto) {
         return Ok(None);
     }
-    let bytes = estimate
+    let projection = estimate
         .coefficient_batch_bytes
         .checked_mul(5)
         .and_then(|n| n.checked_add(lsmr_bytes))
@@ -96,9 +131,12 @@ pub(super) fn lsmr_admission(
                 .checked_mul(16)
                 .and_then(|m| n.checked_add(m))
         })
-        .ok_or_else(|| allocation("separation LSMR projection memory overflows"))?
-        .max(graph_bytes);
-    Ok(Some(LsmrAdmission { base, bytes }))
+        .ok_or_else(|| allocation("separation LSMR projection memory overflows"))?;
+    Ok(Some(LsmrAdmission {
+        base,
+        bytes: projection.max(graph_bytes),
+        projection,
+    }))
 }
 
 /// The admitted detector projection policy and its optional re-executions.
@@ -129,13 +167,15 @@ impl<'a> DetectorPolicy<'a> {
 
     /// Run one detector step with the admitted policy and, after a numerical
     /// certificate failure, once more with retained CG when the admitted
-    /// policy is Auto, then once more with LSMR, and last (Auto only) with the
-    /// largest-weight re-check of a two-FE PCG miss. Returns the step's result and
-    /// the policy that produced it (a terminal result's replay must re-execute
-    /// with that same policy).
+    /// policy is Auto, then once more with LSMR (charging `schwarz`'s bound
+    /// of its Schwarz preconditioner on this generation), and last (Auto
+    /// only) with the largest-weight re-check of a two-FE PCG miss. Returns
+    /// the step's result and the policy that produced it (a terminal
+    /// result's replay must re-execute with that same policy).
     pub(super) fn run<T>(
         &self,
         generation: usize,
+        schwarz: SchwarzBound<'_>,
         mut step: impl FnMut(PpmlConfig, PreparedOlsFitConfig) -> Result<T>,
     ) -> Result<(T, PpmlConfig, PreparedOlsFitConfig)> {
         let mut first = match step(self.ppml, self.linear) {
@@ -161,7 +201,7 @@ impl<'a> DetectorPolicy<'a> {
                 Err(error) => return Err(error),
             };
         }
-        let Some((ppml, linear)) = self.admit_lsmr()? else {
+        let Some((ppml, linear)) = self.admit_lsmr(schwarz)? else {
             return self.recertified(generation, step, first);
         };
         let retried = step(ppml, linear);
@@ -216,24 +256,42 @@ impl<'a> DetectorPolicy<'a> {
     }
 
     /// Charge the LSMR workspace to the plan and return its policy, or `None`
-    /// when no re-execution was resolved or it does not fit the plan.
-    fn admit_lsmr(&self) -> Result<Option<(PpmlConfig, PreparedOlsFitConfig)>> {
+    /// when no re-execution was resolved or it does not fit the plan. A
+    /// Schwarz-capable preconditioner is charged `schwarz`'s bound beside
+    /// fedemean's base workspace when it fits (SPEC §19); otherwise the
+    /// automatic one runs within the base (Jacobi) and explicit Schwarz is
+    /// not re-executed.
+    fn admit_lsmr(
+        &self,
+        schwarz: SchwarzBound<'_>,
+    ) -> Result<Option<(PpmlConfig, PreparedOlsFitConfig)>> {
         let Some((admission, live)) = self.lsmr else {
             return Ok(None);
         };
         let mut plan = live.get();
-        if !plan.admit_separation_projection(plan.separation_projection_bytes.max(admission.bytes))
-        {
+        let mut linear = self.retained_cg.map_or(self.linear, |(_, linear)| linear);
+        let preconditioner = linear.absorb.lsmr.preconditioner;
+        let mut bytes = admission.bytes;
+        if matches!(
+            preconditioner,
+            LsmrPreconditioner::Auto | LsmrPreconditioner::Schwarz
+        ) {
+            match schwarz(plan.separation_projection_headroom(admission.bytes))? {
+                Some(bound) => bytes = admission.with_schwarz(bound)?,
+                None if preconditioner == LsmrPreconditioner::Schwarz => return Ok(None),
+                None => {}
+            }
+        }
+        if !plan.admit_separation_projection(plan.separation_projection_bytes.max(bytes)) {
             return Ok(None);
         }
         live.set(plan);
-        let mut linear = self.retained_cg.map_or(self.linear, |(_, linear)| linear);
         linear.absorb.solver = FeSolverKind::Lsmr;
         linear.absorb.solver_memory_budget = Some(FeSolverMemoryBudget {
             execution_bytes: admission.base,
             usable_bytes: admission
                 .base
-                .checked_add(admission.bytes)
+                .checked_add(bytes)
                 .ok_or_else(|| allocation("separation LSMR projection budget overflows"))?,
         });
         let mut ppml = self.retained_cg.map_or(self.ppml, |(ppml, _)| ppml);
@@ -256,7 +314,8 @@ impl DetectorPolicy<'_> {
         proposal: PreparedNumericalProposal,
         config: SeparationConfig,
     ) -> Result<ValidatedNumericalProposal> {
-        let (certificate, _, _) = self.run(generation.generation(), |ppml, linear| {
+        let bound = |limit| schwarz_bound(generation, limit);
+        let (certificate, _, _) = self.run(generation.generation(), &bound, |ppml, linear| {
             certify_numerical_proposal(generation, &proposal, ppml, config, linear)
         })?;
         Ok(ValidatedNumericalProposal {

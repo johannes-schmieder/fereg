@@ -482,11 +482,10 @@ fn admit_detector_projection(
     let lsmr = retry::lsmr_admission(
         linear.absorb.solver,
         &estimate,
-        crate::fe::block_schur::lsmr_workspace_bytes_for(
+        crate::fe::block_schur::lsmr_base_workspace_bytes(
             generation.original_rows().len(),
             &levels,
             linear.execution.threads.resolved(),
-            linear.absorb.lsmr.preconditioner,
         )?,
         generation.original_rows().len(),
         graph_bytes,
@@ -939,7 +938,8 @@ where
                 let mut lap = trace::IrPhase::new(coordinator.view().generation);
                 let (detected, ppml, linear) = {
                     let view = coordinator.view();
-                    policy.run(view.generation, |ppml, linear| {
+                    let bound = |limit| retry::schwarz_bound(view.prepared, limit);
+                    policy.run(view.generation, &bound, |ppml, linear| {
                         retry::ir_step(
                             view.prepared,
                             ppml,
@@ -1033,7 +1033,8 @@ where
                 }
                 let (detected, ppml, linear) = {
                     let view = coordinator.view();
-                    policy.run(view.generation, |ppml, linear| {
+                    let bound = |limit| retry::schwarz_bound(view.prepared, limit);
+                    policy.run(view.generation, &bound, |ppml, linear| {
                         retry::mu_step(view.prepared, ppml, config, linear, &exploration)
                     })?
                 };

@@ -1,9 +1,14 @@
 use super::*;
-use crate::fe::block_schur::lsmr_workspace_bytes_for;
+use crate::fe::block_schur::lsmr_base_workspace_bytes;
 use crate::fe::LsmrPreconditioner;
 use crate::memory::estimate_fe_solver_memory;
 use crate::ppml::{plan_ppml_memory, PpmlMemoryConfig, PpmlMemoryDimensions, PpmlMemoryPlan};
 use crate::MemoryMode;
+
+/// No Schwarz preconditioner fits (Auto re-executes within the base).
+fn no_schwarz(_: Option<u128>) -> Result<Option<u128>> {
+    Ok(None)
+}
 
 /// The memory module's minimum headroom (512 MiB) below `available_bytes`.
 const HEADROOM: u128 = 512 * 1024 * 1024;
@@ -70,13 +75,7 @@ fn retained_cg(plan: &Cell<PpmlMemoryPlan>) -> (DetectorPolicy<'_>, LsmrAdmissio
     let admission = lsmr_admission(
         FeSolverKind::Cg,
         &estimate,
-        lsmr_workspace_bytes_for(
-            10_000,
-            &[2_000, 1_000],
-            1,
-            linear.absorb.lsmr.preconditioner,
-        )
-        .unwrap(),
+        lsmr_base_workspace_bytes(10_000, &[2_000, 1_000], 1).unwrap(),
         10_000,
         0,
         base,
@@ -100,7 +99,7 @@ fn certified_first_attempt_is_never_reexecuted_or_charged() {
     let (policy, _) = retained_cg(&cell);
     let mut solvers = Vec::new();
     let (value, ppml, linear) = policy
-        .run(0, |ppml, linear| {
+        .run(0, &no_schwarz, |ppml, linear| {
             assert_eq!(ppml.absorb, linear.absorb);
             solvers.push(linear.absorb.solver);
             Ok(7)
@@ -119,7 +118,7 @@ fn numerical_failure_reexecutes_once_with_charged_lsmr() {
         let (policy, admission) = retained_cg(&cell);
         let mut calls = Vec::new();
         let (value, ppml, linear) = policy
-            .run(3, |ppml, linear| {
+            .run(3, &no_schwarz, |ppml, linear| {
                 calls.push((linear.absorb.solver, linear.absorb.solver_memory_budget));
                 assert_eq!(ppml.absorb, linear.absorb);
                 if linear.absorb.solver == FeSolverKind::Cg {
@@ -150,13 +149,78 @@ fn numerical_failure_reexecutes_once_with_charged_lsmr() {
     }
 }
 
+/// A Schwarz-capable LSMR re-execution is charged fedemean's bound of its
+/// Schwarz preconditioner (on the generation that re-executes, within the
+/// plan's headroom) beside the base workspace. Without a bound that fits,
+/// the automatic preconditioner re-executes within the base and explicit
+/// Schwarz does not re-execute; identity and Jacobi need no bound.
+#[test]
+fn lsmr_reexecution_charges_its_schwarz_bound() {
+    use LsmrPreconditioner::{Auto, Diagonal, Off, Schwarz};
+    for (preconditioner, bound, charged) in [
+        (Auto, Some(1_000), Some(1_000)),
+        (Auto, None, Some(0)),
+        (Schwarz, Some(1_000), Some(1_000)),
+        (Schwarz, None, None),
+        (Diagonal, Some(1_000), Some(0)),
+        (Off, Some(1_000), Some(0)),
+    ] {
+        let cell = Cell::new(plan(None));
+        let (policy, admission) = retained_cg(&cell);
+        let mut linear = policy.admitted().1;
+        linear.absorb.lsmr.preconditioner = preconditioner;
+        let ppml = PpmlConfig {
+            absorb: linear.absorb,
+            ..PpmlConfig::default()
+        };
+        let policy = DetectorPolicy::new(ppml, linear, None, Some((admission, &cell)));
+        let queried = std::cell::RefCell::new(Vec::new());
+        let schwarz = |limit| {
+            queried.borrow_mut().push(limit);
+            Ok(bound)
+        };
+        let mut budgets = Vec::new();
+        let result = policy.run(0, &schwarz, |_, linear| {
+            if linear.absorb.solver == FeSolverKind::Lsmr {
+                budgets.push(linear.absorb.solver_memory_budget);
+                Ok(())
+            } else {
+                Err(failure(ErrorCode::NonConvergence, "uncertified"))
+            }
+        });
+        // An unlimited plan passes no limit to the bound.
+        let asked = usize::from(matches!(preconditioner, Auto | Schwarz));
+        assert_eq!(queried.into_inner(), vec![None; asked]);
+        match charged {
+            Some(extra) => {
+                result.expect("LSMR re-execution");
+                let bytes = admission.with_schwarz(extra).unwrap();
+                assert_eq!(bytes, admission.bytes + extra);
+                assert_eq!(cell.get().separation_projection_bytes, bytes);
+                assert_eq!(
+                    budgets,
+                    [Some(FeSolverMemoryBudget {
+                        execution_bytes: admission.base,
+                        usable_bytes: admission.base + bytes,
+                    })]
+                );
+            }
+            None => {
+                assert_eq!(result.unwrap_err().code, ErrorCode::NonConvergence);
+                assert!(budgets.is_empty());
+                assert_eq!(cell.get(), plan(None));
+            }
+        }
+    }
+}
+
 #[test]
 fn failed_reexecution_reports_the_first_error_but_propagates_break_and_memory() {
     let cell = Cell::new(plan(None));
     let (policy, _) = retained_cg(&cell);
     let first = "retained CG direction failed certification";
     let error = policy
-        .run(0, |_, linear| {
+        .run(0, &no_schwarz, |_, linear| {
             Err::<(), _>(if linear.absorb.solver == FeSolverKind::Cg {
                 failure(ErrorCode::NonConvergence, first)
             } else {
@@ -174,7 +238,7 @@ fn failed_reexecution_reports_the_first_error_but_propagates_break_and_memory() 
         ErrorCode::Internal,
     ] {
         let error = policy
-            .run(0, |_, linear| {
+            .run(0, &no_schwarz, |_, linear| {
                 Err::<(), _>(if linear.absorb.solver == FeSolverKind::Cg {
                     failure(ErrorCode::NonConvergence, first)
                 } else {
@@ -197,7 +261,7 @@ fn only_numerical_failures_of_admitted_retained_cg_are_reexecuted() {
     ] {
         let mut calls = 0;
         let error = policy
-            .run(0, |_, _| {
+            .run(0, &no_schwarz, |_, _| {
                 calls += 1;
                 Err::<(), _>(failure(code, "not a certificate failure"))
             })
@@ -207,7 +271,7 @@ fn only_numerical_failures_of_admitted_retained_cg_are_reexecuted() {
     // Other admitted detector solvers resolve none; Auto re-executes as
     // retained CG and so resolves the same charge.
     let estimate = estimate_fe_solver_memory(100, 2, &[10, 10], 1).unwrap();
-    let lsmr = lsmr_workspace_bytes_for(100, &[10, 10], 1, LsmrPreconditioner::Auto).unwrap();
+    let lsmr = lsmr_base_workspace_bytes(100, &[10, 10], 1).unwrap();
     assert_eq!(
         lsmr_admission(FeSolverKind::Auto, &estimate, lsmr, 100, 0, 0),
         lsmr_admission(FeSolverKind::Cg, &estimate, lsmr, 100, 0, 0),
@@ -216,14 +280,6 @@ fn only_numerical_failures_of_admitted_retained_cg_are_reexecuted() {
         let admission = lsmr_admission(solver, &estimate, lsmr, 100, 0, 0).unwrap();
         assert_eq!(admission, None);
     }
-    // Jacobi and the identity never build Schwarz, so they need no grant.
-    for preconditioner in [LsmrPreconditioner::Off, LsmrPreconditioner::Diagonal] {
-        assert!(lsmr_workspace_bytes_for(100, &[10, 10], 1, preconditioner).unwrap() < lsmr);
-    }
-    assert_eq!(
-        lsmr_workspace_bytes_for(100, &[10, 10], 1, LsmrPreconditioner::Schwarz).unwrap(),
-        lsmr
-    );
     let unadmitted = DetectorPolicy::new(
         PpmlConfig::default(),
         PreparedOlsFitConfig::default(),
@@ -232,7 +288,7 @@ fn only_numerical_failures_of_admitted_retained_cg_are_reexecuted() {
     );
     let mut calls = 0;
     let error = unadmitted
-        .run(0, |_, _| {
+        .run(0, &no_schwarz, |_, _| {
             calls += 1;
             Err::<(), _>(failure(ErrorCode::NonConvergence, "uncertified"))
         })
@@ -244,8 +300,7 @@ fn only_numerical_failures_of_admitted_retained_cg_are_reexecuted() {
 fn reexecution_that_does_not_fit_the_plan_reports_the_first_error() {
     let unlimited = plan(None);
     let estimate = estimate_fe_solver_memory(10_000, 4, &[2_000, 1_000], 1).unwrap();
-    let lsmr =
-        lsmr_workspace_bytes_for(10_000, &[2_000, 1_000], 1, LsmrPreconditioner::Auto).unwrap();
+    let lsmr = lsmr_base_workspace_bytes(10_000, &[2_000, 1_000], 1).unwrap();
     let admission = lsmr_admission(
         FeSolverKind::Cg,
         &estimate,
@@ -273,7 +328,7 @@ fn reexecution_that_does_not_fit_the_plan_reports_the_first_error() {
     );
     let mut calls = 0;
     let error = policy
-        .run(0, |_, _| {
+        .run(0, &no_schwarz, |_, _| {
             calls += 1;
             Err::<(), _>(failure(ErrorCode::NonConvergence, "uncertified"))
         })
@@ -321,7 +376,7 @@ fn certified_auto_attempt_is_never_reexecuted_or_charged() {
     let (policy, _) = auto_routed(&cell);
     let mut solvers = Vec::new();
     let (value, ppml, linear) = policy
-        .run(0, |ppml, linear| {
+        .run(0, &no_schwarz, |ppml, linear| {
             assert_eq!(ppml.absorb, linear.absorb);
             solvers.push(linear.absorb.solver);
             Ok(5)
@@ -341,7 +396,7 @@ fn failed_auto_step_reexecutes_as_retained_cg_under_the_same_budget() {
         let admitted = policy.admitted().1;
         let mut calls = Vec::new();
         let (value, ppml, linear) = policy
-            .run(2, |ppml, linear| {
+            .run(2, &no_schwarz, |ppml, linear| {
                 assert_eq!(ppml.absorb, linear.absorb);
                 calls.push(linear.absorb.solver);
                 if linear.absorb.solver == FeSolverKind::Auto {
@@ -369,7 +424,7 @@ fn failed_auto_and_cg_steps_continue_with_lsmr_and_report_the_cg_error() {
     let (policy, admission) = auto_routed(&cell);
     let mut calls = Vec::new();
     let (value, ppml, linear) = policy
-        .run(1, |_, linear| {
+        .run(1, &no_schwarz, |_, linear| {
             calls.push(linear.absorb.solver);
             match linear.absorb.solver {
                 FeSolverKind::Lsmr => Ok(17),
@@ -397,7 +452,7 @@ fn failed_auto_and_cg_steps_continue_with_lsmr_and_report_the_cg_error() {
     let (policy, _) = auto_routed(&cell);
     let cg = "retained CG direction failed certification";
     let error = policy
-        .run(0, |_, linear| {
+        .run(0, &no_schwarz, |_, linear| {
             Err::<(), _>(match linear.absorb.solver {
                 FeSolverKind::Auto => failure(ErrorCode::InvalidData, "Auto did not certify"),
                 FeSolverKind::Cg => failure(ErrorCode::NonConvergence, cg),
@@ -423,7 +478,7 @@ fn auto_step_stops_on_break_memory_or_internal_errors() {
         let (policy, _) = auto_routed(&cell);
         let mut calls = 0;
         let error = policy
-            .run(0, |_, _| {
+            .run(0, &no_schwarz, |_, _| {
                 calls += 1;
                 Err::<(), _>(failure(code, "not a certificate failure"))
             })
@@ -432,7 +487,7 @@ fn auto_step_stops_on_break_memory_or_internal_errors() {
         // Of its retained-CG re-execution.
         let mut solvers = Vec::new();
         let error = policy
-            .run(0, |_, linear| {
+            .run(0, &no_schwarz, |_, linear| {
                 solvers.push(linear.absorb.solver);
                 Err::<(), _>(if linear.absorb.solver == FeSolverKind::Auto {
                     failure(ErrorCode::NonConvergence, "uncertified")
@@ -464,7 +519,7 @@ fn recertified_auto_attempt_follows_only_a_complete_numerical_failure() {
         let (policy, _) = auto_routed(&cell);
         let mut calls = Vec::new();
         let (_, ppml, linear) = policy
-            .run(0, |ppml, linear| {
+            .run(0, &no_schwarz, |ppml, linear| {
                 assert_eq!(ppml.absorb, linear.absorb);
                 calls.push(attempt(&linear));
                 if linear.absorb.solver == success {
@@ -484,7 +539,7 @@ fn recertified_auto_attempt_follows_only_a_complete_numerical_failure() {
     let (policy, _) = auto_routed(&cell);
     let mut calls = Vec::new();
     let (value, ppml, linear) = policy
-        .run(4, |ppml, linear| {
+        .run(4, &no_schwarz, |ppml, linear| {
             assert_eq!(ppml.absorb, linear.absorb);
             calls.push(attempt(&linear));
             if linear.absorb.declined_recheck.is_some() {
@@ -513,7 +568,7 @@ fn recertified_auto_attempt_follows_only_a_complete_numerical_failure() {
         let cell = Cell::new(plan(None));
         let (policy, _) = auto_routed(&cell);
         let error = policy
-            .run(0, |_, linear| {
+            .run(0, &no_schwarz, |_, linear| {
                 Err::<(), _>(match attempt(&linear) {
                     (Cg, _) => failure(ErrorCode::NonConvergence, cg),
                     (Auto, true) => failure(code, "re-check attempt"),
@@ -532,7 +587,7 @@ fn recertified_auto_attempt_follows_only_a_complete_numerical_failure() {
     let unadmitted = DetectorPolicy::new(policy.ppml, policy.linear, policy.retained_cg, None);
     let mut calls = Vec::new();
     unadmitted
-        .run(0, |_, linear| {
+        .run(0, &no_schwarz, |_, linear| {
             calls.push(attempt(&linear));
             Err::<(), _>(failure(ErrorCode::NonConvergence, "uncertified"))
         })
@@ -544,7 +599,7 @@ fn recertified_auto_attempt_follows_only_a_complete_numerical_failure() {
     let (policy, _) = retained_cg(&cell);
     let mut calls = Vec::new();
     policy
-        .run(0, |_, linear| {
+        .run(0, &no_schwarz, |_, linear| {
             calls.push(attempt(&linear));
             Err::<(), _>(failure(ErrorCode::NonConvergence, "uncertified"))
         })

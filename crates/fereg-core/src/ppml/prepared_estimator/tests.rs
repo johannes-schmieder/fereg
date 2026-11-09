@@ -8,7 +8,7 @@ use crate::metadata::{
 use crate::ols::{OlsInputBinding, OlsInputRole};
 use crate::ppml::prepared_irls::{
     reset_canonical_frame_refresh_count, take_canonical_frame_refresh_count,
-    take_cmg_early_memory_peaks, take_fused_strict_witness_count,
+    take_cmg_early_memory_peaks, take_fused_strict_witness_count, take_schwarz_block_admission,
 };
 use crate::ppml::{PpmlFallbackKind, PPML_STEADY_STATE_AUDIT_ITERATIONS};
 use crate::ppml_separation::{MethodStatus, SeparationDropReason, SeparationMethods};
@@ -606,11 +606,11 @@ fn an_explicit_lsmr_step_that_does_not_certify_falls_back_to_the_canonical_sessi
 }
 
 /// Explicit `precondition(schwarz)` runs the joint recurrence with the
-/// Schwarz FE block. A block that does not build within its limit falls
-/// back to the joint recurrence's Jacobi block on every step: the request
-/// stays explicit LSMR with Schwarz, the steps' route reports Jacobi, and
-/// the fit reports the certified fallback (reason `memory`). The fit
-/// matches the MAP oracle.
+/// Schwarz FE block, admitted from fedemean's weight-independent bound. A
+/// block that does not build within its limit falls back to the joint
+/// recurrence's Jacobi block on every step: the request stays explicit LSMR
+/// with Schwarz, the steps' route reports Jacobi, and the fit reports the
+/// certified fallback (reason `memory`). The fit matches the MAP oracle.
 #[test]
 fn an_explicit_schwarz_block_that_does_not_build_reports_its_jacobi_fallback() {
     let (baseline_request, baseline_loaded) = fixture(2, false, false, false, false, false);
@@ -652,6 +652,50 @@ fn an_explicit_schwarz_block_that_does_not_build_reports_its_jacobi_fallback() {
         0
     );
     assert_ppml_results_close(&fallback, &baseline);
+}
+
+/// The preflight admits the explicit Schwarz FE block from fedemean's
+/// weight-independent bound, beside the route's workspace. One byte below
+/// that peak (but above the route without the block) the request is still
+/// served by explicit LSMR: the block is refused before any work and every
+/// step runs the Jacobi block, reported as the certified fallback
+/// (`memory`). The bound is exactly what explicit Schwarz admits beyond
+/// explicit Jacobi, which needs no block.
+#[test]
+fn the_preflight_admits_the_schwarz_block_from_fedemean_s_bound() {
+    let fit = |preconditioner, available| {
+        let (mut request, loaded) = fixture(2, false, false, false, false, false);
+        request.solver = PpmlSolverFamily::Lsmr;
+        request.lsmr_preconditioner = preconditioner;
+        request.memory.requested = MemoryMode::Fast;
+        request.memory.available_bytes = available;
+        fit_prepared_ppml(request, loaded).expect("explicit LSMR")
+    };
+    take_schwarz_block_admission();
+    let jacobi = fit(crate::fe::LsmrPreconditioner::Diagonal, None);
+    assert_eq!(take_schwarz_block_admission(), None);
+    let schwarz = fit(crate::fe::LsmrPreconditioner::Schwarz, None);
+    let (route_peak, bound) = take_schwarz_block_admission().expect("Schwarz block admission");
+    assert!(bound > 0);
+    assert_eq!(
+        schwarz.memory().plan.solver_workspace_bytes,
+        jacobi.memory().plan.solver_workspace_bytes + bound
+    );
+    let usable = route_peak + bound - 1;
+    let headroom = 512_u128 * 1024 * 1024;
+    assert!((usable + headroom) / 5 <= headroom);
+    let refused = fit(
+        crate::fe::LsmrPreconditioner::Schwarz,
+        Some(usable + headroom),
+    );
+    assert_eq!(take_schwarz_block_admission(), None);
+    assert_eq!(refused.solver().requested, PpmlSolverFamily::Lsmr);
+    let steps = refused.memory().steps;
+    let (route, _) = steps.route.expect("explicit LSMR steps");
+    assert_eq!(route.preconditioner, crate::fe::FePreconditioner::Jacobi);
+    assert_eq!(steps.fallback, crate::fe::FeFallbackReason::Memory);
+    assert!(refused.memory().plan.solver_workspace_bytes < route_peak + bound);
+    assert_ppml_results_close(&refused, &jacobi);
 }
 
 #[test]
@@ -844,23 +888,38 @@ fn public_cmg_non_numerical_failures_remain_fatal() {
     }
 }
 
+/// Explicit LSMR's route workspace (without the optional Schwarz FE block)
+/// beyond the limit runs the Auto plan; below the block's admission alone,
+/// the automatic preconditioner keeps explicit LSMR on its Jacobi block
+/// with no fallback, since it builds Schwarz only when it fits.
 #[test]
 fn public_lsmr_workspace_beyond_the_limit_runs_the_auto_plan() {
-    let (mut request, loaded) = fixture(3, false, false, false, false, false);
-    request.solver = PpmlSolverFamily::Lsmr;
-    request.memory.requested = MemoryMode::Fast;
-    let admitted = fit_prepared_ppml(request, loaded).expect("unbounded LSMR fixture");
-    let plan = admitted.memory().plan;
-    let usable = plan.selected_inventory().peak_bytes + plan.solver_workspace_bytes - 1;
+    let fit = |available| {
+        let (mut request, loaded) = fixture(3, false, false, false, false, false);
+        request.solver = PpmlSolverFamily::Lsmr;
+        request.memory.requested = MemoryMode::Fast;
+        request.memory.available_bytes = available;
+        fit_prepared_ppml(request, loaded)
+    };
+    take_schwarz_block_admission();
+    let admitted = fit(None).expect("unbounded LSMR fixture");
+    let (route_peak, bound) = take_schwarz_block_admission().expect("Schwarz block admission");
     let headroom = 512_u128 * 1024 * 1024;
-    assert!((usable + headroom) / 5 <= headroom);
-    let (mut request, loaded) = fixture(3, false, false, false, false, false);
-    request.solver = PpmlSolverFamily::Lsmr;
-    request.memory.requested = MemoryMode::Fast;
-    request.memory.available_bytes = Some(usable + headroom);
+    let available = |usable: u128| {
+        assert!((usable + headroom) / 5 <= headroom);
+        Some(usable + headroom)
+    };
+    let without_block = fit(available(route_peak + bound - 1)).expect("LSMR without the block");
+    assert_eq!(without_block.solver().requested, PpmlSolverFamily::Lsmr);
+    assert_eq!(
+        without_block.memory().steps.fallback,
+        crate::fe::FeFallbackReason::None
+    );
+    assert_ppml_results_close(&without_block, &admitted);
+    let usable = route_peak - 1;
     // The explicit engine's workspace does not fit beside the checkpoint:
     // the Auto plan serves the fit as the certified fallback (`memory`).
-    let fallback = fit_prepared_ppml(request, loaded).expect("the Auto plan below the LSMR peak");
+    let fallback = fit(available(usable)).expect("the Auto plan below the LSMR peak");
     assert_eq!(fallback.solver().requested, PpmlSolverFamily::Auto);
     assert_eq!(
         fallback.memory().steps.fallback,

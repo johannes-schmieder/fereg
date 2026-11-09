@@ -35,7 +35,8 @@ use super::categorical_fwl_cmg::{
 };
 use super::categorical_lsmr::{
     estimate_checkpoint_lsmr_workspace_bytes, estimate_joint_lsmr_workspace_bytes,
-    Formulation as JointLsmrFormulation, JointLsmrReport, ReusableCategoricalJointLsmr,
+    Formulation as JointLsmrFormulation, JointFallback, JointLsmrLimits, JointLsmrReport,
+    ReusableCategoricalJointLsmr,
 };
 #[cfg(test)]
 use super::family::poisson_objective_from_eta;
@@ -174,6 +175,14 @@ thread_local! {
     static CANONICAL_FRAME_REFRESH_COUNT: Cell<usize> = const { Cell::new(0) };
     static FUSED_STRICT_WITNESS_COUNT: Cell<usize> = const { Cell::new(0) };
     static CMG_EARLY_MEMORY_PEAKS: Cell<Option<(u128, u128)>> = const { Cell::new(None) };
+    static SCHWARZ_BLOCK_ADMISSION: Cell<Option<(u128, u128)>> = const { Cell::new(None) };
+}
+
+/// Tests: the last explicit LSMR preflight's admitted peak without the
+/// Schwarz FE block and fedemean's bound of the block (unbounded runs).
+#[cfg(test)]
+pub(super) fn take_schwarz_block_admission() -> Option<(u128, u128)> {
+    SCHWARZ_BLOCK_ADMISSION.replace(None)
 }
 
 #[cfg(test)]
@@ -223,6 +232,11 @@ pub(super) fn take_canonical_frame_refresh_count() -> usize {
 #[cfg(test)]
 pub(super) fn take_fused_strict_witness_count() -> usize {
     FUSED_STRICT_WITNESS_COUNT.replace(0)
+}
+
+#[cfg(test)]
+pub(super) fn record_schwarz_block_admission(peak: u128, bound: u128) {
+    SCHWARZ_BLOCK_ADMISSION.set(Some((peak, bound)));
 }
 
 #[cfg(test)]
@@ -2001,6 +2015,28 @@ struct PublicSolverMemoryAdmission {
     owned_fe_design_shortfall_bytes: u128,
     cmg_batch_capacity: usize,
     checkpoint_workspace_bytes: u128,
+    /// Explicit LSMR with a Schwarz-capable preconditioner: fedemean's
+    /// weight-independent bound of the joint recurrence's Schwarz FE block,
+    /// admitted inside `incremental_bytes`, or why the preflight refused it.
+    schwarz_block: Option<std::result::Result<u128, JointFallback>>,
+}
+
+impl PublicSolverMemoryAdmission {
+    /// The explicit LSMR engine's Schwarz FE block admission: the admitted
+    /// bound (or why it was refused), and the fit's headroom beyond
+    /// everything admitted (`budget`'s headroom less this route's admitted
+    /// workspace), so that the block is built within the fit's remaining
+    /// budget.
+    fn joint_lsmr_limits(self, budget: FeSolverMemoryBudget) -> JointLsmrLimits {
+        JointLsmrLimits {
+            // Identity and Jacobi never build the block.
+            schwarz: self.schwarz_block.unwrap_or(Ok(0)),
+            headroom: budget
+                .usable_bytes
+                .saturating_sub(budget.execution_bytes)
+                .saturating_sub(self.incremental_bytes),
+        }
+    }
 }
 
 fn record_cmg_heap_forecast(
@@ -2165,6 +2201,7 @@ fn public_solver_memory_admission<P: PreparedOlsFitView + ?Sized>(
         owned_fe_design_shortfall_bytes,
         cmg_batch_capacity,
         checkpoint_workspace_bytes: checkpoint_workspace,
+        schwarz_block: None,
     })
 }
 

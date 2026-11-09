@@ -15,6 +15,23 @@ fn engine(
     threads: usize,
     preconditioner: LsmrPreconditioner,
 ) -> ReusableCategoricalJointLsmr<'_> {
+    engine_with(
+        design,
+        active,
+        threads,
+        preconditioner,
+        JointLsmrLimits::UNBOUNDED,
+    )
+}
+
+/// [`engine`] with the preflight's admitted `limits`.
+fn engine_with(
+    design: &FeDesign,
+    active: DenseMatrix,
+    threads: usize,
+    preconditioner: LsmrPreconditioner,
+    limits: JointLsmrLimits,
+) -> ReusableCategoricalJointLsmr<'_> {
     let effects: Vec<_> = design
         .effects()
         .iter()
@@ -29,6 +46,7 @@ fn engine(
         slots,
         view,
         preconditioner,
+        limits,
     )
     .expect("engine")
 }
@@ -497,6 +515,56 @@ fn a_stalled_automatic_jacobi_recurrence_continues_on_the_schwarz_block() {
     }
 }
 
+/// A Schwarz FE block the preflight refused is never built: an explicit
+/// request runs its Jacobi block from the first frame with the refusal's
+/// reason, and the automatic preconditioner hands a stalled Jacobi frame
+/// straight to the projections. Admitted, the block is built within its
+/// bound and the fit's headroom.
+#[test]
+fn a_block_the_preflight_refused_is_never_built() {
+    let fixture = fixture(120, [9, 6, 4], 1);
+    let refused = JointLsmrLimits {
+        schwarz: Err(JointFallback::SchwarzMemoryLimit),
+        headroom: u128::MAX,
+    };
+    let assemble = |preconditioner, limits| {
+        engine_with(
+            &fixture.design,
+            fixture.active.clone(),
+            1,
+            preconditioner,
+            limits,
+        )
+    };
+    let mut explicit = assemble(LsmrPreconditioner::Schwarz, refused);
+    for phase in [0.1, 0.2] {
+        let report = oracle_frame(&mut explicit, &fixture, phase, 0);
+        assert_eq!(report.formulation, Formulation::Joint);
+        assert_eq!(
+            report.route.preconditioner,
+            crate::fe::FePreconditioner::Jacobi
+        );
+        assert_eq!(report.fallback, Some(JointFallback::SchwarzMemoryLimit));
+    }
+    assert!(explicit.projector.is_none());
+    let mut automatic = assemble(LsmrPreconditioner::Auto, refused);
+    let report = oracle_frame(&mut automatic, &fixture, 0.1, 1);
+    assert_eq!(report.formulation, Formulation::Projections);
+    assert_eq!((report.route.escalations, report.retries), (0, 1));
+    assert_eq!(report.fallback, None);
+    // An admitted bound of zero leaves the block only the headroom.
+    let mut admitted = assemble(
+        LsmrPreconditioner::Schwarz,
+        JointLsmrLimits {
+            schwarz: Ok(0),
+            headroom: u128::MAX,
+        },
+    );
+    let report = oracle_frame(&mut admitted, &fixture, 0.1, 0);
+    assert!(is_schwarz(&report));
+    assert_eq!(report.fallback, None);
+}
+
 /// A Schwarz FE block beyond its memory limit: an explicit request falls
 /// back to its Jacobi block, certified and reported, and later frames start
 /// there without another build; the automatic preconditioner hands the
@@ -523,7 +591,11 @@ fn a_workspace_beyond_the_admitted_limit_falls_back_or_refuses() {
         );
         assert_eq!(report.fallback, Some(JointFallback::SchwarzMemoryLimit));
     }
-    assert!(explicit.schwarz_refused && explicit.joint.fe_schwarz.is_none());
+    assert_eq!(
+        explicit.schwarz_refused,
+        Some(JointFallback::SchwarzMemoryLimit)
+    );
+    assert!(explicit.joint.fe_schwarz.is_none());
     let mut automatic = engine(
         &fixture.design,
         fixture.active.clone(),
@@ -801,18 +873,20 @@ fn joint_memory_estimate_scales_with_retained_design_and_thread_team() {
     let floor = 8 * (10_000 * 8 + 10_000 * 9 + 2 * 9 * 3_000);
     assert!(wider > floor);
     // Explicit preconditioners keep the joint recurrence and never project;
-    // a Schwarz FE block adds fedemean's workspace with its grant.
+    // the Schwarz FE block is admitted beside this from fedemean's bound, so
+    // explicit Schwarz charges the same; the projections add fedemean's base
+    // workspace (without a grant) beside their own buffers.
     let joint = |preconditioner| {
         estimate_joint_lsmr_workspace_bytes(10_000, 8, &[2_000, 1_000], 1, preconditioner).unwrap()
     };
     let diagonal = joint(LsmrPreconditioner::Diagonal);
-    let schwarz = joint(LsmrPreconditioner::Schwarz);
     assert_eq!(joint(LsmrPreconditioner::Off), diagonal);
-    assert_eq!(
-        schwarz - diagonal,
-        crate::fe::block_schur::lsmr_workspace_bytes(10_000, &[2_000, 1_000], 1).unwrap()
+    assert_eq!(joint(LsmrPreconditioner::Schwarz), diagonal);
+    assert!(
+        wider - diagonal
+            > crate::fe::block_schur::lsmr_base_workspace_bytes(10_000, &[2_000, 1_000], 1)
+                .unwrap()
     );
-    assert!(diagonal < schwarz && schwarz < wider);
 }
 
 #[test]

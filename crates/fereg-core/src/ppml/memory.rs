@@ -836,6 +836,30 @@ impl PpmlMemoryPlan {
         true
     }
 
+    /// The peak [`Self::with_solver_workspace`] admitted against the usable
+    /// bytes: the required peak, the solver workspace and the reusable banks.
+    pub(crate) const fn solver_workspace_peak(self) -> u128 {
+        self.required_peak_bytes
+            .saturating_add(self.solver_workspace_bytes)
+            .saturating_add(self.reusable_projection_bytes)
+            .saturating_add(self.reusable_certificate_bytes)
+            .saturating_add(self.reusable_slope_bytes)
+    }
+
+    /// Bytes [`Self::with_solver_workspace`] could add beside the admitted
+    /// solver workspace (`None`: no usable limit).
+    pub(crate) fn solver_workspace_headroom(self) -> Option<u128> {
+        self.usable_bytes
+            .map(|usable| usable.saturating_sub(self.solver_workspace_peak()))
+    }
+
+    /// Bytes [`Self::admit_separation_projection`] could admit beside a
+    /// separation projection of `bytes` (`None`: no usable limit).
+    pub(crate) fn separation_projection_headroom(self, bytes: u128) -> Option<u128> {
+        self.usable_bytes
+            .map(|usable| usable.saturating_sub(self.required_peak_bytes.saturating_add(bytes)))
+    }
+
     pub(crate) fn with_solver_workspace(mut self, bytes: u128) -> Result<Self> {
         let peak = self
             .required_peak_bytes
