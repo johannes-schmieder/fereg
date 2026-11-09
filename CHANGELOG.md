@@ -77,6 +77,20 @@
   (PPML request field `preconditioner=`). Two-effect fits whose Jacobi
   recurrence certifies are unchanged bit for bit; three effects take about 60%
   less time on the one-million-row benchmark panel.
+- feppml `solver(lsmr)`'s joint recurrence can use additive Schwarz as its
+  fixed-effect block (fedemean's FE preconditioner handle):
+  `precondition(auto)` continues a stalled Jacobi recurrence on the Schwarz
+  block before handing the step to the projections, and
+  `precondition(schwarz)` runs the joint recurrence with that block instead
+  of the projections. The block is admitted from fedemean's
+  weight-independent bound of its build (replacing the fixed PPML Schwarz
+  grant, also for the separation detector's LSMR re-execution); one that does
+  not fit in memory or whose factorization refuses falls back to the Jacobi
+  block, reported with `e(fe_fallback) = 1` and reason `memory` or
+  `nonconvergence` (`e(fe_requested_preconditioner)` `schwarz`,
+  `e(fe_preconditioner)` `jacobi`). Explicit `schwarz` formerly failed with
+  r(909) on panels where the grant refused the build. Default fits and
+  explicit `jacobi`/`none` are unchanged bit for bit.
 - feppml's strict checkpoint after an elimination decline (explicit `lsmr` and
   `cg`) and Auto's canonical projections with six or more categorical effects
   run on fedemean's full system (modified LSMR and CG respectively).

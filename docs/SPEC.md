@@ -178,7 +178,9 @@ full-system PCG (unless that was the request), then MAP; for explicit CMG or
 CMG-Schur on a design they do not support, the Auto routes; for feppml's
 explicit `lsmr` and `cg`, the Auto plan when the request cannot run at all,
 or the canonical route for a frame (and the later frames) that the explicit
-engine does not certify. Option-grammar errors still fail with r(198);
+engine does not certify; for feppml's `lsmr, precondition(schwarz)`, the
+joint recurrence's Jacobi FE block when the Schwarz block does not fit its
+memory limit or refuses numerically (§13). Option-grammar errors still fail with r(198);
 cancellation (Break) and input or data errors (invalid weights, a level
 without positive weight, malformed columns) are never retried; memory limits
 still bind; uncertified output is never accepted. When no budget remains (an
@@ -1512,12 +1514,21 @@ fedemean's FE preconditioner handle (`Projector::fe_preconditioner`):
 additive Schwarz over the star of factor pairs with automatic local solves,
 built for each frame's Hessian weights and fixed within its recurrences,
 scaled to the raw weights and symmetric positive definite on all of the FE
-coefficient space, so the block-diagonal `M^-1` stays nonsingular. It is
-admitted within the projections' workspace limit. A block that does not
-build is a certified fallback: the joint recurrence continues on its Jacobi
-block, reported on the frame (memory refusals do not depend on the weights,
-so later frames start on Jacobi); memory limits still bind, and cancellation
-and input errors are never retried. With the Schwarz block a tolerance stop
+coefficient space, so the block-diagonal `M^-1` stays nonsingular. The
+preflight admits it from fedemean's weight-independent upper bound of the
+handle (`Projector::fe_preconditioner_bytes`, §19) beside the route's
+workspace, and each frame builds it within the fit's remaining budget (the
+admitted bound plus what nothing else admitted). A block that cannot be
+admitted, does not build within that budget or whose factorization refuses
+is a certified fallback: with `precondition(schwarz)` the joint recurrence
+continues on its Jacobi block (memory refusals do not depend on the weights,
+so later frames start on Jacobi; a refused admission is never built), and
+the fit reports `e(fe_requested_preconditioner)` `schwarz`,
+`e(fe_preconditioner)` `jacobi` when no frame used Schwarz and
+`e(fe_fallback) = 1` with reason `memory` (numerical refusal:
+`nonconvergence`); `precondition(auto)` never escalates to a refused block,
+so a stalled Jacobi frame goes to the projections. Memory limits still bind,
+and cancellation and input errors are never retried. With the Schwarz block a tolerance stop
 that mlsmr's exit audit refutes (the plain gradient against the estimate in
 `M`'s metric, which differ by the preconditioner's condition number on poorly
 connected FE graphs) counts as terminated, and the exact certificate decides
@@ -1541,7 +1552,17 @@ certifies are bitwise unchanged; explicit `schwarz` on the two-, three- and
 six-effect panels, formerly r(909) under the PPML Schwarz grant, certifies on
 its Jacobi fallback. A Schwarz block on those well-connected panels would cost
 about 0.6 s per frame to build for a handful of saved iterations, which is why
-the automatic choice keeps Jacobi until it stalls.
+the automatic choice keeps Jacobi until it stalls. Admission from fedemean's
+bound (integration of the handle, 2026-11-09) replaces the fixed PPML
+Schwarz grant that refused those builds: declared scope, explicit `schwarz`
+fits whose block the grant refused now build it within the remaining budget
+(the joint Schwarz recurrence instead of the Jacobi fallback: inner
+iteration counts, solver signatures and low bits within §20, reported
+without a fallback), explicit `auto`/`schwarz` fits compute the bound's
+count-only build stages once in the preflight, and below a memory limit
+that the block does not fit, explicit `lsmr` keeps its route without the
+block where the Auto plan formerly served it; every other fit, the default
+routes and explicit `jacobi`/`none` keep their bits and admission.
 
 **Checkpoint accelerator (2026-11-09).** Explicit LSMR and CMG fits with two or
 three categorical effects whose canonical elimination declines project the
@@ -2078,19 +2099,33 @@ and projection scratch (the generic MAP-family estimate); fedemean admits its
 own workspace (structure, weight state, recurrence and any Schwarz
 preconditioner) within the budget left beside the held buffers, and a
 fedemean memory decline continues with MAP, reported as the fallback. PPML
-explicit LSMR projections, the strict-checkpoint accelerator and the
-separation detector's LSMR re-execution (§13, §14) charge fereg's estimate of
-fedemean's modified-LSMR workspace on categorical intercept designs
-(structure, weight state, LSMR vectors) plus a Schwarz grant: for fedemean's
-star pairs (the effect with the most levels paired with each other effect),
-24 bytes per cross-tabulation entry (`min(N, L_a·L_e)` entries) and 20 per
-level, plus 48 bytes per entry and smaller-side level for the components'
-Schur complements and local factors, plus 16 bytes per level for apply
-columns; identity and Jacobi re-executions charge no grant. fedemean charges
-each stage of a Schwarz build, its transients included, within that limit
-before it allocates: Auto keeps Jacobi beyond it, explicit Schwarz declines.
-The grant is a policy, not fedemean's estimate (fedemean estimates a build
-only by building it); VALIDATION records it against measured builds. These
+explicit LSMR (its projections and the joint recurrence's Schwarz FE block)
+and the separation detector's LSMR re-execution (§13, §14) charge fereg's
+estimate of fedemean's base modified-LSMR workspace on categorical intercept
+designs (structure, weight state, LSMR vectors) and, for a preconditioner
+that can build Schwarz (`auto`, `schwarz`), fedemean's weight-independent
+upper bound of its star Schwarz preconditioner
+(`Projector::fe_preconditioner_bytes`: the build's stages run count-only on
+the design and are charged exactly as a build charges them, automatic local
+solves with their approximate-Cholesky fallback, so the bound holds for any
+positive weights). The bound is computed within the remaining budget, by the
+explicit engine's preflight and, for the re-execution, on the generation
+that re-executes; a bound that does not fit is not admitted (the explicit
+Schwarz block is then refused before any work and the joint recurrence keeps
+Jacobi, the certified fallback of §13; an automatic re-execution keeps
+Jacobi; an explicit Schwarz re-execution does not run). The handle is built
+within the fit's remaining budget (its admitted bound plus what nothing else
+admitted), the projections and the re-execution within their admitted
+bytes. The strict-checkpoint accelerator keeps the base estimate plus a
+Schwarz grant: for fedemean's star pairs (the effect with the most levels
+paired with each other effect), 24 bytes per cross-tabulation entry
+(`min(N, L_a·L_e)` entries) and 20 per level, plus 48 bytes per entry and
+smaller-side level for the components' Schur complements and local factors,
+plus 16 bytes per level for apply columns. fedemean charges each stage of a
+Schwarz build, its transients included, within its limit before it
+allocates: Auto keeps Jacobi beyond it, explicit Schwarz declines. The grant
+is a policy, not fedemean's estimate; VALIDATION records it against measured
+builds. These
 estimates no longer depend on the worker count. Declared scope: admission outcomes change only under memory
 limits between the former and the new estimates. Owned explicit LSMR that
 the larger within-shaped estimate refused now runs fedemean when its own

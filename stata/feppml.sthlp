@@ -490,9 +490,10 @@ and later steps start there; if that also fails, or Schwarz does not fit in
 memory, the step goes to projections of the controls and the working response
 onto the fixed effects. {cmd:precondition(jacobi)}, {cmd:precondition(none)}
 and {cmd:precondition(schwarz)} keep the joint recurrence with that
-fixed-effect block; a Schwarz block that does not fit in memory falls back to
-Jacobi. Every step is accepted only after an exact normal-equation
-certificate. The engine
+fixed-effect block; a Schwarz block that does not fit in memory, or whose
+factorization refuses, falls back to the Jacobi block as a certified fallback
+(reported in {cmd:e(fe_fallback)}). Every step is accepted only after an
+exact normal-equation certificate. The engine
 appears as row {cmd:lsmr} of {cmd:e(fe_solve)} with no active finite controls
 and as {cmd:lsmr_joint} otherwise. {cmd:solver(cg)}
 selects only prepared fused-FWL CMG on the full graph (row {cmd:cmg}). The
@@ -707,13 +708,16 @@ canonical session, for example {cmd:cg, reduce(eliminate) precondition(jacobi)}.
 With {cmd:solver(lsmr)}, {cmd:e(fe_formulation)} names the formulation of its
 certified steps: {cmd:joint} (every step certified on the joint recurrence of
 the controls and fixed effects), {cmd:fwl} (every step ran the projections of
-the controls and working response from its start, as with
-{cmd:precondition(schwarz)}), or {cmd:joint+fwl} (the joint recurrence handed
-steps to the projections), with the counts {cmd:e(fe_joint_frames)},
+the controls and working response from its start), or {cmd:joint+fwl} (the
+joint recurrence handed steps to the projections), with the counts
+{cmd:e(fe_joint_frames)},
 {cmd:e(fe_fwl_frames)}, and {cmd:e(fe_handoffs)}; a preconditioner comparison
 compares like formulations only when these agree. {cmd:e(fe_fallback)} is 1
-when a certified fallback served part or all of the request (including the
-CMG and checkpoint-accelerator fallbacks below) and
+when a certified fallback served part or all of the request (including
+{cmd:precondition(schwarz)}'s Jacobi fixed-effect block, then with
+{cmd:e(fe_requested_preconditioner)} {cmd:schwarz} and, when no step used
+Schwarz, {cmd:e(fe_preconditioner)} {cmd:jacobi}, and the CMG and
+checkpoint-accelerator fallbacks below) and
 {cmd:e(fe_fallback_reason)} names the first reason: {cmd:none},
 {cmd:unsupported}, {cmd:memory}, {cmd:nonconvergence}, or {cmd:uncertified}.
 

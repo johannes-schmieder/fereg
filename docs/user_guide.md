@@ -80,12 +80,16 @@ as `cg, reduce(full) precondition(cmg)`, `auto` as the canonical route.
 `e(fe_final_route)` is the final weighted least-squares solve, the
 certification step that always runs in the canonical session. With
 `solver(lsmr)`, `e(fe_formulation)` says whether the steps ran the joint
-recurrence (`joint`), FWL projections (`fwl`, as with
-`precondition(schwarz)`) or the joint recurrence with hand-offs to the
-projections (`joint+fwl`), with counts in `e(fe_joint_frames)`,
+recurrence (`joint`, with `precondition(jacobi|none|schwarz)` that
+recurrence's fixed-effect block), FWL projections (`fwl`) or the joint
+recurrence with hand-offs to the projections (`joint+fwl`), with counts in
+`e(fe_joint_frames)`,
 `e(fe_fwl_frames)` and `e(fe_handoffs)`; compare preconditioners only between
 fits with the same formulation. `e(fe_fallback)` and `e(fe_fallback_reason)`
-report a certified fallback. The rows of `e(fe_solve)` give each session's
+report a certified fallback, for example `precondition(schwarz)` whose
+Schwarz block does not fit in memory and runs the Jacobi block
+(`e(fe_requested_preconditioner)` `schwarz`, `e(fe_preconditioner)`
+`jacobi`, reason `memory`). The rows of `e(fe_solve)` give each session's
 frames, retries, fallbacks, iterations, timings and certificate maxima. The
 [installed help](../stata/feppml.sthlp) gives the complete contract.
 
