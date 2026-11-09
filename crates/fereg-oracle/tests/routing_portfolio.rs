@@ -245,7 +245,7 @@ fn check_case(design: &Design, config: PreparedOlsFitConfig) -> CertifiedPrepare
         build_prepared_ols_rhs(&prepared).unwrap().values().ncols(),
         design.regressors.len() + 2
     );
-    let run = || {
+    let fit = |config| {
         fit_prepared_model_robust_with_loaded_moments(
             &prepared,
             PreparedOlsRobustConfig {
@@ -254,8 +254,24 @@ fn check_case(design: &Design, config: PreparedOlsFitConfig) -> CertifiedPrepare
             },
             None,
         )
-        .unwrap()
     };
+    // A many-FE arm that ran the retired within LSMR fails clearly; the
+    // design's default route then answers to the same witnesses.
+    let config = match fit(config) {
+        Err(error) if design.effects.len() >= 3 && config.absorb.routing.is_some() => {
+            assert_eq!(error.code, ErrorCode::InvalidArgument, "{error:?}");
+            assert!(error.message.contains("many-FE routing arm"), "{error:?}");
+            PreparedOlsFitConfig {
+                absorb: fereg_core::fe::AbsorbConfig {
+                    routing: None,
+                    ..config.absorb
+                },
+                ..config
+            }
+        }
+        _ => config,
+    };
+    let run = || fit(config).unwrap();
     let result = run();
     let prefix_limit = prefix_limit(design, config);
     check_fit(design, &oracle, result.fit(), prefix_limit);
@@ -569,102 +585,21 @@ fn geometry_policy_child(test: &str, designs: &[(Design, ExplicitOlsResult)]) ->
     false
 }
 
-/// Independent dense-QR witness for the public Jacobi trial: a mixing design
-/// finishes on the diagonal solver, while a weakly connected one escalates to
-/// the additive preconditioner. Both stay within the scientific tolerances,
-/// repeat exactly at a fixed worker count and agree with the hidden token.
+/// Independent dense-QR witness for the geometry route that fedemean's
+/// declines leave (MAP on the original inputs). With fedemean on, both a
+/// mixing and a weakly connected design run the elimination. With it off, the
+/// mixing design certifies on MAP within the scientific tolerances, repeats
+/// exactly at a fixed worker count and agrees with the hidden token; the weak
+/// design, which MAP cannot certify within the budget, fails clearly.
 #[test]
-fn public_geometry_trial_matches_dense_qr_with_and_without_escalation() {
-    let cases = [
-        (Graph::RandomMobility, LsmrPreconditioner::Diagonal),
-        (Graph::AkmWeak, LsmrPreconditioner::Schwarz),
-    ]
-    .map(|(graph, finished)| {
-        let design = generate(
-            72031,
-            &DesignSpec {
-                rows: 3400,
-                levels: vec![200, 60, 12],
-                regressors: 2,
-                graph,
-                ..DesignSpec::default()
-            },
-        )
-        .unwrap();
-        let (problem, _) = design.oracle_problem(false).unwrap();
-        let oracle = fit_explicit_ols(&problem).unwrap();
-        (graph, finished, design, oracle)
-    });
-    let designs = cases
-        .iter()
-        .map(|(_, _, design, oracle)| (design.clone(), oracle.clone()))
-        .collect::<Vec<_>>();
-    if !geometry_policy_child(
-        "public_geometry_trial_matches_dense_qr_with_and_without_escalation",
-        &designs,
-    ) {
-        return;
-    }
-    for (graph, finished, design, oracle) in cases {
-        let (request, loaded) = support::inputs(&design, false);
-        let prepared = prepare_model(&request, &[], &loaded, true).unwrap();
-        for workers in [1, 4] {
-            let options = config(PreparedOlsExecutionMode::Fast, workers);
-            let run = |routing| {
-                let mut options = options;
-                options.absorb.routing = routing;
-                fit_prepared_model_robust_with_loaded_moments(
-                    &prepared,
-                    PreparedOlsRobustConfig {
-                        fit: options,
-                        ..PreparedOlsRobustConfig::default()
-                    },
-                    None,
-                )
-                .unwrap()
-            };
-            let public = run(None);
-            check_fit(&design, &oracle, public.fit(), None);
-            let report = public.fit().absorption_report();
-            assert_eq!(
-                report.used_solver,
-                FeSolverKind::Lsmr,
-                "{graph:?} {report:?}"
-            );
-            assert_eq!(
-                report.used_preconditioner,
-                Some(finished),
-                "{graph:?} {report:?}"
-            );
-            assert_eq!(public.dof().absorbed_rank, oracle.explicit_dummy_rank);
-            INFERENCE
-                .check(public.statistics().rss, oracle.weighted_rss)
-                .unwrap();
-            for repeat in [run(None), run(Some(RoutingPreset::geometry_many()))] {
-                exact_fit(repeat.fit(), public.fit());
-                assert_eq!(repeat.covariance(), public.covariance());
-            }
-        }
-    }
-}
-
-/// Independent dense-QR witness for the candidate bounded LSMR session
-/// windows (hidden `routing_many_windows_v1`): at most one session per worker,
-/// with the Jacobi trial's escalation barrier at the end of each window. On a
-/// mixing design that finishes on the diagonal solver and a weak AKM design
-/// that escalates, every worker count stays within the scientific tolerances
-/// of the explicit-dummy QR, repeats exactly at a fixed worker count, keeps
-/// the public fit's discrete decisions and equals it exactly where one window
-/// holds every RHS or no RHS escalates.
-#[test]
-fn bounded_session_windows_match_dense_qr_and_public_discrete_decisions() {
+fn public_geometry_route_matches_dense_qr_on_mixing_and_weak_designs() {
     let cases = [Graph::RandomMobility, Graph::AkmWeak].map(|graph| {
         let design = generate(
             72031,
             &DesignSpec {
                 rows: 3400,
                 levels: vec![200, 60, 12],
-                regressors: 6,
+                regressors: 2,
                 graph,
                 ..DesignSpec::default()
             },
@@ -679,7 +614,7 @@ fn bounded_session_windows_match_dense_qr_and_public_discrete_decisions() {
         .map(|(_, design, oracle)| (design.clone(), oracle.clone()))
         .collect::<Vec<_>>();
     if !geometry_policy_child(
-        "bounded_session_windows_match_dense_qr_and_public_discrete_decisions",
+        "public_geometry_route_matches_dense_qr_on_mixing_and_weak_designs",
         &designs,
     ) {
         return;
@@ -687,11 +622,9 @@ fn bounded_session_windows_match_dense_qr_and_public_discrete_decisions() {
     for (graph, design, oracle) in cases {
         let (request, loaded) = support::inputs(&design, false);
         let prepared = prepare_model(&request, &[], &loaded, true).unwrap();
-        let rhs = build_prepared_ols_rhs(&prepared).unwrap().values().ncols();
-        assert_eq!(rhs, 8);
-        for workers in [1, 2, 4, 8] {
+        for workers in [1, 4] {
             let options = config(PreparedOlsExecutionMode::Fast, workers);
-            let run = |routing| {
+            let fit = |routing| {
                 let mut options = options;
                 options.absorb.routing = routing;
                 fit_prepared_model_robust_with_loaded_moments(
@@ -702,53 +635,64 @@ fn bounded_session_windows_match_dense_qr_and_public_discrete_decisions() {
                     },
                     None,
                 )
-                .unwrap()
             };
-            let public = run(None);
-            let windows = run(Some(RoutingPreset::geometry_many_windows()));
-            check_fit(&design, &oracle, windows.fit(), None);
-            assert_eq!(windows.dof(), public.dof());
-            assert_eq!(windows.dof().absorbed_rank, oracle.explicit_dummy_rank);
-            INFERENCE
-                .check(windows.statistics().rss, oracle.weighted_rss)
-                .unwrap();
-            let report = windows.fit().absorption_report();
-            assert_eq!(report.used_solver, FeSolverKind::Lsmr, "{graph:?}");
-            assert!(!report.fallback_used);
-            assert_eq!(
-                report.used_preconditioner,
-                public.fit().absorption_report().used_preconditioner
-            );
-            let repeat = run(Some(RoutingPreset::geometry_many_windows()));
-            exact_fit(repeat.fit(), windows.fit());
-            assert_eq!(repeat.covariance(), windows.covariance());
-            // Without escalation every RHS runs the same independent Jacobi
-            // recurrence in any window; only a window barrier can change bits.
-            // The window's smaller warm-session charge lowers only the
-            // reported workspace peak.
-            if workers >= rhs || matches!(graph, Graph::RandomMobility) {
-                assert_eq!(windows.fit().coefficients(), public.fit().coefficients());
-                assert_eq!(windows.fit().residuals(), public.fit().residuals());
-                assert_eq!(
-                    windows.fit().recovered_fe_coefficients(),
-                    public.fit().recovered_fe_coefficients()
-                );
-                assert_eq!(windows.covariance(), public.covariance());
-                for (left, right) in [
-                    (
-                        windows.fit().absorption_report(),
-                        public.fit().absorption_report(),
-                    ),
-                    (
-                        windows.fit().residual_absorption_report(),
-                        public.fit().residual_absorption_report(),
-                    ),
-                ] {
-                    same_discrete_reports(left, right);
-                    assert_eq!(left.iterations, right.iterations);
-                    assert_eq!(left.certificate, right.certificate);
+            if matches!(graph, Graph::AkmWeak) {
+                // Without fedemean nothing certifies the weak design at
+                // 1e-12 within the budget: the route fails clearly.
+                for routing in [None, Some(RoutingPreset::geometry_many())] {
+                    let error = fit(routing).unwrap_err();
+                    assert_eq!(error.code, ErrorCode::InvalidData, "{error:?}");
+                    assert!(error.message.contains("iteration budget"), "{error:?}");
                 }
+                continue;
             }
+            let run = |routing| fit(routing).unwrap();
+            let public = run(None);
+            check_fit(&design, &oracle, public.fit(), None);
+            let report = public.fit().absorption_report();
+            assert_eq!(
+                report.used_solver,
+                FeSolverKind::Map,
+                "{graph:?} {report:?}"
+            );
+            assert_eq!(public.dof().absorbed_rank, oracle.explicit_dummy_rank);
+            INFERENCE
+                .check(public.statistics().rss, oracle.weighted_rss)
+                .unwrap();
+            for repeat in [run(None), run(Some(RoutingPreset::geometry_many()))] {
+                exact_fit(repeat.fit(), public.fit());
+                assert_eq!(repeat.covariance(), public.covariance());
+            }
+        }
+    }
+}
+
+/// The candidate bounded LSMR session windows (hidden
+/// `routing_many_windows_v1`) ran the retired within LSMR: on the designs it
+/// was qualified on, the arm fails clearly before any work.
+#[test]
+fn retired_bounded_session_windows_fail_clearly() {
+    for graph in [Graph::RandomMobility, Graph::AkmWeak] {
+        let design = generate(
+            72031,
+            &DesignSpec {
+                rows: 3400,
+                levels: vec![200, 60, 12],
+                regressors: 6,
+                graph,
+                ..DesignSpec::default()
+            },
+        )
+        .unwrap();
+        for workers in [1, 4] {
+            let mut options = config(PreparedOlsExecutionMode::Fast, workers);
+            options.absorb.routing = Some(RoutingPreset::geometry_many_windows());
+            let error = support::native_fit(&design, options, false).unwrap_err();
+            assert_eq!(error.code, ErrorCode::InvalidArgument, "{graph:?}");
+            assert!(
+                error.message.contains("routing_many_windows_v1"),
+                "{error:?}"
+            );
         }
     }
 }

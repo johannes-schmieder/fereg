@@ -4867,7 +4867,7 @@ fn low_report_merge_rejects_uncertified_or_incompatible_continuations() {
 }
 
 #[test]
-fn low_lsmr_batches_match_fast_across_pool_sizes() {
+fn low_general_route_batches_match_fast_across_pool_sizes() {
     let _established_routes = crate::fe::block_schur::disable_for_test();
     let rows = 2048;
     let effects = [97, 89, 9].map(|levels| {
@@ -4888,13 +4888,16 @@ fn low_lsmr_batches_match_fast_across_pool_sizes() {
     let prepared = prepared_multiway_categorical(&y, &x, &effects);
     let mut config = PreparedOlsFitConfig::default();
     config.execution.threads = ThreadConfig::from_requested(1, true).unwrap();
+    // MAP certifies at the request: a tight one makes the comparison exact.
+    config.absorb.map.tolerance = 1e-12;
     let fast = fit_prepared_model_coefficients(&prepared, config).unwrap();
     config.execution.mode = PreparedOlsExecutionMode::Low;
     for poolsize in [1, 2, 4, 5] {
         config.execution.poolsize = poolsize;
         let low = fit_prepared_model_coefficients(&prepared, config).unwrap();
         assert_eq!(low.finite_rank(), fast.finite_rank());
-        assert_eq!(low.absorption_report().used_solver, FeSolverKind::Lsmr);
+        // With fedemean's routes off the general route is MAP.
+        assert_eq!(low.absorption_report().used_solver, FeSolverKind::Map);
         for (a, b) in low.residuals().iter().zip(fast.residuals()) {
             assert_close(*a, *b, 1e-10);
         }
@@ -9569,7 +9572,7 @@ fn assert_incremental_fit_exact(
 }
 
 #[test]
-fn incremental_family_fits_match_portfolio_or_incumbent_with_analytic_witnesses() {
+fn incremental_family_fits_match_their_references_or_fail_clearly_with_analytic_witnesses() {
     use crate::fe::{LsmrPreconditioner, RoutingPreset};
     // Within each identical FE cell, x and the error are orthogonal sign
     // patterns. This gives beta=2 and the stated residual without a solver.
@@ -9626,6 +9629,24 @@ fn incremental_family_fits_match_portfolio_or_incumbent_with_analytic_witnesses(
                         (RoutingPreset::incremental_many(), count >= 3),
                         (RoutingPreset::incremental_two(), count == 2),
                     ] {
+                        if eligible && count >= 3 && preconditioner == LsmrPreconditioner::Auto {
+                            // The many-FE arm and the arm it resolves to were
+                            // within LSMR arms: both fail clearly, and the
+                            // default route meets the analytic witness.
+                            for routing in [preset, RoutingPreset::portfolio_unseeded()] {
+                                config.absorb.routing = Some(routing);
+                                let error = fit_prepared_model_coefficients(&data, config)
+                                    .expect_err("retired many-FE arm");
+                                assert_eq!(error.code, ErrorCode::InvalidArgument);
+                            }
+                            config.absorb.routing = None;
+                            let default = fit_prepared_model_coefficients(&data, config).unwrap();
+                            assert_close(default.coefficients()[0].value.unwrap(), 2., 1e-10);
+                            for (&actual, &expected) in default.residuals().iter().zip(&error) {
+                                assert_close(actual, expected, 1e-10);
+                            }
+                            continue;
+                        }
                         config.absorb.routing =
                             if eligible && preconditioner == LsmrPreconditioner::Auto {
                                 Some(RoutingPreset::portfolio_unseeded())
@@ -9869,15 +9890,15 @@ fn derived_final_residual_covers_the_one_fe_and_many_fe_auto_routes() {
         }
     }
     // Both many-FE exits are covered: the balanced unit-weight design passes
-    // the bounded MAP pilot; the sparse designs run the LSMR session.
+    // the bounded MAP pilot; the sparse designs run the MAP continuation.
     assert_eq!(
         routes,
         [
             (1, FeSolverKind::Map),
             (1, FeSolverKind::Map),
             (3, FeSolverKind::Map),
-            (3, FeSolverKind::Lsmr),
-            (3, FeSolverKind::Lsmr),
+            (3, FeSolverKind::Map),
+            (3, FeSolverKind::Map),
         ]
     );
 }

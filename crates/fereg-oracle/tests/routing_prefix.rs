@@ -1,5 +1,10 @@
 #![deny(clippy::too_many_lines)]
-//! Prefix-to-LSMR public-caller witnesses against independent weighted QR.
+//! The isolated categorical prefix arms ran a bounded prefix before a seeded
+//! within LSMR session on three or more FEs; with that solver they are retired
+//! there and fail clearly. The many-FE routes that remain (public Auto, and the
+//! hidden Auto request with an explicit LSMR preconditioner, which keeps
+//! fedemean off and runs MAP) answer to independent weighted QR on the same
+//! designs.
 mod support;
 
 use fereg_core::fe::{
@@ -130,39 +135,32 @@ fn check_saved_gauge(design: &Design, channels: &[Option<Vec<f64>>]) {
     }
 }
 
-fn check_prefix_route(report: &SolveReport, config: PreparedOlsFitConfig) {
+/// A retired prefix arm fails before any work; the witnesses then run on the
+/// design's route without the developer selector.
+fn without_retired_prefix(
+    prepared: &fereg_core::PreparedOlsData,
+    config: PreparedOlsFitConfig,
+) -> PreparedOlsFitConfig {
     let Some(preset) = config.absorb.routing else {
-        return;
+        return config;
     };
-    let (prefix, cap) = [
-        (CategoricalPrefix::None, 0),
-        (CategoricalPrefix::Map4, 4),
-        (CategoricalPrefix::CompactIt4, 8),
-    ]
-    .into_iter()
-    .find(|(prefix, _)| preset == RoutingPreset::prefix(*prefix))
-    .expect("this witness uses only categorical prefix presets");
-    assert!(report.iterations <= config.absorb.lsmr.max_iterations);
-    assert!(report.certificate.relative_infinity_norm <= config.absorb.map.tolerance);
-    if report.used_solver == FeSolverKind::Lsmr {
-        assert_eq!(report.pilot_iterations, cap, "{report:?}");
-        assert!(report.iterations > cap, "{report:?}");
-        assert_eq!(
-            report.requested_preconditioner,
-            Some(config.absorb.lsmr.preconditioner)
-        );
-    } else {
-        let early_family = match prefix {
-            CategoricalPrefix::Map4 => FeSolverKind::Map,
-            CategoricalPrefix::CompactIt4 => FeSolverKind::IronsTuck,
-            CategoricalPrefix::None => panic!("zero prefix must reach LSMR: {report:?}"),
-        };
-        assert_eq!(report.used_solver, early_family, "{report:?}");
-        assert_eq!(report.iterations, report.pilot_iterations);
-        assert!(report.pilot_iterations > 0 && report.pilot_iterations <= cap);
-        assert_eq!(report.requested_preconditioner, None);
-        assert_eq!(report.used_preconditioner, None);
-        assert!(!report.fallback_used);
+    let error = fit_prepared_model_robust_with_loaded_moments(
+        prepared,
+        PreparedOlsRobustConfig {
+            fit: config,
+            ..PreparedOlsRobustConfig::default()
+        },
+        None,
+    )
+    .unwrap_err();
+    assert_eq!(error.code, fereg_core::ErrorCode::InvalidArgument);
+    assert!(error.message.contains(&preset.to_string()), "{error:?}");
+    PreparedOlsFitConfig {
+        absorb: fereg_core::fe::AbsorbConfig {
+            routing: None,
+            ..config.absorb
+        },
+        ..config
     }
 }
 
@@ -176,6 +174,7 @@ fn check_case(
     assert_eq!(prepared.sample().n_active(), design.outcome.len());
     let width = build_prepared_ols_rhs(&prepared).unwrap().values().ncols();
     assert_eq!(width, design.regressors.len() + 2);
+    let config = without_retired_prefix(&prepared, config);
     let result = fit_prepared_model_robust_with_loaded_moments(
         &prepared,
         PreparedOlsRobustConfig {
@@ -186,7 +185,6 @@ fn check_case(
     )
     .unwrap();
     let fit = result.fit();
-    check_prefix_route(fit.absorption_report(), config);
     if !config.absorb.retain_coefficients {
         assert!(fit.recovered_fe_coefficients().is_none());
     }
@@ -259,12 +257,12 @@ fn check_case(
 }
 
 #[test]
-fn categorical_prefixes_preserve_original_weighted_model_and_inference() {
+fn retired_prefixes_fail_and_many_fe_routes_preserve_the_weighted_model_and_inference() {
     let design = design(3, 3);
     let (problem, _) = design.oracle_problem(false).unwrap();
     let oracle = fit_explicit_ols(&problem).unwrap();
     assert_eq!(oracle.finite_regressor_rank, 3);
-    // Public auto and each independently selected prefix share the same truth.
+    // Public Auto and the routes left by each retired prefix share one truth.
     for prefix in [
         None,
         Some(CategoricalPrefix::None),
@@ -304,7 +302,7 @@ fn categorical_prefixes_preserve_original_weighted_model_and_inference() {
 }
 
 #[test]
-fn categorical_prefixes_cross_rhs_windows_and_many_effects() {
+fn retired_prefixes_fail_and_many_fe_routes_cross_rhs_windows_and_many_effects() {
     for (effects, regressors) in [(3, 63), (5, 3)] {
         let design = design(effects, regressors);
         let (problem, _) = design.oracle_problem(false).unwrap();
@@ -316,7 +314,7 @@ fn categorical_prefixes_cross_rhs_windows_and_many_effects() {
             Some(CategoricalPrefix::Map4),
             Some(CategoricalPrefix::CompactIt4),
         ] {
-            let report = check_case(
+            check_case(
                 &design,
                 &oracle,
                 config(
@@ -326,16 +324,12 @@ fn categorical_prefixes_cross_rhs_windows_and_many_effects() {
                     LsmrPreconditioner::Auto,
                 ),
             );
-            if effects == 3 && prefix == Some(CategoricalPrefix::CompactIt4) {
-                assert_eq!(report.used_solver, FeSolverKind::IronsTuck);
-                assert_eq!(report.pilot_iterations, 8);
-            }
         }
     }
 }
 
 #[test]
-fn weak_prefixes_reach_lsmr_with_retained_and_unretained_coefficients() {
+fn weak_ring_routes_meet_the_witness_with_retained_and_unretained_coefficients() {
     let design = weak_design();
     let (problem, _) = design.oracle_problem(false).unwrap();
     let oracle = fit_explicit_ols(&problem).unwrap();
@@ -351,14 +345,17 @@ fn weak_prefixes_reach_lsmr_with_retained_and_unretained_coefficients() {
                 PreparedOlsExecutionMode::Low,
             ] {
                 for workers in [1, 4] {
-                    let report = check_case(
-                        &design,
-                        &oracle,
-                        config(mode, workers, Some(prefix), preconditioner),
-                    );
-                    // This designated unresolved fixture must exercise the seed
-                    // handoff, including multiple Low projection actions.
-                    assert_eq!(report.used_solver, FeSolverKind::Lsmr, "{report:?}");
+                    // The ring is slow for MAP: give the MAP route of an
+                    // explicit preconditioner the ordinary budget.
+                    let mut options = config(mode, workers, Some(prefix), preconditioner);
+                    options.absorb.map.max_iterations = MapConfig::default().max_iterations;
+                    let report = check_case(&design, &oracle, options);
+                    let expected = if preconditioner == LsmrPreconditioner::Auto {
+                        FeSolverKind::Elimination
+                    } else {
+                        FeSolverKind::Map
+                    };
+                    assert_eq!(report.used_solver, expected, "{report:?}");
                 }
             }
         }
@@ -370,6 +367,6 @@ fn weak_prefixes_reach_lsmr_with_retained_and_unretained_coefficients() {
         );
         unretained.absorb.retain_coefficients = false;
         let report = check_case(&design, &oracle, unretained);
-        assert_eq!(report.used_solver, FeSolverKind::Lsmr, "{report:?}");
+        assert_eq!(report.used_solver, FeSolverKind::Elimination, "{report:?}");
     }
 }

@@ -220,81 +220,66 @@ fn partial_optional_allocation_refusal_drops_candidate_but_fatal_errors_propagat
 }
 
 #[test]
-fn pilot_debits_first_half_work_and_keeps_the_final_reserve() {
+fn pilot_debits_its_work_from_the_map_budget_and_keeps_the_final_reserve() {
     let _stable_route = crate::fe::block_schur::stable_route_for_test();
     fixture(true, |design, values| {
         let estimate =
             estimate_fe_solver_memory(values.nrows(), values.ncols(), &[2; 3], 1, None).unwrap();
         let map = MapConfig {
             tolerance: 1e-10,
-            max_iterations: 80,
+            max_iterations: 16_000,
             ..MapConfig::default()
         };
-        let result = super::super::project_general_categorical(
-            design,
-            BorrowedMapWeights::Unit,
-            values.clone(),
-            map,
-            LsmrConfig::default(),
-            None,
-            false,
-            estimate,
-            false,
-            Some(1),
-            None,
-        )
-        .unwrap();
+        let solve = |map, pilot: Option<usize>| {
+            super::super::project_general_categorical(
+                design,
+                BorrowedMapWeights::Unit,
+                values.clone(),
+                map,
+                None,
+                false,
+                estimate,
+                false,
+                pilot,
+                None,
+            )
+        };
+        // A missed pilot's sweeps are debited; MAP then restarts from the
+        // original inputs, so its result is the pilot-free one.
+        let without = solve(map, None).unwrap();
+        let result = solve(map, Some(1)).unwrap();
         assert_eq!(result.report.pilot_iterations, SWEEPS);
         assert!(result.report.fallback_used);
-        assert_eq!(result.report.used_solver, FeSolverKind::Lsmr);
-        assert!(result.report.iterations <= map.max_iterations / 2);
+        assert_eq!(result.report.used_solver, FeSolverKind::Map);
+        assert_eq!(result.report.iterations, without.report.iterations + SWEEPS);
+        assert_eq!(result.residualized(), without.residualized());
+        // The pilot needs more than its sweeps in half the budget.
         let short = MapConfig {
             max_iterations: 8,
             ..map
         };
-        let without = super::super::project_general_categorical(
-            design,
-            BorrowedMapWeights::Unit,
-            values.clone(),
-            short,
-            LsmrConfig::default(),
-            None,
-            false,
-            estimate,
-            false,
-            None,
-            None,
-        )
-        .unwrap();
-        let skipped = super::super::project_general_categorical(
-            design,
-            BorrowedMapWeights::Unit,
-            values,
-            short,
-            LsmrConfig::default(),
-            None,
-            false,
-            estimate,
-            false,
-            Some(1),
-            None,
-        )
-        .unwrap();
-        assert_eq!(skipped.report.pilot_iterations, 0);
-        assert_eq!(skipped.report.iterations, without.report.iterations);
-        assert_eq!(skipped.report.used_solver, without.report.used_solver);
-        assert_eq!(skipped.residualized(), without.residualized());
+        let without = solve(short, None);
+        let skipped = solve(short, Some(1));
+        match (without, skipped) {
+            (Ok(without), Ok(skipped)) => {
+                assert_eq!(skipped.report.pilot_iterations, 0);
+                assert_eq!(skipped.report.iterations, without.report.iterations);
+                assert_eq!(skipped.residualized(), without.residualized());
+            }
+            (Err(without), Err(skipped)) => assert_eq!(without, skipped),
+            _ => panic!("the skipped pilot changed the outcome"),
+        }
     });
 }
 
 #[test]
-fn consumed_pilot_keeps_fresh_lsmr_norms_and_retained_coefficients() {
+fn consumed_pilot_keeps_the_map_fallback_norms_and_retained_coefficients() {
     fixture(true, |design, values| {
         let estimate =
             estimate_fe_solver_memory(values.nrows(), values.ncols(), &[2; 3], 1, None).unwrap();
         let map = MapConfig {
             tolerance: 1e-10,
-            max_iterations: 80,
+            max_iterations: 16_000,
             ..MapConfig::default()
         };
         let solve = |pilot: bool, budget| {
@@ -303,7 +288,6 @@ fn consumed_pilot_keeps_fresh_lsmr_norms_and_retained_coefficients() {
                 BorrowedMapWeights::Unit,
                 values.clone(),
                 map,
-                LsmrConfig::default(),
                 budget,
                 true,
                 estimate,
@@ -325,21 +309,30 @@ fn consumed_pilot_keeps_fresh_lsmr_norms_and_retained_coefficients() {
         );
         assert_eq!(candidate.report.pilot_iterations, SWEEPS);
         assert!(candidate.report.fallback_used);
-        assert_eq!(candidate.report.used_solver, FeSolverKind::Lsmr);
+        assert_eq!(candidate.report.used_solver, FeSolverKind::Map);
         assert_eq!(candidate.residualized(), reference.residualized());
         assert_eq!(
             candidate.coefficients.as_ref().unwrap().values,
             reference.coefficients.as_ref().unwrap().values
         );
         assert_eq!(candidate.residual_norms, reference.residual_norms);
-        assert_eq!(candidate.residual_norms.len(), values.ncols());
         assert!(candidate.report.solver_workspace_peak.bytes().unwrap() <= bytes);
-        for (col, norm) in candidate.residual_norms.iter().enumerate() {
-            let expected = crate::fe::norms::reference::legacy_scalar_norm_state(
-                (0..values.nrows()).map(|r| candidate.residualized()[(r, col)]),
-            )
-            .0;
-            assert_eq!(norm.to_bits(), expected.to_bits());
+        // The coefficients reproduce the projection.
+        let coefficients = candidate.coefficients.as_ref().unwrap();
+        for col in 0..values.ncols() {
+            let rhs = coefficients.rhs(col).unwrap();
+            for row in 0..values.nrows() {
+                let fitted: f64 = design
+                    .effects()
+                    .iter()
+                    .enumerate()
+                    .map(|(e, effect)| {
+                        rhs[coefficients.effect_offsets()[e] + effect.codes()[row] as usize]
+                    })
+                    .sum();
+                let projected = values[(row, col)] - candidate.residualized()[(row, col)];
+                assert!((fitted - projected).abs() <= 1e-8, "{fitted} {projected}");
+            }
         }
     });
 }

@@ -16,7 +16,8 @@ pub struct RoutingPreset {
     break_builder: bool,
 }
 
-/// Isolated many-FE prefix qualification arms.
+/// Isolated prefix qualification arms (two-FE no-upgrade baselines; their
+/// many-FE prefix-plus-LSMR meaning was retired with the pinned within solver).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CategoricalPrefix {
     None,
@@ -123,8 +124,8 @@ impl RoutingPreset {
         }
     }
 
-    /// Two-FE direct-or-h16/k1 portfolio, or strict MAP4 followed by seeded
-    /// incumbent LSMR for more categorical effects. No general pair setup.
+    /// Two-FE direct-or-h16/k1 portfolio. Its many-FE arm (strict MAP4
+    /// followed by seeded within LSMR) is retired and fails clearly.
     pub fn portfolio_v1() -> Self {
         Self {
             checkpoint: 16,
@@ -134,8 +135,8 @@ impl RoutingPreset {
         }
     }
 
-    /// Private causal control: V1 two-FE behavior, with strict unseeded LSMR
-    /// and no substitute geometry pilot for more categorical effects.
+    /// Private causal control: V1 two-FE behavior. Its many-FE arm (strict
+    /// unseeded within LSMR) is retired and fails clearly.
     pub fn portfolio_unseeded() -> Self {
         Self {
             prefix: Some(PrefixPlan::PortfolioUnseeded),
@@ -143,7 +144,8 @@ impl RoutingPreset {
         }
     }
 
-    /// Isolated qualification of strict unseeded LSMR for three or more FEs.
+    /// Historical qualification of strict unseeded within LSMR for three or
+    /// more FEs; retired with that solver, so it fails clearly.
     pub fn incremental_many() -> Self {
         Self {
             prefix: Some(PrefixPlan::IncrementalMany),
@@ -151,11 +153,11 @@ impl RoutingPreset {
         }
     }
 
-    /// Many-FE policy for three or more categorical intercept effects. A
-    /// geometry-certified bounded MAP pilot runs first when its exact pair
-    /// bound predicts certification within four sweeps; otherwise unseeded
-    /// LSMR with retained preparation runs at the private recurrence target.
-    /// Every automatic exit certifies at the requested tolerance.
+    /// Many-FE policy for three or more categorical intercept effects:
+    /// fedemean's routes first; outside them, or after their decline, a
+    /// geometry-certified bounded MAP pilot when its exact pair bound predicts
+    /// certification within four sweeps, then MAP. Every automatic exit
+    /// certifies at the requested tolerance.
     pub fn geometry_many() -> Self {
         Self {
             prefix: Some(PrefixPlan::GeometryMany),
@@ -163,10 +165,8 @@ impl RoutingPreset {
         }
     }
 
-    /// Candidate many-FE policy: the geometry policy with bounded LSMR
-    /// session windows of at most one session per worker instead of every
-    /// RHS at once. The Jacobi trial's escalation barrier falls at the end of
-    /// each window; windows after an escalation start on the additive solver.
+    /// Historical candidate: the geometry policy with bounded within LSMR
+    /// session windows; retired with that solver, so it fails clearly.
     pub fn geometry_many_windows() -> Self {
         Self {
             prefix: Some(PrefixPlan::GeometryManyWindows),
@@ -299,10 +299,6 @@ impl RoutingPreset {
         )
     }
 
-    pub(crate) fn strict_categorical_prefix(self) -> bool {
-        self.portfolio()
-    }
-
     /// Whether the many-FE policy admits the geometry-certified MAP pilot and
     /// certifies its automatic exits at the requested tolerance.
     pub(crate) fn geometry_pilot(self) -> bool {
@@ -310,11 +306,6 @@ impl RoutingPreset {
             self.prefix,
             Some(PrefixPlan::GeometryMany | PrefixPlan::GeometryManyWindows)
         )
-    }
-
-    /// Whether the many-FE LSMR windows hold at most one session per worker.
-    pub(crate) fn bounded_session_windows(self) -> bool {
-        self.prefix == Some(PrefixPlan::GeometryManyWindows)
     }
 
     /// Developer Break arm for the synchronous bounded CMG builder: the h4/k1
@@ -330,21 +321,6 @@ impl RoutingPreset {
     #[doc(hidden)]
     pub fn breaks_builder(self) -> bool {
         self.break_builder
-    }
-
-    pub(crate) fn categorical_prefix(self) -> Option<CategoricalPrefix> {
-        self.prefix.map(|prefix| match prefix {
-            PrefixPlan::Isolated(prefix) => prefix,
-            PrefixPlan::PortfolioV1 => CategoricalPrefix::Map4,
-            PrefixPlan::PortfolioUnseeded
-            | PrefixPlan::IncrementalMany
-            | PrefixPlan::IncrementalTwo
-            | PrefixPlan::RemainingTwo
-            | PrefixPlan::GatesTwo
-            | PrefixPlan::GatesTwoV2
-            | PrefixPlan::GeometryMany
-            | PrefixPlan::GeometryManyWindows => CategoricalPrefix::None,
-        })
     }
 
     pub(super) fn kernel(self) -> Option<RoutingAblation> {
@@ -554,41 +530,33 @@ mod tests {
         assert_eq!(preset.checkpoint(), 4);
         assert_eq!(preset.samples(), 1);
         assert_eq!(preset.kernel(), None);
-        assert_eq!(preset.categorical_prefix(), None);
         assert!(!RoutingPreset::new(4, 1).unwrap().breaks_builder());
     }
 
     #[test]
-    fn portfolio_v1_separates_two_fe_escalation_from_general_prefix() {
+    fn portfolio_v1_is_a_two_fe_escalation_distinct_from_the_isolated_prefix() {
         let preset = RoutingPreset::portfolio_v1();
         assert_eq!(preset.to_string(), "routing_portfolio_v1");
-        assert!(preset.strict_categorical_prefix());
-        assert_eq!(preset.categorical_prefix(), Some(CategoricalPrefix::Map4));
         assert_eq!(preset.checkpoint(), 16);
         assert_eq!(preset.samples(), 1);
         assert_eq!(preset.kernel(), None);
         let legacy = RoutingPreset::prefix(CategoricalPrefix::Map4);
-        assert!(!legacy.strict_categorical_prefix());
         assert_ne!(preset, legacy);
         assert_eq!(legacy.to_string(), "routing_prefix_map4");
         assert_eq!(legacy.checkpoint(), usize::MAX);
         let old_pair = RoutingPreset::new(16, 1).unwrap();
-        assert!(!old_pair.strict_categorical_prefix());
         assert!(old_pair.retired_general_pair_request(Some(3)));
         assert!(!old_pair.retired_general_pair_request(Some(2)));
     }
 
     #[test]
-    fn portfolio_unseeded_changes_only_the_general_prefix() {
+    fn portfolio_unseeded_shares_the_v1_two_fe_controls() {
         let control = RoutingPreset::portfolio_unseeded();
         let v1 = RoutingPreset::portfolio_v1();
         assert_ne!(control, v1);
         assert_eq!(control.to_string(), "routing_portfolio_unseeded");
         assert_eq!(v1.to_string(), "routing_portfolio_v1");
         assert!(control.portfolio() && v1.portfolio());
-        assert!(control.strict_categorical_prefix());
-        assert_eq!(control.categorical_prefix(), Some(CategoricalPrefix::None));
-        assert_eq!(v1.categorical_prefix(), Some(CategoricalPrefix::Map4));
         assert_eq!(control.checkpoint(), v1.checkpoint());
         assert_eq!(control.samples(), v1.samples());
         assert_eq!(control.kernel(), v1.kernel());
@@ -598,10 +566,7 @@ mod tests {
             CategoricalPrefix::Map4,
             CategoricalPrefix::CompactIt4,
         ] {
-            let preset = RoutingPreset::prefix(isolated);
-            assert!(!preset.portfolio());
-            assert!(!preset.strict_categorical_prefix());
-            assert_eq!(preset.categorical_prefix(), Some(isolated));
+            assert!(!RoutingPreset::prefix(isolated).portfolio());
         }
     }
 
@@ -609,8 +574,6 @@ mod tests {
     fn geometry_many_admits_the_pilot_without_the_strict_portfolio_contract() {
         let windows = RoutingPreset::geometry_many_windows();
         assert_eq!(windows.to_string(), "routing_many_windows_v1");
-        assert!(windows.bounded_session_windows());
-        assert!(!RoutingPreset::geometry_many().bounded_session_windows());
         for (preset, name) in [
             (RoutingPreset::geometry_many(), "routing_many_geometry_v1"),
             (windows, "routing_many_windows_v1"),
@@ -623,9 +586,7 @@ mod tests {
         assert_eq!(preset.to_string(), name);
         assert!(preset.geometry_pilot());
         assert!(!preset.portfolio());
-        assert!(!preset.strict_categorical_prefix());
         assert!(!preset.requires_economic_grant());
-        assert_eq!(preset.categorical_prefix(), Some(CategoricalPrefix::None));
         assert_eq!(preset.kernel(), None);
         for other in [
             RoutingPreset::portfolio_unseeded(),
@@ -675,9 +636,7 @@ mod tests {
             CategoricalPrefix::Map4,
             CategoricalPrefix::CompactIt4,
         ] {
-            let isolated = RoutingPreset::prefix(prefix);
-            assert_eq!(isolated.categorical_prefix(), Some(prefix));
-            assert!(!isolated.strict_categorical_prefix());
+            assert_eq!(size_of_val(&RoutingPreset::prefix(prefix)), original_size);
         }
     }
 }

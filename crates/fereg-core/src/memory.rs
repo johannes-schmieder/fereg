@@ -87,16 +87,6 @@ pub struct FeSolverMemoryEstimate {
 }
 
 impl FeSolverMemoryEstimate {
-    pub(crate) const fn lsmr_retained_bytes(self, preconditioner: LsmrPreconditioner) -> u128 {
-        match preconditioner {
-            LsmrPreconditioner::Off => self.lsmr_off_retained_bytes,
-            LsmrPreconditioner::Diagonal => self.lsmr_diagonal_retained_bytes,
-            LsmrPreconditioner::Schwarz | LsmrPreconditioner::Auto => {
-                self.lsmr_schwarz_retained_bytes
-            }
-        }
-    }
-
     #[must_use]
     pub const fn lsmr_bytes(self, preconditioner: LsmrPreconditioner) -> u128 {
         match preconditioner {

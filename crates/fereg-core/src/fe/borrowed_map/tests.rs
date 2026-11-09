@@ -2,57 +2,6 @@ use super::*;
 use crate::fe::auto::direct_lsmr_tolerance;
 use crate::fe::{LevelIndex, ValidatedBorrowedInterceptSource};
 
-/// The within modified-LSMR run of the many-FE geometry policy's fallback
-/// (and its continuations), without retained preparation or routing state.
-#[allow(clippy::too_many_arguments)]
-fn run_borrowed_lsmr(
-    design: &BorrowedInterceptFeDesign<'_>,
-    weights: ValidatedWeights<'_>,
-    values: &DenseMatrix,
-    certificate_tolerance: f64,
-    max_iterations: usize,
-    lsmr_config: LsmrConfig,
-    certificate_reference_norms: Option<&[f64]>,
-    retain_coefficients: bool,
-) -> Result<(DenseMatrix, SolveReport, f64, Option<FeCoefficientBatch>)> {
-    let levels = design
-        .effects()
-        .iter()
-        .map(|effect| effect.n_levels())
-        .collect::<Vec<_>>();
-    let estimate = estimate_fe_solver_memory(
-        values.nrows(),
-        values.ncols(),
-        &levels,
-        lsmr_config
-            .threads
-            .resolved()
-            .max(rayon::current_num_threads()),
-        lsmr_config.local_size,
-    )?;
-    let preconditioner = resolve_borrowed_lsmr_preconditioner(
-        levels.len(),
-        design.total_term_slots(),
-        lsmr_config.preconditioner,
-    );
-    let mut memory = BorrowedLsmrCallMemory::new(estimate, preconditioner, None, 0)?;
-    run_borrowed_lsmr_with_prepared(
-        design,
-        weights,
-        values,
-        certificate_tolerance,
-        max_iterations,
-        lsmr_config,
-        certificate_reference_norms,
-        retain_coefficients,
-        None,
-        &mut memory,
-        None,
-        None,
-        None,
-    )
-}
-
 fn assert_initial_screen_matches_first_certificate_group(
     design: &BorrowedInterceptFeDesign<'_>,
     weights: ValidatedWeights<'_>,
@@ -1104,153 +1053,6 @@ fn ols_norms_are_scaled_and_bit_stable_across_worker_counts() {
         DenseMatrix::from_columns(&[vec![f64::MAX; rows], vec![0.0; rows], vec![0.0; rows]])
             .unwrap();
     assert!(update_workspace_norms(&invalid, weights, &mut workspace, false).is_err());
-}
-
-#[test]
-fn explicit_lsmr_recurrence_is_direct_and_certificate_stays_requested() {
-    let rows = 240;
-    let codes = [
-        (0..rows).map(|r| (r % 8) as u32).collect::<Vec<_>>(),
-        (0..rows).map(|r| ((r / 8) % 7) as u32).collect::<Vec<_>>(),
-        (0..rows)
-            .map(|r| ((3 * r + r / 5) % 5) as u32)
-            .collect::<Vec<_>>(),
-    ];
-    let indexes = [
-        LevelIndex::from_codes(&codes[0], 8).unwrap(),
-        LevelIndex::from_codes(&codes[1], 7).unwrap(),
-        LevelIndex::from_codes(&codes[2], 5).unwrap(),
-    ];
-    let sources = [
-        ValidatedBorrowedInterceptSource::new(&codes[0], 8, &indexes[0]).unwrap(),
-        ValidatedBorrowedInterceptSource::new(&codes[1], 7, &indexes[1]).unwrap(),
-        ValidatedBorrowedInterceptSource::new(&codes[2], 5, &indexes[2]).unwrap(),
-    ];
-    let design = || {
-        BorrowedInterceptFeDesign::new(rows, sources.iter().map(|s| s.effect()).collect()).unwrap()
-    };
-    let input = DenseMatrix::from_columns(&[
-        (0..rows)
-            .map(|r| (r as f64 * 0.13).sin())
-            .collect::<Vec<_>>(),
-        (0..rows)
-            .map(|r| (r as f64 * 0.07).cos() + (r % 3) as f64)
-            .collect::<Vec<_>>(),
-    ])
-    .unwrap();
-    let raw = (0..rows).map(|r| 1. + (r % 5) as f64).collect::<Vec<_>>();
-    let lsmr = LsmrConfig {
-        tolerance: 1e-8,
-        ..LsmrConfig::default()
-    };
-    let validated = validate_weights(BorrowedMapWeights::Provided(&raw), rows).unwrap();
-    let recurrence = super::super::auto::explicit_lsmr_recurrence(lsmr);
-    assert_eq!(recurrence.tolerance, direct_lsmr_tolerance(1e-8));
-    // The explicit rule keeps a margin at the 1e-14 final-residual projection
-    // and is never looser than the certificate.
-    for (requested, expected) in [
-        (1e-8, 1e-10),
-        (1e-12, 1e-14),
-        (5e-13, 5e-15),
-        (1e-14, 1e-15),
-        (1e-15, 1e-15),
-        (1e-16, 1e-16),
-    ] {
-        let tolerance = super::super::auto::explicit_lsmr_recurrence(LsmrConfig {
-            tolerance: requested,
-            ..lsmr
-        })
-        .tolerance;
-        assert_eq!(tolerance, expected, "{requested:e}");
-        assert!(tolerance <= requested);
-    }
-    let (_, rule_report, _, _) = run_borrowed_lsmr(
-        &design(),
-        validated,
-        &input,
-        lsmr.tolerance,
-        lsmr.max_iterations,
-        recurrence,
-        None,
-        false,
-    )
-    .unwrap();
-    let (_, equal_report, _, _) = run_borrowed_lsmr(
-        &design(),
-        validated,
-        &input,
-        lsmr.tolerance,
-        lsmr.max_iterations,
-        lsmr,
-        None,
-        false,
-    )
-    .unwrap();
-    // The tighter recurrence never stops earlier, and the certificate keeps
-    // the requested threshold rather than the recurrence tolerance.
-    assert!(rule_report.iterations >= equal_report.iterations);
-    assert!(rule_report.certified());
-    assert_eq!(
-        rule_report.certificate.passed,
-        rule_report.certificate.relative_infinity_norm <= lsmr.tolerance
-    );
-    let error = run_borrowed_lsmr(
-        &design(),
-        validated,
-        &input,
-        lsmr.tolerance,
-        lsmr.max_iterations,
-        LsmrConfig {
-            tolerance: f64::NAN,
-            ..lsmr
-        },
-        None,
-        false,
-    )
-    .expect_err("nonfinite recurrence tolerance");
-    assert_eq!(error.code, ErrorCode::InvalidArgument);
-}
-
-#[test]
-fn lsmr_postprocess_admission_preserves_attempt_peak_and_checks_parent_overlap() {
-    let estimate = estimate_fe_solver_memory(128, 3, &[16, 8], 1, Some(4)).unwrap();
-    let required = estimate.lsmr_bytes(LsmrPreconditioner::Off);
-    let parent = 137;
-    let base = 211;
-    let budget = FeSolverMemoryBudget {
-        execution_bytes: base,
-        usable_bytes: base + parent + required,
-    };
-    let mut memory =
-        BorrowedLsmrCallMemory::new(estimate, LsmrPreconditioner::Off, Some(budget), parent)
-            .unwrap();
-    assert_eq!(memory.peak.bytes(), Some((parent + required) as u64));
-    memory.include(required).unwrap();
-    let prior = memory.peak;
-    assert_eq!(
-        memory.include(required + 1).unwrap_err().code,
-        ErrorCode::Allocation
-    );
-    assert_eq!(memory.peak, prior);
-    assert_eq!(
-        memory.include(u128::MAX).unwrap_err().code,
-        ErrorCode::Allocation
-    );
-    assert_eq!(memory.peak, prior);
-    let short = FeSolverMemoryBudget {
-        usable_bytes: budget.usable_bytes - 1,
-        ..budget
-    };
-    assert!(
-        BorrowedLsmrCallMemory::new(estimate, LsmrPreconditioner::Off, Some(short), parent)
-            .is_err()
-    );
-    memory.budget = None;
-    memory.include_payload(123, required).unwrap();
-    assert_eq!(
-        memory.peak.bytes(),
-        Some((parent + required + 123 + estimate.lsmr_result_metadata_bytes) as u64)
-    );
 }
 
 #[test]
@@ -5334,79 +5136,6 @@ fn structural_graph_preserves_slow_chain_and_retained_coefficients() {
 }
 
 #[test]
-fn lsmr_continuation_certificate_uses_the_supplied_original_rhs_scale() {
-    let workers = 160_usize;
-    let observations = workers * 2;
-    let mut worker_codes = Vec::with_capacity(observations);
-    let mut firm_codes = Vec::with_capacity(observations);
-    let mut outcome = Vec::with_capacity(observations);
-    for worker in 0..workers {
-        worker_codes.extend([worker as u32, worker as u32]);
-        firm_codes.extend([worker as u32, (worker + 1) as u32]);
-        outcome.extend([(worker as f64 * 0.17).sin(), (worker as f64 * 0.11).cos()]);
-    }
-    let worker_index = LevelIndex::from_codes(&worker_codes, workers).expect("worker index");
-    let firm_index = LevelIndex::from_codes(&firm_codes, workers + 1).expect("firm index");
-    let worker = ValidatedBorrowedInterceptSource::new(&worker_codes, workers, &worker_index)
-        .expect("worker");
-    let firm =
-        ValidatedBorrowedInterceptSource::new(&firm_codes, workers + 1, &firm_index).expect("firm");
-    let design = BorrowedInterceptFeDesign::new(observations, vec![worker.effect(), firm.effect()])
-        .expect("design");
-    let values = DenseMatrix::from_columns(&[outcome]).expect("matrix");
-    let weights = validate_weights(BorrowedMapWeights::Unit, observations).expect("weights");
-    let mut reference_norms = vec![0.0; values.ncols()];
-    let mut scales = vec![0.0; values.ncols()];
-    let mut square_sums = vec![0.0; values.ncols()];
-    weighted_column_norms(
-        &values,
-        weights,
-        &mut reference_norms,
-        &mut scales,
-        &mut square_sums,
-        &mut [],
-    )
-    .expect("reference norms");
-    for norm in &mut reference_norms {
-        *norm *= 1_000.0;
-    }
-    let lsmr = LsmrConfig {
-        tolerance: 1e-14,
-        max_iterations: 1,
-        preconditioner: LsmrPreconditioner::Schwarz,
-        ..LsmrConfig::default()
-    };
-    let (ordinary, ordinary_report, _, _) = run_borrowed_lsmr(
-        &design,
-        weights,
-        &values,
-        lsmr.tolerance,
-        lsmr.max_iterations,
-        lsmr,
-        None,
-        false,
-    )
-    .expect("ordinary LSMR certificate");
-    let (continued, continued_report, _, _) = run_borrowed_lsmr(
-        &design,
-        weights,
-        &values,
-        lsmr.tolerance,
-        lsmr.max_iterations,
-        lsmr,
-        Some(&reference_norms),
-        false,
-    )
-    .expect("continuation LSMR certificate");
-    assert_eq!(ordinary, continued);
-    assert!(ordinary_report.certificate.relative_infinity_norm > 0.0);
-    assert!(
-        continued_report.certificate.relative_infinity_norm
-            < ordinary_report.certificate.relative_infinity_norm / 100.0
-    );
-}
-
-#[test]
 fn uncertified_lsmr_candidate_is_polished_and_fully_accounted() {
     let workers = 160_usize;
     let observations = workers * 2;
@@ -5604,6 +5333,34 @@ fn qualification_matrix_exercises_direct_tolerances_preconditioners_and_forced_c
     )
     .expect("CG reference");
 
+    // The explicit modified-LSMR arms run on fedemean's full system.
+    let fedemean_lsmr = |preconditioner, tolerance| {
+        let mut cache = block_schur::Cache::with_plan(block_schur::Plan::lsmr(preconditioner));
+        match cache
+            .project(
+                &design,
+                borrowed_weights(weights),
+                raw.clone(),
+                MapConfig {
+                    tolerance,
+                    max_iterations: 16_000,
+                    ..config()
+                },
+                None,
+                block_schur::Request::default(),
+            )
+            .expect("qualification LSMR arm")
+        {
+            block_schur::Outcome::Done(result) => result,
+            block_schur::Outcome::Declined(_) => {
+                panic!(
+                    "{preconditioner:?} {tolerance:e} declined: {:?}",
+                    cache.decline()
+                )
+            }
+        }
+    };
+
     for preconditioner in [
         crate::fe::LsmrPreconditioner::Off,
         crate::fe::LsmrPreconditioner::Diagonal,
@@ -5613,49 +5370,26 @@ fn qualification_matrix_exercises_direct_tolerances_preconditioners_and_forced_c
             requested_tolerance,
             direct_lsmr_tolerance(requested_tolerance),
         ] {
-            let (candidate, report, _, _) = run_borrowed_lsmr(
-                &design,
-                weights,
-                &raw,
-                tolerance,
-                16_000,
-                LsmrConfig {
-                    tolerance,
-                    preconditioner,
-                    ..LsmrConfig::default()
-                },
-                None,
-                false,
-            )
-            .expect("qualification direct LSMR arm");
+            let candidate = fedemean_lsmr(preconditioner, tolerance);
+            let report = candidate.report();
             assert!(
-                report.certified(),
+                report.certified() && report.used_solver == FeSolverKind::Lsmr,
                 "{preconditioner:?} {tolerance:e}: {report:?}"
             );
             assert_close(
-                candidate.as_slice(),
+                candidate.residualized().as_slice(),
                 reference.residualized().as_slice(),
                 2e-7,
             );
         }
     }
 
-    let (direct, direct_report, _, _) = run_borrowed_lsmr(
-        &design,
-        weights,
-        &raw,
+    let direct = fedemean_lsmr(
+        crate::fe::LsmrPreconditioner::Schwarz,
         direct_lsmr_tolerance(requested_tolerance),
-        16_000,
-        LsmrConfig {
-            tolerance: direct_lsmr_tolerance(requested_tolerance),
-            preconditioner: crate::fe::LsmrPreconditioner::Schwarz,
-            ..LsmrConfig::default()
-        },
-        None,
-        false,
     )
-    .expect("direct Schwarz LSMR");
-    assert!(direct_report.certified());
+    .residualized()
+    .clone();
     for forced_iterations in [4_usize, 8, 16] {
         let mut reservation = SystemWorkspaceReservation;
         let refined = absorb_cg_with_reservation(
@@ -5788,7 +5522,7 @@ fn fixed_leaf_norm_loans_preserve_borrowed_certificate_storage() {
 }
 
 #[test]
-fn norm_handoff_lsmr_routes_preserve_certificates_coefficients_and_memory() {
+fn norm_handoff_on_the_auto_general_route_preserves_certificates_coefficients_and_memory() {
     let rows = 513;
     let codes = [7, 11, 13].map(|levels| {
         (0..rows)
@@ -5826,9 +5560,7 @@ fn norm_handoff_lsmr_routes_preserve_certificates_coefficients_and_memory() {
         );
         team.install(|| {
             // The explicit request runs on fedemean (its norms are tested
-            // with its adapter); the Auto geometry policy's within LSMR
-            // remains its fallback.
-            let mut saw_auto_lsmr = false;
+            // with its adapter); Auto's general route is MAP.
             for automatic in [true] {
                 for retain in [false, true] {
                     for weights in [
@@ -5893,25 +5625,9 @@ fn norm_handoff_lsmr_routes_preserve_certificates_coefficients_and_memory() {
                                     assert!(actual.report().certified());
                                     let norms = actual.take_residual_norms();
                                     assert_eq!(norms.len(), input.ncols());
-                                    if actual.report().used_solver == FeSolverKind::Lsmr {
-                                        saw_auto_lsmr = true;
-                                        let w = validate_weights(weights, rows).unwrap();
-                                        for (c, norm) in norms.iter().enumerate() {
-                                            let expected_norm =
-                                                crate::fe::norms::reference::legacy_scalar_norm_state(
-                                                    (0..rows).map(|r| {
-                                                        w.normalized(r).sqrt()
-                                                            * actual.residualized()[(r, c)]
-                                                    }),
-                                                )
-                                                .0;
-                                            assert_eq!(norm.to_bits(), expected_norm.to_bits());
-                                        }
-                                    } else {
-                                        assert!(automatic);
-                                        assert_eq!(actual.report().used_solver, FeSolverKind::Map);
-                                        assert_eq!(norms, expected.take_residual_norms());
-                                    }
+                                    assert!(automatic);
+                                    assert_eq!(actual.report().used_solver, FeSolverKind::Map);
+                                    assert_eq!(norms, expected.take_residual_norms());
                                     assert_eq!(actual.residualized(), expected.residualized());
                                     assert_eq!(actual.coefficients, expected.coefficients);
                                     assert_eq!(
@@ -5925,106 +5641,9 @@ fn norm_handoff_lsmr_routes_preserve_certificates_coefficients_and_memory() {
                     }
                 }
             }
-            assert!(saw_auto_lsmr);
         })
         .unwrap();
     }
-}
-
-#[test]
-fn norm_handoff_failed_lsmr_certificate_and_auto_continuation_discard_cache() {
-    let rows = 513;
-    let codes = [7, 11, 13].map(|n| {
-        (0..rows)
-            .map(|r| ((r * 17 + r / 5) % n) as u32)
-            .collect::<Vec<_>>()
-    });
-    let indexes = codes
-        .iter()
-        .zip([7, 11, 13])
-        .map(|(c, n)| LevelIndex::from_codes(c, n).unwrap())
-        .collect::<Vec<_>>();
-    let sources = codes
-        .iter()
-        .zip(&indexes)
-        .zip([7, 11, 13])
-        .map(|((c, i), n)| ValidatedBorrowedInterceptSource::new(c, n, i).unwrap())
-        .collect::<Vec<_>>();
-    let design = || {
-        BorrowedInterceptFeDesign::new(rows, sources.iter().map(|s| s.effect()).collect()).unwrap()
-    };
-    let input = DenseMatrix::from_row_major(
-        rows,
-        2,
-        (0..rows * 2).map(|i| (i as f64 * 0.17).sin()).collect(),
-    )
-    .unwrap();
-    let config = super::super::AbsorbConfig {
-        solver: FeSolverKind::Lsmr,
-        lsmr: LsmrConfig {
-            max_iterations: 1,
-            preconditioner: LsmrPreconditioner::Off,
-            ..LsmrConfig::default()
-        },
-        ..super::super::AbsorbConfig::default()
-    };
-    let estimate = estimate_fe_solver_memory(
-        rows,
-        input.ncols(),
-        &[7, 11, 13],
-        rayon::current_num_threads(),
-        config.lsmr.local_size,
-    )
-    .unwrap();
-    let mut memory =
-        BorrowedLsmrCallMemory::new(estimate, LsmrPreconditioner::Off, None, 0).unwrap();
-    let mut norms = Vec::new();
-    let (_, report, _, _) = run_borrowed_lsmr_with_prepared(
-        &design(),
-        validate_weights(BorrowedMapWeights::Unit, rows).unwrap(),
-        &input,
-        config.lsmr.tolerance,
-        1,
-        config.lsmr,
-        None,
-        false,
-        None,
-        &mut memory,
-        Some(&mut norms),
-        None,
-        None,
-    )
-    .unwrap();
-    assert!(!report.certified());
-    assert!(norms.is_empty());
-    let solve = |cache| {
-        project_borrowed_intercept_structural(
-            &design(),
-            BorrowedMapWeights::Unit,
-            input.clone().into(),
-            config.map,
-            config.lsmr,
-            None,
-            false,
-            false,
-            false,
-            cache,
-            None,
-            None,
-        )
-        .unwrap()
-    };
-    let mut expected = solve(false);
-    let mut actual = solve(true);
-    assert!(actual.report().certified() && actual.report().fallback_used);
-    assert_eq!(actual.take_residual_norms(), expected.take_residual_norms());
-    assert_eq!(actual.residualized(), expected.residualized());
-    assert_eq!(actual.report().certificate, expected.report().certificate);
-    assert_eq!(actual.report().iterations, expected.report().iterations);
-    assert_eq!(
-        actual.report().solver_workspace_peak,
-        expected.report().solver_workspace_peak
-    );
 }
 
 #[test]

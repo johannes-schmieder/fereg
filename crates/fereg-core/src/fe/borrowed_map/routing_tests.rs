@@ -367,7 +367,7 @@ impl PortfolioRectangle {
 }
 
 #[test]
-fn portfolio_unseeded_skips_the_geometry_pilot_and_keeps_preparation_across_rhs_widths() {
+fn retired_many_fe_lsmr_arms_fail_clearly_and_the_default_route_projects_exactly() {
     let mut codes = [Vec::new(), Vec::new(), Vec::new()];
     let mut columns = [Vec::new(), Vec::new()];
     let mut expected = [Vec::new(), Vec::new()];
@@ -404,22 +404,46 @@ fn portfolio_unseeded_skips_the_geometry_pilot_and_keeps_preparation_across_rhs_
         sources.iter().map(|s| s.effect()).collect(),
     )
     .unwrap();
-    let mut route = routing_lsmr::GeneralRoutingState::new(RoutingPreset::portfolio_unseeded());
+    // Every developer selector whose many-FE meaning was a within LSMR arm
+    // fails before any work; the default geometry route projects exactly.
+    use crate::fe::CategoricalPrefix;
+    for retired in [
+        RoutingPreset::portfolio_v1(),
+        RoutingPreset::portfolio_unseeded(),
+        RoutingPreset::geometry_many_windows(),
+        RoutingPreset::prefix(CategoricalPrefix::None),
+        RoutingPreset::prefix(CategoricalPrefix::Map4),
+        RoutingPreset::prefix(CategoricalPrefix::CompactIt4),
+    ] {
+        let route = routing_lsmr::GeneralRoutingState::new(retired);
+        let error = project_general_categorical(
+            &design,
+            BorrowedMapWeights::Unit,
+            DenseMatrix::from_columns(&columns[..1]).unwrap(),
+            config(),
+            None,
+            false,
+            estimate_fe_solver_memory(design.nobs(), 1, &[2, 2, 2], 1, None).unwrap(),
+            false,
+            Some(4),
+            Some(&route),
+        )
+        .unwrap_err();
+        assert_eq!(error.code, ErrorCode::InvalidArgument);
+        assert!(error.message.contains(&retired.to_string()), "{error:?}");
+    }
+    let route = routing_lsmr::GeneralRoutingState::new(RoutingPreset::geometry_many());
     for rhs in [1, 2] {
         let original = DenseMatrix::from_columns(&columns[..rhs]).unwrap();
-        let lsmr = LsmrConfig {
-            max_iterations: 8,
-            preconditioner: LsmrPreconditioner::Off,
-            ..LsmrConfig::default()
-        };
         let estimate = estimate_fe_solver_memory(
             design.nobs(),
             rhs,
             &[2, 2, 2],
             rayon::current_num_threads(),
-            lsmr.local_size,
+            LsmrConfig::default().local_size,
         )
         .unwrap();
+        // Without the pilot the route is MAP at the requested tolerance.
         let result = project_general_categorical(
             &design,
             BorrowedMapWeights::Unit,
@@ -429,21 +453,19 @@ fn portfolio_unseeded_skips_the_geometry_pilot_and_keeps_preparation_across_rhs_
                 max_iterations: 16,
                 ..config()
             },
-            lsmr,
             None,
             true,
             estimate,
             false,
-            Some(4),
-            Some(&mut route),
+            None,
+            Some(&route),
         )
         .unwrap();
-        assert_eq!(result.report().used_solver, FeSolverKind::Lsmr);
+        assert_eq!(result.report().used_solver, FeSolverKind::Map);
         assert_eq!(result.report().pilot_iterations, 0);
         assert!(!result.report().fallback_used);
-        assert!(result.report().iterations <= 8);
-        assert!(result.report().certificate.relative_infinity_norm <= 1e-14);
-        assert!(route.has_prepared());
+        assert!(result.report().iterations <= 16);
+        assert!(result.report().certificate.relative_infinity_norm <= 1e-12);
         for (column, expected) in expected.iter().enumerate().take(rhs) {
             for (row, &expected) in expected.iter().enumerate() {
                 assert!((result.residualized()[(row, column)] - expected).abs() < 1e-12);
@@ -469,7 +491,7 @@ fn portfolio_unseeded_skips_the_geometry_pilot_and_keeps_preparation_across_rhs_
 }
 
 #[test]
-fn geometry_many_runs_the_certified_pilot_without_preparing_lsmr() {
+fn geometry_many_runs_the_certified_pilot() {
     let mut codes = [Vec::new(), Vec::new(), Vec::new()];
     let mut columns = [Vec::new(), Vec::new()];
     let mut expected = [Vec::new(), Vec::new()];
@@ -506,20 +528,15 @@ fn geometry_many_runs_the_certified_pilot_without_preparing_lsmr() {
         sources.iter().map(|s| s.effect()).collect(),
     )
     .unwrap();
-    let mut route = routing_lsmr::GeneralRoutingState::new(RoutingPreset::geometry_many());
+    let route = routing_lsmr::GeneralRoutingState::new(RoutingPreset::geometry_many());
     for rhs in [1, 2] {
         let original = DenseMatrix::from_columns(&columns[..rhs]).unwrap();
-        let lsmr = LsmrConfig {
-            max_iterations: 8,
-            preconditioner: LsmrPreconditioner::Off,
-            ..LsmrConfig::default()
-        };
         let estimate = estimate_fe_solver_memory(
             design.nobs(),
             rhs,
             &[2, 2, 2],
             rayon::current_num_threads(),
-            lsmr.local_size,
+            LsmrConfig::default().local_size,
         )
         .unwrap();
         let result = project_general_categorical(
@@ -531,23 +548,21 @@ fn geometry_many_runs_the_certified_pilot_without_preparing_lsmr() {
                 max_iterations: 16,
                 ..config()
             },
-            lsmr,
             None,
             true,
             estimate,
             false,
             Some(4),
-            Some(&mut route),
+            Some(&route),
         )
         .unwrap();
         // The orthogonal design certifies in the pilot at the requested
-        // tolerance; no LSMR solver is built or retained.
+        // tolerance.
         assert_eq!(result.report().used_solver, FeSolverKind::Map);
         assert_eq!(result.report().requested_solver, FeSolverKind::Auto);
         assert!(result.report().iterations <= 1);
         assert!(result.report().certified());
         assert!(result.report().certificate.relative_infinity_norm <= 1e-12);
-        assert!(!route.has_prepared());
         for (column, expected) in expected.iter().enumerate().take(rhs) {
             for (row, &expected) in expected.iter().enumerate() {
                 assert!((result.residualized()[(row, column)] - expected).abs() < 1e-12);
@@ -2185,206 +2200,105 @@ impl TrialPanel {
         .unwrap()
     }
 
-    fn project<'a>(
-        &self,
-        route: &mut routing_lsmr::GeneralRoutingState<'a>,
-        design: &BorrowedInterceptFeDesign<'a>,
-        deterministic: bool,
-    ) -> CertifiedBorrowedMap {
-        self.project_with(route, design, deterministic, true)
+    /// fedemean's full system, Auto's first many-FE stage: Jacobi PCG
+    /// escalating to Schwarz when slow or stalled.
+    fn project_full(&self, design: &BorrowedInterceptFeDesign<'_>) -> CertifiedBorrowedMap {
+        let mut cache = block_schur::Cache::with_plan(block_schur::Plan::auto_full());
+        match cache
+            .project(
+                design,
+                BorrowedMapWeights::Unit,
+                self.values.clone(),
+                MapConfig {
+                    tolerance: 1e-8,
+                    max_iterations: 4_000,
+                    ..config()
+                },
+                None,
+                block_schur::Request {
+                    retain_coefficients: true,
+                    coefficient_accuracy: false,
+                },
+            )
+            .unwrap()
+        {
+            block_schur::Outcome::Done(result) => result,
+            block_schur::Outcome::Declined(_) => panic!("declined: {:?}", cache.decline()),
+        }
     }
 
-    fn project_with<'a>(
-        &self,
-        route: &mut routing_lsmr::GeneralRoutingState<'a>,
-        design: &BorrowedInterceptFeDesign<'a>,
-        deterministic: bool,
-        retain: bool,
-    ) -> CertifiedBorrowedMap {
-        let lsmr = LsmrConfig {
-            max_iterations: 4_000,
-            threads: crate::ThreadConfig {
-                requested: None,
-                deterministic,
-            },
-            ..LsmrConfig::default()
-        };
-        let estimate = estimate_fe_solver_memory(
-            design.nobs(),
-            2,
-            &self.levels,
-            rayon::current_num_threads(),
-            lsmr.local_size,
-        )
-        .unwrap();
+    /// The general route a decline leaves: MAP on the original inputs.
+    fn project_fallback(&self, design: &BorrowedInterceptFeDesign<'_>) -> CertifiedBorrowedMap {
+        let estimate = estimate_fe_solver_memory(design.nobs(), 2, &self.levels, 1, None).unwrap();
         project_general_categorical(
             design,
             BorrowedMapWeights::Unit,
             self.values.clone(),
             MapConfig {
                 tolerance: 1e-8,
-                max_iterations: 8_000,
+                max_iterations: 16_000,
                 ..config()
             },
-            lsmr,
             None,
-            retain,
+            true,
             estimate,
             false,
             None,
-            Some(route),
+            Some(&routing_lsmr::GeneralRoutingState::new(
+                RoutingPreset::geometry_many(),
+            )),
         )
         .unwrap()
     }
 }
 
 #[test]
-fn jacobi_trial_is_reserved_for_designs_resolved_to_the_additive_preconditioner() {
-    // Below the slot rule's threshold Auto already resolves to the diagonal
-    // preconditioner, so the geometry policy builds it once without a trial,
-    // even where a trial would finish without escalating.
-    let panel = TrialPanel::with_levels(false, [100, 20, 8]);
-    let design = panel.design();
-    assert!(design.total_term_slots() < 256);
-    let mut route = routing_lsmr::GeneralRoutingState::new(RoutingPreset::geometry_many());
-    let mut incumbent = routing_lsmr::GeneralRoutingState::new(RoutingPreset::portfolio_unseeded());
-    let actual = panel.project(&mut route, &design, true);
-    let reference = panel.project(&mut incumbent, &design, true);
-    assert!(!route.jacobi_trial_active());
-    for fit in [&actual, &reference] {
-        assert!(fit.report().certified());
-        assert_eq!(fit.report().used_solver, FeSolverKind::Lsmr);
-        assert_eq!(
-            fit.report().used_preconditioner,
-            Some(LsmrPreconditioner::Diagonal)
-        );
-    }
-    assert!(actual.report().iterations <= reference.report().iterations);
-}
-
-#[test]
-fn jacobi_trial_finishes_mixing_designs_and_escalates_near_confounded_ones() {
-    for (confounded, deterministic) in [(false, false), (true, false), (false, true), (true, true)]
-    {
+fn many_fe_route_and_its_map_fallback_agree_on_mixing_and_near_confounded_panels() {
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
+    for confounded in [false, true] {
         let panel = TrialPanel::new(confounded);
         let design = panel.design();
-        assert!(design.total_term_slots() >= 256);
-        let mut trial = routing_lsmr::GeneralRoutingState::new(RoutingPreset::geometry_many());
-        let mut incumbent =
-            routing_lsmr::GeneralRoutingState::new(RoutingPreset::portfolio_unseeded());
-        let actual = panel.project(&mut trial, &design, deterministic);
-        let reference = panel.project(&mut incumbent, &design, deterministic);
-        for fit in [&actual, &reference] {
+        let full = panel.project_full(&design);
+        let fallback = panel.project_fallback(&design);
+        let route = full.report().route();
+        assert_eq!(
+            (route.reduction, route.method),
+            (crate::fe::FeReduction::Full, crate::fe::FeMethod::Cg)
+        );
+        // The mixing panel finishes on Jacobi; the near-confounded one
+        // escalates to Schwarz.
+        assert_eq!(route.escalations, u32::from(confounded));
+        assert_eq!(
+            matches!(
+                route.preconditioner,
+                crate::fe::FePreconditioner::Schwarz(_)
+            ),
+            confounded
+        );
+        assert_eq!(fallback.report().used_solver, FeSolverKind::Map);
+        for fit in [&full, &fallback] {
             assert!(fit.report().certified());
-            assert_eq!(fit.report().used_solver, FeSolverKind::Lsmr);
-            assert!(!fit.report().fallback_used);
+            assert!(fit.report().certificate.relative_infinity_norm <= 1e-8);
         }
-        assert_eq!(
-            reference.report().used_preconditioner,
-            Some(LsmrPreconditioner::Schwarz)
-        );
-        assert_eq!(
-            actual.report().used_preconditioner,
-            Some(if confounded {
-                LsmrPreconditioner::Schwarz
-            } else {
-                LsmrPreconditioner::Diagonal
-            })
-        );
-        assert_eq!(trial.jacobi_trial_active(), !confounded);
-        assert!(actual.report().certificate.relative_infinity_norm <= 1e-8);
-        // Both certified projections agree with each other on every row, and
-        // their FE coefficients reconstruct the original values.
+        // Both certified projections agree on every row, and each one's FE
+        // coefficients reconstruct the original values.
         for rhs in 0..2 {
             let scale = (0..design.nobs())
                 .map(|row| panel.values[(row, rhs)].abs())
                 .fold(0.0_f64, f64::max);
-            let coefficients = actual.coefficients.as_ref().unwrap();
-            let base = rhs * coefficients.coefficients_per_rhs;
+            // MAP certifies its moments at 1e-8 only; on the near-confounded
+            // panel (6,001 sweeps against fedemean's 64 Schwarz iterations)
+            // that leaves residual gaps of about 5e-6 of the scale.
+            let bound = if confounded { 1e-5 } else { 1e-7 };
             for row in 0..design.nobs() {
                 assert!(
-                    (actual.residualized()[(row, rhs)] - reference.residualized()[(row, rhs)])
-                        .abs()
-                        <= 1e-6 * scale,
+                    (full.residualized()[(row, rhs)] - fallback.residualized()[(row, rhs)]).abs()
+                        <= bound * scale,
                     "confounded={confounded} rhs={rhs} row={row}"
                 );
-                let fitted: f64 = panel
-                    .codes
-                    .iter()
-                    .enumerate()
-                    .map(|(effect, code)| {
-                        coefficients.values
-                            [base + coefficients.effect_offsets[effect] + code[row] as usize]
-                    })
-                    .sum();
-                assert!(
-                    (panel.values[(row, rhs)] - actual.residualized()[(row, rhs)] - fitted).abs()
-                        <= 1e-10 * scale
-                );
             }
-        }
-        // A later call on the binding reuses the retained solver: an escalated
-        // binding keeps the additive preconditioner without another trial.
-        let again = panel.project(&mut trial, &design, deterministic);
-        assert!(again.report().certified());
-        assert_eq!(
-            again.report().used_preconditioner,
-            actual.report().used_preconditioner
-        );
-        assert_eq!(trial.jacobi_trial_active(), !confounded);
-        // A fresh binding repeats the same trial decision; reproducible solvers
-        // repeat its bits exactly.
-        let mut fresh = routing_lsmr::GeneralRoutingState::new(RoutingPreset::geometry_many());
-        let repeat = panel.project(&mut fresh, &design, deterministic);
-        assert_eq!(
-            repeat.report().used_preconditioner,
-            actual.report().used_preconditioner
-        );
-        assert_eq!(repeat.report().iterations, actual.report().iterations);
-        if deterministic {
-            assert_eq!(repeat.residualized(), actual.residualized());
-        }
-    }
-}
-
-#[test]
-fn geometry_certificate_miss_takes_one_seeded_correction_before_map() {
-    let panel = TrialPanel::new(false);
-    let design = panel.design();
-    for retain in [true, false] {
-        let fresh = || routing_lsmr::GeneralRoutingState::new(RoutingPreset::geometry_many());
-        let reference = panel.project_with(&mut fresh(), &design, true, retain);
-        assert!(reference.report().certified());
-        // One forced miss: the correction certifies on LSMR without fallback.
-        GENERAL_LSMR_CERTIFICATE_FAILURES.set(1);
-        GENERAL_LSMR_CORRECTIONS.set(0);
-        let corrected = panel.project_with(&mut fresh(), &design, true, retain);
-        assert_eq!(GENERAL_LSMR_CERTIFICATE_FAILURES.get(), 0);
-        assert_eq!(GENERAL_LSMR_CORRECTIONS.get(), 1);
-        let report = corrected.report();
-        assert!(report.certified(), "{report:?}");
-        assert_eq!(report.used_solver, FeSolverKind::Lsmr);
-        assert!(!report.fallback_used);
-        assert!(report.warnings.is_empty(), "{report:?}");
-        assert!(report.iterations > reference.report().iterations);
-        assert_eq!(corrected.coefficients.is_some(), retain);
-        for rhs in 0..2 {
-            let scale = (0..design.nobs())
-                .map(|row| panel.values[(row, rhs)].abs())
-                .fold(0.0_f64, f64::max);
-            for row in 0..design.nobs() {
-                let gap =
-                    corrected.residualized()[(row, rhs)] - reference.residualized()[(row, rhs)];
-                assert!(
-                    gap.abs() <= 1e-6 * scale,
-                    "retain={retain} rhs={rhs} row={row}"
-                );
-            }
-        }
-        if let Some(coefficients) = corrected.coefficients.as_ref() {
-            // The seeded result already includes the seed: its coefficients
-            // reconstruct the original values.
-            for rhs in 0..2 {
+            for fit in [&full, &fallback] {
+                let coefficients = fit.coefficients.as_ref().unwrap();
                 let base = rhs * coefficients.coefficients_per_rhs;
                 for row in 0..design.nobs() {
                     let fitted: f64 = panel
@@ -2396,46 +2310,23 @@ fn geometry_certificate_miss_takes_one_seeded_correction_before_map() {
                                 [base + coefficients.effect_offsets[effect] + code[row] as usize]
                         })
                         .sum();
-                    let total = corrected.residualized()[(row, rhs)] + fitted;
-                    assert!((panel.values[(row, rhs)] - total).abs() <= 1e-9);
+                    assert!(
+                        (panel.values[(row, rhs)] - fit.residualized()[(row, rhs)] - fitted).abs()
+                            <= 1e-10 * scale
+                    );
                 }
             }
         }
-        // A reproducible repeat of the forced path repeats its bits.
-        GENERAL_LSMR_CERTIFICATE_FAILURES.set(1);
-        let repeat = panel.project_with(&mut fresh(), &design, true, retain);
-        assert_eq!(repeat.residualized(), corrected.residualized());
-        assert_eq!(repeat.report().iterations, report.iterations);
-        // A second miss leaves the original-input MAP fallback.
-        GENERAL_LSMR_CERTIFICATE_FAILURES.set(2);
-        GENERAL_LSMR_CORRECTIONS.set(0);
-        let fallback = panel.project_with(&mut fresh(), &design, true, retain);
-        assert_eq!(GENERAL_LSMR_CORRECTIONS.get(), 1);
-        assert!(fallback.report().certified());
-        assert_eq!(fallback.report().used_solver, FeSolverKind::Map);
-        assert!(fallback.report().fallback_used);
+        // Each stage repeats its bits.
+        assert_eq!(
+            panel.project_full(&design).residualized(),
+            full.residualized()
+        );
+        assert_eq!(
+            panel.project_fallback(&design).residualized(),
+            fallback.residualized()
+        );
     }
-    // Presets without the geometry policy keep their direct MAP fallback.
-    GENERAL_LSMR_CERTIFICATE_FAILURES.set(1);
-    GENERAL_LSMR_CORRECTIONS.set(0);
-    let mut incumbent = routing_lsmr::GeneralRoutingState::new(RoutingPreset::portfolio_unseeded());
-    let strict = panel.project(&mut incumbent, &design, true);
-    assert_eq!(GENERAL_LSMR_CORRECTIONS.get(), 0);
-    assert_eq!(strict.report().used_solver, FeSolverKind::Map);
-    assert!(strict.report().fallback_used);
-}
-
-#[test]
-fn geometry_recurrence_stops_a_decade_below_the_request_and_corrects_at_the_hundredth() {
-    use crate::fe::auto::{corrected_lsmr_tolerance, correction_tolerance};
-    assert_eq!(corrected_lsmr_tolerance(1e-8), 1e-9);
-    assert_eq!(correction_tolerance(1e-8, 1e-9), Some(1e-10));
-    // The shared floor leaves no tighter correction at final-residual accuracy.
-    assert_eq!(corrected_lsmr_tolerance(1e-13), 1e-14);
-    assert_eq!(correction_tolerance(1e-13, 1e-14), None);
-    assert_eq!(corrected_lsmr_tolerance(1e-14), 1e-14);
-    assert_eq!(correction_tolerance(1e-14, 1e-14), None);
-    assert_eq!(correction_tolerance(1e-8, 1e-10), None);
 }
 
 // The OLS session applies an installed hierarchy on the host team: row
@@ -2497,7 +2388,6 @@ fn team_application_reproduces_scalar_route_fits_at_every_worker_count() {
 /// effect `(firm + 17 worker + period) % 32`, all zero-based.
 struct SparseThreePanel {
     codes: [Vec<u32>; 3],
-    indices: Vec<LevelIndex>,
     values: DenseMatrix,
     levels: [usize; 3],
 }
@@ -2534,34 +2424,11 @@ impl SparseThreePanel {
             }
         }
         let levels = [workers, firms, 32];
-        let indices = codes
-            .iter()
-            .zip(levels)
-            .map(|(code, levels)| LevelIndex::from_codes(code, levels).unwrap())
-            .collect();
         Self {
             codes,
-            indices,
             values: DenseMatrix::from_columns(&columns).unwrap(),
             levels,
         }
-    }
-
-    fn design(&self) -> BorrowedInterceptFeDesign<'_> {
-        let sources: Vec<_> = self
-            .codes
-            .iter()
-            .zip(self.levels)
-            .zip(&self.indices)
-            .map(|((code, levels), index)| {
-                ValidatedBorrowedInterceptSource::new(code, levels, index).unwrap()
-            })
-            .collect();
-        BorrowedInterceptFeDesign::new(
-            self.values.nrows(),
-            sources.iter().map(|source| source.effect()).collect(),
-        )
-        .unwrap()
     }
 
     fn lsmr() -> LsmrConfig {
@@ -2572,141 +2439,6 @@ impl SparseThreePanel {
                 deterministic: true,
             },
             ..LsmrConfig::default()
-        }
-    }
-
-    fn project<'a>(
-        &self,
-        design: &BorrowedInterceptFeDesign<'a>,
-        route: &mut routing_lsmr::GeneralRoutingState<'a>,
-        budget: Option<FeSolverMemoryBudget>,
-    ) -> CertifiedBorrowedMap {
-        let lsmr = Self::lsmr();
-        let estimate = estimate_fe_solver_memory(
-            design.nobs(),
-            2,
-            &self.levels,
-            rayon::current_num_threads(),
-            lsmr.local_size,
-        )
-        .unwrap();
-        project_general_categorical(
-            design,
-            BorrowedMapWeights::Unit,
-            self.values.clone(),
-            MapConfig {
-                tolerance: 1e-8,
-                max_iterations: 8_000,
-                ..config()
-            },
-            lsmr,
-            budget,
-            true,
-            estimate,
-            false,
-            None,
-            Some(route),
-        )
-        .unwrap()
-    }
-}
-
-#[test]
-fn refused_level_bound_admits_additive_lsmr_by_exact_yielding_count() {
-    // At campaign scale the level-count Schwarz bound grows quadratically in
-    // the levels and refused LSMR, sending the fit to the MAP fallback. Here a
-    // budget one byte below that bound must admit the same additive LSMR solve
-    // through the exact yielding pair-component count, with the unbudgeted
-    // solve's bits, at every worker count.
-    let panel = SparseThreePanel::new(1_000_000);
-    let lsmr = SparseThreePanel::lsmr();
-    let mut fits = Vec::new();
-    for workers in [1, 4] {
-        let fit =
-            crate::ThreadTeam::new(crate::ThreadConfig::from_requested(workers, true).unwrap())
-                .install(|| {
-                    let coarse = estimate_fe_solver_memory(
-                        panel.values.nrows(),
-                        2,
-                        &panel.levels,
-                        workers,
-                        lsmr.local_size,
-                    )
-                    .unwrap();
-                    let budget = FeSolverMemoryBudget {
-                        execution_bytes: 0,
-                        usable_bytes: coarse.lsmr_schwarz_bytes - 1,
-                    };
-                    let design = panel.design();
-                    let mut route =
-                        routing_lsmr::GeneralRoutingState::new(RoutingPreset::geometry_many());
-                    let reference = panel.project(&design, &mut route, None);
-                    // An unbudgeted or admitted call never counts components.
-                    assert_eq!(design.known_yielding_pair_components(), None);
-                    let mut fits = Vec::new();
-                    for _ in 0..2 {
-                        let design = panel.design();
-                        let mut route =
-                            routing_lsmr::GeneralRoutingState::new(RoutingPreset::geometry_many());
-                        let fit = panel.project(&design, &mut route, Some(budget));
-                        assert_eq!(design.known_yielding_pair_components(), Some(3));
-                        let refined = crate::memory::estimate_fe_solver_memory_with_yielding(
-                            panel.values.nrows(),
-                            2,
-                            &panel.levels,
-                            workers,
-                            lsmr.local_size,
-                            Some(3),
-                        )
-                        .unwrap();
-                        assert!(budget.fits(refined.lsmr_schwarz_bytes));
-                        fits.push(fit);
-                    }
-                    for fit in fits.iter().chain([&reference]) {
-                        assert!(fit.report().certified());
-                        assert_eq!(fit.report().used_solver, FeSolverKind::Lsmr);
-                        assert!(!fit.report().fallback_used);
-                        assert!(fit.report().certificate.relative_infinity_norm <= 1e-8);
-                    }
-                    for fit in &fits {
-                        assert_eq!(fit.report().iterations, reference.report().iterations);
-                        assert_eq!(fit.residualized(), reference.residualized());
-                    }
-                    fits.swap_remove(0)
-                })
-                .unwrap();
-        fits.push(fit);
-    }
-    // Scientific agreement across worker counts, and the retained FE
-    // coefficients reconstruct the original values on every row.
-    for rhs in 0..2 {
-        let scale = (0..panel.values.nrows())
-            .map(|row| panel.values[(row, rhs)].abs())
-            .fold(0.0_f64, f64::max);
-        for row in 0..panel.values.nrows() {
-            assert!(
-                (fits[0].residualized()[(row, rhs)] - fits[1].residualized()[(row, rhs)]).abs()
-                    <= 1e-6 * scale
-            );
-        }
-        for fit in &fits {
-            let coefficients = fit.coefficients.as_ref().unwrap();
-            let base = rhs * coefficients.coefficients_per_rhs;
-            for row in 0..panel.values.nrows() {
-                let fitted: f64 = panel
-                    .codes
-                    .iter()
-                    .enumerate()
-                    .map(|(effect, code)| {
-                        coefficients.values
-                            [base + coefficients.effect_offsets[effect] + code[row] as usize]
-                    })
-                    .sum();
-                assert!(
-                    (panel.values[(row, rhs)] - fit.residualized()[(row, rhs)] - fitted).abs()
-                        <= 1e-10 * scale
-                );
-            }
         }
     }
 }
@@ -2857,196 +2589,33 @@ fn refused_level_bound_admits_owned_lsmr_by_exact_yielding_count() {
 }
 
 #[test]
-fn escalation_reuses_the_trial_design_with_the_rebuilt_solvers_bits() {
+fn many_fe_full_system_escalation_repeats_bits_at_each_worker_count() {
     let _stable_route = crate::fe::block_schur::stable_route_for_test();
-    // The geometry trial prepares the pinned solver's design once and builds
-    // its additive escalation from that design. A solver built from the
-    // shared design is the solver built from the effects: identical solves,
-    // with and without the locality sort and in both adjoint modes.
-    for panel in [TrialPanel::new(true), TrialPanel::new(true).shuffled()] {
-        let design = panel.design();
-        let weights = validate_weights(BorrowedMapWeights::Unit, design.nobs()).unwrap();
-        let columns: Vec<Vec<f64>> = (0..2)
-            .map(|rhs| {
-                (0..design.nobs())
-                    .map(|row| panel.values[(row, rhs)])
-                    .collect()
-            })
-            .collect();
-        let rhs: Vec<_> = columns.iter().map(Vec::as_slice).collect();
-        let options = LsmrOptions {
-            tol: 1e-10,
-            maxiter: 1_000,
-            local_size: None,
-        };
-        for (workers, deterministic) in [(1, false), (4, true)] {
-            crate::ThreadTeam::new(crate::ThreadConfig::from_requested(workers, true).unwrap())
-                .install(|| {
-                    let shared = prepared_within_design(&design).unwrap();
-                    for config in [
-                        PreconditionerConfig::Diagonal,
-                        borrowed_within_preconditioner(LsmrPreconditioner::Schwarz),
-                    ] {
-                        let from_shared = build_retained_lsmr_from(
-                            shared.clone(),
-                            weights,
-                            config.clone(),
-                            deterministic,
-                        )
-                        .unwrap();
-                        let rebuilt =
-                            build_retained_borrowed_lsmr(&design, weights, config, deterministic)
-                                .unwrap();
-                        let left =
-                            routing_lsmr::solve_prepared_input(&from_shared, &rhs, &options, None)
-                                .unwrap();
-                        let right =
-                            routing_lsmr::solve_prepared_input(&rebuilt, &rhs, &options, None)
-                                .unwrap();
-                        assert_eq!(left.iterations, right.iterations);
-                        assert_eq!(left.x, right.x);
-                        assert_eq!(left.demeaned, right.demeaned);
-                    }
-                    // The routed fit escalates and repeats bit for bit.
-                    let fits: Vec<_> = (0..2)
-                        .map(|_| {
-                            let mut route = routing_lsmr::GeneralRoutingState::new(
-                                RoutingPreset::geometry_many(),
-                            );
-                            let fit = panel.project(&mut route, &design, deterministic);
-                            assert!(!route.jacobi_trial_active());
-                            fit
-                        })
-                        .collect();
-                    for fit in &fits {
-                        assert!(fit.report().certified());
-                        assert_eq!(
-                            fit.report().used_preconditioner,
-                            Some(LsmrPreconditioner::Schwarz)
-                        );
-                    }
-                    assert_eq!(fits[0].report().iterations, fits[1].report().iterations);
-                    assert_eq!(fits[0].residualized(), fits[1].residualized());
-                })
-                .unwrap();
-        }
-    }
-}
-
-fn route_trial_panel<R: super::super::lsmr_batch::RhsSource + ?Sized>(
-    panel: &TrialPanel,
-    rhs: &R,
-) -> (within::BatchSolveResult, bool) {
-    let design = panel.design();
-    let weights = validate_weights(BorrowedMapWeights::Unit, design.nobs()).unwrap();
-    let options = LsmrOptions {
-        tol: 1e-9,
-        maxiter: 1_000,
-        local_size: None,
-    };
-    let estimate = estimate_fe_solver_memory(design.nobs(), 2, &panel.levels, 1, None).unwrap();
-    let mut memory =
-        BorrowedLsmrCallMemory::new(estimate, LsmrPreconditioner::Schwarz, None, 0).unwrap();
-    let mut route = routing_lsmr::GeneralRoutingState::new(RoutingPreset::geometry_many());
-    let (solved, _) = route
-        .solve(
-            &design,
-            weights,
-            rhs,
-            &options,
-            LsmrPreconditioner::Auto,
-            borrowed_within_preconditioner(LsmrPreconditioner::Schwarz),
-            true,
-            &mut memory,
-            None,
-        )
-        .unwrap();
-    (solved, route.jacobi_trial_active())
-}
-
-#[test]
-fn routing_windows_transport_their_own_columns_bit_for_bit() {
-    // The many-FE windows transport each window from the row-major matrix and
-    // release it once the sessions own their responses; an escalation
-    // transports its columns again. Both match borrowed column-major input.
-    use super::super::lsmr_batch::RhsSource;
-    for (panel, escalates) in [
-        (TrialPanel::new(false), false),
-        (TrialPanel::new(true), true),
-    ] {
-        let columns = super::super::lsmr_batch::rhs_columns(&panel.values).unwrap();
-        let borrowed: Vec<_> = columns.iter().map(Vec::as_slice).collect();
-        assert_eq!(
-            panel.values.columns(&[1]).unwrap().views(),
-            vec![borrowed[1]]
-        );
-        let (matrix, matrix_trial) = route_trial_panel(&panel, &panel.values);
-        let (slices, slices_trial) = route_trial_panel(&panel, &borrowed[..]);
-        assert_eq!(matrix_trial, !escalates);
-        assert_eq!(slices_trial, !escalates);
-        assert_eq!(matrix.iterations, slices.iterations);
-        assert_eq!(matrix.x, slices.x);
-        assert_eq!(matrix.demeaned, slices.demeaned);
-    }
-}
-
-#[test]
-fn default_mode_additive_escalation_repeats_bits_at_each_worker_count() {
-    let _stable_route = crate::fe::block_schur::stable_route_for_test();
-    // Upstream additive-Schwarz uses fixed reduction ownership, so a
-    // default-mode (not `deterministic`) fit that escalates from the Jacobi
-    // trial repeats bit for bit at a fixed worker count.
-    assert!(matches!(
-        crate::fe::additive_schwarz(),
-        within::PreconditionerConfig::Additive { .. }
-    ));
+    // fedemean's full system uses fixed blocks and lane-order merges, so an
+    // escalating fit repeats bit for bit at every worker count.
     let panel = TrialPanel::with_levels(true, [6_000, 600, 60]).shuffled();
-    // The retained route explicitly builds the fixed additive configuration.
-    {
-        let design = panel.design();
-        let weights = validate_weights(BorrowedMapWeights::Unit, design.nobs()).unwrap();
-        let solver = build_retained_borrowed_lsmr(
-            &design,
-            weights,
-            borrowed_within_preconditioner(LsmrPreconditioner::Schwarz),
-            false,
-        )
-        .unwrap();
-        assert!(matches!(
-            solver.preconditioner().map(|p| p.config()),
-            Some(within::PreconditionerConfig::Additive { .. })
-        ));
-    }
+    let bits = |fit: &CertifiedBorrowedMap| {
+        fit.residualized()
+            .as_slice()
+            .iter()
+            .chain(&fit.coefficients.as_ref().unwrap().values)
+            .map(|value| value.to_bits())
+            .collect::<Vec<_>>()
+    };
+    let mut reference = None;
     for workers in [1, 2, 4, 8] {
         crate::ThreadTeam::new(crate::ThreadConfig::from_requested(workers, false).unwrap())
             .install(|| {
                 let design = panel.design();
-                let run = || {
-                    let mut route =
-                        routing_lsmr::GeneralRoutingState::new(RoutingPreset::geometry_many());
-                    let fit = panel.project(&mut route, &design, false);
-                    assert!(!route.jacobi_trial_active());
-                    fit
-                };
-                let first = run();
+                let first = panel.project_full(&design);
                 assert!(first.report().certified());
-                assert_eq!(
-                    first.report().used_preconditioner,
-                    Some(LsmrPreconditioner::Schwarz)
-                );
-                for _ in 0..3 {
-                    let again = run();
+                for _ in 0..2 {
+                    let again = panel.project_full(&design);
                     assert_eq!(again.report().iterations, first.report().iterations);
-                    let bits = |fit: &CertifiedBorrowedMap| {
-                        fit.residualized()
-                            .as_slice()
-                            .iter()
-                            .chain(&fit.coefficients.as_ref().unwrap().values)
-                            .map(|value| value.to_bits())
-                            .collect::<Vec<_>>()
-                    };
                     assert_eq!(bits(&again), bits(&first), "workers={workers}");
                 }
+                let first = (first.report().route(), bits(&first));
+                assert_eq!(reference.get_or_insert_with(|| first.clone()), &first);
             })
             .unwrap();
     }

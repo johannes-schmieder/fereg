@@ -21,42 +21,6 @@ pub(crate) fn direct_lsmr_tolerance(requested_tolerance: f64) -> f64 {
     }
 }
 
-/// The public many-FE geometry policy stops its recurrence one decimal order
-/// below the request, with the same `1e-14` floor: a certificate miss earns one
-/// correction at [`direct_lsmr_tolerance`] before any MAP fallback.
-pub(crate) fn corrected_lsmr_tolerance(requested_tolerance: f64) -> f64 {
-    if requested_tolerance <= 1e-14 {
-        requested_tolerance
-    } else {
-        (requested_tolerance / 10.0).max(1e-14)
-    }
-}
-
-/// The correction target after a certificate miss, when it is strictly tighter
-/// than the recurrence target that missed.
-pub(crate) fn correction_tolerance(requested_tolerance: f64, recurrence: f64) -> Option<f64> {
-    let tighter = direct_lsmr_tolerance(requested_tolerance);
-    (tighter < recurrence).then_some(tighter)
-}
-
-/// Smallest recurrence target of the former explicit-LSMR margin rule.
-#[cfg(test)]
-const EXPLICIT_LSMR_RECURRENCE_FLOOR: f64 = 1e-15;
-
-/// The former explicit-LSMR margin rule (a hundredth of the request, floored
-/// at 1e-15), kept only for the borrowed within LSMR's own test until that
-/// route leaves with the Auto fallback's migration; fedemean stops on its
-/// certificate at the request.
-#[cfg(test)]
-pub(crate) fn explicit_lsmr_recurrence(config: LsmrConfig) -> LsmrConfig {
-    LsmrConfig {
-        tolerance: (config.tolerance * 1e-2)
-            .max(EXPLICIT_LSMR_RECURRENCE_FLOOR)
-            .min(config.tolerance),
-        ..config
-    }
-}
-
 /// fedemean's memory limit within `budget`: the usable bytes beyond the
 /// caller's execution bytes.
 fn fedemean_memory_limit(budget: Option<FeSolverMemoryBudget>) -> Option<u128> {

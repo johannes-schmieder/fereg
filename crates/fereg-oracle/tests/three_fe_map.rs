@@ -204,7 +204,7 @@ fn nonuniform_independent_and_perturbed_marginals_select_certified_map() {
 }
 
 #[test]
-fn extra_pair_intersection_and_disconnected_components_stay_on_lsmr() {
+fn extra_pair_intersection_and_disconnected_components_skip_the_pilot_for_map() {
     for disconnected in [false, true] {
         let mut codes: [Vec<u32>; 3] = std::array::from_fn(|_| Vec::new());
         for component in 0..2 {
@@ -229,7 +229,9 @@ fn extra_pair_intersection_and_disconnected_components_stay_on_lsmr() {
             PreparedOlsExecutionMode::Low,
         ] {
             let fit = check_oracle(&design, config(mode, 1, true));
-            assert_eq!(fit.absorption_report().used_solver, FeSolverKind::Lsmr);
+            let report = fit.absorption_report();
+            assert_eq!(report.used_solver, FeSolverKind::Map);
+            assert_eq!(report.pilot_iterations, 0);
         }
     }
 }
@@ -246,7 +248,9 @@ fn changing_observation_weights_do_not_use_unit_geometry() {
         PreparedOlsExecutionMode::Low,
     ] {
         let fit = check_oracle(&design, config(mode, 1, true));
-        assert_eq!(fit.absorption_report().used_solver, FeSolverKind::Lsmr);
+        let report = fit.absorption_report();
+        assert_eq!(report.used_solver, FeSolverKind::Map);
+        assert_eq!(report.pilot_iterations, 0);
     }
 }
 

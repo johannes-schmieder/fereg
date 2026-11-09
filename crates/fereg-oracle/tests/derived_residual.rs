@@ -187,7 +187,7 @@ fn many_fe_derived_residual_matches_the_full_dummy_solution() {
     }
     // The public Auto route is the exact elimination of the largest effect. With it switched off (read once per process, so in a
     // child process) the MAP pilot needs unit weights and certifies the
-    // balanced graph; the other designs run the LSMR session.
+    // balanced graph; the other designs run the MAP continuation.
     const CHILD: &str = "FEREG_ORACLE_GEOMETRY_POLICY_CHILD";
     if std::env::var_os(CHILD).is_none() {
         assert!(
@@ -207,9 +207,8 @@ fn many_fe_derived_residual_matches_the_full_dummy_solution() {
         assert!(status.success(), "geometry-policy child failed");
         return;
     }
-    assert_eq!(solvers[0], FeSolverKind::Map);
     assert!(
-        solvers[1..].iter().all(|&s| s == FeSolverKind::Lsmr),
+        solvers.iter().all(|&s| s == FeSolverKind::Map),
         "{solvers:?}"
     );
 }
