@@ -4107,7 +4107,7 @@ unchanged (SPEC §1).
   continues with MAP, reported as the fallback; Auto, `absorb_auto` and
   saved-effect recovery are unchanged.
 - The slope-boundary fixture's offset case (case 1 of
-  `tests/stata/development/within_plugin_slope_boundary.do`; slopes near
+  `tests/stata/development/ols_offset_slope_boundary.do`; slopes near
   ±2^24 that differ by units, `solver(lsmr, precondition(none))`,
   `tolerance(1e-10)`) failed with r(459) and full rollback between the within
   retirement (`d748f6f3`) and fedemean `f67ea713`, which applies and

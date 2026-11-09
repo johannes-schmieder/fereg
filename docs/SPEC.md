@@ -817,7 +817,7 @@ including, since the within retirement, those with `precondition(schwarz)`
 and fewer than two intercept effects and those fedemean does not certify,
 which now continue with MAP; sample, rank, omission and other discrete
 decisions do not change. The slope-boundary fixture's offset case
-(`tests/stata/development/within_plugin_slope_boundary.do`, case 1:
+(`tests/stata/development/ols_offset_slope_boundary.do`, case 1:
 `g##c.(z1 z2)` with slopes near ±2^24 that differ by units,
 `solver(lsmr, precondition(none))`, `tolerance(1e-10)`) certifies on
 fedemean with residual-derived outputs and no fallback (the retired within

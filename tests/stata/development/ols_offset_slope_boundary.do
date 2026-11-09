@@ -10,7 +10,7 @@ local ado_path = subinstr(`"`r(fn)'"', "\", "/", .)
 local suffix "/stata/fereg.ado"
 assert substr(`"`ado_path'"', -strlen(`"`suffix'"'), .) == `"`suffix'"'
 local root = substr(`"`ado_path'"', 1, strlen(`"`ado_path'"') - strlen(`"`suffix'"'))
-import delimited using `"`root'/tests/fixtures/ols/within_plugin_slope_boundary.csv"', varnames(1) asdouble stringcols(25/27) clear
+import delimited using `"`root'/tests/fixtures/ols/ols_offset_slope_boundary.csv"', varnames(1) asdouble stringcols(25/27) clear
 foreach variable in z1 z2 y {
     assert strtrim(string(`variable',"%21x")) == hex_`variable'
 }
@@ -247,4 +247,4 @@ forvalues case = 1/4 {
     assert e(sample) == 1 & e(rank) == ref_rank
     confirm new variable should_not_exist
 }
-display as result "END_FIXTURE|within_plugin_slope_boundary|rc=0"
+display as result "END_FIXTURE|ols_offset_slope_boundary|rc=0"

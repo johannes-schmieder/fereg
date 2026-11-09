@@ -1374,7 +1374,7 @@ mod explicit_slope_lsmr {
     fn boundary() -> (FeDesign, Vec<f64>, DenseMatrix) {
         let path = concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../../tests/fixtures/ols/within_plugin_slope_boundary.csv"
+            "/../../tests/fixtures/ols/ols_offset_slope_boundary.csv"
         );
         let text = std::fs::read_to_string(path).unwrap();
         let mut lines = text.lines();

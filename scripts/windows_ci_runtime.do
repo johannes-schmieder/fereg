@@ -91,7 +91,7 @@ if _rc exit 9109
 * binary has already been hash-verified; the source and installed ado bytes match.
 adopath ++ "`root'/stata"
 * Diagnostic r(9110) identifies this unchanged fixture; it cannot confer PASS.
-capture noisily do "tests/stata/development/within_plugin_slope_boundary.do"
+capture noisily do "tests/stata/development/ols_offset_slope_boundary.do"
 if _rc exit 9110
 * Replay, bootstrap:/jackknife: and the displayed header on Windows.
 * Diagnostic r(9111) identifies this fixture; it cannot confer PASS.
