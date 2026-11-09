@@ -64,7 +64,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 /// exact inversion is numerically meaningful.
 const NULL: f64 = 1e-10;
 /// Levels per task of the inversion and measure passes.
-const LEVEL_TASK: usize = 512;
+pub(super) const LEVEL_TASK: usize = 512;
 /// A centered slope whose sum of squares on a level is at most this
 /// fraction of its raw one (a variation of at most `1e-10` of its
 /// magnitude) is constant there: its centered values are rounding.
@@ -410,14 +410,15 @@ impl Blocks {
         true
     }
 
-    /// Over every blocked level of `r` (internal layout, `R` columns):
+    /// Over every blocked level of `r` (internal layout, `R` columns, the
+    /// effects' first coefficients at `offsets`):
     /// `v_l = M_l^-1 r_l`, written into `z` when given. Returns per column
     /// `[sum_l r_l' v_l, max_l sqrt(r_l' v_l), max |v|]` from per-task
     /// partials combined in task order (`partials`: [`Blocks::tasks`]
     /// times `3 R`).
     pub(super) fn measure<const R: usize>(
         &self,
-        st: &Structure,
+        offsets: &[usize],
         r: &[f64],
         mut z: Option<&mut [f64]>,
         partials: &mut [f64],
@@ -425,7 +426,7 @@ impl Blocks {
         for part in &self.parts {
             let c = part.channels;
             let width = c * c;
-            let span = (st.offsets[part.effect] * R)..(st.offsets[part.effect + 1] * R);
+            let span = (offsets[part.effect] * R)..(offsets[part.effect + 1] * R);
             let blocks = &self.values[part.first..part.first + part.levels * width];
             let tasks = part.levels.div_ceil(LEVEL_TASK);
             let partials = &mut partials[part.task * 3 * R..(part.task + tasks) * 3 * R];

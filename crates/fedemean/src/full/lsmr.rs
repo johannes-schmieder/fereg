@@ -171,7 +171,7 @@ impl Operator for Inverse<'_> {
                 }
                 if let Some((blocks, st, partials)) = &self.blocks {
                     let mut partials = partials.lock().unwrap_or_else(PoisonError::into_inner);
-                    blocks.measure::<1>(st, x, Some(y), &mut partials);
+                    blocks.measure::<1>(&st.offsets, x, Some(y), &mut partials);
                 }
             }
             (None, false) => y.copy_from_slice(x),
@@ -371,7 +371,8 @@ fn check(
         zinf = zinf.max(m.abs() * im);
     }
     if let Some(blocks) = state.blocks() {
-        let [_, block_inf, block_zinf] = blocks.measure::<1>(st, &work.q, None, &mut work.measures);
+        let [_, block_inf, block_zinf] =
+            blocks.measure::<1>(&st.offsets, &work.q, None, &mut work.measures);
         inf = inf.max(block_inf[0]);
         zinf = zinf.max(block_zinf[0]);
     }

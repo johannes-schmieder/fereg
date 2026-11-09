@@ -260,7 +260,7 @@ fn update<const R: usize>(
         // fused pass left them zero: their inverse masses are zero).
         let jacobi = op.jacobi && op.schwarz.is_none();
         let z = jacobi.then_some(&mut work.z[..]);
-        let [rz, inf, zinf] = blocks.measure::<R>(op.st, &work.r, z, &mut work.measures);
+        let [rz, inf, zinf] = blocks.measure::<R>(&op.st.offsets, &work.r, z, &mut work.measures);
         for j in 0..R {
             if jacobi {
                 out[0][j] += rz[j];

@@ -78,6 +78,7 @@
 
 mod blocks;
 mod cells;
+mod handle;
 mod kernels;
 #[cfg(feature = "schwarz")]
 mod lsmr;
@@ -172,6 +173,7 @@ use crate::projector::{
 };
 use crate::weights::{Validated, Weights as InputWeights};
 use cells::Cells;
+pub use handle::FePreconditioner;
 use kernels::{adjoint, load, residualize, Basis, Rows, ROW_BLOCK};
 use pcg::{pcg, Normal, Work};
 use schwarz::{Refusal, Schwarz};
@@ -370,31 +372,42 @@ impl Engine {
             + self.cells.as_ref().map_or(0, |c| cells_bytes(c, width))
     }
 
-    /// Build the geometry; `false` when the design is outside the route,
+    /// Build the geometry (once; an FE preconditioner handle may have built
+    /// the structure first); `false` when the design is outside the route,
     /// which is remembered.
     pub(crate) fn prepare(&mut self, call: &Call<'_, '_>) -> Result<bool> {
         if self.refused {
             return Ok(false);
         }
-        if self.structure.is_some() {
-            return Ok(true);
-        }
-        match Structure::build(call.design, &call.cancel)? {
-            Some(st) => {
-                if call.action == Action::Eliminate {
-                    let other = usize::from(st.largest == 0);
-                    let pair = [st.largest, other];
-                    let effects = call.design.effects();
-                    self.cells = Some(Cells::build(&st, effects, pair, &call.cancel)?);
+        if self.structure.is_none() {
+            match Structure::build(call.design, &call.cancel)? {
+                Some(st) => self.structure = Some(st),
+                None => {
+                    self.refused = true;
+                    return Ok(false);
                 }
-                self.structure = Some(st);
-                Ok(true)
-            }
-            None => {
-                self.refused = true;
-                Ok(false)
             }
         }
+        if call.action == Action::Eliminate && self.cells.is_none() {
+            let st = self.structure.as_ref().expect("structure");
+            let other = usize::from(st.largest == 0);
+            let pair = [st.largest, other];
+            let effects = call.design.effects();
+            self.cells = Some(Cells::build(st, effects, pair, &call.cancel)?);
+        }
+        Ok(true)
+    }
+
+    /// An FE preconditioner handle of `choice` for `weights` (see
+    /// [`crate::Projector::fe_preconditioner`]).
+    pub(crate) fn fe_preconditioner(
+        &mut self,
+        design: &Design<'_>,
+        request: (InputWeights<'_>, crate::projector::Preconditioner),
+        memory_limit: Option<u128>,
+        cancel: &Cancel<'_>,
+    ) -> Result<std::result::Result<FePreconditioner, Decline>> {
+        FePreconditioner::build(self, design, request, memory_limit, cancel)
     }
 
     /// Project from `start` (canonical coefficient layout, validated by the

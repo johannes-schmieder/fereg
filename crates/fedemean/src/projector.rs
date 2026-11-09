@@ -957,6 +957,41 @@ impl<'a> Projector<'a> {
         Ok(formulation)
     }
 
+    /// Build the full system's preconditioner of `preconditioner` for
+    /// `weights` as a handle ([`full::FePreconditioner`]), for a caller's own
+    /// Krylov method on a system whose FE block is `W^1/2 D`, whatever this
+    /// projector's choices. [`Preconditioner::Jacobi`] is the inverse level
+    /// masses (with slopes, the levels' channel blocks);
+    /// [`Preconditioner::Schwarz`] additive Schwarz (feature `schwarz`);
+    /// [`Preconditioner::Auto`] Schwarz at the default [`SchwarzSpec`] for
+    /// two or more effects when it builds within `memory_limit`, else
+    /// Jacobi. Other choices are [`Error::Unsupported`].
+    ///
+    /// The structure is built on first use and kept with the projector; the
+    /// weight state is transient, so building a handle leaves the
+    /// projector's projections unchanged. `memory_limit` bounds the build's
+    /// peak ([`full::FePreconditioner::workspace_bytes`]): each stage is
+    /// charged before it allocates, and a refusal comes before the stage it
+    /// refuses. An explicit choice that does not fit (or whose factorization
+    /// refuses numerically) declines with [`Decline::MemoryLimit`]
+    /// ([`Decline::Numerical`]); a level without weight with
+    /// [`Decline::Weights`]; a design outside the full formulation with
+    /// [`Decline::OutsideRoute`]. The build polls `control`'s cancellation.
+    pub fn fe_preconditioner(
+        &mut self,
+        weights: Weights<'_>,
+        preconditioner: Preconditioner,
+        memory_limit: Option<u128>,
+        control: &Control<'_>,
+    ) -> Result<std::result::Result<full::FePreconditioner, Decline>> {
+        self.full.fe_preconditioner(
+            &self.design,
+            (weights, preconditioner),
+            memory_limit,
+            &Cancel(control.cancel),
+        )
+    }
+
     /// Recompute every level's weighted moment of one residual column (the
     /// eliminated levels included) and certify it at `amplification` times
     /// its weighted norm. `None` when this projector did not project with
