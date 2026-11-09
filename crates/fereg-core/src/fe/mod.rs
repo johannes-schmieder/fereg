@@ -19,6 +19,7 @@ mod cmg_schur;
 mod components;
 mod design;
 pub(crate) mod exact_sections;
+pub(crate) mod fedemean_slope;
 mod interaction;
 mod lsmr;
 mod lsmr_batch;

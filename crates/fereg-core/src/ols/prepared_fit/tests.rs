@@ -1812,10 +1812,19 @@ fn saved_slope_recovery_admits_each_attempt_and_keeps_map_fallback() {
                                     Some(direct_bytes as u64)
                                 );
                             }
-                            assert_eq!(
-                                run(direct_bytes - 1).unwrap().recovery_method(),
-                                crate::fe::CategoricalRecoveryMethod::Map
-                            );
+                            // Without the direct solve's bytes, fedemean's
+                            // full system within the same budget, else MAP.
+                            let short = run(direct_bytes - 1).unwrap();
+                            assert!(matches!(
+                                short.recovery_method(),
+                                crate::fe::CategoricalRecoveryMethod::Full
+                                    | crate::fe::CategoricalRecoveryMethod::Map
+                            ));
+                            assert!(short
+                                .solver_workspace_peak()
+                                .bytes()
+                                .is_some_and(|bytes| u128::from(bytes) < direct_bytes));
+                            assert_eq!(short.channels().len(), 2);
                         } else {
                             assert_eq!(
                                 ample.solver_workspace_peak().bytes(),

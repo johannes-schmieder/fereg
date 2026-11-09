@@ -119,9 +119,11 @@ independent. `solver(auto)` chooses all of them and takes no sub-option other
 than `auto`. The supported explicit OLS requests are:
 
 - `map`, with or without Irons–Tuck or SQUAREM acceleration;
-- `lsmr` with `precondition(auto|none|jacobi|schwarz)`, modified LSMR on the
-  full system (fedemean for categorical intercept designs; with absorbed slopes
-  the general LSMR solver);
+- `lsmr` with `precondition(auto|none|jacobi|schwarz)`, modified LSMR on
+  fedemean's full system, with or without absorbed slopes (with slopes,
+  `jacobi` inverts each level's channel block and `schwarz` is the hybrid
+  below; `schwarz` with fewer than two intercept effects keeps the general
+  within LSMR solver);
 - `cg` with `reduce()` and `precondition()` as in the table below; every
   preconditioner other than `cmg` runs fedemean's PCG on categorical intercept
   designs (no slopes);
@@ -170,7 +172,7 @@ unsupported requests fail clearly.
 | Request | OLS support to preserve | PPML support to preserve |
 |---|---|---|
 | `auto` | No FE, one/multiple intercept or slope-bearing FEs, disconnected designs | Same model grammar with changing positive IRLS weights |
-| `lsmr` | General supported FE grammar, including slopes and multiple RHSs (categorical intercept designs: fedemean's full system) | At least two categorical intercept FEs, including more than three; no absorbed slopes |
+| `lsmr` | General supported FE grammar, including slopes and multiple RHSs (fedemean's full system; `schwarz` with slopes and fewer than two intercept effects: within) | At least two categorical intercept FEs, including more than three; no absorbed slopes |
 | `cg` (fedemean PCG, full or eliminated) | Categorical intercept effects, any count for the full system, two to five for the elimination; weights, finite controls, disconnected designs, saved effects, both memory modes; no slopes | Unsupported (PPML `cg` is CMG) |
 | `cg, precondition(cmg)` (full graph) | Categorical intercept graph: two largest effects as bipartite core, additional effects with at most 64 non-base nuisance columns; no slopes | Exactly two or three categorical intercept effects; third-effect nuisance width at most 64; no slopes |
 | `cg, reduce(eliminate) precondition(cmg)` (CMG-Schur, experimental) | Exactly two categorical intercept effects; positive observation weights, finite controls, disconnected components and saved effects | Unsupported |
@@ -793,12 +795,50 @@ by the moment certificate on the formed residual over every level and a pass
 that misses restarts from its iterate at a tighter tolerance (at most four
 passes within `iterate()`). Both methods stop at 0.1×tol of the starting
 residual's norm and certify at `tolerance()` (the 1e-14 final residual
-projection of saved outputs included); neither falls back. With absorbed
-slopes, explicit `solver(lsmr)` keeps the general LSMR solver: it stops its
-recurrence at a hundredth of `tolerance()`, floored at 1e-15 and never looser
-than `tolerance()`, and certifies the FE moments at `tolerance()` (Johannes,
-2026-10-10). Explicit PPML LSMR keeps its scheduled certificate and one tighter
-continuation (§13).
+projection of saved outputs included); neither falls back.
+
+Absorbed slopes (Milestone 3, 2026-11-09; covered by the M2 decision for
+explicit LSMR). fedemean's full system takes each effect's channels (its
+intercept, if any, and one per slope variable), with channel-major
+coefficients `effect_offset + channel*levels + level`, fereg's layout.
+`precondition(jacobi)` (and the automatic preconditioner's first stage)
+inverts each level's `channels x channels` block of `D'WD` exactly; a block
+whose channels are dependent on the level's rows (a slope constant or zero on
+the level, fewer distinct rows than channels) is a null direction of `D` and
+acts as its pseudo-inverse on the range. `precondition(schwarz)` (and the
+automatic escalation, when two effects have intercepts) is the hybrid
+additive Schwarz: factor-pair subdomains on the intercept channels plus one
+subdomain per level channel block. Results report `jacobi` and `schwarz`.
+Explicit `solver(lsmr)` on a slope design stops on fedemean's per-level
+certificate at `tolerance()`, which equals §16's on nonsingular blocks;
+fereg's independent §16 certificate then decides, after at most one
+correction of the residual at a tenth of `tolerance()` within the remaining
+`iterate()`. A fit fedemean does not certify keeps the established route
+from the original input (the M2 rule: within only for a case that fails):
+within's modified LSMR with the same preconditioner, its recurrence at a
+hundredth of `tolerance()` floored at 1e-15, then the former MAP fallback,
+reported as the fallback (`e(fe_fallback)=1`). Such cases are slopes whose
+raw level Gram loses their within-level variation (e.g. values near ±2^24
+differing by units: within's per-level centering keeps it, fedemean's
+channel blocks do not). Explicit `precondition(schwarz)` with fewer than two
+intercept effects runs within's additive Schwarz directly (its subdomains
+include slope channels). Declared scope: explicit slope `solver(lsmr)` fits
+change at tolerance level; discrete decisions do not change. Explicit PPML
+LSMR keeps its scheduled certificate and one tighter continuation (§13).
+
+OLS Auto on an owned slope design without the exact two-effect slope solver
+(three or more effects, or two effects whose coefficient solver is not
+admitted) runs fedemean's full system first: PCG with the level channel
+blocks, escalating to the hybrid Schwarz when a 24-iteration pilot predicts a
+slow recurrence or it stalls, within half of `iterate()`, certified by the
+generic owner's independent §16 certificate (one correction at a tenth of
+`tolerance()` after a miss). A decline, or a correction that still misses,
+continues with symmetric MAP from the current residuals under the original
+reference norms, reported as the fallback (`e(fe_fallback)=1`). Certified
+projections retain fedemean's coefficients for saved-effect recovery. The
+exact two-effect slope solver stays the Auto route for the designs it serves
+(VALIDATION records the comparison). Declared scope: these Auto fits change
+at tolerance level; discrete decisions do not.
 
 Ordinary automatic two-FE OLS first targets half of `tolerance()` in its
 recurrence and certifies at `tolerance()`. Only a failed certificate permits
@@ -942,7 +982,25 @@ is not used for this complete-reconstruction solve. Final-Hessian weighted
 normalization is followed by fresh original-target global and per-row checks.
 No saved-output request changes the fit's sample, rank, coefficients or covariance.
 OLS, one-effect and slope recovery, successful direct paths and fits without saved
-effects retain their existing behavior. Independent weak three-effect, disconnected,
+effects retain their existing behavior, except for slope designs as follows.
+
+Slope-design recovery (Milestone 3): retained fedemean coefficients (Auto's
+full system, explicit `solver(lsmr)`) are the first tier; a single slope
+effect keeps its direct level solves; otherwise fedemean's full system
+projects the target from the retained coefficients (a warm start) or zero at
+`min(tol, 1e-12)` with coefficients requested; MAP stays the fallback after a
+decline or a failed check. On every slope path a level whose channels the
+scaled pivoted group solve finds rank deficient is re-expressed in that
+solve's representative (the intercept kept on ties, dropped channels exactly
+zero; nonsingular levels keep their coefficients), then the intercept
+effects are normalized as above, the FE sum is reconstructed from the
+coefficients and checked against the target (`max(100 tol, 1e-10)`; strict
+PPML recovery also every row at its reconstruction tolerance), and the
+independent certificate decides. This applies the §5 gauge to slope designs
+with two or more intercept effects, which the general MAP recovery
+previously left unnormalized (a named gauge correction: saved intercept
+channels move by per-component constants; fitted sums, slope channels on
+identified levels, sample, rank and covariance are unchanged). Independent weak three-effect, disconnected,
 rescaling and outside-span witnesses cover the recovery boundary.
 
 Tests: `tests/intercept_slope_oracle.rs`, `tests/fe_certificate_oracle.rs`,

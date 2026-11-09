@@ -12,7 +12,9 @@ use within::{Effect, LsmrOptions, PreconditionerConfig};
 pub struct LsmrConfig {
     pub tolerance: f64,
     pub max_iterations: usize,
-    /// Windowed modified Gram-Schmidt history. `None` disables reorthogonalization.
+    /// Windowed modified Gram-Schmidt history of the LSMR memory estimates
+    /// (fedemean's modified LSMR runs without reorthogonalization). `None`
+    /// disables it.
     pub local_size: Option<usize>,
     pub preconditioner: LsmrPreconditioner,
     pub threads: ThreadConfig,
@@ -38,30 +40,8 @@ fn reserved_empty<T>(elements: usize, message: &'static str) -> Result<Vec<T>> {
     Ok(output)
 }
 
-fn build_effects(design: &FeDesign) -> Result<Vec<Effect<'_>>> {
-    let mut effects = reserved_empty(
-        design.effects().len(),
-        "unable to reserve LSMR fixed-effect views",
-    )?;
-    for effect in design.effects() {
-        effects.push(
-            Effect::new(
-                effect.codes(),
-                effect.has_intercept(),
-                effect.slopes().iter().map(Vec::as_slice),
-            )
-            .map_err(|error| {
-                FeregError::new(
-                    ErrorCode::InvalidData,
-                    format!("unable to construct LSMR fixed-effect term: {error}"),
-                )
-            })?,
-        );
-    }
-    Ok(effects)
-}
-
-/// Residualize one or more right-hand sides with the pinned `within` modified-LSMR core.
+/// Residualize one or more right-hand sides with fedemean's modified LSMR on
+/// the full system (any supported FE grammar, including slopes).
 ///
 /// All input materialization and all output writes occur on the caller thread.
 /// Numerical work uses the caller's current Rayon pool, which is the isolated
@@ -76,15 +56,39 @@ pub fn absorb_lsmr(
     absorb_lsmr_certified_at(design, weights, values, config, config.tolerance)
 }
 
-/// [`absorb_lsmr`] with the recurrence stopping at `config.tolerance` and the
-/// independent FE certificate (and the stop reason it decides) at
-/// `certificate_tolerance`.
+/// [`absorb_lsmr`] certified at `certificate_tolerance`. fedemean's
+/// recurrence stops on its own certificate at that tolerance (its measure
+/// equals SPEC §16's on nonsingular level blocks); fereg's independent
+/// certificate then decides, after at most one correction (see
+/// [`super::fedemean_slope::absorb_certified`]). `config.tolerance` is not a
+/// separate recurrence target.
 pub(crate) fn absorb_lsmr_certified_at(
     design: &FeDesign,
     weights: &[f64],
     values: &mut DenseMatrix,
     config: LsmrConfig,
     certificate_tolerance: f64,
+) -> Result<SolveReport> {
+    absorb_lsmr_with(
+        design,
+        weights,
+        values,
+        config,
+        (certificate_tolerance, None),
+        None,
+    )
+}
+
+/// [`absorb_lsmr_certified_at`] with fedemean's `memory_limit` and, with
+/// `coefficients` (the design's layout, `values.ncols()` columns), the fitted
+/// FE coefficients added in place.
+pub(crate) fn absorb_lsmr_with(
+    design: &FeDesign,
+    weights: &[f64],
+    values: &mut DenseMatrix,
+    config: LsmrConfig,
+    (certificate_tolerance, memory_limit): (f64, Option<u128>),
+    coefficients: Option<(&super::fedemean_slope::Layout, &mut [f64])>,
 ) -> Result<SolveReport> {
     crate::interrupt::checkpoint()?;
     validate_config(config)?;
@@ -109,8 +113,8 @@ pub(crate) fn absorb_lsmr_certified_at(
             "LSMR weights must be finite and positive",
         ));
     }
-    let reference_norms = weighted_column_norms(values, weights)?;
     if design.effects().is_empty() || values.ncols() == 0 {
+        let reference_norms = weighted_column_norms(values, weights)?;
         let certificate = certify_residuals_with_reference_norms(
             design,
             weights,
@@ -128,8 +132,102 @@ pub(crate) fn absorb_lsmr_certified_at(
             )
         });
     }
+    if within_schwarz(design, config.preconditioner) {
+        return absorb_within(design, weights, values, config, certificate_tolerance);
+    }
+    let unit = weights.iter().all(|&weight| weight == 1.0);
+    let attempt = super::fedemean_slope::Attempt::lsmr(
+        config.preconditioner,
+        FeSolverKind::Lsmr,
+        certificate_tolerance,
+        config.max_iterations,
+        memory_limit,
+    );
+    let solved = super::fedemean_slope::absorb_certified(
+        design,
+        (weights, unit),
+        values,
+        &attempt,
+        coefficients,
+    )
+    .map_err(|error| {
+        if error.code == ErrorCode::Unsupported {
+            FeregError::new(
+                ErrorCode::Unsupported,
+                format!("solver(lsmr): {}", error.message),
+            )
+        } else {
+            error
+        }
+    })?;
+    let mut report = solved.report;
+    if solved.declined.is_none() && !report.certified() {
+        report.warnings.push(
+            "LSMR recurrence claimed convergence but the recomputed FE certificate failed"
+                .to_owned(),
+        );
+    }
+    Ok(report)
+}
 
-    let effects = build_effects(design)?;
+/// Whether [`absorb_lsmr_with`] fills requested coefficients (fedemean's
+/// routes; within's additive Schwarz exception does not).
+pub(crate) fn fills_coefficients(design: &FeDesign, preconditioner: LsmrPreconditioner) -> bool {
+    !within_schwarz(design, preconditioner)
+}
+
+/// Explicit additive Schwarz on a slope design with fewer than two effects
+/// with intercepts: fedemean's hybrid Schwarz needs two (its factor-pair
+/// subdomains live on intercept channels), so this one explicit combination
+/// keeps within's additive Schwarz, whose subdomains include slope channels.
+fn within_schwarz(design: &FeDesign, preconditioner: LsmrPreconditioner) -> bool {
+    preconditioner == LsmrPreconditioner::Schwarz
+        && super::fedemean_slope::sloped(design)
+        && design
+            .effects()
+            .iter()
+            .filter(|effect| effect.has_intercept())
+            .count()
+            < 2
+}
+
+fn build_effects(design: &FeDesign) -> Result<Vec<Effect<'_>>> {
+    let mut effects = reserved_empty(
+        design.effects().len(),
+        "unable to reserve LSMR fixed-effect views",
+    )?;
+    for effect in design.effects() {
+        effects.push(
+            Effect::new(
+                effect.codes(),
+                effect.has_intercept(),
+                effect.slopes().iter().map(Vec::as_slice),
+            )
+            .map_err(|error| {
+                FeregError::new(
+                    ErrorCode::InvalidData,
+                    format!("unable to construct LSMR fixed-effect term: {error}"),
+                )
+            })?,
+        );
+    }
+    Ok(effects)
+}
+
+/// within's modified LSMR with the requested preconditioner (the automatic
+/// one resolved as before), its recurrence at a hundredth of the request
+/// (floored at 1e-15, never looser) and fereg's independent certificate at
+/// the request: explicit additive Schwarz with fewer than two intercept
+/// effects (see [`within_schwarz`]), and the established route for a slope
+/// fit fedemean does not certify.
+pub(crate) fn absorb_within(
+    design: &FeDesign,
+    weights: &[f64],
+    values: &mut DenseMatrix,
+    config: LsmrConfig,
+    certificate_tolerance: f64,
+) -> Result<SolveReport> {
+    let reference_norms = weighted_column_norms(values, weights)?;
     let rhs = super::lsmr_batch::rhs_columns(values)?;
     let mut rhs_views = reserved_empty(
         rhs.len(),
@@ -139,41 +237,26 @@ pub(crate) fn absorb_lsmr_certified_at(
         rhs_views.push(column.as_slice());
     }
     let options = LsmrOptions {
-        tol: config.tolerance,
+        tol: (certificate_tolerance * 1e-2)
+            .max(1e-15)
+            .min(certificate_tolerance),
         maxiter: config.max_iterations,
         local_size: config.local_size,
     };
-    let resolved_preconditioner = resolve_preconditioner_kind(design, config.preconditioner);
-    let preconditioner = within_preconditioner(resolved_preconditioner);
-    let initial = super::lsmr_batch::solve_batch(
-        effects,
+    let resolved = resolve_preconditioner_kind(design, config.preconditioner);
+    let solved = super::lsmr_batch::solve_batch(
+        build_effects(design)?,
         &rhs_views,
         Some(weights),
         &options,
-        preconditioner,
+        match resolved {
+            LsmrPreconditioner::Off => PreconditionerConfig::Off,
+            LsmrPreconditioner::Diagonal => PreconditionerConfig::Diagonal,
+            _ => additive_schwarz(),
+        },
         config.threads.deterministic,
-    );
-    let (solved, preconditioner_fallback) = match initial {
-        Ok(solved) => (solved, false),
-        Err(error)
-            if config.preconditioner == LsmrPreconditioner::Auto
-                && error.preconditioner_breakdown() =>
-        {
-            let solved = retry_owned_unpreconditioned(
-                design,
-                weights,
-                &rhs_views,
-                &options,
-                config.threads.deterministic,
-                error,
-            )?;
-            (solved, true)
-        }
-        Err(error) => {
-            return Err(error.into_fereg("modified LSMR failed"));
-        }
-    };
-
+    )
+    .map_err(|error| error.into_fereg("modified LSMR failed"))?;
     super::lsmr_batch::copy_demeaned(&solved.demeaned, values);
     let certificate = certify_residuals_with_reference_norms(
         design,
@@ -182,140 +265,35 @@ pub(crate) fn absorb_lsmr_certified_at(
         &reference_norms,
         certificate_tolerance,
     )?;
-    if crate::diagnostics::solver_trace_enabled() {
-        trace_lsmr_columns(
-            design,
-            weights,
-            values,
-            &reference_norms,
-            certificate_tolerance,
-            &solved,
-        )?;
-    }
-    let recurrence_converged = solved.converged.iter().copied().all(|value| value);
+    let converged = solved.converged.iter().all(|&value| value);
     let stop_reason = if certificate.passed {
         SolveStopReason::Certified
-    } else if recurrence_converged {
+    } else if converged {
         SolveStopReason::Uncertified
     } else {
         SolveStopReason::MaximumIterations
     };
-    let warnings = lsmr_warnings(
-        &solved,
-        preconditioner_fallback,
-        recurrence_converged && !certificate.passed,
-    )?;
-
+    let mut warnings =
+        reserved_empty(solved.warnings.len() + 1, "unable to reserve LSMR warnings")?;
+    for warning in &solved.warnings {
+        warnings.push(format!("within preconditioner: {warning:?}"));
+    }
+    if converged && !certificate.passed {
+        warnings.push(
+            "LSMR recurrence claimed convergence but the recomputed FE certificate failed"
+                .to_owned(),
+        );
+    }
     Ok(SolveReport {
         iterations: solved.iterations.iter().copied().max().unwrap_or(0),
         normal_equation_residual: solved.residual.iter().copied().fold(0.0_f64, f64::max),
         setup_seconds: solved.time_setup,
         solve_seconds: solved.time_solve.iter().copied().sum(),
-        fallback_used: preconditioner_fallback,
         requested_preconditioner: Some(config.preconditioner),
-        used_preconditioner: Some(if preconditioner_fallback {
-            LsmrPreconditioner::Off
-        } else {
-            resolved_preconditioner
-        }),
+        used_preconditioner: Some(resolved),
         warnings,
         ..SolveReport::single_route(FeSolverKind::Lsmr, stop_reason, certificate)
     })
-}
-
-// A numerical refusal consumes its attempted native work before the only
-// permitted Auto retry. Explicit preconditioners never enter this helper.
-fn retry_owned_unpreconditioned(
-    design: &FeDesign,
-    weights: &[f64],
-    rhs: &[&[f64]],
-    options: &LsmrOptions,
-    deterministic: bool,
-    error: super::lsmr_batch::BatchError,
-) -> Result<within::BatchSolveResult> {
-    let spent = error.attempted_iterations();
-    let Some(remaining) = options.maxiter.checked_sub(spent).filter(|n| *n > 0) else {
-        return Err(error.into_fereg("modified LSMR failed"));
-    };
-    let fallback_options = LsmrOptions {
-        maxiter: remaining,
-        ..options.clone()
-    };
-    let mut solved = super::lsmr_batch::solve_batch(
-        build_effects(design)?,
-        rhs,
-        Some(weights),
-        &fallback_options,
-        PreconditionerConfig::Off,
-        deterministic,
-    )
-    .map_err(|fallback_error| {
-        fallback_error.into_fereg("modified LSMR failed after unpreconditioned fallback")
-    })?;
-    for iterations in &mut solved.iterations {
-        *iterations += spent;
-    }
-    Ok(solved)
-}
-
-fn trace_lsmr_columns(
-    design: &FeDesign,
-    weights: &[f64],
-    values: &DenseMatrix,
-    reference_norms: &[f64],
-    certificate_tolerance: f64,
-    solved: &within::BatchSolveResult,
-) -> Result<()> {
-    for column in 0..values.ncols() {
-        let one_column = DenseMatrix::from_columns(&[values.column(column)?])?;
-        let column_certificate = certify_residuals_with_reference_norms(
-            design,
-            weights,
-            &one_column,
-            &reference_norms[column..=column],
-            certificate_tolerance,
-        )?;
-        crate::diagnostics::emit_solver_trace(&format!(
-            "FEREG_SOLVER_TRACE|phase=lsmr_rhs|rhs={column}|converged={}|iterations={}|within_normal={:.17e}|fereg_relinf={:.17e}",
-            solved.converged[column],
-            solved.iterations[column],
-            solved.residual[column],
-            column_certificate.relative_infinity_norm,
-        ));
-    }
-    Ok(())
-}
-
-fn lsmr_warnings(
-    solved: &within::BatchSolveResult,
-    preconditioner_fallback: bool,
-    converged_but_uncertified: bool,
-) -> Result<Vec<String>> {
-    let warning_capacity = solved
-        .warnings
-        .len()
-        .checked_add(usize::from(preconditioner_fallback))
-        .and_then(|count| count.checked_add(usize::from(converged_but_uncertified)))
-        .ok_or_else(|| {
-            FeregError::new(ErrorCode::Allocation, "LSMR warning count overflows usize")
-        })?;
-    let mut warnings = reserved_empty(warning_capacity, "unable to reserve LSMR warnings")?;
-    for warning in &solved.warnings {
-        warnings.push(format!("within preconditioner: {warning:?}"));
-    }
-    if preconditioner_fallback {
-        warnings.insert(
-            0,
-            "automatic LSMR preconditioner failed its positive-definiteness guard; retried unpreconditioned and certified the returned residuals".to_owned(),
-        );
-    }
-    if converged_but_uncertified {
-        warnings.push(
-            "LSMR recurrence claimed convergence but the recomputed FE certificate failed"
-                .to_string(),
-        );
-    }
-    Ok(warnings)
 }
 
 pub(crate) fn resolve_preconditioner_kind(
@@ -333,15 +311,6 @@ pub(crate) fn resolve_preconditioner_kind(
                 LsmrPreconditioner::Diagonal
             }
         }
-    }
-}
-
-fn within_preconditioner(preconditioner: LsmrPreconditioner) -> PreconditionerConfig {
-    match preconditioner {
-        LsmrPreconditioner::Auto => unreachable!("automatic preconditioner is resolved first"),
-        LsmrPreconditioner::Off => PreconditionerConfig::Off,
-        LsmrPreconditioner::Diagonal => PreconditionerConfig::Diagonal,
-        LsmrPreconditioner::Schwarz => additive_schwarz(),
     }
 }
 
@@ -478,71 +447,5 @@ mod tests {
                 .zip(analytic)
                 .all(|(actual, expected)| (actual - expected).abs() < 1e-14));
         }
-    }
-
-    #[test]
-    fn positivity_retry_cannot_refund_the_failed_attempts_iterations() {
-        let (design, _, values) = extreme_weight_tree_fixture();
-        let weights = [1.0; 5];
-        let rhs = super::super::lsmr_batch::rhs_columns(&values).unwrap();
-        let rhs_views: Vec<_> = rhs.iter().map(Vec::as_slice).collect();
-        let options = LsmrOptions {
-            tol: 1e-10,
-            maxiter: 500,
-            local_size: Some(4),
-        };
-        // The upstream iteration_budget tests use genuinely failing operators
-        // to establish this counted-error contract. At the adapter boundary,
-        // choose the count explicitly instead of relying on accidental roundoff.
-        let spent = 3;
-        let failure = || super::super::lsmr_batch::BatchError::Attempt {
-            source: within::SolveError::InvalidInput {
-                context: "mlsmr",
-                message: "preconditioner not positive definite".to_owned(),
-            },
-            iterations: spent,
-        };
-        let off = super::super::lsmr_batch::solve_batch(
-            build_effects(&design).unwrap(),
-            &rhs_views,
-            Some(&weights),
-            &options,
-            PreconditionerConfig::Off,
-            false,
-        )
-        .unwrap();
-        assert!(off.converged.iter().all(|&value| value));
-        let total = spent + off.iterations.iter().copied().max().unwrap();
-        let successful = retry_owned_unpreconditioned(
-            &design,
-            &weights,
-            &rhs_views,
-            &LsmrOptions {
-                maxiter: total,
-                ..options.clone()
-            },
-            false,
-            failure(),
-        )
-        .unwrap();
-        assert_eq!(successful.iterations.iter().copied().max(), Some(total));
-        assert_eq!(successful.demeaned, off.demeaned);
-        assert_eq!(successful.x, off.x);
-        let error = retry_owned_unpreconditioned(
-            &design,
-            &weights,
-            &rhs_views,
-            &LsmrOptions {
-                maxiter: spent,
-                ..options
-            },
-            false,
-            failure(),
-        )
-        .unwrap_err();
-        assert_eq!(error.code, ErrorCode::Internal);
-        assert!(error
-            .message
-            .contains("preconditioner not positive definite"));
     }
 }

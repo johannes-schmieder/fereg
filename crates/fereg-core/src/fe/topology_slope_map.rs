@@ -8,6 +8,8 @@
 #[path = "model_recovery.rs"]
 mod model_recovery;
 pub(crate) use model_recovery::recover_finalized_model_effects_certified;
+mod full_recovery;
+pub(crate) use full_recovery::{recover_finalized_full_certified, FullRecovery};
 
 use std::time::Instant;
 
@@ -71,6 +73,8 @@ pub(crate) enum CategoricalRecoveryMethod {
     Direct,
     Cg,
     Map,
+    /// fedemean's full formulation.
+    Full,
 }
 
 impl RecoveredCategoricalEffects {
@@ -784,6 +788,9 @@ pub(crate) fn recover_finalized_categorical_effects_from_coefficients_selected_c
         coefficients.rhs(0)?,
         "unable to reserve categorical recovery normalized coefficients",
     )?;
+    // fereg's representative on singular slope levels (fedemean's retained
+    // product holds its own there), then the SPEC §5 gauge.
+    full_recovery::canonicalize_singular_slope_levels(topology, effects, weights, &mut normalized)?;
     normalize_intercept_components(topology, effects, weights, &mut normalized, known_connected)?;
     finish_channel_major_recovery(
         topology,

@@ -42,10 +42,15 @@ pub(crate) struct FeSession<'a> {
     /// PPML's generic owner bound to its categorical design: the memory
     /// budget of its full-system projections.
     ppml_full_system: Option<Option<crate::memory::FeSolverMemoryBudget>>,
+    /// OLS Auto on an owned slope design without the two-FE coefficient
+    /// solver: fedemean's full system first, the generic MAP owner after a
+    /// decline.
+    pub(crate) full_general: bool,
 }
 
 mod elimination;
 use elimination::block_schur_enabled;
+mod full_general;
 #[cfg(test)]
 pub(crate) use elimination::starve_full_system_for_test;
 
@@ -269,6 +274,7 @@ impl Default for FeSession<'_> {
             ),
             full_system_used: false,
             ppml_full_system: None,
+            full_general: false,
         }
     }
 }
@@ -673,6 +679,15 @@ impl<'a> FeSession<'a> {
                     .ok_or_else(|| allocation("FE base overlap overflows"))?,
                 config,
             )?;
+            // One effect keeps MAP's exact sweep and the two-FE coefficient
+            // solver the designs it serves; the developer routing arms are
+            // intercept-only and leave slope designs on their public route.
+            self.full_general = block_schur_enabled()
+                && !self.coefficients
+                && p.design().effects().len() >= 2
+                && super::fedemean_slope::sloped(p.design())
+                && config.absorb.lsmr.preconditioner == super::LsmrPreconditioner::Auto
+                && config.absorb.declined_recheck.is_none();
             self.general = Some(p);
         } else {
             self.owned = Some(design);
@@ -1091,6 +1106,8 @@ impl<'a> FeSession<'a> {
                     config.declined_recheck,
                 )
             }
+        } else if self.full_general {
+            self.project_full_general(weights, values.into_values(), config)
         } else if let Some(p) = self.general.as_mut() {
             let values = values.into_values();
             let generation = MapGeometryGeneration {
@@ -1122,18 +1139,7 @@ impl<'a> FeSession<'a> {
                 self.general_routing.as_mut(),
             )
         } else {
-            let mut values = values.into_values();
-            let mut report = super::absorb_fixed_effects(
-                self.owned.as_ref().expect("owned FE binding"),
-                &self.normalized,
-                &mut values,
-                config,
-            )?;
-            report.solver_workspace_peak = report
-                .solver_workspace_peak
-                .with_retained(self.resident_bytes)?
-                .max(self.peak);
-            CertifiedBorrowedMap::from_certified_parts(values, report)
+            self.project_owned(values.into_values(), config)
         };
         // A late elimination or full-system decline residualized some
         // columns in place; their coefficient increments complete the
@@ -1504,32 +1510,7 @@ impl FeSession<'_> {
             include_recovery_peak(&mut peak, memory.map(|m| m.cg_peak_bytes))?;
             return recover_strict_intercepts(&r, tolerance, peak);
         }
-        // General reconstruction uses repository-owned fallible coefficient
-        // banks. Upstream LSMR recovery cannot provide the allocation-failure
-        // contract required by the shared OLS/PPML publication transaction.
-        if memory.is_some_and(|m| !fits(m.map_peak_bytes)) {
-            return Err(allocation(
-                "saved-FE recovery does not fit the joint execution/recovery memory plan",
-            ));
-        }
-        include_recovery_peak(&mut peak, memory.map(|m| m.map_peak_bytes))?;
-        recover::recover_finalized_categorical_effects_map_selected_certified(
-            r.topology,
-            r.effects,
-            r.weights,
-            r.target,
-            r.requested_channels,
-            // Small FE moments alone do not certify a complete slope decomposition.
-            // Preserve the internal recovery target used before this shared owner;
-            // publication still independently checks the requested public tolerance.
-            MapConfig {
-                tolerance: r.map.tolerance.min(1e-12),
-                ..r.map
-            },
-            r.materialize_absorbed_sum,
-            r.reconstruction_tolerance,
-        )
-        .map(|v| v.with_solver_workspace_peak(peak))
+        full_general::recover_general(&r, intercepts, memory, peak)
     }
 }
 fn recover_strict_intercepts(
@@ -1594,7 +1575,7 @@ fn recover_strict_intercepts(
             .with_solver_workspace_peak(peak)
     })
 }
-fn numerical_recovery_miss(e: &FeregError) -> bool {
+pub(super) fn numerical_recovery_miss(e: &FeregError) -> bool {
     e.code == ErrorCode::NonConvergence
         || (e.code == ErrorCode::InvalidData
             && (e.message.contains("failed its FE certificate")
@@ -1602,7 +1583,7 @@ fn numerical_recovery_miss(e: &FeregError) -> bool {
                 || e.message.contains("reconstruction")
                 || e.message.contains("uncertified residual")))
 }
-fn include_recovery_peak(
+pub(super) fn include_recovery_peak(
     peak: &mut crate::memory::SolverWorkspacePeak,
     n: Option<u128>,
 ) -> Result<()> {
@@ -1935,6 +1916,10 @@ pub(crate) struct LegacyFeSession<'a> {
     /// PPML's generic owner bound to its categorical design: the memory
     /// budget of its full-system projections.
     ppml_full_system: Option<Option<crate::memory::FeSolverMemoryBudget>>,
+    /// OLS Auto on an owned slope design without the two-FE coefficient
+    /// solver: fedemean's full system first, the generic MAP owner after a
+    /// decline.
+    pub(crate) full_general: bool,
 }
 #[cfg(test)]
 #[test]

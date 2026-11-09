@@ -141,8 +141,12 @@ plus a continuous slope. The {cmd:#c.} form is slope-only.
 A name to the left of {cmd:=} requests a normalized saved fixed-effect
 channel. For a term with slopes, the intercept uses the base name and slope
 channels use {cmd:_Slope1}, {cmd:_Slope2}, and so on. A slope-only term creates
-only suffixed slope variables. Individual FE normalizations are not unique;
-the fitted absorbed contribution is the stable identified object.
+only suffixed slope variables. Within each connected component, every
+intercept effect after the first has weighted mean zero and the first absorbs
+the difference. Where a level's slope is constant or zero, or the level has a
+single observation, its slope channel is zero and the intercept carries the
+level's contribution. Other individual FE normalizations are not unique; the
+fitted absorbed contribution is the stable identified object.
 
 {pstd}
 Saved names and {cmd:residuals()} must be new, distinct variables. Do not use
@@ -263,8 +267,18 @@ never pay for building the stronger preconditioner. An explicit {cmd:jacobi}, {c
 {cmd:none}, or {cmd:schwarz} never escalates. Explicit requests fail closed:
 non-convergence within {cmd:iterate()} or a solver workspace beyond the memory
 limit is an error, not a substituted route. With absorbed slopes,
-{cmd:solver(lsmr)} uses the general modified-LSMR solver and these
-{cmd:solver(cg)} choices are unavailable.
+{cmd:solver(lsmr)} also runs on the full system: {cmd:precondition(jacobi)}
+then inverts each level's block of its intercept and slope channels exactly
+(a level whose channels are dependent on its rows, such as a slope that is
+constant or zero within the level, acts on the span of its rows), and
+{cmd:precondition(schwarz)} adds those level blocks to the factor-pair
+subdomains of the effects with intercepts; with fewer than two such effects,
+{cmd:precondition(schwarz)} uses the earlier general modified-LSMR solver.
+A slope fit that the full system does not certify (for example, slopes whose
+values differ only far beyond their common offset) reruns with that general
+solver and then MAP, and sets {cmd:e(fe_fallback)}.
+The {cmd:solver(cg)} choices other than {cmd:cmg} are unavailable with
+absorbed slopes.
 
 {pstd}
 {cmd:solver(auto)} is the default. One categorical effect uses direct
@@ -395,7 +409,8 @@ Fixed-effect solver results use the vocabulary of {cmd:solver()}:
 {cmd:direct} is the exact projection onto a single intercept effect (or the
 constant alone). {cmd:derived} is a final residual formed from certified
 projections without a new solve. {cmd:none} means there was nothing to absorb.
-{cmd:block} is block-Jacobi over the retained effects of the eliminated system.
+{cmd:jacobi} with absorbed slopes inverts each level's block of channels
+exactly. {cmd:block} is block-Jacobi over the retained effects of the eliminated system.
 {cmd:schwarz} is additive Schwarz over factor-pair subdomains of the full
 system. Acceleration {cmd:cg} is conjugate gradients over the symmetric MAP
 operator, which verifies or completes a {cmd:solver(cg, precondition(cmg))}
@@ -442,7 +457,12 @@ effects, {cmd:cg, reduce(eliminate) precondition(jacobi)} is the guarded
 Schur-PCG recurrence without multigrid and {cmd:precondition(cmg)} means a CMG
 preconditioner was actually applied. An allocated but unused hierarchy is not
 reported as CMG use. A MAP continuation reports {cmd:map} and sets
-{cmd:e(fe_fallback)}.
+{cmd:e(fe_fallback)}. Automatic fits with absorbed slopes and three or more
+effects (or two effects outside the two-effect slope solver) read
+{cmd:cg, reduce(full) precondition(jacobi)}, or {cmd:precondition(schwarz)}
+after an escalation; a decline continues with MAP and sets
+{cmd:e(fe_fallback)}. Two-effect slope designs report {cmd:map} for their
+exact two-effect slope solver.
 
 {pstd}
 {cmd:e(fe_solve)} is a 2-by-12 matrix with rows {cmd:absorption} and

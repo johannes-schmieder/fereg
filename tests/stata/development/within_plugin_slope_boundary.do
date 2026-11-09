@@ -106,7 +106,9 @@ forvalues case = 1/4 {
             assert e(sample) == 1 & e(rank) == ref_rank & e(converged) == 1
             assert "`e(fe_route)'" == "lsmr, precondition(none)"
             assert "`e(fe_solver)'" == "lsmr, precondition(none)"
-            assert e(fe_iterations) > 0 & e(fe_fallback) == 0
+            * Case 1: fedemean's channel blocks do not resolve its ±2^24-offset
+            * slopes; the established within route runs and is the fallback.
+            assert e(fe_iterations) > 0 & e(fe_fallback) == (`case' == 1)
             assert e(fereg_certificate)[32,2] == 1
             local names : colfullnames e(b)
             assert `"`names'"' == `"`expected_names'"'

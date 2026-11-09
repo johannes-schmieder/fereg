@@ -877,7 +877,7 @@ impl ReusableMapAbsorber {
     fn absorb_current_geometry(
         &mut self,
         weights: &[f64],
-        mut values: DenseMatrix,
+        values: DenseMatrix,
         config: MapConfig,
         structural_constant_if_empty: bool,
         reusable_geometry: bool,
@@ -952,6 +952,27 @@ impl ReusableMapAbsorber {
             config.tolerance,
             &mut geometry_valid,
         )?;
+        self.iterate_map(
+            values,
+            weights,
+            rhs,
+            config,
+            (&mut geometry_valid, initial),
+            (setup_seconds, solve_started),
+        )
+    }
+
+    /// Symmetric MAP sweeps from `values` until the independent certificate
+    /// passes (`initial` is the certificate of the current values).
+    fn iterate_map(
+        &mut self,
+        mut values: DenseMatrix,
+        weights: &[f64],
+        rhs: usize,
+        config: MapConfig,
+        (geometry_valid, initial): (&mut bool, FeCertificate),
+        (setup_seconds, solve_started): (f64, Instant),
+    ) -> Result<CertifiedBorrowedMap> {
         if initial.passed {
             return CertifiedBorrowedMap::from_certified_parts(
                 values,
@@ -982,7 +1003,7 @@ impl ReusableMapAbsorber {
                 || iteration == config.max_iterations
             {
                 let certificate =
-                    self.certify(&values, weights, rhs, config.tolerance, &mut geometry_valid)?;
+                    self.certify(&values, weights, rhs, config.tolerance, geometry_valid)?;
                 if certificate.passed {
                     return CertifiedBorrowedMap::from_certified_parts(
                         values,
@@ -1933,5 +1954,7 @@ fn validate_config(config: MapConfig) -> Result<()> {
     Ok(())
 }
 
+mod external;
+pub(crate) use external::ExternalProjection;
 #[cfg(test)]
 mod tests;
