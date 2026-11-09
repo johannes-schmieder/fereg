@@ -207,9 +207,8 @@ non-convergence within `iterate()` or a workspace beyond the memory limit is
 an error, never a substituted route. The one exception is explicit LSMR with
 absorbed slopes: a fit the full system does not certify, or whose workspace
 exceeds the memory limit, continues with MAP from the original input and sets
-`e(fe_fallback)`; when MAP cannot certify it either (for example, slopes that
-differ only far beyond a large common offset at a very tight `tolerance()`),
-the fit fails with error 459. Only the automatic preconditioners escalate.
+`e(fe_fallback)`; when MAP cannot certify it either, the fit fails with
+error 459. Only the automatic preconditioners escalate.
 
 Automatic two-FE OLS checks an initial solution at the requested tolerance
 and spends additional iterations on a tighter correction only if that check
