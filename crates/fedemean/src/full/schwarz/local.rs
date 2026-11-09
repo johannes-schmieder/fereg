@@ -142,6 +142,12 @@ pub(super) enum Inner {
         factor: Factor<f64>,
         bytes: u128,
     },
+    /// A count-only build's retained bytes and scratch units of the solve
+    /// it would factor (see [`inner`]); never applied.
+    Estimate {
+        bytes: u128,
+        units: usize,
+    },
 }
 
 impl Inner {
@@ -152,7 +158,22 @@ impl Inner {
                 4 * order.capacity() as u128 + 8 * factor.capacity() as u128
             }
             Self::Skyline(sky) => sky.bytes(),
-            Self::Approximate { bytes, .. } | Self::Component { bytes, .. } => *bytes,
+            Self::Approximate { bytes, .. }
+            | Self::Component { bytes, .. }
+            | Self::Estimate { bytes, .. } => *bytes,
+        }
+    }
+
+    /// The larger of two estimates (a solve and its numerical fallback).
+    fn larger(self, other: Self) -> Self {
+        match (self, other) {
+            (Self::Estimate { bytes: a, units: u }, Self::Estimate { bytes: b, units: v }) => {
+                Self::Estimate {
+                    bytes: a.max(b),
+                    units: u.max(v),
+                }
+            }
+            (estimate, _) => estimate,
         }
     }
 
@@ -160,7 +181,8 @@ impl Inner {
     /// `T^g t`; `scratch` holds `(n + 1) max(R, 2)` values.
     fn solve<const R: usize>(&self, t: &mut [f64], scratch: &mut [f64]) {
         match self {
-            Self::Trivial => t.fill(0.0),
+            // A count-only build is never applied.
+            Self::Trivial | Self::Estimate { .. } => t.fill(0.0),
             Self::Dense { order, factor } => {
                 let m = order.len() - 1;
                 let z = &mut scratch[..m * R];
@@ -283,6 +305,7 @@ impl Piece {
         match self.inner {
             Inner::Trivial => 0,
             Inner::Component { .. } => self.n() + 1,
+            Inner::Estimate { units, .. } => units,
             _ => self.sizes[1] + 1,
         }
     }
@@ -607,6 +630,8 @@ fn component(pair: &Pair, piece: &Piece) -> Result<Schur> {
 struct Charge<'a> {
     admit: &'a Admit,
     held: u128,
+    /// Count only: every stage charged, nothing factored.
+    dry: bool,
 }
 
 impl Charge<'_> {
@@ -664,6 +689,12 @@ fn approximately(
         if !charge.to(peak) {
             return Ok(Err(Refusal::MemoryLimit));
         }
+        if charge.dry {
+            return Ok(Ok(Inner::Estimate {
+                bytes,
+                units: n + 1,
+            }));
+        }
         let whole = component(pair, piece)?;
         return Ok(approximate(whole, bytes)?.map(|inner| match inner {
             Inner::Approximate { factor, bytes } => Inner::Component { factor, bytes },
@@ -674,10 +705,15 @@ fn approximately(
     let bytes = APPROXIMATE_ENTRY_BYTES * (ns + nnz) as u128;
     let peak = (graph_bytes(ns, nnz) + input_bytes(ns, nnz))
         .max(input_bytes(ns, nnz) + approximate_peak(ns, nnz));
-    if charge.to(peak) {
-        approximate(schur, bytes)
-    } else {
+    if !charge.to(peak) {
         Ok(Err(Refusal::MemoryLimit))
+    } else if charge.dry {
+        Ok(Ok(Inner::Estimate {
+            bytes,
+            units: ns + 1,
+        }))
+    } else {
+        approximate(schur, bytes)
     }
 }
 
@@ -761,10 +797,18 @@ fn approximate(source: Schur, bytes: u128) -> Result<std::result::Result<Inner, 
 /// The local solve of `piece` by `local` (see [`SchwarzLocal`]) and the
 /// bytes charged for it: each stage charged before it allocates (the Schur
 /// complement's shape counted first, so that it is charged exactly).
+///
+/// With `dry`, the stages up to the factorizations run and are charged as
+/// usual, and the result is an [`Inner::Estimate`] of the solve's retained
+/// bytes and scratch: the charges depend on the design only (shapes,
+/// envelopes, approximate Cholesky by entries). Where an automatic dense or
+/// envelope factorization could reach the rounding floor and fall back to
+/// approximate Cholesky, that fallback is charged too, so the estimate
+/// bounds the weighted build's charge.
 pub(super) fn inner(
     pair: &Pair,
     piece: &Piece,
-    local: SchwarzLocal,
+    (local, dry): (SchwarzLocal, bool),
     admit: &Admit,
     cancel: &Cancel<'_>,
 ) -> Result<std::result::Result<(Inner, u128), Refusal>> {
@@ -772,7 +816,11 @@ pub(super) fn inner(
     if ns == 1 {
         return Ok(Ok((Inner::Trivial, 0)));
     }
-    let mut charge = Charge { admit, held: 0 };
+    let mut charge = Charge {
+        admit,
+        held: 0,
+        dry,
+    };
     let built = solve(pair, piece, local, &mut charge, cancel)?;
     Ok(built.map(|inner| (inner, charge.held)))
 }
@@ -815,6 +863,13 @@ fn solve(
         if !charge.to(formed + bytes) {
             return refused;
         }
+        if charge.dry {
+            let estimate = Inner::Estimate {
+                bytes: 4 * ns as u128 + 8 * (ns * (ns - 1) / 2) as u128,
+                units: ns + 1,
+            };
+            return fallback(estimate, exact, (pair, piece), (schur, nnz), charge);
+        }
         return match dense(&schur.graph())? {
             Some(inner) => Ok(Ok(inner)),
             None if exact => Ok(Err(floor)),
@@ -835,9 +890,32 @@ fn solve(
     if !charge.to(formed + envelope.bytes() + 12 * ns as u128) {
         return refused;
     }
+    if charge.dry {
+        let estimate = Inner::Estimate {
+            bytes: envelope.bytes(),
+            units: ns + 1,
+        };
+        return fallback(estimate, exact, (pair, piece), (schur, nnz), charge);
+    }
     match Skyline::new(&schur.graph(), envelope, cancel)? {
         Some(sky) => Ok(Ok(Inner::Skyline(sky))),
         None if exact => Ok(Err(floor)),
         None => approximately((pair, piece), (Some(schur), nnz), charge),
     }
+}
+
+/// A count-only exact solve's estimate, with (unless `exact`) its
+/// numerical fallback to approximate Cholesky charged as well.
+fn fallback(
+    estimate: Inner,
+    exact: bool,
+    (pair, piece): (&Pair, &Piece),
+    (schur, nnz): (Schur, usize),
+    charge: &mut Charge<'_>,
+) -> Result<std::result::Result<Inner, Refusal>> {
+    if exact {
+        return Ok(Ok(estimate));
+    }
+    Ok(approximately((pair, piece), (Some(schur), nnz), charge)?
+        .map(|approximate| estimate.larger(approximate)))
 }

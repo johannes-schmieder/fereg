@@ -254,6 +254,43 @@ impl Schwarz {
         (budget, width): (Option<u128>, usize),
         cancel: &Cancel<'_>,
     ) -> Result<std::result::Result<Self, Refusal>> {
+        Self::staged(
+            st,
+            effects,
+            state,
+            (spec, generation, false),
+            (budget, width),
+            cancel,
+        )
+    }
+
+    /// An upper bound, for any weights, of the peak [`Schwarz::build`]
+    /// charges (its [`Schwarz::peak_bytes`] for `width` columns): the same
+    /// stages run on `state` (any weights, unit ones suffice) and are
+    /// charged, the pairs' cross-tabulations and the Schur complements'
+    /// exact shapes formed, but nothing is factored (see
+    /// [`local::inner`]'s count-only mode). A refusal is `budget`'s.
+    pub(super) fn estimate(
+        st: &Structure,
+        effects: &[Effect<'_>],
+        state: &State,
+        spec: SchwarzSpec,
+        (budget, width): (Option<u128>, usize),
+        cancel: &Cancel<'_>,
+    ) -> Result<std::result::Result<u128, Refusal>> {
+        let built = Self::staged(st, effects, state, (spec, 0, true), (budget, width), cancel)?;
+        Ok(built.map(|schwarz| schwarz.peak_bytes(width)))
+    }
+
+    /// [`Schwarz::build`], or with `dry` its count-only estimate.
+    fn staged(
+        st: &Structure,
+        effects: &[Effect<'_>],
+        state: &State,
+        (spec, generation, dry): (SchwarzSpec, u64, bool),
+        (budget, width): (Option<u128>, usize),
+        cancel: &Cancel<'_>,
+    ) -> Result<std::result::Result<Self, Refusal>> {
         let admit = Admit::new(budget);
         let k = effects.len() as u128;
         let lists =
@@ -318,7 +355,7 @@ impl Schwarz {
             first += pair.slots();
             pairs.push(pair);
         }
-        if let Some(refusal) = Self::factor(&pairs, &mut pieces, spec, &admit, cancel)? {
+        if let Some(refusal) = Self::factor(&pairs, &mut pieces, (spec, dry), &admit, cancel)? {
             return Ok(Err(refusal));
         }
         let mut schwarz = Self {
@@ -361,7 +398,7 @@ impl Schwarz {
     fn factor(
         pairs: &[Pair],
         pieces: &mut [Piece],
-        spec: SchwarzSpec,
+        (spec, dry): (SchwarzSpec, bool),
         admit: &Admit,
         cancel: &Cancel<'_>,
     ) -> Result<Option<Refusal>> {
@@ -379,8 +416,8 @@ impl Schwarz {
                 if admit.failed() {
                     return;
                 }
-                *outcome = match local::inner(&pairs[piece.pair], piece, spec.local, admit, cancel)
-                {
+                let local = (spec.local, dry);
+                *outcome = match local::inner(&pairs[piece.pair], piece, local, admit, cancel) {
                     Ok(Ok((inner, charged))) => {
                         piece.inner = inner;
                         Built::Done(charged)
@@ -429,6 +466,7 @@ impl Schwarz {
                 Inner::Approximate { .. } | Inner::Component { .. } => {
                     count(&mut self.used.approximate)
                 }
+                Inner::Estimate { .. } => {}
             }
         }
         (self.inner_units, self.partial_units) = (inner, partial);

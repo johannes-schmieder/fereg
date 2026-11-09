@@ -867,3 +867,80 @@ fn invalid_requests_are_errors() {
         Err(Error::InvalidInput(_))
     ));
 }
+
+/// The weight-independent estimate bounds every build's workspace at any
+/// weights, equals it for Jacobi and explicit exact or approximate local
+/// solves (no numerical fallback to charge), and is admitted at itself:
+/// one byte less declines those explicit choices, as their builds do.
+#[test]
+fn the_estimate_bounds_every_build_and_is_exact_without_fallbacks() {
+    let mut sloped = Case::random(111, 3000, &[400, 90, 6]).with_slope(1, 112, 0.0);
+    sloped.intercept[1] = true;
+    let cases = [
+        Case::random(113, 4000, &[900, 120, 7]),
+        Case::random(114, 16_000, &[2000, 300]),
+        Case::random(115, 6000, &[1500, 400, 9, 4]),
+        sloped,
+    ];
+    for (c, case) in cases.iter().enumerate() {
+        let weights = [case.weights(116), vec![1.0; case.n], case.weights(117)];
+        for preconditioner in preconditioners() {
+            let label = format!("case {c} {preconditioner:?}");
+            let mut projector = Projector::new(case.design(), Settings::default());
+            let estimate = match projector.fe_preconditioner_bytes(
+                preconditioner,
+                None,
+                &Control::default(),
+            ) {
+                Ok(estimate) => estimate.expect("estimate"),
+                Err(Error::Unsupported(_)) => continue,
+                Err(error) => panic!("{label}: {error:?}"),
+            };
+            #[allow(unused_mut)]
+            let mut exact = preconditioner == Preconditioner::Jacobi;
+            #[cfg(feature = "schwarz")]
+            if let Preconditioner::Schwarz(spec) = preconditioner {
+                exact |= spec.local != SchwarzLocal::Auto;
+            }
+            for w in &weights {
+                let handle = projector
+                    .fe_preconditioner(
+                        Weights::Values(w),
+                        preconditioner,
+                        None,
+                        &Control::default(),
+                    )
+                    .unwrap()
+                    .expect("handle");
+                let bytes = handle.workspace_bytes();
+                assert!(bytes <= estimate, "{label}: {bytes} > {estimate}");
+                if exact {
+                    assert_eq!(bytes, estimate, "{label}");
+                }
+                let at = projector
+                    .fe_preconditioner(
+                        Weights::Values(w),
+                        preconditioner,
+                        Some(estimate),
+                        &Control::default(),
+                    )
+                    .unwrap();
+                assert_eq!(at.expect("admitted at the estimate").used(), handle.used());
+            }
+            let again = projector
+                .fe_preconditioner_bytes(preconditioner, None, &Control::default())
+                .unwrap();
+            assert_eq!(again, Ok(estimate), "{label}: weight-independent");
+            if exact {
+                let below = projector
+                    .fe_preconditioner_bytes(
+                        preconditioner,
+                        Some(estimate - 1),
+                        &Control::default(),
+                    )
+                    .unwrap();
+                assert_eq!(below, Err(Decline::MemoryLimit), "{label}");
+            }
+        }
+    }
+}

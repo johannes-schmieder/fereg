@@ -82,7 +82,10 @@
 //!   stage, transients included; [`FePreconditioner::workspace_bytes`] is
 //!   the peak it was admitted at (a limit of exactly that builds, one byte
 //!   less declines an explicit choice), and
-//!   [`FePreconditioner::retained_bytes`] what it keeps.
+//!   [`FePreconditioner::retained_bytes`] what it keeps. Before weights
+//!   exist, [`Projector::fe_preconditioner_bytes`] bounds that peak for any
+//!   weights from the design alone (the build's charges without its
+//!   factorizations).
 //! - **Determinism and control.** Builds and applies do not depend on the
 //!   worker count; builds poll the cancellation callback, applies are fixed
 //!   work.

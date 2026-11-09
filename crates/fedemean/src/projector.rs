@@ -992,6 +992,35 @@ impl<'a> Projector<'a> {
         )
     }
 
+    /// An upper bound, for any positive weights, of the
+    /// [`full::FePreconditioner::workspace_bytes`] a
+    /// [`Projector::fe_preconditioner`] build of `preconditioner` reports,
+    /// for admission before weights exist. The build's stages run on the
+    /// design and are charged as a build charges them (structure, weighted
+    /// state, the pairs' cross-tabulations, the Schur complements' exact
+    /// shapes and envelopes, approximate Cholesky by its entries, the apply
+    /// workspace), without weights or factorizations. It is exact for
+    /// Jacobi and for explicit exact or approximate local solves; automatic
+    /// local solves also charge each dense or envelope factorization's
+    /// numerical fallback to approximate Cholesky. Its cost is the build's
+    /// symbolic part (no factorization), and `memory_limit` bounds it as it
+    /// bounds a build: an explicit choice beyond the limit declines with
+    /// [`Decline::MemoryLimit`] (the automatic one reports Jacobi's bytes).
+    /// The structure is built on first use and kept.
+    pub fn fe_preconditioner_bytes(
+        &mut self,
+        preconditioner: Preconditioner,
+        memory_limit: Option<u128>,
+        control: &Control<'_>,
+    ) -> Result<std::result::Result<u128, Decline>> {
+        self.full.fe_preconditioner_bytes(
+            &self.design,
+            preconditioner,
+            memory_limit,
+            &Cancel(control.cancel),
+        )
+    }
+
     /// Recompute every level's weighted moment of one residual column (the
     /// eliminated levels included) and certify it at `amplification` times
     /// its weighted norm. `None` when this projector did not project with

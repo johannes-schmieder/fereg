@@ -125,6 +125,17 @@ mod schwarz {
             Err(Error::Unsupported("additive Schwarz needs feature schwarz"))
         }
 
+        pub(super) fn estimate(
+            _: &Structure,
+            _: &[Effect<'_>],
+            _: &State,
+            _: SchwarzSpec,
+            _: (Option<u128>, usize),
+            _: &Cancel<'_>,
+        ) -> Result<std::result::Result<u128, Refusal>> {
+            Err(Error::Unsupported("additive Schwarz needs feature schwarz"))
+        }
+
         pub(super) fn current(&self, _: SchwarzSpec, _: u64) -> bool {
             match *self {}
         }
@@ -408,6 +419,18 @@ impl Engine {
         cancel: &Cancel<'_>,
     ) -> Result<std::result::Result<FePreconditioner, Decline>> {
         FePreconditioner::build(self, design, request, memory_limit, cancel)
+    }
+
+    /// The handle's weight-independent workspace bound (see
+    /// [`crate::Projector::fe_preconditioner_bytes`]).
+    pub(crate) fn fe_preconditioner_bytes(
+        &mut self,
+        design: &Design<'_>,
+        choice: crate::projector::Preconditioner,
+        memory_limit: Option<u128>,
+        cancel: &Cancel<'_>,
+    ) -> Result<std::result::Result<u128, Decline>> {
+        FePreconditioner::estimate(self, design, choice, memory_limit, cancel)
     }
 
     /// Project from `start` (canonical coefficient layout, validated by the

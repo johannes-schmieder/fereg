@@ -102,7 +102,121 @@ fn jacobi(state: &State) -> PreconditionerUsed {
     }
 }
 
+/// The Schwarz specification `choice` resolves to (`None`: Jacobi) and
+/// whether a refusal of it is the call's (an explicit choice).
+fn resolve(design: &Design<'_>, choice: Preconditioner) -> Result<(Option<SchwarzSpec>, bool)> {
+    let effects = design.effects().len();
+    let schwarz = cfg!(feature = "schwarz");
+    Ok(match choice {
+        Preconditioner::Jacobi => (None, true),
+        Preconditioner::Auto if schwarz && effects >= 2 => (Some(SchwarzSpec::default()), false),
+        Preconditioner::Auto => (None, false),
+        Preconditioner::Schwarz(_) if !schwarz => {
+            return Err(Error::Unsupported("additive Schwarz needs feature schwarz"))
+        }
+        Preconditioner::Schwarz(spec)
+            if design.sloped() && effects >= 2 && spec.local == SchwarzLocal::Exact =>
+        {
+            return Err(Error::Unsupported(
+                "exact Schwarz local solves need intercept effects",
+            ))
+        }
+        Preconditioner::Schwarz(spec) => (Some(spec), true),
+        _ => {
+            return Err(Error::Unsupported(
+                "the FE preconditioner is Jacobi, Schwarz or automatic",
+            ))
+        }
+    })
+}
+
+/// The engine's structure, built once; `None` when the design is outside
+/// the full formulation (remembered).
+fn structure<'e>(
+    engine: &'e mut Engine,
+    design: &Design<'_>,
+    cancel: &Cancel<'_>,
+) -> Result<Option<&'e Structure>> {
+    if engine.refused {
+        return Ok(None);
+    }
+    if engine.structure.is_none() {
+        match Structure::build(design, cancel)? {
+            Some(st) => engine.structure = Some(st),
+            None => {
+                engine.refused = true;
+                return Ok(None);
+            }
+        }
+    }
+    Ok(engine.structure.as_ref())
+}
+
+/// Bytes beside the Schwarz build: the structure and the weight state (the
+/// inverse masses and channel blocks are kept from it), the fill's scatter
+/// accumulators, the offsets and, with slopes, the conversions' columns,
+/// the spans and the measure partials.
+fn base(st: &Structure, design: &Design<'_>, weighted: bool) -> u128 {
+    let effects = design.effects();
+    let tasks: usize = effects
+        .iter()
+        .filter(|e| e.sloped())
+        .map(|e| e.levels().div_ceil(LEVEL_TASK))
+        .sum();
+    let scatter = (st.scatter_blocks() * st.scatter_levels()) as u128;
+    let conversion = if design.sloped() {
+        8 * (2 * st.coefficients() + 3 * tasks) as u128 + 32 * effects.len() as u128
+    } else {
+        0
+    };
+    st.bytes
+        + state_bytes(st, Method::Pcg, weighted)
+        + 8 * (scatter + st.offsets.len() as u128)
+        + conversion
+}
+
 impl FePreconditioner {
+    /// An upper bound of [`FePreconditioner::workspace_bytes`] of a build of
+    /// `choice` for any positive weights (see
+    /// [`crate::Projector::fe_preconditioner_bytes`]).
+    pub(crate) fn estimate(
+        engine: &mut Engine,
+        design: &Design<'_>,
+        choice: Preconditioner,
+        memory_limit: Option<u128>,
+        cancel: &Cancel<'_>,
+    ) -> Result<std::result::Result<u128, Decline>> {
+        let (spec, explicit) = resolve(design, choice)?;
+        let Some(st) = structure(engine, design, cancel)? else {
+            return Ok(Err(Decline::OutsideRoute));
+        };
+        let base = base(st, design, true);
+        if memory_limit.is_some_and(|limit| base > limit) {
+            return Ok(Err(Decline::MemoryLimit));
+        }
+        let Some(spec) = spec else {
+            return Ok(Ok(base));
+        };
+        // Unit weights: the build's charges depend on the design only.
+        let mut state = State::default();
+        let mut accumulators = Vec::new();
+        let unit = validate(Weights::Unit, design.nobs())?;
+        if !state.fill(st, design.effects(), unit, false, &mut accumulators)? {
+            return Ok(Err(Decline::Weights));
+        }
+        drop(accumulators);
+        let budget = memory_limit.map(|limit| limit - base);
+        Ok(
+            match Schwarz::estimate(st, design.effects(), &state, spec, (budget, 1), cancel)? {
+                Ok(peak) => Ok(base + peak),
+                // Automatic: Jacobi when Schwarz does not fit.
+                Err(_) if !explicit => Ok(base),
+                Err(Refusal::MemoryLimit) => Err(Decline::MemoryLimit),
+                Err(Refusal::Numerical(reason)) => Err(Decline::Numerical(reason)),
+            },
+        )
+    }
+
     /// Build the handle of `choice` for `weights` within `memory_limit`
     /// (see [`crate::Projector::fe_preconditioner`]); the structure is built
     /// once and kept by `engine`.
@@ -114,66 +228,13 @@ impl FePreconditioner {
         cancel: &Cancel<'_>,
     ) -> Result<std::result::Result<Self, Decline>> {
         let effects = design.effects();
-        let sloped = design.sloped();
-        let schwarz = cfg!(feature = "schwarz");
-        // The Schwarz specification, and whether its refusal is the call's.
-        let (spec, explicit) = match choice {
-            Preconditioner::Jacobi => (None, true),
-            Preconditioner::Auto if schwarz && effects.len() >= 2 => {
-                (Some(SchwarzSpec::default()), false)
-            }
-            Preconditioner::Auto => (None, false),
-            Preconditioner::Schwarz(_) if !schwarz => {
-                return Err(Error::Unsupported("additive Schwarz needs feature schwarz"))
-            }
-            Preconditioner::Schwarz(spec)
-                if sloped && effects.len() >= 2 && spec.local == SchwarzLocal::Exact =>
-            {
-                return Err(Error::Unsupported(
-                    "exact Schwarz local solves need intercept effects",
-                ))
-            }
-            Preconditioner::Schwarz(spec) => (Some(spec), true),
-            _ => {
-                return Err(Error::Unsupported(
-                    "the FE preconditioner is Jacobi, Schwarz or automatic",
-                ))
-            }
-        };
-        if engine.refused {
+        let (spec, explicit) = resolve(design, choice)?;
+        let Some(st) = structure(engine, design, cancel)? else {
             return Ok(Err(Decline::OutsideRoute));
-        }
-        if engine.structure.is_none() {
-            match Structure::build(design, cancel)? {
-                Some(st) => engine.structure = Some(st),
-                None => {
-                    engine.refused = true;
-                    return Ok(Err(Decline::OutsideRoute));
-                }
-            }
-        }
-        let st = engine.structure.as_ref().expect("structure");
+        };
         let validated = validate(weights, design.nobs())?;
         let m = st.coefficients();
-        // Beside the structure and the weight state (the inverse masses and
-        // channel blocks are kept from it): the fill's scatter accumulators,
-        // the offsets and, with slopes, the conversions' columns, the spans
-        // and the measure partials.
-        let tasks: usize = effects
-            .iter()
-            .filter(|e| e.sloped())
-            .map(|e| e.levels().div_ceil(LEVEL_TASK))
-            .sum();
-        let scatter = (st.scatter_blocks() * st.scatter_levels()) as u128;
-        let conversion = if sloped {
-            8 * (2 * m + 3 * tasks) as u128 + 32 * effects.len() as u128
-        } else {
-            0
-        };
-        let base = st.bytes
-            + state_bytes(st, Method::Pcg, validated.values.is_some())
-            + 8 * (scatter + st.offsets.len() as u128)
-            + conversion;
+        let base = base(st, design, validated.values.is_some());
         if memory_limit.is_some_and(|limit| base > limit) {
             return Ok(Err(Decline::MemoryLimit));
         }
