@@ -49,6 +49,12 @@
 //! coefficient space. A blocked level is measured and certified by the norm
 //! of its moments in its channel span, `sqrt(m' M_l^-1 m)`.
 //!
+//! **The elimination with slopes** ([`Action::Eliminate`], two effects)
+//! runs here too: from the larger effect's per-level fit (the cold start),
+//! PCG on the Schur complement over the smaller effect's coefficients
+//! ([`cells`]), the larger effect by back-substitution, and this module's
+//! residual and certificate over every level of both effects.
+//!
 //! **Escalation.** With [`crate::Fallback::Escalate`], a Jacobi recurrence
 //! that stalls (PCG; modified LSMR: its normal-equation estimate fails to
 //! halve over a stall window) or whose rate after a pilot of
@@ -68,6 +74,7 @@
 //! current weights within the memory limit (or declines) and retained.
 
 mod blocks;
+mod cells;
 mod kernels;
 #[cfg(feature = "schwarz")]
 mod lsmr;
@@ -159,6 +166,7 @@ use crate::projector::{
     MethodUsed, Outcome, PreconditionerUsed, ReductionUsed, Report, Request, Route, SchwarzSpec,
 };
 use crate::weights::{Validated, Weights as InputWeights};
+use cells::Cells;
 use kernels::{adjoint, load, residualize, Rows, ROW_BLOCK};
 use pcg::{pcg, Normal, Work};
 use schwarz::{Refusal, Schwarz};
@@ -192,6 +200,10 @@ pub(crate) enum Action {
     /// Jacobi, escalating to Schwarz at the default specification.
     #[cfg_attr(not(feature = "schwarz"), allow(dead_code))]
     Escalate,
+    /// The elimination with slopes (two effects): PCG on the Schur
+    /// complement of the larger effect's level blocks over the smaller
+    /// effect's coefficients ([`cells`]), with Jacobi on its diagonal blocks.
+    Eliminate,
 }
 
 /// How one batch (or column) preconditions its recurrence.
@@ -251,6 +263,9 @@ pub(crate) struct Engine {
     /// start on Schwarz, since the design's graph makes Jacobi stall.
     hard: bool,
     schwarz: Option<Schwarz>,
+    /// The elimination's cells and its Schur recurrence's workspace.
+    cells: Option<Cells>,
+    reduced: Work,
     work: Work,
     gram: Gram,
     gram_ready: bool,
@@ -271,6 +286,8 @@ pub(super) struct Job<'j, 'c> {
     /// The weight state's generation and [`Engine::hard`].
     generation: u64,
     hard: bool,
+    /// The elimination's cells (with slopes).
+    cells: Option<&'j Cells>,
     cap: usize,
     bytes: u128,
     cancel: Cancel<'c>,
@@ -279,6 +296,8 @@ pub(super) struct Job<'j, 'c> {
 /// The engine's reusable outputs lent to one projection.
 pub(super) struct Outputs<'o> {
     work: &'o mut Work,
+    /// The elimination's Schur workspace.
+    reduced: &'o mut Work,
     schwarz: &'o mut Option<Schwarz>,
     gram: Option<&'o mut Gram>,
     norms: &'o mut Vec<f64>,
@@ -290,6 +309,15 @@ pub(super) struct Outputs<'o> {
 fn state_bytes(st: &Structure, method: Method, weighted: bool) -> u128 {
     let roots = u128::from(weighted) * (1 + u128::from(method == Method::Lsmr));
     8 * (3 * st.coefficients() as u128 + roots * st.nobs as u128) + st.block_bytes
+}
+
+/// Bytes of the elimination's cells and its Schur workspace for `width`
+/// columns (six recurrence vectors and the cells' products).
+fn cells_bytes(cells: &Cells, width: usize) -> u128 {
+    let [ca, cb] = cells.channels;
+    let small = cells.small_tasks() as u128 * 512 * cb as u128;
+    let w = width as u128;
+    cells.bytes() + 8 * w * (6 * small + (cells.cells() * cb) as u128 + 3 * ca as u128)
 }
 
 /// Bytes a projection of `ncols` columns adds to the caller's data: the
@@ -328,12 +356,15 @@ impl Engine {
         self.structure.as_ref()
     }
 
-    /// Bytes of the retained Schwarz preconditioner and its workspace for
-    /// `ncols` columns (0 when none is built).
+    /// Bytes of the retained Schwarz preconditioner or the elimination's
+    /// cells, and their workspaces for `ncols` columns (0 when none is
+    /// built).
     pub(crate) fn schwarz_bytes(&self, ncols: usize) -> u128 {
+        let width = ncols.clamp(1, BATCH);
         self.schwarz
             .as_ref()
-            .map_or(0, |s| s.bytes() + s.scratch_bytes(ncols.clamp(1, BATCH)))
+            .map_or(0, |s| s.bytes() + s.scratch_bytes(width))
+            + self.cells.as_ref().map_or(0, |c| cells_bytes(c, width))
     }
 
     /// Build the geometry; `false` when the design is outside the route,
@@ -347,6 +378,12 @@ impl Engine {
         }
         match Structure::build(call.design, &call.cancel)? {
             Some(st) => {
+                if call.action == Action::Eliminate {
+                    let other = usize::from(st.largest == 0);
+                    let pair = [st.largest, other];
+                    let effects = call.design.effects();
+                    self.cells = Some(Cells::build(&st, effects, pair, &call.cancel)?);
+                }
                 self.structure = Some(st);
                 Ok(true)
             }
@@ -388,7 +425,9 @@ impl Engine {
         let effects = call.design.effects();
         let (validated, key) = validate_keyed(weights, values.nobs())?;
         let weighted = validated.values.is_some();
-        let bytes = admission_bytes(st, call.method, values.ncols(), weighted);
+        let width = values.ncols().clamp(1, BATCH);
+        let bytes = admission_bytes(st, call.method, values.ncols(), weighted)
+            + self.cells.as_ref().map_or(0, |c| cells_bytes(c, width));
         if request.memory_limit.is_some_and(|limit| bytes > limit) {
             return Ok(untouched(Decline::MemoryLimit, facts));
         }
@@ -398,6 +437,9 @@ impl Engine {
             self.generation += 1;
             if !state.fill(st, effects, validated, roots, &mut self.work.scatter)? {
                 return Ok(untouched(Decline::Weights, facts));
+            }
+            if let Some(cells) = self.cells.as_mut() {
+                cells.fill(st, effects, &state)?;
             }
             self.weights = Some((key, state));
         }
@@ -412,12 +454,14 @@ impl Engine {
             action: call.action,
             generation: self.generation,
             hard: self.hard,
+            cells: self.cells.as_ref(),
             cap: request.max_iterations.clamp(1, MAX_ITERATIONS),
             bytes,
             cancel: call.cancel,
         };
         let outputs = Outputs {
             work: &mut self.work,
+            reduced: &mut self.reduced,
             schwarz: &mut self.schwarz,
             gram: request.residual_gram.then_some(&mut self.gram),
             norms: &mut self.norms,
@@ -541,6 +585,11 @@ fn numerical(reason: &'static str, input: InputState, facts: Facts, job: &Job<'_
 
 fn with_structure(mut facts: Facts, job: &Job<'_, '_>) -> Facts {
     facts.reduced = job.st.coefficients();
+    if let Some(cells) = job.cells {
+        let b = cells.effects[1];
+        facts.reduced = job.st.offsets[b + 1] - job.st.offsets[b];
+        facts.cells = cells.cells();
+    }
     facts
 }
 
@@ -552,6 +601,18 @@ fn same_projection(scales: &[f64]) -> Result<InputState> {
 
 /// The route actually used: Schwarz when any recurrence used it.
 fn route(job: &Job<'_, '_>, schwarz: Option<&Schwarz>, escalations: usize) -> Route {
+    if let Some(cells) = job.cells {
+        return Route {
+            reduction: ReductionUsed::Eliminated {
+                effect: cells.effects[0],
+            },
+            method: MethodUsed::Pcg,
+            preconditioner: PreconditionerUsed::ChannelBlocks {
+                singular: u32::try_from(cells.singular()).unwrap_or(u32::MAX),
+            },
+            escalations: 0,
+        };
+    }
     Route {
         reduction: ReductionUsed::Full,
         method: match job.method {
@@ -640,6 +701,7 @@ fn initial_mode(
                 Mode::Escalate
             }
         }
+        Action::Eliminate => Mode::Jacobi,
     }))
 }
 
@@ -914,6 +976,8 @@ struct Formed {
 /// One PCG batch `first..first + R` and its outputs.
 struct Batch<'b, 'v, 'c> {
     values: &'b mut ColumnsMut<'v>,
+    /// The elimination's Schur workspace.
+    reduced: &'b mut Work,
     first: usize,
     reference: Option<&'b [f64]>,
     start: Option<&'b [f64]>,
@@ -972,6 +1036,7 @@ fn recurrence<const R: usize>(
             state,
             jacobi: mode != Mode::Identity,
             schwarz,
+            cells: None,
         };
         let pilot = mode == Mode::Escalate;
         pcg::<R>(&op, work, targets, (job.cap, pilot), &job.cancel, tally)?
@@ -1022,10 +1087,52 @@ fn recurrence<const R: usize>(
         state,
         jacobi: true,
         schwarz,
+        cells: None,
     };
     let solved = pcg::<R>(&op, work, targets, (remaining, false), &job.cancel, tally)?;
     facts.pcg_seconds += started.elapsed().as_secs_f64();
     facts.escalations += usize::from(built);
+    Ok(solved)
+}
+
+/// The elimination with slopes: PCG on the Schur complement of `cells` from
+/// the larger effect's per-level fit in `work.x` (the cold start), given the
+/// true residual `work.r` of every coefficient; the smaller effect's iterate
+/// and the larger effect's back-substitution `x_a -= M_a^-1 X x_b` go into
+/// `work.x`.
+fn eliminated<const R: usize>(
+    job: &Job<'_, '_>,
+    cells: &Cells,
+    (work, reduced): (&mut Work, &mut Work),
+    (targets, tally): (&Targets<R>, &mut Tally<R>),
+    facts: &mut Facts,
+) -> Result<Solve<R>> {
+    let (st, state) = (job.st, job.state);
+    let [a, b] = cells.effects;
+    let small = st.offsets[b] * R..st.offsets[b + 1] * R;
+    let large = st.offsets[a] * R..st.offsets[a + 1] * R;
+    reduced.size_reduced(cells, st.offsets[b + 1] - st.offsets[b], R)?;
+    reduced.x.copy_from_slice(&work.x[small.clone()]);
+    reduced.r.copy_from_slice(&work.r[small.clone()]);
+    let started = Instant::now();
+    let op = Normal {
+        st,
+        effects: job.design.effects(),
+        state,
+        jacobi: true,
+        schwarz: None,
+        cells: Some(cells),
+    };
+    let solved = pcg::<R>(&op, reduced, targets, (job.cap, false), &job.cancel, tally)?;
+    facts.pcg_seconds += started.elapsed().as_secs_f64();
+    work.x[small].copy_from_slice(&reduced.x);
+    let actions = cells::Actions::of(st, state, a, cells.channels[0]);
+    let beta = &mut work.q[large.clone()];
+    cells.larger::<R>(actions, (None, Some(&reduced.x)), &mut [], beta);
+    let Work { x, q, .. } = work;
+    for (x, beta) in x[large.clone()].iter_mut().zip(&q[large]) {
+        *x -= beta;
+    }
     Ok(solved)
 }
 
@@ -1082,7 +1189,13 @@ fn run<const R: usize>(
     };
     let mut tally = Tally::default();
     let escalations = facts.escalations;
-    let solved = recurrence::<R>(job, &batch, (work, slot), (&targets, &mut tally), facts)?;
+    let solved = match job.cells {
+        Some(cells) => {
+            let lent = (&mut *work, &mut *batch.reduced);
+            eliminated::<R>(job, cells, lent, (&targets, &mut tally), facts)?
+        }
+        None => recurrence::<R>(job, &batch, (work, slot), (&targets, &mut tally), facts)?,
+    };
     let schwarz = batch.mode == Mode::Schwarz || facts.escalations > escalations;
     facts.iterations = facts.iterations.max(tally.iterations);
     let floor = match solved {
@@ -1194,6 +1307,7 @@ fn project_pcg(
     let ncols = values.ncols();
     let Outputs {
         work,
+        reduced,
         schwarz: slot,
         gram,
         norms,
@@ -1225,6 +1339,7 @@ fn project_pcg(
         loop {
             let batch = Batch {
                 values: &mut *values,
+                reduced: &mut *reduced,
                 first,
                 reference: reference.as_ref().map(|r| &r[..width]),
                 start: start.filter(|_| attempts == 0),

@@ -164,7 +164,7 @@ impl Blocks {
             let body = |_: usize, chunk: &mut [f64]| {
                 let mut count = 0;
                 for block in chunk.chunks_exact_mut(width) {
-                    count += usize::from(invert(block, c));
+                    count += usize::from(invert(block, c, None));
                 }
                 singular.fetch_add(count, Ordering::Relaxed);
             };
@@ -173,6 +173,13 @@ impl Blocks {
         }
         self.singular = singular.into_inner();
         Ok(())
+    }
+
+    /// The level inverses of effect `e` (`channels^2` per level), when it
+    /// has blocks.
+    pub(super) fn effect(&self, e: usize) -> Option<&[f64]> {
+        let part = self.parts.iter().find(|p| p.effect == e)?;
+        Some(&self.values[part.first..part.first + part.levels * part.channels.pow(2)])
     }
 
     /// Whether effect `e` has blocks.
@@ -328,7 +335,7 @@ impl Blocks {
 /// by column: `r[ch * R + j]`), written to `out` when given; accumulates
 /// `r'v`, `max sqrt(r'v)` and `max |v|` per column into `acc`.
 #[inline]
-fn level<const R: usize>(
+pub(super) fn level<const R: usize>(
     block: &[f64],
     c: usize,
     r: &[f64],
@@ -431,15 +438,31 @@ fn gram(
     Ok(())
 }
 
-/// Replace the `c x c` Gram `block` by its action `M^-1` (module docs);
-/// `true` when it has a null direction.
-fn invert(block: &mut [f64], c: usize) -> bool {
-    if c == 1 {
-        let g = block[0];
-        block[0] = if g > 0.0 { 1.0 / g } else { 1.0 };
-        return g <= 0.0;
+/// Replace the `c x c` positive semidefinite `block` by its action `M^-1`
+/// (module docs); `true` when it has a null direction. With `reference`, a
+/// Schur block's un-eliminated Gram, the scaling and the null threshold and
+/// curvature come from the reference's diagonal (its unit scale), so a
+/// block that cancels to rounding is null; otherwise from the block's own.
+pub(super) fn invert(block: &mut [f64], c: usize, reference: Option<&[f64]>) -> bool {
+    let mut d = [0.0; MAX_CHANNELS];
+    for (k, d) in d[..c].iter_mut().enumerate() {
+        *d = reference.map_or(block[k * c + k], |r| r[k * c + k]);
     }
-    let top = (0..c).map(|k| block[k * c + k]).fold(0.0_f64, f64::max);
+    if c == 1 {
+        let (g, scale) = (block[0], d[0]);
+        let kept = match reference {
+            None => g > 0.0,
+            Some(_) => g > NULL * scale,
+        };
+        block[0] = match (kept, reference) {
+            (true, _) => 1.0 / g,
+            (false, None) => 1.0,
+            (false, Some(_)) if scale > 0.0 => 1.0 / scale,
+            (false, Some(_)) => 1.0,
+        };
+        return !kept;
+    }
+    let top = d[..c].iter().copied().fold(0.0_f64, f64::max);
     if top <= 0.0 {
         block.fill(0.0);
         for k in 0..c {
@@ -449,8 +472,7 @@ fn invert(block: &mut [f64], c: usize) -> bool {
     }
     let mut s = [0.0; MAX_CHANNELS];
     for (k, s) in s[..c].iter_mut().enumerate() {
-        let d = block[k * c + k];
-        *s = 1.0 / if d > 0.0 { d } else { top }.sqrt();
+        *s = 1.0 / if d[k] > 0.0 { d[k] } else { top }.sqrt();
     }
     let mut a = [0.0; MAX_CHANNELS * MAX_CHANNELS];
     for i in 0..c {
@@ -461,6 +483,8 @@ fn invert(block: &mut [f64], c: usize) -> bool {
     let mut q = [0.0; MAX_CHANNELS * MAX_CHANNELS];
     eigen(&mut a[..c * c], &mut q[..c * c], c);
     let largest = (0..c).map(|k| a[k * c + k]).fold(f64::MIN, f64::max);
+    // The reference scaling has a unit diagonal: its unit is the scale.
+    let largest = if reference.is_some() { 1.0 } else { largest };
     let mut phi = [0.0; MAX_CHANNELS];
     let mut singular = false;
     for (k, phi) in phi[..c].iter_mut().enumerate() {
@@ -551,7 +575,7 @@ mod tests {
     fn nonsingular_blocks_are_inverted() {
         let gram = [4.0, 2.0e3, 1.0, 2.0e3, 1.5e6, 30.0, 1.0, 30.0, 9.0];
         let mut block = gram;
-        assert!(!invert(&mut block, 3));
+        assert!(!invert(&mut block, 3, None));
         let product = multiply(&gram, &block, 3);
         for i in 0..3 {
             for k in 0..3 {
@@ -569,7 +593,7 @@ mod tests {
         // Three rows of weight 1 and slope 5 (constant).
         let gram = [3.0, 15.0, 15.0, 75.0];
         let mut block = gram;
-        assert!(invert(&mut block, 2));
+        assert!(invert(&mut block, 2, None));
         let gmg = multiply(&gram, &multiply(&block, &gram, 2), 2);
         for (x, y) in gmg.iter().zip(&gram) {
             assert!((x - y).abs() < 1e-9 * y.abs().max(1.0), "{gmg:?}");
@@ -578,11 +602,11 @@ mod tests {
         assert!(block[0] > 0.0 && det > 0.0 && (block[1] - block[2]).abs() < 1e-15);
         // Intercept with a zero slope.
         let mut zero = [2.0, 0.0, 0.0, 0.0];
-        assert!(invert(&mut zero, 2));
+        assert!(invert(&mut zero, 2, None));
         assert_eq!(zero[0], 0.5);
         assert!(zero[3] > 0.0 && zero[1] == 0.0);
         let mut empty = [0.0];
-        assert!(invert(&mut empty, 1));
+        assert!(invert(&mut empty, 1, None));
         assert_eq!(empty[0], 1.0);
     }
 }

@@ -1,8 +1,8 @@
 //! Varying slopes on the full formulation ([`Effect::with_slopes`]): PCG and
-//! modified LSMR with the levels' channel blocks, the hybrid additive
-//! Schwarz (factor-pair subdomains on the intercept channels plus the level
-//! blocks) or no preconditioner against an independent dense weighted
-//! least-squares reference on the
+//! modified LSMR with the levels' channel blocks, additive Schwarz (pairs
+//! with slopes acted on by their block elimination) or no preconditioner,
+//! and the elimination with slopes of two effects, against an independent
+//! dense weighted least-squares reference on the
 //! explicit design (one column per effect, channel and level: the level
 //! dummy times the channel's value; modified Gram-Schmidt on `sqrt(W) D`),
 //! singular level blocks, unit invariance, independence of the worker count,
@@ -127,10 +127,6 @@ impl Case {
             })
             .collect();
         Design::new(self.n, effects).unwrap()
-    }
-
-    fn intercepts(&self) -> usize {
-        self.specs.iter().filter(|s| s.intercept).count()
     }
 
     fn channels(&self, e: usize) -> usize {
@@ -340,8 +336,8 @@ const SCHWARZ: Preconditioner = Preconditioner::Schwarz(SchwarzSpec {
     local: fedemean::SchwarzLocal::Auto,
 });
 
-/// The routes this build supports for `case` (Schwarz needs two effects
-/// with intercepts).
+/// The routes this build supports for `case` (Schwarz on two or more
+/// effects).
 fn routes(case: &Case) -> Vec<(Method, Preconditioner)> {
     let mut routes = vec![
         (Method::Auto, Preconditioner::Auto),
@@ -351,7 +347,7 @@ fn routes(case: &Case) -> Vec<(Method, Preconditioner)> {
     if cfg!(feature = "schwarz") {
         routes.push((Method::Lsmr, Preconditioner::Jacobi));
         routes.push((Method::Lsmr, Preconditioner::Identity));
-        if case.intercepts() >= 2 {
+        if case.specs.len() >= 2 {
             routes.push((Method::Pcg, SCHWARZ));
             routes.push((Method::Lsmr, SCHWARZ));
         }
@@ -365,7 +361,7 @@ fn resolved(case: &Case, preconditioner: Preconditioner, used: PreconditionerUse
     match preconditioner {
         Preconditioner::Identity => used == PreconditionerUsed::Identity,
         Preconditioner::Schwarz(_) => schwarz,
-        Preconditioner::Auto if cfg!(feature = "schwarz") && case.intercepts() >= 2 => schwarz,
+        Preconditioner::Auto if cfg!(feature = "schwarz") && case.specs.len() >= 2 => schwarz,
         _ => matches!(used, PreconditionerUsed::ChannelBlocks { .. }),
     }
 }
@@ -402,11 +398,33 @@ fn check(
     weights: Option<&[f64]>,
     oracle: &Oracle,
     (method, preconditioner): (Method, Preconditioner),
+    columns: (usize, u64),
+) -> PreconditionerUsed {
+    let route = (Reduction::Full, method, preconditioner);
+    check_route(case, weights, oracle, route, columns)
+}
+
+/// The effect with the most levels (the first of equals): the elimination's.
+fn largest(case: &Case) -> usize {
+    (0..case.specs.len())
+        .max_by_key(|&e| (case.specs[e].levels, std::cmp::Reverse(e)))
+        .unwrap()
+}
+
+/// [`check`] for any reduction (the elimination: its reduced system is the
+/// smaller effect's coefficients).
+fn check_route(
+    case: &Case,
+    weights: Option<&[f64]>,
+    oracle: &Oracle,
+    (reduction, method, preconditioner): (Reduction, Method, Preconditioner),
     (ncols, seed): (usize, u64),
 ) -> PreconditionerUsed {
     let original = case.columns(seed, ncols);
     let mut data = original.clone();
-    let mut projector = Projector::new(case.design(), full(method, preconditioner));
+    let mut settings = full(method, preconditioner);
+    settings.choice.reduction = reduction;
+    let mut projector = Projector::new(case.design(), settings);
     let request = Request::new(TOLERANCE, MAX_ITERATIONS);
     let (outcome, coefficients) = project(
         &mut projector,
@@ -417,7 +435,7 @@ fn check(
         &request,
     );
     let label = format!(
-        "{:?} {method:?}/{preconditioner:?} {ncols} cols weighted {}",
+        "{:?} {reduction:?}/{method:?}/{preconditioner:?} {ncols} cols weighted {}",
         case.specs,
         weights.is_some()
     );
@@ -430,7 +448,6 @@ fn check(
         "{label}: {:?}",
         report.certificate
     );
-    assert_eq!(report.route.reduction, ReductionUsed::Full, "{label}");
     let method_used = if method == Method::Lsmr {
         MethodUsed::Lsmr
     } else {
@@ -438,9 +455,26 @@ fn check(
     };
     assert_eq!(report.route.method, method_used, "{label}");
     assert_eq!(report.route.escalations, 0, "{label}");
-    assert_eq!(report.facts.reduced, case.per_rhs(), "{label}");
     let used = report.route.preconditioner;
-    assert!(resolved(case, preconditioner, used), "{label}: {used:?}");
+    if reduction == Reduction::EliminateLargest {
+        let effect = largest(case);
+        let other = 1 - effect;
+        let reduced = case.specs[other].levels * case.channels(other);
+        assert_eq!(
+            report.route.reduction,
+            ReductionUsed::Eliminated { effect },
+            "{label}"
+        );
+        assert_eq!(report.facts.reduced, reduced, "{label}");
+        assert!(
+            matches!(used, PreconditionerUsed::ChannelBlocks { .. }),
+            "{label}: {used:?}"
+        );
+    } else {
+        assert_eq!(report.route.reduction, ReductionUsed::Full, "{label}");
+        assert_eq!(report.facts.reduced, case.per_rhs(), "{label}");
+        assert!(resolved(case, preconditioner, used), "{label}: {used:?}");
+    }
     assert_eq!(projector.columns().len(), ncols);
     for j in 0..ncols {
         let y = column(&original, ncols, j);
@@ -489,6 +523,14 @@ fn check_case(seed: u64, n: usize, specs: &[Spec], identity: bool) {
         {
             for (ncols, offset) in [(1, 2), (3, 3), (11, 4)] {
                 check(&case, weights, &oracle, route, (ncols, seed + offset));
+            }
+        }
+        if case.specs.len() == 2 {
+            for preconditioner in [Preconditioner::Auto, Preconditioner::Jacobi] {
+                let route = (Reduction::EliminateLargest, Method::Pcg, preconditioner);
+                for (ncols, offset) in [(1, 5), (3, 6), (11, 7)] {
+                    check_route(&case, weights, &oracle, route, (ncols, seed + offset));
+                }
             }
         }
     }
@@ -770,10 +812,10 @@ fn slope_warm_starts_continue_from_their_coefficients() {
     }
 }
 
-/// Auto routes slopes to the full formulation: Schwarz when it builds, or
-/// with escalation the channel blocks first (an easy design keeps them);
-/// the elimination, block-Jacobi, Schwarz without two intercept effects and
-/// too many channels are unsupported; inputs are validated.
+/// Auto routes two effects with slopes to the slope elimination; block-Jacobi,
+/// exact Schwarz local solves with slopes, the elimination of three effects
+/// or with another method or preconditioner, and too many channels are
+/// unsupported; inputs are validated.
 #[test]
 fn slope_routes_and_validation() {
     let case = Case::random(81, 200, &[spec(20, true, 0), spec(6, true, 1)]);
@@ -797,18 +839,17 @@ fn slope_routes_and_validation() {
             })
             .unwrap(),
         );
-        assert_eq!(report.route.reduction, ReductionUsed::Full);
+        // Two effects with slopes: the slope elimination.
+        assert_eq!(
+            report.route.reduction,
+            ReductionUsed::Eliminated { effect: 0 }
+        );
         assert_eq!(report.route.method, MethodUsed::Pcg);
-        let schwarz = cfg!(feature = "schwarz") && fallback == Fallback::Decline;
         let used = report.route.preconditioner;
-        if schwarz {
-            assert!(
-                matches!(used, PreconditionerUsed::Schwarz { .. }),
-                "{used:?}"
-            );
-        } else {
-            assert_eq!(used, PreconditionerUsed::ChannelBlocks { singular: 0 });
-        }
+        assert!(
+            matches!(used, PreconditionerUsed::ChannelBlocks { .. }),
+            "{used:?}"
+        );
         assert_eq!(report.route.escalations, 0);
     }
     let unsupported = |choice: Choice| {
@@ -817,10 +858,7 @@ fn slope_routes_and_validation() {
             "{choice:?}"
         );
     };
-    unsupported(Choice {
-        reduction: Reduction::EliminateLargest,
-        ..Choice::default()
-    });
+
     unsupported(Choice {
         preconditioner: Preconditioner::BlockJacobi(fedemean::BlockSpec::default()),
         ..Choice::default()
@@ -841,14 +879,37 @@ fn slope_routes_and_validation() {
         &Control::default(),
     );
     assert!(matches!(result, Err(Error::Unsupported(_))));
-    // Schwarz with one intercept effect.
-    let single = Effect::new(&case.codes[1], 6)
-        .with_slopes(false, [case.slopes[1][0].as_slice()])
-        .unwrap();
-    let design = Design::new(case.n, vec![Effect::new(&case.codes[0], 20), single]).unwrap();
-    let mut data = original.clone();
-    let columns = ColumnsMut::new(&mut data, case.n, 2).unwrap();
-    let result = Projector::new(design, full(Method::Pcg, SCHWARZ)).project(
+    // Exact Schwarz local solves with slopes; the elimination beyond two
+    // effects or with another method or preconditioner.
+    unsupported(Choice {
+        preconditioner: Preconditioner::Schwarz(SchwarzSpec {
+            local: fedemean::SchwarzLocal::Exact,
+            ..SchwarzSpec::default()
+        }),
+        ..Choice::default()
+    });
+    for (method, preconditioner) in [
+        (Method::Lsmr, Preconditioner::Jacobi),
+        (Method::Pcg, Preconditioner::Identity),
+        (Method::Pcg, SCHWARZ),
+    ] {
+        unsupported(Choice {
+            reduction: Reduction::EliminateLargest,
+            method,
+            preconditioner,
+            ..Choice::default()
+        });
+    }
+    let three = Case::random(
+        83,
+        200,
+        &[spec(20, true, 0), spec(6, true, 1), spec(4, true, 0)],
+    );
+    let mut data = three.columns(84, 2);
+    let columns = ColumnsMut::new(&mut data, three.n, 2).unwrap();
+    let mut settings = Settings::default();
+    settings.choice.reduction = Reduction::EliminateLargest;
+    let result = Projector::new(three.design(), settings).project(
         Weights::Unit,
         columns,
         None,
@@ -904,20 +965,30 @@ fn slope_routes_and_validation() {
             "{channels:?}"
         );
     }
-    // A warm start must have every channel's coefficients.
-    let mut projector = Projector::new(case.design(), Settings::default());
-    let mut data = original.clone();
-    let columns = ColumnsMut::new(&mut data, case.n, 2).unwrap();
-    let start = vec![0.0; (20 + 6) * 2];
-    let result = projector.project_from(
-        Weights::Unit,
-        columns,
-        &start,
-        None,
-        &request,
-        &Control::default(),
-    );
-    assert!(matches!(result, Err(Error::InvalidInput(_))));
+    // A warm start must have every channel's coefficients (the full
+    // formulation); the elimination has none.
+    for (settings, short) in [
+        (full(Method::Pcg, Preconditioner::Jacobi), true),
+        (Settings::default(), false),
+    ] {
+        let mut projector = Projector::new(case.design(), settings);
+        let mut data = original.clone();
+        let columns = ColumnsMut::new(&mut data, case.n, 2).unwrap();
+        let start = vec![0.0; if short { 20 + 6 } else { case.per_rhs() } * 2];
+        let result = projector.project_from(
+            Weights::Unit,
+            columns,
+            &start,
+            None,
+            &request,
+            &Control::default(),
+        );
+        if short {
+            assert!(matches!(result, Err(Error::InvalidInput(_))), "{result:?}");
+        } else {
+            assert!(matches!(result, Err(Error::Unsupported(_))), "{result:?}");
+        }
+    }
 }
 
 /// Solve the small dense system `a x = b` (row-major, `c x c`) by Gaussian
@@ -1007,6 +1078,149 @@ fn slope_coefficient_stopping_bounds_the_block_estimate() {
                 largest <= bound * (1.0 + 1e-6),
                 "{method:?} column {j}: {largest} > {bound}"
             );
+        }
+    }
+}
+
+/// Two effects for the elimination with singular levels: the effect with
+/// slopes (`sloped`, intercept and one slope) has a constant slope on level
+/// 0, a zero slope on level 1 and a single row on level 2; with the slopes
+/// on the smaller effect, its level 3 is also nested in its own levels of
+/// the larger effect (a Schur block that cancels).
+fn singular_pair(sloped: usize, scale: f64) -> Case {
+    let specs = if sloped == 0 {
+        [spec(30, true, 1), spec(8, true, 0)]
+    } else {
+        [spec(30, true, 0), spec(8, true, 1)]
+    };
+    let mut case = Case::random(95, 420, &specs);
+    let mut kept = false;
+    for code in &mut case.codes[sloped] {
+        if *code == 2 {
+            if kept {
+                *code = 4;
+            }
+            kept = true;
+        }
+    }
+    if sloped == 1 {
+        // Larger levels 28 and 29 only at smaller level 3, and level 3 only
+        // there.
+        for i in 0..case.n {
+            if case.codes[1][i] == 3 {
+                case.codes[0][i] = 28 + (i % 2) as u32;
+            } else if case.codes[0][i] >= 28 {
+                case.codes[0][i] = (i % 28) as u32;
+            }
+        }
+    }
+    for i in 0..case.n {
+        match case.codes[sloped][i] {
+            0 => case.slopes[sloped][0][i] = 5.0,
+            1 => case.slopes[sloped][0][i] = 0.0,
+            _ => {}
+        }
+        case.slopes[sloped][0][i] *= scale;
+    }
+    case
+}
+
+#[test]
+fn slope_elimination_handles_singular_levels() {
+    for sloped in [0, 1] {
+        for scale in [1.0, 1e6] {
+            let case = singular_pair(sloped, scale);
+            let weights = case.weights(96);
+            for weights in [None, Some(weights.as_slice())] {
+                let oracle = Oracle::new(&case, weights);
+                for preconditioner in [Preconditioner::Auto, Preconditioner::Jacobi] {
+                    let route = (Reduction::EliminateLargest, Method::Pcg, preconditioner);
+                    let used = check_route(&case, weights, &oracle, route, (3, 97));
+                    let PreconditionerUsed::ChannelBlocks { singular } = used else {
+                        panic!("{used:?}");
+                    };
+                    // The nested smaller level's Schur block cancels.
+                    assert!(sloped == 0 || singular >= 1, "{sloped} {scale}: {used:?}");
+                }
+            }
+        }
+    }
+}
+
+/// The elimination with slopes (a gathered larger effect) is bitwise
+/// independent of the worker count and satisfies every channel's normal
+/// equation, with the slopes on either effect.
+#[test]
+fn slope_elimination_is_pool_independent() {
+    for specs in [
+        [spec(2500, true, 0), spec(400, true, 1)],
+        [spec(2500, true, 2), spec(1200, true, 0)],
+    ] {
+        let case = Case::random(98, 30_000, &specs);
+        let weights = case.weights(99);
+        let ncols = 4;
+        let original = case.columns(100, ncols);
+        let mut settings = Settings::default();
+        settings.choice.reduction = Reduction::EliminateLargest;
+        for weights in [None, Some(weights.as_slice())] {
+            let run = |threads: usize| {
+                let pool = rayon::ThreadPoolBuilder::new()
+                    .num_threads(threads)
+                    .build()
+                    .unwrap();
+                pool.install(|| {
+                    let mut projector = Projector::new(case.design(), settings);
+                    let mut data = original.clone();
+                    let request = Request::new(1e-9, MAX_ITERATIONS);
+                    let (outcome, coefficients) = project(
+                        &mut projector,
+                        &case,
+                        weights,
+                        (&mut data, ncols),
+                        None,
+                        &request,
+                    );
+                    let report = projected(outcome);
+                    assert!(report.certificate.passed);
+                    assert_eq!(
+                        report.route.reduction,
+                        ReductionUsed::Eliminated { effect: 0 }
+                    );
+                    (data, coefficients)
+                })
+            };
+            let (four, coefficients) = run(4);
+            for threads in [1, 3] {
+                let (other, other_coefficients) = run(threads);
+                assert_eq!(bits(&four), bits(&other), "{specs:?} {threads}");
+                assert_eq!(bits(&coefficients), bits(&other_coefficients));
+            }
+            let w = |i: usize| weights.map_or(1.0, |w| w[i]);
+            for j in 0..ncols {
+                let y = column(&original, ncols, j);
+                let r = column(&four, ncols, j);
+                let norm = (0..case.n).map(|i| w(i) * y[i] * y[i]).sum::<f64>().sqrt();
+                for (e, spec) in case.specs.iter().enumerate() {
+                    for c in 0..case.channels(e) {
+                        let (mut moment, mut mass) =
+                            (vec![0.0; spec.levels], vec![0.0; spec.levels]);
+                        for (i, &ri) in r.iter().enumerate() {
+                            let l = case.codes[e][i] as usize;
+                            let v = case.value(e, c, i);
+                            moment[l] += w(i) * v * ri;
+                            mass[l] += w(i) * v * v;
+                        }
+                        for (m, mass) in moment.iter().zip(&mass) {
+                            assert!(m.abs() <= 1e-8 * mass.sqrt() * norm, "{e} {c}");
+                        }
+                    }
+                }
+                let bound = 1e-8 * inf_norm(&y).max(1.0);
+                for (i, (&yi, &ri)) in y.iter().zip(&r).enumerate() {
+                    let fit = case.fitted(&coefficients, Some(j), i);
+                    assert!((yi - fit - ri).abs() <= bound, "column {j}, row {i}");
+                }
+            }
         }
     }
 }

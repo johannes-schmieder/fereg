@@ -8,6 +8,7 @@
 //! fitted contribution `D x` converges while `x` itself is determined only
 //! up to the null space.
 
+use super::cells::{Actions, Cells};
 use super::kernels::{adjoint, forward, Rows, PARALLEL_WORK};
 use super::refill;
 use super::schwarz::{Schwarz, Scratch};
@@ -129,6 +130,28 @@ impl Work {
         Ok(())
     }
 
+    /// Size every recurrence buffer for the Schur system of `cells` (`m`
+    /// coefficients, `r` columns; `t` holds the cells' workspace).
+    pub(super) fn size_reduced(&mut self, cells: &Cells, m: usize, r: usize) -> Result<()> {
+        let sizes = [
+            (&mut self.x, m * r),
+            (&mut self.xs, m * r),
+            (&mut self.r, m * r),
+            (&mut self.z, m * r),
+            (&mut self.p, m * r),
+            (&mut self.q, m * r),
+            (&mut self.t, cells.cells() * cells.channels[1] * r),
+            (&mut self.partials, m.div_ceil(CHUNK) * 3 * r),
+            (&mut self.measures, cells.small_tasks() * 3 * r),
+        ];
+        for (v, len) in sizes {
+            if v.len() != len {
+                refill(v, len, 0.0)?;
+            }
+        }
+        Ok(())
+    }
+
     /// Size the channel-block partials of `state` for `r` columns.
     pub(super) fn size_blocks(&mut self, state: &State, r: usize) -> Result<()> {
         let len = state.blocks().map_or(0, |b| b.tasks() * 3 * r);
@@ -148,10 +171,31 @@ pub(super) struct Normal<'a, 'd> {
     pub(super) state: &'a State,
     pub(super) jacobi: bool,
     pub(super) schwarz: Option<&'a Schwarz>,
+    /// The elimination with slopes: the operator is the Schur complement of
+    /// these cells on the smaller effect's coefficients, preconditioned by
+    /// its diagonal blocks.
+    pub(super) cells: Option<&'a Cells>,
 }
 
 impl Normal<'_, '_> {
-    /// `q = D'W D p` through `t = W D p`.
+    /// The inverse masses and their roots of the system's coefficients.
+    fn inverses(&self) -> (&[f64], &[f64]) {
+        let state = self.state;
+        match self.cells {
+            Some(cells) => {
+                let b = cells.effects[1];
+                let span = self.st.offsets[b]..self.st.offsets[b + 1];
+                (
+                    &state.inverse_mass[span.clone()],
+                    &state.inverse_root_mass[span],
+                )
+            }
+            None => (&state.inverse_mass, &state.inverse_root_mass),
+        }
+    }
+
+    /// `q = D'W D p` through `t = W D p` (the elimination: `q = S p` with
+    /// `t` the cells' workspace).
     pub(super) fn apply<const R: usize>(
         &self,
         p: &[f64],
@@ -159,6 +203,12 @@ impl Normal<'_, '_> {
         q: &mut [f64],
         scatter: &mut [f64],
     ) {
+        if let Some(cells) = self.cells {
+            let [a, _] = cells.effects;
+            let actions = Actions::of(self.st, self.state, a, cells.channels[0]);
+            cells.apply::<R>(actions, p, q, t);
+            return;
+        }
         forward::<R>(self.st, self.effects, p, self.state.weights(), t);
         let rows = Rows {
             data: t,
@@ -185,6 +235,18 @@ fn update<const R: usize>(
     alpha: Option<[f64; R]>,
 ) -> [[f64; R]; 3] {
     let mut out = fused::<R>(op, work, alpha);
+    if let Some(cells) = op.cells {
+        let [_, b] = cells.effects;
+        let smaller = Actions::of(op.st, op.state, b, cells.channels[1]);
+        let [rz, inf, zinf] =
+            cells.precondition::<R>(smaller, &work.r, &mut work.z, &mut work.measures);
+        for j in 0..R {
+            out[0][j] = rz[j];
+            out[1][j] = out[1][j].max(inf[j]);
+            out[2][j] = out[2][j].max(zinf[j]);
+        }
+        return out;
+    }
     let blocks = op.state.blocks();
     if let Some(schwarz) = op.schwarz {
         let inverse = (&op.state.inverse_mass[..], blocks);
@@ -215,8 +277,8 @@ fn fused<const R: usize>(
     work: &mut Work,
     alpha: Option<[f64; R]>,
 ) -> [[f64; R]; 3] {
-    let (inv_mass, inv_root) = (&op.state.inverse_mass, &op.state.inverse_root_mass);
-    let (jacobi, diagonal) = (op.jacobi, op.schwarz.is_none());
+    let (inv_mass, inv_root) = op.inverses();
+    let (jacobi, diagonal) = (op.jacobi, op.schwarz.is_none() && op.cells.is_none());
     let Work {
         x,
         r,

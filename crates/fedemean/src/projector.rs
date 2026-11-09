@@ -139,10 +139,10 @@ impl<'a> CoefficientsMut<'a> {
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum Reduction {
     /// [`Reduction::EliminateLargest`] for two to five intercept effects (the
-    /// elimination's current, provisional range) with [`Method::Auto`] or
-    /// [`Method::Pcg`] and an elimination preconditioner (`Auto`, `Jacobi`,
-    /// `BlockJacobi`); [`Reduction::Full`] for any other effect count, for
-    /// effects with slopes, for [`Method::Lsmr`] and for
+    /// elimination's current, provisional range), or two effects with
+    /// slopes, with [`Method::Auto`] or [`Method::Pcg`] and an elimination
+    /// preconditioner (`Auto`, `Jacobi`, `BlockJacobi`); [`Reduction::Full`]
+    /// for any other design, for [`Method::Lsmr`] and for
     /// [`Preconditioner::Identity`] or [`Preconditioner::Schwarz`].
     /// `BlockJacobi` always eliminates.
     #[default]
@@ -150,8 +150,16 @@ pub enum Reduction {
     /// Eliminate the effect with the most levels exactly (global Schur
     /// complement) and iterate on the remaining effects. Designs with fewer
     /// than two or more than five effects decline
-    /// ([`Decline::OutsideRoute`]); effects with slopes are
-    /// [`Error::Unsupported`].
+    /// ([`Decline::OutsideRoute`]).
+    ///
+    /// With slopes (two effects, [`Method::Pcg`], `Auto` or `Jacobi`;
+    /// otherwise [`Error::Unsupported`]): the larger effect's level channel
+    /// blocks are eliminated exactly, and PCG runs on the Schur complement
+    /// over the other effect's coefficients with Jacobi on its diagonal
+    /// blocks (exact inverses; a block that cancels to rounding relative to
+    /// its level's Gram is null, [`PreconditionerUsed::ChannelBlocks`]). The
+    /// eliminated coefficients follow by back-substitution, and every level
+    /// of both effects is certified. No warm starts.
     EliminateLargest,
     /// The full system of every effect's coefficients, without elimination,
     /// for any number of effects (at least one), with or without slopes.
@@ -212,8 +220,7 @@ pub enum Preconditioner {
     /// directions (scaled eigenvalues at most `1e-10` of the largest) the
     /// block's largest scaled curvature, so the action stays symmetric
     /// positive definite. Consistent residuals have no component along those
-    /// directions, so they shape neither iterates nor results. Escalation
-    /// needs two effects with intercepts (see [`Preconditioner::Schwarz`]).
+    /// directions, so they shape neither iterates nor results.
     Jacobi,
     /// Block-Jacobi over the retained effects: a local solve of each
     /// retained effect's diagonal block of the reduced matrix (a weighted
@@ -223,11 +230,13 @@ pub enum Preconditioner {
     Identity,
     /// One-level additive Schwarz over factor-pair subdomains (the full
     /// formulation; feature `schwarz`, otherwise [`Error::Unsupported`]).
-    /// With slopes, the pairs are those of the effects with intercepts, on
-    /// their intercept channels, and every effect with several channels (or
-    /// a slope without intercept) adds its level channel blocks
-    /// ([`Preconditioner::Jacobi`]) as further subdomains; it needs two
-    /// effects with intercepts ([`Error::Unsupported`] otherwise).
+    /// With slopes, a pair in which either effect has several channels (or a
+    /// slope without intercept) is one subdomain on both effects' channels:
+    /// the block elimination of its cells, exact on the larger effect's
+    /// level channel blocks and Jacobi on the Schur complement's diagonal
+    /// blocks ([`SchwarzSolves::eliminated`]; [`SchwarzLocal`] applies to
+    /// the pairs of intercept effects, and [`SchwarzLocal::Exact`] with
+    /// slopes is [`Error::Unsupported`]).
     /// A subdomain is one connected component of the bipartite level graph
     /// of two effects, and its local operator is that component's block of
     /// `D'WD` (a signed graph Laplacian). The local actions are summed
@@ -473,8 +482,7 @@ pub enum PreconditionerUsed {
     /// None (`M = I`).
     Identity,
     /// Additive Schwarz over `subdomains` factor-pair subdomains, with the
-    /// local Schur solves counted by kind (with slopes, also the level
-    /// channel blocks of the effects with slopes, not counted here).
+    /// local solves counted by kind.
     Schwarz {
         subdomains: u32,
         local: SchwarzSolves,
@@ -501,6 +509,10 @@ pub struct SchwarzSolves {
     pub skyline: u32,
     /// Approximate Cholesky factorization.
     pub approximate: u32,
+    /// Pairs with slopes: one subdomain on both effects' channels, exact on
+    /// the larger effect's level blocks and Jacobi on the Schur
+    /// complement's diagonal blocks.
+    pub eliminated: u32,
 }
 
 /// One retained effect's block of a block-Jacobi preconditioner.
@@ -668,15 +680,28 @@ fn formulation(design: &Design<'_>, choice: Choice) -> Result<Formulation> {
             }
             (_, Preconditioner::BlockJacobi(_)) => Reduction::EliminateLargest,
             _ if eliminable => Reduction::EliminateLargest,
+            // Two effects with slopes: the slope elimination.
+            _ if sloped && effects == 2 => Reduction::EliminateLargest,
             _ => Reduction::Full,
         },
         explicit => explicit,
     };
     if reduction == Reduction::EliminateLargest {
         if sloped {
-            return Err(Error::Unsupported(
-                "the elimination supports intercept effects only (use Reduction::Full for slopes)",
-            ));
+            return match (effects, choice.method, choice.preconditioner) {
+                (2, Method::Auto | Method::Pcg, Preconditioner::Auto | Preconditioner::Jacobi) => {
+                    Ok(Formulation::Full(
+                        full::Method::Pcg,
+                        full::Action::Eliminate,
+                    ))
+                }
+                (2, _, _) => Err(Error::Unsupported(
+                    "the elimination with slopes runs PCG with Jacobi on its Schur blocks",
+                )),
+                _ => Err(Error::Unsupported(
+                    "the elimination with slopes supports two effects (use Reduction::Full)",
+                )),
+            };
         }
         return match (choice.method, choice.preconditioner) {
             (Method::Lsmr, _) => Err(Error::Unsupported(
@@ -691,35 +716,32 @@ fn formulation(design: &Design<'_>, choice: Choice) -> Result<Formulation> {
             _ => Ok(Formulation::Eliminate),
         };
     }
-    // Schwarz's pair subdomains need two effects with intercepts (with
-    // slopes, the level blocks cover the rest).
-    let intercepts = design.effects().iter().filter(|e| e.intercept()).count();
-    if sloped && intercepts < 2 && matches!(choice.preconditioner, Preconditioner::Schwarz(_)) {
-        return Err(Error::Unsupported(
-            "additive Schwarz with slopes needs two effects with intercepts",
-        ));
+    // Pairs with slopes have one local solve, which is not exact.
+    if let Preconditioner::Schwarz(spec) = choice.preconditioner {
+        if sloped && effects >= 2 && spec.local == SchwarzLocal::Exact {
+            return Err(Error::Unsupported(
+                "exact Schwarz local solves need intercept effects",
+            ));
+        }
     }
     let schwarz = cfg!(feature = "schwarz");
     let escalate = choice.fallback == Fallback::Escalate;
-    let action = match choice.preconditioner {
-        // Jacobi first, Schwarz when Jacobi is slow or stalls.
-        Preconditioner::Auto if schwarz && intercepts >= 2 && escalate => full::Action::Escalate,
-        Preconditioner::Auto if schwarz && intercepts >= 2 => full::Action::Auto,
-        Preconditioner::Jacobi if schwarz && (!sloped || intercepts >= 2) && escalate => {
-            full::Action::Escalate
-        }
-        Preconditioner::Auto | Preconditioner::Jacobi => full::Action::Jacobi,
-        Preconditioner::Identity => full::Action::Identity,
-        Preconditioner::BlockJacobi(_) => {
-            return Err(Error::Unsupported(
+    let action =
+        match choice.preconditioner {
+            // Jacobi first, Schwarz when Jacobi is slow or stalls.
+            Preconditioner::Auto if schwarz && effects >= 2 && escalate => full::Action::Escalate,
+            Preconditioner::Auto if schwarz && effects >= 2 => full::Action::Auto,
+            Preconditioner::Jacobi if schwarz && escalate => full::Action::Escalate,
+            Preconditioner::Auto | Preconditioner::Jacobi => full::Action::Jacobi,
+            Preconditioner::Identity => full::Action::Identity,
+            Preconditioner::BlockJacobi(_) => return Err(Error::Unsupported(
                 "block-Jacobi preconditions the eliminated system (Reduction::EliminateLargest)",
-            ))
-        }
-        Preconditioner::Schwarz(spec) if schwarz => full::Action::Schwarz(spec),
-        Preconditioner::Schwarz(_) => {
-            return Err(Error::Unsupported("additive Schwarz needs feature schwarz"))
-        }
-    };
+            )),
+            Preconditioner::Schwarz(spec) if schwarz => full::Action::Schwarz(spec),
+            Preconditioner::Schwarz(_) => {
+                return Err(Error::Unsupported("additive Schwarz needs feature schwarz"))
+            }
+        };
     let method = match choice.method {
         Method::Auto | Method::Pcg => full::Method::Pcg,
         #[cfg(feature = "schwarz")]
@@ -875,12 +897,15 @@ impl<'a> Projector<'a> {
         request: &Request,
         control: &Control<'_>,
     ) -> Result<Outcome> {
-        let Formulation::Full(method, action) =
-            self.check(&columns, coefficients.as_ref(), request)?
-        else {
-            return Err(Error::Unsupported(
-                "warm starts need the full formulation (Reduction::Full)",
-            ));
+        let (method, action) = match self.check(&columns, coefficients.as_ref(), request)? {
+            Formulation::Full(method, action) if action != full::Action::Eliminate => {
+                (method, action)
+            }
+            _ => {
+                return Err(Error::Unsupported(
+                    "warm starts need the full formulation (Reduction::Full)",
+                ))
+            }
         };
         let per_column = self
             .design

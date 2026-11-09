@@ -221,9 +221,6 @@ pub(super) struct Piece {
     pub(super) sizes: [usize; 2],
     /// Coefficient offsets of the larger and the smaller side's effects.
     pub(super) offsets: [usize; 2],
-    /// Their coefficients per level (channels): a level's intercept is the
-    /// first of its `stride` adjacent coefficients.
-    pub(super) strides: [usize; 2],
     pub(super) inner: Inner,
     /// First unit of the inner-solve scratch and of the partial sums.
     pub(super) inner_first: usize,
@@ -314,12 +311,11 @@ impl Piece {
         let codes = &pair.codes[self.relative..self.relative + self.n()];
         let parallel = self.n() * R >= PARALLEL_WORK;
         let [big, small] = self.offsets;
-        let [big_stride, small_stride] = self.strides;
         rows::<R, _>(x, parallel, |s, out| {
             let (g, sign) = if s < nb {
-                (big + codes[s] as usize * big_stride, 1.0)
+                (big + codes[s] as usize, 1.0)
             } else {
-                (small + codes[s] as usize * small_stride, -1.0)
+                (small + codes[s] as usize, -1.0)
             };
             for j in 0..R {
                 out[j] = sign * r[g * R + j];

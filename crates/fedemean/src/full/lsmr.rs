@@ -221,6 +221,7 @@ pub(super) fn project(
     let ncols = values.ncols();
     let Outputs {
         work,
+        reduced: _,
         schwarz: slot,
         gram,
         norms,
