@@ -7,7 +7,8 @@
 //!     [--tolerance 1e-8] [--weights] [--reduction auto|eliminate|full] \
 //!     [--method auto|pcg|lsmr] [--precond auto|jacobi|block|identity|schwarz] \
 //!     [--subdomains star|all] [--local auto|exact|approximate] \
-//!     [--fallback decline|escalate] [--variant base|lowmob|chain]
+//!     [--fallback decline|escalate] [--variant base|lowmob|chain] \
+//!     [--slope worker|firm|...] [--slope-only]
 //! ```
 //!
 //! `--precond block` is block-Jacobi with the default local solves (exact
@@ -16,7 +17,10 @@
 //! and Schwarz need `--features schwarz`.
 //!
 //! Effects, in order: worker, firm (with worker mobility), year, occupation,
-//! region, industry (one per firm). Variants: `base` (mobility 0.12, larger
+//! region, industry (one per firm). `--slope firm` gives that effect a
+//! varying slope on the trend `t = year - 1990` (`firm##c.t`; with
+//! `--slope-only`, `firm#c.t` without the intercept); the columns then carry
+//! a level-specific trend of that effect. Variants: `base` (mobility 0.12, larger
 //! firms more likely), `lowmob` (mobility 0.02: many small worker-firm
 //! components) and `chain` (firms on a line, uniform entry, mobility 0.3,
 //! each move one or two firms along the line). The first projection (`Projector::new`
@@ -50,6 +54,10 @@ struct Args {
     schwarz: SchwarzSpec,
     fallback: Fallback,
     variant: Variant,
+    /// The effect with a slope on the trend, and whether it keeps its
+    /// intercept.
+    slope: Option<usize>,
+    slope_intercept: bool,
 }
 
 /// The mobility pattern of the synthetic panel.
@@ -65,7 +73,7 @@ fn usage() -> &'static str {
      [--tolerance TOL] [--weights] [--reduction auto|eliminate|full] [--method auto|pcg|lsmr] \
      [--precond auto|jacobi|block|identity|schwarz] [--subdomains star|all] \
      [--local auto|exact|approximate] [--fallback decline|escalate] \
-     [--variant base|lowmob|chain]"
+     [--variant base|lowmob|chain] [--slope worker|firm|...] [--slope-only]"
 }
 
 fn parse_args() -> Result<Args, String> {
@@ -92,6 +100,8 @@ fn parse_args() -> Result<Args, String> {
         schwarz: SchwarzSpec::default(),
         fallback: Fallback::Decline,
         variant: Variant::Base,
+        slope: None,
+        slope_intercept: true,
     };
     let mut iter = std::env::args().skip(1);
     while let Some(flag) = iter.next() {
@@ -165,6 +175,12 @@ fn parse_args() -> Result<Args, String> {
                     _ => return Err(format!("--fallback: decline or escalate\n{}", usage())),
                 }
             }
+            "--slope" => {
+                let name = iter.next().unwrap_or_default();
+                let effect = NAMES.iter().position(|&n| n == name);
+                args.slope = Some(effect.ok_or_else(|| format!("--slope: one of {NAMES:?}"))?);
+            }
+            "--slope-only" => args.slope_intercept = false,
             "--help" | "-h" => {
                 println!("{}", usage());
                 std::process::exit(0);
@@ -177,6 +193,9 @@ fn parse_args() -> Result<Args, String> {
     }
     if !(1..=NAMES.len()).contains(&args.effects) {
         return Err(format!("--effects must be between 1 and {}", NAMES.len()));
+    }
+    if args.slope.is_some_and(|e| e >= args.effects) {
+        return Err("--slope names an effect beyond --effects".into());
     }
     if args.n < 100 || args.cols == 0 || args.reps == 0 || args.threads == 0 {
         return Err("--n must be at least 100; --cols, --reps and --threads positive".into());
@@ -297,8 +316,12 @@ fn dense_codes(raw: &[u64]) -> (Vec<u32>, usize) {
 }
 
 /// Observation-major columns: per column, a different mix of the effects
-/// plus noise.
-fn columns(codes: &[(Vec<u32>, usize)], n: usize, cols: usize, seed: u64) -> Vec<f64> {
+/// (with `slope`, that effect's level-specific trend too) plus noise.
+fn columns(
+    codes: &[(Vec<u32>, usize)],
+    slope: Option<(usize, &[f64])>,
+    (n, cols, seed): (usize, usize, u64),
+) -> Vec<f64> {
     let mut rng = Rng(seed);
     let mut data = vec![0.0; n * cols];
     for j in 0..cols {
@@ -309,12 +332,18 @@ fn columns(codes: &[(Vec<u32>, usize)], n: usize, cols: usize, seed: u64) -> Vec
                 (scale, (0..*levels).map(|_| rng.normal()).collect())
             })
             .collect();
+        let trends: Vec<f64> = slope.map_or_else(Vec::new, |(e, _)| {
+            (0..codes[e].1).map(|_| 0.1 * rng.normal()).collect()
+        });
         for (i, row) in data.chunks_exact_mut(cols).enumerate() {
-            let fit: f64 = codes
+            let mut fit: f64 = codes
                 .iter()
                 .zip(&effects)
                 .map(|((c, _), (scale, alpha))| scale * alpha[c[i] as usize])
                 .sum();
+            if let Some((e, t)) = slope {
+                fit += trends[codes[e].0[i] as usize] * t[i];
+            }
             row[j] = fit + rng.normal();
         }
     }
@@ -386,8 +415,10 @@ fn run(args: &Args) -> Result<(), Error> {
         .iter()
         .map(|ids| dense_codes(ids))
         .collect();
+    let trend: Vec<f64> = raw[2].iter().map(|&year| (year - 1990) as f64).collect();
     drop(raw);
-    let original = columns(&codes, args.n, args.cols, 0x0c01_5eed);
+    let slope = args.slope.map(|e| (e, trend.as_slice()));
+    let original = columns(&codes, slope, (args.n, args.cols, 0x0c01_5eed));
     let mut weights: Vec<f64> = {
         let mut rng = Rng(0x3e16_47a5);
         (0..args.n).map(|_| 0.5 + rng.uniform()).collect()
@@ -395,7 +426,12 @@ fn run(args: &Args) -> Result<(), Error> {
     let levels: Vec<String> = codes
         .iter()
         .zip(NAMES)
-        .map(|((_, levels), name)| format!("{name} {levels}"))
+        .enumerate()
+        .map(|(e, ((_, levels), name))| match args.slope {
+            Some(s) if s == e && args.slope_intercept => format!("{name}##c.t {levels}"),
+            Some(s) if s == e => format!("{name}#c.t {levels}"),
+            _ => format!("{name} {levels}"),
+        })
         .collect();
     println!(
         "panel: {:?} n {}  effects {} ({})  cols {}  weights {}  threads {}  tolerance {:e}  \
@@ -421,8 +457,15 @@ fn run(args: &Args) -> Result<(), Error> {
     pool.install(|| -> Result<(), Error> {
         let effects = codes
             .iter()
-            .map(|(codes, levels)| Effect::new(codes, *levels))
-            .collect();
+            .enumerate()
+            .map(|(e, (codes, levels))| {
+                let effect = Effect::new(codes, *levels);
+                match args.slope {
+                    Some(s) if s == e => effect.with_slopes(args.slope_intercept, [&trend[..]]),
+                    _ => Ok(effect),
+                }
+            })
+            .collect::<Result<Vec<_>, _>>()?;
         let design = Design::new(args.n, effects)?;
         let request = Request::new(args.tolerance, 1000);
         let control = Control::default();
