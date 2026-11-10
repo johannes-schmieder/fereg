@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
+import sys
 import tempfile
 import unittest
 import zipfile
@@ -146,11 +148,23 @@ class ReleaseStagingTests(unittest.TestCase):
             self.assertFalse(any('fereg_legacy_' in name for name in names))
             self.assertEqual(manifest["version"], "0.5.3")
             self.assertEqual(manifest["phase"], "stable")
-            self.assertEqual(manifest["action_protocol"], "1.7")
-            self.assertEqual(manifest["ols_result_wire"], "1.5")
-            self.assertEqual(manifest["model_wire"], "2.1")
-            self.assertEqual(manifest["ppml_request_wire"], "1.8")
-            self.assertEqual(manifest["ppml_result_wire"], "1.5")
+            # The manifest names the wires the runtime actually speaks.
+            protocol = (ROOT / "crates/fereg-core/src/protocol.rs").read_text(encoding="utf-8")
+            for field, constant in (
+                ("action_protocol", "ACTION_PROTOCOL_VERSION"),
+                ("model_wire", "MODEL_WIRE_VERSION"),
+                ("ols_result_wire", "OLS_RESULT_WIRE_VERSION"),
+                ("ppml_request_wire", "PPML_REQUEST_WIRE_VERSION"),
+                ("ppml_result_wire", "PPML_RESULT_WIRE_VERSION"),
+            ):
+                found = re.search(
+                    rf"pub const {constant}: ProtocolVersion = ProtocolVersion::new\((\d+), (\d+)\);",
+                    protocol,
+                )
+                self.assertIsNotNone(found, constant)
+                self.assertEqual(manifest[field], f"{found.group(1)}.{found.group(2)}", field)
+            self.assertEqual(manifest["ols_result_wire"], "1.7")
+            self.assertEqual(manifest["ppml_request_wire"], "1.10")
             caveats = " ".join(manifest["support_caveats"]).lower()
             self.assertNotRegex(caveats, r"r\(498\)|fail[- ]closed|ols[- ]only")
 
@@ -317,6 +331,48 @@ class ReleaseStagingTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "checksum mismatch"):
                 stage_local_install.stage(ROOT, plugins, root / "rejected", "macos")
             self.assertFalse((root / "rejected").exists())
+
+    def test_root_candidate_is_checked_against_its_source(self):
+        sys.path.insert(0, str(ROOT / "scripts"))
+        import check_github_install
+
+        source_sha = "c" * 40
+        with tempfile.TemporaryDirectory() as temporary, \
+                patch.object(stage_release, "source_identity", return_value=(source_sha, False)), \
+                patch.object(check_github_install, "runtime_identity", return_value="runtime"):
+            root = Path(temporary)
+            plugins = root / "plugins"
+            plugins.mkdir()
+            self.make_plugins(plugins)
+            output = root / "candidate"
+            stage_local_install.stage_root(ROOT, plugins, output, "macos")
+            metadata = json.loads((output / "dist/fereg-native.json").read_text())
+            self.assertEqual(metadata["runtime_sha256"], "runtime")
+            self.assertEqual(metadata["source_sha"], source_sha)
+            self.assertEqual(metadata["included_platforms"], ["macos"])
+            self.assertEqual([item["path"] for item in metadata["plugins"]], ["fereg_macos.plugin"])
+            self.assertTrue(metadata["candidate"])
+            package = (output / "fereg.pkg").read_text()
+            self.assertNotIn("fereg_linux.plugin", package)
+            self.assertNotIn("fereg_windows.plugin", package)
+            self.assertFalse((output / "dist/fereg_linux.plugin").exists())
+            check_github_install.check(ROOT, output)
+            with patch.object(check_github_install, "runtime_identity", return_value="other"):
+                with self.assertRaisesRegex(RuntimeError, "not bound to this source"):
+                    check_github_install.check(ROOT, output)
+            frontend = output / "stata/feppml.ado"
+            original = frontend.read_bytes()
+            frontend.write_bytes(original + b"* edited\n")
+            with self.assertRaisesRegex(RuntimeError, "differs from the source"):
+                check_github_install.check(ROOT, output)
+            frontend.write_bytes(original)
+            with self.assertRaisesRegex(RuntimeError, "already exists"):
+                stage_local_install.stage_root(ROOT, plugins, output, "macos")
+            with patch.object(stage_release, "source_identity", return_value=(source_sha, True)):
+                with self.assertRaisesRegex(RuntimeError, "dirty"):
+                    stage_local_install.stage_root(ROOT, plugins, root / "dirty", "macos")
+            with self.assertRaisesRegex(RuntimeError, "outside the source tree"):
+                stage_local_install.stage_root(ROOT, plugins, ROOT / "target/tmp/inside", "macos")
 
     def test_dependency_sources_preserve_licenses_and_relocate_config(self):
         with tempfile.TemporaryDirectory() as temporary:

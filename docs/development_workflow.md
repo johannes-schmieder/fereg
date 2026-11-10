@@ -42,6 +42,13 @@ declared scientific and transaction checks before interpreting an experiment.
 Keep the installed runtime unchanged while testing private patches. Main must pass
 the default entrypoint with matching installed artifacts before a distribution
 change is committed; source-only success never authorizes publication or promotion.
+To admit a candidate without touching `dist/`, stage its root package from a clean
+checkout outside that checkout (`scripts/stage_local_install.py --root-package
+--platform macos --plugins BUILT --source CHECKOUT --output DIR`) and run
+`./scripts/run_tests.sh --package-root DIR`: the strict path, with the
+installed-package checker bound to this source's runtime and frontend files
+applied to `DIR` instead. Such a candidate names only the platforms it includes
+and is not a publication package.
 
 ## Plugin replay and affected scopes
 

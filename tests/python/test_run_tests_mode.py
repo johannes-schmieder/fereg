@@ -106,10 +106,28 @@ elif name == "uname":
             "SOURCE-ONLY: source integration PASS; installed-package admission NOT PERFORMED; "
             "release/promotion blocked.\n"))
 
+    def test_staged_candidate_runs_the_strict_path_with_its_package_gate(self):
+        candidate = self.root / "candidate root"
+        candidate.mkdir()
+        result, commands = self.run_checks("--package-root", str(candidate))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        gate = f"{PACKAGE_GATE} --package-root '{candidate}'"
+        self.assertEqual(commands, [(cwd, gate if command == PACKAGE_GATE else command)
+                                    for cwd, command in EXPECTED])
+        self.assertIn(f"PACKAGE: checking the staged candidate {candidate}", result.stdout)
+        self.assertNotIn("SOURCE-ONLY", result.stdout + result.stderr)
+        result, commands = self.run_checks("--package-root", str(candidate), fail=gate)
+        self.assertEqual(result.returncode, 37)
+        self.assertEqual(commands[-1], (".", gate))
+
     def test_unknown_repeated_and_combined_arguments_fail_before_checks(self):
+        existing = str(self.root / "bin")
         for args in (("--help",), ("",), ("--source-only=yes",),
                      ("--source-only --other",), ("--source-only", "--source-only"),
-                     ("--source-only", "--other"), ("--other", "--source-only")):
+                     ("--source-only", "--other"), ("--other", "--source-only"),
+                     ("--package-root",), ("--package-root", str(self.root / "missing")),
+                     ("--package-root", existing, "--source-only"),
+                     ("--source-only", "--package-root", existing)):
             with self.subTest(args=args):
                 result, commands = self.run_checks(*args)
                 self.assertEqual(result.returncode, 2)

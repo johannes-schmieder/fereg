@@ -37,6 +37,10 @@ plugin SHA-256 and size, source-archive hash and platform caveats. The check run
 in `scripts/run_tests.sh` and rejects a stale binary, incomplete package, changed
 checksum, or metadata that Stata would omit during installation. Documentation
 and test-only commits may retain a binary when the runtime identity matches.
+Before a refresh, the same check admits a staged candidate root package
+(`stage_local_install.py --root-package`, `run_tests.sh --package-root`; see
+[development checks](development_workflow.md)); it also requires the
+candidate's Stata files to equal the source's.
 
 Publish the exact corresponding-source archive and dependency audit before
 pushing the root package that refers to them. Use a new versioned release for

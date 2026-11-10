@@ -341,8 +341,8 @@ def write_manifest(
         "source_dirty": source_dirty,
         "action_protocol": "1.7",
         "memory_result_schema": 2,
-        "ols_result_wire": "1.5",
-        "ppml_request_wire": "1.8",
+        "ols_result_wire": "1.7",
+        "ppml_request_wire": "1.10",
         "ppml_result_wire": "1.5",
         "model_wire": "2.1",
         "plugins": [

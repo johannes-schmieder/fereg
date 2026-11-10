@@ -1,11 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
+package_root=""
 if [[ "$#" -eq 0 ]]; then
   source_only=false
 elif [[ "$#" -eq 1 && "$1" == --source-only ]]; then
   source_only=true
+elif [[ "$#" -eq 2 && "$1" == --package-root && -d "$2" ]]; then
+  # The strict path, with the installed-package checker on a staged
+  # candidate root package instead of the repository's own dist/.
+  source_only=false
+  package_root="$(cd "$2" && pwd)"
 else
-  printf '%s\n' 'Usage: scripts/run_tests.sh [--source-only]' >&2
+  printf '%s\n' 'Usage: scripts/run_tests.sh [--source-only | --package-root STAGED_ROOT_PACKAGE]' >&2
   exit 2
 fi
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -18,10 +24,15 @@ if [[ "$source_only" == true ]]; then
     'SOURCE-ONLY: NOT PERFORMED: installed-package binding, inventory, hash, ABI and Mata checks.' \
     'SOURCE-ONLY: this run does not qualify a package for release or promotion.'
 fi
+if [[ -n "$package_root" ]]; then
+  printf 'PACKAGE: checking the staged candidate %s, not the repository dist/.\n' "$package_root"
+fi
 # Stop before any check when the scientific modules could not run.
 "$python" scripts/check_python_environment.py
 "$python" -m unittest discover -s tests/python
-if [[ "$source_only" == false ]]; then
+if [[ -n "$package_root" ]]; then
+  "$python" scripts/check_github_install.py --package-root "$package_root"
+elif [[ "$source_only" == false ]]; then
   "$python" scripts/check_github_install.py
 fi
 "$python" scripts/check_fma_rounding_vectors.py
