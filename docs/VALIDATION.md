@@ -4254,8 +4254,8 @@ are 56,369 ms (ols2chain) and 71,513 ms (ppml2chain).
 **Timing signals, kept as measured (not resampled):**
 - ols3chain on Linux: 1452 against `f370027f`'s 1113 ms (1.30). All three
   candidate fits took 1367-1458 ms, against 1087, 1587 and 1113 ms; the
-  results are bitwise identical, and the Mac shows 0.97. Not diagnosed yet;
-  a Linux phase ledger alongside `f370027f` is the next step.
+  results are bitwise identical, and the Mac shows 0.97. Diagnosed below
+  ("ols3chain Linux phase diagnosis"): not reproduced, no change.
 - ols2slope on Linux: 1.06 against `71fce764` on the same solver and bits
   (1435-1627 against 1329-1484 ms per fit); the Mac shows 0.99.
 - ols4 on Linux: 1.07 against `71fce764`, already present at `f370027f`
@@ -4275,6 +4275,33 @@ standard deviations 2.8e-2 on ols2slopefe, with the fit bitwise).
 
 Not covered: Windows, Intel Macs, installed-package admission, the three
 numpy-dependent Python modules and release work.
+
+**ols3chain Linux phase diagnosis** (2026-11-09; the same host, scc-wo4,
+whole node, bench job failed=0/exit 0). Nine interleaved rounds, each with one
+fresh process per arm (warmup, then one timed fit), all with
+`FEREG_PHASE_TIMING=1`. The arms are the byte-identical `f370027f` and
+`10f4b633` plugins of the validation run, plus diagnostic builds of both
+commits whose CMG local solve counts and times its build and applications
+(uncommitted). The candidate's diagnostic build also ran with its lane groups
+capped at one (`g1`) and two (`g2`). Medians in ms:
+
+| arm, 4 threads | fit | solve | setup | blocks | PCG | CMG apply (work) |
+|---|---:|---:|---:|---:|---:|---:|
+| f370027f / 10f4b633 | 1402 / 1311 | 1005 / 926 | 15 / 15 | 51 / 52 | 922 / 848 | – |
+| diagnostic f370027f | 1347 | 968 | 14 | 53 | 878 | 50.6 (50.5) |
+| diagnostic 10f4b633: 4 groups / g2 / g1 | 1311 / 1316 / 1360 | 938 / 949 / 974 | 14 | 51-52 | 867 / 874 / 900 | 32.7 (71.2) / 41.3 (68.5) / 51.5 (47.9) |
+
+Without phase timing the two plugins took 1427 and 1321 ms; at one thread
+1797 and 1782 ms (PCG 902 and 899, CMG apply 44.5 and 45.3). Every arm runs
+99 iterations with 20 CMG applications. The CMG build takes 4-6 ms on a
+9,999-edge graph, below CMG's planned-edge threshold, so the team apply never
+runs. All arms repeat exactly and agree bit for bit at each thread count.
+The 1.30 is not reproduced: here the candidate is 0.93 against `f370027f`,
+and per-fit spreads of 1245-1579 and 1269-1623 ms show process-to-process
+variance of the size the validation's three fits per arm saw. The concurrent
+lane groups shorten CMG application by 19 ms per fit on this processor (as
+on the Mac, 16.8 to 11.0 ms), and nothing else on the path differs. No
+policy change.
 
 ## Package checks
 
