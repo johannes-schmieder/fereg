@@ -717,6 +717,14 @@ impl CertifiedBorrowedMap {
     }
 
     pub(crate) fn with_residual_norms(mut self, norms: Vec<f64>) -> Result<Self> {
+        self.check_residual_norms(&norms)?;
+        self.residual_norms = norms;
+        Ok(self)
+    }
+
+    /// The checks of [`Self::with_residual_norms`], for norms that their
+    /// producer keeps instead of attaching a copy.
+    pub(crate) fn check_residual_norms(&self, norms: &[f64]) -> Result<()> {
         if norms.len() != self.residualized.ncols()
             || norms.iter().any(|v| !v.is_finite() || *v < 0.0)
         {
@@ -724,8 +732,7 @@ impl CertifiedBorrowedMap {
                 "certified residual norms are not finite and aligned",
             ));
         }
-        self.residual_norms = norms;
-        Ok(self)
+        Ok(())
     }
 
     #[must_use]
@@ -1853,7 +1860,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             accelerator,
             super::CategoricalAcceleratorCapacity::None
         )) * max_rhs;
-        let owner = Self {
+        let mut owner = Self {
             design,
             workspace,
             two_fe_pcg,
@@ -1899,6 +1906,9 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             checkpoint_schur_certificate_failure: false,
             block_schur: block_schur::Cache::default(),
         };
+        // PPML frames read the elimination's residual norms from the cache
+        // (`absorb_with_selected_norms`); no frame attaches a copy.
+        owner.block_schur.detach_residual_norms(true);
         let admitted = Self::owner_bytes(&owner.design, max_rhs, parallel_threads)?;
         crate::memory::require_admitted_capacity(owner.payload_bytes()?, admitted)?;
         Ok(owner)
@@ -2103,18 +2113,19 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                 "reusable categorical MAP norm selection is not aligned",
             ));
         }
-        let (mut absorbed, eliminated) = self.absorb_ppml_route(weights, values, config)?;
+        let (absorbed, eliminated) = self.absorb_ppml_route(weights, values, config)?;
         if eliminated {
             // The elimination's residual pass formed sqrt(sum (w/max w) r^2)
             // per column with the frame's maximum-weight divisor. Hand it over
             // only inside the range where the plain sum is accurate; otherwise
             // the linear frame's stable norm pass stays authoritative. The
             // elimination reports the divisor it used (no second weight pass).
+            // The cache keeps the norms, so warm frames allocate nothing.
             let raw_scale = self
                 .block_schur
                 .weight_scale()
                 .unwrap_or_else(|| maximum_weight(weights));
-            let norms = absorbed.take_residual_norms();
+            let norms = self.block_schur.residual_norms();
             let usable = raw_scale == norm_weight_scale
                 && norms.len() == absorbed.residualized().ncols()
                 && rhs_positions
@@ -2125,7 +2136,6 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                     *destination = norms[position];
                 }
             }
-            let absorbed = absorbed.with_residual_norms(norms)?;
             return Ok((absorbed, usable));
         }
         if self.design.effects().len() != 1 {

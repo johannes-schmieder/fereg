@@ -389,15 +389,13 @@ impl<'a> Cache<'a> {
 
     /// Keep the residual norms of later certified projections only in the
     /// cache ([`Cache::residual_norms`]) instead of attaching a copy to each
-    /// result, so repeated projections allocate nothing.
-    #[allow(dead_code)] // For allocation-free PPML iterations.
+    /// result, so repeated projections allocate nothing (PPML frames).
     pub(crate) fn detach_residual_norms(&mut self, on: bool) {
         self.detach_norms = on;
     }
 
     /// `sqrt(Σ (w / max w) r^2)` per column of the last certified projection
     /// (empty after a decline).
-    #[allow(dead_code)] // For allocation-free PPML iterations.
     pub(crate) fn residual_norms(&self) -> &[f64] {
         match self.projector.as_ref() {
             Some(projector) if self.current => projector.residual_norms(),
@@ -570,10 +568,11 @@ impl<'a> Cache<'a> {
             ),
             None => CertifiedBorrowedMap::from_certified_parts(values, solve_report),
         }?;
+        let norms = projector.residual_norms();
         if detach {
+            result.check_residual_norms(norms)?;
             return Ok(Outcome::Done(result));
         }
-        let norms = projector.residual_norms();
         let mut attached = Vec::new();
         attached
             .try_reserve_exact(norms.len())

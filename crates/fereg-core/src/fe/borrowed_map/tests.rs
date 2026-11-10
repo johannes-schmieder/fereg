@@ -1268,6 +1268,64 @@ fn reusable_selected_norms_preserve_mapping_and_reject_invalid_selections() {
 }
 
 #[test]
+fn eliminated_selected_norms_stay_in_the_cache() {
+    // PPML frames on two effects: the exact elimination's norms are read
+    // from the owner's cache and equal the residual's weighted norms; no
+    // result carries a copy, so warm frames allocate nothing.
+    let _route = crate::fe::block_schur::stable_route_for_test();
+    let rows = 240;
+    let left_codes = (0..rows).map(|r| (r % 12) as u32).collect::<Vec<_>>();
+    let right_codes = (0..rows)
+        .map(|r| ((r * 7 + r / 12) % 9) as u32)
+        .collect::<Vec<_>>();
+    let left_index = LevelIndex::from_codes(&left_codes, 12).unwrap();
+    let right_index = LevelIndex::from_codes(&right_codes, 9).unwrap();
+    let left = ValidatedBorrowedInterceptSource::new(&left_codes, 12, &left_index).unwrap();
+    let right = ValidatedBorrowedInterceptSource::new(&right_codes, 9, &right_index).unwrap();
+    let design = BorrowedInterceptFeDesign::new(rows, vec![left.effect(), right.effect()]).unwrap();
+    let mut projector = ReusableCategoricalMapAbsorber::new(design, 3, 1).unwrap();
+    let matrix = || {
+        DenseMatrix::from_columns(
+            &(0..3)
+                .map(|c| {
+                    (0..rows)
+                        .map(|r| ((r * (c + 3) % 31) as f64 / 7.0).sin())
+                        .collect::<Vec<_>>()
+                })
+                .collect::<Vec<_>>(),
+        )
+        .unwrap()
+    };
+    let selection = [2, 0];
+    let mut norms = [-1.0; 2];
+    for frame in 0..3 {
+        let weights = (0..rows)
+            .map(|r| 1.0 + ((r + frame) % 5) as f64)
+            .collect::<Vec<_>>();
+        let scale = weights.iter().copied().fold(0.0, f64::max);
+        let (actual, reused) = projector
+            .absorb_with_selected_norms(
+                BorrowedMapWeights::Provided(&weights),
+                matrix(),
+                config(),
+                scale,
+                selection.into_iter(),
+                &mut norms,
+            )
+            .unwrap();
+        assert!(reused);
+        assert!(actual.report().certified());
+        assert!(!actual.has_residual_norms());
+        for (position, &column) in selection.iter().enumerate() {
+            let expected = (0..rows).fold(0.0_f64, |norm, row| {
+                norm.hypot((weights[row] / scale).sqrt() * actual.residualized()[(row, column)])
+            });
+            assert!((norms[position] / expected - 1.0).abs() < 1e-13);
+        }
+    }
+}
+
+#[test]
 fn reusable_one_fe_trailing_norms_follow_current_values_weights_and_width() {
     let codes = [0_u32, 0, 1, 1, 2, 2, 3, 3];
     let index = LevelIndex::from_codes(&codes, 4).unwrap();
