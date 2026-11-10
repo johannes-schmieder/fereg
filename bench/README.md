@@ -67,7 +67,10 @@ and with no separation detection. Its bridge uses Julia 1.12.7 with its own
 FixedEffectModels 1.13.3/GLFixedEffectModels 0.5.6 graph, and the published
 Linux bridge binary is rebuilt from its pinned source because it requires a
 newer glibc than SCC provides. Neither Julia PPML route fits a model without
-absorbed effects, so neither runs in No FE PPML cells.
+absorbed effects, so neither runs in No FE PPML cells. reghdfejl's PPML route
+also cannot save effects at these pins (it passes `save = :fe`, which
+GLFixedEffectModels 0.5.6 rejects), so like areg it does not run in saved-FE
+cells of that model; the environment check records the failing call.
 
 Outside the timed command, both GLFixedEffectModels.jl routes are converted to
 the campaign's PPML conventions. Their covariance is rescaled from the

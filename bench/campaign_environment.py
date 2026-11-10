@@ -170,11 +170,14 @@ assert e(converged) == 1
 drop a b
 reghdfejl y x, absorb(g1 g2) vce(cluster g1) threads(2)
 assert e(converged) == 1
-reghdfejl y x, absorb(a=g1 b=g2) vce(robust) family(poisson) threads(2)
+reghdfejl y x, absorb(g1 g2) vce(robust) family(poisson) threads(2)
 assert e(converged) == 1 & e(N) == 240
-drop a b
 reghdfejl y x, absorb(g1 g2) vce(cluster g1) family(poisson) threads(2)
 assert e(converged) == 1 & e(N_clust) == 20
+* The pinned nonlinear route cannot save effects (save=:fe against save::Vector{{Symbol}}).
+capture reghdfejl y x, absorb(a=g1 b=g2) vce(robust) family(poisson) threads(2)
+assert _rc != 0
+display "REGHDFEJL_PPML_SAVED_FE_UNSUPPORTED rc=" _rc
 _jl: @assert string(pkgversion(FixedEffectModels)) == "{FixedEffectModels}";
 _jl: @assert string(pkgversion(GLFixedEffectModels)) == "{GLFixedEffectModels}";
 display "REGHDFEJL_BRIDGE_TEST_COMPLETE"

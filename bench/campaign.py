@@ -127,8 +127,11 @@ def arms(cell):
     if cell['model']=='ols': result.extend(JULIA_ARMS)
     elif absorbing: result.extend(GLJULIA_ARMS[:1])
     if cell['threads']<=4: result.append('reghdfe' if cell['model']=='ols' else 'ppmlhdfe')
-    # reghdfejl runs where reghdfe and ppmlhdfe do, within the Stata license.
-    if cell['threads']<=4 and absorbing: result.extend(REGHDFEJL_ARMS)
+    # reghdfejl runs where reghdfe and ppmlhdfe do, within the Stata license. Its
+    # nonlinear route cannot save effects at the pinned versions: it passes
+    # save=:fe, which GLFixedEffectModels 0.5.6 rejects (save::Vector{Symbol}).
+    if cell['threads']<=4 and absorbing and not (cell['model']=='ppml' and cell['save_fe']):
+        result.extend(REGHDFEJL_ARMS)
     # Stata 19 areg absorbs several categorical effects for linear models; it
     # cannot save individual effects, and Stata is licensed for four cores.
     if cell['model']=='ols' and cell['threads']<=4 and not cell['save_fe']:

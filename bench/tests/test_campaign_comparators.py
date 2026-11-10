@@ -25,9 +25,11 @@ class ComparatorArms(unittest.TestCase):
             self.assertEqual('glfixedeffects' in selected, ppml_fe, cell['id'])
             self.assertEqual('glfixedeffects-strict' in selected, ppml_fe and 'fixest-strict' in selected, cell['id'])
             self.assertFalse({'julia', 'julia-strict'} & set(selected) and cell['model'] == 'ppml')
-            # reghdfejl follows reghdfe/ppmlhdfe; its nonlinear route needs absorbed effects.
+            # reghdfejl follows reghdfe/ppmlhdfe; its nonlinear route needs absorbed
+            # effects and cannot save them.
             stata = 'reghdfe' in selected or 'ppmlhdfe' in selected
-            self.assertEqual('reghdfejl' in selected, stata and (cell['model'] == 'ols' or cell['effects'] > 0), cell['id'])
+            self.assertEqual('reghdfejl' in selected,
+                             stata and (cell['model'] == 'ols' or (cell['effects'] > 0 and not cell['save_fe'])), cell['id'])
             self.assertTrue(all(arm in campaign.PACKING_SECONDS for arm in selected))
         from campaign_report import ARM_NAMES, STATA_ARMS
         self.assertTrue({a for c in configurations() for a in arms(c)} <= set(ARM_NAMES))
