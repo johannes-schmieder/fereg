@@ -23,10 +23,11 @@ The full entrypoint covers Rust, Clippy, allocation/FFI audits, runtime complexi
 the mock SPI bridge, portable shell/Python/strict-C checks and the exact-rational
 FE boundary-response and cancellation witnesses. Licensed Stata profiles also include `smoke`,
 `differential`, `fereg-regression`, `ppml-scientific` and `ppml-hidden`. The
-`development` profile runs every `tests/stata/development` fixture, and `triage`
+`development` profile runs every `tests/stata/development` fixture, `staged-install`
+lists the fixtures for an extracted release package, and `triage`
 lists the remaining fixtures no other profile or script runs, for Johannes to map
-into a verdict profile or retire.
-See [the Stata runner](../ci/README.md). Target mapped tests during development;
+into a verdict profile or retire. Fixtures declare inputs that a source-tree
+run lacks; see [the Stata runner](../ci/README.md). Target mapped tests during development;
 run the applicable integration checks before committing runtime changes.
 
 For an unpublished experimental source copy, `./scripts/run_tests.sh --source-only`

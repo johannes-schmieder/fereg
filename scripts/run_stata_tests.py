@@ -10,6 +10,7 @@ import platform
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -19,6 +20,19 @@ FORBIDDEN_SUCCESS_DIAGNOSTICS = (
     "warning: variance matrix is nonsymmetric or highly singular.",
 )
 HEX_SHA256 = re.compile(r"^[0-9a-f]{64}$")
+# A fixture declares an input its verdict needs beyond a source-tree run with
+# a `* fixture-requires: NAME` line. A run that cannot provide the input does
+# not launch the fixture and reports it as not run, with the reason; it never
+# counts as passed. The runner itself provides `input-trace`.
+REQUIREMENT_PREFIX = "* fixture-requires:"
+REQUIREMENTS = {
+    "staged-package": "an extracted release package (scripts/run_staged_stata_tests.py)",
+    "windows": "Windows Stata (scripts/windows_ci_runtime.do in the Windows qualification)",
+    "input-trace": "the solver trace, checked by scripts/check_input_trace.py",
+}
+NOT_RUN = "not_run"
+# Inputs below the parallel-input work policy read serially on qualified hosts.
+INPUT_TRACE_OPTIONS = ("--serial-ok", "ols_tiny")
 
 
 @dataclass(frozen=True)
@@ -60,6 +74,29 @@ def validate_fixture_log(path: Path, log_text: str) -> str | None:
         return f"expected exactly one {expected!r}; observed {sentinels!r}"
     if sentinels[0] != expected:
         return f"expected {expected!r}; observed {sentinels[0]!r}"
+    return None
+
+
+def fixture_requirements(path: Path) -> tuple[str, ...]:
+    """Return the inputs a fixture declares; unknown or repeated names fail."""
+    found: list[str] = []
+    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        stripped = line.strip()
+        if not stripped.startswith(REQUIREMENT_PREFIX):
+            continue
+        name = stripped[len(REQUIREMENT_PREFIX):].strip()
+        if name not in REQUIREMENTS or name in found:
+            raise ValueError(f"{path}: unknown or repeated fixture requirement {name!r}")
+        found.append(name)
+    return tuple(found)
+
+
+def unmet_requirement(requirements: tuple[str, ...], *, staged: bool) -> str | None:
+    for name in requirements:
+        if (name == "staged-package" and not staged) or (
+            name == "windows" and platform.system() != "Windows"
+        ):
+            return f"needs {REQUIREMENTS[name]}"
     return None
 
 
@@ -235,6 +272,14 @@ def run_fixture(
             raise ValueError("staged package execution requires an exact plugin binding")
         if bound_plugin.parent != bound_ado_root:
             raise ValueError("staged package plugin is outside the extracted ado root")
+    requirements = fixture_requirements(path)
+    unmet = unmet_requirement(requirements, staged=bound_ado_root is not None)
+    if unmet is not None:
+        return FixtureResult(
+            path=path, process_returncode=None, stata_rc=None, log_text="",
+            error=f"not run: {unmet}", failure_kind=NOT_RUN, metadata={},
+            process_output="",
+        )
     with tempfile.TemporaryDirectory(prefix="fereg-stata-") as temp_name:
         # Freeze the lexical path used in wrapper bytes, argv, cwd, and retained
         # invocation.  On macOS /var is a symlink to /private/var; mixing the
@@ -251,13 +296,22 @@ def run_fixture(
             path=path, root=root, run_dir=run_dir,
             bound_plugin=bound_plugin, bound_ado_root=bound_ado_root,
         ))
+        trace_path = run_dir / "solver-trace.log"
+        process_environment = dict(environment) if environment is not None else None
+        recorded_environment = dict(environment) if environment is not None else None
+        if "input-trace" in requirements:
+            # Only this fixture's process traces (tracing allocates).
+            trace = {"FEREG_SOLVER_TRACE": "1", "FEREG_SOLVER_TRACE_FILE": str(trace_path)}
+            inherited = os.environ if process_environment is None else process_environment
+            process_environment = {**inherited, **trace}
+            recorded_environment = {**(recorded_environment or {}), **trace}
         launch_error = None
         process_output = ""
         try:
             completed = runner(
                 [stata, "-q", "-b", "do", str(wrapper)],
                 cwd=run_dir,
-                env=(dict(environment) if environment is not None else None),
+                env=process_environment,
                 check=False,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
@@ -303,6 +357,24 @@ def run_fixture(
             error = validate_fixture_log(path, log_text)
             if error is not None:
                 failure_kind = "missing_success_sentinel"
+        trace_report = None
+        if error is None and "input-trace" in requirements:
+            # The fixture's sentinel is necessary; the digests decide.
+            if not trace_path.is_file():
+                failure_kind = "input_trace"
+                error = "the fixture wrote no solver trace"
+            else:
+                checked = subprocess.run(
+                    [sys.executable, str(root / "scripts" / "check_input_trace.py"),
+                     str(trace_path), *INPUT_TRACE_OPTIONS],
+                    check=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                    text=True,
+                )
+                trace_report = checked.stdout
+                if checked.returncode != 0:
+                    failure_kind = "input_trace"
+                    detail = "; ".join(trace_report.strip().splitlines()[-3:])
+                    error = f"input trace check failed: {detail}"
         if bound_plugin is not None and sha256_file(bound_plugin) != plugin_sha256:
             failure_kind = "candidate_changed"
             error = "candidate plugin bytes changed during the Stata fixture"
@@ -318,8 +390,8 @@ def run_fixture(
                         "argv": [stata, "-q", "-b", "do", str(wrapper)],
                         "cwd": str(run_dir),
                         "environment": (
-                            dict(sorted(environment.items()))
-                            if environment is not None else None
+                            dict(sorted(recorded_environment.items()))
+                            if recorded_environment is not None else None
                         ),
                         "stdout_stderr": "merged",
                     },
@@ -330,6 +402,12 @@ def run_fixture(
             )
             if status_path.is_file():
                 shutil.copy2(status_path, log_dir / f"{stable_name}.status")
+            if trace_path.is_file():
+                shutil.copy2(trace_path, log_dir / f"{stable_name}.trace.log")
+            if trace_report is not None:
+                (log_dir / f"{stable_name}.trace-check.txt").write_text(
+                    trace_report, encoding="utf-8"
+                )
         return FixtureResult(
             path=path,
             process_returncode=process_returncode,
@@ -354,8 +432,12 @@ def main() -> None:
     if not args.stata:
         raise SystemExit("set STATA_BIN or pass --stata")
     root = Path(__file__).resolve().parents[1]
+    # Explicitly named fixtures must run here. The whole tree also holds
+    # fixtures for other runners; there an unmet input is reported, not failed.
+    discovered = not args.paths
     paths = args.paths or sorted((root / "tests/stata").rglob("*.do"))
     failures: list[FixtureResult] = []
+    not_run: list[FixtureResult] = []
     results: list[FixtureResult] = []
     for path in paths:
         print(f"==> {path}")
@@ -369,7 +451,10 @@ def main() -> None:
             require_status=True,
         )
         results.append(result)
-        if result.error:
+        if discovered and result.failure_kind == NOT_RUN:
+            not_run.append(result)
+            print(f"NOT RUN: {result.error}")
+        elif result.error:
             failures.append(result)
             print(f"FAIL: {result.error}")
             if result.log_text:
@@ -377,8 +462,15 @@ def main() -> None:
                 print("\n".join(result.log_text.splitlines()[-60:]))
         else:
             print(f"PASS: {expected_sentinel(path)}")
+
+    def status(item: FixtureResult) -> str:
+        if item in not_run:
+            return NOT_RUN
+        return "failure" if item.error else "success"
+
     first_metadata = next((item.metadata for item in results if item.metadata), {})
     first_failure = failures[0] if failures else None
+    passed = len(results) - len(failures) - len(not_run)
     summary_payload: dict[str, object] = {
         "schema_version": 1,
         "completed": True,
@@ -391,12 +483,13 @@ def main() -> None:
         "stata_os": first_metadata.get("stata_os"),
         "stata_machine_type": first_metadata.get("stata_machine_type"),
         "stata_processors": optional_int(first_metadata.get("stata_processors")),
-        "tests_passed": len(results) - len(failures),
+        "tests_passed": passed,
         "tests_failed": len(failures),
+        "tests_not_run": len(not_run),
         "results": [
             {
                 "fixture": item.path.relative_to(root).as_posix(),
-                "status": "failure" if item.error else "success",
+                "status": status(item),
                 "failure_kind": item.failure_kind,
                 "failure_detail": item.error,
                 "process_rc": item.process_returncode,
@@ -407,6 +500,9 @@ def main() -> None:
     }
     if args.summary_json is not None:
         write_json_atomic(args.summary_json, summary_payload)
+    print(f"Stata fixtures: {passed} passed, {len(failures)} failed, {len(not_run)} not run")
+    for item in not_run:
+        print(f"  not run: {item.path.relative_to(root).as_posix()}: {item.error}")
     if failures:
         failure_summary = "; ".join(
             f"{item.path}: {item.error}" for item in failures

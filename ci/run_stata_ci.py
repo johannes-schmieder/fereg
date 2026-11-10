@@ -338,6 +338,11 @@ def main() -> int:
             "--tested-sha",
             tested_sha,
         ]
+    elif driver == "staged-package":
+        raise SystemExit(
+            f"profile {args.profile!r} runs against an extracted release archive: "
+            f"use scripts/run_staged_stata_tests.py --profile {args.profile}"
+        )
     else:
         raise SystemExit(f"unsupported profile driver: {driver}")
 

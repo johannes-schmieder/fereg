@@ -48,6 +48,18 @@ per-fixture status and the terminal END_FIXTURE sentinel. The installed-package
 tests must load the extracted package with an isolated ado path. Interactive
 Break and transaction failures must restore previous results and outputs.
 
+A fixture that needs an input a source-tree run lacks declares it with a
+`* fixture-requires:` line: `staged-package` (the `staged-install` profile,
+run by `scripts/run_staged_stata_tests.py --profile staged-install` against an
+extracted release archive), `windows` (run by `scripts/windows_ci_runtime.do`
+in the Windows qualification) or `input-trace` (`scripts/run_stata_tests.py`
+sets the solver trace for that process and the trace must pass
+`scripts/check_input_trace.py`). A run that cannot provide the input does not
+start the fixture: when the fixture was named explicitly (every profile) it
+fails as not run, and in a whole-tree run (`run_stata_tests.py` without paths)
+it is reported as not run with its reason. Not-run fixtures never count as
+passed.
+
 ## Workflow boundaries
 
 The retained definitions are manual; no remote run is required during the pause.

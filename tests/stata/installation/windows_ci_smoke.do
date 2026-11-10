@@ -1,4 +1,5 @@
 version 18.0
+* fixture-requires: windows
 clear all
 set more off
 

@@ -5,6 +5,8 @@ import re
 import unittest
 from pathlib import Path
 
+from scripts.run_stata_tests import fixture_requirements
+
 ROOT = Path(__file__).resolve().parents[2]
 PROFILES = ROOT / "ci" / "stata_profiles.json"
 WORKFLOW = ROOT / ".github" / "workflows" / "stata-ci.yml"
@@ -134,11 +136,45 @@ class StataProfileSeparationContractTests(unittest.TestCase):
         self.assertIn("- ppml-scientific", workflow)
 
         for name, profile in profiles.items():
+            if profile.get("driver") == "staged-package":
+                continue
             self.assertNotIn(
                 PUBLIC_STAGED_INSTALL,
                 profile.get("fixtures", []),
                 f"{name} must not mix staged-installation tests into source-tree profiles",
             )
+
+    def test_fixtures_needing_other_inputs_run_only_where_provided(self) -> None:
+        profiles = load_profiles()
+        staged = profiles["staged-install"]
+        self.assertEqual(staged["driver"], "staged-package")
+        self.assertEqual(len(staged["fixtures"]), len(set(staged["fixtures"])))
+        for relative in staged["fixtures"]:
+            self.assertTrue((ROOT / relative).is_file(), relative)
+        required: dict[str, set[str]] = {}
+        for path in sorted((ROOT / "tests/stata").rglob("*.do")):
+            for requirement in fixture_requirements(path):
+                required.setdefault(requirement, set()).add(path.relative_to(ROOT).as_posix())
+        self.assertIn(PUBLIC_STAGED_INSTALL, required["staged-package"])
+        self.assertTrue(required["staged-package"] <= set(staged["fixtures"]))
+        self.assertEqual(required["windows"], {"tests/stata/installation/windows_ci_smoke.do"})
+        windows_runtime = (ROOT / "scripts/windows_ci_runtime.do").read_text(encoding="utf-8")
+        self.assertIn('do "tests/stata/installation/windows_ci_smoke.do"', windows_runtime)
+        for name, profile in profiles.items():
+            fixtures = set(profile.get("fixtures", []))
+            with self.subTest(profile=name):
+                self.assertFalse(fixtures & required["windows"])
+                if profile.get("driver") != "staged-package":
+                    self.assertFalse(fixtures & required["staged-package"])
+
+    def test_development_profile_lists_every_development_fixture(self) -> None:
+        fixtures = load_profiles()["development"]["fixtures"]
+        expected = sorted(
+            path.relative_to(ROOT).as_posix()
+            for path in (ROOT / "tests/stata/development").glob("*.do")
+        )
+        self.assertEqual(sorted(fixtures), expected)
+        self.assertIn("tests/stata/development/parallel_input_oracle.do", fixtures)
 
 
 if __name__ == "__main__":

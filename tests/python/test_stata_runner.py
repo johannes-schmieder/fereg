@@ -1,13 +1,19 @@
 from __future__ import annotations
 
+import json
+import platform
+import shutil
 import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 
 from scripts.run_stata_tests import (
+    NOT_RUN,
+    REQUIREMENTS,
     expected_plugin_filename,
     expected_sentinel,
+    fixture_requirements,
     run_fixture,
     sha256_file,
     validate_fixture_log,
@@ -189,6 +195,98 @@ class StataRunnerSentinelTests(unittest.TestCase):
                     plugin_sha256=sha256_file(plugin),
                     ado_root=package,
                 )
+
+
+class FixtureRequirementTests(unittest.TestCase):
+    root = Path(__file__).resolve().parents[2]
+
+    def write_fixture(self, directory: Path, name: str, requirement: str) -> Path:
+        path = directory / f"{name}.do"
+        path.write_text(
+            f"version 18.0\n* fixture-requires: {requirement}\n"
+            f'display "END_FIXTURE|{name}|rc=0"\n',
+            encoding="utf-8",
+        )
+        return path
+
+    def test_unknown_and_repeated_requirements_fail_clearly(self):
+        with tempfile.TemporaryDirectory() as raw:
+            path = Path(raw) / "fixture.do"
+            for text in ("* fixture-requires: network\n",
+                         "* fixture-requires: windows\n* fixture-requires: windows\n"):
+                path.write_text(text, encoding="utf-8")
+                with self.subTest(text=text), self.assertRaisesRegex(ValueError, "requirement"):
+                    fixture_requirements(path)
+
+    def test_repository_fixtures_declare_their_inputs(self):
+        declared = {
+            "tests/stata/installation/staged_plugin_binary.do": ("staged-package",),
+            "tests/stata/installation/feppml_installation_smoke.do": ("staged-package",),
+            "tests/stata/installation/windows_ci_smoke.do": ("windows",),
+            "tests/stata/development/parallel_input_oracle.do": ("input-trace",),
+        }
+        for path in sorted((self.root / "tests/stata").rglob("*.do")):
+            relative = path.relative_to(self.root).as_posix()
+            with self.subTest(fixture=relative):
+                self.assertEqual(fixture_requirements(path), declared.get(relative, ()))
+
+    def test_an_unmet_input_is_not_run_and_never_launches_stata(self):
+        def refusing_runner(*args, **kwargs):
+            raise AssertionError("an unmet fixture must not start Stata")
+
+        with tempfile.TemporaryDirectory() as raw:
+            directory = Path(raw).resolve()
+            staged = self.write_fixture(directory, "needs_package", "staged-package")
+            result = run_fixture("stata", staged, directory, runner=refusing_runner)
+            self.assertEqual(result.failure_kind, NOT_RUN)
+            self.assertEqual(result.error, f"not run: needs {REQUIREMENTS['staged-package']}")
+            self.assertIsNone(result.stata_rc)
+            if platform.system() != "Windows":
+                windows = self.write_fixture(directory, "needs_windows", "windows")
+                result = run_fixture("stata", windows, directory, runner=refusing_runner)
+                self.assertEqual(result.failure_kind, NOT_RUN)
+                self.assertIn("windows_ci_runtime.do", result.error or "")
+
+    def test_input_trace_is_provided_and_decides_the_verdict(self):
+        name = "trace_fixture"
+        observed: dict[str, str] = {}
+
+        def tracing_runner(trace_lines):
+            def runner(args, *, cwd, env, **kwargs):
+                observed.update(env or {})
+                Path(cwd, "run.log").write_text(
+                    f"END_FIXTURE|{name}|rc=0\n", encoding="utf-8")
+                Path(cwd, "fixture.status").write_text(
+                    "completed=1\nstata_rc=0\n", encoding="utf-8")
+                Path(env["FEREG_SOLVER_TRACE_FILE"]).write_text(
+                    "".join(f"FEREG_SOLVER_TRACE|{line}\n" for line in trace_lines),
+                    encoding="utf-8")
+                return subprocess.CompletedProcess(args, 0)
+            return runner
+
+        agreeing = ["phase=case|label=ols_a|serial", "phase=input_digest|digest=d1",
+                    "phase=case|label=ols_a|parallel", "phase=input_transport|mode=parallel",
+                    "phase=input_digest|digest=d1"]
+        disagreeing = [*agreeing[:-1], "phase=input_digest|digest=d2"]
+        with tempfile.TemporaryDirectory() as raw:
+            directory = Path(raw).resolve()
+            (directory / "scripts").mkdir()
+            shutil.copy2(self.root / "scripts/check_input_trace.py", directory / "scripts")
+            fixture = self.write_fixture(directory, name, "input-trace")
+            logs = directory / "logs"
+            result = run_fixture("stata", fixture, directory, runner=tracing_runner(agreeing),
+                                 log_dir=logs, require_status=True)
+            self.assertIsNone(result.error)
+            self.assertEqual(observed["FEREG_SOLVER_TRACE"], "1")
+            self.assertIn("cases=1 runs=2 parallel_runs=1",
+                          (logs / f"{name}.do.trace-check.txt").read_text(encoding="utf-8"))
+            invocation = json.loads((logs / f"{name}.do.invocation.json").read_text())
+            self.assertEqual(set(invocation["environment"]),
+                             {"FEREG_SOLVER_TRACE", "FEREG_SOLVER_TRACE_FILE"})
+            result = run_fixture("stata", fixture, directory,
+                                 runner=tracing_runner(disagreeing), require_status=True)
+            self.assertEqual(result.failure_kind, "input_trace")
+            self.assertIn("distinct input digests", result.error or "")
 
 
 if __name__ == "__main__":

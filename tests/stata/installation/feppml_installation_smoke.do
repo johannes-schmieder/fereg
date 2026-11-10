@@ -1,4 +1,5 @@
 version 18.0
+* fixture-requires: staged-package
 clear all
 set more off
 

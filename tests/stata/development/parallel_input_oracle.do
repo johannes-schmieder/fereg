@@ -1,4 +1,5 @@
 version 17.0
+* fixture-requires: input-trace
 clear all
 set more off
 

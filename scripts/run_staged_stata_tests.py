@@ -284,7 +284,9 @@ def main() -> None:
     parser.add_argument("--summary-json", type=Path)
     parser.add_argument("--review-only", action="store_true",
                         help="validate a review subset without producing release evidence")
-    parser.add_argument("fixtures", nargs="+", type=Path)
+    parser.add_argument("--profile",
+                        help="run a staged-package profile of ci/stata_profiles.json")
+    parser.add_argument("fixtures", nargs="*", type=Path)
     args = parser.parse_args()
     if not args.stata:
         raise SystemExit("set STATA_BIN or pass --stata")
@@ -292,6 +294,16 @@ def main() -> None:
     if not stata_executable.is_file() or stata_executable.is_symlink():
         raise SystemExit("staged installation requires an exact Stata executable")
     root = Path(__file__).resolve().parents[1]
+    if bool(args.profile) == bool(args.fixtures):
+        raise SystemExit("name the fixtures or one staged-package --profile")
+    if args.profile:
+        profiles = json.loads(
+            (root / "ci" / "stata_profiles.json").read_text(encoding="utf-8")
+        )["profiles"]
+        profile = profiles.get(args.profile)
+        if not isinstance(profile, dict) or profile.get("driver") != "staged-package":
+            raise SystemExit(f"{args.profile!r} is not a staged-package profile")
+        args.fixtures = [root / relative for relative in profile["fixtures"]]
     fixtures: list[Path] = []
     for fixture in args.fixtures:
         candidate = fixture.resolve()
