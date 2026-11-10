@@ -154,5 +154,35 @@ class CampaignStaging(unittest.TestCase):
                 stage(run, archive, root/'source.json', root/'frozen.json', None, 'prefix', 28, 'omp28')
 
 
+class CandidatePlugin(unittest.TestCase):
+    def test_setup_admits_only_a_candidate_with_this_frontend(self):
+        import hashlib
+        import subprocess
+        text = (HERE/'scc/setup.sh').read_text()
+        start = text.index('CAMPAIGN_PLUGIN:-build}" == candidate')
+        snippet = text[text.index("<<'PY'\n", start)+7:text.index('\nPY\n', start)]
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            package, source = root/'package', root/'source'
+            for tree in [package/'dist', package/'stata', source/'dist', source/'stata']:
+                tree.mkdir(parents=True)
+            (package/'dist/fereg_linux.plugin').write_bytes(b'candidate')
+            (package/'dist/fereg_linux.plugin.sha256').write_text(
+                hashlib.sha256(b'candidate').hexdigest()+'  fereg_linux.plugin\n')
+            (source/'dist/fereg_linux.plugin').write_bytes(b'stale')
+            for tree in [package, source]:
+                (tree/'stata/fereg.ado').write_text('program fereg\nend\n')
+            (package/'stata/fereg.sthlp').write_text('newer help')
+            run = lambda: subprocess.run([sys.executable, '-c', snippet, str(package), str(source)],
+                                         capture_output=True, text=True)
+            result = run()
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual((source/'dist/fereg_linux.plugin').read_bytes(), b'candidate')
+            (source/'dist/fereg_linux.plugin').write_bytes(b'stale')
+            (source/'stata/fereg.ado').write_text('program fereg\n  version 19\nend\n')
+            self.assertNotEqual(run().returncode, 0)
+            self.assertEqual((source/'dist/fereg_linux.plugin').read_bytes(), b'stale')
+
+
 if __name__ == '__main__':
     unittest.main()

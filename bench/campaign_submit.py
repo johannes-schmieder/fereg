@@ -4,7 +4,8 @@
 Run on an SCC login node (staging and submission only; no workloads).
 
   stage ROOT --source-tar T --source-json J --frozen-inputs F [--policy P]
-        --export-prefix X [--plugin dist|build] [--slots 28 --pe omp28 --cpu-type CPU]
+        --export-prefix X [--plugin dist|build|candidate --candidate-package PKG]
+        [--slots 28 --pe omp28 --cpu-type CPU]
   submit ROOT --reference-root R --comparator-root C [--after JOB] [--smoke-only]
 
 `stage` creates a new run root with its input record, the launchers taken
@@ -40,8 +41,11 @@ def write_context(root, context):
     (root/'context.json').write_text(json.dumps(context, indent=2)+'\n')
 
 
-def stage(root, source_tar, source_json, frozen_inputs, policy, prefix, slots, pe, cpu_type=None, plugin='dist'):
+def stage(root, source_tar, source_json, frozen_inputs, policy, prefix, slots, pe, cpu_type=None, plugin='dist',
+          candidate_package=None):
     record = json.loads(Path(source_json).read_text())
+    if (plugin == 'candidate') != bool(candidate_package):
+        raise RuntimeError('a candidate plugin requires exactly its staged root package')
     if record.get('dirty') or sha256(source_tar) != record['archive_sha256']:
         raise RuntimeError('source archive does not match its clean record')
     root.mkdir(parents=False, exist_ok=False)
@@ -76,7 +80,10 @@ def stage(root, source_tar, source_json, frozen_inputs, policy, prefix, slots, p
                         'complete reservation and passive observation; retain all failures.',
         resources=dict(setup=dict(slots=4, pe='omp', mem_per_core='4G', h_rt='02:00:00'),
                        smoke=dict(slots=slots, pe=pe, cpu_type=cpu_type),
-                       production=dict(slots=slots, pe=pe, cpu_type=cpu_type, h_rt='12:00:00', mem_per_core='3G'))))
+                       production=dict(slots=slots, pe=pe, cpu_type=cpu_type, h_rt='12:00:00', mem_per_core='3G')),
+        **(dict(candidate_package=str(candidate_package),
+                candidate_plugin_sha256=sha256(Path(candidate_package)/'dist/fereg_linux.plugin'))
+           if candidate_package else {})))
     print('CAMPAIGN_STAGED', root)
 
 
@@ -101,7 +108,8 @@ def submit(root, reference_root, comparator_root, after, smoke_only):
     slots, pe = whole['slots'], whole['pe']
     hold = ['-hold_jid', after] if after else []
     common = (f'RUN_ROOT={root},REFERENCE_ROOT={reference_root},COMPARATOR_ROOT={comparator_root},'
-              f"CAMPAIGN_PLUGIN={context['plugin']},CAMPAIGN_REUSE_ENVIRONMENT=1")
+              f"CAMPAIGN_PLUGIN={context['plugin']},CAMPAIGN_REUSE_ENVIRONMENT=1"
+              +(f",CANDIDATE_PACKAGE={context['candidate_package']}" if context.get('candidate_package') else ''))
     context['reference_root'], context['comparator_root'] = str(reference_root), str(comparator_root)
     setup = qsub(['-N', 'frc_setup', '-pe', 'omp', '4', '-l', 'mem_per_core=4G,h_rt=02:00:00', *hold,
                   '-v', common, '-o', str(root/'logs/setup.sge'), str(root/'setup.sh')])
@@ -143,8 +151,9 @@ if __name__ == '__main__':
     command.add_argument('--slots', type=int, default=28)
     command.add_argument('--pe', default='omp28')
     command.add_argument('--cpu-type', help='CPU model of a hardware supplement, for example 6737P')
-    command.add_argument('--plugin', choices=['dist', 'build'], default='dist',
-                         help="measure the archive's checksummed dist/ binary, or build it in setup")
+    command.add_argument('--plugin', choices=['dist', 'build', 'candidate'], default='dist',
+                         help="the archive's checksummed dist/ binary, a setup build, or a staged candidate")
+    command.add_argument('--candidate-package', type=Path, help='staged candidate root package (with dist/, stata/)')
     command = commands.add_parser('submit')
     command.add_argument('root', type=Path)
     command.add_argument('--reference-root', type=Path, required=True)
@@ -154,6 +163,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
     if args.command == 'stage':
         stage(args.root, args.source_tar, args.source_json, args.frozen_inputs, args.policy, args.export_prefix,
-              args.slots, args.pe, args.cpu_type, args.plugin)
+              args.slots, args.pe, args.cpu_type, args.plugin, args.candidate_package)
     else:
         submit(args.root, args.reference_root, args.comparator_root, args.after, args.smoke_only)

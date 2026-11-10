@@ -53,6 +53,19 @@ if [[ "${CAMPAIGN_PLUGIN:-build}" == dist ]]; then
     # Measure the published package binary exactly as installed from GitHub.
     (cd dist && sha256sum -c fereg_linux.plugin.sha256) > "$RUN_ROOT/logs/build.log" 2>&1
     printf 'CAMPAIGN_PLUGIN=dist\n' >> "$RUN_ROOT/logs/build.log"
+elif [[ "${CAMPAIGN_PLUGIN:-build}" == candidate ]]; then
+    # Measure a staged candidate root package (stage_local_install.py --root-package)
+    # whose frontend is this source's: every packaged file but help is identical.
+    python3 - "${CANDIDATE_PACKAGE:?}" "$PWD" > "$RUN_ROOT/logs/build.log" 2>&1 <<'PY'
+import filecmp,hashlib,pathlib,shutil,sys
+package,source=map(pathlib.Path,sys.argv[1:])
+expected=(package/'dist/fereg_linux.plugin.sha256').read_text().split()[0]
+assert hashlib.sha256((package/'dist/fereg_linux.plugin').read_bytes()).hexdigest()==expected
+frontend=sorted(p.name for p in (package/'stata').iterdir() if p.suffix!='.sthlp')
+assert frontend and all(filecmp.cmp(package/'stata'/n,source/'stata'/n,shallow=False) for n in frontend)
+for path in (package/'dist').iterdir():shutil.copy2(path,source/'dist'/path.name)
+print('CAMPAIGN_PLUGIN=candidate',package,expected,len(frontend),'identical frontend files')
+PY
 else
     cargo fetch --locked --target x86_64-unknown-linux-gnu > "$RUN_ROOT/logs/dependency-fetch.log" 2>&1
     export CARGO_NET_OFFLINE=true
