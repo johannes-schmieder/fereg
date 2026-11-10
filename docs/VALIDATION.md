@@ -4336,6 +4336,34 @@ projection declines only when one column does not fit (the plugin allocator
 audit `fedemean_lsmr_batches_stay_within_their_reported_workspace` binds the
 measured peak to it).
 
+**Column order (`ffe95897`).** Lane Q1's fixture run found that
+`14d829c8` kept every certified column's bits but not the per-column
+route's outcome where columns interact: on the offset-slope boundary
+fixture's case 2 a declining batch charged 72 iterations where one column
+at a time charged 21, so `iterate(100)` was spent and the fit failed r(430)
+instead of its MAP fallback's r(459). A setup decline also returned before
+the earlier columns ran, the batch shared one slow flag, and after a
+Jacobi pilot the first column to hand off took the round's others with it.
+Now a hand-off or decline is resolved only once every earlier column is
+solved: a decline reports the first declining column in column order with
+the iterations it and its predecessors spent, the columns before it
+written and their input state; the first hand-off escalates and later
+columns that worked on Jacobi start again on Schwarz. Witnesses
+(`crates/fedemean/tests/lsmr_order.rs`, each failing on `14d829c8`): the
+fixture's case 2 at two tolerances and five budgets declines exactly as one
+column at a time, a mid-batch setup decline charges and writes the columns
+before it and hands the same remaining budget on, and a later escalation
+gives each column its one-column bits. The fixture passes its four cases
+again (case 2 r(459), case 3 r(430), at 1 and 4 workers); fedemean's tests
+pass in all four feature combinations, fereg-core's library (1,555), the
+plugin's 243 FFI tests and 13 allocator audits, both Clippy configurations,
+rustfmt and the ratchet pass. On the gated Mac
+(no interference; 2 processes x 3 fits) ols6lsmr, ols2slopelsmr, ols2lsmr,
+ppml2lsmr and ppml3lsmr are bitwise identical to `14d829c8`; their timing
+ratios of 0.93-1.05 are noise on a busier host (both arms ran 13-23% slower
+than the earlier window), as the PPML cases show at 1.02-1.03, since their
+joint route never reaches this code.
+
 **Checks (Mac).** `scripts/run_tests.sh --source-only` passes with the three
 numpy-dependent Python modules not run: Python ran 282 tests (13 skipped; the
 three modules cannot import numpy here, and nothing else fails), and the
