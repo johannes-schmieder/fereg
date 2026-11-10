@@ -130,6 +130,21 @@ are checked, and Julia's writable compilation caches remain private to each run.
 `frozen-inputs.json` can name a `dataset_roots` map for corrected datasets retained
 in a supplement; all datasets still require exact file and decoded-column hashes.
 
+The November revision campaign (`campaign_revision.json` as the run policy:
+paired default/tight comparison blocks, package-default inference, raw
+numerical deviations, GLFixedEffectModels.jl and reghdfejl, Veneto cells from
+`revision_inputs.py`) is described in the paper's
+`replication/benchmark-revision.md`. `CAMPAIGN_PLUGIN=candidate` with
+`CANDIDATE_PACKAGE` measures a staged candidate root package
+(`stage_local_install.py --root-package`) after checking its plugin checksum and
+that every packaged frontend file except help is identical to the source's.
+`campaign_submit.py stage` writes a root (input record, launchers from the
+archive, `input/SHA256SUMS`, context); `submit` verifies it and submits setup,
+the whole-node smoke and optionally `scc/campaign_tasks.sh`, which runs listed
+manifest tasks back to back in one whole-node allocation; `production` requires
+the receipt written by `campaign_smoke_qualification.py` and submits the frozen
+array with `-tc`.
+
 ## Private Veneto panels
 
 `panel_campaign.py` uses the same pinned estimator entrypoints, timers, numerical
