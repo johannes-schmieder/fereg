@@ -4,10 +4,6 @@
 //! module builds the three Givens rotation chains (P̂_k, P̄_k, Q̃_k)
 //! that yield Algorithm 2.8 of Fong & Saunders, advances the `(x, h, h̄)`
 //! solution recurrence, and tracks the dual stopping criterion.
-//
-// Copyright (c) 2026 within contributors
-// Copyright (c) 2026 appliedAI Institute for Europe gGmbH
-// MIT License; see the notice in `crates/fedemean/src/lsmr.rs`.
 
 use super::bidiag::{BidiagStep, LSMR_PAR_THRESHOLD, LSMR_UPDATE_CHUNK};
 use super::magnitude::Magnitude;

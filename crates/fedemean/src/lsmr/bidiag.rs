@@ -6,10 +6,6 @@
 //! buffers used to maintain Golub-Kahan basis quality live here as private
 //! helpers — they are implementation detail of this stream, not an
 //! independent subsystem.
-//
-// Copyright (c) 2026 within contributors
-// Copyright (c) 2026 appliedAI Institute for Europe gGmbH
-// MIT License; see the notice in `crates/fedemean/src/lsmr.rs`.
 
 #[cfg(test)]
 mod golub_kahan;

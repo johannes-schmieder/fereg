@@ -1,9 +1,4 @@
 //! Thread-count independence: the same solve returns the same bits in any pool.
-//
-// Copyright (c) 2026 within contributors
-// Copyright (c) 2026 appliedAI Institute for Europe gGmbH
-// MIT License; see the notice in `crates/fedemean/src/lsmr.rs`.
-
 use super::super::*;
 use crate::lsmr::fixtures::DiagOp;
 use crate::lsmr::fold::assert_pool_independent;

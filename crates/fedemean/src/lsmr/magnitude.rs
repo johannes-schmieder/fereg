@@ -1,8 +1,4 @@
 //! Norms as `m · 2^e`, for comparing gradients of problems whose scales share no range.
-//
-// Copyright (c) 2026 within contributors
-// Copyright (c) 2026 appliedAI Institute for Europe gGmbH
-// MIT License; see the notice in `crates/fedemean/src/lsmr.rs`.
 
 use std::ops::{Div, Mul};
 

@@ -1,8 +1,4 @@
 //! The true-residual check of tolerance stops, and the restarts it triggers.
-//
-// Copyright (c) 2026 within contributors
-// Copyright (c) 2026 appliedAI Institute for Europe gGmbH
-// MIT License; see the notice in `crates/fedemean/src/lsmr.rs`.
 use super::super::bidiag::{BidiagStep, Bidiagonalization};
 use super::super::magnitude::Magnitude;
 use super::super::recurrence::ConvergenceCriteria;

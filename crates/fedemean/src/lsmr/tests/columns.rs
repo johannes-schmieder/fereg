@@ -1,9 +1,4 @@
 //! `mlsmr_columns` against `mlsmr` column by column: the same bits for every column.
-//
-// Copyright (c) 2026 within contributors
-// Copyright (c) 2026 appliedAI Institute for Europe gGmbH
-// MIT License; see the notice in `crates/fedemean/src/lsmr.rs`.
-
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use super::super::*;

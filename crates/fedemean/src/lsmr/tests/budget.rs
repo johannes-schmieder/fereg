@@ -3,10 +3,6 @@
 //! (Upstream integration test `tests/iteration_budget.rs`; the injected
 //! application failure is an `InvalidInput` here, since this module has no
 //! Schwarz local-solve error.)
-//
-// Copyright (c) 2026 within contributors
-// Copyright (c) 2026 appliedAI Institute for Europe gGmbH
-// MIT License; see the notice in `crates/fedemean/src/lsmr.rs`.
 use super::super::{lsmr_counted, mlsmr_counted, MlsmrOptions, Operator, SolveError};
 use std::sync::atomic::{AtomicUsize, Ordering};
 

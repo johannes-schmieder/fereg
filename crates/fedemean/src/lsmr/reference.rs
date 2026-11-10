@@ -2,10 +2,6 @@
 //! upstream engine, kept verbatim as a test reference: the tests run them
 //! against the modified recurrence. fedemean's code calls only the modified
 //! entry points.
-//
-// Copyright (c) 2026 within contributors
-// Copyright (c) 2026 appliedAI Institute for Europe gGmbH
-// MIT License; see the notice in `crates/fedemean/src/lsmr.rs`.
 
 use super::bidiag::GolubKahan;
 use super::magnitude::Magnitude;

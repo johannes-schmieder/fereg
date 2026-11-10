@@ -1,8 +1,4 @@
 //! White-box checks on the bidiagonalization itself.
-//
-// Copyright (c) 2026 within contributors
-// Copyright (c) 2026 appliedAI Institute for Europe gGmbH
-// MIT License; see the notice in `crates/fedemean/src/lsmr.rs`.
 
 use super::{alpha_from_vp, dot, par_dot, Bidiagonalization, GolubKahan};
 use crate::lsmr::fixtures::{DenseOp, DiagOp};

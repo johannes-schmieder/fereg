@@ -1,7 +1,3 @@
-// Copyright (c) 2026 within contributors
-// Copyright (c) 2026 appliedAI Institute for Europe gGmbH
-// MIT License; see the notice in `crates/fedemean/src/lsmr.rs`.
-
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 use crate::lsmr::fixtures::{jacobi, vandermonde_ls, IdentityOp};

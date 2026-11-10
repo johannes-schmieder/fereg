@@ -1,8 +1,4 @@
 //! Breakdown, early-exit and input-validation paths.
-//
-// Copyright (c) 2026 within contributors
-// Copyright (c) 2026 appliedAI Institute for Europe gGmbH
-// MIT License; see the notice in `crates/fedemean/src/lsmr.rs`.
 
 use super::super::*;
 use crate::lsmr::fixtures::*;

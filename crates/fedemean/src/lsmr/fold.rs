@@ -1,8 +1,4 @@
 //! Parallel sums whose summation order is fixed by the input length, never by the thread count.
-//
-// Copyright (c) 2026 within contributors
-// Copyright (c) 2026 appliedAI Institute for Europe gGmbH
-// MIT License; see the notice in `crates/fedemean/src/lsmr.rs`.
 
 use std::ops::Range;
 

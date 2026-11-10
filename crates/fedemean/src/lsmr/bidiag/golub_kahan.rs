@@ -1,10 +1,6 @@
 //! The standard Golub-Kahan bidiagonalization (no preconditioner) of the
 //! upstream engine, kept verbatim as a test reference for the modified
 //! stream; see [`super::super::reference`].
-//
-// Copyright (c) 2026 within contributors
-// Copyright (c) 2026 appliedAI Institute for Europe gGmbH
-// MIT License; see the notice in `crates/fedemean/src/lsmr.rs`.
 
 use super::super::finite;
 use super::super::magnitude::Magnitude;

@@ -3,10 +3,6 @@
 //! [`SolveError`] covers runtime failures during a solve, including
 //! operator/preconditioner application and iterative-solver input
 //! validation.
-//
-// Copyright (c) 2026 within contributors
-// Copyright (c) 2026 appliedAI Institute for Europe gGmbH
-// MIT License; see the notice in `crates/fedemean/src/lsmr.rs`.
 
 /// Runtime failure while executing a solve.
 #[derive(Debug, Clone, PartialEq, Eq)]

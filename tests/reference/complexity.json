@@ -1,18 +1,5 @@
 {
-  "growth": [
-    {
-      "after": 15125,
-      "before": 13675,
-      "metric": "fedemean/production_lines",
-      "reason": "Lockstep multi-column modified LSMR, one transition: the engine's mlsmr_columns (lsmr/columns.rs, 1,129 lines), Operator's default column applications (lsmr.rs +54) and the arithmetic-preserving moves of the reference computation onto the modified stream and of the solution update's coefficients into a function (bidiag.rs +6, recurrence.rs +8); fedemean's full LSMR runs batches of up to eight columns through it, with the design and preconditioner column applications on the interleaved kernels, the escalating projection's one-column pilot and memory-narrowed widths (full/lsmr.rs +240, full/mod.rs +13). Every column keeps mlsmr's bits."
-    },
-    {
-      "after": 172,
-      "before": 142,
-      "metric": "fedemean/dispatch_candidates",
-      "reason": "mlsmr_columns' block-shape, width and per-column state checks, failed-application exits and the kernels' parallel thresholds (columns.rs, 26); the default column applications' width checks (lsmr.rs, 2); the full LSMR's width dispatch of the column applications and the one-column admission (full/lsmr.rs, full/mod.rs, 2)."
-    }
-  ],
+  "growth": [],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
   "inventory": {
     "files": {
@@ -2252,128 +2239,128 @@
         "dispatch_candidates": [
           {
             "condition": "k == 1",
-            "line": 123
+            "line": 101
           },
           {
             "condition": "k == 0 || x . len ( ) % k != 0 || y . len ( ) % k != 0",
-            "line": 126
+            "line": 104
           },
           {
             "condition": "preconditioner . nrows ( ) != n || preconditioner . ncols ( ) != n",
-            "line": 488
+            "line": 466
           },
           {
             "condition": "x0 . len ( ) != n",
-            "line": 502
+            "line": 480
           },
           {
             "condition": "b . len ( ) != operator . nrows ( )",
-            "line": 792
+            "line": 770
           }
         ],
         "functions": {
           "apply_adjoint_columns#1": {
-            "line": 105,
+            "line": 83,
             "lines": 8
           },
           "apply_columns#1": {
-            "line": 99,
+            "line": 77,
             "lines": 3
           },
           "cold#1": {
-            "line": 583,
+            "line": 561,
             "lines": 6
           },
           "columnwise#1": {
-            "line": 117,
+            "line": 95,
             "lines": 41
           },
           "default#1": {
-            "line": 325,
+            "line": 303,
             "lines": 6
           },
           "finite#1": {
-            "line": 813,
+            "line": 791,
             "lines": 6
           },
           "fmt#1": {
-            "line": 207,
+            "line": 185,
             "lines": 7
           },
           "fmt#2": {
-            "line": 287,
+            "line": 265,
             "lines": 8
           },
           "handler#1": {
-            "line": 334,
+            "line": 312,
             "lines": 7
           },
           "invalid_input#1": {
-            "line": 820,
+            "line": 798,
             "lines": 6
           },
           "lsmr_from_bidiag#1": {
-            "line": 621,
+            "line": 599,
             "lines": 126
           },
           "mlsmr#1": {
-            "line": 381,
+            "line": 359,
             "lines": 11
           },
           "mlsmr_cancellable#1": {
-            "line": 398,
+            "line": 376,
             "lines": 20
           },
           "mlsmr_counted#1": {
-            "line": 423,
+            "line": 401,
             "lines": 18
           },
           "mlsmr_counted_cancellable#1": {
-            "line": 443,
+            "line": 421,
             "lines": 29
           },
           "mlsmr_impl#1": {
-            "line": 473,
+            "line": 451,
             "lines": 97
           },
           "relative#1": {
-            "line": 603,
+            "line": 581,
             "lines": 7
           },
           "should_escalate#1": {
-            "line": 350,
+            "line": 328,
             "lines": 12
           },
           "source#1": {
-            "line": 217,
+            "line": 195,
             "lines": 3
           },
           "threshold#1": {
-            "line": 318,
+            "line": 296,
             "lines": 3
           },
           "try_new#1": {
-            "line": 301,
+            "line": 279,
             "lines": 10
           },
           "validate_lsmr_inputs#1": {
-            "line": 787,
+            "line": 765,
             "lines": 24
           },
           "vec_norm#1": {
-            "line": 163,
+            "line": 141,
             "lines": 13
           },
           "warm#1": {
-            "line": 591,
+            "line": 569,
             "lines": 11
           },
           "window#1": {
-            "line": 313,
+            "line": 291,
             "lines": 3
           },
           "zero_alpha_exit#1": {
-            "line": 750,
+            "line": 728,
             "lines": 36
           }
         },
@@ -2384,200 +2371,200 @@
         "dispatch_candidates": [
           {
             "condition": "y . len ( ) >= LSMR_PAR_THRESHOLD",
-            "line": 78
+            "line": 74
           },
           {
             "condition": "y . len ( ) >= LSMR_PAR_THRESHOLD",
-            "line": 99
+            "line": 95
           },
           {
             "condition": "norm_v == 0.0 || norm_p == 0.0",
-            "line": 166
+            "line": 162
           },
           {
             "condition": "scaled < - f64 :: EPSILON . sqrt ( ) * ldexp ( norm_v , kv ) * ldexp ( norm_p , kp )",
-            "line": 177
+            "line": 173
           },
           {
             "condition": "k == 0 || g_norm . is_normal ( )",
-            "line": 345
+            "line": 341
           },
           {
             "condition": "! p_coeff . is_normal ( )",
-            "line": 625
+            "line": 621
           },
           {
             "condition": "alpha_from_vp ( & self . bufs . v , & self . bufs . p_tilde )",
-            "line": 648
+            "line": 644
           }
         ],
         "functions": {
           "adjoint_image#1": {
-            "line": 333,
+            "line": 329,
             "lines": 31
           },
           "advance#1": {
-            "line": 255,
+            "line": 251,
             "lines": 9
           },
           "alpha_from_vp#1": {
-            "line": 157,
+            "line": 153,
             "lines": 29
           },
           "axpby#1": {
-            "line": 71,
+            "line": 67,
             "lines": 15
           },
           "axpy_with_norm#1": {
-            "line": 35,
+            "line": 31,
             "lines": 24
           },
           "capacity#1": {
-            "line": 236,
+            "line": 232,
             "lines": 3
           },
           "chrono_slots#1": {
-            "line": 241,
+            "line": 237,
             "lines": 6
           },
           "chunked_sum#1": {
-            "line": 65,
+            "line": 61,
             "lines": 3
           },
           "clear#1": {
-            "line": 249,
+            "line": 245,
             "lines": 4
           },
           "cold#1": {
-            "line": 531,
+            "line": 527,
             "lines": 10
           },
           "dot#1": {
-            "line": 109,
+            "line": 105,
             "lines": 14
           },
           "from#1": {
-            "line": 139,
+            "line": 135,
             "lines": 3
           },
           "from#2": {
-            "line": 145,
+            "line": 141,
             "lines": 9
           },
           "gradient_references#1": {
-            "line": 556,
+            "line": 552,
             "lines": 7
           },
           "gradient_references#2": {
-            "line": 589,
+            "line": 585,
             "lines": 26
           },
           "hidden_gradient#1": {
-            "line": 382,
+            "line": 378,
             "lines": 7
           },
           "hidden_gradient#2": {
-            "line": 465,
+            "line": 461,
             "lines": 14
           },
           "into_residual#1": {
-            "line": 444,
+            "line": 440,
             "lines": 3
           },
           "lane#1": {
-            "line": 266,
+            "line": 262,
             "lines": 4
           },
           "lane_mut#1": {
-            "line": 272,
+            "line": 268,
             "lines": 4
           },
           "new#1": {
-            "line": 222,
+            "line": 218,
             "lines": 12
           },
           "new#2": {
-            "line": 498,
+            "line": 494,
             "lines": 10
           },
           "new#3": {
-            "line": 577,
+            "line": 573,
             "lines": 10
           },
           "norm#1": {
-            "line": 322,
+            "line": 318,
             "lines": 3
           },
           "norm_from_sq#1": {
-            "line": 188,
+            "line": 184,
             "lines": 7
           },
           "normalize#1": {
-            "line": 89,
+            "line": 85,
             "lines": 17
           },
           "par_dot#1": {
-            "line": 126,
+            "line": 122,
             "lines": 3
           },
           "par_norm#1": {
-            "line": 196,
+            "line": 192,
             "lines": 3
           },
           "per_unit#1": {
-            "line": 327,
+            "line": 323,
             "lines": 3
           },
           "plain_gradient#1": {
-            "line": 374,
+            "line": 370,
             "lines": 3
           },
           "plain_gradient#2": {
-            "line": 432,
+            "line": 428,
             "lines": 11
           },
           "push#1": {
-            "line": 292,
+            "line": 288,
             "lines": 11
           },
           "reorthogonalize#1": {
-            "line": 281,
+            "line": 277,
             "lines": 9
           },
           "reorthonormalize_v#1": {
-            "line": 640,
+            "line": 636,
             "lines": 26
           },
           "residual_into#1": {
-            "line": 201,
+            "line": 197,
             "lines": 9
           },
           "residual_norm#1": {
-            "line": 428,
-            "lines": 3
-          },
-          "restart#1": {
-            "line": 448,
-            "lines": 16
-          },
-          "restart#2": {
-            "line": 565,
-            "lines": 9
-          },
-          "step#1": {
-            "line": 394,
-            "lines": 29
-          },
-          "update_p_tilde#1": {
-            "line": 617,
-            "lines": 21
-          },
-          "v#1": {
             "line": 424,
             "lines": 3
           },
+          "restart#1": {
+            "line": 444,
+            "lines": 16
+          },
+          "restart#2": {
+            "line": 561,
+            "lines": 9
+          },
+          "step#1": {
+            "line": 390,
+            "lines": 29
+          },
+          "update_p_tilde#1": {
+            "line": 613,
+            "lines": 21
+          },
+          "v#1": {
+            "line": 420,
+            "lines": 3
+          },
           "warm#1": {
-            "line": 543,
+            "line": 539,
             "lines": 11
           }
         },
@@ -2588,15 +2575,15 @@
         "dispatch_candidates": [],
         "functions": {
           "checkpoint#1": {
-            "line": 44,
+            "line": 40,
             "lines": 7
           },
           "is_cancelled#1": {
-            "line": 40,
+            "line": 36,
             "lines": 3
           },
           "new#1": {
-            "line": 35,
+            "line": 31,
             "lines": 3
           }
         },
@@ -2607,232 +2594,232 @@
         "dispatch_candidates": [
           {
             "condition": "k > MAX_COLUMNS",
-            "line": 103
+            "line": 99
           },
           {
             "condition": "b . len ( ) != rows * k",
-            "line": 108
+            "line": 104
           },
           {
             "condition": "preconditioner . nrows ( ) != cols || preconditioner . ncols ( ) != cols",
-            "line": 114
+            "line": 110
           },
           {
             "condition": "k == 0",
-            "line": 121
+            "line": 117
           },
           {
             "condition": "options . local_size . unwrap_or ( 0 ) > 0",
-            "line": 124
+            "line": 120
           },
           {
             "condition": "Batch :: new ( operator , preconditioner , b , columns , options , cancellation )",
-            "line": 130
+            "line": 126
           },
           {
             "condition": "reserved ( operator . nrows ( ) )",
-            "line": 161
+            "line": 157
           },
           {
             "condition": "self . columns [ c ] . running ( )",
-            "line": 354
+            "line": 350
           },
           {
             "condition": "x0 . len ( ) != self . cols",
-            "line": 386
+            "line": 382
           },
           {
             "condition": "finite ( vec_norm_column ( self . b , k , c ) , <string> )",
-            "line": 414
+            "line": 410
           },
           {
             "condition": "let Err ( source ) = self . operator . apply_columns ( k , & self . x , & mut self . u )",
-            "line": 428
+            "line": 424
           },
           {
             "condition": "self . columns [ c ] . running ( ) && ! warm [ c ]",
-            "line": 443
+            "line": 439
           },
           {
             "condition": "let Err ( source ) = self . operator . apply_adjoint_columns ( k , self . b , & mut self . atu )",
-            "line": 509
+            "line": 505
           },
           {
             "condition": "let Err ( source ) = self . preconditioner . apply_columns ( k , & self . atu , & mut self . v )",
-            "line": 545
+            "line": 541
           },
           {
             "condition": "alpha_of ( ( & self . v , & self . atu ) , k , c , vp [ c ] , & mut self . scratch )",
-            "line": 551
+            "line": 547
           },
           {
             "condition": "let Err ( source ) = self . operator . apply_adjoint_columns ( w , & self . u , & mut self . p )",
+            "line": 572
+          },
+          {
+            "condition": "let Err ( source ) = self . preconditioner . apply_columns ( w , & self . p , & mut self . v )",
             "line": 576
           },
           {
-            "condition": "let Err ( source ) = self . preconditioner . apply_columns ( w , & self . p , & mut self . v )",
-            "line": 580
-          },
-          {
             "condition": "alpha_of ( ( & self . v , & self . p ) , w , s , vp [ s ] , & mut self . scratch )",
-            "line": 588
+            "line": 584
           },
           {
             "condition": "let Err ( source ) = self . operator . apply_columns ( w , & self . v , & mut self . av )",
-            "line": 725
+            "line": 721
           },
           {
             "condition": "let Err ( source ) = self . operator . apply_adjoint_columns ( w , & self . u , & mut self . atu )",
-            "line": 767
+            "line": 763
           },
           {
             "condition": "let Err ( source ) = self . preconditioner . apply_columns ( w , & self . p , & mut self . v )",
-            "line": 793
+            "line": 789
           },
           {
             "condition": "alpha_of ( ( & self . v , & self . p ) , w , s , vp [ s ] , & mut self . scratch )",
-            "line": 804
+            "line": 800
           },
           {
             "condition": "keep . len ( ) == w",
-            "line": 981
+            "line": 977
           },
           {
             "condition": "rows >= LSMR_PAR_THRESHOLD",
-            "line": 1038
+            "line": 1034
           },
           {
             "condition": "( x , rows >= LSMR_PAR_THRESHOLD )",
-            "line": 1182
+            "line": 1178
           },
           {
             "condition": "rows >= LSMR_PAR_THRESHOLD",
-            "line": 1268
+            "line": 1264
           }
         ],
         "functions": {
           "add_lanes#1": {
-            "line": 1102,
+            "line": 1098,
             "lines": 3
           },
           "alpha_of#1": {
-            "line": 1011,
+            "line": 1007,
             "lines": 14
           },
           "axpby_columns#1": {
-            "line": 1224,
+            "line": 1220,
             "lines": 13
           },
           "axpy_sq#1": {
-            "line": 1107,
+            "line": 1103,
             "lines": 33
           },
           "begin_pass#1": {
-            "line": 610,
+            "line": 606,
             "lines": 27
           },
           "compact#1": {
-            "line": 976,
+            "line": 972,
             "lines": 31
           },
           "copy_column#1": {
-            "line": 1062,
+            "line": 1058,
             "lines": 10
           },
           "done#1": {
-            "line": 345,
+            "line": 341,
             "lines": 5
           },
           "dot_sq#1": {
-            "line": 1142,
+            "line": 1138,
             "lines": 29
           },
           "end_pass#1": {
-            "line": 882,
+            "line": 878,
             "lines": 91
           },
           "fail#1": {
-            "line": 336,
+            "line": 332,
             "lines": 8
           },
           "fail_running#1": {
-            "line": 352,
+            "line": 348,
             "lines": 8
           },
           "fill_column#1": {
-            "line": 1073,
+            "line": 1069,
             "lines": 5
           },
           "gather#1": {
-            "line": 1048,
+            "line": 1044,
             "lines": 5
           },
           "hidden#1": {
-            "line": 639,
+            "line": 635,
             "lines": 46
           },
           "mask#1": {
-            "line": 362,
+            "line": 358,
             "lines": 7
           },
           "mlsmr_columns#1": {
-            "line": 82,
+            "line": 78,
             "lines": 68
           },
           "narrow#1": {
-            "line": 1027,
+            "line": 1023,
             "lines": 19
           },
           "new#1": {
-            "line": 277,
+            "line": 273,
             "lines": 54
           },
           "norm_from_sq_column#1": {
-            "line": 1094,
+            "line": 1090,
             "lines": 7
           },
           "normalize_columns#1": {
-            "line": 1193,
+            "line": 1189,
             "lines": 29
           },
           "one_at_a_time#1": {
-            "line": 152,
+            "line": 148,
             "lines": 49
           },
           "reserved#1": {
-            "line": 265,
+            "line": 261,
             "lines": 10
           },
           "rowwise#1": {
-            "line": 1174,
+            "line": 1170,
             "lines": 17
           },
           "run#1": {
-            "line": 687,
+            "line": 683,
             "lines": 26
           },
           "running#1": {
-            "line": 229,
+            "line": 225,
             "lines": 3
           },
           "scatter#1": {
-            "line": 1055,
+            "line": 1051,
             "lines": 5
           },
           "start#1": {
-            "line": 407,
+            "line": 403,
             "lines": 91
           },
           "validate#1": {
-            "line": 371,
+            "line": 367,
             "lines": 32
           },
           "vec_norm_column#1": {
-            "line": 1080,
+            "line": 1076,
             "lines": 12
           },
           "width#1": {
-            "line": 332,
+            "line": 328,
             "lines": 3
           }
         },
@@ -2843,7 +2830,7 @@
         "dispatch_candidates": [],
         "functions": {
           "fmt#1": {
-            "line": 32,
+            "line": 28,
             "lines": 11
           }
         },
@@ -2854,44 +2841,44 @@
         "dispatch_candidates": [
           {
             "condition": "n > SEQUENTIAL_ITEMS",
-            "line": 68
+            "line": 64
           }
         ],
         "functions": {
           "fold#1": {
-            "line": 56,
+            "line": 52,
             "lines": 25
           },
           "n_items#1": {
-            "line": 16,
+            "line": 12,
             "lines": 3
           },
           "n_items#2": {
-            "line": 25,
+            "line": 21,
             "lines": 3
           },
           "n_items#3": {
-            "line": 34,
+            "line": 30,
             "lines": 3
           },
           "n_items#4": {
-            "line": 44,
+            "line": 40,
             "lines": 4
           },
           "split_at#1": {
-            "line": 19,
+            "line": 15,
             "lines": 3
           },
           "split_at#2": {
-            "line": 28,
+            "line": 24,
             "lines": 3
           },
           "split_at#3": {
-            "line": 37,
+            "line": 33,
             "lines": 4
           },
           "split_at#4": {
-            "line": 48,
+            "line": 44,
             "lines": 5
           }
         },
@@ -2902,43 +2889,43 @@
         "dispatch_candidates": [],
         "functions": {
           "div#1": {
-            "line": 72,
+            "line": 68,
             "lines": 3
           },
           "exponent#1": {
-            "line": 78,
+            "line": 74,
             "lines": 3
           },
           "from#1": {
-            "line": 45,
+            "line": 41,
             "lines": 16
           },
           "is_normal#1": {
-            "line": 31,
+            "line": 27,
             "lines": 3
           },
           "ldexp#1": {
-            "line": 83,
+            "line": 79,
             "lines": 4
           },
           "mul#1": {
-            "line": 65,
+            "line": 61,
             "lines": 3
           },
           "normalized#1": {
-            "line": 35,
+            "line": 31,
             "lines": 7
           },
           "pow2#1": {
-            "line": 89,
+            "line": 85,
             "lines": 4
           },
           "product#1": {
-            "line": 18,
+            "line": 14,
             "lines": 3
           },
           "to_f64#1": {
-            "line": 23,
+            "line": 19,
             "lines": 6
           }
         },
@@ -2949,112 +2936,112 @@
         "dispatch_candidates": [
           {
             "condition": "n >= LSMR_PAR_THRESHOLD",
-            "line": 275
+            "line": 271
           }
         ],
         "functions": {
           "advance#1": {
-            "line": 139,
+            "line": 135,
             "lines": 12
           },
           "advance#2": {
-            "line": 163,
+            "line": 159,
             "lines": 18
           },
           "advance#3": {
-            "line": 199,
+            "line": 195,
             "lines": 17
           },
           "backward_error#1": {
-            "line": 408,
+            "line": 404,
             "lines": 6
           },
           "check#1": {
-            "line": 392,
+            "line": 388,
             "lines": 13
           },
           "corroborates#1": {
-            "line": 373,
+            "line": 369,
             "lines": 4
           },
           "corroborates_normal_eq#1": {
-            "line": 355,
+            "line": 351,
             "lines": 16
           },
           "corroborates_residual#1": {
-            "line": 350,
+            "line": 346,
             "lines": 3
           },
           "init#1": {
-            "line": 72,
+            "line": 68,
             "lines": 22
           },
           "init#2": {
-            "line": 244,
+            "line": 240,
             "lines": 8
           },
           "initial#1": {
-            "line": 51,
+            "line": 47,
             "lines": 9
           },
           "into_x#1": {
-            "line": 287,
+            "line": 283,
             "lines": 3
           },
           "new#1": {
-            "line": 27,
+            "line": 23,
             "lines": 5
           },
           "new#2": {
-            "line": 330,
+            "line": 326,
             "lines": 6
           },
           "normal_eq_residual_estimate#1": {
-            "line": 114,
+            "line": 110,
             "lines": 3
           },
           "normar#1": {
-            "line": 183,
+            "line": 179,
             "lines": 3
           },
           "normr#1": {
-            "line": 218,
+            "line": 214,
             "lines": 4
           },
           "observe#1": {
-            "line": 387,
+            "line": 383,
             "lines": 3
           },
           "ratio#1": {
-            "line": 225,
+            "line": 221,
             "lines": 7
           },
           "relative_normal_eq_residual#1": {
-            "line": 118,
+            "line": 114,
             "lines": 3
           },
           "residual_estimate#1": {
-            "line": 104,
+            "line": 100,
             "lines": 3
           },
           "residual_gap#1": {
-            "line": 345,
+            "line": 341,
             "lines": 3
           },
           "start#1": {
-            "line": 337,
+            "line": 333,
             "lines": 6
           },
           "step#1": {
-            "line": 96,
+            "line": 92,
             "lines": 6
           },
           "unit_residual#1": {
-            "line": 109,
+            "line": 105,
             "lines": 3
           },
           "update#1": {
-            "line": 254,
+            "line": 250,
             "lines": 32
           }
         },
