@@ -144,7 +144,9 @@ def bridge_versions(bridge, origin_record):
 
 
 def compiled_inventory(depot):
-    return {str(p.relative_to(depot)): (p.stat().st_size, p.stat().st_mtime_ns)
+    """Cache files, sizes and package-image times. Loading a cache touches its
+    .ji header (unchanged content); a recompilation also writes its .so image."""
+    return {str(p.relative_to(depot)): (p.stat().st_size, None if p.suffix == '.ji' else p.stat().st_mtime_ns)
             for p in sorted((depot/'compiled').rglob('*')) if p.is_file()}
 
 
