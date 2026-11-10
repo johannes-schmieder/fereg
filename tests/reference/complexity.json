@@ -1,16 +1,10 @@
 {
   "growth": [
     {
-      "after": 119372,
-      "before": 119369,
-      "metric": "fereg-core/production_lines",
-      "reason": "allocation-free warm PPML frames on the exact elimination: the PPML owner's elimination cache keeps its residual norms (detached) and PPML frames read them by borrow instead of a per-frame copy; the attach path's finiteness/alignment checks are shared with the detached norms."
-    },
-    {
-      "after": 7985,
-      "before": 7981,
-      "metric": "file/crates/fereg-core/src/fe/borrowed_map.rs",
-      "reason": "allocation-free warm PPML frames on the exact elimination: the PPML owner's elimination cache keeps its residual norms (detached) and PPML frames read them by borrow instead of a per-frame copy; the attach path's finiteness/alignment checks are shared with the detached norms."
+      "after": 15190,
+      "before": 15125,
+      "metric": "fedemean/production_lines",
+      "reason": "Lockstep modified LSMR keeps the outcome of one column at a time in column order (full/lsmr.rs +65): each lane records its state (running, solved, handed off, declined) and its own slow flag; a hand-off or decline is resolved only once every earlier column is solved, later columns that worked on the former preconditioner are set up again after an escalation, a setup decline ends the batch after the columns before it, and the facts, the written columns and the input state of a decline are those of the first declining column, so the iterations a caller charges match the per-column route."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -1338,124 +1332,128 @@
         "dispatch_candidates": [
           {
             "condition": "$ k",
-            "line": 66
+            "line": 75
           },
           {
             "condition": "buffer . len ( ) != len",
-            "line": 426
+            "line": 439
           },
           {
             "condition": "k == 1",
-            "line": 810
+            "line": 910
           },
           {
             "condition": "result . stop_reason == LsmrStopReason :: Escalated && budget > 0",
-            "line": 884
+            "line": 984
           }
         ],
         "functions": {
           "apply#1": {
-            "line": 199,
+            "line": 190,
             "lines": 4
           },
           "apply#2": {
-            "line": 260,
+            "line": 251,
             "lines": 3
           },
           "apply_adjoint#1": {
-            "line": 204,
-            "lines": 3
-          },
-          "apply_adjoint#2": {
-            "line": 264,
-            "lines": 3
-          },
-          "apply_adjoint_columns#1": {
-            "line": 219,
-            "lines": 16
-          },
-          "apply_adjoint_columns#2": {
-            "line": 302,
-            "lines": 8
-          },
-          "apply_columns#1": {
-            "line": 208,
-            "lines": 10
-          },
-          "apply_columns#2": {
-            "line": 268,
-            "lines": 33
-          },
-          "batch_width#1": {
-            "line": 316,
-            "lines": 15
-          },
-          "check#1": {
-            "line": 511,
-            "lines": 56
-          },
-          "from#1": {
-            "line": 348,
-            "lines": 3
-          },
-          "handler#1": {
-            "line": 132,
-            "lines": 10
-          },
-          "ncols#1": {
             "line": 195,
             "lines": 3
           },
+          "apply_adjoint#2": {
+            "line": 255,
+            "lines": 3
+          },
+          "apply_adjoint_columns#1": {
+            "line": 210,
+            "lines": 16
+          },
+          "apply_adjoint_columns#2": {
+            "line": 293,
+            "lines": 8
+          },
+          "apply_columns#1": {
+            "line": 199,
+            "lines": 10
+          },
+          "apply_columns#2": {
+            "line": 259,
+            "lines": 33
+          },
+          "batch_width#1": {
+            "line": 307,
+            "lines": 15
+          },
+          "check#1": {
+            "line": 524,
+            "lines": 56
+          },
+          "from#1": {
+            "line": 339,
+            "lines": 3
+          },
+          "handler#1": {
+            "line": 137,
+            "lines": 9
+          },
+          "ncols#1": {
+            "line": 186,
+            "lines": 3
+          },
           "ncols#2": {
-            "line": 256,
+            "line": 247,
             "lines": 3
           },
           "nrows#1": {
-            "line": 191,
+            "line": 182,
             "lines": 3
           },
           "nrows#2": {
-            "line": 252,
+            "line": 243,
             "lines": 3
           },
           "project#1": {
-            "line": 380,
+            "line": 393,
             "lines": 126
           },
+          "resolve#1": {
+            "line": 726,
+            "lines": 77
+          },
           "right_hand_sides#1": {
-            "line": 724,
+            "line": 827,
             "lines": 17
           },
           "round#1": {
-            "line": 746,
-            "lines": 106
+            "line": 848,
+            "lines": 101
           },
           "settle#1": {
-            "line": 858,
+            "line": 956,
             "lines": 75
           },
+          "settled#1": {
+            "line": 807,
+            "lines": 18
+          },
           "setup#1": {
-            "line": 580,
-            "lines": 64
+            "line": 593,
+            "lines": 65
           },
           "should_escalate#1": {
-            "line": 167,
-            "lines": 10
+            "line": 149,
+            "lines": 19
           },
           "solve_batch#1": {
-            "line": 649,
-            "lines": 73
+            "line": 663,
+            "lines": 56
           },
           "source#1": {
-            "line": 569,
+            "line": 582,
             "lines": 7
-          },
-          "stalled_or_slow#1": {
-            "line": 145,
-            "lines": 19
           }
         },
-        "production_lines": 805
+        "production_lines": 870
       },
       "crates/fedemean/src/full/mod.rs": {
         "chunk_candidates": [],
@@ -29905,7 +29903,7 @@
         "dispatch_candidates": 172,
         "files_over_1500": 0,
         "functions_over_150": 0,
-        "production_lines": 15125
+        "production_lines": 15190
       },
       "fereg-core": {
         "chunk_candidates": 13,

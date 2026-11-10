@@ -19,14 +19,23 @@
 //! the bits of a single one). A round of one column runs `mlsmr` itself. The
 //! batch is the widest that fits the memory limit; see [`batch_width`].
 //!
+//! **Column order.** A batch has the outcome of its columns solved one at a
+//! time in column order: each column's bits, iterations and status, the
+//! escalation, the reported facts, and on a decline the first failing
+//! column's reason, the columns written before it and the iterations it and
+//! they spent. A round settles each column's pass on its own; what one
+//! column's result means for the others (an escalation, a decline) is
+//! decided only once every earlier column is solved, and later columns whose
+//! work no longer matches the one-column route are set up again.
+//!
 //! With escalation, the projection's first column runs alone. A Jacobi pass
 //! whose normal-equation estimate fails to halve over a stall window, or
 //! whose pilot predicts a slow pass, hands off (the engine's escalation
 //! hook): the column continues with Schwarz from its iterate, the true
-//! residual recomputed, within the rest of its budget, and the later rounds
-//! and batches start on Schwarz. When the first column certifies on Jacobi,
-//! the others run lockstep with escalation, and the first of them to hand
-//! off takes the round's other running columns with it.
+//! residual recomputed, within the rest of its budget, and the later columns
+//! start on Schwarz (later columns of the batch that ran on Jacobi start
+//! again). A slow column whose Schwarz does not fit continues, as do the
+//! later columns, on Jacobi; a stalled one declines.
 
 use super::blocks::Blocks;
 use super::kernels::{adjoint, forward, load, residualize, Basis, Rows, ROW_BLOCK};
@@ -109,13 +118,10 @@ macro_rules! lanes {
 /// Hand off when the best normal-equation estimate of a pass fails to halve
 /// over a stall window (the PCG rule), or when its rate after the pilot
 /// iterations predicts a slow pass toward `goal` (the pass tolerance on that
-/// estimate, which starts at 1); `slow` records the latter. A column that
-/// hands off sets `together`, and the round's other columns hand off at
-/// their next test.
+/// estimate, which starts at 1); `slow` records the latter.
 struct Stall {
     goal: f64,
     slow: Arc<AtomicBool>,
-    together: Arc<AtomicBool>,
 }
 
 struct StallRun {
@@ -125,7 +131,6 @@ struct StallRun {
     half: f64,
     goal: f64,
     slow: Arc<AtomicBool>,
-    together: Arc<AtomicBool>,
 }
 
 impl EscalationPolicy for Stall {
@@ -136,13 +141,12 @@ impl EscalationPolicy for Stall {
             half: 1.0,
             goal: self.goal,
             slow: Arc::clone(&self.slow),
-            together: Arc::clone(&self.together),
         })
     }
 }
 
-impl StallRun {
-    fn stalled_or_slow(&mut self, progress: Progress) -> bool {
+impl EscalationHandler for StallRun {
+    fn should_escalate(&mut self, progress: Progress) -> bool {
         self.best = self.best.min(progress.normal_eq_residual);
         if progress.iteration == PILOT / 2 {
             self.half = self.best;
@@ -160,19 +164,6 @@ impl StallRun {
         let stalled = self.best.is_nan() || self.best > 0.5 * self.checkpoint;
         self.checkpoint = self.best;
         stalled
-    }
-}
-
-impl EscalationHandler for StallRun {
-    fn should_escalate(&mut self, progress: Progress) -> bool {
-        if self.together.load(Ordering::Relaxed) {
-            return true;
-        }
-        let escalate = self.stalled_or_slow(progress);
-        if escalate {
-            self.together.store(true, Ordering::Relaxed);
-        }
-        escalate
     }
 }
 
@@ -350,8 +341,10 @@ impl From<Error> for Short {
     }
 }
 
-/// One column of a batch: its certificate scale and targets, its start, and
-/// the iterations, pass and tolerance of its current preconditioner.
+/// One column of a batch: its certificate scale and targets, its start, the
+/// iterations, pass and tolerance of its current preconditioner, where it
+/// stands, and whether its pilot predicted a slow pass (its own flag, as for
+/// one column at a time).
 struct Lane {
     j: usize,
     scale: f64,
@@ -360,7 +353,27 @@ struct Lane {
     spent: usize,
     pass: usize,
     tolerance: f64,
-    solved: Option<Solved>,
+    state: State,
+    slow: Arc<AtomicBool>,
+}
+
+/// Where a lane stands after a round. A hand-off and a shortfall wait until
+/// every earlier column is solved, since the one-column route reaches them
+/// only then.
+enum State {
+    /// Runs its next pass from `start`.
+    Running,
+    Solved(Solved),
+    /// Handed off at this iterate (escalation).
+    Handed(Vec<f64>),
+    Declined(&'static str),
+}
+
+/// A batch's outcome in column order: its columns solved before the first
+/// that declined (all of them when none did), and that column's reason.
+struct Settled {
+    solved: Vec<Solved>,
+    declined: Option<&'static str>,
 }
 
 /// The lockstep width of one projection's rounds and the bytes it reports.
@@ -441,18 +454,9 @@ pub(super) fn project(
         let w = (ncols - first).min(width);
         let batch = (&*values, first, w, start);
         let lent = (&mut *work, &mut *slot);
-        let solved = match solve_batch(job, batch, lent, (&mut mode, &mut lockstep), &mut facts) {
-            Ok(solved) => solved,
-            Err(Short::Failed(error)) => return Err(error),
-            Err(Short::Declined(reason)) => {
-                let input = if first > 0 {
-                    same_projection(formed)?
-                } else {
-                    InputState::Untouched
-                };
-                return Ok((numerical(reason, input, facts, job), false));
-            }
-        };
+        let Settled { solved, declined } =
+            solve_batch(job, batch, lent, (&mut mode, &mut lockstep), &mut facts)?;
+        let written = solved.len();
         let began = Instant::now();
         for (i, solved) in solved.into_iter().enumerate() {
             let j = first + i;
@@ -482,6 +486,15 @@ pub(super) fn project(
             columns.push(solved.report);
         }
         facts.residual_seconds += began.elapsed().as_secs_f64();
+        if let Some(reason) = declined {
+            // As one column at a time: the columns before it are written.
+            let input = if first + written > 0 {
+                same_projection(formed)?
+            } else {
+                InputState::Untouched
+            };
+            return Ok((numerical(reason, input, facts, job), false));
+        }
         first += w;
     }
     let certificate = fold.finish(job.request.tolerance)?;
@@ -638,45 +651,102 @@ fn setup(
         spent: 0,
         pass: 0,
         tolerance: STOP_FRACTION * job.request.tolerance,
-        solved: None,
+        state: State::Running,
+        slow: Arc::new(AtomicBool::new(false)),
     })
 }
 
-/// Solve and certify the batch `first..first + w`: rounds of its
-/// uncertified columns (at most `lockstep.round` at once) until each
-/// certifies. A round whose columns stalled escalates: they continue on
-/// Schwarz (`mode` becomes Schwarz for the later rounds and batches).
+/// Solve and certify the batch `first..first + w` with the outcome of its
+/// columns solved one at a time in column order (see the module docs):
+/// rounds of its running columns (at most `lockstep.round` at once), each
+/// followed by [`resolve`].
 fn solve_batch(
     job: &Job<'_, '_>,
     (values, first, w, start): (&ColumnsMut<'_>, usize, usize, Option<&[f64]>),
     (work, slot): (&mut super::Work, &mut Option<Schwarz>),
     (mode, lockstep): (&mut Mode, &mut Width),
     facts: &mut Facts,
-) -> std::result::Result<Vec<Solved>, Short> {
+) -> Result<Settled> {
     let m = job.st.coefficients();
+    let warm = |j: usize| start.map(|start| &start[j * m..(j + 1) * m]);
     let mut lanes = with_capacity(w)?;
+    // A column whose setup declines ends the batch there, after the columns
+    // before it.
+    let mut tail = None;
     for j in first..first + w {
-        let warm = start.map(|start| &start[j * m..(j + 1) * m]);
-        lanes.push(setup(job, (values, j, warm), work, facts)?);
+        match setup(job, (values, j, warm(j)), work, facts) {
+            Ok(lane) => lanes.push(lane),
+            Err(Short::Declined(reason)) => {
+                tail = Some(reason);
+                break;
+            }
+            Err(Short::Failed(error)) => return Err(error),
+        }
     }
-    let slow = Arc::new(AtomicBool::new(false));
     loop {
-        let pending: Vec<usize> = (0..w).filter(|&i| lanes[i].solved.is_none()).collect();
-        if pending.is_empty() {
-            break;
+        let restart = |i: usize, work: &mut super::Work, facts: &mut Facts| {
+            let j = first + i;
+            setup(job, (values, j, warm(j)), work, facts)
+        };
+        let next = resolve(
+            job,
+            (&mut lanes, restart),
+            (work, slot),
+            (mode, lockstep),
+            facts,
+        )?;
+        let Some(e) = next else {
+            return Ok(settled(lanes, tail, facts));
+        };
+        if matches!(lanes[e].state, State::Declined(_)) {
+            lanes.truncate(e + 1);
+            return Ok(settled(lanes, None, facts));
         }
         // An escalating projection's first column runs alone: its pilot
         // decides the preconditioner of the later rounds at one column's
         // cost, as one column at a time did.
         let pilot = *mode == Mode::Escalate && !lockstep.piloted;
         let width = if pilot { 1 } else { lockstep.round };
-        let run = &pending[..pending.len().min(width)];
+        let run: Vec<usize> = (0..lanes.len())
+            .filter(|&i| matches!(lanes[i].state, State::Running))
+            .take(width)
+            .collect();
         let lent = (&mut *work, &*slot);
-        let stalled = round(job, (&mut lanes, run, values), lent, (*mode, &slow), facts)?;
+        round(job, (&mut lanes, &run, values), lent, *mode, facts)?;
         lockstep.piloted |= pilot;
-        if stalled.is_empty() {
-            continue;
-        }
+    }
+}
+
+/// Decide, in column order, what the batch's first unsolved column means:
+/// returns it (`None` when every column is solved). A hand-off escalates
+/// there: the column continues on Schwarz from its iterate (or on Jacobi
+/// when slow and Schwarz does not fit, else it declines), and the later
+/// columns that already worked on the former preconditioner are set up
+/// again by `restart`.
+fn resolve<F>(
+    job: &Job<'_, '_>,
+    (lanes, restart): (&mut Vec<Lane>, F),
+    (work, slot): (&mut super::Work, &mut Option<Schwarz>),
+    (mode, lockstep): (&mut Mode, &mut Width),
+    facts: &mut Facts,
+) -> Result<Option<usize>>
+where
+    F: Fn(usize, &mut super::Work, &mut Facts) -> std::result::Result<Lane, Short>,
+{
+    loop {
+        let Some(e) = lanes
+            .iter()
+            .position(|lane| !matches!(lane.state, State::Solved(_)))
+        else {
+            return Ok(None);
+        };
+        let x = match std::mem::replace(&mut lanes[e].state, State::Running) {
+            State::Handed(x) => x,
+            other => {
+                lanes[e].state = other;
+                return Ok(Some(e));
+            }
+        };
         let default = SchwarzSpec::default();
         let mut built = ensure(job, default, slot, lockstep.round, facts)?;
         if matches!(built, Err(Refusal::MemoryLimit)) && lockstep.round > 1 {
@@ -700,24 +770,57 @@ fn solve_batch(
                 lockstep.narrow
             };
             lockstep.peak = lockstep.peak.max(held + schwarz);
-        } else if slow.load(Ordering::Relaxed) {
+        } else if lanes[e].slow.load(Ordering::Relaxed) {
             // A slow (not stalled) recurrence whose Schwarz does not fit
             // continues with Jacobi.
             *mode = Mode::Jacobi;
         } else {
-            return Err(Short::Declined("stalled modified LSMR recurrence"));
+            lanes[e].state = State::Declined("stalled modified LSMR recurrence");
+            return Ok(Some(e));
         }
-        for (i, x) in stalled {
-            let lane = &mut lanes[i];
-            lane.start = x;
-            lane.pass = 0;
-            lane.tolerance = STOP_FRACTION * job.request.tolerance;
+        let lane = &mut lanes[e];
+        lane.start = x;
+        lane.pass = 0;
+        lane.tolerance = STOP_FRACTION * job.request.tolerance;
+        for (i, later) in lanes.iter_mut().enumerate().skip(e + 1) {
+            if later.spent > 0 || !matches!(later.state, State::Running) {
+                // Release the former work before setting the column up again.
+                later.state = State::Running;
+                later.start = Vec::new();
+                match restart(i, work, facts) {
+                    Ok(lane) => *later = lane,
+                    Err(Short::Failed(error)) => return Err(error),
+                    Err(Short::Declined(reason)) => {
+                        // (Setups are deterministic: this one succeeded before.)
+                        later.spent = 0;
+                        later.state = State::Declined(reason);
+                    }
+                }
+            }
         }
     }
-    Ok(lanes
-        .into_iter()
-        .map(|lane| lane.solved.expect("every lane certified"))
-        .collect())
+}
+
+/// The batch's outcome from its resolved lanes, with the facts of one column
+/// at a time: the iterations of every column it reached (the declining one
+/// included), and the solved columns' iterations and acceptances.
+fn settled(lanes: Vec<Lane>, tail: Option<&'static str>, facts: &mut Facts) -> Settled {
+    let mut solved = Vec::with_capacity(lanes.len());
+    let mut declined = tail;
+    for lane in lanes {
+        facts.iterations = facts.iterations.max(lane.spent);
+        match lane.state {
+            State::Solved(column) => {
+                facts.column_iterations += lane.spent;
+                facts.accepted +=
+                    usize::from(column.report.status == ColumnStatus::AcceptedAtFloor);
+                solved.push(column);
+            }
+            State::Declined(reason) => declined = Some(reason),
+            State::Running | State::Handed(_) => unreachable!("an unresolved column"),
+        }
+    }
+    Settled { solved, declined }
 }
 
 /// `b = W^1/2 y` of the columns `js`, interleaved.
@@ -741,15 +844,14 @@ fn right_hand_sides(job: &Job<'_, '_>, values: &ColumnsMut<'_>, js: &[usize], b:
 
 /// One lockstep round of the lanes `run` in `mode` from their starts, with
 /// the operator and preconditioner of that mode (the workspaces lent from
-/// `work` for their duration), then each column's [`settle`]. Returns the
-/// columns that handed off (escalation), with their iterates.
+/// `work` for their duration), then each column's [`settle`].
 fn round(
     job: &Job<'_, '_>,
     (lanes, run, values): (&mut [Lane], &[usize], &ColumnsMut<'_>),
     (work, slot): (&mut super::Work, &Option<Schwarz>),
-    (mode, slow): (Mode, &Arc<AtomicBool>),
+    mode: Mode,
     facts: &mut Facts,
-) -> std::result::Result<Vec<(usize, Vec<f64>)>, Short> {
+) -> Result<()> {
     let (st, state) = (job.st, job.state);
     let k = run.len();
     let started = Instant::now();
@@ -780,13 +882,11 @@ fn round(
             .map(|blocks| (blocks, st, Mutex::new(partials))),
         slopes: state.blocks(),
     };
-    let together = Arc::new(AtomicBool::new(false));
     let stalls: Vec<Stall> = run
         .iter()
         .map(|&i| Stall {
             goal: lanes[i].tolerance,
-            slow: Arc::clone(slow),
-            together: Arc::clone(&together),
+            slow: Arc::clone(&lanes[i].slow),
         })
         .collect();
     let escalate = mode == Mode::Escalate;
@@ -841,20 +941,18 @@ fn round(
             .into_inner()
             .unwrap_or_else(PoisonError::into_inner);
     }
-    let mut stalled = Vec::new();
     for (&i, result) in run.iter().zip(results) {
-        if let Some(x) = settle(job, (&mut lanes[i], result, values), work, facts)? {
-            stalled.push((i, x));
-        }
+        settle(job, (&mut lanes[i], result, values), work, facts)?;
     }
-    Ok(stalled)
+    Ok(())
 }
 
-/// One column's round result: its iterate handed back after an escalation
-/// (`Some`), else its certificate: a column that meets its goal and the
-/// certificate is solved; one that misses restarts from its iterate at a
-/// tolerance tightened by the shortfall; the last pass (or an exhausted
-/// budget) also succeeds at the acceptance rule.
+/// One column's round result, recorded in its lane: its iterate after a
+/// hand-off (escalation), else its certificate: a column that meets its
+/// goal and the certificate is solved; one that misses restarts from its
+/// iterate at a tolerance tightened by the shortfall; the last pass (or an
+/// exhausted budget) also succeeds at the acceptance rule, else declines.
+/// Cancellation and allocation failures end the projection.
 fn settle(
     job: &Job<'_, '_>,
     (lane, result, values): (
@@ -864,25 +962,28 @@ fn settle(
     ),
     work: &mut super::Work,
     facts: &mut Facts,
-) -> std::result::Result<Option<Vec<f64>>, Short> {
+) -> Result<()> {
     let result = match result {
         Ok(result) => result,
         Err(failure) => {
-            facts.iterations = facts.iterations.max(lane.spent + failure.iterations);
-            return Err(match failure.source {
-                SolveError::Cancelled => Short::Failed(Error::Cancelled),
-                SolveError::Allocation { .. } => Short::Failed(Error::OutOfMemory(
-                    "unable to reserve the modified LSMR workspace",
-                )),
-                _ => Short::Declined("modified LSMR broke down"),
-            });
+            lane.spent += failure.iterations;
+            match failure.source {
+                SolveError::Cancelled => return Err(Error::Cancelled),
+                SolveError::Allocation { .. } => {
+                    return Err(Error::OutOfMemory(
+                        "unable to reserve the modified LSMR workspace",
+                    ))
+                }
+                _ => lane.state = State::Declined("modified LSMR broke down"),
+            }
+            return Ok(());
         }
     };
     lane.spent += result.iterations;
     let budget = job.cap.saturating_sub(lane.spent);
-    facts.iterations = facts.iterations.max(lane.spent);
     if result.stop_reason == LsmrStopReason::Escalated && budget > 0 {
-        return Ok(Some(result.x));
+        lane.state = State::Handed(result.x);
+        return Ok(());
     }
     let started = Instant::now();
     let src = source(values, lane.j);
@@ -898,9 +999,7 @@ fn settle(
         None
     };
     if let (Some(fold), Some(status)) = (certified.fold, status) {
-        facts.column_iterations += lane.spent;
-        facts.accepted += usize::from(status == ColumnStatus::AcceptedAtFloor);
-        lane.solved = Some(Solved {
+        lane.state = State::Solved(Solved {
             x: result.x,
             reference: lane.scale,
             report: ColumnReport {
@@ -912,12 +1011,11 @@ fn settle(
             },
             fold,
         });
-        return Ok(None);
+        return Ok(());
     }
     if last {
-        return Err(Short::Declined(
-            "modified LSMR did not certify within its budget",
-        ));
+        lane.state = State::Declined("modified LSMR did not certify within its budget");
+        return Ok(());
     }
     // Tighten by the goal's shortfall, at least tenfold.
     let factor = if measure.is_finite() && measure > 1.0 {
@@ -928,5 +1026,5 @@ fn settle(
     lane.tolerance = (lane.tolerance * factor).max(f64::EPSILON);
     lane.pass += 1;
     lane.start = result.x;
-    Ok(None)
+    Ok(())
 }
