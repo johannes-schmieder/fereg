@@ -4617,6 +4617,124 @@ three of that profile's fixtures against the installed copy (`single_runtime`,
 qualification), live Break during Windows loading (waived 2026-11-07), Windows
 performance, and HTTP installation and release work.
 
+## Final Linux qualification (899fcf20)
+
+The final-source Linux check of Addendum 3, 2026-11-09/10, on SCC (run
+`run-20261109q`). Development evidence: nothing is pushed, published or
+written to `dist/`. The input was an offline snapshot of the exact clean
+commit `899fcf209518cdff0eb521b36f27aef178658980`: a shallow git checkout,
+so the staging tools see a clean source identity, and the
+`cargo vendor --locked --versioned-dirs` closure of the workspace and fuzz
+lock files. The emitted source replacement sits in the parent directory's
+`.cargo/config.toml`, outside the checkout, so tracked files stay unchanged.
+Cargo ran offline with an empty `CARGO_HOME` and fetched nothing. The vendored
+CMG matches the reviewed 368eceba inventory (`licenses/CMG-SOURCE.json`,
+126 files), and the build compiled it from that pin.
+
+| Job | Host | Work | SGE |
+| --- | --- | --- | --- |
+| 8547136 | scc-tb4 (E5-2660 v3) | build and staging | failed=0, exit 0 |
+| 8547137 | scc-tb4 | `run_tests.sh --package-root` | failed=0, exit 101 |
+| 8547138 | scc-va2 (E5-2680 v4) | licensed Stata | failed=0, exit 1 |
+| 8547445, 8547443, 8547456 | scc-tb4, scc-tb4, scc-pi2 | diagnosis | failed=0, exit 0 |
+
+Diagnosis attempts 8547397 and 8547398 were stopped by defects in their own
+scripts (a SIGPIPE in a version probe and a Stata log-name collision) and
+were rerun as 8547445 and 8547443. 8547442 was deleted before it started,
+to fix the witness's input order.
+
+**Build.** `scripts/build_linux.sh` (Rust 1.85.1, GCC 12.2): the ELF audit,
+the actual-plugin ABI/self-test harness and the numeric batch guard pass. The
+plugin has sha256
+`5f0467c4ed98259bd439e7180822cdfb75cd6bcae53e1b511485cd61aa6155e4`, is
+23,977,576 bytes and carries `899fcf209518`. Staged from a second, pristine
+checkout:
+- the candidate root package (`stage_local_install.py --root-package
+  --platform linux`);
+- the Linux-only release archive (`stage_release.py --platforms linux`, sha256
+  `486770345cf5f9017e8006582050a9c374c71a7124d211ab4668579154a77bb5`). Its
+  dependency audit (cargo-audit 0.22.1, run on the Mac for the same commit and
+  `Cargo.lock`) reports 0 advisories.
+
+**`scripts/run_tests.sh --package-root`**, with the SCC Python 3.12.4 module
+(NumPy 1.26.4, SciPy 1.14.0, pandas 2.2.2), fails: one Rust test fails.
+Everything before the Rust tests passes:
+- the preflight and all 361 Python tests, none skipped;
+- the package gate on the candidate (34 files, bound to `899fcf209518`);
+- the exact-FMA vectors and both exact-rational FE witnesses;
+- rustfmt, the locked fuzz check and both Clippy configurations.
+
+The entry point stops at the first failing test binary, so the remaining steps
+were also run to completion. This is a diagnostic run, not the strict gate:
+- 2,497 Rust results, of which 2,496 pass and 1 fails: 2,235 workspace results
+  with 5 ignored (fereg-core's library: 1,554 pass, 1 fails, 3 ignored), the
+  plugin's 249 FFI tests, and 13 allocator audits, each in a fresh process;
+- the portable and static checks (including the GCC analyzer), the ratchet, the
+  mock-SPI bridge, the numeric batch guard and the Linux mock-plugin audit all
+  pass.
+
+**Licensed Stata.**
+- **Whole tree** (Stata/MP 19, plugin staged alone): of 160 fixtures, 155 pass,
+  2 fail and 3 are not run. `staged_plugin_binary` and
+  `feppml_installation_smoke` need an extracted package and pass in the next
+  run; `windows_ci_smoke` needs Windows. `parallel_input_oracle` passes its
+  trace check (72 cases, 208 runs, 73 in the numeric window).
+- **`staged-install`** on the Linux archive: 12 of 12 pass.
+- **`older-stata`** on Stata/MP 15.1 failed (item 1 below) and passes after the
+  repair. SCC provides Stata/MP 15 through 19.
+
+**Failures.**
+1. **`replay_and_prefixes` on Stata 15.1: a fixture defect, repaired.** Since
+   `04bc478d`, the display check has expected Stata 17's header
+   `[90% conf. interval]`, but Stata 15 and 16 print `[90% Conf. Interval]`.
+   The check now expects the running release's exact header. The repaired
+   fixture passes on Stata/MP 15.1, 16.1, 17, 18 and 19 with the candidate
+   plugin.
+2. **`frozen_session_uses_standardized_qr_fallback_for_clear_weak_full_rank`
+   (fereg-core), Linux only; it passes on the Mac.**
+   - One bread entry differs between the retained and the one-shot route by
+     2.5e-12 relative (62,545.7295181558 vs 62,545.7295183098), against a
+     tolerance of 2e-12.
+   - The design is weak by construction (x2 = x1 ± 5e-4). κ(X′X) ≈ 5.5e9, so
+     κu ≈ 6e-7, far above the observed difference.
+   - Both routes' Givens rotations and QR norms use libm `hypot`, whose results
+     differ by platform. On a fixed set of 10^6 pairs, glibc 2.28 and macOS
+     libm give different results for 108,640 pairs. They return a value that is
+     not correctly rounded in 111,518 and 147,960 cases respectively (an exact
+     rational check).
+   - **Not changed.** The tolerance is a scientific assertion. Scaling it by
+     the condition proxy, as the same helper already does for the condition
+     proxy itself, needs Johannes's decision.
+3. **`ols_offset_slope_boundary` case 3 gives r(459), not r(430), at 1 and 4
+   workers.** Cases 1, 2 and 4 pass.
+   - The trace shows explicit LSMR certifying the first projection in 42
+     iterations and declining the second after 42. Only 84 of iterate(100)
+     are charged, so the MAP fallback runs and fails its check.
+     `iterate(1000)` charges the same 84.
+   - The Mac and Windows give r(430): LSMR spends the whole budget.
+   - fedemean's LSMR recurrence builds its Givens rotations with `f64::hypot`.
+   - The 10f4b633 Linux plugin gives the same outcome, so this predates Lane E
+     and `ffe95897`.
+   - **Open.** This is a platform-dependent discrete outcome. Either it is
+     declared, or the recurrence's `hypot` is made platform-independent (an
+     arithmetic change); either needs a decision.
+4. **`ols_weighted_schur` rank fallback with x17 = 2·x1.**
+   - Linux omits x1 (status 4) and keeps x17 (b = 0.49915). `regress`, the Mac
+     and the fixture keep x1 and omit x17.
+   - The rank (16), `df_r`, x18 (status 3), the route and the fallback flag
+     all agree, at 1, 4 and 16 workers.
+   - The 10f4b633 and the frozen `71fce764` Linux plugins choose the same
+     column, so the Linux behaviour is long-standing.
+   - The two columns tie in exact arithmetic, and the pivot rule prefers the
+     earlier column only within a few ulps. Rounding in the column norms most
+     likely decides the tie on Linux.
+   - **Not fixed.** Changing the omission behaviour needs Johannes's decision.
+
+Not covered on Linux: a `net install` of the candidate root package, the
+interactive Break fixtures, timing, and HTTP installation and release work.
+The regenerable source snapshot and build trees were removed after the jobs;
+the packages, logs and summaries remain on SCC.
+
 ## Package checks
 
 ### Beta.13 parallel input and parity packaging

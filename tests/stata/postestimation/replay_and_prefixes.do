@@ -166,7 +166,9 @@ program define check_model_display
         }
     }
     local ++row
-    local expected`row' "[90% conf. interval]"
+    * Stata 17 lowercased the coefficient table's interval header.
+    local expected`row' = cond(c(stata_version) >= 17, ///
+        "[90% conf. interval]", "[90% Conf. Interval]")
     local nclusters = cond(missing(e(N_clustervars)), 0, e(N_clustervars))
     forvalues i = 1/`nclusters' {
         local ++row
