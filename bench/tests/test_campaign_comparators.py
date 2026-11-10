@@ -117,5 +117,40 @@ class ComparatorEnvironment(unittest.TestCase):
             self.assertFalse(any('/compiled/' in name for name in listed))
 
 
+class CampaignStaging(unittest.TestCase):
+    def test_stage_records_inputs_and_hardware_launcher(self):
+        import hashlib
+        import io
+        import tarfile
+        from campaign_submit import stage
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            archive = root/'source.tar'
+            with tarfile.open(archive, 'w') as tar:
+                for name in ['bench/scc/setup.sh', 'bench/scc/job.sh', 'bench/campaign.json']:
+                    data = (HERE.parent/name).read_bytes()
+                    info = tarfile.TarInfo(name)
+                    info.size = len(data)
+                    tar.addfile(info, io.BytesIO(data))
+            digest = hashlib.sha256(archive.read_bytes()).hexdigest()
+            (root/'source.json').write_text(json.dumps(dict(commit='c'*40, dirty=False, archive_sha256=digest)))
+            (root/'frozen.json').write_text('{}')
+            (root/'policy.json').write_text('{"bundles": 1}')
+            run = root/'granite'
+            stage(run, archive, root/'source.json', root/'frozen.json', root/'policy.json', 'prefix', 32, 'omp32', '6737P')
+            job = (run/'job.sh').read_text()
+            self.assertIn('#$ -pe omp32 32\n', job)
+            self.assertIn('#$ -l num_proc=32,cpu_type=6737P\n', job)
+            listed = dict(reversed(line.split('  ', 1)) for line in (run/'input/SHA256SUMS').read_text().splitlines())
+            self.assertEqual(set(listed), {'input/source.tar', 'input/source.json', 'input/frozen-inputs.json',
+                                           'input/policy.json', 'setup.sh', 'job.sh'})
+            self.assertTrue(all(hashlib.sha256((run/name).read_bytes()).hexdigest() == value for name, value in listed.items()))
+            context = json.loads((run/'context.json').read_text())
+            self.assertEqual(context['resources']['production']['cpu_type'], '6737P')
+            self.assertEqual(context['launcher_sha256']['job.sh'], listed['job.sh'])
+            with self.assertRaises(FileExistsError):
+                stage(run, archive, root/'source.json', root/'frozen.json', None, 'prefix', 28, 'omp28')
+
+
 if __name__ == '__main__':
     unittest.main()

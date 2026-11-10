@@ -4,12 +4,13 @@
 Run on an SCC login node (staging and submission only; no workloads).
 
   stage ROOT --source-tar T --source-json J --frozen-inputs F [--policy P]
-        --export-prefix X [--slots 28 --pe omp28]
+        --export-prefix X [--plugin dist|build] [--slots 28 --pe omp28 --cpu-type CPU]
   submit ROOT --reference-root R --comparator-root C [--after JOB] [--smoke-only]
 
 `stage` creates a new run root with its input record, the launchers taken
 from the source archive and a sha256sum-format manifest (paths relative to
-the root). `submit` verifies that manifest from the root, then submits setup,
+the root); another whole-node size also sets the run's copy of job.sh,
+whose hash the context records. `submit` verifies that manifest from the root, then submits setup,
 smoke and the production array with -hold_jid, requiring a job id from every
 qsub and recording each in context.json before the next submission.
 """
@@ -39,7 +40,7 @@ def write_context(root, context):
     (root/'context.json').write_text(json.dumps(context, indent=2)+'\n')
 
 
-def stage(root, source_tar, source_json, frozen_inputs, policy, prefix, slots, pe):
+def stage(root, source_tar, source_json, frozen_inputs, policy, prefix, slots, pe, cpu_type=None, plugin='dist'):
     record = json.loads(Path(source_json).read_text())
     if record.get('dirty') or sha256(source_tar) != record['archive_sha256']:
         raise RuntimeError('source archive does not match its clean record')
@@ -57,17 +58,25 @@ def stage(root, source_tar, source_json, frozen_inputs, policy, prefix, slots, p
         for name in LAUNCHERS:
             (root/name).write_bytes(archive.extractfile('bench/scc/'+name).read())
             (root/name).chmod(0o755)
+    if slots != 28 or cpu_type:
+        # A hardware supplement reserves a different whole node; the launcher states it.
+        job = (root/'job.sh').read_text()
+        if '#$ -pe omp28 28\n' not in job or '#$ -l num_proc=28\n' not in job:
+            raise RuntimeError('unexpected job.sh resource header')
+        request = f'num_proc={slots}'+(f',cpu_type={cpu_type}' if cpu_type else '')
+        (root/'job.sh').write_text(job.replace('#$ -pe omp28 28\n', f'#$ -pe {pe} {slots}\n')
+                                   .replace('#$ -l num_proc=28\n', f'#$ -l {request}\n'))
     names += LAUNCHERS
     (root/'input/SHA256SUMS').write_text(''.join(f'{sha256(root/n)}  {n}\n' for n in names))
     write_context(root, dict(
         run_id=root.name, remote_root=str(root), source=record['commit'], source_sha256=record['archive_sha256'],
-        host_observation_required=True, plugin='dist', export_prefix=prefix,
+        host_observation_required=True, plugin=plugin, export_prefix=prefix,
         launcher_sha256={name: sha256(root/name) for name in LAUNCHERS},
         sampling_policy='One frozen schedule; no timing retries or interference exclusions; '
                         'complete reservation and passive observation; retain all failures.',
         resources=dict(setup=dict(slots=4, pe='omp', mem_per_core='4G', h_rt='02:00:00'),
-                       smoke=dict(slots=slots, pe=pe), production=dict(slots=slots, pe=pe, h_rt='12:00:00',
-                                                                       mem_per_core='3G'))))
+                       smoke=dict(slots=slots, pe=pe, cpu_type=cpu_type),
+                       production=dict(slots=slots, pe=pe, cpu_type=cpu_type, h_rt='12:00:00', mem_per_core='3G'))))
     print('CAMPAIGN_STAGED', root)
 
 
@@ -92,13 +101,14 @@ def submit(root, reference_root, comparator_root, after, smoke_only):
     slots, pe = whole['slots'], whole['pe']
     hold = ['-hold_jid', after] if after else []
     common = (f'RUN_ROOT={root},REFERENCE_ROOT={reference_root},COMPARATOR_ROOT={comparator_root},'
-              'CAMPAIGN_PLUGIN=dist,CAMPAIGN_REUSE_ENVIRONMENT=1')
+              f"CAMPAIGN_PLUGIN={context['plugin']},CAMPAIGN_REUSE_ENVIRONMENT=1")
     context['reference_root'], context['comparator_root'] = str(reference_root), str(comparator_root)
     setup = qsub(['-N', 'frc_setup', '-pe', 'omp', '4', '-l', 'mem_per_core=4G,h_rt=02:00:00', *hold,
                   '-v', common, '-o', str(root/'logs/setup.sge'), str(root/'setup.sh')])
     context['setup_job'] = setup
     write_context(root, context)
-    resources = ['-pe', pe, str(slots), '-l', f'num_proc={slots},mem_per_core=3G,h_rt=12:00:00']
+    request = f'num_proc={slots},mem_per_core=3G,h_rt=12:00:00'+(f",cpu_type={whole['cpu_type']}" if whole.get('cpu_type') else '')
+    resources = ['-pe', pe, str(slots), '-l', request]
     smoke = qsub(['-N', 'frc_smoke', *resources, '-hold_jid', setup, '-v',
                   f'RUN_ROOT={root},MODE=smoke,UPSTREAM_JOB={setup},EXPECTED_SLOTS={slots}',
                   '-o', str(root/'logs/smoke.sge'), str(root/'job.sh')])
@@ -132,6 +142,9 @@ if __name__ == '__main__':
     command.add_argument('--export-prefix', required=True)
     command.add_argument('--slots', type=int, default=28)
     command.add_argument('--pe', default='omp28')
+    command.add_argument('--cpu-type', help='CPU model of a hardware supplement, for example 6737P')
+    command.add_argument('--plugin', choices=['dist', 'build'], default='dist',
+                         help="measure the archive's checksummed dist/ binary, or build it in setup")
     command = commands.add_parser('submit')
     command.add_argument('root', type=Path)
     command.add_argument('--reference-root', type=Path, required=True)
@@ -141,6 +154,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
     if args.command == 'stage':
         stage(args.root, args.source_tar, args.source_json, args.frozen_inputs, args.policy, args.export_prefix,
-              args.slots, args.pe)
+              args.slots, args.pe, args.cpu_type, args.plugin)
     else:
         submit(args.root, args.reference_root, args.comparator_root, args.after, args.smoke_only)
