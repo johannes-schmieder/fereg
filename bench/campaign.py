@@ -79,6 +79,8 @@ def configurations(smoke=False, select=True):
         for model in ['ols','ppml']:
             for vce in (['iid','robust','cluster'] if model=='ols' else ['robust','cluster']):
                 add(model,rows=1200,vce=vce,save_fe=True,section='smoke')
+                # reghdfejl's Poisson route runs only without saved effects.
+                if model=='ppml':add(model,rows=1200,vce=vce,section='smoke')
             for design in ['two-sparse','three-dense','three-sparse','akm-clustered',*(['gravity'] if model=='ppml' else [])]:
                 add(model,design,rows=1200,save_fe=True,section='smoke')
             add(model,'no-fe',rows=1200,section='smoke')
