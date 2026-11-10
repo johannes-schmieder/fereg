@@ -17,19 +17,20 @@
 /// does not depend on the platform, the processor's features or the
 /// optimization level.
 ///
-/// - **Accuracy.** The result is the correctly rounded `√(x² + y²)`, or one
-///   of its two neighbours when the exact value lies within about `2⁻¹⁰⁰` of
-///   a value of its own magnitude from a rounding boundary: never more than
-///   one ulp from correct rounding. The unit tests check this bound by exact
-///   integer arithmetic on random and adversarial pairs. Results that
-///   overflow are `+∞`; subnormal results are rounded once more on the
-///   subnormal grid.
+/// - **Accuracy.** A normal result is the correctly rounded `√(x² + y²)`
+///   unless the exact value lies within a relative distance of about `2⁻¹⁰⁰`
+///   of a rounding boundary, where it may be a neighbour of it; a subnormal
+///   result is rounded a second time on the subnormal grid. Either way it is
+///   never more than one ulp from correct rounding, which the unit tests
+///   check by exact integer arithmetic on random and adversarial pairs.
+///   Results that overflow are `+∞`.
 /// - **Special values.** Symmetric in its arguments and their signs.
 ///   `hypot(±∞, y)` is `+∞` even for a NaN `y`; otherwise a NaN argument
 ///   gives the canonical NaN; `hypot(x, ±0)` is `|x|`.
 /// - **Method.** After exact scaling of the larger magnitude `a` into `[1, 2)`,
-///   `a² + b²` is formed without error as a double-length sum (Dekker's exact
-///   products with Veltkamp's splitting), its rounded square root `r` is
+///   `a² + b²` is formed to about twice the working precision as a
+///   double-length sum (Dekker's exact products with Veltkamp's splitting),
+///   its rounded square root `r` is
 ///   corrected once by `(a² + b² − r²) / 2r` with `r²` formed exactly too,
 ///   and the result is scaled back. When `b ≤ 2⁻²⁸ a` the correctly rounded
 ///   result is `a` and is returned directly.
