@@ -1,18 +1,5 @@
 {
-  "growth": [
-    {
-      "after": 119397,
-      "before": 119374,
-      "metric": "fereg-core/production_lines",
-      "reason": "Deterministic pivot ties in the retained QR (finite_wls_kernel.rs): pivot_tie_band (max(64, rows + columns) ulps of the largest standardized column norm, the rounding of the computed norms) and tied_pivot (the earliest canonical candidate within that band of the largest trailing norm, never at or below the rank threshold), replacing the running pairwise 64-ulp comparison inside factor_rank_revealing_retained_qr (which shrinks from 224 to 218 lines); SPEC section 8, decided by Johannes 2026-11-10."
-    },
-    {
-      "after": 2305,
-      "before": 2282,
-      "metric": "file/crates/fereg-core/src/ols/finite_wls_kernel.rs",
-      "reason": "The pivot tie band and the tied-pivot selection of the retained QR (SPEC section 8), as for fereg-core/production_lines."
-    }
-  ],
+  "growth": [],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
   "inventory": {
     "files": {
@@ -3069,23 +3056,23 @@
         "dispatch_candidates": [],
         "functions": {
           "biased_exponent#1": {
-            "line": 110,
+            "line": 111,
             "lines": 3
           },
           "exact_square#1": {
-            "line": 101,
+            "line": 102,
             "lines": 8
           },
           "hypot#1": {
-            "line": 37,
+            "line": 38,
             "lines": 37
           },
           "pow2#1": {
-            "line": 115,
+            "line": 116,
             "lines": 8
           },
           "scaled_hypot#1": {
-            "line": 87,
+            "line": 88,
             "lines": 12
           }
         },
