@@ -4496,6 +4496,60 @@ Not covered: Linux and Windows builds and qualification, Intel Macs, the
 corresponding-source archive (the candidate's notices omit the vendored
 license texts), HTTP installation and release work.
 
+## Final Mac qualification (899fcf20)
+
+The final-source Mac check of Addendum 3, 2026-11-10, on `899fcf20` (runtime
+change `ffe95897` since `1577e7af`). Development evidence: nothing is pushed,
+published or written to `dist/`.
+
+**Candidate.** Built from a clean worktree of `899fcf20` with
+`scripts/build_macos.sh` and the remaps of the
+[Mac build instructions](macos_source_build.md) (Rust 1.85.1, offline):
+universal x86_64/arm64 plugin, sha256
+`567b1cb184221806bbb097f6186fd441ee186968ad33d1e788e00dfbcd923927`,
+33,655,552 bytes, commit string `899fcf209518`. The binary audit and the
+actual ABI/selftest/panic harness pass. It was staged with
+`stage_local_install.py --root-package --platform macos`.
+
+**`scripts/run_tests.sh --package-root`** (Anaconda Python 3.12.2 via
+`FEREG_PYTHON_BIN`) passes. That covers the environment preflight, 361 Python
+tests with none skipped, and the package gate on the candidate (34 files,
+runtime bound to `899fcf209518`). It covers 2,502 Rust test results with none
+failing: fereg-core's library 1,555, the plugin's 243 FFI tests, and its 13
+allocator audits, each in a fresh process. Both Clippy configurations,
+rustfmt, the locked fuzz check, the ratchet, and the portable, static and
+mock-SPI checks pass too. The Linux mock-plugin audit needs a GNU ELF linker
+and is not run on the Mac.
+
+**Whole-tree Stata run** (Stata/MP 19, candidate plugin staged alone): of 160
+fixtures, 157 pass, 0 fail and 3 are not run. The three are
+`staged_plugin_binary` and `feppml_installation_smoke`, which need an
+extracted release package and pass below, and `windows_ci_smoke`, which needs
+Windows. `ols_offset_slope_boundary` passes all four cases: case 2 gives
+r(459) and case 3 r(430), each at 1 and 4 workers with rollback.
+`parallel_input_oracle` passes its trace check (72 cases, 208 runs, 73 in the
+numeric window).
+
+**Installed package.** The macOS-only release archive passes all 12
+`staged-install` fixtures on Stata/MP 19. It was made with
+`stage_release.py --platforms macos` (sha256
+`32e95e4546f2d972f4b802464ce5e6d350583cbbc9ed53938e3764e6cd4b1455`), and its
+dependency audit found 0 advisories. A `net install` of the staged root into
+isolated PLUS/PERSONAL/OLDPLACE/SITE directories installs the package's 34
+files byte for byte and nothing else. `fereg.ado`, `feppml.ado` and the
+plugin resolve from that PLUS, and selftest reports `899fcf209518`. The
+independent comparisons give 9.0e-16 (OLS b and SE against `regress` with
+dummies for two effects) and 1.4e-12 (PPML b against `poisson` with dummies).
+Eleven installation and postestimation fixtures pass against the installed
+copy alone, and the installed bytes are unchanged afterwards. They are the 10
+of the `staged-install` profile that need no extracted package, plus
+`staged_plugin_binary` pointed at the installed directory. The `older-stata`
+profile (`replay_and_prefixes`) passes on Stata/MP 18. Stata 15 and 17 do not
+start on this Mac, so Linux covers Stata 15.1.
+
+Not covered here: Linux and Windows qualification (separate lanes), Intel
+Macs, the corresponding-source archive, HTTP installation and release work.
+
 ## Package checks
 
 ### Beta.13 parallel input and parity packaging
