@@ -34,7 +34,15 @@ PYFIXEST_ARMS = list(POLICY['pyfixest'])
 PYFIXEST_STRICT_ARMS = [f'{arm}-strict' for arm in PYFIXEST_ARMS] if 'pyfixest_strict_tolerance' in POLICY else []
 # FixedEffectModels.jl at its default tolerance and at 1e-10 (linear models only).
 JULIA_ARMS = ['julia','julia-strict'] if 'julia' in POLICY else []
-STATA_REFERENCES = ['reghdfe','ppmlhdfe','areg']
+# GLFixedEffectModels.jl (Poisson, log link) in its own pinned environment, at its
+# default stopping rules and at the policy's strict ones (PPML with absorbed effects).
+GLJULIA_ARMS = ['glfixedeffects','glfixedeffects-strict'] if 'julia_ppml' in POLICY else []
+# reghdfejl: FixedEffectModels.jl (OLS) or GLFixedEffectModels.jl (PPML) through
+# its pinned Stata/Julia bridge, inside the same Stata process and timer as reghdfe.
+REGHDFEJL_ARMS = ['reghdfejl'] if 'reghdfejl' in POLICY else []
+STATA_REFERENCES = ['reghdfe','ppmlhdfe','areg',*REGHDFEJL_ARMS]
+# PPML arms whose package counts every FE level; capture() maps the count to the FE span.
+LEVEL_COUNT_PPML_ARMS = {*GLJULIA_ARMS,*REGHDFEJL_ARMS}
 # Reported absorbed/residual counts follow each package's convention; see agreement().
 COUNT_CONVENTIONS = {'absorbed_dof','residual_dof','correction_dof'}
 
@@ -112,9 +120,15 @@ def controls_suffix(cell):
 
 def arms(cell):
     if 'arms' in cell: return list(cell['arms'])
+    # Neither GLFixedEffectModels.jl nor reghdfejl's nonlinear route fits a
+    # Poisson model without absorbed effects.
+    absorbing = cell['model']=='ols' or cell['effects']>0
     result = ['fereg','fixest',*PYFIXEST_ARMS]
     if cell['model']=='ols': result.extend(JULIA_ARMS)
+    elif absorbing: result.extend(GLJULIA_ARMS[:1])
     if cell['threads']<=4: result.append('reghdfe' if cell['model']=='ols' else 'ppmlhdfe')
+    # reghdfejl runs where reghdfe and ppmlhdfe do, within the Stata license.
+    if cell['threads']<=4 and absorbing: result.extend(REGHDFEJL_ARMS)
     # Stata 19 areg absorbs several categorical effects for linear models; it
     # cannot save individual effects, and Stata is licensed for four cores.
     if cell['model']=='ols' and cell['threads']<=4 and not cell['save_fe']:
@@ -122,6 +136,7 @@ def arms(cell):
     if (cell['model']=='ppml' and cell['design'] in STRICT_PPML_DESIGNS and cell['rows']==1000000
             and cell['threads']==4) or cell['model']=='ols' or cell['section']=='smoke':
         result.extend(['fixest-strict',*PYFIXEST_STRICT_ARMS])
+        if cell['model']=='ppml' and absorbing: result.extend(GLJULIA_ARMS[1:])
     return result
 
 
@@ -138,8 +153,11 @@ def dataset_key(cell):
 # balance bundles (beta.7 SCC medians, rounded). Each fresh process also loads
 # its input, and a timeout stops a command's later repetitions and sizes.
 PACKING_SECONDS = {'fereg':2,'fixest':3,'fixest-strict':4,'pyfixest-within':3,'pyfixest-within-strict':4,
-                   'julia':3,'julia-strict':4,
-                   'reghdfe':25,'areg':25,'ppmlhdfe':90}
+                   'julia':3,'julia-strict':4,'glfixedeffects':5,'glfixedeffects-strict':7,
+                   'reghdfe':25,'areg':25,'ppmlhdfe':90,'reghdfejl':6}
+# Per-process start, package loading and warm-up beyond the timed command
+# (beta.15 and November 6 SCC smoke wall medians, rounded up); others take 10.
+PROCESS_SECONDS = {'julia':20,'julia-strict':20,'glfixedeffects':20,'glfixedeffects-strict':20,'reghdfejl':30}
 
 
 DESIGN_COST = {'akm-clustered':2,'gravity':4}
@@ -160,7 +178,7 @@ def estimated_seconds(cell):
     for arm in arms(cell):
         command = PACKING_SECONDS[arm]*scale*(cell.get('regressors',16)/16)**.5
         if command>=command_timeout(arm): total += command_timeout(arm)
-        else: total += cell['repetitions']*(command+10+5*cell['rows']/1e6)
+        else: total += cell['repetitions']*(command+PROCESS_SECONDS.get(arm,10)+5*cell['rows']/1e6)
     return total
 
 
@@ -457,13 +475,29 @@ def execute(command, directory, cpus, timeout, command_limit=None):
                 command_timeout_seconds=command_limit,process_timeout_seconds=timeout,**memory)
 
 
-def absorbed_rank(metadata, cell, frame):
+def fe_span_rank(frame, effects):
+    """FE-span rank in the smoke oracle's pairwise convention: the first
+    effect's levels plus, for each later effect, its levels less the connected
+    components of its bipartite graph with the first (exact for two effects)."""
+    codes=[pd.factorize(frame[f'g{j}'])[0] for j in range(1,effects+1)]
+    first=int(codes[0].max()+1);rank=first
+    for code in codes[1:]:
+        levels=int(code.max()+1)
+        graph=sparse.coo_matrix((np.ones(len(code),dtype=np.int8),(codes[0],code+first)),shape=(first+levels,)*2)
+        rank+=levels-connected_components(graph,directed=False)[0]
+    return rank
+
+
+def absorbed_rank(metadata, cell, frame, selected=None):
     """Put categorical PPML nuisance counts in the common full FE span.
 
     Native PPML transfers one intercept direction to structural coordinates
     (ppml/result.rs); clustered Stata counts exclude the nested worker FE.
     fixest's PPML count retains the full nuisance span with K.adj disabled.
-    Raw published counts remain in every observation's metadata and capture.
+    GLFixedEffectModels.jl, directly or through reghdfejl, counts every
+    retained level; that count is verified and mapped to the span of the same
+    retained rows. Raw published counts remain in every observation's metadata
+    and capture.
     """
     rank=float(metadata['df_a'])
     if cell.get('effects')==0:
@@ -472,6 +506,11 @@ def absorbed_rank(metadata, cell, frame):
         # areg reports the intercept outside e(df_a); reghdfe counts it there.
         rank+=1
     if cell['model']!='ppml':return rank
+    if metadata.get('arm') in LEVEL_COUNT_PPML_ARMS:
+        retained=frame if selected is None else frame[selected]
+        if rank!=sum(retained[f'g{j}'].nunique() for j in range(1,cell['effects']+1)):
+            raise ValueError('unverified PPML level count')
+        return float(fe_span_rank(retained,cell['effects']))
     native=metadata.get('native_arm')=='1'
     stata=native or metadata['covariance_policy'].startswith('stock-ppml-')
     if native:rank+=1
@@ -515,7 +554,7 @@ def capture(directory, cell, frame, metadata):
                 omitted=['o.'+name for name in omitted],
                 publication_omitted=[name for name in b if name.startswith('o.')],retained_all=bool(selected.all()),
                 finite_slope_rank=len(finite),singleton_deletions=0,separation_deletions=int((~selected).sum()),
-                covariance_policy=metadata['covariance_policy'],absorbed_dof=absorbed_rank(metadata,cell,frame),
+                covariance_policy=metadata['covariance_policy'],absorbed_dof=absorbed_rank(metadata,cell,frame,selected),
                 reported_absorbed_dof=float(metadata['df_a']),
                 clusters=clusters)
     if cell['model']=='ols':
@@ -592,9 +631,29 @@ def fit(root, cell, arm, repetition, frame, cpus):
         save_fe=int(cell['save_fe']),vce=cell['vce'],tolerance='',clock_plugin=root/'environment/command-clock.plugin')
     if arm in JULIA_ARMS:
         settings.update(julia_version=POLICY['julia']['julia'],fixedeffectmodels=POLICY['julia']['FixedEffectModels'])
+    if arm in GLJULIA_ARMS:
+        pin=POLICY['julia_ppml']
+        settings.update(julia_version=pin['julia'],glfixedeffectmodels=pin['GLFixedEffectModels'],
+                        fixedeffectmodels=pin['FixedEffectModels'])
+        if arm.endswith('-strict'):
+            settings.update({'strict_'+key:value for key,value in POLICY['julia_ppml_strict'].items()})
+    bridge=None
+    if arm in REGHDFEJL_ARMS:
+        # Paths and versions of the run's private bridge environment (campaign_environment.py).
+        bridge=json.loads((root/'environment/reghdfejl/versions.json').read_text())
+        pin=POLICY['reghdfejl']
+        if any(bridge[key]!=pin[key] for key in pin):raise RuntimeError('reghdfejl environment differs from its pin')
+        settings.update(reghdfejl_refs=bridge['refs'],reghdfejl_lib=bridge['lib'],reghdfejl_channel=pin['julia'],
+                        reghdfejl_julia_version=pin['julia'],reghdfejl_fem_version=pin['FixedEffectModels'],
+                        reghdfejl_glfem_version=pin['GLFixedEffectModels'])
     write_configuration(directory,settings)
     if arm.startswith('fixest'):
         command=['Rscript',str(HERE/'campaign_r.R'),str(directory/'config.tsv')]
+    elif arm in GLJULIA_ARMS:
+        # Its own depot: GLFixedEffectModels 0.5.6 resolves FixedEffectModels 1.13.3.
+        command=['env',f"JULIA_DEPOT_PATH={root/'environment/julia-ppml-depot'}",
+                 os.environ.get('JULIA_BIN','julia'),'--startup-file=no',f"--threads={cell['threads']}",
+                 f"--project={root/'environment/julia-ppml'}",str(HERE/'campaign_gljulia.jl'),str(directory/'config.tsv')]
     elif arm in JULIA_ARMS:
         # JULIA_DEPOT_PATH (set by the job) holds the instantiated, precompiled pins.
         command=[os.environ.get('JULIA_BIN','julia'),'--startup-file=no',f"--threads={cell['threads']}",
@@ -606,6 +665,10 @@ def fit(root, cell, arm, repetition, frame, cpus):
         command_file=directory/'command.do'
         command_file.write_text(f'do "{HERE}/campaign_stata.do" "{directory}/config.do"\n')
         command=[os.environ.get('STATA_BIN','stata-mp'),'-b','do',str(command_file)]
+    if bridge:
+        # jl locates libjulia through `julia +CHANNEL`; the shim admits only the pinned runtime.
+        command=['env',f"PATH={bridge['bin']}:{os.environ['PATH']}",f"JULIA_DEPOT_PATH={bridge['depot']}",
+                 'JULIA_PKG_OFFLINE=true',*command]
     observation=execute(command,directory,cpus[:cell['threads']],process_timeout(arm),command_timeout(arm))
     meta=read_metadata(directory/'metadata.tsv')
     meta['native_arm']='1' if arm=='fereg' else '0'

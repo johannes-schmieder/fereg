@@ -1,0 +1,105 @@
+{
+  "reghdfejl_commit": "e22427e7773d4b231d79d052282b2b5dfef09abc",
+  "bridge_commit": "846fd5859fd9272f4b645612a12b77a266b60a24",
+  "julia_version": "1.12.7",
+  "fixedeffectmodels_version": "1.13.3",
+  "files": {
+    "reghdfejl.ado": {
+      "url": "https://raw.githubusercontent.com/droodman/reghdfejl/e22427e7773d4b231d79d052282b2b5dfef09abc/reghdfejl.ado",
+      "sha256": "ed8ef6754a2f25e3b5e4adb955bee22730ee59e85687df76cae62b04fca06334"
+    },
+    "reghdfejl_p.ado": {
+      "url": "https://raw.githubusercontent.com/droodman/reghdfejl/e22427e7773d4b231d79d052282b2b5dfef09abc/reghdfejl_p.ado",
+      "sha256": "a0e6a8ee8b9a0d4066b20a6ae4e60ed2a9e8510b12dd26047885edaffa1907e5"
+    },
+    "reghdfejl_estat.ado": {
+      "url": "https://raw.githubusercontent.com/droodman/reghdfejl/e22427e7773d4b231d79d052282b2b5dfef09abc/reghdfejl_estat.ado",
+      "sha256": "0a75e6df120f5e45e0a6535286ea9dbf6ff53ab4899ce71a05e6198e8e26f459"
+    },
+    "reghdfejl.sthlp": {
+      "url": "https://raw.githubusercontent.com/droodman/reghdfejl/e22427e7773d4b231d79d052282b2b5dfef09abc/reghdfejl.sthlp",
+      "sha256": "eee9b54f3a471432615e5745fe601ecc048e1a792245e031a44972f8b08ceedf"
+    },
+    "reghdfejl_masker.ado": {
+      "url": "https://raw.githubusercontent.com/droodman/reghdfejl/e22427e7773d4b231d79d052282b2b5dfef09abc/reghdfejl_masker.ado",
+      "sha256": "ec246710c3d958c9f3c6542b48f583cd114ca6651ec85edd7f64ad6865c6c654"
+    },
+    "reghdfejl_load.ado": {
+      "url": "https://raw.githubusercontent.com/droodman/reghdfejl/e22427e7773d4b231d79d052282b2b5dfef09abc/reghdfejl_load.ado",
+      "sha256": "2f44078926ef7cda0f6566b1ff02513a53c33cb2009e271dddfd3413222b1954"
+    },
+    "reghdfejl_parse_absorb.ado": {
+      "url": "https://raw.githubusercontent.com/droodman/reghdfejl/e22427e7773d4b231d79d052282b2b5dfef09abc/reghdfejl_parse_absorb.ado",
+      "sha256": "eeb197a881e719537e6fd3a5f64def11d8bf3fc4004e68f752bbb14f33549eb0"
+    },
+    "partialhdfejl.ado": {
+      "url": "https://raw.githubusercontent.com/droodman/reghdfejl/e22427e7773d4b231d79d052282b2b5dfef09abc/partialhdfejl.ado",
+      "sha256": "3f3e626b22a04315fa5f44ca999c2469003fa7b3d3ae8c9a04c676e03ddba377"
+    },
+    "reghdfejl_project.toml": {
+      "url": "https://raw.githubusercontent.com/droodman/reghdfejl/e22427e7773d4b231d79d052282b2b5dfef09abc/reghdfejl_project.toml",
+      "sha256": "f914557d2bbcd8eb078077750d1873af15c031ab3d8f8c6508ba489b5535b983"
+    },
+    "reghdfejl_manifest.toml": {
+      "url": "https://raw.githubusercontent.com/droodman/reghdfejl/e22427e7773d4b231d79d052282b2b5dfef09abc/reghdfejl_manifest.toml",
+      "sha256": "4c0b5dd09b20087fa396b0b4d093b96045e8872da1f166c9b65ebd12d83592dd"
+    },
+    "jl.ado": {
+      "url": "https://raw.githubusercontent.com/droodman/julia.ado/846fd5859fd9272f4b645612a12b77a266b60a24/jl.ado",
+      "sha256": "ae3a7dea67774481b061684fa8b7d1915cc602e469166d57f0bb1e7ee871f7aa"
+    },
+    "_jl.ado": {
+      "url": "https://raw.githubusercontent.com/droodman/julia.ado/846fd5859fd9272f4b645612a12b77a266b60a24/_jl.ado",
+      "sha256": "67e2d3db6b224c532c2edaec9cacd5fe626ee75316b6d1d60dbca17ccc917f16"
+    },
+    "jl.sthlp": {
+      "url": "https://raw.githubusercontent.com/droodman/julia.ado/846fd5859fd9272f4b645612a12b77a266b60a24/jl.sthlp",
+      "sha256": "0a067ff727c33d48d91a84f2bc26d2d9e5c1478db281cca540f38d120d40da1c"
+    },
+    "stataplugininterface.jl": {
+      "url": "https://raw.githubusercontent.com/droodman/julia.ado/846fd5859fd9272f4b645612a12b77a266b60a24/stataplugininterface.jl",
+      "sha256": "758231933d6d499349e9db1ccf96e86975218807c4378f5707c02ee207835b5a"
+    },
+    "jl_project.toml": {
+      "url": "https://raw.githubusercontent.com/droodman/julia.ado/846fd5859fd9272f4b645612a12b77a266b60a24/jl_project.toml",
+      "sha256": "90885e63a0e5986f76b2fcbb59a453f93dd6014baee4a9cf908f24dd65d62c8a"
+    },
+    "jl_manifest.toml": {
+      "url": "https://raw.githubusercontent.com/droodman/julia.ado/846fd5859fd9272f4b645612a12b77a266b60a24/jl_manifest.toml",
+      "sha256": "6a0e1e47639cfec6231f49f2cc2eae4f701684fb389e3cfc272f6865f7d031e7"
+    },
+    "jl.plugin": {
+      "url": "https://raw.githubusercontent.com/droodman/julia.ado/846fd5859fd9272f4b645612a12b77a266b60a24/jl.pluginLINUX64",
+      "sha256": "9188f5c4ec314d1d189638239993c3484d3b5dce6412f4b26d115fbadcfef85a"
+    },
+    "cpp/julia.ado.cpp": {
+      "url": "https://raw.githubusercontent.com/droodman/julia.ado/846fd5859fd9272f4b645612a12b77a266b60a24/cpp/julia.ado.cpp",
+      "sha256": "d137dcf3eb9ef1b0642d20618c7c15af2e9c056793fd5bf184bbeecfb986884e"
+    },
+    "cpp/stplugin.c": {
+      "url": "https://raw.githubusercontent.com/droodman/julia.ado/846fd5859fd9272f4b645612a12b77a266b60a24/cpp/stplugin.c",
+      "sha256": "ab694f53e30a404bbfbe59d301a81b8bc59eeecf84bc5427eb65cbf0c5020d6d"
+    },
+    "cpp/stplugin.h": {
+      "url": "https://raw.githubusercontent.com/droodman/julia.ado/846fd5859fd9272f4b645612a12b77a266b60a24/cpp/stplugin.h",
+      "sha256": "0d32086bfb7a621e30ed7fefa41b351b6733bb4561da28a4c581580d62c64e8b"
+    }
+  },
+  "julia_archive": {
+    "url": "https://julialang-s3.julialang.org/bin/linux/x64/1.12/julia-1.12.7-linux-x86_64.tar.gz",
+    "sha256": "4e7e9e776634d24835250de67cde39b0d4af15bc432eb20697e6be6c28ea69e8"
+  },
+  "linux_bridge_build": {
+    "reason": "Published binary requires GLIBC_2.34, unavailable on SCC compute nodes",
+    "compiler_module": "gcc/12.2.0",
+    "flags": [
+      "-shared",
+      "-fPIC",
+      "-DSYSTEM=OPUNIX",
+      "-std=c++11",
+      "-static-libstdc++",
+      "-static-libgcc"
+    ],
+    "source_unchanged": true
+  }
+}

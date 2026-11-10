@@ -71,6 +71,8 @@ PY
 cd "$RUN_ROOT/source"
 bash bench/scc/pyfixest_environment.sh "$RUN_ROOT/environment" > "$RUN_ROOT/logs/pyfixest-environment.log" 2>&1
 bash bench/scc/julia_environment.sh "$RUN_ROOT/environment" > "$RUN_ROOT/logs/julia-environment.log" 2>&1
+# GLFixedEffectModels.jl and reghdfejl: private layers over a verified, reused root.
+python3 bench/campaign_environment.py link "$RUN_ROOT" "${COMPARATOR_ROOT:?}" > "$RUN_ROOT/logs/comparator-environment.log" 2>&1
 python3 bench/campaign.py prepare "$RUN_ROOT"
 Rscript -e 'library(fixest);library(foreign);library(jsonlite);library(digest);writeLines(toJSON(as.list(setNames(vapply(loadedNamespaces(),find.package,character(1)),loadedNamespaces())),auto_unbox=TRUE),file.path(Sys.getenv("RUN_ROOT"),"environment/r-package-paths.json"))'
 python3 - "$RUN_ROOT" <<'PY'
@@ -92,6 +94,9 @@ paths=[r/'source/dist/fereg_linux.plugin',r/'environment/command-clock.plugin',
        *sorted((r/'environment/julia').rglob('*')),*sorted((depot/'packages').rglob('*')),
        *sorted((depot/'artifacts').rglob('*')),
        *sorted((r/'source/bench').rglob('*')),r/'manifest.json',r/'input/frozen-inputs.json',r/'input/policy.json']
+sys.path.insert(0,str(r/'source/bench'))
+from campaign_environment import frozen_files
+paths.extend(frozen_files(r/'environment'))
 for folder in json.loads((r/'environment/r-package-paths.json').read_text()).values():
     paths.extend(sorted(pathlib.Path(folder).rglob('*')))
 paths.extend(pathlib.Path(shutil.which(name)).resolve() for name in ['stata-mp','Rscript','julia'])

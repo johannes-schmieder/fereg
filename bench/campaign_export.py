@@ -25,7 +25,8 @@ FIELDS = ['cell', 'arm', 'repetition', 'status', 'host', 'job', 'task', 'process
 # fereg's own phase clocks (OLS) and total; they may nest and must not be summed.
 METADATA = ['preflight_seconds', 'input_seconds', 'native_seconds', 'total_seconds',
             'warm_seconds', 'iterations', 'tolerance', 'fereg_threads', 'feppml_threads', 'fixest_version',
-            'pyfixest_version', 'pyfixest_commit', 'julia_version', 'fixedeffectmodels_version']
+            'pyfixest_version', 'pyfixest_commit', 'julia_version', 'fixedeffectmodels_version',
+            'glfixedeffectmodels_version', 'covariance_multiplier', 'll_package', 'separation_policy']
 
 
 def digest(path):
@@ -116,6 +117,14 @@ def export(root, report, output, prefix):
                                         if r.get('metadata', {}).get('fixest_version')}))
     if 'julia' in manifest['policy']:
         pins['julia_manifest_sha256'] = digest(root/'environment/julia/Manifest.toml')
+    if 'julia_ppml' in manifest['policy']:
+        pins.update(julia_ppml=manifest['policy']['julia_ppml'],
+                    julia_ppml_manifest_sha256=digest(root/'environment/julia-ppml/Manifest.toml'))
+    if 'reghdfejl' in manifest['policy']:
+        bridge = json.loads((root/'environment/reghdfejl/versions.json').read_text())
+        pins.update(reghdfejl=manifest['policy']['reghdfejl'], reghdfejl_pins_sha256=bridge['pins_sha256'],
+                    reghdfejl_bridge_plugin_sha256=bridge['bridge_plugin_sha256'],
+                    reghdfejl_environment_root=bridge.get('environment_root'))
     metadata = dict(
         schema=2, run_id=context['run_id'], remote_root=context['remote_root'], purpose=manifest['policy']['purpose'],
         source_commit=context['source'], source_archive_sha256=context['source_sha256'],

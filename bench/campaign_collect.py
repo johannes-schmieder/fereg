@@ -75,6 +75,10 @@ def collect(context_path, output):
     if 'julia' in policy:
         files += ['environment/julia-versions.json', 'environment/julia/Project.toml',
                   'environment/julia/Manifest.toml', 'logs/julia-environment.log']
+    if 'julia_ppml' in policy or 'reghdfejl' in policy:
+        files += ['environment/julia-ppml-versions.json', 'environment/julia-ppml/Project.toml',
+                  'environment/julia-ppml/Manifest.toml', 'environment/reghdfejl/versions.json',
+                  'logs/comparator-environment.log']
     if context.get('plugin', 'build') == 'build':
         files.append('logs/dependency-fetch.log')
     bundles = policy['bundles']

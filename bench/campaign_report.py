@@ -31,10 +31,12 @@ ARM_NAMES = {'fereg': 'fereg', 'fixest': 'fixest', 'fixest-strict': 'fixest stri
              'reghdfe': 'reghdfe', 'ppmlhdfe': 'ppmlhdfe', 'areg': 'areg / regress',
              'pyfixest': 'pyfixest 0.60', 'pyfixest-within': 'pyfixest within',
              'pyfixest-within-strict': 'pyfixest within strict',
-             'julia': 'FixedEffectModels.jl', 'julia-strict': 'FixedEffectModels.jl strict'}
-STATA_ARMS = ['fereg', 'reghdfe', 'ppmlhdfe', 'areg']
+             'julia': 'FixedEffectModels.jl', 'julia-strict': 'FixedEffectModels.jl strict',
+             'glfixedeffects': 'GLFixedEffectModels.jl', 'glfixedeffects-strict': 'GLFixedEffectModels.jl strict',
+             'reghdfejl': 'reghdfejl'}
+STATA_ARMS = ['fereg', 'reghdfe', 'ppmlhdfe', 'areg', 'reghdfejl']
 ARM_COLORS = {'fereg': BLUE, 'fixest': GOLD, 'reghdfe': INK, 'ppmlhdfe': INK,
-              'pyfixest-within': '#5B8C5A', 'julia': '#8E5B9B'}
+              'pyfixest-within': '#5B8C5A', 'julia': '#8E5B9B', 'glfixedeffects': '#8E5B9B', 'reghdfejl': RED}
 DESIGNS = {'akm-baseline': 'AKM baseline', 'no-fe': 'No FE', 'one-fe': 'One FE',
            'two-dense': 'Two FE / dense', 'two-sparse': 'Two FE / sparse',
            'three-dense': 'Three FE / dense', 'three-sparse': 'Three FE / sparse',
@@ -74,7 +76,8 @@ def stopping(policy):
 
 
 OTHER_ARMS = {'pyfixest': '0.60', 'pyfixest-within': 'within', 'pyfixest-within-strict': 'within strict',
-              'julia': 'jl', 'julia-strict': 'jl strict'}
+              'julia': 'jl', 'julia-strict': 'jl strict', 'glfixedeffects': 'gljl', 'glfixedeffects-strict': 'gljl strict',
+              'reghdfejl': 'rjl'}
 
 
 def package_pages(pdf, frame, manifest):
@@ -89,6 +92,8 @@ def package_pages(pdf, frame, manifest):
             pdf.page(f'{model.upper()}: Python and Julia packages ({part}/{(len(cells)+17)//18})')
             pdf.text('PyFixest within is a pinned main revision whose default is the within LSMR demeaner. '
                      'FixedEffectModels.jl (jl) uses its default tolerance 1e-6; jl strict uses 1e-10. '
+                     'GLFixedEffectModels.jl (gljl) uses its default center/deviance tolerances 1e-8; gljl strict uses 1e-11/1e-10; '
+                     'neither detects separation. reghdfejl (rjl) runs FixedEffectModels.jl or GLFixedEffectModels.jl from Stata at defaults. '
                      'Median seconds; * marks result discrepancies and † agreement up to degrees-of-freedom conventions. '
                      'A ratio above 1 means the package took longer than fereg.', 'SmallCustom')
             rows = [['Design / N / K', 'Cores / VCE / saved', 'fereg s', *[OTHER_ARMS[a]+' s' for a in extra],
@@ -467,8 +472,8 @@ def configure_plots():
 
 
 def series_arms(model):
-    return ['fereg', 'fixest', 'pyfixest-within', *(['julia'] if model == 'ols' else []),
-            'reghdfe' if model == 'ols' else 'ppmlhdfe']
+    return ['fereg', 'fixest', 'pyfixest-within', 'julia' if model == 'ols' else 'glfixedeffects',
+            'reghdfe' if model == 'ols' else 'ppmlhdfe', 'reghdfejl']
 
 
 def scaling_plot(frame, output):

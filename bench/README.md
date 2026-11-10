@@ -30,8 +30,9 @@ Generated captures belong under `target/tmp/` and are deleted after inspection.
 ## SCC package comparison
 
 `campaign.json` freezes the descriptive OLS/PPML comparison against pinned fixest
-0.14.2 (default and strict profiles), PyFixest, FixedEffectModels.jl, reghdfe,
-ppmlhdfe and Stata 19 areg/regress. At one million rows and four cores it covers the
+0.14.2 (default and strict profiles), PyFixest, FixedEffectModels.jl (OLS),
+GLFixedEffectModels.jl (PPML), reghdfe, ppmlhdfe, reghdfejl (OLS and PPML) and
+Stata 19 areg/regress. At one million rows and four cores it covers the
 AKM baseline with every covariance type with and without saved FE, 4 and 32
 controls instead of 16, and one-FE and dense/sparse two-/three-FE designs. Core
 series at 1/2/4/8/16 workers use the AKM baseline, and size series from
@@ -43,7 +44,41 @@ demeaner, with default estimation tolerances and saved FE recovered at 1e-11
 like the fixest arms. FixedEffectModels.jl runs in linear cells only, at its
 default tolerance (1e-6) and at 1e-10 (`julia-strict`); `julia --threads` sets
 its workers and a warm-up fit of the same specification keeps compilation out
-of timing. The `no-fe` design estimates an intercept and the same 16 controls without absorption;
+of timing.
+
+GLFixedEffectModels.jl 0.5.6 (`glfixedeffects`, `campaign_gljulia.jl`) fits
+every PPML cell with absorbed effects: Poisson family, log link, the same
+absorbed effects, controls, unit weights and robust or worker-clustered
+covariance, without exposure or offset, like the other PPML arms. It requires
+FixedEffectModels 1.x, so its Julia 1.11.7 project (`julia/ppml`, resolving
+FixedEffectModels 1.13.3) and depot are separate from the OLS arm's. The
+default arm keeps the package's stopping rules (center and deviance
+tolerances 1e-8); `glfixedeffects-strict` uses `julia_ppml_strict` (1e-11 and
+1e-10) wherever the strict fixest and PyFixest PPML profiles run. The package
+detects no separation by default and both profiles keep that default, so in
+the gravity design they retain the separated rows and estimate the separating
+control; those comparisons differ in sample and rank rather than being forced
+to agree. reghdfejl (pinned commit, `reghdfejl/pins.json`) runs wherever
+reghdfe or ppmlhdfe does, with the same Stata, timer, processors and
+placement; Julia starts with the cell's workers and the warm-up repeats the
+timed specification. OLS uses FixedEffectModels.jl and PPML its undocumented
+`family(poisson)` route to GLFixedEffectModels.jl, both at package defaults
+and with no separation detection. Its bridge uses Julia 1.12.7 with its own
+FixedEffectModels 1.13.3/GLFixedEffectModels 0.5.6 graph, and the published
+Linux bridge binary is rebuilt from its pinned source because it requires a
+newer glibc than SCC provides. Neither Julia PPML route fits a model without
+absorbed effects, so neither runs in No FE PPML cells.
+
+Outside the timed command, both GLFixedEffectModels.jl routes are converted to
+the campaign's PPML conventions. Their covariance is rescaled from the
+package's factor (none for robust, (N-1)/dof_residual times G/(G-1) for
+clustered) to N/(N-1) or G/(G-1), with the package value kept in
+`covariance-stock.csv`. The reported objective is the Poisson log likelihood
+with the log-gamma normalization, -deviance/2 + sum(y log y - y -
+log Gamma(y+1)), which is defined for the fractional outcomes; the package
+value (`ll_package`) uses the integer density and is minus infinity there.
+Their count of every retained FE level is verified and mapped to the FE span
+of the same rows. The `no-fe` design estimates an intercept and the same 16 controls without absorption;
 the areg arm dispatches to Stata `regress` there. areg runs in every other OLS configuration with at most four workers and
 no saved FE (it cannot save individual effects). With several effects it uses
 `dfabsorb noabsorbtest tolerance(1e-8) iterate(16000)`, the options of the
@@ -97,10 +132,22 @@ smoke and production. Every package receives the same socket-ordered CPU
 prefix and NUMA memory binding. There are no automatic timing retries or
 interference exclusions.
 
+The GLFixedEffectModels.jl and reghdfejl environments come from a reused root
+built once in a batch job: `campaign_environment.py build ENV_ROOT --origin
+ORIGIN` verifies every file and manifest of the November 6 comparator
+installation against `reghdfejl/pins.json` and `julia/ppml`, precompiles the
+nonlinear route for the bridge runtime, fits OLS and Poisson models through the
+bridge twice to show that a later process compiles nothing, and writes
+`ENV_ROOT/SHA256SUMS`. Setup takes that root as `COMPARATOR_ROOT`: `link`
+verifies the manifest and the `campaign.json` pins and gives the run private
+compilation caches and loader files over symlinked frozen trees, which the
+runtime inventory hashes.
+
 Timing includes estimation, inference and requested FE recovery, including
-fixest's lazy extraction and row materialization. Import, generation and disk
-export are excluded. Scientific gates and per-fit limits remain in `campaign.json`; reghdfe and
-ppmlhdfe have a fixed 3,600-second command limit, other commands 600 seconds,
+fixest's lazy extraction and row materialization; for reghdfejl it includes
+the transfer between Stata and Julia. Import, generation and disk
+export are excluded. Scientific gates and per-fit limits remain in `campaign.json`; reghdfe,
+ppmlhdfe, reghdfejl and both GLFixedEffectModels.jl profiles have a fixed 3,600-second command limit, other commands 600 seconds,
 and process limits leave at least 900 seconds beyond each command limit;
 failed or unavailable observations stay visible. This descriptive comparison
 does not qualify a runtime change or establish a universal speed advantage.
