@@ -136,7 +136,7 @@ def main(configuration):
     absorb = ' + '.join(f'g{j}' for j in range(1, q+1))
     vcov = {'iid': 'iid', 'robust': 'hetero', 'cluster': {'CRV1': 'cluster'}}[c['vce']]
     options = dict(vcov=vcov)
-    if model == 'ppml':
+    if model == 'ppml' and c.get('inference_policy','legacy-harmonized') == 'legacy-harmonized':
         options['ssc'] = pf.ssc(k_adj=False, G_adj=True)
     tolerance = 'default'
     if strict:
@@ -151,7 +151,13 @@ def main(configuration):
         formula = f"y ~ {' + '.join(terms)}" + (f" | {fixed_effects}" if fixed_effects else '')
         return estimator(formula, data, **options)
 
-    fit_model(pd.read_stata(c['warm'], convert_categoricals=False), 'g1' if q else '')
+    warm = pd.read_stata(c['warm'], convert_categoricals=False)
+    warm_fit = fit_model(warm, absorb)
+    if c['save_fe']=='1':
+        retained = np.ones(len(warm),dtype=bool)
+        retained[sorted(Counts(warm_fit).dropped)] = False
+        saved_effects(warm_fit,warm,q,retained)
+    del warm_fit, warm
     data = pd.read_stata(c['dataset'], convert_categoricals=False)
     identity = json.loads(Path(c['dataset']).with_suffix('.json').read_text())
     for name, expected in identity['column_sha256'].items():
@@ -185,7 +191,7 @@ def main(configuration):
         names = list(b.index)
         V = np.asarray(fit._vcov, dtype=float)
         # Stata's robust PPML covariance carries n/(n-1); fixest's does not.
-        multiplier = counts.N/(counts.N-1) if model == 'ppml' and c['vce'] == 'robust' else 1.
+        multiplier = counts.N/(counts.N-1) if model == 'ppml' and c['vce'] == 'robust' and c.get('inference_policy','legacy-harmonized') == 'legacy-harmonized' else 1.
         pd.DataFrame(dict(name=names, value=b.to_numpy())).to_csv(output/'coefficients.csv', index=False, float_format='%.17g')
         def write_covariance(matrix, name):
             rows, columns = np.meshgrid(names, names, indexing='ij')
@@ -212,7 +218,7 @@ def main(configuration):
         meta.update(N=counts.N, df_a=absorbed, df_a_unadjusted=sum(counts.levels)-(q-1) if q else 0, df_m=len(b),
                     converged=1, covariance_multiplier=repr(multiplier), finite_slope_rank=sum(n in terms for n in names),
                     slope_omissions=sum(n in terms for n in counts.collinear),
-                    covariance_policy=f"{model}-{c['vce']}-"+('K.adj=FALSE' if model == 'ppml' else 'stock'))
+                    covariance_policy=f"{model}-{c['vce']}-"+('K.adj=FALSE' if model == 'ppml' and c.get('inference_policy','legacy-harmonized') == 'legacy-harmonized' else 'stock'))
         if model == 'ols':
             meta.update(df_r=repr(counts.df_t), correction_df=repr(counts.N-counts.df_k),
                         rss=repr(float(np.sum(np.asarray(fit.resid(), dtype=float)**2))))

@@ -54,12 +54,16 @@ REUSE_CLEANUP_SECONDS = 20000
 def cell_for(panel, frame, threads, save_fe=True, model='ols'):
     if model=='ppml' and save_fe:
         raise ValueError('the PPML panel campaign requires unsaved effects')
-    return dict(id=f'veneto-{panel}'+('-ppml' if model=='ppml' else '')+f'-t{threads}'+('' if save_fe else '-fe0'), model=model, design='veneto-'+panel,
+    cell = dict(id=f'veneto-{panel}'+('-ppml' if model=='ppml' else '')+f'-t{threads}'+('' if save_fe else '-fe0'), model=model, design='veneto-'+panel,
                 section='veneto', rows=len(frame), regressors=len([c for c in frame if c.startswith('x')]),
                 effects=2, save_fe=save_fe, vce='iid' if model=='ols' else 'robust', weights='unit', threads=threads,
                 arms=['fereg', 'fixest', 'fixest-strict', *campaign.PYFIXEST_ARMS, *campaign.PYFIXEST_STRICT_ARMS,
                       *(campaign.JULIA_ARMS if model=='ols' else [])]
                 + (['reghdfe' if model=='ols' else 'ppmlhdfe'] if threads <= 4 else []))
+    if campaign.POLICY.get('symmetric_strict'):
+        cell.pop('arms')
+        cell['arms']=campaign.arms(cell)
+    return cell
 
 
 def smoke_fits(panels=PANELS, model='ols'):
@@ -157,7 +161,7 @@ def prepare(root, long=None, short=None, long_lcs=None, save_fe=True):
         if expected['residual_score'] > 1e-10:
             raise ValueError('dense real-data smoke oracle failed')
         cells.extend(cell_for(panel, frame, t, save_fe) for t in THREADS)
-    warm = dict(model='ols', design='one-fe', rows=512, effects=1, regressors=7, weights='unit')
+    warm = dict(model='ols', design='three-dense', rows=1200, effects=3, regressors=7, weights='unit')
     campaign.make_dataset(warm, root/'data/warm.dta')
     shutil.copy2(root/'data/warm.dta', root/'smoke-data/warm.dta')
     write_json(root/'manifest.json', dict(schema=1, panels={panel: panel_spec(panel) for panel, _ in selected},
@@ -210,14 +214,17 @@ def reuse(root, previous, save_fe=True, panels=None, model='ols'):
                 destination=source.with_name(source.name.replace('ols-','ppml-',1))
                 key=('smoke-' if folder=='smoke-data' else '')+panel
                 datasets[key]=save_dataset(frame,destination)
-        warm=dict(model='ppml',design='one-fe',rows=512,effects=1,regressors=7,weights='unit')
+        warm=dict(model='ppml',design='three-dense',rows=1200,effects=3,regressors=7,weights='unit')
         campaign.make_dataset(warm,root/'data/warm.dta')
+        shutil.copy2(root/'data/warm.dta',root/'smoke-data/warm.dta')
+    if model=='ols':
+        campaign.make_dataset(dict(model='ols',design='three-dense',rows=1200,effects=3,regressors=7,weights='unit'),root/'data/warm.dta')
         shutil.copy2(root/'data/warm.dta',root/'smoke-data/warm.dta')
     write_json(root/'manifest.json', dict(old, cells=cells, datasets=datasets, model=model,
                outcome='daily wage = exp(unadjusted log daily wage)' if model=='ppml' else 'unadjusted log daily wage',
                reused_inputs=str(previous),
                panels={panel: old['panels'][panel] for panel in selected},
-               policy=dict(old['policy'], save_fe=save_fe, job_cleanup_seconds=campaign.POLICY['job_cleanup_seconds'],
+               policy=dict(old['policy'], **{k:campaign.POLICY[k] for k in ['symmetric_strict','inference_policy','prediction_diagnostics','fereg_strict_tolerance','julia_ppml'] if k in campaign.POLICY}, save_fe=save_fe, job_cleanup_seconds=campaign.POLICY['job_cleanup_seconds'],
                            command_timeout_seconds=campaign.POLICY['command_timeout_seconds'],
                            command_timeout_by_arm=campaign.POLICY.get('command_timeout_by_arm',{}),
                            process_timeout_seconds=campaign.POLICY['process_timeout_seconds']),
@@ -323,7 +330,8 @@ def run(root, task, smoke):
     campaign.verify_runtime(root)
     manifest = json.loads((root/'manifest.json').read_text())
     model=manifest.get('model','ols')
-    for key in ['command_timeout_seconds','command_timeout_by_arm','process_timeout_seconds']:
+    for key in ['command_timeout_seconds','command_timeout_by_arm','process_timeout_seconds',
+                'symmetric_strict','inference_policy','prediction_diagnostics','fereg_strict_tolerance','julia_ppml']:
         if key in manifest['policy']:campaign.POLICY[key]=manifest['policy'][key]
     scheduled = list(manifest['panels'])
     selected = scheduled if smoke else [scheduled[task-1]]
@@ -363,7 +371,7 @@ def run(root, task, smoke):
                 raise ValueError('panel input changed')
             rank = identity['topology']['first_pair_rank']
             threads = [4] if smoke else THREADS
-            reference = None
+            reference = {}
             for t in threads:
                 cell = cell_for(panel, frame, t, manifest['policy'].get('save_fe', True), model)
                 baseline, failed = {}, set()
@@ -375,7 +383,7 @@ def run(root, task, smoke):
                             records.append(dict(cell=cell['id'], arm=arm, repetition=rep,
                                                 status='skipped-after-failure', metadata={}))
                             continue
-                        if time.monotonic()-started+campaign.process_timeout(arm) > manifest['policy']['job_cleanup_seconds']:
+                        if time.monotonic()-started+campaign.fit_budget(cell,arm,rep) > manifest['policy']['job_cleanup_seconds']:
                             raise RuntimeError('fixed campaign budget exhausted; partial evidence retained')
                         if monitor:
                             monitor.check()
@@ -388,7 +396,7 @@ def run(root, task, smoke):
                                 expected = sum(identity['topology']['levels']) if arm in campaign.JULIA_ARMS else rank
                                 if record['capture']['absorbed_dof'] != expected:
                                     raise ValueError('independent graph rank differs')
-                                if arm == 'fereg' and float(record['metadata'].get('fereg_threads' if model=='ols' else 'feppml_threads', 'nan')) != t:
+                                if campaign.is_native(arm) and float(record['metadata'].get('fereg_threads' if model=='ols' else 'feppml_threads', 'nan')) != t:
                                     raise ValueError('native worker budget is unverified')
                             except (ValueError, OSError, KeyError) as error:
                                 record.update(status='capture-error', error=str(error))
@@ -397,11 +405,11 @@ def run(root, task, smoke):
                         current[arm] = record
                         checkpoint()
                         if record['status'] != 'ok':
-                            failed.add(arm)
-                            if arm == 'fereg':
+                            if record['status']!='capture-error' or campaign.is_native(arm): failed.add(arm)
+                            if campaign.is_native(arm):
                                 write_json(taskroot/'results.json', dict(records=records, comparisons=comparisons, science=science, complete=False))
                                 raise RuntimeError('native panel failure; do not resample')
-                        elif arm == 'fereg':
+                        elif campaign.is_native(arm):
                             if rep == 1:
                                 baseline[arm] = record
                             else:
@@ -410,9 +418,9 @@ def run(root, task, smoke):
                                 checkpoint()
                                 if not exact:
                                     raise RuntimeError('native fixed-worker science changed; do not resample')
-                            if reference is None:
-                                reference = record
-                            agreement = compare(reference, record, cell)
+                            if arm not in reference:
+                                reference[arm] = record
+                            agreement = compare(reference[arm], record, cell)
                             science.append(dict(panel=panel, threads=t, repetition=rep, kind='cross-worker', **agreement))
                             checkpoint()
                             if not agreement['eligible']:
@@ -435,14 +443,15 @@ def run(root, task, smoke):
                                     checks['fitted'] = close_values(fitted, expected['fitted'], 1e-7, 1e-9)
                             science.append(dict(panel=panel, arm=arm, kind='dense-oracle', checks=checks,
                                                 passed=bool(checks) and all(checks.values())))
-                            if arm == 'fereg' and not (checks and all(checks.values())):
+                            if campaign.is_native(arm) and not (checks and all(checks.values())):
                                 raise RuntimeError('independent real-panel native smoke failed')
                 del baseline
             if sha256(path) != identity['sha256']:
                 raise ValueError('panel input changed during timing')
     campaign.verify_runtime(root)
     expected_count = smoke_fits(scheduled,model) if smoke else sum(len(c['arms']) for c in manifest['cells'] if c['design'] == 'veneto-'+selected[0])*REPETITIONS
-    result = dict(records=records, comparisons=comparisons, science=science, complete=len(records) == expected_count,
+    from campaign_deviations import comparisons as numerical_comparisons
+    result = dict(records=records, comparisons=comparisons, numerical_comparisons=numerical_comparisons(records), science=science, complete=len(records) == expected_count,
                   expected_fits=expected_count, host=socket.gethostname(), job=os.environ['JOB_ID'],
                   task=os.environ.get('SGE_TASK_ID'), native_gate_pass=True)
     write_json(taskroot/'results.json', result)

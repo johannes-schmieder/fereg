@@ -14,13 +14,14 @@ if(q > 0) formula_text <- paste(formula_text,"|",paste(paste0("g",seq_len(q)),co
 fml <- as.formula(formula_text)
 options <- list(fml=fml,nthreads=threads,notes=FALSE)
 options$vcov <- switch(c$vce,iid="iid",robust="hetero",cluster=~cluster)
-options <- c(options, campaign_fixest_options(c$model, c$arm))
+options <- c(options, campaign_fixest_options(c$model, c$arm, if(is.null(c$inference_policy)) "legacy-harmonized" else c$inference_policy))
 fit_model <- function(data, warm=FALSE) {
     o <- options; o$data <- data
-    if (warm && q > 0) o$fml <- as.formula(paste("y ~",paste(terms,collapse=" + "),"| g1"))
     do.call(if(c$model=="ols") feols else fepois,o)
 }
-invisible(fit_model(foreign::read.dta(c$warm,convert.factors=FALSE),TRUE))
+warm_fit <- fit_model(foreign::read.dta(c$warm,convert.factors=FALSE),TRUE)
+if(c$save_fe=="1") invisible(fixef(warm_fit,nthreads=threads,fixef.tol=1e-11))
+rm(warm_fit)
 data <- foreign::read.dta(c$dataset,convert.factors=FALSE)
 identity <- jsonlite::fromJSON(sub("\\.dta$",".json",c$dataset))
 for(name in names(identity$column_sha256)) {
@@ -51,7 +52,7 @@ fit <- tryCatch({
         stopifnot(all(vapply(saved,function(x) all(is.finite(x)),logical(1))))
     }
     Vstock <- vcov(fit,attr=TRUE,nthreads=threads)
-    multiplier <- if(c$model=="ppml" && c$vce=="robust") nobs(fit)/(nobs(fit)-1) else 1
+    multiplier <- if(c$model=="ppml" && c$vce=="robust" && !identical(c$inference_policy,"package-default")) nobs(fit)/(nobs(fit)-1) else 1
     V <- Vstock*multiplier
     fit
 },error=function(e){error <<- conditionMessage(e);NULL})
@@ -62,7 +63,7 @@ meta <- c(rc=if(is.null(fit)) 1 else 0,seconds=seconds,complete=1,
           fixest_version=as.character(packageVersion("fixest")),requested_threads=threads,
           configured_threads=threads,reference_profile=c$arm,
           fixef_tolerance=if(is.null(options$fixef.tol)) "default" else options$fixef.tol,
-          exact_fe_dof=as.integer(c$model=="ols" && c$arm=="fixest-strict"))
+          exact_fe_dof=as.integer(c$model=="ols" && c$arm=="fixest-strict" && !identical(c$inference_policy,"package-default")))
 if(!is.null(fit)) {
     b <- coef(fit)
     write.csv(data.frame(name=names(b),value=unname(b)),file.path(c$output,"coefficients.csv"),row.names=FALSE)
@@ -90,7 +91,7 @@ if(!is.null(fit)) {
     meta <- c(meta,N=nobs(fit),df_a=absorbed,df_a_unadjusted=fit$nparams-length(b),df_m=length(b),
               converged=1,covariance_multiplier=multiplier,
               finite_slope_rank=sum(names(b) %in% terms),slope_omissions=sum(fit$collin.var %in% terms),
-              covariance_policy=paste(c$model,c$vce,if(c$model=="ppml") "K.adj=FALSE" else
+              covariance_policy=paste(c$model,c$vce,if(identical(c$inference_policy,"package-default")) "stock" else if(c$model=="ppml") "K.adj=FALSE" else
                   if(c$arm=="fixest-strict") "K.exact=TRUE" else "stock",sep="-"))
     if(c$model=="ols") meta <- c(meta,df_r=attr(Vstock,"df.t"),correction_df=nobs(fit)-attr(Vstock,"df.K"))
     if(c$vce=="cluster") meta <- c(meta,N_clust=length(unique(data$cluster[selected])))

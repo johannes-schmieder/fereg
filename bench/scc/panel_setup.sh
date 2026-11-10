@@ -34,6 +34,11 @@ if [[ -n "${PANEL_PREVIOUS_ROOT:-}" ]]; then
 fi
 bash bench/scc/pyfixest_environment.sh "$RUN_ROOT/environment" > "$RUN_ROOT/logs/pyfixest-environment.log" 2>&1
 bash bench/scc/julia_environment.sh "$RUN_ROOT/environment" > "$RUN_ROOT/logs/julia-environment.log" 2>&1
+# Additional comparator environments are installed only for an expanded plan.
+if [[ "${CAMPAIGN_EXPANDED_COMPARATORS:-0}" == 1 ]]; then
+    bash bench/scc/julia_ppml_environment.sh "$RUN_ROOT/environment" > "$RUN_ROOT/logs/julia-ppml-environment.log" 2>&1
+    bash bench/scc/reghdfejl_environment.sh "$RUN_ROOT/environment" > "$RUN_ROOT/logs/reghdfejl-environment.log" 2>&1
+fi
 python3 -m unittest discover -s bench/tests > "$RUN_ROOT/logs/harness-tests.log" 2>&1
 python3 scripts/check_github_install.py > "$RUN_ROOT/logs/package-check.log" 2>&1
 python3 bench/panel_campaign.py audit "$RUN_ROOT" > "$RUN_ROOT/logs/input-audit.log" 2>&1
@@ -55,6 +60,14 @@ paths=[r/'source/dist/fereg_linux.plugin',r/'environment/command-clock.plugin',r
        *sorted((r/'environment/julia').rglob('*')),*sorted((depot/'packages').rglob('*')),
        *sorted((depot/'artifacts').rglob('*')),
        *sorted((r/'data').glob('*')),*sorted((r/'smoke-data').glob('*'))]
+# Keep compilation caches writable; freeze package sources, artifacts, manifests,
+# bridge binaries and the separate Julia runtime used by reghdfejl.
+for folder in ['julia-ppml', 'julia-ppml-depot/packages', 'julia-ppml-depot/artifacts',
+               'reghdfejl/references', 'reghdfejl/bin', 'reghdfejl/depot/packages',
+               'reghdfejl/depot/artifacts', 'reghdfejl/depot/environments',
+               'reghdfejl/julia-1.12.7']:
+    paths.extend(sorted((r/'environment'/folder).rglob('*')))
+paths.extend([r/'environment/julia-ppml-versions.json', r/'environment/reghdfejl/versions.json'])
 for folder in json.loads((r/'environment/r-package-paths.json').read_text()).values():
     paths.extend(sorted(pathlib.Path(folder).rglob('*')))
 paths.extend(pathlib.Path(shutil.which(n)).resolve() for n in ['stata-mp','Rscript','julia'])

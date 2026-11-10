@@ -12,6 +12,7 @@ import shutil
 import socket
 import subprocess
 import time
+import tempfile
 
 import numpy as np
 import pandas as pd
@@ -34,15 +35,17 @@ PYFIXEST_ARMS = list(POLICY['pyfixest'])
 PYFIXEST_STRICT_ARMS = [f'{arm}-strict' for arm in PYFIXEST_ARMS] if 'pyfixest_strict_tolerance' in POLICY else []
 # FixedEffectModels.jl at its default tolerance and at 1e-10 (linear models only).
 JULIA_ARMS = ['julia','julia-strict'] if 'julia' in POLICY else []
-# GLFixedEffectModels.jl (Poisson, log link) in its own pinned environment, at its
-# default stopping rules and at the policy's strict ones (PPML with absorbed effects).
-GLJULIA_ARMS = ['glfixedeffects','glfixedeffects-strict'] if 'julia_ppml' in POLICY else []
-# reghdfejl: FixedEffectModels.jl (OLS) or GLFixedEffectModels.jl (PPML) through
-# its pinned Stata/Julia bridge, inside the same Stata process and timer as reghdfe.
-REGHDFEJL_ARMS = ['reghdfejl'] if 'reghdfejl' in POLICY else []
-STATA_REFERENCES = ['reghdfe','ppmlhdfe','areg',*REGHDFEJL_ARMS]
-# PPML arms whose package counts every FE level; capture() maps the count to the FE span.
-LEVEL_COUNT_PPML_ARMS = {*GLJULIA_ARMS,*REGHDFEJL_ARMS}
+STATA_REFERENCES = ['reghdfe','ppmlhdfe','areg','reghdfejl']
+GLJULIA_ARMS = ['glfixedeffects', 'glfixedeffects-strict']
+
+
+def base_arm(arm):
+    return arm.removesuffix('-strict')
+
+
+def is_native(arm):
+    return base_arm(arm) == 'fereg'
+
 # Reported absorbed/residual counts follow each package's convention; see agreement().
 COUNT_CONVENTIONS = {'absorbed_dof','residual_dof','correction_dof'}
 
@@ -79,8 +82,6 @@ def configurations(smoke=False, select=True):
         for model in ['ols','ppml']:
             for vce in (['iid','robust','cluster'] if model=='ols' else ['robust','cluster']):
                 add(model,rows=1200,vce=vce,save_fe=True,section='smoke')
-                # reghdfejl's Poisson route runs only without saved effects.
-                if model=='ppml':add(model,rows=1200,vce=vce,section='smoke')
             for design in ['two-sparse','three-dense','three-sparse','akm-clustered',*(['gravity'] if model=='ppml' else [])]:
                 add(model,design,rows=1200,save_fe=True,section='smoke')
             add(model,'no-fe',rows=1200,section='smoke')
@@ -117,23 +118,23 @@ def controls_suffix(cell):
     """Synthetic cells keep their historical identities at the standard control
     count; real panels carry their own fixed controls and inputs."""
     k = cell.get('regressors', POLICY['controls'])
-    return '' if k == POLICY['controls'] or cell.get('section') == 'veneto' else f'-k{k}'
+    return '' if k == POLICY['controls'] or cell.get('section') in ('veneto','veneto-smoke') else f'-k{k}'
 
 
 def arms(cell):
     if 'arms' in cell: return list(cell['arms'])
-    # Neither GLFixedEffectModels.jl nor reghdfejl's nonlinear route fits a
-    # Poisson model without absorbed effects.
-    absorbing = cell['model']=='ols' or cell['effects']>0
+    if POLICY.get('symmetric_strict'):
+        defaults = ['fereg', 'fixest', *PYFIXEST_ARMS]
+        defaults += ['julia'] if cell['model']=='ols' else ['glfixedeffects']
+        if cell['threads']<=4:
+            defaults.append('reghdfe' if cell['model']=='ols' else 'ppmlhdfe')
+            if cell['model']=='ols':
+                defaults.append('reghdfejl')
+                if not cell['save_fe']: defaults.append('areg')
+        return [a for arm in defaults for a in (arm, arm+'-strict')]
     result = ['fereg','fixest',*PYFIXEST_ARMS]
     if cell['model']=='ols': result.extend(JULIA_ARMS)
-    elif absorbing: result.extend(GLJULIA_ARMS[:1])
     if cell['threads']<=4: result.append('reghdfe' if cell['model']=='ols' else 'ppmlhdfe')
-    # reghdfejl runs where reghdfe and ppmlhdfe do, within the Stata license. Its
-    # nonlinear route cannot save effects at the pinned versions: it passes
-    # save=:fe, which GLFixedEffectModels 0.5.6 rejects (save::Vector{Symbol}).
-    if cell['threads']<=4 and absorbing and not (cell['model']=='ppml' and cell['save_fe']):
-        result.extend(REGHDFEJL_ARMS)
     # Stata 19 areg absorbs several categorical effects for linear models; it
     # cannot save individual effects, and Stata is licensed for four cores.
     if cell['model']=='ols' and cell['threads']<=4 and not cell['save_fe']:
@@ -141,7 +142,6 @@ def arms(cell):
     if (cell['model']=='ppml' and cell['design'] in STRICT_PPML_DESIGNS and cell['rows']==1000000
             and cell['threads']==4) or cell['model']=='ols' or cell['section']=='smoke':
         result.extend(['fixest-strict',*PYFIXEST_STRICT_ARMS])
-        if cell['model']=='ppml' and absorbing: result.extend(GLJULIA_ARMS[1:])
     return result
 
 
@@ -158,22 +158,103 @@ def dataset_key(cell):
 # balance bundles (beta.7 SCC medians, rounded). Each fresh process also loads
 # its input, and a timeout stops a command's later repetitions and sizes.
 PACKING_SECONDS = {'fereg':2,'fixest':3,'fixest-strict':4,'pyfixest-within':3,'pyfixest-within-strict':4,
-                   'julia':3,'julia-strict':4,'glfixedeffects':5,'glfixedeffects-strict':7,
-                   'reghdfe':25,'areg':25,'ppmlhdfe':90,'reghdfejl':6}
-# Per-process start, package loading and warm-up beyond the timed command
-# (beta.15 and November 6 SCC smoke wall medians, rounded up); others take 10.
-PROCESS_SECONDS = {'julia':20,'julia-strict':20,'glfixedeffects':20,'glfixedeffects-strict':20,'reghdfejl':30}
+                   'julia':3,'julia-strict':4,
+                   'reghdfe':25,'areg':25,'ppmlhdfe':90}
 
 
 DESIGN_COST = {'akm-clustered':2,'gravity':4}
 
 
 def command_timeout(arm):
-    return POLICY.get('command_timeout_by_arm', {}).get(arm, POLICY['command_timeout_seconds'])
+    value=POLICY.get('command_timeout_by_arm', {}).get(arm, POLICY['command_timeout_seconds'])
+    if value is None or value <= 0:
+        raise ValueError('Select and freeze the agreed common timeout before preparing or running the revision campaign')
+    return value
 
 
 def process_timeout(arm):
     return max(POLICY['process_timeout_seconds'], command_timeout(arm)+900)
+
+
+def fit_budget(cell, arm, repetition):
+    diagnostic=(POLICY.get('prediction_diagnostics') and repetition==1 and
+                not cell['save_fe'] and base_arm(arm)!='areg')
+    return process_timeout(arm)*(2 if diagnostic else 1)
+
+
+def repetition_positions(cell):
+    """A block retains its predetermined source repetition, never a retry index."""
+    if 'block_repetition' in cell:
+        return [cell['block_repetition']]
+    return range(1,cell['repetitions']+1)
+
+
+def block_identity(cell):
+    return {key:cell[key] for key in ('source_cell','source_repetitions','block_family','block_repetition')
+            if key in cell}
+
+
+def comparison_blocks(source_cells):
+    """Freeze one native/comparator profile pair per original repetition.
+
+    Native anchors are deliberately duplicated across comparator families, before
+    observing any results. Every ratio is paired within a block/allocation.
+    """
+    blocks=[]
+    for cell in source_cells:
+        selected=arms(cell)
+        families=list(dict.fromkeys(base_arm(a) for a in selected if not is_native(a)))
+        required={'fereg','fereg-strict',*(a for f in families for a in (f,f+'-strict'))}
+        if not families or len(selected)!=len(set(selected)) or set(selected)!=required:
+            raise ValueError('comparison blocks require native and comparator default/strict pairs: '+cell['id'])
+        for family in families:
+            for repetition in range(1,cell['repetitions']+1):
+                block=dict(cell,id=f"{cell['id']}--pair-{family}-r{repetition}",
+                           source_cell=cell['id'],source_repetitions=cell['repetitions'],
+                           block_family=family,block_repetition=repetition,repetitions=1,
+                           arms=['fereg','fereg-strict',family,family+'-strict'])
+                block['hard_budget_seconds']=sum(fit_budget(block,a,repetition) for a in block['arms'])
+                blocks.append(block)
+    return blocks
+
+
+def pack_comparison_blocks(blocks):
+    """Deterministic first-fit decreasing using process bounds, not timings."""
+    limit=POLICY.get('block_bundle_seconds',37800)
+    overhead=POLICY.get('block_startup_headroom_seconds',3600)
+    if not np.isfinite(limit) or not np.isfinite(overhead) or limit<=0 or overhead<=0 or limit+overhead>POLICY['job_cleanup_seconds']:
+        raise ValueError('block bundle budget must leave startup/capture headroom before cleanup')
+    if POLICY['job_cleanup_seconds']>=POLICY['job_wall_seconds']:
+        raise ValueError('block cleanup threshold must precede scheduler wall limit')
+    bundles=[];budgets=[]
+    for block in sorted(blocks,key=lambda c:(-c['hard_budget_seconds'],c['id'])):
+        bound=block['hard_budget_seconds']
+        if not np.isfinite(bound) or bound<=0 or bound>limit:
+            raise ValueError('comparison block exceeds allocation budget: '+block['id'])
+        slot=next((i for i,cost in enumerate(budgets) if cost+bound<=limit),len(bundles))
+        if slot==len(bundles):bundles.append([]);budgets.append(0)
+        bundles[slot].append(block);budgets[slot]+=bound
+    return bundles,budgets
+
+
+def validate_block_bundle(cells):
+    """Reject a stale/falsely bounded manifest before any estimator runs."""
+    if not any('block_repetition' in c for c in cells):return False
+    if not all('block_repetition' in c and c['repetitions']==1 for c in cells):
+        raise ValueError('mixed or malformed comparison-block bundle')
+    for cell in cells:
+        repetition=cell['block_repetition']
+        if (not isinstance(repetition,int) or isinstance(repetition,bool) or
+                not 1<=repetition<=cell['source_repetitions'] or
+                arms(cell)!=['fereg','fereg-strict',cell['block_family'],cell['block_family']+'-strict']):
+            raise ValueError('malformed native/comparator repetition block')
+        expected=sum(fit_budget(cell,a,repetition) for a in arms(cell))
+        if expected!=cell['hard_budget_seconds']:
+            raise ValueError('comparison-block process budget changed: '+cell['id'])
+    bundles,_=pack_comparison_blocks(cells)
+    if len(bundles)!=1:
+        raise ValueError('frozen comparison-block bundle exceeds allocation budget')
+    return True
 
 
 def estimated_seconds(cell):
@@ -181,14 +262,70 @@ def estimated_seconds(cell):
         cell['design'],4 if 'sparse' in cell['design'] else 1)
     total = 0.
     for arm in arms(cell):
-        command = PACKING_SECONDS[arm]*scale*(cell.get('regressors',16)/16)**.5
+        command = PACKING_SECONDS.get(arm, PACKING_SECONDS.get(base_arm(arm), 90))*scale*(cell.get('regressors',16)/16)**.5
         if command>=command_timeout(arm): total += command_timeout(arm)
-        else: total += cell['repetitions']*(command+PROCESS_SECONDS.get(arm,10)+5*cell['rows']/1e6)
+        else: total += cell['repetitions']*(command+10+5*cell['rows']/1e6)
+        if POLICY.get('prediction_diagnostics') and not cell['save_fe'] and base_arm(arm)!='areg':
+            total += min(command_timeout(arm),command)+10+5*cell['rows']/1e6
     return total
 
 
+def additional_cells(root, smoke=False):
+    """Read explicitly supplied, audited real-panel cells; never synthesize them."""
+    path=Path(root)/'input'/('additional-smoke-cells.json' if smoke else 'additional-cells.json')
+    if not path.exists():return []
+    supplied=json.loads(path.read_text())
+    if not isinstance(supplied,list):raise ValueError('additional cells must be a JSON list')
+    required={'id','model','design','rows','threads','vce','save_fe','regressors','effects','section'}
+    result=[]
+    for item in supplied:
+        if not isinstance(item,dict) or not required<=item.keys():raise ValueError('incomplete additional cell')
+        cell=dict(item)
+        if (cell['section']!=('veneto-smoke' if smoke else 'veneto') or
+                cell['model'] not in ('ols','ppml') or cell['effects']!=2 or
+                not isinstance(cell['id'],str) or cell['id'] in ('','.','..') or '/' in cell['id'] or '\\' in cell['id'] or
+                not isinstance(cell['design'],str) or not cell['design'] or '/' in cell['design'] or '\\' in cell['design'] or
+                cell['vce'] not in (('iid','robust','cluster') if cell['model']=='ols' else ('robust','cluster')) or
+                any(not isinstance(cell[k],int) or isinstance(cell[k],bool) or cell[k]<=0
+                    for k in ('rows','threads','regressors')) or
+                not isinstance(cell['save_fe'],bool)):
+            raise ValueError('invalid additional real-panel cell')
+        cell.setdefault('repetitions',1 if smoke else repetitions(cell))
+        if not isinstance(cell['repetitions'],int) or isinstance(cell['repetitions'],bool) or cell['repetitions']<1 or (smoke and cell['repetitions']!=1):
+            raise ValueError('invalid additional-cell repetition count')
+        if smoke and cell['rows']>1200:raise ValueError('real-panel smoke exceeds dense oracle bound')
+        cell['arms']=arms(cell)
+        result.append(cell)
+    return result
+
+
+def unique_cells(cells):
+    if len({c['id'] for c in cells})!=len(cells):raise ValueError('duplicate campaign cell id')
+    return cells
+
+
 def prepare(root):
-    cells = configurations()
+    cells = unique_cells(configurations()+additional_cells(root))
+    extra_smoke=additional_cells(root,smoke=True)
+    unique_cells(configurations(True)+extra_smoke)
+    if POLICY.get('schedule')=='paired-repetition-blocks':
+        sources=cells
+        cells=comparison_blocks(sources)
+        bundles,budgets=pack_comparison_blocks(cells)
+        if not bundles:raise ValueError('empty comparison-block campaign')
+        policy=dict(POLICY,bundles=len(bundles))
+        diagnostics=sum(POLICY.get('prediction_diagnostics',False) and c['block_repetition']==1
+                        and not c['save_fe'] and base_arm(a)!='areg' for c in cells for a in arms(c))
+        write_json(root/'manifest.json',dict(schema=3,policy=policy,cells=cells,source_cells=sources,
+                   additional_smoke_cells=extra_smoke,
+                   bundles=bundles,hard_bundle_seconds=budgets,
+                   hard_bundle_hours=[round(x/3600,3) for x in budgets],
+                   estimated_bundle_hours=[round(x/3600,3) for x in budgets],
+                   bundle_estimate_kind='hard process bound including separately requested diagnostics',
+                   timed_fits=sum(len(arms(c)) for c in cells),diagnostic_fits=diagnostics,
+                   pairing='Within block/allocation; original repetitions may run on different hosts. '
+                           'Native anchors are predetermined independently for each comparator family.'))
+        return
     # One design and model per node: its size, core, option and control series
     # then compare absolute times on one host.
     units = {}
@@ -209,7 +346,7 @@ def prepare(root):
                     repetitions=POLICY['reference_repetitions'])
         bundle.insert(0,cell); references.append(cell)
     cells = references+cells
-    write_json(root/'manifest.json',dict(schema=2,policy=POLICY,cells=cells,bundles=bundles,
+    write_json(root/'manifest.json',dict(schema=2,policy=POLICY,cells=cells,bundles=bundles,additional_smoke_cells=extra_smoke,
                estimated_bundle_hours=[round(sum(map(estimated_seconds,b))/3600,2) for b in bundles],
                timed_fits=sum(len(c['arms'])*c['repetitions'] for c in cells)))
 
@@ -457,7 +594,10 @@ def execute(command, directory, cpus, timeout, command_limit=None):
                                   done_rss_bytes=sum(process_memory(p.pid,'VmRSS') for p in processes),
                                   peak_pids=sorted(p.pid for p in processes))
                     # A process that exited during the command would take its peak with it.
-                    memory['memory_exact']=bool(memory.get('reset')) and set(memory['reset_pids'])<=set(memory['peak_pids'])
+                    memory['memory_exact']=(bool(memory.get('reset')) and len(memory['peak_pids'])==1
+                                            and memory['reset_pids']==memory['peak_pids'])
+                    memory['memory_measurement']='kernel-single-process' if memory['memory_exact'] else 'tree-peak-upper-bound'
+                    memory['sampled_tree_peak_bytes']=peak
                 except (OSError,ValueError,psutil.Error) as error:
                     memory.update(memory_exact=False,memory_error=str(error))
                 (directory/'ACK').write_text('ack\n')
@@ -480,42 +620,21 @@ def execute(command, directory, cpus, timeout, command_limit=None):
                 command_timeout_seconds=command_limit,process_timeout_seconds=timeout,**memory)
 
 
-def fe_span_rank(frame, effects):
-    """FE-span rank in the smoke oracle's pairwise convention: the first
-    effect's levels plus, for each later effect, its levels less the connected
-    components of its bipartite graph with the first (exact for two effects)."""
-    codes=[pd.factorize(frame[f'g{j}'])[0] for j in range(1,effects+1)]
-    first=int(codes[0].max()+1);rank=first
-    for code in codes[1:]:
-        levels=int(code.max()+1)
-        graph=sparse.coo_matrix((np.ones(len(code),dtype=np.int8),(codes[0],code+first)),shape=(first+levels,)*2)
-        rank+=levels-connected_components(graph,directed=False)[0]
-    return rank
-
-
-def absorbed_rank(metadata, cell, frame, selected=None):
+def absorbed_rank(metadata, cell, frame):
     """Put categorical PPML nuisance counts in the common full FE span.
 
     Native PPML transfers one intercept direction to structural coordinates
     (ppml/result.rs); clustered Stata counts exclude the nested worker FE.
     fixest's PPML count retains the full nuisance span with K.adj disabled.
-    GLFixedEffectModels.jl, directly or through reghdfejl, counts every
-    retained level; that count is verified and mapped to the span of the same
-    retained rows. Raw published counts remain in every observation's metadata
-    and capture.
+    Raw published counts remain in every observation's metadata and capture.
     """
     rank=float(metadata['df_a'])
     if cell.get('effects')==0:
         return rank
-    if metadata.get('arm')=='areg':
+    if base_arm(metadata.get('arm',''))=='areg':
         # areg reports the intercept outside e(df_a); reghdfe counts it there.
         rank+=1
     if cell['model']!='ppml':return rank
-    if metadata.get('arm') in LEVEL_COUNT_PPML_ARMS:
-        retained=frame if selected is None else frame[selected]
-        if rank!=sum(retained[f'g{j}'].nunique() for j in range(1,cell['effects']+1)):
-            raise ValueError('unverified PPML level count')
-        return float(fe_span_rank(retained,cell['effects']))
     native=metadata.get('native_arm')=='1'
     stata=native or metadata['covariance_policy'].startswith('stock-ppml-')
     if native:rank+=1
@@ -559,7 +678,7 @@ def capture(directory, cell, frame, metadata):
                 omitted=['o.'+name for name in omitted],
                 publication_omitted=[name for name in b if name.startswith('o.')],retained_all=bool(selected.all()),
                 finite_slope_rank=len(finite),singleton_deletions=0,separation_deletions=int((~selected).sum()),
-                covariance_policy=metadata['covariance_policy'],absorbed_dof=absorbed_rank(metadata,cell,frame,selected),
+                covariance_policy=metadata['covariance_policy'],absorbed_dof=absorbed_rank(metadata,cell,frame),
                 reported_absorbed_dof=float(metadata['df_a']),
                 clusters=clusters)
     if cell['model']=='ols':
@@ -582,14 +701,17 @@ def capture(directory, cell, frame, metadata):
         # Scores and objectives use the estimation sample only.
         data=frame[selected];fitted=fitted[selected];y=data.y.to_numpy()
         residual=y-fitted
-        normalizer=np.maximum(1,np.bincount(data.g1.to_numpy(dtype=int),weights=np.abs(y)+np.abs(fitted)))
-        moment=np.bincount(data.g1.to_numpy(dtype=int),weights=residual)
-        result['maximum_worker_score']=float(np.max(np.abs(moment)/normalizer))
+        if cell['effects']:
+            normalizer=np.maximum(1,np.bincount(data.g1.to_numpy(dtype=int),weights=np.abs(y)+np.abs(fitted)))
+            moment=np.bincount(data.g1.to_numpy(dtype=int),weights=residual)
+            result['maximum_worker_score']=float(np.max(np.abs(moment)/normalizer))
+        else:
+            result['maximum_intercept_score']=float(abs(residual.sum())/max(1,np.sum(abs(y)+abs(fitted))))
         result['objective']=float(residual@residual) if cell['model']=='ols' else float(np.sum(fitted-y*np.log(fitted)))
         # Per-level channels must be constant on each retained categorical level.
         result['saved_channels_finite']=all(np.isfinite(rows[f'saved{j}'][selected]).all() for j in range(1,cell['effects']+1))
         if not result['saved_channels_finite']:raise ValueError('nonfinite saved FE channel')
-        moments=[]
+        moments=[] if cell['effects'] else [result['maximum_intercept_score']]
         for j in range(1,cell['effects']+1):
             code=data[f'g{j}'].to_numpy(dtype=int)
             channel=rows[f'saved{j}'].to_numpy(float)[selected]
@@ -627,35 +749,34 @@ def capture(directory, cell, frame, metadata):
     return result
 
 
-def fit(root, cell, arm, repetition, frame, cpus):
-    directory=root/'output'/cell['id']/f'{arm}-r{repetition}'
+def fit(root, cell, arm, repetition, frame, cpus, diagnostic=False):
+    from campaign_deviations import raw_capture
+    directory=root/'output'/cell['id']/(f'{arm}-r{repetition}'+('-diagnostic' if diagnostic else ''))
+    if diagnostic: cell=dict(cell, save_fe=True)
     directory.mkdir(parents=True,exist_ok=False)
     settings=dict(source=root/'source',refs=root/'environment/references',r_library=root/'environment/r-library',
         output=directory,dataset=root/'data'/(dataset_key(cell)+'.dta'),warm=root/'data/warm.dta',
         arm=arm,model=cell['model'],k=cell.get('regressors',16),effects=cell['effects'],threads=cell['threads'],
-        save_fe=int(cell['save_fe']),vce=cell['vce'],tolerance='',clock_plugin=root/'environment/command-clock.plugin')
+        save_fe=int(cell['save_fe']),vce=cell['vce'],
+        tolerance=POLICY.get('fereg_strict_tolerance',1e-12) if arm.endswith('-strict') else '',
+        inference_policy=POLICY.get('inference_policy','legacy-harmonized'),
+        strict_tolerance=POLICY.get('fereg_strict_tolerance',1e-12),
+        clock_plugin=root/'environment/command-clock.plugin')
     if arm in JULIA_ARMS:
         settings.update(julia_version=POLICY['julia']['julia'],fixedeffectmodels=POLICY['julia']['FixedEffectModels'])
-    if arm in GLJULIA_ARMS:
-        pin=POLICY['julia_ppml']
-        settings.update(julia_version=pin['julia'],glfixedeffectmodels=pin['GLFixedEffectModels'],
-                        fixedeffectmodels=pin['FixedEffectModels'])
-        if arm.endswith('-strict'):
-            settings.update({'strict_'+key:value for key,value in POLICY['julia_ppml_strict'].items()})
     bridge=None
-    if arm in REGHDFEJL_ARMS:
-        # Paths and versions of the run's private bridge environment (campaign_environment.py).
+    if base_arm(arm)=='reghdfejl':
         bridge=json.loads((root/'environment/reghdfejl/versions.json').read_text())
-        pin=POLICY['reghdfejl']
-        if any(bridge[key]!=pin[key] for key in pin):raise RuntimeError('reghdfejl environment differs from its pin')
-        settings.update(reghdfejl_refs=bridge['refs'],reghdfejl_lib=bridge['lib'],reghdfejl_channel=pin['julia'],
-                        reghdfejl_julia_version=pin['julia'],reghdfejl_fem_version=pin['FixedEffectModels'],
-                        reghdfejl_glfem_version=pin['GLFixedEffectModels'])
+        settings.update(reghdfejl_refs=bridge['refs'],reghdfejl_lib=bridge['lib'],
+                        reghdfejl_channel=bridge['channel'],reghdfejl_julia_version=bridge['julia_version'],
+                        reghdfejl_fem_version=bridge['fixedeffectmodels_version'])
+    if arm in GLJULIA_ARMS:
+        settings.update(julia_version=POLICY.get('julia_ppml',{}).get('julia','1.11.7'),
+                        glfixedeffectmodels=POLICY.get('julia_ppml',{}).get('GLFixedEffectModels','0.5.6'))
     write_configuration(directory,settings)
     if arm.startswith('fixest'):
         command=['Rscript',str(HERE/'campaign_r.R'),str(directory/'config.tsv')]
     elif arm in GLJULIA_ARMS:
-        # Its own depot: GLFixedEffectModels 0.5.6 resolves FixedEffectModels 1.13.3.
         command=['env',f"JULIA_DEPOT_PATH={root/'environment/julia-ppml-depot'}",
                  os.environ.get('JULIA_BIN','julia'),'--startup-file=no',f"--threads={cell['threads']}",
                  f"--project={root/'environment/julia-ppml'}",str(HERE/'campaign_gljulia.jl'),str(directory/'config.tsv')]
@@ -671,28 +792,42 @@ def fit(root, cell, arm, repetition, frame, cpus):
         command_file.write_text(f'do "{HERE}/campaign_stata.do" "{directory}/config.do"\n')
         command=[os.environ.get('STATA_BIN','stata-mp'),'-b','do',str(command_file)]
     if bridge:
-        # jl locates libjulia through `julia +CHANNEL`; the shim admits only the pinned runtime.
-        command=['env',f"PATH={bridge['bin']}:{os.environ['PATH']}",f"JULIA_DEPOT_PATH={bridge['depot']}",
-                 'JULIA_PKG_OFFLINE=true',*command]
+        command=['env',f"PATH={bridge['bin']}:{os.environ['PATH']}",
+                 f"JULIA_DEPOT_PATH={bridge['depot']}",'JULIA_PKG_OFFLINE=true',*command]
     observation=execute(command,directory,cpus[:cell['threads']],process_timeout(arm),command_timeout(arm))
     meta=read_metadata(directory/'metadata.tsv')
-    meta['native_arm']='1' if arm=='fereg' else '0'
+    meta['native_arm']='1' if is_native(arm) else '0'
     meta['arm']=arm
+    meta['inference_policy']=settings['inference_policy']
+    meta['stopping_profile']='tighter' if arm.endswith('-strict') else 'default'
     observation.update(cell=cell['id'],arm=arm,repetition=repetition,directory=str(directory),
-                       host=socket.gethostname(),job=os.environ.get('JOB_ID'),task=os.environ.get('SGE_TASK_ID'),metadata=meta)
+                       host=socket.gethostname(),job=os.environ.get('JOB_ID'),task=os.environ.get('SGE_TASK_ID'),metadata=meta,
+                       **block_identity(cell))
     logs='\n'.join(p.read_text(errors='replace') for p in directory.glob('*.log'))
     if observation['status']=='ok' and (meta.get('rc')!='0' or meta.get('complete')!='1' or 'CAMPAIGN_COMPLETE rc=0' not in logs):
         observation['status']='incomplete'
+    # Preserve parsable numerical outputs even if a scientific check below fails.
+    if (directory/'coefficients.csv').exists() and (directory/'rows.csv').exists():
+        try:
+            observation['numerical_capture']=raw_capture(directory,cell,frame,meta)
+        except (OSError,ValueError,KeyError) as error:
+            observation['numerical_capture_error']=str(error)
     if observation['status']=='ok':
         try:
             observation['capture']=capture(directory,cell,frame,meta)
             seconds=float(meta['seconds'])
             if not np.isfinite(seconds) or seconds<=0:raise ValueError('invalid timer')
-            if arm=='fereg' or arm in STATA_REFERENCES:
+            if is_native(arm) or base_arm(arm) in STATA_REFERENCES:
                 resolution=float(meta['clock_resolution'])
                 if not 0<resolution<=5e-7:raise ValueError('clock resolution is unqualified')
         except (OSError,ValueError,KeyError) as error:
             observation.update(status='capture-error',error=str(error))
+    if (POLICY.get('prediction_diagnostics') and not diagnostic and repetition==1
+            and not cell['save_fe'] and observation.get('numerical_capture')
+            and base_arm(arm)!='areg'):
+        observation['prediction_diagnostic']=fit(root,cell,arm,repetition,frame,cpus,diagnostic=True)
+        if is_native(arm) and observation['prediction_diagnostic']['status']!='ok':
+            observation['status']='native-diagnostic-failure'
     write_json(directory/'record.json',observation)
     print(f"{cell['id']} {arm} r{repetition}: {observation['status']}",flush=True)
     return observation
@@ -772,51 +907,95 @@ def agreement(x, y, reasons):
                 convention_reasons=sorted(set(reasons)-numerical))
 
 
+def compact_scratch_result(workroot, taskroot, result):
+    """Retain compact evidence after every calculation using private row arrays.
+
+    Original inputs remain in the audited source root. New row captures are
+    intentionally ephemeral, with content hashes retained before node cleanup.
+    """
+    omitted=lambda p:p.name in ('rows.csv','rows.csv.gz') or p.suffix in ('.npz','.dta')
+    shutil.copytree(workroot/'output',taskroot/'output',
+                    ignore=lambda directory,names:[n for n in names if omitted(Path(n))])
+    (taskroot/'data').mkdir(exist_ok=True)
+    for path in (workroot/'data').glob('*.json'):shutil.copy2(path,taskroot/'data'/path.name)
+    raw_count=0;raw_bytes=0
+    def retain(record):
+        nonlocal raw_count,raw_bytes
+        if 'directory' not in record:return
+        directory=Path(record['directory'])
+        destination=taskroot/directory.relative_to(workroot)
+        excluded={p.name:dict(sha256=sha256(p),bytes=p.stat().st_size)
+                  for p in directory.iterdir() if p.is_file() and omitted(p)}
+        raw_count+=len(excluded);raw_bytes+=sum(v['bytes'] for v in excluded.values())
+        record.update(directory=str(destination),ephemeral_output_files=excluded,
+                      row_retention='node scratch only; hashes retained; arrays unavailable after job cleanup')
+        if record.get('prediction_diagnostic'):retain(record['prediction_diagnostic'])
+        write_json(destination/'record.json',record)
+    for record in result['records']:retain(record)
+    result['retention']=dict(policy='compact-with-ephemeral-rows',scratch_root=str(workroot),
+                            excluded_files=raw_count,excluded_bytes=raw_bytes,
+                            row_arrays_available_after_job=False,
+                            comparisons='Precomputed before discarding row-level access; do not reopen row arrays.')
+    write_json(taskroot/'retention.json',result['retention'])
+
+
 def run_bundle(root, task, smoke=False, frozen_inputs=None, monitor=None):
     verify_runtime(root)
     manifest=json.loads((root/'manifest.json').read_text())
-    cells=configurations(True) if smoke else manifest['bundles'][task-1]
+    cells=configurations(True)+manifest.get('additional_smoke_cells',[]) if smoke else manifest['bundles'][task-1]
+    blocked=validate_block_bundle(cells) if not smoke else False
     cpus=physical_cpus();started=time.monotonic();records=[];datasets={};comparisons=[]
     (root/'data').mkdir(exist_ok=True);(root/'output').mkdir(exist_ok=True)
     # Separate task directories avoid any concurrent shared-file mutation.
     taskroot=root/('smoke' if smoke else f'task-{task}')
     taskroot.mkdir(exist_ok=False)
-    for name in ['source','environment']:(taskroot/name).symlink_to(root/name,target_is_directory=True)
-    (taskroot/'data').mkdir();(taskroot/'output').mkdir()
+    workroot=taskroot
+    if POLICY.get('use_node_scratch'):
+        temporary=os.environ.get('TMPDIR')
+        if not temporary or not Path(temporary).is_absolute() or not Path(temporary).is_dir() or not os.access(temporary,os.W_OK|os.X_OK):
+            raise ValueError('use_node_scratch requires an existing writable absolute TMPDIR')
+        workroot=Path(tempfile.mkdtemp(prefix=f'fereg-{taskroot.name}-',dir=temporary))
+    for base in dict.fromkeys([taskroot,workroot]):
+        for name in ['source','environment']:(base/name).symlink_to(root/name,target_is_directory=True)
+    (workroot/'data').mkdir();(workroot/'output').mkdir()
     # The warm input must carry every control a cell in this bundle uses.
-    warmcell=dict(cells[0],model='ppml',design='one-fe',effects=1,rows=512,
+    warmcell=dict(cells[0],model='ppml',design='three-dense',effects=3,rows=1200,
                   regressors=max(c.get('regressors',POLICY['controls']) for c in cells))
-    make_dataset(warmcell,taskroot/'data/warm.dta')
+    make_dataset(warmcell,workroot/'data/warm.dta')
     exhausted={}
     for cell in cells:
         if monitor:monitor.check()
         if time.monotonic()-started>POLICY['job_cleanup_seconds']:break
         key=dataset_key(cell)
-        path=taskroot/'data'/(key+'.dta')
+        path=workroot/'data'/(key+'.dta')
         if not path.exists():
-            frozen=frozen_inputs and not smoke and key in frozen_inputs['datasets']
+            frozen=(frozen_inputs and key in frozen_inputs['datasets'] and
+                    (not smoke or cell.get('section')=='veneto-smoke'))
+            if cell.get('section') in ('veneto','veneto-smoke') and not frozen:
+                raise ValueError('audited real-panel input is missing from frozen inventory: '+key)
             frame,metadata=frozen_dataset(cell,path,frozen_inputs) if frozen else make_dataset(cell,path)
             datasets[key]=metadata
         else:frame=pd.read_stata(path,convert_categoricals=False)
         selected=arms(cell);failed=set()
         # A command that timed out at a smaller size is not attempted again in its series.
         limits=exhausted.get(series_key(cell),{})
-        for repetition in range(1,cell['repetitions']+1):
+        for repetition in repetition_positions(cell):
             current={}
             order=selected[repetition%len(selected):]+selected[:repetition%len(selected)]
             for arm in order:
-                if arm in limits and cell['rows']>limits[arm]:
+                if not blocked and POLICY.get('skip_larger_after_timeout',True) and arm in limits and cell['rows']>limits[arm]:
                     records.append(dict(cell=cell['id'],arm=arm,repetition=repetition,status='skipped-after-timeout',
                                         timed_out_rows=limits[arm],metadata={}))
                     continue
                 if arm in failed:
                     records.append(dict(cell=cell['id'],arm=arm,repetition=repetition,status='skipped-after-failure',metadata={}))
                     continue
-                if time.monotonic()-started+process_timeout(arm)>POLICY['job_cleanup_seconds']:break
-                record=fit(taskroot,cell,arm,repetition,frame,cpus)
+                if time.monotonic()-started+fit_budget(cell,arm,repetition)>POLICY['job_cleanup_seconds']:break
+                record=fit(workroot,cell,arm,repetition,frame,cpus)
+                record.update(block_identity(cell))
                 if monitor:monitor.check()
                 records.append(record);current[arm]=record
-                if record['status']!='ok':failed.add(arm)
+                if record['status']!='ok' and (record['status']!='capture-error' or is_native(arm)):failed.add(arm)
                 if record['status'] in ['timeout','command-timeout']:
                     exhausted.setdefault(series_key(cell),{}).setdefault(arm,cell['rows'])
                 write_json(taskroot/'results.json',dict(cells=cells,records=records,datasets=datasets,comparisons=comparisons,complete=False))
@@ -824,7 +1003,7 @@ def run_bundle(root, task, smoke=False, frozen_inputs=None, monitor=None):
                 for arm in selected:
                     if arm=='fereg' or arm not in current:continue
                     result=compare_records(current['fereg'],current[arm],cell)
-                    result.update(cell=cell['id'],arm=arm,repetition=repetition)
+                    result.update(cell=cell['id'],arm=arm,repetition=repetition,**block_identity(cell))
                     if result['agreement'] in ['exact','convention']:
                         result['ratio']=float(current['fereg']['metadata']['seconds'])/float(current[arm]['metadata']['seconds'])
                     comparisons.append(result)
@@ -834,9 +1013,9 @@ def run_bundle(root, task, smoke=False, frozen_inputs=None, monitor=None):
     seen={(r['cell'],r['arm'],r['repetition']) for r in records}
     for cell in cells:
         for arm in arms(cell):
-            for repetition in range(1,cell['repetitions']+1):
+            for repetition in repetition_positions(cell):
                 if (cell['id'],arm,repetition) not in seen:
-                    records.append(dict(cell=cell['id'],arm=arm,repetition=repetition,status='unattempted-budget',metadata={}))
+                    records.append(dict(cell=cell['id'],arm=arm,repetition=repetition,status='unattempted-budget',metadata={},**block_identity(cell)))
     skipped=['unattempted-budget','skipped-after-failure','skipped-after-timeout']
     result=dict(cells=cells,records=records,datasets=datasets,comparisons=comparisons,
                 complete=len(records)==expected and all(r['status'] not in skipped for r in records),
@@ -845,14 +1024,19 @@ def run_bundle(root, task, smoke=False, frozen_inputs=None, monitor=None):
     if smoke:
         from campaign_oracle import validate_smoke
         result['independent_science']=validate_smoke(result)
-        accepted=all(x['pass'] for x in result['independent_science'] if x['arm']=='fereg')
+        accepted=all(x['pass'] for x in result['independent_science'] if is_native(x['arm']))
         # Production relies on exact kernel peaks; every completed smoke fit must provide one.
-        result['memory_exact']=all(r.get('memory_exact') for r in records if r['status']=='ok')
+        result['memory_exact']=all(r.get('memory_exact') for r in records if is_native(r['arm']) and r['status']=='ok')
         result['native_gate_pass']=(accepted and result['memory_exact']
                                     and sum(r['arm']=='fereg' for r in records)==len(cells))
+    from campaign_deviations import comparisons as numerical_comparisons
+    result['numerical_comparisons']=numerical_comparisons(records)
+    if workroot!=taskroot:compact_scratch_result(workroot,taskroot,result)
     write_json(taskroot/'results.json',result)
     verify_runtime(root)
     if smoke and not result['native_gate_pass']:raise RuntimeError('independent native smoke failed')
+    if blocked and not result['complete']:
+        raise RuntimeError('comparison-block allocation did not complete its frozen positions; retained evidence must not be resampled')
     (taskroot/'COMPLETE').write_text('CAMPAIGN_TASK_COMPLETE\n')
 
 

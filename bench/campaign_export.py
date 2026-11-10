@@ -19,14 +19,13 @@ import pandas as pd
 from campaign_report import load_campaign, summarize, check_native_repetitions, check_workers
 from qualify_scc import validate_reservation, validate_census
 
-FIELDS = ['cell', 'arm', 'repetition', 'status', 'host', 'job', 'task', 'process_rc', 'wall_seconds', 'seconds',
+FIELDS = ['source_cell', 'block_family', 'block_repetition', 'command_timeout_seconds', 'process_timeout_seconds', 'cell', 'arm', 'repetition', 'status', 'host', 'job', 'task', 'process_rc', 'wall_seconds', 'seconds',
           'error', 'estimator_tree_rss_bytes', 'memory_sweeps', 'memory_exact', 'ready_rss_bytes', 'peak_rss_bytes',
           'done_rss_bytes', 'timed_out_rows']
 # fereg's own phase clocks (OLS) and total; they may nest and must not be summed.
 METADATA = ['preflight_seconds', 'input_seconds', 'native_seconds', 'total_seconds',
-            'warm_seconds', 'iterations', 'tolerance', 'fereg_threads', 'feppml_threads', 'fixest_version',
-            'pyfixest_version', 'pyfixest_commit', 'julia_version', 'fixedeffectmodels_version',
-            'glfixedeffectmodels_version', 'covariance_multiplier', 'll_package', 'separation_policy']
+            'inference_policy', 'stopping_profile', 'warm_seconds', 'iterations', 'tolerance', 'fereg_threads', 'feppml_threads', 'fixest_version',
+            'pyfixest_version', 'pyfixest_commit', 'julia_version', 'fixedeffectmodels_version', 'glfixedeffectmodels_version']
 
 
 def digest(path):
@@ -74,23 +73,46 @@ def host_replay(root, manifest):
     return hosts
 
 
+def validate_native_results(native, repeats, workers):
+    """Retain limits by profile without excusing any observed science failure."""
+    limited = {(r['cell'], r['arm']) for r in native if r['status'] in ['command-timeout', 'timeout']}
+    for r in native:
+        if r['status'] != 'ok' and not (
+                (r['cell'], r['arm']) in limited and
+                r['status'] in ['command-timeout', 'timeout', 'skipped-after-failure']):
+            raise ValueError('native evidence failed; do not export or resample')
+    for checks in [repeats, workers]:
+        for key, reasons in checks.items():
+            cell, _, arm = key.partition('::')
+            allowed = {'native application unavailable', 'worker science unavailable'} if (cell, arm or 'fereg') in limited else set()
+            if set(reasons) - allowed:
+                raise ValueError('native evidence failed; do not export or resample')
+    return limited
+
+
+def capture_hashes(records, cells):
+    models = {c['id']: c['model'] for c in cells}
+    return {f"{r['cell']}/{r['arm']}-r{r['repetition']}": canonical(dict(
+                capture=r['capture'], objective=float(r['metadata']['rss' if models[r['cell']]=='ols' else 'll'])))
+            for r in records if 'capture' in r}
+
+
 def export(root, report, output, prefix):
     campaign = load_campaign(root)
     summary = summarize(campaign)
     context, manifest = campaign['context'], campaign['manifest']
     repeats, workers = check_native_repetitions(campaign), check_workers(campaign)
-    native = [r for r in campaign['records'] if r['arm'] == 'fereg']
-    # A native command limit stays visible as a result; every other native failure stops the export.
-    limited = {r['cell'] for r in native if r['status'] in ['command-timeout', 'timeout']}
-    unexplained = [r for r in native if r['status'] != 'ok' and r['cell'] not in limited]
-    if (unexplained or any(v for k, v in repeats.items() if k not in limited)
-            or any(v for k, v in workers.items() if k not in limited)
-            or any(r['status'] not in ['command-timeout', 'timeout', 'skipped-after-failure']
-                   for r in native if r['cell'] in limited)):
-        raise ValueError('native evidence failed; do not export or resample')
+    native = [r for r in campaign['records'] if r['arm'] in ['fereg','fereg-strict']]
+    limited = validate_native_results(native, repeats, workers)
     hosts = host_replay(root, manifest)
     output.mkdir(parents=True, exist_ok=True)
     summary.to_csv(output/(prefix+'-summary.csv'), index=False)
+    # Numerical output is independent of legacy eligibility classifications.
+    from campaign_deviations import comparisons as numerical_comparisons
+    kept={r['cell'] for r in campaign['records']}
+    numerical=[row for task in campaign['tasks'] for row in task.get('numerical_comparisons',[]) if row['cell'] in kept]
+    if not numerical: numerical=numerical_comparisons(campaign['records'])
+    (output/(prefix+'-deviations.json')).write_text(json.dumps(numerical,indent=2,allow_nan=False)+'\n')
     rows = []
     # Superseded cells keep their positions here; the summary omits them.
     for record in campaign['records']+campaign['superseded_records']:
@@ -103,9 +125,7 @@ def export(root, report, output, prefix):
     inventory = json.loads((root/'environment/runtime.json').read_text())
     harness = (root/'logs/harness-tests.log').read_text()
     smoke = campaign['smoke']['independent_science']
-    captured = {f"{r['cell']}/{r['arm']}-r{r['repetition']}": canonical(dict(
-                    capture=r['capture'], objective=float(r['metadata']['rss' if r['cell'].startswith('ols-') else 'll'])))
-                for r in campaign['records'] if 'capture' in r}
+    captured = capture_hashes(campaign['records'], manifest['cells'])
     accounting_keys = ['jobnumber', 'taskid', 'hostname', 'qname', 'slots', 'failed', 'exit_status',
                        'start_time', 'end_time', 'ru_wallclock', 'cpu', 'maxvmem']
     references = summary[(summary.section == 'reference')]
@@ -115,16 +135,12 @@ def export(root, report, output, prefix):
                                [f'{arm}-freeze.txt' for arm in manifest['policy']['pyfixest']]},
                 fixest_versions=sorted({r['metadata']['fixest_version'] for r in campaign['records']
                                         if r.get('metadata', {}).get('fixest_version')}))
+    if manifest['policy'].get('symmetric_strict'):
+        pins['julia_ppml']=json.loads((root/'environment/julia-ppml-versions.json').read_text())
+        pins['julia_ppml_manifest_sha256']=digest(root/'environment/julia-ppml/Manifest.toml')
+        pins['reghdfejl']=json.loads((root/'environment/reghdfejl/versions.json').read_text())
     if 'julia' in manifest['policy']:
         pins['julia_manifest_sha256'] = digest(root/'environment/julia/Manifest.toml')
-    if 'julia_ppml' in manifest['policy']:
-        pins.update(julia_ppml=manifest['policy']['julia_ppml'],
-                    julia_ppml_manifest_sha256=digest(root/'environment/julia-ppml/Manifest.toml'))
-    if 'reghdfejl' in manifest['policy']:
-        bridge = json.loads((root/'environment/reghdfejl/versions.json').read_text())
-        pins.update(reghdfejl=manifest['policy']['reghdfejl'], reghdfejl_pins_sha256=bridge['pins_sha256'],
-                    reghdfejl_bridge_plugin_sha256=bridge['bridge_plugin_sha256'],
-                    reghdfejl_environment_root=bridge.get('environment_root'))
     metadata = dict(
         schema=2, run_id=context['run_id'], remote_root=context['remote_root'], purpose=manifest['policy']['purpose'],
         source_commit=context['source'], source_archive_sha256=context['source_sha256'],
@@ -162,7 +178,7 @@ def export(root, report, output, prefix):
         capture_sha256=captured, artifacts=json.loads((root/'collection-sha256.json').read_text()),
         runtime_inventory_sha256=digest(root/'environment/runtime.json'), exporter_sha256=digest(Path(__file__)),
         report_pdf_sha256=digest(pdf), report_pdf_pages=len(re.findall(rb'/Type\s*/Page[^s]', pdf.read_bytes())),
-        retained_csv_sha256={name: digest(output/name) for name in [prefix+'-summary.csv', prefix+'-observations.csv']},
+        retained_csv_sha256={name: digest(output/name) for name in [prefix+'-summary.csv', prefix+'-observations.csv',prefix+'-deviations.json']},
         limitations=[
             'Descriptive Linux comparison on one fixed seed; three to five repetitions per configuration.',
             'Each design and model ran on one node; absolute times across designs and nodes also reflect node speed, '
@@ -170,6 +186,18 @@ def export(root, report, output, prefix):
             'Agreement by convention removes one covariance scalar from absorbed degrees-of-freedom counting; '
             'strict eligibility and tolerances are unchanged.',
             'A command that reached the time limit was not attempted at larger sizes of its series.'])
+    if manifest.get('source_cells'):
+        from campaign_blocks_report import paired_summary
+        paired_summary(campaign).to_csv(output/(prefix+'-paired-summary.csv'),index=False)
+        metadata['retained_csv_sha256'][prefix+'-paired-summary.csv']=digest(output/(prefix+'-paired-summary.csv'))
+        metadata['limitations']=[
+            "Default and tighter settings use each package's own stopping criteria; equal numbers do not imply equal accuracy.",
+            'Every comparator family and repetition shares one isolated allocation with default and tighter fereg.',
+            'Native denominators are block-specific; absolute timing medians across blocks include host variation.',
+            'All predetermined repetitions and larger sizes remain scheduled, including after another block times out.',
+            'Row arrays are ephemeral node-scratch outputs; compact deviations and raw coefficient/covariance captures are retained.']
+        metadata['source_configurations']=manifest['source_cells']
+        metadata['hard_bundle_hours']=manifest['hard_bundle_hours']
     (output/(prefix+'-inputs.json')).write_text(json.dumps(metadata, indent=2, allow_nan=False)+'\n')
     return metadata
 

@@ -53,19 +53,6 @@ if [[ "${CAMPAIGN_PLUGIN:-build}" == dist ]]; then
     # Measure the published package binary exactly as installed from GitHub.
     (cd dist && sha256sum -c fereg_linux.plugin.sha256) > "$RUN_ROOT/logs/build.log" 2>&1
     printf 'CAMPAIGN_PLUGIN=dist\n' >> "$RUN_ROOT/logs/build.log"
-elif [[ "${CAMPAIGN_PLUGIN:-build}" == candidate ]]; then
-    # Measure a staged candidate root package (stage_local_install.py --root-package)
-    # whose frontend is this source's: every packaged file but help is identical.
-    python3 - "${CANDIDATE_PACKAGE:?}" "$PWD" > "$RUN_ROOT/logs/build.log" 2>&1 <<'PY'
-import filecmp,hashlib,pathlib,shutil,sys
-package,source=map(pathlib.Path,sys.argv[1:])
-expected=(package/'dist/fereg_linux.plugin.sha256').read_text().split()[0]
-assert hashlib.sha256((package/'dist/fereg_linux.plugin').read_bytes()).hexdigest()==expected
-frontend=sorted(p.name for p in (package/'stata').iterdir() if p.suffix!='.sthlp')
-assert frontend and all(filecmp.cmp(package/'stata'/n,source/'stata'/n,shallow=False) for n in frontend)
-for path in (package/'dist').iterdir():shutil.copy2(path,source/'dist'/path.name)
-print('CAMPAIGN_PLUGIN=candidate',package,expected,len(frontend),'identical frontend files')
-PY
 else
     cargo fetch --locked --target x86_64-unknown-linux-gnu > "$RUN_ROOT/logs/dependency-fetch.log" 2>&1
     export CARGO_NET_OFFLINE=true
@@ -84,8 +71,18 @@ PY
 cd "$RUN_ROOT/source"
 bash bench/scc/pyfixest_environment.sh "$RUN_ROOT/environment" > "$RUN_ROOT/logs/pyfixest-environment.log" 2>&1
 bash bench/scc/julia_environment.sh "$RUN_ROOT/environment" > "$RUN_ROOT/logs/julia-environment.log" 2>&1
-# GLFixedEffectModels.jl and reghdfejl: private layers over a verified, reused root.
-python3 bench/campaign_environment.py link "$RUN_ROOT" "${COMPARATOR_ROOT:?}" > "$RUN_ROOT/logs/comparator-environment.log" 2>&1
+# Additional comparator environments are installed only for an expanded plan.
+if [[ "${CAMPAIGN_EXPANDED_COMPARATORS:-0}" == 1 ]]; then
+    if [[ -n "${EXPANDED_REFERENCE_ROOT:-}" ]]; then
+        python3 bench/revision_environment.py "$RUN_ROOT" "$EXPANDED_REFERENCE_ROOT" > "$RUN_ROOT/logs/expanded-environment.log" 2>&1
+    else
+        bash bench/scc/julia_ppml_environment.sh "$RUN_ROOT/environment" > "$RUN_ROOT/logs/julia-ppml-environment.log" 2>&1
+        bash bench/scc/reghdfejl_environment.sh "$RUN_ROOT/environment" > "$RUN_ROOT/logs/reghdfejl-environment.log" 2>&1
+    fi
+fi
+if [[ -n "${BENCHMARK_INPUT_ROOT:-}" ]]; then
+    python3 bench/revision_inputs.py "$RUN_ROOT" "$BENCHMARK_INPUT_ROOT" > "$RUN_ROOT/logs/revision-inputs.log" 2>&1
+fi
 python3 bench/campaign.py prepare "$RUN_ROOT"
 Rscript -e 'library(fixest);library(foreign);library(jsonlite);library(digest);writeLines(toJSON(as.list(setNames(vapply(loadedNamespaces(),find.package,character(1)),loadedNamespaces())),auto_unbox=TRUE),file.path(Sys.getenv("RUN_ROOT"),"environment/r-package-paths.json"))'
 python3 - "$RUN_ROOT" <<'PY'
@@ -107,9 +104,14 @@ paths=[r/'source/dist/fereg_linux.plugin',r/'environment/command-clock.plugin',
        *sorted((r/'environment/julia').rglob('*')),*sorted((depot/'packages').rglob('*')),
        *sorted((depot/'artifacts').rglob('*')),
        *sorted((r/'source/bench').rglob('*')),r/'manifest.json',r/'input/frozen-inputs.json',r/'input/policy.json']
-sys.path.insert(0,str(r/'source/bench'))
-from campaign_environment import frozen_files
-paths.extend(frozen_files(r/'environment'))
+# Keep compilation caches writable; freeze package sources, artifacts, manifests,
+# bridge binaries and the separate Julia runtime used by reghdfejl.
+for folder in ['julia-ppml', 'julia-ppml-depot/packages', 'julia-ppml-depot/artifacts',
+               'reghdfejl/references', 'reghdfejl/bin', 'reghdfejl/depot/packages',
+               'reghdfejl/depot/artifacts', 'reghdfejl/depot/environments',
+               'reghdfejl/julia-1.12.7']:
+    paths.extend(sorted((r/'environment'/folder).rglob('*')))
+paths.extend([r/'environment/julia-ppml-versions.json', r/'environment/reghdfejl/versions.json'])
 for folder in json.loads((r/'environment/r-package-paths.json').read_text()).values():
     paths.extend(sorted(pathlib.Path(folder).rglob('*')))
 paths.extend(pathlib.Path(shutil.which(name)).resolve() for name in ['stata-mp','Rscript','julia'])

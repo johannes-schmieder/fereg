@@ -31,12 +31,14 @@ ARM_NAMES = {'fereg': 'fereg', 'fixest': 'fixest', 'fixest-strict': 'fixest stri
              'reghdfe': 'reghdfe', 'ppmlhdfe': 'ppmlhdfe', 'areg': 'areg / regress',
              'pyfixest': 'pyfixest 0.60', 'pyfixest-within': 'pyfixest within',
              'pyfixest-within-strict': 'pyfixest within strict',
-             'julia': 'FixedEffectModels.jl', 'julia-strict': 'FixedEffectModels.jl strict',
-             'glfixedeffects': 'GLFixedEffectModels.jl', 'glfixedeffects-strict': 'GLFixedEffectModels.jl strict',
-             'reghdfejl': 'reghdfejl'}
-STATA_ARMS = ['fereg', 'reghdfe', 'ppmlhdfe', 'areg', 'reghdfejl']
+             'julia': 'FixedEffectModels.jl', 'julia-strict': 'FixedEffectModels.jl strict'}
+ARM_NAMES.update({'fereg-strict':'fereg tighter','reghdfejl':'reghdfejl (Stata/Julia)',
+                  'reghdfejl-strict':'reghdfejl tighter','glfixedeffects':'GLFixedEffectModels.jl',
+                  'glfixedeffects-strict':'GLFixedEffectModels.jl tighter',
+                  'reghdfe-strict':'reghdfe tighter','ppmlhdfe-strict':'ppmlhdfe tighter','areg-strict':'areg tighter'})
+STATA_ARMS = ['fereg', 'reghdfe', 'ppmlhdfe', 'areg']
 ARM_COLORS = {'fereg': BLUE, 'fixest': GOLD, 'reghdfe': INK, 'ppmlhdfe': INK,
-              'pyfixest-within': '#5B8C5A', 'julia': '#8E5B9B', 'glfixedeffects': '#8E5B9B', 'reghdfejl': RED}
+              'pyfixest-within': '#5B8C5A', 'julia': '#8E5B9B'}
 DESIGNS = {'akm-baseline': 'AKM baseline', 'no-fe': 'No FE', 'one-fe': 'One FE',
            'two-dense': 'Two FE / dense', 'two-sparse': 'Two FE / sparse',
            'three-dense': 'Three FE / dense', 'three-sparse': 'Three FE / sparse',
@@ -51,6 +53,10 @@ TIMING_FOOTNOTE = ('* Descriptive timing outside the scientific comparison. '
 def planned_repetitions(cell, policy):
     # Earlier manifests share one policy-wide repetition count.
     return cell.get('repetitions', policy['repetitions'])
+
+
+def planned_positions(cell, policy):
+    return [cell['block_repetition']] if 'block_repetition' in cell else range(1, planned_repetitions(cell, policy)+1)
 
 
 def planned_arms(cell):
@@ -76,8 +82,7 @@ def stopping(policy):
 
 
 OTHER_ARMS = {'pyfixest': '0.60', 'pyfixest-within': 'within', 'pyfixest-within-strict': 'within strict',
-              'julia': 'jl', 'julia-strict': 'jl strict', 'glfixedeffects': 'gljl', 'glfixedeffects-strict': 'gljl strict',
-              'reghdfejl': 'rjl'}
+              'julia': 'jl', 'julia-strict': 'jl strict'}
 
 
 def package_pages(pdf, frame, manifest):
@@ -92,8 +97,6 @@ def package_pages(pdf, frame, manifest):
             pdf.page(f'{model.upper()}: Python and Julia packages ({part}/{(len(cells)+17)//18})')
             pdf.text('PyFixest within is a pinned main revision whose default is the within LSMR demeaner. '
                      'FixedEffectModels.jl (jl) uses its default tolerance 1e-6; jl strict uses 1e-10. '
-                     'GLFixedEffectModels.jl (gljl) uses its default center/deviance tolerances 1e-8; gljl strict uses 1e-11/1e-10; '
-                     'neither detects separation. reghdfejl (rjl) runs FixedEffectModels.jl or GLFixedEffectModels.jl from Stata at defaults. '
                      'Median seconds; * marks result discrepancies and † agreement up to degrees-of-freedom conventions. '
                      'A ratio above 1 means the package took longer than fereg.', 'SmallCustom')
             rows = [['Design / N / K', 'Cores / VCE / saved', 'fereg s', *[OTHER_ARMS[a]+' s' for a in extra],
@@ -195,7 +198,7 @@ def load_campaign(root):
         records.extend(task['records']); comparisons.extend(task['comparisons'])
         datasets.update(task['datasets']); tasks.append(task)
     expected = {(c['id'], a, r) for c in manifest['cells'] for a in planned_arms(c)
-                for r in range(1, planned_repetitions(c, manifest['policy'])+1)}
+                for r in planned_positions(c, manifest['policy'])}
     actual = [(r['cell'], r['arm'], r['repetition']) for r in records]
     if len(set(actual)) != len(actual) or set(actual) != expected or len(records) != manifest['timed_fits']:
         raise ValueError('manifest and observation coverage disagree')
@@ -233,11 +236,12 @@ def summarize(campaign):
         count = planned_repetitions(cell, policy)
         native_reasons = set(worker_checks.get(cell['id'], [])) | set(repeat_checks.get(cell['id'], []))
         for arm in planned_arms(cell):
-            runs = [records[(cell['id'], arm, rep)] for rep in range(1, count+1)]
+            positions=planned_positions(cell,policy)
+            runs = [records[(cell['id'], arm, rep)] for rep in positions]
             valid = all(r['status'] == 'ok' for r in runs)
             reasons, conventions, paired, scales = set(), set(), [], []
             if arm != 'fereg':
-                for rep, run in enumerate(runs, 1):
+                for rep, run in zip(positions,runs):
                     native = records[(cell['id'], 'fereg', rep)]
                     comparison = comparisons.get((cell['id'], arm, rep), {})
                     kind = comparison.get('agreement', 'exact' if comparison.get('eligible') else 'differs')
@@ -256,7 +260,7 @@ def summarize(campaign):
             observed = [value for r in runs if (value := completed_seconds(r)) is not None]
             # Exact: every paired repetition agrees. Convention: agreement up to
             # absorbed degrees-of-freedom counts and their covariance scalar.
-            native_ok = all(records[(cell['id'], 'fereg', rep)]['status'] == 'ok' for rep in range(1, count+1))
+            native_ok = all(records[(cell['id'], 'fereg', rep)]['status'] == 'ok' for rep in positions)
             if arm == 'fereg':
                 agreement = 'native'
             elif eligible:
@@ -278,7 +282,8 @@ def summarize(campaign):
                 method, memory, increment = 'sampled', median(r['estimator_tree_rss_bytes'] for r in runs)/2**30, None
             else:
                 method, memory, increment = '', None, None
-            rows.append(dict(cell=cell['id'], model=cell['model'], design=cell['design'], rows=cell['rows'],
+            rows.append(dict(cell=cell['id'], source_cell=cell.get('source_cell',cell['id']),
+                             block_family=cell.get('block_family'),block_repetition=cell.get('block_repetition'),model=cell['model'], design=cell['design'], rows=cell['rows'],
                              threads=cell['threads'], vce=cell['vce'], save_fe=cell['save_fe'],
                              regressors=cell.get('regressors', 16), section=cell['section'], arm=arm,
                              repetitions=count, successful_repetitions=sum(r['status'] == 'ok' for r in runs),
@@ -304,7 +309,7 @@ def completed_seconds(record):
         return None
     try:
         seconds = float(meta['seconds'])
-        if record['arm'] in STATA_ARMS:
+        if record['arm'].removesuffix('-strict') in [*STATA_ARMS, 'reghdfejl']:
             resolution = float(meta['clock_resolution'])
             if not 0 < resolution <= 5e-7:
                 return None
@@ -356,11 +361,11 @@ def load_saved_retests(root):
     return result
 
 
-def check_native_repetitions(campaign):
+def check_native_repetitions(campaign, native_arm="fereg"):
     """Require exact repeated native coordinates and stable discrete decisions."""
     failures = {}
     for cell in campaign['manifest']['cells']:
-        records = sorted((r for r in campaign['records'] if r['cell'] == cell['id'] and r['arm'] == 'fereg'),
+        records = sorted((r for r in campaign['records'] if r['cell'] == cell['id'] and r['arm'] == native_arm),
                          key=lambda r: r['repetition'])
         reasons = set()
         if any(r['status'] != 'ok' for r in records):
@@ -378,14 +383,52 @@ def check_native_repetitions(campaign):
                     reasons.add('native repeatability')
                 if float(record['metadata'][metric]) != float(records[0]['metadata'][metric]):
                     reasons.add('native objective repeatability')
-        failures[cell['id']] = sorted(reasons)
+        if records: failures[cell['id']] = sorted(reasons)
+    if campaign['manifest'].get('source_cells'):
+        cells={c['id']:c for c in campaign['manifest']['cells']}
+        grouped={}
+        for r in campaign['records']:
+            if r['arm']==native_arm and r['status']=='ok':
+                c=cells[r['cell']]
+                grouped.setdefault(c.get('source_cell',c['id']),[]).append(r)
+        policy=campaign['manifest']['policy']
+        discrete=['N','sample_sha256','finite_slope_rank','omitted','publication_omitted',
+                  'singleton_deletions','separation_deletions','absorbed_dof','clusters','covariance_policy']
+        for group in grouped.values():
+            ref=group[0]
+            host_references={ref.get('host'):ref} if ref.get('host') else {}
+            for r in group[1:]:
+                reasons=set(failures.get(r['cell'],[]))
+                for key in discrete:
+                    if r['capture'].get(key)!=ref['capture'].get(key):reasons.add('native cross-block '+key)
+                for key,tolerance in [('beta','coefficient'),('covariance','vce')]:
+                    a,b=np.asarray(r['capture'][key]),np.asarray(ref['capture'][key])
+                    if (a.shape!=b.shape or not np.isfinite(a).all() or not np.isfinite(b).all() or
+                        not np.all(abs(a-b)<=policy[tolerance+'_atol']+policy[tolerance+'_rtol']*np.maximum(abs(a),abs(b)))):
+                        reasons.add('native cross-block '+key)
+                    if r.get('host') and r.get('host')==ref.get('host') and not np.array_equal(a,b):
+                        reasons.add('native same-host repeatability')
+                metric='rss' if cells[r['cell']]['model']=='ols' else 'll'
+                a,b=float(r['metadata'][metric]),float(ref['metadata'][metric])
+                if abs(a-b)>policy['objective_atol']+policy['objective_rtol']*max(abs(a),abs(b)):
+                    reasons.add('native cross-block objective')
+                # Exact repeatability applies within every host, including hosts
+                # other than the first cross-host scientific reference.
+                if r.get('host'):
+                    same_host=host_references.setdefault(r['host'],r)
+                    if (any(r['capture'].get(k)!=same_host['capture'].get(k) for k in discrete+['beta','covariance'])
+                            or float(r['metadata'][metric])!=float(same_host['metadata'][metric])):
+                        reasons.add('native same-host repeatability')
+                failures[r['cell']]=sorted(reasons)
+    if native_arm=='fereg' and any(r['arm']=='fereg-strict' for r in campaign['records']):
+        failures.update({cell+'::fereg-strict':reasons for cell,reasons in check_native_repetitions(campaign,'fereg-strict').items()})
     return failures
 
 
-def check_workers(campaign):
+def check_workers(campaign, native_arm="fereg"):
     """Check native science against the four-core cell on the same input."""
     cells = campaign['manifest']['cells']
-    records = {(r['cell'], r['repetition']): r for r in campaign['records'] if r['arm'] == 'fereg'}
+    records = {(r['cell'], r['repetition']): r for r in campaign['records'] if r['arm'] == native_arm}
     policy = campaign['manifest']['policy']
     failures = {}
     def same_values(a, b, rtol, atol):
@@ -393,17 +436,20 @@ def check_workers(campaign):
         return a.shape == b.shape and np.isfinite(a).all() and np.isfinite(b).all() and np.all(
             abs(a-b) <= atol+rtol*np.maximum(abs(a), abs(b)))
     for cell in cells:
-        if cell['threads'] == 4:
+        positions=list(planned_positions(cell,policy))
+        if cell['threads'] == 4 or not any((cell['id'],rep) in records for rep in positions):
             continue
         baseline = [c for c in cells if c['threads'] == 4 and all(c[k] == cell[k] for k in
                     ['model', 'design', 'rows', 'vce', 'save_fe'])
-                    and c.get('regressors', 16) == cell.get('regressors', 16) and c['section'] != 'reference']
+                    and c.get('regressors', 16) == cell.get('regressors', 16) and c['section'] != 'reference'
+                    and c.get('block_family')==cell.get('block_family')
+                    and c.get('block_repetition')==cell.get('block_repetition')]
         if len(baseline) != 1:
             failures[cell['id']] = ['missing four-core scientific witness']
             continue
         reasons = set()
-        shared = min(planned_repetitions(cell, policy), planned_repetitions(baseline[0], policy))
-        for rep in range(1, shared+1):
+        shared = sorted(set(positions)&set(planned_positions(baseline[0],policy)))
+        for rep in shared:
             a, b = records[(cell['id'], rep)], records[(baseline[0]['id'], rep)]
             if a['status'] != 'ok' or b['status'] != 'ok':
                 reasons.add('worker science unavailable'); continue
@@ -423,6 +469,8 @@ def check_workers(campaign):
                                policy['objective_rtol'], policy['objective_atol']):
                 reasons.add('worker objective')
         failures[cell['id']] = sorted(reasons)
+    if native_arm=='fereg' and any(r['arm']=='fereg-strict' for r in campaign['records']):
+        failures.update({cell+'::fereg-strict':reasons for cell,reasons in check_workers(campaign,'fereg-strict').items()})
     return failures
 
 
@@ -472,8 +520,8 @@ def configure_plots():
 
 
 def series_arms(model):
-    return ['fereg', 'fixest', 'pyfixest-within', 'julia' if model == 'ols' else 'glfixedeffects',
-            'reghdfe' if model == 'ols' else 'ppmlhdfe', 'reghdfejl']
+    return ['fereg', 'fixest', 'pyfixest-within', *(['julia'] if model == 'ols' else []),
+            'reghdfe' if model == 'ols' else 'ppmlhdfe']
 
 
 def scaling_plot(frame, output):
@@ -582,7 +630,7 @@ class CampaignPDF:
             canvas.drawString(36, 775, 'FEREG  /  SCC BENCHMARK CAMPAIGN')
             canvas.drawString(36, 23, self.identity)
             canvas.drawRightString(576, 23, str(doc.page))
-            note = Paragraph(TIMING_FOOTNOTE, self.styles['FootnoteCustom'])
+            note = Paragraph(getattr(self,'timing_footnote',TIMING_FOOTNOTE), self.styles['FootnoteCustom'])
             note.wrap(540, 40)
             note.drawOn(canvas, 36, 33)
             canvas.restoreState()
@@ -626,6 +674,9 @@ def render(campaign, frame, output, saved_retests=None):
     pdfmetrics.registerFont(TTFont('CampaignSans-Bold', findfont(FontProperties(family='DejaVu Sans', weight='bold'))))
     pdfmetrics.registerFontFamily('CampaignSans', normal='CampaignSans', bold='CampaignSans-Bold',
                                 italic='CampaignSans', boldItalic='CampaignSans-Bold')
+    if campaign['manifest'].get('source_cells'):
+        from campaign_blocks_report import render_blocks
+        return render_blocks(campaign,output)
     scaling_plot(frame, output/'scaling.png')
     size_plot(frame, campaign['manifest']['policy'], output/'sizes.png')
     context, manifest = campaign['context'], campaign['manifest']

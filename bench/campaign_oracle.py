@@ -6,7 +6,7 @@ import pandas as pd
 from scipy import sparse
 from scipy.linalg import qr
 from scipy.sparse.csgraph import connected_components
-from campaign import close_values, POLICY, SEPARATION_DESIGNS
+from campaign import close_values, POLICY, SEPARATION_DESIGNS, dataset_key
 
 
 def separation(frame, cell):
@@ -108,7 +108,7 @@ def validate_smoke(result):
     for cell in result['cells']:
         record=next((r for r in result['records'] if r['cell']==cell['id']),None)
         if record is None:continue
-        path=Path(record['directory']).parents[2]/'data'/f"{cell['model']}-{cell['design']}-n{cell['rows']}.dta"
+        path=Path(record['directory']).parents[2]/'data'/(dataset_key(cell)+'.dta')
         expected[cell['id']]=oracle(pd.read_stata(path,convert_categoricals=False),cell)
     for record in result['records']:
         cell=next(c for c in result['cells'] if c['id']==record['cell'])

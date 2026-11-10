@@ -29,6 +29,42 @@ class CampaignTests(unittest.TestCase):
             self.assertEqual(len(expected['intercept_covariance']),17)
             self.assertEqual(meta['topology']['levels'],[])
 
+    def test_no_fe_prediction_capture_and_intercept_score(self):
+        import csv
+        import pandas as pd
+        from scipy.special import gammaln
+        for model in ['ols','ppml']:
+            cell=dict(next(c for c in configurations(True) if c['model']==model and c['effects']==0),save_fe=True)
+            with tempfile.TemporaryDirectory() as d:
+                root=Path(d)
+                frame,_=make_dataset(cell,root/'input.dta')
+                expected=oracle(frame,cell)
+                names=expected['names']+['_cons']
+                beta=expected['beta']+[expected['intercept']]
+                V=np.zeros((len(names),len(names)))
+                V[:-1,:-1]=expected['covariance']
+                V[-1,:]=expected['intercept_covariance'];V[:,-1]=V[-1,:]
+                with (root/'coefficients.csv').open('w',newline='') as f:
+                    w=csv.writer(f);w.writerow(['name','value']);w.writerows(zip(names,beta))
+                with (root/'covariance.csv').open('w',newline='') as f:
+                    w=csv.writer(f);w.writerow(['row','column','value'])
+                    w.writerows((a,b,V[i,j]) for i,a in enumerate(names) for j,b in enumerate(names))
+                metadata=dict(finite_slope_rank='16',slope_omissions='0',df_a='0',N=str(len(frame)),
+                              df_r=str(len(frame)-17),covariance_policy='independent-oracle',converged='1')
+                def write_predictions(fitted):
+                    pd.DataFrame(dict(obs_id=frame.obs_id,retained=1,fitted=fitted)).to_csv(root/'rows.csv',index=False)
+                    y=frame.y.to_numpy()
+                    metadata['rss' if model=='ols' else 'll']=str(float(np.sum((y-fitted)**2) if model=='ols'
+                        else np.sum(y*np.log(fitted)-fitted-gammaln(y+1))))
+                write_predictions(expected['fitted'])
+                result=campaign.capture(root,cell,frame,metadata)
+                self.assertLess(result['maximum_intercept_score'],1e-11)
+                self.assertLess(result['maximum_model_score'],1e-11)
+                self.assertNotIn('maximum_worker_score',result)
+                write_predictions(expected['fitted']+.1)
+                with self.assertRaisesRegex(ValueError,'independent model score'):
+                    campaign.capture(root,cell,frame,metadata)
+
     def test_extended_command_limit_leaves_export_time(self):
         self.assertEqual(campaign.command_timeout('reghdfe'),3600)
         self.assertEqual(campaign.command_timeout('ppmlhdfe'),3600)

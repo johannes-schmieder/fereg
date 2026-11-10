@@ -75,10 +75,9 @@ def collect(context_path, output):
     if 'julia' in policy:
         files += ['environment/julia-versions.json', 'environment/julia/Project.toml',
                   'environment/julia/Manifest.toml', 'logs/julia-environment.log']
-    if 'julia_ppml' in policy or 'reghdfejl' in policy:
+    if policy.get('symmetric_strict'):
         files += ['environment/julia-ppml-versions.json', 'environment/julia-ppml/Project.toml',
-                  'environment/julia-ppml/Manifest.toml', 'environment/reghdfejl/versions.json',
-                  'logs/comparator-environment.log']
+                  'environment/julia-ppml/Manifest.toml', 'environment/reghdfejl/versions.json']
     if context.get('plugin', 'build') == 'build':
         files.append('logs/dependency-fetch.log')
     bundles = policy['bundles']
@@ -93,7 +92,7 @@ def collect(context_path, output):
         files.append('logs/abi-retest.log')
     listing = remote('find '+shlex.quote(root+'/logs')+" -maxdepth 1 -type f -name 'production.*.sge'").decode().splitlines()
     files.extend(str(Path(path).relative_to(root)) for path in listing)
-    archive = remote('cd '+shlex.quote(root)+' && tar -cf - '+' '.join(shlex.quote(x) for x in files))
+    archive = remote('cd '+shlex.quote(root)+' && tar -h -cf - '+' '.join(shlex.quote(x) for x in files))
     with tarfile.open(fileobj=io.BytesIO(archive), mode='r:') as tar:
         for member in tar.getmembers():
             path = Path(member.name)

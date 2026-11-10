@@ -1,0 +1,29 @@
+{
+  "purpose": "November outreach revision: default stopping timings and symmetric tighter profiles with raw inference and numerical deviations",
+  "symmetric_strict": true,
+  "inference_policy": "package-default",
+  "prediction_diagnostics": true,
+  "fereg_strict_tolerance": 1e-12,
+  "julia_ppml": {
+    "julia": "1.11.7",
+    "GLFixedEffectModels": "0.5.6"
+  },
+  "command_timeout_seconds": 3600,
+  "command_timeout_by_arm": {},
+  "process_timeout_seconds": 4500,
+  "designs": [
+    "akm-baseline",
+    "one-fe",
+    "two-dense",
+    "two-sparse",
+    "three-dense",
+    "three-sparse",
+    "akm-clustered",
+    "gravity"
+  ],
+  "skip_larger_after_timeout": false,
+  "schedule": "paired-repetition-blocks",
+  "block_bundle_seconds": 37800,
+  "block_startup_headroom_seconds": 3600,
+  "use_node_scratch": true
+}
