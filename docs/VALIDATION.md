@@ -4887,7 +4887,8 @@ test; the remaining steps were run to completion as a diagnostic.
     alone three times on scc-gd4 (8548502), fereg-core's library suite twice
     on scc-gr4 (8548547) and once serially on scc-gd4 (8548568), passing
     each time, as did the parent `842a0632` in the same three suite runs. It
-    passes on the Mac. The cause is not identified; nothing was changed. The
+    passes on the Mac. The cause, a test-isolation defect, is identified and
+    fixed below (`6cf8cb24`, test-only). The
     static and mock-SPI checks, the
     batch guard and the Linux mock-plugin audit pass. The size check stopped
     at the ratchet's "parent revision unavailable": the depth-1 snapshot has
@@ -4918,6 +4919,82 @@ test; the remaining steps were run to completion as a diagnostic.
 
 Not covered: timing (the benchmark campaign follows on this commit), Intel
 Macs, HTTP installation and release work.
+
+## PPML LSMR repeatability witness: test isolation (6cf8cb24)
+
+The Linux-only failure of
+`ppml_lsmr_admission_admits_its_exact_estimate_and_refuses_one_byte_less` in
+SCC tests job 8548432 (two repeated budgeted PPML LSMR fits differed by up to
+2.1e-15 in eta) is a test-isolation defect, not runtime nondeterminism.
+`6cf8cb24` changes tests only; `check_complexity.py --compare-production
+44cd1563` passes, so runtime bits and the qualification above are unchanged.
+
+**Cause.** `block_schur::disable_for_test()` turns fedemean's elimination off
+for the whole test process while its guard lives. Explicit PPML LSMR seeds
+from the elimination when it is enabled and from the checkpoint LSMR attempt
+when it is not (traced `initial_certificate_screen`, `checkpoint_lsmr_attempt`),
+so its eta moves at rounding level with the switch (`FEREG_BLOCK_SCHUR=0` gives
+different eta bits at 1 worker). The test compared its repeated fits bitwise
+without the shared side of the route lock (`stable_route_for_test()`), so a
+disabling test that started or ended between them changed one fit. This also
+explains the reruns: the failure needs concurrent tests, and the serial and
+single-test reruns had none. Production reads `FEREG_BLOCK_SCHUR` once per
+process, so a fit's route cannot change between fits there.
+
+**Reproduction** (Mac, diagnostic builds with per-fit eta hashes, not
+committed).
+- Switching the elimination off for the second repeated fit fails at the same
+  assertion, rel 1.4e-15.
+- Beside a diagnostic test that toggles the switch at random 2–41 ms
+  intervals through the exclusive route lock, the unfixed test failed in 20
+  of 20 runs (rel 1.1e-15 to 1.6e-15); holding the shared lock it passed 20
+  of 20 with the undisturbed eta bits.
+- Alone (`--exact`, one test thread): every fit's eta bits, at 1 and at 4
+  workers, were identical in 121 runs before and 300 runs after the fix (the
+  two worker counts agree within the test's 2e-9). Beside the 33 disabling
+  tests the unfixed test ran wholly in the disabled state in 5 of 5 runs
+  (other bits, still repeated), the fixed one wholly in the enabled state in
+  20 of 20; whole-library runs (6 before, 5 after) gave the undisturbed bits.
+
+**Audit of the other tests.** A diagnostic test toggled the switch without
+the lock (at 2–41 ms or 0.2–3 ms intervals) during 27 full fereg-core library
+runs. Every failure apart from tests that already hold the lock (which the
+diagnostic bypasses) and item 1 (whose old tolerance was still in the
+diagnostic tree) came from eleven tests that compare fits across
+switch-dependent routes, or whose low-memory fits report inconsistent solver
+routes when a fit straddles a flip. They now hold the shared lock as well:
+`ppml_topology_complete_irls_preserves_science_outer_iterations_and_solver_signatures`,
+`canonical_final_preserves_accuracy_on_a_small_dynamic_range_model`,
+`low_categorical_geometry_refusal_retains_canonical_projection`,
+`low_categorical_joint_three_fe_preserves_truth_nested_rank_and_zero_control`,
+`low_three_fe_checkpoint_budget_refusal_preserves_joint_owner_and_science`,
+`load_hint_preserves_first_plan_certificates_and_domain_precedence`,
+`automatic_family_matches_explicit_solver_and_preserves_requested_identity`,
+`profiled_final_products_match_canonical_and_reject_stale_authority`,
+`bias_exact_full_system_matches_independent_explicit_design`,
+`multipartition_ppml_map_keeps_fused_projection_capacities_stable` and
+`gates_unaffected_auto_families_are_exact`. The last six audit runs found no
+unprotected failure. The audit is probabilistic; a test too short to meet a
+flip can still be unprotected.
+
+**Linux, SCC `run-20261110d3`** (job 8549089 on scc-gd4, Xeon Gold 6242,
+the host of the original failures; 8 slots; offline snapshot of `f16ade2c`,
+whose runtime is `44cd1563`, plus the diagnostics; the fixed tree has every
+lock except the capacity test's):
+- Unfixed: alone, 200 of 200 runs gave one set of eta bits at 1 and at 4
+  workers. The whole library (default test threads) failed this test in 2 of
+  12 runs, at the same assertion with rel 1.3e-15 and 2.1e-15 (the original
+  failure's size); the second fit's bits in both are ones the switch toggler
+  produces (20 of 20 failures beside it, rel 1.3e-15 to 2.1e-15).
+- Fixed: alone 200 of 200, the whole library 12 of 12 and beside the
+  toggler 20 of 20 runs passed, all with the unfixed tree's undisturbed bits.
+- Accounting: failed 0, exit 0, 5,316 s, maxvmem 20.1 GB. The snapshot and
+  binaries were deleted after the run; logs and summaries remain on SCC.
+
+**Checks of `6cf8cb24`** (Mac): fereg-core's library 5 full runs, 1,557 pass,
+0 fail, 3 ignored each; the plugin's FFI tests (243 pass) and 13 allocator
+audits in fresh processes; rustfmt; both Clippy configurations; the ratchet
+and production identity against `44cd1563`.
 
 ## Package checks
 
