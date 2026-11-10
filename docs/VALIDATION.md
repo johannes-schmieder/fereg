@@ -4169,6 +4169,113 @@ and MIT metadata are unchanged.
   Dependencies compile without `cfg(test)`, so its CMG code equals the
   base's.
 
+## Combined validation (10f4b633)
+
+Integration-boundary validation of the fedemean branch head `10f4b633`
+(elimination with escalation, the full system with Schwarz, slopes, PPML LSMR
+with the joint Schwarz block, certified fallbacks and the CMG v0.3.0 pin)
+against the frozen `71fce764` and the tranche-1 head `f370027f`, on
+2026-11-09. Development evidence: nothing is pushed or published.
+
+**Checks (Mac).** `scripts/run_tests.sh --source-only` passes: 2,383 Rust
+test results with none failing (fereg-core's library 1,554; the plugin's 243
+FFI tests and its 12 allocator audits, each audit in a fresh process), both
+Clippy configurations, rustfmt, the locked fuzz check, the portable static
+checks and the complexity ratchet. Python ran 282 tests: the three
+numpy-dependent modules cannot be imported here and were not run, the rest
+pass (13 skipped). The actual-plugin ABI harness passes on the candidate
+plugin. Stata fixtures with only the plugin staged: 154 of 163 pass; the nine
+failures are the known set (`mata_correction`, `native_splitbranch_block`,
+the two PPML allocation audits, `parallel_input_oracle` without its trace
+environment, and four installation fixtures), with unchanged signatures.
+
+**Mac M2 Ultra** (1M rows, `x1-x4`, `vce(robust)`, 4 threads, medians in ms;
+every timing window recorded no interference). The main set ran 2
+interleaved processes x 3 fits, the other cases 1 process x 2 fits. Science is
+the candidate against `71fce764` unless noted.
+
+| case | 71fce764 | f370027f | 10f4b633 | science |
+|---|---:|---:|---:|---|
+| ols2, akm, ols3, ols5, ols3hard | 60.5, 59.5, 80.0, 101.5, 76.0 | 60.0, 59.0, 80.0, 101.5, 76.0 | 61.0, 59.0, 80.5, 102.0, 77.0 | bitwise, all arm pairs |
+| ppml2, ppml3, ppml5, ppml3hard, ppmlakm | 398.0, 465.0, 619.0, 592.5, 393.5 | 390.5, 468.5, 612.5, 588.5, 387.0 | 390.5, 464.5, 615.5, 591.0, 392.0 | bitwise, all arm pairs |
+| ols3, ppml3 at 1 thread | 184.0, 1195.0 | 182.5, 1189.0 | 185.0, 1197.5 | bitwise, all arm pairs |
+| ols3, ppml3 at 8 threads | 56.5, 343.0 | 57.5, 339.5 | 57.0, 345.0 | bitwise, all arm pairs |
+| ppml2lsmr, ols2cmgschur | 580.5, 409.5 | 580.5, 411.5 | 582.5, 365.5 | bitwise |
+| ols2slope, ols2wslope | 299.0, 256.0 | 288.5, 252.5 | 296.0, 247.0 | bitwise |
+| ols6 | 1343.0 | 1339.0 | 348.0 | \|db\| 6.1e-16, rel dSE 1.6e-11 |
+| ols6w | 1579.5 | 1570.5 | 472.5 | 4.2e-16, 8.8e-12, rss identical |
+| ols7 (Schwarz, 1 escalation) | 2233.0 | 2219.5 | 1408.0 | 5.6e-16, 9.8e-12 |
+| ols2lsmr | 632.0 | 628.0 | 213.5 | 2.5e-16, 2.4e-12 |
+| ppml3lsmr | 2310.5 | 2290.0 | 878.5 | 2.1e-13, 4.8e-14, deviance identical |
+| ols3chain | 448.5 | 242.5 | 236.0 | 2.5e-16, 6.1e-12; bitwise to f370027f |
+| ols3slope | 668.5 | 666.5 | 372.5 | 1.9e-16, 6.2e-11 |
+| ols2slopelsmr | 1447.5 | 1436.5 | 646.0 | 2.5e-16, 5.7e-12 |
+| ols2slopefe | 1500.5 | 1508.0 | 512.5 | b, SE, rss bitwise; saved effects differ by the §5 transfer |
+| ols2chain, ppml2chain, ppml3chain | not rerun | 110.5, 674.0, 1281.0 | 107.0, 605.0, 1224.0 | bitwise to f370027f |
+| ols3slopefe | not rerun | timeout (> 900 s) | 571.0 | – |
+
+Main-set geomeans: 0.999 against `71fce764` and 1.005 against `f370027f`,
+with no case above max(1.03x, +2 ms). The `71fce764` chain timings from the
+f118c999 validation on this Mac are 23,613 ms (ols2chain) and 27,545 ms
+(ppml2chain); ppml3chain and ols3slopefe exceed 900 s there. The chain fits
+here equal f118c999's bit for bit, whose distances to `71fce764` were
+|db| 1.9e-11, rel dSE 1.6e-7 and rel rss 1.9e-9 (ols2chain, where the
+base's Jacobi recurrence stalls) and |db| 3e-16, rel dSE 9.0e-14 with an
+identical deviance (ppml2chain).
+
+**Linux** (SCC scc-wo4, Xeon E5-2680 v4, a whole 28-core node, 4 threads;
+medians of 9 fits for the main set, 5 for the many-FE, explicit-LSMR and
+slope cases, 3 for the chain cases). The plugins were built on scc-b14 from
+offline snapshots (git archive plus `cargo vendor --locked`, Cargo offline);
+the candidate's vendored CMG matched the 368eceba pin, its manifests, lock
+file and the reviewed source inventory. Both jobs ended with failed=0 and
+exit 0, all 235 Stata processes completed with the expected embedded commit,
+and every arm repeated exactly.
+
+| case | 71fce764 | f370027f | 10f4b633 | cand/base | science |
+|---|---:|---:|---:|---:|---|
+| ols2, akm, ols3, ols4 | 443, 425, 533, 556 | 451, 428, 555, 599 | 455, 439, 543, 593 | 1.03, 1.03, 1.02, 1.07 | bitwise, all arm pairs |
+| ols5, ols3hard | 617, 528 | 570, 504 | 599, 534 | 0.97, 1.01 | bitwise, all arm pairs |
+| ppml2, ppmlakm, ppml3, ppml4 | 2167, 2015, 2556, 2772 | 2084, 1940, 2673, 2831 | 1998, 2051, 2506, 2707 | 0.92, 1.02, 0.98, 0.98 | bitwise, all arm pairs |
+| ppml5, ppml3hard | 3084, 2549 | 2960, 2521 | 2948, 2511 | 0.96, 0.99 | bitwise, all arm pairs |
+| ols6, ols6w | 5036, 6265 | – | 1641, 2313 | 0.33, 0.37 | as on the Mac |
+| ols7 | 7645 | – | 6005 | 0.79 | 3.3e-16, 9.8e-12 |
+| ols2lsmr, ppml2lsmr | 2822, 2848 | – | 905, 2668 | 0.32, 0.94 | as on the Mac; ppml2lsmr bitwise |
+| ols2slope, ols2wslope | 1424, 1445 | – | 1507, 1332 | 1.06, 0.92 | bitwise |
+| ols3slope, ols2slopelsmr, ols2slopefe | 3379, 6875, 4826 | – | 1722, 2542, 2351 | 0.51, 0.37, 0.49 | as on the Mac |
+| ols2chain, ols3chain | – | 550, 1113 | 534, 1452 | – | bitwise to f370027f |
+| ppml2chain, ppml3chain | – | 3108, 6693 | 3000, 5652 | – | bitwise to f370027f |
+| ols3slopefe | – | – | 2695 | – | – |
+
+Main-set geomeans: 0.996 against `71fce764` and 1.000 against `f370027f`.
+The base's chain timings from the earlier whole-node run on the same host
+are 56,369 ms (ols2chain) and 71,513 ms (ppml2chain).
+
+**Timing signals, kept as measured (not resampled):**
+- ols3chain on Linux: 1452 against `f370027f`'s 1113 ms (1.30). All three
+  candidate fits took 1367-1458 ms, against 1087, 1587 and 1113 ms; the
+  results are bitwise identical, and the Mac shows 0.97. Not diagnosed yet;
+  a Linux phase ledger alongside `f370027f` is the next step.
+- ols2slope on Linux: 1.06 against `71fce764` on the same solver and bits
+  (1435-1627 against 1329-1484 ms per fit); the Mac shows 0.99.
+- ols4 on Linux: 1.07 against `71fce764`, already present at `f370027f`
+  (1.08) and in the f118c999 validation (1.07); 0.99 against `f370027f`.
+  Against `f370027f`, ols5, ols3hard and ppmlakm (1.05-1.06) run the same
+  arithmetic and sit within 0.97-1.02 of `71fce764`.
+
+**Route changes by design.** Only fits whose route changed differ from
+`71fce764`: six and seven effects (fedemean's full system), explicit
+`solver(lsmr)` on OLS and three-effect PPML, the chain designs (escalation),
+slopes outside the two-effect slope solver and explicit slope LSMR. Against
+`tolerance(1e-12)` references, earlier lanes reported rel dSE 8.3e-12
+(ols6) and 1.4e-11 (ols7), against `71fce764`'s own 9.6e-12 and 1.5e-11, and
+5.9e-11 for ols3slope against the base's 6.3e-11. Saved slope effects follow
+the documented SPEC §5 normalization (max |Δ| of the saved-effect means and
+standard deviations 2.8e-2 on ols2slopefe, with the fit bitwise).
+
+Not covered: Windows, Intel Macs, installed-package admission, the three
+numpy-dependent Python modules and release work.
+
 ## Package checks
 
 ### Beta.13 parallel input and parity packaging
