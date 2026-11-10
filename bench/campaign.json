@@ -14,8 +14,7 @@
   "reference_repetitions": 3,
   "bundles": 6,
   "command_timeout_seconds": 600,
-  "command_timeout_by_arm": {"reghdfe": 3600, "ppmlhdfe": 3600, "reghdfejl": 3600,
-                             "glfixedeffects": 3600, "glfixedeffects-strict": 3600},
+  "command_timeout_by_arm": {"reghdfe": 3600, "ppmlhdfe": 3600},
   "process_timeout_seconds": 1500,
   "job_wall_seconds": 43200,
   "job_cleanup_seconds": 41400,
@@ -34,10 +33,5 @@
   "pyfixest_strict_tolerance": 1e-11,
   "pyfixest_strict_iwls_tolerance": 1e-10,
   "julia": {"julia": "1.11.7", "FixedEffectModels": "2.1.0"},
-  "julia_ppml": {"julia": "1.11.7", "GLFixedEffectModels": "0.5.6", "FixedEffectModels": "1.13.3"},
-  "julia_ppml_strict": {"center_tol": 1e-11, "dev_tol": 1e-10},
-  "reghdfejl": {"commit": "e22427e7773d4b231d79d052282b2b5dfef09abc",
-                "bridge_commit": "846fd5859fd9272f4b645612a12b77a266b60a24",
-                "julia": "1.12.7", "FixedEffectModels": "1.13.3", "GLFixedEffectModels": "0.5.6"},
-  "purpose": "Descriptive SCC comparison of one frozen runtime: options, designs (including a clustered heavy-tailed worker-firm design and a PPML gravity design with zeros and separation) and controls at one million rows and four cores; core scaling; size series on one node each; FixedEffectModels.jl for linear models and GLFixedEffectModels.jl for PPML; reghdfejl for both models; strict-tolerance fixest, PyFixest, FixedEffectModels.jl and GLFixedEffectModels.jl arms"
+  "purpose": "Descriptive SCC comparison of one frozen runtime: options, designs (including a clustered heavy-tailed worker-firm design and a PPML gravity design with zeros and separation) and controls at one million rows and four cores; core scaling; size series on one node each; FixedEffectModels.jl for linear models; strict-tolerance fixest, PyFixest and FixedEffectModels.jl arms"
 }

@@ -4817,6 +4817,11 @@ because the QR is the kernel of item 1 and has to be platform independent.
    comparison by the condition proxy, as its helper already does for the
    proxy itself; (b) one reference-norm computation for both routes, an
    arithmetic change of every fit's standardization in the last bit.
+   **Item 1 resolved: condition-scaled witness tolerance, Johannes
+   2026-11-10** (option (a), test-only): the witness compares its routes'
+   breads at `max(2e-12, ε·proxy²)` (here 3.0e-7, against the observed
+   2.9e-12) and rejects a bread perturbed by ten times that bound; runtime
+   production is identical to `44cd1563`.
 2. **`ols_offset_slope_boundary` case 3: resolved.** Every platform now gives
    r(459): explicit LSMR certifies the first projection in 30 iterations and
    declines the second after 42, so the MAP fallback runs within iterate(100)

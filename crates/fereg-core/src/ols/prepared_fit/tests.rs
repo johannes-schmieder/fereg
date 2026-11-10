@@ -6727,6 +6727,43 @@ fn assert_fit_science_equal(
     actual: &impl LinearScienceWitness,
     expected: &impl LinearScienceWitness,
 ) {
+    assert_fit_science_equal_with_bread(actual, expected, 2e-12);
+}
+
+/// The bread tolerance of two routes' fits of a deliberately weak design:
+/// `max(2e-12, ε κ)`, with `κ = proxy²` estimating `κ(X′X)` from the larger
+/// diagonal-ratio condition proxy of `R` (the helper below already scales
+/// the proxy's own comparison by `sqrt(proxy)`). The bread `(R′R)⁻¹` moves
+/// relative to itself by about `κ(X′X)` times a relative perturbation of the
+/// standardized inputs; the routes' reference norms may differ by one ulp
+/// (`ε = 2u`: the one-shot route's scaled sum of squares against the
+/// session's correctly rounded norm), so `ε κ` is that first-order bound.
+/// Below `κ ≈ 9e3` the fixed `2e-12` binds.
+fn conditioned_bread_tolerance(
+    actual: &impl LinearScienceWitness,
+    expected: &impl LinearScienceWitness,
+) -> f64 {
+    let proxy = actual
+        .rank()
+        .condition_proxy
+        .max(expected.rank().condition_proxy)
+        .max(1.0);
+    (f64::EPSILON * proxy * proxy).max(2e-12)
+}
+
+/// Whether every bread entry agrees within `tolerance` (the scale of `assert_close`).
+fn bread_within(actual: &[f64], expected: &[f64], tolerance: f64) -> bool {
+    actual.len() == expected.len()
+        && actual.iter().zip(expected).all(|(&left, &right)| {
+            (left - right).abs() <= tolerance * left.abs().max(right.abs()).max(1.0)
+        })
+}
+
+fn assert_fit_science_equal_with_bread(
+    actual: &impl LinearScienceWitness,
+    expected: &impl LinearScienceWitness,
+    bread_tolerance: f64,
+) {
     assert_eq!(actual.coefficients().len(), expected.coefficients().len());
     for (actual, expected) in actual.coefficients().iter().zip(expected.coefficients()) {
         assert_eq!(actual.coefficient_slot, expected.coefficient_slot);
@@ -6792,7 +6829,7 @@ fn assert_fit_science_equal(
     let expected_bread = expected.bread();
     assert_eq!(actual_bread.len(), expected_bread.len());
     for (&actual, &expected) in actual_bread.iter().zip(&expected_bread) {
-        assert_close(actual, expected, 2e-12);
+        assert_close(actual, expected, bread_tolerance);
     }
     assert!(actual.bread_passed() && expected.bread_passed());
     assert_solve_report_science_equal(actual.absorption(), expected.absorption());
@@ -7424,7 +7461,23 @@ fn frozen_session_uses_standardized_qr_fallback_for_clear_weak_full_rank() {
             LinearSessionGenerations::new(0, 0, 0, 0, 0),
         )
         .expect("weak-rank retained session");
-        assert_fit_science_equal(&session.solve_fresh().expect("weak-rank fresh"), &expected);
+        // Decided by Johannes (2026-11-10): the two routes' breads of this
+        // kappa ~ 1e9 design agree to `conditioned_bread_tolerance`, not to
+        // the fixed 2e-12 of well-conditioned fits.
+        let fresh = session.solve_fresh().expect("weak-rank fresh");
+        let bread_tolerance = conditioned_bread_tolerance(&fresh, &expected);
+        assert!(bread_tolerance > 2e-12 && bread_tolerance < 1e-6);
+        assert_fit_science_equal_with_bread(&fresh, &expected, bread_tolerance);
+        // The scaled bound keeps its power: a route whose bread is off by
+        // ten times the bound (about 3e-6 relative here) is rejected.
+        let fresh_bread = LinearScienceWitness::bread(&fresh);
+        let expected_bread = LinearScienceWitness::bread(&expected);
+        let perturbed = fresh_bread
+            .iter()
+            .map(|value| value * (1.0 + 10.0 * bread_tolerance))
+            .collect::<Vec<_>>();
+        assert!(bread_within(&fresh_bread, &expected_bread, bread_tolerance));
+        assert!(!bread_within(&perturbed, &expected_bread, bread_tolerance));
         session
             .strict_candidate()
             .expect("weak-rank initial strict")
@@ -7439,10 +7492,9 @@ fn frozen_session_uses_standardized_qr_fallback_for_clear_weak_full_rank() {
             "weak but clearly full-rank frozen basis must use QR fallback"
         );
         assert_frozen_matches_fit(&frozen, &expected);
-        assert_fit_science_equal(
-            &session.strictify().expect("weak-rank final strict"),
-            &expected,
-        );
+        let strict = session.strictify().expect("weak-rank final strict");
+        let bread_tolerance = conditioned_bread_tolerance(&strict, &expected);
+        assert_fit_science_equal_with_bread(&strict, &expected, bread_tolerance);
         let products = session
             .into_current_products(&mut || Ok(()))
             .expect("weak-rank final products");
