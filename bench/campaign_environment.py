@@ -225,7 +225,8 @@ def build(root, origin):
     pin = POLICY['reghdfejl']
     subprocess.run([str(bridge/'bin/julia'), '+'+pin['julia'], '--startup-file=no',
                     f"--project={bridge/'depot/environments/reghdfejl'}", '-e',
-                    'using GLFixedEffectModels, GLM, FixedEffectModels, DataFrames, CategoricalArrays, Distributions, Vcov; '
+                    # The direct dependencies of the bridge's reghdfejl project.
+                    'using GLFixedEffectModels, FixedEffectModels, DataFrames, CategoricalArrays, Distributions, Vcov; '
                     f'@assert string(VERSION) == "{pin["julia"]}"; '
                     f'@assert string(pkgversion(GLFixedEffectModels)) == "{pin["GLFixedEffectModels"]}"; '
                     f'@assert string(pkgversion(FixedEffectModels)) == "{pin["FixedEffectModels"]}"'],
