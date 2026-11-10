@@ -38,6 +38,9 @@ fn input_factor_hint(request: &OlsRequestV1, loaded: &LoadedOlsInput) -> Prepare
 
 #[test]
 fn load_hint_preserves_first_plan_certificates_and_domain_precedence() {
+    // Hinted and unhinted fits are compared bitwise on routes that depend on
+    // the process-wide elimination switch.
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let exact_inference = |mut report: crate::ppml::PpmlInferenceResult| {
         // Omitted inference coordinates intentionally contain NaNs. Compare
         // every numeric array by IEEE bits, then every remaining report field
@@ -446,6 +449,9 @@ fn public_specialized_solvers_in_memory_low_fall_back_to_auto() {
 
 #[test]
 fn automatic_family_matches_explicit_solver_and_preserves_requested_identity() {
+    // Auto and explicit fits are compared bitwise on routes that depend on
+    // the process-wide elimination switch.
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     for effects in 0..=3 {
         for zero_active in [false, true] {
             if zero_active && effects == 0 {
@@ -1176,6 +1182,9 @@ fn assert_ppml_results_close(candidate: &CertifiedPpmlResult, baseline: &Certifi
 
 #[test]
 fn profiled_final_products_match_canonical_and_reject_stale_authority() {
+    // Profiled and canonical fits are compared bitwise on routes that depend
+    // on the process-wide elimination switch.
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     use super::super::prepared_irls::profile_final_test_mode;
     for effects in [1, 2, 3] {
         for (memory, pool) in [
@@ -1710,6 +1719,9 @@ fn allocation_audit_counts_only_executed_linear_subproblems() {
 
 #[test]
 fn multipartition_ppml_map_keeps_fused_projection_capacities_stable() {
+    // Workspace capacities are compared across the fit's iterations, which
+    // must stay on one side of the process-wide elimination switch.
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     for effects in [1, 2, 3] {
         let (mut request, loaded) = fixture(effects, false, false, false, false, false);
         request.allocation_snapshot_probe = Some(stable_allocation_probe);
@@ -2747,6 +2759,9 @@ fn fixture(
 
 #[test]
 fn bias_exact_full_system_matches_independent_explicit_design() {
+    // Ordinary and corrected fits are compared bitwise; neither may straddle
+    // the process-wide elimination switch.
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let (mut request, mut loaded) = fixture(2, true, false, true, true, false);
     let ordinary = fit_prepared_ppml(request.clone(), loaded.clone()).unwrap();
     request.bias = Some(super::super::PpmlBiasRequest {

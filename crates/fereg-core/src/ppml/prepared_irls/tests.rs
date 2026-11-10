@@ -1100,6 +1100,9 @@ fn refined_checkpoint_preserves_accuracy_on_a_small_dynamic_range_model() {
 }
 #[test]
 fn canonical_final_preserves_accuracy_on_a_small_dynamic_range_model() {
+    // The canonical final is held to accuracy on one route throughout; a fit
+    // may not straddle the process-wide elimination switch.
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     for (hot, mode) in [
         (30.0_f64, PreparedOlsExecutionMode::Low),
         (30., PreparedOlsExecutionMode::Fast),
@@ -3296,6 +3299,10 @@ fn low_three_fe_audit_certifies_map_window_independently_of_checkpoint_engine() 
 
 #[test]
 fn low_three_fe_checkpoint_budget_refusal_preserves_joint_owner_and_science() {
+    // Admitted and refused fits compare their routes and plans; a low-memory
+    // fit straddling the process-wide elimination switch reports inconsistent
+    // solver routes.
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let (prepared, y) = prepared_three_fe([0, 1, 2], false, None);
     let weights: Vec<_> = (0..y.len()).map(|i| 0.2 + (i % 13) as f64).collect();
     let mut config = PreparedPpmlIrlsConfig::default();
@@ -3342,6 +3349,9 @@ fn low_three_fe_checkpoint_budget_refusal_preserves_joint_owner_and_science() {
 
 #[test]
 fn low_categorical_geometry_refusal_retains_canonical_projection() {
+    // The refused session's projection is compared bitwise with a baseline
+    // session on routes that depend on the process-wide elimination switch.
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let (prepared, y) = prepared_three_fe([0, 1, 2], false, None);
     let weights: Vec<_> = (0..y.len()).map(|i| 0.2 + (i % 13) as f64).collect();
     let frame = LinearSolveFrame::from_parts(
@@ -3746,6 +3756,9 @@ fn higher_dimensional_categorical_frames_preserve_weighted_poisson_truth() {
 
 #[test]
 fn low_categorical_joint_three_fe_preserves_truth_nested_rank_and_zero_control() {
+    // Each fit runs on one route throughout: a low-memory fit straddling the
+    // process-wide elimination switch reports inconsistent solver routes.
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     for (order, nested, zero_control) in [
         ([0, 1, 2], None, false),
         ([2, 0, 1], Some(0), false),
@@ -4827,6 +4840,9 @@ fn ppml_topology_publication_follows_strict_commit_and_preserves_accepted_on_rol
 
 #[test]
 fn ppml_topology_complete_irls_preserves_science_outer_iterations_and_solver_signatures() {
+    // Shared and unshared topology fits are compared bitwise; neither may
+    // straddle the process-wide elimination switch.
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let (prepared, outcome) = prepared_three_fe([0, 1, 2], false, None);
     let rows = outcome.len();
     let weights: Vec<_> = (0..rows).map(|row| 0.5 + (row % 11) as f64 / 7.).collect();
@@ -5310,6 +5326,9 @@ fn ppml_lsmr_admission_admits_its_exact_estimate_and_refuses_one_byte_less() {
     // modified-LSMR workspace with its Schwarz grant. A plan at that estimate
     // fits with the unbudgeted science, repeatably and across worker counts;
     // one byte less refuses the fit before any work.
+    // The fits' seed and strict route depend on the process-wide elimination
+    // switch, and repeated fits are compared bitwise: no fit may straddle it.
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let (prepared, outcome) = prepared_sparse_three_fe(150_000);
     let weights = vec![1.0; outcome.len()];
     let offset = vec![0.0; outcome.len()];

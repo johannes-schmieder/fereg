@@ -987,6 +987,9 @@ fn gates_real_callers_routes_refusal_direct_and_cancel() {
 
 #[test]
 fn gates_unaffected_auto_families_are_exact() {
+    // Gated and ungated fits are compared bitwise on routes that depend on
+    // the process-wide elimination switch.
+    let _stable_route = crate::fe::block_schur::stable_route_for_test();
     let fixture = PairedCells::new(true);
     for effects in [1, 2, 3] {
         let data = fixture.prepared(effects);
