@@ -780,7 +780,7 @@ fn retained_qr_drops_general_exact_linear_combinations() {
     for column in 0..3 {
         scales[column] = (0..3)
             .map(|row| values[row * 3 + column])
-            .fold(0.0_f64, f64::hypot);
+            .fold(0.0_f64, fedemean::numerics::hypot);
     }
     let threshold = 128.0 * f64::EPSILON * 3.0;
     let (report, permutation) =
@@ -803,7 +803,12 @@ fn retained_qr_is_canonical_under_row_and_column_permutations() {
         .collect::<Vec<_>>();
     let scales = columns
         .iter()
-        .map(|column| column.iter().copied().fold(0.0_f64, f64::hypot))
+        .map(|column| {
+            column
+                .iter()
+                .copied()
+                .fold(0.0_f64, fedemean::numerics::hypot)
+        })
         .collect::<Vec<_>>();
     let ids = [20_usize, 10, 5];
     let threshold = 128.0 * f64::EPSILON * columns.len() as f64;
@@ -884,8 +889,16 @@ fn retained_qr_handles_extreme_finite_column_scales() {
         .collect::<Vec<_>>();
     let response = std::array::from_fn::<_, 4, _>(|row| first[row] - second[row]);
     let scales = [
-        first.iter().copied().fold(0.0_f64, f64::hypot) * huge,
-        second.iter().copied().fold(0.0_f64, f64::hypot) * tiny,
+        first
+            .iter()
+            .copied()
+            .fold(0.0_f64, fedemean::numerics::hypot)
+            * huge,
+        second
+            .iter()
+            .copied()
+            .fold(0.0_f64, fedemean::numerics::hypot)
+            * tiny,
     ];
     let (report, selected, solution) = retained_qr_solution(
         &values,
@@ -934,13 +947,13 @@ fn retained_qr_rank_decision_is_invariant_to_exact_column_scaling() {
         multiplier * first[1],
     ];
     let scales = [
-        first.into_iter().fold(0.0_f64, f64::hypot),
+        first.into_iter().fold(0.0_f64, fedemean::numerics::hypot),
         values
             .iter()
             .copied()
             .skip(1)
             .step_by(2)
-            .fold(0.0_f64, f64::hypot),
+            .fold(0.0_f64, fedemean::numerics::hypot),
     ];
     let threshold = 128.0 * f64::EPSILON * 2.0;
     let (report, _) =

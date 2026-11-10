@@ -4,6 +4,7 @@
 
 use super::super::finite_wls_kernel::{FIXED_BLOCK_MOMENT_ROWS, RANK_REVEALING_GUARD_EPSILONS};
 use super::*;
+use fedemean::numerics::hypot;
 
 #[derive(Debug)]
 pub(crate) struct LinearConstantRepresentation {
@@ -172,7 +173,7 @@ impl LinearConstantRepresentation {
                 BorrowedMapWeights::Unit => 1.0,
                 BorrowedMapWeights::Provided(values) => values[observation],
             };
-            residual_norm = residual_norm.hypot((weight / weight_divisor).sqrt() * residual);
+            residual_norm = hypot(residual_norm, (weight / weight_divisor).sqrt() * residual);
         }
         self.residual_relative_norm = residual_norm / self.initial_norm;
         if !self.residual_relative_norm.is_finite()

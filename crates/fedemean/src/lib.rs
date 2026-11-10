@@ -62,6 +62,10 @@
 //!   counted and cancellable forms on any [`lsmr::Operator`], with a
 //!   preconditioner, warm starts and escalation (moved from the MIT-licensed
 //!   `schwarz-precond` crate; see the module's provenance note).
+//! - A platform-independent [`numerics::hypot`], built from IEEE operations
+//!   only, which the LSMR recurrence uses for its Givens rotations and norm
+//!   estimates, so its iterates and stopping decisions have the same bits on
+//!   every platform.
 //!
 //! Projections run on the caller's current rayon pool.
 //!
@@ -104,6 +108,7 @@ mod elimination;
 mod error;
 mod full;
 pub mod lsmr;
+pub mod numerics;
 mod projector;
 mod reduce;
 mod weights;

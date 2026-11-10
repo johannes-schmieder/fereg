@@ -28,10 +28,13 @@ forvalues case = 1/4 {
         * candidate failed their unchanged independent FE check in these cases.
         * The exact retained-span oracle remains in the CSV; it is not a
         * published estimate when fereg's independent certificate rejects.
-        * In case 3 explicit LSMR spends all of iterate(100) without
-        * certifying, so no budget remains for the certified fallback and the
-        * fit fails with r(430) (SPEC section 1); case 2's MAP fallback runs
-        * within the remaining budget and fails its check with r(459).
+        * In both cases explicit LSMR certifies the first projection and
+        * declines the second (case 2: 29 + 34 iterations, case 3: 30 + 42),
+        * so the certified MAP fallback runs within the remaining budget and
+        * fails its check with r(459) (SPEC section 1). With the portable
+        * hypot (SPEC section 18) the counts, and so the outcome, are the same
+        * on every platform; case 3 gave r(430) on macOS and Windows and
+        * r(459) on Linux while the recurrence used the C library's hypot.
         quietly regress y q v i.g [aw=w]
         generate byte prior_sample = e(sample)
         local prior_scalars : e(scalars)
@@ -57,7 +60,7 @@ forvalues case = 1/4 {
         foreach attempt in w1a w1b w4a w4b base {
             local workers = cond(substr("`attempt'",2,1) == "4",4,1)
             local rhs i.g
-            local expected_rc = cond(`case' == 3, 430, 459)
+            local expected_rc 459
             if "`attempt'" == "base" {
                 local rhs ib3.g
                 local expected_rc 498

@@ -130,6 +130,17 @@ try {
         throw "Windows exact-FMA arithmetic check failed or did not run"
     }
     Write-Host "Windows exact-FMA arithmetic check: PASS"
+    # The portable hypot of fedemean's LSMR and fereg's QR must give the bits
+    # of every other platform: its golden digest of 10^6 pairs.
+    $HypotOutput = & cargo test --manifest-path "$Root\Cargo.toml" --locked `
+        --profile ci -p fedemean --lib --target $Target `
+        numerics::tests::hypot_bits_match_the_cross_platform_golden_digest -- --exact
+    if ($LASTEXITCODE -ne 0 -or
+        -not (($HypotOutput -join "`n") -match 'test result: ok\. 1 passed; 0 failed;')) {
+        $HypotOutput | ForEach-Object { Write-Host $_ }
+        throw "Windows portable hypot digest check failed or did not run"
+    }
+    Write-Host "Windows portable hypot digest check: PASS"
 
     Set-FeregWindowsStage $ControllerRoot 'fused_kernels'
     $KernelOutput = & cargo test --manifest-path "$Root\Cargo.toml" --locked `

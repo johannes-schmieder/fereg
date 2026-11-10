@@ -16,6 +16,7 @@ pub(super) use axis::{FiniteDenseRows, FiniteResponse};
 pub(crate) use direction::{solve_finite_direction, FiniteDirectionWorkspace};
 pub(super) use workspace::FiniteWorkspace;
 
+use fedemean::numerics::hypot;
 use rayon::prelude::*;
 
 #[cfg(test)]
@@ -446,7 +447,7 @@ pub(super) fn factor_rank_revealing_retained_qr(
                 if incoming == 0.0 {
                     continue;
                 }
-                let rotated = diagonal.hypot(incoming);
+                let rotated = hypot(diagonal, incoming);
                 if !rotated.is_finite() || rotated <= 0.0 {
                     return Err(invalid_data(
                         "retained finite-WLS streaming QR rotation is invalid",
@@ -710,7 +711,7 @@ pub(super) fn certify_retained_qr_dropped_span(
                 residual -= standardized_row[permutation[selected]]
                     * projection_coefficients[selected * dropped + dropped_position];
             }
-            residual_norms[dropped_position] = residual_norms[dropped_position].hypot(residual);
+            residual_norms[dropped_position] = hypot(residual_norms[dropped_position], residual);
             if !residual_norms[dropped_position].is_finite() {
                 return Err(invalid_data(
                     "retained finite-WLS dropped-span residual is not finite",
@@ -976,7 +977,7 @@ fn stable_qr_column_norm(
     }
     let mut norm = 0.0_f64;
     for row in start_row..dimension {
-        norm = norm.hypot(matrix[row * dimension + column]);
+        norm = hypot(norm, matrix[row * dimension + column]);
     }
     if norm.is_finite() {
         Ok(norm)

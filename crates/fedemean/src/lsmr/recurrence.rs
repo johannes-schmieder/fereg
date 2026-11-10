@@ -7,10 +7,12 @@
 
 use super::bidiag::{BidiagStep, LSMR_PAR_THRESHOLD, LSMR_UPDATE_CHUNK};
 use super::magnitude::Magnitude;
+use crate::numerics::hypot;
 use rayon::iter::{IndexedParallelIterator, ParallelIterator};
 use rayon::prelude::{ParallelSlice, ParallelSliceMut};
 
-/// Givens rotation built from `(a, b)` so applying it yields `(r, 0)`, `r = hypot(a, b)`.
+/// Givens rotation built from `(a, b)` so applying it yields `(r, 0)`, `r = hypot(a, b)`
+/// (the portable [`hypot`], so the recurrence has the same bits on every platform).
 #[derive(Clone, Copy)]
 struct Givens {
     c: f64,
@@ -21,7 +23,7 @@ struct Givens {
 impl Givens {
     /// Construct the rotation that zeros `b` against `a`.
     fn new(a: f64, b: f64) -> Self {
-        let r = f64::hypot(a, b);
+        let r = hypot(a, b);
         let (c, s) = if r > 0.0 { (a / r, b / r) } else { (1.0, 0.0) };
         Self { c, s, r }
     }
@@ -213,7 +215,7 @@ impl ResidualChain {
     /// `‖r_k‖ = ‖(β̈ₖ, β̇ₖ − τ̇ₖ)‖`.
     fn normr(&self, beta_dd: f64) -> f64 {
         let tau_d = ratio(self.zeta - self.theta_tilde * self.tau_tilde, self.rho_d);
-        f64::hypot(self.beta_d - tau_d, beta_dd)
+        hypot(self.beta_d - tau_d, beta_dd)
     }
 }
 
@@ -381,7 +383,7 @@ pub(super) struct ConvergenceState {
 
 impl ConvergenceState {
     pub(super) fn observe(&mut self, s: BidiagStep) {
-        self.a_norm = self.a_norm.hypot(s.alpha).hypot(s.beta);
+        self.a_norm = hypot(hypot(self.a_norm, s.alpha), s.beta);
     }
 
     /// Check both stop criteria against the current scalar state.
