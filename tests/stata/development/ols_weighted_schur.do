@@ -98,6 +98,8 @@ foreach t in 1 16 {
     assert e(df_r)==rank_df
     assert e(b)[1,17]==0
     assert e(b)[1,18]==0
+    * x1 and x17 tie; the earlier column is kept, as in regress (SPEC section 8).
+    assert e(fereg_status)[1,2]==1 & e(fereg_status)[17,2]==4
     assert e(fereg_status)[18,2]==3
     assert "`e(fe_route)'"=="cg, reduce(eliminate) precondition(jacobi)"
     forvalues j=1/16 {
@@ -105,6 +107,24 @@ foreach t in 1 16 {
         forvalues k=1/16 {
             assert abs(e(V)[`j',`k']-rank_v[`j',`k'])<1e-9
         }
+    }
+}
+// The tie follows the variable list under rescaling and reordering: listed
+// first, x19 = -3*x1 is kept and x1 omitted, in regress and in fereg.
+generate double x19=-3*x1
+quietly regress y x19 x1-x16 i.g i.h [aw=w], vce(robust)
+assert e(b)[1,2]==0 & e(V)[2,2]==0
+matrix order_b=e(b)
+matrix order_v=e(V)
+scalar order_df=e(df_r)
+quietly fereg y x19 x1-x16 x18 [aw=w], absorb(g h) vce(robust) threads(4)
+assert e(rank)==16 & e(df_r)==order_df
+assert e(fereg_status)[1,2]==1 & e(fereg_status)[2,2]==4 & e(fereg_status)[18,2]==3
+assert e(b)[1,2]==0 & e(b)[1,18]==0
+foreach j of numlist 1 3/17 {
+    assert abs(e(b)[1,`j']-order_b[1,`j'])<1e-8
+    foreach k of numlist 1 3/17 {
+        assert abs(e(V)[`j',`k']-order_v[`j',`k'])<1e-9
     }
 }
 display as result "END_FIXTURE|ols_weighted_schur|rc=0"

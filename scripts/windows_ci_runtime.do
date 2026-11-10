@@ -157,5 +157,9 @@ foreach workers in 0 8 {
 * Independent balanced witness for the accepted bounded MAP recovery.
 capture noisily do "tests/stata/development/feppml_saved_map_pilot.do"
 if _rc exit 9123
+* The omission tie rule against regress (x17 = 2*x1 keeps x1; SPEC section 8).
+* Diagnostic r(9124) identifies this scientific fixture.
+capture noisily do "tests/stata/development/ols_weighted_schur.do"
+if _rc exit 9124
 shell powershell.exe -NoLogo -NoProfile -NonInteractive ///
     -ExecutionPolicy Bypass -File "scripts/windows_ci_report.ps1" -Action pass

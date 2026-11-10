@@ -375,6 +375,10 @@ pub(super) fn fill_finite_wls_moments(
 /// one K-by-K factor is the bounded-memory contract, whereas deterministic
 /// parallel row partitions would require one additional K-by-K factor per
 /// partition.
+///
+/// Each step pivots on the largest trailing column norm. Candidates within
+/// [`pivot_tie_band`] of it tie, and the earliest canonical column among them
+/// is the pivot (SPEC §8), so of exactly collinear columns the first is kept.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn factor_rank_revealing_retained_qr(
     source: FixedBlockMomentSource<'_>,
@@ -503,6 +507,7 @@ pub(super) fn factor_rank_revealing_retained_qr(
     let relative_guard = RANK_REVEALING_GUARD_EPSILONS * f64::EPSILON;
     let lower_boundary = absolute_threshold * (1.0 - relative_guard);
     let upper_boundary = absolute_threshold * (1.0 + relative_guard);
+    let tie_band = pivot_tie_band(source.rows(), dimension, initial_norm);
     let mut rank = 0_usize;
     let mut largest_diagonal = 0.0_f64;
     let mut smallest_diagonal = f64::INFINITY;
@@ -515,22 +520,15 @@ pub(super) fn factor_rank_revealing_retained_qr(
             ambiguous |= trailing_norms[position] >= lower_boundary
                 && trailing_norms[position] <= upper_boundary;
         }
-        let mut pivot_position = rank;
-        let mut pivot_norm = trailing_norms[rank];
-        for position in (rank + 1)..dimension {
-            let candidate_norm = trailing_norms[position];
-            let tie_scale = candidate_norm.abs().max(pivot_norm.abs());
-            let tied = (candidate_norm - pivot_norm).abs()
-                <= RANK_REVEALING_GUARD_EPSILONS * f64::EPSILON * tie_scale;
-            if candidate_norm > pivot_norm && !tied
-                || tied
-                    && canonical_generated_ids[permutation[position]]
-                        < canonical_generated_ids[permutation[pivot_position]]
-            {
-                pivot_position = position;
-                pivot_norm = candidate_norm;
-            }
-        }
+        let pivot_position = tied_pivot(
+            trailing_norms,
+            rank,
+            permutation,
+            canonical_generated_ids,
+            tie_band,
+            absolute_threshold,
+        );
+        let pivot_norm = trailing_norms[pivot_position];
         ambiguous |= pivot_norm >= lower_boundary && pivot_norm <= upper_boundary;
         if pivot_norm <= absolute_threshold {
             break;
@@ -1064,6 +1062,56 @@ pub(super) struct DroppedSpanCertificate {
 }
 
 pub(super) const RANK_REVEALING_GUARD_EPSILONS: f64 = 64.0;
+
+/// The pivot among positions `rank..`: of the candidates within `tie_band` of
+/// the largest trailing norm, the earliest in canonical column order. A tie
+/// never takes a candidate at or below `threshold` while the largest exceeds it.
+fn tied_pivot(
+    trailing_norms: &[f64],
+    rank: usize,
+    permutation: &[usize],
+    canonical_ids: &[usize],
+    tie_band: f64,
+    threshold: f64,
+) -> usize {
+    let maximum = trailing_norms[rank..]
+        .iter()
+        .copied()
+        .fold(0.0_f64, f64::max);
+    let mut pivot = None::<usize>;
+    for (position, &norm) in trailing_norms.iter().enumerate().skip(rank) {
+        let tied = norm >= maximum - tie_band && (norm > threshold || norm == maximum);
+        if tied
+            && pivot.is_none_or(|chosen| {
+                canonical_ids[permutation[position]] < canonical_ids[permutation[chosen]]
+            })
+        {
+            pivot = Some(position);
+        }
+    }
+    pivot.unwrap_or(rank)
+}
+
+/// Width below which two trailing column norms of the retained QR are
+/// numerically indistinguishable: `max(64, rows + columns) · ε · scale`, with
+/// `scale` the largest standardized column norm (the rank threshold's scale).
+///
+/// Every streamed row's Givens rotation and every Householder reflection
+/// rounds the column's entries, so a computed trailing norm differs from the
+/// exact one by a rounding error whose bound grows linearly in
+/// `rows + columns` units `u` of the column scale (and in practice like its
+/// square root). Two norms equal in exact arithmetic (an exact multiple of an
+/// earlier column, or equal standardized columns) are therefore not ordered
+/// once they are within `(rows + columns) · ε` (`ε = 2u`). Over the 16,512
+/// weighted rows of `ols_weighted_schur` they were measured up to 80 `ε`
+/// apart, beyond the former band of 64 ulps of the trailing norm, which let
+/// the platform's rounding decide the omission. The band is never narrower
+/// than the 64 ulps of [`RANK_REVEALING_GUARD_EPSILONS`], and stays at least
+/// 64 times below the rank threshold `128 · ε · max(rows, columns)`.
+pub(super) fn pivot_tie_band(rows: usize, columns: usize, scale: f64) -> f64 {
+    let units = rows.saturating_add(columns) as f64;
+    scale * f64::EPSILON * units.max(RANK_REVEALING_GUARD_EPSILONS)
+}
 
 /// Guard normal-equation use before invoking the destructive physical kernel.
 /// The unchanged stronger guard keeps weak designs under QR rank authority.

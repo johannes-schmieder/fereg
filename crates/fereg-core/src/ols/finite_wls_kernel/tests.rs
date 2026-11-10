@@ -1192,3 +1192,164 @@ fn wide_private_moments_match_in_place_tiles_bit_for_bit() {
         }
     }
 }
+
+/// Rank-revealing QR of weighted standardized columns with chosen canonical
+/// identities; returns the report and the canonical identities of the kept
+/// columns in pivot order.
+fn weighted_tie_report(
+    values: &[f64],
+    rows: usize,
+    columns: usize,
+    weights: &[f64],
+    ids: &[usize],
+) -> (RankRevealingQrReport, Vec<usize>) {
+    let divisor = weights.iter().sum::<f64>() / rows as f64;
+    let scales = (0..columns)
+        .map(|column| {
+            (0..rows).fold(0.0_f64, |norm, row| {
+                fedemean::numerics::hypot(
+                    norm,
+                    (weights[row] / divisor).sqrt() * values[row * columns + column],
+                )
+            })
+        })
+        .collect::<Vec<_>>();
+    let response = vec![0.0_f64; rows];
+    let source = FixedBlockMomentSource::Dense {
+        values: FiniteDenseRows::packed(values, columns),
+        rows,
+        stored_columns: columns,
+        selected_columns: None,
+        response: (&response).into(),
+        weights: BorrowedMapWeights::Provided(weights),
+        solver_weight_divisor: divisor,
+        column_scales: Some(&scales),
+    };
+    let mut stored_row = vec![0.0_f64; columns];
+    let mut qr = vec![0.0_f64; columns * columns];
+    let mut rhs = vec![0.0_f64; columns];
+    let mut trailing = vec![0.0_f64; columns];
+    let mut permutation = vec![usize::MAX; columns];
+    let report = factor_rank_revealing_retained_qr(
+        source,
+        ids,
+        128.0 * f64::EPSILON * rows.max(columns) as f64,
+        &mut stored_row,
+        &mut qr,
+        &mut rhs,
+        &mut trailing,
+        &mut permutation,
+        None,
+    )
+    .expect("weighted retained QR");
+    let kept = permutation[..report.rank]
+        .iter()
+        .map(|&position| ids[position])
+        .collect();
+    (report, kept)
+}
+
+/// `x17 = c · x1` with fifteen other regressors, as in `ols_weighted_schur`:
+/// the two columns tie in exact arithmetic, and over 16,512 weighted rows the
+/// rounding of the streamed Givens QR moves their computed norms apart by up
+/// to about 80 ulps (more than 64 for these seeds). Under every scaling and
+/// storage order the earliest
+/// canonical column is kept and the later one dropped, as `regress` does;
+/// the rank is unchanged.
+#[test]
+fn retained_qr_keeps_the_earliest_of_tied_columns_under_scalings_and_permutations() {
+    const ROWS: usize = 16_512;
+    const COLUMNS: usize = 17;
+    let weights = (0..ROWS)
+        .map(|row| 1.0 + ((row + 1) % 7) as f64)
+        .collect::<Vec<_>>();
+    // Seeds whose rounding separates the tied norms by more than 64 ulps.
+    for seed in [28_u64, 31, 36] {
+        let mut state = 0x1234_5678_u64 ^ seed.wrapping_mul(0x9e37_79b9_7f4a_7c15);
+        let mut uniform = || {
+            state = state.wrapping_add(0x9e37_79b9_7f4a_7c15);
+            let mut z = state;
+            z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+            z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
+            ((z ^ (z >> 31)) >> 11) as f64 / (1_u64 << 53) as f64
+        };
+        let mut base = vec![0.0_f64; ROWS * 16];
+        for value in &mut base {
+            let (u, v) = (uniform() + f64::EPSILON, uniform());
+            *value = (-2.0 * u.ln()).sqrt() * (std::f64::consts::TAU * v).cos();
+        }
+        for multiplier in [2.0_f64, 3.0, -0.5, 1.0e-6, 6.25e7] {
+            // Canonical identity 0 is x1 and 16 its multiple; storage orders:
+            // canonical, reversed, and the multiple stored first.
+            let orders: [Vec<usize>; 3] = [
+                (0..COLUMNS).collect(),
+                (0..COLUMNS).rev().collect(),
+                std::iter::once(16).chain(0..16).collect(),
+            ];
+            for order in orders {
+                let mut values = vec![0.0_f64; ROWS * COLUMNS];
+                for row in 0..ROWS {
+                    for (position, &id) in order.iter().enumerate() {
+                        values[row * COLUMNS + position] = if id == 16 {
+                            multiplier * base[row * 16]
+                        } else {
+                            base[row * 16 + id]
+                        };
+                    }
+                }
+                let (report, kept) = weighted_tie_report(&values, ROWS, COLUMNS, &weights, &order);
+                assert_eq!(report.rank, 16, "seed {seed}, multiplier {multiplier}");
+                assert!(
+                    kept.contains(&0) && !kept.contains(&16),
+                    "seed {seed}, multiplier {multiplier}, order {order:?}: kept {kept:?}"
+                );
+            }
+        }
+    }
+}
+
+/// Exactly representable norms `1` and `1 + δ` of one direction: within the
+/// tie band (`max(64, rows + columns)` ulps of the column scale) the earliest
+/// canonical column is kept; just outside it the larger norm is kept, as
+/// before the tie rule.
+#[test]
+fn retained_qr_tie_band_follows_the_rounding_of_the_column_norms() {
+    for rows in [2_usize, 4_094] {
+        let band = (rows + 2).max(64) as f64 * f64::EPSILON;
+        for (delta, earliest_kept) in [(0.5 * band, true), (2.0 * band, false)] {
+            for ids in [[0_usize, 1], [1, 0]] {
+                let mut values = vec![0.0_f64; rows * 2];
+                values[0] = 1.0;
+                values[1] = 1.0 + delta;
+                let response = vec![0.0_f64; rows];
+                let source = FixedBlockMomentSource::Dense {
+                    values: FiniteDenseRows::packed(&values, 2),
+                    rows,
+                    stored_columns: 2,
+                    selected_columns: None,
+                    response: (&response).into(),
+                    weights: BorrowedMapWeights::Unit,
+                    solver_weight_divisor: 1.0,
+                    column_scales: Some(&[1.0, 1.0]),
+                };
+                let mut permutation = vec![usize::MAX; 2];
+                let report = factor_rank_revealing_retained_qr(
+                    source,
+                    &ids,
+                    128.0 * f64::EPSILON * rows as f64,
+                    &mut [0.0; 2],
+                    &mut [0.0; 4],
+                    &mut [0.0; 2],
+                    &mut [0.0; 2],
+                    &mut permutation,
+                    None,
+                )
+                .expect("near-tie retained QR");
+                assert_eq!(report.rank, 1);
+                let kept = ids[permutation[0]];
+                let expected = if earliest_kept { 0 } else { ids[1] };
+                assert_eq!(kept, expected, "rows {rows}, delta {delta:e}, ids {ids:?}");
+            }
+        }
+    }
+}
