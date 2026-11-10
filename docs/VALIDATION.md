@@ -4735,6 +4735,185 @@ interactive Break fixtures, timing, and HTTP installation and release work.
 The regenerable source snapshot and build trees were removed after the jobs;
 the packages, logs and summaries remain on SCC.
 
+## Portable hypot and pivot ties (44cd1563)
+
+Johannes's decisions of 2026-11-10 on the three Linux-only items of the
+`899fcf20` qualification, implemented in `3dda12e6` (portable hypot),
+`ece57da3` (pivot ties) and `44cd1563` (SPEC, help and guide), the
+qualified commit. `c999f6e3` (a doc-comment correction) and `19b88fdb` (the
+ratchet's line positions) follow; `check_complexity.py --compare-production
+44cd1563` passes on them, so the qualification below applies. Development
+evidence: nothing is pushed, published or written to `dist/`.
+
+**Declared arithmetic scope, before qualification.**
+- *Portable hypot* (SPEC §18). `fedemean::numerics::hypot` replaces the C
+  library's `hypot` at seven sites: fedemean's modified-LSMR recurrence (its
+  Givens rotations, residual estimate and `‖A‖` estimate) and fereg-core's
+  retained QR (streamed Givens rotations, trailing column norms, dropped-span
+  certificate) and dropped-constant certificate. `git grep hypot` leaves the C
+  library's only in independent test references. Affected: explicit
+  `solver(lsmr)` (OLS, slopes, PPML joint and FWL), PPML's LSMR checkpoint
+  accelerator and separation re-execution, owned Auto's LSMR attempt and every
+  fit whose finite rank the QR decides. The §5 recovery and §16 certificate
+  norms do not use `hypot` and are unaffected.
+- *Pivot ties* (SPEC §8). Only the choice among QR pivot candidates within
+  `max(64, N + K)` ulps of the largest trailing norm; rank, DoF and the other
+  omission rules unchanged.
+
+**The function.** Built from IEEE operations only (exact power-of-two
+scaling, Dekker's exact squares with Veltkamp splitting, the correctly
+rounded square root, one Newton correction); no math library, no FMA.
+- An exact integer check of 211,502 random and adversarial pairs (exponent
+  gaps 0 to 64 over the whole range, the shortcut boundary, nearly equal
+  arguments, results at binade boundaries, subnormal and near-overflow pairs,
+  scaled Pythagorean triples) finds every result within one ulp of correct
+  rounding and every normal result correctly rounded; 1,609 subnormal results
+  are one ulp off from their second rounding.
+- Exact triples, IEEE special values and symmetry are tested.
+- Golden digest of 10^6 pairs: `0x128efb568e0c0b75`, identical in Mac debug
+  and release builds. The Linux run and the Windows exact-arithmetic stage
+  (newly added to `build_windows.ps1`) must reproduce it.
+
+**Default routes stay bitwise** (Mac, 1M rows, 4 threads, against an arm64
+build of `ffe95897`, whose runtime is that of `842a0632`; one pair, one timed
+fit each through the timing gate, no interference; the candidate was the
+uncommitted arm64 build of these changes; timings are not evaluated).
+Bitwise b, SE and objective: ols2, ols3, ols5, ols6, akm, ppml2, ppml3,
+ppmlakm, ols2slope, ols3slope and ols2slopefe (saved effects too).
+
+**Changed at rounding level, as declared** (same runs):
+
+| case | \|Δb\| | rel ΔSE | objective |
+| --- | --- | --- | --- |
+| ols2lsmr | 5.6e-17 | bitwise | rel Δrss 2.2e-16 |
+| ols6lsmr | 2.8e-17 | bitwise | bitwise |
+| ppml2lsmr | bitwise | 6.7e-16 | bitwise |
+| ppml3lsmr | 6.9e-18 | 5.6e-16 | bitwise |
+| ols2slopelsmr | bitwise | bitwise | bitwise |
+
+Default `solver(auto)` fits whose finite rank the QR decides (the
+`ols_weighted_schur` design, 16,512 weighted rows, traced
+`finite_factor|method=canonical_qr`, at 1 and 16 workers with equal results):
+x1–x18 with x17 = 2·x1 |Δb| 1.2e-14, rel ΔSE 2.2e-14, rel Δrss 1.1e-15;
+x19 = −3·x1 listed first 3.6e-15, 2.2e-14, 6.7e-16; a weak full-rank pair
+x20 = x2 + 2e-3·noise 1.6e-11, 7.1e-11, 2.2e-15 (amplified by its
+conditioning). Ranks and every status are unchanged. These sites are kept
+because the QR is the kernel of item 1 and has to be platform independent.
+
+**The three items.**
+1. **`frozen_session_uses_standardized_qr_fallback_for_clear_weak_full_rank`:
+   not resolved; open for Johannes.** With the portable hypot the miss is
+   identical on every platform, and it now also fails on the Mac: bread entry
+   62,545.7295181251 (one-shot) against 62,545.7295183053 (fresh session),
+   rel 2.9e-12 against the fixed 2e-12 (Linux with glibc gave 2.5e-12; the
+   macOS C library passed). Cause: both routes feed the same streamed QR, but
+   their reference norms of the first column differ by one ulp (one-shot
+   147.7836256152893 from its scaled sum of squares; session
+   147.78362561528934, the correctly rounded √21,840). On this
+   κ(X′X) ≈ 5.5e9 design that moves R₁₁ by 1.4e-12 relative and the bread by
+   2.9e-12, against the scientific bound κu ≈ 6e-7. The C library's rounding
+   only decided which side of 2e-12 it fell. The hypot change cannot resolve
+   it, and no tolerance was changed. Options: (a) scale this witness's bread
+   comparison by the condition proxy, as its helper already does for the
+   proxy itself; (b) one reference-norm computation for both routes, an
+   arithmetic change of every fit's standardization in the last bit.
+2. **`ols_offset_slope_boundary` case 3: resolved.** Every platform now gives
+   r(459): explicit LSMR certifies the first projection in 30 iterations and
+   declines the second after 42, so the MAP fallback runs within iterate(100)
+   and fails its check (Mac, at 1 and 4 workers and at iterate(1000); case 2:
+   29 + 34, r(459)). The fixture expects r(459) for both cases. Linux traces
+   the same 30 + 42 and 29 + 34 iterations at 1 and 4 workers and both
+   budgets, and the fixture passes on Mac, Linux and Windows.
+3. **`ols_weighted_schur` x1/x17 tie: resolved.** The QR tie band is
+   `max(64, N + K)` ulps of the largest standardized column norm (SPEC §8).
+   Over 16,512 rows the tied norms were measured up to 80 ulps apart, beyond
+   the former 64; the band is 16,529 ulps, at least 64 times below the rank
+   threshold. The new kernel test with x17 = c·x1 (three seeds, five
+   multipliers, three storage orders) fails on the former rule and passes now;
+   the near-tie test keeps the larger norm just outside the band. The fixture
+   asserts x1 kept (status 1) and x17 omitted (status 4) against `regress` at
+   1 and 16 workers, and x19 = −3·x1 listed first kept by both. It passes on
+   Mac, Linux (x17 status 4 at 1, 4 and 16 workers, where Linux formerly
+   omitted x1) and Windows, whose profile now runs it.
+
+**Qualification of `44cd1563`.** Item 1 fails on every platform that runs
+the Rust tests, so the strict entry point fails on the Mac and Linux at that
+test; the remaining steps were run to completion as a diagnostic.
+- **Mac.** Universal plugin built from a clean worktree with
+  `scripts/build_macos.sh` and the remaps of the
+  [Mac build instructions](macos_source_build.md): sha256
+  `3ac6da3ab2ba7b9b64cbe28bb2a4cadf46ac3c56d5a828b725e386d0d0f33af3`,
+  33,655,648 bytes, `44cd1563ef3b`; binary audit and the actual
+  ABI/selftest/panic harness pass; staged with `--root-package`.
+  - `run_tests.sh --package-root`: preflight, 361 Python tests (none
+    skipped), the package gate (34 files bound to `44cd1563ef3b`), the
+    exact-FMA vectors, both exact-rational FE witnesses, rustfmt, the fuzz
+    check and both Clippy configurations pass; the Rust tests stop at item 1.
+    To completion: 2,509 Rust results, 2,508 pass and 1 fails (item 1):
+    workspace 2,239 (fereg-core's library 1,556 pass, 1 fails, 3 ignored),
+    the plugin's 262 FFI tests and 13 allocator audits in fresh processes.
+    The portable, static and mock-SPI checks, the batch guard and the ratchet
+    pass; the Linux mock-plugin audit needs a GNU ELF linker.
+  - Whole tree (Stata/MP 19, plugin alone): of 160 fixtures 157 pass, 0
+    fail, 3 not run (`staged_plugin_binary` and `feppml_installation_smoke`
+    need an extracted package and pass below; `windows_ci_smoke`).
+  - `staged-install` on the macOS archive (sha256
+    `562d7c3a035c80d7090c45ea3d107cef50b4391b340a72c62278a2b4e23f5845`,
+    dependency audit 0 advisories): 12 of 12. `older-stata`
+    (`replay_and_prefixes`) passes on Stata/MP 18.
+- **Linux, SCC `run-20261110f1`** (offline snapshot: depth-1 checkout plus
+  the `cargo vendor` closure, CMG `368eceba` inventory verified, 126 files;
+  manifests checked from the run root before each dependent job).
+  - Build 8548431 on scc-gr4 (failed 0, exit 0): `build_linux.sh` passes
+    (ELF audit, actual-plugin harness, batch guard); plugin
+    `16978964a9c46e8f45a2461923e8e1d7599d1033afe9b9ce2014ce1cd89a55a0`;
+    Linux archive
+    `3259a9b21524520158765d2e5da5b6f5af016759f009be58075a3e82abc972e5`.
+  - Tests 8548432 on scc-gd4 (failed 0, exit 101): preflight, 361 Python
+    tests (none skipped), the package gate (34 files, `44cd1563ef3b`), rustfmt,
+    fuzz and both Clippy configurations pass; the golden hypot digest
+    matches. To completion: 2,523 Rust results, 2,521 pass, 2 fail: workspace
+    2,247 (2,240 pass, 2 fail, 5 ignored), FFI 268, 13 audits. Item 1 gives
+    the Mac's exact values. The second failure,
+    `ppml_lsmr_admission_admits_its_exact_estimate_and_refuses_one_byte_less`,
+    occurred in both runs of this job: two consecutive budgeted PPML LSMR fits
+    on the same prepared design differed by at most 2.1e-15 in eta, where the
+    test requires identical bits. It did not recur in seven reruns: the test
+    alone three times on scc-gd4 (8548502), fereg-core's library suite twice
+    on scc-gr4 (8548547) and once serially on scc-gd4 (8548568), passing
+    each time, as did the parent `842a0632` in the same three suite runs. It
+    passes on the Mac. The cause is not identified; nothing was changed. The
+    static and mock-SPI checks, the
+    batch guard and the Linux mock-plugin audit pass. The size check stopped
+    at the ratchet's "parent revision unavailable": the depth-1 snapshot has
+    no parent commit (a harness defect of this run; the ratchet is
+    source-only and passes on the Mac).
+  - Stata 8548433 on scc-ei1 (failed 0, exit 0): whole tree 157 pass, 0
+    fail, 3 not run; `staged-install` 12 of 12 on the Linux archive;
+    `older-stata` passes on Stata/MP 15.1.
+- **Windows** (accepted wrapper from a clean detached worktree of the exact
+  commit; `inspect` PASS, roles-anywhere, stopped; both runs held the lock,
+  passed every controller check and ended with the instance stopped, transfer
+  objects deleted and the lock released).
+  - `stata-smoke` `win-20261110T090714Z-9482349f`: PASS; archive
+    `7357031c3c7ed8cbb1a7a496b04e5fa9f73de49d8cbcd34558dd57616a3b2685`,
+    receipt `f267d38eb66debe98c59de1dab27645d0efb10ce755d799c82cbc6d28ff2f877`.
+  - `stata-do` `win-20261110T090911Z-18906670`: PASS in 1,355 s (allowance
+    1,800 s), final stage `complete`, `WINDOWS_CI=PASS`; archive
+    `325dae847ebfd605e18f50018761e549f451513066d1cc80cfcde544aef40da6`,
+    receipt `1107c28bacc5585598d5ddc347ac5b382f05e9f5a6ed2f152132ce980d158490`.
+    Every stage passes, including the exact-arithmetic stage with the golden
+    hypot digest, and the profile's fixtures, among them
+    `ols_offset_slope_boundary` (case 3 r(459)) and `ols_weighted_schur`.
+    Plugin `e2dbc5af81232073cfae32d10ab44e167ddc99e0019d7dfd35a9aeaccb98308e`,
+    20,392,448 bytes, `44cd1563ef3b`; not written to `dist/`.
+  - Not covered: the `cargo-test` profile, so item 1 is not run on Windows;
+    the `staged-install` profile on a sealed Windows archive and loading
+    Break, as before.
+
+Not covered: timing (the benchmark campaign follows on this commit), Intel
+Macs, HTTP installation and release work.
+
 ## Package checks
 
 ### Beta.13 parallel input and parity packaging
