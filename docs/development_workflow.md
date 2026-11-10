@@ -6,7 +6,12 @@ The repository has one runtime. Completed acceptance is in [VALIDATION](VALIDATI
 ## Local checks
 
 Python tooling uses Python 3.11 or newer. Scientific Python helpers require
-NumPy, pandas and SciPy. Rust uses the pinned toolchain and Cargo.lock.
+NumPy, pandas and SciPy. `./scripts/run_tests.sh` runs every Python check with
+one interpreter, `FEREG_PYTHON_BIN` (default `python3`), and first checks it
+(`scripts/check_python_environment.py`): without those modules it stops before
+any check instead of letting the scientific modules fail to import or skip.
+Point `FEREG_PYTHON_BIN` at an existing environment that has them (for example
+a conda or virtual environment). Rust uses the pinned toolchain and Cargo.lock.
 
 ```sh
 ./scripts/run_tests.sh

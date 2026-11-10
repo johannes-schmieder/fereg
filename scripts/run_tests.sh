@@ -10,18 +10,23 @@ else
 fi
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
+# One interpreter runs every Python check, including the nested scripts.
+python="${FEREG_PYTHON_BIN:-python3}"
+export FEREG_PYTHON_BIN="$python"
 if [[ "$source_only" == true ]]; then
   printf '%s\n' \
     'SOURCE-ONLY: NOT PERFORMED: installed-package binding, inventory, hash, ABI and Mata checks.' \
     'SOURCE-ONLY: this run does not qualify a package for release or promotion.'
 fi
-python3 -m unittest discover -s tests/python
+# Stop before any check when the scientific modules could not run.
+"$python" scripts/check_python_environment.py
+"$python" -m unittest discover -s tests/python
 if [[ "$source_only" == false ]]; then
-  python3 scripts/check_github_install.py
+  "$python" scripts/check_github_install.py
 fi
-python3 scripts/check_fma_rounding_vectors.py
-python3 scripts/check_fe_boundary_response_oracle.py
-python3 scripts/check_fe_cancellation_oracle.py
+"$python" scripts/check_fma_rounding_vectors.py
+"$python" scripts/check_fe_boundary_response_oracle.py
+"$python" scripts/check_fe_cancellation_oracle.py
 
 command -v cargo >/dev/null 2>&1 || {
   printf '%s\n' 'Rust/Cargo is required; install the pinned rust-toolchain.toml toolchain.' >&2

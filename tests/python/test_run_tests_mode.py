@@ -12,8 +12,10 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 PACKAGE_GATE = "python3 scripts/check_github_install.py"
+PYTHON_PREFLIGHT = "python3 scripts/check_python_environment.py"
 AUDIT_PREFIX = "cargo test -p fereg-plugin --features ffi --lib --profile ci"
 EXPECTED = [
+    (".", PYTHON_PREFLIGHT),
     (".", "python3 -m unittest discover -s tests/python"),
     (".", PACKAGE_GATE),
     (".", "python3 scripts/check_fma_rounding_vectors.py"),
@@ -64,18 +66,21 @@ if name == "cargo" and sys.argv[-3:] == ["--", "--ignored", "--list"]:
 elif name == "uname":
     print(os.environ["MOCK_OS"])
 '''
-        for name in ("bin/python3", "bin/cargo", "bin/bash", "bin/uname",
+        for name in ("bin/python3", "bin/scientific-python", "bin/cargo", "bin/bash", "bin/uname",
                      "tests/mock_spi/run_mock_bridge_test.sh",
                      "tests/mock_spi/run_mock_linux_plugin_audit.sh"):
             path = self.root / name
             path.write_text(stub)
             path.chmod(0o755)
 
-    def run_checks(self, *args, fail=None, platform="Linux"):
+    def run_checks(self, *args, fail=None, platform="Linux", python=None):
         self.log.unlink(missing_ok=True)
         env = dict(os.environ, PATH=f"{self.root / 'bin'}:/usr/bin:/bin",
                    FEREG_TEST_PROFILE="ci", MOCK_ROOT=str(self.root),
                    MOCK_LOG=str(self.log), MOCK_OS=platform, MOCK_FAIL=fail or "")
+        env.pop("FEREG_PYTHON_BIN", None)
+        if python is not None:
+            env["FEREG_PYTHON_BIN"] = python
         result = subprocess.run(["/bin/bash", str(self.runner), *args],
                                 cwd=self.root, env=env, text=True,
                                 capture_output=True, timeout=30)
@@ -115,8 +120,26 @@ elif name == "uname":
     def test_default_package_failure_cannot_fall_back_to_source_only(self):
         result, commands = self.run_checks(fail=PACKAGE_GATE)
         self.assertEqual(result.returncode, 37)
-        self.assertEqual(commands, EXPECTED[:2])
+        self.assertEqual(commands, EXPECTED[:3])
         self.assertNotIn("SOURCE-ONLY", result.stdout + result.stderr)
+
+    def test_missing_scientific_python_stops_before_any_check(self):
+        for args in ((), ("--source-only",)):
+            with self.subTest(args=args):
+                result, commands = self.run_checks(*args, fail=PYTHON_PREFLIGHT)
+                self.assertEqual(result.returncode, 37)
+                self.assertEqual(commands, EXPECTED[:1])
+                self.assertNotIn("source integration PASS", result.stdout)
+
+    def test_explicit_interpreter_runs_every_python_check(self):
+        interpreter = str(self.root / "bin/scientific-python")
+        result, commands = self.run_checks(python=interpreter)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        expected = [(cwd, "scientific-python" + command[len("python3"):])
+                    if command.startswith("python3 ") else (cwd, command)
+                    for cwd, command in EXPECTED]
+        self.assertEqual(commands, expected)
+        self.assertNotIn("python3", "\n".join(command for _, command in commands))
 
     def test_source_only_still_propagates_math_and_command_failures(self):
         expected = [item for item in EXPECTED if item[1] != PACKAGE_GATE]

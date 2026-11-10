@@ -18,7 +18,7 @@ CFLAGS=(-std=c11 -Wall -Wextra -Wpedantic -Wconversion -Wshadow -Wstrict-prototy
 "$CC_BIN" -std=c11 -Wall -Wextra -Wpedantic -Wconversion -Wshadow -Wstrict-prototypes -Wmissing-prototypes -Werror \
   -DSYSTEM=OPUNIX -I"$ROOT/plugin" \
   "$ROOT/tests/mock_spi/plugin_loader_test.c" -ldl -o "$BUILD/plugin_loader_test"
-python3 "$ROOT/scripts/audit_binary.py" "$BUILD/fereg_mock_linux.plugin" > "$BUILD/audit.json"
+"${FEREG_PYTHON_BIN:-python3}" "$ROOT/scripts/audit_binary.py" "$BUILD/fereg_mock_linux.plugin" > "$BUILD/audit.json"
 "$BUILD/plugin_loader_test" "$BUILD/fereg_mock_linux.plugin"
 
 # The actual harness now requires complete OLS/PPML behavior. CI's mandatory
