@@ -1,5 +1,5 @@
 //! Modified LSMR on `A = W^1/2 D` with right-hand side `W^1/2 y`
-//! (schwarz-precond's `mlsmr`), one column at a time.
+//! ([`crate::lsmr::mlsmr`]), one column at a time.
 //!
 //! `mlsmr` needs `M ~ A'A = D'WD` as a nonsingular SPD action `M^-1`; see
 //! the module contract in [`super`]. Its stopping tests (the residual and
@@ -11,7 +11,7 @@
 //! is written only once it certifies.
 //!
 //! With escalation, a Jacobi pass whose normal-equation estimate fails to
-//! halve over a stall window hands off (schwarz-precond's escalation hook):
+//! halve over a stall window hands off (the engine's escalation hook):
 //! the column continues with Schwarz from that iterate, the true residual
 //! recomputed, within the rest of its budget; later columns start on
 //! Schwarz.
@@ -31,15 +31,15 @@ use crate::design::Effect;
 use crate::elimination::pcg::Targets;
 use crate::elimination::{STALL_WINDOW, STOP_FRACTION};
 use crate::error::{Error, Result};
+use crate::lsmr::{
+    mlsmr_counted_cancellable, Cancellation, EscalationHandler, EscalationPolicy, LsmrStopReason,
+    MlsmrOptions, Operator, Progress, SolveError,
+};
 use crate::projector::{
     CoefficientsMut, ColumnReport, ColumnStatus, ColumnsMut, Facts, InputState, Outcome,
     SchwarzSpec,
 };
 use rayon::prelude::*;
-use schwarz_precond::{
-    mlsmr_counted_cancellable, Cancellation, EscalationHandler, EscalationPolicy, LsmrStopReason,
-    MlsmrOptions, Operator, Progress, SolveError,
-};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Instant;

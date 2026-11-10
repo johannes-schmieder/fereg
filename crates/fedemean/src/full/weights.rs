@@ -52,7 +52,6 @@ impl State {
     }
 
     /// `sqrt` of the normalized weights, `None` for unit weights.
-    #[cfg_attr(not(feature = "schwarz"), allow(dead_code))]
     pub(super) fn roots(&self) -> Option<&[f64]> {
         (!self.root.is_empty()).then_some(&self.root[..])
     }

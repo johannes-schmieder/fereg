@@ -399,14 +399,12 @@ fn routes(case: &Case) -> Vec<(Method, Preconditioner)> {
         (Method::Auto, Preconditioner::Auto),
         (Method::Pcg, Preconditioner::Jacobi),
         (Method::Pcg, Preconditioner::Identity),
+        (Method::Lsmr, Preconditioner::Jacobi),
+        (Method::Lsmr, Preconditioner::Identity),
     ];
-    if cfg!(feature = "schwarz") {
-        routes.push((Method::Lsmr, Preconditioner::Jacobi));
-        routes.push((Method::Lsmr, Preconditioner::Identity));
-        if case.specs.len() >= 2 {
-            routes.push((Method::Pcg, SCHWARZ));
-            routes.push((Method::Lsmr, SCHWARZ));
-        }
+    if cfg!(feature = "schwarz") && case.specs.len() >= 2 {
+        routes.push((Method::Pcg, SCHWARZ));
+        routes.push((Method::Lsmr, SCHWARZ));
     }
     routes
 }

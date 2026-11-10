@@ -741,10 +741,7 @@ fn formulation(design: &Design<'_>, choice: Choice) -> Result<Formulation> {
         };
     let method = match choice.method {
         Method::Auto | Method::Pcg => full::Method::Pcg,
-        #[cfg(feature = "schwarz")]
         Method::Lsmr => full::Method::Lsmr,
-        #[cfg(not(feature = "schwarz"))]
-        Method::Lsmr => return Err(Error::Unsupported("modified LSMR needs feature schwarz")),
     };
     Ok(Formulation::Full(method, action))
 }

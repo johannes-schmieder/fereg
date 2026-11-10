@@ -21,7 +21,7 @@
 //!   the starting residual). A cold start begins at the largest effect's
 //!   level means, as the elimination does.
 //! - **Modified LSMR** on `A = W^1/2 D` with right-hand side `W^1/2 y`
-//!   (schwarz-precond's `mlsmr`, feature `schwarz`), one column at a time.
+//!   ([`crate::lsmr::mlsmr`]), one column at a time.
 //!   Its stopping tests are proxies: a pass that does not certify restarts
 //!   from its iterate at a tighter tolerance within the iteration budget.
 //!
@@ -80,7 +80,6 @@ mod blocks;
 mod cells;
 mod handle;
 mod kernels;
-#[cfg(feature = "schwarz")]
 mod lsmr;
 mod pcg;
 #[cfg(feature = "schwarz")]
@@ -200,7 +199,6 @@ const MAX_ITERATIONS: usize = 1_000_000;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Method {
     Pcg,
-    #[cfg_attr(not(feature = "schwarz"), allow(dead_code))]
     Lsmr,
 }
 
@@ -509,10 +507,7 @@ impl Engine {
         };
         let (outcome, gram) = match call.method {
             Method::Pcg => project_pcg(&job, &mut values, start, coefficients, outputs, facts)?,
-            #[cfg(feature = "schwarz")]
             Method::Lsmr => lsmr::project(&job, &mut values, start, coefficients, outputs, facts)?,
-            #[cfg(not(feature = "schwarz"))]
-            Method::Lsmr => return Err(Error::Unsupported("modified LSMR needs feature schwarz")),
         };
         let facts = match &outcome {
             Outcome::Projected(report) => report.facts,

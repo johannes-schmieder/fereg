@@ -71,14 +71,12 @@ pub(super) struct Work {
     /// Observation-pass partial sums.
     pub(super) rows: Vec<f64>,
     /// Modified LSMR: the weighted column `W^1/2 y`.
-    #[cfg_attr(not(feature = "schwarz"), allow(dead_code))]
     pub(super) b: Vec<f64>,
     /// The Schwarz apply workspace (sized by the preconditioner).
     pub(super) schwarz: Scratch,
     /// Partials of the channel-block pass (designs with slopes) ...
     pub(super) measures: Vec<f64>,
     /// ... and of modified LSMR's preconditioner, which runs beside it.
-    #[cfg_attr(not(feature = "schwarz"), allow(dead_code))]
     pub(super) inverse_measures: Vec<f64>,
 }
 

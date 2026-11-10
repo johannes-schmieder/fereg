@@ -29,7 +29,7 @@
 //!   from its current iterate ([`Route::escalations`]).
 //! - The full formulation ([`Reduction::Full`]; [`Reduction::Auto`] for one
 //!   or six or more effects): lockstep PCG on the singular consistent normal
-//!   equations, or modified LSMR (feature `schwarz`, [`Method::Lsmr`]), with
+//!   equations, or modified LSMR ([`Method::Lsmr`], the [`lsmr`] engine), with
 //!   Jacobi, no preconditioner or (feature `schwarz`, the full
 //!   formulation's automatic choice) one-level additive Schwarz over
 //!   factor-pair subdomains ([`Preconditioner::Schwarz`]); Jacobi escalating
@@ -58,6 +58,10 @@
 //!   state, applied by the caller to FE coefficient vectors in the canonical
 //!   layout, for example as the FE block of a block preconditioner of
 //!   `W^1/2 [X D]` in the caller's own modified LSMR.
+//! - The modified LSMR engine itself ([`lsmr`]): [`lsmr::mlsmr`] and its
+//!   counted and cancellable forms on any [`lsmr::Operator`], with a
+//!   preconditioner, warm starts and escalation (moved from the MIT-licensed
+//!   `schwarz-precond` crate; see the module's provenance note).
 //!
 //! Projections run on the caller's current rayon pool.
 //!
@@ -99,6 +103,7 @@ mod design;
 mod elimination;
 mod error;
 mod full;
+pub mod lsmr;
 mod projector;
 mod reduce;
 mod weights;

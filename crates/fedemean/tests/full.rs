@@ -279,15 +279,12 @@ fn full(method: Method, preconditioner: Preconditioner) -> Settings {
 
 /// The full-formulation routes this build supports.
 fn routes() -> Vec<(Method, Preconditioner)> {
-    let mut routes = vec![
+    vec![
         (Method::Pcg, Preconditioner::Jacobi),
         (Method::Pcg, Preconditioner::Identity),
-    ];
-    if cfg!(feature = "schwarz") {
-        routes.push((Method::Lsmr, Preconditioner::Jacobi));
-        routes.push((Method::Lsmr, Preconditioner::Identity));
-    }
-    routes
+        (Method::Lsmr, Preconditioner::Jacobi),
+        (Method::Lsmr, Preconditioner::Identity),
+    ]
 }
 
 fn request() -> Request {
@@ -824,13 +821,9 @@ fn auto_eliminates_two_to_five_effects_and_uses_the_full_system_otherwise() {
     assert_eq!(report.route.reduction, ReductionUsed::Full);
     assert_eq!(report.route.preconditioner, PreconditionerUsed::Identity);
     let lsmr = settings(Reduction::Auto, Method::Lsmr, Preconditioner::Auto);
-    if cfg!(feature = "schwarz") {
-        let report = projected(route_of(&case, lsmr).unwrap());
-        assert_eq!(report.route.reduction, ReductionUsed::Full);
-        assert_eq!(report.route.method, MethodUsed::Lsmr);
-    } else {
-        assert!(matches!(route_of(&case, lsmr), Err(Error::Unsupported(_))));
-    }
+    let report = projected(route_of(&case, lsmr).unwrap());
+    assert_eq!(report.route.reduction, ReductionUsed::Full);
+    assert_eq!(report.route.method, MethodUsed::Lsmr);
 }
 
 #[test]
@@ -853,7 +846,6 @@ fn unsupported_combinations_are_errors_before_any_change() {
         settings(Reduction::Full, Method::Pcg, blocks),
     ];
     if !cfg!(feature = "schwarz") {
-        combinations.push(full(Method::Lsmr, Preconditioner::Jacobi));
         combinations.push(settings(Reduction::Full, Method::Auto, schwarz));
         combinations.push(settings(Reduction::Auto, Method::Pcg, schwarz));
     }

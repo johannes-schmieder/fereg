@@ -1,0 +1,622 @@
+//! Breakdown, early-exit and input-validation paths.
+//
+// Copyright (c) 2026 within contributors
+// Copyright (c) 2026 appliedAI Institute for Europe gGmbH
+// MIT License; see the notice in `crates/fedemean/src/lsmr.rs`.
+
+use super::super::*;
+use crate::lsmr::fixtures::*;
+use crate::lsmr::{Operator, SolveError};
+
+/// `ZeroSecondRow` under either bidiagonalization; the modified one also zeroes the paired p̃.
+fn zero_second_row_solve(b: &[f64], modified: bool) -> LsmrResult {
+    if modified {
+        let identity = IdentityOp { n: 2 };
+        mlsmr(
+            &ZeroSecondRow,
+            b,
+            &identity,
+            1e-12,
+            100,
+            MlsmrOptions::default(),
+        )
+        .expect("modified Golub-Kahan")
+    } else {
+        lsmr(&ZeroSecondRow, b, 1e-12, 100, None).expect("Golub-Kahan")
+    }
+}
+
+/// b lies in A's range, so `A v₁ − α₁ u₁` collapses and β₂ = 0; the residual estimate is then
+/// exactly zero — a converged ResidualTolerance solve, not a distinct breakdown reason.
+#[test]
+fn test_mlsmr_mid_stream_beta_zero_breakdown() {
+    test_mlsmr_mid_stream_beta_zero_breakdown_case(false); // golub_kahan
+    test_mlsmr_mid_stream_beta_zero_breakdown_case(true); // modified_golub_kahan
+}
+
+fn test_mlsmr_mid_stream_beta_zero_breakdown_case(modified: bool) {
+    let result = zero_second_row_solve(&[5.0, 0.0], modified);
+    assert!(result.converged);
+    assert_eq!(result.iterations, 1);
+    assert_eq!(result.stop_reason, LsmrStopReason::ResidualTolerance);
+    assert!((result.x[0] - 5.0).abs() < 1e-12);
+    assert!(result.x[1].abs() < 1e-12);
+}
+
+/// `Aᵀb = 0` with `b ≠ 0` triggers the `step1.alpha == 0` early-exit:
+/// the solver immediately returns `x = 0` and reports the trivial residual
+/// `‖b‖`. Guards the early-exit branch in `mlsmr` / `lsmr_from_bidiag`.
+#[test]
+fn test_mlsmr_step1_alpha_zero_early_exit() {
+    /// `A = [[1.0], [0.0]]` — column vector e_1.
+    /// `Ax = [x, 0]`, `Aᵀy = [y_0]`, so `Aᵀb = 0` whenever `b_0 = 0`.
+    struct ColE1;
+    impl Operator for ColE1 {
+        fn nrows(&self) -> usize {
+            2
+        }
+        fn ncols(&self) -> usize {
+            1
+        }
+        fn apply(&self, x: &[f64], y: &mut [f64]) -> Result<(), SolveError> {
+            y[0] = x[0];
+            y[1] = 0.0;
+            Ok(())
+        }
+        fn apply_adjoint(&self, u: &[f64], x: &mut [f64]) -> Result<(), SolveError> {
+            x[0] = u[0];
+            Ok(())
+        }
+    }
+
+    let b = vec![0.0, 1.0];
+    let result = lsmr(&ColE1, &b, 1e-12, 100, None).expect("lsmr alpha=0 early exit");
+    assert!(result.converged);
+    assert_eq!(result.iterations, 0);
+    assert_eq!(result.x, vec![0.0; 1]);
+    assert_eq!(
+        result.stop_reason,
+        LsmrStopReason::InitialNormalEquationResidualZero
+    );
+    assert!((result.residual_norm - vec_norm(&b)).abs() < 1e-15);
+}
+
+/// Every case below reaches the `α₁ = 0` exit: `diag(m)` annihilates `Aᵀ rhs`, or squaring an
+/// already-tiny gradient underflows. `None` runs the unpreconditioned stream instead.
+fn zero_initial_gradient(
+    a: &[f64],
+    m: Option<&[f64]>,
+    b: &[f64],
+    x0: Option<&[f64]>,
+) -> LsmrResult {
+    let a = DiagOp(a.to_vec());
+    match m {
+        Some(m) => mlsmr(
+            &a,
+            b,
+            &DiagOp(m.to_vec()),
+            1e-10,
+            100,
+            MlsmrOptions {
+                warm_start: x0,
+                ..Default::default()
+            },
+        ),
+        None => lsmr(&a, b, 1e-10, 100, None),
+    }
+    .expect("α₁ = 0 exit")
+}
+
+/// `α₁ = √(p̃ᵀ M⁻¹ p̃)` vanishes whenever `Aᵀb` lies in `ker(M⁻¹)`, however large it is there, so
+/// the exit must be audited outside the metric — from a warm start too, where a zero correction
+/// does not mean a zero `x`. The last three are ways to flatter the backward-error leg into
+/// certifying anyway: a bound that overflowed although every entry of `Aᵀb` is finite, a
+/// denominator that overflows although both factors are finite, and a subnormal bound a clamp
+/// would raise by eight orders. `scaled_design` separates `‖Aᵀb‖ / ‖b‖` from its reciprocal,
+/// which certifies it: only a bound that understates `‖A‖` overstates the error.
+#[test]
+fn a_zero_initial_gradient_the_metric_cannot_see_is_refused() {
+    a_zero_initial_gradient_the_metric_cannot_see_is_refused_case(
+        &[1.0, 1.0],
+        &[0.0, 1.0],
+        None,
+        1.0,
+    ); // kernel_cold
+    a_zero_initial_gradient_the_metric_cannot_see_is_refused_case(
+        &[1.0, 1.0],
+        &[1.0, 1.0],
+        Some(&[1.0, 0.0][..]),
+        1.0,
+    ); // kernel_warm
+    a_zero_initial_gradient_the_metric_cannot_see_is_refused_case(
+        &[1e-6, 1e-6],
+        &[1.0, 1.0],
+        Some(&[1e6, 0.0][..]),
+        1e-6,
+    ); // scaled_design
+    a_zero_initial_gradient_the_metric_cannot_see_is_refused_case(
+        &[2.0, 2.0],
+        &[8e307, 8e307],
+        Some(&[4e307, 0.0][..]),
+        1.6e308,
+    ); // overflowed_bound
+    a_zero_initial_gradient_the_metric_cannot_see_is_refused_case(
+        &[2.0, 1.0],
+        &[5e307, 0.0],
+        Some(&[2.5e307, -1e308][..]),
+        1e308,
+    ); // overflowed_denominator
+    a_zero_initial_gradient_the_metric_cannot_see_is_refused_case(
+        &[1.8e-316, 1.8e-316],
+        &[0.0, 3e-8],
+        None,
+        5.4e-324,
+    ); // subnormal_bound
+}
+
+fn a_zero_initial_gradient_the_metric_cannot_see_is_refused_case(
+    a: &[f64],
+    b: &[f64],
+    x0: Option<&[f64]>,
+    unsolved: f64,
+) {
+    let result = zero_initial_gradient(a, Some(&[1.0, 0.0]), b, x0);
+    let residual = normal_equation_residual(&DiagOp(a.to_vec()), &result.x, b);
+
+    assert!(!result.converged, "{:?}", result.stop_reason);
+    assert_eq!(result.stop_reason, LsmrStopReason::FalseConvergence);
+    assert_eq!(result.iterations, 0);
+    assert!((residual / unsolved - 1.0).abs() < 1e-3, "{residual:e}");
+}
+
+/// An `α₁` whose product form underflows is a scale to recover, not a breakdown at `x = 0`.
+#[test]
+fn an_underflowed_alpha_is_a_scale_not_a_breakdown() {
+    an_underflowed_alpha_is_a_scale_not_a_breakdown_case(None); // no_metric
+    an_underflowed_alpha_is_a_scale_not_a_breakdown_case(Some(&[1.0, 1.0][..])); // identity_metric
+    an_underflowed_alpha_is_a_scale_not_a_breakdown_case(Some(&[1e-10, 1e-10][..]));
+    // scaled_metric
+}
+
+fn an_underflowed_alpha_is_a_scale_not_a_breakdown_case(m: Option<&[f64]>) {
+    let a = &[0.0, 1.0];
+    let b = &[1e100, 1e-100];
+    let result = zero_initial_gradient(a, m, b, None);
+
+    assert!(result.converged, "{:?}", result.stop_reason);
+    assert_eq!(result.iterations, 1);
+    assert!((result.x[1] / 1e-100 - 1.0).abs() < 1e-9, "{:?}", result.x);
+}
+
+/// The exit must not refuse what it cannot measure a drop for. `inside_residual_tolerance` is
+/// carried by `‖b‖`, which the correction does not touch, and `‖b‖ = 1e6` separates that leg from
+/// the relative tolerance. `meets_normal_equation_tolerance` has only the `‖A‖` bound to go on,
+/// and `exact_warm_start` fails outright if the audit reaches for a cold certificate it cannot
+/// square.
+#[test]
+fn a_zero_initial_gradient_nothing_contradicts_certifies() {
+    a_zero_initial_gradient_nothing_contradicts_certifies_case(
+        &[1.0, 1.0],
+        Some(&[1.0, 0.0][..]),
+        &[1e6, 1e-5],
+        Some(&[1e6, 0.0][..]),
+    ); // inside_residual_tolerance
+    a_zero_initial_gradient_nothing_contradicts_certifies_case(
+        &[1.0, 1e-12],
+        Some(&[1.0, 0.0][..]),
+        &[1.0, 1e-4],
+        Some(&[1.0, 0.0][..]),
+    ); // meets_normal_equation_tolerance
+    a_zero_initial_gradient_nothing_contradicts_certifies_case(
+        &[1.0, 0.0],
+        Some(&[1.0, 1.0][..]),
+        &[1e200, 1.0],
+        Some(&[1e200, 0.0][..]),
+    ); // exact_warm_start
+}
+
+fn a_zero_initial_gradient_nothing_contradicts_certifies_case(
+    a: &[f64],
+    m: Option<&[f64]>,
+    b: &[f64],
+    x0: Option<&[f64]>,
+) {
+    let result = zero_initial_gradient(a, m, b, x0);
+
+    assert!(result.converged, "{:?}", result.stop_reason);
+    assert_eq!(result.iterations, 0);
+}
+
+/// A mid-stream bidiagonalization breakdown surfaces as a converged solve, not
+/// a distinct stop reason. Whenever a step returns `alpha == 0`, that same
+/// rotation step drives `zeta_bar` (the ‖Aᵀr‖ estimate) to exactly zero, so
+/// the convergence check fires. On an *inconsistent* breakdown (nonzero
+/// residual) it fires as NormalEquationTolerance.
+///
+/// `ZeroSecondRow` with `b = [5, 3]` reaches `alpha_2 = 0` while leaving a
+/// residual of 3, exercising exactly this path on both bidiagonalizations.
+#[test]
+fn test_mid_stream_breakdown_reports_convergence() {
+    test_mid_stream_breakdown_reports_convergence_case(false); // golub_kahan
+    test_mid_stream_breakdown_reports_convergence_case(true); // modified_golub_kahan
+}
+
+fn test_mid_stream_breakdown_reports_convergence_case(modified: bool) {
+    let result = zero_second_row_solve(&[5.0, 3.0], modified);
+    assert!(result.converged);
+    assert_eq!(result.stop_reason, LsmrStopReason::NormalEquationTolerance);
+    // x_0 = 5 fits row 0; row 1 is unmatchable, leaving residual 3.
+    assert!((result.x[0] - 5.0).abs() < 1e-10);
+    assert!((result.residual_norm - 3.0).abs() < 1e-10);
+}
+
+#[test]
+fn test_mlsmr_zero_rhs_stop_reason() {
+    let b = vec![0.0; 4];
+    let result = lsmr(&OverdeterminedOp, &b, 1e-12, 100, None).expect("zero-rhs solve");
+    assert!(result.converged);
+    assert_eq!(result.iterations, 0);
+    assert_eq!(result.stop_reason, LsmrStopReason::ZeroRhs);
+    assert_eq!(result.residual_norm, 0.0);
+}
+
+/// Near a lucky breakdown `p̃ ≈ 0`, `vp = ⟨v, p̃⟩` (mathematically `≥ 0`) can
+/// come out slightly negative from rounding. A value well inside the relative
+/// tolerance must be treated as an `α = 0` breakdown, not rejected as an
+/// indefinite preconditioner. Regression for the old strict `vp < 0.0` abort.
+#[test]
+fn test_mlsmr_near_breakdown_vp_clamps_to_zero() {
+    // M⁻¹ maps p̃ to (perp(p̃) − 1e-10·p̃): the perpendicular part cancels in
+    // ⟨v, p̃⟩, leaving vp ≈ −1e-10·‖p̃‖² — negative, but ~8 orders inside the
+    // √ε·‖v‖‖p̃‖ floor, so it must clamp rather than raise.
+    struct NearBreakdownPrecond;
+    impl Operator for NearBreakdownPrecond {
+        fn nrows(&self) -> usize {
+            2
+        }
+        fn ncols(&self) -> usize {
+            2
+        }
+        fn apply(&self, x: &[f64], y: &mut [f64]) -> Result<(), SolveError> {
+            y[0] = -x[1] - 1e-10 * x[0];
+            y[1] = x[0] - 1e-10 * x[1];
+            Ok(())
+        }
+        fn apply_adjoint(&self, x: &[f64], y: &mut [f64]) -> Result<(), SolveError> {
+            self.apply(x, y)
+        }
+    }
+
+    let b = vec![3.0, 4.0];
+    let op = IdentityOp { n: 2 };
+    let result = mlsmr(
+        &op,
+        &b,
+        &NearBreakdownPrecond,
+        1e-10,
+        100,
+        MlsmrOptions::default(),
+    );
+    assert!(
+        result.is_ok(),
+        "rounding-scale negative vp must clamp to breakdown, got err {:?}",
+        result.err()
+    );
+}
+
+#[test]
+fn test_mlsmr_rejects_invalid_inputs() {
+    let bad_len = lsmr(&OverdeterminedOp, &[1.0, 2.0], 1e-10, 100, None);
+    assert!(matches!(bad_len, Err(SolveError::InvalidInput { .. })));
+
+    let bad_tol = lsmr(
+        &OverdeterminedOp,
+        &[1.0, 2.0, 3.0, 4.0],
+        f64::NAN,
+        100,
+        None,
+    );
+    assert!(matches!(bad_tol, Err(SolveError::InvalidInput { .. })));
+
+    let bad_rhs = lsmr(
+        &OverdeterminedOp,
+        &[1.0, f64::INFINITY, 3.0, 4.0],
+        1e-10,
+        100,
+        None,
+    );
+    assert!(matches!(bad_rhs, Err(SolveError::InvalidInput { .. })));
+
+    // Finite entrywise, but `‖b‖` overflows and would scale u₁ to zero, reading as α₁ = 0.
+    let overflowing_rhs = lsmr(&OverdeterminedOp, &[f64::MAX; 4], 1e-10, 100, None);
+    assert!(matches!(
+        overflowing_rhs,
+        Err(SolveError::InvalidInput { .. })
+    ));
+}
+
+#[test]
+fn test_mlsmr_rejects_bad_preconditioner_shape() {
+    struct BadPrecond;
+    impl Operator for BadPrecond {
+        fn nrows(&self) -> usize {
+            2
+        }
+        fn ncols(&self) -> usize {
+            2
+        }
+        fn apply(&self, x: &[f64], y: &mut [f64]) -> Result<(), SolveError> {
+            y.copy_from_slice(x);
+            Ok(())
+        }
+        fn apply_adjoint(&self, x: &[f64], y: &mut [f64]) -> Result<(), SolveError> {
+            self.apply(x, y)
+        }
+    }
+
+    let b = vec![1.0, 2.0, 3.0, 3.0];
+    let result = mlsmr(
+        &OverdeterminedOp,
+        &b,
+        &BadPrecond,
+        1e-10,
+        100,
+        MlsmrOptions::default(),
+    );
+    assert!(matches!(result, Err(SolveError::InvalidInput { .. })));
+}
+
+/// A genuinely indefinite preconditioner (`M⁻¹ = −I` ⇒ `vp = −‖p̃‖²`, relative
+/// magnitude 1) must still be rejected — the clamp only ever absorbs a
+/// negligible negative direction, never a real loss of positive-definiteness.
+#[test]
+fn test_mlsmr_rejects_indefinite_preconditioner() {
+    struct NegIdentity;
+    impl Operator for NegIdentity {
+        fn nrows(&self) -> usize {
+            2
+        }
+        fn ncols(&self) -> usize {
+            2
+        }
+        fn apply(&self, x: &[f64], y: &mut [f64]) -> Result<(), SolveError> {
+            for (yi, &xi) in y.iter_mut().zip(x) {
+                *yi = -xi;
+            }
+            Ok(())
+        }
+        fn apply_adjoint(&self, x: &[f64], y: &mut [f64]) -> Result<(), SolveError> {
+            self.apply(x, y)
+        }
+    }
+
+    let b = vec![3.0, 4.0];
+    let op = IdentityOp { n: 2 };
+    let result = mlsmr(&op, &b, &NegIdentity, 1e-10, 100, MlsmrOptions::default());
+    assert!(matches!(result, Err(SolveError::InvalidInput { .. })));
+}
+
+/// Reorthogonalization cancels the last Krylov direction to noise whose `⟨v, p̃⟩` rounds negative.
+#[test]
+fn a_reorthogonalized_breakdown_is_not_an_indefinite_metric() {
+    a_reorthogonalized_breakdown_is_not_an_indefinite_metric_case(
+        DenseOp {
+            rows: 4,
+            cols: 3,
+            data: vec![
+                -0.16929096530790788,
+                -0.4984562277653519,
+                0.13072317043406312,
+                0.13009772651294826,
+                0.05618700961392087,
+                -0.2772395553399575,
+                -0.03358570159357288,
+                0.3721462377814392,
+                -0.06825699516078332,
+                0.0945669171117478,
+                -0.3058591259616409,
+                -0.037184894934893964,
+            ],
+        },
+        &[
+            0.040795682335399985,
+            0.4534654228284515,
+            -0.07445456668775552,
+            0.22621989036785384,
+        ],
+        // Jacobi: `1 / ‖a_j‖²`.
+        DenseOp {
+            rows: 3,
+            cols: 3,
+            data: vec![
+                17.967595266556337,
+                0.0,
+                0.0,
+                0.0,
+                2.0675757429778487,
+                0.0,
+                0.0,
+                0.0,
+                10.000794849860734,
+            ],
+        },
+        10,
+    ); // jacobi
+    a_reorthogonalized_breakdown_is_not_an_indefinite_metric_case(
+        DenseOp {
+            rows: 5,
+            cols: 2,
+            data: vec![
+                -0.13472791693601827,
+                -0.4850321710037593,
+                0.8182735477289922,
+                -0.8988020854355594,
+                -0.5527756975109148,
+                0.6831246540331621,
+                -0.5254968366620636,
+                0.7268238608110611,
+                0.8935718535267778,
+                -0.11936140914510718,
+            ],
+        },
+        &[
+            0.12656882841955985,
+            0.22982262397321862,
+            0.01944542907009761,
+            0.05913717014335362,
+            -0.32647238073075635,
+        ],
+        DenseOp {
+            rows: 2,
+            cols: 2,
+            data: vec![1.0, 1.0, 1.0, 1.00000001],
+        },
+        2,
+    ); // ill_conditioned_dense
+}
+
+fn a_reorthogonalized_breakdown_is_not_an_indefinite_metric_case(
+    a: DenseOp,
+    b: &[f64],
+    metric: DenseOp,
+    local_size: usize,
+) {
+    let options = MlsmrOptions {
+        local_size: Some(local_size),
+        ..Default::default()
+    };
+    let r = mlsmr(&a, b, &metric, 1e-10, 50, options).expect("SPD metric");
+
+    assert!(r.converged, "{:?}", r.stop_reason);
+    let zero = vec![0.0; a.cols];
+    let ratio = normal_equation_residual(&a, &r.x, b) / normal_equation_residual(&a, &zero, b);
+    assert!(ratio <= 1e-12, "{ratio:e}");
+}
+
+/// Recomputing `v = M⁻¹ p̃` keeps a negative direction negative: the refresh never absorbs it.
+// The window cancels the positive direction, leaving a remainder of `vp ≈ −1.6e-49` to refresh.
+#[test]
+fn an_indefinite_metric_is_refused_after_reorthogonalization() {
+    an_indefinite_metric_is_refused_after_reorthogonalization_case(
+        DenseOp {
+            rows: 4,
+            cols: 3,
+            data: vec![1.0, 0.3, 0.0, 0.2, 1.0, 0.1, 0.0, 0.4, 1.0, 0.5, 0.5, 0.5],
+        },
+        &[1.0, 2.0, -1.0, 0.5],
+        &[1.0, 1.0, -0.5],
+        None,
+    ); // one_negative_entry
+    an_indefinite_metric_is_refused_after_reorthogonalization_case(
+        DenseOp {
+            rows: 4,
+            cols: 3,
+            data: vec![1.0, 0.3, 0.0, 0.2, 1.0, 0.1, 0.0, 0.4, 1.0, 0.5, 0.5, 0.5],
+        },
+        &[1.0, 2.0, -1.0, 0.5],
+        &[1.0, 1.0, -0.5],
+        Some(1),
+    ); // one_negative_entry
+    an_indefinite_metric_is_refused_after_reorthogonalization_case(
+        DenseOp {
+            rows: 4,
+            cols: 3,
+            data: vec![1.0, 0.3, 0.0, 0.2, 1.0, 0.1, 0.0, 0.4, 1.0, 0.5, 0.5, 0.5],
+        },
+        &[1.0, 2.0, -1.0, 0.5],
+        &[1.0, 1.0, -0.5],
+        Some(2),
+    ); // one_negative_entry
+    an_indefinite_metric_is_refused_after_reorthogonalization_case(
+        DenseOp {
+            rows: 4,
+            cols: 3,
+            data: vec![1.0, 0.3, 0.0, 0.2, 1.0, 0.1, 0.0, 0.4, 1.0, 0.5, 0.5, 0.5],
+        },
+        &[1.0, 2.0, -1.0, 0.5],
+        &[1.0, 1.0, -0.5],
+        Some(10),
+    ); // one_negative_entry
+    an_indefinite_metric_is_refused_after_reorthogonalization_case(
+        DenseOp {
+            rows: 3,
+            cols: 2,
+            data: vec![
+                -1.2991112911427987,
+                1e-24,
+                -0.6591885378662519,
+                -1e-24,
+                0.8763697896531903,
+                0.0,
+            ],
+        },
+        &[1.0, 1.0, 1.0],
+        &[1.0, -1.0],
+        None,
+    ); // negative_remainder
+    an_indefinite_metric_is_refused_after_reorthogonalization_case(
+        DenseOp {
+            rows: 3,
+            cols: 2,
+            data: vec![
+                -1.2991112911427987,
+                1e-24,
+                -0.6591885378662519,
+                -1e-24,
+                0.8763697896531903,
+                0.0,
+            ],
+        },
+        &[1.0, 1.0, 1.0],
+        &[1.0, -1.0],
+        Some(1),
+    ); // negative_remainder
+    an_indefinite_metric_is_refused_after_reorthogonalization_case(
+        DenseOp {
+            rows: 3,
+            cols: 2,
+            data: vec![
+                -1.2991112911427987,
+                1e-24,
+                -0.6591885378662519,
+                -1e-24,
+                0.8763697896531903,
+                0.0,
+            ],
+        },
+        &[1.0, 1.0, 1.0],
+        &[1.0, -1.0],
+        Some(2),
+    ); // negative_remainder
+    an_indefinite_metric_is_refused_after_reorthogonalization_case(
+        DenseOp {
+            rows: 3,
+            cols: 2,
+            data: vec![
+                -1.2991112911427987,
+                1e-24,
+                -0.6591885378662519,
+                -1e-24,
+                0.8763697896531903,
+                0.0,
+            ],
+        },
+        &[1.0, 1.0, 1.0],
+        &[1.0, -1.0],
+        Some(10),
+    ); // negative_remainder
+}
+
+fn an_indefinite_metric_is_refused_after_reorthogonalization_case(
+    a: DenseOp,
+    b: &[f64],
+    m: &[f64],
+    local_size: Option<usize>,
+) {
+    let options = MlsmrOptions {
+        local_size,
+        ..Default::default()
+    };
+    let r = mlsmr(&a, b, &DiagOp(m.to_vec()), 1e-12, 50, options);
+    assert!(matches!(r, Err(SolveError::InvalidInput { .. })), "{m:?}");
+}

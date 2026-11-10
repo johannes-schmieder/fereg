@@ -14,7 +14,6 @@ path = "src/lib.rs"
 fedemean = { path = "../fedemean", features = ["cmg", "schwarz"] }
 cmg = { git = "https://github.com/johannes-schmieder/CMG", rev = "368eceba765db91ff818815698da35889ce42ed0", features = ["parallel", "experimental-components"] }
 rayon = { version = "=1.12.0" }
-schwarz-precond = { git = "https://github.com/johannes-schmieder/within", rev = "8d401d8278ac783b2f258c459e057f30cd80d595", package = "schwarz-precond" }
 
 [lints]
 workspace = true

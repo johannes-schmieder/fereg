@@ -6,7 +6,7 @@
 //! design `D` under the current Hessian weights, by one of two formulations
 //! with the same solution:
 //!
-//! - **Joint.** Modified LSMR on `W^1/2 [X D]` (schwarz-precond's `mlsmr`)
+//! - **Joint.** Modified LSMR on `W^1/2 [X D]` (`fedemean::lsmr::mlsmr`)
 //!   with a block-diagonal preconditioner: the controls' current-weight Gram
 //!   factor and, on the FE block, the inverse level masses (Jacobi), the
 //!   identity, or fedemean's additive Schwarz preconditioner of `D'WD`
@@ -48,10 +48,10 @@ use crate::linalg::neumaier_add;
 use crate::memory::fallible_filled;
 use std::time::Instant;
 
-use rayon::prelude::*;
-use schwarz_precond::{
+use fedemean::lsmr::{
     mlsmr_cancellable, LsmrStopReason, MlsmrOptions, Operator, SolveError, Staleness,
 };
+use rayon::prelude::*;
 
 use crate::data::DenseMatrix;
 use crate::error::{allocation, invalid_argument, ErrorCode, FeregError, Result};
@@ -875,7 +875,7 @@ impl<'p> ReusableCategoricalJointLsmr<'p> {
         // (`FalseConvergence`) is terminated, and the exact certificate
         // decides it, as for the projections.
         let schwarz = self.joint.block == FeBlock::Schwarz;
-        let terminated = |result: &schwarz_precond::LsmrResult| {
+        let terminated = |result: &fedemean::lsmr::LsmrResult| {
             result.converged || (schwarz && result.stop_reason == LsmrStopReason::FalseConvergence)
         };
         if !terminated(&result) || !certificate.passed {
@@ -1274,9 +1274,9 @@ impl<'p> ReusableCategoricalJointLsmr<'p> {
         tolerance: f64,
         max_iterations: usize,
         warm_start: Option<&[f64]>,
-        escalation: Option<&dyn schwarz_precond::EscalationPolicy>,
+        escalation: Option<&dyn fedemean::lsmr::EscalationPolicy>,
         local_size: Option<usize>,
-    ) -> Result<schwarz_precond::LsmrResult> {
+    ) -> Result<fedemean::lsmr::LsmrResult> {
         let operator = AugmentedCategoricalOperator::new(
             fe_design,
             &self.active_design,
@@ -1315,7 +1315,7 @@ impl<'p> ReusableCategoricalJointLsmr<'p> {
                 escalation,
                 local_size,
             },
-            schwarz_precond::Cancellation::new(poll),
+            fedemean::lsmr::Cancellation::new(poll),
         )
         .map_err(|error| {
             if armed && matches!(error, SolveError::Cancelled) {
@@ -1410,7 +1410,7 @@ enum Warm {
 fn trace_pass(
     block: FeBlock,
     tolerance: f64,
-    result: &schwarz_precond::LsmrResult,
+    result: &fedemean::lsmr::LsmrResult,
     certificate: &JointLsmrCertificate,
 ) {
     if !crate::diagnostics::solver_trace_enabled() {
