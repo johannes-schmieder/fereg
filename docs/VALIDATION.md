@@ -4550,6 +4550,73 @@ start on this Mac, so Linux covers Stata 15.1.
 Not covered here: Linux and Windows qualification (separate lanes), Intel
 Macs, the corresponding-source archive, HTTP installation and release work.
 
+## Windows qualification (899fcf20)
+
+The Windows check of Addendum 3, 2026-11-10 (UTC), on the exact clean commit
+`899fcf209518cdff0eb521b36f27aef178658980`, sent from a clean detached
+worktree through the accepted private-machine wrapper (`windows_ci.sh`,
+sha256 `9ee64b16499780cb2a044c466ca2da6d9f5dc40b721bb7224aaae8130bd3b1ef`;
+controller `e88ed0308472dc87d8767915dde7532a105891645cdfe7593202d5b92a75a09e`;
+diagnostic guard
+`14fe3f6515439c55d0732e99fba797280b76dfd9638345794a639a00a44ffd12`; the
+accepted pins). Development evidence: nothing is pushed, published or
+written to `dist/`. `inspect` reported the restricted
+roles-anywhere profile and a stopped instance. Both runs held the shared lock,
+ran as SYSTEM on Windows Server 2022 x86-64 with Stata/MP 19, and passed every
+controller check (execution identity, source hash and paths, source manifest,
+shutdown backstop, Stata, project test). Each finished with the instance
+stopped, its transient transfer objects deleted and the lock released.
+
+| Run | Profile | Source archive sha256 | Receipt sha256 | Result |
+| --- | --- | --- | --- | --- |
+| `win-20261110T041936Z-accd7ed2` | `stata-smoke` | `3c4500aded8c4d7f566c02b573f5409539971a2e0195230b3b46be9106c504a5` | `c902a9d6aedb9a7169cd967d530071e57870b08e901496add5b84b9432d6ae2c` | PASS |
+| `win-20261110T042144Z-3aff94ad` | `stata-do` | `2c88562b2361791540359c2c644ab3b3c515c8c7287121bcafd6a01fbdf80f86` | `bcb5fd0fc9dda492e4791bdddd05f56f1c565748d7209a1543422402d7a1a8e2` | PASS |
+
+The two archives hold the same deterministic `git archive` of the commit plus
+the wrapper's per-run source manifest, whose zip timestamp differs. Each
+receipt binds its own archive hash, which the controller rechecked before
+extraction.
+
+**Full profile** (`windows-ci.do` → `scripts/windows_ci_runtime.do`,
+1,304 s of the 1,800 s fereg allowance; final stage `complete`; the status
+file gives `WINDOWS_CI=PASS` only after the driver's last assertion). The
+Rust/MSVC release build (static CRT), the exact-FMA and x86-64 fused-kernel tests on the
+FMA/AVX hardware path, the C bridge (`/W4 /WX`) and numeric batch guards, the
+plugin link with embedded commit and build date, the PE binary audit and the
+actual native loader all pass. The plugin is checksum-verified, staged with the
+Windows release file set (`stage_local_install.py --platform windows`) and
+`net install`ed into isolated PLUS/PERSONAL; the installed copy has the same
+hash. The installed package runs `windows_ci_smoke` (selftest names
+`fereg_windows.plugin`, a robust one-effect fit, `observation_stores`),
+`single_runtime`, `ols_solver_reporting`, `ols_cmg_raw_residual_oracle`,
+`ols_mixed_solver_reports`, `feppml_one_fe_dummy_oracle`,
+`within_weighted_ols`, `ols_three_fe_batch_oracle`, `lsmr_batch_oracle`,
+`ols_offset_slope_boundary`, `replay_and_prefixes`, the transaction fixtures
+`estimate_ols_eclass_transaction` and `estimate_ppml_hidden_transaction`,
+`ols_no_fe_direct`, `ols_no_fe_centered` and `feppml_saved_map_pilot`. From
+`ols_offset_slope_boundary` on, the source ado directory, byte-identical to
+the installed one, is also first on the adopath. The host is Stata/MP 19
+GUI; the missing-value witness, `parallel_input_failures` and the nested
+input oracle at the default and eight workers pass. The oracle
+gives 72 cases, 208 runs, at least 72 in the numeric window, and exact
+serial/parallel input digests. PPML saved-intercept recovery passes at both
+worker counts, with at least four traced CG recoveries each. The guarded
+collector returned the tested plugin, sha256
+`67a4eb9b38736e9ae6e8c542a1fcd37ac9660f20a00fed4d5c9c33b47be0e61a`
+(20,388,352 bytes), and the download matched the receipt. Locally it is an
+x86-64 PE DLL carrying `899fcf209518` and the build date 2026-11-10. The
+project's PE audit needs `dumpbin`, so it ran on Windows only.
+
+Not covered: the `staged-install` profile on a sealed Windows release
+archive. Its runner starts Stata with Unix `-b do`, `stage_release.py` needs a
+git checkout and a dependency-audit receipt, and `staged_plugin_binary`
+deletes the loaded plugin, which Windows blocks. The Windows profile runs
+three of that profile's fixtures against the installed copy (`single_runtime`,
+`observation_stores`, `replay_and_prefixes`). Also not covered: the
+`cargo-test` workspace profile (not part of the project's Windows
+qualification), live Break during Windows loading (waived 2026-11-07), Windows
+performance, and HTTP installation and release work.
+
 ## Package checks
 
 ### Beta.13 parallel input and parity packaging
