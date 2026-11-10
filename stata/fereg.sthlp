@@ -113,6 +113,16 @@ within clusters; {cmd:?} means redundancy may be understated. Undefined
 statistics remain missing. Replay after {cmd:bootstrap:} or {cmd:jackknife:}
 uses Stata's prefix inference display.
 
+{pstd}
+Regressors collinear with the absorbed effects are omitted as FE-collinear.
+Among the remaining regressors, a scaled column-pivoted QR factorization
+decides numerical rank and omits the dependent ones. Of regressors that are
+exact multiples of one another, such as {cmd:x2 = 2*x1}, the one listed first
+is kept and the later ones are omitted, as with {help regress}; this choice
+does not depend on the platform, the thread count, or the variables' scale.
+{cmd:e(fereg_status)} records each coefficient's status, and omitted
+coefficients and their variances are zero.
+
 {marker absorb}
 {title:Absorbed terms}
 
@@ -370,6 +380,11 @@ workers according to work, independent tasks and admitted storage. Existing
 stage traces distinguish lane limits and independent work from this budget.
 {cmd:deterministic} fixes the work partition
 and merge order for the same architecture and thread count; it may be slower.
+Results repeat exactly for the same data, options and thread count on one
+machine and agree to numerical accuracy across thread counts and platforms;
+their last bits may differ between platforms. The LSMR recurrences and the
+rank-revealing QR use a platform-independent {it:hypot}, so their iteration
+counts, stops and pivots do not depend on the platform's math library.
 {cmd:timeit} prints the selected memory plan, native allocation, scratch, RSS,
 timing, and requested/effective threads. {cmd:verbose(#)} records the
 requested verbosity; use {cmd:timeit} to print execution diagnostics.

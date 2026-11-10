@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+- Platform-independent LSMR and QR arithmetic: the modified LSMR recurrence
+  (Givens rotations, residual and norm estimates) and the rank-revealing QR
+  (streamed Givens rotations, column norms, the dropped-span and
+  dropped-constant certificates) use a portable `hypot` built from IEEE
+  operations only, within one ulp of correct rounding and pinned by a golden
+  digest that macOS, Linux and Windows reproduce, instead of the C library's,
+  which differs between platforms. Their iterations, stops and pivots no
+  longer depend on the platform. Explicit `solver(lsmr)` (OLS and PPML), the
+  PPML LSMR accelerator and fits whose finite rank the QR decides change in
+  the last bits (|db| at most 1.2e-14 on the checked well-conditioned designs);
+  default elimination, CG and Cholesky fits are unchanged bit for bit. The
+  explicit-LSMR boundary case of `ols_offset_slope_boundary` that gave r(430)
+  on macOS and Windows and r(459) on Linux now gives r(459) everywhere.
+- Collinear regressors: of regressors that are exact multiples of one another
+  (for example `x17 = 2*x1`), the one listed first is kept and the later ones
+  are omitted, as with `regress`, on every platform. The QR pivot rule treats
+  candidates within `max(64, N + K)` ulps of the largest trailing norm as tied
+  (the rounding of the computed norms), where it formerly used 64 ulps, which
+  let the platform's rounding decide such ties (Linux omitted `x1`). Rank,
+  degrees of freedom and the other omission rules are unchanged.
 - Redesign the solver options and results; there is no compatibility with the
   former names. `solver(method[, reduce() precondition() accelerate()])` replaces
   `solver(map|it|squarem|lsmr|cmg|cmgschur)`, `preconditioner()` and the

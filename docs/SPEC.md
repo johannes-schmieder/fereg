@@ -1122,14 +1122,40 @@ dependent slope channels; a singular local Gram block is not automatically
 an invalid model. Weak-graph tests retain identified combinations even where
 individual FE coordinates are not unique.
 
+Pivot ties (decided by Johannes, 2026-11-10). The column-pivoted QR, on
+columns standardized by their reference norms, pivots on the largest trailing
+column norm. Candidates whose computed trailing norms lie within
+`max(64, N + K)·ε` of the largest, in units of the largest standardized column
+norm (the rank threshold's scale; N streamed rows, K candidate columns), are
+tied, and the earliest candidate in canonical column order is the pivot. So of
+regressors that are exact multiples of one another (for example `x17 = 2·x1`)
+the first listed is kept and the later ones are omitted as numerically rank
+deficient, as `regress` does, independently of the platform, the worker count,
+the columns' scale and their storage order. The band covers the rounding of
+the computed norms, whose error bound grows linearly in N + K units of
+roundoff (differences of 80 ε were measured over 16,512 rows, beyond the
+former band of 64 ε of the trailing norm, so the platform's rounding decided
+`ols_weighted_schur`'s x1/x17 tie). It is never narrower than that former band
+and stays at least 64 times below the rank threshold `128·ε·max(N, K)`; a tie
+never selects a candidate at or below the threshold. Rank, residual DoF,
+FE-collinear status and the other omission rules are unchanged: the rule
+decides only which of tied candidates is kept. Declared scope: fits whose
+finite rank is decided by this QR (a declined guarded Cholesky) and in which
+two candidates come within the band, which are rank-deficient designs with
+exact or near-exact ties (the omitted column may change to the earlier one)
+and full-rank fits whose pivot order changes (last bits only).
+
 PPML freezes canonical finite rank/status after the final separation/singleton
 sample. Positive changing IRLS weights cannot silently change public omission
 decisions. Revalidate that basis against the accepted final Hessian; a final
 rank loss or inconsistent rank decision is fatal. Starts, warm states and
 ordinary iteration-specific factorizations have no canonical-rank authority.
 
-Tests: `src/ols/finite_wls_kernel.rs`,
+Tests: `src/ols/finite_wls_kernel.rs` (with
+`retained_qr_keeps_the_earliest_of_tied_columns_under_scalings_and_permutations`
+and `retained_qr_tie_band_follows_the_rounding_of_the_column_norms`),
 `tests/intercept_slope_oracle.rs`, `tests/prepared_fit_oracle.rs`,
+`development/ols_weighted_schur.do` (against `regress`),
 `parity_ppmlhdfe/feppml_scientific_contract.do`.
 
 ## 9. Degrees of freedom and nesting
@@ -2090,6 +2116,36 @@ The two-FE OLS Auto team installation, the parallel cell construction and the pa
 follow this rule: their results do not depend on the worker count, apart from
 CMG's fixed-chunk centering of a single coarse component of at least 131,072
 entries, which uses the same tree whenever a team is installed.
+
+Portable hypot (decided by Johannes, 2026-11-10). The C library's `hypot` is
+not correctly rounded and differs between platforms in the last bit (glibc
+2.28 and macOS differ on 108,640 of 10^6 pairs), so kernels that accumulate
+it followed platform-dependent paths. fedemean's modified LSMR (its Givens
+rotations, its residual and `‖A‖` estimates) and fereg's retained QR (the
+streamed Givens rotations, the trailing column norms, the dropped-span and
+dropped-constant certificates) use `fedemean::numerics::hypot` instead: built
+from IEEE operations only (exact power-of-two scaling, additions,
+multiplications, one division and the correctly rounded square root; no math
+library and no fused multiply-add), correctly rounded except within about
+2^-100 of a rounding boundary and on subnormal results, and never more than one
+ulp from correct rounding (an exact integer check), with a golden digest of
+10^6 pairs that macOS, Linux and Windows must reproduce. Given the same
+inputs these kernels have the same bits on every platform, so their discrete
+decisions (LSMR stops, declines and charged iterations; QR pivots) no longer
+depend on the platform's math library. Other platform-dependent arithmetic
+remains (runtime FMA dispatch; `exp` and `log` in PPML), and complete results
+are still not required to be bitwise identical across platforms. Declared
+scope: every route through these kernels may change at rounding level:
+explicit `solver(lsmr)` (OLS, slopes, PPML's joint recurrence and FWL
+projections), PPML's strict-checkpoint LSMR accelerator and the separation
+detector's LSMR re-execution, owned Auto's LSMR attempt on owned designs, and
+every fit whose finite rank the retained QR decides (a declined or rejected
+guarded Cholesky: rank-deficient or weak regressors), including PPML's
+dropped-constant certificate. Default elimination, PCG and Cholesky fits do
+not use these kernels and stay bitwise. Discrete outcomes that the platform's
+math library decided may change: `ols_offset_slope_boundary` case 3 now gives
+r(459) on every platform (formerly r(430) on macOS and Windows). VALIDATION
+records the measured differences.
 
 Scoped changes may deliberately change algorithms, arithmetic order and storage. Declare affected outputs, routes and
 errors before implementation; require independent scientific acceptance and

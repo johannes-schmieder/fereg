@@ -241,6 +241,12 @@ otherwise callers run the portable bodies inline. FMA is exactly rounded, so
 results match wherever the platform `fma` is exactly rounded.
 Processor features may select different arithmetic under SPEC's independent
 scientific checks; both the portable and accelerated paths remain tested.
+fedemean's `numerics::hypot` replaces the C library's `hypot` in the
+modified-LSMR recurrence and in fereg-core's retained QR (`finite_wls_kernel`
+Givens rotations, column norms and dropped-span certificate;
+`linear_constant`'s certificate). It uses IEEE operations only, so these
+kernels have the same bits on every platform (SPEC §18); a golden digest test
+pins it, and the Windows build runs that test too.
 
 The modified-LSMR recurrence (`mlsmr`), its lockstep multi-column form
 (`mlsmr_columns`) and its escalation hooks live in fedemean's `lsmr` module,

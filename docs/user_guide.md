@@ -384,6 +384,18 @@ diagnostics are specific to `fereg`:
 - `e(fereg_status)`, `e(fereg_dof)`, `e(fereg_fe)`, `e(fereg_cluster)`, and
   related matrices expose the detailed result contract.
 
+Regressors collinear with the absorbed effects are omitted as FE-collinear.
+Among the others a scaled column-pivoted QR factorization decides numerical
+rank. Of regressors that are exact multiples of one another, such as
+`x2 = 2*x1`, the one listed first is kept and the later ones are omitted, as
+with `regress`, whatever the platform, thread count or variable scale; omitted
+coefficients and their variances are zero, and `e(fereg_status)` records each
+status. Results repeat exactly for the same data, options and thread count on
+one machine and agree to numerical accuracy across thread counts and
+platforms, whose last bits may differ. The LSMR recurrences and this QR use a
+platform-independent `hypot`, so their iterations, stops and pivots do not
+depend on the platform's math library (see [SPEC](SPEC.md) §8 and §18).
+
 The lines above the coefficient table name the absorption route
 (`Fixed-effect solver:`), mark an escalation, list any local solves and
 state that the accuracy check passed at the effective tolerance and, after a

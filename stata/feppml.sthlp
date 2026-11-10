@@ -452,6 +452,10 @@ with the native team. At one million observations or more, it keeps the caller's
 setting. The original setting is restored on success, error, and Break.
 {cmd:deterministic} fixes reduction
 partitions and merge order for the same platform, route, and thread count.
+Results agree to numerical accuracy across thread counts and platforms; their
+last bits may differ between platforms. The LSMR recurrences and the
+rank-revealing QR use a platform-independent {it:hypot}, so their iteration
+counts, stops and pivots do not depend on the platform's math library.
 {cmd:solver()} uses the grammar of {help fereg##solver:fereg}:
 {cmd:solver(auto)} (the default),
 {cmd:solver(lsmr}[{cmd:, reduce(auto|full) precondition(auto|none|jacobi|schwarz)}]{cmd:)},
@@ -684,7 +688,11 @@ The closed diagnostic matrix set is
 With absorbed channels, {cmd:e(dof_table)} contains categories, redundancy,
 rank, approximation, and nesting by channel. {cmd:e(feppml_status)} preserves
 canonical coefficient slots and distinct base, omitted, FE-collinear, and
-numerically rank-deficient statuses. {cmd:e(feppml_receipt)} contains the
+numerically rank-deficient statuses. The finite rank is decided once, on the
+final sample, by a scaled column-pivoted QR factorization; of regressors that
+are exact multiples of one another, the one listed first is kept and the
+later ones are rank deficient, independently of the platform, the thread
+count, and the variables' scale. {cmd:e(feppml_receipt)} contains the
 versioned identity and final COMPLETE marker. Scalars beginning
 {cmd:e(feppml_)} expose bounded VCE/PSD, separation-ledger, memory, route,
 allocation, timing, thread, and certificate evidence.
