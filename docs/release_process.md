@@ -86,7 +86,9 @@ archive includes the complete dependency
 closure, its license texts and a relocatable offline Cargo configuration.
 Extract its `THIRD_PARTY_LICENSES.txt` and pass that file to native staging with
 `--third-party-licenses`; the installed package carries the combined notices,
-MIT text, CMG permission notice and corresponding-source URL. The CMG payload must match `licenses/CMG-SOURCE.json`, its Cargo manifest/lock
+MIT text, CMG permission notice, the MIT grant of fedemean's moved LSMR engine
+(in `THIRD_PARTY_NOTICES.md`, since that source is in-tree rather than a
+vendored dependency) and corresponding-source URL. The CMG payload must match `licenses/CMG-SOURCE.json`, its Cargo manifest/lock
 pin and the vendor replacement configuration. The inventory records Cargo
 1.85.1 normalization; packaging never rewrites the dependency. Refresh that
 external inventory from a clean `cargo vendor --locked --versioned-dirs`

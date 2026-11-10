@@ -228,16 +228,19 @@ qualification harness and cluster comparison results are in [bench](bench/README
 ## Upstream software and acknowledgments
 
 fereg builds on established open-source numerical software. Its modified
-LSMR iteration uses the `schwarz-precond` crate of a pinned, adapted
-[fork](https://github.com/johannes-schmieder/within) of
+LSMR iteration is the engine of the MIT-licensed `schwarz-precond` crate of an
+adapted [fork](https://github.com/johannes-schmieder/within) of
 [within](https://github.com/py-econometrics/within), developed by Alexander
 Fischer, Kristof Schröder, and contributors at the appliedAI Institute for
 Europe and in the PyFixest community. Their
 [graph-preconditioning paper](https://github.com/py-econometrics/within-paper)
 describes the pairwise Schwarz approach, which fereg's own `fedemean` crate
 implements for its additive Schwarz preconditioner, with approximate Cholesky
-local solves from the `approx-chol` crate. The fork adapts resumable
-iterations, allocation, reproducible reductions, and cancellation for fereg.
+local solves from the `approx-chol` crate. The fork adapted resumable
+iterations, allocation, reproducible reductions, and cancellation for fereg;
+the engine now lives in `fedemean` with its upstream notice (see the
+[third-party notices](THIRD_PARTY_NOTICES.md)), and fereg no longer depends on
+that repository.
 
 The CMG backend uses a [Rust port](https://github.com/johannes-schmieder/CMG)
 of Koutis and Miller's
@@ -279,7 +282,7 @@ and its dependencies, along with prior work on parallel data transfer.
 - **Fong, David Chin-Lung, and Michael A. Saunders (2011).**
   [*LSMR: An Iterative Algorithm for Sparse Least-Squares Problems*](https://doi.org/10.1137/10079687X).
   *SIAM Journal on Scientific Computing* 33(5): 2950–2971.
-  The LSMR iteration used for fixed-effect absorption through `schwarz-precond`.
+  The modified LSMR iteration of fedemean's full-system and PPML joint solves.
 - **Gao, Yuan, Rasmus Kyng, and Daniel A. Spielman (2026).**
   [*AC(k): Robust Solution of Laplacian Equations by Randomized Approximate Cholesky Factorization*](https://doi.org/10.1137/24M1673577).
   *SIAM Journal on Scientific Computing* 48(3): A1643–A1684.

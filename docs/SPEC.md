@@ -217,10 +217,16 @@ interfaces, not additions to the public options above.
 
 `within`, formerly the pinned modified-LSMR library, was never a public solver
 and is no longer a dependency (retired in Milestone 3, 2026-11-09). Every
-modified LSMR is `mlsmr` from the pinned `schwarz-precond` crate (the same
-revision as before), run by fedemean's full system and, for PPML's explicit
-joint `[X D]` recurrence (§13) and the developer LSMR Break hooks, by
-fereg-core directly. All supported backends must honor the same scientific
+modified LSMR is `mlsmr` of fedemean's `lsmr` module, the engine of the
+`schwarz-precond` crate at the former pin `8d401d82` moved in-tree with its
+MIT notice (2026-11-09; no fereg dependency resolves from that repository),
+run by fedemean's full system and, for PPML's explicit joint `[X D]`
+recurrence (§13) and the developer LSMR Break hooks, by fereg-core directly.
+fedemean's full system runs each batch of up to eight columns in lockstep
+(`mlsmr_columns`), one operator, adjoint and preconditioner application per
+iteration for the running columns; each column keeps its own recurrence,
+stopping tests, restarts and certificate and returns the bits of a
+one-column solve, and the batch narrows to what the memory limit admits. All supported backends must honor the same scientific
 model and accuracy contract. Shared internal operations preserve explicit solver and storage support;
 unsupported requests fail clearly.
 

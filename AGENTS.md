@@ -112,7 +112,7 @@ class is itself the requirement, with the reason recorded. Submit a chain in one
 step with `-hold_jid`, confirm that every `qsub` returned a job id, and verify
 checksum manifests (`sha256sum`-format, paths relative to the run root) from the
 run root before anything depends on them; record each job's host in the result.
-The pinned `schwarz-precond`, `cmg` and `approx-chol` dependencies follow the
+The pinned `cmg` and `approx-chol` dependencies follow the
 same scientific rules; integrate dependency changes through reviewed pins.
 
 Native publication permissions are resolved in `docs/licensing.md`. Main is a

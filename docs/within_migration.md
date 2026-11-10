@@ -1,12 +1,13 @@
 # Upstream within compatibility
 
 > **Historical and superseded.** fereg no longer depends on `within`: its last
-> uses were removed in Milestone 3 (November 2026), and only `schwarz-precond`
-> stays at the pinned revision `8d401d82`. The entry-point, slope-boundary and
-> allocation tooling this record cites was removed with it; Git history keeps
-> it at revision `9fe647ab`. Code references below describe the code of that
-> time; removed files are named in plain text. For current behavior, see the
-> [specification](SPEC.md#solver-support-and-dispatch) and the
+> uses were removed in Milestone 3 (November 2026), and the modified LSMR
+> engine of `schwarz-precond` (revision `8d401d82`) moved into fedemean on
+> 2026-11-09, so no dependency on that repository remains. The entry-point,
+> slope-boundary and allocation tooling this record cites was removed with
+> `within`; Git history keeps it at revision `9fe647ab`. Code references below
+> describe the code of that time; removed files are named in plain text. For
+> current behavior, see the [specification](SPEC.md#solver-support-and-dispatch) and the
 > [validation record](VALIDATION.md#within-retirement-milestone-3-development-mac).
 
 This is the historical beta.11 migration record from October 2026. Its dated

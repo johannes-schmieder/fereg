@@ -4303,6 +4303,80 @@ lane groups shorten CMG application by 19 ms per fit on this processor (as
 on the Mac, 16.8 to 11.0 ms), and nothing else on the path differs. No
 policy change.
 
+## Modified LSMR engine in fedemean (development, Mac)
+
+fedemean carries the modified LSMR engine of the MIT-licensed
+`schwarz-precond` crate as `fedemean::lsmr` (`04f63332`): the engine at the
+former pin `8d401d82` of the adapted within fork, moved with its unit tests
+and upstream notice and without the crate's Schwarz preconditioner, its
+arithmetic unchanged (the mechanical edits are listed in the module's
+provenance note). fedemean's explicit-LSMR projections then run batches of
+up to eight columns in lockstep through the engine's `mlsmr_columns`
+(`14d829c8`), developed on the fork after that pin and never published. fereg
+has no dependency on the within repository: both lockfiles lose
+schwarz-precond, thiserror, thiserror-impl, proc-macro2, quote, syn and
+unicode-ident (`Cargo.lock` 32 to 25 packages, `fuzz/Cargo.lock` 37 to 30),
+and no locked package resolves from that repository. Modified LSMR no longer
+needs fedemean's `schwarz` feature, which covers additive Schwarz and
+approx-chol.
+
+Declared scope of `14d829c8`: fedemean's full-system LSMR projections with
+more than one column (explicit `solver(lsmr)` on OLS, slope LSMR, PPML's FWL
+projections). Each column keeps its own recurrence, stopping tests, restarts,
+budget and certificate, and the batch's kernels keep `mlsmr`'s per-column
+summation order, so every column returns the bits of its one-column solve.
+Independent witnesses: the engine's tests compare every result field of
+`mlsmr_columns` with `mlsmr` at widths 1-8 (restarts, refused stops,
+breakdowns, indefinite metrics, invalid columns, cancellation, pool widths),
+and fedemean's tests compare lockstep projections with one-column projections
+(Jacobi, identity, Schwarz, weights, slopes with channel blocks and centered
+offsets, a memory-narrowed width). The reported workspace is the widest
+batch's; under a tighter limit the batch narrows down to one column, and a
+projection declines only when one column does not fit (the plugin allocator
+audit `fedemean_lsmr_batches_stay_within_their_reported_workspace` binds the
+measured peak to it).
+
+**Checks (Mac).** `scripts/run_tests.sh --source-only` passes with the three
+numpy-dependent Python modules not run: Python ran 282 tests (13 skipped; the
+three modules cannot import numpy here, and nothing else fails), and the
+script's remaining steps pass: 2,413 Rust test results with none failing
+(fedemean's library 125, among them the moved engine's tests and the lockstep
+tests; fereg-core's library 1,554; the plugin's 243 FFI tests and its 13
+allocator audits, each in a fresh process), both Clippy configurations,
+rustfmt, the locked fuzz check, the portable static checks and the complexity
+ratchet. fedemean's tests also pass without features, and Clippy is clean in
+all four fedemean feature combinations. The new batch audit measured peaks of
+0.63-0.96 of the reported workspace over 2 and 3 effects and a slope design,
+Jacobi and Schwarz, 5 and 11 columns and 1 and 4 workers, including the runs
+one byte below the widest batch and at one column's admission. The
+actual-plugin ABI harness passes on the `14d829c8` plugin. The offline source
+archive (vendored closure, `package_release.py`) builds the plugin with Cargo
+offline.
+
+**Mac M2 Ultra** (1M rows, `x1-x4`, `vce(robust)`, 4 threads, medians in ms;
+both timing windows recorded no interference). The first comparison ran one
+process x 2 fits per arm, the second 2 interleaved processes x 3 fits. Every
+case is bitwise identical (b, SE and objective) in both comparisons.
+
+| case | 10f4b633 | 04f63332 | 04f63332 | 14d829c8 |
+|---|---:|---:|---:|---:|
+| ols6lsmr | 704.5 | 697.5 | 651.5 | 509.0 |
+| ols2slopelsmr | 679.5 | 665.5 | 642.5 | 600.5 |
+| ols2lsmr | 216.5 | 214.0 | 211.5 | 204.0 |
+| ppml2lsmr, ppml3lsmr | 600.5, 906.0 | 594.5, 906.5 | 580.0, 873.0 | 578.5, 872.0 |
+| ppml2chainlsmr (`solver(lsmr)`) | 900.0 | 900.5 | 888.0 | 881.5 |
+| ols2, ols3, ppml2, ppml3, ols6 | 60.5, 82.5, 399.5, 472.0, 341.0 | 61.0, 80.5, 393.0, 469.5, 340.0 | 58.5, 79.5, 382.0, 462.5, 359.5 | 58.0, 79.0, 384.0, 459.5, 343.5 |
+
+The move leaves every timing within noise. The lockstep batch takes ols6lsmr
+to 0.78 and ols2slopelsmr to 0.93 of the one-column route; ols2lsmr (0.96,
+ten iterations per column, where fixed per-column passes dominate) and the
+PPML cases are flat: PPML's default explicit route is the joint recurrence,
+which solves one system per frame. The default cases run unchanged code
+(ols6's processes spread 331-365 ms in the first arm).
+
+Not covered: Linux and SCC timing, Windows, Intel Macs, installed-package
+admission, the three numpy-dependent Python modules and release work.
+
 ## Package checks
 
 ### Beta.13 parallel input and parity packaging

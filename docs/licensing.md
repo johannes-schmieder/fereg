@@ -12,9 +12,17 @@ third-party notices. CMG 0.3.0 carries that license and MIT Cargo metadata upstr
 Source packaging preserves the dependency unchanged and verifies its pinned
 source inventory in `licenses/CMG-SOURCE.json`.
 
+fedemean's modified LSMR engine (`crates/fedemean/src/lsmr.rs` and
+`crates/fedemean/src/lsmr/`) is MIT source moved from the `schwarz-precond`
+crate of the within repository (adapted fork revision `8d401d82`); the moved
+files keep their upstream copyright notices, and its MIT grant is reproduced
+in the module and in the [third-party notices](../THIRD_PARTY_NOTICES.md),
+which travel with source and binary packages. fereg has no dependency on that
+repository.
+
 Preserve third-party licenses and copyright notices. StataCorp's SPI sources,
-the MIT numerical dependencies, and MIT/Apache-2.0 Rayon sources retain their
-own notices. Johannes confirmed the required Stata/SPI native-distribution
+the moved LSMR source, the MIT numerical dependencies, and MIT/Apache-2.0
+Rayon sources retain their own notices. Johannes confirmed the required Stata/SPI native-distribution
 permissions on 2026-10-13.
 
 Native releases include checksums, a dependency audit, matching source with

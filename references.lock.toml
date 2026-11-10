@@ -24,7 +24,7 @@ version = "commit-pinned development tree"
 license = "MIT"
 relevant_source_paths = ["crates/within/src/", "crates/schwarz-precond/src/"]
 relevant_test_paths = ["crates/within/tests/", "crates/schwarz-precond/src/lsmr/tests/", "bench/history/"]
-use = "Runtime dependency through its schwarz-precond crate only (modified LSMR for fedemean and for PPML's joint LSMR, at the Cargo pin); the within crate was a runtime dependency until milestone 3 and is no longer linked. Kept as a development reference."
+use = "Development reference only; not a runtime dependency. The modified LSMR engine of its schwarz-precond crate (adapted fork revision 8d401d82) was moved into fedemean's lsmr module with its MIT notice on 2026-11-09; the within crate was a runtime dependency until milestone 3."
 
 [[reference]]
 name = "cmg"

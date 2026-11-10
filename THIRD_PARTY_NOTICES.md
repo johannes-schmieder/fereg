@@ -7,25 +7,57 @@ Interface 3.0 sources published by StataCorp LP at the URL recorded in
 `references.lock.toml`. Their original copyright notices are retained.
 They are not relicensed by fereg.
 
-## Pinned numerical dependencies
+## Modified LSMR engine (moved MIT source)
 
-The MIT-licensed `schwarz-precond` runtime dependency comes from
+fedemean's `lsmr` module (`crates/fedemean/src/lsmr.rs` and
+`crates/fedemean/src/lsmr/`) is the modified LSMR engine of the MIT-licensed
+`schwarz-precond` crate from
 [within](https://github.com/py-econometrics/within), developed by Alexander
 Fischer, Kristof Schröder, and contributors at the appliedAI Institute for
-Europe and in the PyFixest community. fereg uses its version 0.5.0 from the
-[adapted fork at `8d401d82`](https://github.com/johannes-schmieder/within/tree/8d401d8278ac783b2f258c459e057f30cd80d595)
-(package `schwarz-precond` of that repository). It supplies the modified LSMR
-iteration that fereg's `fedemean` crate and fereg-core's PPML joint LSMR
-run. The fork adapts resumable iterations, bounded allocation, reproducible
-reductions and cancellation. fereg's adapters supply the model data and
-independently check the returned weighted fixed-effect residuals before
-accepting an estimate. The numerical methods and their sources are
-acknowledged in the [README](README.md#selected-references). The repository's
-`within` crate is no longer a fereg dependency.
+Europe and in the PyFixest community. It was moved into fedemean on
+2026-11-09 from version 0.5.0 at the
+[adapted fork's revision `8d401d82`](https://github.com/johannes-schmieder/within/tree/8d401d8278ac783b2f258c459e057f30cd80d595),
+with its unit tests and without the crate's Schwarz preconditioner; the
+lockstep multi-column solve (`mlsmr_columns`) was developed on that fork
+afterwards, never published, and moved in with it. The fork adapted
+resumable iterations, bounded allocation, reproducible reductions and
+cancellation. The engine runs fedemean's full-system LSMR and fereg-core's
+PPML joint LSMR; fereg's adapters supply the model data and independently
+check the returned weighted fixed-effect residuals before accepting an
+estimate. The numerical methods and their sources are acknowledged in the
+[README](README.md#selected-references). Neither `schwarz-precond` nor the
+repository's `within` crate is a fereg dependency, and no locked package
+resolves from that repository.
 
-The upstream [MIT license](https://github.com/johannes-schmieder/within/blob/8d401d8278ac783b2f258c459e057f30cd80d595/LICENSE)
-retains copyright notices for within contributors and the appliedAI Institute
-for Europe gGmbH. Preserve those notices with source distributions.
+The moved files keep the upstream copyright notices. The following MIT grant
+covers them; preserve it with source and binary distributions.
+
+```text
+MIT License
+
+Copyright (c) 2026 within contributors
+Copyright (c) 2026 appliedAI Institute for Europe gGmbH
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+## Pinned numerical dependencies
 
 The MIT-licensed `approx-chol` crate, version 0.6.0 from crates.io, supplies
 the approximate Cholesky factorizations of fedemean's Schwarz local solves.

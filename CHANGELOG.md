@@ -101,6 +101,18 @@
   `e5613e81fb3b03c78de98658b372646fa802aabb`: a branch-free
   canonical edge sort and team applications of every planned hierarchy level.
   Both are arithmetic-preserving; results are unchanged bit for bit.
+- fedemean carries the modified LSMR engine (`fedemean::lsmr`): the engine of
+  the MIT-licensed `schwarz-precond` crate at the former pin `8d401d82`, moved
+  in with its tests and upstream notice. fereg no longer depends on the within
+  repository; `schwarz-precond` and the six crates only it needed leave
+  `Cargo.lock`. Results are unchanged bit for bit.
+- Explicit `solver(lsmr)` on fedemean's full system runs up to eight columns
+  in lockstep, one operator, adjoint and preconditioner application per
+  iteration for the running columns; each column keeps the bits, iterations
+  and certificate of its one-column solve, and the batch narrows to the
+  memory limit. On the one-million-row benchmark panel, six-effect OLS LSMR
+  takes 22% less time and two-effect slope LSMR 7% less; PPML LSMR is
+  unchanged.
 
 ## 0.5.3 — 2026-11-07
 

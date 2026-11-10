@@ -242,15 +242,20 @@ results match wherever the platform `fma` is exactly rounded.
 Processor features may select different arithmetic under SPEC's independent
 scientific checks; both the portable and accelerated paths remain tested.
 
-The modified-LSMR recurrence (`mlsmr`) and its escalation hooks live in the
-pinned `schwarz-precond` dependency. fedemean uses it (feature `schwarz`) for
-every full-system LSMR route, including the owned explicit LSMR on slope
-designs; fereg-core calls it directly only for PPML's explicit joint `[X D]`
-modified LSMR (`ppml/categorical_lsmr.rs`) and the developer LSMR Break hooks
-(`fe/lsmr_break.rs`). fedemean's Schwarz local solves use `approx-chol` for
-approximate Cholesky. fereg no longer depends on `within` (retired in
-Milestone 3). Changes to these dependencies obey the same scientific and
-performance evidence rules and enter through a pinned revision bump.
+The modified-LSMR recurrence (`mlsmr`), its lockstep multi-column form
+(`mlsmr_columns`) and its escalation hooks live in fedemean's `lsmr` module,
+moved from the MIT-licensed `schwarz-precond` crate with its upstream notice
+(no feature gate). fedemean uses it for every full-system LSMR route,
+including the owned explicit LSMR on slope designs, and runs each batch's
+uncertified columns in lockstep with each column's `mlsmr` bits; fereg-core
+calls it directly only for PPML's explicit joint `[X D]` modified LSMR
+(`ppml/categorical_lsmr.rs`), and the developer LSMR Break hooks
+(`fe/lsmr_break.rs`) observe its cancellation polls. fedemean's Schwarz local
+solves use `approx-chol` for approximate Cholesky (feature `schwarz`). fereg
+no longer depends on the within repository (`within` retired in Milestone 3,
+`schwarz-precond` on 2026-11-09). The engine obeys the same scientific and
+performance evidence rules as other runtime code; changes to the pinned
+dependencies enter through a pinned revision bump.
 
 Automatic unit-weight, symmetric three-FE OLS may first attempt at most four
 MAP sweeps when complete, outward-rounded pair-incidence geometry predicts

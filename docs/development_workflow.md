@@ -133,10 +133,12 @@ behind test configuration. Keep independent reference implementations and their
 consumers in fereg-oracle or fereg-testkit; preserve unique scientific witnesses
 when removing an obsolete production pipeline.
 
-The modified-LSMR recurrence is in the pinned `schwarz-precond` dependency
-(fedemean's full-system LSMR, PPML's explicit joint LSMR and the developer LSMR
-Break hooks); fedemean's Schwarz local solves use `approx-chol`. fereg no
-longer depends on `within` (retired in Milestone 3). Dependency changes follow
+The modified-LSMR recurrence is fedemean's `lsmr` module, moved from the
+`schwarz-precond` crate with its MIT notice (fedemean's full-system LSMR,
+PPML's explicit joint LSMR and the developer LSMR Break hooks); its tests run
+with fedemean's. fedemean's Schwarz local solves use `approx-chol`. fereg no
+longer depends on the within repository (`within` retired in Milestone 3,
+`schwarz-precond` on 2026-11-09). Dependency changes follow
 the same scientific and evidence requirements and enter this repository
 through a reviewed pinned revision bump. The historical
 [within migration record](within_migration.md) documents the former
