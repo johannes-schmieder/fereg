@@ -252,16 +252,7 @@ impl SolutionState {
 
     /// One `(x, h, h̄)` step; `v` must be normalized `v_{k+1}` and `prev` carries `(ρ, ρ̄)_{k-1}`.
     pub(super) fn update(&mut self, v: &[f64], curr: RotationStep, prev: RotationStep) {
-        // `ρρ̄` scales with `‖A‖²`, and `ζ/(ρρ̄)` can underflow where `β₁ζ/(ρρ̄)` does not.
-        let t_x = if curr.rho == 0.0 || curr.rho_bar == 0.0 {
-            0.0
-        } else {
-            let unsigned = Magnitude::product(self.rhs_norm, curr.zeta.abs())
-                / Magnitude::product(curr.rho, curr.rho_bar);
-            curr.zeta.signum() * unsigned.to_f64()
-        };
-        let t_hbar = ratio(curr.theta_bar, prev.rho) * ratio(curr.rho, prev.rho_bar);
-        let t_h = ratio(curr.theta_new, curr.rho);
+        let [t_x, t_hbar, t_h] = update_coefficients(self.rhs_norm, curr, prev);
 
         let n = self.x.len();
         debug_assert_eq!(v.len(), n);
@@ -296,6 +287,26 @@ impl SolutionState {
     pub(super) fn into_x(self) -> Vec<f64> {
         self.x
     }
+}
+
+/// `(t_x, t_h̄, t_h)` of one `(x, h, h̄)` step for a recurrence on `u₁ = b / rhs_norm`:
+/// `h̄ = h − t_h̄ h̄`, `x += t_x h̄`, `h = v − t_h h`.
+pub(super) fn update_coefficients(
+    rhs_norm: f64,
+    curr: RotationStep,
+    prev: RotationStep,
+) -> [f64; 3] {
+    // `ρρ̄` scales with `‖A‖²`, and `ζ/(ρρ̄)` can underflow where `β₁ζ/(ρρ̄)` does not.
+    let t_x = if curr.rho == 0.0 || curr.rho_bar == 0.0 {
+        0.0
+    } else {
+        let unsigned = Magnitude::product(rhs_norm, curr.zeta.abs())
+            / Magnitude::product(curr.rho, curr.rho_bar);
+        curr.zeta.signum() * unsigned.to_f64()
+    };
+    let t_hbar = ratio(curr.theta_bar, prev.rho) * ratio(curr.rho, prev.rho_bar);
+    let t_h = ratio(curr.theta_new, curr.rho);
+    [t_x, t_hbar, t_h]
 }
 
 /// Outcome of a single convergence test: continue iterating or stop.

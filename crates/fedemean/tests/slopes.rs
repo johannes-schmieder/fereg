@@ -807,6 +807,56 @@ fn slope_projections_are_pool_independent() {
     }
 }
 
+/// Lockstep modified LSMR on designs with slopes (channel blocks, a slope
+/// at a large offset on some levels): every column has the bits,
+/// coefficients and iterations of its one-column projection.
+#[test]
+fn lockstep_lsmr_with_slopes_has_single_column_bits() {
+    let case = Case::random(
+        64,
+        6_000,
+        &[spec(900, true, 1), spec(300, true, 0), spec(20, true, 2)],
+    )
+    .shifted_levels(0, 3, 16_777_216.0);
+    let weights = case.weights(65);
+    let ncols = 5;
+    let original = case.columns(66, ncols);
+    let per_rhs = case.per_rhs();
+    let request = Request::new(1e-9, MAX_ITERATIONS);
+    // The identity is slow on these slopes (as in the pool test).
+    for (method, preconditioner) in routes(&case)
+        .into_iter()
+        .filter(|&(m, p)| m == Method::Lsmr && p != Preconditioner::Identity)
+    {
+        for weights in [None, Some(weights.as_slice())] {
+            let mut projector = Projector::new(case.design(), full(method, preconditioner));
+            let mut data = original.clone();
+            let (outcome, coefficients) = project(
+                &mut projector,
+                &case,
+                weights,
+                (&mut data, ncols),
+                None,
+                &request,
+            );
+            assert!(projected(outcome).certificate.passed);
+            let iterations: Vec<usize> = projector.columns().iter().map(|c| c.iterations).collect();
+            let mut alone = Projector::new(case.design(), full(method, preconditioner));
+            for j in 0..ncols {
+                let mut single = column(&original, ncols, j);
+                let (outcome, one) =
+                    project(&mut alone, &case, weights, (&mut single, 1), None, &request);
+                assert!(projected(outcome).certificate.passed);
+                let label = format!("{preconditioner:?} column {j}");
+                assert_eq!(bits(&column(&data, ncols, j)), bits(&single), "{label}");
+                let lockstep = &coefficients[j * per_rhs..(j + 1) * per_rhs];
+                assert_eq!(bits(lockstep), bits(&one), "{label}");
+                assert_eq!(iterations[j], alone.columns()[0].iterations, "{label}");
+            }
+        }
+    }
+}
+
 /// Warm starts in the channel-major layout: from the solution at most one
 /// iteration; from a perturbed start the same projection, with coefficients
 /// that are the full solution.

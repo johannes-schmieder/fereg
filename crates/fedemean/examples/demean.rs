@@ -8,7 +8,7 @@
 //!     [--method auto|pcg|lsmr] [--precond auto|jacobi|block|identity|schwarz] \
 //!     [--subdomains star|all] [--local auto|exact|approximate] \
 //!     [--fallback decline|escalate] [--variant base|lowmob|chain] \
-//!     [--slope worker|firm|...] [--slope-only]
+//!     [--slope worker|firm|...] [--slope-only] [--dump FILE] [--dump-first FILE]
 //! ```
 //!
 //! `--precond block` is block-Jacobi with the default local solves (exact
@@ -58,6 +58,11 @@ struct Args {
     /// intercept.
     slope: Option<usize>,
     slope_intercept: bool,
+    /// Write the last repetition's projected columns here (little-endian
+    /// doubles, observation-major).
+    dump: Option<String>,
+    /// The same for the first projection.
+    dump_first: Option<String>,
 }
 
 /// The mobility pattern of the synthetic panel.
@@ -73,7 +78,7 @@ fn usage() -> &'static str {
      [--tolerance TOL] [--weights] [--reduction auto|eliminate|full] [--method auto|pcg|lsmr] \
      [--precond auto|jacobi|block|identity|schwarz] [--subdomains star|all] \
      [--local auto|exact|approximate] [--fallback decline|escalate] \
-     [--variant base|lowmob|chain] [--slope worker|firm|...] [--slope-only]"
+     [--variant base|lowmob|chain] [--slope worker|firm|...] [--slope-only] [--dump FILE] [--dump-first FILE]"
 }
 
 fn parse_args() -> Result<Args, String> {
@@ -102,6 +107,8 @@ fn parse_args() -> Result<Args, String> {
         variant: Variant::Base,
         slope: None,
         slope_intercept: true,
+        dump: None,
+        dump_first: None,
     };
     let mut iter = std::env::args().skip(1);
     while let Some(flag) = iter.next() {
@@ -181,6 +188,10 @@ fn parse_args() -> Result<Args, String> {
                 args.slope = Some(effect.ok_or_else(|| format!("--slope: one of {NAMES:?}"))?);
             }
             "--slope-only" => args.slope_intercept = false,
+            "--dump" => args.dump = Some(iter.next().ok_or("--dump needs a path")?),
+            "--dump-first" => {
+                args.dump_first = Some(iter.next().ok_or("--dump-first needs a path")?);
+            }
             "--help" | "-h" => {
                 println!("{}", usage());
                 std::process::exit(0);
@@ -373,6 +384,11 @@ fn describe(label: &str, outcome: &Outcome, projector: &Projector<'_>, elapsed: 
         .columns()
         .iter()
         .fold(0.0_f64, |m, c| m.max(c.relative_moment));
+    let per_column: Vec<String> = projector
+        .columns()
+        .iter()
+        .map(|c| c.iterations.to_string())
+        .collect();
     let facts = &report.facts;
     println!(
         "{label}: {:.4} s  route {:?}/{:?}/{:?}  escalations {}  iterations {}  \
@@ -404,6 +420,11 @@ fn describe(label: &str, outcome: &Outcome, projector: &Projector<'_>, elapsed: 
         facts.lanes,
         facts.corrections,
         report.workspace_bytes / (1 << 20),
+    );
+    println!(
+        "    column iterations [{}]  column iterations in all {}",
+        per_column.join(" "),
+        facts.column_iterations
     );
     true
 }
@@ -497,6 +518,10 @@ fn run(args: &Args) -> Result<(), Error> {
         if !describe("first (new + project)", &outcome, &projector, first) {
             return Err("the first projection declined".into());
         }
+        if let Some(path) = &args.dump_first {
+            let bytes: Vec<u8> = data.iter().flat_map(|v| v.to_le_bytes()).collect();
+            std::fs::write(path, bytes)?;
+        }
 
         let mut times = Vec::with_capacity(args.reps);
         let mut last = None;
@@ -536,6 +561,10 @@ fn run(args: &Args) -> Result<(), Error> {
         let median = median(&mut times);
         if let Some((outcome, elapsed)) = &last {
             describe("last repetition", outcome, &projector, *elapsed);
+        }
+        if let Some(path) = &args.dump {
+            let bytes: Vec<u8> = data.iter().flat_map(|v| v.to_le_bytes()).collect();
+            std::fs::write(path, bytes)?;
         }
         println!(
             "repeated: median {:.4} s over {} reps (min {:.4} s, max {:.4} s); first/median {:.2}",

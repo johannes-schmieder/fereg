@@ -21,9 +21,11 @@
 //!   the starting residual). A cold start begins at the largest effect's
 //!   level means, as the elimination does.
 //! - **Modified LSMR** on `A = W^1/2 D` with right-hand side `W^1/2 y`
-//!   ([`crate::lsmr::mlsmr`]), one column at a time.
-//!   Its stopping tests are proxies: a pass that does not certify restarts
-//!   from its iterate at a tighter tolerance within the iteration budget.
+//!   ([`crate::lsmr::mlsmr`] and [`crate::lsmr::mlsmr_columns`]),
+//!   lockstep over batches of up to eight columns ([`lsmr`]), each column
+//!   with `mlsmr`'s own recurrence and bits. Its stopping tests are proxies:
+//!   a pass that does not certify restarts from its iterate at a tighter
+//!   tolerance within the iteration budget.
 //!
 //! Success is declared only by the moment certificate recomputed from the
 //! formed residual over all levels, with the elimination's fold and scales
@@ -72,9 +74,11 @@
 //!
 //! Memory: every allocation is fallible; the structure, weight state and
 //! one flat workspace (resized per batch width, allocations kept) are
-//! retained, so repeated PCG projections allocate nothing. `mlsmr` allocates
-//! its own vectors per column. A Schwarz preconditioner is built for the
-//! current weights within the memory limit (or declines) and retained.
+//! retained, so repeated PCG projections allocate nothing. `mlsmr` and
+//! `mlsmr_columns` allocate their own vectors per round; the LSMR batch is
+//! the widest that fits the memory limit. A Schwarz preconditioner is built
+//! for the current weights within the memory limit (or declines) and
+//! retained.
 
 mod blocks;
 mod cells;
@@ -336,9 +340,26 @@ fn cells_bytes(cells: &Cells, width: usize) -> u128 {
     cells.bytes() + 8 * w * (6 * small + (cells.cells() * cb) as u128 + 3 * ca as u128)
 }
 
-/// Bytes a projection of `ncols` columns adds to the caller's data: the
-/// structure, the weight state and the solve workspace (for modified LSMR,
-/// with an estimate of `mlsmr`'s own vectors).
+/// Bytes of the modified LSMR solve for batches of `width` columns (beside
+/// the structure and weight state). One column: fedemean's workspace and an
+/// estimate of `mlsmr`'s own vectors. Wider: per column, its right-hand
+/// side, `mlsmr_columns`' two observation and seven coefficient vectors, the
+/// column's start, restart base, result and certified iterate and its
+/// scatter accumulators; once, `mlsmr_columns`' single-column stream (three
+/// observation and five coefficient vectors).
+pub(super) fn lsmr_bytes(st: &Structure, width: usize) -> u128 {
+    let (m, n) = (st.coefficients() as u128, st.nobs as u128);
+    if width <= 1 {
+        return pcg::work_bytes(st, 1) + 8 * (5 * n + 8 * m);
+    }
+    let scatter = (st.scatter_blocks() * st.scatter_levels()) as u128;
+    let w = width as u128;
+    pcg::work_bytes(st, 1) + 8 * (w * (3 * n + 11 * m + scatter) + 3 * n + 5 * m)
+}
+
+/// Bytes a projection of `ncols` columns uses beyond the caller's data: the
+/// structure, the weight state and the solve workspace (modified LSMR at its
+/// widest batch; under a tighter limit it runs narrower, down to one column).
 pub(crate) fn admission_bytes(
     st: &Structure,
     method: Method,
@@ -347,12 +368,18 @@ pub(crate) fn admission_bytes(
 ) -> u128 {
     let solve = match method {
         Method::Pcg => pcg::work_bytes(st, ncols.min(BATCH)),
-        Method::Lsmr => {
-            let (m, n) = (st.coefficients() as u128, st.nobs as u128);
-            pcg::work_bytes(st, 1) + 8 * (5 * n + 8 * m)
-        }
+        Method::Lsmr => lsmr_bytes(st, ncols.clamp(1, BATCH)),
     };
     st.bytes + state_bytes(st, method, weighted) + solve
+}
+
+/// The columns a projection of `ncols` must admit at once: PCG's batch;
+/// modified LSMR one, a wider batch running only where it fits.
+fn minimum_columns(method: Method, ncols: usize) -> usize {
+    match method {
+        Method::Pcg => ncols,
+        Method::Lsmr => 1,
+    }
 }
 
 impl Engine {
@@ -463,7 +490,8 @@ impl Engine {
         let (validated, key) = validate_keyed(weights, values.nobs())?;
         let weighted = validated.values.is_some();
         let width = values.ncols().clamp(1, BATCH);
-        let bytes = admission_bytes(st, call.method, values.ncols(), weighted)
+        let minimum = minimum_columns(call.method, values.ncols());
+        let bytes = admission_bytes(st, call.method, minimum, weighted)
             + self.cells.as_ref().map_or(0, |c| cells_bytes(c, width));
         if request.memory_limit.is_some_and(|limit| bytes > limit) {
             return Ok(untouched(Decline::MemoryLimit, facts));

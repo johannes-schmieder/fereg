@@ -740,6 +740,78 @@ fn schwarz_is_bitwise_independent_of_the_pool() {
     }
 }
 
+/// Lockstep modified LSMR gives every column the bits, coefficients and
+/// iterations of its own one-column projection, under Jacobi, the identity
+/// and Schwarz, unit and varying weights, over two batches (eight and three
+/// columns), and at the narrower width a memory limit leaves.
+#[test]
+fn lockstep_lsmr_columns_have_their_single_column_bits() {
+    let case = Case::random(391, 3000, &[700, 150, 9, 5]);
+    let weights = case.weights(392);
+    let ncols = 11;
+    let original = case.columns(393, ncols);
+    let per_rhs = case.per_rhs();
+    let request = Request::new(TOLERANCE, MAX_ITERATIONS);
+    let preconditioners = [
+        Preconditioner::Jacobi,
+        Preconditioner::Identity,
+        Preconditioner::Schwarz(SchwarzSpec::default()),
+    ];
+    for weights in [None, Some(weights.as_slice())] {
+        for preconditioner in preconditioners {
+            let choice = settings(Method::Lsmr, preconditioner, Fallback::Decline);
+            let mut projector = Projector::new(case.design(), choice);
+            let mut data = original.clone();
+            let (outcome, coefficients) = project(
+                &mut projector,
+                &case,
+                weights,
+                (&mut data, ncols),
+                &request,
+                &Control::default(),
+            )
+            .unwrap();
+            assert!(projected(outcome).certificate.passed);
+            let iterations: Vec<usize> = projector.columns().iter().map(|c| c.iterations).collect();
+            let mut alone = Projector::new(case.design(), choice);
+            for j in 0..ncols {
+                let mut single = column(&original, ncols, j);
+                let (outcome, one) = project(
+                    &mut alone,
+                    &case,
+                    weights,
+                    (&mut single, 1),
+                    &request,
+                    &Control::default(),
+                )
+                .unwrap();
+                assert!(projected(outcome).certificate.passed);
+                let label = format!("{preconditioner:?} column {j}");
+                assert_eq!(bits(&column(&data, ncols, j)), bits(&single), "{label}");
+                let lockstep = &coefficients[j * per_rhs..(j + 1) * per_rhs];
+                assert_eq!(bits(lockstep), bits(&one), "{label}");
+                assert_eq!(iterations[j], alone.columns()[0].iterations, "{label}");
+            }
+            let mut narrow = request;
+            narrow.memory_limit = projector.admission_bytes(2);
+            let mut limited = original.clone();
+            let (outcome, limited_coefficients) = project(
+                &mut projector,
+                &case,
+                weights,
+                (&mut limited, ncols),
+                &narrow,
+                &Control::default(),
+            )
+            .unwrap();
+            let report = projected(outcome);
+            assert!(report.workspace_bytes <= narrow.memory_limit.unwrap());
+            assert_eq!(bits(&limited), bits(&data), "{preconditioner:?} narrow");
+            assert_eq!(bits(&limited_coefficients), bits(&coefficients));
+        }
+    }
+}
+
 /// Explicit Schwarz beyond the memory limit declines with the columns
 /// untouched; the automatic choice keeps Jacobi within it; the admitted
 /// bytes count a built preconditioner.
@@ -754,7 +826,10 @@ fn memory_limits_decline_explicit_schwarz_and_keep_automatic_jacobi() {
         let mut projector =
             Projector::new(case.design(), settings(method, explicit, Fallback::Decline));
         assert!(projector.prepare(&Control::default()).unwrap());
-        let base = projector.admission_bytes(ncols).unwrap();
+        // Modified LSMR admits one column's workspace; a wider batch runs
+        // only where it fits beside the preconditioner.
+        let needed = if method == Method::Lsmr { 1 } else { ncols };
+        let base = projector.admission_bytes(needed).unwrap();
         let mut limited = request;
         limited.memory_limit = Some(base + 1024);
         let mut data = original.clone();

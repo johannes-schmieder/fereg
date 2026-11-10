@@ -2,7 +2,12 @@
 //! preconditioner `M ≈ AᵀA`, warm starts, escalation and cooperative
 //! cancellation: [`mlsmr`] and its counted and cancellable forms, on any
 //! [`Operator`]. `M⁻¹` must be nonsingular (symmetric positive definite) on
-//! all of the operator's column space.
+//! all of the operator's column space. [`mlsmr_columns`] runs `mlsmr` on up
+//! to [`MAX_COLUMNS`] right-hand sides in lockstep (one operator, adjoint
+//! and preconditioner application per iteration for all running columns);
+//! each column returns `mlsmr`'s bits when the operator's and the
+//! preconditioner's column applications ([`Operator::apply_columns`]) give
+//! each column the bits of a single application.
 //!
 //! fedemean's full formulation runs it on `W^1/2 D`; callers may run it on
 //! their own operators (fereg's PPML joint recurrence does).
@@ -18,8 +23,12 @@
 //! [`SolveError`] without the Schwarz local-solve variant; the `α₁ = 0` exit
 //! of the recurrence's driver moved into its own function; and the standard
 //! (unpreconditioned) Golub-Kahan entry points kept only as the tests'
-//! reference. The upstream notice follows; it applies to this module and its
-//! submodules.
+//! reference. The lockstep [`mlsmr_columns`] (with its tests), the
+//! operators' default column applications, the reference computation's move
+//! onto the modified stream and the solution update's coefficient function
+//! were developed on the fork after that revision and never published; they
+//! came in with this module, under the same license. The upstream notice
+//! follows; it applies to this module and its submodules.
 //
 // MIT License
 //
@@ -46,6 +55,7 @@
 
 mod bidiag;
 mod cancellation;
+mod columns;
 mod error;
 #[cfg(test)]
 mod fixtures;
@@ -64,6 +74,7 @@ use magnitude::Magnitude;
 use recurrence::{ConvergenceCriteria, LsmrRecurrenceState, RotationStep, SolutionState, Stop};
 
 pub use cancellation::Cancellation;
+pub use columns::{mlsmr_columns, ColumnSolve, MlsmrColumnsOptions, MAX_COLUMNS};
 pub use error::SolveError;
 #[cfg(test)]
 pub(crate) use reference::{lsmr, lsmr_cancellable, lsmr_counted, lsmr_counted_cancellable};
@@ -78,6 +89,71 @@ pub trait Operator: Send + Sync {
     fn apply(&self, x: &[f64], y: &mut [f64]) -> Result<(), error::SolveError>;
     /// Computes `y = Aᵀ x`; symmetric operators should delegate to `apply`.
     fn apply_adjoint(&self, x: &[f64], y: &mut [f64]) -> Result<(), error::SolveError>;
+
+    /// Computes `y = A x` for `k` columns stored interleaved: entry `i` of
+    /// column `j` is at `i * k + j` (`x` holds `ncols · k` values, `y`
+    /// `nrows · k`). The default applies [`apply`](Self::apply) to each
+    /// column through contiguous copies; an override should give every
+    /// column the bits of `apply`, which keeps [`mlsmr_columns`] per-column
+    /// identical to [`mlsmr`].
+    fn apply_columns(&self, k: usize, x: &[f64], y: &mut [f64]) -> Result<(), error::SolveError> {
+        columnwise(k, x, y, |x, y| self.apply(x, y))
+    }
+
+    /// Computes `y = Aᵀ x` for `k` interleaved columns; see
+    /// [`apply_columns`](Self::apply_columns).
+    fn apply_adjoint_columns(
+        &self,
+        k: usize,
+        x: &[f64],
+        y: &mut [f64],
+    ) -> Result<(), error::SolveError> {
+        columnwise(k, x, y, |x, y| self.apply_adjoint(x, y))
+    }
+}
+
+/// `f` on each of the `k` interleaved columns of `x` into those of `y`,
+/// through fallibly reserved contiguous copies.
+fn columnwise(
+    k: usize,
+    x: &[f64],
+    y: &mut [f64],
+    f: impl Fn(&[f64], &mut [f64]) -> Result<(), error::SolveError>,
+) -> Result<(), error::SolveError> {
+    if k == 1 {
+        return f(x, y);
+    }
+    if k == 0 || x.len() % k != 0 || y.len() % k != 0 {
+        return Err(error::SolveError::InvalidInput {
+            context: "apply_columns",
+            message: format!(
+                "{k} columns do not divide the input {} and output {} lengths",
+                x.len(),
+                y.len()
+            ),
+        });
+    }
+    let reserve = |len: usize| {
+        let mut values = Vec::new();
+        values
+            .try_reserve_exact(len)
+            .map_err(|_| error::SolveError::Allocation {
+                context: "apply_columns",
+            })?;
+        values.resize(len, 0.0);
+        Ok::<_, error::SolveError>(values)
+    };
+    let (mut input, mut output) = (reserve(x.len() / k)?, reserve(y.len() / k)?);
+    for j in 0..k {
+        for (value, &source) in input.iter_mut().zip(x.iter().skip(j).step_by(k)) {
+            *value = source;
+        }
+        f(&input, &mut output)?;
+        for (target, &value) in y.iter_mut().skip(j).step_by(k).zip(&output) {
+            *target = value;
+        }
+    }
+    Ok(())
 }
 
 /// Euclidean norm of a vector.

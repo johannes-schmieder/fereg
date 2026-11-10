@@ -58,7 +58,7 @@ fn axpy_with_norm(y: &mut [f64], x: &[f64], scale: f64) -> f64 {
 }
 
 /// Independent accumulators per leaf: a single add chain is latency-bound and never vectorizes.
-const LANES: usize = 8;
+pub(super) const LANES: usize = 8;
 
 /// `Σ leaf` over `LSMR_UPDATE_CHUNK` pieces in a tree fixed by the length.
 #[inline]
@@ -86,7 +86,7 @@ pub(super) fn axpby(y: &mut [f64], x: &[f64], alpha: f64, beta: f64) {
 
 /// `y /= d` without over/underflow unless `y / d` does, to one rounding at `f64::MAX` (`drscl`).
 #[inline]
-fn normalize(y: &mut [f64], d: f64) {
+pub(super) fn normalize(y: &mut [f64], d: f64) {
     if d > 0.0 {
         let inv = 1.0 / d;
         let seq = |c: &mut [f64]| {
@@ -129,7 +129,7 @@ fn par_dot(a: &[f64], b: &[f64]) -> f64 {
 
 /// Why [`alpha_from_vp`] refused a pair.
 #[derive(Debug)]
-enum AlphaError {
+pub(super) enum AlphaError {
     /// `⟨v, p̃⟩ < −√ε·‖v‖‖p̃‖`: an indefinite `M`, or a `v` that drifted from `M⁻¹ p̃`.
     NegativeMetric,
     Invalid(SolveError),
@@ -154,7 +154,7 @@ impl From<AlphaError> for SolveError {
 }
 
 /// `α = √⟨v, p̃⟩`; a `vp` negative within `√ε·‖v‖‖p̃‖` clamps to 0, an indefinite `M` raises.
-fn alpha_from_vp(v: &[f64], p_tilde: &[f64]) -> Result<f64, AlphaError> {
+pub(super) fn alpha_from_vp(v: &[f64], p_tilde: &[f64]) -> Result<f64, AlphaError> {
     // A NaN `vp` may be `∞ − ∞` from finite vectors; the norms below reject a NaN entry.
     let vp = par_dot(v, p_tilde);
     if vp.is_normal() && vp > 0.0 {
@@ -479,13 +479,13 @@ impl<A: Operator + ?Sized, M: Operator + ?Sized> Bidiagonalization
 }
 
 /// Workspaces used by [`ModifiedGolubKahan`].
-struct ModifiedGolubKahanBuffers {
+pub(super) struct ModifiedGolubKahanBuffers {
     /// `u` left unnormalized between steps while `β_{k+1}` stays inside [`RAW_U_NORMS`].
-    u: Vec<f64>,
+    pub(super) u: Vec<f64>,
     /// `ṽ` in DOF space (length n). **Normalized** at the end of each step.
-    v: Vec<f64>,
+    pub(super) v: Vec<f64>,
     /// `p̃` recurrence vector (length n); `p_tilde_stored ≈ α · M · v_normalized`.
-    p_tilde: Vec<f64>,
+    pub(super) p_tilde: Vec<f64>,
     /// Scratch for `A · v` (length m).
     av: Vec<f64>,
     /// Scratch for `Aᵀ · u` (length n).
@@ -508,15 +508,15 @@ impl ModifiedGolubKahanBuffers {
 }
 
 /// `‖u‖` left unnormalized to skip a pass over `m`; `‖Aᵀu‖ ≤ 1e64 ‖A‖` caps raw `‖A‖` at `1e244`.
-const RAW_U_NORMS: std::ops::RangeInclusive<f64> = 1e-64..=1e64;
+pub(super) const RAW_U_NORMS: std::ops::RangeInclusive<f64> = 1e-64..=1e64;
 
 /// Modified Golub-Kahan with `M ≈ AᵀA`, storing `p̃` scaled by `α` so a step costs one `M⁻¹`.
 pub(super) struct ModifiedGolubKahan<'a, A: Operator + ?Sized, M: Operator + ?Sized> {
     operator: &'a A,
     preconditioner: &'a M,
-    bufs: ModifiedGolubKahanBuffers,
+    pub(super) bufs: ModifiedGolubKahanBuffers,
     /// Last `α` emitted; needed by the next step to scale `p_tilde`.
-    alpha: f64,
+    pub(super) alpha: f64,
     /// `1/‖u‖` as stored: `1/β_k`, or 1 once `u` was normalized in place.
     u_norm_inv: f64,
 }
@@ -558,27 +558,7 @@ impl<'a, A: Operator + ?Sized, M: Operator + ?Sized> StagedStart<'a, A, M> {
         rhs: &[f64],
         rhs_norm: f64,
     ) -> Result<(Magnitude, Magnitude), SolveError> {
-        let stream = &mut self.0;
-        let bufs = &mut stream.bufs;
-        let (g, mv) = (&mut bufs.atu, &mut bufs.v);
-        let image = adjoint_image(stream.operator, rhs, rhs_norm, &mut bufs.av, g)?;
-        if !image.g_norm.is_finite() {
-            return Ok((Magnitude::from(image.g_norm), image.norm()));
-        }
-        let plain = image.norm();
-        // `gᵀM⁻¹g` overflows past `‖g‖ ≈ 1e154`, but `M⁻¹` of a subnormal `g` made unit may too.
-        let scale = if image.g_norm.is_normal() {
-            image.g_norm
-        } else {
-            1.0
-        };
-        normalize(g, scale);
-        stream.preconditioner.apply(g, mv)?;
-        let alpha = alpha_from_vp(mv, g)?;
-        Ok((
-            Magnitude::product(ldexp(1.0, image.k), scale) * Magnitude::from(alpha),
-            plain,
-        ))
+        self.0.gradient_references(rhs, rhs_norm)
     }
 
     /// Seed the sequence from the staged `u` with `β₁ = ‖u‖`, yielding the stream and `(α₁, β₁)`.
@@ -594,7 +574,7 @@ impl<'a, A: Operator + ?Sized, M: Operator + ?Sized> StagedStart<'a, A, M> {
 }
 
 impl<'a, A: Operator + ?Sized, M: Operator + ?Sized> ModifiedGolubKahan<'a, A, M> {
-    fn new(operator: &'a A, preconditioner: &'a M, local_size: usize) -> Self {
+    pub(super) fn new(operator: &'a A, preconditioner: &'a M, local_size: usize) -> Self {
         let (m, n) = (operator.nrows(), operator.ncols());
         Self {
             operator,
@@ -603,6 +583,34 @@ impl<'a, A: Operator + ?Sized, M: Operator + ?Sized> ModifiedGolubKahan<'a, A, M
             alpha: 0.0,
             u_norm_inv: 1.0,
         }
+    }
+
+    /// [`StagedStart::gradient_references`] on this stream's scratch (`av`, `atu`, `v`).
+    pub(super) fn gradient_references(
+        &mut self,
+        rhs: &[f64],
+        rhs_norm: f64,
+    ) -> Result<(Magnitude, Magnitude), SolveError> {
+        let bufs = &mut self.bufs;
+        let (g, mv) = (&mut bufs.atu, &mut bufs.v);
+        let image = adjoint_image(self.operator, rhs, rhs_norm, &mut bufs.av, g)?;
+        if !image.g_norm.is_finite() {
+            return Ok((Magnitude::from(image.g_norm), image.norm()));
+        }
+        let plain = image.norm();
+        // `gᵀM⁻¹g` overflows past `‖g‖ ≈ 1e154`, but `M⁻¹` of a subnormal `g` made unit may too.
+        let scale = if image.g_norm.is_normal() {
+            image.g_norm
+        } else {
+            1.0
+        };
+        normalize(g, scale);
+        self.preconditioner.apply(g, mv)?;
+        let alpha = alpha_from_vp(mv, g)?;
+        Ok((
+            Magnitude::product(ldexp(1.0, image.k), scale) * Magnitude::from(alpha),
+            plain,
+        ))
     }
 
     /// Scaling by `β / α_k` cancels the stored `α_k`; requires `α_k > 0`.

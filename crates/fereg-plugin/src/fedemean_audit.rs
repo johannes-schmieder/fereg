@@ -292,3 +292,107 @@ fn fedemean_schwarz_build_stays_within_its_reported_workspace() {
         });
     }
 }
+
+/// fedemean's lockstep modified LSMR stays within its reported workspace
+/// (and `admission_bytes`) at its widest batch, with Jacobi and Schwarz,
+/// intercepts and a slope, five and eleven columns, one and four workers;
+/// under a limit one byte below, it runs a narrower batch within that
+/// limit; at one column's workspace it runs one column at a time.
+#[test]
+#[ignore = "process-global allocator audit; run with --test-threads=1"]
+fn fedemean_lsmr_batches_stay_within_their_reported_workspace() {
+    use fedemean::{Choice, Fallback, Method, Preconditioner, Reduction, SchwarzSpec};
+    let _guard = crate::instrumentation::lock_action_observation();
+    // (rows, firms, spell, mobility, effects, slope)
+    let designs = [
+        (200_000, 12_000, 5, 0.2, 2, false),
+        (200_000, 12_000, 5, 0.2, 3, false),
+        (100_000, 2_000, 5, 0.3, 2, true),
+    ];
+    let mut state = 0x15a1_5eed;
+    for threads in [1, 4] {
+        let pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(threads)
+            .build()
+            .unwrap();
+        drop(pool.broadcast(|_| ()));
+        pool.install(|| {
+            for (n, firms, spell, moves, k, slope) in designs {
+                let codes = mobility(n, firms, spell, moves);
+                let levels = [n.div_ceil(spell), firms, YEARS];
+                let weights: Vec<f64> = (0..n).map(|_| (2.0 * uniform(&mut state)).exp()).collect();
+                let trend: Vec<f64> = codes[2].iter().map(|&t| f64::from(t)).collect();
+                let channels: Vec<usize> = (0..k).map(|e| 1 + usize::from(slope && e == 1)).collect();
+                let per: usize = (0..k).map(|e| levels[e] * channels[e]).sum();
+                let offsets: Vec<usize> = (0..k)
+                    .scan(0, |s, e| {
+                        let o = *s;
+                        *s += levels[e] * channels[e];
+                        Some(o)
+                    })
+                    .collect();
+                for preconditioner in [Preconditioner::Jacobi, Preconditioner::Schwarz(SchwarzSpec::default())] {
+                    for ncols in [5, 11] {
+                        let label = format!("{threads} workers, {n} rows, {k} effects, slope {slope}, {preconditioner:?}, {ncols} columns");
+                        let run = |limit: Option<u128>| {
+                            let effects = (0..k)
+                                .map(|e| {
+                                    let effect = Effect::new(&codes[e], levels[e]);
+                                    if slope && e == 1 {
+                                        effect.with_slopes(true, [trend.as_slice()]).unwrap()
+                                    } else {
+                                        effect
+                                    }
+                                })
+                                .collect();
+                            let design = Design::new(n, effects).unwrap();
+                            let choice = Choice {
+                                reduction: Reduction::Full,
+                                method: Method::Lsmr,
+                                preconditioner,
+                                fallback: Fallback::Decline,
+                            };
+                            let mut projector = Projector::new(design, Settings { choice, lanes: Some(4) });
+                            let mut values: Vec<f64> = (0..n * ncols).map(|i| ((i % 97) as f64) - 48.0).collect();
+                            let mut coefficients = vec![0.0; per * ncols];
+                            let layout = CoefficientLayout::new(per, &offsets, &levels[..k]).with_channels(&channels);
+                            let mut request = Request::new(1e-8, 2000);
+                            request.memory_limit = limit;
+                            let (start, _) = crate::ffi::begin_allocation_observation();
+                            let outcome = projector
+                                .project(
+                                    Weights::Values(&weights),
+                                    ColumnsMut::new(&mut values, n, ncols).unwrap(),
+                                    Some(CoefficientsMut::new(&mut coefficients, layout)),
+                                    &request,
+                                    &Control::default(),
+                                )
+                                .unwrap();
+                            let peak = crate::ffi::allocation_usage().peak_bytes - start.current_bytes;
+                            (outcome, peak, projector.admission_bytes(ncols), projector.admission_bytes(1))
+                        };
+                        let reported = |outcome: Outcome, label: &str| match outcome {
+                            Outcome::Projected(report) => {
+                                assert!(report.certificate.passed, "{label}");
+                                report.workspace_bytes
+                            }
+                            other => panic!("{label}: {other:?}"),
+                        };
+                        let (outcome, peak, admission, one) = run(None);
+                        let wide = reported(outcome, &label);
+                        eprintln!("fedemean LSMR audit: {label}: peak {peak} reported {wide} ({:.2})", peak as f64 / wide as f64);
+                        assert!(u128::from(peak) <= wide + u128::from(REPORT_SLACK), "{label}: peak {peak} > reported {wide}");
+                        assert_eq!(admission, Some(wide), "{label}");
+                        for limit in [wide - 1, one.unwrap()] {
+                            let (outcome, peak, _, _) = run(Some(limit));
+                            let narrow = reported(outcome, &label);
+                            eprintln!("fedemean LSMR audit: {label}: limit {limit} peak {peak} reported {narrow} ({:.2})", peak as f64 / narrow as f64);
+                            assert!(narrow <= limit, "{label}: reported {narrow} > limit {limit}");
+                            assert!(u128::from(peak) <= limit + u128::from(REPORT_SLACK), "{label}: peak {peak} > limit {limit}");
+                        }
+                    }
+                }
+            }
+        });
+    }
+}
