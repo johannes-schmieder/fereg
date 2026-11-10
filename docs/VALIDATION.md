@@ -4377,6 +4377,97 @@ which solves one system per frame. The default cases run unchanged code
 Not covered: Linux and SCC timing, Windows, Intel Macs, installed-package
 admission, the three numpy-dependent Python modules and release work.
 
+## Validation gaps closed (Mac, 1577e7af)
+
+Addendum-3 cleanup on the fedemean branch, 2026-11-09/10. Development
+evidence: nothing is pushed, published or written to `dist/`.
+
+**PPML allocation audits (runtime defect, `97d492ab`).** On the exact
+elimination route every warm PPML IRLS frame allocated and freed an 8-byte
+copy of the elimination's residual norms (`block_schur::Cache::attempt`
+attached it to each result), so the allocation audit's 16-iteration window
+saw 48 events at one thread and 32 at four, `e(feppml_allocation_cert_passed)`
+was 0, and `feppml_joint_categorical_audit`/`feppml_profile_curve_audit`
+failed r(9). The defect was present at the frozen `71fce764` (same counts)
+and absent at v0.5.3 (0 events). The PPML owner's cache now keeps the norms
+and `absorb_with_selected_norms` reads them by borrow, with the attach path's
+checks. Scope: allocation only. 24 PPML specifications (two to four effects,
+fast and low memory, robust and clustered, weights and an offset, 1 and 4
+threads) are bitwise identical in b, V, ll, deviance and iterations to the
+pre-fix plugin; both audits pass at 1 thread/pool 1 and 4 threads/pool 2.
+
+**Python environment (`bf9426fd`).** With an interpreter lacking NumPy, SciPy
+and pandas, three modules failed to import and 13 tests skipped. Every Python
+step of `scripts/run_tests.sh` now uses `FEREG_PYTHON_BIN`, and a preflight
+stops the run before any check without those modules. With the existing
+Anaconda Python 3.12.2 (NumPy 1.26.4, SciPy 1.13.1, pandas 2.2.2) all 361
+Python tests run and pass, none skipped.
+
+**Fixtures (`5651385b`).** The other seven of the nine whole-tree failures
+also failed identically with the `71fce764` plugin. `parallel_input_oracle`
+needs the solver trace, `staged_plugin_binary` and `feppml_installation_smoke`
+an extracted release package, and `windows_ci_smoke` Windows; they now
+declare that input (`* fixture-requires:`), and the runner provides the trace
+and its digest check or reports the fixture as not run (a failure when named
+explicitly; never a pass). The new `staged-install` profile holds the staged
+fixtures, and the `development` profile lists every development fixture.
+`mata_correction`, `native_splitbranch_block` and
+`feppml_platform_load_capture` were inputs of drivers retired in `788b05ea6`,
+needed code never in this repository and are removed.
+
+**Installed-package admission (`1577e7af`).** The universal plugin was built
+from a clean worktree of `1577e7af` with `scripts/build_macos.sh` and the
+remaps of the [Mac build instructions](macos_source_build.md) (sha256
+`6214d881df52c865b8f6ec05ab3c822775e94971e8d7df5cc5d47c08e098f46c`,
+33,655,968 bytes, x86_64 and arm64): binary audit and actual ABI/selftest/
+panic harness pass. `check_github_install.py` was bound to the repository's
+`dist/`, which still holds main's runtime and fails here as designed;
+`--package-root` checks a candidate root package staged by
+`stage_local_install.py --root-package` (macOS only; it also requires the
+candidate's Stata files to equal the source's). `scripts/run_tests.sh
+--package-root` with that candidate passes: the preflight, 361 Python tests
+(none skipped), the package gate on the candidate (34 files), 2,498 Rust test
+results with none failing (fereg-core's library 1,555; the plugin's 243 FFI
+tests and its 13 allocator audits, each in a fresh process), both Clippy
+configurations, rustfmt, the locked fuzz check, the ratchet and the
+portable, static and mock-SPI checks; the Linux mock-plugin audit needs a GNU
+ELF linker and is not run on the Mac. A `net install`
+of the candidate into isolated PLUS/PERSONAL/OLDPLACE/SITE directories
+installs 34 files byte for byte; the plugin resolves from that PLUS, selftest
+reports commit `1577e7af5fac`, independent comparisons give 1.2e-15 (OLS
+against `regress` with dummies) and 1.1e-11 (PPML against `poisson`), and 11
+installation and postestimation fixtures pass against the installed copy.
+The macOS-only release archive (`stage_release.py --platforms macos`, sha256
+`cb751f1d01ab0bf2da0a0b133db8a50a5b7721b84b6056bdabf9210df5ed87cc`;
+dependency audit 0 advisories) passes all 12 `staged-install` fixtures.
+Staging repair: the archive manifest now names the OLS result wire 1.7 and
+PPML request wire 1.10 the runtime speaks (it still said 1.5 and 1.8). The
+PPML Mata objects match their Stata 15 receipt; the compiled poster, which
+cannot be rebuilt without Stata 15, still posts `e(feppml_linear_route)` and
+`e(feppml_solver_fallback_count)`. This is a known reporting limitation and
+does not block admission.
+
+**Whole-tree Stata run** (the candidate plugin staged alone, Stata/MP 19):
+160 fixtures, 156 pass, 1 fails and 3 are not run: `staged_plugin_binary` and
+`feppml_installation_smoke` (they pass in the staged-install run above) and
+`windows_ci_smoke` (the Windows qualification runs it).
+`parallel_input_oracle` passes its trace check (72 cases, 208 runs, 73 in the
+numeric window). The failure is new, not one of the nine:
+`ols_offset_slope_boundary` case 2 (explicit slope `lsmr,
+precondition(none)`, `iterate(100)`) now fails r(430) where it expects r(459).
+It enters at `14d829c8`, the lockstep multi-column LSMR (`04f63332` passes;
+that lane ran no Stata fixtures). The fit's second projection declines; the
+column-by-column solve stopped at its first failing column and charged 21
+iterations, while the batch charges the 72 iterations a later column spent in
+lockstep, so 28 + 72 exhaust the budget and the certified MAP fallback no
+longer runs. Cases 1, 3 and 4 pass. Neither the batch's accounting nor the
+fixture is changed here: charging a decline only through its first failing
+column, or declaring the new outcome as was done for case 3, needs a decision.
+
+Not covered: Linux and Windows builds and qualification, Intel Macs, the
+corresponding-source archive (the candidate's notices omit the vendored
+license texts), HTTP installation and release work.
+
 ## Package checks
 
 ### Beta.13 parallel input and parity packaging
