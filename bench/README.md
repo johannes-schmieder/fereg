@@ -112,7 +112,14 @@ remain a cross-check, and the smoke gate requires exact peaks.
 
 `scc/setup.sh` builds a frozen source archive and copies the pinned comparator
 environment from `REFERENCE_ROOT`; `CAMPAIGN_PLUGIN=dist` measures the published
-package binary after checking its checksum instead of rebuilding it.
+package binary after checking its checksum instead of rebuilding it, and
+`CAMPAIGN_PLUGIN=candidate` with `CANDIDATE_PACKAGE` measures a staged candidate
+root package (`stage_local_install.py --root-package`) after checking its plugin
+checksum and that every packaged frontend file except help is identical to the
+source's. `campaign_submit.py stage` writes a run root (input record, launchers
+from the archive, `input/SHA256SUMS`, context; `--pe/--slots/--cpu-type` for a
+hardware supplement) and `submit` verifies the manifest from the root and submits
+setup, smoke and the production array with `-hold_jid`, recording each job id.
 `scc/pyfixest_environment.sh` installs the PyFixest arms named in
 `campaign.json` from the locked requirements in `pyfixest/` (the main revision
 builds its Rust extension with the pinned toolchain), and
