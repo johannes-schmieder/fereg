@@ -1,26 +1,26 @@
 {
   "schema": 1,
-  "version": "0.5.3",
-  "source_sha": "87dda4abfa9d5b7c9421ab86349a5f46134aedbb",
-  "runtime_sha256": "d33c87d06adea631099b958644c7d1bdacd43e2e091445c7128e0d7e4b35fea7",
+  "version": "0.6.0",
+  "source_sha": "06a805119818d95dba71e17d9f7ba69e4759268d",
+  "runtime_sha256": "d37bd7479526acc748b4c2571e89e20777cc30fe640accafb8535ed9d58beccd",
   "plugins": [
     {
       "path": "fereg_macos.plugin",
-      "source_sha": "87dda4abfa9d5b7c9421ab86349a5f46134aedbb",
-      "sha256": "73d13341bfecb844bc9eca66490c51242dbdaf91f2f25a9d82c944cd5d9ddd9d",
-      "bytes": 30478272
+      "source_sha": "06a805119818d95dba71e17d9f7ba69e4759268d",
+      "sha256": "07c3e9c316b8c20b3795be0935694441a4edf5abd88678cae2b52a2c50be0b18",
+      "bytes": 33655632
     },
     {
       "path": "fereg_linux.plugin",
-      "source_sha": "87dda4abfa9d5b7c9421ab86349a5f46134aedbb",
-      "sha256": "3b16e72aced6f908894d9ec312c8aca8f6a0d2d9769fe72467635ebb6da1da7e",
-      "bytes": 22198864
+      "source_sha": "06a805119818d95dba71e17d9f7ba69e4759268d",
+      "sha256": "f41fff17b172ee7bcaac2d900bd99ab0870e4884bf616ca556b8b59b830615ff",
+      "bytes": 23981728
     },
     {
       "path": "fereg_windows.plugin",
-      "source_sha": "1974e3833f8b3d2b2cb396e7ffaf41ec7fd64235",
-      "sha256": "ca4fab92770ca2278f552ffd6d08e6743f49d5af42ae9d81644c9e1b07802058",
-      "bytes": 12264448
+      "source_sha": "06a805119818d95dba71e17d9f7ba69e4759268d",
+      "sha256": "c72712af0373b91d81fefd45a93d9559eb68b0109287e7109f6c872ca147ecbf",
+      "bytes": 20392448
     }
   ],
   "included_platforms": [
@@ -29,16 +29,14 @@
     "macos"
   ],
   "support_caveats": [
-    "The Windows plugin is still the 0.5.3 build (before the exact elimination); rebuild and qualify it, and publish the matching corresponding-source archive, before pushing this runtime.",
     "Only platforms named in included_platforms are supplied by this package.",
     "The Linux binary requires glibc 2.28 or newer.",
-    "Eligible Windows x86-64 Stata/MP 19 GUI numeric input is parallel; loading Break may be delayed or unavailable.",
+    "Windows x86-64 Stata/MP 19 GUI supports eligible parallel input; Break during Windows loading may be delayed or unavailable.",
     "Native Intel-host Stata testing is outstanding; the macOS plugin contains both processor slices.",
-    "The accepted Linux no-FE 16-regressor, one-worker slowdown of 7.3% versus beta.14 remains; see docs/VALIDATION.md.",
-    "The accepted saved-effect refinement is 5.7% faster than 0.5.2 on the easy cell, 1.5% slower than its historical arm and 2.1% slower on the difficult cell, measured on one physical Linux host; see docs/VALIDATION.md."
+    "The accepted Linux no-FE 16-regressor, one-worker slowdown of 7.3% versus beta.14 remains; see docs/VALIDATION.md."
   ],
-  "corresponding_source_sha256": "1e2da13ece55c3122ceac8fbfe0c5b696c6cc9734e4c469b0859136920357c35",
-  "corresponding_source_commit": "c788fac06409c435955bfd489ccd5d0e91ba278c",
-  "cmg_sha": "e5613e81fb3b03c78de98658b372646fa802aabb",
-  "performance_acceptance": "Historical Mac weak-auto-t4 and weak-cmg-t4 cells remain INCONCLUSIVE with the owner acceptance dated 2026-11-06. The historical 0.5.2 saved-effects gate remains FAIL (paired ratio 1.1020), accepted on 2026-11-07. The fixed 63-call refinement comparison passes every current gate; Johannes accepted its remaining 1.5% historical easy-case gap and 2.1% difficult-case cost and authorized main integration. All measurements and failures remain preserved; no adverse results were resampled."
+  "corresponding_source_sha256": "fb270ec4fc9ff05503f58b8755504a70ad5a9f46e7e6a1ce8021f3d280133f78",
+  "corresponding_source_commit": "06a805119818d95dba71e17d9f7ba69e4759268d",
+  "cmg_sha": "368eceba765db91ff818815698da35889ce42ed0",
+  "performance_acceptance": "Johannes accepted the exact-elimination workstream on 2026-11-08 and the fedemean plan and addenda on 2026-11-08 to 2026-11-10. The November revision campaign on 80b6768e (runtime identical to 44cd1563) is descriptive: median default fereg time 0.572 of beta.15 over 63 matching cells. Historical performance exceptions and failures remain recorded in docs/VALIDATION.md; no adverse results were resampled."
 }

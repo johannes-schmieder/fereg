@@ -1,8 +1,89 @@
 # Validation status
 
+## Release 0.6.0, November 11, 2026
+
+Johannes's instruction of 2026-11-11: merge the fedemean branch into main and
+publish it as v0.6.0, a breaking release (the `solver()` grammar and `e()`
+renames; `feppml` without `solver(map)`). The packaging commit `06a80511`
+changes only version metadata against the qualified `44cd1563`:
+`check_complexity.py --compare-production 44cd1563` differs only in
+`Cargo.toml` and `Cargo.lock` (the version), the only other runtime change is
+`ADO_VERSION`, and the Stata frontend differs only in version lines. All three
+plugins were built from `06a80511` and carry `06a805119818` and the build date
+2026-11-11.
+
+**Corresponding source.** `cargo vendor --locked --versioned-dirs` gives 19
+crates; the vendored CMG 0.3.0 matches its reviewed 126-file inventory
+(`368eceba`). The dependency audit (cargo-audit 0.22.1, Rust 1.85.1) reports
+0 advisories for `Cargo.lock` `56ef1738…`. `fereg-0.6.0-source.zip` is
+`fb270ec4fc9ff05503f58b8755504a70ad5a9f46e7e6a1ce8021f3d280133f78`
+(33,595,797 bytes, 2,720 manifest files). Its combined notices cover exactly
+the vendored crates, Rayon and the Rust notices; the crates that only `within`
+needed are gone.
+
+**macOS.** Built offline from the extracted source archive with its
+[Mac build instructions](macos_source_build.md) (fresh Cargo home, nothing
+fetched, path remaps): universal plugin
+`07c3e9c316b8c20b3795be0935694441a4edf5abd88678cae2b52a2c50be0b18`,
+33,655,632 bytes; the binary audit and the actual ABI/selftest/panic harness
+pass. This offline build is the release plugin.
+- `run_tests.sh --package-root` on the staged candidate (Anaconda Python
+  3.12.2) passes: the preflight, 361 Python tests, the package gate (34 files,
+  runtime `d37bd747…`), 2,508 Rust results with none failing (fereg-core's
+  library 1,557, the plugin's FFI tests 243, the allocator audits in fresh
+  processes), both Clippy configurations, rustfmt, the fuzz check, the ratchet
+  and the portable, static and mock-SPI checks. The Linux mock-plugin audit
+  needs a GNU ELF linker.
+- Whole tree on Stata/MP 19 (plugin staged alone): 157 pass, 0 fail, 3 not run
+  (`staged_plugin_binary` and `feppml_installation_smoke` need an extracted
+  package and pass below; `windows_ci_smoke` needs Windows).
+- `staged-install`: 12 of 12 on the macOS-only archive (`88ada13f…`) and 12 of
+  12 on the three-platform release archive. `older-stata` passes on Stata/MP 18.
+
+**Linux, SCC `run-20261111r060`** (offline depth-2 snapshot of `06a80511` and
+the workspace and fuzz vendor closure; the CMG inventory checked in each tree;
+manifests verified from the run root before each job).
+- Build 8574134 on scc-gr4 (failed 0, exit 0, 187 s): `build_linux.sh`'s ELF
+  audit, actual-plugin harness and batch guard pass; plugin
+  `f41fff17b172ee7bcaac2d900bd99ab0870e4884bf616ca556b8b59b830615ff`,
+  23,981,728 bytes; Linux-only archive `eb5e6aa7…`.
+- Tests 8574135 on scc-gr4 (failed 0, exit 0, 666 s): `run_tests.sh
+  --package-root` with SCC Python 3.12.4 passes: 361 Python tests, the package
+  gate, 2,523 Rust results with none failing (the golden hypot digest
+  included), the ratchet and the Linux mock-plugin audit.
+- Stata 8574136 on scc-wa3 (failed 0, exit 0, 1,126 s): whole tree on Stata/MP
+  19 157 pass, 0 fail, 3 not run; `staged-install` 12 of 12 on the Linux-only
+  archive; `older-stata` on Stata/MP 15.1 passes.
+
+**Windows.** The accepted wrapper (`9ee64b16…`; controller `e88ed030…`,
+diagnostic guard `14fe3f65…`) from a clean detached worktree of `06a80511`;
+`inspect` PASS (roles-anywhere, stopped).
+- `stata-smoke` `win-20261111T153930Z-d366751a`: PASS (archive `e5f17253…`,
+  receipt `608165dc…`).
+- `stata-do` `win-20261111T154102Z-6623cb14`: PASS in 1,454 s of the 1,800 s
+  allowance, final stage `complete` (archive `a1dca4c9…`, receipt
+  `1aa668c6…`). Every controller check passes, as do the Rust/MSVC build, the
+  exact-arithmetic stage with the golden hypot digest, the C bridge, the PE
+  audit, the native loader and the installed-package fixtures of the profile.
+  Plugin `c72712af0373b91d81fefd45a93d9559eb68b0109287e7109f6c872ca147ecbf`,
+  20,392,448 bytes, an x86-64 PE DLL.
+- Both runs held the lock and ended with the instance stopped, the transfer
+  objects deleted and the lock released.
+
+**Package.** `fereg-0.6.0.zip` (`stage_release.py`, all three platforms, the
+combined notices):
+`305cbc229405924b597417a05a80325421e3a7fe6366fff27ed850980e67ad13`, 25,438,868
+bytes, 47 files. `dist/` is refreshed from it (runtime `d37bd747…`, the source
+archive hash, CMG `368eceba`), and `check_github_install.py` passes for 38
+files.
+
+Not covered: native Intel-Mac execution, the `staged-install` profile on a
+sealed Windows archive, live Break during Windows loading (waived 2026-11-07)
+and timing; the November campaign on `80b6768e` is descriptive.
+
 ## Exact elimination route and PPML elimination pre-solve, November 8, 2026
 
-**Integrated locally into main (not pushed; Windows plugin and publication pending).**
+**Integrated locally into main on November 8; published in 0.6.0 (above).**
 Johannes commissioned a performance workstream for OLS and PPML with two, three
 and more categorical effects (branch `claude-need4speed` on `b5aad4ed`) and, on
 November 8, accepted its decisions: a distinct reported solver identity for the
